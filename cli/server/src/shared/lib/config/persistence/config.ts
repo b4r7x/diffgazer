@@ -1,10 +1,10 @@
 import {
   AI_PROVIDERS,
   type AIProvider,
-  ProviderStatusSchema,
   type ProviderStatus,
-  SettingsConfigSchema,
+  ProviderStatusSchema,
   type SettingsConfig,
+  SettingsConfigSchema,
 } from "@diffgazer/core/schemas/config";
 import { z } from "zod";
 import { writeJsonFile, writeJsonFileSync } from "../../fs.js";

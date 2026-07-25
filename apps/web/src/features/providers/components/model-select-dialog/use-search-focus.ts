@@ -34,14 +34,19 @@ export function useModelSearchFocus({
   focusFilterButton,
   enterListFromBoundary,
 }: UseModelSearchFocusOptions): UseModelSearchFocusResult {
-  useKey(
-    "ArrowDown",
-    () => {
-      focusFilterButton(filterIndex);
-      blurSearchInput();
-    },
-    { enabled: open && inSearch, allowInInput: true, preventDefault: true },
-  );
+  // Leaving the search box for the filter row, shared by the document-level
+  // useKey fallback and the input's onArrowDown so the two dispatch paths cannot
+  // drift.
+  const moveToFilterRow = () => {
+    blurSearchInput();
+    focusFilterButton(filterIndex);
+  };
+
+  useKey("ArrowDown", moveToFilterRow, {
+    enabled: open && inSearch,
+    allowInInput: true,
+    preventDefault: true,
+  });
   useKey("ArrowUp", focusCloseButton, {
     enabled: open && inSearch,
     allowInInput: true,
@@ -65,10 +70,5 @@ export function useModelSearchFocus({
     }
   };
 
-  const handleSearchArrowDown = () => {
-    blurSearchInput();
-    focusFilterButton(filterIndex);
-  };
-
-  return { handleSearchEscape, handleSearchArrowDown };
+  return { handleSearchEscape, handleSearchArrowDown: moveToFilterRow };
 }

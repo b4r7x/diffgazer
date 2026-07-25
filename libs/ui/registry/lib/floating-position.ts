@@ -1,10 +1,28 @@
 import {
+  type Bounds,
   CROSS_AXIS_SIDES,
   type FloatingAlign,
   type FloatingSide,
   OPPOSITE_SIDE,
   type Viewport,
 } from "./floating-position-constants";
+
+/**
+ * Returns true when the anchor box lies entirely past one edge of the clipping bounds.
+ *
+ * Collision avoidance clamps floating content into the viewport, so once the anchor
+ * scrolls out of its clipping region the panel would otherwise park itself against a
+ * viewport edge, detached from the element it belongs to. Callers use this to suppress
+ * the panel instead.
+ */
+export function isAnchorClippedOut(anchor: Bounds, bounds: Bounds): boolean {
+  return (
+    anchor.bottom <= bounds.top ||
+    anchor.top >= bounds.bottom ||
+    anchor.right <= bounds.left ||
+    anchor.left >= bounds.right
+  );
+}
 
 /** Computes viewport coordinates for floating content from trigger/content rectangles. */
 export function computePosition(

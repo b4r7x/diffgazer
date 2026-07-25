@@ -18,6 +18,7 @@ import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
+import { focusBorder, SURFACE_BORDER } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 import { ApiKeyOverlay } from "./api-key-overlay";
 import type { ProviderDetailData } from "./details";
@@ -196,8 +197,8 @@ export function ProvidersScreen(): ReactElement {
             <Box
               flexDirection="column"
               width={listWidth}
-              borderStyle="single"
-              borderColor={isListActive ? tokens.accent : tokens.border}
+              borderStyle={SURFACE_BORDER}
+              borderColor={focusBorder(tokens, isListActive)}
             >
               <ProviderList
                 providers={providers}
@@ -211,8 +212,8 @@ export function ProvidersScreen(): ReactElement {
             <Box
               flexDirection="column"
               flexGrow={1}
-              borderStyle="single"
-              borderColor={isDetailsActive ? tokens.accent : tokens.border}
+              borderStyle={SURFACE_BORDER}
+              borderColor={focusBorder(tokens, isDetailsActive)}
             >
               <ProviderDetails
                 provider={selectedDetail}

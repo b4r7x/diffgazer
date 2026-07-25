@@ -20,7 +20,7 @@ export const blockBarDoc: ComponentDoc = {
     {
       title: "Multi-Segment Mode",
       content:
-        "Pass a segments array: segments={[{ value: 60, variant: 'success' }, { value: 25, variant: 'warning' }]}. Value is derived from the segment sum unless explicitly provided. Cells are allocated across ordered segments, so an exact max-total fills the configured width without clipping later segments. When segments and children are both provided, segments win and define rendering and value.",
+        "Pass a segments array: segments={[{ value: 60, variant: 'success' }, { value: 25, variant: 'warning' }]}. Value is derived from the segment sum unless explicitly provided. Cells are allocated across ordered segments, so an exact max-total fills the configured width without clipping later segments. When segments and children are both provided, segments win and define rendering and value. Each segment also accepts className for app-owned colors the built-in variants do not cover.",
     },
     {
       title: "Compound Mode",
@@ -116,7 +116,7 @@ export const blockBarDoc: ComponentDoc = {
           "Color token applied to the implicit single segment when no segments or children are provided.",
       },
       segments: {
-        type: "{ value: number; variant?: SegmentVariant; char?: string }[]",
+        type: "{ value: number; variant?: SegmentVariant; char?: string; className?: string }[]",
         required: false,
         defaultValue: null,
         description:

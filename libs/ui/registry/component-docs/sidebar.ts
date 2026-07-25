@@ -108,6 +108,7 @@ export const sidebarDoc: ComponentDoc = {
     { name: "sidebar-variant-caret", title: "Variant — caret" },
     { name: "sidebar-variant-inverted", title: "Variant — inverted" },
     { name: "sidebar-variant-bar", title: "Variant — bar" },
+    { name: "sidebar-variant-terminal", title: "Variant — terminal" },
     { name: "sidebar-variant-tree", title: "Variant — tree" },
     { name: "sidebar-collapsible", title: "Collapsible sections" },
     { name: "sidebar-rail", title: "Rail mode" },

@@ -34,6 +34,7 @@ export const searchInputDoc: ComponentDoc = {
   examples: [
     { name: "search-input-default", title: "Default" },
     { name: "search-input-custom", title: "Custom" },
+    { name: "search-input-states", title: "Sizes, invalid, disabled" },
     { name: "search-input-keyboard", title: "Keyboard Navigation" },
   ],
   keyboard: {
@@ -52,10 +53,7 @@ export const searchInputDoc: ComponentDoc = {
           "Forward through onKeyDown so a parent listbox, combobox, or custom search flow can own navigation.",
       },
     ],
-    examples: [
-      { name: "search-input-default", title: "Without keyboard (typing only)" },
-      { name: "search-input-keyboard", title: "With keyboard navigation" },
-    ],
+    examples: [{ name: "search-input-keyboard", title: "With keyboard navigation" }],
   },
   props: {
     SearchInput: {
@@ -106,7 +104,14 @@ export const searchInputDoc: ComponentDoc = {
         type: '"sm" | "md" | "lg"',
         required: false,
         defaultValue: '"md"',
-        description: "Padding/font size token for the search wrapper.",
+        description: "Height/padding/font size token, shared with Input and InputGroup.",
+      },
+      inputClassName: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description:
+          "Classes merged onto the inner input. The public seam for styling the field itself (text overflow, alignment) instead of reaching through the shell with a `[&_input]` selector.",
       },
       "aria-label": {
         type: "string",

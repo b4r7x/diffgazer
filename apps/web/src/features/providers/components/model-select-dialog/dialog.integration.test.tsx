@@ -1,6 +1,7 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider, configQueries, useSaveConfig } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
+import { getDateLabel, getTimestamp } from "@diffgazer/core/format";
 import type {
   AIProvider,
   OpenRouterModelsResponse,
@@ -259,8 +260,11 @@ describe("ModelSelectDialog query states", () => {
     });
     renderDialog({ getProviderModels });
 
-    expect(await screen.findByText(/using cached catalog data/i)).toHaveTextContent(
-      "2026-06-02T00:00:00.000Z",
+    const notice = await screen.findByText(/using cached catalog data/i);
+    expect(notice).toHaveTextContent(
+      `Using cached catalog data from ${getDateLabel("2026-06-02T00:00:00.000Z")} at ${getTimestamp(
+        "2026-06-02T00:00:00.000Z",
+      )}.`,
     );
     await user.click(screen.getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(getProviderModels).toHaveBeenCalledTimes(2));

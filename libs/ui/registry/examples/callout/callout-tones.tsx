@@ -27,11 +27,11 @@ export default function CalloutTones() {
         <Callout.Content>Something went wrong. Please try again.</Callout.Content>
       </Callout>
 
-      <Callout tone="warning">
-        <Callout.Icon />
-        <Callout.Title>Dismissible</Callout.Title>
-        <Callout.Content>Click the dismiss button to close this callout.</Callout.Content>
-        <Callout.Dismiss />
+      <Callout tone="success">
+        <Callout.Title>No icon</Callout.Title>
+        <Callout.Content>
+          Omit Callout.Icon and the icon column collapses — the title starts at the frame edge.
+        </Callout.Content>
       </Callout>
     </div>
   );

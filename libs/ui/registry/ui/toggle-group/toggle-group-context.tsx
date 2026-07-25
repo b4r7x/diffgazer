@@ -12,7 +12,7 @@ export interface ToggleGroupContextValue {
    * Switches value/onChange/defaultValue from string|null to readonly string[].
    */
   selectionMode: ToggleGroupSelectionMode;
-  /** Whether toggle group is item selected. */
+  /** Returns whether the given item value is selected. */
   isItemSelected: (value: string) => boolean;
   /** Fired when the selected value(s) change. */
   onChange: (value: string) => void;

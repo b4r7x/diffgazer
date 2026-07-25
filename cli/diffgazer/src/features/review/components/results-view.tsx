@@ -13,8 +13,10 @@ import { Box, Text } from "ink";
 import { type ReactElement, useState } from "react";
 import { useContentZone } from "../../../components/layout/global";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
+import { focusBorder, SURFACE_BORDER } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 import { useReviewKeyboard } from "../hooks/use-keyboard";
+import { computePaneGeometry } from "../lib/pane-geometry";
 import { IssueDetailsPane, type IssueDetailsSubZone } from "./issue-details-pane/pane";
 import { IssueListPane, type IssueListSubZone } from "./issue-list-pane";
 
@@ -33,14 +35,6 @@ const RESULTS_SHORTCUTS_LEFT: Shortcut[] = [
   SWITCH_PANE_SHORTCUT,
 ];
 const RESULTS_SHORTCUTS_RIGHT: Shortcut[] = [BACK_SHORTCUT];
-const RESULTS_CHROME_ROWS = 2;
-const RESULTS_PANE_BORDER_ROWS = 2;
-const ISSUE_LIST_CHROME_ROWS = 5;
-const ISSUE_DETAILS_CHROME_ROWS = 7;
-// Narrow mode truncates the details title and location to one row each, so the
-// half-pane chrome is exact: paddingTop + title + location.
-const NARROW_DETAILS_HEADER_ROWS = 3;
-const DETAILS_TABS_ROWS = 2;
 
 export function ReviewResultsView({
   issues,
@@ -109,29 +103,21 @@ export function ReviewResultsView({
 
   const detailsEmptyKind = selectDetailsEmptyKind(issues.length, filteredIssues.length);
   const duplicateNotice = buildDuplicateCollapseNotice(droppedDuplicates, issues.length);
-  const listWidth = isMedium
-    ? Math.max(Math.floor(columns * 0.35), 26)
-    : Math.max(Math.floor(columns * 0.4), 30);
-  const listContentWidth = Math.max((isNarrow ? columns : listWidth) - 4, 1);
-  const duplicateNoticeRows = duplicateNotice ? 1 : 0;
-  const paneHeight = Math.max(contentRows - RESULTS_CHROME_ROWS - duplicateNoticeRows, 1);
-  const paneContentHeight = Math.max(paneHeight - RESULTS_PANE_BORDER_ROWS, 1);
-  const listPaneContentHeight = isNarrow
-    ? Math.max(Math.floor(paneContentHeight / 2), 1)
-    : paneContentHeight;
-  const listScrollHeight = Math.max(listPaneContentHeight - ISSUE_LIST_CHROME_ROWS, 1);
-  const detailsPaneHeight = Math.floor(paneHeight / 2);
-  const narrowDetailsInnerRows = Math.max(detailsPaneHeight - RESULTS_PANE_BORDER_ROWS, 0);
-  const showDetailsTabs =
-    !isNarrow || narrowDetailsInnerRows >= NARROW_DETAILS_HEADER_ROWS + DETAILS_TABS_ROWS + 1;
-  const detailScrollHeight = isNarrow
-    ? Math.max(
-        narrowDetailsInnerRows -
-          NARROW_DETAILS_HEADER_ROWS -
-          (showDetailsTabs ? DETAILS_TABS_ROWS : 0),
-        1,
-      )
-    : Math.max(paneContentHeight - ISSUE_DETAILS_CHROME_ROWS, 1);
+  const {
+    listWidth,
+    listContentWidth,
+    listPaneHeight,
+    detailsPaneHeight,
+    listScrollHeight,
+    detailScrollHeight,
+    showDetailsTabs,
+  } = computePaneGeometry({
+    columns,
+    contentRows,
+    isNarrow,
+    isMedium,
+    hasDuplicateNotice: Boolean(duplicateNotice),
+  });
   const reviewIdLabel = reviewId ? formatRunId(reviewId) : "#unknown";
 
   return (
@@ -149,11 +135,11 @@ export function ReviewResultsView({
       <Box flexDirection={isNarrow ? "column" : "row"} marginTop={1}>
         <Box
           width={isNarrow ? undefined : listWidth}
-          height={isNarrow ? Math.ceil(paneHeight / 2) : paneHeight}
+          height={listPaneHeight}
           flexShrink={isNarrow ? undefined : 0}
           overflowY="hidden"
-          borderStyle="single"
-          borderColor={activeZone === "list" ? tokens.accent : tokens.border}
+          borderStyle={SURFACE_BORDER}
+          borderColor={focusBorder(tokens, activeZone === "list")}
         >
           <IssueListPane
             issues={filteredIssues}
@@ -171,10 +157,10 @@ export function ReviewResultsView({
         </Box>
         <Box
           flexGrow={1}
-          height={isNarrow ? detailsPaneHeight : paneHeight}
+          height={detailsPaneHeight}
           overflowY="hidden"
-          borderStyle="single"
-          borderColor={activeZone === "details" ? tokens.accent : tokens.border}
+          borderStyle={SURFACE_BORDER}
+          borderColor={focusBorder(tokens, activeZone === "details")}
         >
           <IssueDetailsPane
             issue={selectedIssue}

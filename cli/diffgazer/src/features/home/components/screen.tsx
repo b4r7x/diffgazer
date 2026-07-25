@@ -61,8 +61,8 @@ function HomeInitError({ message, onRetry }: { message: string; onRetry: () => v
   return (
     <Box flexDirection="column" flexGrow={1} alignItems="center" justifyContent="center">
       <Text color={tokens.error}>Home Data Unavailable</Text>
-      <Text dimColor>{sanitizeTerminalText(message)}</Text>
-      <Text dimColor>Press r to retry</Text>
+      <Text color={tokens.muted}>{sanitizeTerminalText(message)}</Text>
+      <Text color={tokens.muted}>Press r to retry</Text>
     </Box>
   );
 }
@@ -83,9 +83,9 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
   );
   const hasActiveSession = activeSession != null;
 
-  const trustConfig = initData?.project.trust ?? null;
-  const projectId = initData?.project.projectId;
-  const repoRoot = initData?.project.path;
+  const trustConfig = initData.project.trust ?? null;
+  const projectId = initData.project.projectId;
+  const repoRoot = initData.project.path;
 
   const { isTrusted, needsTrust } = deriveTrustStatus({
     trust: trustConfig,
@@ -95,8 +95,8 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
 
   const context: ContextInfo = buildHomeContextInfo(
     {
-      provider: initData?.config?.provider,
-      model: initData?.config?.model,
+      provider: initData.config?.provider,
+      model: initData.config?.model,
       trustedRepoRoot: trustConfig?.repoRoot,
     },
     mostRecent,

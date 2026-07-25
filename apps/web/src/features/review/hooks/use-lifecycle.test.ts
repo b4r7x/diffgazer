@@ -337,6 +337,45 @@ describe("useReviewLifecycle Back from terminal screens", () => {
     );
     expect(mockToastError).not.toHaveBeenCalled();
   });
+
+  it("reports a rejected cancel instead of leaving the user on a dead button", async () => {
+    const base = makeRunningBaseReturn();
+    base.stream.cancel = vi.fn(async () => {
+      throw new Error("Network request failed");
+    });
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+
+    const { result } = renderReviewLifecycle("unstaged");
+
+    act(() => result.current.handleCancel());
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith("Cancel failed", {
+        message: "Network request failed",
+      });
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(result.current.isTransitionPending).toBe(false);
+  });
+
+  it("reports a rejected cancel from the provider-setup path", async () => {
+    const base = makeRunningBaseReturn();
+    base.stream.cancel = vi.fn(async () => {
+      throw new Error("Network request failed");
+    });
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+
+    const { result } = renderReviewLifecycle("staged");
+
+    act(() => result.current.handleSetupProvider());
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith("Cancel failed", {
+        message: "Network request failed",
+      });
+    });
+    expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/settings/providers" });
+  });
 });
 
 describe("useReviewLifecycle Back from a running review", () => {

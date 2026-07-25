@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 
-import { THEME_DOCS_COLOR_GROUPS } from "@diffgazer/ui/theme";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@/hooks/theme-context";
+import { THEME_DOCS_COLOR_GROUPS } from "../lib/token-presentation";
 import { ColorGrid } from "./color-grid";
 
 function renderColorGrid() {

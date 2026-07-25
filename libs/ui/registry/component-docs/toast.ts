@@ -30,6 +30,11 @@ export const toastDoc: ComponentDoc = {
         "Toasts with tone='error' persist when duration is omitted and must be closed manually. An explicit positive duration schedules auto-dismissal.",
     },
     {
+      title: "Actions",
+      content:
+        'Render the `action` slot with the bracketed ghost Button (`<Button variant="ghost" size="sm" bracket>`) so a toast invitation speaks the same [ label ] vocabulary as the rest of the library. A toast with a rendered action and no explicit duration persists until dismissed.',
+    },
+    {
       title: "Keyboard",
       content:
         "Press Escape to dismiss the most recent toast. Toast Escape handling is global when toasts are present, so it runs before lower-priority page overlays that have not already handled the key. Press the focus hotkey (F8 by default, configurable via the Toaster `hotkey` prop) to move focus into the toast region so action and close buttons stay reachable before a timed toast disappears; the hotkey is ignored while an editable element has focus.",
@@ -50,6 +55,7 @@ export const toastDoc: ComponentDoc = {
   ],
   usage: { example: "toast-default" },
   examples: [
+    { name: "toast-static", title: "Standing Toast" },
     { name: "toast-default", title: "All Tones" },
     { name: "toast-variants", title: "Layout Variants" },
     { name: "toast-actions", title: "With Actions" },
@@ -112,7 +118,7 @@ export const toastDoc: ComponentDoc = {
         required: false,
         defaultValue: "5000",
         description:
-          "Auto-dismiss delay in ms. Error/loading tones and toasts with a rendered action persist when duration is omitted. The `hud` variant does not render actions, so passing an action does not make a HUD toast persistent. An explicit positive duration schedules dismissal.",
+          "Auto-dismiss delay in ms. Error/loading tones and toasts with a rendered action persist when duration is omitted. The `hud` variant does not render actions, so passing an action does not make a HUD toast persistent. An explicit positive duration schedules dismissal; a non-finite duration (Infinity) opts out of auto-dismissal entirely.",
       },
       action: {
         type: "ReactNode",

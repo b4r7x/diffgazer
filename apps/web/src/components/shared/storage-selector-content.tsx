@@ -5,6 +5,7 @@ import {
 } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { useId, useState } from "react";
 
 export interface StorageSelectorContentProps {
@@ -46,9 +47,9 @@ export function StorageSelectorContent({
 
   return (
     <div className="space-y-3">
-      <div id={labelId} className="text-sm font-mono text-foreground/60">
-        Select Storage Method:
-      </div>
+      <SectionHeader as="h2" id={labelId} variant="muted">
+        Select Storage Method
+      </SectionHeader>
       <RadioGroup
         value={value ?? undefined}
         onChange={handleChange}

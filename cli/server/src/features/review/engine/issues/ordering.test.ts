@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeIssue } from "../../../../shared/lib/testing/factories.js";
-import {
-  deduplicateIssues,
-  filterIssuesByMinSeverity,
-  sortIssuesBySeverity,
-} from "./ordering.js";
+import { deduplicateIssues, filterIssuesByMinSeverity, sortIssuesBySeverity } from "./ordering.js";
 
 describe("deduplicateIssues", () => {
   it("deduplicates by file, line, and case-insensitive title while keeping the highest severity", () => {

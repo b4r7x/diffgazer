@@ -7,9 +7,9 @@ import {
   type Shortcut,
 } from "@diffgazer/core/schemas/presentation";
 import { useKey, useScope } from "@diffgazer/keys";
-import { Panel } from "@diffgazer/ui/components/panel";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
+import { CardLayout } from "@/components/layout/card-layout";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { useConfigData } from "@/hooks/use-config";
 
@@ -59,26 +59,22 @@ function TrustPermissionsEditor({ editorInput }: TrustPermissionsEditorProps) {
   });
 
   return (
-    <div className="flex flex-1 overflow-y-auto p-4">
-      <Panel className="m-auto w-full max-w-2xl">
-        <Panel.Header>
-          <Panel.Title>TRUST &amp; PERMISSIONS</Panel.Title>
-        </Panel.Header>
-        <Panel.Content>
-          <TrustPermissionsContent
-            directory={editorInput.repoRoot ?? "Loading..."}
-            value={capabilities}
-            onChange={handleCapabilitiesChange}
-            isTrusted={isTrusted}
-            isLoading={isLoading}
-            autoFocusList
-            showActions
-            keyboardScope={SETTINGS_TRUST_PERMISSIONS_SCOPE}
-            onSave={handleSave}
-            onRevoke={handleRevoke}
-          />
-        </Panel.Content>
-      </Panel>
-    </div>
+    <CardLayout
+      title="Trust & Permissions"
+      subtitle="Choose what Diffgazer may do inside this repository."
+    >
+      <TrustPermissionsContent
+        directory={editorInput.repoRoot ?? "Loading..."}
+        value={capabilities}
+        onChange={handleCapabilitiesChange}
+        isTrusted={isTrusted}
+        isLoading={isLoading}
+        autoFocusList
+        showActions
+        keyboardScope={SETTINGS_TRUST_PERMISSIONS_SCOPE}
+        onSave={handleSave}
+        onRevoke={handleRevoke}
+      />
+    </CardLayout>
   );
 }

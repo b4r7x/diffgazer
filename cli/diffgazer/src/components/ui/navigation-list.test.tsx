@@ -1,6 +1,7 @@
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { flush } from "../../testing/flush";
 import { CliThemeProvider } from "../../theme/provider";
 import { NavigationList } from "./navigation-list";
 
@@ -11,12 +12,6 @@ afterEach(() => {
 const ARROW_UP = "[A";
 const ARROW_DOWN = "[B";
 const RETURN = "\r";
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 function renderList(props: Partial<Parameters<typeof NavigationList>[0]> = {}) {
   return render(
@@ -129,5 +124,55 @@ describe("NavigationList navigation", () => {
     await flush();
 
     expect(onHighlightChange).toHaveBeenCalledWith("c");
+  });
+});
+
+describe("NavigationList row content", () => {
+  test("hands the highlight state to render-prop children and follows the highlight", async () => {
+    const { lastFrame, stdin } = render(
+      <CliThemeProvider initialTheme="dark">
+        <NavigationList isActive>
+          {["a", "b"].map((id) => (
+            <NavigationList.Item key={id} id={id}>
+              {({ isHighlighted }) => <Text>{`${id}:${isHighlighted ? "on" : "off"}`}</Text>}
+            </NavigationList.Item>
+          ))}
+        </NavigationList>
+      </CliThemeProvider>,
+    );
+    await flush();
+    expect(lastFrame()).toContain("a:on");
+    expect(lastFrame()).toContain("b:off");
+
+    stdin.write(ARROW_DOWN);
+    await flush();
+    expect(lastFrame()).toContain("a:off");
+    expect(lastFrame()).toContain("b:on");
+  });
+
+  test("resolves the row tone against the list active state so items never recompute it", async () => {
+    function renderTone(isActive: boolean) {
+      return render(
+        <CliThemeProvider initialTheme="dark">
+          <NavigationList isActive={isActive}>
+            <NavigationList.Item id="a">
+              {({ tone }) => <Text>{`fill:${tone.background ?? "none"}`}</Text>}
+            </NavigationList.Item>
+          </NavigationList>
+        </CliThemeProvider>,
+      );
+    }
+
+    const active = renderTone(true);
+    await flush();
+    const activeFrame = active.lastFrame();
+    cleanup();
+
+    const inactive = renderTone(false);
+    await flush();
+    const inactiveFrame = inactive.lastFrame();
+
+    expect(activeFrame).not.toContain("fill:none");
+    expect(inactiveFrame).toContain("fill:none");
   });
 });

@@ -6,6 +6,7 @@ import { NavigationContext } from "../../../hooks/use-navigation";
 import { buildResponsiveResult, getBreakpointTier } from "../../../lib/breakpoints";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../theme/provider";
+import { makeHistoryScreenState } from "../testing/history-screen-state";
 import { HistoryScreen } from "./screen";
 
 const useHistoryScreenStateMock = vi.hoisted(() => vi.fn());
@@ -81,20 +82,7 @@ describe("HistoryScreen pagination", () => {
       const loaded = pageState === "loaded";
       const loading = pageState === "loading";
 
-      return {
-        reviewsQuery: { data: { reviews: [] }, isLoading: false, error: null },
-        reviewDetailQuery: {
-          isLoading: false,
-          isError: false,
-          error: null,
-          refetch: vi.fn(),
-        },
-        reviews: [],
-        timelineItems: [],
-        selectedDateId: "all",
-        setSelectedDateId: vi.fn(),
-        searchQuery: "",
-        setSearchQuery: vi.fn(),
+      return makeHistoryScreenState({
         mappedRuns: loaded
           ? [
               {
@@ -107,14 +95,7 @@ describe("HistoryScreen pagination", () => {
             ]
           : [],
         selectedRunId: loaded ? "later-review" : null,
-        setSelectedRunId: vi.fn(),
-        selectedRun: null,
-        severityCounts: null,
-        sortedIssues: [],
-        duration: "",
         hasReviews: loaded,
-        hasSearchQuery: false,
-        emptyRunsMessage: "No runs yet",
         hasMoreReviews: !loaded,
         isLoadingMoreReviews: loading,
         loadMoreReviews: async () => {
@@ -123,7 +104,7 @@ describe("HistoryScreen pagination", () => {
           await releasePage.promise;
           setPageState("loaded");
         },
-      };
+      });
     }
 
     useHistoryScreenStateMock.mockImplementation(useEmptyThenLaterHistoryPage);
@@ -152,34 +133,15 @@ describe("HistoryScreen pagination", () => {
       timestamp: "07/18/2026, 10:33:48 PM",
       summary: `Historical review ${index + 1} with a long summary`,
     }));
-    useHistoryScreenStateMock.mockReturnValue({
-      reviewsQuery: { data: { reviews: [] }, isLoading: false, error: null },
-      reviewDetailQuery: {
-        isLoading: false,
-        isError: false,
-        error: null,
-        refetch: vi.fn(),
-      },
-      reviews: [],
-      timelineItems: [],
-      selectedDateId: "all",
-      setSelectedDateId: vi.fn(),
-      searchQuery: "",
-      setSearchQuery: vi.fn(),
-      mappedRuns: runs,
-      selectedRunId: runs[0]?.id ?? null,
-      setSelectedRunId: vi.fn(),
-      selectedRun: null,
-      severityCounts: null,
-      sortedIssues: [],
-      duration: "",
-      hasReviews: true,
-      hasSearchQuery: false,
-      emptyRunsMessage: "No runs yet",
-      hasMoreReviews: true,
-      isLoadingMoreReviews: false,
-      loadMoreReviews: vi.fn(async () => {}),
-    });
+    useHistoryScreenStateMock.mockReturnValue(
+      makeHistoryScreenState({
+        mappedRuns: runs,
+        selectedRunId: runs[0]?.id ?? null,
+        hasReviews: true,
+        hasMoreReviews: true,
+        loadMoreReviews: vi.fn(async () => {}),
+      }),
+    );
 
     const { lastFrame } = renderRootFrame(80, 24, <HistoryScreen />);
     await vi.waitFor(() => expect(lastFrame()).toContain("Load older runs"));

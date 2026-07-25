@@ -9,7 +9,6 @@ import { dismiss, remove, useToastStore } from "./toast-store";
 // text for screen readers, so text queries ignore it like script/style.
 const DEFAULT_IGNORE = "script, style";
 const TOAST_IGNORE = `${DEFAULT_IGNORE}, [data-slot="toast-announcer"], [data-slot="toast-announcer"] *`;
-const LAZY_CHUNK_TIMEOUT_MS = 8_000;
 
 function StoreReader({ onRead }: { onRead: (ids: string[]) => void }) {
   const { toasts } = useToastStore();
@@ -241,6 +240,9 @@ describe("Toast", () => {
   });
 
   it("renders the loading toast spinner via the lazy chunk", async () => {
+    // Resolve the dynamic import up front so the assertion waits on React flushing
+    // the already-loaded chunk, not on the loader itself.
+    await import("../spinner/spinner");
     vi.useRealTimers();
     render(<Toaster />);
     act(() => {
@@ -249,12 +251,9 @@ describe("Toast", () => {
 
     const toastEl = screen.getByText("Working").closest('[role="status"]');
     expect(toastEl).not.toBeNull();
-    await waitFor(
-      () => {
-        expect(toastEl?.querySelector('[role="status"][aria-label="Loading"]')).not.toBeNull();
-      },
-      { timeout: LAZY_CHUNK_TIMEOUT_MS },
-    );
+    await waitFor(() => {
+      expect(toastEl?.querySelector('[role="status"][aria-label="Loading"]')).not.toBeNull();
+    });
     vi.useFakeTimers();
   });
 
@@ -849,6 +848,50 @@ describe("Toast", () => {
       vi.advanceTimersByTime(250);
     });
     expect(screen.queryByText("Second")).not.toBeInTheDocument();
+  });
+
+  it("keeps a toast created after the list emptied paused while region focus persists (WCAG 2.2.1)", () => {
+    render(<Toaster />);
+    act(() => {
+      toast("Focused first", { id: "gap-1", duration: 3000 });
+    });
+
+    const region = screen.getByRole("region", { name: "Notifications" });
+    act(() => {
+      region.focus();
+    });
+    expect(region).toHaveFocus();
+
+    act(() => {
+      toast.dismiss("gap-1");
+    });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.queryByText("Focused first")).not.toBeInTheDocument();
+    expect(region).toHaveFocus();
+
+    act(() => {
+      toast("Focused second", { id: "gap-2", duration: 3000 });
+    });
+    act(() => {
+      vi.advanceTimersByTime(10000);
+    });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.getByText("Focused second")).toBeInTheDocument();
+
+    act(() => {
+      region.blur();
+    });
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.queryByText("Focused second")).not.toBeInTheDocument();
   });
 
   it("renders localized dismiss and tone labels", () => {

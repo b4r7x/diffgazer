@@ -8,6 +8,7 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { getContentZoneRows } from "../../../components/layout/global";
 import { Dialog } from "../../../components/ui/dialog";
 import { Spinner } from "../../../components/ui/spinner";
+import { useListNavigation } from "../../../hooks/use-list-navigation";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { getListWindow } from "../../../lib/list-window";
 import { terminalCellWidth } from "../../../lib/terminal-width";
@@ -72,7 +73,7 @@ function renderModelListBody({
   }
   if (filteredModels.length === 0) {
     return (
-      <Text dimColor>
+      <Text color={tokens.muted}>
         {models.length === 0 ? "No models available" : "No models match your search"}
       </Text>
     );
@@ -159,6 +160,13 @@ export function ModelSelectOverlay({
 
   const safeHighlightIndex =
     filteredModels.length === 0 || highlightedIndex < 0 ? 0 : highlightedIndex;
+
+  const modelNavigation = useListNavigation({
+    items: filteredModels.map((model) => ({ id: model.id, disabled: false })),
+    highlightedId: filteredModels[safeHighlightIndex]?.id ?? null,
+    onHighlightChange: setHighlightedModelId,
+    wrap: true,
+  });
 
   const resetOnOpen = useEffectEvent(() => {
     resetFilters();
@@ -254,13 +262,11 @@ export function ModelSelectOverlay({
       if (filteredModels.length === 0) return;
 
       if (key.upArrow) {
-        const nextIndex = (safeHighlightIndex - 1 + filteredModels.length) % filteredModels.length;
-        setHighlightedModelId(filteredModels[nextIndex]?.id);
+        modelNavigation.moveBy(-1);
         return;
       }
       if (key.downArrow) {
-        const nextIndex = (safeHighlightIndex + 1) % filteredModels.length;
-        setHighlightedModelId(filteredModels[nextIndex]?.id);
+        modelNavigation.moveBy(1);
         return;
       }
       if (key.return) {
@@ -335,10 +341,10 @@ export function ModelSelectOverlay({
         </Dialog.Body>
         <Dialog.Footer>
           <Box gap={2} justifyContent="flex-end" width="100%">
-            <Text dimColor>Tab: zone</Text>
-            <Text dimColor>/: search</Text>
-            <Text dimColor>f: filter</Text>
-            {(sourceError || fallbackNotice) && <Text dimColor>r: retry</Text>}
+            <Text color={tokens.muted}>Tab: zone</Text>
+            <Text color={tokens.muted}>/: search</Text>
+            <Text color={tokens.muted}>f: filter</Text>
+            {(sourceError || fallbackNotice) && <Text color={tokens.muted}>r: retry</Text>}
           </Box>
         </Dialog.Footer>
       </Dialog.Content>

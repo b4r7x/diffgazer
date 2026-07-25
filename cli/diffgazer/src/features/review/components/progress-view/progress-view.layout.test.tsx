@@ -1,5 +1,7 @@
-import { AGENT_METADATA, type AgentState } from "@diffgazer/core/schemas/events";
+import { AGENT_METADATA, type AgentId, type AgentState } from "@diffgazer/core/schemas/events";
+import type { ProgressStepWithSubstepsData } from "@diffgazer/core/schemas/presentation";
 import { cleanup } from "ink-testing-library";
+import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { cleanupRootFrames, renderRootFrame } from "../../../../testing/render-root-frame";
@@ -16,7 +18,65 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+const DEFAULT_AGENTS: AgentId[] = ["detective", "guardian", "optimizer", "simplifier", "tester"];
+const DEFAULT_STEPS: ProgressStepWithSubstepsData[] = [
+  { id: "parse", label: "Parse diff", status: "completed" },
+  { id: "context", label: "Build context", status: "completed" },
+  { id: "review", label: "Run review agents", status: "active" },
+  { id: "assemble", label: "Assemble report", status: "pending" },
+  { id: "report", label: "Write report", status: "pending" },
+];
+
+const AGENT_NAMES = DEFAULT_AGENTS.map((id) => AGENT_METADATA[id].name);
+const STEP_AND_AGENT_COUNTS = [3, 4, 5].flatMap((stepCount) =>
+  [2, 3, 4, 5].map((agentCount) => [stepCount, agentCount] as const),
+);
+
 describe("ReviewProgressView (TUI) layout", () => {
+  test.each(
+    STEP_AND_AGENT_COUNTS,
+  )("closes the metrics box over a named agent at 80x24 with %i steps and %i agents", async (stepCount, agentCount) => {
+    const { lastFrame } = renderRootFrame(
+      80,
+      24,
+      <ReviewProgressView
+        progressSteps={DEFAULT_STEPS.slice(0, stepCount)}
+        agents={DEFAULT_AGENTS.slice(0, agentCount).map(makeAgent)}
+        events={[]}
+        fileProgress={{ total: 23, current: 4, currentFile: "src/a.ts", completed: [] }}
+        isStreaming
+        error={null}
+        notices={[]}
+        onCancel={vi.fn()}
+        onBack={vi.fn()}
+        issuesFound={4}
+        startedAt={new Date("2026-01-01T00:00:00.000Z")}
+        completedAt={null}
+      />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("PROGRESS OVERVIEW"));
+    const lines = stripAnsi(lastFrame() ?? "").split("\n");
+    expect(lines).toHaveLength(24);
+    // The metrics box sits at the bottom of the overview pane, so an
+    // under-counted row reserve above it clips the last metric and the
+    // closing border off the frame instead of shrinking the agent board.
+    const elapsedRow = lines.findIndex((line) => line.includes("Elapsed:"));
+    expect(elapsedRow).toBeGreaterThan(-1);
+    expect(lines[elapsedRow + 1]?.trimStart().startsWith("└")).toBe(true);
+    // Closing the box must not cost the roster. The board drops its pad rather
+    // than disappear, and its last row goes to a named agent rather than to an
+    // overflow count that says nothing about what the review is doing. Scoped
+    // to the board's own rows so the activity pane cannot satisfy this.
+    const boardRow = lines.findIndex((line) => line.includes("AGENT BOARD"));
+    expect(boardRow).toBeGreaterThan(-1);
+    const boardRows = lines.slice(
+      boardRow,
+      lines.findIndex((line) => line.trimStart().startsWith("┌")),
+    );
+    expect(boardRows.some((line) => AGENT_NAMES.some((name) => line.includes(name)))).toBe(true);
+  });
+
   test("fits realistic progress content into an 80 by 24 root frame", async () => {
     const agents = (["detective", "guardian", "optimizer", "simplifier", "tester"] as const).map(
       makeAgent,

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { queryTestElement, requireFrameDocument } from "../testing/assertions.js";
+import { queryTestElement, requireFrameDocument } from "../testing/internal/assertions.js";
 import {
   containsActiveElement,
   getFirstFocusableElement,

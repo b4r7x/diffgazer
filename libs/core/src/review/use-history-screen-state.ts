@@ -3,18 +3,20 @@ import { useReview, useReviews } from "../api/hooks/review.js";
 import { formatDuration } from "../format.js";
 import type { SeverityCounts, TimelineItem } from "../schemas/presentation/index.js";
 import type { ReviewIssue, ReviewMetadata } from "../schemas/review/index.js";
+import { sortIssuesBySeverity } from "./history/issue-order.js";
 import {
-  buildHistoryRunSummary,
   buildTimelineItems,
   filterReviewsForHistory,
   getEmptyRunsMessage,
   HISTORY_SECTION_ALL_ID,
-  type HistoryRunSummary,
-  metadataToSeverityCounts,
   resolveSelectedDateId,
   resolveSelectedId,
-  sortIssuesBySeverity,
-} from "./history.js";
+} from "./history/navigation.js";
+import {
+  buildHistoryRunSummary,
+  type HistoryRunSummary,
+  metadataToSeverityCounts,
+} from "./history/run-presentation.js";
 
 /** A `[value, setter]` pair, mirroring `useState`'s return shape. */
 type StatePair<T> = [T, Dispatch<SetStateAction<T>>];

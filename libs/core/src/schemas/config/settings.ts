@@ -30,6 +30,10 @@ export const SaveTrustRequestSchema = TrustConfigSchema.pick({
 });
 export type SaveTrustRequest = z.infer<typeof SaveTrustRequestSchema>;
 
+export const TrustResponseSchema = z.object({ trust: TrustConfigSchema });
+
+export const DeleteTrustResponseSchema = z.object({ removed: z.boolean() });
+
 export const THEMES = ["auto", "dark", "light", "terminal"] as const;
 export const ThemeSchema = z.enum(THEMES);
 export type Theme = z.infer<typeof ThemeSchema>;

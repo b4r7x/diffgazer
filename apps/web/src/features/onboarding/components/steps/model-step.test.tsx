@@ -206,6 +206,29 @@ describe("ModelStep", () => {
     ).toBeInTheDocument();
   });
 
+  it("dates the cached-catalog notice in words instead of a machine timestamp", async () => {
+    const fetchedAt = new Date();
+    fetchedAt.setHours(14, 15, 0, 0);
+    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>().mockResolvedValue({
+      ...GEMINI_CATALOG,
+      fetchedAt: fetchedAt.toISOString(),
+      source: "cache",
+      cached: true,
+    });
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      getProviderModels,
+    } satisfies BoundApi;
+
+    render(<ModelStep provider="gemini" value={null} onChange={vi.fn()} onCommit={vi.fn()} />, {
+      wrapper: makeWrapper(api),
+    });
+
+    const notice = await screen.findByText(/using cached catalog data/i);
+    expect(notice).toHaveTextContent(/from Today at 2:15 PM\.$/);
+    expect(notice).not.toHaveTextContent(/\d{4}-\d{2}-\d{2}T/);
+  });
+
   it("does not offer manual OpenRouter entry when no models are available", async () => {
     const mockGetOpenRouterModels = vi
       .fn<() => Promise<OpenRouterModelsResponse>>()

@@ -40,6 +40,12 @@ interface PreparedScaffoldBase {
   installation: PreparedInstallation;
   usage?: { code: string; lang: string };
   examples: PreparedExample[];
+  /**
+   * Raw example sources by name, including examples the page's example list omits. `<Example
+   * name>` resolves against this map rather than the list, so a hero example only referenced
+   * from the scaffold still has a source to render.
+   */
+  exampleSource: Record<string, string>;
   sourceFiles: PreparedSourceFile[];
 }
 
@@ -111,6 +117,14 @@ function prepareExamples(
   });
 }
 
+function prepareExampleSource(
+  data: Pick<ComponentPageData, "exampleSource"> | HookPageData,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(data.exampleSource).map(([name, source]) => [name, source.raw]),
+  );
+}
+
 function prepareUsage(
   data: Pick<ComponentPageData, "usageSnippet"> | HookPageData,
   lang: string,
@@ -137,6 +151,7 @@ export function prepareComponentScaffoldData(
     installation: prepareInstallation(library, data.name, "component"),
     ...(usage ? { usage } : {}),
     examples: prepareExamples(data),
+    exampleSource: prepareExampleSource(data),
     sourceFiles: sourceFilesOrPaths(data.files, sourceFiles),
     props: data.props,
     dataAttributes: data.docs?.dataAttributes ?? [],
@@ -157,6 +172,7 @@ export function prepareHookScaffoldData(
     installation: prepareInstallation(library, data.name, "hook"),
     ...(usage ? { usage } : {}),
     examples: prepareExamples(data),
+    exampleSource: prepareExampleSource(data),
     sourceFiles: sourceFilesOrPaths(data.files, sourceFiles),
     parameters: data.docs?.parameters ?? [],
     returns: data.docs?.returns,

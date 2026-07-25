@@ -20,11 +20,30 @@ The theme sets primitive `--base-*` tokens first, then maps them into the semant
 | Primitive | Dark | Light | Primary semantic use |
 |-----------|------|-------|----------------------|
 | `--base-bg` | `#0a0a0a` | `#f7f8f5` | `--background` |
-| `--base-fg` | `#e5e5e5` | `#1f2328` | `--foreground` |
+| `--base-fg` | `#e5e5e5` | `#1f2328` | `--foreground`, `--ring` |
+| `--base-dim` | `#9c9c9c` | `#5f6872` | `--muted-foreground`, `--border-strong` |
 | `--base-border` | `#606060` | `#aeb7c0` | `--border` |
 | `--base-selection` | `#333333` | `#e8edf3` | `--secondary`, dark `--card`, dark `--popover` |
-| `--base-info` | `#ccccff` | `#0b63ce` | `--info`, light `--ring` |
+| `--base-info` | `#79b8ff` | `#0b63ce` | `--info` |
+| `--base-success` | `#7ee787` | `#0f7a4f` | `--success` |
 | `--base-danger` | `#ff7b72` | `#c62828` | `--error` |
+
+Focus is monochrome in both variants: `--ring` maps to `--base-fg` everywhere, so a focus ring never carries status meaning. Status hues stay reserved for validation, callouts, badges, and diffs.
+
+`--border-strong` is the raised-contrast edge — separators and active-but-not-focused borders — one step above `--border`.
+
+`--accent` is inverse emphasis in both variants (`--base-highlight`: white on dark, near-black on light). `--base-accent` stays a primitive rather than a role — it feeds the code-syntax palette and the light `--action` fill.
+
+### Action vs primary
+
+Two roles that coincide in dark and separate in light, so they are not interchangeable:
+
+- `--primary` / `--primary-foreground` is **monochrome emphasis**: filled progress, completed steps, checked indicators. It maps to a neutral in both variants (`--base-fg` dark, `--base-highlight` light) and never carries chroma.
+- `--action` / `--action-foreground` is the **call-to-action pair**: the single filled voice on a screen (`Button variant="primary"`, `Panel tone="accent"`). It is the one place the theme is allowed to spend chroma.
+
+The theme rule for that pair is per variant: dark resolves it to mono white (`--base-highlight`), light resolves it to the accent violet (`--base-accent` `#6f42c1` on white). Dark stays monochrome because a chroma fill on `#0a0a0a` reads as a status hue; light needs the chroma because a near-black fill is indistinguishable from ordinary emphasis on an off-white page. Both directions are 4.5:1 against their own foreground.
+
+Retheming keeps the roles: point `--action` at your brand colour and leave `--primary` neutral, or the distinction collapses and every filled control reads as a call to action.
 
 See the [theme overview](/ui/theme) for the full token groups and the [colors reference](/ui/theme/colors) for all semantic, tone, code, and surface tokens.
 

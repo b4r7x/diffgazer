@@ -4,6 +4,7 @@ import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Select } from "./index";
+import { useSelectContext } from "./select-context";
 import {
   getSearchInput,
   getSelectTrigger,
@@ -11,8 +12,7 @@ import {
   PICK_FRUIT,
   renderSelect,
   renderSelectInline,
-} from "./select.test-utils";
-import { useSelectContext } from "./select-context";
+} from "./select-test-utils";
 
 describe("Select selection", () => {
   it("passes selected values and registered labels to the SelectValue render function", async () => {

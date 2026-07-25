@@ -2,6 +2,7 @@ import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { getVerticalArrowDirection } from "@diffgazer/keys";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { RadioGroup } from "@diffgazer/ui/components/radio";
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { ModelListItem } from "./list-item";
 
@@ -32,7 +33,7 @@ function StatusMessage({
   if (isSaving) {
     return (
       <>
-        <Spinner size="sm" aria-hidden="true" />
+        <Spinner variant="braille" size="sm" aria-hidden="true" />
         <EmptyState.Message>Saving...</EmptyState.Message>
       </>
     );
@@ -40,7 +41,7 @@ function StatusMessage({
   if (isLoading) {
     return (
       <>
-        <Spinner size="sm" aria-hidden="true" />
+        <Spinner variant="braille" size="sm" aria-hidden="true" />
         <EmptyState.Message>Loading models...</EmptyState.Message>
       </>
     );
@@ -65,9 +66,12 @@ export function ModelList({
   const showList = !isSaving && models.length > 0;
 
   return (
-    <div
+    // The dialog owns arrow-key navigation through the RadioGroup, so the scroll
+    // region does not take focus or its own key handling.
+    <ScrollArea
       ref={ref}
-      className="max-h-[50dvh] overflow-y-auto overscroll-contain px-4 py-3 scrollbar-thin"
+      keyboardScrollable={false}
+      className="max-h-[50dvh] overscroll-contain px-5 py-3"
       data-layout-region="model-list"
     >
       {showList ? (
@@ -96,6 +100,6 @@ export function ModelList({
           <StatusMessage isSaving={isSaving} isLoading={isLoading} emptyLabel={emptyLabel} />
         )}
       </EmptyState>
-    </div>
+    </ScrollArea>
   );
 }

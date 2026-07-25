@@ -246,10 +246,10 @@ function NavigationListGroupHeader({
       role="option"
       aria-selected={false}
       aria-label={`${header.accessibleLabel}, ${expanded ? collapseLabel : expandLabel} section`}
+      data-slot="navigation-list-group-header"
       data-value={headerId}
       data-highlighted={header.isActive ? "" : undefined}
-      data-group-header="true"
-      data-expanded={expanded}
+      data-state={expanded ? "open" : "closed"}
       onClick={header.handleClick}
       onFocus={header.handleFocus}
       className={cn(

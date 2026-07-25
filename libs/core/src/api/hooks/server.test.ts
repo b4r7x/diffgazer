@@ -4,9 +4,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ServerState } from "../../schemas/presentation/diagnostics.js";
 import type { BoundApi } from "../bound.js";
 import { ApiProvider } from "./context.js";
-import { type ServerState, useServerStatus } from "./server.js";
+import { useServerStatus } from "./server.js";
 
 function makeWrapper(api: BoundApi) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

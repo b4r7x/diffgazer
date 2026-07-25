@@ -20,8 +20,10 @@ export const menuItemBase = cva("cursor-pointer w-full transition-colors", {
   variants: {
     menuVariant: {
       default: "px-4 py-3 flex items-center font-mono duration-75",
-      detail:
-        "px-4 py-4 flex justify-between items-center text-sm border-b border-border last:border-b-0",
+      // No per-row rule: a hairline under every row reads as a data table.
+      // The right-aligned dim value column carries the rhythm instead, and
+      // MenuDivider still draws real group boundaries.
+      detail: "px-4 py-4 flex justify-between items-center text-sm",
     },
     state: {
       normal: "hover:bg-secondary group",
@@ -36,13 +38,7 @@ export const menuItemBase = cva("cursor-pointer w-full transition-colors", {
     },
   },
   compoundVariants: [
-    { state: "focused", menuVariant: "detail", class: "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]" },
     { state: "disabled", menuVariant: "default", class: "hover:bg-transparent" },
-    {
-      state: "disabledFocused",
-      menuVariant: "detail",
-      class: "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]",
-    },
     {
       colorVariant: "danger",
       state: "focused",

@@ -1,0 +1,129 @@
+import { Kbd } from "@diffgazer/ui/components/kbd";
+import { Spinner } from "@diffgazer/ui/components/spinner";
+import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
+import { Suspense } from "react";
+
+/**
+ * A3 docs-shell inset for layout-shaped component examples (Sidebar, etc.).
+ * The demo lives in a left rail of fixed width; the right pane is a faked
+ * docs page (sticky topbar, breadcrumb, h1, paragraph, code silhouette, ToC)
+ * so the reader sees the component IN context. Right-pane content is purely
+ * decorative — `aria-hidden` so screen readers don't announce placeholder text.
+ */
+
+const EMPTY_FALLBACK = <div aria-hidden="true" className="h-full w-full" />;
+
+const LOADING_FALLBACK = (
+  <div className="flex h-full w-full items-center justify-center">
+    <Spinner variant="pulse" size="sm" />
+  </div>
+);
+
+function DemoSlot({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
+  if (!Demo) return EMPTY_FALLBACK;
+  return (
+    <Suspense fallback={LOADING_FALLBACK}>
+      <Demo />
+    </Suspense>
+  );
+}
+
+function InsetToolbar() {
+  return (
+    <div
+      aria-hidden="true"
+      className="flex items-center justify-between h-8 px-3 border-b border-border bg-secondary/40 text-2xs uppercase tracking-widest text-muted-foreground"
+    >
+      <span className="inline-flex gap-1.5">
+        <span className="w-2 h-2 border border-border" />
+        <span className="w-2 h-2 border border-border" />
+        <span className="w-2 h-2 border border-border" />
+      </span>
+      <span>preview · sidebar in context</span>
+      <span className="opacity-0">·</span>
+    </div>
+  );
+}
+
+function FauxDocsTopbar() {
+  return (
+    <div
+      aria-hidden="true"
+      className="sticky top-0 z-10 h-11 px-4 flex items-center gap-6 border-b border-border bg-background/90 backdrop-blur text-xs text-muted-foreground"
+    >
+      <span className="inline-flex shrink-0 items-center gap-2 text-foreground font-bold uppercase tracking-widest">
+        <span className="w-2.5 h-2.5 bg-foreground" />
+        Diffgazer
+      </span>
+      <span className="hidden @[560px]/pane:inline-flex gap-4">
+        <span className="text-foreground">Docs</span>
+        <span>Registry</span>
+        <span>Changelog</span>
+      </span>
+      <span className="ml-auto hidden @[440px]/pane:flex min-w-0 max-w-[200px] flex-1 items-center justify-between gap-2 h-5 px-2 border border-border/60 bg-secondary/30">
+        <span className="truncate">Search docs…</span>
+        <Kbd size="sm">⌘K</Kbd>
+      </span>
+    </div>
+  );
+}
+
+function FauxDocsBody({ children }: { children: ReactNode }) {
+  return (
+    <div aria-hidden="true" className="@container/inset px-6 py-6 min-w-0">
+      <div className="grid grid-cols-1 @[520px]/inset:grid-cols-[1fr_140px] gap-6 items-start">
+        <div className="min-w-0">
+          <p className="text-2xs uppercase tracking-widest text-muted-foreground mb-3">
+            Docs / Components / <span className="text-foreground">Sidebar</span>
+          </p>
+          <h1 className="text-xl font-bold text-foreground leading-tight mb-2.5">Sidebar</h1>
+          <p className="text-muted-foreground text-xs leading-relaxed max-w-[56ch] mb-3.5">
+            A composable navigation surface for product layouts. Section titles, items, badges, and
+            a sticky footer.
+          </p>
+          <div className="border border-border/60 bg-secondary/40 p-3.5 my-4 max-w-[60ch] space-y-2">
+            <span className="block h-2 w-11/12 bg-foreground/10" />
+            <span className="block h-2 w-3/4 bg-foreground/10" />
+            <span className="block h-2 w-9/12 bg-foreground/10" />
+            <span className="block h-2 w-1/2 bg-foreground/10" />
+          </div>
+          {children}
+        </div>
+        <aside className="hidden @[520px]/inset:block sticky top-11 pl-3 border-l border-border/60 text-muted-foreground text-xs">
+          <p className="uppercase tracking-widest text-2xs mb-2.5">On this page</p>
+          <ul className="space-y-1">
+            <li className="text-foreground">Overview</li>
+            <li className="text-muted-foreground/80">Anatomy</li>
+            <li className="text-muted-foreground/80">Keyboard</li>
+          </ul>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+export function InsetPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
+  return (
+    <div className="border border-border bg-background overflow-hidden">
+      <InsetToolbar />
+      {/* The rail is exactly sidebar-width (w-64) so demos sit flush against
+          the rail border and a wider demo can never crush the faux page. */}
+      <div className="grid grid-cols-[16rem_1fr] h-[440px]">
+        <div className="border-r border-border flex flex-col items-stretch bg-background overflow-auto scrollbar-thin [&>*]:min-w-0">
+          <DemoSlot demo={demo} />
+        </div>
+        <div className="@container/pane flex flex-col min-w-0 bg-background relative">
+          <FauxDocsTopbar />
+          <FauxDocsBody>
+            <p className="text-muted-foreground text-xs leading-7 max-w-[60ch]">
+              Compose with <span className="text-foreground font-bold">SidebarHeader</span>,
+              <span className="text-foreground font-bold"> SidebarContent</span>, and
+              <span className="text-foreground font-bold"> SidebarFooter</span>. Items support
+              active and disabled states.
+            </p>
+          </FauxDocsBody>
+        </div>
+      </div>
+    </div>
+  );
+}

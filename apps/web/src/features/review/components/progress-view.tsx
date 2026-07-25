@@ -15,10 +15,10 @@ import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Panel } from "@diffgazer/ui/components/panel";
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ProgressList } from "@/components/shared/progress/list";
 import {
   REVIEW_PROGRESS_CONTROLS,
   useReviewProgressKeyboard,
@@ -27,6 +27,7 @@ import { ActivityLog } from "./activity-log/log";
 import { AgentBoard } from "./agent-board";
 import { ContextSnapshotPreview } from "./context-snapshot-preview";
 import { ReviewMetricsFooter } from "./metrics-footer";
+import { ProgressList } from "./progress-list/list";
 
 export interface ReviewProgressData {
   steps: ProgressStepData[];
@@ -117,11 +118,7 @@ function ErrorDisplay({
 
   return (
     <div className="shrink-0 px-4 pb-3">
-      <div
-        role="alert"
-        aria-live="assertive"
-        className="rounded-md border border-error/40 bg-error/5 p-4 text-center"
-      >
+      <Panel tone="error" role="alert" aria-live="assertive" className="p-4 text-center">
         <div className="text-error-text mb-2 text-lg font-bold">{guidance.title}</div>
         <div className="text-muted-foreground font-mono text-sm mb-2">{error}</div>
         <div className="text-muted-foreground mb-4 text-sm">{guidance.guidance}</div>
@@ -147,7 +144,7 @@ function ErrorDisplay({
             </Button>
           )}
         </div>
-      </div>
+      </Panel>
     </div>
   );
 }
@@ -201,24 +198,24 @@ export function ReviewProgressView({
         as="section"
         aria-label="Progress"
         data-pane="progress"
-        data-focused={focusPane === "progress" || undefined}
-        className="flex w-full flex-col border border-border data-[focused]:border-info max-md:shrink-0 md:min-h-0 md:w-1/3"
+        focused={focusPane === "progress"}
+        className="flex w-full flex-col max-md:shrink-0 md:min-h-0 md:w-1/3"
       >
         <Panel.Label variant="border" aria-hidden="true">
           Progress
         </Panel.Label>
 
-        <div
+        <ScrollArea
           ref={progressScrollRef}
           tabIndex={-1}
-          className="flex-1 px-4 pt-4 focus:outline-none md:min-h-0 md:overflow-y-auto md:scrollbar-hide"
+          className="flex-1 px-4 pt-4 focus:outline-none md:min-h-0"
         >
           <ProgressList steps={steps} className="mb-8" />
 
           <AgentBoard agents={agents} />
 
           {contextSnapshot && !isRunning && <ContextSnapshotPreview snapshot={contextSnapshot} />}
-        </div>
+        </ScrollArea>
 
         <div className="shrink-0 px-4">
           <ReviewMetricsFooter metrics={metrics} startTime={startTime} isRunning={isRunning} />
@@ -245,8 +242,8 @@ export function ReviewProgressView({
         as="section"
         aria-label="Live Activity Log"
         data-pane="log"
-        data-focused={focusPane === "log" || focusPane === "filters" || undefined}
-        className="flex w-full flex-col border border-border data-[focused]:border-info max-md:shrink-0 md:min-h-0 md:flex-1"
+        focused={focusPane === "log" || focusPane === "filters"}
+        className="flex w-full flex-col max-md:shrink-0 md:min-h-0 md:flex-1"
       >
         <Panel.Label variant="border" aria-hidden="true">
           Live Activity Log

@@ -5,15 +5,10 @@ import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
+import { flush } from "../../../testing/flush";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ApiKeyOverlay } from "./api-key-overlay";
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 function makeQueryClient(): QueryClient {
   return new QueryClient({

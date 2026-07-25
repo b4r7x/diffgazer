@@ -6,12 +6,12 @@ export default function LogoFonts() {
       <Logo
         text="DG"
         asciiText={" ____   ____ \n|  _ \\ / ___|\n| | | | |  _ \n| |_| | |_| |\n|____/ \\____|"}
-        className="text-foreground text-[8px]"
+        className="text-foreground text-2xs"
       />
       <Logo
         text="UI"
         asciiText={" _   _ ___ \n| | | |_ _|\n| | | || | \n| |_| || | \n \\___/|___|"}
-        className="text-success text-2xs"
+        className="text-muted-foreground text-2xs"
       />
     </div>
   );

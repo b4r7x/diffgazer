@@ -20,6 +20,7 @@ export const inputDoc: ComponentDoc = {
     { name: "input-default", title: "Default" },
     { name: "input-group", title: "Group" },
     { name: "input-variants", title: "Variants" },
+    { name: "input-focus", title: "Focus" },
     { name: "input-form", title: "Form" },
   ],
   keyboard: null,

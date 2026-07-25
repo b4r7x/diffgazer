@@ -9,7 +9,7 @@ import {
 } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { describe, expect, it } from "vitest";
-import { createGitService } from "../../../../shared/lib/git/service.js";
+import type { createGitService } from "../../../../shared/lib/git/service.js";
 import { makeParsedDiff } from "../../../../shared/lib/testing/factories.js";
 import { MAX_DIFF_SIZE_BYTES, resolveGitDiff } from "../../diff.js";
 import { lenientReadSavedReview } from "../../storage/lenient-read.js";

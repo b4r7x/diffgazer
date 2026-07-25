@@ -40,7 +40,7 @@ export function ComponentDocScaffold({ hero }: { hero: string }) {
         </>
       )}
 
-      {scaffold.examples.length > 1 && <Examples skipFirst showHeading />}
+      <Examples hero={hero} showHeading />
 
       {hasApiReference && <APIReference />}
 

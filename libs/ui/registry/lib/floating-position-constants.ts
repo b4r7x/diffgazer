@@ -13,6 +13,18 @@ export interface Viewport {
   height: number;
 }
 
+/** Viewport-relative edges of a clipping region or an anchor box. */
+export interface Bounds {
+  /** Distance from the viewport top edge in CSS pixels. */
+  top: number;
+  /** Distance from the viewport left edge in CSS pixels. */
+  left: number;
+  /** Distance from the viewport left edge to the right edge in CSS pixels. */
+  right: number;
+  /** Distance from the viewport top edge to the bottom edge in CSS pixels. */
+  bottom: number;
+}
+
 // Placement flip target when collision avoidance fires; duplicates floating-panel's
 // CSS-edge map by data but the intent is the resolved opposite placement, not a CSS edge.
 /** Opposite side used as the first collision fallback. */

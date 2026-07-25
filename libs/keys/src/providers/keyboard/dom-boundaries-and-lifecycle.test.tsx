@@ -2,8 +2,8 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect, useRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { requireFrameDocument } from "../../testing/assertions.js";
-import { KeyboardWrapper, fireKey as pressKey } from "../../testing/test-utils.js";
+import { requireFrameDocument } from "../../testing/internal/assertions.js";
+import { KeyboardWrapper, fireKey as pressKey } from "../../testing/internal/test-utils.js";
 import { useKeyboardContext } from "../keyboard-context.js";
 
 function fireKeyFrom(element: Element, key: string, options?: Partial<KeyboardEventInit>) {

@@ -11,8 +11,8 @@ import { type StepperVariant, stepperRootVariants } from "@/lib/stepper-variants
 import { cn } from "@/lib/utils";
 import { handleStepListNavigationKey } from "./step-navigation";
 import { StepperContext } from "./stepper-context";
-import { useStepperState } from "./use-state";
 import { useStepCollection } from "./use-step-collection";
+import { useStepperState } from "./use-stepper-state";
 
 /** Props for stepper. */
 export interface StepperProps extends Omit<ComponentProps<"ol">, "children"> {

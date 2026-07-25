@@ -16,8 +16,8 @@ export default function LogoFiglet() {
 
   return (
     <div className="space-y-4">
-      <Logo text="DG" asciiText={bigText} className="text-foreground text-[8px]" />
-      <Logo text="diffgazer" asciiText={smallText} className="text-success text-[8px]" />
+      <Logo text="DG" asciiText={bigText} className="text-foreground text-2xs" />
+      <Logo text="diffgazer" asciiText={smallText} className="text-muted-foreground text-2xs" />
     </div>
   );
 }

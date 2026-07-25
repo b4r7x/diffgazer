@@ -26,7 +26,13 @@ export default function DiffViewStatusbar() {
       // statusBar is a headless slot — the consumer owns styling and content.
       statusBar={
         <div className="flex items-center justify-between gap-4">
-          <span>+5 −2 · 1 hunk</span>
+          {/* The diff palette anchors are inherited from the DiffView root, so the
+              summary counters carry the same add/remove signal as the rows. */}
+          <span className="flex items-center gap-2">
+            <span className="font-bold text-(--diff-color-add)">+5</span>
+            <span className="font-bold text-(--diff-color-remove)">−2</span>
+            <span>· 1 hunk</span>
+          </span>
           <span className="flex items-center gap-2">
             <Kbd size="sm">j</Kbd>
             <Kbd size="sm">k</Kbd>

@@ -13,27 +13,12 @@ export {
   useSettings,
 } from "./config.js";
 export { ApiProvider, useApi } from "./context.js";
-export {
-  type ContextStatus,
-  type DiagnosticsActions,
-  type DiagnosticsActionsInput,
-  type DiagnosticsData,
-  type DiagnosticsPresentation,
-  deriveDiagnosticsActions,
-  getContextActionLabel,
-  getContextPresentation,
-  getServerStatusPresentation,
-  getSetupPresentation,
-  refreshAllDiagnostics,
-  type SetupPresentationInput,
-  useDiagnosticsData,
-} from "./diagnostics.js";
+export { type DiagnosticsData, refreshAllDiagnostics, useDiagnosticsData } from "./diagnostics.js";
 export { guardQueryState, matchQueryState } from "./match-query-state.js";
 export { configQueries } from "./queries/config.js";
 export {
   useActiveReviewSession,
   useCreateReview,
-  useRefreshReviewContext,
   useReview,
   useReviewContext,
   useReviewSessionCache,
@@ -47,7 +32,6 @@ export {
   useReviewCompletion,
 } from "./use-review-completion.js";
 export {
-  deriveReviewGate,
   type ReviewGate,
   type UseReviewLifecycleBaseOptions,
   type UseReviewLifecycleBaseResult,

@@ -46,6 +46,12 @@ describe("DemoPreview default (viewfinder) frame", () => {
     renderPreview({ rawCode: "" });
     expect(screen.queryByText("[copy jsx]")).not.toBeInTheDocument();
   });
+
+  it("keeps the viewfinder chrome for the compact single-line frame", () => {
+    renderPreview({ frame: "compact" });
+    expect(chromeLabels()).toHaveLength(1);
+    expect(screen.getByText("[copy jsx]")).toBeInTheDocument();
+  });
 });
 
 describe("DemoPreview inset/fill frames", () => {
@@ -74,6 +80,7 @@ describe("DemoPreview import failures", () => {
 
   it.each<PreviewFrame>([
     "default",
+    "compact",
     "fill",
     "inset",
   ])("isolates a rejected %s preview while keeping the page and source readable", async (frame) => {

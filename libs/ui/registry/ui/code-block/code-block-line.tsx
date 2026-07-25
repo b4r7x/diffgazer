@@ -72,13 +72,7 @@ export function CodeBlockLine({
 }: CodeBlockLineProps) {
   const isDiffLine = state === "added" || state === "removed";
   return (
-    <span
-      ref={ref}
-      data-slot="code-block-line"
-      data-line-state={state}
-      className={className}
-      {...props}
-    >
+    <span ref={ref} data-slot="code-block-line" data-state={state} className={className} {...props}>
       {number != null ? (
         <span aria-hidden="true" data-slot="code-block-line-number">
           {number}

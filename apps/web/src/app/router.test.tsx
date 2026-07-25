@@ -16,14 +16,11 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
 import { ConfigProvider } from "@/hooks/use-config";
+import { NotFoundPage } from "./not-found";
+import { RouteRecoveryPage } from "./route-error-boundary";
 import { lazyRoute } from "./route-import";
 import { router } from "./router";
-import {
-  ConnectedRootLayout,
-  ConnectedRouteOutlet,
-  NotFoundPage,
-  RouteRecoveryPage,
-} from "./routes/__root";
+import { ConnectedRootLayout, ConnectedRouteOutlet } from "./routes/__root";
 
 vi.mock("../lib/config-guards", () => ({
   requireConfigured: vi.fn(),

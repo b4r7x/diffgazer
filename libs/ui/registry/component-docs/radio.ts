@@ -51,6 +51,7 @@ export const radioDoc: ComponentDoc = {
   examples: [
     { name: "radio-group-default", title: "Default" },
     { name: "radio-group-variants", title: "Variants" },
+    { name: "radio-group-states", title: "Highlight, Invalid, and Disabled" },
   ],
   keyboard: {
     description:
@@ -71,7 +72,7 @@ export const radioDoc: ComponentDoc = {
       { keys: "Space", action: "Selects the focused radio." },
       { keys: "Enter", action: "Calls onEnter for preview/commit flows, or selects when wired." },
     ],
-    examples: [{ name: "radio-group-default", title: "Default" }],
+    examples: [{ name: "radio-group-variants", title: "Arrow navigation in both orientations" }],
   },
   dataAttributes: [
     {

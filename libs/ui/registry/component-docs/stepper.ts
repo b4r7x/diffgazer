@@ -26,9 +26,24 @@ export const stepperDoc: ComponentDoc = {
         "pending · active · completed · error · skipped · disabled. `skipped` ≠ `completed` (data integrity for form wizards). `disabled` ≠ `pending` (policy gate vs ordering). Skipped renders line-through. Disabled is non-interactive and skipped by arrow-key navigation.",
     },
     {
+      title: "State color",
+      content:
+        "Completed indicators, labels, and connectors read the primary token, not success: finishing a step is neutral progress, so it stays monochrome in both themes. The status palette stays reserved for meaning — error is the only status that keeps a semantic hue.",
+    },
+    {
+      title: "Repainting from an app palette",
+      content:
+        "An app that owns its own status palette (e.g. live-run telemetry colors) passes `indicatorClassName`/`labelClassName` on StepperTrigger instead of targeting the trigger's inner spans with descendant selectors. Both merge over the variant classes, so a single utility wins the conflict without copying the rest of the state styling.",
+    },
+    {
+      title: "Substep nesting",
+      content:
+        "StepperContent stacks below its trigger and indents its children. Substeps draw a terminal branch rail from that indent (├─ per row, └─ on the last), so nested rows read as children of the step rather than a second column.",
+    },
+    {
       title: "Keyboard model",
       content:
-        "Single roving tab stop on the active step (falls back to the first non-disabled step). Arrow keys (Up/Down/Left/Right) cycle focus and skip disabled steps. Home/End jump to first/last enabled step. Editable targets inside step content keep their native handling.",
+        "Single roving tab stop on the active step (falls back to the first non-disabled step). Arrow keys (Up/Down/Left/Right) cycle focus and skip disabled steps. Home/End jump to first/last enabled step. Editable targets inside step content keep their native handling. The focused trigger shows the library's outside focus ring (2px --ring, 2px offset) around the whole row.",
     },
     {
       title: "Expansion modes",
@@ -177,6 +192,19 @@ export const stepperDoc: ComponentDoc = {
           '{ completed: "DONE", active: "RUN", pending: "WAIT", error: "FAIL", skipped: "SKIP", disabled: "OFF" }',
         description:
           'Per-status indicator label overrides. Used directly by `variant="tag"`; other variants use these labels as the screen-reader fallback for the indicator glyph.',
+      },
+      indicatorClassName: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description:
+          "Classes merged onto the indicator span, for repainting it from an app-owned palette.",
+      },
+      labelClassName: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Classes merged onto the label span. Same seam as indicatorClassName.",
       },
       children: {
         type: "ReactNode",

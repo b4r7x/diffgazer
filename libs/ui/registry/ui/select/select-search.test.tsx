@@ -10,7 +10,7 @@ import {
   PICK_FRUIT,
   renderSelect,
   renderSelectInline,
-} from "./select.test-utils";
+} from "./select-test-utils";
 
 describe("Select search position", () => {
   function renderSearchPositioned(position?: "top" | "bottom") {

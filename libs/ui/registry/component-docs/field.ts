@@ -18,6 +18,8 @@ export const fieldDoc: ComponentDoc = {
   usage: { example: "field-input" },
   examples: [
     { name: "field-input", title: "Input" },
+    { name: "field-states", title: "Valid, invalid, disabled" },
+    { name: "field-controls", title: "Checkbox and Select" },
     { name: "field-form", title: "Form integration" },
   ],
   keyboard: null,

@@ -1,10 +1,7 @@
 import { useEffect, useEffectEvent, useState } from "react";
 import type { Result } from "../../result.js";
-import {
-  isSessionTerminationCode,
-  type SessionTerminationCode,
-  type StreamReviewError,
-} from "../../review/index.js";
+import { isSessionTerminationCode, type SessionTerminationCode } from "../../review/lifecycle.js";
+import type { StreamReviewError } from "../../review/stream.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 
 export interface UseReviewStartOptions {

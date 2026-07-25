@@ -1,5 +1,7 @@
 import { gazeFindings } from "../demo";
-import { type Cleanup, type Flags, getFlags, type Mouse, sleep, spinAt } from "../util";
+import { type Cleanup, createEffectScope } from "../effect-scope";
+import { sleep, spinAt } from "../motion";
+import { type Flags, getFlags, type Mouse } from "../viewport";
 
 export interface GazeController {
   tilt(now: number, mouse: Mouse): void;
@@ -74,7 +76,8 @@ export function initGaze(
     let node: HTMLElement | null = el;
     while (node && node !== ancestor) {
       top += node.offsetTop;
-      node = node.offsetParent as HTMLElement | null;
+      const parent: Element | null = node.offsetParent;
+      node = parent instanceof HTMLElement ? parent : null;
     }
     return top;
   };
@@ -109,6 +112,12 @@ export function initGaze(
 
   placeCallouts();
 
+  // A motion-preference flip re-runs this init over a DOM the other branch may
+  // have left mid-scan, so drop animated state before taking either path.
+  scan.classList.remove("visible");
+  for (const row of rows) row.classList.remove("lit", "locked");
+  for (const callout of callouts) callout?.classList.remove("on");
+
   if (flags.reduced) {
     spin.textContent = "●";
     status.textContent = formatIssueCount(gazeFindings.length);
@@ -117,18 +126,12 @@ export function initGaze(
     return { tilt: () => {}, placeCallouts, cleanup: () => {} };
   }
 
+  const scope = createEffectScope(signal);
   const spinTimer = setInterval(() => {
     spin.textContent = spinAt(Math.floor(performance.now() / 110));
   }, 110);
-
-  let active = true;
-  const stop = (): void => {
-    active = false;
-    clearInterval(spinTimer);
-  };
-  signal?.addEventListener("abort", stop, { once: true });
-  const isActive = (): boolean => active && signal?.aborted !== true;
-  if (signal?.aborted) stop();
+  scope.addCleanup(() => clearInterval(spinTimer));
+  const isActive = scope.active;
 
   void (async () => {
     while (isActive()) {
@@ -136,30 +139,30 @@ export function initGaze(
       for (const callout of callouts) callout?.classList.remove("on");
       status.textContent = "scanning";
       spin.style.color = "";
-      if (!(await sleep(700, signal)) || !isActive()) break;
+      if (!(await sleep(700, scope.signal)) || !isActive()) break;
 
       scan.classList.add("visible");
       moveScan(rows.slice(1, 2));
-      if (!(await sleep(750, signal)) || !isActive()) break;
+      if (!(await sleep(750, scope.signal)) || !isActive()) break;
 
       moveScan(removed);
       for (const row of removed) row.classList.add("lit");
-      if (!(await sleep(800, signal)) || !isActive()) break;
+      if (!(await sleep(800, scope.signal)) || !isActive()) break;
 
       moveScan(added);
       for (const row of added) row.classList.add("lit");
       status.textContent = "analyzing";
-      if (!(await sleep(950, signal)) || !isActive()) break;
+      if (!(await sleep(950, scope.signal)) || !isActive()) break;
 
       lockFinding(0, formatIssueCount(1));
-      if (!(await sleep(2300, signal)) || !isActive()) break;
+      if (!(await sleep(2300, scope.signal)) || !isActive()) break;
 
       lockFinding(1, formatIssueCount(gazeFindings.length));
-      if (!(await sleep(2600, signal)) || !isActive()) break;
+      if (!(await sleep(2600, scope.signal)) || !isActive()) break;
 
       scan.classList.remove("visible");
       status.textContent = "review complete";
-      if (!(await sleep(2800, signal)) || !isActive()) break;
+      if (!(await sleep(2800, scope.signal)) || !isActive()) break;
     }
   })();
 
@@ -169,12 +172,5 @@ export function initGaze(
     panel.style.setProperty("--gx", `${-mouse.ny * 3.5}deg`);
   };
 
-  return {
-    tilt,
-    placeCallouts,
-    cleanup: () => {
-      signal?.removeEventListener("abort", stop);
-      stop();
-    },
-  };
+  return { tilt, placeCallouts, cleanup: scope.cleanup };
 }

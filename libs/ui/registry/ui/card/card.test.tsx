@@ -34,6 +34,25 @@ describe("Card", () => {
     expect(ref.current).toBe(screen.getByRole("article", { name: "Release" }));
   });
 
+  // Class assertion by exception: component-docs/card.ts documents `size` as "max-width
+  // constraints", so the emitted max-w-* utility is the published contract rather than an
+  // implementation detail, and there is no rendered attribute or role that encodes it.
+  it("maps each size to its documented max-width constraint", () => {
+    render(
+      <>
+        <Card size="sm">Small</Card>
+        <Card size="md">Medium</Card>
+        <Card size="lg">Large</Card>
+        <Card>Unconstrained</Card>
+      </>,
+    );
+
+    expect(screen.getByText("Small")).toHaveClass("max-w-sm");
+    expect(screen.getByText("Medium")).toHaveClass("max-w-md");
+    expect(screen.getByText("Large")).toHaveClass("max-w-lg");
+    expect(screen.getByText("Unconstrained").className).not.toMatch(/\bmax-w-/);
+  });
+
   it("sets data-interactive when interactive is true", () => {
     render(<Card interactive>Interactive content</Card>);
 
@@ -79,17 +98,6 @@ describe("Card", () => {
     const card = screen.getByRole("article", { name: "Release" });
     expect(card).toHaveAttribute("data-surface", "stacked");
     expect(card).toHaveAttribute("data-slot", "card");
-  });
-
-  it.each([
-    ["sm", "max-w-sm"],
-    ["md", "max-w-md"],
-    ["lg", "max-w-lg"],
-  ] as const)("applies the documented cardVariants size mapping for size='%s'", (size, expectedClass) => {
-    render(<Card size={size}>{size} card</Card>);
-
-    const card = screen.getByText(`${size} card`);
-    expect(card).toHaveClass(expectedClass);
   });
 
   it("renders an interactive card as a focusable button", async () => {

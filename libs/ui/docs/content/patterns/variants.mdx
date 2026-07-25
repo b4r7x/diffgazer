@@ -85,7 +85,8 @@ Extract to `registry/lib/` when two or more components share the same variant ax
 | `selectable-variants.ts` | Checkbox, Radio |
 | `segmented-variants.ts` | Tabs, ToggleGroup |
 | `input-variants.ts` | Input, InputGroup, Textarea |
-| `stepper-variants.ts` | Stepper, HorizontalStepper |
+| `stepper-variants.ts` | Stepper |
+| `horizontal-stepper-variants.ts` | HorizontalStepper |
 | `corner-label-variants.ts` | Panel, Card |
 
 Keep variants local when only one component uses them.
@@ -117,6 +118,7 @@ CSS files handle things Tailwind utilities cannot express. Put **only** these in
 | `command-palette.css` | Density CSS custom properties, multi-attribute frame/density/tone selectors, forced-colors |
 | `callout.css` | Tone cascade via CSS custom properties, frame chrome via data-attributes, forced-colors |
 | `panel.css` | Frame chrome (hairline/rail/viewfinder/surface) via multi-attribute selectors, forced-colors |
+| `spinner.css` | Theme-conditional trail alphas — the shipped theme defaults to dark on a bare `:root`, so the `dark` variant cannot express a light-only override |
 
 **What does NOT belong in CSS files:**
 
@@ -134,10 +136,10 @@ Use a `Record<VariantKey, T>` when the mapping produces **non-className values**
 
 ```tsx
 // OK: maps to content characters, not classes
-const selectableIndicators: Record<string, string> = {
-  checked: "✓",
-  unchecked: "○",
-  indeterminate: "–",
+const checkboxIndicators: Record<string, string> = {
+  checked: "[x]",
+  unchecked: "[ ]",
+  indeterminate: "[-]",
 };
 
 // OK: maps heading tag to default prop value

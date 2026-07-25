@@ -1,9 +1,25 @@
 "use client";
 
-import type { VariantProps } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 import type { Ref, TextareaHTMLAttributes } from "react";
 import { inputVariants } from "@/lib/input-variants";
 import { cn } from "@/lib/utils";
+
+// Height is the textarea's own axis: the shared input sizes only set padding and
+// font size, so min-height steps in even 16px increments per size. Giving
+// ::-webkit-resizer a background replaces the native grip glyph — the one piece
+// of chrome the library does not draw itself — while drag-to-resize and the
+// resize cursor stay intact.
+const textareaVariants = cva("h-auto resize-y [&::-webkit-resizer]:bg-background", {
+  variants: {
+    size: {
+      sm: "min-h-16",
+      md: "min-h-20",
+      lg: "min-h-24",
+    },
+  },
+  defaultVariants: { size: "md" },
+});
 
 /** Props for textarea. */
 export interface TextareaProps
@@ -21,7 +37,7 @@ export function Textarea({ className, size, ref, ...props }: TextareaProps) {
   return (
     <textarea
       data-slot="textarea"
-      className={cn(inputVariants({ size }), "h-auto min-h-20 resize-y", className)}
+      className={cn(inputVariants({ size }), textareaVariants({ size }), className)}
       ref={ref}
       {...props}
     />

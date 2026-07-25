@@ -16,9 +16,9 @@
   --base-selection: #333333;
 
   /* Accent colors - simplified for minimal theme */
-  --base-info: #ccccff; /* light for links */
-  --base-accent: #808080; /* ≥4.5:1 on #0a0a0a (was #787878, 4.48:1) */
-  --base-success: #e5e5e5; /* white for success in minimal */
+  --base-info: #79b8ff; /* decisive blue, same hue family as light #0b63ce */
+  --base-accent: #808080; /* syntax-palette neutral; ≥4.5:1 on #0a0a0a */
+  --base-success: #7ee787; /* chromatic in both themes: status hue, never --base-fg */
   --base-danger: #ff7b72; /* keep for error */
   --base-warning: #d29922; /* keep for warning */
 
@@ -49,6 +49,9 @@
   --muted: var(--base-muted);
   --muted-foreground: var(--base-dim);
   --border: var(--base-border);
+  /* Raised-contrast edge (separators, active non-focus borders). --base-dim is
+     the mid step between --base-border and --base-fg in both palettes. */
+  --border-strong: var(--base-dim);
   --input: var(--base-selection);
   --accent: var(--base-highlight);
   --accent-foreground: var(--base-highlight-foreground);
@@ -71,7 +74,11 @@
    * single primitive override re-tints every subtle surface (Badge/Callout).
    * Percentages preserve the historical alpha; neutral anchors to --base-border.
    */
-  --success-subtle: color-mix(in oklab, var(--base-success) 10%, transparent);
+  /* 12%, matching light: green mixes weaker than red at equal alpha, and a
+     10% tint left a code-block added row (#162017) barely apart from a
+     highlight row (#1c1c1c). 12% lands the row at #182519 — readably green
+     without out-shouting the removed tint. */
+  --success-subtle: color-mix(in oklab, var(--base-success) 12%, transparent);
   --success-text: var(--base-success);
   --success-border: var(--base-success);
   --success-strong: var(--base-success);
@@ -97,8 +104,10 @@
 
   --neutral-subtle: color-mix(in oklab, var(--base-border) 10%, transparent);
   --neutral-border: var(--base-border);
-  --neutral-text: var(--base-muted);
-  --neutral-strong: var(--base-muted);
+  /* --base-dim, not --base-muted: neutral chips sit on their own tinted
+     surface, where --base-muted lands at ~4.4:1. --base-dim clears 4.5:1. */
+  --neutral-text: var(--base-dim);
+  --neutral-strong: var(--base-dim);
   --neutral-strong-foreground: var(--base-bg);
 
   --action: var(--base-highlight);
@@ -107,9 +116,17 @@
   /* Shared scrim for modal backdrops (same value across themes). */
   --scrim: rgb(0 0 0 / 0.6);
 
-  /* Surface elevation steps. --surface-1 is one step lighter than --base-bg
-     for Linear/Raycast-style elevated panels (Panel frame="surface"). */
+  /* The single sanctioned shadow: a hard offset with no blur, for floating
+     layers that want brutalist emphasis. Flat surfaces use border + --surface-1
+     instead. Consume it as `shadow-(--shadow-hard)` or `box-shadow: var(--shadow-hard)`. */
+  --shadow-hard: 4px 4px 0 0 rgb(0 0 0 / 0.9);
+
+  /* Surface elevation steps. --surface-1 is one step off --base-bg for
+     Linear/Raycast-style elevated panels (Panel frame="surface"), and
+     --surface-1-highlight is the 1px inner top edge that gives the step a lip.
+     In dark the step goes lighter, so the lip is a soft foreground wash. */
   --surface-1: #111111;
+  --surface-1-highlight: color-mix(in oklab, var(--base-fg) 12%, transparent);
 
   --trans-fast: 0.15s ease;
   --radius: 0.25rem;
@@ -135,13 +152,18 @@
   --base-danger: #c62828;
   --base-warning: #8a5a00;
 
-  /* Code syntax palette (shared by Fumadocs + generated snippets) */
+  /*
+   * Code syntax palette (shared by Fumadocs + generated snippets). Mirrors the
+   * dark palette's restraint role-for-role — one accent hue (info), amber
+   * parameters, red operators, everything else neutral — instead of the
+   * conventional multi-hue light scheme the base primitives would produce.
+   */
   --code-comment: var(--base-dim);
-  --code-string: var(--base-accent);
-  --code-number: var(--base-accent);
+  --code-string: var(--base-muted);
+  --code-number: var(--base-muted);
   --code-keyword: var(--base-info);
-  --code-function: var(--base-success);
-  --code-tag: var(--base-success);
+  --code-function: var(--base-fg);
+  --code-tag: var(--base-fg);
   --code-attr: var(--base-info);
   --code-parameter: var(--base-warning);
   --code-operator: var(--base-danger);
@@ -158,14 +180,18 @@
   --muted: var(--base-muted);
   --muted-foreground: var(--base-dim);
   --border: var(--base-border);
+  --border-strong: var(--base-dim);
   --input: var(--base-input-bg);
-  --accent: var(--base-accent);
+  /* Accent is inverse emphasis in both palettes — white on dark, near-black on
+     light. --base-accent stays a primitive for the syntax palette, not a role. */
+  --accent: var(--base-highlight);
   --accent-foreground: var(--base-highlight-foreground);
   --card: var(--base-input-bg);
   --card-foreground: var(--base-fg);
   --popover: var(--base-input-bg);
   --popover-foreground: var(--base-fg);
-  --ring: var(--base-info);
+  /* Focus is monochrome in both palettes: one ring token, never a status hue. */
+  --ring: var(--base-fg);
   --success: var(--base-success);
   --success-foreground: #ffffff;
   --warning: var(--base-warning);
@@ -176,7 +202,10 @@
   --error-foreground: #ffffff;
 
   --success-subtle: color-mix(in oklab, var(--base-success) 12%, transparent);
-  --success-text: var(--base-success);
+  /* Text steps darker than the primitive: --base-success on --success-subtle
+     measures 4.28:1, below the 4.5:1 contract. #0a6647 clears it (5.58:1 on the
+     tint, 6.56:1 on --background) while staying the same green. */
+  --success-text: #0a6647;
   --success-border: var(--base-success);
   --success-strong: var(--base-success);
   --success-strong-foreground: #ffffff;
@@ -188,7 +217,10 @@
   --warning-strong-foreground: #ffffff;
 
   --error-subtle: color-mix(in oklab, var(--base-danger) 10%, transparent);
-  --error-text: var(--base-danger);
+  /* Pinned one step darker than the primitive, same as --success-text above:
+     --base-danger on --error-subtle measures 4.51:1, with no headroom under the
+     4.5:1 contract. #b32424 clears it (5.27:1 on the tint, 6.17:1 on --background). */
+  --error-text: #b32424;
   --error-border: var(--base-danger);
   --error-strong: var(--base-danger);
   --error-strong-foreground: #ffffff;
@@ -201,8 +233,8 @@
 
   --neutral-subtle: color-mix(in oklab, var(--base-border) 8%, transparent);
   --neutral-border: var(--base-border);
-  --neutral-text: var(--base-muted);
-  --neutral-strong: var(--base-muted);
+  --neutral-text: var(--base-dim);
+  --neutral-strong: var(--base-dim);
   --neutral-strong-foreground: #ffffff;
 
   --action: var(--base-accent);
@@ -211,7 +243,12 @@
   /* Shared scrim for modal backdrops (same value across themes). */
   --scrim: rgb(0 0 0 / 0.6);
 
-  /* Surface elevation steps. --surface-1 is the elevated surface vs
-     --base-bg (Linear-style cards / Panel frame="surface"). */
-  --surface-1: #ffffff;
+  --shadow-hard: 4px 4px 0 0 color-mix(in oklab, var(--base-fg) 25%, transparent);
+
+  /* Surface elevation steps. Light steps DOWN from the page background: an
+     off-white page cannot go a visible step lighter without hitting pure white,
+     which read as a hairline illusion rather than a surface. The white
+     --surface-1-highlight lip on top keeps the step reading as raised. */
+  --surface-1: #eef0f3;
+  --surface-1-highlight: #ffffff;
 }

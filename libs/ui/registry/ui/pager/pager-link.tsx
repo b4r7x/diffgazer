@@ -27,6 +27,7 @@ export function PagerLink({ className, ref, children, direction, ...props }: Pag
   const rel = direction === "previous" ? "prev" : "next";
   const resolvedClassName = cn(
     "text-xs font-mono text-muted-foreground hover:text-foreground transition-colors",
+    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
     direction === "next" && "ml-auto",
     className,
   );

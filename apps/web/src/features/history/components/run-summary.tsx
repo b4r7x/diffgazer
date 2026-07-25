@@ -1,17 +1,10 @@
 import { getRunSummaryParts, getRunSummaryText, type SeverityPart } from "@diffgazer/core/review";
 import type { ReviewMetadata } from "@diffgazer/core/schemas/review";
 import type { ReactNode } from "react";
-
-const SEVERITY_BASE_CLASS: Record<SeverityPart["severity"], string> = {
-  blocker: "text-severity-blocker",
-  high: "text-severity-high",
-  medium: "text-severity-medium",
-  low: "text-severity-low",
-  nit: "text-severity-nit",
-};
+import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
 
 function severityChipClass(severity: SeverityPart["severity"]): string {
-  return `${SEVERITY_BASE_CLASS[severity]} group-data-[highlighted]:text-primary-foreground/85`;
+  return `${SEVERITY_CONFIG[severity].color} group-data-[highlighted]:text-primary-foreground/85`;
 }
 
 export function getRunSummary(metadata: ReviewMetadata): ReactNode {

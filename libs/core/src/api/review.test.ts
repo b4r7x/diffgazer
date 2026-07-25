@@ -268,6 +268,7 @@ describe("getActiveReviewSession", () => {
       "/api/review/sessions/active",
       undefined,
       expect.any(Function),
+      undefined,
     );
   });
 

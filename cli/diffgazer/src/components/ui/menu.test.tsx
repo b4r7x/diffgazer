@@ -1,5 +1,7 @@
+import { Box } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { flush } from "../../testing/flush";
 import { waitUntil } from "../../testing/wait-until";
 import { CliThemeProvider } from "../../theme/provider";
 import { Menu } from "./menu";
@@ -12,12 +14,6 @@ const ARROW_DOWN = "\u001b[B";
 const ARROW_UP = "\u001b[A";
 const RETURN = "\r";
 const ESCAPE = "\u001b";
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 function renderMenu(props: Partial<Parameters<typeof Menu>[0]> = {}) {
   return render(
@@ -113,5 +109,47 @@ describe("Menu navigation", () => {
     stdin.write(ARROW_DOWN);
     await flush();
     expect(onHighlightChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("Menu.Divider", () => {
+  test("draws a rule across the full menu width instead of a fixed-length run", async () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <Box width={30}>
+          <Menu isActive>
+            <Menu.Item id="a">Alpha</Menu.Item>
+            <Menu.Divider />
+            <Menu.Item id="c">Charlie</Menu.Item>
+          </Menu>
+        </Box>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    const ruleRow = (lastFrame() ?? "").split("\n").find((row) => row.includes("─"));
+    expect(ruleRow).toBe("─".repeat(30));
+  });
+});
+
+describe("Menu.Item hotkey column", () => {
+  test("keeps a disabled row aligned with its siblings without advertising its key", async () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <Menu isActive>
+          <Menu.Item id="a" hotkey="r">
+            Alpha
+          </Menu.Item>
+          <Menu.Item id="b" hotkey="l" disabled>
+            Bravo
+          </Menu.Item>
+        </Menu>
+      </CliThemeProvider>,
+    );
+    await flush();
+    const rows = (lastFrame() ?? "").split("\n");
+
+    expect(rows[0]).toBe("> r. Alpha");
+    expect(rows[1]).toBe("     Bravo");
   });
 });

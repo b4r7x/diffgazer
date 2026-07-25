@@ -2,17 +2,17 @@ import { formatDuration } from "@diffgazer/core/format";
 import { formatRunId } from "@diffgazer/core/review";
 import type {
   AnalysisStats,
+  CategoryStats,
   IssuePreview,
   SeverityCounts,
 } from "@diffgazer/core/schemas/presentation";
 import { pluralize } from "@diffgazer/core/strings";
-import { Button } from "@diffgazer/ui/components/button";
 import { Panel, PanelContent } from "@diffgazer/ui/components/panel";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { Typography } from "@diffgazer/ui/components/typography";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { SeverityBreakdown } from "@/components/shared/severity/breakdown";
-import { type CategoryStats, CategoryStatsTable } from "./category-stats-table";
+import { CategoryStatsTable } from "./category-stats-table";
 import { IssuePreviewItem } from "./issue-preview-item";
 
 export interface ReviewCompleteSummaryProps {
@@ -21,8 +21,6 @@ export interface ReviewCompleteSummaryProps {
   categoryStats: CategoryStats[];
   topIssues: IssuePreview[];
   durationMs?: number;
-  onEnterReview?: () => void;
-  onBack?: () => void;
   className?: string;
 }
 
@@ -32,16 +30,16 @@ export function ReviewCompleteSummary({
   categoryStats,
   topIssues,
   durationMs,
-  onEnterReview,
-  onBack,
   className,
 }: ReviewCompleteSummaryProps) {
   const runLabel = stats.runId ? formatRunId(stats.runId) : "#unknown";
 
   return (
     <div className={cn("flex flex-col gap-6", className)}>
-      <div className="border-l-4 border-success pl-6 py-2 bg-secondary/20">
-        <Typography as="h1" size="2xl" className="text-success-text mb-2">
+      <Panel frame="rail" tone="success" className="py-2 pl-5">
+        {/* The run headline stays at terminal scale below sm: at display size it
+            wraps to two lines at 375 and dwarfs the panels underneath it. */}
+        <Typography as="h1" size="lg" className="text-success-text mb-2 sm:text-2xl">
           Review Complete {runLabel}
         </Typography>
         <p className="text-sm text-muted-foreground">
@@ -67,23 +65,23 @@ export function ReviewCompleteSummary({
             Duration: <span className="text-foreground">{formatDuration(durationMs)}</span>
           </p>
         ) : null}
-      </div>
+      </Panel>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Panel className="bg-secondary/10">
-          <SectionHeader as="h2" variant="muted" className="mb-4">
-            Severity Breakdown
-          </SectionHeader>
-          <PanelContent spacing="sm" className="pt-0">
+        <Panel frame="surface">
+          <PanelContent spacing="sm">
+            <SectionHeader as="h2" variant="muted">
+              Severity Breakdown
+            </SectionHeader>
             <SeverityBreakdown counts={severityCounts} />
           </PanelContent>
         </Panel>
 
-        <Panel className="bg-secondary/10">
-          <SectionHeader as="h2" variant="muted" className="mb-4">
-            Issues by Category
-          </SectionHeader>
-          <PanelContent spacing="none" className="pt-0">
+        <Panel frame="surface">
+          <PanelContent spacing="sm">
+            <SectionHeader as="h2" variant="muted">
+              Issues by Category
+            </SectionHeader>
             <CategoryStatsTable categories={categoryStats} />
           </PanelContent>
         </Panel>
@@ -91,14 +89,10 @@ export function ReviewCompleteSummary({
 
       {topIssues.length > 0 && (
         <div>
-          <Typography
-            as="h2"
-            size="sm"
-            className="text-accent mb-3 flex items-center gap-2 uppercase tracking-wider"
-          >
-            <span aria-hidden="true">!</span> Top Issues Preview
-          </Typography>
-          <div className="border border-border rounded-sm overflow-hidden">
+          <SectionHeader as="h2" variant="muted" className="mb-3">
+            Top Issues Preview
+          </SectionHeader>
+          <Panel className="overflow-hidden">
             {topIssues.map((issue) => (
               <IssuePreviewItem
                 key={issue.id}
@@ -109,18 +103,9 @@ export function ReviewCompleteSummary({
                 severity={issue.severity}
               />
             ))}
-          </div>
+          </Panel>
         </div>
       )}
-
-      <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-4 mb-4">
-        <Button variant="success" size="lg" onClick={onEnterReview} className="w-full sm:w-auto">
-          View Results
-        </Button>
-        <Button variant="ghost" size="md" onClick={onBack} className="text-muted-foreground">
-          [ Back ]
-        </Button>
-      </div>
     </div>
   );
 }

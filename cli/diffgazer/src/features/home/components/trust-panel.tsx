@@ -17,6 +17,7 @@ import { Button } from "../../../components/ui/button";
 import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
+import { isCompactHeight } from "../../../lib/breakpoints";
 import { useTheme } from "../../../theme/provider";
 
 interface TrustPanelProps {
@@ -36,7 +37,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
   const saving = saveTrust.isPending;
   const error = saveTrust.error?.message ?? null;
   const hasRepoAccess = capabilities.readFiles;
-  const compact = rows <= 24;
+  const compact = isCompactHeight(rows);
 
   const actionLabel = getTrustButtonLabel(saving, hasRepoAccess);
   const actionShortcuts: Shortcut[] = [
@@ -72,7 +73,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
       <Panel.Content>
         <Box flexDirection="column" gap={1}>
           <SectionHeader>Trust This Repository?</SectionHeader>
-          <Text dimColor>Diffgazer needs permissions to review your code</Text>
+          <Text color={tokens.muted}>Diffgazer needs permissions to review your code</Text>
 
           <TrustPermissionsContent
             directory={initQuery.data?.project.path ?? "Loading..."}

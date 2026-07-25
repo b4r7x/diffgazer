@@ -19,17 +19,17 @@ export default function CardSurfaces() {
           <CardDescription>Paper stack illusion</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Hard offset shadow creates depth.</p>
+          <p className="text-sm text-muted-foreground">A hard offset plate creates depth.</p>
         </CardContent>
       </Card>
 
       <Card surface="inset" size="md">
         <CardHeader>
           <CardTitle>Inset</CardTitle>
-          <CardDescription>Recessed into the page</CardDescription>
+          <CardDescription>Recessed surface step</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Stamped effect with inset shadow.</p>
+          <p className="text-sm text-muted-foreground">Stamped effect from a surface step.</p>
         </CardContent>
       </Card>
 
@@ -48,10 +48,10 @@ export default function CardSurfaces() {
       <Card surface="glow" size="md">
         <CardHeader>
           <CardTitle>Glow</CardTitle>
-          <CardDescription>Subtle edge luminance</CardDescription>
+          <CardDescription>Doubled outer edge</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Soft outer glow for emphasis.</p>
+          <p className="text-sm text-muted-foreground">A second hard edge for emphasis.</p>
         </CardContent>
       </Card>
     </div>

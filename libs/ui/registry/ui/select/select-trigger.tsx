@@ -13,12 +13,19 @@ import { useSelectTypeahead } from "./use-typeahead";
 import { getVisibleEnabledOptions } from "./visible-options";
 
 const selectTriggerVariants = cva(
-  "flex items-center justify-between w-full px-3 py-2 text-sm font-mono cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+  // Field grammar shared with Input: dashed dimmed disabled, --error takes over the
+  // edge while aria-invalid is set. The focus indicator is variant-owned: the default
+  // trigger keeps the inset Input ring (with Input's `outline-hidden`, which survives
+  // forced-colors where the ring and border do not), while the card trigger sits on an
+  // inverted --foreground header where an inset --ring is the same value as the surface,
+  // so it draws an outside outline against the page background instead.
+  "flex items-center justify-between w-full px-3 py-2 text-sm font-mono cursor-pointer disabled:opacity-50 disabled:border-dashed disabled:cursor-not-allowed aria-invalid:border-error aria-invalid:ring-1 aria-invalid:ring-error",
   {
     variants: {
       variant: {
-        default: "border border-border bg-background text-foreground hover:bg-secondary",
-        card: "bg-foreground text-accent-foreground border-b border-foreground font-bold text-xs uppercase tracking-wider",
+        default:
+          "border border-border bg-background text-foreground hover:bg-secondary focus:outline-hidden focus:border-ring focus:ring-1 focus:ring-ring aria-invalid:focus:border-error aria-invalid:focus:ring-error",
+        card: "bg-foreground text-background border-b border-foreground font-bold text-xs uppercase tracking-wider focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
       },
     },
     defaultVariants: { variant: "default" },

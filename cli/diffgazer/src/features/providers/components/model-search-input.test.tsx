@@ -1,16 +1,11 @@
 import { cleanup, render } from "ink-testing-library";
 import { useState } from "react";
 import { afterEach, describe, expect, test } from "vitest";
+import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
 import { SearchInput } from "./model-search-input";
 
 const BACKSPACE = "\u007f";
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 function ControlledModelSearchInput() {
   const [value, setValue] = useState("claude😀");

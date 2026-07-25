@@ -8,7 +8,7 @@ export const calloutDoc: ComponentDoc = {
     {
       name: "Callout.Icon",
       indent: 1,
-      note: "Tone icon — outlined 14px SVG (overridable via children)",
+      note: "Tone icon — character glyph in the tone color (overridable via children)",
     },
     { name: "Callout.Title", indent: 1, note: "Bold title text in the tone color" },
     { name: "Callout.Content", indent: 1, note: "Body text in muted color" },
@@ -28,7 +28,7 @@ export const calloutDoc: ComponentDoc = {
     {
       title: "Default icons",
       content:
-        "Each tone ships a default outlined SVG glyph. Pass children to Callout.Icon to override with any ReactNode.",
+        "Each tone ships a default character glyph (i / ! / ✕ / ✓), the same icon language Toast uses. Pass children to Callout.Icon to override with any ReactNode, including an SVG.",
     },
     {
       title: "Dismissible",
@@ -102,7 +102,8 @@ export const calloutDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: "tone icon",
-        description: "Custom icon content. The icon is decorative and aria-hidden.",
+        description:
+          "Custom icon content (character, emoji, or SVG). The icon is decorative and aria-hidden.",
       },
     },
     "Callout.Title": {

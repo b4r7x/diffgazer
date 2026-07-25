@@ -11,7 +11,9 @@ import { AvatarIndicator } from "./avatar-indicator";
 export const avatarGroupSpacingVariants = cva("", {
   variants: {
     spacing: {
-      overlap: "-space-x-1.5",
+      // gap-0 cancels the flex gap Overflow ships so overlap keeps its full
+      // negative offset when these classes are merged onto that root.
+      overlap: "gap-0 -space-x-1.5",
       gap: "gap-1",
     },
   },
@@ -76,8 +78,7 @@ export function AvatarGroup({
       <div {...props} role="group" aria-label={ariaLabel}>
         <Overflow
           mode="items"
-          gap={avatarGroupSpacingVariants({ spacing })}
-          className={className}
+          className={cn(avatarGroupSpacingVariants({ spacing }), className)}
           indicator={({ count }) => <AvatarIndicator count={count} />}
         >
           {allItems}

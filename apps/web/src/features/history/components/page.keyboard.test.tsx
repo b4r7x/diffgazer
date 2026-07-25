@@ -27,7 +27,7 @@ import {
   renderHistoryPage,
   setupApiMocks,
   trustedProject,
-} from "./page.test-utils";
+} from "./page-test-utils";
 
 describe("HistoryPage keyboard navigation", () => {
   beforeEach(() => {
@@ -128,6 +128,28 @@ describe("HistoryPage keyboard navigation", () => {
     const search = screen.getByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
     expect(search).toHaveFocus();
     expect(search).toHaveValue("");
+  });
+
+  it("clears the search filter on the first Escape and leaves the field on the second", async () => {
+    const user = userEvent.setup();
+    renderHistoryPage(<HistoryPage />);
+
+    await focusRunsList();
+
+    const search = screen.getByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
+    await user.click(search);
+    await user.keyboard("feature");
+    await waitFor(() => expect(search).toHaveValue("feature"));
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(search).toHaveValue(""));
+    expect(search).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.getByRole("listbox", { name: /review runs/i })).toHaveFocus(),
+    );
+    expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/" });
   });
 
   it("marks the active run with data-highlighted so theming can invert chip colors", async () => {
@@ -420,5 +442,21 @@ describe("HistoryPage keyboard navigation", () => {
 
     const insightsPane = screen.getByRole("complementary", { name: "Review insights" });
     expect(document.activeElement).not.toBe(insightsPane);
+  });
+
+  it("moves the active-pane affordance to the pane that owns keyboard focus", async () => {
+    const user = userEvent.setup();
+    renderHistoryPage(<HistoryPage />);
+
+    const runsPane = await screen.findByRole("region", { name: "Review runs" });
+    const sectionsPane = screen.getByRole("complementary", { name: "Review sections" });
+
+    await focusRunsList();
+    await waitFor(() => expect(runsPane).toHaveAttribute("data-state", "focused"));
+    expect(sectionsPane).not.toHaveAttribute("data-state");
+
+    await user.click(screen.getByRole("option", { name: "All" }));
+    await waitFor(() => expect(sectionsPane).toHaveAttribute("data-state", "focused"));
+    expect(runsPane).not.toHaveAttribute("data-state");
   });
 });

@@ -6,6 +6,7 @@ import { err, ok } from "@diffgazer/core/result";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import type { ReviewMode, ReviewResult } from "@diffgazer/core/schemas/review";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
@@ -15,7 +16,6 @@ import type {
 } from "../../shared/lib/ai/client/initialize.js";
 import type { createGitService as createGitServiceType } from "../../shared/lib/git/service.js";
 import { makeIssue } from "../../shared/lib/testing/factories.js";
-import { requireValue } from "../../testing/assertions.js";
 import { parseDiff } from "./engine/diff/parser.js";
 import type { SSEWriter } from "./stream/sse.js";
 

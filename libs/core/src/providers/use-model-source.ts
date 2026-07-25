@@ -1,10 +1,10 @@
 import type { AIProvider } from "../schemas/config/index.js";
 import { OPENROUTER_PROVIDER_ID } from "../schemas/config/index.js";
-import { type ProviderModelsState, useProviderModelsMapped } from "./use-models-mapped.js";
 import {
   type OpenRouterModelsState,
   useOpenRouterModelsMapped,
 } from "./use-openrouter-models-mapped.js";
+import { type ProviderModelsState, useProviderModelsMapped } from "./use-provider-models-mapped.js";
 
 export interface ModelSourceState extends ProviderModelsState {
   /** True when the active provider is OpenRouter (compatibility UI gated on this). */

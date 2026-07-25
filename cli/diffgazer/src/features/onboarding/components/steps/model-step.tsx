@@ -106,7 +106,7 @@ export function ModelStep({
     return (
       <Box flexDirection="column" gap={1}>
         <Text color={tokens.muted}>{subtitle}</Text>
-        <Text dimColor>No models available for this provider.</Text>
+        <Text color={tokens.muted}>No models available for this provider.</Text>
         {fallbackNotice ? <Text color={tokens.warning}>{fallbackNotice}</Text> : null}
         <Text color={tokens.muted}>Press r to retry.</Text>
       </Box>

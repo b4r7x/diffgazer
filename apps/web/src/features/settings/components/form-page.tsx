@@ -1,11 +1,9 @@
-import { matchQueryState } from "@diffgazer/core/api/hooks";
 import type { UseActionRowNavigationReturn } from "@diffgazer/keys";
-import { Button } from "@diffgazer/ui/components/button";
-import { Callout } from "@diffgazer/ui/components/callout";
-import { Spinner } from "@diffgazer/ui/components/spinner";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { CardLayout } from "@/components/ui/card-layout";
+import { CardLayout } from "@/components/layout/card-layout";
+import { SettingsFormActions } from "./settings-form-actions";
+import { renderSettingsFormPending } from "./settings-form-pending";
 
 interface SettingsFormPageProps<T> {
   title: string;
@@ -36,21 +34,7 @@ export function SettingsFormPage<T>({
   onSave,
   children,
 }: SettingsFormPageProps<T>) {
-  const pendingUI = matchQueryState(query, {
-    loading: () => (
-      <CardLayout title={title} subtitle={subtitle}>
-        <Spinner className="text-muted-foreground">Loading settings...</Spinner>
-      </CardLayout>
-    ),
-    error: (err) => (
-      <CardLayout title={title} subtitle={subtitle}>
-        <Callout tone="error" live className="text-sm">
-          <Callout.Content>{err.message}</Callout.Content>
-        </Callout>
-      </CardLayout>
-    ),
-    success: () => null,
-  });
+  const pendingUI = renderSettingsFormPending(query, title, subtitle);
 
   if (pendingUI) return pendingUI;
 
@@ -60,26 +44,13 @@ export function SettingsFormPage<T>({
       subtitle={subtitle}
       contentInactive={footer.inActions}
       footer={
-        <>
-          <Button
-            {...footer.getActionProps(0)}
-            variant="ghost"
-            onClick={onCancel}
-            disabled={isSaving}
-            highlighted={footer.inActions && footer.focusedIndex === 0 && !isSaving}
-          >
-            Cancel
-          </Button>
-          <Button
-            {...footer.getActionProps(1)}
-            variant="success"
-            onClick={onSave}
-            disabled={!canSave}
-            highlighted={footer.inActions && footer.focusedIndex === 1 && canSave}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
-        </>
+        <SettingsFormActions
+          footer={footer}
+          isSaving={isSaving}
+          canSave={canSave}
+          onCancel={onCancel}
+          onSave={onSave}
+        />
       }
     >
       {children}

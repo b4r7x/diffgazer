@@ -212,9 +212,12 @@ export function assertInstalledRegistryTree(fixture) {
     "@/hooks/use-presence",
     "@/hooks/use-floating-position",
   ]);
+  // Tooltip owns only its width/padding/type; the surface comes from the composed
+  // PopoverContent, so assert the composition rather than the surface classes.
   assertFileContains(fixture, "src/components/ui/tooltip/tooltip-content.tsx", [
     "../popover/popover-content",
-    "max-w-xs border border-border bg-background",
+    "<PopoverContent",
+    "max-w-xs",
   ]);
   assertFileContains(fixture, "src/hooks/use-focus-restore.ts", ["useFocusRestore"]);
   assertFileContains(fixture, "src/hooks/utils/focusable.ts", ["isFocusable"]);

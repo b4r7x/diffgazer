@@ -5,7 +5,8 @@ import {
 } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { type KeyboardEvent, useState } from "react";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { type KeyboardEvent, useId, useState } from "react";
 
 export interface ThemeSelectorContentProps {
   value: SelectableTheme;
@@ -32,6 +33,7 @@ export function ThemeSelectorContent({
   onBoundaryReached,
   enabled = true,
 }: ThemeSelectorContentProps) {
+  const labelId = useId();
   const options = SELECTABLE_THEME_OPTIONS;
   const optionValues = options.map((option) => option.value);
 
@@ -72,9 +74,11 @@ export function ThemeSelectorContent({
 
   return (
     <div className="space-y-3">
-      <div className="text-sm font-mono text-foreground/60">Select Interface Theme:</div>
+      <SectionHeader id={labelId} as="h2" variant="muted">
+        Interface Theme
+      </SectionHeader>
       <RadioGroup
-        aria-label="Select interface theme"
+        aria-labelledby={labelId}
         value={value}
         onChange={handleChange}
         onHighlightChange={handleHighlightChange}

@@ -1,42 +1,44 @@
 import { Button } from "@diffgazer/ui/components/button";
+import { SectionHeader, sectionHeaderVariants } from "@diffgazer/ui/components/section-header";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { ReactNode } from "react";
 
-export type InfoFieldColor = "blue" | "violet" | "green" | "yellow" | "red" | "muted";
+/**
+ * Label treatment. Colour on the context panel means status and nothing else:
+ * `default` is structural, `info`/`warning` mark a row whose label word carries
+ * live state (Trusted / Not trusted). Provider and Last Run are data, not state,
+ * so they stay structural instead of adding a third and fourth hue.
+ */
+export type InfoFieldTone = "default" | "info" | "warning";
 
 export interface InfoFieldProps {
   label: string;
-  color?: InfoFieldColor;
+  tone?: InfoFieldTone;
   children: ReactNode;
   className?: string;
   onClick?: () => void;
   ariaLabel?: string;
 }
 
-const labelColors: Record<InfoFieldColor, string> = {
-  blue: "text-info-text",
-  violet: "text-accent",
-  green: "text-success-text",
-  yellow: "text-warning-text",
-  red: "text-error-text",
-  muted: "text-muted-foreground",
+const toneClasses: Record<InfoFieldTone, string> = {
+  default: "text-muted-foreground",
+  info: "text-info-text",
+  warning: "text-warning-text",
 };
 
 export function InfoField({
   label,
-  color = "muted",
+  tone = "default",
   children,
   className,
   onClick,
   ariaLabel,
 }: InfoFieldProps) {
-  const content = (
-    <>
-      <div className={cn("text-xs uppercase mb-1 font-bold", labelColors[color])}>{label}</div>
-      <div className="text-foreground opacity-90">{children}</div>
-    </>
-  );
+  const labelClassName = cn("mb-1", toneClasses[tone]);
 
+  // One block owns the label/value stack so the clickable and static rows lay
+  // out identically — Button is a flex row, and two bare children would sit
+  // side by side there and stacked here.
   if (onClick) {
     return (
       <Button
@@ -48,10 +50,29 @@ export function InfoField({
         onClick={onClick}
         aria-label={ariaLabel ?? `${label} settings`}
       >
-        {content}
+        <div className="w-full min-w-0">
+          {/* A span, not the SectionHeader element: <button> takes phrasing content only,
+              and everything inside it is presentational, so a heading here would be invalid
+              markup that assistive tech prunes from the outline anyway. The button's
+              aria-label already names the row. Sharing sectionHeaderVariants keeps the two
+              branches visually identical. */}
+          <span className={cn(sectionHeaderVariants({ as: "h3" }), "block", labelClassName)}>
+            {label}
+          </span>
+          <div className="text-foreground">{children}</div>
+        </div>
       </Button>
     );
   }
 
-  return <div className={className}>{content}</div>;
+  return (
+    <div className={className}>
+      <div className="w-full min-w-0">
+        <SectionHeader as="h3" className={labelClassName}>
+          {label}
+        </SectionHeader>
+        <div className="text-foreground">{children}</div>
+      </div>
+    </div>
+  );
 }

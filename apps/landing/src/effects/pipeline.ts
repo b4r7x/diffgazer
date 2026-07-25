@@ -1,5 +1,7 @@
 import { formatFindingSummary, pipelineFindings } from "../demo";
-import { type Cleanup, clamp, createEffectScope, type Flags, getFlags, spinAt } from "../util";
+import { type Cleanup, createEffectScope } from "../effect-scope";
+import { clamp, spinAt } from "../motion";
+import { type Flags, getFlags } from "../viewport";
 
 const RP_TIMES = ["212ms", "1.2s", "8.4s", "0.9s"];
 // Each step runs across [start, end) of the pinned-scroll progress; findings
@@ -93,8 +95,15 @@ export function initPipeline(
     return clamp(-rect.top / (rect.height - innerHeight), 0, 1);
   };
 
+  // Scroll fires far more often than the pinned track advances: above and below it the
+  // progress clamps to a constant, and at both ends the glyph is static rather than the
+  // spinner, so an unchanged progress means an unchanged frame.
+  let lastProgress: number | null = null;
+
   const scrub = (): void => {
     const p = progress();
+    if (p === lastProgress) return;
+    lastProgress = p;
     const spin = spinAt(Math.floor(performance.now() / 120));
 
     steps.forEach((step, i) => {
@@ -124,8 +133,12 @@ export function initPipeline(
       phase === "complete" ? `4 steps · ${formatFindingSummary(pipelineFindings)}` : "";
   };
 
-  addEventListener("scroll", scrub, { passive: true, signal: scope.signal });
-  addEventListener("resize", scrub, { signal: scope.signal });
+  // Under reduced motion the scrub is pinned to the completed state, so the
+  // only run it needs is the initial one.
+  if (!flags.reduced) {
+    addEventListener("scroll", scrub, { passive: true, signal: scope.signal });
+    addEventListener("resize", scrub, { signal: scope.signal });
+  }
   scrub();
   return scope.cleanup;
 }

@@ -1,10 +1,10 @@
-import { Box, Text, useInput } from "ink";
+import { Box } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
 import { useListNavigation } from "../../hooks/use-list-navigation";
+import { useListNavigationInput } from "../../hooks/use-list-navigation-input";
 import { collectChildItems } from "../../lib/collect-child-items";
-import type { CliColorTokens } from "../../theme/palettes";
-import { useTheme } from "../../theme/provider";
+import { SelectableItemRow } from "./selectable-item-row";
 
 export interface CheckboxGroupProps<T extends string = string> {
   value?: T[];
@@ -29,7 +29,6 @@ interface CheckboxGroupContextValue {
   checkedValues: string[];
   highlightedValue: string;
   groupDisabled: boolean;
-  tokens: CliColorTokens;
 }
 
 const CheckboxGroupContext = createContext<CheckboxGroupContextValue | null>(null);
@@ -55,54 +54,16 @@ function extractCheckboxItem(element: ReactElement): CollectedItem | null {
 
 function CheckboxItem({ value, label, description, disabled = false }: CheckboxItemProps) {
   const ctx = useCheckboxGroupContext();
-  const isDisabled = disabled || ctx.groupDisabled;
-  const isChecked = ctx.checkedValues.includes(value);
-  const isHighlighted = ctx.highlightedValue === value;
-
-  const indicator = isChecked ? "[x]" : "[ ]";
-
-  if (isDisabled) {
-    return (
-      <Box flexDirection="column">
-        <Box gap={1}>
-          <Text dimColor>{indicator}</Text>
-          {typeof label === "string" ? <Text dimColor>{label}</Text> : label}
-        </Box>
-        {description != null && (
-          <Box>
-            <Text dimColor>{"    "}</Text>
-            {typeof description === "string" ? <Text dimColor>{description}</Text> : description}
-          </Box>
-        )}
-      </Box>
-    );
-  }
 
   return (
-    <Box flexDirection="column">
-      <Box gap={1}>
-        <Text color={isHighlighted ? ctx.tokens.accent : undefined} bold={isHighlighted}>
-          {indicator}
-        </Text>
-        {typeof label === "string" ? (
-          <Text color={isHighlighted ? ctx.tokens.accent : undefined} bold={isHighlighted}>
-            {label}
-          </Text>
-        ) : (
-          label
-        )}
-      </Box>
-      {description != null && (
-        <Box>
-          <Text>{"    "}</Text>
-          {typeof description === "string" ? (
-            <Text color={ctx.tokens.muted}>{description}</Text>
-          ) : (
-            description
-          )}
-        </Box>
-      )}
-    </Box>
+    <SelectableItemRow
+      indicator={ctx.checkedValues.includes(value) ? "[x]" : "[ ]"}
+      label={label}
+      description={description}
+      disabled={disabled || ctx.groupDisabled}
+      highlighted={ctx.highlightedValue === value}
+      descriptionIndent={4}
+    />
   );
 }
 
@@ -117,7 +78,6 @@ function CheckboxGroupRoot<T extends string = string>({
   isActive = true,
   children,
 }: CheckboxGroupProps<T>) {
-  const { tokens } = useTheme();
   const items = collectChildItems(children, extractCheckboxItem);
   const navigableItems = items.map((item) => ({
     id: item.value,
@@ -125,11 +85,7 @@ function CheckboxGroupRoot<T extends string = string>({
   }));
 
   const [internalValue, setInternalValue] = useState<string[]>(defaultValue ?? []);
-  const {
-    currentHighlightedId: highlightedValue,
-    moveBy,
-    selectItem,
-  } = useListNavigation({
+  const navigation = useListNavigation({
     items: navigableItems,
     onHighlightChange,
     onNavigationBoundaryReached,
@@ -138,13 +94,10 @@ function CheckboxGroupRoot<T extends string = string>({
 
   const checkedValues = value ?? internalValue;
 
-  function toggleCurrent() {
-    const item = selectItem(highlightedValue);
-    if (!item) return;
-
-    const nextValues = checkedValues.includes(item.id)
-      ? checkedValues.filter((v) => v !== item.id)
-      : [...checkedValues, item.id];
+  function toggle(id: string) {
+    const nextValues = checkedValues.includes(id)
+      ? checkedValues.filter((v) => v !== id)
+      : [...checkedValues, id];
 
     if (value === undefined) {
       setInternalValue(nextValues);
@@ -152,31 +105,19 @@ function CheckboxGroupRoot<T extends string = string>({
     onChange?.(nextValues as T[]);
   }
 
-  useInput(
-    (_input, key) => {
-      if (key.upArrow) {
-        moveBy(-1);
-        return;
-      }
-      if (key.downArrow) {
-        moveBy(1);
-        return;
-      }
-      if (_input === " " || key.return) {
-        toggleCurrent();
-        return;
-      }
-    },
-    { isActive: isActive && !disabled },
-  );
+  useListNavigationInput({
+    navigation,
+    isActive: isActive && !disabled,
+    activateOnSpace: true,
+    onActivate: (item) => toggle(item.id),
+  });
 
   return (
     <CheckboxGroupContext
       value={{
         checkedValues: checkedValues as string[],
-        highlightedValue,
+        highlightedValue: navigation.currentHighlightedId,
         groupDisabled: disabled,
-        tokens,
       }}
     >
       <Box flexDirection="column">{children}</Box>

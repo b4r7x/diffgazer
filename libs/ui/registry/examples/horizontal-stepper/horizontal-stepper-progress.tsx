@@ -21,18 +21,20 @@ export default function HorizontalStepperProgress() {
         <Button
           variant="secondary"
           size="sm"
+          bracket
           onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
           disabled={currentIndex === 0}
         >
-          Back
+          BACK
         </Button>
         <Button
           variant="primary"
           size="sm"
+          bracket
           onClick={() => setCurrentIndex((i) => Math.min(stepValues.length - 1, i + 1))}
           disabled={currentIndex === stepValues.length - 1}
         >
-          Next
+          NEXT
         </Button>
       </div>
     </div>

@@ -107,13 +107,14 @@ function CloseButton({
       type="button"
       onClick={() => onDismiss(id)}
       className={cn(
-        "min-h-6 min-w-6 p-1 flex items-center justify-center text-xs leading-none",
-        "text-muted hover:text-foreground cursor-pointer",
+        "min-h-6 min-w-6 p-1 flex items-center justify-center text-xs leading-none shrink-0",
+        "rounded-[var(--radius)] cursor-pointer transition-colors",
+        "text-muted-foreground hover:text-foreground hover:bg-foreground/5",
         "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
       )}
       aria-label={dismissLabel ?? `Dismiss: ${title}`}
     >
-      ✕
+      [x]
     </button>
   );
 }
@@ -195,10 +196,17 @@ function ViewfinderLayout({
         </span>
         <CloseButton id={id} title={title} dismissLabel={dismissLabel} onDismiss={onDismiss} />
       </div>
-      {message && <div className="text-sm text-foreground/90">{message}</div>}
+      {message && <div className="text-xs text-muted-foreground leading-relaxed">{message}</div>}
     </>
   );
 }
+
+// Shared corner-bracket knob (panel.css / diff-view.css / dialog.css): size,
+// weight, and offset read --viewfinder-* so an ancestor retheme reaches toast
+// too. Fallbacks preserve toast's own 14px / 2px / -1px geometry. Color stays
+// CVA-driven because it tracks the toast tone.
+const VIEWFINDER_BOX =
+  "absolute w-[var(--viewfinder-size,0.875rem)] h-[var(--viewfinder-size,0.875rem)] border-0";
 
 function ViewfinderCorners({ tone }: { tone: ToastTone }) {
   const colorClass = toastToneCornerBorder({ tone });
@@ -206,25 +214,33 @@ function ViewfinderCorners({ tone }: { tone: ToastTone }) {
     <span aria-hidden="true" data-slot="toast-corners" className="pointer-events-none">
       <span
         className={cn(
-          "absolute -top-px -left-px w-3.5 h-3.5 border-0 border-t-2 border-l-2",
+          VIEWFINDER_BOX,
+          "top-[var(--viewfinder-offset,-1px)] left-[var(--viewfinder-offset,-1px)]",
+          "border-t-[length:var(--viewfinder-weight,2px)] border-l-[length:var(--viewfinder-weight,2px)]",
           colorClass,
         )}
       />
       <span
         className={cn(
-          "absolute -top-px -right-px w-3.5 h-3.5 border-0 border-t-2 border-r-2",
+          VIEWFINDER_BOX,
+          "top-[var(--viewfinder-offset,-1px)] right-[var(--viewfinder-offset,-1px)]",
+          "border-t-[length:var(--viewfinder-weight,2px)] border-r-[length:var(--viewfinder-weight,2px)]",
           colorClass,
         )}
       />
       <span
         className={cn(
-          "absolute -bottom-px -left-px w-3.5 h-3.5 border-0 border-b-2 border-l-2",
+          VIEWFINDER_BOX,
+          "bottom-[var(--viewfinder-offset,-1px)] left-[var(--viewfinder-offset,-1px)]",
+          "border-b-[length:var(--viewfinder-weight,2px)] border-l-[length:var(--viewfinder-weight,2px)]",
           colorClass,
         )}
       />
       <span
         className={cn(
-          "absolute -bottom-px -right-px w-3.5 h-3.5 border-0 border-b-2 border-r-2",
+          VIEWFINDER_BOX,
+          "bottom-[var(--viewfinder-offset,-1px)] right-[var(--viewfinder-offset,-1px)]",
+          "border-b-[length:var(--viewfinder-weight,2px)] border-r-[length:var(--viewfinder-weight,2px)]",
           colorClass,
         )}
       />

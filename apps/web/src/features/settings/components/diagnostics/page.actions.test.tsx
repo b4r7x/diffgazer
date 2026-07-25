@@ -8,7 +8,7 @@ import {
   renderPage,
   setupDiagnosticsMocks,
   waitForDiagnosticsActions,
-} from "./page.test-harness";
+} from "./page-test-utils";
 
 describe("SettingsDiagnosticsPage diagnostics actions", () => {
   beforeEach(() => {

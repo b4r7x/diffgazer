@@ -132,6 +132,15 @@ export function useHistoryKeyboard({
 
   const tabCycle = buildTabCycle({ hasRuns, hasMore, hasInsights, hasRetry });
 
+  const zoneTargets: Record<KeyboardHistoryFocusZone, RefObject<HTMLElement | null>> = {
+    search: searchInputRef,
+    timeline: timelineRef,
+    runs: runsListRef,
+    "load-more": loadMoreRef,
+    insights: insightsListRef,
+    retry: retryRef,
+  };
+
   useFocusZone({
     initial: "runs",
     zones: ZONES,
@@ -143,14 +152,7 @@ export function useHistoryKeyboard({
     tabCycleBoundary: getMainContent,
     focus: {
       autoFocus: true,
-      targets: {
-        search: searchInputRef,
-        timeline: timelineRef,
-        runs: runsListRef,
-        "load-more": loadMoreRef,
-        insights: insightsListRef,
-        retry: retryRef,
-      },
+      targets: zoneTargets,
     },
     enabled,
     transitions: ({ zone, key }) => {

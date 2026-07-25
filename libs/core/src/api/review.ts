@@ -5,7 +5,7 @@ import {
   type StreamReviewOptions as CoreStreamReviewOptions,
   processReviewStream,
   type StreamReviewError,
-} from "../review/index.js";
+} from "../review/stream.js";
 import {
   type ActiveReviewSessionResponse,
   ActiveReviewSessionResponseSchema,
@@ -21,7 +21,7 @@ import {
   type ReviewsResponse,
   ReviewsResponseSchema,
 } from "../schemas/review/index.js";
-import type { ApiClient, ReviewContextResponse } from "./types.js";
+import { type ApiClient, isApiError, type ReviewContextResponse } from "./types.js";
 
 export type { StreamReviewError };
 
@@ -71,10 +71,7 @@ export async function resumeReviewStream(
   try {
     response = await client.request("GET", `/api/review/reviews/${reviewId}/stream`, { signal });
   } catch (error) {
-    const status =
-      error instanceof Error && "status" in error
-        ? (error as { status: number }).status
-        : undefined;
+    const status = isApiError(error) ? error.status : undefined;
     const message = getErrorMessage(error);
     if (status === 404) {
       return err({
@@ -148,17 +145,12 @@ export async function getActiveReviewSession(
 ): Promise<ActiveReviewSessionResponse> {
   const params = mode ? { mode } : undefined;
   const validate = (body: unknown) => ActiveReviewSessionResponseSchema.parse(body);
-  if (signal) {
-    return client.get<ActiveReviewSessionResponse>(
-      "/api/review/sessions/active",
-      params,
-      validate,
-      {
-        signal,
-      },
-    );
-  }
-  return client.get<ActiveReviewSessionResponse>("/api/review/sessions/active", params, validate);
+  return client.get<ActiveReviewSessionResponse>(
+    "/api/review/sessions/active",
+    params,
+    validate,
+    signal ? { signal } : undefined,
+  );
 }
 
 export async function getReviewContext(client: ApiClient): Promise<ReviewContextResponse> {

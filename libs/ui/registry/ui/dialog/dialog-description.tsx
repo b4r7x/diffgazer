@@ -25,7 +25,7 @@ export function DialogDescription({ className, ...props }: DialogDescriptionProp
       {...props}
       data-slot="dialog-description"
       id={descriptionId}
-      className={cn("text-xs text-foreground/70", className)}
+      className={cn("text-xs text-muted-foreground", className)}
     />
   );
 }

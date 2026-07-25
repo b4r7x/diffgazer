@@ -1,3 +1,4 @@
+import { sanitizeTerminalText } from "../review/sanitize-terminal.js";
 import type { ModelInfo, OpenRouterModel } from "../schemas/config/index.js";
 
 /**
@@ -17,8 +18,8 @@ export function isOpenRouterCompatible(
 export function mapOpenRouterModels(models: OpenRouterModel[]): ModelInfo[] {
   return models.map((model) => ({
     id: model.id,
-    name: model.name || model.id,
-    description: model.description ?? model.id,
+    name: sanitizeTerminalText(model.name || model.id),
+    description: sanitizeTerminalText(model.description ?? model.id),
     tier: model.isFree ? "free" : "paid",
   }));
 }

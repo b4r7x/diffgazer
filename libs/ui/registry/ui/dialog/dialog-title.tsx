@@ -9,8 +9,10 @@ export interface DialogTitleProps extends ComponentProps<"h2"> {
   /** Heading level for the title element. */
   as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
   /**
-   * Optional right-aligned eyebrow tag (e.g. "CONFIRM", "DESTRUCTIVE"). Rendered as dialog
-   * content but outside the heading, so it is excluded from the dialog's accessible name.
+   * Optional eyebrow tag (e.g. "CONFIRM", "DESTRUCTIVE"). Sits at the title row's inline end,
+   * except when a Dialog.CloseIcon is present — then the close button owns the top-right corner
+   * and the eyebrow moves next to the title text instead. Rendered as dialog content but outside
+   * the heading, so it is excluded from the dialog's accessible name.
    */
   meta?: string;
 }
@@ -61,7 +63,10 @@ export function DialogTitle({
       >
         {children}
       </Tag>
-      <span className="ml-auto shrink-0 text-[length:var(--dialog-title-meta-size)] font-normal uppercase tracking-[var(--dialog-title-meta-tracking)] text-muted">
+      <span
+        data-slot="dialog-title-meta"
+        className="ml-auto shrink-0 text-[length:var(--dialog-title-meta-size)] font-normal uppercase tracking-[var(--dialog-title-meta-tracking)] text-muted-foreground"
+      >
         {meta}
       </span>
     </div>

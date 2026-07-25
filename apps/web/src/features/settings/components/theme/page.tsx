@@ -1,20 +1,19 @@
-import { matchQueryState, useSettings } from "@diffgazer/core/api/hooks";
+import { useSettings } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { deriveSaveState, useSubmitGuard } from "@diffgazer/core/forms";
 import { isSelectableTheme, resolveSelectableTheme } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { useKey, useScope } from "@diffgazer/keys";
-import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Panel } from "@diffgazer/ui/components/panel";
-import { Spinner } from "@diffgazer/ui/components/spinner";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { CardLayout } from "@/components/ui/card-layout";
+import { useId, useState } from "react";
 import { useTheme } from "@/hooks/use-theme";
 import type { ResolvedTheme, WebTheme } from "@/types/theme";
 import { useSettingsFormFooter } from "../../hooks/use-settings-form-footer";
+import { SettingsFormActions } from "../settings-form-actions";
+import { renderSettingsFormPending } from "../settings-form-pending";
 import { ThemePreviewCard } from "./preview-card";
 import { ThemeSelectorContent } from "./selector-content";
 
@@ -39,21 +38,11 @@ export function SettingsThemePage() {
     });
   };
 
-  const pendingUI = matchQueryState(settingsQuery, {
-    loading: () => (
-      <CardLayout title="Theme Settings" subtitle="Choose how Diffgazer appears.">
-        <Spinner className="text-muted-foreground">Loading settings...</Spinner>
-      </CardLayout>
-    ),
-    error: (error) => (
-      <CardLayout title="Theme Settings" subtitle="Choose how Diffgazer appears.">
-        <Callout tone="error" live className="text-sm">
-          <Callout.Content>{error.message}</Callout.Content>
-        </Callout>
-      </CardLayout>
-    ),
-    success: () => null,
-  });
+  const pendingUI = renderSettingsFormPending(
+    settingsQuery,
+    "Theme Settings",
+    "Choose how Diffgazer appears.",
+  );
 
   if (pendingUI) return pendingUI;
 
@@ -84,6 +73,8 @@ function SettingsThemeEditor({
   onSave,
 }: SettingsThemeEditorProps) {
   const navigate = useNavigate();
+  const selectorTitleId = useId();
+  const previewTitleId = useId();
   const [selectedTheme, setSelectedTheme] = useState<WebTheme>(savedTheme);
   const [focusedTheme, setFocusedTheme] = useState<WebTheme | null>(savedTheme);
   const [hoveredTheme, setHoveredTheme] = useState<WebTheme | null>(null);
@@ -138,13 +129,20 @@ function SettingsThemeEditor({
   useKey("Escape", handleCancel, { enabled: !isSaving });
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
-      <div className="grid min-h-full w-full grid-cols-1 gap-6 md:grid-cols-[2fr_3fr]">
-        <Panel tone="accent" className="relative pt-4 flex flex-col h-full">
-          <Panel.Header>
-            <Panel.Title>Theme Settings</Panel.Title>
-          </Panel.Header>
-          <Panel.Content className="flex-1 flex flex-col">
+    // Same wrapper padding and top line as CardLayout; the two panes stack until lg
+    // so the 768 column never gets narrow enough to wrap every radio description.
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-7 pb-4">
+      <div className="mx-auto grid w-full max-w-5xl grid-cols-1 items-start gap-8 lg:grid-cols-[2fr_3fr]">
+        {/* The selector is the interactive pane; the preview is passive output. */}
+        {/* Focused tracks where focus actually is: once the user steps into the footer
+            actions the selector is no longer the active pane, so the frame stops claiming
+            it is. */}
+        <Panel frame="viewfinder" focused={!footer.inActions} aria-labelledby={selectorTitleId}>
+          <Panel.Label>
+            <h1 id={selectorTitleId}>Theme Settings</h1>
+          </Panel.Label>
+          <Panel.Content spacing="none">
+            <Panel.Description className="mb-4">Choose how Diffgazer appears.</Panel.Description>
             <ThemeSelectorContent
               value={selectedTheme}
               highlighted={focusedTheme}
@@ -166,7 +164,7 @@ function SettingsThemeEditor({
               }}
             />
 
-            <div className="mt-auto pt-6 space-y-4">
+            <div className="mt-6 space-y-4">
               <Callout tone="info" className="pointer-coarse:hidden">
                 <Callout.Content>
                   Focus previews themes live. Space selects, Enter saves &amp; exits.
@@ -174,40 +172,29 @@ function SettingsThemeEditor({
               </Callout>
 
               {saveError && (
-                <Callout tone="error" live className="text-sm">
+                <Callout tone="error" live>
                   <Callout.Content>{saveError}</Callout.Content>
                 </Callout>
               )}
 
               <div className="flex justify-end gap-3">
-                <Button
-                  {...footer.getActionProps(0)}
-                  variant="ghost"
-                  onClick={handleCancel}
-                  disabled={isSaving}
-                  highlighted={footer.inActions && footer.focusedIndex === 0 && !isSaving}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  {...footer.getActionProps(1)}
-                  variant="success"
-                  onClick={handleSave}
-                  disabled={!canSave}
-                  highlighted={footer.inActions && footer.focusedIndex === 1 && canSave}
-                >
-                  Save
-                </Button>
+                <SettingsFormActions
+                  footer={footer}
+                  isSaving={isSaving}
+                  canSave={canSave}
+                  onCancel={handleCancel}
+                  onSave={handleSave}
+                />
               </div>
             </div>
           </Panel.Content>
         </Panel>
 
-        <Panel tone="info" className="relative pt-4 flex flex-col md:h-full md:overflow-hidden">
-          <Panel.Header>
-            <Panel.Title>Live Preview</Panel.Title>
-          </Panel.Header>
-          <Panel.Content className="flex-1 flex items-center justify-center p-0">
+        <Panel frame="viewfinder" aria-labelledby={previewTitleId}>
+          <Panel.Label>
+            <h2 id={previewTitleId}>Live Preview</h2>
+          </Panel.Label>
+          <Panel.Content className="flex items-center justify-center">
             <ThemePreviewCard previewTheme={previewResolved} />
           </Panel.Content>
         </Panel>

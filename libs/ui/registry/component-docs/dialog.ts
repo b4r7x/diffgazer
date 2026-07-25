@@ -64,6 +64,21 @@ export const dialogDoc: ComponentDoc = {
         "Pass a hints array to DialogFooter (or compose DialogFooter.Hints) to render inline keyboard shortcut hints alongside the action buttons. Hints render inside the footer, matching the global footer's Kbd primitive and typography.",
     },
     {
+      title: "Corner clearance",
+      content:
+        'The corner brackets own the dialog corners, so the content insets around them. corners="bold" draws 28px arms and pushes the footer actions inward so a button corner never collides with the bottom brackets, and the DialogCloseIcon inset grows per corner variant. The close icon owns the top-right corner alone: when a DialogTitle also carries a meta eyebrow, the eyebrow drops out of the corner and sits beside the title text instead, and the title row reserves the button\'s slot so a long (truncating) title stays clear of it.',
+    },
+    {
+      title: "Inline (non-modal)",
+      content:
+        'Pass modal={false} to DialogContent to render the same frame, corners, header marker, and footer in the document flow — no backdrop, focus trap, scroll lock, or focus restoration. Because nothing is modal about it, the inline shell exposes role="group" (still named by DialogTitle) rather than a dialog role, and the role prop is ignored. Use it to embed dialog chrome in a page, or to make the open state visible on a static page — see the Open State example. Inline content still honours open, so it unmounts when the consumer closes it.',
+    },
+    {
+      title: "Surface and backdrop",
+      content:
+        "DialogContent is a flat surface: --background fill, 1px border under the default frame='border', rounded-sm corners, and --shadow-hard (a hard 4px offset with no blur) — the library's only sanctioned shadow. The backdrop dims with --scrim over a 2px blur; the dim carries the layer separation, not the blur.",
+    },
+    {
       title: "Extending DialogContent styles",
       content:
         "dialogContentVariants is the CVA used by DialogContent. Re-export it to compose custom variants for product-specific dialog shells — e.g. extend the base classes with bg/border tokens, or add new size keys. The corners prop is a plain TypeScript type (DialogCorners) whose visual styling is driven by [data-corners] selectors in shared/dialog.css.",
@@ -72,6 +87,7 @@ export const dialogDoc: ComponentDoc = {
   usage: { example: "dialog-default" },
   examples: [
     { name: "dialog-default", title: "Default" },
+    { name: "dialog-inline", title: "Open State (inline, non-modal)" },
     { name: "dialog-bracketed", title: "Bracketed" },
     { name: "dialog-viewfinder", title: "Viewfinder" },
     { name: "dialog-viewfinder-subtle", title: "Viewfinder Subtle" },
@@ -173,7 +189,14 @@ export const dialogDoc: ComponentDoc = {
         required: false,
         defaultValue: '"dialog"',
         description:
-          'Set role="alertdialog" for destructive confirmations. Per WAI-ARIA APG, alert dialogs should not close on outside interaction.',
+          'Set role="alertdialog" for destructive confirmations. Per WAI-ARIA APG, alert dialogs should not close on outside interaction. Modal mode only — an inline dialog is a labelled region, not a dialog.',
+      },
+      modal: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description:
+          'Renders the dialog as a native modal in the browser top layer. Pass false to render the same frame, corners, and chrome in the document flow instead — no backdrop, focus trap, scroll lock, or focus restoration, and role="group" instead of a dialog role.',
       },
       closeOnBackdropClick: {
         type: "boolean",
@@ -224,7 +247,7 @@ export const dialogDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          'Optional right-aligned eyebrow tag (e.g. "CONFIRM", "DESTRUCTIVE"). Rendered as dialog content but outside the heading, so it is excluded from the dialog accessible name.',
+          'Optional eyebrow tag (e.g. "CONFIRM", "DESTRUCTIVE"). Sits at the title row inline end, except when a DialogCloseIcon is present — then the close button owns the top-right corner and the eyebrow moves next to the title text instead. Rendered as dialog content but outside the heading, so it is excluded from the dialog accessible name.',
       },
     },
     DialogTrigger: {

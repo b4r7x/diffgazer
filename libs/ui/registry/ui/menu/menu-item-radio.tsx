@@ -86,6 +86,7 @@ export function MenuItemRadio({
       data-diffgazer-navigation-item="true"
       data-value={id}
       data-highlighted={isFocused ? "" : undefined}
+      data-state={isSelected ? "checked" : "unchecked"}
       aria-checked={isSelected}
       aria-disabled={disabled || undefined}
       data-selected={isSelected ? "" : undefined}

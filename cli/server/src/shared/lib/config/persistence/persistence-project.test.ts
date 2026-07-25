@@ -1,7 +1,7 @@
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { homePath, readJson, writeJson } from "./persistence.test-support.js";
+import { homePath, readJson } from "./persistence.test-support.js";
 
 import "./persistence.test-support.js";
 

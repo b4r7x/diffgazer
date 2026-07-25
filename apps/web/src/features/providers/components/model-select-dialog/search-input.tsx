@@ -20,7 +20,7 @@ export function ModelSearchInput({
   ref,
 }: ModelSearchInputProps) {
   return (
-    <div className="px-4 pt-3 pb-2">
+    <div className="px-5 pt-3 pb-2">
       <SearchInput
         ref={ref}
         value={value}

@@ -26,7 +26,7 @@ export function PanelDescription({ className, id, ...props }: PanelDescriptionPr
       {...props}
       data-slot="panel-description"
       id={resolvedId}
-      className={cn("m-0 text-xs leading-normal text-foreground/70", className)}
+      className={cn("m-0 text-xs leading-normal text-muted-foreground", className)}
     />
   );
 }

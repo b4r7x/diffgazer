@@ -34,15 +34,15 @@ describe("secrets persistence", () => {
       unknownSecrets: { gemini: "", groq: "   " },
     });
     persistSecrets(secrets);
-    await expect(readJson<{ providers: Record<string, unknown> }>(homePath("secrets.json"))).resolves.toEqual(
-      {
-        providers: {
-          gemini: "",
-          groq: "   ",
-          openrouter: "  key-with-padding  ",
-        },
+    await expect(
+      readJson<{ providers: Record<string, unknown> }>(homePath("secrets.json")),
+    ).resolves.toEqual({
+      providers: {
+        gemini: "",
+        groq: "   ",
+        openrouter: "  key-with-padding  ",
       },
-    );
+    });
   });
 
   it("keeps known secrets loadable when one entry uses an unknown ref kind", async () => {

@@ -30,6 +30,13 @@ export interface HistoryInsightsPaneProps {
   className?: string;
 }
 
+// A bare line number identifies nothing; the rail has room for the file name that
+// owns it. The directory is dropped rather than truncated so the datum stays whole.
+function formatIssueLocation(issue: ReviewIssue): string {
+  const fileName = issue.file.split("/").pop() ?? issue.file;
+  return issue.line_start == null ? fileName : `${fileName}:${issue.line_start}`;
+}
+
 export function HistoryInsightsPane({
   runId,
   severityCounts,
@@ -53,11 +60,14 @@ export function HistoryInsightsPane({
   }
 
   return (
-    <div className={cn("flex min-h-0 flex-col md:h-full md:overflow-hidden", className)}>
-      <ScrollArea className="min-h-0 space-y-6 overflow-visible p-4 pr-2 md:flex-1 md:overflow-x-hidden md:overflow-y-auto">
+    // Below md the pane is stacked in a scrolling column, so the issue list and
+    // the duration footer both take their natural height; from md up the pane is
+    // a fixed-height track and only the list scrolls.
+    <div className={cn("flex flex-col md:h-full md:min-h-0 md:overflow-hidden", className)}>
+      <ScrollArea className="space-y-6 overflow-visible p-4 pr-2 md:min-h-0 md:flex-1 md:overflow-x-hidden md:overflow-y-auto">
         {severityCounts && (
           <div>
-            <SectionHeader bordered className="border-border">
+            <SectionHeader as="h3" bordered className="mb-2">
               Severity Breakdown
             </SectionHeader>
             <div className="mt-3">
@@ -81,7 +91,7 @@ export function HistoryInsightsPane({
 
         {detailState.status === "ready" && issues.length > 0 && (
           <div>
-            <SectionHeader bordered className="border-border">
+            <SectionHeader as="h3" bordered className="mb-2">
               {issues.length} Issues
             </SectionHeader>
             <NavigationList
@@ -109,7 +119,7 @@ export function HistoryInsightsPane({
                   density="compact"
                   className="border-b border-border last:border-b-0"
                 >
-                  <NavigationList.Title className="min-w-0">
+                  <NavigationList.Title className="min-w-0 items-start">
                     <span
                       className={cn(
                         "mr-2 font-bold",
@@ -119,13 +129,13 @@ export function HistoryInsightsPane({
                     >
                       [{capitalize(issue.severity)}]
                     </span>
-                    <span className="min-w-0 truncate">{issue.title}</span>
+                    {/* The title is the only descriptive text on the row, so it wraps
+                        to two lines instead of dying at ~18 characters. */}
+                    <span className="min-w-0 line-clamp-2">{issue.title}</span>
                   </NavigationList.Title>
-                  {issue.line_start != null && (
-                    <NavigationList.Meta>
-                      <NavigationList.Subtitle>L:{issue.line_start}</NavigationList.Subtitle>
-                    </NavigationList.Meta>
-                  )}
+                  <NavigationList.Meta>
+                    <NavigationList.Subtitle>{formatIssueLocation(issue)}</NavigationList.Subtitle>
+                  </NavigationList.Meta>
                 </NavigationList.Item>
               ))}
             </NavigationList>
@@ -134,11 +144,11 @@ export function HistoryInsightsPane({
       </ScrollArea>
 
       {duration && (
-        <div className="border-t border-border p-3 bg-secondary/10">
-          <div className="text-2xs text-muted-foreground uppercase tracking-wider mb-1">
+        <div className="border-t border-border bg-base-surface-1 p-3">
+          <SectionHeader as="h3" variant="muted" className="mb-1">
             Duration
-          </div>
-          <div className="text-sm font-mono text-foreground">{duration}</div>
+          </SectionHeader>
+          <div className="font-mono text-sm text-foreground">{duration}</div>
         </div>
       )}
     </div>

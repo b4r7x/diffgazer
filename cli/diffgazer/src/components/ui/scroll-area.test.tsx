@@ -6,6 +6,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { CodeSnippet } from "../../features/review/components/code-snippet";
 import { DiffView } from "../../features/review/components/diff-view";
 import { IssueDetailsPane } from "../../features/review/components/issue-details-pane/pane";
+import { flush } from "../../testing/flush";
 import { CliThemeProvider } from "../../theme/provider";
 import { ScrollArea } from "./scroll-area";
 
@@ -19,12 +20,6 @@ const PAGE_UP = "\u001b[5~";
 const PAGE_DOWN = "\u001b[6~";
 const HOME = "\u001b[H";
 const END = "\u001b[F";
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 function items(count: number, prefix = "item"): ReactNode[] {
   return Array.from({ length: count }, (_, i) => `${prefix}-${i}`).map((label) => (

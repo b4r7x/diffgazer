@@ -7,6 +7,18 @@ export {
   type HomeContextInit,
   type HomeContextReview,
 } from "./context-info.js";
+export {
+  type ContextStatus,
+  type DiagnosticsActions,
+  type DiagnosticsActionsInput,
+  type DiagnosticsPresentation,
+  deriveDiagnosticsActions,
+  getContextActionLabel,
+  getContextPresentation,
+  getServerStatusPresentation,
+  getSetupPresentation,
+  type SetupPresentationInput,
+} from "./diagnostics.js";
 export { ISSUE_TABS, type IssueTab, isIssueTab } from "./issue-tabs.js";
 export {
   type BadgeVariant,

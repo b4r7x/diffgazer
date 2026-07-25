@@ -1,3 +1,15 @@
+// Attributes that can flip an item between eligible and skipped without changing
+// the registered collection itself.
+const ELIGIBILITY_ATTRIBUTES = [
+  "hidden",
+  "inert",
+  "aria-hidden",
+  "class",
+  "style",
+  "disabled",
+  "open",
+];
+
 interface DocumentChangeObserver {
   subscribers: Set<() => void>;
   disconnect: () => void;
@@ -51,7 +63,7 @@ function hasStyleSheetObserverRegistry(
 function getStyleSheetObserverRegistry(View: Window): StyleSheetObserverRegistry {
   if (!hasStyleSheetObserverRegistry(View)) {
     Object.defineProperty(View, STYLE_SHEET_OBSERVER_REGISTRY, {
-      configurable: false,
+      configurable: true,
       value: { states: new WeakMap<CSSStyleSheet, StyleSheetObserverState>() },
     });
   }
@@ -61,7 +73,7 @@ function getStyleSheetObserverRegistry(View: Window): StyleSheetObserverRegistry
   return View[STYLE_SHEET_OBSERVER_REGISTRY];
 }
 
-function installStyleSheetObservers(prototype: CSSStyleSheet): StyleSheetObserverState {
+function installStyleSheetObservers(prototype: CSSStyleSheet): StyleSheetObserverState | null {
   const callbacks = new Set<() => void>();
   const originals: StyleSheetMethods = {
     insertRule: prototype.insertRule,
@@ -96,10 +108,24 @@ function installStyleSheetObservers(prototype: CSSStyleSheet): StyleSheetObserve
     },
   };
 
-  prototype.insertRule = observers.insertRule;
-  prototype.deleteRule = observers.deleteRule;
-  prototype.replace = observers.replace;
-  prototype.replaceSync = observers.replaceSync;
+  // Frozen intrinsics (SES lockdown, Object.freeze) reject these assignments;
+  // degrade to no stylesheet observation instead of crashing the component tree.
+  try {
+    prototype.insertRule = observers.insertRule;
+    prototype.deleteRule = observers.deleteRule;
+    prototype.replace = observers.replace;
+    prototype.replaceSync = observers.replaceSync;
+  } catch {
+    return null;
+  }
+  if (
+    prototype.insertRule !== observers.insertRule ||
+    prototype.deleteRule !== observers.deleteRule ||
+    prototype.replace !== observers.replace ||
+    prototype.replaceSync !== observers.replaceSync
+  ) {
+    return null;
+  }
   return { callbacks, originals, observers };
 }
 
@@ -126,6 +152,7 @@ function observeStyleSheetChanges(View: Window, onChange: () => void): () => voi
   const prototype = View.CSSStyleSheet.prototype;
   const registry = getStyleSheetObserverRegistry(View);
   const state = registry.states.get(prototype) ?? installStyleSheetObservers(prototype);
+  if (!state) return () => {};
   registry.states.set(prototype, state);
   state.callbacks.add(onChange);
   let isSubscribed = true;
@@ -187,5 +214,45 @@ export function subscribeToSelectableDocumentChanges(
     if (entry?.subscribers.size !== 0) return;
     entry.disconnect();
     documentChangeObservers.delete(document);
+  };
+}
+
+/**
+ * Notifies on every change that can alter which items in a container are eligible:
+ * subtree mutations, eligibility attributes on the container or any ancestor, and
+ * document-wide layout or stylesheet changes.
+ */
+export function observeSelectableEligibility(
+  container: HTMLElement,
+  onChange: () => void,
+): () => void {
+  const View = container.ownerDocument.defaultView;
+  if (!View?.MutationObserver) return () => {};
+
+  const observer = new View.MutationObserver(onChange);
+  observer.observe(container, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ELIGIBILITY_ATTRIBUTES,
+  });
+
+  let ancestor = container.parentElement;
+  while (ancestor) {
+    observer.observe(ancestor, {
+      attributes: true,
+      attributeFilter: ELIGIBILITY_ATTRIBUTES,
+    });
+    ancestor = ancestor.parentElement;
+  }
+
+  const unsubscribeDocument = subscribeToSelectableDocumentChanges(
+    container.ownerDocument,
+    onChange,
+  );
+
+  return () => {
+    observer.disconnect();
+    unsubscribeDocument();
   };
 }

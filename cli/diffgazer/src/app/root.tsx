@@ -1,21 +1,15 @@
-import {
-  ApiProvider,
-  useConfigCheck,
-  useServerStatus,
-  useSettings,
-} from "@diffgazer/core/api/hooks";
+import { ApiProvider, useConfigCheck, useServerStatus } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { sanitizeTerminalText } from "@diffgazer/core/review";
-import { toSelectableTheme } from "@diffgazer/core/schemas/config";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
-import { useContext, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { CliMode } from "../cli-options";
-import { GlobalLayout, MIN_TERMINAL_COLUMNS, MIN_TERMINAL_ROWS } from "../components/layout/global";
+import { GlobalLayout } from "../components/layout/global";
+import { isTerminalTooSmall, TerminalTooSmall } from "../components/layout/terminal-too-small";
 import { Spinner } from "../components/ui/spinner";
-import { ExitPreparationProvider, useExit } from "../hooks/use-exit";
-import { KeyboardContext } from "../hooks/use-keyboard";
+import { ExitPreparationProvider } from "../hooks/use-exit";
 import { useNavigation } from "../hooks/use-navigation";
 import { useTerminalDimensions } from "../hooks/use-terminal-dimensions";
 import { api } from "../lib/api";
@@ -23,25 +17,20 @@ import { createCliQueryClient } from "../lib/query-client";
 import { createServerFactories } from "../lib/servers/factories";
 import type { TerminalInputQueue } from "../lib/terminal-input";
 import { CliThemeProvider, useTheme } from "../theme/provider";
+import { AppGlobalShortcuts } from "./global-shortcuts";
 import { TerminalKeyboardProvider } from "./providers/keyboard";
-import { NavigationProvider } from "./providers/navigation-provider";
+import { NavigationProvider } from "./providers/navigation";
 import { ServerProvider, useServerControls } from "./providers/server";
 import { ScreenRouter } from "./router";
+import { StartupThemeSync } from "./startup-theme-sync";
 import { useConfigGuard } from "./use-config-guard";
 
 const queryClient = createCliQueryClient();
 
 function GateFrame({ children }: { children: ReactNode }): ReactElement {
   const { columns, rows } = useTerminalDimensions();
-  if (columns < MIN_TERMINAL_COLUMNS || rows < MIN_TERMINAL_ROWS) {
-    return (
-      <Box width={columns} height={rows} justifyContent="center" alignItems="center">
-        <Text>
-          Terminal too small ({columns} columns x {rows} rows). Minimum: {MIN_TERMINAL_COLUMNS}{" "}
-          columns x {MIN_TERMINAL_ROWS} rows.
-        </Text>
-      </Box>
-    );
+  if (isTerminalTooSmall(columns, rows)) {
+    return <TerminalTooSmall columns={columns} rows={rows} />;
   }
   return (
     <Box
@@ -100,8 +89,8 @@ function HealthGate({
         <Text color={tokens.error}>
           {startupFailure ? "Server Failed to Start" : "Server Disconnected"}
         </Text>
-        <Text dimColor>{sanitizeTerminalText(startupFailure ?? state.message)}</Text>
-        <Text dimColor>Press r to retry</Text>
+        <Text color={tokens.muted}>{sanitizeTerminalText(startupFailure ?? state.message)}</Text>
+        <Text color={tokens.muted}>Press r to retry</Text>
       </Box>
     );
   }
@@ -136,12 +125,12 @@ export function ConfigGate({ children }: { children: ReactNode }): ReactElement 
     return (
       <Box flexDirection="column" alignItems="center" justifyContent="center" padding={1}>
         <Text color={tokens.error}>Configuration Check Failed</Text>
-        <Text dimColor>
+        <Text color={tokens.muted}>
           {sanitizeTerminalText(
             configCheck.error?.message ?? "Unable to reach the configuration API.",
           )}
         </Text>
-        <Text dimColor>Press r to retry</Text>
+        <Text color={tokens.muted}>Press r to retry</Text>
       </Box>
     );
   }
@@ -155,71 +144,6 @@ export function ConfigGate({ children }: { children: ReactNode }): ReactElement 
   }
 
   return <>{children}</>;
-}
-
-export function StartupThemeSync({ explicitTheme }: { explicitTheme?: string }): null {
-  const settingsQuery = useSettings();
-  const { setTheme } = useTheme();
-  const hasApplied = useRef(false);
-
-  useEffect(() => {
-    if (explicitTheme || hasApplied.current || !settingsQuery.data?.theme) return;
-    hasApplied.current = true;
-    setTheme(toSelectableTheme(settingsQuery.data.theme));
-  }, [explicitTheme, settingsQuery.data?.theme, setTheme]);
-
-  return null;
-}
-
-export function GlobalShortcuts({ onExit }: { onExit: () => void }): null {
-  const ctx = useContext(KeyboardContext);
-  const { navigate, route } = useNavigation();
-
-  const isGated = route.screen === "onboarding";
-
-  const onKeyboard = useEffectEvent((key: string) => {
-    if (isGated) {
-      if (key === "q") onExit();
-      return;
-    }
-
-    switch (key) {
-      case "q":
-        onExit();
-        break;
-      case "s":
-        if (route.screen !== "settings" && !route.screen.startsWith("settings/")) {
-          navigate({ screen: "settings" });
-        }
-        break;
-      case "?":
-        if (route.screen !== "help") {
-          navigate({ screen: "help" });
-        }
-        break;
-    }
-  });
-
-  useEffect(() => {
-    if (!ctx) return;
-
-    const unregisterQ = ctx.registerGlobalHandler("q", () => onKeyboard("q"));
-    const unregisterS = ctx.registerGlobalHandler("s", () => onKeyboard("s"));
-    const unregisterHelp = ctx.registerGlobalHandler("?", () => onKeyboard("?"));
-
-    return () => {
-      unregisterQ();
-      unregisterS();
-      unregisterHelp();
-    };
-  }, [ctx]);
-
-  return null;
-}
-
-export function AppGlobalShortcuts(): ReactElement {
-  const { handleExit } = useExit();
-  return <GlobalShortcuts onExit={handleExit} />;
 }
 
 interface AppProps {

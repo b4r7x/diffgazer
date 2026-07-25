@@ -75,8 +75,8 @@ module.exports = {
           // no-orphans precise for alias-reached web modules instead of disabling it.
           "^apps/web/src/hooks/(use-theme|use-config)\\.tsx$",
           "^apps/web/src/lib/main-content\\.ts$",
-          "^apps/web/src/(features/(providers/components/list|history/hooks/use-keyboard|help/components/page)|components/ui/card-layout)\\.tsx?$",
-          "^apps/docs/src/(components/(content-spinner|not-found-state|preview-inset-pane|shared/(chrome-label|dot-grid|focus-ring)|layout/(tui-fault-panel|tui-bracket-link)|docs-mdx/(markdown-renderers|blocks/steps))|features/theme/components/(diffgazer-preview|variable-diagram)|hooks/(theme-context|use-demos)|lib/(consumption-metadata|docs-chrome|example-frames|generated-doc-data|resolve-examples))\\.tsx?$",
+          "^apps/web/src/(features/(providers/components/list|history/hooks/use-keyboard|help/components/page|review/components/run-details-panel)|components/layout/card-layout)\\.tsx?$",
+          "^apps/docs/src/(components/(content-spinner|inset-preview-pane|not-found-state|shared/(chrome-label|dot-grid|focus-ring)|layout/(tui-fault-panel|tui-bracket-link)|docs-mdx/(markdown-renderers|blocks/steps))|features/theme/components/(diffgazer-preview|variable-diagram)|hooks/(theme-context|use-demos)|lib/(consumption-metadata|docs-chrome|example-frames|generated-doc-data|resolve-examples))\\.tsx?$",
         ],
       },
       to: {},

@@ -32,9 +32,7 @@ describe("trust persistence", () => {
       trustMode: "persistent",
     });
 
-    const persisted = await readJson<{ projects: Record<string, unknown> }>(
-      homePath("trust.json"),
-    );
+    const persisted = await readJson<{ projects: Record<string, unknown> }>(homePath("trust.json"));
     expect(Object.keys(persisted.projects).sort()).toEqual(["proj-external", "proj-mine"]);
   });
 

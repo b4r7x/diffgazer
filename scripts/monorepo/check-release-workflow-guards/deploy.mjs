@@ -1,6 +1,6 @@
 import { parse } from "yaml";
-import { DEPLOY_WORKFLOW_PATH, RELEASE_READINESS_WORKFLOW_PATH } from "./workflow-source.mjs";
 import { REQUIRED_READINESS_JOB_IDS } from "./readiness.mjs";
+import { DEPLOY_WORKFLOW_PATH, RELEASE_READINESS_WORKFLOW_PATH } from "./workflow-source.mjs";
 
 export function collectDeployReadinessLinkFailures(deploySource, readinessSource) {
   let deploy;

@@ -6,6 +6,7 @@ import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { Footer } from "../../../components/layout/footer";
+import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
 import { TrustPanel } from "./trust-panel";
 
@@ -38,12 +39,6 @@ function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
       missing: ["provider", "model", "trust"],
     },
   };
-}
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
 }
 
 async function flushUntil(predicate: () => boolean, attempts = 200): Promise<void> {

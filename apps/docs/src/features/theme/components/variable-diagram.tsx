@@ -1,7 +1,7 @@
 import { cn } from "@diffgazer/ui/lib/utils";
-import { THEME_DOCS_MAPPED_PRIMITIVES } from "@diffgazer/ui/theme";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useTheme } from "@/hooks/theme-context";
+import { THEME_DOCS_MAPPED_PRIMITIVES } from "../lib/token-presentation";
 
 interface VariableDiagramProps {
   className?: string;

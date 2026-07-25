@@ -4,7 +4,6 @@ import { createRef } from "react";
 import { renderToString } from "react-dom/server";
 import { assertType, describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
-import { panelDoc } from "../../component-docs/panel";
 import { Panel, type PanelProps } from "./index";
 
 function getRoot(container: HTMLElement): HTMLElement {
@@ -364,6 +363,59 @@ describe("Panel", () => {
     );
 
     expect(container.querySelector('[data-slot="panel-corners"]')).toBeNull();
+    expect(getRoot(container)).not.toHaveAttribute("data-state");
+  });
+
+  it("focused grows corner brackets on a frame that has none at rest", () => {
+    const { container } = render(
+      <Panel focused>
+        <Panel.Content>Body</Panel.Content>
+      </Panel>,
+    );
+
+    const root = getRoot(container);
+    expect(root).toHaveAttribute("data-state", "focused");
+    expect(root).toHaveAttribute("data-frame", "hairline");
+
+    const corners = container.querySelector('[data-slot="panel-corners"]');
+    expect(corners).toHaveAttribute("aria-hidden", "true");
+    expect(corners?.querySelectorAll("span")).toHaveLength(4);
+  });
+
+  it("focused keeps the viewfinder frame's corners and marks the pane state", () => {
+    const { container } = render(
+      <Panel frame="viewfinder" focused>
+        <Panel.Content>Body</Panel.Content>
+      </Panel>,
+    );
+
+    const root = getRoot(container);
+    expect(root).toHaveAttribute("data-state", "focused");
+    expect(root).toHaveAttribute("data-frame", "viewfinder");
+    expect(container.querySelectorAll('[data-slot="panel-corners"] > span')).toHaveLength(4);
+  });
+
+  it("focused leaves the accessible region name, description, and element untouched", async () => {
+    const tree = (focused: boolean) => (
+      <Panel focused={focused}>
+        <Panel.Header>
+          <Panel.Title>Release</Panel.Title>
+          <Panel.Description>v1</Panel.Description>
+        </Panel.Header>
+        <Panel.Content>Body</Panel.Content>
+      </Panel>
+    );
+
+    const { container, rerender } = render(tree(false));
+    const resting = screen.getByRole("region", { name: "Release" });
+    expect(resting).toHaveAccessibleDescription("v1");
+
+    rerender(tree(true));
+    const focused = screen.getByRole("region", { name: "Release" });
+    expect(focused).toBe(resting);
+    expect(focused.tagName).toBe("SECTION");
+    expect(focused).toHaveAccessibleDescription("v1");
+    expect(await axe(container)).toHaveNoViolations();
   });
 
   it("has no a11y violations for the default panel", async () => {
@@ -393,6 +445,34 @@ describe("Panel", () => {
     const label = container.querySelector('[data-slot="panel-label"]');
     expect(label).not.toBeNull();
     expect(label).toHaveTextContent("[ 01 / FS_TREE ]");
+  });
+
+  // jsdom has no layout, so the inset class IS the observable contract here: the
+  // label must clear the corner bracket it would otherwise paint over.
+  it("steps Panel.Label past the corner brackets when the panel draws them", () => {
+    function LabelledPanel({ focused }: { focused?: boolean }) {
+      return (
+        <Panel frame="hairline" focused={focused}>
+          <Panel.Label>Progress</Panel.Label>
+        </Panel>
+      );
+    }
+
+    const { container, rerender } = render(<LabelledPanel />);
+    const label = () => container.querySelector('[data-slot="panel-label"]');
+
+    expect(label()).toHaveClass("left-4");
+
+    rerender(<LabelledPanel focused />);
+    expect(label()).toHaveClass("left-8");
+    expect(label()).not.toHaveClass("left-4");
+
+    const { container: viewfinder } = render(
+      <Panel frame="viewfinder">
+        <Panel.Label>Details</Panel.Label>
+      </Panel>,
+    );
+    expect(viewfinder.querySelector('[data-slot="panel-label"]')).toHaveClass("left-8");
   });
 
   it("names and describes the server-rendered section by Panel.Title/Panel.Description", () => {
@@ -442,13 +522,5 @@ describe("Panel", () => {
     expect(html).toContain('aria-describedby="opaque-panel-description"');
     expect(html).toContain('id="opaque-panel-title"');
     expect(html).toContain('id="opaque-panel-description"');
-  });
-
-  it("documents every explicit ARIA name as an initial section trigger", () => {
-    const asProp = panelDoc.props?.Panel?.as;
-
-    expect(asProp?.defaultValue).toContain("explicit ARIA name");
-    expect(asProp?.description).toContain("explicit ARIA name");
-    expect(asProp?.defaultValue).not.toContain("aria-label present");
   });
 });

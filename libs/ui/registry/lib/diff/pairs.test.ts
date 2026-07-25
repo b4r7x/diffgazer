@@ -1,5 +1,5 @@
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { describe, expect, it } from "vitest";
-import { requireValue } from "../../testing/assertions";
 import { collectEditPairs, type EditPairGroup } from "./pairs";
 import type { DiffChange } from "./parse";
 

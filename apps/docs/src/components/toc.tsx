@@ -195,7 +195,7 @@ export function TableOfContentsPanel({
   if (tocEntries.length === 0) return null;
 
   return (
-    <Toc className="hidden xl:block">
+    <Toc className="hidden w-56 shrink-0 py-8 pr-4 xl:block">
       <div className="sticky top-16 max-h-[calc(100vh-6rem)]">
         <ScrollArea className="h-[calc(100vh-8rem)] pr-2">
           <TocList>

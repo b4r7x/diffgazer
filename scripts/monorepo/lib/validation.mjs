@@ -23,10 +23,12 @@ export function collectGeneratedDistParityErrors(rootDir) {
   );
 }
 
+/** Mirrors the copy filter in `buildRegistryArtifacts`; the two must stay in lockstep. */
 function artifactCopyFilter(path) {
   return (
     !/\.(md)$/i.test(path) &&
     !/\.(test|spec)\.(ts|tsx|js|jsx)$/i.test(path) &&
+    !/[.-]test-utils\.(ts|tsx|js|jsx)$/i.test(path) &&
     !path.includes("__tests__")
   );
 }

@@ -50,8 +50,8 @@ function renderPage() {
 }
 
 async function moveFromSelectedLensToFooter(user: ReturnType<typeof userEvent.setup>) {
-  const agentsGroup = screen.getByRole("group", { name: /active agents/i });
-  await user.keyboard("{ArrowDown}".repeat(within(agentsGroup).getAllByRole("checkbox").length));
+  const lensGroup = screen.getByRole("group", { name: /active lenses/i });
+  await user.keyboard("{ArrowDown}".repeat(within(lensGroup).getAllByRole("checkbox").length));
 }
 
 describe("SettingsAnalysisPage keyboard behavior", () => {
@@ -72,8 +72,8 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
     renderPage();
 
     await waitFor(() => {
-      const agentsGroup = screen.getByRole("group", { name: /active agents/i });
-      expect(within(agentsGroup).getByRole("checkbox", { name: /detective/i })).toHaveFocus();
+      const lensGroup = screen.getByRole("group", { name: /active lenses/i });
+      expect(within(lensGroup).getByRole("checkbox", { name: /detective/i })).toHaveFocus();
     });
 
     await moveFromSelectedLensToFooter(user);
@@ -98,8 +98,8 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
 
     renderPage();
 
-    const agentsGroup = screen.getByRole("group", { name: /active agents/i });
-    expect(within(agentsGroup).getAllByRole("checkbox", { checked: true })).toHaveLength(
+    const lensGroup = screen.getByRole("group", { name: /active lenses/i });
+    expect(within(lensGroup).getAllByRole("checkbox", { checked: true })).toHaveLength(
       allLenses.length,
     );
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
@@ -110,8 +110,8 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
     renderPage();
 
     await waitFor(() => {
-      const agentsGroup = screen.getByRole("group", { name: /active agents/i });
-      expect(within(agentsGroup).getByRole("checkbox", { name: /detective/i })).toHaveFocus();
+      const lensGroup = screen.getByRole("group", { name: /active lenses/i });
+      expect(within(lensGroup).getByRole("checkbox", { name: /detective/i })).toHaveFocus();
     });
 
     await user.keyboard("{Enter}");
@@ -127,7 +127,7 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
   it("keeps one associated live validation node while the final lens is removed and restored", async () => {
     const user = userEvent.setup();
     renderPage();
-    const group = screen.getByRole("group", { name: /active agents/i });
+    const group = screen.getByRole("group", { name: /active lenses/i });
     const liveRegion = screen.getByRole("status");
 
     expect(group).toHaveAttribute("aria-describedby", liveRegion.id);

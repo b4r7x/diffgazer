@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  isValidElement,
   type KeyboardEvent,
   type ReactNode,
   type Ref,
@@ -18,7 +17,7 @@ import { useAriaLinkedPortalContainer } from "../shared/portal";
 import { SearchableContent, type SearchableListboxProps } from "./searchable-content";
 import type { SelectOptionMetadata } from "./select-context";
 import { useSelectContext } from "./select-context";
-import { SelectSearch } from "./select-search";
+import { isSelectSearchElement } from "./select-search";
 import { containsSelectSearchElement } from "./selection";
 import { useSelectContentNavigation } from "./use-content-navigation";
 
@@ -198,7 +197,7 @@ export function SelectContent({
       matchTriggerWidth
       ref={composedRef}
       className={cn(
-        "border border-border bg-background shadow-2xl rounded-sm overflow-y-auto outline-none",
+        "border border-border bg-background shadow-(--shadow-hard) rounded-sm overflow-y-auto outline-none",
         className,
       )}
       // Cap the dropdown to the room FloatingPanel reports and scroll long lists
@@ -219,10 +218,6 @@ export function SelectContent({
       )}
     </FloatingPanel>
   );
-}
-
-function isSelectSearchElement(child: ReactNode): boolean {
-  return isValidElement(child) && child.type === SelectSearch;
 }
 
 function MatchCount({

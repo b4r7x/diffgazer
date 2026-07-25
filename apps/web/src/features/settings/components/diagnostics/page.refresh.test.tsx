@@ -11,7 +11,7 @@ import {
   renderPage,
   setupDiagnosticsMocks,
   waitForReady,
-} from "./page.test-harness";
+} from "./page-test-utils";
 
 describe("SettingsDiagnosticsPage diagnostics refresh", () => {
   beforeEach(() => {

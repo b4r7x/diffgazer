@@ -2,6 +2,7 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import type { CredentialRef } from "@diffgazer/core/schemas/config";
 import { OPENROUTER_PROVIDER_ID, PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
 import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { ApiKeyDialog } from "@/features/providers/components/api-key-dialog/dialog";
 import { ProviderDetails } from "@/features/providers/components/details";
@@ -70,6 +71,7 @@ export function ProvidersPage() {
     selection,
     dialogs,
     handlers,
+    actions,
     keyboard,
     isSubmitting,
   } = useProvidersPageState();
@@ -81,24 +83,6 @@ export function ProvidersPage() {
     : getProvidersFooter(keyboard.focusZone, Boolean(selectedProvider));
 
   usePageFooter({ shortcuts: footer.shortcuts, rightShortcuts: footer.rightShortcuts });
-
-  const actions = {
-    onSetApiKey: () => {
-      if (isSubmitting) return;
-      if (selectedProvider) dialogs.openApiKey(selectedProvider.id);
-    },
-    onSelectModel: () => {
-      if (isSubmitting) return;
-      if (selectedProvider) dialogs.openModel(selectedProvider.id);
-    },
-    onRemoveKey: () => {
-      if (isSubmitting) return;
-      if (selectedProvider) void handlers.removeKey(selectedProvider.id);
-    },
-    onSelectProvider: () => {
-      if (selectedProvider) handlers.activateProvider(selectedProvider);
-    },
-  };
 
   const handleProviderListActivate = (id: string) => {
     const provider = filteredProviders.find((candidate) => candidate.id === id);
@@ -115,8 +99,13 @@ export function ProvidersPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
-      <div
-        className="flex w-full flex-col border-b border-border md:h-full md:w-2/5 md:border-r md:border-b-0"
+      {/* Each pane is a Panel so the active one wears the viewfinder brackets in
+          --ring instead of an ad-hoc focus border. The band is full-bleed, so the
+          panes drop the default hairline frame and draw only the single seam
+          between them. */}
+      <Panel
+        focused={keyboard.focusZone !== "buttons"}
+        className="flex w-full flex-col rounded-none border-0 border-b md:h-full md:w-2/5 md:border-r md:border-b-0"
         data-layout-pane="provider-list"
       >
         <ProviderList
@@ -147,9 +136,10 @@ export function ProvidersPage() {
           onActivate={handleProviderListActivate}
           onBoundaryReached={keyboard.handleListBoundary}
         />
-      </div>
-      <div
-        className="flex w-full flex-col bg-background md:h-full md:w-3/5"
+      </Panel>
+      <Panel
+        focused={keyboard.focusZone === "buttons" && !!selectedProvider}
+        className="flex w-full flex-col rounded-none border-0 md:h-full md:w-3/5"
         data-layout-pane="provider-details"
       >
         <ProviderDetails
@@ -162,7 +152,7 @@ export function ProvidersPage() {
           isFocused={keyboard.focusZone === "buttons" && !!selectedProvider}
           getButtonProps={keyboard.getActionButtonProps}
         />
-      </div>
+      </Panel>
 
       {apiKeyDialog && (
         <ApiKeyDialog

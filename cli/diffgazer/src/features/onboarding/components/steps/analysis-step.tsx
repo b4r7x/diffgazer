@@ -18,7 +18,7 @@ export function AnalysisStep({
   const { tokens } = useTheme();
   return (
     <Box flexDirection="column" gap={1}>
-      <Text color={tokens.muted}>Review Agents:</Text>
+      <Text color={tokens.muted}>Active Lenses:</Text>
       <AnalysisSelector selectedLenses={selectedLenses} onChange={onChange} isActive={isActive} />
     </Box>
   );

@@ -24,7 +24,7 @@ export default function NavigationListDefault() {
       </NavigationList.Item>
       <NavigationList.Item id="review-3">
         <NavigationList.Title>refactor: menu keyboard handling</NavigationList.Title>
-        <NavigationList.Status>!</NavigationList.Status>
+        <NavigationList.Status className="text-error">!</NavigationList.Status>
         <NavigationList.Meta>
           <NavigationList.Badge variant="error">FAIL</NavigationList.Badge>
           <NavigationList.Subtitle>7 files changed</NavigationList.Subtitle>

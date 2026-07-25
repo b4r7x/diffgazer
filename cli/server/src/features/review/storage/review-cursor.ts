@@ -8,6 +8,11 @@ export interface ReviewCursorBoundary {
   id: string;
 }
 
+export function compareReviewOrder(a: ReviewCursorBoundary, b: ReviewCursorBoundary): number {
+  const dateOrder = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  return dateOrder || b.id.localeCompare(a.id);
+}
+
 function isCanonicalIsoDate(value: unknown): value is string {
   if (typeof value !== "string") return false;
   const timestamp = Date.parse(value);

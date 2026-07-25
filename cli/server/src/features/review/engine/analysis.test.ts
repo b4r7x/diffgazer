@@ -1,11 +1,11 @@
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { AgentStreamEvent, StepEvent } from "@diffgazer/core/schemas/events";
 import type { Lens, ReviewIssue } from "@diffgazer/core/schemas/review";
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
 import { makeFileDiff, makeIssue, makeParsedDiff } from "../../../shared/lib/testing/factories.js";
-import { requireValue } from "../../../testing/assertions.js";
 import { runLensAnalysis } from "./analysis.js";
 
 const CORRECTNESS_LENS: Lens = {

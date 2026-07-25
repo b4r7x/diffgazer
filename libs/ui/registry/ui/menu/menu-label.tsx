@@ -20,7 +20,7 @@ export function MenuLabel({ id, children, className }: MenuLabelProps) {
       id={id}
       role="presentation"
       className={cn(
-        "text-[11px] uppercase tracking-wider text-muted-foreground px-4 py-2 font-mono",
+        "text-2xs uppercase tracking-wider text-muted-foreground px-4 py-2 font-mono",
         className,
       )}
     >

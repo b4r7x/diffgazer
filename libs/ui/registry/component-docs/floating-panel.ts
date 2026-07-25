@@ -20,9 +20,14 @@ export const floatingPanelDoc: ComponentDoc = {
         "Always writes `--ui-content-transform-origin` derived from the resolved side/align plus `--floating-panel-available-height` and `--floating-panel-available-width` for capping overflow. When `matchTriggerWidth` is true, also writes `--ui-floating-trigger-width`. The `.ui-floating-panel` rule reads `--ui-floating-z` (default `var(--z-popover)`) for its z-index layer, so consumers can scope-override z without className overrides. Consumers can read or override these on the panel or an ancestor.",
     },
     {
+      title: "Anchor Tracking",
+      content:
+        "The panel re-measures on scroll of every scrollable ancestor, on window scroll/resize, and on trigger/panel resize, so it stays attached while the page moves. Once the trigger scrolls fully out of the viewport or out of one of those scroll ancestors, collision clamping would park the panel against a viewport edge detached from its anchor; instead the panel marks itself `data-anchor-hidden` and stops painting (`opacity: 0`, `pointer-events: none`). It stays mounted and focusable so an open overlay never drops focus, and it paints again as soon as the anchor scrolls back into view.",
+    },
+    {
       title: "Style Merging",
       content:
-        "Caller `style` merges before internal positioning styles. Structural keys (`position`, `top`, `left`, `visibility`, `--ui-content-transform-origin`, `--floating-panel-available-height`, `--floating-panel-available-width`, `--ui-floating-trigger-width`) cannot be overridden; everything else (background, min-width, border, transform, etc.) passes through.",
+        "Caller `style` merges before internal positioning styles. Structural keys (`position`, `top`, `left`, `visibility`, `--ui-content-transform-origin`, `--floating-panel-available-height`, `--floating-panel-available-width`, `--ui-floating-trigger-width`, plus `opacity`/`pointer-events` while `data-anchor-hidden` is set) cannot be overridden; everything else (background, min-width, border, transform, etc.) passes through.",
     },
     {
       title: "Accessibility",
@@ -39,6 +44,7 @@ export const floatingPanelDoc: ComponentDoc = {
   examples: [
     { name: "floating-panel-default", title: "Anchored panel" },
     { name: "floating-panel-custom-menu", title: "Custom menu" },
+    { name: "floating-panel-collision", title: "Edge collision" },
   ],
   keyboard: null,
   dataAttributes: [
@@ -66,6 +72,13 @@ export const floatingPanelDoc: ComponentDoc = {
       values: "present after first measurement",
       description:
         "Marks a measured panel so adapters can defer effects until positioning is stable.",
+    },
+    {
+      attribute: "data-anchor-hidden",
+      appliesTo: "FloatingPanel",
+      values: "present while the trigger is scrolled out of view",
+      description:
+        "Set when the trigger has left the viewport or a scroll ancestor. The panel stops painting while it is present.",
     },
   ],
   cssVariables: [

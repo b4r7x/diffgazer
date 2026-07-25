@@ -10,7 +10,6 @@ export default function ButtonVariants() {
       <Button variant="success">Success</Button>
       <Button variant="destructive">Destructive</Button>
       <Button variant="link">Link</Button>
-      <Button variant="action">Action</Button>
       <Button bracket>Bracket</Button>
     </div>
   );

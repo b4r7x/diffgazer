@@ -7,7 +7,7 @@ export const dividerDoc: ComponentDoc = {
     {
       title: "Spaced Variant",
       content:
-        "The spaced variant renders a centered label between two rules with margin. Pass children to customize the label; defaults to \u2726 when no children are provided. The default variant is a simple line.",
+        "The spaced variant renders a centered label between two rules with margin. Pass children to customize the label; defaults to \u2726 when no children are provided. The label renders at full muted-foreground contrast (only the rules are dimmed) and is uppercase and tracked so divider labels share the SectionHeader vocabulary. The default variant is a simple line.",
     },
     {
       title: "Vertical Orientation",
@@ -17,7 +17,7 @@ export const dividerDoc: ComponentDoc = {
     {
       title: "Decorative vs Semantic",
       content:
-        'By default, decorative is true — the divider renders with role="none" so screen readers skip it. Most dividers are visual rhythm, not meaningful content boundaries. Set decorative={false} when the separator marks a real structural boundary between distinct page sections, and provide an explicit aria-label. Visible children do not name a separator.',
+        'By default, decorative is true — the divider renders with role="none" so screen readers skip it, including a spaced label such as "or", which is presentational reinforcement of a choice the surrounding controls already express. Set decorative={false} when the separator marks a real structural boundary between distinct page sections, and provide an explicit aria-label. Visible children do not name a separator.',
     },
   ],
   usage: { example: "divider-default" },
@@ -25,7 +25,7 @@ export const dividerDoc: ComponentDoc = {
     { name: "divider-default", title: "Default" },
     { name: "divider-variants", title: "Variants" },
     { name: "divider-custom-label", title: "Custom Label" },
-    { name: "divider-vertical", title: "Vertical" },
+    { name: "divider-vertical", title: "Vertical (plain and spaced)" },
     { name: "divider-decorative", title: "Semantic (non-decorative)" },
   ],
   keyboard: null,

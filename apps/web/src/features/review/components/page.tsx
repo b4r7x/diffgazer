@@ -14,7 +14,7 @@ import {
   useSearch,
 } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { resolveBackAction } from "@/lib/back-navigation";
+import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
 import { useReviewErrorHandler } from "../hooks/use-error-handler";
 import { type ReviewCompleteData, ReviewContainer, ReviewLoadingMessage } from "./container";
 import { ReviewResultsView } from "./results-view";
@@ -87,14 +87,7 @@ export function ReviewPage() {
   };
 
   const handleBack = () => {
-    const action = resolveBackAction(pathname, canGoBack);
-    if (action.type === "navigate") {
-      void router.navigate({ to: action.to });
-      return;
-    }
-    if (action.type === "history") {
-      router.history.back();
-    }
+    performBackAction(router, resolveBackAction(pathname, canGoBack));
   };
 
   useEffect(() => {
@@ -127,13 +120,7 @@ export function ReviewPage() {
       if (!savedResultsOpen && !savedIssueId) {
         return (
           <ReviewSummaryView
-            issues={savedOutcome.data.issues}
-            reviewId={savedOutcome.data.reviewId}
-            durationMs={savedOutcome.data.durationMs}
-            lensStats={savedOutcome.data.lensStats}
-            droppedDuplicates={savedOutcome.data.droppedDuplicates}
-            droppedBelowThreshold={savedOutcome.data.droppedBelowThreshold}
-            minSeverity={savedOutcome.data.minSeverity}
+            {...savedOutcome.data}
             onEnterReview={() => setSavedResultsOpen(true)}
             onBack={handleBack}
           />
@@ -171,13 +158,7 @@ export function ReviewPage() {
     case "summary":
       return (
         <ReviewSummaryView
-          issues={currentLiveState.reviewData.issues}
-          reviewId={currentLiveState.reviewData.reviewId}
-          durationMs={currentLiveState.reviewData.durationMs}
-          lensStats={currentLiveState.reviewData.lensStats}
-          droppedDuplicates={currentLiveState.reviewData.droppedDuplicates}
-          droppedBelowThreshold={currentLiveState.reviewData.droppedBelowThreshold}
-          minSeverity={currentLiveState.reviewData.minSeverity}
+          {...currentLiveState.reviewData}
           onEnterReview={() =>
             setLiveState({ phase: "results", reviewData: currentLiveState.reviewData })
           }

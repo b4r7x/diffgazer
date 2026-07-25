@@ -15,7 +15,7 @@ export function CalloutTitle({ children, className, ...props }: CalloutTitleProp
     <span
       data-slot="callout-title"
       className={cn(
-        "self-center font-bold text-[13px] leading-[1.4] text-[color:var(--callout-tone,var(--foreground))]",
+        "self-center font-bold leading-[1.4] text-[color:var(--callout-tone,var(--foreground))]",
         className,
       )}
       {...props}

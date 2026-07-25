@@ -14,7 +14,8 @@ export function CalloutContent({ children, className, ...props }: CalloutContent
   return (
     <div
       data-slot="callout-content"
-      className={cn("text-[12px] leading-[1.55] text-muted-foreground", className)}
+      // em-relative (12/13) so the root font-size stays the single sizing knob.
+      className={cn("text-[0.923em] leading-[1.55] text-muted-foreground", className)}
       {...props}
     >
       {children}

@@ -92,6 +92,34 @@ describe("buildRegistryArtifacts", () => {
     expect(readFileSync(copiedFile, "utf-8")).toBe("hello");
   });
 
+  it("keeps test-only files out of copied directories", () => {
+    const root = createTempRoot();
+    const sourceDir = join(root, "source-dir");
+    mkdirSync(join(sourceDir, "__tests__"), { recursive: true });
+    writeFileSync(join(sourceDir, "select.tsx"), "export const Select = null;");
+    writeFileSync(join(sourceDir, "select.test.tsx"), "it('x', () => {});");
+    writeFileSync(join(sourceDir, "select-test-utils.tsx"), "export const renderSelect = null;");
+    writeFileSync(join(sourceDir, "legacy.test-utils.ts"), "export const legacy = null;");
+    writeFileSync(join(sourceDir, "README.md"), "# docs");
+    writeFileSync(join(sourceDir, "__tests__/helper.ts"), "export const helper = null;");
+
+    buildRegistryArtifacts({
+      rootDir: root,
+      manifest: createMinimalManifest(),
+      defaultOrigin: "https://example.com",
+      inputs: [],
+      copyDirs: [{ from: "source-dir", to: "copied" }],
+    });
+
+    const copied = join(root, "dist/artifacts/copied");
+    expect(existsSync(join(copied, "select.tsx"))).toBe(true);
+    expect(existsSync(join(copied, "select.test.tsx"))).toBe(false);
+    expect(existsSync(join(copied, "select-test-utils.tsx"))).toBe(false);
+    expect(existsSync(join(copied, "legacy.test-utils.ts"))).toBe(false);
+    expect(existsSync(join(copied, "README.md"))).toBe(false);
+    expect(existsSync(join(copied, "__tests__"))).toBe(false);
+  });
+
   it("writes the normalized requested origin into the provenance manifest", () => {
     const root = createTempRoot();
 

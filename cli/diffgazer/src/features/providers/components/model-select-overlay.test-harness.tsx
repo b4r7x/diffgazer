@@ -49,11 +49,7 @@ export function geminiName(id: string): string {
   return model.name ?? id;
 }
 
-export async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
+export { flush } from "../../../testing/flush";
 
 // Poll on a macrotask boundary. React Query resolves the mocked api over a
 // microtask chain whose React-scheduler commit can land a few macrotasks later,

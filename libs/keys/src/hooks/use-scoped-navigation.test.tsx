@@ -2,7 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
-import { fireKey, KeyboardWrapper } from "../testing/test-utils.js";
+import { fireKey, KeyboardWrapper } from "../testing/internal/test-utils.js";
 import { useKey } from "./use-key.js";
 import { useScope } from "./use-scope.js";
 import {

@@ -1,13 +1,10 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { StepStatus } from "@/lib/step-status";
-import type { HorizontalStepperVariant } from "@/lib/stepper-variants";
+import type { HorizontalStepperVariant } from "@/lib/horizontal-stepper-variants";
+import type { HorizontalStepStatus, StepStatus } from "@/lib/step-status";
 
-export type { StepStatus };
-
-/** Allowed horizontal step status values. */
-export type HorizontalStepStatus = Extract<StepStatus, "active" | "completed" | "pending">;
+export type { HorizontalStepStatus, StepStatus };
 
 /** Context value shared by stepper. */
 interface StepperContextValue {
@@ -20,13 +17,15 @@ interface StepperContextValue {
   steps: string[];
   /** Visual variant. Controls the indicator glyph and connector treatment across every step. */
   variant: HorizontalStepperVariant;
+  /** True when the compact treatment is forced instead of left to the container query. */
+  compact: boolean;
 }
 
 /** React context backing horizontal stepper. */
 export const HorizontalStepperContext = createContext<StepperContextValue | undefined>(undefined);
 
-/** Reads the stepper context. */
-export function useStepperContext() {
+/** Reads the horizontal stepper context. */
+export function useHorizontalStepperContext() {
   const ctx = useContext(HorizontalStepperContext);
   if (ctx === undefined) {
     throw new Error("HorizontalStepperStep must be used within a HorizontalStepper");
@@ -35,12 +34,17 @@ export function useStepperContext() {
 }
 
 /** Provides step info behavior. */
-export function useStepInfo(value: string): { status: HorizontalStepStatus; index: number } {
-  const { value: currentValue, steps } = useStepperContext();
+export function useStepInfo(value: string): {
+  status: HorizontalStepStatus;
+  index: number;
+  total: number;
+} {
+  const { value: currentValue, steps } = useHorizontalStepperContext();
   const stepIndex = steps.indexOf(value);
   const currentIndex = steps.indexOf(currentValue);
+  const total = steps.length;
 
-  if (stepIndex === currentIndex) return { status: "active", index: stepIndex };
-  if (stepIndex < currentIndex) return { status: "completed", index: stepIndex };
-  return { status: "pending", index: stepIndex };
+  if (stepIndex === currentIndex) return { status: "active", index: stepIndex, total };
+  if (stepIndex < currentIndex) return { status: "completed", index: stepIndex, total };
+  return { status: "pending", index: stepIndex, total };
 }

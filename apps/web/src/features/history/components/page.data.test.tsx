@@ -25,7 +25,7 @@ import {
   renderHistoryPage,
   setupApiMocks,
   trustedProject,
-} from "./page.test-utils";
+} from "./page-test-utils";
 
 describe("HistoryPage loading and error status", () => {
   beforeEach(() => {

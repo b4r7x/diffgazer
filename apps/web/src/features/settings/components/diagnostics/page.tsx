@@ -1,19 +1,18 @@
+import { type DiagnosticsData, useDiagnosticsData } from "@diffgazer/core/api/hooks";
+import { formatTimestampOrNA } from "@diffgazer/core/format";
 import {
-  type DiagnosticsData,
   deriveDiagnosticsActions,
   getContextActionLabel,
   getContextPresentation,
   getServerStatusPresentation,
   getSetupPresentation,
-  useDiagnosticsData,
-} from "@diffgazer/core/api/hooks";
-import { formatTimestampOrNA } from "@diffgazer/core/format";
+} from "@diffgazer/core/schemas/presentation";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
-import { Divider } from "@diffgazer/ui/components/divider";
 import { KeyValue } from "@diffgazer/ui/components/key-value";
 import { Panel } from "@diffgazer/ui/components/panel";
-import { Typography } from "@diffgazer/ui/components/typography";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { useId } from "react";
 import { useConfigData } from "@/hooks/use-config";
 import { useDiagnosticsKeyboard } from "./use-diagnostics-keyboard";
 
@@ -63,6 +62,7 @@ function getOverallState({
 }
 
 export function SettingsDiagnosticsPage() {
+  const titleId = useId();
   const { provider, model } = useConfigData();
   const diagnostics = useDiagnosticsData();
   const {
@@ -108,92 +108,102 @@ export function SettingsDiagnosticsPage() {
     initError,
   });
 
+  const contextTimestamp = formatTimestampOrNA(contextGeneratedAt, "Unavailable");
+
   return (
-    <div className="flex flex-1 overflow-y-auto px-4">
+    // Same wrapper padding, width, frame, and corner-label title as CardLayout. The
+    // panel is written out rather than reusing CardLayout because the diagnostics
+    // region is the element that carries aria-busy while a refresh is in flight.
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-7 pb-4">
       <Panel
-        as="section"
-        aria-label="system diagnostics"
+        frame="viewfinder"
+        aria-labelledby={titleId}
         aria-busy={isRefreshingAll || isRefreshing}
-        className="m-auto flex w-full max-w-2xl flex-col border-border bg-background shadow-lg"
+        className="mx-auto w-full max-w-2xl"
       >
-        <Panel.Header className="bg-secondary border-border px-4 py-2">
-          <Panel.Title className="text-foreground">System Diagnostics</Panel.Title>
-          <output className="text-xs text-muted-foreground">
-            {OVERALL_STATE_LABELS[overallState]}
-          </output>
-        </Panel.Header>
+        <Panel.Label>
+          <h1 id={titleId}>System Diagnostics</h1>
+        </Panel.Label>
 
         <Panel.Content
           ref={focusFallbackRef}
           tabIndex={-1}
-          className="p-6 space-y-8 focus:outline-none"
+          spacing="none"
+          className="focus:outline-none"
         >
-          <div className="grid grid-cols-1 gap-y-4 text-sm sm:grid-cols-2 sm:gap-x-8">
-            <div className="flex min-w-0 flex-col">
-              <span className="text-muted-foreground text-xs uppercase tracking-wider mb-1">
-                Version Info
-              </span>
-              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="text-info-text">Diffgazer Web</span>
-                <span className="text-border">|</span>
-                <span className="break-all text-success-text">
-                  {import.meta.env.MODE.toUpperCase()}
-                </span>
-              </div>
-            </div>
+          <Panel.Description className="mb-4">Runtime health for this workspace.</Panel.Description>
 
-            <div className="flex min-w-0 flex-col">
-              <span className="text-muted-foreground text-xs uppercase tracking-wider mb-1">
-                Context Snapshot
-              </span>
-              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-foreground">
-                <span className="break-words">{context.label}</span>
-                {contextStatus === "ready" && (
-                  <span className="break-words text-xs text-warning-text">
-                    {formatTimestampOrNA(contextGeneratedAt, "Unavailable")}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <Divider className="border-dashed" />
-
-          <div className="space-y-3">
-            <Typography as="h3" size="xs" className="text-accent uppercase tracking-wider">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <SectionHeader as="h2" variant="muted">
               Diagnostic Snapshot
-            </Typography>
-            <KeyValue className="font-mono">
-              <KeyValue.Item
-                label="Health"
-                value={<span className="break-all">{server.label}</span>}
-                variant={server.variant}
-              />
-              <KeyValue.Item
-                label="Setup"
-                value={<span className="break-all">{setup.label}</span>}
-                variant={setup.variant}
-              />
-              <KeyValue.Item
-                label="Provider"
-                value={<span className="break-all">{providerValue}</span>}
-                variant={provider ? "success" : "warning"}
-              />
-              <KeyValue.Item
-                label="Refreshed"
-                value={
-                  <span className="break-all">
-                    {formatTimestampOrNA(lastRefreshedAt, "Unavailable")}
-                  </span>
-                }
-                variant="info"
-              />
-            </KeyValue>
+            </SectionHeader>
+            <output className="shrink-0 font-mono text-xs text-muted-foreground">
+              {OVERALL_STATE_LABELS[overallState]}
+            </output>
           </div>
 
-          <Divider className="border-dashed" />
+          {/* Below sm the value drops onto its own line instead of competing with
+              the label for the same row, which is what overprinted long provider
+              strings at 375. */}
+          <KeyValue className="font-mono max-sm:grid-cols-1 max-sm:gap-y-1">
+            <KeyValue.Item
+              label="Health"
+              value={<span className="break-all">{server.label}</span>}
+              variant={server.variant}
+              valueClassName="max-sm:text-left"
+            />
+            <KeyValue.Item
+              label="Setup"
+              value={<span className="break-all">{setup.label}</span>}
+              variant={setup.variant}
+              valueClassName="max-sm:text-left"
+            />
+            <KeyValue.Item
+              label="Provider"
+              value={<span className="break-all">{providerValue}</span>}
+              variant={provider ? "success" : "warning"}
+              valueClassName="max-sm:text-left"
+            />
+            <KeyValue.Item
+              label="Context"
+              value={
+                <span className="break-all">
+                  {context.label}
+                  {contextStatus === "ready" && (
+                    <span className="ml-2 font-normal text-muted-foreground">
+                      {contextTimestamp}
+                    </span>
+                  )}
+                </span>
+              }
+              variant={context.variant}
+              valueClassName="max-sm:text-left"
+            />
+            <KeyValue.Item
+              label="Build"
+              value={<span className="break-all">{import.meta.env.MODE.toUpperCase()}</span>}
+              valueClassName="max-sm:text-left"
+            />
+            <KeyValue.Item
+              label="Refreshed"
+              value={
+                <span className="break-all">
+                  {formatTimestampOrNA(lastRefreshedAt, "Unavailable")}
+                </span>
+              }
+              valueClassName="font-normal text-muted-foreground max-sm:text-left"
+            />
+          </KeyValue>
 
-          <fieldset className="flex min-w-0 flex-wrap gap-4 border-0 p-0 pt-2">
+          {diagnosticsError && (
+            <Callout tone="error" live className="mt-6">
+              <Callout.Content>{diagnosticsError}</Callout.Content>
+            </Callout>
+          )}
+        </Panel.Content>
+
+        <Panel.Footer className="justify-end gap-3">
+          <fieldset className="flex min-w-0 flex-wrap justify-end gap-3 border-0 p-0">
             <legend className="sr-only">Diagnostics actions</legend>
             <Button
               {...getActionProps(0)}
@@ -208,7 +218,7 @@ export function SettingsDiagnosticsPage() {
             </Button>
             <Button
               {...getActionProps(1)}
-              variant="success"
+              variant="primary"
               size="sm"
               bracket
               disabled={isContextActionDisabled}
@@ -218,13 +228,7 @@ export function SettingsDiagnosticsPage() {
               {contextActionLabel}
             </Button>
           </fieldset>
-
-          {diagnosticsError && (
-            <Callout tone="error" live className="text-sm">
-              <Callout.Content>{diagnosticsError}</Callout.Content>
-            </Callout>
-          )}
-        </Panel.Content>
+        </Panel.Footer>
       </Panel>
     </div>
   );

@@ -251,9 +251,7 @@ describe("getOpenRouterModelsWithCache", () => {
     if (firstFailure?.ok !== false) throw new Error("expected concurrent fetch failures");
     const failedMessage = firstFailure.error.message;
     expect(
-      failedResults.every(
-        (result) => !result.ok && result.error.message === failedMessage,
-      ),
+      failedResults.every((result) => !result.ok && result.error.message === failedMessage),
     ).toBe(true);
 
     const retryRequests = Array.from({ length: 8 }, () => getOpenRouterModelsWithCache(apiKey));

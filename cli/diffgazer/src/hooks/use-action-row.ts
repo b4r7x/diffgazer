@@ -4,7 +4,12 @@ import { useState } from "react";
 export interface UseActionRowOptions {
   actionCount: number;
   disabledActions?: readonly boolean[];
-  onAction: (index: number) => void;
+  /**
+   * Optional: a caller that owns Enter itself (the settings screens read the
+   * active index and run their own submit) leaves this out and never calls
+   * `activate`.
+   */
+  onAction?: (index: number) => void;
   isActive?: boolean;
   defaultIndex?: number;
   activeIndex?: number;
@@ -83,7 +88,7 @@ export function useActionRow({
   }
 
   function activate(index = activeIndex) {
-    if (isEnabled(index, actionCount, disabledActions)) onAction(index);
+    if (isEnabled(index, actionCount, disabledActions)) onAction?.(index);
   }
 
   function reset(index = defaultIndex) {

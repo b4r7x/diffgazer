@@ -101,6 +101,18 @@ describe("theme override domain token parity", () => {
   });
 
   it.each([
+    ["dark", { "--border-strong": "#484f58", "--surface-1": "#161b22" }],
+    ["light", { "--border-strong": "#8c959f", "--surface-1": "#f6f8fa" }],
+  ] as const)("restates the %s structural tokens so lib monochrome surfaces stay out of the app palette", async (theme, expected) => {
+    const css = await loadThemeOverridesCss();
+    const declarations = getDeclarations(getThemeBlock(css, String.raw`\[data-theme="${theme}"\]`));
+
+    for (const [variable, value] of Object.entries(expected)) {
+      expect(declarations.get(variable)).toBe(value);
+    }
+  });
+
+  it.each([
     ["dark", DARK_PALETTE_VALUES],
     ["light", LIGHT_PALETTE_VALUES],
   ] as const)("keeps every %s theme value equal to the canonical core palette", async (theme, expected) => {

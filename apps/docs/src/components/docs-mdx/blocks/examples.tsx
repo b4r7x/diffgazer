@@ -9,10 +9,11 @@ import { SectionHeading } from "../section-heading";
 import { useCurrentLibrary } from "./use-current-library";
 
 export function Examples({
-  skipFirst,
+  hero,
   showHeading,
 }: {
-  skipFirst?: boolean;
+  /** Name of the example already rendered as the page hero; excluded from the list. */
+  hero?: string;
   showHeading?: boolean;
 }) {
   const data = useDocData();
@@ -21,8 +22,7 @@ export function Examples({
 
   if (!data) return null;
   const d = data.data;
-  const allExamples = resolveExamples(d);
-  const examples = skipFirst ? allExamples.slice(1) : allExamples;
+  const examples = resolveExamples(d).filter((ex) => ex.name !== hero);
 
   if (examples.length === 0) return null;
 

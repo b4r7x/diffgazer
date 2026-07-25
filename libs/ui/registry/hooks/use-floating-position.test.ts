@@ -94,9 +94,14 @@ function FloatingHarness({
           if (node) node.getBoundingClientRect = getContentRect;
           contentRef(node);
         },
-        "data-testid": "position",
       },
-      formatPosition(position),
+      // Read-back surface for the hook's return value: <output> has an implicit
+      // role="status", so assertions query a role rather than a test id.
+      createElement(
+        "output",
+        { "data-anchor-hidden": position?.anchorHidden ? "" : undefined },
+        formatPosition(position),
+      ),
     ),
   );
 }
@@ -131,14 +136,12 @@ describe("useFloatingPosition", () => {
     setViewport();
     const { rerender } = render(createElement(FloatingHarness, { open: false }));
 
-    // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-    expect(screen.getByTestId("position")).toHaveTextContent("closed");
+    expect(screen.getByRole("status")).toHaveTextContent("closed");
 
     rerender(createElement(FloatingHarness, { open: true }));
 
     await waitFor(() => {
-      // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-      expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146");
+      expect(screen.getByRole("status")).toHaveTextContent("bottom:100:146");
     });
   });
 
@@ -189,11 +192,10 @@ describe("useFloatingPosition", () => {
                   if (node) node.getBoundingClientRect = () => contentRect;
                   contentRef(node);
                 },
-                "data-testid": "late-position",
               },
-              formatPosition(position),
+              createElement("output", null, formatPosition(position)),
             )
-          : createElement("div", { "data-testid": "late-position" }, formatPosition(position)),
+          : createElement("output", null, formatPosition(position)),
       );
     }
 
@@ -201,11 +203,11 @@ describe("useFloatingPosition", () => {
       const { rerender, unmount } = render(
         createElement(LateContentHarness, { showContent: false }),
       );
-      expect(screen.getByTestId("late-position")).toHaveTextContent("closed");
+      expect(screen.getByRole("status")).toHaveTextContent("closed");
 
       rerender(createElement(LateContentHarness, { showContent: true }));
       await waitFor(() => {
-        expect(screen.getByTestId("late-position")).toHaveTextContent("bottom:100:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:100:146");
       });
 
       contentX = 260;
@@ -213,12 +215,12 @@ describe("useFloatingPosition", () => {
         resizeCallback?.([], {} as ResizeObserver);
       });
       await waitFor(() => {
-        expect(screen.getByTestId("late-position")).toHaveTextContent("bottom:260:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:260:146");
       });
 
       rerender(createElement(LateContentHarness, { showContent: false }));
       await waitFor(() => {
-        expect(screen.getByTestId("late-position")).toHaveTextContent("closed");
+        expect(screen.getByRole("status")).toHaveTextContent("closed");
       });
       expect(disconnect).toHaveBeenCalledTimes(1);
 
@@ -244,6 +246,9 @@ describe("useFloatingPosition", () => {
       observe: ReturnType<typeof vi.fn>;
       observer: ResizeObserver;
     }> = [];
+    // The observed node is the measured wrapper, not the <output> the assertions read,
+    // so the harness records each attachment as it happens.
+    const contentNodes: Array<HTMLDivElement | null> = [];
 
     class MockResizeObserver implements ResizeObserver {
       readonly disconnect = vi.fn();
@@ -294,11 +299,11 @@ describe("useFloatingPosition", () => {
             key: `content-${version}`,
             ref: (node: HTMLDivElement | null) => {
               if (node) node.getBoundingClientRect = getContentRect;
+              contentNodes.push(node);
               contentRef(node);
             },
-            "data-testid": "replacement-position",
           },
-          formatPosition(position),
+          createElement("output", null, formatPosition(position)),
         ),
       );
     }
@@ -306,11 +311,11 @@ describe("useFloatingPosition", () => {
     try {
       const { rerender } = render(createElement(ReplacementHarness, { version: "first" }));
       await waitFor(() => {
-        expect(screen.getByTestId("replacement-position")).toHaveTextContent("bottom:100:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:100:146");
       });
 
       const firstTrigger = screen.getByRole("button");
-      const firstNode = screen.getByTestId("replacement-position");
+      const firstNode = contentNodes[0];
       const firstObserver = observers[0];
       expect(firstObserver?.observe).toHaveBeenCalledWith(firstTrigger);
       expect(firstObserver?.observe).toHaveBeenCalledWith(firstNode);
@@ -325,11 +330,11 @@ describe("useFloatingPosition", () => {
 
       rerender(createElement(ReplacementHarness, { version: "second" }));
       await waitFor(() => {
-        expect(screen.getByTestId("replacement-position")).toHaveTextContent("bottom:320:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:320:146");
       });
 
       const secondTrigger = screen.getByRole("button");
-      const secondNode = screen.getByTestId("replacement-position");
+      const secondNode = contentNodes.at(-1);
       const secondObserver = observers[1];
       expect(firstObserver?.disconnect).toHaveBeenCalledTimes(1);
       expect(removeEventListener).toHaveBeenCalledWith("resize", firstResizeRegistration?.[1]);
@@ -349,7 +354,7 @@ describe("useFloatingPosition", () => {
 
       expect(firstTriggerRect).toHaveBeenCalledTimes(firstTriggerMeasurements);
       expect(firstContentRect).toHaveBeenCalledTimes(firstMeasurements);
-      expect(screen.getByTestId("replacement-position")).toHaveTextContent("bottom:320:146");
+      expect(screen.getByRole("status")).toHaveTextContent("bottom:320:146");
     } finally {
       addEventListener.mockRestore();
       removeEventListener.mockRestore();
@@ -370,8 +375,7 @@ describe("useFloatingPosition", () => {
     );
 
     await waitFor(() => {
-      // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-      expect(screen.getByTestId("position")).toHaveTextContent("top:80:484");
+      expect(screen.getByRole("status")).toHaveTextContent("top:80:484");
     });
   });
 
@@ -386,8 +390,7 @@ describe("useFloatingPosition", () => {
     );
 
     await waitFor(() => {
-      // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-      expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146");
+      expect(screen.getByRole("status")).toHaveTextContent("bottom:100:146");
     });
 
     x = 120;
@@ -395,8 +398,7 @@ describe("useFloatingPosition", () => {
       window.dispatchEvent(new Event("resize"));
     });
     await waitFor(() => {
-      // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-      expect(screen.getByTestId("position")).toHaveTextContent("bottom:120:146");
+      expect(screen.getByRole("status")).toHaveTextContent("bottom:120:146");
     });
 
     x = 140;
@@ -404,8 +406,7 @@ describe("useFloatingPosition", () => {
       window.dispatchEvent(new Event("scroll"));
     });
     await waitFor(() => {
-      // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-      expect(screen.getByTestId("position")).toHaveTextContent("bottom:140:146");
+      expect(screen.getByRole("status")).toHaveTextContent("bottom:140:146");
     });
   });
 
@@ -459,8 +460,7 @@ describe("useFloatingPosition", () => {
       );
 
       await waitFor(() => {
-        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-        expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:100:146");
       });
 
       const callsAfterMount = triggerRectCalls.mock.calls.length;
@@ -483,8 +483,7 @@ describe("useFloatingPosition", () => {
       });
 
       await waitFor(() => {
-        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-        expect(screen.getByTestId("position")).toHaveTextContent("bottom:250:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:250:146");
       });
 
       const callsAfterFlush = triggerRectCalls.mock.calls.length;
@@ -502,8 +501,7 @@ describe("useFloatingPosition", () => {
       );
 
       await waitFor(() => {
-        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-        expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:100:146");
       });
 
       rafCallbacks = [];
@@ -519,8 +517,7 @@ describe("useFloatingPosition", () => {
       });
 
       await waitFor(() => {
-        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-        expect(screen.getByTestId("position")).toHaveTextContent("bottom:200:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:200:146");
       });
 
       triggerX = 350;
@@ -534,8 +531,7 @@ describe("useFloatingPosition", () => {
       });
 
       await waitFor(() => {
-        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-        expect(screen.getByTestId("position")).toHaveTextContent("bottom:350:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:350:146");
       });
     });
 
@@ -544,8 +540,7 @@ describe("useFloatingPosition", () => {
       const { unmount } = render(createElement(FloatingHarness, { open: true }));
 
       await waitFor(() => {
-        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-        expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:100:146");
       });
 
       rafCallbacks = [];
@@ -582,8 +577,7 @@ describe("useFloatingPosition", () => {
       const { unmount } = render(createElement(FloatingHarness, { open: true }));
 
       await waitFor(() => {
-        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-        expect(screen.getByTestId("position")).toHaveTextContent("bottom:100:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:100:146");
       });
 
       unmount();
@@ -639,7 +633,7 @@ describe("useFloatingPosition", () => {
           contentRef(null);
         };
       }, [contentRef]);
-      return createElement("div", { "data-testid": "alt-position" }, formatPosition(position));
+      return createElement("output", null, formatPosition(position));
     }
 
     try {
@@ -647,8 +641,7 @@ describe("useFloatingPosition", () => {
 
       await waitFor(() => {
         // Center alignment with alt viewport 1280x720 puts content at trigger.left + width/2 - content.width/2 = 100 + 40 - 60 = 80
-        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-        expect(screen.getByTestId("alt-position")).toHaveTextContent("bottom:80:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:80:146");
       });
 
       // Listeners attach on the trigger's own view, NOT the host window.
@@ -761,14 +754,14 @@ describe("useFloatingPosition", () => {
           contentRef(null);
         };
       }, [contentRef]);
-      return createElement("div", { "data-testid": "cross-realm-ready" }, "ready");
+      return createElement("output", null, "ready");
     }
 
     try {
       render(createElement(CrossRealmHarness));
 
       await waitFor(() => {
-        expect(screen.getByTestId("cross-realm-ready")).toHaveTextContent("ready");
+        expect(screen.getByRole("status")).toHaveTextContent("ready");
       });
 
       // Scroll-ancestor discovery must reach the cross-realm overflow wrapper.
@@ -820,12 +813,12 @@ describe("useFloatingPosition", () => {
 
     function ScrollParentHarness({
       overflowStyle,
-      testId,
       getTriggerRect,
+      getWrapperRect,
     }: {
       overflowStyle: { overflow?: string; overflowX?: string; overflowY?: string };
-      testId: string;
       getTriggerRect: () => DOMRect;
+      getWrapperRect?: () => DOMRect;
     }) {
       const triggerRef = useRef<HTMLElement | null>(null);
       const { position, contentRef } = useFloatingPosition({
@@ -841,6 +834,7 @@ describe("useFloatingPosition", () => {
           ref: (node: HTMLDivElement | null) => {
             if (!node) return;
             wrapperNode = node;
+            if (getWrapperRect) node.getBoundingClientRect = getWrapperRect;
             overflowByElement.set(node, {
               overflow: overflowStyle.overflow ?? "",
               overflowX: overflowStyle.overflowX ?? "",
@@ -863,9 +857,12 @@ describe("useFloatingPosition", () => {
               if (n) n.getBoundingClientRect = () => contentRect;
               contentRef(n);
             },
-            "data-testid": testId,
           },
-          formatPosition(position),
+          createElement(
+            "output",
+            { "data-anchor-hidden": position?.anchorHidden ? "" : undefined },
+            formatPosition(position),
+          ),
         ),
       );
     }
@@ -874,35 +871,30 @@ describe("useFloatingPosition", () => {
       {
         name: "leaves the rendered position unchanged on scroll for overflow: visible ancestors",
         overflowStyle: {},
-        testId: "non-scroll-position",
         expectUpdate: false,
       },
       {
         name: "updates the rendered position on scroll for ancestors with overflow-y: auto",
         overflowStyle: { overflowY: "auto" },
-        testId: "auto-scroll-position",
         expectUpdate: true,
       },
       {
         name: "updates the rendered position on scroll for ancestors with overflow: scroll",
         overflowStyle: { overflow: "scroll" },
-        testId: "transform-scroll-position",
         expectUpdate: true,
       },
-    ])("$name", async ({ overflowStyle, testId, expectUpdate }) => {
+    ])("$name", async ({ overflowStyle, expectUpdate }) => {
       setViewport();
       let triggerX = 100;
       render(
         createElement(ScrollParentHarness, {
           overflowStyle,
-          testId,
           getTriggerRect: () => makeDOMRect(triggerX, 100, 80, 40),
         }),
       );
 
       await waitFor(() => {
-        // getByTestId: hook output has no native role; harness pattern renders return values to data-testid for read-back
-        expect(screen.getByTestId(testId)).toHaveTextContent("bottom:100:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:100:146");
       });
 
       triggerX = 250;
@@ -912,14 +904,106 @@ describe("useFloatingPosition", () => {
 
       if (expectUpdate) {
         await waitFor(() => {
-          expect(screen.getByTestId(testId)).toHaveTextContent("bottom:250:146");
+          expect(screen.getByRole("status")).toHaveTextContent("bottom:250:146");
         });
       } else {
         await act(async () => {
           await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
         });
-        expect(screen.getByTestId(testId)).toHaveTextContent("bottom:100:146");
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:100:146");
       }
+    });
+
+    it("reports the anchor hidden once the trigger scrolls out of its scroll ancestor, even while it stays inside the viewport", async () => {
+      setViewport();
+      let triggerY = 150;
+      render(
+        createElement(ScrollParentHarness, {
+          overflowStyle: { overflowY: "auto" },
+          getTriggerRect: () => makeDOMRect(100, triggerY, 80, 40),
+          getWrapperRect: () => makeDOMRect(0, 100, 400, 200),
+        }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:100:196");
+      });
+      expect(screen.getByRole("status")).not.toHaveAttribute("data-anchor-hidden");
+
+      // Below the ancestor's bottom edge (300) but far from the viewport's (600).
+      triggerY = 400;
+      act(() => {
+        wrapperNode?.dispatchEvent(new Event("scroll"));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByRole("status")).toHaveAttribute("data-anchor-hidden", "");
+      });
+    });
+  });
+
+  describe("anchor visibility", () => {
+    it("keeps the anchor visible while it is partly on screen and reports it hidden once it scrolls fully past the viewport edge", async () => {
+      setViewport();
+      let triggerY = 100;
+      render(
+        createElement(FloatingHarness, {
+          open: true,
+          avoidCollisions: true,
+          getTriggerRect: () => makeDOMRect(100, triggerY, 80, 40),
+        }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:100:146");
+      });
+      expect(screen.getByRole("status")).not.toHaveAttribute("data-anchor-hidden");
+
+      // Straddling the top edge: 20px of the trigger is still on screen.
+      triggerY = -20;
+      act(() => {
+        window.dispatchEvent(new Event("scroll"));
+      });
+      await waitFor(() => {
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:100:26");
+      });
+      expect(screen.getByRole("status")).not.toHaveAttribute("data-anchor-hidden");
+
+      // Fully above the viewport. Collision handling clamps the panel to an unrelated
+      // spot against the top edge, which is exactly what the hidden flag exists to suppress.
+      triggerY = -60;
+      act(() => {
+        window.dispatchEvent(new Event("scroll"));
+      });
+      await waitFor(() => {
+        expect(screen.getByRole("status")).toHaveAttribute("data-anchor-hidden", "");
+      });
+      expect(screen.getByRole("status")).toHaveTextContent("right:186:8");
+
+      triggerY = 100;
+      act(() => {
+        window.dispatchEvent(new Event("scroll"));
+      });
+      await waitFor(() => {
+        expect(screen.getByRole("status")).not.toHaveAttribute("data-anchor-hidden");
+      });
+      expect(screen.getByRole("status")).toHaveTextContent("bottom:100:146");
+    });
+
+    it("never reports a zero-area trigger as hidden, since an unmeasured box cannot be told apart from a scrolled-away one", async () => {
+      setViewport();
+      render(
+        createElement(FloatingHarness, {
+          open: true,
+          avoidCollisions: true,
+          getTriggerRect: () => makeDOMRect(0, 0, 0, 0),
+        }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:8:8");
+      });
+      expect(screen.getByRole("status")).not.toHaveAttribute("data-anchor-hidden");
     });
   });
 });

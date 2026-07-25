@@ -65,18 +65,26 @@ export function ActivityLog({
               overflow="hidden"
               flexWrap="nowrap"
             >
-              <Text color={tokens.muted}>{formatTimestamp(entry.timestamp)}</Text>
-              <Badge variant={TAG_BADGE_VARIANTS[entry.tagType ?? "system"] ?? "neutral"}>
-                {entry.tag}
-              </Badge>
+              <Box flexShrink={0}>
+                <Text color={tokens.muted}>{formatTimestamp(entry.timestamp)}</Text>
+              </Box>
+              <Box flexShrink={0}>
+                <Badge variant={TAG_BADGE_VARIANTS[entry.tagType ?? "system"] ?? "neutral"}>
+                  {entry.tag}
+                </Badge>
+              </Box>
               {entry.source ? (
-                <Text color={tokens.muted} wrap="truncate-end">
-                  [{entry.source}]
-                </Text>
+                <Box flexShrink={1} minWidth={0} overflow="hidden">
+                  <Text color={tokens.muted} wrap="truncate-end">
+                    [{entry.source}]
+                  </Text>
+                </Box>
               ) : null}
-              <Text color={getLogEntryColor(entry, tokens)} wrap="truncate-end">
-                {sanitizeTerminalText(entry.message)}
-              </Text>
+              <Box flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden">
+                <Text color={getLogEntryColor(entry, tokens)} wrap="truncate-end">
+                  {sanitizeTerminalText(entry.message)}
+                </Text>
+              </Box>
             </Box>
           ))
         }

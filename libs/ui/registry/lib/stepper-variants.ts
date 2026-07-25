@@ -1,4 +1,4 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import type { StepStatus } from "./step-status";
 
 /** Visual style for vertical stepper indicators. */
@@ -21,9 +21,13 @@ export const stepperRootVariants = cva("flex flex-col list-none m-0 p-0 font-mon
   defaultVariants: { variant: "ascii" },
 });
 
-/** Step row layout for vertical steppers. */
+/**
+ * Step row layout for vertical steppers. Single column: the trigger owns the indicator/label row
+ * internally, and StepperContent stacks underneath it. A two-column track put expanded content
+ * beside the trigger instead of below it.
+ */
 export const stepperStepVariants = cva(
-  "relative grid grid-cols-[auto_1fr] gap-x-2.5 items-start py-4 [counter-increment:step]",
+  "relative grid grid-cols-1 items-start py-4 [counter-increment:step]",
 );
 
 /** Indicator variants for vertical steppers. */
@@ -52,8 +56,11 @@ export const stepperIndicatorVariants = cva(
       },
     },
     compoundVariants: [
+      // Completed reads --primary, not --success: progress is a neutral control state, and the
+      // status palette stays reserved for meaning (error keeps --error). --primary is monochrome
+      // in both themes, so completed steps look the same in dark and light.
       // ASCII — color the glyph by state.
-      { variant: "ascii", status: "completed", className: "text-success" },
+      { variant: "ascii", status: "completed", className: "text-primary" },
       { variant: "ascii", status: "active", className: "text-foreground" },
       { variant: "ascii", status: "error", className: "text-error" },
       { variant: "ascii", status: "skipped", className: "text-muted-foreground opacity-60" },
@@ -63,7 +70,7 @@ export const stepperIndicatorVariants = cva(
       {
         variant: "numbered",
         status: "completed",
-        className: "bg-success border-success text-background",
+        className: "bg-primary border-primary text-primary-foreground",
       },
       {
         variant: "numbered",
@@ -79,7 +86,7 @@ export const stepperIndicatorVariants = cva(
       { variant: "numbered", status: "disabled", className: "opacity-40" },
 
       // Bullet — single glyph color swap.
-      { variant: "bullet", status: "completed", className: "text-success" },
+      { variant: "bullet", status: "completed", className: "text-primary" },
       { variant: "bullet", status: "active", className: "text-foreground" },
       { variant: "bullet", status: "error", className: "text-error" },
       { variant: "bullet", status: "skipped", className: "text-muted-foreground opacity-60" },
@@ -89,7 +96,7 @@ export const stepperIndicatorVariants = cva(
       {
         variant: "tag",
         status: "completed",
-        className: "text-success border-success",
+        className: "text-primary border-primary",
       },
       {
         variant: "tag",
@@ -109,7 +116,7 @@ export const stepperIndicatorVariants = cva(
       { variant: "tag", status: "disabled", className: "opacity-40" },
 
       // Progress — Unicode block bar color swap.
-      { variant: "progress", status: "completed", className: "text-success" },
+      { variant: "progress", status: "completed", className: "text-primary" },
       { variant: "progress", status: "active", className: "text-foreground" },
       { variant: "progress", status: "error", className: "text-error" },
       { variant: "progress", status: "skipped", className: "text-muted-foreground opacity-60" },
@@ -138,7 +145,7 @@ export const stepperLabelVariants = cva("text-[13px] leading-[1.4] font-medium",
 export const stepperTriggerVariants = cva(
   "flex items-start gap-2.5 appearance-none bg-transparent border-0 p-0 text-left w-full " +
     "font-[inherit] cursor-pointer rounded-none " +
-    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring " +
+    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 " +
     "disabled:cursor-not-allowed " +
     "aria-disabled:cursor-not-allowed aria-disabled:opacity-60",
 );
@@ -190,153 +197,3 @@ export const NUMBERED_ERROR_GLYPH = "!";
 export const NUMBERED_SKIPPED_GLYPH = "—";
 /** Disabled glyph for numbered steppers. */
 export const NUMBERED_DISABLED_GLYPH = "·";
-
-/** Root variants for horizontal steppers. */
-export const horizontalStepperRootVariants = cva(
-  "flex items-center list-none m-0 p-0 font-mono tabular-nums",
-  {
-    variants: {
-      variant: {
-        ascii: "text-[12px] gap-0",
-        numbered: "text-2xs gap-0 items-start [counter-reset:step]",
-        breadcrumb: "text-[12px] gap-1.5",
-      },
-    },
-    defaultVariants: { variant: "ascii" },
-  },
-);
-
-/** Visual style for horizontal stepper indicators. */
-export type HorizontalStepperVariant = NonNullable<
-  VariantProps<typeof horizontalStepperRootVariants>["variant"]
->;
-
-/** Step layout variants for horizontal steppers. */
-export const horizontalStepperStepVariants = cva("relative inline-flex items-center", {
-  variants: {
-    variant: {
-      ascii: "gap-1.5",
-      numbered:
-        "flex-col gap-1.5 flex-1 min-w-[80px] [counter-increment:step] " +
-        // Connector line above the label, behind the indicator square.
-        "before:content-[''] before:absolute before:top-[11px] before:h-px before:bg-border-strong before:z-0 " +
-        "before:left-[calc(-50%+11px)] before:right-[calc(50%+11px)] " +
-        "first:before:hidden " +
-        "data-[conn-completed=true]:before:bg-success",
-      breadcrumb: "gap-1 text-muted-foreground",
-    },
-  },
-  defaultVariants: { variant: "ascii" },
-});
-
-/** Glyph variants for horizontal steppers. */
-export const horizontalStepperGlyphVariants = cva("font-mono tabular-nums", {
-  variants: {
-    variant: {
-      ascii: "text-[12px] font-semibold",
-      numbered:
-        "w-[22px] h-[22px] inline-flex items-center justify-center text-[11px] font-semibold " +
-        "border border-border-strong bg-background text-muted-foreground relative z-[1]",
-      breadcrumb: "text-[12px] font-semibold",
-    },
-    status: {
-      pending: "",
-      active: "",
-      completed: "",
-      error: "",
-      skipped: "",
-      disabled: "",
-    },
-  },
-  compoundVariants: [
-    // H1 ascii
-    { variant: "ascii", status: "completed", className: "text-success" },
-    { variant: "ascii", status: "active", className: "text-foreground" },
-    { variant: "ascii", status: "pending", className: "text-muted-foreground" },
-    { variant: "ascii", status: "error", className: "text-error" },
-    { variant: "ascii", status: "skipped", className: "text-muted-foreground opacity-60" },
-    { variant: "ascii", status: "disabled", className: "text-muted-foreground opacity-40" },
-
-    // H2 numbered (inverted square)
-    {
-      variant: "numbered",
-      status: "completed",
-      className: "bg-success border-success text-background",
-    },
-    {
-      variant: "numbered",
-      status: "active",
-      className: "bg-foreground border-foreground text-background",
-    },
-    {
-      variant: "numbered",
-      status: "error",
-      className: "bg-error border-error text-background",
-    },
-    { variant: "numbered", status: "skipped", className: "border-dashed" },
-    { variant: "numbered", status: "disabled", className: "opacity-40" },
-
-    // H3 breadcrumb (glyph)
-    { variant: "breadcrumb", status: "completed", className: "text-success" },
-    { variant: "breadcrumb", status: "active", className: "text-foreground" },
-    { variant: "breadcrumb", status: "pending", className: "text-muted-foreground" },
-    { variant: "breadcrumb", status: "error", className: "text-error" },
-    { variant: "breadcrumb", status: "skipped", className: "text-muted-foreground opacity-60" },
-    { variant: "breadcrumb", status: "disabled", className: "text-muted-foreground opacity-40" },
-  ],
-  defaultVariants: { variant: "ascii", status: "pending" },
-});
-
-/** Label variants for horizontal steppers. */
-export const horizontalStepperLabelVariants = cva("font-mono", {
-  variants: {
-    variant: {
-      ascii: "text-[12px]",
-      numbered: "text-2xs uppercase tracking-[0.08em] min-w-[6ch] text-center",
-      breadcrumb: "text-[12px]",
-    },
-    status: {
-      pending: "text-muted-foreground",
-      active: "text-foreground font-semibold",
-      completed: "text-foreground",
-      error: "text-error font-semibold",
-      skipped: "text-muted-foreground line-through",
-      disabled: "text-muted-foreground opacity-50",
-    },
-  },
-  compoundVariants: [
-    // Breadcrumb completed labels stay dim (path-history feel).
-    { variant: "breadcrumb", status: "completed", className: "text-muted-foreground" },
-  ],
-  defaultVariants: { variant: "ascii", status: "pending" },
-});
-
-/** Connector class between horizontal stepper items. */
-export const horizontalStepperConnectorClass =
-  "mx-1.5 text-border-strong data-[completed=true]:text-success";
-
-/** Separator class for breadcrumb-style horizontal steppers. */
-export const horizontalStepperBreadcrumbSeparatorClass = "text-border-strong";
-
-/** Status glyphs for non-numbered horizontal stepper variants. */
-export const HORIZONTAL_STEP_INDICATOR_GLYPHS: Record<
-  Exclude<HorizontalStepperVariant, "numbered">,
-  Record<StepStatus, string>
-> = {
-  ascii: {
-    completed: "[x]",
-    active: "[~]",
-    pending: "[ ]",
-    error: "[!]",
-    skipped: "[—]",
-    disabled: "[/]",
-  },
-  breadcrumb: {
-    completed: "✓",
-    active: "›",
-    pending: "",
-    error: "×",
-    skipped: "—",
-    disabled: "·",
-  },
-};

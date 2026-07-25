@@ -4,7 +4,11 @@ import {
   getComposedEventTarget,
   isHTMLElement,
 } from "../../dom/element-guards.js";
-import { containsActiveElement, getFirstFocusableElement, isFocusable } from "../../dom/focusable.js";
+import {
+  containsActiveElement,
+  getFirstFocusableElement,
+  isFocusable,
+} from "../../dom/focusable.js";
 import type { FocusZoneTarget, FocusZoneTargetRef, UseFocusZoneFocusOptions } from "./types.js";
 
 export function resolveFocusTargetRef(ref: FocusZoneTargetRef | undefined): HTMLElement | null {
@@ -132,5 +136,5 @@ export function useFocusZoneFocusSync<T extends string>(params: {
 
     repairZoneFocus(safeZone);
     lastFocusedZoneRef.current = safeZone;
-  }, [enabled, hasFocusTargets, safeZone]);
+  }, [enabled, hasFocusTargets, safeZone, lastFocusedZoneRef]);
 }

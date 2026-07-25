@@ -2,6 +2,7 @@ import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import { Badge } from "../../../components/ui/badge";
 import { terminalCellWidth } from "../../../lib/terminal-width";
+import { rowTone, selectionFill } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 
 interface ModelListItemProps {
@@ -30,28 +31,32 @@ export function ModelListItem({ model, isHighlighted, isSelected, maxWidth }: Mo
     : 0;
   const nameWidth = hasDescription ? textWidth - descriptionWidth - 1 : textWidth;
 
+  const tone = rowTone(tokens, { isHighlighted });
+  const markerColor = isSelected && !isHighlighted ? selectionFill(tokens) : tone.primary;
+
   return (
-    <Box width={maxWidth}>
-      <Text
-        color={isHighlighted ? tokens.fg : undefined}
-        backgroundColor={isHighlighted ? tokens.accent : undefined}
-        bold={isHighlighted || isSelected}
-      >
+    <Box width={maxWidth} backgroundColor={tone.background}>
+      <Text color={markerColor} bold={isHighlighted || isSelected}>
         {prefix}
       </Text>
-      <Text color={isSelected ? tokens.info : undefined} bold>
+      <Text color={markerColor} bold>
         {check}{" "}
       </Text>
       <Box gap={1} flexShrink={0}>
         <Box width={nameWidth} flexShrink={0}>
-          <Text bold wrap="truncate-end">
+          <Text color={tone.primary} bold wrap="truncate-end">
             {model.name}
           </Text>
         </Box>
-        <Badge variant={model.tier === "free" ? "info" : "neutral"}>{model.tier}</Badge>
+        <Badge
+          variant={model.tier === "free" ? "info" : "neutral"}
+          color={tone.background ? tone.primary : undefined}
+        >
+          {model.tier}
+        </Badge>
         {hasDescription && (
           <Box width={descriptionWidth} flexShrink={0}>
-            <Text dimColor wrap="truncate-end">
+            <Text color={tone.secondary} wrap="truncate-end">
               {model.description}
             </Text>
           </Box>

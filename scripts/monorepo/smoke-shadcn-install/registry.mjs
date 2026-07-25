@@ -175,7 +175,8 @@ export function standaloneKeysHookImports(keysRegistryDir, keysNames, uiRegistry
 export function findUnbundledKeysEntryHooks(entryHookNames, appSource, installedUiSources) {
   const importedByUi = new Set();
   for (const source of installedUiSources) {
-    for (const match of source.matchAll(/@\/hooks\/([a-z0-9-]+)/g) ?? []) importedByUi.add(match[1]);
+    for (const match of source.matchAll(/@\/hooks\/([a-z0-9-]+)/g) ?? [])
+      importedByUi.add(match[1]);
   }
   return entryHookNames.filter(
     (hook) => !importedByUi.has(hook) && !appSource.includes(`import '@/hooks/${hook}';`),

@@ -15,9 +15,9 @@ import { cn } from "@/lib/utils";
 import { SelectContext, type SelectOptionMetadata } from "./select-context";
 import { SelectFormMirror } from "./select-form-mirror";
 import { SelectItem, type SelectItemProps } from "./select-item";
-import { SelectSearch } from "./select-search";
+import { isSelectSearchElement } from "./select-search";
 import { containsSelectSearchElement, getNodeText } from "./selection";
-import { type UseSelectStateOptions, useSelectState } from "./use-state";
+import { type UseSelectStateOptions, useSelectState } from "./use-select-state";
 
 /** Props for select base. */
 interface SelectBaseProps<TValue extends string = string>
@@ -95,7 +95,7 @@ const selectRootVariants = cva("relative", {
   variants: {
     variant: {
       default: "",
-      card: "border border-foreground bg-background shadow-[8px_8px_0px_0px_color-mix(in_srgb,var(--border)_50%,transparent)]",
+      card: "border border-foreground bg-background shadow-(--shadow-hard)",
     },
     width: {
       sm: "w-48",
@@ -249,8 +249,4 @@ function collectSeedOptions(children: ReactNode): ReadonlyMap<string, SelectOpti
   });
 
   return seed;
-}
-
-function isSelectSearchElement(child: ReactNode): boolean {
-  return isValidElement(child) && child.type === SelectSearch;
 }

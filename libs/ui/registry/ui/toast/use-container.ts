@@ -31,10 +31,16 @@ export function useToastContainer(
     dismiss(last.id);
   };
 
-  useEscapeKey(handleEscape, enabled && toasts.length > 0, { priority: 0, ref: containerRef });
+  const hasToasts = toasts.length > 0;
+  useEscapeKey(handleEscape, enabled && hasToasts, { priority: 0, ref: containerRef });
 
+  // Re-derives the pause causes from live conditions every time the list goes
+  // from empty to non-empty. The store resets its pause state once the last
+  // toast is removed, and the region stays mounted, so hover/focus/hidden-tab
+  // conditions that outlive the empty gap would otherwise never re-pause and
+  // the next toast would auto-dismiss under them (WCAG 2.2.1).
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !hasToasts) return;
     const node = containerRef.current;
     if (!node) return;
     const doc = node.ownerDocument;
@@ -55,5 +61,5 @@ export function useToastContainer(
       resume("focus");
       resume("hover");
     };
-  }, [containerRef, enabled]);
+  }, [containerRef, enabled, hasToasts]);
 }

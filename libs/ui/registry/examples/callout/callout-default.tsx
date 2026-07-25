@@ -6,8 +6,10 @@ export default function CalloutDefault() {
       <Callout.Icon />
       <Callout.Title>Information</Callout.Title>
       <Callout.Content>
-        This is an informational callout with a title and body text.
+        This is an informational callout with a title, body text, and a dismiss button — the full
+        anatomy in one instance.
       </Callout.Content>
+      <Callout.Dismiss />
     </Callout>
   );
 }

@@ -5,10 +5,9 @@ import {
   type StepEvent,
 } from "../schemas/events/index.js";
 import { ReviewErrorCode } from "../schemas/review/index.js";
+import { getReviewEventSequence, isReviewEventSequenceContinuation } from "./event-sequence.js";
 import {
   createInitialReviewState,
-  getReviewEventSequence,
-  isReviewEventSequenceContinuation,
   type ReviewAction,
   type ReviewEvent,
   type ReviewState,

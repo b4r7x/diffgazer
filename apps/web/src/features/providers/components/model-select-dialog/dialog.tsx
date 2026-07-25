@@ -14,6 +14,7 @@ import {
   type KeyboardHint,
 } from "@diffgazer/ui/components/dialog";
 import { useRef } from "react";
+import { getCatalogFallbackNotice } from "@/lib/catalog-fallback-notice";
 import { ModelFilterTabs } from "./filter-tabs";
 import { ModelList } from "./list";
 import { ModelSearchInput } from "./search-input";
@@ -97,29 +98,27 @@ export function ModelSelectDialog({
   });
 
   const emptyLabel = error ?? "No models match your search";
+  const fallbackNotice = getCatalogFallbackNotice(source, fetchedAt);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-w-2xl overflow-hidden border border-border shadow-2xl"
+        className="overflow-hidden"
         closeOnBackdropClick={!isSaving}
         onEscapeKeyDown={(event) => {
           if (isSaving) event.preventDefault();
         }}
       >
-        <DialogHeader
-          marker="none"
-          className="flex-row items-center justify-between gap-3 bg-secondary/50 px-4 py-3"
-        >
-          <DialogTitle className="min-w-0 flex-1 w-auto text-info-text tracking-wide">
-            Select Model
-          </DialogTitle>
-          <DialogClose
-            {...getCloseButtonProps()}
-            size="sm"
-            disabled={isSaving}
-            className="h-auto shrink-0 px-2 py-1 text-muted-foreground hover:text-foreground font-bold"
-          />
+        <DialogHeader>
+          <div className="flex items-center justify-between gap-3">
+            <DialogTitle className="min-w-0 flex-1">Select Model</DialogTitle>
+            <DialogClose
+              {...getCloseButtonProps()}
+              size="sm"
+              disabled={isSaving}
+              className="h-auto shrink-0 px-2 py-1 text-muted-foreground hover:text-foreground"
+            />
+          </div>
         </DialogHeader>
 
         <DialogBody className="min-h-0 p-0 flex flex-col overflow-hidden">
@@ -146,17 +145,13 @@ export function ModelSelectDialog({
             }}
           />
           {isOpenRouter && !loading && !error && (
-            <div className="px-4 pb-2 text-2xs text-muted-foreground">
+            <div className="px-5 pb-2 text-2xs text-muted-foreground">
               {getCompatibilityLabel(openRouter)}
             </div>
           )}
-          {(source === "cache" || source === "snapshot") && (
-            <output className="mx-4 mb-2 flex items-center justify-between gap-3 text-2xs text-warning-text">
-              <span>
-                {source === "cache"
-                  ? `Using cached catalog data from ${fetchedAt ?? "an unknown time"}.`
-                  : "Using the bundled model catalog because live catalog data is unavailable."}
-              </span>
+          {fallbackNotice && (
+            <output className="mx-5 mb-2 flex items-center justify-between gap-3 text-2xs text-warning-text">
+              <span>{fallbackNotice}</span>
               <Button
                 type="button"
                 size="sm"
@@ -170,7 +165,7 @@ export function ModelSelectDialog({
             </output>
           )}
           {error ? (
-            <div className="mx-4 mb-2">
+            <div className="mx-5 mb-2">
               <Button
                 type="button"
                 size="sm"

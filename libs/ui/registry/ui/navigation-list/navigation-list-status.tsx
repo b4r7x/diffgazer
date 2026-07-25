@@ -16,7 +16,7 @@ export function NavigationListStatus({ children, className }: NavigationListStat
   return (
     <span
       className={cn(
-        "col-start-2 row-start-1 self-center text-2xs font-bold text-warning group-data-[highlighted]:text-primary-foreground",
+        "col-start-2 row-start-1 self-center text-2xs font-bold text-muted-foreground group-data-[highlighted]:text-primary-foreground",
         className,
       )}
     >

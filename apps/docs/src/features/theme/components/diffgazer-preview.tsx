@@ -30,7 +30,7 @@ export function DiffgazerPreview() {
 
       <div className="border border-border bg-background p-3">
         <p className="text-2xs uppercase tracking-widest text-muted-foreground mb-2">Quick start</p>
-        <CodeBlock variant="terminal">
+        <CodeBlock variant="terminal" chrome="dots">
           <CodeBlock.Content showLineNumbers={false}>{QUICK_START.join("\n")}</CodeBlock.Content>
         </CodeBlock>
       </div>

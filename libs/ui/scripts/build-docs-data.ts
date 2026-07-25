@@ -354,16 +354,15 @@ async function processComponent(
   // Merge companion examples (other items' example folders) into exampleSource
   // so a unified MDX page can render <Example name="..." /> for both primitives.
   // The companion examples are intentionally NOT pushed onto `examples` so
-  // `<Examples skipFirst />` consumers stay scoped to the primary item.
+  // `<Examples hero="..." />` consumers stay scoped to the primary item.
   for (const companionName of docs?.companionExamples ?? []) {
     const companionData = readExamples(companionName, highlighter);
     Object.assign(examplesData.exampleSource, companionData.exampleSource);
   }
-  const rawSnippet =
+  const usageSnippet =
     docs?.usage?.code ??
     (usageExample ? examplesData.exampleSource[usageExample]?.raw : undefined) ??
     "";
-  const usageSnippet = rawSnippet;
   const keysItems = resolveCopyDependencyClosure(item).keysNames;
   const crossDeps =
     keysItems.length > 0 ? [{ library: "keys", type: "hook", items: keysItems }] : undefined;

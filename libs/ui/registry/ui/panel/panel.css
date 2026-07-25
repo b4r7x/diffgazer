@@ -25,7 +25,10 @@
     position: relative;
     background: var(--panel-bg, var(--background));
     color: var(--panel-fg, var(--foreground));
-    border-radius: var(--radius);
+    /* One corner treatment across the surface family (Panel, Card, Dialog,
+       Popover, Tooltip, Select): the tight 1px --radius-sm, not the 4px
+       --radius used by controls. */
+    border-radius: var(--radius-sm);
   }
 
   /* Density rhythm — single source of truth. */
@@ -119,7 +122,9 @@
      ============================================================ */
   [data-slot="panel"][data-frame="rail"] {
     border: 0;
-    border-inline-start: 2px solid var(--border);
+    /* The rail is the only chrome this frame gets, so it reads on --border-strong
+       rather than the hairline --border, which disappears against the page. */
+    border-inline-start: 2px solid var(--border-strong);
     border-radius: 0;
     padding-block: 2px;
   }
@@ -147,6 +152,10 @@
      Dialog uses a separate `.dlg-corners` + [data-corners] pattern
      for its own (in-flow vs. modal) reasons, so there is no literal
      `.viewfinder` class to share across all three components today.
+
+     Corner geometry is frame-agnostic: the viewfinder frame declares
+     the resting bracket vars, and [data-state="focused"] declares its
+     own on every frame (see the focused section below).
      ============================================================ */
   [data-slot="panel"][data-frame="viewfinder"] {
     --viewfinder-size: 20px;
@@ -155,32 +164,32 @@
     --viewfinder-offset: 0px;
     padding: 8px;
   }
-  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-corners"] > span {
+  [data-slot="panel"] [data-slot="panel-corners"] > span {
     position: absolute;
     pointer-events: none;
     width: var(--viewfinder-size);
     height: var(--viewfinder-size);
     border: 0 solid var(--viewfinder-color);
   }
-  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-corners"] > .vf-tl {
+  [data-slot="panel"] [data-slot="panel-corners"] > .vf-tl {
     top: var(--viewfinder-offset);
     left: var(--viewfinder-offset);
     border-top-width: var(--viewfinder-weight);
     border-left-width: var(--viewfinder-weight);
   }
-  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-corners"] > .vf-tr {
+  [data-slot="panel"] [data-slot="panel-corners"] > .vf-tr {
     top: var(--viewfinder-offset);
     right: var(--viewfinder-offset);
     border-top-width: var(--viewfinder-weight);
     border-right-width: var(--viewfinder-weight);
   }
-  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-corners"] > .vf-bl {
+  [data-slot="panel"] [data-slot="panel-corners"] > .vf-bl {
     bottom: var(--viewfinder-offset);
     left: var(--viewfinder-offset);
     border-bottom-width: var(--viewfinder-weight);
     border-left-width: var(--viewfinder-weight);
   }
-  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-corners"] > .vf-br {
+  [data-slot="panel"] [data-slot="panel-corners"] > .vf-br {
     bottom: var(--viewfinder-offset);
     right: var(--viewfinder-offset);
     border-bottom-width: var(--viewfinder-weight);
@@ -196,13 +205,16 @@
   }
 
   /* ============================================================
-     Frame: surface — elevated --surface-1 background, transparent
-     border (forced-colors fallback), inner top highlight.
+     Frame: surface — elevated --surface-1 background plus a hairline
+     perimeter and a 1px inner top lip in --surface-1-highlight. The fill
+     delta against the page is deliberately small (one step, lighter in
+     dark and darker in light), so the lip and the perimeter carry the
+     frame where the delta alone cannot.
      ============================================================ */
   [data-slot="panel"][data-frame="surface"] {
     background: var(--surface-1);
-    border: 1px solid transparent;
-    box-shadow: inset 0 1px 0 color-mix(in oklab, var(--foreground) 4%, transparent);
+    border: 1px solid var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent));
+    box-shadow: inset 0 1px 0 var(--surface-1-highlight);
   }
   [data-slot="panel"][data-frame="surface"] [data-slot="panel-header"] {
     border-block-end: 1px solid
@@ -306,6 +318,23 @@
     background: color-mix(in oklab, var(--action) 6%, transparent);
     border-block-end-color: var(--action);
   }
+
+  /* ============================================================
+     Focused — the active-pane affordance. Corner brackets grow on
+     every frame in --ring: longer and thicker than the resting
+     viewfinder corners, so focus reads at a glance without moving
+     the box (no border, padding, or shadow change → no reflow).
+     Tone still owns border/rail/header color; only the brackets
+     switch to --ring. The [data-frame] selector is load-bearing:
+     it matches the specificity of the tone rules above, which set
+     --viewfinder-color, so source order decides and focus wins.
+     ============================================================ */
+  [data-slot="panel"][data-frame][data-state="focused"] {
+    --viewfinder-size: 28px;
+    --viewfinder-weight: 3px;
+    --viewfinder-color: var(--ring);
+    --viewfinder-offset: 0px;
+  }
 }
 
 /* ============================================================
@@ -320,8 +349,13 @@
   [data-slot="panel"][data-frame="rail"] {
     border-inline-start-color: CanvasText;
   }
-  [data-slot="panel"][data-frame="viewfinder"] [data-slot="panel-corners"] > span {
+  [data-slot="panel"] [data-slot="panel-corners"] > span {
     border-color: CanvasText;
+  }
+  /* HCM flattens --ring to CanvasText, so the focused pane needs the
+     system highlight color to stay distinguishable from resting. */
+  [data-slot="panel"][data-state="focused"] [data-slot="panel-corners"] > span {
+    border-color: Highlight;
   }
   [data-slot="panel-header"][data-marker="bar"]::before {
     background: CanvasText;

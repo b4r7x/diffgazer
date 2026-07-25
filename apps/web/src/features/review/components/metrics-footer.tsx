@@ -24,7 +24,7 @@ export function ReviewMetricsFooter({ metrics, startTime, isRunning }: ReviewMet
 
   return (
     <div className="shrink-0 pt-4 pb-6 border-t border-border">
-      <SectionHeader variant="muted" bordered>
+      <SectionHeader variant="muted" bordered className="mb-2">
         Metrics
       </SectionHeader>
       <KeyValue className="pt-2">

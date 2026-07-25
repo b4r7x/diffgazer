@@ -2,7 +2,7 @@
 
 import { isInsideDisabledFieldset, isReachable } from "@diffgazer/keys";
 import { type RefObject, useCallback, useLayoutEffect, useRef, useState } from "react";
-import { subscribeToSelectableDocumentChanges } from "./selectable-collection-observer";
+import { observeSelectableEligibility } from "./selectable-collection-observer";
 
 /** Registered item data for a selectable collection that needs DOM-order navigation. */
 export interface SelectableCollectionItem {
@@ -215,36 +215,12 @@ export function useSelectableCollection(containerRef: RefObject<HTMLElement | nu
   });
 
   useLayoutEffect(() => {
-    const View = container?.ownerDocument.defaultView;
-    if (!container || !View?.MutationObserver) return;
+    if (!container) return;
 
-    const observer = new View.MutationObserver(syncCollection);
-    observer.observe(container, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["hidden", "inert", "aria-hidden", "class", "style", "disabled", "open"],
-    });
-
-    let ancestor = container.parentElement;
-    while (ancestor) {
-      observer.observe(ancestor, {
-        attributes: true,
-        attributeFilter: ["hidden", "inert", "aria-hidden", "class", "style", "disabled", "open"],
-      });
-      ancestor = ancestor.parentElement;
-    }
-
-    const unsubscribeDocument = subscribeToSelectableDocumentChanges(
-      container.ownerDocument,
-      syncCollection,
-    );
+    const stopObserving = observeSelectableEligibility(container, syncCollection);
     syncCollection();
 
-    return () => {
-      observer.disconnect();
-      unsubscribeDocument();
-    };
+    return stopObserving;
   }, [container, syncCollection]);
 
   useLayoutEffect(() => {

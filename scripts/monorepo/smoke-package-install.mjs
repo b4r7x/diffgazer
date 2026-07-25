@@ -10,6 +10,7 @@ import {
   writeKeysPackageModeSmoke,
   writeKeysTestHelperSmoke,
 } from "./smoke-keys-package-fixtures.mjs";
+import { shouldRunPackageSmoke, withTempPackageProject } from "./smoke-package-runner.mjs";
 import {
   verifyUiNextPackageSmoke,
   verifyUiVitePackageSmoke,
@@ -19,7 +20,6 @@ import {
   writeUiPackageModeSmoke,
   writeUiVitePackageSmoke,
 } from "./smoke-ui-package-fixtures.mjs";
-import { shouldRunPackageSmoke, withTempPackageProject } from "./smoke-package-runner.mjs";
 
 const root = process.cwd();
 

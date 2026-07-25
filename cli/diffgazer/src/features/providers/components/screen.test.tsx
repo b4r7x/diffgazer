@@ -7,10 +7,11 @@ import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { GlobalShortcuts } from "../../../app/global-shortcuts";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
-import { NavigationProvider } from "../../../app/providers/navigation-provider";
-import { GlobalShortcuts } from "../../../app/root";
+import { NavigationProvider } from "../../../app/providers/navigation";
 import { useNavigation } from "../../../hooks/use-navigation";
+import { flush } from "../../../testing/flush";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ProvidersScreen } from "./screen";
@@ -32,12 +33,6 @@ afterEach(() => {
   cleanup();
   cleanupRootFrames();
 });
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 async function flushUntil(predicate: () => boolean, attempts = 200): Promise<void> {
   for (let i = 0; i < attempts; i += 1) {

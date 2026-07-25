@@ -50,7 +50,7 @@ describe("InfoField", () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
-  it("activates button on Enter key", async () => {
+  it("activates from the keyboard with Enter", async () => {
     const onClick = vi.fn();
     const user = userEvent.setup();
     render(

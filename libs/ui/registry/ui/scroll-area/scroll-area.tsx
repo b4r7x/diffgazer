@@ -5,19 +5,18 @@ import type { ComponentPropsWithRef, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 
 /** Class variants for scroll area. */
-export const scrollAreaVariants = cva(
-  "relative scrollbar-thin rounded-[inherit] [scrollbar-gutter:stable]",
-  {
-    variants: {
-      orientation: {
-        vertical: "overflow-y-auto overflow-x-hidden",
-        horizontal: "overflow-x-auto overflow-y-hidden",
-        both: "overflow-auto",
-      },
+export const scrollAreaVariants = cva("relative scrollbar-thin rounded-[inherit]", {
+  variants: {
+    orientation: {
+      // The gutter reserves the vertical track so content does not reflow when
+      // it appears; a horizontal-only region has no vertical track to reserve.
+      vertical: "overflow-y-auto overflow-x-hidden [scrollbar-gutter:stable]",
+      horizontal: "overflow-x-auto overflow-y-hidden",
+      both: "overflow-auto [scrollbar-gutter:stable]",
     },
-    defaultVariants: { orientation: "vertical" },
   },
-);
+  defaultVariants: { orientation: "vertical" },
+});
 
 /** Thin-scrollbar wrapper with vertical, horizontal, or both overflow directions. */
 export type ScrollOrientation = NonNullable<VariantProps<typeof scrollAreaVariants>["orientation"]>;
@@ -138,6 +137,9 @@ export function ScrollArea({
       onKeyDown={canKeyboardScroll ? handleKeyDown : onKeyDown}
       className={cn(
         scrollAreaVariants({ orientation }),
+        // Inset offset, not outset: this element is the scroll container, so an outline
+        // drawn outside its padding box is clipped by whatever encloses it — the keyboard
+        // focus indicator would vanish exactly where it is needed.
         canKeyboardScroll &&
           "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-[-2px]",
         className,

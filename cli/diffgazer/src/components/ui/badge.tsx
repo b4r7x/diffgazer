@@ -4,6 +4,11 @@ import { useTheme } from "../../theme/provider";
 
 export interface BadgeProps {
   variant?: BadgeVariant;
+  /**
+   * Overrides the variant hue. A status hue cannot survive a selection fill, so
+   * rows on a highlighted background pass the row tone here and lean on the
+   * badge label to carry the status.
+   */
   color?: string;
   size?: "sm" | "md" | "lg";
   dot?: boolean;

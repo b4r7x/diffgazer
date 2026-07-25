@@ -37,6 +37,11 @@ export const emptyStateDoc: ComponentDoc = {
         "sm for compact embedded contexts, md (default) for standard use, lg for full-page empty states. Size propagates to all parts via context.",
     },
     {
+      title: "Icon",
+      content:
+        "EmptyStateIcon scales its font size with the root size, so a text glyph or a currentColor icon inherits the theme in both palettes. Avoid color emoji: they render identically in light and dark and break the monochrome identity.",
+    },
+    {
       title: "Compound Composition",
       content:
         "Compose semantic parts for icon, message, description, and actions. All parts consume size from the root via React context. Variant controls root layout only.",

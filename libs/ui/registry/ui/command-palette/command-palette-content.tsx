@@ -56,15 +56,23 @@ export interface CommandPaletteContentProps
    * "comfortable" is Linear-ish breathing room, "dense" is VSCode-tight.
    */
   density?: CommandPaletteDensity | null;
+  /**
+   * Renders the palette as a modal dialog in the browser top layer (default). Pass false to
+   * render it in the document flow instead — an embedded palette with the same frame, density,
+   * and highlight chrome, without a backdrop, focus trap, or focus restoration. Inline palettes
+   * still honour `open`, so they unmount when the consumer closes them.
+   */
+  modal?: boolean;
 }
 
-/** Native dialog modal container with frame + density variants. */
+/** Modal (or embedded) palette container with frame + density variants. */
 export function CommandPaletteContent({
   children,
   className,
   size,
   frame,
   density,
+  modal = true,
   label = "Command palette",
 }: CommandPaletteContentProps) {
   const { open, onOpenChange, search, onSearchChange, itemCount, inputRef } =
@@ -94,6 +102,37 @@ export function CommandPaletteContent({
     });
   }, [focusRestore]);
 
+  const inner = (
+    <PortalContainerProvider container={container}>
+      {resolvedFrame === "viewfinder" ? <span aria-hidden="true" className="cp-corners" /> : null}
+      {children}
+      {/* biome-ignore lint/a11y/useSemanticElements: role="status" is the sr-only results-count live region; <output> carries form-association semantics that do not fit here. */}
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {getLiveText(search, itemCount)}
+      </div>
+    </PortalContainerProvider>
+  );
+
+  if (!modal) {
+    if (!open) return null;
+    return (
+      // biome-ignore lint/a11y/useSemanticElements: <fieldset> is a form-control grouping element; this is a labelled composite region wrapping a combobox and its listbox, so role="group" on a div is the correct mapping.
+      <div
+        // Inline mode has no dialog element; the shell itself is the portal container.
+        ref={setContainer}
+        role="group"
+        aria-label={label}
+        data-slot="command-palette-content"
+        data-frame={resolvedFrame}
+        data-density={resolvedDensity}
+        data-state="open"
+        className={cn(commandPaletteContentVariants({ size }), className)}
+      >
+        {inner}
+      </div>
+    );
+  }
+
   return (
     <DialogShell
       open={open}
@@ -110,14 +149,7 @@ export function CommandPaletteContent({
       aria-modal="true"
       aria-label={label}
     >
-      <PortalContainerProvider container={container}>
-        {resolvedFrame === "viewfinder" ? <span aria-hidden="true" className="cp-corners" /> : null}
-        {children}
-        {/* biome-ignore lint/a11y/useSemanticElements: role="status" is the sr-only results-count live region; <output> carries form-association semantics that do not fit here. */}
-        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {getLiveText(search, itemCount)}
-        </div>
-      </PortalContainerProvider>
+      {inner}
     </DialogShell>
   );
 }

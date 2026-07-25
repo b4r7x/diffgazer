@@ -1,8 +1,9 @@
 import { Box, Text, useInput } from "ink";
 import type { ReactNode } from "react";
 import { useContext, useEffect } from "react";
-import { KeyboardContext } from "../../hooks/use-keyboard";
+import { KeyboardContext } from "../../hooks/keyboard-context";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
+import { SURFACE_BORDER } from "../../theme/chrome";
 import { useTheme } from "../../theme/provider";
 import { getContentZoneRows } from "../layout/global";
 
@@ -39,7 +40,7 @@ function DialogContent({ children }: DialogContentProps) {
   return (
     <Box
       flexDirection="column"
-      borderStyle="round"
+      borderStyle={SURFACE_BORDER}
       borderColor={tokens.border}
       paddingX={2}
       paddingY={1}
@@ -55,7 +56,7 @@ function DialogHeader({ children }: DialogHeaderProps) {
   return (
     <Box
       marginBottom={1}
-      borderStyle="single"
+      borderStyle={SURFACE_BORDER}
       borderTop={false}
       borderLeft={false}
       borderRight={false}
@@ -90,7 +91,7 @@ function DialogFooter({ children }: DialogFooterProps) {
   return (
     <Box
       marginTop={1}
-      borderStyle="single"
+      borderStyle={SURFACE_BORDER}
       borderBottom={false}
       borderLeft={false}
       borderRight={false}

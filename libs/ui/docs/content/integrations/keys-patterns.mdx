@@ -207,7 +207,7 @@ function BranchList({ onChoose }) {
           data-value={item.id}
           role="option"
           aria-selected={isHighlighted(item.id)}
-          data-highlighted={isHighlighted(item.id) || undefined}
+          data-highlighted={isHighlighted(item.id) ? "" : undefined}
         >
           {item.label}
         </div>

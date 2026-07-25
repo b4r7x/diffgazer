@@ -1,5 +1,6 @@
 import { Box, Text } from "ink";
 import type { ReactNode } from "react";
+import { SURFACE_BORDER } from "../../theme/chrome";
 import { useTheme } from "../../theme/provider";
 
 interface PanelProps {
@@ -19,7 +20,12 @@ function PanelRoot({ children }: PanelProps) {
   const { tokens } = useTheme();
 
   return (
-    <Box flexDirection="column" width="100%" borderStyle="round" borderColor={tokens.border}>
+    <Box
+      flexDirection="column"
+      width="100%"
+      borderStyle={SURFACE_BORDER}
+      borderColor={tokens.border}
+    >
       {children}
     </Box>
   );
@@ -35,7 +41,7 @@ function PanelHeader({ variant = "default", children }: PanelHeaderProps) {
   };
 
   return (
-    <Box>
+    <Box paddingX={1}>
       <Text bold color={colorByVariant[variant]}>
         {children}
       </Text>

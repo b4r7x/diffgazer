@@ -43,6 +43,7 @@ export const tabsDoc: ComponentDoc = {
   usage: { example: "tabs-default" },
   examples: [
     { name: "tabs-default", title: "Default" },
+    { name: "tabs-variants", title: "Trigger Variants" },
     { name: "tabs-vertical", title: "Vertical Orientation" },
     { name: "tabs-controlled", title: "Controlled with Disabled Tab" },
     { name: "tabs-keyboard", title: "Keyboard Navigation" },

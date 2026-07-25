@@ -1,6 +1,7 @@
 import { sanitizeTerminalText } from "@diffgazer/core/review";
 import { Box, type DOMElement, Text, useBoxMetrics } from "ink";
 import { useRef } from "react";
+import { SURFACE_BORDER } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 
 export interface CodeSnippetProps {
@@ -19,7 +20,12 @@ export function CodeSnippet({ filePath, startLine, code }: CodeSnippetProps) {
   const hasLineNumbers = startLine !== undefined;
 
   return (
-    <Box ref={containerRef} flexDirection="column" borderStyle="round" borderColor={tokens.border}>
+    <Box
+      ref={containerRef}
+      flexDirection="column"
+      borderStyle={SURFACE_BORDER}
+      borderColor={tokens.border}
+    >
       <Box marginBottom={1}>
         <Text color={tokens.accent}>{safeFilePath}</Text>
       </Box>

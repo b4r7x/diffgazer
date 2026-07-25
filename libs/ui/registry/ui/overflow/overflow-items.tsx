@@ -23,8 +23,6 @@ export interface OverflowItemsProps extends Omit<ComponentPropsWithRef<"div">, "
   children: ReactNode;
   /** Items mode only. Render function or static node shown when items overflow. */
   indicator?: OverflowIndicatorRender;
-  /** Items mode only. Tailwind gap class applied between items and indicator. */
-  gap?: string;
   /** Accessible name for the overflow indicator. Defaults to `${count} more items`. */
   getOverflowLabel?: (count: number) => string;
 }
@@ -56,7 +54,6 @@ function IndicatorDisplay({
 export function OverflowItems({
   children,
   indicator,
-  gap = "gap-1",
   className,
   getOverflowLabel,
   ref,
@@ -75,7 +72,7 @@ export function OverflowItems({
   return (
     <div
       ref={composedRef}
-      className={cn("relative flex items-center overflow-clip", gap, className)}
+      className={cn("relative flex items-center gap-1 overflow-clip", className)}
       {...props}
     >
       {items.map((item, i) => (

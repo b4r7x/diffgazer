@@ -7,9 +7,10 @@ import { cleanup, render } from "ink-testing-library";
 import { act, type ReactElement, useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
-import { NavigationProvider } from "../../../app/providers/navigation-provider";
+import { NavigationProvider } from "../../../app/providers/navigation";
 import { useNavigation } from "../../../hooks/use-navigation";
 import type { Route } from "../../../lib/routes";
+import { flush } from "../../../testing/flush";
 import { makeReviewLifecycleBase } from "../../../testing/review-lifecycle-base";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
@@ -76,12 +77,6 @@ beforeEach(() => {
 });
 
 const ESC = "\u001b";
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 function RouteHarness(): ReactElement {
   const { route } = useNavigation();

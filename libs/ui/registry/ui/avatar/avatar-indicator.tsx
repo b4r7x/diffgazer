@@ -34,7 +34,7 @@ export function AvatarIndicator({
       aria-label={ariaLabel ?? getLabel?.(count) ?? `${count} more`}
       className={cn(
         avatarVariants({ size: resolvedSize }),
-        "border-dashed bg-muted text-foreground",
+        "border-dashed text-muted-foreground",
         className,
       )}
     >

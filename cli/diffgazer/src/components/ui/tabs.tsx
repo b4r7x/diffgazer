@@ -1,8 +1,10 @@
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
 import { useListNavigation } from "../../hooks/use-list-navigation";
+import { useListNavigationInput } from "../../hooks/use-list-navigation-input";
 import { collectChildItems } from "../../lib/collect-child-items";
+import { SURFACE_BORDER, selectionFill } from "../../theme/chrome";
 import { useTheme } from "../../theme/provider";
 
 interface TabsProps {
@@ -78,25 +80,19 @@ function TabsList({ loop = true, isActive = true, children }: TabsListProps) {
   const ctx = useTabsContext();
   const { tokens } = useTheme();
   const triggers = collectChildItems(children, extractTabsTrigger);
-  const { moveBy } = useListNavigation({
+  const navigation = useListNavigation({
     items: triggers.map((trigger) => ({ id: trigger.value, disabled: trigger.disabled })),
     highlightedId: ctx.activeValue,
     onHighlightChange: ctx.setActiveValue,
     wrap: loop,
   });
 
-  useInput(
-    (_input, key) => {
-      if (!key.leftArrow && !key.rightArrow) return;
-      moveBy(key.rightArrow ? 1 : -1);
-    },
-    { isActive },
-  );
+  useListNavigationInput({ navigation, isActive, orientation: "horizontal" });
 
   return (
     <Box
       gap={1}
-      borderStyle="single"
+      borderStyle={SURFACE_BORDER}
       borderBottom={false}
       borderLeft={false}
       borderRight={false}
@@ -113,13 +109,13 @@ function TabsTrigger({ value, disabled = false, children }: TabsTriggerProps) {
   const isActiveTab = ctx.activeValue === value;
 
   if (disabled) {
-    return <Text dimColor>{children}</Text>;
+    return <Text color={tokens.muted}>{children}</Text>;
   }
 
   return (
     <Text
-      color={isActiveTab ? tokens.fg : tokens.muted}
-      backgroundColor={isActiveTab ? tokens.accent : undefined}
+      color={isActiveTab ? tokens.bg : tokens.muted}
+      backgroundColor={isActiveTab ? selectionFill(tokens) : undefined}
       bold={isActiveTab}
     >
       {` ${children} `}

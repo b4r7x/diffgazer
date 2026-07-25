@@ -1,8 +1,10 @@
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext } from "react";
 import { type ListNavigationItem, useListNavigation } from "../../hooks/use-list-navigation";
+import { useListNavigationInput } from "../../hooks/use-list-navigation-input";
 import { collectChildItems } from "../../lib/collect-child-items";
+import { type RowTone, rowTone, selectionFill } from "../../theme/chrome";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 
@@ -17,10 +19,21 @@ export interface NavigationListProps {
   children: ReactNode;
 }
 
+export interface NavigationListItemState {
+  isHighlighted: boolean;
+  tone: RowTone;
+}
+
 export interface NavigationListItemProps {
   id: string;
   disabled?: boolean;
-  children: ReactNode;
+  /**
+   * Pass a function to colour the row against the highlight fill — the
+   * highlighted row of a focused list is a full-width selection bar, so row
+   * text has to switch to the background token to stay readable. The row tone
+   * is already resolved against the list's active state.
+   */
+  children: ReactNode | ((state: NavigationListItemState) => ReactNode);
 }
 
 export interface NavigationListTitleProps {
@@ -30,6 +43,7 @@ export interface NavigationListTitleProps {
 interface NavigationListContextValue {
   highlightedId: string;
   selectedId: string | null;
+  isActive: boolean;
   tokens: CliColorTokens;
 }
 
@@ -73,28 +87,26 @@ function NavigationListItem({ id, disabled = false, children }: NavigationListIt
   const ctx = useNavigationListContext();
   const isHighlighted = ctx.highlightedId === id;
   const isSelected = ctx.selectedId === id;
+  const tone = rowTone(ctx.tokens, { isHighlighted, isActive: ctx.isActive });
+  const content = typeof children === "function" ? children({ isHighlighted, tone }) : children;
 
   if (disabled) {
     return (
       <Box>
-        <Text dimColor>{"  "}</Text>
-        <Box>{children}</Box>
+        <Text>{"  "}</Text>
+        <Box>{content}</Box>
       </Box>
     );
   }
 
-  const prefix = getItemPrefix(isSelected, isHighlighted);
+  const markerColor = isSelected && !isHighlighted ? selectionFill(ctx.tokens) : tone.primary;
 
   return (
-    <Box>
-      <Text
-        color={isHighlighted ? ctx.tokens.fg : undefined}
-        backgroundColor={isHighlighted ? ctx.tokens.accent : undefined}
-        bold={isHighlighted || isSelected}
-      >
-        {prefix}
+    <Box width="100%" backgroundColor={tone.background}>
+      <Text color={markerColor} bold={isHighlighted || isSelected}>
+        {getItemPrefix(isSelected, isHighlighted)}
       </Text>
-      <Box>{children}</Box>
+      <Box>{content}</Box>
     </Box>
   );
 }
@@ -112,43 +124,31 @@ function NavigationListRoot({
   const { tokens } = useTheme();
   const renderedItems = collectChildItems(children, extractNavigationListItem);
   const items = navigationItems ?? renderedItems;
-  const { currentHighlightedId, moveBy, selectItem } = useListNavigation({
+  const navigation = useListNavigation({
     items,
     highlightedId: controlledHighlightedId,
     onHighlightChange,
     wrap,
   });
 
-  useInput(
-    (_input, key) => {
-      if (key.upArrow) {
-        moveBy(-1);
-        return;
-      }
-      if (key.downArrow) {
-        moveBy(1);
-        return;
-      }
-      if (key.return) {
-        const item = selectItem(currentHighlightedId);
-        if (item) {
-          onSelect?.(item.id);
-        }
-        return;
-      }
-    },
-    { isActive },
-  );
+  useListNavigationInput({
+    navigation,
+    isActive,
+    onActivate: (item) => onSelect?.(item.id),
+  });
 
   return (
     <NavigationListContext
       value={{
-        highlightedId: currentHighlightedId,
+        highlightedId: navigation.currentHighlightedId,
         selectedId,
+        isActive,
         tokens,
       }}
     >
-      <Box flexDirection="column">{children}</Box>
+      <Box flexDirection="column" width="100%">
+        {children}
+      </Box>
     </NavigationListContext>
   );
 }

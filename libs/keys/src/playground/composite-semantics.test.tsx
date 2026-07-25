@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { CommandPaletteDemo } from "../../examples/playground/src/demos/command-palette";
 import { TabBarDemo } from "../../examples/playground/src/demos/tab-bar";
-import { KeyboardWrapper } from "../testing/test-utils.js";
+import { KeyboardWrapper } from "../testing/internal/test-utils.js";
 
 vi.mock("@diffgazer/keys", () => import("../index.js"));
 

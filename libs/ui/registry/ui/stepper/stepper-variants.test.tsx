@@ -47,6 +47,27 @@ describe("Stepper variant indicators", () => {
     expect(screen.getByRole("button", { name: /Step 2/ })).toHaveTextContent("WORK");
   });
 
+  // jsdom cannot measure color, so the merged class IS the contract these slots exist for:
+  // an app palette must win over the variant's own state classes.
+  it("merges indicatorClassName and labelClassName over the variant state classes", () => {
+    render(
+      <Stepper variant="tag">
+        <Stepper.Step stepId="s1" status="active">
+          <Stepper.Trigger indicatorClassName="bg-info-bg" labelClassName="text-info-text">
+            Step 1
+          </Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    const trigger = screen.getByRole("button", { name: /Step 1/ });
+    const [indicator, label] = Array.from(trigger.children) as HTMLElement[];
+    expect(indicator).toHaveClass("bg-info-bg");
+    expect(indicator).not.toHaveClass("bg-foreground");
+    expect(label).toHaveClass("text-info-text");
+    expect(label).not.toHaveClass("text-foreground");
+  });
+
   it.each([
     "ascii",
     "numbered",

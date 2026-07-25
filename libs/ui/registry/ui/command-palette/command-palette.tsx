@@ -2,7 +2,10 @@
 
 import type { ReactNode } from "react";
 import { CommandPaletteContext } from "./command-palette-context";
-import { type UseCommandPaletteStateOptions, useCommandPaletteState } from "./use-state";
+import {
+  type UseCommandPaletteStateOptions,
+  useCommandPaletteState,
+} from "./use-command-palette-state";
 
 /** Props for command palette. */
 export interface CommandPaletteProps extends UseCommandPaletteStateOptions {

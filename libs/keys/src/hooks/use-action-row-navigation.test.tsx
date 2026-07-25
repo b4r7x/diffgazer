@@ -5,8 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { useLayoutEffect, useRef } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { useActionRowNavigationDoc } from "../../docs/hook-docs/use-action-row-navigation.js";
+import { fireKey, KeyboardWrapper } from "../testing/internal/test-utils.js";
 import { testNavigationBehavior } from "../testing/navigation-behavior.js";
-import { fireKey, KeyboardWrapper } from "../testing/test-utils.js";
 import {
   type UseActionRowNavigationOptions,
   type UseActionRowNavigationReturn,

@@ -10,12 +10,11 @@ import { Text } from "ink";
 import { render as renderInk } from "ink-testing-library";
 import { createElement, type ReactNode, useContext, useMemo } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-
+import { AppGlobalShortcuts } from "../../../app/global-shortcuts";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
-import { NavigationProvider } from "../../../app/providers/navigation-provider";
-import { AppGlobalShortcuts } from "../../../app/root";
+import { NavigationProvider } from "../../../app/providers/navigation";
+import { KeyboardContext, type KeyboardContextValue } from "../../../hooks/keyboard-context";
 import { ExitPreparationProvider } from "../../../hooks/use-exit";
-import { KeyboardContext, type KeyboardContextValue } from "../../../hooks/use-keyboard";
 import { registerServerSet } from "../../../lib/servers/stop-all";
 import { CliThemeProvider } from "../../../theme/provider";
 import { OnboardingWizard } from "../components/wizard";

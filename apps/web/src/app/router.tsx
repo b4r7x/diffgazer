@@ -10,8 +10,10 @@ import {
 import { z } from "zod";
 import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
 import { requireConfigured, requireNotConfigured } from "../lib/config-guards";
+import { NotFoundPage } from "./not-found";
+import { RouteRecoveryPage } from "./route-error-boundary";
 import { lazyRoute } from "./route-import";
-import { NotFoundPage, RootLayout, RouteRecoveryPage } from "./routes/__root";
+import { RootLayout } from "./routes/__root";
 import { HomePage } from "./routes/home";
 import { ReviewPage } from "./routes/review";
 

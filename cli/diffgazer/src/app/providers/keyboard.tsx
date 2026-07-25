@@ -1,7 +1,7 @@
 import { useInput } from "ink";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useRef } from "react";
-import { KeyboardContext, type KeyboardContextValue } from "../../hooks/use-keyboard";
+import { KeyboardContext, type KeyboardContextValue } from "../../hooks/keyboard-context";
 import { inkKeyToHotkey, isTypeableShortcutKey } from "../../lib/ink-key";
 import type { TerminalInputQueue } from "../../lib/terminal-input";
 

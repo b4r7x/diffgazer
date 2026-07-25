@@ -1,5 +1,5 @@
 import { ctx, type ManifestItem } from "../../context.js";
-import { getKeysHookNames, resolveKeysHooksFromRegistry } from "../../utils/keys-copy-bundle.js";
+import { resolveKeysHooksFromRegistry } from "../../utils/keys-copy-bundle.js";
 import { getNamespacedItem, parseInstallName } from "../../utils/namespaces.js";
 
 type Manifest = Record<string, ManifestItem>;

@@ -52,6 +52,23 @@ describe("effect lifecycle signals", () => {
     cleanup();
   });
 
+  it("settles the headline on its final text when the scramble is torn down mid-flight", async () => {
+    vi.useFakeTimers();
+    mountHero();
+
+    const cleanup = initHero(document, animatedFlags);
+    await vi.advanceTimersByTimeAsync(500);
+    cleanup();
+
+    expect(document.querySelector("#h1")?.textContent).toBe("Local AI code review.");
+
+    const restart = initHero(document, { reduced: true, finePointer: true });
+
+    expect(document.querySelector("#h1")?.getAttribute("aria-label")).toBe("Local AI code review.");
+
+    restart();
+  });
+
   it("does not enable the custom cursor for an already-aborted signal", () => {
     document.body.innerHTML = `
       <div id="reticle"></div>

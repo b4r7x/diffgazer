@@ -83,10 +83,6 @@ function setActiveReviewSessionQueryData(
   qc.setQueryData(reviewQueries.activeSession(api, mode).queryKey, data);
 }
 
-function activeSessionQueryModes(mode: ReviewMode): Array<ReviewMode | undefined> {
-  return mode === "unstaged" ? [mode, undefined] : [mode];
-}
-
 function cancelActiveReviewSessionQuery(
   qc: QueryClient,
   api: BoundApi,
@@ -98,32 +94,13 @@ function cancelActiveReviewSessionQuery(
   });
 }
 
-async function cancelActiveSessionQueries(qc: QueryClient, api: BoundApi, mode: ReviewMode) {
-  await Promise.all(
-    activeSessionQueryModes(mode).map((queryMode) =>
-      cancelActiveReviewSessionQuery(qc, api, queryMode),
-    ),
-  );
-}
-
-function setModeActiveSessionQueryData(
-  qc: QueryClient,
-  api: BoundApi,
-  mode: ReviewMode,
-  data: ActiveReviewSessionResponse,
-) {
-  for (const queryMode of activeSessionQueryModes(mode)) {
-    setActiveReviewSessionQueryData(qc, api, queryMode, data);
-  }
-}
-
 async function cacheActiveSessionQueryData(
   qc: QueryClient,
   api: BoundApi,
   session: ActiveReviewSession,
 ) {
-  await cancelActiveSessionQueries(qc, api, session.mode);
-  setModeActiveSessionQueryData(qc, api, session.mode, { session });
+  await cancelActiveReviewSessionQuery(qc, api, session.mode);
+  setActiveReviewSessionQueryData(qc, api, session.mode, { session });
 }
 
 function sessionMatchesReviewId(
@@ -156,10 +133,8 @@ async function clearActiveSessionQueryData(
   mode: ReviewMode,
   reviewId?: string | null,
 ) {
-  await cancelActiveSessionQueries(qc, api, mode);
-  for (const queryMode of activeSessionQueryModes(mode)) {
-    clearActiveReviewSessionQueryData(qc, api, queryMode, reviewId);
-  }
+  await cancelActiveReviewSessionQuery(qc, api, mode);
+  clearActiveReviewSessionQueryData(qc, api, mode, reviewId);
 }
 
 export function useReviewSessionCache() {

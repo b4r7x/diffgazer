@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { FormEvent } from "react";
@@ -7,6 +10,9 @@ import { type ButtonRenderProps, buttonVariants } from "./button";
 import { Button } from "./index";
 
 describe("Button", () => {
+  // Reflow is a layout guarantee jsdom cannot measure, so this asserts the classes that carry it.
+  // They are the contract, not incidental styling: a long label must wrap inside the button instead
+  // of pushing its own row wider, and only the icon size opts back out.
   it("keeps text sizes reflowable and reserves no-wrap sizing for icon buttons", () => {
     const minimumHeights = { sm: "min-h-7", md: "min-h-9", lg: "min-h-11" } as const;
     for (const size of ["sm", "md", "lg"] as const) {
@@ -48,10 +54,7 @@ describe("Button", () => {
 
   it("exposes highlighted state on the native button branch", () => {
     const { rerender } = render(<Button highlighted>Native</Button>);
-    expect(screen.getByRole("button", { name: "Native" })).toHaveAttribute(
-      "data-highlighted",
-      "true",
-    );
+    expect(screen.getByRole("button", { name: "Native" })).toHaveAttribute("data-highlighted", "");
 
     rerender(<Button highlighted={false}>Native</Button>);
     expect(screen.getByRole("button", { name: "Native" })).not.toHaveAttribute("data-highlighted");
@@ -63,10 +66,7 @@ describe("Button", () => {
         Anchor
       </Button>,
     );
-    expect(screen.getByRole("link", { name: "Anchor" })).toHaveAttribute(
-      "data-highlighted",
-      "true",
-    );
+    expect(screen.getByRole("link", { name: "Anchor" })).toHaveAttribute("data-highlighted", "");
 
     rerender(
       <Button as="a" href="/test" highlighted={false}>
@@ -92,7 +92,7 @@ describe("Button", () => {
     const { rerender } = render(<ComposedButton highlighted />);
     expect(screen.getByRole("button", { name: "Composed" })).toHaveAttribute(
       "data-highlighted",
-      "true",
+      "",
     );
 
     rerender(<ComposedButton highlighted={false} />);
@@ -321,5 +321,72 @@ describe("Button", () => {
       </Button>,
     );
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe("disabled primary contrast (parsed from CSS)", () => {
+  const THEME_CSS = readFileSync(
+    resolve(fileURLToPath(import.meta.url), "../../../../styles/theme.css"),
+    "utf8",
+  );
+
+  /**
+   * Body of a rule block, matched whitespace-tolerantly so reformatting theme.css cannot
+   * strand these assertions on a selector that no longer matches character for character.
+   */
+  function block(selector: string): string {
+    const pattern = selector
+      .split(",")
+      .map((part) => part.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join(",\\s*");
+    const body = THEME_CSS.match(new RegExp(`${pattern}\\s*\\{([\\s\\S]*?)\\n\\}`))?.[1];
+    if (body === undefined) throw new Error(`Selector not found in CSS: ${selector}`);
+    return body;
+  }
+
+  /** Reads a custom property, following one level of `var()` aliasing. */
+  function readVar(blockText: string, name: string): string {
+    const value = blockText.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1]?.trim();
+    if (value === undefined) throw new Error(`Custom property not found: ${name}`);
+    const alias = value.match(/^var\((--[\w-]+)\)$/)?.[1];
+    return alias === undefined ? value : readVar(blockText, alias);
+  }
+
+  function luminance(hex: string): number {
+    const v = hex.replace("#", "");
+    const channel = (offset: number) => {
+      const s = Number.parseInt(v.slice(offset, offset + 2), 16) / 255;
+      return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+  }
+
+  function contrast(a: string, b: string): number {
+    const la = luminance(a);
+    const lb = luminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+
+  // The disabled treatment is a computed-color contract jsdom cannot measure, so this asserts the
+  // classes that carry it: fading a filled button drags its label under 4.5:1, so the fill is
+  // emptied instead of dimmed.
+  it("empties the disabled primary fill instead of fading it", () => {
+    const classes = buttonVariants({ variant: "primary" }).split(" ");
+    for (const state of ["disabled", "aria-disabled"]) {
+      expect(classes).toContain(`${state}:bg-transparent`);
+      expect(classes).toContain(`${state}:text-muted-foreground`);
+      // Without this the base fade still applies and washes the pair out.
+      expect(classes).toContain(`${state}:opacity-100`);
+    }
+  });
+
+  it.each([
+    ["dark", ':root, [data-theme="dark"]'],
+    ["light", '[data-theme="light"]'],
+  ])("keeps the disabled primary label readable in %s", (_theme, selector) => {
+    const theme = block(selector);
+    expect(
+      contrast(readVar(theme, "--muted-foreground"), readVar(theme, "--background")),
+    ).toBeGreaterThanOrEqual(4.5);
   });
 });

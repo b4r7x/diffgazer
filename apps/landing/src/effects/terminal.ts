@@ -1,5 +1,7 @@
+import { type Cleanup, createEffectScope } from "../effect-scope";
+import { sleep, typeText } from "../motion";
 import { observeOnce } from "../observe";
-import { type Cleanup, createEffectScope, type Flags, getFlags, sleep, typeText } from "../util";
+import { type Flags, getFlags } from "../viewport";
 
 function lineText(line: HTMLElement): string {
   return line.dataset.line ?? "";
@@ -29,7 +31,7 @@ async function runTerminal(
   }
 }
 
-function attachTilt(terminal: HTMLElement, signal?: AbortSignal): void {
+function attachTilt(terminal: HTMLElement, signal: AbortSignal): void {
   const wrap = terminal.parentElement;
   if (!wrap) return;
   wrap.addEventListener(
@@ -41,7 +43,7 @@ function attachTilt(terminal: HTMLElement, signal?: AbortSignal): void {
       terminal.style.setProperty("--ry", `${nx * 7}deg`);
       terminal.style.setProperty("--rx", `${-ny * 6}deg`);
     },
-    signal ? { signal } : undefined,
+    { signal },
   );
   wrap.addEventListener(
     "pointerleave",
@@ -49,7 +51,7 @@ function attachTilt(terminal: HTMLElement, signal?: AbortSignal): void {
       terminal.style.setProperty("--ry", "0deg");
       terminal.style.setProperty("--rx", "0deg");
     },
-    signal ? { signal } : undefined,
+    { signal },
   );
 }
 

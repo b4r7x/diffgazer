@@ -1,6 +1,7 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { flush } from "../../../testing/flush";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 import { NoChangesView } from "./no-changes-view";
@@ -11,12 +12,6 @@ const ESCAPE = "\u001b";
 afterEach(() => {
   cleanup();
 });
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 describe("NoChangesView (TUI)", () => {
   test("renders the shared no-diff copy for file mode", () => {

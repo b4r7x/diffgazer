@@ -15,7 +15,6 @@ import { pluralize } from "@diffgazer/core/strings";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useContentZone } from "../../../components/layout/global";
-import { SeverityBreakdown } from "../../../components/shared/severity/breakdown";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { ScrollArea } from "../../../components/ui/scroll-area";
@@ -25,6 +24,7 @@ import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../theme/provider";
 import { CategoryStatsTable } from "./category-stats-table";
 import { IssuePreviewItem } from "./issue-preview-item";
+import { SeverityBreakdown } from "./severity/breakdown";
 
 export interface ReviewSummaryViewProps {
   issues: ReviewIssue[];

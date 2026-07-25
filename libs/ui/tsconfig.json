@@ -14,6 +14,8 @@
   "exclude": [
     "registry/**/*.test.ts",
     "registry/**/*.test.tsx",
+    "registry/**/*-test-utils.ts",
+    "registry/**/*-test-utils.tsx",
     "theme/**/*.test.ts",
     "registry/**/testing/**",
     "registry/component-docs/**",

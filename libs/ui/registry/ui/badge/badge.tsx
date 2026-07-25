@@ -5,11 +5,13 @@ import { cn } from "@/lib/utils";
 /** Allowed badge variant values. */
 export type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral";
 /** Allowed badge size values. */
-export type BadgeSize = "sm" | "md" | "lg";
+export type BadgeSize = "xs" | "sm" | "md" | "lg";
+/** Allowed badge appearance values. */
+export type BadgeAppearance = "solid" | "outline";
 
 /** Class variants for badge. */
 export const badgeVariants = cva(
-  "inline-flex items-center font-bold tracking-wider rounded-sm border shrink-0 whitespace-nowrap",
+  "inline-flex items-center font-bold tracking-wider uppercase rounded-sm border shrink-0 whitespace-nowrap",
   {
     variants: {
       variant: {
@@ -24,12 +26,18 @@ export const badgeVariants = cva(
           "[--badge-dot:var(--neutral-strong)] bg-neutral-subtle text-neutral-text border-neutral-border",
       },
       size: {
+        xs: "px-1.5 py-0 text-2xs",
         sm: "px-2 py-0.5 text-xs",
         md: "px-3 py-1 text-sm",
         lg: "px-4 py-1.5 text-base",
       },
+      // Declared after `variant` so the transparent fill wins the merge.
+      appearance: {
+        solid: "",
+        outline: "bg-transparent",
+      },
     },
-    defaultVariants: { variant: "neutral", size: "sm" },
+    defaultVariants: { variant: "neutral", size: "sm", appearance: "solid" },
   },
 );
 
@@ -44,12 +52,21 @@ export interface BadgeProps
 }
 
 /** Root label container with variant and size styling. */
-export function Badge({ ref, className, variant, size, dot, children, ...props }: BadgeProps) {
+export function Badge({
+  ref,
+  className,
+  variant,
+  size,
+  appearance,
+  dot,
+  children,
+  ...props
+}: BadgeProps) {
   return (
     <span
       ref={ref}
       data-slot="badge"
-      className={cn(badgeVariants({ variant, size }), className)}
+      className={cn(badgeVariants({ variant, size, appearance }), className)}
       {...props}
     >
       {dot && (

@@ -12,6 +12,11 @@ export const switchDoc: ComponentDoc = {
   ],
   notes: [
     {
+      title: "State Glyph",
+      content:
+        'The thumb renders a binary glyph — "1" when checked, "0" when unchecked — so the on/off state stays readable without relying on track inversion or thumb position. The glyph is aria-hidden; role="switch" plus aria-checked carries the state for assistive technology.',
+    },
+    {
       title: "Form Submission",
       content:
         'Switch renders a hidden native checkbox when name or required is set. The value prop controls the form-submission string (default "on"). Pass form to associate both the switch and its form mirror with a remote form.',
@@ -20,6 +25,7 @@ export const switchDoc: ComponentDoc = {
   usage: { example: "switch-default" },
   examples: [
     { name: "switch-default", title: "Default" },
+    { name: "switch-states", title: "Sizes and States" },
     { name: "switch-controlled", title: "Controlled" },
   ],
   keyboard: {
@@ -29,7 +35,7 @@ export const switchDoc: ComponentDoc = {
       { keys: "Space", action: "Toggles the checked state when the switch is focused." },
       { keys: "Enter", action: "Toggles the checked state when the switch is focused." },
     ],
-    examples: [{ name: "switch-default", title: "Default" }],
+    examples: [{ name: "switch-controlled", title: "Controlled toggle" }],
   },
   dataAttributes: [
     {

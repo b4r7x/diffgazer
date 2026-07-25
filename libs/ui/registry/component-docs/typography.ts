@@ -21,7 +21,11 @@ export const typographyDoc: ComponentDoc = {
     },
   ],
   usage: { example: "typography-default" },
-  examples: [{ name: "typography-default", title: "Default" }],
+  examples: [
+    { name: "typography-default", title: "Default" },
+    { name: "typography-headings", title: "Heading Ramp" },
+    { name: "typography-tones", title: "Weights and Colors" },
+  ],
   keyboard: null,
   props: {
     Typography: {
@@ -55,7 +59,7 @@ export const typographyDoc: ComponentDoc = {
         required: false,
         defaultValue: '"default"',
         description:
-          "Text color token. default uses the primary text color, muted uses muted-foreground, accent uses the theme primary.",
+          "Text color token. default uses the foreground color, muted uses muted-foreground, accent uses the theme accent.",
       },
       lineClamp: {
         type: "1 | 2 | 3 | 4 | 5 | 6",

@@ -7,7 +7,7 @@ import { type ReactNode, type SyntheticEvent, useRef, useState } from "react";
 import { renderToString } from "react-dom/server";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
-import { requireAttribute } from "../../testing/assertions";
+import { requireAttribute, requireElement } from "../../testing/assertions";
 import { Popover } from "../popover/index";
 import { Dialog } from "./index";
 
@@ -1847,5 +1847,83 @@ describe("Dialog focus trap", () => {
 
     await user.tab({ shift: true });
     expect(closeIcon).toHaveFocus();
+  });
+});
+
+describe("Dialog.Title meta eyebrow", () => {
+  it('exposes data-slot="dialog-title-meta" so the close icon can claim the corner', () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Title meta="CONFIRM">Apply Patch</Dialog.Title>
+          <Dialog.CloseIcon />
+        </Dialog.Content>
+      </Dialog>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Apply Patch" });
+    const eyebrow = dialog.querySelector('[data-slot="dialog-title-meta"]');
+    expect(eyebrow).toHaveTextContent("CONFIRM");
+    // The eyebrow is a sibling of the heading, not part of it, so it stays out
+    // of the dialog's accessible name.
+    expect(dialog.querySelector('[data-slot="dialog-title"]')).toHaveTextContent("Apply Patch");
+  });
+});
+
+describe("Dialog inline (modal={false})", () => {
+  function renderInline(open = true) {
+    return render(
+      <Dialog open={open}>
+        <Dialog.Content modal={false} corners="standard">
+          <Dialog.Header>
+            <Dialog.Title>Inline Dialog</Dialog.Title>
+            <Dialog.Description>Rendered in the document flow</Dialog.Description>
+          </Dialog.Header>
+          <Dialog.Body>Body content</Dialog.Body>
+        </Dialog.Content>
+      </Dialog>,
+    );
+  }
+
+  it("renders the dialog chrome in the flow without a native dialog element", () => {
+    const { container } = renderInline();
+
+    expect(container.querySelector("dialog")).toBeNull();
+    const shell = requireElement(
+      container.querySelector('[data-slot="dialog-content"]'),
+      "inline dialog shell",
+    );
+    expect(requireAttribute(shell, "data-state")).toBe("open");
+    expect(shell).toHaveAttribute("data-corners", "standard");
+    expect(screen.getByText("Body content")).toBeInTheDocument();
+  });
+
+  it("is a labelled region rather than a dialog, since nothing about it is modal", () => {
+    renderInline();
+
+    const region = screen.getByRole("group", { name: "Inline Dialog" });
+    expect(region).not.toHaveAttribute("aria-modal");
+    expect(region).toHaveAccessibleDescription("Rendered in the document flow");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("unmounts when the consumer closes it", () => {
+    const { container, rerender } = renderInline();
+    expect(container.querySelector('[data-slot="dialog-content"]')).not.toBeNull();
+
+    rerender(
+      <Dialog open={false}>
+        <Dialog.Content modal={false}>
+          <Dialog.Title>Inline Dialog</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>,
+    );
+
+    expect(container.querySelector('[data-slot="dialog-content"]')).toBeNull();
+  });
+
+  it("has no axe violations", async () => {
+    const { container } = renderInline();
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

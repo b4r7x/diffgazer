@@ -10,7 +10,7 @@ export default function TooltipPlacementExample() {
           <Tooltip.Trigger>
             <button
               type="button"
-              className="border border-foreground/30 px-3 py-1 font-mono text-sm"
+              className="border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
             >
               {side}
             </button>

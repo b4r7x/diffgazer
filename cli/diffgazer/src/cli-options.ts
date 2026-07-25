@@ -26,8 +26,8 @@ const CLI_OPTIONS = {
 export type CliAction =
   | { type: "help" }
   | { type: "version" }
-  | { type: "web"; mode: CliMode; openBrowser: true }
-  | { type: "tui"; mode: CliMode; theme?: TuiThemeName; openBrowser: false };
+  | { type: "web"; mode: CliMode }
+  | { type: "tui"; mode: CliMode; theme?: TuiThemeName };
 
 export function resolveCliAction(args: string[]): CliAction {
   const { values } = parseArgs({
@@ -57,8 +57,8 @@ export function resolveCliAction(args: string[]): CliAction {
         `Invalid --theme "${theme}". Expected one of: ${TUI_THEME_NAMES.join(", ")}.`,
       );
     }
-    return { type: "tui", mode, theme, openBrowser: false };
+    return { type: "tui", mode, theme };
   }
 
-  return { type: "web", mode, openBrowser: true };
+  return { type: "web", mode };
 }

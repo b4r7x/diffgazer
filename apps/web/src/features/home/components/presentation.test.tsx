@@ -2,7 +2,7 @@ import type { ShutdownResult } from "@diffgazer/core/api";
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { Toaster } from "@diffgazer/ui/components/toast";
+import { Toaster, toast } from "@diffgazer/ui/components/toast";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, StrictMode } from "react";
@@ -65,6 +65,24 @@ function buildProps(overrides: Partial<HomePagePresentationProps> = {}): HomePag
 function renderPresentation(props: HomePagePresentationProps) {
   return render(<HomePagePresentation {...props} />, { wrapper: Wrapper });
 }
+
+// Toasts live in a module-scoped store that outlives `cleanup()`, so the
+// persistent error/warning toasts one row raises would otherwise leak into the
+// next row's absence checks. Draining goes through the public dismiss API and
+// waits for the Toaster to unmount them; the toast root is queried by its DOM
+// contract because a dismissed toast has no accessible name left to match.
+async function drainToasts() {
+  const { unmount } = render(<Toaster />);
+  act(() => {
+    toast.dismiss();
+  });
+  await waitFor(() => expect(document.querySelectorAll('[data-slot="toast"]')).toHaveLength(0));
+  unmount();
+}
+
+beforeEach(async () => {
+  await drainToasts();
+});
 
 function StrictWrapper({ children }: { children: ReactNode }) {
   return (
@@ -334,8 +352,6 @@ describe("HomePagePresentation — quit result surfacing", () => {
     mockRouterNavigate.mockReset();
   });
 
-  // Runs first: the other rows leave persistent error/warning toasts in the
-  // shared toast store, which would otherwise make this absence check flaky.
   it("shows neither notice when shutdown closes cleanly", async () => {
     const shutdown = vi.fn(async (): Promise<ShutdownResult> => ({ status: "closed" }));
     const user = userEvent.setup();
@@ -360,5 +376,70 @@ describe("HomePagePresentation — quit result surfacing", () => {
 
     expect(await screen.findByText(title)).toBeInTheDocument();
     expect(screen.getByText(message)).toBeInTheDocument();
+  });
+});
+
+describe("HomePagePresentation — menu jump keys", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRouterNavigate.mockReset();
+  });
+
+  it("starts an unstaged review from the advertised r key", async () => {
+    const createReview = vi.fn(async () => ({ reviewId: "rev-new" }));
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ createReview }));
+
+    await user.keyboard("r");
+
+    await waitFor(() => expect(createReview).toHaveBeenCalledWith({ mode: "unstaged" }));
+  });
+
+  it("starts a staged review from the advertised shifted R key", async () => {
+    const createReview = vi.fn(async () => ({ reviewId: "rev-new" }));
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ createReview }));
+
+    await user.keyboard("{Shift>}R{/Shift}");
+
+    await waitFor(() => expect(createReview).toHaveBeenCalledWith({ mode: "staged" }));
+  });
+
+  it("resumes the cached session from the advertised l key", async () => {
+    const navigateMock = createNavigateMock();
+    const user = userEvent.setup();
+    renderPresentation(
+      buildProps({
+        resumableSession: { reviewId: "rev-unstaged", mode: "unstaged" },
+        navigate: navigateMock.navigate,
+      }),
+    );
+
+    await user.keyboard("l");
+
+    expect(navigateMock.mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/review/{-$reviewId}",
+        params: { reviewId: "rev-unstaged" },
+      }),
+    );
+  });
+
+  it("ignores the jump keys of items the menu renders as disabled", async () => {
+    const createReview = vi.fn(async () => ({ reviewId: "rev-new" }));
+    const navigateMock = createNavigateMock();
+    const user = userEvent.setup();
+    // Untrusted disables both review starts; no resumable session disables resume.
+    renderPresentation(
+      buildProps({ isTrusted: false, createReview, navigate: navigateMock.navigate }),
+    );
+
+    await user.keyboard("r");
+    await user.keyboard("{Shift>}R{/Shift}");
+    await user.keyboard("l");
+
+    expect(createReview).not.toHaveBeenCalled();
+    expect(navigateMock.mock).not.toHaveBeenCalled();
+    expect(screen.queryByText("Repository Not Trusted")).not.toBeInTheDocument();
   });
 });

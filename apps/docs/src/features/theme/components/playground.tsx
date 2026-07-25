@@ -1,8 +1,8 @@
 import { Button } from "@diffgazer/ui/components/button";
 import { Panel, PanelContent, PanelHeader, PanelTitle } from "@diffgazer/ui/components/panel";
-import { orderThemeDocsPrimitives, THEME_DOCS_PLAYGROUND_ORDER } from "@diffgazer/ui/theme";
 import { useState } from "react";
 import { type DocsTheme, useTheme } from "@/hooks/theme-context";
+import { orderThemeDocsPrimitives, THEME_DOCS_PLAYGROUND_ORDER } from "../lib/token-presentation";
 import { ColorPickerRow } from "./color-picker-row";
 import { CssOutput } from "./css-output";
 import { PreviewPanel } from "./preview-panel";

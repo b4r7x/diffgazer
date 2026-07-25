@@ -112,6 +112,10 @@
       "types": "./dist/schemas/presentation/index.d.ts",
       "import": "./dist/schemas/presentation/index.js"
     },
+    "./testing/assertions": {
+      "types": "./dist/testing/assertions.d.ts",
+      "import": "./dist/testing/assertions.js"
+    },
     "./testing/dom-polyfills": {
       "types": "./dist/testing/dom-polyfills.d.ts",
       "import": "./dist/testing/dom-polyfills.js"

@@ -63,6 +63,20 @@ import { removeCommand } from "./remove.js";
 
 type Snapshot = Map<string, Buffer | null>;
 
+// Installing ui/dialog appends one CSS chunk per style-bearing item in its tree,
+// so tests that target a single chunk locate it by body text.
+const CSS_CHUNK_PATTERN =
+  /\/\* dgadd:css ([a-f0-9]{16})(?: \S+)? \*\/([\s\S]*?)\/\* dgadd:css-end \1(?: \S+)? \*\//g;
+
+function findCssChunk(css: string, declaration: string): { hash: string; block: string } {
+  for (const match of css.matchAll(CSS_CHUNK_PATTERN)) {
+    const hash = match[1];
+    const body = match[2];
+    if (hash && body?.includes(declaration)) return { hash, block: match[0] };
+  }
+  throw new Error(`No dgadd CSS chunk contains ${declaration}.`);
+}
+
 let root: string;
 
 function resetFaults(): void {
@@ -233,15 +247,14 @@ describe("removeCommand transaction", () => {
     const stylesPath = join(root, "src/styles/styles.css");
     const manifestPath = join(root, "diffgazer.json");
     const config = readConfig();
-    const chunkOwner = Object.entries(config.installedComponents ?? {}).find(
-      ([, record]) => (record.cssChunks?.length ?? 0) > 0,
+    const originalCss = readFileSync(stylesPath, "utf-8");
+    const backdropChunk = findCssChunk(originalCss, "dialog::backdrop");
+    const chunkOwner = Object.entries(config.installedComponents ?? {}).find(([, record]) =>
+      record.cssChunks?.includes(backdropChunk.hash),
     );
-    if (!chunkOwner) throw new Error("Expected a CSS chunk owner");
+    if (!chunkOwner) throw new Error("Expected an owner for the dialog backdrop CSS chunk");
     const [chunkOwnerName, chunkOwnerRecord] = chunkOwner;
-    const editedCss = readFileSync(stylesPath, "utf-8").replace(
-      /(dialog::backdrop)/,
-      "/* user tuned */\n$1",
-    );
+    const editedCss = originalCss.replace(/(dialog::backdrop)/, "/* user tuned */\n$1");
     writeFileSync(stylesPath, editedCss);
     const before = capture([...sourcePaths, stylesPath, manifestPath]);
     faults.renameTarget = manifestPath;
@@ -257,7 +270,10 @@ describe("removeCommand transaction", () => {
     await removeDialog();
 
     expect(sourcePaths.every((path) => !existsSync(path))).toBe(true);
-    expect(readFileSync(stylesPath, "utf-8")).toBe(editedCss);
+    // The retry keeps the edited chunk byte-for-byte and drops every untouched one.
+    const cssAfter = readFileSync(stylesPath, "utf-8");
+    expect(cssAfter).toContain(findCssChunk(editedCss, "user tuned").block);
+    expect([...cssAfter.matchAll(CSS_CHUNK_PATTERN)]).toHaveLength(1);
     const retained = readConfig().installedComponents?.[chunkOwnerName];
     expect(retained?.cssChunks).toEqual(chunkOwnerRecord.cssChunks);
     expect(retained?.files).toBeUndefined();

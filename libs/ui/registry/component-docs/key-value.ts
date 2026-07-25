@@ -17,7 +17,7 @@ export const keyValueDoc: ComponentDoc = {
     {
       title: "Color Variants",
       content:
-        "5 semantic color variants (default, warning, info, success, error) style the value text. The info variant uses monospace font instead of bold.",
+        "5 semantic color variants (default, warning, info, success, error) style the value text. The info variant renders monospace in the info color instead of bold.",
     },
     {
       title: "Bordered Rows",
@@ -32,7 +32,7 @@ export const keyValueDoc: ComponentDoc = {
     {
       title: "Class Slots",
       content:
-        "Use labelClassName and valueClassName for app-specific label/value styling while preserving the <dl>/<dt>/<dd> structure.",
+        "KeyValue.Item renders two elements: className (and every other forwarded prop) lands on the <dt>, valueClassName on the <dd>. Both preserve the <dl>/<dt>/<dd> structure.",
     },
   ],
   usage: { example: "key-value-default" },
@@ -84,7 +84,7 @@ export const keyValueDoc: ComponentDoc = {
         required: false,
         defaultValue: '"default"',
         description:
-          "Color token applied to the value. Info uses monospace; the rest are bold semantic colors.",
+          "Color token applied to the value. Info renders monospace in the info color; the rest are bold semantic colors.",
       },
       layout: {
         type: '"horizontal" | "vertical"',
@@ -98,11 +98,12 @@ export const keyValueDoc: ComponentDoc = {
         defaultValue: "inherited from KeyValue",
         description: "Per-row override for the inter-row top separator and compact sizing.",
       },
-      labelClassName: {
+      className: {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "Class applied to the <dt> in addition to the variant classes.",
+        description:
+          "Class applied to the <dt> in addition to the variant classes. Other forwarded props land on the <dt> too.",
       },
       valueClassName: {
         type: "string",

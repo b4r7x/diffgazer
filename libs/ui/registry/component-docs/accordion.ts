@@ -88,6 +88,7 @@ export const accordionDoc: ComponentDoc = {
     { name: "accordion-default", title: "Default" },
     { name: "accordion-multiple", title: "Multiple Open" },
     { name: "accordion-custom-handle", title: "Custom Handle" },
+    { name: "accordion-source-variant", title: "Source Variant" },
   ],
   props: {
     Accordion: {

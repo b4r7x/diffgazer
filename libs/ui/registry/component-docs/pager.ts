@@ -4,6 +4,11 @@ export const pagerDoc: ComponentDoc = {
   description: "Previous/next page navigation bar with arrow indicators.",
   notes: [
     {
+      title: "Page Spacing",
+      content:
+        'Pager renders only the top rule and the link row. Vertical spacing from the content above is a page decision — add it at the call site (for example className="mt-8").',
+    },
+    {
       title: "Link Navigation",
       content:
         'Use PagerLink with a direction prop for standard anchor links. For framework-specific link components (TanStack Link, Next.js Link), use the render-prop pattern: <PagerLink direction="next">{(props) => <Link {...props} to="...">text</Link>}</PagerLink>.',
@@ -17,7 +22,10 @@ export const pagerDoc: ComponentDoc = {
   usage: { example: "pager-default" },
   examples: [
     { name: "pager-default", title: "Default" },
-    { name: "pager-single", title: "Single" },
+    { name: "pager-single", title: "Single Direction" },
+    { name: "pager-long-labels", title: "Long Titles" },
+    { name: "pager-states", title: "Hover and Focus" },
+    { name: "pager-render-prop", title: "Framework Link (render prop)" },
   ],
   keyboard: null,
   props: {

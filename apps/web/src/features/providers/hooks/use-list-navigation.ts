@@ -16,9 +16,7 @@ interface UseProvidersListNavigationOptions {
   filteredProviders: Array<{ id: string }>;
   filter: ProviderFilter;
   dialogOpen: boolean;
-  inInput: boolean;
-  inFilters: boolean;
-  inList: boolean;
+  zone: FocusZone;
   inputRef: RefObject<HTMLInputElement | null>;
   setZone: (zone: FocusZone) => void;
   setSelectedId: (id: string | null) => void;
@@ -52,9 +50,7 @@ export function useProvidersListNavigation({
   filteredProviders,
   filter,
   dialogOpen,
-  inInput,
-  inFilters,
-  inList,
+  zone,
   inputRef,
   setZone,
   setSelectedId,
@@ -103,6 +99,21 @@ export function useProvidersListNavigation({
     setZone("list");
   };
 
+  // The filter-row up/down transitions, shared by the document-level useKey
+  // registrations and the ToggleGroup's handleFilterKeyDown so the two paths
+  // cannot drift.
+  const moveToSearch = () => {
+    setZone("input");
+    inputRef.current?.focus();
+  };
+
+  const moveToList = () => {
+    if (filteredProviders.length === 0) return;
+    setZone("list");
+    focusFirstProvider();
+    focusProviderList();
+  };
+
   const handleSearchEscape = () => {
     focusFilterButton(PROVIDER_FILTERS.indexOf(filter));
     inputRef.current?.blur();
@@ -114,36 +125,28 @@ export function useProvidersListNavigation({
       focusFilterButton(PROVIDER_FILTERS.indexOf(filter));
       inputRef.current?.blur();
     },
-    { enabled: !dialogOpen && inInput, allowInInput: true, preventDefault: true },
+    { enabled: !dialogOpen && zone === "input", allowInInput: true, preventDefault: true },
   );
-  useKey("Escape", handleSearchEscape, { enabled: !dialogOpen && inInput, allowInInput: true });
+  useKey("Escape", handleSearchEscape, {
+    enabled: !dialogOpen && zone === "input",
+    allowInInput: true,
+  });
 
-  useKey(
-    "ArrowUp",
-    () => {
-      setZone("input");
-      inputRef.current?.focus();
-    },
-    { enabled: !dialogOpen && inFilters, preventDefault: true },
-  );
-  useKey(
-    "ArrowDown",
-    () => {
-      if (filteredProviders.length > 0) {
-        setZone("list");
-        focusFirstProvider();
-        focusProviderList();
-      }
-    },
-    { enabled: !dialogOpen && inFilters, preventDefault: true },
-  );
+  useKey("ArrowUp", moveToSearch, {
+    enabled: !dialogOpen && zone === "filters",
+    preventDefault: true,
+  });
+  useKey("ArrowDown", moveToList, {
+    enabled: !dialogOpen && zone === "filters",
+    preventDefault: true,
+  });
 
   useKey(
     "ArrowRight",
     () => {
       enterButtons(0);
     },
-    { enabled: !dialogOpen && inList && selectedProvider !== null },
+    { enabled: !dialogOpen && zone === "list" && selectedProvider !== null },
   );
 
   useKey(
@@ -152,7 +155,7 @@ export function useProvidersListNavigation({
       setZone("input");
       inputRef.current?.focus();
     },
-    { enabled: !dialogOpen && !inInput, preventDefault: true },
+    { enabled: !dialogOpen && zone !== "input", preventDefault: true },
   );
 
   const handleListBoundary = (direction: "up" | "down") => {
@@ -164,17 +167,13 @@ export function useProvidersListNavigation({
   const handleFilterKeyDown = (event: ReactKeyboardEvent) => {
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      setZone("input");
-      inputRef.current?.focus();
+      moveToSearch();
       return;
     }
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      if (filteredProviders.length === 0) return;
-      setZone("list");
-      focusFirstProvider();
-      focusProviderList();
+      moveToList();
     }
   };
 

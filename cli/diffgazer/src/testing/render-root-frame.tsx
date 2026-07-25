@@ -2,7 +2,7 @@ import { PassThrough, Writable } from "node:stream";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { render } from "ink";
 import type { ReactNode } from "react";
-import { NavigationProvider } from "../app/providers/navigation-provider";
+import { NavigationProvider } from "../app/providers/navigation";
 import { GlobalLayout } from "../components/layout/global";
 import { CliThemeProvider } from "../theme/provider";
 

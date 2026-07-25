@@ -84,7 +84,12 @@ describe("config API functions", () => {
 
     await activateProvider(client, "gemini", model);
 
-    expect(client.post).toHaveBeenCalledWith("/api/config/provider/gemini/activate", expectedBody);
+    expect(client.post).toHaveBeenCalledWith(
+      "/api/config/provider/gemini/activate",
+      expectedBody,
+      undefined,
+      expect.any(Function),
+    );
   });
 
   it.each(
@@ -109,6 +114,8 @@ describe("config API functions", () => {
     expect(client.post).toHaveBeenCalledWith(
       `/api/config/provider/${encodedProviderId}/activate`,
       {},
+      undefined,
+      expect.any(Function),
     );
   });
 

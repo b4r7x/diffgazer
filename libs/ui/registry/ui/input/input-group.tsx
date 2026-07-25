@@ -14,7 +14,10 @@ const INTERACTIVE_AFFIX_SELECTOR = "button, a, input, select, textarea, label, [
 
 /** Class variants for input group. */
 export const inputGroupVariants = cva(
-  "flex w-full items-center gap-2 bg-background border border-border text-foreground font-mono placeholder:text-foreground/55 transition-colors focus-within:border-foreground focus-within:ring-1 focus-within:ring-foreground has-[input[aria-invalid=true]]:border-2 has-[input[aria-invalid=true]]:border-error has-[input[aria-invalid=true]]:focus-within:border-error has-[input[aria-invalid=true]]:focus-within:ring-error",
+  // The shell owns the focus indicator for the bare input inside it. Under forced-colors
+  // the ring (a box-shadow) is dropped and border-color is forced to the system palette,
+  // so the shell draws an outline of its own there — see input-variants.ts.
+  "flex w-full items-center gap-2 bg-background border border-border text-foreground font-mono placeholder:text-foreground/55 transition-colors focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:forced-colors:outline-2 focus-within:forced-colors:outline-offset-2 has-[input[aria-invalid=true]]:border-error has-[input[aria-invalid=true]]:ring-1 has-[input[aria-invalid=true]]:ring-error has-[input[aria-invalid=true]]:focus-within:border-error has-[input[aria-invalid=true]]:focus-within:ring-error",
   {
     variants: {
       size: inputSizeClasses,
@@ -94,7 +97,7 @@ export function InputGroup({
       onMouseDown={handleContainerMouseDown}
       className={cn(
         inputGroupVariants({ size }),
-        disabled && "cursor-not-allowed opacity-50",
+        disabled && "cursor-not-allowed border-dashed opacity-50",
         className,
       )}
     >

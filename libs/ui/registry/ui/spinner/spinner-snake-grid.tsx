@@ -15,8 +15,14 @@ const SNAKE_PERIMETER = [0, 1, 2, 5, 8, 7, 6, 3] as const;
 export const SNAKE_FRAME_COUNT = SNAKE_PERIMETER.length;
 
 const PERIMETER_POSITION = new Map<number, number>(SNAKE_PERIMETER.map((cell, i) => [cell, i]));
-const TRAIL_OPACITIES = [1, 0.6, 0.3] as const;
-const INACTIVE_OPACITY = 0.15;
+// Alphas live in spinner.css so the light palette can raise the ramp; the dark
+// values (1 / 0.6 / 0.3 / 0.15) are the CSS defaults.
+const TRAIL_VARS = [
+  "--spinner-trail-head",
+  "--spinner-trail-body",
+  "--spinner-trail-tail",
+] as const;
+const IDLE_VAR = "--spinner-trail-idle";
 
 /** Class variants for snake grid dot. */
 export const snakeGridDotVariants = cva("rounded-sm bg-current", {
@@ -44,12 +50,12 @@ export const snakeGridContainerVariants = cva("grid grid-cols-3", {
 
 const CELL_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const;
 
-function getCellOpacity(frame: number, cellIndex: number): number {
+function getCellOpacity(frame: number, cellIndex: number): string {
   const positionInPerimeter = PERIMETER_POSITION.get(cellIndex);
-  if (positionInPerimeter === undefined) return 0;
+  if (positionInPerimeter === undefined) return "0";
   const distanceBehindHead =
     (frame - positionInPerimeter + SNAKE_PERIMETER.length) % SNAKE_PERIMETER.length;
-  return TRAIL_OPACITIES[distanceBehindHead] ?? INACTIVE_OPACITY;
+  return `var(${TRAIL_VARS[distanceBehindHead] ?? IDLE_VAR})`;
 }
 
 /** Props for snake grid. */

@@ -1,6 +1,7 @@
 import { Box, Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { flush } from "../../testing/flush";
 import { CliThemeProvider } from "../../theme/provider";
 import { RadioGroup } from "./radio";
 
@@ -14,12 +15,6 @@ const ARROW_LEFT = "\u001b[D";
 const ARROW_RIGHT = "\u001b[C";
 const RETURN = "\r";
 const SPACE = " ";
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 function renderGroup(props: Partial<Parameters<typeof RadioGroup>[0]> = {}) {
   return render(

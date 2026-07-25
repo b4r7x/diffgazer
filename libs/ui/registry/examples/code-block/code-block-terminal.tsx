@@ -6,9 +6,11 @@ Already up to date
 
 Done in 1.2s`;
 
+// variant="terminal" only centers the label; the window dots are opt-in in
+// every variant through chrome="dots".
 export default function CodeBlockTerminal() {
   return (
-    <CodeBlock variant="terminal" language="bash">
+    <CodeBlock variant="terminal" language="bash" chrome="dots">
       <CodeBlock.Header>
         <CodeBlock.Label>~/diffgazer · zsh</CodeBlock.Label>
       </CodeBlock.Header>

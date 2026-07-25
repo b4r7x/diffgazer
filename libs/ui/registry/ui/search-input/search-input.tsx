@@ -11,19 +11,22 @@ import {
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
+import { inputSizeClasses } from "@/lib/input-variants";
 import { cn } from "@/lib/utils";
 
+// Sizes come from the shared input grid so a SearchInput lines up with an Input
+// or InputGroup of the same nominal size; focus and invalid mirror InputGroup's
+// inset grammar on --ring / --error.
 const searchInputVariants = cva(
-  "relative flex items-center gap-2 bg-background border border-border font-mono shrink-0 transition-colors motion-reduce:transition-none focus-within:border-foreground has-[input[aria-invalid=true]]:border-error",
+  // The shell owns the focus indicator for the bare input inside it. Under forced-colors
+  // the ring (a box-shadow) is dropped and border-color is forced to the system palette,
+  // so the shell draws an outline of its own there — see input-variants.ts.
+  "relative flex items-center gap-2 bg-background border border-border font-mono shrink-0 transition-colors motion-reduce:transition-none focus-within:border-ring focus-within:ring-1 focus-within:ring-ring focus-within:forced-colors:outline-2 focus-within:forced-colors:outline-offset-2 has-[input[aria-invalid=true]]:border-error has-[input[aria-invalid=true]]:ring-1 has-[input[aria-invalid=true]]:ring-error has-[input[aria-invalid=true]]:focus-within:border-error has-[input[aria-invalid=true]]:focus-within:ring-error",
   {
     variants: {
-      size: {
-        sm: "p-2 text-xs max-md:text-base",
-        md: "p-3 text-sm max-md:text-base",
-        lg: "p-3 text-base",
-      },
+      size: inputSizeClasses,
       disabled: {
-        true: "opacity-50 pointer-events-none",
+        true: "opacity-50 border-dashed pointer-events-none",
       },
     },
     defaultVariants: { size: "md" },
@@ -54,8 +57,13 @@ export interface SearchInputProps
   onEnter?: () => void;
   /** Prefix content before the input. Pass null to hide it. */
   prefix?: ReactNode;
-  /** Padding/font size token for the search wrapper. */
+  /** Height/padding/font size token, shared with Input and InputGroup. */
   size?: "sm" | "md" | "lg";
+  /**
+   * Classes merged onto the inner input. The public seam for styling the field itself (text
+   * overflow, alignment) instead of reaching through the shell with a `[&_input]` selector.
+   */
+  inputClassName?: string;
   /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLInputElement>;
 }
@@ -74,6 +82,7 @@ export function SearchInput({
   placeholder = "Search...",
   prefix = defaultPrefix,
   className,
+  inputClassName,
   ref,
   size,
   disabled,
@@ -141,7 +150,10 @@ export function SearchInput({
         aria-labelledby={ariaLabelledBy}
         disabled={disabled}
         {...rest}
-        className="min-w-0 flex-1 bg-transparent pr-6 font-mono text-foreground placeholder:text-foreground/55 focus:outline-none disabled:cursor-not-allowed pointer-coarse:pr-9 [&::-webkit-search-cancel-button]:appearance-none"
+        className={cn(
+          "min-w-0 flex-1 bg-transparent pr-6 font-mono text-foreground placeholder:text-foreground/55 focus:outline-none disabled:cursor-not-allowed pointer-coarse:pr-9 [&::-webkit-search-cancel-button]:appearance-none",
+          inputClassName,
+        )}
       />
       {current.length > 0 ? (
         <button
@@ -149,7 +161,7 @@ export function SearchInput({
           data-slot="search-input-clear"
           aria-label="Clear search"
           disabled={disabled}
-          className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center text-base leading-none text-foreground/70 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed pointer-coarse:right-0 pointer-coarse:size-11"
+          className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center text-base leading-none text-foreground/70 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed pointer-coarse:right-0 pointer-coarse:size-11"
           onPointerDown={(event) => event.preventDefault()}
           onClick={() => {
             invalidatePendingReset();

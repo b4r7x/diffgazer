@@ -12,7 +12,7 @@
    * ancestor-scoped override reaches them. Defaults: --code-block-bg → var(--background);
    * --code-block-fg → var(--foreground); --code-block-border → var(--border); --code-block-border-soft →
    * color-mix(in oklab, var(--border) 60%, transparent); --code-block-muted →
-   * var(--muted-foreground); --code-block-header-h → 32px.
+   * var(--muted-foreground); --code-block-header-h → 32px; --code-block-font-size → 13px.
    */
   [data-slot="code-block"] {
     position: relative;
@@ -21,14 +21,16 @@
     background: var(--code-block-bg, var(--background));
     color: var(--code-block-fg, var(--foreground));
     overflow: hidden;
-    border-radius: 2px;
+    border-radius: calc(var(--radius) * 0.5);
   }
 
   [data-slot="code-block-content"] {
     margin: 0;
     padding: 12px 0;
     font-family: var(--base-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-    font-size: 13px;
+    /* Consumer-sizable: className on CodeBlock.Content lands on the ScrollArea
+       wrapper, so a pinned font-size here would be unreachable from the outside. */
+    font-size: var(--code-block-font-size, 13px);
     line-height: 1.45;
     letter-spacing: 0;
     font-feature-settings:
@@ -79,12 +81,13 @@
     flex: 1 1 auto;
   }
 
-  /* Row state tints applied to the line, not <code>. */
-  [data-slot="code-block-line"][data-line-state="added"] {
-    background: color-mix(in oklab, var(--success, #2ea043) 12%, transparent);
+  /* Row state tints applied to the line, not <code>. Added/removed read the
+     subtle tone tier so a theme re-tints diff rows and Badge/Callout together. */
+  [data-slot="code-block-line"][data-state="added"] {
+    background: var(--success-subtle);
   }
 
-  [data-slot="code-block-line"][data-line-state="added"] [data-slot="code-block-line-sign"] {
+  [data-slot="code-block-line"][data-state="added"] [data-slot="code-block-line-sign"] {
     color: color-mix(
       in oklab,
       var(--success, #2ea043) 90%,
@@ -92,15 +95,15 @@
     );
   }
 
-  [data-slot="code-block-line"][data-line-state="removed"] {
-    background: color-mix(in oklab, var(--error, #f85149) 12%, transparent);
+  [data-slot="code-block-line"][data-state="removed"] {
+    background: var(--error-subtle);
   }
 
-  [data-slot="code-block-line"][data-line-state="removed"] [data-slot="code-block-line-sign"] {
+  [data-slot="code-block-line"][data-state="removed"] [data-slot="code-block-line-sign"] {
     color: color-mix(in oklab, var(--error, #f85149) 90%, var(--code-block-fg, var(--foreground)));
   }
 
-  [data-slot="code-block-line"][data-line-state="highlight"] {
+  [data-slot="code-block-line"][data-state="highlight"] {
     background: color-mix(in oklab, var(--code-block-fg, var(--foreground)) 8%, transparent);
   }
 
@@ -207,7 +210,7 @@
     margin: 0;
     background: transparent;
     border: 0;
-    border-radius: 2px;
+    border-radius: calc(var(--radius) * 0.5);
     color: color-mix(in oklab, var(--code-block-fg, var(--foreground)) 60%, transparent);
     cursor: pointer;
     transition:
@@ -225,12 +228,6 @@
   }
 
   [data-slot="code-block-copy-button"]:focus-visible {
-    outline: 2px solid var(--ring, var(--code-block-fg, var(--foreground)));
-    outline-offset: 2px;
-  }
-
-  /* Focus ring on the scrollable region. */
-  [data-slot="code-block-content"]:focus-visible {
     outline: 2px solid var(--ring, var(--code-block-fg, var(--foreground)));
     outline-offset: 2px;
   }
@@ -327,7 +324,6 @@
     border-left-color: CanvasText;
   }
 
-  [data-slot="code-block-content"]:focus-visible,
   [data-slot="code-block-copy-button"]:focus-visible {
     outline-color: Highlight;
   }

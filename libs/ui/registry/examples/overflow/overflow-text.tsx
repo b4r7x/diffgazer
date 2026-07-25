@@ -7,7 +7,9 @@ export default function OverflowTextExample() {
   return (
     <div className="flex flex-col gap-4">
       <div className="space-y-1.5">
-        <span className="text-xs font-mono text-muted-foreground">lines=1 (truncate)</span>
+        <span className="text-xs font-mono text-muted-foreground">
+          lines=1 (truncate) — hover the clipped line for the auto tooltip
+        </span>
         <div className="w-64 border border-dashed border-foreground/20 p-2">
           <Overflow mode="text">{longText}</Overflow>
         </div>

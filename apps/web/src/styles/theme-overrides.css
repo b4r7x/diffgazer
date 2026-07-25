@@ -37,6 +37,14 @@
   --action-foreground: var(--base-bg);
   --muted-foreground: var(--base-muted);
 
+  /* Structural tokens the lib derives from its monochrome primitives: without
+     these the GitHub-dark surfaces inherit neutral gray (#9c9c9c edge, #111111
+     fill) that reads cold-gray against the blue-black canvas. GitHub-dark's own
+     steps: border-default #30363d -> border-muted-emphasis #484f58, canvas-default
+     #0d1117 -> canvas-subtle #161b22. */
+  --border-strong: #484f58;
+  --surface-1: #161b22;
+
   /* Domain-specific tokens (diffgazer-only, not in /ui) */
   --severity-blocker: var(--base-danger);
   --severity-high: #f0883e;
@@ -66,7 +74,23 @@
   --base-warning: #9a6700;
   --base-border: #d0d7de;
   --base-muted: #656d76;
+
+  /* Semantic remaps that diverge from the lib light block, mirroring the dark
+     block above: the lib maps --primary/--ring/--accent to its near-black
+     highlight role, which would flip the app's selection and accent vocabulary
+     to a different hue family in light than in dark. The paired foregrounds
+     need no restatement here — the lib light block already resolves
+     --primary-foreground and --accent-foreground to #ffffff, which is the
+     correct pairing (5.19:1 on the blue, 5.05:1 on the violet). */
+  --primary: var(--base-info);
+  --accent: var(--base-accent);
+  --ring: var(--base-info);
   --muted-foreground: var(--base-muted);
+
+  /* GitHub-light counterparts of the lib structural tokens (see the dark block):
+     border-neutral-emphasis #8c959f and canvas-subtle #f6f8fa. */
+  --border-strong: #8c959f;
+  --surface-1: #f6f8fa;
 
   /* Domain-specific tokens (diffgazer-only) */
   --severity-blocker: var(--base-danger);

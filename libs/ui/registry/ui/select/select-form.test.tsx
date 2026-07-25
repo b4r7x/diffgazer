@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Select, type SelectProps } from "./index";
-import { getSearchInput, getSelectTrigger, getTestForm } from "./select.test-utils";
+import { getSearchInput, getSelectTrigger, getTestForm } from "./select-test-utils";
 
 describe("Select form submission", () => {
   function renderFormSelect({

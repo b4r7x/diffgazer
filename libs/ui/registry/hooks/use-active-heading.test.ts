@@ -64,6 +64,20 @@ function appendHeading(id: string) {
   return heading;
 }
 
+function appendScrollContainer(
+  id: string,
+  { clientHeight, scrollHeight, scrollTop = 0 }: Record<string, number>,
+) {
+  const container = document.createElement("div");
+  container.id = id;
+  document.body.appendChild(container);
+  for (const [key, value] of Object.entries({ clientHeight, scrollHeight, scrollTop })) {
+    Object.defineProperty(container, key, { configurable: true, value });
+  }
+  container.getBoundingClientRect = () => makeDOMRect(0, clientHeight);
+  return container;
+}
+
 function flushFrames() {
   act(() => {
     const callbacks = Array.from(frameCallbacks.values());
@@ -328,6 +342,44 @@ describe("useActiveHeading", () => {
       restoreProperty(document, "onscrollend", originalScrollEnd);
       vi.useRealTimers();
     }
+  });
+
+  it("keeps the visible heading active when the tracked container cannot scroll", () => {
+    // A TOC demo pinned in a pane that fits its content has nothing to scroll, so
+    // bottom lock must stay out of the way and the first heading stays active.
+    appendScrollContainer("pane", { clientHeight: 300, scrollHeight: 300 });
+    setHeadingRect("h1", 10);
+    setHeadingRect("h2", 400);
+    setHeadingRect("h3", 800);
+
+    const { result } = renderHook(() =>
+      useActiveHeading({
+        ids: ["h1", "h2", "h3"],
+        containerId: "pane",
+        topOffset: 24,
+        observe: false,
+      }),
+    );
+
+    expect(result.current.activeId).toBe("h1");
+  });
+
+  it("activates the last heading once the container is scrolled to its bottom", () => {
+    appendScrollContainer("pane", { clientHeight: 300, scrollHeight: 1200, scrollTop: 900 });
+    setHeadingRect("h1", -880);
+    setHeadingRect("h2", -480);
+    setHeadingRect("h3", -80);
+
+    const { result } = renderHook(() =>
+      useActiveHeading({
+        ids: ["h1", "h2", "h3"],
+        containerId: "pane",
+        topOffset: 24,
+        observe: false,
+      }),
+    );
+
+    expect(result.current.activeId).toBe("h3");
   });
 
   it("cleans up observers, listeners, and pending animation frames on unmount", () => {

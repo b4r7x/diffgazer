@@ -25,39 +25,78 @@
     scrollbar-width: none;
   }
 
+  /*
+   * Terminal tools show their scroll indicators, so the thumb stays legible at
+   * rest and strengthens on hover/focus. Both steps are consumed via var()
+   * fallback (never declared on the utility) so an ancestor scope can override
+   * them: --scrollbar-thumb → foreground at 35%; --scrollbar-thumb-active →
+   * foreground at 60%. Derived from --foreground, so both themes track.
+   *
+   * The ::-webkit-scrollbar tree is the ONLY way to get a resting thumb in
+   * Chromium/WebKit: declaring the standard scrollbar-width/scrollbar-color on
+   * the same element makes Chromium drop this pseudo tree and fall back to the
+   * platform scrollbar, which is an overlay that stays invisible until you
+   * scroll (macOS default). So the two syntaxes stay mutually exclusive —
+   * webkit painting here, standard properties only where the pseudo-element is
+   * unsupported (Firefox) in the @supports block below.
+   *
+   * Tailwind v4 ships a built-in `scrollbar-thin` utility of its own that emits
+   * `scrollbar-width: thin` into the utilities layer, which would re-trigger
+   * that fallback on every Tailwind consumer. These rules are unlayered, so
+   * they outrank it: the reset puts scrollbar-width back to its initial value,
+   * and the Firefox branch re-declares `thin` after it.
+   */
+  .scrollbar-thin {
+    scrollbar-width: auto;
+  }
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
 
-  .scrollbar-thin::-webkit-scrollbar-track {
+  .scrollbar-thin::-webkit-scrollbar-track,
+  .scrollbar-thin::-webkit-scrollbar-corner {
     background: transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: transparent;
+    background: var(--scrollbar-thumb, color-mix(in oklab, var(--foreground) 35%, transparent));
     border-radius: 2px;
     transition: background 0.15s ease;
   }
 
   .scrollbar-thin:hover::-webkit-scrollbar-thumb,
   .scrollbar-thin:focus-within::-webkit-scrollbar-thumb {
-    background: var(--border);
+    background: var(
+      --scrollbar-thumb-active,
+      color-mix(in oklab, var(--foreground) 60%, transparent)
+    );
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: var(--foreground);
   }
 
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
-    transition: scrollbar-color 0.15s ease;
-  }
+  @supports not selector(::-webkit-scrollbar) {
+    .scrollbar-thin {
+      scrollbar-width: thin;
+      scrollbar-color: var(
+          --scrollbar-thumb,
+          color-mix(in oklab, var(--foreground) 35%, transparent)
+        )
+        transparent;
+      transition: scrollbar-color 0.15s ease;
+    }
 
-  .scrollbar-thin:hover,
-  .scrollbar-thin:focus-within {
-    scrollbar-color: var(--border) transparent;
+    .scrollbar-thin:hover,
+    .scrollbar-thin:focus-within {
+      scrollbar-color: var(
+          --scrollbar-thumb-active,
+          color-mix(in oklab, var(--foreground) 60%, transparent)
+        )
+        transparent;
+    }
   }
 }
 
@@ -195,6 +234,7 @@
   --color-action: var(--action);
   --color-action-foreground: var(--action-foreground);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
 

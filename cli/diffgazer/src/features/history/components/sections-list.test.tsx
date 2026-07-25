@@ -2,6 +2,7 @@ import type { TimelineItem } from "@diffgazer/core/schemas/presentation";
 import { cleanup, render } from "ink-testing-library";
 import { useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
 import { SectionsList } from "./sections-list";
 
@@ -136,9 +137,3 @@ describe("SectionsList", () => {
     expect(lines.every((line) => line.length <= 18)).toBe(true);
   });
 });
-
-async function flush(times = 4): Promise<void> {
-  for (let index = 0; index < times; index += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}

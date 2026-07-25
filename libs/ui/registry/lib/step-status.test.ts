@@ -1,6 +1,6 @@
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { describe, expect, it } from "vitest";
 import registry from "../registry.json";
-import { requireValue } from "../testing/assertions";
 import { STEP_STATUSES, type StepStatus } from "./step-status";
 
 describe("step-status registry metadata", () => {

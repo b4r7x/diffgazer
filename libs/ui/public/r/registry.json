@@ -59,9 +59,9 @@
           "target": "@ui/accordion/accordion-content.tsx"
         },
         {
-          "path": "registry/ui/accordion/use-state.ts",
+          "path": "registry/ui/accordion/use-accordion-state.ts",
           "type": "registry:ui",
-          "target": "@ui/accordion/use-state.ts"
+          "target": "@ui/accordion/use-accordion-state.ts"
         }
       ]
     },
@@ -218,6 +218,7 @@
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/label.json",
         "https://r.b4r7.dev/r/ui/utils.json"
       ],
       "meta": {
@@ -1409,9 +1410,9 @@
           "target": "@ui/stepper/stepper-context.tsx"
         },
         {
-          "path": "registry/ui/stepper/use-state.ts",
+          "path": "registry/ui/stepper/use-stepper-state.ts",
           "type": "registry:ui",
-          "target": "@ui/stepper/use-state.ts"
+          "target": "@ui/stepper/use-stepper-state.ts"
         },
         {
           "path": "registry/ui/stepper/use-step-collection.ts",
@@ -1461,6 +1462,7 @@
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",
+        "https://r.b4r7.dev/r/ui/input-variants.json",
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
@@ -1653,7 +1655,7 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/step-status.json",
-        "https://r.b4r7.dev/r/ui/stepper-variants.json",
+        "https://r.b4r7.dev/r/ui/horizontal-stepper-variants.json",
         "https://r.b4r7.dev/r/ui/utils.json"
       ],
       "files": [
@@ -1771,9 +1773,9 @@
           "target": "@ui/command-palette/highlight.ts"
         },
         {
-          "path": "registry/ui/command-palette/use-state.ts",
+          "path": "registry/ui/command-palette/use-command-palette-state.ts",
           "type": "registry:ui",
-          "target": "@ui/command-palette/use-state.ts"
+          "target": "@ui/command-palette/use-command-palette-state.ts"
         },
         {
           "path": "registry/ui/command-palette/use-item-registry.ts",
@@ -1892,9 +1894,9 @@
           "target": "@ui/select/select-form-mirror.tsx"
         },
         {
-          "path": "registry/ui/select/use-state.ts",
+          "path": "registry/ui/select/use-select-state.ts",
           "type": "registry:ui",
-          "target": "@ui/select/use-state.ts"
+          "target": "@ui/select/use-select-state.ts"
         },
         {
           "path": "registry/ui/select/use-content-navigation.ts",
@@ -1936,6 +1938,11 @@
           "path": "registry/ui/spinner/spinner-snake-grid.tsx",
           "type": "registry:ui",
           "target": "@ui/spinner/spinner-snake-grid.tsx"
+        },
+        {
+          "path": "registry/ui/spinner/spinner.css",
+          "type": "registry:style",
+          "target": "~/styles/spinner.css"
         }
       ]
     },
@@ -2456,6 +2463,10 @@
         },
         {
           "path": "registry/lib/selectable-collection-observer.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "registry/lib/selectable-group.ts",
           "type": "registry:lib"
         }
       ]

@@ -1,7 +1,7 @@
 import { render, renderHook, screen } from "@testing-library/react";
 import { createElement, useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { requireFrameDocument, requireValue } from "../testing/assertions.js";
+import { requireFrameDocument, requireValue } from "../testing/internal/assertions.js";
 import { useScrollLock } from "./use-scroll-lock.js";
 
 describe("useScrollLock", () => {

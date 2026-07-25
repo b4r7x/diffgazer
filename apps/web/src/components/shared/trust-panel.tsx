@@ -11,8 +11,8 @@ import { focusNavigationItem } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { toast } from "@diffgazer/ui/components/toast";
 import { type KeyboardEvent, useRef, useState } from "react";
+import { CardLayout } from "@/components/layout/card-layout";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
-import { CardLayout } from "@/components/ui/card-layout";
 
 export interface TrustPanelProps {
   directory: string;

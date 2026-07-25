@@ -4,7 +4,7 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Select } from "./index";
-import { getSearchInput, getSelectTrigger, PICK_FRUIT, renderSelect } from "./select.test-utils";
+import { getSearchInput, getSelectTrigger, PICK_FRUIT, renderSelect } from "./select-test-utils";
 
 describe("Select Tab-close focus restore", () => {
   it("restores focus to the trigger when Tab-closing a multiple select", () => {

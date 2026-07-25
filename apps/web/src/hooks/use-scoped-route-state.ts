@@ -3,6 +3,12 @@ import { useSyncExternalStore } from "react";
 
 export type SetState<T> = (value: T | ((prev: T) => T)) => void;
 
+// Scoped-route-state keys each page owns, shared so the home menu's per-route
+// reset list cannot drift from the keys those pages actually store.
+export const HISTORY_RUN_KEY = "run";
+export const HISTORY_DATE_KEY = "date";
+export const SETTINGS_HIGHLIGHTED_KEY = "highlighted";
+
 const MAX_ENTRIES = 100;
 const routeStateStore = new Map<string, unknown>();
 const subscribers = new Set<() => void>();

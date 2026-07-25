@@ -29,7 +29,7 @@ export default function FloatingPanelDefaultExample() {
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((value) => !value)}
-        className="border border-foreground/30 px-3 py-1 font-mono text-sm"
+        className="border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
       >
         {open ? "close" : "open panel"}
       </button>
@@ -41,7 +41,7 @@ export default function FloatingPanelDefaultExample() {
         aria-labelledby={titleId}
         id={panelId}
         onKeyDown={handlePanelKeyDown}
-        className="border border-border bg-background p-3 font-mono text-xs text-foreground shadow-md"
+        className="rounded-sm border border-border bg-background p-3 font-mono text-xs text-foreground"
       >
         <DialogContent titleId={titleId} onDismiss={close} />
       </FloatingPanel>
@@ -66,7 +66,7 @@ function DialogContent({ titleId, onDismiss }: { titleId: string; onDismiss: () 
       <button
         ref={dismissRef}
         type="button"
-        className="mt-2 block border border-foreground/30 px-2 py-0.5 text-xs"
+        className="mt-2 block border border-foreground/30 px-2 py-0.5 text-xs focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
         onClick={onDismiss}
       >
         dismiss

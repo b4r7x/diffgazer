@@ -51,7 +51,7 @@ export function SectionsList({
       {window.canScrollUp ? <Text color={tokens.muted}>{"\u25B2"}</Text> : null}
       <NavigationList
         selectedId={selectedId}
-        highlightedId={isActive ? selectedId : null}
+        highlightedId={selectedId}
         onSelect={onSelect}
         onHighlightChange={onHighlightChange}
         isActive={isActive}
@@ -60,18 +60,20 @@ export function SectionsList({
       >
         {visibleItems.map((item) => (
           <NavigationList.Item key={item.id} id={item.id}>
-            <Box width={itemWidth} flexDirection="row" gap={itemWidth > 2 ? 1 : 0}>
-              <Box flexGrow={1} flexShrink={1} minWidth={0}>
-                <Text color={tokens.fg} bold wrap="truncate-end">
-                  {item.label}
-                </Text>
+            {({ tone }) => (
+              <Box width={itemWidth} flexDirection="row" gap={itemWidth > 2 ? 1 : 0}>
+                <Box flexGrow={1} flexShrink={1} minWidth={0}>
+                  <Text color={tone.primary} bold wrap="truncate-end">
+                    {item.label}
+                  </Text>
+                </Box>
+                <Box flexShrink={1} maxWidth={Math.max(itemWidth - 2, 1)}>
+                  <Text color={tone.secondary} wrap="truncate-end">
+                    {item.count}
+                  </Text>
+                </Box>
               </Box>
-              <Box flexShrink={1} maxWidth={Math.max(itemWidth - 2, 1)}>
-                <Text color={tokens.muted} wrap="truncate-end">
-                  {item.count}
-                </Text>
-              </Box>
-            </Box>
+            )}
           </NavigationList.Item>
         ))}
       </NavigationList>

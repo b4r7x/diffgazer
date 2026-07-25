@@ -9,10 +9,12 @@
 }
 
 @layer components {
+  /* Dim carries the backdrop; the blur is halved to 2px so the layer stays in
+     the terminal register instead of reading as frosted glass. */
   dialog::backdrop {
     background: var(--scrim);
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
   }
 
   dialog[data-state="open"]::backdrop {
@@ -179,8 +181,33 @@
  */
 @layer components {
   [data-slot="dialog-content"] {
-    --dialog-title-meta-size: 11px;
+    /* rem, not px: the meta eyebrow tracks the user's root font size like the
+       rest of the type scale. 0.6875rem renders identically at a 16px root. */
+    --dialog-title-meta-size: 0.6875rem;
     --dialog-title-meta-tracking: 0.08em;
+  }
+
+  /*
+   * The close icon owns the top-right corner outright. When a title meta eyebrow
+   * is present too, the eyebrow leaves the corner instead of stacking under the
+   * button: the heading stops growing to fill the row, so the tag sits directly
+   * beside the title text at the row's inline start. The reserved padding still
+   * keeps a long (truncating) title clear of the button.
+   */
+  [data-slot="dialog-content"]:has([data-slot="dialog-close-icon"]) [data-slot="dialog-title-row"] {
+    /* icon inset + icon width (1.75rem) + an 8px gap - the header's own inline
+       padding (1.25rem), which the row already sits inside. */
+    padding-inline-end: calc(var(--dialog-close-btn-inset) + 1rem);
+  }
+  [data-slot="dialog-content"]:has([data-slot="dialog-close-icon"])
+    [data-slot="dialog-title-row"]
+    > [data-slot="dialog-title"] {
+    flex: 0 1 auto;
+  }
+  [data-slot="dialog-content"]:has([data-slot="dialog-close-icon"])
+    [data-slot="dialog-title-row"]
+    > [data-slot="dialog-title-meta"] {
+    margin-inline-start: 0;
   }
 }
 

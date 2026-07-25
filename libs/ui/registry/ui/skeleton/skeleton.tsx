@@ -10,7 +10,7 @@ export function Skeleton({ className, ref, ...props }: SkeletonProps) {
     <div
       ref={ref}
       data-slot="skeleton"
-      className={cn("rounded-sm bg-secondary motion-safe:animate-pulse", className)}
+      className={cn("rounded-sm bg-border motion-safe:animate-pulse", className)}
       {...props}
       aria-hidden="true"
     />

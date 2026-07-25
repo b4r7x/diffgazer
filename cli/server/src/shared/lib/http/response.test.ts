@@ -1,9 +1,9 @@
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import type { Handler } from "hono";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { requireValue } from "../../../testing/assertions.js";
 import { errorResponse, zodErrorHandler } from "./response.js";
 
 type ErrorBody = {

@@ -2,7 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Registry } from "@diffgazer/registry/schemas";
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
-import { extractRelativeImports, validationError, type ValidationError } from "./types.js";
+import { extractRelativeImports, type ValidationError, validationError } from "./types.js";
 
 function isExistingFile(path: string): boolean {
   try {

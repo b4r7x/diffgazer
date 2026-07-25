@@ -18,7 +18,9 @@ const FRAME_DOCUMENT = `<!doctype html>
 
 export default function SidebarOwnerWindow() {
   const [frameBody, setFrameBody] = useState<HTMLElement | null>(null);
-  const [mounted, setMounted] = useState(false);
+  // Mounted by default so the frame renders a sidebar instead of an empty box
+  // on first paint; the buttons still exercise the mount/unmount lifecycle.
+  const [mounted, setMounted] = useState(true);
 
   const handleFrameLoad = (event: SyntheticEvent<HTMLIFrameElement>) => {
     setFrameBody(event.currentTarget.contentDocument?.body ?? null);
@@ -57,7 +59,11 @@ export default function SidebarOwnerWindow() {
               <Sidebar aria-label="Frame navigation">
                 <SidebarHeader>iframe viewport</SidebarHeader>
                 <SidebarContent>
-                  <SidebarItem as="button">Frame item</SidebarItem>
+                  <SidebarItem as="button" active>
+                    overview
+                  </SidebarItem>
+                  <SidebarItem as="button">requests</SidebarItem>
+                  <SidebarItem as="button">console</SidebarItem>
                 </SidebarContent>
               </Sidebar>
             </SidebarProvider>,

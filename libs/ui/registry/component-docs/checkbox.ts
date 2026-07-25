@@ -29,7 +29,12 @@ export const checkboxDoc: ComponentDoc = {
     {
       title: "Indeterminate State",
       content:
-        "Checkbox supports a third state: checked='indeterminate' renders [-] (x variant) or [ - ] (bullet variant). This is useful for parent checkboxes representing partially-selected groups.",
+        "Checkbox supports a third state: checked='indeterminate' renders [-] in both indicator variants. This is useful for parent checkboxes representing partially-selected groups.",
+    },
+    {
+      title: "Indicator Variants",
+      content:
+        "variant='x' (default) marks the checked state with [x]; variant='bullet' marks it with [*]. Both keep the same three-character width so mixed lists stay aligned, and neither reuses Radio's [ ● ] dot — a checkbox never reads as a radio.",
     },
     {
       title: "Built-in Navigation",
@@ -46,6 +51,7 @@ export const checkboxDoc: ComponentDoc = {
   examples: [
     { name: "checkbox-default", title: "Default" },
     { name: "checkbox-variants", title: "Variants" },
+    { name: "checkbox-states", title: "Highlight, Invalid, and Disabled" },
     { name: "checkbox-group", title: "Group" },
     { name: "checkbox-checklist", title: "Checklist" },
   ],

@@ -4,37 +4,17 @@ import {
   type ButtonHTMLAttributes,
   type FocusEvent,
   type MouseEvent,
-  type ReactNode,
   type Ref,
   useId,
   useLayoutEffect,
   useRef,
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
+import { BracketMarkers } from "@/lib/segmented-brackets";
 import { segmentedItemVariants } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
 import { useTabsListWrapped } from "./tabs-list";
-
-function BracketMarkers({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <span
-        aria-hidden="true"
-        className="mr-1 text-foreground opacity-0 group-data-[state=active]/segmented-item:opacity-100"
-      >
-        [
-      </span>
-      {children}
-      <span
-        aria-hidden="true"
-        className="ml-1 text-foreground opacity-0 group-data-[state=active]/segmented-item:opacity-100"
-      >
-        ]
-      </span>
-    </>
-  );
-}
 
 /** Props for tabs trigger. */
 export interface TabsTriggerProps<TValue extends string = string>
@@ -127,7 +107,11 @@ export function TabsTrigger<TValue extends string = string>({
         className,
       )}
     >
-      {variant === "bracket" ? <BracketMarkers>{children}</BracketMarkers> : children}
+      {variant === "bracket" ? (
+        <BracketMarkers state="active">{children}</BracketMarkers>
+      ) : (
+        children
+      )}
     </button>
   );
 }

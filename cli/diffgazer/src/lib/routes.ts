@@ -21,21 +21,23 @@ export type Route =
 
 export type ScreenName = Route["screen"];
 
-export const SCREEN_NAMES: readonly ScreenName[] = [
-  "home",
-  "onboarding",
-  "review",
-  "history",
-  "help",
-  "settings",
-  "settings/theme",
-  "settings/providers",
-  "settings/storage",
-  "settings/analysis",
-  "settings/agent-execution",
-  "settings/diagnostics",
-  "settings/trust-permissions",
-];
+const SCREEN_NAME_MAP = {
+  home: true,
+  onboarding: true,
+  review: true,
+  history: true,
+  help: true,
+  settings: true,
+  "settings/theme": true,
+  "settings/providers": true,
+  "settings/storage": true,
+  "settings/analysis": true,
+  "settings/agent-execution": true,
+  "settings/diagnostics": true,
+  "settings/trust-permissions": true,
+} satisfies Record<ScreenName, true>;
+
+export const SCREEN_NAMES: readonly ScreenName[] = Object.keys(SCREEN_NAME_MAP) as ScreenName[];
 
 export function isScreenName(value: string): value is ScreenName {
   return (SCREEN_NAMES as readonly string[]).includes(value);

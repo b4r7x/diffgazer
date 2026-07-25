@@ -1,4 +1,5 @@
 import { cleanup, render } from "ink-testing-library";
+import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { getHistoryFooter } from "../../features/history/lib/footer";
 import { CliThemeProvider } from "../../theme/provider";
@@ -21,7 +22,10 @@ describe("Footer", () => {
       </CliThemeProvider>,
     );
 
-    const frame = view.lastFrame() ?? "";
+    // The key and its label are separately coloured Text nodes, so the raw
+    // frame splits them with an escape sequence whenever colour is on — which
+    // would also let the negative assertion below pass for the wrong reason.
+    const frame = stripAnsi(view.lastFrame() ?? "");
     expect(frame.split("\n")).toHaveLength(1);
     expect(frame).toContain("[Enter] Open Review");
     expect(frame).toContain("[Esc] Back");

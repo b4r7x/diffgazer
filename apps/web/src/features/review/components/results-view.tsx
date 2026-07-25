@@ -4,6 +4,7 @@ import {
   selectDetailsEmptyKind,
 } from "@diffgazer/core/review";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { IssueDetailsPane } from "@/features/review/components/issue-details-pane/pane";
 import { IssueListPane } from "@/features/review/components/issue-list-pane";
 import { useReviewResultsKeyboard } from "../hooks/use-results-keyboard";
@@ -62,9 +63,9 @@ export function ReviewResultsView({
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2 font-mono">
       <div className="py-2 mb-2 shrink-0">
-        <span className="text-sm font-medium text-accent">
+        <SectionHeader as="h2" variant="accent">
           Review {reviewId ? formatRunId(reviewId) : "#unknown"}
-        </span>
+        </SectionHeader>
         {duplicateNotice ? (
           <p className="mt-1 text-xs text-muted-foreground" role="note">
             {duplicateNotice}

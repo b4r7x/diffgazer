@@ -7,6 +7,7 @@ import {
 import { Box } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test } from "vitest";
+import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ActivityLog } from "./activity-log";
 
@@ -20,12 +21,6 @@ const BEL = String.fromCharCode(0x07);
 const OSC52 = `${ESC}]52;c;ZXZpbA==${BEL}`;
 const ARROW_UP = "\u001b[A";
 const END = "\u001b[F";
-
-async function flush(times = 4): Promise<void> {
-  for (let index = 0; index < times; index += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 function appendThinkingEvents(state: ReviewState, prefix: string, count: number): ReviewState {
   let nextState = state;

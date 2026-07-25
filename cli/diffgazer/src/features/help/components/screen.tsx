@@ -11,7 +11,7 @@ import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { terminalCellWidth } from "../../../lib/terminal-width";
 
 const HELP_KEY_WIDTH = Math.max(...HELP_SHORTCUTS.map(({ key }) => terminalCellWidth(key)));
-const HELP_CHROME_ROWS = 4;
+const HELP_CHROME_ROWS = 5;
 
 export function HelpScreen(): ReactElement {
   usePageFooter({ shortcuts: BACK_SHORTCUTS });
@@ -30,6 +30,7 @@ export function HelpScreen(): ReactElement {
         overflow="hidden"
       >
         <Panel>
+          <Panel.Header variant="subtle">HELP</Panel.Header>
           <Panel.Content>
             <ScrollArea height={scrollHeight} isActive>
               <Box flexDirection="column" gap={1}>

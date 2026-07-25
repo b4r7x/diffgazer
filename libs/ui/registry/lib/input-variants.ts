@@ -12,7 +12,16 @@ export const inputSizeClasses = {
 
 /** Base input styling with size variants and invalid-state selectors. */
 export const inputVariants = cva(
-  "flex w-full bg-background border border-border text-foreground font-mono placeholder:text-foreground/55 transition-colors focus:border-foreground focus:ring-1 focus:ring-foreground focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed aria-invalid:border-2 aria-invalid:border-error aria-invalid:focus:border-error aria-invalid:focus:ring-error",
+  // Focus is the inset grammar shared by every editable field: the 1px border
+  // switches to --ring and a 1px ring doubles it. Invalid swaps both to --error
+  // and keeps the border at 1px, so validity toggles never resize the content box.
+  //
+  // `outline-hidden` rather than `outline-none`: forced-colors drops the ring
+  // (a box-shadow) and forces border-color to the system palette, so both halves of
+  // the indicator disappear and a suppressed UA outline would leave focus invisible.
+  // outline-hidden suppresses the outline the same way but keeps a 2px transparent
+  // one that forced-colors repaints in a system color.
+  "flex w-full bg-background border border-border text-foreground font-mono placeholder:text-foreground/55 transition-colors focus:border-ring focus:ring-1 focus:ring-ring focus:outline-hidden disabled:opacity-50 disabled:border-dashed disabled:cursor-not-allowed aria-invalid:border-error aria-invalid:ring-1 aria-invalid:ring-error aria-invalid:focus:border-error aria-invalid:focus:ring-error",
   {
     variants: {
       size: inputSizeClasses,

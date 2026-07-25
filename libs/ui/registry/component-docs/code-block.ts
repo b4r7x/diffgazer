@@ -7,7 +7,7 @@ export const codeBlockDoc: ComponentDoc = {
     {
       title: "Variants",
       content:
-        'variant="hairline" (default) renders a 1px soft border with a header row for filename + actions. variant="bare" removes all chrome and renders a 2px left rule that turns accent on hover; the header is suppressed. variant="terminal" centers the title in the header and renders three desaturated dots by default (chrome="dots"). Pass chrome="none" for a terminal pane without window dots. All chrome is driven by [data-variant] and [data-chrome] selectors in code-block/code-block.css; consumers do not need to apply any classes manually.',
+        'variant="hairline" (default) renders a 1px soft border with a header row for filename + actions. variant="bare" removes all chrome and renders a 2px left rule that turns accent on hover; the header is suppressed. variant="terminal" centers the title in the header for a shell pane. Window dots are opt-in in every variant via chrome="dots". All chrome is driven by [data-variant] and [data-chrome] selectors in code-block/code-block.css; consumers do not need to apply any classes manually.',
     },
     {
       title: "Compound API",
@@ -22,7 +22,7 @@ export const codeBlockDoc: ComponentDoc = {
     {
       title: "Line States",
       content:
-        'Each CodeBlock.Line exposes a `state` prop: "added" tints the row with success color and renders a sr-only "Added: " prefix; "removed" tints with destructive color and a "Removed: " prefix; "highlight" tints with foreground color. The tint is applied to the row, not the <code>, so syntax-color themes remain readable.',
+        'Each CodeBlock.Line exposes a `state` prop: "added" tints the row with --success-subtle and renders a sr-only "Added: " prefix; "removed" tints with --error-subtle and a "Removed: " prefix; "highlight" tints with foreground color. The +/- gutter sign keeps the full-strength --success/--error tone. The tint is applied to the row, not the <code>, so syntax-color themes remain readable.',
     },
     {
       title: "Injected Syntax Highlighting",
@@ -74,7 +74,7 @@ export const codeBlockDoc: ComponentDoc = {
     { name: "code-block-default", title: "Default" },
     { name: "code-block-hairline", title: "Hairline" },
     { name: "code-block-bare", title: "Bare" },
-    { name: "code-block-terminal", title: "Terminal" },
+    { name: "code-block-terminal", title: "Terminal with window dots" },
     { name: "code-block-highlights", title: "Diff & Highlight states" },
     { name: "code-block-highlighted", title: "Syntax highlighting" },
   ],
@@ -111,7 +111,7 @@ export const codeBlockDoc: ComponentDoc = {
       description: "Language identifier used by labels and syntax-highlighting selectors.",
     },
     {
-      attribute: "data-line-state",
+      attribute: "data-state",
       appliesTo: "CodeBlock.Line",
       values: '"highlight" | "added" | "removed"',
       description: "Per-line visual state for highlights and diff rows.",
@@ -130,7 +130,7 @@ export const codeBlockDoc: ComponentDoc = {
         required: false,
         defaultValue: '"hairline"',
         description:
-          'Visual variant. "hairline" (default) is a soft-bordered block with a filename header. "bare" removes chrome and renders a 2px left rule that turns accent on hover; the header is suppressed. "terminal" centers the title in the header — use for shell output. Window dots are controlled separately via the `chrome` prop and default to "dots" for variant="terminal".',
+          'Visual variant. "hairline" (default) is a soft-bordered block with a filename header. "bare" removes chrome and renders a 2px left rule that turns accent on hover; the header is suppressed. "terminal" centers the title in the header — use for shell output. Window dots are opt-in via the `chrome` prop.',
       },
       language: {
         type: "string",
@@ -149,9 +149,9 @@ export const codeBlockDoc: ComponentDoc = {
       chrome: {
         type: '"dots" | "none"',
         required: false,
-        defaultValue: '"dots" for variant="terminal", "none" otherwise',
+        defaultValue: '"none"',
         description:
-          'Decorative chrome in the header strip. "dots" renders three desaturated terminal-style dots on the left edge and reserves symmetric padding so a centered label stays balanced. "none" disables chrome — useful for a terminal pane without window dots.',
+          'Decorative chrome in the header strip. "none" (default) leaves the header to its label and actions. "dots" renders three desaturated window dots on the left edge and reserves symmetric padding so a centered label stays balanced.',
       },
       children: {
         type: "ReactNode",

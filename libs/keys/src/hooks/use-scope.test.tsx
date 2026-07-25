@@ -7,7 +7,7 @@ import {
   KeyboardWrapper,
   fireKey as pressKey,
   StrictKeyboardWrapper,
-} from "../testing/test-utils.js";
+} from "../testing/internal/test-utils.js";
 import { useKey } from "./use-key.js";
 import { useScope } from "./use-scope.js";
 

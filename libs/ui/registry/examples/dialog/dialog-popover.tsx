@@ -17,7 +17,7 @@ export default function DialogPopoverExample() {
               role="dialog"
               aria-label="Nested popover"
               autoFocus={false}
-              className="border border-border bg-background p-3 shadow-md"
+              className="p-3"
             >
               <button type="button" className="border border-border px-3 py-1 text-sm">
                 Popover action

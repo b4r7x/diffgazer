@@ -43,6 +43,13 @@ export interface StepperTriggerProps extends Omit<ComponentProps<"button">, "chi
    * these labels as the screen-reader fallback for the indicator glyph.
    */
   statusLabels?: Partial<Record<StepStatus, string>>;
+  /**
+   * Classes merged onto the indicator span. The public seam for repainting the indicator from an
+   * app-owned palette (e.g. a live-run status palette) instead of reaching into the trigger DOM.
+   */
+  indicatorClassName?: string;
+  /** Classes merged onto the label span. Same seam as `indicatorClassName`, for the step text. */
+  labelClassName?: string;
 }
 
 /** Clickable step header with indicator and label. */
@@ -51,6 +58,8 @@ export function StepperTrigger({
   className,
   onClick,
   statusLabels,
+  indicatorClassName,
+  labelClassName,
   disabled: disabledProp,
   ...props
 }: StepperTriggerProps) {
@@ -99,11 +108,11 @@ export function StepperTrigger({
       disabled={isTriggerDisabled ? true : undefined}
       tabIndex={tabIndex}
     >
-      <span className={stepperIndicatorVariants({ variant, status })}>
+      <span className={cn(stepperIndicatorVariants({ variant, status }), indicatorClassName)}>
         <span className="sr-only">{screenReaderLabel} </span>
         <Glyph variant={variant} status={status} tagLabel={tagLabel} />
       </span>
-      <span ref={labelRef} className={stepperLabelVariants({ status })}>
+      <span ref={labelRef} className={cn(stepperLabelVariants({ status }), labelClassName)}>
         {children}
       </span>
     </button>

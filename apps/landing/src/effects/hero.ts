@@ -1,4 +1,6 @@
-import { type Cleanup, createEffectScope, type Flags, getFlags, sleep, typeText } from "../util";
+import { type Cleanup, createEffectScope } from "../effect-scope";
+import { sleep, typeText } from "../motion";
+import { type Flags, getFlags } from "../viewport";
 
 const SCRAMBLE = "▓▒░<>/*+=#";
 
@@ -33,6 +35,7 @@ function buildHeadlineChars(h1: HTMLElement): void {
 /** Reveal each character with a brief glitch, or settle instantly when reduced. */
 function scrambleIn(el: HTMLElement, reduced: boolean): Cleanup {
   const chars = [...el.querySelectorAll<HTMLElement>(".ch")];
+  const finals = chars.map((char) => char.textContent ?? "");
   const timers = new Set<ReturnType<typeof setTimeout>>();
   const intervals = new Set<ReturnType<typeof setInterval>>();
   chars.forEach((char, index) => {
@@ -40,7 +43,7 @@ function scrambleIn(el: HTMLElement, reduced: boolean): Cleanup {
       char.classList.add("on");
       return;
     }
-    const final = char.textContent ?? "";
+    const final = finals[index] ?? "";
     const timer = setTimeout(
       () => {
         timers.delete(timer);
@@ -67,6 +70,12 @@ function scrambleIn(el: HTMLElement, reduced: boolean): Cleanup {
     for (const interval of intervals) clearInterval(interval);
     timers.clear();
     intervals.clear();
+    // Settle every character on its final glyph: a motion-preference flip
+    // re-reads the headline text to rebuild it, so a frozen scramble glyph
+    // would be baked into both the headline and its accessible name.
+    chars.forEach((char, index) => {
+      char.textContent = finals[index] ?? "";
+    });
   };
 }
 

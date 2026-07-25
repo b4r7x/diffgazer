@@ -7,20 +7,34 @@ interface QueryStateHandlers<T> {
   success: (data: T) => ReactNode;
 }
 
+type QueryPhase<T> =
+  | { status: "loading" }
+  | { status: "error"; error: Error }
+  | { status: "success"; data: T }
+  | { status: "idle" };
+
+function resolveQueryPhase<T>(query: UseQueryResult<T>): QueryPhase<T> {
+  if (query.isLoading) return { status: "loading" };
+  // Error takes precedence over stale data: a refetch failure leaves both
+  // `data` (previous success) and `error` populated, and the UI should
+  // surface the error rather than silently render outdated content.
+  if (query.error) return { status: "error", error: query.error };
+  if (query.data !== undefined) return { status: "success", data: query.data };
+  // A disabled query (`enabled: false`) is `isLoading: false` with no data and
+  // `fetchStatus: "idle"`. Only report loading when a fetch is actually running;
+  // otherwise the caller must not be stuck behind a spinner that never resolves.
+  if (query.fetchStatus !== "idle") return { status: "loading" };
+  return { status: "idle" };
+}
+
 export function matchQueryState<T>(
   query: UseQueryResult<T>,
   handlers: QueryStateHandlers<T>,
 ): ReactNode {
-  if (query.isLoading) return handlers.loading();
-  // Error takes precedence over stale data: a refetch failure leaves both
-  // `data` (previous success) and `error` populated, and the UI should
-  // surface the error rather than silently render outdated content.
-  if (query.error) return handlers.error(query.error);
-  if (query.data !== undefined) return handlers.success(query.data);
-  // A disabled query (`enabled: false`) is `isLoading: false` with no data and
-  // `fetchStatus: "idle"`. Only show loading when a fetch is actually running;
-  // otherwise render nothing so the caller is not stuck behind a fake spinner.
-  if (query.fetchStatus !== "idle") return handlers.loading();
+  const phase = resolveQueryPhase(query);
+  if (phase.status === "loading") return handlers.loading();
+  if (phase.status === "error") return handlers.error(phase.error);
+  if (phase.status === "success") return handlers.success(phase.data);
   return null;
 }
 
@@ -35,11 +49,8 @@ export function guardQueryState<T>(
     error: (error: Error) => ReactElement;
   },
 ): ReactElement | null {
-  if (query.isLoading) return callbacks.loading();
-  if (query.error) return callbacks.error(query.error);
-  if (query.data !== undefined) return null;
-  // A disabled query (`enabled: false`) is idle with no data; do not return a
-  // loading element that would never resolve. Only guard while a fetch runs.
-  if (query.fetchStatus !== "idle") return callbacks.loading();
+  const phase = resolveQueryPhase(query);
+  if (phase.status === "loading") return callbacks.loading();
+  if (phase.status === "error") return callbacks.error(phase.error);
   return null;
 }

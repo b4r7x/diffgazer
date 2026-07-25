@@ -123,7 +123,7 @@ describe("ReviewSummaryView", () => {
       "scope",
       "row",
     );
-    expect(within(table).getByText("failed (CANCELLED)")).toBeInTheDocument();
+    expect(within(table).getByText("failed [CANCELLED]")).toBeInTheDocument();
   });
 
   it("omits the hidden-count notice when nothing was dropped", () => {

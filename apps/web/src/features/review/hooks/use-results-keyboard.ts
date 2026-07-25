@@ -16,7 +16,7 @@ import {
 import { useCanGoBack, useLocation, useRouter } from "@tanstack/react-router";
 import { type KeyboardEvent, useRef, useState } from "react";
 import { RESET_FILTER_VALUE } from "@/features/review/components/severity-filter-group";
-import { resolveBackAction } from "@/lib/back-navigation";
+import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
 import { getMainContent } from "@/lib/main-content";
 import { useReviewDetailsTabKeyboard } from "./use-details-tab-keyboard";
 import { useIssueDetailsTabs } from "./use-issue-details-tabs";
@@ -280,12 +280,7 @@ export function useReviewResultsKeyboard({
         changeFocusZone("list");
         return;
       }
-      const action = resolveBackAction(pathname, canGoBack);
-      if (action.type === "navigate") {
-        void router.navigate({ to: action.to });
-      } else if (action.type === "history") {
-        router.history.back();
-      }
+      performBackAction(router, resolveBackAction(pathname, canGoBack));
     },
     { scope: REVIEW_SCOPE },
   );

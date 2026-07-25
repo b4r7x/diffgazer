@@ -17,11 +17,11 @@ import { useFormReset } from "@/hooks/use-form-reset";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
 import {
+  checkboxIndicators,
   type SelectableSize,
   type SelectableVariant,
   selectableContainerClass,
   selectableDescriptionVariants,
-  selectableIndicators,
   selectableIndicatorVariants,
   selectableLabelVariants,
   selectableVariants,
@@ -193,7 +193,7 @@ export function Checkbox({
     }
   };
 
-  const indicator = selectableIndicators[variant][state];
+  const indicator = checkboxIndicators[variant][state];
   return (
     <>
       {(name || required) && (

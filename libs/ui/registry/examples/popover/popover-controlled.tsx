@@ -14,17 +14,17 @@ export default function PopoverControlledExample() {
             <button
               {...triggerProps}
               type="button"
-              className="border border-foreground/30 px-3 py-1 font-mono text-sm"
+              className="border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
             >
               {open ? "close" : "open"}
             </button>
           )}
         </Popover.Trigger>
-        <Popover.Content className="border border-border bg-background p-3 font-mono text-xs text-foreground shadow-md">
+        <Popover.Content className="p-3 font-mono text-xs text-foreground">
           Controlled popover
           <button
             type="button"
-            className="mt-2 block border border-foreground/30 px-2 py-0.5 text-xs"
+            className="mt-2 block border border-foreground/30 px-2 py-0.5 text-xs focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
             onClick={() => setOpen(false)}
           >
             dismiss

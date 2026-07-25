@@ -3,9 +3,8 @@ import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { HorizontalStepper } from "@diffgazer/ui/components/horizontal-stepper";
-import { cn } from "@diffgazer/ui/lib/utils";
 import { useEffect, useEffectEvent, useRef } from "react";
-import { CardLayout } from "@/components/ui/card-layout";
+import { CardLayout } from "@/components/layout/card-layout";
 import { useOnboardingKeyboard } from "../hooks/use-keyboard";
 import { useOnboarding } from "../hooks/use-onboarding";
 import { AnalysisStep } from "./steps/analysis-step";
@@ -14,6 +13,11 @@ import { ExecutionStep } from "./steps/execution-step";
 import { ModelStep } from "./steps/model-step";
 import { ProviderStep } from "./steps/provider-step";
 import { StorageStep } from "./steps/storage-step";
+
+function getPrimaryLabel(isLastStep: boolean, isBusy: boolean): string {
+  if (!isLastStep) return "Next";
+  return isBusy ? "Saving..." : "Complete Setup";
+}
 
 export function OnboardingWizard() {
   const focusFallbackRef = useRef<HTMLDivElement>(null);
@@ -147,63 +151,44 @@ export function OnboardingWizard() {
               {...footer.getActionProps(0)}
               variant="secondary"
               size="sm"
+              bracket
+              highlighted={footer.inActions && footer.focusedIndex === 0 && !isBusy}
               onClick={handleBack}
               disabled={isBusy}
-              className={cn(
-                footer.inActions && footer.focusedIndex === 0 && !isBusy && "ring-2 ring-info",
-              )}
             >
               Back
             </Button>
           )}
-          {isLastStep ? (
-            <Button
-              {...footer.getActionProps(primaryButtonIndex)}
-              variant="success"
-              size="sm"
-              onClick={handlePrimaryAction}
-              disabled={!canActivatePrimary}
-              className={cn(
-                footer.inActions &&
-                  footer.focusedIndex === primaryButtonIndex &&
-                  canActivatePrimary &&
-                  "ring-2 ring-info",
-              )}
-            >
-              {isBusy ? "Saving..." : "Complete Setup"}
-            </Button>
-          ) : (
-            <Button
-              {...footer.getActionProps(primaryButtonIndex)}
-              size="sm"
-              onClick={handlePrimaryAction}
-              disabled={!canActivatePrimary}
-              className={cn(
-                footer.inActions &&
-                  footer.focusedIndex === primaryButtonIndex &&
-                  canActivatePrimary &&
-                  "ring-2 ring-info",
-              )}
-            >
-              Next
-            </Button>
-          )}
+          {/* One primary voice for the whole wizard: the commit action keeps the same
+              filled --action chip from step 1 to Complete Setup, so the CTA never changes
+              color mid-flow or between themes. */}
+          <Button
+            {...footer.getActionProps(primaryButtonIndex)}
+            size="sm"
+            bracket
+            highlighted={
+              footer.inActions && footer.focusedIndex === primaryButtonIndex && canActivatePrimary
+            }
+            onClick={handlePrimaryAction}
+            disabled={!canActivatePrimary}
+          >
+            {getPrimaryLabel(isLastStep, isBusy)}
+          </Button>
         </>
       }
     >
       <div ref={focusFallbackRef} tabIndex={-1} className="space-y-4 focus:outline-none">
-        <p className="text-sm text-muted-foreground md:hidden">
-          Step {steps.indexOf(currentStep) + 1}/{steps.length} · {STEP_LABELS[currentStep]}
-        </p>
-        <div className="hidden md:block">
-          <HorizontalStepper steps={steps} value={currentStep} aria-label="Setup progress">
-            {steps.map((step) => (
-              <HorizontalStepper.Step key={step} value={step}>
-                {STEP_LABELS[step]}
-              </HorizontalStepper.Step>
-            ))}
-          </HorizontalStepper>
-        </div>
+        {/* Compact at every width, not below a breakpoint: six labelled ascii steps with their
+            connectors measure ~1075px, and this card's content box tops out at 616px, so the
+            full run would spill past the panel border on desktop just as it did on mobile.
+            Narrow phones drop to the stepper's text-only tier on their own. */}
+        <HorizontalStepper compact steps={steps} value={currentStep} aria-label="Setup progress">
+          {steps.map((step) => (
+            <HorizontalStepper.Step key={step} value={step}>
+              {STEP_LABELS[step]}
+            </HorizontalStepper.Step>
+          ))}
+        </HorizontalStepper>
         {(error ?? earlySaveError) && (
           <Callout tone="error" live>
             <Callout.Content>{error ?? earlySaveError}</Callout.Content>

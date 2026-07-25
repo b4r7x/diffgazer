@@ -1,7 +1,7 @@
 import type { ShutdownResult } from "@diffgazer/core/api";
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { NavigableMenuAction } from "@diffgazer/core/navigation";
-import { resolveHomeMenuActivation } from "@diffgazer/core/navigation";
+import { isMenuActionDisabled, resolveHomeMenuActivation } from "@diffgazer/core/navigation";
 import { describeReviewStartError } from "@diffgazer/core/review";
 import type { ContextInfo, MenuAction } from "@diffgazer/core/schemas/presentation";
 import {
@@ -10,13 +10,19 @@ import {
   TRUST_FOOTER_RIGHT_SHORTCUTS,
 } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import { useScope } from "@diffgazer/keys";
+import { useKey, useScope } from "@diffgazer/keys";
 import { toast } from "@diffgazer/ui/components/toast";
 import type { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { TRUST_PANEL_FOOTER_SHORTCUTS, TrustPanel } from "@/components/shared/trust-panel";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
 import { HomeMenu } from "@/features/home/components/menu";
+import {
+  HISTORY_DATE_KEY,
+  HISTORY_RUN_KEY,
+  SETTINGS_HIGHLIGHTED_KEY,
+} from "@/hooks/use-scoped-route-state";
+import { reportShutdownResult } from "@/lib/shutdown";
 
 type Navigate = ReturnType<typeof useNavigate>;
 type CreateReview = (input: { mode: ReviewMode }) => Promise<{ reviewId: string }>;
@@ -36,8 +42,8 @@ const MENU_ROUTES: Record<NavigableMenuAction, RouteConfig> = {
 // never writes (history keeps "run"/"date"; settings keeps "highlighted"; help
 // stores nothing).
 const MENU_ROUTE_SCOPED_KEYS: Record<NavigableMenuAction, readonly string[]> = {
-  history: ["run", "date"],
-  settings: ["highlighted"],
+  history: [HISTORY_RUN_KEY, HISTORY_DATE_KEY],
+  settings: [SETTINGS_HIGHLIGHTED_KEY],
   help: [],
 };
 
@@ -100,12 +106,7 @@ export function HomePagePresentation({
   })();
 
   const handleQuit = async () => {
-    const result = await shutdown();
-    if (result.status === "closed") return;
-
-    const variant = result.status === "error" ? "error" : "warning";
-    const title = result.status === "error" ? "Quit Failed" : "Close Tab Manually";
-    toast[variant](title, { message: result.message });
+    reportShutdownResult(await shutdown());
   };
 
   const navigateToReview = (reviewId: string, mode: ReviewMode) => {
@@ -191,35 +192,66 @@ export function HomePagePresentation({
     }
   };
 
+  // The trust prompt replaces the menu only when there is a project to grant it
+  // for; without one the menu renders instead, with every item already disabled.
+  // Footer copy and the jump keys follow that same branch.
+  const showsTrustPanel = needsTrust && projectId !== null && repoRoot !== null;
+
   usePageFooter({
-    shortcuts: needsTrust
+    shortcuts: showsTrustPanel
       ? [...TRUST_PANEL_FOOTER_SHORTCUTS, { key: "q", label: "Quit" }]
       : MAIN_MENU_SHORTCUTS,
-    rightShortcuts: needsTrust ? TRUST_FOOTER_RIGHT_SHORTCUTS : [],
+    rightShortcuts: showsTrustPanel ? TRUST_FOOTER_RIGHT_SHORTCUTS : [],
   });
   useScope("home");
 
-  if (needsTrust && projectId && repoRoot) {
+  // Every menu item advertises its jump key, matching the TUI home menu. The
+  // navigation letters (h/s/?/q) are already bound app-wide, so only the review
+  // letters register here; both surfaces resolve them through the same
+  // disabled/activation rules a click goes through.
+  const activateShortcut = (id: MenuAction) => {
+    if (isStartingReview) return;
+    if (isMenuActionDisabled(id, { isTrusted, hasResumableSession })) return;
+    handleActivate(id);
+  };
+
+  useKey(
+    {
+      r: () => activateShortcut("review-unstaged"),
+      R: () => activateShortcut("review-staged"),
+      l: () => activateShortcut("resume-review"),
+    },
+    { enabled: !showsTrustPanel },
+  );
+
+  if (showsTrustPanel) {
     return <TrustPanel directory={repoRoot} />;
   }
 
   return (
-    <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-center p-4 md:p-6 lg:p-8 gap-4 md:gap-6 lg:gap-8 overflow-auto">
-      <ContextSidebar
-        context={context}
-        isTrusted={isTrusted}
-        projectPath={repoRoot ?? undefined}
-        pending={isStartingReview}
-      />
-      <HomeMenu
-        highlighted={effectiveHighlighted}
-        onHighlightChange={onHighlightChange}
-        onSelect={handleActivate}
-        items={MENU_ITEMS}
-        isTrusted={isTrusted}
-        hasResumableSession={hasResumableSession}
-        pending={isStartingReview}
-      />
+    <div className="flex flex-1 flex-col overflow-y-auto px-4 pt-8 pb-4 md:px-6 lg:px-8">
+      {/* The block is centred in whatever height is left instead of hanging off
+          the hero, and the two panes stretch to one bottom line so the
+          composition closes at desktop. */}
+      <div className="m-auto flex w-full max-w-5xl flex-col items-stretch gap-8 lg:flex-row">
+        <HomeMenu
+          highlighted={effectiveHighlighted}
+          onHighlightChange={onHighlightChange}
+          onSelect={handleActivate}
+          items={MENU_ITEMS}
+          isTrusted={isTrusted}
+          hasResumableSession={hasResumableSession}
+          pending={isStartingReview}
+        />
+        {/* Menu first in source order so the actionable pane leads the stacked
+            layout; the context column returns to the left at desktop. */}
+        <ContextSidebar
+          context={context}
+          isTrusted={isTrusted}
+          projectPath={repoRoot ?? undefined}
+          pending={isStartingReview}
+        />
+      </div>
     </div>
   );
 }

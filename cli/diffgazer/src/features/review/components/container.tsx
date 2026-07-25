@@ -179,7 +179,7 @@ export function ReviewContainer({
         <ReviewProgressView
           progressSteps={mapStepsToProgressDataWithAgents(state.steps, state.agents)}
           agents={state.agents}
-          lensStats={state.completion?.lensStats}
+          lensStats={state.completion.lensStats}
           events={state.events}
           fileProgress={state.fileProgress}
           isStreaming={state.isStreaming}
@@ -216,10 +216,10 @@ export function ReviewContainer({
               ? state.completedAt.getTime() - state.startedAt.getTime()
               : undefined
           }
-          lensStats={state.completion?.lensStats}
-          droppedDuplicates={state.completion?.droppedDuplicates}
-          droppedBelowThreshold={state.completion?.droppedBelowThreshold}
-          minSeverity={state.completion?.minSeverity}
+          lensStats={state.completion.lensStats}
+          droppedDuplicates={state.completion.droppedDuplicates}
+          droppedBelowThreshold={state.completion.droppedBelowThreshold}
+          minSeverity={state.completion.minSeverity}
           onContinue={goToResults}
           onBack={handleGateBack}
         />

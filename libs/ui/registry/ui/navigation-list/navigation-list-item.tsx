@@ -40,7 +40,11 @@ const itemVariants = cva("flex cursor-pointer group", {
       false: "",
     },
   },
-  compoundVariants: [{ tree: true, active: false, className: "hover:bg-transparent border-b-0" }],
+  compoundVariants: [
+    { tree: true, active: false, className: "hover:bg-transparent border-b-0" },
+    // Disabled rows drop every hover affordance so they never invite a click.
+    { disabled: true, active: false, className: "hover:bg-transparent" },
+  ],
   defaultVariants: {
     active: false,
     disabled: false,
@@ -48,12 +52,40 @@ const itemVariants = cva("flex cursor-pointer group", {
   },
 });
 
+// Tree rows carry the active/selected fill on an inner wrapper (the outer row
+// owns the connector glyph), so the axis lives in its own CVA rather than raw
+// ternaries beside itemVariants.
+const treeRowVariants = cva("flex-1 flex items-center rounded-sm", {
+  variants: {
+    active: {
+      true: "bg-primary text-primary-foreground",
+      // The hover fill lives in the compound below, not here: this CVA is applied raw (no
+      // cn()/twMerge pass), so pairing `hover:bg-secondary` with a `hover:bg-transparent`
+      // override would ship both classes and leave source order to decide which wins.
+      false: "",
+    },
+    selected: {
+      true: "bg-secondary",
+      false: "",
+    },
+    // disabled carries no standalone classes but must be declared so the typed call site can
+    // pass it and the compound variant below can match.
+    disabled: {
+      true: "",
+      false: "",
+    },
+  },
+  // Disabled rows drop every hover affordance so they never invite a click.
+  compoundVariants: [{ active: false, disabled: false, className: "hover:bg-secondary" }],
+  defaultVariants: { active: false, selected: false, disabled: false },
+});
+
 const contentVariants = cva("flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap-y-0.5", {
   variants: {
     density: {
-      compact: "p-2",
+      compact: "p-1.5",
       default: "p-3",
-      comfortable: "p-4",
+      comfortable: "p-5",
     },
   },
   defaultVariants: {
@@ -145,7 +177,7 @@ export function NavigationListItem({
   // always-rendered selected-marker cell.
   const showsSelectedMarker = isSelected && !isActive;
 
-  let indicatorColorClass = "bg-transparent group-hover:bg-muted";
+  let indicatorColorClass = disabled ? "bg-transparent" : "bg-transparent group-hover:bg-muted";
   if (isActive) {
     indicatorColorClass =
       indicator === "bar" ? "bg-primary-foreground/40" : "bg-primary-foreground";
@@ -214,11 +246,11 @@ export function NavigationListItem({
         )}
         {isTree ? (
           <div
-            className={cn(
-              "flex-1 flex items-center rounded-sm",
-              isActive ? "bg-primary text-primary-foreground" : "hover:bg-secondary",
-              showsSelectedMarker && "bg-secondary",
-            )}
+            className={treeRowVariants({
+              active: isActive,
+              selected: showsSelectedMarker,
+              disabled,
+            })}
           >
             <div className="flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap-y-0.5 py-0.5 px-1">
               {children}
@@ -231,7 +263,7 @@ export function NavigationListItem({
               className={cn(
                 "shrink-0",
                 (indicator === "bar" || indicator === "bar-thick") && [
-                  indicator === "bar" ? "w-1" : "w-[4px]",
+                  indicator === "bar" ? "w-1" : "w-2",
                   indicatorColorClass,
                 ],
                 (indicator === "arrow" || indicator === "bracket") && "w-1 bg-transparent",

@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AIProvider, TrustConfig } from "@diffgazer/core/schemas/config";
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { requireValue } from "../../../testing/assertions.js";
 
 const keyring = vi.hoisted(() => ({
   deleteKeyringSecret: vi.fn(),

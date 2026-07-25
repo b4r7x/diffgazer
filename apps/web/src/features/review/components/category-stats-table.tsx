@@ -1,7 +1,5 @@
-import type { CategoryStats as CoreCategoryStats } from "@diffgazer/core/schemas/presentation";
+import type { CategoryStats } from "@diffgazer/core/schemas/presentation";
 import { cn } from "@diffgazer/ui/lib/utils";
-
-export type CategoryStats = CoreCategoryStats & { color: string };
 
 export type CategoryStatsTableProps = {
   categories: CategoryStats[];
@@ -13,8 +11,8 @@ export function CategoryStatsTable({ categories, className }: CategoryStatsTable
     <table className={cn("w-full text-sm text-left border-collapse", className)}>
       <thead>
         <tr className="text-muted-foreground border-b border-border text-xs uppercase">
-          <th className="pb-2 font-normal pl-2">Category</th>
-          <th className="pb-2 font-normal text-right pr-2">Count</th>
+          <th className="pb-2 font-normal">Category</th>
+          <th className="pb-2 font-normal text-right">Count</th>
         </tr>
       </thead>
       <tbody className="text-foreground/80">
@@ -26,8 +24,11 @@ export function CategoryStatsTable({ categories, className }: CategoryStatsTable
               index < categories.length - 1 && "border-b border-border/50",
             )}
           >
-            <td className={cn("py-3 pl-2", category.color)}>{category.name}</td>
-            <td className="py-3 text-right font-bold pr-2">{category.count}</td>
+            {/* Category names stay neutral on purpose: hue is the severity vocabulary
+                on this screen, and tinting categories made the same colors mean two
+                different things side by side. */}
+            <td className="py-3">{category.name}</td>
+            <td className="py-3 text-right font-bold">{category.count}</td>
           </tr>
         ))}
       </tbody>

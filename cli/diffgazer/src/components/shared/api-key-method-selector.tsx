@@ -80,9 +80,7 @@ export function ApiKeyMethodSelector({
             type="password"
             isActive={isActive && inputFocused}
           />
-          <Text color={tokens.muted} dimColor>
-            Press Tab to focus input
-          </Text>
+          <Text color={tokens.muted}>Press Tab to focus input</Text>
         </Box>
       )}
 
@@ -97,13 +95,9 @@ export function ApiKeyMethodSelector({
             isActive={isActive && inputFocused && !envVarReadOnly}
           />
           {envVarReadOnly ? (
-            <Text color={tokens.muted} dimColor>
-              Fixed for this provider
-            </Text>
+            <Text color={tokens.muted}>Fixed for this provider</Text>
           ) : (
-            <Text color={tokens.muted} dimColor>
-              Press Tab to focus input
-            </Text>
+            <Text color={tokens.muted}>Press Tab to focus input</Text>
           )}
         </Box>
       )}

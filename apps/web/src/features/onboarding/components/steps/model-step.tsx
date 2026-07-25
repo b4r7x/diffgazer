@@ -5,8 +5,10 @@ import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { getCatalogFallbackNotice } from "@/lib/catalog-fallback-notice";
 import { resolveAvailableValue } from "../../lib/select";
 
 interface ModelStepProps {
@@ -144,12 +146,7 @@ export function ModelStep({
   const wasLoadingRef = useRef(false);
   const canFocusRecoveryRef = useRef(false);
   const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
-  let fallbackNotice: string | null = null;
-  if (source === "cache") {
-    fallbackNotice = `Using cached catalog data from ${fetchedAt ?? "an unknown time"}.`;
-  } else if (source === "snapshot") {
-    fallbackNotice = "Using the bundled model catalog because live catalog data is unavailable.";
-  }
+  const fallbackNotice = getCatalogFallbackNotice(source, fetchedAt);
 
   useEffect(() => {
     if (!loading) return;
@@ -182,7 +179,7 @@ export function ModelStep({
   if (loading) {
     return (
       <div ref={loadingStateRef} className="space-y-4">
-        <Spinner className="text-muted-foreground">
+        <Spinner variant="braille" className="text-muted-foreground">
           {isOpenRouter ? "Loading OpenRouter models..." : "Loading models..."}
         </Spinner>
       </div>
@@ -232,18 +229,16 @@ export function ModelStep({
     />
   );
 
-  const content = isOpenRouter ? (
-    <div className="max-h-64 overflow-y-auto scrollbar-hide">{list}</div>
-  ) : (
-    list
-  );
+  const content = isOpenRouter ? <ScrollArea className="max-h-64">{list}</ScrollArea> : list;
 
   if (!fallbackNotice) return content;
   return (
     <div className="space-y-3">
       <output className="flex items-center justify-between gap-3 text-sm text-warning-text">
         <span>{fallbackNotice}</span>
-        <Button type="button" size="sm" variant="secondary" onClick={retry}>
+        {/* shrink-0: the notice is the flexible half of the row, so the control keeps its
+            label on one line instead of breaking mid-word. */}
+        <Button type="button" size="sm" variant="secondary" onClick={retry} className="shrink-0">
           Retry
         </Button>
       </output>

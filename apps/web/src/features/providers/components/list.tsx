@@ -77,7 +77,7 @@ export function ProviderList({
   return (
     <div className="flex flex-col md:h-full">
       <div className="p-3 border-b border-border bg-secondary/30">
-        <SectionHeader as="h2" className="mb-0 text-foreground">
+        <SectionHeader as="h2" className="text-foreground">
           Providers
         </SectionHeader>
       </div>
@@ -168,7 +168,8 @@ export function ProviderList({
               const capabilities = PROVIDER_CAPABILITIES[provider.id];
               const tierBadge = capabilities?.tierBadge ?? "PAID";
               const badge = getDisplayStatusBadge(provider.displayStatus);
-              const statusText = `[${badge.label.toUpperCase()}]`;
+              // Padded brackets: one bracket grammar across statuses and buttons.
+              const statusText = `[ ${badge.label.toUpperCase()} ]`;
               const subtitleText = !provider.model ? "Select model" : provider.model || undefined;
 
               return (

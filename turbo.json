@@ -38,6 +38,9 @@
     "type-check": {
       "dependsOn": ["^build", "^type-check"]
     },
+    "@diffgazer/ui#type-check": {
+      "dependsOn": ["build", "^build", "^type-check"]
+    },
     "test": {
       "dependsOn": ["^build"]
     },

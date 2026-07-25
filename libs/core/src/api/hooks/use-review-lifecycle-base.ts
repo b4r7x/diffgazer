@@ -6,8 +6,8 @@ import {
   isNoDiffError as checkNoDiffError,
   getLoadingMessage,
   type SessionTerminationCode,
-  type StreamReviewError,
-} from "../../review/index.js";
+} from "../../review/lifecycle.js";
+import type { StreamReviewError } from "../../review/stream.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 import type { ReviewContextResponse } from "../types.js";
 import { useSettings } from "./config.js";

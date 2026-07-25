@@ -1,4 +1,4 @@
-import { z } from "zod";
+import type { z } from "zod";
 import { quarantineCorruptFile, readJsonFileSyncSafe } from "../../fs.js";
 import { log } from "../../log.js";
 

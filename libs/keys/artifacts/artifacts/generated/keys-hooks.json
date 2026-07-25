@@ -10311,7 +10311,7 @@
       },
       {
         "path": "src/hooks/utils/navigation-core.ts",
-        "raw": "\"use client\";\n\nimport { type RefObject, useState } from \"react\";\nimport { containsActiveElement } from \"./focusable\";\nimport {\n  getFocusedNavigationValue,\n  getNavigationItems,\n} from \"./navigation-items\";\nimport type { NavigationRole, UseNavigationOptions } from \"../use-navigation\";\n\nexport type UseNavigationCoreOptions<TValue extends string = string> = Omit<\n  UseNavigationOptions<TValue>,\n  \"enabled\" | \"preventDefault\" | \"orientation\" | \"upKeys\" | \"downKeys\"\n>;\n\nexport interface UseNavigationCoreReturn<TValue extends string = string> {\n  highlighted: TValue | null;\n  isHighlighted: (value: TValue) => boolean;\n  highlight: (value: TValue | null) => void;\n  move: (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => void;\n  focusIndex: (index: number) => boolean;\n  handleSelect: (event: globalThis.KeyboardEvent) => void;\n  handleEnter: (event: globalThis.KeyboardEvent) => void;\n  getElements: () => HTMLElement[];\n}\n\nexport function queryNavigationElements(\n  containerRef: RefObject<HTMLElement | null>,\n  role: NavigationRole,\n  skipDisabled: boolean,\n  scopeToContainer: boolean,\n  ownerSelector: string | null | undefined,\n): HTMLElement[] {\n  return getNavigationItems(containerRef.current, {\n    type: role,\n    skipDisabled,\n    scopeToContainer,\n    ownerSelector,\n  });\n}\n\nexport function wrapIndex(index: number, length: number, wrap: boolean): number | null {\n  if (index < 0) return wrap ? length - 1 : null;\n  if (index >= length) return wrap ? 0 : null;\n  return index;\n}\n\n/**\n * Shared list-navigation state machine used by the standalone and provider-backed\n * navigation hooks.\n */\nexport function useNavigationCore<TValue extends string = string>({\n  containerRef,\n  role,\n  highlighted: controlledHighlighted,\n  defaultHighlighted = null,\n  onSelect,\n  onEnter,\n  onHighlightChange,\n  wrap = true,\n  onNavigationBoundaryReached,\n  skipDisabled = true,\n  moveFocus = false,\n  scopeToContainer = true,\n  ownerSelector,\n}: UseNavigationCoreOptions<TValue>): UseNavigationCoreReturn<TValue> {\n  const [internalHighlighted, setInternalHighlighted] = useState<TValue | null>(defaultHighlighted);\n  const isControlled = controlledHighlighted !== undefined;\n  const highlighted = isControlled ? (controlledHighlighted ?? null) : internalHighlighted;\n\n  const setFocusedValue = (nextValue: TValue | null) => {\n    if (!isControlled) setInternalHighlighted(nextValue);\n    onHighlightChange?.(nextValue);\n  };\n\n  const getElements = () =>\n    queryNavigationElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector);\n\n  const getFocusedIndex = (): number => {\n    const elements = getElements();\n    if (elements.length === 0) return -1;\n\n    const focusedIndex = elements.findIndex(containsActiveElement);\n    if (focusedIndex >= 0) return focusedIndex;\n\n    if (highlighted !== null) {\n      const index = elements.findIndex((el) => el.dataset.value === highlighted);\n      if (index >= 0) return index;\n    }\n\n    return -1;\n  };\n\n  const getCurrentValue = (): TValue | null => {\n    const focusedValue = getFocusedNavigationValue(containerRef.current, {\n      type: role,\n      skipDisabled,\n      scopeToContainer,\n      ownerSelector,\n    });\n    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.\n    if (focusedValue !== null) return focusedValue as TValue;\n\n    const elements = getElements();\n\n    if (highlighted !== null) {\n      return elements.some((el) => el.dataset.value === highlighted) ? highlighted : null;\n    }\n\n    return null;\n  };\n\n  const focusIndex = (index: number, knownElements?: HTMLElement[]): boolean => {\n    const elements = knownElements ?? getElements();\n    const el = elements[index];\n    if (!el) return false;\n    const nextValue = el.dataset.value;\n    if (nextValue === undefined) return false;\n\n    el.scrollIntoView?.({ block: \"nearest\" });\n    if (moveFocus) {\n      el.focus();\n      // Native disabled controls can't take DOM focus; report failure to step past.\n      if (!containsActiveElement(el)) return false;\n    }\n    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.\n    setFocusedValue(nextValue as TValue);\n    return true;\n  };\n\n  const move = (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {\n    const elements = getElements();\n    if (elements.length === 0) return;\n\n    const current = getFocusedIndex();\n    let rawNext = current + delta;\n    // Bounded by item count so an all-disabled wrap list can't loop forever.\n    for (let attempts = 0; attempts < elements.length; attempts += 1) {\n      const next = wrapIndex(rawNext, elements.length, wrap);\n      if (next === null) {\n        const direction = delta < 0 ? \"previous\" : \"next\";\n        if (event && key) onNavigationBoundaryReached?.(direction, event, key);\n        return;\n      }\n      if (next === current) return;\n      if (focusIndex(next, elements)) return;\n      if (!moveFocus) return;\n      rawNext = next + delta;\n    }\n  };\n\n  const handleSelect = (event: globalThis.KeyboardEvent) => {\n    const currentValue = getCurrentValue();\n    if (currentValue !== null) onSelect?.(currentValue, event);\n  };\n\n  const handleEnter = (event: globalThis.KeyboardEvent) => {\n    const currentValue = getCurrentValue();\n    if (currentValue === null) return;\n    if (onEnter) onEnter(currentValue, event);\n    else onSelect?.(currentValue, event);\n  };\n\n  const isHighlighted = (v: TValue) => highlighted === v;\n  const highlight = (v: TValue | null) => setFocusedValue(v);\n\n  return {\n    highlighted,\n    isHighlighted,\n    highlight,\n    move,\n    focusIndex,\n    handleSelect,\n    handleEnter,\n    getElements,\n  };\n}\n",
+        "raw": "\"use client\";\n\nimport { type RefObject, useState } from \"react\";\nimport { containsActiveElement } from \"./focusable\";\nimport { getFocusedNavigationValue, getNavigationItems } from \"./navigation-items\";\nimport type { NavigationRole, UseNavigationOptions } from \"../use-navigation\";\n\nexport type UseNavigationCoreOptions<TValue extends string = string> = Omit<\n  UseNavigationOptions<TValue>,\n  \"enabled\" | \"preventDefault\" | \"orientation\" | \"upKeys\" | \"downKeys\"\n>;\n\nexport interface UseNavigationCoreReturn<TValue extends string = string> {\n  highlighted: TValue | null;\n  isHighlighted: (value: TValue) => boolean;\n  highlight: (value: TValue | null) => void;\n  move: (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => void;\n  focusIndex: (index: number) => boolean;\n  handleSelect: (event: globalThis.KeyboardEvent) => void;\n  handleEnter: (event: globalThis.KeyboardEvent) => void;\n  getElements: () => HTMLElement[];\n}\n\nexport function queryNavigationElements(\n  containerRef: RefObject<HTMLElement | null>,\n  role: NavigationRole,\n  skipDisabled: boolean,\n  scopeToContainer: boolean,\n  ownerSelector: string | null | undefined,\n): HTMLElement[] {\n  return getNavigationItems(containerRef.current, {\n    type: role,\n    skipDisabled,\n    scopeToContainer,\n    ownerSelector,\n  });\n}\n\nexport function wrapIndex(index: number, length: number, wrap: boolean): number | null {\n  if (index < 0) return wrap ? length - 1 : null;\n  if (index >= length) return wrap ? 0 : null;\n  return index;\n}\n\n/**\n * Shared list-navigation state machine used by the standalone and provider-backed\n * navigation hooks.\n */\nexport function useNavigationCore<TValue extends string = string>({\n  containerRef,\n  role,\n  highlighted: controlledHighlighted,\n  defaultHighlighted = null,\n  onSelect,\n  onEnter,\n  onHighlightChange,\n  wrap = true,\n  onNavigationBoundaryReached,\n  skipDisabled = true,\n  moveFocus = false,\n  scopeToContainer = true,\n  ownerSelector,\n}: UseNavigationCoreOptions<TValue>): UseNavigationCoreReturn<TValue> {\n  const [internalHighlighted, setInternalHighlighted] = useState<TValue | null>(defaultHighlighted);\n  const isControlled = controlledHighlighted !== undefined;\n  const highlighted = isControlled ? (controlledHighlighted ?? null) : internalHighlighted;\n\n  const setFocusedValue = (nextValue: TValue | null) => {\n    if (!isControlled) setInternalHighlighted(nextValue);\n    onHighlightChange?.(nextValue);\n  };\n\n  const getElements = () =>\n    queryNavigationElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector);\n\n  const getFocusedIndex = (): number => {\n    const elements = getElements();\n    if (elements.length === 0) return -1;\n\n    const focusedIndex = elements.findIndex(containsActiveElement);\n    if (focusedIndex >= 0) return focusedIndex;\n\n    if (highlighted !== null) {\n      const index = elements.findIndex((el) => el.dataset.value === highlighted);\n      if (index >= 0) return index;\n    }\n\n    return -1;\n  };\n\n  const getCurrentValue = (): TValue | null => {\n    const focusedValue = getFocusedNavigationValue(containerRef.current, {\n      type: role,\n      skipDisabled,\n      scopeToContainer,\n      ownerSelector,\n    });\n    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.\n    if (focusedValue !== null) return focusedValue as TValue;\n\n    const elements = getElements();\n\n    if (highlighted !== null) {\n      return elements.some((el) => el.dataset.value === highlighted) ? highlighted : null;\n    }\n\n    return null;\n  };\n\n  const focusIndex = (index: number, knownElements?: HTMLElement[]): boolean => {\n    const elements = knownElements ?? getElements();\n    const el = elements[index];\n    if (!el) return false;\n    const nextValue = el.dataset.value;\n    if (nextValue === undefined) return false;\n\n    el.scrollIntoView?.({ block: \"nearest\" });\n    if (moveFocus) {\n      el.focus();\n      // Native disabled controls can't take DOM focus; report failure to step past.\n      if (!containsActiveElement(el)) return false;\n    }\n    // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.\n    setFocusedValue(nextValue as TValue);\n    return true;\n  };\n\n  const move = (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {\n    const elements = getElements();\n    if (elements.length === 0) return;\n\n    const current = getFocusedIndex();\n    let rawNext = current + delta;\n    // Bounded by item count so an all-disabled wrap list can't loop forever.\n    for (let attempts = 0; attempts < elements.length; attempts += 1) {\n      const next = wrapIndex(rawNext, elements.length, wrap);\n      if (next === null) {\n        const direction = delta < 0 ? \"previous\" : \"next\";\n        if (event && key) onNavigationBoundaryReached?.(direction, event, key);\n        return;\n      }\n      if (next === current) return;\n      if (focusIndex(next, elements)) return;\n      if (!moveFocus) return;\n      rawNext = next + delta;\n    }\n  };\n\n  const handleSelect = (event: globalThis.KeyboardEvent) => {\n    const currentValue = getCurrentValue();\n    if (currentValue !== null) onSelect?.(currentValue, event);\n  };\n\n  const handleEnter = (event: globalThis.KeyboardEvent) => {\n    const currentValue = getCurrentValue();\n    if (currentValue === null) return;\n    if (onEnter) onEnter(currentValue, event);\n    else onSelect?.(currentValue, event);\n  };\n\n  const isHighlighted = (v: TValue) => highlighted === v;\n  const highlight = (v: TValue | null) => setFocusedValue(v);\n\n  return {\n    highlighted,\n    isHighlighted,\n    highlight,\n    move,\n    focusIndex,\n    handleSelect,\n    handleEnter,\n    getElements,\n  };\n}\n",
         "highlighted": [
           {
             "number": 1,
@@ -10474,38 +10474,19 @@
               {
                 "text": "{",
                 "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 6,
-            "content": [
+              },
               {
-                "text": "  getFocusedNavigationValue",
+                "text": " getFocusedNavigationValue",
                 "color": "var(--code-variable)"
               },
               {
                 "text": ",",
                 "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 7,
-            "content": [
-              {
-                "text": "  getNavigationItems",
-                "color": "var(--code-variable)"
               },
               {
-                "text": ",",
-                "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 8,
-            "content": [
+                "text": " getNavigationItems ",
+                "color": "var(--code-variable)"
+              },
               {
                 "text": "}",
                 "color": "var(--code-operator)"
@@ -10541,7 +10522,7 @@
             ]
           },
           {
-            "number": 9,
+            "number": 6,
             "content": [
               {
                 "text": "import",
@@ -10610,11 +10591,11 @@
             ]
           },
           {
-            "number": 10,
+            "number": 7,
             "content": []
           },
           {
-            "number": 11,
+            "number": 8,
             "content": [
               {
                 "text": "export",
@@ -10703,7 +10684,7 @@
             ]
           },
           {
-            "number": 12,
+            "number": 9,
             "content": [
               {
                 "text": "  ",
@@ -10728,7 +10709,7 @@
             ]
           },
           {
-            "number": 13,
+            "number": 10,
             "content": [
               {
                 "text": "  ",
@@ -10845,7 +10826,7 @@
             ]
           },
           {
-            "number": 14,
+            "number": 11,
             "content": [
               {
                 "text": ">;",
@@ -10854,11 +10835,11 @@
             ]
           },
           {
-            "number": 15,
+            "number": 12,
             "content": []
           },
           {
-            "number": 16,
+            "number": 13,
             "content": [
               {
                 "text": "export",
@@ -10935,7 +10916,7 @@
             ]
           },
           {
-            "number": 17,
+            "number": 14,
             "content": [
               {
                 "text": "  highlighted",
@@ -10976,7 +10957,7 @@
             ]
           },
           {
-            "number": 18,
+            "number": 15,
             "content": [
               {
                 "text": "  ",
@@ -11041,7 +11022,7 @@
             ]
           },
           {
-            "number": 19,
+            "number": 16,
             "content": [
               {
                 "text": "  ",
@@ -11122,7 +11103,7 @@
             ]
           },
           {
-            "number": 20,
+            "number": 17,
             "content": [
               {
                 "text": "  ",
@@ -11251,7 +11232,7 @@
             ]
           },
           {
-            "number": 21,
+            "number": 18,
             "content": [
               {
                 "text": "  ",
@@ -11316,7 +11297,7 @@
             ]
           },
           {
-            "number": 22,
+            "number": 19,
             "content": [
               {
                 "text": "  ",
@@ -11389,7 +11370,7 @@
             ]
           },
           {
-            "number": 23,
+            "number": 20,
             "content": [
               {
                 "text": "  ",
@@ -11462,7 +11443,7 @@
             ]
           },
           {
-            "number": 24,
+            "number": 21,
             "content": [
               {
                 "text": "  ",
@@ -11511,7 +11492,7 @@
             ]
           },
           {
-            "number": 25,
+            "number": 22,
             "content": [
               {
                 "text": "}",
@@ -11520,11 +11501,11 @@
             ]
           },
           {
-            "number": 26,
+            "number": 23,
             "content": []
           },
           {
-            "number": 27,
+            "number": 24,
             "content": [
               {
                 "text": "export",
@@ -11553,7 +11534,7 @@
             ]
           },
           {
-            "number": 28,
+            "number": 25,
             "content": [
               {
                 "text": "  containerRef",
@@ -11602,7 +11583,7 @@
             ]
           },
           {
-            "number": 29,
+            "number": 26,
             "content": [
               {
                 "text": "  role",
@@ -11627,7 +11608,7 @@
             ]
           },
           {
-            "number": 30,
+            "number": 27,
             "content": [
               {
                 "text": "  skipDisabled",
@@ -11652,7 +11633,7 @@
             ]
           },
           {
-            "number": 31,
+            "number": 28,
             "content": [
               {
                 "text": "  scopeToContainer",
@@ -11677,7 +11658,7 @@
             ]
           },
           {
-            "number": 32,
+            "number": 29,
             "content": [
               {
                 "text": "  ownerSelector",
@@ -11734,7 +11715,7 @@
             ]
           },
           {
-            "number": 33,
+            "number": 30,
             "content": [
               {
                 "text": "):",
@@ -11759,7 +11740,7 @@
             ]
           },
           {
-            "number": 34,
+            "number": 31,
             "content": [
               {
                 "text": "  ",
@@ -11808,7 +11789,7 @@
             ]
           },
           {
-            "number": 35,
+            "number": 32,
             "content": [
               {
                 "text": "    type",
@@ -11829,7 +11810,7 @@
             ]
           },
           {
-            "number": 36,
+            "number": 33,
             "content": [
               {
                 "text": "    skipDisabled",
@@ -11842,7 +11823,7 @@
             ]
           },
           {
-            "number": 37,
+            "number": 34,
             "content": [
               {
                 "text": "    scopeToContainer",
@@ -11855,7 +11836,7 @@
             ]
           },
           {
-            "number": 38,
+            "number": 35,
             "content": [
               {
                 "text": "    ownerSelector",
@@ -11868,7 +11849,7 @@
             ]
           },
           {
-            "number": 39,
+            "number": 36,
             "content": [
               {
                 "text": "  ",
@@ -11889,7 +11870,7 @@
             ]
           },
           {
-            "number": 40,
+            "number": 37,
             "content": [
               {
                 "text": "}",
@@ -11898,11 +11879,11 @@
             ]
           },
           {
-            "number": 41,
+            "number": 38,
             "content": []
           },
           {
-            "number": 42,
+            "number": 39,
             "content": [
               {
                 "text": "export",
@@ -12023,7 +12004,7 @@
             ]
           },
           {
-            "number": 43,
+            "number": 40,
             "content": [
               {
                 "text": "  ",
@@ -12104,7 +12085,7 @@
             ]
           },
           {
-            "number": 44,
+            "number": 41,
             "content": [
               {
                 "text": "  ",
@@ -12169,7 +12150,7 @@
             ]
           },
           {
-            "number": 45,
+            "number": 42,
             "content": [
               {
                 "text": "  ",
@@ -12190,7 +12171,7 @@
             ]
           },
           {
-            "number": 46,
+            "number": 43,
             "content": [
               {
                 "text": "}",
@@ -12199,11 +12180,11 @@
             ]
           },
           {
-            "number": 47,
+            "number": 44,
             "content": []
           },
           {
-            "number": 48,
+            "number": 45,
             "content": [
               {
                 "text": "/**",
@@ -12212,7 +12193,7 @@
             ]
           },
           {
-            "number": 49,
+            "number": 46,
             "content": [
               {
                 "text": " * Shared list-navigation state machine used by the standalone and provider-backed",
@@ -12221,7 +12202,7 @@
             ]
           },
           {
-            "number": 50,
+            "number": 47,
             "content": [
               {
                 "text": " * navigation hooks.",
@@ -12230,7 +12211,7 @@
             ]
           },
           {
-            "number": 51,
+            "number": 48,
             "content": [
               {
                 "text": " ",
@@ -12243,7 +12224,7 @@
             ]
           },
           {
-            "number": 52,
+            "number": 49,
             "content": [
               {
                 "text": "export",
@@ -12312,7 +12293,7 @@
             ]
           },
           {
-            "number": 53,
+            "number": 50,
             "content": [
               {
                 "text": "  containerRef",
@@ -12325,7 +12306,7 @@
             ]
           },
           {
-            "number": 54,
+            "number": 51,
             "content": [
               {
                 "text": "  role",
@@ -12338,7 +12319,7 @@
             ]
           },
           {
-            "number": 55,
+            "number": 52,
             "content": [
               {
                 "text": "  highlighted",
@@ -12359,7 +12340,7 @@
             ]
           },
           {
-            "number": 56,
+            "number": 53,
             "content": [
               {
                 "text": "  defaultHighlighted ",
@@ -12384,7 +12365,7 @@
             ]
           },
           {
-            "number": 57,
+            "number": 54,
             "content": [
               {
                 "text": "  onSelect",
@@ -12397,7 +12378,7 @@
             ]
           },
           {
-            "number": 58,
+            "number": 55,
             "content": [
               {
                 "text": "  onEnter",
@@ -12410,7 +12391,7 @@
             ]
           },
           {
-            "number": 59,
+            "number": 56,
             "content": [
               {
                 "text": "  onHighlightChange",
@@ -12423,7 +12404,7 @@
             ]
           },
           {
-            "number": 60,
+            "number": 57,
             "content": [
               {
                 "text": "  wrap ",
@@ -12448,7 +12429,7 @@
             ]
           },
           {
-            "number": 61,
+            "number": 58,
             "content": [
               {
                 "text": "  onNavigationBoundaryReached",
@@ -12461,7 +12442,7 @@
             ]
           },
           {
-            "number": 62,
+            "number": 59,
             "content": [
               {
                 "text": "  skipDisabled ",
@@ -12486,7 +12467,7 @@
             ]
           },
           {
-            "number": 63,
+            "number": 60,
             "content": [
               {
                 "text": "  moveFocus ",
@@ -12511,7 +12492,7 @@
             ]
           },
           {
-            "number": 64,
+            "number": 61,
             "content": [
               {
                 "text": "  scopeToContainer ",
@@ -12536,7 +12517,7 @@
             ]
           },
           {
-            "number": 65,
+            "number": 62,
             "content": [
               {
                 "text": "  ownerSelector",
@@ -12549,7 +12530,7 @@
             ]
           },
           {
-            "number": 66,
+            "number": 63,
             "content": [
               {
                 "text": "}:",
@@ -12606,7 +12587,7 @@
             ]
           },
           {
-            "number": 67,
+            "number": 64,
             "content": [
               {
                 "text": "  ",
@@ -12699,7 +12680,7 @@
             ]
           },
           {
-            "number": 68,
+            "number": 65,
             "content": [
               {
                 "text": "  ",
@@ -12748,7 +12729,7 @@
             ]
           },
           {
-            "number": 69,
+            "number": 66,
             "content": [
               {
                 "text": "  ",
@@ -12817,11 +12798,11 @@
             ]
           },
           {
-            "number": 70,
+            "number": 67,
             "content": []
           },
           {
-            "number": 71,
+            "number": 68,
             "content": [
               {
                 "text": "  ",
@@ -12910,7 +12891,7 @@
             ]
           },
           {
-            "number": 72,
+            "number": 69,
             "content": [
               {
                 "text": "    ",
@@ -12947,7 +12928,7 @@
             ]
           },
           {
-            "number": 73,
+            "number": 70,
             "content": [
               {
                 "text": "    ",
@@ -12972,7 +12953,7 @@
             ]
           },
           {
-            "number": 74,
+            "number": 71,
             "content": [
               {
                 "text": "  ",
@@ -12985,11 +12966,11 @@
             ]
           },
           {
-            "number": 75,
+            "number": 72,
             "content": []
           },
           {
-            "number": 76,
+            "number": 73,
             "content": [
               {
                 "text": "  ",
@@ -13034,7 +13015,7 @@
             ]
           },
           {
-            "number": 77,
+            "number": 74,
             "content": [
               {
                 "text": "    ",
@@ -13087,11 +13068,11 @@
             ]
           },
           {
-            "number": 78,
+            "number": 75,
             "content": []
           },
           {
-            "number": 79,
+            "number": 76,
             "content": [
               {
                 "text": "  ",
@@ -13152,7 +13133,7 @@
             ]
           },
           {
-            "number": 80,
+            "number": 77,
             "content": [
               {
                 "text": "    ",
@@ -13197,7 +13178,7 @@
             ]
           },
           {
-            "number": 81,
+            "number": 78,
             "content": [
               {
                 "text": "    ",
@@ -13266,11 +13247,11 @@
             ]
           },
           {
-            "number": 82,
+            "number": 79,
             "content": []
           },
           {
-            "number": 83,
+            "number": 80,
             "content": [
               {
                 "text": "    ",
@@ -13323,7 +13304,7 @@
             ]
           },
           {
-            "number": 84,
+            "number": 81,
             "content": [
               {
                 "text": "    ",
@@ -13368,11 +13349,11 @@
             ]
           },
           {
-            "number": 85,
+            "number": 82,
             "content": []
           },
           {
-            "number": 86,
+            "number": 83,
             "content": [
               {
                 "text": "    ",
@@ -13409,7 +13390,7 @@
             ]
           },
           {
-            "number": 87,
+            "number": 84,
             "content": [
               {
                 "text": "      ",
@@ -13514,7 +13495,7 @@
             ]
           },
           {
-            "number": 88,
+            "number": 85,
             "content": [
               {
                 "text": "      ",
@@ -13559,7 +13540,7 @@
             ]
           },
           {
-            "number": 89,
+            "number": 86,
             "content": [
               {
                 "text": "    ",
@@ -13572,11 +13553,11 @@
             ]
           },
           {
-            "number": 90,
+            "number": 87,
             "content": []
           },
           {
-            "number": 91,
+            "number": 88,
             "content": [
               {
                 "text": "    ",
@@ -13605,7 +13586,7 @@
             ]
           },
           {
-            "number": 92,
+            "number": 89,
             "content": [
               {
                 "text": "  ",
@@ -13618,11 +13599,11 @@
             ]
           },
           {
-            "number": 93,
+            "number": 90,
             "content": []
           },
           {
-            "number": 94,
+            "number": 91,
             "content": [
               {
                 "text": "  ",
@@ -13699,7 +13680,7 @@
             ]
           },
           {
-            "number": 95,
+            "number": 92,
             "content": [
               {
                 "text": "    ",
@@ -13764,7 +13745,7 @@
             ]
           },
           {
-            "number": 96,
+            "number": 93,
             "content": [
               {
                 "text": "      type",
@@ -13785,7 +13766,7 @@
             ]
           },
           {
-            "number": 97,
+            "number": 94,
             "content": [
               {
                 "text": "      skipDisabled",
@@ -13798,7 +13779,7 @@
             ]
           },
           {
-            "number": 98,
+            "number": 95,
             "content": [
               {
                 "text": "      scopeToContainer",
@@ -13811,7 +13792,7 @@
             ]
           },
           {
-            "number": 99,
+            "number": 96,
             "content": [
               {
                 "text": "      ownerSelector",
@@ -13824,7 +13805,7 @@
             ]
           },
           {
-            "number": 100,
+            "number": 97,
             "content": [
               {
                 "text": "    ",
@@ -13845,7 +13826,7 @@
             ]
           },
           {
-            "number": 101,
+            "number": 98,
             "content": [
               {
                 "text": "    //",
@@ -13858,7 +13839,7 @@
             ]
           },
           {
-            "number": 102,
+            "number": 99,
             "content": [
               {
                 "text": "    ",
@@ -13915,11 +13896,11 @@
             ]
           },
           {
-            "number": 103,
+            "number": 100,
             "content": []
           },
           {
-            "number": 104,
+            "number": 101,
             "content": [
               {
                 "text": "    ",
@@ -13964,11 +13945,11 @@
             ]
           },
           {
-            "number": 105,
+            "number": 102,
             "content": []
           },
           {
-            "number": 106,
+            "number": 103,
             "content": [
               {
                 "text": "    ",
@@ -14005,7 +13986,7 @@
             ]
           },
           {
-            "number": 107,
+            "number": 104,
             "content": [
               {
                 "text": "      ",
@@ -14114,7 +14095,7 @@
             ]
           },
           {
-            "number": 108,
+            "number": 105,
             "content": [
               {
                 "text": "    ",
@@ -14127,11 +14108,11 @@
             ]
           },
           {
-            "number": 109,
+            "number": 106,
             "content": []
           },
           {
-            "number": 110,
+            "number": 107,
             "content": [
               {
                 "text": "    ",
@@ -14156,7 +14137,7 @@
             ]
           },
           {
-            "number": 111,
+            "number": 108,
             "content": [
               {
                 "text": "  ",
@@ -14169,11 +14150,11 @@
             ]
           },
           {
-            "number": 112,
+            "number": 109,
             "content": []
           },
           {
-            "number": 113,
+            "number": 110,
             "content": [
               {
                 "text": "  ",
@@ -14278,7 +14259,7 @@
             ]
           },
           {
-            "number": 114,
+            "number": 111,
             "content": [
               {
                 "text": "    ",
@@ -14331,7 +14312,7 @@
             ]
           },
           {
-            "number": 115,
+            "number": 112,
             "content": [
               {
                 "text": "    ",
@@ -14368,7 +14349,7 @@
             ]
           },
           {
-            "number": 116,
+            "number": 113,
             "content": [
               {
                 "text": "    ",
@@ -14409,7 +14390,7 @@
             ]
           },
           {
-            "number": 117,
+            "number": 114,
             "content": [
               {
                 "text": "    ",
@@ -14466,7 +14447,7 @@
             ]
           },
           {
-            "number": 118,
+            "number": 115,
             "content": [
               {
                 "text": "    ",
@@ -14515,11 +14496,11 @@
             ]
           },
           {
-            "number": 119,
+            "number": 116,
             "content": []
           },
           {
-            "number": 120,
+            "number": 117,
             "content": [
               {
                 "text": "    ",
@@ -14592,7 +14573,7 @@
             ]
           },
           {
-            "number": 121,
+            "number": 118,
             "content": [
               {
                 "text": "    ",
@@ -14613,7 +14594,7 @@
             ]
           },
           {
-            "number": 122,
+            "number": 119,
             "content": [
               {
                 "text": "      ",
@@ -14642,7 +14623,7 @@
             ]
           },
           {
-            "number": 123,
+            "number": 120,
             "content": [
               {
                 "text": "      //",
@@ -14655,7 +14636,7 @@
             ]
           },
           {
-            "number": 124,
+            "number": 121,
             "content": [
               {
                 "text": "      ",
@@ -14700,7 +14681,7 @@
             ]
           },
           {
-            "number": 125,
+            "number": 122,
             "content": [
               {
                 "text": "    ",
@@ -14713,7 +14694,7 @@
             ]
           },
           {
-            "number": 126,
+            "number": 123,
             "content": [
               {
                 "text": "    //",
@@ -14726,7 +14707,7 @@
             ]
           },
           {
-            "number": 127,
+            "number": 124,
             "content": [
               {
                 "text": "    ",
@@ -14763,7 +14744,7 @@
             ]
           },
           {
-            "number": 128,
+            "number": 125,
             "content": [
               {
                 "text": "    ",
@@ -14788,7 +14769,7 @@
             ]
           },
           {
-            "number": 129,
+            "number": 126,
             "content": [
               {
                 "text": "  ",
@@ -14801,11 +14782,11 @@
             ]
           },
           {
-            "number": 130,
+            "number": 127,
             "content": []
           },
           {
-            "number": 131,
+            "number": 128,
             "content": [
               {
                 "text": "  ",
@@ -14942,7 +14923,7 @@
             ]
           },
           {
-            "number": 132,
+            "number": 129,
             "content": [
               {
                 "text": "    ",
@@ -14987,7 +14968,7 @@
             ]
           },
           {
-            "number": 133,
+            "number": 130,
             "content": [
               {
                 "text": "    ",
@@ -15044,11 +15025,11 @@
             ]
           },
           {
-            "number": 134,
+            "number": 131,
             "content": []
           },
           {
-            "number": 135,
+            "number": 132,
             "content": [
               {
                 "text": "    ",
@@ -15093,7 +15074,7 @@
             ]
           },
           {
-            "number": 136,
+            "number": 133,
             "content": [
               {
                 "text": "    ",
@@ -15130,7 +15111,7 @@
             ]
           },
           {
-            "number": 137,
+            "number": 134,
             "content": [
               {
                 "text": "    //",
@@ -15143,7 +15124,7 @@
             ]
           },
           {
-            "number": 138,
+            "number": 135,
             "content": [
               {
                 "text": "    ",
@@ -15236,7 +15217,7 @@
             ]
           },
           {
-            "number": 139,
+            "number": 136,
             "content": [
               {
                 "text": "      ",
@@ -15309,7 +15290,7 @@
             ]
           },
           {
-            "number": 140,
+            "number": 137,
             "content": [
               {
                 "text": "      ",
@@ -15346,7 +15327,7 @@
             ]
           },
           {
-            "number": 141,
+            "number": 138,
             "content": [
               {
                 "text": "        ",
@@ -15443,7 +15424,7 @@
             ]
           },
           {
-            "number": 142,
+            "number": 139,
             "content": [
               {
                 "text": "        ",
@@ -15500,7 +15481,7 @@
             ]
           },
           {
-            "number": 143,
+            "number": 140,
             "content": [
               {
                 "text": "        ",
@@ -15517,7 +15498,7 @@
             ]
           },
           {
-            "number": 144,
+            "number": 141,
             "content": [
               {
                 "text": "      ",
@@ -15530,7 +15511,7 @@
             ]
           },
           {
-            "number": 145,
+            "number": 142,
             "content": [
               {
                 "text": "      ",
@@ -15563,7 +15544,7 @@
             ]
           },
           {
-            "number": 146,
+            "number": 143,
             "content": [
               {
                 "text": "      ",
@@ -15604,7 +15585,7 @@
             ]
           },
           {
-            "number": 147,
+            "number": 144,
             "content": [
               {
                 "text": "      ",
@@ -15637,7 +15618,7 @@
             ]
           },
           {
-            "number": 148,
+            "number": 145,
             "content": [
               {
                 "text": "      rawNext ",
@@ -15666,7 +15647,7 @@
             ]
           },
           {
-            "number": 149,
+            "number": 146,
             "content": [
               {
                 "text": "    ",
@@ -15679,7 +15660,7 @@
             ]
           },
           {
-            "number": 150,
+            "number": 147,
             "content": [
               {
                 "text": "  ",
@@ -15692,11 +15673,11 @@
             ]
           },
           {
-            "number": 151,
+            "number": 148,
             "content": []
           },
           {
-            "number": 152,
+            "number": 149,
             "content": [
               {
                 "text": "  ",
@@ -15777,7 +15758,7 @@
             ]
           },
           {
-            "number": 153,
+            "number": 150,
             "content": [
               {
                 "text": "    ",
@@ -15822,7 +15803,7 @@
             ]
           },
           {
-            "number": 154,
+            "number": 151,
             "content": [
               {
                 "text": "    ",
@@ -15879,7 +15860,7 @@
             ]
           },
           {
-            "number": 155,
+            "number": 152,
             "content": [
               {
                 "text": "  ",
@@ -15892,11 +15873,11 @@
             ]
           },
           {
-            "number": 156,
+            "number": 153,
             "content": []
           },
           {
-            "number": 157,
+            "number": 154,
             "content": [
               {
                 "text": "  ",
@@ -15977,7 +15958,7 @@
             ]
           },
           {
-            "number": 158,
+            "number": 155,
             "content": [
               {
                 "text": "    ",
@@ -16022,7 +16003,7 @@
             ]
           },
           {
-            "number": 159,
+            "number": 156,
             "content": [
               {
                 "text": "    ",
@@ -16063,7 +16044,7 @@
             ]
           },
           {
-            "number": 160,
+            "number": 157,
             "content": [
               {
                 "text": "    ",
@@ -16100,7 +16081,7 @@
             ]
           },
           {
-            "number": 161,
+            "number": 158,
             "content": [
               {
                 "text": "    ",
@@ -16141,7 +16122,7 @@
             ]
           },
           {
-            "number": 162,
+            "number": 159,
             "content": [
               {
                 "text": "  ",
@@ -16154,11 +16135,11 @@
             ]
           },
           {
-            "number": 163,
+            "number": 160,
             "content": []
           },
           {
-            "number": 164,
+            "number": 161,
             "content": [
               {
                 "text": "  ",
@@ -16239,7 +16220,7 @@
             ]
           },
           {
-            "number": 165,
+            "number": 162,
             "content": [
               {
                 "text": "  ",
@@ -16336,11 +16317,11 @@
             ]
           },
           {
-            "number": 166,
+            "number": 163,
             "content": []
           },
           {
-            "number": 167,
+            "number": 164,
             "content": [
               {
                 "text": "  ",
@@ -16361,7 +16342,7 @@
             ]
           },
           {
-            "number": 168,
+            "number": 165,
             "content": [
               {
                 "text": "    highlighted",
@@ -16374,7 +16355,7 @@
             ]
           },
           {
-            "number": 169,
+            "number": 166,
             "content": [
               {
                 "text": "    isHighlighted",
@@ -16387,7 +16368,7 @@
             ]
           },
           {
-            "number": 170,
+            "number": 167,
             "content": [
               {
                 "text": "    highlight",
@@ -16400,7 +16381,7 @@
             ]
           },
           {
-            "number": 171,
+            "number": 168,
             "content": [
               {
                 "text": "    move",
@@ -16413,7 +16394,7 @@
             ]
           },
           {
-            "number": 172,
+            "number": 169,
             "content": [
               {
                 "text": "    focusIndex",
@@ -16426,7 +16407,7 @@
             ]
           },
           {
-            "number": 173,
+            "number": 170,
             "content": [
               {
                 "text": "    handleSelect",
@@ -16439,7 +16420,7 @@
             ]
           },
           {
-            "number": 174,
+            "number": 171,
             "content": [
               {
                 "text": "    handleEnter",
@@ -16452,7 +16433,7 @@
             ]
           },
           {
-            "number": 175,
+            "number": 172,
             "content": [
               {
                 "text": "    getElements",
@@ -16465,7 +16446,7 @@
             ]
           },
           {
-            "number": 176,
+            "number": 173,
             "content": [
               {
                 "text": "  ",
@@ -16478,7 +16459,7 @@
             ]
           },
           {
-            "number": 177,
+            "number": 174,
             "content": [
               {
                 "text": "}",
@@ -16487,7 +16468,7 @@
             ]
           },
           {
-            "number": 178,
+            "number": 175,
             "content": []
           }
         ]
@@ -55809,7 +55790,7 @@
     "title": "useFocusTrap",
     "description": "Trap Tab focus within a container element",
     "source": {
-      "raw": "\"use client\";\n\nimport { type RefObject, useEffect, useRef } from \"react\";\nimport {\n  composedContains,\n  getDeepActiveElement,\n  isHTMLElement,\n} from \"./utils/element-guards\";\nimport { restoreFocus as restoreFocusTarget } from \"./utils/focus-restore\";\nimport { getFocusableElements, isFocusable } from \"./utils/focusable\";\nimport { createFocusTrapController } from \"./utils/focus-trap-controller\";\nimport { useFocusRestore } from \"./use-focus-restore\";\n\n/** Options for trapping Tab focus inside a container. */\nexport interface UseFocusTrapOptions {\n  /** Element that receives focus when the trap activates. */\n  initialFocus?: RefObject<HTMLElement | null>;\n  /** Restore focus to the previously focused element when the trap releases. */\n  restoreFocus?: boolean;\n  /** Whether the focus trap is active. */\n  enabled?: boolean;\n}\n\ninterface ActiveTrap {\n  container: HTMLElement;\n  restoreFocus: boolean;\n  release: () => void;\n}\n\nfunction pickInitialTarget(\n  container: HTMLElement,\n  initialFocus: RefObject<HTMLElement | null> | undefined,\n): HTMLElement {\n  const requested = initialFocus?.current;\n  if (requested && composedContains(container, requested) && isFocusable(requested))\n    return requested;\n  return getFocusableElements(container)[0] ?? container;\n}\n\nfunction isInsideContainer(\n  container: HTMLElement,\n  target: EventTarget | null,\n): target is HTMLElement {\n  return isHTMLElement(target) && composedContains(container, target);\n}\n\n/**\n * Keeps Tab and Shift+Tab focus inside a container while active, with nested\n * trap stacking and optional focus restoration on release. Active traps listen\n * for keydown and focusin in the capture phase on the container's owner document.\n */\nexport function useFocusTrap(\n  containerRef: RefObject<HTMLElement | null>,\n  options: UseFocusTrapOptions = {},\n): void {\n  const { initialFocus, restoreFocus = true, enabled = true } = options;\n  const activeTrapRef = useRef<ActiveTrap | null>(null);\n  // Detach listeners BEFORE focus moves out in release(), or the document-level\n  // focusin recapture re-traps the restored target. restoreOnUnmount:false keeps\n  // this stack hook from moving focus during its own unmount cleanup.\n  const { capture, restore } = useFocusRestore({\n    enabled: restoreFocus,\n    restoreOnUnmount: false,\n  });\n\n  // No dependency array on purpose: React does not re-fire effects when\n  // containerRef.current mutates while the ref object stays stable.\n  useEffect(() => {\n    const nextContainer = enabled ? containerRef.current : null;\n    const active = activeTrapRef.current;\n    if (active && active.container === nextContainer) {\n      // restoreFocus is release-time policy; update in place instead of tearing\n      // down (which would recapture the interior as the restore target, not the opener).\n      active.restoreFocus = restoreFocus;\n      return;\n    }\n\n    active?.release();\n    activeTrapRef.current = null;\n\n    if (!nextContainer) return;\n    const container = nextContainer;\n    const ownerDocument = container.ownerDocument;\n    // Resolve the observer BEFORE any side effect (focus capture, tabindex mutation)\n    // so a document without MutationObserver bails out leaving the container untouched.\n    const MutationObserverCtor = ownerDocument.defaultView?.MutationObserver;\n    if (typeof MutationObserverCtor !== \"function\") return;\n    // Capture the opener before focus moves inside, so a false-to-true toggle can still restore to it.\n    const activeAtActivation = getDeepActiveElement(ownerDocument);\n    const opener =\n      isHTMLElement(activeAtActivation) && !isInsideContainer(container, activeAtActivation)\n        ? activeAtActivation\n        : null;\n    const restoreTarget = capture(ownerDocument);\n\n    const controller = createFocusTrapController({\n      container,\n      resolveInitialFocus: () => pickInitialTarget(container, initialFocus),\n      MutationObserverCtor,\n    });\n    // Push BEFORE arming/focusing: pushTrap suspends the previous top so its\n    // focusin handler does not recapture focus away from this new trap.\n    controller.activate();\n\n    const activeTrap: ActiveTrap = {\n      container,\n      restoreFocus,\n      release: () => {\n        const { hasOuterTrap } = controller.release();\n\n        if (activeTrap.restoreFocus) {\n          const restored = restore();\n          if (!restored && !hasOuterTrap) restoreFocusTarget(restoreTarget ?? opener);\n        }\n      },\n    };\n    activeTrapRef.current = activeTrap;\n  });\n\n  useEffect(() => {\n    return () => {\n      const activeTrap = activeTrapRef.current;\n      if (!activeTrap) return;\n      activeTrapRef.current = null;\n      activeTrap.release();\n    };\n  }, []);\n}\n",
+      "raw": "\"use client\";\n\nimport { type RefObject, useEffect, useRef } from \"react\";\nimport { composedContains, getDeepActiveElement, isHTMLElement } from \"./utils/element-guards\";\nimport { restoreFocus as restoreFocusTarget } from \"./utils/focus-restore\";\nimport { getFocusableElements, isFocusable } from \"./utils/focusable\";\nimport { createFocusTrapController } from \"./utils/focus-trap-controller\";\nimport { useFocusRestore } from \"./use-focus-restore\";\n\n/** Options for trapping Tab focus inside a container. */\nexport interface UseFocusTrapOptions {\n  /** Element that receives focus when the trap activates. */\n  initialFocus?: RefObject<HTMLElement | null>;\n  /** Restore focus to the previously focused element when the trap releases. */\n  restoreFocus?: boolean;\n  /** Whether the focus trap is active. */\n  enabled?: boolean;\n}\n\ninterface ActiveTrap {\n  container: HTMLElement;\n  restoreFocus: boolean;\n  release: () => void;\n}\n\nfunction pickInitialTarget(\n  container: HTMLElement,\n  initialFocus: RefObject<HTMLElement | null> | undefined,\n): HTMLElement {\n  const requested = initialFocus?.current;\n  if (requested && composedContains(container, requested) && isFocusable(requested))\n    return requested;\n  return getFocusableElements(container)[0] ?? container;\n}\n\nfunction isInsideContainer(\n  container: HTMLElement,\n  target: EventTarget | null,\n): target is HTMLElement {\n  return isHTMLElement(target) && composedContains(container, target);\n}\n\n/**\n * Keeps Tab and Shift+Tab focus inside a container while active, with nested\n * trap stacking and optional focus restoration on release. Active traps listen\n * for keydown and focusin in the capture phase on the container's owner document.\n */\nexport function useFocusTrap(\n  containerRef: RefObject<HTMLElement | null>,\n  options: UseFocusTrapOptions = {},\n): void {\n  const { initialFocus, restoreFocus = true, enabled = true } = options;\n  const activeTrapRef = useRef<ActiveTrap | null>(null);\n  // Detach listeners BEFORE focus moves out in release(), or the document-level\n  // focusin recapture re-traps the restored target. restoreOnUnmount:false keeps\n  // this stack hook from moving focus during its own unmount cleanup.\n  const { capture, restore } = useFocusRestore({\n    enabled: restoreFocus,\n    restoreOnUnmount: false,\n  });\n\n  // No dependency array on purpose: React does not re-fire effects when\n  // containerRef.current mutates while the ref object stays stable.\n  useEffect(() => {\n    const nextContainer = enabled ? containerRef.current : null;\n    const active = activeTrapRef.current;\n    if (active && active.container === nextContainer) {\n      // restoreFocus is release-time policy; update in place instead of tearing\n      // down (which would recapture the interior as the restore target, not the opener).\n      active.restoreFocus = restoreFocus;\n      return;\n    }\n\n    active?.release();\n    activeTrapRef.current = null;\n\n    if (!nextContainer) return;\n    const container = nextContainer;\n    const ownerDocument = container.ownerDocument;\n    // Resolve the observer BEFORE any side effect (focus capture, tabindex mutation)\n    // so a document without MutationObserver bails out leaving the container untouched.\n    const MutationObserverCtor = ownerDocument.defaultView?.MutationObserver;\n    if (typeof MutationObserverCtor !== \"function\") return;\n    // Capture the opener before focus moves inside, so a false-to-true toggle can still restore to it.\n    const activeAtActivation = getDeepActiveElement(ownerDocument);\n    const opener =\n      isHTMLElement(activeAtActivation) && !isInsideContainer(container, activeAtActivation)\n        ? activeAtActivation\n        : null;\n    const restoreTarget = capture(ownerDocument);\n\n    const controller = createFocusTrapController({\n      container,\n      resolveInitialFocus: () => pickInitialTarget(container, initialFocus),\n      MutationObserverCtor,\n    });\n    // Push BEFORE arming/focusing: pushTrap suspends the previous top so its\n    // focusin handler does not recapture focus away from this new trap.\n    controller.activate();\n\n    const activeTrap: ActiveTrap = {\n      container,\n      restoreFocus,\n      release: () => {\n        const { hasOuterTrap } = controller.release();\n\n        if (activeTrap.restoreFocus) {\n          const restored = restore();\n          if (!restored && !hasOuterTrap) restoreFocusTarget(restoreTarget ?? opener);\n        }\n      },\n    };\n    activeTrapRef.current = activeTrap;\n  });\n\n  useEffect(() => {\n    return () => {\n      const activeTrap = activeTrapRef.current;\n      if (!activeTrap) return;\n      activeTrapRef.current = null;\n      activeTrap.release();\n    };\n  }, []);\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -55927,51 +55908,27 @@
             {
               "text": "{",
               "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 5,
-          "content": [
+            },
             {
-              "text": "  composedContains",
+              "text": " composedContains",
               "color": "var(--code-variable)"
             },
             {
               "text": ",",
               "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 6,
-          "content": [
+            },
             {
-              "text": "  getDeepActiveElement",
+              "text": " getDeepActiveElement",
               "color": "var(--code-variable)"
             },
             {
               "text": ",",
               "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 7,
-          "content": [
-            {
-              "text": "  isHTMLElement",
-              "color": "var(--code-variable)"
             },
             {
-              "text": ",",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 8,
-          "content": [
+              "text": " isHTMLElement ",
+              "color": "var(--code-variable)"
+            },
             {
               "text": "}",
               "color": "var(--code-operator)"
@@ -56007,7 +55964,7 @@
           ]
         },
         {
-          "number": 9,
+          "number": 5,
           "content": [
             {
               "text": "import",
@@ -56068,7 +56025,7 @@
           ]
         },
         {
-          "number": 10,
+          "number": 6,
           "content": [
             {
               "text": "import",
@@ -56129,7 +56086,7 @@
           ]
         },
         {
-          "number": 11,
+          "number": 7,
           "content": [
             {
               "text": "import",
@@ -56182,7 +56139,7 @@
           ]
         },
         {
-          "number": 12,
+          "number": 8,
           "content": [
             {
               "text": "import",
@@ -56235,11 +56192,11 @@
           ]
         },
         {
-          "number": 13,
+          "number": 9,
           "content": []
         },
         {
-          "number": 14,
+          "number": 10,
           "content": [
             {
               "text": "/**",
@@ -56256,7 +56213,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 11,
           "content": [
             {
               "text": "export",
@@ -56289,7 +56246,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 12,
           "content": [
             {
               "text": "  ",
@@ -56310,7 +56267,7 @@
           ]
         },
         {
-          "number": 17,
+          "number": 13,
           "content": [
             {
               "text": "  initialFocus",
@@ -56359,7 +56316,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 14,
           "content": [
             {
               "text": "  ",
@@ -56380,7 +56337,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 15,
           "content": [
             {
               "text": "  restoreFocus",
@@ -56405,7 +56362,7 @@
           ]
         },
         {
-          "number": 20,
+          "number": 16,
           "content": [
             {
               "text": "  ",
@@ -56426,7 +56383,7 @@
           ]
         },
         {
-          "number": 21,
+          "number": 17,
           "content": [
             {
               "text": "  enabled",
@@ -56451,7 +56408,7 @@
           ]
         },
         {
-          "number": 22,
+          "number": 18,
           "content": [
             {
               "text": "}",
@@ -56460,11 +56417,11 @@
           ]
         },
         {
-          "number": 23,
+          "number": 19,
           "content": []
         },
         {
-          "number": 24,
+          "number": 20,
           "content": [
             {
               "text": "interface",
@@ -56489,7 +56446,7 @@
           ]
         },
         {
-          "number": 25,
+          "number": 21,
           "content": [
             {
               "text": "  container",
@@ -56514,7 +56471,7 @@
           ]
         },
         {
-          "number": 26,
+          "number": 22,
           "content": [
             {
               "text": "  restoreFocus",
@@ -56539,7 +56496,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 23,
           "content": [
             {
               "text": "  ",
@@ -56584,7 +56541,7 @@
           ]
         },
         {
-          "number": 28,
+          "number": 24,
           "content": [
             {
               "text": "}",
@@ -56593,11 +56550,11 @@
           ]
         },
         {
-          "number": 29,
+          "number": 25,
           "content": []
         },
         {
-          "number": 30,
+          "number": 26,
           "content": [
             {
               "text": "function",
@@ -56618,7 +56575,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 27,
           "content": [
             {
               "text": "  container",
@@ -56643,7 +56600,7 @@
           ]
         },
         {
-          "number": 32,
+          "number": 28,
           "content": [
             {
               "text": "  initialFocus",
@@ -56712,7 +56669,7 @@
           ]
         },
         {
-          "number": 33,
+          "number": 29,
           "content": [
             {
               "text": "):",
@@ -56737,7 +56694,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 30,
           "content": [
             {
               "text": "  ",
@@ -56786,7 +56743,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 31,
           "content": [
             {
               "text": "  ",
@@ -56843,7 +56800,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 32,
           "content": [
             {
               "text": "    ",
@@ -56864,7 +56821,7 @@
           ]
         },
         {
-          "number": 37,
+          "number": 33,
           "content": [
             {
               "text": "  ",
@@ -56909,7 +56866,7 @@
           ]
         },
         {
-          "number": 38,
+          "number": 34,
           "content": [
             {
               "text": "}",
@@ -56918,11 +56875,11 @@
           ]
         },
         {
-          "number": 39,
+          "number": 35,
           "content": []
         },
         {
-          "number": 40,
+          "number": 36,
           "content": [
             {
               "text": "function",
@@ -56943,7 +56900,7 @@
           ]
         },
         {
-          "number": 41,
+          "number": 37,
           "content": [
             {
               "text": "  container",
@@ -56968,7 +56925,7 @@
           ]
         },
         {
-          "number": 42,
+          "number": 38,
           "content": [
             {
               "text": "  target",
@@ -57009,7 +56966,7 @@
           ]
         },
         {
-          "number": 43,
+          "number": 39,
           "content": [
             {
               "text": "):",
@@ -57042,7 +56999,7 @@
           ]
         },
         {
-          "number": 44,
+          "number": 40,
           "content": [
             {
               "text": "  ",
@@ -57095,7 +57052,7 @@
           ]
         },
         {
-          "number": 45,
+          "number": 41,
           "content": [
             {
               "text": "}",
@@ -57104,11 +57061,11 @@
           ]
         },
         {
-          "number": 46,
+          "number": 42,
           "content": []
         },
         {
-          "number": 47,
+          "number": 43,
           "content": [
             {
               "text": "/**",
@@ -57117,7 +57074,7 @@
           ]
         },
         {
-          "number": 48,
+          "number": 44,
           "content": [
             {
               "text": " * Keeps Tab and Shift+Tab focus inside a container while active, with nested",
@@ -57126,7 +57083,7 @@
           ]
         },
         {
-          "number": 49,
+          "number": 45,
           "content": [
             {
               "text": " * trap stacking and optional focus restoration on release. Active traps listen",
@@ -57135,7 +57092,7 @@
           ]
         },
         {
-          "number": 50,
+          "number": 46,
           "content": [
             {
               "text": " * for keydown and focusin in the capture phase on the container's owner document.",
@@ -57144,7 +57101,7 @@
           ]
         },
         {
-          "number": 51,
+          "number": 47,
           "content": [
             {
               "text": " ",
@@ -57157,7 +57114,7 @@
           ]
         },
         {
-          "number": 52,
+          "number": 48,
           "content": [
             {
               "text": "export",
@@ -57186,7 +57143,7 @@
           ]
         },
         {
-          "number": 53,
+          "number": 49,
           "content": [
             {
               "text": "  containerRef",
@@ -57235,7 +57192,7 @@
           ]
         },
         {
-          "number": 54,
+          "number": 50,
           "content": [
             {
               "text": "  options",
@@ -57272,7 +57229,7 @@
           ]
         },
         {
-          "number": 55,
+          "number": 51,
           "content": [
             {
               "text": "):",
@@ -57297,7 +57254,7 @@
           ]
         },
         {
-          "number": 56,
+          "number": 52,
           "content": [
             {
               "text": "  ",
@@ -57406,7 +57363,7 @@
           ]
         },
         {
-          "number": 57,
+          "number": 53,
           "content": [
             {
               "text": "  ",
@@ -57487,7 +57444,7 @@
           ]
         },
         {
-          "number": 58,
+          "number": 54,
           "content": [
             {
               "text": "  //",
@@ -57500,7 +57457,7 @@
           ]
         },
         {
-          "number": 59,
+          "number": 55,
           "content": [
             {
               "text": "  //",
@@ -57513,7 +57470,7 @@
           ]
         },
         {
-          "number": 60,
+          "number": 56,
           "content": [
             {
               "text": "  //",
@@ -57526,7 +57483,7 @@
           ]
         },
         {
-          "number": 61,
+          "number": 57,
           "content": [
             {
               "text": "  ",
@@ -57599,7 +57556,7 @@
           ]
         },
         {
-          "number": 62,
+          "number": 58,
           "content": [
             {
               "text": "    enabled",
@@ -57620,7 +57577,7 @@
           ]
         },
         {
-          "number": 63,
+          "number": 59,
           "content": [
             {
               "text": "    restoreOnUnmount",
@@ -57645,7 +57602,7 @@
           ]
         },
         {
-          "number": 64,
+          "number": 60,
           "content": [
             {
               "text": "  ",
@@ -57666,11 +57623,11 @@
           ]
         },
         {
-          "number": 65,
+          "number": 61,
           "content": []
         },
         {
-          "number": 66,
+          "number": 62,
           "content": [
             {
               "text": "  //",
@@ -57683,7 +57640,7 @@
           ]
         },
         {
-          "number": 67,
+          "number": 63,
           "content": [
             {
               "text": "  //",
@@ -57696,7 +57653,7 @@
           ]
         },
         {
-          "number": 68,
+          "number": 64,
           "content": [
             {
               "text": "  ",
@@ -57733,7 +57690,7 @@
           ]
         },
         {
-          "number": 69,
+          "number": 65,
           "content": [
             {
               "text": "    ",
@@ -57802,7 +57759,7 @@
           ]
         },
         {
-          "number": 70,
+          "number": 66,
           "content": [
             {
               "text": "    ",
@@ -57851,7 +57808,7 @@
           ]
         },
         {
-          "number": 71,
+          "number": 67,
           "content": [
             {
               "text": "    ",
@@ -57900,7 +57857,7 @@
           ]
         },
         {
-          "number": 72,
+          "number": 68,
           "content": [
             {
               "text": "      //",
@@ -57913,7 +57870,7 @@
           ]
         },
         {
-          "number": 73,
+          "number": 69,
           "content": [
             {
               "text": "      //",
@@ -57926,7 +57883,7 @@
           ]
         },
         {
-          "number": 74,
+          "number": 70,
           "content": [
             {
               "text": "      ",
@@ -57959,7 +57916,7 @@
           ]
         },
         {
-          "number": 75,
+          "number": 71,
           "content": [
             {
               "text": "      ",
@@ -57976,7 +57933,7 @@
           ]
         },
         {
-          "number": 76,
+          "number": 72,
           "content": [
             {
               "text": "    ",
@@ -57989,11 +57946,11 @@
           ]
         },
         {
-          "number": 77,
+          "number": 73,
           "content": []
         },
         {
-          "number": 78,
+          "number": 74,
           "content": [
             {
               "text": "    ",
@@ -58022,7 +57979,7 @@
           ]
         },
         {
-          "number": 79,
+          "number": 75,
           "content": [
             {
               "text": "    ",
@@ -58059,11 +58016,11 @@
           ]
         },
         {
-          "number": 80,
+          "number": 76,
           "content": []
         },
         {
-          "number": 81,
+          "number": 77,
           "content": [
             {
               "text": "    ",
@@ -58096,7 +58053,7 @@
           ]
         },
         {
-          "number": 82,
+          "number": 78,
           "content": [
             {
               "text": "    ",
@@ -58133,7 +58090,7 @@
           ]
         },
         {
-          "number": 83,
+          "number": 79,
           "content": [
             {
               "text": "    ",
@@ -58182,7 +58139,7 @@
           ]
         },
         {
-          "number": 84,
+          "number": 80,
           "content": [
             {
               "text": "    //",
@@ -58195,7 +58152,7 @@
           ]
         },
         {
-          "number": 85,
+          "number": 81,
           "content": [
             {
               "text": "    //",
@@ -58208,7 +58165,7 @@
           ]
         },
         {
-          "number": 86,
+          "number": 82,
           "content": [
             {
               "text": "    ",
@@ -58265,7 +58222,7 @@
           ]
         },
         {
-          "number": 87,
+          "number": 83,
           "content": [
             {
               "text": "    ",
@@ -58322,7 +58279,7 @@
           ]
         },
         {
-          "number": 88,
+          "number": 84,
           "content": [
             {
               "text": "    //",
@@ -58335,7 +58292,7 @@
           ]
         },
         {
-          "number": 89,
+          "number": 85,
           "content": [
             {
               "text": "    ",
@@ -58380,7 +58337,7 @@
           ]
         },
         {
-          "number": 90,
+          "number": 86,
           "content": [
             {
               "text": "    ",
@@ -58409,7 +58366,7 @@
           ]
         },
         {
-          "number": 91,
+          "number": 87,
           "content": [
             {
               "text": "      ",
@@ -58454,7 +58411,7 @@
           ]
         },
         {
-          "number": 92,
+          "number": 88,
           "content": [
             {
               "text": "        ",
@@ -58471,7 +58428,7 @@
           ]
         },
         {
-          "number": 93,
+          "number": 89,
           "content": [
             {
               "text": "        ",
@@ -58496,7 +58453,7 @@
           ]
         },
         {
-          "number": 94,
+          "number": 90,
           "content": [
             {
               "text": "    ",
@@ -58541,11 +58498,11 @@
           ]
         },
         {
-          "number": 95,
+          "number": 91,
           "content": []
         },
         {
-          "number": 96,
+          "number": 92,
           "content": [
             {
               "text": "    ",
@@ -58590,7 +58547,7 @@
           ]
         },
         {
-          "number": 97,
+          "number": 93,
           "content": [
             {
               "text": "      container",
@@ -58603,7 +58560,7 @@
           ]
         },
         {
-          "number": 98,
+          "number": 94,
           "content": [
             {
               "text": "      ",
@@ -58660,7 +58617,7 @@
           ]
         },
         {
-          "number": 99,
+          "number": 95,
           "content": [
             {
               "text": "      MutationObserverCtor",
@@ -58673,7 +58630,7 @@
           ]
         },
         {
-          "number": 100,
+          "number": 96,
           "content": [
             {
               "text": "    ",
@@ -58694,7 +58651,7 @@
           ]
         },
         {
-          "number": 101,
+          "number": 97,
           "content": [
             {
               "text": "    //",
@@ -58707,7 +58664,7 @@
           ]
         },
         {
-          "number": 102,
+          "number": 98,
           "content": [
             {
               "text": "    //",
@@ -58720,7 +58677,7 @@
           ]
         },
         {
-          "number": 103,
+          "number": 99,
           "content": [
             {
               "text": "    ",
@@ -58749,11 +58706,11 @@
           ]
         },
         {
-          "number": 104,
+          "number": 100,
           "content": []
         },
         {
-          "number": 105,
+          "number": 101,
           "content": [
             {
               "text": "    ",
@@ -58802,7 +58759,7 @@
           ]
         },
         {
-          "number": 106,
+          "number": 102,
           "content": [
             {
               "text": "      container",
@@ -58815,7 +58772,7 @@
           ]
         },
         {
-          "number": 107,
+          "number": 103,
           "content": [
             {
               "text": "      restoreFocus",
@@ -58828,7 +58785,7 @@
           ]
         },
         {
-          "number": 108,
+          "number": 104,
           "content": [
             {
               "text": "      ",
@@ -58869,7 +58826,7 @@
           ]
         },
         {
-          "number": 109,
+          "number": 105,
           "content": [
             {
               "text": "        ",
@@ -58938,11 +58895,11 @@
           ]
         },
         {
-          "number": 110,
+          "number": 106,
           "content": []
         },
         {
-          "number": 111,
+          "number": 107,
           "content": [
             {
               "text": "        ",
@@ -58975,7 +58932,7 @@
           ]
         },
         {
-          "number": 112,
+          "number": 108,
           "content": [
             {
               "text": "          ",
@@ -59020,7 +58977,7 @@
           ]
         },
         {
-          "number": 113,
+          "number": 109,
           "content": [
             {
               "text": "          ",
@@ -59081,7 +59038,7 @@
           ]
         },
         {
-          "number": 114,
+          "number": 110,
           "content": [
             {
               "text": "        ",
@@ -59094,7 +59051,7 @@
           ]
         },
         {
-          "number": 115,
+          "number": 111,
           "content": [
             {
               "text": "      ",
@@ -59107,7 +59064,7 @@
           ]
         },
         {
-          "number": 116,
+          "number": 112,
           "content": [
             {
               "text": "    ",
@@ -59120,7 +59077,7 @@
           ]
         },
         {
-          "number": 117,
+          "number": 113,
           "content": [
             {
               "text": "    ",
@@ -59153,7 +59110,7 @@
           ]
         },
         {
-          "number": 118,
+          "number": 114,
           "content": [
             {
               "text": "  ",
@@ -59174,11 +59131,11 @@
           ]
         },
         {
-          "number": 119,
+          "number": 115,
           "content": []
         },
         {
-          "number": 120,
+          "number": 116,
           "content": [
             {
               "text": "  ",
@@ -59215,7 +59172,7 @@
           ]
         },
         {
-          "number": 121,
+          "number": 117,
           "content": [
             {
               "text": "    ",
@@ -59252,7 +59209,7 @@
           ]
         },
         {
-          "number": 122,
+          "number": 118,
           "content": [
             {
               "text": "      ",
@@ -59301,7 +59258,7 @@
           ]
         },
         {
-          "number": 123,
+          "number": 119,
           "content": [
             {
               "text": "      ",
@@ -59334,7 +59291,7 @@
           ]
         },
         {
-          "number": 124,
+          "number": 120,
           "content": [
             {
               "text": "      ",
@@ -59371,7 +59328,7 @@
           ]
         },
         {
-          "number": 125,
+          "number": 121,
           "content": [
             {
               "text": "      ",
@@ -59400,7 +59357,7 @@
           ]
         },
         {
-          "number": 126,
+          "number": 122,
           "content": [
             {
               "text": "    ",
@@ -59413,7 +59370,7 @@
           ]
         },
         {
-          "number": 127,
+          "number": 123,
           "content": [
             {
               "text": "  ",
@@ -59434,7 +59391,7 @@
           ]
         },
         {
-          "number": 128,
+          "number": 124,
           "content": [
             {
               "text": "}",
@@ -59443,7 +59400,7 @@
           ]
         },
         {
-          "number": 129,
+          "number": 125,
           "content": []
         }
       ]
@@ -59451,7 +59408,7 @@
     "files": [
       {
         "path": "src/hooks/use-focus-trap.ts",
-        "raw": "\"use client\";\n\nimport { type RefObject, useEffect, useRef } from \"react\";\nimport {\n  composedContains,\n  getDeepActiveElement,\n  isHTMLElement,\n} from \"./utils/element-guards\";\nimport { restoreFocus as restoreFocusTarget } from \"./utils/focus-restore\";\nimport { getFocusableElements, isFocusable } from \"./utils/focusable\";\nimport { createFocusTrapController } from \"./utils/focus-trap-controller\";\nimport { useFocusRestore } from \"./use-focus-restore\";\n\n/** Options for trapping Tab focus inside a container. */\nexport interface UseFocusTrapOptions {\n  /** Element that receives focus when the trap activates. */\n  initialFocus?: RefObject<HTMLElement | null>;\n  /** Restore focus to the previously focused element when the trap releases. */\n  restoreFocus?: boolean;\n  /** Whether the focus trap is active. */\n  enabled?: boolean;\n}\n\ninterface ActiveTrap {\n  container: HTMLElement;\n  restoreFocus: boolean;\n  release: () => void;\n}\n\nfunction pickInitialTarget(\n  container: HTMLElement,\n  initialFocus: RefObject<HTMLElement | null> | undefined,\n): HTMLElement {\n  const requested = initialFocus?.current;\n  if (requested && composedContains(container, requested) && isFocusable(requested))\n    return requested;\n  return getFocusableElements(container)[0] ?? container;\n}\n\nfunction isInsideContainer(\n  container: HTMLElement,\n  target: EventTarget | null,\n): target is HTMLElement {\n  return isHTMLElement(target) && composedContains(container, target);\n}\n\n/**\n * Keeps Tab and Shift+Tab focus inside a container while active, with nested\n * trap stacking and optional focus restoration on release. Active traps listen\n * for keydown and focusin in the capture phase on the container's owner document.\n */\nexport function useFocusTrap(\n  containerRef: RefObject<HTMLElement | null>,\n  options: UseFocusTrapOptions = {},\n): void {\n  const { initialFocus, restoreFocus = true, enabled = true } = options;\n  const activeTrapRef = useRef<ActiveTrap | null>(null);\n  // Detach listeners BEFORE focus moves out in release(), or the document-level\n  // focusin recapture re-traps the restored target. restoreOnUnmount:false keeps\n  // this stack hook from moving focus during its own unmount cleanup.\n  const { capture, restore } = useFocusRestore({\n    enabled: restoreFocus,\n    restoreOnUnmount: false,\n  });\n\n  // No dependency array on purpose: React does not re-fire effects when\n  // containerRef.current mutates while the ref object stays stable.\n  useEffect(() => {\n    const nextContainer = enabled ? containerRef.current : null;\n    const active = activeTrapRef.current;\n    if (active && active.container === nextContainer) {\n      // restoreFocus is release-time policy; update in place instead of tearing\n      // down (which would recapture the interior as the restore target, not the opener).\n      active.restoreFocus = restoreFocus;\n      return;\n    }\n\n    active?.release();\n    activeTrapRef.current = null;\n\n    if (!nextContainer) return;\n    const container = nextContainer;\n    const ownerDocument = container.ownerDocument;\n    // Resolve the observer BEFORE any side effect (focus capture, tabindex mutation)\n    // so a document without MutationObserver bails out leaving the container untouched.\n    const MutationObserverCtor = ownerDocument.defaultView?.MutationObserver;\n    if (typeof MutationObserverCtor !== \"function\") return;\n    // Capture the opener before focus moves inside, so a false-to-true toggle can still restore to it.\n    const activeAtActivation = getDeepActiveElement(ownerDocument);\n    const opener =\n      isHTMLElement(activeAtActivation) && !isInsideContainer(container, activeAtActivation)\n        ? activeAtActivation\n        : null;\n    const restoreTarget = capture(ownerDocument);\n\n    const controller = createFocusTrapController({\n      container,\n      resolveInitialFocus: () => pickInitialTarget(container, initialFocus),\n      MutationObserverCtor,\n    });\n    // Push BEFORE arming/focusing: pushTrap suspends the previous top so its\n    // focusin handler does not recapture focus away from this new trap.\n    controller.activate();\n\n    const activeTrap: ActiveTrap = {\n      container,\n      restoreFocus,\n      release: () => {\n        const { hasOuterTrap } = controller.release();\n\n        if (activeTrap.restoreFocus) {\n          const restored = restore();\n          if (!restored && !hasOuterTrap) restoreFocusTarget(restoreTarget ?? opener);\n        }\n      },\n    };\n    activeTrapRef.current = activeTrap;\n  });\n\n  useEffect(() => {\n    return () => {\n      const activeTrap = activeTrapRef.current;\n      if (!activeTrap) return;\n      activeTrapRef.current = null;\n      activeTrap.release();\n    };\n  }, []);\n}\n",
+        "raw": "\"use client\";\n\nimport { type RefObject, useEffect, useRef } from \"react\";\nimport { composedContains, getDeepActiveElement, isHTMLElement } from \"./utils/element-guards\";\nimport { restoreFocus as restoreFocusTarget } from \"./utils/focus-restore\";\nimport { getFocusableElements, isFocusable } from \"./utils/focusable\";\nimport { createFocusTrapController } from \"./utils/focus-trap-controller\";\nimport { useFocusRestore } from \"./use-focus-restore\";\n\n/** Options for trapping Tab focus inside a container. */\nexport interface UseFocusTrapOptions {\n  /** Element that receives focus when the trap activates. */\n  initialFocus?: RefObject<HTMLElement | null>;\n  /** Restore focus to the previously focused element when the trap releases. */\n  restoreFocus?: boolean;\n  /** Whether the focus trap is active. */\n  enabled?: boolean;\n}\n\ninterface ActiveTrap {\n  container: HTMLElement;\n  restoreFocus: boolean;\n  release: () => void;\n}\n\nfunction pickInitialTarget(\n  container: HTMLElement,\n  initialFocus: RefObject<HTMLElement | null> | undefined,\n): HTMLElement {\n  const requested = initialFocus?.current;\n  if (requested && composedContains(container, requested) && isFocusable(requested))\n    return requested;\n  return getFocusableElements(container)[0] ?? container;\n}\n\nfunction isInsideContainer(\n  container: HTMLElement,\n  target: EventTarget | null,\n): target is HTMLElement {\n  return isHTMLElement(target) && composedContains(container, target);\n}\n\n/**\n * Keeps Tab and Shift+Tab focus inside a container while active, with nested\n * trap stacking and optional focus restoration on release. Active traps listen\n * for keydown and focusin in the capture phase on the container's owner document.\n */\nexport function useFocusTrap(\n  containerRef: RefObject<HTMLElement | null>,\n  options: UseFocusTrapOptions = {},\n): void {\n  const { initialFocus, restoreFocus = true, enabled = true } = options;\n  const activeTrapRef = useRef<ActiveTrap | null>(null);\n  // Detach listeners BEFORE focus moves out in release(), or the document-level\n  // focusin recapture re-traps the restored target. restoreOnUnmount:false keeps\n  // this stack hook from moving focus during its own unmount cleanup.\n  const { capture, restore } = useFocusRestore({\n    enabled: restoreFocus,\n    restoreOnUnmount: false,\n  });\n\n  // No dependency array on purpose: React does not re-fire effects when\n  // containerRef.current mutates while the ref object stays stable.\n  useEffect(() => {\n    const nextContainer = enabled ? containerRef.current : null;\n    const active = activeTrapRef.current;\n    if (active && active.container === nextContainer) {\n      // restoreFocus is release-time policy; update in place instead of tearing\n      // down (which would recapture the interior as the restore target, not the opener).\n      active.restoreFocus = restoreFocus;\n      return;\n    }\n\n    active?.release();\n    activeTrapRef.current = null;\n\n    if (!nextContainer) return;\n    const container = nextContainer;\n    const ownerDocument = container.ownerDocument;\n    // Resolve the observer BEFORE any side effect (focus capture, tabindex mutation)\n    // so a document without MutationObserver bails out leaving the container untouched.\n    const MutationObserverCtor = ownerDocument.defaultView?.MutationObserver;\n    if (typeof MutationObserverCtor !== \"function\") return;\n    // Capture the opener before focus moves inside, so a false-to-true toggle can still restore to it.\n    const activeAtActivation = getDeepActiveElement(ownerDocument);\n    const opener =\n      isHTMLElement(activeAtActivation) && !isInsideContainer(container, activeAtActivation)\n        ? activeAtActivation\n        : null;\n    const restoreTarget = capture(ownerDocument);\n\n    const controller = createFocusTrapController({\n      container,\n      resolveInitialFocus: () => pickInitialTarget(container, initialFocus),\n      MutationObserverCtor,\n    });\n    // Push BEFORE arming/focusing: pushTrap suspends the previous top so its\n    // focusin handler does not recapture focus away from this new trap.\n    controller.activate();\n\n    const activeTrap: ActiveTrap = {\n      container,\n      restoreFocus,\n      release: () => {\n        const { hasOuterTrap } = controller.release();\n\n        if (activeTrap.restoreFocus) {\n          const restored = restore();\n          if (!restored && !hasOuterTrap) restoreFocusTarget(restoreTarget ?? opener);\n        }\n      },\n    };\n    activeTrapRef.current = activeTrap;\n  });\n\n  useEffect(() => {\n    return () => {\n      const activeTrap = activeTrapRef.current;\n      if (!activeTrap) return;\n      activeTrapRef.current = null;\n      activeTrap.release();\n    };\n  }, []);\n}\n",
         "highlighted": [
           {
             "number": 1,
@@ -59569,51 +59526,27 @@
               {
                 "text": "{",
                 "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 5,
-            "content": [
+              },
               {
-                "text": "  composedContains",
+                "text": " composedContains",
                 "color": "var(--code-variable)"
               },
               {
                 "text": ",",
                 "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 6,
-            "content": [
+              },
               {
-                "text": "  getDeepActiveElement",
+                "text": " getDeepActiveElement",
                 "color": "var(--code-variable)"
               },
               {
                 "text": ",",
                 "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 7,
-            "content": [
-              {
-                "text": "  isHTMLElement",
-                "color": "var(--code-variable)"
               },
               {
-                "text": ",",
-                "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 8,
-            "content": [
+                "text": " isHTMLElement ",
+                "color": "var(--code-variable)"
+              },
               {
                 "text": "}",
                 "color": "var(--code-operator)"
@@ -59649,7 +59582,7 @@
             ]
           },
           {
-            "number": 9,
+            "number": 5,
             "content": [
               {
                 "text": "import",
@@ -59710,7 +59643,7 @@
             ]
           },
           {
-            "number": 10,
+            "number": 6,
             "content": [
               {
                 "text": "import",
@@ -59771,7 +59704,7 @@
             ]
           },
           {
-            "number": 11,
+            "number": 7,
             "content": [
               {
                 "text": "import",
@@ -59824,7 +59757,7 @@
             ]
           },
           {
-            "number": 12,
+            "number": 8,
             "content": [
               {
                 "text": "import",
@@ -59877,11 +59810,11 @@
             ]
           },
           {
-            "number": 13,
+            "number": 9,
             "content": []
           },
           {
-            "number": 14,
+            "number": 10,
             "content": [
               {
                 "text": "/**",
@@ -59898,7 +59831,7 @@
             ]
           },
           {
-            "number": 15,
+            "number": 11,
             "content": [
               {
                 "text": "export",
@@ -59931,7 +59864,7 @@
             ]
           },
           {
-            "number": 16,
+            "number": 12,
             "content": [
               {
                 "text": "  ",
@@ -59952,7 +59885,7 @@
             ]
           },
           {
-            "number": 17,
+            "number": 13,
             "content": [
               {
                 "text": "  initialFocus",
@@ -60001,7 +59934,7 @@
             ]
           },
           {
-            "number": 18,
+            "number": 14,
             "content": [
               {
                 "text": "  ",
@@ -60022,7 +59955,7 @@
             ]
           },
           {
-            "number": 19,
+            "number": 15,
             "content": [
               {
                 "text": "  restoreFocus",
@@ -60047,7 +59980,7 @@
             ]
           },
           {
-            "number": 20,
+            "number": 16,
             "content": [
               {
                 "text": "  ",
@@ -60068,7 +60001,7 @@
             ]
           },
           {
-            "number": 21,
+            "number": 17,
             "content": [
               {
                 "text": "  enabled",
@@ -60093,7 +60026,7 @@
             ]
           },
           {
-            "number": 22,
+            "number": 18,
             "content": [
               {
                 "text": "}",
@@ -60102,11 +60035,11 @@
             ]
           },
           {
-            "number": 23,
+            "number": 19,
             "content": []
           },
           {
-            "number": 24,
+            "number": 20,
             "content": [
               {
                 "text": "interface",
@@ -60131,7 +60064,7 @@
             ]
           },
           {
-            "number": 25,
+            "number": 21,
             "content": [
               {
                 "text": "  container",
@@ -60156,7 +60089,7 @@
             ]
           },
           {
-            "number": 26,
+            "number": 22,
             "content": [
               {
                 "text": "  restoreFocus",
@@ -60181,7 +60114,7 @@
             ]
           },
           {
-            "number": 27,
+            "number": 23,
             "content": [
               {
                 "text": "  ",
@@ -60226,7 +60159,7 @@
             ]
           },
           {
-            "number": 28,
+            "number": 24,
             "content": [
               {
                 "text": "}",
@@ -60235,11 +60168,11 @@
             ]
           },
           {
-            "number": 29,
+            "number": 25,
             "content": []
           },
           {
-            "number": 30,
+            "number": 26,
             "content": [
               {
                 "text": "function",
@@ -60260,7 +60193,7 @@
             ]
           },
           {
-            "number": 31,
+            "number": 27,
             "content": [
               {
                 "text": "  container",
@@ -60285,7 +60218,7 @@
             ]
           },
           {
-            "number": 32,
+            "number": 28,
             "content": [
               {
                 "text": "  initialFocus",
@@ -60354,7 +60287,7 @@
             ]
           },
           {
-            "number": 33,
+            "number": 29,
             "content": [
               {
                 "text": "):",
@@ -60379,7 +60312,7 @@
             ]
           },
           {
-            "number": 34,
+            "number": 30,
             "content": [
               {
                 "text": "  ",
@@ -60428,7 +60361,7 @@
             ]
           },
           {
-            "number": 35,
+            "number": 31,
             "content": [
               {
                 "text": "  ",
@@ -60485,7 +60418,7 @@
             ]
           },
           {
-            "number": 36,
+            "number": 32,
             "content": [
               {
                 "text": "    ",
@@ -60506,7 +60439,7 @@
             ]
           },
           {
-            "number": 37,
+            "number": 33,
             "content": [
               {
                 "text": "  ",
@@ -60551,7 +60484,7 @@
             ]
           },
           {
-            "number": 38,
+            "number": 34,
             "content": [
               {
                 "text": "}",
@@ -60560,11 +60493,11 @@
             ]
           },
           {
-            "number": 39,
+            "number": 35,
             "content": []
           },
           {
-            "number": 40,
+            "number": 36,
             "content": [
               {
                 "text": "function",
@@ -60585,7 +60518,7 @@
             ]
           },
           {
-            "number": 41,
+            "number": 37,
             "content": [
               {
                 "text": "  container",
@@ -60610,7 +60543,7 @@
             ]
           },
           {
-            "number": 42,
+            "number": 38,
             "content": [
               {
                 "text": "  target",
@@ -60651,7 +60584,7 @@
             ]
           },
           {
-            "number": 43,
+            "number": 39,
             "content": [
               {
                 "text": "):",
@@ -60684,7 +60617,7 @@
             ]
           },
           {
-            "number": 44,
+            "number": 40,
             "content": [
               {
                 "text": "  ",
@@ -60737,7 +60670,7 @@
             ]
           },
           {
-            "number": 45,
+            "number": 41,
             "content": [
               {
                 "text": "}",
@@ -60746,11 +60679,11 @@
             ]
           },
           {
-            "number": 46,
+            "number": 42,
             "content": []
           },
           {
-            "number": 47,
+            "number": 43,
             "content": [
               {
                 "text": "/**",
@@ -60759,7 +60692,7 @@
             ]
           },
           {
-            "number": 48,
+            "number": 44,
             "content": [
               {
                 "text": " * Keeps Tab and Shift+Tab focus inside a container while active, with nested",
@@ -60768,7 +60701,7 @@
             ]
           },
           {
-            "number": 49,
+            "number": 45,
             "content": [
               {
                 "text": " * trap stacking and optional focus restoration on release. Active traps listen",
@@ -60777,7 +60710,7 @@
             ]
           },
           {
-            "number": 50,
+            "number": 46,
             "content": [
               {
                 "text": " * for keydown and focusin in the capture phase on the container's owner document.",
@@ -60786,7 +60719,7 @@
             ]
           },
           {
-            "number": 51,
+            "number": 47,
             "content": [
               {
                 "text": " ",
@@ -60799,7 +60732,7 @@
             ]
           },
           {
-            "number": 52,
+            "number": 48,
             "content": [
               {
                 "text": "export",
@@ -60828,7 +60761,7 @@
             ]
           },
           {
-            "number": 53,
+            "number": 49,
             "content": [
               {
                 "text": "  containerRef",
@@ -60877,7 +60810,7 @@
             ]
           },
           {
-            "number": 54,
+            "number": 50,
             "content": [
               {
                 "text": "  options",
@@ -60914,7 +60847,7 @@
             ]
           },
           {
-            "number": 55,
+            "number": 51,
             "content": [
               {
                 "text": "):",
@@ -60939,7 +60872,7 @@
             ]
           },
           {
-            "number": 56,
+            "number": 52,
             "content": [
               {
                 "text": "  ",
@@ -61048,7 +60981,7 @@
             ]
           },
           {
-            "number": 57,
+            "number": 53,
             "content": [
               {
                 "text": "  ",
@@ -61129,7 +61062,7 @@
             ]
           },
           {
-            "number": 58,
+            "number": 54,
             "content": [
               {
                 "text": "  //",
@@ -61142,7 +61075,7 @@
             ]
           },
           {
-            "number": 59,
+            "number": 55,
             "content": [
               {
                 "text": "  //",
@@ -61155,7 +61088,7 @@
             ]
           },
           {
-            "number": 60,
+            "number": 56,
             "content": [
               {
                 "text": "  //",
@@ -61168,7 +61101,7 @@
             ]
           },
           {
-            "number": 61,
+            "number": 57,
             "content": [
               {
                 "text": "  ",
@@ -61241,7 +61174,7 @@
             ]
           },
           {
-            "number": 62,
+            "number": 58,
             "content": [
               {
                 "text": "    enabled",
@@ -61262,7 +61195,7 @@
             ]
           },
           {
-            "number": 63,
+            "number": 59,
             "content": [
               {
                 "text": "    restoreOnUnmount",
@@ -61287,7 +61220,7 @@
             ]
           },
           {
-            "number": 64,
+            "number": 60,
             "content": [
               {
                 "text": "  ",
@@ -61308,11 +61241,11 @@
             ]
           },
           {
-            "number": 65,
+            "number": 61,
             "content": []
           },
           {
-            "number": 66,
+            "number": 62,
             "content": [
               {
                 "text": "  //",
@@ -61325,7 +61258,7 @@
             ]
           },
           {
-            "number": 67,
+            "number": 63,
             "content": [
               {
                 "text": "  //",
@@ -61338,7 +61271,7 @@
             ]
           },
           {
-            "number": 68,
+            "number": 64,
             "content": [
               {
                 "text": "  ",
@@ -61375,7 +61308,7 @@
             ]
           },
           {
-            "number": 69,
+            "number": 65,
             "content": [
               {
                 "text": "    ",
@@ -61444,7 +61377,7 @@
             ]
           },
           {
-            "number": 70,
+            "number": 66,
             "content": [
               {
                 "text": "    ",
@@ -61493,7 +61426,7 @@
             ]
           },
           {
-            "number": 71,
+            "number": 67,
             "content": [
               {
                 "text": "    ",
@@ -61542,7 +61475,7 @@
             ]
           },
           {
-            "number": 72,
+            "number": 68,
             "content": [
               {
                 "text": "      //",
@@ -61555,7 +61488,7 @@
             ]
           },
           {
-            "number": 73,
+            "number": 69,
             "content": [
               {
                 "text": "      //",
@@ -61568,7 +61501,7 @@
             ]
           },
           {
-            "number": 74,
+            "number": 70,
             "content": [
               {
                 "text": "      ",
@@ -61601,7 +61534,7 @@
             ]
           },
           {
-            "number": 75,
+            "number": 71,
             "content": [
               {
                 "text": "      ",
@@ -61618,7 +61551,7 @@
             ]
           },
           {
-            "number": 76,
+            "number": 72,
             "content": [
               {
                 "text": "    ",
@@ -61631,11 +61564,11 @@
             ]
           },
           {
-            "number": 77,
+            "number": 73,
             "content": []
           },
           {
-            "number": 78,
+            "number": 74,
             "content": [
               {
                 "text": "    ",
@@ -61664,7 +61597,7 @@
             ]
           },
           {
-            "number": 79,
+            "number": 75,
             "content": [
               {
                 "text": "    ",
@@ -61701,11 +61634,11 @@
             ]
           },
           {
-            "number": 80,
+            "number": 76,
             "content": []
           },
           {
-            "number": 81,
+            "number": 77,
             "content": [
               {
                 "text": "    ",
@@ -61738,7 +61671,7 @@
             ]
           },
           {
-            "number": 82,
+            "number": 78,
             "content": [
               {
                 "text": "    ",
@@ -61775,7 +61708,7 @@
             ]
           },
           {
-            "number": 83,
+            "number": 79,
             "content": [
               {
                 "text": "    ",
@@ -61824,7 +61757,7 @@
             ]
           },
           {
-            "number": 84,
+            "number": 80,
             "content": [
               {
                 "text": "    //",
@@ -61837,7 +61770,7 @@
             ]
           },
           {
-            "number": 85,
+            "number": 81,
             "content": [
               {
                 "text": "    //",
@@ -61850,7 +61783,7 @@
             ]
           },
           {
-            "number": 86,
+            "number": 82,
             "content": [
               {
                 "text": "    ",
@@ -61907,7 +61840,7 @@
             ]
           },
           {
-            "number": 87,
+            "number": 83,
             "content": [
               {
                 "text": "    ",
@@ -61964,7 +61897,7 @@
             ]
           },
           {
-            "number": 88,
+            "number": 84,
             "content": [
               {
                 "text": "    //",
@@ -61977,7 +61910,7 @@
             ]
           },
           {
-            "number": 89,
+            "number": 85,
             "content": [
               {
                 "text": "    ",
@@ -62022,7 +61955,7 @@
             ]
           },
           {
-            "number": 90,
+            "number": 86,
             "content": [
               {
                 "text": "    ",
@@ -62051,7 +61984,7 @@
             ]
           },
           {
-            "number": 91,
+            "number": 87,
             "content": [
               {
                 "text": "      ",
@@ -62096,7 +62029,7 @@
             ]
           },
           {
-            "number": 92,
+            "number": 88,
             "content": [
               {
                 "text": "        ",
@@ -62113,7 +62046,7 @@
             ]
           },
           {
-            "number": 93,
+            "number": 89,
             "content": [
               {
                 "text": "        ",
@@ -62138,7 +62071,7 @@
             ]
           },
           {
-            "number": 94,
+            "number": 90,
             "content": [
               {
                 "text": "    ",
@@ -62183,11 +62116,11 @@
             ]
           },
           {
-            "number": 95,
+            "number": 91,
             "content": []
           },
           {
-            "number": 96,
+            "number": 92,
             "content": [
               {
                 "text": "    ",
@@ -62232,7 +62165,7 @@
             ]
           },
           {
-            "number": 97,
+            "number": 93,
             "content": [
               {
                 "text": "      container",
@@ -62245,7 +62178,7 @@
             ]
           },
           {
-            "number": 98,
+            "number": 94,
             "content": [
               {
                 "text": "      ",
@@ -62302,7 +62235,7 @@
             ]
           },
           {
-            "number": 99,
+            "number": 95,
             "content": [
               {
                 "text": "      MutationObserverCtor",
@@ -62315,7 +62248,7 @@
             ]
           },
           {
-            "number": 100,
+            "number": 96,
             "content": [
               {
                 "text": "    ",
@@ -62336,7 +62269,7 @@
             ]
           },
           {
-            "number": 101,
+            "number": 97,
             "content": [
               {
                 "text": "    //",
@@ -62349,7 +62282,7 @@
             ]
           },
           {
-            "number": 102,
+            "number": 98,
             "content": [
               {
                 "text": "    //",
@@ -62362,7 +62295,7 @@
             ]
           },
           {
-            "number": 103,
+            "number": 99,
             "content": [
               {
                 "text": "    ",
@@ -62391,11 +62324,11 @@
             ]
           },
           {
-            "number": 104,
+            "number": 100,
             "content": []
           },
           {
-            "number": 105,
+            "number": 101,
             "content": [
               {
                 "text": "    ",
@@ -62444,7 +62377,7 @@
             ]
           },
           {
-            "number": 106,
+            "number": 102,
             "content": [
               {
                 "text": "      container",
@@ -62457,7 +62390,7 @@
             ]
           },
           {
-            "number": 107,
+            "number": 103,
             "content": [
               {
                 "text": "      restoreFocus",
@@ -62470,7 +62403,7 @@
             ]
           },
           {
-            "number": 108,
+            "number": 104,
             "content": [
               {
                 "text": "      ",
@@ -62511,7 +62444,7 @@
             ]
           },
           {
-            "number": 109,
+            "number": 105,
             "content": [
               {
                 "text": "        ",
@@ -62580,11 +62513,11 @@
             ]
           },
           {
-            "number": 110,
+            "number": 106,
             "content": []
           },
           {
-            "number": 111,
+            "number": 107,
             "content": [
               {
                 "text": "        ",
@@ -62617,7 +62550,7 @@
             ]
           },
           {
-            "number": 112,
+            "number": 108,
             "content": [
               {
                 "text": "          ",
@@ -62662,7 +62595,7 @@
             ]
           },
           {
-            "number": 113,
+            "number": 109,
             "content": [
               {
                 "text": "          ",
@@ -62723,7 +62656,7 @@
             ]
           },
           {
-            "number": 114,
+            "number": 110,
             "content": [
               {
                 "text": "        ",
@@ -62736,7 +62669,7 @@
             ]
           },
           {
-            "number": 115,
+            "number": 111,
             "content": [
               {
                 "text": "      ",
@@ -62749,7 +62682,7 @@
             ]
           },
           {
-            "number": 116,
+            "number": 112,
             "content": [
               {
                 "text": "    ",
@@ -62762,7 +62695,7 @@
             ]
           },
           {
-            "number": 117,
+            "number": 113,
             "content": [
               {
                 "text": "    ",
@@ -62795,7 +62728,7 @@
             ]
           },
           {
-            "number": 118,
+            "number": 114,
             "content": [
               {
                 "text": "  ",
@@ -62816,11 +62749,11 @@
             ]
           },
           {
-            "number": 119,
+            "number": 115,
             "content": []
           },
           {
-            "number": 120,
+            "number": 116,
             "content": [
               {
                 "text": "  ",
@@ -62857,7 +62790,7 @@
             ]
           },
           {
-            "number": 121,
+            "number": 117,
             "content": [
               {
                 "text": "    ",
@@ -62894,7 +62827,7 @@
             ]
           },
           {
-            "number": 122,
+            "number": 118,
             "content": [
               {
                 "text": "      ",
@@ -62943,7 +62876,7 @@
             ]
           },
           {
-            "number": 123,
+            "number": 119,
             "content": [
               {
                 "text": "      ",
@@ -62976,7 +62909,7 @@
             ]
           },
           {
-            "number": 124,
+            "number": 120,
             "content": [
               {
                 "text": "      ",
@@ -63013,7 +62946,7 @@
             ]
           },
           {
-            "number": 125,
+            "number": 121,
             "content": [
               {
                 "text": "      ",
@@ -63042,7 +62975,7 @@
             ]
           },
           {
-            "number": 126,
+            "number": 122,
             "content": [
               {
                 "text": "    ",
@@ -63055,7 +62988,7 @@
             ]
           },
           {
-            "number": 127,
+            "number": 123,
             "content": [
               {
                 "text": "  ",
@@ -63076,7 +63009,7 @@
             ]
           },
           {
-            "number": 128,
+            "number": 124,
             "content": [
               {
                 "text": "}",
@@ -63085,7 +63018,7 @@
             ]
           },
           {
-            "number": 129,
+            "number": 125,
             "content": []
           }
         ]

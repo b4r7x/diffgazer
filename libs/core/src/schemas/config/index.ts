@@ -63,6 +63,7 @@ export {
   AGENT_EXECUTION_MODES,
   type AgentExecution,
   AgentExecutionSchema,
+  DeleteTrustResponseSchema,
   type SaveTrustRequest,
   SaveTrustRequestSchema,
   SECRETS_STORAGE,
@@ -77,6 +78,7 @@ export {
   TrustCapabilitiesSchema,
   type TrustConfig,
   TrustConfigSchema,
+  TrustResponseSchema,
 } from "./settings.js";
 export { buildHubValues, type SettingsHubInput } from "./settings-hub.js";
 export {

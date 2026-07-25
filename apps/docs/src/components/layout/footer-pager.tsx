@@ -78,7 +78,7 @@ export function DocsFooterPager({
   });
 
   return (
-    <Pager>
+    <Pager className="mt-8">
       {previous && (
         <Pager.Link direction="previous">
           {({ className, rel }) => (

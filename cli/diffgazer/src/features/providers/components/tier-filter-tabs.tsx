@@ -1,5 +1,7 @@
 import { TIER_FILTERS, type TierFilter } from "@diffgazer/core/providers";
+import { clampIndex } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
+import { rowTone } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 
 interface TierFilterTabsProps {
@@ -16,8 +18,7 @@ export function TierFilterTabs({ value, onValueChange, isActive }: TierFilterTab
       if (!key.leftArrow && !key.rightArrow) return;
       const currentIdx = TIER_FILTERS.indexOf(value);
       const direction = key.rightArrow ? 1 : -1;
-      const nextIdx = (currentIdx + direction + TIER_FILTERS.length) % TIER_FILTERS.length;
-      const next = TIER_FILTERS[nextIdx];
+      const next = TIER_FILTERS[clampIndex(currentIdx, direction, TIER_FILTERS.length, true)];
       if (next) onValueChange(next);
     },
     { isActive },
@@ -27,11 +28,12 @@ export function TierFilterTabs({ value, onValueChange, isActive }: TierFilterTab
     <Box gap={1}>
       {TIER_FILTERS.map((filter) => {
         const isSelected = value === filter;
+        const tone = rowTone(tokens, { isHighlighted: isSelected });
         return (
           <Text
             key={filter}
-            color={isSelected ? tokens.fg : tokens.muted}
-            backgroundColor={isSelected ? tokens.accent : undefined}
+            color={isSelected ? tone.primary : tone.secondary}
+            backgroundColor={tone.background}
             bold={isSelected}
           >
             {` ${filter.toUpperCase()} `}

@@ -18,16 +18,21 @@ export default function SearchInputKeyboard() {
 
   const filtered = items.filter((item) => item.toLowerCase().includes(query.toLowerCase()));
 
-  const { isHighlighted, highlighted, onKeyDown, highlight } = useNavigation({
+  const { isHighlighted, highlighted, onKeyDown, highlight } = useNavigation<string>({
     containerRef: listRef,
     role: "option",
     wrap: true,
+    // Starts highlighted so the keyboard treatment is visible without pressing a key.
+    defaultHighlighted: "Hooks",
     onSelect: (value) => setQuery(value),
   });
 
   return (
     <div className="w-72 border border-border">
       <SearchInput
+        // The frame owns the outer hairline; the input keeps only the seam that
+        // separates it from the results list.
+        className="border-0 border-b"
         value={query}
         onChange={(v) => {
           setQuery(v);

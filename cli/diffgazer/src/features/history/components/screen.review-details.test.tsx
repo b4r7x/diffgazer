@@ -9,7 +9,7 @@ import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
-import { NavigationProvider } from "../../../app/providers/navigation-provider";
+import { NavigationProvider } from "../../../app/providers/navigation";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { buildResponsiveResult, getBreakpointTier } from "../../../lib/breakpoints";
 import { waitUntil } from "../../../testing/wait-until";

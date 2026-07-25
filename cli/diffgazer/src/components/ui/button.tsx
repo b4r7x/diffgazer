@@ -1,11 +1,10 @@
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
+import { selectionFill } from "../../theme/chrome";
 import { useTheme } from "../../theme/provider";
 
 export interface ButtonProps {
-  variant?: "primary" | "secondary" | "destructive" | "success" | "ghost" | "outline";
-  size?: "sm" | "md" | "lg";
-  bracket?: boolean;
+  variant?: "primary" | "secondary" | "destructive" | "success" | "ghost";
   loading?: boolean;
   disabled?: boolean;
   isActive?: boolean;
@@ -13,16 +12,8 @@ export interface ButtonProps {
   children: string;
 }
 
-const paddingBySize = {
-  sm: { x: 0, y: 0 },
-  md: { x: 1, y: 0 },
-  lg: { x: 2, y: 0 },
-} as const;
-
 export function Button({
   variant = "primary",
-  size = "md",
-  bracket = true,
   loading = false,
   disabled = false,
   isActive = false,
@@ -37,11 +28,12 @@ export function Button({
     destructive: tokens.error,
     success: tokens.success,
     ghost: tokens.fg,
-    outline: tokens.border,
   };
 
-  const color = variantColor[variant];
-  const pad = paddingBySize[size];
+  // The variant colours the resting label only. Focus always fills with the
+  // selection hue, otherwise a focused secondary button fills muted and reads
+  // as the disabled one in the row.
+  const color = disabled ? tokens.muted : variantColor[variant];
   const interactive = isActive && !disabled && !loading;
 
   useInput(
@@ -54,12 +46,11 @@ export function Button({
   );
 
   return (
-    <Box paddingX={pad.x} paddingY={pad.y}>
+    <Box paddingX={1}>
       <Text
-        color={interactive ? tokens.fg : color}
-        backgroundColor={interactive ? color : undefined}
+        color={interactive ? tokens.bg : color}
+        backgroundColor={interactive ? selectionFill(tokens) : undefined}
         bold={interactive}
-        dimColor={disabled}
       >
         {loading ? (
           <>
@@ -67,9 +58,9 @@ export function Button({
             <Text> </Text>
           </>
         ) : null}
-        {bracket ? "[ " : "> "}
+        {"[ "}
         {children}
-        {bracket ? " ]" : ""}
+        {" ]"}
       </Text>
     </Box>
   );

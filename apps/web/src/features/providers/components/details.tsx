@@ -5,7 +5,6 @@ import {
 } from "@diffgazer/core/providers";
 import type { ProviderWithStatus } from "@diffgazer/core/schemas/config";
 import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
-import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { KeyValue } from "@diffgazer/ui/components/key-value";
@@ -56,10 +55,12 @@ function getButtonConfig(
       variant: "destructive" as const,
       disabled: isPending || !provider.hasApiKey,
     },
+    // Secondary, not link: a borderless label in an action row reads as text, and
+    // the row already has one filled CTA plus one semantic destructive intent.
     {
       action: actions.onSelectModel,
       label: PROVIDER_DETAIL_ACTION_LABELS.selectModel,
-      variant: "link" as const,
+      variant: "secondary" as const,
       disabled: isPending || !provider.hasApiKey,
     },
   ];
@@ -77,9 +78,7 @@ export function ProviderDetails({
     return (
       <div className="@container flex flex-1 flex-col overflow-y-auto">
         <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
-          <SectionHeader as="h2" className="mb-0 text-foreground">
-            Provider Details
-          </SectionHeader>
+          <SectionHeader as="h2">Provider Details</SectionHeader>
         </div>
         <EmptyState className="flex-1">{PROVIDER_DETAIL_EMPTY_LABEL}</EmptyState>
       </div>
@@ -91,9 +90,7 @@ export function ProviderDetails({
     return (
       <div className="@container flex flex-1 flex-col overflow-y-auto">
         <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
-          <SectionHeader as="h2" className="mb-0 text-foreground">
-            Provider Details: {provider.name}
-          </SectionHeader>
+          <SectionHeader as="h2">Provider Details: {provider.name}</SectionHeader>
         </div>
         <EmptyState className="flex-1">Unknown provider: {provider.id}</EmptyState>
       </div>
@@ -105,19 +102,16 @@ export function ProviderDetails({
   return (
     <div className="@container flex flex-1 flex-col overflow-y-auto">
       <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
-        <SectionHeader as="h2" className="mb-0 text-foreground">
-          Provider Details: {provider.name}
-        </SectionHeader>
+        <SectionHeader as="h2">Provider Details: {provider.name}</SectionHeader>
         {provider.displayStatus === "active" && (
-          <span className="text-2xs text-success-text font-mono flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-success"></span> Active
-          </span>
+          // Same bracketed status token the provider list uses, not a third chip style.
+          <span className="shrink-0 font-mono text-2xs text-success-text">[ ACTIVE ]</span>
         )}
       </div>
 
       <div className="p-6">
         <section className="mb-6">
-          <SectionHeader variant="muted" bordered className="mb-4 border-border text-accent">
+          <SectionHeader variant="muted" bordered className="mb-4 border-border">
             Capabilities
           </SectionHeader>
           <div
@@ -132,7 +126,7 @@ export function ProviderDetails({
         </section>
 
         <section className="mb-6">
-          <SectionHeader variant="muted" bordered className="mb-4 border-border text-accent">
+          <SectionHeader variant="muted" bordered className="mb-4 border-border">
             Cost Tier
           </SectionHeader>
           <div className="border-l-2 border-success pl-4">
@@ -143,7 +137,7 @@ export function ProviderDetails({
         </section>
 
         <section className="mb-6">
-          <SectionHeader variant="muted" bordered className="mb-4 border-border text-accent">
+          <SectionHeader variant="muted" bordered className="mb-4 border-border">
             Status
           </SectionHeader>
           <KeyValue>
@@ -151,7 +145,7 @@ export function ProviderDetails({
               label="API Key Status"
               value={
                 provider.hasApiKey ? (
-                  <Badge variant="info">[ STORED ]</Badge>
+                  <span className="font-mono text-info-text">[ STORED ]</span>
                 ) : (
                   <span className="text-muted-foreground">Not configured</span>
                 )
@@ -188,11 +182,7 @@ export function ProviderDetails({
                 bracket
                 onClick={btn.action}
                 disabled={btn.disabled}
-                className={
-                  isFocused && focusedButtonIndex === index && !btn.disabled
-                    ? "ring-2 ring-info ring-offset-1 ring-offset-background"
-                    : ""
-                }
+                highlighted={isFocused && focusedButtonIndex === index && !btn.disabled}
               >
                 {btn.label}
               </Button>

@@ -1,11 +1,12 @@
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
 import { useListNavigation } from "../../hooks/use-list-navigation";
+import { useListNavigationInput } from "../../hooks/use-list-navigation-input";
 import { collectChildItems } from "../../lib/collect-child-items";
 import { getListWindow } from "../../lib/list-window";
-import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
+import { SelectableItemRow } from "./selectable-item-row";
 
 export interface RadioGroupProps {
   value?: string;
@@ -33,7 +34,6 @@ interface RadioGroupContextValue {
   highlightedValue: string;
   groupDisabled: boolean;
   visibleValues: ReadonlySet<string>;
-  tokens: CliColorTokens;
 }
 
 const RadioGroupContext = createContext<RadioGroupContextValue | null>(null);
@@ -61,54 +61,15 @@ function RadioGroupItem({ value, label, description, disabled = false }: RadioGr
   const ctx = useRadioGroupContext();
   if (!ctx.visibleValues.has(value)) return null;
 
-  const isDisabled = disabled || ctx.groupDisabled;
-  const isSelected = ctx.selectedValue === value;
-  const isHighlighted = ctx.highlightedValue === value;
-
-  const indicator = isSelected ? "( * )" : "(   )";
-
-  if (isDisabled) {
-    return (
-      <Box flexDirection="column">
-        <Box gap={1}>
-          <Text dimColor>{indicator}</Text>
-          {typeof label === "string" ? <Text dimColor>{label}</Text> : label}
-        </Box>
-        {description != null && (
-          <Box>
-            <Text dimColor>{"      "}</Text>
-            {typeof description === "string" ? <Text dimColor>{description}</Text> : description}
-          </Box>
-        )}
-      </Box>
-    );
-  }
-
   return (
-    <Box flexDirection="column">
-      <Box gap={1}>
-        <Text color={isHighlighted ? ctx.tokens.accent : undefined} bold={isHighlighted}>
-          {indicator}
-        </Text>
-        {typeof label === "string" ? (
-          <Text color={isHighlighted ? ctx.tokens.accent : undefined} bold={isHighlighted}>
-            {label}
-          </Text>
-        ) : (
-          label
-        )}
-      </Box>
-      {description != null && (
-        <Box>
-          <Text>{"      "}</Text>
-          {typeof description === "string" ? (
-            <Text color={ctx.tokens.muted}>{description}</Text>
-          ) : (
-            description
-          )}
-        </Box>
-      )}
-    </Box>
+    <SelectableItemRow
+      indicator={ctx.selectedValue === value ? "( * )" : "(   )"}
+      label={label}
+      description={description}
+      disabled={disabled || ctx.groupDisabled}
+      highlighted={ctx.highlightedValue === value}
+      descriptionIndent={6}
+    />
   );
 }
 
@@ -133,17 +94,14 @@ function RadioGroupRoot({
   }));
 
   const [internalValue, setInternalValue] = useState(defaultValue ?? "");
-  const {
-    currentHighlightedId: highlightedValue,
-    moveBy,
-    selectItem,
-  } = useListNavigation({
+  const navigation = useListNavigation({
     items: navigableItems,
     defaultHighlightedId: value ?? defaultValue,
     onHighlightChange,
     onNavigationBoundaryReached,
     wrap,
   });
+  const highlightedValue = navigation.currentHighlightedId;
 
   const selectedValue = value ?? internalValue;
   const highlightedIndex = Math.max(
@@ -159,39 +117,21 @@ function RadioGroupRoot({
   });
   const visibleValues = new Set(items.slice(window.start, window.end).map((item) => item.value));
 
-  function selectCurrent() {
-    const item = selectItem(highlightedValue);
-    if (!item) return;
-
-    if (value === undefined) {
-      setInternalValue(item.id);
-    }
-    onChange?.(item.id);
-  }
-
   const isVertical = orientation === "vertical";
   const showScrollGutter = isVertical && isWindowed;
 
-  useInput(
-    (_input, key) => {
-      const prevKey = isVertical ? key.upArrow : key.leftArrow;
-      const nextKey = isVertical ? key.downArrow : key.rightArrow;
-
-      if (prevKey) {
-        moveBy(-1);
-        return;
+  useListNavigationInput({
+    navigation,
+    isActive: isActive && !disabled,
+    orientation,
+    activateOnSpace: true,
+    onActivate: (item) => {
+      if (value === undefined) {
+        setInternalValue(item.id);
       }
-      if (nextKey) {
-        moveBy(1);
-        return;
-      }
-      if (key.return || _input === " ") {
-        selectCurrent();
-        return;
-      }
+      onChange?.(item.id);
     },
-    { isActive: isActive && !disabled },
-  );
+  });
 
   return (
     <RadioGroupContext
@@ -200,7 +140,6 @@ function RadioGroupRoot({
         highlightedValue,
         groupDisabled: disabled,
         visibleValues,
-        tokens,
       }}
     >
       {showScrollGutter ? (

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Select } from "./index";
-import { getSelectTrigger, PICK_FRUIT } from "./select.test-utils";
+import { getSelectTrigger, PICK_FRUIT } from "./select-test-utils";
 
 describe("Select indirect composition (registration)", () => {
   function WrappedItem({ value, children }: { value: string; children: ReactNode }) {

@@ -20,6 +20,8 @@ export default function ToastActions() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  bracket
+                  className="px-0"
                   onClick={() => toast.dismiss(REVIEW_SUBMITTED_TOAST_ID)}
                 >
                   Dismiss

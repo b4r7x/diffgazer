@@ -1,6 +1,7 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import { AGENT_METADATA, type AgentState } from "@diffgazer/core/schemas/events";
 import { cleanup, render } from "ink-testing-library";
+import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { cleanupRootFrames } from "../../../../testing/render-root-frame";
@@ -70,7 +71,10 @@ describe("ReviewProgressView (TUI) status", () => {
       },
     });
 
-    const frame = lastFrame() ?? "";
+    // The metric label and value are separately coloured Text nodes, so the raw
+    // frame splits them with an escape sequence whenever colour is on — which
+    // would also let the negative assertion below pass for the wrong reason.
+    const frame = stripAnsi(lastFrame() ?? "");
     expect(frame).toContain("Files in Prompt: 2/2");
     expect(frame).not.toContain("Files processed");
   });

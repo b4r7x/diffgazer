@@ -13,7 +13,9 @@ const sections = [
 
 export default function TabsKeyboard() {
   return (
-    <Tabs defaultValue="overview" activationMode="manual">
+    // bracket variant here so manual activation is demonstrated on a second
+    // trigger style rather than repeating the hero's underline row.
+    <Tabs defaultValue="overview" variant="bracket" activationMode="manual">
       <TabsList>
         {sections.map((section) => (
           <TabsTrigger key={section.value} value={section.value}>

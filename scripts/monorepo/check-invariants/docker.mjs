@@ -1,11 +1,6 @@
 import { posix } from "node:path";
 import { parse as parseYaml } from "yaml";
-import {
-  existsInRoot,
-  invariantResult,
-  readJsonInRoot,
-  readTextInRoot,
-} from "./context.mjs";
+import { existsInRoot, invariantResult, readJsonInRoot, readTextInRoot } from "./context.mjs";
 
 const PNPM_DOCKERFILES = ["Dockerfile", "deploy/landing.Dockerfile"];
 const DOCKER_ARTIFACT_FORMATTER_INPUTS = ["biome.json", ".gitignore"];

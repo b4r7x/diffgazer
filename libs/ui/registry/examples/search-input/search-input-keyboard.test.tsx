@@ -15,16 +15,26 @@ describe("search-input-keyboard example copy contract", () => {
 });
 
 describe("search-input-keyboard example", () => {
+  it("starts on the seeded highlight so the keyboard state is visible before any key press", () => {
+    render(<SearchInputKeyboard />);
+    const input = screen.getByRole("combobox", { name: "Search items..." });
+    const hooksOption = screen.getByRole("option", { name: "Hooks" });
+
+    expect(input).toHaveAttribute("aria-activedescendant", hooksOption.id);
+    expect(hooksOption).toHaveAttribute("aria-selected", "true");
+  });
+
   it("clears the active descendant and selection on typing and on an empty-query Escape", async () => {
     const user = userEvent.setup();
     render(<SearchInputKeyboard />);
     const input = screen.getByRole("combobox", { name: "Search items..." });
+    const componentsOption = screen.getByRole("option", { name: "Components" });
     input.focus();
 
     await user.keyboard("{ArrowDown}");
-    const componentsOption = screen.getByRole("option", { name: "Components" });
-    expect(input).toHaveAttribute("aria-activedescendant", componentsOption.id);
-    expect(componentsOption).toHaveAttribute("aria-selected", "true");
+    const utilitiesOption = screen.getByRole("option", { name: "Utilities" });
+    expect(input).toHaveAttribute("aria-activedescendant", utilitiesOption.id);
+    expect(utilitiesOption).toHaveAttribute("aria-selected", "true");
 
     await user.keyboard("o");
     expect(input).not.toHaveAttribute("aria-activedescendant");

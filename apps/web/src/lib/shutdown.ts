@@ -5,6 +5,7 @@ import {
   shutdownClosedResult,
   shutdownNetworkError,
 } from "@diffgazer/core/api";
+import { toast } from "@diffgazer/ui/components/toast";
 import { api } from "@/lib/api";
 
 export async function shutdown(): Promise<ShutdownResult> {
@@ -26,4 +27,13 @@ export async function shutdown(): Promise<ShutdownResult> {
   }
 
   return shutdownCloseBlockedResult();
+}
+
+export function reportShutdownResult(result: ShutdownResult): void {
+  if (result.status === "closed") return;
+  if (result.status === "error") {
+    toast.error("Quit Failed", { message: result.message });
+    return;
+  }
+  toast.warning("Close Tab Manually", { message: result.message });
 }

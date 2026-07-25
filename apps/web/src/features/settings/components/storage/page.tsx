@@ -34,7 +34,7 @@ export function SettingsStoragePage() {
 
   return (
     <SettingsFormPage
-      title="Configure Secrets Storage"
+      title="Secrets Storage"
       subtitle="Choose where API keys and sensitive data should be stored."
       query={settingsQuery}
       footer={footer}
@@ -63,7 +63,7 @@ export function SettingsStoragePage() {
         </Callout>
 
         {error && (
-          <Callout tone="error" live className="text-sm">
+          <Callout tone="error" live>
             <Callout.Content>{error}</Callout.Content>
           </Callout>
         )}

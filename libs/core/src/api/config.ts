@@ -10,6 +10,8 @@ import type {
   SaveConfigRequest,
 } from "../schemas/config/index.js";
 import {
+  ActivateProviderResponseSchema,
+  ConfigCheckResponseSchema,
   CurrentConfigResponseSchema,
   InitResponseSchema,
   OpenRouterModelsResponseSchema,
@@ -60,6 +62,8 @@ export async function activateProvider(
   return client.post<ActivateProviderResponse>(
     `/api/config/provider/${encodeURIComponent(providerId)}/activate`,
     model ? { model } : {},
+    undefined,
+    (body) => ActivateProviderResponseSchema.parse(body),
   );
 }
 
@@ -79,7 +83,9 @@ export async function loadInit(client: ApiClient): Promise<InitResponse> {
 }
 
 export async function checkConfig(client: ApiClient): Promise<ConfigCheckResponse> {
-  return client.get<ConfigCheckResponse>("/api/config/check");
+  return client.get<ConfigCheckResponse>("/api/config/check", undefined, (body) =>
+    ConfigCheckResponseSchema.parse(body),
+  );
 }
 
 export async function getConfig(client: ApiClient): Promise<ConfigResponse> {

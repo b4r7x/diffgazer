@@ -75,7 +75,7 @@ export function IssueDetailsPane({
             tabIndex={-1}
             className="flex-1 min-h-0 focus:outline-none"
           >
-            <EmptyState className="h-full min-h-[20rem]">
+            <EmptyState className="h-full min-h-80">
               <div className="space-y-2">
                 <div>{empty.title}</div>
                 {empty.description && (
@@ -137,9 +137,13 @@ export function IssueDetailsPane({
 
             <TabsContent value="explain" tabIndex={-1} className="mt-0">
               <div className="text-sm text-foreground/80">
-                <SectionHeader as="h2">Rationale</SectionHeader>
+                <SectionHeader as="h2" className="mb-2">
+                  Rationale
+                </SectionHeader>
                 <p className="mb-4">{issue.rationale}</p>
-                <SectionHeader as="h2">Recommendation</SectionHeader>
+                <SectionHeader as="h2" className="mb-2">
+                  Recommendation
+                </SectionHeader>
                 <p>{issue.recommendation}</p>
               </div>
             </TabsContent>
@@ -185,9 +189,9 @@ function DetailsPanel({
       ref={paneRef}
       aria-label="Issue details"
       data-pane="details"
-      data-focused={isFocused || undefined}
+      focused={isFocused}
       className={cn(
-        "mt-3 flex min-h-0 w-full flex-1 flex-col border border-border data-[focused]:border-info md:w-3/5 md:flex-initial md:basis-auto",
+        "mt-3 flex min-h-0 w-full flex-1 flex-col md:w-3/5 md:flex-initial md:basis-auto",
         className,
       )}
     >

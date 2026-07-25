@@ -15,11 +15,17 @@ const INDENT_PER_LEVEL_PX = 12;
 
 /** Class variants for toc item. */
 export const tocItemVariants = cva(
-  "block py-1 text-xs font-mono transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+  [
+    "block py-1 text-xs font-mono transition-colors",
+    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+    // The 2px rail sits on top of TocList's 1px hairline (-2px margin cancels
+    // the border width, so the label X never shifts between states).
+    "-ml-[2px] border-l-2 border-transparent",
+  ].join(" "),
   {
     variants: {
       active: {
-        true: "text-primary font-bold",
+        true: "border-l-primary text-primary font-bold",
         false: "text-muted-foreground hover:text-foreground",
       },
     },

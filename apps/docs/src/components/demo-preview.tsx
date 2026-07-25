@@ -19,7 +19,7 @@ import {
   Suspense,
 } from "react";
 import { CopyButton } from "@/components/copy-button";
-import { InsetPreviewPane } from "@/components/preview-inset-pane";
+import { InsetPreviewPane } from "@/components/inset-preview-pane";
 import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { DOT_GRID_CLASS } from "@/components/shared/dot-grid";
 import { useTheme } from "@/hooks/theme-context";
@@ -76,10 +76,12 @@ function DefaultPreviewPane({
   demo,
   rawCode,
   theme,
+  compact = false,
 }: {
   demo: LazyExoticComponent<ComponentType> | null;
   rawCode: string;
   theme: string;
+  compact?: boolean;
 }) {
   return (
     <div data-demo-preview data-theme={theme}>
@@ -93,7 +95,8 @@ function DefaultPreviewPane({
         <div
           className={cn(
             DOT_GRID_CLASS,
-            "flex min-h-[240px] items-center justify-center px-8 py-12",
+            "flex items-center justify-center px-8",
+            compact ? "min-h-[96px] py-6" : "min-h-[240px] py-12",
           )}
         >
           <DemoNode demo={demo} />
@@ -142,8 +145,15 @@ function PreviewPane({
     );
   }
   if (frame === "fill") return <FillPreviewPane demo={demo} theme={theme} />;
-  if (frame === "default")
-    return <DefaultPreviewPane demo={demo} rawCode={rawCode} theme={theme} />;
+  if (frame === "default" || frame === "compact")
+    return (
+      <DefaultPreviewPane
+        demo={demo}
+        rawCode={rawCode}
+        theme={theme}
+        compact={frame === "compact"}
+      />
+    );
   frame satisfies never;
   return null;
 }

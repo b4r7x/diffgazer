@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { requireFrameDocument } from "../testing/assertions.js";
+import { requireFrameDocument } from "../testing/internal/assertions.js";
 import { getRestorableFocusTarget, restoreFocus } from "./focus-restore.js";
 
 function button(label: string, ownerDocument: Document = document) {

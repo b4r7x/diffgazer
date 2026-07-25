@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { KeyboardEvent as ReactKeyboardEvent, RefCallback, RefObject } from "react";
 import type { ProviderFilter } from "../lib/filter";
 import { useProvidersActionButtons } from "./use-action-buttons";
-import { useProvidersDialogKeyboard } from "./use-dialog-keyboard";
+import { useProvidersListFocusReclaim } from "./use-list-focus-reclaim";
 import { useProvidersListNavigation } from "./use-list-navigation";
 
 const PROVIDER_ZONES = ["input", "filters", "list", "buttons"] as const;
@@ -64,11 +64,7 @@ export function useProvidersKeyboard({
 }: ProvidersKeyboardOptions): ProvidersKeyboardReturn {
   const navigate = useNavigate();
 
-  const {
-    zone: internalZone,
-    setZone,
-    isZone,
-  } = useFocusZone({
+  const { zone: internalZone, setZone } = useFocusZone({
     initial: "list",
     zones: PROVIDER_ZONES,
     scope: "providers",
@@ -77,8 +73,6 @@ export function useProvidersKeyboard({
 
   const effectiveFocusZone =
     !selectedProvider && internalZone === "buttons" ? "list" : internalZone;
-  const inInput = effectiveFocusZone === "input";
-  const inFilters = effectiveFocusZone === "filters";
   const inButtons = effectiveFocusZone === "buttons";
 
   const focusProviderList = () => {
@@ -102,9 +96,7 @@ export function useProvidersKeyboard({
     filteredProviders,
     filter,
     dialogOpen,
-    inInput,
-    inFilters,
-    inList: isZone("list"),
+    zone: effectiveFocusZone,
     inputRef,
     setZone,
     setSelectedId,
@@ -112,14 +104,16 @@ export function useProvidersKeyboard({
     enterButtons,
   });
 
-  useProvidersDialogKeyboard({
+  useProvidersListFocusReclaim({
     dialogOpen,
     listReady,
     listContainerRef,
     setZone,
   });
 
-  useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !dialogOpen && !inInput });
+  useKey("Escape", () => navigate({ to: "/settings" }), {
+    enabled: !dialogOpen && effectiveFocusZone !== "input",
+  });
 
   return {
     focusZone: effectiveFocusZone,

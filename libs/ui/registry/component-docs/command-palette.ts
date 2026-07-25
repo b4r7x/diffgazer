@@ -35,6 +35,11 @@ export const commandPaletteDoc: ComponentDoc = {
         'CommandPaletteContent exposes two orthogonal axes. `frame` picks the shell chrome — "border" (1px hairline, default), "viewfinder" (no border, four corner brackets + 2px left accent bar on selection), "terminal" (top + bottom 2px rules, inverted selection, prefix glyph becomes $), "card" (rounded 8px shell with a subtle gradient surface and floating rounded selection — Linear-ish), or "none" (bare shell for embedding). `density` picks the typographic & spacing surface — "compact" (default), "comfortable", or "dense". Both are plain TypeScript types (CommandPaletteFrame, CommandPaletteDensity) whose visual styling is driven by [data-frame] / [data-density] selectors in command-palette/command-palette.css, so consumers can override token values per-instance via CSS custom properties.',
     },
     {
+      title: "Modal or Embedded",
+      content:
+        "By default Content renders a native modal dialog in the browser top layer with a focus trap and focus restoration. Pass modal={false} to embed the same surface in the page: identical frame, density, tone, and highlight chrome, but in the document flow, without a backdrop and without stealing focus - useful for a persistent search pane, and for documenting the open surface itself. The examples below are embedded palettes for exactly that reason.",
+    },
+    {
       title: "Optional auto-coloring",
       content:
         'Items accept a `tone` prop ("neutral" | "nav" | "action" | "settings" | "destructive" | "ai") that renders a 2px left accent bar and tints the optional icon. The label color is unchanged so contrast remains readable, including under the terminal frame\'s inverted selection. For automatic classification + inline match highlighting, import `CommandPaletteHighlightItem` from `@diffgazer/ui/components/command-palette/highlight`. It infers tone from a small regex table (verbs like "delete", "go to", "toggle", "ask", "run") and wraps matched characters in `<mark data-slot="command-palette-item-match">`.',
@@ -49,7 +54,7 @@ export const commandPaletteDoc: ComponentDoc = {
     {
       name: "CommandPaletteContent",
       indent: 1,
-      note: "Native dialog modal container with frame + density variants",
+      note: "Modal (or embedded) palette container with frame + density variants",
     },
     {
       name: "CommandPaletteInput",
@@ -68,13 +73,13 @@ export const commandPaletteDoc: ComponentDoc = {
   ],
   usage: { example: "command-palette-demo" },
   examples: [
-    { name: "command-palette-demo", title: "Default" },
     { name: "command-palette-viewfinder", title: "Viewfinder frame" },
     { name: "command-palette-terminal", title: "Terminal frame" },
     { name: "command-palette-comfortable", title: "Comfortable density" },
     { name: "command-palette-dense", title: "Dense density" },
     { name: "command-palette-tones", title: "Tones (manual)" },
     { name: "command-palette-auto-tones", title: "Tones (auto-coloring)" },
+    { name: "command-palette-empty", title: "Empty state" },
   ],
   keyboard: {
     description:
@@ -91,7 +96,8 @@ export const commandPaletteDoc: ComponentDoc = {
       attribute: "data-state",
       appliesTo: "CommandPaletteContent",
       values: '"open" | "closed"',
-      description: "Native dialog open state mirrored by the shared shell.",
+      description:
+        'Native dialog open state mirrored by the shared shell. Embedded palettes emit "open" while mounted.',
     },
     {
       attribute: "data-frame",
@@ -110,6 +116,13 @@ export const commandPaletteDoc: ComponentDoc = {
       appliesTo: "CommandPaletteItem",
       values: "item id",
       description: "Stable id used for filtering, highlight, and activation.",
+    },
+    {
+      attribute: "data-highlighted",
+      appliesTo: "CommandPaletteItem",
+      values: "present when highlighted",
+      description:
+        "Marks the active descendant. All highlight styling keys off this attribute; aria-selected stays for listbox semantics.",
     },
     {
       attribute: "data-tone",
@@ -200,11 +213,19 @@ export const commandPaletteDoc: ComponentDoc = {
         description:
           'Typographic and spacing surface. Switches a token block (--command-palette-row-h, --command-palette-input-py, --command-palette-list-p, --command-palette-text-size, etc.) consumed by every inner slot via [data-density] selectors in command-palette/command-palette.css. "compact" matches the V1 refined-mono target, "comfortable" is Linear-ish breathing room, "dense" is VSCode-tight.',
       },
+      modal: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description:
+          "Renders the palette as a modal dialog in the browser top layer (default). Pass false to render it in the document flow instead - an embedded palette with the same frame, density, and highlight chrome, without a backdrop, focus trap, or focus restoration. Inline palettes still honour open, so they unmount when the consumer closes them.",
+      },
       label: {
         type: "string",
         required: false,
         defaultValue: '"Command palette"',
-        description: "Accessible name for the modal dialog.",
+        description:
+          "Accessible name for the palette. Applied to the modal dialog, or to the embedded region when modal is false.",
       },
     },
     CommandPaletteItem: {

@@ -40,12 +40,13 @@
     "libs/ui/registry/ui/diff-view/diff-view.css",
     "libs/ui/registry/ui/panel/panel.css",
     "libs/ui/registry/ui/sidebar/sidebar.css",
+    "libs/ui/registry/ui/spinner/spinner.css",
     "libs/ui/registry/ui/shared/*.css",
     "libs/ui/styles/*.css"
   ],
   "ignoreIssues": {
     "libs/registry/src/manifest.ts": ["types"],
-    "libs/ui/theme/index.ts": ["exports"]
+    "libs/ui/theme/index.ts": ["exports", "types"]
   },
   "ignore": [
     "**/dist/**",

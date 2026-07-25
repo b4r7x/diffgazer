@@ -1,4 +1,6 @@
-import { createEffectScope, type Flags, lerp, type Mouse } from "../util";
+import { createEffectScope } from "../effect-scope";
+import { lerp } from "../motion";
+import type { Flags, Mouse } from "../viewport";
 
 export interface Cursor {
   draw(): void;
@@ -23,6 +25,14 @@ export function initCursor(
   if (!scope.active()) return { ...NOOP, cleanup: scope.cleanup };
 
   for (const el of root.querySelectorAll<HTMLElement>("[data-magnetic]")) {
+    let resetTimer: ReturnType<typeof setTimeout> | undefined;
+    scope.addCleanup(() => {
+      clearTimeout(resetTimer);
+      // The pull is written as inline style, so tearing down mid-hover would leave the
+      // control displaced and holding a transition it will never finish.
+      el.style.transform = "";
+      el.style.transition = "";
+    });
     el.addEventListener(
       "pointermove",
       (event) => {
@@ -38,10 +48,10 @@ export function initCursor(
       () => {
         el.style.transition = "transform 0.4s cubic-bezier(0.2, 1, 0.3, 1)";
         el.style.transform = "none";
-        const timer = setTimeout(() => {
+        clearTimeout(resetTimer);
+        resetTimer = setTimeout(() => {
           el.style.transition = "";
         }, 400);
-        scope.addCleanup(() => clearTimeout(timer));
       },
       { signal: scope.signal },
     );

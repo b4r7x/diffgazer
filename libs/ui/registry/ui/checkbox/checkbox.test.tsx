@@ -36,6 +36,13 @@ describe("Checkbox", () => {
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
+  it("keeps the bullet variant distinct from the radio dot", () => {
+    const { rerender } = render(<Checkbox checked variant="bullet" label="Accept" />);
+    expect(screen.getByRole("checkbox")).toHaveTextContent("[*]");
+    rerender(<Checkbox checked={false} variant="bullet" label="Accept" />);
+    expect(screen.getByRole("checkbox")).not.toHaveTextContent("●");
+  });
+
   it("emits data-slot and data-state styling hooks", () => {
     const { rerender } = render(<Checkbox checked={false} label="Accept" />);
     const control = screen.getByRole("checkbox");

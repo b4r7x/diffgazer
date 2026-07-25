@@ -1,14 +1,23 @@
 import { existsSync, readFileSync } from "node:fs";
-import type {
-  PreparedComponentScaffold,
-  PreparedExample,
-  PreparedHookScaffold,
-  PreparedInstallation,
-  PreparedScaffoldData,
-  PreparedSourceFile,
-} from "../../src/lib/scaffold-data.ts";
+import type { PreparedScaffoldData } from "../../src/lib/scaffold-data.ts";
 import type { PreRenderPage } from "../generate-sitemap.ts";
 import { loadPreparedScaffoldData } from "./artifacts.ts";
+import { codeBlock } from "./markdown-primitives.ts";
+import {
+  renderAccessibility,
+  renderComponentApi,
+  renderComponentScaffold,
+  renderExample,
+  renderExamples,
+  renderHookScaffold,
+  renderInstallation,
+  renderNotes,
+  renderParameters,
+  renderReturns,
+  renderSource,
+  resolveExampleByName,
+  withoutHero,
+} from "./scaffold-markdown.ts";
 
 export interface PageMarkdown {
   path: string;
@@ -49,222 +58,15 @@ function parseFrontmatter(source: string): { frontmatter: Frontmatter; body: str
   };
 }
 
-function escapeTableCell(value: string): string {
-  return value.replace(/\|/g, "\\|").replace(/\r?\n/g, "<br>");
-}
-
-function markdownTable(headers: string[], rows: string[][]): string {
-  if (rows.length === 0) return "";
-  const header = `| ${headers.map(escapeTableCell).join(" | ")} |`;
-  const divider = `| ${headers.map(() => "---").join(" | ")} |`;
-  const body = rows
-    .map((row) => `| ${row.map((cell) => escapeTableCell(cell)).join(" | ")} |`)
-    .join("\n");
-  return `${header}\n${divider}\n${body}`;
-}
-
-function codeBlock(code: string, language: string): string {
-  const longestBacktickRun = Math.max(
-    0,
-    ...Array.from(code.matchAll(/`+/g), (match) => match[0].length),
-  );
-  const fence = "`".repeat(Math.max(3, longestBacktickRun + 1));
-  return `${fence}${language}\n${code.trimEnd()}\n${fence}`;
-}
-
-function sourceLanguage(path: string): string {
-  if (path.endsWith(".css")) return "css";
-  if (path.endsWith(".json")) return "json";
-  if (path.endsWith(".tsx")) return "tsx";
-  return "typescript";
-}
-
-function renderInstallation(installation: PreparedInstallation): string {
-  const paths = installation.paths.map((path) => {
-    const details = path.details.map((detail) => `- **${detail.label}:** \`${detail.value}\``);
-    const parts = [
-      `### ${path.label}`,
-      path.available ? "Available." : "Not currently available.",
-      path.command ? codeBlock(path.command, "bash") : "",
-      details.join("\n"),
-      path.note ?? "",
-    ];
-    return parts.filter(Boolean).join("\n\n");
-  });
-  if (installation.note) paths.push(installation.note);
-  return paths.join("\n\n");
-}
-
-function renderExample(example: PreparedExample): string {
-  const source = example.raw ? codeBlock(example.raw, "tsx") : `Example id: \`${example.name}\`.`;
-  return `### ${example.title}\n\n${source}`;
-}
-
-function renderExamples(examples: PreparedExample[]): string {
-  return examples.map(renderExample).join("\n\n");
-}
-
-function renderSource(sourceFiles: PreparedSourceFile[]): string {
-  return sourceFiles
-    .map((file) => {
-      if (!file.raw) return `- \`${file.path}\``;
-      return `### \`${file.path}\`\n\n${codeBlock(file.raw, sourceLanguage(file.path))}`;
-    })
-    .join("\n\n");
-}
-
-function renderComponentApi(data: PreparedComponentScaffold): string {
-  const sections: string[] = [];
-  for (const [component, props] of Object.entries(data.props)) {
-    const rows = Object.entries(props).map(([name, prop]) => [
-      name,
-      prop.type,
-      prop.required ? "Yes" : "No",
-      prop.defaultValue ?? "—",
-      prop.description,
-    ]);
-    if (rows.length > 0) {
-      sections.push(
-        `### ${component}\n\n${markdownTable(
-          ["Prop", "Type", "Required", "Default", "Description"],
-          rows,
-        )}`,
-      );
-    }
-  }
-
-  if (data.dataAttributes.length > 0) {
-    sections.push(
-      `### Data attributes\n\n${markdownTable(
-        ["Attribute", "Applies to", "Values", "Description"],
-        data.dataAttributes.map((item) => [
-          item.attribute,
-          item.appliesTo,
-          item.values,
-          item.description,
-        ]),
-      )}`,
-    );
-  }
-  if (data.cssVariables.length > 0) {
-    sections.push(
-      `### CSS variables\n\n${markdownTable(
-        ["Name", "Default", "Description"],
-        data.cssVariables.map((item) => [
-          item.name,
-          item.defaultValue ?? "component-defined",
-          item.description,
-        ]),
-      )}`,
-    );
-  }
-  return sections.join("\n\n");
-}
-
-function renderAccessibility(data: PreparedComponentScaffold): string {
-  const sections: string[] = [];
-  const keyboard = data.keyboard;
-  if (keyboard) {
-    const keyboardParts = ["### Keyboard Navigation", keyboard.description];
-    if (keyboard.keys && keyboard.keys.length > 0) {
-      keyboardParts.push(
-        markdownTable(
-          ["Key", "Action"],
-          keyboard.keys.map((row) => [row.keys, row.action]),
-        ),
-      );
-    }
-    if (keyboard.examples.length > 0) {
-      keyboardParts.push(
-        keyboard.examples
-          .map((example) => `- **${example.title}** (\`${example.name}\`)`)
-          .join("\n"),
-      );
-    }
-    sections.push(keyboardParts.filter(Boolean).join("\n\n"));
-  }
-  if (data.accessibilityNotes.length > 0) {
-    sections.push(
-      `### Notes\n\n${data.accessibilityNotes
-        .map((note) => `#### ${note.title}\n\n${note.content}`)
-        .join("\n\n")}`,
-    );
-  }
-  return sections.join("\n\n");
-}
-
-function renderParameters(data: PreparedHookScaffold): string {
-  return markdownTable(
-    ["Parameter", "Type", "Required", "Default", "Description"],
-    data.parameters.map((parameter) => [
-      parameter.name,
-      parameter.type,
-      parameter.required ? "Yes" : "No",
-      parameter.defaultValue ?? "—",
-      parameter.description,
-    ]),
-  );
-}
-
-function renderReturns(data: PreparedHookScaffold): string {
-  if (!data.returns) return "";
-  const parts = [`**Type:** \`${data.returns.type}\``, data.returns.description];
-  if (data.returns.properties && data.returns.properties.length > 0) {
-    parts.push(
-      markdownTable(
-        ["Property", "Type", "Required", "Default", "Description"],
-        data.returns.properties.map((property) => [
-          property.name,
-          property.type,
-          property.required ? "Yes" : "No",
-          property.defaultValue ?? "—",
-          property.description,
-        ]),
-      ),
-    );
-  }
-  return parts.filter(Boolean).join("\n\n");
-}
-
-function renderNotes(data: PreparedHookScaffold): string {
-  return data.notes.map((note) => `### ${note.title}\n\n${note.content}`).join("\n\n");
-}
-
-function renderComponentScaffold(data: PreparedComponentScaffold, hero?: string): string {
-  const heroExample = hero ? data.examples.find((example) => example.name === hero) : undefined;
-  const examples = heroExample
-    ? data.examples.filter((example) => example.name !== heroExample.name)
-    : data.examples;
-  const api = renderComponentApi(data);
-  const accessibility = renderAccessibility(data);
-  const sections = [
-    heroExample ? `## Example\n\n${renderExample(heroExample)}` : "",
-    `## Installation\n\n${renderInstallation(data.installation)}`,
-    data.usage ? `## Usage\n\n${codeBlock(data.usage.code, data.usage.lang)}` : "",
-    examples.length > 0 ? `## Examples\n\n${renderExamples(examples)}` : "",
-    api ? `## API Reference\n\n${api}` : "",
-    accessibility ? `## Accessibility\n\n${accessibility}` : "",
-    data.sourceFiles.length > 0 ? `## Source\n\n${renderSource(data.sourceFiles)}` : "",
-  ];
-  return sections.filter(Boolean).join("\n\n");
-}
-
-function renderHookScaffold(data: PreparedHookScaffold): string {
-  const sections = [
-    data.usage ? `## Usage\n\n${codeBlock(data.usage.code, data.usage.lang)}` : "",
-    `## Installation\n\n${renderInstallation(data.installation)}`,
-    data.parameters.length > 0 ? `## Parameters\n\n${renderParameters(data)}` : "",
-    data.returns ? `## Returns\n\n${renderReturns(data)}` : "",
-    data.examples.length > 0 ? `## Examples\n\n${renderExamples(data.examples)}` : "",
-    data.notes.length > 0 ? `## Notes\n\n${renderNotes(data)}` : "",
-    data.sourceFiles.length > 0 ? `## Source\n\n${renderSource(data.sourceFiles)}` : "",
-  ];
-  return sections.filter(Boolean).join("\n\n");
-}
+const attributePatterns = new Map<string, RegExp>();
 
 function quotedAttribute(attributes: string, name: string): string | undefined {
-  const match = new RegExp(`\\b${name}=(['"])(.*?)\\1`).exec(attributes);
-  return match?.[2];
+  let pattern = attributePatterns.get(name);
+  if (!pattern) {
+    pattern = new RegExp(`\\b${name}=(['"])(.*?)\\1`);
+    attributePatterns.set(name, pattern);
+  }
+  return pattern.exec(attributes)?.[2];
 }
 
 function renderPreparedMdx(source: string, data: PreparedScaffoldData | null): string {
@@ -279,7 +81,7 @@ function renderPreparedMdx(source: string, data: PreparedScaffoldData | null): s
     );
     rendered = rendered.replace(/<Example\b([^>]*)\/>/g, (_match, attributes: string) => {
       const name = quotedAttribute(attributes, "name");
-      const example = name ? data.examples.find((item) => item.name === name) : undefined;
+      const example = name ? resolveExampleByName(data, name) : undefined;
       return example ? renderExample(example) : "";
     });
     rendered = rendered.replace(/<APIReference\s*\/>/g, () => {
@@ -308,8 +110,7 @@ function renderPreparedMdx(source: string, data: PreparedScaffoldData | null): s
     renderInstallation(data.installation),
   );
   rendered = rendered.replace(/<Examples\b([^>]*)\/>/g, (_match, attributes: string) => {
-    const examples = /\bskipFirst\b/.test(attributes) ? data.examples.slice(1) : data.examples;
-    const body = renderExamples(examples);
+    const body = renderExamples(withoutHero(data.examples, quotedAttribute(attributes, "hero")));
     if (!body) return "";
     return /\bshowHeading\b/.test(attributes) ? `## Examples\n\n${body}` : body;
   });

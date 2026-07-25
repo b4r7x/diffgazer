@@ -8,20 +8,35 @@ import {
 } from "@diffgazer/core/theme";
 import { describe, expect, it } from "vitest";
 import {
-  orderThemeDocsPrimitives,
-  THEME_DOCS_COLOR_GRID_ORDER,
-  THEME_DOCS_PLAYGROUND_ORDER,
+  THEME_DOCS_CODE_TOKENS,
   THEME_DOCS_PRIMITIVES,
   THEME_DOCS_SEMANTIC_TOKENS,
-  THEME_DOCS_TOKENS,
+  THEME_DOCS_SURFACE_TOKENS,
+  THEME_DOCS_TONE_TOKENS,
+  type ThemeDocsToken,
 } from "./index";
+
+/** Every token this package declares, in no particular order: display grouping lives in apps/docs. */
+const THEME_DOCS_TOKENS: readonly ThemeDocsToken[] = [
+  ...THEME_DOCS_PRIMITIVES,
+  ...THEME_DOCS_SEMANTIC_TOKENS,
+  ...THEME_DOCS_TONE_TOKENS,
+  ...THEME_DOCS_CODE_TOKENS,
+  ...THEME_DOCS_SURFACE_TOKENS,
+];
 
 const THEME_CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../styles/theme.css");
 
 const DARK_BLOCK_RE = /:root,\s*\[data-theme="dark"\]\s*\{([\s\S]*?)\n\}/;
 const LIGHT_BLOCK_RE = /\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/;
 const DECLARATION_RE = /^\s*(--[a-z0-9-]+):\s*([^;]+);/gm;
-const NON_COLOR_TOKENS = new Set(["--base-font-mono", "--trans-fast", "--radius", "--scrim"]);
+const NON_COLOR_TOKENS = new Set([
+  "--base-font-mono",
+  "--trans-fast",
+  "--radius",
+  "--scrim",
+  "--shadow-hard",
+]);
 
 /** Core theme-token keys map to product-neutral `--base-*` primitive names. */
 const PRIMITIVE_KEY_TO_BASE: Record<PrimitiveTokenKey, `--base-${string}`> = {
@@ -135,86 +150,5 @@ describe("primitive semanticTokens edges match parsed theme.css", () => {
       expect([...primitive.semanticTokens.dark].sort()).toEqual(expectedDark);
       expect([...primitive.semanticTokens.light].sort()).toEqual(expectedLight);
     }
-  });
-});
-
-describe("T-057 orderThemeDocsPrimitives", () => {
-  it("returns primitives in the requested display order", () => {
-    const ordered = orderThemeDocsPrimitives(THEME_DOCS_COLOR_GRID_ORDER);
-    expect(ordered.map((primitive) => primitive.name)).toEqual(THEME_DOCS_COLOR_GRID_ORDER);
-  });
-
-  it("sources values from the shared UI theme primitives, not the order list", () => {
-    const ordered = orderThemeDocsPrimitives(THEME_DOCS_COLOR_GRID_ORDER);
-    for (const primitive of ordered) {
-      const canonical = THEME_DOCS_PRIMITIVES.find(
-        (candidate) => candidate.name === primitive.name,
-      );
-      expect(primitive.darkValue).toBe(canonical?.darkValue);
-    }
-  });
-
-  it("throws when the order list omits a primitive", () => {
-    expect(() => orderThemeDocsPrimitives([THEME_DOCS_PRIMITIVES[0].name])).toThrow();
-  });
-
-  it("rejects an order array with a name that is not a primitive", () => {
-    expect(() =>
-      orderThemeDocsPrimitives([
-        // @ts-expect-error -- a typo'd primitive name is now a compile error, not a runtime throw.
-        "--base-typo",
-        ...THEME_DOCS_COLOR_GRID_ORDER.slice(1),
-      ]),
-    ).toThrow(/missing primitives/);
-  });
-});
-
-describe("T-057 display orders", () => {
-  const swatchOrder = [
-    "--base-bg",
-    "--base-fg",
-    "--base-dim",
-    "--base-info",
-    "--base-success",
-    "--base-danger",
-    "--base-warning",
-    "--base-accent",
-    "--base-border",
-    "--base-highlight",
-    "--base-highlight-foreground",
-    "--base-selection",
-    "--base-muted",
-    "--base-input-bg",
-  ];
-
-  const editableOrder = [
-    "--base-bg",
-    "--base-fg",
-    "--base-dim",
-    "--base-info",
-    "--base-accent",
-    "--base-success",
-    "--base-danger",
-    "--base-warning",
-    "--base-border",
-    "--base-highlight",
-    "--base-highlight-foreground",
-    "--base-selection",
-    "--base-muted",
-    "--base-input-bg",
-  ];
-
-  it("keeps the color-grid swatch order", () => {
-    expect(THEME_DOCS_COLOR_GRID_ORDER).toEqual(swatchOrder);
-  });
-
-  it("keeps the playground editable-row order", () => {
-    expect(THEME_DOCS_PLAYGROUND_ORDER).toEqual(editableOrder);
-  });
-
-  it("covers every primitive exactly once", () => {
-    const names = THEME_DOCS_PRIMITIVES.map((primitive) => primitive.name).sort();
-    expect([...THEME_DOCS_COLOR_GRID_ORDER].sort()).toEqual(names);
-    expect([...THEME_DOCS_PLAYGROUND_ORDER].sort()).toEqual(names);
   });
 });

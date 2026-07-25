@@ -10,9 +10,10 @@ import { useKey, useScope } from "@diffgazer/keys";
 import { Menu, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { useNavigate } from "@tanstack/react-router";
+import { useId } from "react";
 import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { useConfigData } from "@/hooks/use-config";
-import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
+import { SETTINGS_HIGHLIGHTED_KEY, useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
 
 const SETTINGS_ROUTES: Record<SettingsAction, string> = {
@@ -35,10 +36,11 @@ function getSettingsMenuHighlighted(value: string | null): string | null {
 
 export function SettingsHubPage() {
   const navigate = useNavigate();
+  const titleId = useId();
   const { loadState, provider, isConfigured, repoRoot, trust, configPath } = useConfigData();
   const { theme } = useTheme();
   const [highlighted, setHighlighted] = useScopedRouteState<string | null>(
-    "highlighted",
+    SETTINGS_HIGHLIGHTED_KEY,
     SETTINGS_MENU_ITEMS[0]?.id ?? null,
   );
   const effectiveHighlighted = getSettingsMenuHighlighted(highlighted);
@@ -72,13 +74,15 @@ export function SettingsHubPage() {
     selectedLensCount: settings?.defaultLenses?.length,
   });
 
+  // One value vocabulary for the whole column: success = the user configured it,
+  // default = an always-present preference, muted = unset or purely navigational.
   const menuValues: Record<
     SettingsAction,
-    { value: string; valueVariant?: "default" | "success" | "success-badge" | "muted" }
+    { value: string; valueVariant?: "default" | "success" | "muted" }
   > = {
     trust: {
       value: values.trust,
-      valueVariant: isTrusted ? "success-badge" : "muted",
+      valueVariant: isTrusted ? "success" : "muted",
     },
     theme: {
       value: values.theme,
@@ -90,7 +94,7 @@ export function SettingsHubPage() {
     },
     storage: {
       value: values.storage,
-      valueVariant: settings?.secretsStorage ? "default" : "muted",
+      valueVariant: settings?.secretsStorage ? "success" : "muted",
     },
     "agent-execution": {
       value: values["agent-execution"],
@@ -98,7 +102,7 @@ export function SettingsHubPage() {
     },
     analysis: {
       value: values.analysis,
-      valueVariant: settings?.defaultLenses?.length ? "default" : "muted",
+      valueVariant: settings?.defaultLenses?.length ? "success" : "muted",
     },
     diagnostics: {
       value: values.diagnostics,
@@ -107,16 +111,13 @@ export function SettingsHubPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto px-4 pb-12 pt-4">
-      <div className="m-auto w-full max-w-3xl">
-        <Panel
-          frame="hairline"
-          density="compact"
-          aria-label="Settings Hub"
-          className="mt-4 bg-background shadow-2xl"
-        >
-          <Panel.Label variant="border" aria-hidden="true">
-            Settings Hub
+    // Same wrapper padding, width, and top line as CardLayout so the panel does not
+    // jump as the user moves between the hub and its children.
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-7 pb-4">
+      <div className="mx-auto w-full max-w-2xl">
+        <Panel frame="viewfinder" density="compact" aria-labelledby={titleId}>
+          <Panel.Label>
+            <h1 id={titleId}>Settings Hub</h1>
           </Panel.Label>
           {/* Menu-of-actions over a links list is deliberate (F-231): the hub keeps
               TUI-parity keyboard navigation, and the app runs as a local single-window
@@ -136,7 +137,9 @@ export function SettingsHubPage() {
                 <MenuItem
                   key={item.id}
                   id={item.id}
-                  value={meta.value}
+                  // Uppercase is a display rule, not a content rule: the DOM text
+                  // stays sentence case so screen readers do not spell it out.
+                  value={<span className="uppercase tracking-wider">{meta.value}</span>}
                   valueVariant={meta.valueVariant}
                 >
                   {item.label}
@@ -144,9 +147,11 @@ export function SettingsHubPage() {
               );
             })}
           </Menu>
-          <Panel.Footer className="font-mono">
-            <span>config path: {configPath}</span>
-            <span>{settingsError ?? "local settings"}</span>
+          {/* Stacks below sm so the long config path and its caption never wrap
+              into two colliding right-aligned columns at 375. */}
+          <Panel.Footer className="flex-col items-start gap-1 font-mono sm:flex-row sm:items-center sm:gap-3">
+            <span className="min-w-0 break-all">config path: {configPath}</span>
+            <span className="shrink-0">{settingsError ?? "local settings"}</span>
           </Panel.Footer>
         </Panel>
       </div>

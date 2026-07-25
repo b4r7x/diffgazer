@@ -25,6 +25,9 @@ function DialogFooterRoot({ hints, className, children, ...props }: DialogFooter
       data-slot="dialog-footer"
       className={cn(
         "flex flex-wrap gap-3 items-center px-5 pt-3 pb-4 shrink-0 bg-background text-foreground",
+        // corners="bold" draws 28px bracket arms; the footer insets past them so
+        // an action button corner never collides with the bottom brackets.
+        "[[data-corners=bold]_&]:px-8 [[data-corners=bold]_&]:pb-6",
         hasHints ? "justify-between" : "justify-end",
         className,
       )}

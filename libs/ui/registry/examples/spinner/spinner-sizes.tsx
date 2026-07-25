@@ -2,16 +2,13 @@ import { Spinner } from "@/components/ui/spinner";
 
 export default function SpinnerSizes() {
   return (
-    <div className="flex flex-col gap-4">
-      <Spinner size="sm">
-        <span className="text-muted-foreground">Small</span>
-      </Spinner>
-      <Spinner size="md">
-        <span className="text-muted-foreground">Medium</span>
-      </Spinner>
-      <Spinner size="lg">
-        <span className="text-muted-foreground">Large</span>
-      </Spinner>
+    <div className="grid grid-cols-[2rem_auto] items-center justify-start gap-x-3 gap-y-4">
+      <Spinner size="sm" />
+      <span className="font-mono text-xs text-muted-foreground">sm</span>
+      <Spinner size="md" />
+      <span className="font-mono text-sm text-muted-foreground">md</span>
+      <Spinner size="lg" />
+      <span className="font-mono text-base text-muted-foreground">lg</span>
     </div>
   );
 }

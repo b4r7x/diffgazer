@@ -18,6 +18,14 @@ function getAgentExecutionLabel(mode: AgentExecution | null | undefined): string
   return "Sequential";
 }
 
+/**
+ * Row values for the settings hub, in neutral casing.
+ *
+ * Casing is a display rule owned by each surface, not part of the data: the web hub lifts
+ * these with a CSS `uppercase`, and the TUI uppercases at its render site. Shouting them
+ * here would put the capitals in the DOM, where screen readers may spell them out letter
+ * by letter.
+ */
 export function buildHubValues({
   provider,
   isConfigured,
@@ -27,9 +35,9 @@ export function buildHubValues({
   agentExecution,
   selectedLensCount,
 }: SettingsHubInput): Record<SettingsAction, string> {
-  const providerLabel = isConfigured && provider ? provider.toUpperCase() : "Not configured";
-  const themeLabel = (theme ?? "auto").toUpperCase();
-  const storageLabel = secretsStorage ? secretsStorage.toUpperCase() : "Not set";
+  const providerLabel = isConfigured && provider ? provider : "Not configured";
+  const themeLabel = theme ?? "auto";
+  const storageLabel = secretsStorage ?? "Not set";
   const analysisLabel =
     selectedLensCount && selectedLensCount > 0
       ? pluralize(selectedLensCount, "lens", "lenses")

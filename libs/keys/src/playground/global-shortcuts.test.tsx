@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { GlobalShortcutsDemo } from "../../examples/playground/src/demos/global-shortcuts";
-import { KeyboardWrapper } from "../testing/test-utils.js";
+import { KeyboardWrapper } from "../testing/internal/test-utils.js";
 
 vi.mock("@diffgazer/keys", () => import("../index.js"));
 

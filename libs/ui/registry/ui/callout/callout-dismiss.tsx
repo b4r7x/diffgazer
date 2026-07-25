@@ -36,9 +36,9 @@ export function CalloutDismiss({
       }}
       className={cn(
         "self-center inline-flex items-center justify-center shrink-0",
-        "w-6 h-6 p-1 rounded-[var(--radius)] font-mono text-[13px] cursor-pointer",
-        "text-muted hover:text-foreground hover:bg-foreground/5",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--callout-tone,var(--foreground))] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "w-6 h-6 p-1 rounded-[var(--radius)] font-mono cursor-pointer",
+        "text-muted-foreground hover:text-foreground hover:bg-foreground/5",
+        "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
         "transition-colors",
         className,
       )}

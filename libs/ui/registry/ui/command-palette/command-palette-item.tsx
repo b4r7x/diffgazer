@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useCommandPaletteContext } from "./command-palette-context";
-import { getCommandPaletteItemDomId } from "./use-state";
+import { getCommandPaletteItemDomId } from "./use-command-palette-state";
 
 /** Allowed command palette item tone values. */
 export type CommandPaletteItemTone =
@@ -127,6 +127,7 @@ export function CommandPaletteItem({
       data-slot="command-palette-item"
       data-value={id}
       data-tone={tone}
+      data-highlighted={isHighlighted ? "" : undefined}
       aria-selected={isHighlighted}
       aria-disabled={disabled || undefined}
       onClick={handleClick}

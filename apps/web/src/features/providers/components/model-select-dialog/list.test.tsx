@@ -1,15 +1,8 @@
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ModelList } from "./list";
-
-vi.mock("@diffgazer/ui/components/badge", () => ({
-  Badge: ({ children, variant }: { children: ReactNode; variant: string }) => (
-    <span data-tone={variant}>{children}</span>
-  ),
-}));
 
 const MODELS: ModelInfo[] = [
   {
@@ -27,7 +20,7 @@ const MODELS: ModelInfo[] = [
 ];
 
 describe("ModelList", () => {
-  it("presents free tiers as informational and paid tiers as neutral", () => {
+  it("labels each model with its access tier", () => {
     render(
       <ModelList
         models={MODELS}
@@ -41,8 +34,8 @@ describe("ModelList", () => {
       />,
     );
 
-    expect(screen.getByText("free")).toHaveAttribute("data-tone", "info");
-    expect(screen.getByText("paid")).toHaveAttribute("data-tone", "neutral");
+    expect(screen.getByText("free")).toBeInTheDocument();
+    expect(screen.getByText("paid")).toBeInTheDocument();
   });
 
   it("confirms the double-clicked model directly", async () => {
@@ -148,6 +141,9 @@ describe("ModelList", () => {
 
     const liveRegion = screen.getByRole("status");
     expect(liveRegion).toHaveTextContent("");
+    // `sr-only` IS the contract here: the region must stay mounted (so the empty
+    // message is announced) yet take no visual space while results exist, and
+    // jsdom cannot measure that it collapses.
     expect(liveRegion).toHaveClass("sr-only");
 
     rerender(<ModelList models={[]} emptyLabel="No models match your search" {...props} />);

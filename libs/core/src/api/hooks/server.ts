@@ -1,11 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+import type { ServerState } from "../../schemas/presentation/diagnostics.js";
 import { useApi } from "./context.js";
 import { serverQueries } from "./queries/server.js";
-
-export type ServerState =
-  | { status: "checking" }
-  | { status: "connected" }
-  | { status: "error"; message: string };
 
 function deriveServerState(
   isLoading: boolean,

@@ -2,12 +2,12 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import type { ArtifactManifest } from "../manifest.js";
 import { resolveInside } from "../utils/fs.js";
-import type { ArtifactLibrary } from "./docs-libraries-config.js";
 import { resolveArtifactPath } from "./artifact-availability.js";
 import {
   rewriteDemoIndexForViteGlob,
   rewriteSecondaryDemoIndexImports,
 } from "./demo-index-rewrite.js";
+import type { ArtifactLibrary } from "./docs-libraries-config.js";
 import { assertSafeLibraryId } from "./library-id-validation.js";
 import { collectPathParityErrors, collectTreeParityErrors } from "./path-parity.js";
 

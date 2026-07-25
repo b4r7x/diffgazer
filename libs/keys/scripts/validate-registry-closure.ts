@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { RegistrySchema } from "@diffgazer/registry/schemas";
+import { type Registry, RegistrySchema } from "@diffgazer/registry/schemas";
 import {
   validateContentFreshness,
   validateNoJsImportsInPublicContent,
@@ -16,7 +16,7 @@ import type { ValidationError } from "./validate-registry-closure/types.js";
 export function validateRegistryClosure(registryPath: string): boolean {
   const registryRoot = resolve(registryPath, "..", "..");
 
-  let registry;
+  let registry: Registry;
   try {
     registry = RegistrySchema.parse(JSON.parse(readFileSync(registryPath, "utf-8")));
   } catch (e) {

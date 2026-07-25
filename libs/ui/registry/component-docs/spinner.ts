@@ -22,9 +22,14 @@ export const spinnerDoc: ComponentDoc = {
         'The gap prop controls the space between the spinner glyph and its label. Values: "none" (0), "sm" (4px), "md" (8px, default), "lg" (12px). Works for both horizontal and vertical label positions.',
     },
     {
+      title: "Fixed Glyph Box",
+      content:
+        "All four variants animate inside one 2em-square box that scales with the size prop, so swapping variant or cycling frames never moves the label or reflows the row. 2em is the largest footprint any variant needs — the lg snake grid measures 32px at its 16px font size, and the widest dots frame reserves 3ch.",
+    },
+    {
       title: "Snake Variant",
       content:
-        "A 3×3 grid of dots with a 3-dot trail moving clockwise around the 8-position perimeter. The head renders at full opacity, body at 60%, tail at 30%, and inactive dots at 15%.",
+        "A 3×3 grid of dots with a 3-dot trail moving clockwise around the 8-position perimeter. The head, body, tail, and idle alphas come from the --spinner-trail-* variables in spinner.css; the light palette raises the ramp (idle 32% instead of 15%) so the trail stays legible on a light background.",
     },
     {
       title: "Reduced Motion",
@@ -43,8 +48,31 @@ export const spinnerDoc: ComponentDoc = {
     { name: "spinner-variants", title: "Variants" },
     { name: "spinner-sizes", title: "Sizes" },
     { name: "spinner-label-positions", title: "Label Positions" },
+    { name: "spinner-gap-and-speed", title: "Gap and Speed" },
   ],
   keyboard: null,
+  cssVariables: [
+    {
+      name: "--spinner-trail-head",
+      description: "Opacity of the snake head dot.",
+      defaultValue: "1",
+    },
+    {
+      name: "--spinner-trail-body",
+      description: "Opacity of the dot one step behind the head.",
+      defaultValue: "0.6 (light: 0.7)",
+    },
+    {
+      name: "--spinner-trail-tail",
+      description: "Opacity of the dot two steps behind the head.",
+      defaultValue: "0.3 (light: 0.45)",
+    },
+    {
+      name: "--spinner-trail-idle",
+      description: "Opacity of the perimeter dots the trail has passed.",
+      defaultValue: "0.15 (light: 0.32)",
+    },
+  ],
   props: {
     Spinner: {
       variant: {

@@ -43,7 +43,7 @@ export function ModelFilterTabs({
       highlighted={isFocused ? (TIER_FILTERS[focusedIndex] ?? null) : null}
       onKeyDown={onKeyDown}
       label="Model tier filter"
-      className="px-4 pb-2"
+      className="px-5 pb-2"
     >
       {TIER_FILTERS.map((filter, idx) => {
         const tabProps = getTabProps?.(idx);

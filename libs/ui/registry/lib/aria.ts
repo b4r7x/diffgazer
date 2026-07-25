@@ -18,6 +18,16 @@ export function resolveAriaInvalid(
   return undefined;
 }
 
+/** True when an aria-invalid value marks the control as invalid. */
+export function isAriaInvalid(ariaInvalid: AriaAttributes["aria-invalid"]) {
+  return (
+    ariaInvalid === true ||
+    ariaInvalid === "true" ||
+    ariaInvalid === "grammar" ||
+    ariaInvalid === "spelling"
+  );
+}
+
 /** Merges whitespace-delimited ARIA id lists into one normalized id string. */
 export function mergeIds(...values: Array<string | undefined>) {
   const ids = values.flatMap((value) => value?.split(/\s+/).filter(Boolean) ?? []);

@@ -16,8 +16,8 @@
 
     /* Diff-only palette anchors. These are intentionally independent of the
        global --success/--error/--accent tokens because product themes
-       may desaturate those for non-diff UI (e.g. the minimal theme maps
-       --success to white). A diff that lost its red/green signal would be
+       may desaturate those for non-diff UI (e.g. a monochrome theme mapping
+       --success to a neutral). A diff that lost its red/green signal would be
        unreadable, so we ship GitHub-tuned defaults here and let consumers
        swap via [data-diff-palette], the light-theme tier below, or a
        per-instance custom property override. */
@@ -26,9 +26,11 @@
     --diff-color-hunk: #79b8ff;
 
     /* Derived row tints. Percent tiers: ~14% subtle row tint, ~32% strong
-       word-diff overlay, ~16% hunk separator, ~18% neutral empty-pane fill. */
-    --diff-added-bg: color-mix(in oklab, var(--diff-color-add) 14%, transparent);
-    --diff-added-bg-strong: color-mix(in oklab, var(--diff-color-add) 32%, transparent);
+       word-diff overlay, ~16% hunk separator, faint hatched empty-pane fill.
+       The add tier runs 4 points hotter than remove: green at equal alpha
+       reads weaker than red, and an added row must not look like a highlight. */
+    --diff-added-bg: color-mix(in oklab, var(--diff-color-add) 18%, transparent);
+    --diff-added-bg-strong: color-mix(in oklab, var(--diff-color-add) 36%, transparent);
     --diff-removed-bg: color-mix(in oklab, var(--diff-color-remove) 14%, transparent);
     --diff-removed-bg-strong: color-mix(in oklab, var(--diff-color-remove) 32%, transparent);
     --diff-hunk-bg: color-mix(in oklab, var(--diff-color-hunk) 16%, transparent);
@@ -43,9 +45,16 @@
       transparent
     );
     --diff-marker-fg: var(--diff-view-muted, var(--muted-foreground));
+    /* Unmatched split-pane filler: a faint hatch that reads as "no line here"
+       and stays below every row tint instead of out-shouting them. */
     --diff-empty-bg: color-mix(
       in oklab,
-      var(--diff-view-muted, var(--muted-foreground)) 18%,
+      var(--diff-view-muted, var(--muted-foreground)) 5%,
+      transparent
+    );
+    --diff-empty-hatch: color-mix(
+      in oklab,
+      var(--diff-view-muted, var(--muted-foreground)) 14%,
       transparent
     );
 
@@ -130,10 +139,10 @@
       [num-r] minmax(2.5ch, max-content)
       [marker] 1.25ch
       [code] 1fr;
+    /* Scrollbar styling belongs to the .scrollbar-thin utility the rows already
+       carry — declaring it here too only wins on touch devices. */
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: var(--diff-view-border, var(--border)) var(--diff-view-bg, var(--background));
   }
 
   [data-slot="diff-view-rows"][data-line-numbers="false"] {
@@ -155,9 +164,11 @@
     grid-template-columns: [marker] 1.25ch [code] 1fr;
   }
 
+  /* Inset focus form: the rows sit inside the diff frame, so the ring is drawn
+     within their own box rather than as an outline that the frame would clip. */
   [data-slot="diff-view-rows"]:focus-visible {
-    outline: 2px solid var(--ring, var(--diff-view-fg, var(--foreground)));
-    outline-offset: -2px;
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--ring, var(--diff-view-fg, var(--foreground)));
   }
 
   /* Split container — two side-by-side panes. */
@@ -199,7 +210,12 @@
     color: var(--diff-hunk-fg);
   }
   [data-row][data-state="empty"] {
-    background: var(--diff-empty-bg);
+    background-color: var(--diff-empty-bg);
+    background-image: repeating-linear-gradient(
+      135deg,
+      var(--diff-empty-hatch) 0 1px,
+      transparent 1px 7px
+    );
   }
   [data-row][data-highlighted] {
     box-shadow: inset 2px 0 0 0 var(--ring, var(--diff-view-fg, var(--foreground)));
@@ -244,12 +260,12 @@
   /* Word-diff spans stack on top of the row tint with the strong tier. */
   [data-word="added"] {
     background: var(--diff-added-bg-strong);
-    border-radius: 2px;
+    border-radius: calc(var(--radius) * 0.5);
     padding: 0 1px;
   }
   [data-word="removed"] {
     background: var(--diff-removed-bg-strong);
-    border-radius: 2px;
+    border-radius: calc(var(--radius) * 0.5);
     padding: 0 1px;
   }
 
@@ -259,8 +275,6 @@
   [data-slot="diff-view"][data-max-h] [data-slot="diff-view-scroll-v"] {
     max-height: var(--diff-view-max-h, 240px);
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--diff-view-border, var(--border)) var(--diff-view-bg, var(--background));
   }
 
   /* "No changes" status row. */
@@ -277,7 +291,7 @@
   [data-slot="diff-view"][data-variant="hairline"] {
     border: 1px solid
       var(--diff-view-border-soft, color-mix(in oklab, var(--border) 50%, transparent));
-    border-radius: 2px;
+    border-radius: calc(var(--radius) * 0.5);
   }
 
   /* ============================================================
@@ -304,7 +318,7 @@
   [data-slot="diff-view"][data-variant="dense"] {
     border: 1px solid
       var(--diff-view-border-soft, color-mix(in oklab, var(--border) 50%, transparent));
-    border-radius: 2px;
+    border-radius: calc(var(--radius) * 0.5);
   }
 
   [data-slot="diff-view"][data-variant="dense"] [data-slot="diff-view-rows"] {
@@ -418,7 +432,7 @@
       color-mix(in oklab, var(--diff-view-border, var(--border)) 30%, transparent);
     background: color-mix(in oklab, var(--diff-view-fg, var(--foreground)) 6%, transparent);
     padding: 3px 12px;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--diff-view-muted, var(--muted-foreground));
   }
 
@@ -450,8 +464,10 @@
       background: Canvas;
       border-inline-start: 2px solid LinkText;
     }
+    /* box-shadow is dropped in forced-colors, so restore the ring as an outline. */
     [data-slot="diff-view-rows"]:focus-visible {
-      outline-color: Highlight;
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
     }
   }
 }

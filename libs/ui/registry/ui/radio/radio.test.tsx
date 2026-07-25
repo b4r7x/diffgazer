@@ -540,6 +540,20 @@ describe("Radio", () => {
 });
 
 describe("RadioGroup", () => {
+  it("keeps the visible label and the radiogroup in one stacking root", () => {
+    render(
+      <RadioGroup label="Colors" defaultValue="blue">
+        <RadioGroup.Item value="blue" label="Blue" />
+        <RadioGroup.Item value="green" label="Green" />
+      </RadioGroup>,
+    );
+    const group = screen.getByRole("radiogroup", { name: "Colors" });
+    const groupLabel = screen.getByText("Colors");
+
+    expect(groupLabel.parentElement).toBe(group.parentElement);
+    expect(group.parentElement).toHaveAttribute("data-slot", "radio-group-root");
+  });
+
   it.each([
     { defaultValue: "blue", expected: "Blue", label: "default-selected item" },
     { defaultValue: undefined, expected: "Blue", label: "first enabled fallback" },

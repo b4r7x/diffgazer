@@ -1,7 +1,7 @@
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CliThemeProvider } from "../../theme/provider";
-import { Header } from "./header";
+import { fitProviderLabel, Header } from "./header";
 
 vi.mock("../../hooks/use-terminal-dimensions", () => ({
   useResponsive: () => ({
@@ -43,5 +43,19 @@ describe("Header", () => {
 
     const frameWithoutBack = view.lastFrame() ?? "";
     expect(frameWithoutBack).not.toContain("← Back");
+  });
+});
+
+describe("fitProviderLabel", () => {
+  test("keeps the full provider / model label when it fits", () => {
+    expect(fitProviderLabel("gemini / gemini-3-flash", 40)).toBe("gemini / gemini-3-flash");
+  });
+
+  test("drops the provider prefix instead of eliding the model when space runs out", () => {
+    expect(fitProviderLabel("gemini / gemini-3-flash-preview", 24)).toBe("gemini-3-flash-preview");
+  });
+
+  test("leaves a label without a model segment untouched", () => {
+    expect(fitProviderLabel("Not configured", 4)).toBe("Not configured");
   });
 });

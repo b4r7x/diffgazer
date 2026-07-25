@@ -1,15 +1,15 @@
 import { useEffect, useEffectEvent, useReducer, useRef } from "react";
 import { getErrorMessage } from "../../errors.js";
 import { err, ok, type Result } from "../../result.js";
+import { isSessionTerminationCode } from "../../review/lifecycle.js";
 import {
   createInitialReviewState,
-  isSessionTerminationCode,
   type ReviewAction,
   type ReviewEvent,
   type ReviewState,
   reviewReducer,
-  type StreamReviewError,
-} from "../../review/index.js";
+} from "../../review/state.js";
+import type { StreamReviewError } from "../../review/stream.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 import { useApi } from "./context.js";
 

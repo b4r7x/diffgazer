@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import {
-  THEME_DOCS_COLOR_GRID_ORDER,
-  THEME_DOCS_PLAYGROUND_ORDER,
-  THEME_DOCS_TOKENS,
-} from "@diffgazer/ui/theme";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ThemeProvider } from "@/hooks/theme-context";
 import { ColorGrid } from "./components/color-grid";
 import { ThemePlayground } from "./components/playground";
+import {
+  THEME_DOCS_COLOR_GRID_ORDER,
+  THEME_DOCS_PLAYGROUND_ORDER,
+  THEME_DOCS_TOKENS,
+} from "./lib/token-presentation";
 
 function primitiveNamesFromCopyButtons(container: HTMLElement): string[] {
   return within(container)

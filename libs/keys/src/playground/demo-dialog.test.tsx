@@ -6,7 +6,7 @@ import { DemoDialog } from "../../examples/playground/src/components/demo-dialog
 import { CommandPaletteDemo } from "../../examples/playground/src/demos/command-palette";
 import { FocusTrapDemo } from "../../examples/playground/src/demos/focus-trap";
 import { ScopedDialogDemo } from "../../examples/playground/src/demos/scoped-dialog";
-import { KeyboardWrapper } from "../testing/test-utils.js";
+import { KeyboardWrapper } from "../testing/internal/test-utils.js";
 
 vi.mock("@diffgazer/keys", () => import("../index.js"));
 

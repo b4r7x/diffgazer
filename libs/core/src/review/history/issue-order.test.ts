@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeIssue } from "../../testing/factories.js";
-import { sortIssuesBySeverity } from "../history.js";
+import { sortIssuesBySeverity } from "./issue-order.js";
 
 describe("sortIssuesBySeverity", () => {
   it("returns an empty array for missing or empty input", () => {

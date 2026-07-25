@@ -145,6 +145,38 @@ describe("documentation scaffolds", () => {
     expect(screen.getByRole("button", { name: "View hook source" })).toBeInTheDocument();
   });
 
+  it("keeps every documented example when the hero is not part of the examples list", () => {
+    // Button-style page: the hero (button-default) is rendered above the list and
+    // is absent from docs.examples, so nothing may be dropped from the list.
+    const heroOutsideExamples = {
+      ...populatedComponent,
+      examples: ["example-variants", "example-secondary"],
+      exampleSource: {
+        "example-default": source,
+        "example-variants": source,
+        "example-secondary": source,
+      },
+      docs: {
+        ...populatedComponent.docs,
+        examples: [
+          { name: "example-variants", title: "Variants" },
+          { name: "example-secondary", title: "Secondary" },
+        ],
+      },
+    } satisfies ComponentPageData;
+
+    render(
+      <Providers>
+        <DocDataProvider value={{ type: "component", data: heroOutsideExamples }}>
+          <ComponentDocScaffold hero="example-default" />
+        </DocDataProvider>
+      </Providers>,
+    );
+
+    expect(screen.getByText("Variants")).toBeInTheDocument();
+    expect(screen.getByText("Secondary")).toBeInTheDocument();
+  });
+
   it("omits every data-dependent section when its structured data is absent", () => {
     const componentWithoutSections = {
       ...populatedComponent,

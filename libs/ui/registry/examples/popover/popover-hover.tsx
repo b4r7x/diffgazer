@@ -8,10 +8,7 @@ export default function PopoverHoverExample() {
           hover for info
         </span>
       </Popover.Trigger>
-      <Popover.Content
-        side="top"
-        className="max-w-xs border border-border bg-background px-2 py-1 font-mono text-xs text-foreground shadow-md"
-      >
+      <Popover.Content side="top" className="max-w-xs px-2 py-1 font-mono text-xs text-foreground">
         This field is required for validation.
       </Popover.Content>
     </Popover>

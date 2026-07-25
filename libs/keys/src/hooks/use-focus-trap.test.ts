@@ -2,7 +2,7 @@ import { act, render, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type RefObject, useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getDeepActiveElement } from "../dom/element-guards.js";
-import { queryTestElement, requireFrameDocument } from "../testing/assertions.js";
+import { queryTestElement, requireFrameDocument } from "../testing/internal/assertions.js";
 import { useFocusRestore } from "./use-focus-restore.js";
 import { useFocusTrap } from "./use-focus-trap.js";
 

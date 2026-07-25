@@ -286,7 +286,12 @@ export function MenuSubContent({
       align="start"
       sideOffset={sideOffset}
       role="presentation"
-      className={cn("min-w-[8rem] border border-border bg-background shadow-md", className)}
+      className={cn(
+        // --shadow-hard is the library's only sanctioned shadow: a hard offset
+        // with no blur, matching the other floating layers (dialog, select).
+        "min-w-[8rem] border border-border bg-background shadow-(--shadow-hard)",
+        className,
+      )}
     >
       <MenuRoot
         ref={contentRef}

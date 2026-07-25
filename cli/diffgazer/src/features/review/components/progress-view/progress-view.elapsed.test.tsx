@@ -1,5 +1,6 @@
 import { cleanup } from "ink-testing-library";
 import { act } from "react";
+import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { cleanupRootFrames } from "../../../../testing/render-root-frame";
@@ -24,7 +25,9 @@ describe("ReviewProgressView (TUI) elapsed time", () => {
       completedAt,
     });
 
-    expect(lastFrame() ?? "").toContain("Elapsed: 00:02");
+    // The label and value are separately coloured Text nodes, so the raw frame
+    // splits them with an escape sequence whenever colour is on.
+    expect(stripAnsi(lastFrame() ?? "")).toContain("Elapsed: 00:02");
   });
 
   test("advances elapsed time during a silent stream", async () => {
@@ -41,13 +44,13 @@ describe("ReviewProgressView (TUI) elapsed time", () => {
     });
 
     await flush();
-    expect(lastFrame() ?? "").toMatch(/Elapsed:\s*00:00/);
+    expect(stripAnsi(lastFrame() ?? "")).toMatch(/Elapsed:\s*00:00/);
 
     act(() => {
       vi.advanceTimersByTime(1_000);
     });
 
     await flush();
-    expect(lastFrame() ?? "").toMatch(/Elapsed:\s*00:01/);
+    expect(stripAnsi(lastFrame() ?? "")).toMatch(/Elapsed:\s*00:01/);
   });
 });

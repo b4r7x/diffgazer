@@ -22,6 +22,11 @@ export const menuDoc: ComponentDoc = {
         "Use Menu.Item and Menu.Divider as explicit children in the Menu JSX tree. Custom item UI belongs inside Menu.Item. Components that create items internally from an opaque wrapper are not part of the current public contract.",
     },
     {
+      title: "Row Columns",
+      content:
+        "A default row is icon, label, accelerator. The label column starts immediately after the icon and the [n] accelerator is pushed to the row end, so rows with and without an accelerator keep their labels aligned. Detail rows keep the same shape with a right-aligned value instead of an accelerator.",
+    },
+    {
       title: "Built-in Keyboard Navigation",
       content:
         "Menu includes keyboard navigation via useListbox (Arrow keys, Home/End, Enter/Space). For custom key bindings or cross-component navigation, use the highlighted, onHighlightChange, and onKeyDown props to add external handlers alongside the built-in behavior.",
@@ -29,16 +34,17 @@ export const menuDoc: ComponentDoc = {
   ],
   usage: { example: "menu-default" },
   examples: [
-    { name: "menu-default", title: "Default" },
     { name: "menu-nested", title: "Detail Variant" },
     { name: "menu-grouped", title: "Grouped with Labels" },
     { name: "menu-checkbox-radio", title: "Checkbox and Radio Items" },
     { name: "menu-icons", title: "Custom Icons" },
+    { name: "menu-disabled", title: "Disabled Items" },
     { name: "menu-submenu", title: "Submenu" },
+    { name: "menu-keyboard", title: "Controlled Keyboard Navigation" },
   ],
   keyboard: {
     description:
-      "Keyboard navigation is built-in. The menu-keyboard example demonstrates controlled mode with explicit state management. Arrow keys move focus, Enter activates selection.",
+      "Keyboard navigation is built-in. The Controlled Keyboard Navigation example above demonstrates controlled mode with explicit state management. Arrow keys move focus, Enter activates selection.",
     keys: [
       {
         keys: "ArrowUp / ArrowDown",
@@ -69,7 +75,9 @@ export const menuDoc: ComponentDoc = {
         action: "Closes submenu content and returns focus to its trigger.",
       },
     ],
-    examples: [{ name: "menu-keyboard", title: "Controlled keyboard navigation" }],
+    // The controlled demo lives in Examples above; mounting it twice on one page
+    // would register the 1-4 hotkeys in two providers at once.
+    examples: [],
   },
   dataAttributes: [
     {
@@ -78,6 +86,12 @@ export const menuDoc: ComponentDoc = {
       values: "present when highlighted",
       description:
         "Marks the active descendant for keyboard and pointer highlight styling, including disabled items that remain discoverable but cannot activate.",
+    },
+    {
+      attribute: "data-state",
+      appliesTo: "MenuItemCheckbox / MenuItemRadio",
+      values: '"checked" | "unchecked"',
+      description: "Enumerated check state for styling hooks in copy mode.",
     },
     {
       attribute: "data-selected",
@@ -149,7 +163,7 @@ export const menuDoc: ComponentDoc = {
         required: false,
         defaultValue: '"default"',
         description:
-          "Visual layout. `detail` renders taller, divider-separated rows with a right-aligned value column, for menus where each item carries a status or summary value.",
+          "Visual layout. `detail` renders taller rows with a right-aligned value column, for menus where each item carries a status or summary value.",
       },
       wrap: {
         type: "boolean",
@@ -214,7 +228,8 @@ export const menuDoc: ComponentDoc = {
         type: '"default" | "success" | "success-badge" | "muted"',
         required: false,
         defaultValue: '"default"',
-        description: "Color treatment for the detail value.",
+        description:
+          "Color treatment for the detail value. The success variants prefix a ✓ so the passing state does not rest on color alone.",
       },
       icon: {
         type: "ReactNode",

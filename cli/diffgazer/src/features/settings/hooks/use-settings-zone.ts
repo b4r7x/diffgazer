@@ -15,7 +15,6 @@ interface UseSettingsZoneOptions {
 
 interface SettingsZoneResult {
   zone: SettingsZone;
-  buttonIndex: number;
   isListActive: boolean;
   isButtonActive: (index: number) => boolean;
   enterButtons: () => void;
@@ -60,10 +59,11 @@ export function useSettingsZone({
   const disabledActions = Array.from({ length: buttonCount }, (_, index) =>
     Boolean(disabledButtons?.includes(index)),
   );
+  // No onAction: each settings screen owns Enter, because the submit it runs
+  // depends on screen state this hook does not see. The row only tracks focus.
   const actionRow = useActionRow({
     actionCount: buttonCount,
     disabledActions,
-    onAction: () => {},
     isActive: effectiveZone === "buttons" && !disabled,
     verticalNavigation: hasList,
     onExitUp: hasList ? () => setZone("list") : undefined,
@@ -94,7 +94,6 @@ export function useSettingsZone({
 
   return {
     zone: effectiveZone,
-    buttonIndex: actionRow.activeIndex,
     isListActive: hasList && effectiveZone === "list" && !disabled,
     isButtonActive: (index: number) =>
       effectiveZone === "buttons" &&

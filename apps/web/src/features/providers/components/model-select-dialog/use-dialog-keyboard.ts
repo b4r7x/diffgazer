@@ -275,10 +275,7 @@ export function useModelDialogKeyboard({
     setFilterIndex(0);
     setCheckedModelId(currentModel);
     const targetId = currentModel ?? models[0]?.id;
-    if (targetId && focusModelElement(targetId)) {
-      hasHandledInitialFocusRef.current = true;
-      return;
-    }
+    if (targetId) focusModelElement(targetId);
     hasHandledInitialFocusRef.current = true;
   });
 

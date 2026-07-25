@@ -65,9 +65,9 @@ This is the single source of truth for how each workspace is shaped. Bulletproof
 - Non-value state keeps semantic callback names: `open`/`onOpenChange`, `highlighted`/`onHighlightChange`, `selectedId`/`onSelect`, and `onNavigate`.
 - Do not add deprecated aliases before the first public customer-facing release. Rename the API and update all docs, examples, registry files, generated bundles, and app consumers.
 
-### Boolean form controls (Checkbox, Radio)
+### Boolean form controls (Checkbox, Radio, Switch)
 
-Standalone `Checkbox` and `Radio` render custom div-based controls plus a hidden native `<input>` for form-submission semantics. They keep native-style boolean state props:
+Standalone `Checkbox`, `Radio`, and `Switch` render custom non-native controls (div-based for Checkbox/Radio, a `role="switch"` button for Switch) plus a hidden native `<input>` for form-submission semantics. They keep native-style boolean state props:
 
 - `checked` / `defaultChecked` — boolean state (Checkbox accepts `"indeterminate"`).
 - `onChange(checked: boolean)` — called when the boolean state changes.
@@ -77,7 +77,7 @@ This is a documented exception to the generic `value/defaultValue/onChange(value
 
 1. The hidden native input owns `value: string` for form encoding. Renaming the boolean state to `value: boolean` would either shadow that prop or change form-submission semantics.
 2. The boolean state IS the value-control state — just spelled `checked` to match native HTML semantics and existing React/library conventions.
-3. Group primitives (`CheckboxGroup`, `RadioGroup`) follow the standard `value/defaultValue/onChange(value)` contract for their composite value.
+3. Group primitives (`CheckboxGroup`, `RadioGroup`) follow the standard `value/defaultValue/onChange(value)` contract for their composite value. `Switch` is standalone-only and has no group primitive.
 
 ## Form Primitives
 

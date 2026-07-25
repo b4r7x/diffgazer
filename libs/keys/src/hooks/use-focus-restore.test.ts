@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { requireFrameDocument } from "../testing/assertions.js";
+import { requireFrameDocument } from "../testing/internal/assertions.js";
 import { useFocusRestore } from "./use-focus-restore.js";
 
 function button(label: string) {

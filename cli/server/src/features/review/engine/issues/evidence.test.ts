@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { makeFileDiff, makeIssue, makeParsedDiff } from "../../../../shared/lib/testing/factories.js";
+import {
+  makeFileDiff,
+  makeIssue,
+  makeParsedDiff,
+} from "../../../../shared/lib/testing/factories.js";
 import type { DiffHunk } from "../diff/types.js";
 import {
   createIssueEvidenceResolver,

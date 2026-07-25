@@ -13,6 +13,15 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 
+// Stand-in for the app content the rail sits next to — the tri-state (open,
+// rail, hidden) is only judgeable against a populated pane.
+const CONTENT_ROWS = [
+  { name: "registry/ui/sidebar/sidebar.tsx", meta: "M  +42 −8" },
+  { name: "registry/ui/sidebar/sidebar-item.tsx", meta: "M  +12 −3" },
+  { name: "registry/ui/sidebar/sidebar.css", meta: "A  +64 −0" },
+  { name: "docs/content/components/sidebar.mdx", meta: "M  +9 −9" },
+];
+
 // In rail mode (48px) each item collapses to an icon-only row: the label and
 // section titles hide via the nav's `data-state="rail"` group while the glyph
 // tile stays visible. SidebarItem preserves the accessible name automatically
@@ -41,14 +50,22 @@ export default function SidebarRail() {
             </SidebarSection>
           </SidebarContent>
         </Sidebar>
-        <div className="flex flex-col gap-2 p-4 text-xs text-muted-foreground font-mono">
-          <SidebarTrigger className="self-start border border-border px-2 py-1" />
+        <div className="flex min-w-0 flex-1 flex-col gap-3 border-l border-border p-4 text-xs text-muted-foreground font-mono">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="border border-border px-2 py-1" />
+            <span className="truncate">~/diffgazer/libs/ui</span>
+          </div>
+          <ul className="flex flex-col gap-1">
+            {CONTENT_ROWS.map((row) => (
+              <li key={row.name} className="flex items-center justify-between gap-4">
+                <span className="truncate text-foreground/80">{row.name}</span>
+                <span className="shrink-0">{row.meta}</span>
+              </li>
+            ))}
+          </ul>
           <p>
             Toggle the rail with the trigger or <Kbd size="sm">Cmd/Ctrl</Kbd>
-            <Kbd size="sm">B</Kbd>.
-          </p>
-          <p>
-            <Kbd size="sm">Shift</Kbd>
+            <Kbd size="sm">B</Kbd>; <Kbd size="sm">Shift</Kbd>
             <Kbd size="sm">Cmd/Ctrl</Kbd>
             <Kbd size="sm">B</Kbd> toggles the hidden state.
           </p>

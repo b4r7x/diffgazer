@@ -1,3 +1,4 @@
+export { formatRunId } from "../format.js";
 export {
   buildCategoryStats,
   buildDuplicateCollapseNotice,
@@ -13,56 +14,43 @@ export {
   type ContextSnapshotView,
 } from "./context-snapshot.js";
 export { type DetailsEmptyKind, selectDetailsEmptyKind } from "./details-empty.js";
+export { getAgentDetail, type UIStepStatus } from "./display.js";
 export {
-  getAgentDetail,
-  mapStepStatus,
-  type UIStepStatus,
-} from "./display.js";
+  getReviewEventSequence,
+  isReviewEventSequenceContinuation,
+  type ReviewEventSequence,
+} from "./event-sequence.js";
 export {
   convertAgentEventsToLogEntries,
   convertReviewEventToLogEntry,
   getReviewEventLogSource,
 } from "./event-to-log.js";
 export { filterIssuesBySeverity, toggleSeverity } from "./filtering.js";
+export { sortIssuesBySeverity } from "./history/issue-order.js";
 export {
-  buildHistoryRunSummary,
-  buildHistoryWarningMessages,
-  buildTimelineItems,
   deriveHistoryDetailState,
   filterReviewsForHistory,
-  formatRunId,
-  getEmptyRunsMessage,
-  getRunBranchLabel,
-  getRunDisplayId,
+  HISTORY_SEARCH_PLACEHOLDER,
+  type HistoryDetailState,
+  resolveSelectedId,
+} from "./history/navigation.js";
+export {
+  buildHistoryRunSummary,
   getRunSummaryParts,
   getRunSummaryText,
-  HISTORY_SEARCH_PLACEHOLDER,
-  HISTORY_SECTION_ALL_ID,
-  HISTORY_SECTION_ALL_LABEL,
-  type HistoryDetailState,
   type HistoryRunSummary,
-  type HistoryWarningSummary,
-  matchesHistoryQuery,
-  metadataToSeverityCounts,
   type RunSummaryParts,
-  resolveSelectedDateId,
-  resolveSelectedId,
   type SeverityPart,
-  sortIssuesBySeverity,
+} from "./history/run-presentation.js";
+export {
+  buildHistoryWarningMessages,
+  type HistoryWarningSummary,
   summarizeHistoryWarnings,
-} from "./history.js";
+} from "./history/warnings.js";
+export { type IssueDetailsState, useIssueDetailsState } from "./issue-details-state.js";
 export {
-  clampIssueTab,
-  getAvailableIssueTabs,
-  type IssueDetailsState,
-  toggleFixPlanStep,
-  useIssueDetailsState,
-} from "./issue-details-state.js";
-export {
-  getLoadingMessage,
   isCheckingForChanges,
   isNoDiffError,
-  isSessionTerminationCode,
   type SessionTerminationCode,
   type SessionTerminationCopy,
   sessionTerminationCopy,
@@ -116,19 +104,12 @@ export {
 export {
   createInitialReviewState,
   type FileProgress,
-  getReviewEventSequence,
-  isReviewEventSequenceContinuation,
   type ReviewAction,
   type ReviewEvent,
-  type ReviewEventSequence,
   type ReviewState,
   reviewReducer,
 } from "./state.js";
-export {
-  processReviewStream,
-  type StreamReviewError,
-  type StreamReviewOptions,
-} from "./stream.js";
+export type { StreamReviewError, StreamReviewOptions } from "./stream.js";
 export {
   type HistoryScreenState,
   type UseHistoryScreenStateOptions,

@@ -38,7 +38,7 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
                   <Text color={tokens.warning} wrap="truncate-middle">
                     {rows.trust.value}
                   </Text>
-                  <Text dimColor wrap="truncate-end">
+                  <Text color={tokens.muted} wrap="truncate-end">
                     Open Settings → Trust & Permissions to grant
                   </Text>
                 </Box>

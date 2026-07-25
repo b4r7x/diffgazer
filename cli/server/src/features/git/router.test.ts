@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
 import { err, ok } from "@diffgazer/core/result";
 import type { GitStatus } from "@diffgazer/core/schemas/git";
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { requireValue } from "../../testing/assertions.js";
 
 const { mockCreateGitService, mockGitService } = vi.hoisted(() => {
   const service = {

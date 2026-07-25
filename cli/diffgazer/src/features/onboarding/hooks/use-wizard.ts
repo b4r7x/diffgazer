@@ -3,14 +3,9 @@ import {
   useSaveConfig,
   useSaveSettings,
 } from "@diffgazer/core/api/hooks";
-import {
-  INPUT_METHODS,
-  type InputMethod,
-  type OnboardingStep,
-  useWizardState,
-} from "@diffgazer/core/onboarding";
-import type { AIProvider } from "@diffgazer/core/schemas/config";
-import { AI_PROVIDERS, isAgentExecution, isSecretsStorage } from "@diffgazer/core/schemas/config";
+import { isAIProvider } from "@diffgazer/core/catalog";
+import { isInputMethod, type OnboardingStep, useWizardState } from "@diffgazer/core/onboarding";
+import { isAgentExecution, isSecretsStorage } from "@diffgazer/core/schemas/config";
 import type { LensId } from "@diffgazer/core/schemas/review";
 import { useEffect, useEffectEvent, useState } from "react";
 import { useRegisterExitPreparation } from "../../../hooks/use-exit";
@@ -21,14 +16,6 @@ type WizardFocusZone = "step" | "nav" | "api-key-method" | "api-key-input";
 
 function getStepFocusZone(step: OnboardingStep): WizardFocusZone {
   return step === "api-key" ? "api-key-method" : "step";
-}
-
-function isAIProvider(v: string): v is AIProvider {
-  return (AI_PROVIDERS as readonly string[]).includes(v);
-}
-
-function isInputMethod(v: string): v is InputMethod {
-  return (INPUT_METHODS as readonly string[]).includes(v);
 }
 
 function reportCleanupError(message: string): void {

@@ -22,15 +22,17 @@ describe("buildHubValues", () => {
     );
   });
 
-  test("uppercases provider and theme values", () => {
+  // Casing belongs to the surfaces (web lifts these with CSS, the TUI uppercases when it
+  // renders), so the stored identifier reaches the DOM unshouted.
+  test("returns provider and theme in their stored casing", () => {
     const values = buildHubValues(makeInput());
-    expect(values.provider).toBe("GEMINI");
-    expect(values.theme).toBe("AUTO");
+    expect(values.provider).toBe("gemini");
+    expect(values.theme).toBe("auto");
   });
 
   test.each([
-    { secretsStorage: "file" as const, rendered: "FILE" },
-    { secretsStorage: "keyring" as const, rendered: "KEYRING" },
+    { secretsStorage: "file" as const, rendered: "file" },
+    { secretsStorage: "keyring" as const, rendered: "keyring" },
     { secretsStorage: null, rendered: "Not set" },
   ])("renders secrets storage '$secretsStorage' as '$rendered'", ({ secretsStorage, rendered }) => {
     expect(buildHubValues(makeInput({ secretsStorage })).storage).toBe(rendered);
@@ -59,7 +61,7 @@ describe("buildHubValues", () => {
     expect(buildHubValues(makeInput()).diagnostics).toBe("Local");
   });
 
-  test("falls back to AUTO theme when theme is missing", () => {
-    expect(buildHubValues(makeInput({ theme: undefined })).theme).toBe("AUTO");
+  test("falls back to the auto theme when theme is missing", () => {
+    expect(buildHubValues(makeInput({ theme: undefined })).theme).toBe("auto");
   });
 });

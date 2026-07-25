@@ -157,7 +157,13 @@ describe("Overflow", () => {
     const ref = createRef<HTMLDivElement>();
 
     render(
-      <Overflow mode="items" ref={ref} aria-label="Recent files" data-state="items" gap="gap-2">
+      <Overflow
+        mode="items"
+        ref={ref}
+        aria-label="Recent files"
+        data-state="items"
+        className="gap-2"
+      >
         <span>One</span>
         <span>Two</span>
       </Overflow>,

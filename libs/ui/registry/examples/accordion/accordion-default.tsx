@@ -41,6 +41,15 @@ export default function AccordionDefault() {
           </p>
         </AccordionContent>
       </AccordionItem>
+      {/* Disabled items dim their trigger and are skipped by arrow navigation. */}
+      <AccordionItem value="item-4" disabled>
+        <AccordionHeader>
+          <AccordionTrigger>Enterprise support (disabled)</AccordionTrigger>
+        </AccordionHeader>
+        <AccordionContent>
+          <p className="text-sm text-muted-foreground">Not available on this plan.</p>
+        </AccordionContent>
+      </AccordionItem>
     </Accordion>
   );
 }

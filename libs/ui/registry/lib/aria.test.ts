@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it } from "vitest";
 import {
+  isAriaInvalid,
   isHTMLDialogElement,
   isHTMLElementForContainer,
   mergeIds,
@@ -47,6 +48,20 @@ describe("resolveAriaInvalid", () => {
     forceInvalid,
   }) => {
     expect(resolveAriaInvalid(ariaInvalid, forceInvalid)).toBeUndefined();
+  });
+});
+
+describe("isAriaInvalid", () => {
+  it.each([
+    { ariaInvalid: true, expected: true },
+    { ariaInvalid: "true" as const, expected: true },
+    { ariaInvalid: "grammar" as const, expected: true },
+    { ariaInvalid: "spelling" as const, expected: true },
+    { ariaInvalid: false, expected: false },
+    { ariaInvalid: "false" as const, expected: false },
+    { ariaInvalid: undefined, expected: false },
+  ])("treats $ariaInvalid as invalid=$expected", ({ ariaInvalid, expected }) => {
+    expect(isAriaInvalid(ariaInvalid)).toBe(expected);
   });
 });
 

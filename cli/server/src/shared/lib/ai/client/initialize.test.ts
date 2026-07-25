@@ -63,8 +63,6 @@ function writeJson(filePath: string, value: unknown): void {
   writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-
-
 function setupTempHome() {
   diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-ai-client-"));
   process.env.DIFFGAZER_HOME = diffgazerHome;

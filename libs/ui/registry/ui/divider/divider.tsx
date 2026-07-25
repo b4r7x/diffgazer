@@ -2,8 +2,13 @@ import { cva, type VariantProps } from "class-variance-authority";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-/** Class variants for divider. */
-export const dividerVariants = cva("flex opacity-40", {
+/**
+ * Class variants for divider.
+ *
+ * The root carries no opacity: the hairlines dim themselves (see LINE_CLASS) so the spaced
+ * variant's label keeps full `--muted-foreground` contrast instead of fading to ~2:1.
+ */
+export const dividerVariants = cva("flex", {
   variants: {
     variant: {
       default: "",
@@ -45,6 +50,8 @@ interface SemanticDividerProps {
 /** Props for divider. Semantic separators require an explicit accessible name. */
 export type DividerProps = DividerBaseProps & (DecorativeDividerProps | SemanticDividerProps);
 
+const LINE_CLASS = "flex-1 border-border opacity-40";
+
 /** Line separator with horizontal and vertical orientation, default and spaced variants. */
 export function Divider({
   ref,
@@ -69,28 +76,22 @@ export function Divider({
       {variant === "spaced" ? (
         <>
           <span
-            className={cn(
-              "flex-1 border-border",
-              orientation === "horizontal" ? "border-t" : "border-l",
-            )}
+            className={cn(LINE_CLASS, orientation === "horizontal" ? "border-t" : "border-l")}
           />
-          <span className={cn("font-light", orientation === "horizontal" ? "px-2" : "py-2")}>
+          <span
+            className={cn(
+              "uppercase tracking-wider",
+              orientation === "horizontal" ? "px-2" : "py-2",
+            )}
+          >
             {children ?? "\u2726"}
           </span>
           <span
-            className={cn(
-              "flex-1 border-border",
-              orientation === "horizontal" ? "border-t" : "border-l",
-            )}
+            className={cn(LINE_CLASS, orientation === "horizontal" ? "border-t" : "border-l")}
           />
         </>
       ) : (
-        <span
-          className={cn(
-            "flex-1 border-border",
-            orientation === "horizontal" ? "border-t" : "border-l",
-          )}
-        />
+        <span className={cn(LINE_CLASS, orientation === "horizontal" ? "border-t" : "border-l")} />
       )}
     </div>
   );

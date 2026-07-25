@@ -28,7 +28,10 @@ export type DialogCorners = "none" | "subtle" | "standard" | "bold" | "outset";
 
 /** Class variants for dialog content. */
 export const dialogContentVariants = cva(
-  "relative w-full max-h-[90dvh] flex flex-col bg-background text-foreground shadow-2xl m-auto",
+  // --shadow-hard is the library's only sanctioned shadow: a hard offset with
+  // no blur. It replaces the soft shadow-2xl so the modal edge stays a drawn
+  // line in both themes instead of a glow that vanishes on a light backdrop.
+  "relative w-full max-h-[90dvh] flex flex-col rounded-sm bg-background text-foreground shadow-(--shadow-hard) m-auto",
   {
     variants: {
       size: {
@@ -54,7 +57,7 @@ const FALLBACK_DIALOG_LABEL = "Dialog";
 /** Props for dialog content. */
 export interface DialogContentProps
   extends VariantProps<typeof dialogContentVariants>,
-    Omit<ComponentProps<"dialog">, "children" | "className"> {
+    Omit<ComponentProps<"dialog">, "children" | "className" | "open"> {
   /** Content rendered inside the component. */
   children: ReactNode;
   /** Additional class names merged onto the rendered element. */
@@ -69,9 +72,19 @@ export interface DialogContentProps
   corners?: DialogCorners | null;
   /**
    * Set role="alertdialog" for destructive confirmations. Per WAI-ARIA APG, alert dialogs
-   * should not close on outside interaction.
+   * should not close on outside interaction. Modal mode only — an inline dialog is a labelled
+   * region, not a dialog (see `modal`).
    */
   role?: "dialog" | "alertdialog";
+  /**
+   * Renders the dialog as a native modal in the browser top layer (default). Pass false to
+   * render the same frame, corners, and chrome in the document flow instead — no backdrop,
+   * focus trap, scroll lock, or focus restoration, and no dialog role, since nothing is
+   * modal about it. Use it to embed dialog chrome in a page, or to make the open state
+   * reviewable on a static documentation page. Inline dialogs still honour `open`, so they
+   * unmount when the consumer closes them.
+   */
+  modal?: boolean;
   /** When false, clicking the backdrop does not close the dialog (recommended for alertdialog). */
   closeOnBackdropClick?: boolean;
   /** Element that receives focus when the overlay opens. */
@@ -147,6 +160,7 @@ export function DialogContent({
   corners,
   closeOnBackdropClick = true,
   initialFocus,
+  modal = true,
   onEscapeKeyDown,
   onCancel,
   onAnimationEnd,
@@ -171,7 +185,7 @@ export function DialogContent({
   const scrollLockTargetRef = useRef<HTMLElement>(null);
   const [container, setContainer] = useState<Element | null>(null);
   const focusRestore = useFocusRestore({ restoreOnUnmount: true });
-  useScrollLock({ target: scrollLockTargetRef, enabled: open });
+  useScrollLock({ target: scrollLockTargetRef, enabled: open && modal });
   // Restore focus to the captured opener; fall back to the trigger ref read at
   // restore time (not during render) so a programmatically-opened dialog still
   // returns focus somewhere sensible.
@@ -223,6 +237,42 @@ export function DialogContent({
     setContainer(node);
   }, []);
 
+  const inner = (
+    <PortalContainerProvider container={container}>
+      {resolvedCorners !== "none" ? <span aria-hidden="true" className="dlg-corners" /> : null}
+      {children}
+    </PortalContainerProvider>
+  );
+
+  if (!modal) {
+    if (!open) return null;
+    return (
+      // biome-ignore lint/a11y/useSemanticElements: an inline dialog is not modal, so role="dialog" would misannounce it; this is a labelled region wrapping the same chrome.
+      <div
+        // The rest props are typed against <dialog> because the modal path renders
+        // one. Attribute names and payloads are identical here — only the event
+        // target element type differs, which the cast re-points to the inline div.
+        {...(rest as ComponentProps<"div">)}
+        onAnimationEnd={onAnimationEnd as ComponentProps<"div">["onAnimationEnd"]}
+        // Inline mode has no dialog element; the shell itself is the portal container.
+        ref={setContainer}
+        id={contentId}
+        role="group"
+        className={cn(dialogContentVariants({ size, frame }), className)}
+        data-slot="dialog-content"
+        data-frame={resolvedFrame}
+        data-corners={resolvedCorners}
+        data-state="open"
+        aria-label={accessibleName["aria-label"]}
+        aria-labelledby={accessibleName["aria-labelledby"]}
+        aria-description={ariaDescription}
+        aria-describedby={resolvedDescribedBy}
+      >
+        {inner}
+      </div>
+    );
+  }
+
   return (
     <DialogShell
       {...rest}
@@ -250,10 +300,7 @@ export function DialogContent({
       aria-description={ariaDescription}
       aria-describedby={resolvedDescribedBy}
     >
-      <PortalContainerProvider container={container}>
-        {resolvedCorners !== "none" ? <span aria-hidden="true" className="dlg-corners" /> : null}
-        {children}
-      </PortalContainerProvider>
+      {inner}
     </DialogShell>
   );
 }

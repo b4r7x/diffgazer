@@ -8,7 +8,7 @@ import { render as renderInk } from "ink-testing-library";
 import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
-import { NavigationProvider } from "../../../app/providers/navigation-provider";
+import { NavigationProvider } from "../../../app/providers/navigation";
 import { CliThemeProvider } from "../../../theme/provider";
 import { OnboardingWizard } from "./wizard";
 

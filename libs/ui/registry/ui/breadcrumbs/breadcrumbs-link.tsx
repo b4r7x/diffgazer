@@ -30,6 +30,7 @@ export function BreadcrumbsLink({ children, className, ref, ...props }: Breadcru
     ref: ref ?? null,
     className: cn(
       "transition-colors hover:text-foreground hover:underline hover:underline-offset-2",
+      "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
       className,
     ),
     "aria-current": current ? "page" : undefined,

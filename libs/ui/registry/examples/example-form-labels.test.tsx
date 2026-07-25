@@ -2,19 +2,26 @@ import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../testing/axe";
 import EmptyStateLive from "./empty-state/empty-state-live";
+import FieldControls from "./field/field-controls";
+import FieldStates from "./field/field-states";
 import InputDefault from "./input/input-default";
+import InputFocus from "./input/input-focus";
 import InputVariants from "./input/input-variants";
+import SearchInputStates from "./search-input/search-input-states";
 import SelectAvatar from "./select/select-avatar";
 import SelectCard from "./select/select-card";
 import SelectDefault from "./select/select-default";
 import SelectDisplayModes from "./select/select-display-modes";
 import SelectMultiple from "./select/select-multiple";
 import SelectMultiselectSimple from "./select/select-multiselect-simple";
+import SelectOpen from "./select/select-open";
 import SelectRadio from "./select/select-radio";
 import SelectSearchTop from "./select/select-search-top";
 import SelectSearchable from "./select/select-searchable";
+import SelectStates from "./select/select-states";
 import SelectTagsExample from "./select/select-tags";
 import TextareaDefault from "./textarea/textarea-default";
+import TextareaFocus from "./textarea/textarea-focus";
 import TextareaVariants from "./textarea/textarea-variants";
 import ToggleGroupCounts from "./toggle-group/toggle-group-counts";
 import ToggleGroupDefault from "./toggle-group/toggle-group-default";
@@ -49,11 +56,18 @@ const examples: Array<[string, () => React.JSX.Element]> = [
   ["select-radio", SelectRadio],
   ["select-search-top", SelectSearchTop],
   ["select-searchable", SelectSearchable],
+  ["select-open", SelectOpen],
+  ["select-states", SelectStates],
   ["select-tags", SelectTagsExample],
   ["input-default", InputDefault],
   ["input-variants", InputVariants],
+  ["input-focus", InputFocus],
+  ["field-states", FieldStates],
+  ["field-controls", FieldControls],
+  ["search-input-states", SearchInputStates],
   ["textarea-default", TextareaDefault],
   ["textarea-variants", TextareaVariants],
+  ["textarea-focus", TextareaFocus],
   ["toggle-group-default", ToggleGroupDefault],
   ["toggle-group-counts", ToggleGroupCounts],
   ["toggle-group-disabled", ToggleGroupDisabled],

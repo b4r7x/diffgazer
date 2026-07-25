@@ -2,6 +2,7 @@ import type { LensOption } from "@diffgazer/core/schemas/events";
 import type { LensId } from "@diffgazer/core/schemas/review";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { useId, useState } from "react";
 
 interface AnalysisSelectorContentProps {
@@ -45,12 +46,9 @@ export function AnalysisSelectorContent({
 
   return (
     <div className="space-y-3">
-      <div
-        id={labelId}
-        className="text-xs text-muted-foreground uppercase tracking-wider font-bold"
-      >
-        Active Agents
-      </div>
+      <SectionHeader as="h2" id={labelId} variant="muted">
+        Active Lenses
+      </SectionHeader>
       <CheckboxGroup
         value={value}
         onChange={handleChange}
@@ -63,7 +61,6 @@ export function AnalysisSelectorContent({
           onBoundaryReached?.(direction === "previous" ? "up" : "down");
         }}
         wrap={false}
-        variant="bullet"
         disabled={disabled || !enabled}
         autoFocus={autoFocusReady}
         required={required}

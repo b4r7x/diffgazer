@@ -1,4 +1,4 @@
-import type { InputMethod } from "@diffgazer/core/onboarding";
+import { type InputMethod, isInputMethod } from "@diffgazer/core/onboarding";
 import { getVerticalArrowDirection } from "@diffgazer/keys";
 import { Field } from "@diffgazer/ui/components/field";
 import { InputGroup } from "@diffgazer/ui/components/input";
@@ -25,10 +25,6 @@ interface ApiKeyMethodSelectorProps {
   };
   invalid?: boolean;
   errorId?: string;
-}
-
-function isInputMethod(value: string | null): value is InputMethod {
-  return value === "paste" || value === "env";
 }
 
 export function ApiKeyMethodSelector({

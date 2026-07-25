@@ -1,6 +1,6 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,14 +31,12 @@ describe("HelpPage", () => {
     mockNavigate.mockReset();
   });
 
-  it("exposes the panel as a region named Help without double-announcing the corner label", () => {
+  it("names the panel region with the single visible Help title", () => {
     renderPage();
 
-    expect(screen.getByRole("region", { name: /help/i })).toBeInTheDocument();
-
-    // getByText throws on multiple matches, so this also proves "Help" appears once.
-    const cornerLabel = screen.getByText("Help");
-    expect(cornerLabel).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("region", { name: /^help$/i })).toBeInTheDocument();
+    // getByRole throws on multiple matches, so this also proves the title appears once.
+    expect(screen.getByRole("heading", { level: 1, name: "Help" })).toBeVisible();
   });
 
   it("lists keyboard shortcuts and navigates home on Escape", async () => {
@@ -60,6 +58,17 @@ describe("HelpPage", () => {
     expect(screen.getByText("Open Help")).toBeVisible();
     expect(screen.queryByText("Review Unstaged Changes")).not.toBeInTheDocument();
     expect(screen.queryByText("Review Staged Changes")).not.toBeInTheDocument();
+  });
+
+  it("shows one row per action instead of repeating the scroll label per key", () => {
+    renderPage();
+
+    expect(screen.getAllByText("Scroll Content")).toHaveLength(1);
+
+    const shortcuts = screen.getByRole("list", { name: /keyboard shortcuts/i });
+    for (const key of ["↑/↓", "PgUp/PgDn", "Home/End"]) {
+      expect(within(shortcuts).getAllByText(key).length).toBeGreaterThan(0);
+    }
   });
 
   it("lists touch gestures for touch devices", () => {

@@ -5,12 +5,31 @@ import { Text } from "ink";
 import { render } from "ink-testing-library";
 import { vi } from "vitest";
 
+import { useTerminalDimensions } from "../../../../hooks/use-terminal-dimensions";
 import { CliThemeProvider } from "../../../../theme/provider";
 import { ReviewProgressView, type ReviewProgressViewProps } from "./view";
 
 vi.mock("@diffgazer/core/api/hooks", () => ({
   useInit: () => ({ data: undefined, isLoading: false }),
 }));
+
+// The view reads the zone GlobalLayout provides, which this harness does not
+// mount. Derive it from the rendered terminal with the real row math.
+vi.mock("../../../../components/layout/global", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../../components/layout/global")>();
+  return {
+    ...actual,
+    useContentZone: () => {
+      const { columns, rows } = useTerminalDimensions();
+      return {
+        columns,
+        rows,
+        contentRows: actual.getContentZoneRows(rows),
+        contentColumns: columns,
+      };
+    },
+  };
+});
 
 export function makeAgent(id: AgentId): AgentState {
   return {
@@ -50,11 +69,7 @@ export function makeContextSnapshot(): ReviewContextResponse {
   };
 }
 
-export async function flush(times = 4): Promise<void> {
-  for (let index = 0; index < times; index += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
+export { flush } from "../../../../testing/flush";
 
 export function renderViewNode(overrides: Partial<ReviewProgressViewProps> = {}) {
   return (

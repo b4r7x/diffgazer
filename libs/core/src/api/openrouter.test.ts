@@ -72,4 +72,19 @@ describe("mapOpenRouterModels", () => {
     ]);
     expect(mapped?.description).toBe("openrouter/no-desc");
   });
+
+  it("strips terminal escape sequences from name and description (CWE-150)", () => {
+    // ESC () laced: OSC-52 clipboard write terminated by BEL () and an
+    // SGR color CSI in the name; two OSC-8 hyperlink sequences in the description.
+    const [mapped] = mapOpenRouterModels([
+      makeModel({
+        id: "openrouter/evil",
+        name: "Evil]52;c;ZXZpbA== Model[31m",
+        description: "Desc]8;;http://phishlink]8;;",
+        isFree: true,
+      }),
+    ]);
+    expect(mapped?.name).toBe("Evil Model");
+    expect(mapped?.description).toBe("Desclink");
+  });
 });

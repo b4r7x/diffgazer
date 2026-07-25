@@ -139,7 +139,9 @@ describe("SettingsHubScreen", () => {
       </CliThemeProvider>,
     );
 
-    expect(view.lastFrame()).toContain("Not trusted");
+    // Caps are the hub screen's display rule (buildHubValues returns neutral text so the
+    // web DOM stays unshouted), so the terminal lifts every value including this one.
+    expect(view.lastFrame()).toContain("NOT TRUSTED");
     expect(view.lastFrame()).toContain("config path: /custom/diffgazer/config.json");
   });
 

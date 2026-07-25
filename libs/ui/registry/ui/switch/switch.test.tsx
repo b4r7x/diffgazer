@@ -28,6 +28,14 @@ describe("Switch", () => {
     expect(sw).toHaveAttribute("data-disabled", "");
   });
 
+  it("renders the binary thumb glyph for each state", () => {
+    const { rerender } = render(<Switch checked={false} aria-label="Toggle" />);
+    const thumb = () => screen.getByRole("switch").querySelector('[data-slot="switch-thumb"]');
+    expect(thumb()).toHaveTextContent("0");
+    rerender(<Switch checked aria-label="Toggle" />);
+    expect(thumb()).toHaveTextContent("1");
+  });
+
   it("toggles on click in controlled mode", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

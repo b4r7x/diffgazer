@@ -16,6 +16,19 @@ import { DefaultItemLayout, DetailItemLayout } from "./menu-item-layouts";
 import { getItemState, menuItemBase, menuItemValue } from "./menu-item-variants";
 import { useMenuItemInteractions } from "./use-menu-item-interactions";
 
+/** Colour treatment for a detail value. */
+type MenuItemValueVariant = "default" | "success" | "success-badge" | "muted";
+
+/**
+ * Glyph prepended to a detail value. Only the success variants get one, and it is the
+ * non-color carrier of "passing" in a monochrome palette — informative, not decorative,
+ * so it stays in the accessibility tree.
+ */
+const MENU_VALUE_GLYPHS: Partial<Record<MenuItemValueVariant, string>> = {
+  success: "✓",
+  "success-badge": "✓",
+};
+
 /** Props for menu item. */
 export interface MenuItemProps<TId extends string = string>
   extends Omit<
@@ -37,8 +50,11 @@ export interface MenuItemProps<TId extends string = string>
   icon?: ReactNode;
   /** Detail variant only. Right-aligned value (badge, count, or status text). */
   value?: ReactNode;
-  /** Color treatment for the detail value. */
-  valueVariant?: "default" | "success" | "success-badge" | "muted";
+  /**
+   * Color treatment for the detail value. The success variants prefix a ✓ so the passing
+   * state does not rest on color alone.
+   */
+  valueVariant?: MenuItemValueVariant;
   /** Item label. */
   children: ReactNode;
   /** Ref forwarded to the underlying element. */
@@ -128,6 +144,7 @@ export function MenuItem<TId extends string = string>({
           isSelected={isSelected}
           value={value}
           valueClassName={menuItemValue({ valueVariant, focused: isActive, active: isActive })}
+          valueGlyph={MENU_VALUE_GLYPHS[valueVariant]}
           icon={icon}
         >
           {children}

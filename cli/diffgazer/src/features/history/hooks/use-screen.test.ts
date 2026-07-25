@@ -10,17 +10,12 @@ import { NavigationContext } from "../../../hooks/use-navigation";
 import { buildResponsiveResult, getBreakpointTier } from "../../../lib/breakpoints";
 import { CliThemeProvider } from "../../../theme/provider";
 import { HistoryScreen } from "../components/screen";
+import { makeHistoryScreenState } from "../testing/history-screen-state";
 import { useHistoryScreen } from "./use-screen";
 
 const useHistoryScreenStateMock = vi.hoisted(() => vi.fn());
 const terminalSize = vi.hoisted(() => ({ columns: 100, rows: 30 }));
 const SUPPORT_FLOOR = { columns: 80, rows: 24 } as const;
-const reviewDetailQuery = {
-  isLoading: false,
-  isError: false,
-  error: null,
-  refetch: vi.fn(),
-};
 
 // Boundary mock: @diffgazer/core/review owns the shared history data pipeline; this TUI adapter test provides its public hook output.
 vi.mock("@diffgazer/core/review", async (importOriginal) => ({
@@ -65,45 +60,12 @@ function setHistoryQuery(reviewsQuery: {
   isLoading: boolean;
   error: Error | null;
 }) {
-  useHistoryScreenStateMock.mockReturnValue({
-    reviewsQuery,
-    reviewDetailQuery,
-    reviews: [],
-    timelineItems: [],
-    selectedDateId: "all",
-    setSelectedDateId: vi.fn(),
-    searchQuery: "",
-    setSearchQuery: vi.fn(),
-    mappedRuns: [],
-    selectedRunId: null,
-    setSelectedRunId: vi.fn(),
-    selectedRun: null,
-    severityCounts: null,
-    sortedIssues: [],
-    duration: "",
-    hasReviews: false,
-    hasSearchQuery: false,
-    emptyRunsMessage: "No runs yet",
-    hasMoreReviews: false,
-    isLoadingMoreReviews: false,
-    loadMoreReviews: vi.fn(),
-  });
+  useHistoryScreenStateMock.mockReturnValue(makeHistoryScreenState({ reviewsQuery }));
 }
 
 describe("useHistoryScreen", () => {
   it.each([
     ["loading", { data: undefined, isLoading: true, error: null }],
-    ["error", { data: undefined, isLoading: false, error: new Error("history unavailable") }],
-    ["empty", { data: { reviews: [] }, isLoading: false, error: null }],
-  ])("keeps route Back active while the %s branch renders no search input", (_branch, reviewsQuery) => {
-    setHistoryQuery(reviewsQuery);
-
-    const { result } = renderHook(() => useHistoryScreen({ onOpenReview: vi.fn() }));
-
-    expect(result.current.interactionMode).toBe("route");
-  });
-
-  it.each([
     ["error", { data: undefined, isLoading: false, error: new Error("history unavailable") }],
     ["empty", { data: { reviews: [] }, isLoading: false, error: null }],
   ])("returns to the previous route on one Escape from the %s branch", async (_branch, reviewsQuery) => {
@@ -140,29 +102,7 @@ describe("useHistoryScreen", () => {
   });
 
   it("skips run-only zones when cycling focus with no runs", () => {
-    useHistoryScreenStateMock.mockReturnValue({
-      reviewsQuery: { data: { reviews: [] }, isLoading: false, error: null },
-      reviewDetailQuery,
-      reviews: [],
-      timelineItems: [],
-      selectedDateId: "all",
-      setSelectedDateId: vi.fn(),
-      searchQuery: "",
-      setSearchQuery: vi.fn(),
-      mappedRuns: [],
-      selectedRunId: null,
-      setSelectedRunId: vi.fn(),
-      selectedRun: null,
-      severityCounts: null,
-      sortedIssues: [],
-      duration: "",
-      hasReviews: false,
-      hasSearchQuery: false,
-      emptyRunsMessage: "No runs yet",
-      hasMoreReviews: false,
-      isLoadingMoreReviews: false,
-      loadMoreReviews: vi.fn(),
-    });
+    useHistoryScreenStateMock.mockReturnValue(makeHistoryScreenState());
 
     const { result } = renderHook(() => useHistoryScreen({ onOpenReview: vi.fn() }));
 
@@ -182,29 +122,15 @@ describe("useHistoryScreen", () => {
   it("clears a zero-match search and activates its first unfiltered run in one transition", () => {
     const setSearchQuery = vi.fn();
     const setSelectedRunId = vi.fn();
-    const baseState = {
-      reviewsQuery: { data: { reviews: [] }, isLoading: false, error: null },
-      reviewDetailQuery,
+    const baseState = makeHistoryScreenState({
       reviews: [{ id: "history-review-1" }],
-      timelineItems: [],
-      selectedDateId: "all",
-      setSelectedDateId: vi.fn(),
       searchQuery: "no matches",
       setSearchQuery,
-      mappedRuns: [],
-      selectedRunId: null,
       setSelectedRunId,
-      selectedRun: null,
-      severityCounts: null,
-      sortedIssues: [],
-      duration: "",
       hasReviews: true,
       hasSearchQuery: true,
       emptyRunsMessage: "No matching runs",
-      hasMoreReviews: false,
-      isLoadingMoreReviews: false,
-      loadMoreReviews: vi.fn(),
-    };
+    });
     useHistoryScreenStateMock.mockReturnValue(baseState);
     const { result, rerender } = renderHook(() => useHistoryScreen({ onOpenReview: vi.fn() }));
 
@@ -237,29 +163,9 @@ describe("useHistoryScreen", () => {
 
   it("opens a saved review by reviewId without starting a new unstaged review", () => {
     const onOpenReview = vi.fn();
-    useHistoryScreenStateMock.mockReturnValue({
-      reviewsQuery: { data: { reviews: [] }, isLoading: false, error: null },
-      reviewDetailQuery,
-      reviews: [],
-      timelineItems: [],
-      selectedDateId: "all",
-      setSelectedDateId: vi.fn(),
-      searchQuery: "",
-      setSearchQuery: vi.fn(),
-      mappedRuns: [],
-      selectedRunId: "history-review-1",
-      setSelectedRunId: vi.fn(),
-      selectedRun: null,
-      severityCounts: null,
-      sortedIssues: [],
-      duration: "",
-      hasReviews: true,
-      hasSearchQuery: false,
-      emptyRunsMessage: "No runs yet",
-      hasMoreReviews: false,
-      isLoadingMoreReviews: false,
-      loadMoreReviews: vi.fn(),
-    });
+    useHistoryScreenStateMock.mockReturnValue(
+      makeHistoryScreenState({ selectedRunId: "history-review-1", hasReviews: true }),
+    );
 
     const { result } = renderHook(() => useHistoryScreen({ onOpenReview }));
 

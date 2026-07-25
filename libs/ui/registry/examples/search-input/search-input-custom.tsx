@@ -13,7 +13,7 @@ export default function SearchInputCustom() {
         placeholder="Type and press Enter..."
         onEscape={() => setQuery("")}
         prefix={
-          <span className="text-success font-bold" aria-hidden="true">
+          <span className="text-foreground font-bold" aria-hidden="true">
             $
           </span>
         }
@@ -22,7 +22,7 @@ export default function SearchInputCustom() {
         defaultValue=""
         placeholder="Uncontrolled search"
         prefix={
-          <span className="text-muted-foreground font-bold" aria-hidden="true">
+          <span className="text-foreground font-bold" aria-hidden="true">
             &gt;
           </span>
         }

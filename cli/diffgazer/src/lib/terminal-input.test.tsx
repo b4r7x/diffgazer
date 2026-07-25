@@ -3,7 +3,7 @@ import { render, useInput } from "ink";
 import { useContext, useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../app/providers/keyboard";
-import { KeyboardContext } from "../hooks/use-keyboard";
+import { KeyboardContext } from "../hooks/keyboard-context";
 import { createTerminalInputBoundary } from "./terminal-input";
 
 interface KeyboardProbeProps {

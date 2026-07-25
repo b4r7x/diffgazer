@@ -14,10 +14,10 @@ import {
 } from "@diffgazer/core/schemas/presentation";
 import { Box, useInput } from "ink";
 import { type ReactElement, useContext, useEffect, useState } from "react";
-import { getContentZoneRows } from "../../../../components/layout/global";
+import { useContentZone } from "../../../../components/layout/global";
 import { Button } from "../../../../components/ui/button";
 import { Callout } from "../../../../components/ui/callout";
-import { KeyboardContext } from "../../../../hooks/use-keyboard";
+import { KeyboardContext } from "../../../../hooks/keyboard-context";
 import { useResponsive } from "../../../../hooks/use-terminal-dimensions";
 import type { BreakpointTier } from "../../../../lib/breakpoints";
 import { ReviewProgressActivity } from "./activity";
@@ -97,7 +97,8 @@ export function ReviewProgressView({
   contextSnapshot,
   contextOutputDirectory,
 }: ReviewProgressViewProps): ReactElement {
-  const { isMedium, isWide, rows, tier } = useResponsive();
+  const { isMedium, isWide, tier } = useResponsive();
+  const { contentRows } = useContentZone();
   const keyboard = useContext(KeyboardContext);
   // Lazy now-seed: a zero seed renders a negative elapsed on the first frame
   // and permanently for runs that mount already stopped (error/abort).
@@ -148,7 +149,6 @@ export function ReviewProgressView({
   const { progress: progressWidth, log: logWidth } = getPaneWidths(tier);
 
   const errorGuidance = error ? classifyReviewStreamError(error, errorCode) : null;
-  const contentRows = getContentZoneRows(rows);
   const hasActionRow = !error && ((isStreaming && onCancel) || (!isStreaming && onViewResults));
   const actionRows = hasActionRow ? 2 : 0;
   let errorRows = 0;

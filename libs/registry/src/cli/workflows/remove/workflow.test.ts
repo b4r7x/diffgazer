@@ -39,7 +39,7 @@ vi.mock("../../terminal.js", async (importOriginal) => {
   };
 });
 
-import { createRemoveCommand } from "../../command-factories.js";
+import { createRemoveCommand } from "../../command-factories/remove.js";
 import { info, success } from "../../terminal.js";
 import type { DerivedRemovalPlan } from "./types.js";
 import { runRemoveWorkflow } from "./workflow.js";

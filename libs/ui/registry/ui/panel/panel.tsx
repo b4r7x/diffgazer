@@ -38,6 +38,12 @@ interface PanelOwnProps {
   tone?: PanelTone;
   /** Padding rhythm. Default = 14/20; compact = 10/14. */
   density?: PanelDensity;
+  /**
+   * Marks the panel as the active pane: viewfinder corner brackets render in --ring, thicker and
+   * longer than the resting frame, on every frame. Visual affordance only - it does not move focus
+   * or change ARIA.
+   */
+  focused?: boolean;
 }
 
 /** Props for panel. */
@@ -63,6 +69,7 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
     frame,
     tone,
     density,
+    focused,
     children,
     "aria-label": ariaLabel,
     "aria-labelledby": ariaLabelledBy,
@@ -94,8 +101,14 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
     [],
   );
 
+  const resolvedFrame = frame ?? "hairline";
+  const resolvedDensity = density ?? "default";
+  // The viewfinder frame owns resting corners; `focused` grows them on any frame.
+  const hasCorners = resolvedFrame === "viewfinder" || focused === true;
+
   const contextValue = useMemo<PanelContextValue>(
     () => ({
+      hasCorners,
       titleId,
       descriptionId,
       registerTitle,
@@ -104,6 +117,7 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
       unregisterDescription,
     }),
     [
+      hasCorners,
       titleId,
       descriptionId,
       registerTitle,
@@ -120,8 +134,6 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
   const hasAriaName = isNonEmptyString(ariaLabel) || isNonEmptyString(ariaLabelledBy);
   const isNamedRegion = hasRenderableTitle || hasAriaName;
 
-  const resolvedFrame = frame ?? "hairline";
-  const resolvedDensity = density ?? "default";
   const Tag = (as ?? (isNamedRegion ? "section" : "div")) as ElementType;
 
   const accessibleName = resolvePanelAccessibleName({
@@ -141,12 +153,13 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
         data-frame={resolvedFrame}
         data-tone={tone ?? undefined}
         data-density={resolvedDensity}
+        data-state={focused ? "focused" : undefined}
         aria-label={accessibleName["aria-label"]}
         aria-labelledby={accessibleName["aria-labelledby"]}
         aria-describedby={resolvedAriaDescribedBy}
         className={cn(className)}
       >
-        {resolvedFrame === "viewfinder" ? (
+        {hasCorners ? (
           <span aria-hidden="true" data-slot="panel-corners">
             <span className="vf-tl" />
             <span className="vf-tr" />

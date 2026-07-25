@@ -24,7 +24,7 @@ import {
   setupApiMocks,
   trustedProject,
   untrustedProject,
-} from "./page.test-utils";
+} from "./page-test-utils";
 
 describe("HistoryPage trust workflow", () => {
   beforeEach(() => {
@@ -67,7 +67,9 @@ describe("HistoryPage trust workflow", () => {
     renderHistoryPage(<HistoryPage />);
 
     expect(await screen.findByText("Trust This Repository?")).toBeInTheDocument();
-    expect(screen.getByText("/moved/repo")).toBeInTheDocument();
+    // The path renders in middle-truncating segments, so assert the whole
+    // value the screen presents rather than one text node.
+    expect(screen.getByTitle("/moved/repo")).toHaveTextContent("/moved/repo");
     expect(screen.queryByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER)).not.toBeInTheDocument();
     expect(mockGetReviews).not.toHaveBeenCalled();
   });

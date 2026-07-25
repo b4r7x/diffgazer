@@ -8,7 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "ink";
 import type { ReactNode } from "react";
 import stripAnsi from "strip-ansi";
-import { NavigationProvider } from "../app/providers/navigation-provider";
+import { NavigationProvider } from "../app/providers/navigation";
 import { GlobalLayout } from "../components/layout/global";
 import { ReviewResultsView } from "../features/review/components/results-view";
 import { ReviewSummaryView } from "../features/review/components/summary-view";

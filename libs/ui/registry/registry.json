@@ -52,7 +52,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/accordion/use-state.ts",
+          "path": "registry/ui/accordion/use-accordion-state.ts",
           "type": "registry:ui"
         }
       ]
@@ -175,7 +175,7 @@
       "title": "Field",
       "description": "Form field primitives for labels, controls, descriptions, and validation messages",
       "dependencies": [],
-      "registryDependencies": ["theme", "aria", "composed-refs", "utils"],
+      "registryDependencies": ["theme", "aria", "composed-refs", "label", "utils"],
       "meta": {
         "client": true
       },
@@ -1248,7 +1248,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/stepper/use-state.ts",
+          "path": "registry/ui/stepper/use-stepper-state.ts",
           "type": "registry:ui"
         },
         {
@@ -1293,6 +1293,7 @@
         "controllable-state",
         "form-reset",
         "compose-refs",
+        "input-variants",
         "utils",
         "composed-refs"
       ],
@@ -1453,7 +1454,7 @@
         "client": true
       },
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "step-status", "stepper-variants", "utils"],
+      "registryDependencies": ["theme", "step-status", "horizontal-stepper-variants", "utils"],
       "files": [
         {
           "path": "registry/ui/horizontal-stepper/index.ts",
@@ -1553,7 +1554,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/command-palette/use-state.ts",
+          "path": "registry/ui/command-palette/use-command-palette-state.ts",
           "type": "registry:ui"
         },
         {
@@ -1657,7 +1658,7 @@
           "type": "registry:ui"
         },
         {
-          "path": "registry/ui/select/use-state.ts",
+          "path": "registry/ui/select/use-select-state.ts",
           "type": "registry:ui"
         },
         {
@@ -1692,6 +1693,11 @@
         {
           "path": "registry/ui/spinner/spinner-snake-grid.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/spinner/spinner.css",
+          "type": "registry:style",
+          "target": "~/styles/spinner.css"
         }
       ]
     },
@@ -2359,7 +2365,7 @@
       "name": "segmented-variants",
       "type": "registry:lib",
       "title": "Segmented Variants",
-      "description": "Shared CVA + sliding-indicator class names for segmented controls (Tabs, ToggleGroup).",
+      "description": "Shared CVA + sliding-indicator class names and bracket markers for segmented controls (Tabs, ToggleGroup).",
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
       "meta": {
@@ -2369,6 +2375,10 @@
       "files": [
         {
           "path": "registry/lib/segmented-variants.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "registry/lib/segmented-brackets.tsx",
           "type": "registry:lib"
         }
       ]
@@ -2391,6 +2401,10 @@
         },
         {
           "path": "registry/lib/selectable-collection-observer.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "registry/lib/selectable-group.ts",
           "type": "registry:lib"
         }
       ]
@@ -2485,6 +2499,24 @@
           "path": "registry/ui/shared/stepper.css",
           "type": "registry:style",
           "target": "~/styles/stepper.css"
+        }
+      ]
+    },
+    {
+      "name": "horizontal-stepper-variants",
+      "type": "registry:lib",
+      "title": "Horizontal Stepper Variants",
+      "description": "Shared CVA visual contracts and indicator glyph dictionaries for horizontal stepper variants.",
+      "dependencies": ["class-variance-authority"],
+      "registryDependencies": ["step-status"],
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/horizontal-stepper-variants.ts",
+          "type": "registry:lib"
         }
       ]
     },

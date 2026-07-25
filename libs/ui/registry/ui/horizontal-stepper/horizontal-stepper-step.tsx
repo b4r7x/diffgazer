@@ -3,17 +3,24 @@
 import type { ReactNode } from "react";
 import {
   HORIZONTAL_STEP_INDICATOR_GLYPHS,
+  type HorizontalStepperVariant,
   horizontalStepperBreadcrumbSeparatorClass,
+  horizontalStepperCompletedConnectorClass,
   horizontalStepperConnectorClass,
+  horizontalStepperConnectorDisplayClass,
+  horizontalStepperConnectorItemClass,
+  horizontalStepperCounterClass,
+  horizontalStepperCounterVisibilityClass,
   horizontalStepperGlyphVariants,
   horizontalStepperLabelVariants,
   horizontalStepperStepVariants,
-} from "@/lib/stepper-variants";
+  horizontalStepperTextOnlyCollapseClass,
+} from "@/lib/horizontal-stepper-variants";
 import { cn } from "@/lib/utils";
 import {
   type HorizontalStepStatus,
+  useHorizontalStepperContext,
   useStepInfo,
-  useStepperContext,
 } from "./horizontal-stepper-context";
 
 const SR_LABEL: Record<HorizontalStepStatus, string> = {
@@ -34,52 +41,77 @@ export interface HorizontalStepperStepProps {
 
 /** Single horizontal step (derives status from parent value) */
 export function HorizontalStepperStep({ value, children, className }: HorizontalStepperStepProps) {
-  const { variant } = useStepperContext();
-  const { status, index } = useStepInfo(value);
+  const { variant, compact } = useHorizontalStepperContext();
+  const { status, index, total } = useStepInfo(value);
   const showConnectorBefore = index > 0;
+  const isActive = status === "active";
 
   const glyph = renderGlyph(variant, status);
-
-  // For the `numbered` variant the connector lives in the step's pseudo-
-  // element; we expose the completion state via `data-conn-completed` so the
-  // CSS reads "completed connector = green line". Only `completed` steps fill
-  // their incoming segment — the active step's incoming connector stays
-  // border-coloured to read as still-in-progress, mirroring the vertical
-  // stepper spec where only segments leading INTO a completed indicator turn
-  // green.
-  const isConnCompleted = status === "completed";
+  const connector = renderConnector(variant, status === "completed");
 
   return (
     <>
-      {showConnectorBefore && variant === "ascii" && (
-        <li role="presentation" aria-hidden="true" className="inline-flex items-center">
-          <span
-            data-completed={status === "completed" ? "true" : undefined}
-            className={horizontalStepperConnectorClass}
-          >
-            ───
-          </span>
-        </li>
-      )}
-      {showConnectorBefore && variant === "breadcrumb" && (
-        <li role="presentation" aria-hidden="true" className="inline-flex items-center">
-          <span className={horizontalStepperBreadcrumbSeparatorClass}>/</span>
+      {showConnectorBefore && connector !== null && (
+        <li
+          role="presentation"
+          aria-hidden="true"
+          className={cn(
+            horizontalStepperConnectorItemClass,
+            horizontalStepperConnectorDisplayClass(compact),
+          )}
+        >
+          {connector}
         </li>
       )}
       <li
-        aria-current={status === "active" ? "step" : undefined}
+        aria-current={isActive ? "step" : undefined}
         data-status={status}
-        data-conn-completed={isConnCompleted ? "true" : undefined}
-        className={cn(horizontalStepperStepVariants({ variant }), className)}
+        className={cn(
+          horizontalStepperStepVariants({ variant }),
+          // Both compact branches are written out in full here and on the label below.
+          // Tailwind scans the built JS for complete class strings (the @source globs in
+          // libs/ui/styles/sources.css), so a class assembled by interpolating
+          // `@max-xl/horizontal-stepper:` onto a variable ships only the bare prefix and
+          // no utility is ever emitted. The trailing space keeps the next step's `[ ]` off
+          // the last word of the active label once the connectors are gone.
+          isActive && (compact ? "pe-1.5" : "@max-xl/horizontal-stepper:pe-1.5"),
+          !isActive && horizontalStepperTextOnlyCollapseClass,
+          className,
+        )}
       >
         {glyph !== null && (
-          <span className={cn(horizontalStepperGlyphVariants({ variant, status }))}>
+          <span
+            className={cn(
+              horizontalStepperGlyphVariants({ variant, status }),
+              horizontalStepperTextOnlyCollapseClass,
+            )}
+          >
             <span className="sr-only">{SR_LABEL[status]}</span>
             {glyph}
           </span>
         )}
-        <span className={cn(horizontalStepperLabelVariants({ variant, status }))}>
+        <span
+          className={cn(
+            horizontalStepperLabelVariants({ variant, status }),
+            // `sr-only` rather than `hidden`: the collapsed label leaves the layout but stays
+            // in the accessibility tree, so every step is still announced.
+            !isActive && (compact ? "sr-only" : "@max-xl/horizontal-stepper:sr-only"),
+          )}
+        >
           {glyph === null && <span className="sr-only">{SR_LABEL[status]}</span>}
+          {isActive && (
+            // Position is already conveyed by the list and aria-current; this prefix is the
+            // visual stand-in for the labels the compact treatment hides.
+            <span
+              aria-hidden="true"
+              className={cn(
+                horizontalStepperCounterClass,
+                horizontalStepperCounterVisibilityClass(compact),
+              )}
+            >
+              Step {index + 1}/{total} ·
+            </span>
+          )}
           {children}
         </span>
       </li>
@@ -87,15 +119,31 @@ export function HorizontalStepperStep({ value, children, className }: Horizontal
   );
 }
 
-function renderGlyph(
-  variant: "ascii" | "numbered" | "breadcrumb",
-  status: HorizontalStepStatus,
-): ReactNode {
+function renderConnector(variant: HorizontalStepperVariant, isCompleted: boolean): ReactNode {
+  if (variant === "ascii") {
+    return (
+      <span
+        className={cn(
+          horizontalStepperConnectorClass,
+          isCompleted && horizontalStepperCompletedConnectorClass,
+        )}
+      >
+        ───
+      </span>
+    );
+  }
+  if (variant === "breadcrumb") {
+    return <span className={horizontalStepperBreadcrumbSeparatorClass}>/</span>;
+  }
+  // Numbered draws its connector as a ::before segment on the step itself.
+  return null;
+}
+
+function renderGlyph(variant: HorizontalStepperVariant, status: HorizontalStepStatus): ReactNode {
   if (variant === "numbered") {
     if (status === "completed") return "✓";
     return <span data-counter aria-hidden="true" />;
   }
   if (variant === "breadcrumb" && status === "pending") return null;
-  const glyph = HORIZONTAL_STEP_INDICATOR_GLYPHS[variant][status];
-  return glyph || null;
+  return HORIZONTAL_STEP_INDICATOR_GLYPHS[variant][status];
 }

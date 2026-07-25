@@ -5,12 +5,16 @@ import { cn } from "@/lib/utils";
 /** Allowed status indicator status values. */
 export type StatusIndicatorStatus = "online" | "offline" | "busy";
 
-/** Class variants for status indicator dot. */
-export const statusIndicatorDotVariants = cva("inline-block h-1.5 w-1.5 shrink-0 rounded-full", {
+/**
+ * Class variants for the status marker. Each status carries its own shape so the states stay
+ * distinguishable without color: filled circle (online), filled square (busy), hollow circle
+ * (offline).
+ */
+export const statusIndicatorDotVariants = cva("inline-block size-2 shrink-0", {
   variants: {
     status: {
-      online: "bg-primary",
-      offline: "bg-muted-foreground",
+      online: "rounded-full bg-success",
+      offline: "rounded-full border border-muted-foreground",
       busy: "bg-warning",
     },
     pulse: {
@@ -31,7 +35,7 @@ export const statusIndicatorDotVariants = cva("inline-block h-1.5 w-1.5 shrink-0
 export interface StatusIndicatorProps
   extends ComponentProps<"span">,
     Omit<VariantProps<typeof statusIndicatorDotVariants>, "status" | "pulse"> {
-  /** Semantic status. Drives the dot color and the default sr-only status word. */
+  /** Semantic status. Drives the dot shape and color and the default sr-only status word. */
   status?: StatusIndicatorStatus;
   /** Animate the dot. Only the online status animates; busy and offline never pulse. */
   pulse?: boolean;
@@ -43,7 +47,7 @@ export interface StatusIndicatorProps
   label?: string | null;
 }
 
-/** Inline status row: pulsing dot (optional) plus children label text. */
+/** Inline status row: pulsing status marker (optional) plus children label text. */
 export function StatusIndicator({
   ref,
   className,

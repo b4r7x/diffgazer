@@ -89,8 +89,7 @@ export function listPackageJsonFiles(rootDir = process.cwd()) {
 function commandOutputsFor(rootDir, overrides = {}) {
   return {
     gitLsFilesStaged: overrides.gitLsFilesStaged ?? runGitLsFilesStaged(rootDir),
-    gitLsFilesEnvExamples:
-      overrides.gitLsFilesEnvExamples ?? runGitLsFilesEnvExamples(rootDir),
+    gitLsFilesEnvExamples: overrides.gitLsFilesEnvExamples ?? runGitLsFilesEnvExamples(rootDir),
     nestedRepoConfig: overrides.nestedRepoConfig ?? readNestedRepoConfig(rootDir),
     nestedGitDirs:
       overrides.nestedGitDirs ??

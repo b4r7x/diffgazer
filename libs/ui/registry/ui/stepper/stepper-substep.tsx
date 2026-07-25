@@ -74,7 +74,11 @@ export function StepperSubstep({
   const statusText = detail ?? statusLabels?.[status];
 
   return (
-    <div {...props} className={cn(substepVariants({ status }), className)}>
+    <div
+      {...props}
+      data-slot="stepper-substep"
+      className={cn(substepVariants({ status }), className)}
+    >
       <Badge
         variant={SUBSTEP_STATUS_BADGE_VARIANTS[status]}
         size="sm"

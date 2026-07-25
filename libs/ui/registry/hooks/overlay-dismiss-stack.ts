@@ -57,6 +57,7 @@ export type EscapeKeyLayerHandle = {
 
 export const DEFAULT_OVERLAY_PRIORITY = 1;
 const CLICK_SWALLOW_TIMEOUT_MS = 750;
+const TOUCH_FALLBACK_DEDUPE_MS = 750;
 const DOCUMENT_POINTER_LISTENER_OPTIONS: AddEventListenerOptions = { capture: true };
 const outsideClickEntries: OutsideClickEntry[] = [];
 const escapeKeyEntries: EscapeKeyEntry[] = [];
@@ -182,7 +183,7 @@ function isDuplicateTouchFallback(event: Event): boolean {
   const isDuplicate =
     event.type === "mousedown" &&
     lastTouchTarget === event.target &&
-    Date.now() - lastTouchTime < 750;
+    Date.now() - lastTouchTime < TOUCH_FALLBACK_DEDUPE_MS;
   if (isDuplicate) lastTouchTarget = null;
   return isDuplicate;
 }

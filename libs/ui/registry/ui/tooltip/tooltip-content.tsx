@@ -21,10 +21,10 @@ export function TooltipContent({
       align={align}
       sideOffset={sideOffset}
       data-slot="tooltip-content"
-      className={cn(
-        "max-w-xs border border-border bg-background px-2 py-1 font-mono text-xs text-foreground shadow-md",
-        className,
-      )}
+      // Surface (border, --surface-1 fill, highlight lip, radius) comes from
+      // PopoverContent; the tooltip only adds its own width, padding, and type.
+      // No drop shadow: the hairline plus the surface step carry the edge.
+      className={cn("max-w-xs px-2 py-1 font-mono text-xs text-foreground", className)}
       {...rest}
     >
       {children}

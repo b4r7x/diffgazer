@@ -2,10 +2,7 @@
 
 import { type RefObject, useState } from "react";
 import { containsActiveElement } from "../../dom/focusable.js";
-import {
-  getFocusedNavigationValue,
-  getNavigationItems,
-} from "../../dom/navigation-items.js";
+import { getFocusedNavigationValue, getNavigationItems } from "../../dom/navigation-items.js";
 import type { NavigationRole, UseNavigationOptions } from "../use-navigation.js";
 
 export type UseNavigationCoreOptions<TValue extends string = string> = Omit<

@@ -15,7 +15,7 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
 
   return (
     <div className="mb-8">
-      <SectionHeader variant="muted" bordered>
+      <SectionHeader variant="muted" bordered className="mb-2">
         Context Snapshot
       </SectionHeader>
       <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">

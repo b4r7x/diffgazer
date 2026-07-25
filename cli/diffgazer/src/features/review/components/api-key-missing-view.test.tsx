@@ -6,8 +6,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { NavigationProvider } from "../../../app/providers/navigation-provider";
+import { NavigationProvider } from "../../../app/providers/navigation";
 import { useConfigGuard } from "../../../app/use-config-guard";
+import { flush } from "../../../testing/flush";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ApiKeyMissingView } from "./api-key-missing-view";
@@ -19,12 +20,6 @@ const ESCAPE = "\u001b";
 afterEach(() => {
   cleanup();
 });
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 function ConfigGuardProbe() {
   const state = useConfigGuard();

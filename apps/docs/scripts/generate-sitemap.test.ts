@@ -1,12 +1,9 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getPreRenderPages, resolveGeneratorOutputDir, resolveOrigin } from "./generate-sitemap.ts";
 
-const PAGER_EXAMPLES = [
-  "../../../libs/ui/registry/examples/pager/pager-default.tsx",
-  "../../../libs/ui/registry/examples/pager/pager-single.tsx",
-];
+const PAGER_EXAMPLES_DIR = resolve(import.meta.dirname, "../../../libs/ui/registry/examples/pager");
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -152,18 +149,16 @@ describe("getPreRenderPages", () => {
 
   it("keeps every Pager example href on a prerendered route", () => {
     const prerenderedPaths = new Set(getPreRenderPages().map((page) => page.path));
-    const hrefs = PAGER_EXAMPLES.flatMap((relativePath) => {
-      const source = readFileSync(resolve(import.meta.dirname, relativePath), "utf-8");
+    const exampleFiles = readdirSync(PAGER_EXAMPLES_DIR).filter((file) => file.endsWith(".tsx"));
+    const hrefs = exampleFiles.flatMap((file) => {
+      const source = readFileSync(join(PAGER_EXAMPLES_DIR, file), "utf-8");
       return [...source.matchAll(/href="([^"]+)"/g)]
         .map((match) => match[1])
         .filter((href): href is string => href !== undefined);
     });
 
-    expect(hrefs).toEqual([
-      "/ui/components/button",
-      "/ui/components/checkbox",
-      "/ui/getting-started",
-    ]);
+    expect(exampleFiles.length, "expected Pager examples to scan").toBeGreaterThan(0);
+    expect(hrefs.length, "expected Pager examples to link somewhere").toBeGreaterThan(0);
     for (const href of hrefs) expect(prerenderedPaths.has(href)).toBe(true);
   });
 });

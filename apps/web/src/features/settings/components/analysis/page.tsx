@@ -77,7 +77,7 @@ export function SettingsAnalysisPage() {
         </output>
       </div>
       {error && (
-        <Callout tone="error" live className="text-sm">
+        <Callout tone="error" live>
           <Callout.Content>{error}</Callout.Content>
         </Callout>
       )}

@@ -14,6 +14,7 @@ export const textareaDoc: ComponentDoc = {
   examples: [
     { name: "textarea-default", title: "Default" },
     { name: "textarea-variants", title: "Variants" },
+    { name: "textarea-focus", title: "Focus" },
   ],
   keyboard: null,
   props: {
@@ -23,7 +24,7 @@ export const textareaDoc: ComponentDoc = {
         required: false,
         defaultValue: '"md"',
         description:
-          "Padding and font-size token. Every size shares the same h-auto min-h-20 resize-y resizable baseline.",
+          "Padding, font-size, and min-height token. Every size stays vertically resizable.",
       },
       "aria-invalid": {
         type: 'boolean | "true" | "false" | "grammar" | "spelling"',

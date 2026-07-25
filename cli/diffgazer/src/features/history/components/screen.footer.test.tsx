@@ -6,6 +6,7 @@ import { NavigationContext } from "../../../hooks/use-navigation";
 import { buildResponsiveResult, getBreakpointTier } from "../../../lib/breakpoints";
 import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
+import { makeHistoryScreenState } from "../testing/history-screen-state";
 import { HistoryScreen } from "./screen";
 
 const useHistoryScreenStateMock = vi.hoisted(() => vi.fn());
@@ -67,34 +68,7 @@ function setHistoryQuery(reviewsQuery: {
   isLoading: boolean;
   error: Error | null;
 }) {
-  useHistoryScreenStateMock.mockReturnValue({
-    reviewsQuery,
-    reviewDetailQuery: {
-      isLoading: false,
-      isError: false,
-      error: null,
-      refetch: vi.fn(),
-    },
-    reviews: [],
-    timelineItems: [],
-    selectedDateId: "all",
-    setSelectedDateId: vi.fn(),
-    searchQuery: "",
-    setSearchQuery: vi.fn(),
-    mappedRuns: [],
-    selectedRunId: null,
-    setSelectedRunId: vi.fn(),
-    selectedRun: null,
-    severityCounts: null,
-    sortedIssues: [],
-    duration: "",
-    hasReviews: false,
-    hasSearchQuery: false,
-    emptyRunsMessage: "No runs yet",
-    hasMoreReviews: false,
-    isLoadingMoreReviews: false,
-    loadMoreReviews: vi.fn(),
-  });
+  useHistoryScreenStateMock.mockReturnValue(makeHistoryScreenState({ reviewsQuery }));
 }
 
 beforeEach(() => {
@@ -125,45 +99,27 @@ describe("HistoryScreen footer", () => {
     Object.assign(terminalSize, SUPPORT_FLOOR);
     const setSearchQuery = vi.fn();
     const setSelectedDateId = vi.fn();
-    useHistoryScreenStateMock.mockReturnValue({
-      reviewsQuery: { data: { reviews: [] }, isLoading: false, error: null },
-      reviewDetailQuery: {
-        isLoading: false,
-        isError: false,
-        error: null,
-        refetch: vi.fn(),
-      },
-      reviews: [],
-      timelineItems: [
-        { id: "all", label: "All", count: 1 },
-        { id: "today", label: "Today", count: 1 },
-      ],
-      selectedDateId: "all",
-      setSelectedDateId,
-      searchQuery: "",
-      setSearchQuery,
-      mappedRuns: [
-        {
-          id: "history-review-1",
-          displayId: "#hist",
-          branch: "main",
-          timestamp: "now",
-          summary: "First run",
-        },
-      ],
-      selectedRunId: "history-review-1",
-      setSelectedRunId: vi.fn(),
-      selectedRun: null,
-      severityCounts: null,
-      sortedIssues: [],
-      duration: "",
-      hasReviews: true,
-      hasSearchQuery: false,
-      emptyRunsMessage: "No runs yet",
-      hasMoreReviews: false,
-      isLoadingMoreReviews: false,
-      loadMoreReviews: vi.fn(),
-    });
+    useHistoryScreenStateMock.mockReturnValue(
+      makeHistoryScreenState({
+        timelineItems: [
+          { id: "all", label: "All", count: 1 },
+          { id: "today", label: "Today", count: 1 },
+        ],
+        setSelectedDateId,
+        setSearchQuery,
+        mappedRuns: [
+          {
+            id: "history-review-1",
+            displayId: "#hist",
+            branch: "main",
+            timestamp: "now",
+            summary: "First run",
+          },
+        ],
+        selectedRunId: "history-review-1",
+        hasReviews: true,
+      }),
+    );
     const view = renderHistoryScreenWithFooter();
     expect(view.lastFrame()).toContain("RUNS");
     expect((view.lastFrame() ?? "").split("\n").length).toBeLessThanOrEqual(SUPPORT_FLOOR.rows);

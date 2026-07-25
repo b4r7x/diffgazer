@@ -12,6 +12,12 @@ export function getBreakpointTier(columns: number): BreakpointTier {
   return "wide";
 }
 
+const COMPACT_HEIGHT_MAX_ROWS = 24;
+
+export function isCompactHeight(rows: number): boolean {
+  return rows <= COMPACT_HEIGHT_MAX_ROWS;
+}
+
 export interface ResponsiveResult {
   tier: BreakpointTier;
   isNarrow: boolean;

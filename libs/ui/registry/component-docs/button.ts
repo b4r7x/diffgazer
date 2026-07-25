@@ -1,8 +1,23 @@
 import type { ComponentDoc } from "./types";
 
 export const buttonDoc: ComponentDoc = {
-  description: "Terminal-inspired button with bracket notation and 8 variants.",
+  description: "Terminal-inspired button with bracket notation and 7 variants.",
   notes: [
+    {
+      title: "One Filled Voice",
+      content:
+        "Only the primary variant is filled, and it paints the --action / --action-foreground pair. Semantic intents stay outlined — success and destructive carry meaning through colour, priority through fill — so the variant set keeps one filled voice per screen while success and destructive stay recognisable by hue alone.",
+    },
+    {
+      title: "--action, not --primary",
+      content:
+        "The filled variant paints --action / --action-foreground, the call-to-action pair, and not --primary. They are different roles that happen to coincide in dark: --primary is monochrome emphasis (filled progress, completed steps, checked indicators) and stays mono in both themes; --action is the one place per screen a theme is allowed to spend chroma, so the light palette resolves it to the accent violet while dark keeps it white. A button that reads --primary would lose that distinction in light and turn every filled control into a call to action.",
+    },
+    {
+      title: "Disabled Primary",
+      content:
+        "Disabled and loading primaries drop the --action fill for a dashed border and a --muted-foreground label rather than fading it. Fading a filled button drags its label toward the page background with it and the pair falls under 4.5:1; emptying the fill leaves the label on the ambient surface, where it keeps its own contrast in both themes, and the dashed edge matches the treatment disabled inputs already use.",
+    },
     {
       title: "Bracket Mode",
       content:
@@ -22,9 +37,9 @@ export const buttonDoc: ComponentDoc = {
   anatomy: [{ name: "Button", indent: 0, note: "Root button element" }],
   usage: { example: "button-default" },
   examples: [
-    { name: "button-default", title: "Default" },
     { name: "button-variants", title: "Variants" },
     { name: "button-states", title: "States" },
+    { name: "button-highlighted", title: "Highlighted (collection focus)" },
     { name: "button-link", title: "Link (as anchor)" },
     { name: "button-render-prop", title: "Render-Prop" },
   ],
@@ -40,7 +55,7 @@ export const buttonDoc: ComponentDoc = {
   props: {
     Button: {
       variant: {
-        type: '"primary" | "secondary" | "destructive" | "success" | "ghost" | "outline" | "link" | "action"',
+        type: '"primary" | "secondary" | "destructive" | "success" | "ghost" | "outline" | "link"',
         required: false,
         defaultValue: '"primary"',
         description: "Visual style of the button.",

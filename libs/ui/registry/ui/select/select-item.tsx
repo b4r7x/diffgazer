@@ -22,10 +22,12 @@ const selectItemVariants = cva(
   {
     variants: {
       state: {
-        default: "text-foreground/60",
+        // Passive hover on the non-highlighted rows: pointer feedback without
+        // moving the keyboard highlight.
+        default: "text-foreground/60 hover:bg-secondary/50",
         highlighted: "bg-secondary text-foreground",
         selected: "bg-foreground text-background font-medium",
-        selectedMulti: "text-foreground",
+        selectedMulti: "text-foreground hover:bg-secondary/50",
         selectedMultiHighlighted: "bg-secondary text-foreground",
       },
       variant: {
@@ -43,7 +45,7 @@ const selectItemVariants = cva(
       {
         variant: "card",
         state: ["selected", "selectedMultiHighlighted"],
-        className: "bg-muted-foreground text-background font-medium",
+        className: "bg-foreground text-background font-medium",
       },
     ],
     defaultVariants: { state: "default", variant: "default" },

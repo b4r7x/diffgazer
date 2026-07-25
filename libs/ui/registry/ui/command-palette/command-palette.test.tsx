@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { createRef, StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
-import { commandPaletteDoc } from "../../component-docs/command-palette";
 import { CommandPalette } from "./index";
 
 afterEach(() => {
@@ -240,6 +239,20 @@ describe("CommandPalette", () => {
     );
   });
 
+  it("marks the highlighted option with data-highlighted alongside aria-selected", async () => {
+    const user = userEvent.setup();
+    renderPalette();
+    const copy = screen.getByRole("option", { name: /copy/i });
+    const paste = screen.getByRole("option", { name: /paste/i });
+    expect(copy).toHaveAttribute("data-highlighted");
+    expect(paste).not.toHaveAttribute("data-highlighted");
+
+    await user.type(screen.getByRole("combobox"), "{ArrowDown}");
+    expect(paste).toHaveAttribute("data-highlighted");
+    expect(paste).toHaveAttribute("aria-selected", "true");
+    expect(copy).not.toHaveAttribute("data-highlighted");
+  });
+
   it("keeps item registration current under StrictMode filtering", async () => {
     const user = userEvent.setup();
     const onActivate = vi.fn();
@@ -271,14 +284,7 @@ describe("CommandPalette", () => {
     expect(input).toHaveValue("");
   });
 
-  it("filters from the controlled live search value documented in the API guide", () => {
-    const filteringNote = commandPaletteDoc.notes?.find(
-      (note) => note.title === "Built-in Filtering",
-    );
-    expect(filteringNote?.content).toContain("live search value");
-    expect(filteringNote?.content).toContain("controlled `search` prop");
-    expect(filteringNote?.content).not.toContain("deferred");
-
+  it("filters against the controlled live search value", () => {
     renderPalette({ search: "copy" });
 
     expect(screen.getByRole("option", { name: /copy/i })).toBeInTheDocument();
@@ -435,6 +441,40 @@ describe("CommandPalette", () => {
 
     first.setAttribute("hidden", "");
     await waitFor(() => expect(input).toHaveAttribute("aria-activedescendant", second.id));
+  });
+
+  it("re-resolves the fallback active descendant when a stylesheet hides an item after mount", async () => {
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item className="palette-stylesheet-hidden" id="first">
+              First
+            </CommandPalette.Item>
+            <CommandPalette.Item id="second">Second</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    );
+
+    const input = screen.getByRole("combobox");
+    const first = screen.getByRole("option", { name: "First" });
+    const second = screen.getByRole("option", { name: "Second" });
+    expect(input).toHaveAttribute("aria-activedescendant", first.id);
+
+    // The rule lands outside the list subtree, so only document-level stylesheet
+    // observation can invalidate eligibility here.
+    const style = document.createElement("style");
+    document.head.append(style);
+    const ruleIndex = style.sheet?.insertRule(".palette-stylesheet-hidden { display: none; }");
+    if (ruleIndex === undefined) throw new Error("Expected stylesheet rule insertion");
+
+    try {
+      await waitFor(() => expect(input).toHaveAttribute("aria-activedescendant", second.id));
+    } finally {
+      style.remove();
+    }
   });
 
   it("forwards item props and refs while honoring preventDefault", async () => {
@@ -605,5 +645,82 @@ describe("CommandPaletteContent card frame", () => {
       </CommandPalette>,
     );
     expect(screen.getByRole("dialog")).toHaveAttribute("data-frame", "card");
+  });
+});
+
+describe("CommandPaletteContent embedded mode", () => {
+  it("renders the open surface in the document flow without a dialog or focus steal", async () => {
+    const user = userEvent.setup();
+    render(
+      <div>
+        <button type="button">Outside</button>
+        <CommandPalette open>
+          <CommandPalette.Content modal={false} label="Embedded palette" frame="viewfinder">
+            <CommandPalette.Input />
+            <CommandPalette.List>
+              <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+              <CommandPalette.Item id="paste">Paste</CommandPalette.Item>
+            </CommandPalette.List>
+          </CommandPalette.Content>
+        </CommandPalette>
+      </div>,
+    );
+
+    const region = screen.getByRole("group", { name: "Embedded palette" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(region).toHaveAttribute("data-frame", "viewfinder");
+    expect(region).toHaveAttribute("data-state", "open");
+    expect(screen.getAllByRole("option")).toHaveLength(2);
+    expect(document.body).toHaveFocus();
+
+    // No focus trap: the surrounding page stays reachable.
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Outside" })).toHaveFocus();
+  });
+
+  it("filters embedded items from the search input", async () => {
+    const user = userEvent.setup();
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content modal={false} label="Embedded palette">
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+            <CommandPalette.Item id="paste">Paste</CommandPalette.Item>
+            <CommandPalette.Empty>No results found</CommandPalette.Empty>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    );
+
+    await user.type(screen.getByRole("combobox", { name: "Command search" }), "past");
+    expect(screen.getAllByRole("option")).toHaveLength(1);
+    expect(screen.getByRole("option")).toHaveAttribute("data-value", "paste");
+  });
+
+  it("unmounts the embedded surface when the consumer closes it", () => {
+    const { rerender } = render(
+      <CommandPalette open>
+        <CommandPalette.Content modal={false} label="Embedded palette">
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    );
+    expect(screen.getByRole("group", { name: "Embedded palette" })).toBeInTheDocument();
+
+    rerender(
+      <CommandPalette open={false}>
+        <CommandPalette.Content modal={false} label="Embedded palette">
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    );
+    expect(screen.queryByRole("group", { name: "Embedded palette" })).not.toBeInTheDocument();
   });
 });

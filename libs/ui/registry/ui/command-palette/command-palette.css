@@ -37,9 +37,9 @@
     --command-palette-input-py: 12px;
     --command-palette-input-px: 16px;
     --command-palette-list-p: 6px;
-    --command-palette-heading-size: 12px;
-    --command-palette-prefix-size: 14px;
-    --command-palette-text-size: 14px;
+    --command-palette-heading-size: 0.75rem;
+    --command-palette-prefix-size: 0.875rem;
+    --command-palette-text-size: 0.875rem;
   }
 
   /* Density: comfortable */
@@ -50,9 +50,9 @@
     --command-palette-input-py: 16px;
     --command-palette-input-px: 20px;
     --command-palette-list-p: 8px;
-    --command-palette-heading-size: 12px;
-    --command-palette-prefix-size: 15px;
-    --command-palette-text-size: 14px;
+    --command-palette-heading-size: 0.75rem;
+    --command-palette-prefix-size: 0.9375rem;
+    --command-palette-text-size: 0.875rem;
   }
 
   /* Density: dense */
@@ -63,21 +63,26 @@
     --command-palette-input-py: 8px;
     --command-palette-input-px: 12px;
     --command-palette-list-p: 4px;
-    --command-palette-heading-size: 11px;
-    --command-palette-prefix-size: 13px;
-    --command-palette-text-size: 13px;
+    --command-palette-heading-size: 0.6875rem;
+    --command-palette-prefix-size: 0.8125rem;
+    --command-palette-text-size: 0.8125rem;
   }
 
   /* Frame: border (default) — single 1px hairline. */
   [data-slot="command-palette-content"][data-frame="border"] {
     border: 1px solid var(--command-palette-border, var(--border));
-    box-shadow: 0 20px 60px oklch(0% 0 0 / 0.6);
+    box-shadow: var(--command-palette-shadow, var(--shadow-hard));
   }
 
-  /* Frame: viewfinder — no border, four corner brackets. */
+  /* Frame: viewfinder — no border, four corner brackets. Corner geometry reads
+     the shared --viewfinder-* knob (same name in panel, diff-view, dialog). */
   [data-slot="command-palette-content"][data-frame="viewfinder"] {
+    --viewfinder-size: 18px;
+    --viewfinder-weight: 2px;
+    --viewfinder-color: var(--command-palette-fg, var(--foreground));
+    --viewfinder-offset: -1px;
     border: 0;
-    box-shadow: 0 20px 60px oklch(0% 0 0 / 0.6);
+    box-shadow: var(--command-palette-shadow, var(--shadow-hard));
   }
 
   [data-slot="command-palette-content"][data-frame="viewfinder"]::before,
@@ -86,38 +91,38 @@
   [data-slot="command-palette-content"][data-frame="viewfinder"] > .cp-corners::after {
     content: "";
     position: absolute;
-    width: 18px;
-    height: 18px;
-    border: 0 solid var(--command-palette-fg, var(--foreground));
+    width: var(--viewfinder-size);
+    height: var(--viewfinder-size);
+    border: 0 solid var(--viewfinder-color);
     pointer-events: none;
   }
 
   [data-slot="command-palette-content"][data-frame="viewfinder"]::before {
-    top: -1px;
-    left: -1px;
-    border-top-width: 2px;
-    border-left-width: 2px;
+    top: var(--viewfinder-offset);
+    left: var(--viewfinder-offset);
+    border-top-width: var(--viewfinder-weight);
+    border-left-width: var(--viewfinder-weight);
   }
 
   [data-slot="command-palette-content"][data-frame="viewfinder"]::after {
-    top: -1px;
-    right: -1px;
-    border-top-width: 2px;
-    border-right-width: 2px;
+    top: var(--viewfinder-offset);
+    right: var(--viewfinder-offset);
+    border-top-width: var(--viewfinder-weight);
+    border-right-width: var(--viewfinder-weight);
   }
 
   [data-slot="command-palette-content"][data-frame="viewfinder"] > .cp-corners::before {
-    bottom: -1px;
-    left: -1px;
-    border-bottom-width: 2px;
-    border-left-width: 2px;
+    bottom: var(--viewfinder-offset);
+    left: var(--viewfinder-offset);
+    border-bottom-width: var(--viewfinder-weight);
+    border-left-width: var(--viewfinder-weight);
   }
 
   [data-slot="command-palette-content"][data-frame="viewfinder"] > .cp-corners::after {
-    bottom: -1px;
-    right: -1px;
-    border-bottom-width: 2px;
-    border-right-width: 2px;
+    bottom: var(--viewfinder-offset);
+    right: var(--viewfinder-offset);
+    border-bottom-width: var(--viewfinder-weight);
+    border-right-width: var(--viewfinder-weight);
   }
 
   /* Frame: terminal — top + bottom 2px rules, no side borders. */
@@ -125,7 +130,7 @@
     border: 0;
     border-top: 2px solid var(--command-palette-fg, var(--foreground));
     border-bottom: 2px solid var(--command-palette-fg, var(--foreground));
-    box-shadow: 0 20px 60px oklch(0% 0 0 / 0.6);
+    box-shadow: var(--command-palette-shadow, var(--shadow-hard));
     --command-palette-prefix-content: "$";
   }
 
@@ -138,7 +143,7 @@
   /* Frame: card — Linear-ish rounded shell with a subtle gradient surface. */
   [data-slot="command-palette-content"][data-frame="card"] {
     border: 1px solid var(--command-palette-border, var(--border));
-    border-radius: 8px;
+    border-radius: calc(var(--radius) * 2);
     background: linear-gradient(
       140deg,
       color-mix(
@@ -149,14 +154,15 @@
         0%,
       var(--command-palette-bg, var(--background)) 100%
     );
-    box-shadow: 0 30px 80px oklch(0% 0 0 / 0.7);
+    box-shadow: var(--command-palette-shadow, var(--shadow-hard));
     overflow: hidden;
   }
 
-  /* Frame: none — bare. */
+  /* Frame: none — bare. No chrome and no shadow: the embedding surface owns
+     depth, which is the whole point of this frame. */
   [data-slot="command-palette-content"][data-frame="none"] {
     border: 0;
-    box-shadow: 0 20px 60px oklch(0% 0 0 / 0.6);
+    box-shadow: none;
   }
 
   /* Input row */
@@ -204,7 +210,7 @@
     [data-slot="command-palette-group-heading"] {
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    font-size: 11px;
+    font-size: var(--text-2xs);
   }
 
   [data-slot="command-palette-content"][data-frame="terminal"]
@@ -232,22 +238,22 @@
     cursor: not-allowed;
   }
 
-  [data-slot="command-palette-item"][aria-selected="true"] {
+  [data-slot="command-palette-item"][data-highlighted] {
     background: color-mix(in oklab, var(--command-palette-fg, var(--foreground)) 7%, transparent);
     color: var(--command-palette-fg, var(--foreground));
   }
 
-  /* Viewfinder frame replaces the selection tint with a 2px left accent bar
+  /* Viewfinder frame replaces the highlight tint with a 2px left accent bar
      (matches the dialog viewfinder language). Use ::after so it doesn't
      collide with the tone bar at [data-tone]:not([data-tone="neutral"])::before. */
   [data-slot="command-palette-content"][data-frame="viewfinder"]
-    [data-slot="command-palette-item"][aria-selected="true"] {
+    [data-slot="command-palette-item"][data-highlighted] {
     background: transparent;
     font-weight: 500;
   }
 
   [data-slot="command-palette-content"][data-frame="viewfinder"]
-    [data-slot="command-palette-item"][aria-selected="true"]::after {
+    [data-slot="command-palette-item"][data-highlighted]::after {
     content: "";
     position: absolute;
     left: 0;
@@ -258,22 +264,22 @@
     pointer-events: none;
   }
 
-  /* Terminal frame inverts selection (white-on-black). */
+  /* Terminal frame inverts the highlighted row (white-on-black). */
   [data-slot="command-palette-content"][data-frame="terminal"]
-    [data-slot="command-palette-item"][aria-selected="true"] {
+    [data-slot="command-palette-item"][data-highlighted] {
     background: var(--command-palette-fg, var(--foreground));
     color: var(--command-palette-bg, var(--background));
     font-weight: 500;
   }
 
-  /* Card frame: rows float inside the list padding with a rounded selection. */
+  /* Card frame: rows float inside the list padding with a rounded highlight. */
   [data-slot="command-palette-content"][data-frame="card"] [data-slot="command-palette-item"] {
     margin: 0 var(--command-palette-list-p);
-    border-radius: 6px;
+    border-radius: calc(var(--radius) * 1.5);
   }
 
   [data-slot="command-palette-content"][data-frame="card"]
-    [data-slot="command-palette-item"][aria-selected="true"] {
+    [data-slot="command-palette-item"][data-highlighted] {
     background: color-mix(in oklab, var(--command-palette-fg, var(--foreground)) 8%, transparent);
   }
 
@@ -291,7 +297,7 @@
 
   [data-slot="command-palette-item-shortcut"] {
     color: var(--command-palette-muted, var(--muted-foreground));
-    font-size: 11px;
+    font-size: var(--text-2xs);
     flex-shrink: 0;
   }
 
@@ -343,20 +349,19 @@
     color: var(--command-palette-tone-ai, var(--accent));
   }
 
-  /* Under the terminal frame's inverted selection (bg: --command-palette-fg, color: --command-palette-bg)
-     tones lose contrast: in the dark-mode minimal theme several tone tokens
-     resolve to the same color as --foreground (e.g. --success → --base-success
-     → #e5e5e5 = white), which would render the 2px bar and icon invisible
-     against the white selection background. Re-tint both to --command-palette-bg so they
-     remain visible without re-coloring the label. */
+  /* Under the terminal frame's inverted highlight (bg: --command-palette-fg, color: --command-palette-bg)
+     tones lose contrast: a tone token can resolve to the highlight background
+     itself (e.g. the ai tone → --accent → --base-highlight → #ffffff in dark),
+     which would render the 2px bar and icon invisible against it. Re-tint both
+     to --command-palette-bg so they remain visible without re-coloring the label. */
   [data-slot="command-palette-content"][data-frame="terminal"]
-    [data-slot="command-palette-item"][aria-selected="true"]
+    [data-slot="command-palette-item"][data-highlighted]
     [data-slot="command-palette-item-icon"] {
     color: var(--command-palette-bg, var(--background));
   }
 
   [data-slot="command-palette-content"][data-frame="terminal"]
-    [data-slot="command-palette-item"][aria-selected="true"][data-tone]:not(
+    [data-slot="command-palette-item"][data-highlighted][data-tone]:not(
       [data-tone="neutral"]
     )::before {
     background: var(--command-palette-bg, var(--background));
@@ -389,13 +394,13 @@
     padding: 8px 12px;
     border-top: 1px solid
       var(--command-palette-border-soft, color-mix(in oklab, var(--border) 60%, transparent));
-    font-size: 11px;
+    font-size: var(--text-2xs);
     color: var(--command-palette-muted, var(--muted-foreground));
     user-select: none;
   }
 
   [data-slot="command-palette-content"][data-frame="card"] [data-slot="command-palette-footer"] {
-    background: color-mix(in oklab, black 25%, transparent);
+    background: color-mix(in oklab, var(--command-palette-fg, var(--foreground)) 4%, transparent);
     border-top: 1px solid
       color-mix(in oklab, var(--command-palette-fg, var(--foreground)) 8%, transparent);
   }

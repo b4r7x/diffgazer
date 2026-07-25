@@ -25,7 +25,14 @@ export const segmentedContainerVariants = cva("inline-flex font-mono", {
     },
   },
   compoundVariants: [
-    { variant: "underline", orientation: "vertical", className: "gap-1 border-b-0 border-r" },
+    // The vertical rail is the only structure line in a vertical tab list, so
+    // it reads on --border-strong; the horizontal underline sits under dense
+    // triggers and keeps the lighter --border.
+    {
+      variant: "underline",
+      orientation: "vertical",
+      className: "gap-1 border-b-0 border-r border-border-strong",
+    },
     {
       orientation: "horizontal",
       wrapped: true,
@@ -58,7 +65,7 @@ export const segmentedItemVariants = cva(
   [
     "relative inline-flex items-center justify-center whitespace-nowrap font-mono",
     "cursor-pointer select-none bg-transparent transition-colors motion-reduce:transition-none",
-    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
     "disabled:cursor-not-allowed disabled:opacity-50",
     // Tabs emit data-state="active"; ToggleGroup emits data-state="on" — one
     // shared selected-state style reads both per the data-attribute vocabulary.

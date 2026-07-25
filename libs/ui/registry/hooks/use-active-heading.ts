@@ -34,7 +34,7 @@ export interface UseActiveHeadingOptions {
   bottomMargin?: number;
   /** Fraction of the heading height that must cross the activation line before it becomes active. @default 0 */
   threshold?: number;
-  /** When true, the last heading is always activated when the user scrolls to the bottom of the container. @default true */
+  /** When true, the last heading is always activated when the user scrolls to the bottom of the container. Ignored while the container has nothing to scroll. @default true */
   bottomLock?: boolean;
   /** Set to false to disable scroll observation. When disabled, activeId is set to null. @default true */
   enabled?: boolean;
@@ -169,8 +169,12 @@ export function useActiveHeading({
 
     const { top, height, scrollTop, scrollHeight } = getViewportMetrics(doc, container);
     const bottomMarginPx = Math.max(0, bottomMargin) * height;
+    // A container that cannot scroll is trivially "at the bottom". Bottom-lock is a
+    // scrolled-to-the-end rule, so it must not fire on a static pane — otherwise the
+    // last heading is marked active while the reader is looking at the first one.
+    const maxScrollTop = scrollHeight - height;
 
-    if (bottomLock && scrollTop + height >= scrollHeight - 2 - bottomMarginPx) {
+    if (bottomLock && maxScrollTop > 2 && scrollTop >= maxScrollTop - 2 - bottomMarginPx) {
       setActiveId(elements[elements.length - 1]?.id ?? null);
       return;
     }

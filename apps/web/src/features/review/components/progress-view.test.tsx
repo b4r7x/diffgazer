@@ -385,20 +385,20 @@ describe("ReviewProgressView", () => {
 
     const progressPane = screen.getByRole("region", { name: "Progress" });
     const logPane = screen.getByRole("region", { name: "Live Activity Log" });
-    await waitFor(() => expect(progressPane).toHaveAttribute("data-focused"));
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
 
     // Move focus outside both pane containers; document-scope Tab must still cycle.
     (document.activeElement as HTMLElement | null)?.blur();
     expect(document.body).toHaveFocus();
 
     await user.keyboard("{Tab}");
-    await waitFor(() => expect(logPane).toHaveAttribute("data-focused"));
+    await waitFor(() => expect(logPane).toHaveAttribute("data-state", "focused"));
     expect(screen.getByRole("log")).toHaveFocus();
-    expect(progressPane).not.toHaveAttribute("data-focused");
+    expect(progressPane).not.toHaveAttribute("data-state", "focused");
 
     await user.keyboard("{Shift>}{Tab}{/Shift}");
-    await waitFor(() => expect(progressPane).toHaveAttribute("data-focused"));
-    expect(logPane).not.toHaveAttribute("data-focused");
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+    expect(logPane).not.toHaveAttribute("data-state", "focused");
     expect(progressPane.matches(":focus-within")).toBe(true);
   });
 
@@ -412,7 +412,8 @@ describe("ReviewProgressView", () => {
 
     await waitFor(() => expect(screen.getByRole("radio", { name: "All" })).toHaveFocus());
     expect(screen.getByRole("region", { name: "Live Activity Log" })).toHaveAttribute(
-      "data-focused",
+      "data-state",
+      "focused",
     );
   });
 
@@ -428,7 +429,10 @@ describe("ReviewProgressView", () => {
     await user.keyboard("{Tab}");
 
     await waitFor(() =>
-      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute("data-focused"),
+      expect(screen.getByRole("region", { name: "Progress" })).toHaveAttribute(
+        "data-state",
+        "focused",
+      ),
     );
   });
 
@@ -481,11 +485,11 @@ describe("ReviewProgressView", () => {
     renderView();
 
     const logPane = screen.getByRole("region", { name: "Live Activity Log" });
-    expect(logPane).not.toHaveAttribute("data-focused");
+    expect(logPane).not.toHaveAttribute("data-state", "focused");
 
     await user.click(screen.getByRole("radio", { name: "All" }));
 
-    await waitFor(() => expect(logPane).toHaveAttribute("data-focused"));
+    await waitFor(() => expect(logPane).toHaveAttribute("data-state", "focused"));
   });
 
   it("shows agent progress on the dedicated board without duplicating it under the workflow step", () => {

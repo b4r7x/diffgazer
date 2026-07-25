@@ -1,12 +1,10 @@
 export { createBundler } from "./bundler/bundle.js";
 export type { BundleFile, BundleItem, BundleResult, BundlerConfig } from "./bundler/types.js";
-export {
-  createAddCommand,
-  createDiffCommand,
-  createInitCommand,
-  createListCommand,
-  createRemoveCommand,
-} from "./command-factories.js";
+export { createAddCommand } from "./command-factories/add.js";
+export { createDiffCommand } from "./command-factories/diff.js";
+export { createInitCommand } from "./command-factories/init.js";
+export { createListCommand } from "./command-factories/list.js";
+export { createRemoveCommand } from "./command-factories/remove.js";
 export {
   aliasPathSchema,
   type ConfigLoadResult,

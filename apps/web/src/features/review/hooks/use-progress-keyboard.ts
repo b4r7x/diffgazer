@@ -2,6 +2,7 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import { BACK_SHORTCUT, SWITCH_PANE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { useFocusZone, useKey } from "@diffgazer/keys";
 import { useRef } from "react";
+import { isInteractiveTarget } from "@/features/review/lib/interactive-target";
 import { getMainContent } from "@/lib/main-content";
 
 interface UseReviewProgressKeyboardOptions {
@@ -16,17 +17,6 @@ export const REVIEW_PROGRESS_CONTROLS = {
   cancel: { key: "c", label: "Cancel" },
   leave: { key: "Escape", label: "Back" },
 } as const;
-
-// App-specific activatable-target check. Unlike `isEditableElement` from
-// @diffgazer/keys (which only matches text-editable inputs/textareas/contenteditable),
-// this also matches buttons and links, so Enter activates them natively instead
-// of opening results. Focusable pane scroll containers are intentionally not
-// matched: Enter has no native meaning there and the footer advertises
-// "Enter View Results" for the whole screen.
-function isActivatableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return Boolean(target.closest("button,a,input,select,textarea,[role='button']"));
-}
 
 export function useReviewProgressKeyboard({
   onViewResults,
@@ -69,7 +59,7 @@ export function useReviewProgressKeyboard({
   useKey(
     "Enter",
     (event) => {
-      if (isActivatableTarget(event.target)) return;
+      if (isInteractiveTarget(event.target)) return;
       onViewResults?.();
     },
     { enabled: !!onViewResults && !hasError },
@@ -82,7 +72,7 @@ export function useReviewProgressKeyboard({
   useKey(
     REVIEW_PROGRESS_CONTROLS.cancel.key,
     (event) => {
-      if (isActivatableTarget(event.target)) return;
+      if (isInteractiveTarget(event.target)) return;
       onCancel?.();
     },
     { enabled: !!onCancel && !hasError && !cancelDisabled },
@@ -90,7 +80,7 @@ export function useReviewProgressKeyboard({
   useKey(
     "f",
     (event) => {
-      if (isActivatableTarget(event.target)) return;
+      if (isInteractiveTarget(event.target)) return;
       setZone("filters");
     },
     { enabled: !hasError },

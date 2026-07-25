@@ -17,6 +17,7 @@ import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
+import { isCompactHeight } from "../../../lib/breakpoints";
 import { useTheme } from "../../../theme/provider";
 import { getSettingsFooter, useSettingsZone } from "../hooks/use-settings-zone";
 
@@ -93,7 +94,7 @@ function LoadedTrustPermissionsScreen({
       <Box width={Math.min(columns, 72)} flexDirection="column">
         <Panel>
           <Panel.Content>
-            <Box flexDirection="column" gap={rows <= 24 ? 0 : 1}>
+            <Box flexDirection="column" gap={isCompactHeight(rows) ? 0 : 1}>
               <SectionHeader>Trust &amp; Permissions</SectionHeader>
               <TrustPermissionsContent
                 directory={editorInput.repoRoot ?? "Loading..."}
@@ -101,7 +102,7 @@ function LoadedTrustPermissionsScreen({
                 onChange={handleCapabilitiesChange}
                 isTrusted={isTrusted}
                 isActive={isListActive}
-                compact={rows <= 24}
+                compact={isCompactHeight(rows)}
                 onDownBoundary={enterButtons}
               />
               {statusMessage ? (

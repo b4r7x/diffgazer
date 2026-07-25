@@ -1,31 +1,12 @@
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { TrustConfig } from "@diffgazer/core/schemas/config";
 import { describe, expect, it, vi } from "vitest";
 import {
-  catalog,
-  configPath,
   diffgazerHome,
-  expectFileMissingEventually,
-  fsHooks,
-  keyring,
   loadStore,
-  loadStoreFactory,
   readJson,
-  readJsonEventually,
-  secretsPath,
-  secretsRecoveryPath,
   trustConfig,
   trustPath,
-  writeJson,
 } from "./store.test-support.js";
 
 describe("config store", () => {

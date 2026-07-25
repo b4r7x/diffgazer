@@ -3,6 +3,7 @@ import { makeReviewMetadata } from "@diffgazer/core/testing/factories";
 import { cleanup, render } from "ink-testing-library";
 import { useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
 import { RunsList } from "./runs-list";
 
@@ -120,6 +121,36 @@ describe("RunsList", () => {
     expect(bottomRows.length).toBeLessThanOrEqual(6);
   });
 
+  test("spends rows on runs instead of scroll carets that never render", () => {
+    const runs = Array.from({ length: 2 }, (_, index) => ({
+      id: `run-${index}`,
+      displayId: `#000${index}`,
+      branch: `branch-${index}`,
+      timestamp: `${index}:00`,
+      summary: `Summary ${index}`,
+    }));
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <RunsList
+          runs={runs}
+          selectedId={runs[0]?.id ?? null}
+          onSelect={vi.fn()}
+          emptyMessage="No runs"
+          height={6}
+          width={32}
+        />
+      </CliThemeProvider>,
+    );
+
+    // Both runs fit in the four content rows history gives this pane, so the
+    // list must not reserve caret rows it has nothing to draw in.
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("#0000");
+    expect(frame).toContain("#0001");
+    expect(frame).not.toContain("▼");
+    expect(frame).not.toContain("▲");
+  });
+
   test("shows the older-runs shortcut while another cursor page is available", () => {
     const run = buildHistoryRunSummary(makeReviewMetadata());
     const { lastFrame } = render(
@@ -222,9 +253,3 @@ describe("RunsList", () => {
     expect(lines[0]?.length).toBeLessThanOrEqual(25);
   });
 });
-
-async function flush(times = 4): Promise<void> {
-  for (let index = 0; index < times; index += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}

@@ -15,6 +15,8 @@ interface HomeMenuProps {
   pending?: boolean;
 }
 
+const MENU_TITLE_ID = "home-main-menu-title";
+
 export function HomeMenu({
   highlighted,
   onHighlightChange,
@@ -27,21 +29,23 @@ export function HomeMenu({
   const annotated = withGroupDividers(items);
 
   return (
-    <Panel className="w-full max-w-md lg:w-1/2 lg:max-w-lg h-fit flex flex-col">
-      <Panel.Header marker="none">
-        <Panel.Title
-          id="home-main-menu-title"
-          className="text-xs uppercase tracking-widest text-muted text-center w-full font-normal"
-        >
-          Main Menu
-        </Panel.Title>
-      </Panel.Header>
+    // The menu is the pane the arrow keys drive, so it carries the focused
+    // affordance while the read-only context panel stays at rest.
+    <Panel
+      frame="viewfinder"
+      focused
+      aria-labelledby={MENU_TITLE_ID}
+      className="flex w-full min-w-0 flex-col lg:flex-1"
+    >
+      <Panel.Label>
+        <h2 id={MENU_TITLE_ID}>Main Menu</h2>
+      </Panel.Label>
       <div className="flex flex-col py-2">
         <Menu
           highlighted={highlighted}
           onHighlightChange={onHighlightChange}
           onSelect={onSelect}
-          aria-labelledby="home-main-menu-title"
+          aria-labelledby={MENU_TITLE_ID}
           autoFocus
         >
           {annotated.map(({ item, showDividerBefore }) => {
@@ -50,7 +54,12 @@ export function HomeMenu({
             return (
               <Fragment key={item.id}>
                 {showDividerBefore && <MenuDivider />}
-                <MenuItem id={item.id} disabled={disabled} variant={item.variant}>
+                <MenuItem
+                  id={item.id}
+                  disabled={disabled}
+                  variant={item.variant}
+                  hotkey={item.shortcut}
+                >
                   {item.label}
                 </MenuItem>
               </Fragment>
@@ -58,7 +67,9 @@ export function HomeMenu({
           })}
         </Menu>
         {pending && (
-          <Spinner className="text-muted-foreground justify-center pt-2">Starting review…</Spinner>
+          <Spinner variant="braille" className="text-muted-foreground justify-center pt-2">
+            Starting review…
+          </Spinner>
         )}
       </div>
     </Panel>

@@ -55,7 +55,7 @@ export default function FloatingPanelCustomMenuExample() {
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((value) => !value)}
-        className="border border-foreground/30 px-3 py-1 font-mono text-sm"
+        className="border border-foreground/30 px-3 py-1 font-mono text-sm focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
       >
         actions
       </button>
@@ -68,7 +68,7 @@ export default function FloatingPanelCustomMenuExample() {
         id={menuId}
         sideOffset={4}
         onKeyDown={handleMenuKeyDown}
-        className="min-w-[10rem] border border-border bg-background py-1 font-mono text-xs text-foreground shadow-md"
+        className="min-w-[10rem] rounded-sm border border-border bg-background px-1 py-1 font-mono text-xs text-foreground"
       >
         <MenuItems onSelect={close} />
       </FloatingPanel>
@@ -93,7 +93,7 @@ function MenuItems({ onSelect }: { onSelect: () => void }) {
             type="button"
             role="menuitem"
             onClick={onSelect}
-            className="flex w-full items-center px-2 py-1 text-left hover:bg-muted"
+            className="flex w-full items-center px-2 py-1 text-left hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
           >
             {item}
           </button>

@@ -7,7 +7,7 @@ import { hasRenderableContent, useFieldContext } from "./field-context";
 export interface FieldDescriptionProps extends ComponentProps<"p"> {}
 
 export function FieldDescription({ className, children, ref, ...props }: FieldDescriptionProps) {
-  const { defaultDescriptionId, registerSlot, unregisterSlot } =
+  const { defaultDescriptionId, disabled, registerSlot, unregisterSlot } =
     useFieldContext("Field.Description");
   const hasChildren = hasRenderableContent(children);
   const resolvedId = props.id ?? defaultDescriptionId;
@@ -25,7 +25,7 @@ export function FieldDescription({ className, children, ref, ...props }: FieldDe
       ref={ref}
       id={resolvedId}
       data-slot="field-description"
-      className={cn("text-xs text-muted-foreground", className)}
+      className={cn("text-xs text-muted-foreground", disabled && "opacity-50", className)}
     >
       {children}
     </p>

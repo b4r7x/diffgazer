@@ -9,7 +9,6 @@ import {
   type ReactNode,
   type Ref,
   useCallback,
-  useEffect,
   useId,
   useMemo,
   useRef,
@@ -17,14 +16,14 @@ import {
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
-import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
+import { isAriaInvalid, mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
 import {
   getEnabledSelectableCollectionItems,
-  resolveSelectableCollectionItem,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
-import { type SelectableVariant, selectableLabelVariants } from "@/lib/selectable-variants";
+import { useSelectableGroupAutoFocus } from "@/lib/selectable-group";
+import { type SelectableVariant, selectableGroupLabelVariants } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
 import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import type { RadioSize } from "./radio";
@@ -181,7 +180,6 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
   const composedRef = useComposedRefs(containerRef, ref);
   const generatedId = useId();
   const labelId = `${generatedId}-label`;
-  const hasAutoFocusedRef = useRef(false);
   const fieldsetDisabled = useFieldsetDisabled(containerRef);
   const isDisabled = disabled || fieldsetDisabled;
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
@@ -251,6 +249,10 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
   const resolvedAriaLabelledBy = ariaLabel
     ? undefined
     : mergeIds(ariaLabelledBy, label ? labelId : undefined);
+  const resolvedAriaInvalid = resolveAriaInvalid(
+    ariaInvalid,
+    effectiveRequired && requiredInvalid && validSelectedValue === null,
+  );
 
   const { tabTargetValue, handleKeyDown } = useRadioGroupNavigation<TValue>({
     containerRef,
@@ -273,29 +275,15 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     handleValueChange,
   });
 
-  useEffect(() => {
-    if (!autoFocus || !keyboardNavigation || isDisabled) {
-      hasAutoFocusedRef.current = false;
-      return;
-    }
-    if (hasAutoFocusedRef.current) return;
-
-    const activeItems = getEnabledSelectableCollectionItems(items, isDisabled);
-    const target = resolveSelectableCollectionItem(activeItems, highlightedValue, value);
-    if (!target?.element) return;
-
-    target.element.focus();
-    setHighlightedValue(target.value);
-    hasAutoFocusedRef.current = true;
-  }, [
+  useSelectableGroupAutoFocus({
     autoFocus,
     keyboardNavigation,
-    isDisabled,
+    disabled: isDisabled,
     items,
     highlightedValue,
-    value,
+    selectedValue: value,
     setHighlightedValue,
-  ]);
+  });
 
   const contextValue: RadioGroupContextValue = useMemo(
     () => ({
@@ -332,60 +320,61 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
 
   return (
     <RadioGroupContext value={contextValue}>
-      {label && (
+      {/* Single wrapper so the visible label always stacks above the options,
+          including when the group is dropped into a flex-row parent. */}
+      <div data-slot="radio-group-root" className="flex flex-col gap-2">
+        {label && (
+          <div
+            id={labelId}
+            data-slot="radio-group-label"
+            className={selectableGroupLabelVariants({
+              invalid: isAriaInvalid(resolvedAriaInvalid),
+              size,
+            })}
+          >
+            {label}
+          </div>
+        )}
+        {effectiveRequired && !name && (
+          <input
+            ref={validationInputRef}
+            type="checkbox"
+            data-slot="radio-group-validation"
+            required
+            checked={validSelectedValue !== null}
+            disabled={isDisabled}
+            tabIndex={-1}
+            aria-hidden={true}
+            className="sr-only"
+            onChange={() => {}}
+            onInvalid={(event) => {
+              event.preventDefault();
+              handleRequiredInvalid();
+              enabledItems[0]?.element?.focus();
+            }}
+          />
+        )}
         <div
-          id={labelId}
-          data-slot="radio-group-label"
+          {...rootProps}
+          ref={composedRef}
+          role="radiogroup"
+          data-slot="radio-group"
+          data-diffgazer-selectable-owner="radio"
+          aria-label={ariaLabel}
+          aria-labelledby={resolvedAriaLabelledBy}
+          aria-orientation={orientation}
+          aria-required={effectiveRequired || undefined}
+          aria-invalid={resolvedAriaInvalid}
+          aria-disabled={isDisabled || undefined}
           className={cn(
-            "mb-2 font-mono font-bold text-muted-foreground",
-            selectableLabelVariants({ size }),
+            "flex",
+            orientation === "vertical" ? "flex-col gap-2" : "flex-row gap-4",
+            className,
           )}
+          onKeyDown={handleKeyDown}
         >
-          {label}
+          {children}
         </div>
-      )}
-      {effectiveRequired && !name && (
-        <input
-          ref={validationInputRef}
-          type="checkbox"
-          data-slot="radio-group-validation"
-          required
-          checked={validSelectedValue !== null}
-          disabled={isDisabled}
-          tabIndex={-1}
-          aria-hidden={true}
-          className="sr-only"
-          onChange={() => {}}
-          onInvalid={(event) => {
-            event.preventDefault();
-            handleRequiredInvalid();
-            enabledItems[0]?.element?.focus();
-          }}
-        />
-      )}
-      <div
-        {...rootProps}
-        ref={composedRef}
-        role="radiogroup"
-        data-slot="radio-group"
-        data-diffgazer-selectable-owner="radio"
-        aria-label={ariaLabel}
-        aria-labelledby={resolvedAriaLabelledBy}
-        aria-orientation={orientation}
-        aria-required={effectiveRequired || undefined}
-        aria-invalid={resolveAriaInvalid(
-          ariaInvalid,
-          effectiveRequired && requiredInvalid && validSelectedValue === null,
-        )}
-        aria-disabled={isDisabled || undefined}
-        className={cn(
-          "flex",
-          orientation === "vertical" ? "flex-col gap-2" : "flex-row gap-4",
-          className,
-        )}
-        onKeyDown={handleKeyDown}
-      >
-        {children}
       </div>
     </RadioGroupContext>
   );

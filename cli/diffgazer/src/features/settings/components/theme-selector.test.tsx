@@ -1,5 +1,6 @@
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ThemeSelector } from "./theme-selector";
 
@@ -9,12 +10,6 @@ afterEach(() => {
 
 const ARROW_DOWN = "\u001b[B";
 const SPACE = " ";
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 describe("ThemeSelector", () => {
   test("renders the shared selectable theme labels", () => {

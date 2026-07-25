@@ -89,24 +89,29 @@ export function DefaultItemLayout({
             : cn("transition-opacity opacity-0 group-hover:opacity-100", idleColor)
         }
       />
+      {/* Labels start in one column right after the icon; accelerators are
+          pushed to the row end so rows with and without one still align. */}
+      <span
+        className={cn(
+          "min-w-0 flex-1 tracking-wide",
+          !isEmphasized && !isDanger && "group-hover:text-foreground",
+        )}
+      >
+        {children}
+      </span>
       {hotkey !== undefined && (
         // Keep the unbound label out of the accessible name and typeahead text.
         <span
           aria-hidden="true"
           className={
             isEmphasized
-              ? "mr-4 shrink-0"
-              : cn("mr-4 shrink-0 group-hover:text-foreground", idleColor)
+              ? "ml-4 shrink-0 tabular-nums"
+              : cn("ml-4 shrink-0 tabular-nums group-hover:text-foreground", idleColor)
           }
         >
           [{hotkey}]
         </span>
       )}
-      <span
-        className={cn("tracking-wide", !isEmphasized && !isDanger && "group-hover:text-foreground")}
-      >
-        {children}
-      </span>
     </>
   );
 }
@@ -117,6 +122,12 @@ interface DetailItemLayoutProps {
   /** Controlled value. */
   value?: ReactNode;
   valueClassName: string;
+  /**
+   * Decorative glyph rendered before the value. Carries the success state in
+   * monochrome palettes, where --success resolves to the foreground colour and
+   * hue alone cannot say "passing".
+   */
+  valueGlyph?: string;
   /** Icon content rendered by the component. */
   icon?: ReactNode;
   /** MenuItem and MenuDivider children. */
@@ -128,6 +139,7 @@ export function DetailItemLayout({
   isSelected,
   value,
   valueClassName,
+  valueGlyph,
   icon,
   children,
 }: DetailItemLayoutProps) {
@@ -150,7 +162,14 @@ export function DetailItemLayout({
           {children}
         </span>
       </div>
-      {value !== undefined && value !== null && <div className={valueClassName}>{value}</div>}
+      {value !== undefined && value !== null && (
+        <div className={valueClassName}>
+          {/* Not aria-hidden: the glyph is what carries "passing" when color cannot, so
+              hiding it would leave the state visible only to sighted users. */}
+          {valueGlyph !== undefined && <span className="mr-1">{valueGlyph}</span>}
+          {value}
+        </div>
+      )}
     </>
   );
 }

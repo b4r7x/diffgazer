@@ -11,8 +11,7 @@
     "node_modules",
     "dist",
     "src/test-setup.ts",
-    "src/testing/assertions.ts",
-    "src/testing/test-utils.tsx",
+    "src/testing/internal",
     "**/*.test.ts",
     "**/*.test.tsx"
   ]

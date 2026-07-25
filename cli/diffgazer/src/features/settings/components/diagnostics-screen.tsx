@@ -1,16 +1,15 @@
+import { refreshAllDiagnostics, useDiagnosticsData } from "@diffgazer/core/api/hooks";
+import { usePageFooter } from "@diffgazer/core/footer";
+import { formatTimestampOrNA } from "@diffgazer/core/format";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
 import {
+  BACK_SHORTCUT,
   deriveDiagnosticsActions,
   getContextActionLabel,
   getContextPresentation,
   getServerStatusPresentation,
   getSetupPresentation,
-  refreshAllDiagnostics,
-  useDiagnosticsData,
-} from "@diffgazer/core/api/hooks";
-import { usePageFooter } from "@diffgazer/core/footer";
-import { formatTimestampOrNA } from "@diffgazer/core/format";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
-import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
+} from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import { type ReactElement, useState } from "react";
 import { Badge } from "../../../components/ui/badge";

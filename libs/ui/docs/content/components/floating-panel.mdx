@@ -18,7 +18,7 @@ component: "floating-panel"
 
 ## Examples
 
-<Examples skipFirst />
+<Examples hero="floating-panel-default" />
 
 <APIReference />
 
@@ -93,6 +93,8 @@ Per-instance overrides win against the global reduced-motion fallback. If you ne
 ## FAQ
 
 **The panel does not appear.** Check that `triggerRef.current` resolves to a DOM element before `open` flips to `true`. `FloatingPanel` measures against `triggerRef.current` on first paint; if the trigger has not mounted, no position resolves and the panel stays hidden.
+
+**The panel vanishes when I scroll.** That is anchor tracking, not a bug. The panel re-measures against the trigger on every scroll and resize; once the trigger leaves the viewport (or the scrollable ancestor it lives in) the panel sets `data-anchor-hidden` and stops painting, because a clamped position detached from its anchor reads as a stray box floating over unrelated content. It stays mounted and focusable, and paints again as soon as the anchor scrolls back in. Close the panel on scroll in the wrapping primitive if you want it gone for good.
 
 **My custom transform animation is not anchored.** Set `transform-origin: var(--ui-content-transform-origin)` inside your `@keyframes` rule. `FloatingPanel` writes the origin to the element on every measure based on the resolved side and align.
 

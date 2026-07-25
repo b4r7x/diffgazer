@@ -1,5 +1,7 @@
+import { type Cleanup, createEffectScope } from "../effect-scope";
+import { spinAt } from "../motion";
 import { observeEach } from "../observe";
-import { type Cleanup, createEffectScope, type Flags, getFlags, spinAt } from "../util";
+import { type Flags, getFlags } from "../viewport";
 
 /** Type a label out character by character, or set it directly when reduced. */
 function makeLabelSetter(label: HTMLElement, reduced: boolean): [(text: string) => void, Cleanup] {
@@ -27,8 +29,37 @@ function makeLabelSetter(label: HTMLElement, reduced: boolean): [(text: string) 
   ];
 }
 
+/**
+ * The scene that owns the HUD readout and the page theme: the last one whose
+ * top has crossed the middle of the viewport. Resolved from geometry on every
+ * scroll rather than from IntersectionObserver enter events — an observer only
+ * announces a scene when its intersection flips, so a scene re-entered from
+ * below (scrolling back up, or jumping via an anchor) is never announced again
+ * and the readout and theme stay stuck on the scene below it.
+ */
+function trackActiveScene(
+  scenes: readonly HTMLElement[],
+  onChange: (scene: HTMLElement) => void,
+  signal: AbortSignal,
+): void {
+  let active: HTMLElement | undefined;
+  const update = (): void => {
+    const line = innerHeight / 2;
+    let next = scenes[0];
+    for (const scene of scenes) {
+      if (scene.getBoundingClientRect().top <= line) next = scene;
+    }
+    if (!next || next === active) return;
+    active = next;
+    onChange(next);
+  };
+  addEventListener("scroll", update, { passive: true, signal });
+  addEventListener("resize", update, { signal });
+  update();
+}
+
 /** Scroll-progress telemetry in the bottom-left HUD readout. */
-function trackScrollProgress(pct: HTMLElement, signal?: AbortSignal): void {
+function trackScrollProgress(pct: HTMLElement, signal: AbortSignal): void {
   let lastPct = -1;
   const update = (): void => {
     const max = document.documentElement.scrollHeight - innerHeight;
@@ -37,8 +68,8 @@ function trackScrollProgress(pct: HTMLElement, signal?: AbortSignal): void {
     lastPct = value;
     pct.textContent = `${String(value).padStart(3, "0")}%`;
   };
-  addEventListener("scroll", update, signal ? { passive: true, signal } : { passive: true });
-  addEventListener("resize", update, signal ? { signal } : undefined);
+  addEventListener("scroll", update, { passive: true, signal });
+  addEventListener("resize", update, { signal });
   update();
 }
 
@@ -50,7 +81,6 @@ export function initHud(
   const scope = createEffectScope(signal);
   if (!scope.active()) return scope.cleanup;
 
-  const cleanups: Cleanup[] = [];
   const spin = root.querySelector<HTMLElement>("#osd-spin");
   const label = root.querySelector<HTMLElement>("#osd-label");
   const pct = root.querySelector<HTMLElement>("#osd-pct");
@@ -60,31 +90,28 @@ export function initHud(
     const timer = setInterval(() => {
       spin.textContent = spinAt(++step);
     }, 120);
-    cleanups.push(() => clearInterval(timer));
+    scope.addCleanup(() => clearInterval(timer));
   }
   if (pct) trackScrollProgress(pct, scope.signal);
 
   const [setLabel, cleanupLabel] = label
     ? makeLabelSetter(label, flags.reduced)
     : [() => {}, () => {}];
-  cleanups.push(cleanupLabel);
+  scope.addCleanup(cleanupLabel);
 
-  cleanups.push(
-    observeEach(
-      root.querySelectorAll("[data-osd]"),
-      (target) => {
-        const section = target as HTMLElement;
-        setLabel(section.dataset.osd ?? "");
-        const light = section.dataset.themeScene === "light";
-        const html = document.documentElement;
-        html.dataset.sceneTheme = light ? "light" : "dark";
-        html.dataset.theme = light ? "light" : "dark";
-      },
-      { threshold: 0, rootMargin: "0px 0px -50% 0px" },
-    ),
+  trackActiveScene(
+    [...root.querySelectorAll<HTMLElement>("[data-osd]")],
+    (scene) => {
+      setLabel(scene.dataset.osd ?? "");
+      const light = scene.dataset.themeScene === "light";
+      const html = document.documentElement;
+      html.dataset.sceneTheme = light ? "light" : "dark";
+      html.dataset.theme = light ? "light" : "dark";
+    },
+    scope.signal,
   );
 
-  cleanups.push(
+  scope.addCleanup(
     observeEach(root.querySelectorAll(".scene"), (target) => target.classList.add("in"), {
       threshold: 0,
       rootMargin: "0px 0px -10% 0px",
@@ -92,8 +119,5 @@ export function initHud(
     }),
   );
 
-  scope.addCleanup(() => {
-    for (const cleanup of cleanups.splice(0)) cleanup();
-  });
   return scope.cleanup;
 }

@@ -3,12 +3,14 @@ import { SEVERITY_ORDER, type SeverityCounts } from "@diffgazer/core/schemas/pre
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { capitalize } from "@diffgazer/core/strings";
 import { Box, Text, useInput } from "ink";
-import { type ReactElement, useState } from "react";
+import type { ReactElement } from "react";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { ScrollArea } from "../../../components/ui/scroll-area";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
+import { useListNavigation } from "../../../hooks/use-list-navigation";
 import { getListWindow } from "../../../lib/list-window";
+import { selectionFill } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 import { severityColor } from "../../../theme/severity";
 
@@ -42,9 +44,12 @@ export function HistoryInsightsPane({
   onOpenReview,
 }: HistoryInsightsPaneProps): ReactElement {
   const { tokens } = useTheme();
-  const [highlightedIssueId, setHighlightedIssueId] = useState<string | undefined>(issues[0]?.id);
+  const issueNavigation = useListNavigation({
+    items: issues.map((issue) => ({ id: issue.id, disabled: false })),
+    wrap: false,
+  });
   const highlightedIssueIndex = Math.max(
-    issues.findIndex((issue) => issue.id === highlightedIssueId),
+    issues.findIndex((issue) => issue.id === issueNavigation.currentHighlightedId),
     0,
   );
   const effectiveHighlightedIssueId = issues[highlightedIssueIndex]?.id;
@@ -64,13 +69,11 @@ export function HistoryInsightsPane({
 
       if (detailState.status === "ready" && issues.length > 0) {
         if (key.downArrow || input === "j") {
-          const nextIssue = issues[Math.min(highlightedIssueIndex + 1, issues.length - 1)];
-          if (nextIssue) setHighlightedIssueId(nextIssue.id);
+          issueNavigation.moveBy(1);
           return;
         }
         if (key.upArrow || input === "k") {
-          const previousIssue = issues[Math.max(highlightedIssueIndex - 1, 0)];
-          if (previousIssue) setHighlightedIssueId(previousIssue.id);
+          issueNavigation.moveBy(-1);
           return;
         }
       }
@@ -104,7 +107,7 @@ export function HistoryInsightsPane({
             return (
               <Box key={issue.id} gap={1} height={1} overflow="hidden">
                 <Box flexShrink={0}>
-                  <Text color={tokens.accent}>{isHighlighted ? "\u2502" : " "}</Text>
+                  <Text color={selectionFill(tokens)}>{isHighlighted ? "\u2502" : " "}</Text>
                 </Box>
                 <Box flexShrink={0}>
                   <Text color={severityColor(issue.severity, tokens)} bold>
@@ -112,7 +115,7 @@ export function HistoryInsightsPane({
                   </Text>
                 </Box>
                 <Box flexShrink={0}>
-                  <Text color={tokens.muted} dimColor>
+                  <Text color={tokens.muted}>
                     {issue.line_start != null ? `L:${issue.line_start}` : ""}
                   </Text>
                 </Box>
@@ -150,16 +153,14 @@ export function HistoryInsightsPane({
               <Text color={tokens.error}>
                 Could not load review details: {sanitizeTerminalText(detailState.message)}
               </Text>
-              <Text color={tokens.muted} dimColor>
+              <Text color={tokens.muted}>
                 {isActive ? "Press r to retry" : "Focus this pane, then press r to retry"}
               </Text>
             </Box>
           ) : null}
           {duration ? (
             <Box marginTop={1} flexDirection="column">
-              <Text color={tokens.muted} dimColor>
-                DURATION
-              </Text>
+              <Text color={tokens.muted}>DURATION</Text>
               <Text color={tokens.fg}>{duration}</Text>
             </Box>
           ) : null}

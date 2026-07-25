@@ -30,6 +30,8 @@ export interface BlockBarSegmentData {
   variant?: SegmentVariant;
   /** Override the filled character for this segment only. */
   char?: string;
+  /** Class applied to this segment, for app-owned colors the variants do not cover. */
+  className?: string;
 }
 
 /** Props for block bar. */
@@ -212,7 +214,12 @@ function BlockBarRoot({
                     key={i}
                     value={filledCounts[i] ?? 0}
                   >
-                    <BlockBarSegment value={seg.value} variant={seg.variant} char={seg.char} />
+                    <BlockBarSegment
+                      value={seg.value}
+                      variant={seg.variant}
+                      char={seg.char}
+                      className={seg.className}
+                    />
                   </BlockBarSegmentCountContext>
                 ))
               : resolvedChildren}

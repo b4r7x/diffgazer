@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { EmptyState, EmptyStateDescription, EmptyStateMessage } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 
 const items = ["useNavigation", "useFocusTrap", "useScrollLock"];
 
@@ -12,13 +13,12 @@ export default function EmptyStateLive() {
 
   return (
     <div className="flex flex-col gap-4">
-      <input
+      <Input
         type="search"
         aria-label="Filter hooks"
         placeholder="Filter hooks…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="border border-border bg-background px-3 py-1.5 text-sm text-foreground"
       />
       {filtered.length > 0 && (
         <ul className="text-sm text-foreground">

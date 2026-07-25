@@ -29,8 +29,9 @@ Each status role (`success`, `warning`, `error`, `info`, `neutral`) ships a smal
 The `--<tone>-subtle` backgrounds are derived from their primitive with `color-mix`, so overriding a single primitive re-tints every subtle surface:
 
 ```css
---success-subtle: color-mix(in oklab, var(--base-success) 10%, transparent);
-/* warning 5% (dark) / 8% (light); error 10%; info 10%;
+--success-subtle: color-mix(in oklab, var(--base-success) 12%, transparent);
+/* success runs 12% in both themes: green mixes weaker than red at equal alpha.
+   warning 5% (dark) / 8% (light); error 10%; info 10%;
    neutral anchors to --base-border (10% dark / 8% light). */
 ```
 

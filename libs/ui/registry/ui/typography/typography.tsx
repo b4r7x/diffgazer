@@ -28,7 +28,7 @@ export const typographyVariants = cva("font-mono", {
     color: {
       default: "text-foreground",
       muted: "text-muted-foreground",
-      accent: "text-primary",
+      accent: "text-accent",
     },
     lineClamp: {
       1: "line-clamp-1",

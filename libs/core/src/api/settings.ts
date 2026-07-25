@@ -1,5 +1,9 @@
 import type { SaveTrustRequest, SettingsConfig } from "../schemas/config/index.js";
-import { SettingsConfigSchema } from "../schemas/config/index.js";
+import {
+  DeleteTrustResponseSchema,
+  SettingsConfigSchema,
+  TrustResponseSchema,
+} from "../schemas/config/index.js";
 import type { ApiClient, TrustResponse } from "./types.js";
 
 export async function getSettings(client: ApiClient): Promise<SettingsConfig> {
@@ -18,19 +22,25 @@ export async function saveSettings(
 export async function getTrust(client: ApiClient): Promise<TrustResponse> {
   // The server resolves project identity from the request's project root; no
   // projectId is sent.
-  return client.get<TrustResponse>("/api/settings/trust");
+  return client.get<TrustResponse>("/api/settings/trust", undefined, (body) =>
+    TrustResponseSchema.parse(body),
+  );
 }
 
 export async function saveTrust(
   client: ApiClient,
   trust: SaveTrustRequest,
 ): Promise<TrustResponse> {
-  return client.post<TrustResponse>("/api/settings/trust", trust);
+  return client.post<TrustResponse>("/api/settings/trust", trust, undefined, (body) =>
+    TrustResponseSchema.parse(body),
+  );
 }
 
 export async function deleteTrust(client: ApiClient): Promise<{ removed: boolean }> {
   // Identity resolves from the request's project root; no projectId is sent.
-  return client.delete<{ removed: boolean }>("/api/settings/trust");
+  return client.delete<{ removed: boolean }>("/api/settings/trust", undefined, (body) =>
+    DeleteTrustResponseSchema.parse(body),
+  );
 }
 
 export const bindSettings = (client: ApiClient) => ({

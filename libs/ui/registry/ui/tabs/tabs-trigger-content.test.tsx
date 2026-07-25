@@ -1,8 +1,9 @@
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
-import { requireElement, requireValue } from "../../testing/assertions";
+import { requireElement } from "../../testing/assertions";
 import { Tabs } from "./index";
 
 describe("Tabs.Trigger / Tabs.Content ARIA ownership", () => {

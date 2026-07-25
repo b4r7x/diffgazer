@@ -4,6 +4,10 @@ import type { LensId } from "../schemas/review/index.js";
 export const INPUT_METHODS = ["paste", "env"] as const;
 export type InputMethod = (typeof INPUT_METHODS)[number];
 
+export function isInputMethod(value: string | null): value is InputMethod {
+  return INPUT_METHODS.includes(value as InputMethod);
+}
+
 export const WIZARD_STEPS = [
   "storage",
   "provider",

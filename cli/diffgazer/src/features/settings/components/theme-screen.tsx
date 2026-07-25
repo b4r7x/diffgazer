@@ -147,7 +147,7 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
             <Panel.Content>
               <Box flexDirection="column" gap={isWide ? 1 : 0}>
                 <SectionHeader>Theme Settings</SectionHeader>
-                <Text color={activeTokens.muted}>Select Interface Theme:</Text>
+                <Text color={activeTokens.muted}>Interface Theme</Text>
                 <ThemeSelector
                   value={selectedTheme}
                   onChange={(value) => {

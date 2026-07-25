@@ -16,11 +16,6 @@ export interface ThemeDocsPrimitive<N extends `--${string}` = `--${string}`> {
   semanticTokens: ThemeDocsPrimitiveSemanticTokens;
 }
 
-export interface ThemeDocsTokenGroup {
-  title: string;
-  tokens: readonly ThemeDocsToken[];
-}
-
 const EMPTY_SEMANTIC_TOKENS: ThemeDocsPrimitiveSemanticTokens = { dark: [], light: [] };
 
 function primitive<const N extends `--${string}`>(
@@ -65,18 +60,21 @@ export const THEME_DOCS_PRIMITIVES = [
   primitive(BG, "#0a0a0a", "#f7f8f5", { dark: ["--background"], light: ["--background"] }),
   primitive(FG, "#e5e5e5", "#1f2328", {
     dark: ["--foreground", "--primary", "--ring"],
-    light: ["--foreground"],
+    light: ["--foreground", "--ring"],
   }),
-  primitive(DIM, "#9c9c9c", "#5f6872", { dark: [], light: [] }),
-  primitive(INFO, "#ccccff", "#0b63ce", { dark: ["--info"], light: ["--ring", "--info"] }),
-  primitive(ACCENT, "#808080", "#6f42c1", { dark: [], light: ["--accent", "--action"] }),
-  primitive(SUCCESS, "#e5e5e5", "#0f7a4f", { dark: ["--success"], light: ["--success"] }),
+  primitive(DIM, "#9c9c9c", "#5f6872", {
+    dark: ["--border-strong"],
+    light: ["--border-strong"],
+  }),
+  primitive(INFO, "#79b8ff", "#0b63ce", { dark: ["--info"], light: ["--info"] }),
+  primitive(ACCENT, "#808080", "#6f42c1", { dark: [], light: ["--action"] }),
+  primitive(SUCCESS, "#7ee787", "#0f7a4f", { dark: ["--success"], light: ["--success"] }),
   primitive(DANGER, "#ff7b72", "#c62828", { dark: ["--error"], light: ["--error"] }),
   primitive(WARNING, "#d29922", "#8a5a00", { dark: ["--warning"], light: ["--warning"] }),
   primitive(BORDER, "#606060", "#aeb7c0", { dark: ["--border"], light: ["--border"] }),
   primitive(HIGHLIGHT, "#ffffff", "#1f2328", {
     dark: ["--accent", "--action"],
-    light: ["--primary"],
+    light: ["--accent", "--primary"],
   }),
   primitive(HIGHLIGHT_FG, "#000000", "#ffffff", { dark: [], light: [] }),
   primitive(SELECTION, "#333333", "#e8edf3", {
@@ -92,18 +90,6 @@ export const THEME_DOCS_PRIMITIVES = [
 
 export type ThemeDocsPrimitiveName = (typeof THEME_DOCS_PRIMITIVES)[number]["name"];
 
-const themeDocsPrimitiveByName = new Map<ThemeDocsPrimitiveName, ThemeDocsPrimitive>(
-  THEME_DOCS_PRIMITIVES.map((primitive) => [primitive.name, primitive] as const),
-);
-
-function getThemeDocsPrimitive(name: ThemeDocsPrimitiveName): ThemeDocsPrimitive {
-  const primitive = themeDocsPrimitiveByName.get(name);
-  if (!primitive) {
-    throw new Error(`Unknown base primitive in display order: ${name}`);
-  }
-  return primitive;
-}
-
 export const THEME_DOCS_SEMANTIC_TOKENS = [
   token("--background", ref(BG), ref(BG)),
   token("--foreground", ref(FG), ref(FG)),
@@ -114,14 +100,15 @@ export const THEME_DOCS_SEMANTIC_TOKENS = [
   token("--muted", ref(MUTED), ref(MUTED)),
   token("--muted-foreground", ref(DIM), ref(DIM)),
   token("--border", ref(BORDER), ref(BORDER)),
+  token("--border-strong", ref(DIM), ref(DIM)),
   token("--input", ref(SELECTION), ref(INPUT_BG)),
-  token("--accent", ref(HIGHLIGHT), ref(ACCENT)),
+  token("--accent", ref(HIGHLIGHT), ref(HIGHLIGHT)),
   token("--accent-foreground", ref(HIGHLIGHT_FG), ref(HIGHLIGHT_FG)),
   token("--card", ref(SELECTION), ref(INPUT_BG)),
   token("--card-foreground", ref(FG), ref(FG)),
   token("--popover", ref(SELECTION), ref(INPUT_BG)),
   token("--popover-foreground", ref(FG), ref(FG)),
-  token("--ring", ref(FG), ref(INFO)),
+  token("--ring", ref(FG), ref(FG)),
   token("--success", ref(SUCCESS), ref(SUCCESS)),
   token("--success-foreground", ref(BG), WHITE),
   token("--warning", ref(WARNING), ref(WARNING)),
@@ -135,8 +122,8 @@ export const THEME_DOCS_SEMANTIC_TOKENS = [
 ] as const satisfies readonly ThemeDocsToken[];
 
 export const THEME_DOCS_TONE_TOKENS = [
-  token("--success-subtle", mix(SUCCESS, 10), mix(SUCCESS, 12)),
-  token("--success-text", ref(SUCCESS), ref(SUCCESS)),
+  token("--success-subtle", mix(SUCCESS, 12), mix(SUCCESS, 12)),
+  token("--success-text", ref(SUCCESS), "#0a6647"),
   token("--success-border", ref(SUCCESS), ref(SUCCESS)),
   token("--success-strong", ref(SUCCESS), ref(SUCCESS)),
   token("--success-strong-foreground", ref(BG), WHITE),
@@ -146,7 +133,7 @@ export const THEME_DOCS_TONE_TOKENS = [
   token("--warning-strong", ref(WARNING), ref(WARNING)),
   token("--warning-strong-foreground", ref(BG), WHITE),
   token("--error-subtle", mix(DANGER, 10), mix(DANGER, 10)),
-  token("--error-text", ref(DANGER), ref(DANGER)),
+  token("--error-text", ref(DANGER), "#b32424"),
   token("--error-border", ref(DANGER), ref(DANGER)),
   token("--error-strong", ref(DANGER), ref(DANGER)),
   token("--error-strong-foreground", ref(BG), WHITE),
@@ -157,18 +144,18 @@ export const THEME_DOCS_TONE_TOKENS = [
   token("--info-strong-foreground", ref(BG), WHITE),
   token("--neutral-subtle", mix(BORDER, 10), mix(BORDER, 8)),
   token("--neutral-border", ref(BORDER), ref(BORDER)),
-  token("--neutral-text", ref(MUTED), ref(MUTED)),
-  token("--neutral-strong", ref(MUTED), ref(MUTED)),
+  token("--neutral-text", ref(DIM), ref(DIM)),
+  token("--neutral-strong", ref(DIM), ref(DIM)),
   token("--neutral-strong-foreground", ref(BG), WHITE),
 ] as const satisfies readonly ThemeDocsToken[];
 
 export const THEME_DOCS_CODE_TOKENS = [
   token("--code-comment", ref(DIM), ref(DIM)),
-  token("--code-string", ref(ACCENT), ref(ACCENT)),
-  token("--code-number", ref(ACCENT), ref(ACCENT)),
+  token("--code-string", ref(ACCENT), ref(MUTED)),
+  token("--code-number", ref(ACCENT), ref(MUTED)),
   token("--code-keyword", ref(INFO), ref(INFO)),
-  token("--code-function", ref(SUCCESS), ref(SUCCESS)),
-  token("--code-tag", ref(SUCCESS), ref(SUCCESS)),
+  token("--code-function", ref(SUCCESS), ref(FG)),
+  token("--code-tag", ref(SUCCESS), ref(FG)),
   token("--code-attr", ref(INFO), ref(INFO)),
   token("--code-parameter", ref(WARNING), ref(WARNING)),
   token("--code-operator", ref(DANGER), ref(DANGER)),
@@ -177,94 +164,6 @@ export const THEME_DOCS_CODE_TOKENS = [
 ] as const satisfies readonly ThemeDocsToken[];
 
 export const THEME_DOCS_SURFACE_TOKENS = [
-  token("--surface-1", "#111111", "#ffffff"),
+  token("--surface-1", "#111111", "#eef0f3"),
+  token("--surface-1-highlight", mix(FG, 12), WHITE),
 ] as const satisfies readonly ThemeDocsToken[];
-
-const THEME_DOCS_VARIABLE_DIAGRAM_ORDER = [
-  BG,
-  FG,
-  INFO,
-  SUCCESS,
-  DANGER,
-  WARNING,
-  ACCENT,
-  BORDER,
-  MUTED,
-  HIGHLIGHT,
-  SELECTION,
-  INPUT_BG,
-] as const satisfies readonly ThemeDocsPrimitiveName[];
-
-export const THEME_DOCS_COLOR_GRID_ORDER = [
-  BG,
-  FG,
-  DIM,
-  INFO,
-  SUCCESS,
-  DANGER,
-  WARNING,
-  ACCENT,
-  BORDER,
-  HIGHLIGHT,
-  HIGHLIGHT_FG,
-  SELECTION,
-  MUTED,
-  INPUT_BG,
-] as const satisfies readonly ThemeDocsPrimitiveName[];
-
-export const THEME_DOCS_PLAYGROUND_ORDER = [
-  BG,
-  FG,
-  DIM,
-  INFO,
-  ACCENT,
-  SUCCESS,
-  DANGER,
-  WARNING,
-  BORDER,
-  HIGHLIGHT,
-  HIGHLIGHT_FG,
-  SELECTION,
-  MUTED,
-  INPUT_BG,
-] as const satisfies readonly ThemeDocsPrimitiveName[];
-
-export const THEME_DOCS_MAPPED_PRIMITIVES = THEME_DOCS_VARIABLE_DIAGRAM_ORDER.map((name) =>
-  getThemeDocsPrimitive(name),
-).filter(
-  (primitive) =>
-    primitive.semanticTokens.dark.length > 0 || primitive.semanticTokens.light.length > 0,
-);
-
-export const THEME_DOCS_COLOR_GROUPS = [
-  { title: "Primitives", tokens: orderThemeDocsPrimitives(THEME_DOCS_COLOR_GRID_ORDER) },
-  { title: "Semantic Tokens", tokens: THEME_DOCS_SEMANTIC_TOKENS },
-  { title: "Tone Variants", tokens: THEME_DOCS_TONE_TOKENS },
-  { title: "Code Syntax", tokens: THEME_DOCS_CODE_TOKENS },
-  { title: "Surface Tokens", tokens: THEME_DOCS_SURFACE_TOKENS },
-] as const satisfies readonly ThemeDocsTokenGroup[];
-
-export const THEME_DOCS_TOKENS = THEME_DOCS_COLOR_GROUPS.flatMap((group) => group.tokens);
-
-export function orderThemeDocsPrimitives(
-  order: readonly ThemeDocsPrimitiveName[],
-): ThemeDocsPrimitive[] {
-  if (order.length !== THEME_DOCS_PRIMITIVES.length) {
-    throw new Error(
-      `Display order lists ${order.length} primitives but THEME_DOCS_PRIMITIVES has ${THEME_DOCS_PRIMITIVES.length}.`,
-    );
-  }
-
-  const missing = THEME_DOCS_PRIMITIVES.map((primitive) => primitive.name).filter(
-    (name) => !order.includes(name),
-  );
-  if (missing.length > 0) {
-    throw new Error(`Display order is missing primitives: ${missing.join(", ")}`);
-  }
-
-  if (new Set(order).size !== order.length) {
-    throw new Error("Display order contains duplicate primitives.");
-  }
-
-  return order.map((name) => getThemeDocsPrimitive(name));
-}

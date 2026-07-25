@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { fireKey, KeyboardWrapper } from "../../testing/test-utils.js";
+import { fireKey, KeyboardWrapper } from "../../testing/internal/test-utils.js";
 import { useFocusZone } from "../use-focus-zone.js";
 
 const wrapper = KeyboardWrapper;

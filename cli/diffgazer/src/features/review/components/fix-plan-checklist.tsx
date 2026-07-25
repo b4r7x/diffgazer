@@ -1,7 +1,9 @@
 import { type IssueFixStepPresentation, sanitizeTerminalText } from "@diffgazer/core/review";
+import { clampIndex } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 import { Badge } from "../../../components/ui/badge";
+import { selectionFill } from "../../../theme/chrome";
 import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
 
@@ -28,7 +30,7 @@ function getIndicatorColor(
   isComplete: boolean,
   tokens: CliColorTokens,
 ): string | undefined {
-  if (isHighlighted) return tokens.accent;
+  if (isHighlighted) return selectionFill(tokens);
   if (isComplete) return tokens.success;
   return undefined;
 }
@@ -38,7 +40,7 @@ function getActionColor(
   isComplete: boolean,
   tokens: CliColorTokens,
 ): string {
-  if (isHighlighted) return tokens.accent;
+  if (isHighlighted) return selectionFill(tokens);
   if (isComplete) return tokens.muted;
   return tokens.fg;
 }
@@ -56,11 +58,11 @@ export function FixPlanChecklist({
     (input, key) => {
       if (steps.length === 0) return;
       if (key.upArrow) {
-        setHighlightIndex((i) => (i - 1 + steps.length) % steps.length);
+        setHighlightIndex((i) => clampIndex(i, -1, steps.length, true));
         return;
       }
       if (key.downArrow) {
-        setHighlightIndex((i) => (i + 1) % steps.length);
+        setHighlightIndex((i) => clampIndex(i, 1, steps.length, true));
         return;
       }
       if (input === " " || key.return) {
@@ -73,9 +75,9 @@ export function FixPlanChecklist({
 
   return (
     <Box flexDirection="column">
-      {steps.map((step) => {
+      {steps.map((step, index) => {
         const isComplete = completedSteps.has(step.completionIndex);
-        const isHighlighted = isActive && step.completionIndex === highlightIndex;
+        const isHighlighted = isActive && index === highlightIndex;
         const indicator = isComplete ? "[x]" : "[ ]";
 
         return (

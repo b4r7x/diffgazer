@@ -34,7 +34,7 @@ export function DetailsTabContent({
   return (
     <>
       <div className="mb-6">
-        <SectionHeader>SYMPTOM</SectionHeader>
+        <SectionHeader className="mb-2">SYMPTOM</SectionHeader>
         <p className="text-sm leading-relaxed text-foreground/80">{issue.symptom}</p>
         {codeEvidence.length > 0 && (
           <section aria-label="Evidence" tabIndex={-1} className="mt-2 space-y-3">
@@ -57,13 +57,13 @@ export function DetailsTabContent({
       </div>
 
       <div className="mb-6">
-        <SectionHeader>WHY IT MATTERS</SectionHeader>
+        <SectionHeader className="mb-2">WHY IT MATTERS</SectionHeader>
         <p className="text-sm leading-relaxed text-foreground/80">{issue.whyItMatters}</p>
       </div>
 
       {presentation.fixPlan.length > 0 && (
         <div className="mb-6">
-          <SectionHeader>FIX PLAN</SectionHeader>
+          <SectionHeader className="mb-2">FIX PLAN</SectionHeader>
           <FixPlanChecklist
             steps={presentation.fixPlan}
             completedSteps={completedSteps}
@@ -76,7 +76,7 @@ export function DetailsTabContent({
 
       {issue.betterOptions && issue.betterOptions.length > 0 && (
         <div className="mb-6">
-          <SectionHeader>BETTER OPTIONS</SectionHeader>
+          <SectionHeader className="mb-2">BETTER OPTIONS</SectionHeader>
           <ul className="list-disc pl-4 space-y-1">
             {issue.betterOptions.map((opt, index) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: option text can repeat; backend order is the rendered identity.
@@ -90,7 +90,7 @@ export function DetailsTabContent({
 
       {issue.testsToAdd && issue.testsToAdd.length > 0 && (
         <div className="mb-6">
-          <SectionHeader>TESTS TO ADD</SectionHeader>
+          <SectionHeader className="mb-2">TESTS TO ADD</SectionHeader>
           <ul className="list-disc pl-4 space-y-1">
             {issue.testsToAdd.map((test, index) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: test text can repeat; backend order is the rendered identity.

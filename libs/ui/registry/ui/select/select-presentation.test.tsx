@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
@@ -12,7 +12,7 @@ import {
   PICK_FRUIT,
   renderSelect,
   renderSelectInline,
-} from "./select.test-utils";
+} from "./select-test-utils";
 
 describe("Select active-descendant ownership", () => {
   it("makes the search input the editable combobox and reduces the trigger to a toggle when search is present", async () => {
@@ -338,6 +338,128 @@ describe("Select dropdown width", () => {
 
     const listbox = await screen.findByRole("listbox");
     expect(listbox.style.maxHeight).toBe("var(--floating-panel-available-height)");
+  });
+});
+
+// jsdom compiles no Tailwind, so the rendered outline is not observable here. These
+// assert the documented per-variant focus-indicator class contract instead: the card
+// trigger paints an inverted --foreground surface where an inset --ring is invisible, so
+// it must carry the outside outline and must not fall back to the inset field ring.
+describe("Select trigger focus indicator", () => {
+  const INSET_RING = ["focus:border-ring", "focus:ring-1", "focus:ring-ring"];
+  const OUTSIDE_OUTLINE = [
+    "focus-visible:outline-2",
+    "focus-visible:outline-ring",
+    "focus-visible:outline-offset-2",
+  ];
+
+  it("draws the card trigger focus indicator outside the inverted header", async () => {
+    const user = userEvent.setup();
+    renderSelect({ variant: "card" });
+    const trigger = getSelectTrigger();
+
+    await user.tab();
+
+    expect(trigger).toHaveFocus();
+    expect(trigger).toHaveClass(...OUTSIDE_OUTLINE);
+    for (const inset of INSET_RING) {
+      expect(trigger).not.toHaveClass(inset);
+    }
+  });
+
+  it("keeps the inset field ring on the default trigger", async () => {
+    const user = userEvent.setup();
+    renderSelect({ variant: "default" });
+    const trigger = getSelectTrigger();
+
+    await user.tab();
+
+    expect(trigger).toHaveFocus();
+    expect(trigger).toHaveClass(...INSET_RING);
+    for (const outline of OUTSIDE_OUTLINE) {
+      expect(trigger).not.toHaveClass(outline);
+    }
+  });
+});
+
+describe("Select open listbox anchor tracking", () => {
+  function stubTriggerRect(trigger: HTMLElement, top: number) {
+    trigger.getBoundingClientRect = () =>
+      ({
+        x: 40,
+        y: top,
+        left: 40,
+        top,
+        right: 240,
+        bottom: top + 32,
+        width: 200,
+        height: 32,
+        toJSON: () => ({}),
+      }) as DOMRect;
+  }
+
+  it("follows the trigger while the page scrolls and stops painting once the trigger scrolls off screen", async () => {
+    renderSelect({ defaultOpen: true, variant: "default" });
+    const trigger = getSelectTrigger();
+    const listbox = await screen.findByRole("listbox");
+
+    stubTriggerRect(trigger, 100);
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    await waitFor(() => {
+      expect(listbox.style.top).toBe("136px");
+    });
+    expect(listbox.style.left).toBe("40px");
+    expect(listbox).not.toHaveAttribute("data-anchor-hidden");
+
+    stubTriggerRect(trigger, 300);
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    await waitFor(() => {
+      expect(listbox.style.top).toBe("336px");
+    });
+    expect(listbox).not.toHaveAttribute("data-anchor-hidden");
+
+    stubTriggerRect(trigger, -80);
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    await waitFor(() => {
+      expect(listbox).toHaveAttribute("data-anchor-hidden", "");
+    });
+    expect(listbox.style.opacity).toBe("0");
+    expect(listbox.style.pointerEvents).toBe("none");
+
+    stubTriggerRect(trigger, 100);
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    await waitFor(() => {
+      expect(listbox).not.toHaveAttribute("data-anchor-hidden");
+    });
+    expect(listbox.style.opacity).toBe("");
+    expect(listbox.style.top).toBe("136px");
+  });
+
+  it("keeps the suppressed listbox mounted and focusable so an open select never drops focus mid-scroll", async () => {
+    renderSelect({ defaultOpen: true, variant: "default" });
+    const trigger = getSelectTrigger();
+    const listbox = await screen.findByRole("listbox");
+    listbox.focus();
+
+    stubTriggerRect(trigger, -80);
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+    await waitFor(() => {
+      expect(listbox).toHaveAttribute("data-anchor-hidden", "");
+    });
+
+    expect(screen.getByRole("listbox")).toBe(listbox);
+    expect(listbox).toHaveFocus();
+    expect(listbox.style.visibility).toBe("visible");
   });
 });
 

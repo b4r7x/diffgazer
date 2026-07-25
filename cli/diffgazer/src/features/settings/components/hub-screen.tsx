@@ -17,6 +17,7 @@ import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import type { Route } from "../../../lib/routes";
+import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
 
 const SETTINGS_ROUTE_MAP: Record<SettingsAction, Route> = {
@@ -57,6 +58,21 @@ function HubFrame({
   );
 }
 
+/**
+ * The hub row values are the fastest health read in the app, so the ones that
+ * carry a "needs attention" state get semantic colour instead of uniform grey.
+ */
+function getHubValueColors(
+  setup: { isTrusted: boolean; isConfigured: boolean; hasStorage: boolean },
+  tokens: CliColorTokens,
+): Partial<Record<SettingsAction, string>> {
+  return {
+    trust: setup.isTrusted ? tokens.success : tokens.warning,
+    provider: setup.isConfigured ? tokens.success : tokens.warning,
+    storage: setup.hasStorage ? tokens.fg : tokens.warning,
+  };
+}
+
 export function SettingsHubScreen(): ReactElement {
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
   useBackHandler();
@@ -93,15 +109,21 @@ export function SettingsHubScreen(): ReactElement {
     );
   }
 
+  const setup = {
+    isTrusted: hasRepositoryReadAccess(initQuery.data?.project.trust, initQuery.data?.project.path),
+    isConfigured: initQuery.data?.setup?.isConfigured ?? false,
+    hasStorage: Boolean(settingsQuery.data?.secretsStorage),
+  };
   const values = buildHubValues({
     provider: initQuery.data?.config?.provider,
-    isConfigured: initQuery.data?.setup?.isConfigured ?? false,
-    isTrusted: hasRepositoryReadAccess(initQuery.data?.project.trust, initQuery.data?.project.path),
+    isConfigured: setup.isConfigured,
+    isTrusted: setup.isTrusted,
     theme: settingsQuery.data?.theme,
     secretsStorage: settingsQuery.data?.secretsStorage,
     agentExecution: settingsQuery.data?.agentExecution,
     selectedLensCount: settingsQuery.data?.defaultLenses?.length,
   });
+  const valueColors = getHubValueColors(setup, tokens);
   const settingsError = settingsQuery.error?.message ?? null;
 
   return (
@@ -109,11 +131,11 @@ export function SettingsHubScreen(): ReactElement {
       columns={columns}
       footer={
         <Box marginTop={1} gap={2}>
-          <Text dimColor>
+          <Text color={tokens.muted}>
             config path: {sanitizeTerminalText(initQuery.data?.configPath ?? "unknown")}
           </Text>
-          <Text dimColor>|</Text>
-          <Text color={settingsError ? tokens.error : undefined} dimColor={!settingsError}>
+          <Text color={tokens.muted}>|</Text>
+          <Text color={settingsError ? tokens.error : tokens.muted}>
             {settingsError ? sanitizeTerminalText(settingsError) : "local settings"}
           </Text>
         </Box>
@@ -121,7 +143,15 @@ export function SettingsHubScreen(): ReactElement {
     >
       <Menu variant="hub" onSelect={onSelect}>
         {SETTINGS_MENU_ITEMS.map((item) => (
-          <Menu.Item key={item.id} id={item.id} value={values[item.id]}>
+          <Menu.Item
+            key={item.id}
+            id={item.id}
+            // Caps are this screen's display rule. buildHubValues returns neutral text so
+            // the web DOM stays unshouted for screen readers; a terminal has no CSS layer
+            // to lift it, so the lift happens here.
+            value={values[item.id].toUpperCase()}
+            valueColor={valueColors[item.id]}
+          >
             {item.label}
           </Menu.Item>
         ))}

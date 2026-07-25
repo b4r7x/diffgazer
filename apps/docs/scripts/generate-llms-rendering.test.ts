@@ -174,6 +174,10 @@ describe("generate llms rendering", () => {
       });
 
       const button = readFileSync(join(tempDir, "ui/components/button.md"), "utf-8");
+      // The hero is not part of the page's example list, so it resolves from the example
+      // sources exactly as <Example name> does on the site.
+      expect(button).toContain("## Example\n");
+      expect(button).toContain("### Button Default");
       expect(button).toContain("## Installation");
       expect(button).toContain("pnpm exec dgadd add ui/button");
       expect(button).toContain("## Usage");

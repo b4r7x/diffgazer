@@ -3,14 +3,14 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
-  collectReleaseGuardFailures,
-  collectReleaseRecoveryFailures,
-} from "./check-release-workflow-guards/release.mjs";
-import { collectChangesetStatusGuardFailures } from "./check-release-workflow-guards/readiness.mjs";
-import {
   collectDeployReadinessLinkFailures,
   collectDeployTransactionFailures,
 } from "./check-release-workflow-guards/deploy.mjs";
+import { collectChangesetStatusGuardFailures } from "./check-release-workflow-guards/readiness.mjs";
+import {
+  collectReleaseGuardFailures,
+  collectReleaseRecoveryFailures,
+} from "./check-release-workflow-guards/release.mjs";
 import {
   DEPLOY_WORKFLOW_PATH,
   PACKAGE_GOVERNANCE_PATH,

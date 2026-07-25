@@ -1,10 +1,10 @@
-import {
-  type DiagnosticsData,
-  deriveDiagnosticsActions,
-  refreshAllDiagnostics,
-} from "@diffgazer/core/api/hooks";
+import { type DiagnosticsData, refreshAllDiagnostics } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
+import {
+  BACK_SHORTCUT,
+  deriveDiagnosticsActions,
+  type Shortcut,
+} from "@diffgazer/core/schemas/presentation";
 import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import { type RefObject, useEffect, useRef, useState } from "react";

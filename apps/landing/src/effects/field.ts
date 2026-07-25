@@ -1,5 +1,7 @@
 import { demoFindings, formatFindingSummary, gazeFindings } from "../demo";
-import { clamp, createEffectScope, lerp, type Mouse } from "../util";
+import { createEffectScope } from "../effect-scope";
+import { clamp, lerp } from "../motion";
+import type { Mouse } from "../viewport";
 
 type Kind = "ctx" | "hunk" | "add" | "rem";
 
@@ -163,7 +165,9 @@ export function createField(
   addEventListener(
     "resize",
     () => {
+      cacheRects();
       if (resizeTimer) clearTimeout(resizeTimer);
+      // Reseeding the field reallocates every line, so wait out the drag.
       resizeTimer = setTimeout(() => {
         resize();
         if (lastFrame) draw(lastFrame.mouse, lastFrame.light);
@@ -171,19 +175,30 @@ export function createField(
     },
     { signal: scope.signal },
   );
-  addEventListener("resize", cacheRects, { signal: scope.signal });
-  addEventListener(
-    "scroll",
-    () => {
-      scrollV = lerp(scrollV, scrollY - lastScrollY, 0.5);
-      lastScrollY = scrollY;
-      cacheRects();
-    },
-    { passive: true, signal: scope.signal },
-  );
+
+  // Scroll only feeds the next frame, so coalesce bursts into one rect read. The static
+  // branch has no frame loop — it redraws from the resize handler, which caches the rects
+  // itself — so scrolling has nothing to feed there.
+  let scrollFrame: number | undefined;
+  if (!options.redrawOnResize) {
+    addEventListener(
+      "scroll",
+      () => {
+        if (scrollFrame !== undefined) return;
+        scrollFrame = requestAnimationFrame(() => {
+          scrollFrame = undefined;
+          scrollV = lerp(scrollV, scrollY - lastScrollY, 0.5);
+          lastScrollY = scrollY;
+          cacheRects();
+        });
+      },
+      { passive: true, signal: scope.signal },
+    );
+  }
 
   scope.addCleanup(() => {
     if (resizeTimer) clearTimeout(resizeTimer);
+    if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
   });
 
   return { draw, cleanup: scope.cleanup };

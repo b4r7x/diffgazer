@@ -812,37 +812,31 @@ describe("ReviewPage live review phase transitions", () => {
     return user;
   }
 
-  async function triggerBack(
-    user: ReturnType<typeof userEvent.setup>,
-    control: "button" | "escape",
-  ) {
-    if (control === "button") {
-      await user.click(screen.getByRole("button", { name: /back/i }));
-      return;
-    }
-    await user.keyboard("{Escape}");
-  }
-
-  it.each(["button", "escape"] satisfies Array<
-    "button" | "escape"
-  >)("uses the safe home fallback for direct navigation via %s", async (control) => {
+  // The summary screen carries no in-page Back button: the app header link and
+  // the Esc shortcut are the two back affordances, and both run this handler.
+  it("uses the safe home fallback for direct navigation via Escape", async () => {
     const user = await openSummary();
 
-    await triggerBack(user, control);
+    await user.keyboard("{Escape}");
 
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
     expect(mockBack).not.toHaveBeenCalled();
   });
 
-  it.each(["button", "escape"] satisfies Array<
-    "button" | "escape"
-  >)("uses browser history when available via %s", async (control) => {
+  it("uses browser history when available via Escape", async () => {
     routeState.canGoBack = true;
     const user = await openSummary();
 
-    await triggerBack(user, control);
+    await user.keyboard("{Escape}");
 
     expect(mockBack).toHaveBeenCalledTimes(1);
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("keeps View Results as the only action on the summary screen", async () => {
+    await openSummary();
+
+    expect(screen.getByRole("button", { name: /view results/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
   });
 });

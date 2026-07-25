@@ -13,8 +13,8 @@ function renderShortcuts(items: Shortcut[]) {
 
   return activeItems.map((shortcut, index) => (
     <span key={`${shortcut.key}-${shortcut.label}`} className="whitespace-nowrap">
-      <Kbd>{shortcut.key}</Kbd> <span>{shortcut.label}</span>
-      {index < activeItems.length - 1 && <span className="text-muted-foreground">•</span>}
+      <Kbd variant="inverse">{shortcut.key}</Kbd> <span>{shortcut.label}</span>
+      {index < activeItems.length - 1 && <span className="text-background/60">•</span>}
     </span>
   ));
 }

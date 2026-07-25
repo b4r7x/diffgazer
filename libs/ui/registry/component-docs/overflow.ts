@@ -22,6 +22,11 @@ export const overflowDoc: ComponentDoc = {
         "Uses a hidden measurement row to calculate widths before paint (no flicker). Default indicator is an ellipsis badge. Customize via the indicator prop — pass a render function ({ count }) => ReactNode or static ReactNode.",
     },
     {
+      title: "Indicator Convention",
+      content:
+        "The built-in indicator is a dashed badge: dashed means 'the library put this here'. Custom indicators are solid so a consumer-authored count reads as content. Keep custom indicators on the tight radius (rounded-sm or none) so they match neighbouring chips.",
+    },
+    {
       title: "Text Mode",
       content:
         "Set lines={1} for single-line truncate or lines={2+} for multi-line clamping. Tooltip auto-derives content from string children. Set tooltip={false} to disable, or tooltip={<custom>} for custom content.",
@@ -67,17 +72,18 @@ export const overflowDoc: ComponentDoc = {
         description:
           "Text mode only. true/ReactNode renders a Tooltip when content is actually clipped (auto-derived from children when true). false disables the tooltip.",
       },
-      gap: {
-        type: "string",
-        required: false,
-        defaultValue: '"gap-1"',
-        description: "Items mode only. Tailwind gap class applied between items and indicator.",
-      },
       indicator: {
         type: "ReactNode | ((props: { count: number }) => ReactNode)",
         required: false,
         defaultValue: "dashed ellipsis badge",
         description: "Items mode only. Render function or static node shown when items overflow.",
+      },
+      className: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description:
+          "Merged onto the root. Items mode ships gap-1 between items and indicator; override it here (for example gap-1.5).",
       },
     },
   },

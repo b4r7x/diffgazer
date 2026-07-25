@@ -305,7 +305,7 @@ async function runSmoke() {
     assertBuiltCss(soloFixture, {
       label: "Built solo button shadcn",
       // Dialog isn't part of solo install — only assert theme tokens reach final CSS.
-      expected: [".bg-primary", "--base-bg"],
+      expected: [".bg-action", "--base-bg"],
     });
     console.log("OK: solo button install type-checks and builds with auto-installed theme");
 

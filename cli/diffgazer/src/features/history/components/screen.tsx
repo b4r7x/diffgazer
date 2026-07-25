@@ -20,37 +20,14 @@ import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
+import { focusBorder, SURFACE_BORDER } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 import { useHistoryScreen } from "../hooks/use-screen";
 import { getHistoryFooter } from "../lib/footer";
-import type { HistoryFocusZone } from "../types";
+import { computePaneLayout, getVisibleHistoryPanes } from "../lib/pane-layout";
 import { HistoryInsightsPane } from "./insights-pane";
 import { RunsList } from "./runs-list";
 import { SectionsList } from "./sections-list";
-
-const HISTORY_CHROME_ROWS = 10;
-const HISTORY_INSIGHTS_CHROME_ROWS = 5;
-// Below this per-pane slot height the narrow stack cannot give every pane a
-// content row (insights needs HISTORY_INSIGHTS_CHROME_ROWS + 1), so history
-// degrades to the focused pane only instead of rendering empty bordered boxes.
-const MIN_STACKED_PANE_ROWS = HISTORY_INSIGHTS_CHROME_ROWS + 1;
-
-type HistoryPane = "sections" | "runs" | "insights";
-
-function getHistoryWarningRows(messageCount: number): number {
-  if (messageCount === 0) return 0;
-  return messageCount + 4;
-}
-
-function getInsightScrollHeight(paneHeight: number): number {
-  return Math.max(paneHeight - HISTORY_INSIGHTS_CHROME_ROWS, 1);
-}
-
-function getFocusedHistoryPane(focusZone: HistoryFocusZone): HistoryPane {
-  if (focusZone === "timeline") return "sections";
-  if (focusZone === "insights") return "insights";
-  return "runs";
-}
 
 function HistoryWarnings({ warnings }: { warnings: readonly ReviewListWarning[] }) {
   const messages = buildHistoryWarningMessages(summarizeHistoryWarnings(warnings));
@@ -133,23 +110,12 @@ export function HistoryScreen(): ReactElement {
     },
   );
 
-  const sectionsWidth = isMedium
-    ? Math.max(Math.floor(columns * 0.18), 16)
-    : Math.max(Math.floor(columns * 0.2), 18);
-  const insightsWidth = isMedium
-    ? Math.max(Math.floor(columns * 0.32), 26)
-    : Math.max(Math.floor(columns * 0.34), 30);
-  const contentWidth = Math.max(columns - 4, 1);
-  const sectionsPaneWidth = isNarrow ? contentWidth : sectionsWidth;
-  const runsPaneWidth = isNarrow
-    ? contentWidth
-    : Math.max(contentWidth - sectionsWidth - insightsWidth, 1);
   const guard = guardQueryState(screen.reviewsQuery, {
     loading: () => (
       <Panel>
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
-            <SectionHeader>Runs</SectionHeader>
+            <SectionHeader>History</SectionHeader>
             <Box justifyContent="center" paddingY={2}>
               <Spinner label="Loading runs..." />
             </Box>
@@ -161,7 +127,7 @@ export function HistoryScreen(): ReactElement {
       <Panel>
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
-            <SectionHeader>Runs</SectionHeader>
+            <SectionHeader>History</SectionHeader>
             <Box justifyContent="center" paddingY={2}>
               <Text color={tokens.error}>Error: {err.message}</Text>
             </Box>
@@ -175,22 +141,30 @@ export function HistoryScreen(): ReactElement {
 
   const warnings = screen.reviewsQuery.data?.warnings ?? [];
   const warningMessages = buildHistoryWarningMessages(summarizeHistoryWarnings(warnings));
-  const paneHeight = Math.max(
-    contentRows - HISTORY_CHROME_ROWS - getHistoryWarningRows(warningMessages.length),
-    1,
-  );
-  const canStackPanes = !isNarrow || Math.floor(paneHeight / 3) >= MIN_STACKED_PANE_ROWS;
-  const paneSlotHeight =
-    isNarrow && canStackPanes ? Math.max(Math.floor(paneHeight / 3), 3) : paneHeight;
-  const listHeight = Math.max(paneSlotHeight - 4, 1);
-  const insightScrollHeight = getInsightScrollHeight(paneSlotHeight);
+  const {
+    sectionsWidth,
+    insightsWidth,
+    sectionsPaneWidth,
+    runsPaneWidth,
+    paneHeight,
+    paneSlotHeight,
+    listHeight,
+    insightScrollHeight,
+    canStackPanes,
+  } = computePaneLayout({
+    columns,
+    isNarrow,
+    isMedium,
+    contentRows,
+    warningCount: warningMessages.length,
+  });
 
   if (!screen.hasReviews && !screen.hasMoreReviews) {
     return (
       <Panel>
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
-            <SectionHeader>Runs</SectionHeader>
+            <SectionHeader>History</SectionHeader>
             <HistoryWarnings warnings={warnings} />
             <Box justifyContent="center" paddingY={2}>
               <EmptyState>
@@ -204,16 +178,17 @@ export function HistoryScreen(): ReactElement {
     );
   }
 
-  const focusedPane = getFocusedHistoryPane(screen.focusZone);
-  const showSections = canStackPanes || focusedPane === "sections";
-  const showRuns = canStackPanes || focusedPane === "runs";
-  const showInsights = canStackPanes || focusedPane === "insights";
+  const {
+    sections: showSections,
+    runs: showRuns,
+    insights: showInsights,
+  } = getVisibleHistoryPanes(screen.focusZone, canStackPanes);
 
   return (
     <Panel>
       <Panel.Content>
         <Box flexDirection="column" gap={1}>
-          <SectionHeader>Runs</SectionHeader>
+          <SectionHeader>History</SectionHeader>
           <HistoryWarnings warnings={warnings} />
           <Box>
             <Input
@@ -229,8 +204,8 @@ export function HistoryScreen(): ReactElement {
               <Box
                 width={isNarrow ? undefined : sectionsWidth}
                 height={paneSlotHeight}
-                borderStyle="single"
-                borderColor={screen.focusZone === "timeline" ? tokens.accent : tokens.border}
+                borderStyle={SURFACE_BORDER}
+                borderColor={focusBorder(tokens, screen.focusZone === "timeline")}
                 flexDirection="column"
               >
                 <Box paddingX={1} paddingTop={1}>
@@ -254,8 +229,8 @@ export function HistoryScreen(): ReactElement {
               <Box
                 flexGrow={1}
                 height={paneSlotHeight}
-                borderStyle="single"
-                borderColor={screen.focusZone === "runs" ? tokens.accent : tokens.border}
+                borderStyle={SURFACE_BORDER}
+                borderColor={focusBorder(tokens, screen.focusZone === "runs")}
                 flexDirection="column"
               >
                 <Box paddingX={1} paddingTop={1}>
@@ -279,8 +254,8 @@ export function HistoryScreen(): ReactElement {
               <Box
                 width={isNarrow ? undefined : insightsWidth}
                 height={paneSlotHeight}
-                borderStyle="single"
-                borderColor={screen.focusZone === "insights" ? tokens.accent : tokens.border}
+                borderStyle={SURFACE_BORDER}
+                borderColor={focusBorder(tokens, screen.focusZone === "insights")}
               >
                 <HistoryInsightsPane
                   runId={

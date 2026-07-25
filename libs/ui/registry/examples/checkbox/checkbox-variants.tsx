@@ -2,22 +2,27 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 export default function CheckboxVariants() {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
+        <div className="text-xs text-muted-foreground uppercase font-bold">Indicator</div>
         <Checkbox checked={true} label="Variant: x (default)" variant="x" />
+        <Checkbox checked="indeterminate" label="Indeterminate state" />
         <Checkbox checked={true} label="Variant: bullet" variant="bullet" />
       </div>
       <div className="flex flex-col gap-2">
-        <Checkbox label="Small" size="sm" />
-        <Checkbox label="Medium (default)" size="md" />
-        <Checkbox label="Large" size="lg" />
+        <div className="text-xs text-muted-foreground uppercase font-bold">Size</div>
+        <Checkbox checked={true} label="Small" size="sm" />
+        <Checkbox checked={true} label="Medium (default)" size="md" />
+        <Checkbox checked={true} label="Large" size="lg" />
       </div>
-      <Checkbox checked="indeterminate" label="Indeterminate state" />
-      <Checkbox disabled label="Disabled checkbox" />
-      <Checkbox
-        label="With description"
-        description="This checkbox has additional descriptive text below the label."
-      />
+      <div className="flex flex-col gap-2">
+        <div className="text-xs text-muted-foreground uppercase font-bold">Content</div>
+        <Checkbox disabled label="Disabled checkbox" />
+        <Checkbox
+          label="With description"
+          description="This checkbox has additional descriptive text below the label."
+        />
+      </div>
     </div>
   );
 }

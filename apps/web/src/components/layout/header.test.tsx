@@ -16,6 +16,13 @@ describe("Header", () => {
     expect(screen.queryByText("DIFFGAZER")).not.toBeInTheDocument();
   });
 
+  it("swaps the figlet banner for a one-line wordmark on work screens", () => {
+    render(<Header providerName="OpenAI" providerStatus="idle" wordmark="line" />);
+
+    expect(screen.queryByRole("img", { name: "DIFFGAZER" })).not.toBeInTheDocument();
+    expect(screen.getByText("DIFFGAZER")).toBeInTheDocument();
+  });
+
   it("shows provider name and status when supplied", () => {
     render(
       <Header
@@ -23,7 +30,11 @@ describe("Header", () => {
         providerStatus="active"
       />,
     );
-    const status = screen.getByLabelText(/provider: openai \/ a-provider-model-name/i);
+    // The aria-label replaces the row's children for assistive tech, so it has
+    // to carry the status word the sighted user reads beside the name.
+    const status = screen.getByLabelText(
+      "Provider: OpenAI / a-provider-model-name-that-needs-to-fit, active",
+    );
     expect(status).toBeInTheDocument();
     expect(status).toHaveTextContent("OpenAI / a-provider-model-name-that-needs-to-fit");
     expect(status).toHaveTextContent(/active/i);

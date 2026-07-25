@@ -1,3 +1,4 @@
+import { useApiKeyEntry } from "@diffgazer/core/providers";
 import type { SecretsStorage } from "@diffgazer/core/schemas/config";
 import { Callout } from "@diffgazer/ui/components/callout";
 import {
@@ -9,12 +10,8 @@ import {
 } from "@diffgazer/ui/components/dialog";
 import { useId, useRef } from "react";
 import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
-import type { FocusElement } from "@/types/focus-element";
 import { ApiKeyFooter } from "./footer";
-import { useApiKeyForm } from "./use-form";
 import { useApiKeyDialogKeyboard } from "./use-keyboard";
-
-export type { FocusElement };
 
 export interface ApiKeyDialogProps {
   open: boolean;
@@ -40,19 +37,19 @@ export function ApiKeyDialog({
       ? `Keys are stored in your OS keychain. Context is only sent to ${providerName}.`
       : `Keys are stored in a local file with OS permissions. Context is only sent to ${providerName}.`;
 
-  const form = useApiKeyForm({
+  const entry = useApiKeyEntry({
     envVarName,
     onSubmit,
   });
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && form.isSubmitting) return;
-    if (!nextOpen) form.reset();
+    if (!nextOpen && entry.isSubmitting) return;
+    if (!nextOpen) entry.reset();
     onOpenChange(nextOpen);
   };
 
   const handleSubmit = async (method?: "paste" | "env") => {
-    const saved = await form.handleSubmit(method);
+    const saved = await entry.submit(method);
     if (saved) handleOpenChange(false);
     return saved;
   };
@@ -69,10 +66,10 @@ export function ApiKeyDialog({
     confirmHighlighted,
   } = useApiKeyDialogKeyboard({
     open,
-    method: form.method,
-    setMethod: form.setMethod,
-    canSubmit: form.canSubmit && !form.isSubmitting,
-    isSubmitting: form.isSubmitting,
+    method: entry.method,
+    setMethod: entry.setMethod,
+    canSubmit: entry.canSubmit && !entry.isSubmitting,
+    isSubmitting: entry.isSubmitting,
     inputRef,
     onSubmit: handleSubmit,
     onClose: () => handleOpenChange(false),
@@ -81,24 +78,22 @@ export function ApiKeyDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-w-xl overflow-hidden border border-border shadow-2xl"
-        closeOnBackdropClick={!form.isSubmitting}
+        className="max-w-xl overflow-hidden"
+        closeOnBackdropClick={!entry.isSubmitting}
         onEscapeKeyDown={(event) => {
-          if (form.isSubmitting) event.preventDefault();
+          if (entry.isSubmitting) event.preventDefault();
         }}
       >
-        <DialogHeader marker="none" className="bg-secondary/50 px-4 py-3">
-          <DialogTitle className="min-w-0 flex-1 w-auto text-info-text tracking-wide">
-            {providerName} API Key
-          </DialogTitle>
+        <DialogHeader>
+          <DialogTitle>{providerName} API Key</DialogTitle>
         </DialogHeader>
 
-        <DialogBody className="p-6 space-y-6">
+        <DialogBody className="space-y-6">
           <ApiKeyMethodSelector
-            value={form.method}
-            onChange={form.setMethod}
-            keyValue={form.keyValue}
-            onKeyValueChange={form.setKeyValue}
+            value={entry.method}
+            onChange={entry.setMethod}
+            keyValue={entry.value}
+            onKeyValueChange={entry.setValue}
             envVarName={envVarName}
             providerName={providerName}
             inputRef={inputRef}
@@ -108,13 +103,13 @@ export function ApiKeyDialog({
             onMethodCommit={handleMethodCommit}
             onInputMethodKeyDown={handleMethodKeyDown}
             getMethodOptionProps={getMethodOptionProps}
-            invalid={form.error !== null}
+            invalid={entry.error !== null}
             errorId={errorId}
           />
 
-          {form.error && (
+          {entry.error && (
             <Callout id={errorId} tone="error" live>
-              <Callout.Content>{form.error}</Callout.Content>
+              <Callout.Content>{entry.error}</Callout.Content>
             </Callout>
           )}
 
@@ -127,8 +122,8 @@ export function ApiKeyDialog({
           onConfirm={() => {
             void handleSubmit();
           }}
-          canSubmit={form.canSubmit}
-          isSubmitting={form.isSubmitting}
+          canSubmit={entry.canSubmit}
+          isSubmitting={entry.isSubmitting}
           getCancelProps={getCancelProps}
           getConfirmProps={getConfirmProps}
           cancelHighlighted={cancelHighlighted}

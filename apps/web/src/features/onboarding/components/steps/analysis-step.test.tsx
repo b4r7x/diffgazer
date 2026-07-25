@@ -17,9 +17,9 @@ describe("AnalysisStep", () => {
     const onCommit = vi.fn();
     render(<Harness onCommit={onCommit} />);
 
-    const agentsGroup = screen.getByRole("group", { name: /review agents/i });
-    const firstLens = within(agentsGroup).getByRole("checkbox", { name: /detective/i });
-    const focusedLens = within(agentsGroup).getByRole("checkbox", { name: /guardian/i });
+    const lensesGroup = screen.getByRole("group", { name: /active lenses/i });
+    const firstLens = within(lensesGroup).getByRole("checkbox", { name: /detective/i });
+    const focusedLens = within(lensesGroup).getByRole("checkbox", { name: /guardian/i });
 
     focusedLens.focus();
     await user.keyboard("{Enter}");

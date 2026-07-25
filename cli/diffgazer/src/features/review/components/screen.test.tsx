@@ -3,7 +3,7 @@ import { makeIssue } from "@diffgazer/core/testing/factories";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
-import { NavigationProvider } from "../../../app/providers/navigation-provider";
+import { NavigationProvider } from "../../../app/providers/navigation";
 import type { Route } from "../../../lib/routes";
 import { makeReviewLifecycleBase } from "../../../testing/review-lifecycle-base";
 

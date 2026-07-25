@@ -65,8 +65,8 @@ describe("highlight", () => {
     );
 
     const lines = container.querySelectorAll('[data-slot="code-block-line"]');
-    expect(lines[0]).toHaveAttribute("data-line-state", "added");
-    expect(lines[1]).toHaveAttribute("data-line-state", "removed");
+    expect(lines[0]).toHaveAttribute("data-state", "added");
+    expect(lines[1]).toHaveAttribute("data-state", "removed");
     expect(lines[0]?.querySelector('[data-slot="code-block-line-sign"]')?.textContent).toBe("+");
     expect(lines[1]?.querySelector('[data-slot="code-block-line-sign"]')?.textContent).toBe("−");
     expect(codeTokenCount(requireElement(lines[0], "added diff line"))).toBeGreaterThan(0);

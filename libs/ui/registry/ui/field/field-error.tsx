@@ -26,7 +26,9 @@ export function FieldError({ className, children, ref, ...props }: FieldErrorPro
       ref={ref}
       id={resolvedId}
       data-slot="field-error"
-      className={cn("text-xs text-error", className)}
+      // The left rule carries the invalid signal without color, so the message
+      // still separates from Field.Description for color-blind readers.
+      className={cn("border-l border-error pl-2 text-xs text-error", className)}
     >
       {children}
     </p>

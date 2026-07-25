@@ -9,7 +9,7 @@ import type {
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
@@ -225,15 +225,18 @@ describe("OnboardingWizard", () => {
       .mockResolvedValue({ deleted: true, provider: "openrouter" });
   });
 
-  it("shows the current step in compact progress and in the full stepper", async () => {
+  it("marks the current step and its position in the setup progress", async () => {
     renderWizard();
 
     await expectStep(/secrets storage/i);
-    const compactProgress = screen.getByText("Step 1/6 · Storage");
-    const fullProgress = screen.getByLabelText("Setup progress");
+    const progress = screen.getByLabelText("Setup progress");
+    const currentStep = within(progress).getByRole("listitem", { current: "step" });
 
-    expect(compactProgress).toHaveTextContent("Step 1/6 · Storage");
-    expect(fullProgress).toBeInTheDocument();
+    expect(currentStep).toHaveTextContent(/Step 1\/6/);
+    expect(currentStep).toHaveTextContent(/Storage/);
+    // Every step stays announced even though the compact treatment hides the other labels.
+    expect(within(progress).getAllByRole("listitem")).toHaveLength(6);
+    expect(within(progress).getByText("Execution")).toBeInTheDocument();
   });
 
   it("disables the Next action on the api-key step until canProceed is satisfied", async () => {

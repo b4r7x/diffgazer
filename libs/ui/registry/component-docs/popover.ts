@@ -52,6 +52,11 @@ export const popoverDoc: ComponentDoc = {
         "Use `open` and `onOpenChange` props for controlled state. Works with both trigger modes.",
     },
     {
+      title: "Default Surface",
+      content:
+        "Popover.Content ships the surface: a 1px --border hairline, a --surface-1 fill with a 1px --surface-1-highlight inner top lip, and the family's tight rounded-sm corners. --surface-1 sits one step off the page background (lighter in dark, darker in light), so a floating layer separates from dense content by depth step rather than by blur — there is still no drop shadow. There is no padding either, so menu-style content can sit flush. `className` merges last, so a consumer can override or drop any of it; FloatingPanel underneath stays fully headless.",
+    },
+    {
       title: "Portal Rendering",
       content:
         "Content renders through the shared Portal primitive. When a PortalContainerProvider is present, Popover.Content uses that scoped container; otherwise it falls back to document.body. This keeps nested overlay trees in the same portal scope while still escaping overflow:hidden ancestors by default.",

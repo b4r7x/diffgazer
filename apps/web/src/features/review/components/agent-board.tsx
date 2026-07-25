@@ -3,29 +3,41 @@ import type { AgentState } from "@diffgazer/core/schemas/events";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Progress } from "@diffgazer/ui/components/progress";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
-import { Fragment } from "react";
 
 interface AgentBoardProps {
   agents: AgentState[];
 }
+
+// One grid for the whole board with each agent a subgrid row, so the four cells
+// of an agent stay one list item for assistive tech while the columns still line
+// up across rows.
+const BOARD_GRID =
+  "grid grid-cols-[auto_minmax(0,auto)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5";
+const AGENT_ROW = "col-span-4 grid grid-cols-subgrid items-center";
 
 export function AgentBoard({ agents }: AgentBoardProps) {
   if (agents.length === 0) return null;
 
   return (
     <div className="mb-8">
-      <SectionHeader variant="muted" bordered>
+      <SectionHeader variant="muted" bordered className="mb-2">
         Agent Board
       </SectionHeader>
-      <div className="grid grid-cols-[auto_minmax(0,auto)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5">
+      {/* biome-ignore lint/a11y/useSemanticElements: this already is a <ul>; the explicit role="list" below restores list semantics that Tailwind preflight strips, and Biome should not suggest swapping the element. */}
+      <ul
+        // biome-ignore lint/a11y/noRedundantRoles: Tailwind preflight sets list-style:none on <ul>, which drops list semantics in Safari/VoiceOver; role="list" restores them.
+        role="list"
+        aria-label="Agent board"
+        className={BOARD_GRID}
+      >
         {agents.map((agent) => {
           const detail = getAgentDetail(agent);
           return (
-            <Fragment key={agent.id}>
+            <li key={agent.id} className={AGENT_ROW}>
               <Badge
                 variant={agent.meta.badgeVariant ?? "info"}
                 size="sm"
-                className="min-w-[48px] justify-center"
+                className="min-w-12 justify-center"
               >
                 {agent.meta.badgeLabel}
               </Badge>
@@ -38,10 +50,10 @@ export function AgentBoard({ agents }: AgentBoardProps) {
               <span className="text-xs text-muted-foreground truncate" title={detail}>
                 {detail}
               </span>
-            </Fragment>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </div>
   );
 }

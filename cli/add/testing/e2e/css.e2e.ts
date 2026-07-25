@@ -1,8 +1,22 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { runDgadd, writeFixtureConfig } from "./test-helpers.js";
+
+// Installing ui/dialog appends several chunks (its own backdrop rules plus the
+// ones its transitive deps ship), so tests that target one chunk locate it by
+// body text instead of taking whichever entry recorded chunks first.
+const CSS_CHUNK_PATTERN =
+  /\/\* dgadd:css ([a-f0-9]{16})(?: \S+)? \*\/([\s\S]*?)\/\* dgadd:css-end \1(?: \S+)? \*\//g;
+
+function chunkHashContaining(css: string, declaration: string): string {
+  for (const match of css.matchAll(CSS_CHUNK_PATTERN)) {
+    const [, hash, body] = match;
+    if (hash && body?.includes(declaration)) return hash;
+  }
+  throw new Error(`No dgadd CSS chunk contains ${declaration}.`);
+}
 
 let root: string;
 
@@ -164,19 +178,19 @@ describe("css chunk ownership on remove", () => {
     runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
 
     const manifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    // Pull whichever entry recorded chunks so the assertion does not bind to the
-    // item that happens to own the shared CSS today.
-    const chunkOwnerEntry = Object.entries(
-      manifest.installedComponents as Record<string, { cssChunks?: string[] }>,
-    ).find(([, record]) => (record.cssChunks ?? []).length > 0);
-    expect(chunkOwnerEntry, "expected at least one item to record cssChunks").toBeTruthy();
-    if (!chunkOwnerEntry) {
-      throw new Error("Expected at least one item to record cssChunks.");
-    }
-    const ownerHashes = chunkOwnerEntry[1].cssChunks ?? [];
+    // Collect every recorded chunk so the assertions do not bind to the items
+    // that happen to own the shared CSS today.
+    const ownerHashes = [
+      ...new Set(
+        Object.values(
+          manifest.installedComponents as Record<string, { cssChunks?: string[] }>,
+        ).flatMap((record) => record.cssChunks ?? []),
+      ),
+    ];
+    expect(ownerHashes.length, "expected at least one item to record cssChunks").toBeGreaterThan(0);
 
     // Give ui/button (explicit, preserved) the same hashes: two items emitting
-    // identical CSS, so the chunk must survive removal of the first co-owner.
+    // identical CSS, so every chunk must survive removal of a co-owner.
     manifest.installedComponents["ui/button"].cssChunks = [...ownerHashes];
     writeFileSync(join(root, "diffgazer.json"), JSON.stringify(manifest, null, 2));
 
@@ -209,18 +223,20 @@ describe("css chunk ownership on remove", () => {
   test("edited chunk is preserved on remove without --force and stays re-targetable", () => {
     runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
 
-    // Discover the chunk owner so the assertions do not bind to its name.
+    // Discover the owner of the chunk about to be edited so the assertions do
+    // not bind to its name.
+    const stylesPath = join(root, "src/styles/styles.css");
+    const backdropHash = chunkHashContaining(readFileSync(stylesPath, "utf-8"), "dialog::backdrop");
     const beforeManifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     const chunkOwnerEntry = Object.entries(
       beforeManifest.installedComponents as Record<string, { cssChunks?: string[] }>,
-    ).find(([, record]) => (record.cssChunks ?? []).length > 0);
+    ).find(([, record]) => (record.cssChunks ?? []).includes(backdropHash));
     if (!chunkOwnerEntry) {
-      throw new Error("Expected at least one item to record cssChunks.");
+      throw new Error("Expected an item to own the dialog backdrop chunk.");
     }
     const [chunkOwner, ownerRecord] = chunkOwnerEntry;
     const ownerHashes = ownerRecord.cssChunks ?? [];
 
-    const stylesPath = join(root, "src/styles/styles.css");
     const edited = readFileSync(stylesPath, "utf-8").replace(
       /(dialog::backdrop)/,
       "/* user tuned */\n$1",

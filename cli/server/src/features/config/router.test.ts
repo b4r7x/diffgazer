@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApi } from "@diffgazer/core/api";
 import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api/protocol";
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetRateLimitsForTests } from "../../shared/middlewares/rate-limit.js";
-import { requireValue } from "../../testing/assertions.js";
 
 // Matches the catalog and OpenRouter routes' createRateLimitMiddleware maxRequests in router.ts.
 const MODEL_FETCH_MAX_REQUESTS = 30;

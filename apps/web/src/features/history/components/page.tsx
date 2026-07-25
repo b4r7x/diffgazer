@@ -9,11 +9,13 @@ import {
 } from "@diffgazer/core/review";
 import type { ReviewListWarning } from "@diffgazer/core/schemas/review";
 import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
+import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { Panel } from "@diffgazer/ui/components/panel";
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
-import { type KeyboardEvent, useRef } from "react";
+import type { KeyboardEvent } from "react";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { TrustPanel } from "@/components/shared/trust-panel";
@@ -59,6 +61,11 @@ function HistoryPageContent() {
     focusZone,
     searchQuery,
     searchInputRef,
+    timelineRef,
+    runsListRef,
+    loadMoreRef,
+    insightsListRef,
+    retryRef,
     setSearchQuery,
     setFocusZone,
     timelineItems,
@@ -87,11 +94,6 @@ function HistoryPageContent() {
     setHighlightedIssueId,
   } = useHistoryPage();
 
-  const timelineRef = useRef<HTMLElement>(null);
-  const runsListRef = useRef<HTMLDivElement>(null);
-  const loadMoreRef = useRef<HTMLButtonElement>(null);
-  const insightsListRef = useRef<HTMLDivElement>(null);
-  const retryRef = useRef<HTMLButtonElement>(null);
   const activeRunId = selectedRunId;
   const insightsDetailState = deriveHistoryDetailState({
     isLoading: reviewDetailQuery.isLoading,
@@ -161,29 +163,50 @@ function HistoryPageContent() {
         }}
         placeholder={HISTORY_SEARCH_PLACEHOLDER}
         prefix={
-          <span aria-hidden="true" className="text-info-text font-bold">
+          // The "/" is a keyboard affordance, so it is noise on a touch device.
+          <span aria-hidden="true" className="hidden font-bold text-info-text pointer-fine:inline">
             /
           </span>
         }
         className="border-border bg-background"
+        // At 375 the placeholder is wider than the field; ellipsize it instead of
+        // hard-clipping mid-word.
+        inputClassName="text-ellipsis"
       />
 
+      {/*
+        Pane count adapts instead of compressing: one column at 375, two at 768
+        (SECTIONS becomes a full-width strip so RUNS keeps the width), the full
+        three-pane rhythm from 1024. --panel-hairline is raised to the full
+        --border token so the pane frames stay legible in GitHub-dark.
+
+        The notched Panel.Label chips overhang their pane by 12px, and this row
+        clips (scrolls below md, hides above it), so the clearance comes from the
+        row's own pt-4. The panes therefore sit 12px lower than the bare grid would
+        place them; that offset is intended, not compensated away.
+
+        Below md the panes stack and the row itself scrolls, so each pane keeps
+        its content-based minimum height; `min-h-0` is scoped to md upward,
+        where a pane is a fixed-height track that scrolls internally instead.
+      */}
       <div
         data-row="history"
-        className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto md:flex-row md:overflow-hidden"
+        className="mt-2 grid min-h-0 flex-1 gap-x-px gap-y-6 overflow-y-auto pt-4 [--panel-hairline:var(--border)] md:grid-cols-[minmax(0,1fr)_18rem] md:grid-rows-[auto_minmax(0,1fr)] md:overflow-hidden lg:grid-cols-[11rem_minmax(0,1fr)_20rem] lg:grid-rows-[minmax(0,1fr)]"
       >
         <Panel
           ref={timelineRef}
           as="aside"
           aria-label="Review sections"
           data-pane="timeline"
-          data-focused={focusZone === "timeline" || undefined}
-          className="mt-3 flex flex-col border border-border data-[focused]:border-info focus:outline-none md:w-48 md:shrink-0"
+          focused={focusZone === "timeline"}
+          className="flex flex-col md:col-span-2 md:min-h-0 lg:col-span-1"
         >
           <Panel.Label variant="border" aria-hidden="true">
             Sections
           </Panel.Label>
-          <div className="px-2 pb-2 pt-3 md:flex-1 md:overflow-y-auto">
+          {/* Capped below lg so the date filter cannot push the first run row off
+              the first mobile/tablet viewport. */}
+          <ScrollArea className="max-h-40 px-2 pb-2 pt-3 lg:max-h-none lg:min-h-0 lg:flex-1">
             <TimelineList
               items={timelineItems}
               selectedId={selectedDateId}
@@ -195,23 +218,27 @@ function HistoryPageContent() {
               keyboardEnabled={focusZone === "timeline"}
               onBoundaryReached={handleTimelineBoundary}
             />
-          </div>
+          </ScrollArea>
         </Panel>
 
         <Panel
           as="section"
           aria-label="Review runs"
           data-pane="runs"
-          data-focused={focusZone === "runs" || focusZone === "load-more" || undefined}
-          className="mt-3 min-w-0 flex flex-col border border-border data-[focused]:border-info focus:outline-none md:flex-1"
+          focused={focusZone === "runs" || focusZone === "load-more"}
+          className="flex min-w-0 flex-col md:min-h-0"
         >
           <Panel.Label variant="border" aria-hidden="true">
             Runs
           </Panel.Label>
+          {/* Ordering is fixed, so this reads as a datum rather than borrowing the
+              bracketed-control vocabulary of the real actions on the page. */}
           <div className="flex justify-end px-3 pt-3">
-            <span className="text-2xs text-muted-foreground font-mono">Sort: Recent</span>
+            <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">
+              Newest first
+            </span>
           </div>
-          <div className="p-2 md:flex-1 md:overflow-y-auto">
+          <ScrollArea className="p-2 md:min-h-0 md:flex-1">
             {mappedRuns.length > 0 ? (
               <NavigationList
                 ref={runsListRef}
@@ -241,11 +268,13 @@ function HistoryPageContent() {
                     <NavigationList.Status className="text-muted-foreground group-data-[highlighted]:text-primary-foreground/70">
                       {run.timestamp}
                     </NavigationList.Status>
-                    <NavigationList.Meta className="min-w-0 flex-wrap">
+                    {/* Branch and summary share row 2: a three-line run row halves
+                        the list density the terminal surface aims for. */}
+                    <NavigationList.Meta className="min-w-0">
                       <NavigationList.Badge variant="neutral" size="sm">
                         {run.branch}
                       </NavigationList.Badge>
-                      <span className="min-w-full line-clamp-2 text-sm text-muted-foreground group-data-[highlighted]:text-primary-foreground/85">
+                      <span className="min-w-0 line-clamp-2 text-sm text-muted-foreground group-data-[highlighted]:text-primary-foreground/85">
                         {run.summary}
                       </span>
                     </NavigationList.Meta>
@@ -264,28 +293,34 @@ function HistoryPageContent() {
               {mappedRuns.length === 0 ? emptyRunsMessage : null}
             </EmptyState>
             {hasMoreReviews ? (
-              <button
+              <Button
                 ref={loadMoreRef}
-                type="button"
-                disabled={isLoadingMoreReviews}
+                variant="outline"
+                size="sm"
+                bracket
+                loading={isLoadingMoreReviews}
                 onClick={() => void loadMoreReviews()}
-                className="mt-2 w-full border border-border px-3 py-2 text-sm font-mono text-muted-foreground hover:text-foreground disabled:opacity-50"
+                className="mt-2 w-full"
               >
-                {isLoadingMoreReviews ? "Loading older runs..." : "Load older runs"}
-              </button>
+                Load older runs
+              </Button>
             ) : null}
-          </div>
+          </ScrollArea>
         </Panel>
 
         <Panel
           as="aside"
           aria-label="Review insights"
           data-pane="insights"
-          data-focused={focusZone === "insights" || focusZone === "retry" || undefined}
-          className="mt-3 shrink-0 flex flex-col border border-border data-[focused]:border-info focus:outline-none md:min-h-0 md:w-80"
+          focused={focusZone === "insights" || focusZone === "retry"}
+          className="flex flex-col md:min-h-0"
         >
           <Panel.Label variant="border" aria-hidden="true">
-            Insights{selectedRun ? ` · ${formatRunId(selectedRun.id)}` : ""}
+            Insights
+            {/* The run hash is data, not a label: keep its real casing. */}
+            {selectedRun ? (
+              <span className="normal-case"> · {formatRunId(selectedRun.id)}</span>
+            ) : null}
           </Panel.Label>
           <HistoryInsightsPane
             runId={selectedRun?.id ?? null}

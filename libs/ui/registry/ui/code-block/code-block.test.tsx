@@ -68,9 +68,9 @@ describe("CodeBlock", () => {
       expect(container.querySelector('[data-slot="code-block-header"]')).toBeNull();
     });
 
-    it('renders three aria-hidden dots in variant="terminal"', () => {
+    it('renders three aria-hidden dots when chrome="dots" is opted into', () => {
       const { container } = render(
-        <CodeBlock variant="terminal">
+        <CodeBlock variant="terminal" chrome="dots">
           <CodeBlock.Header>
             <CodeBlock.Label>~/diffgazer</CodeBlock.Label>
           </CodeBlock.Header>
@@ -105,7 +105,7 @@ describe("CodeBlock", () => {
       );
     });
 
-    it('explicit chrome="dots" matches the default for variant="terminal"', () => {
+    it('defaults to chrome="none" in every variant, including terminal', () => {
       const { container } = render(
         <>
           <CodeBlock variant="terminal">
@@ -114,25 +114,20 @@ describe("CodeBlock", () => {
             </CodeBlock.Header>
             <CodeBlock.Content>{"$ pwd"}</CodeBlock.Content>
           </CodeBlock>
-          <CodeBlock variant="terminal" chrome="dots">
+          <CodeBlock>
             <CodeBlock.Header>
-              <CodeBlock.Label>~/a</CodeBlock.Label>
+              <CodeBlock.Label>a.ts</CodeBlock.Label>
             </CodeBlock.Header>
-            <CodeBlock.Content>{"$ pwd"}</CodeBlock.Content>
+            <CodeBlock.Content>{"const a = 1"}</CodeBlock.Content>
           </CodeBlock>
         </>,
       );
 
-      const [implicit, explicit] = container.querySelectorAll('[data-slot="code-block"]');
-      expect(implicit).toHaveAttribute("data-chrome", "dots");
-      expect(explicit).toHaveAttribute("data-chrome", "dots");
-
-      const implicitDots = implicit?.querySelector('[data-slot="code-block-dots"]');
-      const explicitDots = explicit?.querySelector('[data-slot="code-block-dots"]');
-      expect(implicitDots).not.toBeNull();
-      expect(explicitDots).not.toBeNull();
-      expect(implicitDots?.querySelectorAll("span").length).toBe(3);
-      expect(explicitDots?.querySelectorAll("span").length).toBe(3);
+      const [terminal, hairline] = container.querySelectorAll('[data-slot="code-block"]');
+      expect(terminal).toHaveAttribute("data-chrome", "none");
+      expect(hairline).toHaveAttribute("data-chrome", "none");
+      expect(terminal?.querySelector('[data-slot="code-block-dots"]')).toBeNull();
+      expect(hairline?.querySelector('[data-slot="code-block-dots"]')).toBeNull();
     });
 
     it('propagates chrome="dots" via data-chrome regardless of variant', () => {
@@ -154,7 +149,7 @@ describe("CodeBlock", () => {
   });
 
   describe("line states", () => {
-    it('renders data-line-state="added" and a sr-only "Added: " prefix', () => {
+    it('renders data-state="added" and a sr-only "Added: " prefix', () => {
       const { container } = render(
         <CodeBlock>
           <CodeBlock.Content>
@@ -164,11 +159,11 @@ describe("CodeBlock", () => {
       );
 
       const line = container.querySelector('[data-slot="code-block-line"]');
-      expect(line).toHaveAttribute("data-line-state", "added");
+      expect(line).toHaveAttribute("data-state", "added");
       expect(within(line as HTMLElement).getByText(/^Added:$/)).toBeInTheDocument();
     });
 
-    it('renders data-line-state="removed" and a sr-only "Removed: " prefix', () => {
+    it('renders data-state="removed" and a sr-only "Removed: " prefix', () => {
       const { container } = render(
         <CodeBlock>
           <CodeBlock.Content>
@@ -178,7 +173,7 @@ describe("CodeBlock", () => {
       );
 
       const line = container.querySelector('[data-slot="code-block-line"]');
-      expect(line).toHaveAttribute("data-line-state", "removed");
+      expect(line).toHaveAttribute("data-state", "removed");
       expect(within(line as HTMLElement).getByText(/^Removed:$/)).toBeInTheDocument();
     });
   });

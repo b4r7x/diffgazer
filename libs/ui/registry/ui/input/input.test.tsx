@@ -59,6 +59,20 @@ describe("Input", () => {
     expect(input).toHaveAttribute("aria-invalid", "grammar");
   });
 
+  // Class assertion by exception: the inset focus grammar is a ring (box-shadow) plus a
+  // recoloured border, and forced-colors drops the first and force-overrides the second.
+  // Whether anything is left to see is a computed-style question jsdom cannot answer and
+  // axe does not model, so the utility that carries the fallback is pinned directly.
+  // `outline-hidden` keeps a 2px transparent outline that forced-colors repaints;
+  // `outline-none` emits no outline at all and would leave focus invisible there.
+  it("keeps a forced-colors focus fallback on the field grammar", () => {
+    render(<Input aria-label="Email" />);
+
+    const input = screen.getByRole("textbox", { name: "Email" });
+    expect(input).toHaveClass("focus:outline-hidden");
+    expect(input).not.toHaveClass("focus:outline-none");
+  });
+
   it("renders prefix and suffix affordances around the input", async () => {
     const user = userEvent.setup();
 

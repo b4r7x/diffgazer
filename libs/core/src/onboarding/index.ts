@@ -14,7 +14,7 @@ export type {
   OnboardingStep,
   WizardData,
 } from "./types.js";
-export { INPUT_METHODS, WIZARD_STEPS } from "./types.js";
+export { INPUT_METHODS, isInputMethod, WIZARD_STEPS } from "./types.js";
 export {
   type UseWizardStateOptions,
   type UseWizardStateResult,

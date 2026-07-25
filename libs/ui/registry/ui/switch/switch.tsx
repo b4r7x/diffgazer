@@ -54,7 +54,7 @@ const trackVariants = cva(
     "font-mono cursor-pointer select-none",
     "border border-border rounded-sm",
     "transition-colors duration-150",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
   ],
   {
     variants: {
@@ -66,7 +66,9 @@ const trackVariants = cva(
       },
       checked: {
         true: "bg-primary border-primary",
-        false: "bg-muted",
+        // Recessed surface token, not the muted text token: keeps the off track
+        // hue-free and clearly emptier than the filled on track.
+        false: "bg-secondary",
       },
       disabled: {
         true: "opacity-50 cursor-not-allowed",
@@ -83,7 +85,7 @@ const trackVariants = cva(
 
 const thumbVariants = cva(
   [
-    "block rounded-sm bg-background border border-border",
+    "rounded-sm bg-background text-foreground border border-border",
     "transition-transform duration-150",
     "font-mono leading-none flex items-center justify-center",
   ],
@@ -231,7 +233,11 @@ export function Switch({
           aria-hidden="true"
           data-slot="switch-thumb"
           className={thumbVariants({ size, checked: isChecked })}
-        />
+        >
+          {/* Binary glyph so on/off stays readable in a still frame, without
+              relying on track inversion or thumb position alone. */}
+          {isChecked ? "1" : "0"}
+        </span>
       </button>
     </>
   );

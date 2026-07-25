@@ -7,7 +7,6 @@ import {
   type ReactNode,
   type Ref,
   useCallback,
-  useEffect,
   useId,
   useLayoutEffect,
   useMemo,
@@ -18,14 +17,14 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { useNavigation } from "@/hooks/use-navigation";
-import { isHTMLElementForContainer, mergeIds, resolveAriaInvalid } from "@/lib/aria";
+import { isAriaInvalid, isHTMLElementForContainer, mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
 import {
   getEnabledSelectableCollectionItems,
-  resolveSelectableCollectionItem,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
-import { type SelectableVariant, selectableLabelVariants } from "@/lib/selectable-variants";
+import { useSelectableGroupAutoFocus } from "@/lib/selectable-group";
+import { type SelectableVariant, selectableGroupLabelVariants } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
 import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import type { CheckboxSize } from "./checkbox";
@@ -137,7 +136,6 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
   const composedRef = useComposedRefs(containerRef, ref);
   const generatedId = useId();
   const labelId = `${generatedId}-label`;
-  const hasAutoFocusedRef = useRef(false);
   const fieldsetDisabled = useFieldsetDisabled(containerRef);
   const isDisabled = disabled || fieldsetDisabled;
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
@@ -194,6 +192,10 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
   const resolvedAriaLabelledBy = ariaLabel
     ? undefined
     : mergeIds(ariaLabelledBy, label ? labelId : undefined);
+  const resolvedAriaInvalid = resolveAriaInvalid(
+    ariaInvalid,
+    nativeInvalid && required && !hasValidSelectedValue,
+  );
 
   const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
     value: controlledHighlighted,
@@ -216,29 +218,15 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     ownerSelector: '[data-diffgazer-selectable-owner="checkbox"]',
   });
 
-  useEffect(() => {
-    if (!autoFocus || !keyboardNavigation || isDisabled) {
-      hasAutoFocusedRef.current = false;
-      return;
-    }
-    if (hasAutoFocusedRef.current) return;
-
-    const activeItems = getEnabledSelectableCollectionItems(items, isDisabled);
-    const target = resolveSelectableCollectionItem(activeItems, highlightedValue, ...value);
-    if (!target?.element) return;
-
-    target.element.focus();
-    setHighlightedValue(target.value);
-    hasAutoFocusedRef.current = true;
-  }, [
+  useSelectableGroupAutoFocus({
     autoFocus,
     keyboardNavigation,
-    isDisabled,
+    disabled: isDisabled,
     items,
     highlightedValue,
-    value,
+    selectedValue: value,
     setHighlightedValue,
-  ]);
+  });
 
   const toggle = useCallback(
     (itemValue: string) => {
@@ -300,56 +288,57 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
 
   return (
     <CheckboxGroupContext value={contextValue}>
-      {label && (
+      {/* Single wrapper so the visible label always stacks above the items,
+          including when the group is dropped into a flex-row parent. */}
+      <div data-slot="checkbox-group-root" className="flex flex-col gap-2">
+        {label && (
+          <div
+            id={labelId}
+            data-slot="checkbox-group-label"
+            className={selectableGroupLabelVariants({
+              invalid: isAriaInvalid(resolvedAriaInvalid),
+              size,
+            })}
+          >
+            {label}
+          </div>
+        )}
+        {/* biome-ignore lint/a11y/useSemanticElements: role="group" labels the set of related checkboxes; <fieldset> would impose default form styling/structure and break the group layout. */}
         <div
-          id={labelId}
-          data-slot="checkbox-group-label"
-          className={cn(
-            "mb-2 font-mono font-bold text-muted-foreground",
-            selectableLabelVariants({ size }),
-          )}
+          {...rootProps}
+          ref={composedRef}
+          role="group"
+          data-slot="checkbox-group"
+          data-diffgazer-selectable-owner="checkbox"
+          aria-label={ariaLabel}
+          aria-labelledby={resolvedAriaLabelledBy}
+          aria-disabled={isDisabled || undefined}
+          aria-invalid={resolvedAriaInvalid}
+          className={cn("flex flex-col gap-2", className)}
+          onKeyDown={handleKeyDown}
         >
-          {label}
+          {required && (
+            // Validation-only mirror: aria-hidden keeps it out of the a11y tree,
+            // so naming and invalid state live on the visible role="group".
+            <input
+              type="checkbox"
+              data-slot="checkbox-group-validation"
+              required
+              checked={hasValidSelectedValue}
+              disabled={isDisabled}
+              tabIndex={-1}
+              aria-hidden={true}
+              className="sr-only"
+              onChange={() => {}}
+              onInvalid={(event) => {
+                event.preventDefault();
+                setNativeInvalid(true);
+                getEnabledSelectableCollectionItems(items, isDisabled)[0]?.element?.focus();
+              }}
+            />
+          )}
+          {children}
         </div>
-      )}
-      {/* biome-ignore lint/a11y/useSemanticElements: role="group" labels the set of related checkboxes; <fieldset> would impose default form styling/structure and break the group layout. */}
-      <div
-        {...rootProps}
-        ref={composedRef}
-        role="group"
-        data-slot="checkbox-group"
-        data-diffgazer-selectable-owner="checkbox"
-        aria-label={ariaLabel}
-        aria-labelledby={resolvedAriaLabelledBy}
-        aria-disabled={isDisabled || undefined}
-        aria-invalid={resolveAriaInvalid(
-          ariaInvalid,
-          nativeInvalid && required && !hasValidSelectedValue,
-        )}
-        className={cn("flex flex-col gap-2", className)}
-        onKeyDown={handleKeyDown}
-      >
-        {required && (
-          // Validation-only mirror: aria-hidden keeps it out of the a11y tree,
-          // so naming and invalid state live on the visible role="group".
-          <input
-            type="checkbox"
-            data-slot="checkbox-group-validation"
-            required
-            checked={hasValidSelectedValue}
-            disabled={isDisabled}
-            tabIndex={-1}
-            aria-hidden={true}
-            className="sr-only"
-            onChange={() => {}}
-            onInvalid={(event) => {
-              event.preventDefault();
-              setNativeInvalid(true);
-              getEnabledSelectableCollectionItems(items, isDisabled)[0]?.element?.focus();
-            }}
-          />
-        )}
-        {children}
       </div>
     </CheckboxGroupContext>
   );

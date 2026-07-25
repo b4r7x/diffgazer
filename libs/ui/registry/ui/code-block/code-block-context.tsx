@@ -14,14 +14,13 @@ export interface CodeBlockContextValue {
    * Visual variant. "hairline" (default) is a soft-bordered block with a filename header.
    * "bare" removes chrome and renders a 2px left rule that turns accent on hover; the header is
    * suppressed. "terminal" centers the title in the header - use for shell output. Window dots
-   * are controlled separately via the `chrome` prop and default to "dots" for
-   * variant="terminal".
+   * are opt-in for every variant via the `chrome` prop.
    */
   variant: CodeBlockVariant;
   /**
-   * Decorative chrome in the header strip. "dots" renders three desaturated terminal-style dots
-   * on the left edge and reserves symmetric padding so a centered label stays balanced. "none"
-   * disables chrome - useful for a terminal pane without window dots.
+   * Decorative chrome in the header strip. "none" (default) leaves the header to its label and
+   * actions. "dots" renders three desaturated window dots on the left edge and reserves
+   * symmetric padding so a centered label stays balanced.
    */
   chrome: CodeBlockChrome;
   /** Registers the id of a label that actually rendered. */

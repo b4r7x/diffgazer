@@ -109,13 +109,13 @@ describe("add command", () => {
   });
 
   test("add does not adopt skipped pre-existing files into the ownership manifest", () => {
+    // ui/kbd and its only transitive dep ship no registry:style, so a skipped
+    // install must leave the manifest completely empty — a CSS-bearing item
+    // would still record its appended chunk.
     const preExisting = [
-      "src/components/ui/button/index.ts",
-      "src/components/ui/button/button.tsx",
-      "src/components/ui/spinner/index.ts",
-      "src/components/ui/spinner/spinner.tsx",
-      "src/components/ui/spinner/use-animation.ts",
-      "src/components/ui/spinner/spinner-snake-grid.tsx",
+      "src/components/ui/kbd/index.ts",
+      "src/components/ui/kbd/kbd.tsx",
+      "src/components/ui/kbd/kbd-group.tsx",
       "src/lib/utils.ts",
     ];
     for (const relativePath of preExisting) {
@@ -124,7 +124,7 @@ describe("add command", () => {
       writeFileSync(absolutePath, "// user file\n");
     }
 
-    runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
+    runDgadd(["add", "ui/kbd", "--cwd", root, "--yes", "--skip-install"]);
 
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
     expect(config.installedComponents).toBeUndefined();

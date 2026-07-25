@@ -12,6 +12,11 @@ const users = [
   { initials: "RX", name: "Rex" },
 ];
 
+// Custom count chip: solid border and tight radius, matching the avatar chips.
+// The dashed border is reserved for the component's own default indicator.
+const COUNT_CHIP_CLASS =
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border border-foreground/30 font-mono text-2xs text-muted-foreground";
+
 export default function OverflowAvatarsExample() {
   return (
     <div className="flex flex-col gap-4">
@@ -20,12 +25,7 @@ export default function OverflowAvatarsExample() {
         <div className="w-32 border border-dashed border-foreground/20 p-2">
           <Overflow
             mode="items"
-            gap="gap-1"
-            indicator={({ count }) => (
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center border border-dashed border-foreground/30 font-mono text-2xs text-muted-foreground">
-                +{count}
-              </span>
-            )}
+            indicator={({ count }) => <span className={COUNT_CHIP_CLASS}>+{count}</span>}
           >
             {users.map((u) => (
               <Avatar key={u.initials} alt={u.name} fallback={u.initials} size="sm" />
@@ -39,12 +39,7 @@ export default function OverflowAvatarsExample() {
         <div className="w-48 border border-dashed border-foreground/20 p-2">
           <Overflow
             mode="items"
-            gap="gap-1"
-            indicator={({ count }) => (
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center border border-dashed border-foreground/30 font-mono text-2xs text-muted-foreground">
-                +{count}
-              </span>
-            )}
+            indicator={({ count }) => <span className={COUNT_CHIP_CLASS}>+{count}</span>}
           >
             {users.map((u) => (
               <Avatar key={u.initials} alt={u.name} fallback={u.initials} size="sm" />

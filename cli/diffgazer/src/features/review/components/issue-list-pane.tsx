@@ -3,10 +3,12 @@ import {
   type UISeverityFilter,
 } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { clampIndex } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { getListWindow } from "../../../lib/list-window";
+import { selectionFill } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 import { IssuePreviewItem } from "./issue-preview-item";
 import { SeverityFilterGroup } from "./severity-filter-group";
@@ -65,7 +67,7 @@ export function IssueListPane({
       }
 
       if (key.downArrow || input === "j") {
-        const nextIndex = Math.min(highlightedIndex + 1, issues.length - 1);
+        const nextIndex = clampIndex(highlightedIndex, 1, issues.length, false);
         setHighlightedIndex(nextIndex);
         const issue = issues[nextIndex];
         if (issue) {
@@ -135,7 +137,7 @@ export function IssueListPane({
             const absoluteIndex = window.start + idx;
             return (
               <Box key={issue.id}>
-                <Text color={selectedId === issue.id ? tokens.accent : tokens.muted}>
+                <Text color={selectedId === issue.id ? selectionFill(tokens) : tokens.muted}>
                   {selectedId === issue.id ? "\u2502 " : "  "}
                 </Text>
                 <IssuePreviewItem

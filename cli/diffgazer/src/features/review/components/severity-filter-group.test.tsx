@@ -6,6 +6,7 @@ import {
 import { cleanup, render } from "ink-testing-library";
 import { useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { flush } from "../../../testing/flush";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../theme/provider";
 import { SeverityFilterGroup } from "./severity-filter-group";
@@ -23,12 +24,6 @@ const ZERO_COUNTS = SEVERITY_ORDER.reduce(
   },
   {} as Record<(typeof SEVERITY_ORDER)[number], number>,
 );
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 function Harness({
   initialFilter = new Set<(typeof SEVERITY_ORDER)[number]>(),

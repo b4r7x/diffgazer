@@ -139,6 +139,10 @@ function buildPanelStyle(
     top: position.y,
     left: position.x,
     visibility: "visible",
+    // Anchor scrolled out of view: keep the panel mounted and focusable (hiding it would
+    // drop focus out of an open overlay) but stop painting it, so it never reads as a
+    // stray box clamped against the viewport edge.
+    ...(position.anchorHidden ? { opacity: 0, pointerEvents: "none" as const } : null),
     "--ui-content-transform-origin": computeTransformOrigin(position.side, position.align),
     // Room the panel has before overflowing the viewport for the resolved side.
     // Custom panels can cap their scrollable region with these (e.g.
@@ -224,6 +228,7 @@ export function FloatingPanel({
           data-side={position?.side}
           data-align={position?.align}
           data-positioned={positioned ? "" : undefined}
+          data-anchor-hidden={position?.anchorHidden ? "" : undefined}
           className={cn("ui-floating-panel", className)}
           style={{ ...style, ...positionedStyle }}
         >

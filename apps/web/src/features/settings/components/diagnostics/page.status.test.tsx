@@ -12,7 +12,7 @@ import {
   renderPage,
   setupDiagnosticsMocks,
   waitForReady,
-} from "./page.test-harness";
+} from "./page-test-utils";
 
 describe("SettingsDiagnosticsPage diagnostics status", () => {
   beforeEach(() => {
@@ -30,6 +30,20 @@ describe("SettingsDiagnosticsPage diagnostics status", () => {
     });
     expect(within(diagnosticsPanel).queryByText("[ready]")).not.toBeInTheDocument();
     expect(within(diagnosticsPanel).queryByText("success")).not.toBeInTheDocument();
+  });
+
+  it("reports every diagnostics fact as a labelled row in one snapshot list", async () => {
+    renderPage();
+    await waitForReady();
+
+    const diagnosticsPanel = screen.getByRole("region", { name: /system diagnostics/i });
+
+    for (const label of ["Health", "Setup", "Provider", "Context", "Build", "Refreshed"]) {
+      expect(within(diagnosticsPanel).getByText(label)).toBeVisible();
+    }
+    expect(
+      await within(diagnosticsPanel).findByText("openrouter (openrouter/test-model)"),
+    ).toBeVisible();
   });
 
   it("keeps error, loading, setup-needed, and ready precedence across source transitions", async () => {

@@ -16,20 +16,31 @@ const LazySpinner = lazy(() => import("../spinner/spinner").then((m) => ({ defau
 
 /** Class variants for button. */
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center wrap-anywhere text-center font-mono transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 cursor-pointer disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50",
+  "inline-flex items-center justify-center wrap-anywhere text-center font-mono transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 cursor-pointer disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40",
   {
     variants: {
+      // One filled voice (primary, on the --action pair) so a screen never
+      // argues about which button is the call to action. Semantic intents
+      // (success, destructive) are outlined: colour carries meaning, fill
+      // carries priority, so intent never competes with the single CTA.
       variant: {
-        primary: "bg-primary text-primary-foreground font-bold hover:bg-primary/90",
-        secondary: "border border-border bg-transparent text-foreground hover:bg-secondary",
+        // Disabled primary drops the fill instead of fading it: opacity over a
+        // coloured fill drags the label toward the page with it and the pair
+        // collapses (~1.8:1 on light --action). Emptying the fill leaves the
+        // muted label on the ambient surface, where it keeps its own contrast,
+        // and the dashed edge is the disabled grammar the inputs already speak.
+        // The transparent border reserves that edge so toggling disabled never
+        // resizes the button.
+        primary:
+          "border border-transparent bg-action text-action-foreground font-bold hover:bg-action/90 disabled:border-dashed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100 aria-disabled:border-dashed aria-disabled:border-border aria-disabled:bg-transparent aria-disabled:text-muted-foreground aria-disabled:opacity-100",
+        secondary: "border border-border bg-secondary text-secondary-foreground hover:bg-border",
         destructive:
           "text-error-text border border-error-border bg-transparent hover:bg-error-strong hover:text-error-strong-foreground",
         success:
-          "bg-success-strong text-success-strong-foreground font-bold hover:bg-success-strong/90",
+          "text-success-text border border-success-border bg-transparent hover:bg-success-strong hover:text-success-strong-foreground",
         ghost: "bg-transparent text-foreground hover:bg-secondary",
-        outline: "border border-border bg-transparent text-foreground hover:bg-border",
+        outline: "border border-border bg-transparent text-foreground hover:bg-secondary",
         link: "bg-transparent text-info-text underline-offset-2 hover:underline",
-        action: "bg-action text-action-foreground font-bold hover:bg-action/90",
       },
       size: {
         sm: "min-h-7 h-auto max-w-full whitespace-normal px-3 py-1 text-xs",
@@ -37,8 +48,10 @@ export const buttonVariants = cva(
         lg: "min-h-11 h-auto max-w-full whitespace-normal px-6 py-2 text-base",
         icon: "h-9 w-9 max-w-none shrink-0 whitespace-nowrap p-0",
       },
+      // Virtual focus from a parent collection wears the same outside ring as
+      // real focus (one focus grammar, one token), just without focus-visible.
       highlighted: {
-        true: "ring-2 ring-primary ring-offset-2 ring-offset-background",
+        true: "outline-2 outline-ring outline-offset-2",
       },
     },
     defaultVariants: {
@@ -128,7 +141,7 @@ export interface ButtonRenderProps<T extends HTMLElement = HTMLElement> {
   /** Present when the component is in a loading state. */
   "data-loading"?: boolean;
   /** Present when the component is highlighted by a parent collection. */
-  "data-highlighted"?: boolean;
+  "data-highlighted"?: string;
   /** Tab index applied to the rendered element. */
   tabIndex?: number;
 }
@@ -216,7 +229,7 @@ export function Button<T extends HTMLElement = HTMLElement>(props: ButtonProps<T
       "aria-disabled": isDisabled || undefined,
       "data-slot": "button" as const,
       "data-loading": loading || undefined,
-      "data-highlighted": highlighted || undefined,
+      "data-highlighted": highlighted ? "" : undefined,
       ...(isDisabled && { tabIndex: -1 as const }),
     };
     return props.children({
@@ -257,7 +270,7 @@ export function Button<T extends HTMLElement = HTMLElement>(props: ButtonProps<T
         href={isDisabled ? undefined : href}
         data-slot="button"
         data-loading={loading || undefined}
-        data-highlighted={highlighted || undefined}
+        data-highlighted={highlighted ? "" : undefined}
         {...anchorProps}
         aria-busy={consumerAriaBusy ?? (loading || undefined)}
         aria-disabled={consumerAriaDisabled ?? (isDisabled || undefined)}
@@ -300,7 +313,7 @@ export function Button<T extends HTMLElement = HTMLElement>(props: ButtonProps<T
       ref={ref}
       data-slot="button"
       data-loading={loading || undefined}
-      data-highlighted={highlighted || undefined}
+      data-highlighted={highlighted ? "" : undefined}
       disabled={disabled || undefined}
       {...buttonProps}
       aria-busy={consumerAriaBusy ?? (loading || undefined)}

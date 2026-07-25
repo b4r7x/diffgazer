@@ -44,7 +44,7 @@ describe("KeyValue", () => {
         <KeyValue.Item
           label="Status"
           value="Ready"
-          labelClassName="custom-label"
+          className="custom-label"
           valueClassName="custom-value"
         />
       </KeyValue>,
@@ -55,7 +55,7 @@ describe("KeyValue", () => {
 
     expect(label.tagName).toBe("DT");
     expect(value.tagName).toBe("DD");
-    // Verifies labelClassName/valueClassName prop forwarding contract (not Tailwind internals).
+    // Verifies className (dt) / valueClassName (dd) forwarding contract (not Tailwind internals).
     expect(label).toHaveClass("custom-label");
     expect(value).toHaveClass("custom-value");
     expect(label.nextElementSibling).toBe(value);

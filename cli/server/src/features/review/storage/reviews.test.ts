@@ -37,6 +37,10 @@ async function loadStorage() {
   return import("./reviews.js");
 }
 
+async function loadRekey() {
+  return import("./rekey.js");
+}
+
 const reviewsDir = (): string => join(tempHome, "triage-reviews");
 const reviewPath = (id: string): string => join(reviewsDir(), `${id}.json`);
 const projectIndexPath = (projectPath: string): string => {
@@ -1662,7 +1666,8 @@ describe("reviews storage", () => {
     ]);
     await writeProjectIndexFile("/old/path", [REVIEW_ID]);
 
-    const { listReviews, rekeyProjectReviews } = await loadStorage();
+    const { listReviews } = await loadStorage();
+    const { rekeyProjectReviews } = await loadRekey();
 
     await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(true);
 
@@ -1699,7 +1704,8 @@ describe("reviews storage", () => {
       { id: existingId, createdAt: "2025-01-01T00:00:00.000Z" },
     ]);
 
-    const { listReviewPage, rekeyProjectReviews } = await loadStorage();
+    const { listReviewPage } = await loadStorage();
+    const { rekeyProjectReviews } = await loadRekey();
     await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(true);
     const page = await listReviewPage("/new/path", { limit: 10 });
 
@@ -1740,7 +1746,7 @@ describe("reviews storage", () => {
       });
 
     try {
-      const { rekeyProjectReviews } = await loadStorage();
+      const { rekeyProjectReviews } = await loadRekey();
       await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(false);
       await expect(readProjectIndexIds("/old/path")).resolves.toEqual([REVIEW_ID, REVIEW_ID_2]);
 
@@ -1757,6 +1763,85 @@ describe("reviews storage", () => {
       await expect(stat(projectIndexPath("/old/path"))).rejects.toMatchObject({ code: "ENOENT" });
     } finally {
       writeSpy.mockRestore();
+    }
+  });
+
+  it("publishes the already-moved reviews when a review write aborts the rekey", async () => {
+    const movedId = makeReviewId(76);
+    const failedId = makeReviewId(77);
+    const untouchedId = makeReviewId(78);
+    const entries = [
+      { id: movedId, createdAt: "2027-01-01T00:00:00.000Z" },
+      { id: failedId, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: untouchedId, createdAt: "2025-01-01T00:00:00.000Z" },
+    ];
+    await Promise.all(
+      entries.map(({ id, createdAt }) =>
+        writeSavedReview(makeProjectReview(id, createdAt, "/old/path")),
+      ),
+    );
+    await writeCertifiedProjectIndex("/old/path", entries);
+
+    const atomicWrite = await import("../../../shared/lib/fs.js");
+    const realAtomicWrite = atomicWrite.atomicWriteFile;
+    const writeSpy = vi
+      .spyOn(atomicWrite, "atomicWriteFile")
+      .mockImplementation(async (filePath, content, mode) => {
+        if (filePath === reviewPath(failedId)) throw new Error("injected review write failure");
+        return realAtomicWrite(filePath, content, mode);
+      });
+
+    try {
+      const { listReviews } = await loadStorage();
+      const { rekeyProjectReviews } = await loadRekey();
+      await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(false);
+
+      // The review whose file already points at the destination has to stay listable there.
+      const listed = await listReviews("/new/path");
+      expect(listed.ok).toBe(true);
+      if (listed.ok) expect(listed.value.items.map((item) => item.id)).toEqual([movedId]);
+      await expect(readProjectIndexIds("/new/path")).resolves.toEqual([movedId]);
+
+      // The source index stays the durable retry set, and the failure stops the pass
+      // instead of rewriting the reviews behind it.
+      await expect(readProjectIndexIds("/old/path")).resolves.toEqual([
+        movedId,
+        failedId,
+        untouchedId,
+      ]);
+      await expect(readSavedReview(untouchedId)).resolves.toMatchObject({
+        metadata: { projectPath: "/old/path" },
+      });
+    } finally {
+      writeSpy.mockRestore();
+    }
+  });
+
+  it("skips unreadable reviews during a rekey instead of failing the whole move", async () => {
+    const movedId = makeReviewId(79);
+    const corruptId = makeReviewId(80);
+    await writeSavedReview(makeProjectReview(movedId, "2027-01-01T00:00:00.000Z", "/old/path"));
+    await writeFile(reviewPath(corruptId), "{ not json", "utf-8");
+    await writeCertifiedProjectIndex("/old/path", [
+      { id: movedId, createdAt: "2027-01-01T00:00:00.000Z" },
+      { id: corruptId, createdAt: "2026-01-01T00:00:00.000Z" },
+    ]);
+
+    const logModule = await import("../../../shared/lib/log.js");
+    const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
+
+    try {
+      const { rekeyProjectReviews } = await loadRekey();
+      await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(true);
+
+      expect(logSpy).toHaveBeenCalledWith("warn", "reviews_rekey_unreadable_review_skipped", {
+        id: corruptId,
+        code: "PARSE_ERROR",
+      });
+      await expect(readProjectIndexIds("/new/path")).resolves.toEqual([movedId]);
+      await expect(stat(projectIndexPath("/old/path"))).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      logSpy.mockRestore();
     }
   });
 
@@ -1789,7 +1874,8 @@ describe("reviews storage", () => {
     const logModule = await import("../../../shared/lib/log.js");
     const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
 
-    const { listReviews, rekeyProjectReviews } = await loadStorage();
+    const { listReviews } = await loadStorage();
+    const { rekeyProjectReviews } = await loadRekey();
     await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(false);
 
     await expect(stat(projectIndexPath("/new/path"))).rejects.toMatchObject({ code: "ENOENT" });
@@ -1863,7 +1949,8 @@ describe("reviews storage", () => {
     const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
 
     try {
-      const { listReviews, rekeyProjectReviews } = await loadStorage();
+      const { listReviews } = await loadStorage();
+      const { rekeyProjectReviews } = await loadRekey();
       await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(false);
 
       await expect(stat(projectReconcileMarkerPath("/new/path"))).resolves.toBeDefined();
@@ -1948,7 +2035,7 @@ describe("reviews storage", () => {
     const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
 
     try {
-      const { rekeyProjectReviews } = await loadStorage();
+      const { rekeyProjectReviews } = await loadRekey();
       await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(false);
 
       expect(logSpy).toHaveBeenCalledWith(
@@ -1976,5 +2063,55 @@ describe("reviews storage", () => {
       writeSpy.mockRestore();
       vi.doUnmock("node:fs/promises");
     }
+  });
+
+  it("skips a deleted review file instead of failing the whole rekey", async () => {
+    const survivingId = makeReviewId(78);
+    const deletedId = makeReviewId(79);
+    await writeSavedReview(makeProjectReview(survivingId, "2027-01-01T00:00:00.000Z", "/old/path"));
+    await writeCertifiedProjectIndex("/old/path", [
+      { id: survivingId, createdAt: "2027-01-01T00:00:00.000Z" },
+      { id: deletedId, createdAt: "2026-01-01T00:00:00.000Z" },
+    ]);
+
+    const { listReviews } = await loadStorage();
+    const { rekeyProjectReviews } = await loadRekey();
+    await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(true);
+
+    const listed = await listReviews("/new/path");
+    expect(listed.ok).toBe(true);
+    if (listed.ok) expect(listed.value.items.map((item) => item.id)).toEqual([survivingId]);
+    await expect(readSavedReview(survivingId)).resolves.toMatchObject({
+      metadata: { projectPath: "/new/path" },
+    });
+    await expect(stat(projectIndexPath("/old/path"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("certifies a recovery rekey whose source index also lists another project's review", async () => {
+    const recoveredId = makeReviewId(80);
+    const foreignId = makeReviewId(81);
+    await Promise.all([
+      writeSavedReview(makeProjectReview(recoveredId, "2027-01-01T00:00:00.000Z", "/new/path")),
+      writeSavedReview(makeProjectReview(foreignId, "2026-01-01T00:00:00.000Z", "/other/path")),
+    ]);
+    await writeCertifiedProjectIndex("/old/path", [
+      { id: recoveredId, createdAt: "2027-01-01T00:00:00.000Z" },
+      { id: foreignId, createdAt: "2026-01-01T00:00:00.000Z" },
+    ]);
+
+    const { listReviews } = await loadStorage();
+    const { rekeyProjectReviews } = await loadRekey();
+    await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(true);
+
+    const listed = await listReviews("/new/path");
+    expect(listed.ok).toBe(true);
+    if (listed.ok) expect(listed.value.items.map((item) => item.id)).toEqual([recoveredId]);
+    await expect(readSavedReview(foreignId)).resolves.toMatchObject({
+      metadata: { projectPath: "/other/path" },
+    });
+    await expect(stat(projectReconcileMarkerPath("/new/path"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(stat(projectIndexPath("/old/path"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 });

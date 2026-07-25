@@ -3,6 +3,7 @@ import { SEVERITY_LABELS } from "@diffgazer/core/schemas/presentation";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import { Badge } from "../../../components/ui/badge";
+import { rowTone } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 import { severityColor } from "../../../theme/severity";
 
@@ -48,27 +49,26 @@ export function IssuePreviewItem({
   const titleDisplay = toSingleLine(title);
   const { pathColumns, titleColumns } = getTextColumnBudget(label, contentWidth);
 
+  const tone = rowTone(tokens, { isHighlighted });
+
   return (
-    <Box gap={1} width={contentWidth} height={1} flexWrap="nowrap">
+    <Box
+      gap={1}
+      width={contentWidth}
+      height={1}
+      flexWrap="nowrap"
+      backgroundColor={tone.background}
+    >
       <Box flexShrink={0}>
-        <Badge color={color}>{label}</Badge>
+        <Badge color={isHighlighted ? tone.primary : color}>{label}</Badge>
       </Box>
       <Box width={pathColumns} flexShrink={0}>
-        <Text
-          color={isHighlighted ? tokens.bg : tokens.muted}
-          backgroundColor={isHighlighted ? tokens.fg : undefined}
-          wrap="truncate-start"
-        >
+        <Text color={tone.secondary} wrap="truncate-start">
           {pathDisplay}
         </Text>
       </Box>
       <Box width={titleColumns} flexShrink={0}>
-        <Text
-          color={isHighlighted ? tokens.bg : undefined}
-          backgroundColor={isHighlighted ? tokens.fg : undefined}
-          bold={isHighlighted}
-          wrap="truncate-end"
-        >
+        <Text color={tone.primary} bold={isHighlighted} wrap="truncate-end">
           {titleDisplay}
         </Text>
       </Box>

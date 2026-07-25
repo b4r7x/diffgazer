@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { getInitialWizardData } from "./defaults.js";
-import {
-  buildConfigPayload,
-  buildSettingsPayload,
-  saveWizard,
-} from "./save-wizard.js";
+import { buildConfigPayload, buildSettingsPayload, saveWizard } from "./save-wizard.js";
 import type { WizardData } from "./types.js";
 
 function withData(overrides: Partial<WizardData>): WizardData {

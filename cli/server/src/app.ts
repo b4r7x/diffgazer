@@ -9,7 +9,7 @@ import { configRouter } from "./features/config/router.js";
 import { gitRouter } from "./features/git/router.js";
 import { healthRouter } from "./features/health.js";
 import { reviewRouter } from "./features/review/router.js";
-import { rekeyProjectReviews } from "./features/review/storage/reviews.js";
+import { rekeyProjectReviews } from "./features/review/storage/rekey.js";
 import { settingsRouter } from "./features/settings/router.js";
 import { shutdownRouter } from "./features/shutdown/router.js";
 import { setReviewRekeyHandler } from "./shared/lib/config/store.js";

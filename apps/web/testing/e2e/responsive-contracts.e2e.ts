@@ -506,7 +506,7 @@ test("the stacked providers view owns exactly one scroller and reaches the detai
     for (const el of Array.from(document.querySelectorAll<HTMLElement>("*"))) {
       const style = getComputedStyle(el);
       if (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 2) {
-        found.push(`${el.tagName}.${(el.className + "").split(" ").slice(0, 3).join(".")}`);
+        found.push(`${el.tagName}.${`${el.className}`.split(" ").slice(0, 3).join(".")}`);
       }
     }
     return found;

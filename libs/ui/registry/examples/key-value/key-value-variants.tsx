@@ -12,7 +12,7 @@ export default function KeyValueVariants() {
         <KeyValue.Item label="Errors" value="3 failures" variant="error" />
       </KeyValue>
       <div className="text-xs text-muted-foreground uppercase font-bold mt-4">Vertical Layout</div>
-      <KeyValue layout="vertical" className="flex gap-6">
+      <KeyValue layout="vertical">
         <KeyValue.Item label="Model" value="GPT-4o" variant="info" />
         <KeyValue.Item label="Tokens" value="1,234" />
         <KeyValue.Item label="Cost" value="$0.02" variant="success" />

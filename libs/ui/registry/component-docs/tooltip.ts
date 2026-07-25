@@ -44,6 +44,16 @@ export const tooltipDoc: ComponentDoc = {
         'Tooltip is a thin wrapper around the Popover primitive with `triggerMode="hover"`. For interactive floating content, use Popover directly.',
     },
     {
+      title: "Surface",
+      content:
+        "The surface (1px --border hairline, --surface-1 fill with a 1px --surface-1-highlight inner top lip, rounded-sm corners) comes from Popover.Content; Tooltip.Content only adds its max width, tight padding, and mono type. No drop shadow — the hairline plus the one-step surface lift carry the edge, which keeps the box in the same register as Menu, Select, and Dialog.",
+    },
+    {
+      title: "Reviewing the Open State",
+      content:
+        "A hover tooltip shows nothing on a static page. Pass a controlled `open` with no setter to pin the surface open when you need the open state visible in documentation, a design review, or a visual-regression capture — see the Open State example. `defaultOpen` only seeds uncontrolled state, so hover leave or a scroll still closes it. Product code should use neither and let hover/focus drive the tooltip.",
+    },
+    {
       title: "Controlled Mode",
       content:
         'Supports `open`, `defaultOpen`, and `onOpenChange` props for programmatic control: `<Tooltip content="Help" open={showHelp} onOpenChange={setShowHelp}>...</Tooltip>`.',
@@ -52,6 +62,7 @@ export const tooltipDoc: ComponentDoc = {
   usage: { example: "tooltip-basic" },
   examples: [
     { name: "tooltip-basic", title: "Basic" },
+    { name: "tooltip-open", title: "Open State (static)" },
     { name: "tooltip-placement", title: "Placement" },
     { name: "tooltip-interactive", title: "Interactive Triggers" },
   ],

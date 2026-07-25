@@ -1,8 +1,9 @@
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
-import { requireElement, requireValue } from "../../testing/assertions";
+import { requireElement } from "../../testing/assertions";
 import { Stepper, type StepperProps } from "./index";
 
 function renderStepper(props: Partial<StepperProps> = {}) {

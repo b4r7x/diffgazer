@@ -26,6 +26,11 @@
    * var(--foreground); --callout-border → var(--border); --callout-subtle → transparent.
    * The [data-tone] variants below still win.
    */
+  /*
+   * The root font-size is the single sizing knob: Title inherits it and
+   * Content steps down with an em-relative size, so a consumer utility on the
+   * root (e.g. `text-sm`) rescales the whole callout.
+   */
   [data-slot="callout"] {
     position: relative;
     font-family: var(--font-mono);

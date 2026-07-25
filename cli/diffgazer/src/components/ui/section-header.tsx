@@ -1,5 +1,6 @@
 import { Box, Text } from "ink";
 import { useTheme } from "../../theme/provider";
+import { Rule } from "./rule";
 
 export interface SectionHeaderProps {
   variant?: "default" | "muted";
@@ -23,17 +24,7 @@ export function SectionHeader({
       <Text bold={bold} color={color}>
         {children.toUpperCase()}
       </Text>
-      {bordered ? (
-        <Box
-          width="100%"
-          borderStyle="single"
-          borderColor={tokens.border}
-          borderTop
-          borderBottom={false}
-          borderLeft={false}
-          borderRight={false}
-        />
-      ) : null}
+      {bordered ? <Rule /> : null}
     </Box>
   );
 }

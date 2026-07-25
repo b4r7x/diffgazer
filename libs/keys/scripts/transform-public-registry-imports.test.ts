@@ -6,7 +6,7 @@ import { RELATIVE_JS_IMPORT_RE } from "@diffgazer/registry";
 import type { RegistryItem } from "@diffgazer/registry/schemas";
 import { RegistrySchema } from "@diffgazer/registry/schemas";
 import { afterEach, describe, expect, it } from "vitest";
-import { requireValue } from "../src/testing/assertions.js";
+import { requireValue } from "../src/testing/internal/assertions.js";
 import {
   assertNoRelativeJsImports,
   rewriteImportsForTargetLayout,

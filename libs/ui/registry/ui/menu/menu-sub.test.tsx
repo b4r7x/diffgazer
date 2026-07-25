@@ -1,8 +1,8 @@
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
-import { requireValue } from "../../testing/assertions";
 import { Menu, type MenuProps } from "./index";
 
 type MenuRenderProps = Partial<MenuProps> & Partial<Record<`data-${string}`, string>>;

@@ -110,6 +110,7 @@ export function buildRegistryArtifacts(
       filter: (src) =>
         !/\.(md)$/i.test(src) &&
         !/\.(test|spec)\.(ts|tsx|js|jsx)$/i.test(src) &&
+        !/[.-]test-utils\.(ts|tsx|js|jsx)$/i.test(src) &&
         !src.includes("__tests__"),
     });
   }

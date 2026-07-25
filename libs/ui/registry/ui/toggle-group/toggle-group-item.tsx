@@ -11,6 +11,7 @@ import {
   useRef,
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
+import { BracketMarkers } from "@/lib/segmented-brackets";
 import { segmentedItemVariants } from "@/lib/segmented-variants";
 import { cn } from "@/lib/utils";
 import { useToggleGroupContext } from "./toggle-group-context";
@@ -26,26 +27,6 @@ export interface ToggleGroupItemProps<TValue extends string = string>
   disabled?: boolean;
   /** Item label. */
   children: ReactNode;
-}
-
-function BracketMarkers({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <span
-        aria-hidden="true"
-        className="mr-1 text-foreground opacity-0 group-data-[state=on]/segmented-item:opacity-100"
-      >
-        [
-      </span>
-      {children}
-      <span
-        aria-hidden="true"
-        className="ml-1 text-foreground opacity-0 group-data-[state=on]/segmented-item:opacity-100"
-      >
-        ]
-      </span>
-    </>
-  );
 }
 
 export function ToggleGroupItem<TValue extends string = string>({
@@ -103,7 +84,7 @@ export function ToggleGroupItem<TValue extends string = string>({
   // count renders as a separate styled span after the label, so the brackets
   // only ever wrap the actual children — never the count.
   const renderedChildren =
-    variant === "bracket" ? <BracketMarkers>{children}</BracketMarkers> : children;
+    variant === "bracket" ? <BracketMarkers state="on">{children}</BracketMarkers> : children;
 
   return (
     // biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is conditionally "radio" (Biome cannot resolve the ternary); aria-checked is applied only in the radio branch and aria-pressed only in the button branch.
@@ -138,10 +119,14 @@ export function ToggleGroupItem<TValue extends string = string>({
       )}
     >
       {renderedChildren}
+      {/* The item is a flex container, so a whitespace text node between the
+          label and the count is not rendered; it only keeps the accessible name
+          as "Error 3". The visible gutter is a margin, and tabular-nums keeps
+          multi-digit counts on one column. */}
       {count != null && (
         <>
           {" "}
-          <span data-slot="toggle-group-count" className="tabular-nums opacity-70">
+          <span data-slot="toggle-group-count" className="ml-1.5 tabular-nums opacity-70">
             {count}
           </span>
         </>

@@ -5,6 +5,7 @@ import {
   type ReviewScreenPhase,
   resolveSavedReviewOutcome,
   type SavedReviewData,
+  sanitizeTerminalText,
   toSavedReviewQueryState,
 } from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
@@ -83,7 +84,7 @@ function SavedReviewErrorView({
     <Box flexDirection="column" gap={1}>
       <Callout variant="error">
         <Callout.Title>Could not load review</Callout.Title>
-        <Callout.Content>{message}</Callout.Content>
+        <Callout.Content>{sanitizeTerminalText(message)}</Callout.Content>
       </Callout>
       <Box gap={2}>
         <Button variant="secondary" isActive onPress={onBack}>

@@ -8,7 +8,7 @@ import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { useNavigation } from "../hooks/use-navigation";
 import { CliThemeProvider } from "../theme/provider";
-import { NavigationProvider } from "./providers/navigation-provider";
+import { NavigationProvider } from "./providers/navigation";
 
 const useConfigCheckMock = vi.hoisted(() => vi.fn());
 const useInitMock = vi.hoisted(() => vi.fn());

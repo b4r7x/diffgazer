@@ -4,6 +4,7 @@ import {
   useReviewLifecycleBase,
   useReviewSessionCache,
 } from "@diffgazer/core/api/hooks";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import {
   extractOrchestratorStats,
   getAlternateReviewMode,
@@ -130,28 +131,50 @@ export function useReviewLifecycle({
   const cancelOnServer = (preserveState = false): Promise<string | null> =>
     base.stream.cancel(base.stream.state.reviewId ?? params.reviewId ?? null, { preserveState });
 
-  const handleCancel = () => {
-    if (invalidateTransition()) {
-      clearActiveSession(activeReviewId);
-      navigate({ to: "/" });
-      return;
-    }
+  // A thrown cancel (network drop, aborted fetch) reads to the user exactly like
+  // the server-reported failure above, so it gets the same toast unless the
+  // caller overrides it.
+  const reportCancelFailure = (error: unknown, token: symbol) => {
+    if (!isCurrentTransition(token)) return;
+    toast.error("Cancel failed", { message: getErrorMessage(error, "Unknown error") });
+  };
+
+  // Cancels the server session under the transition token guard, then runs the
+  // site-specific continuation.
+  const runCancelTransition = (
+    preserveState: boolean,
+    onCancelled: (token: symbol) => void | Promise<void>,
+    onError: (error: unknown, token: symbol) => void = reportCancelFailure,
+  ) => {
     const token = beginTransition();
     if (!token) return;
     void (async () => {
       try {
-        const error = await cancelOnServer();
+        const error = await cancelOnServer(preserveState);
         if (!isCurrentTransition(token)) return;
         if (error) {
           toast.error("Cancel failed", { message: error });
           return;
         }
         clearActiveSession(activeReviewId);
-        navigate({ to: "/" });
+        await onCancelled(token);
+      } catch (error) {
+        onError(error, token);
       } finally {
         finishTransition(token);
       }
     })();
+  };
+
+  const handleCancel = () => {
+    if (invalidateTransition()) {
+      clearActiveSession(activeReviewId);
+      navigate({ to: "/" });
+      return;
+    }
+    runCancelTransition(false, () => {
+      navigate({ to: "/" });
+    });
   };
 
   // Leaves a running review without touching the server session, so it remains
@@ -173,36 +196,15 @@ export function useReviewLifecycle({
   };
 
   const handleSetupProvider = () => {
-    const token = beginTransition();
-    if (!token) return;
-    void (async () => {
-      try {
-        const error = await cancelOnServer(true);
-        if (!isCurrentTransition(token)) return;
-        if (error) {
-          toast.error("Cancel failed", { message: error });
-          return;
-        }
-        clearActiveSession(activeReviewId);
-        navigate({ to: "/settings/providers" });
-      } finally {
-        finishTransition(token);
-      }
-    })();
+    runCancelTransition(true, () => {
+      navigate({ to: "/settings/providers" });
+    });
   };
 
   const handleSwitchMode = () => {
-    const token = beginTransition();
-    if (!token) return;
-    void (async () => {
-      try {
-        const cancelError = await cancelOnServer(true);
-        if (!isCurrentTransition(token)) return;
-        if (cancelError) {
-          toast.error("Cancel failed", { message: cancelError });
-          return;
-        }
-        clearActiveSession(activeReviewId);
+    runCancelTransition(
+      true,
+      async (token) => {
         const alternateMode = getAlternateReviewMode(mode);
         const { reviewId } = await createReview.mutateAsync({ mode: alternateMode });
         if (!isCurrentTransition(token)) return;
@@ -212,14 +214,13 @@ export function useReviewLifecycle({
           search: { mode: alternateMode, live: true },
           replace: true,
         });
-      } catch (error) {
+      },
+      (error, token) => {
         if (!isCurrentTransition(token)) return;
         const message = isApiError(error) ? error.message : "Could not create a review session.";
         toast.error("Failed to Start Review", { message });
-      } finally {
-        finishTransition(token);
-      }
-    })();
+      },
+    );
   };
 
   return {

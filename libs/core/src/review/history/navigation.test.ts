@@ -9,7 +9,7 @@ import {
   matchesHistoryQuery,
   resolveSelectedDateId,
   resolveSelectedId,
-} from "../history.js";
+} from "./navigation.js";
 
 function inNewYork(run: () => void): void {
   const originalTimeZone = process.env.TZ;

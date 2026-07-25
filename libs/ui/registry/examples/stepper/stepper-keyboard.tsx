@@ -40,29 +40,34 @@ export default function StepperKeyboard() {
   });
 
   return (
-    <Stepper
-      ref={containerRef}
-      expandedIds={expandedIds}
-      onExpandedChange={setExpandedIds}
-      onKeyDown={onKeyDown}
-    >
-      {steps.map((step) => (
-        <Stepper.Step key={step.id} stepId={step.id} status={step.status}>
-          <Stepper.Trigger role="button" data-value={step.id}>
-            {step.label}
-          </Stepper.Trigger>
-          {step.detail && (
-            <Stepper.Content>
-              <div
-                className={`text-sm ${step.status === "active" ? "text-foreground" : "text-muted-foreground"}`}
-              >
-                {step.detail}
-              </div>
-            </Stepper.Content>
-          )}
-        </Stepper.Step>
-      ))}
-      <p className="text-xs text-muted-foreground mt-2">↑↓ navigate steps · Enter/Space toggle</p>
-    </Stepper>
+    <div className="flex flex-col gap-2">
+      <Stepper
+        ref={containerRef}
+        expandedIds={expandedIds}
+        onExpandedChange={setExpandedIds}
+        onKeyDown={onKeyDown}
+      >
+        {steps.map((step) => (
+          <Stepper.Step key={step.id} stepId={step.id} status={step.status}>
+            <Stepper.Trigger role="button" data-value={step.id}>
+              {step.label}
+            </Stepper.Trigger>
+            {step.detail && (
+              <Stepper.Content>
+                <div
+                  className={`text-sm ${step.status === "active" ? "text-foreground" : "text-muted-foreground"}`}
+                >
+                  {step.detail}
+                </div>
+              </Stepper.Content>
+            )}
+          </Stepper.Step>
+        ))}
+      </Stepper>
+      <p className="text-xs text-muted-foreground">
+        Tab into the list, then ↑↓ to navigate steps · Enter/Space toggles. The focused step draws
+        the outside focus ring (2px, --ring, offset 2px) around its whole row.
+      </p>
+    </div>
   );
 }

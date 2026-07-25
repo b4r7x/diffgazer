@@ -1,11 +1,7 @@
 "use client";
 
 import { type RefObject, useEffect, useRef } from "react";
-import {
-  composedContains,
-  getDeepActiveElement,
-  isHTMLElement,
-} from "../dom/element-guards.js";
+import { composedContains, getDeepActiveElement, isHTMLElement } from "../dom/element-guards.js";
 import { restoreFocus as restoreFocusTarget } from "../dom/focus-restore.js";
 import { getFocusableElements, isFocusable } from "../dom/focusable.js";
 import { createFocusTrapController } from "./focus-trap-controller.js";

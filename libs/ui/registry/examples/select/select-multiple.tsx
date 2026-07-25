@@ -13,7 +13,7 @@ export default function SelectMultiple() {
   const [value, setValue] = useState<string[]>(["typescript"]);
   return (
     <div className="w-64">
-      <Select multiple variant="card" value={value} onChange={setValue}>
+      <Select multiple value={value} onChange={setValue}>
         <SelectTrigger aria-label="Languages">
           <SelectValue placeholder="Select languages..." />
         </SelectTrigger>

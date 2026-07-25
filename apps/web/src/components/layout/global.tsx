@@ -1,15 +1,19 @@
 import { useFooterData } from "@diffgazer/core/footer";
 import { getProviderDisplay, getProviderDisplayStatus } from "@diffgazer/core/providers";
 import { useKey, useKeyboardContext } from "@diffgazer/keys";
-import { toast } from "@diffgazer/ui/components/toast";
 import { useCanGoBack, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useConfigData } from "@/hooks/use-config";
-import { resolveBackAction } from "@/lib/back-navigation";
+import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
 import { getMainContent, MAIN_CONTENT_ID } from "@/lib/main-content";
-import { shutdown } from "@/lib/shutdown";
+import { reportShutdownResult, shutdown } from "@/lib/shutdown";
 import { Footer } from "./footer";
 import { Header } from "./header";
+
+/** Home and the setup wizard are the brand moments; every work screen keeps the one-line header. */
+function isBrandScreen(pathname: string): boolean {
+  return pathname === "/" || pathname === "/onboarding";
+}
 
 function ConnectedHeader() {
   const router = useRouter();
@@ -24,24 +28,15 @@ function ConnectedHeader() {
   const backAction = resolveBackAction(pathname, canGoBack);
 
   const onBack = () => {
-    if (backAction.type === "navigate") {
-      void router.navigate({ to: backAction.to });
-      return;
-    }
-
-    if (backAction.type === "history") {
-      router.history.back();
-    }
+    performBackAction(router, backAction);
   };
-
-  const isDenseWorkScreen = pathname.startsWith("/review") || pathname.startsWith("/history");
 
   return (
     <Header
       providerName={providerName}
       providerStatus={providerStatus}
       onBack={backAction.type === "none" ? undefined : onBack}
-      wordmark={isDenseWorkScreen ? "compact" : "full"}
+      wordmark={isBrandScreen(pathname) ? "banner" : "line"}
     />
   );
 }
@@ -72,12 +67,7 @@ export function GlobalShortcuts() {
 
   const handleQuit = () => {
     if (hasOpenDialog()) return;
-    void shutdown().then((result) => {
-      if (result.status === "closed") return;
-      const variant = result.status === "error" ? "error" : "warning";
-      const title = result.status === "error" ? "Quit Failed" : "Close Tab Manually";
-      toast[variant](title, { message: result.message });
-    });
+    void shutdown().then(reportShutdownResult);
   };
   const openSettings = () => {
     if (!hasOpenDialog()) navigateUnlessCurrent("/settings");

@@ -12,8 +12,10 @@ import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { type FocusEvent as ReactFocusEvent, useRef, useState } from "react";
+import { PathValue } from "./path-value";
 import { useTrustFormKeyboard } from "./use-trust-form-keyboard";
 
 interface TrustPermissionsContentBaseProps {
@@ -153,12 +155,19 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
       onPointerDownCapture={handleContentPointerDown}
     >
       <div className="border-b border-border pb-3">
-        <div className="text-muted-foreground text-xs mb-2 uppercase tracking-wide">
+        <SectionHeader as="h2" variant="muted" className="mb-2">
           Target Repository
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-lg text-info-text font-bold truncate pr-4">{directory}</span>
-          {isTrusted && <Badge variant="success">TRUSTED</Badge>}
+        </SectionHeader>
+        {/* The repository name is the whole point of this screen, so the path
+            gives up its leading segments before its last one — and the badge
+            gives up the row before the name gives up characters. */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <PathValue value={directory} className="text-lg text-info-text font-bold" />
+          {isTrusted && (
+            <Badge variant="success" className="self-start">
+              TRUSTED
+            </Badge>
+          )}
         </div>
       </div>
 

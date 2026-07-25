@@ -104,17 +104,57 @@
 
 /*
  * Completed steps recolour the connector so a finished segment reads as a
- * filled timeline. Bullet uses `border-left-color` because the connector is
- * a border, not a background.
+ * filled timeline. `--primary` (not `--success`): progress is a neutral control
+ * state and stays monochrome in both palettes; the status palette is reserved
+ * for meaning. Bullet uses `border-left-color` because the connector is a
+ * border, not a background.
  */
 [data-orientation="vertical"][data-variant="ascii"]
   > li[data-status="completed"]:not(:last-child)::before,
 [data-orientation="vertical"][data-variant="numbered"]
   > li[data-status="completed"]:not(:last-child)::before {
-  background: var(--success);
+  background: var(--primary);
 }
 
 [data-orientation="vertical"][data-variant="bullet"]
   > li[data-status="completed"]:not(:last-child)::before {
-  border-left-color: var(--success);
+  border-left-color: var(--primary);
+}
+
+/*
+ * Substep branch rail. Substeps render below their parent trigger, indented by
+ * StepperContent. Without a connector they read as a detached second block, so
+ * each row draws the terminal `├─` branch (and `└─` on the last row) from the
+ * parent's indent line: a 1px vertical rail plus a short tee into the row.
+ * Pure CSS because the geometry is `::before`/`::after` positioning with a
+ * `:last-child` stub, not a variant axis.
+ */
+[data-slot="stepper-substep"] {
+  position: relative;
+  padding-left: 14px;
+}
+
+[data-slot="stepper-substep"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+
+/* Last row: the rail stops at the tee, closing the branch as `└`. */
+[data-slot="stepper-substep"]:last-child::before {
+  bottom: 50%;
+}
+
+[data-slot="stepper-substep"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 8px;
+  height: 1px;
+  background: var(--border);
 }

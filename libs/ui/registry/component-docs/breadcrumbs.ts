@@ -40,6 +40,7 @@ export const breadcrumbsDoc: ComponentDoc = {
     { name: "breadcrumbs-custom-separator", title: "Custom Separator" },
     { name: "breadcrumbs-custom-link", title: "Custom Link" },
     { name: "breadcrumbs-ellipsis", title: "Ellipsis" },
+    { name: "breadcrumbs-truncated", title: "Constrained Width" },
   ],
   keyboard: null,
   props: {

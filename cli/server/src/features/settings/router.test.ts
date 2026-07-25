@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api/protocol";
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { requireValue } from "../../testing/assertions.js";
 import type { ActiveSession } from "../review/stream/store.js";
 
 const TEST_TOKEN = "test-settings-token";

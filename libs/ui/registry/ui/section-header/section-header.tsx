@@ -4,20 +4,27 @@ import { cn } from "@/lib/utils";
 
 type HeadingTag = "h2" | "h3" | "h4";
 
-/** Class variants for section header. */
-export const sectionHeaderVariants = cva("font-bold mb-2 uppercase tracking-wider", {
+/**
+ * Class variants for section header.
+ *
+ * The heading level owns size, weight, AND tracking: at these sizes a 1px size step alone is
+ * imperceptible, so each level also loosens tracking and lightens weight to read as a scale.
+ * No outside margin lives here — spacing belongs to the layout that places the header.
+ */
+export const sectionHeaderVariants = cva("uppercase", {
   variants: {
     variant: {
       default: "text-foreground",
       muted: "text-muted-foreground",
+      accent: "text-accent",
     },
     bordered: {
       true: "border-b border-border pb-2",
     },
     as: {
-      h2: "text-sm",
-      h3: "text-xs",
-      h4: "text-[11px]",
+      h2: "text-sm font-bold tracking-[0.08em]",
+      h3: "text-xs font-bold tracking-[0.14em]",
+      h4: "text-[11px] font-medium tracking-[0.22em]",
     },
   },
   defaultVariants: { variant: "default", bordered: false, as: "h3" },

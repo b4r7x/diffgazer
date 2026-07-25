@@ -1,7 +1,8 @@
 import type { ComponentDoc } from "./types";
 
 export const iconsDoc: ComponentDoc = {
-  description: "SVG icon components for use as indicators, triggers, and decorative elements.",
+  description:
+    "SVG icon components for use as indicators, triggers, and decorative elements. The item is the shared icon namespace; it currently ships Chevron, the one glyph the library draws as SVG (every other system glyph is mono text).",
   anatomy: [
     {
       name: "Chevron",
@@ -13,7 +14,7 @@ export const iconsDoc: ComponentDoc = {
     {
       title: "Animation",
       content:
-        "Set open={true} to rotate the chevron 90° clockwise from its base direction. Uses CSS transition-transform for smooth animation.",
+        "Set open={true} to rotate the chevron 90° clockwise from its base direction. Uses CSS transition-transform for smooth animation. The Animated Toggle example also renders the closed and open states side by side, so the rotation is verifiable without interacting.",
     },
     {
       title: "Accessibility",

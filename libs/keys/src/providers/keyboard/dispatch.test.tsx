@@ -12,7 +12,7 @@ import UseScopeBasic from "../../../registry/examples/use-scope/use-scope-basic.
 import { DECLINE } from "../../core/normalize-key-input.js";
 import { useKey } from "../../hooks/use-key.js";
 import { useScope } from "../../hooks/use-scope.js";
-import { KeyboardWrapper, fireKey as pressKey } from "../../testing/test-utils.js";
+import { KeyboardWrapper, fireKey as pressKey } from "../../testing/internal/test-utils.js";
 import { useKeyboardContext } from "../keyboard-context.js";
 
 function fireKeyFrom(element: Element, key: string, options?: Partial<KeyboardEventInit>) {

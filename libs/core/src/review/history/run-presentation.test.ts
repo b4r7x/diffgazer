@@ -1,16 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { makeReviewMetadata } from "../../testing/factories.js";
+import { HISTORY_SEARCH_PLACEHOLDER } from "./navigation.js";
 import {
   buildHistoryRunSummary,
-  buildHistoryWarningMessages,
   getRunBranchLabel,
-  getRunDisplayId,
   getRunSummaryParts,
   getRunSummaryText,
-  HISTORY_SEARCH_PLACEHOLDER,
   metadataToSeverityCounts,
-  summarizeHistoryWarnings,
-} from "../history.js";
+} from "./run-presentation.js";
+import { buildHistoryWarningMessages, summarizeHistoryWarnings } from "./warnings.js";
 
 describe("summarizeHistoryWarnings", () => {
   it("separates unreadable records, salvage loss, and index maintenance failures", () => {
@@ -133,7 +131,7 @@ describe("getRunSummaryText", () => {
   });
 });
 
-describe("getRunBranchLabel + getRunDisplayId", () => {
+describe("getRunBranchLabel", () => {
   it("returns Staged when the run mode is staged", () => {
     expect(getRunBranchLabel(makeReviewMetadata({ mode: "staged" }))).toBe("Staged");
   });
@@ -142,12 +140,6 @@ describe("getRunBranchLabel + getRunDisplayId", () => {
     expect(getRunBranchLabel(makeReviewMetadata({ mode: "unstaged", branch: undefined }))).toBe(
       "Main",
     );
-  });
-
-  it("displays a short id with a leading hash", () => {
-    expect(
-      getRunDisplayId(makeReviewMetadata({ id: "abcdef00-0000-4000-8000-000000000000" })),
-    ).toBe("#abcdef00");
   });
 });
 

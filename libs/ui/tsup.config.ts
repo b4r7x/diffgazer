@@ -108,8 +108,10 @@ function aliasPlugin(): Plugin {
 
       build.onResolve({ filter: /^@\/lib\// }, (args) => {
         const name = args.path.replace("@/lib/", "");
-        const asFile = resolve(registryRoot, "lib", `${name}.ts`);
-        if (existsSync(asFile)) return { path: asFile };
+        for (const extension of [".ts", ".tsx"]) {
+          const asFile = resolve(registryRoot, "lib", `${name}${extension}`);
+          if (existsSync(asFile)) return { path: asFile };
+        }
         return { path: resolve(registryRoot, "lib", name, "index.ts") };
       });
 

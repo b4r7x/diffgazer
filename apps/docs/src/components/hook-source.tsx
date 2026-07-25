@@ -35,7 +35,9 @@ function HookSourceAll({ data, sectionTitle, hint }: HookSourceAllProps) {
 
   return (
     <div className="space-y-6">
-      <SectionHeader as="h3">{sectionTitle}</SectionHeader>
+      <SectionHeader as="h3" className="mb-2">
+        {sectionTitle}
+      </SectionHeader>
       <p className="text-sm text-muted-foreground">{hint}</p>
       {entries.map((hook) => (
         <HookSourceBlock key={hook.name} hook={hook} />

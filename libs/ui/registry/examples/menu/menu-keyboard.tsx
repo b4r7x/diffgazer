@@ -38,8 +38,13 @@ function MenuWithHotkeys() {
           Delete
         </MenuItem>
       </Menu>
-      <p className="px-3 py-2 text-xs text-muted-foreground border-t border-border">
-        ↑↓ navigate · 1-4 jump · Enter select
+      {/* One hint line: each hint stays whole, wrapping happens only at the separators. */}
+      <p className="flex flex-wrap items-center gap-x-2 whitespace-nowrap px-3 py-2 text-xs text-muted-foreground border-t border-border">
+        <span>↑↓ nav</span>
+        <span aria-hidden="true">·</span>
+        <span>1-4 jump</span>
+        <span aria-hidden="true">·</span>
+        <span>⏎ select</span>
       </p>
     </div>
   );

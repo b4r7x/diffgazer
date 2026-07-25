@@ -152,6 +152,15 @@ describe("GlobalLayout", () => {
     expect(navigateSpy).not.toHaveBeenCalled();
   });
 
+  it("offers no back affordance during onboarding, which has nowhere to go back to", () => {
+    routerState.pathname = "/onboarding";
+    routerState.canGoBack = true;
+
+    renderShell();
+
+    expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
+  });
+
   it("keeps the configured header when only provider status fails", async () => {
     vi.mocked(mockApi.getProviderStatus).mockRejectedValue(
       new Error("provider status unavailable"),
@@ -159,9 +168,10 @@ describe("GlobalLayout", () => {
 
     renderShell();
 
-    expect(
-      await screen.findByLabelText("Provider: openrouter / openrouter/test-model, Status: active"),
-    ).toBeInTheDocument();
+    const status = await screen.findByLabelText(
+      "Provider: openrouter / openrouter/test-model, active",
+    );
+    expect(status).toHaveTextContent("active");
   });
 
   it("labels an init failure without presenting an unconfigured provider", async () => {
@@ -169,9 +179,8 @@ describe("GlobalLayout", () => {
 
     renderShell();
 
-    expect(
-      await screen.findByLabelText("Provider: Configuration unavailable, Status: idle"),
-    ).toBeInTheDocument();
+    const status = await screen.findByLabelText("Provider: Configuration unavailable, idle");
+    expect(status).toHaveTextContent("idle");
     expect(screen.queryByLabelText(/Provider: Not configured/i)).not.toBeInTheDocument();
   });
 });

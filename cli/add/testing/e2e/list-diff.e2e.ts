@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { runDgadd, writeFixtureConfig } from "./test-helpers.js";
 

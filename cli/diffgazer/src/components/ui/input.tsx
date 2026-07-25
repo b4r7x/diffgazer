@@ -1,6 +1,8 @@
 import { Box, Text, useInput } from "ink";
-import { applyTextEditKey, useInputMode } from "../../hooks/use-input-mode";
+import { useInputMode } from "../../hooks/use-input-mode";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
+import { applyTextEditKey } from "../../lib/text-edit-key";
+import { SURFACE_BORDER } from "../../theme/chrome";
 import { useTheme } from "../../theme/provider";
 
 export interface InputProps {
@@ -92,13 +94,11 @@ function ManualTextEdit({
   const showPlaceholder = value.length === 0 && placeholder != null;
 
   return (
-    <Box width={width} borderStyle="single" borderColor={borderColor}>
+    <Box width={width} borderStyle={SURFACE_BORDER} borderColor={borderColor}>
       {showPlaceholder ? (
-        <Text color={tokens.muted} dimColor={disabled}>
-          {placeholder}
-        </Text>
+        <Text color={tokens.muted}>{placeholder}</Text>
       ) : (
-        <Text dimColor={disabled} wrap="truncate-start">
+        <Text color={disabled ? tokens.muted : tokens.fg} wrap="truncate-start">
           {display}
         </Text>
       )}

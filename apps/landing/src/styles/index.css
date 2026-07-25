@@ -228,7 +228,10 @@ main { position: relative; z-index: 10; }
 /* ============================================================
    Scene 2 — one command / terminal in 3D
    ============================================================ */
-#s2 .scene-inner { display: grid; grid-template-columns: 5fr 7fr; gap: clamp(32px, 5vw, 80px); align-items: center; }
+/* Every fr track here is minmax(0, …): an fr track's automatic minimum is
+   min-content, so a nowrap child (a giant word, a code line) would push the
+   track past the viewport instead of being clipped/scrolled inside it. */
+#s2 .scene-inner { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 80px); align-items: center; }
 .term-wrap { perspective: 1400px; }
 .terminal {
   background: var(--surface-1); border: 1px solid var(--hairline); border-radius: var(--radius);
@@ -298,7 +301,7 @@ html[data-scene-theme="light"] .sev-low { color: #4b5563; border-color: #57606a;
 html[data-scene-theme="light"] .sev-nit { color: #4b5563; border-color: #6e7781; background: #ffffff; }
 .sev-legend { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 26px; }
 
-.findings-panel { margin-top: 44px; display: grid; grid-template-columns: 11fr 9fr;
+.findings-panel { margin-top: 44px; display: grid; grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
   background: var(--surface-1); border: 1px solid var(--hairline); border-radius: var(--radius); overflow: hidden; }
 .findings-list { border-right: 1px solid var(--hairline); display: flex; flex-direction: column; }
 .finding-row { flex: 1 1 auto; width: 100%; min-height: 46px; display: flex; align-items: center; gap: 10px; padding: 10px 16px;
@@ -359,13 +362,22 @@ html[data-scene-theme="light"] .fd-fix .rem { color: #cf222e; }
    Responsive
    ============================================================ */
 @media (max-width: 920px) {
-  #s2 .scene-inner, .findings-panel { grid-template-columns: 1fr; }
+  #s2 .scene-inner, .findings-panel { grid-template-columns: minmax(0, 1fr); }
   .findings-list { border-right: none; border-bottom: 1px solid var(--hairline); }
   #s3-wrap { height: auto; }
   #s3 { position: relative; height: auto; padding: 18vh 0; }
   .hud-tr { gap: 0; }
   .hud-tr a { padding: 6px 5px; font-size: 11px; letter-spacing: 0.1em; }
   .hud-bl { display: none; }
+  /* Scene 4's giant heading sweeps the top-left corner at these widths and
+     would print straight through the fixed wordmark. The HUD scene tracker
+     flips data-scene-theme for exactly that scene, so the wordmark steps aside
+     for its whole pass; visibility (not just opacity) keeps it out of the tab
+     order while hidden. This rides on scene 4 being the only inverted scene
+     (data-theme-scene="light" in index.html) — a second light scene would need
+     its own hiding attribute rather than this one. */
+  .hud.hud-tl { transition: color 0.15s ease, opacity 0.45s ease, visibility 0.45s; }
+  html[data-scene-theme="light"] .hud-tl { opacity: 0; visibility: hidden; transition: none; }
 }
 
 /* ============================================================
@@ -378,6 +390,11 @@ html[data-scene-theme="light"] .fd-fix .rem { color: #cf222e; }
   .mask-line > span, .reveal { transform: none; opacity: 1; transition: none; }
   #figlet .fl > span { transform: none; transition: none; }
   #reticle { display: none; }
+  /* Scene 3 is scrubbed by its sticky 230vh track. With the scrub off, that track
+     is 130vh of dead scroll past a frozen scene, so the section falls back to the
+     same static flow layout the narrow breakpoint uses. */
+  #s3-wrap { height: auto; }
+  #s3 { position: relative; height: auto; padding: 18vh 0; }
 }
 
 /* Mobile refinements */
@@ -398,6 +415,11 @@ html[data-scene-theme="light"] .fd-fix .rem { color: #cf222e; }
 @media (max-width: 700px) {
   .finding-row .loc { display: none; }
   .finding-detail { min-height: 0; }
+  /* Suggested-fix lines outrun the panel here. Truncate them like the finding
+     titles above instead of scrolling, so the clipped edge lands on an ellipsis
+     rather than half a glyph. Wrapping is not an option: a continuation line
+     with no +/− marker reads as a separate diff line. */
+  .fd-fix pre { overflow: hidden; text-overflow: ellipsis; }
 }
 
 /* Hero diff: restore breathing room over the compact contract defaults.

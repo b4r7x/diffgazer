@@ -24,7 +24,7 @@ describe("HistoryInsightsPane", () => {
     expect(screen.getByText(/severity breakdown/i)).toBeInTheDocument();
     expect(screen.getByText("1 Issues")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /wrong value/i })).toBeInTheDocument();
-    expect(screen.getByText("L:7")).toBeInTheDocument();
+    expect(screen.getByText("index.ts:7")).toBeInTheDocument();
     expect(screen.getByText("4m 12s")).toBeInTheDocument();
   });
 
@@ -62,7 +62,7 @@ describe("HistoryInsightsPane", () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it("does not render a nullable line label for run issues", () => {
+  it("falls back to the file name when a run issue has no line location", () => {
     render(
       <HistoryInsightsPane
         runId="run-1"
@@ -79,7 +79,8 @@ describe("HistoryInsightsPane", () => {
     );
 
     expect(screen.getByRole("option", { name: /missing line location/i })).toBeInTheDocument();
-    expect(screen.queryByText("L:null")).not.toBeInTheDocument();
+    expect(screen.getByText("index.ts")).toBeInTheDocument();
+    expect(screen.queryByText(/null/)).not.toBeInTheDocument();
   });
 
   it("invokes onSelectIssue with the issue id when an issue is clicked", async () => {

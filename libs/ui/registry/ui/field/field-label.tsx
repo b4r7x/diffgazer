@@ -7,6 +7,7 @@ import {
   useLayoutEffect,
 } from "react";
 import { cn } from "@/lib/utils";
+import { labelVariants } from "../label/label";
 import {
   hasRenderableContent,
   isDisabledControl,
@@ -57,7 +58,7 @@ export function FieldLabel({ className, children, ref, id, onClick, ...props }: 
       data-slot="field-label"
       htmlFor={props.htmlFor ?? controlId}
       onClick={handleClick}
-      className={cn("text-xs uppercase font-bold text-muted-foreground select-none", className)}
+      className={cn(labelVariants(), disabled && "opacity-50", className)}
     >
       {children}
       {required && (

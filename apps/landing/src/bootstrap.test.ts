@@ -93,6 +93,16 @@ describe("bootstrap under reduced motion", () => {
     expect(document.querySelector("#gz-co-1")?.classList.contains("on")).toBe(true);
   });
 
+  it("re-anchors the gaze callouts when the viewport resizes", () => {
+    const anchor = document.querySelector<HTMLElement>('#gz-diff [data-target="0"]');
+    if (!anchor) throw new Error("gaze anchor row not mounted");
+    Object.defineProperty(anchor, "offsetTop", { value: 120, configurable: true });
+
+    window.dispatchEvent(new Event("resize"));
+
+    expect(document.querySelector<HTMLElement>("#gz-co-0")?.style.top).toBe("118px");
+  });
+
   it("reveals the full headline and keeps its accessible name", () => {
     const chars = document.querySelectorAll("#h1 .ch");
     const revealed = document.querySelectorAll("#h1 .ch.on");

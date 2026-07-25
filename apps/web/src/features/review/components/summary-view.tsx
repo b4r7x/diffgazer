@@ -10,24 +10,11 @@ import type { LensStat } from "@diffgazer/core/schemas/events";
 import { BACK_SHORTCUT, type IssuePreview } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { useKey, useScope } from "@diffgazer/keys";
-import type { CategoryStats } from "@/features/review/components/category-stats-table";
+import { Button } from "@diffgazer/ui/components/button";
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { ReviewCompleteSummary } from "@/features/review/components/review-complete-summary";
-
-const DEFAULT_CATEGORY_COLOR = "text-info-text";
-
-const CATEGORY_COLORS: Record<string, string> = {
-  security: "text-error-text",
-  performance: "text-warning-text",
-};
-
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return Boolean(
-    target.closest(
-      'a, button, input, textarea, select, [role="button"], [role="checkbox"], [role="radio"], [role="tab"], [contenteditable="true"]',
-    ),
-  );
-}
+import { RunDetailsPanel } from "@/features/review/components/run-details-panel";
+import { isInteractiveTarget } from "@/features/review/lib/interactive-target";
 
 interface ReviewSummaryViewProps {
   issues: ReviewIssue[];
@@ -53,16 +40,11 @@ export function ReviewSummaryView({
   onBack,
 }: ReviewSummaryViewProps) {
   const summary = buildReviewSummary(issues);
-  const duplicateNotice = buildDuplicateCollapseNotice(droppedDuplicates, summary.total);
-  const hiddenNotice = buildHiddenIssuesNotice(droppedBelowThreshold, minSeverity);
+  const notices = [
+    buildDuplicateCollapseNotice(droppedDuplicates, summary.total),
+    buildHiddenIssuesNotice(droppedBelowThreshold, minSeverity),
+  ].filter((notice): notice is string => notice !== null);
   const lensRows = buildLensSummaryRows(lensStats);
-
-  const categoryStats: CategoryStats[] = buildCategoryStats(issues).map((stat) => ({
-    id: stat.id,
-    name: stat.name,
-    count: stat.count,
-    color: CATEGORY_COLORS[stat.id] ?? DEFAULT_CATEGORY_COLOR,
-  }));
 
   const topIssues: IssuePreview[] = issues.slice(0, 3).map((issue) => ({
     id: issue.id,
@@ -94,53 +76,32 @@ export function ReviewSummaryView({
   });
 
   return (
-    <div className="relative flex-1 overflow-y-auto px-4 py-4">
-      <div className="w-full max-w-4xl mx-auto">
+    // ScrollArea rather than a bare overflow-y-auto: the summary was the one
+    // scroll region left with the unstyled platform scrollbar, which read as a
+    // stray desktop strip down the right edge at phone widths. Bottom padding
+    // waits for md: a sticky bottom-0 child docks to the scrollport inset by
+    // that padding, which left a band under the phone action row for half-rows
+    // to render in.
+    <ScrollArea className="flex-1 px-4 pt-4 scroll-pb-16 md:scroll-pb-0 md:pb-4">
+      <div className="w-full max-w-4xl mx-auto flex flex-col gap-6">
         <ReviewCompleteSummary
           stats={stats}
           severityCounts={summary.severityCounts}
-          categoryStats={categoryStats}
+          categoryStats={buildCategoryStats(issues)}
           topIssues={topIssues}
           durationMs={durationMs}
-          onEnterReview={onEnterReview}
-          onBack={onBack}
         />
-        {duplicateNotice ? (
-          <p className="text-muted-foreground font-mono text-xs mt-4" role="note">
-            {duplicateNotice}
-          </p>
-        ) : null}
-        {hiddenNotice ? (
-          <p className="text-muted-foreground font-mono text-xs mt-4" role="note">
-            {hiddenNotice}
-          </p>
-        ) : null}
-        {lensRows.length > 0 ? (
-          <table className="font-mono text-xs mt-4 w-full">
-            <caption className="text-left text-muted-foreground mb-1">Issues by lens</caption>
-            <thead className="sr-only">
-              <tr>
-                <th scope="col">Lens</th>
-                <th scope="col">Issues</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lensRows.map((row) => (
-                <tr key={row.lensId}>
-                  <th className="pr-4 text-left font-normal" scope="row">
-                    {row.label}
-                  </th>
-                  <td className="pr-4 text-right">
-                    {row.status === "failed"
-                      ? `failed${row.errorCode ? ` (${row.errorCode})` : ""}`
-                      : row.issueCount}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : null}
+        <RunDetailsPanel notices={notices} lensRows={lensRows} />
+        {/* The action row is the last element and stays reachable while the
+            summary scrolls under it on phones, mirroring the pinned TUI CTA.
+            The hairline is what makes a row disappearing under it read as a
+            docked bar rather than a clipped render. */}
+        <div className="sticky bottom-0 flex justify-center border-t border-border bg-background pb-2 pt-3 md:static md:border-t-0 md:pb-4">
+          <Button variant="primary" size="lg" bracket onClick={onEnterReview}>
+            View Results
+          </Button>
+        </div>
       </div>
-    </div>
+    </ScrollArea>
   );
 }

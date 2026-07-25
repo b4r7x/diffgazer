@@ -1,3 +1,4 @@
+import { type Cleanup, createEffectScope } from "./effect-scope";
 import { initCopyButtons } from "./effects/copy";
 import { initCursor } from "./effects/cursor";
 import { createField } from "./effects/field";
@@ -8,15 +9,7 @@ import { initHud } from "./effects/hud";
 import { initPipeline } from "./effects/pipeline";
 import { initTerminal } from "./effects/terminal";
 import { wireEnvLinks } from "./env";
-import {
-  type Cleanup,
-  createEffectScope,
-  createMouse,
-  type Flags,
-  getFlags,
-  isLight,
-  type Mouse,
-} from "./util";
+import { createMouse, type Flags, getFlags, isLight, type Mouse } from "./viewport";
 
 function trackPointer(mouse: Mouse, signal: AbortSignal): void {
   addEventListener(
@@ -43,8 +36,6 @@ function startMotion(
 
   const field = createField(doc, signal);
   const cursor = initCursor(doc, flags, mouse, signal);
-
-  addEventListener("resize", () => gaze.placeCallouts(), { signal });
 
   let running = true;
   let active = true;
@@ -80,6 +71,9 @@ function startVisualEffects(doc: Document, flags: Flags, signal: AbortSignal): C
   scope.addCleanup(initTerminal(doc, flags, scope.signal));
   const gaze = initGaze(doc, flags, scope.signal);
   scope.addCleanup(gaze.cleanup);
+  // Callouts stay absolutely positioned against their anchor rows in both
+  // branches, so re-anchoring on resize is not motion work.
+  addEventListener("resize", () => gaze.placeCallouts(), { signal: scope.signal });
   scope.addCleanup(initFindings(doc, flags, scope.signal));
   scope.addCleanup(initPipeline(doc, flags, scope.signal));
 
@@ -95,21 +89,13 @@ function startVisualEffects(doc: Document, flags: Flags, signal: AbortSignal): C
 }
 
 export function bootstrap(doc: Document = document, flags: Flags = getFlags()): Cleanup {
-  const controller = new AbortController();
-  const cleanups: Cleanup[] = [];
-  const addCleanup = (cleanup: Cleanup | undefined): void => {
-    if (cleanup) cleanups.push(cleanup);
-  };
-  const cleanup = (): void => {
-    controller.abort();
-    for (const dispose of cleanups.splice(0)) dispose();
-  };
+  const scope = createEffectScope();
 
   wireEnvLinks(doc);
-  addCleanup(initCopyButtons(doc, 1400, controller.signal));
+  scope.addCleanup(initCopyButtons(doc, 1400, scope.signal));
   let activeFlags = flags;
-  let stopVisualEffects = startVisualEffects(doc, activeFlags, controller.signal);
-  addCleanup(() => stopVisualEffects());
+  let stopVisualEffects = startVisualEffects(doc, activeFlags, scope.signal);
+  scope.addCleanup(() => stopVisualEffects());
 
   if (typeof matchMedia === "function") {
     const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
@@ -117,11 +103,11 @@ export function bootstrap(doc: Document = document, flags: Flags = getFlags()): 
       if (event.matches === activeFlags.reduced) return;
       stopVisualEffects();
       activeFlags = { ...activeFlags, reduced: event.matches };
-      stopVisualEffects = startVisualEffects(doc, activeFlags, controller.signal);
+      stopVisualEffects = startVisualEffects(doc, activeFlags, scope.signal);
     };
     reducedMotion.addEventListener("change", handleReducedMotionChange);
-    addCleanup(() => reducedMotion.removeEventListener("change", handleReducedMotionChange));
+    scope.addCleanup(() => reducedMotion.removeEventListener("change", handleReducedMotionChange));
   }
 
-  return cleanup;
+  return scope.cleanup;
 }

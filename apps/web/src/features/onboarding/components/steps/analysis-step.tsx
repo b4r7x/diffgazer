@@ -3,6 +3,7 @@ import { isLensId, type LensId } from "@diffgazer/core/schemas/review";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { type KeyboardEvent, useId, useState } from "react";
 
 const LENS_OPTIONS = buildLensOptions();
@@ -44,9 +45,11 @@ export function AnalysisStep({
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <div id={labelId} className="text-sm font-mono text-foreground/60">
-          Review Agents:
-        </div>
+        {/* h2: the wizard shell titles each step with an h1, so the default h3 would skip a
+            level. */}
+        <SectionHeader id={labelId} as="h2" variant="muted">
+          Active Lenses
+        </SectionHeader>
         <CheckboxGroup
           value={lenses}
           onChange={(nextValue) => {

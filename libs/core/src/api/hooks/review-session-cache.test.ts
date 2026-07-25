@@ -1,9 +1,12 @@
 /** @vitest-environment jsdom */
 
-import { QueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ActiveReviewSession, ActiveReviewSessionResponse } from "../../schemas/review/index.js";
+import type {
+  ActiveReviewSession,
+  ActiveReviewSessionResponse,
+} from "../../schemas/review/index.js";
 import { createDeferred } from "../../testing/deferred.js";
 import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
@@ -52,7 +55,6 @@ describe("review active-session cache helpers", () => {
     queryClient.setQueryData(reviewQueries.activeSession(api, "unstaged").queryKey, {
       session: unstaged,
     });
-    queryClient.setQueryData(reviewQueries.activeSession(api).queryKey, { session: unstaged });
 
     const { result } = renderHook(() => useReviewSessionCache(), {
       wrapper: Wrapper,
@@ -68,9 +70,6 @@ describe("review active-session cache helpers", () => {
     expect(queryClient.getQueryData(reviewQueries.activeSession(api, "unstaged").queryKey)).toEqual(
       { session: unstaged },
     );
-    expect(queryClient.getQueryData(reviewQueries.activeSession(api).queryKey)).toEqual({
-      session: unstaged,
-    });
   });
 
   it("does not clear a different active session for the same review mode", async () => {
@@ -103,9 +102,6 @@ describe("review active-session cache helpers", () => {
     queryClient.setQueryData(reviewQueries.activeSession(api, "unstaged").queryKey, {
       session: active,
     });
-    queryClient.setQueryData(reviewQueries.activeSession(api).queryKey, {
-      session: active,
-    });
 
     const { result } = renderHook(() => useReviewSessionCache(), {
       wrapper: Wrapper,
@@ -118,12 +114,9 @@ describe("review active-session cache helpers", () => {
     expect(queryClient.getQueryData(reviewQueries.activeSession(api, "unstaged").queryKey)).toEqual(
       { session: active },
     );
-    expect(queryClient.getQueryData(reviewQueries.activeSession(api).queryKey)).toEqual({
-      session: active,
-    });
   });
 
-  it("mirrors created unstaged active sessions to the unfiltered query key and clears by review id", async () => {
+  it("caches a created unstaged active session under its mode key and clears by review id", async () => {
     const unstaged = makeActiveSession({ mode: "unstaged" });
     const harness = setup({
       createReview: vi.fn(async () => ({ reviewId: unstaged.reviewId, session: unstaged })),
@@ -146,9 +139,6 @@ describe("review active-session cache helpers", () => {
     expect(
       harness.queryClient.getQueryData(reviewQueries.activeSession(api, "unstaged").queryKey),
     ).toEqual({ session: unstaged });
-    expect(harness.queryClient.getQueryData(reviewQueries.activeSession(api).queryKey)).toEqual({
-      session: unstaged,
-    });
 
     await act(async () => {
       await cacheResult.current.clearActiveSession("unstaged", unstaged.reviewId);
@@ -157,9 +147,6 @@ describe("review active-session cache helpers", () => {
     expect(
       harness.queryClient.getQueryData(reviewQueries.activeSession(api, "unstaged").queryKey),
     ).toEqual({ session: null });
-    expect(harness.queryClient.getQueryData(reviewQueries.activeSession(api).queryKey)).toEqual({
-      session: null,
-    });
   });
 
   it("returns a stable cache helper object and clearActiveSession function", () => {
@@ -218,36 +205,26 @@ describe("review active-session cache helpers", () => {
     expect(
       harness.queryClient.getQueryData(reviewQueries.activeSession(api, "unstaged").queryKey),
     ).toEqual({ session: createdSession });
-    expect(harness.queryClient.getQueryData(reviewQueries.activeSession(api).queryKey)).toEqual({
-      session: createdSession,
-    });
   });
 
-  it("keeps an active session cleared when older active-session requests resolve later", async () => {
+  it("keeps an active session cleared when an older active-session request resolves later", async () => {
     const session = makeActiveSession({
       reviewId: "22222222-2222-4222-8222-222222222222",
       mode: "unstaged",
     });
     const modeActiveSession = createDeferred<ActiveReviewSessionResponse>();
-    const allActiveSession = createDeferred<ActiveReviewSessionResponse>();
     const harness = setup({
-      getActiveReviewSession: vi.fn((mode?: string) =>
-        mode === "unstaged" ? modeActiveSession.promise : allActiveSession.promise,
-      ),
+      getActiveReviewSession: vi.fn(() => modeActiveSession.promise),
     });
     api = harness.api;
 
     harness.queryClient.setQueryData(reviewQueries.activeSession(api, "unstaged").queryKey, {
       session,
     });
-    harness.queryClient.setQueryData(reviewQueries.activeSession(api).queryKey, { session });
     const modeFetch = harness.queryClient
       .fetchQuery(reviewQueries.activeSession(api, "unstaged"))
       .catch(() => undefined);
-    const allFetch = harness.queryClient
-      .fetchQuery(reviewQueries.activeSession(api))
-      .catch(() => undefined);
-    await waitFor(() => expect(api.getActiveReviewSession).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(api.getActiveReviewSession).toHaveBeenCalledTimes(1));
 
     const { result } = renderHook(() => useReviewSessionCache(), {
       wrapper: harness.Wrapper,
@@ -259,15 +236,11 @@ describe("review active-session cache helpers", () => {
 
     await act(async () => {
       modeActiveSession.resolve({ session });
-      allActiveSession.resolve({ session });
-      await Promise.all([modeFetch, allFetch]);
+      await modeFetch;
     });
 
     expect(
       harness.queryClient.getQueryData(reviewQueries.activeSession(api, "unstaged").queryKey),
     ).toEqual({ session: null });
-    expect(harness.queryClient.getQueryData(reviewQueries.activeSession(api).queryKey)).toEqual({
-      session: null,
-    });
   });
 });

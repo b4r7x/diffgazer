@@ -11,18 +11,20 @@ import {
 import {
   computeAvailableSize,
   computePosition,
+  isAnchorClippedOut,
   resolveCollisionPosition,
   shift,
   wouldOverflow,
 } from "@/lib/floating-position";
 import type {
+  Bounds,
   FloatingAlign,
   FloatingPlacement,
   FloatingSide,
   Viewport,
 } from "@/lib/floating-position-constants";
 
-export { computePosition, resolveCollisionPosition, shift, wouldOverflow };
+export { computePosition, isAnchorClippedOut, resolveCollisionPosition, shift, wouldOverflow };
 export type { FloatingAlign, FloatingPlacement, FloatingSide };
 
 /** Options for positioning floating content relative to a trigger element. */
@@ -61,6 +63,12 @@ export interface FloatingPosition {
   availableHeight: number;
   /** Available width along the resolved side after collision padding. */
   availableWidth: number;
+  /**
+   * True while the trigger has scrolled fully out of the viewport or out of one of its
+   * scroll ancestors. Panels should suppress themselves instead of showing the clamped
+   * position, which is no longer attached to anything.
+   */
+  anchorHidden: boolean;
 }
 
 /** Computed position plus the ref that must be attached to the floating content element. */
@@ -133,6 +141,25 @@ function getOverflowAncestors(node: Node): Element[] {
   return [ancestor, ...getOverflowAncestors(ancestor)];
 }
 
+// A trigger with no measurable box has not been laid out (or is display:none in a
+// synthetic environment); its rect cannot distinguish "scrolled away" from "not measured
+// yet", so it is never treated as clipped. Clip regions reported as zero-area are skipped
+// for the same reason.
+function isAnchorHidden(triggerRect: DOMRect, clipAncestors: readonly Element[], vp: Viewport) {
+  if (triggerRect.width === 0 && triggerRect.height === 0) return false;
+
+  const viewportBounds: Bounds = { top: 0, left: 0, right: vp.width, bottom: vp.height };
+  if (isAnchorClippedOut(triggerRect, viewportBounds)) return true;
+
+  for (const ancestor of clipAncestors) {
+    const clipRect = ancestor.getBoundingClientRect();
+    if (clipRect.width === 0 || clipRect.height === 0) continue;
+    if (isAnchorClippedOut(triggerRect, clipRect)) return true;
+  }
+
+  return false;
+}
+
 /** Position floating content relative to a trigger element. */
 export function useFloatingPosition({
   triggerRef,
@@ -151,6 +178,10 @@ export function useFloatingPosition({
     setContent(node);
   }, []);
   const frameRef = useRef<number | null>(null);
+  // Populated by the open effect, which already walks these ancestors to subscribe to
+  // their scroll events; reused here so anchor-visibility checks stay O(ancestors) per
+  // frame instead of re-walking the DOM.
+  const clipAncestorsRef = useRef<readonly Element[]>([]);
 
   // Ref-to-state promotion with equality bail; must observe every render.
   useLayoutEffect(() => {
@@ -213,6 +244,7 @@ export function useFloatingPosition({
       triggerWidth: triggerRect.width,
       availableHeight,
       availableWidth,
+      anchorHidden: isAnchorHidden(triggerRect, clipAncestorsRef.current, vp),
     });
   }, [
     alignOffset,
@@ -245,6 +277,11 @@ export function useFloatingPosition({
       return;
     }
 
+    // Discovered before the first measurement so the anchor-visibility check inside
+    // update() sees the same clip regions the scroll subscriptions below use.
+    const scrollParents = getOverflowAncestors(trigger);
+    clipAncestorsRef.current = scrollParents;
+
     update();
 
     const view = trigger.ownerDocument?.defaultView ?? window;
@@ -258,7 +295,6 @@ export function useFloatingPosition({
     observer?.observe(trigger);
     observer?.observe(content);
 
-    const scrollParents = getOverflowAncestors(trigger);
     for (const parent of scrollParents) {
       parent.addEventListener("scroll", handleLayoutChange, { passive: true });
     }
@@ -267,6 +303,7 @@ export function useFloatingPosition({
 
     return () => {
       active = false;
+      clipAncestorsRef.current = [];
       observer?.disconnect();
       for (const parent of scrollParents) {
         parent.removeEventListener("scroll", handleLayoutChange);

@@ -1,6 +1,7 @@
 "use client";
 
 import { cva } from "class-variance-authority";
+import { isValidElement, type ReactNode } from "react";
 import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { useSelectContext } from "./select-context";
@@ -95,4 +96,8 @@ export function SelectSearch({
       />
     </div>
   );
+}
+
+export function isSelectSearchElement(child: ReactNode): boolean {
+  return isValidElement(child) && child.type === SelectSearch;
 }

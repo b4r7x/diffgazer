@@ -1,6 +1,8 @@
 import { sanitizeTerminalText } from "@diffgazer/core/review";
 import { Box, Text, useInput } from "ink";
-import { applyTextEditKey, useInputMode } from "../../../hooks/use-input-mode";
+import { useInputMode } from "../../../hooks/use-input-mode";
+import { applyTextEditKey } from "../../../lib/text-edit-key";
+import { focusBorder, SURFACE_BORDER } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 
 interface SearchInputProps {
@@ -25,7 +27,7 @@ export function SearchInput({ value, onChange, isActive }: SearchInputProps) {
   return (
     <Box>
       <Text color={tokens.muted}>/ </Text>
-      <Box borderStyle="single" borderColor={isActive ? tokens.accent : tokens.border} flexGrow={1}>
+      <Box borderStyle={SURFACE_BORDER} borderColor={focusBorder(tokens, isActive)} flexGrow={1}>
         {value ? (
           <Text wrap="truncate-start">
             {sanitizeTerminalText(value)}

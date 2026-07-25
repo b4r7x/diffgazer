@@ -5,6 +5,7 @@ import { NavigationContext } from "../../../hooks/use-navigation";
 import { buildResponsiveResult, getBreakpointTier } from "../../../lib/breakpoints";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../theme/provider";
+import { makeHistoryScreenState } from "../testing/history-screen-state";
 import { HistoryScreen } from "./screen";
 
 const useHistoryScreenStateMock = vi.hoisted(() => vi.fn());
@@ -68,7 +69,7 @@ function makeHistoryState({
     summary: "Readable review",
   };
 
-  return {
+  return makeHistoryScreenState({
     reviewsQuery: {
       data: {
         reviews: hasReviews ? [review] : [],
@@ -77,27 +78,11 @@ function makeHistoryState({
       isLoading: false,
       error: null,
     },
-    reviewDetailQuery: { isLoading: false, isError: false, error: null, refetch: vi.fn() },
-    reviews: [],
-    timelineItems: [],
-    selectedDateId: "all",
-    setSelectedDateId: vi.fn(),
-    searchQuery: "",
-    setSearchQuery: vi.fn(),
     mappedRuns: hasReviews ? [review] : [],
     selectedRunId: hasReviews ? review.id : null,
-    setSelectedRunId: vi.fn(),
-    selectedRun: null,
-    severityCounts: null,
-    sortedIssues: [],
-    duration: "",
     hasReviews,
-    hasSearchQuery: false,
-    emptyRunsMessage: "No runs yet",
-    hasMoreReviews: false,
-    isLoadingMoreReviews: false,
     loadMoreReviews: vi.fn(async () => {}),
-  };
+  });
 }
 
 function renderHistoryScreen() {

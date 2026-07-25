@@ -18,12 +18,22 @@ export const tocDoc: ComponentDoc = {
       title: "Depth",
       content: "Use the depth prop on TocItem to indent nested headings consistently (h2/h3/h4).",
     },
+    {
+      title: "Page Layout",
+      content:
+        "Toc renders the nav landmark and its heading only. Width, sticky offset, and page padding are call-site decisions — pass them via className (the docs site uses w-56 shrink-0 py-8 pr-4).",
+    },
+    {
+      title: "Active Marker",
+      content:
+        "An active TocItem bolds its label and paints a 2px rail segment over the TocList hairline, matching the sidebar bar/terminal marker language.",
+    },
   ],
   usage: { example: "toc-default" },
   examples: [
     { name: "toc-default", title: "Default" },
-    { name: "toc-depth", title: "Nested Depth + Active State" },
-    { name: "toc-active", title: "With Active Heading Tracking" },
+    { name: "toc-depth", title: "Nested Depth (h2/h3/h4) + Active State" },
+    { name: "toc-active", title: "Active Heading Tracking (scroll container)" },
   ],
   keyboard: null,
   props: {

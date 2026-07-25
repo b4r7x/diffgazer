@@ -1,6 +1,7 @@
 import { buildHomeContextRows, type ContextInfo } from "@diffgazer/core/schemas/presentation";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { useNavigate } from "@tanstack/react-router";
+import { PathValue } from "@/components/shared/path-value";
 import { InfoField } from "./info-field";
 
 interface ContextSidebarProps {
@@ -9,6 +10,8 @@ interface ContextSidebarProps {
   projectPath?: string;
   pending?: boolean;
 }
+
+const CONTEXT_TITLE_ID = "home-context-title";
 
 export function ContextSidebar({
   context,
@@ -25,39 +28,42 @@ export function ContextSidebar({
   };
 
   return (
-    <Panel className="w-full max-w-md lg:w-80 h-fit shrink-0">
-      <Panel.Header>
-        <Panel.Title>Context</Panel.Title>
-      </Panel.Header>
+    <Panel
+      frame="viewfinder"
+      aria-labelledby={CONTEXT_TITLE_ID}
+      className="w-full lg:order-first lg:w-80 lg:shrink-0 xl:w-96"
+    >
+      <Panel.Label>
+        <h2 id={CONTEXT_TITLE_ID}>Context</h2>
+      </Panel.Label>
       <Panel.Content inert={pending || undefined}>
         {isTrusted ? (
-          <InfoField label={rows.trust.label} color="blue">
-            <span className="break-all font-mono opacity-90">{rows.trust.value}</span>
+          <InfoField label={rows.trust.label} tone="info">
+            <PathValue value={rows.trust.value} />
           </InfoField>
         ) : (
           <InfoField
             label={rows.trust.label}
-            color="yellow"
+            tone="warning"
             onClick={() => navigateUnlessPending("/settings/trust-permissions")}
             ariaLabel="Grant trust permissions"
           >
-            <span className="break-all font-mono opacity-90">{rows.trust.value}</span>
-            <span className="text-xs opacity-70 ml-2">Click to grant trust →</span>
+            <PathValue value={rows.trust.value} />
+            <span className="mt-1 block text-xs text-muted-foreground">Click to grant trust →</span>
           </InfoField>
         )}
         <InfoField
           label={rows.provider.label}
-          color="violet"
           onClick={() => navigateUnlessPending("/settings/providers")}
           ariaLabel="Configure provider settings"
         >
-          <span className="opacity-90">{rows.provider.value}</span>
+          <span className="block truncate">{rows.provider.value}</span>
         </InfoField>
-        <InfoField label={rows.lastRun.label} color="green">
-          <div className="flex justify-between items-center">
-            <span className="opacity-90">{rows.lastRun.value}</span>
+        <InfoField label={rows.lastRun.label}>
+          <div className="flex justify-between items-center gap-2">
+            <span className="truncate">{rows.lastRun.value}</span>
             {rows.lastRun.issueCount !== undefined && (
-              <span className="text-warning-text text-xs">{rows.lastRun.issueCount}</span>
+              <span className="text-warning-text text-xs shrink-0">{rows.lastRun.issueCount}</span>
             )}
           </div>
         </InfoField>

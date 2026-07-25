@@ -1,6 +1,8 @@
 import { type DemoFinding, demoFindings, formatFindingSummary } from "../demo";
+import { type Cleanup, createEffectScope } from "../effect-scope";
+import { sleep } from "../motion";
 import { observeOnce } from "../observe";
-import { type Cleanup, createEffectScope, type Flags, getFlags, sleep } from "../util";
+import { type Flags, getFlags } from "../viewport";
 
 const INTERACTIVE_TARGET =
   "a[href], button, input, textarea, select, [contenteditable]:not([contenteditable='false']), [tabindex]";

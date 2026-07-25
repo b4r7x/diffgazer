@@ -30,7 +30,9 @@ export interface DialogActionProps
 export function DialogAction({
   children,
   onClick,
-  variant = "action",
+  // "primary" is the single primary-CTA voice: it renders the --action pair in
+  // both themes, so a dialog's confirming action never drifts per theme.
+  variant = "primary",
   bracket = true,
   ref,
   ...props

@@ -5,13 +5,13 @@ import { type KeyboardEvent as ReactKeyboardEvent, useMemo, useRef } from "react
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { cn } from "@/lib/utils";
 import { AccordionContext } from "./accordion-context";
-import { type AccordionProps, useAccordionState } from "./use-state";
+import { type AccordionProps, useAccordionState } from "./use-accordion-state";
 
 export type {
   AccordionMultipleProps,
   AccordionProps,
   AccordionSingleProps,
-} from "./use-state";
+} from "./use-accordion-state";
 
 const ACCORDION_ROOT_ATTRIBUTE = "data-diffgazer-accordion-root";
 

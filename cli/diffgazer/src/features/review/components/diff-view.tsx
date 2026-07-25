@@ -1,6 +1,7 @@
 import { sanitizeTerminalText } from "@diffgazer/core/review";
 import { Box, type DOMElement, Text, useBoxMetrics } from "ink";
 import { useRef } from "react";
+import { SURFACE_BORDER } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 
 export interface DiffViewProps {
@@ -18,7 +19,12 @@ export function DiffView({ patch }: DiffViewProps) {
   const lines = sanitizeTerminalText(patch).split("\n");
 
   return (
-    <Box ref={containerRef} flexDirection="column" borderStyle="round" borderColor={tokens.border}>
+    <Box
+      ref={containerRef}
+      flexDirection="column"
+      borderStyle={SURFACE_BORDER}
+      borderColor={tokens.border}
+    >
       {lines.map((line, i) => {
         let color = tokens.fg;
         if (line.startsWith("--- ") || line.startsWith("+++ ")) {

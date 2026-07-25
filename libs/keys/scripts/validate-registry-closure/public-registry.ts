@@ -4,7 +4,7 @@ import { RELATIVE_JS_IMPORT_RE } from "@diffgazer/registry";
 import type { RegistryItem } from "@diffgazer/registry/schemas";
 import { REGISTRY_ITEM_TYPE, RegistrySchema } from "@diffgazer/registry/schemas";
 import { createKeysSourceContentTransform } from "../transform-public-registry-imports.js";
-import { extractRelativeImports, validationError, type ValidationError } from "./types.js";
+import { extractRelativeImports, type ValidationError, validationError } from "./types.js";
 
 function parseRegistryEntry(raw: unknown): RegistryItem {
   const [item] = RegistrySchema.parse({ items: [raw] }).items;
@@ -105,7 +105,10 @@ export function validateNoJsImportsInPublicContent(publicDir: string): Validatio
   return errors;
 }
 
-export function validateContentFreshness(publicDir: string, registryRoot: string): ValidationError[] {
+export function validateContentFreshness(
+  publicDir: string,
+  registryRoot: string,
+): ValidationError[] {
   const errors: ValidationError[] = [];
   const transform = createKeysSourceContentTransform(registryRoot);
 

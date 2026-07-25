@@ -7,6 +7,8 @@ description: The `@diffgazer/ui` two-layer CSS variable system — primitives, s
 
 Override the primitives to reskin every component at once — subtle tone backgrounds and component-scoped tokens both derive from the primitives, so a single override re-tints everything. Override semantic tokens for fine-grained control. Component-scoped tokens (e.g. `--panel-hairline`) are consumed with `var()` fallbacks, so an ancestor-scoped override now reaches them while a chosen variant's own value still wins.
 
+Two semantic roles are easy to confuse because they coincide in dark: `--primary` is monochrome emphasis, `--action` is the call-to-action pair and the one role allowed to carry chroma. See [Action vs primary](/ui/theme/diffgazer#action-vs-primary) before repointing either.
+
 ## Variable architecture
 
 <VariableDiagram />
@@ -38,15 +40,36 @@ When you add custom CSS, place it inside the appropriate `@layer` block to opt i
 
 Surface tokens describe stepwise elevation above the page background (`--base-bg`). They are declared on `:root` and the `[data-theme="light"]` override block in `theme.css`.
 
-| Token         | Dark default | Light default | Used by                                                                 |
-|---------------|--------------|---------------|-------------------------------------------------------------------------|
-| `--surface-1` | `#111111`    | `#ffffff`     | `Panel frame="surface"` for Linear/Raycast-style elevated card surfaces |
+| Token                   | Dark default                                    | Light default | Used by                                                                 |
+|-------------------------|-------------------------------------------------|---------------|-------------------------------------------------------------------------|
+| `--surface-1`           | `#111111`                                       | `#eef0f3`     | `Panel frame="surface"` for Linear/Raycast-style elevated card surfaces |
+| `--surface-1-highlight` | `color-mix(in oklab, var(--base-fg) 12%, transparent)` | `#ffffff` | The 1px inner top lip drawn on `--surface-1` fills |
 
-`--surface-1` is one step above `--base-bg` in the dark theme and the elevated card surface in the light theme. Override it on `:root` (or any ancestor) to tint every elevated panel without forking the component:
+`--surface-1` is one step off `--base-bg`: lighter in dark, and *darker* in light, because an off-white page has no visible step left going lighter. `--surface-1-highlight` is the 1px inner top edge that keeps the step reading as raised in both directions. Override them on `:root` (or any ancestor) to retint every elevated panel without forking the component:
 
 ```css
 :root {
   --surface-1: #161616;
+}
+```
+
+### Hard shadow
+
+Flat surfaces get their depth from a border plus `--surface-1`, not from blur. The one sanctioned shadow is `--shadow-hard`, a hard offset with zero blur, reserved for floating layers with deliberate brutalist emphasis (`Dialog`, `Menu` submenus, `Select` content and `variant="card"`, `CommandPalette`).
+
+| Token          | Dark default                | Light default                                                  |
+|----------------|-----------------------------|----------------------------------------------------------------|
+| `--shadow-hard` | `4px 4px 0 0 rgb(0 0 0 / 0.9)` | `4px 4px 0 0 color-mix(in oklab, var(--base-fg) 25%, transparent)` |
+
+It has no Tailwind bridge (`--shadow-*` is Tailwind's own theme namespace), so consume it directly:
+
+```tsx
+<div className="shadow-(--shadow-hard)">…</div>
+```
+
+```css
+.my-floating-surface {
+  box-shadow: var(--shadow-hard);
 }
 ```
 

@@ -2,7 +2,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 export default function SpinnerLabelPositions() {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col items-start gap-6">
       <Spinner labelPosition="right">
         <span className="text-muted-foreground">right</span>
       </Spinner>

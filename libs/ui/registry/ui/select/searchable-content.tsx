@@ -11,7 +11,7 @@ import {
   type Ref,
 } from "react";
 import { SelectEmpty } from "./select-empty";
-import { SelectSearch, type SelectSearchProps } from "./select-search";
+import { isSelectSearchElement, type SelectSearchProps } from "./select-search";
 
 /** Props for listbox. */
 type ListboxProps = {
@@ -90,10 +90,6 @@ function findSearchPosition(searchChildren: ReactNode): "top" | "bottom" | null 
     }
   }
   return null;
-}
-
-function isSelectSearchElement(child: ReactNode): boolean {
-  return isValidElement(child) && child.type === SelectSearch;
 }
 
 function isSelectEmptyElement(child: ReactNode): boolean {

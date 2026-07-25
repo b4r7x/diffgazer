@@ -8,6 +8,7 @@ import { err, ok } from "@diffgazer/core/result";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import { CreateReviewResponseSchema, ReviewErrorCode } from "@diffgazer/core/schemas/review";
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,7 +19,6 @@ import {
   CREATE_REVIEW_BODY_LIMIT_KB,
   DEFAULT_BODY_LIMIT_KB,
 } from "../../shared/middlewares/body-limit.js";
-import { requireValue } from "../../testing/assertions.js";
 import { MAX_REVIEW_FILES, MAX_REVIEW_PATH_LENGTH } from "./schemas.js";
 
 const REVIEW_A = "550e8400-e29b-41d4-a716-446655440000";

@@ -1,10 +1,14 @@
 "use client";
 
-import type { UseKeyOptions } from "./use-key.js";
 import { useFocusZoneFocusSync } from "./use-focus-zone/focus-sync.js";
 import { useFocusZoneKeyboard } from "./use-focus-zone/keyboard.js";
 import { useFocusZoneState } from "./use-focus-zone/state.js";
-import type { FocusZoneProps, UseFocusZoneOptions, UseFocusZoneReturn } from "./use-focus-zone/types.js";
+import type {
+  FocusZoneProps,
+  UseFocusZoneOptions,
+  UseFocusZoneReturn,
+} from "./use-focus-zone/types.js";
+import type { UseKeyOptions } from "./use-key.js";
 
 export type {
   FocusZoneProps,

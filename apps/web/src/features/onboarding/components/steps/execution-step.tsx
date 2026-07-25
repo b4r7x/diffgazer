@@ -5,6 +5,7 @@ import {
 } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
+import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { useId, useState } from "react";
 
 interface ExecutionStepProps {
@@ -33,9 +34,11 @@ export function ExecutionStep({
 
   return (
     <div className="space-y-3">
-      <div id={labelId} className="text-sm font-mono text-foreground/60">
-        Agent Execution Mode:
-      </div>
+      {/* h2: the wizard shell titles each step with an h1, so the default h3 would skip a
+          level. */}
+      <SectionHeader id={labelId} as="h2" variant="muted">
+        Agent Execution Mode
+      </SectionHeader>
       <RadioGroup
         value={value}
         onChange={(nextValue) => {

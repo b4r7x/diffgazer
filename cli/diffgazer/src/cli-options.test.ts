@@ -11,7 +11,6 @@ describe("resolveCliAction", () => {
     expect(resolveCliAction([])).toEqual({
       type: "web",
       mode: "prod",
-      openBrowser: true,
     });
   });
 
@@ -22,7 +21,6 @@ describe("resolveCliAction", () => {
       expect.fail(`expected tui action, got ${action.type}`);
     }
     expect(action.mode).toBe("prod");
-    expect(action.openBrowser).toBe(false);
   });
 
   test("keeps dev mode and a supported theme for the TUI flow", () => {
@@ -32,7 +30,6 @@ describe("resolveCliAction", () => {
       type: "tui",
       mode: "dev",
       theme: "high-contrast",
-      openBrowser: false,
     });
   });
 

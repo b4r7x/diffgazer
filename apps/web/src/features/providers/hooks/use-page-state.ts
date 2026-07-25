@@ -70,6 +70,23 @@ export function useProvidersPageState() {
     void handleSelectProvider(provider.id, provider.name, model);
   };
 
+  // Guards on `isSubmitting` are unnecessary here: the dialog openers and
+  // `withGuard` already reject while a submit is in flight.
+  const actions = {
+    onSetApiKey: () => {
+      if (selectedProvider) openApiKeyDialog(selectedProvider.id);
+    },
+    onSelectModel: () => {
+      if (selectedProvider) openModelDialog(selectedProvider.id);
+    },
+    onRemoveKey: () => {
+      if (selectedProvider) void handleRemoveKey(selectedProvider.id);
+    },
+    onSelectProvider: () => {
+      if (selectedProvider) activateProvider(selectedProvider);
+    },
+  };
+
   const {
     focusZone,
     filterIndex,
@@ -93,12 +110,8 @@ export function useProvidersPageState() {
     dialogOpen,
     inputRef,
     listContainerRef,
-    onSetApiKey: () => {
-      if (selectedProvider) openApiKeyDialog(selectedProvider.id);
-    },
-    onSelectModel: () => {
-      if (selectedProvider) openModelDialog(selectedProvider.id);
-    },
+    onSetApiKey: actions.onSetApiKey,
+    onSelectModel: actions.onSelectModel,
     onRemoveKey: handleRemoveKey,
     onActivateProvider: activateProvider,
   });
@@ -123,18 +136,17 @@ export function useProvidersPageState() {
 
     dialogs: {
       current: dialog,
-      openApiKey: openApiKeyDialog,
-      openModel: openModelDialog,
       close: closeDialog,
       anyOpen: dialogOpen,
     },
 
     handlers: {
       saveApiKey: handleSaveApiKey,
-      removeKey: handleRemoveKey,
       selectModel: handleSelectModel,
       activateProvider,
     },
+
+    actions,
 
     isSubmitting,
 

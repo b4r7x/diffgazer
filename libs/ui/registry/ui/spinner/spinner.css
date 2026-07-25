@@ -1,0 +1,28 @@
+/*
+ * Spinner trail alphas.
+ *
+ * The snake variant paints its 3×3 grid with an opacity ramp (head → body →
+ * tail → idle). A 15% idle floor reads on the near-black background but almost
+ * disappears on the light one, so the light palette raises the whole ramp.
+ *
+ * This lives in CSS rather than a Tailwind variant because the shipped theme
+ * defaults to dark on a bare `:root` (no attribute): the `dark` variant only
+ * matches an explicit `[data-theme="dark"]`, so a Tailwind-expressed override
+ * would mis-fire on unattributed roots. Keying off `[data-theme="light"]`
+ * mirrors how theme.css itself declares the light palette.
+ */
+@layer components {
+  [data-slot="spinner"] {
+    --spinner-trail-head: 1;
+    --spinner-trail-body: 0.6;
+    --spinner-trail-tail: 0.3;
+    --spinner-trail-idle: 0.15;
+  }
+
+  [data-theme="light"] [data-slot="spinner"],
+  [data-theme="light"][data-slot="spinner"] {
+    --spinner-trail-body: 0.7;
+    --spinner-trail-tail: 0.45;
+    --spinner-trail-idle: 0.32;
+  }
+}

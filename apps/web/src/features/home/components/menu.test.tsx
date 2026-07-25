@@ -72,6 +72,14 @@ describe("HomeMenu — Resume Last Review gating", () => {
     expect(screen.getByRole("menu", { name: /main menu/i })).toBeInTheDocument();
   });
 
+  it("advertises each item's jump key without folding it into the accessible name", () => {
+    renderHomeMenu();
+    for (const { label, shortcut } of MENU_ITEMS) {
+      if (shortcut === undefined) continue;
+      expect(screen.getByRole("menuitem", { name: label })).toHaveTextContent(`[${shortcut}]`);
+    }
+  });
+
   it("disables every menu item and shows a pending status while a review is starting", () => {
     renderHomeMenu({ pending: true });
     expect(screen.getByRole("status")).toHaveTextContent(/starting review/i);

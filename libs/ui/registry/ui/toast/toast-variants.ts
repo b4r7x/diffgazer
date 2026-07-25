@@ -66,18 +66,26 @@ export const toastToneCornerBorder = cva("", {
   defaultVariants: { tone: "info" },
 });
 
-/** Class variants for toast shell. */
-export const toastShellVariants = cva("font-mono", {
-  variants: {
-    variant: {
-      hud: "inline-flex items-center gap-2.5 max-w-[360px] px-3.5 py-2 text-xs bg-[color:var(--surface-1)] border",
-      card: "flex bg-[color:var(--surface-1)] border border-border/40",
-      viewfinder: "relative px-4 py-3 bg-background border border-border/40",
-      countdown: "relative flex flex-col bg-[color:var(--surface-1)] border",
+/**
+ * Class variants for toast shell. Every variant is bordered with the family hairline recipe,
+ * shared verbatim with panel.css and callout.css so a toast stacked over a panel draws the same
+ * 1px edge weight — hence the border in the base. Card/hud/countdown round with the family radius;
+ * viewfinder stays square because its corner brackets are the frame.
+ */
+export const toastShellVariants = cva(
+  "font-mono border border-[color:color-mix(in_oklab,var(--border)_60%,transparent)]",
+  {
+    variants: {
+      variant: {
+        hud: "inline-flex items-center gap-2.5 max-w-[360px] px-3.5 py-2 text-xs bg-[color:var(--surface-1)] rounded-[var(--radius)]",
+        card: "flex bg-[color:var(--surface-1)] rounded-[var(--radius)]",
+        viewfinder: "relative px-4 py-3 bg-background",
+        countdown: "relative flex flex-col bg-[color:var(--surface-1)] rounded-[var(--radius)]",
+      },
     },
+    defaultVariants: { variant: "card" },
   },
-  defaultVariants: { variant: "card" },
-});
+);
 
 export const icons: Record<Exclude<ToastTone, "loading">, string> = {
   success: "✓",

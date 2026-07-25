@@ -125,6 +125,7 @@ export function MenuItemCheckbox({
       data-diffgazer-navigation-item="true"
       data-value={id}
       data-highlighted={isFocused ? "" : undefined}
+      data-state={isChecked ? "checked" : "unchecked"}
       aria-checked={isChecked}
       aria-disabled={disabled || undefined}
       onMouseDown={handleMouseDown}

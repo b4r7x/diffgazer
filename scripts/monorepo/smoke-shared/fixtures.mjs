@@ -246,7 +246,10 @@ export function assertBuiltCss(fixture, options = {}) {
   const {
     outputDir = "dist",
     label = "built",
-    expected = [".bg-primary", ".w-64", "--base-bg", "dialog::backdrop"],
+    // One marker per contract: a theme-mapped colour utility generated from a scanned
+    // component source (.bg-action, the single filled CTA), a component size utility
+    // (.w-64), the theme token layer (--base-bg), and aggregated component global CSS.
+    expected = [".bg-action", ".w-64", "--base-bg", "dialog::backdrop"],
   } = options;
   const css = readBuiltCss(fixture, outputDir);
 

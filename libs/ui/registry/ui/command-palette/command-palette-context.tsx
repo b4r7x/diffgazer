@@ -1,9 +1,9 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { CommandPaletteContextValue } from "./use-state";
+import type { CommandPaletteContextValue } from "./use-command-palette-state";
 
-export type { CommandPaletteContextValue } from "./use-state";
+export type { CommandPaletteContextValue } from "./use-command-palette-state";
 
 /** React context backing command palette. */
 export const CommandPaletteContext = createContext<CommandPaletteContextValue | undefined>(

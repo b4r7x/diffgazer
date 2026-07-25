@@ -1,6 +1,6 @@
 import type { IssueTab } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import { useKey } from "@diffgazer/keys";
+import { clampIndex, useKey } from "@diffgazer/keys";
 import { useState } from "react";
 
 interface UseReviewDetailsTabKeyboardOptions {
@@ -86,11 +86,11 @@ export function useReviewDetailsTabKeyboard({
 
   // j/k move the focused fix-plan step; Space/Enter toggle it. Arrows stay bound
   // to detail-body scrolling so the rest of the details content remains reachable.
-  useKey("k", () => setFocusedStepIndex(Math.max(0, focusedStepIndex - 1)), {
+  useKey("k", () => setFocusedStepIndex(clampIndex(focusedStepIndex, -1, fixPlan.length, false)), {
     scope,
     enabled: stepsActive,
   });
-  useKey("j", () => setFocusedStepIndex(Math.min(fixPlan.length - 1, focusedStepIndex + 1)), {
+  useKey("j", () => setFocusedStepIndex(clampIndex(focusedStepIndex, 1, fixPlan.length, false)), {
     scope,
     enabled: stepsActive,
   });

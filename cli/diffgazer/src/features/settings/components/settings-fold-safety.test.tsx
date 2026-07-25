@@ -47,6 +47,7 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
   };
 });
 
+import { AgentExecutionScreen } from "./agent-execution-screen";
 import { AnalysisScreen } from "./analysis-screen";
 import { StorageScreen } from "./storage-screen";
 import { ThemeScreen } from "./theme-screen";
@@ -117,7 +118,7 @@ describe("settings screens at the 80x24 support floor", () => {
     apiMocks.settings.secretsStorage = null;
     const view = renderRootFrame(80, 24, <StorageScreen />);
 
-    await vi.waitFor(() => expect(view.lastFrame()).toContain("CONFIGURE SECRETS STORAGE"));
+    await vi.waitFor(() => expect(view.lastFrame()).toContain("SECRETS STORAGE"));
     expect(view.lastFrame()).not.toContain("( * )");
 
     await press(view, "\t");
@@ -150,6 +151,22 @@ describe("settings screens at the 80x24 support floor", () => {
     await vi.waitFor(() => expect(view.lastFrame()).toContain("analysis save failed"));
     const frame = view.lastFrame() ?? "";
     expect(frame.indexOf("analysis save failed")).toBeLessThan(frame.indexOf("Cancel"));
+    expectWithinTerminal(frame);
+  });
+
+  test("keeps an agent execution save failure visible above the actions", async () => {
+    apiMocks.saveFailure = "agent execution save failed";
+    const view = renderRootFrame(80, 24, <AgentExecutionScreen />);
+
+    await press(view, "\u001B[B");
+    await press(view, "\r");
+    await press(view, "\t");
+    await press(view, "\u001B[C");
+    await press(view, "\r");
+
+    await vi.waitFor(() => expect(view.lastFrame()).toContain("agent execution save failed"));
+    const frame = view.lastFrame() ?? "";
+    expect(frame.indexOf("agent execution save failed")).toBeLessThan(frame.indexOf("Cancel"));
     expectWithinTerminal(frame);
   });
 });

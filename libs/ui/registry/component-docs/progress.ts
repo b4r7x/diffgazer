@@ -26,9 +26,18 @@ export const progressDoc: ComponentDoc = {
       content:
         "The indeterminate animation respects prefers-reduced-motion: reduce. When active, the bar renders a static 40% fill.",
     },
+    {
+      title: "Progress vs BlockBar",
+      content:
+        "Progress is the pixel bar for task completion: role=progressbar, a solid fill, and an indeterminate mode for work with no known duration. BlockBar is the character-cell meter for a steady-state measurement (role=meter) — coverage, token budget, severity mix — drawn from filled/empty glyphs and stackable into colored segments. Reach for Progress when something is running, BlockBar when something is being measured.",
+    },
   ],
   usage: { example: "progress-default" },
-  examples: [{ name: "progress-default", title: "Default" }],
+  examples: [
+    { name: "progress-default", title: "Default" },
+    { name: "progress-sizes", title: "Sizes" },
+    { name: "progress-labeled", title: "Labeled with value text" },
+  ],
   dataAttributes: [
     {
       attribute: "data-state",

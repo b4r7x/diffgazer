@@ -10,7 +10,7 @@ export default defineConfig({
       "@diffgazer/core/theme": path.resolve(import.meta.dirname, "../core/src/theme/index.ts"),
       "@diffgazer/keys/testing/navigation-behavior": path.resolve(
         import.meta.dirname,
-        "../keys/dist/testing/navigation-behavior.js",
+        "../keys/src/testing/navigation-behavior.ts",
       ),
       "@diffgazer/keys": path.resolve(import.meta.dirname, "../keys/src/index.ts"),
     },

@@ -4,7 +4,14 @@ import type { UseFocusZoneOptions } from "./types.js";
 export function useFocusZoneState<T extends string>(
   options: Pick<
     UseFocusZoneOptions<T>,
-    "initial" | "zones" | "zone" | "onZoneChange" | "onLeaveZone" | "onEnterZone" | "tabCycle" | "enabled"
+    | "initial"
+    | "zones"
+    | "zone"
+    | "onZoneChange"
+    | "onLeaveZone"
+    | "onEnterZone"
+    | "tabCycle"
+    | "enabled"
   >,
 ) {
   const { initial, zones, enabled = true } = options;

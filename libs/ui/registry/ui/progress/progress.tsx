@@ -24,20 +24,17 @@ export interface ProgressProps
 }
 
 /** Class variants for track. */
-export const progressVariants = cva(
-  "relative w-full overflow-hidden rounded-sm bg-secondary font-mono",
-  {
-    variants: {
-      size: {
-        sm: "h-1",
-        md: "h-2",
-      },
-    },
-    defaultVariants: {
-      size: "md",
+export const progressVariants = cva("relative w-full overflow-hidden rounded-sm bg-border", {
+  variants: {
+    size: {
+      sm: "h-1",
+      md: "h-2",
     },
   },
-);
+  defaultVariants: {
+    size: "md",
+  },
+});
 
 /** Root element with track and fill. Pass value for determinate, omit for indeterminate. */
 export function Progress({

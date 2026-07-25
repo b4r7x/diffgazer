@@ -99,14 +99,18 @@ describe("SettingsHubPage", () => {
     localStorage.clear();
   });
 
-  it("exposes the panel as a region named Settings Hub without double-announcing the corner label", async () => {
+  it("names the panel region with the corner-label heading, announced once", async () => {
     renderPage();
 
     expect(await screen.findByRole("region", { name: /settings hub/i })).toBeInTheDocument();
 
-    // getByText throws on multiple matches, so this also proves "Settings Hub" appears once.
+    // The corner label supplies the region's name through aria-labelledby, so it is a real
+    // top-level heading rather than a hidden decoration — the same shape the diagnostics
+    // panel uses. getByText throws on multiple matches, which also proves "Settings Hub"
+    // reaches assistive tech once rather than twice.
     const cornerLabel = screen.getByText("Settings Hub");
-    expect(cornerLabel).toHaveAttribute("aria-hidden", "true");
+    expect(cornerLabel).not.toHaveAttribute("aria-hidden");
+    expect(screen.getByRole("heading", { level: 1, name: "Settings Hub" })).toBe(cornerLabel);
 
     await waitFor(() => {
       expect(screen.getByText("local settings")).toBeVisible();

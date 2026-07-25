@@ -1,8 +1,8 @@
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
-import { requireValue } from "../../testing/assertions";
 import { Sidebar } from "./index";
 
 describe("Sidebar mobile sheet", () => {

@@ -5,6 +5,7 @@ import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
+import { Panel } from "@diffgazer/ui/components/panel";
 import { useRef } from "react";
 
 export interface NoChangesViewProps {
@@ -55,11 +56,12 @@ export function NoChangesView({
   });
 
   return (
-    <div className="flex flex-1 items-center justify-center">
-      <div
+    <div className="flex flex-1 items-center justify-center p-4">
+      <Panel
+        frame="viewfinder"
         ref={focusFallbackRef}
         tabIndex={-1}
-        className="text-center max-w-md p-6 focus:outline-none"
+        className="w-full max-w-md p-6 text-center focus:outline-none"
       >
         <div className="text-warning-text text-lg font-bold mb-4">{title}</div>
         <p className="text-muted-foreground font-mono text-sm mb-6">{message}</p>
@@ -86,7 +88,7 @@ export function NoChangesView({
             Back to Home
           </Button>
         </div>
-      </div>
+      </Panel>
     </div>
   );
 }

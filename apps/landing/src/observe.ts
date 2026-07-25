@@ -1,4 +1,4 @@
-import type { Cleanup } from "./util";
+import type { Cleanup } from "./effect-scope";
 
 export function observeOnce(target: Element, onEnter: () => void, threshold = 0.5): Cleanup {
   if (typeof IntersectionObserver === "undefined") {

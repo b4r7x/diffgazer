@@ -55,10 +55,13 @@ export function TuiFaultPanel({
                 value="RECOVER"
                 valueClassName="font-normal text-muted-foreground"
               />
+              {/* The label rule has to cross the gap-x-4 gutter to meet the value rule, or the
+                  separator renders as two segments with a hole — same offset trick the bordered
+                  KeyValue variant uses, sized to this panel's gutter. */}
               <KeyValue.Item
                 label="ACTION:"
                 value={actionLabel}
-                labelClassName="mt-2 border-t border-dashed border-border pt-2"
+                className="mt-2 -mr-4 border-t border-dashed border-border pt-2 pr-4"
                 valueClassName="mt-2 border-t border-dashed border-border pt-2 font-normal"
               />
             </KeyValue>

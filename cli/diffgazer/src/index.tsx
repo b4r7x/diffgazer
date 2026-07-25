@@ -27,7 +27,7 @@ async function main(): Promise<void> {
   ensureShutdownToken();
 
   if (action.type === "web") {
-    startWeb({ mode: action.mode, openBrowser: action.openBrowser });
+    startWeb({ mode: action.mode, openBrowser: true });
     return;
   }
 

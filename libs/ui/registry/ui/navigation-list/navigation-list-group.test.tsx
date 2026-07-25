@@ -91,16 +91,17 @@ describe("NavigationListGroup", () => {
 
     const listbox = screen.getByRole("listbox");
     const header = screen.getByRole("option", { name: /Section \(2\), collapse section/i });
+    expect(header).toHaveAttribute("data-slot", "navigation-list-group-header");
     expect(header).toHaveAttribute("data-value", "section-header");
-    expect(header).toHaveAttribute("data-expanded", "true");
+    expect(header).toHaveAttribute("data-state", "open");
 
     listbox.focus();
     await user.keyboard("{Enter}");
-    expect(header).toHaveAttribute("data-expanded", "false");
+    expect(header).toHaveAttribute("data-state", "closed");
     expect(screen.queryByRole("option", { name: "One" })).not.toBeInTheDocument();
 
     await user.keyboard("{Enter}");
-    expect(header).toHaveAttribute("data-expanded", "true");
+    expect(header).toHaveAttribute("data-state", "open");
     expect(screen.getByRole("option", { name: "One" })).toBeInTheDocument();
   });
 
@@ -131,18 +132,18 @@ describe("NavigationListGroup", () => {
 
     await user.click(firstHeader);
     expect(listbox).toHaveAttribute("aria-activedescendant", firstHeader.id);
-    expect(firstHeader).toHaveAttribute("data-expanded", "false");
-    expect(secondHeader).toHaveAttribute("data-expanded", "true");
+    expect(firstHeader).toHaveAttribute("data-state", "closed");
+    expect(secondHeader).toHaveAttribute("data-state", "open");
 
     await user.keyboard("{ArrowDown}{Enter}");
     expect(listbox).toHaveAttribute("aria-activedescendant", secondHeader.id);
-    expect(firstHeader).toHaveAttribute("data-expanded", "false");
-    expect(secondHeader).toHaveAttribute("data-expanded", "false");
+    expect(firstHeader).toHaveAttribute("data-state", "closed");
+    expect(secondHeader).toHaveAttribute("data-state", "closed");
 
     await user.keyboard("{ArrowUp}{Enter}");
     expect(listbox).toHaveAttribute("aria-activedescendant", firstHeader.id);
-    expect(firstHeader).toHaveAttribute("data-expanded", "true");
-    expect(secondHeader).toHaveAttribute("data-expanded", "false");
+    expect(firstHeader).toHaveAttribute("data-state", "open");
+    expect(secondHeader).toHaveAttribute("data-state", "closed");
   });
 
   it("collapsed group hides children", () => {

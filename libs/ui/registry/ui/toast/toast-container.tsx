@@ -206,7 +206,10 @@ export function Toaster({ position = "bottom-right", hotkey = "F8" }: ToasterPro
         // Override the UA [popover] stylesheet (inset:0, margin:auto, fit-content,
         // border/padding/background) so corner positioning and the transparent
         // backdrop survive when popover mode activates.
+        // The hotkey focuses this region programmatically, so it needs a visible
+        // focus indicator; mouse interaction never matches :focus-visible.
         "fixed z-[var(--z-toast)] flex gap-2 pointer-events-none outline-none",
+        "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
         "[&[popover]]:m-0 [&[popover]]:p-0 [&[popover]]:max-w-none [&[popover]]:max-h-none [&[popover]]:w-auto [&[popover]]:h-auto",
         "[&[popover]]:bg-transparent [&[popover]]:border-0 [&[popover]]:overflow-visible",
         toastPositionVariants({ position }),

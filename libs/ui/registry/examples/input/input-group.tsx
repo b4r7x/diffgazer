@@ -6,7 +6,8 @@ export default function InputGroupExample() {
       aria-label="Config path"
       prefix="~/"
       suffix=".json"
-      placeholder="diffgazer/config"
+      defaultValue="diffgazer/config"
+      placeholder="path/to/config"
     />
   );
 }

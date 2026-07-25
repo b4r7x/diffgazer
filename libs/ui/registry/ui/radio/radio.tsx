@@ -19,11 +19,11 @@ import { useFormReset } from "@/hooks/use-form-reset";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
 import {
+  radioIndicators,
   type SelectableSize,
   type SelectableVariant,
   selectableContainerClass,
   selectableDescriptionVariants,
-  selectableIndicators,
   selectableIndicatorVariants,
   selectableLabelVariants,
   selectableVariants,
@@ -327,7 +327,7 @@ export function Radio({
             highlighted,
           })}
         >
-          {selectableIndicators[variant][isChecked ? "checked" : "unchecked"]}
+          {radioIndicators[variant][isChecked ? "checked" : "unchecked"]}
         </span>
         {label && (
           <div className={cn("flex flex-col min-w-0", !description && "justify-center")}>

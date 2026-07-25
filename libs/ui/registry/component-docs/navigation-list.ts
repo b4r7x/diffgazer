@@ -12,7 +12,11 @@ export const navigationListDoc: ComponentDoc = {
     },
     { name: "NavigationList.Item", indent: 1, note: "Selectable list item container" },
     { name: "NavigationList.Title", indent: 2, note: "Primary item label" },
-    { name: "NavigationList.Status", indent: 2, note: "Top-right status marker" },
+    {
+      name: "NavigationList.Status",
+      indent: 2,
+      note: "Top-right status marker (muted by default)",
+    },
     { name: "NavigationList.Meta", indent: 2, note: "Row 2 container for badges and subtitles" },
     {
       name: "NavigationList.Badge",
@@ -30,7 +34,8 @@ export const navigationListDoc: ComponentDoc = {
     },
     {
       title: "Density",
-      content: "density prop controls spacing — compact, default, or comfortable.",
+      content:
+        "density prop controls item padding — compact (6px), default (12px), or comfortable (20px).",
     },
     {
       title: "Rich Items",
@@ -107,21 +112,16 @@ export const navigationListDoc: ComponentDoc = {
       description: "Stable item id used by keyboard navigation.",
     },
     {
-      attribute: "data-density",
-      appliesTo: "NavigationList.Item",
-      values: '"compact" | "default" | "comfortable"',
-      description: "Per-item density setting.",
-    },
-    {
       attribute: "data-indicator",
-      appliesTo: "NavigationList.Item",
+      appliesTo: "NavigationList.Item indicator slot (non-tree items)",
       values: '"bar" | "bar-thick" | "arrow" | "bracket"',
-      description: "Active indicator visual treatment.",
+      description:
+        "Active indicator visual treatment. Emitted on the leading indicator cell inside the item, not on the option root.",
     },
     {
-      attribute: "data-expanded",
-      appliesTo: "NavigationList.Group",
-      values: '"true" | "false"',
+      attribute: "data-state",
+      appliesTo: "NavigationList.Group header",
+      values: '"open" | "closed"',
       description: "Group disclosure state changed by pointer or keyboard activation.",
     },
   ],
@@ -195,7 +195,8 @@ export const navigationListDoc: ComponentDoc = {
         type: '"bar" | "bar-thick" | "arrow" | "bracket"',
         required: false,
         defaultValue: '"bar"',
-        description: "Visual indicator style for the active/selected item.",
+        description:
+          "Visual indicator style for the active/selected item. bar is a 4px rail at 40% fill, bar-thick an 8px rail at full fill; arrow and bracket mark the title glyph instead.",
       },
       autoFocus: {
         type: "boolean",
@@ -256,6 +257,13 @@ export const navigationListDoc: ComponentDoc = {
         required: true,
         defaultValue: null,
         description: "Top-right status marker.",
+      },
+      className: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description:
+          "Merged onto the marker. The slot is muted by default; pass a semantic tone (text-warning, text-error, text-success) at call sites where the status carries that meaning.",
       },
     },
     "NavigationList.Meta": {

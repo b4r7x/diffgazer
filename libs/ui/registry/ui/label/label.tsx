@@ -23,7 +23,7 @@ export interface LabelProps extends ComponentPropsWithRef<"label"> {
 }
 
 /** Class variants for label. */
-export const labelVariants = cva("text-xs uppercase font-bold select-none", {
+export const labelVariants = cva("text-xs uppercase font-bold tracking-wider select-none", {
   variants: {
     color: {
       default: "text-muted-foreground",
@@ -38,12 +38,16 @@ export const labelVariants = cva("text-xs uppercase font-bold select-none", {
 
 /** Class variants for label wrapper. */
 export const labelWrapperVariants = cva(
-  "has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-70",
+  // The disabled dim lands on the label text only (group/label), not the wrapper:
+  // the wrapped control already dims itself, and stacking two opacities made it
+  // nearly invisible. Horizontal aligns on the first text baseline so a wrapped
+  // two-line label still sits on the control's text line.
+  "group/label has-[:disabled]:cursor-not-allowed",
   {
     variants: {
       orientation: {
         vertical: "flex flex-col gap-1",
-        horizontal: "flex items-center gap-2",
+        horizontal: "flex items-baseline gap-2",
       },
     },
     defaultVariants: { orientation: "vertical" },
@@ -103,7 +107,7 @@ export function Label({
         onMouseDown={handleMouseDown}
         {...props}
       >
-        <span className={cn(labelVariants({ color }))}>
+        <span className={cn(labelVariants({ color }), "group-has-[:disabled]/label:opacity-50")}>
           {label}
           {required && <RequiredIndicator />}
         </span>

@@ -1,7 +1,7 @@
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { act, render, renderHook, screen } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { requireValue } from "../testing/assertions";
 import { computeVisibleCount, useOverflowItems } from "./use-overflow-items";
 
 let resizeCallbacks: (() => void)[] = [];

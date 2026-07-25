@@ -35,9 +35,12 @@ export const sidebarItemVariants = cva(
     // group/item is consumed by the marker glyph in sidebar-item (hover preview).
     "group/item flex items-center gap-2 w-full min-w-0 px-2 py-1 text-sm",
     "cursor-pointer transition-colors motion-reduce:transition-none",
-    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
+    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
     "disabled:cursor-not-allowed",
+    // Disabled rows keep the dimmed resting look on hover so they never invite
+    // a click; each variant re-states its own resting text tone below.
     "aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
+    "aria-disabled:hover:bg-transparent aria-disabled:hover:text-foreground/70",
     "no-underline",
     // Rail mode: center the icon, drop horizontal padding so the icon sits at
     // the geometric center of the 48px rail. Label/badge/glyph children hide
@@ -87,6 +90,7 @@ export const sidebarItemVariants = cva(
         terminal: [
           "border-l border-border -ml-px pl-[calc(0.5rem+3px)] group-data-[state=rail]/sidebar:ml-0",
           "text-foreground/60 hover:text-foreground hover:border-foreground/40",
+          "aria-disabled:hover:text-foreground/60 aria-disabled:hover:border-border",
           "data-[selected]:text-foreground data-[selected]:border-l-foreground",
           "data-[selected]:hover:border-l-foreground",
         ].join(" "),

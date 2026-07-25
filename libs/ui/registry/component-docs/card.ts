@@ -29,17 +29,22 @@ export const cardDoc: ComponentDoc = {
     {
       title: "Surfaces",
       content:
-        "Card supports five surface treatments: flat (default clean border), stacked (paper stack depth with offset shadow), inset (recessed into the page), dotted (dashed wireframe border), and glow (subtle edge luminance). Use surface='flat' for everyday cards, surface='stacked' for elevated emphasis, surface='inset' for recessed areas, surface='dotted' for drafts or placeholders, and surface='glow' for highlighted content.",
+        "Card supports five surface treatments: flat (default clean border), stacked (paper-stack depth from a hard offset plate), inset (recessed surface step), dotted (dashed wireframe border), and glow (hard doubled outer edge). Depth comes from borders and background steps — cards never cast a soft shadow. Use surface='flat' for everyday cards, surface='stacked' for elevated emphasis, surface='inset' for recessed areas, surface='dotted' for drafts or placeholders, and surface='glow' for highlighted content.",
     },
     {
       title: "Interactive",
       content:
-        "Add the interactive prop to enable hover and focus-visible states. Each surface has a unique hover treatment: flat brightens the border, stacked deepens the shadow, inset intensifies the inset shadow, dotted solidifies the border, and glow amplifies the luminance. The interactive prop only styles the surface — it does not make a div focusable. Render an interactive card on a focusable host (as='a' with href, or as='button' with onClick) or wrap its content in a link/button so keyboard users can reach it and the focus-visible treatment is reachable. See the Interactive example.",
+        "Add the interactive prop to enable hover and focus-visible states. Each surface has a unique hover treatment: flat brightens the border, stacked grows the offset plate, inset deepens the recessed fill, dotted solidifies the border, and glow strengthens the outer edge. The interactive prop only styles the surface — it does not make a div focusable. Render an interactive card on a focusable host (as='a' with href, or as='button' with onClick) or wrap its content in a link/button so keyboard users can reach it and the focus-visible treatment is reachable. See the Interactive example.",
     },
     {
       title: "Floating Border Labels",
       content:
         "Use CardLabel variant='border' for a boxed border label, or variant='gap' for a border cutout label with no border around the text. When using CardLabel, add pt-6 (or similar) to sibling CardContent to clear the floating label.",
+    },
+    {
+      title: "Padding rhythm",
+      content:
+        "CardHeader, CardContent, and CardFooter all use px-6, so header text, body text, and footer actions share one vertical edge. Only the block padding differs per region (header py-3, content p-6, footer py-4). Override className if a product layout needs a different rhythm — but override all three regions together, never one.",
     },
     {
       title: "Size",
@@ -91,7 +96,7 @@ export const cardDoc: ComponentDoc = {
         required: false,
         defaultValue: '"flat"',
         description:
-          "Surface treatment. Flat is a clean border, stacked adds paper-stack depth, inset recesses into the page, dotted uses a dashed wireframe border, and glow adds subtle edge luminance.",
+          "Surface treatment. Flat is a clean border, stacked adds a hard offset plate, inset steps the background down, dotted uses a dashed wireframe border, and glow doubles the outer edge.",
       },
       interactive: {
         type: "boolean",

@@ -38,14 +38,14 @@ export const panelDoc: ComponentDoc = {
     {
       name: "PanelLabel",
       indent: 1,
-      note: "Floating corner label (e.g. [ 01 / FS_TREE ]). The Panel root is the positioning context (panel.css sets position: relative on every frame).",
+      note: "Floating corner label (e.g. [ 01 / FS_TREE ]). The Panel root is the positioning context (panel.css sets position: relative on every frame), and the label's inline-start inset follows the frame's corner brackets.",
     },
   ],
   notes: [
     {
       title: "Frames",
       content:
-        "Pick one frame via the `frame` prop: hairline (default soft border + marker bar), rail (left rail only), viewfinder (four corner brackets), surface (Linear-style elevated --surface-1 background). Frame is purely visual chrome and applies independently of tone and density.",
+        "Pick one frame via the `frame` prop: hairline (default soft border + marker bar), rail (inline-start rail drawn in --border-strong so it reads as a deliberate frame rather than a stray divider), viewfinder (four corner brackets), surface (--surface-1 background with a hairline perimeter and a 1px inner top lip in --surface-1-highlight — the fill steps lighter in dark and darker in light, and the lip is what keeps both directions reading as raised). Frame is purely visual chrome and applies independently of tone and density.",
     },
     {
       title: "Tone",
@@ -75,7 +75,12 @@ export const panelDoc: ComponentDoc = {
     {
       title: "Corner labels",
       content:
-        "Use Panel.Label variant='border' for a boxed border label, or variant='gap' for a border cutout label.",
+        "Use Panel.Label variant='border' for a boxed border label, or variant='gap' for a border cutout label. The label sits at the standard 1rem inline-start inset on frames without corner brackets and steps out to 2rem when the panel draws them (frame='viewfinder', or any frame while focused), so its opaque background never covers a bracket arm. Consumers do not hand-roll that offset.",
+    },
+    {
+      title: "Focused pane",
+      content:
+        '`focused` marks the panel as the active pane in a multi-pane layout: viewfinder corner brackets grow on any frame, drawn in --ring, longer and thicker than the resting viewfinder corners. It emits data-state="focused" and changes nothing else — no border, padding, or shadow shift, so toggling it never reflows the layout. It is a visual affordance only: it does not move DOM focus and does not change roles, names, or ARIA. Drive it from whatever pane-focus state the app already owns, and keep a real focus-visible outline on the interactive elements inside.',
     },
   ],
   usage: { example: "panel-default" },
@@ -84,6 +89,7 @@ export const panelDoc: ComponentDoc = {
     { name: "panel-composed", title: "Composed" },
     { name: "panel-frames", title: "Frames" },
     { name: "panel-tones", title: "Tones" },
+    { name: "panel-focused", title: "Focused" },
   ],
   keyboard: null,
   props: {
@@ -115,6 +121,13 @@ export const panelDoc: ComponentDoc = {
         required: false,
         defaultValue: '"default"',
         description: "Padding rhythm. Default = 14/20; compact = 10/14.",
+      },
+      focused: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description:
+          "Marks the panel as the active pane: viewfinder corner brackets render in --ring, thicker and longer than the resting frame, on every frame. Visual affordance only — it does not move focus or change ARIA.",
       },
       children: {
         type: "ReactNode",

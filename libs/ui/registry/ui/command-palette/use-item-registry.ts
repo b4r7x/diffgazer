@@ -5,6 +5,7 @@ import {
   isSelectableItemEligible,
   sortSelectableCollectionItems,
 } from "@/lib/selectable-collection";
+import { observeSelectableEligibility } from "@/lib/selectable-collection-observer";
 
 /** Selectable item with icon, shortcut, tone, value. */
 export interface CommandPaletteItemMetadata {
@@ -56,38 +57,11 @@ export function useCommandPaletteItemRegistry({
   useLayoutEffect(() => {
     if (!enabled) return;
     const list = listRef.current;
-    const view = list?.ownerDocument.defaultView;
-    if (!list || !view?.MutationObserver) return;
+    if (!list) return;
 
-    const attributeFilter = [
-      "hidden",
-      "inert",
-      "aria-hidden",
-      "class",
-      "style",
-      "disabled",
-      "open",
-    ];
-    // Keep collection eligibility invalidation aligned with lib/selectable-collection.ts.
-    const observer = new view.MutationObserver(() => {
+    return observeSelectableEligibility(list, () => {
       setRegisteredItems((current) => [...current]);
     });
-    observer.observe(list, {
-      subtree: true,
-      attributes: true,
-      attributeFilter,
-    });
-
-    let ancestor = list.parentElement;
-    while (ancestor) {
-      observer.observe(ancestor, {
-        attributes: true,
-        attributeFilter,
-      });
-      ancestor = ancestor.parentElement;
-    }
-
-    return () => observer.disconnect();
   }, [enabled, listRef]);
 
   const activeItems = useMemo(

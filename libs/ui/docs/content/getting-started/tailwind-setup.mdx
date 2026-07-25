@@ -117,18 +117,18 @@ If you install `@diffgazer/ui` as a runtime npm package instead of copying sourc
 
 **Layer 2 -- Semantics**: Functional tokens that reference primitives.
 
-The "Semantic tokens (dark)" column lists the dark-theme role edges; light remaps some (e.g. `--primary` → `--base-highlight`, `--accent`/`--action` → `--base-accent`). See [Theme](/ui/theme#variable-architecture) for the per-theme diagram.
+The "Semantic tokens (dark)" column lists the dark-theme role edges; light remaps some (e.g. `--primary` → `--base-highlight`, `--action` → `--base-accent`). See [Theme](/ui/theme#variable-architecture) for the per-theme diagram.
 
 | Primitive | Value (dark) | Semantic tokens (dark) |
 |-----------|-------------|-----------------|
 | `--base-bg` | `#0a0a0a` | `--background` |
 | `--base-fg` | `#e5e5e5` | `--foreground`, `--primary`, `--ring` |
-| `--base-dim` | `#9c9c9c` | `--muted-foreground` |
-| `--base-info` | `#ccccff` | `--info` |
-| `--base-success` | `#e5e5e5` | `--success` |
+| `--base-dim` | `#9c9c9c` | `--muted-foreground`, `--border-strong` |
+| `--base-info` | `#79b8ff` | `--info` |
+| `--base-success` | `#7ee787` | `--success` |
 | `--base-danger` | `#ff7b72` | `--error` |
 | `--base-warning` | `#d29922` | `--warning` |
-| `--base-accent` | `#808080` | `--accent`, `--action` (light); syntax highlighting |
+| `--base-accent` | `#808080` | `--action` (light); syntax highlighting |
 | `--base-border` | `#606060` | `--border` |
 | `--base-highlight` | `#ffffff` | `--accent`, `--action` |
 | `--base-highlight-foreground` | `#000000` | `--accent-foreground`, `--action-foreground` |

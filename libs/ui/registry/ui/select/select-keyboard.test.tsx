@@ -9,7 +9,7 @@ import {
   PICK_FRUIT,
   renderSelect,
   renderSelectInline,
-} from "./select.test-utils";
+} from "./select-test-utils";
 
 describe("Select keyboard navigation", () => {
   it.each(["Enter", " ", "ArrowDown"])("opens with %s key on trigger", async (key) => {

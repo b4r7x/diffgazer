@@ -1,7 +1,8 @@
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { useCopyToClipboard } from "@diffgazer/ui/hooks/copy-to-clipboard";
-import { THEME_DOCS_COLOR_GROUPS, type ThemeDocsToken } from "@diffgazer/ui/theme";
+import type { ThemeDocsToken } from "@diffgazer/ui/theme";
 import { useTheme } from "@/hooks/theme-context";
+import { THEME_DOCS_COLOR_GROUPS } from "../lib/token-presentation";
 
 export function ColorGrid() {
   const { theme } = useTheme();

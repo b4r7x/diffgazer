@@ -59,7 +59,7 @@ export const selectDoc: ComponentDoc = {
     {
       title: "Card Variant",
       content:
-        "Set variant='card' on Select for a settings-panel layout with checkbox-style indicators and a thick border treatment. The list still respects open/defaultOpen — pass defaultOpen to render the inline list immediately, or pair with open/onOpenChange to control expansion.",
+        "Set variant='card' on Select for a settings-panel layout with checkbox-style indicators and a thick border treatment. The list still respects open/defaultOpen — pass defaultOpen to render the inline list immediately, or pair with open/onOpenChange to control expansion. The card trigger is an inverted --foreground header, so it takes its keyboard focus indicator as an outside outline (outline-2 outline-ring outline-offset-2) drawn on the page background; the default trigger keeps the inset Input focus ring.",
     },
     {
       title: "Multiple Selection",
@@ -105,6 +105,8 @@ export const selectDoc: ComponentDoc = {
   usage: { example: "select-default" },
   examples: [
     { name: "select-default", title: "Default" },
+    { name: "select-open", title: "Open Listbox (defaultOpen)" },
+    { name: "select-states", title: "Disabled and Invalid" },
     { name: "select-searchable", title: "Searchable (bottom)" },
     { name: "select-search-top", title: "Searchable (top)" },
     { name: "select-multiple", title: "Multiple" },
@@ -154,10 +156,7 @@ export const selectDoc: ComponentDoc = {
         action: "Selects the active filtered option when one is visible.",
       },
     ],
-    examples: [
-      { name: "select-default", title: "Default with keyboard navigation" },
-      { name: "select-searchable", title: "Searchable with keyboard navigation" },
-    ],
+    examples: [{ name: "select-searchable", title: "Searchable with keyboard navigation" }],
   },
   dataAttributes: [
     {

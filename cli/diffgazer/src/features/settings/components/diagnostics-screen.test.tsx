@@ -2,6 +2,7 @@ import type { DiagnosticsData } from "@diffgazer/core/api/hooks";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
 
 const ARROW_RIGHT = "\u001B[C";
@@ -34,12 +35,6 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
-
-async function flush(times = 4): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
 
 function makeDiagnosticsData(overrides: Partial<DiagnosticsData> = {}): DiagnosticsData {
   return {

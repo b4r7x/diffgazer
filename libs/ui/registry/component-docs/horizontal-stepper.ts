@@ -24,21 +24,32 @@ export const horizontalStepperDoc: ComponentDoc = {
     {
       title: "Variants",
       content:
-        "ascii renders inline bracket glyphs with text connectors, numbered renders a numbered indicator on a continuous line, and breadcrumb renders slash-separated labels.",
+        "ascii renders inline bracket glyphs with text connectors, numbered renders a numbered indicator on a continuous line, and breadcrumb renders slash-separated labels. Completed indicators and connectors read the primary token, so progress stays monochrome in both themes; the status palette is reserved for meaning.",
+    },
+    {
+      title: "Root Element",
+      content:
+        "The root accepts the full ordered-list contract: id, data-*, ref, and any other <ol> attribute is spread onto the element, matching the vertical Stepper.",
+    },
+    {
+      title: "Constrained Containers",
+      content:
+        'Steps and connectors never break internally, so a narrow parent cannot wrap a label mid-word or split the [ ] glyph across two lines. The root declares a container query instead, in two tiers. Below 36rem of inline space the stepper collapses to the compact treatment: connectors drop out, non-active labels leave the layout, and the active label is prefixed with "Step 3/6 ·". Below 20rem even that glyph run stops fitting, so it drops out as well and the stepper reads as plain "Step 3/6 · Label" text. Because both switches are container queries and not viewport breakpoints, the same stepper adapts inside a sidebar, a dialog, and a full-width page without the consumer branching. Pass compact to force the first tier at any width; the second still follows the container.',
     },
     {
       title: "Accessibility",
       content:
-        'The root is an ordered list named by aria-label (default "Progress"). The active item exposes aria-current="step", and each item includes screen-reader status text: Completed, Current, or Upcoming.',
+        'The root is an ordered list named by aria-label (default "Progress"). The active item exposes aria-current="step", and each item includes screen-reader status text: Completed, Current, or Upcoming. Both compact tiers only collapse things visually — every step and its label stay in the accessibility tree, and the "Step 3/6 ·" prefix is aria-hidden because list position already conveys it.',
     },
   ],
   usage: { example: "horizontal-stepper-default" },
   examples: [
     { name: "horizontal-stepper-default", title: "Default" },
     { name: "horizontal-stepper-variants", title: "Variants" },
-    { name: "horizontal-stepper-variant-ascii", title: "Variant: ASCII" },
+    { name: "horizontal-stepper-variant-ascii", title: "Variant: ASCII (start, mid-run, done)" },
     { name: "horizontal-stepper-variant-numbered", title: "Variant: Numbered" },
     { name: "horizontal-stepper-variant-breadcrumb", title: "Variant: Breadcrumb" },
+    { name: "horizontal-stepper-compact", title: "Compact / Constrained Width" },
     { name: "horizontal-stepper-progress", title: "Progress" },
   ],
   keyboard: {
@@ -58,19 +69,8 @@ export const horizontalStepperDoc: ComponentDoc = {
       attribute: "data-status",
       appliesTo: "HorizontalStepper.Step",
       values: '"completed" | "active" | "pending"',
-      description: "Derived step status.",
-    },
-    {
-      attribute: "data-conn-completed",
-      appliesTo: "HorizontalStepper.Step",
-      values: '"true"',
-      description: "Marks completed incoming connector segments for numbered variant styling.",
-    },
-    {
-      attribute: "data-completed",
-      appliesTo: "ASCII connector",
-      values: '"true"',
-      description: "Marks completed ASCII connector spans.",
+      description:
+        "Derived step status. It is also the only hook connector styling needs: the numbered variant fills the incoming segment on data-status=completed.",
     },
     {
       attribute: "data-counter",
@@ -99,6 +99,13 @@ export const horizontalStepperDoc: ComponentDoc = {
         required: false,
         defaultValue: '"ascii"',
         description: "Visual variant. Drives glyphs, connectors, and label typography.",
+      },
+      compact: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description:
+          'Forces the compact treatment (connectors hidden, only the active step labelled, prefixed with "Step 3/6 ·"). When false the stepper adopts it automatically below a 36rem container. Below a 20rem container the glyph run drops out too, leaving only the text, with or without this prop.',
       },
       "aria-label": {
         type: "string",
