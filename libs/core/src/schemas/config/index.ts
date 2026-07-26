@@ -91,6 +91,7 @@ export {
   resolveSelectableTheme,
   SECRETS_STORAGE_OPTIONS,
   SELECTABLE_THEME_OPTIONS,
+  SETTINGS_SCREEN_COPY,
   type SelectableTheme,
   type SettingsOption,
   toSelectableTheme,

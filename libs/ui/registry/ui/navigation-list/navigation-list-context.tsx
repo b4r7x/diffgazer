@@ -45,12 +45,10 @@ export interface NavigationListContextValue {
   unregisterGroupHeader: (id: string) => void;
 }
 
-/** React context backing navigation list. */
 export const NavigationListContext = createContext<NavigationListContextValue | undefined>(
   undefined,
 );
 
-/** Reads the navigation list context. */
 export function useNavigationListContext() {
   const context = useContext(NavigationListContext);
   if (context === undefined) {

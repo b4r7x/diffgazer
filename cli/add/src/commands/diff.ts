@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createDiffCommand, ensureWithinDir } from "@diffgazer/registry/cli";
-import { ctx, type DiffgazerAddConfig, type ResolvedConfig } from "../context.js";
+import { ctx, type ManifestIntegrationMode, type ResolvedConfig } from "../context.js";
 import { buildExpectedChunkContentsForItem, extractCssChunkContents } from "../utils/css-chunks.js";
 import {
   getNamespacedItem,
@@ -16,14 +16,11 @@ import {
   prepareFileContentForIntegration,
 } from "../utils/registry.js";
 
-type InstalledComponents = NonNullable<DiffgazerAddConfig["installedComponents"]>;
-type IntegrationMode = NonNullable<InstalledComponents[string]>["integrationMode"];
-
 function resolveIntegrationMode(
   cwd: string,
   itemName: string,
   manifestPath: string,
-): IntegrationMode {
+): ManifestIntegrationMode | undefined {
   const manifest = ctx.config.getManifestItems(cwd);
   const entry = manifest?.[itemName];
   const fileEntry = entry?.files?.find((file) => file.path === manifestPath);

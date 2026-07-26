@@ -10,14 +10,7 @@ import type {
   SettingsConfig,
   TrustConfig,
 } from "@diffgazer/core/schemas/config";
-import { z } from "zod";
-import {
-  getFileMtimeMs,
-  readJsonFileSyncSafe,
-  removeFileSync,
-  writeJsonFile,
-  writeJsonFileSync,
-} from "../fs.js";
+import { getFileMtimeMs, readJsonFileSyncSafe, removeFileSync, writeJsonFile } from "../fs.js";
 import { log } from "../log.js";
 import { getGlobalConfigPath, getGlobalSecretsPath, resolveProjectRoot } from "../paths.js";
 import { deleteKeyringSecret, readKeyringSecret, writeKeyringSecret } from "./keyring.js";
@@ -35,6 +28,14 @@ import {
   syncProvidersWithSecrets,
 } from "./persistence/secrets.js";
 import {
+  getSecretsRecoveryPath,
+  readSecretsRecovery,
+  reconcileSecretsRecoveryAtStartup,
+  rollbackFailure,
+  type SecretsRecoveryRecord,
+  serializeSecretsState,
+} from "./persistence/secrets-recovery.js";
+import {
   activeProvider,
   applyActiveProvider,
   applyCredentialsWithoutModel,
@@ -46,6 +47,7 @@ import {
   isStorageConfigured,
 } from "./providers-store.js";
 import {
+  deleteShadowedKeyringEntries,
   finalizeKeyringDeletions,
   findOrphanedKeyringEntries,
   getApiKeyName,
@@ -64,11 +66,15 @@ import type {
   SecretsStorageErrorCode,
 } from "./types.js";
 
-// Re-keys review history on a project move. `shared/` must not import
-// `features/`, so the review feature registers its implementation here at startup;
-// defaults to a no-op.
+// Re-keys review history on a project move. `shared/` must not import `features/`, so
+// the review feature registers its implementation here at startup. The unregistered
+// default reports failure so a missing composition-root wiring leaves project.json on
+// the old root (a retried move) instead of silently claiming the history moved.
 type ReviewRekeyHandler = (oldProjectPath: string, newProjectPath: string) => Promise<boolean>;
-let reviewRekeyHandler: ReviewRekeyHandler = async () => true;
+let reviewRekeyHandler: ReviewRekeyHandler = async () => {
+  log("error", "review_rekey_handler_not_registered");
+  return false;
+};
 
 export function setReviewRekeyHandler(handler: ReviewRekeyHandler): void {
   reviewRekeyHandler = handler;
@@ -79,118 +85,6 @@ export function setReviewRekeyHandler(handler: ReviewRekeyHandler): void {
 const persistFailure = (operation: "config" | "secrets", cause: unknown): SecretsStorageError => {
   log("error", "config_persist_failed", { operation, error: getErrorMessage(cause) });
   return createError<SecretsStorageErrorCode>("PERSIST_FAILED", `Failed to persist ${operation}`);
-};
-
-const SecretsRecoveryRecordSchema = z
-  .object({
-    version: z.literal(1),
-    previousConfigFileExisted: z.boolean(),
-    previousConfig: z.unknown(),
-    previousFileExisted: z.boolean(),
-    previousSecrets: z
-      .object({
-        providers: z.record(z.string(), z.unknown()),
-      })
-      .strict(),
-  })
-  .strict();
-
-type SecretsRecoveryRecord = z.infer<typeof SecretsRecoveryRecordSchema>;
-
-const getSecretsRecoveryPath = (): string => `${getGlobalSecretsPath()}.recovery`;
-
-const serializeSecretsState = (state: SecretsState): SecretsRecoveryRecord["previousSecrets"] => ({
-  providers: { ...state.unknownSecrets, ...state.providers },
-});
-
-const rollbackFailure = (cause: unknown): SecretsStorageError => {
-  log("error", "secrets_rollback_failed", { error: getErrorMessage(cause) });
-  return createError<SecretsStorageErrorCode>(
-    "ROLLBACK_FAILED",
-    "Failed to restore secrets after a partial persistence failure",
-  );
-};
-
-const restoreRecoveryRecordSync = (record: SecretsRecoveryRecord): void => {
-  if (record.previousConfigFileExisted) {
-    writeJsonFileSync(getGlobalConfigPath(), record.previousConfig, 0o600);
-  } else {
-    removeFileSync(getGlobalConfigPath());
-  }
-  if (record.previousFileExisted) {
-    writeJsonFileSync(getGlobalSecretsPath(), record.previousSecrets, 0o600);
-  } else {
-    removeFileSync(getGlobalSecretsPath());
-  }
-};
-
-type SecretsRecoveryRead =
-  | { kind: "missing" }
-  | { kind: "valid"; record: SecretsRecoveryRecord }
-  | { kind: "invalid"; error: SecretsStorageError };
-
-const readSecretsRecovery = (): SecretsRecoveryRead => {
-  const recoveryPath = getSecretsRecoveryPath();
-  const readResult = readJsonFileSyncSafe<unknown>(recoveryPath);
-  if (readResult.status === "missing") return { kind: "missing" };
-  if (readResult.status === "corrupt") {
-    return {
-      kind: "invalid",
-      error: rollbackFailure(new Error("Secrets recovery record is not valid JSON")),
-    };
-  }
-
-  const parsed = SecretsRecoveryRecordSchema.safeParse(readResult.data);
-  if (!parsed.success) {
-    return {
-      kind: "invalid",
-      error: rollbackFailure(new Error("Secrets recovery record failed validation")),
-    };
-  }
-
-  return { kind: "valid", record: parsed.data };
-};
-
-// The caller must hold the config-file transaction lock. Recovery covers config and
-// secrets as one aggregate, so replaying it outside that lock can roll back an active
-// writer in another process.
-const reconcileSecretsRecoveryAtStartup = (): SecretsStorageError | null => {
-  const recovery = readSecretsRecovery();
-  if (recovery.kind === "missing") return null;
-  if (recovery.kind === "invalid") return recovery.error;
-
-  try {
-    restoreRecoveryRecordSync(recovery.record);
-    removeFileSync(getSecretsRecoveryPath());
-    return null;
-  } catch (cause) {
-    return rollbackFailure(cause);
-  }
-};
-
-// Delete keyring entries shadowed by an env sidecar ref: reads resolve the
-// sidecar env ref first, so a stale `api_key_<provider>` from an interrupted literal->env
-// switch would linger unreferenced. Keyring mode only, probing env-sidecar providers.
-const deleteShadowedKeyringEntries = (secrets: SecretsState): void => {
-  for (const [providerId, entry] of Object.entries(secrets.providers)) {
-    if (typeof entry === "string" || entry.kind !== "env") continue;
-    const existing = readKeyringSecret(getApiKeyName(providerId));
-    if (!existing.ok) {
-      log("warn", "keyring_shadow_reconcile_failed", {
-        providerId,
-        error: existing.error.message,
-      });
-      continue;
-    }
-    if (existing.value === null) continue;
-    const deleteResult = deleteKeyringSecret(getApiKeyName(providerId));
-    if (!deleteResult.ok) {
-      log("warn", "keyring_shadow_delete_failed", {
-        providerId,
-        error: deleteResult.error.message,
-      });
-    }
-  }
 };
 
 export interface ConfigStore {
@@ -325,6 +219,15 @@ export function createConfigStore(): ConfigStore {
     syncLoadedProviders();
   };
 
+  /**
+   * The read gate for the config+secrets aggregate, resolving four states: the on-disk
+   * `.recovery` record (another process is mid-mutation), `startupRecoveryError` (a WAL
+   * replay that failed and must keep failing closed), `canReadInitialState` (constructed
+   * while another process held the lock, before this store initialized), and the settled
+   * state (refresh from disk and serve). `getProviderApiKey` propagates the verdict; the
+   * value getters below drop it and serve the WAL snapshot on purpose, because
+   * `ConfigStore` gives synchronous getters no error channel.
+   */
   const prepareAggregateRead = (): Result<void, SecretsStorageError> => {
     const recoveryBeforeRead = readSecretsRecovery();
     if (recoveryBeforeRead.kind === "invalid") {

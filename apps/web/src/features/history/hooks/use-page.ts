@@ -102,10 +102,8 @@ export function useHistoryPage() {
     history.setSelectedRunId(runId);
   };
 
-  const handleRunsBoundary = (direction: "up" | "down") => {
-    if (direction === "up") {
-      setFocusZone("search");
-    }
+  const handleRunsBoundary = () => {
+    setFocusZone("search");
   };
 
   const handleIssueClick = (issueId: string) => {

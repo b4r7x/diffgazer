@@ -1,4 +1,4 @@
-import type { ServerController } from "./controller";
+import type { ServerController } from "./types";
 
 interface ServerSetRegistration {
   readonly servers: readonly ServerController[];

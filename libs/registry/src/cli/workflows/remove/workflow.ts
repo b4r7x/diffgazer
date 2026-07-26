@@ -62,7 +62,7 @@ async function executeRemoval<TItem, TConfig>(
   }
 
   const snapshot = beginRemovalTransaction(options, config, ownedFiles);
-  const { removed, failures, causes } = deleteRemovalFiles(options, config, cwd, files);
+  const { removed, failures, causes } = deleteRemovalFiles(options, config, files);
 
   if (failures.length > 0) {
     const failure = new AggregateError(

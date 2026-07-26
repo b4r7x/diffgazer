@@ -4,8 +4,10 @@ import { useEffectEvent, useId, useLayoutEffect } from "react";
 import type { KeyHandler } from "../core/normalize-key-input.js";
 import { normalizeKeyInput } from "../core/normalize-key-input.js";
 import type { ValidateHotkey } from "../dom/hotkey.js";
-import type { HandlerOptions } from "../providers/keyboard.js";
-import { useOptionalKeyboardRegistryContext } from "../providers/keyboard-context.js";
+import {
+  type HandlerOptions,
+  useOptionalKeyboardRegistryContext,
+} from "../providers/keyboard-context.js";
 
 /** Options for registering one or more hotkeys with `useKey`. */
 export interface UseKeyOptions extends HandlerOptions {
@@ -64,6 +66,7 @@ export function useKey(
   const dispatch = useEffectEvent((key: string, event: KeyboardEvent) => handlerMap[key]?.(event));
 
   const registrationKeys = Object.keys(handlerMap).sort();
+  // Length-prefixed so a hotkey containing the `|` delimiter cannot collide with a different key set.
   const registrationVersion = registrationKeys.map((key) => `${key.length}:${key}`).join("|");
 
   const handlerOptions: HandlerOptions | undefined = options

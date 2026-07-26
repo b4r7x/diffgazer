@@ -8,24 +8,17 @@ import {
 } from "@diffgazer/ui/components/code-block";
 import { Panel, PanelFooter } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
-import { Spinner } from "@diffgazer/ui/components/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@diffgazer/ui/components/tabs";
 import { Typography } from "@diffgazer/ui/components/typography";
 import { cn } from "@diffgazer/ui/lib/utils";
-import {
-  Component,
-  type ComponentType,
-  type LazyExoticComponent,
-  type ReactNode,
-  Suspense,
-  useRef,
-  useState,
-} from "react";
+import { type ComponentType, type LazyExoticComponent, useRef, useState } from "react";
 import { CopyButton } from "@/components/copy-button";
+import { DemoNode } from "@/components/demo-node";
 import { InsetPreviewPane } from "@/components/inset-preview-pane";
 import { type PreviewMode, usePreviewMode } from "@/components/preview-mode-context";
 import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { DOT_GRID_CLASS } from "@/components/shared/dot-grid";
+import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { useTheme } from "@/hooks/theme-context";
 import type { PreviewFrame } from "@/lib/example-frames";
 
@@ -35,45 +28,6 @@ interface DemoPreviewProps {
   code: CodeBlockLineProps[];
   rawCode: string;
   frame?: PreviewFrame;
-}
-
-const EMPTY_FALLBACK = <div aria-hidden="true" className="h-full w-full" />;
-
-const LOADING_FALLBACK = (
-  <div className="flex h-full w-full items-center justify-center">
-    <Spinner variant="pulse" size="sm" />
-  </div>
-);
-
-class DemoPreviewErrorBoundary extends Component<
-  Readonly<{ children: ReactNode }>,
-  Readonly<{ failed: boolean }>
-> {
-  override state = { failed: false };
-
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-
-  override render() {
-    if (this.state.failed) {
-      return (
-        <output className="flex min-h-[120px] items-center justify-center text-sm">
-          Preview unavailable.
-        </output>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-function DemoNode({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
-  if (!Demo) return EMPTY_FALLBACK;
-  return (
-    <Suspense fallback={LOADING_FALLBACK}>
-      <Demo />
-    </Suspense>
-  );
 }
 
 function DefaultPreviewPane({
@@ -224,9 +178,15 @@ export function DemoPreview({ title, demo, code, rawCode, frame = "default" }: D
           </TabsTrigger>
         </TabsList>
         <TabsContent value="preview">
-          <DemoPreviewErrorBoundary>
+          <ErrorBoundary
+            fallback={
+              <output className="flex min-h-[120px] items-center justify-center text-sm">
+                Preview unavailable.
+              </output>
+            }
+          >
             <PreviewPane demo={demo} frame={frame} rawCode={rawCode} />
-          </DemoPreviewErrorBoundary>
+          </ErrorBoundary>
         </TabsContent>
         <TabsContent value="code">
           <CodePane code={code} rawCode={rawCode} />

@@ -1,7 +1,7 @@
 import { useLocation } from "@tanstack/react-router";
 import { useSyncExternalStore } from "react";
 
-export type SetState<T> = (value: T | ((prev: T) => T)) => void;
+type SetState<T> = (value: T | ((prev: T) => T)) => void;
 
 // Scoped-route-state keys each page owns, shared so the home menu's per-route
 // reset list cannot drift from the keys those pages actually store.

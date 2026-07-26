@@ -5,7 +5,7 @@ import {
   type Shortcut,
   SWITCH_PANE_SHORTCUT,
 } from "@diffgazer/core/schemas/presentation";
-import type { HistoryInteractionMode } from "./run-mapping";
+import type { HistoryInteractionMode } from "../types";
 
 export interface HistoryFooter {
   shortcuts: Shortcut[];

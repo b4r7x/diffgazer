@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRegistryLoader } from "@diffgazer/registry/cli";
-import { CopyBundleSchema } from "@diffgazer/registry/schemas";
+import { CopyBundleSchema, parseKeysDependencyRef } from "@diffgazer/registry/schemas";
 import { z } from "zod";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -98,16 +98,6 @@ export function resolveKeysCopyHookFiles(hooks: string[]): {
   return { files, missingHooks };
 }
 
-function parseKeysDependencyName(dep: string): string | null {
-  if (dep.startsWith("@diffgazer/keys/")) {
-    return dep.replace("@diffgazer/keys/", "");
-  }
-  if (dep.startsWith("@diffgazer-keys/")) {
-    return dep.replace("@diffgazer-keys/", "");
-  }
-  return null;
-}
-
 /**
  * Extract keys hook names from registry items by scanning Diffgazer keys
  * namespace refs. Returns bare hook names (e.g. "focus-trap") that key the copy
@@ -122,7 +112,7 @@ export function resolveKeysHooksFromRegistry(
   const names = new Set<string>();
   for (const item of items) {
     for (const dep of item.registryDependencies ?? []) {
-      const name = parseKeysDependencyName(dep);
+      const name = parseKeysDependencyRef(dep);
       if (name) names.add(name);
     }
   }

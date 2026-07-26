@@ -98,15 +98,10 @@ export function MenuItemRadio({
         className,
       )}
     >
-      <span
-        aria-hidden="true"
-        className={menuItemIndicator({ idle: (!isActive && !disabled) || undefined })}
-      >
+      <span aria-hidden="true" className={menuItemIndicator({ idle: !isActive && !disabled })}>
         {isSelected ? RADIO_SELECTED : RADIO_UNSELECTED}
       </span>
-      <span className={menuItemLabel({ idle: (!isActive && !disabled) || undefined })}>
-        {children}
-      </span>
+      <span className={menuItemLabel({ idle: !isActive && !disabled })}>{children}</span>
     </div>
   );
 }

@@ -3,33 +3,22 @@ import InkSpinner from "ink-spinner";
 import { useTheme } from "../../theme/provider";
 
 export interface SpinnerProps {
-  variant?: "dots" | "braille" | "snake";
   label?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md";
 }
-
-const variantToType = {
-  dots: "dots",
-  braille: "dots8Bit",
-  snake: "line",
-} as const;
 
 const gapBySize = {
   sm: 0,
   md: 1,
-  lg: 2,
 } as const;
 
-export function Spinner({ variant = "dots", label, size = "md" }: SpinnerProps) {
+export function Spinner({ label, size = "md" }: SpinnerProps) {
   const { tokens } = useTheme();
 
-  const spinnerType = variantToType[variant];
-  const gap = gapBySize[size];
-
   return (
-    <Box flexDirection="row" gap={gap}>
+    <Box flexDirection="row" gap={gapBySize[size]}>
       <Text color={tokens.accent}>
-        <InkSpinner type={spinnerType} />
+        <InkSpinner type="dots" />
       </Text>
       {label != null ? <Text>{label}</Text> : null}
     </Box>

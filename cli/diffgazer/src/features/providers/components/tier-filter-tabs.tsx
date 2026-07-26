@@ -6,11 +6,11 @@ import { useTheme } from "../../../theme/provider";
 
 interface TierFilterTabsProps {
   value: TierFilter;
-  onValueChange: (value: TierFilter) => void;
+  onChange: (value: TierFilter) => void;
   isActive: boolean;
 }
 
-export function TierFilterTabs({ value, onValueChange, isActive }: TierFilterTabsProps) {
+export function TierFilterTabs({ value, onChange, isActive }: TierFilterTabsProps) {
   const { tokens } = useTheme();
 
   useInput(
@@ -19,7 +19,7 @@ export function TierFilterTabs({ value, onValueChange, isActive }: TierFilterTab
       const currentIdx = TIER_FILTERS.indexOf(value);
       const direction = key.rightArrow ? 1 : -1;
       const next = TIER_FILTERS[clampIndex(currentIdx, direction, TIER_FILTERS.length, true)];
-      if (next) onValueChange(next);
+      if (next) onChange(next);
     },
     { isActive },
   );

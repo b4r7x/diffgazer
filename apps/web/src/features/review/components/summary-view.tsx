@@ -9,7 +9,7 @@ import {
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import { BACK_SHORTCUT, type IssuePreview } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
-import { useKey, useScope } from "@diffgazer/keys";
+import { DECLINE, useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { ReviewCompleteSummary } from "@/features/review/components/review-complete-summary";
@@ -64,9 +64,11 @@ export function ReviewSummaryView({
 
   useScope("review-summary");
   useKey("Enter", (event) => {
-    if (isInteractiveTarget(event.target)) return false;
-    onEnterReview();
-    return true;
+    if (!isInteractiveTarget(event.target)) {
+      onEnterReview();
+      return;
+    }
+    return DECLINE;
   });
   useKey("Escape", onBack);
 

@@ -81,7 +81,7 @@ export function useKeyboardRegistryContext(): KeyboardRegistryContextValue {
 }
 
 /** Returns the active-scope context or throws when no provider is mounted. */
-export function useKeyboardScopeContext(): KeyboardScopeContextValue {
+function useKeyboardScopeContext(): KeyboardScopeContextValue {
   const ctx = useContext(KeyboardScopeContext);
   if (ctx === undefined) {
     throw new Error(KEYBOARD_PROVIDER_ERROR);
@@ -89,12 +89,26 @@ export function useKeyboardScopeContext(): KeyboardScopeContextValue {
   return ctx;
 }
 
+// Copies field by field so the internal registry members (registerImplicit, the
+// order-accepting pushScope) stay out of the public value at runtime too.
+function toPublicContext(
+  activeScope: string | null,
+  registry: KeyboardRegistryContextValue,
+): KeyboardContextValue {
+  return {
+    activeScope,
+    getActiveScope: registry.getActiveScope,
+    pushScope: registry.pushScope,
+    register: registry.register,
+  };
+}
+
 /** Returns the active keyboard context and throws if `KeyboardProvider` is missing. */
 export function useKeyboardContext(): KeyboardContextValue {
   const registry = useKeyboardRegistryContext();
   const scope = useKeyboardScopeContext();
 
-  return { activeScope: scope.activeScope, ...registry };
+  return toPublicContext(scope.activeScope, registry);
 }
 
 /** Returns the active keyboard context or null if `KeyboardProvider` is missing. */
@@ -103,7 +117,7 @@ export function useOptionalKeyboardContext(): KeyboardContextValue | null {
   const scope = useContext(KeyboardScopeContext);
 
   if (registry === undefined || scope === undefined) return null;
-  return { activeScope: scope.activeScope, ...registry };
+  return toPublicContext(scope.activeScope, registry);
 }
 
 /** Returns the registry context or null if `KeyboardProvider` is missing. */

@@ -10,7 +10,7 @@ import { useTheme } from "../../theme/provider";
 interface TabsProps {
   value?: string;
   defaultValue?: string;
-  onValueChange?: (value: string) => void;
+  onChange?: (value: string) => void;
   children: ReactNode;
 }
 
@@ -57,7 +57,7 @@ function extractTabsTrigger(element: ReactElement): CollectedTrigger | null {
   return { value: props.value, disabled: props.disabled ?? false };
 }
 
-function TabsRoot({ value, defaultValue, onValueChange, children }: TabsProps) {
+function TabsRoot({ value, defaultValue, onChange, children }: TabsProps) {
   const [internalValue, setInternalValue] = useState(defaultValue ?? "");
 
   const activeValue = value ?? internalValue;
@@ -66,7 +66,7 @@ function TabsRoot({ value, defaultValue, onValueChange, children }: TabsProps) {
     if (value === undefined) {
       setInternalValue(next);
     }
-    onValueChange?.(next);
+    onChange?.(next);
   }
 
   return (

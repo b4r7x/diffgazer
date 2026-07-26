@@ -1,3 +1,5 @@
+import { isMember } from "../fields.js";
+import type { SettingsAction } from "../presentation/navigation.js";
 import {
   AGENT_EXECUTION_MODES,
   type AgentExecution,
@@ -49,10 +51,21 @@ export const AGENT_EXECUTION_OPTIONS = [
   },
 ] as const satisfies ReadonlyArray<SettingsOption<AgentExecution>>;
 
-function isMember<T extends string>(members: readonly T[], value: string | null): value is T {
-  if (value === null) return false;
-  return members.includes(value as T);
-}
+/** Header copy for the settings screens the web app and the TUI mirror; analysis says "lenses" per F-106. */
+export const SETTINGS_SCREEN_COPY = {
+  storage: {
+    title: "Secrets Storage",
+    subtitle: "Choose where API keys and sensitive data should be stored.",
+  },
+  "agent-execution": {
+    title: "Agent Execution Mode",
+    subtitle: "Choose whether analysis agents run in sequence or in parallel.",
+  },
+  analysis: {
+    title: "Analysis Settings",
+    subtitle: "Choose which lenses run during reviews.",
+  },
+} as const satisfies Partial<Record<SettingsAction, { title: string; subtitle: string }>>;
 
 export function isTheme(value: string | null): value is Theme {
   return isMember(THEMES, value);

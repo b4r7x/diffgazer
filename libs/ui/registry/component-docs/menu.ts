@@ -90,8 +90,8 @@ export const menuDoc: ComponentDoc = {
         action: "Closes submenu content and returns focus to its trigger.",
       },
     ],
-    // The controlled demo lives in Examples above; mounting it twice on one page
-    // would register the 1-4 hotkeys in two providers at once.
+    // The controlled demo already renders in Examples above; a second mount here
+    // would repeat it on the same page.
     examples: [],
   },
   dataAttributes: [

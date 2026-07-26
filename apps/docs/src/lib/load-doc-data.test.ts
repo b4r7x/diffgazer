@@ -7,7 +7,11 @@ const componentHighlighted = [
   {
     number: 1,
     content: [
-      { text: "export function Select() {}", color: "var(--syntax-keyword)", className: "code-fn" },
+      {
+        text: "export function Select() {}",
+        color: "var(--code-keyword)",
+        className: "code-keyword",
+      },
     ],
     state: "highlight",
   },

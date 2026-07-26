@@ -65,7 +65,6 @@ export function DiffViewSplit({
         label={oldSideLabel}
         rows={leftRows}
         showLineNumbers={showLineNumbers}
-        disableWordDiff={disableWordDiff}
         isDense={isDense}
         activeHunk={activeHunk}
         registerNavigationItems
@@ -77,7 +76,6 @@ export function DiffViewSplit({
         label={newSideLabel}
         rows={rightRows}
         showLineNumbers={showLineNumbers}
-        disableWordDiff={disableWordDiff}
         isDense={isDense}
         activeHunk={activeHunk}
         registerNavigationItems={false}
@@ -119,7 +117,6 @@ function SplitSide({
   label,
   rows,
   showLineNumbers,
-  disableWordDiff,
   isDense,
   activeHunk,
   registerNavigationItems,
@@ -130,7 +127,6 @@ function SplitSide({
   label: string;
   rows: SideEntry[];
   showLineNumbers: boolean;
-  disableWordDiff: boolean;
   isDense: boolean;
   activeHunk: string | null;
   registerNavigationItems: boolean;
@@ -179,7 +175,6 @@ function SplitSide({
             key={i}
             cell={entry.cell}
             showLineNumbers={showLineNumbers}
-            disableWordDiff={disableWordDiff}
             isDense={isDense}
             addedLineLabel={addedLineLabel}
             removedLineLabel={removedLineLabel}
@@ -193,14 +188,12 @@ function SplitSide({
 function SplitCellRow({
   cell,
   showLineNumbers,
-  disableWordDiff,
   isDense,
   addedLineLabel,
   removedLineLabel,
 }: {
   cell: SplitCell;
   showLineNumbers: boolean;
-  disableWordDiff: boolean;
   isDense: boolean;
   addedLineLabel: string;
   removedLineLabel: string;
@@ -236,11 +229,7 @@ function SplitCellRow({
       </span>
       <span className="diff-code">
         {srLabel && <span className="sr-only">{srLabel}</span>}
-        <LineContent
-          content={cell.content}
-          wordSegments={disableWordDiff ? undefined : cell.wordSegments}
-          type={cell.type}
-        />
+        <LineContent content={cell.content} wordSegments={cell.wordSegments} type={cell.type} />
       </span>
     </span>
   );

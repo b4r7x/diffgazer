@@ -12,7 +12,6 @@ vi.mock("@tanstack/react-router", () => ({
 
 import { HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
 import { act, screen } from "@testing-library/react";
-import { HistoryPage } from "./page";
 import {
   makeInitResponse,
   mockGetProviderStatus,
@@ -24,7 +23,8 @@ import {
   setupApiMocks,
   trustedProject,
   untrustedProject,
-} from "./page-test-utils";
+} from "../testing/page";
+import { HistoryPage } from "./page";
 
 describe("HistoryPage trust workflow", () => {
   beforeEach(() => {

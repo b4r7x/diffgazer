@@ -23,7 +23,7 @@ function createNavigation(highlighted: ListNavigationItem | null = { id: "a", di
   return {
     currentHighlightedId: highlighted?.id ?? "",
     moveBy: vi.fn(),
-    selectItem: vi.fn(() => highlighted),
+    findSelectableItem: vi.fn(() => highlighted),
   } satisfies ListNavigation;
 }
 

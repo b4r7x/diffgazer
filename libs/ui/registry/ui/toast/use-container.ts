@@ -6,6 +6,8 @@ import type { Toast } from "./toast-store";
 import { dismiss, pause, resume } from "./toast-store";
 
 function isHovered(node: HTMLElement): boolean {
+  // jsdom's selector engine rejects the :hover dynamic pseudo-class; treat that
+  // as "not hovered".
   try {
     return node.matches(":hover");
   } catch {

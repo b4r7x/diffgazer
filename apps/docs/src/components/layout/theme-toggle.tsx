@@ -1,9 +1,7 @@
 import { cn } from "@diffgazer/ui/lib/utils";
 import { CHROME_ACTION_TARGET_CLASS } from "@/components/shared/chrome-label";
+import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
 import { nextThemePreference, themeToggleLabel, useTheme } from "@/hooks/theme-context";
-
-const focusRingClassName =
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -27,7 +25,7 @@ export function ThemeToggle() {
       className={cn(
         "px-1 uppercase transition-colors hover:bg-secondary hover:text-foreground pointer-coarse:px-2",
         CHROME_ACTION_TARGET_CLASS,
-        focusRingClassName,
+        FOCUS_RING_CLASS,
       )}
     >
       {theme}

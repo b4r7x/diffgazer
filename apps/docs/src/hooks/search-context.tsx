@@ -90,12 +90,14 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
 function useSearchContext(): SearchContextValue {
   const ctx = useContext(SearchContext);
-  if (!ctx) throw new Error("useSearchOpen must be used within SearchProvider");
+  if (!ctx) throw new Error("Search hooks must be used within SearchProvider");
   return ctx;
 }
 
+/** Whether the command palette is open, and its setter. */
 export function useSearchOpen() {
-  return useSearchContext();
+  const { open, setOpen } = useSearchContext();
+  return { open, setOpen };
 }
 
 /** Pages visited this session, most recent first, and the recorder for new visits. */

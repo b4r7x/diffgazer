@@ -54,12 +54,11 @@ export interface UseReviewLifecycleBaseResult {
   start: {
     hasStarted: boolean;
     hasStreamed: boolean;
-    setHasStarted: (value: boolean) => void;
-    setHasStreamed: (value: boolean) => void;
   };
 
+  reset: () => void;
+
   gate: ReviewGate;
-  contextReady: boolean;
   contextSnapshot: ReviewContextResponse | null;
 }
 
@@ -133,7 +132,6 @@ export function useReviewLifecycleBase(
   const contextStep = stream.state.steps.find((step) => step.id === "context");
   const contextReviewId =
     contextStep?.status === "completed" ? (stream.state.reviewId ?? null) : null;
-  const contextReady = contextReviewId !== null;
   const { data: contextData } = useReviewContext({
     enabled: false,
   });
@@ -157,6 +155,13 @@ export function useReviewLifecycleBase(
 
   const contextSnapshot =
     contextReviewId === refreshedContextReviewId ? (contextData ?? null) : null;
+
+  const reset = () => {
+    stream.abort();
+    resetCompletion();
+    setHasStarted(false);
+    setHasStreamed(false);
+  };
 
   const gate = deriveReviewGate({
     loadingMessage,
@@ -182,11 +187,9 @@ export function useReviewLifecycleBase(
     start: {
       hasStarted,
       hasStreamed,
-      setHasStarted,
-      setHasStreamed,
     },
+    reset,
     gate,
-    contextReady,
     contextSnapshot,
   };
 }

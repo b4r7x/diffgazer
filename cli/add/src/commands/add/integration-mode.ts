@@ -11,6 +11,7 @@ import { resolveProjectPath, toPosixPath } from "../../utils/paths.js";
 import type { ResolvedIntegrationSelection } from "./integration.js";
 
 type IntegrationMode = ResolvedIntegrationSelection["mode"];
+type Manifest = NonNullable<DiffgazerAddConfig["installedComponents"]>;
 
 function isCopyMode(record: ManifestItem | undefined): boolean {
   return (
@@ -29,14 +30,14 @@ function hasDifferentIntegrationMode(
 }
 
 function findIntegrationModeChanges(
-  manifest: NonNullable<DiffgazerAddConfig["installedComponents"]> | undefined,
+  manifest: Manifest,
   resolvedNames: string[],
   requestedMode: IntegrationMode,
 ): string[] {
   return resolvedNames
     .map((name) => `ui/${name}`)
     .filter((name) => {
-      const record = manifest?.[name];
+      const record = manifest[name];
       return record !== undefined && hasDifferentIntegrationMode(record, requestedMode);
     });
 }
@@ -116,6 +117,87 @@ function planRemovableHookFiles(
   return planned;
 }
 
+// Hooks still installed in copy mode after the migration: every copy-mode ui/*
+// item that is not migrating away, plus everything the requested copy install
+// is about to (re)write.
+function collectRetainedCopyHooks(
+  manifest: Manifest,
+  changedNames: string[],
+  resolvedNames: string[],
+  requestedMode: IntegrationMode,
+): Set<string> {
+  const changedSet = new Set(changedNames);
+  const hooks = new Set<string>();
+  for (const [name, record] of Object.entries(manifest)) {
+    if (!name.startsWith("ui/") || !isCopyMode(record)) continue;
+    if (!changedSet.has(name) || requestedMode === "copy") addHooksForItem(hooks, name);
+  }
+  if (requestedMode === "copy") {
+    for (const name of resolvedNames) addHooksForItem(hooks, `ui/${name}`);
+  }
+  return hooks;
+}
+
+// Hooks the user installed by name rather than as a component dependency; those
+// belong to the user, not to the migrating item.
+function collectExplicitHooks(manifest: Manifest, explicitNames: Set<string>): Set<string> {
+  const hooks = new Set<string>(
+    [...explicitNames]
+      .filter((name) => name.startsWith("keys/"))
+      .map((name) => name.slice("keys/".length)),
+  );
+  for (const [name, record] of Object.entries(manifest)) {
+    if (name.startsWith("keys/") && record.installedAs !== "transitive") {
+      hooks.add(name.slice("keys/".length));
+    }
+  }
+  return hooks;
+}
+
+// Hooks the migration could delete: those pulled in by an item that is leaving
+// copy mode. Migrating *into* copy mode deletes nothing.
+function collectCandidateHooks(
+  manifest: Manifest,
+  changedNames: string[],
+  requestedMode: IntegrationMode,
+): Set<string> {
+  const hooks = new Set<string>();
+  if (requestedMode === "copy") return hooks;
+  for (const name of changedNames) {
+    if (isCopyMode(manifest[name])) addHooksForItem(hooks, name);
+  }
+  return hooks;
+}
+
+function collectRetainedFilePaths(
+  cwd: string,
+  config: ResolvedConfig,
+  hooksPath: string,
+  manifest: Manifest,
+  retainedHooks: Set<string>,
+): Set<string> {
+  const paths = new Set<string>();
+  for (const hook of retainedHooks) {
+    for (const file of manifest[`keys/${hook}`]?.files ?? []) {
+      paths.add(resolveHookManifestPath(cwd, hooksPath, file.path));
+    }
+  }
+  for (const file of resolveKeysCopyHookFiles([...retainedHooks]).files) {
+    paths.add(
+      resolveHookManifestPath(
+        cwd,
+        hooksPath,
+        toPosixPath(`${config.hooksFsPath}/${file.relativePath}`),
+      ),
+    );
+  }
+  return paths;
+}
+
+// A copied hook file is deleted only when no retained ui/* item still installs
+// it in copy mode and the user never installed that keys/* hook explicitly.
+// Everything else stays on disk, so switching one component's integration mode
+// can never strip hooks another component or the user still owns.
 export function planIntegrationModeMigration(
   cwd: string,
   config: ResolvedConfig,
@@ -129,52 +211,24 @@ export function planIntegrationModeMigration(
     resolvedNames.filter(hasKeyboardIntegration),
     requestedMode,
   );
-  const changedSet = new Set(changedNames);
-  const retainedCopyHooks = new Set<string>();
 
-  for (const [name, record] of Object.entries(manifest)) {
-    if (!name.startsWith("ui/") || !isCopyMode(record)) continue;
-    if (!changedSet.has(name) || requestedMode === "copy") addHooksForItem(retainedCopyHooks, name);
-  }
-  if (requestedMode === "copy") {
-    for (const name of resolvedNames) addHooksForItem(retainedCopyHooks, `ui/${name}`);
-  }
-
-  const explicitHooks = new Set<string>(
-    [...explicitNames]
-      .filter((name) => name.startsWith("keys/"))
-      .map((name) => name.slice("keys/".length)),
+  const retainedCopyHooks = collectRetainedCopyHooks(
+    manifest,
+    changedNames,
+    resolvedNames,
+    requestedMode,
   );
-  for (const [name, record] of Object.entries(manifest)) {
-    if (name.startsWith("keys/") && record.installedAs !== "transitive") {
-      explicitHooks.add(name.slice("keys/".length));
-    }
-  }
+  const explicitHooks = collectExplicitHooks(manifest, explicitNames);
+  const candidateHooks = collectCandidateHooks(manifest, changedNames, requestedMode);
 
-  const candidateHooks = new Set<string>();
-  if (requestedMode !== "copy") {
-    for (const name of changedNames) {
-      if (isCopyMode(manifest[name])) addHooksForItem(candidateHooks, name);
-    }
-  }
-
-  const retainedHooks = new Set([...retainedCopyHooks, ...explicitHooks]);
   const hooksPath = resolveProjectPath(cwd, config.hooksFsPath);
-  const retainedFilePaths = new Set<string>();
-  for (const hook of retainedHooks) {
-    for (const file of manifest[`keys/${hook}`]?.files ?? []) {
-      retainedFilePaths.add(resolveHookManifestPath(cwd, hooksPath, file.path));
-    }
-  }
-  for (const file of resolveKeysCopyHookFiles([...retainedHooks]).files) {
-    retainedFilePaths.add(
-      resolveHookManifestPath(
-        cwd,
-        hooksPath,
-        toPosixPath(`${config.hooksFsPath}/${file.relativePath}`),
-      ),
-    );
-  }
+  const retainedFilePaths = collectRetainedFilePaths(
+    cwd,
+    config,
+    hooksPath,
+    manifest,
+    new Set([...retainedCopyHooks, ...explicitHooks]),
+  );
 
   const removeManifestNames: string[] = [];
   const filesToRemove: PlannedRemovedFile[] = [];

@@ -1,13 +1,5 @@
 import type { ComponentDoc as RegistryComponentDoc } from "@diffgazer/registry";
 
-export type {
-  AnatomyNode,
-  ComponentNote,
-  ExampleRef,
-  KeyboardSection,
-  UsageSection,
-} from "@diffgazer/registry";
-
 /**
  * Public-component doc shape with a UI-only escape hatch.
  *

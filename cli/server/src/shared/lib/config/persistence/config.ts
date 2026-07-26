@@ -7,7 +7,7 @@ import {
   SettingsConfigSchema,
 } from "@diffgazer/core/schemas/config";
 import { z } from "zod";
-import { writeJsonFile, writeJsonFileSync } from "../../fs.js";
+import { writeJsonFile } from "../../fs.js";
 import { log } from "../../log.js";
 import { getGlobalConfigPath } from "../../paths.js";
 import { withFileTransactionLock } from "../transaction/file-lock.js";
@@ -181,14 +181,6 @@ const serializeConfig = (
   };
 };
 
-export const persistConfig = (state: ConfigState): void => {
-  writeJsonFileSync(
-    CONFIG_PATH(),
-    serializeConfig(state.settings, state.providers, state.unknownSettings, state.unknownProviders),
-    0o600,
-  );
-};
-
 const providerEntriesEqual = (a: ProviderStatus, b: ProviderStatus): boolean =>
   a.hasApiKey === b.hasApiKey && a.isActive === b.isActive && a.model === b.model;
 
@@ -309,12 +301,3 @@ export const withConfigFileTransaction = <T>(
       await Promise.all(acceptedWriteSettlements);
     }
   });
-
-export const persistConfigMergedAsync: PersistConfigMerged = (
-  state,
-  previousProviders,
-  previousSettings,
-) =>
-  withConfigFileTransaction((persistMerged) =>
-    persistMerged(state, previousProviders, previousSettings),
-  );

@@ -1,14 +1,7 @@
 "use client";
 
 import { cva, type VariantProps } from "class-variance-authority";
-import {
-  type ComponentProps,
-  type ReactNode,
-  useEffect,
-  useEffectEvent,
-  useMemo,
-  useState,
-} from "react";
+import { type ComponentProps, type ReactNode, useEffectEvent, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { AvatarContext, type AvatarStatus, useAvatarGroupContext } from "./avatar-context";
 import { AvatarFallback } from "./avatar-fallback";
@@ -60,17 +53,21 @@ function AvatarRoot({
 }: AvatarProps) {
   const groupCtx = useAvatarGroupContext();
   const resolvedSize = size ?? groupCtx?.size;
-  const [imageStatus, setImageStatus] = useState<AvatarStatus>("idle");
+  const [imageStatus, setStatus] = useState<AvatarStatus>("idle");
   const notifyStatusChange = useEffectEvent((status: AvatarStatus) => {
     onStatusChange?.(status);
   });
 
-  useEffect(() => {
-    if (imageStatus === "idle") return;
-    notifyStatusChange(imageStatus);
-  }, [imageStatus]);
-
-  const contextValue = useMemo(() => ({ imageStatus, setImageStatus }), [imageStatus]);
+  const contextValue = useMemo(
+    () => ({
+      imageStatus,
+      setImageStatus: (status: AvatarStatus) => {
+        setStatus(status);
+        if (status !== "idle") notifyStatusChange(status);
+      },
+    }),
+    [imageStatus],
+  );
 
   const label = alt ?? (typeof fallback === "string" ? fallback : undefined);
 

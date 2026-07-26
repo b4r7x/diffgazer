@@ -34,7 +34,7 @@ function dispatchListener(listener: EventListenerOrEventListenerObject, event: E
   listener.handleEvent(event);
 }
 
-function installMatchMedia(initial: MatchMediaValue) {
+export function stubMatchMedia(initial: MatchMediaValue) {
   let current = initial;
   const records = new Set<MatchMediaRecord>();
 
@@ -97,12 +97,4 @@ function installMatchMedia(initial: MatchMediaValue) {
       }
     },
   };
-}
-
-export function stubMatchMedia(matches: MatchMediaValue): void {
-  installMatchMedia(matches);
-}
-
-export function stubControllableMatchMedia(initial: MatchMediaValue) {
-  return installMatchMedia(initial);
 }

@@ -1,4 +1,5 @@
 import { formatFindingSummary, pipelineFindings } from "../demo";
+import { el, severityChip } from "../dom";
 import { type Cleanup, createEffectScope } from "../effect-scope";
 import { clamp, spinAt } from "../motion";
 import { type Flags, getFlags } from "../viewport";
@@ -65,24 +66,12 @@ export function initPipeline(
 
   findingsWrap.textContent = "";
   for (const finding of pipelineFindings) {
-    const row = document.createElement("div");
-    row.className = "rp-find";
-
-    const severity = document.createElement("span");
-    severity.className = `sev sev-${finding.severity}`;
-    severity.textContent = finding.severity;
-    row.append(severity);
-
-    const title = document.createElement("span");
-    title.className = "ft";
-    title.textContent = finding.title;
-    row.append(title);
-
-    const location = document.createElement("span");
-    location.className = "fl";
-    location.textContent = finding.location;
-    row.append(location);
-
+    const row = el("div", "rp-find");
+    row.append(
+      severityChip(finding),
+      el("span", "ft", finding.title),
+      el("span", "fl", finding.location),
+    );
     findingsWrap.append(row);
   }
   const finds = [...findingsWrap.querySelectorAll<HTMLElement>(".rp-find")];

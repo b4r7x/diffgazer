@@ -1,13 +1,11 @@
 /** @vitest-environment jsdom */
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { BoundApi } from "../api/bound.js";
-import { ApiProvider } from "../api/hooks/context.js";
-import type { ReviewMetadata } from "../schemas/review/index.js";
+import type { ReviewMetadata, SavedReview } from "../schemas/review/index.js";
 import { makeReviewMetadata } from "../testing/factories.js";
+import { createTestQueryWrapper } from "../testing/query-wrapper.js";
 import { useHistoryScreenState } from "./use-history-screen-state.js";
 
 const FIRST_REVIEW = makeReviewMetadata({
@@ -31,24 +29,26 @@ const OLDER_REVIEW = makeReviewMetadata({
   durationMs: 4500,
 });
 
-function makeWrapper(reviews: ReviewMetadata[] = REVIEWS) {
-  const api = {
+const SAVED_REVIEW: SavedReview = {
+  metadata: FIRST_REVIEW,
+  result: { issues: [] },
+  gitContext: { branch: null, commit: null, fileCount: 0, additions: 0, deletions: 0 },
+};
+
+function makeWrapper(api: Partial<BoundApi>) {
+  return createTestQueryWrapper({ api }).Wrapper;
+}
+
+function makeListWrapper(reviews: ReviewMetadata[] = REVIEWS) {
+  return makeWrapper({
     getReviews: vi.fn(async () => ({ reviews })),
-    getReview: vi.fn(async () => ({ review: null })),
-  } as unknown as BoundApi;
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const wrapper = ({ children }: { children: ReactNode }) =>
-    createElement(
-      QueryClientProvider,
-      { client: queryClient },
-      createElement(ApiProvider, { value: api }, children),
-    );
-  return wrapper;
+    getReview: vi.fn(async () => ({ review: SAVED_REVIEW })),
+  });
 }
 
 describe("useHistoryScreenState", () => {
   it("runs the pipeline and resolves the first run as selected", async () => {
-    const { result } = renderHook(() => useHistoryScreenState(), { wrapper: makeWrapper() });
+    const { result } = renderHook(() => useHistoryScreenState(), { wrapper: makeListWrapper() });
 
     await waitFor(() => expect(result.current.hasReviews).toBe(true));
 
@@ -70,7 +70,7 @@ describe("useHistoryScreenState", () => {
       }),
     ];
     const { result } = renderHook(() => useHistoryScreenState(), {
-      wrapper: makeWrapper(reviews),
+      wrapper: makeListWrapper(reviews),
     });
     await waitFor(() => expect(result.current.mappedRuns).toHaveLength(2));
 
@@ -85,7 +85,7 @@ describe("useHistoryScreenState", () => {
   });
 
   it("clears the selected run when the search query changes", async () => {
-    const { result } = renderHook(() => useHistoryScreenState(), { wrapper: makeWrapper() });
+    const { result } = renderHook(() => useHistoryScreenState(), { wrapper: makeListWrapper() });
     await waitFor(() => expect(result.current.hasReviews).toBe(true));
 
     act(() => result.current.setSelectedRunId("run-b"));
@@ -100,7 +100,7 @@ describe("useHistoryScreenState", () => {
   });
 
   it("clears the selected run when the date filter changes", async () => {
-    const { result } = renderHook(() => useHistoryScreenState(), { wrapper: makeWrapper() });
+    const { result } = renderHook(() => useHistoryScreenState(), { wrapper: makeListWrapper() });
     await waitFor(() => expect(result.current.hasReviews).toBe(true));
 
     act(() => result.current.setSelectedRunId("run-b"));
@@ -114,19 +114,9 @@ describe("useHistoryScreenState", () => {
   });
 
   it("messages an empty run-noun empty state when no runs exist", async () => {
-    const api = {
-      getReviews: vi.fn(async () => ({ reviews: [] })),
-      getReview: vi.fn(async () => ({ review: null })),
-    } as unknown as BoundApi;
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const wrapper = ({ children }: { children: ReactNode }) =>
-      createElement(
-        QueryClientProvider,
-        { client: queryClient },
-        createElement(ApiProvider, { value: api }, children),
-      );
-
-    const { result } = renderHook(() => useHistoryScreenState(), { wrapper });
+    const { result } = renderHook(() => useHistoryScreenState(), {
+      wrapper: makeListWrapper([]),
+    });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.hasReviews).toBe(false);
@@ -141,17 +131,10 @@ describe("useHistoryScreenState", () => {
         ? { reviews: [SECOND_REVIEW, OLDER_REVIEW], nextCursor: null }
         : { reviews: REVIEWS, nextCursor },
     );
-    const api = {
+    const wrapper = makeWrapper({
       getReviews,
-      getReview: vi.fn(async () => ({ review: null })),
-    } as unknown as BoundApi;
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const wrapper = ({ children }: { children: ReactNode }) =>
-      createElement(
-        QueryClientProvider,
-        { client: queryClient },
-        createElement(ApiProvider, { value: api }, children),
-      );
+      getReview: vi.fn(async () => ({ review: SAVED_REVIEW })),
+    });
     const { result } = renderHook(() => useHistoryScreenState(), { wrapper });
     await waitFor(() => expect(result.current.hasMoreReviews).toBe(true));
 

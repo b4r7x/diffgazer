@@ -20,7 +20,7 @@ export function buildSettingsPayload(data: WizardData): SettingsPayload {
   };
 }
 
-export function buildCredentialRef(
+function buildCredentialRef(
   provider: AIProvider,
   inputMethod: InputMethod,
   apiKey: string,

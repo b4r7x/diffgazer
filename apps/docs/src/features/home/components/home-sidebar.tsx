@@ -6,9 +6,9 @@ import {
 } from "@diffgazer/ui/components/sidebar";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { Link, useLocation } from "@tanstack/react-router";
-import { chromeSidebarItemClassName } from "@/components/layout/sidebar";
 import { TreeSidebarShell } from "@/components/layout/tree-sidebar-shell";
 import { isPrimaryNavigationClick } from "@/components/shared/navigation-click";
+import { CHROME_SIDEBAR_ITEM_CLASS } from "@/components/shared/sidebar-item";
 import type { HomeLibrary } from "../data";
 
 export function HomeSidebar({
@@ -50,7 +50,7 @@ export function HomeSidebar({
                   <SidebarItem
                     key={section.splat}
                     active={isActive}
-                    className={chromeSidebarItemClassName}
+                    className={CHROME_SIDEBAR_ITEM_CLASS}
                     onClick={(event) => {
                       if (isPrimaryNavigationClick(event)) onNavigate?.();
                     }}

@@ -6,7 +6,7 @@ import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test } from "vitest";
 import { ModelSelectOverlay } from "./model-select-overlay";
 import { setTestTerminalDimensions } from "./model-select-overlay.terminal-mock";
-import { flushUntil, geminiName, Wrapper } from "./model-select-overlay.test-harness";
+import { flushUntil, geminiName, Wrapper } from "./model-select-overlay.test-support";
 
 function FooterProbe() {
   const { shortcuts, rightShortcuts } = useFooterData();

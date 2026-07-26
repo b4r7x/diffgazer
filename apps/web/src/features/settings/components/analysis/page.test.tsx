@@ -1,3 +1,4 @@
+import { SETTINGS_SCREEN_COPY } from "@diffgazer/core/schemas/config";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -65,6 +66,15 @@ describe("SettingsAnalysisPage keyboard behavior", () => {
       isLoading: false,
     };
     mockIsSaving.current = false;
+  });
+
+  it("heads the page with the shared settings copy", () => {
+    renderPage();
+
+    expect(
+      screen.getByRole("heading", { name: SETTINGS_SCREEN_COPY.analysis.title }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(SETTINGS_SCREEN_COPY.analysis.subtitle)).toBeInTheDocument();
   });
 
   it("does not move footer focus onto a disabled save action", async () => {

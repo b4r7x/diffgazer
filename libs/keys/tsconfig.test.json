@@ -17,7 +17,8 @@
     "src/**/*.test.tsx",
     "registry/**/*.ts",
     "registry/**/*.tsx",
-    "scripts/**/*.test.ts"
+    "scripts/**/*.test.ts",
+    "examples/playground/src/**/*.test.tsx"
   ],
   "exclude": ["node_modules", "dist"]
 }

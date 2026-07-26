@@ -1,4 +1,5 @@
 import { usePageFooter } from "@diffgazer/core/footer";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Button } from "@diffgazer/ui/components/button";
 import { type ErrorComponentProps, Outlet, useLocation, useRouter } from "@tanstack/react-router";
 import React from "react";
@@ -48,7 +49,9 @@ export class RouteErrorBoundary extends React.Component<
   }
 }
 
-const EMPTY_FOOTER_SHORTCUTS: [] = [];
+// Hoisted for a stable identity — an inline `[]` would give `usePageFooter` a
+// new array every render.
+const EMPTY_FOOTER_SHORTCUTS: Shortcut[] = [];
 
 function ClearPageFooter() {
   usePageFooter({
@@ -103,26 +106,6 @@ export function RouteRecoveryPage({
   return <RouteErrorFallback error={error} onRetry={handleRetry} clearFooter={clearFooter} />;
 }
 
-interface LocationAwareRouteErrorBoundaryProps {
-  children: React.ReactNode;
-  onReset: () => void;
-  onReload: () => void;
-}
-
-export function LocationAwareRouteErrorBoundary({
-  children,
-  onReset,
-  onReload,
-}: LocationAwareRouteErrorBoundaryProps) {
-  const routeIdentity = useLocation({ select: (location) => location.href });
-
-  return (
-    <RouteErrorBoundary key={routeIdentity} onReset={onReset} onReload={onReload} clearFooter>
-      {children}
-    </RouteErrorBoundary>
-  );
-}
-
 export function RouteOutletBoundary({
   onReset,
   onReload,
@@ -130,11 +113,15 @@ export function RouteOutletBoundary({
   onReset: () => void;
   onReload: () => void;
 }) {
+  // Keyed by location so navigating away from a broken route remounts the
+  // boundary and clears the caught error without a manual retry.
+  const routeIdentity = useLocation({ select: (location) => location.href });
+
   return (
-    <LocationAwareRouteErrorBoundary onReset={onReset} onReload={onReload}>
+    <RouteErrorBoundary key={routeIdentity} onReset={onReset} onReload={onReload} clearFooter>
       <div className="flex flex-1 flex-col min-h-0">
         <Outlet />
       </div>
-    </LocationAwareRouteErrorBoundary>
+    </RouteErrorBoundary>
   );
 }

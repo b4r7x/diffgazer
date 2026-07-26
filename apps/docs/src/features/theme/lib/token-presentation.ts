@@ -109,9 +109,5 @@ export function orderThemeDocsPrimitives(
     throw new Error(`Display order is missing primitives: ${missing.join(", ")}`);
   }
 
-  if (new Set(order).size !== order.length) {
-    throw new Error("Display order contains duplicate primitives.");
-  }
-
   return order.map((name) => getThemeDocsPrimitive(name));
 }

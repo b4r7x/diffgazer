@@ -1,17 +1,10 @@
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { describe, expect, it } from "vitest";
-import {
-  makeFileDiff,
-  makeIssue,
-  makeParsedDiff,
-} from "../../../../shared/lib/testing/factories.js";
+import { makeFileDiff, makeParsedDiff } from "../../testing/factories.js";
 import type { DiffHunk } from "../diff/types.js";
-import {
-  createIssueEvidenceResolver,
-  ensureIssueEvidence,
-  MAX_SYNTHESIZED_EVIDENCE_JSON_BYTES,
-} from "./evidence.js";
+import { createIssueEvidenceResolver, MAX_SYNTHESIZED_EVIDENCE_JSON_BYTES } from "./evidence.js";
 
-describe("ensureIssueEvidence", () => {
+describe("createIssueEvidenceResolver", () => {
   it("returns issue unchanged when evidence already exists", () => {
     const issue = makeIssue({
       evidence: [
@@ -20,7 +13,7 @@ describe("ensureIssueEvidence", () => {
     });
     const diff = makeParsedDiff([]);
 
-    const result = ensureIssueEvidence(issue, diff);
+    const result = createIssueEvidenceResolver(diff)(issue);
 
     expect(result).toBe(issue);
   });
@@ -33,7 +26,7 @@ describe("ensureIssueEvidence", () => {
       ],
     });
 
-    const result = ensureIssueEvidence(issue, makeParsedDiff([]));
+    const result = createIssueEvidenceResolver(makeParsedDiff([]))(issue);
 
     expect(result.evidence).toEqual([
       { type: "code", title: "Valid", sourceId: "source", excerpt: "code" },
@@ -45,7 +38,7 @@ describe("ensureIssueEvidence", () => {
       evidence: [{ type: "code", title: "   ", sourceId: "   ", excerpt: "   " }],
     });
 
-    const result = ensureIssueEvidence(issue, makeParsedDiff([]));
+    const result = createIssueEvidenceResolver(makeParsedDiff([]))(issue);
 
     expect(result.evidence).toHaveLength(1);
     expect(result.evidence[0]).toMatchObject({
@@ -66,8 +59,9 @@ describe("ensureIssueEvidence", () => {
     });
     const diff = makeParsedDiff([makeFileDiff({ filePath: "test.ts" })]);
 
-    const result = ensureIssueEvidence(issue, diff);
-    const nullLineResult = ensureIssueEvidence(nullLineIssue, diff);
+    const resolveEvidence = createIssueEvidenceResolver(diff);
+    const result = resolveEvidence(issue);
+    const nullLineResult = resolveEvidence(nullLineIssue);
 
     expect(result.evidence).toHaveLength(1);
     expect(result.evidence?.[0]?.type).toBe("code");
@@ -89,7 +83,7 @@ describe("ensureIssueEvidence", () => {
     const issue = makeIssue({ file: "test.ts", line_start: 3, line_end: 4, evidence: [] });
     const diff = makeParsedDiff([file]);
 
-    const result = ensureIssueEvidence(issue, diff);
+    const result = createIssueEvidenceResolver(diff)(issue);
 
     expect(result.evidence).toHaveLength(1);
     expect(result.evidence?.[0]?.type).toBe("code");

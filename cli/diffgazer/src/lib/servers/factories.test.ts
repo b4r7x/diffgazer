@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { config } from "../../config";
-import type { ServerController } from "./controller";
 import { createServerFactories } from "./factories";
 import type { ProcessServerConfig } from "./process/server";
+import type { ServerController } from "./types";
 
 const createProcessServerMock = vi.hoisted(() =>
   vi.fn((_config: ProcessServerConfig) => ({

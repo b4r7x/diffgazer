@@ -61,7 +61,7 @@ export function useProvidersActionButtons({
     }
   };
 
-  const actionRow = useActionRowNavigation<readonly unknown[]>({
+  const actionRow = useActionRowNavigation({
     enabled: !dialogOpen && inButtons,
     actionCount: BUTTON_COUNT,
     disabledActions,

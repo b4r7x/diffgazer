@@ -15,7 +15,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { FocusElement } from "@/types/focus-element";
+import type { ApiKeyFocusTarget } from "@/types/api-key-focus-target";
 
 type FocusZone = "radios" | "input" | "footer";
 
@@ -36,8 +36,8 @@ interface FooterButtonProps {
 }
 
 interface ApiKeyDialogKeyboardReturn {
-  focused: FocusElement;
-  setFocused: (element: FocusElement) => void;
+  focused: ApiKeyFocusTarget;
+  setFocused: (element: ApiKeyFocusTarget) => void;
   getMethodOptionProps: (method: InputMethod) => {
     ref: RefCallback<HTMLDivElement>;
   };
@@ -49,7 +49,7 @@ interface ApiKeyDialogKeyboardReturn {
   handleMethodCommit: (method: InputMethod) => void;
 }
 
-function getZoneForElement(element: FocusElement): FocusZone {
+function getZoneForElement(element: ApiKeyFocusTarget): FocusZone {
   if (element === "paste" || element === "env") return "radios";
   if (element === "input") return "input";
   return "footer";
@@ -64,8 +64,8 @@ function getEffectiveFocused({
   inFooter: boolean;
   footerIndex: number;
   canSubmit: boolean;
-  focused: FocusElement;
-}): FocusElement {
+  focused: ApiKeyFocusTarget;
+}): ApiKeyFocusTarget {
   if (inFooter) {
     if (focused === "confirm") return canSubmit ? "confirm" : "cancel";
     if (focused === "cancel") return "cancel";
@@ -86,7 +86,7 @@ export function useApiKeyDialogKeyboard({
   onClose,
 }: ApiKeyDialogKeyboardOptions): ApiKeyDialogKeyboardReturn {
   const methodOptionRefs = useRef(new Map<InputMethod, HTMLDivElement>());
-  const [focused, setFocusedInternal] = useState<FocusElement>("paste");
+  const [focused, setFocusedInternal] = useState<ApiKeyFocusTarget>("paste");
 
   useScope("api-key-dialog", { enabled: open });
 
@@ -96,7 +96,7 @@ export function useApiKeyDialogKeyboard({
     enabled: open,
   });
 
-  const setFocused = (element: FocusElement) => {
+  const setFocused = (element: ApiKeyFocusTarget) => {
     setFocusedInternal(element);
     setZone(getZoneForElement(element));
   };
@@ -106,7 +106,7 @@ export function useApiKeyDialogKeyboard({
     methodOptionRefs.current.get(nextMethod)?.focus();
   };
 
-  const footerActionRow = useActionRowNavigation<readonly unknown[]>({
+  const footerActionRow = useActionRowNavigation({
     enabled: open && isZone("footer"),
     actionCount: 2,
     disabledActions: [isSubmitting, !canSubmit],
@@ -135,6 +135,7 @@ export function useApiKeyDialogKeyboard({
       onFocus: () => {
         setZone("footer");
         setFocusedInternal(index === 0 ? "cancel" : "confirm");
+        actionProps.onFocus();
       },
     };
   };

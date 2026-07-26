@@ -13,9 +13,7 @@ const gitRouter = new Hono();
 gitRouter.use("*", requireRepoAccess);
 
 const resolveServiceOrResponse = async (c: Context) => {
-  const projectRoot = getProjectRoot(c);
-  const relativePath = c.req.query("path");
-  const result = await resolveGitService({ basePath: projectRoot, relativePath });
+  const result = await resolveGitService(getProjectRoot(c));
 
   if (!result.ok) {
     const status = result.error.code === ErrorCode.GIT_NOT_FOUND ? 500 : 400;

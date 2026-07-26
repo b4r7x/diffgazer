@@ -34,7 +34,10 @@ export interface MenuContextValue {
   variant: "default" | "detail";
   idPrefix: string;
   itemRole: "menuitem" | "menuitemradio";
-  /** Registers item with menu. */
+  /**
+   * `registrationId` is the mount identity (a useId), so two items sharing a `value` still
+   * register and unregister independently; `value` is what navigation and selection compare.
+   */
   registerItem: (
     registrationId: string,
     value: string,
@@ -61,10 +64,8 @@ export interface MenuContextValue {
   stackContainer: HTMLElement | null;
 }
 
-/** React context backing menu. */
 export const MenuContext = createContext<MenuContextValue | undefined>(undefined);
 
-/** Reads the menu context. */
 export function useMenuContext(): MenuContextValue {
   const context = useContext(MenuContext);
   if (context === undefined) {

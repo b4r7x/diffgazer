@@ -1,7 +1,7 @@
 import { createContext, type ReactNode, useContext } from "react";
 import { useExitHandler } from "../../hooks/use-exit-handler";
 import { type ServerControls, useServers } from "../../hooks/use-servers";
-import type { ServerController } from "../../lib/servers/controller";
+import type { ServerController } from "../../lib/servers/types";
 
 const ServerControlsContext = createContext<ServerControls | null>(null);
 

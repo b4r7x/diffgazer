@@ -8,8 +8,8 @@ import { Typography } from "@diffgazer/ui/components/typography";
 import { useLocation } from "@tanstack/react-router";
 import { CopyButton } from "@/components/copy-button";
 import { getConsumptionMetadata } from "@/lib/consumption-metadata";
-import { getDocsLibraryFromPathname, PRIMARY_DOCS_LIBRARY_ID } from "@/lib/library";
 import { useComponentData, useHookData } from "../doc-data-context";
+import { useCurrentLibrary } from "./use-current-library";
 
 type PathState = ConsumptionMetadata["paths"]["copy"];
 type Caption = { label: string; value?: string };
@@ -100,7 +100,7 @@ export function ConsumptionBlock() {
   const componentData = useComponentData();
   const hookData = useHookData();
   const pathname = useLocation({ select: (location) => location.pathname });
-  const library = getDocsLibraryFromPathname(pathname) ?? PRIMARY_DOCS_LIBRARY_ID;
+  const library = useCurrentLibrary();
 
   if (library !== "ui" && library !== "keys") return null;
 

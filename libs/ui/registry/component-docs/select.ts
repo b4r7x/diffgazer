@@ -110,7 +110,6 @@ export const selectDoc: ComponentDoc = {
     { name: "select-searchable", title: "Searchable (bottom)" },
     { name: "select-search-top", title: "Searchable (top)" },
     { name: "select-multiple", title: "Multiple" },
-    { name: "select-multiselect-simple", title: "Multiselect (list display)" },
     { name: "select-display-modes", title: "Display Modes" },
     { name: "select-avatar", title: "Avatar Picker (render children)" },
     { name: "select-tags", title: "Tags (Multiselect)" },

@@ -178,9 +178,8 @@ export function finalizeRemoval<TItem, TConfig>(
 export function deleteRemovalFiles<TItem, TConfig>(
   options: RunRemoveWorkflowOptions<TItem, TConfig>,
   config: TConfig,
-  cwd: string,
   files: Set<string>,
-): { removed: number; failures: string[]; causes: unknown[] } {
-  const allowedBaseDirs = options.resolveAllowedBaseDirs({ cwd, config });
-  return deleteFiles(cwd, files, allowedBaseDirs);
+): DeleteResult {
+  const { cwd } = options;
+  return deleteFiles(cwd, files, options.resolveAllowedBaseDirs({ cwd, config }));
 }

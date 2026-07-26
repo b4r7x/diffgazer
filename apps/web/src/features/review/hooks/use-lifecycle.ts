@@ -1,4 +1,3 @@
-import { isApiError } from "@diffgazer/core/api";
 import {
   useCreateReview,
   useReviewLifecycleBase,
@@ -6,6 +5,7 @@ import {
 } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import {
+  describeReviewStartError,
   extractOrchestratorStats,
   getAlternateReviewMode,
   sessionTerminationCopy,
@@ -217,8 +217,8 @@ export function useReviewLifecycle({
       },
       (error, token) => {
         if (!isCurrentTransition(token)) return;
-        const message = isApiError(error) ? error.message : "Could not create a review session.";
-        toast.error("Failed to Start Review", { message });
+        const { title, message } = describeReviewStartError(error);
+        toast.error(title, { message });
       },
     );
   };

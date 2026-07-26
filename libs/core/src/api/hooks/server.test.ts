@@ -1,37 +1,24 @@
 /** @vitest-environment jsdom */
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { ServerState } from "../../schemas/presentation/diagnostics.js";
+import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
-import { ApiProvider } from "./context.js";
 import { useServerStatus } from "./server.js";
 
-function makeWrapper(api: BoundApi) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const Wrapper = ({ children }: { children: ReactNode }) =>
-    createElement(
-      QueryClientProvider,
-      { client: queryClient },
-      createElement(ApiProvider, { value: api }, children),
-    );
-  return { Wrapper };
-}
-
 describe("useServerStatus", () => {
-  let request: ReturnType<typeof vi.fn>;
-  let api: BoundApi;
+  let request: Mock<BoundApi["request"]>;
+  let api: Partial<BoundApi>;
 
   beforeEach(() => {
-    request = vi.fn();
-    api = { request } as unknown as BoundApi;
+    request = vi.fn<BoundApi["request"]>();
+    api = { request };
   });
 
   it("reports 'error' when the first health poll fails with no cached data", async () => {
     request.mockRejectedValue(new Error("ECONNREFUSED"));
-    const { Wrapper } = makeWrapper(api);
+    const { Wrapper } = createTestQueryWrapper({ api });
 
     const { result } = renderHook(() => useServerStatus(), { wrapper: Wrapper });
 
@@ -41,9 +28,9 @@ describe("useServerStatus", () => {
   });
 
   it("keeps the gate connected across a failed retry and reports immediate recovery", async () => {
-    request.mockResolvedValueOnce(undefined);
+    request.mockResolvedValueOnce(new Response());
     const latestStates: ServerState[] = [];
-    const { Wrapper } = makeWrapper(api);
+    const { Wrapper } = createTestQueryWrapper({ api });
 
     const { result } = renderHook(
       () => {
@@ -70,7 +57,7 @@ describe("useServerStatus", () => {
     });
 
     latestStates.length = 0;
-    request.mockResolvedValueOnce(undefined);
+    request.mockResolvedValueOnce(new Response());
     await act(async () => {
       await result.current.retry();
     });

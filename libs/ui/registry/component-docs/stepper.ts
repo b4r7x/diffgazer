@@ -65,11 +65,6 @@ export const stepperDoc: ComponentDoc = {
   examples: [
     { name: "stepper-default", title: "Default" },
     { name: "stepper-variants", title: "Variants" },
-    { name: "stepper-variant-ascii", title: "Variant: ASCII" },
-    { name: "stepper-variant-numbered", title: "Variant: Numbered" },
-    { name: "stepper-variant-bullet", title: "Variant: Bullet" },
-    { name: "stepper-variant-tag", title: "Variant: Tag" },
-    { name: "stepper-variant-progress", title: "Variant: Progress" },
     { name: "stepper-state-matrix", title: "Six Canonical States" },
     { name: "stepper-auto-tone", title: "Auto Tone" },
     { name: "stepper-substeps", title: "With Substeps" },

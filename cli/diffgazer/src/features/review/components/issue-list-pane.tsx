@@ -12,8 +12,9 @@ import { SectionHeader } from "../../../components/ui/section-header";
 import { getListWindow } from "../../../lib/list-window";
 import { selectionHue } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
+import { getSeverityChipLayout } from "../lib/severity-chip-layout";
 import { IssuePreviewItem } from "./issue-preview-item";
-import { getSeverityChipLayout, SeverityFilterGroup } from "./severity-filter-group";
+import { SeverityFilterGroup } from "./severity-filter-group";
 
 export type IssueListSubZone = "filter" | "issues";
 

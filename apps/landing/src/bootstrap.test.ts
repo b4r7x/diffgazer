@@ -170,7 +170,12 @@ describe("bootstrap under reduced motion", () => {
     expect(selected()?.textContent).toContain(demoFindings.at(-1)?.title);
   });
 
-  it("has no structural accessibility violations", async () => {
+  // This is the only axe run in the repo that scans a whole page rather than a
+  // single component: ~0.4s on an idle machine, but `turbo run test` starts every
+  // workspace suite at once and each spawns a CPU-sized worker pool, so the scan
+  // can stretch past the 10s global timeout. The budget is sized for that
+  // contention; it still fails fast if the scan genuinely hangs.
+  it("has no structural accessibility violations", { timeout: 30_000 }, async () => {
     expect(await runAxe(document.body)).toHaveNoViolations();
   });
 });

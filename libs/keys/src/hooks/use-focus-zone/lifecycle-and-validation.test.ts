@@ -19,6 +19,48 @@ describe("useFocusZone", () => {
       expect(result.current.zone).toBe("a");
     });
 
+    it("reports the fallback zone to transitions when the controlled zone is not in zones", () => {
+      const transitions = vi.fn(() => null);
+      renderHook(
+        () =>
+          useFocusZone({
+            initial: "main",
+            zones: ["main", "sidebar"],
+            zone: "ghost" as "main",
+            transitions,
+          }),
+        { wrapper },
+      );
+
+      act(() => fireKey("ArrowRight"));
+      expect(transitions).toHaveBeenCalledWith({ zone: "main", key: "ArrowRight" });
+    });
+
+    it("does not fire lifecycle callbacks when setZone repeats the reported fallback zone", () => {
+      const onZoneChange = vi.fn();
+      const onLeaveZone = vi.fn();
+      const onEnterZone = vi.fn();
+      const { result } = renderHook(
+        () =>
+          useFocusZone({
+            initial: "main",
+            zones: ["main", "sidebar"],
+            zone: "ghost" as "main",
+            onZoneChange,
+            onLeaveZone,
+            onEnterZone,
+          }),
+        { wrapper },
+      );
+
+      expect(result.current.zone).toBe("main");
+      act(() => result.current.setZone("main"));
+
+      expect(onLeaveZone).not.toHaveBeenCalled();
+      expect(onEnterZone).not.toHaveBeenCalled();
+      expect(onZoneChange).not.toHaveBeenCalled();
+    });
+
     it("does not prevent native Tab when tabCycle cannot move zones", () => {
       const { result } = renderHook(
         () =>

@@ -10,7 +10,7 @@ import {
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LocationAwareRouteErrorBoundary, RouteErrorBoundary } from "./route-error-boundary";
+import { RouteErrorBoundary, RouteOutletBoundary } from "./route-error-boundary";
 
 const PAGE_SHORTCUTS = [{ key: "Enter", label: "Run action" }];
 const PAGE_RIGHT_SHORTCUTS = [{ key: "Esc", label: "Back" }];
@@ -106,21 +106,19 @@ describe("RouteErrorBoundary recovery", () => {
     const rootRoute = createRootRoute({
       component: () => (
         <FooterProvider initialShortcuts={[]}>
-          <LocationAwareRouteErrorBoundary onReset={vi.fn()} onReload={vi.fn()}>
-            <RouterDrivenContent />
-          </LocationAwareRouteErrorBoundary>
+          <RouteOutletBoundary onReset={vi.fn()} onReload={vi.fn()} />
         </FooterProvider>
       ),
     });
     const throwingRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: "/history",
-      component: () => null,
+      component: RouterDrivenContent,
     });
     const healthyRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: "/help",
-      component: () => <div>healthy route content</div>,
+      component: RouterDrivenContent,
     });
     const testRouter = createRouter({
       routeTree: rootRoute.addChildren([throwingRoute, healthyRoute]),

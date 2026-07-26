@@ -8,7 +8,6 @@ export type PortalContainerValue = Element | typeof PENDING_PORTAL_CONTAINER;
 
 const PortalContainerContext = createContext<PortalContainerValue | undefined>(undefined);
 
-/** Provides portal container behavior. */
 export function usePortalContainer() {
   return useContext(PortalContainerContext);
 }

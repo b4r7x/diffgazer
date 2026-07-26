@@ -1,4 +1,5 @@
 import { type DemoFinding, demoFindings, formatFindingSummary } from "../demo";
+import { el, severityChip } from "../dom";
 import { type Cleanup, createEffectScope } from "../effect-scope";
 import { sleep } from "../motion";
 import { observeOnce } from "../observe";
@@ -18,20 +19,11 @@ function createRow(finding: DemoFinding, index: number): HTMLButtonElement {
   row.dataset.hover = "";
   row.dataset.hoverProxy = ".sev";
 
-  const severity = document.createElement("span");
-  severity.className = `sev sev-${finding.severity}`;
-  severity.textContent = finding.severity;
-  row.append(severity);
-
-  const title = document.createElement("span");
-  title.className = "title";
-  title.textContent = finding.title;
-  row.append(title);
-
-  const location = document.createElement("span");
-  location.className = "loc";
-  location.textContent = finding.location;
-  row.append(location);
+  row.append(
+    severityChip(finding),
+    el("span", "title", finding.title),
+    el("span", "loc", finding.location),
+  );
 
   return row;
 }
@@ -67,40 +59,19 @@ export function initFindings(
     const d = demoFindings[index];
     if (!d || !detail) return;
 
-    const title = document.createElement("div");
-    title.className = "fd-title";
-    title.textContent = d.title;
+    const meta = el("div", "fd-meta");
+    meta.append(severityChip(d), el("span", "fd-tag", d.tag));
 
-    const meta = document.createElement("div");
-    meta.className = "fd-meta";
-    const severity = document.createElement("span");
-    severity.className = `sev sev-${d.severity}`;
-    severity.textContent = d.severity;
-    const tag = document.createElement("span");
-    tag.className = "fd-tag";
-    tag.textContent = d.tag;
-    meta.append(severity, tag);
-
-    const body = document.createElement("p");
-    body.className = "fd-body";
-    body.textContent = d.body;
-
-    const fix = document.createElement("div");
-    fix.className = "fd-fix";
-    const fixLabel = document.createElement("div");
-    fixLabel.className = "fix-label";
-    fixLabel.textContent = "suggested fix";
     const pre = document.createElement("pre");
     d.fix.forEach(([kind, line], i) => {
       if (i > 0) pre.append("\n");
-      const span = document.createElement("span");
-      span.className = kind;
-      span.textContent = line;
-      pre.append(span);
+      pre.append(el("span", kind, line));
     });
-    fix.append(fixLabel, pre);
 
-    detail.replaceChildren(title, meta, body, fix);
+    const fix = el("div", "fd-fix");
+    fix.append(el("div", "fix-label", "suggested fix"), pre);
+
+    detail.replaceChildren(el("div", "fd-title", d.title), meta, el("p", "fd-body", d.body), fix);
     detail.setAttribute("aria-labelledby", `finding-tab-${index}`);
   }
 

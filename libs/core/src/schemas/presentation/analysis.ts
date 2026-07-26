@@ -1,20 +1,17 @@
-import { z } from "zod";
-import { ReviewSeveritySchema } from "../review/issues.js";
+import type { ReviewSeverity } from "../review/enums.js";
 
-const AnalysisStatsSchema = z.object({
-  runId: z.string().nullable(),
-  totalIssues: z.number(),
-  filesWithIssues: z.number(),
-  blockerCount: z.number(),
-});
-export type AnalysisStats = z.infer<typeof AnalysisStatsSchema>;
+export interface AnalysisStats {
+  runId: string | null;
+  totalIssues: number;
+  filesWithIssues: number;
+  blockerCount: number;
+}
 
-const IssuePreviewSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  file: z.string(),
-  line: z.number().nullable().optional(),
-  category: z.string(),
-  severity: ReviewSeveritySchema,
-});
-export type IssuePreview = z.infer<typeof IssuePreviewSchema>;
+export interface IssuePreview {
+  id: string;
+  title: string;
+  file: string;
+  line?: number | null;
+  category: string;
+  severity: ReviewSeverity;
+}

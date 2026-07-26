@@ -1,8 +1,8 @@
 import { usePageFooter } from "@diffgazer/core/footer";
+import { formatRunId } from "@diffgazer/core/format";
 import {
   buildDuplicateCollapseNotice,
   filterIssuesBySeverity,
-  formatRunId,
   selectDetailsEmptyKind,
   useIssueDetailsState,
 } from "@diffgazer/core/review";

@@ -1,4 +1,6 @@
-// Non-CSP response headers, applied to every docs route via Nitro routeRules.
+// Non-CSP response headers, applied twice: as a Nitro routeRule for every docs
+// route (vite.config.ts) and again per response in server.ts, which is the path
+// the SSR handler's own responses take.
 // The Content-Security-Policy is emitted per request from server.ts so each
 // response can carry the request's CSP nonce (no 'unsafe-inline'); see
 // buildDocsContentSecurityPolicy.
@@ -12,7 +14,9 @@ export const DOCS_BASE_SECURITY_HEADERS = {
   // HTML carries ETag + Last-Modified but must revalidate: container-replacing
   // deploys drop the content-hashed /assets chunks that stale HTML still names,
   // so without this browsers serve heuristically-fresh HTML that 404s on load.
-  // The more specific /assets/** immutable rule still wins for hashed assets.
+  // Content-hashed /assets never reach this rule: Nitro's own build-asset
+  // handler answers them with max-age=31536000, immutable (pinned by
+  // testing/e2e/security.e2e.ts).
   "Cache-Control": "public, max-age=0, must-revalidate",
 } satisfies Record<string, string>;
 

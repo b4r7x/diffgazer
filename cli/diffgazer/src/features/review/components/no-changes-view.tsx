@@ -1,6 +1,6 @@
 import { getNoChangesCopy } from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
-import { ReviewGateView } from "./api-key-missing-view";
+import { ReviewGateView } from "./review-gate-view";
 
 export interface NoChangesViewProps {
   mode: ReviewMode;

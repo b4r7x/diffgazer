@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { ctx } from "../context.js";
 import { addCommand } from "./add/command.js";
 import { diffCommand } from "./diff.js";
-import { removeCommand } from "./remove.js";
+import { removeCommand } from "./remove/command.js";
 
 let root: string;
 

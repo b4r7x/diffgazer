@@ -6,7 +6,7 @@ import {
   type ExtraOption,
   resolveCwd,
   type SharedCommandOptions,
-} from "./shared.js";
+} from "./command-options.js";
 
 export interface AddCommandConfig<TConfig> {
   itemLabel: string;

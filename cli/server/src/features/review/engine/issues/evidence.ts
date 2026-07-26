@@ -1,15 +1,10 @@
 import type { EvidenceRef, ReviewIssue } from "@diffgazer/core/schemas/review";
-import { MAX_REVIEW_ISSUES } from "@diffgazer/core/schemas/review";
 import type { DiffHunk, ParsedDiff } from "../diff/types.js";
 import { isCompleteEvidenceReference, normalizeIssueLineFields } from "./normalization.js";
 
 export const MAX_SYNTHESIZED_EVIDENCE_LINES = 5;
 /** Maximum UTF-8 bytes occupied by `JSON.stringify(excerpt)`. */
 export const MAX_SYNTHESIZED_EVIDENCE_JSON_BYTES = 4 * 1024;
-/** Maximum synthesized-excerpt contribution across the closed-lens final result. */
-export const MAX_SYNTHESIZED_EVIDENCE_JSON_BYTES_PER_REVIEW =
-  MAX_REVIEW_ISSUES * MAX_SYNTHESIZED_EVIDENCE_JSON_BYTES;
-
 const SYNTHESIZED_EVIDENCE_TRUNCATION_MARKER = " ... [evidence truncated]";
 const SYNTHESIZED_EVIDENCE_GAP_MARKER = "... [evidence gap] ...";
 const JSON_STRING_DELIMITER_BYTES = 2;
@@ -251,8 +246,4 @@ export function createIssueEvidenceResolver(diff: ParsedDiff): (issue: ReviewIss
         extractedEvidence.length > 0 ? extractedEvidence : fallbackIssueEvidence(normalizedIssue),
     };
   };
-}
-
-export function ensureIssueEvidence(issue: ReviewIssue, diff: ParsedDiff): ReviewIssue {
-  return createIssueEvidenceResolver(diff)(issue);
 }

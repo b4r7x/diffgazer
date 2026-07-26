@@ -8,7 +8,6 @@ import {
   type Ref,
   useCallback,
   useId,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -26,7 +25,6 @@ import {
 import { useSelectableGroupAutoFocus } from "@/lib/selectable-group";
 import { type SelectableVariant, selectableGroupLabelVariants } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
-import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import type { CheckboxSize } from "./checkbox";
 import { CheckboxGroupContext } from "./checkbox-group-context";
 
@@ -48,8 +46,7 @@ type CheckboxGroupRootProps = Omit<
 /**
  * @typeParam T - Convenience assertion for the value union surfaced through
  * `value`/`onChange`. Values originate from the rendered items' `data-value`
- * strings and are asserted to `T`, not validated; in development an unregistered
- * value warns (see `warnUnregisteredValue`).
+ * strings and are asserted to `T`, not validated.
  */
 export type CheckboxGroupProps<T extends string = string> = CheckboxGroupRootProps & {
   /** Controlled selected item values. */
@@ -139,13 +136,6 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
   const fieldsetDisabled = useFieldsetDisabled(containerRef);
   const isDisabled = disabled || fieldsetDisabled;
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
-  // Read through a ref so the dev-mode unregistered-value guard does not pull
-  // `items` into the stable `toggle` callback's deps.
-  const itemsRef = useRef(items);
-
-  useLayoutEffect(() => {
-    itemsRef.current = items;
-  }, [items]);
 
   const [value, setValue, , resetValue] = useControllableState<T[]>({
     value: "value" in props ? (controlledValue ?? []) : undefined,
@@ -231,11 +221,6 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
   const toggle = useCallback(
     (itemValue: string) => {
       if (isDisabled) return;
-      warnUnregisteredValue(
-        "CheckboxGroup",
-        itemValue,
-        itemsRef.current.map((item) => item.value),
-      );
       invalidatePendingReset();
       setNativeInvalid(false);
       setValue((cur) => {
@@ -256,6 +241,7 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     }
 
     onKeyDown?.(event);
+    // Space belongs to the item toggle, never to group navigation.
     if (!event.defaultPrevented && event.key !== " ") navKeyDown(event);
   };
 

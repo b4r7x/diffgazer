@@ -116,7 +116,7 @@ function tryReadPaths(
   seen.add(resolvedConfigPath);
 
   try {
-    const config = readTsConfig(configPath);
+    const config = readJsonc(configPath);
     const effective = resolveEffectiveOptions(configPath, new Set());
     if (effective?.paths) {
       const basePath = effective.baseUrl ?? effective.pathsBasePath ?? dirname(configPath);
@@ -147,7 +147,7 @@ function resolveEffectiveOptions(
   stack.add(resolvedConfigPath);
 
   try {
-    const config = readTsConfig(resolvedConfigPath);
+    const config = readJsonc(resolvedConfigPath);
     const extended = resolveExtendsPath(config.extends, resolvedConfigPath);
     const inherited = extended ? resolveEffectiveOptions(extended, stack) : null;
     const compilerOptions = isRecord(config.compilerOptions) ? config.compilerOptions : {};
@@ -166,10 +166,10 @@ function resolveEffectiveOptions(
   }
 }
 
-function readTsConfig(configPath: string): Record<string, unknown> {
-  const withoutComments = stripJsonComments(readFileSync(configPath, "utf-8"));
+function readJsonc(path: string): Record<string, unknown> {
+  const withoutComments = stripJsonComments(readFileSync(path, "utf-8"));
   const parsed: unknown = JSON.parse(stripJsonTrailingCommas(withoutComments));
-  if (!isRecord(parsed)) throw new Error(`Invalid TypeScript config: ${configPath}`);
+  if (!isRecord(parsed)) throw new Error(`Expected a JSON object in ${path}`);
   return parsed;
 }
 
@@ -231,7 +231,7 @@ function resolvePackageConfig(value: string, configDir: string): string | null {
     if (existsSync(packageDir)) {
       const packageJsonPath = resolve(packageDir, "package.json");
       try {
-        const packageJson = readTsConfig(packageJsonPath);
+        const packageJson = readJsonc(packageJsonPath);
         if (packageJson.exports !== undefined) return null;
         if (packageSpecifier.subpath) {
           return resolvePackageConfigFile(resolve(packageDir, packageSpecifier.subpath));

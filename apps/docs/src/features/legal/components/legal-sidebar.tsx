@@ -5,9 +5,9 @@ import {
   SidebarSectionTitle,
 } from "@diffgazer/ui/components/sidebar";
 import { Link, useLocation } from "@tanstack/react-router";
-import { chromeSidebarItemClassName } from "@/components/layout/sidebar";
 import { TreeSidebarShell } from "@/components/layout/tree-sidebar-shell";
 import { isPrimaryNavigationClick } from "@/components/shared/navigation-click";
+import { CHROME_SIDEBAR_ITEM_CLASS } from "@/components/shared/sidebar-item";
 import { LEGAL_LINKS } from "../lib/pages";
 
 const NAV_LINKS = [{ slug: "home", label: "Home", to: "/" }, ...LEGAL_LINKS] as const;
@@ -26,7 +26,7 @@ export function LegalSidebar({ onNavigate }: { onNavigate?: () => void }) {
             <SidebarItem
               key={link.slug}
               active={pathname === link.to}
-              className={chromeSidebarItemClassName}
+              className={CHROME_SIDEBAR_ITEM_CLASS}
               onClick={(event) => {
                 if (isPrimaryNavigationClick(event)) onNavigate?.();
               }}

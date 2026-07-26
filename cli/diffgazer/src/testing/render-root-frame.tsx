@@ -1,47 +1,10 @@
-import { PassThrough, Writable } from "node:stream";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { render } from "ink";
 import type { ReactNode } from "react";
 import { NavigationProvider } from "../app/providers/navigation";
 import { GlobalLayout } from "../components/layout/global";
 import { CliThemeProvider } from "../theme/provider";
-
-class TestOutput extends Writable {
-  readonly frames: string[] = [];
-  readonly isTTY = true;
-
-  constructor(
-    readonly columns: number,
-    readonly rows: number,
-  ) {
-    super();
-  }
-
-  override _write(
-    chunk: string | Buffer,
-    _encoding: BufferEncoding,
-    callback: (error?: Error | null) => void,
-  ): void {
-    this.frames.push(chunk.toString());
-    callback();
-  }
-}
-
-class TestInput extends PassThrough {
-  readonly isTTY = true;
-
-  setRawMode(): this {
-    return this;
-  }
-
-  ref(): this {
-    return this;
-  }
-
-  unref(): this {
-    return this;
-  }
-}
+import { TestInput, TestOutput } from "./ink-streams";
 
 export interface RootFrameView {
   frames: string[];

@@ -59,23 +59,9 @@ export const writeJsonFileSync = (
   data: unknown,
   mode: number = DEFAULT_FILE_MODE,
 ): void => {
-  const dir = path.dirname(filePath);
-  ensureDirSync(dir, DEFAULT_DIR_MODE);
+  ensureDirSync(path.dirname(filePath), DEFAULT_DIR_MODE);
 
-  const tempPath = `${filePath}.${randomUUID()}.tmp`;
-  const content = `${JSON.stringify(data, null, 2)}\n`;
-
-  try {
-    fs.writeFileSync(tempPath, content, { mode });
-    fs.renameSync(tempPath, filePath);
-  } catch (error) {
-    // Best-effort temp-file cleanup; the original error is what callers need, and
-    // a leftover .tmp on an unlink failure is harmless (it is uniquely named).
-    try {
-      fs.unlinkSync(tempPath);
-    } catch {}
-    throw error;
-  }
+  atomicWriteFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, mode);
 };
 
 /** Creates a JSON file without replacing an existing winner. */
@@ -94,6 +80,8 @@ export const writeJsonFileSyncExclusive = (
     fs.writeFileSync(tempPath, content, { mode, flag: "wx" });
     fs.linkSync(tempPath, filePath);
   } finally {
+    // The hard link is the durable result, so the temp name is always dropped; a
+    // leftover .tmp on an unlink failure is harmless (it is uniquely named).
     try {
       fs.unlinkSync(tempPath);
     } catch {}
@@ -119,6 +107,21 @@ export async function writeJsonFile(
   await fs.promises.mkdir(dir, { recursive: true, mode: DEFAULT_DIR_MODE });
 
   await atomicWriteFile(filePath, `${JSON.stringify(data, null, 2)}\n`, mode);
+}
+
+function atomicWriteFileSync(filePath: string, content: string, mode: number): void {
+  const tempPath = `${filePath}.${randomUUID()}.tmp`;
+  try {
+    fs.writeFileSync(tempPath, content, { mode });
+    fs.renameSync(tempPath, filePath);
+  } catch (error) {
+    // Best-effort temp-file cleanup; the original error is what callers need, and
+    // a leftover .tmp on an unlink failure is harmless (it is uniquely named).
+    try {
+      fs.unlinkSync(tempPath);
+    } catch {}
+    throw error;
+  }
 }
 
 export async function atomicWriteFile(

@@ -1,4 +1,4 @@
-import type { ExampleRef } from "@/types/data";
+import type { ExampleRef } from "@diffgazer/registry";
 
 /** Title for an example that carries no authored one, derived from its id. */
 export function exampleTitle(name: string): string {

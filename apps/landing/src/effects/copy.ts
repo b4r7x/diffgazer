@@ -33,12 +33,10 @@ export function initCopyButtons(
           label.textContent = "failed";
         }
         if (!scope.active() || currentOperation !== operation) return;
-        const timer = setTimeout(() => {
-          if (revertTimer !== timer || currentOperation !== operation || !scope.active()) return;
+        revertTimer = setTimeout(() => {
           revertTimer = undefined;
           label.textContent = "copy";
         }, revertMs);
-        revertTimer = timer;
       },
       { signal: scope.signal },
     );

@@ -2,8 +2,6 @@ import { getErrorMessage } from "@diffgazer/core/errors";
 import { classifyError, type ErrorRule } from "../errors.js";
 import type { GitDiffErrorCode } from "./types.js";
 
-export type { GitDiffErrorCode } from "./types.js";
-
 const GIT_ERROR_RULES: ErrorRule<GitDiffErrorCode>[] = [
   {
     patterns: [
@@ -39,7 +37,12 @@ const GIT_ERROR_RULES: ErrorRule<GitDiffErrorCode>[] = [
   },
 ];
 
-export function createGitDiffError(error: unknown): Error {
+export interface GitDiffError {
+  code: GitDiffErrorCode;
+  message: string;
+}
+
+export function createGitDiffError(error: unknown): GitDiffError {
   const originalMessage = getErrorMessage(error);
   const classified = classifyError(error, GIT_ERROR_RULES, {
     code: "UNKNOWN",
@@ -47,7 +50,7 @@ export function createGitDiffError(error: unknown): Error {
   });
 
   if (classified.code === "UNKNOWN") {
-    return new Error(classified.message);
+    return classified;
   }
-  return new Error(`${classified.message} (Original: ${originalMessage})`);
+  return { code: classified.code, message: `${classified.message} (Original: ${originalMessage})` };
 }

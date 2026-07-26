@@ -1,3 +1,4 @@
+import { getCatalogFallbackNotice } from "@diffgazer/core/catalog";
 import { useModelSource } from "@diffgazer/core/providers";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
@@ -7,14 +8,10 @@ import { Badge } from "../../../../components/ui/badge";
 import { RadioGroup } from "../../../../components/ui/radio";
 import { Spinner } from "../../../../components/ui/spinner";
 import { useTerminalDimensions } from "../../../../hooks/use-terminal-dimensions";
-import { terminalCellWidth } from "../../../../lib/terminal-width";
+import { wrappedRowCount } from "../../../../lib/terminal-width";
 import { useTheme } from "../../../../theme/provider";
 
 const MODEL_STEP_RESERVED_ROWS = 12;
-
-function getWrappedRowCount(text: string, width: number): number {
-  return Math.max(Math.ceil(terminalCellWidth(text) / Math.max(width, 1)), 1);
-}
 
 interface ModelStepProps {
   value?: string;
@@ -64,12 +61,7 @@ export function ModelStep({
   } = useModelSource(true, provider);
 
   const subtitle = isOpenRouter ? "Select a model from OpenRouter." : getSubtitle(provider);
-  let fallbackNotice: string | null = null;
-  if (source === "cache") {
-    fallbackNotice = `Using cached catalog data from ${fetchedAt ?? "an unknown time"}.`;
-  } else if (source === "snapshot") {
-    fallbackNotice = "Using the bundled model catalog because live catalog data is unavailable.";
-  }
+  const fallbackNotice = getCatalogFallbackNotice(source, fetchedAt);
 
   useInput(
     (input) => {
@@ -115,7 +107,7 @@ export function ModelStep({
 
   const fallbackMessage = fallbackNotice ? `${fallbackNotice} Press r to retry.` : null;
   const fallbackRows = fallbackMessage
-    ? getWrappedRowCount(fallbackMessage, Math.max(columns - 4, 1))
+    ? wrappedRowCount(fallbackMessage, Math.max(columns - 4, 1))
     : 0;
 
   return (

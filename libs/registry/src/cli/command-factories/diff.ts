@@ -1,34 +1,18 @@
 import { Command } from "commander";
 import { withErrorHandler } from "../with-error-handler.js";
-import { type DiffWorkflowFile, renderDiffPatch, runDiffWorkflow } from "../workflows/diff.js";
-import { resolveCwd, type SharedCommandOptions } from "./shared.js";
+import { type RunDiffWorkflowOptions, runDiffWorkflow } from "../workflows/diff.js";
+import { resolveCwd, type SharedCommandOptions } from "./command-options.js";
 
-export interface DiffCommandConfig<TConfig> {
-  itemPlural: string;
-  requireConfig: (cwd: string) => TConfig;
-  resolveDefaultNames: (ctx: { cwd: string; config: TConfig }) => string[];
-  validateRequestedNames: (names: string[]) => void;
-  resolveFilesForName: (ctx: { name: string; cwd: string; config: TConfig }) => DiffWorkflowFile[];
-  noInstalledMessage: string;
-  upToDateMessage: string;
-}
+// itemPlural names the command surface (description, argument), not the diff
+// summary, which counts files.
+export type DiffCommandConfig<TConfig> = Omit<
+  RunDiffWorkflowOptions<TConfig>,
+  "cwd" | "requestedNames"
+> & { itemPlural: string };
 
 function buildDiffAction<TConfig>(config: DiffCommandConfig<TConfig>) {
   return withErrorHandler(async (names: string[], opts: SharedCommandOptions) => {
-    const cwd = resolveCwd(opts);
-
-    runDiffWorkflow({
-      cwd,
-      requestedNames: names,
-      itemPlural: config.itemPlural,
-      requireConfig: config.requireConfig,
-      resolveDefaultNames: config.resolveDefaultNames,
-      validateRequestedNames: config.validateRequestedNames,
-      resolveFilesForName: config.resolveFilesForName,
-      noInstalledMessage: config.noInstalledMessage,
-      upToDateMessage: config.upToDateMessage,
-      renderChangedFile: renderDiffPatch,
-    });
+    runDiffWorkflow({ ...config, cwd: resolveCwd(opts), requestedNames: names });
   });
 }
 

@@ -1,4 +1,3 @@
-import { stripRelativeJsExtensions } from "@diffgazer/registry";
 import type { ResolvedConfig } from "../context.js";
 import { SOURCE_ALIASES } from "../context.js";
 
@@ -195,8 +194,4 @@ export function handleRscDirective(content: string, isClient: boolean, rsc: bool
   const hasDirective = directive.test(content);
   if (hasDirective) return content;
   return rsc && isClient ? `"use client";\n\n${content}` : content;
-}
-
-export function rewriteRelativeJsExtensionsForCopy(content: string): string {
-  return stripRelativeJsExtensions(content);
 }

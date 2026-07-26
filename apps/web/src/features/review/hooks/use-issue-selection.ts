@@ -37,7 +37,6 @@ export function useIssueSelection({
     selectedIssue,
     selectedIssueId: effectiveSelectedId,
     setSelectedIssueId,
-    highlightedIssueId: effectiveSelectedId,
     listRef,
   };
 }

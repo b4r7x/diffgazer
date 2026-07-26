@@ -9,7 +9,6 @@ import { vi } from "vitest";
 type ReviewLifecycleBase = UseReviewLifecycleBaseResult;
 
 export interface ReviewLifecycleBaseOverrides {
-  abort?: () => void;
   agents?: AgentState[];
   cancel?: ReviewLifecycleBase["stream"]["cancel"];
   completedAt?: Date | null;
@@ -26,6 +25,7 @@ export interface ReviewLifecycleBaseOverrides {
   isStreaming?: boolean;
   isTerminalStreamError?: boolean;
   issues?: ReviewIssue[];
+  reset?: () => void;
   reviewId?: string | null;
   resume?: ReviewLifecycleBase["stream"]["resume"];
   startedAt?: Date | null;
@@ -55,8 +55,7 @@ export function makeReviewLifecycleBase(
 
   return {
     stream: {
-      stop: vi.fn(),
-      abort: overrides.abort ?? vi.fn(),
+      abort: vi.fn(),
       cancel: overrides.cancel ?? vi.fn(async () => null),
       resume: overrides.resume ?? vi.fn(async () => ok(undefined)),
       state: {
@@ -97,11 +96,9 @@ export function makeReviewLifecycleBase(
     start: {
       hasStarted: overrides.hasStarted ?? true,
       hasStreamed: overrides.hasStreamed ?? true,
-      setHasStarted: vi.fn(),
-      setHasStreamed: vi.fn(),
     },
+    reset: overrides.reset ?? vi.fn(),
     gate: resolveGate({ gate: overrides.gate, isNoDiffError, isTerminalStreamError }),
-    contextReady: false,
     contextSnapshot: null,
   };
 }

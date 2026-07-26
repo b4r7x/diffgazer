@@ -82,6 +82,11 @@ function isDialogScope(scope: string | null): boolean {
   return scope === "dialog" || scope?.endsWith("-dialog") === true;
 }
 
+/**
+ * Not every dialog registers a keys scope (the model-select dialog does not), so
+ * the open `<dialog>` in the DOM is the second, authoritative check alongside
+ * `isDialogScope`.
+ */
 function hasOpenDialog(): boolean {
   return document.querySelector("dialog[open]") !== null;
 }

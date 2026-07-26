@@ -43,6 +43,7 @@ export {
   type ProgressSubstepData,
   type ReviewMetricId,
   type ReviewMetricRow,
+  type ReviewMetricTone,
   type ReviewProgressMetrics,
 } from "./progress.js";
 export {

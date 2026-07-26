@@ -2,8 +2,8 @@ import type { UseActionRowNavigationReturn } from "@diffgazer/keys";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { CardLayout } from "@/components/layout/card-layout";
-import { SettingsFormActions } from "./settings-form-actions";
-import { renderSettingsFormPending } from "./settings-form-pending";
+import { SettingsFormActions } from "./form-actions";
+import { renderSettingsFormPending } from "./form-pending";
 
 interface SettingsFormPageProps<T> {
   title: string;

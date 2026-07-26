@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { useId, useState } from "react";
 
-export interface StorageSelectorContentProps {
+interface StorageSelectorContentProps {
   value: SecretsStorage | null;
   onChange: (value: SecretsStorage) => void;
   onEnter?: (value: SecretsStorage) => void;

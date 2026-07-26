@@ -75,22 +75,13 @@ const DOT_STATUS: Record<ProviderDisplayStatus, StatusIndicatorStatus> = {
  * provider status because that is the truth the user needs first, and the dot
  * carries the same state so the row is never colour-only.
  */
-const SERVER_STATE_WORD: Record<HeaderServerState, string | null> = {
-  live: null,
-  retrying: "Reconnecting",
-  offline: "Offline",
-};
-
-const SERVER_DOT_STATUS: Record<HeaderServerState, StatusIndicatorStatus | null> = {
-  live: null,
-  retrying: "offline",
-  offline: "busy",
-};
-
-const SERVER_ARIA_WORD: Record<HeaderServerState, string> = {
-  live: "live",
-  retrying: "reconnecting",
-  offline: "offline",
+const SERVER_STATE: Record<
+  HeaderServerState,
+  { word: string | null; dot: StatusIndicatorStatus | null; aria: string }
+> = {
+  live: { word: null, dot: null, aria: "live" },
+  retrying: { word: "Reconnecting", dot: "offline", aria: "reconnecting" },
+  offline: { word: "Offline", dot: "busy", aria: "offline" },
 };
 
 export function Header({
@@ -101,12 +92,12 @@ export function Header({
   wordmark = "banner",
 }: HeaderProps) {
   const layout = LAYOUT[wordmark];
-  const serverWord = SERVER_STATE_WORD[serverState];
-  const statusWord = serverWord ?? providerStatus;
+  const server = SERVER_STATE[serverState];
+  const statusWord = server.word ?? providerStatus;
   // StatusIndicator ships three statuses and each carries its own shape, so a
   // dead transport takes the filled square and a retry takes the hollow dot -
   // the three states stay apart without relying on colour.
-  const dotStatus = SERVER_DOT_STATUS[serverState] ?? DOT_STATUS[providerStatus];
+  const dotStatus = server.dot ?? DOT_STATUS[providerStatus];
 
   return (
     <header className="@container shrink-0 p-4 pb-2">
@@ -138,7 +129,7 @@ export function Header({
           // An aria-label replaces the children for assistive tech, so the status
           // word has to be part of it; label={null} keeps StatusIndicator from
           // adding a second visible copy.
-          aria-label={`Provider: ${providerName}, ${providerStatus}; server ${SERVER_ARIA_WORD[serverState]}`}
+          aria-label={`Provider: ${providerName}, ${providerStatus}; server ${server.aria}`}
           className={cn(
             "min-w-0 justify-self-end gap-1.5 text-foreground normal-case tracking-normal",
             layout.status,

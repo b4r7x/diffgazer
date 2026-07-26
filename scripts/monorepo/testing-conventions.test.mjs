@@ -43,7 +43,7 @@ const UI_TEST_AXE_EXEMPTIONS = new Map([
     "Mocked layout dimensions cannot provide a meaningful overflow audit in jsdom.",
   ],
   [
-    "libs/ui/registry/ui/section-header/ssr/section-header.test.tsx",
+    "libs/ui/registry/ui/section-header/section-header.ssr.test.tsx",
     "The SSR contract is parsed in a detached document rather than rendered as standalone UI.",
   ],
   [

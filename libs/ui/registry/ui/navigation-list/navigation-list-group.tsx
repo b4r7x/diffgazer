@@ -153,12 +153,10 @@ export function NavigationListGroup({
 
 function useNavigationListGroupHeader({
   headerId,
-  accessibleLabel,
   expanded,
   toggle,
 }: {
   headerId: string;
-  accessibleLabel: string;
   expanded: boolean;
   toggle: () => void;
 }) {
@@ -201,7 +199,7 @@ function useNavigationListGroupHeader({
     if (!event.defaultPrevented) highlight(headerId);
   };
 
-  return { rootRef, itemId, isActive, accessibleLabel, handleClick, handleFocus };
+  return { rootRef, itemId, isActive, handleClick, handleFocus };
 }
 
 function NavigationListGroupHeader({
@@ -230,12 +228,8 @@ function NavigationListGroupHeader({
   collapseLabel: string;
 }) {
   const isTree = variant === "tree";
-  const header = useNavigationListGroupHeader({
-    headerId,
-    accessibleLabel: isTree || count === undefined ? label : `${label} (${count})`,
-    expanded,
-    toggle,
-  });
+  const accessibleLabel = isTree || count === undefined ? label : `${label} (${count})`;
+  const header = useNavigationListGroupHeader({ headerId, expanded, toggle });
 
   return (
     // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — this collapsible group header is an option that stays non-focusable while the container holds focus and aria-activedescendant tracks the active option.
@@ -245,7 +239,7 @@ function NavigationListGroupHeader({
       id={header.itemId}
       role="option"
       aria-selected={false}
-      aria-label={`${header.accessibleLabel}, ${expanded ? collapseLabel : expandLabel} section`}
+      aria-label={`${accessibleLabel}, ${expanded ? collapseLabel : expandLabel} section`}
       data-slot="navigation-list-group-header"
       data-value={headerId}
       data-highlighted={header.isActive ? "" : undefined}

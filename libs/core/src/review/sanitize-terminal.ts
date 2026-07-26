@@ -25,6 +25,17 @@ function consumeCsi(input: string, start: number): number | null {
   return finalByte >= CSI_FINAL_MIN && finalByte <= CSI_FINAL_MAX ? index + 1 : null;
 }
 
+function consumeOsc(input: string, start: number): number {
+  let index = start;
+  while (index < input.length) {
+    const code = input.charCodeAt(index);
+    if (code === BEL || code === C1_ST) return index + 1;
+    if (code === ESC && input.charCodeAt(index + 1) === 0x5c) return index + 2;
+    index += 1;
+  }
+  return index;
+}
+
 function isStrippedControl(code: number): boolean {
   if (code === 0x09 || code === 0x0a) return false; // keep \t and \n
   // C0 (0x00-0x1f), DEL (0x7f), and C1 (0x80-0x9f)
@@ -42,19 +53,7 @@ export function sanitizeTerminalText(input: string): string {
       const next = input.charCodeAt(i + 1);
       // OSC (ESC ]): drop through BEL or ST (ESC \).
       if (next === 0x5d) {
-        i += 2;
-        while (i < input.length) {
-          const c = input.charCodeAt(i);
-          if (c === BEL || c === C1_ST) {
-            i += 1;
-            break;
-          }
-          if (c === ESC && input.charCodeAt(i + 1) === 0x5c) {
-            i += 2;
-            break;
-          }
-          i += 1;
-        }
+        i = consumeOsc(input, i + 2);
         continue;
       }
       // CSI (ESC [): drop params through the final byte, SGR included.
@@ -81,19 +80,7 @@ export function sanitizeTerminalText(input: string): string {
 
     // C1 OSC introducer (0x9d) ... terminated by BEL or ST.
     if (code === 0x9d) {
-      i += 1;
-      while (i < input.length) {
-        const c = input.charCodeAt(i);
-        if (c === BEL || c === C1_ST) {
-          i += 1;
-          break;
-        }
-        if (c === ESC && input.charCodeAt(i + 1) === 0x5c) {
-          i += 2;
-          break;
-        }
-        i += 1;
-      }
+      i = consumeOsc(input, i + 1);
       continue;
     }
 

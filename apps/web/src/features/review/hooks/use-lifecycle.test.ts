@@ -104,7 +104,6 @@ function renderReviewLifecycle(mode: ReviewMode) {
 function makeBaseReturn() {
   return {
     stream: {
-      stop: vi.fn(),
       abort: vi.fn(),
       cancel: vi.fn(async (): Promise<string | null> => null),
       resume: vi.fn(),
@@ -136,9 +135,8 @@ function makeBaseReturn() {
     start: {
       hasStarted: true,
       hasStreamed: true,
-      setHasStarted: vi.fn(),
-      setHasStreamed: vi.fn(),
     },
+    reset: vi.fn(),
   };
 }
 
@@ -188,6 +186,27 @@ describe("useReviewLifecycle no-diff alternate start", () => {
       replace: true,
     });
     expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/" });
+  });
+
+  it("reports the code-specific start failure when the alternate review cannot be created", async () => {
+    const base = makeBaseReturn();
+    base.stream.cancel = vi.fn(async () => null);
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+    mockCreateReview.mockRejectedValue(
+      Object.assign(new Error("API key not found"), { code: "API_KEY_MISSING", status: 400 }),
+    );
+
+    const { result } = renderReviewLifecycle("unstaged");
+
+    act(() => result.current.handleSwitchMode());
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith("API Key Missing", {
+        message: "API key not found. Add one in Settings → Providers.",
+      });
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(result.current.isTransitionPending).toBe(false);
   });
 
   it("clears the active session when the review reaches no-diff", async () => {

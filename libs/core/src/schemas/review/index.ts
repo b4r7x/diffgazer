@@ -44,7 +44,6 @@ export {
   SeverityRubricSchema,
 } from "./lens.js";
 export {
-  ANALYSIS_SETTINGS_SUBTITLE,
   deriveLensSelectionState,
   isLensId,
   isLensSelectionDirty,

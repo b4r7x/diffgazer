@@ -101,7 +101,7 @@ export const markdownMdxComponents: MDXComponents = {
             <CodeBlockLabel>{language}</CodeBlockLabel>
           </CodeBlockHeader>
         )}
-        <CodeBlockContent className="shiki" showLineNumbers={!isShell}>
+        <CodeBlockContent className="shiki">
           <PreCodeContext value={true}>{children}</PreCodeContext>
         </CodeBlockContent>
       </CodeBlock>

@@ -10,7 +10,7 @@ import { sanitizeTerminalText } from "@diffgazer/core/review";
 import type { ContextInfo, Shortcut } from "@diffgazer/core/schemas/presentation";
 import { buildHomeContextInfo, MAIN_MENU_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
-import type { ComponentProps, ReactElement } from "react";
+import type { ReactElement } from "react";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useExit } from "../../../hooks/use-exit";
@@ -145,12 +145,15 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
           {needsTrust ? (
             <TrustPanel onAccept={handleTrustAccept} />
           ) : (
-            <HomeMenuWithFooter
-              isActive
-              onAction={onAction}
-              isTrusted={isTrusted}
-              hasResumableSession={hasActiveSession}
-            />
+            <>
+              <MainMenuFooter />
+              <HomeMenu
+                isActive
+                onAction={onAction}
+                isTrusted={isTrusted}
+                hasResumableSession={hasActiveSession}
+              />
+            </>
           )}
         </Box>
       </Box>
@@ -158,7 +161,12 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
   );
 }
 
-function HomeMenuWithFooter(props: ComponentProps<typeof HomeMenu>): ReactElement {
+/**
+ * Branch-scoped footer publisher: it unmounts when the trust panel takes over
+ * the menu column, so the panel's own `usePageFooter` owns the bar instead of
+ * being overwritten by a parent effect on the same commit.
+ */
+function MainMenuFooter(): null {
   usePageFooter({ shortcuts: MAIN_MENU_SHORTCUTS });
-  return <HomeMenu {...props} />;
+  return null;
 }

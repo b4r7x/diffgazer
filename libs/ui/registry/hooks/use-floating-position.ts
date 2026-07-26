@@ -20,7 +20,6 @@ import {
 import type {
   Bounds,
   FloatingAlign,
-  FloatingPlacement,
   FloatingSide,
   Viewport,
 } from "@/lib/floating-position-constants";
@@ -33,7 +32,7 @@ export {
   shift,
   wouldOverflow,
 };
-export type { FloatingAlign, FloatingPlacement, FloatingSide };
+export type { FloatingAlign, FloatingSide };
 
 /** Options for positioning floating content relative to a trigger element. */
 export interface UseFloatingPositionOptions {

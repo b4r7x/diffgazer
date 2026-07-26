@@ -4,13 +4,14 @@ import {
   AGENT_EXECUTION_OPTIONS,
   type AgentExecution,
   isAgentExecution,
+  SETTINGS_SCREEN_COPY,
 } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { toVerticalBoundaryDirection, useKey, useScope } from "@diffgazer/keys";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useRef, useState } from "react";
-import { useSettingsFormActions } from "../../hooks/use-settings-form-actions";
+import { useSettingsFormActions } from "../../hooks/use-form-actions";
 import { SettingsFormPage } from "../form-page";
 
 export function SettingsAgentExecutionPage() {
@@ -53,8 +54,8 @@ export function SettingsAgentExecutionPage() {
 
   return (
     <SettingsFormPage
-      title="Agent Execution Mode"
-      subtitle="Choose whether analysis agents run in sequence or in parallel."
+      title={SETTINGS_SCREEN_COPY["agent-execution"].title}
+      subtitle={SETTINGS_SCREEN_COPY["agent-execution"].subtitle}
       query={settingsQuery}
       footer={footer}
       isSaving={isSaving}

@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { HorizontalStepperVariant } from "@/lib/horizontal-stepper-variants";
 import type { HorizontalStepStatus, StepStatus } from "@/lib/step-status";
+import type { HorizontalStepperVariant } from "./horizontal-stepper-variants";
 
 export type { HorizontalStepStatus, StepStatus };
 
@@ -21,10 +21,8 @@ interface StepperContextValue {
   compact: boolean;
 }
 
-/** React context backing horizontal stepper. */
 export const HorizontalStepperContext = createContext<StepperContextValue | undefined>(undefined);
 
-/** Reads the horizontal stepper context. */
 export function useHorizontalStepperContext() {
   const ctx = useContext(HorizontalStepperContext);
   if (ctx === undefined) {
@@ -33,7 +31,6 @@ export function useHorizontalStepperContext() {
   return ctx;
 }
 
-/** Provides step info behavior. */
 export function useStepInfo(value: string): {
   status: HorizontalStepStatus;
   index: number;

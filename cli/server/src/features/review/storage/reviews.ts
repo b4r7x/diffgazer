@@ -1,28 +1,18 @@
 import { randomUUID } from "node:crypto";
 import type { Dirent } from "node:fs";
 import { readdir } from "node:fs/promises";
-import { isAbsolute, relative, resolve, sep } from "node:path";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
-import { UuidSchema } from "@diffgazer/core/schemas/fields";
 import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
-import {
-  type ReviewGitContext,
-  type ReviewListWarning,
-  type ReviewMetadata,
-  ReviewMetadataSchema,
-  type SavedReview,
-  SavedReviewSchema,
+import type {
+  ReviewGitContext,
+  ReviewListWarning,
+  ReviewMetadata,
+  SavedReview,
 } from "@diffgazer/core/schemas/review";
 import { isNodeError } from "../../../shared/lib/fs.js";
 import { log } from "../../../shared/lib/log.js";
-import {
-  coerceMetadataVocab,
-  lenientReadSavedReview,
-  normalizeSavedReviewLineFields,
-  type ReviewSalvageDiagnostics,
-} from "./lenient-read.js";
-import { createCollection } from "./persistence.js";
+import type { ReviewSalvageDiagnostics } from "./lenient-read.js";
 import {
   addToProjectIndex,
   clearReconcileMarker,
@@ -37,7 +27,6 @@ import {
   readProjectIndexData,
   removeInvalidProjectIndexEntries,
   withProjectIndexLock,
-  writeCursorProjectIndex,
   writeCursorProjectIndexLocked,
 } from "./project-index.js";
 import {
@@ -47,51 +36,27 @@ import {
   type ReviewCursorBoundary,
 } from "./review-cursor.js";
 import { withReviewLock } from "./review-lock.js";
+import { reviewStore } from "./review-store.js";
 import type { DateFieldsOf, SaveReviewOptions, StoreError, StoreErrorCode } from "./types.js";
 
 function filterByProjectAndSort<T extends { id: string; projectPath: string }>(
   items: T[],
-  projectPath: string | undefined,
+  projectPath: string,
   dateField: DateFieldsOf<T>,
 ): T[] {
-  const filtered = projectPath ? items.filter((item) => item.projectPath === projectPath) : items;
-  return filtered.sort((a, b) =>
-    compareReviewOrder(
-      { id: a.id, createdAt: a[dateField] as string },
-      { id: b.id, createdAt: b[dateField] as string },
-    ),
-  );
+  return items
+    .filter((item) => item.projectPath === projectPath)
+    .sort((a, b) =>
+      compareReviewOrder(
+        { id: a.id, createdAt: a[dateField] as string },
+        { id: b.id, createdAt: b[dateField] as string },
+      ),
+    );
 }
 
 const MAX_CONCURRENT_REVIEW_READS = 8;
-const getReviewFile = (reviewId: string): string => {
-  const parsedId = UuidSchema.safeParse(reviewId);
-  if (!parsedId.success) throw new Error("Invalid review id");
-
-  const filePath = resolve(REVIEWS_DIR, `${parsedId.data}.json`);
-  const relativePath = relative(REVIEWS_DIR, filePath);
-  if (relativePath === ".." || relativePath.startsWith(`..${sep}`) || isAbsolute(relativePath)) {
-    throw new Error("Review path escapes the collection directory");
-  }
-  return filePath;
-};
 
 const createStoreError = createError<StoreErrorCode>;
-
-export const reviewStore = createCollection<SavedReview, ReviewMetadata, ReviewSalvageDiagnostics>({
-  name: "review",
-  dir: REVIEWS_DIR,
-  filePath: getReviewFile,
-  schema: SavedReviewSchema,
-  metadataSchema: ReviewMetadataSchema,
-  getMetadata: (review) => review.metadata,
-  getId: (review) => review.metadata.id,
-  // Salvage older immutable reviews the strict write-side schema rejects so they
-  // remain readable through review and history views (F-446).
-  lenientRead: lenientReadSavedReview,
-  coerceMetadata: coerceMetadataVocab,
-  transformRead: normalizeSavedReviewLineFields,
-});
 
 async function mapWithLimitedConcurrency<T, R>(
   items: readonly T[],
@@ -328,89 +293,8 @@ async function migrateMetadataList(items: ReviewMetadata[]): Promise<ReviewMetad
   });
 }
 
-type IndexListing =
-  | { kind: "served"; items: ReviewMetadata[]; warnings: ReviewListWarning[] }
-  | { kind: "rebuild" };
-
-// Non-paginated listings may read the whole index. A reconcile marker or unreadable
-// entry switches to the serialized full-scan rebuild; missing entries are removed.
-async function listFromIndex(
-  projectPath: string,
-  indexedIds: string[],
-  needsRewrite: boolean,
-): Promise<IndexListing> {
-  if (await hasReconcileMarker(projectPath)) return { kind: "rebuild" };
-
-  const items: ReviewMetadata[] = [];
-  const invalidIds = new Set<string>();
-  const warnings: ReviewListWarning[] = [];
-
-  const results = await readReviewMetadata(indexedIds);
-  for (const { id, result: readResult } of results) {
-    if (!readResult.ok) {
-      // Missing file: drop from the index and keep serving.
-      if (readResult.error.code === "NOT_FOUND") {
-        invalidIds.add(id);
-        continue;
-      }
-      // Any other read failure means the index can't be trusted; rebuild via scan.
-      return { kind: "rebuild" };
-    }
-    const { diagnostics, metadata } = readResult.value;
-    if (metadata.projectPath !== projectPath) {
-      invalidIds.add(id);
-      continue;
-    }
-    appendSalvageWarning(warnings, metadata, diagnostics);
-    items.push(metadata);
-  }
-
-  const sortedItems = filterByProjectAndSort(items, undefined, "createdAt");
-  if (needsRewrite || items.length !== indexedIds.length) {
-    try {
-      await writeCursorProjectIndex(
-        projectPath,
-        sortedItems,
-        scanReviewsForCertification,
-        invalidIds,
-      );
-    } catch (error) {
-      log("warn", "reviews_index_rewrite_failed", { error });
-      warnings.push({ kind: "index_rewrite_failed" });
-    }
-  }
-
-  return {
-    kind: "served",
-    items: sortedItems,
-    warnings,
-  };
-}
-
-export async function listReviews(
-  projectPath?: string,
-): Promise<Result<{ items: ReviewMetadata[]; warnings: ReviewListWarning[] }, StoreError>> {
-  if (projectPath) {
-    const indexResult = await readProjectIndexData(projectPath);
-    if (indexResult.kind === "valid" && indexResult.data.ids.length > 0) {
-      const listing = await listFromIndex(
-        projectPath,
-        indexResult.data.ids,
-        indexResult.data.needsRewrite,
-      );
-      if (listing.kind === "served") {
-        const migratedItems = await migrateMetadataList(listing.items);
-        return ok({ items: migratedItems, warnings: listing.warnings });
-      }
-    }
-    return listReviewsFromFullScan(projectPath, indexResult.kind === "corrupt");
-  }
-
-  return listReviewsFromFullScan();
-}
-
 async function scanReviews(
-  projectPath?: string,
+  projectPath: string,
 ): Promise<
   Result<
     { items: ReviewMetadata[]; warnings: ReviewListWarning[]; isComplete: boolean },
@@ -467,15 +351,11 @@ export async function scanReviewsForCertification(projectPath: string): Promise<
 }
 
 async function listReviewsFromFullScan(
-  projectPath?: string,
-  persistEmptyIndex = false,
+  projectPath: string,
 ): Promise<Result<{ items: ReviewMetadata[]; warnings: ReviewListWarning[] }, StoreError>> {
-  if (!projectPath) return scanReviews();
-
   return withProjectIndexLock(projectPath, async () => {
     const result = await scanReviews(projectPath);
     if (!result.ok) return result;
-    if (!persistEmptyIndex && result.value.items.length === 0) return result;
 
     try {
       await writeCursorProjectIndexLocked(
@@ -622,7 +502,7 @@ export async function listReviewPage(
     indexResult.kind === "valid" ? indexResult.data : emptyProjectIndexData();
   const needsBootstrap = needsReconcile || !isCursorOrdered || !entries || !isCanonical;
   if (needsBootstrap) {
-    const fullResult = await listReviewsFromFullScan(projectPath, true);
+    const fullResult = await listReviewsFromFullScan(projectPath);
     if (!fullResult.ok) return fullResult;
     return ok(paginateSortedItems(fullResult.value.items, options, fullResult.value.warnings));
   }

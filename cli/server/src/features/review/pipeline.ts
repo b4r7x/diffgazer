@@ -131,7 +131,6 @@ export async function executeReview(params: {
     {
       concurrency: config.concurrency,
       projectContext: config.projectContext,
-      partialOnAllFailed: false,
       signal,
     },
   );

@@ -20,10 +20,8 @@ interface KeyValueContextValue {
   bordered: boolean;
 }
 
-/** React context backing key value. */
 const KeyValueContext = createContext<KeyValueContextValue | undefined>(undefined);
 
-/** Reads the key value context. */
 function useKeyValueContext(): KeyValueContextValue {
   const context = useContext(KeyValueContext);
   if (context === undefined) {

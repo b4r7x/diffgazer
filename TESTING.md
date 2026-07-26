@@ -19,7 +19,7 @@ getByRole > getByLabelText > getByPlaceholderText > getByText > getByDisplayValu
 `getByTestId` is the last resort. Use it only when:
 - No accessible query reaches the target (e.g. layout containers with no semantic role).
 - The `data-testid` IS the public API being verified (a `*ClassName` / `data-testid` prop forwarded to consumers).
-- The test is a **hook test harness** that renders the hook's return value to a `data-testid` element so the test can read it back (`libs/ui/registry/hooks/testing/use-floating-position.test.ts`, `use-overflow.test.ts`). Hook outputs (numbers, coords, booleans) have no native role.
+- The test is a **hook test harness** that renders the hook's return value to a `data-testid` element so the test can read it back (`libs/ui/registry/hooks/use-floating-indicator.test.tsx`, `use-overflow-detection.test.ts`). Hook outputs (numbers, coords, booleans) have no native role.
 
 Document the second and third cases inline with `// getByTestId: <why>`.
 
@@ -46,7 +46,7 @@ Use `it.each` to collapse parameterizable cases (different keys → same action)
 
 **Every retained `vi.mock(...)` SHOULD carry a `// Boundary mock: <why>` comment** naming the specific boundary. This is a repo convention for reviewers and future audits; it is not wired into an automated CI gate today.
 
-**Mocking internal modules (sibling files, app composition, hooks owned by the same app) is forbidden.** When a test needs to isolate a unit from its compositional dependencies, refactor the unit for dependency injection (the `apps/web/src/features/home/components/home-presentation.tsx` split is the reference).
+**Mocking internal modules (sibling files, app composition, hooks owned by the same app) is forbidden.** When a test needs to isolate a unit from its compositional dependencies, refactor the unit for dependency injection (the `apps/web/src/features/home/components/presentation.tsx` split is the reference).
 
 ### 5. `userEvent` over `fireEvent`
 

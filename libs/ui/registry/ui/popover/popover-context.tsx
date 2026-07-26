@@ -41,10 +41,8 @@ export interface PopoverContextValue {
   enabled: boolean;
 }
 
-/** React context backing popover. */
 export const PopoverContext = createContext<PopoverContextValue | undefined>(undefined);
 
-/** Reads the popover context. */
 export function usePopoverContext() {
   const ctx = useContext(PopoverContext);
   if (ctx === undefined) throw new Error("Popover parts must be used within <Popover>");

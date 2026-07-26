@@ -18,7 +18,6 @@ import userEvent from "@testing-library/user-event";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { MAIN_CONTENT_ID } from "@/lib/main-content";
 import { expectSingleReticle } from "@/testing/reticle";
-import { HistoryPage } from "./page";
 import {
   FooterView,
   focusRunsList,
@@ -28,7 +27,8 @@ import {
   renderHistoryPage,
   setupApiMocks,
   trustedProject,
-} from "./page-test-utils";
+} from "../testing/page";
+import { HistoryPage } from "./page";
 
 describe("HistoryPage keyboard navigation", () => {
   beforeEach(() => {

@@ -13,7 +13,7 @@ import {
   REVIEW_METRICS_FOOTER_ROWS,
   ReviewMetricsFooter,
 } from "../metrics-footer";
-import { ProgressList } from "../progress/list";
+import { ProgressList } from "../progress-list/list";
 
 /**
  * Rows the overview always spends, whatever it renders: the bordered section
@@ -47,7 +47,6 @@ export interface ReviewProgressOverviewProps {
   isStreaming: boolean;
   reviewId?: string | null;
   contextSnapshot?: ReviewContextResponse | null;
-  contextOutputDirectory?: string;
 }
 
 export function ReviewProgressOverview({
@@ -61,7 +60,6 @@ export function ReviewProgressOverview({
   isStreaming,
   reviewId,
   contextSnapshot,
-  contextOutputDirectory,
 }: ReviewProgressOverviewProps): ReactElement {
   const { tokens } = useTheme();
   const hasCompletedSnapshot = Boolean(contextSnapshot && !isStreaming);
@@ -116,12 +114,7 @@ export function ReviewProgressOverview({
 
       {contextSnapshot && !isStreaming ? (
         <Box marginTop={1}>
-          <ContextSnapshotPreview
-            key={reviewId ?? "pending"}
-            snapshot={contextSnapshot}
-            outputDirectory={contextOutputDirectory}
-            compact
-          />
+          <ContextSnapshotPreview key={reviewId ?? "pending"} snapshot={contextSnapshot} compact />
         </Box>
       ) : null}
 

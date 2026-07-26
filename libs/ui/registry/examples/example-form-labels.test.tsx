@@ -13,7 +13,6 @@ import SelectCard from "./select/select-card";
 import SelectDefault from "./select/select-default";
 import SelectDisplayModes from "./select/select-display-modes";
 import SelectMultiple from "./select/select-multiple";
-import SelectMultiselectSimple from "./select/select-multiselect-simple";
 import SelectOpen from "./select/select-open";
 import SelectRadio from "./select/select-radio";
 import SelectSearchTop from "./select/select-search-top";
@@ -52,7 +51,6 @@ const examples: Array<[string, () => React.JSX.Element]> = [
   ["select-card", SelectCard],
   ["select-display-modes", SelectDisplayModes],
   ["select-multiple", SelectMultiple],
-  ["select-multiselect-simple", SelectMultiselectSimple],
   ["select-radio", SelectRadio],
   ["select-search-top", SelectSearchTop],
   ["select-searchable", SelectSearchable],

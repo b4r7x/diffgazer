@@ -2,7 +2,7 @@ import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { AgentStreamEvent, LensStat, StepEvent } from "@diffgazer/core/schemas/events";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/core/schemas/events";
-import type { LensId, ReviewIssue, ReviewOptions } from "@diffgazer/core/schemas/review";
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import type { AIClient } from "../../../shared/lib/ai/types.js";
 import { runLensAnalysis } from "./analysis.js";
 import type { ParsedDiff } from "./diff/types.js";
@@ -12,7 +12,12 @@ import {
   sortIssuesBySeverity,
 } from "./issues/ordering.js";
 import { getLenses } from "./lenses.js";
-import type { OrchestrationOptions, OrchestrationOutcome, ReviewError } from "./types.js";
+import type {
+  LensSelection,
+  OrchestrationOptions,
+  OrchestrationOutcome,
+  ReviewError,
+} from "./types.js";
 
 function isAbortRejection(reason: unknown, signal?: AbortSignal): boolean {
   if (signal?.aborted) return true;
@@ -83,7 +88,7 @@ async function runWithConcurrency<T, R>(
 export async function orchestrateReview(
   client: AIClient,
   diff: ParsedDiff,
-  reviewOptions: ReviewOptions = {},
+  selection: LensSelection,
   onEvent: (event: AgentStreamEvent | StepEvent) => void,
   orchestrationOptions: OrchestrationOptions,
 ): Promise<Result<OrchestrationOutcome, ReviewError>> {
@@ -91,13 +96,8 @@ export async function orchestrateReview(
     return err({ code: "NO_DIFF", message: "No files changed" });
   }
 
-  const selectedLensIds = (reviewOptions.lenses?.length ? reviewOptions.lenses : undefined) ??
-    (reviewOptions.profile?.lenses.length ? reviewOptions.profile.lenses : undefined) ?? [
-      "correctness",
-    ];
-  const lensIds = [...new Set(selectedLensIds)];
-  const lenses = getLenses(lensIds);
-  const filter = reviewOptions.filter ?? reviewOptions.profile?.filter;
+  const { filter } = selection;
+  const lenses = getLenses(selection.lenses);
 
   const concurrency = Math.min(orchestrationOptions.concurrency, Math.max(1, lenses.length));
 
@@ -152,7 +152,7 @@ export async function orchestrateReview(
 
   const allIssues: ReviewIssue[] = [];
   const lensStats: LensStat[] = [];
-  const failedLenses: Array<{ lensId: LensId; errorCode?: string; errorMessage?: string }> = [];
+  let failedLensCount = 0;
   let lastError: ReviewError | null = null;
   let droppedIncompleteProviderIssues = 0;
 
@@ -176,7 +176,7 @@ export async function orchestrateReview(
         errorCode,
         errorMessage: errorMsg,
       });
-      failedLenses.push({ lensId: lens.id, errorCode, errorMessage: errorMsg });
+      failedLensCount += 1;
       return;
     }
 
@@ -190,11 +190,7 @@ export async function orchestrateReview(
         errorCode: result.error.code,
         errorMessage: result.error.message,
       });
-      failedLenses.push({
-        lensId: lens.id,
-        errorCode: result.error.code,
-        errorMessage: result.error.message,
-      });
+      failedLensCount += 1;
       return;
     }
 
@@ -227,30 +223,17 @@ export async function orchestrateReview(
     timestamp: new Date().toISOString(),
   });
 
-  const allLensesFailed = failedLenses.length === lenses.length && lenses.length > 0;
+  const allLensesFailed = failedLensCount === lenses.length && lenses.length > 0;
 
   if (allLensesFailed && lastError !== null) {
-    if (orchestrationOptions.partialOnAllFailed) {
-      return ok({
-        issues: [],
-        lensStats,
-        failedLenses,
-        droppedDuplicates,
-        droppedBelowThreshold,
-        droppedIncompleteProviderIssues,
-        minSeverity: filter?.minSeverity,
-      });
-    }
     return err(lastError);
   }
 
   return ok({
     issues: sorted,
     lensStats,
-    failedLenses,
     droppedDuplicates,
     droppedBelowThreshold,
-    droppedIncompleteProviderIssues,
     minSeverity: filter?.minSeverity,
   });
 }

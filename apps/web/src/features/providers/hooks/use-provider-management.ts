@@ -1,9 +1,10 @@
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { useSubmitGuard } from "@diffgazer/core/forms";
+import { mapProvidersWithStatus } from "@diffgazer/core/providers";
 import type { AIProvider, CredentialRef } from "@diffgazer/core/schemas/config";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useRef, useState } from "react";
-import { useProviders } from "./use-providers";
+import { useConfigActions, useConfigData } from "@/hooks/use-config";
 
 export type ApiKeyDialogOwner = {
   kind: "api-key";
@@ -20,7 +21,9 @@ export type ModelDialogOwner = {
 type ProviderDialogOwner = ApiKeyDialogOwner | ModelDialogOwner;
 
 export function useProviderManagement() {
-  const { providers, isLoading, saveApiKey, removeApiKey, selectProvider } = useProviders();
+  const { isLoading, providerStatus } = useConfigData();
+  const { saveCredentials, deleteProviderCredentials, activateProvider } = useConfigActions();
+  const providers = mapProvidersWithStatus(providerStatus);
   const [dialogOwner, setDialogOwner] = useState<ProviderDialogOwner | null>(null);
   const nextDialogOwnerId = useRef(0);
   const { isSubmitting, withGuard } = useSubmitGuard();
@@ -52,7 +55,7 @@ export function useProviderManagement() {
   ) => {
     const modelOwner = opts?.openModelDialog ? createModelDialogOwner(owner.providerId) : null;
     return withGuard(async () => {
-      await saveApiKey(owner.providerId, value);
+      await saveCredentials(owner.providerId, value);
       setDialogOwner((current) => (current === owner ? modelOwner : current));
       toast.success("API Key Saved", { message: "Provider configured" });
     });
@@ -60,7 +63,7 @@ export function useProviderManagement() {
 
   const handleRemoveKey = async (providerId: AIProvider) => {
     return withGuard(async () => {
-      await removeApiKey(providerId);
+      await deleteProviderCredentials(providerId);
       toast.success("API Key Removed", { message: "Provider key deleted" });
     }).catch((error) => {
       toast.error("Failed to Remove", { message: getErrorMessage(error, "Unknown error") });
@@ -80,7 +83,7 @@ export function useProviderManagement() {
       return false;
     }
     return withGuard(async () => {
-      await selectProvider(providerId, model);
+      await activateProvider(providerId, model);
       toast.success("Provider Activated", { message: `${providerName} is now active` });
     }).catch((error) => {
       toast.error("Failed to Activate", { message: getErrorMessage(error, "Unknown error") });
@@ -90,7 +93,7 @@ export function useProviderManagement() {
 
   const handleSelectModel = async (owner: ModelDialogOwner, modelId: string) => {
     return withGuard(async () => {
-      await selectProvider(owner.providerId, modelId);
+      await activateProvider(owner.providerId, modelId);
       setDialogOwner((current) => (current === owner ? null : current));
       toast.success("Model Selected", { message: `Selected ${modelId}` });
     }).catch((error) => {

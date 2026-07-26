@@ -9,7 +9,7 @@ import {
   errorResponse,
   zodErrorHandler,
 } from "../../shared/lib/http/response.js";
-import { storeErrorStatus } from "../../shared/lib/http/store-error.js";
+import { handleStoreError } from "../../shared/lib/http/store-error.js";
 import { cancelSessionsForProvider } from "../../shared/lib/session-registry.js";
 import {
   createBodyLimitMiddleware,
@@ -51,12 +51,7 @@ configRouter.get("/init", (c): Response => {
   const projectRoot = getProjectRoot(c);
   const result = getInitState(projectRoot);
   if (!result.ok) {
-    return errorResponse(
-      c,
-      result.error.message,
-      result.error.code,
-      storeErrorStatus(result.error.code),
-    );
+    return handleStoreError(c, result.error);
   }
   return c.json(result.value);
 });
@@ -64,12 +59,7 @@ configRouter.get("/init", (c): Response => {
 configRouter.get("/check", (c): Response => {
   const result = checkConfig();
   if (!result.ok) {
-    return errorResponse(
-      c,
-      result.error.message,
-      result.error.code,
-      storeErrorStatus(result.error.code),
-    );
+    return handleStoreError(c, result.error);
   }
   return c.json(result.value);
 });
@@ -77,12 +67,7 @@ configRouter.get("/check", (c): Response => {
 configRouter.get("/", (c): Response => {
   const result = getConfig();
   if (!result.ok) {
-    return errorResponse(
-      c,
-      result.error.message,
-      result.error.code,
-      storeErrorStatus(result.error.code),
-    );
+    return handleStoreError(c, result.error);
   }
   if (!result.value) {
     return errorResponse(c, "Configuration not found", ErrorCode.CONFIG_NOT_FOUND, 404);
@@ -101,12 +86,7 @@ configRouter.get(
   async (c): Promise<Response> => {
     const result = await getOpenRouterModels();
     if (!result.ok) {
-      return errorResponse(
-        c,
-        result.error.message,
-        result.error.code,
-        storeErrorStatus(result.error.code),
-      );
+      return handleStoreError(c, result.error);
     }
     return c.json(result.value);
   },
@@ -143,12 +123,7 @@ configRouter.post(
     const body = c.req.valid("json");
     const result = await saveConfig(body);
     if (!result.ok) {
-      return errorResponse(
-        c,
-        result.error.message,
-        result.error.code,
-        storeErrorStatus(result.error.code),
-      );
+      return handleStoreError(c, result.error);
     }
     return c.json(result.value);
   },
@@ -165,12 +140,7 @@ configRouter.post(
     const { model } = c.req.valid("json");
     const result = await activateProvider({ provider: providerId, model });
     if (!result.ok) {
-      return errorResponse(
-        c,
-        result.error.message,
-        result.error.code,
-        storeErrorStatus(result.error.code),
-      );
+      return handleStoreError(c, result.error);
     }
     return c.json(result.value);
   },
@@ -184,12 +154,7 @@ configRouter.delete(
     const { providerId } = c.req.valid("param");
     const result = await deleteProvider(providerId);
     if (!result.ok) {
-      return errorResponse(
-        c,
-        result.error.message,
-        result.error.code,
-        storeErrorStatus(result.error.code),
-      );
+      return handleStoreError(c, result.error);
     }
     if (result.value.deleted) {
       cancelSessionsForProvider(providerId, {
@@ -206,12 +171,7 @@ configRouter.delete("/", requireRepoAccess, async (c): Promise<Response> => {
   const activeProvider = currentConfig.ok ? (currentConfig.value?.provider ?? null) : null;
   const result = await deleteConfig();
   if (!result.ok) {
-    return errorResponse(
-      c,
-      result.error.message,
-      result.error.code,
-      storeErrorStatus(result.error.code),
-    );
+    return handleStoreError(c, result.error);
   }
   if (result.value.deleted) {
     if (activeProvider) {

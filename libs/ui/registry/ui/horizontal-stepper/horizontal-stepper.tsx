@@ -1,12 +1,12 @@
 "use client";
 
 import { type ComponentProps, type ReactNode, useMemo } from "react";
+import { cn } from "@/lib/utils";
+import { HorizontalStepperContext } from "./horizontal-stepper-context";
 import {
   type HorizontalStepperVariant,
   horizontalStepperRootVariants,
-} from "@/lib/horizontal-stepper-variants";
-import { cn } from "@/lib/utils";
-import { HorizontalStepperContext } from "./horizontal-stepper-context";
+} from "./horizontal-stepper-variants";
 
 /** Props for horizontal stepper. */
 export interface HorizontalStepperProps extends Omit<ComponentProps<"ol">, "children"> {

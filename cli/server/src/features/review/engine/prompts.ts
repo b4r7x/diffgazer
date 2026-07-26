@@ -33,7 +33,7 @@ export interface ReviewPrompt {
   files: PromptFileIdentity[];
 }
 
-export function createPromptFileIdentities(diff: ParsedDiff): PromptFileIdentity[] {
+function createPromptFileIdentities(diff: ParsedDiff): PromptFileIdentity[] {
   return diff.files.map((file, index) => ({ id: `file-${index + 1}`, file }));
 }
 

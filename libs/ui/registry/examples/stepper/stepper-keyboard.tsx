@@ -1,8 +1,9 @@
 "use client";
 
-import { useNavigation } from "@diffgazer/keys";
 import { useRef, useState } from "react";
 import { Stepper } from "@/components/ui/stepper";
+// @hidden-imports-ok — demo imports the useNavigation re-export from the hidden use-navigation hook registry item
+import { useNavigation } from "@/hooks/use-navigation";
 
 const steps = [
   {

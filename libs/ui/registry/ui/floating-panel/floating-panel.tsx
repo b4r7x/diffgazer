@@ -37,7 +37,6 @@ export interface FloatingPanelContextValue {
 
 const FloatingPanelContext = createContext<FloatingPanelContextValue | undefined>(undefined);
 
-/** Reads the floating panel context. */
 export function useFloatingPanelContext(): FloatingPanelContextValue {
   const ctx = useContext(FloatingPanelContext);
   if (ctx === undefined) {

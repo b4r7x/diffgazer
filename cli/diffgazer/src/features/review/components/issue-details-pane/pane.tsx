@@ -143,7 +143,7 @@ export function IssueDetailsPane({
       </Box>
       <Tabs
         value={activeTab}
-        onValueChange={(value) => {
+        onChange={(value) => {
           if (isIssueTab(value)) onTabChange(value);
         }}
       >

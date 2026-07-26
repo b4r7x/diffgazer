@@ -47,10 +47,8 @@ if (process.env.MODE === "config") {
   const settings = id === "a"
     ? { ...previous.settings, theme: "dark" }
     : { ...previous.settings, severityThreshold: "high" };
-  operation = () => persistence.persistConfigMergedAsync(
-    { ...previous, settings },
-    previous.providers,
-    previous.settings,
+  operation = () => persistence.withConfigFileTransaction((persistMerged) =>
+    persistMerged({ ...previous, settings }, previous.providers, previous.settings),
   );
 } else if (process.env.MODE === "secrets") {
   const provider = id === "a" ? "gemini" : "groq";

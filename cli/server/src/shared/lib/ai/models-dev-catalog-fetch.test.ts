@@ -1,8 +1,8 @@
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeChunkedResponse } from "../testing/http.js";
+import { MODELS_DEV_SAMPLE } from "../testing/models-dev-sample.js";
 import { fetchModelsDevCatalog, ModelsDevCatalogCacheSchema } from "./models-dev-catalog.js";
-import { MODELS_DEV_SAMPLE } from "./models-dev-sample.js";
 
 const okResponse = (body: unknown, headers?: Record<string, string>): Response =>
   ({ ok: true, status: 200, headers: new Headers(headers), json: async () => body }) as Response;

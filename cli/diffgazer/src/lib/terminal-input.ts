@@ -5,6 +5,13 @@ const PASTE_START = "\u001b[200~";
 const PASTE_END = "\u001b[201~";
 const ESCAPE_PREFIX_HOLD_MS = 50;
 
+/**
+ * Terminals encode Alt+<key> as ESC followed by that key ("legacy modified" encoding),
+ * and Ink collapses both that pair and a bare Escape into the same input event. This
+ * boundary classifies every event before Ink sees it: a lone ESC is held for
+ * ESCAPE_PREFIX_HOLD_MS so the byte that follows can decide between the two, and the
+ * Proxy overrides only `read()` so Ink keeps the real stdin it needs for raw mode.
+ */
 export type TerminalInputClassification = "ordinary" | "legacy-modified";
 
 export interface TerminalInputQueue {

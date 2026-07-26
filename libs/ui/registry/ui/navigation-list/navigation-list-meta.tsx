@@ -14,11 +14,11 @@ export interface NavigationListMetaProps {
 
 /** Row 2 container for badges and subtitles. */
 export function NavigationListMeta({ children, className }: NavigationListMetaProps) {
-  const { descId } = useNavigationListItemContext();
+  const { descIdPrefix } = useNavigationListItemContext();
 
   return (
     <div
-      id={`${descId}-meta`}
+      id={`${descIdPrefix}-meta`}
       className={cn(
         "col-span-full row-start-2 flex gap-2 items-center group-data-[highlighted]:text-primary-foreground/70",
         className,

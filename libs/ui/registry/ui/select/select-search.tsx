@@ -2,7 +2,6 @@
 
 import { cva } from "class-variance-authority";
 import { isValidElement, type ReactNode } from "react";
-import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { useSelectContext } from "./select-context";
 import { isActiveOptionVisible, toOptionId } from "./selection";
@@ -64,7 +63,7 @@ export function SelectSearch({
     highlighted,
     listboxId,
   } = useSelectContext("SelectSearch");
-  const activeDescendant = isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
+  const activeDescendant = isActiveOptionVisible(options, highlighted, searchQuery)
     ? toOptionId(listboxId, highlighted)
     : undefined;
 

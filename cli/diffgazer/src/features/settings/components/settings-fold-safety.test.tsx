@@ -1,4 +1,4 @@
-import type { SettingsConfig } from "@diffgazer/core/schemas/config";
+import { SETTINGS_SCREEN_COPY, type SettingsConfig } from "@diffgazer/core/schemas/config";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 
@@ -118,7 +118,9 @@ describe("settings screens at the 80x24 support floor", () => {
     apiMocks.settings.secretsStorage = null;
     const view = renderRootFrame(80, 24, <StorageScreen />);
 
-    await vi.waitFor(() => expect(view.lastFrame()).toContain("SECRETS STORAGE"));
+    await vi.waitFor(() =>
+      expect(view.lastFrame()).toContain(SETTINGS_SCREEN_COPY.storage.title.toUpperCase()),
+    );
     expect(view.lastFrame()).not.toContain("( * )");
 
     await press(view, "\t");

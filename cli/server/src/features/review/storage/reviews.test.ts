@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SavedReview } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { makeIssue } from "../../../shared/lib/testing/factories.js";
 
 const REVIEW_ID = "550e8400-e29b-41d4-a716-446655440000";
 const REVIEW_ID_2 = "660e8400-e29b-41d4-a716-446655440001";
@@ -212,7 +212,7 @@ describe("reviews storage", () => {
   });
 
   it("persists failed lens count through save, list, and detail reads", async () => {
-    const { getReview, listReviews, saveReview } = await loadStorage();
+    const { getReview, listReviewPage, saveReview } = await loadStorage();
 
     const saved = await saveReview(
       makeSaveOptions({
@@ -232,7 +232,7 @@ describe("reviews storage", () => {
     expect(saved.ok).toBe(true);
     if (saved.ok) expect(saved.value.failedLensCount).toBe(1);
 
-    const listed = await listReviews("/projects/test");
+    const listed = await listReviewPage("/projects/test", { limit: 20 });
     expect(listed.ok).toBe(true);
     if (listed.ok) expect(listed.value.items[0]?.failedLensCount).toBe(1);
 
@@ -261,10 +261,10 @@ describe("reviews storage", () => {
     });
     const { failedLensCount: _omitted, ...legacyMetadata } = current.metadata;
     await writeSavedReview({ ...current, metadata: legacyMetadata });
-    const { getReview, listReviews } = await loadStorage();
+    const { getReview, listReviewPage } = await loadStorage();
 
     const [listed, detail] = await Promise.all([
-      listReviews("/projects/test"),
+      listReviewPage("/projects/test", { limit: 20 }),
       getReview(REVIEW_ID),
     ]);
 
@@ -284,36 +284,20 @@ describe("reviews storage", () => {
     await waitForSavedReview(REVIEW_ID, (review) => review.metadata.failedLensCount === 1);
   });
 
-  it("lists reviews sorted by newest first and can filter by project path", async () => {
-    await writeSavedReview(
-      makeSavedReview({
-        metadata: {
-          ...makeSavedReview().metadata,
-          id: REVIEW_ID,
-          projectPath: "/proj/a",
-          createdAt: "2024-01-01T00:00:00.000Z",
-        },
-      }),
-    );
-    await writeSavedReview(
-      makeSavedReview({
-        metadata: {
-          ...makeSavedReview().metadata,
-          id: REVIEW_ID_2,
-          projectPath: "/proj/b",
-          createdAt: "2025-06-01T00:00:00.000Z",
-        },
-      }),
-    );
-    const { listReviews } = await loadStorage();
+  it("lists a project's reviews newest first and leaves other projects out", async () => {
+    await Promise.all([
+      writeSavedReview(makeProjectReview(REVIEW_ID, "2024-01-01T00:00:00.000Z")),
+      writeSavedReview(makeProjectReview(REVIEW_ID_2, "2025-06-01T00:00:00.000Z")),
+      writeSavedReview(makeProjectReview(makeReviewId(60), "2026-01-01T00:00:00.000Z", "/proj/b")),
+    ]);
+    const { listReviewPage } = await loadStorage();
 
-    const all = await listReviews();
-    const filtered = await listReviews("/proj/a");
+    const result = await listReviewPage("/proj/a", { limit: 20 });
 
-    expect(all.ok).toBe(true);
-    if (all.ok) expect(all.value.items.map((item) => item.id)).toEqual([REVIEW_ID_2, REVIEW_ID]);
-    expect(filtered.ok).toBe(true);
-    if (filtered.ok) expect(filtered.value.items.map((item) => item.id)).toEqual([REVIEW_ID]);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.items.map((item) => item.id)).toEqual([REVIEW_ID_2, REVIEW_ID]);
+    }
   });
 
   it("reconciles a durably-saved review the stale index omits and self-heals the index", async () => {
@@ -341,8 +325,8 @@ describe("reviews storage", () => {
     await writeProjectIndexFile("/proj/a", [REVIEW_ID]);
     await writeReconcileMarker("/proj/a");
 
-    const { listReviews } = await loadStorage();
-    const result = await listReviews("/proj/a");
+    const { listReviewPage } = await loadStorage();
+    const result = await listReviewPage("/proj/a", { limit: 20 });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -368,8 +352,8 @@ describe("reviews storage", () => {
     await writeReconcileMarker("/proj/a");
     await writeFile(reviewPath(REVIEW_ID_2), "{ not json", "utf-8");
 
-    const { listReviews } = await loadStorage();
-    const result = await listReviews("/proj/a");
+    const { listReviewPage } = await loadStorage();
+    const result = await listReviewPage("/proj/a", { limit: 20 });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -402,8 +386,12 @@ describe("reviews storage", () => {
         },
       }),
     );
-    await writeProjectIndexFile("/proj/a", [REVIEW_ID]);
-    await writeProjectIndexFile("/proj/b", [REVIEW_ID_2]);
+    await writeCertifiedProjectIndex("/proj/a", [
+      { id: REVIEW_ID, createdAt: "2024-01-01T00:00:00.000Z" },
+    ]);
+    await writeCertifiedProjectIndex("/proj/b", [
+      { id: REVIEW_ID_2, createdAt: "2025-06-01T00:00:00.000Z" },
+    ]);
 
     // fs/promises named exports are not spyable, so wrap readFile for the fresh module
     // graph the dynamic import builds; reads pass through, only paths are recorded.
@@ -412,8 +400,8 @@ describe("reviews storage", () => {
     vi.doMock("node:fs/promises", () => ({ ...actual, readFile: readFileSpy }));
 
     try {
-      const { listReviews } = await loadStorage();
-      const result = await listReviews("/proj/a");
+      const { listReviewPage } = await loadStorage();
+      const result = await listReviewPage("/proj/a", { limit: 20 });
 
       expect(result.ok).toBe(true);
       if (!result.ok) return;
@@ -448,11 +436,15 @@ describe("reviews storage", () => {
         },
       }),
     );
-    await writeProjectIndexFile("/proj/a", [REVIEW_ID]);
-    await writeProjectIndexFile("/proj/b", [REVIEW_ID_2]);
+    await writeCertifiedProjectIndex("/proj/a", [
+      { id: REVIEW_ID, createdAt: "2024-01-01T00:00:00.000Z" },
+    ]);
+    await writeCertifiedProjectIndex("/proj/b", [
+      { id: REVIEW_ID_2, createdAt: "2025-06-01T00:00:00.000Z" },
+    ]);
 
-    const { listReviews } = await loadStorage();
-    const result = await listReviews("/proj/a");
+    const { listReviewPage } = await loadStorage();
+    const result = await listReviewPage("/proj/a", { limit: 20 });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -472,10 +464,13 @@ describe("reviews storage", () => {
       }),
     );
     // REVIEW_ID_2 is indexed but its review file was never written.
-    await writeProjectIndexFile("/proj/a", [REVIEW_ID, REVIEW_ID_2]);
+    await writeCertifiedProjectIndex("/proj/a", [
+      { id: REVIEW_ID_2, createdAt: "2025-06-01T00:00:00.000Z" },
+      { id: REVIEW_ID, createdAt: "2024-01-01T00:00:00.000Z" },
+    ]);
 
-    const { listReviews } = await loadStorage();
-    const result = await listReviews("/proj/a");
+    const { listReviewPage } = await loadStorage();
+    const result = await listReviewPage("/proj/a", { limit: 20 });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -493,7 +488,10 @@ describe("reviews storage", () => {
         },
       }),
     );
-    await writeProjectIndexFile("/proj/a", [REVIEW_ID, REVIEW_ID_2]);
+    await writeCertifiedProjectIndex("/proj/a", [
+      { id: REVIEW_ID_2, createdAt: "2025-06-01T00:00:00.000Z" },
+      { id: REVIEW_ID, createdAt: "2025-01-01T00:00:00.000Z" },
+    ]);
     const atomicWrite = await import("../../../shared/lib/fs.js");
     const writeSpy = vi
       .spyOn(atomicWrite, "atomicWriteFile")
@@ -502,8 +500,8 @@ describe("reviews storage", () => {
     const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
 
     try {
-      const { listReviews } = await loadStorage();
-      const result = await listReviews("/proj/a");
+      const { listReviewPage } = await loadStorage();
+      const result = await listReviewPage("/proj/a", { limit: 20 });
 
       expect(result.ok).toBe(true);
       if (!result.ok) return;
@@ -537,15 +535,15 @@ describe("reviews storage", () => {
       }),
     );
 
-    const { listReviews } = await loadStorage();
-    const fromScan = await listReviews("/proj/a");
+    const { listReviewPage } = await loadStorage();
+    const fromScan = await listReviewPage("/proj/a", { limit: 20 });
 
     expect(fromScan.ok).toBe(true);
     if (!fromScan.ok) return;
     expect(fromScan.value.items.map((item) => item.id)).toEqual([REVIEW_ID_2, REVIEW_ID]);
     await expect(readProjectIndexIds("/proj/a")).resolves.toEqual([REVIEW_ID_2, REVIEW_ID]);
 
-    const fromIndex = await listReviews("/proj/a");
+    const fromIndex = await listReviewPage("/proj/a", { limit: 20 });
     expect(fromIndex.ok).toBe(true);
     if (fromIndex.ok) {
       expect(fromIndex.value.items.map((item) => item.id)).toEqual(
@@ -582,8 +580,8 @@ describe("reviews storage", () => {
     vi.doMock("node:fs/promises", () => ({ ...actual, readFile: readFileSpy }));
 
     try {
-      const { listReviews } = await loadStorage();
-      const result = await listReviews(projectPath);
+      const { listReviewPage } = await loadStorage();
+      const result = await listReviewPage(projectPath, { limit: 20 });
 
       expect(result).toMatchObject({ ok: true });
       if (!result.ok) return;
@@ -595,18 +593,18 @@ describe("reviews storage", () => {
     }
   });
 
-  it("does not create an index for an ordinary empty index miss", async () => {
+  it("bootstraps an empty certified index for a project with no reviews", async () => {
     const projectPath = "/proj/empty";
-    const { listReviews } = await loadStorage();
+    const { listReviewPage } = await loadStorage();
 
-    await expect(listReviews(projectPath)).resolves.toMatchObject({
+    await expect(listReviewPage(projectPath, { limit: 20 })).resolves.toMatchObject({
       ok: true,
-      value: { items: [], warnings: [] },
+      value: { items: [], warnings: [], nextCursor: null },
     });
-    await expect(stat(projectIndexPath(projectPath))).rejects.toMatchObject({ code: "ENOENT" });
-    await expect(stat(projectCursorMarkerPath(projectPath))).rejects.toMatchObject({
-      code: "ENOENT",
-    });
+    await expect(readProjectIndexIds(projectPath)).resolves.toEqual([]);
+    await expect(readFile(projectCursorMarkerPath(projectPath), "utf-8")).resolves.toBe(
+      CURSOR_INDEX_MARKER,
+    );
   });
 
   it("replaces a corrupt empty index without following symlinks or mismatched records", async () => {
@@ -635,8 +633,8 @@ describe("reviews storage", () => {
     vi.doMock("node:fs/promises", () => ({ ...actual, readFile: readFileSpy }));
 
     try {
-      const { listReviews } = await loadStorage();
-      const result = await listReviews(projectPath);
+      const { listReviewPage } = await loadStorage();
+      const result = await listReviewPage(projectPath, { limit: 20 });
 
       expect(result).toMatchObject({ ok: true, value: { items: [] } });
       expect(readFileSpy).not.toHaveBeenCalledWith(reviewPath(symlinkId), expect.anything());
@@ -669,7 +667,7 @@ describe("reviews storage", () => {
   });
 
   it("does not lose a concurrent index add", async () => {
-    const { saveReview, listReviews } = await loadStorage();
+    const { saveReview, listReviewPage } = await loadStorage();
 
     const first = saveReview(makeSaveOptions({ reviewId: REVIEW_ID, projectPath: "/proj/a" }));
     const second = saveReview(makeSaveOptions({ reviewId: REVIEW_ID_2, projectPath: "/proj/a" }));
@@ -684,7 +682,7 @@ describe("reviews storage", () => {
       expect(ids).toEqual(expect.arrayContaining([REVIEW_ID, REVIEW_ID_2]));
     });
 
-    const listed = await listReviews("/proj/a");
+    const listed = await listReviewPage("/proj/a", { limit: 20 });
     expect(listed.ok).toBe(true);
     if (listed.ok) {
       expect(listed.value.items.map((item) => item.id)).toEqual(
@@ -697,8 +695,8 @@ describe("reviews storage", () => {
     await writeSavedReview(makeProjectReview(REVIEW_ID, "2026-01-01T00:00:00.000Z"));
     await writeProjectIndexFile("/proj/a", [REVIEW_ID, REVIEW_ID]);
 
-    const { listReviews } = await loadStorage();
-    const result = await listReviews("/proj/a");
+    const { listReviewPage } = await loadStorage();
+    const result = await listReviewPage("/proj/a", { limit: 20 });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -1264,9 +1262,9 @@ describe("reviews storage", () => {
       },
     });
     await writeSavedReview(legacy);
-    const { listReviews, getReview } = await loadStorage();
+    const { listReviewPage, getReview } = await loadStorage();
 
-    const listResult = await listReviews();
+    const listResult = await listReviewPage("/projects/test", { limit: 20 });
     expect(listResult.ok).toBe(true);
     if (listResult.ok) {
       expect(listResult.value.items[0]).toMatchObject({ highCount: 1, mediumCount: 1 });
@@ -1306,8 +1304,8 @@ describe("reviews storage", () => {
     const logModule = await import("../../../shared/lib/log.js");
     const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
 
-    const { listReviews } = await loadStorage();
-    const result = await listReviews("/proj/index-fail");
+    const { listReviewPage } = await loadStorage();
+    const result = await listReviewPage("/proj/index-fail", { limit: 20 });
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -1379,13 +1377,13 @@ describe("reviews storage", () => {
         return real(filePath, content, mode);
       });
 
-    const { saveReview, listReviews } = await loadStorage();
+    const { saveReview, listReviewPage } = await loadStorage();
     const saved = await saveReview(
       makeSaveOptions({ reviewId: REVIEW_ID, projectPath: "/proj/index-fail" }),
     );
     expect(saved.ok).toBe(true);
 
-    const listed = await listReviews("/proj/index-fail");
+    const listed = await listReviewPage("/proj/index-fail", { limit: 20 });
     writeSpy.mockRestore();
 
     expect(listed.ok).toBe(true);
@@ -1400,7 +1398,7 @@ describe("reviews storage", () => {
     const projectPath = "/proj/corrupt-between-saves";
     const logModule = await import("../../../shared/lib/log.js");
     const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
-    const { listReviews, saveReview } = await loadStorage();
+    const { listReviewPage, saveReview } = await loadStorage();
 
     const first = await saveReview(makeSaveOptions({ reviewId: REVIEW_ID, projectPath }));
     expect(first.ok).toBe(true);
@@ -1413,7 +1411,7 @@ describe("reviews storage", () => {
     expect(indexEntries.map((entry) => entry.id)).toEqual(
       expect.arrayContaining([REVIEW_ID, REVIEW_ID_2]),
     );
-    const listed = await listReviews(projectPath);
+    const listed = await listReviewPage(projectPath, { limit: 20 });
     expect(listed.ok).toBe(true);
     if (listed.ok) {
       expect(listed.value.items.map((item) => item.id)).toEqual(
@@ -1465,7 +1463,7 @@ describe("reviews storage", () => {
     // A genuinely JSON-corrupt file — surfaced as a warning, not salvaged.
     await writeFile(reviewPath(REVIEW_ID_2), "{ not json", "utf-8");
 
-    const { getReview, listReviews } = await loadStorage();
+    const { getReview, listReviewPage } = await loadStorage();
 
     const read = await getReview(REVIEW_ID);
     expect(read.ok).toBe(true);
@@ -1487,15 +1485,11 @@ describe("reviews storage", () => {
       expect(second?.line_end).toBeNull();
     }
 
-    const listed = await listReviews("/legacy/proj");
+    const listed = await listReviewPage("/legacy/proj", { limit: 20 });
     expect(listed.ok).toBe(true);
     if (listed.ok) {
       expect(listed.value.items.map((item) => item.id)).toContain(REVIEW_ID);
-    }
-    const allListed = await listReviews();
-    expect(allListed.ok).toBe(true);
-    if (allListed.ok) {
-      expect(allListed.value.warnings).toContainEqual({
+      expect(listed.value.warnings).toContainEqual({
         kind: "unreadable_review",
         reviewId: REVIEW_ID_2,
       });
@@ -1666,13 +1660,15 @@ describe("reviews storage", () => {
     ]);
     await writeProjectIndexFile("/old/path", [REVIEW_ID]);
 
-    const { listReviews } = await loadStorage();
+    const { listReviewPage } = await loadStorage();
     const { rekeyProjectReviews } = await loadRekey();
 
     await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(true);
 
-    const underOld = await listReviews("/old/path");
-    const underNew = await listReviews("/new/path");
+    await expect(stat(projectIndexPath("/old/path"))).rejects.toMatchObject({ code: "ENOENT" });
+
+    const underOld = await listReviewPage("/old/path", { limit: 20 });
+    const underNew = await listReviewPage("/new/path", { limit: 20 });
 
     expect(underOld.ok).toBe(true);
     if (underOld.ok) expect(underOld.value.items).toEqual([]);
@@ -1687,7 +1683,6 @@ describe("reviews storage", () => {
     await expect(readSavedReview(REVIEW_ID_2)).resolves.toMatchObject({
       metadata: { projectPath: "/new/path" },
     });
-    await expect(stat(projectIndexPath("/old/path"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("merges a rekey into an existing certified destination in canonical order", async () => {
@@ -1792,12 +1787,12 @@ describe("reviews storage", () => {
       });
 
     try {
-      const { listReviews } = await loadStorage();
+      const { listReviewPage } = await loadStorage();
       const { rekeyProjectReviews } = await loadRekey();
       await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(false);
 
       // The review whose file already points at the destination has to stay listable there.
-      const listed = await listReviews("/new/path");
+      const listed = await listReviewPage("/new/path", { limit: 20 });
       expect(listed.ok).toBe(true);
       if (listed.ok) expect(listed.value.items.map((item) => item.id)).toEqual([movedId]);
       await expect(readProjectIndexIds("/new/path")).resolves.toEqual([movedId]);
@@ -1874,7 +1869,7 @@ describe("reviews storage", () => {
     const logModule = await import("../../../shared/lib/log.js");
     const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
 
-    const { listReviews } = await loadStorage();
+    const { listReviewPage } = await loadStorage();
     const { rekeyProjectReviews } = await loadRekey();
     await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(false);
 
@@ -1892,7 +1887,7 @@ describe("reviews storage", () => {
     );
 
     await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(true);
-    const listed = await listReviews("/new/path");
+    const listed = await listReviewPage("/new/path", { limit: 20 });
     expect(listed.ok).toBe(true);
     if (listed.ok) {
       expect(listed.value.items.map((item) => item.id)).toEqual([movedId, existingId]);
@@ -1949,7 +1944,7 @@ describe("reviews storage", () => {
     const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
 
     try {
-      const { listReviews } = await loadStorage();
+      const { listReviewPage } = await loadStorage();
       const { rekeyProjectReviews } = await loadRekey();
       await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(false);
 
@@ -1967,7 +1962,7 @@ describe("reviews storage", () => {
       );
 
       await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(true);
-      const destinationListing = await listReviews("/new/path");
+      const destinationListing = await listReviewPage("/new/path", { limit: 20 });
       expect(destinationListing.ok).toBe(true);
       if (destinationListing.ok) {
         expect(destinationListing.value.items.map((item) => item.id)).toEqual([
@@ -2074,11 +2069,11 @@ describe("reviews storage", () => {
       { id: deletedId, createdAt: "2026-01-01T00:00:00.000Z" },
     ]);
 
-    const { listReviews } = await loadStorage();
+    const { listReviewPage } = await loadStorage();
     const { rekeyProjectReviews } = await loadRekey();
     await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(true);
 
-    const listed = await listReviews("/new/path");
+    const listed = await listReviewPage("/new/path", { limit: 20 });
     expect(listed.ok).toBe(true);
     if (listed.ok) expect(listed.value.items.map((item) => item.id)).toEqual([survivingId]);
     await expect(readSavedReview(survivingId)).resolves.toMatchObject({
@@ -2099,11 +2094,11 @@ describe("reviews storage", () => {
       { id: foreignId, createdAt: "2026-01-01T00:00:00.000Z" },
     ]);
 
-    const { listReviews } = await loadStorage();
+    const { listReviewPage } = await loadStorage();
     const { rekeyProjectReviews } = await loadRekey();
     await expect(rekeyProjectReviews("/old/path", "/new/path")).resolves.toBe(true);
 
-    const listed = await listReviews("/new/path");
+    const listed = await listReviewPage("/new/path", { limit: 20 });
     expect(listed.ok).toBe(true);
     if (listed.ok) expect(listed.value.items.map((item) => item.id)).toEqual([recoveredId]);
     await expect(readSavedReview(foreignId)).resolves.toMatchObject({

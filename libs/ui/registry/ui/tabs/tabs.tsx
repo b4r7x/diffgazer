@@ -6,7 +6,6 @@ import {
   isValidElement,
   type ReactNode,
   type Ref,
-  useEffect,
   useId,
   useMemo,
   useRef,
@@ -17,7 +16,6 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import type { SegmentedSize, SegmentedVariant } from "@/lib/segmented-variants";
 import { isSeedElementSkipped, useSelectableCollection } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
-import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import { TabsContent } from "./tabs-content";
 import { TabsContext } from "./tabs-context";
 import { TabsTrigger } from "./tabs-trigger";
@@ -147,20 +145,6 @@ function TabsRoot<TValue extends string = string>(props: TabsProps<TValue>) {
   const [focusedValue, setFocusedValue] = useState<string | null>(null);
   const firstEnabledTab = enabledValues[0] ?? "";
   const resolvedValue = enabledValues.includes(value) ? value : firstEnabledTab;
-
-  // Warn in dev when a non-empty value owns no registered trigger (it silently
-  // falls back to the first enabled tab).
-  useEffect(() => {
-    if (process.env.NODE_ENV === "production" || value === "") return;
-    // Defer a frame so wrapper-rendered triggers (registered in a layout effect)
-    // join triggerValues before warning; a triggerValues change reschedules, so the
-    // surviving frame sees settled values and avoids a false first-render warning.
-    const view = rootRef.current?.ownerDocument.defaultView ?? globalThis;
-    const frame = view.requestAnimationFrame(() => {
-      warnUnregisteredValue("Tabs", value, triggerValues);
-    });
-    return () => view.cancelAnimationFrame(frame);
-  }, [value, triggerValues]);
 
   const resolvedFocusedValue =
     focusedValue !== null && enabledValues.includes(focusedValue) ? focusedValue : resolvedValue;

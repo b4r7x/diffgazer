@@ -1,9 +1,9 @@
 import { guardQueryState } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
+import { formatRunId } from "@diffgazer/core/format";
 import {
   buildHistoryWarningMessages,
   deriveHistoryDetailState,
-  formatRunId,
   HISTORY_SEARCH_PLACEHOLDER,
   summarizeHistoryWarnings,
 } from "@diffgazer/core/review";

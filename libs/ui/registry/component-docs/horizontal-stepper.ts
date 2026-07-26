@@ -52,8 +52,6 @@ export const horizontalStepperDoc: ComponentDoc = {
     { name: "horizontal-stepper-default", title: "Default" },
     { name: "horizontal-stepper-variants", title: "Variants" },
     { name: "horizontal-stepper-variant-ascii", title: "Variant: ASCII (start, mid-run, done)" },
-    { name: "horizontal-stepper-variant-numbered", title: "Variant: Numbered" },
-    { name: "horizontal-stepper-variant-breadcrumb", title: "Variant: Breadcrumb" },
     { name: "horizontal-stepper-compact", title: "Compact / Constrained Width" },
     { name: "horizontal-stepper-progress", title: "Progress" },
   ],

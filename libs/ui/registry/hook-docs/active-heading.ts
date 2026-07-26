@@ -136,7 +136,7 @@ export const activeHeadingDoc: HookDoc = {
     {
       title: "Bottom Lock",
       content:
-        "When bottomLock is true (default), the last heading is always highlighted when scrolled to the bottom. This ensures the last section is reachable even if it's shorter than the viewport. It never fires on a container that cannot scroll, so a static pane keeps its first heading active.",
+        "When bottomLock is true (default), the last heading is always highlighted when scrolled to the bottom — without it, a last section shorter than the viewport never becomes active. It never fires on a container that cannot scroll, so a static pane keeps its first heading active.",
     },
   ],
   examples: [

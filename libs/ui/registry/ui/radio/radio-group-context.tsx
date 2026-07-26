@@ -37,10 +37,8 @@ export interface RadioGroupContextValue {
   tabTargetValue: string | null;
 }
 
-/** React context backing radio group. */
 export const RadioGroupContext = createContext<RadioGroupContextValue | undefined>(undefined);
 
-/** Reads the radio group context. */
 export function useRadioGroupContext() {
   const context = useContext(RadioGroupContext);
   if (!context) {

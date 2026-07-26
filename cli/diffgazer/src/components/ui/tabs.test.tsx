@@ -46,59 +46,59 @@ describe("Tabs navigation", () => {
   });
 
   test("right arrow moves the active tab and skips disabled triggers", async () => {
-    const onValueChange = vi.fn();
-    const { lastFrame, stdin } = renderTabs({}, { onValueChange });
+    const onChange = vi.fn();
+    const { lastFrame, stdin } = renderTabs({}, { onChange });
     await flush();
 
     stdin.write(ARROW_RIGHT);
     await flush();
-    expect(onValueChange).toHaveBeenLastCalledWith("c");
-    expect(onValueChange).not.toHaveBeenCalledWith("b");
+    expect(onChange).toHaveBeenLastCalledWith("c");
+    expect(onChange).not.toHaveBeenCalledWith("b");
     expect(lastFrame()).toContain("Charlie panel");
     expect(lastFrame()).not.toContain("Alpha panel");
   });
 
   test("left arrow moves the active tab back and skips disabled triggers", async () => {
-    const onValueChange = vi.fn();
-    const { lastFrame, stdin } = renderTabs({}, { defaultValue: "c", onValueChange });
+    const onChange = vi.fn();
+    const { lastFrame, stdin } = renderTabs({}, { defaultValue: "c", onChange });
     await flush();
 
     stdin.write(ARROW_LEFT);
     await flush();
-    expect(onValueChange).toHaveBeenLastCalledWith("a");
-    expect(onValueChange).not.toHaveBeenCalledWith("b");
+    expect(onChange).toHaveBeenLastCalledWith("a");
+    expect(onChange).not.toHaveBeenCalledWith("b");
     expect(lastFrame()).toContain("Alpha panel");
   });
 
   test("wraps past the last tab when loop is true", async () => {
-    const onValueChange = vi.fn();
-    const { stdin } = renderTabs({ loop: true }, { defaultValue: "c", onValueChange });
+    const onChange = vi.fn();
+    const { stdin } = renderTabs({ loop: true }, { defaultValue: "c", onChange });
     await flush();
 
     stdin.write(ARROW_RIGHT);
     await flush();
-    expect(onValueChange).toHaveBeenLastCalledWith("a");
+    expect(onChange).toHaveBeenLastCalledWith("a");
   });
 
   test("does not wrap past the last tab when loop is false", async () => {
-    const onValueChange = vi.fn();
-    const { lastFrame, stdin } = renderTabs({ loop: false }, { defaultValue: "c", onValueChange });
+    const onChange = vi.fn();
+    const { lastFrame, stdin } = renderTabs({ loop: false }, { defaultValue: "c", onChange });
     await flush();
 
     stdin.write(ARROW_RIGHT);
     await flush();
-    expect(onValueChange).not.toHaveBeenCalledWith("a");
+    expect(onChange).not.toHaveBeenCalledWith("a");
     expect(lastFrame()).toContain("Charlie panel");
     expect(lastFrame()).not.toContain("Alpha panel");
   });
 
   test("ignores input when the list is inactive", async () => {
-    const onValueChange = vi.fn();
-    const { stdin } = renderTabs({ isActive: false }, { onValueChange });
+    const onChange = vi.fn();
+    const { stdin } = renderTabs({ isActive: false }, { onChange });
     await flush();
 
     stdin.write(ARROW_RIGHT);
     await flush();
-    expect(onValueChange).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

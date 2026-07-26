@@ -4,6 +4,7 @@ import {
   AGENT_EXECUTION_OPTIONS,
   type AgentExecution,
   isAgentExecution,
+  SETTINGS_SCREEN_COPY,
 } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import type { ReactElement } from "react";
@@ -54,16 +55,14 @@ export function AgentExecutionScreen(): ReactElement {
 
   return (
     <SettingsFormScreen
-      title="Agent Execution Mode"
-      subtitle="Choose whether analysis agents run in sequence or in parallel."
+      title={SETTINGS_SCREEN_COPY["agent-execution"].title}
+      subtitle={SETTINGS_SCREEN_COPY["agent-execution"].subtitle}
       loadingLabel="Loading agent execution settings..."
       listShortcuts={LIST_SHORTCUTS}
       saving={isSaving}
       canSave={canSave}
       error={error}
       onSave={handleSave}
-      cancelVariant="ghost"
-      saveVariant="success"
     >
       {({ isListActive, enterButtons, isCompact }) => (
         <RadioGroup

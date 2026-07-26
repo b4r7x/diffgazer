@@ -28,10 +28,8 @@ export interface PanelContextValue {
   unregisterDescription: (id: string) => void;
 }
 
-/** React context backing panel. */
 export const PanelContext = createContext<PanelContextValue | undefined>(undefined);
 
-/** Reads the panel context. */
 export function usePanelContext(): PanelContextValue {
   const context = useContext(PanelContext);
   if (!context) {

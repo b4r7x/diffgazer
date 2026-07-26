@@ -1,6 +1,5 @@
 "use client";
 
-import { KeyboardProvider, useKey } from "@diffgazer/keys";
 import { useState } from "react";
 import { Menu, MenuDivider, MenuItem } from "@/components/ui/menu";
 
@@ -11,16 +10,20 @@ const hotkeys: Record<string, string> = {
   "4": "export",
 };
 
-function MenuWithHotkeys() {
+export default function MenuKeyboard() {
   const [selectedId, setSelectedId] = useState<string | null>("new");
-
-  useKey(
-    Object.fromEntries(Object.entries(hotkeys).map(([key, id]) => [key, () => setSelectedId(id)])),
-  );
 
   return (
     <div className="w-64 border border-border">
-      <Menu selectedId={selectedId} onSelect={setSelectedId} aria-label="File actions">
+      <Menu
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+        onKeyDown={(event) => {
+          const id = hotkeys[event.key];
+          if (id) setSelectedId(id);
+        }}
+        aria-label="File actions"
+      >
         <MenuItem id="new" hotkey={1}>
           New File
         </MenuItem>
@@ -40,6 +43,8 @@ function MenuWithHotkeys() {
       </Menu>
       {/* One hint line: each hint stays whole, wrapping happens only at the separators. */}
       <p className="flex flex-wrap items-center gap-x-2 whitespace-nowrap px-3 py-2 text-xs text-muted-foreground border-t border-border">
+        <span>tab in</span>
+        <span aria-hidden="true">·</span>
         <span>↑↓ nav</span>
         <span aria-hidden="true">·</span>
         <span>1-4 jump</span>
@@ -47,13 +52,5 @@ function MenuWithHotkeys() {
         <span>⏎ select</span>
       </p>
     </div>
-  );
-}
-
-export default function MenuKeyboard() {
-  return (
-    <KeyboardProvider>
-      <MenuWithHotkeys />
-    </KeyboardProvider>
   );
 }

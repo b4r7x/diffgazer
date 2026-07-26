@@ -1,4 +1,4 @@
-import { stubControllableMatchMedia } from "@diffgazer/core/testing/match-media";
+import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider, useTheme } from "@/hooks/use-theme";
@@ -45,9 +45,7 @@ const storageMock: Storage = {
 Object.defineProperty(globalThis, "localStorage", { value: storageMock, writable: true });
 
 function mockMatchMedia(matches: boolean) {
-  return stubControllableMatchMedia((query) =>
-    query === "(prefers-color-scheme: dark)" ? matches : false,
-  );
+  return stubMatchMedia((query) => (query === "(prefers-color-scheme: dark)" ? matches : false));
 }
 
 function ThemeConsumer({ onRender }: { onRender: (ctx: ThemeContextValue) => void }) {

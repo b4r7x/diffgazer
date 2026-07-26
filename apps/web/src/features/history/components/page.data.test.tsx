@@ -9,14 +9,14 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-import { formatRunId, HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
+import { formatRunId } from "@diffgazer/core/format";
+import { HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
 import type { ReviewResponse } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue, makeReviewMetadata } from "@diffgazer/core/testing/factories";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expectSingleReticle } from "@/testing/reticle";
-import { HistoryPage } from "./page";
 import {
   defaultReviewsResponse,
   FooterView,
@@ -27,7 +27,8 @@ import {
   renderHistoryPage,
   setupApiMocks,
   trustedProject,
-} from "./page-test-utils";
+} from "../testing/page";
+import { HistoryPage } from "./page";
 
 describe("HistoryPage loading and error status", () => {
   beforeEach(() => {

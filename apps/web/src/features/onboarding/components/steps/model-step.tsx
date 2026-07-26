@@ -1,3 +1,4 @@
+import { getCatalogFallbackNotice } from "@diffgazer/core/catalog";
 import { useModelSource } from "@diffgazer/core/providers";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
@@ -7,8 +8,7 @@ import { Button } from "@diffgazer/ui/components/button";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { Spinner } from "@diffgazer/ui/components/spinner";
-import { type ReactNode, useEffect, useRef, useState } from "react";
-import { getCatalogFallbackNotice } from "@/lib/catalog-fallback-notice";
+import { useEffect, useRef, useState } from "react";
 import { resolveAvailableValue } from "../../lib/select";
 
 interface ModelStepProps {
@@ -18,58 +18,6 @@ interface ModelStepProps {
   onCommit?: (model: string) => void;
   enabled?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
-}
-
-interface ModelRadioGroupProps extends Omit<ModelStepProps, "provider"> {
-  modelIds: string[];
-  children: ReactNode;
-  className?: string;
-}
-
-function ModelRadioGroup({
-  modelIds,
-  value,
-  onChange,
-  onCommit,
-  enabled = true,
-  onBoundaryReached,
-  children,
-  className,
-}: ModelRadioGroupProps) {
-  const [highlighted, setHighlighted] = useState<string | null>(null);
-  const effectiveHighlighted = resolveAvailableValue(modelIds, highlighted, value);
-
-  const handleChange = (nextValue: string) => {
-    setHighlighted(nextValue);
-    onChange(nextValue);
-  };
-
-  const handleEnter = (nextValue: string) => {
-    setHighlighted(nextValue);
-    onCommit?.(nextValue);
-  };
-
-  return (
-    <RadioGroup
-      aria-label="Available models"
-      value={value ?? undefined}
-      onChange={handleChange}
-      highlighted={enabled ? effectiveHighlighted : null}
-      onHighlightChange={setHighlighted}
-      onEnter={handleEnter}
-      onNavigationBoundaryReached={(direction, event) => {
-        const verticalDirection = toVerticalBoundaryDirection(direction, event.key);
-        if (verticalDirection !== null) onBoundaryReached?.(verticalDirection);
-      }}
-      keyboardNavigation={enabled}
-      autoFocus={enabled}
-      activationMode="manual"
-      wrap={false}
-      className={className}
-    >
-      {children}
-    </RadioGroup>
-  );
 }
 
 interface ModelInfoListProps extends Omit<ModelStepProps, "provider"> {
@@ -86,18 +34,41 @@ function ModelInfoList({
   enabled = true,
   onBoundaryReached,
 }: ModelInfoListProps) {
-  const modelIds = models.map((model) => model.id);
+  const [highlighted, setHighlighted] = useState<string | null>(null);
+  const effectiveHighlighted = resolveAvailableValue(
+    models.map((model) => model.id),
+    highlighted,
+    value,
+  );
+
+  const handleChange = (nextValue: string) => {
+    setHighlighted(nextValue);
+    onChange(nextValue);
+  };
+
+  const handleEnter = (nextValue: string) => {
+    setHighlighted(nextValue);
+    onCommit?.(nextValue);
+  };
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground font-mono">{subtitle}</p>
-      <ModelRadioGroup
-        modelIds={modelIds}
-        value={value}
-        onChange={onChange}
-        onCommit={onCommit}
-        enabled={enabled}
-        onBoundaryReached={onBoundaryReached}
+      <RadioGroup
+        aria-label="Available models"
+        value={value ?? undefined}
+        onChange={handleChange}
+        highlighted={enabled ? effectiveHighlighted : null}
+        onHighlightChange={setHighlighted}
+        onEnter={handleEnter}
+        onNavigationBoundaryReached={(direction, event) => {
+          const verticalDirection = toVerticalBoundaryDirection(direction, event.key);
+          if (verticalDirection !== null) onBoundaryReached?.(verticalDirection);
+        }}
+        keyboardNavigation={enabled}
+        autoFocus={enabled}
+        activationMode="manual"
+        wrap={false}
         className="space-y-1"
       >
         {models.map((model) => (
@@ -126,7 +97,7 @@ function ModelInfoList({
             description={model.description || undefined}
           />
         ))}
-      </ModelRadioGroup>
+      </RadioGroup>
     </div>
   );
 }

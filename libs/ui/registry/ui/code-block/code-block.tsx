@@ -65,6 +65,9 @@ export function CodeBlock({
   const resolvedVariant: CodeBlockVariant = variant ?? "hairline";
   const resolvedChrome: CodeBlockChrome = chrome ?? "none";
   const [renderedLabelId, setRenderedLabelId] = useState<string | null>(null);
+  // Keyed by symbol so a remounting Label's cleanup cannot clear the id its own
+  // re-registration just set (StrictMode, or two Labels swapping); the first
+  // surviving registration wins.
   const labelRegistrationsRef = useRef(new Map<symbol, string>());
 
   const fallbackName = label ?? (language ? `${language} code` : "Code block");

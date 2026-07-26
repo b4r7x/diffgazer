@@ -1,4 +1,15 @@
 import { getErrorMessage } from "@diffgazer/core/errors";
+import type { z } from "zod";
+
+/** Renders a zod error as a single log-friendly `path: message` line. */
+export function formatSchemaIssues(error: z.ZodError): string {
+  return error.issues
+    .map((issue) => {
+      const path = issue.path.length > 0 ? issue.path.join(".") : "<root>";
+      return `${path}: ${issue.message}`;
+    })
+    .join("; ");
+}
 
 export interface ErrorRule<C extends string> {
   patterns: string[];

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ButtonHTMLAttributes, Ref } from "react";
+import type { ButtonHTMLAttributes, MouseEvent, Ref } from "react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./sidebar-context";
 
@@ -30,7 +30,7 @@ export function SidebarTrigger({
     labelDefault = isOpen ? "Close navigation" : "Open navigation";
   }
 
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     onClick?.(event);
     if (event.defaultPrevented) return;
     toggleSidebar();

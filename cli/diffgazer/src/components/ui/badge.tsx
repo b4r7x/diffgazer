@@ -10,7 +10,7 @@ export interface BadgeProps {
    * badge label to carry the status.
    */
   color?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md";
   dot?: boolean;
   children: string;
 }
@@ -18,7 +18,6 @@ export interface BadgeProps {
 const padding: Record<NonNullable<BadgeProps["size"]>, string> = {
   sm: "",
   md: " ",
-  lg: "  ",
 };
 
 export function Badge({

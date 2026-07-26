@@ -1,6 +1,6 @@
 "use client";
 
-import { Children, type ComponentProps } from "react";
+import { Children, type ComponentProps, type CSSProperties } from "react";
 import { ScrollArea } from "../scroll-area/scroll-area";
 import { useRequiredCodeBlockContext } from "./code-block-context";
 import { CodeBlockLine } from "./code-block-line";
@@ -9,13 +9,11 @@ import { CodeBlockLine } from "./code-block-line";
 export interface CodeBlockContentProps extends ComponentProps<"div"> {
   /** Auto-split mode only. Renders a line-number gutter for string children. */
   showLineNumbers?: boolean;
-  lineCount?: number;
 }
 
 /** Scrollable <pre> body (auto-split or composed) */
 export function CodeBlockContent({
   showLineNumbers = true,
-  lineCount: lineCountProp,
   className,
   children,
   ref,
@@ -30,7 +28,7 @@ export function CodeBlockContent({
 
   const isString = typeof children === "string";
   const lines = isString ? (children as string).split("\n") : null;
-  const lineCount = lineCountProp ?? (lines ? lines.length : Children.count(children));
+  const lineCount = lines ? lines.length : Children.count(children);
   const gutterWidth = Math.max(String(lineCount).length, 2);
 
   return (
@@ -45,7 +43,7 @@ export function CodeBlockContent({
     >
       <pre
         data-slot="code-block-content"
-        style={{ "--code-block-line-number-w": `${gutterWidth}ch` } as React.CSSProperties}
+        style={{ "--code-block-line-number-w": `${gutterWidth}ch` } as CSSProperties}
       >
         {lines
           ? lines.map((line, i) => (

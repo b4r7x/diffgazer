@@ -2,15 +2,13 @@ import { configQueries } from "@diffgazer/core/api/hooks";
 import { isRedirect } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCheckConfig, mockLoadInit } = vi.hoisted(() => ({
-  mockCheckConfig: vi.fn(),
+const { mockLoadInit } = vi.hoisted(() => ({
   mockLoadInit: vi.fn(),
 }));
 
-// Boundary mock: @/lib/api is the apps/web HTTP-client singleton (createApi wraps fetch); tests provide canned checkConfig/loadInit responses to drive guard behavior.
+// Boundary mock: @/lib/api is the apps/web HTTP-client singleton (createApi wraps fetch); tests provide canned loadInit responses to drive guard behavior.
 vi.mock("@/lib/api", () => ({
   api: {
-    checkConfig: (...args: unknown[]) => mockCheckConfig(...args),
     loadInit: (...args: unknown[]) => mockLoadInit(...args),
   },
 }));
@@ -43,30 +41,18 @@ describe("config guards", () => {
   });
 
   it("passes a configured user through requireConfigured", async () => {
-    mockCheckConfig.mockResolvedValue({ configured: true });
     mockLoadInit.mockResolvedValue({ setup: { isConfigured: true } });
 
     await expect(requireConfigured()).resolves.toBeUndefined();
-    expect(mockCheckConfig).not.toHaveBeenCalled();
   });
 
   it("redirects an unconfigured user to onboarding", async () => {
-    mockCheckConfig.mockResolvedValue({ configured: false });
     mockLoadInit.mockResolvedValue({ setup: { isConfigured: false } });
 
     await expectRedirectTo(requireConfigured(), "/onboarding");
-  });
-
-  it("uses init setup status when the legacy check contradicts it", async () => {
-    mockCheckConfig.mockResolvedValue({ configured: true });
-    mockLoadInit.mockResolvedValue({ setup: { isConfigured: false } });
-
-    await expectRedirectTo(requireConfigured(), "/onboarding");
-    expect(mockCheckConfig).not.toHaveBeenCalled();
   });
 
   it("redirects completed users away from onboarding on direct URL access", async () => {
-    mockCheckConfig.mockResolvedValue({ configured: false });
     mockLoadInit.mockResolvedValue({ setup: { isConfigured: true } });
 
     await expectRedirectTo(requireNotConfigured(), "/");

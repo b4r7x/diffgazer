@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { stubControllableMatchMedia, stubMatchMedia } from "@diffgazer/core/testing/match-media";
+import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
@@ -130,7 +130,7 @@ describe("SessionPanel", () => {
   });
 
   it("settles a running animation when reduced motion turns on and waits for replay after it turns off", async () => {
-    const reducedMotion = stubControllableMatchMedia(false);
+    const reducedMotion = stubMatchMedia(false);
     render(<SessionPanel />);
 
     await runAnimation(900);

@@ -1,14 +1,16 @@
+import { stripRelativeJsExtensions } from "@diffgazer/registry";
 import { metaFlag } from "@diffgazer/registry/cli";
-import type { RegistryFile, RegistryItem, ResolvedConfig } from "../context.js";
+import type {
+  ManifestIntegrationMode,
+  RegistryFile,
+  RegistryItem,
+  ResolvedConfig,
+} from "../context.js";
 import {
   rewriteKeysPackageImportsForCopy,
   rewriteLocalImportsForKeysPackage,
 } from "./keys-imports.js";
-import {
-  handleRscDirective,
-  rewriteRelativeJsExtensionsForCopy,
-  transformImports,
-} from "./transform.js";
+import { handleRscDirective, transformImports } from "./transform.js";
 
 const REGISTRY_UI_PREFIX = "registry/ui/";
 const REGISTRY_HOOKS_PREFIX = "registry/hooks/";
@@ -48,7 +50,7 @@ export function getInstallDirForBase(
 
 function applyIntegrationRewrite(
   content: string,
-  integrationMode: "none" | "copy" | "@diffgazer/keys" | undefined,
+  integrationMode: ManifestIntegrationMode | undefined,
 ): string {
   if (integrationMode === "@diffgazer/keys") return rewriteLocalImportsForKeysPackage(content);
   if (integrationMode === "copy") return rewriteKeysPackageImportsForCopy(content);
@@ -59,11 +61,11 @@ export function prepareFileContentForIntegration(
   file: RegistryFile,
   item: RegistryItem,
   config: { aliases: ResolvedConfig["aliases"]; rsc: boolean },
-  integrationMode?: "none" | "copy" | "@diffgazer/keys",
+  integrationMode?: ManifestIntegrationMode,
 ): string {
   let content = applyIntegrationRewrite(file.content, integrationMode);
   content = content.replace(CSS_SIDE_EFFECT_IMPORT_RE, "").replace(/\n{3,}/g, "\n\n");
-  content = rewriteRelativeJsExtensionsForCopy(content);
+  content = stripRelativeJsExtensions(content);
   content = transformImports(content, config.aliases);
   content = handleRscDirective(content, metaFlag(item, "client", true), config.rsc);
   return content;

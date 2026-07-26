@@ -68,7 +68,6 @@ function ConfigConsumer() {
       <p>Configured: {String(data.isConfigured)}</p>
       <p>Loading: {String(data.isLoading)}</p>
       <p>Config load: {data.loadState.status}</p>
-      <p>Provider status load: {data.providerStatusLoadState.status}</p>
       <p>Project: {data.projectId ?? "none"}</p>
       <p>Provider rows: {data.providerStatus.length}</p>
       <button
@@ -179,7 +178,7 @@ describe("ConfigProvider", () => {
     expect(screen.getByText("Config load: error")).toBeInTheDocument();
   });
 
-  it("preserves valid init data and exposes a separate provider-status failure", async () => {
+  it("falls back to the init provider rows when the provider-status request fails", async () => {
     mockApi.getProviderStatus.mockRejectedValue(new Error("Provider status unavailable"));
 
     renderWithProvider();
@@ -189,13 +188,12 @@ describe("ConfigProvider", () => {
     });
 
     expect(screen.getByText("Config load: ready")).toBeInTheDocument();
-    expect(screen.getByText("Provider status load: error")).toBeInTheDocument();
     expect(screen.getByText("Provider: gemini")).toBeInTheDocument();
     expect(screen.getByText("Project: proj-1")).toBeInTheDocument();
     expect(screen.getByText("Provider rows: 1")).toBeInTheDocument();
   });
 
-  it("exposes provider-status loading without hiding loaded init data", async () => {
+  it("keeps loaded init data visible while provider status is still pending", async () => {
     mockApi.getProviderStatus.mockReturnValue(new Promise(() => {}));
 
     renderWithProvider();
@@ -204,7 +202,6 @@ describe("ConfigProvider", () => {
       expect(screen.getByText("Config load: ready")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Provider status load: loading")).toBeInTheDocument();
     expect(screen.getByText("Loading: true")).toBeInTheDocument();
     expect(screen.getByText("Provider: gemini")).toBeInTheDocument();
     expect(screen.getByText("Project: proj-1")).toBeInTheDocument();
@@ -215,8 +212,10 @@ describe("ConfigProvider", () => {
 
     renderWithProvider();
 
+    // Provider rows land from the settled provider-status query, so loading is
+    // still true purely because init has not resolved.
     await waitFor(() => {
-      expect(screen.getByText("Provider status load: ready")).toBeInTheDocument();
+      expect(screen.getByText("Provider rows: 1")).toBeInTheDocument();
     });
 
     expect(screen.getByText("Config load: loading")).toBeInTheDocument();

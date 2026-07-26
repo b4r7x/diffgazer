@@ -4,7 +4,6 @@ import { cva } from "class-variance-authority";
 import type { ComponentPropsWithRef, KeyboardEvent, ReactNode } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
-import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
 import { useSelectContext } from "./select-context";
@@ -84,7 +83,7 @@ export function SelectTrigger({
   });
   const resolvedAriaInvalid = resolveAriaInvalid(ariaInvalid ?? triggerAriaInvalid);
   const activeDescendant =
-    open && !searchable && isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
+    open && !searchable && isActiveOptionVisible(options, highlighted, searchQuery)
       ? toOptionId(listboxId, highlighted)
       : undefined;
   const composedDescribedBy = mergeIds(ariaDescribedByProp, ariaDescribedBy);

@@ -3,7 +3,7 @@ import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { HorizontalStepper } from "@diffgazer/ui/components/horizontal-stepper";
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useRef } from "react";
 import { CardLayout } from "@/components/layout/card-layout";
 import { useOnboardingKeyboard } from "../hooks/use-keyboard";
 import { useOnboarding } from "../hooks/use-onboarding";
@@ -37,16 +37,7 @@ export function OnboardingWizard() {
     updateData,
     setProvider,
     complete,
-    cleanupEarlySave,
   } = useOnboarding();
-
-  // Clean up early-saved credentials if wizard is abandoned (unmount without completing)
-  const runCleanup = useEffectEvent(() => {
-    void cleanupEarlySave();
-  });
-  useEffect(() => {
-    return () => runCleanup();
-  }, []);
 
   const {
     footer,

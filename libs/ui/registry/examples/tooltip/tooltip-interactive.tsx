@@ -1,10 +1,10 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export default function TooltipInteractiveExample() {
   return (
     <div className="flex items-center gap-6">
       <Tooltip>
-        <TooltipTrigger>
+        <Tooltip.Trigger>
           {(triggerProps) => (
             <button
               {...triggerProps}
@@ -13,12 +13,12 @@ export default function TooltipInteractiveExample() {
               save
             </button>
           )}
-        </TooltipTrigger>
-        <TooltipContent>Save changes to disk</TooltipContent>
+        </Tooltip.Trigger>
+        <Tooltip.Content>Save changes to disk</Tooltip.Content>
       </Tooltip>
 
       <Tooltip>
-        <TooltipTrigger>
+        <Tooltip.Trigger>
           {(triggerProps) => (
             <button
               {...triggerProps}
@@ -30,8 +30,8 @@ export default function TooltipInteractiveExample() {
               delete
             </button>
           )}
-        </TooltipTrigger>
-        <TooltipContent>Remove selected items</TooltipContent>
+        </Tooltip.Trigger>
+        <Tooltip.Content>Remove selected items</Tooltip.Content>
       </Tooltip>
     </div>
   );

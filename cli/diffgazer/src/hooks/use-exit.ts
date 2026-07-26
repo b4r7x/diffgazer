@@ -1,41 +1,18 @@
 import { useApp } from "ink";
-import {
-  createContext,
-  createElement,
-  type MutableRefObject,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useRef,
-} from "react";
+import { createContext, type MutableRefObject, useContext, useEffect } from "react";
 import { config } from "../config";
 import { stopAllServers } from "../lib/servers/stop-all";
 import { stopWithTimeout } from "../lib/stop-with-timeout";
 
-type ExitPreparation = () => Promise<void>;
-type ExitProcess = () => void;
+export type ExitPreparation = () => Promise<void>;
+export type ExitProcess = () => void;
 
 interface ExitPreparationContextValue {
   preparationRef: MutableRefObject<ExitPreparation | null>;
   exitProcess?: ExitProcess;
 }
 
-const ExitPreparationContext = createContext<ExitPreparationContextValue | null>(null);
-
-export function ExitPreparationProvider({
-  children,
-  exitProcess,
-}: {
-  children: ReactNode;
-  exitProcess?: ExitProcess;
-}) {
-  const preparationRef = useRef<ExitPreparation | null>(null);
-  return createElement(
-    ExitPreparationContext,
-    { value: { preparationRef, exitProcess } },
-    children,
-  );
-}
+export const ExitPreparationContext = createContext<ExitPreparationContextValue | null>(null);
 
 export function useRegisterExitPreparation(prepare: ExitPreparation): void {
   const context = useContext(ExitPreparationContext);

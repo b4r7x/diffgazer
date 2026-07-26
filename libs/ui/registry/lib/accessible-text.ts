@@ -13,7 +13,7 @@ interface TextContentProps {
   style?: CSSProperties;
 }
 
-const NON_NAMING_ELEMENTS = new Set(["script", "style", "template"]);
+const NON_NAMING_ELEMENTS = new Set(["script", "style", "template", "noscript"]);
 
 function isHiddenFromAccessibleName(element: ReactElement<TextContentProps>): boolean {
   const { hidden, style } = element.props;

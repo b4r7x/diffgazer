@@ -2,7 +2,7 @@ import { Command } from "commander";
 import type { RegistryItem } from "../registry.js";
 import { withErrorHandler } from "../with-error-handler.js";
 import { runListWorkflow } from "../workflows/list.js";
-import { resolveCwd, type SharedCommandOptions } from "./shared.js";
+import { resolveCwd, type SharedCommandOptions } from "./command-options.js";
 
 type RegistryLikeItem = Pick<
   RegistryItem,

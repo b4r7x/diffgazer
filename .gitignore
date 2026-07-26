@@ -35,4 +35,5 @@ libs/ui/test-results/
 apps/landing/playwright-report/
 apps/landing/test-results/
 /artifacts/parity/
+libs/keys/artifacts/artifacts/
 .nuke

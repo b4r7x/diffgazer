@@ -230,15 +230,15 @@ export function createFocusTrapController(
     if (event.key !== "Tab") return;
 
     if (!trapEntry.suspended) observeNewTrapTargets(trapEntry);
-    const focusableEls = getTabbableElements(container);
-    if (focusableEls.length === 0) {
+    const tabbableEls = getTabbableElements(container);
+    if (tabbableEls.length === 0) {
       event.preventDefault();
       if (getDeepActiveElement(ownerDocument) !== container) container.focus();
       return;
     }
 
-    const first = focusableEls[0];
-    const last = focusableEls[focusableEls.length - 1];
+    const first = tabbableEls[0];
+    const last = tabbableEls[tabbableEls.length - 1];
     const activeElement = getDeepActiveElement(ownerDocument);
 
     if (!isInsideContainer(container, activeElement)) {
@@ -247,18 +247,18 @@ export function createFocusTrapController(
       return;
     }
 
-    if (!focusableEls.includes(activeElement)) {
+    if (!tabbableEls.includes(activeElement)) {
       event.preventDefault();
       getTabbableFromAnchor(
-        focusableEls as [HTMLElement, ...HTMLElement[]],
+        tabbableEls as [HTMLElement, ...HTMLElement[]],
         activeElement,
         event.shiftKey,
       ).focus();
       return;
     }
 
-    const activeIndex = focusableEls.indexOf(activeElement);
-    const adjacent = focusableEls[activeIndex + (event.shiftKey ? -1 : 1)];
+    const activeIndex = tabbableEls.indexOf(activeElement);
+    const adjacent = tabbableEls[activeIndex + (event.shiftKey ? -1 : 1)];
     if (adjacent && hasExcludedCheckedRadioPeer(container, adjacent)) {
       event.preventDefault();
       adjacent.focus();

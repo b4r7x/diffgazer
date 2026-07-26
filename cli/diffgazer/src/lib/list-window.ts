@@ -45,6 +45,9 @@ export function getListWindow({
   let canScrollUp = window.start > 0;
   let canScrollDown = window.end < total;
 
+  // Reserving a row for an indicator shrinks the window, and a smaller window can only
+  // turn indicators on, never off, so the reservation count is monotone and the second
+  // pass is always the fixed point.
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const availableRows = viewportRows - Number(canScrollUp) - Number(canScrollDown);
     const nextVisibleRows = Math.max(1, Math.min(total, availableRows, maxContentRows));

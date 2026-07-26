@@ -1,9 +1,9 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setReviewRekeyHandler } from "./shared/lib/config/store.js";
-import { makeIssue } from "./shared/lib/testing/factories.js";
 
 // Boundary mock: keyring is the OS keychain wrapper; report it unavailable so the re-key test avoids the native binding.
 vi.mock("./shared/lib/config/keyring.js", () => ({
@@ -40,7 +40,7 @@ describe("review re-key wiring", () => {
     // Import after vi.resetModules so createApp, the config store, and the review
     // storage share one module instance (the rekey handler is module-level state).
     const { createApp: freshCreateApp } = await import("./app.js");
-    const { saveReview, listReviews } = await import("./features/review/storage/reviews.js");
+    const { saveReview, listReviewPage } = await import("./features/review/storage/reviews.js");
     const { createConfigStore } = await import("./shared/lib/config/store.js");
 
     const originalRoot = join(diffgazerHome, "original");
@@ -87,7 +87,7 @@ describe("review re-key wiring", () => {
     // The handler is fire-and-forget; wait for the listing to move to the new path.
     await vi.waitFor(
       async () => {
-        const underNew = await listReviews(movedRoot);
+        const underNew = await listReviewPage(movedRoot, { limit: 20 });
         if (!underNew.ok || underNew.value.items.length !== 1) {
           throw new Error("listing not yet re-keyed");
         }
@@ -96,14 +96,14 @@ describe("review re-key wiring", () => {
       { timeout: 3000, interval: 20 },
     );
 
-    const underOld = await listReviews(originalRoot);
+    const underOld = await listReviewPage(originalRoot, { limit: 20 });
     expect(underOld.ok).toBe(true);
     if (underOld.ok) expect(underOld.value.items).toEqual([]);
   });
 
   it("keeps the old root after a review-write failure and commits it after the next retry", async () => {
     const { createApp: freshCreateApp } = await import("./app.js");
-    const { saveReview, listReviews } = await import("./features/review/storage/reviews.js");
+    const { saveReview, listReviewPage } = await import("./features/review/storage/reviews.js");
     const { createConfigStore } = await import("./shared/lib/config/store.js");
     const atomicWrite = await import("./shared/lib/fs.js");
     const originalRoot = join(diffgazerHome, "retry-original");
@@ -166,8 +166,8 @@ describe("review re-key wiring", () => {
         });
       });
 
-      const underNew = await listReviews(movedRoot);
-      const underOld = await listReviews(originalRoot);
+      const underNew = await listReviewPage(movedRoot, { limit: 20 });
+      const underOld = await listReviewPage(originalRoot, { limit: 20 });
       expect(underNew.ok && underNew.value.items.map((item) => item.id)).toEqual([reviewId]);
       expect(underOld.ok && underOld.value.items).toEqual([]);
     } finally {

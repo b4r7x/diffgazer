@@ -1,32 +1,15 @@
 import { Kbd } from "@diffgazer/ui/components/kbd";
-import { Spinner } from "@diffgazer/ui/components/spinner";
 import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
-import { Suspense } from "react";
+import { DemoNode } from "@/components/demo-node";
 
 /**
- * A3 docs-shell inset for layout-shaped component examples (Sidebar, etc.).
- * The demo lives in a left rail of fixed width; the right pane is a faked
- * docs page (sticky topbar, breadcrumb, h1, paragraph, code silhouette, ToC)
- * so the reader sees the component IN context. Right-pane content is purely
+ * Docs-shell inset for the layout-shaped examples listed in
+ * `lib/example-frames.ts` as INSET_EXAMPLES (Sidebar and friends). The demo
+ * lives in a left rail of fixed width; the right pane is a faked docs page
+ * (sticky topbar, breadcrumb, h1, paragraph, code silhouette, ToC) so the
+ * reader sees the component IN context. Right-pane content is purely
  * decorative — `aria-hidden` so screen readers don't announce placeholder text.
  */
-
-const EMPTY_FALLBACK = <div aria-hidden="true" className="h-full w-full" />;
-
-const LOADING_FALLBACK = (
-  <div className="flex h-full w-full items-center justify-center">
-    <Spinner variant="pulse" size="sm" />
-  </div>
-);
-
-function DemoSlot({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
-  if (!Demo) return EMPTY_FALLBACK;
-  return (
-    <Suspense fallback={LOADING_FALLBACK}>
-      <Demo />
-    </Suspense>
-  );
-}
 
 function InsetToolbar() {
   return (
@@ -110,7 +93,7 @@ export function InsetPreviewPane({ demo }: { demo: LazyExoticComponent<Component
           the rail border and a wider demo can never crush the faux page. */}
       <div className="grid grid-cols-[16rem_1fr] h-[440px]">
         <div className="flex flex-col items-stretch bg-background overflow-y-auto overflow-x-hidden scrollbar-thin [&>*]:min-w-0">
-          <DemoSlot demo={demo} />
+          <DemoNode demo={demo} />
         </div>
         <div className="@container/pane flex flex-col min-w-0 bg-background relative border-l border-border">
           <FauxDocsTopbar />

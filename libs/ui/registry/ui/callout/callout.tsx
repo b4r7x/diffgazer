@@ -1,6 +1,6 @@
 "use client";
 
-import { getRestorableFocusTarget, isFocusable } from "@diffgazer/keys";
+import { getFocusableElements, getRestorableFocusTarget } from "@diffgazer/keys";
 import {
   Children,
   type ComponentProps,
@@ -33,39 +33,22 @@ const TONE_ROLE_LIVE: Record<CalloutTone, "status" | "alert"> = {
   error: "alert",
 };
 
-const DISMISS_FOCUS_SELECTOR = [
-  "a[href]",
-  "button:not([disabled])",
-  'input:not([type="hidden"]):not([disabled])',
-  "select:not([disabled])",
-  "textarea:not([disabled])",
-  "[tabindex]:not([disabled])",
-].join(",");
-
-const DOCUMENT_POSITION_PRECEDING = 0x02;
-const DOCUMENT_POSITION_FOLLOWING = 0x04;
-
-function getFocusSearchScope(root: HTMLElement): ParentNode {
-  const rootNode = root.getRootNode();
-  const view = root.ownerDocument.defaultView;
-  if (view && rootNode instanceof view.ShadowRoot) return rootNode;
-  return root.ownerDocument.body;
-}
-
 function getDismissFocusTargets(root: HTMLElement): HTMLElement[] {
-  const candidates = Array.from(
-    getFocusSearchScope(root).querySelectorAll<HTMLElement>(DISMISS_FOCUS_SELECTOR),
-  ).filter((candidate) => !root.contains(candidate) && isFocusable(candidate));
+  const preceding: HTMLElement[] = [];
+  const following: HTMLElement[] = [];
+  let passedRoot = false;
 
-  const following = candidates.filter((candidate) =>
-    Boolean(root.compareDocumentPosition(candidate) & DOCUMENT_POSITION_FOLLOWING),
-  );
-  const preceding = candidates
-    .filter((candidate) =>
-      Boolean(root.compareDocumentPosition(candidate) & DOCUMENT_POSITION_PRECEDING),
-    )
-    .reverse();
-  return [...following, ...preceding];
+  // getFocusableElements walks composed order, so the callout's own focusables
+  // are one contiguous run and everything after it is the nearest next target.
+  for (const candidate of getFocusableElements(root.ownerDocument.body)) {
+    if (root.contains(candidate)) {
+      passedRoot = true;
+      continue;
+    }
+    (passedRoot ? following : preceding).push(candidate);
+  }
+
+  return [...following, ...preceding.reverse()];
 }
 
 function moveFocusOutsideCallout(root: HTMLElement): void {

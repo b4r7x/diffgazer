@@ -41,7 +41,7 @@ vi.mock("../../terminal.js", async (importOriginal) => {
 
 import { createRemoveCommand } from "../../command-factories/remove.js";
 import { info, success } from "../../terminal.js";
-import type { DerivedRemovalPlan } from "./types.js";
+import type { DerivedRemovalPlan, FileRemovalVerdict } from "./types.js";
 import { runRemoveWorkflow } from "./workflow.js";
 
 interface TestItem {
@@ -317,19 +317,43 @@ describe("runRemoveWorkflow", () => {
       name: "test-component",
       files: [{ absolutePath: join(tempDir, "component.tsx") }],
     };
-    const canRemoveFile = vi.fn(() => true);
+    const checkFileRemoval = vi.fn((): FileRemovalVerdict => "removable");
     const onAfterRemove = vi.fn((): DerivedRemovalPlan => ({ writes: [], preservedNotices: [] }));
 
     await runRemoveWorkflow<TestItem, null>({
       ...buildOptions(tempDir, item, { updateManifest: vi.fn(), onAfterRemove }),
       force: true,
-      canRemoveFile,
+      checkFileRemoval,
     });
 
-    expect(canRemoveFile).not.toHaveBeenCalled();
+    expect(checkFileRemoval).not.toHaveBeenCalled();
     expect(onAfterRemove).toHaveBeenCalledWith(
       expect.objectContaining({ removedNames: ["test-component"], force: true }),
     );
+  });
+
+  // Regression: an untracked file and a locally edited one are different
+  // problems, so --force guidance belongs only on the edited one.
+  it("distinguishes an untracked file from a modified one when skipping", async () => {
+    const filePath = join(tempDir, "component.tsx");
+    writeFileSync(filePath, "export {};\n");
+    const item: TestItem = { name: "test-component", files: [{ absolutePath: filePath }] };
+    const options = buildOptions(tempDir, item, {
+      updateManifest: vi.fn(),
+      onAfterRemove: vi.fn(),
+    });
+
+    await runRemoveWorkflow<TestItem, null>({ ...options, checkFileRemoval: () => "unowned" });
+    await runRemoveWorkflow<TestItem, null>({ ...options, checkFileRemoval: () => "modified" });
+
+    const infoMessages = vi.mocked(info).mock.calls.map(([msg]) => msg);
+    expect(infoMessages).toContain(
+      "Skipping test-component: component.tsx is not tracked in the ownership manifest (the manifest is missing or was reset)",
+    );
+    expect(infoMessages).toContain(
+      "Skipping test-component: component.tsx has been modified (use --force to override)",
+    );
+    expect(existsSync(filePath)).toBe(true);
   });
 
   it("omits names kept for a preserved derived artifact from the removed summary", async () => {

@@ -1,17 +1,12 @@
 "use client";
 
-import { createContext, type RefObject, useContext } from "react";
+import { createContext, useContext } from "react";
 import type { SegmentedSize, SegmentedVariant } from "@/lib/segmented-variants";
 
 export type ToggleGroupSelectionMode = "single" | "multiple";
 
 /** Context value shared by toggle group. */
 export interface ToggleGroupContextValue {
-  /**
-   * Switches between radio-style single selection and pressed-button-style multiple selection.
-   * Switches value/onChange/defaultValue from string|null to readonly string[].
-   */
-  selectionMode: ToggleGroupSelectionMode;
   /** Returns whether the given item value is selected. */
   isItemSelected: (value: string) => boolean;
   /** Fired when the selected value(s) change. */
@@ -25,8 +20,6 @@ export interface ToggleGroupContextValue {
   /** Visual style variant. */
   variant: SegmentedVariant;
   highlightedValue: string | null;
-  /** Ref for the container element. */
-  containerRef: RefObject<HTMLDivElement | null>;
   usesButtonSemantics: boolean;
   tabTargetValue: string | null;
   /** Registers item with toggle group. */
@@ -40,10 +33,8 @@ export interface ToggleGroupContextValue {
   unregisterItem: (itemId: string) => void;
 }
 
-/** React context backing toggle group. */
 export const ToggleGroupContext = createContext<ToggleGroupContextValue | undefined>(undefined);
 
-/** Reads the toggle group context. */
 export function useToggleGroupContext() {
   const context = useContext(ToggleGroupContext);
   if (!context) {

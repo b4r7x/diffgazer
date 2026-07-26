@@ -3,9 +3,14 @@ import { cn } from "@diffgazer/ui/lib/utils";
 import type { AnyRouter, LinkComponentProps, RegisteredRouter } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
+import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
 
-const BRACKET_LINK_CLASS =
-  "font-mono text-2xs uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+const BRACKET_LINK_CLASS = cn(
+  CHROME_LABEL_CLASS,
+  "transition-colors hover:text-foreground",
+  FOCUS_RING_CLASS,
+);
 
 export type TuiBracketLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,

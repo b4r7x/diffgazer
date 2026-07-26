@@ -136,15 +136,10 @@ export function MenuItemCheckbox({
         className,
       )}
     >
-      <span
-        aria-hidden="true"
-        className={menuItemIndicator({ idle: (!isFocused && !disabled) || undefined })}
-      >
+      <span aria-hidden="true" className={menuItemIndicator({ idle: !isFocused && !disabled })}>
         {isChecked ? CHECKBOX_CHECKED : CHECKBOX_UNCHECKED}
       </span>
-      <span className={menuItemLabel({ idle: (!isFocused && !disabled) || undefined })}>
-        {children}
-      </span>
+      <span className={menuItemLabel({ idle: !isFocused && !disabled })}>{children}</span>
     </div>
   );
 }

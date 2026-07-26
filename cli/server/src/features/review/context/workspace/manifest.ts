@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { z } from "zod";
+import { formatSchemaIssues } from "../../../../shared/lib/errors.js";
 import { log } from "../../../../shared/lib/log.js";
 
 const PackageManifestSchema = z.object({
@@ -13,15 +14,6 @@ const PackageManifestSchema = z.object({
 });
 
 export type PackageManifest = z.infer<typeof PackageManifestSchema>;
-
-export function formatSchemaIssues(error: z.ZodError): string {
-  return error.issues
-    .map((issue) => {
-      const path = issue.path.length > 0 ? issue.path.join(".") : "<root>";
-      return `${path}: ${issue.message}`;
-    })
-    .join("; ");
-}
 
 export async function readPackageManifest(filePath: string): Promise<PackageManifest | null> {
   let raw: string;

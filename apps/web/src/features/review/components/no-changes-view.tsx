@@ -29,7 +29,7 @@ export function NoChangesView({
   const actions = onSwitchMode ? [onSwitchMode, onBack] : [onBack];
   const actionCount = actions.length;
 
-  const footer = useActionRowNavigation<readonly unknown[]>({
+  const footer = useActionRowNavigation({
     enabled: true,
     actionCount,
     disabledActions: onSwitchMode ? [switchDisabled, false] : [false],

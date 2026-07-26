@@ -5,7 +5,7 @@ import { addCommand } from "./commands/add/command.js";
 import { diffCommand } from "./commands/diff.js";
 import { initCommand } from "./commands/init.js";
 import { listCommand } from "./commands/list.js";
-import { removeCommand } from "./commands/remove.js";
+import { removeCommand } from "./commands/remove/command.js";
 import { VERSION } from "./context.js";
 
 // Boolean global options may precede the shorthand item, so shorthand detection

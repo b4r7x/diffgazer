@@ -18,7 +18,7 @@ export interface UseListNavigationOptions {
 export interface ListNavigation {
   currentHighlightedId: string;
   moveBy: (direction: 1 | -1) => void;
-  selectItem: (id: string) => ListNavigationItem | null;
+  findSelectableItem: (id: string) => ListNavigationItem | null;
 }
 
 export function useListNavigation({
@@ -55,9 +55,9 @@ export function useListNavigation({
     onHighlightChange?.(result.id);
   }
 
-  function selectItem(id: string): ListNavigationItem | null {
+  function findSelectableItem(id: string): ListNavigationItem | null {
     return selectableItems.find((item) => item.id === id) ?? null;
   }
 
-  return { currentHighlightedId, moveBy, selectItem };
+  return { currentHighlightedId, moveBy, findSelectableItem };
 }

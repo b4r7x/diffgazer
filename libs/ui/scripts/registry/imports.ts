@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { KEYS_REGISTRY_DEPENDENCY_PREFIXES } from "@diffgazer/registry/schemas";
 import {
   extractLocalImports,
-  KEYS_REGISTRY_PREFIXES,
   normalizeRegistryPath,
   type RegistryItem,
   readSourceFile,
@@ -75,7 +75,7 @@ export function validateRegistryImportClosure(root: string, items: RegistryItem[
           // is satisfied when the importer already depends on the matching @diffgazer-keys/* item.
           const importedItem = itemsByName.get(importedItemName);
           const shimKeysDeps = (importedItem?.registryDependencies ?? []).filter((dep) =>
-            KEYS_REGISTRY_PREFIXES.some((prefix) => dep.startsWith(prefix)),
+            KEYS_REGISTRY_DEPENDENCY_PREFIXES.some((prefix) => dep.startsWith(prefix)),
           );
           const satisfiedByKeys =
             shimKeysDeps.length > 0 && shimKeysDeps.every((dep) => closure.has(dep));

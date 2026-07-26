@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { RELATIVE_JS_IMPORT_RE } from "@diffgazer/registry";
+import { findRelativeJsSpecifiers } from "@diffgazer/registry";
 import { describe, expect, it } from "vitest";
 import {
   PUBLIC_REGISTRY_DIR,
@@ -8,22 +8,16 @@ import {
   readPublicRegistryItems,
 } from "./registry-test-helpers";
 
-function findRelativeJsImportSpecifiers(content: string): string[] {
-  RELATIVE_JS_IMPORT_RE.lastIndex = 0;
-  return [...content.matchAll(RELATIVE_JS_IMPORT_RE)].map((match) => `${match[3]}.js`);
-}
-
 describe("committed public registry copy does not leak internal import forms", () => {
   it("public registry item files do not contain relative .js import specifiers", () => {
     const leaks: string[] = [];
     for (const item of readPublicRegistryItems()) {
       for (const file of item.files ?? []) {
         if (typeof file.content !== "string") continue;
-        file.content.split("\n").forEach((line, i) => {
-          if (findRelativeJsImportSpecifiers(line).length > 0) {
-            leaks.push(`${item.name}/${file.path}:${i + 1}: ${line.trim()}`);
-          }
-        });
+        const specifiers = findRelativeJsSpecifiers(file.content);
+        if (specifiers.length > 0) {
+          leaks.push(`${item.name}/${file.path}: ${specifiers.join(", ")}`);
+        }
       }
     }
     expect(leaks, `Found .js import leaks:\n${leaks.join("\n")}`).toEqual([]);

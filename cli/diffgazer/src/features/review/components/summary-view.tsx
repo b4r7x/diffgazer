@@ -1,12 +1,11 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { formatDuration } from "@diffgazer/core/format";
+import { formatDuration, formatRunId } from "@diffgazer/core/format";
 import {
   buildCategoryStats,
   buildDuplicateCollapseNotice,
   buildHiddenIssuesNotice,
   buildLensSummaryRows,
   buildReviewSummary,
-  formatRunId,
 } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";

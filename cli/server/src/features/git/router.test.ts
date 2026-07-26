@@ -46,7 +46,6 @@ beforeEach(async () => {
   tempHome = await mkdtemp(join(tmpdir(), "diffgazer-git-router-home-"));
   project = await realpath(await mkdtemp(join(tmpdir(), "diffgazer-git-router-proj-")));
   await mkdir(join(project, ".git"));
-  await mkdir(join(project, "src"));
   projectRealpath = project;
   process.env.DIFFGAZER_HOME = tempHome;
   process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";
@@ -89,18 +88,6 @@ function requestOptions(): RequestInit {
 }
 
 describe("git router", () => {
-  it("rejects an escaping status path", async () => {
-    await trustProject(project);
-    const app = await createGitApp();
-
-    const response = await app.request("/api/git/status?path=../escape", requestOptions());
-    const body = (await response.json()) as { error: { code: string } };
-
-    expect(response.status).toBe(400);
-    expect(body.error.code).toBe("INVALID_PATH");
-    expect(mockCreateGitService).not.toHaveBeenCalled();
-  });
-
   it("rejects an invalid diff mode through query validation", async () => {
     await trustProject(project);
     const app = await createGitApp();
@@ -176,7 +163,7 @@ describe("git router", () => {
     expect(mockGitService[otherMethod]).not.toHaveBeenCalled();
   });
 
-  it("returns status JSON and passes the path query to the git service", async () => {
+  it("returns status JSON from the project root", async () => {
     mockGitService.getStatus.mockResolvedValue(
       ok({
         ...cleanStatus,
@@ -191,21 +178,21 @@ describe("git router", () => {
     await trustProject(project);
     const app = await createGitApp();
 
-    const response = await app.request("/api/git/status?path=src", requestOptions());
+    const response = await app.request("/api/git/status", requestOptions());
     const body = (await response.json()) as GitStatus;
 
     expect(response.status).toBe(200);
     expect(body.isGitRepo).toBe(true);
     expect(body.hasChanges).toBe(true);
     expect(body.files.unstaged[0]?.path).toBe("app.ts");
-    expect(mockCreateGitService).toHaveBeenCalledWith({ cwd: join(projectRealpath, "src") });
+    expect(mockCreateGitService).toHaveBeenCalledWith({ cwd: projectRealpath });
   });
 
   it("returns diff JSON and the resolved mode", async () => {
     await trustProject(project);
     const app = await createGitApp();
 
-    const response = await app.request("/api/git/diff?mode=staged&path=src", requestOptions());
+    const response = await app.request("/api/git/diff?mode=staged", requestOptions());
     const body = (await response.json()) as { diff: string; mode: string };
 
     expect(response.status).toBe(200);
@@ -214,6 +201,6 @@ describe("git router", () => {
       mode: "staged",
     });
     expect(mockGitService.getDiff).toHaveBeenCalledWith("staged");
-    expect(mockCreateGitService).toHaveBeenCalledWith({ cwd: join(projectRealpath, "src") });
+    expect(mockCreateGitService).toHaveBeenCalledWith({ cwd: projectRealpath });
   });
 });

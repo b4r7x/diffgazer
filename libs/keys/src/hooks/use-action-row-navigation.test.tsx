@@ -593,38 +593,7 @@ describe("useActionRowNavigation", () => {
   });
 
   describe("types", () => {
-    it("narrows index and disabledActions when Actions tuple is provided", () => {
-      type TwoActions = readonly [() => void, () => void];
-      type Options = UseActionRowNavigationOptions<TwoActions>;
-
-      expectTypeOf<Options["actionCount"]>().toEqualTypeOf<2>();
-      expectTypeOf<NonNullable<Options["disabledActions"]>>().toEqualTypeOf<
-        readonly [boolean, boolean]
-      >();
-      expectTypeOf<number>().not.toMatchTypeOf<Parameters<Options["onAction"]>[0]>();
-      expectTypeOf<0>().toMatchTypeOf<Parameters<Options["onAction"]>[0]>();
-      expectTypeOf<1>().toMatchTypeOf<Parameters<Options["onAction"]>[0]>();
-      expectTypeOf<2>().not.toMatchTypeOf<Parameters<Options["onAction"]>[0]>();
-      expectTypeOf<number>().not.toMatchTypeOf<Parameters<NonNullable<Options["onNavigate"]>>[0]>();
-    });
-
-    it("rejects disabledActions whose length does not match Actions", () => {
-      type ThreeActions = readonly [() => void, () => void, () => void];
-
-      expectTypeOf<readonly [boolean, boolean]>().not.toMatchTypeOf<
-        NonNullable<UseActionRowNavigationOptions<ThreeActions>["disabledActions"]>
-      >();
-    });
-
-    it("rejects actionCount that disagrees with Actions length", () => {
-      type ThreeActions = readonly [() => void, () => void, () => void];
-
-      expectTypeOf<2>().not.toMatchTypeOf<
-        UseActionRowNavigationOptions<ThreeActions>["actionCount"]
-      >();
-    });
-
-    it("keeps the loose default contract when no generic is supplied", () => {
+    it("indexes actions by position", () => {
       expectTypeOf<UseActionRowNavigationOptions["actionCount"]>().toEqualTypeOf<number>();
       expectTypeOf<UseActionRowNavigationOptions["onAction"]>()
         .parameter(0)
@@ -632,30 +601,6 @@ describe("useActionRowNavigation", () => {
       expectTypeOf<NonNullable<UseActionRowNavigationOptions["disabledActions"]>>().toEqualTypeOf<
         readonly boolean[]
       >();
-    });
-
-    it("narrows the return value index parameters for tuple instantiations", () => {
-      type ThreeActions = readonly [() => void, () => void, () => void];
-      type Return = UseActionRowNavigationReturn<ThreeActions>;
-
-      expectTypeOf<Return["focusedIndex"]>().toEqualTypeOf<0 | 1 | 2>();
-      expectTypeOf<Return["getActionProps"]>().parameter(0).toEqualTypeOf<0 | 1 | 2>();
-      expectTypeOf<Return["enterActions"]>().parameter(0).toEqualTypeOf<0 | 1 | 2 | undefined>();
-
-      function _typeAssertions(row: Return) {
-        row.getActionProps(0);
-        row.getActionProps(2);
-        // @ts-expect-error getActionProps rejects out-of-range tuple indices.
-        row.getActionProps(7);
-        // @ts-expect-error enterActions rejects out-of-range tuple indices.
-        row.enterActions(7);
-        // @ts-expect-error reset rejects out-of-range tuple indices.
-        row.reset(7);
-      }
-      void _typeAssertions;
-    });
-
-    it("keeps return index parameters as number for array instantiations", () => {
       expectTypeOf<UseActionRowNavigationReturn["focusedIndex"]>().toEqualTypeOf<number>();
       expectTypeOf<UseActionRowNavigationReturn["getActionProps"]>()
         .parameter(0)

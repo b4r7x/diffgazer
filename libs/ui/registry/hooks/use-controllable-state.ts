@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 /** Options for a value that can be controlled by props or owned internally. */
 export interface UseControllableStateOptions<T> {
@@ -31,21 +31,6 @@ export function useControllableState<T>({
 
   const isControlled = controlled ?? controlledValue !== undefined;
   const current = isControlled ? (controlledValue as T) : internal;
-  const wasControlledRef = useRef(isControlled);
-  const warnedControlSwitchRef = useRef(false);
-
-  useEffect(() => {
-    if (process.env.NODE_ENV === "production") return;
-    if (wasControlledRef.current !== isControlled) {
-      if (!warnedControlSwitchRef.current) {
-        warnedControlSwitchRef.current = true;
-        console.error(
-          `A component changed from ${wasControlledRef.current ? "controlled" : "uncontrolled"} to ${isControlled ? "controlled" : "uncontrolled"}. Components should not switch between controlled and uncontrolled state.`,
-        );
-      }
-      wasControlledRef.current = isControlled;
-    }
-  }, [isControlled]);
 
   // Effect-synced Radix useCallbackRef pattern: read the controlled value and
   // consumer onChange through a ref so setValue stays referentially stable.

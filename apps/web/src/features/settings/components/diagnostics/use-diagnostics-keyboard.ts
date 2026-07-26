@@ -81,7 +81,7 @@ export function useDiagnosticsKeyboard({
     isRefreshing: isRefreshingContext,
     isRefreshingAll,
   });
-  const { focusedIndex, inActions, getActionProps } = useActionRowNavigation<readonly unknown[]>({
+  const { focusedIndex, inActions, getActionProps } = useActionRowNavigation({
     enabled: true,
     actionCount: BUTTON_COUNT,
     disabledActions: [refreshAllDisabled, contextActionDisabled],

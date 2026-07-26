@@ -1,19 +1,15 @@
 import type { useReviews } from "@diffgazer/core/api/hooks";
 import {
   filterReviewsForHistory,
+  type HistoryRunSummary,
   type HistoryScreenState,
   useHistoryScreenState,
 } from "@diffgazer/core/review";
 import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue, ReviewMetadata } from "@diffgazer/core/schemas/review";
 import { useState } from "react";
-import {
-  getAvailableHistoryZones,
-  type HistoryInteractionMode,
-  type MappedRun,
-  nextHistoryZone,
-} from "../lib/run-mapping";
-import type { HistoryFocusZone } from "../types";
+import { getAvailableHistoryZones, nextHistoryZone } from "../lib/focus-zones";
+import type { HistoryFocusZone, HistoryInteractionMode } from "../types";
 
 export interface UseHistoryScreenResult {
   reviewsQuery: ReturnType<typeof useReviews>;
@@ -33,7 +29,7 @@ export interface UseHistoryScreenResult {
   selectedDateId: string;
   setSelectedDateId: (id: string) => void;
 
-  mappedRuns: MappedRun[];
+  mappedRuns: HistoryRunSummary[];
   selectedRunId: string | null;
   setSelectedRunId: (id: string | null) => void;
 
@@ -48,7 +44,6 @@ export interface UseHistoryScreenResult {
   loadMoreReviews: () => Promise<void>;
 
   handleRunActivate: (runId: string) => void;
-  handleOpenReview: () => void;
 }
 
 interface UseHistoryScreenOptions {
@@ -88,10 +83,6 @@ export function useHistoryScreen({
     });
   };
 
-  const handleOpenReview = () => {
-    if (history.selectedRunId) onOpenReview(history.selectedRunId);
-  };
-
   const clearSearchAndFocusRuns = () => {
     const firstRunId =
       filterReviewsForHistory(history.reviews, history.selectedDateId, "")[0]?.id ?? null;
@@ -128,6 +119,5 @@ export function useHistoryScreen({
     isLoadingMoreReviews: history.isLoadingMoreReviews,
     loadMoreReviews: history.loadMoreReviews,
     handleRunActivate: onOpenReview,
-    handleOpenReview,
   };
 }

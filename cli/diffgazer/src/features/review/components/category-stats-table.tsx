@@ -2,8 +2,6 @@ import type { CategoryStats } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import { useTheme } from "../../../theme/provider";
 
-export type { CategoryStats };
-
 export interface CategoryStatsTableProps {
   categories: CategoryStats[];
 }

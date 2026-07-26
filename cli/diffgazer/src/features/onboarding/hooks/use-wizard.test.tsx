@@ -11,10 +11,10 @@ import { render as renderInk } from "ink-testing-library";
 import { createElement, type ReactNode, useContext, useMemo } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { AppGlobalShortcuts } from "../../../app/global-shortcuts";
+import { ExitPreparationProvider } from "../../../app/providers/exit-preparation";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { NavigationProvider } from "../../../app/providers/navigation";
 import { KeyboardContext, type KeyboardContextValue } from "../../../hooks/keyboard-context";
-import { ExitPreparationProvider } from "../../../hooks/use-exit";
 import { registerServerSet } from "../../../lib/servers/stop-all";
 import { CliThemeProvider } from "../../../theme/provider";
 import { OnboardingWizard } from "../components/wizard";
@@ -270,7 +270,7 @@ describe("useOnboardingWizard", () => {
     const hook = renderHook(() => useOnboardingWizard(), { wrapper });
 
     act(() => hook.result.current.handleNext());
-    act(() => hook.result.current.toggleFocusArea());
+    act(() => hook.result.current.cycleFocusZone());
 
     expect(hook.result.current.navIndex).toBe(0);
 
@@ -291,7 +291,12 @@ describe("useOnboardingWizard", () => {
     expect(hook.result.current.currentStep).toBe("api-key");
     expect(hook.result.current.canProceed).toBe(false);
 
-    act(() => hook.result.current.toggleFocusArea());
+    act(() => hook.result.current.cycleFocusZone());
+    act(() => hook.result.current.cycleFocusZone());
+    expect(hook.result.current.focusZone).toBe("nav");
+    expect(hook.result.current.navIndex).toBe(1);
+
+    act(() => hook.result.current.moveNavIndex(-1));
     expect(hook.result.current.navIndex).toBe(0);
 
     act(() => hook.result.current.handleBack());
@@ -305,8 +310,8 @@ describe("useOnboardingWizard", () => {
     act(() => hook.result.current.handleNext());
     act(() => hook.result.current.handleProviderChange("openrouter"));
     act(() => hook.result.current.handleNext());
-    act(() => hook.result.current.toggleFocusArea());
-    act(() => hook.result.current.moveNavIndex(1));
+    act(() => hook.result.current.cycleFocusZone());
+    act(() => hook.result.current.cycleFocusZone());
     act(() => hook.result.current.handleNext());
 
     expect(hook.result.current.currentStep).toBe("api-key");

@@ -2,13 +2,19 @@
 
 import "@testing-library/jest-dom/vitest";
 import { KeyboardProvider } from "@diffgazer/keys";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTags,
+  SelectTrigger,
+} from "@diffgazer/ui/components/select";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PageTree } from "@/lib/page-tree";
 import { stubMatchMedia } from "@/testing/match-media";
-import SelectTagsExample from "../../../../../libs/ui/registry/examples/select/select-tags";
 import { DocsFooterPager } from "./footer-pager";
 
 const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }));
@@ -58,10 +64,31 @@ function renderPager(pageUrl: string) {
   );
 }
 
+// A multi-select is the realistic "control owns the key" case: its typeahead
+// claims p/n while the pager's page shortcuts must stay inert.
+function LanguagesSelect() {
+  const [value, setValue] = useState<string[]>(["typescript", "rust"]);
+
+  return (
+    <Select multiple width="lg" value={value} onChange={setValue}>
+      <SelectTrigger aria-label="Languages">
+        <SelectTags placeholder="Select languages..." />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="typescript">TypeScript</SelectItem>
+        <SelectItem value="rust">Rust</SelectItem>
+        <SelectItem value="go">Go</SelectItem>
+        <SelectItem value="python">Python</SelectItem>
+        <SelectItem value="zig">Zig</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
 function PagerWithSelectTags() {
   return (
     <KeyboardProvider>
-      <SelectTagsExample />
+      <LanguagesSelect />
       <div role="menu">
         <div role="menuitem" tabIndex={0}>
           Custom control

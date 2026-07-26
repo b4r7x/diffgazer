@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, win32 } from "node:path";
 import { z } from "zod";
-import { REGISTRY_ORIGIN } from "../constants.js";
 import { computeIntegrity } from "../copy-bundle.js";
 import {
   RegistryFileSchema as BaseRegistryFileSchema,
@@ -56,8 +55,6 @@ export const BaseRegistryBundleSchema = z.object({
 type ParsedRegistryDependencyRef =
   | { kind: "local"; raw: string; name: string }
   | { kind: "namespace"; raw: string; namespace: string; name: string };
-
-export { REGISTRY_ORIGIN };
 
 const SIMPLE_NAMESPACE_REF_RE = /^(@[a-z0-9][\w-]*)\/([a-z0-9][\w-]*)$/i;
 const SCOPED_NAMESPACE_REF_RE = /^(@[a-z0-9][\w-]*\/[a-z0-9][\w-]*)\/([a-z0-9][\w-]*)$/i;

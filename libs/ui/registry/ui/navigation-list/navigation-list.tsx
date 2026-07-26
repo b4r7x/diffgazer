@@ -19,7 +19,6 @@ import {
 } from "@/hooks/use-listbox";
 import { isSelectableItemEligible, useSelectableCollection } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
-import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import {
   type GroupHeaderRegistration,
   NavigationListContext,
@@ -201,14 +200,9 @@ export function NavigationList({
 
   const wrappedActivate = useCallback(
     (id: string) => {
-      warnUnregisteredValue(
-        "NavigationList",
-        id,
-        items.map((item) => item.id),
-      );
       handleItemActivate(id);
     },
-    [handleItemActivate, items],
+    [handleItemActivate],
   );
 
   const registerGroupHeader = useCallback((id: string, registration: GroupHeaderRegistration) => {

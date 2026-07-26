@@ -5,13 +5,13 @@ import { applyTextEditKey } from "../../../lib/text-edit-key";
 import { focusBorder, SURFACE_BORDER } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 
-interface SearchInputProps {
+interface ModelSearchInputProps {
   value: string;
   onChange: (value: string) => void;
   isActive: boolean;
 }
 
-export function SearchInput({ value, onChange, isActive }: SearchInputProps) {
+export function ModelSearchInput({ value, onChange, isActive }: ModelSearchInputProps) {
   const { tokens } = useTheme();
 
   useInputMode(isActive);

@@ -11,10 +11,8 @@ export interface AvatarGroupContextValue {
   size?: "sm" | "md" | "lg" | null;
 }
 
-/** React context backing avatar group. */
 export const AvatarGroupContext = createContext<AvatarGroupContextValue | undefined>(undefined);
 
-/** Reads the avatar group context. */
 export function useAvatarGroupContext() {
   return useContext(AvatarGroupContext);
 }
@@ -26,10 +24,8 @@ export interface AvatarContextValue {
   setImageStatus: (status: AvatarStatus) => void;
 }
 
-/** React context backing avatar. */
 export const AvatarContext = createContext<AvatarContextValue | undefined>(undefined);
 
-/** Reads the avatar context. */
 export function useAvatarContext() {
   const ctx = useContext(AvatarContext);
   if (!ctx) {

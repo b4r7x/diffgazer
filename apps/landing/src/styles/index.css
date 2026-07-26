@@ -17,7 +17,7 @@
 /* ============================================================
    Token bridge — concept vars mapped onto @diffgazer/ui primitives.
    Scene inversion flips data-theme alongside data-scene-theme, so --dim,
-   --muted, --selection, --hairline and --danger track the active tier from
+   --selection, --hairline and --danger track the active tier from
    theme.css. Diff colors and --warning stay literal: theme.css exposes no
    --diff-* tokens, and the medium-severity amber is intentionally constant
    across tiers. --background/--foreground/--surface-1/--radius/--border come
@@ -31,7 +31,6 @@
   --diff-hunk: #79b8ff;
   --warning: #d29922;
   --dim: var(--base-dim);
-  --muted: var(--base-muted);
   --selection: var(--base-selection);
   --danger: var(--base-danger);
   --hairline: color-mix(in oklab, var(--base-border) 60%, transparent);

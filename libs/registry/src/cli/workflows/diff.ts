@@ -10,18 +10,13 @@ export interface DiffWorkflowFile {
   registryContent: string;
 }
 
-export function renderDiffPatch(ctx: {
-  file: DiffWorkflowFile;
-  localContent: string;
-  registryContent: string;
-}): void {
+function renderDiffPatch(file: DiffWorkflowFile, localContent: string): void {
   if (isSilentMode()) return;
-  const { file, localContent, registryContent } = ctx;
   heading(`${file.itemName}/${file.relativePath}`);
   const patch = createTwoFilesPatch(
     `upstream/${file.relativePath}`,
     `local/${file.relativePath}`,
-    registryContent,
+    file.registryContent,
     localContent,
     "upstream",
     "local",
@@ -43,18 +38,12 @@ export function renderDiffPatch(ctx: {
 export interface RunDiffWorkflowOptions<TConfig> {
   cwd: string;
   requestedNames: string[];
-  itemPlural: string;
   requireConfig: (cwd: string) => TConfig;
   resolveDefaultNames: (ctx: { cwd: string; config: TConfig }) => string[];
   validateRequestedNames: (names: string[]) => void;
   resolveFilesForName: (ctx: { name: string; cwd: string; config: TConfig }) => DiffWorkflowFile[];
   noInstalledMessage: string;
   upToDateMessage: string;
-  renderChangedFile: (ctx: {
-    file: DiffWorkflowFile;
-    localContent: string;
-    registryContent: string;
-  }) => void;
 }
 
 interface DiffCounts {
@@ -80,10 +69,7 @@ function resolveNames<TConfig>(
   return names;
 }
 
-function diffFile(
-  file: DiffWorkflowFile,
-  renderChangedFile: RunDiffWorkflowOptions<unknown>["renderChangedFile"],
-): "not-installed" | "unchanged" | "changed" {
+function diffFile(file: DiffWorkflowFile): "not-installed" | "unchanged" | "changed" {
   if (!existsSync(file.localPath)) {
     info(`${pc.dim(`${file.itemName}/`)}${file.relativePath}: ${pc.yellow("not installed")}`);
     return "not-installed";
@@ -92,17 +78,15 @@ function diffFile(
   const localContent = readFileSync(file.localPath, "utf-8");
   if (localContent === file.registryContent) return "unchanged";
 
-  renderChangedFile({ file, localContent, registryContent: file.registryContent });
+  renderDiffPatch(file, localContent);
   return "changed";
 }
 
-function printSummary(
-  counts: DiffCounts,
-  options: Pick<RunDiffWorkflowOptions<unknown>, "itemPlural" | "upToDateMessage">,
-): void {
+// The counters are per file, not per item: one item can contribute several files.
+function printSummary(counts: DiffCounts, upToDateMessage: string): void {
   newline();
   if (counts.changed === 0 && counts.notInstalled === 0) {
-    info(options.upToDateMessage);
+    info(upToDateMessage);
     return;
   }
 
@@ -110,7 +94,7 @@ function printSummary(
   if (counts.changed > 0) parts.push(`${counts.changed} changed`);
   if (counts.unchanged > 0) parts.push(`${counts.unchanged} unchanged`);
   if (counts.notInstalled > 0) parts.push(`${counts.notInstalled} not installed`);
-  info(`Summary: ${parts.join(", ")} ${options.itemPlural}.`);
+  info(`Summary: ${parts.join(", ")} file(s).`);
 }
 
 export function runDiffWorkflow<TConfig>(options: RunDiffWorkflowOptions<TConfig>): void {
@@ -124,10 +108,10 @@ export function runDiffWorkflow<TConfig>(options: RunDiffWorkflowOptions<TConfig
   for (const name of names) {
     const files = options.resolveFilesForName({ name, cwd: options.cwd, config });
     for (const file of files) {
-      const result = diffFile(file, options.renderChangedFile);
+      const result = diffFile(file);
       counts[result === "not-installed" ? "notInstalled" : result]++;
     }
   }
 
-  printSummary(counts, options);
+  printSummary(counts, options.upToDateMessage);
 }

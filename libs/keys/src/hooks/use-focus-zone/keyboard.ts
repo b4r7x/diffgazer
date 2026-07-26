@@ -25,7 +25,7 @@ export function useFocusZoneKeyboard<T extends string>(
     | "focus"
   >,
   state: {
-    currentZone: T;
+    safeZone: T;
     zones: readonly [T, ...T[]];
     setZoneValue: (next: T) => void;
     validatedTabCycle: T[] | undefined;
@@ -45,10 +45,10 @@ export function useFocusZoneKeyboard<T extends string>(
     focus,
   } = options;
 
-  const { currentZone, zones, setZoneValue, validatedTabCycle, canCycleTabs, enabled } = state;
+  const { safeZone, zones, setZoneValue, validatedTabCycle, canCycleTabs, enabled } = state;
 
   const handleArrowTransition = (key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown") => {
-    const next = transitions?.({ zone: currentZone, key });
+    const next = transitions?.({ zone: safeZone, key });
     if (next != null && zones.includes(next)) {
       setZoneValue(next);
       return;
@@ -59,7 +59,7 @@ export function useFocusZoneKeyboard<T extends string>(
   const cycleZone = (delta: 1 | -1) => {
     if (!validatedTabCycle || validatedTabCycle.length === 0) return;
     const cycle = validatedTabCycle;
-    const idx = cycle.indexOf(currentZone);
+    const idx = cycle.indexOf(safeZone);
     if (idx === -1) {
       const next = delta > 0 ? cycle[0] : cycle[cycle.length - 1];
       if (next) setZoneValue(next);
@@ -134,8 +134,5 @@ export function useFocusZoneKeyboard<T extends string>(
     allowInInput,
   });
 
-  const hasExplicitScope = "scope" in options;
-  useScope(hasExplicitScope ? (scope ?? null) : null, {
-    enabled: enabled && hasExplicitScope && scope != null,
-  });
+  useScope(scope ?? null, { enabled });
 }

@@ -1,4 +1,4 @@
-import { readdir, readFile, writeFile } from "node:fs/promises";
+import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { homePath, readJson, tempHome, writeJson } from "./persistence.test-support.js";
 
@@ -25,7 +25,7 @@ describe("secrets persistence", () => {
         openrouter: "  key-with-padding  ",
       },
     });
-    const { loadSecrets, persistSecrets } = await import("./secrets.js");
+    const { loadSecrets, persistSecretsAsync } = await import("./secrets.js");
 
     const secrets = loadSecrets();
 
@@ -33,7 +33,7 @@ describe("secrets persistence", () => {
       providers: { openrouter: "  key-with-padding  " },
       unknownSecrets: { gemini: "", groq: "   " },
     });
-    persistSecrets(secrets);
+    await persistSecretsAsync(secrets);
     await expect(
       readJson<{ providers: Record<string, unknown> }>(homePath("secrets.json")),
     ).resolves.toEqual({
@@ -52,14 +52,14 @@ describe("secrets persistence", () => {
         zai: { kind: "vault", path: "secret/zai" },
       },
     });
-    const { loadSecrets, persistSecrets } = await import("./secrets.js");
+    const { loadSecrets, persistSecretsAsync } = await import("./secrets.js");
 
     const secrets = loadSecrets();
     const files = await readdir(tempHome);
     expect(files.some((file) => /^secrets\.json\..+\.backup$/.test(file))).toBe(false);
     expect(secrets.providers).toEqual({ gemini: "real-key" });
 
-    persistSecrets(secrets);
+    await persistSecretsAsync(secrets);
     const persisted = await readJson<{ providers: Record<string, unknown> }>(
       homePath("secrets.json"),
     );
@@ -83,7 +83,7 @@ describe("secrets persistence", () => {
         "future-provider": futureProviderRef,
       },
     });
-    const { loadSecrets, persistSecrets } = await import("./secrets.js");
+    const { loadSecrets, persistSecretsAsync } = await import("./secrets.js");
 
     const secrets = loadSecrets();
 
@@ -98,7 +98,7 @@ describe("secrets persistence", () => {
       },
     });
 
-    persistSecrets(secrets);
+    await persistSecretsAsync(secrets);
     await expect(
       readJson<{ providers: Record<string, unknown> }>(homePath("secrets.json")),
     ).resolves.toEqual({
@@ -129,9 +129,10 @@ describe("secrets persistence", () => {
     await writeJson("secrets.json", invalidRoot);
     const filePath = homePath("secrets.json");
     const original = await readFile(filePath, "utf-8");
-    const { loadSecrets, persistSecrets } = await import("./secrets.js");
+    const { loadSecrets, persistSecretsAsync } = await import("./secrets.js");
 
-    persistSecrets(loadSecrets());
+    loadSecrets();
+    await persistSecretsAsync({ providers: { gemini: "key" } });
 
     const backupName = (await readdir(tempHome)).find((candidate) =>
       /^secrets\.json\..+\.backup$/.test(candidate),
@@ -143,21 +144,22 @@ describe("secrets persistence", () => {
   });
 
   it("persists secrets as a real JSON file", async () => {
-    const { persistSecrets } = await import("./secrets.js");
+    const { persistSecretsAsync } = await import("./secrets.js");
 
-    persistSecrets({ providers: { gemini: "key" } });
+    await persistSecretsAsync({ providers: { gemini: "key" } });
 
     await expect(readJson(homePath("secrets.json"))).resolves.toEqual({
       providers: { gemini: "key" },
     });
   });
 
-  it("removes the secrets file when it exists", async () => {
+  it("removes the secrets file once the last secret is cleared", async () => {
     await writeJson("secrets.json", { providers: { gemini: "key" } });
-    const { removeSecretsFile } = await import("./secrets.js");
+    const { persistSecretsAsync } = await import("./secrets.js");
 
-    expect(removeSecretsFile()).toBe(true);
-    expect(removeSecretsFile()).toBe(false);
+    await persistSecretsAsync({ providers: {} }, { providers: { gemini: "key" } });
+
+    await expect(stat(homePath("secrets.json"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("syncs providers with file secrets and ignores file secrets for keyring storage", async () => {

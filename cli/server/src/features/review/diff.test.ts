@@ -8,7 +8,6 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { z } from "zod";
 import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
 import { createGitService } from "../../shared/lib/git/service.js";
-import { makeFileDiff, makeParsedDiff } from "../../shared/lib/testing/factories.js";
 import { filterDiffByFiles, resolveGitDiff } from "./diff.js";
 import { resolveReviewDefaults } from "./pipeline.js";
 import { CreateReviewBodySchema } from "./schemas.js";
@@ -23,6 +22,7 @@ import {
   getSession,
   markReady,
 } from "./stream/store.js";
+import { makeFileDiff, makeParsedDiff } from "./testing/factories.js";
 
 type GitService = ReturnType<typeof createGitService>;
 

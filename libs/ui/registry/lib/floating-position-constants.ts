@@ -2,8 +2,6 @@
 export type FloatingSide = "top" | "bottom" | "left" | "right";
 /** Cross-axis alignment relative to the trigger. */
 export type FloatingAlign = "start" | "center" | "end";
-/** Placement token combining side and optional alignment. */
-export type FloatingPlacement = `${FloatingSide}` | `${FloatingSide}-${FloatingAlign}`;
 
 /** Viewport dimensions used by floating-position collision math. */
 export interface Viewport {

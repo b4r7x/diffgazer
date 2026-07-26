@@ -34,63 +34,22 @@ export function Input({
 }: InputProps) {
   const { tokens } = useTheme();
   const { columns } = useTerminalDimensions();
+  const editable = isActive && !disabled;
 
-  useInputMode(isActive && !disabled);
-
-  const width = Math.min(widthBySize[size], columns - 4);
-  const borderColor = error ? tokens.error : tokens.border;
-  const isMasked = type === "password";
-
-  function handleChange(next: string) {
-    onChange?.(next);
-  }
-
-  return (
-    <ManualTextEdit
-      value={value}
-      onChange={handleChange}
-      placeholder={placeholder}
-      width={width}
-      borderColor={disabled ? tokens.muted : borderColor}
-      isActive={isActive && !disabled}
-      mask={isMasked}
-      disabled={disabled}
-    />
-  );
-}
-
-interface ManualTextEditProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  width: number;
-  borderColor: string;
-  isActive: boolean;
-  mask: boolean;
-  disabled: boolean;
-}
-
-function ManualTextEdit({
-  value,
-  onChange,
-  placeholder,
-  width,
-  borderColor,
-  isActive,
-  mask,
-  disabled,
-}: ManualTextEditProps) {
-  const { tokens } = useTheme();
+  useInputMode(editable);
 
   useInput(
     (input, key) => {
       const next = applyTextEditKey(value, input, key);
-      if (next !== null) onChange(next);
+      if (next !== null) onChange?.(next);
     },
-    { isActive },
+    { isActive: editable },
   );
 
-  const display = mask ? "*".repeat(Array.from(value).length) : value;
+  const width = Math.min(widthBySize[size], columns - 4);
+  const enabledBorderColor = error ? tokens.error : tokens.border;
+  const borderColor = disabled ? tokens.muted : enabledBorderColor;
+  const display = type === "password" ? "*".repeat(Array.from(value).length) : value;
   const showPlaceholder = value.length === 0 && placeholder != null;
 
   return (

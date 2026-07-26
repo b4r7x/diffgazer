@@ -1,32 +1,26 @@
-import { z } from "zod";
-
 export const GIT_FILE_STATUS_CODES = ["M", "T", "A", "D", "R", "C", "U", "?", "!", " "] as const;
-const GitFileStatusCodeSchema = z.enum(GIT_FILE_STATUS_CODES);
-export type GitFileStatusCode = z.infer<typeof GitFileStatusCodeSchema>;
+export type GitFileStatusCode = (typeof GIT_FILE_STATUS_CODES)[number];
 
-export const GitFileEntrySchema = z.object({
-  path: z.string(),
-  previousPath: z.string().optional(),
-  indexStatus: GitFileStatusCodeSchema,
-  workTreeStatus: GitFileStatusCodeSchema,
-});
-export type GitFileEntry = z.infer<typeof GitFileEntrySchema>;
+export interface GitFileEntry {
+  path: string;
+  previousPath?: string;
+  indexStatus: GitFileStatusCode;
+  workTreeStatus: GitFileStatusCode;
+}
 
-export const GitStatusFilesSchema = z.object({
-  staged: z.array(GitFileEntrySchema),
-  unstaged: z.array(GitFileEntrySchema),
-  untracked: z.array(GitFileEntrySchema),
-});
-export type GitStatusFiles = z.infer<typeof GitStatusFilesSchema>;
+export interface GitStatusFiles {
+  staged: GitFileEntry[];
+  unstaged: GitFileEntry[];
+  untracked: GitFileEntry[];
+}
 
-export const GitStatusSchema = z.object({
-  isGitRepo: z.boolean(),
-  branch: z.string().nullable(),
-  remoteBranch: z.string().nullable(),
-  ahead: z.number().int().nonnegative(),
-  behind: z.number().int().nonnegative(),
-  files: GitStatusFilesSchema,
-  hasChanges: z.boolean(),
-  conflicted: z.array(z.string()),
-});
-export type GitStatus = z.infer<typeof GitStatusSchema>;
+export interface GitStatus {
+  isGitRepo: boolean;
+  branch: string | null;
+  remoteBranch: string | null;
+  ahead: number;
+  behind: number;
+  files: GitStatusFiles;
+  hasChanges: boolean;
+  conflicted: string[];
+}

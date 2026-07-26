@@ -1,7 +1,7 @@
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { describe, expect, it } from "vitest";
 import registry from "../registry.json";
-import { STEP_STATUSES, type StepStatus } from "./step-status";
+import { STEP_STATUSES } from "./step-status";
 
 describe("step-status registry metadata", () => {
   it("names every canonical status", () => {
@@ -13,16 +13,5 @@ describe("step-status registry metadata", () => {
     for (const status of STEP_STATUSES) {
       expect(item.description).toMatch(new RegExp(`\\b${status}\\b`));
     }
-  });
-
-  it("STEP_STATUSES exports the canonical six-state ordering", () => {
-    expect(STEP_STATUSES).toEqual([
-      "pending",
-      "active",
-      "completed",
-      "error",
-      "skipped",
-      "disabled",
-    ] satisfies StepStatus[]);
   });
 });

@@ -85,11 +85,10 @@ Extract to `registry/lib/` when two or more components share the same variant ax
 | `selectable-variants.ts` | Checkbox, Radio |
 | `segmented-variants.ts` | Tabs, ToggleGroup |
 | `input-variants.ts` | Input, InputGroup, Textarea |
-| `stepper-variants.ts` | Stepper |
-| `horizontal-stepper-variants.ts` | HorizontalStepper |
 | `corner-label-variants.ts` | Panel, Card |
+| `stepper-variants.ts` | Stepper — the one single-consumer module still in `lib/` |
 
-Keep variants local when only one component uses them.
+Keep variants local when only one component uses them: `horizontal-stepper/horizontal-stepper-variants.ts`, `sidebar/sidebar-variants.ts`, and `toast/toast-variants.ts` sit in the component folder and are imported relatively. Colocating costs nothing at install time — a colocated module can still be its own hidden registry item, which is how `horizontal-stepper-variants` and `sidebar-variants` ship, so installing the component pulls its CVA strings and nothing else.
 
 ---
 

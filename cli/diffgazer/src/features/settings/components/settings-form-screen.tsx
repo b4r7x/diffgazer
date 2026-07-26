@@ -5,7 +5,7 @@ import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { useQueryGuardPanels } from "../../../components/shared/query-guard-panels";
-import { Button, type ButtonProps } from "../../../components/ui/button";
+import { Button } from "../../../components/ui/button";
 import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { useBackHandler } from "../../../hooks/use-back-handler";
@@ -31,8 +31,6 @@ export interface SettingsFormScreenProps {
   /** Already-formatted save failure; each screen keeps its own error strategy. */
   error: string | null;
   onSave: () => void;
-  cancelVariant: ButtonProps["variant"];
-  saveVariant: ButtonProps["variant"];
   children: (body: SettingsFormBody) => ReactNode;
 }
 
@@ -50,8 +48,6 @@ export function SettingsFormScreen({
   canSave,
   error,
   onSave,
-  cancelVariant,
-  saveVariant,
   children,
 }: SettingsFormScreenProps): ReactElement {
   const { columns, rows } = useTerminalDimensions();
@@ -94,7 +90,7 @@ export function SettingsFormScreen({
               {error ? <Text color={tokens.error}>{sanitizeTerminalText(error)}</Text> : null}
               <Box gap={1}>
                 <Button
-                  variant={cancelVariant}
+                  variant="ghost"
                   onPress={goBack}
                   disabled={saving}
                   isActive={isButtonActive(0)}
@@ -102,7 +98,7 @@ export function SettingsFormScreen({
                   Cancel
                 </Button>
                 <Button
-                  variant={saveVariant}
+                  variant="success"
                   onPress={onSave}
                   disabled={!canSave}
                   isActive={isButtonActive(1)}

@@ -5,8 +5,8 @@ import { describe, expect, it } from "vitest";
 
 const SERVER_ROOT = path.resolve(import.meta.dirname, "../../../..");
 const TEST_ONLY_FIXTURES = [
-  "src/shared/lib/ai/models-dev-sample.ts",
-  "src/shared/lib/testing/factories.ts",
+  "src/features/review/testing/factories.ts",
+  "src/shared/lib/testing/models-dev-sample.ts",
   "src/shared/lib/testing/http.ts",
 ] as const;
 

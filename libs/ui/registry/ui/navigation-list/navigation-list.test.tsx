@@ -6,7 +6,6 @@ import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { closestElement } from "../../testing/assertions";
 import { NavigationList, type NavigationListProps } from "./index";
-import { useNavigationListContext } from "./navigation-list-context";
 
 type NavigationListRenderProps = Partial<NavigationListProps> &
   Partial<Record<`data-${string}`, string>>;
@@ -171,46 +170,6 @@ describe("NavigationList", () => {
       "aria-activedescendant",
       screen.getByRole("option", { name: "Two" }).id,
     );
-  });
-
-  it("warns in development when an unregistered item id is activated", async () => {
-    const user = userEvent.setup();
-    function GhostActivator() {
-      const { activate } = useNavigationListContext();
-      return (
-        <button type="button" onClick={() => activate("ghost")}>
-          activate ghost
-        </button>
-      );
-    }
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-
-    render(
-      <NavigationList aria-label="Test nav">
-        <NavigationList.Item id="one">
-          <NavigationList.Title>One</NavigationList.Title>
-        </NavigationList.Item>
-        <GhostActivator />
-      </NavigationList>,
-    );
-
-    await user.click(screen.getByRole("button", { name: "activate ghost" }));
-
-    expect(warn).toHaveBeenCalled();
-    expect(warn.mock.calls[0]?.[0]).toContain("ghost");
-    expect(warn.mock.calls[0]?.[0]).toContain("NavigationList");
-    warn.mockRestore();
-  });
-
-  it("does not warn when a registered item is activated", async () => {
-    const user = userEvent.setup();
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    renderList();
-
-    await user.click(screen.getByRole("option", { name: /One/ }));
-
-    expect(warn).not.toHaveBeenCalled();
-    warn.mockRestore();
   });
 
   it("passes native root props and composes key handling with list navigation", async () => {

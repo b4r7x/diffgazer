@@ -169,9 +169,7 @@ export const fetchModelsDevCatalog = async (options?: {
   return ok(catalog);
 };
 
-export type ProviderModelsResult = ProviderModelsResponse;
-
-type ResultSource = ProviderModelsResult["source"];
+type ResultSource = ProviderModelsResponse["source"];
 
 // Returns null when the catalog yields no models for the provider so the caller
 // falls through to the next tier instead of serving a blank picker. `cached` is
@@ -181,12 +179,12 @@ const resultIfNonEmpty = (
   provider: AIProvider,
   fetchedAt: string,
   source: ResultSource,
-): ProviderModelsResult | null => {
+): ProviderModelsResponse | null => {
   const models = catalogToModelInfo(catalog, provider);
   return models.length > 0 ? { models, fetchedAt, source, cached: source === "cache" } : null;
 };
 
-const snapshotResult = (provider: AIProvider): ProviderModelsResult => ({
+const snapshotResult = (provider: AIProvider): ProviderModelsResponse => ({
   models: catalogToModelInfo(CATALOG_SNAPSHOT, provider),
   fetchedAt: new Date().toISOString(),
   source: "snapshot",
@@ -238,7 +236,9 @@ const resolveCatalogGeneration = async (options: {
 // it adds a bundled-snapshot tier, per-provider non-empty fall-through, a
 // single-provider-drop poison guard, and a corrupt-cache quarantine that still
 // seeds a shrink-guard baseline. See design.md D6 for the recorded exception.
-export const getProviderModels = async (providerId: AIProvider): Promise<ProviderModelsResult> => {
+export const getProviderModels = async (
+  providerId: AIProvider,
+): Promise<ProviderModelsResponse> => {
   const path = getGlobalModelsDevCatalogPath();
   const loadedCache = loadCacheStateMemoized(path);
   const cacheState = loadedCache.state;

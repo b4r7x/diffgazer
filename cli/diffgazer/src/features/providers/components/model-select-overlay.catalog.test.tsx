@@ -12,7 +12,7 @@ import {
   GEMINI_CATALOG,
   geminiName,
   Wrapper,
-} from "./model-select-overlay.test-harness";
+} from "./model-select-overlay.test-support";
 
 const OPENROUTER_MODELS: OpenRouterModelsResponse = {
   models: [
@@ -70,6 +70,8 @@ describe("ModelSelectOverlay OpenRouter compatibility", () => {
   });
 });
 
+const CACHED_FETCHED_AT = "2026-06-02T00:00:00.000Z";
+
 describe("ModelSelectOverlay catalog provenance", () => {
   afterEach(() => {
     cleanup();
@@ -80,7 +82,7 @@ describe("ModelSelectOverlay catalog provenance", () => {
       ...GEMINI_CATALOG,
       source: "cache",
       cached: true,
-      fetchedAt: "2026-06-02T00:00:00.000Z",
+      fetchedAt: CACHED_FETCHED_AT,
     });
     const api = {
       ...createApi({ baseUrl: "http://localhost" }),
@@ -99,7 +101,8 @@ describe("ModelSelectOverlay catalog provenance", () => {
 
     await flushUntil(() => lastFrame()?.includes("Using cached catalog data") ?? false);
     const fallbackFrame = lastFrame() ?? "";
-    expect(fallbackFrame).toContain("2026-06-02T00:00:00.000Z");
+    // The notice reads as a time; the raw ISO stamp the catalog reports never reaches the frame.
+    expect(fallbackFrame).not.toContain(CACHED_FETCHED_AT);
     // Key hints live in the one global shortcut-bar grammar, never in a second
     // lowercase-colon row inside the card.
     expect(fallbackFrame).not.toContain("Tab: zone");

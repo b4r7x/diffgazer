@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, posix, resolve } from "node:path";
-import { RELATIVE_JS_IMPORT_RE } from "@diffgazer/registry";
+import { findRelativeJsSpecifiers } from "@diffgazer/registry";
 import type { RegistryItem } from "@diffgazer/registry/schemas";
 import { REGISTRY_ITEM_TYPE, RegistrySchema } from "@diffgazer/registry/schemas";
 import { createKeysSourceContentTransform } from "../transform-public-registry-imports.js";
@@ -88,14 +88,13 @@ export function validateNoJsImportsInPublicContent(publicDir: string): Validatio
     for (const file of item.files) {
       if (typeof file.content !== "string") continue;
 
-      RELATIVE_JS_IMPORT_RE.lastIndex = 0;
-      const match = RELATIVE_JS_IMPORT_RE.exec(file.content);
-      if (match) {
+      const [specifier] = findRelativeJsSpecifiers(file.content);
+      if (specifier) {
         errors.push(
           validationError(
             "PUBLIC_JS_IMPORT",
             item.name,
-            `File ${file.target ?? file.path} has relative .js import: "${match[3]}.js"`,
+            `File ${file.target ?? file.path} has relative .js import: "${specifier}"`,
           ),
         );
       }

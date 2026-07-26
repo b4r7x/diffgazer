@@ -5,7 +5,7 @@ export type FigletFont = "Big" | "Small";
 
 type FigletModule = typeof figlet;
 
-type FontModule = { default: string };
+type FontModule = { default: string } | string;
 
 const FONT_LOADERS: Record<FigletFont, () => Promise<FontModule>> = {
   Big: () => import("figlet/importable-fonts/Big.js"),
@@ -13,7 +13,7 @@ const FONT_LOADERS: Record<FigletFont, () => Promise<FontModule>> = {
 };
 
 const MISSING_DEPENDENCY_MESSAGE =
-  "@diffgazer/ui/components/logo/figlet requires the optional peer dependency 'figlet'. Install it with: npm install figlet";
+  "Logo figlet rendering requires the optional peer dependency 'figlet'. Install it with: npm install figlet";
 
 let figletPromise: Promise<FigletModule> | null = null;
 const fontPromises = new Map<FigletFont, Promise<void>>();
@@ -34,16 +34,15 @@ function loadFont(figletModule: FigletModule, font: FigletFont): Promise<void> {
   let promise = fontPromises.get(font);
   if (!promise) {
     promise = FONT_LOADERS[font]()
-      .then((mod) => (mod.default ?? mod) as string)
-      .catch(() => {
-        throw new Error(MISSING_DEPENDENCY_MESSAGE);
-      })
+      .then((mod) => (typeof mod === "string" ? mod : mod.default))
       .then((data) => {
         figletModule.parseFont(font, data);
       })
       .catch((error: unknown) => {
         fontPromises.delete(font);
-        throw error;
+        // figlet itself already resolved, so this is a chunk or font-data
+        // failure; keep the real cause instead of blaming the peer dependency.
+        throw new Error(`Failed to load the figlet font "${font}".`, { cause: error });
       });
     fontPromises.set(font, promise);
   }

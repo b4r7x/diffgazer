@@ -6,6 +6,7 @@ import {
   ProjectContextSnapshotManifestSchema,
   ProjectContextSnapshotSchema,
 } from "@diffgazer/core/schemas/context";
+import { formatSchemaIssues } from "../../../../shared/lib/errors.js";
 import { atomicWriteFile } from "../../../../shared/lib/fs.js";
 import { log } from "../../../../shared/lib/log.js";
 
@@ -108,13 +109,10 @@ export async function loadContextSnapshot(
       meta: JSON.parse(metaRaw),
     });
     if (!parsed.success) {
-      const issues = parsed.error.issues
-        .map((issue) => {
-          const issuePath = issue.path.length > 0 ? issue.path.join(".") : "<root>";
-          return `${issuePath}: ${issue.message}`;
-        })
-        .join("; ");
-      log("warn", "context_snapshot_invalid", { contextDir, issues });
+      log("warn", "context_snapshot_invalid", {
+        contextDir,
+        issues: formatSchemaIssues(parsed.error),
+      });
       return null;
     }
     if (

@@ -98,13 +98,11 @@ export function ProviderList({
       <ToggleGroup
         value={filter}
         onChange={(value) => {
+          if (value === null) return;
           const index = PROVIDER_FILTER_LABELS.findIndex((item) => item.value === value);
-          if (index === -1) return;
-          const nextFilter = PROVIDER_FILTER_LABELS[index]?.value;
-          if (!nextFilter) return;
           onFilterFocus?.(index);
           onFilterHighlightChange?.(index);
-          onFilterChange(nextFilter);
+          onFilterChange(value);
         }}
         onHighlightChange={(value) => {
           if (value === null) return;
@@ -170,7 +168,7 @@ export function ProviderList({
               const badge = getDisplayStatusBadge(provider.displayStatus);
               // Padded brackets: one bracket grammar across statuses and buttons.
               const statusText = `[ ${badge.label.toUpperCase()} ]`;
-              const subtitleText = !provider.model ? "Select model" : provider.model || undefined;
+              const subtitleText = provider.model || "Select model";
 
               return (
                 <NavigationListItem
@@ -182,7 +180,7 @@ export function ProviderList({
                   )}
                 >
                   <NavigationListTitle>{provider.name}</NavigationListTitle>
-                  {statusText && <NavigationListStatus>{statusText}</NavigationListStatus>}
+                  <NavigationListStatus>{statusText}</NavigationListStatus>
                   <div className="col-span-full row-start-2 flex min-w-0 items-center gap-2">
                     <NavigationListMeta className="shrink-0">
                       <NavigationListBadge
@@ -192,11 +190,9 @@ export function ProviderList({
                         {tierBadge}
                       </NavigationListBadge>
                     </NavigationListMeta>
-                    {subtitleText && (
-                      <NavigationListSubtitle className="min-w-0 truncate">
-                        {subtitleText}
-                      </NavigationListSubtitle>
-                    )}
+                    <NavigationListSubtitle className="min-w-0 truncate">
+                      {subtitleText}
+                    </NavigationListSubtitle>
                   </div>
                 </NavigationListItem>
               );

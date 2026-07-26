@@ -1,7 +1,8 @@
 import { metaStringList, promptSelect, warn } from "@diffgazer/registry/cli";
-import { ctx } from "../../context.js";
+import { KEYS_REGISTRY_DEPENDENCY_PREFIXES } from "@diffgazer/registry/schemas";
+import { ctx, type ManifestIntegrationMode } from "../../context.js";
 
-export type IntegrationMode = "ask" | "none" | "copy" | "@diffgazer/keys";
+export type IntegrationMode = "ask" | ManifestIntegrationMode;
 export type ResolvedIntegrationMode = Exclude<IntegrationMode, "ask">;
 
 export interface ResolvedIntegrationSelection {
@@ -10,11 +11,10 @@ export interface ResolvedIntegrationSelection {
 }
 
 const KEYBOARD_NAVIGATION_INTEGRATION = "keyboard-navigation";
-const KEYS_REGISTRY_PREFIXES = ["@diffgazer-keys/", "@diffgazer/keys/"] as const;
 
 function hasKeysRegistryDependency(item: { registryDependencies?: string[] }): boolean {
   return (item.registryDependencies ?? []).some((dep) =>
-    KEYS_REGISTRY_PREFIXES.some((prefix) => dep.startsWith(prefix)),
+    KEYS_REGISTRY_DEPENDENCY_PREFIXES.some((prefix) => dep.startsWith(prefix)),
   );
 }
 

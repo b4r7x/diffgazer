@@ -35,8 +35,7 @@ import { MenuStackBack } from "./menu-stack";
 /**
  * @typeParam TId - Convenience assertion for the id union surfaced through
  * `selectedId`/`onSelect`/`onHighlightChange`. Ids originate from `Menu.Item`
- * children props and are asserted to `TId`, not validated; activating an
- * unregistered id warns in development (see the dev guard in `wrappedActivate`).
+ * children props and are asserted to `TId`, not validated.
  */
 export interface MenuProps<TId extends string = string>
   extends Omit<ComponentPropsWithRef<"div">, "aria-label" | "children" | "onKeyDown" | "onSelect"> {
@@ -229,14 +228,9 @@ export function Menu<TId extends string = string>({
         handler();
         return;
       }
-      if (process.env.NODE_ENV !== "production" && !items.some((item) => item.id === id)) {
-        console.warn(
-          `Menu: activated item id "${id}" is not registered. Render it through <Menu.Item> so it is collected.`,
-        );
-      }
       handleItemActivate(id as TId);
     },
-    [handleItemActivate, handleItemHighlight, items],
+    [handleItemActivate, handleItemHighlight],
   );
 
   const notifySelect = useCallback(

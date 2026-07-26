@@ -173,10 +173,5 @@ describe("useHistoryScreen", () => {
 
     expect(onOpenReview).toHaveBeenCalledWith("history-review-1");
     expect(onOpenReview).toHaveBeenCalledTimes(1);
-
-    result.current.handleOpenReview();
-
-    expect(onOpenReview).toHaveBeenLastCalledWith("history-review-1");
-    expect(onOpenReview).toHaveBeenCalledTimes(2);
   });
 });

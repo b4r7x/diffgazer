@@ -1,8 +1,8 @@
 import { createServer as createTcpServer } from "node:net";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ServerController } from "./lib/servers/controller";
 import { createServerFactories } from "./lib/servers/factories";
 import { createProcessServer } from "./lib/servers/process/server";
+import type { ServerController } from "./lib/servers/types";
 import { startWeb } from "./web-launcher";
 
 const ensureShutdownToken = vi.fn();

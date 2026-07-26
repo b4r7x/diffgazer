@@ -17,11 +17,16 @@ import {
   writeCursorProjectIndex,
 } from "./project-index.js";
 import { withReviewLock } from "./review-lock.js";
-import { reviewStore, scanReviewsForCertification } from "./reviews.js";
+import { reviewStore } from "./review-store.js";
+import { scanReviewsForCertification } from "./reviews.js";
 
 // Move a project's stored review history to a new path (repo dir moved/renamed):
 // rewrite each matching review's metadata.projectPath under its lock and migrate the
 // sha256(projectPath) index file to the new key.
+//
+// Invariant every branch below upholds: the source index may only be deleted once the
+// destination index provably contains every id this pass claimed, so an interrupted
+// move always leaves a durable retry set behind.
 export async function rekeyProjectReviews(
   oldProjectPath: string,
   newProjectPath: string,

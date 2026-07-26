@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 
 /** Heading activation line mode. A number sets a custom viewport fraction from 0 to 1. */
-export type ActiveHeadingActivation = "top-line" | "viewport-center" | (number & {});
+export type ActiveHeadingActivation = "top-line" | "viewport-center" | number;
 
 /**
  * Tracks the currently active heading by id.

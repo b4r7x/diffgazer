@@ -1,15 +1,12 @@
 import { useSettings } from "@diffgazer/core/api/hooks";
+import { SETTINGS_SCREEN_COPY } from "@diffgazer/core/schemas/config";
 import { buildLensOptions } from "@diffgazer/core/schemas/events";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
-import {
-  ANALYSIS_SETTINGS_SUBTITLE,
-  deriveLensSelectionState,
-  type LensId,
-} from "@diffgazer/core/schemas/review";
+import { deriveLensSelectionState, type LensId } from "@diffgazer/core/schemas/review";
 import { useScope } from "@diffgazer/keys";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { useId, useRef, useState } from "react";
-import { useSettingsFormActions } from "../../hooks/use-settings-form-actions";
+import { useSettingsFormActions } from "../../hooks/use-form-actions";
 import { SettingsFormPage } from "../form-page";
 import { AnalysisSelectorContent } from "./selector-content";
 
@@ -41,8 +38,8 @@ export function SettingsAnalysisPage() {
 
   return (
     <SettingsFormPage
-      title="Analysis Settings"
-      subtitle={ANALYSIS_SETTINGS_SUBTITLE}
+      title={SETTINGS_SCREEN_COPY.analysis.title}
+      subtitle={SETTINGS_SCREEN_COPY.analysis.subtitle}
       query={settingsQuery}
       footer={footer}
       isSaving={isSaving}

@@ -54,6 +54,8 @@ export function TerminalKeyboardProvider({
   }, []);
 
   useInput((input, key) => {
+    // The queue holds one classification per Ink input event, so consume() must run
+    // exactly once here — an early return above this line would desynchronise it.
     if (terminalInputQueue?.consume() === "legacy-modified") return;
 
     const hotkey = inkKeyToHotkey(input, key);

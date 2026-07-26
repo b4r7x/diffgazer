@@ -10,11 +10,11 @@ import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import { CreateReviewResponseSchema, ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StatusHashResult } from "../../shared/lib/git/service.js";
 import { canonicalizeProjectRoot } from "../../shared/lib/paths.js";
-import { makeIssue } from "../../shared/lib/testing/factories.js";
 import {
   CREATE_REVIEW_BODY_LIMIT_KB,
   DEFAULT_BODY_LIMIT_KB,

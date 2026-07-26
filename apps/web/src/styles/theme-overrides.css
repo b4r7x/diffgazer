@@ -2,7 +2,7 @@
  * Loaded AFTER the lib theme, so this file declares ONLY what differs from the
  * lib palette: the GitHub-dark primitive values, the handful of semantic remaps
  * whose mapping diverges from the lib, the diffgazer-only domain tokens
- * (severity, status, row-active), and the bridge block for those domain tokens.
+ * (severity, status, input-well), and the bridge block for those domain tokens.
  * Everything the lib already ships (subtle derivation, lib-identical semantic
  * mappings, .ui-base, scrollbars, animations, radius, custom-variant) is
  * inherited, not re-stated. */
@@ -56,8 +56,6 @@
   --status-complete: var(--base-success);
   --status-pending: var(--base-muted);
 
-  --row-active-fg: var(--primary-foreground);
-
   /* Sunken input-well surface (darker than --background in GitHub-dark); the
      semantic --input role is selection-gray, so this is an app-only token. */
   --input-well: var(--base-input-bg);
@@ -103,9 +101,10 @@
   --status-complete: var(--base-success);
   --status-pending: var(--base-muted);
 
-  --row-active-fg: var(--primary-foreground);
-
-  --input-well: var(--base-input-bg);
+  /* Spelled out rather than var(--base-input-bg): GitHub-light has no canvas
+     step below the default canvas, and the lib's light --base-input-bg is
+     #ffffff, which would collapse the well into --background. */
+  --input-well: #f6f8fa;
 }
 
 @font-face {
@@ -126,8 +125,6 @@
   --color-status-running: var(--status-running);
   --color-status-complete: var(--status-complete);
   --color-status-pending: var(--status-pending);
-
-  --color-row-active-fg: var(--row-active-fg);
 
   --color-input-well: var(--input-well);
 }

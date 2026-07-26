@@ -1,4 +1,5 @@
 import { gazeFindings } from "../demo";
+import { el, severityChip } from "../dom";
 import { type Cleanup, createEffectScope } from "../effect-scope";
 import { sleep, spinAt } from "../motion";
 import { type Flags, getFlags, type Mouse } from "../viewport";
@@ -53,30 +54,15 @@ function formatIssueCount(count: number): string {
 function renderCallout(callout: HTMLElement, index: number): void {
   const finding = gazeFindings[index];
   if (!finding) return;
-  callout.textContent = "";
 
-  const line = document.createElement("div");
-  line.className = "co-line1";
+  const line = el("div", "co-line1");
+  line.append(severityChip(finding), el("span", "fd-tag", finding.tag));
 
-  const severity = document.createElement("span");
-  severity.className = `sev sev-${finding.severity}`;
-  severity.textContent = finding.severity;
-  line.append(severity);
-
-  const tag = document.createElement("span");
-  tag.className = "fd-tag";
-  tag.textContent = finding.tag;
-  line.append(tag);
-
-  const title = document.createElement("div");
-  title.className = "co-title";
-  title.textContent = finding.title;
-
-  const location = document.createElement("div");
-  location.className = "co-loc";
-  location.textContent = finding.location;
-
-  callout.append(line, title, location);
+  callout.replaceChildren(
+    line,
+    el("div", "co-title", finding.title),
+    el("div", "co-loc", finding.location),
+  );
 }
 
 export function initGaze(

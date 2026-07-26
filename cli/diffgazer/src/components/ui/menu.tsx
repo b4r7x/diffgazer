@@ -13,7 +13,6 @@ export interface MenuProps<Id extends string = string> {
   highlightedId?: Id | null;
   onSelect?: (id: Id) => void;
   onHighlightChange?: (id: Id) => void;
-  onClose?: () => void;
   variant?: "default" | "hub";
   wrap?: boolean;
   isActive?: boolean;
@@ -138,7 +137,6 @@ function MenuRoot<Id extends string = string>({
   highlightedId: controlledHighlightedId = null,
   onSelect,
   onHighlightChange,
-  onClose,
   variant = "default",
   wrap = true,
   isActive = true,
@@ -160,22 +158,13 @@ function MenuRoot<Id extends string = string>({
   });
 
   useInput(
-    (input, key) => {
-      if (key.escape) {
-        onClose?.();
+    (input) => {
+      if (input.length !== 1) return;
+      for (const item of items) {
+        if (item.hotkey == null || String(item.hotkey) !== input) continue;
+        if (!navigation.findSelectableItem(item.id)) continue;
+        onSelect?.(item.id as Id);
         return;
-      }
-      if (input.length === 1) {
-        for (const item of items) {
-          if (
-            item.hotkey != null &&
-            String(item.hotkey) === input &&
-            navigation.selectItem(item.id)
-          ) {
-            onSelect?.(item.id as Id);
-            return;
-          }
-        }
       }
     },
     { isActive },

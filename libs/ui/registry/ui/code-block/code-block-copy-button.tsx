@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps, MouseEvent, ReactNode } from "react";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 
 /** Props for code block copy button. */
@@ -72,13 +72,9 @@ export function CodeBlockCopyButton({
   const { copied, copy } = useCopyToClipboard({ onCopy, onError: onCopyError });
   const state = copied ? "copied" : "idle";
 
-  const handleClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleClick = async (event: MouseEvent<HTMLButtonElement>) => {
     onClick?.(event);
     if (event.defaultPrevented) return;
-    if (!navigator.clipboard) {
-      onCopyError?.(new Error("Clipboard API unavailable"));
-      return;
-    }
     await copy(source);
   };
 

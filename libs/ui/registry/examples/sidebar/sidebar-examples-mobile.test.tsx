@@ -8,9 +8,6 @@ import SidebarDefault from "./sidebar-default";
 import SidebarMobileSheet from "./sidebar-mobile-sheet";
 import SidebarRail from "./sidebar-rail";
 import SidebarRenderProp from "./sidebar-render-prop";
-import SidebarVariantBar from "./sidebar-variant-bar";
-import SidebarVariantCaret from "./sidebar-variant-caret";
-import SidebarVariantInverted from "./sidebar-variant-inverted";
 import SidebarVariantTerminal from "./sidebar-variant-terminal";
 import SidebarVariantTree from "./sidebar-variant-tree";
 import SidebarVariants from "./sidebar-variants";
@@ -22,9 +19,6 @@ const examples = [
   ["sidebar-mobile-sheet", SidebarMobileSheet],
   ["sidebar-rail", SidebarRail],
   ["sidebar-render-prop", SidebarRenderProp],
-  ["sidebar-variant-bar", SidebarVariantBar],
-  ["sidebar-variant-caret", SidebarVariantCaret],
-  ["sidebar-variant-inverted", SidebarVariantInverted],
   ["sidebar-variant-terminal", SidebarVariantTerminal],
   ["sidebar-variant-tree", SidebarVariantTree],
   ["sidebar-variants", SidebarVariants],

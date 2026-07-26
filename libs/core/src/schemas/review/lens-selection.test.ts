@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { LensId } from "./lens.js";
 import {
-  ANALYSIS_SETTINGS_SUBTITLE,
   deriveLensSelectionState,
   isLensId,
   isLensSelectionDirty,
@@ -89,11 +88,5 @@ describe("deriveLensSelectionState", () => {
       isDirty: true,
       hasSelection: false,
     });
-  });
-});
-
-describe("ANALYSIS_SETTINGS_SUBTITLE", () => {
-  test("uses the lens-neutral vocabulary", () => {
-    expect(ANALYSIS_SETTINGS_SUBTITLE).toBe("Choose which lenses run during reviews.");
   });
 });

@@ -10,7 +10,7 @@ export default defineConfig({
       "scripts/**/*.test.ts",
       "testing/e2e/**/*.e2e.ts",
     ],
-    setupFiles: ["./src/testing/vitest.setup.ts"],
+    setupFiles: ["./src/testing/test-setup.ts"],
     pool: "forks",
     fileParallelism: false,
     testTimeout: 45_000,

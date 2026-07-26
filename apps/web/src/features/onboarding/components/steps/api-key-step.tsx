@@ -4,7 +4,7 @@ import { AVAILABLE_PROVIDERS, PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/
 import { getVerticalArrowDirection, useKey } from "@diffgazer/keys";
 import { type KeyboardEvent, useRef, useState } from "react";
 import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
-import type { FocusElement } from "@/types/focus-element";
+import type { ApiKeyFocusTarget } from "@/types/api-key-focus-target";
 
 interface ApiKeyStepProps {
   provider: AIProvider;
@@ -29,7 +29,7 @@ export function ApiKeyStep({
 }: ApiKeyStepProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const methodOptionRefs = useRef(new Map<InputMethod, HTMLDivElement>());
-  const [focused, setFocused] = useState<FocusElement>("paste");
+  const [focused, setFocused] = useState<ApiKeyFocusTarget>("paste");
   const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
   const providerName = providerInfo?.name ?? provider;
   const envVarName = PROVIDER_ENV_VARS[provider];

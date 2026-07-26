@@ -1,5 +1,5 @@
 import { requireValue } from "@diffgazer/core/testing/assertions";
-import { stubControllableMatchMedia, stubMatchMedia } from "@diffgazer/core/testing/match-media";
+import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -77,7 +77,7 @@ describe("Sidebar mobile sheet", () => {
   ])("keeps the sheet closed when a desktop %s state flips to mobile", async (defaultState) => {
     const user = userEvent.setup();
     const onStateChange = vi.fn();
-    const viewport = stubControllableMatchMedia(false);
+    const viewport = stubMatchMedia(false);
     render(
       <Sidebar.Provider defaultState={defaultState} onStateChange={onStateChange}>
         <Sidebar>
@@ -208,7 +208,7 @@ describe("Sidebar mobile sheet", () => {
   it("restores a desktop rail presentation after a mobile resize", async () => {
     const user = userEvent.setup();
     const onStateChange = vi.fn();
-    const viewport = stubControllableMatchMedia(false);
+    const viewport = stubMatchMedia(false);
     render(
       <Sidebar.Provider defaultState="rail" onStateChange={onStateChange}>
         <Sidebar>
@@ -235,7 +235,7 @@ describe("Sidebar mobile sheet", () => {
 
   it("returns to a closed sheet after a desktop round trip", async () => {
     const user = userEvent.setup();
-    const viewport = stubControllableMatchMedia(true);
+    const viewport = stubMatchMedia(true);
     render(
       <Sidebar.Provider defaultState="rail">
         <Sidebar>

@@ -1,6 +1,10 @@
 import type { MenuAction } from "../schemas/presentation/navigation.js";
 import type { ReviewMode } from "../schemas/review/index.js";
-import { isReviewStartAction, type ReviewStartAction } from "./menu-disabling.js";
+import {
+  isReviewStartAction,
+  type MenuDisablingContext,
+  type ReviewStartAction,
+} from "./menu-disabling.js";
 
 type ResumableMode = Extract<ReviewMode, "unstaged" | "staged">;
 
@@ -64,11 +68,6 @@ const REVIEW_START_MODE: Record<ReviewStartAction, ResumableMode> = {
   "review-staged": "staged",
 };
 
-interface HomeMenuActivationContext {
-  isTrusted: boolean;
-  hasResumableSession: boolean;
-}
-
 /**
  * Maps a menu action plus the home trust/session state to a single shared
  * activation decision. Each surface renders this decision in its own channel
@@ -76,7 +75,7 @@ interface HomeMenuActivationContext {
  */
 export function resolveHomeMenuActivation(
   action: MenuAction,
-  { isTrusted, hasResumableSession }: HomeMenuActivationContext,
+  { isTrusted, hasResumableSession }: MenuDisablingContext,
 ): HomeMenuActivation {
   if (action === "quit") {
     return { kind: "quit" };

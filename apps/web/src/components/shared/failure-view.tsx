@@ -7,7 +7,7 @@ import { Panel } from "@diffgazer/ui/components/panel";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useRef } from "react";
 
-export interface FailureAction {
+interface FailureAction {
   label: string;
   onAction: () => void;
   disabled?: boolean;
@@ -47,7 +47,7 @@ export function FailureView({
   const focusFallbackRef = useRef<HTMLDivElement>(null);
   const actions = [primary, secondary];
 
-  const footer = useActionRowNavigation<readonly unknown[]>({
+  const footer = useActionRowNavigation({
     enabled: true,
     actionCount: actions.length,
     disabledActions: [primary.disabled === true, secondary.disabled === true],

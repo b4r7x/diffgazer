@@ -236,7 +236,6 @@
       "type": "registry:ui",
       "title": "Callout",
       "description": "Highlighted message block for tips, warnings, and errors",
-      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "controllable-state",
@@ -382,8 +381,7 @@
         "selectable-variants",
         "selectable-glyph",
         "utils",
-        "composed-refs",
-        "warn-unregistered-value"
+        "composed-refs"
       ],
       "meta": {
         "client": true,
@@ -451,8 +449,7 @@
         "selectable-variants",
         "selectable-glyph",
         "utils",
-        "composed-refs",
-        "warn-unregistered-value"
+        "composed-refs"
       ],
       "meta": {
         "client": true,
@@ -1008,7 +1005,6 @@
       "type": "registry:ui",
       "title": "Tabs",
       "description": "Terminal-styled tabbed interface",
-      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "aria",
@@ -1019,8 +1015,7 @@
         "segmented-variants",
         "selectable-collection",
         "utils",
-        "composed-refs",
-        "warn-unregistered-value"
+        "composed-refs"
       ],
       "meta": {
         "client": true,
@@ -1149,7 +1144,6 @@
         "icons",
         "aria",
         "composed-refs",
-        "warn-unregistered-value",
         "marker-rail"
       ],
       "meta": {
@@ -1370,7 +1364,6 @@
       "type": "registry:ui",
       "title": "Toggle Group",
       "description": "Compound toggle button group for single selection with keyboard navigation",
-      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "@diffgazer-keys/navigation",
@@ -1411,7 +1404,6 @@
       "type": "registry:ui",
       "title": "Code Block",
       "description": "Code display with three visual variants (hairline, bare, terminal), per-line diff/highlight states, and optional copy button. Add ui/code-block-highlight separately for lowlight syntax coloring.",
-      "dependencies": ["class-variance-authority"],
       "registryDependencies": ["theme", "scroll-area", "utils", "copy-to-clipboard"],
       "meta": {
         "client": true
@@ -1507,7 +1499,6 @@
       "meta": {
         "client": true
       },
-      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "theme",
         "step-status",
@@ -2361,22 +2352,6 @@
       ]
     },
     {
-      "name": "warn-unregistered-value",
-      "type": "registry:lib",
-      "title": "warnUnregisteredValue",
-      "description": "Dev-mode guard for the convenience-assertion TValue/TId generics on compound-collection components: warns when a typed callback fires with a value that was never registered. No-op in production.",
-      "meta": {
-        "client": false,
-        "hidden": true
-      },
-      "files": [
-        {
-          "path": "registry/lib/warn-unregistered-value.ts",
-          "type": "registry:lib"
-        }
-      ]
-    },
-    {
       "name": "typeahead",
       "type": "registry:lib",
       "title": "Typeahead",
@@ -2607,7 +2582,7 @@
     },
     {
       "name": "horizontal-stepper-variants",
-      "type": "registry:lib",
+      "type": "registry:ui",
       "title": "Horizontal Stepper Variants",
       "description": "Shared CVA visual contracts and indicator glyph dictionaries for horizontal stepper variants.",
       "dependencies": ["class-variance-authority"],
@@ -2618,8 +2593,8 @@
       },
       "files": [
         {
-          "path": "registry/lib/horizontal-stepper-variants.ts",
-          "type": "registry:lib"
+          "path": "registry/ui/horizontal-stepper/horizontal-stepper-variants.ts",
+          "type": "registry:ui"
         }
       ]
     },

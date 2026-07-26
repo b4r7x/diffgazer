@@ -3,11 +3,11 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
 /** Allowed badge variant values. */
-export type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral";
+export type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
 /** Allowed badge size values. */
-export type BadgeSize = "xs" | "sm" | "md" | "lg";
+export type BadgeSize = NonNullable<VariantProps<typeof badgeVariants>["size"]>;
 /** Allowed badge appearance values. */
-export type BadgeAppearance = "solid" | "outline";
+export type BadgeAppearance = NonNullable<VariantProps<typeof badgeVariants>["appearance"]>;
 
 /** Class variants for badge. */
 export const badgeVariants = cva(
@@ -42,11 +42,13 @@ export const badgeVariants = cva(
 );
 
 /** Props for badge. */
-export interface BadgeProps
-  extends ComponentProps<"span">,
-    Omit<VariantProps<typeof badgeVariants>, "variant"> {
+export interface BadgeProps extends ComponentProps<"span"> {
   /** Semantic color token. Picks foreground, background, border, and dot color together. */
   variant?: BadgeVariant;
+  /** Padding and font-size token. */
+  size?: BadgeSize;
+  /** Solid keeps the tinted fill; outline renders border and text only on a transparent background. */
+  appearance?: BadgeAppearance;
   /** Renders a leading status dot in the variant color. */
   dot?: boolean;
 }

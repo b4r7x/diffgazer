@@ -23,6 +23,8 @@ const CssChunkHashSchema = z.string().regex(/^[a-f0-9]{16}$/, {
   error: "CSS chunk hashes must be sixteen lowercase hexadecimal characters",
 });
 
+const ManifestIntegrationModeSchema = z.enum(["none", "copy", "@diffgazer/keys"]);
+
 export const DiffgazerAddConfigSchema = z.object({
   $schema: z.string().optional(),
   version: z.string().optional(),
@@ -44,7 +46,7 @@ export const DiffgazerAddConfigSchema = z.object({
       z.string(),
       z.object({
         installedAt: z.string(),
-        integrationMode: z.enum(["none", "copy", "@diffgazer/keys"]).optional(),
+        integrationMode: ManifestIntegrationModeSchema.optional(),
         keysVersion: z.string().optional(),
         // "explicit" — user passed this name to `dgadd add`. "transitive" — pulled in as
         // a registry dependency. Used to decide cascade-remove eligibility.
@@ -58,7 +60,7 @@ export const DiffgazerAddConfigSchema = z.object({
               item: z.string(),
               registryIntegrity: z.string().optional(),
               cliVersion: z.string().optional(),
-              integrationMode: z.enum(["none", "copy", "@diffgazer/keys"]).optional(),
+              integrationMode: ManifestIntegrationModeSchema.optional(),
               retired: z.literal(true).optional(),
             }),
           )
@@ -73,23 +75,12 @@ export type DiffgazerAddConfig = z.infer<typeof DiffgazerAddConfigSchema>;
 /** A single zod-proved manifest entry keyed by installed item name. */
 export type ManifestItem = NonNullable<DiffgazerAddConfig["installedComponents"]>[string];
 
-export type ManifestInstallMetadata = {
-  integrationMode?: "none" | "copy" | "@diffgazer/keys";
-  keysVersion?: string;
-  installedAs?: "explicit" | "transitive";
-  cssChunks?: string[];
-  files?: ManifestOwnedFile[];
-};
+/** Everything a manifest entry carries except the timestamp the writer stamps. */
+export type ManifestInstallMetadata = Omit<ManifestItem, "installedAt">;
 
-export type ManifestOwnedFile = {
-  path: string;
-  hash: string;
-  item: string;
-  registryIntegrity?: string;
-  cliVersion?: string;
-  integrationMode?: "none" | "copy" | "@diffgazer/keys";
-  retired?: true;
-};
+export type ManifestOwnedFile = NonNullable<ManifestItem["files"]>[number];
+
+export type ManifestIntegrationMode = z.infer<typeof ManifestIntegrationModeSchema>;
 
 /** dgadd resolved config (component + hook paths). */
 export interface ResolvedConfig {

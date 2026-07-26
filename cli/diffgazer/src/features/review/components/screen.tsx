@@ -8,6 +8,7 @@ import {
   sanitizeTerminalText,
   toSavedReviewQueryState,
 } from "@diffgazer/core/review";
+import { BACK_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { Box } from "ink";
 import { type ReactElement, useState } from "react";
@@ -78,7 +79,7 @@ function SavedReviewErrorView({
   onBack: () => void;
 }): ReactElement {
   useBackHandler({ isActive: true });
-  usePageFooter({ shortcuts: [], rightShortcuts: [{ key: "Esc", label: "Back" }] });
+  usePageFooter({ shortcuts: [], rightShortcuts: BACK_SHORTCUTS });
 
   return (
     <Box flexDirection="column" gap={1}>

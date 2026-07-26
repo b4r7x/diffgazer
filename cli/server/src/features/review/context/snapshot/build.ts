@@ -9,15 +9,11 @@ import { buildSnapshotContent } from "./content.js";
 const snapshotLocks = new Map<string, Promise<unknown>>();
 const lockSnapshot = createKeyedLock(snapshotLocks);
 
-function withSnapshotLock<T>(projectPath: string, fn: () => Promise<T>): Promise<T> {
-  return lockSnapshot(projectPath, fn);
-}
-
 export function buildProjectContextSnapshot(
   projectPath: string,
   options: { force?: boolean } = {},
 ): Promise<ProjectContextSnapshot> {
-  return withSnapshotLock(projectPath, () => buildSnapshot(projectPath, options));
+  return lockSnapshot(projectPath, () => buildSnapshot(projectPath, options));
 }
 
 async function buildSnapshot(

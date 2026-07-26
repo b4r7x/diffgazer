@@ -30,7 +30,6 @@ export function useFocusZone<T extends string>(
 
   const state = useFocusZoneState(options);
   const {
-    currentZone,
     safeZone,
     setZoneValue,
     validatedTabCycle,
@@ -41,7 +40,7 @@ export function useFocusZone<T extends string>(
   } = state;
 
   useFocusZoneKeyboard(options, {
-    currentZone,
+    safeZone,
     zones,
     setZoneValue,
     validatedTabCycle,

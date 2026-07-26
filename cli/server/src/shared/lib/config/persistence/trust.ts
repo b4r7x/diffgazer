@@ -1,6 +1,6 @@
 import { type TrustConfig, TrustConfigSchema } from "@diffgazer/core/schemas/config";
 import { z } from "zod";
-import { writeJsonFile, writeJsonFileSync } from "../../fs.js";
+import { writeJsonFile } from "../../fs.js";
 import { log } from "../../log.js";
 import { getGlobalTrustPath } from "../../paths.js";
 import { withFileTransactionLock } from "../transaction/file-lock.js";
@@ -42,10 +42,6 @@ export const loadTrust = (): TrustState => {
   }
 
   return { projects: validated };
-};
-
-export const persistTrust = (state: TrustState): void => {
-  writeJsonFileSync(TRUST_PATH(), state, 0o600);
 };
 
 export const persistTrustRecordAsync = (config: TrustConfig): Promise<void> => {

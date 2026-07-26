@@ -34,8 +34,6 @@ import {
   type KeyboardScopeContextValue,
 } from "./keyboard-context.js";
 
-export type { HandlerOptions } from "./keyboard-context.js";
-
 interface HandlerEntry {
   id: number;
   handler: KeyHandler;
@@ -56,9 +54,15 @@ interface ScopeStackEntry {
   order: string;
 }
 
+// U+FFFF sorts after every character React can put in an id, so imperative
+// pushScope calls always outrank declarative ones.
 const IMPERATIVE_SCOPE_ORDER_PREFIX = "\uffff";
 const REACT_ID_RADIX = 32;
 
+// `order` is a React `useId()` string: a base-32 tree path between the `:r`/`:`
+// markers, optionally followed by `H<localId>`. Decoding it back to numbers
+// recovers declaration order, which is how scopes that mount in the same commit
+// get ranked; it depends on React's id format (see docs/content/guides/scopes.mdx).
 function getScopeOrderSegments(order: string): number[] {
   const withoutMarker = order.replace(/^[:_]*[rR][:_]*/, "");
   const localIdMatch = withoutMarker.match(/^(.*)H([0-9A-V]+)[:_]*$/);

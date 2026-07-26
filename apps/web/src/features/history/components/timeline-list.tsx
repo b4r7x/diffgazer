@@ -27,8 +27,6 @@ export function TimelineList({
     onSelect(id);
   };
 
-  const getCountDescription = (count: number) => pluralize(count, "run");
-
   return (
     <NavigationList
       aria-label="Review sections"
@@ -59,7 +57,7 @@ export function TimelineList({
           <NavigationList.Title>{item.label}</NavigationList.Title>
           <NavigationList.Status>{item.count}</NavigationList.Status>
           <NavigationList.Meta className="sr-only">
-            {getCountDescription(item.count)}
+            {pluralize(item.count, "run")}
           </NavigationList.Meta>
         </NavigationList.Item>
       ))}

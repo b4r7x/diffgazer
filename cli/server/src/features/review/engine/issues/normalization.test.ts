@@ -1,5 +1,5 @@
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { describe, expect, it } from "vitest";
-import { makeIssue } from "../../../../shared/lib/testing/factories.js";
 import { normalizeIssueLineFields, validateIssueCompleteness } from "./normalization.js";
 
 describe("validateIssueCompleteness", () => {

@@ -9,12 +9,22 @@
  * would pass on text the reader never saw.
  */
 
-function escapeForRegExp(fragment: string): string {
-  return fragment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/**
+ * The formatter decides where a long selector breaks, so a caller writing one on
+ * a single line still has to match the wrapped source: every whitespace run is
+ * interchangeable, and `:not(…)` may hold its argument on its own line.
+ */
+function toSelectorPattern(fragment: string): string {
+  return fragment
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\s+/g, "\\s+")
+    .replace(/:not\\\(/g, ":not\\(\\s*")
+    .replace(/\\\)/g, "\\s*\\)");
 }
 
-function blockAfter(source: string, header: string): string | null {
-  const opener = new RegExp(`${escapeForRegExp(header)}\\s*\\{`).exec(source);
+/** Everything between the braces of `selector`, nested blocks included. */
+export function ruleBody(source: string, selector: string): string | null {
+  const opener = new RegExp(`${toSelectorPattern(selector)}\\s*\\{`).exec(source);
   if (!opener) return null;
 
   const open = opener.index + opener[0].length - 1;
@@ -29,11 +39,6 @@ function blockAfter(source: string, header: string): string | null {
   return null;
 }
 
-/** Everything between the braces of `selector`, nested blocks included. */
-export function ruleBody(source: string, selector: string): string | null {
-  return blockAfter(source, selector);
-}
-
 /**
  * Everything between the braces of an at-rule such as `@media (pointer: coarse)`,
  * with the rules nested inside it intact, ready to read further rules out of.
@@ -41,7 +46,7 @@ export function ruleBody(source: string, selector: string): string | null {
  * scopes all of its assertions to is gone, which no assertion below would catch.
  */
 export function atRuleBody(source: string, prelude: string): string {
-  const body = blockAfter(source, prelude);
+  const body = ruleBody(source, prelude);
   if (body === null) throw new Error(`missing or unbalanced ${prelude}`);
   return body;
 }

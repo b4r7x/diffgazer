@@ -3,7 +3,6 @@
 import { type KeyboardEvent as ReactKeyboardEvent, type RefObject, useRef } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { isHTMLElementForContainer } from "@/lib/aria";
-import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 
 /** Whether arrow navigation immediately selects or only highlights until commit. */
 export type RadioGroupActivationMode = "automatic" | "manual";
@@ -23,13 +22,8 @@ function getRadioNavigationDirection(key: string): RadioGroupNavigationDirection
   return null;
 }
 
-interface SelectableCollectionItem {
-  value: string;
-}
-
 export interface UseRadioGroupNavigationOptions<TValue extends string = string> {
   containerRef: RefObject<HTMLDivElement | null>;
-  items: SelectableCollectionItem[];
   value: string | undefined;
   highlightedValue: string | null;
   enabledValues: string[];
@@ -55,7 +49,6 @@ export interface UseRadioGroupNavigationOptions<TValue extends string = string> 
 /** APG keyboard navigation, activation mode, and tab-target derivation for RadioGroup. */
 export function useRadioGroupNavigation<TValue extends string = string>({
   containerRef,
-  items,
   value,
   highlightedValue,
   enabledValues,
@@ -92,11 +85,6 @@ export function useRadioGroupNavigation<TValue extends string = string>({
 
     const direction = getRadioNavigationDirection(navigationEventRef.current?.key ?? "");
     if (direction !== null) {
-      warnUnregisteredValue(
-        "RadioGroup",
-        next,
-        items.map((item) => item.value),
-      );
       onNavigate?.(next as TValue, direction);
     }
 
@@ -112,11 +100,6 @@ export function useRadioGroupNavigation<TValue extends string = string>({
 
     setHighlightedValue(next);
     handleValueChange(next);
-    warnUnregisteredValue(
-      "RadioGroup",
-      next,
-      items.map((item) => item.value),
-    );
     onEnter?.(next as TValue, event);
   };
 

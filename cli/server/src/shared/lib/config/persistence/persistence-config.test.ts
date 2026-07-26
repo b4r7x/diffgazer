@@ -1,8 +1,21 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
+import type { ProviderStatus, SettingsConfig } from "@diffgazer/core/schemas/config";
 import { describe, expect, it } from "vitest";
+import type { ConfigState } from "../types.js";
 import { homePath, readJson, tempHome, writeJson } from "./persistence.test-support.js";
 
 import "./persistence.test-support.js";
+
+/** Writes through the locked transaction the store uses in production. */
+async function persistConfigState(
+  state: ConfigState,
+  previous: { providers: ProviderStatus[]; settings: SettingsConfig } = state,
+): Promise<ConfigState> {
+  const { withConfigFileTransaction } = await import("./config.js");
+  return withConfigFileTransaction((persistMerged) =>
+    persistMerged(state, previous.providers, previous.settings),
+  );
+}
 
 describe("config persistence", () => {
   it("loads default config when no file exists", async () => {
@@ -57,7 +70,7 @@ describe("config persistence", () => {
         { provider: "future-provider", hasApiKey: true, isActive: false },
       ],
     });
-    const { loadConfig, persistConfig, DEFAULT_SETTINGS } = await import("./config.js");
+    const { loadConfig, DEFAULT_SETTINGS } = await import("./config.js");
 
     const config = loadConfig();
     const files = await readdir(tempHome);
@@ -70,7 +83,7 @@ describe("config persistence", () => {
     expect(config.settings.defaultLenses).toEqual(DEFAULT_SETTINGS.defaultLenses);
     expect(config.settings.theme).toBe("dark");
 
-    persistConfig(config);
+    await persistConfigState(config);
     const persisted = await readJson<{ providers: Array<{ provider: string }> }>(
       homePath("config.json"),
     );
@@ -98,9 +111,9 @@ describe("config persistence", () => {
     await writeJson("config.json", invalidRoot);
     const filePath = homePath("config.json");
     const original = await readFile(filePath, "utf-8");
-    const { loadConfig, persistConfig } = await import("./config.js");
+    const { loadConfig } = await import("./config.js");
 
-    persistConfig(loadConfig());
+    await persistConfigState(loadConfig());
 
     const backupName = (await readdir(tempHome)).find((candidate) =>
       /^config\.json\..+\.backup$/.test(candidate),
@@ -112,7 +125,7 @@ describe("config persistence", () => {
   });
 
   it("treats a changed active provider as one aggregate choice during merge", async () => {
-    const { persistConfigMergedAsync, loadConfig, DEFAULT_SETTINGS } = await import("./config.js");
+    const { loadConfig, DEFAULT_SETTINGS } = await import("./config.js");
     const previousProviders = loadConfig().providers;
     const inMemory = {
       settings: DEFAULT_SETTINGS,
@@ -133,7 +146,10 @@ describe("config persistence", () => {
       ),
     });
 
-    await persistConfigMergedAsync(inMemory, previousProviders, DEFAULT_SETTINGS);
+    await persistConfigState(inMemory, {
+      providers: previousProviders,
+      settings: DEFAULT_SETTINGS,
+    });
 
     const persisted = await readJson<{
       providers: Array<{ provider: string; isActive: boolean; model?: string }>;
@@ -149,7 +165,7 @@ describe("config persistence", () => {
   });
 
   it("keeps a concurrent active-provider choice while merging an unrelated model update", async () => {
-    const { persistConfigMergedAsync, loadConfig, DEFAULT_SETTINGS } = await import("./config.js");
+    const { loadConfig, DEFAULT_SETTINGS } = await import("./config.js");
     await writeJson("config.json", {
       settings: DEFAULT_SETTINGS,
       providers: [
@@ -173,7 +189,10 @@ describe("config persistence", () => {
       })),
     });
 
-    await persistConfigMergedAsync(inMemory, previousProviders, DEFAULT_SETTINGS);
+    await persistConfigState(inMemory, {
+      providers: previousProviders,
+      settings: DEFAULT_SETTINGS,
+    });
 
     const persisted = await readJson<{
       providers: Array<{ provider: string; isActive: boolean; model?: string }>;
@@ -204,7 +223,7 @@ describe("config persistence", () => {
   });
 
   it("normalizes opaque and known active rows without losing opaque fields", async () => {
-    const { loadConfig, persistConfig, DEFAULT_SETTINGS } = await import("./config.js");
+    const { loadConfig, DEFAULT_SETTINGS } = await import("./config.js");
     await writeJson("config.json", {
       settings: DEFAULT_SETTINGS,
       providers: [
@@ -229,7 +248,7 @@ describe("config persistence", () => {
         futureMetadata: { revision: 2 },
       },
     ]);
-    persistConfig(loaded);
+    await persistConfigState(loaded);
 
     const persisted = await readJson<{
       providers: Array<Record<string, unknown> & { isActive?: boolean }>;
@@ -247,7 +266,7 @@ describe("config persistence", () => {
   });
 
   it("deactivates an opaque selection when this transaction activates a known provider", async () => {
-    const { loadConfig, persistConfigMergedAsync, DEFAULT_SETTINGS } = await import("./config.js");
+    const { loadConfig, DEFAULT_SETTINGS } = await import("./config.js");
     await writeJson("config.json", {
       settings: DEFAULT_SETTINGS,
       providers: [
@@ -268,7 +287,7 @@ describe("config persistence", () => {
       })),
     };
 
-    await persistConfigMergedAsync(state, previous.providers, previous.settings);
+    await persistConfigState(state, previous);
 
     const persisted = await readJson<{
       providers: Array<Record<string, unknown> & { isActive?: boolean }>;
@@ -286,43 +305,47 @@ describe("config persistence", () => {
     );
   });
 
-  it("refuses to persist active known and opaque providers together", async () => {
-    const { persistConfig, DEFAULT_SETTINGS } = await import("./config.js");
+  it("refuses to persist two active providers", async () => {
+    const { DEFAULT_SETTINGS } = await import("./config.js");
 
-    expect(() =>
-      persistConfig({
+    await expect(
+      persistConfigState({
         settings: DEFAULT_SETTINGS,
-        providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
-        unknownProviders: [
-          { provider: "future-provider", hasApiKey: true, isActive: true, futureField: 1 },
+        providers: [
+          { provider: "gemini", hasApiKey: true, isActive: true },
+          { provider: "openrouter", hasApiKey: true, isActive: true },
         ],
       }),
-    ).toThrow("Config cannot persist more than one active provider");
+    ).rejects.toThrow("Config cannot persist more than one active provider");
   });
 
   it("canonicalizes default lenses at the persistence boundary and rejects an empty list", async () => {
-    const { persistConfig, DEFAULT_SETTINGS } = await import("./config.js");
+    const { DEFAULT_SETTINGS } = await import("./config.js");
     const providers = [{ provider: "gemini" as const, hasApiKey: false, isActive: false }];
+    const previous = { providers, settings: DEFAULT_SETTINGS };
 
-    persistConfig({
-      settings: {
-        ...DEFAULT_SETTINGS,
-        defaultLenses: ["security", "correctness", "security", "tests", "correctness"],
+    await persistConfigState(
+      {
+        settings: {
+          ...DEFAULT_SETTINGS,
+          defaultLenses: ["security", "correctness", "security", "tests", "correctness"],
+        },
+        providers,
       },
-      providers,
-    });
+      previous,
+    );
 
     const persisted = await readJson<{ settings: { defaultLenses: string[] } }>(
       homePath("config.json"),
     );
     expect(persisted.settings.defaultLenses).toEqual(["security", "correctness", "tests"]);
 
-    expect(() =>
-      persistConfig({
-        settings: { ...DEFAULT_SETTINGS, defaultLenses: [] },
-        providers,
-      }),
-    ).toThrow();
+    await expect(
+      persistConfigState(
+        { settings: { ...DEFAULT_SETTINGS, defaultLenses: [] }, providers },
+        previous,
+      ),
+    ).rejects.toThrow();
   });
 
   it("repairs an empty persisted default lens list with the non-empty default", async () => {
@@ -336,7 +359,7 @@ describe("config persistence", () => {
   });
 
   it("merges config.json settings at per-field granularity so a concurrent change to a different settings field survives persist", async () => {
-    const { persistConfigMergedAsync, loadConfig, DEFAULT_SETTINGS } = await import("./config.js");
+    const { loadConfig, DEFAULT_SETTINGS } = await import("./config.js");
     const previousSettings = loadConfig().settings;
     const inMemory = {
       settings: { ...previousSettings, theme: "dark" as const },
@@ -348,7 +371,10 @@ describe("config persistence", () => {
       providers: loadConfig().providers,
     });
 
-    await persistConfigMergedAsync(inMemory, inMemory.providers, previousSettings);
+    await persistConfigState(inMemory, {
+      providers: inMemory.providers,
+      settings: previousSettings,
+    });
 
     const persisted = await readJson<{
       settings: { theme: string; severityThreshold: string };
@@ -358,13 +384,13 @@ describe("config persistence", () => {
   });
 
   it("persists config as a real JSON file", async () => {
-    const { persistConfig, DEFAULT_SETTINGS } = await import("./config.js");
+    const { loadConfig, DEFAULT_PROVIDERS, DEFAULT_SETTINGS } = await import("./config.js");
 
-    persistConfig({ settings: DEFAULT_SETTINGS, providers: [] });
+    await persistConfigState(loadConfig());
 
     await expect(readJson(homePath("config.json"))).resolves.toEqual({
       settings: DEFAULT_SETTINGS,
-      providers: [],
+      providers: DEFAULT_PROVIDERS,
     });
   });
 });

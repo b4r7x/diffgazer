@@ -18,7 +18,7 @@ import {
   flush,
   flushUntil,
   Wrapper,
-} from "./model-select-overlay.test-harness";
+} from "./model-select-overlay.test-support";
 
 function getLargeModelName(index: number): string {
   return `Large Model ${String(index).padStart(2, "0")}`;

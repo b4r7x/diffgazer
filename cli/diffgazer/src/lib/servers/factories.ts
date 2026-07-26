@@ -3,17 +3,14 @@ import type { CliMode } from "../../cli-options";
 import { config } from "../../config";
 import { createApiServer } from "./api";
 import { createReadyHandler } from "./browser-launch";
-import type { ServerController } from "./controller";
 import { createEmbeddedServer } from "./embedded";
 import { findGitRoot } from "./git-root";
+import type { ServerController } from "./types";
 import { createWebServer } from "./web";
 
-interface ServerFactoryOptions {
-  openBrowser?: boolean;
-}
-
-interface ModeServerFactoryOptions extends ServerFactoryOptions {
+interface ModeServerFactoryOptions {
   mode: CliMode;
+  openBrowser?: boolean;
   /** Dev web mode starts Vite; dev TUI only needs the API child. Defaults to true. */
   includeWebServer?: boolean;
   onStartupFailure?: (message: string) => void;

@@ -1,3 +1,4 @@
+import { SETTINGS_SCREEN_COPY } from "@diffgazer/core/schemas/config";
 import { cleanup, render } from "ink-testing-library";
 import { afterAll, afterEach, describe, expect, test, vi } from "vitest";
 import { flush } from "../../../testing/flush";
@@ -73,6 +74,12 @@ function renderScreen() {
 }
 
 describe("AgentExecutionScreen", () => {
+  test("heads the screen with the shared settings copy", () => {
+    const view = renderScreen();
+
+    expect(view.lastFrame()).toContain(SETTINGS_SCREEN_COPY["agent-execution"].title.toUpperCase());
+  });
+
   test("keeps Save inert until the mode changes", async () => {
     const view = renderScreen();
 

@@ -10,17 +10,10 @@ import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useListNavigation } from "../../../hooks/use-list-navigation";
 import { getListWindow } from "../../../lib/list-window";
+import { SEVERITY_INITIALS } from "../../../lib/severity-initials";
 import { selectionHue } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 import { severityColor } from "../../../theme/severity";
-
-const COMPACT_SEVERITY_LABELS = {
-  blocker: "B",
-  high: "H",
-  medium: "M",
-  low: "L",
-  nit: "N",
-} as const;
 
 export interface HistoryInsightsPaneProps {
   runId: string | null;
@@ -137,7 +130,7 @@ export function HistoryInsightsPane({
               <Box gap={1}>
                 {SEVERITY_ORDER.map((severity) => (
                   <Text key={severity} color={severityColor(severity, tokens)}>
-                    {`${COMPACT_SEVERITY_LABELS[severity]}${String(severityCounts[severity])}`}
+                    {`${SEVERITY_INITIALS[severity]}${String(severityCounts[severity])}`}
                   </Text>
                 ))}
               </Box>

@@ -10,13 +10,12 @@ import {
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { describe, expect, it } from "vitest";
 import type { createGitService } from "../../../../shared/lib/git/service.js";
-import { makeParsedDiff } from "../../../../shared/lib/testing/factories.js";
 import { MAX_DIFF_SIZE_BYTES, resolveGitDiff } from "../../diff.js";
 import { lenientReadSavedReview } from "../../storage/lenient-read.js";
+import { makeParsedDiff } from "../../testing/factories.js";
 import {
   createIssueEvidenceResolver,
   MAX_SYNTHESIZED_EVIDENCE_JSON_BYTES,
-  MAX_SYNTHESIZED_EVIDENCE_JSON_BYTES_PER_REVIEW,
   MAX_SYNTHESIZED_EVIDENCE_LINES,
 } from "./evidence.js";
 
@@ -143,7 +142,9 @@ describe("synthesized issue evidence envelope", () => {
     expect(hunkContentReads).toBe(1);
     expect(perIssueBytes).toBeLessThanOrEqual(MAX_SYNTHESIZED_EVIDENCE_JSON_BYTES);
     expect(perLensBytes).toBeLessThanOrEqual(perLensEnvelope);
-    expect(MAX_SYNTHESIZED_EVIDENCE_JSON_BYTES_PER_REVIEW).toBe(LENS_IDS.length * perLensEnvelope);
+    expect(perLensBytes * LENS_IDS.length).toBeLessThanOrEqual(
+      MAX_REVIEW_ISSUES * MAX_SYNTHESIZED_EVIDENCE_JSON_BYTES,
+    );
     expect(processed[0]?.evidence[0]).toMatchObject({
       range: { start: 1, end: 1 },
     });

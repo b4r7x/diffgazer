@@ -86,11 +86,6 @@ export function useReviewStream() {
     }
   };
 
-  const stop = () => {
-    cancelStream("stop");
-    dispatch({ type: "COMPLETE" });
-  };
-
   const abort = () => {
     cancelStream("abort");
     dispatch({ type: "RESET" });
@@ -237,5 +232,5 @@ export function useReviewStream() {
     };
   }, []);
 
-  return { state, stop, abort, cancel, resume };
+  return { state, abort, cancel, resume };
 }

@@ -1,22 +1,11 @@
 /** @vitest-environment jsdom */
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BoundApi } from "../bound.js";
-import { ApiProvider } from "./context.js";
+import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
+import type { ReviewContextResponse } from "../types.js";
 import { reviewQueries } from "./queries/review.js";
 import { useRefreshReviewContext, useReviews } from "./review.js";
-
-function makeWrapper(api: BoundApi, queryClient: QueryClient) {
-  return ({ children }: { children: ReactNode }) =>
-    createElement(
-      QueryClientProvider,
-      { client: queryClient },
-      createElement(ApiProvider, { value: api }, children),
-    );
-}
 
 describe("useReviews", () => {
   it("deduplicates typed warnings across cursor pages without collapsing distinct records", async () => {
@@ -52,11 +41,8 @@ describe("useReviews", () => {
             ],
           },
     );
-    const api = { getReviews } as unknown as BoundApi;
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const { result } = renderHook(() => useReviews(), {
-      wrapper: makeWrapper(api, queryClient),
-    });
+    const { Wrapper } = createTestQueryWrapper({ api: { getReviews } });
+    const { result } = renderHook(() => useReviews(), { wrapper: Wrapper });
 
     await waitFor(() => expect(result.current.hasNextPage).toBe(true));
     await act(() => result.current.fetchNextPage());
@@ -72,21 +58,19 @@ describe("useReviews", () => {
 });
 
 describe("useRefreshReviewContext", () => {
-  let api: BoundApi;
-  let queryClient: QueryClient;
+  let harness: ReturnType<typeof createTestQueryWrapper>;
   let invalidateSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    api = {
-      refreshReviewContext: vi.fn(async () => ({ context: undefined })),
-    } as unknown as BoundApi;
-    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    harness = createTestQueryWrapper({
+      api: { refreshReviewContext: vi.fn(async () => ({}) as ReviewContextResponse) },
+    });
+    invalidateSpy = vi.spyOn(harness.queryClient, "invalidateQueries");
   });
 
   it("invalidates the active context query key", async () => {
     const { result } = renderHook(() => useRefreshReviewContext(), {
-      wrapper: makeWrapper(api, queryClient),
+      wrapper: harness.Wrapper,
     });
     act(() => result.current.mutate(undefined));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -94,6 +78,6 @@ describe("useRefreshReviewContext", () => {
     const keys = invalidateSpy.mock.calls.map(
       ([arg]: [unknown]) => (arg as { queryKey: unknown[] }).queryKey,
     );
-    expect(keys).toContainEqual(reviewQueries.context(api).queryKey);
+    expect(keys).toContainEqual(reviewQueries.context(harness.api).queryKey);
   });
 });

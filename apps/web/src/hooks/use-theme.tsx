@@ -19,7 +19,6 @@ function subscribeToSystemTheme(callback: () => void): () => void {
 }
 
 function getSystemTheme(): ResolvedTheme {
-  if (typeof window === "undefined") return "dark";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
@@ -37,7 +36,6 @@ function resolveWebTheme(value: string | null): WebTheme {
 }
 
 function accessThemeStorage<T>(operation: (storage: Storage) => T, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
   try {
     return operation(window.localStorage);
   } catch (error) {
@@ -68,11 +66,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const { data: settings } = useSettings();
   const { mutateAsync: saveSettingsAsync } = useSaveSettings();
 
-  const system: ResolvedTheme = useSyncExternalStore(
-    subscribeToSystemTheme,
-    getSystemTheme,
-    () => "dark" as const,
-  );
+  const system: ResolvedTheme = useSyncExternalStore(subscribeToSystemTheme, getSystemTheme);
 
   const settingsTheme = settings?.theme ? toSelectableTheme(settings.theme) : null;
   const effectiveTheme: WebTheme = localOverride ?? settingsTheme ?? fallbackTheme;

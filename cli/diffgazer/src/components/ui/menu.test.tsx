@@ -2,7 +2,6 @@ import { Box } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { flush } from "../../testing/flush";
-import { waitUntil } from "../../testing/wait-until";
 import { CliThemeProvider } from "../../theme/provider";
 import { Menu } from "./menu";
 
@@ -13,7 +12,6 @@ afterEach(() => {
 const ARROW_DOWN = "\u001b[B";
 const ARROW_UP = "\u001b[A";
 const RETURN = "\r";
-const ESCAPE = "\u001b";
 
 function renderMenu(props: Partial<Parameters<typeof Menu>[0]> = {}) {
   return render(
@@ -71,15 +69,6 @@ describe("Menu navigation", () => {
     await flush();
     expect(onSelect).toHaveBeenLastCalledWith("c");
     expect(onSelect).not.toHaveBeenCalledWith("b");
-  });
-
-  test("escape closes the menu", async () => {
-    const onClose = vi.fn();
-    const { stdin } = renderMenu({ onClose });
-    await flush();
-
-    stdin.write(ESCAPE);
-    await waitUntil(() => onClose.mock.calls.length === 1);
   });
 
   test("a hotkey selects its item regardless of the current highlight", async () => {

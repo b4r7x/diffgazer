@@ -35,7 +35,6 @@ export interface ReviewState {
 export type ReviewAction =
   | { type: "START" }
   | { type: "EVENT"; event: ReviewEvent }
-  | { type: "COMPLETE" }
   | { type: "COMPLETE_WITH_RESULT"; issues: ReviewIssue[] }
   | { type: "CANCELLED" }
   | { type: "ERROR"; error: string; errorCode?: string | null }
@@ -293,9 +292,6 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
 
     case "EVENT":
       return dispatchEvent(state, action.event);
-
-    case "COMPLETE":
-      return { ...state, isStreaming: false };
 
     case "COMPLETE_WITH_RESULT":
       return { ...state, isStreaming: false, issues: action.issues };

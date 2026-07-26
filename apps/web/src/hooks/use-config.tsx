@@ -19,7 +19,6 @@ import { createContext, type ReactNode, useCallback, useContext, useMemo } from 
 
 interface ConfigDataContextValue {
   loadState: ConfigLoadState;
-  providerStatusLoadState: ProviderStatusLoadState;
   isLoading: boolean;
   provider?: AIProvider;
   model?: string;
@@ -29,7 +28,6 @@ interface ConfigDataContextValue {
   projectId: string | null;
   repoRoot: string | null;
   trust: TrustConfig | null;
-  setupStatus: SetupStatus | null;
   secretsStorage: SecretsStorage | null;
 }
 
@@ -37,11 +35,6 @@ type ConfigLoadState =
   | { status: "loading" }
   | { status: "error"; error: Error }
   | { status: "ready"; setupStatus: SetupStatus };
-
-type ProviderStatusLoadState =
-  | { status: "loading" }
-  | { status: "error"; error: Error }
-  | { status: "ready" };
 
 interface ConfigActionsContextValue {
   refresh: () => Promise<void>;
@@ -75,11 +68,6 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     if (initQuery.error) return { status: "error", error: initQuery.error };
     return { status: "error", error: new Error("Configuration did not load") };
   }, [initData, initQuery.error, initQuery.isLoading]);
-  const providerStatusLoadState = useMemo<ProviderStatusLoadState>(() => {
-    if (providersQuery.isLoading) return { status: "loading" };
-    if (providersQuery.error) return { status: "error", error: providersQuery.error };
-    return { status: "ready" };
-  }, [providersQuery.error, providersQuery.isLoading]);
 
   const provider = initData?.config?.provider;
   const model = initData?.config?.model;
@@ -89,7 +77,6 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const projectId = initData?.project.projectId ?? null;
   const repoRoot = initData?.project.path ?? null;
   const trust = initData?.project.trust ?? null;
-  const setupStatus = initData?.setup ?? null;
   const secretsStorage = initData?.settings.secretsStorage ?? null;
 
   const refresh = useCallback(async () => {
@@ -124,7 +111,6 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const dataValue = useMemo<ConfigDataContextValue>(
     () => ({
       loadState,
-      providerStatusLoadState,
       isLoading,
       provider,
       model,
@@ -134,12 +120,10 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       projectId,
       repoRoot,
       trust,
-      setupStatus,
       secretsStorage,
     }),
     [
       loadState,
-      providerStatusLoadState,
       isLoading,
       provider,
       model,
@@ -149,7 +133,6 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       projectId,
       repoRoot,
       trust,
-      setupStatus,
       secretsStorage,
     ],
   );

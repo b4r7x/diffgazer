@@ -7,7 +7,7 @@ import { getStore } from "../../shared/lib/config/store.js";
 import { safeTokenMatch } from "../../shared/lib/crypto.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
-import { storeErrorStatus } from "../../shared/lib/http/store-error.js";
+import { handleStoreError } from "../../shared/lib/http/store-error.js";
 import { revokeProjectSessions } from "../../shared/lib/session-registry.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
 import { SettingsSchema } from "./schemas.js";
@@ -37,12 +37,7 @@ settingsRouter.post(
     const patch = c.req.valid("json");
     const result = await getStore().updateSettings(patch);
     if (!result.ok) {
-      return errorResponse(
-        c,
-        result.error.message,
-        result.error.code,
-        storeErrorStatus(result.error.code),
-      );
+      return handleStoreError(c, result.error);
     }
     return c.json(result.value);
   },
@@ -92,12 +87,7 @@ settingsRouter.post(
 
     const result = await getStore().saveTrust(trustConfig);
     if (!result.ok) {
-      return errorResponse(
-        c,
-        result.error.message,
-        result.error.code,
-        storeErrorStatus(result.error.code),
-      );
+      return handleStoreError(c, result.error);
     }
     if (existingTrust?.capabilities.readFiles && !trustConfig.capabilities.readFiles) {
       revokeProjectSessions(projectRoot, {
@@ -117,12 +107,7 @@ settingsRouter.delete("/trust", requireTrustRouteToken, async (c) => {
   }
   const result = await getStore().removeTrust(project.projectId);
   if (!result.ok) {
-    return errorResponse(
-      c,
-      result.error.message,
-      result.error.code,
-      storeErrorStatus(result.error.code),
-    );
+    return handleStoreError(c, result.error);
   }
   if (result.value) {
     revokeProjectSessions(projectRoot, {

@@ -29,6 +29,7 @@ vi.mock("../lib/config-guards", () => ({
 
 vi.mock("@/lib/shutdown", () => ({
   shutdown: vi.fn().mockResolvedValue({ status: "closed" as const }),
+  reportShutdownResult: vi.fn(),
 }));
 
 function delay(ms: number) {

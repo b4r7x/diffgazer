@@ -59,7 +59,7 @@ vi.mock("node:fs", async (importOriginal) => {
 
 import { DiffgazerAddConfigSchema } from "../context.js";
 import { addCommand } from "./add/command.js";
-import { removeCommand } from "./remove.js";
+import { removeCommand } from "./remove/command.js";
 
 type Snapshot = Map<string, Buffer | null>;
 

@@ -50,17 +50,9 @@ export function createDomainErrorCodes<const T extends readonly string[]>(specif
   return [...SHARED_ERROR_CODES, ...specificCodes] as const;
 }
 
-export function createDomainErrorSchema<const T extends readonly string[]>(
-  specificCodes: T,
-  options?: { includeDetails?: boolean },
-) {
-  const allCodes = createDomainErrorCodes(specificCodes);
-  const codeSchema = z.enum(allCodes);
-
-  const base = z.object({
+export function createDomainErrorSchema<const T extends readonly string[]>(specificCodes: T) {
+  return z.object({
     message: z.string(),
-    code: codeSchema,
+    code: z.enum(createDomainErrorCodes(specificCodes)),
   });
-
-  return options?.includeDetails ? base.extend({ details: z.string().optional() }) : base;
 }

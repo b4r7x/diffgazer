@@ -1,11 +1,8 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
+import { mediaBlocks, ruleFor, styleSheet } from "../testing/css";
 import { bodyMarkup, mountLanding } from "../testing/markup";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const css = readFileSync(join(here, "index.css"), "utf8");
+const css = styleSheet();
 
 describe("landing footer bracket pairs", () => {
   beforeEach(() => {
@@ -40,10 +37,9 @@ describe("landing hero diff line handling", () => {
   it("still truncates on an ellipsis at the hero breakpoint", () => {
     // jsdom has no viewport to evaluate the 700px query against, so this one
     // stays a source check: the declaration is the contract.
-    const at = css.indexOf(".gaze-diff .diff-code { overflow: hidden;");
+    const truncation = ruleFor(mediaBlocks("max-width: 700px"), ".gaze-diff .diff-code");
 
-    expect(at, "no truncation rule for the hero diff").toBeGreaterThan(-1);
-    expect(css.indexOf("@media (max-width: 700px)")).toBeLessThan(at);
-    expect(css.slice(at, css.indexOf("}", at))).toContain("text-overflow: ellipsis");
+    expect(truncation).toContain("overflow: hidden");
+    expect(truncation).toContain("text-overflow: ellipsis");
   });
 });

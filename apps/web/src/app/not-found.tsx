@@ -5,6 +5,9 @@ import { FailureView } from "@/components/shared/failure-view";
 export function NotFoundPage() {
   const navigate = useNavigate();
 
+  // No route matches a not-found render, so head()/HeadContent never fires here;
+  // the title is set by hand and restored on unmount unless another screen has
+  // already changed it.
   useEffect(() => {
     const previousTitle = document.title;
     const notFoundTitle = "Page not found — Diffgazer";

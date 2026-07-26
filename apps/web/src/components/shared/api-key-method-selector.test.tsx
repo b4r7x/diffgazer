@@ -3,13 +3,17 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import type { FocusElement } from "@/types/focus-element";
+import type { ApiKeyFocusTarget } from "@/types/api-key-focus-target";
 import { ApiKeyMethodSelector } from "./api-key-method-selector";
 
-function Subject({ onFocusChange = vi.fn() }: { onFocusChange?: (value: FocusElement) => void }) {
+function Subject({
+  onFocusChange = vi.fn(),
+}: {
+  onFocusChange?: (value: ApiKeyFocusTarget) => void;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [method, setMethod] = useState<InputMethod>("paste");
-  const [focused, setFocused] = useState<FocusElement>("paste");
+  const [focused, setFocused] = useState<ApiKeyFocusTarget>("paste");
 
   return (
     <ApiKeyMethodSelector

@@ -4,7 +4,7 @@ import { cn } from "@diffgazer/ui/lib/utils";
 import type { TableOfContents } from "fumadocs-core/toc";
 import { Fragment, type ReactNode } from "react";
 import { useDocsTree } from "@/hooks/docs-tree-context";
-import { Breadcrumbs } from "./breadcrumbs";
+import { DocsPathBreadcrumbs } from "./docs-path-breadcrumbs";
 import { PreviewModeProvider } from "./preview-mode-context";
 import { CHROME_LABEL_CLASS } from "./shared/chrome-label";
 import { MobileTocPanel, TableOfContentsPanel, useDocsToc } from "./toc";
@@ -56,8 +56,6 @@ export function DocsPageHeader({
   slug,
   className,
 }: DocsPageHeaderProps) {
-  const hasTags = Boolean(tags && tags.length > 0);
-  const hasDescription = Boolean(description && description.length > 0);
   const hasMeta = Boolean(lib && slug);
   const tree = useDocsTree();
 
@@ -71,7 +69,7 @@ export function DocsPageHeader({
         <div className={cn(CHROME_LABEL_CLASS, "mb-2 flex items-center gap-2")}>
           {tree ? (
             <>
-              <Breadcrumbs tree={tree} className="min-w-0 flex-1 lg:hidden" />
+              <DocsPathBreadcrumbs tree={tree} className="min-w-0 flex-1 lg:hidden" />
               <span className="hidden lg:inline">{`${lib}/${slug}`}</span>
             </>
           ) : (
@@ -84,24 +82,21 @@ export function DocsPageHeader({
         {title}
       </Typography>
 
-      {hasTags && (
-        <div className={cn("flex flex-wrap gap-2", hasDescription && "mb-3")}>
-          {tags?.map((tag) => (
-            <span
-              key={tag}
-              className="px-2 py-1 border border-border font-mono text-2xs uppercase tracking-widest text-muted-foreground"
-            >
+      {tags && tags.length > 0 ? (
+        <div className={cn("flex flex-wrap gap-2", description && "mb-3")}>
+          {tags.map((tag) => (
+            <span key={tag} className={cn(CHROME_LABEL_CLASS, "px-2 py-1 border border-border")}>
               {tag}
             </span>
           ))}
         </div>
-      )}
+      ) : null}
 
-      {hasDescription && description && (
+      {description ? (
         <Typography as="p" className="max-w-3xl break-words">
           {renderInlineCode(description)}
         </Typography>
-      )}
+      ) : null}
     </div>
   );
 }

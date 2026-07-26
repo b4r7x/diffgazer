@@ -11,9 +11,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { useId, useState } from "react";
 import { useTheme } from "@/hooks/use-theme";
 import type { ResolvedTheme, WebTheme } from "@/types/theme";
-import { useSettingsFormFooter } from "../../hooks/use-settings-form-footer";
-import { SettingsFormActions } from "../settings-form-actions";
-import { renderSettingsFormPending } from "../settings-form-pending";
+import { useSettingsFormFooter } from "../../hooks/use-form-footer";
+import { SettingsFormActions } from "../form-actions";
+import { renderSettingsFormPending } from "../form-pending";
 import { ThemePreviewCard } from "./preview-card";
 import { ThemeSelectorContent } from "./selector-content";
 
@@ -100,7 +100,6 @@ function SettingsThemeEditor({
 
   const footer = useSettingsFormFooter({
     disabledActions: [isSaving, isSaveDisabled],
-    canSave,
     onCancel: handleCancel,
     onSave: handleSave,
     contentShortcuts: [

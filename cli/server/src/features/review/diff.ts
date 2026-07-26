@@ -1,7 +1,7 @@
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { ReviewStartedEvent } from "@diffgazer/core/schemas/events";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
-import { createGitDiffError } from "../../shared/lib/git/errors.js";
+import { createGitDiffError, type GitDiffError } from "../../shared/lib/git/errors.js";
 import type { createGitService } from "../../shared/lib/git/service.js";
 import { type ReviewAbort, reviewAbort } from "./abort.js";
 import { parseDiff } from "./engine/diff/parser.js";
@@ -13,8 +13,8 @@ import type { EmitFn } from "./types.js";
 export const MAX_DIFF_SIZE_BYTES = 512 * 1024;
 const DIFFGAZER_DIR_PREFIX = ".diffgazer/";
 
-function getReviewErrorCodeForGitDiff(error: Error): ReviewErrorCode {
-  return error.message.startsWith("Git is not installed")
+function getReviewErrorCodeForGitDiff(error: GitDiffError): ReviewErrorCode {
+  return error.code === "GIT_NOT_FOUND"
     ? ReviewErrorCode.GIT_NOT_FOUND
     : ReviewErrorCode.GENERATION_FAILED;
 }

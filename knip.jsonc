@@ -118,9 +118,8 @@
         "styles/theme.css"
       ],
       "entry": [
-        "registry/ui/**/index.ts",
-        "registry/hooks/**/*.ts",
-        "registry/lib/**/*.ts",
+        // Every registry file is a copy-consumer entry point, so knip does no
+        // unused-file or unused-export analysis inside registry/ on purpose.
         "registry/**/*.{ts,tsx}",
         "scripts/**/*.ts",
         "tsup.config.ts",

@@ -167,10 +167,10 @@ export function NavigationListItem({
   const isActive = !disabled && focused && (hasHighlight ? isHighlighted : isSelected);
   const itemId = getEncodedListboxItemId(idPrefix, id);
   const labelId = `${itemId}-label`;
-  const descId = `${itemId}-desc`;
+  const descIdPrefix = `${itemId}-desc`;
   const describedBy = mergeIds(
-    hasDescriptionChild(children, NavigationListMeta) ? `${descId}-meta` : undefined,
-    hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : undefined,
+    hasDescriptionChild(children, NavigationListMeta) ? `${descIdPrefix}-meta` : undefined,
+    hasDescriptionChild(children, NavigationListSubtitle) ? `${descIdPrefix}-sub` : undefined,
   );
 
   // Selected rows keep a muted marker while the active visual is elsewhere
@@ -205,7 +205,10 @@ export function NavigationListItem({
     if (!event.defaultPrevented && !disabled) highlight(id);
   };
 
-  const itemContextValue = useMemo(() => ({ labelId, descId, isTree }), [labelId, descId, isTree]);
+  const itemContextValue = useMemo(
+    () => ({ labelId, descIdPrefix, isTree }),
+    [labelId, descIdPrefix, isTree],
+  );
 
   useLayoutEffect(() => {
     registerItem(registrationId, id, disabled, rootRef.current);

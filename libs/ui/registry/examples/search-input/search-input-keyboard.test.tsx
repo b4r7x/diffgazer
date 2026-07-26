@@ -1,18 +1,7 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import SearchInputKeyboard from "./search-input-keyboard";
-
-const source = readFileSync(join(import.meta.dirname, "search-input-keyboard.tsx"), "utf-8");
-
-describe("search-input-keyboard example copy contract", () => {
-  it("imports keys helpers from the local copy-mode hook path, not the unpublished package", () => {
-    expect(source).not.toContain('from "@diffgazer/keys"');
-    expect(source).toContain('from "@/hooks/use-navigation"');
-  });
-});
 
 describe("search-input-keyboard example", () => {
   it("starts on the seeded highlight so the keyboard state is visible before any key press", () => {

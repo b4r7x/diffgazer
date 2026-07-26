@@ -40,7 +40,10 @@ describe("getFigletText", () => {
 
     const { getFigletText } = await import("./figlet-text");
 
-    await expect(getFigletText("OK", "Big")).rejects.toThrow(/optional peer dependency 'figlet'/);
+    await expect(getFigletText("OK", "Big")).rejects.toMatchObject({
+      message: expect.stringContaining('Failed to load the figlet font "Big"'),
+      cause: expect.objectContaining({ message: "chunk load failed" }),
+    });
     const result = await getFigletText("OK", "Big");
 
     expect(result.split("\n").length).toBeGreaterThan(1);

@@ -5,7 +5,7 @@ import { InputGroup } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent, RefCallback, RefObject } from "react";
-import type { FocusElement } from "@/types/focus-element";
+import type { ApiKeyFocusTarget } from "@/types/api-key-focus-target";
 
 interface ApiKeyMethodSelectorProps {
   value: InputMethod;
@@ -15,8 +15,8 @@ interface ApiKeyMethodSelectorProps {
   envVarName: string;
   providerName: string;
   inputRef: RefObject<HTMLInputElement | null>;
-  focused: FocusElement;
-  onFocus: (element: FocusElement) => void;
+  focused: ApiKeyFocusTarget;
+  onFocus: (element: ApiKeyFocusTarget) => void;
   onKeySubmit: () => void;
   onMethodCommit: (method: InputMethod) => void;
   onInputMethodKeyDown?: (event: KeyboardEvent, method: InputMethod) => void;

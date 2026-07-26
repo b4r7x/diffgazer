@@ -21,15 +21,12 @@ export interface AccordionContextValue {
  */
 export const AccordionHeaderContext = createContext(false);
 
-/** Provides accordion header present behavior. */
 export function useAccordionHeaderPresent() {
   return useContext(AccordionHeaderContext);
 }
 
-/** React context backing accordion. */
 export const AccordionContext = createContext<AccordionContextValue | undefined>(undefined);
 
-/** Reads the accordion context. */
 export function useAccordionContext() {
   const context = useContext(AccordionContext);
   if (!context) {
@@ -52,10 +49,8 @@ export interface AccordionItemContextValue {
   contentId: string;
 }
 
-/** React context backing accordion item. */
 export const AccordionItemContext = createContext<AccordionItemContextValue | undefined>(undefined);
 
-/** Reads the accordion item context. */
 export function useAccordionItemContext() {
   const context = useContext(AccordionItemContext);
   if (!context) {

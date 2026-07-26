@@ -5,7 +5,7 @@ import { cn } from "@diffgazer/ui/lib/utils";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useLayoutEffect, useRef, useState } from "react";
-import { Breadcrumbs } from "@/components/breadcrumbs";
+import { DocsPathBreadcrumbs } from "@/components/docs-path-breadcrumbs";
 import { useMobileNav } from "@/hooks/mobile-nav-context";
 import { usePendingDocsRoute } from "@/hooks/use-pending-docs-route";
 import {
@@ -48,34 +48,40 @@ const selectTriggerClassName = cn(
   "hover:bg-secondary/40 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
 );
 
+interface RouteContext {
+  library: DocsLibraryId;
+  pathname: string;
+  pendingPathname: string | null;
+}
+
 export function SidebarChrome({ library, tree }: { library: DocsLibraryId; tree: PageTree }) {
   const pathname = useLocation({ select: (location) => location.pathname });
   const pendingDocsPathname = usePendingDocsRoute();
   const navigate = useNavigate();
   const { setOpen: setMobileNavOpen, isDesktop } = useMobileNav();
   const [selectHost, setSelectHost] = useState<HTMLDivElement | null>(null);
-  const transitionTokenRef = useRef(0);
-  const currentRouteRef = useRef({ library, pathname, pendingPathname: pendingDocsPathname });
-  const [pendingSwitch, setPendingSwitch] = useState<{
-    token: number;
-    library: DocsLibraryId;
-    pathname: string;
-    pendingPathname: string | null;
-  } | null>(null);
+  // The awaited switch resolves long after the render that started it, so the
+  // route it began on is read from a ref; null means the sidebar unmounted.
+  const activeRouteRef = useRef<RouteContext | null>({
+    library,
+    pathname,
+    pendingPathname: pendingDocsPathname,
+  });
+  const [pendingSwitch, setPendingSwitch] = useState<RouteContext | null>(null);
   const activeLibrary = getDocsLibraryConfig(library);
   const switching =
     pendingSwitch !== null &&
-    pendingSwitch.token === transitionTokenRef.current &&
     pendingSwitch.library === library &&
     pendingSwitch.pathname === pathname &&
     pendingSwitch.pendingPathname === pendingDocsPathname;
   const isHeaderBusy = switching || pendingDocsPathname !== null;
 
+  // Layout, not passive: a resolved switch can run before a passive effect would
+  // have refreshed the route it compares itself against.
   useLayoutEffect(() => {
-    currentRouteRef.current = { library, pathname, pendingPathname: pendingDocsPathname };
-    transitionTokenRef.current += 1;
+    activeRouteRef.current = { library, pathname, pendingPathname: pendingDocsPathname };
     return () => {
-      transitionTokenRef.current += 1;
+      activeRouteRef.current = null;
     };
   }, [library, pathname, pendingDocsPathname]);
 
@@ -89,23 +95,16 @@ export function SidebarChrome({ library, tree }: { library: DocsLibraryId; tree:
     const targetLibrary = getDocsLibraryConfig(nextValue);
     if (!targetLibrary.enabled || nextValue === library) return;
 
-    const token = transitionTokenRef.current + 1;
-    transitionTokenRef.current = token;
     const ownsTransition = () => {
-      const currentRoute = currentRouteRef.current;
+      const activeRoute = activeRouteRef.current;
       return (
-        transitionTokenRef.current === token &&
-        currentRoute.library === library &&
-        currentRoute.pathname === pathname &&
-        currentRoute.pendingPathname === pendingDocsPathname
+        activeRoute !== null &&
+        activeRoute.library === library &&
+        activeRoute.pathname === pathname &&
+        activeRoute.pendingPathname === pendingDocsPathname
       );
     };
-    setPendingSwitch({
-      token,
-      library,
-      pathname,
-      pendingPathname: pendingDocsPathname,
-    });
+    setPendingSwitch({ library, pathname, pendingPathname: pendingDocsPathname });
     try {
       const currentSlugs = getRouteSlugsFromPathname(pathname, library);
       const { library: targetLib, slugs } = await resolveLibrarySwitchPath({
@@ -124,7 +123,7 @@ export function SidebarChrome({ library, tree }: { library: DocsLibraryId; tree:
       if (!ownsTransition()) return;
       toast.error("Couldn't switch library");
     } finally {
-      if (ownsTransition()) setPendingSwitch(null);
+      setPendingSwitch(null);
     }
   };
 
@@ -178,7 +177,7 @@ export function SidebarChrome({ library, tree }: { library: DocsLibraryId; tree:
           <SidebarPanelHeaderDivider />
           <SidebarPanelHeaderRow className="min-h-0 gap-2 py-1.5">
             <SidebarPanelHeaderLabel>Path</SidebarPanelHeaderLabel>
-            <Breadcrumbs
+            <DocsPathBreadcrumbs
               tree={tree}
               className="min-w-0 flex-1"
               onNavigate={() => setMobileNavOpen(false)}

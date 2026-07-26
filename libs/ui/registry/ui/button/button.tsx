@@ -203,7 +203,9 @@ function ButtonContent({
   const inner = (
     <>
       {loading && (
-        <Suspense fallback={null}>
+        // The label goes sr-only while loading, so the fallback has to hold the
+        // spinner's box or the button renders empty until the chunk resolves.
+        <Suspense fallback={<span aria-hidden="true" className="inline-flex size-[2em]" />}>
           <LazySpinner variant="braille" size={spinnerSize} aria-hidden="true" gap="none" />
         </Suspense>
       )}

@@ -5,7 +5,11 @@ import {
   rewriteKeysPackageImportsInContent,
   stripRelativeJsExtensions,
 } from "@diffgazer/registry";
-import type { RegistryItem } from "@diffgazer/registry/schemas";
+import {
+  KEYS_REGISTRY_DEPENDENCY_PREFIXES,
+  parseKeysDependencyRef,
+  type RegistryItem,
+} from "@diffgazer/registry/schemas";
 
 function renderImport(specifiers: string[], target: string, quote: string, indent: string): string {
   return `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`;
@@ -46,10 +50,8 @@ interface PublicRegistryIndexJson {
 
 function toDirectRegistryDependency(dep: string): string {
   if (dep.startsWith("http://") || dep.startsWith("https://")) return dep;
-  if (dep.startsWith("@diffgazer-keys/") || dep.startsWith("@diffgazer/keys/")) {
-    const name = dep.replace(/^@diffgazer-keys\/|^@diffgazer\/keys\//, "");
-    return `${REGISTRY_ORIGIN}/r/keys/${name}.json`;
-  }
+  const keysHook = parseKeysDependencyRef(dep);
+  if (keysHook) return `${REGISTRY_ORIGIN}/r/keys/${keysHook}.json`;
   if (dep.startsWith("@")) return dep;
   return `${REGISTRY_ORIGIN}/r/ui/${dep}.json`;
 }
@@ -155,8 +157,8 @@ export function isHiddenKeysShim(item: PublicRegistryItemJson & { name?: string 
   return (
     item.meta?.hidden === true &&
     item.name?.startsWith("use-") === true &&
-    (item.registryDependencies ?? []).some(
-      (dep) => dep.startsWith("@diffgazer-keys/") || dep.startsWith("@diffgazer/keys/"),
+    (item.registryDependencies ?? []).some((dep) =>
+      KEYS_REGISTRY_DEPENDENCY_PREFIXES.some((prefix) => dep.startsWith(prefix)),
     )
   );
 }

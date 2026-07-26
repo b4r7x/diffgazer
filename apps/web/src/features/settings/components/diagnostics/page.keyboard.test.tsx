@@ -8,7 +8,7 @@ import {
   renderPage,
   setupDiagnosticsMocks,
   waitForDiagnosticsActions,
-} from "./page-test-utils";
+} from "../../testing/diagnostics-page";
 
 describe("SettingsDiagnosticsPage diagnostics keyboard", () => {
   beforeEach(() => {

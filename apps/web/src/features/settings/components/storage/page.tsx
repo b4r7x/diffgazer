@@ -1,12 +1,12 @@
 import { useSettings } from "@diffgazer/core/api/hooks";
 import { deriveSaveState } from "@diffgazer/core/forms";
-import type { SecretsStorage } from "@diffgazer/core/schemas/config";
+import { SETTINGS_SCREEN_COPY, type SecretsStorage } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { useScope } from "@diffgazer/keys";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { useRef, useState } from "react";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
-import { useSettingsFormActions } from "../../hooks/use-settings-form-actions";
+import { useSettingsFormActions } from "../../hooks/use-form-actions";
 import { SettingsFormPage } from "../form-page";
 
 export function SettingsStoragePage() {
@@ -34,8 +34,8 @@ export function SettingsStoragePage() {
 
   return (
     <SettingsFormPage
-      title="Secrets Storage"
-      subtitle="Choose where API keys and sensitive data should be stored."
+      title={SETTINGS_SCREEN_COPY.storage.title}
+      subtitle={SETTINGS_SCREEN_COPY.storage.subtitle}
       query={settingsQuery}
       footer={footer}
       isSaving={isSaving}

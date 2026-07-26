@@ -1,11 +1,7 @@
 import { useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
+import { SETTINGS_SCREEN_COPY } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
-import {
-  ANALYSIS_SETTINGS_SUBTITLE,
-  deriveLensSelectionState,
-  LENS_IDS,
-  type LensId,
-} from "@diffgazer/core/schemas/review";
+import { deriveLensSelectionState, LENS_IDS, type LensId } from "@diffgazer/core/schemas/review";
 import { Text } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
@@ -56,16 +52,14 @@ export function AnalysisScreen(): ReactElement {
 
   return (
     <SettingsFormScreen
-      title="Analysis Settings"
-      subtitle={ANALYSIS_SETTINGS_SUBTITLE}
+      title={SETTINGS_SCREEN_COPY.analysis.title}
+      subtitle={SETTINGS_SCREEN_COPY.analysis.subtitle}
       loadingLabel="Loading analysis settings..."
       listShortcuts={LIST_SHORTCUTS}
       saving={isSaving}
       canSave={canSave}
       error={error}
       onSave={handleSave}
-      cancelVariant="ghost"
-      saveVariant="success"
     >
       {({ isListActive, enterButtons, isCompact }) => (
         <>

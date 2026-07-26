@@ -1,3 +1,11 @@
+// Two event arrays can carry identical indices and still come from different
+// dispatch branches (a replay, or a fork off an earlier state), so index equality
+// cannot prove that one array continues another. Every appended event mints a
+// token derived from the previous array's token, and isReviewEventSequenceContinuation
+// walks that chain — only a genuine append lands on `next.token`. `stream` scopes
+// tokens to a single review run and `firstIndex` absorbs head trimming, which is
+// what lets the activity log reuse its computed rows across an append.
+
 import type { ReviewEvent } from "./state.js";
 
 export interface ReviewEventSequence {

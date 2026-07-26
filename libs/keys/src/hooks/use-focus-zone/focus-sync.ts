@@ -99,6 +99,8 @@ export function useFocusZoneFocusSync<T extends string>(params: {
     }
   });
 
+  // No dependency array on purpose: React does not re-fire effects when the zone
+  // target refs' .current mutate while the ref objects stay stable.
   useEffect(() => {
     reconcileFocusinListeners();
   });

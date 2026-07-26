@@ -29,10 +29,8 @@ export interface StepperContextValue {
   unregisterStep: (registrationId: string) => void;
 }
 
-/** React context backing stepper. */
 export const StepperContext = createContext<StepperContextValue | undefined>(undefined);
 
-/** Reads the stepper context. */
 export function useStepperContext() {
   const context = useContext(StepperContext);
   if (!context) {
@@ -62,10 +60,8 @@ export interface StepperStepContextValue {
   setTriggerLabel: (label: string | undefined) => void;
 }
 
-/** React context backing stepper step. */
 export const StepperStepContext = createContext<StepperStepContextValue | undefined>(undefined);
 
-/** Reads the stepper step context. */
 export function useStepperStepContext() {
   const context = useContext(StepperStepContext);
   if (!context) {

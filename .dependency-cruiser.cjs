@@ -37,7 +37,7 @@ module.exports = {
           "(^|/)types\\.ts$",
           "(^|/)types/",
           "^cli/server/src/shared/lib/http/error-codes\\.ts$",
-          "^libs/core/src/schemas/presentation/(timeline|category-stats)\\.ts$",
+          "^libs/core/src/schemas/presentation/(analysis|category-stats|timeline)\\.ts$",
           // Public package subpath exports and documentation data are consumed
           // through package.json exports or artifact/doc loaders, not the
           // runtime application graph crawled here.
@@ -61,7 +61,7 @@ module.exports = {
           // in the runtime dependency crawl.
           "(^|/)(src|registry)/testing/(assertions|navigation-behavior)\\.tsx?$",
           "^libs/ui/testing/",
-          "^apps/web/src/testing/(escape-regexp|factories|render)\\.tsx?$",
+          "^apps/web/src/testing/(escape-regexp|render|reticle)\\.tsx?$",
           "^apps/docs/src/testing/(match-media|router-mock)\\.tsx?$",
           "(^|/)test-setup\\.ts$",
           "\\.(test|spec|e2e|stories)\\.[jt]sx?$",
@@ -76,7 +76,7 @@ module.exports = {
           "^apps/web/src/hooks/(use-theme|use-config)\\.tsx$",
           "^apps/web/src/lib/main-content\\.ts$",
           "^apps/web/src/(features/(providers/components/list|history/hooks/use-keyboard|help/components/page|review/components/run-details-panel)|components/layout/card-layout)\\.tsx?$",
-          "^apps/docs/src/(components/(content-spinner|inset-preview-pane|not-found-state|shared/(chrome-label|dot-grid|focus-ring)|layout/(tui-fault-panel|tui-bracket-link)|docs-mdx/(markdown-renderers|blocks/steps))|features/theme/components/(diffgazer-preview|variable-diagram)|hooks/(theme-context|use-demos)|lib/(consumption-metadata|docs-chrome|example-frames|generated-doc-data|resolve-examples))\\.tsx?$",
+          "^apps/docs/src/(components/(content-spinner|demo-node|inset-preview-pane|not-found-state|shared/(chrome-label|dot-grid|error-boundary|focus-ring|sidebar-item)|layout/(tui-fault-panel|tui-bracket-link)|docs-mdx/(markdown-renderers|blocks/steps))|features/theme/components/(diffgazer-preview|variable-diagram)|hooks/(docs-tree-context|theme-context|use-demos)|lib/(consumption-metadata|docs-chrome|example-frames|generated-doc-data|resolve-examples))\\.tsx?$",
         ],
       },
       to: {},

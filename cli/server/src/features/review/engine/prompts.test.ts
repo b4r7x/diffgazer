@@ -1,6 +1,6 @@
 import type { Lens } from "@diffgazer/core/schemas/review";
 import { describe, expect, it } from "vitest";
-import { makeParsedDiff } from "../../../shared/lib/testing/factories.js";
+import { makeParsedDiff } from "../testing/factories.js";
 import {
   buildReviewPrompt,
   CORRECTNESS_SEVERITY_RUBRIC,

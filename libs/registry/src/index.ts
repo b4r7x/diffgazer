@@ -57,7 +57,10 @@ export {
   type StaticNamedImport,
 } from "./imports/import-specifiers.js";
 export { rewriteKeysPackageImportsInContent } from "./imports/keys-import-rewrite.js";
-export { RELATIVE_JS_IMPORT_RE, stripRelativeJsExtensions } from "./imports/relative-js-imports.js";
+export {
+  findRelativeJsSpecifiers,
+  stripRelativeJsExtensions,
+} from "./imports/relative-js-imports.js";
 export {
   type ArtifactManifest,
   createArtifactManifest,

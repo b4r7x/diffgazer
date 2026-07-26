@@ -1,12 +1,10 @@
 /** @vitest-environment jsdom */
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { TrustConfig } from "../../schemas/config/index.js";
+import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
-import { ApiProvider } from "./context.js";
 import { TRUST_EDITOR_MESSAGES, useTrustEditor } from "./use-trust-editor.js";
 
 const TRUSTED_AT = "2026-05-13T12:00:00.000Z";
@@ -22,14 +20,8 @@ function makeTrust(overrides: Partial<TrustConfig> = {}): TrustConfig {
   };
 }
 
-function makeWrapper(api: BoundApi) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return ({ children }: { children: ReactNode }) =>
-    createElement(
-      QueryClientProvider,
-      { client: queryClient },
-      createElement(ApiProvider, { value: api }, children),
-    );
+function makeWrapper(api: Partial<BoundApi>) {
+  return createTestQueryWrapper({ api }).Wrapper;
 }
 
 function makeCallbacks() {
@@ -37,14 +29,16 @@ function makeCallbacks() {
 }
 
 describe("useTrustEditor", () => {
-  let saveTrust: ReturnType<typeof vi.fn>;
-  let deleteTrust: ReturnType<typeof vi.fn>;
-  let api: BoundApi;
+  let saveTrust: Mock<BoundApi["saveTrust"]>;
+  let deleteTrust: Mock<BoundApi["deleteTrust"]>;
+  let api: Partial<BoundApi>;
 
   beforeEach(() => {
-    saveTrust = vi.fn(async (trust: TrustConfig) => ({ trust }));
-    deleteTrust = vi.fn(async () => ({ removed: true }));
-    api = { saveTrust, deleteTrust } as unknown as BoundApi;
+    saveTrust = vi.fn<BoundApi["saveTrust"]>(async ({ capabilities, trustMode }) => ({
+      trust: makeTrust({ capabilities: { ...capabilities, runCommands: false }, trustMode }),
+    }));
+    deleteTrust = vi.fn<BoundApi["deleteTrust"]>(async () => ({ removed: true }));
+    api = { saveTrust, deleteTrust };
   });
 
   it("exposes the persisted capabilities and trusted state from the editor input", () => {

@@ -1,3 +1,4 @@
+export { REGISTRY_ORIGIN } from "../constants.js";
 export { createBundler } from "./bundler/bundle.js";
 export type { BundleFile, BundleItem, BundleResult, BundlerConfig } from "./bundler/types.js";
 export { createAddCommand } from "./command-factories/add.js";
@@ -10,7 +11,6 @@ export {
   type ConfigLoadResult,
   createConfigModule,
   resolveAliasedPaths,
-  updateManifest,
 } from "./config.js";
 export {
   detectPackageManager,
@@ -43,7 +43,6 @@ export {
   createRegistryLoader,
   metaFlag,
   metaStringList,
-  REGISTRY_ORIGIN,
   type RegistryAccessors,
   RegistryContentFileSchema,
   type RegistryContentItem,

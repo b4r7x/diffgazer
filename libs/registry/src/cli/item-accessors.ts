@@ -17,20 +17,6 @@ function getItemOrThrow<T extends RegistryItem>(
   return item;
 }
 
-function validateItems<T extends RegistryItem>(
-  names: string[],
-  getItem: (name: string) => T | undefined,
-  itemLabel: string,
-  listCommand: string,
-): void {
-  const missing = names.filter((name) => !getItem(name));
-  if (missing.length > 0) {
-    throw new Error(
-      `${itemLabel}(s) not found in registry: ${missing.map((n) => `"${n}"`).join(", ")}. Run \`${listCommand}\` to see available ${itemLabel.toLowerCase()}s.`,
-    );
-  }
-}
-
 export interface CreateItemAccessorsOptions<TConfig, TItem extends RegistryItem = RegistryItem> {
   configFileName: string;
   initCommand: string;
@@ -53,9 +39,5 @@ export function createItemAccessors<TConfig, TItem extends RegistryItem = Regist
     return getItemOrThrow(name, options.getItem, options.itemLabel, options.listCommand);
   }
 
-  function validate(names: string[]): void {
-    validateItems(names, options.getItem, options.itemLabel, options.listCommand);
-  }
-
-  return { requireConfig, getOrThrow, validate };
+  return { requireConfig, getOrThrow };
 }

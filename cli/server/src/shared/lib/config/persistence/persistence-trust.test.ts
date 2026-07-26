@@ -71,12 +71,21 @@ describe("trust persistence", () => {
     expect(files.some((file) => /^trust\.json\..+\.backup$/.test(file))).toBe(true);
   });
 
-  it("persists trust as a real JSON file", async () => {
-    const { persistTrust } = await import("./trust.js");
+  it("creates trust.json on the first granted record", async () => {
+    const { persistTrustRecordAsync } = await import("./trust.js");
+    const record = {
+      projectId: "proj-first",
+      repoRoot: "/projects/first",
+      trustedAt: "2024-01-02T00:00:00.000Z",
+      capabilities: { readFiles: true, runCommands: false },
+      trustMode: "persistent" as const,
+    };
 
-    persistTrust({ projects: {} });
+    await persistTrustRecordAsync(record);
 
-    await expect(readJson(homePath("trust.json"))).resolves.toEqual({ projects: {} });
+    await expect(readJson(homePath("trust.json"))).resolves.toEqual({
+      projects: { "proj-first": record },
+    });
   });
 
   it("drops reserved project IDs from trust records", async () => {

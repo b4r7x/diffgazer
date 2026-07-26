@@ -10,5 +10,5 @@ const HorizontalStepper = Object.assign(HorizontalStepperRoot, {
 
 export { HorizontalStepper, type HorizontalStepperProps };
 export { HorizontalStepperStep, type HorizontalStepperStepProps };
-export type { HorizontalStepperVariant } from "@/lib/horizontal-stepper-variants";
 export type { StepStatus } from "./horizontal-stepper-context";
+export type { HorizontalStepperVariant } from "./horizontal-stepper-variants";

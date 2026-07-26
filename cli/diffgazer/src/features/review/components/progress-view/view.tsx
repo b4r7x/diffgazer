@@ -41,7 +41,6 @@ export interface ReviewProgressViewProps {
   completedAt: Date | null;
   reviewId?: string | null;
   contextSnapshot?: ReviewContextResponse | null;
-  contextOutputDirectory?: string;
 }
 
 const STREAMING_SHORTCUTS: Shortcut[] = [{ key: "c", label: "Cancel" }];
@@ -100,7 +99,6 @@ export function ReviewProgressView({
   completedAt,
   reviewId,
   contextSnapshot,
-  contextOutputDirectory,
 }: ReviewProgressViewProps): ReactElement {
   const { isMedium, isWide, tier } = useResponsive();
   const { contentRows } = useContentZone();
@@ -199,7 +197,6 @@ export function ReviewProgressView({
           isStreaming={isStreaming}
           reviewId={reviewId}
           contextSnapshot={contextSnapshot}
-          contextOutputDirectory={contextOutputDirectory}
         />
         <ReviewProgressActivity
           width={logWidth}

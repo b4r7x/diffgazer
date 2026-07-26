@@ -1,5 +1,5 @@
 import { render, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Popover } from "../popover";
 import { Select } from "../select";
 import { Portal } from "./portal";
@@ -50,7 +50,6 @@ describe("Portal", () => {
   });
 
   it("keeps Select ID references in the trigger document when given an iframe container", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const iframe = document.createElement("iframe");
     document.body.appendChild(iframe);
     const iframeDocument = iframe.contentDocument;
@@ -74,15 +73,12 @@ describe("Portal", () => {
       expect(controlledId ? document.getElementById(controlledId) : null).toHaveRole("listbox");
     });
     expect(within(iframeDocument.body).queryByRole("listbox")).not.toBeInTheDocument();
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Select: portalContainer"));
 
     view.unmount();
     iframe.remove();
-    warn.mockRestore();
   });
 
   it("keeps hover Popover descriptions in the trigger document", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const iframe = document.createElement("iframe");
     document.body.appendChild(iframe);
     const iframeDocument = iframe.contentDocument;
@@ -102,10 +98,8 @@ describe("Portal", () => {
       expect(describedBy ? document.getElementById(describedBy) : null).toHaveRole("tooltip");
     });
     expect(within(iframeDocument.body).queryByRole("tooltip")).not.toBeInTheDocument();
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Popover: portalContainer"));
 
     view.unmount();
     iframe.remove();
-    warn.mockRestore();
   });
 });

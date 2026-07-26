@@ -1,14 +1,14 @@
 import { matchQueryState } from "@diffgazer/core/api/hooks";
+import { formatRunId } from "@diffgazer/core/format";
 import { deriveTrustStatus } from "@diffgazer/core/navigation";
 import {
   buildHistoryWarningMessages,
   deriveHistoryDetailState,
-  formatRunId,
   HISTORY_SEARCH_PLACEHOLDER,
   summarizeHistoryWarnings,
 } from "@diffgazer/core/review";
 import type { ReviewListWarning } from "@diffgazer/core/schemas/review";
-import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
+import { isListNavigationKey } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { Kbd } from "@diffgazer/ui/components/kbd";
@@ -99,7 +99,6 @@ function HistoryPageContent() {
   } = useHistoryPage();
   const navigate = useNavigate();
 
-  const activeRunId = selectedRunId;
   const insightsDetailState = deriveHistoryDetailState({
     isLoading: reviewDetailQuery.isLoading,
     error: reviewDetailQuery.error,
@@ -110,7 +109,7 @@ function HistoryPageContent() {
     enabled: reviewsQuery.isSuccess,
     focusZone,
     setFocusZone,
-    activeRunId,
+    activeRunId: selectedRunId,
     hasRuns: mappedRuns.length > 0,
     hasMore: hasMoreReviews,
     hasInsights: insightsDetailState.status === "ready" && sortedIssues.length > 0,
@@ -131,9 +130,9 @@ function HistoryPageContent() {
       return;
     }
 
-    if (event.key === " " && activeRunId) {
+    if (event.key === " " && selectedRunId) {
       event.preventDefault();
-      handleRunActivate(activeRunId);
+      handleRunActivate(selectedRunId);
     }
   };
 
@@ -263,9 +262,7 @@ function HistoryPageContent() {
                 onEnter={handleRunActivate}
                 onHighlightChange={setSelectedRunId}
                 onNavigationBoundaryReached={(direction) => {
-                  if (direction === "previous") {
-                    handleRunsBoundary(toVerticalBoundaryDirection(direction));
-                  }
+                  if (direction === "previous") handleRunsBoundary();
                 }}
                 onKeyDown={handleRunsKeyDown}
                 wrap={false}

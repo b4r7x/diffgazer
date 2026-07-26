@@ -1,5 +1,4 @@
-import { formatDuration } from "@diffgazer/core/format";
-import { formatRunId } from "@diffgazer/core/review";
+import { formatDuration, formatRunId } from "@diffgazer/core/format";
 import type {
   AnalysisStats,
   CategoryStats,

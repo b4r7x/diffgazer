@@ -1,5 +1,6 @@
 import { FooterProvider } from "@diffgazer/core/footer";
-import { createInitialReviewState, formatRunId, reviewReducer } from "@diffgazer/core/review";
+import { formatRunId } from "@diffgazer/core/format";
+import { createInitialReviewState, reviewReducer } from "@diffgazer/core/review";
 import type { InitResponse } from "@diffgazer/core/schemas/config";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
@@ -185,7 +186,7 @@ function resetReviewMocks() {
   mockUseReview.mockReturnValue(reviewQuery({}));
   mockUseReviewLifecycleBase.mockReset();
   mockUseReviewLifecycleBase.mockReturnValue({
-    stream: { stop: vi.fn(), abort: vi.fn(), cancel: vi.fn(), state: makeStreamState() },
+    stream: { abort: vi.fn(), cancel: vi.fn(), state: makeStreamState() },
     checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
     completion: {
       isCompleting: false,
@@ -193,7 +194,8 @@ function resetReviewMocks() {
       skipDelay: vi.fn(),
       resetCompletion: vi.fn(),
     },
-    start: { hasStarted: true, hasStreamed: true, setHasStarted: vi.fn(), setHasStreamed: vi.fn() },
+    start: { hasStarted: true, hasStreamed: true },
+    reset: vi.fn(),
   });
 }
 
@@ -346,7 +348,6 @@ describe("ReviewPage saved review loading", () => {
     routeState.search = { mode: "unstaged", live: true };
     mockUseReviewLifecycleBase.mockReturnValue({
       stream: {
-        stop: vi.fn(),
         abort: vi.fn(),
         cancel: vi.fn(),
         state: { ...makeStreamState(), reviewId },
@@ -361,9 +362,8 @@ describe("ReviewPage saved review loading", () => {
       start: {
         hasStarted: true,
         hasStreamed: true,
-        setHasStarted: vi.fn(),
-        setHasStreamed: vi.fn(),
       },
+      reset: vi.fn(),
     });
 
     renderPage();
@@ -488,7 +488,6 @@ describe("ReviewPage stale live session falls back to saved review", () => {
         captured.onNotFoundInSession = opts.onNotFoundInSession ?? null;
         return {
           stream: {
-            stop: vi.fn(),
             abort: vi.fn(),
             cancel: vi.fn(),
             state: { ...makeStreamState(), reviewId: STALE_REVIEW_ID },
@@ -503,9 +502,8 @@ describe("ReviewPage stale live session falls back to saved review", () => {
           start: {
             hasStarted: true,
             hasStreamed: true,
-            setHasStarted: vi.fn(),
-            setHasStreamed: vi.fn(),
           },
+          reset: vi.fn(),
         };
       },
     );
@@ -597,7 +595,6 @@ describe("ReviewPage reviewId changes", () => {
       capturedOnComplete = opts.onComplete ?? null;
       return {
         stream: {
-          stop: vi.fn(),
           abort: vi.fn(),
           cancel: vi.fn(),
           state: { ...makeStreamState(), reviewId: FIRST_REVIEW_ID, issues: [firstIssue] },
@@ -612,9 +609,8 @@ describe("ReviewPage reviewId changes", () => {
         start: {
           hasStarted: true,
           hasStreamed: true,
-          setHasStarted: vi.fn(),
-          setHasStreamed: vi.fn(),
         },
+        reset: vi.fn(),
       };
     });
 
@@ -631,7 +627,6 @@ describe("ReviewPage reviewId changes", () => {
     routeState.params = { reviewId: SECOND_REVIEW_ID };
     mockUseReviewLifecycleBase.mockReturnValue({
       stream: {
-        stop: vi.fn(),
         abort: vi.fn(),
         cancel: vi.fn(),
         state: { ...makeStreamState(), reviewId: SECOND_REVIEW_ID },
@@ -646,9 +641,8 @@ describe("ReviewPage reviewId changes", () => {
       start: {
         hasStarted: true,
         hasStreamed: true,
-        setHasStarted: vi.fn(),
-        setHasStreamed: vi.fn(),
       },
+      reset: vi.fn(),
     });
 
     view.rerender(<ReviewPage />);
@@ -736,7 +730,6 @@ describe("ReviewPage live review phase transitions", () => {
       capturedOnComplete = opts.onComplete ?? null;
       return {
         stream: {
-          stop: vi.fn(),
           abort: vi.fn(),
           cancel: vi.fn(),
           state: {
@@ -755,9 +748,8 @@ describe("ReviewPage live review phase transitions", () => {
         start: {
           hasStarted: true,
           hasStreamed: true,
-          setHasStarted: vi.fn(),
-          setHasStreamed: vi.fn(),
         },
+        reset: vi.fn(),
       };
     });
   });

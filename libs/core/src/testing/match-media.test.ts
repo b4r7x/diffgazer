@@ -1,11 +1,11 @@
 /** @vitest-environment jsdom */
 
 import { describe, expect, it, vi } from "vitest";
-import { stubControllableMatchMedia } from "./match-media.js";
+import { stubMatchMedia } from "./match-media.js";
 
-describe("stubControllableMatchMedia", () => {
+describe("stubMatchMedia", () => {
   it("notifies only media queries whose match changed", () => {
-    const controller = stubControllableMatchMedia((query) => query === "(stable)");
+    const controller = stubMatchMedia((query) => query === "(stable)");
     const stable = window.matchMedia("(stable)");
     const changing = window.matchMedia("(changing)");
     const stableListener = vi.fn();

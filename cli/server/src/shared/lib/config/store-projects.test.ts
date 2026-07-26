@@ -57,6 +57,39 @@ describe("config store", () => {
     }
   });
 
+  it("keeps project.json on the old root when no re-key handler is registered", async () => {
+    const logModule = await import("../log.js");
+    const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
+    const { createConfigStore } = await import("./store.js");
+    const originalRoot = join(diffgazerHome, "unwired-original");
+    const movedRoot = join(diffgazerHome, "unwired-moved");
+    const projectFilePath = join(movedRoot, ".diffgazer", "project.json");
+    mkdirSync(join(movedRoot, ".diffgazer"), { recursive: true });
+    mkdirSync(join(movedRoot, ".git"), { recursive: true });
+    writeFileSync(
+      projectFilePath,
+      JSON.stringify({
+        projectId: "unwired-id",
+        repoRoot: originalRoot,
+        createdAt: "2024-01-01T00:00:00.000Z",
+      }),
+    );
+
+    try {
+      createConfigStore().getProjectInfo(movedRoot);
+
+      await vi.waitFor(() =>
+        expect(logSpy).toHaveBeenCalledWith("error", "review_rekey_handler_not_registered"),
+      );
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(JSON.parse(readFileSync(projectFilePath, "utf-8"))).toMatchObject({
+        repoRoot: originalRoot,
+      });
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
   it("keeps exactly one trust record for a moved project's preserved projectId", async () => {
     const movedRoot = join(diffgazerHome, "moved-trust");
     mkdirSync(join(movedRoot, ".diffgazer"), { recursive: true });

@@ -34,7 +34,6 @@ const CodeBlockContext = createContext<CodeBlockContextValue | null>(null);
 
 export const CodeBlockProvider = CodeBlockContext.Provider;
 
-/** Reads the required code block context. */
 export function useRequiredCodeBlockContext(consumerName: string): CodeBlockContextValue {
   const context = useContext(CodeBlockContext);
   if (!context) {

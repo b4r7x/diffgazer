@@ -1,6 +1,6 @@
 import { execa, type ResultPromise } from "execa";
 import { config as appConfig } from "../../../config";
-import type { ServerController } from "../controller";
+import type { ServerController } from "../types";
 import {
   appendDiagnosticTail,
   consumeCompleteLines,
@@ -82,6 +82,9 @@ export function createProcessServer(
   function start(): Promise<void> {
     if (startPromise) return startPromise;
     if (cleanupPromise) {
+      // A start() arriving while a previous child is still being cleaned up queues behind
+      // that cleanup. stop() bumps lifecycleVersion, so a stop that lands during the wait
+      // cancels the queued restart instead of spawning a child nobody asked for.
       const version = lifecycleVersion;
       const queuedStart = cleanupPromise.then(() => {
         if (version !== lifecycleVersion) {

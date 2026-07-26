@@ -1,5 +1,6 @@
 import { Children, isValidElement, type ReactNode } from "react";
 import { encodeDomIdSegment } from "@/lib/dom-id";
+import { matchesSearch } from "@/lib/search";
 
 export function isValueSelected(value: string | null | string[], itemValue: string): boolean {
   return Array.isArray(value) ? value.includes(itemValue) : value === itemValue;
@@ -29,11 +30,10 @@ export function isActiveOptionVisible(
   options: ReadonlyMap<string, { label: string; disabled: boolean }>,
   value: string | null,
   searchQuery: string,
-  matches: (label: string, query: string) => boolean,
 ): value is string {
   if (value === null) return false;
   const option = options.get(value);
-  return !!option && !option.disabled && matches(option.label, searchQuery);
+  return !!option && !option.disabled && matchesSearch(option.label, searchQuery);
 }
 
 export function containsSelectSearchElement(

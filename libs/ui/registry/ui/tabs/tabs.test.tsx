@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useState } from "react";
 import { renderToString } from "react-dom/server";
@@ -71,51 +71,6 @@ describe("Tabs", () => {
     expect(screen.getByRole("tab", { name: "Second" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "First" })).toHaveAttribute("aria-selected", "false");
     expect(screen.getByText("Second panel")).not.toHaveAttribute("hidden");
-  });
-
-  it("warns in development when a controlled value matches no registered trigger", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-
-    render(
-      <Tabs value="ghost">
-        <Tabs.List>
-          <Tabs.Trigger value="one">One</Tabs.Trigger>
-          <Tabs.Trigger value="two">Two</Tabs.Trigger>
-        </Tabs.List>
-        <Tabs.Content value="one">Content one</Tabs.Content>
-        <Tabs.Content value="two">Content two</Tabs.Content>
-      </Tabs>,
-    );
-
-    await waitFor(() => expect(warn).toHaveBeenCalled());
-    expect(warn.mock.calls[0]?.[0]).toContain("ghost");
-    expect(warn.mock.calls[0]?.[0]).toContain("Tabs");
-    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
-
-    warn.mockRestore();
-  });
-
-  it("does not warn when a controlled value matches a wrapper-rendered trigger", async () => {
-    function WrappedTab({ value, children }: { value: string; children: ReactNode }) {
-      return <Tabs.Trigger value={value}>{children}</Tabs.Trigger>;
-    }
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-
-    render(
-      <Tabs value="second">
-        <Tabs.List>
-          <WrappedTab value="first">First</WrappedTab>
-          <WrappedTab value="second">Second</WrappedTab>
-        </Tabs.List>
-        <Tabs.Content value="first">First panel</Tabs.Content>
-        <Tabs.Content value="second">Second panel</Tabs.Content>
-      </Tabs>,
-    );
-
-    // Flush the deferred dev-warn frame; wrapper triggers register before it fires.
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
-    expect(warn).not.toHaveBeenCalled();
-    warn.mockRestore();
   });
 
   it("selects a tab on click", async () => {

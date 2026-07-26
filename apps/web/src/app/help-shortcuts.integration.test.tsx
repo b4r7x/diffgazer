@@ -31,7 +31,7 @@ import {
   renderHistoryPage,
   setupApiMocks,
   trustedProject,
-} from "@/features/history/components/page-test-utils";
+} from "@/features/history/testing/page";
 import {
   HomePagePresentation,
   type HomePagePresentationProps,
@@ -39,9 +39,10 @@ import {
 import { ActivityLog } from "@/features/review/components/activity-log/log";
 import { useReviewDetailsTabKeyboard } from "@/features/review/hooks/use-details-tab-keyboard";
 
-const { mockNavigate, mockShutdown } = vi.hoisted(() => ({
+const { mockNavigate, mockShutdown, mockReportShutdownResult } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockShutdown: vi.fn(async () => ({ status: "closed" as const })),
+  mockReportShutdownResult: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -49,7 +50,10 @@ vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({ pathname: "/" }),
 }));
 
-vi.mock("@/lib/shutdown", () => ({ shutdown: mockShutdown }));
+vi.mock("@/lib/shutdown", () => ({
+  shutdown: mockShutdown,
+  reportShutdownResult: mockReportShutdownResult,
+}));
 
 type ShortcutRow = { key: string; label: string };
 
@@ -365,6 +369,9 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
     renderGlobalHome();
     await user.keyboard("q");
     await waitFor(() => expect(mockShutdown).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(mockReportShutdownResult).toHaveBeenCalledWith({ status: "closed" }),
+    );
   },
 
   "? → Open Help": async () => {
@@ -397,6 +404,7 @@ describe("help shortcut integration", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockShutdown.mockReset();
+    mockReportShutdownResult.mockReset();
   });
 
   it("renders the canonical shortcut table", () => {

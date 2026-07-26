@@ -7,35 +7,46 @@ describe("createGitDiffError", () => {
       kind: "missing repository",
       input: new Error("fatal: not a git repository"),
       expectedFragment: "Not a git repository",
+      expectedCode: "NOT_A_REPOSITORY",
     },
     {
       kind: "spawn ENOENT",
       input: new Error("spawn git ENOENT"),
       expectedFragment: "Git is not installed",
+      expectedCode: "GIT_NOT_FOUND",
     },
     {
       kind: "command not found",
       input: new Error("git command not found"),
       expectedFragment: "Git is not installed",
+      expectedCode: "GIT_NOT_FOUND",
     },
     {
       kind: "permission denied",
       input: new Error("EACCES permission denied"),
       expectedFragment: "Permission denied",
+      expectedCode: "PERMISSION_DENIED",
     },
     {
       kind: "operation timeout",
       input: new Error("operation timed out"),
       expectedFragment: "timed out",
+      expectedCode: "TIMEOUT",
     },
     {
       kind: "buffer exceeded",
       input: new Error("stdout maxBuffer length exceeded"),
       expectedFragment: "buffer limit",
+      expectedCode: "BUFFER_EXCEEDED",
     },
-  ])("produces a $kind message that wraps the original error", ({ input, expectedFragment }) => {
+  ])("produces a $kind code and message that wraps the original error", ({
+    input,
+    expectedFragment,
+    expectedCode,
+  }) => {
     const result = createGitDiffError(input);
 
+    expect(result.code).toBe(expectedCode);
     expect(result.message).toContain(expectedFragment);
     expect(result.message).toContain("Original:");
   });
@@ -43,6 +54,7 @@ describe("createGitDiffError", () => {
   it("returns a generic 'Failed to get git diff' message for unrecognized errors", () => {
     const result = createGitDiffError(new Error("something completely unexpected"));
 
+    expect(result.code).toBe("UNKNOWN");
     expect(result.message).toContain("Failed to get git diff");
     expect(result.message).toContain("something completely unexpected");
     expect(result.message).not.toContain("Original:");

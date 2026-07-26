@@ -1,4 +1,5 @@
 import { useActivateProvider } from "@diffgazer/core/api/hooks";
+import { getCatalogFallbackNotice } from "@diffgazer/core/catalog";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { getCompatibilityLabel, useModelFilter, useModelSource } from "@diffgazer/core/providers";
 import { sanitizeTerminalText } from "@diffgazer/core/review";
@@ -13,10 +14,10 @@ import { Dialog, getDialogWidth } from "../../../components/ui/dialog";
 import { Spinner } from "../../../components/ui/spinner";
 import { useListNavigation } from "../../../hooks/use-list-navigation";
 import { getListWindow } from "../../../lib/list-window";
-import { terminalCellWidth } from "../../../lib/terminal-width";
+import { wrappedRowCount } from "../../../lib/terminal-width";
 import { useTheme } from "../../../theme/provider";
 import { ModelListItem } from "./model-list-item";
-import { SearchInput } from "./model-search-input";
+import { ModelSearchInput } from "./model-search-input";
 import { TierFilterTabs } from "./tier-filter-tabs";
 
 type FocusZone = "search" | "filters" | "list";
@@ -33,10 +34,6 @@ const MIN_MODEL_VIEWPORT_SIZE = 4;
 // Card border, padding, title + provider subtitle, header rule, search box,
 // tier tabs and the gaps between them.
 const MODEL_DIALOG_BASE_CHROME_ROWS = 12;
-
-function getRenderedRows(text: string, contentWidth: number): number {
-  return Math.max(Math.ceil(terminalCellWidth(text) / contentWidth), 1);
-}
 
 function getModelViewportSize({
   contentRows,
@@ -251,12 +248,7 @@ export function ModelSelectOverlay({
     { isActive: open && !saving },
   );
 
-  let fallbackNotice: string | null = null;
-  if (source === "cache") {
-    fallbackNotice = `Using cached catalog data from ${fetchedAt ?? "an unknown time"}.`;
-  } else if (source === "snapshot") {
-    fallbackNotice = "Using the bundled model catalog because live catalog data is unavailable.";
-  }
+  const fallbackNotice = getCatalogFallbackNotice(source, fetchedAt);
 
   useInput(
     (input) => {
@@ -307,9 +299,9 @@ export function ModelSelectOverlay({
   const compatibilityLabel = isOpenRouter ? getCompatibilityLabel(openRouter) : null;
   const conditionalRows = [
     compatibilityLabel && !loading && !sourceError ? 1 : 0,
-    fallbackNotice ? getRenderedRows(`${fallbackNotice} Press r to retry.`, contentWidth) : 0,
+    fallbackNotice ? wrappedRowCount(`${fallbackNotice} Press r to retry.`, contentWidth) : 0,
     sourceError ? 1 : 0,
-    activationError ? getRenderedRows(sanitizeTerminalText(activationError), contentWidth) : 0,
+    activationError ? wrappedRowCount(sanitizeTerminalText(activationError), contentWidth) : 0,
     saving ? 1 : 0,
   ].reduce((total, rowCount) => total + rowCount, 0);
   const modelViewportSize = getModelViewportSize({
@@ -332,7 +324,7 @@ export function ModelSelectOverlay({
         </Dialog.Header>
         <Dialog.Body>
           <Box flexDirection="column" gap={1}>
-            <SearchInput
+            <ModelSearchInput
               value={searchQuery}
               onChange={setSearchQuery}
               isActive={focusZone === "search" && !saving}
@@ -340,7 +332,7 @@ export function ModelSelectOverlay({
 
             <TierFilterTabs
               value={tierFilter}
-              onValueChange={setTierFilter}
+              onChange={setTierFilter}
               isActive={focusZone === "filters" && !saving}
             />
 

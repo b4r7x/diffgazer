@@ -1,23 +1,5 @@
-import type {
-  AnatomyNode,
-  ComponentDoc,
-  ComponentNote,
-  ComponentPropsTable,
-  ExampleRef,
-  KeyboardSection,
-  PropInfo,
-} from "@diffgazer/registry";
+import type { ComponentDoc, PropInfo } from "@diffgazer/registry";
 import type { CodeBlockLineProps } from "@diffgazer/ui/components/code-block";
-
-export type {
-  ExampleRef,
-  AnatomyNode,
-  ComponentNote,
-  KeyboardSection,
-  ComponentDoc,
-  PropInfo,
-  ComponentPropsTable,
-};
 
 export interface SourceFile {
   raw: string;

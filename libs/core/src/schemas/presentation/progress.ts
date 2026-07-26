@@ -1,44 +1,41 @@
-import { z } from "zod";
-import { LIFECYCLE_STATUSES } from "../events/statuses.js";
+import type { LIFECYCLE_STATUSES } from "../events/statuses.js";
 
-const PROGRESS_STATUSES = ["completed", "active", "pending"] as const;
-const ProgressStatusSchema = z.enum(PROGRESS_STATUSES);
-export type ProgressStatus = z.infer<typeof ProgressStatusSchema>;
+export type ProgressStatus = "completed" | "active" | "pending";
 
-const ProgressSubstepDataSchema = z.object({
-  id: z.string(),
-  tag: z.string(),
-  label: z.string(),
-  status: z.enum(LIFECYCLE_STATUSES),
-  detail: z.string().optional(),
-});
-export type ProgressSubstepData = z.infer<typeof ProgressSubstepDataSchema>;
+export interface ProgressSubstepData {
+  id: string;
+  tag: string;
+  label: string;
+  status: (typeof LIFECYCLE_STATUSES)[number];
+  detail?: string;
+}
 
-const ProgressStepDataSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  status: ProgressStatusSchema,
-});
-export type ProgressStepData = z.infer<typeof ProgressStepDataSchema>;
+export interface ProgressStepData {
+  id: string;
+  label: string;
+  status: ProgressStatus;
+}
 
-const ProgressStepWithSubstepsDataSchema = ProgressStepDataSchema.extend({
-  substeps: z.array(ProgressSubstepDataSchema).optional(),
-});
-export type ProgressStepWithSubstepsData = z.infer<typeof ProgressStepWithSubstepsDataSchema>;
+export interface ProgressStepWithSubstepsData extends ProgressStepData {
+  substeps?: ProgressSubstepData[];
+}
 
-const ReviewProgressMetricsSchema = z.object({
-  filesProcessed: z.number().nonnegative(),
-  filesTotal: z.number().nonnegative(),
-  issuesFound: z.number().nonnegative(),
-});
-export type ReviewProgressMetrics = z.infer<typeof ReviewProgressMetricsSchema>;
+export interface ReviewProgressMetrics {
+  filesProcessed: number;
+  filesTotal: number;
+  issuesFound: number;
+}
 
 export type ReviewMetricId = "files-in-prompt" | "issues-found" | "elapsed";
+
+/** Emphasis a surface gives a metric, so web and TUI highlight the same rows. */
+export type ReviewMetricTone = "default" | "info" | "warning";
 
 export interface ReviewMetricRow<TElapsed> {
   id: ReviewMetricId;
   label: string;
   value: string | number | TElapsed;
+  tone: ReviewMetricTone;
 }
 
 export function buildReviewMetricsRows<TElapsed>(
@@ -51,9 +48,15 @@ export function buildReviewMetricsRows<TElapsed>(
     {
       id: "files-in-prompt",
       label: "Files in Prompt",
-      value: `${String(metrics.filesProcessed)}/${filesTotal}`,
+      value: `${metrics.filesProcessed}/${filesTotal}`,
+      tone: "default",
     },
-    { id: "issues-found", label: "Issues Found", value: metrics.issuesFound },
-    { id: "elapsed", label: "Elapsed", value: elapsed },
+    {
+      id: "issues-found",
+      label: "Issues Found",
+      value: metrics.issuesFound,
+      tone: metrics.issuesFound > 0 ? "warning" : "default",
+    },
+    { id: "elapsed", label: "Elapsed", value: elapsed, tone: "info" },
   ];
 }

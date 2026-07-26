@@ -14,9 +14,8 @@ import {
   geminiName,
   makeGeminiApi,
   makeQueryClient,
-  StableWrapper,
   Wrapper,
-} from "./model-select-overlay.test-harness";
+} from "./model-select-overlay.test-support";
 
 describe("ModelSelectOverlay selection (Enter -> activate -> close)", () => {
   afterEach(() => {
@@ -182,14 +181,14 @@ describe("ModelSelectOverlay saving state", () => {
     const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
 
     const view = render(
-      <StableWrapper api={api} queryClient={queryClient}>
+      <Wrapper api={api} queryClient={queryClient}>
         <ModelSelectOverlay
           open={true}
           onOpenChange={() => {}}
           providerId="gemini"
           onSelect={() => {}}
         />
-      </StableWrapper>,
+      </Wrapper>,
     );
 
     await flushUntil(() => view.lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
@@ -198,14 +197,14 @@ describe("ModelSelectOverlay saving state", () => {
     await flushUntil(() => view.lastFrame()?.includes("Activation failed") ?? false);
 
     view.rerender(
-      <StableWrapper api={api} queryClient={queryClient}>
+      <Wrapper api={api} queryClient={queryClient}>
         <ModelSelectOverlay
           open={true}
           onOpenChange={() => {}}
           providerId="groq"
           onSelect={() => {}}
         />
-      </StableWrapper>,
+      </Wrapper>,
     );
     await flush();
 

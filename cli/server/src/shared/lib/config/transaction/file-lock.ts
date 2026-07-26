@@ -44,12 +44,7 @@ interface FileLockOwner {
   markerName: string;
 }
 
-interface ObservedDirectoryLock {
-  kind: "directory";
-  entries: string[];
-  metadata: FileLockMetadata | null;
-  mtimeMs: number;
-}
+type ObservedDirectoryLock = Extract<ObservedLock, { kind: "directory" }>;
 
 export interface FileTransactionLockOptions {
   timeoutMs?: number;

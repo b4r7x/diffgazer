@@ -27,6 +27,16 @@ const ROOT = process.env.DIFFGAZER_UI_REGISTRY_ROOT
 const REGISTRY_SCHEMA = "https://ui.shadcn.com/schema/registry.json";
 const KEYBOARD_NAVIGATION_INTEGRATION = "keyboard-navigation";
 const ALLOWED_REGISTRY_DEP_ORIGINS = ["https://docs.b4r7.dev", "https://r.b4r7.dev"] as const;
+const KEYS_PEER_NAME = "@diffgazer/keys";
+const TEST_SOURCE_RE =
+  /\.(?:test|spec|stories?)\.[jt]sx?$|[.-]test-(?:utils|helpers|harness|support)\./;
+const SHIPPED_REGISTRY_DIRS = [
+  "registry/ui",
+  "registry/hooks",
+  "registry/lib",
+  "registry/examples",
+] as const;
+const BUILD_ENV_TOKENS = ["process.env", "import.meta.env", "NODE_ENV"] as const;
 
 function readJson(relativePath: string): unknown {
   return JSON.parse(readFileSync(resolve(ROOT, relativePath), "utf-8"));
@@ -77,11 +87,125 @@ function clientEntryBarrelHasDirective(item: RegistryItem): boolean {
   return source.startsWith('"use client"') || source.startsWith("'use client'");
 }
 
-function itemSourceContains(item: RegistryItem, needle: string): boolean {
-  return (item.files ?? []).some((file) => {
+function itemPackageImports(item: RegistryItem): Set<string> {
+  const packages = new Set<string>();
+
+  for (const file of item.files ?? []) {
     const path = resolve(ROOT, file.path);
-    return existsSync(path) && readFileSync(path, "utf-8").includes(needle);
-  });
+    if (!existsSync(path) || file.path.endsWith(".css")) continue;
+
+    for (const { specifier } of extractImportSpecifiers(readFileSync(path, "utf-8"))) {
+      if (specifier.startsWith(".") || specifier.startsWith("@/")) continue;
+      const segments = specifier.split("/");
+      packages.add(segments.slice(0, specifier.startsWith("@") ? 2 : 1).join("/"));
+    }
+  }
+
+  return packages;
+}
+
+function peerPackages(packageJson: PackageJson): { required: Set<string>; optional: Set<string> } {
+  const required = new Set<string>();
+  const optional = new Set<string>();
+
+  for (const peer of Object.keys(packageJson.peerDependencies ?? {})) {
+    const target =
+      packageJson.peerDependenciesMeta?.[peer]?.optional === true ? optional : required;
+    target.add(peer);
+  }
+
+  return { required, optional };
+}
+
+// `dependencies` is the install instruction copy/dgadd consumers receive, so it must
+// match what the item's files actually import. Required peers (react, keys) are always
+// present and never listed; optional peers may be declared without an import because the
+// consumer constructs them and passes them in (code-block-highlight takes a lowlight instance).
+function validateDeclaredDependencies(
+  item: RegistryItem,
+  peers: { required: Set<string>; optional: Set<string> },
+): string[] {
+  const declared = new Set(item.dependencies ?? []);
+  const imported = itemPackageImports(item);
+  const errors: string[] = [];
+
+  for (const dependency of declared) {
+    if (imported.has(dependency) || peers.optional.has(dependency)) continue;
+    errors.push(`${item.name} declares dependency "${dependency}" but no file imports it`);
+  }
+
+  for (const dependency of imported) {
+    if (peers.required.has(dependency) || declared.has(dependency)) continue;
+    errors.push(`${item.name} imports "${dependency}" but omits it from dependencies`);
+  }
+
+  return errors;
+}
+
+function sourceFilesUnder(registryDir: string): string[] {
+  const root = resolve(ROOT, registryDir);
+  if (!existsSync(root)) return [];
+
+  function walk(dir: string): string[] {
+    const entries: string[] = [];
+    for (const entry of readdirSync(dir)) {
+      const entryPath = resolve(dir, entry);
+      if (statSync(entryPath).isDirectory()) {
+        entries.push(...walk(entryPath));
+      } else if (entry.endsWith(".ts") || entry.endsWith(".tsx")) {
+        entries.push(entryPath);
+      }
+    }
+    return entries;
+  }
+
+  return walk(root);
+}
+
+/** Files a copy/dgadd consumer actually receives; test suites never ship. */
+function shippedSourceFiles(registryDir: string): string[] {
+  return sourceFilesUnder(registryDir).filter((file) => !TEST_SOURCE_RE.test(file));
+}
+
+// Examples are the copy/dgadd consumer's reference source: they must import the local
+// hook paths dgadd writes, never the package that copy mode rewrites away.
+function validateExamplesAvoidKeysPackage(): string[] {
+  const errors: string[] = [];
+
+  for (const exampleFile of shippedSourceFiles("registry/examples")) {
+    const residual = extractImportSpecifiers(readFileSync(exampleFile, "utf-8")).filter(
+      ({ specifier }) => specifier === KEYS_PEER_NAME || specifier.startsWith(`${KEYS_PEER_NAME}/`),
+    );
+    if (residual.length === 0) continue;
+
+    errors.push(
+      `${normalizeRegistryPath(relative(ROOT, exampleFile))} imports "${KEYS_PEER_NAME}"; examples must use the copied local hook paths`,
+    );
+  }
+
+  return errors;
+}
+
+// Copy/dgadd consumers paste this source into their own app, where `process` is
+// undeclared under the stock Vite react-ts tsconfig and no bundler define is
+// guaranteed. Shipped registry source therefore reads no build environment at all;
+// diagnostics are hard throws, matching the shadcn copy-paste norm.
+function validateNoBuildEnvReads(): string[] {
+  const errors: string[] = [];
+
+  for (const registryDir of SHIPPED_REGISTRY_DIRS) {
+    for (const sourceFile of shippedSourceFiles(registryDir)) {
+      const source = readFileSync(sourceFile, "utf-8");
+      const matched = BUILD_ENV_TOKENS.filter((token) => source.includes(token));
+      if (matched.length === 0) continue;
+
+      errors.push(
+        `${normalizeRegistryPath(relative(ROOT, sourceFile))} reads ${matched.join(", ")}; shipped registry source must not depend on a build environment`,
+      );
+    }
+  }
+
+  return errors;
 }
 
 function validateExamplesAvoidHiddenPaths(items: RegistryItem[]): string[] {
@@ -97,23 +221,7 @@ function validateExamplesAvoidHiddenPaths(items: RegistryItem[]): string[] {
 
   if (hiddenFiles.size === 0) return errors;
 
-  const examplesDir = resolve(ROOT, "registry/examples");
-  if (!existsSync(examplesDir)) return errors;
-
-  function walk(dir: string): string[] {
-    const entries: string[] = [];
-    for (const entry of readdirSync(dir)) {
-      const entryPath = resolve(dir, entry);
-      if (statSync(entryPath).isDirectory()) {
-        entries.push(...walk(entryPath));
-      } else if (entry.endsWith(".tsx") || entry.endsWith(".ts")) {
-        entries.push(entryPath);
-      }
-    }
-    return entries;
-  }
-
-  for (const exampleFile of walk(examplesDir)) {
+  for (const exampleFile of sourceFilesUnder("registry/examples")) {
     const source = readFileSync(exampleFile, "utf-8");
     if (source.includes("@hidden-imports-ok")) continue;
     const exampleRelPath = normalizeRegistryPath(relative(ROOT, exampleFile));
@@ -166,8 +274,6 @@ function validateNoPublicKeysImports(): string[] {
   return errors;
 }
 
-const KEYS_PEER_NAME = "@diffgazer/keys";
-
 // Package-mode UI entries (accordion.tsx, popover/use-auto-focus.ts, and other
 // keyboard-backed exports) static-import @diffgazer/keys at module top, and the
 // tsup alias plugin externalizes those as static ESM specifiers, so importing
@@ -201,6 +307,7 @@ function validate(): string[] {
   const packageJson = readJson("package.json") as PackageJson;
   const items = registry.items;
   const exportsMap = packageJson.exports ?? {};
+  const peers = peerPackages(packageJson);
   const errors: string[] = [];
 
   if (registry.$schema !== REGISTRY_SCHEMA) {
@@ -257,12 +364,7 @@ function validate(): string[] {
       }
     }
 
-    if (
-      itemSourceContains(item, "class-variance-authority") &&
-      !item.dependencies?.includes("class-variance-authority")
-    ) {
-      errors.push(`${item.name} imports class-variance-authority but omits it from dependencies`);
-    }
+    errors.push(...validateDeclaredDependencies(item, peers));
 
     if (hasClientDirective(item) && item.meta?.client !== true) {
       errors.push(`${item.name} contains a client file but omits meta.client`);
@@ -295,6 +397,8 @@ function validate(): string[] {
   errors.push(...validateRegistryImportClosure(ROOT, items));
   errors.push(...validateOrphanFiles(ROOT, items));
   errors.push(...validateExamplesAvoidHiddenPaths(items));
+  errors.push(...validateExamplesAvoidKeysPackage());
+  errors.push(...validateNoBuildEnvReads());
   errors.push(...validatePublicComponentProps(ROOT, items));
   errors.push(...validateNoPublicKeysImports());
 

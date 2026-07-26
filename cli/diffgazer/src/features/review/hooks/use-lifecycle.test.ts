@@ -251,9 +251,9 @@ describe("useReviewLifecycle active-session cache", () => {
   });
 
   test("preserves the active session on local reset unless terminal clearing is requested", () => {
-    const abort = vi.fn();
+    const reset = vi.fn();
     apiMocks.useReviewLifecycleBase.mockReturnValue(
-      makeReviewLifecycleBase({ abort, isStreaming: true, reviewId: "running-review" }),
+      makeReviewLifecycleBase({ reset, isStreaming: true, reviewId: "running-review" }),
     );
 
     const { result } = renderHook(() => useReviewLifecycle({ mode: "staged" }));
@@ -262,7 +262,7 @@ describe("useReviewLifecycle active-session cache", () => {
       result.current.reset();
     });
 
-    expect(abort).toHaveBeenCalledTimes(1);
+    expect(reset).toHaveBeenCalledTimes(1);
     expect(apiMocks.clearActiveSession).not.toHaveBeenCalled();
 
     act(() => {

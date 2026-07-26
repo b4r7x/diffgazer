@@ -62,6 +62,8 @@ export function Divider({
   children,
   ...props
 }: DividerProps) {
+  const lineClass = cn(LINE_CLASS, orientation === "horizontal" ? "border-t" : "border-l");
+
   return (
     // biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is conditionally "separator" (Biome cannot resolve the ternary); aria-orientation is applied only in that branch and is valid for the separator role.
     <div
@@ -75,9 +77,7 @@ export function Divider({
     >
       {variant === "spaced" ? (
         <>
-          <span
-            className={cn(LINE_CLASS, orientation === "horizontal" ? "border-t" : "border-l")}
-          />
+          <span className={lineClass} />
           <span
             className={cn(
               "uppercase tracking-wider",
@@ -86,12 +86,10 @@ export function Divider({
           >
             {children ?? "\u2726"}
           </span>
-          <span
-            className={cn(LINE_CLASS, orientation === "horizontal" ? "border-t" : "border-l")}
-          />
+          <span className={lineClass} />
         </>
       ) : (
-        <span className={cn(LINE_CLASS, orientation === "horizontal" ? "border-t" : "border-l")} />
+        <span className={lineClass} />
       )}
     </div>
   );

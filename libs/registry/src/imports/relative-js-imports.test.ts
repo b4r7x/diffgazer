@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RELATIVE_JS_IMPORT_RE, stripRelativeJsExtensions } from "./relative-js-imports.js";
-
-function matches(content: string): boolean {
-  return new RegExp(RELATIVE_JS_IMPORT_RE.source, "g").test(content);
-}
+import { findRelativeJsSpecifiers, stripRelativeJsExtensions } from "./relative-js-imports.js";
 
 describe("stripRelativeJsExtensions", () => {
   it("strips .js from named, default, and re-export specifiers", () => {
@@ -87,20 +83,51 @@ describe("stripRelativeJsExtensions ignores non-executable text", () => {
   });
 });
 
-describe("RELATIVE_JS_IMPORT_RE", () => {
-  it("catches whitespace-before-paren forms the no-whitespace copies missed", () => {
-    expect(matches('import ("./m.js")')).toBe(true);
-    expect(matches('require ("./m.js")')).toBe(true);
+describe("findRelativeJsSpecifiers", () => {
+  it("reports every executable form the writer rewrites, in source order", () => {
+    const content = [
+      'import { a } from "./a.js";',
+      'export { b } from "../b.js";',
+      'import "./styles.js";',
+      'const m = import ("./m.js");',
+      'const r = require ("./r.js");',
+    ].join("\n");
+
+    expect(findRelativeJsSpecifiers(content)).toEqual([
+      "./a.js",
+      "../b.js",
+      "./styles.js",
+      "./m.js",
+      "./r.js",
+    ]);
   });
 
-  it("does not match non-string parenthesized calls (quote-lookahead discipline)", () => {
-    expect(matches("import(variable)")).toBe(false);
-    expect(matches('import somethingNamed from "./a.js"')).toBe(true);
+  it("ignores package specifiers and extensionless relative imports", () => {
+    expect(findRelativeJsSpecifiers('import { a } from "@scope/pkg";')).toEqual([]);
+    expect(findRelativeJsSpecifiers('import { a } from "./a";')).toEqual([]);
   });
+});
 
-  it("exposes the specifier (without .js) in capture group 3 for exec consumers", () => {
-    const re = new RegExp(RELATIVE_JS_IMPORT_RE.source, "g");
-    const match = re.exec('import { a } from "./nested/a.js";');
-    expect(match?.[3]).toBe("./nested/a");
+// The gates that guard the committed public registries once used a raw-text regex while
+// the writer used the lexer. These are the cases where the two disagreed: the first two
+// failed a gate the writer could never fix, the rest shipped a broken specifier past it.
+describe("findRelativeJsSpecifiers agrees with stripRelativeJsExtensions", () => {
+  const cases = [
+    { name: "a .js specifier quoted inside a comment", content: '// re-export from "./legacy.js"' },
+    {
+      name: "a .js specifier inside an ordinary string",
+      content: `const msg = 'import "./x.js"';`,
+    },
+    { name: "a template-literal dynamic import", content: "await import(`./lazy.js`);" },
+    { name: "a re-export with no whitespace around from", content: 'export{a}from"./a.js";' },
+    {
+      name: "a specifier wrapped onto its own line",
+      content: 'import {\n  a,\n} from\n  "./x.js";',
+    },
+  ];
+
+  it.each(cases)("flags $name only when the writer would rewrite it", ({ content }) => {
+    const rewritten = stripRelativeJsExtensions(content) !== content;
+    expect(findRelativeJsSpecifiers(content).length > 0).toBe(rewritten);
   });
 });

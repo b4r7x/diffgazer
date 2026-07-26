@@ -277,3 +277,28 @@ export function findOrphanedKeyringEntries(
   }
   return ok(orphans);
 }
+
+// Delete keyring entries shadowed by an env sidecar ref: reads resolve the
+// sidecar env ref first, so a stale `api_key_<provider>` from an interrupted literal->env
+// switch would linger unreferenced. Keyring mode only, probing env-sidecar providers.
+export const deleteShadowedKeyringEntries = (secrets: SecretsState): void => {
+  for (const [providerId, entry] of Object.entries(secrets.providers)) {
+    if (typeof entry === "string" || entry.kind !== "env") continue;
+    const existing = readKeyringSecret(getApiKeyName(providerId));
+    if (!existing.ok) {
+      log("warn", "keyring_shadow_reconcile_failed", {
+        providerId,
+        error: existing.error.message,
+      });
+      continue;
+    }
+    if (existing.value === null) continue;
+    const deleteResult = deleteKeyringSecret(getApiKeyName(providerId));
+    if (!deleteResult.ok) {
+      log("warn", "keyring_shadow_delete_failed", {
+        providerId,
+        error: deleteResult.error.message,
+      });
+    }
+  }
+};

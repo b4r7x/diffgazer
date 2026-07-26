@@ -37,9 +37,7 @@ export type { ListboxMetadataItem };
  *
  * @typeParam TId - Convenience assertion for the id union flowing through
  * `onSelect`/`onEnter`/`onHighlightChange`. Ids originate from item children
- * props or DOM dataset strings and are asserted to `TId`, not validated. The
- * consuming compound component owns the dev-mode unregistered-id guard (it holds
- * the authoritative registered set; see `warnUnregisteredValue`).
+ * props or DOM dataset strings and are asserted to `TId`, not validated.
  */
 export interface UseListboxOptions<TId extends string = string> {
   /** Controlled selected item ID. When provided, the hook is in controlled mode for selection. */

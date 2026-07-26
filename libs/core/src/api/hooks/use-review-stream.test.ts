@@ -19,15 +19,15 @@ function fakeResumeResult(reviewId = "r"): ResumeReviewResult {
   return { result: { issues: [] }, reviewId };
 }
 
-function createApi(overrides: Partial<BoundApi> = {}): BoundApi {
+function createApi(overrides: Partial<BoundApi> = {}): Partial<BoundApi> {
   return {
     resumeReviewStream: vi.fn(),
     createReview: vi.fn(),
     ...overrides,
-  } as unknown as BoundApi;
+  };
 }
 
-function createWrapper(api: BoundApi) {
+function createWrapper(api: Partial<BoundApi>) {
   return createTestQueryWrapper({ api }).Wrapper;
 }
 
@@ -61,39 +61,6 @@ describe("useReviewStream", () => {
     expect(resumeReviewStream).toHaveBeenCalledWith(
       expect.objectContaining({ reviewId: "active-review" }),
     );
-  });
-
-  it("stop() halts streaming while preserving the active review id", async () => {
-    let resolveResume: (result: Result<ResumeReviewResult, StreamReviewError>) => void = () => {};
-    const resumeReviewStream = vi.fn<BoundApi["resumeReviewStream"]>().mockReturnValue(
-      new Promise((resolve) => {
-        resolveResume = resolve;
-      }),
-    );
-    const api = createApi({ resumeReviewStream });
-
-    const { result } = renderHook(() => useReviewStream(), {
-      wrapper: createWrapper(api),
-    });
-
-    let resumePromise: Promise<Result<void, StreamReviewError>>;
-    act(() => {
-      resumePromise = result.current.resume("stop-review");
-    });
-
-    await waitFor(() => expect(result.current.state.isStreaming).toBe(true));
-
-    act(() => {
-      result.current.stop();
-    });
-
-    expect(result.current.state.isStreaming).toBe(false);
-    expect(result.current.state.reviewId).toBe("stop-review");
-
-    await act(async () => {
-      resolveResume(ok(fakeResumeResult("stop-review")));
-      await requireValue(resumePromise, "stop resume promise");
-    });
   });
 
   it("abort() clears the review id and halts streaming", async () => {
@@ -187,15 +154,15 @@ describe("useReviewStream", () => {
 
     // Resolve the first (aborted) -- the finally guard should NOT null the
     // second's controller. Before the fix, this would null the ref and a
-    // subsequent stop() would have nothing to abort.
+    // subsequent abort would have nothing to abort.
     await act(async () => {
       resolveFirst(ok(fakeResumeResult("first-review")));
       await requireValue(firstPromise, "first resume promise");
     });
 
-    // The second stream can still be stopped (controller ref not nulled)
+    // The second stream can still be aborted (controller ref not nulled)
     act(() => {
-      result.current.stop();
+      result.current.abort();
     });
     expect(result.current.state.isStreaming).toBe(false);
 

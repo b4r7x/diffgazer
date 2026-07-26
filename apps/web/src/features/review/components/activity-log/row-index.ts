@@ -11,17 +11,12 @@ import type { LogEntryData } from "@diffgazer/core/schemas/presentation";
 
 export const LOG_WINDOW_SIZE = 200;
 
-interface MatchingPage {
-  readonly firstRow: number;
-  readonly logicalIndices: readonly number[];
-}
-
 export interface EventRowIndex {
   readonly events: readonly ReviewEvent[];
   readonly firstLogicalIndex: number;
-  readonly matchingPages: readonly MatchingPage[];
+  readonly firstRow: number;
+  readonly matchingRows: readonly number[];
   readonly nextLogicalIndex: number;
-  readonly nextMatchingRow: number;
   readonly revision: number;
   readonly sequence: ReviewEventSequence | undefined;
   readonly source: string | null;
@@ -43,30 +38,18 @@ function isRowEvent(event: ReviewEvent, source: string | null): boolean {
   return source === null || getReviewEventLogSource(event) === source;
 }
 
-function buildMatchingPages(
+function collectMatchingRows(
   events: readonly ReviewEvent[],
   source: string | null,
   firstLogicalIndex: number,
-): { pages: readonly MatchingPage[]; nextRow: number } {
-  const pages: MatchingPage[] = [];
-  let page: number[] = [];
-  let pageStart = 0;
-  let nextRow = 0;
-
-  for (let eventIndex = 0; eventIndex < events.length; eventIndex += 1) {
+  fromEventIndex = 0,
+): number[] {
+  const rows: number[] = [];
+  for (let eventIndex = fromEventIndex; eventIndex < events.length; eventIndex += 1) {
     const event = events[eventIndex];
-    if (!event || !isRowEvent(event, source)) continue;
-    if (page.length === 0) pageStart = nextRow;
-    page.push(firstLogicalIndex + eventIndex);
-    nextRow += 1;
-    if (page.length === LOG_WINDOW_SIZE) {
-      pages.push({ firstRow: pageStart, logicalIndices: page });
-      page = [];
-    }
+    if (event && isRowEvent(event, source)) rows.push(firstLogicalIndex + eventIndex);
   }
-  if (page.length > 0) pages.push({ firstRow: pageStart, logicalIndices: page });
-
-  return { pages, nextRow };
+  return rows;
 }
 
 function createEventRowIndex(
@@ -76,14 +59,13 @@ function createEventRowIndex(
   sequence = getReviewEventSequence(events),
 ): EventRowIndex {
   const firstLogicalIndex = sequence?.firstIndex ?? 0;
-  const matching = buildMatchingPages(events, source, firstLogicalIndex);
 
   return {
     events,
     firstLogicalIndex,
-    matchingPages: matching.pages,
+    firstRow: 0,
+    matchingRows: collectMatchingRows(events, source, firstLogicalIndex),
     nextLogicalIndex: sequence?.nextIndex ?? events.length,
-    nextMatchingRow: matching.nextRow,
     revision: (previous?.revision ?? 0) + 1,
     sequence,
     source,
@@ -100,95 +82,29 @@ function canContinueEventRowIndex(
   return isReviewEventSequenceContinuation(previous.sequence, sequence, events);
 }
 
-function pruneMatchingPages(
-  pages: readonly MatchingPage[],
-  firstLogicalIndex: number,
-): readonly MatchingPage[] {
-  let pageIndex = 0;
-  while (pageIndex < pages.length) {
-    const logicalIndices = pages[pageIndex]?.logicalIndices;
-    const lastLogicalIndex = logicalIndices?.at(-1);
-    if (lastLogicalIndex !== undefined && lastLogicalIndex >= firstLogicalIndex) {
-      break;
-    }
-    pageIndex += 1;
-  }
-  if (pageIndex === pages.length) return [];
-
-  const firstPage = pages[pageIndex];
-  if (!firstPage) return [];
-  const firstRetainedOffset = firstPage.logicalIndices.findIndex(
-    (logicalIndex) => logicalIndex >= firstLogicalIndex,
-  );
-  if (firstRetainedOffset <= 0 && pageIndex === 0) return pages;
-
-  const retainedPages = pages.slice(pageIndex);
-  if (firstRetainedOffset <= 0) return retainedPages;
-  return [
-    {
-      firstRow: firstPage.firstRow + firstRetainedOffset,
-      logicalIndices: firstPage.logicalIndices.slice(firstRetainedOffset),
-    },
-    ...retainedPages.slice(1),
-  ];
-}
-
-function appendMatchingIndices(
-  pages: readonly MatchingPage[],
-  logicalIndices: readonly number[],
-  firstRow: number,
-): readonly MatchingPage[] {
-  if (logicalIndices.length === 0) return pages;
-
-  const nextPages = [...pages];
-  let nextIndex = 0;
-  const lastPage = nextPages.at(-1);
-  if (lastPage && lastPage.logicalIndices.length < LOG_WINDOW_SIZE) {
-    const available = LOG_WINDOW_SIZE - lastPage.logicalIndices.length;
-    const appended = logicalIndices.slice(0, available);
-    nextPages[nextPages.length - 1] = {
-      firstRow: lastPage.firstRow,
-      logicalIndices: [...lastPage.logicalIndices, ...appended],
-    };
-    nextIndex = appended.length;
-  }
-
-  while (nextIndex < logicalIndices.length) {
-    const values = logicalIndices.slice(nextIndex, nextIndex + LOG_WINDOW_SIZE);
-    nextPages.push({
-      firstRow: firstRow + nextIndex,
-      logicalIndices: values,
-    });
-    nextIndex += values.length;
-  }
-  return nextPages;
-}
-
 function continueEventRowIndex(
   previous: EventRowIndex,
   events: readonly ReviewEvent[],
   sequence: ReviewEventSequence,
 ): EventRowIndex {
-  let matchingPages = pruneMatchingPages(previous.matchingPages, sequence.firstIndex);
-  let nextMatchingRow = previous.nextMatchingRow;
-
-  const appendedLogicalIndices: number[] = [];
-  const firstAppendedEvent = previous.nextLogicalIndex - sequence.firstIndex;
-  for (let eventIndex = firstAppendedEvent; eventIndex < events.length; eventIndex += 1) {
-    const event = events[eventIndex];
-    if (event && isRowEvent(event, previous.source)) {
-      appendedLogicalIndices.push(sequence.firstIndex + eventIndex);
-    }
-  }
-  matchingPages = appendMatchingIndices(matchingPages, appendedLogicalIndices, nextMatchingRow);
-  nextMatchingRow += appendedLogicalIndices.length;
+  const firstRetained = previous.matchingRows.findIndex(
+    (logicalIndex) => logicalIndex >= sequence.firstIndex,
+  );
+  const evicted = firstRetained === -1 ? previous.matchingRows.length : firstRetained;
+  const retained = evicted === 0 ? previous.matchingRows : previous.matchingRows.slice(evicted);
+  const appended = collectMatchingRows(
+    events,
+    previous.source,
+    sequence.firstIndex,
+    previous.nextLogicalIndex - sequence.firstIndex,
+  );
 
   return {
     events,
     firstLogicalIndex: sequence.firstIndex,
-    matchingPages,
+    firstRow: previous.firstRow + evicted,
+    matchingRows: appended.length === 0 ? retained : [...retained, ...appended],
     nextLogicalIndex: sequence.nextIndex,
-    nextMatchingRow,
     revision: previous.revision,
     sequence,
     source: previous.source,
@@ -211,22 +127,9 @@ export function deriveEventRowIndex(
 
 export function getEventRowBounds(index: EventRowIndex): RowBounds {
   return {
-    start: index.matchingPages[0]?.firstRow ?? index.nextMatchingRow,
-    end: index.nextMatchingRow,
+    start: index.firstRow,
+    end: index.firstRow + index.matchingRows.length,
   };
-}
-
-function getRowLogicalIndices(index: EventRowIndex, startRow: number, endRow: number): number[] {
-  const logicalIndices: number[] = [];
-  for (const page of index.matchingPages) {
-    const pageEnd = page.firstRow + page.logicalIndices.length;
-    if (pageEnd <= startRow) continue;
-    if (page.firstRow >= endRow) break;
-    const start = Math.max(0, startRow - page.firstRow);
-    const end = Math.min(page.logicalIndices.length, endRow - page.firstRow);
-    logicalIndices.push(...page.logicalIndices.slice(start, end));
-  }
-  return logicalIndices;
 }
 
 export function convertEventRowWindow(
@@ -234,8 +137,9 @@ export function convertEventRowWindow(
   startRow: number,
   endRow: number,
 ): LogEntryData[] {
+  const window = index.matchingRows.slice(startRow - index.firstRow, endRow - index.firstRow);
   const entries: LogEntryData[] = [];
-  for (const logicalIndex of getRowLogicalIndices(index, startRow, endRow)) {
+  for (const logicalIndex of window) {
     const event = index.events[logicalIndex - index.firstLogicalIndex];
     if (!event) continue;
     const entry = convertReviewEventToLogEntry(event, logicalIndex);
@@ -245,8 +149,7 @@ export function convertEventRowWindow(
 }
 
 export function getEventRowTail(index: EventRowIndex): ReviewEvent | undefined {
-  const lastPage = index.matchingPages.at(-1);
-  const logicalIndex = lastPage?.logicalIndices.at(-1);
+  const logicalIndex = index.matchingRows.at(-1);
   return logicalIndex === undefined
     ? undefined
     : index.events[logicalIndex - index.firstLogicalIndex];

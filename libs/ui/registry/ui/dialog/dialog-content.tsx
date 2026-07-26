@@ -10,7 +10,6 @@ import {
   type RefObject,
   type SyntheticEvent,
   useCallback,
-  useEffect,
   useRef,
   useState,
 } from "react";
@@ -214,23 +213,6 @@ export function DialogContent({
     titleId,
     hasRenderableTitle,
   });
-
-  const fallbackAriaLabel = accessibleName["aria-label"];
-  const isFallbackName = fallbackAriaLabel === FALLBACK_DIALOG_LABEL;
-
-  useEffect(() => {
-    if (process.env.NODE_ENV === "production" || !open || !isFallbackName) return;
-    // Defer to the next frame so a Title registered by a wrapper component (its
-    // registration runs in a layout effect, after this render's fallback was
-    // computed) clears the fallback before we warn — avoiding a false warning.
-    const view = shellRef.current?.ownerDocument.defaultView ?? globalThis;
-    const frame = view.requestAnimationFrame(() => {
-      console.warn(
-        "Dialog: No accessible name provided. Add a <Dialog.Title>, aria-label, or aria-labelledby prop.",
-      );
-    });
-    return () => view.cancelAnimationFrame(frame);
-  }, [isFallbackName, open]);
 
   const resolvedDescribedBy = mergeIds(
     ariaDescribedBy,

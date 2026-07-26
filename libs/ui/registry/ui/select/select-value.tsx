@@ -56,7 +56,7 @@ export interface SelectValueProps {
   getOverflowLabel?: (count: number) => string;
 }
 
-function MultiValue({
+function SelectionDisplay({
   selected,
   options,
   display,
@@ -139,7 +139,7 @@ export function SelectValue({
 
   return (
     <span className={className}>
-      <MultiValue
+      <SelectionDisplay
         selected={selected}
         options={options}
         display={display}

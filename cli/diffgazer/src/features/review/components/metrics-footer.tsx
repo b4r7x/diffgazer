@@ -1,6 +1,7 @@
 import { formatTime } from "@diffgazer/core/format";
 import {
   buildReviewMetricsRows,
+  type ReviewMetricTone,
   type ReviewProgressMetrics,
 } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
@@ -8,13 +9,9 @@ import { SURFACE_BORDER } from "../../../theme/chrome";
 import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
 
-function getMetricColor(
-  id: string,
-  metrics: ReviewProgressMetrics,
-  tokens: CliColorTokens,
-): string {
-  if (id === "elapsed") return tokens.info;
-  if (id === "issues-found" && metrics.issuesFound > 0) return tokens.warning;
+function toneColor(tone: ReviewMetricTone, tokens: CliColorTokens): string {
+  if (tone === "info") return tokens.info;
+  if (tone === "warning") return tokens.warning;
   return tokens.fg;
 }
 
@@ -52,7 +49,7 @@ export function ReviewMetricsFooter({
             <Text key={row.id}>
               {index > 0 ? <Text color={tokens.muted}>{" \u00b7 "}</Text> : null}
               <Text color={tokens.muted}>{`${row.label} `}</Text>
-              <Text color={getMetricColor(row.id, metrics, tokens)}>{row.value}</Text>
+              <Text color={toneColor(row.tone, tokens)}>{row.value}</Text>
             </Text>
           ))}
         </Text>
@@ -70,7 +67,7 @@ export function ReviewMetricsFooter({
       {rows.map((row) => (
         <Text key={row.id}>
           <Text color={tokens.muted}>{row.label}: </Text>
-          <Text color={getMetricColor(row.id, metrics, tokens)}>{row.value}</Text>
+          <Text color={toneColor(row.tone, tokens)}>{row.value}</Text>
         </Text>
       ))}
     </Box>

@@ -1,4 +1,4 @@
-import { useKey } from "@diffgazer/keys";
+import { composedClosest, useKey } from "@diffgazer/keys";
 import { Pager } from "@diffgazer/ui/components/pager";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type DocsLibraryId, routeSplatFromDocsPath } from "@/lib/library";
@@ -40,9 +40,9 @@ function isControlOwnedShortcut(event: KeyboardEvent): boolean {
   const ownerDocument = (target as { ownerDocument?: Document } | null)?.ownerDocument;
   const ElementConstructor = ownerDocument?.defaultView?.Element;
   if (!ElementConstructor || !(target instanceof ElementConstructor)) return false;
-  if (target.closest(PAGER_SHORTCUT_CONTROL_SELECTOR)) return true;
+  if (composedClosest(target, PAGER_SHORTCUT_CONTROL_SELECTOR)) return true;
 
-  const roleOwner = target.closest("[role]");
+  const roleOwner = composedClosest(target, "[role]");
   const role = roleOwner?.getAttribute("role")?.trim().toLowerCase();
   return role !== undefined && PAGER_SHORTCUT_CONTROL_ROLES.has(role);
 }

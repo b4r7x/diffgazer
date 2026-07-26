@@ -1,6 +1,5 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { PassThrough, Writable } from "node:stream";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { canonicalReviewFixture } from "@diffgazer/core/testing/review-facts";
@@ -14,51 +13,15 @@ import { ReviewResultsView } from "../features/review/components/results-view";
 import { ReviewSummaryView } from "../features/review/components/summary-view";
 import { api } from "../lib/api";
 import { CliThemeProvider } from "../theme/provider";
+import { TestInput, TestOutput } from "./ink-streams";
 
 const outputDir = process.argv[2];
 if (!outputDir) throw new Error("Expected the parity output directory argument");
 
-class CaptureOutput extends Writable {
-  readonly frames: string[] = [];
-  readonly isTTY = true;
-
-  constructor(
-    readonly columns: number,
-    readonly rows: number,
-  ) {
-    super();
-  }
-
-  override _write(
-    chunk: string | Buffer,
-    _encoding: BufferEncoding,
-    callback: (error?: Error | null) => void,
-  ): void {
-    this.frames.push(chunk.toString());
-    callback();
-  }
-}
-
-class CaptureInput extends PassThrough {
-  readonly isTTY = true;
-
-  setRawMode(): this {
-    return this;
-  }
-
-  ref(): this {
-    return this;
-  }
-
-  unref(): this {
-    return this;
-  }
-}
-
 async function renderFrame(columns: number, child: ReactNode): Promise<string> {
-  const stdout = new CaptureOutput(columns, 24);
-  const stderr = new CaptureOutput(columns, 24);
-  const stdin = new CaptureInput();
+  const stdout = new TestOutput(columns, 24);
+  const stderr = new TestOutput(columns, 24);
+  const stdin = new TestInput();
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const instance = render(
     <QueryClientProvider client={queryClient}>

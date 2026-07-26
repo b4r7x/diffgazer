@@ -14,11 +14,11 @@ export interface NavigationListSubtitleProps {
 
 /** Secondary metadata text. */
 export function NavigationListSubtitle({ children, className }: NavigationListSubtitleProps) {
-  const { descId } = useNavigationListItemContext();
+  const { descIdPrefix } = useNavigationListItemContext();
 
   return (
     <span
-      id={`${descId}-sub`}
+      id={`${descIdPrefix}-sub`}
       className={cn(
         "block min-w-0 truncate text-2xs leading-none text-muted-foreground group-data-[highlighted]:text-primary-foreground/70",
         className,

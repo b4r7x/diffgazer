@@ -52,12 +52,12 @@ function makeContextResponse(label: string): ReviewContextResponse {
 describe("useReviewLifecycleBase terminal resume states", () => {
   function createLifecycleApi(
     resumeResult: Result<ResumeReviewResult, StreamReviewError>,
-  ): BoundApi {
+  ): Partial<BoundApi> {
     return {
       getSettings: vi.fn(async () => makeSettings()),
       resumeReviewStream: vi.fn(async () => resumeResult),
       getReviewContext: vi.fn(),
-    } as unknown as BoundApi;
+    };
   }
 
   it("replaces a fresh cached snapshot A with B after B's context step completes", async () => {
@@ -230,13 +230,11 @@ describe("useReviewLifecycleBase terminal resume states", () => {
   it("keeps a local self-cancel without an error non-terminal", async () => {
     const harness = createTestQueryWrapper({
       api: {
-        getSettings: vi.fn(async () => makeSettings()),
+        ...createLifecycleApi(ok({ result: { issues: [] }, reviewId: "local-cancel-review" })),
         cancelReviewSession: vi.fn(async () => ({
           cancelled: true as const,
           reason: "cancelled" as const,
         })),
-        getReviewContext: vi.fn(),
-        resumeReviewStream: vi.fn(),
       },
     });
 
@@ -245,14 +243,13 @@ describe("useReviewLifecycleBase terminal resume states", () => {
         useReviewLifecycleBase({
           configLoading: false,
           isConfigured: true,
+          reviewId: "local-cancel-review",
           onComplete: vi.fn(),
         }),
       { wrapper: harness.Wrapper },
     );
 
-    act(() => {
-      result.current.start.setHasStarted(true);
-    });
+    await waitFor(() => expect(result.current.start.hasStarted).toBe(true));
     await waitFor(() => expect(result.current.checks.loadingMessage).toBeNull());
 
     await act(async () => {

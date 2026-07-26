@@ -1,10 +1,10 @@
+import type { HistoryRunSummary } from "@diffgazer/core/review";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { NavigationList } from "../../../components/ui/navigation-list";
 import { getListWindow, type ListWindow } from "../../../lib/list-window";
 import { useTheme } from "../../../theme/provider";
-import type { MappedRun } from "../lib/run-mapping";
 
 interface RunsWindowOptions {
   selectedIndex: number;
@@ -40,7 +40,7 @@ function getRunsWindow({ selectedIndex, total, viewportRows, itemRows }: RunsWin
 }
 
 export interface RunsListProps {
-  runs: MappedRun[];
+  runs: HistoryRunSummary[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onHighlightChange?: (id: string) => void;

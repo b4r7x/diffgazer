@@ -12,6 +12,10 @@ export interface ExpandRequestedNamesResult {
   blocked: BlockedRemoval[];
 }
 
+// "unowned" — the file has no ownership record, so removal cannot be verified.
+// "modified" — the file is tracked but its content drifted from the recorded hash.
+export type FileRemovalVerdict = "removable" | "unowned" | "modified";
+
 export interface DerivedRemovalPlan {
   // Files to rewrite (e.g. styles.css with removed chunks stripped). Applied
   // only after validation against the allowed base dirs.
@@ -37,14 +41,14 @@ export interface RunRemoveWorkflowOptions<TItem, TConfig> {
   getItemName: (item: TItem) => string;
   isInstalled: (ctx: { cwd: string; config: TConfig; item: TItem }) => boolean;
   resolveFilesForItem: (ctx: { cwd: string; config: TConfig; item: TItem }) => RemoveWorkflowFile[];
-  canRemoveFile?: (ctx: {
+  checkFileRemoval?: (ctx: {
     cwd: string;
     config: TConfig;
     item: TItem;
     file: RemoveWorkflowFile;
     force: boolean;
     requestedNames: string[];
-  }) => boolean;
+  }) => FileRemovalVerdict;
   resolveAllowedBaseDirs: (ctx: { cwd: string; config: TConfig }) => string[];
   resolveTransactionFiles?: (ctx: { cwd: string; config: TConfig }) => string[];
   updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;

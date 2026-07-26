@@ -1,8 +1,9 @@
 import { Typography } from "@diffgazer/ui/components/typography";
 import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
+import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
 import { useComponentData } from "../doc-data-context";
 import { SectionHeading } from "../section-heading";
-import { PropsTableBlock } from "./props-table";
+import { PropsTableBlock } from "./props-table-block";
 
 export function APIReference() {
   const componentData = useComponentData();
@@ -68,7 +69,7 @@ function ReferenceTable({
         {title}
       </Typography>
       <section
-        className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        className={`overflow-x-auto ${FOCUS_RING_CLASS}`}
         aria-labelledby={headingId}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: horizontal overflow must be keyboard reachable.
         tabIndex={0}

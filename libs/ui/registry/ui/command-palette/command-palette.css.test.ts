@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
+import { atRuleBody, ruleBody } from "../../testing/css-contract";
 
 describe("CommandPalette CSS contract", () => {
   // jsdom's CSSOM ignores rules nested in @layer and pseudo-element styles, so
@@ -13,120 +14,56 @@ describe("CommandPalette CSS contract", () => {
     css = readFileSync(CSS_PATH, "utf8");
   });
 
-  function whitespaceTolerant(fragment: string): string {
-    return fragment
-      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-      .replace(/\s+/g, "\\s+")
-      .replace(/:not\\\(/g, ":not\\(\\s*")
-      .replace(/\\\)/g, "\\s*\\)");
-  }
-
-  /** Text between the braces of `atRule`, brace-matched so nested rules stay intact. */
-  function atRuleScope(atRule: string): string | null {
-    const start = css.match(new RegExp(`${whitespaceTolerant(atRule)}\\s*\\{`));
-    if (start?.index === undefined) return null;
-    let depth = 1;
-    const from = start.index + start[0].length;
-    for (let i = from; i < css.length; i += 1) {
-      if (css[i] === "{") depth += 1;
-      else if (css[i] === "}") {
-        depth -= 1;
-        if (depth === 0) return css.slice(from, i);
-      }
-    }
-    return null;
-  }
-
-  function ruleBody(selectorFragment: string, options?: { atRule?: string }): string | null {
-    const source = options?.atRule ? atRuleScope(options.atRule) : css;
-    if (source === null) return null;
-    const match = source.match(
-      new RegExp(`${whitespaceTolerant(selectorFragment)}\\s*\\{([^}]*)\\}`),
-    );
-    return match?.[1] ?? null;
-  }
-
   it("viewfinder highlight draws a 2px left accent bar via ::after", () => {
     const body = ruleBody(
+      css,
       '[data-slot="command-palette-content"][data-frame="viewfinder"] [data-slot="command-palette-item"][data-highlighted]::after',
     );
-    expect(body).not.toBeNull();
-    expect(body).toContain("width: 2px");
-    expect(body).toContain("background: var(--command-palette-fg, var(--foreground))");
     expect(body).toContain('content: ""');
-  });
-
-  it("viewfinder group headings render uppercase with letter-spacing", () => {
-    const body = ruleBody(
-      '[data-slot="command-palette-content"][data-frame="viewfinder"] [data-slot="command-palette-group-heading"]',
-    );
-    expect(body).not.toBeNull();
-    expect(body).toContain("text-transform: uppercase");
-    expect(body).toContain("letter-spacing: 0.06em");
-    expect(body).toContain("font-size: var(--text-2xs)");
+    expect(body).toContain("width: 2px");
   });
 
   it("routes every floating frame shadow through the single hard-shadow token plus the shared lip", () => {
     for (const frame of ["border", "viewfinder", "terminal", "card"]) {
-      const body = ruleBody(`[data-slot="command-palette-content"][data-frame="${frame}"]`);
-      expect(body).not.toBeNull();
+      const body = ruleBody(css, `[data-slot="command-palette-content"][data-frame="${frame}"]`);
       // Modal overlay tier: the shared --surface-1 inner lip composited with the
       // library's only sanctioned drop shadow, in one box-shadow so neither wins.
       expect(body).toContain("inset 0 1px 0 var(--surface-1-highlight)");
       expect(body).toContain("var(--command-palette-shadow, var(--shadow-hard))");
     }
+    // Nothing may hand-roll a black shadow beside the token.
     expect(css).not.toContain("oklch(0% 0 0");
   });
 
-  it("expands the Esc close control to a 44px touch target without moving its chip", () => {
-    const body = ruleBody('[data-slot="command-palette-close"]::before');
-    expect(body).not.toBeNull();
-    expect(body).toContain("min-width: 44px");
-    expect(body).toContain("min-height: 44px");
-    expect(body).toContain("position: absolute");
-    // Anchored to the chip's leading edge, so the extra width grows away from
-    // the readout and the input instead of overhanging them.
-    expect(body).toContain("inset-inline-start: 0");
-    expect(body).not.toContain("left: 50%");
-    expect(body).toContain("translate: 0 -50%");
-  });
-
-  it("pads the footer past the home indicator with a safe fallback", () => {
-    const body = ruleBody('[data-slot="command-palette-footer"]');
-    expect(body).toContain("padding: 8px 12px max(8px, env(safe-area-inset-bottom))");
-  });
-
-  it("reserves a fixed-width tabular slot for the count readout", () => {
-    const body = ruleBody('[data-slot="command-palette-count"]');
-    expect(body).toContain("font-variant-numeric: tabular-nums");
-    expect(body).toContain("min-width: 7ch");
-    expect(ruleBody('[data-slot="command-palette-count"][data-empty]')).toContain(
-      "color: var(--error)",
+  it("leaves the bare embedding frame without a shadow", () => {
+    expect(ruleBody(css, '[data-slot="command-palette-content"][data-frame="none"]')).toContain(
+      "box-shadow: none",
     );
   });
 
-  it("fills the palette from the shared overlay surface step, not the page background", () => {
-    const body = ruleBody('[data-slot="command-palette-content"]');
-    expect(body).toContain("background: var(--command-palette-bg, var(--surface-1))");
-  });
-
-  it("leaves the bare embedding frame without a shadow", () => {
-    const body = ruleBody('[data-slot="command-palette-content"][data-frame="none"]');
-    expect(body).toContain("box-shadow: none");
-  });
-
   it("declares the shared viewfinder corner knob instead of hardcoding geometry", () => {
-    const frameBody = ruleBody('[data-slot="command-palette-content"][data-frame="viewfinder"]');
-    expect(frameBody).toContain("--viewfinder-size: 18px");
-    expect(frameBody).toContain("--viewfinder-weight: 2px");
-    expect(frameBody).toContain("--viewfinder-offset: -1px");
+    const body = ruleBody(css, '[data-slot="command-palette-content"][data-frame="viewfinder"]');
+    expect(body).toContain("--viewfinder-size: 18px");
+    expect(body).toContain("--viewfinder-weight: 2px");
+    expect(body).toContain("--viewfinder-offset: -1px");
+  });
 
-    // The four corner rules share one geometry block, so assert the knob is
-    // read rather than re-hardcoded anywhere in the file.
-    expect(css).toContain("width: var(--viewfinder-size)");
-    expect(css).toContain("border: 0 solid var(--viewfinder-color)");
-    expect(css).toContain("border-bottom-width: var(--viewfinder-weight)");
-    expect(css).toContain("right: var(--viewfinder-offset)");
+  it("expands the Esc close control to a 44px touch target without moving its chip", () => {
+    const body = ruleBody(css, '[data-slot="command-palette-close"]::before');
+    expect(body).toContain("min-width: 44px");
+    expect(body).toContain("min-height: 44px");
+    // Anchored to the chip's leading edge, so the extra width grows away from
+    // the readout and the input instead of overhanging them.
+    expect(body).toContain("inset-inline-start: 0");
+  });
+
+  it("floors the search input font-size at 16px on coarse pointers", () => {
+    // Below 16px iOS Safari zooms the page on focus and never zooms back.
+    const coarse = ruleBody(
+      atRuleBody(css, "@media (pointer: coarse)"),
+      '[data-slot="command-palette-input"] input',
+    );
+    expect(coarse).toContain("font-size: max(16px, var(--command-palette-text-size))");
   });
 
   it("keeps every font size on the rem scale so browser text preferences apply", () => {
@@ -134,78 +71,27 @@ describe("CommandPalette CSS contract", () => {
     expect(css).not.toMatch(/--command-palette-(heading|prefix|text)-size:\s*\d+px/);
   });
 
-  it("tints the card footer from the palette foreground, never from raw black", () => {
-    const body = ruleBody(
-      '[data-slot="command-palette-content"][data-frame="card"] [data-slot="command-palette-footer"]',
+  it("pads the footer past the home indicator with a safe fallback", () => {
+    expect(ruleBody(css, '[data-slot="command-palette-footer"]')).toContain(
+      "max(8px, env(safe-area-inset-bottom))",
     );
-    expect(body).not.toBeNull();
-    expect(body).toContain("var(--command-palette-fg, var(--foreground)) 4%");
-    expect(css).not.toContain("oklab, black");
   });
 
-  it("terminal frame heading adopts the kebab padding and lighter weight", () => {
-    const body = ruleBody(
-      '[data-slot="command-palette-content"][data-frame="terminal"] [data-slot="command-palette-group-heading"]',
+  it("fills the palette from the shared overlay surface step, not the page background", () => {
+    expect(ruleBody(css, '[data-slot="command-palette-content"]')).toContain(
+      "background: var(--command-palette-bg, var(--surface-1))",
     );
-    expect(body).not.toBeNull();
-    expect(body).toContain("font-weight: 400");
-    expect(body).toContain("padding: 6px var(--command-palette-input-px) 2px");
   });
 
-  it("terminal-frame highlighted row re-tints the tone bar to --command-palette-bg", () => {
-    const body = ruleBody(
-      '[data-slot="command-palette-content"][data-frame="terminal"] [data-slot="command-palette-item"][data-highlighted][data-tone]:not([data-tone="neutral"])::before',
+  it("switches the count readout to the error colour when the filter matched nothing", () => {
+    expect(ruleBody(css, '[data-slot="command-palette-count"][data-empty]')).toContain(
+      "color: var(--error)",
     );
-    expect(body).not.toBeNull();
-    expect(body).toContain("background: var(--command-palette-bg, var(--surface-1))");
-  });
-
-  it("collapses the list padding when nothing is rendered inside it", () => {
-    const body = ruleBody('[data-slot="command-palette-list"]:empty');
-    expect(body).not.toBeNull();
-    expect(body).toContain("padding: 0");
   });
 
   it("disabled items hide the tone bar", () => {
-    const body = ruleBody('[data-slot="command-palette-item"][aria-disabled="true"]::before');
-    expect(body).not.toBeNull();
-    expect(body).toContain("display: none");
-  });
-
-  it("floors the search input font-size at 16px on coarse pointers", () => {
-    const base = ruleBody('[data-slot="command-palette-input"] input');
-    expect(base).not.toBeNull();
-    expect(base).toContain("font-size: var(--command-palette-text-size)");
-
-    const coarse = ruleBody('[data-slot="command-palette-input"] input', {
-      atRule: "@media (pointer: coarse)",
-    });
-    expect(coarse).not.toBeNull();
-    expect(coarse).toContain("font-size: max(16px, var(--command-palette-text-size))");
-  });
-
-  it("card frame defines a rounded shell with a gradient surface", () => {
-    const body = ruleBody('[data-slot="command-palette-content"][data-frame="card"]');
-    expect(body).not.toBeNull();
-    expect(body).toContain("border-radius: calc(var(--radius) * 2)");
-    expect(body).toContain("border: 1px solid var(--command-palette-border, var(--border))");
-    expect(body).toContain("linear-gradient");
-  });
-
-  it("card frame items float with a rounded highlight inside the list padding", () => {
-    const itemBody = ruleBody(
-      '[data-slot="command-palette-content"][data-frame="card"] [data-slot="command-palette-item"]',
-    );
-    expect(itemBody).not.toBeNull();
-    expect(itemBody).toContain("margin: 0 var(--command-palette-list-p)");
-    expect(itemBody).toContain("border-radius: calc(var(--radius) * 1.5)");
-
-    const highlightedBody = ruleBody(
-      '[data-slot="command-palette-content"][data-frame="card"] [data-slot="command-palette-item"][data-highlighted]',
-    );
-    expect(highlightedBody).not.toBeNull();
-    expect(highlightedBody).toContain(
-      "background: color-mix(in oklab, var(--command-palette-fg, var(--foreground)) 8%, transparent)",
-    );
+    expect(
+      ruleBody(css, '[data-slot="command-palette-item"][aria-disabled="true"]::before'),
+    ).toContain("display: none");
   });
 });

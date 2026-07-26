@@ -37,13 +37,10 @@ const sessionsRouter = new Hono();
 async function requireJsonContentType(c: Context, next: Next): Promise<Response | undefined> {
   const contentType = c.req.header("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
   if (contentType !== "application/json") {
-    return c.json(
-      {
-        error: {
-          message: "Content-Type must be application/json",
-          code: ErrorCode.VALIDATION_ERROR,
-        },
-      },
+    return errorResponse(
+      c,
+      "Content-Type must be application/json",
+      ErrorCode.VALIDATION_ERROR,
       415,
     );
   }

@@ -6,10 +6,10 @@ import { Example } from "@/components/docs-mdx/blocks/example";
 import { Examples } from "@/components/docs-mdx/blocks/examples";
 import { KeyboardNav } from "@/components/docs-mdx/blocks/keyboard-nav";
 import { Notes } from "@/components/docs-mdx/blocks/notes";
-import { ParameterTableBlock as ParameterTable } from "@/components/docs-mdx/blocks/parameter-table";
-import { PropsTableBlock as PropsTable } from "@/components/docs-mdx/blocks/props-table";
+import { ParameterTableBlock } from "@/components/docs-mdx/blocks/parameter-table-block";
+import { PropsTableBlock } from "@/components/docs-mdx/blocks/props-table-block";
 import { ReturnsTable } from "@/components/docs-mdx/blocks/returns-table";
-import { SourceViewerBlock as SourceViewer } from "@/components/docs-mdx/blocks/source-viewer";
+import { SourceViewerBlock } from "@/components/docs-mdx/blocks/source-viewer-block";
 import { Step, Steps } from "@/components/docs-mdx/blocks/steps";
 import { UsageSnippet } from "@/components/docs-mdx/blocks/usage-snippet";
 import { markdownMdxComponents } from "@/components/docs-mdx/markdown-renderers";
@@ -30,11 +30,11 @@ const mdxComponents: MDXComponents = {
   LibraryHookSource,
   Example,
   Examples,
-  PropsTable,
-  ParameterTable,
+  PropsTable: PropsTableBlock,
+  ParameterTable: ParameterTableBlock,
   ReturnsTable,
   UsageSnippet,
-  SourceViewer,
+  SourceViewer: SourceViewerBlock,
   Steps,
   Step,
   KeyboardNav,

@@ -22,7 +22,6 @@
     "declarationMap": false,
     "baseUrl": ".",
     "paths": {
-      "@/components/ui/select": ["../../libs/ui/dist/components/select.d.ts"],
       "@/*": ["./src/*"],
       "@diffgazer/keys": ["../../libs/keys/src/index.ts"],
       "@diffgazer/registry": ["../../libs/registry/src/index.ts"],

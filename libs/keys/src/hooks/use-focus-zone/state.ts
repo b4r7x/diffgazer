@@ -19,10 +19,14 @@ export function useFocusZoneState<T extends string>(
 
   const [internalZone, setInternalZone] = useState<T>(initial);
 
-  const currentZone: T = controlledZone ?? internalZone;
+  // `initial` and a controlled `zone` are consumer-supplied and can point outside
+  // `zones`; validate once here so every consumer reads the same active zone.
+  const requestedZone: T = controlledZone ?? internalZone;
+  const safeZone = zones.includes(requestedZone) ? requestedZone : zones[0];
+
   const lastFocusedZoneRef = useRef<T | null>(null);
   const zoneStateRef = useRef({
-    currentZone,
+    safeZone,
     zones,
     controlledZone,
     onLeaveZone,
@@ -33,7 +37,7 @@ export function useFocusZoneState<T extends string>(
   // where useEffectEvent is forbidden; runs every render by design.
   useLayoutEffect(() => {
     zoneStateRef.current = {
-      currentZone,
+      safeZone,
       zones,
       controlledZone,
       onLeaveZone,
@@ -48,18 +52,15 @@ export function useFocusZoneState<T extends string>(
 
   const setZoneValue = useCallback((next: T) => {
     const latest = zoneStateRef.current;
-    if (next === latest.currentZone) return;
+    if (next === latest.safeZone) return;
     if (!latest.zones.includes(next)) return;
-    latest.onLeaveZone?.(latest.currentZone);
+    latest.onLeaveZone?.(latest.safeZone);
     latest.onEnterZone?.(next);
     if (latest.controlledZone === undefined) setInternalZone(next);
     latest.onZoneChange?.(next);
   }, []);
 
-  const safeZone = zones.includes(currentZone) ? currentZone : zones[0];
-
   return {
-    currentZone,
     safeZone,
     setZoneValue,
     validatedTabCycle,

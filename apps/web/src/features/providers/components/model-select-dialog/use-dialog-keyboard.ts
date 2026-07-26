@@ -15,7 +15,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useModelDialogFocusTrap } from "./use-dialog-focus-trap";
+import { useModelDialogZones } from "./use-dialog-zones";
 import { useModelFilters } from "./use-filter-row-keyboard";
 import { useModelSearchFocus } from "./use-search-focus";
 
@@ -97,7 +97,6 @@ export function useModelDialogKeyboard({
 }: ModelDialogKeyboardOptions): ModelDialogKeyboardReturn {
   const [checkedModelId, setCheckedModelId] = useState<string | undefined>(currentModel);
   const [filterIndex, setFilterIndex] = useState(0);
-  const [tabFocusedFooterIndex, setTabFocusedFooterIndex] = useState<number | null>(null);
   const hasHandledInitialFocusRef = useRef(false);
   const hadFilteredModelsRef = useRef(false);
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
@@ -110,7 +109,7 @@ export function useModelDialogKeyboard({
     focusCloseButton,
     focusSearchInput,
     getCloseButtonProps,
-  } = useModelDialogFocusTrap({ open, searchInputRef, hasHandledInitialFocusRef });
+  } = useModelDialogZones({ open, searchInputRef, hasHandledInitialFocusRef });
 
   const blurSearchInput = () => searchInputRef.current?.blur();
 
@@ -128,7 +127,7 @@ export function useModelDialogKeyboard({
     onSelect(nextModelId);
   };
 
-  const footerActionRow = useActionRowNavigation<readonly unknown[]>({
+  const footerActionRow = useActionRowNavigation({
     enabled: open && isZone("footer") && !isSaving,
     actionCount: 2,
     disabledActions: [isSaving, !canConfirm],
@@ -156,15 +155,10 @@ export function useModelDialogKeyboard({
       ref: actionProps.ref,
       onFocus: () => {
         setFocusZone("footer");
-        setTabFocusedFooterIndex(index);
+        actionProps.onFocus();
       },
     };
   };
-
-  const footerButtonIndex =
-    isZone("footer") && !footerActionRow.inActions && tabFocusedFooterIndex !== null
-      ? tabFocusedFooterIndex
-      : footerActionRow.focusedIndex;
 
   const enterFooter = (index: number) => {
     setFocusZone("footer");
@@ -327,10 +321,6 @@ export function useModelDialogKeyboard({
     repairListFocus();
   }, [open, focusZone, filteredIdsKey, isSaving]);
 
-  useEffect(() => {
-    if (focusZone !== "footer") setTabFocusedFooterIndex(null);
-  }, [focusZone]);
-
   const handleListSelect = (modelId: string) => {
     setFocusZone("list");
     focusModelElement(modelId);
@@ -349,7 +339,7 @@ export function useModelDialogKeyboard({
     checkedModelId,
     filterIndex,
     setFilterIndex,
-    footerButtonIndex,
+    footerButtonIndex: footerActionRow.focusedIndex,
     getCloseButtonProps,
     getFooterButtonProps,
     getFilterButtonProps: filters.getFilterButtonProps,

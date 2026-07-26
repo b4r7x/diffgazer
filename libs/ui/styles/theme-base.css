@@ -245,7 +245,7 @@
 
 @theme {
   --font-sans: "Inter", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-mono: var(--base-font-mono);
 
   --text-2xs: 0.625rem;
   --text-3xs: 0.5625rem;

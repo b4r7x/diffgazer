@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { BoundApi } from "../api/bound.js";
 import type { ProviderModelsResponse } from "../schemas/config/index.js";
 import { createTestQueryWrapper } from "../testing/query-wrapper.js";
@@ -18,12 +18,12 @@ const GEMINI_CATALOG: ProviderModelsResponse = {
 };
 
 describe("useProviderModelsMapped", () => {
-  let getProviderModels: ReturnType<typeof vi.fn>;
-  let api: BoundApi;
+  let getProviderModels: Mock<BoundApi["getProviderModels"]>;
+  let api: Partial<BoundApi>;
 
   beforeEach(() => {
-    getProviderModels = vi.fn(async () => GEMINI_CATALOG);
-    api = { getProviderModels } as unknown as BoundApi;
+    getProviderModels = vi.fn<BoundApi["getProviderModels"]>(async () => GEMINI_CATALOG);
+    api = { getProviderModels };
   });
 
   it("returns the catalog models once the query resolves", async () => {

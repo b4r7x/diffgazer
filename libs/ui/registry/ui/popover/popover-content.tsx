@@ -106,11 +106,7 @@ export function PopoverContent({
   const isMenu = contentRole === "menu";
   const resolvedAriaLabel =
     ariaLabel ?? (isDialog && !ariaLabelledBy ? FALLBACK_POPOVER_DIALOG_LABEL : undefined);
-  const resolvedPortalContainer = useAriaLinkedPortalContainer(
-    portalContainer,
-    triggerRef,
-    "Popover",
-  );
+  const resolvedPortalContainer = useAriaLinkedPortalContainer(portalContainer, triggerRef);
 
   const { onExitComplete, onFocusCaptureDismissal, onBlurCaptureDismissal } =
     usePopoverContentDismissal({

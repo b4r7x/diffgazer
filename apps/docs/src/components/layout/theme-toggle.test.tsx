@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { stubControllableMatchMedia, stubMatchMedia } from "@diffgazer/core/testing/match-media";
+import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useLayoutEffect } from "react";
@@ -24,7 +24,7 @@ function prefersDark(theme: "dark" | "light") {
 }
 
 function stubSystemTheme(theme: "dark" | "light") {
-  return stubControllableMatchMedia(prefersDark(theme));
+  return stubMatchMedia(prefersDark(theme));
 }
 
 beforeEach(() => {

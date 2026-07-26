@@ -102,7 +102,6 @@ export function SelectContent({
     variant,
     listboxId,
     triggerId,
-    searchInputRef,
     triggerRef,
     contentRef: selectContentRef,
     options,
@@ -117,11 +116,7 @@ export function SelectContent({
   const searchComposedRef = useComposedRefs(selectContentRef, ref);
   const fullComposedRef = useComposedRefs(containerRef, selectContentRef, ref);
   const composedRef = hasSearch ? searchComposedRef : fullComposedRef;
-  const resolvedPortalContainer = useAriaLinkedPortalContainer(
-    portalContainer,
-    triggerRef,
-    "Select",
-  );
+  const resolvedPortalContainer = useAriaLinkedPortalContainer(portalContainer, triggerRef);
 
   const { handleKeyDown, activeDescendant, focusOpenContent, initializeHighlight } =
     useSelectContentNavigation({
@@ -129,15 +124,6 @@ export function SelectContent({
       isDropdown,
       onKeyDown,
     });
-
-  useLayoutEffect(() => {
-    if (hasSearch || !searchInputRef.current || process.env.NODE_ENV === "production") {
-      return;
-    }
-    console.warn(
-      "Select: Select.Search rendered through a component wrapper cannot be hoisted out of the listbox. Render Select.Search directly, in a Fragment, or in a DOM wrapper.",
-    );
-  }, [hasSearch, searchInputRef]);
 
   const listboxPropsBase = {
     id: listboxId,

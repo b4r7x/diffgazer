@@ -11,10 +11,6 @@ describe("Select indirect composition (registration)", () => {
     return <Select.Item value={value}>{children}</Select.Item>;
   }
 
-  function WrappedSearch() {
-    return <Select.Search />;
-  }
-
   it("makes a SelectItem rendered inside a consumer wrapper selectable", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -48,28 +44,6 @@ describe("Select indirect composition (registration)", () => {
     );
 
     expect(getSelectTrigger().textContent).toContain("Banana");
-  });
-
-  it("detects a SelectSearch rendered through a wrapper component", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-
-    try {
-      render(
-        <Select defaultOpen>
-          <Select.Trigger>
-            <Select.Value placeholder={PICK_FRUIT} />
-          </Select.Trigger>
-          <Select.Content>
-            <WrappedSearch />
-            <Select.Item value="apple">Apple</Select.Item>
-          </Select.Content>
-        </Select>,
-      );
-
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining("Select.Search rendered through"));
-    } finally {
-      warn.mockRestore();
-    }
   });
 
   it("has no a11y violations when items render through a wrapper component", async () => {

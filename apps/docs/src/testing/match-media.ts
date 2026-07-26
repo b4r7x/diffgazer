@@ -1,7 +1,4 @@
-import {
-  stubControllableMatchMedia as stubCoreControllableMatchMedia,
-  stubMatchMedia as stubCoreMatchMedia,
-} from "@diffgazer/core/testing/match-media";
+import { stubMatchMedia as stubCoreMatchMedia } from "@diffgazer/core/testing/match-media";
 
 interface StubMatchMediaOptions {
   isDesktop: boolean;
@@ -22,7 +19,7 @@ export function stubMatchMedia({ isDesktop }: StubMatchMediaOptions) {
 }
 
 export function stubControllableMatchMedia({ isDesktop }: StubMatchMediaOptions) {
-  const controller = stubCoreControllableMatchMedia((query) => matchesFor(query, isDesktop));
+  const controller = stubCoreMatchMedia((query) => matchesFor(query, isDesktop));
 
   return {
     setDesktop(next: boolean) {

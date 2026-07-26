@@ -1,6 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { renderSelectableGlyph } from "@/lib/selectable-glyph";
+import { cn } from "@/lib/utils";
+import {
+  type HorizontalStepStatus,
+  useHorizontalStepperContext,
+  useStepInfo,
+} from "./horizontal-stepper-context";
 import {
   HORIZONTAL_STEP_INDICATOR_GLYPHS,
   type HorizontalStepperVariant,
@@ -17,14 +24,7 @@ import {
   horizontalStepperLabelVariants,
   horizontalStepperStepVariants,
   horizontalStepperWindowClasses,
-} from "@/lib/horizontal-stepper-variants";
-import { renderSelectableGlyph } from "@/lib/selectable-glyph";
-import { cn } from "@/lib/utils";
-import {
-  type HorizontalStepStatus,
-  useHorizontalStepperContext,
-  useStepInfo,
-} from "./horizontal-stepper-context";
+} from "./horizontal-stepper-variants";
 
 const SR_LABEL: Record<HorizontalStepStatus, string> = {
   completed: "Completed: ",

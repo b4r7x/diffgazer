@@ -89,7 +89,7 @@ export function resolveAliasedPaths<K extends string>(
   return Object.fromEntries(entries) as Record<K, string>;
 }
 
-export function updateManifest<T extends Record<string, unknown>>(opts: {
+function updateManifest<T extends Record<string, unknown>>(opts: {
   configFileName: string;
   schema: z.ZodType<T>;
   manifestKey: string;

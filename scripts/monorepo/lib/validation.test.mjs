@@ -252,7 +252,7 @@ describe("collectBundleRelativeJsImportErrors", () => {
     ];
 
     assert.deepEqual(collectBundleRelativeJsImportErrors(items, "bundle"), [
-      'bundle: src/hooks/use-focus-restore.ts has relative .js import specifiers: from "./utils/focus-restore.js"',
+      "bundle: src/hooks/use-focus-restore.ts has relative .js import specifiers: ./utils/focus-restore.js",
     ]);
   });
 
@@ -273,7 +273,7 @@ describe("collectBundleRelativeJsImportErrors", () => {
     ];
 
     assert.deepEqual(collectBundleRelativeJsImportErrors(items, "bundle"), [
-      'bundle: registry/ui/x/index.ts has relative .js import specifiers: import "./setup.js", import("../lazy.js", require("./dep.js"',
+      "bundle: registry/ui/x/index.ts has relative .js import specifiers: ./setup.js, ../lazy.js, ./dep.js",
     ]);
   });
 

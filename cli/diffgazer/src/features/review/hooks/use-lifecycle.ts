@@ -158,10 +158,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     setMode(selectedMode);
     setStartError(null);
     setStartedReviewId(undefined);
-    lifecycle.stream.abort();
-    lifecycle.completion.resetCompletion();
-    lifecycle.start.setHasStarted(false);
-    lifecycle.start.setHasStreamed(false);
+    lifecycle.reset();
     setPhase("streaming");
     try {
       const result = await createReview.mutateAsync({ mode: selectedMode });
@@ -200,12 +197,9 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
       clearActiveSessionForReview(terminalReviewId);
     }
     setStartError(null);
-    lifecycle.completion.resetCompletion();
-    lifecycle.start.setHasStarted(false);
-    lifecycle.start.setHasStreamed(false);
+    lifecycle.reset();
     setPhase("streaming");
     setStartedReviewId(undefined);
-    lifecycle.stream.abort();
   }
 
   const state: ReviewLifecycleState = {

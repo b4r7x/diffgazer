@@ -2,6 +2,7 @@ import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
 import { terminalCellWidth } from "../../lib/terminal-width";
+import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 
 export interface FooterProps {
@@ -11,7 +12,7 @@ export interface FooterProps {
 
 interface RowProps {
   shortcuts: Shortcut[];
-  tokens: { accent: string; muted: string; fg: string };
+  tokens: Pick<CliColorTokens, "accent" | "muted">;
   width: number;
 }
 

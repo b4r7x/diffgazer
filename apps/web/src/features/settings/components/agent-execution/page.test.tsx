@@ -1,3 +1,4 @@
+import { SETTINGS_SCREEN_COPY } from "@diffgazer/core/schemas/config";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -43,6 +44,15 @@ describe("SettingsAgentExecutionPage", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockSaveSettings.mockReset();
+  });
+
+  it("heads the page with the shared settings copy", () => {
+    renderPage();
+
+    expect(
+      screen.getByRole("heading", { name: SETTINGS_SCREEN_COPY["agent-execution"].title }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(SETTINGS_SCREEN_COPY["agent-execution"].subtitle)).toBeInTheDocument();
   });
 
   it("moves from execution mode choices to footer actions at the lower boundary", async () => {

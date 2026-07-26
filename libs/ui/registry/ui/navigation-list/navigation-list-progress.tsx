@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 type ProgressVariant = "block" | "bar";
 
 /** Class variants for progress color. */
-export const progressColorVariants = cva("", {
+const progressColorVariants = cva("", {
   variants: {
     color: {
       success: "text-success",

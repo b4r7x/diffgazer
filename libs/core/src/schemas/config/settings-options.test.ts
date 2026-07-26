@@ -8,6 +8,7 @@ import {
   resolveSelectableTheme,
   SECRETS_STORAGE_OPTIONS,
   SELECTABLE_THEME_OPTIONS,
+  SETTINGS_SCREEN_COPY,
   toSelectableTheme,
 } from "./settings-options.js";
 
@@ -54,5 +55,20 @@ describe("settings option contracts", () => {
     expect(isAgentExecution("sequential")).toBe(true);
     expect(isAgentExecution("parallel")).toBe(true);
     expect(isAgentExecution("concurrent")).toBe(false);
+  });
+
+  it("owns the settings screen headers both surfaces render", () => {
+    expect(SETTINGS_SCREEN_COPY.storage).toEqual({
+      title: "Secrets Storage",
+      subtitle: "Choose where API keys and sensitive data should be stored.",
+    });
+    expect(SETTINGS_SCREEN_COPY["agent-execution"]).toEqual({
+      title: "Agent Execution Mode",
+      subtitle: "Choose whether analysis agents run in sequence or in parallel.",
+    });
+    expect(SETTINGS_SCREEN_COPY.analysis).toEqual({
+      title: "Analysis Settings",
+      subtitle: "Choose which lenses run during reviews.",
+    });
   });
 });

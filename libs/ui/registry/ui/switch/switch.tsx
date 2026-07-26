@@ -4,6 +4,7 @@ import { cva } from "class-variance-authority";
 import {
   type AriaAttributes,
   type ComponentPropsWithRef,
+  type MouseEvent,
   type ReactNode,
   type Ref,
   useId,
@@ -219,7 +220,7 @@ export function Switch({
     setIsChecked(!isChecked);
   };
 
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     if (isDisabled) {
       event.preventDefault();
       return;

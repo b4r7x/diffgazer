@@ -1,6 +1,8 @@
 import { getNavigationItemProps, useScopedNavigation } from "@diffgazer/keys";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { useRef } from "react";
+import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
 import type { DocsLibraryId } from "@/lib/library";
 import type { HomeLibrary } from "../data";
@@ -73,7 +75,7 @@ export function RegistryDirectory({ libraries }: { libraries: HomeLibrary[] }) {
           of the fold budget described in hero-panel.tsx. Widen only above `sm`. */}
       <div
         aria-hidden="true"
-        className="mt-1 flex items-center gap-4 px-2 py-1 font-mono text-2xs uppercase tracking-widest text-muted-foreground sm:mt-4 sm:py-3"
+        className={cn(CHROME_LABEL_CLASS, "mt-1 flex items-center gap-4 px-2 py-1 sm:mt-4 sm:py-3")}
       >
         <span className="grow border-b border-dashed border-border" />
         <span>END OF DIRECTORY</span>

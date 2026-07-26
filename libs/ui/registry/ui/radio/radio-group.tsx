@@ -26,7 +26,6 @@ import {
 import { useSelectableGroupAutoFocus } from "@/lib/selectable-group";
 import { type SelectableVariant, selectableGroupLabelVariants } from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
-import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import type { RadioSize } from "./radio";
 import { RadioGroupContext, type RadioGroupContextValue } from "./radio-group-context";
 import { RadioGroupItem, type RadioGroupItemProps } from "./radio-group-item";
@@ -64,8 +63,7 @@ type RadioGroupRootProps = Omit<
 /**
  * @typeParam TValue - Convenience assertion for the value union surfaced through
  * `value`/`onChange`/`onNavigate`/`onEnter`. Values originate from the rendered
- * items' `data-value` strings and are asserted to `TValue`, not validated; in
- * development an unregistered value warns (see `warnUnregisteredValue`).
+ * items' `data-value` strings and are asserted to `TValue`, not validated.
  */
 export interface RadioGroupProps<TValue extends string = string> extends RadioGroupRootProps {
   /** Controlled selected value. */
@@ -194,11 +192,6 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
     defaultValue,
     onChange: (next) => {
       if (next === undefined) return;
-      warnUnregisteredValue(
-        "RadioGroup",
-        next,
-        items.map((item) => item.value),
-      );
       onChange?.(next as TValue);
     },
   });
@@ -249,7 +242,6 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
 
   const { tabTargetValue, handleKeyDown } = useRadioGroupNavigation<TValue>({
     containerRef,
-    items,
     value,
     highlightedValue,
     enabledValues,

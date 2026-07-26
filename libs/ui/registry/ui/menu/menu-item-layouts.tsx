@@ -61,7 +61,7 @@ interface DefaultItemLayoutProps {
   hotkey?: number | string;
   /** Icon content rendered by the component. */
   icon?: ReactNode;
-  /** MenuItem and MenuDivider children. */
+  /** Item label. */
   children: ReactNode;
 }
 
@@ -119,7 +119,7 @@ export function DefaultItemLayout({
 interface DetailItemLayoutProps {
   isFocused: boolean;
   isSelected: boolean;
-  /** Controlled value. */
+  /** Right-aligned detail cell content. */
   value?: ReactNode;
   valueClassName: string;
   /**
@@ -130,7 +130,7 @@ interface DetailItemLayoutProps {
   valueGlyph?: string;
   /** Icon content rendered by the component. */
   icon?: ReactNode;
-  /** MenuItem and MenuDivider children. */
+  /** Item label. */
   children: ReactNode;
 }
 

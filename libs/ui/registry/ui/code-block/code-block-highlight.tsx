@@ -12,7 +12,10 @@ interface HastElement {
   properties?: { className?: string | string[] | undefined } | undefined;
   children?: HastNode[] | undefined;
 }
-type HastNode = HastText | HastElement | { type: string };
+interface HastOther {
+  type: "root" | "comment" | "doctype";
+}
+type HastNode = HastText | HastElement | HastOther;
 interface HastRoot {
   type: "root";
   children: HastNode[];
@@ -50,11 +53,10 @@ function classListOf(node: HastElement): string | undefined {
 }
 
 function renderNode(node: HastNode, key: number): ReactNode {
-  if (node.type === "text") return (node as HastText).value;
+  if (node.type === "text") return node.value;
   if (node.type === "element") {
-    const el = node as HastElement;
-    const children = (el.children ?? []).map((child, i) => renderNode(child, i));
-    return createElement(el.tagName, { key, className: classListOf(el) }, ...children);
+    const children = (node.children ?? []).map((child, i) => renderNode(child, i));
+    return createElement(node.tagName, { key, className: classListOf(node) }, ...children);
   }
   return null;
 }
@@ -70,8 +72,8 @@ function splitElementNode(node: HastElement): HastNode[][] {
 }
 
 function splitNodeByLine(node: HastNode): HastNode[][] {
-  if (node.type === "text") return splitTextNode(node as HastText);
-  if (node.type === "element") return splitElementNode(node as HastElement);
+  if (node.type === "text") return splitTextNode(node);
+  if (node.type === "element") return splitElementNode(node);
   return [[node]];
 }
 
@@ -126,7 +128,6 @@ export function CodeBlockHighlight({
   showLineNumbers = true,
   ...contentProps
 }: CodeBlockHighlightProps) {
-  const lines = code.split("\n");
   const highlightedLines = useMemo(
     () => highlightCode(code, language, lowlight),
     [code, language, lowlight],
@@ -134,7 +135,7 @@ export function CodeBlockHighlight({
 
   return (
     <CodeBlockContent showLineNumbers={showLineNumbers} {...contentProps}>
-      {lines.map((_, i) => {
+      {highlightedLines.map((line, i) => {
         const number = i + 1;
         return (
           <CodeBlockLine
@@ -143,7 +144,7 @@ export function CodeBlockHighlight({
             number={showLineNumbers ? number : undefined}
             state={lineStates?.[number]}
           >
-            {highlightedLines[i]}
+            {line}
           </CodeBlockLine>
         );
       })}

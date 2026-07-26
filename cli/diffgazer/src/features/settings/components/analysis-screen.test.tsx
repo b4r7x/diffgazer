@@ -1,3 +1,4 @@
+import { SETTINGS_SCREEN_COPY } from "@diffgazer/core/schemas/config";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CliThemeProvider } from "../../../theme/provider";
@@ -56,6 +57,7 @@ describe("AnalysisScreen", () => {
       </CliThemeProvider>,
     );
 
+    expect(view.lastFrame()).toContain(SETTINGS_SCREEN_COPY.analysis.title.toUpperCase());
     expect(view.lastFrame()).toContain("[x]");
     expect(view.lastFrame()).toContain("Save");
 

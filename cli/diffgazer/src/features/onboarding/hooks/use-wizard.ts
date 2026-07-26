@@ -7,7 +7,7 @@ import { isAIProvider } from "@diffgazer/core/catalog";
 import { isInputMethod, type OnboardingStep, useWizardState } from "@diffgazer/core/onboarding";
 import { isAgentExecution, isSecretsStorage } from "@diffgazer/core/schemas/config";
 import type { LensId } from "@diffgazer/core/schemas/review";
-import { useEffect, useEffectEvent, useState } from "react";
+import { useState } from "react";
 import { useRegisterExitPreparation } from "../../../hooks/use-exit";
 import { useNavigation } from "../../../hooks/use-navigation";
 
@@ -41,17 +41,6 @@ export function useOnboardingWizard() {
   });
 
   useRegisterExitPreparation(wizard.cleanupEarlySave);
-
-  const cleanupEarlySaveOnUnmount = useEffectEvent(() => {
-    void wizard.cleanupEarlySave();
-  });
-
-  useEffect(
-    () => () => {
-      cleanupEarlySaveOnUnmount();
-    },
-    [],
-  );
 
   const isSaving = saveSettings.isPending || saveConfig.isPending || wizard.isEarlySaving;
   const focusArea: FocusArea = focusZone === "nav" ? "nav" : "step";
@@ -165,10 +154,8 @@ export function useOnboardingWizard() {
     handleApiKeyChange,
     handleModelChange,
     handleLensesChange,
-    cleanupEarlySave: wizard.cleanupEarlySave,
     handleNext,
     handleBack,
-    toggleFocusArea,
     cycleFocusZone,
     setApiKeyInputFocused,
     moveNavIndex,

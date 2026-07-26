@@ -163,8 +163,10 @@
     line-height: 1.6;
   }
 
-  /* Okabe-Ito colorblind-safe palette (dark tier). Sky-blue add anchor keeps
-     ≥4.5:1 on #0a0a0a (the #0072b2 blue fails at 3.82:1). */
+  /* Okabe-Ito colorblind-safe palette, both themes: the tint percentages set
+     here apply to light too — the light block below re-anchors only the two
+     colors. Sky-blue add anchor keeps ≥4.5:1 on #0a0a0a (the #0072b2 blue
+     fails at 3.82:1). */
   [data-slot="diff-view"][data-diff-palette="okabe-ito"] {
     --diff-color-add: #56b4e9;
     --diff-color-remove: #d55e00;

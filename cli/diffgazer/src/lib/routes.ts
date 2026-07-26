@@ -37,7 +37,7 @@ const SCREEN_NAME_MAP = {
   "settings/trust-permissions": true,
 } satisfies Record<ScreenName, true>;
 
-export const SCREEN_NAMES: readonly ScreenName[] = Object.keys(SCREEN_NAME_MAP) as ScreenName[];
+const SCREEN_NAMES: readonly ScreenName[] = Object.keys(SCREEN_NAME_MAP) as ScreenName[];
 
 export function isScreenName(value: string): value is ScreenName {
   return (SCREEN_NAMES as readonly string[]).includes(value);

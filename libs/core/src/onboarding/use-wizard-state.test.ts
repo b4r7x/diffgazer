@@ -262,6 +262,43 @@ describe("useWizardState", () => {
     expect(cleanupDone).toBe(true);
   });
 
+  it("deletes the early-saved credentials exactly once when the wizard unmounts mid-flow", async () => {
+    const callbacks = makeCallbacks();
+    const { result, unmount } = renderHook(() =>
+      useWizardState({ initial: OPENROUTER_DATA, callbacks }),
+    );
+
+    advanceToEarlySave(result);
+    await act(async () => result.current.next());
+
+    await act(async () => {
+      unmount();
+    });
+
+    expect(callbacks.deleteCredentials).toHaveBeenCalledExactlyOnceWith("openrouter");
+  });
+
+  it("does not delete credentials when the wizard unmounts after completing", async () => {
+    const callbacks = makeCallbacks();
+    const { result, unmount } = renderHook(() =>
+      useWizardState({ initial: OPENROUTER_DATA, callbacks }),
+    );
+
+    advanceToEarlySave(result);
+    await act(async () => result.current.next());
+    act(() => result.current.updateData({ model: "openai/gpt-5" }));
+
+    await act(async () => {
+      await result.current.complete();
+    });
+
+    await act(async () => {
+      unmount();
+    });
+
+    expect(callbacks.deleteCredentials).not.toHaveBeenCalled();
+  });
+
   it("deletes an early-saved provider before accepting and completing with another provider", async () => {
     const deleteGate = deferred<void>();
     const callbacks = makeCallbacks({

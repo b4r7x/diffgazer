@@ -319,7 +319,7 @@ export function MenuSubContent({
     if (container) {
       container.focus({ preventScroll: true });
     }
-    parentMenu.highlight(triggerRef.current?.getAttribute("data-value") ?? "");
+    if (triggerId !== null) parentMenu.highlight(triggerId);
   };
 
   const dismissSubmenu = () => {

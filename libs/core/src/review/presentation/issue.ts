@@ -61,7 +61,7 @@ export interface IssueTraceStepPresentation {
 function formatIssueLineRange(start: number | null, end: number | null): string {
   if (start == null) return "?";
   if (end == null) return String(start);
-  return `${String(start)}-${String(end)}`;
+  return `${start}-${end}`;
 }
 
 /** Builds the issue metadata and fix-plan contract shared by web and TUI details panes. */
@@ -69,7 +69,7 @@ export function toIssueDetailsPresentation(issue: ReviewIssue): IssueDetailsPres
   const range = formatIssueLineRange(issue.line_start, issue.line_end);
   return {
     category: issue.category,
-    confidence: `${String(Math.round(issue.confidence * 100))}%`,
+    confidence: `${Math.round(issue.confidence * 100)}%`,
     range,
     location: `${issue.file}:${range}`,
     fixPlan: (issue.fixPlan ?? []).map((step, completionIndex) => ({
@@ -93,5 +93,5 @@ export function formatSeverityFilterLabel(
   severity: ReviewIssue["severity"],
   count: number,
 ): string {
-  return `${SEVERITY_LABELS[severity]} ${String(count)}`;
+  return `${SEVERITY_LABELS[severity]} ${count}`;
 }

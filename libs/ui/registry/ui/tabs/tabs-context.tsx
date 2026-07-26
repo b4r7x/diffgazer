@@ -3,16 +3,12 @@
 import { createContext, useContext } from "react";
 import type { SegmentedSize, SegmentedVariant } from "@/lib/segmented-variants";
 
-function encodeIdPart(value: string): string {
-  return encodeURIComponent(value);
-}
-
 export function getTabTriggerId(tabsId: string, value: string): string {
-  return `${tabsId}-tab-${encodeIdPart(value)}`;
+  return `${tabsId}-tab-${encodeURIComponent(value)}`;
 }
 
 export function getTabPanelId(tabsId: string, value: string): string {
-  return `${tabsId}-tabpanel-${encodeIdPart(value)}`;
+  return `${tabsId}-tabpanel-${encodeURIComponent(value)}`;
 }
 
 /** Context value shared by tabs. */
@@ -56,10 +52,8 @@ export interface TabsContextValue {
   unregisterPanel: (registrationId: string) => void;
 }
 
-/** React context backing tabs. */
 export const TabsContext = createContext<TabsContextValue | undefined>(undefined);
 
-/** Reads the tabs context. */
 export function useTabsContext() {
   const context = useContext(TabsContext);
   if (!context) {

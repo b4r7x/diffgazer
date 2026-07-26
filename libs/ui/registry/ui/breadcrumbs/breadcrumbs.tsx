@@ -24,6 +24,9 @@ function isBreadcrumbsItemElement(child: ReactNode): child is ReactElement<Bread
   return isValidElement<BreadcrumbsItemProps>(child) && child.type === BreadcrumbsItem;
 }
 
+// Fragments are flattened so the last BreadcrumbsItem can be found regardless of
+// nesting; keys are re-composed from the fragment path so the flattened siblings
+// stay unique.
 function flattenFragments(children: ReactNode, parentKey?: string): ReactNode[] {
   return Children.toArray(children).flatMap((child, index) => {
     if (!isValidElement<{ children?: ReactNode }>(child)) return [child];

@@ -9,6 +9,7 @@ import { cn } from "@diffgazer/ui/lib/utils";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { isPrimaryNavigationClick } from "@/components/shared/navigation-click";
+import { CHROME_SIDEBAR_ITEM_CLASS } from "@/components/shared/sidebar-item";
 import { usePendingDocsRoute } from "@/hooks/use-pending-docs-route";
 import { DOCS_LIBRARY_IDS, type DocsLibraryId, routeSplatFromDocsPath } from "@/lib/library";
 import type { PageTree, PageTreeNode } from "@/lib/page-tree";
@@ -119,13 +120,6 @@ function groupBySection(children: PageTreeNode[]): Section[] {
   return sections;
 }
 
-/**
- * Inactive-link dimming for every chrome tree sidebar (Docs/Home/Legal), matching
- * the deleted `#sidebar-nav` color-mix stops (foreground 52% / hover 4%).
- */
-export const chromeSidebarItemClassName =
-  "text-foreground/52 transition-colors hover:bg-foreground/[0.04] hover:text-foreground data-[selected]:text-foreground";
-
 export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
   const pathname = useLocation({ select: (l) => l.pathname });
   const pendingPathname = usePendingDocsRoute();
@@ -177,7 +171,7 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                   <SidebarItem
                     key={url}
                     active={pathname === url || isPending}
-                    className={chromeSidebarItemClassName}
+                    className={CHROME_SIDEBAR_ITEM_CLASS}
                     onClick={(event) => {
                       if (!isPrimaryNavigationClick(event)) return;
                       onNavigate?.();

@@ -88,7 +88,10 @@ export function classifyReviewStreamError(
   error: string,
   errorCode?: string | null,
 ): ReviewStreamErrorGuidance {
-  if (errorCode === ErrorCode.API_KEY_MISSING) {
+  const isApiKeyError =
+    errorCode === ErrorCode.API_KEY_MISSING ||
+    (errorCode == null && API_KEY_ERROR_PATTERN.test(error));
+  if (isApiKeyError) {
     return {
       kind: "api-key",
       title: "API Key Error",
@@ -102,14 +105,6 @@ export function classifyReviewStreamError(
       title: "Connection Lost",
       guidance: "The review stream was interrupted. Retry to reconnect to the active review.",
       ctaLabel: "Retry",
-    };
-  }
-  if (errorCode == null && API_KEY_ERROR_PATTERN.test(error)) {
-    return {
-      kind: "api-key",
-      title: "API Key Error",
-      guidance: "Your API key may be invalid or expired.",
-      ctaLabel: CONFIGURE_PROVIDER_LABEL,
     };
   }
   return {

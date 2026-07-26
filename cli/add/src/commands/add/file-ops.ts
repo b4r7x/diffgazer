@@ -1,3 +1,4 @@
+import { stripRelativeJsExtensions } from "@diffgazer/registry";
 import type { FileOp } from "@diffgazer/registry/cli";
 import type { RegistryItem, ResolvedConfig } from "../../context.js";
 import { ctx } from "../../context.js";
@@ -8,7 +9,6 @@ import {
   getInstallDirForBase,
   prepareFileContentForIntegration,
 } from "../../utils/registry.js";
-import { rewriteRelativeJsExtensionsForCopy } from "../../utils/transform.js";
 import type { ResolvedIntegrationSelection } from "./integration.js";
 
 export type OwnedFileOp = FileOp & { sourceNames?: string[] };
@@ -63,7 +63,7 @@ function mergeKeysHookFileOps(
   for (const file of resolvedFiles) {
     const sourceName = `keys/${file.hook}`;
     const targetPath = resolveInstallPath(cwd, hooksFsPath, file.relativePath);
-    const content = rewriteRelativeJsExtensionsForCopy(file.content);
+    const content = stripRelativeJsExtensions(file.content);
     const existing = byTargetPath.get(targetPath);
 
     if (existing) {

@@ -37,7 +37,7 @@ export function useListNavigationInput({
       }
       if (!onActivate) return;
       if (key.return || (activateOnSpace && input === " ")) {
-        const item = navigation.selectItem(navigation.currentHighlightedId);
+        const item = navigation.findSelectableItem(navigation.currentHighlightedId);
         if (item) onActivate(item);
       }
     },

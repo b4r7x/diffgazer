@@ -22,7 +22,7 @@ export const requireRepoAccess = async (c: Context, next: Next): Promise<Respons
     );
   }
 
-  if (!hasRepoReadAccess(projectRoot)) {
+  if (trust.repoRoot !== projectRoot) {
     return errorResponse(
       c,
       "Trust was granted for a different repository root. Re-grant trust for this directory.",

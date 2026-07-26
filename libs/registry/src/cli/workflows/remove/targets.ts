@@ -1,7 +1,18 @@
 import { existsSync } from "node:fs";
 import { dirname, relative } from "node:path";
 import { info } from "../../terminal.js";
-import type { RemoveWorkflowFile, RunRemoveWorkflowOptions } from "./types.js";
+import type { FileRemovalVerdict, RemoveWorkflowFile, RunRemoveWorkflowOptions } from "./types.js";
+
+function skipMessage(
+  name: string,
+  relativePath: string,
+  verdict: Exclude<FileRemovalVerdict, "removable">,
+): string {
+  if (verdict === "unowned") {
+    return `Skipping ${name}: ${relativePath} is not tracked in the ownership manifest (the manifest is missing or was reset)`;
+  }
+  return `Skipping ${name}: ${relativePath} has been modified (use --force to override)`;
+}
 
 interface ResolveCtx<TItem, TConfig> {
   cwd: string;
@@ -25,7 +36,7 @@ function collectRetainedFiles<TItem, TConfig>(
 function collectFilesToRemove<TItem, TConfig>(
   ctx: ResolveCtx<TItem, TConfig> & {
     getItemOrThrow: (name: string) => TItem;
-    canRemoveFile?: RunRemoveWorkflowOptions<TItem, TConfig>["canRemoveFile"];
+    checkFileRemoval?: RunRemoveWorkflowOptions<TItem, TConfig>["checkFileRemoval"];
     force: boolean;
     requestedNames: string[];
   },
@@ -49,20 +60,17 @@ function collectFilesToRemove<TItem, TConfig>(
         continue;
       }
       if (retainedFiles.has(file.absolutePath)) continue;
-      if (
-        ctx.canRemoveFile &&
-        !ctx.canRemoveFile({
+      const verdict =
+        ctx.checkFileRemoval?.({
           cwd: ctx.cwd,
           config: ctx.config,
           item,
           file,
           force: ctx.force,
           requestedNames: ctx.requestedNames,
-        })
-      ) {
-        info(
-          `Skipping ${name}: ${relative(ctx.cwd, file.absolutePath)} has been modified (use --force to override)`,
-        );
+        }) ?? "removable";
+      if (verdict !== "removable") {
+        info(skipMessage(name, relative(ctx.cwd, file.absolutePath), verdict));
         blocked = true;
         break;
       }
@@ -99,7 +107,7 @@ export function collectRemovalTargets<TItem, TConfig>(
     {
       ...ctx,
       getItemOrThrow: options.getItemOrThrow,
-      canRemoveFile: options.canRemoveFile,
+      checkFileRemoval: options.checkFileRemoval,
       force: options.force,
       requestedNames: expandedNames,
     },

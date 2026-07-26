@@ -56,7 +56,7 @@ export function AgentBoard({ agents, maxRows = agents.length, compact = false }:
               <Box flexShrink={0}>
                 <Text bold>{agent.meta.name}</Text>
               </Box>
-              {agent.status === "running" ? <Spinner variant="dots" size="sm" /> : null}
+              {agent.status === "running" ? <Spinner size="sm" /> : null}
               <Box flexShrink={0}>
                 <Badge variant={status.variant} size="sm">
                   {status.label}

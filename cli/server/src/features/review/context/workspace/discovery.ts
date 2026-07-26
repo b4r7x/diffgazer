@@ -4,8 +4,9 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { z } from "zod";
+import { formatSchemaIssues } from "../../../../shared/lib/errors.js";
 import { readFileDirectory } from "../directory.js";
-import { formatSchemaIssues, readPackageManifest } from "./manifest.js";
+import { readPackageManifest } from "./manifest.js";
 
 export type WorkspacePackage = {
   name: string;
@@ -17,8 +18,6 @@ export type WorkspacePackage = {
 type WorkspaceRoot = {
   dir: string;
   kind: WorkspacePackage["kind"];
-  includeSelf: boolean;
-  includeChildren: boolean;
 };
 
 export interface WorkspaceDiscoveryOptions {
@@ -38,8 +37,8 @@ const PnpmWorkspaceListSchema = z
   .min(1);
 
 const FALLBACK_WORKSPACE_ROOTS: WorkspaceRoot[] = [
-  { dir: "apps", kind: "app", includeSelf: false, includeChildren: true },
-  { dir: "packages", kind: "package", includeSelf: false, includeChildren: true },
+  { dir: "apps", kind: "app" },
+  { dir: "packages", kind: "package" },
 ];
 
 async function isRealpathContained(
@@ -211,11 +210,6 @@ export async function discoverWorkspacePackages(
     } catch {
       continue;
     }
-
-    if (root.includeSelf) {
-      addPackage(await readWorkspacePackage(projectPath, root.dir, root.kind, normalizedProject));
-    }
-    if (!root.includeChildren) continue;
 
     const entries = await readFileDirectory(absoluteRoot);
     for (const entry of entries) {

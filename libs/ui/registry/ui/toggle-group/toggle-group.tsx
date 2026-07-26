@@ -205,6 +205,7 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
 
   const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
     value: controlledHighlighted,
+    controlled: "highlighted" in props,
     defaultValue: null,
     onChange: onHighlightChange as ((value: string | null) => void) | undefined,
   });
@@ -283,7 +284,6 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
 
   const contextValue = useMemo(
     () => ({
-      selectionMode,
       isItemSelected,
       onChange: handleValueChange,
       onHighlightChange: setHighlightedValue,
@@ -291,14 +291,12 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
       size,
       variant,
       highlightedValue: activeHighlightedValue,
-      containerRef,
       usesButtonSemantics,
       tabTargetValue,
       registerItem: registerLiveItem,
       unregisterItem,
     }),
     [
-      selectionMode,
       isItemSelected,
       handleValueChange,
       setHighlightedValue,

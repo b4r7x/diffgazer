@@ -32,10 +32,8 @@ export type CheckboxGroupContextValue = {
   name?: string;
 };
 
-/** React context backing checkbox group. */
 export const CheckboxGroupContext = createContext<CheckboxGroupContextValue | undefined>(undefined);
 
-/** Reads the checkbox group context. */
 export function useCheckboxGroupContext() {
   const context = useContext(CheckboxGroupContext);
   if (!context) throw new Error("CheckboxItem must be used within CheckboxGroup");

@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { ProviderModelsResponse } from "../../schemas/config/index.js";
 import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
@@ -22,17 +22,17 @@ function makeResponse(id: string): ProviderModelsResponse {
   };
 }
 
-function makeWrapper(api: BoundApi) {
+function makeWrapper(api: Partial<BoundApi>) {
   return createTestQueryWrapper({ api }).Wrapper;
 }
 
 describe("useProviderModels", () => {
-  let getProviderModels: ReturnType<typeof vi.fn>;
-  let api: BoundApi;
+  let getProviderModels: Mock<BoundApi["getProviderModels"]>;
+  let api: Partial<BoundApi>;
 
   beforeEach(() => {
-    getProviderModels = vi.fn(async (id: string) => makeResponse(id));
-    api = { getProviderModels } as unknown as BoundApi;
+    getProviderModels = vi.fn<BoundApi["getProviderModels"]>(async (id) => makeResponse(id));
+    api = { getProviderModels };
   });
 
   it("does not fetch when disabled", () => {

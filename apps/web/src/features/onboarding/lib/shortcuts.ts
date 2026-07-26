@@ -1,6 +1,31 @@
 import type { OnboardingStep } from "@diffgazer/core/onboarding";
 import { NAVIGATE_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 
+interface StepActionLabels {
+  navigate: string;
+  select: string;
+  enter: string;
+}
+
+// A Record keyed by OnboardingStep rather than a switch: a seventh step is a
+// compile error here instead of a silently empty footer.
+const STEP_ACTION_LABELS: Record<OnboardingStep, StepActionLabels> = {
+  storage: {
+    navigate: NAVIGATE_SHORTCUT.label,
+    select: "Select Storage",
+    enter: "Select & Next",
+  },
+  provider: { navigate: "Navigate Providers", select: "Select Provider", enter: "Select & Next" },
+  "api-key": { navigate: "Navigate Fields", select: "Select Method", enter: "Select & Next" },
+  model: { navigate: "Navigate Models", select: "Select Model", enter: "Select & Next" },
+  analysis: {
+    navigate: NAVIGATE_SHORTCUT.label,
+    select: "Toggle Option",
+    enter: "Toggle & Next",
+  },
+  execution: { navigate: "Navigate Modes", select: "Select Mode", enter: "Select & Next" },
+};
+
 export function getStepShortcuts(
   currentStep: OnboardingStep,
   isButtonsZone: boolean,
@@ -14,50 +39,11 @@ export function getStepShortcuts(
     ];
   }
 
-  switch (currentStep) {
-    case "storage":
-      return [
-        NAVIGATE_SHORTCUT,
-        { key: "Space", label: "Select Storage" },
-        { key: "Enter", label: "Select & Next" },
-        { key: "↓", label: "Focus Actions" },
-      ];
-    case "provider":
-      return [
-        { key: "↑/↓", label: "Navigate Providers" },
-        { key: "Space", label: "Select Provider" },
-        { key: "Enter", label: "Select & Next" },
-        { key: "↓", label: "Focus Actions" },
-      ];
-    case "api-key":
-      return [
-        { key: "↑/↓", label: "Navigate Fields" },
-        { key: "Space", label: "Select Method" },
-        { key: "Enter", label: "Select & Next" },
-        { key: "↓", label: "Focus Actions" },
-      ];
-    case "model":
-      return [
-        { key: "↑/↓", label: "Navigate Models" },
-        { key: "Space", label: "Select Model" },
-        { key: "Enter", label: "Select & Next" },
-        { key: "↓", label: "Focus Actions" },
-      ];
-    case "analysis":
-      return [
-        NAVIGATE_SHORTCUT,
-        { key: "Space", label: "Toggle Option" },
-        { key: "Enter", label: "Toggle & Next" },
-        { key: "↓", label: "Focus Actions" },
-      ];
-    case "execution":
-      return [
-        { key: "↑/↓", label: "Navigate Modes" },
-        { key: "Space", label: "Select Mode" },
-        { key: "Enter", label: "Select & Next" },
-        { key: "↓", label: "Focus Actions" },
-      ];
-    default:
-      return [];
-  }
+  const labels = STEP_ACTION_LABELS[currentStep];
+  return [
+    { key: NAVIGATE_SHORTCUT.key, label: labels.navigate },
+    { key: "Space", label: labels.select },
+    { key: "Enter", label: labels.enter },
+    { key: "↓", label: "Focus Actions" },
+  ];
 }

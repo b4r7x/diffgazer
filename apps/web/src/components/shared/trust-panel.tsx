@@ -14,7 +14,7 @@ import { type KeyboardEvent, useRef, useState } from "react";
 import { CardLayout } from "@/components/layout/card-layout";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 
-export interface TrustPanelProps {
+interface TrustPanelProps {
   directory: string;
 }
 

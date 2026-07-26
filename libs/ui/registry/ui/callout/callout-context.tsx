@@ -13,10 +13,8 @@ export interface CalloutContextValue {
   onDismiss: () => void;
 }
 
-/** React context backing callout. */
 export const CalloutContext = createContext<CalloutContextValue | undefined>(undefined);
 
-/** Reads the callout context. */
 export function useCalloutContext() {
   const context = useContext(CalloutContext);
   if (!context) {

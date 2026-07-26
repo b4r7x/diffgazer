@@ -14,11 +14,9 @@ interface BlockBarContextValue {
   emptyChar: string;
 }
 
-/** React context backing block bar. */
 export const BlockBarContext = createContext<BlockBarContextValue | undefined>(undefined);
 export const BlockBarSegmentCountContext = createContext<number | null>(null);
 
-/** Reads the block bar context. */
 export function useBlockBarContext() {
   const context = useContext(BlockBarContext);
   if (!context) {

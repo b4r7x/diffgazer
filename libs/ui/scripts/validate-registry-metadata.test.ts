@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -198,6 +198,10 @@ function runValidator(root: string) {
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
 
+function writeExample(root: string, name: string, source: string) {
+  writeFile(resolve(root, `registry/examples/widget/${name}`), source);
+}
+
 function writePublicItem(root: string, content: string, hidden = false) {
   mkdirSync(resolve(root, "public/r"), { recursive: true });
   writeJson(resolve(root, "public/r/keys-leak.json"), {
@@ -296,6 +300,103 @@ describe("validate-registry-metadata", () => {
     expect(stderr).toContain(
       "unsupported @diffgazer/keys root import (import, dynamic-import, require)",
     );
+  });
+
+  it("rejects a declared dependency that no file in the item imports", () => {
+    const root = createKeysRequiredPeerFixture();
+    const registryPath = resolve(root, "registry/registry.json");
+    const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
+    registry.items[1].dependencies = ["class-variance-authority"];
+    writeJson(registryPath, registry);
+
+    const { status, stderr } = runValidator(root);
+
+    expect(status).not.toBe(0);
+    expect(stderr).toContain(
+      'helper declares dependency "class-variance-authority" but no file imports it',
+    );
+  });
+
+  it("rejects an imported package that the item omits from dependencies", () => {
+    const root = createKeysRequiredPeerFixture();
+    writeFile(
+      resolve(root, "registry/lib/helper.ts"),
+      'import { cva } from "class-variance-authority";\nexport const helper = cva("helper");\n',
+    );
+
+    const { status, stderr } = runValidator(root);
+
+    expect(status).not.toBe(0);
+    expect(stderr).toContain(
+      'helper imports "class-variance-authority" but omits it from dependencies',
+    );
+  });
+
+  it("accepts an imported package that the item declares", () => {
+    const root = createKeysRequiredPeerFixture();
+    const registryPath = resolve(root, "registry/registry.json");
+    const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
+    registry.items[1].dependencies = ["class-variance-authority"];
+    writeJson(registryPath, registry);
+    writeFile(
+      resolve(root, "registry/lib/helper.ts"),
+      'import { cva } from "class-variance-authority";\nexport const helper = cva("helper");\n',
+    );
+
+    const { status, stdout } = runValidator(root);
+
+    expect(status).toBe(0);
+    expect(stdout).toContain("[ui] registry metadata OK");
+  });
+
+  it("rejects a keys package import in any example, not just the ones with a sibling test", () => {
+    const root = createKeysRequiredPeerFixture();
+    writeExample(root, "widget-keyboard.tsx", 'import { useNavigation } from "@diffgazer/keys";\n');
+    writeExample(root, "widget-scoped.tsx", 'import { useKey } from "@diffgazer/keys/use-key";\n');
+
+    const { status, stderr } = runValidator(root);
+
+    expect(status).not.toBe(0);
+    expect(stderr).toContain("registry/examples/widget/widget-keyboard.tsx");
+    expect(stderr).toContain("registry/examples/widget/widget-scoped.tsx");
+    expect(stderr).toContain('imports "@diffgazer/keys"');
+  });
+
+  it.each([
+    { token: "process.env", source: 'export const dev = process.env.NODE_ENV !== "production";\n' },
+    { token: "import.meta.env", source: "export const dev = import.meta.env.DEV;\n" },
+  ])("rejects $token in shipped registry source", ({ token, source }) => {
+    const root = createKeysRequiredPeerFixture();
+    writeFile(resolve(root, "registry/lib/helper.ts"), source);
+
+    const { status, stderr } = runValidator(root);
+
+    expect(status).not.toBe(0);
+    expect(stderr).toContain(`registry/lib/helper.ts reads ${token}`);
+  });
+
+  it("rejects a build-env read in an example as well as in component source", () => {
+    const root = createKeysRequiredPeerFixture();
+    writeExample(root, "widget-env.tsx", "export const mode = process.env.NODE_ENV;\n");
+
+    const { status, stderr } = runValidator(root);
+
+    expect(status).not.toBe(0);
+    expect(stderr).toContain("registry/examples/widget/widget-env.tsx reads process.env, NODE_ENV");
+  });
+
+  it("accepts examples that import the copied local hook path", () => {
+    const root = createKeysRequiredPeerFixture();
+    writeExample(
+      root,
+      "widget-keyboard.tsx",
+      'import { useNavigation } from "@/hooks/use-navigation";\nexport default useNavigation;\n',
+    );
+
+    const { status, stdout } = runValidator(root);
+
+    expect(status).toBe(0);
+    expect(stdout).toContain("[ui] registry metadata OK");
   });
 
   it("detects executable template root imports without flagging raw template text", () => {

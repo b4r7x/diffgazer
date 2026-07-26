@@ -2,40 +2,21 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
+import { atRuleBody, ruleBody } from "../../testing/css-contract";
 
 describe("OverlayHints CSS contract", () => {
   // jsdom's CSSOM ignores rules nested in @layer and never evaluates
   // (pointer: coarse), so the collapse contract is asserted against the source.
   const CSS_PATH = resolve(fileURLToPath(import.meta.url), "../overlay-hints.css");
   let css = "";
+  let coarse = "";
 
   beforeAll(() => {
     css = readFileSync(CSS_PATH, "utf8");
-  });
-
-  function scope(header: string): string {
-    const start = css.indexOf(header);
-    expect(start, `missing ${header}`).toBeGreaterThan(-1);
-    const from = css.indexOf("{", start) + 1;
-    let depth = 1;
-    for (let i = from; i < css.length; i += 1) {
-      if (css[i] === "{") depth += 1;
-      else if (css[i] === "}") {
-        depth -= 1;
-        if (depth === 0) return css.slice(from, i);
-      }
-    }
-    throw new Error(`unterminated ${header}`);
-  }
-
-  it("wraps hints to a second row instead of scrolling them", () => {
-    const body = scope('[data-slot="overlay-hints"] {');
-    expect(body).toContain("flex-wrap: wrap");
-    expect(body).toContain("gap: 4px 16px");
+    coarse = atRuleBody(css, "@media (pointer: coarse)");
   });
 
   function coarseRules(): { selector: string; body: string }[] {
-    const coarse = scope("@media (pointer: coarse)");
     const rules: { selector: string; body: string }[] = [];
     let selectorStart = 0;
     for (let i = 0; i < coarse.length; i += 1) {
@@ -55,17 +36,25 @@ describe("OverlayHints CSS contract", () => {
     return rules;
   }
 
+  it("wraps hints to a second row instead of scrolling them", () => {
+    // At 390 a fourth hint no longer fits on one line, and a horizontally
+    // scrolling legend inside a scrolling overlay is unreachable on touch.
+    expect(ruleBody(css, '[data-slot="overlay-hints"]')).toContain("flex-wrap: wrap");
+  });
+
   it("hides key groups that are useless without a keyboard", () => {
-    const coarse = scope("@media (pointer: coarse)");
-    expect(coarse).toContain('[data-slot="overlay-hints-item"]:not([data-touch])');
-    expect(coarse).toContain("display: none");
+    expect(
+      ruleBody(
+        coarse,
+        '[data-slot="overlay-hints"][aria-hidden="true"] [data-slot="overlay-hints-item"]:not([data-touch])',
+      ),
+    ).toContain("display: none");
   });
 
   it("collapses the whole bar when no touch-relevant hint survives", () => {
-    const coarse = scope("@media (pointer: coarse)");
-    expect(coarse).toContain(
-      '[data-slot="overlay-hints"][aria-hidden="true"]:not(:has([data-touch]))',
-    );
+    expect(
+      ruleBody(coarse, '[data-slot="overlay-hints"][aria-hidden="true"]:not(:has([data-touch]))'),
+    ).toContain("display: none");
   });
 
   it("collapses the host chrome row that exists only to hold the bar", () => {
@@ -118,6 +107,8 @@ describe("OverlayHints CSS contract", () => {
   });
 
   it("owns no separator of its own — the host surface draws the hairline", () => {
+    // A hint bar that drew its own border-top would double the hairline of the
+    // host chrome row it always sits inside.
     expect(css).not.toContain("border-top");
   });
 });

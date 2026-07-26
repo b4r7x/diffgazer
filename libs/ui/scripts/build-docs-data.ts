@@ -15,6 +15,7 @@ import {
   kebabToCamelCase,
 } from "@diffgazer/registry";
 import {
+  parseKeysDependencyRef,
   REGISTRY_ITEM_TYPE,
   type Registry,
   type RegistryItem,
@@ -25,7 +26,6 @@ const ROOT = resolve(import.meta.dirname, "..");
 const REGISTRY_PATH = resolve(ROOT, "registry/registry.json");
 const PUBLIC_REGISTRY_DIR = resolve(ROOT, "public/r");
 const KEYS_PUBLIC_REGISTRY_DIR = resolve(ROOT, "../keys/public/r");
-const KEYS_REGISTRY_PREFIXES = ["@diffgazer-keys/", "@diffgazer/keys/"] as const;
 
 function loadRegistryItems(): RegistryItem[] {
   return RegistrySchema.parse(JSON.parse(readFileSync(REGISTRY_PATH, "utf-8"))).items;
@@ -157,13 +157,6 @@ function parseBuiltRegistryItem(path: string): RegistryItem {
   return item;
 }
 
-function keysDependencyName(dependency: string): string | null {
-  for (const prefix of KEYS_REGISTRY_PREFIXES) {
-    if (dependency.startsWith(prefix)) return dependency.slice(prefix.length);
-  }
-  return null;
-}
-
 function resolveCopyDependencyClosure(item: RegistryItem): {
   localNames: string[];
   keysNames: string[];
@@ -177,7 +170,7 @@ function resolveCopyDependencyClosure(item: RegistryItem): {
     visited.add(current.name);
 
     for (const dependency of current.registryDependencies ?? []) {
-      const keysName = keysDependencyName(dependency);
+      const keysName = parseKeysDependencyRef(dependency);
       if (keysName) {
         keysNames.add(keysName);
         continue;

@@ -1,6 +1,7 @@
 import { useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import type { SecretsStorage } from "@diffgazer/core/schemas/config";
+import { deriveSaveState } from "@diffgazer/core/forms";
+import { SETTINGS_SCREEN_COPY, type SecretsStorage } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Text } from "ink";
 import type { ReactElement } from "react";
@@ -9,7 +10,6 @@ import { StorageSelector } from "../../../components/shared/storage-selector";
 import { Callout } from "../../../components/ui/callout";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useTheme } from "../../../theme/provider";
-import { deriveStorageSaveState } from "../lib/derive-storage-save-state";
 import { SettingsFormScreen } from "./settings-form-screen";
 
 const LIST_SHORTCUTS: Shortcut[] = [NAVIGATE_SHORTCUT, { key: "Enter", label: "Select Storage" }];
@@ -25,11 +25,14 @@ export function StorageScreen(): ReactElement {
 
   const saving = saveSettings.isPending;
   const persistedStorage = settingsQuery.data?.secretsStorage ?? null;
-  const { effective: effectiveStorage, canSave } = deriveStorageSaveState({
+  const derived = deriveSaveState<SecretsStorage | null>({
     persisted: persistedStorage,
     choice: storage,
     saving,
+    fallback: null,
   });
+  const effectiveStorage = derived.effective;
+  const canSave = effectiveStorage !== null && derived.canSave;
 
   function handleSave() {
     if (!canSave || !effectiveStorage) return;
@@ -49,16 +52,14 @@ export function StorageScreen(): ReactElement {
 
   return (
     <SettingsFormScreen
-      title="Secrets Storage"
-      subtitle="Choose where API keys and sensitive data should be stored."
+      title={SETTINGS_SCREEN_COPY.storage.title}
+      subtitle={SETTINGS_SCREEN_COPY.storage.subtitle}
       loadingLabel="Loading storage settings..."
       listShortcuts={LIST_SHORTCUTS}
       saving={saving}
       canSave={canSave}
       error={saveError}
       onSave={handleSave}
-      cancelVariant="secondary"
-      saveVariant="primary"
     >
       {({ isListActive, enterButtons, isCompact }) => (
         <>

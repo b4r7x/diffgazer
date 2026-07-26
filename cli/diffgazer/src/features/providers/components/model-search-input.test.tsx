@@ -3,16 +3,16 @@ import { useState } from "react";
 import { afterEach, describe, expect, test } from "vitest";
 import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
-import { SearchInput } from "./model-search-input";
+import { ModelSearchInput } from "./model-search-input";
 
 const BACKSPACE = "\u007f";
 
 function ControlledModelSearchInput() {
   const [value, setValue] = useState("claude😀");
-  return <SearchInput value={value} onChange={setValue} isActive />;
+  return <ModelSearchInput value={value} onChange={setValue} isActive />;
 }
 
-describe("SearchInput", () => {
+describe("ModelSearchInput", () => {
   afterEach(() => {
     cleanup();
   });

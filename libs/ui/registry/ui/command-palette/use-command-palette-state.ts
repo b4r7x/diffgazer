@@ -5,7 +5,6 @@ import {
   type RefObject,
   useCallback,
   useId,
-  useMemo,
   useRef,
 } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
@@ -64,8 +63,6 @@ export interface CommandPaletteContextValue {
   unregisterItem: (registrationId: string) => void;
 }
 
-const defaultFilter = matchesSearch;
-
 export function getCommandPaletteItemDomId(listId: string, id: string): string {
   const encoded = encodeDomIdSegment(id);
   return `${listId}-item-${encoded || "empty"}`;
@@ -111,7 +108,7 @@ export function useCommandPaletteState({
   shouldFilter = true,
   filter: filterProp,
 }: UseCommandPaletteStateOptions): CommandPaletteContextValue {
-  const filter = filterProp ?? defaultFilter;
+  const filter = filterProp ?? matchesSearch;
   const [isOpen, setIsOpen] = useControllableState({
     value: controlledOpen,
     defaultValue: false,
@@ -156,63 +153,47 @@ export function useCommandPaletteState({
     [getItemOnSelect, handleOpenChange, onActivate],
   );
 
+  const effectiveHighlighted = getEffectiveHighlighted(
+    highlighted,
+    itemIds,
+    isHighlightedControlled,
+  );
+
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef: listRef,
     role: "option",
     wrap: true,
-    highlighted: getEffectiveHighlighted(highlighted, itemIds, isHighlightedControlled),
+    highlighted: effectiveHighlighted,
     onHighlightChange: setHighlighted,
     onEnter: handleActivate,
     enabled: isOpen,
     scopeToContainer: true,
   });
 
-  const effectiveHighlighted = getEffectiveHighlighted(
-    highlighted,
-    itemIds,
-    isHighlightedControlled,
-  );
   const highlightedIndex =
     effectiveHighlighted === null ? -1 : itemIds.indexOf(effectiveHighlighted);
 
-  return useMemo(
-    () => ({
-      open: isOpen,
-      onOpenChange: handleOpenChange,
-      highlighted: effectiveHighlighted,
-      onHighlightChange: setHighlighted,
-      onActivate: handleActivate,
-      search,
-      onSearchChange: setSearch,
-      shouldFilter,
-      filter,
-      itemCount: itemIds.length,
-      highlightedPosition: highlightedIndex === -1 ? null : highlightedIndex + 1,
-      listId: `${paletteId}-list`,
-      listRef,
-      inputRef,
-      navKeyDown,
-      registerItem,
-      unregisterItem,
-    }),
-    [
-      isOpen,
-      handleOpenChange,
-      handleActivate,
-      effectiveHighlighted,
-      highlightedIndex,
-      itemIds,
-      setHighlighted,
-      search,
-      setSearch,
-      shouldFilter,
-      filter,
-      paletteId,
-      navKeyDown,
-      registerItem,
-      unregisterItem,
-    ],
-  );
+  // Not memoized: useNavigation hands back a fresh onKeyDown every render, so a
+  // useMemo over this object could never hit.
+  return {
+    open: isOpen,
+    onOpenChange: handleOpenChange,
+    highlighted: effectiveHighlighted,
+    onHighlightChange: setHighlighted,
+    onActivate: handleActivate,
+    search,
+    onSearchChange: setSearch,
+    shouldFilter,
+    filter,
+    itemCount: itemIds.length,
+    highlightedPosition: highlightedIndex === -1 ? null : highlightedIndex + 1,
+    listId: `${paletteId}-list`,
+    listRef,
+    inputRef,
+    navKeyDown,
+    registerItem,
+    unregisterItem,
+  };
 }
 
 function getEffectiveHighlighted(

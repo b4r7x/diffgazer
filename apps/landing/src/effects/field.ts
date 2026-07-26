@@ -61,6 +61,25 @@ export interface Field {
 
 const pick = <T>(items: [T, ...T[]]): T => items[(Math.random() * items.length) | 0] ?? items[0];
 
+/**
+ * Whether a line at (px, py) of width w runs under a scene rect that is still on
+ * screen. Each caller pads the rect differently, but the test is the same one.
+ */
+const runsUnder = (
+  rect: DOMRect | null,
+  px: number,
+  py: number,
+  w: number,
+  padX: number,
+  padBottom: number,
+): boolean =>
+  rect !== null &&
+  rect.bottom > 0 &&
+  py > rect.top - 24 &&
+  py < rect.bottom + padBottom &&
+  px + w > rect.left - padX &&
+  px < rect.right + padX;
+
 export function createField(
   root: ParentNode = document,
   signal?: AbortSignal,
@@ -146,38 +165,11 @@ export function createField(
       const px = line.x + (camX * 14) / line.z;
       const py = line.row * LINE_H + (camY * 10) / line.z;
       let alpha = 0.15 / line.z;
-      if (
-        apVisible &&
-        apRect &&
-        py > apRect.top - 24 &&
-        py < apRect.bottom + 24 &&
-        px + w > apRect.left - 60 &&
-        px < apRect.right + 60
-      ) {
-        alpha *= 0.15;
-      }
-      if (
-        heroRect &&
-        heroRect.bottom > 0 &&
-        py > heroRect.top - 24 &&
-        py < heroRect.bottom + 140 &&
-        px + w > heroRect.left - 80 &&
-        px < heroRect.right + 80
-      ) {
-        alpha *= 0.25;
-      }
+      if (apVisible && runsUnder(apRect, px, py, w, 60, 24)) alpha *= 0.15;
+      if (runsUnder(heroRect, px, py, w, 80, 140)) alpha *= 0.25;
       // Same factor as the hero rule, applied to whichever other scene owns the
       // viewport: atmosphere in the margins, out of the way over copy.
-      if (
-        contentRect &&
-        contentRect.bottom > 0 &&
-        py > contentRect.top - 24 &&
-        py < contentRect.bottom + 24 &&
-        px + w > contentRect.left - 80 &&
-        px < contentRect.right + 80
-      ) {
-        alpha *= 0.25;
-      }
+      if (runsUnder(contentRect, px, py, w, 80, 24)) alpha *= 0.25;
       if (light) alpha *= 0.55;
       ctx.globalAlpha = Math.min(0.13, alpha);
       ctx.fillStyle = COLORS[line.src.k][light ? 1 : 0];

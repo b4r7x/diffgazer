@@ -60,10 +60,8 @@ export interface SelectContextValue {
   onNativeInvalid: () => void;
 }
 
-/** React context backing select. */
 export const SelectContext = createContext<SelectContextValue | undefined>(undefined);
 
-/** Reads the select context. */
 export function useSelectContext(source?: string): SelectContextValue {
   const context = useContext(SelectContext);
   if (!context) {

@@ -294,11 +294,6 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
   const selectItem = useCallback(
     (itemValue: string) => {
       const option = optionMetadata.get(itemValue);
-      if (!option && process.env.NODE_ENV !== "production") {
-        console.warn(
-          `Select: ignoring activation of value "${itemValue}" — no SelectItem with this value is registered.`,
-        );
-      }
       if (disabled || !option || option.disabled || !matchesSearch(option.label, searchQuery))
         return;
       invalidatePendingReset();

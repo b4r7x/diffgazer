@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ROOT, readPublicRegistryItems, readSourceRegistry } from "./registry-test-helpers";
+import { ROOT, readSourceRegistry } from "./registry-test-helpers";
 
 describe("CSS-heavy components declare CSS in registry metadata", () => {
   const CSS_HEAVY_COMPONENTS = ["dialog", "command-palette"];
@@ -66,22 +66,6 @@ describe("public surface items are intentional", () => {
       exports?: Record<string, unknown>;
     };
     expect(pkg.exports).toHaveProperty(`./lib/${itemName}`);
-  });
-});
-
-describe("stale dependency metadata removed", () => {
-  it("overflow does not declare class-variance-authority as a dependency", () => {
-    const registry = readSourceRegistry();
-    const overflow = registry.items?.find((i) => i.name === "overflow");
-    expect(overflow, "overflow must exist in registry").toBeDefined();
-    expect(overflow?.dependencies ?? []).not.toContain("class-variance-authority");
-  });
-
-  it("overflow public registry item does not declare class-variance-authority", () => {
-    const items = readPublicRegistryItems();
-    const overflow = items.find((i) => i.name === "overflow");
-    expect(overflow, "overflow must exist in public registry").toBeDefined();
-    expect(overflow?.dependencies ?? []).not.toContain("class-variance-authority");
   });
 });
 

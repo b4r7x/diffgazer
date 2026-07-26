@@ -1,6 +1,5 @@
 import {
   buildReviewMetricsRows,
-  type ReviewMetricId,
   type ReviewProgressMetrics,
 } from "@diffgazer/core/schemas/presentation";
 import { KeyValue } from "@diffgazer/ui/components/key-value";
@@ -10,12 +9,6 @@ import { Timer } from "./timer";
 interface ReviewMetricsFooterProps {
   metrics: ReviewProgressMetrics;
   startTime?: Date;
-}
-
-function getMetricVariant(id: ReviewMetricId, issuesFound: number) {
-  if (id === "elapsed") return "info";
-  if (id === "issues-found" && issuesFound > 0) return "warning";
-  return "default";
 }
 
 export function ReviewMetricsFooter({ metrics, startTime }: ReviewMetricsFooterProps) {
@@ -28,12 +21,7 @@ export function ReviewMetricsFooter({ metrics, startTime }: ReviewMetricsFooterP
       </SectionHeader>
       <KeyValue className="pt-2">
         {rows.map((row) => (
-          <KeyValue.Item
-            key={row.id}
-            label={row.label}
-            value={row.value}
-            variant={getMetricVariant(row.id, metrics.issuesFound)}
-          />
+          <KeyValue.Item key={row.id} label={row.label} value={row.value} variant={row.tone} />
         ))}
       </KeyValue>
     </div>

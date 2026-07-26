@@ -576,50 +576,6 @@ describe("Dialog", () => {
     expect(dialog).toHaveAttribute("aria-label", "Dialog");
   });
 
-  it("warns in dev when falling back to hardcoded dialog label", async () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    render(
-      <Dialog defaultOpen>
-        <Dialog.Content>
-          <Dialog.Body>Body content</Dialog.Body>
-        </Dialog.Content>
-      </Dialog>,
-    );
-
-    // The warning is deferred a frame so a wrapper-registered Title can clear the
-    // fallback first; a genuinely titleless dialog still warns.
-    await waitFor(() =>
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("No accessible name provided")),
-    );
-    warnSpy.mockRestore();
-  });
-
-  it("does not warn about a missing accessible name while the dialog is closed", async () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    function WrappedTitle({ children }: { children: ReactNode }) {
-      return <Dialog.Title>{children}</Dialog.Title>;
-    }
-
-    render(
-      <Dialog open={false}>
-        <Dialog.Content>
-          <WrappedTitle>Closed wrapped title</WrappedTitle>
-          <Dialog.Body>Body content</Dialog.Body>
-        </Dialog.Content>
-      </Dialog>,
-    );
-
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-
-    expect(warnSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("No accessible name provided"),
-    );
-    expect(errorSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("No accessible name provided"),
-    );
-  });
-
   it("preserves consumer aria-describedby and merges with description id", () => {
     render(
       <Dialog defaultOpen>

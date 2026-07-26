@@ -131,34 +131,24 @@ describe("useControllableState", () => {
     expect(result.current[0]).toBe("controlled");
   });
 
-  it("warns once when switching from uncontrolled to controlled, and not again on a later switch", () => {
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    try {
-      const onChange = vi.fn();
-      const { result, rerender } = renderHook(
-        ({ value }: { value: string | undefined }) =>
-          useControllableState({ value, defaultValue: "default", onChange }),
-        { initialProps: { value: undefined as string | undefined } },
-      );
+  it("follows the switch when a consumer moves between uncontrolled and controlled", () => {
+    const onChange = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ value }: { value: string | undefined }) =>
+        useControllableState({ value, defaultValue: "default", onChange }),
+      { initialProps: { value: undefined as string | undefined } },
+    );
 
-      expect(result.current[0]).toBe("default");
-      expect(result.current[2]).toBe(false);
-      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    expect(result.current[0]).toBe("default");
+    expect(result.current[2]).toBe(false);
 
-      rerender({ value: "controlled" });
-      expect(result.current[0]).toBe("controlled");
-      expect(result.current[2]).toBe(true);
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("changed from uncontrolled to controlled"),
-      );
+    rerender({ value: "controlled" });
+    expect(result.current[0]).toBe("controlled");
+    expect(result.current[2]).toBe(true);
 
-      rerender({ value: undefined });
-      expect(result.current[2]).toBe(false);
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-    } finally {
-      consoleErrorSpy.mockRestore();
-    }
+    rerender({ value: undefined });
+    expect(result.current[0]).toBe("default");
+    expect(result.current[2]).toBe(false);
   });
 
   it("supports explicitly controlled undefined values", () => {

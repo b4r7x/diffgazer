@@ -1,3 +1,4 @@
+import { getCatalogFallbackNotice } from "@diffgazer/core/catalog";
 import { getCompatibilityLabel, useModelFilter, useModelSource } from "@diffgazer/core/providers";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
@@ -14,7 +15,6 @@ import {
   type KeyboardHint,
 } from "@diffgazer/ui/components/dialog";
 import { useRef } from "react";
-import { getCatalogFallbackNotice } from "@/lib/catalog-fallback-notice";
 import { ModelFilterTabs } from "./filter-tabs";
 import { ModelList } from "./list";
 import { ModelSearchInput } from "./search-input";

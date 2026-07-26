@@ -95,6 +95,8 @@ export function Label({
   onMouseDown,
   ...props
 }: LabelProps) {
+  // Double-clicking a wrapping label selects its text instead of activating the
+  // control; suppress that, but leave clicks that land on a real control alone.
   const handleMouseDown = (event: MouseEvent<HTMLLabelElement>) => {
     onMouseDown?.(event);
     if (event.defaultPrevented) return;

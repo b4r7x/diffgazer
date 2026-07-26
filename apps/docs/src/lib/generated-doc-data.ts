@@ -112,12 +112,9 @@ const hookDataSchema: z.ZodType<HookData> = z
 
 const hooksDataSchema = z.record(z.string(), z.record(z.string(), hookDataSchema));
 
-function parseGeneratedData<T>(label: string, value: unknown, schema: z.ZodType<T>): T {
-  const result = schema.safeParse(value);
-  if (!result.success) {
-    throw new Error(`Invalid generated docs data: ${label}: ${result.error.message}`);
-  }
-  return result.data;
+const parsedHooksData = hooksDataSchema.safeParse(rawHooksData);
+if (!parsedHooksData.success) {
+  throw new Error(`Invalid generated docs data: hooksData: ${parsedHooksData.error.message}`);
 }
 
-export const hooksData = parseGeneratedData("hooksData", rawHooksData, hooksDataSchema);
+export const hooksData = parsedHooksData.data;

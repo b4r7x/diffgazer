@@ -10,7 +10,9 @@ import {
 } from "@diffgazer/ui/components/command-palette";
 import { Kbd } from "@diffgazer/ui/components/kbd";
 import { Spinner } from "@diffgazer/ui/components/spinner";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
+import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
 import {
   type DocsSearchScope,
@@ -25,24 +27,23 @@ const LIBRARY_LABELS: Record<string, string> = Object.fromEntries(
   getEnabledDocsLibraries().map((lib) => [lib.id, lib.displayName]),
 );
 
-// biome-ignore format: Phase 10 accept checks quoted section keys.
 const SECTION_LABELS: Record<string, string> = {
-  "components": "Components",
-  "concepts": "Concepts",
+  components: "Components",
+  concepts: "Concepts",
   "getting-started": "Getting Started",
-  "api": "API",
-  "cli": "CLI",
-  "guides": "Guides",
-  "hooks": "Hooks",
-  "integrations": "Integrations",
-  "operations": "Operations",
-  "patterns": "Patterns",
-  "reference": "Reference",
-  "theme": "Theme",
-  "tui": "TUI",
-  "utils": "Utilities",
-  "web": "Web",
-  "general": "Docs",
+  api: "API",
+  cli: "CLI",
+  guides: "Guides",
+  hooks: "Hooks",
+  integrations: "Integrations",
+  operations: "Operations",
+  patterns: "Patterns",
+  reference: "Reference",
+  theme: "Theme",
+  tui: "TUI",
+  utils: "Utilities",
+  web: "Web",
+  general: "Docs",
 };
 
 interface SearchStatusView {
@@ -186,7 +187,11 @@ export function SearchDialog() {
                 type="button"
                 aria-label="Close search"
                 onClick={closeSearch}
-                className={`hidden min-h-11 min-w-11 items-center justify-center px-2 font-mono text-2xs uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground pointer-coarse:inline-flex ${FOCUS_RING_CLASS}`}
+                className={cn(
+                  CHROME_LABEL_CLASS,
+                  "hidden min-h-11 min-w-11 items-center justify-center px-2 transition-colors hover:text-foreground pointer-coarse:inline-flex",
+                  FOCUS_RING_CLASS,
+                )}
               >
                 [ close ]
               </button>

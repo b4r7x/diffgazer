@@ -22,7 +22,8 @@
    * --command-palette-muted → var(--muted-foreground); --command-palette-prefix-content → ">";
    * --command-palette-tone-nav → var(--info); --command-palette-tone-action → var(--success);
    * --command-palette-tone-settings → var(--warning); --command-palette-tone-destructive → var(--error);
-   * --command-palette-tone-ai → var(--accent). The [data-frame="terminal"] prefix override below still wins.
+   * --command-palette-tone-ai → var(--accent); --command-palette-shadow → var(--shadow-hard).
+   * The [data-frame="terminal"] prefix override below still wins.
    */
   [data-slot="command-palette-content"] {
     position: relative;

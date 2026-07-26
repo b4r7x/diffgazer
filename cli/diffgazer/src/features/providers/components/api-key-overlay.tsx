@@ -1,6 +1,5 @@
 import { useSaveConfig } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import type { InputMethod } from "@diffgazer/core/onboarding";
 import { useApiKeyEntry } from "@diffgazer/core/providers";
 import { sanitizeTerminalText } from "@diffgazer/core/review";
 import {
@@ -18,7 +17,6 @@ import { Dialog } from "../../../components/ui/dialog";
 import { Spinner } from "../../../components/ui/spinner";
 import { useActionRow } from "../../../hooks/use-action-row";
 import { useTheme } from "../../../theme/provider";
-import { isOverlayFooterNavActive } from "../lib/overlay-footer-gate";
 
 const API_KEY_SHORTCUTS: Shortcut[] = [
   { key: "Tab", label: "Focus Key Field" },
@@ -73,10 +71,6 @@ export function ApiKeyOverlay({
     void entry.submit();
   }
 
-  function handleMethodChange(m: InputMethod) {
-    setMethod(m);
-  }
-
   // Single Tab owner for the overlay: toggle the key input focus, which also
   // gates the footer arrows below (F-347b).
   useInput(
@@ -95,12 +89,14 @@ export function ApiKeyOverlay({
     rightShortcuts: API_KEY_RIGHT_SHORTCUTS,
   });
 
-  const footerNavActive = isOverlayFooterNavActive({ open, saving, inputFocused });
   const actions = useActionRow({
     actionCount: 2,
     disabledActions: [!canSubmit, false],
     onAction: (index) => (index === 0 ? handleSave() : handleClose()),
-    isActive: footerNavActive,
+    // Footer arrows stay inactive while the key input is focused, otherwise
+    // arrow-then-Enter while typing activates Cancel and discards the typed key
+    // (F-347b — Ink delivers keystrokes to all active subscribers).
+    isActive: open && !saving && !inputFocused,
   });
 
   const resetSecrets = useEffectEvent(() => {
@@ -126,7 +122,7 @@ export function ApiKeyOverlay({
             <Text color={tokens.muted}>Choose how to provide the API key for {providerId}:</Text>
             <ApiKeyMethodSelector
               method={method}
-              onMethodChange={handleMethodChange}
+              onMethodChange={setMethod}
               apiKey={value}
               onApiKeyChange={setValue}
               envVar={envVarName}

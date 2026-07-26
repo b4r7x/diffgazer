@@ -1,9 +1,9 @@
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { BlockBar } from "@diffgazer/ui/components/block-bar";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { BAR_EMPTY_CHAR, BAR_FILLED_CHAR, DEFAULT_BAR_WIDTH, SEVERITY_CONFIG } from "./constants";
+import { SEVERITY_CONFIG } from "./constants";
 
-export interface SeverityBarProps {
+interface SeverityBarProps {
   label: string;
   count: number;
   max: number;
@@ -21,9 +21,6 @@ export function SeverityBar({ label, count, max, severity, className }: Severity
         label={label}
         value={count}
         max={max}
-        barWidth={DEFAULT_BAR_WIDTH}
-        filledChar={BAR_FILLED_CHAR}
-        emptyChar={BAR_EMPTY_CHAR}
         valueText={`${label}: ${count}`}
         className="flex-1"
       >

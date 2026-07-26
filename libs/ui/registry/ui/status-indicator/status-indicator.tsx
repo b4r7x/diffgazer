@@ -1,4 +1,4 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
@@ -32,9 +32,7 @@ export const statusIndicatorDotVariants = cva("inline-block size-2 shrink-0", {
 });
 
 /** Props for status indicator. */
-export interface StatusIndicatorProps
-  extends ComponentProps<"span">,
-    Omit<VariantProps<typeof statusIndicatorDotVariants>, "status" | "pulse"> {
+export interface StatusIndicatorProps extends ComponentProps<"span"> {
   /** Semantic status. Drives the dot shape and color and the default sr-only status word. */
   status?: StatusIndicatorStatus;
   /** Animate the dot. Only the online status animates; busy and offline never pulse. */

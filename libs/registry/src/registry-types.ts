@@ -21,6 +21,18 @@ export const REGISTRY_ITEM_TYPE = {
   file: "registry:file",
 } as const satisfies Record<string, RegistryItemType>;
 
+// Namespace prefixes for a `@diffgazer/keys` registry dependency: `@diffgazer-keys/` is the
+// canonical shadcn ref, `@diffgazer/keys/` the package-style spelling parsers still accept.
+export const KEYS_REGISTRY_DEPENDENCY_PREFIXES = ["@diffgazer-keys/", "@diffgazer/keys/"] as const;
+
+/** Returns the bare hook name of a keys registry dependency (e.g. `focus-trap`), or null. */
+export function parseKeysDependencyRef(dependency: string): string | null {
+  for (const prefix of KEYS_REGISTRY_DEPENDENCY_PREFIXES) {
+    if (dependency.startsWith(prefix)) return dependency.slice(prefix.length);
+  }
+  return null;
+}
+
 export const RegistryFileSchema = z.object({
   path: z.string(),
   content: z.string().optional(),

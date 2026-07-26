@@ -6,7 +6,7 @@ import {
 } from "@diffgazer/keys";
 import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 
-export type TrustFormFocusZone = "list" | "buttons";
+type TrustFormFocusZone = "list" | "buttons";
 export type TrustFormAction = "save" | "revoke";
 
 const TRUST_FORM_ZONES = ["list", "buttons"] as const;

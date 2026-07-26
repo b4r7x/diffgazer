@@ -5,9 +5,9 @@ import {
   collectPathParityErrors,
   collectTreeParityErrors,
   computeStrictArtifactFingerprint,
+  findRelativeJsSpecifiers,
   normalizeOrigin,
   REGISTRY_ORIGIN,
-  RELATIVE_JS_IMPORT_RE,
   validateManifest,
 } from "@diffgazer/registry";
 import { errorMessage } from "./error-message.mjs";
@@ -276,10 +276,10 @@ export function collectBundleRelativeJsImportErrors(items, label) {
   for (const item of items ?? []) {
     for (const file of item?.files ?? []) {
       if (typeof file?.content !== "string") continue;
-      const matches = file.content.match(new RegExp(RELATIVE_JS_IMPORT_RE.source, "g"));
-      if (matches) {
+      const specifiers = findRelativeJsSpecifiers(file.content);
+      if (specifiers.length > 0) {
         errors.push(
-          `${label}: ${file.target ?? file.path} has relative .js import specifiers: ${matches.join(", ")}`,
+          `${label}: ${file.target ?? file.path} has relative .js import specifiers: ${specifiers.join(", ")}`,
         );
       }
     }

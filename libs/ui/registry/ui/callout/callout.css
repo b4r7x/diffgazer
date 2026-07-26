@@ -15,9 +15,11 @@
  * with [data-has-icon] on the inner grid element. The icon column is
  * collapsed when no <Callout.Icon> child is present.
  *
- * For architectural parity with Panel (panel/panel.css), all chrome and
- * forced-colors fallbacks live in this file; the React component only emits
- * data-attributes.
+ * This file owns the frame, the tone cascade, and the grid. The parts keep
+ * their own typography and interactive chrome in Tailwind (Callout.Title
+ * weight, Callout.Icon sizing, Callout.Dismiss hover/focus/touch target, and
+ * the bar's forced-colors fallback), so a chrome change may land in either
+ * place — unlike Panel (panel/panel.css), which really does hold all of it.
  */
 @layer components {
   /*
@@ -33,7 +35,7 @@
    */
   [data-slot="callout"] {
     position: relative;
-    font-family: var(--font-mono);
+    font-family: var(--base-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
     font-size: 13px;
     color: var(--foreground);
     border-radius: var(--radius);
@@ -101,8 +103,8 @@
 /* ============================================================
    Grid layout: the inner [data-slot="callout-grid"] element owns the
    grid, with columns + template areas driven by [data-frame] and its
-   own [data-has-icon]. Each child takes its cell from its data-slot
-   (the React components emit data-attributes only).
+   own [data-has-icon]. Each child takes its cell from the data-slot it
+   emits; the placement rules live here, the parts' own styling does not.
    ============================================================ */
 @layer components {
   [data-slot="callout-grid"] {

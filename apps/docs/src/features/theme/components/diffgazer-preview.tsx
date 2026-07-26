@@ -1,6 +1,7 @@
 import { buttonVariants } from "@diffgazer/ui/components/button";
 import { CodeBlock } from "@diffgazer/ui/components/code-block";
 import { DOT_GRID_CLASS } from "@/components/shared/dot-grid";
+import { getDocsLibraryConfig } from "@/lib/library";
 
 const REVIEW_LENSES = ["Correctness", "Security", "Performance", "Simplicity", "Tests"];
 
@@ -36,7 +37,7 @@ export function DiffgazerPreview() {
       </div>
 
       <a
-        href="https://github.com/b4r7x/diffgazer"
+        href={getDocsLibraryConfig("app").githubUrl}
         target="_blank"
         rel="noreferrer"
         className={buttonVariants({ variant: "link", size: "sm" })}

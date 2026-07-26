@@ -127,6 +127,26 @@ describe("ModelSelectDialog (catalog)", () => {
     expect(within(dialog).getByRole("button", { name: /confirm/i })).toBeEnabled();
   });
 
+  it("moves the footer highlight to the button the pointer focused", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByRole("radio", { name: /Gemini 2\.5 Flash/ });
+    const cancel = within(dialog).getByRole("button", { name: /cancel/i });
+    const confirm = within(dialog).getByRole("button", { name: /confirm/i });
+
+    await user.click(confirm);
+    await user.keyboard("{ArrowLeft}");
+    await waitFor(() => expect(cancel).toHaveAttribute("data-highlighted"));
+
+    await user.click(confirm);
+
+    expect(confirm).toHaveFocus();
+    await waitFor(() => expect(confirm).toHaveAttribute("data-highlighted"));
+    expect(cancel).not.toHaveAttribute("data-highlighted");
+  });
+
   it("renders catalog models free-first with a free badge", async () => {
     renderDialog();
     await waitFor(() =>

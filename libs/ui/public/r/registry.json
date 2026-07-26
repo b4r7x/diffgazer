@@ -294,7 +294,6 @@
       "type": "registry:ui",
       "title": "Callout",
       "description": "Highlighted message block for tips, warnings, and errors",
-      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
@@ -369,8 +368,7 @@
         "https://r.b4r7.dev/r/ui/selectable-variants.json",
         "https://r.b4r7.dev/r/ui/selectable-glyph.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/composed-refs.json",
-        "https://r.b4r7.dev/r/ui/warn-unregistered-value.json"
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true,
@@ -448,8 +446,7 @@
         "https://r.b4r7.dev/r/ui/selectable-variants.json",
         "https://r.b4r7.dev/r/ui/selectable-glyph.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/composed-refs.json",
-        "https://r.b4r7.dev/r/ui/warn-unregistered-value.json"
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true,
@@ -1088,7 +1085,6 @@
       "type": "registry:ui",
       "title": "Tabs",
       "description": "Terminal-styled tabbed interface",
-      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/aria.json",
@@ -1099,8 +1095,7 @@
         "https://r.b4r7.dev/r/ui/segmented-variants.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/utils.json",
-        "https://r.b4r7.dev/r/ui/composed-refs.json",
-        "https://r.b4r7.dev/r/ui/warn-unregistered-value.json"
+        "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
       "meta": {
         "client": true,
@@ -1249,7 +1244,6 @@
         "https://r.b4r7.dev/r/ui/icons.json",
         "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json",
-        "https://r.b4r7.dev/r/ui/warn-unregistered-value.json",
         "https://r.b4r7.dev/r/ui/marker-rail.json"
       ],
       "meta": {
@@ -1504,7 +1498,6 @@
       "type": "registry:ui",
       "title": "Toggle Group",
       "description": "Compound toggle button group for single selection with keyboard navigation",
-      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
@@ -1549,7 +1542,6 @@
       "type": "registry:ui",
       "title": "Code Block",
       "description": "Code display with three visual variants (hairline, bare, terminal), per-line diff/highlight states, and optional copy button. Add ui/code-block-highlight separately for lowlight syntax coloring.",
-      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/scroll-area.json",
@@ -1668,7 +1660,6 @@
       "meta": {
         "client": true
       },
-      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/step-status.json",

@@ -30,7 +30,7 @@ export const substepVariants = cva("flex items-center gap-2 py-1 text-sm", {
   defaultVariants: { status: "pending" },
 });
 
-export const SUBSTEP_STATUS_BADGE_VARIANTS: Record<
+const SUBSTEP_STATUS_BADGE_VARIANTS: Record<
   SubstepStatus,
   "success" | "info" | "error" | "neutral"
 > = {

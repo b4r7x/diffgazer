@@ -7,7 +7,7 @@ import {
   type SecretsStorage,
 } from "@diffgazer/core/schemas/config";
 import { z } from "zod";
-import { removeFileSync, writeJsonFile, writeJsonFileSync } from "../../fs.js";
+import { removeFileSync, writeJsonFile } from "../../fs.js";
 import { getGlobalSecretsPath } from "../../paths.js";
 import { withFileTransactionLock } from "../transaction/file-lock.js";
 import type { SecretsState } from "../types.js";
@@ -113,10 +113,6 @@ const mergeChangedRecords = (
   return merged;
 };
 
-export const persistSecrets = (state: SecretsState): void => {
-  writeJsonFileSync(SECRETS_PATH(), serializeSecrets(state), 0o600);
-};
-
 export const persistSecretsAsync = (
   state: SecretsState,
   previousState: SecretsState = { providers: {} },
@@ -134,8 +130,6 @@ export const persistSecretsAsync = (
     }
     await writeJsonFile(SECRETS_PATH(), { providers }, 0o600);
   });
-
-export const removeSecretsFile = (): boolean => removeFileSync(SECRETS_PATH());
 
 export const syncProvidersWithSecrets = (
   providers: ProviderStatus[],

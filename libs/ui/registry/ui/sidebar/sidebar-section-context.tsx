@@ -23,21 +23,14 @@ export interface SidebarSectionContextValue {
   panelId: string;
 }
 
-/** React context backing sidebar section. */
 export const SidebarSectionContext = createContext<SidebarSectionContextValue | undefined>(
   undefined,
 );
 
-/** Reads the sidebar section context. */
 export function useSidebarSectionContext() {
   const context = useContext(SidebarSectionContext);
   if (!context) {
     throw new Error("SidebarSection compound components must be used within a SidebarSection");
   }
   return context;
-}
-
-/** Reads the optional sidebar section context. */
-export function useOptionalSidebarSectionContext() {
-  return useContext(SidebarSectionContext);
 }

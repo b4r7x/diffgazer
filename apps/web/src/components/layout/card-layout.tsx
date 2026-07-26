@@ -2,7 +2,7 @@ import { Panel } from "@diffgazer/ui/components/panel";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { type ReactNode, useId } from "react";
 
-export interface CardLayoutProps {
+interface CardLayoutProps {
   title?: string;
   subtitle?: string;
   /**

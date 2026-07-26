@@ -9,8 +9,8 @@ import {
   errorResponse,
   zodErrorHandler as handleZodError,
 } from "../../../shared/lib/http/response.js";
+import { handleStoreError } from "../../../shared/lib/http/store-error.js";
 import { requireRepoAccess } from "../../../shared/middlewares/trust-guard.js";
-import { handleStoreError } from "../errors.js";
 import { ReviewIdParamSchema, ReviewListQuerySchema } from "../schemas.js";
 import { getReview as getStoredReview, listReviewPage } from "../storage/reviews.js";
 import { isValidProjectPath, resolvesToSameProject } from "../validation.js";
@@ -20,7 +20,7 @@ const historyRouter = new Hono();
 historyRouter.get(
   "/reviews",
   requireRepoAccess,
-  zValidator("query", ReviewListQuerySchema.passthrough(), handleZodError),
+  zValidator("query", ReviewListQuerySchema, handleZodError),
   async (c): Promise<Response> => {
     const requested = await getRequestedProjectPath(c);
     if (!requested.ok) return requested.response;

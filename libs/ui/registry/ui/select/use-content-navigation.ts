@@ -109,7 +109,7 @@ export function useSelectContentNavigation({
 
     if (e.key === "Enter") {
       e.preventDefault();
-      if (isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)) {
+      if (isActiveOptionVisible(options, highlighted, searchQuery)) {
         selectItem(highlighted);
       }
       return;
@@ -228,7 +228,7 @@ export function useSelectContentNavigation({
     if (e.key !== " " && !isModified) handleTypeahead(e.key);
   };
 
-  const activeDescendant = isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
+  const activeDescendant = isActiveOptionVisible(options, highlighted, searchQuery)
     ? toOptionId(listboxId, highlighted)
     : undefined;
 

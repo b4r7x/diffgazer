@@ -7,7 +7,7 @@ import { getErrorMessage } from "@diffgazer/core/errors";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import type { Context } from "hono";
-import type { ServerController } from "./controller";
+import type { ServerController } from "./types";
 
 export interface EmbeddedServerConfig {
   port: number;
@@ -47,6 +47,16 @@ function isHtmlShellPath(pathname: string): boolean {
   return pathname === "/index.html" || extname(pathname) === "";
 }
 
+function describeListenError(err: NodeJS.ErrnoException, port: number): string {
+  if (err.code === "EADDRINUSE") {
+    return `Port ${port} is already in use. Close the other process or set a different PORT.`;
+  }
+  if (err.code === "EACCES") {
+    return `Permission denied binding to port ${port}. Try a port above 1024.`;
+  }
+  return `Server listen error: ${err.message}`;
+}
+
 export const isSpaNavigationRequest = (c: Context, pathname: string): boolean => {
   const method = c.req.method;
   if (method !== "GET" && method !== "HEAD") {
@@ -83,6 +93,13 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
     startPromise = null;
   }
 
+  function failStartup(message: string, cause?: unknown): void {
+    state = "idle";
+    console.error(message);
+    config.onFailure?.(message);
+    rejectStartup(new Error(message, cause === undefined ? undefined : { cause }));
+  }
+
   function start(): Promise<void> {
     if (startPromise) return startPromise;
 
@@ -94,22 +111,14 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
     startPromise = starting;
     void starting.catch(() => undefined);
     void startServer().catch((err: unknown) => {
-      state = "idle";
-      const message = getErrorMessage(err);
-      console.error(err);
-      config.onFailure?.(message);
-      rejectStartup(new Error(message, { cause: err }));
+      failStartup(getErrorMessage(err), err);
     });
     return starting;
   }
 
   async function startServer(): Promise<void> {
     if (!existsSync(webRoot)) {
-      const message = `Web assets not found at ${webRoot}`;
-      console.error(message);
-      state = "idle";
-      config.onFailure?.(message);
-      rejectStartup(new Error(message));
+      failStartup(`Web assets not found at ${webRoot}`);
       return;
     }
 
@@ -160,25 +169,10 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
       });
 
       server.on("error", (err: NodeJS.ErrnoException) => {
-        state = "idle";
-        let message: string;
-        if (err.code === "EADDRINUSE") {
-          message = `Port ${config.port} is already in use. Close the other process or set a different PORT.`;
-        } else if (err.code === "EACCES") {
-          message = `Permission denied binding to port ${config.port}. Try a port above 1024.`;
-        } else {
-          message = `Server listen error: ${err.message}`;
-        }
-        console.error(message);
-        config.onFailure?.(message);
-        rejectStartup(new Error(message, { cause: err }));
+        failStartup(describeListenError(err, config.port), err);
       });
     } catch (err) {
-      state = "idle";
-      const message = getErrorMessage(err);
-      console.error(err);
-      config.onFailure?.(message);
-      rejectStartup(new Error(message, { cause: err }));
+      failStartup(getErrorMessage(err), err);
     }
   }
 

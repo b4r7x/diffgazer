@@ -1,14 +1,11 @@
 export type BreakpointTier = "narrow" | "medium" | "wide";
 
-export const BREAKPOINTS = {
-  narrow: { maxColumns: 79 },
-  medium: { minColumns: 80, maxColumns: 119 },
-  wide: { minColumns: 120 },
-} as const;
+const MEDIUM_MIN_COLUMNS = 80;
+const WIDE_MIN_COLUMNS = 120;
 
 export function getBreakpointTier(columns: number): BreakpointTier {
-  if (columns < BREAKPOINTS.medium.minColumns) return "narrow";
-  if (columns < BREAKPOINTS.wide.minColumns) return "medium";
+  if (columns < MEDIUM_MIN_COLUMNS) return "narrow";
+  if (columns < WIDE_MIN_COLUMNS) return "medium";
   return "wide";
 }
 

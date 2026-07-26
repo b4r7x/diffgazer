@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, posix, resolve } from "node:path";
-import { RELATIVE_JS_IMPORT_RE, stripRelativeJsExtensions } from "@diffgazer/registry";
+import { findRelativeJsSpecifiers, stripRelativeJsExtensions } from "@diffgazer/registry";
 import type { RegistryItem } from "@diffgazer/registry/schemas";
 import { RegistrySchema } from "@diffgazer/registry/schemas";
 
@@ -95,9 +95,9 @@ export function assertNoRelativeJsImports(outputDir: string): void {
     const item = parseRegistryEntry(JSON.parse(readFileSync(join(outputDir, entry), "utf-8")));
     for (const file of item.files) {
       if (typeof file.content !== "string") continue;
-      const matches = file.content.match(new RegExp(RELATIVE_JS_IMPORT_RE.source, "g"));
-      if (matches) {
-        offenders.push(`${entry} (${file.target ?? file.path}): ${matches.join(", ")}`);
+      const specifiers = findRelativeJsSpecifiers(file.content);
+      if (specifiers.length > 0) {
+        offenders.push(`${entry} (${file.target ?? file.path}): ${specifiers.join(", ")}`);
       }
     }
   }

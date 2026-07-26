@@ -21,7 +21,7 @@ export interface UseNavigationCoreReturn<TValue extends string = string> {
   getElements: () => HTMLElement[];
 }
 
-export function queryNavigationElements(
+function queryNavigationElements(
   containerRef: RefObject<HTMLElement | null>,
   role: NavigationRole,
   skipDisabled: boolean,
@@ -36,7 +36,7 @@ export function queryNavigationElements(
   });
 }
 
-export function wrapIndex(index: number, length: number, wrap: boolean): number | null {
+function wrapIndex(index: number, length: number, wrap: boolean): number | null {
   if (index < 0) return wrap ? length - 1 : null;
   if (index >= length) return wrap ? 0 : null;
   return index;

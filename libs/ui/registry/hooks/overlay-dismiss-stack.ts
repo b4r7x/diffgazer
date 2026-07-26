@@ -71,8 +71,7 @@ function getComposedPath(event: Event): EventTarget[] {
 
 function pathContains(path: EventTarget[], element: HTMLElement | null): boolean {
   if (!element) return false;
-  if (path.length > 0) return path.includes(element);
-  return false;
+  return path.includes(element);
 }
 
 function isTargetInside(target: Node, element: HTMLElement | null): boolean {

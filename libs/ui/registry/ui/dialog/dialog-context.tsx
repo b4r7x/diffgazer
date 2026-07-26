@@ -33,10 +33,8 @@ export interface DialogContextValue {
   unregisterDescription: (registrationId: string) => void;
 }
 
-/** React context backing dialog. */
 export const DialogContext = createContext<DialogContextValue | undefined>(undefined);
 
-/** Reads the dialog context. */
 export function useDialogContext() {
   const context = useContext(DialogContext);
   if (!context) {
@@ -45,7 +43,6 @@ export function useDialogContext() {
   return context;
 }
 
-/** Provides dialog dismiss behavior. */
 export function useDialogDismiss<T extends HTMLElement = HTMLElement>(
   onClick?: MouseEventHandler<T>,
 ): MouseEventHandler<T> {

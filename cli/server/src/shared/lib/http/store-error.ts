@@ -1,7 +1,9 @@
+import type { AppError } from "@diffgazer/core/errors";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
+import type { Context } from "hono";
 import type { SecretsStorageErrorCode } from "../config/types.js";
 import type { ConfigServiceErrorCode, StoreErrorCode } from "./error-codes.js";
-import type { ErrorStatus } from "./response.js";
+import { type ErrorStatus, errorResponse } from "./response.js";
 
 export type StoreHttpErrorCode =
   | StoreErrorCode
@@ -42,4 +44,8 @@ export function storeErrorStatus(code: StoreHttpErrorCode): ErrorStatus {
 
   const unhandled: never = code;
   throw new Error(`Unhandled store error code: ${unhandled}`);
+}
+
+export function handleStoreError(ctx: Context, error: AppError<StoreHttpErrorCode>): Response {
+  return errorResponse(ctx, error.message, error.code, storeErrorStatus(error.code));
 }

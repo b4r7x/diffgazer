@@ -31,6 +31,12 @@ type ResumableSession = { reviewId: string; mode: ReviewMode };
 type RouteConfig = { to: string; search?: Record<string, string> };
 const MENU_ITEM_IDS = new Set<string>(MENU_ITEMS.map((item) => item.id));
 
+function getHomeMenuHighlighted(value: string | null): string | null {
+  if (!value) return value;
+  if (MENU_ITEM_IDS.has(value)) return value;
+  return MENU_ITEMS[0]?.id ?? null;
+}
+
 const MENU_ROUTES: Record<NavigableMenuAction, RouteConfig> = {
   history: { to: "/history" },
   settings: { to: "/settings" },
@@ -82,12 +88,9 @@ export function HomePagePresentation({
   const hasResumableSession = resumableSession != null;
   const activeReviewRequestRef = useRef<symbol | null>(null);
   const invalidIdReportedRef = useRef(false);
-  const isMountedRef = useRef(false);
 
   useEffect(() => {
-    isMountedRef.current = true;
     return () => {
-      isMountedRef.current = false;
       activeReviewRequestRef.current = null;
     };
   }, []);
@@ -99,11 +102,7 @@ export function HomePagePresentation({
     navigate({ to: "/", replace: true });
   }, [searchError, navigate]);
 
-  const effectiveHighlighted = (() => {
-    if (!highlighted) return highlighted;
-    if (MENU_ITEM_IDS.has(highlighted)) return highlighted;
-    return MENU_ITEMS[0]?.id ?? null;
-  })();
+  const effectiveHighlighted = getHomeMenuHighlighted(highlighted);
 
   const handleQuit = async () => {
     reportShutdownResult(await shutdown());
@@ -124,7 +123,7 @@ export function HomePagePresentation({
     setIsStartingReview(true);
 
     const finishCurrentRequest = () => {
-      if (!isMountedRef.current || activeReviewRequestRef.current !== request) return false;
+      if (activeReviewRequestRef.current !== request) return false;
       activeReviewRequestRef.current = null;
       setIsStartingReview(false);
       return true;

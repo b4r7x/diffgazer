@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { getErrorMessage } from "../errors.js";
 import { type AIProvider, AVAILABLE_PROVIDERS } from "../schemas/config/index.js";
 import { canProceed } from "./can-proceed.js";
@@ -206,6 +206,13 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
       );
     }
   }, [callbacks, onCleanupError]);
+
+  // Abandoning the wizard mid-flow must not leave early-saved credentials behind.
+  // Completing clears the marker first, so this is a no-op on the success path.
+  const cleanupOnUnmount = useEffectEvent(() => {
+    void cleanupEarlySave();
+  });
+  useEffect(() => () => cleanupOnUnmount(), []);
 
   return {
     wizardData,

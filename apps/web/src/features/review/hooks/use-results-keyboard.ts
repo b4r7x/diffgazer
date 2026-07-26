@@ -145,12 +145,11 @@ export function useReviewResultsKeyboard({
     isFilterActive,
   } = useSeverityFilter({ issues });
 
-  const { selectedIssue, selectedIssueId, setSelectedIssueId, highlightedIssueId, listRef } =
-    useIssueSelection({
-      filteredIssues,
-      sourceKey: severityFilterToKey(severityFilter),
-      initialIssueId,
-    });
+  const { selectedIssue, selectedIssueId, setSelectedIssueId, listRef } = useIssueSelection({
+    filteredIssues,
+    sourceKey: severityFilterToKey(severityFilter),
+    initialIssueId,
+  });
 
   const {
     activeTab,
@@ -192,11 +191,7 @@ export function useReviewResultsKeyboard({
         filters: {
           container: filterRef,
           target: () =>
-            findNavigationItemByValue(filterRef.current, {
-              type: "button",
-              value: focusTargetValueForIndex(focusedFilterIndex),
-              ownerSelector: null,
-            }) ??
+            findFilterChip(focusedFilterIndex) ??
             getNavigationItems(filterRef.current, {
               type: "button",
               ownerSelector: null,
@@ -243,7 +238,7 @@ export function useReviewResultsKeyboard({
   useScopedNavigation({
     containerRef: listRef,
     role: "option",
-    highlighted: highlightedIssueId,
+    highlighted: selectedIssueId,
     onHighlightChange: selectIssue,
     onNavigationBoundaryReached: handleListBoundary,
     wrap: false,
@@ -293,11 +288,7 @@ export function useReviewResultsKeyboard({
     if (direction !== "next") return;
     if (isFilterActive) {
       setFocusedFilterIndex(resetIndex);
-      findNavigationItemByValue(filterRef.current, {
-        type: "button",
-        value: RESET_FILTER_VALUE,
-        ownerSelector: null,
-      })?.focus();
+      findFilterChip(resetIndex)?.focus();
       return;
     }
     changeFocusZone("details");
@@ -362,7 +353,6 @@ export function useReviewResultsKeyboard({
     handleFilterKeyDown,
     handleSeverityFilterBoundary,
     handleDetailsTabsBoundary,
-    highlightedIssueId,
     handleListFocus,
     listRef,
     listBodyRef,

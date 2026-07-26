@@ -5,5 +5,4 @@ export const GitDiffModeSchema = ReviewModeSchema.exclude(["files"]);
 
 export const GitDiffQuerySchema = z.object({
   mode: GitDiffModeSchema.optional(),
-  path: z.string().optional(),
 });

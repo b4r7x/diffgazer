@@ -23,16 +23,15 @@ export interface SidebarContextValue {
   onStateChange: (state: SidebarState) => void;
   /** Opens or closes the mobile sheet. */
   onMobileOpenChange: (open: boolean) => void;
-  /** Toggles sidebar. */
+  /** Toggles the mobile sheet below the breakpoint, otherwise swaps the desktop state open <-> rail. */
   toggleSidebar: () => void;
-  /** Toggles hidden. */
+  /** Toggles the mobile sheet below the breakpoint, otherwise swaps the desktop state open <-> hidden. */
   toggleHidden: () => void;
 }
 
-/** React context backing sidebar. */
 export const SidebarContext = createContext<SidebarContextValue | undefined>(undefined);
 
-/** Provides sidebar behavior. */
+/** Sidebar state plus the callbacks that change it. Throws outside a Sidebar or SidebarProvider. */
 export function useSidebar() {
   const context = useContext(SidebarContext);
   if (!context) {
@@ -41,7 +40,7 @@ export function useSidebar() {
   return context;
 }
 
-/** Provides optional sidebar behavior. */
+/** useSidebar for components that may render outside a sidebar: returns undefined instead of throwing. */
 export function useOptionalSidebar() {
   return useContext(SidebarContext);
 }
@@ -65,13 +64,11 @@ export interface SidebarChromeContextValue {
   autoTone: boolean;
 }
 
-/** React context backing sidebar chrome. */
 export const SidebarChromeContext = createContext<SidebarChromeContextValue>({
   variant: "caret",
   autoTone: false,
 });
 
-/** Provides sidebar chrome behavior. */
 export function useSidebarChrome() {
   return useContext(SidebarChromeContext);
 }

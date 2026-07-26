@@ -4,8 +4,6 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { DialogKeyboardHints, type KeyboardHint } from "./dialog-keyboard-hints";
 
-export { DialogKeyboardHints, type KeyboardHint };
-
 /** Props for dialog footer. */
 export interface DialogFooterProps extends ComponentProps<"div"> {
   /**

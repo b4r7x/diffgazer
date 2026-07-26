@@ -90,6 +90,9 @@ export function ScrollArea({
   const contentReferenceChanged = !isWindowed && !Object.is(scrollState.contentReference, children);
   const rowCount = totalRows ?? measuredStaticRowCount;
   const lastIndex = Math.max(rowCount - 1, 0);
+  // Static children have no known row count until useBoxMetrics reports one, so a content
+  // swap must render the box unclamped (minHeight undefined) for a single commit to be
+  // measured, then re-clamp to the measured rowCount. isMeasuringContent is that window.
   const isMeasuringContent = contentReferenceChanged || scrollState.isMeasuringContent;
   const nextIsMeasuringContent =
     contentReferenceChanged ||
@@ -165,8 +168,7 @@ export function ScrollArea({
         updateScrollState(next);
       } else if (key.home) {
         if (!canNavigateUp) return;
-        const next = 0;
-        updateScrollState(next);
+        updateScrollState(0);
       } else if (key.end) {
         if (!canNavigateDown) return;
         updateScrollState(lastIndex, false);

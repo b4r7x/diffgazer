@@ -1,9 +1,10 @@
 import type { Result } from "@diffgazer/core/result";
 import { err, ok } from "@diffgazer/core/result";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
 import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
-import { makeFileDiff, makeIssue, makeParsedDiff } from "../../../shared/lib/testing/factories.js";
+import { makeFileDiff, makeParsedDiff } from "../testing/factories.js";
 import { orchestrateReview } from "./orchestrate.js";
 
 function createDiffForFiles(files: string[]) {
@@ -53,7 +54,7 @@ describe("orchestrateReview", () => {
     const result = await orchestrateReview(
       makeClient([]),
       createDiffForFiles([]),
-      {},
+      { lenses: ["correctness"] },
       (event) => events.push({ type: event.type }),
       { concurrency: 2 },
     );
@@ -61,51 +62,6 @@ describe("orchestrateReview", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe("NO_DIFF");
     expect(events).toEqual([]);
-  });
-
-  it("falls back from an empty explicit lens list and invokes one correctness analysis", async () => {
-    const client = makeClient([]);
-    const generate = vi.spyOn(client, "generate");
-    const events: Array<Record<string, unknown>> = [];
-
-    const result = await orchestrateReview(
-      client,
-      createDiffForFiles(["src/a.ts"]),
-      { lenses: [] },
-      (event) => events.push(event as Record<string, unknown>),
-      { concurrency: 4 },
-    );
-
-    expect(result.ok).toBe(true);
-    expect(generate).toHaveBeenCalledOnce();
-    expect(events.filter((event) => event.type === "agent_queued")).toHaveLength(1);
-    if (result.ok) {
-      expect(result.value.lensStats.map((lens) => lens.lensId)).toEqual(["correctness"]);
-    }
-  });
-
-  it("canonicalizes duplicate lens ids before queuing or invoking agents", async () => {
-    const client = makeClient([]);
-    const generate = vi.spyOn(client, "generate");
-    const events: Array<Record<string, unknown>> = [];
-
-    const result = await orchestrateReview(
-      client,
-      createDiffForFiles(["src/a.ts"]),
-      { lenses: ["correctness", "correctness", "security", "correctness", "security"] },
-      (event) => events.push(event as Record<string, unknown>),
-      { concurrency: 4 },
-    );
-
-    expect(result.ok).toBe(true);
-    expect(generate).toHaveBeenCalledTimes(2);
-    expect(events.filter((event) => event.type === "agent_queued")).toHaveLength(2);
-    if (result.ok) {
-      expect(result.value.lensStats.map((lens) => lens.lensId)).toEqual([
-        "correctness",
-        "security",
-      ]);
-    }
   });
 
   it("returns sorted, deduplicated issues and complete orchestration metadata", async () => {
@@ -150,7 +106,7 @@ describe("orchestrateReview", () => {
     expect(JSON.stringify(events)).not.toMatch(/"(?:traceId|spanId|parentSpanId)":/);
   });
 
-  it("keeps successful lens output and reports failed lenses", async () => {
+  it("keeps successful lens output and reports the failed lens in its stats", async () => {
     const client = makeClient([
       ok({ issues: [makeIssue({ id: "issue-1", file: "file-1" })] }),
       err({ code: "MODEL_ERROR", message: "Second lens failed" }),
@@ -167,21 +123,19 @@ describe("orchestrateReview", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.issues).toHaveLength(1);
-      expect(result.value.failedLenses).toEqual([
+      expect(result.value.lensStats.filter((lens) => lens.status === "failed")).toEqual([
         expect.objectContaining({ lensId: "security", errorCode: "MODEL_ERROR" }),
       ]);
     }
   });
 
-  it("returns an error when every lens fails unless partialOnAllFailed is enabled", async () => {
-    const diff = createDiffForFiles(["src/a.ts"]);
-
+  it("returns the last error when every lens fails", async () => {
     const failed = await orchestrateReview(
       makeClient([
         err({ code: "MODEL_ERROR", message: "Correctness failed" }),
         err({ code: "NETWORK_ERROR", message: "Security failed" }),
       ]),
-      diff,
+      createDiffForFiles(["src/a.ts"]),
       { lenses: ["correctness", "security"] },
       () => {},
       { concurrency: 2 },
@@ -189,26 +143,6 @@ describe("orchestrateReview", () => {
 
     expect(failed.ok).toBe(false);
     if (!failed.ok) expect(failed.error.code).toBe("NETWORK_ERROR");
-
-    const partial = await orchestrateReview(
-      makeClient([
-        err({ code: "MODEL_ERROR", message: "Correctness failed" }),
-        err({ code: "NETWORK_ERROR", message: "Security failed" }),
-      ]),
-      diff,
-      { lenses: ["correctness", "security"] },
-      () => {},
-      { concurrency: 2, partialOnAllFailed: true },
-    );
-
-    expect(partial.ok).toBe(true);
-    if (partial.ok) {
-      expect(partial.value.issues).toEqual([]);
-      expect(partial.value.failedLenses.map((lens) => lens.lensId)).toEqual([
-        "correctness",
-        "security",
-      ]);
-    }
   });
 
   it("honors the severity filter from review options", async () => {
@@ -250,17 +184,15 @@ describe("orchestrateReview", () => {
       createDiffForFiles(["src/a.ts"]),
       { lenses: ["correctness", "security", "performance"] },
       () => {},
-      { concurrency: 1, partialOnAllFailed: true, signal: controller.signal },
+      { concurrency: 1, signal: controller.signal },
     );
 
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.lensStats).toHaveLength(3);
-      expect(result.value.failedLenses.map((lens) => lens.lensId)).toEqual([
-        "security",
-        "performance",
-      ]);
-      expect(result.value.failedLenses.every((lens) => lens.errorCode === "CANCELLED")).toBe(true);
+      const failed = result.value.lensStats.filter((lens) => lens.status === "failed");
+      expect(failed.map((lens) => lens.lensId)).toEqual(["security", "performance"]);
+      expect(failed.every((lens) => lens.errorCode === "CANCELLED")).toBe(true);
     }
   });
 
@@ -277,13 +209,11 @@ describe("orchestrateReview", () => {
       createDiffForFiles(["src/a.ts"]),
       { lenses: ["correctness"] },
       () => {},
-      { concurrency: 1, partialOnAllFailed: true },
+      { concurrency: 1 },
     );
 
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.failedLenses[0]?.errorCode).toBe("INTERNAL_ERROR");
-    }
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("INTERNAL_ERROR");
   });
 
   it("reports droppedDuplicates and droppedBelowThreshold on orchestrator_complete", async () => {
@@ -364,7 +294,6 @@ describe("orchestrateReview", () => {
       { lensId: "security", issueCount: 0 },
     ]);
     expect(result.value.droppedDuplicates).toBe(0);
-    expect(result.value.droppedIncompleteProviderIssues).toBe(1);
     expect(events.filter((event) => event.type === "issue_found")).toHaveLength(1);
     expect(events.find((event) => event.type === "orchestrator_complete")).toMatchObject({
       totalIssues: 1,
@@ -420,7 +349,7 @@ describe("orchestrateReview", () => {
         "security",
         "performance",
       ]);
-      expect(result.value.failedLenses).toEqual([]);
+      expect(result.value.lensStats.every((lens) => lens.status === "success")).toBe(true);
     }
   });
 });

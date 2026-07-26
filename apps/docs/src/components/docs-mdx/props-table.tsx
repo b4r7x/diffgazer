@@ -1,5 +1,5 @@
+import type { PropInfo } from "@diffgazer/registry";
 import { Typography } from "@diffgazer/ui/components/typography";
-import type { PropInfo } from "@/types/data";
 import { ParameterTable } from "./parameter-table";
 
 interface PropsTableProps {

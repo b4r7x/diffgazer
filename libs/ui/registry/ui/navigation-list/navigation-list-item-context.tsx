@@ -4,20 +4,16 @@ import { createContext, useContext } from "react";
 
 /** Context value shared by navigation list item. */
 export interface NavigationListItemContextValue {
-  /** DOM id for label. */
   labelId: string;
-  /** DOM id for desc. */
-  descId: string;
-  /** Whether navigation list item is tree. */
+  /** Prefix the description parts derive their own ids from, never an id itself. */
+  descIdPrefix: string;
   isTree: boolean;
 }
 
-/** React context backing navigation list item. */
 export const NavigationListItemContext = createContext<NavigationListItemContextValue | undefined>(
   undefined,
 );
 
-/** Reads the navigation list item context. */
 export function useNavigationListItemContext() {
   const context = useContext(NavigationListItemContext);
   if (context === undefined) {

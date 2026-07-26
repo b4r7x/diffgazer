@@ -5,12 +5,10 @@ import type { CommandPaletteContextValue } from "./use-command-palette-state";
 
 export type { CommandPaletteContextValue } from "./use-command-palette-state";
 
-/** React context backing command palette. */
 export const CommandPaletteContext = createContext<CommandPaletteContextValue | undefined>(
   undefined,
 );
 
-/** Reads the command palette context. */
 export function useCommandPaletteContext() {
   const context = useContext(CommandPaletteContext);
   if (!context)

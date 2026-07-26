@@ -1,7 +1,7 @@
+import { formatRunId } from "@diffgazer/core/format";
 import {
   buildDuplicateCollapseNotice,
   buildLensFailureNotice,
-  formatRunId,
   selectDetailsEmptyKind,
 } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
@@ -45,7 +45,6 @@ export function ReviewResultsView({
     handleFilterKeyDown,
     handleSeverityFilterBoundary,
     handleDetailsTabsBoundary,
-    highlightedIssueId,
     handleListFocus,
     listRef,
     listBodyRef,
@@ -101,7 +100,7 @@ export function ReviewResultsView({
             issues={filteredIssues}
             allIssues={issues}
             selectedIssueId={selectedIssueId}
-            highlightedIssueId={highlightedIssueId}
+            highlightedIssueId={selectedIssueId}
             onSelectIssue={selectIssueAndFocusList}
             onHighlightIssue={selectIssue}
             onListBoundaryReached={handleListBoundary}

@@ -12,7 +12,10 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GlobalShortcuts } from "./global";
 
-vi.mock("@/lib/shutdown", () => ({ shutdown: vi.fn() }));
+vi.mock("@/lib/shutdown", () => ({
+  shutdown: vi.fn().mockResolvedValue({ status: "closed" as const }),
+  reportShutdownResult: vi.fn(),
+}));
 
 function ScopedDialogPage() {
   useScope("test-dialog");

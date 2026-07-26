@@ -10,7 +10,7 @@ import {
   flushUntil,
   geminiName,
   Wrapper,
-} from "./model-select-overlay.test-harness";
+} from "./model-select-overlay.test-support";
 
 describe("ModelSelectOverlay ArrowUp after the tier filter shrinks the list", () => {
   afterEach(() => {

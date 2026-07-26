@@ -22,43 +22,21 @@ canonical states (`pending` · `active` · `completed` · `error` · `skipped` �
 
 <Example name="stepper-variants" />
 
-### ASCII
-
-Default. Mono 1ch bracket glyphs (`[x] [~] [ ] [!]`) with a blinking cursor on
-the active step. Pure terminal idiom — matches dialog brackets, code-block
-chrome, and CLI output.
-
-<Example name="stepper-variant-ascii" />
-
-### Numbered
-
-20px square with the CSS-counter step number; swaps to `✓` on completed. Use
-for form wizards and onboarding where the step number matters to the user.
-
-<Example name="stepper-variant-numbered" />
-
-### Bullet
-
-Single Unicode glyph per state (`•` · `›` · `·` · `×`) with a dashed
-connector. Minimal chrome — use when the stepper is one of many UI elements.
-
-<Example name="stepper-variant-bullet" />
-
-### Tag
-
-Uppercase text tag (`DONE` · `RUN` · `WAIT` · `FAIL` · `SKIP` · `OFF`) with a
-fixed `min-width` so the active state never shifts neighbour widths. Use for
-CI / build / deploy surfaces where users read status as text.
-
-<Example name="stepper-variant-tag" />
-
-### Progress
-
-Unicode block-element bar (`███ / █▌░ / ░░░`) per step. Strong terminal
-flavor; best for short lists (3–5 steps) where granular per-step progress
-matters.
-
-<Example name="stepper-variant-progress" />
+- **`ascii`.** Default. Mono 1ch bracket glyphs (`[x] [~] [ ] [!]`) with a
+  blinking cursor on the active step. Pure terminal idiom — matches dialog
+  brackets, code-block chrome, and CLI output.
+- **`numbered`.** 20px square with the CSS-counter step number; swaps to `✓` on
+  completed. Use for form wizards and onboarding where the step number matters
+  to the user.
+- **`bullet`.** Single Unicode glyph per state (`•` · `›` · `·` · `×`) with a
+  dashed connector. Minimal chrome — use when the stepper is one of many UI
+  elements.
+- **`tag`.** Uppercase text tag (`DONE` · `RUN` · `WAIT` · `FAIL` · `SKIP` ·
+  `OFF`) with a fixed `min-width` so the active state never shifts neighbour
+  widths. Use for CI / build / deploy surfaces where users read status as text.
+- **`progress`.** Unicode block-element bar (`███ / █▌░ / ░░░`) per step. Strong
+  terminal flavor; best for short lists (3–5 steps) where granular per-step
+  progress matters.
 
 ## Six canonical states
 

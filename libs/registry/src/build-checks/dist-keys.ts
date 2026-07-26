@@ -1,6 +1,4 @@
-import { REGISTRY_ITEM_TYPE } from "../registry-types.js";
-
-const KEYS_REGISTRY_PREFIXES = ["@diffgazer/keys/", "@diffgazer-keys/"] as const;
+import { parseKeysDependencyRef, REGISTRY_ITEM_TYPE } from "../registry-types.js";
 
 interface DistKeyItem {
   type: string;
@@ -26,11 +24,8 @@ export function resolveKeysHookFiles(items: KeysHookItem[]): Set<string> {
   const files = new Set<string>();
   for (const item of items) {
     for (const dep of item.registryDependencies ?? []) {
-      for (const prefix of KEYS_REGISTRY_PREFIXES) {
-        if (dep.startsWith(prefix)) {
-          files.add(`use-${dep.slice(prefix.length)}`);
-        }
-      }
+      const hook = parseKeysDependencyRef(dep);
+      if (hook) files.add(`use-${hook}`);
     }
   }
   return files;

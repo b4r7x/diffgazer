@@ -133,18 +133,6 @@ describe("review-state", () => {
     expect(reviewReducer(started, { type: "RESET" })).toEqual(createInitialReviewState());
   });
 
-  it("preserves issues when a review completes", () => {
-    const withIssue = reviewReducer(startedState(), {
-      type: "EVENT",
-      event: issueFound("i1", "Bug found", "detective"),
-    });
-
-    const completed = reviewReducer(withIssue, { type: "COMPLETE" });
-
-    expect(completed.isStreaming).toBe(false);
-    expect(completed.issues).toEqual([expect.objectContaining({ title: "Bug found" })]);
-  });
-
   it("marks cancellation without turning it into an error", () => {
     const cancelled = reviewReducer(startedState(), { type: "CANCELLED" });
 

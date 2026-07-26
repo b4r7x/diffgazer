@@ -42,6 +42,9 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Passthrough path for highlighters that emit their own <pre><code> markup
+     (shiki / rehype-pretty-code) — see code-block.mdx and apps/docs
+     markdown-renderers.tsx. CodeBlock.Line children never hit this rule. */
   [data-slot="code-block-content"] > code {
     display: block;
     padding-inline: 12px;

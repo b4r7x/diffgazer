@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 describe("composeRefs documentation recipes", () => {
   it("keeps component render examples on useComposedRefs", () => {
     const markdown = readFileSync(
-      resolve(process.cwd(), "docs/content/utils/compose-refs.mdx"),
+      resolve(import.meta.dirname, "../../docs/content/utils/compose-refs.mdx"),
       "utf8",
     );
     const tsxFences = [...markdown.matchAll(/```tsx\n([\s\S]*?)```/g)].flatMap((match) =>

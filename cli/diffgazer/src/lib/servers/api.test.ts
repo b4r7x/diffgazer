@@ -1,4 +1,3 @@
-import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const execaMock = vi.hoisted(() => vi.fn());
@@ -6,6 +5,7 @@ const execaMock = vi.hoisted(() => vi.fn());
 vi.mock("execa", () => ({ execa: execaMock }));
 
 import { createApiServer, waitForHealthy } from "./api";
+import { createFakeChild } from "./process/test-support";
 
 const ADDRESS = "http://localhost:3000";
 
@@ -135,18 +135,6 @@ describe("waitForHealthy", () => {
     ).rejects.toThrow(/did not become healthy.*within 100ms/);
   });
 });
-
-interface FakeChild extends Promise<unknown> {
-  stdout: EventEmitter;
-  kill: ReturnType<typeof vi.fn>;
-}
-
-function createFakeChild(): FakeChild {
-  const pending = new Promise<unknown>(() => {}) as FakeChild;
-  pending.stdout = new EventEmitter();
-  pending.kill = vi.fn();
-  return pending;
-}
 
 describe("createApiServer readiness wiring", () => {
   beforeEach(() => {

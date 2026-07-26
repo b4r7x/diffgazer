@@ -20,9 +20,6 @@ export interface FloatingIndicatorRect {
  * variants (Mantine FloatingIndicator pattern) so a single indicator element
  * can transform between siblings.
  *
- * The hook owns the CSS-escape of `activeValue` so the caller does not need
- * to import the DOM-only `CSS` global — keeping the SSR boundary explicit.
- *
  * A `MutationObserver` re-measures when the container's children change
  * (lazy lists, deferred mounts) so the indicator re-pins itself when the
  * active item appears later or is replaced.

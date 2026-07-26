@@ -128,7 +128,11 @@ export function SessionPanel() {
         <button
           type="button"
           onClick={() => setRunId((id) => id + 1)}
-          className={`shrink-0 px-2 py-1 font-mono text-2xs uppercase tracking-widest text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground ${FOCUS_RING_CLASS}`}
+          className={cn(
+            CHROME_LABEL_CLASS,
+            "shrink-0 px-2 py-1 transition-colors hover:bg-secondary hover:text-foreground",
+            FOCUS_RING_CLASS,
+          )}
         >
           [ replay ]
         </button>

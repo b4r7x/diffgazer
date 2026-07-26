@@ -48,27 +48,12 @@ const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
     r.top_provider && typeof r.top_provider === "object"
       ? (r.top_provider as Record<string, unknown>)
       : null;
-  const contextLengthRaw =
-    r.context_length ??
-    r.context_window ??
-    r.contextLength ??
-    r.contextWindow ??
-    topProvider?.context_length ??
-    topProvider?.contextLength;
+  const contextLengthRaw = r.context_length ?? topProvider?.context_length;
   const contextLength = Number.isFinite(Number(contextLengthRaw)) ? Number(contextLengthRaw) : 0;
-  const maxCompletionTokensRaw =
-    topProvider?.max_completion_tokens ??
-    topProvider?.maxCompletionTokens ??
-    r.max_completion_tokens ??
-    r.maxCompletionTokens;
-  const maxCompletionTokens = Number(maxCompletionTokensRaw);
-
-  let supportedParametersRaw: unknown[] | undefined;
-  if (Array.isArray(r.supported_parameters)) {
-    supportedParametersRaw = r.supported_parameters;
-  } else if (Array.isArray(r.supportedParameters)) {
-    supportedParametersRaw = r.supportedParameters;
-  }
+  const maxCompletionTokens = Number(topProvider?.max_completion_tokens);
+  const supportedParametersRaw = Array.isArray(r.supported_parameters)
+    ? r.supported_parameters
+    : undefined;
 
   const pricingRaw = (r.pricing && typeof r.pricing === "object" ? r.pricing : {}) as Record<
     string,

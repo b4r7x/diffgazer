@@ -43,7 +43,7 @@ describe("event row index", () => {
     }
     const previous = deriveEventRowIndex(null, state.events, "Detective");
     const previousBounds = getEventRowBounds(previous);
-    const previousPages = previous.matchingPages;
+    const previousRows = previous.matchingRows;
     let nextState = state;
     for (let offset = 0; offset < 50; offset += 1) {
       const appended = track(thinkingEvent(`event-${5_000 + offset}`));
@@ -59,7 +59,7 @@ describe("event row index", () => {
     expect(next.nextLogicalIndex).toBe(5_050);
     expect(getEventRowBounds(next)).toEqual({ start: 50, end: 5_050 });
     expect(convertEventRowWindow(next, 5_049, 5_050)[0]?.message).toBe("event-5049");
-    expect(previous.matchingPages).toBe(previousPages);
+    expect(previous.matchingRows).toBe(previousRows);
     expect(getEventRowBounds(previous)).toEqual(previousBounds);
     expect(previous.firstLogicalIndex).toBe(0);
     expect(previous.nextLogicalIndex).toBe(5_000);

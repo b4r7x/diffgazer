@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, type RefObject, useEffect, useLayoutEffect, useState } from "react";
+import { type ReactNode, type RefObject, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   isPendingPortalContainer,
@@ -19,7 +19,6 @@ export interface PortalProps {
 export function useAriaLinkedPortalContainer(
   container: Element | null | undefined,
   triggerRef: RefObject<Element | null>,
-  componentName: string,
 ): Element | null | undefined {
   const [triggerDocument, setTriggerDocument] = useState<Document | null>(
     () => triggerRef.current?.ownerDocument ?? null,
@@ -35,13 +34,6 @@ export function useAriaLinkedPortalContainer(
     container !== undefined &&
     triggerDocument !== null &&
     container.ownerDocument !== triggerDocument;
-
-  useEffect(() => {
-    if (!isCrossDocument || process.env.NODE_ENV === "production") return;
-    console.warn(
-      `${componentName}: portalContainer must share the trigger's document for ARIA ID references. Falling back to the trigger document body.`,
-    );
-  }, [componentName, isCrossDocument]);
 
   return isCrossDocument ? triggerDocument.body : container;
 }

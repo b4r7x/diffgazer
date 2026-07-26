@@ -3,7 +3,7 @@ import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { SeverityBar } from "./bar";
 
-export interface SeverityBreakdownProps {
+interface SeverityBreakdownProps {
   counts: SeverityCounts;
   className?: string;
 }

@@ -1,16 +1,9 @@
 import type { z } from "zod";
+import { formatSchemaIssues } from "../../errors.js";
 import { quarantineCorruptFile, readJsonFileSyncSafe } from "../../fs.js";
 import { log } from "../../log.js";
 
 export const RESERVED_PROJECT_IDS = new Set(["__proto__", "constructor", "prototype"]);
-
-const formatSchemaIssues = (error: z.ZodError): string =>
-  error.issues
-    .map((issue) => {
-      const path = issue.path.length > 0 ? issue.path.join(".") : "<root>";
-      return `${path}: ${issue.message}`;
-    })
-    .join("; ");
 
 export const loadOrQuarantine = <T>(
   filePath: string,

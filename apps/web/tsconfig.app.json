@@ -19,12 +19,5 @@
     }
   },
   "include": ["src"],
-  "exclude": [
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/*-test-utils.ts",
-    "**/*-test-utils.tsx",
-    "src/testing/**",
-    "src/test-setup.ts"
-  ]
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "src/**/testing/**", "src/test-setup.ts"]
 }

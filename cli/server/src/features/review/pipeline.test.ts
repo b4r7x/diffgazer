@@ -3,8 +3,9 @@ import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import { LENS_IDS, ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
+import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { makeFileDiff, makeIssue, makeParsedDiff } from "../../shared/lib/testing/factories.js";
+import { makeFileDiff, makeParsedDiff } from "./testing/factories.js";
 
 const saveReview = vi.fn();
 // Boundary mock: filesystem storage - saveReview is the durable-write boundary finalizeReview gates the report step on.

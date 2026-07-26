@@ -143,16 +143,19 @@ export function Checkbox({
     ariaDescribedBy,
     description ? descriptionId : undefined,
   );
+  // CheckboxGroup owns the reset baseline and the native-invalid state for every
+  // item it renders, so a grouped Checkbox must not write either itself.
+  const isGroupItem = () => rootRef.current?.hasAttribute("data-diffgazer-checkbox-group-item");
   const controlledFormReset =
     controlledBool === undefined
       ? undefined
       : {
           syncResetBaseline: () => {
-            if (rootRef.current?.hasAttribute("data-diffgazer-checkbox-group-item")) return;
+            if (isGroupItem()) return;
             if (nativeInputRef.current) nativeInputRef.current.defaultChecked = isChecked;
           },
           onReset: () => {
-            if (rootRef.current?.hasAttribute("data-diffgazer-checkbox-group-item")) return;
+            if (isGroupItem()) return;
             setNativeInvalid(false);
           },
         };

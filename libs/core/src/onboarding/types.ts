@@ -1,11 +1,12 @@
 import type { AgentExecution, AIProvider, SecretsStorage } from "../schemas/config/index.js";
+import { isMember } from "../schemas/fields.js";
 import type { LensId } from "../schemas/review/index.js";
 
 export const INPUT_METHODS = ["paste", "env"] as const;
 export type InputMethod = (typeof INPUT_METHODS)[number];
 
 export function isInputMethod(value: string | null): value is InputMethod {
-  return INPUT_METHODS.includes(value as InputMethod);
+  return isMember(INPUT_METHODS, value);
 }
 
 export const WIZARD_STEPS = [
