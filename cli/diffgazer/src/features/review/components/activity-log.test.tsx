@@ -6,6 +6,7 @@ import {
 } from "@diffgazer/core/review";
 import { Box } from "ink";
 import { cleanup, render } from "ink-testing-library";
+import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test } from "vitest";
 import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
@@ -161,5 +162,48 @@ describe("ActivityLog (TUI)", () => {
 
     expect(eventRows).toHaveLength(1);
     expect(eventRows[0]?.length).toBeLessThanOrEqual(80);
+  });
+
+  test("starts every message at one column across a mixed-agent stream", async () => {
+    const events: ReviewEvent[] = [
+      {
+        type: "agent_thinking",
+        agent: "detective",
+        timestamp: "2024-01-01T00:00:00Z",
+        thought: "MSG-detective",
+      },
+      {
+        type: "agent_thinking",
+        agent: "guardian",
+        timestamp: "2024-01-01T00:00:01Z",
+        thought: "MSG-guardian",
+      },
+      {
+        type: "agent_thinking",
+        agent: "optimizer",
+        timestamp: "2024-01-01T00:00:02Z",
+        thought: "MSG-optimizer",
+      },
+    ];
+
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <Box width={80}>
+          <ActivityLog events={events} height={3} />
+        </Box>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    const frame = stripAnsi(lastFrame() ?? "");
+    const columns = frame
+      .split("\n")
+      .filter((row) => row.includes("MSG-"))
+      .map((row) => row.indexOf("MSG-"));
+
+    expect(columns).toHaveLength(3);
+    expect(new Set(columns).size).toBe(1);
+    // The agent is named once, by its tag badge; the duplicate name column is gone.
+    expect(frame).not.toContain("[Guardian]");
   });
 });

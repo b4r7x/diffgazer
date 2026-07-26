@@ -25,6 +25,43 @@ const SHORT_SEVERITY_LABELS: Record<(typeof SEVERITY_ORDER)[number], string> = {
   nit: "N",
 };
 
+export type SeverityChipMode = "full" | "wrapped" | "short";
+
+export interface SeverityChipLayout {
+  mode: SeverityChipMode;
+  /** Rows the chip row occupies, so the list pane can budget its viewport. */
+  rows: number;
+}
+
+export interface SeverityChipLayoutInput {
+  labels: string[];
+  hasReset: boolean;
+  contentWidth: number;
+}
+
+/**
+ * Readable chips are worth a second row: the row wraps before it collapses to
+ * single letters, so the cryptic codes survive only where one whole chip cannot
+ * fit on a line.
+ */
+export function getSeverityChipLayout({
+  labels,
+  hasReset,
+  contentWidth,
+}: SeverityChipLayoutInput): SeverityChipLayout {
+  const chips = [...labels, ...(hasReset ? ["Reset"] : [])];
+  const fullRowWidth = chips.reduce(
+    (width, label, index) => width + label.length + 2 + (index > 0 ? 1 : 0),
+    0,
+  );
+  if (fullRowWidth <= contentWidth) return { mode: "full", rows: 1 };
+
+  const widestChip = Math.max(...chips.map((label) => label.length + 2));
+  if (widestChip > contentWidth) return { mode: "short", rows: 1 };
+
+  return { mode: "wrapped", rows: Math.ceil(fullRowWidth / Math.max(contentWidth, 1)) };
+}
+
 export function SeverityFilterGroup({
   currentFilter,
   onFilterChange,
@@ -44,12 +81,12 @@ export function SeverityFilterGroup({
   const fullLabels = SEVERITY_ORDER.map((severity) =>
     formatSeverityFilterLabel(severity, issueCounts[severity]),
   );
-  const resetLabel = isFilterActive ? "Reset" : null;
-  const fullRowWidth = [...fullLabels, ...(resetLabel ? [resetLabel] : [])].reduce(
-    (width, label, index) => width + label.length + 2 + (index > 0 ? 1 : 0),
-    0,
-  );
-  const useShortLabels = fullRowWidth > contentWidth;
+  const { mode } = getSeverityChipLayout({
+    labels: fullLabels,
+    hasReset: isFilterActive,
+    contentWidth,
+  });
+  const useShortLabels = mode === "short";
 
   useInput(
     (input, key) => {
@@ -80,7 +117,9 @@ export function SeverityFilterGroup({
   );
 
   return (
-    <Box gap={1} width={contentWidth} flexWrap="wrap">
+    // columnGap, not gap: Ink's `gap` spends a row between wrapped chip rows,
+    // and the wrapped layout above counts contiguous rows.
+    <Box columnGap={1} width={contentWidth} flexWrap="wrap">
       {SEVERITY_ORDER.map((severity, index) => {
         const isSelected = currentFilter.has(severity);
         const isFocused = isActive && index === focusedIndex;

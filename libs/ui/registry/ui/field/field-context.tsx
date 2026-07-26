@@ -15,6 +15,8 @@ export interface FieldContextValue {
   defaultDescriptionId: string;
   defaultErrorId: string;
   invalid: boolean;
+  /** True when Field.Error has renderable content, so the description can yield the slot to it. */
+  errorHasContent: boolean;
   required: boolean | undefined;
   disabled: boolean | undefined;
   controlRef: RefObject<HTMLElement | null>;

@@ -16,17 +16,27 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
-import { getEncodedListboxItemId } from "@/hooks/use-listbox";
+import { useIsMobile, usePointerCoarse } from "@/hooks/use-is-mobile";
+import { collectListboxItems, getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { useOutsideClick } from "@/hooks/use-outside-click";
 import { cn } from "@/lib/utils";
 import { FloatingPanel } from "../floating-panel/floating-panel";
 import { Chevron } from "../icons/chevron";
+import { OVERLAY_SURFACE } from "../shared/overlay-surface";
 import { Menu as MenuRoot } from "./menu";
 import { useMenuContext } from "./menu-context";
+import { MenuGroup } from "./menu-group";
+import { MenuItem } from "./menu-item";
+import { MenuItemCheckbox } from "./menu-item-checkbox";
 import { DefaultItemLayout } from "./menu-item-layouts";
+import { MenuItemRadio } from "./menu-item-radio";
 import { getItemState, menuItemBase } from "./menu-item-variants";
+
+/** How a submenu presents itself. */
+export type MenuSubMode = "flyout" | "stack" | "auto";
 
 /** Context value shared by menu sub. */
 interface MenuSubContextValue {
@@ -40,6 +50,10 @@ interface MenuSubContextValue {
   triggerItemId: string | null;
   /** Updates trigger item id. */
   setTriggerItemId: (id: string | null) => void;
+  /** Resolved presentation for this submenu. */
+  resolvedMode: "flyout" | "stack";
+  /** Sub-trigger item id and label, published by the trigger for the back row. */
+  triggerInfoRef: RefObject<{ id: string; label: ReactNode } | null>;
 }
 
 const MenuSubContext = createContext<MenuSubContextValue | undefined>(undefined);
@@ -60,8 +74,23 @@ export interface MenuSubProps {
   defaultOpen?: boolean;
   /** Fired when the submenu open state changes. */
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Presentation. `"flyout"` opens a side-anchored panel; `"stack"` drills down
+   * inside the parent panel with a back row. `"auto"` (default) picks `stack`
+   * on touch or on a narrow viewport, where a side flyout has nowhere to go and
+   * ends up shifted back over the rows it came from.
+   */
+  mode?: MenuSubMode;
   /** MenuSubTrigger and MenuSubContent children. */
   children: ReactNode;
+}
+
+/** Width below which a side-anchored submenu cannot clear its own parent panel. */
+const STACK_VIEWPORT_BREAKPOINT = 640;
+
+function resolveSubMode(mode: MenuSubMode, cramped: boolean): "flyout" | "stack" {
+  if (mode !== "auto") return mode;
+  return cramped ? "stack" : "flyout";
 }
 
 /** Submenu container (manages open state) */
@@ -69,10 +98,17 @@ export function MenuSub({
   open: controlledOpen,
   defaultOpen = false,
   onOpenChange: onOpenChangeProp,
+  mode = "auto",
   children,
 }: MenuSubProps) {
   const triggerRef = useRef<HTMLDivElement>(null);
   const [triggerItemId, setTriggerItemId] = useState<string | null>(null);
+  const triggerInfoRef = useRef<{ id: string; label: ReactNode } | null>(null);
+  // Both signals are resolved before the submenu ever opens, so touch and narrow
+  // viewports never see a flyout frame. No new observers, no measurement pass.
+  const coarsePointer = usePointerCoarse(triggerRef);
+  const narrowViewport = useIsMobile(STACK_VIEWPORT_BREAKPOINT, triggerRef);
+  const resolvedMode = resolveSubMode(mode, coarsePointer || narrowViewport);
 
   const [openState, setOpenState] = useControllableState<boolean>({
     value: controlledOpen,
@@ -87,8 +123,10 @@ export function MenuSub({
       triggerRef,
       triggerItemId,
       setTriggerItemId,
+      resolvedMode,
+      triggerInfoRef,
     }),
-    [openState, setOpenState, triggerItemId],
+    [openState, setOpenState, triggerItemId, resolvedMode],
   );
 
   return <MenuSubContext value={ctx}>{children}</MenuSubContext>;
@@ -125,7 +163,8 @@ export function MenuSubTrigger({
     registerActivator,
     unregisterActivator,
   } = useMenuContext();
-  const { open, onOpenChange, triggerRef, setTriggerItemId } = useMenuSubContext();
+  const { open, onOpenChange, triggerRef, setTriggerItemId, triggerInfoRef, resolvedMode } =
+    useMenuSubContext();
   const registrationId = useId();
   const composedRef = useComposedRefs(triggerRef, ref);
 
@@ -145,6 +184,12 @@ export function MenuSubTrigger({
     return () => setTriggerItemId(null);
   }, [setTriggerItemId, itemId]);
 
+  // Published through a ref, not state: the label is arbitrary JSX whose
+  // identity changes every render, so storing it in state would loop.
+  useLayoutEffect(() => {
+    triggerInfoRef.current = { id, label: children };
+  }, [triggerInfoRef, id, children]);
+
   useEffect(() => {
     const openSubmenu = () => {
       if (!disabled) onOpenChange(true);
@@ -155,10 +200,13 @@ export function MenuSubTrigger({
 
   // Close an open submenu when the parent menu's highlight moves off this
   // trigger — this also enforces one open submenu per level, since opening a
-  // sibling highlights that sibling and unhighlights this one.
+  // sibling highlights that sibling and unhighlights this one. In stack mode the
+  // highlight deliberately moves INTO the submenu, so the parent stack enforces
+  // the one-open rule instead.
   useEffect(() => {
+    if (resolvedMode === "stack") return;
     if (open && highlighted !== null && highlighted !== id) onOpenChange(false);
-  }, [open, highlighted, id, onOpenChange]);
+  }, [resolvedMode, open, highlighted, id, onOpenChange]);
 
   const handleClick = (event: MouseEvent<HTMLDivElement>) => {
     if (event.defaultPrevented || disabled) return;
@@ -226,9 +274,44 @@ export function MenuSubContent({
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledBy,
 }: MenuSubContentProps) {
-  const { open, onOpenChange, triggerRef, triggerItemId } = useMenuSubContext();
+  const { open, onOpenChange, triggerRef, triggerItemId, resolvedMode, triggerInfoRef } =
+    useMenuSubContext();
   const parentMenu = useMenuContext();
   const contentRef = useRef<HTMLDivElement>(null);
+  const isStack = resolvedMode === "stack";
+  const { pushSub, popSub, activeSub, stackContainer } = parentMenu;
+  const highlightRef = useRef(parentMenu.highlight);
+  highlightRef.current = parentMenu.highlight;
+  const triggerId = triggerInfoRef.current?.id ?? null;
+  const isPushed = isStack && triggerId !== null && activeSub?.id === triggerId;
+  const firstStackItemId =
+    collectListboxItems(children, {
+      itemTypes: [MenuItem, MenuItemCheckbox, MenuItemRadio],
+      containerTypes: [MenuGroup],
+    }).find((item) => !item.disabled)?.id ?? null;
+
+  // The drill-down stack lives on the parent Menu, so publishing this submenu
+  // into it is synchronisation with an external store, not derived state. The
+  // cleanup pops only our own entry, so a sibling push is never clobbered.
+  useEffect(() => {
+    if (!isStack || !open) return;
+    const info = triggerInfoRef.current;
+    if (info === null) return;
+    pushSub(info);
+    // The trigger row is now hidden, so the highlight has to follow the user
+    // into the submenu rather than point at an element that no longer exists.
+    // Read through the ref: the highlight setter's identity changes with the
+    // highlight itself, and depending on it would re-push on every move.
+    if (firstStackItemId !== null) highlightRef.current(firstStackItemId);
+    return () => popSub(info.id);
+  }, [isStack, open, pushSub, popSub, triggerInfoRef, firstStackItemId]);
+
+  // The parent pops for the back row, ArrowLeft, Escape and sibling pushes, so
+  // losing the entry has to release this submenu's own open state too.
+  useEffect(() => {
+    if (!isPushed) return;
+    return () => onOpenChange(false);
+  }, [isPushed, onOpenChange]);
 
   const returnFocusToParent = () => {
     onOpenChange(false);
@@ -278,6 +361,14 @@ export function MenuSubContent({
   const resolvedAriaLabelledBy =
     ariaLabelledBy ?? (ariaLabel ? undefined : (triggerItemId ?? undefined));
 
+  if (isStack) {
+    // Drill-down: the items portal into the parent panel's stack region, so they
+    // inherit its surface, width and left edge verbatim and stay inside the one
+    // role="menu" container — no second menu, no nested roles, no new chrome.
+    if (!isPushed || stackContainer === null) return null;
+    return createPortal(children, stackContainer);
+  }
+
   return (
     <FloatingPanel
       open={open}
@@ -286,12 +377,7 @@ export function MenuSubContent({
       align="start"
       sideOffset={sideOffset}
       role="presentation"
-      className={cn(
-        // --shadow-hard is the library's only sanctioned shadow: a hard offset
-        // with no blur, matching the other floating layers (dialog, select).
-        "min-w-[8rem] border border-border bg-background shadow-(--shadow-hard)",
-        className,
-      )}
+      className={cn("min-w-[8rem]", OVERLAY_SURFACE, className)}
     >
       <MenuRoot
         ref={contentRef}

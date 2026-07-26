@@ -236,7 +236,7 @@ describe("ReviewPage saved review loading", () => {
     expect(
       await screen.findByText(`Review Complete ${formatRunId("review-saved")}`),
     ).toBeInTheDocument();
-    expect(screen.getByText("Duration:").parentElement).toHaveTextContent("Duration: 2.5s");
+    expect(screen.getByText("1 issue in 1 file · 2.5s")).toBeVisible();
     expect(screen.getByText("Saved result issue")).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: /saved result issue/i })).not.toBeInTheDocument();
 
@@ -769,7 +769,7 @@ describe("ReviewPage live review phase transitions", () => {
       capturedOnComplete?.();
     });
 
-    expect(await screen.findByText("2 issues")).toBeVisible();
+    expect(await screen.findByText(/^2 issues in /)).toBeVisible();
     expect(screen.getByRole("note")).toHaveTextContent(
       "1 duplicate issue collapsed across lenses (3 → 2 issues)",
     );

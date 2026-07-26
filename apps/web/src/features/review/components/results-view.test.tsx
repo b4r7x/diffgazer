@@ -1,4 +1,5 @@
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import type { LensStat } from "@diffgazer/core/schemas/events";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
@@ -94,6 +95,7 @@ function renderView(
     createReviewIssue("issue-2", "Issue two"),
   ],
   droppedDuplicates?: number,
+  lensStats?: LensStat[],
 ) {
   return render(
     <KeyboardProvider>
@@ -102,12 +104,35 @@ function renderView(
           issues={issues}
           reviewId="review-1"
           droppedDuplicates={droppedDuplicates}
+          lensStats={lensStats}
         />
         <FooterView />
       </FooterProvider>
     </KeyboardProvider>,
   );
 }
+
+describe("ReviewResultsView run integrity", () => {
+  const partialLensStats: LensStat[] = [
+    { lensId: "correctness", issueCount: 2, status: "success" },
+    { lensId: "security", issueCount: 0, status: "failed" },
+    { lensId: "performance", issueCount: 0, status: "failed" },
+  ];
+
+  it("says a saved run was partial and names the lenses that never reported", () => {
+    renderView(undefined, undefined, partialLensStats);
+
+    const notice = screen.getByRole("note");
+    expect(notice).toHaveTextContent("Partial run — 2 of 3 lenses failed");
+    expect(notice).toHaveTextContent("Guardian and Optimizer");
+  });
+
+  it("stays quiet when every lens reported", () => {
+    renderView(undefined, undefined, [{ lensId: "correctness", issueCount: 2, status: "success" }]);
+
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  });
+});
 
 describe("ReviewResultsView keyboard regression", () => {
   it("renders the persisted duplicate-collapse count transition", () => {

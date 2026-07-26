@@ -4,6 +4,7 @@ import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { DocsPageHeader } from "@/components/page-layout";
 import { MobileNavProvider } from "@/hooks/mobile-nav-context";
 import { SearchProvider } from "@/hooks/search-context";
 import type { PageTree } from "@/lib/page-tree";
@@ -107,7 +108,7 @@ const SECTIONED_TREE: PageTree = {
 };
 
 describe("DocsContentLayout content breadcrumbs", () => {
-  it("exposes a Breadcrumb landmark inside the main content column", () => {
+  it("exposes exactly one Breadcrumb landmark in the content column, in the page header", () => {
     stubMatchMedia({ isDesktop: false });
     routerBoundary.pathname = "/ui/components/button";
 
@@ -116,7 +117,7 @@ describe("DocsContentLayout content breadcrumbs", () => {
         <MobileNavProvider>
           <SearchProvider>
             <DocsContentLayout tree={SECTIONED_TREE} library="ui">
-              <p>Docs body</p>
+              <DocsPageHeader title="Button" lib="ui" slug="components/button" />
             </DocsContentLayout>
           </SearchProvider>
         </MobileNavProvider>
@@ -124,8 +125,13 @@ describe("DocsContentLayout content breadcrumbs", () => {
     );
 
     const main = screen.getByRole("main");
-    const path = within(main).getByRole("navigation", { name: "Breadcrumb" });
+    // The shell no longer prints its own PATH row: the header's scope line is
+    // the single copy of the path inside the article column.
+    const paths = within(main).getAllByRole("navigation", { name: "Breadcrumb" });
+    expect(paths).toHaveLength(1);
 
+    const path = paths[0];
+    if (!path) throw new Error("breadcrumb landmark missing");
     expect(within(path).getByRole("link", { name: "components" })).toHaveAttribute(
       "href",
       "/ui/components",

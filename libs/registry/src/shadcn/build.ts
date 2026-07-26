@@ -44,8 +44,6 @@ export interface EnsurePublicRegistryReadyOptions {
   fixCommand: string;
   sourceRegistryPath?: string;
   publicRegistryDir?: string;
-  registryPath?: string;
-  outputDir?: string;
   label?: string;
   afterBuild?: (ctx: { rootDir: string; outputDir: string }) => void;
   transformSourceItem?: Parameters<typeof validatePublicRegistryFresh>[0]["transformSourceItem"];
@@ -61,8 +59,6 @@ export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOpti
     fixCommand,
     sourceRegistryPath = "registry/registry.json",
     publicRegistryDir = "public/r",
-    registryPath = sourceRegistryPath,
-    outputDir = publicRegistryDir,
     label = "public registry index",
     afterBuild,
     transformSourceItem,
@@ -72,6 +68,27 @@ export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOpti
 
   const publicRegistryIndex = resolve(rootDir, publicRegistryDir, "registry.json");
   const hasLocalShadcn = Boolean(resolveLocalShadcnBin(rootDir));
+
+  const rebuild = () => {
+    runShadcnRegistryBuild({
+      rootDir,
+      registryPath: sourceRegistryPath,
+      outputDir: publicRegistryDir,
+    });
+    afterBuild?.({ rootDir, outputDir: resolve(rootDir, publicRegistryDir) });
+  };
+
+  const validate = () => {
+    validatePublicRegistryFresh({
+      rootDir,
+      fixCommand,
+      sourceRegistryPath,
+      publicRegistryDir,
+      transformSourceItem,
+      transformSourceContent,
+      shouldSkipSourceItem,
+    });
+  };
 
   if (!existsSync(publicRegistryIndex)) {
     if (!hasLocalShadcn) {
@@ -84,34 +101,16 @@ export function ensurePublicRegistryReady(options: EnsurePublicRegistryReadyOpti
       );
     }
 
-    runShadcnRegistryBuild({ rootDir, registryPath, outputDir });
-    afterBuild?.({ rootDir, outputDir: resolve(rootDir, outputDir) });
+    rebuild();
   }
 
   try {
-    validatePublicRegistryFresh({
-      rootDir,
-      fixCommand,
-      sourceRegistryPath,
-      publicRegistryDir,
-      transformSourceItem,
-      transformSourceContent,
-      shouldSkipSourceItem,
-    });
+    validate();
   } catch (error) {
     if (!hasLocalShadcn) throw error;
 
-    runShadcnRegistryBuild({ rootDir, registryPath, outputDir });
-    afterBuild?.({ rootDir, outputDir: resolve(rootDir, outputDir) });
-    validatePublicRegistryFresh({
-      rootDir,
-      fixCommand,
-      sourceRegistryPath,
-      publicRegistryDir,
-      transformSourceItem,
-      transformSourceContent,
-      shouldSkipSourceItem,
-    });
+    rebuild();
+    validate();
   }
 }
 

@@ -6,8 +6,5 @@ export {
   SHUTDOWN_CLOSE_BLOCKED_MESSAGE,
   SHUTDOWN_FAILED_MESSAGE,
   type ShutdownResult,
-  shutdownCloseBlockedResult,
-  shutdownClosedResult,
-  shutdownNetworkError,
 } from "./shutdown-result.js";
 export { type ApiError, isApiError } from "./types.js";

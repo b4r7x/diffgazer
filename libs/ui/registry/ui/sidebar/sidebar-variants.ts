@@ -1,4 +1,5 @@
 import { cva } from "class-variance-authority";
+import { MARKER_RAIL_BASE } from "@/lib/marker-rail";
 
 /** Allowed sidebar variant values. */
 export type SidebarVariant = "caret" | "inverted" | "bar" | "terminal" | "tree";
@@ -82,10 +83,14 @@ export const sidebarItemVariants = cva(
           "group-data-[state=rail]/sidebar:data-[selected]:mx-0 group-data-[state=rail]/sidebar:data-[selected]:w-full group-data-[state=rail]/sidebar:data-[selected]:px-0",
           "data-[selected]:hover:bg-foreground data-[selected]:hover:text-background",
         ].join(" "),
+        // The library's shared "you are here" rail. The mark is --primary in
+        // every primitive that draws it (Toc, NavigationList, Sidebar), never a
+        // second near-black spelled --foreground.
         bar: [
-          "border-l-2 border-transparent -ml-[2px] pl-[calc(0.5rem+3px)] group-data-[state=rail]/sidebar:ml-0",
+          MARKER_RAIL_BASE,
+          "pl-[calc(0.5rem+3px)] group-data-[state=rail]/sidebar:ml-0",
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
-          "data-[selected]:text-foreground data-[selected]:border-l-foreground",
+          "data-[selected]:text-foreground data-[selected]:border-l-primary",
           "data-[selected]:bg-foreground/5 data-[selected]:hover:bg-foreground/5",
         ].join(" "),
         // Terminal/TUI rail: every row carries a faint 1px left rail so stacked

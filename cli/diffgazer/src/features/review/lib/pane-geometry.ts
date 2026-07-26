@@ -11,7 +11,6 @@ export interface ReviewPaneGeometryInput {
   columns: number;
   contentRows: number;
   isNarrow: boolean;
-  isMedium: boolean;
   hasDuplicateNotice: boolean;
 }
 
@@ -54,12 +53,11 @@ export function computePaneGeometry({
   columns,
   contentRows,
   isNarrow,
-  isMedium,
   hasDuplicateNotice,
 }: ReviewPaneGeometryInput): ReviewPaneGeometry {
-  const listWidth = isMedium
-    ? Math.max(Math.floor(columns * 0.35), 26)
-    : Math.max(Math.floor(columns * 0.4), 30);
+  // The list carries the severity chip row and issue titles, so its share of the
+  // frame is the same at every tier instead of shrinking as the frame grows.
+  const listWidth = Math.min(Math.max(Math.floor(columns * 0.4), 34), 56);
 
   const paneHeight = Math.max(contentRows - RESULTS_CHROME_ROWS - (hasDuplicateNotice ? 1 : 0), 1);
   const paneContentHeight = Math.max(paneHeight - RESULTS_PANE_BORDER_ROWS, 1);

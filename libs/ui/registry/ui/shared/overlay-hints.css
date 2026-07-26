@@ -1,0 +1,70 @@
+/*
+ * OverlayHints — the keyed legend a keyboard-first overlay uses to teach its
+ * keys. One layout, one collapse rule, one place to change touch behaviour.
+ * The host surface owns its own separator and padding; this file owns only the
+ * row itself, so a hint bar never doubles the hairline it sits behind.
+ */
+@layer components {
+  [data-slot="overlay-hints"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    min-width: 0;
+    /* Wrap to a second row rather than scrolling horizontally: at 390 a fourth
+       hint no longer fits on one line. */
+    gap: 4px 16px;
+  }
+
+  [data-slot="overlay-hints-item"] {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted-foreground);
+  }
+
+  /*
+   * Touch has no keyboard, so a key legend is instructions the user cannot
+   * follow. Items are hidden unless the consumer marked them touch-relevant,
+   * and a bar with nothing left collapses entirely rather than leaving an empty
+   * strip — that recovers a full row of a 390-wide overlay.
+   */
+  @media (pointer: coarse) {
+    [data-slot="overlay-hints"][aria-hidden="true"]
+      [data-slot="overlay-hints-item"]:not([data-touch]) {
+      display: none;
+    }
+
+    [data-slot="overlay-hints"][aria-hidden="true"]:not(:has([data-touch])) {
+      display: none;
+    }
+
+    /* Collapsing the bar is not enough: a host chrome row whose only content is
+       that collapsed bar keeps painting its border, padding and background — a
+       dead 17px strip under the CommandPalette list at 390. The row that exists
+       solely to hold the legend goes with it, once, here. The two :has() calls
+       stay siblings on purpose — :has() inside :has() is invalid and drops the
+       whole rule. */
+    :has(> [data-slot="overlay-hints"][aria-hidden="true"]:only-child):not(:has([data-touch])) {
+      display: none;
+    }
+
+    /* A legend the consumer deliberately exposed to AT (Dialog) is the only
+       place its shortcut is announced, and touch screen readers exist — so it
+       leaves the visual flow, not the accessibility tree. Absolutely positioned
+       content reserves no height, so a bar whose items all went out of flow
+       paints exactly like the display:none case above, and the host row that
+       exists only to hold it collapses the same way. */
+    [data-slot="overlay-hints"][aria-hidden="false"]
+      [data-slot="overlay-hints-item"]:not([data-touch]),
+    :has(> [data-slot="overlay-hints"][aria-hidden="false"]:only-child):not(:has([data-touch])) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+}

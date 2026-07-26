@@ -24,6 +24,17 @@ export interface ReviewCompleteSummaryProps {
   className?: string;
 }
 
+/**
+ * The one fact line the run earns: counts and elapsed time, separated by the
+ * middle dot the rest of the app already uses. A clean run says so in words
+ * instead of filling the template with zeros.
+ */
+function buildFactLine(stats: AnalysisStats, durationMs: number | undefined): string {
+  const elapsed = durationMs === undefined ? "" : ` · ${formatDuration(durationMs)}`;
+  if (stats.totalIssues === 0) return `No issues found${elapsed}`;
+  return `${pluralize(stats.totalIssues, "issue")} in ${pluralize(stats.filesWithIssues, "file")}${elapsed}`;
+}
+
 export function ReviewCompleteSummary({
   stats,
   severityCounts,
@@ -33,6 +44,7 @@ export function ReviewCompleteSummary({
   className,
 }: ReviewCompleteSummaryProps) {
   const runLabel = stats.runId ? formatRunId(stats.runId) : "#unknown";
+  const isClean = stats.totalIssues === 0;
 
   return (
     <div className={cn("flex flex-col gap-6", className)}>
@@ -42,46 +54,40 @@ export function ReviewCompleteSummary({
         <Typography as="h1" size="lg" className="text-success-text mb-2 sm:text-2xl">
           Review Complete {runLabel}
         </Typography>
-        <p className="text-sm text-muted-foreground">
-          Found{" "}
-          <span className="text-foreground font-bold">{pluralize(stats.totalIssues, "issue")}</span>{" "}
-          across{" "}
-          <span className="text-foreground font-bold">
-            {pluralize(stats.filesWithIssues, "file")} with issues
-          </span>
-          .
-          {stats.blockerCount > 0 && (
-            <>
-              {" "}
-              <span className="text-error-text font-bold">
-                {pluralize(stats.blockerCount, "blocker")} found
-              </span>
-              .
-            </>
-          )}
+        <p className={cn("text-sm", isClean ? "text-success-text" : "text-muted-foreground")}>
+          {buildFactLine(stats, durationMs)}
         </p>
-        {durationMs !== undefined ? (
-          <p className="mt-1 text-sm text-muted-foreground">
-            Duration: <span className="text-foreground">{formatDuration(durationMs)}</span>
+        {stats.blockerCount > 0 && (
+          <p className="mt-1 text-sm font-bold text-error-text">
+            {pluralize(stats.blockerCount, "blocker")} found.
           </p>
-        ) : null}
+        )}
       </Panel>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Panel frame="surface">
+        {/* Labelled panels, like every other block of information in the app.
+            The frames stay at rest: the accent corners belong to the focus
+            target, which on this screen is the [View Results] action. */}
+        <Panel aria-label="Severity breakdown">
+          <Panel.Label variant="border" aria-hidden="true">
+            Severity Breakdown
+          </Panel.Label>
           <PanelContent spacing="sm">
-            <SectionHeader as="h2" variant="muted">
-              Severity Breakdown
-            </SectionHeader>
-            <SeverityBreakdown counts={severityCounts} />
+            {/* A clean run keeps its five zero bars - they carry "we did look at
+                all five" - but at reduced weight so the zeros stop competing
+                with the headline. */}
+            <SeverityBreakdown
+              counts={severityCounts}
+              className={isClean ? "opacity-55" : undefined}
+            />
           </PanelContent>
         </Panel>
 
-        <Panel frame="surface">
+        <Panel aria-label="Issues by category">
+          <Panel.Label variant="border" aria-hidden="true">
+            Issues by Category
+          </Panel.Label>
           <PanelContent spacing="sm">
-            <SectionHeader as="h2" variant="muted">
-              Issues by Category
-            </SectionHeader>
             <CategoryStatsTable categories={categoryStats} />
           </PanelContent>
         </Panel>

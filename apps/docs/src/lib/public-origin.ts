@@ -5,6 +5,8 @@ const INVALID_PUBLIC_ORIGIN = "VITE_PUBLIC_ORIGIN must be an absolute HTTP(S) or
 export function resolvePublicOrigin(configuredOrigin?: string): string {
   if (configuredOrigin === undefined) return DEFAULT_PUBLIC_ORIGIN;
 
+  // URL() silently repairs `https:///host` and accepts any scheme, so the shape of
+  // the raw value has to be checked before parsing: http(s) plus a non-empty authority.
   const raw = configuredOrigin.trim();
   if (!/^https?:\/\/[^/?#]+(?:[/?#]|$)/i.test(raw)) {
     throw new Error(INVALID_PUBLIC_ORIGIN);
@@ -19,8 +21,6 @@ export function resolvePublicOrigin(configuredOrigin?: string): string {
 
   const hasOnlyTrailingSlashes = /^\/*$/.test(url.pathname);
   if (
-    (url.protocol !== "http:" && url.protocol !== "https:") ||
-    url.hostname.length === 0 ||
     url.username.length > 0 ||
     url.password.length > 0 ||
     !hasOnlyTrailingSlashes ||

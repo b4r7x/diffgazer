@@ -307,41 +307,22 @@ export function useActionRowNavigation<Actions extends readonly unknown[] = read
     return DECLINE;
   };
 
-  useKey(
-    "ArrowLeft",
-    () => {
-      const nextIndex = getNextIndex(focusedIndex, -1, actionCount, wrap, disabledKey);
-      if (nextIndex !== null && nextIndex !== focusedIndex) {
-        focusAction(nextIndex);
-        onNavigate?.(nextIndex as ActionRowIndex<Actions>);
-        return;
-      }
-      if (nextIndex === focusedIndex) {
-        onNavigationBoundaryReached?.("previous");
-        return;
-      }
-      return DECLINE;
-    },
-    keyOptions,
-  );
+  const stepAction = (direction: -1 | 1, boundary: "previous" | "next") => {
+    const nextIndex = getNextIndex(focusedIndex, direction, actionCount, wrap, disabledKey);
+    if (nextIndex !== null && nextIndex !== focusedIndex) {
+      focusAction(nextIndex);
+      onNavigate?.(nextIndex as ActionRowIndex<Actions>);
+      return;
+    }
+    if (nextIndex === focusedIndex) {
+      onNavigationBoundaryReached?.(boundary);
+      return;
+    }
+    return DECLINE;
+  };
 
-  useKey(
-    "ArrowRight",
-    () => {
-      const nextIndex = getNextIndex(focusedIndex, 1, actionCount, wrap, disabledKey);
-      if (nextIndex !== null && nextIndex !== focusedIndex) {
-        focusAction(nextIndex);
-        onNavigate?.(nextIndex as ActionRowIndex<Actions>);
-        return;
-      }
-      if (nextIndex === focusedIndex) {
-        onNavigationBoundaryReached?.("next");
-        return;
-      }
-      return DECLINE;
-    },
-    keyOptions,
-  );
+  useKey("ArrowLeft", () => stepAction(-1, "previous"), keyOptions);
+  useKey("ArrowRight", () => stepAction(1, "next"), keyOptions);
 
   useKey(
     "ArrowDown",

@@ -154,7 +154,10 @@ export function Field({
   const labelId = labelSlot?.hasContent ? labelSlot.id : undefined;
   const descriptionId = descriptionSlot?.hasContent ? descriptionSlot.id : undefined;
   const errorId = errorSlot?.hasContent ? errorSlot.id : undefined;
-  const describedBy = mergeIds(descriptionId, invalid ? errorId : undefined);
+  const errorHasContent = errorId !== undefined;
+  // Error first: the problem is announced before the hint that describes the field, and while the
+  // field is invalid the description yields the visible helper slot to the error entirely.
+  const describedBy = mergeIds(invalid ? errorId : undefined, descriptionId);
   const contextValue = useMemo(
     () => ({
       controlId: resolvedControlId,
@@ -162,6 +165,7 @@ export function Field({
       defaultDescriptionId,
       defaultErrorId,
       invalid,
+      errorHasContent,
       required,
       disabled,
       controlRef,
@@ -177,6 +181,7 @@ export function Field({
       defaultDescriptionId,
       defaultErrorId,
       invalid,
+      errorHasContent,
       required,
       disabled,
       labelId,
@@ -195,7 +200,9 @@ export function Field({
         data-slot="field"
         data-invalid={invalid || undefined}
         data-disabled={disabled || undefined}
-        className={cn("flex flex-col gap-1.5", className)}
+        // `group/field` is what lets the required marker escalate to the error hue while the
+        // field is invalid; the marker itself lives in Label and cannot read Field context.
+        className={cn("group/field flex flex-col gap-1.5", className)}
       >
         {children}
       </div>

@@ -9,7 +9,7 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
   useInit: () => ({ data: undefined, isLoading: false }),
 }));
 
-const RESULTS_DETAILS_COLUMN = 28;
+const RESULTS_DETAILS_COLUMN = 34;
 
 afterEach(() => {
   cleanupRootFrames();
@@ -54,7 +54,7 @@ test("renders every canonical review fact in ANSI-free 80x24 TUI frames", async 
 
   const summaryFrame = stripAnsi(summary.lastFrame() ?? "");
   for (const { label, count } of facts.severityCounts) {
-    expect(summaryFrame).toMatch(new RegExp(`\\b${label}\\s+\\S+\\s+${String(count)}\\b`));
+    expect(summaryFrame).toContain(`[${label} ${String(count)}]`);
   }
 
   const capturedFrames = [summary.lastFrame() ?? ""];

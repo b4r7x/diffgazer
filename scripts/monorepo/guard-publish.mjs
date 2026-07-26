@@ -3,6 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { errorMessage } from "./lib/error-message.mjs";
 import { listRepoFiles } from "./lib/files.mjs";
 import { readJson } from "./lib/json.mjs";
 
@@ -64,7 +65,7 @@ function getPreviousVersionsByFile(packages) {
 
 export function findVersionChangedPackageNames({ packages, previousVersionsByFile }) {
   return packages
-    .filter((pkg) => valueFor(previousVersionsByFile, pkg.file) !== pkg.version)
+    .filter((pkg) => previousVersionsByFile.get(pkg.file) !== pkg.version)
     .map((pkg) => pkg.name);
 }
 
@@ -92,12 +93,8 @@ function getPublishedVersions(name) {
   }
 }
 
-function valueFor(valuesByName, name) {
-  return valuesByName instanceof Map ? valuesByName.get(name) : valuesByName[name];
-}
-
 function versionsFor(publishedVersionsByName, name) {
-  return valueFor(publishedVersionsByName, name) ?? [];
+  return publishedVersionsByName.get(name) ?? [];
 }
 
 export function createPublishPlan({ packages, publishedVersionsByName, allowlist, pendingNames }) {
@@ -194,7 +191,7 @@ if (
   try {
     main();
   } catch (error) {
-    console.error(error instanceof Error ? error.message : error);
+    console.error(errorMessage(error));
     process.exitCode = 1;
   }
 }

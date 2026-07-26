@@ -9,10 +9,16 @@ export type SelectableVariant = "x" | "bullet";
 /** The x-variant glyph pair, identical for both controls. */
 const X_INDICATORS = { checked: "[x]", unchecked: "[ ]" } as const;
 
-/** Text glyphs for the two radio states. A radio is never indeterminate. */
+/**
+ * Text glyphs for the two radio states. A radio is never indeterminate.
+ *
+ * Three characters, like every other glyph in the family: the bullet used to be padded to five
+ * with non-breaking spaces, which overran the reserved cell and pushed radio labels further right
+ * than checkbox labels in any form that mixed the two.
+ */
 export const radioIndicators = {
   x: X_INDICATORS,
-  bullet: { checked: "[\u00a0\u25cf\u00a0]", unchecked: "[\u00a0\u00a0\u00a0]" },
+  bullet: { checked: "[\u25cf]", unchecked: "[ ]" },
 } satisfies Record<SelectableVariant, Record<string, string>>;
 
 /**
@@ -49,8 +55,12 @@ export const selectableVariants = cva(
         true: selectableHighlightClass,
         false: "text-foreground hover:bg-secondary/50",
       },
+      // Disabled resolves a token instead of fading the row. `opacity-50` multiplied whatever
+      // tone the row already had (3.18:1 in light, 4.48:1 in dark — straddling the 4.5:1 line)
+      // and forced-colors mode ignores opacity entirely, so disabled was invisible there;
+      // `--muted-foreground` clears 4.5:1 in both palettes and GrayText carries high contrast.
       disabled: {
-        true: "opacity-50 cursor-not-allowed",
+        true: "cursor-not-allowed text-muted-foreground forced-colors:text-[GrayText]",
         false: "",
       },
     },
@@ -68,32 +78,42 @@ export const selectableVariants = cva(
  */
 export const selectableContainerClass = "flex items-center gap-3 px-3 py-2 pointer-coarse:min-h-11";
 
-/** Indicator variants for selectable controls. */
-export const selectableIndicatorVariants = cva("font-bold shrink-0 whitespace-nowrap", {
+/**
+ * Indicator variants for selectable controls.
+ *
+ * Every glyph in the family is exactly three characters, so the reserved cell is `3ch` at every
+ * size. The font-size still scales the cell in pixels, but never in characters — which is what
+ * keeps one label left edge in a form that mixes checkboxes and radios. The gap to the label is
+ * owned by the row's `gap-3`, so this reservation has one job.
+ */
+export const selectableIndicatorVariants = cva("font-bold shrink-0 whitespace-nowrap min-w-[3ch]", {
   variants: {
     size: {
-      sm: "text-sm min-w-[3ch]",
-      md: "min-w-[4ch]",
-      lg: "text-lg min-w-[4ch]",
+      sm: "text-sm",
+      md: "",
+      lg: "text-lg",
     },
-    // checked/highlighted carry no standalone classes but must be declared so the
-    // typed call sites can pass them and the compound variant below can match.
-    checked: {
-      true: "",
-      false: "",
-    },
+    // highlighted carries no standalone classes but must be declared so the typed call sites
+    // can pass it.
     highlighted: {
       true: "",
       false: "",
     },
+    // A disabled glyph reads as structure rather than as content: --border-strong is the same
+    // token the numbered stepper square and its connector use.
+    disabled: {
+      true: "text-border-strong forced-colors:text-[GrayText]",
+      false: "",
+    },
   },
-  // The checked glyph is a neutral control accent, not a status: --primary keeps
-  // it monochrome in both palettes (status hues stay reserved for meaning).
-  compoundVariants: [{ checked: true, highlighted: false, className: "text-primary" }],
+  // No `checked` tone lives here. `--primary` resolves to `--base-fg` in dark and light
+  // `--base-highlight` is light `--base-fg`, so the old `checked → text-primary` compound painted
+  // the mark in exactly the label's color in both palettes. The checked/unchecked distinction is
+  // carried by the glyph split in `selectable-glyph.tsx` instead: dim brackets, bold mark.
   defaultVariants: {
     size: "md",
-    checked: false,
     highlighted: false,
+    disabled: false,
   },
 });
 
@@ -140,8 +160,15 @@ export const selectableDescriptionVariants = cva("text-sm mt-0.5", {
       true: "text-foreground/70",
       false: "text-muted-foreground group-focus/selectable:text-foreground/70",
     },
+    // The description was already --muted-foreground, so the old opacity fade compounded on it.
+    // Disabled keeps the tone and only adds the forced-colors mark.
+    disabled: {
+      true: "text-muted-foreground forced-colors:text-[GrayText]",
+      false: "",
+    },
   },
   defaultVariants: {
     highlighted: false,
+    disabled: false,
   },
 });

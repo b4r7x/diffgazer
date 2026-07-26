@@ -2,24 +2,29 @@ import type { ComponentDoc } from "./types";
 
 export const skeletonDoc: ComponentDoc = {
   description:
-    "Loading placeholder with a subtle pulse animation. Purely decorative (aria-hidden). Control dimensions via className.",
+    "Loading placeholder drawn as a strip of character cells with a left-to-right scan sweep. Purely decorative (aria-hidden). Size it in cells with chars, or set dimensions via className.",
   anatomy: [
     {
       name: "Skeleton",
       indent: 0,
-      note: "Decorative placeholder div. Use className to set width and height.",
+      note: "Decorative character-cell placeholder. Use chars or className to set width and height.",
     },
   ],
   notes: [
     {
       title: "Dimensions",
       content:
-        "Skeleton has no intrinsic size. Use Tailwind classes like w-32 h-4 or w-full h-6 to define the placeholder shape.",
+        "Skeleton has no intrinsic width. Pass chars to reserve the width of the value it stands in for (a 7-cell sha, a 40-cell path), or use Tailwind classes like w-32 h-4 for a proportional block. Height comes from className; the strip has a 12px floor so the cells stay legible.",
+    },
+    {
+      title: "Cell Grid",
+      content:
+        "The strip is subdivided into --skeleton-cell wide cells by a mask, so it speaks the same character-cell alphabet as Spinner and BlockBar. The mask cuts the element's own background, which means a consumer background class still tiles into cells rather than filling the strip solid.",
     },
     {
       title: "Reduced Motion",
       content:
-        "The pulse animation uses motion-safe:animate-pulse, so it is automatically disabled when the user prefers reduced motion.",
+        "The scan sweep is dropped entirely under prefers-reduced-motion: reduce. The static cell grid still reads as pending.",
     },
     {
       title: "Composition",
@@ -37,5 +42,46 @@ export const skeletonDoc: ComponentDoc = {
     { name: "skeleton-default", title: "Default" },
     { name: "skeleton-composed", title: "Composed placeholder" },
   ],
-  noProps: true,
+  dataAttributes: [
+    {
+      attribute: "data-chars",
+      appliesTo: "Skeleton",
+      values: "cell count, present only when chars is set",
+      description: "Enables the cell-count width rule that reads --skeleton-chars.",
+    },
+  ],
+  cssVariables: [
+    {
+      name: "--skeleton-cell",
+      description: "Width of one placeholder cell, including its gap.",
+      defaultValue: "8px",
+    },
+    {
+      name: "--skeleton-gap",
+      description: "Width of the knocked-out gap between two cells.",
+      defaultValue: "1px",
+    },
+    {
+      name: "--skeleton-cell-fill",
+      description:
+        "Fill color of the cells. Deliberately below text contrast — the strip is decorative.",
+    },
+  ],
+  props: {
+    Skeleton: {
+      chars: {
+        type: "number",
+        required: false,
+        defaultValue: null,
+        description:
+          "Width of the placeholder in character cells, so it reserves the width of the value it stands in for.",
+      },
+      className: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Class names for the placeholder height and any width not set by chars.",
+      },
+    },
+  },
 };

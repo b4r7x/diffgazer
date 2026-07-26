@@ -1,5 +1,7 @@
+import "./model-select-overlay.terminal-mock";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { FooterProvider } from "@diffgazer/core/footer";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
@@ -24,7 +26,9 @@ function Wrapper({ children, api }: { children: ReactNode; api: BoundApi }) {
     <QueryClientProvider client={makeQueryClient()}>
       <ApiProvider value={api}>
         <CliThemeProvider initialTheme="dark">
-          <TerminalKeyboardProvider>{children}</TerminalKeyboardProvider>
+          <TerminalKeyboardProvider>
+            <FooterProvider initialShortcuts={[]}>{children}</FooterProvider>
+          </TerminalKeyboardProvider>
         </CliThemeProvider>
       </ApiProvider>
     </QueryClientProvider>

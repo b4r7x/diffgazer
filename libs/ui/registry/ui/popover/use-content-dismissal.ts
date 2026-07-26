@@ -2,7 +2,6 @@
 
 import {
   type FocusEvent,
-  type KeyboardEvent,
   type RefObject,
   useCallback,
   useEffect,
@@ -47,7 +46,6 @@ export interface UsePopoverContentDismissalReturn {
   onExitComplete: () => void;
   onFocusCaptureDismissal: () => void;
   onBlurCaptureDismissal: (event: FocusEvent<HTMLDivElement>) => void;
-  onKeyDownDismissal: (event: KeyboardEvent<HTMLDivElement>) => void;
 }
 
 export function usePopoverContentDismissal({
@@ -60,38 +58,20 @@ export function usePopoverContentDismissal({
 }: UsePopoverContentDismissalOptions): UsePopoverContentDismissalReturn {
   const wasOpenRef = useRef(open);
   const restoreFocusAfterCloseRef = useRef(false);
-  const dismissRequestedRef = useRef(false);
-  const dismissResetRef = useRef<{ timer: number; view: Window } | null>(null);
   const pointerFocusTransferRef = useRef(false);
   const pointerResetRef = useRef<{ timer: number; view: Window } | null>(null);
 
   const requestClose = useCallback(
     (restoreFocus: boolean) => {
-      if (dismissRequestedRef.current) return;
-      dismissRequestedRef.current = true;
-      const view =
-        triggerRef.current?.ownerDocument.defaultView ??
-        contentRef.current?.ownerDocument.defaultView;
-      if (view) {
-        const timer = view.setTimeout(() => {
-          dismissResetRef.current = null;
-          dismissRequestedRef.current = false;
-        }, 0);
-        dismissResetRef.current = { timer, view };
-      } else {
-        dismissRequestedRef.current = false;
-      }
       markDismissed();
       onOpenChange(false);
       if (restoreFocus) triggerRef.current?.focus();
     },
-    [contentRef, markDismissed, onOpenChange, triggerRef],
+    [markDismissed, onOpenChange, triggerRef],
   );
 
   useEffect(
     () => () => {
-      const pendingReset = dismissResetRef.current;
-      if (pendingReset) pendingReset.view.clearTimeout(pendingReset.timer);
       const pendingPointerReset = pointerResetRef.current;
       if (pendingPointerReset) {
         pendingPointerReset.view.clearTimeout(pendingPointerReset.timer);
@@ -241,24 +221,9 @@ export function usePopoverContentDismissal({
     [contentRef, triggerRef],
   );
 
-  const onKeyDownDismissal = useCallback(
-    (event: KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === "Escape") {
-        const shouldRestoreFocus = isFocusWithinPopover();
-        event.preventDefault();
-        if (shouldRestoreFocus) {
-          event.stopPropagation();
-        }
-        requestClose(shouldRestoreFocus);
-      }
-    },
-    [isFocusWithinPopover, requestClose],
-  );
-
   return {
     onExitComplete,
     onFocusCaptureDismissal,
     onBlurCaptureDismissal,
-    onKeyDownDismissal,
   };
 }

@@ -1,25 +1,37 @@
 import { useActivateProvider } from "@diffgazer/core/api/hooks";
+import { usePageFooter } from "@diffgazer/core/footer";
 import { getCompatibilityLabel, useModelFilter, useModelSource } from "@diffgazer/core/providers";
 import { sanitizeTerminalText } from "@diffgazer/core/review";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
+import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
+import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useEffect, useEffectEvent, useState } from "react";
-import { getContentZoneRows } from "../../../components/layout/global";
-import { Dialog } from "../../../components/ui/dialog";
+import { useContentZone } from "../../../components/layout/global";
+import { Dialog, getDialogWidth } from "../../../components/ui/dialog";
 import { Spinner } from "../../../components/ui/spinner";
 import { useListNavigation } from "../../../hooks/use-list-navigation";
-import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { getListWindow } from "../../../lib/list-window";
 import { terminalCellWidth } from "../../../lib/terminal-width";
-import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
 import { ModelListItem } from "./model-list-item";
 import { SearchInput } from "./model-search-input";
 import { TierFilterTabs } from "./tier-filter-tabs";
 
 type FocusZone = "search" | "filters" | "list";
+
+const MODEL_SELECT_SHORTCUTS: Shortcut[] = [
+  { key: "Tab", label: "Switch Zone" },
+  { key: "/", label: "Search" },
+  { key: "f", label: "Filter Tier" },
+  { key: "Enter", label: "Select" },
+];
+const MODEL_SELECT_RETRY_SHORTCUT: Shortcut = { key: "r", label: "Retry" };
+const MODEL_SELECT_RIGHT_SHORTCUTS: Shortcut[] = [{ ...BACK_SHORTCUT, label: "Close" }];
 const MIN_MODEL_VIEWPORT_SIZE = 4;
+// Card border, padding, title + provider subtitle, header rule, search box,
+// tier tabs and the gaps between them.
 const MODEL_DIALOG_BASE_CHROME_ROWS = 12;
 
 function getRenderedRows(text: string, contentWidth: number): number {
@@ -42,18 +54,7 @@ function getModelViewportSize({
   return Math.min(total, availableRows);
 }
 
-function renderModelListBody({
-  loading,
-  sourceError,
-  models,
-  filteredModels,
-  focusZone,
-  safeHighlightIndex,
-  selectedId,
-  contentWidth,
-  viewportSize,
-  tokens,
-}: {
+interface ModelListBodyProps {
   loading: boolean;
   sourceError: string | undefined;
   models: ModelInfo[];
@@ -63,8 +64,21 @@ function renderModelListBody({
   selectedId: string | undefined;
   contentWidth: number;
   viewportSize: number;
-  tokens: CliColorTokens;
-}): ReactElement {
+}
+
+function ModelListBody({
+  loading,
+  sourceError,
+  models,
+  filteredModels,
+  focusZone,
+  safeHighlightIndex,
+  selectedId,
+  contentWidth,
+  viewportSize,
+}: ModelListBodyProps): ReactElement {
+  const { tokens } = useTheme();
+
   if (loading) {
     return <Spinner label="Loading models…" />;
   }
@@ -121,7 +135,7 @@ export function ModelSelectOverlay({
   onSelect,
 }: ModelSelectOverlayProps): ReactElement {
   const { tokens } = useTheme();
-  const { columns, rows } = useTerminalDimensions();
+  const { columns, contentRows } = useContentZone();
   const {
     models,
     loading,
@@ -257,6 +271,16 @@ export function ModelSelectOverlay({
     },
   );
 
+  // One key-hint grammar: the overlay publishes to the global shortcut bar
+  // instead of drawing a second, lowercase-colon hint row inside the card.
+  usePageFooter({
+    shortcuts:
+      sourceError || fallbackNotice
+        ? [...MODEL_SELECT_SHORTCUTS, MODEL_SELECT_RETRY_SHORTCUT]
+        : MODEL_SELECT_SHORTCUTS,
+    rightShortcuts: MODEL_SELECT_RIGHT_SHORTCUTS,
+  });
+
   useInput(
     (_input, key) => {
       if (filteredModels.length === 0) return;
@@ -278,7 +302,8 @@ export function ModelSelectOverlay({
     { isActive: open && focusZone === "list" && !saving },
   );
 
-  const contentWidth = Math.min(columns - 8, 70);
+  // The card is bounded, so the rows measure against the card, not the screen.
+  const contentWidth = Math.max(getDialogWidth(columns) - 6, 1);
   const compatibilityLabel = isOpenRouter ? getCompatibilityLabel(openRouter) : null;
   const conditionalRows = [
     compatibilityLabel && !loading && !sourceError ? 1 : 0,
@@ -288,16 +313,22 @@ export function ModelSelectOverlay({
     saving ? 1 : 0,
   ].reduce((total, rowCount) => total + rowCount, 0);
   const modelViewportSize = getModelViewportSize({
-    contentRows: getContentZoneRows(rows),
+    contentRows,
     total: filteredModels.length,
     conditionalRows,
   });
+
+  const providerName =
+    AVAILABLE_PROVIDERS.find((provider) => provider.id === providerId)?.name ?? providerId;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} onEscapeKeyDown={handleEscapeKeyDown}>
       <Dialog.Content>
         <Dialog.Header>
           <Dialog.Title>Select Model</Dialog.Title>
+          <Dialog.Subtitle>
+            {`${providerName} · ${String(models.length)} ${models.length === 1 ? "model" : "models"}`}
+          </Dialog.Subtitle>
         </Dialog.Header>
         <Dialog.Body>
           <Box flexDirection="column" gap={1}>
@@ -321,32 +352,23 @@ export function ModelSelectOverlay({
             ) : null}
             {sourceError ? <Text color={tokens.muted}>Press r to retry.</Text> : null}
 
-            {renderModelListBody({
-              loading,
-              sourceError: sourceError ?? undefined,
-              models,
-              filteredModels,
-              focusZone,
-              safeHighlightIndex,
-              selectedId,
-              contentWidth,
-              viewportSize: modelViewportSize,
-              tokens,
-            })}
+            <ModelListBody
+              loading={loading}
+              sourceError={sourceError ?? undefined}
+              models={models}
+              filteredModels={filteredModels}
+              focusZone={focusZone}
+              safeHighlightIndex={safeHighlightIndex}
+              selectedId={selectedId}
+              contentWidth={contentWidth}
+              viewportSize={modelViewportSize}
+            />
             {activationError ? (
               <Text color={tokens.error}>{sanitizeTerminalText(activationError)}</Text>
             ) : null}
             {saving && <Spinner label="Saving…" />}
           </Box>
         </Dialog.Body>
-        <Dialog.Footer>
-          <Box gap={2} justifyContent="flex-end" width="100%">
-            <Text color={tokens.muted}>Tab: zone</Text>
-            <Text color={tokens.muted}>/: search</Text>
-            <Text color={tokens.muted}>f: filter</Text>
-            {(sourceError || fallbackNotice) && <Text color={tokens.muted}>r: retry</Text>}
-          </Box>
-        </Dialog.Footer>
       </Dialog.Content>
     </Dialog>
   );

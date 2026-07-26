@@ -158,11 +158,28 @@ describe("Input", () => {
     expect(screen.getByRole("textbox", { name: "Path" })).not.toHaveFocus();
   });
 
+  it("keeps a read-only field focusable, enabled and unedited", async () => {
+    const user = userEvent.setup();
+    render(<Input readOnly defaultValue="~/projects/diffgazer" aria-label="Path" />);
+    const input = screen.getByRole("textbox", { name: "Path" });
+
+    await user.tab();
+    expect(input).toHaveFocus();
+    expect(input).not.toBeDisabled();
+    expect(input).not.toHaveAttribute("aria-disabled");
+
+    await user.type(input, "abc");
+    expect(input).toHaveValue("~/projects/diffgazer");
+  });
+
   it("has no a11y violations across Input and InputGroup states", async () => {
     const { container, rerender } = render(<Input aria-label="Email" />);
     expect(await axe(container)).toHaveNoViolations();
 
     rerender(<Input aria-label="Email" aria-invalid />);
+    expect(await axe(container)).toHaveNoViolations();
+
+    rerender(<Input aria-label="Email" readOnly defaultValue="ops@example.com" />);
     expect(await axe(container)).toHaveNoViolations();
 
     rerender(<InputGroup aria-label="Path" prefix="~/" suffix=".json" />);

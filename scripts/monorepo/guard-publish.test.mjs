@@ -69,7 +69,7 @@ process.exit(exitCodes[previousInvocations] ?? 0);
   const moduleUrl = pathToFileURL(path.resolve("scripts/monorepo/guard-publish.mjs")).href;
   const input = {
     packages: packageFixtures,
-    publishedVersionsByName: registryVersions,
+    publishedVersions: registryVersions,
     allowlist,
     pendingNames,
   };
@@ -79,7 +79,11 @@ process.exit(exitCodes[previousInvocations] ?? 0);
       "--input-type=module",
       "--eval",
       `import { publishPendingPackages } from ${JSON.stringify(moduleUrl)};
-publishPendingPackages(${JSON.stringify(input)});`,
+const input = ${JSON.stringify(input)};
+publishPendingPackages({
+  ...input,
+  publishedVersionsByName: new Map(Object.entries(input.publishedVersions)),
+});`,
     ],
     {
       cwd: path.resolve("."),
@@ -258,10 +262,9 @@ test("derives the publish set from version changes instead of registry absence",
 test("plans pending versions as publications or registry recoveries", () => {
   const plan = createPublishPlan({
     packages: packageFixtures,
-    publishedVersionsByName: {
-      ...publishedVersionsByName,
-      diffgazer: ["0.1.3", "0.1.4"],
-    },
+    publishedVersionsByName: new Map(
+      Object.entries({ ...publishedVersionsByName, diffgazer: ["0.1.3", "0.1.4"] }),
+    ),
     allowlist: ["diffgazer", "@diffgazer/add"],
     pendingNames: ["diffgazer", "@diffgazer/add"],
   });
@@ -280,7 +283,7 @@ test("a gated package in the pending set fails before publication", () => {
     () =>
       createPublishPlan({
         packages: packageFixtures,
-        publishedVersionsByName,
+        publishedVersionsByName: new Map(Object.entries(publishedVersionsByName)),
         allowlist: ["diffgazer"],
         pendingNames: ["@diffgazer/add"],
       }),

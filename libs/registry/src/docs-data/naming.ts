@@ -8,7 +8,3 @@ export function kebabToCamelCase(str: string): string {
 export function toDocExportName(name: string): string {
   return `${kebabToCamelCase(name)}Doc`;
 }
-
-export function toYamlString(value: string): string {
-  return JSON.stringify(value);
-}

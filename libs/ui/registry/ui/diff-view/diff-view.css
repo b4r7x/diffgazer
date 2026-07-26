@@ -57,6 +57,41 @@
       var(--diff-view-muted, var(--muted-foreground)) 14%,
       transparent
     );
+    /* One material for absence. Both the unmatched split-pane filler and the
+       whole-diff empty band consume this declaration, so the two can never
+       drift into separate vocabularies. */
+    --diff-hatch: repeating-linear-gradient(
+      135deg,
+      var(--diff-empty-hatch) 0 1px,
+      transparent 1px 7px
+    );
+
+    /* Soft-wrap switch. Wrapping is pure geometry, so instead of restating the
+       same six declarations under every trigger (explicit prop, narrow
+       container, coarse pointer) the rules below flip these inherited values
+       and the consuming declarations read them exactly once. */
+    --diff-rows-overflow-x: auto;
+    --diff-row-min-width: max-content;
+    --diff-code-white-space: pre;
+    --diff-code-overflow-wrap: normal;
+    --diff-code-indent: 0;
+    --diff-code-pad-start: 0.5ch;
+    --diff-gutter-align: stretch;
+
+    /* Named container so the wrap default can be owned by CSS: a phone gets
+       wrapping without the consumer knowing the prop exists.
+
+       inline-size: 100% is load-bearing, not decoration. inline-size containment
+       zeroes the figure's own intrinsic width contribution, so in any
+       shrink-to-fit context (flex centering, grid auto track, float) the root
+       would resolve to its borders — measured at 2px in the docs preview, which
+       then wraps every line into nothing. A definite inline size is what makes
+       the containment safe. Moving the container to an inner wrapper does not
+       help: the wrapper contributes 0 in turn and the figure collapses to its
+       figcaption instead (measured 198px). */
+    container-type: inline-size;
+    container-name: diff-view;
+    inline-size: 100%;
 
     position: relative;
     display: block;
@@ -74,6 +109,49 @@
     font-variant-ligatures: none;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0;
+  }
+
+  /* Wrapped geometry. The 2ch hanging indent IS the continuation cue — no
+     arrow, no ellipsis, nothing to tire of on the twentieth screen. Releasing
+     the max-content row floor also lets the row tint paint the full wrapped
+     height instead of stranding at the scroll width. */
+  [data-slot="diff-view"][data-wrap="on"] {
+    --diff-rows-overflow-x: hidden;
+    --diff-row-min-width: 0;
+    --diff-code-white-space: pre-wrap;
+    --diff-code-overflow-wrap: anywhere;
+    --diff-code-indent: -2ch;
+    --diff-code-pad-start: 2.5ch;
+    --diff-gutter-align: start;
+  }
+
+  /* CSS-owned responsive default: below 40rem the filmstrip costs several
+     horizontal drags per long line, so wrap unless the consumer opted out.
+     Declared on the rows container because an element cannot query itself. */
+  @container diff-view (max-width: 40rem) {
+    [data-slot="diff-view"]:not([data-wrap="off"]) [data-slot="diff-view-rows"] {
+      --diff-rows-overflow-x: hidden;
+      --diff-row-min-width: 0;
+      --diff-code-white-space: pre-wrap;
+      --diff-code-overflow-wrap: anywhere;
+      --diff-code-indent: -2ch;
+      --diff-code-pad-start: 2.5ch;
+      --diff-gutter-align: start;
+    }
+  }
+
+  /* Same default for touch at any width: horizontal scroll inside a vertically
+     scrolling page is the worst gesture on a phone, landscape included. */
+  @media (pointer: coarse) {
+    [data-slot="diff-view"]:not([data-wrap="off"]) {
+      --diff-rows-overflow-x: hidden;
+      --diff-row-min-width: 0;
+      --diff-code-white-space: pre-wrap;
+      --diff-code-overflow-wrap: anywhere;
+      --diff-code-indent: -2ch;
+      --diff-code-pad-start: 2.5ch;
+      --diff-gutter-align: start;
+    }
   }
 
   [data-slot="diff-view"][data-density="compact"] {
@@ -128,6 +206,30 @@
     white-space: nowrap;
   }
 
+  /* The path yields width first: an ellipsised path is honest, "+7 −" is a lie. */
+  [data-slot="diff-view-caption-path"] {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  [data-slot="diff-view-stat"] {
+    flex: none;
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  [data-slot="diff-view-stat"] .diff-stat-add {
+    color: var(--diff-color-add);
+  }
+  [data-slot="diff-view-stat"] .diff-stat-remove {
+    color: var(--diff-color-remove);
+  }
+
   /* Rows container — grid + subgrid + horizontal scroll. The [code] track grows
      to the widest line's content (see .diff-code), so the grid overflows the
      container and every subgrid row (grid-column: 1 / -1) spans the full
@@ -141,7 +243,7 @@
       [code] 1fr;
     /* Scrollbar styling belongs to the .scrollbar-thin utility the rows already
        carry — declaring it here too only wins on touch devices. */
-    overflow-x: auto;
+    overflow-x: var(--diff-rows-overflow-x);
     overflow-y: hidden;
   }
 
@@ -190,7 +292,7 @@
     display: grid;
     grid-template-columns: subgrid;
     grid-column: 1 / -1;
-    min-width: max-content;
+    min-width: var(--diff-row-min-width);
   }
 
   [data-row] > .diff-num,
@@ -211,21 +313,21 @@
   }
   [data-row][data-state="empty"] {
     background-color: var(--diff-empty-bg);
-    background-image: repeating-linear-gradient(
-      135deg,
-      var(--diff-empty-hatch) 0 1px,
-      transparent 1px 7px
-    );
+    background-image: var(--diff-hatch);
   }
   [data-row][data-highlighted] {
     box-shadow: inset 2px 0 0 0 var(--ring, var(--diff-view-fg, var(--foreground)));
   }
 
+  /* align-self keeps the number and the +/− pinned to the FIRST visual line of
+     a wrapped row instead of centring across the block, so the gutter still
+     reads as a column. */
   .diff-num {
     color: var(--diff-line-num-fg);
     text-align: right;
     padding-inline: 0.5ch;
     user-select: none;
+    align-self: var(--diff-gutter-align);
   }
 
   /* Marker cell — copy-paste keeps the +/− glyph (delta / git compat). */
@@ -233,6 +335,7 @@
     color: var(--diff-marker-fg);
     text-align: center;
     user-select: text;
+    align-self: var(--diff-gutter-align);
   }
 
   [data-row][data-state="added"] .diff-marker {
@@ -243,14 +346,22 @@
   }
 
   .diff-code {
-    white-space: pre;
+    white-space: var(--diff-code-white-space);
+    overflow-wrap: var(--diff-code-overflow-wrap);
     padding-inline-end: 1ch;
-    padding-inline-start: 0.5ch;
-    /* Keep the code cell's intrinsic (content) minimum — do NOT collapse it to
-       min-width: 0. It is the only content-sized cell in the [code] 1fr track,
-       so its min-content is what grows that track (and every subgrid row spanning
-       it) to the widest line. Collapsing it strands the row state tints at the
-       visible width when the diff is scrolled horizontally. */
+    /* Hanging indent under wrap: the negative text-indent pulls the first line
+       back to the usual 0.5ch offset, so continuations sit 2ch in. text-indent
+       is not copied, and pre-wrap preserves tabs and leading whitespace, so a
+       wrapped row still yields its original line on copy. */
+    padding-inline-start: var(--diff-code-pad-start);
+    text-indent: var(--diff-code-indent);
+    /* On the NON-wrapped path, keep the code cell's intrinsic (content) minimum
+       — do NOT collapse it to min-width: 0. It is the only content-sized cell in
+       the [code] 1fr track, so its min-content is what grows that track (and
+       every subgrid row spanning it) to the widest line. Collapsing it strands
+       the row state tints at the visible width when the diff is scrolled
+       horizontally. Under wrap the grid deliberately does not overflow, so the
+       row floor is released instead (see --diff-row-min-width). */
   }
 
   [data-row][data-state="hunk"] .diff-code {
@@ -277,12 +388,39 @@
     overflow-y: auto;
   }
 
-  /* "No changes" status row. */
+  /* "No changes" status row — the same hatched material an unmatched split
+     pane uses, so "nothing here" is recognisable without reading a sentence. */
   [data-slot="diff-view-empty"] {
     padding: 16px;
     text-align: center;
     color: var(--diff-view-muted, var(--muted-foreground));
     font-size: 13px;
+  }
+
+  [data-slot="diff-view-empty"][data-empty] {
+    background-color: var(--diff-empty-bg);
+    background-image: var(--diff-hatch);
+    /* Floor, not growth: 16px padding around one 13px line already measures
+       ~51px. It also matches the touch-target floor the rest of the library
+       uses, so the band never collapses to a hairline on a phone. */
+    min-height: 44px;
+  }
+
+  /* Knocked-out label on hatched ground — the same figure/ground move
+     PanelLabel and CardLabel already make. */
+  [data-slot="diff-view-empty-label"] {
+    background: var(--diff-view-bg, var(--background));
+    padding-inline: 8px;
+  }
+
+  /* bare's whole contract is "no chrome", so it keeps the plain label. */
+  [data-slot="diff-view"][data-variant="bare"] [data-slot="diff-view-empty"][data-empty] {
+    background-image: none;
+    background-color: transparent;
+  }
+  [data-slot="diff-view"][data-variant="bare"] [data-slot="diff-view-empty-label"] {
+    background: transparent;
+    padding-inline: 0;
   }
 
   /* ============================================================
@@ -456,6 +594,12 @@
     [data-slot="diff-view-corners"] > span {
       border-color: CanvasText;
     }
+    /* Gradients are dropped in forced colors; dashed is the HCM idiom for
+       absence. */
+    [data-slot="diff-view-empty"][data-empty] {
+      background-image: none;
+      border: 1px dashed GrayText;
+    }
     [data-row][data-state="added"] {
       background: Canvas;
       border-inline-start: 2px solid Mark;
@@ -468,6 +612,11 @@
     [data-slot="diff-view-rows"]:focus-visible {
       outline: 2px solid Highlight;
       outline-offset: -2px;
+    }
+    /* Hue is dropped, but the + and − signs still carry the direction. */
+    [data-slot="diff-view-stat"] .diff-stat-add,
+    [data-slot="diff-view-stat"] .diff-stat-remove {
+      color: CanvasText;
     }
   }
 }

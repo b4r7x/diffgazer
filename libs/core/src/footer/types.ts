@@ -13,4 +13,9 @@ export interface FooterActions {
 export interface PageFooterOptions {
   shortcuts: Shortcut[];
   rightShortcuts?: Shortcut[];
+  /**
+   * When false the page publishes nothing, leaving the footer to whichever
+   * component actually owns the screen (a guard branch, for example).
+   */
+  enabled?: boolean;
 }

@@ -289,7 +289,7 @@ const checks = [
   ...validatePackageExportTargets("libs/ui", "@diffgazer/ui"),
   ...validateUiPackageExports(),
   ...artifactLibraries.flatMap((library) =>
-    validateArtifactPackSurface(root, library, packedFilesByPackage.get(library.packageName) ?? []),
+    validateArtifactPackSurface(library, packedFilesByPackage.get(library.packageName) ?? []),
   ),
   ...validateUiPackSurface(uiPackedFiles),
   ...validateUiDeclarationsAvoidHiddenShared(uiPackedFiles),
@@ -318,8 +318,6 @@ checks.push(
   ...collectBundleRelativeJsImportErrors(keysCopyBundle.items, "@diffgazer/add keys copy bundle"),
 );
 
-// Exit-code contract: this validator leaves a non-zero code when any check
-// fails so diagnostics can drain before CI observes the failure.
 runValidationChecks(checks, {
   failureHeader: "Artifact validation failed.",
   successMessage: "OK: artifact validation passed",

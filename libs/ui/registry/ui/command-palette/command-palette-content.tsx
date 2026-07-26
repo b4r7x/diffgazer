@@ -16,7 +16,17 @@ export type CommandPaletteDensity = "compact" | "comfortable" | "dense";
 
 /** Class variants for command palette content. */
 export const commandPaletteContentVariants = cva(
-  "relative flex flex-col max-h-[80dvh] m-auto w-full font-mono",
+  cn(
+    "relative flex flex-col max-h-[80dvh] w-full font-mono",
+    // Top-pinned, not centred: the software keyboard shrinks the visual viewport
+    // the instant the user starts typing, and a centred panel jumps upward at
+    // exactly the wrong moment. A fixed top edge holds the input row still for
+    // the whole session. max() degrades to 12px without viewport-fit=cover.
+    "mx-auto mt-[max(0.75rem,env(safe-area-inset-top))] mb-auto",
+    // Narrow viewports: inset from the edge so both vertical hairlines and the
+    // offset shadow stay on-screen. At >=640px the size variants still rule.
+    "max-sm:mx-3 max-sm:w-[calc(100%-1.5rem)] max-sm:max-w-none",
+  ),
   {
     variants: {
       size: { sm: "max-w-sm", md: "max-w-xl", lg: "max-w-2xl" },

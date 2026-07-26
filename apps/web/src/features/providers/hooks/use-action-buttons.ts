@@ -41,7 +41,7 @@ export function useProvidersActionButtons({
   onActivateProvider,
 }: UseProvidersActionButtonsOptions): UseProvidersActionButtonsResult {
   const hasApiKey = selectedProvider?.hasApiKey ?? false;
-  const canRemoveKey = hasApiKey;
+  const disabledActions = [false, false, !hasApiKey, !hasApiKey];
 
   const handleButtonAction = (index: number) => {
     if (!selectedProvider) return;
@@ -64,7 +64,7 @@ export function useProvidersActionButtons({
   const actionRow = useActionRowNavigation<readonly unknown[]>({
     enabled: !dialogOpen && inButtons,
     actionCount: BUTTON_COUNT,
-    disabledActions: [false, false, !canRemoveKey, !hasApiKey],
+    disabledActions,
     onAction: handleButtonAction,
     onNavigationBoundaryReached: (direction) => {
       if (direction === "previous") {
@@ -94,10 +94,9 @@ export function useProvidersActionButtons({
   };
 
   const navigateButtonsVertical = (direction: 1 | -1) => {
-    const enabledFlags = [true, true, canRemoveKey, hasApiKey];
     let next = actionRow.focusedIndex + direction;
     while (next >= 0 && next < BUTTON_COUNT) {
-      if (enabledFlags[next]) {
+      if (!disabledActions[next]) {
         actionRow.enterActions(next);
         return;
       }

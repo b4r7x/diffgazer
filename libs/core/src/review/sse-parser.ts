@@ -16,7 +16,7 @@ function parseSSELine(line: string): unknown | undefined {
   if (!line.startsWith("data: ")) return undefined;
 
   const jsonStr = line.slice(6);
-  const result = safeParseJson(jsonStr, () => undefined);
+  const result = safeParseJson(jsonStr);
 
   return result.ok ? result.value : undefined;
 }

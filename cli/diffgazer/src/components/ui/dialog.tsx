@@ -1,11 +1,22 @@
 import { Box, Text, useInput } from "ink";
 import type { ReactNode } from "react";
-import { useContext, useEffect } from "react";
+import { createContext, useContext, useEffect } from "react";
 import { KeyboardContext } from "../../hooks/keyboard-context";
-import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions";
-import { SURFACE_BORDER } from "../../theme/chrome";
+import { SURFACE_BORDER, selectionHue } from "../../theme/chrome";
 import { useTheme } from "../../theme/provider";
-import { getContentZoneRows } from "../layout/global";
+import { useContentZone } from "../layout/global";
+
+/**
+ * A dialog is a card lifted over the screen, not a screen replacement: it keeps
+ * gutters at every width so the terminal background reads as the matte around
+ * it, and it never grows past a comfortable reading measure.
+ */
+export function getDialogWidth(columns: number): number {
+  const preferred = Math.min(Math.max(columns - 16, 52), 72);
+  return Math.max(Math.min(preferred, columns - 4), 1);
+}
+
+const DialogWidthContext = createContext<number | null>(null);
 
 export interface DialogProps {
   open?: boolean;
@@ -26,6 +37,10 @@ export interface DialogTitleProps {
   children: string;
 }
 
+export interface DialogSubtitleProps {
+  children: string;
+}
+
 export interface DialogBodyProps {
   children: ReactNode;
 }
@@ -36,12 +51,16 @@ export interface DialogFooterProps {
 
 function DialogContent({ children }: DialogContentProps) {
   const { tokens } = useTheme();
+  const width = useContext(DialogWidthContext);
 
+  // An open modal owns focus by definition, so the card carries the focus hue —
+  // one blue rectangle on screen, the same rule the panes follow.
   return (
     <Box
       flexDirection="column"
+      width={width ?? undefined}
       borderStyle={SURFACE_BORDER}
-      borderColor={tokens.border}
+      borderColor={selectionHue(tokens)}
       paddingX={2}
       paddingY={1}
     >
@@ -55,7 +74,7 @@ function DialogHeader({ children }: DialogHeaderProps) {
 
   return (
     <Box
-      marginBottom={1}
+      flexDirection="column"
       borderStyle={SURFACE_BORDER}
       borderTop={false}
       borderLeft={false}
@@ -75,6 +94,12 @@ function DialogTitle({ children }: DialogTitleProps) {
       {children}
     </Text>
   );
+}
+
+function DialogSubtitle({ children }: DialogSubtitleProps) {
+  const { tokens } = useTheme();
+
+  return <Text color={tokens.muted}>{children}</Text>;
 }
 
 function DialogBody({ children }: DialogBodyProps) {
@@ -103,7 +128,7 @@ function DialogFooter({ children }: DialogFooterProps) {
 }
 
 function DialogRoot({ open = false, onOpenChange, onEscapeKeyDown, children }: DialogProps) {
-  const { columns, rows } = useTerminalDimensions();
+  const { columns, contentRows } = useContentZone();
   const keyboard = useContext(KeyboardContext);
 
   useEffect(() => {
@@ -124,16 +149,18 @@ function DialogRoot({ open = false, onOpenChange, onEscapeKeyDown, children }: D
   if (!open) return null;
 
   return (
-    <Box
-      flexDirection="column"
-      justifyContent="center"
-      alignItems="center"
-      width={columns}
-      height={getContentZoneRows(rows)}
-      overflow="hidden"
-    >
-      {children}
-    </Box>
+    <DialogWidthContext value={getDialogWidth(columns)}>
+      <Box
+        flexDirection="column"
+        justifyContent="center"
+        alignItems="center"
+        width={columns}
+        height={contentRows}
+        overflow="hidden"
+      >
+        {children}
+      </Box>
+    </DialogWidthContext>
   );
 }
 
@@ -141,6 +168,7 @@ export const Dialog = Object.assign(DialogRoot, {
   Content: DialogContent,
   Header: DialogHeader,
   Title: DialogTitle,
+  Subtitle: DialogSubtitle,
   Body: DialogBody,
   Footer: DialogFooter,
 });

@@ -20,6 +20,7 @@ import { isAriaInvalid, mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
 import {
   getEnabledSelectableCollectionItems,
+  isSeedElementSkipped,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
 import { useSelectableGroupAutoFocus } from "@/lib/selectable-group";
@@ -132,15 +133,7 @@ function collectEnabledDirectRadioValues(children: ReactNode): string[] {
   return Children.toArray(children).flatMap((child) => {
     if (!isValidElement<RadioGroupItemProps>(child) || child.type !== RadioGroupItem) return [];
     const props = child.props;
-    if (
-      props.disabled ||
-      props.hidden ||
-      props.inert ||
-      props["aria-hidden"] === true ||
-      props["aria-hidden"] === "true"
-    ) {
-      return [];
-    }
+    if (props.disabled || isSeedElementSkipped(props)) return [];
     return [props.value];
   });
 }

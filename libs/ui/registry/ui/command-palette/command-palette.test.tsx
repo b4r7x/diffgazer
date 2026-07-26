@@ -453,7 +453,8 @@ describe("CommandPalette", () => {
     await waitFor(() => expect(input).toHaveAttribute("aria-activedescendant", second.id));
   });
 
-  it("re-resolves the fallback active descendant when a stylesheet hides an item after mount", async () => {
+  it("re-resolves the fallback active descendant on the next navigation when a stylesheet hides an item", async () => {
+    const user = userEvent.setup();
     render(
       <CommandPalette open>
         <CommandPalette.Content>
@@ -473,14 +474,15 @@ describe("CommandPalette", () => {
     const second = screen.getByRole("option", { name: "Second" });
     expect(input).toHaveAttribute("aria-activedescendant", first.id);
 
-    // The rule lands outside the list subtree, so only document-level stylesheet
-    // observation can invalidate eligibility here.
+    // The rule lands outside the list subtree, so no mutation observes it; the
+    // palette re-checks eligibility when the user navigates.
     const style = document.createElement("style");
     document.head.append(style);
     const ruleIndex = style.sheet?.insertRule(".palette-stylesheet-hidden { display: none; }");
     if (ruleIndex === undefined) throw new Error("Expected stylesheet rule insertion");
 
     try {
+      await user.keyboard("{ArrowDown}");
       await waitFor(() => expect(input).toHaveAttribute("aria-activedescendant", second.id));
     } finally {
       style.remove();

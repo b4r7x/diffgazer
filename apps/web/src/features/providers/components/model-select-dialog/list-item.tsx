@@ -22,7 +22,7 @@ export function ModelListItem({ model, onDoubleClick }: ModelListItemProps) {
           </Badge>
         </span>
       }
-      description={model.description}
+      description={model.description || undefined}
     />
   );
 }

@@ -31,4 +31,11 @@ describe("ProviderStep", () => {
 
     expect(onCommit).toHaveBeenCalledWith(selectedProvider.id);
   });
+
+  it("keeps the radiogroup and one option per provider", () => {
+    render(<ProviderStep value={null} onChange={vi.fn()} />);
+
+    expect(screen.getByRole("radiogroup", { name: "Select AI provider" })).toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(AVAILABLE_PROVIDERS.length);
+  });
 });

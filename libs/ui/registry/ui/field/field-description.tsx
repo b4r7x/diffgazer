@@ -7,7 +7,7 @@ import { hasRenderableContent, useFieldContext } from "./field-context";
 export interface FieldDescriptionProps extends ComponentProps<"p"> {}
 
 export function FieldDescription({ className, children, ref, ...props }: FieldDescriptionProps) {
-  const { defaultDescriptionId, disabled, registerSlot, unregisterSlot } =
+  const { defaultDescriptionId, disabled, errorHasContent, invalid, registerSlot, unregisterSlot } =
     useFieldContext("Field.Description");
   const hasChildren = hasRenderableContent(children);
   const resolvedId = props.id ?? defaultDescriptionId;
@@ -19,13 +19,25 @@ export function FieldDescription({ className, children, ref, ...props }: FieldDe
 
   if (!hasChildren) return null;
 
+  const hidden = invalid && errorHasContent;
+
   return (
     <p
       {...props}
       ref={ref}
       id={resolvedId}
       data-slot="field-description"
-      className={cn("text-xs text-muted-foreground", disabled && "opacity-50", className)}
+      className={cn(
+        // One visible helper slot at a time: while the field is invalid the error takes the row,
+        // so field height stops depending on validity and correcting a field does not push it
+        // under the user's thumb. `sr-only` rather than `null` — the node keeps its id and its
+        // place in aria-describedby, so assistive tech still gets the hint.
+        hidden ? "sr-only" : "text-xs text-muted-foreground",
+        // The description was already muted, so the old fade compounded on it; disabled only adds
+        // the forced-colors mark, which opacity could never carry.
+        disabled && "forced-colors:text-[GrayText]",
+        className,
+      )}
     >
       {children}
     </p>

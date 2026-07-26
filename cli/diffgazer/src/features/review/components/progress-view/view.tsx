@@ -15,7 +15,6 @@ import {
 import { Box, useInput } from "ink";
 import { type ReactElement, useContext, useEffect, useState } from "react";
 import { useContentZone } from "../../../../components/layout/global";
-import { Button } from "../../../../components/ui/button";
 import { Callout } from "../../../../components/ui/callout";
 import { KeyboardContext } from "../../../../hooks/keyboard-context";
 import { useResponsive } from "../../../../hooks/use-terminal-dimensions";
@@ -48,6 +47,7 @@ export interface ReviewProgressViewProps {
 const STREAMING_SHORTCUTS: Shortcut[] = [{ key: "c", label: "Cancel" }];
 const COMPLETING_SHORTCUTS: Shortcut[] = [{ key: "Enter", label: "View Results" }];
 const SAVE_CONTEXT_SHORTCUT: Shortcut = { key: "w", label: "Save context" };
+const OPEN_SETTINGS_SHORTCUT: Shortcut = { key: "s", label: "Open Settings" };
 
 function getPaneWidths(tier: BreakpointTier): { progress: string; log: string } {
   if (tier === "wide") return { progress: "33%", log: "67%" };
@@ -61,13 +61,18 @@ function getProgressShortcuts({
   hasViewResults,
   hasContextSnapshot,
   hasError,
+  hasSettingsRecovery,
 }: {
   isStreaming: boolean;
   hasCancel: boolean;
   hasViewResults: boolean;
   hasContextSnapshot: boolean;
   hasError: boolean;
+  hasSettingsRecovery: boolean;
 }): Shortcut[] {
+  // A missing API key has no other affordance, so it publishes the one key that
+  // recovers it instead of an in-content button.
+  if (hasSettingsRecovery) return [OPEN_SETTINGS_SHORTCUT];
   if (hasError) return [];
   if (isStreaming) return hasCancel ? STREAMING_SHORTCUTS : [];
   return [
@@ -119,15 +124,28 @@ export function ReviewProgressView({
     return () => clearInterval(interval);
   }, [completedAt, isStreaming, startedAt]);
 
+  const errorGuidance = error ? classifyReviewStreamError(error, errorCode) : null;
+  const hasSettingsRecovery = Boolean(
+    errorGuidance?.kind === "api-key" && onGoToSettings !== undefined,
+  );
+
   useInput(
     (input, key) => {
       if (key.escape) {
         onBack?.();
       } else if (input === "c" && isStreaming) {
         onCancel?.();
+      } else if (input === "s" && hasSettingsRecovery) {
+        onGoToSettings?.();
+      } else if (key.return && !isStreaming && !error) {
+        onViewResults?.();
       }
     },
-    { isActive: Boolean(onBack || (isStreaming && onCancel)) },
+    {
+      isActive: Boolean(
+        onBack || onViewResults || hasSettingsRecovery || (isStreaming && onCancel),
+      ),
+    },
   );
 
   const shortcuts = getProgressShortcuts({
@@ -136,6 +154,7 @@ export function ReviewProgressView({
     hasViewResults: Boolean(onViewResults),
     hasContextSnapshot: Boolean(contextSnapshot),
     hasError: Boolean(error),
+    hasSettingsRecovery,
   });
 
   usePageFooter({
@@ -148,14 +167,12 @@ export function ReviewProgressView({
   const sideBySide = isWide || isMedium;
   const { progress: progressWidth, log: logWidth } = getPaneWidths(tier);
 
-  const errorGuidance = error ? classifyReviewStreamError(error, errorCode) : null;
-  const hasActionRow = !error && ((isStreaming && onCancel) || (!isStreaming && onViewResults));
-  const actionRows = hasActionRow ? 2 : 0;
-  let errorRows = 0;
-  if (errorGuidance) {
-    errorRows = errorGuidance.kind === "api-key" && onGoToSettings ? 8 : 6;
-  }
-  const paneHeight = Math.max(contentRows - actionRows - errorRows, 1);
+  // The shortcut bar is the only action surface here, so the panes keep the
+  // rows an in-content button row used to take. What is left is the callout:
+  // two border rows, the title, its content lines and the marginTop above it.
+  const calloutRows = hasSettingsRecovery ? 7 : 6;
+  const errorRows = errorGuidance ? calloutRows : 0;
+  const paneHeight = Math.max(contentRows - errorRows, 1);
   const hasCompletedSnapshot = Boolean(contextSnapshot && !isStreaming);
   const stackedPaneGap = sideBySide ? 0 : 1;
   let progressPaneHeight = paneHeight;
@@ -200,33 +217,10 @@ export function ReviewProgressView({
             <Callout.Title>{errorGuidance.title}</Callout.Title>
             <Callout.Content>{sanitizeTerminalText(error ?? "")}</Callout.Content>
             <Callout.Content>{errorGuidance.guidance}</Callout.Content>
+            {hasSettingsRecovery ? (
+              <Callout.Content>Press s to open Settings.</Callout.Content>
+            ) : null}
           </Callout>
-          {errorGuidance.kind === "api-key" && onGoToSettings ? (
-            <Box marginTop={1}>
-              <Button variant="primary" isActive onPress={onGoToSettings}>
-                Go to Settings
-              </Button>
-            </Box>
-          ) : null}
-        </Box>
-      ) : null}
-      {isStreaming && onCancel ? (
-        <Box marginTop={1} gap={2}>
-          <Button variant="destructive" onPress={onCancel}>
-            Cancel
-          </Button>
-          {onBack ? (
-            <Button variant="secondary" onPress={onBack}>
-              Back
-            </Button>
-          ) : null}
-        </Box>
-      ) : null}
-      {!isStreaming && !error && onViewResults ? (
-        <Box marginTop={1}>
-          <Button variant="primary" isActive onPress={onViewResults}>
-            View Results
-          </Button>
         </Box>
       ) : null}
     </Box>

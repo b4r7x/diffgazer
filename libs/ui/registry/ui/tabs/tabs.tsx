@@ -15,7 +15,7 @@ import {
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import type { SegmentedSize, SegmentedVariant } from "@/lib/segmented-variants";
-import { useSelectableCollection } from "@/lib/selectable-collection";
+import { isSeedElementSkipped, useSelectableCollection } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
 import { warnUnregisteredValue } from "@/lib/warn-unregistered-value";
 import { TabsContent } from "./tabs-content";
@@ -63,17 +63,6 @@ interface TabSeed {
   triggerValues: string[];
 }
 
-// SSR-seed mirror of the shared isSelectableElementSkipped DOM predicate; runs
-// before any element mounts.
-function isTabSeedElementSkipped(props: TabTriggerElementProps): boolean {
-  return (
-    props.hidden === true ||
-    props.inert === true ||
-    props["aria-hidden"] === true ||
-    props["aria-hidden"] === "true"
-  );
-}
-
 // SSR/first-render seed before registration effects run: resolve a selected tab
 // from the static child tree. A skipped ancestor carries down so
 // hidden/inert/aria-hidden wrappers exclude their triggers.
@@ -84,7 +73,7 @@ function collectTabSeed(children: ReactNode, skippedAncestor = false): TabSeed {
     if (!isValidElement<TabTriggerElementProps>(child)) return;
     if (child.type === TabsRoot) return;
 
-    const skipped = skippedAncestor || isTabSeedElementSkipped(child.props);
+    const skipped = skippedAncestor || isSeedElementSkipped(child.props);
 
     if (child.type === TabsTrigger && typeof child.props.value === "string") {
       seed.triggerValues.push(child.props.value);

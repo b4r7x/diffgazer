@@ -1,7 +1,6 @@
 import type { ProgressStatus, ProgressSubstepData } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import { Badge } from "../../../../components/ui/badge";
-import { Spinner } from "../../../../components/ui/spinner";
 import type { CliColorTokens } from "../../../../theme/palettes";
 import { useTheme } from "../../../../theme/provider";
 
@@ -11,10 +10,18 @@ export interface ProgressStepProps {
   substeps?: ProgressSubstepData[];
 }
 
+/**
+ * Every step state prints a glyph in the same single-cell column, so the label
+ * column starts at one x position and the active step is told apart from the
+ * pending ones by shape as well as by colour. The active marker is a static
+ * glyph, not a spinner: a nested animated box collapses to zero height when the
+ * overview pane shrinks, which drops the one row the user is watching.
+ */
 const STEP_ICON = {
   completed: "*",
-  pending: "-",
-} satisfies Record<Exclude<ProgressStatus, "active">, string>;
+  pending: "\u00b7",
+  active: ">",
+} satisfies Record<ProgressStatus, string>;
 
 const SUBSTEP_BADGE_VARIANT = {
   pending: "neutral",
@@ -31,6 +38,7 @@ function getStepColor(status: ProgressStatus, tokens: CliColorTokens): string {
 
 function getStepIconColor(status: ProgressStatus, tokens: CliColorTokens): string {
   if (status === "completed") return tokens.statusComplete;
+  if (status === "active") return tokens.statusRunning;
   return tokens.statusPending;
 }
 
@@ -48,17 +56,14 @@ export function ProgressStep({ name, status, substeps }: ProgressStepProps) {
 
   const stepColor = getStepColor(status, tokens);
 
-  const icon =
-    status === "active" ? (
-      <Spinner variant="dots" size="sm" />
-    ) : (
-      <Text color={getStepIconColor(status, tokens)}>{STEP_ICON[status]}</Text>
-    );
-
   return (
-    <Box flexDirection="column">
+    // Steps never shrink: yoga spreads a row deficit across the rows and zeroes
+    // out whichever one it lands on, so the list windows itself instead.
+    <Box flexDirection="column" flexShrink={0}>
       <Box gap={1}>
-        {icon}
+        <Box width={1} flexShrink={0}>
+          <Text color={getStepIconColor(status, tokens)}>{STEP_ICON[status]}</Text>
+        </Box>
         <Text color={stepColor}>{name}</Text>
       </Box>
       {substeps && substeps.length > 0 ? (

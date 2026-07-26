@@ -272,7 +272,7 @@ describe("Select accessibility", () => {
     const searchInput = screen.getByRole("combobox", { name: "Region" });
     const description = screen.getByText("Pick your billing region");
     const error = screen.getByText("Region is required");
-    expect(searchInput).toHaveAttribute("aria-describedby", `${description.id} ${error.id}`);
+    expect(searchInput).toHaveAttribute("aria-describedby", `${error.id} ${description.id}`);
     expect(searchInput).toHaveAttribute("aria-invalid", "true");
   });
 
@@ -298,7 +298,7 @@ describe("Select accessibility", () => {
     const listbox = screen.getByRole("listbox");
     const description = screen.getByText("Pick your billing region");
     const error = screen.getByText("Region is required");
-    expect(listbox).toHaveAttribute("aria-describedby", `${description.id} ${error.id}`);
+    expect(listbox).toHaveAttribute("aria-describedby", `${error.id} ${description.id}`);
     expect(listbox).toHaveAttribute("aria-invalid", "true");
     expect(listbox).toHaveAttribute("aria-required", "true");
   });

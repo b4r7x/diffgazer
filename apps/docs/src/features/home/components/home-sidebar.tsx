@@ -6,8 +6,9 @@ import {
 } from "@diffgazer/ui/components/sidebar";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { Link, useLocation } from "@tanstack/react-router";
-import { chromeSidebarItemClassName, isPrimaryNavigationClick } from "@/components/layout/sidebar";
+import { chromeSidebarItemClassName } from "@/components/layout/sidebar";
 import { TreeSidebarShell } from "@/components/layout/tree-sidebar-shell";
+import { isPrimaryNavigationClick } from "@/components/shared/navigation-click";
 import type { HomeLibrary } from "../data";
 
 export function HomeSidebar({

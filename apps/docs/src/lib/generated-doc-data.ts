@@ -2,16 +2,35 @@ import type { CodeBlockLineProps } from "@diffgazer/ui/components/code-block";
 import { z } from "zod";
 import { hooksData as rawHooksData } from "@/generated/library-data";
 
-const highlightedLinesSchema = z.custom<CodeBlockLineProps[]>((value) => Array.isArray(value), {
-  error: "Expected highlighted code lines",
-});
+const codeBlockTokenSchema = z
+  .object({
+    text: z.string(),
+    color: z.string().optional(),
+    className: z.string().optional(),
+  })
+  .passthrough();
 
-const sourceFileSchema = z.object({
+const codeBlockLineSchema = z
+  .object({
+    number: z.number().optional(),
+    content: z.union([z.string(), z.array(codeBlockTokenSchema)]).optional(),
+    state: z.enum(["highlight", "added", "removed"]).optional(),
+  })
+  .passthrough();
+
+// CodeBlockLineProps extends span props, so it cannot be expressed as a zod object
+// type directly; validate the generated fields and keep the component's prop type.
+export const highlightedLinesSchema = z.custom<CodeBlockLineProps[]>(
+  (value) => z.array(codeBlockLineSchema).safeParse(value).success,
+  { error: "Expected highlighted code lines" },
+);
+
+export const sourceFileSchema = z.object({
   raw: z.string(),
   highlighted: highlightedLinesSchema,
 });
 
-const sourceFileWithPathSchema = sourceFileSchema.extend({
+export const sourceFileWithPathSchema = sourceFileSchema.extend({
   path: z.string(),
 });
 

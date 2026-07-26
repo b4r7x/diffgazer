@@ -14,9 +14,17 @@ import { cn } from "@diffgazer/ui/lib/utils";
  */
 type WordmarkVariant = "banner" | "line";
 
+/**
+ * Transport health as the header tells it. The lamp is the app's only status
+ * light, so it reports the server first: a provider cannot be "Active" through
+ * a dead connection.
+ */
+export type HeaderServerState = "live" | "retrying" | "offline";
+
 interface HeaderProps {
   providerName: string;
   providerStatus: ProviderDisplayStatus;
+  serverState?: HeaderServerState;
   onBack?: () => void;
   wordmark?: WordmarkVariant;
 }
@@ -43,7 +51,11 @@ const LAYOUT = {
     grid: "grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]",
     brand: "col-span-2 col-start-1 row-start-1 sm:col-span-1 sm:col-start-2",
     back: "col-start-1 row-start-2 sm:row-start-1",
-    status: "col-start-2 row-start-2 sm:col-start-3 sm:row-start-1",
+    // Below sm the status takes its own full-width row: sharing row 2 with the
+    // back control left a model name like "gemini-3-flash-preview" clipped
+    // against the right edge at 390 instead of ellipsizing.
+    status:
+      "col-span-2 col-start-1 row-start-3 justify-self-start sm:col-span-1 sm:col-start-3 sm:row-start-1 sm:justify-self-end",
   },
 } as const satisfies Record<WordmarkVariant, Record<string, string>>;
 
@@ -58,8 +70,43 @@ const DOT_STATUS: Record<ProviderDisplayStatus, StatusIndicatorStatus> = {
   idle: "offline",
 };
 
-export function Header({ providerName, providerStatus, onBack, wordmark = "banner" }: HeaderProps) {
+/**
+ * What the lamp says when the transport is not healthy. The word replaces the
+ * provider status because that is the truth the user needs first, and the dot
+ * carries the same state so the row is never colour-only.
+ */
+const SERVER_STATE_WORD: Record<HeaderServerState, string | null> = {
+  live: null,
+  retrying: "Reconnecting",
+  offline: "Offline",
+};
+
+const SERVER_DOT_STATUS: Record<HeaderServerState, StatusIndicatorStatus | null> = {
+  live: null,
+  retrying: "offline",
+  offline: "busy",
+};
+
+const SERVER_ARIA_WORD: Record<HeaderServerState, string> = {
+  live: "live",
+  retrying: "reconnecting",
+  offline: "offline",
+};
+
+export function Header({
+  providerName,
+  providerStatus,
+  serverState = "live",
+  onBack,
+  wordmark = "banner",
+}: HeaderProps) {
   const layout = LAYOUT[wordmark];
+  const serverWord = SERVER_STATE_WORD[serverState];
+  const statusWord = serverWord ?? providerStatus;
+  // StatusIndicator ships three statuses and each carries its own shape, so a
+  // dead transport takes the filled square and a retry takes the hollow dot -
+  // the three states stay apart without relying on colour.
+  const dotStatus = SERVER_DOT_STATUS[serverState] ?? DOT_STATUS[providerStatus];
 
   return (
     <header className="@container shrink-0 p-4 pb-2">
@@ -85,13 +132,13 @@ export function Header({ providerName, providerStatus, onBack, wordmark = "banne
         </div>
 
         <StatusIndicator
-          status={DOT_STATUS[providerStatus]}
+          status={dotStatus}
           pulse={false}
           label={null}
           // An aria-label replaces the children for assistive tech, so the status
           // word has to be part of it; label={null} keeps StatusIndicator from
           // adding a second visible copy.
-          aria-label={`Provider: ${providerName}, ${providerStatus}`}
+          aria-label={`Provider: ${providerName}, ${providerStatus}; server ${SERVER_ARIA_WORD[serverState]}`}
           className={cn(
             "min-w-0 justify-self-end gap-1.5 text-foreground normal-case tracking-normal",
             layout.status,
@@ -102,7 +149,9 @@ export function Header({ providerName, providerStatus, onBack, wordmark = "banne
               the row's aria-label carries the word at every width. */}
           <span className="shrink-0 text-muted-foreground sr-only sm:not-sr-only sm:whitespace-nowrap">
             <span aria-hidden="true">• </span>
-            <span className="capitalize">{providerStatus}</span>
+            <span className={cn("capitalize", serverState === "offline" && "text-error-text")}>
+              {statusWord}
+            </span>
           </span>
         </StatusIndicator>
       </div>

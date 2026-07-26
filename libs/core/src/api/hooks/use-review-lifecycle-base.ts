@@ -1,13 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import type { Result } from "../../result.js";
 import {
   isCheckingForChanges as checkForChanges,
   isNoDiffError as checkNoDiffError,
   getLoadingMessage,
   type SessionTerminationCode,
 } from "../../review/lifecycle.js";
-import type { StreamReviewError } from "../../review/stream.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 import type { ReviewContextResponse } from "../types.js";
 import { useSettings } from "./config.js";
@@ -16,7 +14,7 @@ import { refreshReviewContextCache } from "./queries/review.js";
 import { useReviewContext } from "./review.js";
 import { useReviewCompletion } from "./use-review-completion.js";
 import { useReviewStart } from "./use-review-start.js";
-import type { CancelReviewOptions, ReviewStreamState } from "./use-review-stream.js";
+import type { ReviewStreamState, UseReviewStreamResult } from "./use-review-stream.js";
 import { useReviewStream } from "./use-review-stream.js";
 
 /**
@@ -37,13 +35,7 @@ export interface UseReviewLifecycleBaseOptions {
 }
 
 export interface UseReviewLifecycleBaseResult {
-  stream: {
-    stop: () => void;
-    abort: () => void;
-    cancel: (reviewId: string | null, options?: CancelReviewOptions) => Promise<string | null>;
-    resume: (reviewId: string) => Promise<Result<void, StreamReviewError>>;
-    state: ReviewStreamState;
-  };
+  stream: UseReviewStreamResult;
 
   checks: {
     isNoDiffError: boolean;
@@ -174,13 +166,7 @@ export function useReviewLifecycleBase(
   });
 
   return {
-    stream: {
-      stop: stream.stop,
-      abort: stream.abort,
-      cancel: stream.cancel,
-      resume: stream.resume,
-      state: stream.state,
-    },
+    stream,
     checks: {
       isNoDiffError,
       isTerminalStreamError,

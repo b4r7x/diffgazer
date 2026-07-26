@@ -21,7 +21,6 @@ function IssuePreviewContent({
   file,
   line,
   category,
-  icon,
   color,
   label,
   borderColor,
@@ -31,7 +30,6 @@ function IssuePreviewContent({
   file: string;
   line?: number | null;
   category: string;
-  icon: string;
   color: string;
   label: string;
   borderColor: string;
@@ -42,9 +40,6 @@ function IssuePreviewContent({
   return (
     <>
       <div className="flex min-w-0 flex-1 items-center gap-4">
-        <span className={cn("font-bold text-lg", color)} aria-hidden="true">
-          {icon}
-        </span>
         <div className="min-w-0">
           <div
             className={cn(
@@ -76,9 +71,9 @@ export function IssuePreviewItem({
   onClick,
   className,
 }: IssuePreviewItemProps) {
-  const { icon, color, borderColor } = SEVERITY_CONFIG[severity];
+  const { color, borderColor } = SEVERITY_CONFIG[severity];
   const label = SEVERITY_LABELS[severity];
-  const contentProps = { title, file, line, category, icon, color, label, borderColor };
+  const contentProps = { title, file, line, category, color, label, borderColor };
   const sharedClassName = cn(
     "flex items-center justify-between p-3 w-full text-left",
     "bg-background border-b border-border last:border-b-0",

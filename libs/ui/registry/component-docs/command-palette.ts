@@ -40,6 +40,21 @@ export const commandPaletteDoc: ComponentDoc = {
         "By default Content renders a native modal dialog in the browser top layer with a focus trap and focus restoration. Pass modal={false} to embed the same surface in the page: identical frame, density, tone, and highlight chrome, but in the document flow, without a backdrop and without stealing focus - useful for a persistent search pane, and for documenting the open surface itself. The examples below are embedded palettes for exactly that reason.",
     },
     {
+      title: "Keyboard legend",
+      content:
+        "CommandPaletteFooter renders the shared OverlayHints primitive (registry/ui/shared/overlay-hints) when given no children: Navigate / Select / Close, in one layout every keyboard-first overlay in the library speaks. Pass children to take full control. The legend is aria-hidden — the shortcuts are already reachable through the real controls — and at coarse pointer every hint that is not marked touch-relevant is hidden, collapsing the whole bar rather than leaving an empty strip; on a 390-wide palette that recovers a full row, and the working close affordance is the Esc button in the input row.",
+    },
+    {
+      title: "Narrow-viewport geometry",
+      content:
+        'Below 640px the panel insets 12px from each viewport edge (max-sm:mx-3 plus a matching width) so both vertical hairlines and the offset shadow stay on-screen instead of being clipped. The panel is top-pinned at every width — margin-block-start: max(12px, env(safe-area-inset-top)) with an auto bottom margin — so the software keyboard shrinking the visual viewport cannot displace the input row mid-typing. The height cap stays max-h-[80dvh]. The footer pads past the home indicator with env(safe-area-inset-bottom), which needs viewport-fit=cover on the host page and degrades to the base padding without it. The Esc affordance in the input row is a real button with the accessible name "Close" and a 44x44 hit area expanded via ::before, so touch users have a working close control; the visible chip does not move.',
+    },
+    {
+      title: "Position readout",
+      content:
+        "The default input suffix renders CommandPaletteCount: a bracketed readout of the highlighted position over the filtered total — [3/24] with a highlight, [24] without one, and [0] with a data-empty marker (error colour) when the filter matched nothing. It is aria-hidden, because the palette's existing polite live region already announces the result count; rendering it visibly is what closes the gap for sighted keyboard users. Supplying your own `suffix` replaces it, so compose CommandPalette.Count yourself if you want both.",
+    },
+    {
       title: "Optional auto-coloring",
       content:
         'Items accept a `tone` prop ("neutral" | "nav" | "action" | "settings" | "destructive" | "ai") that renders a 2px left accent bar and tints the optional icon. The label color is unchanged so contrast remains readable, including under the terminal frame\'s inverted selection. For automatic classification + inline match highlighting, import `CommandPaletteHighlightItem` from `@diffgazer/ui/components/command-palette/highlight`. It infers tone from a small regex table (verbs like "delete", "go to", "toggle", "ask", "run") and wraps matched characters in `<mark data-slot="command-palette-item-match">`.',
@@ -59,7 +74,12 @@ export const commandPaletteDoc: ComponentDoc = {
     {
       name: "CommandPaletteInput",
       indent: 2,
-      note: "Search input with prefix/suffix slots (Esc Kbd by default)",
+      note: "Search input with prefix/suffix slots (count readout + Esc Kbd by default)",
+    },
+    {
+      name: "CommandPaletteCount",
+      indent: 3,
+      note: "Bracketed [position/total] readout, rendered in the default input suffix",
     },
     { name: "CommandPaletteList", indent: 2, note: "Scrollable item container" },
     { name: "CommandPaletteEmpty", indent: 3, note: "Shown when no items match search" },
@@ -129,6 +149,12 @@ export const commandPaletteDoc: ComponentDoc = {
       appliesTo: "CommandPaletteItem",
       values: '"neutral" | "nav" | "action" | "settings" | "destructive" | "ai"',
       description: "Semantic tone for the optional accent bar and icon tint.",
+    },
+    {
+      attribute: "data-empty",
+      appliesTo: "CommandPaletteCount",
+      values: "present when the filter matched nothing",
+      description: "Switches the readout to the error colour alongside CommandPaletteEmpty.",
     },
   ],
   props: {

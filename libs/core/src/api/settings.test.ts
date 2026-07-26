@@ -16,7 +16,9 @@ describe("settings API functions", () => {
 
     const result = await getTrust(client);
 
-    expect(client.get).toHaveBeenCalledWith("/api/settings/trust", undefined, expect.any(Function));
+    expect(client.get).toHaveBeenCalledWith("/api/settings/trust", {
+      schema: expect.any(Function),
+    });
     expect(result).toEqual({ trust });
   });
 
@@ -25,11 +27,9 @@ describe("settings API functions", () => {
 
     const result = await deleteTrust(client);
 
-    expect(client.delete).toHaveBeenCalledWith(
-      "/api/settings/trust",
-      undefined,
-      expect.any(Function),
-    );
+    expect(client.delete).toHaveBeenCalledWith("/api/settings/trust", {
+      schema: expect.any(Function),
+    });
     expect(result).toEqual({ removed: true });
   });
 });

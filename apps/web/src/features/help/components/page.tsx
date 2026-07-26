@@ -1,6 +1,11 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { BACK_SHORTCUTS, HELP_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
+import {
+  BACK_SHORTCUTS,
+  groupShortcutsByContext,
+  HELP_SHORTCUTS,
+  SHORTCUT_CONTEXT_LABELS,
+} from "@diffgazer/core/schemas/presentation";
 import { useKey, useScope } from "@diffgazer/keys";
 import { Kbd } from "@diffgazer/ui/components/kbd";
 import { Panel } from "@diffgazer/ui/components/panel";
@@ -10,7 +15,10 @@ import { useNavigate } from "@tanstack/react-router";
 
 // "h → History" is a web-only live binding, so it stays appended here per F-242
 // per-surface-extras scoping.
-const SHORTCUTS = [...HELP_SHORTCUTS, { key: "h", label: "Open History" }];
+const SHORTCUTS: Shortcut[] = [
+  ...HELP_SHORTCUTS,
+  { key: "h", label: "Open History", context: "global" },
+];
 
 const TOUCH_GESTURES = [
   { gesture: "Tap", label: "Open the focused card or menu item" },
@@ -26,10 +34,12 @@ interface ShortcutRow {
 }
 
 /**
- * The canonical table in libs/core lists one row per key, so scrolling arrives
- * as three consecutive rows all labelled "Scroll Content". Collapsing runs of
- * the same label keeps that shared table the single source of truth while the
- * screen shows one row per action.
+ * The canonical table in libs/core lists one row per key, so keys that share an
+ * action arrive as consecutive rows with the same label ("Move the highlight"
+ * for both ↑/↓ and j/k). Collapsing runs of the same label keeps that shared
+ * table the single source of truth while the screen shows one row per action.
+ * The collapse runs per group, so a label run never merges across a context
+ * boundary.
  */
 function toShortcutRows(shortcuts: readonly Shortcut[]): ShortcutRow[] {
   const rows: ShortcutRow[] = [];
@@ -41,7 +51,11 @@ function toShortcutRows(shortcuts: readonly Shortcut[]): ShortcutRow[] {
   return rows;
 }
 
-const SHORTCUT_ROWS = toShortcutRows(SHORTCUTS);
+const SHORTCUT_GROUPS = groupShortcutsByContext(SHORTCUTS).map((group) => ({
+  context: group.context,
+  heading: SHORTCUT_CONTEXT_LABELS[group.context],
+  rows: toShortcutRows(group.shortcuts),
+}));
 
 // One grid for the whole list, with each row a subgrid, so every description
 // starts on the same column instead of wherever its key chip happens to end —
@@ -50,6 +64,13 @@ const SHORTCUT_ROWS = toShortcutRows(SHORTCUTS);
 // of pushing every description into a three-word ribbon.
 const LIST_GRID =
   "grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)] gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,auto)_minmax(0,1fr)]";
+// Each context group is its own list (so AT can jump group to group), which
+// also makes each one its own grid. A fixed key column therefore replaces the
+// `auto` track used by the single gesture list: only a fixed track keeps the
+// description column aligned across separate grids, and it is the same fixed
+// key column the TUI derives from its widest key.
+const SHORTCUT_GRID =
+  "grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)] gap-x-4 gap-y-2 sm:grid-cols-[13rem_minmax(0,1fr)]";
 const ROW_GRID = "col-span-2 grid grid-cols-subgrid items-baseline text-sm";
 
 export function HelpPage() {
@@ -63,9 +84,10 @@ export function HelpPage() {
     <ScrollArea className="flex min-h-0 flex-1 flex-col px-4 pt-8 pb-4">
       <Panel
         frame="viewfinder"
+        focused
         density="compact"
         aria-labelledby={HELP_TITLE_ID}
-        className="mx-auto w-full max-w-2xl"
+        className="mx-auto w-full max-w-2xl lg:max-w-3xl"
       >
         <Panel.Label>
           <h1 id={HELP_TITLE_ID}>Help</h1>
@@ -104,26 +126,49 @@ export function HelpPage() {
               <SectionHeader as="h2" variant="muted" className="mb-3">
                 Keyboard Shortcuts
               </SectionHeader>
-              {/* biome-ignore lint/a11y/useSemanticElements: this already is a <ul>; the explicit role="list" below restores list semantics that Tailwind preflight strips, and Biome should not suggest swapping the element. */}
-              <ul
-                // biome-ignore lint/a11y/noRedundantRoles: Tailwind preflight sets list-style:none on <ul>, which drops list semantics in Safari/VoiceOver; role="list" restores them.
-                role="list"
-                aria-label="Keyboard shortcuts"
-                className={LIST_GRID}
-              >
-                {SHORTCUT_ROWS.map((row) => (
-                  <li key={`${row.label}:${row.keys.join("+")}`} className={ROW_GRID}>
-                    <span className="flex flex-wrap gap-1">
-                      {row.keys.map((key) => (
-                        <Kbd key={key} className="h-auto whitespace-nowrap">
-                          {key}
-                        </Kbd>
+              {/* The groups answer "why does j/k do nothing here?": the two ↑/↓
+                  rows sit in different contexts, where the difference is the
+                  point. At lg they flow into two columns to use the empty half
+                  of a 1440-wide viewport; below that it stays one column. */}
+              <div className="lg:columns-2 lg:gap-x-10">
+                {SHORTCUT_GROUPS.map((group) => (
+                  <div
+                    key={group.context}
+                    className="mt-4 break-inside-avoid first:mt-0 lg:mb-4 lg:mt-0"
+                  >
+                    <SectionHeader
+                      as="h3"
+                      variant="muted"
+                      id={`${HELP_TITLE_ID}-${group.context}`}
+                      className="mb-1"
+                    >
+                      {group.heading}
+                    </SectionHeader>
+                    {/* biome-ignore lint/a11y/useSemanticElements: this already is a <ul>; the explicit role="list" below restores list semantics that Tailwind preflight strips, and Biome should not suggest swapping the element. */}
+                    <ul
+                      // biome-ignore lint/a11y/noRedundantRoles: Tailwind preflight sets list-style:none on <ul>, which drops list semantics in Safari/VoiceOver; role="list" restores them.
+                      role="list"
+                      aria-labelledby={`${HELP_TITLE_ID}-${group.context}`}
+                      className={SHORTCUT_GRID}
+                    >
+                      {group.rows.map((row) => (
+                        <li key={`${row.label}:${row.keys.join("+")}`} className={ROW_GRID}>
+                          <span className="flex flex-wrap gap-1">
+                            {row.keys.map((key) => (
+                              <Kbd key={key} className="h-auto whitespace-nowrap">
+                                {key}
+                              </Kbd>
+                            ))}
+                          </span>
+                          <span className="min-w-0 break-words text-muted-foreground">
+                            {row.label}
+                          </span>
+                        </li>
                       ))}
-                    </span>
-                    <span className="min-w-0 break-words text-muted-foreground">{row.label}</span>
-                  </li>
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </section>
 
             <section>

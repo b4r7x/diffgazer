@@ -43,7 +43,14 @@ export interface CommandPaletteContextValue {
    * (or id).
    */
   filter: (value: string, search: string) => boolean;
+  /** Number of items currently rendered in the list (post-filter). */
   itemCount: number;
+  /**
+   * 1-based position of the highlighted item within the rendered list, or null
+   * when nothing is highlighted. Derived during render from the same registry
+   * `itemCount` reads, so the readout can never disagree with the list.
+   */
+  highlightedPosition: number | null;
   /** DOM id for list. */
   listId: string;
   /** Ref for the list element. */
@@ -160,11 +167,19 @@ export function useCommandPaletteState({
     scopeToContainer: true,
   });
 
+  const effectiveHighlighted = getEffectiveHighlighted(
+    highlighted,
+    itemIds,
+    isHighlightedControlled,
+  );
+  const highlightedIndex =
+    effectiveHighlighted === null ? -1 : itemIds.indexOf(effectiveHighlighted);
+
   return useMemo(
     () => ({
       open: isOpen,
       onOpenChange: handleOpenChange,
-      highlighted: getEffectiveHighlighted(highlighted, itemIds, isHighlightedControlled),
+      highlighted: effectiveHighlighted,
       onHighlightChange: setHighlighted,
       onActivate: handleActivate,
       search,
@@ -172,6 +187,7 @@ export function useCommandPaletteState({
       shouldFilter,
       filter,
       itemCount: itemIds.length,
+      highlightedPosition: highlightedIndex === -1 ? null : highlightedIndex + 1,
       listId: `${paletteId}-list`,
       listRef,
       inputRef,
@@ -183,9 +199,9 @@ export function useCommandPaletteState({
       isOpen,
       handleOpenChange,
       handleActivate,
-      highlighted,
+      effectiveHighlighted,
+      highlightedIndex,
       itemIds,
-      isHighlightedControlled,
       setHighlighted,
       search,
       setSearch,

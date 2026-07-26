@@ -11,13 +11,16 @@ import type { ReviewListWarning } from "@diffgazer/core/schemas/review";
 import { isListNavigationKey, toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
+import { Kbd } from "@diffgazer/ui/components/kbd";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
+import { useNavigate } from "@tanstack/react-router";
 import type { KeyboardEvent } from "react";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { ConfigurationStatus } from "@/components/shared/configuration-status";
+import { FailureView } from "@/components/shared/failure-view";
 import { TrustPanel } from "@/components/shared/trust-panel";
 import { HistoryInsightsPane } from "@/features/history/components/insights-pane";
 import { TimelineList } from "@/features/history/components/timeline-list";
@@ -80,6 +83,7 @@ function HistoryPageContent() {
     duration,
     hasReviews,
     emptyRunsMessage,
+    hasSearchQuery,
     hasMoreReviews,
     isLoadingMoreReviews,
     loadMoreReviews,
@@ -93,6 +97,7 @@ function HistoryPageContent() {
     highlightedIssueId,
     setHighlightedIssueId,
   } = useHistoryPage();
+  const navigate = useNavigate();
 
   const activeRunId = selectedRunId;
   const insightsDetailState = deriveHistoryDetailState({
@@ -134,7 +139,15 @@ function HistoryPageContent() {
 
   const guard = matchQueryState(reviewsQuery, {
     loading: () => <CenteredStatus>Loading runs...</CenteredStatus>,
-    error: (err) => <CenteredStatus tone="error">Error: {err.message}</CenteredStatus>,
+    error: (err) => (
+      <FailureView
+        title="Reviews Unavailable"
+        message={`Diffgazer could not read the review history. ${err.message}`}
+        scope="history-error"
+        primary={{ label: "Retry", onAction: () => void reviewsQuery.refetch() }}
+        secondary={{ label: "Back to Home", onAction: () => void navigate({ to: "/" }) }}
+      />
+    ),
     success: () => null,
   });
 
@@ -288,9 +301,19 @@ function HistoryPageContent() {
               variant="inline"
               size="sm"
               live
-              className={mappedRuns.length === 0 ? "h-full" : "p-0"}
+              className={mappedRuns.length === 0 ? "h-full flex-col gap-1" : "p-0"}
             >
-              {mappedRuns.length === 0 ? emptyRunsMessage : null}
+              {mappedRuns.length === 0 ? (
+                <EmptyState.Message>{emptyRunsMessage}</EmptyState.Message>
+              ) : null}
+              {/* Only a search has a key to press: the "no runs yet" and
+                  date-filtered empties stay honest with no hint. Hidden below sm
+                  because a phone has no Esc — mobile clears with the input. */}
+              {mappedRuns.length === 0 && hasSearchQuery ? (
+                <EmptyState.Hint className="max-sm:hidden">
+                  <Kbd size="sm">Esc</Kbd> clear search
+                </EmptyState.Hint>
+              ) : null}
             </EmptyState>
             {hasMoreReviews ? (
               <Button

@@ -1,3 +1,4 @@
+import "./model-select-overlay.terminal-mock";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { ModelSelectOverlay } from "./model-select-overlay";

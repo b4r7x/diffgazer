@@ -117,6 +117,7 @@ export function SettingsDiagnosticsPage() {
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-7 pb-4">
       <Panel
         frame="viewfinder"
+        focused
         aria-labelledby={titleId}
         aria-busy={isRefreshingAll || isRefreshing}
         className="mx-auto w-full max-w-2xl"

@@ -122,7 +122,6 @@ for (const [caseName, runInstruction] of [
     "multiline command",
     ["RUN corepack enable && \\", "    pnpm install \\", "      --frozen-lockfile"].join("\n"),
   ],
-  ["exec-form command", 'RUN ["pnpm", "install", "--prod", "--frozen-lockfile"]'],
 ]) {
   test(`Docker patch validation detects a frozen install in ${caseName}`, () => {
     const root = createConformingFixture();
@@ -161,6 +160,48 @@ for (const runInstruction of [
     assert.equal(result.ok, true);
   });
 }
+
+test("Docker patch validation skips JSON exec-form RUN instead of misreading it", () => {
+  const root = createConformingFixture();
+  writeText(
+    root,
+    "deploy/landing.Dockerfile",
+    [
+      "FROM node:22-alpine",
+      "WORKDIR /app",
+      // Exec form runs no shell, so the shell-form parser does not describe it.
+      // It is out of scope, not a violation to be guessed at.
+      'RUN ["pnpm", "install", "--frozen-lockfile"]',
+      "",
+    ].join("\n"),
+  );
+
+  const [result] = runFixture(root, { checks: [checkDockerFrozenInstallsCopyPatches] });
+
+  assert.equal(result.ok, true);
+});
+
+test("Docker COPY parsing skips JSON exec form rather than splitting it on whitespace", () => {
+  const root = createConformingFixture();
+  writeText(
+    root,
+    "deploy/landing.Dockerfile",
+    [
+      "FROM node:22-alpine",
+      // Exec form is out of scope, so it credits nothing: the parser must
+      // report both inputs missing rather than register the bracketed tokens
+      // (`["biome.json",` and friends) as if they were real sources.
+      'COPY ["biome.json", ".gitignore", "./"]',
+      "",
+    ].join("\n"),
+  );
+
+  const [result] = runFixture(root, { checks: [checkDockerArtifactFormatterInputs] });
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /deploy\/landing\.Dockerfile: biome\.json/);
+  assert.match(result.details, /deploy\/landing\.Dockerfile: \.gitignore/);
+});
 
 test("Docker patch validation discovers additional frozen-install Dockerfiles", () => {
   const root = createConformingFixture();

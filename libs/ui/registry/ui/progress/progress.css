@@ -1,0 +1,46 @@
+/*
+ * Progress cell grid. The library already has one quantity language —
+ * BlockBar's character cells — and a rounded material bar was a second one.
+ * variant="cells" (the default) subdivides track and fill with a mask on the
+ * ROOT, so both are cut by the same grid and the cells stay phase-aligned as
+ * the fill grows. No per-cell DOM, no glyphs, no ARIA change.
+ *
+ * Radius lives in the CVA (bar keeps rounded-sm, cells does not), so it is not
+ * re-declared here: a Tailwind utility would outrank this layer anyway.
+ */
+@layer components {
+  [data-slot="progress"][data-variant="cells"] {
+    --progress-cell: 8px;
+    --progress-gap: 1px;
+  }
+
+  /* size="sm" is a 4px track — below the threshold where an 8px cell reads as
+     anything but mush, so it degrades honestly to the continuous bar. */
+  [data-slot="progress"][data-variant="cells"]:not([data-size="sm"]) {
+    -webkit-mask-image: repeating-linear-gradient(
+      90deg,
+      #000 0 calc(var(--progress-cell) - var(--progress-gap)),
+      transparent calc(var(--progress-cell) - var(--progress-gap)) var(--progress-cell)
+    );
+    mask-image: repeating-linear-gradient(
+      90deg,
+      #000 0 calc(var(--progress-cell) - var(--progress-gap)),
+      transparent calc(var(--progress-cell) - var(--progress-gap)) var(--progress-cell)
+    );
+  }
+}
+
+@media (forced-colors: active) {
+  /* Forced colors drops mask support unevenly and flattens the track/fill pair
+     to the same system color, so fall back to an outlined track with a
+     Highlight fill. */
+  [data-slot="progress"] {
+    -webkit-mask-image: none;
+    mask-image: none;
+    border: 1px solid CanvasText;
+  }
+
+  [data-slot="progress-indicator"] {
+    background: Highlight;
+  }
+}

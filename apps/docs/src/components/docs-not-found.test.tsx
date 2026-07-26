@@ -4,6 +4,7 @@ import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MobileNavProvider } from "@/hooks/mobile-nav-context";
+import { SearchProvider } from "@/hooks/search-context";
 import type { PageTree } from "@/lib/page-tree";
 import { stubMatchMedia } from "@/testing/match-media";
 import { DocsNotFoundBlock } from "./docs-not-found";
@@ -63,7 +64,9 @@ function renderBlock() {
   return render(
     <KeyboardProvider>
       <MobileNavProvider>
-        <DocsNotFoundBlock tree={TREE} library="ui" />
+        <SearchProvider>
+          <DocsNotFoundBlock tree={TREE} library="ui" />
+        </SearchProvider>
       </MobileNavProvider>
     </KeyboardProvider>,
   );

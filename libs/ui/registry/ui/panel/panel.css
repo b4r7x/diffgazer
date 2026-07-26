@@ -156,12 +156,20 @@
      Corner geometry is frame-agnostic: the viewfinder frame declares
      the resting bracket vars, and [data-state="focused"] declares its
      own on every frame (see the focused section below).
+
+     Contrast encodes focus, not just geometry: resting corners sit on
+     --border-strong so an inert pane never outweighs the active one.
+     Painting them in --foreground made the never-focusable pane the
+     heaviest object on the screen while the driven pane wore the lower
+     contrast --ring. Focused corners still clear 3:1 against the page
+     and against the resting color (WCAG 1.4.11), in both themes.
      ============================================================ */
   [data-slot="panel"][data-frame="viewfinder"] {
-    --viewfinder-size: 20px;
-    --viewfinder-weight: 2px;
-    --viewfinder-color: var(--foreground);
+    --viewfinder-size: 16px;
+    --viewfinder-weight: 1.5px;
+    --viewfinder-color: var(--border-strong);
     --viewfinder-offset: 0px;
+    /* Held at 8px across both corner sizes so a focus toggle never reflows. */
     padding: 8px;
   }
   [data-slot="panel"] [data-slot="panel-corners"] > span {

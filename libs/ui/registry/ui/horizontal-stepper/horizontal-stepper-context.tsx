@@ -38,13 +38,16 @@ export function useStepInfo(value: string): {
   status: HorizontalStepStatus;
   index: number;
   total: number;
+  /** Index of the active step, so a step can tell how far it sits from the window centre. */
+  activeIndex: number;
 } {
   const { value: currentValue, steps } = useHorizontalStepperContext();
   const stepIndex = steps.indexOf(value);
   const currentIndex = steps.indexOf(currentValue);
   const total = steps.length;
+  const info = { index: stepIndex, total, activeIndex: currentIndex };
 
-  if (stepIndex === currentIndex) return { status: "active", index: stepIndex, total };
-  if (stepIndex < currentIndex) return { status: "completed", index: stepIndex, total };
-  return { status: "pending", index: stepIndex, total };
+  if (stepIndex === currentIndex) return { status: "active", ...info };
+  if (stepIndex < currentIndex) return { status: "completed", ...info };
+  return { status: "pending", ...info };
 }

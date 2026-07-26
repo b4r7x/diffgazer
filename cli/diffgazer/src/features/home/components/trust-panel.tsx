@@ -69,8 +69,8 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
   if (guard) return guard;
 
   return (
-    <Panel>
-      <Panel.Content>
+    <Panel grow focused>
+      <Panel.Content grow>
         <Box flexDirection="column" gap={1}>
           <SectionHeader>Trust This Repository?</SectionHeader>
           <Text color={tokens.muted}>Diffgazer needs permissions to review your code</Text>

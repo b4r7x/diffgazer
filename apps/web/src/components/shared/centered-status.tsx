@@ -8,14 +8,14 @@ interface CenteredStatusProps {
 }
 
 /**
- * Full-pane status readout. Both tones sit in the viewfinder frame so a route that
- * is still loading looks like the product rather than a blank canvas, and the label
- * keeps the app's uppercase tracked vocabulary over the terminal braille spinner.
+ * Full-pane status readout. The hairline frame keeps it looking like the product
+ * without claiming a reticle it cannot earn — nothing here takes keystrokes — and
+ * the label keeps the app's uppercase tracked vocabulary over the braille spinner.
  */
 export function CenteredStatus({ tone = "info", children }: CenteredStatusProps) {
   return (
     <div className="flex flex-1 items-center justify-center p-4 font-mono">
-      <Panel frame="viewfinder" density="compact">
+      <Panel density="compact">
         <Panel.Content spacing="none">
           {tone === "error" ? (
             <p role="alert" className="text-sm uppercase tracking-[0.14em] text-error-text">

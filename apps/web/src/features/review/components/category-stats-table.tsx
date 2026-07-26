@@ -1,4 +1,5 @@
 import type { CategoryStats } from "@diffgazer/core/schemas/presentation";
+import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { cn } from "@diffgazer/ui/lib/utils";
 
 export type CategoryStatsTableProps = {
@@ -7,6 +8,12 @@ export type CategoryStatsTableProps = {
 };
 
 export function CategoryStatsTable({ categories, className }: CategoryStatsTableProps) {
+  // A header row over nothing is a table that costs 240px to say nothing; a
+  // clean run gets a sentence instead.
+  if (categories.length === 0) {
+    return <EmptyState className={className}>Nothing to categorise.</EmptyState>;
+  }
+
   return (
     <table className={cn("w-full text-sm text-left border-collapse", className)}>
       <thead>

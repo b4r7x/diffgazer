@@ -28,26 +28,13 @@
     "tsup",
     "vitest"
   ],
-  "ignoreFiles": [
-    "libs/keys/artifacts/artifacts/source/registry/examples/**",
-    "libs/keys/docs/hook-docs/**",
-    "libs/keys/examples/playground/**",
-    // Public registry CSS entries are discovered through registry.json file
-    // metadata, not TS imports; the artifact validator owns their presence.
-    "libs/ui/registry/ui/callout/callout.css",
-    "libs/ui/registry/ui/code-block/code-block.css",
-    "libs/ui/registry/ui/command-palette/command-palette.css",
-    "libs/ui/registry/ui/diff-view/diff-view.css",
-    "libs/ui/registry/ui/panel/panel.css",
-    "libs/ui/registry/ui/sidebar/sidebar.css",
-    "libs/ui/registry/ui/spinner/spinner.css",
-    "libs/ui/registry/ui/shared/*.css",
-    "libs/ui/styles/*.css"
-  ],
   "ignoreIssues": {
     "libs/registry/src/manifest.ts": ["types"],
     "libs/ui/theme/index.ts": ["exports", "types"]
   },
+  // Only build output and generated data belong here. Anything owned by one
+  // workspace is ignored in that workspace's own block below, so a path stays
+  // next to the package that has to justify it.
   "ignore": [
     "**/dist/**",
     "**/.output/**",
@@ -55,10 +42,7 @@
     "**/.source/**",
     "**/coverage/**",
     "**/generated/**",
-    "**/*.gen.ts",
-    "libs/ui/public/r/**",
-    "libs/keys/public/r/**",
-    "libs/core/src/catalog/catalog-snapshot.ts"
+    "**/*.gen.ts"
   ],
   "workspaces": {
     ".": {
@@ -98,12 +82,41 @@
       ]
     },
     "libs/core": {
-      "entry": ["src/**/index.ts", "src/*.ts", "scripts/**/*.ts", "vitest.config.ts"]
+      "entry": ["src/**/index.ts", "src/*.ts", "scripts/**/*.ts", "vitest.config.ts"],
+      // Offline catalog data, regenerated from models.dev.
+      "ignore": ["src/catalog/catalog-snapshot.ts"]
     },
     "libs/keys": {
-      "entry": ["src/index.ts", "scripts/**/*.ts", "registry/**/*.{ts,tsx}", "vitest.config.ts"]
+      "entry": ["src/index.ts", "scripts/**/*.ts", "registry/**/*.{ts,tsx}", "vitest.config.ts"],
+      // Committed public registry: the reviewable handoff contract, not imports.
+      "ignore": ["public/r/**"],
+      "ignoreFiles": ["docs/hook-docs/**", "examples/playground/**"]
     },
     "libs/ui": {
+      // Committed public registry: the reviewable handoff contract, not imports.
+      "ignore": ["public/r/**"],
+      // Registry CSS entries are discovered through registry.json file metadata,
+      // not TS imports; the artifact validator owns their presence.
+      // Listed one by one on purpose: a new stylesheet has to be justified here
+      // rather than silently absorbed by a glob.
+      "ignoreFiles": [
+        "registry/ui/callout/callout.css",
+        "registry/ui/code-block/code-block.css",
+        "registry/ui/command-palette/command-palette.css",
+        "registry/ui/diff-view/diff-view.css",
+        "registry/ui/panel/panel.css",
+        "registry/ui/progress/progress.css",
+        "registry/ui/shared/dialog.css",
+        "registry/ui/shared/overlay-hints.css",
+        "registry/ui/shared/stepper.css",
+        "registry/ui/sidebar/sidebar.css",
+        "registry/ui/skeleton/skeleton.css",
+        "registry/ui/spinner/spinner.css",
+        "styles/sources.css",
+        "styles/styles.css",
+        "styles/theme-base.css",
+        "styles/theme.css"
+      ],
       "entry": [
         "registry/ui/**/index.ts",
         "registry/hooks/**/*.ts",
@@ -120,7 +133,8 @@
       "entry": ["src/index.ts", "src/schemas.ts", "src/cli/index.ts", "vitest.config.ts"]
     },
     "libs/keys/artifacts": {
-      "entry": ["scripts/**/*.mjs"]
+      "entry": ["scripts/**/*.mjs"],
+      "ignoreFiles": ["artifacts/source/registry/examples/**"]
     }
   }
 }

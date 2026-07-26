@@ -1,4 +1,5 @@
 import { parse } from "yaml";
+import { errorMessage } from "../lib/error-message.mjs";
 import { RELEASE_READINESS_WORKFLOW_PATH, stripExpressionDelimiters } from "./workflow-source.mjs";
 
 const CHANGESET_STATUS_CONDITION = [
@@ -35,8 +36,7 @@ export function collectChangesetStatusGuardFailures(source) {
   try {
     workflow = parse(source);
   } catch (error) {
-    const message =
-      error && typeof error === "object" && "message" in error ? error.message : String(error);
+    const message = errorMessage(error);
     return [`${RELEASE_READINESS_WORKFLOW_PATH}: failed to parse workflow YAML: ${message}`];
   }
 

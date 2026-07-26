@@ -6,6 +6,7 @@ import type { ComponentType, LazyExoticComponent } from "react";
 import { lazy } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DemoPreview } from "@/components/demo-preview";
+import { PreviewModeProvider } from "@/components/preview-mode-context";
 import { ThemeProvider } from "@/hooks/theme-context";
 import type { PreviewFrame } from "@/lib/example-frames";
 
@@ -31,44 +32,44 @@ function chromeLabels() {
   return screen.queryAllByText("Preview").filter((el) => el.closest('[role="tab"]') === null);
 }
 
-describe("DemoPreview default (viewfinder) frame", () => {
+describe("DemoPreview default (specimen) frame", () => {
   it("renders the PREVIEW chrome label above the stage", () => {
     renderPreview();
     expect(chromeLabels()).toHaveLength(1);
   });
 
-  it("renders the copy-jsx footer action when source is available", () => {
+  it("renders the copy-tsx footer action when source is available", () => {
     renderPreview({ rawCode: "const example = <Button />;" });
-    expect(screen.getByText("[copy jsx]")).toBeInTheDocument();
+    expect(screen.getByText("[copy tsx]")).toBeInTheDocument();
   });
 
-  it("hides the copy-jsx footer action when source is empty", () => {
+  it("hides the copy-tsx footer action when source is empty", () => {
     renderPreview({ rawCode: "" });
-    expect(screen.queryByText("[copy jsx]")).not.toBeInTheDocument();
+    expect(screen.queryByText("[copy tsx]")).not.toBeInTheDocument();
   });
 
-  it("keeps the viewfinder chrome for the compact single-line frame", () => {
+  it("keeps the frame chrome for the compact single-line frame", () => {
     renderPreview({ frame: "compact" });
     expect(chromeLabels()).toHaveLength(1);
-    expect(screen.getByText("[copy jsx]")).toBeInTheDocument();
+    expect(screen.getByText("[copy tsx]")).toBeInTheDocument();
   });
 });
 
 describe("DemoPreview inset/fill frames", () => {
   const WorkingDemo = lazy(async () => ({ default: () => <p>Working preview</p> }));
 
-  it("leaves the inset frame free of viewfinder chrome", async () => {
+  it("leaves the inset frame free of panel chrome", async () => {
     renderPreview({ frame: "inset", demo: WorkingDemo });
     expect(screen.getByText(/sidebar in context/i)).toBeInTheDocument();
     expect(chromeLabels()).toHaveLength(0);
-    expect(screen.queryByText("[copy jsx]")).not.toBeInTheDocument();
+    expect(screen.queryByText("[copy tsx]")).not.toBeInTheDocument();
     expect(await screen.findByText("Working preview")).toBeInTheDocument();
   });
 
-  it("leaves the fill frame free of viewfinder chrome", async () => {
+  it("leaves the fill frame free of panel chrome", async () => {
     renderPreview({ frame: "fill", demo: WorkingDemo });
     expect(chromeLabels()).toHaveLength(0);
-    expect(screen.queryByText("[copy jsx]")).not.toBeInTheDocument();
+    expect(screen.queryByText("[copy tsx]")).not.toBeInTheDocument();
     expect(await screen.findByText("Working preview")).toBeInTheDocument();
   });
 });
@@ -143,5 +144,107 @@ describe("DemoPreview import failures", () => {
     await waitFor(() => {
       expect(within(rejectedExample).getByText("const rejected = true")).toBeInTheDocument();
     });
+  });
+});
+
+describe("DemoPreview frame", () => {
+  // User veto on vf-07: default previews keep the permanent viewfinder frame.
+  it("keeps the permanent viewfinder frame on the default preview", () => {
+    renderPreview();
+
+    const panel = document.querySelector('[data-slot="panel"]');
+    expect(panel).not.toBeNull();
+    expect(panel).toHaveAttribute("data-frame", "viewfinder");
+  });
+});
+
+describe("DemoPreview page mode", () => {
+  function TwoExamples() {
+    return (
+      <ThemeProvider>
+        <PreviewModeProvider>
+          <DemoPreview
+            title="First"
+            demo={null}
+            code={[{ number: 1, content: "const first = 1" }]}
+            rawCode="const first = 1"
+          />
+          <DemoPreview
+            title="Second"
+            demo={null}
+            code={[{ number: 1, content: "const second = 2" }]}
+            rawCode="const second = 2"
+          />
+        </PreviewModeProvider>
+      </ThemeProvider>
+    );
+  }
+
+  it("switches every example on the page from any one strip", async () => {
+    const user = userEvent.setup();
+    render(<TwoExamples />);
+
+    const [firstCode, secondCode] = screen.getAllByRole("tab", { name: "Code" });
+    if (!firstCode || !secondCode) throw new Error("code triggers missing");
+
+    await user.click(secondCode);
+
+    expect(await screen.findByText("const first = 1")).toBeInTheDocument();
+    expect(screen.getByText("const second = 2")).toBeInTheDocument();
+    for (const trigger of screen.getAllByRole("tab", { name: "Preview" })) {
+      expect(trigger).toHaveAttribute("aria-selected", "false");
+    }
+  });
+
+  it("opens on the preview again for a freshly mounted page", async () => {
+    const user = userEvent.setup();
+    const first = render(<TwoExamples />);
+    const codeTrigger = screen.getAllByRole("tab", { name: "Code" })[0];
+    if (!codeTrigger) throw new Error("code trigger missing");
+    await user.click(codeTrigger);
+    first.unmount();
+
+    render(<TwoExamples />);
+    for (const trigger of screen.getAllByRole("tab", { name: "Preview" })) {
+      expect(trigger).toHaveAttribute("aria-selected", "true");
+    }
+  });
+
+  it("keeps a standalone example switching on its own", async () => {
+    const user = userEvent.setup();
+    render(
+      <ThemeProvider>
+        <DemoPreview
+          demo={null}
+          code={[{ number: 1, content: "const alone = true" }]}
+          rawCode="const alone = true"
+        />
+      </ThemeProvider>,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Code" }));
+    expect(await screen.findByText("const alone = true")).toBeInTheDocument();
+  });
+
+  it("keeps the clicked example stationary when examples above it change height", async () => {
+    const user = userEvent.setup();
+    const scrollBy = vi.fn();
+    vi.stubGlobal("scrollBy", scrollBy);
+    render(<TwoExamples />);
+
+    const secondCode = screen.getAllByRole("tab", { name: "Code" })[1];
+    if (!secondCode) throw new Error("code trigger missing");
+    const secondRoot = secondCode.closest("div.mb-6");
+    if (!(secondRoot instanceof HTMLElement)) throw new Error("example root missing");
+
+    const tops = [300, 120];
+    vi.spyOn(secondRoot, "getBoundingClientRect").mockImplementation(
+      () => ({ top: tops.shift() ?? 120 }) as DOMRect,
+    );
+
+    await user.click(secondCode);
+
+    expect(scrollBy).toHaveBeenCalledWith({ top: -180, behavior: "instant" });
+    vi.unstubAllGlobals();
   });
 });

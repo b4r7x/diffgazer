@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { expectSingleReticle } from "@/testing/reticle";
 
 const mockNavigate = vi.fn();
 
@@ -116,6 +117,17 @@ describe("SettingsHubPage", () => {
       expect(screen.getByText("local settings")).toBeVisible();
     });
     expect(screen.getByText("config path: /custom/diffgazer/config.json")).toBeVisible();
+  });
+
+  it("brackets exactly one pane on the loaded screen", async () => {
+    const { container } = renderPage();
+
+    await screen.findByRole("region", { name: /settings hub/i });
+    await waitFor(() => {
+      expect(screen.getByText("local settings")).toBeVisible();
+    });
+
+    expectSingleReticle(container);
   });
 
   it("shows the settings load error in the footer instead of the default message", async () => {

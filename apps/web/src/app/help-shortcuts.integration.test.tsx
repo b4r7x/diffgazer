@@ -1,7 +1,17 @@
 import { FooterProvider } from "@diffgazer/core/footer";
-import { createInitialReviewState, type ReviewEvent, reviewReducer } from "@diffgazer/core/review";
+import {
+  createInitialReviewState,
+  HISTORY_SEARCH_PLACEHOLDER,
+  type ReviewEvent,
+  reviewReducer,
+} from "@diffgazer/core/review";
 import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
-import { HELP_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
+import {
+  groupShortcutsByContext,
+  HELP_SHORTCUTS,
+  SHORTCUT_CONTEXT_LABELS,
+  type Shortcut,
+} from "@diffgazer/core/schemas/presentation";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider, useFocusZone, useScope } from "@diffgazer/keys";
 import {
@@ -15,6 +25,13 @@ import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GlobalShortcuts } from "@/components/layout/global";
 import { HelpPage } from "@/features/help/components/page";
+import { HistoryPage } from "@/features/history/components/page";
+import {
+  focusRunsList,
+  renderHistoryPage,
+  setupApiMocks,
+  trustedProject,
+} from "@/features/history/components/page-test-utils";
 import {
   HomePagePresentation,
   type HomePagePresentationProps,
@@ -36,24 +53,35 @@ vi.mock("@/lib/shutdown", () => ({ shutdown: mockShutdown }));
 
 type ShortcutRow = { key: string; label: string };
 
-const WEB_HELP_SHORTCUTS: ShortcutRow[] = [...HELP_SHORTCUTS, { key: "h", label: "Open History" }];
+const WEB_SHORTCUTS: Shortcut[] = [
+  ...HELP_SHORTCUTS,
+  { key: "h", label: "Open History", context: "global" },
+];
+
+// The screen renders the canonical table grouped by context, so the expected
+// sequence is the grouped one - flattened back to key/label pairs.
+const WEB_HELP_SHORTCUTS: ShortcutRow[] = groupShortcutsByContext(WEB_SHORTCUTS).flatMap((group) =>
+  group.shortcuts.map(({ key, label }) => ({ key, label })),
+);
 
 // The screen collapses consecutive rows that share a label into one row with
 // several keys, so each displayed key is expanded back to a key/label pair to
 // keep the canonical table the unit of comparison. A row is two cells - the key
 // chips and the label - and `<kbd>` carries no ARIA role, so the split inside a
-// row stays an element query; the row list itself is read by role.
+// row stays an element query; the group lists themselves are read by role.
 function readDisplayedShortcutRows(): ShortcutRow[] {
-  const list = screen.getByRole("list", { name: "Keyboard shortcuts" });
-  return within(list)
-    .getAllByRole("listitem")
-    .flatMap((row) => {
-      const label = row.lastElementChild?.textContent ?? "";
-      return Array.from(row.querySelectorAll("kbd")).map((kbd) => ({
-        key: kbd.textContent ?? "",
-        label,
-      }));
-    });
+  return groupShortcutsByContext(WEB_SHORTCUTS).flatMap((group) => {
+    const list = screen.getByRole("list", { name: SHORTCUT_CONTEXT_LABELS[group.context] });
+    return within(list)
+      .getAllByRole("listitem")
+      .flatMap((row) => {
+        const label = row.lastElementChild?.textContent ?? "";
+        return Array.from(row.querySelectorAll("kbd")).map((kbd) => ({
+          key: kbd.textContent ?? "",
+          label,
+        }));
+      });
+  });
 }
 
 function renderHelpShortcutTable() {
@@ -219,7 +247,7 @@ function renderActivityLog() {
 // added to the help table with no entry here fails as a missing case in its own
 // `it`, independent of run order or `-t` filtering.
 const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
-  "↑/↓ → Navigate Menus and Lists": async () => {
+  "↑/↓ → Move the highlight": async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();
     render(
@@ -264,7 +292,7 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
     expect(onSwitchPane).toHaveBeenCalledWith("details");
   },
 
-  "1-4 → Switch Tab (in Review)": async () => {
+  "1-4 → Switch Tab": async () => {
     const user = userEvent.setup();
     const onSwitchTab = vi.fn();
     render(
@@ -277,7 +305,7 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
     expect(onSwitchTab).toHaveBeenCalledOnce();
   },
 
-  "j/k → Navigate Lists and Fix Plan": async () => {
+  "j/k → Move the highlight": async () => {
     const user = userEvent.setup();
     render(
       <KeyboardProvider>
@@ -290,7 +318,7 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
     expect(screen.getByText("details:0")).toBeInTheDocument();
   },
 
-  "↑/↓ → Scroll Content": async () => {
+  "↑/↓ → Scroll the focused pane": async () => {
     const user = userEvent.setup();
     const onScroll = vi.fn();
     render(
@@ -303,7 +331,7 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
     expect(onScroll).toHaveBeenCalledWith(-80);
   },
 
-  "PgUp/PgDn → Scroll Content": async () => {
+  "PgUp/PgDn → Page up or down": async () => {
     const user = userEvent.setup();
     renderActivityLog();
 
@@ -315,7 +343,7 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
     expect(await screen.findByText("event-0")).toBeInTheDocument();
   },
 
-  "Home/End → Scroll Content": async () => {
+  "Home/End → Jump to start or end": async () => {
     const user = userEvent.setup();
     renderActivityLog();
 
@@ -351,6 +379,17 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
     renderGlobalHome();
     await user.keyboard("h");
     expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/history" }));
+  },
+
+  "/ → Search Runs": async () => {
+    const user = userEvent.setup();
+    setupApiMocks(trustedProject());
+    renderHistoryPage(<HistoryPage />);
+    await focusRunsList();
+
+    await user.keyboard("/");
+
+    expect(screen.getByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER)).toHaveFocus();
   },
 };
 

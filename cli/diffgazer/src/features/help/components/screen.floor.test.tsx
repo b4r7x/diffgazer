@@ -17,7 +17,7 @@ describe("HelpScreen floor", () => {
   test("scrolls help content inside the 60x20 floor without composited garbage", async () => {
     const { lastFrame } = renderRootFrame(60, 20, <HelpScreen />);
 
-    await vi.waitFor(() => expect(lastFrame()).toContain("KEYBOARD SHORTCUTS"));
+    await vi.waitFor(() => expect(lastFrame()).toContain("ANYWHERE"));
     const frame = stripAnsi(lastFrame() ?? "");
 
     expect(frame.split("\n")).toHaveLength(20);
@@ -27,7 +27,7 @@ describe("HelpScreen floor", () => {
     expect(frame).not.toMatch(/Escer|Settingst/);
 
     const hasScrollIndicator = frame.includes("▼");
-    const hasCompleteShortcutRow = frame.includes("Navigate Menus and Lists");
+    const hasCompleteShortcutRow = frame.includes("Move the highlight");
     expect(hasScrollIndicator || hasCompleteShortcutRow).toBe(true);
   });
 });

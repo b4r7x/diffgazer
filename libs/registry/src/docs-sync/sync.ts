@@ -1,4 +1,3 @@
-import { log } from "../logger.js";
 import { normalizeOrigin } from "../origin.js";
 import { computeSyncFingerprint, readSyncState, shouldSkipSync, writeSyncState } from "./cache.js";
 import { assertSafeLibraryId } from "./library-id-validation.js";
@@ -32,7 +31,7 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
   const origin = normalizeOrigin(requestedOrigin);
   const paths = resolveSyncOutputPaths(docsRoot, outputPathOverrides);
 
-  log.info("[docs-sync] Loading workspace artifacts.");
+  console.log("[docs-sync] Loading workspace artifacts.");
 
   const artifacts = libraries.map((lib) => loadLibraryArtifacts(lib, workspaceRoot, origin));
   assertArtifactOrigins(artifacts, origin);
@@ -54,11 +53,11 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
       primaryLibraryId,
     })
   ) {
-    log.info("[docs-sync] Artifacts unchanged; skipping sync.");
+    console.log("[docs-sync] Artifacts unchanged; skipping sync.");
     return { synced: false, fingerprint: syncFingerprint, artifacts };
   }
 
-  log.info("[docs-sync] Syncing docs and generated artifacts...");
+  console.log("[docs-sync] Syncing docs and generated artifacts...");
   runDocsSyncPass({
     artifacts,
     primaryArtifact,
@@ -74,6 +73,6 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     syncedAt: new Date().toISOString(),
   });
 
-  log.info("[docs-sync] Done.");
+  console.log("[docs-sync] Done.");
   return { synced: true, fingerprint: syncFingerprint, artifacts };
 }

@@ -60,7 +60,11 @@ export function ProviderStep({
         autoFocus={enabled}
         activationMode="manual"
         wrap={false}
-        className="space-y-1 border border-border p-1"
+        // One container per wizard step: the panel reticle. Storage, analysis
+        // and execution already render their rows straight on the panel ground,
+        // so the provider list drops its own box instead of nesting a third
+        // frame inside the step.
+        className="space-y-1"
       >
         {AVAILABLE_PROVIDERS.map((provider) => {
           const capabilities = PROVIDER_CAPABILITIES[provider.id];

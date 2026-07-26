@@ -14,6 +14,11 @@ import { ScrollArea } from "../../../components/ui/scroll-area";
 import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
 
+// `[QUEUE]` is the widest tag the stream emits; the column is clamped to at
+// least that so the message column starts at one x position down the whole log,
+// and widens only if a longer tag ever appears in the visible rows.
+const MIN_TAG_COLUMN_WIDTH = 7;
+
 export interface ActivityLogProps {
   events: readonly ReviewEvent[];
   height?: number;
@@ -55,8 +60,13 @@ export function ActivityLog({
         contentIdentity={contentIdentity}
         totalRows={visibleEvents.length}
       >
-        {(range) =>
-          convertAgentEventsToLogEntries(visibleEvents, range).map((entry) => (
+        {(range) => {
+          const entries = convertAgentEventsToLogEntries(visibleEvents, range);
+          const tagColumnWidth = Math.max(
+            MIN_TAG_COLUMN_WIDTH,
+            ...entries.map((entry) => (entry.tag ? entry.tag.length + 2 : 0)),
+          );
+          return entries.map((entry) => (
             <Box
               key={entry.id}
               gap={1}
@@ -68,26 +78,21 @@ export function ActivityLog({
               <Box flexShrink={0}>
                 <Text color={tokens.muted}>{formatTimestamp(entry.timestamp)}</Text>
               </Box>
-              <Box flexShrink={0}>
-                <Badge variant={TAG_BADGE_VARIANTS[entry.tagType ?? "system"] ?? "neutral"}>
-                  {entry.tag}
-                </Badge>
+              <Box flexShrink={0} width={tagColumnWidth}>
+                {entry.tag ? (
+                  <Badge variant={TAG_BADGE_VARIANTS[entry.tagType ?? "system"] ?? "neutral"}>
+                    {entry.tag}
+                  </Badge>
+                ) : null}
               </Box>
-              {entry.source ? (
-                <Box flexShrink={1} minWidth={0} overflow="hidden">
-                  <Text color={tokens.muted} wrap="truncate-end">
-                    [{entry.source}]
-                  </Text>
-                </Box>
-              ) : null}
               <Box flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden">
                 <Text color={getLogEntryColor(entry, tokens)} wrap="truncate-end">
                   {sanitizeTerminalText(entry.message)}
                 </Text>
               </Box>
             </Box>
-          ))
-        }
+          ));
+        }}
       </ScrollArea>
     </Box>
   );

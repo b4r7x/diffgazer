@@ -117,6 +117,36 @@ describe("Menu", () => {
     );
   });
 
+  it("keeps every wrapper between the menu and its items presentational", () => {
+    render(
+      <Menu aria-label="Owned">
+        <Menu.Group label="Group">
+          <Menu.Item id="one">One</Menu.Item>
+        </Menu.Group>
+        <Menu.Item id="two">Two</Menu.Item>
+      </Menu>,
+    );
+
+    const menu = screen.getByRole("menu");
+    const owned = [
+      ...screen.getAllByRole("menuitem"),
+      ...screen.getAllByRole("group", { hidden: true }),
+    ];
+    expect(owned.length).toBeGreaterThan(2);
+
+    for (const node of owned) {
+      let parent = node.parentElement;
+      while (parent !== null && parent !== menu && parent.getAttribute("role") !== "group") {
+        // ARIA requires `menu` to own its menuitems/groups. A wrapper without a
+        // role is `generic` and breaks that ownership chain for AT that walks
+        // owned elements, so every intermediate node must be presentational.
+        expect(parent.getAttribute("role")).toMatch(/^(none|presentation)$/);
+        parent = parent.parentElement;
+      }
+      expect(parent).not.toBeNull();
+    }
+  });
+
   it.each([
     [
       "item",

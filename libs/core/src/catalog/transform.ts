@@ -77,12 +77,15 @@ function isFresher(candidate: ModelsDevModel, current: ModelsDevModel): boolean 
   return a.epoch > b.epoch;
 }
 
+/**
+ * The description sits directly under the model name in every picker, so it
+ * carries only what the name does not. With no context limit to report there is
+ * nothing to add and the row keeps a single line.
+ */
 function describeModel(model: ModelsDevModel): string {
   const context = model.limit?.context;
-  if (context && context >= 1000) {
-    return `${model.name ?? model.id} — ${formatContextTokens(context)} context.`;
-  }
-  return model.name ?? model.id;
+  if (context && context >= 1000) return `${formatContextTokens(context)} context`;
+  return "";
 }
 
 /**

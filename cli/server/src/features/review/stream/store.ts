@@ -448,11 +448,7 @@ function cancelSessionWithError(
   const session = activeSessions.get(reviewId);
   if (!session || session.isComplete || session.persistenceState !== "pending") return;
 
-  terminateSession(session, {
-    code: error.code,
-    message: error.message,
-    reason: error.reason,
-  });
+  terminateSession(session, error);
   setTimeout(
     () => {
       activeSessions.delete(reviewId);

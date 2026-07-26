@@ -37,6 +37,16 @@ export const radioDoc: ComponentDoc = {
         'RadioGroup delegates roving focus to @diffgazer/keys navigation. All four arrow keys move focus and select items by default regardless of orientation (per WAI-ARIA APG radio group pattern). Home/End jump to first/last item. Space selects the focused item. Enter commit is a Diffgazer extension for preview/commit flows, not the APG baseline. Use activationMode="manual" with onNavigate/onChange when arrows should move focus and highlight without changing value, and onEnter when Enter should commit the focused item. Use autoFocus to focus the highlighted, selected, or first enabled item when the group becomes active. Use keyboardNavigation to suspend RadioGroup-managed key handling; when suspended, enabled items remain tabbable. Use onNavigationBoundaryReached(direction, event, key) to hand focus to adjacent controls and filter vertical-only handoffs by key when needed.',
     },
     {
+      title: "Glyph Hierarchy",
+      content:
+        "The brackets are chrome and render muted; the inner mark keeps the control's tone at bold weight, so a selected row is the only place full-contrast ink appears in the glyph column. The visible text is unchanged and the whole cell stays aria-hidden.",
+    },
+    {
+      title: "Indicator Variants",
+      content:
+        "variant='bullet' (default) marks the selected state with [●]; variant='x' marks it with [x]. Both glyphs are three characters, the same width Checkbox reserves, so a form mixing radios and checkboxes keeps one label left edge at every size.",
+    },
+    {
       title: "Orientation",
       content:
         "Set orientation='horizontal' for inline layouts. Layout direction changes but all four arrow keys always navigate (per APG spec).",

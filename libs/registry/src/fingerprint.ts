@@ -2,17 +2,9 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { REGISTRY_ORIGIN } from "./constants.js";
-import { log } from "./logger.js";
 import { normalizeOrigin } from "./origin.js";
+import { compareCodeUnits } from "./utils/compare-code-units.js";
 import { collectAllFiles, resolveInside, toPosixPath } from "./utils/fs.js";
-
-// Locale-independent code-unit comparison so the committed fingerprint hashes
-// files in the same order on every machine (see libs/core catalog transform).
-function compareCodeUnits(a: string, b: string): number {
-  if (a < b) return -1;
-  if (a > b) return 1;
-  return 0;
-}
 
 export interface InputsFingerprintResult {
   fingerprint: string;
@@ -33,7 +25,7 @@ function recordMissingInput(
     missing.push(input);
     return;
   }
-  log.warn(`Fingerprint input not found, skipping: ${input}`);
+  console.warn(`Fingerprint input not found, skipping: ${input}`);
 }
 
 function computeInputsFingerprintResult(

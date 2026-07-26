@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getEnabledSelectableCollectionItems,
   useSelectableCollection,
@@ -13,6 +13,33 @@ afterEach(() => {
 });
 
 describe("useSelectableCollection", () => {
+  it("shares one scheduled document notification and unsubscribes after the last subscriber", async () => {
+    const queueMicrotask = vi.spyOn(window, "queueMicrotask");
+    const firstContainer = document.createElement("div");
+    const secondContainer = document.createElement("div");
+    document.body.append(firstContainer, secondContainer);
+
+    const first = renderHook(() => useSelectableCollection({ current: firstContainer }));
+    const second = renderHook(() => useSelectableCollection({ current: secondContainer }));
+    queueMicrotask.mockClear();
+
+    window.dispatchEvent(new Event("resize"));
+    window.dispatchEvent(new Event("resize"));
+    expect(queueMicrotask).toHaveBeenCalledOnce();
+    await act(async () => Promise.resolve());
+
+    first.unmount();
+    queueMicrotask.mockClear();
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(queueMicrotask).toHaveBeenCalledOnce();
+    await act(async () => Promise.resolve());
+
+    second.unmount();
+    queueMicrotask.mockClear();
+    window.dispatchEvent(new Event("resize"));
+    expect(queueMicrotask).not.toHaveBeenCalled();
+  });
+
   it("keeps the item array stable when a sync does not change collection content", async () => {
     const container = document.createElement("div");
     document.body.append(container);

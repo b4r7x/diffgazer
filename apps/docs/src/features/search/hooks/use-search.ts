@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   type DocsLibraryId,
   docsPath,
@@ -112,7 +112,6 @@ function toResolvedSearchState(results: SearchResult[]): SearchState {
 export function useSearch() {
   const [query, setQuery] = useState("");
   const [searchState, setSearchState] = useState<SearchState>(SEARCH_IDLE_STATE);
-  const generation = useRef(0);
 
   useEffect(() => {
     const trimmedQuery = normalizeSearchQuery(query);
@@ -126,16 +125,14 @@ export function useSearch() {
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      const id = ++generation.current;
-
       doSearch({ data: trimmedQuery, signal: controller.signal })
         .then((items) => {
-          if (id !== generation.current || controller.signal.aborted) return;
+          if (controller.signal.aborted) return;
 
           setSearchState(toResolvedSearchState(toSearchResults(items)));
         })
         .catch((err) => {
-          if (id !== generation.current || controller.signal.aborted) return;
+          if (controller.signal.aborted) return;
           if (import.meta.env.DEV) console.warn("Search failed:", err);
           setSearchState({
             status: "error",

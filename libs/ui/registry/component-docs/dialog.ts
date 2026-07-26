@@ -61,7 +61,7 @@ export const dialogDoc: ComponentDoc = {
     {
       title: "Keyboard hints",
       content:
-        "Pass a hints array to DialogFooter (or compose DialogFooter.Hints) to render inline keyboard shortcut hints alongside the action buttons. Hints render inside the footer, matching the global footer's Kbd primitive and typography.",
+        "Pass a hints array to DialogFooter (or compose DialogFooter.Hints) to render inline keyboard shortcut hints alongside the action buttons. Hints render through the shared OverlayHints primitive (registry/ui/shared/overlay-hints), so Dialog, CommandPalette, and any future keyboard surface spell their legend the same way. Dialog opts out of the primitive's aria-hidden default so the key names stay discoverable by assistive technology. At coarse pointer the legend collapses — a key hint is instructions a touch user cannot follow — so keep any touch-relevant action in the action row, not the hints.",
     },
     {
       title: "Corner clearance",
@@ -76,7 +76,17 @@ export const dialogDoc: ComponentDoc = {
     {
       title: "Surface and backdrop",
       content:
-        "DialogContent is a flat surface: --background fill, 1px border under the default frame='border', rounded-sm corners, and --shadow-hard (a hard 4px offset with no blur) — the library's only sanctioned shadow. The backdrop dims with --scrim over a 2px blur; the dim carries the layer separation, not the blur.",
+        "DialogContent is the modal overlay tier: --surface-1 fill (one step off the page background) with a 1px --surface-1-highlight inner lip, 1px border under the default frame='border', rounded-sm corners, and --shadow-hard (a hard 4px offset with no blur) — the library's only sanctioned shadow, reserved for this tier. Anchored overlays such as Popover and Menu submenus share the fill and lip but drop the slab shadow. The backdrop dims with --scrim over a 2px blur; the dim carries the layer separation, not the blur.",
+    },
+    {
+      title: "Narrow-viewport geometry",
+      content:
+        "Below 640px DialogContent insets 12px from each viewport edge (max-sm:mx-3 with a matching width and max-w-none) so both vertical hairlines, the offset shadow, and the corner brackets render whole instead of being clipped at the edge. It also pads its bottom by env(safe-area-inset-bottom) to keep the footer's action row clear of the home indicator — that requires viewport-fit=cover on the host page and resolves to 0 without it. The height cap stays max-h-[90dvh], and nothing changes at 640px and up.",
+    },
+    {
+      title: "Entrance motion",
+      content:
+        "The overlay family runs one entrance vector: opacity plus a 4px translateY drop, never a scale — a scale-in reads as a rubbery soft-UI surface, and on a wide dialog it grows the drawn border across every open. Timing comes from the overlay-wide --ui-content-enter-duration / --ui-content-exit-duration contract; --dialog-duration remains a per-instance override but no longer holds an independent value that can drift out of sync with anchored surfaces. prefers-reduced-motion: reduce drops the animation entirely.",
     },
     {
       title: "Extending DialogContent styles",

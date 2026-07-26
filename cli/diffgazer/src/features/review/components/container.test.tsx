@@ -230,10 +230,10 @@ describe("ReviewContainer", () => {
       makeReviewLifecycleBase({ cancel, isStreaming: true, reviewId: "review-123" }),
     );
 
-    const { stdin, lastFrame } = renderContainer();
+    const { stdin, lastFrame } = renderContainer({ showFooterProbe: true });
 
-    expect(lastFrame() ?? "").toContain("Cancel");
-    expect(lastFrame() ?? "").toContain("Back");
+    await waitUntil(() => (lastFrame() ?? "").includes("c Cancel"));
+    expect(lastFrame() ?? "").toContain("Esc Back");
 
     stdin.write(ESC);
 

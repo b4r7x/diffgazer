@@ -1,4 +1,5 @@
-import { formatRunId } from "../../format.js";
+import { formatDuration, formatRunId } from "../../format.js";
+import { pluralize } from "../../strings.js";
 
 export interface ContextInfo {
   trustedDir?: string;
@@ -6,6 +7,7 @@ export interface ContextInfo {
   providerModel?: string;
   lastRunId?: string;
   lastRunIssueCount?: number;
+  lastRunDurationMs?: number;
 }
 
 interface HomeContextRow {
@@ -16,7 +18,13 @@ interface HomeContextRow {
 interface HomeContextRows {
   trust: HomeContextRow;
   provider: HomeContextRow;
-  lastRun: HomeContextRow & { issueCount?: string };
+  lastRun: HomeContextRow & {
+    issueCount?: string;
+    /** "4 issues · 2m 14s" - the run's outcome in one line, or undefined with no run. */
+    meta?: string;
+    /** Lets the surface pick the success treatment without re-parsing `meta`. */
+    hasIssues: boolean;
+  };
 }
 
 export interface HomeContextInit {
@@ -28,6 +36,7 @@ export interface HomeContextInit {
 export interface HomeContextReview {
   id?: string;
   issueCount?: number;
+  durationMs?: number;
 }
 
 /**
@@ -45,6 +54,7 @@ export function buildHomeContextInfo(
     providerModel: init.model ?? undefined,
     lastRunId: mostRecentReview?.id,
     lastRunIssueCount: mostRecentReview?.issueCount,
+    lastRunDurationMs: mostRecentReview?.durationMs,
     trustedDir: isTrusted ? (init.trustedRepoRoot ?? undefined) : undefined,
   };
 }
@@ -66,6 +76,8 @@ export function buildHomeContextRows({
       providerModel === undefined ? providerName : `${providerName} (${providerModel})`;
   }
   const lastRunId = context.lastRunId;
+  const issueCount = context.lastRunIssueCount;
+  const durationMs = context.lastRunDurationMs;
 
   return {
     trust: {
@@ -77,9 +89,24 @@ export function buildHomeContextRows({
       label: "Last Run",
       value: lastRunId !== undefined ? formatRunId(lastRunId) : "None",
       issueCount:
-        lastRunId !== undefined && context.lastRunIssueCount !== undefined
-          ? `(${context.lastRunIssueCount} issues)`
-          : undefined,
+        lastRunId !== undefined && issueCount !== undefined ? `(${issueCount} issues)` : undefined,
+      meta: buildLastRunMeta(lastRunId, issueCount, durationMs),
+      hasIssues: issueCount !== undefined && issueCount > 0,
     },
   };
+}
+
+/**
+ * The one line under the run id: what the run found and how long it took. A run
+ * with no recorded duration keeps the counts alone; with no run there is no
+ * line at all.
+ */
+function buildLastRunMeta(
+  lastRunId: string | undefined,
+  issueCount: number | undefined,
+  durationMs: number | undefined,
+): string | undefined {
+  if (lastRunId === undefined || issueCount === undefined) return undefined;
+  const outcome = issueCount === 0 ? "no issues" : pluralize(issueCount, "issue");
+  return durationMs === undefined ? outcome : `${outcome} · ${formatDuration(durationMs)}`;
 }

@@ -39,13 +39,64 @@ describe("ReviewSummaryView root frame", () => {
       />,
     );
 
-    await vi.waitFor(() => expect(lastFrame()).toContain("View Results (Enter)"));
+    await vi.waitFor(() => expect(lastFrame()).toContain("View Results"));
     const frame = lastFrame() ?? "";
+    // One action surface: the footer names the action, the body never repeats it.
+    expect(frame.split("View Results")).toHaveLength(2);
+    expect(frame).not.toContain("(Enter)");
     expect(frame).toContain("REVIEW COMPLETE #REVIEW-1");
     expect(frame).toContain("Found 1 issue across 1 file with issues.");
     expect(frame).toContain("Leaky state update");
     expect(frame.split("\n")).toHaveLength(24);
     expectNoRepeatedDividerRows(frame);
+  });
+
+  test("lands the top-issue preview above the fold at 100x30", async () => {
+    const fixture = canonicalReviewFixture;
+    const firstIssue = fixture.result.issues[0];
+    if (!firstIssue) throw new Error("canonical fixture has no issues");
+    const { lastFrame } = renderRootFrame(
+      100,
+      30,
+      <ReviewSummaryView
+        issues={fixture.result.issues}
+        reviewId={fixture.metadata.id}
+        durationMs={fixture.metadata.durationMs}
+        onContinue={vi.fn()}
+      />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("SEVERITY BREAKDOWN"));
+    const frame = stripAnsi(lastFrame() ?? "");
+
+    expect(frame).toContain("TOP ISSUES PREVIEW");
+    expect(frame).toContain(firstIssue.title.slice(0, 20));
+  });
+
+  test("spends at most three rows on the severity block at the 80x24 floor", async () => {
+    const fixture = canonicalReviewFixture;
+    const { lastFrame } = renderRootFrame(
+      80,
+      24,
+      <ReviewSummaryView
+        issues={fixture.result.issues}
+        reviewId={fixture.metadata.id}
+        durationMs={fixture.metadata.durationMs}
+        onContinue={vi.fn()}
+      />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("SEVERITY BREAKDOWN"));
+    const lines = stripAnsi(lastFrame() ?? "").split("\n");
+    const start = lines.findIndex((line) => line.includes("SEVERITY BREAKDOWN"));
+    const severityRows = lines
+      .slice(start + 2)
+      .filter((line) => /█|\[BLOCKER|\[NIT/.test(line)).length;
+
+    // Was eight rows of half-empty bar tracks; counts now read from the legend.
+    expect(severityRows).toBeLessThanOrEqual(3);
+    expect(stripAnsi(lastFrame() ?? "")).toContain("[BLOCKER 1]");
+    expect(stripAnsi(lastFrame() ?? "")).not.toContain("░");
   });
 
   test("renders long top-issue previews as one row each at 100 columns", async () => {
@@ -104,12 +155,18 @@ describe("ReviewSummaryView root frame", () => {
       expect(line.trim()).toBe("▼");
     }
 
-    // The action-controls row is not overwritten by escaped preview content;
-    // pre-fix it read "[[ View Results (Enter) ]pi-k[ Back (Esc) ] Provider key errors …".
-    const actionRow = lines.find((line) => line.includes("View Results (Enter)"));
+    // The footer is the only action surface and it is not overwritten by
+    // escaped preview content; pre-fix an in-content button row read
+    // "[[ View Results (Enter) ]pi-k[ Back (Esc) ] Provider key errors …".
+    const actionRow = lines.find((line) => line.includes("View Results"));
     expect(actionRow).toBeDefined();
     expect(actionRow).not.toContain("Provider");
-    expect(actionRow).toContain("Back (Esc)");
+    expect(actionRow).toContain("Back");
+
+    // The shortcut bar is the single action surface: an in-content button row
+    // restating the same key would print the label a second time.
+    expect(lines.filter((line) => line.includes("View Results"))).toHaveLength(1);
+    expect(lines.filter((line) => line.includes("Back"))).toHaveLength(1);
 
     expect(lines).toHaveLength(30);
   });
@@ -138,7 +195,7 @@ describe("ReviewSummaryView root frame", () => {
       />,
     );
 
-    await vi.waitFor(() => expect(lastFrame()).toContain("View Results (Enter)"));
+    await vi.waitFor(() => expect(lastFrame()).toContain("View Results"));
     expect(lastFrame()?.split("\n")).toHaveLength(24);
   });
 
@@ -176,7 +233,7 @@ describe("ReviewSummaryView root frame", () => {
 
     const frame = lastFrame() ?? "";
     expect(frame).toContain("4 below-threshold issues hidden");
-    expect(frame).toContain("View Results (Enter)");
+    expect(frame).toContain("View Results");
     expect(frame.split("\n")).toHaveLength(24);
   });
 });

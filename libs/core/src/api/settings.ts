@@ -7,9 +7,9 @@ import {
 import type { ApiClient, TrustResponse } from "./types.js";
 
 export async function getSettings(client: ApiClient): Promise<SettingsConfig> {
-  return client.get<SettingsConfig>("/api/settings", undefined, (body) =>
-    SettingsConfigSchema.parse(body),
-  );
+  return client.get<SettingsConfig>("/api/settings", {
+    schema: (body) => SettingsConfigSchema.parse(body),
+  });
 }
 
 export async function saveSettings(
@@ -22,25 +22,25 @@ export async function saveSettings(
 export async function getTrust(client: ApiClient): Promise<TrustResponse> {
   // The server resolves project identity from the request's project root; no
   // projectId is sent.
-  return client.get<TrustResponse>("/api/settings/trust", undefined, (body) =>
-    TrustResponseSchema.parse(body),
-  );
+  return client.get<TrustResponse>("/api/settings/trust", {
+    schema: (body) => TrustResponseSchema.parse(body),
+  });
 }
 
 export async function saveTrust(
   client: ApiClient,
   trust: SaveTrustRequest,
 ): Promise<TrustResponse> {
-  return client.post<TrustResponse>("/api/settings/trust", trust, undefined, (body) =>
-    TrustResponseSchema.parse(body),
-  );
+  return client.post<TrustResponse>("/api/settings/trust", trust, {
+    schema: (body) => TrustResponseSchema.parse(body),
+  });
 }
 
 export async function deleteTrust(client: ApiClient): Promise<{ removed: boolean }> {
   // Identity resolves from the request's project root; no projectId is sent.
-  return client.delete<{ removed: boolean }>("/api/settings/trust", undefined, (body) =>
-    DeleteTrustResponseSchema.parse(body),
-  );
+  return client.delete<{ removed: boolean }>("/api/settings/trust", {
+    schema: (body) => DeleteTrustResponseSchema.parse(body),
+  });
 }
 
 export const bindSettings = (client: ApiClient) => ({

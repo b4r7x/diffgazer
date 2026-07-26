@@ -1,6 +1,5 @@
 import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { log } from "../logger.js";
 
 const TEST_EXAMPLE_FILE = /\.(?:test|spec)\.tsx$/i;
 const TEST_EXAMPLE_KEY = /\.(?:test|spec)$/i;
@@ -35,7 +34,7 @@ export function generateDemoIndex(config: {
       }
       const existing = seenKeys.get(exampleName);
       if (existing) {
-        log.warn(
+        console.warn(
           `Demo index key collision: "${exampleName}" from "${item.name}" overwrites "${existing}"`,
         );
       }

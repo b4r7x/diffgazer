@@ -155,7 +155,7 @@ describe("ModelSelectOverlay long description", () => {
     await flushUntil(() => lastFrame()?.includes("Flash") ?? false);
 
     const frame = lastFrame() ?? "";
-    expect(frame).toContain("A very long model");
+    expect(frame).toContain("A very long");
     expect(frame).toContain("…");
     expect(frame).not.toContain("FULLTAILVISIBLE");
   });
@@ -193,14 +193,13 @@ describe("ModelSelectOverlay long description", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Gemini") ?? false);
+    await flushUntil(() => lastFrame()?.includes("Wide Model") ?? false);
 
     const frame = lastFrame() ?? "";
     const lines = frame.split("\n");
     expect(lines.filter((line) => line.includes("[ ]"))).toHaveLength(1);
     expect(lines.every((line) => terminalCellWidth(line) <= 40)).toBe(true);
     expect(lines).toHaveLength(15);
-    expect(frame).toContain("Tab: zone");
     expect(frame).not.toContain("FULLNAMEEND");
     expect(frame).not.toContain("FULLTAILVISIBLE");
   });

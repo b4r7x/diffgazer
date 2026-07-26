@@ -116,20 +116,32 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
     onExit: handleExit,
   });
 
-  const contentWidth = Math.min(columns, 90);
-  const sidebarWidth = isNarrow ? contentWidth : Math.min(30, Math.floor(columns * 0.33));
+  // The sidebar carries paths, provider ids and run ids: it gets a share of the
+  // frame that grows with it instead of a fixed 30 columns that elides at 100.
+  const contentWidth = Math.min(columns - 4, 120);
+  const sidebarWidth = isNarrow
+    ? contentWidth
+    : Math.min(Math.max(Math.floor(contentWidth * 0.38), 28), 44);
+
+  // Side by side the two panes share the full frame height. Stacked they must
+  // not: a full-height context pane would eat the viewport and leave the menu
+  // as a border sliver, so there the context keeps its content height and only
+  // the menu takes the slack.
+  const paneHeight = isNarrow ? undefined : "100%";
 
   return (
-    <Box justifyContent="center" alignItems="flex-start" flexGrow={1}>
+    <Box justifyContent="center" alignItems="stretch" flexGrow={1}>
       <Box width={contentWidth} flexDirection={isNarrow ? "column" : "row"}>
-        <Box width={sidebarWidth}>
+        {/* The menu panel fills its row, so an elastic sidebar would be shrunk
+            back below the budget the clamp just granted it. */}
+        <Box width={sidebarWidth} flexShrink={0} height={paneHeight}>
           <ContextSidebar
             context={context}
             isTrusted={isTrusted}
             projectPath={repoRoot ?? undefined}
           />
         </Box>
-        <Box flexGrow={1}>
+        <Box flexGrow={1} minWidth={40} height={paneHeight}>
           {needsTrust ? (
             <TrustPanel onAccept={handleTrustAccept} />
           ) : (

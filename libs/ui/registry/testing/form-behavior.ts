@@ -9,7 +9,7 @@ function resolveDescribedByText(field: HTMLElement): string | null {
   if (!describedBy) {
     return null;
   }
-  const ownerDocument = field.ownerDocument ?? document;
+  const ownerDocument = field.ownerDocument;
   const parts: string[] = [];
   for (const id of describedBy.trim().split(/\s+/)) {
     const target = ownerDocument.getElementById(id);
@@ -43,31 +43,10 @@ export function expectFieldInvalid(field: HTMLElement, expectedMessage?: string 
     return;
   }
 
-  const siblingError = findSiblingErrorText(field);
-  if (matchesMessage(siblingError, expectedMessage)) {
-    return;
-  }
-
   expect(
-    describedByText ?? siblingError ?? "",
+    describedByText ?? "",
     `field should expose error message ${String(expectedMessage)} via aria-describedby`,
   ).toMatch(expectedMessage);
-}
-
-function findSiblingErrorText(field: HTMLElement): string | null {
-  const parent = field.parentElement;
-  if (!parent) {
-    return null;
-  }
-  const candidates = parent.querySelectorAll(
-    '[role="alert"], [data-slot="field-error"], [aria-live]',
-  );
-  for (const candidate of candidates) {
-    if (candidate.textContent?.trim()) {
-      return candidate.textContent.trim();
-    }
-  }
-  return null;
 }
 
 /**
@@ -112,10 +91,8 @@ export function expectFieldDescribedBy(field: HTMLElement, descriptionId: string
   expect(ids, `field aria-describedby should include "${descriptionId}"`).toContain(descriptionId);
 }
 
-const FILLABLE_ROLES = ["textbox", "searchbox", "spinbutton", "combobox"] as const;
-
 /**
- * Locate a form control by accessible name (label or aria-label) and type into it.
+ * Locate a textbox by accessible name (label or aria-label) and type into it.
  * Clears existing content first.
  */
 export async function fillField(
@@ -123,18 +100,7 @@ export async function fillField(
   name: string | RegExp,
   value: string,
 ): Promise<void> {
-  let control: HTMLElement | null = null;
-  for (const role of FILLABLE_ROLES) {
-    control = screen.queryByRole(role, { name });
-    if (control) {
-      break;
-    }
-  }
-  if (!control) {
-    throw new Error(
-      `fillField: no textbox/searchbox/spinbutton/combobox with name ${String(name)} found.`,
-    );
-  }
+  const control = screen.getByRole("textbox", { name });
   await user.clear(control);
   if (value.length > 0) {
     await user.type(control, value);
@@ -142,8 +108,8 @@ export async function fillField(
 }
 
 /**
- * Submit the form by clicking the submit button (default: getByRole("button", { name: /submit|save|create|confirm|continue/i }))
- * or the explicitly-passed button.
+ * Submit the form by clicking the explicitly-passed button, or the button whose
+ * accessible name matches /submit|save|create|confirm|continue/i.
  */
 export async function submitForm(user: UserEvent, submitButton?: HTMLElement): Promise<void> {
   if (submitButton) {
@@ -151,18 +117,5 @@ export async function submitForm(user: UserEvent, submitButton?: HTMLElement): P
     return;
   }
 
-  const direct = screen.queryByRole("button", { name: SUBMIT_LABEL_PATTERN });
-  if (direct) {
-    await user.click(direct);
-    return;
-  }
-
-  const buttons = screen.getAllByRole("button");
-  const fallback = buttons.find((button) => SUBMIT_LABEL_PATTERN.test(button.textContent ?? ""));
-  if (!fallback) {
-    throw new Error(
-      `submitForm: no submit-like button found. Pass an explicit button element. Tried pattern ${String(SUBMIT_LABEL_PATTERN)}.`,
-    );
-  }
-  await user.click(fallback);
+  await user.click(screen.getByRole("button", { name: SUBMIT_LABEL_PATTERN }));
 }

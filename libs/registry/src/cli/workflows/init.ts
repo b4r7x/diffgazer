@@ -256,15 +256,6 @@ export async function runInitWorkflow<TConfig>(
     nextSteps,
   } = options;
 
-  if (typeof plannedPaths !== "function") {
-    throw new TypeError(
-      "runInitWorkflow requires a `plannedPaths` callback that lists every file or " +
-        "directory the init may create, write, or touch (config file is included " +
-        "automatically). This is mandatory so rollback can restore package.json, " +
-        "lockfiles, and freshly-created files when writeConfig fails after install.",
-    );
-  }
-
   ensurePackageJson(cwd);
 
   const existing = loadConfig(cwd);

@@ -1,6 +1,7 @@
 import "./model-select-overlay.terminal-mock";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { FooterProvider } from "@diffgazer/core/footer";
 import type { ProviderModelsResponse } from "@diffgazer/core/schemas/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
@@ -103,7 +104,9 @@ export function Wrapper({ children, api }: { children: ReactNode; api?: BoundApi
     <QueryClientProvider client={queryClient}>
       <ApiProvider value={boundApi}>
         <CliThemeProvider initialTheme="dark">
-          <TerminalKeyboardProvider>{children}</TerminalKeyboardProvider>
+          <TerminalKeyboardProvider>
+            <FooterProvider initialShortcuts={[]}>{children}</FooterProvider>
+          </TerminalKeyboardProvider>
         </CliThemeProvider>
       </ApiProvider>
     </QueryClientProvider>
@@ -123,7 +126,9 @@ export function StableWrapper({
     <QueryClientProvider client={queryClient}>
       <ApiProvider value={api}>
         <CliThemeProvider initialTheme="dark">
-          <TerminalKeyboardProvider>{children}</TerminalKeyboardProvider>
+          <TerminalKeyboardProvider>
+            <FooterProvider initialShortcuts={[]}>{children}</FooterProvider>
+          </TerminalKeyboardProvider>
         </CliThemeProvider>
       </ApiProvider>
     </QueryClientProvider>

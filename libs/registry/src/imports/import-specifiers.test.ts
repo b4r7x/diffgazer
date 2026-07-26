@@ -22,9 +22,9 @@ describe("extractImportSpecifiers", () => {
       { specifier: "pkg-type", kind: "import", isTypeOnly: true },
       { specifier: "pkg-export", kind: "export", isTypeOnly: false },
       { specifier: "pkg-export-type", kind: "export", isTypeOnly: true },
+      { specifier: "pkg-side-effect", kind: "side-effect", isTypeOnly: false },
       { specifier: "pkg-dynamic", kind: "dynamic-import", isTypeOnly: false },
       { specifier: "pkg-require", kind: "require", isTypeOnly: false },
-      { specifier: "pkg-side-effect", kind: "side-effect", isTypeOnly: false },
     ]);
   });
 
@@ -119,6 +119,11 @@ describe("extractImportSpecifiers", () => {
       { specifier: "real-template-literal", kind: "dynamic-import", isTypeOnly: false },
       { specifier: "real-template-expression", kind: "dynamic-import", isTypeOnly: false },
       {
+        specifier: "real-template-expression-require",
+        kind: "require",
+        isTypeOnly: false,
+      },
+      {
         specifier: "real-nested-template-expression",
         kind: "dynamic-import",
         isTypeOnly: false,
@@ -126,12 +131,6 @@ describe("extractImportSpecifiers", () => {
       {
         specifier: "real-template-brace-expression",
         kind: "dynamic-import",
-        isTypeOnly: false,
-      },
-      { specifier: "real-after-block", kind: "dynamic-import", isTypeOnly: false },
-      {
-        specifier: "real-template-expression-require",
-        kind: "require",
         isTypeOnly: false,
       },
       { specifier: "real-require", kind: "require", isTypeOnly: false },
@@ -156,6 +155,7 @@ describe("extractImportSpecifiers", () => {
         kind: "require",
         isTypeOnly: false,
       },
+      { specifier: "real-after-block", kind: "dynamic-import", isTypeOnly: false },
       { specifier: "real-side-effect", kind: "side-effect", isTypeOnly: false },
     ]);
   });

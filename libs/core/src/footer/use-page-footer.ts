@@ -16,15 +16,21 @@ const EMPTY_SHORTCUTS: Shortcut[] = [];
  * The effect deliberately does not reset on unmount: the next page's
  * `usePageFooter` overwrites the state, and resetting would cause a one-frame
  * flicker between routes.
+ *
+ * A parent's effect runs after its children's, so a page that hands the screen
+ * to a guard branch must pass `enabled: false` instead of publishing empty
+ * shortcuts, or it overwrites the footer the branch just published.
  */
 export function usePageFooter({
   shortcuts,
   rightShortcuts = EMPTY_SHORTCUTS,
+  enabled = true,
 }: PageFooterOptions): void {
   const { setShortcuts, setRightShortcuts } = useFooterActions();
 
   useEffect(() => {
+    if (!enabled) return;
     setShortcuts(shortcuts);
     setRightShortcuts(rightShortcuts);
-  }, [shortcuts, rightShortcuts, setShortcuts, setRightShortcuts]);
+  }, [enabled, shortcuts, rightShortcuts, setShortcuts, setRightShortcuts]);
 }

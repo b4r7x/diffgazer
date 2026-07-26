@@ -20,9 +20,9 @@ export function HomeMenu({
   const annotated = withGroupDividers(MENU_ITEMS);
 
   return (
-    <Panel>
+    <Panel grow focused={isActive}>
       <Panel.Header variant="subtle">Main Menu</Panel.Header>
-      <Panel.Content>
+      <Panel.Content grow>
         <Menu isActive={isActive} onSelect={onAction}>
           {annotated.map(({ item, showDividerBefore }) => {
             const disabled = isMenuActionDisabled(item.id, { isTrusted, hasResumableSession });

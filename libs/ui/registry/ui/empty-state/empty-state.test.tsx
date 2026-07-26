@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
+import { Kbd } from "../kbd";
 import { EmptyState } from "./index";
 
 describe("EmptyState", () => {
@@ -34,5 +35,69 @@ describe("EmptyState", () => {
     const { container } = render(<EmptyState live>No results</EmptyState>);
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  describe("Hint", () => {
+    it("renders as a quiet annotation row under the message", () => {
+      const { container } = render(
+        <EmptyState>
+          <EmptyState.Message>No runs match this search</EmptyState.Message>
+          <EmptyState.Hint>
+            <kbd>Esc</kbd> clear search
+          </EmptyState.Hint>
+        </EmptyState>,
+      );
+
+      const hint = container.querySelector('[data-slot="empty-state-hint"]');
+      expect(hint).not.toBeNull();
+      expect(hint).toHaveTextContent("Esc clear search");
+    });
+
+    it.each([
+      "sm",
+      "md",
+      "lg",
+    ] as const)("takes its type scale from the root size context (%s)", (size) => {
+      const { container } = render(
+        <EmptyState size={size}>
+          <EmptyState.Hint>press slash</EmptyState.Hint>
+        </EmptyState>,
+      );
+
+      // Same mechanism the sibling parts use: the root publishes data-size and
+      // each part carries a step per size that resolves against it.
+      expect(container.firstElementChild).toHaveAttribute("data-size", size);
+      expect(container.querySelector('[data-slot="empty-state-hint"]')?.className).toContain(
+        `group-data-[size=${size}]/es:`,
+      );
+    });
+
+    it("is announced inside the live region after the message", () => {
+      render(
+        <EmptyState live>
+          <EmptyState.Message>No runs match this search</EmptyState.Message>
+          <EmptyState.Hint>
+            <kbd>Esc</kbd> clear search
+          </EmptyState.Hint>
+        </EmptyState>,
+      );
+
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "No runs match this searchEsc clear search",
+      );
+    });
+
+    it("has no a11y violations with a keyboard chip child", async () => {
+      const { container } = render(
+        <EmptyState live>
+          <EmptyState.Message>No runs match this search</EmptyState.Message>
+          <EmptyState.Hint>
+            <Kbd size="sm">Esc</Kbd> clear search
+          </EmptyState.Hint>
+        </EmptyState>,
+      );
+
+      expect(await axe(container)).toHaveNoViolations();
+    });
   });
 });

@@ -203,11 +203,10 @@ export function createFocusTrapController(
   const originalTabIndex = container.getAttribute("tabindex");
   if (!hadTabIndex) container.setAttribute("tabindex", "-1");
 
-  let lastFocused: HTMLElement = container;
-  let entry: TrapEntry | null = null;
   let activated = false;
 
-  const recapture = () => {
+  function recapture(): void {
+    const { lastFocused } = trapEntry;
     const target =
       composedContains(container, lastFocused) &&
       lastFocused.isConnected &&
@@ -215,25 +214,22 @@ export function createFocusTrapController(
         ? lastFocused
         : resolveInitialFocus();
     target.focus();
-  };
+  }
 
-  const handleFocusIn = (event: FocusEvent) => {
+  function handleFocusIn(event: FocusEvent): void {
     const target = getComposedEventTarget(event);
     if (isInsideContainer(container, target)) {
-      lastFocused = target;
-      if (entry) {
-        entry.lastFocused = target;
-        if (!entry.suspended) observeNewTrapTargets(entry);
-      }
+      trapEntry.lastFocused = target;
+      if (!trapEntry.suspended) observeNewTrapTargets(trapEntry);
       return;
     }
     recapture();
-  };
+  }
 
-  const handleKeyDown = (event: KeyboardEvent) => {
+  function handleKeyDown(event: KeyboardEvent): void {
     if (event.key !== "Tab") return;
 
-    if (entry && !entry.suspended) observeNewTrapTargets(entry);
+    if (!trapEntry.suspended) observeNewTrapTargets(trapEntry);
     const focusableEls = getTabbableElements(container);
     if (focusableEls.length === 0) {
       event.preventDefault();
@@ -280,10 +276,11 @@ export function createFocusTrapController(
         first?.focus();
       }
     }
-  };
+  }
 
   const observer = new MutationObserverCtor(() => {
-    if (entry && !entry.suspended) observeNewTrapTargets(entry);
+    if (!trapEntry.suspended) observeNewTrapTargets(trapEntry);
+    const { lastFocused } = trapEntry;
     if (
       lastFocused.isConnected &&
       composedContains(container, lastFocused) &&
@@ -297,14 +294,13 @@ export function createFocusTrapController(
     container,
     ownerDocument,
     resolveInitialFocus,
-    lastFocused,
+    lastFocused: container,
     handleKeyDown,
     handleFocusIn,
     observer,
     observedTargets: new Set(),
     suspended: true,
   };
-  entry = trapEntry;
 
   return {
     activate: () => {
@@ -319,15 +315,13 @@ export function createFocusTrapController(
           resolveInitialFocus().focus();
         }
         const activeElement = getDeepActiveElement(ownerDocument);
-        lastFocused = isInsideContainer(container, activeElement)
+        trapEntry.lastFocused = isInsideContainer(container, activeElement)
           ? activeElement
           : resolveInitialFocus();
-        trapEntry.lastFocused = lastFocused;
       } else {
         const activeElement = getDeepActiveElement(ownerDocument);
         if (isInsideContainer(container, activeElement)) {
-          lastFocused = activeElement;
-          trapEntry.lastFocused = lastFocused;
+          trapEntry.lastFocused = activeElement;
         }
       }
     },
@@ -337,12 +331,8 @@ export function createFocusTrapController(
       }
       activated = false;
 
-      ownerDocument.removeEventListener("keydown", handleKeyDown, true);
-      ownerDocument.removeEventListener("focusin", handleFocusIn, true);
-      disconnectTrapObserver(trapEntry);
-
+      suspendEntry(trapEntry);
       removeTrap(trapEntry);
-      entry = null;
 
       if (!hadTabIndex) {
         container.removeAttribute("tabindex");

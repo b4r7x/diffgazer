@@ -3,7 +3,7 @@ import type { Result } from "@diffgazer/core/result";
 import { err, ok } from "@diffgazer/core/result";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/events";
-import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
+import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
 import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
 import type { AIClient } from "../../shared/lib/ai/types.js";
 import { createGitService } from "../../shared/lib/git/service.js";
@@ -244,18 +244,19 @@ export async function createReviewSession(
     if (!parsedResult.ok) {
       void handleReviewFailure(parsedResult.error, emit, reviewId, session.controller.signal);
     } else {
-      void runReviewSession(
+      void runReviewSession({
         aiClient,
-        { mode, projectPath },
+        mode,
+        projectPath,
         reviewDefaults,
         reviewId,
-        session.controller.signal,
+        signal: session.controller.signal,
         headCommit,
-        parsedResult.value,
+        parsed: parsedResult.value,
         branch,
         elapsedStart,
         emit,
-      ).catch((error) => {
+      }).catch((error) => {
         handleDetachedReviewSessionError(reviewId, error);
       });
     }
@@ -279,21 +280,33 @@ export async function createReviewSession(
   });
 }
 
-async function runReviewSession(
-  aiClient: AIClient,
-  options: StreamReviewParams,
-  reviewDefaults: ReturnType<typeof resolveReviewDefaults>,
-  reviewId: string,
-  signal: AbortSignal,
-  headCommit: string,
-  parsed: ParsedDiff,
-  branch: string | null,
-  elapsedStart: number,
-  emit: EmitFn,
-): Promise<void> {
-  const { mode = "unstaged", projectPath: projectPathOption } = options;
-  const projectPath = projectPathOption ?? process.cwd();
+interface RunReviewSessionOptions {
+  aiClient: AIClient;
+  mode: ReviewMode;
+  projectPath: string;
+  reviewDefaults: ReturnType<typeof resolveReviewDefaults>;
+  reviewId: string;
+  signal: AbortSignal;
+  headCommit: string;
+  parsed: ParsedDiff;
+  branch: string | null;
+  elapsedStart: number;
+  emit: EmitFn;
+}
 
+async function runReviewSession({
+  aiClient,
+  mode,
+  projectPath,
+  reviewDefaults,
+  reviewId,
+  signal,
+  headCommit,
+  parsed,
+  branch,
+  elapsedStart,
+  emit,
+}: RunReviewSessionOptions): Promise<void> {
   try {
     signal.throwIfAborted();
 
@@ -314,7 +327,7 @@ async function runReviewSession(
 
     const durationMs = Math.round(performance.now() - elapsedStart);
 
-    const finalResultResult = await finalizeReview({
+    const finalized = await finalizeReview({
       outcome,
       emit,
       reviewId,
@@ -328,8 +341,8 @@ async function runReviewSession(
       branch,
       headCommit,
     });
-    if (!finalResultResult.ok) {
-      await handleReviewFailure(finalResultResult.error, emit, reviewId, signal);
+    if (!finalized.ok) {
+      await handleReviewFailure(finalized.error, emit, reviewId, signal);
       return;
     }
   } catch (error) {

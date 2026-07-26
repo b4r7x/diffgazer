@@ -1,4 +1,4 @@
-import { metaField, promptSelect, warn } from "@diffgazer/registry/cli";
+import { metaStringList, promptSelect, warn } from "@diffgazer/registry/cli";
 import { ctx } from "../../context.js";
 
 export type IntegrationMode = "ask" | "none" | "copy" | "@diffgazer/keys";
@@ -20,7 +20,7 @@ function hasKeysRegistryDependency(item: { registryDependencies?: string[] }): b
 
 function itemHasKeyboardIntegration(name: string): boolean {
   const item = ctx.registry.getItem(name) ?? {};
-  const optionalIntegrations = metaField<string[]>(item, "optionalIntegrations", []);
+  const optionalIntegrations = metaStringList(item, "optionalIntegrations");
   return (
     optionalIntegrations.includes(KEYBOARD_NAVIGATION_INTEGRATION) ||
     hasKeysRegistryDependency(item)

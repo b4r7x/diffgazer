@@ -36,7 +36,7 @@ export function TierFilterTabs({ value, onValueChange, isActive }: TierFilterTab
             backgroundColor={tone.background}
             bold={isSelected}
           >
-            {` ${filter.toUpperCase()} `}
+            {`${isSelected ? " \u00b7 " : "  "}${filter.toUpperCase()} `}
           </Text>
         );
       })}

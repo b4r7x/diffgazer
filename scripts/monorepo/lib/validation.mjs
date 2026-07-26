@@ -10,6 +10,7 @@ import {
   RELATIVE_JS_IMPORT_RE,
   validateManifest,
 } from "@diffgazer/registry";
+import { errorMessage } from "./error-message.mjs";
 import { readJson } from "./json.mjs";
 import { resolveInside, toPosixPath } from "./paths.mjs";
 
@@ -155,7 +156,7 @@ export function validateLibraryArtifacts(options) {
   try {
     manifestRootAbs = resolveInside(rootDir, artifactRoot, `${label} artifact root`);
   } catch (error) {
-    return [error instanceof Error ? error.message : String(error)];
+    return [errorMessage(error)];
   }
   const manifestPath = resolveInside(
     manifestRootAbs,
@@ -184,7 +185,7 @@ export function validateLibraryArtifacts(options) {
       `${label} manifest artifact root`,
     );
   } catch (error) {
-    return [error instanceof Error ? error.message : String(error)];
+    return [errorMessage(error)];
   }
   if (artifactRootAbs !== manifestRootAbs) {
     errors.push(
@@ -227,7 +228,7 @@ export function validateLibraryArtifacts(options) {
     validateManifestDeclaredCopiedDirs(rootDir, artifactRootAbs, manifest, label, errors);
     validateGeneratedEntries(rootDir, artifactRootAbs, manifest.generated, label, errors);
   } catch (error) {
-    errors.push(error instanceof Error ? error.message : String(error));
+    errors.push(errorMessage(error));
   }
 
   return errors;

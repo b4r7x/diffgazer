@@ -5,6 +5,7 @@ import {
 } from "./empty-state";
 import { EmptyStateActions } from "./empty-state-actions";
 import { EmptyStateDescription } from "./empty-state-description";
+import { EmptyStateHint } from "./empty-state-hint";
 import { EmptyStateIcon } from "./empty-state-icon";
 import { EmptyStateMessage } from "./empty-state-message";
 
@@ -14,11 +15,13 @@ const EmptyState = Object.assign(EmptyStateRoot, {
   Message: EmptyStateMessage,
   Description: EmptyStateDescription,
   Actions: EmptyStateActions,
+  Hint: EmptyStateHint,
 });
 
 export { EmptyState, emptyStateVariants, type EmptyStateProps };
 export type { EmptyStateSize, EmptyStateVariant } from "./empty-state";
 export { EmptyStateActions, type EmptyStateActionsProps } from "./empty-state-actions";
 export { EmptyStateDescription, type EmptyStateDescriptionProps } from "./empty-state-description";
+export { EmptyStateHint, type EmptyStateHintProps } from "./empty-state-hint";
 export { EmptyStateIcon, type EmptyStateIconProps } from "./empty-state-icon";
 export { EmptyStateMessage, type EmptyStateMessageProps } from "./empty-state-message";

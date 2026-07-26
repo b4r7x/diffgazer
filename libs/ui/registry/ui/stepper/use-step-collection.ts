@@ -10,7 +10,11 @@ import {
   useMemo,
   useState,
 } from "react";
-import { isSelectableItemEligible, useSelectableCollection } from "@/lib/selectable-collection";
+import {
+  isSeedElementSkipped,
+  isSelectableItemEligible,
+  useSelectableCollection,
+} from "@/lib/selectable-collection";
 import { isStepInteractive, type StepStatus } from "@/lib/step-status";
 import { StepperStep, type StepperStepProps } from "./stepper-step";
 import { StepperTrigger, type StepperTriggerProps } from "./stepper-trigger";
@@ -24,15 +28,6 @@ export interface StepDescriptor {
 
 export type StepRegistrationDescriptor = Omit<StepDescriptor, "disabled">;
 
-function isStepSeedElementSkipped(props: StepperStepProps): boolean {
-  return (
-    props.hidden === true ||
-    props.inert === true ||
-    props["aria-hidden"] === true ||
-    props["aria-hidden"] === "true"
-  );
-}
-
 function collectStepSeed(children: ReactNode): StepDescriptor[] {
   return Children.toArray(children).flatMap((child) => {
     if (!isValidElement(child) || child.type !== StepperStep) return [];
@@ -44,7 +39,7 @@ function collectStepSeed(children: ReactNode): StepDescriptor[] {
         status: props.status,
         label: trigger.label,
         disabled:
-          !isStepInteractive(props.status) || trigger.disabled || isStepSeedElementSkipped(props),
+          !isStepInteractive(props.status) || trigger.disabled || isSeedElementSkipped(props),
       },
     ];
   });

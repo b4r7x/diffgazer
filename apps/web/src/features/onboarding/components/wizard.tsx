@@ -143,7 +143,10 @@ export function OnboardingWizard() {
   return (
     <CardLayout
       title={STEP_TITLES[currentStep]}
-      subtitle="Diffgazer Setup Wizard"
+      // The flow used to name itself again on a subtitle row that read the same on
+      // all six steps. It now rides the frame's top rule, and the step position
+      // stays with the stepper below rather than being printed twice.
+      readout="Setup"
       footer={
         <>
           {!isFirstStep && (

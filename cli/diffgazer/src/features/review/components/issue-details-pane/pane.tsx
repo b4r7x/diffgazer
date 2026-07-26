@@ -45,15 +45,21 @@ function IssueHeader({
   const { tokens } = useTheme();
   const wrap = truncate ? "truncate-end" : "wrap";
 
+  // flexShrink 0 keeps every wrapped header row; minWidth 0 lets the column
+  // shrink to the pane width so a long title wraps instead of being clipped.
   return (
-    <Box flexDirection="column" flexShrink={0}>
-      <Text bold color={tokens.fg} wrap={wrap}>
-        {sanitizeTerminalText(issue.title)}
-      </Text>
-      <Text color={tokens.accent} wrap={wrap}>
-        <Text color={tokens.muted}>Location: </Text>
-        {sanitizeTerminalText(presentation.location)}
-      </Text>
+    <Box flexDirection="column" flexShrink={0} minWidth={0}>
+      <Box width="100%" flexShrink={0}>
+        <Text bold color={tokens.fg} wrap={wrap}>
+          {sanitizeTerminalText(issue.title)}
+        </Text>
+      </Box>
+      <Box width="100%" flexShrink={0}>
+        <Text color={tokens.accent} wrap={wrap}>
+          <Text color={tokens.muted}>Location: </Text>
+          {sanitizeTerminalText(presentation.location)}
+        </Text>
+      </Box>
     </Box>
   );
 }

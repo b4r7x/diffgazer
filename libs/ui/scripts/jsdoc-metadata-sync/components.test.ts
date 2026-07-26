@@ -77,94 +77,99 @@ const componentCases: ComponentJsDocCase[] = [
   },
 ];
 
+const NATIVE_EVENT_ESCAPE_HATCH =
+  "Native event escape hatch is part of the type surface but omitted from the curated public props table.";
+const REF_PASSTHROUGH =
+  "React ref passthrough is intentionally omitted from the curated public props table.";
+const FLOATING_POSITION_PASSTHROUGH =
+  "Shared floating-position passthrough is documented by the floating panel primitive.";
+const GROUP_STYLE_TOKEN =
+  "Group-level style token duplicates item styling; documented on the item props table.";
+const ARIA_PASSTHROUGH =
+  "ARIA passthrough is covered by accessibility behavior tests rather than the curated props table.";
+const CLASSNAME_PASSTHROUGH =
+  "React passthrough styling prop is intentionally omitted from the curated public props table.";
+const COMPOSITION_SLOT =
+  "React composition slot is documented in anatomy/examples rather than the curated group props table.";
+const CURATED_TABLE_STYLING_PASSTHROUGH =
+  "Styling passthrough is intentionally omitted from the curated table.";
+const CURATED_TABLE_REF_PASSTHROUGH =
+  "React ref passthrough is intentionally omitted from the curated table.";
+
 const documentedMemberExclusions: Record<string, MemberMetadataExclusion[]> = {
   "checkbox:CheckboxGroupProps": [
     {
       member: "onKeyDown",
-      reason:
-        "Native event escape hatch is part of the type surface but omitted from the curated public props table.",
+      reason: NATIVE_EVENT_ESCAPE_HATCH,
     },
     {
       member: "size",
-      reason:
-        "Group-level style token duplicates item styling; metadata ownership is outside this batch.",
+      reason: GROUP_STYLE_TOKEN,
     },
     {
       member: "variant",
-      reason:
-        "Group-level style token duplicates item styling; metadata ownership is outside this batch.",
+      reason: GROUP_STYLE_TOKEN,
     },
     {
       member: "strikethrough",
-      reason:
-        "Group-level style token duplicates item styling; metadata ownership is outside this batch.",
+      reason: GROUP_STYLE_TOKEN,
     },
     {
       member: "className",
-      reason:
-        "React passthrough styling prop is intentionally omitted from the curated public props table.",
+      reason: CLASSNAME_PASSTHROUGH,
     },
     {
       member: "aria-invalid",
-      reason:
-        "ARIA passthrough is covered by accessibility behavior tests; metadata ownership is outside this batch.",
+      reason: ARIA_PASSTHROUGH,
     },
     {
       member: "children",
-      reason:
-        "React composition slot is documented in anatomy/examples rather than the curated group props table.",
+      reason: COMPOSITION_SLOT,
     },
     {
       member: "ref",
-      reason: "React ref passthrough is intentionally omitted from the curated public props table.",
+      reason: REF_PASSTHROUGH,
     },
   ],
   "menu:MenuProps": [
     {
       member: "onKeyDown",
-      reason:
-        "Native event escape hatch is part of the type surface but omitted from the curated public props table.",
+      reason: NATIVE_EVENT_ESCAPE_HATCH,
     },
   ],
   "radio:RadioGroupProps": [
     {
       member: "onKeyDown",
-      reason:
-        "Native event escape hatch is part of the type surface but omitted from the curated public props table.",
+      reason: NATIVE_EVENT_ESCAPE_HATCH,
     },
     {
       member: "disabled",
       reason:
-        "Group-level disabled state mirrors item/native behavior; metadata ownership is outside this batch.",
+        "Group-level disabled state mirrors item/native behavior; documented on the item props table.",
     },
     {
       member: "size",
-      reason:
-        "Group-level style token duplicates item styling; metadata ownership is outside this batch.",
+      reason: GROUP_STYLE_TOKEN,
     },
     {
       member: "variant",
-      reason:
-        "Group-level style token duplicates item styling; metadata ownership is outside this batch.",
+      reason: GROUP_STYLE_TOKEN,
     },
     {
       member: "aria-invalid",
-      reason:
-        "ARIA passthrough is covered by accessibility behavior tests; metadata ownership is outside this batch.",
+      reason: ARIA_PASSTHROUGH,
     },
     {
       member: "className",
-      reason:
-        "React passthrough styling prop is intentionally omitted from the curated public props table.",
+      reason: CLASSNAME_PASSTHROUGH,
     },
     {
       member: "children",
-      reason:
-        "React composition slot is documented in anatomy/examples rather than the curated group props table.",
+      reason: COMPOSITION_SLOT,
     },
     {
       member: "ref",
-      reason: "React ref passthrough is intentionally omitted from the curated public props table.",
+      reason: REF_PASSTHROUGH,
     },
   ],
   "select-content:SelectContentProps": [
@@ -174,7 +179,7 @@ const documentedMemberExclusions: Record<string, MemberMetadataExclusion[]> = {
     },
     {
       member: "className",
-      reason: "Styling passthrough is intentionally omitted from the curated table.",
+      reason: CURATED_TABLE_STYLING_PASSTHROUGH,
     },
     {
       member: "onKeyDown",
@@ -182,19 +187,19 @@ const documentedMemberExclusions: Record<string, MemberMetadataExclusion[]> = {
     },
     {
       member: "side",
-      reason: "Shared floating-position passthrough is documented by the floating panel primitive.",
+      reason: FLOATING_POSITION_PASSTHROUGH,
     },
     {
       member: "align",
-      reason: "Shared floating-position passthrough is documented by the floating panel primitive.",
+      reason: FLOATING_POSITION_PASSTHROUGH,
     },
     {
       member: "sideOffset",
-      reason: "Shared floating-position passthrough is documented by the floating panel primitive.",
+      reason: FLOATING_POSITION_PASSTHROUGH,
     },
     {
       member: "collisionPadding",
-      reason: "Shared floating-position passthrough is documented by the floating panel primitive.",
+      reason: FLOATING_POSITION_PASSTHROUGH,
     },
     {
       member: "portalContainer",
@@ -203,19 +208,19 @@ const documentedMemberExclusions: Record<string, MemberMetadataExclusion[]> = {
     },
     {
       member: "ref",
-      reason: "React ref passthrough is intentionally omitted from the curated table.",
+      reason: CURATED_TABLE_REF_PASSTHROUGH,
     },
   ],
   "select-search:SelectSearchProps": [
     {
       member: "className",
-      reason: "Styling passthrough is intentionally omitted from the curated table.",
+      reason: CURATED_TABLE_STYLING_PASSTHROUGH,
     },
   ],
   "select-value:SelectValueProps": [
     {
       member: "className",
-      reason: "Styling passthrough is intentionally omitted from the curated table.",
+      reason: CURATED_TABLE_STYLING_PASSTHROUGH,
     },
   ],
 };

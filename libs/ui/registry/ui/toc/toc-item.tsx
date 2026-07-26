@@ -8,6 +8,7 @@ import type {
   ReactNode,
   Ref,
 } from "react";
+import { MARKER_RAIL_BASE, MARKER_RAIL_SELECTED } from "@/lib/marker-rail";
 import { cn } from "@/lib/utils";
 
 const INDENT_BASE_PX = 12;
@@ -18,14 +19,14 @@ export const tocItemVariants = cva(
   [
     "block py-1 text-xs font-mono transition-colors",
     "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
-    // The 2px rail sits on top of TocList's 1px hairline (-2px margin cancels
-    // the border width, so the label X never shifts between states).
-    "-ml-[2px] border-l-2 border-transparent",
+    // The shared marker rail sits on top of TocList's 1px hairline. Toc is the
+    // reference implementation of the library's "you are here" mark.
+    MARKER_RAIL_BASE,
   ].join(" "),
   {
     variants: {
       active: {
-        true: "border-l-primary text-primary font-bold",
+        true: `${MARKER_RAIL_SELECTED} text-primary font-bold`,
         false: "text-muted-foreground hover:text-foreground",
       },
     },

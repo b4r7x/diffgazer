@@ -24,6 +24,23 @@ export function isSelectableElementSkipped(element: HTMLElement): boolean {
   return !isReachable(element);
 }
 
+/**
+ * SSR-seed mirror of isSelectableElementSkipped: answers the same question from
+ * static child props, before any element mounts.
+ */
+export function isSeedElementSkipped(props: {
+  hidden?: boolean;
+  inert?: boolean;
+  "aria-hidden"?: boolean | "true" | "false";
+}): boolean {
+  return (
+    props.hidden === true ||
+    props.inert === true ||
+    props["aria-hidden"] === true ||
+    props["aria-hidden"] === "true"
+  );
+}
+
 /** Visibility and keyboard-eligibility flags computed for a registered item. */
 interface SelectableItemStatus {
   isVisible: boolean;

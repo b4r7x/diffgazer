@@ -11,6 +11,7 @@ import {
   MenuSub,
   MenuSubContent,
   type MenuSubContentProps,
+  type MenuSubMode,
   type MenuSubProps,
   MenuSubTrigger,
   type MenuSubTriggerProps,
@@ -35,6 +36,6 @@ export { MenuItemRadio, type MenuItemRadioProps };
 export { MenuDivider, type MenuDividerProps };
 export { MenuGroup, type MenuGroupProps };
 export { MenuLabel, type MenuLabelProps };
-export { MenuSub, type MenuSubProps };
+export { MenuSub, type MenuSubProps, type MenuSubMode };
 export { MenuSubTrigger, type MenuSubTriggerProps };
 export { MenuSubContent, type MenuSubContentProps };

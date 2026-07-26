@@ -10,6 +10,11 @@ export const fieldDoc: ComponentDoc = {
         "Field.Control clones one control element and applies id, required, disabled, aria-invalid, and aria-describedby from Field.Root. A disabled Field.Root remains authoritative even if the child explicitly sets disabled={false}. A required Field.Root remains authoritative even if the child explicitly sets required={false}. Use Field.Control with Input, Textarea, Select, or another control that accepts those props. A consumer id on the control child wins: Field keeps the child's own id and points Field.Label's htmlFor at it. Slots register through context, so wrapping Field.Label, Field.Description, or Field.Error in a layout element keeps the ARIA wiring intact.",
     },
     {
+      title: "One Helper Slot",
+      content:
+        "Field.Description and Field.Error share one visible row. While the field is invalid and Field.Error has content, the description renders screen-reader-only and the error takes its place, so field height does not depend on validity and a form validating on blur does not push the input the user is correcting. The description keeps its id and its place in aria-describedby, which lists the error first so the problem is announced before the hint.",
+    },
+    {
       title: "InputGroup vs Field",
       content:
         "InputGroup is only a decorated input shell for prefix and suffix content. Plain text affixes are aria-hidden decoration; interactive affixes need explicit labels. Field is the form wrapper for label, helper text, and error wiring.",
@@ -44,7 +49,7 @@ export const fieldDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          "Marks the control as required and shows a required indicator next to Field.Label. This remains authoritative when the child sets required={false}.",
+          "Marks the control as required and shows a required indicator next to Field.Label. The indicator is muted at rest and resolves to the error hue only while the field is invalid, so a resting form carries no error-hue marks. This remains authoritative when the child sets required={false}.",
       },
       disabled: {
         type: "boolean",
@@ -84,7 +89,8 @@ export const fieldDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: "Helper text. Returns null when empty so aria-describedby stays clean.",
+        description:
+          "Helper text. Returns null when empty so aria-describedby stays clean, and renders screen-reader-only while the field is invalid and Field.Error has content.",
       },
     },
     "Field.Error": {

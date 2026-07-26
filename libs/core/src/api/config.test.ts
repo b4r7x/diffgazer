@@ -33,11 +33,9 @@ describe("config API functions", () => {
 
     const result = await getProviderStatus(client);
 
-    expect(client.get).toHaveBeenCalledWith(
-      "/api/config/providers",
-      undefined,
-      expect.any(Function),
-    );
+    expect(client.get).toHaveBeenCalledWith("/api/config/providers", {
+      schema: expect.any(Function),
+    });
     expect(result).toEqual(providers);
   });
 
@@ -84,12 +82,9 @@ describe("config API functions", () => {
 
     await activateProvider(client, "gemini", model);
 
-    expect(client.post).toHaveBeenCalledWith(
-      "/api/config/provider/gemini/activate",
-      expectedBody,
-      undefined,
-      expect.any(Function),
-    );
+    expect(client.post).toHaveBeenCalledWith("/api/config/provider/gemini/activate", expectedBody, {
+      schema: expect.any(Function),
+    });
   });
 
   it.each(
@@ -97,11 +92,9 @@ describe("config API functions", () => {
   )("getProviderModels encodes a provider containing %s exactly once", async (_label, providerId, encodedProviderId) => {
     await getProviderModels(client, providerId);
 
-    expect(client.get).toHaveBeenCalledWith(
-      `/api/config/provider/${encodedProviderId}/models`,
-      undefined,
-      expect.any(Function),
-    );
+    expect(client.get).toHaveBeenCalledWith(`/api/config/provider/${encodedProviderId}/models`, {
+      schema: expect.any(Function),
+    });
   });
 
   it.each(
@@ -114,8 +107,7 @@ describe("config API functions", () => {
     expect(client.post).toHaveBeenCalledWith(
       `/api/config/provider/${encodedProviderId}/activate`,
       {},
-      undefined,
-      expect.any(Function),
+      { schema: expect.any(Function) },
     );
   });
 
@@ -130,10 +122,8 @@ describe("config API functions", () => {
   it("keeps the OpenRouter models endpoint constant", async () => {
     await getOpenRouterModels(client);
 
-    expect(client.get).toHaveBeenCalledWith(
-      "/api/config/provider/openrouter/models",
-      undefined,
-      expect.any(Function),
-    );
+    expect(client.get).toHaveBeenCalledWith("/api/config/provider/openrouter/models", {
+      schema: expect.any(Function),
+    });
   });
 });

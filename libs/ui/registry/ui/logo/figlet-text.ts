@@ -34,13 +34,16 @@ function loadFont(figletModule: FigletModule, font: FigletFont): Promise<void> {
   let promise = fontPromises.get(font);
   if (!promise) {
     promise = FONT_LOADERS[font]()
-      .then((mod) => {
-        const data = (mod.default ?? mod) as string;
+      .then((mod) => (mod.default ?? mod) as string)
+      .catch(() => {
+        throw new Error(MISSING_DEPENDENCY_MESSAGE);
+      })
+      .then((data) => {
         figletModule.parseFont(font, data);
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         fontPromises.delete(font);
-        throw new Error(MISSING_DEPENDENCY_MESSAGE);
+        throw error;
       });
     fontPromises.set(font, promise);
   }

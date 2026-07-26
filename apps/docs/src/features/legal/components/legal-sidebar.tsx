@@ -5,8 +5,9 @@ import {
   SidebarSectionTitle,
 } from "@diffgazer/ui/components/sidebar";
 import { Link, useLocation } from "@tanstack/react-router";
-import { chromeSidebarItemClassName, isPrimaryNavigationClick } from "@/components/layout/sidebar";
+import { chromeSidebarItemClassName } from "@/components/layout/sidebar";
 import { TreeSidebarShell } from "@/components/layout/tree-sidebar-shell";
+import { isPrimaryNavigationClick } from "@/components/shared/navigation-click";
 import { LEGAL_LINKS } from "../lib/pages";
 
 const NAV_LINKS = [{ slug: "home", label: "Home", to: "/" }, ...LEGAL_LINKS] as const;

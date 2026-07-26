@@ -23,12 +23,26 @@ function resolveOwnerWindow(owner: MobileViewportOwner | undefined): Window | nu
  * hint or a cookie instead.
  */
 export function useIsMobile(breakpoint = 1024, owner?: MobileViewportOwner): boolean {
+  return useMediaQuery(`(max-width: ${breakpoint - 1}px)`, owner);
+}
+
+/**
+ * Returns `true` when the primary pointing device is coarse (touch).
+ *
+ * Same subscription model as `useIsMobile`, so a component can branch on input
+ * modality without adding a second measurement pass. `getServerSnapshot`
+ * returns `false`, so SSR renders the fine-pointer layout.
+ */
+export function usePointerCoarse(owner?: MobileViewportOwner): boolean {
+  return useMediaQuery("(pointer: coarse)", owner);
+}
+
+function useMediaQuery(query: string, owner: MobileViewportOwner | undefined): boolean {
   // Required, not defensive: useSyncExternalStore re-subscribes whenever the
   // subscribe/getSnapshot identities change, so under React 19 concurrent
   // rendering an unmemoized pair would detach and re-attach the matchMedia
   // listener on every parent render. Memoizing keeps the subscription stable.
   const { subscribe, getSnapshot } = useMemo(() => {
-    const query = `(max-width: ${breakpoint - 1}px)`;
     let queryWindow: Window | null = null;
     let mediaQueryList: MediaQueryList | null = null;
 
@@ -51,7 +65,7 @@ export function useIsMobile(breakpoint = 1024, owner?: MobileViewportOwner): boo
       },
       getSnapshot: () => getMediaQueryList()?.matches ?? false,
     };
-  }, [breakpoint, owner]);
+  }, [query, owner]);
 
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

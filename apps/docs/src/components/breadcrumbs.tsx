@@ -1,7 +1,7 @@
 import { cn } from "@diffgazer/ui/lib/utils";
 import { Link, useLocation } from "@tanstack/react-router";
 import { Fragment } from "react";
-import { isPrimaryNavigationClick } from "@/components/layout/sidebar";
+import { isPrimaryNavigationClick } from "@/components/shared/navigation-click";
 import { SECTIONS_WITH_INDEX } from "@/generated/sections-with-index";
 import { isDocsLibraryId } from "@/lib/library";
 import { findTreeSectionPath, type PageTree } from "@/lib/page-tree";

@@ -10,7 +10,7 @@ import { SectionHeader } from "../../../components/ui/section-header";
 import { Spinner } from "../../../components/ui/spinner";
 import { useListNavigation } from "../../../hooks/use-list-navigation";
 import { getListWindow } from "../../../lib/list-window";
-import { selectionFill } from "../../../theme/chrome";
+import { selectionHue } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 import { severityColor } from "../../../theme/severity";
 
@@ -107,7 +107,7 @@ export function HistoryInsightsPane({
             return (
               <Box key={issue.id} gap={1} height={1} overflow="hidden">
                 <Box flexShrink={0}>
-                  <Text color={selectionFill(tokens)}>{isHighlighted ? "\u2502" : " "}</Text>
+                  <Text color={selectionHue(tokens)}>{isHighlighted ? "\u2502" : " "}</Text>
                 </Box>
                 <Box flexShrink={0}>
                   <Text color={severityColor(issue.severity, tokens)} bold>

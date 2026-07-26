@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import {
   Children,
   type ComponentProps,
+  type ElementType,
   isValidElement,
   type ReactNode,
   type RefObject,
@@ -18,6 +19,7 @@ import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { mergeIds } from "@/lib/aria";
 import { cn } from "@/lib/utils";
 import { DialogShell } from "../shared/dialog-shell";
+import { OVERLAY_SURFACE_MODAL } from "../shared/overlay-surface";
 import { PortalContainerProvider } from "../shared/portal-context";
 import { Dialog as DialogRoot } from "./dialog";
 import { useDialogContext } from "./dialog-context";
@@ -28,10 +30,21 @@ export type DialogCorners = "none" | "subtle" | "standard" | "bold" | "outset";
 
 /** Class variants for dialog content. */
 export const dialogContentVariants = cva(
-  // --shadow-hard is the library's only sanctioned shadow: a hard offset with
-  // no blur. It replaces the soft shadow-2xl so the modal edge stays a drawn
-  // line in both themes instead of a glow that vanishes on a light backdrop.
-  "relative w-full max-h-[90dvh] flex flex-col rounded-sm bg-background text-foreground shadow-(--shadow-hard) m-auto",
+  // Modal overlay tier: the shared --surface-1 step and lip plus --shadow-hard,
+  // the library's only sanctioned drop shadow. The surface step is what makes
+  // the panel read as raised when the offset shadow is clipped by a narrow
+  // viewport; the `frame` variant below owns the hairline.
+  cn(
+    OVERLAY_SURFACE_MODAL,
+    "relative w-full max-h-[90dvh] flex flex-col text-foreground m-auto",
+    // Narrow viewports: inset from the edge so both vertical hairlines, the
+    // offset shadow, and the corner brackets stay on-screen instead of being
+    // clipped by the viewport. At >=640px nothing changes.
+    "max-sm:mx-3 max-sm:w-[calc(100%-1.5rem)] max-sm:max-w-none",
+    // Keep the footer's action row clear of the home indicator. Resolves to 0
+    // when the host page ships no viewport-fit=cover.
+    "max-sm:pb-[env(safe-area-inset-bottom)]",
+  ),
   {
     variants: {
       size: {
@@ -99,28 +112,21 @@ export interface DialogContentProps
   onEscapeKeyDown?: (e: SyntheticEvent<HTMLDialogElement>) => void;
 }
 
-function hasNonEmptyText(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
+function hasNonEmptyText(value: string | undefined): boolean {
+  return value !== undefined && value.trim().length > 0;
 }
-
-type AccessibleNameInput = {
-  ariaLabel: string | undefined;
-  ariaLabelledBy: string | undefined;
-  titleId: string;
-  hasRenderableTitle: boolean;
-};
-
-type AccessibleNameOutput = {
-  "aria-label": string | undefined;
-  "aria-labelledby": string | undefined;
-};
 
 function resolveAccessibleName({
   ariaLabel,
   ariaLabelledBy,
   titleId,
   hasRenderableTitle,
-}: AccessibleNameInput): AccessibleNameOutput {
+}: {
+  ariaLabel: string | undefined;
+  ariaLabelledBy: string | undefined;
+  titleId: string;
+  hasRenderableTitle: boolean;
+}): { "aria-label": string | undefined; "aria-labelledby": string | undefined } {
   if (hasNonEmptyText(ariaLabelledBy)) {
     return { "aria-label": undefined, "aria-labelledby": ariaLabelledBy };
   }
@@ -197,9 +203,9 @@ export function DialogContent({
   }, [focusRestore, triggerRef]);
   // Registration covers parts rendered through consumer wrapper components; the
   // static child scan seeds the first render before the registration effects run.
-  const hasRenderableTitle = hasRegisteredTitle || containsDialogTitleElement(children);
+  const hasRenderableTitle = hasRegisteredTitle || containsDialogPart(children, DialogTitle);
   const hasRenderableDescription =
-    hasRegisteredDescription || containsDialogDescriptionElement(children);
+    hasRegisteredDescription || containsDialogPart(children, DialogDescription);
   const resolvedFrame = frame ?? "border";
   const resolvedCorners = corners ?? "none";
   const accessibleName = resolveAccessibleName({
@@ -305,20 +311,11 @@ export function DialogContent({
   );
 }
 
-function containsDialogTitleElement(children: ReactNode): boolean {
+function containsDialogPart(children: ReactNode, part: ElementType): boolean {
   return Children.toArray(children).some((child) => {
     if (!isValidElement<{ children?: ReactNode }>(child)) return false;
     if (child.type === DialogRoot) return false;
-    if (child.type === DialogTitle) return true;
-    return containsDialogTitleElement(child.props.children);
-  });
-}
-
-function containsDialogDescriptionElement(children: ReactNode): boolean {
-  return Children.toArray(children).some((child) => {
-    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
-    if (child.type === DialogRoot) return false;
-    if (child.type === DialogDescription) return true;
-    return containsDialogDescriptionElement(child.props.children);
+    if (child.type === part) return true;
+    return containsDialogPart(child.props.children, part);
   });
 }

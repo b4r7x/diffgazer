@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { log } from "../logger.js";
 import { type RegistryFile, RegistryItemSchema } from "../registry-types.js";
 import { findExamples } from "./examples.js";
 import { type DocsHighlighter, type HighlightLanguage, highlightCode } from "./highlight.js";
@@ -81,12 +80,12 @@ function readSourceFile(options: {
   const { item, rootDir, highlighter, themeName, lang } = options;
   const file = item.files[0];
   if (!file?.path) {
-    log.warn(`Hook "${item.name}": no file path, skipping`);
+    console.warn(`Hook "${item.name}": no file path, skipping`);
     return null;
   }
   const hookPath = resolve(rootDir, file.path);
   if (!existsSync(hookPath)) {
-    log.warn(`Hook "${item.name}": file not found at ${hookPath}, skipping`);
+    console.warn(`Hook "${item.name}": file not found at ${hookPath}, skipping`);
     return null;
   }
 

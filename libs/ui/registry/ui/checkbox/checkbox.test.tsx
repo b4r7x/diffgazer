@@ -11,6 +11,13 @@ import {
 import { Field } from "../field/index";
 import { Checkbox } from "./index";
 
+/** Visible indicator glyph of a selectable control (the aria-hidden cell before the label). */
+function readGlyph(control: HTMLElement): string {
+  const indicator = control.querySelector('[aria-hidden="true"]');
+  if (indicator === null) throw new Error("Expected an indicator glyph");
+  return indicator.textContent ?? "";
+}
+
 function getForm(name = "Test form"): HTMLFormElement {
   const form = screen.getByRole("form", { name });
   if (!(form instanceof HTMLFormElement)) throw new Error("Expected form test element");
@@ -41,6 +48,35 @@ describe("Checkbox", () => {
     expect(screen.getByRole("checkbox")).toHaveTextContent("[*]");
     rerender(<Checkbox checked={false} variant="bullet" label="Accept" />);
     expect(screen.getByRole("checkbox")).not.toHaveTextContent("●");
+  });
+
+  it("draws every glyph in the same three-character column", () => {
+    // The glyph column is the alignment contract for any form that mixes checkboxes and radios:
+    // in a monospace column a wider glyph moves the label, so a five-character radio bullet used
+    // to push radio labels 2ch right of the checkbox labels next to them.
+    for (const variant of ["x", "bullet"] as const) {
+      for (const checked of [true, false, "indeterminate"] as const) {
+        const { unmount } = render(<Checkbox checked={checked} variant={variant} label="Accept" />);
+        expect(readGlyph(screen.getByRole("checkbox"))).toHaveLength(3);
+        unmount();
+      }
+    }
+  });
+
+  it("splits the glyph into chrome and mark without changing its visible text", () => {
+    // The split is the compatibility guard: consumers and tests match on the visible "[x]" text,
+    // so the three spans must still read as one string, and the whole cell must stay out of the
+    // accessible name.
+    const { rerender } = render(<Checkbox checked label="Accept" />);
+    const checkbox = screen.getByRole("checkbox", { name: "Accept" });
+    const indicator = checkbox.querySelector('[aria-hidden="true"]');
+    expect(indicator).toHaveTextContent("[x]");
+    expect(indicator?.querySelectorAll("span")).toHaveLength(3);
+
+    rerender(<Checkbox checked={false} label="Accept" />);
+    expect(screen.getByRole("checkbox", { name: "Accept" })).toHaveTextContent("[ ]");
+    rerender(<Checkbox checked="indeterminate" label="Accept" />);
+    expect(screen.getByRole("checkbox", { name: "Accept" })).toHaveTextContent("[-]");
   });
 
   it("emits data-slot and data-state styling hooks", () => {
@@ -129,7 +165,7 @@ describe("Checkbox", () => {
     );
 
     const checkbox = screen.getByRole("checkbox", { name: /accept policy.*terms/i });
-    expectFieldInvalid(checkbox, /field help.*field error.*local help/i);
+    expectFieldInvalid(checkbox, /field error.*field help.*local help/i);
   });
 
   it("renders aria-invalid and aria-required when set", () => {

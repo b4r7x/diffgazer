@@ -7,7 +7,8 @@ import {
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { Link, useLocation } from "@tanstack/react-router";
-import { type MouseEvent, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+import { isPrimaryNavigationClick } from "@/components/shared/navigation-click";
 import { usePendingDocsRoute } from "@/hooks/use-pending-docs-route";
 import { DOCS_LIBRARY_IDS, type DocsLibraryId, routeSplatFromDocsPath } from "@/lib/library";
 import type { PageTree, PageTreeNode } from "@/lib/page-tree";
@@ -116,11 +117,6 @@ function groupBySection(children: PageTreeNode[]): Section[] {
   if (current) pushSection(sections, current.title, current.items);
 
   return sections;
-}
-
-/** A new-tab/background click (middle button or modifier) should not dismiss the sidebar. */
-export function isPrimaryNavigationClick(event: MouseEvent): boolean {
-  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
 /**

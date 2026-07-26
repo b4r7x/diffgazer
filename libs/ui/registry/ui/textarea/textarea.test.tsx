@@ -60,11 +60,28 @@ describe("Textarea", () => {
     expect(textarea).toHaveAttribute("aria-invalid", "grammar");
   });
 
+  it("keeps a read-only textarea focusable, enabled and unedited", async () => {
+    const user = userEvent.setup();
+    render(<Textarea readOnly defaultValue="Generated output." aria-label="Comment" />);
+    const textarea = screen.getByRole("textbox", { name: "Comment" });
+
+    await user.tab();
+    expect(textarea).toHaveFocus();
+    expect(textarea).not.toBeDisabled();
+    expect(textarea).not.toHaveAttribute("aria-disabled");
+
+    await user.type(textarea, "abc");
+    expect(textarea).toHaveValue("Generated output.");
+  });
+
   it("has no a11y violations across Textarea states", async () => {
     const { container, rerender } = render(<Textarea aria-label="Comment" />);
     expect(await axe(container)).toHaveNoViolations();
 
     rerender(<Textarea aria-label="Comment" aria-invalid />);
+    expect(await axe(container)).toHaveNoViolations();
+
+    rerender(<Textarea aria-label="Comment" readOnly defaultValue="Generated output." />);
     expect(await axe(container)).toHaveNoViolations();
   });
 });

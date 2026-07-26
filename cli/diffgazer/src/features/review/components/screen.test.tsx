@@ -77,7 +77,8 @@ describe("ReviewScreen", () => {
     const frame = lastFrame() ?? "";
     expect(frame).toMatch(/progress overview/i);
     expect(frame).toMatch(/live activity log/i);
-    expect(frame).toContain("Cancel");
+    // Cancel is published to the shortcut bar, never restated in the body.
+    expect(frame).not.toContain("Cancel");
     expect(apiMocks.clearActiveSession).not.toHaveBeenCalled();
   });
 

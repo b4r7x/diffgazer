@@ -4,7 +4,7 @@ import {
   type DocsLibraryId,
   getDocsLibraryConfig,
   getInstallCommand,
-  hookFileName,
+  hookSourceFiles,
 } from "@/lib/library";
 import { loadDocSourceData } from "@/lib/load-doc-data";
 import {
@@ -38,16 +38,7 @@ async function loadHookSource(library: DocsLibraryId, name: string): Promise<Sou
   const hook = await loadDocSourceData(library, "hooks", name, { throwIfMissing: true });
   if (!hook) throw new Error(`Missing hook source: ${library}/${name}`);
 
-  const files =
-    hook.files && hook.files.length > 0
-      ? hook.files
-      : [
-          {
-            path: hookFileName(name),
-            raw: hook.source.raw,
-            highlighted: hook.source.highlighted,
-          },
-        ];
+  const files = hookSourceFiles(name, hook);
 
   return {
     files,

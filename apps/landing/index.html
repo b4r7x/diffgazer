@@ -49,7 +49,7 @@
  | |  | || | | |__  | |__ | |  __   /  \      / /| |__  | |__) |
  | |  | || | |  __| |  __|| | |_ | / /\ \    / / |  __| |  _  /
  | |__| || |_| |    | |   | |__| |/ ____ \  / /__| |____| | \ \
- |_____/_____|_|    |_|    \_____/_/    \_\/_____|______|_|  \_\</pre><span class="logo-word" aria-hidden="true">DIFFGAZER</span></a>
+ |_____/_____|_|    |_|    \_____/_/    \_\/_____|______|_|  \_\</pre></a>
     <div class="hud hud-tr">
       <a href="https://docs.b4r7.dev" data-hover data-link="docs"><span class="bracket">[&nbsp;</span>docs<span class="bracket">&nbsp;]</span></a>
       <a href="https://github.com/b4r7x/diffgazer" data-hover data-link="github"><span class="bracket">[&nbsp;</span>github<span class="bracket">&nbsp;]</span></a>
@@ -69,7 +69,11 @@
         <div class="scene-inner">
           <div class="gaze3d-stage">
             <div class="gaze3d" id="gaze3d" data-slot="panel" data-frame="hairline" data-density="default">
-              <figure class="gaze-diff" id="gz-diff-view" data-slot="diff-view" data-variant="statusbar" data-density="compact" aria-roledescription="diff" aria-labelledby="gz-caption">
+              <!-- data-wrap="off" is the DiffView contract's opt-out. The hero
+                   wants the truncate-on-ellipsis path (see the ≤700px block in
+                   index.css); the primitive's coarse-pointer default would
+                   soft-wrap these rows and fake diff lines. -->
+              <figure class="gaze-diff" id="gz-diff-view" data-slot="diff-view" data-variant="statusbar" data-density="compact" data-wrap="off" aria-roledescription="diff" aria-labelledby="gz-caption">
                 <div class="scan" id="gz-scan" aria-hidden="true">
                   <span class="vf-tl"></span><span class="vf-tr"></span><span class="vf-bl"></span><span class="vf-br"></span>
                 </div>
@@ -159,7 +163,6 @@
       <!-- ============ SCENE 4 — FINDINGS (light) ============ -->
       <section class="scene" id="s4" data-osd="04 / FINDINGS" data-theme-scene="light">
         <div class="scene-inner">
-          <span class="ghost-word" aria-hidden="true">FIND</span>
           <h2 class="giant" style="font-size:clamp(36px,5.5vw,84px)">
             <span class="mask-line"><span>Findings,</span></span>
             <span class="mask-line"><span class="dim-line">ranked.</span></span>
@@ -186,15 +189,20 @@
       <section class="scene" id="s6" data-osd="05 / INSTALL">
         <div class="scene-inner">
           <pre id="figlet" role="img" aria-label="diffgazer"><span class="fl"><span>  _____ _____ ______ ______ _____           ____________ _____  </span></span><span class="fl"><span> |  __ \_   _|  ____|  ____/ ____|   /\    |___  /  ____|  __ \ </span></span><span class="fl"><span> | |  | || | | |__  | |__ | |  __   /  \      / /| |__  | |__) |</span></span><span class="fl"><span> | |  | || | |  __| |  __|| | |_ | / /\ \    / / |  __| |  _  / </span></span><span class="fl"><span> | |__| || |_| |    | |   | |__| |/ ____ \  / /__| |____| | \ \ </span></span><span class="fl"><span> |_____/_____|_|    |_|    \_____/_/    \_\/_____|______|_|  \_\</span></span></pre>
+          <div class="pm-switch reveal" data-delay="1" role="group" aria-label="Package manager">
+            <button type="button" class="btn pm-btn" data-cmd="npm install -g diffgazer" aria-pressed="true" data-hover><span class="bracket">[&nbsp;</span>npm<span class="bracket">&nbsp;]</span></button>
+            <button type="button" class="btn pm-btn" data-cmd="pnpm add -g diffgazer" aria-pressed="false" data-hover><span class="bracket">[&nbsp;</span>pnpm<span class="bracket">&nbsp;]</span></button>
+            <button type="button" class="btn pm-btn" data-cmd="bun add -g diffgazer" aria-pressed="false" data-hover><span class="bracket">[&nbsp;</span>bun<span class="bracket">&nbsp;]</span></button>
+          </div>
           <div class="install-row reveal" data-delay="1">
-            <div class="install-cmd"><span class="prompt">$</span> npm install -g diffgazer</div>
+            <div class="install-cmd"><span class="prompt">$</span> <span class="install-cmd-text">npm install -g diffgazer</span></div>
             <button class="btn copy-btn" data-copy="npm install -g diffgazer" data-hover data-magnetic aria-label="Copy install command"><span class="bracket">[&nbsp;</span><span class="copy-label" aria-live="polite">copy</span><span class="bracket">&nbsp;]</span></button>
           </div>
           <p class="note reveal" data-delay="2">Node 22+. Run it in a repo with changes.<br />Only the diff and the prompt leave your machine — to the provider you pick:<br />Gemini · Z.ai · OpenRouter · Groq · Cerebras.</p>
           <div class="foot-links reveal" data-delay="3">
-            <a href="https://docs.b4r7.dev" data-hover data-link="docs">Documentation</a>
-            <a href="https://github.com/b4r7x/diffgazer" data-hover data-link="github">GitHub</a>
-            <a href="https://github.com/b4r7x/diffgazer/blob/main/LICENSE" data-hover data-link="license">MIT License</a>
+            <a href="https://docs.b4r7.dev" data-hover data-link="docs"><span class="bracket">[&nbsp;</span>Documentation<span class="bracket">&nbsp;]</span></a>
+            <a href="https://github.com/b4r7x/diffgazer" data-hover data-link="github"><span class="bracket">[&nbsp;</span>GitHub<span class="bracket">&nbsp;]</span></a>
+            <a href="https://github.com/b4r7x/diffgazer/blob/main/LICENSE" data-hover data-link="license"><span class="bracket">[&nbsp;</span>MIT License<span class="bracket">&nbsp;]</span></a>
           </div>
         </div>
       </section>

@@ -87,21 +87,7 @@ export function useProvidersPageState() {
     },
   };
 
-  const {
-    focusZone,
-    filterIndex,
-    setFilterIndex,
-    buttonIndex,
-    getActionButtonProps,
-    getFilterButtonProps,
-    handleFilterKeyDown,
-    handleListKeyDown,
-    handleSearchFocus,
-    handleSearchEscape,
-    handleFilterFocus,
-    handleListFocus,
-    handleListBoundary,
-  } = useProvidersKeyboard({
+  const keyboard = useProvidersKeyboard({
     selectedProvider,
     filteredProviders,
     listReady: !isLoading && filteredProviders.length > 0,
@@ -150,21 +136,6 @@ export function useProvidersPageState() {
 
     isSubmitting,
 
-    keyboard: {
-      focusZone,
-      filterIndex,
-      setFilterIndex,
-      buttonIndex,
-      getActionButtonProps,
-      getFilterButtonProps,
-      handleFilterKeyDown,
-      handleListKeyDown,
-      handleSearchFocus,
-      handleSearchEscape,
-      handleFilterFocus,
-      handleListFocus,
-      handleListBoundary,
-      listContainerRef,
-    },
+    keyboard: { ...keyboard, listContainerRef },
   };
 }

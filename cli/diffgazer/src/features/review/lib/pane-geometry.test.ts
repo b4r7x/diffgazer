@@ -5,7 +5,6 @@ const WIDE = {
   columns: 120,
   contentRows: 26,
   isNarrow: false,
-  isMedium: false,
   hasDuplicateNotice: false,
 };
 
@@ -22,9 +21,15 @@ describe("computePaneGeometry", () => {
     expect(geometry.showDetailsTabs).toBe(true);
   });
 
-  test("narrows the list column on a medium frame", () => {
-    expect(computePaneGeometry({ ...WIDE, isMedium: true }).listWidth).toBe(42);
-    expect(computePaneGeometry({ ...WIDE, columns: 60, isMedium: true }).listWidth).toBe(26);
+  test("gives the list the same share of every frame, never less as it grows", () => {
+    expect(computePaneGeometry({ ...WIDE, columns: 100 }).listWidth).toBe(40);
+    expect(computePaneGeometry({ ...WIDE, columns: 80 }).listWidth).toBe(34);
+    expect(computePaneGeometry({ ...WIDE, columns: 200 }).listWidth).toBe(56);
+
+    const widths = [80, 100, 120, 200].map(
+      (columns) => computePaneGeometry({ ...WIDE, columns }).listWidth,
+    );
+    expect(widths).toEqual([...widths].sort((a, b) => a - b));
   });
 
   test("reserves a row for the duplicate notice", () => {

@@ -37,23 +37,6 @@ const loadHookDoc = createHookDocLoader(resolve(ROOT, "registry/hook-docs"), (na
 const COMPONENT_DOCS_DIR = resolve(ROOT, "registry/component-docs");
 const GENERATED_COMPONENTS_DIR = resolve(ROOT, "docs/generated/components");
 const COMPONENT_DOC_SUPPORT_FILES = new Set(["types.ts"]);
-const COMPONENT_DOC_ARRAY_FIELDS = [
-  "anatomy",
-  "companionExamples",
-  "cssVariables",
-  "dataAttributes",
-  "examples",
-  "notes",
-  "tags",
-] as const;
-const COMPONENT_DOC_OBJECT_FIELDS = ["props", "usage"] as const;
-const COMPONENT_DOC_FIELDS = [
-  "description",
-  "keyboard",
-  "noProps",
-  ...COMPONENT_DOC_ARRAY_FIELDS,
-  ...COMPONENT_DOC_OBJECT_FIELDS,
-] as const;
 
 function isPublicItem(item: RegistryItem): boolean {
   return item.meta?.hidden !== true;
@@ -110,21 +93,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return !Array.isArray(value);
 }
 
+// Every ComponentDoc field is optional, so the guard can only reject an export
+// that is not a doc object at all — a function, an array, or a doc whose two
+// most-used fields carry the wrong kind of value.
 function isComponentDoc(value: unknown): value is ComponentDoc {
   if (!isRecord(value)) return false;
-  if (!COMPONENT_DOC_FIELDS.some((field) => field in value)) return false;
-  if ("description" in value && typeof value.description !== "string") return false;
-  if ("keyboard" in value && value.keyboard !== null && !isRecord(value.keyboard)) return false;
-  if ("noProps" in value && typeof value.noProps !== "boolean") return false;
-
-  for (const field of COMPONENT_DOC_ARRAY_FIELDS) {
-    if (field in value && !Array.isArray(value[field])) return false;
-  }
-  for (const field of COMPONENT_DOC_OBJECT_FIELDS) {
-    if (field in value && !isRecord(value[field])) return false;
-  }
-
-  return true;
+  if (value.description !== undefined && typeof value.description !== "string") return false;
+  return value.props === undefined || isRecord(value.props);
 }
 
 async function loadComponentDoc(name: string): Promise<ComponentDoc | null> {
@@ -145,7 +120,7 @@ async function loadComponentDoc(name: string): Promise<ComponentDoc | null> {
 
   const doc = exports[exportName];
   if (!isComponentDoc(doc)) {
-    throw new Error(`Component "${name}": docs export "${exportName}" is not a ComponentDoc`);
+    throw new Error(`Component "${name}": docs export "${exportName}" is not a component doc`);
   }
 
   return doc;

@@ -7,6 +7,7 @@ import {
   type LogTagType,
   type SeverityCounts,
   type Shortcut,
+  type ShortcutContext,
 } from "./index.js";
 
 describe("schemas/presentation public contracts", () => {
@@ -17,6 +18,7 @@ describe("schemas/presentation public contracts", () => {
       providerModel?: string;
       lastRunId?: string;
       lastRunIssueCount?: number;
+      lastRunDurationMs?: number;
     }>();
     expectTypeOf<IssueTab>().toEqualTypeOf<"details" | "explain" | "trace" | "patch">();
     expectTypeOf<LogTagType>().toEqualTypeOf<
@@ -43,6 +45,7 @@ describe("schemas/presentation public contracts", () => {
       key: string;
       label: string;
       disabled?: boolean;
+      context?: ShortcutContext;
     }>();
   });
 

@@ -1,0 +1,98 @@
+/*
+ * Skeleton renders as a character-cell strip, not a rounded blob: the same
+ * alphabet Spinner (pixel grid) and BlockBar (U+2588/U+2591 cells) already
+ * speak. The cells are cut out of the fill with a mask rather than painted as
+ * a gradient background, so a consumer-set background class still tiles into
+ * cells instead of covering them.
+ *
+ * Every custom property here is component-scoped (--skeleton-*), so nothing in
+ * the shared theme token contract moves.
+ */
+@layer components {
+  [data-slot="skeleton"] {
+    --skeleton-cell: 8px;
+    --skeleton-gap: 1px;
+    /* Deliberately below text contrast: the strip is decorative and
+       aria-hidden, and must never read as content. Light needs the extra
+       points because a dark tint at equal alpha reads lighter than a light
+       tint on near-black. */
+    --skeleton-cell-fill: color-mix(in oklab, var(--foreground) 13%, transparent);
+
+    position: relative;
+    overflow: hidden;
+    border-radius: 0;
+    min-height: 12px;
+    background-color: var(--skeleton-cell-fill);
+    -webkit-mask-image: repeating-linear-gradient(
+      90deg,
+      #000 0 calc(var(--skeleton-cell) - var(--skeleton-gap)),
+      transparent calc(var(--skeleton-cell) - var(--skeleton-gap)) var(--skeleton-cell)
+    );
+    mask-image: repeating-linear-gradient(
+      90deg,
+      #000 0 calc(var(--skeleton-cell) - var(--skeleton-gap)),
+      transparent calc(var(--skeleton-cell) - var(--skeleton-gap)) var(--skeleton-cell)
+    );
+  }
+
+  [data-theme="light"] [data-slot="skeleton"],
+  [data-theme="light"][data-slot="skeleton"] {
+    --skeleton-cell-fill: color-mix(in oklab, var(--foreground) 15%, transparent);
+  }
+
+  /* `chars` reserves the width of the value the placeholder stands in for.
+     The component writes the count into --skeleton-chars and marks the element
+     with data-chars, so the width rule never has to guess whether the property
+     was set. */
+  [data-slot="skeleton"][data-chars] {
+    width: calc(var(--skeleton-cell) * var(--skeleton-chars));
+  }
+
+  /* Scan sweep. The element mask applies to the pseudo-element too, so what
+     travels is cells lighting up left to right — not a glossy shimmer bar. */
+  [data-slot="skeleton"]::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 40%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--foreground) 9%, transparent) 45%,
+      transparent
+    );
+    animation: skeleton-scan 1400ms linear infinite;
+  }
+}
+
+@keyframes skeleton-scan {
+  from {
+    transform: translateX(-60%);
+  }
+  to {
+    transform: translateX(260%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No sweep at all — a static cell grid still reads as "pending". */
+  [data-slot="skeleton"]::after {
+    content: none;
+  }
+}
+
+@media (forced-colors: active) {
+  /* Forced-colors strips mask support unevenly, so drop the cell grid and fall
+     back to a plain outlined band. */
+  [data-slot="skeleton"] {
+    background: Canvas;
+    border: 1px solid GrayText;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  [data-slot="skeleton"]::after {
+    content: none;
+  }
+}

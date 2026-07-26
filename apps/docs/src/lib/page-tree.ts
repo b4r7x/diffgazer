@@ -58,6 +58,11 @@ export function firstNavigablePage(tree: PageTree): LandingItem | null {
   return flattenPageTree(tree)[0] ?? null;
 }
 
+/** The navigable page at `url`, i.e. the sidebar entry the reader is on. */
+export function findPageByUrl(tree: PageTree, url: string): LandingItem | null {
+  return flattenPageTree(tree).find((page) => page.url === url) ?? null;
+}
+
 export interface PageNeighbors {
   previous: LandingItem | null;
   next: LandingItem | null;

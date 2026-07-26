@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { LensStatSchema } from "../events/agent.js";
-import { createdAtField, UuidSchema } from "../fields.js";
+import { UuidSchema } from "../fields.js";
 import { ReviewResultSchema, ReviewSeveritySchema } from "./issues.js";
 import { LensIdSchema, ProfileIdSchema } from "./lens.js";
 
@@ -46,7 +46,7 @@ export const ReviewMetadataSchema = z
   .object({
     id: UuidSchema,
     projectPath: z.string(),
-    ...createdAtField,
+    createdAt: z.iso.datetime(),
     mode: ReviewModeSchema.optional(),
     staged: z.boolean().optional(),
     branch: z.string().nullable(),

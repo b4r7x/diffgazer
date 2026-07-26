@@ -116,10 +116,14 @@
   /* Shared scrim for modal backdrops (same value across themes). */
   --scrim: rgb(0 0 0 / 0.6);
 
-  /* The single sanctioned shadow: a hard offset with no blur, for floating
-     layers that want brutalist emphasis. Flat surfaces use border + --surface-1
-     instead. Consume it as `shadow-(--shadow-hard)` or `box-shadow: var(--shadow-hard)`. */
-  --shadow-hard: 4px 4px 0 0 rgb(0 0 0 / 0.9);
+  /* The single sanctioned shadow: a hard offset with no blur, reserved for the
+     modal overlay tier (Dialog, CommandPalette). Anchored surfaces use border +
+     --surface-1 instead. Consume it as `shadow-(--shadow-hard)` or
+     `box-shadow: var(--shadow-hard)`.
+     Mixed from --base-fg rather than pure black so the offset stays visible
+     against the page in BOTH themes: a near-black shadow over a near-black page
+     composites to ~1.05:1 and disappears. Same percentage as light. */
+  --shadow-hard: 4px 4px 0 0 color-mix(in oklab, var(--base-fg) 22%, transparent);
 
   /* Surface elevation steps. --surface-1 is one step off --base-bg for
      Linear/Raycast-style elevated panels (Panel frame="surface"), and
@@ -243,7 +247,7 @@
   /* Shared scrim for modal backdrops (same value across themes). */
   --scrim: rgb(0 0 0 / 0.6);
 
-  --shadow-hard: 4px 4px 0 0 color-mix(in oklab, var(--base-fg) 25%, transparent);
+  --shadow-hard: 4px 4px 0 0 color-mix(in oklab, var(--base-fg) 22%, transparent);
 
   /* Surface elevation steps. Light steps DOWN from the page background: an
      off-white page cannot go a visible step lighter without hitting pure white,

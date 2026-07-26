@@ -1,6 +1,10 @@
 @layer base {
   dialog {
-    --dialog-duration: 0.15s;
+    /* One duration source for the whole overlay family: the modal tier reads the
+       same --ui-content-* clock the anchored tier already uses (theme-base.css).
+       --dialog-duration stays a working per-instance override, it just no longer
+       holds an independent value that can drift out of sync. */
+    --dialog-duration: var(--ui-content-enter-duration);
     padding: 0;
     border: none;
     background: transparent;
@@ -22,7 +26,7 @@
   }
 
   dialog[data-state="closed"]::backdrop {
-    animation: backdrop-out var(--dialog-duration) ease-in forwards;
+    animation: backdrop-out var(--ui-content-exit-duration) ease-in forwards;
   }
 
   dialog[data-state="open"] {
@@ -30,7 +34,7 @@
   }
 
   dialog[data-state="closed"] {
-    animation: dialog-out var(--dialog-duration) ease-in forwards;
+    animation: dialog-out var(--ui-content-exit-duration) ease-in forwards;
     pointer-events: none;
   }
 
@@ -57,25 +61,33 @@
   }
 }
 
+/*
+ * One entrance vector for the overlay family: fade plus a 4px drop, never a
+ * scale. A scale-in is a soft-UI idiom — it implies a rubbery surface, which is
+ * the opposite of a drawn 1px rectangle, and on a wide dialog a 5% scale grows
+ * the border ~40px across every open. A translate also keeps --shadow-hard's
+ * 4px offset off fractional device pixels mid-animation, so the light-theme
+ * edge stops shimmering, and it cannot overshoot the viewport at 390.
+ */
 @keyframes dialog-in {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: translateY(-4px);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0);
   }
 }
 
 @keyframes dialog-out {
   from {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0);
   }
   to {
     opacity: 0;
-    transform: scale(0.95);
+    transform: translateY(-4px);
   }
 }
 

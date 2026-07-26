@@ -1,14 +1,9 @@
 #!/usr/bin/env node
 
-import { closeSync, existsSync, openSync, readFileSync, readSync, statSync } from "node:fs";
-import { StringDecoder } from "node:string_decoder";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { listRepoFiles } from "./lib/files.mjs";
 import { runValidationChecks } from "./lib/run-checks.mjs";
-
-export const MAX_FILE_BYTES = 2 * 1024 * 1024;
-const SCAN_CHUNK_BYTES = 64 * 1024;
-const SCAN_OVERLAP_CHARS = 1024;
 
 const SKIPPED_PREFIXES = [
   ".git/",
@@ -171,66 +166,6 @@ function collectFileFindings(path, source) {
   }));
 }
 
-function countNewlines(source) {
-  let count = 0;
-  for (const char of source) {
-    if (char === "\n") count += 1;
-  }
-  return count;
-}
-
-function collectOversizedFileFindings(path) {
-  const descriptor = openSync(path, "r");
-  const buffer = Buffer.allocUnsafe(SCAN_CHUNK_BYTES);
-  const decoder = new StringDecoder("utf8");
-  const findings = new Map();
-  let overlap = "";
-  let decodedChars = 0;
-  let decodedNewlines = 0;
-  let isBinary = false;
-
-  const scanChunk = (text) => {
-    if (!text) return;
-    const previousOverlapLength = overlap.length;
-    const combined = overlap + text;
-    const combinedStart = decodedChars - previousOverlapLength;
-    const combinedStartLine = 1 + decodedNewlines - countNewlines(overlap);
-
-    for (const match of collectSourceMatches(path, combined)) {
-      if (match.end <= previousOverlapLength) continue;
-      const absoluteStart = combinedStart + match.start;
-      findings.set(`${match.pattern}:${absoluteStart}`, {
-        path,
-        line: combinedStartLine + match.line - 1,
-        pattern: match.pattern,
-        preview: `<redacted:${match.end - match.start}>`,
-      });
-    }
-
-    decodedChars += text.length;
-    decodedNewlines += countNewlines(text);
-    overlap = combined.slice(-SCAN_OVERLAP_CHARS);
-  };
-
-  try {
-    while (true) {
-      const bytesRead = readSync(descriptor, buffer, 0, buffer.length, null);
-      if (bytesRead === 0) break;
-      const chunk = buffer.subarray(0, bytesRead);
-      if (chunk.includes(0)) {
-        isBinary = true;
-        break;
-      }
-      scanChunk(decoder.write(chunk));
-    }
-    if (!isBinary) scanChunk(decoder.end());
-  } finally {
-    closeSync(descriptor);
-  }
-
-  return isBinary ? [] : [...findings.values()];
-}
-
 export function collectSecretFindings(files) {
   const findings = [];
 
@@ -239,11 +174,7 @@ export function collectSecretFindings(files) {
     const stats = statSync(path);
     if (!stats.isFile()) continue;
 
-    if (stats.size > MAX_FILE_BYTES) {
-      findings.push(...collectOversizedFileFindings(path));
-    } else {
-      findings.push(...collectFileFindings(path, readFileSync(path, "utf8")));
-    }
+    findings.push(...collectFileFindings(path, readFileSync(path, "utf8")));
   }
 
   return findings;

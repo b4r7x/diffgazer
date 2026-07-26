@@ -13,7 +13,6 @@ import {
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
-import { cn } from "@/lib/utils";
 import { CalloutContext, type CalloutTone } from "./callout-context";
 import { CalloutIcon } from "./callout-icon";
 
@@ -43,6 +42,9 @@ const DISMISS_FOCUS_SELECTOR = [
   "[tabindex]:not([disabled])",
 ].join(",");
 
+const DOCUMENT_POSITION_PRECEDING = 0x02;
+const DOCUMENT_POSITION_FOLLOWING = 0x04;
+
 function getFocusSearchScope(root: HTMLElement): ParentNode {
   const rootNode = root.getRootNode();
   const view = root.ownerDocument.defaultView;
@@ -51,19 +53,17 @@ function getFocusSearchScope(root: HTMLElement): ParentNode {
 }
 
 function getDismissFocusTargets(root: HTMLElement): HTMLElement[] {
-  const ownerDocument = root.ownerDocument;
   const candidates = Array.from(
     getFocusSearchScope(root).querySelectorAll<HTMLElement>(DISMISS_FOCUS_SELECTOR),
   ).filter((candidate) => !root.contains(candidate) && isFocusable(candidate));
-  const NodeCtor = ownerDocument.defaultView?.Node;
-  const followingFlag = NodeCtor?.DOCUMENT_POSITION_FOLLOWING ?? 4;
-  const precedingFlag = NodeCtor?.DOCUMENT_POSITION_PRECEDING ?? 2;
 
   const following = candidates.filter((candidate) =>
-    Boolean(root.compareDocumentPosition(candidate) & followingFlag),
+    Boolean(root.compareDocumentPosition(candidate) & DOCUMENT_POSITION_FOLLOWING),
   );
   const preceding = candidates
-    .filter((candidate) => Boolean(root.compareDocumentPosition(candidate) & precedingFlag))
+    .filter((candidate) =>
+      Boolean(root.compareDocumentPosition(candidate) & DOCUMENT_POSITION_PRECEDING),
+    )
     .reverse();
   return [...following, ...preceding];
 }
@@ -160,7 +160,7 @@ export function Callout({
         data-slot="callout"
         data-tone={tone}
         data-frame={frame}
-        className={cn(className)}
+        className={className}
         {...props}
       >
         <div data-slot="callout-grid" data-has-icon={String(hasIcon)}>

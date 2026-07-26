@@ -57,8 +57,11 @@ export {
 } from "./lifecycle.js";
 export {
   type AgentStatusBadgeVariant,
+  buildLensFailureNotice,
   getAgentStatusMeta,
   getPartialFailureWarning,
+  isAgentHeartbeatEvent,
+  type LogStreamState,
   type PartialFailureWarning,
 } from "./presentation/agent-status.js";
 export {

@@ -23,20 +23,16 @@ import type { ApiClient } from "./types.js";
 export async function getProviderStatus(
   client: ApiClient,
 ): Promise<ProvidersStatusResponse["providers"]> {
-  const response = await client.get<ProvidersStatusResponse>(
-    "/api/config/providers",
-    undefined,
-    (body) => ProvidersStatusResponseSchema.parse(body),
-  );
+  const response = await client.get<ProvidersStatusResponse>("/api/config/providers", {
+    schema: (body) => ProvidersStatusResponseSchema.parse(body),
+  });
   return response.providers;
 }
 
 export async function getOpenRouterModels(client: ApiClient): Promise<OpenRouterModelsResponse> {
-  return client.get<OpenRouterModelsResponse>(
-    "/api/config/provider/openrouter/models",
-    undefined,
-    (body) => OpenRouterModelsResponseSchema.parse(body),
-  );
+  return client.get<OpenRouterModelsResponse>("/api/config/provider/openrouter/models", {
+    schema: (body) => OpenRouterModelsResponseSchema.parse(body),
+  });
 }
 
 export async function getProviderModels(
@@ -45,8 +41,7 @@ export async function getProviderModels(
 ): Promise<ProviderModelsResponse> {
   return client.get<ProviderModelsResponse>(
     `/api/config/provider/${encodeURIComponent(providerId)}/models`,
-    undefined,
-    (body) => ProviderModelsResponseSchema.parse(body),
+    { schema: (body) => ProviderModelsResponseSchema.parse(body) },
   );
 }
 
@@ -62,8 +57,7 @@ export async function activateProvider(
   return client.post<ActivateProviderResponse>(
     `/api/config/provider/${encodeURIComponent(providerId)}/activate`,
     model ? { model } : {},
-    undefined,
-    (body) => ActivateProviderResponseSchema.parse(body),
+    { schema: (body) => ActivateProviderResponseSchema.parse(body) },
   );
 }
 
@@ -77,21 +71,21 @@ export async function deleteProviderCredentials(
 }
 
 export async function loadInit(client: ApiClient): Promise<InitResponse> {
-  return client.get<InitResponse>("/api/config/init", undefined, (body) =>
-    InitResponseSchema.parse(body),
-  );
+  return client.get<InitResponse>("/api/config/init", {
+    schema: (body) => InitResponseSchema.parse(body),
+  });
 }
 
 export async function checkConfig(client: ApiClient): Promise<ConfigCheckResponse> {
-  return client.get<ConfigCheckResponse>("/api/config/check", undefined, (body) =>
-    ConfigCheckResponseSchema.parse(body),
-  );
+  return client.get<ConfigCheckResponse>("/api/config/check", {
+    schema: (body) => ConfigCheckResponseSchema.parse(body),
+  });
 }
 
 export async function getConfig(client: ApiClient): Promise<ConfigResponse> {
-  return client.get<ConfigResponse>("/api/config", undefined, (body) =>
-    CurrentConfigResponseSchema.parse(body),
-  );
+  return client.get<ConfigResponse>("/api/config", {
+    schema: (body) => CurrentConfigResponseSchema.parse(body),
+  });
 }
 
 export const bindConfig = (client: ApiClient) => ({

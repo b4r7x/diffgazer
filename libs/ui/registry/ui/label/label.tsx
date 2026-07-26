@@ -59,9 +59,21 @@ export type LabelOrientation = NonNullable<
   VariantProps<typeof labelWrapperVariants>["orientation"]
 >;
 
-function RequiredIndicator() {
+/**
+ * The " *" marker appended to a required label.
+ *
+ * Muted at rest, escalating to the error hue only while the surrounding Field is invalid: a form
+ * with four required fields used to put four error-hue marks on screen before the user had done
+ * anything, so the one mark that meant "this is broken" had to out-shout them. `group/field` is
+ * written by the Field root, so a standalone Label keeps the muted marker permanently — it has no
+ * validity to read.
+ */
+export function RequiredIndicator() {
   return (
-    <span className="text-error" aria-hidden="true">
+    <span
+      className="text-muted-foreground group-data-[invalid]/field:text-error"
+      aria-hidden="true"
+    >
       {" "}
       *
     </span>
@@ -107,7 +119,14 @@ export function Label({
         onMouseDown={handleMouseDown}
         {...props}
       >
-        <span className={cn(labelVariants({ color }), "group-has-[:disabled]/label:opacity-50")}>
+        <span
+          className={cn(
+            labelVariants({ color }),
+            // Token, not opacity: a faded label straddled the 4.5:1 line and vanished entirely
+            // in forced-colors mode, which ignores opacity.
+            "group-has-[:disabled]/label:text-muted-foreground group-has-[:disabled]/label:forced-colors:text-[GrayText]",
+          )}
+        >
           {label}
           {required && <RequiredIndicator />}
         </span>

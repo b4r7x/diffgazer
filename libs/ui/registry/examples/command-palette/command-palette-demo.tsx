@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CommandPalette } from "@/components/ui/command-palette";
-import { Kbd } from "@/components/ui/kbd";
 
 export default function CommandPaletteDemo() {
   const [open, setOpen] = useState(false);
@@ -39,17 +38,9 @@ export default function CommandPaletteDemo() {
               </CommandPalette.Item>
             </CommandPalette.Group>
           </CommandPalette.List>
-          <CommandPalette.Footer>
-            <span className="inline-flex items-center gap-1.5">
-              <Kbd size="sm">↑</Kbd>
-              <Kbd size="sm">↓</Kbd>
-              Navigate
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Kbd size="sm">↵</Kbd>
-              Select
-            </span>
-          </CommandPalette.Footer>
+          {/* Childless: the footer renders the canonical Navigate / Select /
+              Close legend through the shared OverlayHints primitive. */}
+          <CommandPalette.Footer />
         </CommandPalette.Content>
       </CommandPalette>
     </div>

@@ -26,17 +26,7 @@ export type {
 export function useFocusZone<T extends string>(
   options: UseFocusZoneOptions<T>,
 ): UseFocusZoneReturn<T> {
-  const {
-    transitions,
-    tabCycleScope,
-    tabCycleBoundary,
-    scope,
-    containerRef,
-    focusWithinOnly,
-    allowInInput,
-    preventDefault,
-    focus,
-  } = options;
+  const { scope, containerRef, focusWithinOnly, allowInInput, preventDefault, focus } = options;
 
   const state = useFocusZoneState(options);
   const {
@@ -50,29 +40,14 @@ export function useFocusZone<T extends string>(
     lastFocusedZoneRef,
   } = state;
 
-  useFocusZoneKeyboard(
-    {
-      transitions,
-      tabCycleScope,
-      tabCycleBoundary,
-      scope,
-      containerRef,
-      focusWithinOnly,
-      allowInInput,
-      preventDefault,
-      enabled,
-      focus,
-    },
-    {
-      currentZone,
-      zones,
-      setZoneValue,
-      validatedTabCycle,
-      canCycleTabs,
-      enabled,
-    },
-    options,
-  );
+  useFocusZoneKeyboard(options, {
+    currentZone,
+    zones,
+    setZoneValue,
+    validatedTabCycle,
+    canCycleTabs,
+    enabled,
+  });
 
   useFocusZoneFocusSync({
     zones,

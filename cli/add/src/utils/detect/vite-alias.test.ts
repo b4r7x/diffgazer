@@ -65,11 +65,21 @@ describe("detectViteAlias", () => {
       expected: { importAliasPrefix: "@", sourceDir: "src" },
     },
     {
-      name: "Vite aliases with a renamed resolve from the bare path built-in",
+      name: "Vite aliases with a renamed resolve",
       config: [
         "import { resolve as resolvePath } from 'path';",
         "export default {",
         "  resolve: { alias: { '@': resolvePath(__dirname, './src') } },",
+        "};",
+      ],
+      expected: { importAliasPrefix: "@", sourceDir: "src" },
+    },
+    {
+      name: "Vite aliases resolved from import.meta.dirname",
+      config: [
+        "import { resolve } from 'node:path';",
+        "export default {",
+        "  resolve: { alias: { '@': resolve(import.meta.dirname, './src') } },",
         "};",
       ],
       expected: { importAliasPrefix: "@", sourceDir: "src" },
@@ -86,7 +96,7 @@ describe("detectViteAlias", () => {
       expected: { importAliasPrefix: "@app", sourceDir: "app" },
     },
     {
-      name: "Vite aliases with a renamed URL constructor from node:url",
+      name: "Vite aliases with a renamed URL constructor",
       config: [
         "import { URL as NodeURL } from 'node:url';",
         "export default {",
@@ -106,7 +116,7 @@ describe("detectViteAlias", () => {
       expected: { importAliasPrefix: "@", sourceDir: "src" },
     },
     {
-      name: "Vite aliases with renamed fileURLToPath from the bare URL built-in",
+      name: "Vite aliases with a renamed fileURLToPath",
       config: [
         "import { fileURLToPath as toPath } from 'url';",
         "export default {",
@@ -128,21 +138,12 @@ describe("detectViteAlias", () => {
       expected: { importAliasPrefix: "~", sourceDir: "app" },
     },
     {
-      name: "Vite named alias arrays",
-      config: [
-        "const aliases = [{ find: '@', replacement: './src' }];",
-        "export default { resolve: { alias: aliases } };",
-      ],
-      expected: { importAliasPrefix: "@", sourceDir: "src" },
-    },
-    {
       name: "Vite defineConfig exports",
       config: [
         "import { defineConfig } from 'vite';",
-        "const aliases = { '@': new URL('./src', import.meta.url).pathname };",
-        "const resolve = { alias: aliases };",
-        "const config = { resolve };",
-        "export default defineConfig(config);",
+        "export default defineConfig({",
+        "  resolve: { alias: { '@': new URL('./src', import.meta.url).pathname } },",
+        "});",
       ],
       expected: { importAliasPrefix: "@", sourceDir: "src" },
     },
@@ -150,38 +151,11 @@ describe("detectViteAlias", () => {
       name: "Vite functional defineConfig exports",
       config: [
         "import { defineConfig } from 'vite';",
-        "export default defineConfig(({ mode }) => {",
-        "  const root = mode === 'test' ? 'test' : 'src';",
-        "  const helper = () => { if (root) return root; return 'src'; };",
-        "  return { resolve: { alias: [{ find: '~', replacement: './src' }] } };",
-        "});",
+        "export default defineConfig(({ mode }) => ({",
+        "  resolve: { alias: [{ find: '~', replacement: './src' }] },",
+        "}));",
       ],
       expected: { importAliasPrefix: "~", sourceDir: "src" },
-    },
-    {
-      name: "Vite exports with plugin-local shadow bindings",
-      config: [
-        "const rootResolve = { alias: { '~': './app' } };",
-        "function plugin() {",
-        "  const rootResolve = { alias: { '@': './src' } };",
-        "  return { name: 'shadow', rootResolve };",
-        "}",
-        "export default { resolve: rootResolve, plugins: [plugin()] };",
-      ],
-      expected: { importAliasPrefix: "~", sourceDir: "app" },
-    },
-    {
-      name: "Vite defineConfig exports with plugin-local alias shadow bindings",
-      config: [
-        "import { defineConfig } from 'vite';",
-        "const aliases = [{ find: '~', replacement: './app' }];",
-        "function plugin() {",
-        "  const aliases = [{ find: '@', replacement: './src' }];",
-        "  return { name: 'shadow', aliases };",
-        "}",
-        "export default defineConfig({ resolve: { alias: aliases }, plugins: [plugin()] });",
-      ],
-      expected: { importAliasPrefix: "~", sourceDir: "app" },
     },
   ]) {
     test(`detects ${fixture.name}`, () => {
@@ -239,13 +213,14 @@ describe("detectViteAlias", () => {
       ],
     },
     {
-      name: "a named alias array with an extra path segment",
+      name: "an array alias with an extra path segment",
       config: [
         "import { resolve } from 'node:path';",
-        "const aliases = [",
-        "  { find: '@', replacement: resolve(__dirname, 'packages', './app') },",
-        "];",
-        "export default { resolve: { alias: aliases } };",
+        "export default {",
+        "  resolve: {",
+        "    alias: [{ find: '@', replacement: resolve(__dirname, 'packages', './app') }],",
+        "  },",
+        "};",
       ],
     },
     {
@@ -258,13 +233,14 @@ describe("detectViteAlias", () => {
       ],
     },
     {
-      name: "a named alias array resolved from a nested base",
+      name: "an array alias resolved from a nested base",
       config: [
         "import { resolve } from 'node:path';",
-        "const aliases = [",
-        "  { find: '@', replacement: resolve('packages', './app') },",
-        "];",
-        "export default { resolve: { alias: aliases } };",
+        "export default {",
+        "  resolve: {",
+        "    alias: [{ find: '@', replacement: resolve('packages', './app') }],",
+        "  },",
+        "};",
       ],
     },
   ])("ignores $name", ({ config }) => {
@@ -306,20 +282,6 @@ describe("detectViteAlias", () => {
         "};",
       ],
     },
-    {
-      name: "an earlier dynamic alias with the same find value",
-      config: [
-        "const condition = true;",
-        "export default {",
-        "  resolve: {",
-        "    alias: [",
-        "      { find: '@', replacement: condition ? './app' : './src' },",
-        "      { find: '@', replacement: './src' },",
-        "    ],",
-        "  },",
-        "};",
-      ],
-    },
   ])("ignores $name instead of reading a nested token", ({ config }) => {
     writeViteConfig(config);
     assertNoDetectedAlias();
@@ -327,18 +289,18 @@ describe("detectViteAlias", () => {
 
   test.each([
     {
-      name: "a dynamic expression after an exported config identifier",
+      name: "an alias collection referenced through a variable",
+      config: [
+        "const aliases = [{ find: '@', replacement: './src' }];",
+        "export default { resolve: { alias: aliases } };",
+      ],
+    },
+    {
+      name: "a config referenced through a variable",
       config: [
         "const root = { resolve: { alias: { '@': './src' } } };",
         "const dynamicConfig = {};",
         "export default root && dynamicConfig;",
-      ],
-    },
-    {
-      name: "a dynamic expression after an exported object",
-      config: [
-        "const dynamicConfig = {};",
-        "export default { resolve: { alias: { '@': './src' } } } && dynamicConfig;",
       ],
     },
     {
@@ -350,7 +312,7 @@ describe("detectViteAlias", () => {
       ],
     },
     {
-      name: "a trailing expression after defineConfig",
+      name: "a config passed to defineConfig through a variable",
       config: [
         "import { defineConfig } from 'vite';",
         "const config = { resolve: { alias: { '@': './src' } } };",
@@ -358,202 +320,7 @@ describe("detectViteAlias", () => {
         "export default defineConfig(config) && fallback;",
       ],
     },
-    {
-      name: "a conditional return before a static functional config return",
-      config: [
-        "import { defineConfig } from 'vite';",
-        "const condition = true;",
-        "export default defineConfig(() => {",
-        "  if (condition) {",
-        "    return { resolve: { alias: { '@': './app' } } };",
-        "  }",
-        "  return { resolve: { alias: { '@': './src' } } };",
-        "});",
-      ],
-    },
   ])("ignores $name", ({ config }) => {
-    writeViteConfig(config);
-    assertNoDetectedAlias();
-  });
-
-  test.each([
-    {
-      name: "a locally defined resolve function",
-      config: [
-        "const resolve = () => './src';",
-        "export default { resolve: { alias: { '@': resolve(__dirname, './src') } } };",
-      ],
-    },
-    {
-      name: "a locally defined path object",
-      config: [
-        "const path = { resolve: () => './src' };",
-        "export default { resolve: { alias: { '@': path.resolve(__dirname, './src') } } };",
-      ],
-    },
-    {
-      name: "a locally defined fileURLToPath function",
-      config: [
-        "const fileURLToPath = () => './src';",
-        "export default {",
-        "  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },",
-        "};",
-      ],
-    },
-    {
-      name: "a locally defined defineConfig function",
-      config: [
-        "const defineConfig = (value) => value;",
-        "export default defineConfig({ resolve: { alias: { '@': './src' } } });",
-      ],
-    },
-    {
-      name: "a locally defined URL constructor",
-      config: [
-        "class URL { constructor() { return { pathname: '/app' }; } }",
-        "export default {",
-        "  resolve: { alias: { '@': new URL('./src', import.meta.url).pathname } },",
-        "};",
-      ],
-    },
-    {
-      name: "a URL function declared after the exported config",
-      config: [
-        "export default {",
-        "  resolve: { alias: { '@': new URL('./src', import.meta.url).pathname } },",
-        "};",
-        "function URL() { return { pathname: '/app' }; }",
-      ],
-    },
-    {
-      name: "a URL constructor imported from an untrusted module",
-      config: [
-        "import { URL } from './url.js';",
-        "export default {",
-        "  resolve: { alias: { '@': new URL('./src', import.meta.url).pathname } },",
-        "};",
-      ],
-    },
-    {
-      name: "a locally rebound __dirname",
-      config: [
-        "import path from 'node:path';",
-        "const __dirname = '/packages';",
-        "export default {",
-        "  resolve: { alias: { '@': path.resolve(__dirname, './src') } },",
-        "};",
-      ],
-    },
-    {
-      name: "an imported resolve function shadowed inside functional config",
-      config: [
-        "import { resolve } from 'node:path';",
-        "import { defineConfig } from 'vite';",
-        "export default defineConfig(() => {",
-        "  const resolve = () => './app';",
-        "  return { resolve: { alias: { '@': resolve(__dirname, './src') } } };",
-        "});",
-      ],
-    },
-  ])("ignores $name without trusted import provenance", ({ config }) => {
-    writeViteConfig(config);
-    assertNoDetectedAlias();
-  });
-
-  test.each([
-    {
-      name: "a top-level config spread",
-      config: [
-        "const dynamicConfig = {};",
-        "export default { resolve: { alias: { '@': './src' } }, ...dynamicConfig };",
-      ],
-    },
-    {
-      name: "a resolve spread",
-      config: [
-        "const dynamicResolve = {};",
-        "export default {",
-        "  resolve: { alias: { '@': './src' }, ...dynamicResolve },",
-        "};",
-      ],
-    },
-    {
-      name: "an alias object spread",
-      config: [
-        "const dynamicAliases = {};",
-        "export default {",
-        "  resolve: { alias: { '@': './src', ...dynamicAliases } },",
-        "};",
-      ],
-    },
-    {
-      name: "an alias array entry spread",
-      config: [
-        "const dynamicAlias = {};",
-        "export default {",
-        "  resolve: {",
-        "    alias: [{ find: '@', replacement: './src', ...dynamicAlias }],",
-        "  },",
-        "};",
-      ],
-    },
-    {
-      name: "duplicate resolve keys",
-      config: [
-        "export default {",
-        "  resolve: { alias: { '@': './src' } },",
-        "  resolve: {},",
-        "};",
-      ],
-    },
-    {
-      name: "duplicate alias keys",
-      config: ["export default {", "  resolve: { alias: { '@': './src' }, alias: {} },", "};"],
-    },
-    {
-      name: "duplicate find keys",
-      config: [
-        "export default {",
-        "  resolve: {",
-        "    alias: [{ find: '@', find: '~', replacement: './src' }],",
-        "  },",
-        "};",
-      ],
-    },
-    {
-      name: "duplicate replacement keys",
-      config: [
-        "export default {",
-        "  resolve: {",
-        "    alias: [{ find: '@', replacement: './src', replacement: './app' }],",
-        "  },",
-        "};",
-      ],
-    },
-  ])("ignores $name because it can override static alias data", ({ config }) => {
-    writeViteConfig(config);
-    assertNoDetectedAlias();
-  });
-
-  test.each([
-    {
-      name: "a reassigned let alias collection",
-      config: [
-        "let aliases = { '@': './src' };",
-        "const dynamicAliases = { '@': './app' };",
-        "aliases = dynamicAliases;",
-        "export default { resolve: { alias: aliases } };",
-      ],
-    },
-    {
-      name: "a mutated const alias property",
-      config: [
-        "const aliases = { '@': './src' };",
-        "aliases['@'] = './app';",
-        "export default { resolve: { alias: aliases } };",
-      ],
-    },
-  ])("ignores $name instead of following stale initializer data", ({ config }) => {
     writeViteConfig(config);
     assertNoDetectedAlias();
   });

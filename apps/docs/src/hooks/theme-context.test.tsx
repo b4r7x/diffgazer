@@ -3,7 +3,13 @@
 import "@testing-library/jest-dom/vitest";
 import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { THEME_COLORS, THEME_INIT_SCRIPT, themeToggleLabel } from "./theme-context";
+import { themeBootstrap } from "./theme-bootstrap";
+import {
+  THEME_BOOTSTRAP_CONFIG,
+  THEME_COLORS,
+  THEME_INIT_SCRIPT,
+  themeToggleLabel,
+} from "./theme-context";
 
 function stubSystemTheme(theme: "dark" | "light") {
   stubMatchMedia((query) => query.includes("prefers-color-scheme: dark") && theme === "dark");
@@ -23,10 +29,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("THEME_INIT_SCRIPT", () => {
+describe("theme bootstrap", () => {
   function executeThemeBootstrap() {
-    // biome-ignore lint/security/noGlobalEval: executes the app's static, user-input-free bootstrap verbatim to verify its pre-hydration DOM contract.
-    window.eval(THEME_INIT_SCRIPT);
+    themeBootstrap(THEME_BOOTSTRAP_CONFIG);
   }
 
   function finishThemeBootstrap() {
@@ -92,6 +97,20 @@ describe("THEME_INIT_SCRIPT", () => {
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
     finishThemeBootstrap();
     getItem.mockRestore();
+  });
+
+  it("serializes into an inline script that applies the same stamp", () => {
+    localStorage.setItem("@diffgazer/docs-theme", "dark");
+
+    // biome-ignore lint/security/noGlobalEval: runs the serialized bootstrap verbatim to prove the inlined head script stays self-contained.
+    window.eval(THEME_INIT_SCRIPT);
+
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+    expect(document.head.querySelector('meta[name="theme-color"]')).toHaveAttribute(
+      "content",
+      THEME_COLORS.dark,
+    );
+    finishThemeBootstrap();
   });
 
   it("bails out without throwing when the browser has no matchMedia", () => {

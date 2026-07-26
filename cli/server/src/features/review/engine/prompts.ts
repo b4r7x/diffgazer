@@ -34,13 +34,7 @@ export interface ReviewPrompt {
 }
 
 export function createPromptFileIdentities(diff: ParsedDiff): PromptFileIdentity[] {
-  const seenIds = new Set<string>();
-  return diff.files.map((file, index) => {
-    const id = `file-${index + 1}`;
-    if (seenIds.has(id)) throw new Error(`Duplicate prompt file id: ${id}`);
-    seenIds.add(id);
-    return { id, file };
-  });
+  return diff.files.map((file, index) => ({ id: `file-${index + 1}`, file }));
 }
 
 export const SECURITY_HARDENING_PROMPT = `IMPORTANT SECURITY INSTRUCTIONS:

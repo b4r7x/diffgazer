@@ -2,6 +2,7 @@ import {
   convertReviewEventToLogEntry,
   getReviewEventLogSource,
   getReviewEventSequence,
+  isAgentHeartbeatEvent,
   isReviewEventSequenceContinuation,
   type ReviewEvent,
   type ReviewEventSequence,
@@ -31,9 +32,20 @@ export interface RowBounds {
   readonly start: number;
 }
 
+/**
+ * A row is an event that happened. Heartbeats restate the agent board every ~2s
+ * and never earn one, and with a source filter active only that agent's events
+ * do. The unfiltered log runs through the same index rather than plain index
+ * arithmetic, so both paths agree on what a row is.
+ */
+function isRowEvent(event: ReviewEvent, source: string | null): boolean {
+  if (isAgentHeartbeatEvent(event)) return false;
+  return source === null || getReviewEventLogSource(event) === source;
+}
+
 function buildMatchingPages(
   events: readonly ReviewEvent[],
-  source: string,
+  source: string | null,
   firstLogicalIndex: number,
 ): { pages: readonly MatchingPage[]; nextRow: number } {
   const pages: MatchingPage[] = [];
@@ -43,7 +55,7 @@ function buildMatchingPages(
 
   for (let eventIndex = 0; eventIndex < events.length; eventIndex += 1) {
     const event = events[eventIndex];
-    if (!event || getReviewEventLogSource(event) !== source) continue;
+    if (!event || !isRowEvent(event, source)) continue;
     if (page.length === 0) pageStart = nextRow;
     page.push(firstLogicalIndex + eventIndex);
     nextRow += 1;
@@ -64,9 +76,7 @@ function createEventRowIndex(
   sequence = getReviewEventSequence(events),
 ): EventRowIndex {
   const firstLogicalIndex = sequence?.firstIndex ?? 0;
-  const matching = source
-    ? buildMatchingPages(events, source, firstLogicalIndex)
-    : { pages: [], nextRow: 0 };
+  const matching = buildMatchingPages(events, source, firstLogicalIndex);
 
   return {
     events,
@@ -162,18 +172,16 @@ function continueEventRowIndex(
   let matchingPages = pruneMatchingPages(previous.matchingPages, sequence.firstIndex);
   let nextMatchingRow = previous.nextMatchingRow;
 
-  if (previous.source) {
-    const appendedLogicalIndices: number[] = [];
-    const firstAppendedEvent = previous.nextLogicalIndex - sequence.firstIndex;
-    for (let eventIndex = firstAppendedEvent; eventIndex < events.length; eventIndex += 1) {
-      const event = events[eventIndex];
-      if (event && getReviewEventLogSource(event) === previous.source) {
-        appendedLogicalIndices.push(sequence.firstIndex + eventIndex);
-      }
+  const appendedLogicalIndices: number[] = [];
+  const firstAppendedEvent = previous.nextLogicalIndex - sequence.firstIndex;
+  for (let eventIndex = firstAppendedEvent; eventIndex < events.length; eventIndex += 1) {
+    const event = events[eventIndex];
+    if (event && isRowEvent(event, previous.source)) {
+      appendedLogicalIndices.push(sequence.firstIndex + eventIndex);
     }
-    matchingPages = appendMatchingIndices(matchingPages, appendedLogicalIndices, nextMatchingRow);
-    nextMatchingRow += appendedLogicalIndices.length;
   }
+  matchingPages = appendMatchingIndices(matchingPages, appendedLogicalIndices, nextMatchingRow);
+  nextMatchingRow += appendedLogicalIndices.length;
 
   return {
     events,
@@ -202,20 +210,13 @@ export function deriveEventRowIndex(
 }
 
 export function getEventRowBounds(index: EventRowIndex): RowBounds {
-  if (!index.source) {
-    return { start: index.firstLogicalIndex, end: index.nextLogicalIndex };
-  }
   return {
     start: index.matchingPages[0]?.firstRow ?? index.nextMatchingRow,
     end: index.nextMatchingRow,
   };
 }
 
-function getMatchingLogicalIndices(
-  index: EventRowIndex,
-  startRow: number,
-  endRow: number,
-): number[] {
+function getRowLogicalIndices(index: EventRowIndex, startRow: number, endRow: number): number[] {
   const logicalIndices: number[] = [];
   for (const page of index.matchingPages) {
     const pageEnd = page.firstRow + page.logicalIndices.length;
@@ -228,22 +229,13 @@ function getMatchingLogicalIndices(
   return logicalIndices;
 }
 
-function getVisibleLogicalIndices(
-  index: EventRowIndex,
-  startRow: number,
-  endRow: number,
-): number[] {
-  if (index.source) return getMatchingLogicalIndices(index, startRow, endRow);
-  return Array.from({ length: endRow - startRow }, (_, offset) => startRow + offset);
-}
-
 export function convertEventRowWindow(
   index: EventRowIndex,
   startRow: number,
   endRow: number,
 ): LogEntryData[] {
   const entries: LogEntryData[] = [];
-  for (const logicalIndex of getVisibleLogicalIndices(index, startRow, endRow)) {
+  for (const logicalIndex of getRowLogicalIndices(index, startRow, endRow)) {
     const event = index.events[logicalIndex - index.firstLogicalIndex];
     if (!event) continue;
     const entry = convertReviewEventToLogEntry(event, logicalIndex);
@@ -253,7 +245,6 @@ export function convertEventRowWindow(
 }
 
 export function getEventRowTail(index: EventRowIndex): ReviewEvent | undefined {
-  if (!index.source) return index.events.at(-1);
   const lastPage = index.matchingPages.at(-1);
   const logicalIndex = lastPage?.logicalIndices.at(-1);
   return logicalIndex === undefined

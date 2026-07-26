@@ -2,9 +2,9 @@
 
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, Ref } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
-import { cn } from "@/lib/utils";
 import { Kbd } from "../kbd/kbd";
 import { useCommandPaletteContext } from "./command-palette-context";
+import { CommandPaletteCount } from "./command-palette-count";
 import { getCommandPaletteItemDomId } from "./use-command-palette-state";
 
 const INPUT_NAVIGATION_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter"]);
@@ -20,8 +20,10 @@ export interface CommandPaletteInputProps {
    * --command-palette-prefix-content is rendered (default ">"; terminal frame swaps to "$").
    */
   prefix?: ReactNode;
-  /** Optional trailing content. Defaults to a Kbd "Esc" hint. */
+  /** Optional trailing content. Defaults to the `[n/m]` count readout plus an Esc close button. */
   suffix?: ReactNode;
+  /** Accessible name for the default Esc close control. */
+  closeLabel?: string;
   /** Called when key down occurs. */
   onKeyDown?: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
   /** Additional class names merged onto the rendered element. */
@@ -36,16 +38,17 @@ export function CommandPaletteInput({
   label = "Command search",
   prefix,
   suffix,
+  closeLabel = "Close",
   onKeyDown,
   className,
   ref,
 }: CommandPaletteInputProps) {
-  const { open, search, onSearchChange, navKeyDown, highlighted, listId, inputRef } =
+  const { open, onOpenChange, search, onSearchChange, navKeyDown, highlighted, listId, inputRef } =
     useCommandPaletteContext();
   const composedRef = useComposedRefs(inputRef, ref);
 
   return (
-    <div data-slot="command-palette-input" className={cn(className)}>
+    <div data-slot="command-palette-input" className={className}>
       {prefix !== undefined ? (
         <span data-slot="command-palette-input-prefix">{prefix}</span>
       ) : (
@@ -85,7 +88,18 @@ export function CommandPaletteInput({
         <span data-slot="command-palette-input-suffix">{suffix}</span>
       ) : (
         <span data-slot="command-palette-input-suffix">
-          <Kbd size="sm">Esc</Kbd>
+          <CommandPaletteCount />
+          {/* A real close control, not a hint: touch has no Esc key, and the
+              ::before hit-area expansion in command-palette.css gives it a 44x44
+              target without moving a single desktop pixel. */}
+          <button
+            type="button"
+            data-slot="command-palette-close"
+            aria-label={closeLabel}
+            onClick={() => onOpenChange(false)}
+          >
+            <Kbd size="sm">Esc</Kbd>
+          </button>
         </span>
       )}
     </div>

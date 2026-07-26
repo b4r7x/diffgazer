@@ -1,6 +1,7 @@
 import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
+import { expectSingleHeavyCornerPane } from "../../../testing/reticle";
 import { HomeScreen } from "./screen";
 
 const trustVar = vi.hoisted(() => ({ trust: null as unknown }));
@@ -79,6 +80,73 @@ describe("HomeScreen context sidebar floor", () => {
     expect(lines.some((line) => /^\s*gs →/.test(line))).toBe(false);
     expect(lines.some((line) => /^\s*sions\b/.test(line))).toBe(false);
     expect(lines).toHaveLength(24);
+  });
+
+  test.each([
+    [100, 30],
+    [80, 24],
+  ])("fills the content zone down to the shortcut bar at %ix%i", async (columns, rows) => {
+    trustVar.trust = {
+      repoRoot: "/tmp/repo",
+      capabilities: { readFiles: true, runCommands: false },
+    };
+    const { lastFrame } = renderRootFrame(columns, rows, <HomeScreen />);
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("Main Menu"));
+    const lines = stripAnsi(lastFrame() ?? "").split("\n");
+    const bottomBorder = lines.findLastIndex((line) => /[└┗]/.test(line));
+
+    expect(bottomBorder).toBeGreaterThan(0);
+    // Only the shortcut bar may follow the panels: the frame and the key bar
+    // are one bottom-locked assembly, never a ragged gap.
+    expect(lines.length - 1 - bottomBorder).toBeLessThanOrEqual(1);
+  });
+
+  test("gives the context sidebar its full clamped width instead of shrinking it", async () => {
+    trustVar.trust = {
+      repoRoot: "/tmp/repo",
+      capabilities: { readFiles: true, runCommands: false },
+    };
+    const { lastFrame } = renderRootFrame(100, 30, <HomeScreen />);
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("Last Run"));
+    const topBorder =
+      stripAnsi(lastFrame() ?? "")
+        .split("\n")
+        .find((line) => line.includes("┌")) ?? "";
+
+    // clamp(floor(96 * 0.38), 28, 44) = 36 columns, borders included.
+    expect(topBorder.indexOf("┐") - topBorder.indexOf("┌") + 1).toBe(36);
+    // The budget the clamp buys is spent on the values the sidebar exists for.
+    expect(lastFrame()).toContain("#c0ffee00 (8 issues)");
+  });
+
+  test("stacks both panes at 60x24 instead of letting the context swallow the frame", async () => {
+    trustVar.trust = {
+      repoRoot: "/tmp/repo",
+      capabilities: { readFiles: true, runCommands: false },
+    };
+    const { lastFrame } = renderRootFrame(60, 24, <HomeScreen />);
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("Main Menu"));
+    const frame = stripAnsi(lastFrame() ?? "");
+
+    // Stacked, the menu is below the context pane: it must keep its rows, not
+    // be squeezed down to a border sliver.
+    expect(frame).toContain("Context");
+    expect(frame).toContain("Review Unstaged");
+    expect(frame).toContain("Quit");
+  });
+
+  test("marks one pane with the heavy-corner reticle", async () => {
+    trustVar.trust = {
+      repoRoot: "/tmp/repo",
+      capabilities: { readFiles: true, runCommands: false },
+    };
+    const { lastFrame } = renderRootFrame(100, 30, <HomeScreen />);
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("Main Menu"));
+    expectSingleHeavyCornerPane(lastFrame());
   });
 
   test("renders the trusted Last Run id as one #-prefixed token at 80x24", async () => {

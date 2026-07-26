@@ -32,7 +32,6 @@ describe("useSeverityFilter", () => {
     const { result } = renderHook(() => useSeverityFilter({ issues }));
 
     expect(result.current.severityFilter.size).toBe(0);
-    expect(result.current.selectedCount).toBe(0);
     expect(result.current.isFilterActive).toBe(false);
     expect(result.current.filteredIssues).toHaveLength(4);
   });
@@ -48,7 +47,7 @@ describe("useSeverityFilter", () => {
     });
 
     expect(result.current.severityFilter.has("high")).toBe(true);
-    expect(result.current.selectedCount).toBe(1);
+    expect(result.current.severityFilter.size).toBe(1);
     expect(result.current.isFilterActive).toBe(true);
     expect(result.current.filteredIssues.map((i) => i.id)).toEqual(["h1", "h2"]);
   });
@@ -67,7 +66,8 @@ describe("useSeverityFilter", () => {
     });
 
     expect(result.current.severityFilter.has("high")).toBe(false);
-    expect(result.current.selectedCount).toBe(0);
+    expect(result.current.severityFilter.size).toBe(0);
+    expect(result.current.isFilterActive).toBe(false);
   });
 
   it("supports multi-severity union filtering", () => {

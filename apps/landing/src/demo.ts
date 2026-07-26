@@ -61,10 +61,10 @@ export const demoFindings = [
 
 export const pipelineFindings = demoFindings.slice(0, 3);
 
-const firstFinding = demoFindings[0];
-
 function findDemoFinding(tag: DemoFinding["tag"]): DemoFinding {
-  return demoFindings.find((finding) => finding.tag === tag) ?? firstFinding;
+  const found = demoFindings.find((finding) => finding.tag === tag);
+  if (!found) throw new Error(`no demo finding tagged ${tag}`);
+  return found;
 }
 
 export const gazeFindings = [findDemoFinding("correctness"), findDemoFinding("tests")] satisfies [

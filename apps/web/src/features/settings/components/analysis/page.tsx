@@ -32,7 +32,7 @@ export function SettingsAnalysisPage() {
   useScope("settings-analysis");
 
   const actions = useSettingsFormActions({
-    canSave: isDirty && hasLensSelection,
+    saveAvailable: isDirty && hasLensSelection,
     getSettingsPayload: () => ({ defaultLenses: effectiveLenses }),
     contentShortcuts: [NAVIGATE_SHORTCUT, { key: "Enter/Space", label: "Toggle Lens" }],
     focusFallbackRef,

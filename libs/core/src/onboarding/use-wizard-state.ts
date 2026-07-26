@@ -4,7 +4,7 @@ import { type AIProvider, AVAILABLE_PROVIDERS } from "../schemas/config/index.js
 import { canProceed } from "./can-proceed.js";
 import { getInitialWizardData } from "./defaults.js";
 import { buildConfigPayload, type SaveWizardCallbacks, saveWizard } from "./save-wizard.js";
-import { getStepAt, isFirstStepIndex, isLastStepIndex } from "./steps.js";
+import { getStepAt } from "./steps.js";
 import { type OnboardingStep, WIZARD_STEPS, type WizardData } from "./types.js";
 
 const CLEANUP_ERROR_PREFIX = "Failed to remove saved credentials";
@@ -61,8 +61,8 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   const pendingSaveRef = useRef<Promise<void> | null>(null);
 
   const currentStep = getStepAt(stepIndex);
-  const isFirst = isFirstStepIndex(stepIndex);
-  const isLast = isLastStepIndex(stepIndex);
+  const isFirst = stepIndex === 0;
+  const isLast = stepIndex === WIZARD_STEPS.length - 1;
   const canProceedNow = canProceed(currentStep, wizardData);
 
   const applyProvider = (provider: AIProvider) => {

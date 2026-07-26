@@ -21,37 +21,26 @@ export const cardVariants = cva("w-full relative rounded-sm bg-background", {
       lg: "max-w-lg",
     },
     interactive: {
-      true: "cursor-pointer transition-[border-color,background-color,box-shadow,outline-color] duration-150 ease-out hover:bg-[color-mix(in_oklab,var(--foreground)_4%,var(--background))] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+      true: "cursor-pointer transition-[border-color,background-color,box-shadow,outline-color] duration-150 ease-out hover:border-border hover:bg-[color-mix(in_oklab,var(--foreground)_4%,var(--background))] focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
       false: "",
     },
   },
   compoundVariants: [
     {
-      surface: "flat",
-      interactive: true,
-      className: "hover:border-border",
-    },
-    {
       surface: "stacked",
       interactive: true,
       className:
-        "hover:border-border hover:shadow-[5px_5px_0_0_var(--background),6px_6px_0_0_color-mix(in_oklab,var(--foreground)_45%,transparent)]",
+        "hover:shadow-[5px_5px_0_0_var(--background),6px_6px_0_0_color-mix(in_oklab,var(--foreground)_45%,transparent)]",
     },
     {
       surface: "inset",
       interactive: true,
-      className:
-        "hover:border-border hover:bg-[color-mix(in_oklab,var(--foreground)_10%,var(--background))]",
-    },
-    {
-      surface: "dotted",
-      interactive: true,
-      className: "hover:border-border",
+      className: "hover:bg-[color-mix(in_oklab,var(--foreground)_10%,var(--background))]",
     },
     {
       surface: "glow",
       interactive: true,
-      className: "hover:border-border hover:outline-foreground/70",
+      className: "hover:outline-foreground/70",
     },
   ],
   defaultVariants: { surface: "flat", size: "default", interactive: false },

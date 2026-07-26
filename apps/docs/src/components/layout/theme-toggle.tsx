@@ -20,6 +20,10 @@ export function ThemeToggle() {
       suppressHydrationWarning
       onClick={() => setTheme(nextThemePreference(theme))}
       aria-label={themeToggleLabel(theme)}
+      // The footer binds F2 to this same cycle; the binding is announced where
+      // the control lives, not only in the footer hint row.
+      aria-keyshortcuts="F2"
+      title="Theme (F2)"
       className={cn(
         "px-1 uppercase transition-colors hover:bg-secondary hover:text-foreground pointer-coarse:px-2",
         CHROME_ACTION_TARGET_CLASS,

@@ -24,23 +24,6 @@ export function useOnboarding() {
     onCleanupError: (message) => toast.error("Cleanup Failed", { message }),
   });
 
-  return {
-    currentStep: wizard.currentStep,
-    wizardData: wizard.wizardData,
-    // HorizontalStepper expects a mutable string[]; copy the readonly source.
-    steps: [...wizard.steps],
-    isFirstStep: wizard.isFirstStep,
-    isLastStep: wizard.isLastStep,
-    canProceed: wizard.canProceed,
-    isSubmitting: wizard.isSubmitting,
-    isEarlySaving: wizard.isEarlySaving,
-    error: wizard.error,
-    earlySaveError: wizard.earlySaveError,
-    next: wizard.next,
-    back: wizard.back,
-    updateData: wizard.updateData,
-    setProvider: wizard.setProvider,
-    complete: wizard.complete,
-    cleanupEarlySave: wizard.cleanupEarlySave,
-  };
+  // HorizontalStepper expects a mutable string[]; copy the readonly source.
+  return { ...wizard, steps: [...wizard.steps] };
 }

@@ -119,10 +119,10 @@ async function extractMetadataFromFile<M>(
   const readResult = await safeReadFile(path, name);
   if (!readResult.ok) return readResult;
 
-  const parseResult = safeParseJson(readResult.value, (message) =>
-    createStoreError("PARSE_ERROR", `${name}: ${message}`),
-  );
-  if (!parseResult.ok) return parseResult;
+  const parseResult = safeParseJson(readResult.value);
+  if (!parseResult.ok) {
+    return err(createStoreError("PARSE_ERROR", `${name}: ${parseResult.error}`));
+  }
 
   const parsed = parseResult.value;
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
@@ -172,10 +172,10 @@ export function createCollection<T, M, D = never>(
 
     // Only a schema-validation failure on valid JSON is salvaged; JSON corruption
     // stays a PARSE_ERROR.
-    const parseResult = safeParseJson(readResult.value, (message) =>
-      createStoreError("PARSE_ERROR", `${name}: ${message}`),
-    );
-    if (!parseResult.ok) return parseResult;
+    const parseResult = safeParseJson(readResult.value);
+    if (!parseResult.ok) {
+      return err(createStoreError("PARSE_ERROR", `${name}: ${parseResult.error}`));
+    }
 
     const validation = schema.safeParse(parseResult.value);
     if (validation.success) {

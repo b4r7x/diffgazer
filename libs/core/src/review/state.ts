@@ -143,7 +143,7 @@ function updateAgents(agents: AgentState[], event: AgentStreamEvent): AgentState
 }
 
 function updateIssues(issues: ReviewIssue[], event: AgentStreamEvent): ReviewIssue[] {
-  if (event.type === "issue_found" && event.issue) {
+  if (event.type === "issue_found") {
     return [...issues, event.issue];
   }
   return issues;
@@ -241,33 +241,15 @@ function handleFileProgressEvent(
   };
 }
 
+const STEP_EVENT_TYPES: Record<StepEvent["type"], true> = {
+  review_started: true,
+  step_start: true,
+  step_complete: true,
+  step_error: true,
+};
+
 function isStepReviewEvent(event: ReviewEvent): event is StepEvent {
-  switch (event.type) {
-    case "review_started":
-    case "step_start":
-    case "step_complete":
-    case "step_error":
-      return true;
-
-    case "orchestrator_start":
-    case "agent_queued":
-    case "file_start":
-    case "file_complete":
-    case "agent_start":
-    case "agent_thinking":
-    case "agent_progress":
-    case "agent_error":
-    case "file_progress":
-    case "issue_found":
-    case "agent_complete":
-    case "orchestrator_complete":
-      return false;
-
-    default: {
-      const _exhaustive: never = event;
-      return _exhaustive;
-    }
-  }
+  return event.type in STEP_EVENT_TYPES;
 }
 
 // Routes a review event to the handler that owns its sub-type. Step, file, and
@@ -286,6 +268,8 @@ function dispatchEvent(state: ReviewState, event: ReviewEvent): ReviewState {
     return handleFileProgressEvent(state, event);
   }
 
+  // A degenerate complete event reporting zero files must not wipe the total
+  // already established by the stream.
   if (event.type === "orchestrator_complete" && event.filesAnalyzed) {
     return {
       ...state,

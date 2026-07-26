@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import {
   HORIZONTAL_STEP_INDICATOR_GLYPHS,
   type HorizontalStepperVariant,
+  horizontalStepperActiveOnlyCollapseClass,
   horizontalStepperBreadcrumbSeparatorClass,
   horizontalStepperCompletedConnectorClass,
   horizontalStepperConnectorClass,
@@ -11,11 +12,13 @@ import {
   horizontalStepperConnectorItemClass,
   horizontalStepperCounterClass,
   horizontalStepperCounterVisibilityClass,
+  horizontalStepperElisionClass,
   horizontalStepperGlyphVariants,
   horizontalStepperLabelVariants,
   horizontalStepperStepVariants,
-  horizontalStepperTextOnlyCollapseClass,
+  horizontalStepperWindowClasses,
 } from "@/lib/horizontal-stepper-variants";
+import { renderSelectableGlyph } from "@/lib/selectable-glyph";
 import { cn } from "@/lib/utils";
 import {
   type HorizontalStepStatus,
@@ -42,9 +45,15 @@ export interface HorizontalStepperStepProps {
 /** Single horizontal step (derives status from parent value) */
 export function HorizontalStepperStep({ value, children, className }: HorizontalStepperStepProps) {
   const { variant, compact } = useHorizontalStepperContext();
-  const { status, index, total } = useStepInfo(value);
+  const { status, index, total, activeIndex } = useStepInfo(value);
   const showConnectorBefore = index > 0;
   const isActive = status === "active";
+  const distance = index - activeIndex;
+  const windowClasses = horizontalStepperWindowClasses(variant, total, compact);
+  // The markers ride the two steps flanking the active one, so they read in run order
+  // (`+2 [x] [~] [ ] +1`) while the list still holds exactly one <li> per step.
+  const hiddenBefore = distance === -1 ? activeIndex - 1 : 0;
+  const hiddenAfter = distance === 1 ? total - activeIndex - 2 : 0;
 
   const glyph = renderGlyph(variant, status);
   const connector = renderConnector(variant, status === "completed");
@@ -75,17 +84,21 @@ export function HorizontalStepperStep({ value, children, className }: Horizontal
           // no utility is ever emitted. The trailing space keeps the next step's `[ ]` off
           // the last word of the active label once the connectors are gone.
           isActive && (compact ? "pe-1.5" : "@max-xl/horizontal-stepper:pe-1.5"),
-          !isActive && horizontalStepperTextOnlyCollapseClass,
+          !isActive && horizontalStepperActiveOnlyCollapseClass,
+          Math.abs(distance) > 1 && windowClasses.window,
           className,
         )}
       >
-        {glyph !== null && (
+        {hiddenBefore > 0 && (
           <span
-            className={cn(
-              horizontalStepperGlyphVariants({ variant, status }),
-              horizontalStepperTextOnlyCollapseClass,
-            )}
+            aria-hidden="true"
+            className={cn(horizontalStepperElisionClass, windowClasses.elision)}
           >
+            +{hiddenBefore}
+          </span>
+        )}
+        {glyph !== null && (
+          <span className={horizontalStepperGlyphVariants({ variant, status })}>
             <span className="sr-only">{SR_LABEL[status]}</span>
             {glyph}
           </span>
@@ -114,6 +127,14 @@ export function HorizontalStepperStep({ value, children, className }: Horizontal
           )}
           {children}
         </span>
+        {hiddenAfter > 0 && (
+          <span
+            aria-hidden="true"
+            className={cn(horizontalStepperElisionClass, windowClasses.elision)}
+          >
+            +{hiddenAfter}
+          </span>
+        )}
       </li>
     </>
   );
@@ -145,5 +166,7 @@ function renderGlyph(variant: HorizontalStepperVariant, status: HorizontalStepSt
     return <span data-counter aria-hidden="true" />;
   }
   if (variant === "breadcrumb" && status === "pending") return null;
-  return HORIZONTAL_STEP_INDICATOR_GLYPHS[variant][status];
+  // Same glyph grammar as the form controls: dim brackets, bold mark. The breadcrumb `✓` and `›`
+  // are unbracketed and pass through untouched.
+  return renderSelectableGlyph(HORIZONTAL_STEP_INDICATOR_GLYPHS[variant][status]);
 }

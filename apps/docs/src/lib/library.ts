@@ -1,4 +1,5 @@
 import rawConfig from "../../config/docs-libraries.json";
+import type { HookSourceData } from "./generated-doc-data";
 import {
   type ArtifactSourceConfig,
   type DocsLibraryConfigData,
@@ -10,10 +11,9 @@ export type DocsLibraryId = (typeof rawConfig.libraries)[number]["id"];
 // DocsLibrariesConfigSchema validates rawConfig at module load and refines
 // primaryLibraryId ∈ libraries[].id, so these JSON-derived id literals are the
 // validated boundary type — no cast or defensive re-check is needed downstream.
-const KNOWN_LIBRARY_IDS: readonly DocsLibraryId[] = rawConfig.libraries.map(
+export const DOCS_LIBRARY_IDS: readonly DocsLibraryId[] = rawConfig.libraries.map(
   (library) => library.id,
 );
-export const DOCS_LIBRARY_IDS: readonly DocsLibraryId[] = KNOWN_LIBRARY_IDS;
 export const PRIMARY_DOCS_LIBRARY_ID: DocsLibraryId = rawConfig.primaryLibraryId;
 
 const LIBRARY_CONFIG = Object.fromEntries(
@@ -31,7 +31,7 @@ function splitPathname(pathname: string): string[] {
 }
 
 export function isDocsLibraryId(value: string): value is DocsLibraryId {
-  return (KNOWN_LIBRARY_IDS as readonly string[]).includes(value);
+  return (DOCS_LIBRARY_IDS as readonly string[]).includes(value);
 }
 
 export function getDocsLibraryConfig(lib: DocsLibraryId): DocsLibraryConfigData {
@@ -49,6 +49,13 @@ export function getEnabledDocsLibraries(): DocsLibraryConfigData[] {
 export function hookFileName(name: string): string {
   const hookName = name.startsWith("use-") ? name : `use-${name}`;
   return `${hookName}.ts`;
+}
+
+/** Multi-file hooks carry explicit paths; single-file ones derive theirs from the hook name. */
+export function hookSourceFiles(name: string, hook: HookSourceData) {
+  return hook.files && hook.files.length > 0
+    ? hook.files
+    : [{ path: hookFileName(name), raw: hook.source.raw, highlighted: hook.source.highlighted }];
 }
 
 function prefixInstallItem(itemName: string, itemPrefix?: string): string {
@@ -115,7 +122,7 @@ export function getRouteSlugsFromPathname(pathname: string, library: DocsLibrary
   return normalizeRouteSlugs(rel.split("/"));
 }
 
-const DOCS_PATH_PATTERN = new RegExp(`^/(?:${KNOWN_LIBRARY_IDS.join("|")})(?:/|$)`);
+const DOCS_PATH_PATTERN = new RegExp(`^/(?:${DOCS_LIBRARY_IDS.join("|")})(?:/|$)`);
 
 export function isDocsPath(pathname?: string | null): boolean {
   if (!pathname) return false;

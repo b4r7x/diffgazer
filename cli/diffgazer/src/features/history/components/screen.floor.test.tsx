@@ -2,6 +2,7 @@ import { canonicalReviewFixture } from "@diffgazer/core/testing/review-facts";
 import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
+import { expectSingleHeavyCornerPane } from "../../../testing/reticle";
 import { HistoryScreen } from "./screen";
 
 const f = canonicalReviewFixture;
@@ -105,5 +106,24 @@ describe("HistoryScreen floor", () => {
     expect(frame).toContain("Jul 18");
     expect(frame).toContain("#c0ffee");
     expect(frame).toContain("ISSUES");
+  });
+
+  test("marks one pane with the heavy-corner reticle", async () => {
+    const { lastFrame } = renderRootFrame(100, 30, <HistoryScreen />);
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("RUNS"));
+    expectSingleHeavyCornerPane(lastFrame());
+  });
+
+  test("runs its panes down to the shortcut bar at 100x30", async () => {
+    const { lastFrame } = renderRootFrame(100, 30, <HistoryScreen />);
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("RUNS"));
+    const lines = stripAnsi(lastFrame() ?? "").split("\n");
+    const bottomBorder = lines.findLastIndex((line) => /[└┗]/.test(line));
+
+    expect(bottomBorder).toBeGreaterThan(0);
+    // No ragged gap between the pane bottoms and the key bar.
+    expect(lines.length - 1 - bottomBorder).toBeLessThanOrEqual(1);
   });
 });

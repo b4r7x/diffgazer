@@ -8,6 +8,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import { expectSingleReticle } from "@/testing/reticle";
 import { ReviewContainer } from "./container";
 
 vi.mock("../hooks/use-lifecycle", () => ({
@@ -113,6 +114,17 @@ describe("ReviewContainer configuration gates", () => {
       expect(screen.getByRole("alert")).toHaveTextContent("Configuration Unavailable");
     });
     expect(screen.queryByText("Model Required")).not.toBeInTheDocument();
+  });
+
+  it("brackets exactly one pane on the rendered gate", async () => {
+    mockLoadInit.mockResolvedValue(makeModelMissingInitResponse());
+    const { container } = renderReviewContainer();
+
+    await waitFor(() => {
+      expect(screen.getByText("Model Required")).toBeInTheDocument();
+    });
+
+    expectSingleReticle(container);
   });
 
   it("uses valid init setup data when only provider status fails", async () => {

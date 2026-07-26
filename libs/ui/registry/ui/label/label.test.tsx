@@ -179,7 +179,7 @@ describe("Label", () => {
     const standaloneControl = screen.getByRole("textbox", { name: "Standalone" });
 
     expect(disabledNote?.content).toContain(
-      "Wrapper mode automatically dims when it contains a disabled form control.",
+      "Wrapper mode automatically resolves the muted token when it contains a disabled form control",
     );
     expect(disabledNote?.content).toContain("Standalone mode does not inspect sibling controls");
     expect(disabledNote?.content).not.toContain("peer-disabled");

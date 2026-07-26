@@ -8,6 +8,10 @@ export const cornerLabelVariants = cva(
       variant: {
         border: "border border-border",
         gap: "",
+        // Readout is the reticle's own instrument, not a chip parked near it:
+        // it sits on the panel's top rule between the bracket arms (no border
+        // box - the arms are the frame) and tracks the pane's focused state.
+        readout: "-top-[9px] text-[11px] leading-none tracking-[0.18em]",
       },
     },
     defaultVariants: { variant: "border" },

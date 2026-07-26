@@ -2,6 +2,7 @@
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { errorMessage } from "./lib/error-message.mjs";
 import { runValidationChecks } from "./lib/run-checks.mjs";
 
 export const DEPLOY_RUNBOOK_PATHS = ["deploy/PUBLIC_DEPLOYMENT.md", "deploy/REVERSE_PROXY.md"];
@@ -38,8 +39,7 @@ export function collectDeployRunbookFailures(
     try {
       failures.push(...collectRunbookStyleFailures(path, readFile(path, "utf8")));
     } catch (error) {
-      const message =
-        error && typeof error === "object" && "message" in error ? error.message : String(error);
+      const message = errorMessage(error);
       failures.push(`${path}: ${message}`);
     }
   }

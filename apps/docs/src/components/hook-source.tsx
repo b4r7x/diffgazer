@@ -1,6 +1,6 @@
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { type HookData, type HookDataMap, hooksData } from "@/lib/generated-doc-data";
-import { hookFileName } from "@/lib/library";
+import { hookSourceFiles } from "@/lib/library";
 import { CopyButton } from "./copy-button";
 import { SourceViewer } from "./docs-mdx/source-viewer";
 
@@ -22,41 +22,8 @@ export function HookSource({ library, hook }: HookSourceProps) {
   );
 }
 
-interface HookSourceAllProps {
-  data: HookDataMap;
-  sectionTitle: string;
-  hint: React.ReactNode;
-}
-
-function HookSourceAll({ data, sectionTitle, hint }: HookSourceAllProps) {
-  const entries = Object.values(data);
-
-  if (entries.length === 0) return null;
-
-  return (
-    <div className="space-y-6">
-      <SectionHeader as="h3" className="mb-2">
-        {sectionTitle}
-      </SectionHeader>
-      <p className="text-sm text-muted-foreground">{hint}</p>
-      {entries.map((hook) => (
-        <HookSourceBlock key={hook.name} hook={hook} />
-      ))}
-    </div>
-  );
-}
-
 function HookSourceBlock({ hook }: { hook: HookData }) {
-  const files =
-    hook.files && hook.files.length > 0
-      ? hook.files
-      : [
-          {
-            path: hookFileName(hook.name),
-            raw: hook.source.raw,
-            highlighted: hook.source.highlighted,
-          },
-        ];
+  const files = hookSourceFiles(hook.name, hook);
   const isSingleFile = files.length === 1;
 
   return (
@@ -85,6 +52,19 @@ interface LibraryHookSourceProps {
 }
 
 export function LibraryHookSource({ library, sectionTitle, hint }: LibraryHookSourceProps) {
-  const data: HookDataMap = hooksData[library] ?? {};
-  return <HookSourceAll data={data} sectionTitle={sectionTitle} hint={hint} />;
+  const entries = Object.values(hooksData[library] ?? {});
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader as="h3" className="mb-2">
+        {sectionTitle}
+      </SectionHeader>
+      <p className="text-sm text-muted-foreground">{hint}</p>
+      {entries.map((hook) => (
+        <HookSourceBlock key={hook.name} hook={hook} />
+      ))}
+    </div>
+  );
 }

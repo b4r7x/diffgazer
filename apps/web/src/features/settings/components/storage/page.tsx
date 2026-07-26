@@ -25,7 +25,7 @@ export function SettingsStoragePage() {
   useScope("settings-storage");
 
   const actions = useSettingsFormActions({
-    canSave: !!effectiveStorage && isDirty,
+    saveAvailable: !!effectiveStorage && isDirty,
     getSettingsPayload: () => ({ secretsStorage: effectiveStorage }),
     contentShortcuts: [NAVIGATE_SHORTCUT, { key: "Enter/Space", label: "Select Storage" }],
     focusFallbackRef,

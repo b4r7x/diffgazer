@@ -1,4 +1,4 @@
-import { FooterProvider } from "@diffgazer/core/footer";
+import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { KeyboardProvider } from "@diffgazer/keys";
 import {
@@ -391,14 +391,57 @@ describe("not-found routing", () => {
     expect(router.options.defaultNotFoundComponent).toBe(NotFoundPage);
   });
 
+  it("labels the Esc shortcut with the action Esc actually runs", async () => {
+    function RightShortcutProbe() {
+      const { rightShortcuts } = useFooterData();
+      return (
+        <output>
+          {rightShortcuts.map((shortcut) => `${shortcut.key}:${shortcut.label}`).join("|")}
+        </output>
+      );
+    }
+
+    const rootRoute = createRootRoute({
+      component: () => (
+        <FooterProvider>
+          <KeyboardProvider>
+            <Outlet />
+            <RightShortcutProbe />
+          </KeyboardProvider>
+        </FooterProvider>
+      ),
+      notFoundComponent: NotFoundPage,
+    });
+    const notFoundRouter = createRouter({
+      routeTree: rootRoute.addChildren([
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path: "/",
+          component: () => <div>home</div>,
+        }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ["/stale-bookmark"] }),
+    });
+
+    render(<RouterProvider router={notFoundRouter} />);
+
+    await waitFor(() => expect(screen.getByText("Page Not Found")).toBeInTheDocument());
+    // Esc runs the secondary action, which reloads; "Back" would be a lie.
+    expect(screen.getByRole("status")).toHaveTextContent("Esc:Reload");
+  });
+
   it("sets the unmatched title and restores the matched title after returning home", async () => {
     const user = userEvent.setup();
     const rootRoute = createRootRoute({
+      // The real root outlet provides these, and the not-found view is a keyboard
+      // screen like every other dead end, so the harness mirrors that shell.
       component: () => (
-        <>
-          <HeadContent />
-          <Outlet />
-        </>
+        <FooterProvider>
+          <KeyboardProvider>
+            <HeadContent />
+            <Outlet />
+          </KeyboardProvider>
+        </FooterProvider>
       ),
     });
     const homeRoute = createRoute({
@@ -420,16 +463,13 @@ describe("not-found routing", () => {
       notFoundRouter.history.push("/stale-bookmark");
       await notFoundRouter.load();
     });
-    await waitFor(() => expect(screen.getByText("Page not found")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Page Not Found")).toBeInTheDocument());
     expect(document.title).toBe("Page not found — Diffgazer");
 
-    const homeLink = screen.getByRole("link", { name: /go home/i });
-    expect(homeLink).toHaveAttribute("href", "/");
-
-    await user.click(homeLink);
+    await user.click(screen.getByRole("button", { name: "Go to Home" }));
     await waitFor(() => expect(screen.getByText("home ready")).toBeInTheDocument());
     await waitFor(() => expect(document.title).toBe("Home — Diffgazer"));
-    expect(screen.queryByText("Page not found")).not.toBeInTheDocument();
+    expect(screen.queryByText("Page Not Found")).not.toBeInTheDocument();
   });
 });
 

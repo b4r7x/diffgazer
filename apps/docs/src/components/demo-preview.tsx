@@ -18,9 +18,12 @@ import {
   type LazyExoticComponent,
   type ReactNode,
   Suspense,
+  useRef,
+  useState,
 } from "react";
 import { CopyButton } from "@/components/copy-button";
 import { InsetPreviewPane } from "@/components/inset-preview-pane";
+import { type PreviewMode, usePreviewMode } from "@/components/preview-mode-context";
 import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { DOT_GRID_CLASS } from "@/components/shared/dot-grid";
 import { useTheme } from "@/hooks/theme-context";
@@ -110,7 +113,7 @@ function DefaultPreviewPane({
         </ScrollArea>
         {rawCode.length > 0 && (
           <PanelFooter>
-            <CopyButton text={rawCode} label="copy jsx" className="ml-auto uppercase" />
+            <CopyButton text={rawCode} label="copy tsx" className="ml-auto uppercase" />
           </PanelFooter>
         )}
       </Panel>
@@ -188,8 +191,20 @@ function CodePane({ code, rawCode }: { code: CodeBlockLineProps[]; rawCode: stri
 }
 
 export function DemoPreview({ title, demo, code, rawCode, frame = "default" }: DemoPreviewProps) {
+  const shared = usePreviewMode();
+  const [localMode, setLocalMode] = useState<PreviewMode>("preview");
+  const rootRef = useRef<HTMLDivElement>(null);
+  // Outside a docs page (MDX placements, unit tests) the strip is its own
+  // uncontrolled pair; inside one, every strip reads the page's single value.
+  const mode = shared?.mode ?? localMode;
+
+  const onModeChange = (next: PreviewMode) => {
+    if (shared) shared.setMode(next, rootRef.current);
+    else setLocalMode(next);
+  };
+
   return (
-    <div className="mb-6">
+    <div ref={rootRef} className="mb-6">
       {title && (
         <Typography
           as="h4"
@@ -199,7 +214,7 @@ export function DemoPreview({ title, demo, code, rawCode, frame = "default" }: D
           {title}
         </Typography>
       )}
-      <Tabs defaultValue="preview" variant="underline" size="sm">
+      <Tabs value={mode} onChange={onModeChange} variant="underline" size="sm">
         <TabsList className="mb-3">
           <TabsTrigger value="preview" className="text-xs">
             Preview

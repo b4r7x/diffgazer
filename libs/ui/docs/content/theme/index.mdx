@@ -55,11 +55,13 @@ Surface tokens describe stepwise elevation above the page background (`--base-bg
 
 ### Hard shadow
 
-Flat surfaces get their depth from a border plus `--surface-1`, not from blur. The one sanctioned shadow is `--shadow-hard`, a hard offset with zero blur, reserved for floating layers with deliberate brutalist emphasis (`Dialog`, `Menu` submenus, `Select` content and `variant="card"`, `CommandPalette`).
+Flat surfaces get their depth from a border plus `--surface-1`, not from blur. The one sanctioned shadow is `--shadow-hard`, a hard offset with zero blur, reserved for the **modal overlay tier** — `Dialog` and `CommandPalette`. Anchored overlays (`Popover`, `Tooltip`, `Select` content and `variant="card"`, `Menu` submenus) carry the surface step and hairline alone; see [Overlay elevation](#overlay-elevation).
+
+Both themes mix the offset from `--base-fg` at the same percentage, so the shadow reads identically on either background. A near-black offset over a near-black page composites to ~1.05:1 and disappears, which is why dark does not use pure black.
 
 | Token          | Dark default                | Light default                                                  |
 |----------------|-----------------------------|----------------------------------------------------------------|
-| `--shadow-hard` | `4px 4px 0 0 rgb(0 0 0 / 0.9)` | `4px 4px 0 0 color-mix(in oklab, var(--base-fg) 25%, transparent)` |
+| `--shadow-hard` | `4px 4px 0 0 color-mix(in oklab, var(--base-fg) 22%, transparent)` | `4px 4px 0 0 color-mix(in oklab, var(--base-fg) 22%, transparent)` |
 
 It has no Tailwind bridge (`--shadow-*` is Tailwind's own theme namespace), so consume it directly:
 
@@ -72,6 +74,17 @@ It has no Tailwind bridge (`--shadow-*` is Tailwind's own theme namespace), so c
   box-shadow: var(--shadow-hard);
 }
 ```
+
+### Overlay elevation
+
+Every overlay in the library shares one fill and differs only in whether it also carries the slab shadow. `OVERLAY_SURFACE` and `OVERLAY_SURFACE_MODAL` (`registry/ui/shared/overlay-surface.ts`) are the two class recipes; nothing else should re-spell them.
+
+| Tier | Surfaces | Recipe |
+|------|----------|--------|
+| Anchored | `Popover`, `Tooltip`, `Select.Content`, `Select variant="card"`, `Menu.SubContent` | `--surface-1` fill + 1px `--border` hairline + `--surface-1-highlight` inner lip |
+| Modal | `Dialog`, `CommandPalette` | the anchored fill and lip **plus** `--shadow-hard`; the hairline comes from each surface's own `frame` axis |
+
+The fill step is what carries the elevation when the offset shadow is clipped — at 375/390 the shadow falls off the viewport edge, and the panel still reads as a raised plane because it is a step off the page in both themes.
 
 ## Z-index scale
 

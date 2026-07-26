@@ -11,7 +11,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { cn } from "@/lib/utils";
 import { PanelContext, type PanelContextValue } from "./panel-context";
 import { PanelDescription } from "./panel-description";
 import { PanelTitle } from "./panel-title";
@@ -86,13 +85,8 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
   const [registeredTitleId, setRegisteredTitleId] = useState<string | null>(null);
   const [registeredDescriptionId, setRegisteredDescriptionId] = useState<string | null>(null);
 
-  const registerTitle = useCallback((nextId: string) => setRegisteredTitleId(nextId), []);
   const unregisterTitle = useCallback(
     (nextId: string) => setRegisteredTitleId((current) => (current === nextId ? null : current)),
-    [],
-  );
-  const registerDescription = useCallback(
-    (nextId: string) => setRegisteredDescriptionId(nextId),
     [],
   );
   const unregisterDescription = useCallback(
@@ -105,26 +99,20 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
   const resolvedDensity = density ?? "default";
   // The viewfinder frame owns resting corners; `focused` grows them on any frame.
   const hasCorners = resolvedFrame === "viewfinder" || focused === true;
+  const isFocused = focused === true;
 
   const contextValue = useMemo<PanelContextValue>(
     () => ({
       hasCorners,
+      focused: isFocused,
       titleId,
       descriptionId,
-      registerTitle,
+      registerTitle: setRegisteredTitleId,
       unregisterTitle,
-      registerDescription,
+      registerDescription: setRegisteredDescriptionId,
       unregisterDescription,
     }),
-    [
-      hasCorners,
-      titleId,
-      descriptionId,
-      registerTitle,
-      unregisterTitle,
-      registerDescription,
-      unregisterDescription,
-    ],
+    [hasCorners, isFocused, titleId, descriptionId, unregisterTitle, unregisterDescription],
   );
 
   const resolvedTitleId = registeredTitleId ?? findPanelChildId(children, PanelTitle, titleId);
@@ -157,7 +145,7 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
         aria-label={accessibleName["aria-label"]}
         aria-labelledby={accessibleName["aria-labelledby"]}
         aria-describedby={resolvedAriaDescribedBy}
-        className={cn(className)}
+        className={className}
       >
         {hasCorners ? (
           <span aria-hidden="true" data-slot="panel-corners">

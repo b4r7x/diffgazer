@@ -183,8 +183,7 @@ describe("createReview", () => {
         profile: "quick",
         files: ["a.ts"],
       },
-      undefined,
-      expect.any(Function),
+      { schema: expect.any(Function) },
     );
   });
 
@@ -226,11 +225,10 @@ describe("getReviews", () => {
 
     await getReviews(client, "/repo", cursor, 25);
 
-    expect(client.get).toHaveBeenCalledWith(
-      "/api/review/reviews",
-      { projectPath: "/repo", cursor, limit: "25" },
-      expect.any(Function),
-    );
+    expect(client.get).toHaveBeenCalledWith("/api/review/reviews", {
+      params: { projectPath: "/repo", cursor, limit: "25" },
+      schema: expect.any(Function),
+    });
   });
 });
 
@@ -251,12 +249,11 @@ describe("getActiveReviewSession", () => {
     const withMode = await getActiveReviewSession(withModeClient, "staged", signal);
 
     expect(withMode.session?.reviewId).toBe("11111111-1111-4111-8111-111111111111");
-    expect(withModeClient.get).toHaveBeenCalledWith(
-      "/api/review/sessions/active",
-      { mode: "staged" },
-      expect.any(Function),
-      { signal },
-    );
+    expect(withModeClient.get).toHaveBeenCalledWith("/api/review/sessions/active", {
+      params: { mode: "staged" },
+      signal,
+      schema: expect.any(Function),
+    });
 
     const withoutModeClient = createClient();
     vi.mocked(withoutModeClient.get).mockResolvedValue({ session: null });
@@ -264,12 +261,9 @@ describe("getActiveReviewSession", () => {
     const withoutMode = await getActiveReviewSession(withoutModeClient);
 
     expect(withoutMode.session).toBeNull();
-    expect(withoutModeClient.get).toHaveBeenCalledWith(
-      "/api/review/sessions/active",
-      undefined,
-      expect.any(Function),
-      undefined,
-    );
+    expect(withoutModeClient.get).toHaveBeenCalledWith("/api/review/sessions/active", {
+      schema: expect.any(Function),
+    });
   });
 
   it("normalizes invalid active-session payloads into ApiError", async () => {

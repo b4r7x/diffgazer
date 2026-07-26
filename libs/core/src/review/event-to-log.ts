@@ -5,7 +5,7 @@ import { pluralize, truncate } from "../strings.js";
 
 function getAgent(agentId: AgentId): { label: string; name: string } {
   const meta = AGENT_METADATA[agentId];
-  return { label: meta?.badgeLabel ?? "AGT", name: meta?.name ?? agentId };
+  return { label: meta.badgeLabel, name: meta.name };
 }
 
 export function getReviewEventLogSource(event: AgentStreamEvent | StepEvent): string | undefined {
@@ -30,51 +30,50 @@ export function convertReviewEventToLogEntry(
   const id = `${event.type}-${index}`;
   const { timestamp } = event;
 
-  if (event.type === "step_start") {
-    const meta = STEP_METADATA[event.step];
-    return {
-      id,
-      timestamp,
-      tag: "STEP",
-      tagType: "system",
-      message: `${meta.label}: ${meta.description}`,
-    };
-  }
-
-  if (event.type === "step_complete") {
-    const meta = STEP_METADATA[event.step];
-    return {
-      id,
-      timestamp,
-      tag: "DONE",
-      tagType: "system",
-      message: `${meta.label} complete`,
-    };
-  }
-
-  if (event.type === "step_error") {
-    const meta = STEP_METADATA[event.step];
-    return {
-      id,
-      timestamp,
-      tag: "FAIL",
-      tagType: "error",
-      message: `${meta.label} failed: ${event.error}`,
-      isWarning: true,
-    };
-  }
-
-  if (event.type === "review_started") {
-    return {
-      id,
-      timestamp,
-      tag: "START",
-      tagType: "system",
-      message: `Review started: ${pluralize(event.filesTotal, "file")} to analyze`,
-    };
-  }
-
   switch (event.type) {
+    case "step_start": {
+      const meta = STEP_METADATA[event.step];
+      return {
+        id,
+        timestamp,
+        tag: "STEP",
+        tagType: "system",
+        message: `${meta.label}: ${meta.description}`,
+      };
+    }
+
+    case "step_complete": {
+      const meta = STEP_METADATA[event.step];
+      return {
+        id,
+        timestamp,
+        tag: "DONE",
+        tagType: "system",
+        message: `${meta.label} complete`,
+      };
+    }
+
+    case "step_error": {
+      const meta = STEP_METADATA[event.step];
+      return {
+        id,
+        timestamp,
+        tag: "FAIL",
+        tagType: "error",
+        message: `${meta.label} failed: ${event.error}`,
+        isWarning: true,
+      };
+    }
+
+    case "review_started":
+      return {
+        id,
+        timestamp,
+        tag: "START",
+        tagType: "system",
+        message: `Review started: ${pluralize(event.filesTotal, "file")} to analyze`,
+      };
+
     case "orchestrator_start":
       return {
         id,

@@ -14,8 +14,7 @@ export function useSeverityFilter({ issues }: UseSeverityFilterOptions) {
   const [focusedFilterIndex, setFocusedFilterIndex] = useState(0);
 
   const filteredIssues = filterIssuesBySeverity(issues, severityFilter);
-  const selectedCount = severityFilter.size;
-  const isFilterActive = selectedCount > 0;
+  const isFilterActive = severityFilter.size > 0;
 
   const toggleSeverityFilter = () => {
     const sev = SEVERITY_ORDER[focusedFilterIndex];
@@ -35,7 +34,6 @@ export function useSeverityFilter({ issues }: UseSeverityFilterOptions) {
     setFocusedFilterIndex,
     toggleSeverityFilter,
     resetSeverityFilter,
-    selectedCount,
     isFilterActive,
   };
 }

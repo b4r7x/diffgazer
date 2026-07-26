@@ -5,7 +5,7 @@ function v(name: string): string {
 }
 
 export const docsCodeTheme = {
-  name: "tui-theme",
+  name: DOCS_CODE_THEME_NAME,
   type: "dark" as const,
   colors: {
     "editor.foreground": v("variable"),

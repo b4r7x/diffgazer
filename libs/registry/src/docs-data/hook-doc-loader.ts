@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { log } from "../logger.js";
 import { isWithinDir } from "../utils/fs.js";
 import { toDocExportName } from "./naming.js";
 import type { HookDoc } from "./types.js";
@@ -50,7 +49,7 @@ export function createHookDocLoader(
     try {
       assertSafeRelativeFileName(fileName);
     } catch (err) {
-      log.warn(`Rejected hook doc name: ${err}`);
+      console.warn(`Rejected hook doc name: ${err}`);
       return null;
     }
     const docPath = resolve(resolvedDocsDir, `${fileName}.ts`);
@@ -65,7 +64,7 @@ export function createHookDocLoader(
       if (!isHookDoc(value)) return null;
       return value;
     } catch (err) {
-      log.warn(`Failed to load hook doc: ${err}`);
+      console.warn(`Failed to load hook doc: ${err}`);
       return null;
     }
   };

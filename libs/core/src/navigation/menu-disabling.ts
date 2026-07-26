@@ -5,9 +5,14 @@ export interface MenuDisablingContext {
   hasResumableSession: boolean;
 }
 
-const REVIEW_START_ACTIONS = new Set<MenuAction>(["review-unstaged", "review-staged"]);
+export type ReviewStartAction = Extract<MenuAction, "review-unstaged" | "review-staged">;
 
-export function isReviewStartAction(id: MenuAction): boolean {
+const REVIEW_START_ACTIONS: ReadonlySet<MenuAction> = new Set<MenuAction>([
+  "review-unstaged",
+  "review-staged",
+]);
+
+export function isReviewStartAction(id: MenuAction): id is ReviewStartAction {
   return REVIEW_START_ACTIONS.has(id);
 }
 

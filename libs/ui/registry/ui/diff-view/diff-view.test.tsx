@@ -4,9 +4,10 @@ import { fileURLToPath } from "node:url";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef, useLayoutEffect } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { ParsedDiff } from "@/lib/diff";
 import { axe } from "../../../testing/axe";
+import { atRuleBody, ruleBody } from "../../testing/css-contract";
 import { computeDiff, DiffView } from "./index";
 
 const ONE_HUNK: ParsedDiff = {
@@ -267,9 +268,9 @@ describe("DiffView", () => {
 
     render(<DiffView patch={patch} />);
 
-    expect(screen.getByText("src/app.ts", { selector: "figcaption" })).toHaveTextContent(
-      /^src\/app\.ts$/,
-    );
+    expect(
+      screen.getByText("src/app.ts", { selector: '[data-slot="diff-view-caption-path"]' }),
+    ).toHaveTextContent(/^src\/app\.ts$/);
   });
 
   it("shows 'No changes' when diff has no hunks", () => {
@@ -296,6 +297,19 @@ describe("DiffView", () => {
     expect(status).not.toHaveClass("sr-only");
     expect(status).toHaveTextContent("No changes");
     expect(mutations.some((mutation) => mutation.target === status)).toBe(true);
+  });
+
+  it("dresses the empty band in the same hatched material as an unmatched pane", () => {
+    const { container, rerender } = render(<DiffView diff={NO_CHANGES} />);
+    const status = screen.getByRole("status");
+
+    expect(status).toHaveAttribute("data-empty", "true");
+    expect(container.querySelector('[data-slot="diff-view-empty-label"]')).toHaveTextContent(
+      "No changes",
+    );
+
+    rerender(<DiffView diff={ONE_HUNK} />);
+    expect(screen.getByRole("status")).not.toHaveAttribute("data-empty");
   });
 
   it("renders EOF newline-only changes instead of the empty state", () => {
@@ -631,22 +645,38 @@ describe("DiffView", () => {
     ] as const)("toggles the data-line-numbers contract and gutter numbers across every rows container in %s mode", (mode) => {
       const { container, rerender } = render(<DiffView diff={ONE_HUNK} mode={mode} />);
 
-      const rowsWithoutNumbers = container.querySelectorAll('[data-slot="diff-view-rows"]');
-      expect(rowsWithoutNumbers.length).toBeGreaterThan(0);
-      for (const rows of rowsWithoutNumbers) {
-        expect(rows).toHaveAttribute("data-line-numbers", "false");
-      }
-      expect(container.querySelectorAll(".diff-num")).toHaveLength(0);
-
-      rerender(<DiffView diff={ONE_HUNK} mode={mode} showLineNumbers />);
-
       const rowsWithNumbers = container.querySelectorAll('[data-slot="diff-view-rows"]');
-      expect(rowsWithNumbers.length).toBe(rowsWithoutNumbers.length);
+      expect(rowsWithNumbers.length).toBeGreaterThan(0);
       for (const rows of rowsWithNumbers) {
         expect(rows).toHaveAttribute("data-line-numbers", "true");
       }
       expect(screen.getAllByText("2", { selector: ".diff-num" }).length).toBeGreaterThan(0);
       expect(screen.getAllByText("4", { selector: ".diff-num" }).length).toBeGreaterThan(0);
+
+      rerender(<DiffView diff={ONE_HUNK} mode={mode} showLineNumbers={false} />);
+
+      const rowsWithoutNumbers = container.querySelectorAll('[data-slot="diff-view-rows"]');
+      expect(rowsWithoutNumbers.length).toBe(rowsWithNumbers.length);
+      for (const rows of rowsWithoutNumbers) {
+        expect(rows).toHaveAttribute("data-line-numbers", "false");
+      }
+      expect(container.querySelectorAll(".diff-num")).toHaveLength(0);
+    });
+
+    it('keeps the gutter off under variant="bare", where a gutter is chrome', () => {
+      const { container, rerender } = render(
+        <DiffView diff={ONE_HUNK} variant="bare" label="Bare diff" />,
+      );
+      expect(container.querySelector('[data-slot="diff-view-rows"]')).toHaveAttribute(
+        "data-line-numbers",
+        "false",
+      );
+
+      rerender(<DiffView diff={ONE_HUNK} variant="bare" label="Bare diff" showLineNumbers />);
+      expect(container.querySelector('[data-slot="diff-view-rows"]')).toHaveAttribute(
+        "data-line-numbers",
+        "true",
+      );
     });
   });
 
@@ -679,6 +709,95 @@ describe("DiffView", () => {
     expect(removed.length).toBeGreaterThan(0);
     for (const cell of added) expect(cell.textContent).toBe("+");
     for (const cell of removed) expect(cell.textContent).toBe("−");
+  });
+
+  describe("caption stat", () => {
+    const getStat = (container: HTMLElement) =>
+      container.querySelector('[data-slot="diff-view-stat"]');
+
+    it("reads the counts out of the parsed hunks by default", () => {
+      const { container } = render(<DiffView diff={ONE_HUNK} />);
+      const stat = getStat(container);
+
+      expect(stat).not.toBeNull();
+      expect(stat).toHaveTextContent("+2");
+      expect(stat).toHaveTextContent("−1");
+    });
+
+    it("pluralizes the counts into the figure's accessible name", () => {
+      render(<DiffView diff={ONE_HUNK} />);
+      expect(screen.getByRole("figure")).toHaveAccessibleName(/2 additions, 1 deletion/);
+    });
+
+    it("renders nothing when stat is off", () => {
+      const { container } = render(<DiffView diff={ONE_HUNK} stat={false} />);
+      expect(getStat(container)).toBeNull();
+      expect(container.querySelector('[data-slot="diff-view-caption-path"]')).toHaveTextContent(
+        "src/app.ts",
+      );
+    });
+
+    it("renders nothing for a context-only diff rather than +0 −0", () => {
+      const contextOnly: ParsedDiff = {
+        oldPath: "src/app.ts",
+        newPath: "src/app.ts",
+        hunks: [
+          {
+            oldStart: 1,
+            oldCount: 1,
+            newStart: 1,
+            newCount: 1,
+            heading: "",
+            changes: [{ type: "context", content: "run()", oldLine: 1, newLine: 1 }],
+          },
+        ],
+      };
+      const { container } = render(<DiffView diff={contextOnly} />);
+      expect(getStat(container)).toBeNull();
+    });
+
+    it('goes with the suppressed caption under variant="bare"', () => {
+      const { container } = render(
+        <DiffView diff={ONE_HUNK} variant="bare" label="Bare changes" />,
+      );
+      expect(container.querySelector("figcaption")).toBeNull();
+      expect(getStat(container)).toBeNull();
+    });
+  });
+
+  describe("wrap", () => {
+    it("surfaces the tri-state wrap contract on the figure", () => {
+      const { container, rerender } = render(<DiffView diff={ONE_HUNK} />);
+      // Absent by design: CSS owns the responsive default.
+      expect(getFigure(container)).not.toHaveAttribute("data-wrap");
+
+      rerender(<DiffView diff={ONE_HUNK} wrap />);
+      expect(getFigure(container)).toHaveAttribute("data-wrap", "on");
+
+      rerender(<DiffView diff={ONE_HUNK} wrap={false} />);
+      expect(getFigure(container)).toHaveAttribute("data-wrap", "off");
+    });
+
+    it("leaves the rendered line text untouched so copy still yields the source", () => {
+      const { container, rerender } = render(<DiffView diff={ONE_HUNK} wrap={false} />);
+      const read = () =>
+        [...container.querySelectorAll(".diff-code")].map((cell) => cell.textContent);
+      const unwrapped = read();
+
+      rerender(<DiffView diff={ONE_HUNK} wrap />);
+      expect(read()).toEqual(unwrapped);
+    });
+
+    it("keeps hunk navigation and the highlight working while wrapped", async () => {
+      const user = userEvent.setup();
+      const { container } = render(<DiffView diff={THREE_HUNKS} wrap />);
+
+      const rows = screen.getByRole("region", { name: "Unified diff" });
+      rows.focus();
+      await user.keyboard("j");
+
+      expect(container.querySelectorAll("[data-hunk][data-highlighted]")).toHaveLength(1);
+    });
   });
 
   it('has no a11y violations in variant="bare"', async () => {
@@ -815,4 +934,74 @@ describe("diff signal contrast (parsed from CSS)", () => {
       }
     });
   }
+});
+
+describe("DiffView CSS contract", () => {
+  // jsdom lays out no stylesheet and drops @layer-nested rules from its CSSOM,
+  // so the shipped source is the contract for these geometry decisions.
+  const CSS_PATH = resolve(fileURLToPath(import.meta.url), "../diff-view.css");
+  let css = "";
+  let components = "";
+
+  beforeAll(() => {
+    css = readFileSync(CSS_PATH, "utf8");
+    components = atRuleBody(css, "@layer components");
+  });
+
+  it("turns the rows container into a non-scrollport under wrap", () => {
+    const wrapOn = ruleBody(components, '[data-slot="diff-view"][data-wrap="on"]');
+
+    // The consuming declarations read the switch exactly once each, so the
+    // wrapped and unwrapped paths cannot drift apart.
+    expect(components).toContain("overflow-x: var(--diff-rows-overflow-x)");
+    expect(components).toContain("min-width: var(--diff-row-min-width)");
+    expect(wrapOn).toContain("--diff-rows-overflow-x: hidden");
+    expect(wrapOn).toContain("--diff-row-min-width: 0");
+    expect(wrapOn).toContain("--diff-code-white-space: pre-wrap");
+  });
+
+  it("hangs continuations 2ch in and pins the gutter to the first visual line", () => {
+    const wrapOn = ruleBody(components, '[data-slot="diff-view"][data-wrap="on"]');
+
+    expect(components).toContain("text-indent: var(--diff-code-indent)");
+    expect(components).toContain("padding-inline-start: var(--diff-code-pad-start)");
+    expect(components).toContain("align-self: var(--diff-gutter-align)");
+    expect(wrapOn).toContain("--diff-code-indent: -2ch");
+    expect(wrapOn).toContain("--diff-code-pad-start: 2.5ch");
+    expect(wrapOn).toContain("--diff-gutter-align: start");
+  });
+
+  it("wraps by default below 40rem unless the consumer opted out", () => {
+    const narrow = atRuleBody(components, "@container diff-view (max-width: 40rem)");
+    expect(narrow).toContain('[data-slot="diff-view"]:not([data-wrap="off"])');
+    expect(narrow).toContain("--diff-code-white-space: pre-wrap");
+    expect(ruleBody(components, '[data-slot="diff-view"]')).toContain("container-name: diff-view");
+  });
+
+  it("paints the empty band and the unmatched row from one hatch declaration", () => {
+    const emptyRow = ruleBody(components, '[data-row][data-state="empty"]');
+    const emptyBand = ruleBody(components, '[data-slot="diff-view-empty"][data-empty]');
+
+    expect(emptyRow).toContain("background-image: var(--diff-hatch)");
+    expect(emptyBand).toContain("background-image: var(--diff-hatch)");
+    expect(emptyBand).toContain("min-height: 44px");
+  });
+
+  it('drops the hatch under variant="bare" and in forced colors', () => {
+    const bare = ruleBody(
+      components,
+      '[data-slot="diff-view"][data-variant="bare"] [data-slot="diff-view-empty"][data-empty]',
+    );
+    const forced = atRuleBody(components, "@media (forced-colors: active)");
+
+    expect(bare).toContain("background-image: none");
+    expect(ruleBody(forced, '[data-slot="diff-view-empty"][data-empty]')).toContain(
+      "border: 1px dashed GrayText",
+    );
+  });
+
+  it("keeps the line-number gutter out of a copied selection", () => {
+    const gutter = ruleBody(components, "\n  .diff-num");
+    expect(gutter).toContain("user-select: none");
+  });
 });

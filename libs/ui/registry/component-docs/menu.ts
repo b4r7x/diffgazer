@@ -13,7 +13,16 @@ export const menuDoc: ComponentDoc = {
     { name: "MenuItemRadio", indent: 1, note: "Radio-style selectable item" },
     { name: "MenuSub", indent: 1, note: "Submenu container (manages open state)" },
     { name: "MenuSubTrigger", indent: 2, note: "Trigger item that opens the submenu" },
-    { name: "MenuSubContent", indent: 2, note: "Floating panel for submenu content" },
+    {
+      name: "MenuSubContent",
+      indent: 2,
+      note: "Submenu content — a side flyout, or a drill-down inside the parent panel",
+    },
+    {
+      name: "MenuStackBack",
+      indent: 3,
+      note: "Sticky back row rendered automatically in drill-down mode",
+    },
   ],
   notes: [
     {
@@ -25,6 +34,11 @@ export const menuDoc: ComponentDoc = {
       title: "Row Columns",
       content:
         "A default row is icon, label, accelerator. The label column starts immediately after the icon and the [n] accelerator is pushed to the row end, so rows with and without an accelerator keep their labels aligned. Detail rows keep the same shape with a right-aligned value instead of an accelerator.",
+    },
+    {
+      title: "Submenu presentation",
+      content:
+        'Menu.Sub takes mode="flyout" | "stack" | "auto" (default "auto"). A flyout is a side-anchored panel. A stack is a drill-down: the submenu replaces the item list inside the SAME panel, at the same width and left edge, with a sticky back row that is both the breadcrumb and the pop control. "auto" resolves to stack at coarse pointer or below 640px, resolved before the submenu ever opens so touch never sees a flyout frame — a side flyout has nowhere to go on a narrow screen and ends up shifted back over the rows it came from, hiding them. The key model is identical in both: ArrowRight/Enter pushes, ArrowLeft/Escape pops, and Escape at the root level still closes the menu. While drilled in, the parent items are removed from the DOM tree that navigation reads, so arrow keys and typeahead never reach a row the user cannot see.',
     },
     {
       title: "Built-in Keyboard Navigation",
@@ -40,6 +54,7 @@ export const menuDoc: ComponentDoc = {
     { name: "menu-icons", title: "Custom Icons" },
     { name: "menu-disabled", title: "Disabled Items" },
     { name: "menu-submenu", title: "Submenu" },
+    { name: "menu-submenu-stack", title: "Submenu (drill-down stack)" },
     { name: "menu-keyboard", title: "Controlled Keyboard Navigation" },
   ],
   keyboard: {
@@ -353,6 +368,13 @@ export const menuDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description: "Fired when the submenu open state changes.",
+      },
+      mode: {
+        type: '"flyout" | "stack" | "auto"',
+        required: false,
+        defaultValue: '"auto"',
+        description:
+          'Presentation. "flyout" opens a side-anchored panel; "stack" drills down inside the parent panel with a back row. "auto" picks stack on touch or below 640px, where a side flyout has nowhere to go.',
       },
       children: {
         type: "ReactNode",

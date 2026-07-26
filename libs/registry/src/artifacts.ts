@@ -7,7 +7,6 @@ import {
   PACKAGE_ARTIFACT_ROOT,
 } from "./constants.js";
 import { computeArtifactFingerprint } from "./fingerprint.js";
-import { log } from "./logger.js";
 import type { ArtifactManifest } from "./manifest.js";
 import { normalizeOrigin, rewriteOriginsInDir } from "./origin.js";
 import {
@@ -169,7 +168,7 @@ export function copyArtifactsToPackage(options: CopyArtifactsToPackageOptions): 
   cpSync(source, target, { recursive: true, force: true });
   rewritePackageArtifactManifest(target, PACKAGE_ARTIFACT_ROOT);
 
-  log.info(`[${label}] copied artifacts from ${source}`);
+  console.log(`[${label}] copied artifacts from ${source}`);
 }
 
 function rewritePackageArtifactManifest(target: string, packageArtifactDir: string): void {

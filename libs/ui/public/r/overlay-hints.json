@@ -1,0 +1,29 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "overlay-hints",
+  "title": "Overlay Hints",
+  "description": "Shared keyboard hint bar for overlay footers, collapsing at coarse pointer",
+  "registryDependencies": [
+    "https://r.b4r7.dev/r/ui/kbd.json",
+    "https://r.b4r7.dev/r/ui/utils.json"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/shared/overlay-hints.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentProps, ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { Kbd } from \"../kbd/kbd\";\n\n/** Props for overlay hints item. */\nexport interface OverlayHintsItemProps extends Omit<ComponentProps<\"span\">, \"children\"> {\n  /** Key names rendered as Kbd chips, in press order. */\n  keys: string[];\n  /**\n   * Marks the hint as useful without a keyboard. Unmarked items are hidden at\n   * coarse pointer, and a bar where nothing survives collapses entirely.\n   */\n  touch?: boolean;\n  /** What the keys do. */\n  children: ReactNode;\n  /** Size of the rendered Kbd chips. */\n  size?: \"sm\" | \"md\";\n}\n\n/** One key group plus its label. */\nfunction OverlayHintsItem({\n  keys,\n  touch = false,\n  size = \"md\",\n  children,\n  className,\n  ...rest\n}: OverlayHintsItemProps) {\n  return (\n    <span\n      {...rest}\n      data-slot=\"overlay-hints-item\"\n      data-touch={touch ? \"\" : undefined}\n      className={className}\n    >\n      {keys.map((key) => (\n        <Kbd key={key} size={size}>\n          {key}\n        </Kbd>\n      ))}\n      <span>{children}</span>\n    </span>\n  );\n}\n\n/** Props for overlay hints. */\nexport interface OverlayHintsProps extends ComponentProps<\"div\"> {\n  /** OverlayHints.Item children. */\n  children: ReactNode;\n}\n\n/**\n * Keyed legend for a keyboard surface — the one piece of chrome that says the\n * product is keyboard-first, so every overlay spells it the same way.\n *\n * Hidden from assistive technology by default: the shortcuts are already\n * reachable through the real controls and their `aria-keyshortcuts`, and\n * announcing \"↑ ↓ Navigate\" inside a listbox is noise. Pass\n * `aria-hidden={false}` when the key names should be discoverable by AT.\n */\nexport function OverlayHintsRoot({\n  children,\n  className,\n  \"aria-hidden\": ariaHidden = true,\n  ...rest\n}: OverlayHintsProps) {\n  return (\n    <div\n      {...rest}\n      aria-hidden={ariaHidden}\n      data-slot=\"overlay-hints\"\n      className={cn(\"text-xs\", className)}\n    >\n      {children}\n    </div>\n  );\n}\n\nexport const OverlayHints = Object.assign(OverlayHintsRoot, { Item: OverlayHintsItem });\n",
+      "type": "registry:ui",
+      "target": "@ui/shared/overlay-hints.tsx"
+    },
+    {
+      "path": "registry/ui/shared/overlay-hints.css",
+      "content": "/*\n * OverlayHints — the keyed legend a keyboard-first overlay uses to teach its\n * keys. One layout, one collapse rule, one place to change touch behaviour.\n * The host surface owns its own separator and padding; this file owns only the\n * row itself, so a hint bar never doubles the hairline it sits behind.\n */\n@layer components {\n  [data-slot=\"overlay-hints\"] {\n    display: flex;\n    flex-wrap: wrap;\n    align-items: center;\n    min-width: 0;\n    /* Wrap to a second row rather than scrolling horizontally: at 390 a fourth\n       hint no longer fits on one line. */\n    gap: 4px 16px;\n  }\n\n  [data-slot=\"overlay-hints-item\"] {\n    display: inline-flex;\n    align-items: center;\n    gap: 6px;\n    color: var(--muted-foreground);\n  }\n\n  /*\n   * Touch has no keyboard, so a key legend is instructions the user cannot\n   * follow. Items are hidden unless the consumer marked them touch-relevant,\n   * and a bar with nothing left collapses entirely rather than leaving an empty\n   * strip — that recovers a full row of a 390-wide overlay.\n   */\n  @media (pointer: coarse) {\n    [data-slot=\"overlay-hints\"][aria-hidden=\"true\"]\n      [data-slot=\"overlay-hints-item\"]:not([data-touch]) {\n      display: none;\n    }\n\n    [data-slot=\"overlay-hints\"][aria-hidden=\"true\"]:not(:has([data-touch])) {\n      display: none;\n    }\n\n    /* Collapsing the bar is not enough: a host chrome row whose only content is\n       that collapsed bar keeps painting its border, padding and background — a\n       dead 17px strip under the CommandPalette list at 390. The row that exists\n       solely to hold the legend goes with it, once, here. The two :has() calls\n       stay siblings on purpose — :has() inside :has() is invalid and drops the\n       whole rule. */\n    :has(> [data-slot=\"overlay-hints\"][aria-hidden=\"true\"]:only-child):not(:has([data-touch])) {\n      display: none;\n    }\n\n    /* A legend the consumer deliberately exposed to AT (Dialog) is the only\n       place its shortcut is announced, and touch screen readers exist — so it\n       leaves the visual flow, not the accessibility tree. Absolutely positioned\n       content reserves no height, so a bar whose items all went out of flow\n       paints exactly like the display:none case above, and the host row that\n       exists only to hold it collapses the same way. */\n    [data-slot=\"overlay-hints\"][aria-hidden=\"false\"]\n      [data-slot=\"overlay-hints-item\"]:not([data-touch]),\n    :has(> [data-slot=\"overlay-hints\"][aria-hidden=\"false\"]:only-child):not(:has([data-touch])) {\n      position: absolute;\n      width: 1px;\n      height: 1px;\n      padding: 0;\n      margin: -1px;\n      overflow: hidden;\n      clip-path: inset(50%);\n      white-space: nowrap;\n    }\n  }\n}\n",
+      "type": "registry:style",
+      "target": "~/styles/overlay-hints.css"
+    }
+  ],
+  "meta": {
+    "client": true,
+    "hidden": true
+  },
+  "type": "registry:ui"
+}

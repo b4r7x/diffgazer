@@ -183,9 +183,11 @@ describe("HistoryScreen review details", () => {
       );
     const { stdin, lastFrame } = renderHistoryScreen(getReview);
 
-    await waitUntil(() => (lastFrame() ?? "").includes("disk unreadable"));
+    // The pane wraps prose, so the failure message is matched on unwrapped text.
+    const unwrapped = () => (lastFrame() ?? "").replace(/\s*│\s*/g, " ").replace(/\s+/g, " ");
+    await waitUntil(() => unwrapped().includes("disk unreadable"));
 
-    const errorFrame = lastFrame() ?? "";
+    const errorFrame = unwrapped();
     expect(errorFrame).toContain("SEVERITY BREAKDOWN");
     expect(errorFrame).toContain("4m 12s");
     expect(errorFrame).toContain("Focus this pane, then press");

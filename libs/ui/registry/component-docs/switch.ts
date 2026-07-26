@@ -17,6 +17,16 @@ export const switchDoc: ComponentDoc = {
         'The thumb renders a binary glyph — "1" when checked, "0" when unchecked — so the on/off state stays readable without relying on track inversion or thumb position. The glyph is aria-hidden; role="switch" plus aria-checked carries the state for assistive technology.',
     },
     {
+      title: "Labelled Row",
+      content:
+        "Pass label (and optionally description) to render the same row grammar Checkbox and Radio use: track on the left, label on the right, one shared gap and one shared 44px coarse-pointer height. The label is wired as the accessible name through aria-labelledby, the description through aria-describedby, and clicking either forwards to the control. An explicit aria-label still wins. With neither prop the render is unchanged, so hand-rolled rows keep working.",
+    },
+    {
+      title: "Disabled Treatment",
+      content:
+        "A disabled switch dashes its track border and resolves the thumb to the recessed surface with a muted digit — the same disabled grammar Input and Textarea use. It is not an opacity fade: forced-colors mode drops opacity but keeps border-style, so the state stays visible in high-contrast themes.",
+    },
+    {
       title: "Form Submission",
       content:
         'Switch renders a hidden native checkbox when name or required is set. The value prop controls the form-submission string (default "on"). Pass form to associate both the switch and its form mirror with a remote form.',
@@ -43,6 +53,12 @@ export const switchDoc: ComponentDoc = {
       appliesTo: "Switch",
       values: '"checked" | "unchecked"',
       description: "Reflects the checked state for track and thumb styling.",
+    },
+    {
+      attribute: "data-slot",
+      appliesTo: "Switch row",
+      values: '"switch-row"',
+      description: "Present on the row wrapper rendered when label or description is set.",
     },
     {
       attribute: "data-disabled",
@@ -101,6 +117,19 @@ export const switchDoc: ComponentDoc = {
         required: false,
         defaultValue: "false",
         description: "Disables the switch and hidden input.",
+      },
+      label: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description:
+          "Visible label rendered beside the track. Wires aria-labelledby and makes the whole row a tap target.",
+      },
+      description: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Visible description under the label, wired with aria-describedby.",
       },
       size: {
         type: '"sm" | "md"',

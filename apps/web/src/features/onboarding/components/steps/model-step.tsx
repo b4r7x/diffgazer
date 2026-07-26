@@ -121,7 +121,9 @@ function ModelInfoList({
                 </Badge>
               </span>
             }
-            description={model.description}
+            // An empty description means the name already said everything, so the
+            // row keeps one line and adds no empty node to aria-describedby.
+            description={model.description || undefined}
           />
         ))}
       </ModelRadioGroup>

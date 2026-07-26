@@ -167,10 +167,6 @@ function describeCall(expression) {
   return null;
 }
 
-function isFunctionLike(node) {
-  return ts.isFunctionLike(node);
-}
-
 function isEnabledTestCallback(node, checker, testSymbols) {
   if (
     (!ts.isArrowFunction(node) && !ts.isFunctionExpression(node)) ||
@@ -290,13 +286,13 @@ function isAfterUnconditionalExit(node, testCallback) {
 
 function findContainingTestCallback(node, checker, testSymbols) {
   let current = node.parent;
-  while (current && !isFunctionLike(current)) current = current.parent;
+  while (current && !ts.isFunctionLike(current)) current = current.parent;
   return current && isEnabledTestCallback(current, checker, testSymbols) ? current : null;
 }
 
 function findEnclosingFunction(node) {
   let current = node.parent;
-  while (current && !isFunctionLike(current)) current = current.parent;
+  while (current && !ts.isFunctionLike(current)) current = current.parent;
   return current ?? null;
 }
 

@@ -3,6 +3,26 @@ import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 
+function describeReviewLoadError(
+  status: number | undefined,
+  errorMessage: string | undefined,
+): { title: string; message: string } {
+  switch (status) {
+    case 400:
+      return { title: "Invalid Review ID", message: "The review ID format is invalid." };
+    case 404:
+      return {
+        title: "Review Not Found",
+        message: "The review session was not found or has expired.",
+      };
+    default:
+      return {
+        title: "Error Loading Review",
+        message: errorMessage || "An error occurred while loading the review.",
+      };
+  }
+}
+
 export function useReviewErrorHandler() {
   const navigate = useNavigate();
 
@@ -11,13 +31,7 @@ export function useReviewErrorHandler() {
       const status = isApiError(error) ? error.status : undefined;
       const errorMessage = isApiError(error) ? error.message : undefined;
 
-      let title = "Error Loading Review";
-      if (status === 400) title = "Invalid Review ID";
-      if (status === 404) title = "Review Not Found";
-
-      let message = errorMessage || "An error occurred while loading the review.";
-      if (status === 400) message = "The review ID format is invalid.";
-      if (status === 404) message = "The review session was not found or has expired.";
+      const { title, message } = describeReviewLoadError(status, errorMessage);
 
       toast.error(title, { message });
       navigate({ to: "/" });

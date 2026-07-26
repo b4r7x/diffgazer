@@ -365,6 +365,71 @@ describe("Switch", () => {
     expect(thumb?.className).toContain("motion-reduce:transition-none");
   });
 
+  it("takes its accessible name from label and lets aria-label override it", () => {
+    const { rerender } = render(<Switch label="Telemetry" />);
+    expect(screen.getByRole("switch", { name: "Telemetry" })).toBeInTheDocument();
+
+    rerender(<Switch label="Telemetry" aria-label="Send telemetry" />);
+    expect(screen.getByRole("switch", { name: "Send telemetry" })).toBeInTheDocument();
+  });
+
+  it("toggles when the label text is clicked", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Switch label="Telemetry" onChange={onChange} />);
+
+    await user.click(screen.getByText("Telemetry"));
+    expect(onChange).toHaveBeenCalledWith(true);
+    expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("ignores label clicks while disabled", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Switch label="Telemetry" disabled onChange={onChange} />);
+
+    await user.click(screen.getByText("Telemetry"));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("wires description into the accessible description", () => {
+    render(<Switch label="Telemetry" description="Sends anonymous usage counts." />);
+    expect(screen.getByRole("switch", { name: "Telemetry" })).toHaveAccessibleDescription(
+      "Sends anonymous usage counts.",
+    );
+  });
+
+  it("keeps the label row a 44px coarse-pointer target", () => {
+    const { container } = render(<Switch label="Telemetry" />);
+    // Touch-target contract from the mobile campaign; jsdom cannot measure layout, so the class
+    // that reserves the height is the assertion, exactly as in Checkbox and Radio.
+    const row = container.querySelector('[data-slot="switch-row"]');
+    expect(row?.className).toContain("pointer-coarse:min-h-11");
+  });
+
+  it("renders no row when neither label nor description is set", () => {
+    const { container } = render(<Switch aria-label="Toggle" />);
+    expect(container.querySelector('[data-slot="switch-row"]')).toBeNull();
+  });
+
+  it("has no a11y violations with a label and a description", async () => {
+    const { container } = render(<Switch label="Telemetry" description="Anonymous counts." />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("carries disabled on the track border-style, not on opacity", () => {
+    // The class IS the contract here, the way it already is for Input's dashed disabled edge:
+    // forced-colors mode repaints colors and ignores opacity, so a faded disabled switch was
+    // indistinguishable from an enabled one. A dashed border survives that repaint.
+    const { rerender } = render(<Switch aria-label="Toggle" />);
+    expect(screen.getByRole("switch").className).not.toContain("border-dashed");
+
+    rerender(<Switch disabled aria-label="Toggle" />);
+    const track = screen.getByRole("switch");
+    expect(track.className).toContain("border-dashed");
+    expect(track.className).not.toContain("opacity-50");
+  });
+
   it("has no a11y violations across states", async () => {
     const { container, rerender } = render(<Switch aria-label="Toggle" />);
     expect(await axe(container)).toHaveNoViolations();

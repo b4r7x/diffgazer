@@ -1,40 +1,62 @@
 import { describe, expect, test } from "vitest";
 import { computePaneLayout, getVisibleHistoryPanes } from "./pane-layout";
 
-const WIDE = { columns: 120, isNarrow: false, isMedium: false, contentRows: 30, warningCount: 0 };
+const WIDE = { columns: 120, isNarrow: false, contentRows: 30, warningCount: 0 };
 
 describe("computePaneLayout", () => {
   test("splits a wide frame into three side-by-side panes that fit the content width", () => {
     const layout = computePaneLayout(WIDE);
 
-    expect(layout.sectionsWidth).toBe(24);
-    expect(layout.insightsWidth).toBe(40);
+    expect(layout.sectionsWidth).toBe(16);
+    expect(layout.insightsWidth).toBe(50);
     expect(layout.sectionsPaneWidth).toBe(layout.sectionsWidth);
-    expect(layout.sectionsWidth + layout.insightsWidth + layout.runsPaneWidth).toBe(120 - 4);
+    expect(layout.sectionsWidth + layout.insightsWidth + layout.runsPaneWidth).toBe(120);
+    expect(layout.runsPaneWidth).toBeGreaterThanOrEqual(44);
     expect(layout.canStackPanes).toBe(true);
     expect(layout.paneSlotHeight).toBe(layout.paneHeight);
   });
 
-  test("holds every pane to a minimum width on a narrow-but-medium frame", () => {
-    const layout = computePaneLayout({ ...WIDE, columns: 60, isMedium: true });
+  test("holds every pane to a minimum width on a narrow frame", () => {
+    const layout = computePaneLayout({ ...WIDE, columns: 60 });
 
-    expect(layout.sectionsWidth).toBe(16);
+    expect(layout.sectionsWidth).toBe(14);
     expect(layout.insightsWidth).toBe(26);
     expect(layout.runsPaneWidth).toBeGreaterThanOrEqual(1);
+  });
+
+  test("never gives a wider frame less room than a narrower one", () => {
+    const widths = [80, 100, 120, 160].map((columns) => computePaneLayout({ ...WIDE, columns }));
+
+    for (let index = 1; index < widths.length; index += 1) {
+      const previous = widths[index - 1];
+      const current = widths[index];
+      if (previous === undefined || current === undefined) throw new Error("missing layout");
+      expect(current.insightsWidth).toBeGreaterThanOrEqual(previous.insightsWidth);
+      expect(current.runsPaneWidth).toBeGreaterThanOrEqual(previous.runsPaneWidth);
+    }
   });
 
   test("gives each stacked pane a third of the height when the narrow stack fits", () => {
     const layout = computePaneLayout({ ...WIDE, isNarrow: true, contentRows: 40 });
 
-    expect(layout.paneHeight).toBe(30);
+    expect(layout.paneHeight).toBe(33);
     expect(layout.canStackPanes).toBe(true);
-    expect(layout.paneSlotHeight).toBe(10);
-    expect(layout.listHeight).toBe(6);
-    expect(layout.insightScrollHeight).toBe(5);
+    expect(layout.paneSlotHeight).toBe(11);
+    expect(layout.listHeight).toBe(7);
+    expect(layout.insightScrollHeight).toBe(6);
+  });
+
+  test("gives the shallowest stacking frame a slot that still holds the insights chrome", () => {
+    const layout = computePaneLayout({ ...WIDE, isNarrow: true, contentRows: 25 });
+
+    expect(layout.paneHeight).toBe(18);
+    expect(layout.canStackPanes).toBe(true);
+    expect(layout.paneSlotHeight).toBe(6);
+    expect(layout.insightScrollHeight).toBe(1);
   });
 
   test("stops stacking when a third of the height cannot hold the insights chrome", () => {
-    const layout = computePaneLayout({ ...WIDE, isNarrow: true, contentRows: 25 });
+    const layout = computePaneLayout({ ...WIDE, isNarrow: true, contentRows: 22 });
 
     expect(layout.paneHeight).toBe(15);
     expect(layout.canStackPanes).toBe(false);
@@ -43,7 +65,7 @@ describe("computePaneLayout", () => {
 
   test("reserves rows for the warning callout and never returns a zero-height pane", () => {
     const withWarnings = computePaneLayout({ ...WIDE, warningCount: 2 });
-    expect(withWarnings.paneHeight).toBe(30 - 10 - 6);
+    expect(withWarnings.paneHeight).toBe(30 - 7 - 6);
 
     const squeezed = computePaneLayout({ ...WIDE, contentRows: 4, warningCount: 3 });
     expect(squeezed.paneHeight).toBe(1);

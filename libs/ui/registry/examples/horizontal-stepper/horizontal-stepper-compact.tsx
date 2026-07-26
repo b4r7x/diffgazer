@@ -48,8 +48,14 @@ export default function HorizontalStepperCompact() {
         </div>
       </Demo>
 
-      <Demo caption="Constrained to 280px — the glyph run drops out too, leaving the text">
+      <Demo caption="Constrained to 280px — the run windows to previous/active/next with +N counters">
         <div className="max-w-[280px] border border-border p-3">
+          <SetupStepper />
+        </div>
+      </Demo>
+
+      <Demo caption="Constrained to 200px — only the active step is left, glyph included">
+        <div className="max-w-[200px] border border-border p-3">
           <SetupStepper />
         </div>
       </Demo>

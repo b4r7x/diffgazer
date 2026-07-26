@@ -215,11 +215,23 @@ export function HomePagePresentation({
     handleActivate(id);
   };
 
+  // Opening the run you just made is the most likely next action on home, and
+  // its id is already printed in the CONTEXT panel - so the row is a real
+  // action, reachable by click and by [o], with the same guards as r/R/l.
+  const openLastRun = () => {
+    if (isStartingReview || context.lastRunId === undefined) return;
+    void navigate({
+      to: "/review/{-$reviewId}",
+      params: { reviewId: context.lastRunId },
+    });
+  };
+
   useKey(
     {
       r: () => activateShortcut("review-unstaged"),
       R: () => activateShortcut("review-staged"),
       l: () => activateShortcut("resume-review"),
+      o: openLastRun,
     },
     { enabled: !showsTrustPanel },
   );
@@ -250,6 +262,7 @@ export function HomePagePresentation({
           isTrusted={isTrusted}
           projectPath={repoRoot ?? undefined}
           pending={isStartingReview}
+          onOpenLastRun={context.lastRunId === undefined ? undefined : openLastRun}
         />
       </div>
     </div>

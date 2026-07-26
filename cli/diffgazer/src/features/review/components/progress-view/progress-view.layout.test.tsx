@@ -146,8 +146,11 @@ describe("ReviewProgressView (TUI) layout", () => {
     );
 
     await vi.waitFor(() => expect(lastFrame()).toContain("NARROW-ACTIVITY-VISIBLE"));
+    // One action surface: Cancel is published to the shortcut bar, never as a
+    // second in-content button row.
+    await vi.waitFor(() => expect(lastFrame()).toContain("[c] Cancel"));
     const frame = lastFrame() ?? "";
-    expect(frame).toContain("Cancel");
+    expect(frame.split("Cancel")).toHaveLength(2);
     expect(frame.split("\n")).toHaveLength(24);
   });
 
@@ -186,5 +189,70 @@ describe("ReviewProgressView (TUI) layout", () => {
 
     await vi.waitFor(() => expect(lastFrame()).toContain("LOG-EVENT-12"));
     expect(lastFrame()?.split("\n")).toHaveLength(24);
+  });
+
+  test("degrades to a one-line ledger and announces the agents it cannot list at 60x24", async () => {
+    const { lastFrame } = renderRootFrame(
+      60,
+      24,
+      <ReviewProgressView
+        progressSteps={DEFAULT_STEPS}
+        agents={DEFAULT_AGENTS.slice(0, 3).map(makeAgent)}
+        events={[]}
+        fileProgress={{ total: 12, current: 1, currentFile: "src/a.ts", completed: [] }}
+        isStreaming
+        error={null}
+        notices={[]}
+        onCancel={vi.fn()}
+        issuesFound={0}
+        startedAt={new Date("2026-01-01T00:00:00.000Z")}
+        completedAt={null}
+      />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("PROGRESS OVERVIEW"));
+    const lines = stripAnsi(lastFrame() ?? "").split("\n");
+
+    expect(lines).toHaveLength(24);
+    // No orphaned metrics box: a top border is never the last box row drawn.
+    const orphanBox = lines.findIndex(
+      (line, index) =>
+        /^\s*┌─+┐\s*$/.test(line) &&
+        !lines.slice(index + 1).some((row) => /^\s*└─+┘\s*$/.test(row)),
+    );
+    expect(orphanBox).toBe(-1);
+    // Data that cannot be listed is announced, never silently dropped.
+    expect(lines.some((line) => line.includes("3 agents running"))).toBe(true);
+    expect(lines.some((line) => line.includes("Files in Prompt"))).toBe(true);
+  });
+
+  test("keeps the api-key recovery callout whole inside an 80 by 24 root frame", async () => {
+    const { lastFrame } = renderRootFrame(
+      80,
+      24,
+      <ReviewProgressView
+        progressSteps={DEFAULT_STEPS.slice(0, 3)}
+        agents={DEFAULT_AGENTS.slice(0, 3).map(makeAgent)}
+        events={[]}
+        fileProgress={{ total: 12, current: 1, currentFile: "src/a.ts", completed: [] }}
+        isStreaming={false}
+        error="API-key rejected"
+        notices={[]}
+        onGoToSettings={vi.fn()}
+        issuesFound={0}
+        startedAt={new Date("2026-01-01T00:00:00.000Z")}
+        completedAt={null}
+      />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("API Key Error"));
+    const lines = stripAnsi(lastFrame() ?? "").split("\n");
+
+    expect(lines).toHaveLength(24);
+    // The recovery line is the callout's third content row, so the reserve has
+    // to pay for it: the callout keeps its closing border inside the frame.
+    const recoveryRow = lines.findIndex((line) => line.includes("Press s to open Settings."));
+    expect(recoveryRow).toBeGreaterThan(-1);
+    expect(lines.slice(recoveryRow + 1).some((line) => line.includes("\u2518"))).toBe(true);
   });
 });

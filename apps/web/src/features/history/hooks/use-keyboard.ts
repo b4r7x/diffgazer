@@ -231,8 +231,11 @@ export function useHistoryKeyboard({
 
   const { shortcuts, rightShortcuts } = getHistoryFooter(focusZone);
 
+  // The error branch renders its own FailureView footer; publishing history
+  // shortcuts here would overwrite it, since parent effects run last.
   usePageFooter({
     shortcuts,
     rightShortcuts,
+    enabled,
   });
 }

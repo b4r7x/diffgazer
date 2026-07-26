@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
 import type { ReactNode } from "react";
-import { selectionFill } from "../../theme/chrome";
+import { selectionHue } from "../../theme/chrome";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 
@@ -25,7 +25,7 @@ function getRowEmphasis(
   { disabled, highlighted }: Pick<SelectableItemRowProps, "disabled" | "highlighted">,
 ): RowEmphasis {
   if (disabled) return { color: tokens.muted, bold: false };
-  if (highlighted) return { color: selectionFill(tokens), bold: true };
+  if (highlighted) return { color: selectionHue(tokens), bold: true };
   return { color: undefined, bold: false };
 }
 

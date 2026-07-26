@@ -25,6 +25,11 @@ export const emptyStateDoc: ComponentDoc = {
       indent: 1,
       note: "Optional action area for buttons/links. Gap adapts via context.",
     },
+    {
+      name: "EmptyStateHint",
+      indent: 1,
+      note: "Quiet keyboard affordance for Kbd children. Non-interactive; font size adapts via context.",
+    },
   ],
   notes: [
     {
@@ -47,6 +52,16 @@ export const emptyStateDoc: ComponentDoc = {
         "Compose semantic parts for icon, message, description, and actions. All parts consume size from the root via React context. Variant controls root layout only.",
     },
     {
+      title: "Keyboard Hint",
+      content:
+        "EmptyStateHint is the keyboard affordance: compose it with Kbd so an empty screen ends with the key that fills it instead of a full stop. It is deliberately non-interactive — on a touch surface there is no key to press, so render EmptyStateActions (a real button) there and let the Hint be the desktop affordance; the two compose, Actions above and Hint below. Kbd is a peer composition, so copy-mode consumers who never use the hint are not forced to pull it. The inline variant lays its root out as a row, so a Message + Hint pair needs flex-col on that instance to stack.",
+    },
+    {
+      title: "Writing Empty States",
+      content:
+        "Name what is missing, name the action, name the key. Active voice, present tense, no apology and no 'oops'. Keep the hint to about three words — under live it is announced right after the message, so a sentence there becomes a paragraph in the ear.",
+    },
+    {
       title: "Accessibility",
       content:
         'For empty states that appear dynamically (e.g., after filtering returns no results), set live on the root. This adds role="status" and aria-live="polite" so screen readers announce the change. A live EmptyState must stay mounted across the results→empty transition: render it unconditionally (empty while results exist) and swap its children, instead of conditionally mounting it already containing its message — many screen-reader/browser pairs do not announce a live region inserted with content already inside it.',
@@ -56,6 +71,7 @@ export const emptyStateDoc: ComponentDoc = {
   examples: [
     { name: "empty-state-default", title: "Default" },
     { name: "empty-state-variants", title: "Variants" },
+    { name: "empty-state-hint", title: "Keyboard hint" },
     { name: "empty-state-live", title: "Dynamic (live)" },
   ],
   keyboard: null,
@@ -119,6 +135,14 @@ export const emptyStateDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description: "Action buttons or links.",
+      },
+    },
+    EmptyStateHint: {
+      children: {
+        type: "ReactNode",
+        required: false,
+        defaultValue: null,
+        description: "Keyboard affordance copy, typically Kbd chips plus two or three words.",
       },
     },
   },

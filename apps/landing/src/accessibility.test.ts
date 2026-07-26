@@ -63,19 +63,19 @@ describe("landing accessibility contracts", () => {
       }
     });
 
-    it("names the HUD wordmark once, with both visual variants hidden from the a11y tree", () => {
+    it("names the HUD wordmark once, with the ascii art hidden from the a11y tree", () => {
       mountLanding();
 
       const wordmark = document.querySelector<HTMLElement>(".hud-tl");
       const figlet = wordmark?.querySelector<HTMLElement>(".logo-figlet");
-      const word = wordmark?.querySelector<HTMLElement>(".logo-word");
 
       // One canonical accessible spelling across landing, web, and docs: the
       // brand is lowercase, however loudly the ascii art renders it.
       expect(wordmark?.getAttribute("aria-label")).toBe("diffgazer");
+      // The figlet is the mark at every width now, so there is no second
+      // letter-spaced variant to hide or to name.
       expect(figlet?.getAttribute("aria-hidden")).toBe("true");
-      expect(word?.getAttribute("aria-hidden")).toBe("true");
-      expect(word?.textContent).toBe("DIFFGAZER");
+      expect(wordmark?.querySelector(".logo-word")).toBeNull();
     });
 
     it("exposes the install figlet as a single labeled image, not raw ascii", () => {

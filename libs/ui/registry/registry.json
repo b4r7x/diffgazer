@@ -326,6 +326,45 @@
       ]
     },
     {
+      "name": "overlay-surface",
+      "type": "registry:ui",
+      "title": "Overlay Surface",
+      "description": "Shared elevation grammar for the overlay family, in an anchored and a modal tier",
+      "registryDependencies": [],
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/shared/overlay-surface.ts",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "overlay-hints",
+      "type": "registry:ui",
+      "title": "Overlay Hints",
+      "description": "Shared keyboard hint bar for overlay footers, collapsing at coarse pointer",
+      "registryDependencies": ["kbd", "utils"],
+      "meta": {
+        "client": true,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/shared/overlay-hints.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/shared/overlay-hints.css",
+          "type": "registry:style",
+          "target": "~/styles/overlay-hints.css"
+        }
+      ]
+    },
+    {
       "name": "checkbox",
       "type": "registry:ui",
       "title": "Checkbox",
@@ -341,6 +380,7 @@
         "fieldset-disabled",
         "selectable-collection",
         "selectable-variants",
+        "selectable-glyph",
         "utils",
         "composed-refs",
         "warn-unregistered-value"
@@ -409,6 +449,7 @@
         "fieldset-disabled",
         "selectable-collection",
         "selectable-variants",
+        "selectable-glyph",
         "utils",
         "composed-refs",
         "warn-unregistered-value"
@@ -681,6 +722,10 @@
         {
           "path": "registry/ui/empty-state/empty-state-actions.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/empty-state/empty-state-hint.tsx",
+          "type": "registry:ui"
         }
       ]
     },
@@ -814,7 +859,9 @@
         "aria",
         "utils",
         "composed-refs",
-        "trigger-interop"
+        "trigger-interop",
+        "overlay-surface",
+        "overlay-hints"
       ],
       "meta": {
         "client": true,
@@ -1020,7 +1067,9 @@
         "outside-click",
         "utils",
         "floating-panel",
-        "composed-refs"
+        "composed-refs",
+        "overlay-surface",
+        "is-mobile"
       ],
       "meta": {
         "client": true,
@@ -1078,6 +1127,10 @@
         {
           "path": "registry/ui/menu/menu-sub.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/menu/menu-stack.tsx",
+          "type": "registry:ui"
         }
       ]
     },
@@ -1096,7 +1149,8 @@
         "icons",
         "aria",
         "composed-refs",
-        "warn-unregistered-value"
+        "warn-unregistered-value",
+        "marker-rail"
       ],
       "meta": {
         "client": true,
@@ -1454,7 +1508,13 @@
         "client": true
       },
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "step-status", "horizontal-stepper-variants", "utils"],
+      "registryDependencies": [
+        "theme",
+        "step-status",
+        "horizontal-stepper-variants",
+        "selectable-glyph",
+        "utils"
+      ],
       "files": [
         {
           "path": "registry/ui/horizontal-stepper/index.ts",
@@ -1499,7 +1559,8 @@
         "utils",
         "composed-refs",
         "dom-id",
-        "@diffgazer-keys/scroll-lock"
+        "@diffgazer-keys/scroll-lock",
+        "overlay-hints"
       ],
       "meta": {
         "client": true,
@@ -1524,6 +1585,10 @@
         },
         {
           "path": "registry/ui/command-palette/command-palette-input.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/command-palette/command-palette-count.tsx",
           "type": "registry:ui"
         },
         {
@@ -1591,7 +1656,8 @@
         "typeahead-buffer",
         "utils",
         "composed-refs",
-        "dom-id"
+        "dom-id",
+        "overlay-surface"
       ],
       "meta": {
         "client": true,
@@ -1926,7 +1992,7 @@
       "title": "TOC",
       "description": "Headless-friendly table of contents primitives for section navigation",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "utils"],
+      "registryDependencies": ["theme", "utils", "marker-rail"],
       "meta": {
         "client": true
       },
@@ -2345,6 +2411,42 @@
       ]
     },
     {
+      "name": "selectable-glyph",
+      "type": "registry:lib",
+      "title": "Selectable Glyph",
+      "description": "Splits a bracket glyph into dim chrome and a full-contrast mark",
+      "dependencies": [],
+      "registryDependencies": ["utils"],
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/selectable-glyph.tsx",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "marker-rail",
+      "type": "registry:lib",
+      "title": "Marker Rail",
+      "description": "Shared left-rail mark for the selected row, with an inverted-row variant",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": false,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/lib/marker-rail.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "corner-label-variants",
       "type": "registry:lib",
       "title": "Corner Label Variants",
@@ -2527,7 +2629,7 @@
       "title": "Sidebar Variants",
       "description": "Shared CVA visual contracts for the Sidebar primitive (container + item, six active-marker variants).",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": [],
+      "registryDependencies": ["marker-rail"],
       "meta": {
         "client": false,
         "hidden": true
@@ -2790,7 +2892,8 @@
         "@diffgazer-keys/focusable",
         "utils",
         "composed-refs",
-        "trigger-interop"
+        "trigger-interop",
+        "overlay-surface"
       ],
       "meta": {
         "client": true,
@@ -2844,6 +2947,7 @@
         "form-reset",
         "compose-refs",
         "fieldset-disabled",
+        "selectable-variants",
         "utils",
         "composed-refs"
       ],
@@ -2879,6 +2983,11 @@
         {
           "path": "registry/ui/progress/progress.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/progress/progress.css",
+          "type": "registry:style",
+          "target": "~/styles/progress.css"
         }
       ]
     },
@@ -2888,7 +2997,7 @@
       "title": "Skeleton",
       "description": "Loading placeholder with pulse animation",
       "dependencies": [],
-      "registryDependencies": ["theme", "utils"],
+      "registryDependencies": ["theme"],
       "meta": {
         "client": false
       },
@@ -2900,6 +3009,11 @@
         {
           "path": "registry/ui/skeleton/skeleton.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/skeleton/skeleton.css",
+          "type": "registry:style",
+          "target": "~/styles/skeleton.css"
         }
       ]
     }

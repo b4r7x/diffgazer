@@ -34,7 +34,7 @@ export function SettingsAgentExecutionPage() {
   // save action disabled (the loading guard returns before render, but the footer
   // hook runs).
   const actions = useSettingsFormActions({
-    canSave: settings !== undefined && canSaveDerived,
+    saveAvailable: settings !== undefined && canSaveDerived,
     getSettingsPayload: () => ({ agentExecution: effectiveMode }),
     contentShortcuts: [NAVIGATE_SHORTCUT, { key: "Enter/Space", label: "Select Mode" }],
     focusFallbackRef,

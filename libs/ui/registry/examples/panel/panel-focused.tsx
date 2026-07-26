@@ -28,7 +28,7 @@ export default function PanelFocused() {
       <Panel frame="viewfinder">
         <Panel.Header>
           <Panel.Title as="h3">Viewfinder resting</Panel.Title>
-          <Panel.Description>20px brackets in --foreground.</Panel.Description>
+          <Panel.Description>16px brackets in --border-strong.</Panel.Description>
         </Panel.Header>
         <Panel.Content spacing="none">
           <Panel.Row label="Frame" value="viewfinder" />

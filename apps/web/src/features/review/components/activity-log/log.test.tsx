@@ -4,11 +4,22 @@ import {
   type ReviewState,
   reviewReducer,
 } from "@diffgazer/core/review";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { AGENT_METADATA, type AgentState } from "@diffgazer/core/schemas/events";
+import { act, render as baseRender, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, ReactElement, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { ReviewClockProvider } from "../../hooks/use-review-clock";
 import { ActivityLog } from "./log";
+
+function RunningClock({ children }: { children: ReactNode }) {
+  return <ReviewClockProvider running>{children}</ReviewClockProvider>;
+}
+
+/** The pinned tail row prints seconds off the screen clock, so it needs one. */
+function render(ui: ReactElement) {
+  return baseRender(ui, { wrapper: RunningClock });
+}
 
 const timestamp = "2026-01-01T00:00:00.000Z";
 
@@ -139,24 +150,24 @@ describe("ActivityLog native callbacks", () => {
     vi.useFakeTimers();
     try {
       let state = createTaggedState([makeEvent(0)]);
-      const { rerender } = render(<ActivityLog events={state.events} showCursor />);
+      const { rerender } = render(<ActivityLog events={state.events} streamState="flowing" />);
       const log = screen.getByRole("log");
       const status = screen.getByRole("status");
 
       expect(log).toHaveAttribute("aria-live", "off");
-      expect(status).toHaveTextContent("");
+      expect(status).not.toHaveTextContent("event-0");
 
       state = appendEvent(state, makeEvent(1));
-      rerender(<ActivityLog events={state.events} showCursor />);
+      rerender(<ActivityLog events={state.events} streamState="flowing" />);
       act(() => vi.advanceTimersByTime(749));
-      expect(status).toHaveTextContent("");
+      expect(status).not.toHaveTextContent("event-1");
       act(() => vi.advanceTimersByTime(1));
       expect(status).toHaveTextContent("event-1");
 
       state = appendEvent(state, makeEvent(2));
-      rerender(<ActivityLog events={state.events} showCursor />);
+      rerender(<ActivityLog events={state.events} streamState="flowing" />);
       state = appendEvent(state, makeEvent(3));
-      rerender(<ActivityLog events={state.events} showCursor />);
+      rerender(<ActivityLog events={state.events} streamState="flowing" />);
       act(() => vi.advanceTimersByTime(750));
       expect(status).toHaveTextContent("event-3");
       expect(status).not.toHaveTextContent("event-2");
@@ -170,7 +181,7 @@ describe("ActivityLog native callbacks", () => {
     try {
       let state = createTaggedState([makeEvent(0)]);
       const { rerender } = render(
-        <ActivityLog events={state.events} showCursor sourceFilter="Detective" />,
+        <ActivityLog events={state.events} streamState="flowing" sourceFilter="Detective" />,
       );
       const status = screen.getByRole("status");
 
@@ -180,9 +191,11 @@ describe("ActivityLog native callbacks", () => {
         thought: "guardian-event",
         timestamp,
       });
-      rerender(<ActivityLog events={state.events} showCursor sourceFilter="Detective" />);
+      rerender(
+        <ActivityLog events={state.events} streamState="flowing" sourceFilter="Detective" />,
+      );
       act(() => vi.advanceTimersByTime(750));
-      expect(status).toHaveTextContent("");
+      expect(status).not.toHaveTextContent("guardian-event");
 
       state = appendEvent(state, {
         type: "agent_thinking",
@@ -190,7 +203,9 @@ describe("ActivityLog native callbacks", () => {
         thought: "detective-event",
         timestamp,
       });
-      rerender(<ActivityLog events={state.events} showCursor sourceFilter="Detective" />);
+      rerender(
+        <ActivityLog events={state.events} streamState="flowing" sourceFilter="Detective" />,
+      );
       act(() => vi.advanceTimersByTime(750));
       expect(status).toHaveTextContent("detective-event");
     } finally {
@@ -402,5 +417,147 @@ describe("ActivityLog streaming", () => {
 
     await waitFor(() => expect(log.scrollTop).toBe(300));
     expect(screen.getByText("event-2")).toBeInTheDocument();
+  });
+});
+
+describe("ActivityLog heartbeats and live tail row", () => {
+  function heartbeat(progress: number): ReviewEvent {
+    return {
+      type: "agent_progress",
+      agent: "detective",
+      progress,
+      message: "Waiting for model response",
+      timestamp,
+    };
+  }
+
+  const runningDetective: AgentState[] = [
+    {
+      id: "detective",
+      status: "running",
+      progress: 65,
+      issueCount: 0,
+      meta: AGENT_METADATA.detective,
+    },
+  ];
+
+  it("keeps heartbeat pings out of the log body", () => {
+    let state = createTaggedState([makeEvent(0)]);
+    for (const progress of [10, 20, 30, 40]) state = appendEvent(state, heartbeat(progress));
+
+    render(<ActivityLog events={state.events} streamState="flowing" />);
+
+    expect(screen.getByText("event-0")).toBeVisible();
+    expect(screen.queryAllByText(/Waiting for model response/)).toHaveLength(0);
+  });
+
+  it("still appends a real event after a burst of heartbeats", () => {
+    let state = createTaggedState([makeEvent(0)]);
+    state = appendEvent(state, heartbeat(10));
+    state = appendEvent(state, makeEvent(1));
+
+    render(<ActivityLog events={state.events} streamState="flowing" />);
+
+    expect(screen.getByText("event-1")).toBeVisible();
+  });
+
+  it("pins what is happening now, with the agent and the elapsed time", () => {
+    const state = createTaggedState([makeEvent(0)]);
+
+    render(
+      <ActivityLog
+        events={state.events}
+        streamState="flowing"
+        agents={runningDetective}
+        startTime={new Date(Date.now() - 46_000)}
+      />,
+    );
+
+    expect(screen.getByText("Detective · waiting for model response · 46.0s")).toBeVisible();
+  });
+
+  it("keeps counting the elapsed time while the run stays silent", () => {
+    vi.useFakeTimers();
+    try {
+      const state = createTaggedState([makeEvent(0)]);
+
+      render(
+        <ActivityLog
+          events={state.events}
+          streamState="flowing"
+          agents={runningDetective}
+          startTime={new Date(Date.now() - 46_000)}
+        />,
+      );
+
+      act(() => vi.advanceTimersByTime(3_000));
+
+      expect(screen.getByText("Detective · waiting for model response · 49.0s")).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("narrows the tail row to the filtered agent", () => {
+    const state = createTaggedState([makeEvent(0)]);
+
+    render(
+      <ActivityLog
+        events={state.events}
+        streamState="flowing"
+        sourceFilter="Detective"
+        agents={runningDetective}
+        startTime={new Date(Date.now() - 12_000)}
+      />,
+    );
+
+    expect(screen.getByText("Detective · waiting for model response · 12.0s")).toBeVisible();
+  });
+
+  it("freezes the cursor and names the stall when the stream dies", () => {
+    const state = createTaggedState([makeEvent(0)]);
+
+    const { container } = render(
+      <ActivityLog
+        events={state.events}
+        streamState="stalled"
+        agents={runningDetective}
+        startTime={new Date(Date.now() - 90_000)}
+        lastEventAt={Date.now() - 51_000}
+      />,
+    );
+
+    expect(screen.getByText("stream stalled · last event 51.0s ago")).toBeVisible();
+    expect(container.querySelector("[data-log-tail]")).toHaveAttribute("data-log-tail", "stalled");
+    // class assertion retained: the frozen cursor is CSS-only, so the absence of
+    // the blink class is the only observable form the stopped cursor takes.
+    expect(container.querySelector(".cursor-blink")).toBeNull();
+  });
+
+  it("stops announcing the tail sentence once the run is over", () => {
+    const state = createTaggedState([makeEvent(0)]);
+    const tail = (streamState: "flowing" | undefined) => (
+      <ActivityLog
+        events={state.events}
+        streamState={streamState}
+        agents={runningDetective}
+        startTime={new Date(Date.now() - 5_000)}
+      />
+    );
+
+    const { rerender } = render(tail("flowing"));
+    expect(screen.getByRole("status")).toHaveTextContent("Detective · waiting for model response");
+
+    rerender(tail(undefined));
+
+    expect(screen.getByRole("status")).toHaveTextContent("");
+  });
+
+  it("leaves no dangling cursor once the run is over", () => {
+    const state = createTaggedState([makeEvent(0)]);
+
+    render(<ActivityLog events={state.events} agents={runningDetective} />);
+
+    expect(screen.queryByText(/waiting for model response/)).not.toBeInTheDocument();
   });
 });

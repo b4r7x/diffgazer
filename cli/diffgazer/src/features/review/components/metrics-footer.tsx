@@ -5,11 +5,24 @@ import {
 } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import { SURFACE_BORDER } from "../../../theme/chrome";
+import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
+
+function getMetricColor(
+  id: string,
+  metrics: ReviewProgressMetrics,
+  tokens: CliColorTokens,
+): string {
+  if (id === "elapsed") return tokens.info;
+  if (id === "issues-found" && metrics.issuesFound > 0) return tokens.warning;
+  return tokens.fg;
+}
 
 export interface ReviewMetricsFooterProps {
   metrics: ReviewProgressMetrics;
   elapsed: number;
+  /** Drops the border for a one-line ledger, which can never half-draw. */
+  compact?: boolean;
 }
 
 /**
@@ -20,9 +33,32 @@ export interface ReviewMetricsFooterProps {
 export const REVIEW_METRICS_FOOTER_ROWS =
   buildReviewMetricsRows({ filesProcessed: 0, filesTotal: 0, issuesFound: 0 }, 0).length + 2;
 
-export function ReviewMetricsFooter({ metrics, elapsed }: ReviewMetricsFooterProps) {
+/** The borderless ledger: one line, whatever the metric count. */
+export const REVIEW_METRICS_COMPACT_ROWS = 1;
+
+export function ReviewMetricsFooter({
+  metrics,
+  elapsed,
+  compact = false,
+}: ReviewMetricsFooterProps) {
   const { tokens } = useTheme();
   const rows = buildReviewMetricsRows(metrics, formatTime(elapsed));
+
+  if (compact) {
+    return (
+      <Box height={1} overflow="hidden">
+        <Text wrap="truncate-end">
+          {rows.map((row, index) => (
+            <Text key={row.id}>
+              {index > 0 ? <Text color={tokens.muted}>{" \u00b7 "}</Text> : null}
+              <Text color={tokens.muted}>{`${row.label} `}</Text>
+              <Text color={getMetricColor(row.id, metrics, tokens)}>{row.value}</Text>
+            </Text>
+          ))}
+        </Text>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -31,18 +67,12 @@ export function ReviewMetricsFooter({ metrics, elapsed }: ReviewMetricsFooterPro
       borderColor={tokens.border}
       paddingX={1}
     >
-      {rows.map((row) => {
-        let color = tokens.fg;
-        if (row.id === "elapsed") color = tokens.info;
-        if (row.id === "issues-found" && metrics.issuesFound > 0) color = tokens.warning;
-
-        return (
-          <Text key={row.id}>
-            <Text color={tokens.muted}>{row.label}: </Text>
-            <Text color={color}>{row.value}</Text>
-          </Text>
-        );
-      })}
+      {rows.map((row) => (
+        <Text key={row.id}>
+          <Text color={tokens.muted}>{row.label}: </Text>
+          <Text color={getMetricColor(row.id, metrics, tokens)}>{row.value}</Text>
+        </Text>
+      ))}
     </Box>
   );
 }

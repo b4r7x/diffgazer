@@ -41,10 +41,37 @@ describe("ReviewSummaryView", () => {
     renderSummary({ reviewId: "7685a1b2-0000-4000-8000-000000000000" });
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Review Complete #7685");
-    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(3);
-    expect(screen.getByRole("heading", { level: 2, name: "Severity Breakdown" })).toBeVisible();
-    expect(screen.getByRole("heading", { level: 2, name: "Issues by Category" })).toBeVisible();
     expect(screen.getByRole("heading", { level: 2, name: /top issues preview/i })).toBeVisible();
+  });
+
+  it("names both summary regions so assistive tech can reach them", () => {
+    renderSummary();
+
+    expect(screen.getByRole("region", { name: "Severity breakdown" })).toBeVisible();
+    expect(screen.getByRole("region", { name: "Issues by category" })).toBeVisible();
+  });
+
+  it("states the run as one fact line instead of a filled-in template", () => {
+    renderSummary({
+      durationMs: 134_000,
+      issues: [
+        makeIssue({ id: "1", severity: "high", title: "Issue 1", file: "a.ts" }),
+        makeIssue({ id: "2", severity: "low", title: "Issue 2", file: "b.ts" }),
+      ],
+    });
+
+    expect(screen.getByText("2 issues in 2 files · 2m 14s")).toBeVisible();
+    expect(screen.queryByText(/^Duration:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Found .* across/)).not.toBeInTheDocument();
+  });
+
+  it("says a clean run found nothing and drops the empty category table", () => {
+    renderSummary({ issues: [], durationMs: 3800 });
+
+    expect(screen.getByText("No issues found · 3.8s")).toBeVisible();
+    const categories = screen.getByRole("region", { name: "Issues by category" });
+    expect(within(categories).getByText("Nothing to categorise.")).toBeVisible();
+    expect(within(categories).queryByRole("table")).not.toBeInTheDocument();
   });
 
   it("falls back to #unknown in the heading when the review id is missing", () => {
@@ -53,10 +80,10 @@ describe("ReviewSummaryView", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Review Complete #unknown");
   });
 
-  it("renders the persisted review duration beside the summary totals", () => {
+  it("renders the persisted review duration in the fact line", () => {
     renderSummary({ durationMs: 2500 });
 
-    expect(screen.getByText("Duration:").parentElement).toHaveTextContent("Duration: 2.5s");
+    expect(screen.getByText("1 issue in 1 file · 2.5s")).toBeVisible();
   });
 
   it("renders category names in the stats table without literal icon words", () => {

@@ -367,6 +367,7 @@
         "https://r.b4r7.dev/r/ui/fieldset-disabled.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/selectable-variants.json",
+        "https://r.b4r7.dev/r/ui/selectable-glyph.json",
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json",
         "https://r.b4r7.dev/r/ui/warn-unregistered-value.json"
@@ -445,6 +446,7 @@
         "https://r.b4r7.dev/r/ui/fieldset-disabled.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/selectable-variants.json",
+        "https://r.b4r7.dev/r/ui/selectable-glyph.json",
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json",
         "https://r.b4r7.dev/r/ui/warn-unregistered-value.json"
@@ -782,6 +784,11 @@
           "path": "registry/ui/empty-state/empty-state-actions.tsx",
           "type": "registry:ui",
           "target": "@ui/empty-state/empty-state-actions.tsx"
+        },
+        {
+          "path": "registry/ui/empty-state/empty-state-hint.tsx",
+          "type": "registry:ui",
+          "target": "@ui/empty-state/empty-state-hint.tsx"
         }
       ]
     },
@@ -938,7 +945,9 @@
         "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json",
-        "https://r.b4r7.dev/r/ui/trigger-interop.json"
+        "https://r.b4r7.dev/r/ui/trigger-interop.json",
+        "https://r.b4r7.dev/r/ui/overlay-surface.json",
+        "https://r.b4r7.dev/r/ui/overlay-hints.json"
       ],
       "meta": {
         "client": true,
@@ -1144,7 +1153,9 @@
         "https://r.b4r7.dev/r/ui/outside-click.json",
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/floating-panel.json",
-        "https://r.b4r7.dev/r/ui/composed-refs.json"
+        "https://r.b4r7.dev/r/ui/composed-refs.json",
+        "https://r.b4r7.dev/r/ui/overlay-surface.json",
+        "https://r.b4r7.dev/r/ui/is-mobile.json"
       ],
       "meta": {
         "client": true,
@@ -1215,6 +1226,11 @@
           "path": "registry/ui/menu/menu-sub.tsx",
           "type": "registry:ui",
           "target": "@ui/menu/menu-sub.tsx"
+        },
+        {
+          "path": "registry/ui/menu/menu-stack.tsx",
+          "type": "registry:ui",
+          "target": "@ui/menu/menu-stack.tsx"
         }
       ]
     },
@@ -1233,7 +1249,8 @@
         "https://r.b4r7.dev/r/ui/icons.json",
         "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json",
-        "https://r.b4r7.dev/r/ui/warn-unregistered-value.json"
+        "https://r.b4r7.dev/r/ui/warn-unregistered-value.json",
+        "https://r.b4r7.dev/r/ui/marker-rail.json"
       ],
       "meta": {
         "client": true,
@@ -1656,6 +1673,7 @@
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/step-status.json",
         "https://r.b4r7.dev/r/ui/horizontal-stepper-variants.json",
+        "https://r.b4r7.dev/r/ui/selectable-glyph.json",
         "https://r.b4r7.dev/r/ui/utils.json"
       ],
       "files": [
@@ -1706,7 +1724,8 @@
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json",
         "https://r.b4r7.dev/r/ui/dom-id.json",
-        "https://r.b4r7.dev/r/keys/scroll-lock.json"
+        "https://r.b4r7.dev/r/keys/scroll-lock.json",
+        "https://r.b4r7.dev/r/ui/overlay-hints.json"
       ],
       "meta": {
         "client": true,
@@ -1737,6 +1756,11 @@
           "path": "registry/ui/command-palette/command-palette-input.tsx",
           "type": "registry:ui",
           "target": "@ui/command-palette/command-palette-input.tsx"
+        },
+        {
+          "path": "registry/ui/command-palette/command-palette-count.tsx",
+          "type": "registry:ui",
+          "target": "@ui/command-palette/command-palette-count.tsx"
         },
         {
           "path": "registry/ui/command-palette/command-palette-list.tsx",
@@ -1812,7 +1836,8 @@
         "https://r.b4r7.dev/r/ui/typeahead-buffer.json",
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json",
-        "https://r.b4r7.dev/r/ui/dom-id.json"
+        "https://r.b4r7.dev/r/ui/dom-id.json",
+        "https://r.b4r7.dev/r/ui/overlay-surface.json"
       ],
       "meta": {
         "client": true,
@@ -2164,7 +2189,8 @@
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
+        "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/ui/marker-rail.json"
       ],
       "meta": {
         "client": true
@@ -2597,7 +2623,8 @@
         "https://r.b4r7.dev/r/keys/focusable.json",
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json",
-        "https://r.b4r7.dev/r/ui/trigger-interop.json"
+        "https://r.b4r7.dev/r/ui/trigger-interop.json",
+        "https://r.b4r7.dev/r/ui/overlay-surface.json"
       ],
       "meta": {
         "client": true,
@@ -2659,6 +2686,7 @@
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/fieldset-disabled.json",
+        "https://r.b4r7.dev/r/ui/selectable-variants.json",
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
@@ -2701,6 +2729,11 @@
           "path": "registry/ui/progress/progress.tsx",
           "type": "registry:ui",
           "target": "@ui/progress/progress.tsx"
+        },
+        {
+          "path": "registry/ui/progress/progress.css",
+          "type": "registry:style",
+          "target": "~/styles/progress.css"
         }
       ]
     },
@@ -2710,10 +2743,7 @@
       "title": "Skeleton",
       "description": "Loading placeholder with pulse animation",
       "dependencies": [],
-      "registryDependencies": [
-        "https://r.b4r7.dev/r/ui/theme.json",
-        "https://r.b4r7.dev/r/ui/utils.json"
-      ],
+      "registryDependencies": ["https://r.b4r7.dev/r/ui/theme.json"],
       "meta": {
         "client": false
       },
@@ -2727,6 +2757,11 @@
           "path": "registry/ui/skeleton/skeleton.tsx",
           "type": "registry:ui",
           "target": "@ui/skeleton/skeleton.tsx"
+        },
+        {
+          "path": "registry/ui/skeleton/skeleton.css",
+          "type": "registry:style",
+          "target": "~/styles/skeleton.css"
         }
       ]
     }

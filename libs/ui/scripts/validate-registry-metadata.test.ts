@@ -270,8 +270,11 @@ describe("validate-registry-metadata", () => {
     const { status, stderr } = runValidator(root);
 
     expect(status).not.toBe(0);
+    // The reported forms follow the order the specifiers appear in the file above,
+    // not the ImportSpecifierKind union order: extractImportSpecifiers returns
+    // matches in source order and the validator dedupes them first-occurrence first.
     expect(stderr).toContain(
-      "unsupported @diffgazer/keys root import (import, export, dynamic-import, require, side-effect)",
+      "unsupported @diffgazer/keys root import (import, side-effect, export, dynamic-import, require)",
     );
   });
 

@@ -5,7 +5,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { collectSecretFindings, formatSecretFindings, MAX_FILE_BYTES } from "./secret-scan.mjs";
+import { collectSecretFindings, formatSecretFindings } from "./secret-scan.mjs";
+
+const LARGE_FILE_BYTES = 2 * 1024 * 1024;
 
 function scanSource(source) {
   const dir = mkdtempSync(join(tmpdir(), "dg-secret-scan-"));
@@ -29,10 +31,10 @@ test("secret scan detects high-confidence token shapes without printing the toke
   assert.doesNotMatch(formatSecretFindings(findings)[0], new RegExp(fakeToken));
 });
 
-test("secret scan detects and redacts recognized tokens beyond the in-memory cap", () => {
+test("secret scan detects and redacts recognized tokens in a large file", () => {
   const fakeToken = `ghp_${"Z".repeat(36)}`;
   const prefix = "x".repeat(64 * 1024 - 10);
-  const findings = scanSource(`${prefix} ${fakeToken}\n${"y".repeat(MAX_FILE_BYTES)}`);
+  const findings = scanSource(`${prefix} ${fakeToken}\n${"y".repeat(LARGE_FILE_BYTES)}`);
   const formatted = formatSecretFindings(findings).join("\n");
 
   assert.equal(
@@ -65,7 +67,7 @@ test("secret scan retains oversized binary and ignored-path exclusions", () => {
   const cwd = process.cwd();
 
   try {
-    writeFileSync(binaryPath, `${"a".repeat(MAX_FILE_BYTES)}\0${fakeToken}`);
+    writeFileSync(binaryPath, `${"a".repeat(LARGE_FILE_BYTES)}\0${fakeToken}`);
     mkdirSync(dirname(ignoredPath), { recursive: true });
     writeFileSync(ignoredPath, fakeToken);
     process.chdir(dir);

@@ -144,6 +144,7 @@ export function useHistoryPage() {
     duration: history.duration,
     hasReviews: history.hasReviews,
     emptyRunsMessage: history.emptyRunsMessage,
+    hasSearchQuery: history.hasSearchQuery,
     hasMoreReviews: history.hasMoreReviews,
     isLoadingMoreReviews: history.isLoadingMoreReviews,
     loadMoreReviews: history.loadMoreReviews,

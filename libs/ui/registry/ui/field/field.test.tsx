@@ -43,7 +43,41 @@ describe("Field", () => {
     const input = screen.getByRole("textbox", { name: "Email" });
 
     expect(input).toBeRequired();
-    expectFieldInvalid(input, "Use your work email. Email is required.");
+    expectFieldInvalid(input, "Email is required. Use your work email.");
+  });
+
+  it("keeps the required marker out of the accessible name and off the error channel at rest", () => {
+    const { rerender } = render(
+      <Field required>
+        <Field.Label>Email</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+      </Field>,
+    );
+
+    // The marker is decoration; aria-required is the real signal and must not move.
+    const input = screen.getByRole("textbox", { name: "Email" });
+    expect(input).toBeRequired();
+    const marker = screen.getByText("Email").querySelector('[aria-hidden="true"]');
+    expect(marker).toHaveTextContent("*");
+
+    // At rest the marker is muted and only escalates through the Field's data-invalid group,
+    // so a resting form carries no error-hue glyphs at all.
+    const field = input.closest("[data-slot='field']");
+    expect(field).toHaveClass("group/field");
+    expect(field).not.toHaveAttribute("data-invalid");
+
+    rerender(
+      <Field required invalid>
+        <Field.Label>Email</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+      </Field>,
+    );
+    expect(input.closest("[data-slot='field']")).toHaveAttribute("data-invalid");
+    expect(screen.getByRole("textbox", { name: "Email" })).toBeRequired();
   });
 
   it("wires disabled state and custom control ids to the control", () => {
@@ -109,7 +143,61 @@ describe("Field", () => {
 
     expectFieldDescribedBy(input, "email-help");
     expectFieldDescribedBy(input, "email-error");
-    expect(input).toHaveAccessibleDescription("Use your work email. Email is required.");
+    expect(input).toHaveAccessibleDescription("Email is required. Use your work email.");
+  });
+
+  it("shows one helper message at a time and announces the error first", () => {
+    const { rerender } = render(
+      <Field>
+        <Field.Label>Email</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Description>Use your work email.</Field.Description>
+        <Field.Error>Email is required.</Field.Error>
+      </Field>,
+    );
+
+    // Valid: the description owns the helper row and the error is not rendered at all.
+    expect(screen.getByText("Use your work email.")).not.toHaveClass("sr-only");
+    expect(screen.queryByText("Email is required.")).not.toBeInTheDocument();
+
+    rerender(
+      <Field invalid>
+        <Field.Label>Email</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Description>Use your work email.</Field.Description>
+        <Field.Error>Email is required.</Field.Error>
+      </Field>,
+    );
+
+    // Invalid: the error takes the row, the description stays in the DOM and in the description
+    // chain — assistive tech loses nothing, the field just stops growing.
+    const description = screen.getByText("Use your work email.");
+    expect(description).toBeInTheDocument();
+    expect(description).toHaveClass("sr-only");
+    const error = screen.getByText("Email is required.");
+    expect(error).toHaveAttribute("role", "alert");
+
+    const input = screen.getByRole("textbox", { name: "Email" });
+    const describedBy = requireAttribute(input, "aria-describedby").split(" ");
+    expect(describedBy.indexOf(error.id)).toBeLessThan(describedBy.indexOf(description.id));
+  });
+
+  it("keeps the description visible when an invalid field has no error content", () => {
+    render(
+      <Field invalid>
+        <Field.Label>Email</Field.Label>
+        <Field.Control>
+          <Input />
+        </Field.Control>
+        <Field.Description>Use your work email.</Field.Description>
+      </Field>,
+    );
+
+    expect(screen.getByText("Use your work email.")).not.toHaveClass("sr-only");
   });
 
   it("composes form wiring with decorated inputs", () => {
@@ -129,7 +217,7 @@ describe("Field", () => {
     expect(input).toHaveAttribute("id", "repository-path");
     expect(input).toBeRequired();
     expect(input).toBeDisabled();
-    expectFieldInvalid(input, "Relative config path. Repository path is required.");
+    expectFieldInvalid(input, "Repository path is required. Relative config path.");
     expect(screen.getByText("~/")).toBeInTheDocument();
     expect(screen.getByText(".json")).toBeInTheDocument();
     expect(screen.getByText("~/")).toHaveAttribute("aria-hidden", "true");
@@ -268,7 +356,7 @@ describe("Field", () => {
     const input = screen.getByRole("textbox", { name: "Email" });
 
     expect(input).toBeRequired();
-    expectFieldInvalid(input, "Use your work email. Email is required.");
+    expectFieldInvalid(input, "Email is required. Use your work email.");
   });
 
   it("lets a control child's own id win and follows it from the label", async () => {
@@ -494,7 +582,7 @@ describe("Field", () => {
 
     const combobox = screen.getByRole("combobox", { name: "Region" });
 
-    expectFieldInvalid(combobox, "Choose where data is stored. Region is required.");
+    expectFieldInvalid(combobox, "Region is required. Choose where data is stored.");
     expect(combobox).toHaveAttribute("aria-required", "true");
     expect(combobox).toBeDisabled();
     expect(combobox).toHaveAttribute("aria-labelledby");
@@ -673,7 +761,7 @@ describe("Field", () => {
     mountStaticMarkup(html);
 
     const input = screen.getByRole("textbox", { name: "Email" });
-    expect(input).toHaveAccessibleDescription("Use your work email. Email is required.");
+    expect(input).toHaveAccessibleDescription("Email is required. Use your work email.");
   });
 
   it("follows a child control's own id from the label in SSR output before hydration", () => {

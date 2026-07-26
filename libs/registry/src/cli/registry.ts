@@ -211,28 +211,21 @@ function validateIntegrity<TBundle extends { integrity?: string }>(
   }
 }
 
-export function metaField<T extends string | number | boolean | string[]>(
+export function metaFlag(
   item: { meta?: Record<string, unknown> },
   key: string,
-  fallback: T,
-): T {
+  fallback: boolean,
+): boolean {
   const val = item.meta?.[key];
-  if (val === undefined) return fallback;
-  if (Array.isArray(fallback)) {
-    // Callers iterate the result as strings, so a non-string element must fall
-    // back rather than narrow to a lying `string[]`.
-    return Array.isArray(val) && val.every((v) => typeof v === "string") ? (val as T) : fallback;
-  }
-  switch (typeof fallback) {
-    case "string":
-      return typeof val === "string" ? (val as T) : fallback;
-    case "number":
-      return typeof val === "number" ? (val as T) : fallback;
-    case "boolean":
-      return typeof val === "boolean" ? (val as T) : fallback;
-    default:
-      return fallback;
-  }
+  return typeof val === "boolean" ? val : fallback;
+}
+
+// Callers iterate the result as strings, so a non-string element must yield an
+// empty list rather than narrow to a lying `string[]`.
+export function metaStringList(item: { meta?: Record<string, unknown> }, key: string): string[] {
+  const val = item.meta?.[key];
+  if (!Array.isArray(val)) return [];
+  return val.every((v) => typeof v === "string") ? (val as string[]) : [];
 }
 
 interface CreateRegistryAccessorsOptions {
@@ -270,7 +263,7 @@ export function createRegistryAccessors(
   }
 
   function getPublicItems(): RegistryContentItem[] {
-    return getAllItems().filter((item) => !metaField(item, "hidden", false));
+    return getAllItems().filter((item) => !metaFlag(item, "hidden", false));
   }
 
   return {

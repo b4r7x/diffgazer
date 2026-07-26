@@ -1,7 +1,6 @@
 "use client";
 
 import { Children, type ComponentProps, isValidElement, type ReactNode } from "react";
-import { cn } from "@/lib/utils";
 import { PanelDescription } from "./panel-description";
 import { PanelTitle } from "./panel-title";
 
@@ -20,7 +19,7 @@ export function PanelHeader({ className, children, marker = "bar", ...props }: P
   const hasEnd = endChildren.length > 0;
 
   return (
-    <div {...props} data-slot="panel-header" data-marker={marker} className={cn(className)}>
+    <div {...props} data-slot="panel-header" data-marker={marker} className={className}>
       <div data-slot="panel-header-body">{bodyChildren}</div>
       {hasEnd ? <div data-slot="panel-header-end">{endChildren}</div> : null}
     </div>

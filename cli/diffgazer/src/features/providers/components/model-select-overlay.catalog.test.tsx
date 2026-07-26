@@ -1,3 +1,4 @@
+import "./model-select-overlay.terminal-mock";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import type {
   OpenRouterModelsResponse,
@@ -99,7 +100,9 @@ describe("ModelSelectOverlay catalog provenance", () => {
     await flushUntil(() => lastFrame()?.includes("Using cached catalog data") ?? false);
     const fallbackFrame = lastFrame() ?? "";
     expect(fallbackFrame).toContain("2026-06-02T00:00:00.000Z");
-    expect(fallbackFrame).toContain("Tab: zone");
+    // Key hints live in the one global shortcut-bar grammar, never in a second
+    // lowercase-colon row inside the card.
+    expect(fallbackFrame).not.toContain("Tab: zone");
     expect(fallbackFrame.split("\n")).toHaveLength(20);
 
     stdin.write("r");

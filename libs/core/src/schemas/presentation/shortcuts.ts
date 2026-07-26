@@ -1,7 +1,49 @@
+/**
+ * Where a shortcut applies. Only the help tables tag their entries; footers and
+ * menu constants leave it undefined and ignore the field entirely.
+ */
+export type ShortcutContext = "global" | "list" | "review" | "history";
+
 export interface Shortcut {
   key: string;
   label: string;
   disabled?: boolean;
+  context?: ShortcutContext;
+}
+
+export const SHORTCUT_CONTEXT_ORDER = ["global", "list", "review", "history"] as const;
+
+export const SHORTCUT_CONTEXT_LABELS: Record<ShortcutContext, string> = {
+  global: "Anywhere",
+  list: "In lists",
+  review: "In a review",
+  history: "In history",
+};
+
+export interface ShortcutGroup {
+  context: ShortcutContext;
+  shortcuts: Shortcut[];
+}
+
+/**
+ * Groups a help table by context in the canonical order. Untagged entries fall
+ * into "global", empty groups are omitted, and order is preserved within a
+ * group so both surfaces render the same sequence.
+ */
+export function groupShortcutsByContext(shortcuts: readonly Shortcut[]): ShortcutGroup[] {
+  const byContext = new Map<ShortcutContext, Shortcut[]>();
+
+  for (const shortcut of shortcuts) {
+    const context = shortcut.context ?? "global";
+    const existing = byContext.get(context);
+    if (existing) existing.push(shortcut);
+    else byContext.set(context, [shortcut]);
+  }
+
+  return SHORTCUT_CONTEXT_ORDER.flatMap((context) => {
+    const group = byContext.get(context);
+    return group ? [{ context, shortcuts: group }] : [];
+  });
 }
 
 export function areShortcutsEqual(a: Shortcut[], b: Shortcut[]): boolean {
@@ -14,7 +56,8 @@ export function areShortcutsEqual(a: Shortcut[], b: Shortcut[]): boolean {
       right !== undefined &&
       left.key === right.key &&
       left.label === right.label &&
-      left.disabled === right.disabled
+      left.disabled === right.disabled &&
+      left.context === right.context
     );
   });
 }
@@ -42,20 +85,24 @@ export const BACK_SHORTCUTS: Shortcut[] = [BACK_SHORTCUT];
 
 // Canonical help-screen shortcut table, consumed by both surfaces' Help screens.
 // Every entry has a live handler on at least one surface (web: q/s/h/shift+?,
-// list/menu navigation; TUI: q/s/?).
+// list/menu navigation, `/` history search; TUI: q/s/?, `/` history search).
+// Entries are tagged with the context they apply in and grouped at render time;
+// the shared footer constants are spread rather than mutated so `context` never
+// leaks into footer rendering.
 export const HELP_SHORTCUTS: Shortcut[] = [
-  { key: "↑/↓", label: "Navigate Menus and Lists" },
-  { key: "Enter", label: "Select / Confirm" },
-  { key: "Esc", label: "Go Back" },
-  SWITCH_PANE_SHORTCUT,
-  { key: "1-4", label: "Switch Tab (in Review)" },
-  { key: "j/k", label: "Navigate Lists and Fix Plan" },
-  { key: "↑/↓", label: "Scroll Content" },
-  { key: "PgUp/PgDn", label: "Scroll Content" },
-  { key: "Home/End", label: "Scroll Content" },
-  { key: "s", label: "Open Settings" },
-  { key: "q", label: "Quit" },
-  { key: "?", label: "Open Help" },
+  { key: "Enter", label: "Select / Confirm", context: "global" },
+  { key: "Esc", label: "Go Back", context: "global" },
+  { key: "s", label: "Open Settings", context: "global" },
+  { key: "?", label: "Open Help", context: "global" },
+  { key: "q", label: "Quit", context: "global" },
+  { key: "↑/↓", label: "Move the highlight", context: "list" },
+  { key: "j/k", label: "Move the highlight", context: "list" },
+  { ...SWITCH_PANE_SHORTCUT, context: "review" },
+  { key: "1-4", label: "Switch Tab", context: "review" },
+  { key: "↑/↓", label: "Scroll the focused pane", context: "review" },
+  { key: "PgUp/PgDn", label: "Page up or down", context: "review" },
+  { key: "Home/End", label: "Jump to start or end", context: "review" },
+  { key: "/", label: "Search Runs", context: "history" },
 ];
 
 // Both surfaces consume the permission entries; Tab and q are TUI-home shortcuts.

@@ -26,7 +26,7 @@ export const STALE_DOCS_E2E_SNAPSHOT_PATH =
 const EMPTY_COMMAND_OUTPUTS = {
   gitLsFilesStaged: "",
   gitLsFilesEnvExamples: "",
-  nestedRepoConfig: "",
+  submoduleConfig: "",
   nestedGitDirs: "",
   nestedLocks: "",
   nestedWorkspaces: "",

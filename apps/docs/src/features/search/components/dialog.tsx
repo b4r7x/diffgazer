@@ -3,6 +3,7 @@ import {
   CommandPalette,
   CommandPaletteContent,
   CommandPaletteFooter,
+  CommandPaletteGroup,
   CommandPaletteInput,
   CommandPaletteItem,
   CommandPaletteList,
@@ -11,7 +12,12 @@ import { Kbd } from "@diffgazer/ui/components/kbd";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { useNavigate } from "@tanstack/react-router";
 import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
-import { useSearchOpen } from "@/hooks/search-context";
+import {
+  type DocsSearchScope,
+  useDocsHistory,
+  useDocsSearchScope,
+  useSearchOpen,
+} from "@/hooks/search-context";
 import { getEnabledDocsLibraries } from "@/lib/library";
 import { type SearchStatus, useSearch } from "../hooks/use-search";
 
@@ -44,13 +50,61 @@ interface SearchStatusView {
   severity?: "error";
 }
 
+interface LauncherEntry {
+  id: string;
+  title: string;
+  label: string;
+  url: string;
+}
+
+/**
+ * Destinations offered before a query is typed: the section indexes of the
+ * library the reader is in, then the sibling library roots. `/ ↓ ↵` reaches one
+ * of them without typing.
+ */
+function buildJumpEntries(scope: DocsSearchScope | null): LauncherEntry[] {
+  const libraries = getEnabledDocsLibraries();
+  const sections = (scope?.sections ?? []).map((section) => ({
+    id: `jump-section:${section.url}`,
+    title: section.name,
+    label: LIBRARY_LABELS[scope?.library ?? ""] ?? scope?.library ?? "",
+    url: section.url,
+  }));
+  const roots = libraries
+    .filter((library) => library.id !== scope?.library)
+    .map((library) => ({
+      id: `jump-library:${library.id}`,
+      title: library.displayName,
+      label: "Library",
+      url: `/${library.id}`,
+    }));
+  return [...sections, ...roots];
+}
+
+function LauncherItem({
+  entry,
+  onSelect,
+}: {
+  entry: LauncherEntry;
+  onSelect: (url: string) => void;
+}) {
+  return (
+    <CommandPaletteItem id={entry.id} onSelect={() => onSelect(entry.url)}>
+      <div className="flex items-center gap-2">
+        <span>{entry.title}</span>
+        <span className="text-2xs text-muted-foreground">{entry.label}</span>
+      </div>
+    </CommandPaletteItem>
+  );
+}
+
 function getSearchStatusView(
   hasQuery: boolean,
   status: SearchStatus,
   error: string | null,
 ): SearchStatusView | null {
   if (!hasQuery) {
-    return { message: "Type to search docs..." };
+    return null;
   }
   if (status === "error") {
     return { message: error ?? "Search failed. Try again.", severity: "error" };
@@ -63,11 +117,15 @@ function getSearchStatusView(
 
 export function SearchDialog() {
   const { open, setOpen } = useSearchOpen();
+  const { recent } = useDocsHistory();
+  const { scope } = useDocsSearchScope();
   const { query, results, status, error, search } = useSearch();
   const navigate = useNavigate();
   const hasQuery = query.trim().length > 0;
   const statusView = getSearchStatusView(hasQuery, status, error);
   const showsResults = hasQuery && status === "success";
+  const showsLauncher = !hasQuery && status !== "loading";
+  const jumpEntries = buildJumpEntries(scope);
 
   const closeSearch = () => {
     search("");
@@ -139,7 +197,37 @@ export function SearchDialog() {
           }
         />
         {statusContent}
-        <CommandPaletteList className={showsResults ? "min-h-[240px]" : undefined}>
+        <CommandPaletteList className={showsResults || showsLauncher ? "min-h-[240px]" : undefined}>
+          {/* Before a query, the palette is a launcher rather than an empty box:
+              the reader's own trail, then the destinations of the library they
+              are in. The first typed character replaces both with results. */}
+          {showsLauncher && recent.length > 0 && (
+            <CommandPaletteGroup heading="Recent">
+              {recent.map((page) => (
+                <LauncherItem
+                  key={`recent:${page.url}`}
+                  entry={{
+                    id: `recent:${page.url}`,
+                    title: page.title,
+                    label: SECTION_LABELS[page.section] ?? page.section,
+                    url: page.url,
+                  }}
+                  onSelect={(url) => navigate({ to: url })}
+                />
+              ))}
+            </CommandPaletteGroup>
+          )}
+          {showsLauncher && jumpEntries.length > 0 && (
+            <CommandPaletteGroup heading="Jump">
+              {jumpEntries.map((entry) => (
+                <LauncherItem
+                  key={entry.id}
+                  entry={entry}
+                  onSelect={(url) => navigate({ to: url })}
+                />
+              ))}
+            </CommandPaletteGroup>
+          )}
           {showsResults &&
             results.map((result) => (
               <CommandPaletteItem

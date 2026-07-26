@@ -1,9 +1,14 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { render, screen, within } from "@testing-library/react";
 import { JSDOM } from "jsdom";
 import { createRef } from "react";
 import { renderToString } from "react-dom/server";
 import { assertType, describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
+import { ruleBody } from "../../testing/css-contract";
+import { expectSingleReticle } from "../../testing/reticle";
 import { Panel, type PanelProps } from "./index";
 
 function getRoot(container: HTMLElement): HTMLElement {
@@ -447,8 +452,9 @@ describe("Panel", () => {
     expect(label).toHaveTextContent("[ 01 / FS_TREE ]");
   });
 
-  // jsdom has no layout, so the inset class IS the observable contract here: the
-  // label must clear the corner bracket it would otherwise paint over.
+  // jsdom applies no stylesheet, so the inset decision is asserted through the
+  // attribute the label publishes, not the utility class that implements it: the
+  // label must step past a corner bracket it would otherwise paint over.
   it("steps Panel.Label past the corner brackets when the panel draws them", () => {
     function LabelledPanel({ focused }: { focused?: boolean }) {
       return (
@@ -461,18 +467,64 @@ describe("Panel", () => {
     const { container, rerender } = render(<LabelledPanel />);
     const label = () => container.querySelector('[data-slot="panel-label"]');
 
-    expect(label()).toHaveClass("left-4");
+    expect(label()).toHaveAttribute("data-inset", "edge");
 
     rerender(<LabelledPanel focused />);
-    expect(label()).toHaveClass("left-8");
-    expect(label()).not.toHaveClass("left-4");
+    expect(label()).toHaveAttribute("data-inset", "corner");
 
     const { container: viewfinder } = render(
       <Panel frame="viewfinder">
         <Panel.Label>Details</Panel.Label>
       </Panel>,
     );
-    expect(viewfinder.querySelector('[data-slot="panel-label"]')).toHaveClass("left-8");
+    expect(viewfinder.querySelector('[data-slot="panel-label"]')).toHaveAttribute(
+      "data-inset",
+      "corner",
+    );
+  });
+
+  it("Panel.Label publishes its variant and defaults to the boxed border label", () => {
+    const { container } = render(
+      <Panel>
+        <Panel.Label>Boxed</Panel.Label>
+        <Panel.Label variant="readout">SETUP · 02/06 · PROVIDER</Panel.Label>
+      </Panel>,
+    );
+
+    const labels = container.querySelectorAll('[data-slot="panel-label"]');
+    expect(labels[0]).toHaveAttribute("data-variant", "border");
+    expect(labels[1]).toHaveAttribute("data-variant", "readout");
+  });
+
+  it("Panel.Label readout tracks the pane state, and other variants do not carry a box", () => {
+    function ReadoutPanel({ focused }: { focused?: boolean }) {
+      return (
+        <Panel frame="viewfinder" focused={focused}>
+          <Panel.Label variant="readout">SETUP · 02/06 · PROVIDER</Panel.Label>
+        </Panel>
+      );
+    }
+
+    const { container, rerender } = render(<ReadoutPanel />);
+    const label = () => container.querySelector('[data-slot="panel-label"]');
+
+    expect(label()).not.toHaveAttribute("data-state");
+    // The bracket arms are the readout's frame; a border box would double it.
+    expect(label()).not.toHaveClass("border");
+
+    rerender(<ReadoutPanel focused />);
+    expect(label()).toHaveAttribute("data-state", "focused");
+  });
+
+  it("Panel.Label readout keeps its text in the accessibility tree", () => {
+    render(
+      <Panel frame="viewfinder" focused>
+        <Panel.Label variant="readout">SETUP · 02/06 · PROVIDER</Panel.Label>
+        <Panel.Content>Body</Panel.Content>
+      </Panel>,
+    );
+
+    expect(screen.getByText("SETUP · 02/06 · PROVIDER")).toBeInTheDocument();
   });
 
   it("names and describes the server-rendered section by Panel.Title/Panel.Description", () => {
@@ -522,5 +574,71 @@ describe("Panel", () => {
     expect(html).toContain('aria-describedby="opaque-panel-description"');
     expect(html).toContain('id="opaque-panel-title"');
     expect(html).toContain('id="opaque-panel-description"');
+  });
+});
+
+describe("Panel reticle grammar", () => {
+  // jsdom applies no stylesheet and drops @layer rules from its CSSOM, so the
+  // corner tokens are only readable from the source panel.css ships.
+  const css = readFileSync(resolve(fileURLToPath(import.meta.url), "../panel.css"), "utf8");
+  const RESTING = '[data-slot="panel"][data-frame="viewfinder"]';
+  const FOCUSED = '[data-slot="panel"][data-frame][data-state="focused"]';
+
+  it("keeps the resting corners lighter than the focused ones so contrast encodes focus", () => {
+    const resting = ruleBody(css, RESTING);
+    const focused = ruleBody(css, FOCUSED);
+
+    expect(resting).toContain("--viewfinder-color: var(--border-strong)");
+    expect(resting).toContain("--viewfinder-size: 16px");
+    expect(resting).toContain("--viewfinder-weight: 1.5px");
+
+    expect(focused).toContain("--viewfinder-color: var(--ring)");
+    expect(focused).toContain("--viewfinder-size: 28px");
+    expect(focused).toContain("--viewfinder-weight: 3px");
+
+    // Rule 4: the inert state must never be painted in --foreground, which is
+    // what made it outweigh the active pane.
+    expect(resting).not.toContain("var(--foreground)");
+  });
+
+  it("declares the focused corner rule after the tone rules so focus wins on equal specificity", () => {
+    expect(css.indexOf(`${FOCUSED} {`)).toBeGreaterThan(
+      css.indexOf(`${RESTING}[data-tone="accent"] {`),
+    );
+  });
+
+  it("holds the viewfinder padding steady so a focus toggle never reflows the box", () => {
+    expect(ruleBody(css, RESTING)).toContain("padding: 8px");
+    expect(ruleBody(css, FOCUSED)).not.toContain("padding");
+  });
+
+  it("counts exactly one focused pane per screen", () => {
+    const { container } = render(
+      <div>
+        <Panel frame="viewfinder" aria-label="Context">
+          <Panel.Content>Inert</Panel.Content>
+        </Panel>
+        <Panel focused aria-label="Menu">
+          <Panel.Content>Driven</Panel.Content>
+        </Panel>
+      </div>,
+    );
+
+    expectSingleReticle(container);
+  });
+
+  it("fails a screen that lights a second reticle", () => {
+    const { container } = render(
+      <div>
+        <Panel focused aria-label="Menu">
+          <Panel.Content>Driven</Panel.Content>
+        </Panel>
+        <Panel focused aria-label="Context">
+          <Panel.Content>Also driven</Panel.Content>
+        </Panel>
+      </div>,
+    );
+
+    expect(() => expectSingleReticle(container)).toThrow();
   });
 });

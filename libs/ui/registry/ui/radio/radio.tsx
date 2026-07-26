@@ -18,6 +18,7 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
+import { renderSelectableGlyph } from "@/lib/selectable-glyph";
 import {
   radioIndicators,
   type SelectableSize,
@@ -321,13 +322,12 @@ export function Radio({
       >
         <span
           aria-hidden="true"
-          className={selectableIndicatorVariants({
-            size,
-            checked: isChecked,
-            highlighted,
-          })}
+          className={selectableIndicatorVariants({ size, highlighted, disabled: isDisabled })}
         >
-          {radioIndicators[variant][isChecked ? "checked" : "unchecked"]}
+          {renderSelectableGlyph(radioIndicators[variant][isChecked ? "checked" : "unchecked"], {
+            highlighted,
+            disabled: isDisabled,
+          })}
         </span>
         {label && (
           <div className={cn("flex flex-col min-w-0", !description && "justify-center")}>
@@ -335,7 +335,10 @@ export function Radio({
               {label}
             </span>
             {description && (
-              <span id={descriptionId} className={selectableDescriptionVariants({ highlighted })}>
+              <span
+                id={descriptionId}
+                className={selectableDescriptionVariants({ highlighted, disabled: isDisabled })}
+              >
                 {description}
               </span>
             )}

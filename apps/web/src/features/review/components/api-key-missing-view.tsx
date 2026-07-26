@@ -1,16 +1,10 @@
-import { usePageFooter } from "@diffgazer/core/footer";
 import {
   CONFIGURATION_ERROR_COPY,
   CONFIGURE_PROVIDER_LABEL,
   getApiKeyMissingCopy,
 } from "@diffgazer/core/review";
 import type { AIProvider, SetupStatus } from "@diffgazer/core/schemas/config";
-import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
-import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
-import { Button } from "@diffgazer/ui/components/button";
-import { Panel } from "@diffgazer/ui/components/panel";
-import { useRef } from "react";
+import { FailureView } from "@/components/shared/failure-view";
 
 export interface ApiKeyMissingViewProps {
   activeProvider?: AIProvider;
@@ -20,92 +14,7 @@ export interface ApiKeyMissingViewProps {
   primaryDisabled?: boolean;
 }
 
-interface ReviewSetupGateViewProps {
-  title: string;
-  body: string;
-  primaryLabel: string;
-  onPrimary: () => void;
-  onBack: () => void;
-  isError?: boolean;
-  primaryDisabled?: boolean;
-}
-
-function ReviewSetupGateView({
-  title,
-  body,
-  primaryLabel,
-  onPrimary,
-  onBack,
-  isError = false,
-  primaryDisabled = false,
-}: ReviewSetupGateViewProps) {
-  useScope("review-setup-gate");
-  const focusFallbackRef = useRef<HTMLDivElement>(null);
-  const actions = [onPrimary, onBack];
-
-  const footer = useActionRowNavigation<readonly unknown[]>({
-    enabled: true,
-    actionCount: actions.length,
-    disabledActions: [primaryDisabled, false],
-    defaultZone: "actions",
-    disabledFocusFallbackRef: focusFallbackRef,
-    onAction: (index) => actions[index]?.(),
-  });
-
-  useKey("Escape", onBack);
-
-  const focusedLabel = footer.focusedIndex === 0 ? primaryLabel : "Back to Home";
-
-  const footerShortcuts: Shortcut[] = [
-    { key: "←/→", label: "Move Action" },
-    { key: "Enter/Space", label: focusedLabel, disabled: footer.isFocusedActionDisabled },
-  ];
-
-  usePageFooter({
-    shortcuts: footerShortcuts,
-    rightShortcuts: [BACK_SHORTCUT],
-  });
-
-  return (
-    <div className="flex flex-1 items-center justify-center p-4">
-      <Panel
-        frame="viewfinder"
-        ref={focusFallbackRef}
-        tabIndex={-1}
-        className="w-full max-w-md p-6 text-center focus:outline-none"
-      >
-        <div
-          role={isError ? "alert" : undefined}
-          className={`${isError ? "text-error-text" : "text-warning-text"} text-lg font-bold mb-4`}
-        >
-          {title}
-        </div>
-        <p className="text-muted-foreground font-mono text-sm mb-6">{body}</p>
-        <div className="flex gap-4 justify-center">
-          <Button
-            {...footer.getActionProps(0)}
-            variant="outline"
-            bracket
-            disabled={primaryDisabled}
-            highlighted={footer.inActions && footer.focusedIndex === 0}
-            onClick={onPrimary}
-          >
-            {primaryLabel}
-          </Button>
-          <Button
-            {...footer.getActionProps(1)}
-            variant="secondary"
-            bracket
-            highlighted={footer.inActions && footer.focusedIndex === 1}
-            onClick={onBack}
-          >
-            Back to Home
-          </Button>
-        </div>
-      </Panel>
-    </div>
-  );
-}
+const REVIEW_SETUP_GATE_SCOPE = "review-setup-gate";
 
 export function ApiKeyMissingView({
   activeProvider,
@@ -117,13 +26,17 @@ export function ApiKeyMissingView({
   const copy = getApiKeyMissingCopy({ provider: activeProvider, missing });
 
   return (
-    <ReviewSetupGateView
+    <FailureView
       title={copy.title}
-      body={copy.body}
-      primaryLabel={CONFIGURE_PROVIDER_LABEL}
-      onPrimary={onNavigateSettings}
-      onBack={onBack}
-      primaryDisabled={primaryDisabled}
+      message={copy.body}
+      tone="warning"
+      scope={REVIEW_SETUP_GATE_SCOPE}
+      primary={{
+        label: CONFIGURE_PROVIDER_LABEL,
+        onAction: onNavigateSettings,
+        disabled: primaryDisabled,
+      }}
+      secondary={{ label: "Back to Home", onAction: onBack }}
     />
   );
 }
@@ -138,14 +51,12 @@ export function ConfigurationErrorView({
   primaryDisabled?: boolean;
 }) {
   return (
-    <ReviewSetupGateView
+    <FailureView
       title={CONFIGURATION_ERROR_COPY.title}
-      body={CONFIGURATION_ERROR_COPY.body}
-      primaryLabel="Retry"
-      onPrimary={onRetry}
-      onBack={onBack}
-      primaryDisabled={primaryDisabled}
-      isError
+      message={CONFIGURATION_ERROR_COPY.body}
+      scope={REVIEW_SETUP_GATE_SCOPE}
+      primary={{ label: "Retry", onAction: onRetry, disabled: primaryDisabled }}
+      secondary={{ label: "Back to Home", onAction: onBack }}
     />
   );
 }

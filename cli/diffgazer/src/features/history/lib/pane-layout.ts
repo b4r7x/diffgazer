@@ -1,16 +1,21 @@
 import type { HistoryFocusZone } from "../types";
 
-const HISTORY_CHROME_ROWS = 10;
+// Bordered screen header (2) + gap + the search input shell (3) + gap. Anything
+// larger reserves a row the panes never get back, which prints as a dead gap
+// between the pane bottoms and the shortcut bar.
+const HISTORY_CHROME_ROWS = 7;
 const HISTORY_INSIGHTS_CHROME_ROWS = 5;
 // Below this per-pane slot height the narrow stack cannot give every pane a
 // content row (insights needs HISTORY_INSIGHTS_CHROME_ROWS + 1), so history
 // degrades to the focused pane only instead of rendering empty bordered boxes.
 const MIN_STACKED_PANE_ROWS = HISTORY_INSIGHTS_CHROME_ROWS + 1;
 
+/** The runs pane carries run id, timestamp and severity counts on one row. */
+const RUNS_MIN_WIDTH = 44;
+
 export interface HistoryPaneLayoutInput {
   columns: number;
   isNarrow: boolean;
-  isMedium: boolean;
   contentRows: number;
   warningCount: number;
 }
@@ -42,25 +47,25 @@ function getHistoryWarningRows(messageCount: number): number {
 export function computePaneLayout({
   columns,
   isNarrow,
-  isMedium,
   contentRows,
   warningCount,
 }: HistoryPaneLayoutInput): HistoryPaneLayout {
-  const sectionsWidth = isMedium
-    ? Math.max(Math.floor(columns * 0.18), 16)
-    : Math.max(Math.floor(columns * 0.2), 18);
-  const insightsWidth = isMedium
-    ? Math.max(Math.floor(columns * 0.32), 26)
-    : Math.max(Math.floor(columns * 0.34), 30);
-  const contentWidth = Math.max(columns - 4, 1);
+  // Sections holds short labels ("All 3", "Jul 18 3"); the rows it does not need
+  // belong to insights, whose issue titles are what the reader is here for.
+  const contentWidth = Math.max(columns, 1);
+  const sectionsWidth = Math.min(Math.max(Math.floor(columns * 0.14), 14), 20);
+  const insightsWidth = Math.max(
+    Math.min(contentWidth - sectionsWidth - RUNS_MIN_WIDTH, Math.floor(contentWidth * 0.42)),
+    26,
+  );
 
   const paneHeight = Math.max(
     contentRows - HISTORY_CHROME_ROWS - getHistoryWarningRows(warningCount),
     1,
   );
   const canStackPanes = !isNarrow || Math.floor(paneHeight / 3) >= MIN_STACKED_PANE_ROWS;
-  const paneSlotHeight =
-    isNarrow && canStackPanes ? Math.max(Math.floor(paneHeight / 3), 3) : paneHeight;
+  // canStackPanes already proves the slot clears MIN_STACKED_PANE_ROWS.
+  const paneSlotHeight = isNarrow && canStackPanes ? Math.floor(paneHeight / 3) : paneHeight;
 
   return {
     sectionsWidth,

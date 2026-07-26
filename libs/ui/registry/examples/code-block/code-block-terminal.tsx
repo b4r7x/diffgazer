@@ -6,7 +6,7 @@ Already up to date
 
 Done in 1.2s`;
 
-// variant="terminal" only centers the label; the window dots are opt-in in
+// variant="terminal" only centers the label; the pane strip is opt-in in
 // every variant through chrome="dots".
 export default function CodeBlockTerminal() {
   return (

@@ -54,10 +54,9 @@ export function StatusBar() {
       aria-label="Primary"
       className={cn(
         // Mobile stacks the nav row under the brand/actions row. From md the bar
-        // is the pre-campaign single flex row: one 1rem rhythm from the brand
-        // through the last nav link, with the actions group pushed to the end by
-        // its own auto margin (justify-between would instead scatter the three
-        // groups across the bar).
+        // is a single flex row: one 1rem rhythm from the brand through the last
+        // nav link, with the actions group pushed to the end by its own auto
+        // margin (justify-between would instead scatter the three groups).
         "grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-y-1 border-b border-border bg-background px-4 py-1 md:flex md:gap-x-4",
         CHROME_LABEL_CLASS,
       )}
@@ -77,25 +76,24 @@ export function StatusBar() {
 
               Three things earn their place. `tracking-normal` cancels the bar's
               own `tracking-widest` — that 0.1em resolves against the *nav's*
-              font-size and inherits down as an absolute length, prying every
-              glyph 1px (1.2px below md) off its column until the box-drawing
-              strokes stopped meeting. `max-w-none overflow-visible` drops the
-              Logo's own clip guard, which is written for a component sizing
-              itself to a container; here the art is deliberately laid out wider
-              than its wrapper and only the transform brings it back, so the
-              guard would shear off the trailing columns before the scale ever
-              applied. `w-max` then sizes the art to its own content instead of
-              the wrapper.
+              font-size and inherits down as an absolute length, which offsets
+              every glyph from its column so the box-drawing strokes stop
+              meeting. `max-w-none overflow-visible` drops the Logo's own clip
+              guard, which assumes a component sizing itself to its container;
+              here the art is laid out wider than its wrapper and only the
+              transform brings it back, so the guard would shear off the
+              trailing columns. `w-max` then sizes the art to its own content
+              instead of the wrapper.
 
               Transforms do not affect layout, so the wrapper has to reserve the
-              *scaled* box itself — but it derives that box rather than carrying
-              a measurement. The art is a grid of WORDMARK_ROWS x WORDMARK_COLS
-              monospace cells, and this wrapper sets the very font the art is
-              laid out in, so the unscaled block is exactly that many `ch` wide
-              and `em` tall in the wrapper's own units. Both the reservation and
-              the Logo's transform then read one `--wm-scale` per breakpoint, so
-              they cannot drift from each other, and regenerating the art moves
-              the reservation with it.
+              *scaled* box itself, and it derives that box rather than carrying a
+              measurement. The art is a grid of WORDMARK_ROWS x WORDMARK_COLS
+              monospace cells and this wrapper sets the font the art is laid out
+              in, so the unscaled block is exactly that many `ch` wide and `em`
+              tall in the wrapper's own units. Both the reservation and the
+              Logo's transform read one `--wm-scale` per breakpoint, so they
+              cannot drift, and regenerating the art moves the reservation with
+              it.
 
               The art has no readable text, so `text` is purely the accessible
               name. */}
@@ -119,11 +117,10 @@ export function StatusBar() {
       </div>
       {/* Below md this row is a grid of four equal cells rather than a loose flex
           row: flex items refuse to shrink under their min-content, so COMPONENTS
-          claimed the width it needed and the other three split what was left,
-          which read as four labels dropped in at random. Equal columns give the
-          row its rhythm on their own — no dividers. The negative margin cancels
-          the nav's own px-4 so the cells run edge to edge; from md the row is
-          the pre-campaign flex list. */}
+          would claim the width it needs and the other three split what is left.
+          Equal columns give the row its rhythm on their own — no dividers. The
+          negative margin cancels the nav's own px-4 so the cells run edge to
+          edge; from md the row is a plain flex list. */}
       <div className="col-span-2 row-start-2 -mx-4 grid grid-cols-4 md:mx-0 md:flex md:items-center md:gap-x-4">
         <NavLink label="Docs" params={{ lib: "app" }} />
         <NavLink label="Components" params={{ lib: "ui" }} />

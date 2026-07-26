@@ -190,7 +190,9 @@ function SettingsThemeEditor({
           </Panel.Content>
         </Panel>
 
-        <Panel frame="viewfinder" aria-labelledby={previewTitleId}>
+        {/* Passive output: no brackets, so the selector stays the one reticle
+            on this screen even while focus sits in the footer actions. */}
+        <Panel aria-labelledby={previewTitleId}>
           <Panel.Label>
             <h2 id={previewTitleId}>Live Preview</h2>
           </Panel.Label>

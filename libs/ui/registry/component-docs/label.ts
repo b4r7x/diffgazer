@@ -22,7 +22,7 @@ export const labelDoc: ComponentDoc = {
     {
       title: "Disabled State",
       content:
-        "Wrapper mode automatically dims when it contains a disabled form control. Standalone mode does not inspect sibling controls; apply any disabled appearance explicitly through className.",
+        "Wrapper mode automatically resolves the muted token when it contains a disabled form control, and marks GrayText in forced-colors mode. Standalone mode does not inspect sibling controls; apply any disabled appearance explicitly through className.",
     },
   ],
   usage: { example: "label-default" },
@@ -60,7 +60,8 @@ export const labelDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "false",
-        description: "Appends a destructive-colored required indicator after the label text.",
+        description:
+          "Appends a muted required indicator after the label text. Inside a Field it escalates to the error hue while that field is invalid; standalone it stays muted.",
       },
       children: {
         type: "ReactNode",

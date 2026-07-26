@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useState,
 } from "react";
+import { type ThemeBootstrapConfig, themeBootstrap } from "./theme-bootstrap";
 
 export type DocsTheme = "dark" | "light";
 export type ThemePreference = DocsTheme | "system";
@@ -83,24 +84,21 @@ function applyTheme(theme: DocsTheme): void {
     ?.setAttribute("content", THEME_COLORS[theme]);
 }
 
+export const THEME_BOOTSTRAP_CONFIG: ThemeBootstrapConfig = {
+  storageKey: STORAGE_KEY,
+  defaultPreference: DEFAULT_PREFERENCE,
+  darkQuery: DARK_SCHEME_QUERY,
+  themeColors: THEME_COLORS,
+  toggleLabels: TOGGLE_LABELS,
+};
+
 /**
- * Pre-hydration bootstrap, injected inline in the document head (routes/__root.tsx)
+ * {@link themeBootstrap} serialized for the inline head script in routes/__root.tsx,
  * so the stored preference reaches the document before the first paint. It stamps
- * exactly what {@link applyTheme} stamps and labels the server-rendered toggle as
- * its markup is parsed. Everything interpolated below is a module constant.
- *
- * The theme-color meta is created here rather than rendered by React: React 19
- * treats meta as a hoistable it matches by attributes during hydration, so a tag
- * this script had already retinted would be duplicated rather than adopted.
- *
- * The whole body is wrapped in one try/catch, as next-themes' own ThemeScript is:
- * this runs in <head> before anything is painted, so a browser missing matchMedia
- * or MutationObserver would otherwise abort the bootstrap half-applied and report
- * an uncaught error on every load. Bailing out leaves the shell's served theme in
- * place. The inner storage try/catch stays: that one is a partial failure the
- * script recovers from rather than a reason to give up.
+ * exactly what {@link applyTheme} stamps and labels the server-rendered toggle as its
+ * markup is parsed.
  */
-export const THEME_INIT_SCRIPT = `(function(){try{var d=document.documentElement;var p=${JSON.stringify(DEFAULT_PREFERENCE)};try{var s=localStorage.getItem(${JSON.stringify(STORAGE_KEY)});if(s==="dark"||s==="light"||s==="system")p=s}catch(e){}var t=p==="system"?(window.matchMedia(${JSON.stringify(DARK_SCHEME_QUERY)}).matches?"dark":"light"):p;d.setAttribute("data-theme",t);d.style.colorScheme=t;var c=document.createElement("meta");c.setAttribute("name","theme-color");c.setAttribute("content",${JSON.stringify(THEME_COLORS)}[t]);document.head.appendChild(c);var L=${JSON.stringify(TOGGLE_LABELS)};function u(e){e.setAttribute("aria-label",L[p]);e.textContent=p}function y(e){if(e.nodeType!==1)return;if(e.matches("[data-docs-theme-toggle]"))u(e);e.querySelectorAll("[data-docs-theme-toggle]").forEach(u)}var o=new MutationObserver(function(r){r.forEach(function(m){m.addedNodes.forEach(y)})});o.observe(d,{childList:true,subtree:true});y(d);document.addEventListener("DOMContentLoaded",function(){o.disconnect()},{once:true})}catch(err){}})();`;
+export const THEME_INIT_SCRIPT = `(${themeBootstrap.toString()})(${JSON.stringify(THEME_BOOTSTRAP_CONFIG)});`;
 
 const useClientLayoutEffect = typeof document === "undefined" ? useEffect : useLayoutEffect;
 

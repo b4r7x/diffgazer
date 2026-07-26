@@ -1,7 +1,9 @@
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
+import { formatDuration } from "@diffgazer/core/format";
 import {
   classifyReviewStreamError,
   getPartialFailureWarning,
+  type LogStreamState,
   type ReviewEvent,
   type ReviewStreamErrorGuidance,
 } from "@diffgazer/core/review";
@@ -17,12 +19,15 @@ import { Callout } from "@diffgazer/ui/components/callout";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   REVIEW_PROGRESS_CONTROLS,
   useReviewProgressKeyboard,
 } from "../hooks/use-progress-keyboard";
+import { ReviewClockProvider, useReviewClock } from "../hooks/use-review-clock";
+import { useStreamLiveness } from "../hooks/use-stream-liveness";
 import { ActivityLog } from "./activity-log/log";
 import { AgentBoard } from "./agent-board";
 import { ContextSnapshotPreview } from "./context-snapshot-preview";
@@ -149,6 +154,50 @@ function ErrorDisplay({
   );
 }
 
+const PANEL_TONE_BY_LIVENESS = {
+  flowing: undefined,
+  quiet: "warning",
+  stalled: "error",
+} as const satisfies Record<LogStreamState, "warning" | "error" | undefined>;
+
+/**
+ * The run naming its own silence. Nothing animates and nothing moves: the panel
+ * frame carries the state and this line says how long the stream has been quiet,
+ * so "the model is thinking" and "the pipe is dead" stop looking alike.
+ */
+function StreamLivenessNotice({
+  state,
+  lastEventAt,
+  onReconnect,
+}: {
+  state: Exclude<LogStreamState, "flowing">;
+  lastEventAt: number;
+  onReconnect?: () => void;
+}) {
+  const now = useReviewClock();
+  const elapsed = formatDuration(Math.max(0, now - lastEventAt));
+  const verdict = state === "stalled" ? "Stream stalled" : "Stream quiet";
+
+  return (
+    <div className="mb-6 space-y-2">
+      <output
+        aria-live="polite"
+        className={cn(
+          "font-mono text-xs",
+          state === "stalled" ? "text-error-text" : "text-warning-text",
+        )}
+      >
+        {`${verdict} — no events for ${elapsed}.`}
+      </output>
+      {state === "stalled" && onReconnect && (
+        <Button variant="outline" size="sm" bracket onClick={onReconnect}>
+          Reconnect
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function ReviewProgressView({
   data,
   isRunning,
@@ -190,113 +239,132 @@ export function ReviewProgressView({
   }));
 
   const partialFailure = getPartialFailureWarning(agents, error ?? null, lensStats);
+  const liveness = useStreamLiveness({ events, isRunning });
 
   return (
-    <div className="flex flex-1 flex-col gap-4 px-4 pt-4 pb-4 max-md:overflow-y-auto md:flex-row md:overflow-hidden">
-      <Panel
-        ref={progressPaneRef}
-        as="section"
-        aria-label="Progress"
-        data-pane="progress"
-        focused={focusPane === "progress"}
-        className="flex w-full flex-col max-md:shrink-0 md:min-h-0 md:w-1/3"
-      >
-        <Panel.Label variant="border" aria-hidden="true">
-          Progress
-        </Panel.Label>
-
-        <ScrollArea
-          ref={progressScrollRef}
-          tabIndex={-1}
-          className="flex-1 px-4 pt-4 focus:outline-none md:min-h-0"
+    <ReviewClockProvider running={isRunning}>
+      <div className="flex flex-1 flex-col gap-4 px-4 pt-4 pb-4 max-md:overflow-y-auto md:flex-row md:overflow-hidden">
+        <Panel
+          ref={progressPaneRef}
+          as="section"
+          aria-label="Progress"
+          data-pane="progress"
+          focused={focusPane === "progress"}
+          tone={PANEL_TONE_BY_LIVENESS[isRunning ? liveness.state : "flowing"]}
+          className="flex w-full flex-col max-md:shrink-0 md:min-h-0 md:w-1/3"
         >
-          <ProgressList steps={steps} className="mb-8" />
+          <Panel.Label variant="border" aria-hidden="true">
+            Progress
+          </Panel.Label>
 
-          <AgentBoard agents={agents} />
+          <ScrollArea
+            ref={progressScrollRef}
+            tabIndex={-1}
+            className="flex-1 px-4 pt-4 focus:outline-none md:min-h-0"
+          >
+            <ProgressList steps={steps} className="mb-8" />
 
-          {contextSnapshot && !isRunning && <ContextSnapshotPreview snapshot={contextSnapshot} />}
-        </ScrollArea>
+            {isRunning && liveness.state !== "flowing" && (
+              <StreamLivenessNotice
+                state={liveness.state}
+                lastEventAt={liveness.lastEventAt}
+                onReconnect={reviewId && onRetry ? () => onRetry(reviewId) : undefined}
+              />
+            )}
 
-        <div className="shrink-0 px-4">
-          <ReviewMetricsFooter metrics={metrics} startTime={startTime} isRunning={isRunning} />
-
-          {(onViewResults || (isRunning && onCancel)) && !error && (
-            <div className="flex flex-wrap gap-3 pb-4">
-              {isRunning && onCancel && (
-                <Button variant="secondary" bracket disabled={cancelDisabled} onClick={onCancel}>
-                  {REVIEW_PROGRESS_CONTROLS.cancel.label}
-                </Button>
-              )}
-              {onViewResults && (
-                <Button variant="outline" bracket onClick={onViewResults}>
-                  View Results
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </Panel>
-
-      <Panel
-        ref={logPaneRef}
-        as="section"
-        aria-label="Live Activity Log"
-        data-pane="log"
-        focused={focusPane === "log" || focusPane === "filters"}
-        className="flex w-full flex-col max-md:shrink-0 md:min-h-0 md:flex-1"
-      >
-        <Panel.Label variant="border" aria-hidden="true">
-          Live Activity Log
-        </Panel.Label>
-
-        <div
-          ref={agentFilterRef}
-          className="flex flex-wrap items-start justify-between gap-3 px-4 pt-3"
-        >
-          <AgentFilterBar agents={agentOptions} active={agentFilter} onChange={setAgentFilter} />
-          <span className="shrink-0 text-2xs text-muted-foreground font-mono max-sm:hidden">
-            tail -f agent.log
-          </span>
-        </div>
-
-        <div ref={logContentRef} className="flex flex-1 min-h-0 flex-col">
-          {partialFailure.hasPartialFailure && (
-            <div className="px-4 pb-2">
-              <Callout tone="warning" live>
-                <Callout.Title>Partial Analysis</Callout.Title>
-                <Callout.Content>{partialFailure.message}</Callout.Content>
-              </Callout>
-            </div>
-          )}
-
-          {notices.length > 0 && (
-            <output className="shrink-0 px-4 pb-2 text-sm text-warning-text">
-              {notices.map((notice) => (
-                <div key={notice}>{notice}</div>
-              ))}
-            </output>
-          )}
-
-          {error && errorGuidance && (
-            <ErrorDisplay
-              error={error}
-              guidance={errorGuidance}
-              onBack={onBack}
-              onRetry={
-                errorGuidance.kind === "transport" && reviewId && onRetry
-                  ? () => onRetry(reviewId)
-                  : undefined
-              }
+            {/* Frozen percentages must stop reading as live progress. */}
+            <AgentBoard
+              agents={agents}
+              className={isRunning && liveness.state === "stalled" ? "opacity-40" : undefined}
             />
-          )}
-          <ActivityLog
-            events={events}
-            sourceFilter={agentFilter}
-            showCursor={isRunning}
-            className="flex-1 min-h-0 px-2 pb-2 max-md:h-[45dvh] max-md:flex-none"
-          />
-        </div>
-      </Panel>
-    </div>
+
+            {contextSnapshot && !isRunning && <ContextSnapshotPreview snapshot={contextSnapshot} />}
+          </ScrollArea>
+
+          <div className="shrink-0 px-4">
+            <ReviewMetricsFooter metrics={metrics} startTime={startTime} />
+
+            {(onViewResults || (isRunning && onCancel)) && !error && (
+              <div className="flex flex-wrap gap-3 pb-4">
+                {isRunning && onCancel && (
+                  <Button variant="secondary" bracket disabled={cancelDisabled} onClick={onCancel}>
+                    {REVIEW_PROGRESS_CONTROLS.cancel.label}
+                  </Button>
+                )}
+                {onViewResults && (
+                  <Button variant="outline" bracket onClick={onViewResults}>
+                    View Results
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </Panel>
+
+        <Panel
+          ref={logPaneRef}
+          as="section"
+          aria-label="Live Activity Log"
+          data-pane="log"
+          focused={focusPane === "log" || focusPane === "filters"}
+          className="flex w-full flex-col max-md:shrink-0 md:min-h-0 md:flex-1"
+        >
+          <Panel.Label variant="border" aria-hidden="true">
+            Live Activity Log
+          </Panel.Label>
+
+          <div
+            ref={agentFilterRef}
+            className="flex flex-wrap items-start justify-between gap-3 px-4 pt-3"
+          >
+            <AgentFilterBar agents={agentOptions} active={agentFilter} onChange={setAgentFilter} />
+            <span className="shrink-0 text-2xs text-muted-foreground font-mono max-sm:hidden">
+              tail -f agent.log
+            </span>
+          </div>
+
+          <div ref={logContentRef} className="flex flex-1 min-h-0 flex-col">
+            {partialFailure.hasPartialFailure && (
+              <div className="px-4 pb-2">
+                <Callout tone="warning" live>
+                  <Callout.Title>Partial Analysis</Callout.Title>
+                  <Callout.Content>{partialFailure.message}</Callout.Content>
+                </Callout>
+              </div>
+            )}
+
+            {notices.length > 0 && (
+              <output className="shrink-0 px-4 pb-2 text-sm text-warning-text">
+                {notices.map((notice) => (
+                  <div key={notice}>{notice}</div>
+                ))}
+              </output>
+            )}
+
+            {error && errorGuidance && (
+              <ErrorDisplay
+                error={error}
+                guidance={errorGuidance}
+                onBack={onBack}
+                onRetry={
+                  errorGuidance.kind === "transport" && reviewId && onRetry
+                    ? () => onRetry(reviewId)
+                    : undefined
+                }
+              />
+            )}
+            <ActivityLog
+              events={events}
+              sourceFilter={agentFilter}
+              streamState={isRunning ? liveness.state : null}
+              agents={agents}
+              startTime={startTime}
+              lastEventAt={liveness.lastEventAt}
+              className="flex-1 min-h-0 px-2 pb-2 max-md:h-[45dvh] max-md:flex-none"
+            />
+          </div>
+        </Panel>
+      </div>
+    </ReviewClockProvider>
   );
 }

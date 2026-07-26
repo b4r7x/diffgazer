@@ -5,6 +5,7 @@ import { cn } from "@diffgazer/ui/lib/utils";
 import type { TableOfContents } from "fumadocs-core/toc";
 import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { CHROME_LABEL_CLASS } from "./shared/chrome-label";
+import { isPrimaryNavigationClick } from "./shared/navigation-click";
 
 const CONTENT_CONTAINER_ID = "main-content";
 const TOC_TITLE = "On this page";
@@ -52,6 +53,10 @@ function entriesFromDom(doc: Document, containerId: string): TocEntry[] {
   for (const heading of container.querySelectorAll<HTMLElement>("h2[id], h3[id]")) {
     const { id } = heading;
     if (!id || seen.has(id)) continue;
+    // Rendered demos ship their own section headings (the useActiveHeading
+    // examples do). Those are the demo's content, not the page's, so they must
+    // neither list as TOC rows nor drive this page's scroll spy.
+    if (heading.closest("[data-demo-preview]")) continue;
     seen.add(id);
     entries.push({
       depth: heading.tagName === "H3" ? 3 : 2,
@@ -68,10 +73,6 @@ function entriesFromDom(doc: Document, containerId: string): TocEntry[] {
 // redundant updates.
 function entriesSignature(entries: TocEntry[]): string {
   return entries.map((e) => `${e.depth}:${e.id}:${e.title}`).join("\n");
-}
-
-function isPlainLeftClick(event: MouseEvent<HTMLAnchorElement>): boolean {
-  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
 function syncLocationHash(id: string): void {
@@ -163,7 +164,7 @@ export function MobileTocPanel({ entries, scrollTo }: TocPanelProps) {
   if (entries.length === 0) return null;
 
   const onEntryClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
-    if (!isPlainLeftClick(event)) return;
+    if (!isPrimaryNavigationClick(event)) return;
     event.preventDefault();
 
     // The disclosure sits between the reader and the heading they picked;
@@ -257,7 +258,7 @@ export function TableOfContentsPanel({
   }, [activeId]);
 
   const onItemClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
-    if (!isPlainLeftClick(event)) return;
+    if (!isPrimaryNavigationClick(event)) return;
     event.preventDefault();
     scrollTo(id);
     syncLocationHash(id);

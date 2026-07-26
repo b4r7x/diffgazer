@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { log } from "../logger.js";
 import { REGISTRY_ITEM_TYPE, type Registry, type RegistryItem } from "../registry-types.js";
 import { writeJson } from "../utils/json.js";
 import { DOCS_CODE_THEME_NAME } from "./code-theme.js";
@@ -57,7 +56,7 @@ export async function buildHooksData(params: {
     return { hooksCount: 0, allHooks, registryHooks, errors };
   }
 
-  log.info(
+  console.log(
     `Found ${allHooks.length} hooks (${registryHooks.length} registry + ${(hooksConfig.extraItems ?? []).length} extra)`,
   );
 
@@ -98,13 +97,13 @@ export async function buildHooksData(params: {
     }
   }
   const hooksCount = Object.keys(enrichedData).length;
-  log.info(`Wrote ${hooksCount} per-hook JSON files`);
+  console.log(`Wrote ${hooksCount} per-hook JSON files`);
 
   const hookList = Object.values(enrichedData)
     .map((h) => ({ name: h.name, title: h.title }))
     .sort((a, b) => a.name.localeCompare(b.name));
   writeJson(resolve(outputDir, "hook-list.json"), hookList);
-  log.info(`Wrote hook-list.json (${hookList.length} entries)`);
+  console.log(`Wrote hook-list.json (${hookList.length} entries)`);
 
   mkdirSync(hooksConfig.contentDir, { recursive: true });
 
@@ -114,7 +113,7 @@ export async function buildHooksData(params: {
   const hasIndexPage = existsSync(resolve(hooksConfig.contentDir, "index.mdx"));
   const metaPages = hasIndexPage ? ["index", ...hookPages] : hookPages;
   writeJson(resolve(hooksConfig.contentDir, "meta.json"), { title: "Hooks", pages: metaPages });
-  log.info(`Wrote meta.json (${hooksCount} hook pages)`);
+  console.log(`Wrote meta.json (${hooksCount} hook pages)`);
 
   if (hooksConfig.aggregateHooksFile) {
     const aggregateItems = hooksConfig.aggregateHooksItems ?? registryHooks;
@@ -125,7 +124,7 @@ export async function buildHooksData(params: {
       themeName: DOCS_CODE_THEME_NAME,
     });
     writeJson(resolve(outputDir, hooksConfig.aggregateHooksFile), basicData);
-    log.info(`Wrote ${hooksConfig.aggregateHooksFile} (${Object.keys(basicData).length} hooks)`);
+    console.log(`Wrote ${hooksConfig.aggregateHooksFile} (${Object.keys(basicData).length} hooks)`);
   }
 
   return { hooksCount, allHooks, registryHooks, errors };

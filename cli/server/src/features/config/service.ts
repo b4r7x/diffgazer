@@ -74,31 +74,25 @@ function validateCredential(
   provider: AIProvider,
   apiKey: string | CredentialRef,
 ): Result<void, { message: string; code: ConfigServiceErrorCode }> {
-  if (typeof apiKey === "string") {
-    if (apiKey.trim().length === 0) {
+  if (typeof apiKey !== "string" && apiKey.kind === "env") {
+    // A provider may only reference its OWN env var, not another provider's
+    // allowed key (no cross-provider credential binding).
+    const expected = PROVIDER_ENV_VARS[provider];
+    if (apiKey.varName !== expected) {
       return err(
-        createError(ErrorCode.CREDENTIAL_INVALID, "API key must not be empty or whitespace-only"),
+        createError(
+          ErrorCode.CREDENTIAL_INVALID,
+          `Environment variable "${apiKey.varName}" is not the key for provider "${provider}". Expected: ${expected}`,
+        ),
       );
     }
     return ok(undefined);
   }
-  if (apiKey.kind === "literal") {
-    if (apiKey.value.trim().length === 0) {
-      return err(
-        createError(ErrorCode.CREDENTIAL_INVALID, "API key must not be empty or whitespace-only"),
-      );
-    }
-    return ok(undefined);
-  }
-  // kind: "env" — a provider may only reference its OWN env var, not another
-  // provider's allowed key (no cross-provider credential binding).
-  const expected = PROVIDER_ENV_VARS[provider];
-  if (apiKey.varName !== expected) {
+
+  const literal = typeof apiKey === "string" ? apiKey : apiKey.value;
+  if (literal.trim().length === 0) {
     return err(
-      createError(
-        ErrorCode.CREDENTIAL_INVALID,
-        `Environment variable "${apiKey.varName}" is not the key for provider "${provider}". Expected: ${expected}`,
-      ),
+      createError(ErrorCode.CREDENTIAL_INVALID, "API key must not be empty or whitespace-only"),
     );
   }
   return ok(undefined);

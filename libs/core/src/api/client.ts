@@ -5,6 +5,8 @@ import type {
   ApiClient,
   ApiClientConfig,
   ApiError,
+  BodyRequestOptions,
+  QueryRequestOptions,
   RequestOptions,
   ResponseValidator,
 } from "./types.js";
@@ -89,42 +91,32 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     return response;
   }
 
+  async function query<T>(
+    method: "GET" | "DELETE",
+    path: string,
+    options?: QueryRequestOptions<T>,
+  ): Promise<T> {
+    const { schema, ...request } = options ?? {};
+    const response = await send(method, path, request);
+    return parse<T>(response, schema);
+  }
+
+  async function withBody<T>(
+    method: "POST" | "PUT",
+    path: string,
+    body?: unknown,
+    options?: BodyRequestOptions<T>,
+  ): Promise<T> {
+    const { schema, ...request } = options ?? {};
+    const response = await send(method, path, { body, ...request });
+    return parse<T>(response, schema);
+  }
+
   return {
-    get: async <T>(
-      path: string,
-      params?: Record<string, string>,
-      schema?: ResponseValidator<T>,
-      options?: Omit<RequestOptions, "body" | "params">,
-    ): Promise<T> => {
-      const response = await send("GET", path, { params, ...options });
-      return parse<T>(response, schema);
-    },
-    post: async <T>(
-      path: string,
-      body?: unknown,
-      options?: Omit<RequestOptions, "body" | "params">,
-      schema?: ResponseValidator<T>,
-    ): Promise<T> => {
-      const response = await send("POST", path, { body, ...options });
-      return parse<T>(response, schema);
-    },
-    put: async <T>(
-      path: string,
-      body?: unknown,
-      options?: Omit<RequestOptions, "body" | "params">,
-      schema?: ResponseValidator<T>,
-    ): Promise<T> => {
-      const response = await send("PUT", path, { body, ...options });
-      return parse<T>(response, schema);
-    },
-    delete: async <T>(
-      path: string,
-      params?: Record<string, string>,
-      schema?: ResponseValidator<T>,
-    ): Promise<T> => {
-      const response = await send("DELETE", path, { params });
-      return parse<T>(response, schema);
-    },
+    get: (path, options) => query("GET", path, options),
+    delete: (path, options) => query("DELETE", path, options),
+    post: (path, body, options) => withBody("POST", path, body, options),
+    put: (path, body, options) => withBody("PUT", path, body, options),
     request: send,
   };
 }

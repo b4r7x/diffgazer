@@ -96,6 +96,7 @@ const config = defineConfig(() => {
         // Docs-owned hooks live in src/hooks/; they precede the blanket @/hooks
         // alias (first match wins) so they resolve to docs source rather than the
         // libs/ui registry that demo source authors against.
+        "@/hooks/docs-tree-context": resolve(import.meta.dirname, "./src/hooks/docs-tree-context"),
         "@/hooks/use-demos": resolve(import.meta.dirname, "./src/hooks/use-demos"),
         "@/hooks/use-pending-docs-route": resolve(
           import.meta.dirname,
@@ -106,6 +107,7 @@ const config = defineConfig(() => {
           "./src/hooks/mobile-nav-context",
         ),
         "@/hooks/search-context": resolve(import.meta.dirname, "./src/hooks/search-context"),
+        "@/hooks/theme-bootstrap": resolve(import.meta.dirname, "./src/hooks/theme-bootstrap"),
         "@/hooks/theme-context": resolve(import.meta.dirname, "./src/hooks/theme-context"),
         "@/hooks": uiRegistryPath("hooks"),
         "@/lib/utils": uiRegistryPath("lib/utils"),
@@ -120,6 +122,7 @@ const config = defineConfig(() => {
         "@/lib/floating-position-constants": uiRegistryPath("lib/floating-position-constants"),
         "@/lib/horizontal-stepper-variants": uiRegistryPath("lib/horizontal-stepper-variants"),
         "@/lib/input-variants": uiRegistryPath("lib/input-variants"),
+        "@/lib/marker-rail": uiRegistryPath("lib/marker-rail"),
         "@/lib/search": uiRegistryPath("lib/search"),
         "@/lib/segmented-brackets": uiRegistryPath("lib/segmented-brackets"),
         "@/lib/segmented-variants": uiRegistryPath("lib/segmented-variants"),
@@ -127,6 +130,7 @@ const config = defineConfig(() => {
           "lib/selectable-collection-observer",
         ),
         "@/lib/selectable-collection": uiRegistryPath("lib/selectable-collection"),
+        "@/lib/selectable-glyph": uiRegistryPath("lib/selectable-glyph"),
         "@/lib/selectable-group": uiRegistryPath("lib/selectable-group"),
         "@/lib/selectable-variants": uiRegistryPath("lib/selectable-variants"),
         "@/lib/step-status": uiRegistryPath("lib/step-status"),

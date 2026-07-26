@@ -37,7 +37,7 @@ describe("useSettingsFormActions", () => {
     const getSettingsPayload = vi.fn(() => ({ agentExecution: "parallel" as const }));
     const { result } = renderHook(() =>
       useSettingsFormActions({
-        canSave: false,
+        saveAvailable: false,
         getSettingsPayload,
         contentShortcuts: [],
       }),
@@ -55,7 +55,7 @@ describe("useSettingsFormActions", () => {
     const getSettingsPayload = vi.fn(() => ({ agentExecution: "parallel" as const }));
     const { result } = renderHook(() =>
       useSettingsFormActions({
-        canSave: true,
+        saveAvailable: true,
         getSettingsPayload,
         contentShortcuts: [],
       }),
@@ -72,7 +72,7 @@ describe("useSettingsFormActions", () => {
     mockSaveSettings.mockResolvedValue(undefined);
     const { result } = renderHook(() =>
       useSettingsFormActions({
-        canSave: true,
+        saveAvailable: true,
         getSettingsPayload: () => ({ secretsStorage: "keyring" }),
         contentShortcuts: [],
       }),
@@ -88,7 +88,7 @@ describe("useSettingsFormActions", () => {
     mockSaveSettings.mockRejectedValueOnce(new Error("Settings store is read-only"));
     const { result } = renderHook(() =>
       useSettingsFormActions({
-        canSave: true,
+        saveAvailable: true,
         getSettingsPayload: () => ({ agentExecution: "sequential" }),
         contentShortcuts: [],
       }),

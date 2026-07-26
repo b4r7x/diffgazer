@@ -83,9 +83,10 @@ export function useCommandPaletteItemRegistry({
       const existingIndex = current.findIndex(
         (candidate) => candidate.registrationId === item.registrationId,
       );
-      if (existingIndex === -1) return [...current, item];
+      // -1 indexes to undefined, so the one guard covers both "not registered
+      // yet" and the index lookup the compiler cannot prove is in range.
       const existingItem = current[existingIndex];
-      if (existingItem === undefined) return current;
+      if (existingItem === undefined) return [...current, item];
       if (areCommandPaletteItemsEqual(existingItem, item)) return current;
 
       const next = [...current];

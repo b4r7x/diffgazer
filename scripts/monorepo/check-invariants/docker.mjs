@@ -21,28 +21,7 @@ export function checkPnpmPinsMatchRootPackageManager(context) {
   );
 }
 
-function getDockerEscapeCharacter(content) {
-  for (const line of content.split(/\r?\n/)) {
-    const directive = /^\s*#\s*([a-z]+)\s*=\s*(.*?)\s*$/i.exec(line);
-    if (!directive) break;
-    if (directive[1].toLowerCase() === "escape" && ["\\", "`"].includes(directive[2])) {
-      return directive[2];
-    }
-  }
-
-  return "\\";
-}
-
-function hasDockerLineContinuation(line, escapeCharacter) {
-  if (!line.endsWith(escapeCharacter)) return false;
-
-  let count = 0;
-  for (let index = line.length - 1; line[index] === escapeCharacter; index -= 1) count += 1;
-  return count % 2 === 1;
-}
-
 function parseDockerInstructions(content) {
-  const escapeCharacter = getDockerEscapeCharacter(content);
   const instructions = [];
   let logicalLine = "";
 
@@ -51,7 +30,7 @@ function parseDockerInstructions(content) {
     if (trimmed.startsWith("#")) continue;
     if (logicalLine === "" && trimmed === "") continue;
 
-    const continued = hasDockerLineContinuation(line, escapeCharacter);
+    const continued = line.endsWith("\\");
     const fragment = continued ? line.slice(0, -1) : line;
     logicalLine = logicalLine === "" ? fragment : `${logicalLine} ${fragment.trimStart()}`;
     if (continued) continue;
@@ -77,96 +56,22 @@ function stripDockerInstructionOptions(argumentsText) {
   return command;
 }
 
-function tokenizeShellCommand(command) {
-  const tokens = [];
-  let index = 0;
+const PNPM_INSTALL_COMMAND = /^\s*(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*pnpm\s+install\b/;
+const FROZEN_LOCKFILE_FLAG = /\s--frozen-lockfile(?![\w=-])/;
 
-  while (index < command.length) {
-    while (/\s/.test(command[index] ?? "")) index += 1;
-    if (index >= command.length || command[index] === "#") break;
-
-    const operator = ["&&", "||", ";", "|", "&", "(", ")"].find((value) =>
-      command.startsWith(value, index),
-    );
-    if (operator) {
-      tokens.push({ type: "operator", value: operator });
-      index += operator.length;
-      continue;
-    }
-
-    let quote = null;
-    let value = "";
-    while (index < command.length) {
-      const character = command[index];
-      if (quote) {
-        if (character === quote) {
-          quote = null;
-        } else if (character === "\\" && quote === '"' && index + 1 < command.length) {
-          index += 1;
-          value += command[index];
-        } else {
-          value += character;
-        }
-        index += 1;
-        continue;
-      }
-      if (character === '"' || character === "'") {
-        quote = character;
-        index += 1;
-        continue;
-      }
-      if (character === "\\" && index + 1 < command.length) {
-        index += 1;
-        value += command[index];
-        index += 1;
-        continue;
-      }
-      if (/\s/.test(character) || [";", "|", "&", "(", ")"].includes(character)) break;
-      value += character;
-      index += 1;
-    }
-    tokens.push({ type: "word", value });
-  }
-
-  return tokens;
-}
-
+/**
+ * Shell form only. JSON exec form (`RUN ["pnpm", "install"]`) runs no shell, so
+ * the `&&`/`;` splitting and the flag regexes below do not describe it; the
+ * repo's Dockerfiles are shell form throughout. Bailing out keeps exec form
+ * explicitly out of scope instead of silently misreading the JSON as words.
+ */
 function hasFrozenPnpmInstall(argumentsText) {
   const command = stripDockerInstructionOptions(argumentsText);
-  if (command.startsWith("[")) {
-    try {
-      const args = JSON.parse(command);
-      return (
-        Array.isArray(args) &&
-        args[0] === "pnpm" &&
-        args[1] === "install" &&
-        args.slice(2).includes("--frozen-lockfile")
-      );
-    } catch {
-      return false;
-    }
-  }
+  if (command.startsWith("[")) return false;
 
-  const tokens = tokenizeShellCommand(command);
-  let commandStart = true;
-
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    if (token.type === "operator") {
-      commandStart = true;
-      continue;
-    }
-    if (!commandStart || /^[A-Za-z_][A-Za-z0-9_]*=/.test(token.value)) continue;
-    if (token.value === "pnpm" && tokens[index + 1]?.value === "install") {
-      for (let argumentIndex = index + 2; argumentIndex < tokens.length; argumentIndex += 1) {
-        if (tokens[argumentIndex].type === "operator") break;
-        if (tokens[argumentIndex].value === "--frozen-lockfile") return true;
-      }
-    }
-    commandStart = false;
-  }
-
-  return false;
+  return command
+    .split(/&&|\|\||[;|]/)
+    .some((segment) => PNPM_INSTALL_COMMAND.test(segment) && FROZEN_LOCKFILE_FLAG.test(segment));
 }
 
 export function checkDockerArtifactFormatterInputs(context) {
@@ -195,20 +100,12 @@ function parseDockerCopySources(argumentsText) {
   return parseDockerCopy(argumentsText)?.sources ?? [];
 }
 
+/** Shell form only — see hasFrozenPnpmInstall. JSON exec form is skipped, not guessed at. */
 function parseDockerCopy(argumentsText) {
-  const sources = stripDockerInstructionOptions(argumentsText);
-  let args;
+  const text = stripDockerInstructionOptions(argumentsText);
+  if (text.startsWith("[")) return null;
 
-  if (sources.startsWith("[")) {
-    try {
-      args = JSON.parse(sources);
-    } catch {
-      return null;
-    }
-    if (!Array.isArray(args) || !args.every((value) => typeof value === "string")) return null;
-  } else {
-    args = sources.split(/\s+/);
-  }
+  const args = text.split(/\s+/).filter(Boolean);
 
   if (args.length < 2) return null;
   return {

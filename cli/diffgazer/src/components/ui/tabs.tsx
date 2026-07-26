@@ -4,7 +4,7 @@ import { createContext, useContext, useState } from "react";
 import { useListNavigation } from "../../hooks/use-list-navigation";
 import { useListNavigationInput } from "../../hooks/use-list-navigation-input";
 import { collectChildItems } from "../../lib/collect-child-items";
-import { SURFACE_BORDER, selectionFill } from "../../theme/chrome";
+import { SURFACE_BORDER, selectionHue } from "../../theme/chrome";
 import { useTheme } from "../../theme/provider";
 
 interface TabsProps {
@@ -115,7 +115,7 @@ function TabsTrigger({ value, disabled = false, children }: TabsTriggerProps) {
   return (
     <Text
       color={isActiveTab ? tokens.bg : tokens.muted}
-      backgroundColor={isActiveTab ? selectionFill(tokens) : undefined}
+      backgroundColor={isActiveTab ? selectionHue(tokens) : undefined}
       bold={isActiveTab}
     >
       {` ${children} `}

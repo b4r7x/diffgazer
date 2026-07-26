@@ -5,6 +5,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
   useCallback,
+  useEffect,
   useId,
   useMemo,
   useRef,
@@ -19,11 +20,17 @@ import {
 } from "@/hooks/use-listbox";
 import { useSelectableCollection } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
-import { type CustomActivator, MenuContext, type MenuContextValue } from "./menu-context";
+import {
+  type CustomActivator,
+  MenuContext,
+  type MenuContextValue,
+  type MenuSubEntry,
+} from "./menu-context";
 import { MenuGroup } from "./menu-group";
 import { MenuItem } from "./menu-item";
 import { MenuItemCheckbox } from "./menu-item-checkbox";
 import { MenuItemRadio } from "./menu-item-radio";
+import { MenuStackBack } from "./menu-stack";
 
 /**
  * @typeParam TId - Convenience assertion for the id union surfaced through
@@ -97,6 +104,10 @@ export function Menu<TId extends string = string>({
   const composedRef = useComposedRefs(menuRef, ref);
   const customActivators = useRef<Map<string, CustomActivator>>(new Map());
   const [registrationsStarted, setRegistrationsStarted] = useState(false);
+  const [activeSub, setActiveSub] = useState<MenuSubEntry | null>(null);
+  const [stackContainer, setStackContainer] = useState<HTMLDivElement | null>(null);
+  const highlightRef = useRef<((id: TId) => void) | null>(null);
+  const activeSubRef = useRef<MenuSubEntry | null>(null);
   const selectionEnabled = controlledSelectedId !== undefined || defaultSelectedId !== null;
   const itemRole = selectionEnabled ? "menuitemradio" : "menuitem";
 
@@ -123,6 +134,18 @@ export function Menu<TId extends string = string>({
     [registerItem],
   );
 
+  const pushSub = useCallback((entry: MenuSubEntry) => setActiveSub(entry), []);
+
+  const popSub = useCallback((id?: string) => {
+    const current = activeSubRef.current;
+    if (current === null) return;
+    // A submenu unmounting after a sibling already pushed must not pop the
+    // sibling's entry, so a caller can name the entry it owns.
+    if (id !== undefined && id !== current.id) return;
+    setActiveSub(null);
+    highlightRef.current?.(current.id as TId);
+  }, []);
+
   const registerActivator = useCallback((id: string, handler: CustomActivator) => {
     customActivators.current.set(id, handler);
   }, []);
@@ -142,6 +165,15 @@ export function Menu<TId extends string = string>({
       wrap,
       idPrefix,
       onKeyDown: (e: KeyboardEvent) => {
+        // Drilled into a submenu: ArrowLeft and Escape pop one level instead of
+        // closing the menu, mirroring the flyout's own key model.
+        if (activeSub !== null && (e.key === "ArrowLeft" || e.key === "Escape")) {
+          e.preventDefault();
+          e.stopPropagation();
+          popSub();
+          onKeyDown?.(e);
+          return;
+        }
         if ((e.key === "Enter" || e.key === " ") && highlighted !== null) {
           const handler = customActivators.current.get(highlighted);
           if (handler) {
@@ -180,6 +212,14 @@ export function Menu<TId extends string = string>({
       getItemId: getEncodedListboxItemId,
       ref: composedRef,
     });
+
+  // Latest refs, not state sync: popSub is created before useListbox returns its
+  // highlight setter and must keep a stable identity for the submenu effect that
+  // calls it, so it reads both through refs instead of a stale closure.
+  useEffect(() => {
+    activeSubRef.current = activeSub;
+    highlightRef.current = handleItemHighlight;
+  }, [activeSub, handleItemHighlight]);
 
   const wrappedActivate = useCallback(
     (id: string) => {
@@ -222,6 +262,10 @@ export function Menu<TId extends string = string>({
       unregisterItem,
       registerActivator,
       unregisterActivator,
+      activeSub,
+      pushSub,
+      popSub,
+      stackContainer,
     }),
     [
       selectedId,
@@ -236,6 +280,10 @@ export function Menu<TId extends string = string>({
       unregisterItem,
       registerActivator,
       unregisterActivator,
+      activeSub,
+      pushSub,
+      popSub,
+      stackContainer,
     ],
   );
 
@@ -249,7 +297,21 @@ export function Menu<TId extends string = string>({
         aria-label={ariaLabel}
         className={cn("w-full relative outline-none", className)}
       >
-        {children}
+        {activeSub !== null ? <MenuStackBack label={activeSub.label} /> : null}
+        {/* Drill-down region. A stacked submenu portals its items here, so they
+            sit in the same role="menu" container at the same width — and the
+            parent list below is `hidden`, which drops it from the accessibility
+            tree AND from the selectable collection, so arrow navigation and
+            typeahead never reach an item the user cannot see. */}
+        <div
+          ref={setStackContainer}
+          role="none"
+          data-slot="menu-stack"
+          hidden={activeSub === null}
+        />
+        <div role="none" data-slot="menu-list" hidden={activeSub !== null}>
+          {children}
+        </div>
       </div>
     </MenuContext>
   );

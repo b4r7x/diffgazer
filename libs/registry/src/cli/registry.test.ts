@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { RegistryItemSchema } from "../registry-types.js";
-import { RegistryItemSchema as CliRegistryItemSchema, metaField } from "./registry.js";
+import { RegistryItemSchema as CliRegistryItemSchema, metaStringList } from "./registry.js";
 
-describe("metaField array validation", () => {
+describe("metaStringList", () => {
   it("returns a string[] meta value through unchanged", () => {
     const item = { meta: { tags: ["a", "b"] } };
-    expect(metaField(item, "tags", [] as string[])).toEqual(["a", "b"]);
+    expect(metaStringList(item, "tags")).toEqual(["a", "b"]);
   });
 
-  it("falls back when the array contains a non-string element", () => {
+  it("returns an empty list when the array contains a non-string element", () => {
     const item = { meta: { tags: ["a", 1] } } as { meta?: Record<string, unknown> };
-    expect(metaField(item, "tags", ["default"])).toEqual(["default"]);
+    expect(metaStringList(item, "tags")).toEqual([]);
   });
 });
 

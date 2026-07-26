@@ -9,6 +9,11 @@ export interface PanelContextValue {
    * focused). PanelLabel reads it to clear the bracket arm instead of painting over it.
    */
   hasCorners: boolean;
+  /**
+   * True while the panel is marked as the active pane. PanelLabel reads it so the
+   * readout variant state-changes with the corner brackets as one instrument.
+   */
+  focused: boolean;
   /** Fallback id PanelTitle uses when the consumer does not supply one. */
   titleId: string;
   /** Fallback id PanelDescription uses when the consumer does not supply one. */

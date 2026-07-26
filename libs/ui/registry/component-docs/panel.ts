@@ -75,12 +75,17 @@ export const panelDoc: ComponentDoc = {
     {
       title: "Corner labels",
       content:
-        "Use Panel.Label variant='border' for a boxed border label, or variant='gap' for a border cutout label. The label sits at the standard 1rem inline-start inset on frames without corner brackets and steps out to 2rem when the panel draws them (frame='viewfinder', or any frame while focused), so its opaque background never covers a bracket arm. Consumers do not hand-roll that offset.",
+        "Use Panel.Label variant='border' for a boxed border label, variant='gap' for a border cutout label, or variant='readout' to seat the label on the panel's top rule between the two bracket arms (no box — the arms are the frame). The label sits at the standard 1rem inline-start inset on frames without corner brackets and steps past the arm when the panel draws them (frame='viewfinder', or any frame while focused), so its opaque background never covers a bracket. The readout tracks the arm's current length instead of a fixed offset, and repaints in --ring while the pane is focused, so label and corners read as one instrument. Every label publishes data-variant, data-inset ('edge' or 'corner'), and data-state='focused'; consumers do not hand-roll those offsets.",
     },
     {
       title: "Focused pane",
       content:
-        '`focused` marks the panel as the active pane in a multi-pane layout: viewfinder corner brackets grow on any frame, drawn in --ring, longer and thicker than the resting viewfinder corners. It emits data-state="focused" and changes nothing else — no border, padding, or shadow shift, so toggling it never reflows the layout. It is a visual affordance only: it does not move DOM focus and does not change roles, names, or ARIA. Drive it from whatever pane-focus state the app already owns, and keep a real focus-visible outline on the interactive elements inside.',
+        '`focused` marks the panel as the active pane in a multi-pane layout: viewfinder corner brackets grow on any frame, drawn in --ring, longer and thicker than the resting corners. It emits data-state="focused" and changes nothing else — no border, padding, or shadow shift, so toggling it never reflows the layout. It is a visual affordance only: it does not move DOM focus and does not change roles, names, or ARIA. Drive it from whatever pane-focus state the app already owns, and keep a real focus-visible outline on the interactive elements inside.',
+    },
+    {
+      title: "Reticle grammar",
+      content:
+        'The corner brackets are a signature, not decoration, and they mean one thing: this is the pane the keyboard drives. Four rules, stated as prohibitions because those are the ones that get broken. (1) A panel that cannot receive keyboard focus must not use frame="viewfinder" and must not pass `focused`. (2) A screen renders at most one panel with data-state="focused" at any time — assert it with expectSingleReticle(container) in full-screen tests. (3) frame="viewfinder" without `focused` is reserved for surfaces where the reticle is the subject rather than the chrome, such as a marketing hero lens; on product screens the reticle always means focus. (4) Resting corners are --border-strong, focused corners are --ring, never --foreground — the inert state must not outweigh the active one.',
     },
   ],
   usage: { example: "panel-default" },
@@ -90,6 +95,7 @@ export const panelDoc: ComponentDoc = {
     { name: "panel-frames", title: "Frames" },
     { name: "panel-tones", title: "Tones" },
     { name: "panel-focused", title: "Focused" },
+    { name: "panel-readout", title: "Corner labels" },
   ],
   keyboard: null,
   props: {
@@ -212,10 +218,11 @@ export const panelDoc: ComponentDoc = {
     },
     PanelLabel: {
       variant: {
-        type: '"border" | "gap"',
+        type: '"border" | "gap" | "readout"',
         required: false,
         defaultValue: '"border"',
-        description: "Border style around the floating label text.",
+        description:
+          'Label treatment. "border" boxes the text, "gap" cuts it into the frame, "readout" seats it on the top rule between the bracket arms and repaints in --ring while the pane is focused.',
       },
       children: {
         type: "ReactNode",

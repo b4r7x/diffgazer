@@ -3,7 +3,7 @@ import { clampIndex } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 import { Badge } from "../../../components/ui/badge";
-import { selectionFill } from "../../../theme/chrome";
+import { selectionHue } from "../../../theme/chrome";
 import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
 
@@ -30,7 +30,7 @@ function getIndicatorColor(
   isComplete: boolean,
   tokens: CliColorTokens,
 ): string | undefined {
-  if (isHighlighted) return selectionFill(tokens);
+  if (isHighlighted) return selectionHue(tokens);
   if (isComplete) return tokens.success;
   return undefined;
 }
@@ -40,7 +40,7 @@ function getActionColor(
   isComplete: boolean,
   tokens: CliColorTokens,
 ): string {
-  if (isHighlighted) return selectionFill(tokens);
+  if (isHighlighted) return selectionHue(tokens);
   if (isComplete) return tokens.muted;
   return tokens.fg;
 }

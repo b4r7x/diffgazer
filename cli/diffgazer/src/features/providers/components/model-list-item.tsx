@@ -2,7 +2,7 @@ import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import { Badge } from "../../../components/ui/badge";
 import { terminalCellWidth } from "../../../lib/terminal-width";
-import { rowTone, selectionFill } from "../../../theme/chrome";
+import { rowTone, selectionHue } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 
 interface ModelListItemProps {
@@ -32,7 +32,7 @@ export function ModelListItem({ model, isHighlighted, isSelected, maxWidth }: Mo
   const nameWidth = hasDescription ? textWidth - descriptionWidth - 1 : textWidth;
 
   const tone = rowTone(tokens, { isHighlighted });
-  const markerColor = isSelected && !isHighlighted ? selectionFill(tokens) : tone.primary;
+  const markerColor = isSelected && !isHighlighted ? selectionHue(tokens) : tone.primary;
 
   return (
     <Box width={maxWidth} backgroundColor={tone.background}>

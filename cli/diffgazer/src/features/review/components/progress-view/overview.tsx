@@ -2,12 +2,17 @@ import type { ReviewContextResponse } from "@diffgazer/core/api/types";
 import type { FileProgress } from "@diffgazer/core/review";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import type { ProgressStepWithSubstepsData } from "@diffgazer/core/schemas/presentation";
-import { Box } from "ink";
+import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { SectionHeader } from "../../../../components/ui/section-header";
+import { useTheme } from "../../../../theme/provider";
 import { AgentBoard } from "../agent-board";
 import { ContextSnapshotPreview } from "../context-snapshot-preview";
-import { REVIEW_METRICS_FOOTER_ROWS, ReviewMetricsFooter } from "../metrics-footer";
+import {
+  REVIEW_METRICS_COMPACT_ROWS,
+  REVIEW_METRICS_FOOTER_ROWS,
+  ReviewMetricsFooter,
+} from "../metrics-footer";
 import { ProgressList } from "../progress/list";
 
 /**
@@ -17,11 +22,14 @@ import { ProgressList } from "../progress/list";
  * height and clipped open, so each contribution is named rather than folded
  * into one number.
  */
-const OVERVIEW_CHROME_ROWS =
-  2 + // "Progress Overview" heading + rule
-  1 + // progress list top pad
-  1 + // metrics footer top margin
-  REVIEW_METRICS_FOOTER_ROWS;
+function getOverviewChromeRows(metricsRows: number): number {
+  return (
+    2 + // "Progress Overview" heading + rule
+    1 + // progress list top pad
+    1 + // metrics footer top margin
+    metricsRows
+  );
+}
 
 /** The agent board's own chrome: top margin, bordered heading, list pad. */
 const AGENT_BOARD_CHROME_ROWS = 1 + 2 + 1;
@@ -55,14 +63,25 @@ export function ReviewProgressOverview({
   contextSnapshot,
   contextOutputDirectory,
 }: ReviewProgressOverviewProps): ReactElement {
+  const { tokens } = useTheme();
   const hasCompletedSnapshot = Boolean(contextSnapshot && !isStreaming);
   const progressRows = progressSteps.reduce(
     (total, step) => total + 1 + (step.substeps?.length ?? 0),
     0,
   );
+  // A bordered metrics box that cannot fit whole draws an orphaned top border,
+  // so below its budget the ledger goes borderless instead of half-drawn.
+  const isCompactMetrics =
+    height - progressRows - getOverviewChromeRows(REVIEW_METRICS_FOOTER_ROWS) < 0;
+  const metricsRows = isCompactMetrics ? REVIEW_METRICS_COMPACT_ROWS : REVIEW_METRICS_FOOTER_ROWS;
+  // The step list is told its budget instead of being clipped: a clipped list
+  // can lose the active step, and that is the row the run is watched through.
+  const agentRowsFloor = agents.length > 0 && !hasCompletedSnapshot ? 1 : 0;
+  const listRows = Math.max(height - getOverviewChromeRows(metricsRows) - agentRowsFloor, 1);
+  const visibleProgressRows = Math.min(progressRows, listRows);
   // The board keeps its pad while the pane can afford it, and drops it when
   // that row is the difference between showing the roster and showing nothing.
-  const freeRows = height - progressRows - OVERVIEW_CHROME_ROWS;
+  const freeRows = height - visibleProgressRows - getOverviewChromeRows(metricsRows);
   const isCompactBoard = freeRows < AGENT_BOARD_CHROME_ROWS + 1;
   const boardChromeRows = isCompactBoard
     ? COMPACT_AGENT_BOARD_CHROME_ROWS
@@ -75,13 +94,23 @@ export function ReviewProgressOverview({
       <SectionHeader variant="muted" bordered>
         Progress Overview
       </SectionHeader>
-      <Box flexDirection="column" paddingTop={1} flexShrink={0}>
-        <ProgressList steps={progressSteps} />
+      {/* The step list yields rows first: the metrics ledger and the agent
+          announcement are single lines that must never be half-drawn. */}
+      <Box flexDirection="column" paddingTop={1} flexShrink={1} overflow="hidden">
+        <ProgressList steps={progressSteps} maxRows={listRows} />
       </Box>
 
       {showAgentBoard ? (
         <Box flexDirection="column" marginTop={1} flexShrink={0} overflow="hidden">
           <AgentBoard agents={agents} maxRows={agentRows} compact={isCompactBoard} />
+        </Box>
+      ) : null}
+
+      {agents.length > 0 && !showAgentBoard && !hasCompletedSnapshot ? (
+        <Box height={1} flexShrink={0} overflow="hidden">
+          <Text color={tokens.muted} wrap="truncate-end">
+            {`${agents.length} ${agents.length === 1 ? "agent" : "agents"} running — press Tab for the log`}
+          </Text>
         </Box>
       ) : null}
 
@@ -104,6 +133,7 @@ export function ReviewProgressOverview({
             issuesFound,
           }}
           elapsed={elapsed}
+          compact={isCompactMetrics}
         />
       </Box>
     </Box>

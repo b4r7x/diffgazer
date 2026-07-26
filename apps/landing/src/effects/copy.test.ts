@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { initCopyButtons } from "./copy";
+import { mountLanding } from "../testing/markup";
+import { initCopyButtons, initPackageManagerSwitch } from "./copy";
 
 interface Deferred {
   promise: Promise<void>;
@@ -137,5 +138,112 @@ describe("initCopyButtons", () => {
     await vi.advanceTimersByTimeAsync(1400);
 
     expect(label?.textContent).toBe("copy");
+  });
+});
+
+describe("initPackageManagerSwitch", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    document.body.innerHTML = "";
+  });
+
+  function mountInstallScene(): void {
+    mountLanding();
+  }
+
+  function scene(): HTMLElement {
+    const section = document.querySelector<HTMLElement>("#s6");
+    if (!section) throw new Error("install scene not mounted");
+    return section;
+  }
+
+  function pmButton(name: string): HTMLButtonElement {
+    const button = [...scene().querySelectorAll<HTMLButtonElement>(".pm-btn")].find((candidate) =>
+      candidate.textContent?.includes(name),
+    );
+    if (!button) throw new Error(`missing ${name} button`);
+    return button;
+  }
+
+  function shownCommand(): string {
+    return scene().querySelector<HTMLElement>(".install-cmd-text")?.textContent ?? "";
+  }
+
+  function copyButton(): HTMLButtonElement {
+    const button = scene().querySelector<HTMLButtonElement>(".copy-btn");
+    if (!button) throw new Error("copy button missing");
+    return button;
+  }
+
+  it("ships npm as the pressed default", () => {
+    mountInstallScene();
+    initPackageManagerSwitch(document);
+
+    expect(pmButton("npm").getAttribute("aria-pressed")).toBe("true");
+    expect(pmButton("pnpm").getAttribute("aria-pressed")).toBe("false");
+    expect(pmButton("bun").getAttribute("aria-pressed")).toBe("false");
+    expect(shownCommand()).toBe("npm install -g diffgazer");
+  });
+
+  it("rewrites the shown command and the copied payload together", async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+
+    mountInstallScene();
+    initPackageManagerSwitch(document);
+    initCopyButtons(document, 1400);
+
+    pmButton("pnpm").click();
+
+    expect(shownCommand()).toBe("pnpm add -g diffgazer");
+    expect(
+      [...scene().querySelectorAll<HTMLButtonElement>(".pm-btn")].filter(
+        (button) => button.getAttribute("aria-pressed") === "true",
+      ),
+    ).toHaveLength(1);
+
+    copyButton().click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(writeText).toHaveBeenCalledWith("pnpm add -g diffgazer");
+  });
+
+  it("clears a stale copied label when the manager changes", async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+
+    mountInstallScene();
+    initPackageManagerSwitch(document);
+    initCopyButtons(document, 1400);
+
+    copyButton().click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(copyButton().querySelector(".copy-label")?.textContent).toBe("copied");
+
+    pmButton("bun").click();
+    expect(copyButton().querySelector(".copy-label")?.textContent).toBe("copy");
+    expect(shownCommand()).toBe("bun add -g diffgazer");
+  });
+
+  it("leaves the hero install row on npm", () => {
+    mountInstallScene();
+    initPackageManagerSwitch(document);
+
+    pmButton("pnpm").click();
+
+    const heroCopy = document.querySelector<HTMLElement>("#s1 .copy-btn");
+    expect(heroCopy?.dataset.copy).toBe("npm install -g diffgazer");
+  });
+
+  it("stops mutating the command after cleanup", () => {
+    mountInstallScene();
+    const cleanup = initPackageManagerSwitch(document);
+
+    cleanup();
+    pmButton("pnpm").click();
+
+    expect(shownCommand()).toBe("npm install -g diffgazer");
   });
 });

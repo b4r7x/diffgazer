@@ -13,6 +13,7 @@ import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position"
 import { matchesSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { FloatingPanel, useFloatingPanelContext } from "../floating-panel";
+import { OVERLAY_SURFACE } from "../shared/overlay-surface";
 import { useAriaLinkedPortalContainer } from "../shared/portal";
 import { SearchableContent, type SearchableListboxProps } from "./searchable-content";
 import type { SelectOptionMetadata } from "./select-context";
@@ -196,10 +197,7 @@ export function SelectContent({
       avoidCollisions
       matchTriggerWidth
       ref={composedRef}
-      className={cn(
-        "border border-border bg-background shadow-(--shadow-hard) rounded-sm overflow-y-auto outline-none",
-        className,
-      )}
+      className={cn(OVERLAY_SURFACE, "overflow-y-auto outline-none", className)}
       // No max-height here: FloatingPanel caps this element to the room it measured, so
       // the overflow-y-auto above scrolls long lists instead of overflowing the viewport.
       style={{ width: "var(--ui-floating-trigger-width)" }}

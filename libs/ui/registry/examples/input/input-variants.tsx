@@ -34,6 +34,12 @@ export default function InputVariants() {
           <Input placeholder="Disabled input" />
         </Field.Control>
       </Field>
+      <Field>
+        <Field.Label>Read-only</Field.Label>
+        <Field.Control>
+          <Input readOnly defaultValue="~/projects/diffgazer" />
+        </Field.Control>
+      </Field>
     </div>
   );
 }

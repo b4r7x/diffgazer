@@ -57,8 +57,25 @@ describe("ReviewProgressView (TUI) status", () => {
     const frame = lastFrame() ?? "";
     expect(frame).toContain("API Key Error");
     expect(frame).toContain("Your API key may be invalid or expired.");
-    expect(frame).toContain("Go to Settings");
+    // The recovery lives in the shortcut bar, and the callout says which key.
+    expect(frame).toContain("Press s to open Settings.");
     expect(frame).not.toContain("Cancel");
+  });
+
+  test("reaches settings from the API-key error through the s key alone", async () => {
+    const onGoToSettings = vi.fn();
+    const { stdin, lastFrame } = renderView({
+      isStreaming: false,
+      error: "Provider rejected the API key",
+      errorCode: "API_KEY_MISSING",
+      onGoToSettings,
+    });
+
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain("API Key Error"));
+    stdin.write("s");
+    await flush();
+
+    expect(onGoToSettings).toHaveBeenCalledTimes(1);
   });
 
   test("labels prompt inclusion without claiming model analysis is complete", () => {

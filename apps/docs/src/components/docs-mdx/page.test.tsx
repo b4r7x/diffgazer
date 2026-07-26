@@ -7,6 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { lazy } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MobileNavProvider } from "@/hooks/mobile-nav-context";
+import { SearchProvider } from "@/hooks/search-context";
 import type { PageTree } from "@/lib/page-tree";
 import { stubMatchMedia } from "@/testing/match-media";
 import { MdxDocsPage } from "./page";
@@ -81,16 +82,18 @@ describe("MdxDocsPage", () => {
     render(
       <KeyboardProvider>
         <MobileNavProvider>
-          <MdxDocsPage
-            path="ui/beta.mdx"
-            pageUrl="/ui/beta"
-            tree={tree}
-            library="ui"
-            componentData={null}
-            hookData={null}
-          >
-            <RejectedMdx />
-          </MdxDocsPage>
+          <SearchProvider>
+            <MdxDocsPage
+              path="ui/beta.mdx"
+              pageUrl="/ui/beta"
+              tree={tree}
+              library="ui"
+              componentData={null}
+              hookData={null}
+            >
+              <RejectedMdx />
+            </MdxDocsPage>
+          </SearchProvider>
         </MobileNavProvider>
       </KeyboardProvider>,
     );

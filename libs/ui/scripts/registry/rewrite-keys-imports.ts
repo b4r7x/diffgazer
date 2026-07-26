@@ -11,12 +11,6 @@ function renderImport(specifiers: string[], target: string, quote: string, inden
   return `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`;
 }
 
-function rewriteKeysPackageImportLine(line: string): string {
-  return rewriteKeysPackageImportsInContent(`${line}\n`, {
-    renderImport,
-  }).trimEnd();
-}
-
 function stripCssSideEffectImports(content: string): string {
   return content.replace(/^\s*import\s+["'][^"']+\.css["'];?\s*\n?/gm, "");
 }
@@ -241,6 +235,3 @@ export function aggregateThemeStylesInPublicRegistry(
   stylesFile.content = computeAggregated(stylesFile.content);
   writeFileSync(themePath, `${JSON.stringify(theme, null, 2)}\n`);
 }
-
-// Kept for tests that exercise single-line rewrite behavior.
-export { rewriteKeysPackageImportLine };

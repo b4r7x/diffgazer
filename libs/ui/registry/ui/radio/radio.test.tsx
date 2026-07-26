@@ -6,9 +6,17 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { expectFieldInvalid, expectResetClearsInvalid } from "../../testing/form-behavior";
+import { Checkbox } from "../checkbox/index";
 import { Field } from "../field/index";
 import { Radio, RadioGroup, type RadioGroupItemProps } from "./index";
 import type { RadioGroupProps } from "./radio-group";
+
+/** Visible indicator glyph of a selectable control (the aria-hidden cell before the label). */
+function readGlyph(control: HTMLElement): string {
+  const indicator = control.querySelector('[aria-hidden="true"]');
+  if (indicator === null) throw new Error("Expected an indicator glyph");
+  return indicator.textContent ?? "";
+}
 
 function getForm(): HTMLFormElement {
   const form = screen.getByRole("form", { name: "Test form" });
@@ -26,6 +34,40 @@ describe("Radio", () => {
     expect(control).toHaveAttribute("data-state", "checked");
     rerender(<Radio checked disabled label="A" />);
     expect(control).toHaveAttribute("data-disabled", "");
+  });
+
+  it("draws every glyph in the same three-character column as Checkbox", () => {
+    // One glyph column for the whole family: a mixed checkbox/radio form has a single label
+    // left edge, which the padded five-character bullet used to break by 2ch.
+    for (const variant of ["x", "bullet"] as const) {
+      for (const checked of [true, false] as const) {
+        const { unmount } = render(<Radio checked={checked} variant={variant} label="A" />);
+        expect(readGlyph(screen.getByRole("radio"))).toHaveLength(3);
+        unmount();
+      }
+    }
+
+    render(
+      <>
+        <Radio checked variant="bullet" label="Radio" />
+        <Checkbox checked label="Checkbox" />
+      </>,
+    );
+    expect(readGlyph(screen.getByRole("radio"))).toHaveLength(
+      readGlyph(screen.getByRole("checkbox")).length,
+    );
+  });
+
+  it("splits the glyph into chrome and mark without changing its visible text", () => {
+    const { rerender } = render(<Radio checked variant="bullet" label="A" />);
+    const indicator = screen
+      .getByRole("radio", { name: "A" })
+      .querySelector('[aria-hidden="true"]');
+    expect(indicator).toHaveTextContent("[●]");
+    expect(indicator?.querySelectorAll("span")).toHaveLength(3);
+
+    rerender(<Radio checked={false} variant="x" label="A" />);
+    expect(screen.getByRole("radio", { name: "A" })).toHaveTextContent("[ ]");
   });
 
   it("does not toggle off on second click (radio stays selected)", async () => {
@@ -129,7 +171,7 @@ describe("Radio", () => {
     );
 
     const radio = screen.getByRole("radio", { name: /payment method.*card/i });
-    expectFieldInvalid(radio, /field help.*field error.*local help/i);
+    expectFieldInvalid(radio, /field error.*field help.*local help/i);
   });
 
   it("submits a meaningful default value and resets uncontrolled state", async () => {

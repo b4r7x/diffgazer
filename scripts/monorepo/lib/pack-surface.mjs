@@ -1,4 +1,4 @@
-export function validateArtifactPackSurface(_root, library, packedFiles) {
+export function validateArtifactPackSurface(library, packedFiles) {
   const leaked = packedFiles.filter((path) => path.startsWith("dist/artifacts/"));
 
   return leaked.length

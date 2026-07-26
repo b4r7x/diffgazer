@@ -32,9 +32,14 @@ export const checkboxDoc: ComponentDoc = {
         "Checkbox supports a third state: checked='indeterminate' renders [-] in both indicator variants. This is useful for parent checkboxes representing partially-selected groups.",
     },
     {
+      title: "Glyph Hierarchy",
+      content:
+        "The brackets are chrome and render muted; the inner mark keeps the control's tone at bold weight. A checked row is therefore the only place full-contrast ink appears in the glyph column, so a long checklist can be scanned instead of read bracket by bracket. The visible text is unchanged — the indicator still reads [x], [ ], or [-] — and the whole cell stays aria-hidden.",
+    },
+    {
       title: "Indicator Variants",
       content:
-        "variant='x' (default) marks the checked state with [x]; variant='bullet' marks it with [*]. Both keep the same three-character width so mixed lists stay aligned, and neither reuses Radio's [ ● ] dot — a checkbox never reads as a radio.",
+        "variant='x' (default) marks the checked state with [x]; variant='bullet' marks it with [*]. Both keep the same three-character width so mixed lists stay aligned, and neither reuses Radio's [●] dot — a checkbox never reads as a radio.",
     },
     {
       title: "Built-in Navigation",

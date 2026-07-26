@@ -1,5 +1,7 @@
+import { formatSeverityFilterLabel } from "@diffgazer/core/review";
 import {
   calculateSeverityCounts,
+  SEVERITY_ORDER,
   type UISeverityFilter,
 } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
@@ -8,10 +10,10 @@ import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 import { SectionHeader } from "../../../components/ui/section-header";
 import { getListWindow } from "../../../lib/list-window";
-import { selectionFill } from "../../../theme/chrome";
+import { selectionHue } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 import { IssuePreviewItem } from "./issue-preview-item";
-import { SeverityFilterGroup } from "./severity-filter-group";
+import { getSeverityChipLayout, SeverityFilterGroup } from "./severity-filter-group";
 
 export type IssueListSubZone = "filter" | "issues";
 
@@ -111,10 +113,16 @@ export function IssueListPane({
     );
   }
 
+  // A wrapped chip row costs the list one viewport row per extra chip line.
+  const chipRows = getSeverityChipLayout({
+    labels: SEVERITY_ORDER.map((severity) => formatSeverityFilterLabel(severity, counts[severity])),
+    hasReset: severityFilter.size > 0,
+    contentWidth,
+  }).rows;
   const window = getListWindow({
     selectedIndex: highlightedIndex,
     total: issues.length,
-    viewportRows: height,
+    viewportRows: Math.max(height - (chipRows - 1), 1),
   });
   const visibleIssues = issues.slice(window.start, window.end);
 
@@ -137,7 +145,7 @@ export function IssueListPane({
             const absoluteIndex = window.start + idx;
             return (
               <Box key={issue.id}>
-                <Text color={selectedId === issue.id ? selectionFill(tokens) : tokens.muted}>
+                <Text color={selectedId === issue.id ? selectionHue(tokens) : tokens.muted}>
                   {selectedId === issue.id ? "\u2502 " : "  "}
                 </Text>
                 <IssuePreviewItem

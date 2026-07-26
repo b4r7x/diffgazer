@@ -1,9 +1,8 @@
 import {
   isApiError,
+  SHUTDOWN_CLOSE_BLOCKED_MESSAGE,
+  SHUTDOWN_FAILED_MESSAGE,
   type ShutdownResult,
-  shutdownCloseBlockedResult,
-  shutdownClosedResult,
-  shutdownNetworkError,
 } from "@diffgazer/core/api";
 import { toast } from "@diffgazer/ui/components/toast";
 import { api } from "@/lib/api";
@@ -17,16 +16,16 @@ export async function shutdown(): Promise<ShutdownResult> {
     if (isApiError(error)) {
       return { status: "error", message: error.message };
     }
-    return shutdownNetworkError();
+    return { status: "error", message: SHUTDOWN_FAILED_MESSAGE };
   }
 
   window.close();
 
   if (window.closed) {
-    return shutdownClosedResult();
+    return { status: "closed" };
   }
 
-  return shutdownCloseBlockedResult();
+  return { status: "unsupported", message: SHUTDOWN_CLOSE_BLOCKED_MESSAGE };
 }
 
 export function reportShutdownResult(result: ShutdownResult): void {

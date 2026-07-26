@@ -40,6 +40,21 @@ export const diffViewDoc: ComponentDoc = {
         'Intra-line word highlighting is enabled by default — changed slices on add/remove rows are wrapped in <span data-word="added|removed"> and tinted with the strong-tier overlay. Disable per-line word annotation with `disableWordDiff`.',
     },
     {
+      title: "Wrapping",
+      content:
+        'Long code lines soft-wrap with a 2ch hanging indent instead of scrolling sideways: the gutter and marker stay pinned to the first visual line, and the row tint paints the full wrapped height. The default is owned by CSS — containers under 40rem and coarse pointers wrap, wider pointer-fine containers keep the filmstrip — so a phone gets wrapping without the consumer knowing the prop exists. Pass `wrap` or `wrap={false}` to force either state; the prop surfaces as data-wrap="on" / "off" and its absence is what hands the decision to CSS. Wrapping is pure geometry: no colors, no motion, and copy still yields the original line because text-indent is not copied.',
+    },
+    {
+      title: "File Stat",
+      content:
+        'The figcaption ends with a `+adds −removes` readout parsed from the hunks, matching how the product writes change size everywhere else. It is on by default (`stat={false}` opts out) and renders nothing for a diff with no add/remove changes. At any width the PATH truncates and the stat does not: an ellipsised path is honest, "+7 −" is a lie. A visually-hidden sibling carries "N additions, N deletions" so the figure\'s accessible name reads as prose instead of punctuation.',
+    },
+    {
+      title: "Empty State",
+      content:
+        'A diff with no hunks renders its role="status" band on the same 135° hatch an unmatched split pane uses, with the label knocked out on top — one material for absence across the whole component. variant="bare" keeps the plain label, and forced-colors falls back to a dashed GrayText border.',
+    },
+    {
       title: "Vertical Scroll",
       content:
         "Pass a CSS length to `maxHeight` to opt into a vertical scroll wrapper around the rows container. The figure sets the --diff-view-max-h CSS variable and `data-max-h`; the shared CSS pins the scroll wrapper height and renders a thin scrollbar. Horizontal scroll still works per-row independently.",
@@ -61,6 +76,21 @@ export const diffViewDoc: ComponentDoc = {
       name: "figcaption",
       indent: 1,
       note: 'File path / rename label; bound to the figure\'s accessible name; suppressed in variant="bare"',
+    },
+    {
+      name: '[data-slot="diff-view-caption-path"]',
+      indent: 2,
+      note: "File path span inside the figcaption; truncates before the stat does",
+    },
+    {
+      name: '[data-slot="diff-view-stat"]',
+      indent: 2,
+      note: "+adds −removes readout plus its visually-hidden prose equivalent",
+    },
+    {
+      name: '[data-slot="diff-view-empty"] > [data-slot="diff-view-empty-label"]',
+      indent: 1,
+      note: 'Knocked-out "No changes" label on the hatched empty band',
     },
     {
       name: '[data-slot="diff-view-corners"]',
@@ -112,6 +142,8 @@ export const diffViewDoc: ComponentDoc = {
     { name: "diff-view-max-height", title: "Max height (V-scroll)" },
     { name: "diff-view-split", title: "Split mode" },
     { name: "diff-view-line-numbers", title: "Line numbers" },
+    { name: "diff-view-stat", title: "File stat" },
+    { name: "diff-view-wrap", title: "Wrapping long lines" },
     { name: "diff-view-compare", title: "Before / after compare" },
     { name: "diff-view-with-header", title: "With header label" },
   ],
@@ -175,6 +207,18 @@ export const diffViewDoc: ComponentDoc = {
       description: "Marks the currently keyboard-highlighted hunk.",
     },
     {
+      attribute: "data-wrap",
+      appliesTo: "DiffView",
+      values: '"on" | "off", absent when CSS owns the default',
+      description: "Forces or opts out of soft wrapping for long code lines.",
+    },
+    {
+      attribute: "data-empty",
+      appliesTo: "DiffView empty band",
+      values: "present when the diff has no hunks",
+      description: "Enables the hatched empty-state material.",
+    },
+    {
       attribute: "data-max-h",
       appliesTo: "DiffView",
       values: "present when maxHeight is set",
@@ -185,6 +229,11 @@ export const diffViewDoc: ComponentDoc = {
     {
       name: "--diff-view-max-h",
       description: "CSS length used by the optional vertical scroll wrapper.",
+    },
+    {
+      name: "--diff-hatch",
+      description:
+        "Shared 135° hatch used by both the unmatched split-pane filler and the empty band.",
     },
     {
       name: "--diff-color-add",
@@ -257,9 +306,23 @@ export const diffViewDoc: ComponentDoc = {
       showLineNumbers: {
         type: "boolean",
         required: false,
-        defaultValue: "false",
+        defaultValue: 'true (false when variant="bare")',
         description:
-          "Renders line-number gutters. Surfaces as data-line-numbers on the rows container.",
+          "Renders line-number gutters. Surfaces as data-line-numbers on the rows container. On by default because every finding in this domain is addressed as file:line; the numbers are user-select: none, so copying a diff still yields clean code.",
+      },
+      stat: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description:
+          "Renders the +adds −removes readout at the end of the figcaption. A diff with no add/remove changes renders nothing either way.",
+      },
+      wrap: {
+        type: "boolean",
+        required: false,
+        defaultValue: "CSS-owned: wraps under 40rem or on coarse pointers",
+        description:
+          "Soft-wraps long code lines with a hanging indent instead of scrolling them horizontally. Leave unset to keep the responsive default.",
       },
       disableWordDiff: {
         type: "boolean",

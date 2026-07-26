@@ -8,6 +8,7 @@ import {
   type CommandPaletteFrame,
   commandPaletteContentVariants,
 } from "./command-palette-content";
+import { CommandPaletteCount, type CommandPaletteCountProps } from "./command-palette-count";
 import { CommandPaletteEmpty, type CommandPaletteEmptyProps } from "./command-palette-empty";
 import { CommandPaletteFooter, type CommandPaletteFooterProps } from "./command-palette-footer";
 import { CommandPaletteGroup, type CommandPaletteGroupProps } from "./command-palette-group";
@@ -22,6 +23,7 @@ import { CommandPaletteList, type CommandPaletteListProps } from "./command-pale
 const CommandPalette = Object.assign(CommandPaletteRoot, {
   Content: CommandPaletteContent,
   Input: CommandPaletteInput,
+  Count: CommandPaletteCount,
   List: CommandPaletteList,
   Group: CommandPaletteGroup,
   Item: CommandPaletteItem,
@@ -43,3 +45,4 @@ export { CommandPaletteGroup, type CommandPaletteGroupProps };
 export { CommandPaletteItem, type CommandPaletteItemProps, type CommandPaletteItemTone };
 export { CommandPaletteEmpty, type CommandPaletteEmptyProps };
 export { CommandPaletteFooter, type CommandPaletteFooterProps };
+export { CommandPaletteCount, type CommandPaletteCountProps };

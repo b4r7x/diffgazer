@@ -52,9 +52,9 @@ function runGitLsFilesEnvExamples(rootDir) {
   });
 }
 
-function readNestedRepoConfig(rootDir) {
+function readSubmoduleConfig(rootDir) {
   try {
-    return execSync(`git config --get-regexp '^${"sub"}${"module"}\\.'`, {
+    return execSync("git config --get-regexp '^submodule\\.'", {
       cwd: rootDir,
       encoding: "utf8",
     }).trim();
@@ -90,7 +90,7 @@ function commandOutputsFor(rootDir, overrides = {}) {
   return {
     gitLsFilesStaged: overrides.gitLsFilesStaged ?? runGitLsFilesStaged(rootDir),
     gitLsFilesEnvExamples: overrides.gitLsFilesEnvExamples ?? runGitLsFilesEnvExamples(rootDir),
-    nestedRepoConfig: overrides.nestedRepoConfig ?? readNestedRepoConfig(rootDir),
+    submoduleConfig: overrides.submoduleConfig ?? readSubmoduleConfig(rootDir),
     nestedGitDirs:
       overrides.nestedGitDirs ??
       runFind(

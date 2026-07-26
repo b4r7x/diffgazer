@@ -3,7 +3,9 @@
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ThemeProvider } from "@/hooks/theme-context";
+import { stubMatchMedia } from "@/testing/match-media";
 import { FooterBar } from "./footer-bar";
 
 const navigateMock = vi.hoisted(() => vi.fn());
@@ -30,18 +32,34 @@ vi.mock("@tanstack/react-router", async () => {
 });
 
 describe("FooterBar", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    document.documentElement.removeAttribute("data-theme");
+    stubMatchMedia({ isDesktop: true });
+    navigateMock.mockClear();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
   it("links theme, privacy, and terms to their routes", () => {
     routerBoundary.matches = [
       { routeId: "__root__", status: "success" },
       { routeId: "/", status: "success" },
     ];
     render(
-      <KeyboardProvider>
-        <FooterBar />
-      </KeyboardProvider>,
+      <ThemeProvider>
+        <KeyboardProvider>
+          <FooterBar />
+        </KeyboardProvider>
+      </ThemeProvider>,
     );
 
-    expect(screen.getByRole("link", { name: /theme/i })).toHaveAttribute("href", "/ui/theme");
+    // The theme hint is a control, not a link: its label promises the switch,
+    // so it performs the switch.
+    expect(screen.queryByRole("link", { name: /theme/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /theme/i })).toBeInTheDocument();
 
     // Privacy and Terms are the only entry points to the legal pages, so they
     // must live in the footer landmark rather than in the route body.
@@ -53,24 +71,46 @@ describe("FooterBar", () => {
     expect(within(footer).getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
   });
 
-  it("navigates to the theme page when F2 is pressed", async () => {
+  it("toggles the theme in place on F2 instead of navigating away", async () => {
     routerBoundary.matches = [
       { routeId: "__root__", status: "success" },
       { routeId: "/", status: "success" },
     ];
     const user = userEvent.setup();
     render(
-      <KeyboardProvider>
-        <FooterBar />
-      </KeyboardProvider>,
+      <ThemeProvider>
+        <KeyboardProvider>
+          <FooterBar />
+        </KeyboardProvider>
+      </ThemeProvider>,
     );
 
+    const before = document.documentElement.getAttribute("data-theme");
     await user.keyboard("{F2}");
 
-    expect(navigateMock).toHaveBeenCalledWith({
-      to: "/$lib/$",
-      params: { lib: "ui", _splat: "theme" },
-    });
+    expect(document.documentElement.getAttribute("data-theme")).not.toBe(before);
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it("toggles the theme from the footer hint itself", async () => {
+    routerBoundary.matches = [
+      { routeId: "__root__", status: "success" },
+      { routeId: "/", status: "success" },
+    ];
+    const user = userEvent.setup();
+    render(
+      <ThemeProvider>
+        <KeyboardProvider>
+          <FooterBar />
+        </KeyboardProvider>
+      </ThemeProvider>,
+    );
+
+    const before = document.documentElement.getAttribute("data-theme");
+    await user.click(screen.getByRole("button", { name: /theme/i }));
+
+    expect(document.documentElement.getAttribute("data-theme")).not.toBe(before);
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it("shows list-navigation hints on the home page", () => {
@@ -79,9 +119,11 @@ describe("FooterBar", () => {
       { routeId: "/", status: "success" },
     ];
     render(
-      <KeyboardProvider>
-        <FooterBar />
-      </KeyboardProvider>,
+      <ThemeProvider>
+        <KeyboardProvider>
+          <FooterBar />
+        </KeyboardProvider>
+      </ThemeProvider>,
     );
 
     expect(screen.getByText("move")).toBeInTheDocument();
@@ -97,9 +139,11 @@ describe("FooterBar", () => {
       { routeId: "/$lib/$", status: "success" },
     ];
     render(
-      <KeyboardProvider>
-        <FooterBar />
-      </KeyboardProvider>,
+      <ThemeProvider>
+        <KeyboardProvider>
+          <FooterBar />
+        </KeyboardProvider>
+      </ThemeProvider>,
     );
 
     expect(screen.getByText("prev/next")).toBeInTheDocument();
@@ -115,9 +159,11 @@ describe("FooterBar", () => {
   ])("suppresses route-local hints for %s state", (_label, matches) => {
     routerBoundary.matches = matches;
     render(
-      <KeyboardProvider>
-        <FooterBar />
-      </KeyboardProvider>,
+      <ThemeProvider>
+        <KeyboardProvider>
+          <FooterBar />
+        </KeyboardProvider>
+      </ThemeProvider>,
     );
 
     expect(screen.queryByText("prev/next")).not.toBeInTheDocument();

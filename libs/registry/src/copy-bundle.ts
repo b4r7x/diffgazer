@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
 import { RegistrySchema } from "./registry-types.js";
+import { compareCodeUnits } from "./utils/compare-code-units.js";
 import { assertRegistrySourceFilePath } from "./utils/fs.js";
 
 export const CopyBundleItemSchema = z.object({
@@ -45,12 +46,6 @@ export interface BuildCopyBundleResult {
 
 export function computeIntegrity(content: string): string {
   return `sha256-${createHash("sha256").update(content).digest("hex")}`;
-}
-
-function compareCodeUnits(a: string, b: string): number {
-  if (a < b) return -1;
-  if (a > b) return 1;
-  return 0;
 }
 
 function normalizeFilePath(path: string, mapping?: { from: string; to: string }): string {

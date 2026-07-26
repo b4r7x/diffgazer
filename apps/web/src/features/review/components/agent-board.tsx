@@ -3,9 +3,11 @@ import type { AgentState } from "@diffgazer/core/schemas/events";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Progress } from "@diffgazer/ui/components/progress";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { cn } from "@diffgazer/ui/lib/utils";
 
 interface AgentBoardProps {
   agents: AgentState[];
+  className?: string;
 }
 
 // One grid for the whole board with each agent a subgrid row, so the four cells
@@ -15,11 +17,11 @@ const BOARD_GRID =
   "grid grid-cols-[auto_minmax(0,auto)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5";
 const AGENT_ROW = "col-span-4 grid grid-cols-subgrid items-center";
 
-export function AgentBoard({ agents }: AgentBoardProps) {
+export function AgentBoard({ agents, className }: AgentBoardProps) {
   if (agents.length === 0) return null;
 
   return (
-    <div className="mb-8">
+    <div className={cn("mb-8", className)}>
       <SectionHeader variant="muted" bordered className="mb-2">
         Agent Board
       </SectionHeader>

@@ -116,11 +116,7 @@ function specifierRange(token: SpecifierToken): ImportSpecifierRange {
 
 function findImportSpecifierMatches(source: string): ImportSpecifierMatch[] {
   const tokens = tokenizeSource(source);
-  const imports: ImportSpecifierMatch[] = [];
-  const exports: ImportSpecifierMatch[] = [];
-  const dynamicImports: ImportSpecifierMatch[] = [];
-  const requires: ImportSpecifierMatch[] = [];
-  const sideEffects: ImportSpecifierMatch[] = [];
+  const matches: ImportSpecifierMatch[] = [];
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
@@ -133,7 +129,7 @@ function findImportSpecifierMatches(source: string): ImportSpecifierMatch[] {
     ) {
       const next = tokens[index + 1];
       if (next?.kind === "string") {
-        sideEffects.push({
+        matches.push({
           specifier: next.value,
           kind: "side-effect",
           isTypeOnly: false,
@@ -148,7 +144,7 @@ function findImportSpecifierMatches(source: string): ImportSpecifierMatch[] {
         dynamicSpecifierValue !== undefined &&
         isSpecifierToken(dynamicSpecifierToken)
       ) {
-        dynamicImports.push({
+        matches.push({
           specifier: dynamicSpecifierValue,
           kind: "dynamic-import",
           isTypeOnly: false,
@@ -163,7 +159,7 @@ function findImportSpecifierMatches(source: string): ImportSpecifierMatch[] {
       ) {
         const specifier = findFromSpecifier(tokens, index + 2)?.token;
         if (specifier) {
-          imports.push({
+          matches.push({
             specifier: specifier.value,
             kind: "import",
             isTypeOnly: isToken(next, "identifier", "type"),
@@ -181,7 +177,7 @@ function findImportSpecifierMatches(source: string): ImportSpecifierMatch[] {
       if (isToken(exportedShape, "punctuator", "{") || isToken(exportedShape, "punctuator", "*")) {
         const specifier = findFromSpecifier(tokens, index + 2)?.token;
         if (specifier) {
-          exports.push({
+          matches.push({
             specifier: specifier.value,
             kind: "export",
             isTypeOnly,
@@ -202,7 +198,7 @@ function findImportSpecifierMatches(source: string): ImportSpecifierMatch[] {
       requiredSpecifierValue !== undefined &&
       isSpecifierToken(requiredSpecifierToken)
     ) {
-      requires.push({
+      matches.push({
         specifier: requiredSpecifierValue,
         kind: "require",
         isTypeOnly: false,
@@ -211,7 +207,7 @@ function findImportSpecifierMatches(source: string): ImportSpecifierMatch[] {
     }
   }
 
-  return [...imports, ...exports, ...dynamicImports, ...requires, ...sideEffects];
+  return matches;
 }
 
 export function extractImportSpecifiers(source: string): ImportSpecifier[] {

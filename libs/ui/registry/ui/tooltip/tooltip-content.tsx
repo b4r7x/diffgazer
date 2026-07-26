@@ -21,9 +21,9 @@ export function TooltipContent({
       align={align}
       sideOffset={sideOffset}
       data-slot="tooltip-content"
-      // Surface (border, --surface-1 fill, highlight lip, radius) comes from
-      // PopoverContent; the tooltip only adds its own width, padding, and type.
-      // No drop shadow: the hairline plus the surface step carry the edge.
+      // The anchored overlay tier (border, --surface-1 fill, highlight lip,
+      // radius) comes from PopoverContent; the tooltip only adds its own width,
+      // padding, and type. No drop shadow — that is the modal tier's mark.
       className={cn("max-w-xs px-2 py-1 font-mono text-xs text-foreground", className)}
       {...rest}
     >

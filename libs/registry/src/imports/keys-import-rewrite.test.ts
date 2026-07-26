@@ -56,6 +56,22 @@ describe("rewriteKeysPackageImportsInContent", () => {
     );
   });
 
+  it("rewrites containsActiveElement to the copied focusable utility", () => {
+    const input = 'import { containsActiveElement, getNavigationItems } from "@diffgazer/keys";';
+
+    const output = rewriteKeysPackageImportsInContent(input, {
+      renderImport: (specifiers, target, quote, indent) =>
+        `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+    });
+
+    expect(output).toBe(
+      [
+        'import { containsActiveElement } from "@/hooks/utils/focusable";',
+        'import { getNavigationItems } from "@/hooks/utils/navigation-items";',
+      ].join("\n"),
+    );
+  });
+
   it("rewrites composed tree helpers to the copied element guards", () => {
     const input =
       'import { composedClosest, composedContains, isEditableElement, useNavigation } from "@diffgazer/keys";';

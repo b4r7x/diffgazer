@@ -13,7 +13,7 @@ function DetailsKeyboardHarness({
 }: {
   enabled: boolean;
   onScroll: (delta: number) => void;
-  onToggleStep: (step: number) => void;
+  onToggleStep: (stepIndex: number) => void;
 }) {
   useScope(DETAILS_KEYBOARD_SCOPE);
   useReviewDetailsTabKeyboard({
@@ -58,7 +58,7 @@ describe("useReviewDetailsTabKeyboard", () => {
     expect(onScroll).toHaveBeenCalledOnce();
     expect(onScroll).toHaveBeenCalledWith(80);
     expect(onToggleStep).toHaveBeenCalledOnce();
-    expect(onToggleStep).toHaveBeenCalledWith(1);
+    expect(onToggleStep).toHaveBeenCalledWith(0);
 
     rerender(
       <KeyboardProvider>

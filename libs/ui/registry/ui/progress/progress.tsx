@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 
 /** Allowed progress size values. */
 export type ProgressSize = NonNullable<VariantProps<typeof progressVariants>["size"]>;
+/** Allowed progress variant values. */
+export type ProgressVariant = NonNullable<VariantProps<typeof progressVariants>["variant"]>;
 
 /** Props for progress. */
 export interface ProgressProps
@@ -19,20 +21,35 @@ export interface ProgressProps
   max?: number;
   /** Height of the progress bar track. */
   size?: ProgressSize;
+  /**
+   * "cells" (default) cuts track and fill into hard-edged character cells.
+   * "bar" keeps the continuous rounded track for hairline-thin inline uses.
+   */
+  variant?: ProgressVariant;
   /** Custom text exposed through aria-valuetext for the current value. */
   valueText?: string;
 }
 
 /** Class variants for track. */
-export const progressVariants = cva("relative w-full overflow-hidden rounded-sm bg-border", {
+export const progressVariants = cva("relative w-full overflow-hidden bg-border", {
   variants: {
     size: {
       sm: "h-1",
       md: "h-2",
     },
+    variant: {
+      cells: "",
+      bar: "rounded-sm",
+    },
   },
+  compoundVariants: [
+    // A 4px track cannot carry an 8px cell, so size="sm" falls back to the
+    // continuous bar — including its radius. See progress.css.
+    { variant: "cells", size: "sm", class: "rounded-sm" },
+  ],
   defaultVariants: {
     size: "md",
+    variant: "cells",
   },
 });
 
@@ -41,6 +58,7 @@ export function Progress({
   value,
   max = 100,
   size = "md",
+  variant = "cells",
   valueText,
   className,
   ...props
@@ -60,16 +78,18 @@ export function Progress({
       role="progressbar"
       data-slot="progress"
       data-state={isIndeterminate ? "indeterminate" : "loaded"}
+      data-size={size}
+      data-variant={variant}
       aria-valuenow={clampedValue}
       aria-valuemin={0}
       aria-valuemax={normalizedMax}
       aria-valuetext={valueText}
-      className={cn(progressVariants({ size }), className)}
+      className={cn(progressVariants({ size, variant }), className)}
     >
       <div
         data-slot="progress-indicator"
         className={cn(
-          "h-full bg-foreground transition-[width] duration-150",
+          "h-full bg-foreground motion-safe:transition-[width] motion-safe:duration-150",
           isIndeterminate && "progress-indeterminate",
         )}
         style={isIndeterminate ? undefined : { width: `${percentage}%` }}

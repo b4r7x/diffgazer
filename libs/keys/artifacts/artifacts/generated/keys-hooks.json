@@ -63025,7 +63025,7 @@
       },
       {
         "path": "src/hooks/utils/focus-trap-controller.ts",
-        "raw": "import {\n  composedContains,\n  getComposedEventTarget,\n  getDeepActiveElement,\n  isHTMLElement,\n  isHTMLInputElement,\n} from \"./element-guards\";\nimport {\n  documentOrder,\n  getComposedChildren,\n  getFocusableElements,\n  getTabbableElements,\n  isFocusable,\n} from \"./focusable\";\n\ninterface TrapEntry {\n  container: HTMLElement;\n  ownerDocument: Document;\n  resolveInitialFocus: () => HTMLElement;\n  lastFocused: HTMLElement;\n  handleKeyDown: (event: KeyboardEvent) => void;\n  handleFocusIn: (event: FocusEvent) => void;\n  observer: MutationObserver;\n  observedTargets: Set<Node>;\n  suspended: boolean;\n}\n\nexport interface CreateFocusTrapControllerOptions {\n  container: HTMLElement;\n  resolveInitialFocus: () => HTMLElement;\n  MutationObserverCtor: typeof MutationObserver;\n}\n\nexport interface FocusTrapReleaseResult {\n  hasOuterTrap: boolean;\n}\n\nexport interface FocusTrapController {\n  activate: () => void;\n  release: () => FocusTrapReleaseResult;\n}\n\nconst trapStacks = new WeakMap<Document, TrapEntry[]>();\n\nconst TRAP_MUTATION_OPTIONS = {\n  childList: true,\n  subtree: true,\n  attributes: true,\n  attributeFilter: [\n    \"disabled\",\n    \"hidden\",\n    \"open\",\n    \"tabindex\",\n    \"aria-hidden\",\n    \"inert\",\n    \"style\",\n    \"class\",\n  ],\n} as const satisfies MutationObserverInit;\n\nfunction getOpenShadowRoots(container: HTMLElement): ShadowRoot[] {\n  const roots: ShadowRoot[] = [];\n  const visit = (element: Element) => {\n    if (element.shadowRoot) roots.push(element.shadowRoot);\n    for (const child of getComposedChildren(element)) visit(child);\n  };\n  visit(container);\n  return roots;\n}\n\nfunction observeNewTrapTargets(entry: TrapEntry): void {\n  const targets: Node[] = [entry.container, ...getOpenShadowRoots(entry.container)];\n  for (const target of targets) {\n    if (entry.observedTargets.has(target)) continue;\n    entry.observer.observe(target, TRAP_MUTATION_OPTIONS);\n    entry.observedTargets.add(target);\n  }\n}\n\nfunction disconnectTrapObserver(entry: TrapEntry): void {\n  entry.observer.disconnect();\n  entry.observedTargets.clear();\n}\n\nfunction getTrapStack(ownerDocument: Document): TrapEntry[] {\n  let stack = trapStacks.get(ownerDocument);\n  if (!stack) {\n    stack = [];\n    trapStacks.set(ownerDocument, stack);\n  }\n  return stack;\n}\n\nfunction armEntry(entry: TrapEntry): void {\n  if (!entry.suspended) return;\n  entry.ownerDocument.addEventListener(\"keydown\", entry.handleKeyDown, true);\n  entry.ownerDocument.addEventListener(\"focusin\", entry.handleFocusIn, true);\n  observeNewTrapTargets(entry);\n  entry.suspended = false;\n}\n\nfunction suspendEntry(entry: TrapEntry): void {\n  if (entry.suspended) return;\n  entry.ownerDocument.removeEventListener(\"keydown\", entry.handleKeyDown, true);\n  entry.ownerDocument.removeEventListener(\"focusin\", entry.handleFocusIn, true);\n  disconnectTrapObserver(entry);\n  entry.suspended = true;\n}\n\nfunction resumeEntry(entry: TrapEntry): void {\n  armEntry(entry);\n  const target =\n    composedContains(entry.container, entry.lastFocused) &&\n    entry.lastFocused.isConnected &&\n    isFocusable(entry.lastFocused)\n      ? entry.lastFocused\n      : entry.resolveInitialFocus();\n  target.focus();\n}\n\nfunction shouldInsertBefore(incoming: TrapEntry, existing: TrapEntry): boolean {\n  return (\n    incoming.container !== existing.container &&\n    composedContains(incoming.container, existing.container)\n  );\n}\n\nfunction pushTrap(entry: TrapEntry): boolean {\n  const stack = getTrapStack(entry.ownerDocument);\n  const previousTop = stack.at(-1);\n  const insertIndex = stack.findIndex((existing) => shouldInsertBefore(entry, existing));\n  if (insertIndex === -1) stack.push(entry);\n  else stack.splice(insertIndex, 0, entry);\n\n  const nextTop = stack.at(-1);\n  if (previousTop && previousTop !== nextTop) suspendEntry(previousTop);\n  return nextTop === entry;\n}\n\nfunction removeTrap(entry: TrapEntry): void {\n  const stack = getTrapStack(entry.ownerDocument);\n  const index = stack.indexOf(entry);\n  if (index < 0) return;\n  const wasTop = index === stack.length - 1;\n  stack.splice(index, 1);\n  if (wasTop) {\n    const newTop = stack.at(-1);\n    if (newTop) resumeEntry(newTop);\n  }\n}\n\nfunction isInsideContainer(\n  container: HTMLElement,\n  target: EventTarget | null,\n): target is HTMLElement {\n  return isHTMLElement(target) && composedContains(container, target);\n}\n\nfunction getTabbableFromAnchor(\n  tabbableEls: [HTMLElement, ...HTMLElement[]],\n  activeElement: HTMLElement,\n  shiftKey: boolean,\n): HTMLElement {\n  const firstTabbable = tabbableEls[0];\n  const documentOrderEls = [...tabbableEls].sort(documentOrder);\n  if (shiftKey) {\n    for (let index = documentOrderEls.length - 1; index >= 0; index -= 1) {\n      const candidate = documentOrderEls[index];\n      if (candidate && documentOrder(candidate, activeElement) < 0) return candidate;\n    }\n    return documentOrderEls.at(-1) ?? firstTabbable;\n  }\n\n  for (const candidate of documentOrderEls) {\n    if (documentOrder(activeElement, candidate) < 0) return candidate;\n  }\n  return documentOrderEls[0] ?? firstTabbable;\n}\n\nfunction hasExcludedCheckedRadioPeer(container: HTMLElement, element: HTMLElement): boolean {\n  if (!isHTMLInputElement(element) || element.type !== \"radio\" || element.name === \"\") return false;\n  const root = element.getRootNode();\n  return getFocusableElements(container).some(\n    (candidate) =>\n      candidate !== element &&\n      isHTMLInputElement(candidate) &&\n      candidate.type === \"radio\" &&\n      candidate.name === element.name &&\n      candidate.form === element.form &&\n      candidate.getRootNode() === root &&\n      candidate.checked &&\n      candidate.tabIndex < 0,\n  );\n}\n\nexport function createFocusTrapController(\n  options: CreateFocusTrapControllerOptions,\n): FocusTrapController {\n  const { container, resolveInitialFocus, MutationObserverCtor } = options;\n  const ownerDocument = container.ownerDocument;\n\n  const hadTabIndex = container.hasAttribute(\"tabindex\");\n  const originalTabIndex = container.getAttribute(\"tabindex\");\n  if (!hadTabIndex) container.setAttribute(\"tabindex\", \"-1\");\n\n  let lastFocused: HTMLElement = container;\n  let entry: TrapEntry | null = null;\n  let activated = false;\n\n  const recapture = () => {\n    const target =\n      composedContains(container, lastFocused) &&\n      lastFocused.isConnected &&\n      isFocusable(lastFocused)\n        ? lastFocused\n        : resolveInitialFocus();\n    target.focus();\n  };\n\n  const handleFocusIn = (event: FocusEvent) => {\n    const target = getComposedEventTarget(event);\n    if (isInsideContainer(container, target)) {\n      lastFocused = target;\n      if (entry) {\n        entry.lastFocused = target;\n        if (!entry.suspended) observeNewTrapTargets(entry);\n      }\n      return;\n    }\n    recapture();\n  };\n\n  const handleKeyDown = (event: KeyboardEvent) => {\n    if (event.key !== \"Tab\") return;\n\n    if (entry && !entry.suspended) observeNewTrapTargets(entry);\n    const focusableEls = getTabbableElements(container);\n    if (focusableEls.length === 0) {\n      event.preventDefault();\n      if (getDeepActiveElement(ownerDocument) !== container) container.focus();\n      return;\n    }\n\n    const first = focusableEls[0];\n    const last = focusableEls[focusableEls.length - 1];\n    const activeElement = getDeepActiveElement(ownerDocument);\n\n    if (!isInsideContainer(container, activeElement)) {\n      event.preventDefault();\n      (event.shiftKey ? last : first)?.focus();\n      return;\n    }\n\n    if (!focusableEls.includes(activeElement)) {\n      event.preventDefault();\n      getTabbableFromAnchor(\n        focusableEls as [HTMLElement, ...HTMLElement[]],\n        activeElement,\n        event.shiftKey,\n      ).focus();\n      return;\n    }\n\n    const activeIndex = focusableEls.indexOf(activeElement);\n    const adjacent = focusableEls[activeIndex + (event.shiftKey ? -1 : 1)];\n    if (adjacent && hasExcludedCheckedRadioPeer(container, adjacent)) {\n      event.preventDefault();\n      adjacent.focus();\n      return;\n    }\n\n    if (event.shiftKey) {\n      if (activeElement === first) {\n        event.preventDefault();\n        last?.focus();\n      }\n    } else {\n      if (activeElement === last) {\n        event.preventDefault();\n        first?.focus();\n      }\n    }\n  };\n\n  const observer = new MutationObserverCtor(() => {\n    if (entry && !entry.suspended) observeNewTrapTargets(entry);\n    if (\n      lastFocused.isConnected &&\n      composedContains(container, lastFocused) &&\n      isFocusable(lastFocused)\n    )\n      return;\n    recapture();\n  });\n\n  const trapEntry: TrapEntry = {\n    container,\n    ownerDocument,\n    resolveInitialFocus,\n    lastFocused,\n    handleKeyDown,\n    handleFocusIn,\n    observer,\n    observedTargets: new Set(),\n    suspended: true,\n  };\n  entry = trapEntry;\n\n  return {\n    activate: () => {\n      if (activated) return;\n      activated = true;\n\n      const isTopTrap = pushTrap(trapEntry);\n\n      if (isTopTrap) {\n        armEntry(trapEntry);\n        if (!isInsideContainer(container, getDeepActiveElement(ownerDocument))) {\n          resolveInitialFocus().focus();\n        }\n        const activeElement = getDeepActiveElement(ownerDocument);\n        lastFocused = isInsideContainer(container, activeElement)\n          ? activeElement\n          : resolveInitialFocus();\n        trapEntry.lastFocused = lastFocused;\n      } else {\n        const activeElement = getDeepActiveElement(ownerDocument);\n        if (isInsideContainer(container, activeElement)) {\n          lastFocused = activeElement;\n          trapEntry.lastFocused = lastFocused;\n        }\n      }\n    },\n    release: () => {\n      if (!activated) {\n        return { hasOuterTrap: getTrapStack(ownerDocument).length > 0 };\n      }\n      activated = false;\n\n      ownerDocument.removeEventListener(\"keydown\", handleKeyDown, true);\n      ownerDocument.removeEventListener(\"focusin\", handleFocusIn, true);\n      disconnectTrapObserver(trapEntry);\n\n      removeTrap(trapEntry);\n      entry = null;\n\n      if (!hadTabIndex) {\n        container.removeAttribute(\"tabindex\");\n      } else if (originalTabIndex !== null) {\n        container.setAttribute(\"tabindex\", originalTabIndex);\n      }\n\n      return { hasOuterTrap: getTrapStack(ownerDocument).length > 0 };\n    },\n  };\n}\n",
+        "raw": "import {\n  composedContains,\n  getComposedEventTarget,\n  getDeepActiveElement,\n  isHTMLElement,\n  isHTMLInputElement,\n} from \"./element-guards\";\nimport {\n  documentOrder,\n  getComposedChildren,\n  getFocusableElements,\n  getTabbableElements,\n  isFocusable,\n} from \"./focusable\";\n\ninterface TrapEntry {\n  container: HTMLElement;\n  ownerDocument: Document;\n  resolveInitialFocus: () => HTMLElement;\n  lastFocused: HTMLElement;\n  handleKeyDown: (event: KeyboardEvent) => void;\n  handleFocusIn: (event: FocusEvent) => void;\n  observer: MutationObserver;\n  observedTargets: Set<Node>;\n  suspended: boolean;\n}\n\nexport interface CreateFocusTrapControllerOptions {\n  container: HTMLElement;\n  resolveInitialFocus: () => HTMLElement;\n  MutationObserverCtor: typeof MutationObserver;\n}\n\nexport interface FocusTrapReleaseResult {\n  hasOuterTrap: boolean;\n}\n\nexport interface FocusTrapController {\n  activate: () => void;\n  release: () => FocusTrapReleaseResult;\n}\n\nconst trapStacks = new WeakMap<Document, TrapEntry[]>();\n\nconst TRAP_MUTATION_OPTIONS = {\n  childList: true,\n  subtree: true,\n  attributes: true,\n  attributeFilter: [\n    \"disabled\",\n    \"hidden\",\n    \"open\",\n    \"tabindex\",\n    \"aria-hidden\",\n    \"inert\",\n    \"style\",\n    \"class\",\n  ],\n} as const satisfies MutationObserverInit;\n\nfunction getOpenShadowRoots(container: HTMLElement): ShadowRoot[] {\n  const roots: ShadowRoot[] = [];\n  const visit = (element: Element) => {\n    if (element.shadowRoot) roots.push(element.shadowRoot);\n    for (const child of getComposedChildren(element)) visit(child);\n  };\n  visit(container);\n  return roots;\n}\n\nfunction observeNewTrapTargets(entry: TrapEntry): void {\n  const targets: Node[] = [entry.container, ...getOpenShadowRoots(entry.container)];\n  for (const target of targets) {\n    if (entry.observedTargets.has(target)) continue;\n    entry.observer.observe(target, TRAP_MUTATION_OPTIONS);\n    entry.observedTargets.add(target);\n  }\n}\n\nfunction disconnectTrapObserver(entry: TrapEntry): void {\n  entry.observer.disconnect();\n  entry.observedTargets.clear();\n}\n\nfunction getTrapStack(ownerDocument: Document): TrapEntry[] {\n  let stack = trapStacks.get(ownerDocument);\n  if (!stack) {\n    stack = [];\n    trapStacks.set(ownerDocument, stack);\n  }\n  return stack;\n}\n\nfunction armEntry(entry: TrapEntry): void {\n  if (!entry.suspended) return;\n  entry.ownerDocument.addEventListener(\"keydown\", entry.handleKeyDown, true);\n  entry.ownerDocument.addEventListener(\"focusin\", entry.handleFocusIn, true);\n  observeNewTrapTargets(entry);\n  entry.suspended = false;\n}\n\nfunction suspendEntry(entry: TrapEntry): void {\n  if (entry.suspended) return;\n  entry.ownerDocument.removeEventListener(\"keydown\", entry.handleKeyDown, true);\n  entry.ownerDocument.removeEventListener(\"focusin\", entry.handleFocusIn, true);\n  disconnectTrapObserver(entry);\n  entry.suspended = true;\n}\n\nfunction resumeEntry(entry: TrapEntry): void {\n  armEntry(entry);\n  const target =\n    composedContains(entry.container, entry.lastFocused) &&\n    entry.lastFocused.isConnected &&\n    isFocusable(entry.lastFocused)\n      ? entry.lastFocused\n      : entry.resolveInitialFocus();\n  target.focus();\n}\n\nfunction shouldInsertBefore(incoming: TrapEntry, existing: TrapEntry): boolean {\n  return (\n    incoming.container !== existing.container &&\n    composedContains(incoming.container, existing.container)\n  );\n}\n\nfunction pushTrap(entry: TrapEntry): boolean {\n  const stack = getTrapStack(entry.ownerDocument);\n  const previousTop = stack.at(-1);\n  const insertIndex = stack.findIndex((existing) => shouldInsertBefore(entry, existing));\n  if (insertIndex === -1) stack.push(entry);\n  else stack.splice(insertIndex, 0, entry);\n\n  const nextTop = stack.at(-1);\n  if (previousTop && previousTop !== nextTop) suspendEntry(previousTop);\n  return nextTop === entry;\n}\n\nfunction removeTrap(entry: TrapEntry): void {\n  const stack = getTrapStack(entry.ownerDocument);\n  const index = stack.indexOf(entry);\n  if (index < 0) return;\n  const wasTop = index === stack.length - 1;\n  stack.splice(index, 1);\n  if (wasTop) {\n    const newTop = stack.at(-1);\n    if (newTop) resumeEntry(newTop);\n  }\n}\n\nfunction isInsideContainer(\n  container: HTMLElement,\n  target: EventTarget | null,\n): target is HTMLElement {\n  return isHTMLElement(target) && composedContains(container, target);\n}\n\nfunction getTabbableFromAnchor(\n  tabbableEls: [HTMLElement, ...HTMLElement[]],\n  activeElement: HTMLElement,\n  shiftKey: boolean,\n): HTMLElement {\n  const firstTabbable = tabbableEls[0];\n  const documentOrderEls = [...tabbableEls].sort(documentOrder);\n  if (shiftKey) {\n    for (let index = documentOrderEls.length - 1; index >= 0; index -= 1) {\n      const candidate = documentOrderEls[index];\n      if (candidate && documentOrder(candidate, activeElement) < 0) return candidate;\n    }\n    return documentOrderEls.at(-1) ?? firstTabbable;\n  }\n\n  for (const candidate of documentOrderEls) {\n    if (documentOrder(activeElement, candidate) < 0) return candidate;\n  }\n  return documentOrderEls[0] ?? firstTabbable;\n}\n\nfunction hasExcludedCheckedRadioPeer(container: HTMLElement, element: HTMLElement): boolean {\n  if (!isHTMLInputElement(element) || element.type !== \"radio\" || element.name === \"\") return false;\n  const root = element.getRootNode();\n  return getFocusableElements(container).some(\n    (candidate) =>\n      candidate !== element &&\n      isHTMLInputElement(candidate) &&\n      candidate.type === \"radio\" &&\n      candidate.name === element.name &&\n      candidate.form === element.form &&\n      candidate.getRootNode() === root &&\n      candidate.checked &&\n      candidate.tabIndex < 0,\n  );\n}\n\nexport function createFocusTrapController(\n  options: CreateFocusTrapControllerOptions,\n): FocusTrapController {\n  const { container, resolveInitialFocus, MutationObserverCtor } = options;\n  const ownerDocument = container.ownerDocument;\n\n  const hadTabIndex = container.hasAttribute(\"tabindex\");\n  const originalTabIndex = container.getAttribute(\"tabindex\");\n  if (!hadTabIndex) container.setAttribute(\"tabindex\", \"-1\");\n\n  let activated = false;\n\n  function recapture(): void {\n    const { lastFocused } = trapEntry;\n    const target =\n      composedContains(container, lastFocused) &&\n      lastFocused.isConnected &&\n      isFocusable(lastFocused)\n        ? lastFocused\n        : resolveInitialFocus();\n    target.focus();\n  }\n\n  function handleFocusIn(event: FocusEvent): void {\n    const target = getComposedEventTarget(event);\n    if (isInsideContainer(container, target)) {\n      trapEntry.lastFocused = target;\n      if (!trapEntry.suspended) observeNewTrapTargets(trapEntry);\n      return;\n    }\n    recapture();\n  }\n\n  function handleKeyDown(event: KeyboardEvent): void {\n    if (event.key !== \"Tab\") return;\n\n    if (!trapEntry.suspended) observeNewTrapTargets(trapEntry);\n    const focusableEls = getTabbableElements(container);\n    if (focusableEls.length === 0) {\n      event.preventDefault();\n      if (getDeepActiveElement(ownerDocument) !== container) container.focus();\n      return;\n    }\n\n    const first = focusableEls[0];\n    const last = focusableEls[focusableEls.length - 1];\n    const activeElement = getDeepActiveElement(ownerDocument);\n\n    if (!isInsideContainer(container, activeElement)) {\n      event.preventDefault();\n      (event.shiftKey ? last : first)?.focus();\n      return;\n    }\n\n    if (!focusableEls.includes(activeElement)) {\n      event.preventDefault();\n      getTabbableFromAnchor(\n        focusableEls as [HTMLElement, ...HTMLElement[]],\n        activeElement,\n        event.shiftKey,\n      ).focus();\n      return;\n    }\n\n    const activeIndex = focusableEls.indexOf(activeElement);\n    const adjacent = focusableEls[activeIndex + (event.shiftKey ? -1 : 1)];\n    if (adjacent && hasExcludedCheckedRadioPeer(container, adjacent)) {\n      event.preventDefault();\n      adjacent.focus();\n      return;\n    }\n\n    if (event.shiftKey) {\n      if (activeElement === first) {\n        event.preventDefault();\n        last?.focus();\n      }\n    } else {\n      if (activeElement === last) {\n        event.preventDefault();\n        first?.focus();\n      }\n    }\n  }\n\n  const observer = new MutationObserverCtor(() => {\n    if (!trapEntry.suspended) observeNewTrapTargets(trapEntry);\n    const { lastFocused } = trapEntry;\n    if (\n      lastFocused.isConnected &&\n      composedContains(container, lastFocused) &&\n      isFocusable(lastFocused)\n    )\n      return;\n    recapture();\n  });\n\n  const trapEntry: TrapEntry = {\n    container,\n    ownerDocument,\n    resolveInitialFocus,\n    lastFocused: container,\n    handleKeyDown,\n    handleFocusIn,\n    observer,\n    observedTargets: new Set(),\n    suspended: true,\n  };\n\n  return {\n    activate: () => {\n      if (activated) return;\n      activated = true;\n\n      const isTopTrap = pushTrap(trapEntry);\n\n      if (isTopTrap) {\n        armEntry(trapEntry);\n        if (!isInsideContainer(container, getDeepActiveElement(ownerDocument))) {\n          resolveInitialFocus().focus();\n        }\n        const activeElement = getDeepActiveElement(ownerDocument);\n        trapEntry.lastFocused = isInsideContainer(container, activeElement)\n          ? activeElement\n          : resolveInitialFocus();\n      } else {\n        const activeElement = getDeepActiveElement(ownerDocument);\n        if (isInsideContainer(container, activeElement)) {\n          trapEntry.lastFocused = activeElement;\n        }\n      }\n    },\n    release: () => {\n      if (!activated) {\n        return { hasOuterTrap: getTrapStack(ownerDocument).length > 0 };\n      }\n      activated = false;\n\n      suspendEntry(trapEntry);\n      removeTrap(trapEntry);\n\n      if (!hadTabIndex) {\n        container.removeAttribute(\"tabindex\");\n      } else if (originalTabIndex !== null) {\n        container.setAttribute(\"tabindex\", originalTabIndex);\n      }\n\n      return { hasOuterTrap: getTrapStack(ownerDocument).length > 0 };\n    },\n  };\n}\n",
         "highlighted": [
           {
             "number": 1,
@@ -69788,116 +69788,6 @@
                 "color": "var(--code-keyword)"
               },
               {
-                "text": " lastFocused",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": ":",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "HTMLElement",
-                "color": "var(--code-function)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "=",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " container",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": ";",
-                "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 207,
-            "content": [
-              {
-                "text": "  ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "let",
-                "color": "var(--code-keyword)"
-              },
-              {
-                "text": " entry",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": ":",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "TrapEntry",
-                "color": "var(--code-function)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "|",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "null",
-                "color": "var(--code-number)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "=",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "null",
-                "color": "var(--code-number)"
-              },
-              {
-                "text": ";",
-                "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 208,
-            "content": [
-              {
-                "text": "  ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "let",
-                "color": "var(--code-keyword)"
-              },
-              {
                 "text": " activated ",
                 "color": "var(--code-variable)"
               },
@@ -69920,18 +69810,18 @@
             ]
           },
           {
-            "number": 209,
+            "number": 207,
             "content": []
           },
           {
-            "number": 210,
+            "number": 208,
             "content": [
               {
                 "text": "  ",
                 "color": "var(--code-variable)"
               },
               {
-                "text": "const",
+                "text": "function",
                 "color": "var(--code-keyword)"
               },
               {
@@ -69943,11 +69833,7 @@
                 "color": "var(--code-function)"
               },
               {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "=",
+                "text": "():",
                 "color": "var(--code-operator)"
               },
               {
@@ -69955,16 +69841,8 @@
                 "color": "var(--code-variable)"
               },
               {
-                "text": "()",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "=>",
-                "color": "var(--code-keyword)"
+                "text": "void",
+                "color": "var(--code-number)"
               },
               {
                 "text": " ",
@@ -69977,7 +69855,60 @@
             ]
           },
           {
-            "number": 211,
+            "number": 209,
+            "content": [
+              {
+                "text": "    ",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": "const",
+                "color": "var(--code-keyword)"
+              },
+              {
+                "text": " ",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": "{",
+                "color": "var(--code-operator)"
+              },
+              {
+                "text": " ",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": "lastFocused",
+                "color": "var(--code-number)"
+              },
+              {
+                "text": " ",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": "}",
+                "color": "var(--code-operator)"
+              },
+              {
+                "text": " ",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": "=",
+                "color": "var(--code-operator)"
+              },
+              {
+                "text": " trapEntry",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": ";",
+                "color": "var(--code-operator)"
+              }
+            ]
+          },
+          {
+            "number": 210,
             "content": [
               {
                 "text": "    ",
@@ -70006,7 +69937,7 @@
             ]
           },
           {
-            "number": 212,
+            "number": 211,
             "content": [
               {
                 "text": "      ",
@@ -70035,7 +69966,7 @@
             ]
           },
           {
-            "number": 213,
+            "number": 212,
             "content": [
               {
                 "text": "      ",
@@ -70060,7 +69991,7 @@
             ]
           },
           {
-            "number": 214,
+            "number": 213,
             "content": [
               {
                 "text": "      ",
@@ -70077,7 +70008,7 @@
             ]
           },
           {
-            "number": 215,
+            "number": 214,
             "content": [
               {
                 "text": "        ",
@@ -70094,7 +70025,7 @@
             ]
           },
           {
-            "number": 216,
+            "number": 215,
             "content": [
               {
                 "text": "        ",
@@ -70123,7 +70054,7 @@
             ]
           },
           {
-            "number": 217,
+            "number": 216,
             "content": [
               {
                 "text": "    ",
@@ -70152,31 +70083,31 @@
             ]
           },
           {
-            "number": 218,
+            "number": 217,
             "content": [
               {
                 "text": "  ",
                 "color": "var(--code-variable)"
               },
               {
-                "text": "};",
+                "text": "}",
                 "color": "var(--code-operator)"
               }
             ]
           },
           {
-            "number": 219,
+            "number": 218,
             "content": []
           },
           {
-            "number": 220,
+            "number": 219,
             "content": [
               {
                 "text": "  ",
                 "color": "var(--code-variable)"
               },
               {
-                "text": "const",
+                "text": "function",
                 "color": "var(--code-keyword)"
               },
               {
@@ -70186,18 +70117,6 @@
               {
                 "text": "handleFocusIn",
                 "color": "var(--code-function)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "=",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
               },
               {
                 "text": "(",
@@ -70220,7 +70139,7 @@
                 "color": "var(--code-function)"
               },
               {
-                "text": ")",
+                "text": "):",
                 "color": "var(--code-operator)"
               },
               {
@@ -70228,8 +70147,8 @@
                 "color": "var(--code-variable)"
               },
               {
-                "text": "=>",
-                "color": "var(--code-keyword)"
+                "text": "void",
+                "color": "var(--code-number)"
               },
               {
                 "text": " ",
@@ -70242,7 +70161,7 @@
             ]
           },
           {
-            "number": 221,
+            "number": 220,
             "content": [
               {
                 "text": "    ",
@@ -70287,7 +70206,7 @@
             ]
           },
           {
-            "number": 222,
+            "number": 221,
             "content": [
               {
                 "text": "    ",
@@ -70324,56 +70243,14 @@
             ]
           },
           {
-            "number": 223,
-            "content": [
-              {
-                "text": "      lastFocused ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "=",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " target",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": ";",
-                "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 224,
+            "number": 222,
             "content": [
               {
                 "text": "      ",
                 "color": "var(--code-variable)"
               },
               {
-                "text": "if",
-                "color": "var(--code-keyword)"
-              },
-              {
-                "text": " (entry) ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "{",
-                "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 225,
-            "content": [
-              {
-                "text": "        ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "entry",
+                "text": "trapEntry",
                 "color": "var(--code-number)"
               },
               {
@@ -70399,10 +70276,10 @@
             ]
           },
           {
-            "number": 226,
+            "number": 223,
             "content": [
               {
-                "text": "        ",
+                "text": "      ",
                 "color": "var(--code-variable)"
               },
               {
@@ -70418,7 +70295,7 @@
                 "color": "var(--code-operator)"
               },
               {
-                "text": "entry",
+                "text": "trapEntry",
                 "color": "var(--code-number)"
               },
               {
@@ -70434,7 +70311,7 @@
                 "color": "var(--code-function)"
               },
               {
-                "text": "(entry)",
+                "text": "(trapEntry)",
                 "color": "var(--code-variable)"
               },
               {
@@ -70444,20 +70321,7 @@
             ]
           },
           {
-            "number": 227,
-            "content": [
-              {
-                "text": "      ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "}",
-                "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 228,
+            "number": 224,
             "content": [
               {
                 "text": "      ",
@@ -70474,7 +70338,7 @@
             ]
           },
           {
-            "number": 229,
+            "number": 225,
             "content": [
               {
                 "text": "    ",
@@ -70487,7 +70351,7 @@
             ]
           },
           {
-            "number": 230,
+            "number": 226,
             "content": [
               {
                 "text": "    ",
@@ -70508,31 +70372,31 @@
             ]
           },
           {
-            "number": 231,
+            "number": 227,
             "content": [
               {
                 "text": "  ",
                 "color": "var(--code-variable)"
               },
               {
-                "text": "};",
+                "text": "}",
                 "color": "var(--code-operator)"
               }
             ]
           },
           {
-            "number": 232,
+            "number": 228,
             "content": []
           },
           {
-            "number": 233,
+            "number": 229,
             "content": [
               {
                 "text": "  ",
                 "color": "var(--code-variable)"
               },
               {
-                "text": "const",
+                "text": "function",
                 "color": "var(--code-keyword)"
               },
               {
@@ -70542,18 +70406,6 @@
               {
                 "text": "handleKeyDown",
                 "color": "var(--code-function)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "=",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
               },
               {
                 "text": "(",
@@ -70576,7 +70428,7 @@
                 "color": "var(--code-function)"
               },
               {
-                "text": ")",
+                "text": "):",
                 "color": "var(--code-operator)"
               },
               {
@@ -70584,8 +70436,8 @@
                 "color": "var(--code-variable)"
               },
               {
-                "text": "=>",
-                "color": "var(--code-keyword)"
+                "text": "void",
+                "color": "var(--code-number)"
               },
               {
                 "text": " ",
@@ -70598,7 +70450,7 @@
             ]
           },
           {
-            "number": 234,
+            "number": 230,
             "content": [
               {
                 "text": "    ",
@@ -70659,11 +70511,11 @@
             ]
           },
           {
-            "number": 235,
+            "number": 231,
             "content": []
           },
           {
-            "number": 236,
+            "number": 232,
             "content": [
               {
                 "text": "    ",
@@ -70674,15 +70526,7 @@
                 "color": "var(--code-keyword)"
               },
               {
-                "text": " (entry ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "&&",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " ",
+                "text": " (",
                 "color": "var(--code-variable)"
               },
               {
@@ -70690,7 +70534,7 @@
                 "color": "var(--code-operator)"
               },
               {
-                "text": "entry",
+                "text": "trapEntry",
                 "color": "var(--code-number)"
               },
               {
@@ -70706,7 +70550,7 @@
                 "color": "var(--code-function)"
               },
               {
-                "text": "(entry)",
+                "text": "(trapEntry)",
                 "color": "var(--code-variable)"
               },
               {
@@ -70716,7 +70560,7 @@
             ]
           },
           {
-            "number": 237,
+            "number": 233,
             "content": [
               {
                 "text": "    ",
@@ -70761,7 +70605,7 @@
             ]
           },
           {
-            "number": 238,
+            "number": 234,
             "content": [
               {
                 "text": "    ",
@@ -70814,7 +70658,7 @@
             ]
           },
           {
-            "number": 239,
+            "number": 235,
             "content": [
               {
                 "text": "      ",
@@ -70843,7 +70687,7 @@
             ]
           },
           {
-            "number": 240,
+            "number": 236,
             "content": [
               {
                 "text": "      ",
@@ -70896,7 +70740,7 @@
             ]
           },
           {
-            "number": 241,
+            "number": 237,
             "content": [
               {
                 "text": "      ",
@@ -70913,7 +70757,7 @@
             ]
           },
           {
-            "number": 242,
+            "number": 238,
             "content": [
               {
                 "text": "    ",
@@ -70926,11 +70770,11 @@
             ]
           },
           {
-            "number": 243,
+            "number": 239,
             "content": []
           },
           {
-            "number": 244,
+            "number": 240,
             "content": [
               {
                 "text": "    ",
@@ -70975,7 +70819,7 @@
             ]
           },
           {
-            "number": 245,
+            "number": 241,
             "content": [
               {
                 "text": "    ",
@@ -71044,7 +70888,7 @@
             ]
           },
           {
-            "number": 246,
+            "number": 242,
             "content": [
               {
                 "text": "    ",
@@ -71089,11 +70933,11 @@
             ]
           },
           {
-            "number": 247,
+            "number": 243,
             "content": []
           },
           {
-            "number": 248,
+            "number": 244,
             "content": [
               {
                 "text": "    ",
@@ -71134,7 +70978,7 @@
             ]
           },
           {
-            "number": 249,
+            "number": 245,
             "content": [
               {
                 "text": "      ",
@@ -71163,7 +71007,7 @@
             ]
           },
           {
-            "number": 250,
+            "number": 246,
             "content": [
               {
                 "text": "      (",
@@ -71216,7 +71060,7 @@
             ]
           },
           {
-            "number": 251,
+            "number": 247,
             "content": [
               {
                 "text": "      ",
@@ -71233,7 +71077,7 @@
             ]
           },
           {
-            "number": 252,
+            "number": 248,
             "content": [
               {
                 "text": "    ",
@@ -71246,11 +71090,11 @@
             ]
           },
           {
-            "number": 253,
+            "number": 249,
             "content": []
           },
           {
-            "number": 254,
+            "number": 250,
             "content": [
               {
                 "text": "    ",
@@ -71291,7 +71135,7 @@
             ]
           },
           {
-            "number": 255,
+            "number": 251,
             "content": [
               {
                 "text": "      ",
@@ -71320,7 +71164,7 @@
             ]
           },
           {
-            "number": 256,
+            "number": 252,
             "content": [
               {
                 "text": "      ",
@@ -71337,7 +71181,7 @@
             ]
           },
           {
-            "number": 257,
+            "number": 253,
             "content": [
               {
                 "text": "        focusableEls ",
@@ -71382,7 +71226,7 @@
             ]
           },
           {
-            "number": 258,
+            "number": 254,
             "content": [
               {
                 "text": "        activeElement",
@@ -71395,7 +71239,7 @@
             ]
           },
           {
-            "number": 259,
+            "number": 255,
             "content": [
               {
                 "text": "        ",
@@ -71420,7 +71264,7 @@
             ]
           },
           {
-            "number": 260,
+            "number": 256,
             "content": [
               {
                 "text": "      )",
@@ -71445,7 +71289,7 @@
             ]
           },
           {
-            "number": 261,
+            "number": 257,
             "content": [
               {
                 "text": "      ",
@@ -71462,7 +71306,7 @@
             ]
           },
           {
-            "number": 262,
+            "number": 258,
             "content": [
               {
                 "text": "    ",
@@ -71475,11 +71319,11 @@
             ]
           },
           {
-            "number": 263,
+            "number": 259,
             "content": []
           },
           {
-            "number": 264,
+            "number": 260,
             "content": [
               {
                 "text": "    ",
@@ -71532,7 +71376,7 @@
             ]
           },
           {
-            "number": 265,
+            "number": 261,
             "content": [
               {
                 "text": "    ",
@@ -71625,7 +71469,7 @@
             ]
           },
           {
-            "number": 266,
+            "number": 262,
             "content": [
               {
                 "text": "    ",
@@ -71670,7 +71514,7 @@
             ]
           },
           {
-            "number": 267,
+            "number": 263,
             "content": [
               {
                 "text": "      ",
@@ -71699,7 +71543,7 @@
             ]
           },
           {
-            "number": 268,
+            "number": 264,
             "content": [
               {
                 "text": "      ",
@@ -71728,7 +71572,7 @@
             ]
           },
           {
-            "number": 269,
+            "number": 265,
             "content": [
               {
                 "text": "      ",
@@ -71745,7 +71589,7 @@
             ]
           },
           {
-            "number": 270,
+            "number": 266,
             "content": [
               {
                 "text": "    ",
@@ -71758,11 +71602,11 @@
             ]
           },
           {
-            "number": 271,
+            "number": 267,
             "content": []
           },
           {
-            "number": 272,
+            "number": 268,
             "content": [
               {
                 "text": "    ",
@@ -71795,7 +71639,7 @@
             ]
           },
           {
-            "number": 273,
+            "number": 269,
             "content": [
               {
                 "text": "      ",
@@ -71824,7 +71668,7 @@
             ]
           },
           {
-            "number": 274,
+            "number": 270,
             "content": [
               {
                 "text": "        ",
@@ -71853,7 +71697,7 @@
             ]
           },
           {
-            "number": 275,
+            "number": 271,
             "content": [
               {
                 "text": "        ",
@@ -71882,7 +71726,7 @@
             ]
           },
           {
-            "number": 276,
+            "number": 272,
             "content": [
               {
                 "text": "      ",
@@ -71895,7 +71739,7 @@
             ]
           },
           {
-            "number": 277,
+            "number": 273,
             "content": [
               {
                 "text": "    ",
@@ -71924,7 +71768,7 @@
             ]
           },
           {
-            "number": 278,
+            "number": 274,
             "content": [
               {
                 "text": "      ",
@@ -71953,7 +71797,7 @@
             ]
           },
           {
-            "number": 279,
+            "number": 275,
             "content": [
               {
                 "text": "        ",
@@ -71982,7 +71826,7 @@
             ]
           },
           {
-            "number": 280,
+            "number": 276,
             "content": [
               {
                 "text": "        ",
@@ -72011,7 +71855,7 @@
             ]
           },
           {
-            "number": 281,
+            "number": 277,
             "content": [
               {
                 "text": "      ",
@@ -72024,7 +71868,7 @@
             ]
           },
           {
-            "number": 282,
+            "number": 278,
             "content": [
               {
                 "text": "    ",
@@ -72037,24 +71881,24 @@
             ]
           },
           {
-            "number": 283,
+            "number": 279,
             "content": [
               {
                 "text": "  ",
                 "color": "var(--code-variable)"
               },
               {
-                "text": "};",
+                "text": "}",
                 "color": "var(--code-operator)"
               }
             ]
           },
           {
-            "number": 284,
+            "number": 280,
             "content": []
           },
           {
-            "number": 285,
+            "number": 281,
             "content": [
               {
                 "text": "  ",
@@ -72123,7 +71967,7 @@
             ]
           },
           {
-            "number": 286,
+            "number": 282,
             "content": [
               {
                 "text": "    ",
@@ -72134,15 +71978,7 @@
                 "color": "var(--code-keyword)"
               },
               {
-                "text": " (entry ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "&&",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " ",
+                "text": " (",
                 "color": "var(--code-variable)"
               },
               {
@@ -72150,7 +71986,7 @@
                 "color": "var(--code-operator)"
               },
               {
-                "text": "entry",
+                "text": "trapEntry",
                 "color": "var(--code-number)"
               },
               {
@@ -72166,7 +72002,7 @@
                 "color": "var(--code-function)"
               },
               {
-                "text": "(entry)",
+                "text": "(trapEntry)",
                 "color": "var(--code-variable)"
               },
               {
@@ -72176,7 +72012,60 @@
             ]
           },
           {
-            "number": 287,
+            "number": 283,
+            "content": [
+              {
+                "text": "    ",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": "const",
+                "color": "var(--code-keyword)"
+              },
+              {
+                "text": " ",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": "{",
+                "color": "var(--code-operator)"
+              },
+              {
+                "text": " ",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": "lastFocused",
+                "color": "var(--code-number)"
+              },
+              {
+                "text": " ",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": "}",
+                "color": "var(--code-operator)"
+              },
+              {
+                "text": " ",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": "=",
+                "color": "var(--code-operator)"
+              },
+              {
+                "text": " trapEntry",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": ";",
+                "color": "var(--code-operator)"
+              }
+            ]
+          },
+          {
+            "number": 284,
             "content": [
               {
                 "text": "    ",
@@ -72193,7 +72082,7 @@
             ]
           },
           {
-            "number": 288,
+            "number": 285,
             "content": [
               {
                 "text": "      ",
@@ -72218,7 +72107,7 @@
             ]
           },
           {
-            "number": 289,
+            "number": 286,
             "content": [
               {
                 "text": "      ",
@@ -72247,7 +72136,7 @@
             ]
           },
           {
-            "number": 290,
+            "number": 287,
             "content": [
               {
                 "text": "      ",
@@ -72264,7 +72153,7 @@
             ]
           },
           {
-            "number": 291,
+            "number": 288,
             "content": [
               {
                 "text": "    )",
@@ -72273,7 +72162,7 @@
             ]
           },
           {
-            "number": 292,
+            "number": 289,
             "content": [
               {
                 "text": "      ",
@@ -72290,7 +72179,7 @@
             ]
           },
           {
-            "number": 293,
+            "number": 290,
             "content": [
               {
                 "text": "    ",
@@ -72311,7 +72200,7 @@
             ]
           },
           {
-            "number": 294,
+            "number": 291,
             "content": [
               {
                 "text": "  ",
@@ -72332,11 +72221,11 @@
             ]
           },
           {
-            "number": 295,
+            "number": 292,
             "content": []
           },
           {
-            "number": 296,
+            "number": 293,
             "content": [
               {
                 "text": "  ",
@@ -72385,7 +72274,7 @@
             ]
           },
           {
-            "number": 297,
+            "number": 294,
             "content": [
               {
                 "text": "    container",
@@ -72398,7 +72287,7 @@
             ]
           },
           {
-            "number": 298,
+            "number": 295,
             "content": [
               {
                 "text": "    ownerDocument",
@@ -72411,7 +72300,7 @@
             ]
           },
           {
-            "number": 299,
+            "number": 296,
             "content": [
               {
                 "text": "    resolveInitialFocus",
@@ -72424,10 +72313,18 @@
             ]
           },
           {
-            "number": 300,
+            "number": 297,
             "content": [
               {
                 "text": "    lastFocused",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": ":",
+                "color": "var(--code-keyword)"
+              },
+              {
+                "text": " container",
                 "color": "var(--code-variable)"
               },
               {
@@ -72437,7 +72334,7 @@
             ]
           },
           {
-            "number": 301,
+            "number": 298,
             "content": [
               {
                 "text": "    handleKeyDown",
@@ -72450,7 +72347,7 @@
             ]
           },
           {
-            "number": 302,
+            "number": 299,
             "content": [
               {
                 "text": "    handleFocusIn",
@@ -72463,7 +72360,7 @@
             ]
           },
           {
-            "number": 303,
+            "number": 300,
             "content": [
               {
                 "text": "    observer",
@@ -72476,7 +72373,7 @@
             ]
           },
           {
-            "number": 304,
+            "number": 301,
             "content": [
               {
                 "text": "    observedTargets",
@@ -72513,7 +72410,7 @@
             ]
           },
           {
-            "number": 305,
+            "number": 302,
             "content": [
               {
                 "text": "    suspended",
@@ -72538,7 +72435,7 @@
             ]
           },
           {
-            "number": 306,
+            "number": 303,
             "content": [
               {
                 "text": "  ",
@@ -72551,32 +72448,11 @@
             ]
           },
           {
-            "number": 307,
-            "content": [
-              {
-                "text": "  entry ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "=",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " trapEntry",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": ";",
-                "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 308,
+            "number": 304,
             "content": []
           },
           {
-            "number": 309,
+            "number": 305,
             "content": [
               {
                 "text": "  ",
@@ -72597,7 +72473,7 @@
             ]
           },
           {
-            "number": 310,
+            "number": 306,
             "content": [
               {
                 "text": "    ",
@@ -72638,7 +72514,7 @@
             ]
           },
           {
-            "number": 311,
+            "number": 307,
             "content": [
               {
                 "text": "      ",
@@ -72663,7 +72539,7 @@
             ]
           },
           {
-            "number": 312,
+            "number": 308,
             "content": [
               {
                 "text": "      activated ",
@@ -72688,11 +72564,11 @@
             ]
           },
           {
-            "number": 313,
+            "number": 309,
             "content": []
           },
           {
-            "number": 314,
+            "number": 310,
             "content": [
               {
                 "text": "      ",
@@ -72737,11 +72613,11 @@
             ]
           },
           {
-            "number": 315,
+            "number": 311,
             "content": []
           },
           {
-            "number": 316,
+            "number": 312,
             "content": [
               {
                 "text": "      ",
@@ -72762,7 +72638,7 @@
             ]
           },
           {
-            "number": 317,
+            "number": 313,
             "content": [
               {
                 "text": "        ",
@@ -72783,7 +72659,7 @@
             ]
           },
           {
-            "number": 318,
+            "number": 314,
             "content": [
               {
                 "text": "        ",
@@ -72832,7 +72708,7 @@
             ]
           },
           {
-            "number": 319,
+            "number": 315,
             "content": [
               {
                 "text": "          ",
@@ -72865,7 +72741,7 @@
             ]
           },
           {
-            "number": 320,
+            "number": 316,
             "content": [
               {
                 "text": "        ",
@@ -72878,7 +72754,7 @@
             ]
           },
           {
-            "number": 321,
+            "number": 317,
             "content": [
               {
                 "text": "        ",
@@ -72923,10 +72799,22 @@
             ]
           },
           {
-            "number": 322,
+            "number": 318,
             "content": [
               {
-                "text": "        lastFocused ",
+                "text": "        ",
+                "color": "var(--code-variable)"
+              },
+              {
+                "text": "trapEntry",
+                "color": "var(--code-number)"
+              },
+              {
+                "text": ".",
+                "color": "var(--code-operator)"
+              },
+              {
+                "text": "lastFocused ",
                 "color": "var(--code-variable)"
               },
               {
@@ -72956,7 +72844,7 @@
             ]
           },
           {
-            "number": 323,
+            "number": 319,
             "content": [
               {
                 "text": "          ",
@@ -72973,7 +72861,7 @@
             ]
           },
           {
-            "number": 324,
+            "number": 320,
             "content": [
               {
                 "text": "          ",
@@ -73002,40 +72890,7 @@
             ]
           },
           {
-            "number": 325,
-            "content": [
-              {
-                "text": "        ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "trapEntry",
-                "color": "var(--code-number)"
-              },
-              {
-                "text": ".",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": "lastFocused ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "=",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " lastFocused",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": ";",
-                "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 326,
+            "number": 321,
             "content": [
               {
                 "text": "      ",
@@ -73064,7 +72919,7 @@
             ]
           },
           {
-            "number": 327,
+            "number": 322,
             "content": [
               {
                 "text": "        ",
@@ -73109,7 +72964,7 @@
             ]
           },
           {
-            "number": 328,
+            "number": 323,
             "content": [
               {
                 "text": "        ",
@@ -73146,28 +73001,7 @@
             ]
           },
           {
-            "number": 329,
-            "content": [
-              {
-                "text": "          lastFocused ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "=",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " activeElement",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": ";",
-                "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 330,
+            "number": 324,
             "content": [
               {
                 "text": "          ",
@@ -73190,7 +73024,7 @@
                 "color": "var(--code-operator)"
               },
               {
-                "text": " lastFocused",
+                "text": " activeElement",
                 "color": "var(--code-variable)"
               },
               {
@@ -73200,7 +73034,7 @@
             ]
           },
           {
-            "number": 331,
+            "number": 325,
             "content": [
               {
                 "text": "        ",
@@ -73213,7 +73047,7 @@
             ]
           },
           {
-            "number": 332,
+            "number": 326,
             "content": [
               {
                 "text": "      ",
@@ -73226,7 +73060,7 @@
             ]
           },
           {
-            "number": 333,
+            "number": 327,
             "content": [
               {
                 "text": "    ",
@@ -73239,7 +73073,7 @@
             ]
           },
           {
-            "number": 334,
+            "number": 328,
             "content": [
               {
                 "text": "    ",
@@ -73280,7 +73114,7 @@
             ]
           },
           {
-            "number": 335,
+            "number": 329,
             "content": [
               {
                 "text": "      ",
@@ -73309,7 +73143,7 @@
             ]
           },
           {
-            "number": 336,
+            "number": 330,
             "content": [
               {
                 "text": "        ",
@@ -73382,7 +73216,7 @@
             ]
           },
           {
-            "number": 337,
+            "number": 331,
             "content": [
               {
                 "text": "      ",
@@ -73395,7 +73229,7 @@
             ]
           },
           {
-            "number": 338,
+            "number": 332,
             "content": [
               {
                 "text": "      activated ",
@@ -73420,148 +73254,18 @@
             ]
           },
           {
-            "number": 339,
+            "number": 333,
             "content": []
           },
           {
-            "number": 340,
+            "number": 334,
             "content": [
               {
                 "text": "      ",
                 "color": "var(--code-variable)"
               },
               {
-                "text": "ownerDocument",
-                "color": "var(--code-number)"
-              },
-              {
-                "text": ".",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": "removeEventListener",
-                "color": "var(--code-function)"
-              },
-              {
-                "text": "(",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "\"",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": "keydown",
-                "color": "var(--code-tag)"
-              },
-              {
-                "text": "\"",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": ",",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " handleKeyDown",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": ",",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "true",
-                "color": "var(--code-number)"
-              },
-              {
-                "text": ")",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": ";",
-                "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 341,
-            "content": [
-              {
-                "text": "      ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "ownerDocument",
-                "color": "var(--code-number)"
-              },
-              {
-                "text": ".",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": "removeEventListener",
-                "color": "var(--code-function)"
-              },
-              {
-                "text": "(",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "\"",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": "focusin",
-                "color": "var(--code-tag)"
-              },
-              {
-                "text": "\"",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": ",",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " handleFocusIn",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": ",",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "true",
-                "color": "var(--code-number)"
-              },
-              {
-                "text": ")",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": ";",
-                "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 342,
-            "content": [
-              {
-                "text": "      ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "disconnectTrapObserver",
+                "text": "suspendEntry",
                 "color": "var(--code-function)"
               },
               {
@@ -73575,11 +73279,7 @@
             ]
           },
           {
-            "number": 343,
-            "content": []
-          },
-          {
-            "number": 344,
+            "number": 335,
             "content": [
               {
                 "text": "      ",
@@ -73600,36 +73300,11 @@
             ]
           },
           {
-            "number": 345,
-            "content": [
-              {
-                "text": "      entry ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "=",
-                "color": "var(--code-operator)"
-              },
-              {
-                "text": " ",
-                "color": "var(--code-variable)"
-              },
-              {
-                "text": "null",
-                "color": "var(--code-number)"
-              },
-              {
-                "text": ";",
-                "color": "var(--code-operator)"
-              }
-            ]
-          },
-          {
-            "number": 346,
+            "number": 336,
             "content": []
           },
           {
-            "number": 347,
+            "number": 337,
             "content": [
               {
                 "text": "      ",
@@ -73658,7 +73333,7 @@
             ]
           },
           {
-            "number": 348,
+            "number": 338,
             "content": [
               {
                 "text": "        ",
@@ -73703,7 +73378,7 @@
             ]
           },
           {
-            "number": 349,
+            "number": 339,
             "content": [
               {
                 "text": "      ",
@@ -73756,7 +73431,7 @@
             ]
           },
           {
-            "number": 350,
+            "number": 340,
             "content": [
               {
                 "text": "        ",
@@ -73805,7 +73480,7 @@
             ]
           },
           {
-            "number": 351,
+            "number": 341,
             "content": [
               {
                 "text": "      ",
@@ -73818,11 +73493,11 @@
             ]
           },
           {
-            "number": 352,
+            "number": 342,
             "content": []
           },
           {
-            "number": 353,
+            "number": 343,
             "content": [
               {
                 "text": "      ",
@@ -73895,7 +73570,7 @@
             ]
           },
           {
-            "number": 354,
+            "number": 344,
             "content": [
               {
                 "text": "    ",
@@ -73908,7 +73583,7 @@
             ]
           },
           {
-            "number": 355,
+            "number": 345,
             "content": [
               {
                 "text": "  ",
@@ -73921,7 +73596,7 @@
             ]
           },
           {
-            "number": 356,
+            "number": 346,
             "content": [
               {
                 "text": "}",
@@ -73930,7 +73605,7 @@
             ]
           },
           {
-            "number": 357,
+            "number": 347,
             "content": []
           }
         ]

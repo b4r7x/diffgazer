@@ -84,12 +84,12 @@ export function checkNoGitlinkEntries(context) {
   );
 }
 
-export function checkNoNestedRepoConfig(context) {
-  const nestedRepoConfig = String(context.commandOutputs.nestedRepoConfig ?? "");
+export function checkNoGitSubmoduleConfig(context) {
+  const submoduleConfig = String(context.commandOutputs.submoduleConfig ?? "");
   return invariantResult(
-    "no nested repo config",
-    nestedRepoConfig.length === 0,
-    nestedRepoConfig.split("\n").slice(0, 10).join(", "),
+    "no git submodule config",
+    submoduleConfig.length === 0,
+    submoduleConfig.split("\n").slice(0, 10).join(", "),
   );
 }
 

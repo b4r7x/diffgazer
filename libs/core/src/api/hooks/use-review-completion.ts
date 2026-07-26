@@ -28,6 +28,15 @@ export interface UseReviewCompletionResult {
 
 type CompletionState = { status: "idle" } | { status: "delaying" | "completed"; completedAt: Date };
 
+type TimerRef = { current: ReturnType<typeof setTimeout> | null };
+
+function clearTimer(timerRef: TimerRef) {
+  if (timerRef.current) {
+    clearTimeout(timerRef.current);
+    timerRef.current = null;
+  }
+}
+
 export function useReviewCompletion({
   isStreaming,
   isComplete,
@@ -50,19 +59,9 @@ export function useReviewCompletion({
   const emitComplete = useEffectEvent(onComplete);
   const emitStreamComplete = useEffectEvent(() => onStreamComplete?.());
 
-  function clearTimer() {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }
-
   useEffect(() => {
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
+      clearTimer(timerRef);
     };
   }, []);
 
@@ -80,10 +79,7 @@ export function useReviewCompletion({
       emitStreamComplete();
       const delayMs = getCompletionDelay();
 
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
+      clearTimer(timerRef);
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
         setCompletion((current) =>
@@ -106,14 +102,13 @@ export function useReviewCompletion({
         errorCode === ReviewErrorCode.CANCELLED ||
         !hasStreamed)
     ) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
+      clearTimer(timerRef);
       setCompletion({ status: "idle" });
     }
   }, [isStreaming, isComplete, error, errorCode, hasStreamed]);
 
   function skipDelay() {
-    clearTimer();
+    clearTimer(timerRef);
     setCompletion((current) =>
       current.status === "delaying" ? { ...current, status: "completed" } : current,
     );
@@ -121,7 +116,7 @@ export function useReviewCompletion({
   }
 
   function reset() {
-    clearTimer();
+    clearTimer(timerRef);
     handledCompletionRef.current = false;
     setCompletion({ status: "idle" });
   }

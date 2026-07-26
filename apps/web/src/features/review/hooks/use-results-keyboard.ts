@@ -318,18 +318,10 @@ export function useReviewResultsKeyboard({
     enterDetails: () => changeFocusZone("details"),
   });
 
-  const selectedIssueForKeyboard =
-    selectedIssue?.fixPlan === undefined
-      ? selectedIssue
-      : {
-          ...selectedIssue,
-          fixPlan: selectedIssue.fixPlan.map((step, index) => ({ ...step, step: index })),
-        };
-
   const { focusedStepIndex, setFocusedStepIndex } = useReviewDetailsTabKeyboard({
     scope: REVIEW_SCOPE,
     enabled: focusZone === "details",
-    selectedIssue: selectedIssueForKeyboard,
+    selectedIssue,
     activeTab,
     moveTab,
     scrollDetails,

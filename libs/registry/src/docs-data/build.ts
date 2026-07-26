@@ -1,6 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { log } from "../logger.js";
 import type { Registry } from "../registry-types.js";
 import { RegistrySchema } from "../registry-types.js";
 import { isWithinDir } from "../utils/fs.js";
@@ -76,7 +75,7 @@ function buildLibsData(params: {
   });
   writeJson(resolve(outputDir, libsConfig.outputFile), libsData);
   const libsCount = Object.keys(libsData).length;
-  log.info(`Wrote ${libsConfig.outputFile} (${libsCount} libs)`);
+  console.log(`Wrote ${libsConfig.outputFile} (${libsCount} libs)`);
 
   return { libsCount };
 }
@@ -105,7 +104,7 @@ function buildDemoIndex(params: {
     findExamplesFn: findExamples,
   });
   writeFileSync(resolve(outputDir, "demo-index.ts"), demoIndexContent);
-  log.info("Wrote demo-index.ts");
+  console.log("Wrote demo-index.ts");
 }
 
 export async function buildDocsData(config: BuildDocsDataConfig): Promise<BuildDocsDataResult> {
@@ -181,12 +180,10 @@ export async function buildDocsData(config: BuildDocsDataConfig): Promise<BuildD
       outputDir,
     });
 
-    log.info(`\n--- Build Summary (${libraryId}) ---`);
-    if (componentsCount > 0) log.info(`Components: ${componentsCount}`);
-    if (hooksCount > 0) log.info(`Hooks: ${hooksCount}`);
-    if (libsCount > 0) log.info(`Libs: ${libsCount}`);
-    log.info("Errors: 0");
-    log.info("Build completed successfully.");
+    console.log(`\nBuild summary (${libraryId})`);
+    if (componentsCount > 0) console.log(`Components: ${componentsCount}`);
+    if (hooksCount > 0) console.log(`Hooks: ${hooksCount}`);
+    if (libsCount > 0) console.log(`Libs: ${libsCount}`);
   } finally {
     highlighter.dispose();
   }

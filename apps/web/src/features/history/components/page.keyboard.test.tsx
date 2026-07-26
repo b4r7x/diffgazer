@@ -17,6 +17,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { MAIN_CONTENT_ID } from "@/lib/main-content";
+import { expectSingleReticle } from "@/testing/reticle";
 import { HistoryPage } from "./page";
 import {
   FooterView,
@@ -58,6 +59,21 @@ describe("HistoryPage keyboard navigation", () => {
       to: "/review/{-$reviewId}",
       params: { reviewId: "22222222-2222-4222-8222-222222222222" },
     });
+  });
+
+  it("keeps exactly one pane bracketed as focus moves between panes", async () => {
+    const user = userEvent.setup();
+    const { container } = renderHistoryPage(<HistoryPage />);
+
+    await focusRunsList();
+    expectSingleReticle(container);
+
+    await user.click(screen.getByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER));
+    await user.keyboard("{ArrowDown}");
+    const sectionsList = screen.getByRole("listbox", { name: /review sections/i });
+    await waitFor(() => expect(sectionsList).toHaveFocus());
+
+    expectSingleReticle(container);
   });
 
   it("switches timeline keyboard behavior when clicking the selected section from runs", async () => {
@@ -150,6 +166,27 @@ describe("HistoryPage keyboard navigation", () => {
       expect(screen.getByRole("listbox", { name: /review runs/i })).toHaveFocus(),
     );
     expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/" });
+  });
+
+  it("offers the Esc affordance only while a search is filtering everything out", async () => {
+    const user = userEvent.setup();
+    renderHistoryPage(<HistoryPage />);
+
+    await focusRunsList();
+
+    const search = screen.getByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
+    await user.click(search);
+    await user.keyboard("zzzznomatch");
+
+    const empty = await screen.findByText("No runs match this search");
+    const hint = screen.getByText(/clear search/);
+    expect(empty).toBeInTheDocument();
+    expect(within(hint).getByText("Esc").tagName).toBe("KBD");
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(search).toHaveValue(""));
+    expect(screen.queryByText(/clear search/)).not.toBeInTheDocument();
   });
 
   it("marks the active run with data-highlighted so theming can invert chip colors", async () => {

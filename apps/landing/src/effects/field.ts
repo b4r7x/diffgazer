@@ -20,10 +20,14 @@ interface Line {
 
 const featuredFinding = gazeFindings[0];
 const featuredFile = featuredFinding.location.replace(/:\d+$/, "");
-const featuredRemoval =
-  featuredFinding.fix.find(([kind]) => kind === "rem")?.[1] ?? "- return review.findings.length";
-const featuredAddition =
-  featuredFinding.fix.find(([kind]) => kind === "add")?.[1] ?? "+ return weightedTotal";
+const fixLine = (kind: "rem" | "add"): string => {
+  const line = featuredFinding.fix.find(([entryKind]) => entryKind === kind)?.[1];
+  if (line === undefined) throw new Error(`featured finding missing ${kind} fix line`);
+  return line;
+};
+
+const featuredRemoval = fixLine("rem");
+const featuredAddition = fixLine("add");
 
 const FIELD_SRC = [
   { t: "$ diffgazer", k: "ctx" },
@@ -81,6 +85,7 @@ export function createField(
   let lastScrollY = scrollY;
   let apRect: DOMRect | null = null;
   let heroRect: DOMRect | null = null;
+  let contentRect: DOMRect | null = null;
   let lastFrame: { mouse: Mouse; light: boolean } | null = null;
 
   function seedLine(line: Line, fresh: boolean): void {
@@ -111,7 +116,17 @@ export function createField(
 
   const cacheRects = (): void => {
     apRect = root.querySelector("#gaze3d")?.getBoundingClientRect() ?? null;
-    heroRect = root.querySelector("#s1 .scene-inner")?.getBoundingClientRect() ?? null;
+    const heroEl = root.querySelector("#s1 .scene-inner");
+    heroRect = heroEl?.getBoundingClientRect() ?? null;
+    // The HUD publishes the scene that owns the viewport, so the field can dim
+    // itself over whatever copy the reader is actually looking at — not only
+    // over the hero, which was the one scene that already had this rule. When
+    // the hero IS that scene its own rule below covers it: matching the same
+    // element twice would square the factor over the hero copy.
+    const owner = root instanceof Document ? root : root.ownerDocument;
+    const scene = owner?.documentElement.dataset.osdScene;
+    const sceneEl = scene ? root.querySelector(`#${scene} .scene-inner`) : null;
+    contentRect = sceneEl && sceneEl !== heroEl ? sceneEl.getBoundingClientRect() : null;
   };
 
   const draw = (mouse: Mouse, light: boolean): void => {
@@ -148,6 +163,18 @@ export function createField(
         py < heroRect.bottom + 140 &&
         px + w > heroRect.left - 80 &&
         px < heroRect.right + 80
+      ) {
+        alpha *= 0.25;
+      }
+      // Same factor as the hero rule, applied to whichever other scene owns the
+      // viewport: atmosphere in the margins, out of the way over copy.
+      if (
+        contentRect &&
+        contentRect.bottom > 0 &&
+        py > contentRect.top - 24 &&
+        py < contentRect.bottom + 24 &&
+        px + w > contentRect.left - 80 &&
+        px < contentRect.right + 80
       ) {
         alpha *= 0.25;
       }

@@ -70,7 +70,7 @@ describe("createApiClient", () => {
     it("appends query params", async () => {
       mockFetch.mockResolvedValue(jsonResponse({}));
 
-      await client.get("/api/reviews", { mode: "staged" });
+      await client.get("/api/reviews", { params: { mode: "staged" } });
 
       const [url] = lastCall();
       expect(url).toContain("mode=staged");
@@ -277,7 +277,7 @@ describe("createApiClient", () => {
     it("returns the validated body when the schema accepts it", async () => {
       mockFetch.mockResolvedValue(jsonResponse({ value: 42 }));
 
-      const result = await client.get<{ value: number }>("/api/test", undefined, numberSchema);
+      const result = await client.get<{ value: number }>("/api/test", { schema: numberSchema });
 
       expect(result).toEqual({ value: 42 });
     });
@@ -287,7 +287,7 @@ describe("createApiClient", () => {
       mockFetch.mockResolvedValue(jsonResponse({ value: "not-a-number" }));
 
       try {
-        await client.get<{ value: number }>("/api/test", undefined, numberSchema);
+        await client.get<{ value: number }>("/api/test", { schema: numberSchema });
       } catch (error) {
         expect((error as Error).message).toBe("Expected { value: number }");
         expect((error as { status: number }).status).toBe(422);

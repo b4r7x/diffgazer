@@ -1,15 +1,13 @@
 import type { AIProvider, ProviderWithStatus } from "@diffgazer/core/schemas/config";
 import { useFocusZone, useKey } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
-import type { KeyboardEvent as ReactKeyboardEvent, RefCallback, RefObject } from "react";
+import type { RefObject } from "react";
 import type { ProviderFilter } from "../lib/filter";
 import { useProvidersActionButtons } from "./use-action-buttons";
 import { useProvidersListFocusReclaim } from "./use-list-focus-reclaim";
 import { useProvidersListNavigation } from "./use-list-navigation";
 
 const PROVIDER_ZONES = ["input", "filters", "list", "buttons"] as const;
-
-type FocusZone = (typeof PROVIDER_ZONES)[number];
 
 interface ProvidersKeyboardOptions {
   selectedProvider: ProviderWithStatus | null;
@@ -26,28 +24,6 @@ interface ProvidersKeyboardOptions {
   onActivateProvider: (provider: ProviderWithStatus) => void;
 }
 
-interface ProvidersKeyboardReturn {
-  focusZone: FocusZone;
-  filterIndex: number;
-  setFilterIndex: (index: number | ((prev: number) => number)) => void;
-  buttonIndex: number;
-  getActionButtonProps: (index: number) => {
-    ref: RefCallback<HTMLButtonElement>;
-    onFocus: () => void;
-  };
-  getFilterButtonProps: (index: number) => {
-    ref: RefCallback<HTMLButtonElement>;
-    onFocus: () => void;
-  };
-  handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
-  handleListKeyDown: (event: ReactKeyboardEvent) => void;
-  handleSearchFocus: () => void;
-  handleFilterFocus: (index: number) => void;
-  handleListFocus: () => void;
-  handleSearchEscape: () => void;
-  handleListBoundary: (direction: "up" | "down") => void;
-}
-
 export function useProvidersKeyboard({
   selectedProvider,
   filteredProviders,
@@ -61,7 +37,7 @@ export function useProvidersKeyboard({
   onSelectModel,
   onRemoveKey,
   onActivateProvider,
-}: ProvidersKeyboardOptions): ProvidersKeyboardReturn {
+}: ProvidersKeyboardOptions) {
   const navigate = useNavigate();
 
   const { zone: internalZone, setZone } = useFocusZone({
@@ -117,17 +93,8 @@ export function useProvidersKeyboard({
 
   return {
     focusZone: effectiveFocusZone,
-    filterIndex: list.filterIndex,
-    setFilterIndex: list.setFilterIndex,
     buttonIndex,
     getActionButtonProps,
-    getFilterButtonProps: list.getFilterButtonProps,
-    handleFilterKeyDown: list.handleFilterKeyDown,
-    handleListKeyDown: list.handleListKeyDown,
-    handleSearchFocus: list.handleSearchFocus,
-    handleFilterFocus: list.handleFilterFocus,
-    handleListFocus: list.handleListFocus,
-    handleSearchEscape: list.handleSearchEscape,
-    handleListBoundary: list.handleListBoundary,
+    ...list,
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { getNavigationItems } from "@diffgazer/keys";
+import { containsActiveElement, getNavigationItems } from "@diffgazer/keys";
 import { type KeyboardEvent as ReactKeyboardEvent, useMemo, useRef } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { cn } from "@/lib/utils";
@@ -27,20 +27,6 @@ function getNavigableTriggers(container: HTMLElement | null): HTMLElement[] {
     if (View && trigger instanceof View.HTMLButtonElement && trigger.disabled) return false;
     return true;
   });
-}
-
-function getDeepActiveElement(root: Document): Element | null {
-  let active = root.activeElement;
-  while (active?.shadowRoot?.activeElement) {
-    active = active.shadowRoot.activeElement;
-  }
-  return active;
-}
-
-function containsActiveElement(el: HTMLElement): boolean {
-  const activeElement = getDeepActiveElement(el.ownerDocument);
-  const View = el.ownerDocument.defaultView;
-  return Boolean(View && activeElement instanceof View.HTMLElement && el.contains(activeElement));
 }
 
 /**

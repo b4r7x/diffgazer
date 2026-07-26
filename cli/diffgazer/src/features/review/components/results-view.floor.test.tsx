@@ -90,9 +90,9 @@ describe("ReviewResultsView root frame", () => {
 
     await vi.waitFor(() => expect(lastFrame()).toContain("RESULTS-FLOOR-1"));
     const initialFrame = lastFrame() ?? "";
-    const severityFilterRow = initialFrame.split("\n").find((row) => row.includes("B1 H11"));
+    const severityFilterRow = initialFrame.split("\n").find((row) => row.includes("[BLOCKER 1]"));
     expect(severityFilterRow).toBeDefined();
-    expect(severityFilterRow).not.toContain("[BLOCK");
+    expect(initialFrame).not.toContain("B1 H11");
     expect(initialFrame.split("\n")).toHaveLength(24);
 
     const paintedTitles = new Set(initialFrame.match(/RESULTS-FLOOR-\d+/g) ?? []);

@@ -15,9 +15,9 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
   const rows = buildHomeContextRows({ context, isTrusted, projectPath });
 
   return (
-    <Panel>
+    <Panel grow>
       <Panel.Header>Context</Panel.Header>
-      <Panel.Content>
+      <Panel.Content grow>
         <Box flexDirection="column" gap={1}>
           {isTrusted ? (
             <KeyValue
@@ -49,7 +49,9 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
             label={rows.provider.label}
             value={
               <Box flexGrow={1} minWidth={1} overflow="hidden">
-                <Text wrap="truncate-end">{rows.provider.value}</Text>
+                {/* Like the path row: the model id is identified by both ends,
+                    so a tight sidebar loses the middle rather than the tail. */}
+                <Text wrap="truncate-middle">{rows.provider.value}</Text>
               </Box>
             }
           />

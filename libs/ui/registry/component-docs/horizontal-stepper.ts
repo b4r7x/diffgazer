@@ -27,6 +27,11 @@ export const horizontalStepperDoc: ComponentDoc = {
         "ascii renders inline bracket glyphs with text connectors, numbered renders a numbered indicator on a continuous line, and breadcrumb renders slash-separated labels. Completed indicators and connectors read the primary token, so progress stays monochrome in both themes; the status palette is reserved for meaning.",
     },
     {
+      title: "Glyph Hierarchy",
+      content:
+        "ascii glyphs share the form family's grammar: the brackets render muted as chrome and the inner mark ([x], [~]) keeps the step's status tone at bold weight, so completed and active marks carry the contrast and a pending [ ] reads entirely as chrome. The visible text is unchanged.",
+    },
+    {
       title: "Root Element",
       content:
         "The root accepts the full ordered-list contract: id, data-*, ref, and any other <ol> attribute is spread onto the element, matching the vertical Stepper.",
@@ -34,12 +39,12 @@ export const horizontalStepperDoc: ComponentDoc = {
     {
       title: "Constrained Containers",
       content:
-        'Steps and connectors never break internally, so a narrow parent cannot wrap a label mid-word or split the [ ] glyph across two lines. The root declares a container query instead, in two tiers. Below 36rem of inline space the stepper collapses to the compact treatment: connectors drop out, non-active labels leave the layout, and the active label is prefixed with "Step 3/6 ·". Below 20rem even that glyph run stops fitting, so it drops out as well and the stepper reads as plain "Step 3/6 · Label" text. Because both switches are container queries and not viewport breakpoints, the same stepper adapts inside a sidebar, a dialog, and a full-width page without the consumer branching. Pass compact to force the first tier at any width; the second still follows the container.',
+        'Steps and connectors never break internally, so a narrow parent cannot wrap a label mid-word or split the [ ] glyph across two lines. The root declares a container query instead, in three tiers. Below 36rem of inline space the stepper collapses to the compact treatment: connectors drop out, non-active labels leave the layout, and the active label is prefixed with "Step 3/6 ·". Narrower still, the glyph run becomes a viewfinder window — previous, active, next, plus muted "+2" / "+1" counters for the steps it elides — which makes the run a constant width for any step count. That window engages from need, not from a blanket width: the threshold is keyed by variant and step count, so a four-step ascii run keeps its full run down to 18rem while a twelve-step run windows from 32rem. Below 14rem only the active step remains, but its glyph never drops: the stepper always shows progress. Because every switch is a container query and not a viewport breakpoint, the same stepper adapts inside a sidebar, a dialog, and a full-width page without the consumer branching. Pass compact to force the first two tiers at any width; the narrowest still follows the container.',
     },
     {
       title: "Accessibility",
       content:
-        'The root is an ordered list named by aria-label (default "Progress"). The active item exposes aria-current="step", and each item includes screen-reader status text: Completed, Current, or Upcoming. Both compact tiers only collapse things visually — every step and its label stay in the accessibility tree, and the "Step 3/6 ·" prefix is aria-hidden because list position already conveys it.',
+        'The root is an ordered list named by aria-label (default "Progress"). The active item exposes aria-current="step", and each item includes screen-reader status text: Completed, Current, or Upcoming. Every compact tier only collapses things visually — every step and its label stay in the accessibility tree at every width. The "Step 3/6 ·" prefix and the "+2" / "+1" elision counters are aria-hidden, because list position and the step statuses already carry that information.',
     },
   ],
   usage: { example: "horizontal-stepper-default" },
@@ -105,7 +110,7 @@ export const horizontalStepperDoc: ComponentDoc = {
         required: false,
         defaultValue: "false",
         description:
-          'Forces the compact treatment (connectors hidden, only the active step labelled, prefixed with "Step 3/6 ·"). When false the stepper adopts it automatically below a 36rem container. Below a 20rem container the glyph run drops out too, leaving only the text, with or without this prop.',
+          'Forces the compact treatment (connectors hidden, only the active step labelled and prefixed with "Step 3/6 ·", glyph run windowed to previous/active/next with elision counters). When false the stepper adopts each tier automatically: the compact treatment below a 36rem container, and the window at a threshold derived from the variant and the step count. Below a 14rem container only the active step remains, with or without this prop.',
       },
       "aria-label": {
         type: "string",

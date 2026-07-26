@@ -70,6 +70,8 @@ function streamReducer(state: ReviewStreamState, action: StreamAction): ReviewSt
       };
 }
 
+export type UseReviewStreamResult = ReturnType<typeof useReviewStream>;
+
 export function useReviewStream() {
   const api = useApi();
   const [state, dispatch] = useReducer(streamReducer, createInitialStreamState());

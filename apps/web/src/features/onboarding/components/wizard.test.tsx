@@ -14,6 +14,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { escapeRegExp } from "@/testing/escape-regexp";
+import { expectSingleReticle } from "@/testing/reticle";
 
 const mockNavigate = vi.fn();
 
@@ -237,6 +238,30 @@ describe("OnboardingWizard", () => {
     // Every step stays announced even though the compact treatment hides the other labels.
     expect(within(progress).getAllByRole("listitem")).toHaveLength(6);
     expect(within(progress).getByText("Execution")).toBeInTheDocument();
+  });
+
+  it("names the flow in the panel readout instead of on a subtitle row", async () => {
+    renderWizard();
+
+    await expectStep(/secrets storage/i);
+    const heading = screen.getByRole("heading", { level: 1, name: /secrets storage/i });
+    const label = heading.closest('[data-slot="panel-label"]');
+
+    expect(label).toHaveAttribute("data-variant", "readout");
+    expect(label).toHaveTextContent("Setup");
+    expect(label).toHaveTextContent("Secrets Storage");
+    // The flow name used to be repeated verbatim under the title on every step.
+    expect(screen.queryByText("Diffgazer Setup Wizard")).not.toBeInTheDocument();
+    // Position stays with the stepper below, so the readout never restates it.
+    expect(label).not.toHaveTextContent(/\d\/6/);
+  });
+
+  it("renders exactly one bracketed element per step", async () => {
+    const { container } = renderWizard();
+
+    await expectStep(/secrets storage/i);
+
+    expectSingleReticle(container);
   });
 
   it("disables the Next action on the api-key step until canProceed is satisfied", async () => {

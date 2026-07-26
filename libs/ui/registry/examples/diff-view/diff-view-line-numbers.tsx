@@ -20,8 +20,11 @@ const patch = `--- a/src/utils/score.ts
 export default function DiffViewLineNumbers() {
   return (
     <div className="flex w-full min-w-0 flex-col gap-4">
-      <DiffView patch={patch} showLineNumbers />
-      <DiffView patch={patch} mode="split" showLineNumbers />
+      {/* Numbers ship on: the product addresses every finding as file:line. */}
+      <DiffView patch={patch} />
+      <DiffView patch={patch} mode="split" />
+      {/* Opting out is the rarer case, so it is the explicit one. */}
+      <DiffView patch={patch} showLineNumbers={false} />
     </div>
   );
 }

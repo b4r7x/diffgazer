@@ -24,7 +24,13 @@ export const inputVariants = cva(
   // the indicator disappear and a suppressed UA outline would leave focus invisible.
   // outline-hidden suppresses the outline the same way but keeps a 2px transparent
   // one that forced-colors repaints in a system color.
-  "flex w-full bg-background border border-border text-foreground font-mono placeholder:text-foreground/55 transition-colors focus:border-ring focus:ring-1 focus:ring-ring focus:outline-hidden disabled:opacity-50 disabled:border-dashed disabled:cursor-not-allowed aria-invalid:border-error aria-invalid:ring-1 aria-invalid:ring-error aria-invalid:focus:border-error aria-invalid:focus:ring-error",
+  //
+  // Disabled and read-only are different states and use different channels: disabled dashes the
+  // EDGE ("this field is not part of this form"), read-only fills the SURFACE ("this value
+  // matters, you just cannot change it"). Fill is the one dimension neither disabled nor invalid
+  // nor focus uses, so read-only cannot be confused with any of them and stays focusable and
+  // copyable with its full-contrast ink.
+  "flex w-full bg-background border border-border text-foreground font-mono placeholder:text-foreground/55 transition-colors focus:border-ring focus:ring-1 focus:ring-ring focus:outline-hidden disabled:opacity-50 disabled:border-dashed disabled:cursor-not-allowed read-only:bg-secondary read-only:border-border read-only:text-foreground read-only:placeholder:text-foreground/40 read-only:cursor-default aria-invalid:border-error aria-invalid:ring-1 aria-invalid:ring-error aria-invalid:focus:border-error aria-invalid:focus:ring-error",
   {
     variants: {
       size: inputSizeClasses,

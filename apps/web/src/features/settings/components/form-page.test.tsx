@@ -2,6 +2,7 @@ import type { UseActionRowNavigationReturn } from "@diffgazer/keys";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { expectSingleReticle } from "@/testing/reticle";
 import { SettingsFormPage } from "./form-page";
 
 const stubFooter = {
@@ -28,13 +29,13 @@ function makeQuery(overrides: Partial<UseQueryResult<unknown>>): UseQueryResult<
   } as UseQueryResult<unknown>;
 }
 
-function renderShell(query: UseQueryResult<unknown>) {
+function renderShell(query: UseQueryResult<unknown>, inActions = false) {
   return render(
     <SettingsFormPage
       title="Test Settings"
       subtitle="A subtitle"
       query={query}
-      footer={stubFooter}
+      footer={{ ...stubFooter, inActions }}
       isSaving={false}
       canSave={false}
       onCancel={() => {}}
@@ -59,5 +60,13 @@ describe("SettingsFormPage status semantics", () => {
   it("renders the page content once data is available", () => {
     renderShell(makeQuery({ data: { ok: true } }));
     expect(screen.getByText("content")).toBeInTheDocument();
+  });
+
+  it("keeps the panel bracketed while focus sits in the footer actions", () => {
+    // The actions live inside the panel, so dimming the content must not read
+    // as "the keys moved somewhere else".
+    const { container } = renderShell(makeQuery({ data: { ok: true } }), true);
+
+    expectSingleReticle(container);
   });
 });

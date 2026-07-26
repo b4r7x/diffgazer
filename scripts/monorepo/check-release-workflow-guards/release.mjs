@@ -1,4 +1,5 @@
 import { parse } from "yaml";
+import { errorMessage } from "../lib/error-message.mjs";
 import {
   PACKAGE_GOVERNANCE_PATH,
   RELEASE_WORKFLOW_PATH,
@@ -21,8 +22,7 @@ export function collectReleaseGuardFailures(source) {
   try {
     workflow = parse(source);
   } catch (error) {
-    const message =
-      error && typeof error === "object" && "message" in error ? error.message : String(error);
+    const message = errorMessage(error);
     return [`${RELEASE_WORKFLOW_PATH}: failed to parse workflow YAML: ${message}`];
   }
 
@@ -56,8 +56,7 @@ export function collectReleaseRecoveryFailures(workflowSource, governanceSource)
   try {
     workflow = parse(workflowSource);
   } catch (error) {
-    const message =
-      error && typeof error === "object" && "message" in error ? error.message : String(error);
+    const message = errorMessage(error);
     return [`${RELEASE_WORKFLOW_PATH}: failed to parse workflow YAML: ${message}`];
   }
 

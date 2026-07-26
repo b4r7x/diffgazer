@@ -7,9 +7,10 @@ import userEvent from "@testing-library/user-event";
 import { useLayoutEffect } from "react";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { themeBootstrap } from "@/hooks/theme-bootstrap";
 import {
+  THEME_BOOTSTRAP_CONFIG,
   THEME_COLORS,
-  THEME_INIT_SCRIPT,
   ThemeProvider,
   themeToggleLabel,
   useTheme,
@@ -46,8 +47,7 @@ describe("ThemeToggle", () => {
   }
 
   function executeThemeBootstrap() {
-    // biome-ignore lint/security/noGlobalEval: executes the app's static, user-input-free bootstrap verbatim to verify its pre-hydration DOM contract.
-    window.eval(THEME_INIT_SCRIPT);
+    themeBootstrap(THEME_BOOTSTRAP_CONFIG);
   }
 
   function finishThemeBootstrap() {
@@ -128,6 +128,19 @@ describe("ThemeToggle", () => {
     view.unmount();
     hydrationErrors.mockRestore();
     container.remove();
+  });
+
+  it("announces the F2 binding on the control that performs it", () => {
+    render(
+      <ThemeProvider>
+        <ThemeToggle />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: themeToggleLabel("system") })).toHaveAttribute(
+      "aria-keyshortcuts",
+      "F2",
+    );
   });
 
   it("cycles dark, light, then back to the system theme and persists each choice", async () => {

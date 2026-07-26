@@ -7,7 +7,7 @@ export const codeBlockDoc: ComponentDoc = {
     {
       title: "Variants",
       content:
-        'variant="hairline" (default) renders a 1px soft border with a header row for filename + actions. variant="bare" removes all chrome and renders a 2px left rule that turns accent on hover; the header is suppressed. variant="terminal" centers the title in the header for a shell pane. Window dots are opt-in in every variant via chrome="dots". All chrome is driven by [data-variant] and [data-chrome] selectors in code-block/code-block.css; consumers do not need to apply any classes manually.',
+        'variant="hairline" (default) renders a 1px soft border with a header row for filename + actions. variant="bare" removes all chrome and renders a 2px left rule that turns accent on hover; the header is suppressed. variant="terminal" centers the title in the header for a shell pane. A three-mark pane strip is opt-in in every variant via chrome="dots". All chrome is driven by [data-variant] and [data-chrome] selectors in code-block/code-block.css; consumers do not need to apply any classes manually.',
     },
     {
       title: "Compound API",
@@ -74,7 +74,7 @@ export const codeBlockDoc: ComponentDoc = {
     { name: "code-block-default", title: "Default" },
     { name: "code-block-hairline", title: "Hairline" },
     { name: "code-block-bare", title: "Bare" },
-    { name: "code-block-terminal", title: "Terminal with window dots" },
+    { name: "code-block-terminal", title: "Terminal with pane strip" },
     { name: "code-block-highlights", title: "Diff & Highlight states" },
     { name: "code-block-highlighted", title: "Syntax highlighting" },
   ],
@@ -130,7 +130,7 @@ export const codeBlockDoc: ComponentDoc = {
         required: false,
         defaultValue: '"hairline"',
         description:
-          'Visual variant. "hairline" (default) is a soft-bordered block with a filename header. "bare" removes chrome and renders a 2px left rule that turns accent on hover; the header is suppressed. "terminal" centers the title in the header — use for shell output. Window dots are opt-in via the `chrome` prop.',
+          'Visual variant. "hairline" (default) is a soft-bordered block with a filename header. "bare" removes chrome and renders a 2px left rule that turns accent on hover; the header is suppressed. "terminal" centers the title in the header — use for shell output. The three-mark pane strip is opt-in via the `chrome` prop.',
       },
       language: {
         type: "string",
@@ -151,7 +151,7 @@ export const codeBlockDoc: ComponentDoc = {
         required: false,
         defaultValue: '"none"',
         description:
-          'Decorative chrome in the header strip. "none" (default) leaves the header to its label and actions. "dots" renders three desaturated window dots on the left edge and reserves symmetric padding so a centered label stays balanced.',
+          'Decorative chrome in the header strip. "none" (default) leaves the header to its label and actions. "dots" renders a three-mark pane strip on the left edge and reserves symmetric padding so a centered label stays balanced. The marks are hard 8px squares on a descending opacity ramp — a pane strip, not macOS window controls: nothing here closes, minimizes, or zooms.',
       },
       children: {
         type: "ReactNode",

@@ -132,6 +132,7 @@ export function ReviewPage() {
           reviewId={savedOutcome.data.reviewId}
           initialIssueId={savedIssueId}
           droppedDuplicates={savedOutcome.data.droppedDuplicates}
+          lensStats={savedOutcome.data.lensStats}
         />
       );
     }
@@ -173,6 +174,7 @@ export function ReviewPage() {
           reviewId={currentLiveState.reviewData.reviewId}
           initialIssueId={initialIssueId}
           droppedDuplicates={currentLiveState.reviewData.droppedDuplicates}
+          lensStats={currentLiveState.reviewData.lensStats}
         />
       );
   }

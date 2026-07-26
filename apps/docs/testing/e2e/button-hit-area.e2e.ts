@@ -135,7 +135,7 @@ test.describe("Coarse-pointer hit areas", () => {
     await page.goto("/ui/components/button");
     expect(await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches)).toBe(coarse);
 
-    // The demo preview's own "copy jsx" control: a size="sm" ghost Button painting
+    // The demo preview's own "copy tsx" control: a size="sm" ghost Button painting
     // 28px tall in a panel footer, with nothing interactive above or below it.
     const control = page
       .locator('[data-slot="panel-footer"]')

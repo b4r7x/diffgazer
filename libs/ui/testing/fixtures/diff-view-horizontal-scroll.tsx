@@ -28,7 +28,15 @@ const LONG_LINE_DIFF: ParsedDiff = {
 function DiffViewHorizontalScrollFixture() {
   return (
     <div style={{ width: "360px" }}>
-      <DiffView diff={LONG_LINE_DIFF} mode="unified" disableWordDiff style={{ margin: 0 }} />
+      {/* The 360px shell is under the 40rem auto-wrap threshold, so the
+          filmstrip this fixture exercises has to be opted into explicitly. */}
+      <DiffView
+        diff={LONG_LINE_DIFF}
+        mode="unified"
+        disableWordDiff
+        wrap={false}
+        style={{ margin: 0 }}
+      />
     </div>
   );
 }

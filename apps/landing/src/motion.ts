@@ -1,9 +1,7 @@
-const SPIN = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
+/** One code unit per frame, so the braille spinner indexes directly. */
+const SPIN = "⣾⣽⣻⢿⡿⣟⣯⣷";
 
-export const spinAt = (index: number): string => {
-  const length = SPIN.length;
-  return SPIN[((index % length) + length) % length] ?? SPIN[0] ?? "";
-};
+export const spinAt = (index: number): string => SPIN.charAt(index % SPIN.length);
 
 export const sleep = (ms: number, signal?: AbortSignal): Promise<boolean> => {
   if (signal?.aborted) return Promise.resolve(false);

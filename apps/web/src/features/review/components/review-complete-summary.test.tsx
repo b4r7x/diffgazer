@@ -13,9 +13,8 @@ describe("ReviewCompleteSummary", () => {
       />,
     );
 
-    expect(screen.getByText("1 issue")).toBeVisible();
-    expect(screen.queryByText("1 issues")).not.toBeInTheDocument();
-    expect(screen.getByText("1 file with issues")).toBeVisible();
+    expect(screen.getByText("1 issue in 1 file")).toBeVisible();
+    expect(screen.queryByText(/1 issues/)).not.toBeInTheDocument();
     expect(screen.queryByText(/analyzed/i)).not.toBeInTheDocument();
   });
 });

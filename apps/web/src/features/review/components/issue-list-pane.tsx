@@ -1,5 +1,6 @@
 import {
   calculateSeverityCounts,
+  SEVERITY_LABELS,
   type UISeverityFilter,
 } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
@@ -13,21 +14,15 @@ import { PathValue } from "@/components/shared/path-value";
 import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
 import { SeverityFilterGroup } from "./severity-filter-group";
 
-interface IssueListState {
+export interface IssueListPaneProps {
   issues: ReviewIssue[];
   allIssues: ReviewIssue[];
   selectedIssueId: string | null;
   highlightedIssueId?: string | null;
-}
-
-interface IssueListCallbacks {
   onSelectIssue: (id: string) => void;
   onHighlightIssue?: (id: string | null) => void;
   onListBoundaryReached?: (direction: "previous" | "next") => void;
   onListFocus?: () => void;
-}
-
-interface IssueListFilter {
   severityFilter: UISeverityFilter;
   onSeverityFilterChange: (filter: UISeverityFilter) => void;
   onSeverityFilterReset?: () => void;
@@ -36,43 +31,37 @@ interface IssueListFilter {
   onFocusedFilterIndexChange?: (index: number) => void;
   isFilterFocused?: boolean;
   onFilterKeyDown?: (event: KeyboardEvent) => void;
-}
-
-interface IssueListRefs {
   filterRef?: Ref<HTMLDivElement>;
   listRef?: Ref<HTMLDivElement>;
   listBodyRef?: Ref<HTMLDivElement>;
-}
-
-interface IssueListUi {
   isFocused: boolean;
   title?: string;
   className?: string;
 }
 
-export interface IssueListPaneProps {
-  listState: IssueListState;
-  callbacks: IssueListCallbacks;
-  filter: IssueListFilter;
-  refs: IssueListRefs;
-  ui: IssueListUi;
-}
-
 export function IssueListPane({
-  listState: { issues, allIssues, selectedIssueId, highlightedIssueId },
-  callbacks: { onSelectIssue, onHighlightIssue, onListBoundaryReached, onListFocus },
-  filter: {
-    severityFilter,
-    onSeverityFilterChange,
-    onSeverityFilterReset,
-    onSeverityFilterBoundary,
-    focusedFilterIndex,
-    onFocusedFilterIndexChange,
-    isFilterFocused,
-    onFilterKeyDown,
-  },
-  refs: { filterRef, listRef, listBodyRef },
-  ui: { isFocused, title = "Issues", className },
+  issues,
+  allIssues,
+  selectedIssueId,
+  highlightedIssueId,
+  onSelectIssue,
+  onHighlightIssue,
+  onListBoundaryReached,
+  onListFocus,
+  severityFilter,
+  onSeverityFilterChange,
+  onSeverityFilterReset,
+  onSeverityFilterBoundary,
+  focusedFilterIndex,
+  onFocusedFilterIndexChange,
+  isFilterFocused,
+  onFilterKeyDown,
+  filterRef,
+  listRef,
+  listBodyRef,
+  isFocused,
+  title = "Issues",
+  className,
 }: IssueListPaneProps) {
   const counts = calculateSeverityCounts(allIssues);
   const isFilterActive = severityFilter.size > 0;
@@ -153,20 +142,28 @@ export function IssueListPane({
                 density="compact"
                 className="border-b border-border last:border-b-0"
               >
-                <NavigationList.Title className="min-w-0 items-start">
+                {/* pe-3 is the gutter between the title cell and the severity
+                    tag beside it: the row grid has no column gap, so a title
+                    that fills its track put "…magic paddingLOW" on one line. */}
+                <NavigationList.Title className="min-w-0 items-start pe-3">
+                  {/* The tag below sits in the Status slot, which is wired into
+                      neither the option's name nor its description, so the
+                      severity still reaches AT exactly once through here. */}
                   <span className="sr-only">{issue.severity} severity: </span>
-                  <span
-                    className={cn(
-                      "mr-2",
-                      config.color,
-                      "group-data-[highlighted]:text-primary-foreground",
-                    )}
-                    aria-hidden="true"
-                  >
-                    {config.icon}
-                  </span>
                   <span className="min-w-0 line-clamp-2">{issue.title}</span>
                 </NavigationList.Title>
+                {/* Severity decides what gets read first, so it is printed as a
+                    word rather than drawn as a 10px glyph the reader has to
+                    decode - the same form the history insights pane uses. */}
+                <NavigationList.Status
+                  className={cn(
+                    "tracking-[0.08em] tabular-nums",
+                    config.color,
+                    "group-data-[highlighted]:text-primary-foreground",
+                  )}
+                >
+                  {SEVERITY_LABELS[issue.severity]}
+                </NavigationList.Status>
                 <NavigationList.Meta className="min-w-0 overflow-hidden">
                   {/* PathValue owns the truncation here, so the subtitle's own
                       `truncate` is neutralised down to its clipping box: the

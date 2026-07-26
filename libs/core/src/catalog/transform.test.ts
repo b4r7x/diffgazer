@@ -83,8 +83,9 @@ describe("catalogToModelInfo", () => {
     expect(flash.tier).toBe("free");
     expect(flash.recommended).toBe(true);
     expect(flash.name).toBe("Gemini 2.5 Flash");
-    expect(flash.description.length).toBeGreaterThan(0);
-    expect(flash.description).toContain("1M context");
+    // The name is already the row's title, so the description carries only the
+    // fact the title does not.
+    expect(flash.description).toBe("1M context");
     expect(flash.contextLength).toBe(1048576);
     expect(flash.maxOutputTokens).toBe(65536);
     const pro3 = requireValue(
@@ -114,7 +115,7 @@ describe("catalogToModelInfo", () => {
     expect(llama.description).toContain("131K context");
   });
 
-  it("omits the context suffix for a model with no usable context window", () => {
+  it("leaves the description empty for a model with no usable context window", () => {
     const noContext = parseModelsDevCatalog({
       google: {
         id: "google",
@@ -128,10 +129,11 @@ describe("catalogToModelInfo", () => {
       },
     });
     const [model] = catalogToModelInfo(noContext, "gemini");
-    expect(model?.description).toBe("Bare Flash");
+    expect(model?.name).toBe("Bare Flash");
+    expect(model?.description).toBe("");
   });
 
-  it("falls back to the model id for name and description when name is absent", () => {
+  it("falls back to the model id for the name when it is absent", () => {
     const noName = parseModelsDevCatalog({
       google: {
         id: "google",
@@ -142,7 +144,7 @@ describe("catalogToModelInfo", () => {
     });
     const [model] = catalogToModelInfo(noName, "gemini");
     expect(model?.name).toBe("gemini-2.5-flash");
-    expect(model?.description).toBe("gemini-2.5-flash");
+    expect(model?.description).toBe("");
   });
 
   it("keeps the raw model id verbatim while sanitizing only the display label", () => {

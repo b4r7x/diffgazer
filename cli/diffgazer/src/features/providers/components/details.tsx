@@ -25,6 +25,13 @@ export interface ProviderDetailData {
   defaultModel?: string;
 }
 
+/**
+ * Rows the body needs to breathe: eight labelled rows with a blank line between
+ * them plus the wrapped action block. Below this the blank lines go first —
+ * a dense list beats actions the pane has to clip.
+ */
+export const COMFORTABLE_DETAILS_ROWS = 21;
+
 interface ProviderDetailsProps {
   provider?: ProviderDetailData;
   isActive?: boolean;
@@ -33,7 +40,7 @@ interface ProviderDetailsProps {
   onRemove?: () => void;
   onSetActive?: () => void;
   isPending?: boolean;
-  stackActions?: boolean;
+  compact?: boolean;
 }
 
 export function ProviderDetails({
@@ -44,7 +51,7 @@ export function ProviderDetails({
   onRemove,
   onSetActive,
   isPending = false,
-  stackActions = false,
+  compact = false,
 }: ProviderDetailsProps): ReactElement {
   const { tokens } = useTheme();
   const showRemove = provider?.displayStatus !== "needs-key";
@@ -78,7 +85,7 @@ export function ProviderDetails({
   const badge = getDisplayStatusBadge(provider.displayStatus);
   const capabilities = PROVIDER_CAPABILITIES[provider.id];
   return (
-    <Box flexDirection="column" gap={1}>
+    <Box flexDirection="column" gap={compact ? 0 : 1}>
       <KeyValue label="Name" value={provider.name} labelWidth={14} />
       <KeyValue label="ID" value={provider.id} labelWidth={14} />
       <KeyValue
@@ -100,7 +107,9 @@ export function ProviderDetails({
       <KeyValue label="Streaming" value={capabilities.streaming} labelWidth={14} />
       <KeyValue label="Context" value={capabilities.contextWindow} labelWidth={14} />
 
-      <Box flexDirection={stackActions ? "column" : "row"} gap={1} marginTop={1}>
+      {/* The actions wrap instead of stacking: four rows of buttons plus their
+          gaps outgrow the pane and Ink paints the overflow onto the border. */}
+      <Box flexWrap="wrap" gap={1} marginTop={1}>
         <Button
           variant="primary"
           isActive={actions.isActionActive(0)}

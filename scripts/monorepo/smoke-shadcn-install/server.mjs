@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { join } from "node:path";
+import { errorMessage } from "../lib/error-message.mjs";
 import { registryRouteFromUrl } from "./registry.mjs";
 
 function rewriteRegistryUrls(value, baseUrl) {
@@ -43,7 +44,7 @@ export function createRegistryHandler(registryDirs, getBaseUrl) {
       const json = JSON.parse(readFileSync(filePath, "utf-8"));
       response.end(JSON.stringify(rewriteRegistryUrls(json, getBaseUrl()), null, 2));
     } catch (error) {
-      response.writeHead(500).end(error instanceof Error ? error.message : String(error));
+      response.writeHead(500).end(errorMessage(error));
     }
   };
 }

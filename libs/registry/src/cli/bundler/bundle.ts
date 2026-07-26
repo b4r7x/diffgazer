@@ -2,7 +2,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { computeIntegrity } from "../../copy-bundle.js";
 import { atomicWriteFile } from "../fs/writes.js";
-import { metaField, parseRegistryDependencyRef, RegistryContentItemSchema } from "../registry.js";
+import {
+  metaFlag,
+  metaStringList,
+  parseRegistryDependencyRef,
+  RegistryContentItemSchema,
+} from "../registry.js";
 import { heading, info, toErrorMessage } from "../terminal.js";
 import { type DetectNpmImportsOptions, detectNpmImports } from "./detect-imports.js";
 import { type RegistrySourceItem, RegistrySourceSchema } from "./schemas.js";
@@ -135,9 +140,9 @@ function bundleItem(sourceItem: RegistrySourceItem, ctx: BundleContext): BundleI
     files,
     meta: {
       ...sourceMeta,
-      client: metaField(sourceItem, "client", ctx.clientDefault),
-      hidden: metaField(sourceItem, "hidden", false),
-      optionalIntegrations: metaField<string[]>(sourceItem, "optionalIntegrations", []),
+      client: metaFlag(sourceItem, "client", ctx.clientDefault),
+      hidden: metaFlag(sourceItem, "hidden", false),
+      optionalIntegrations: metaStringList(sourceItem, "optionalIntegrations"),
     },
   };
 }

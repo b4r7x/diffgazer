@@ -1,9 +1,11 @@
-import type { ReviewEvent } from "@diffgazer/core/review";
+import type { LogStreamState, ReviewEvent } from "@diffgazer/core/review";
+import type { AgentState } from "@diffgazer/core/schemas/events";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ActivityLogAnnouncement } from "./announcement";
 import { LogEntry } from "./entry";
+import { buildTailStatus, LiveTailRow } from "./live-tail-row";
 import {
   convertEventRowWindow,
   deriveEventRowIndex,
@@ -17,7 +19,16 @@ import {
 export interface ActivityLogProps extends React.HTMLAttributes<HTMLDivElement> {
   events: readonly ReviewEvent[];
   sourceFilter?: string | null;
-  showCursor?: boolean;
+  /**
+   * Liveness of the run behind the log. `null`/undefined means the run is not
+   * streaming, and the pinned tail row is not rendered at all.
+   */
+  streamState?: LogStreamState | null;
+  agents?: readonly AgentState[];
+  /** Run start, for the tail row's elapsed clock. */
+  startTime?: Date;
+  /** Epoch ms of the last event; drives the "last event Xs ago" stall clock. */
+  lastEventAt?: number;
 }
 
 interface LogWindowState {
@@ -38,7 +49,10 @@ interface ScrollWindowAnchor {
 export function ActivityLog({
   events,
   sourceFilter,
-  showCursor,
+  streamState = null,
+  agents = [],
+  startTime,
+  lastEventAt = Date.now(),
   className,
   onKeyDown,
   onScroll,
@@ -190,6 +204,17 @@ export function ActivityLog({
     container.scrollTop = alignment === "start" ? 0 : container.scrollHeight;
   }, [windowState]);
 
+  const tailRowProps =
+    streamState === null
+      ? null
+      : {
+          state: streamState,
+          agents,
+          startTime,
+          lastEventAt,
+          sourceFilter: normalizedSourceFilter,
+        };
+
   const tailEvent = getEventRowTail(rowIndex);
   const latestEntry = convertEventRowWindow(
     rowIndex,
@@ -269,16 +294,17 @@ export function ActivityLog({
               isError={entry.isError}
             />
           ))}
-          {showCursor && (
-            <span className="inline-block h-4 w-2 bg-foreground cursor-blink" aria-hidden="true" />
-          )}
         </div>
       </ScrollArea>
+      {/* Outside the scrolling content: the tail row is pinned to the pane so
+          "is it alive?" stays answerable without scrolling to the bottom. */}
+      {tailRowProps && <LiveTailRow {...tailRowProps} />}
       <ActivityLogAnnouncement
         tailEvent={tailEvent}
         latestEntry={latestEntry}
         sourceFilter={normalizedSourceFilter}
-        enabled={showCursor === true}
+        tailStatus={tailRowProps ? buildTailStatus(tailRowProps) : null}
+        enabled={streamState !== null}
       />
     </>
   );

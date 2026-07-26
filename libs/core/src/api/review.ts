@@ -43,9 +43,9 @@ export async function createReview(
   client: ApiClient,
   options: CreateReviewOptions = {},
 ): Promise<CreateReviewResponse> {
-  return client.post<CreateReviewResponse>("/api/review/reviews", options, undefined, (body) =>
-    CreateReviewResponseSchema.parse(body),
-  );
+  return client.post<CreateReviewResponse>("/api/review/reviews", options, {
+    schema: (body) => CreateReviewResponseSchema.parse(body),
+  });
 }
 
 export interface ResumeReviewOptions {
@@ -127,15 +127,16 @@ export async function getReviews(
     ...(cursor ? { cursor } : {}),
     ...(limit !== undefined ? { limit: String(limit) } : {}),
   };
-  return client.get<ReviewsResponse>("/api/review/reviews", params, (body) =>
-    ReviewsResponseSchema.parse(body),
-  );
+  return client.get<ReviewsResponse>("/api/review/reviews", {
+    params,
+    schema: (body) => ReviewsResponseSchema.parse(body),
+  });
 }
 
 export async function getReview(client: ApiClient, id: string): Promise<ReviewResponse> {
-  return client.get<ReviewResponse>(`/api/review/reviews/${id}`, undefined, (body) =>
-    ReviewResponseSchema.parse(body),
-  );
+  return client.get<ReviewResponse>(`/api/review/reviews/${id}`, {
+    schema: (body) => ReviewResponseSchema.parse(body),
+  });
 }
 
 export async function getActiveReviewSession(
@@ -143,14 +144,11 @@ export async function getActiveReviewSession(
   mode?: ReviewMode,
   signal?: AbortSignal,
 ): Promise<ActiveReviewSessionResponse> {
-  const params = mode ? { mode } : undefined;
-  const validate = (body: unknown) => ActiveReviewSessionResponseSchema.parse(body);
-  return client.get<ActiveReviewSessionResponse>(
-    "/api/review/sessions/active",
-    params,
-    validate,
-    signal ? { signal } : undefined,
-  );
+  return client.get<ActiveReviewSessionResponse>("/api/review/sessions/active", {
+    ...(mode ? { params: { mode } } : {}),
+    ...(signal ? { signal } : {}),
+    schema: (body) => ActiveReviewSessionResponseSchema.parse(body),
+  });
 }
 
 export async function getReviewContext(client: ApiClient): Promise<ReviewContextResponse> {

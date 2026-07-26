@@ -1,8 +1,13 @@
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
-import type { ReviewEvent } from "@diffgazer/core/review";
+import {
+  createInitialReviewState,
+  type ReviewEvent,
+  type ReviewState,
+  reviewReducer,
+} from "@diffgazer/core/review";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Footer } from "@/components/layout/footer";
@@ -58,13 +63,17 @@ function makeProgressData(overrides: Partial<ReviewProgressData> = {}): ReviewPr
 
 type ThinkingAgent = Extract<ReviewEvent, { type: "agent_thinking" }>["agent"];
 
-function makeLogEvents(count: number, agent: ThinkingAgent = "detective"): ReviewEvent[] {
-  return Array.from({ length: count }, (_, index) => ({
+function makeLogEvent(index: number, agent: ThinkingAgent = "detective"): ReviewEvent {
+  return {
     type: "agent_thinking",
     agent,
     thought: `event-${index}`,
     timestamp: "2026-01-01T00:00:00.000Z",
-  }));
+  };
+}
+
+function makeLogEvents(count: number, agent: ThinkingAgent = "detective"): ReviewEvent[] {
+  return Array.from({ length: count }, (_, index) => makeLogEvent(index, agent));
 }
 
 function renderView(props: Partial<ReviewProgressViewProps> = {}) {
@@ -534,5 +543,178 @@ describe("ReviewProgressView", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
     // Escape must never cancel the run; only the visible [Cancel] button does.
     expect(onCancel).not.toHaveBeenCalled();
+  });
+});
+
+describe("ReviewProgressView elapsed clock", () => {
+  it("prints the same second in the metrics timer and in the pinned tail row", () => {
+    vi.useFakeTimers();
+    try {
+      renderView({
+        isRunning: true,
+        data: makeProgressData({
+          agents: [makeAgent()],
+          events: makeLogEvents(1),
+          startTime: new Date(Date.now() - 46_500),
+        }),
+      });
+
+      // Between two whole seconds: two clocks with their own intervals report
+      // different seconds here, one shared clock reports the same one twice.
+      act(() => vi.advanceTimersByTime(600));
+
+      expect(screen.getByText("00:46")).toBeVisible();
+      expect(screen.getByText(/waiting for model response · 46\.5s$/)).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("ReviewProgressView stream liveness", () => {
+  function renderRunning(onRetry?: (reviewId: string) => void) {
+    return renderView({
+      isRunning: true,
+      reviewId: "review-1",
+      onRetry,
+      data: makeProgressData({ agents: [makeAgent()], events: makeLogEvents(1) }),
+    });
+  }
+
+  function renderStream(initialEvents: readonly ReviewEvent[]) {
+    const tree = (events: readonly ReviewEvent[]) => (
+      <KeyboardProvider>
+        <FooterProvider>
+          <ReviewProgressView
+            data={makeProgressData({ agents: [makeAgent()], events })}
+            isRunning
+          />
+        </FooterProvider>
+      </KeyboardProvider>
+    );
+    const { rerender } = render(tree(initialEvents));
+    return { push: (events: readonly ReviewEvent[]) => rerender(tree(events)) };
+  }
+
+  /** Appends until the capped event buffer stops growing, as a long run does. */
+  function fillEventBuffer(): ReviewState {
+    let state = createInitialReviewState();
+    let previousLength = -1;
+    let index = 0;
+    while (state.events.length !== previousLength) {
+      previousLength = state.events.length;
+      state = reviewReducer(state, { type: "EVENT", event: makeLogEvent(index) });
+      index += 1;
+    }
+    return state;
+  }
+
+  it("never calls a stall on a stream that keeps delivering events", () => {
+    vi.useFakeTimers();
+    try {
+      let state = reviewReducer(createInitialReviewState(), {
+        type: "EVENT",
+        event: makeLogEvent(0),
+      });
+      const stream = renderStream(state.events);
+
+      for (let tick = 1; tick <= 12; tick += 1) {
+        act(() => vi.advanceTimersByTime(5_000));
+        state = reviewReducer(state, { type: "EVENT", event: makeLogEvent(tick) });
+        stream.push(state.events);
+      }
+
+      expect(screen.queryByText(/Stream quiet/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Stream stalled/)).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("never calls a stall once the event buffer is full and events still arrive", () => {
+    vi.useFakeTimers();
+    try {
+      let state = fillEventBuffer();
+      const cappedLength = state.events.length;
+      const stream = renderStream(state.events);
+
+      for (let tick = 1; tick <= 12; tick += 1) {
+        act(() => vi.advanceTimersByTime(5_000));
+        state = reviewReducer(state, {
+          type: "EVENT",
+          event: makeLogEvent(cappedLength + tick),
+        });
+        stream.push(state.events);
+      }
+
+      expect(state.events).toHaveLength(cappedLength);
+      expect(screen.queryByText(/Stream quiet/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Stream stalled/)).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stays quiet while events flow", () => {
+    vi.useFakeTimers();
+    try {
+      renderRunning();
+
+      act(() => vi.advanceTimersByTime(10_000));
+
+      expect(screen.queryByText(/Stream quiet/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Stream stalled/)).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("names the silence at 20s and calls it a stall at 45s", () => {
+    vi.useFakeTimers();
+    try {
+      renderRunning(vi.fn());
+
+      act(() => vi.advanceTimersByTime(21_000));
+      expect(screen.getByText(/Stream quiet/)).toBeVisible();
+      expect(screen.queryByRole("button", { name: "Reconnect" })).not.toBeInTheDocument();
+
+      act(() => vi.advanceTimersByTime(25_000));
+      expect(screen.getByText(/Stream stalled/)).toBeVisible();
+      expect(screen.getByRole("button", { name: "Reconnect" })).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("resubscribes the stream from the stalled state", async () => {
+    vi.useFakeTimers();
+    const onRetry = vi.fn();
+    try {
+      renderRunning(onRetry);
+      act(() => vi.advanceTimersByTime(46_000));
+
+      // fireEvent retained: fake timers drive the stall clock; userEvent waits on the same timer queue.
+      fireEvent.click(screen.getByRole("button", { name: "Reconnect" }));
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(onRetry).toHaveBeenCalledWith("review-1");
+  });
+
+  it("says nothing about liveness once the run is finished", () => {
+    vi.useFakeTimers();
+    try {
+      renderView({
+        isRunning: false,
+        data: makeProgressData({ agents: [makeAgent({ status: "complete", progress: 100 })] }),
+      });
+
+      act(() => vi.advanceTimersByTime(60_000));
+
+      expect(screen.queryByText(/Stream stalled/)).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

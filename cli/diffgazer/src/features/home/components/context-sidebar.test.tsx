@@ -44,6 +44,31 @@ describe("ContextSidebar (TUI)", () => {
     expect(frame).toContain("Last Run: None");
   });
 
+  test("keeps the model id's tail readable in the 100-column home sidebar", () => {
+    const context: ContextInfo = {
+      providerName: "gemini",
+      providerModel: "gemini-2.5-pro",
+      trustedDir: "/repo",
+    };
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        {/* The width LoadedHomeScreen grants the sidebar at 100 columns. */}
+        <Box width={36}>
+          <ContextSidebar context={context} isTrusted projectPath="/repo" />
+        </Box>
+      </CliThemeProvider>,
+    );
+
+    const frame = lastFrame() ?? "";
+    const providerLine = frame.split("\n").find((line) => line.includes("Provider:"));
+
+    expect(providerLine, frame).toBeDefined();
+    // The parenthesis closes: the row identifies the model by both ends rather
+    // than dropping its tail one character short.
+    expect(providerLine).toContain("gemini");
+    expect(providerLine).toContain("pro)");
+  });
+
   test("keeps long repository and provider values inside a narrow sidebar", () => {
     const context: ContextInfo = {
       providerName: "openrouter",

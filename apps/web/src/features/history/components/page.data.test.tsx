@@ -15,9 +15,11 @@ import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue, makeReviewMetadata } from "@diffgazer/core/testing/factories";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { expectSingleReticle } from "@/testing/reticle";
 import { HistoryPage } from "./page";
 import {
   defaultReviewsResponse,
+  FooterView,
   makeReviewResponse,
   mockGetReview,
   mockGetReviews,
@@ -56,12 +58,47 @@ describe("HistoryPage loading and error status", () => {
     await waitFor(() => expect(runsList).toHaveFocus());
   });
 
-  it("announces the error branch as an alert region", async () => {
+  it("brackets exactly one pane on the loaded screen", async () => {
+    const { container } = renderHistoryPage(<HistoryPage />);
+
+    await screen.findByRole("listbox", { name: /review runs/i });
+
+    expectSingleReticle(container);
+  });
+
+  it("announces the error branch and offers a way out of it", async () => {
+    const user = userEvent.setup();
     mockGetReviews.mockRejectedValue(new Error("disk unreadable"));
 
     renderHistoryPage(<HistoryPage />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Error: disk unreadable");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Reviews Unavailable");
+    expect(screen.getByText(/disk unreadable/)).toBeVisible();
+
+    mockGetReviews.mockResolvedValue(defaultReviewsResponse());
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByRole("listbox", { name: /review runs/i })).toBeInTheDocument();
+  });
+
+  it("lets the error screen own the footer instead of advertising history shortcuts", async () => {
+    mockGetReviews.mockRejectedValue(new Error("disk unreadable"));
+
+    renderHistoryPage(
+      <>
+        <HistoryPage />
+        <FooterView />
+      </>,
+    );
+
+    await screen.findByRole("alert");
+    const footer = within(screen.getByRole("contentinfo"));
+
+    await waitFor(() => expect(footer.getByText("Move Action")).toBeInTheDocument());
+    expect(footer.getByText("Retry")).toBeInTheDocument();
+    expect(footer.queryByText("Switch Pane")).not.toBeInTheDocument();
+    expect(footer.queryByText("Open Review")).not.toBeInTheDocument();
+    expect(footer.queryByText("Search")).not.toBeInTheDocument();
   });
 
   it("shows an init error instead of routing through untrusted defaults", async () => {

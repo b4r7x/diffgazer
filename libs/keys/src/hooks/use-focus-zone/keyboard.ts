@@ -22,7 +22,6 @@ export function useFocusZoneKeyboard<T extends string>(
     | "focusWithinOnly"
     | "allowInInput"
     | "preventDefault"
-    | "enabled"
     | "focus"
   >,
   state: {
@@ -33,7 +32,6 @@ export function useFocusZoneKeyboard<T extends string>(
     canCycleTabs: boolean;
     enabled: boolean;
   },
-  scopeOptions: UseFocusZoneOptions<T>,
 ) {
   const {
     transitions,
@@ -136,7 +134,7 @@ export function useFocusZoneKeyboard<T extends string>(
     allowInInput,
   });
 
-  const hasExplicitScope = "scope" in scopeOptions;
+  const hasExplicitScope = "scope" in options;
   useScope(hasExplicitScope ? (scope ?? null) : null, {
     enabled: enabled && hasExplicitScope && scope != null,
   });

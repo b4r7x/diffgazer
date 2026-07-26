@@ -12,8 +12,8 @@ export interface CodeBlockProps extends Omit<ComponentProps<"figure">, "children
   /**
    * Visual variant. "hairline" (default) is a soft-bordered block with a filename header.
    * "bare" removes chrome and renders a 2px left rule that turns accent on hover; the header is
-   * suppressed. "terminal" centers the title in the header - use for shell output. Window dots
-   * are opt-in for every variant via the `chrome` prop.
+   * suppressed. "terminal" centers the title in the header - use for shell output. The pane
+   * strip is opt-in for every variant via the `chrome` prop.
    */
   variant?: CodeBlockVariant;
   /**
@@ -28,7 +28,7 @@ export interface CodeBlockProps extends Omit<ComponentProps<"figure">, "children
   label?: string;
   /**
    * Decorative chrome in the header strip. "none" (default) leaves the header to its label and
-   * actions. "dots" renders three desaturated window dots on the left edge and reserves
+   * actions. "dots" renders a three-mark pane strip on the left edge and reserves
    * symmetric padding so a centered label stays balanced.
    */
   chrome?: CodeBlockChrome;

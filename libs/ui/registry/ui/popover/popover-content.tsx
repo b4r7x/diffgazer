@@ -3,7 +3,6 @@
 import {
   type ComponentPropsWithoutRef,
   type FocusEvent,
-  type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
   type Ref,
@@ -14,25 +13,13 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position";
 import { cn } from "@/lib/utils";
 import { FloatingPanel, useFloatingPanelContext } from "../floating-panel";
+import { OVERLAY_SURFACE } from "../shared/overlay-surface";
 import { useAriaLinkedPortalContainer } from "../shared/portal";
 import { type PopoverPopupRole, usePopoverContext } from "./popover-context";
 import { useAutoFocus } from "./use-auto-focus";
 import { usePopoverContentDismissal } from "./use-content-dismissal";
 
 const FALLBACK_POPOVER_DIALOG_LABEL = "Popover";
-
-/**
- * Default surface chrome. FloatingPanel stays headless; the popover layer owns
- * the identity so a first-time consumer does not render an invisible box.
- *
- * Depth follows the R7 grammar — border plus a surface step, never blur:
- * `--surface-1` sits one step off the page background (lighter in dark, darker
- * in light) and the 1px `--surface-1-highlight` inner lip keeps the step
- * reading as raised over dense content. No padding, so menu-style content can
- * still sit flush; `className` merges last and can opt out of any of it.
- */
-const POPOVER_SURFACE =
-  "rounded-sm border border-border bg-[color:var(--surface-1)] shadow-[inset_0_1px_0_var(--surface-1-highlight)]";
 
 /** Props for popover content. */
 export interface PopoverContentProps
@@ -125,7 +112,7 @@ export function PopoverContent({
     "Popover",
   );
 
-  const { onExitComplete, onFocusCaptureDismissal, onBlurCaptureDismissal, onKeyDownDismissal } =
+  const { onExitComplete, onFocusCaptureDismissal, onBlurCaptureDismissal } =
     usePopoverContentDismissal({
       open,
       isClick,
@@ -155,12 +142,6 @@ export function PopoverContent({
     onBlurCaptureDismissal(e);
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    onKeyDown?.(e);
-    if (e.defaultPrevented) return;
-    onKeyDownDismissal(e);
-  };
-
   const shouldAutoFocus = open && (isDialog || isMenu) && autoFocus;
 
   return (
@@ -187,8 +168,12 @@ export function PopoverContent({
       onMouseLeave={handleMouseLeave}
       onFocusCapture={handleFocusCapture}
       onBlurCapture={handleBlurCapture}
-      onKeyDown={handleKeyDown}
-      className={cn(POPOVER_SURFACE, className)}
+      onKeyDown={onKeyDown}
+      // FloatingPanel stays headless; the popover layer applies the shared
+      // anchored overlay tier so a first-time consumer does not render an
+      // invisible box. No padding, so menu-style content can still sit flush;
+      // `className` merges last and can opt out of any of it.
+      className={cn(OVERLAY_SURFACE, className)}
     >
       <PopoverAutoFocus
         contentRef={contentRef}

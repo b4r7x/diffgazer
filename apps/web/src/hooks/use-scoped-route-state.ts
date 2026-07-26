@@ -9,25 +9,12 @@ export const HISTORY_RUN_KEY = "run";
 export const HISTORY_DATE_KEY = "date";
 export const SETTINGS_HIGHLIGHTED_KEY = "highlighted";
 
-const MAX_ENTRIES = 100;
 const routeStateStore = new Map<string, unknown>();
 const subscribers = new Set<() => void>();
 
 function emitChange(): void {
   subscribers.forEach((callback) => {
     callback();
-  });
-}
-
-function cleanupIfNeeded(): void {
-  if (routeStateStore.size <= MAX_ENTRIES) return;
-
-  const keysToRemove = Array.from(routeStateStore.keys()).slice(
-    0,
-    routeStateStore.size - MAX_ENTRIES,
-  );
-  keysToRemove.forEach((key) => {
-    routeStateStore.delete(key);
   });
 }
 
@@ -44,7 +31,6 @@ function getSnapshot<T>(storageKey: string, defaultValue: T): T {
 
 function setValue<T>(storageKey: string, value: T): void {
   routeStateStore.set(storageKey, value);
-  cleanupIfNeeded();
   emitChange();
 }
 

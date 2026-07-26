@@ -80,6 +80,40 @@ describe("TableOfContentsPanel", () => {
     await waitFor(() => expect(tocLinks()).toEqual(["With Id"]));
   });
 
+  it("leaves demo headings out of the page TOC and its scroll spy", async () => {
+    render(
+      <main id="main-content">
+        <h2 id="usage">Usage</h2>
+        <div data-demo-preview>
+          <h2 id="demo-introduction">Introduction</h2>
+          <h3 id="demo-installation">Installation</h3>
+        </div>
+        <h2 id="api">API</h2>
+        <SidebarToc toc={[]} />
+      </main>,
+    );
+
+    await waitFor(() => expect(tocLinks()).toEqual(["Usage", "API"]));
+  });
+
+  it("excludes a demo nested inside a real section", async () => {
+    render(
+      <main id="main-content">
+        <h2 id="examples">Examples</h2>
+        <section>
+          <div data-demo-preview>
+            <div>
+              <h3 id="demo-section">Demo section</h3>
+            </div>
+          </div>
+        </section>
+        <SidebarToc toc={[]} />
+      </main>,
+    );
+
+    await waitFor(() => expect(tocLinks()).toEqual(["Examples"]));
+  });
+
   it("links each entry to its heading anchor", async () => {
     renderWithHeadings([{ tag: "h2", id: "examples", text: "Examples" }]);
 

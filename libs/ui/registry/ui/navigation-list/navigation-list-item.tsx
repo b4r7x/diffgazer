@@ -16,6 +16,7 @@ import {
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { mergeIds } from "@/lib/aria";
+import { MARKER_RAIL_BASE, MARKER_RAIL_ON_INVERTED, MARKER_RAIL_SELECTED } from "@/lib/marker-rail";
 import { cn } from "@/lib/utils";
 import { useNavigationListContext } from "./navigation-list-context";
 import {
@@ -179,8 +180,9 @@ export function NavigationListItem({
 
   let indicatorColorClass = disabled ? "bg-transparent" : "bg-transparent group-hover:bg-muted";
   if (isActive) {
-    indicatorColorClass =
-      indicator === "bar" ? "bg-primary-foreground/40" : "bg-primary-foreground";
+    // One inverted-row indicator colour. The old half-opacity `bar` branch made
+    // the same mark mean two things depending on the indicator width.
+    indicatorColorClass = "bg-primary-foreground";
   } else if (showsSelectedMarker) {
     indicatorColorClass = "bg-accent";
   }
@@ -231,6 +233,14 @@ export function NavigationListItem({
         onFocus={handleFocus}
         className={cn(
           itemVariants({ active: isActive, disabled, tree: isTree || undefined }),
+          // The library's shared "you are here" mark: a 2px rail for the
+          // persistent current location, inversion for the transient highlight,
+          // and both together on a row that is currently both. The base class
+          // reserves the rail in every state, so the label's x-position never
+          // shifts. Tree rows carry their own connector glyph gutter instead.
+          !isTree && MARKER_RAIL_BASE,
+          !isTree && isActive && MARKER_RAIL_ON_INVERTED,
+          !isTree && showsSelectedMarker && MARKER_RAIL_SELECTED,
           showsSelectedMarker && !isTree && "bg-secondary",
           className,
         )}

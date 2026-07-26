@@ -47,6 +47,11 @@ export const sidebarDoc: ComponentDoc = {
   ],
   notes: [
     {
+      title: "Current-location mark",
+      content:
+        'The library spells "you are here" one way: a 2px left rail in --primary (registry/lib/marker-rail.ts). Full-bleed inversion is reserved for the TRANSIENT keyboard highlight; a row that is both the current location and the highlight keeps the inversion and flips its rail to --primary-foreground so the mark survives. The rail is reserved transparently in the resting state and pulled back by its own width, so a row\'s label never shifts horizontally when it becomes current \u2014 that anti-shift geometry is the contract, and it is why the rail costs 0px of label width at 375/390 where a full-bleed fill reads as a solid slab. The `bar` variant is that shared rail. `caret`, `terminal` and `tree` are deliberate alternative idioms with their own gutter grammar, and `inverted` is the loud full-bleed option; pick `bar` when you want the library-standard mark.',
+    },
+    {
       title: "Requires @diffgazer/keys (package mode)",
       content:
         "Sidebar's arrow-key navigation imports from the required @diffgazer/keys peer. Package consumers must install @diffgazer/keys with @diffgazer/ui; packages are not yet published to npm, so use a local checkout until the first release. Importing @diffgazer/ui/components/sidebar without keys fails at module load with an error naming the missing @diffgazer/keys package. Copy/dgadd consumers do not need the package — copy mode rewrites the keyboard hooks to local source.",

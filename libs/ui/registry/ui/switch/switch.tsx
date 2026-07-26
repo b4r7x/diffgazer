@@ -1,12 +1,25 @@
 "use client";
 
 import { cva } from "class-variance-authority";
-import { type AriaAttributes, type ComponentPropsWithRef, type Ref, useRef, useState } from "react";
+import {
+  type AriaAttributes,
+  type ComponentPropsWithRef,
+  type ReactNode,
+  type Ref,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
-import { resolveAriaInvalid } from "@/lib/aria";
+import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import { useFieldsetDisabled } from "@/lib/fieldset-disabled";
+import {
+  selectableContainerClass,
+  selectableDescriptionVariants,
+  selectableLabelVariants,
+} from "@/lib/selectable-variants";
 import { cn } from "@/lib/utils";
 
 /** Allowed switch size values. */
@@ -40,6 +53,10 @@ export type SwitchProps = SwitchRootProps & {
   name?: string;
   value?: string;
   size?: SwitchSize;
+  /** Visible label rendered beside the track, wired as the accessible name. */
+  label?: ReactNode;
+  /** Visible description rendered under the label, wired with aria-describedby. */
+  description?: ReactNode;
   "aria-label"?: string;
   "aria-labelledby"?: string;
   "aria-describedby"?: string;
@@ -73,8 +90,10 @@ const trackVariants = cva(
         // hue-free and clearly emptier than the filled on track.
         false: "bg-secondary",
       },
+      // Dashed edge, not a fade: the same disabled grammar Input/Textarea already use, and the
+      // one that survives forced-colors mode (which drops opacity but keeps border-style).
       disabled: {
-        true: "opacity-50 cursor-not-allowed",
+        true: "border-dashed cursor-not-allowed",
         false: "",
       },
     },
@@ -102,6 +121,11 @@ const thumbVariants = cva(
         true: "",
         false: "",
       },
+      // The 0/1 digit and the thumb fill carry the disabled tone the track no longer fades in.
+      disabled: {
+        true: "bg-secondary text-muted-foreground forced-colors:text-[GrayText]",
+        false: "",
+      },
     },
     compoundVariants: [
       { size: "sm", checked: false, className: "translate-x-0.5" },
@@ -112,6 +136,7 @@ const thumbVariants = cva(
     defaultVariants: {
       size: "md",
       checked: false,
+      disabled: false,
     },
   },
 );
@@ -127,6 +152,8 @@ export function Switch({
   name,
   value = "on",
   size = "md",
+  label,
+  description,
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledBy,
   "aria-describedby": ariaDescribedBy,
@@ -136,6 +163,10 @@ export function Switch({
   ref,
   ...rootProps
 }: SwitchProps) {
+  const hasRow = label !== undefined || description !== undefined;
+  const generatedId = useId();
+  const labelId = `${generatedId}-label`;
+  const descriptionId = `${generatedId}-desc`;
   const rootRef = useRef<HTMLButtonElement>(null);
   const nativeInputRef = useRef<HTMLInputElement>(null);
   const composedRef = useComposedRefs(rootRef, ref);
@@ -150,6 +181,15 @@ export function Switch({
   const resolvedAriaInvalid = resolveAriaInvalid(
     ariaInvalid,
     nativeInvalid && required && !isChecked,
+  );
+  // Same naming precedence as Checkbox: an explicit aria-label wins, otherwise the rendered
+  // label joins whatever aria-labelledby the consumer passed.
+  const resolvedAriaLabelledBy = ariaLabel
+    ? undefined
+    : mergeIds(ariaLabelledBy, label ? labelId : undefined);
+  const resolvedAriaDescribedBy = mergeIds(
+    ariaDescribedBy,
+    description ? descriptionId : undefined,
   );
   const controlledFormReset =
     controlledChecked === undefined
@@ -188,6 +228,78 @@ export function Switch({
     if (!event.defaultPrevented) toggle();
   };
 
+  const handleLabelClick = () => {
+    if (isDisabled) return;
+    rootRef.current?.focus();
+    rootRef.current?.click();
+  };
+
+  const control = (
+    <button
+      {...rootProps}
+      ref={composedRef}
+      type="button"
+      form={form}
+      role="switch"
+      data-slot="switch"
+      data-state={isChecked ? "checked" : "unchecked"}
+      data-disabled={isDisabled ? "" : undefined}
+      aria-checked={isChecked}
+      aria-disabled={isDisabled || undefined}
+      aria-required={required || undefined}
+      aria-invalid={resolvedAriaInvalid}
+      aria-label={ariaLabel}
+      aria-labelledby={resolvedAriaLabelledBy}
+      aria-describedby={resolvedAriaDescribedBy}
+      disabled={isDisabled}
+      onClick={handleClick}
+      className={cn(trackVariants({ size, checked: isChecked, disabled: isDisabled }), className)}
+    >
+      <span
+        aria-hidden="true"
+        data-slot="switch-thumb"
+        className={thumbVariants({ size, checked: isChecked, disabled: isDisabled })}
+      >
+        {/* Binary glyph so on/off stays readable in a still frame, without
+            relying on track inversion or thumb position alone. */}
+        {isChecked ? "1" : "0"}
+      </span>
+    </button>
+  );
+
+  // Without a label the render is byte-identical to the pre-label markup, so existing call sites
+  // that hand-roll their own row are untouched.
+  const row = hasRow ? (
+    <div
+      data-slot="switch-row"
+      className={cn(selectableContainerClass, description && "items-start")}
+    >
+      {control}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: this forwards clicks to the switch button, which owns keyboard activation. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: same — the button beside it is the interactive element. */}
+      <div
+        className={cn("flex flex-col min-w-0", !description && "justify-center")}
+        onClick={handleLabelClick}
+      >
+        {label && (
+          <span id={labelId} className={selectableLabelVariants({ size })}>
+            {label}
+          </span>
+        )}
+        {description && (
+          <span
+            id={descriptionId}
+            className={selectableDescriptionVariants({ disabled: isDisabled })}
+          >
+            {description}
+          </span>
+        )}
+      </div>
+    </div>
+  ) : (
+    control
+  );
+
   return (
     <>
       {(name || required) && (
@@ -212,36 +324,7 @@ export function Switch({
           }}
         />
       )}
-      <button
-        {...rootProps}
-        ref={composedRef}
-        type="button"
-        form={form}
-        role="switch"
-        data-slot="switch"
-        data-state={isChecked ? "checked" : "unchecked"}
-        data-disabled={isDisabled ? "" : undefined}
-        aria-checked={isChecked}
-        aria-disabled={isDisabled || undefined}
-        aria-required={required || undefined}
-        aria-invalid={resolvedAriaInvalid}
-        aria-label={ariaLabel}
-        aria-labelledby={ariaLabelledBy}
-        aria-describedby={ariaDescribedBy}
-        disabled={isDisabled}
-        onClick={handleClick}
-        className={cn(trackVariants({ size, checked: isChecked, disabled: isDisabled }), className)}
-      >
-        <span
-          aria-hidden="true"
-          data-slot="switch-thumb"
-          className={thumbVariants({ size, checked: isChecked })}
-        >
-          {/* Binary glyph so on/off stays readable in a still frame, without
-              relying on track inversion or thumb position alone. */}
-          {isChecked ? "1" : "0"}
-        </span>
-      </button>
+      {row}
     </>
   );
 }

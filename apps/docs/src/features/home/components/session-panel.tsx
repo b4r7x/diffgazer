@@ -17,8 +17,8 @@ const VERDICTS = [
   { agent: "tests", result: "coverage gap", tone: "finding" },
 ] as const;
 
-const REVEAL_LINE_10 = VERDICTS.length + 1;
-const REVEAL_LINE_11 = VERDICTS.length + 2;
+const REVEAL_FOOTER = VERDICTS.length + 1;
+const REVEAL_SETTLED = VERDICTS.length + 2;
 
 const START_DELAY = 350;
 const CHAR_INTERVAL = 55;
@@ -55,7 +55,7 @@ export function SessionPanel() {
       setStage("settled");
       setTypedCount(COMMAND.length);
       setSpinnerFrame(0);
-      setReveal(REVEAL_LINE_11);
+      setReveal(REVEAL_SETTLED);
     };
     const onReducedMotionChange = (event: MediaQueryListEvent) => {
       if (event.matches) settle();
@@ -103,10 +103,10 @@ export function SessionPanel() {
     }
 
     elapsed += FOOTER_STAGGER;
-    at(elapsed, () => setReveal(REVEAL_LINE_10));
+    at(elapsed, () => setReveal(REVEAL_FOOTER));
     elapsed += FOOTER_STAGGER;
     at(elapsed, () => {
-      setReveal(REVEAL_LINE_11);
+      setReveal(REVEAL_SETTLED);
       setStage("settled");
     });
 
@@ -190,7 +190,7 @@ export function SessionPanel() {
 
           <div className="whitespace-pre">{" "}</div>
 
-          <div className={cn("whitespace-pre-wrap", reveal < REVEAL_LINE_10 && "invisible")}>
+          <div className={cn("whitespace-pre-wrap", reveal < REVEAL_FOOTER && "invisible")}>
             <span className="text-muted-foreground">rendered with </span>
             <span className="text-foreground">@diffgazer/ui</span>
             <span className="text-muted-foreground"> — driven by </span>
@@ -200,7 +200,7 @@ export function SessionPanel() {
           <div
             className={cn(
               "whitespace-pre font-bold text-foreground",
-              reveal < REVEAL_LINE_11 && "invisible",
+              reveal < REVEAL_SETTLED && "invisible",
             )}
           >
             ❯ press j/k to browse the registry

@@ -1,10 +1,11 @@
 import { useKey } from "@diffgazer/keys";
 import { Kbd } from "@diffgazer/ui/components/kbd";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { Fragment } from "react";
 import { CHROME_ACTION_TARGET_CLASS, CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
+import { nextThemePreference, useTheme } from "@/hooks/theme-context";
 
 type FooterRouteMatch = {
   routeId: string;
@@ -44,12 +45,14 @@ function KeyHint({ keys, label }: { keys: readonly string[]; label: string }) {
 }
 
 export function FooterBar() {
-  const navigate = useNavigate();
   const mode = useRouterState({ select: (state) => getFooterMode(state.matches) });
+  const { theme, setTheme } = useTheme();
+  // The hint sits in a row of direct-manipulation keys, so F2 does what its
+  // label says: flip the theme in place, the same cycle the status-bar control
+  // runs. The theme docs page keeps its route, reachable from sidebar and search.
+  const toggleTheme = () => setTheme(nextThemePreference(theme));
 
-  useKey("f2", () => {
-    void navigate({ to: "/$lib/$", params: { lib: "ui", _splat: "theme" } });
-  });
+  useKey("f2", toggleTheme);
 
   return (
     <footer
@@ -67,14 +70,14 @@ export function FooterBar() {
         )}
         {mode === "docs" && <KeyHint keys={["p", "n"]} label="prev/next" />}
         <KeyHint keys={["/"]} label="search" />
-        <Link
-          to="/$lib/$"
-          params={{ lib: "ui", _splat: "theme" }}
+        <button
+          type="button"
+          onClick={toggleTheme}
           className={`inline-flex items-center gap-1.5 transition-colors hover:text-foreground ${FOCUS_RING_CLASS}`}
         >
           <Kbd size="sm">F2</Kbd>
           <span>Theme</span>
-        </Link>
+        </button>
       </div>
       <div className="flex items-center gap-6">
         <Link

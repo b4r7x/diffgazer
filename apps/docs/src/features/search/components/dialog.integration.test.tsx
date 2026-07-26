@@ -5,7 +5,12 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SearchProvider, useSearchOpen } from "@/hooks/search-context";
+import {
+  type RecentDocsPage,
+  SearchProvider,
+  useDocsHistory,
+  useSearchOpen,
+} from "@/hooks/search-context";
 import { SearchDialog } from "./dialog";
 
 const mocks = vi.hoisted(() => ({
@@ -49,6 +54,14 @@ function pageResult(
   };
 }
 
+function VisitRecorder({ pages }: { pages: RecentDocsPage[] }) {
+  const { recordVisit } = useDocsHistory();
+  useEffect(() => {
+    for (const page of pages) recordVisit(page);
+  }, [pages, recordVisit]);
+  return null;
+}
+
 function OpenOnMount() {
   const { setOpen } = useSearchOpen();
   useEffect(() => setOpen(true), [setOpen]);
@@ -84,6 +97,7 @@ describe("SearchDialog integration", () => {
     HTMLDialogElement.prototype.close = vi.fn(function close(this: HTMLDialogElement) {
       this.open = false;
     });
+    sessionStorage.clear();
     mocks.doSearch.mockReset();
     mocks.doSearch.mockResolvedValue([]);
     mocks.navigate.mockReset();
@@ -139,10 +153,54 @@ describe("SearchDialog integration", () => {
     expect(mocks.navigate).toHaveBeenCalledWith({ to: "/ui/components/shared" });
   });
 
-  it("prompts for a query before any search has run", async () => {
+  it("opens onto a launcher whose Jump targets are reachable with two keys", async () => {
+    const user = setupUser();
     await renderOpenDialog();
 
-    expect(screen.getByText("Type to search docs...")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Jump" })).toBeInTheDocument();
+    const options = screen.getAllByRole("option");
+    expect(options.length).toBeGreaterThan(0);
+
+    await user.keyboard("{Enter}");
+    expect(mocks.navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists pages visited this session under Recent, most recent first", async () => {
+    render(<SearchDialog />, {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <TestProviders>
+          <VisitRecorder
+            pages={[
+              { title: "Button", url: "/ui/components/button", section: "components" },
+              { title: "Callout", url: "/ui/components/callout", section: "components" },
+            ]}
+          />
+          {children}
+        </TestProviders>
+      ),
+    });
+    await act(async () => {});
+
+    const recent = screen.getByRole("group", { name: "Recent" });
+    const titles = within(recent)
+      .getAllByRole("option")
+      .map((option) => option.textContent);
+    expect(titles[0]).toContain("Callout");
+    expect(titles[1]).toContain("Button");
+  });
+
+  it("replaces the launcher with results on the first typed character", async () => {
+    const user = setupUser();
+    mocks.doSearch.mockResolvedValue([pageResult("button", "Button")]);
+
+    const input = await renderOpenDialog();
+    expect(screen.getByRole("group", { name: "Jump" })).toBeInTheDocument();
+
+    await user.type(input, "b");
+
+    expect(await screen.findByText("Button")).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Jump" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("option", { selected: true })).toHaveLength(1);
   });
 
   it("announces search failures assertively outside the listbox", async () => {

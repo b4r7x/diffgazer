@@ -25,6 +25,7 @@ import {
 } from "@/lib/segmented-variants";
 import {
   getEnabledSelectableCollectionItems,
+  isSeedElementSkipped,
   useSelectableCollection,
 } from "@/lib/selectable-collection";
 import { cn } from "@/lib/utils";
@@ -114,15 +115,6 @@ interface ToggleGroupSeedElementProps {
   "aria-hidden"?: boolean | "true" | "false";
 }
 
-function isToggleSeedElementSkipped(props: ToggleGroupSeedElementProps): boolean {
-  return (
-    props.hidden === true ||
-    props.inert === true ||
-    props["aria-hidden"] === true ||
-    props["aria-hidden"] === "true"
-  );
-}
-
 function collectEnabledToggleValues(children: ReactNode, skippedAncestor = false): string[] {
   const enabledValues: string[] = [];
 
@@ -130,7 +122,7 @@ function collectEnabledToggleValues(children: ReactNode, skippedAncestor = false
     if (!isValidElement<ToggleGroupSeedElementProps>(child)) return;
     if (child.type === ToggleGroup) return;
 
-    const skipped = skippedAncestor || isToggleSeedElementSkipped(child.props);
+    const skipped = skippedAncestor || isSeedElementSkipped(child.props);
     if (child.type === ToggleGroupItem && typeof child.props.value === "string") {
       if (!child.props.disabled && !skipped) enabledValues.push(child.props.value);
       return;

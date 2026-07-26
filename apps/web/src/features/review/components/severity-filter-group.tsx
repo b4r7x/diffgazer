@@ -106,6 +106,11 @@ export function SeverityFilterGroup({
               className={cn(
                 "min-w-fit px-1.5 text-xs inline-flex items-center whitespace-nowrap tabular-nums pointer-coarse:min-h-11 pointer-coarse:px-3",
                 isActive && SEVERITY_CONFIG[sev].color,
+                // A chip whose count is zero can only filter to an empty list, so
+                // it goes quiet and stops competing with the filters that can do
+                // something. It stays operable and keeps its count in the
+                // accessibility tree - a dimmed control, not a removed one.
+                count === 0 && "text-muted-foreground/60",
               )}
             >
               <span aria-hidden="true">[{visibleLabel}]</span>

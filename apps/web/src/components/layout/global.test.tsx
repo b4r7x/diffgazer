@@ -67,6 +67,9 @@ function createMockApi(): BoundApi {
 
   return {
     ...api,
+    // The shell polls /api/health for its transport lamp; a healthy server is
+    // the baseline every other assertion here is written against.
+    request: vi.fn().mockResolvedValue(new Response(null, { status: 200 })),
     activateProvider: vi
       .fn()
       .mockResolvedValue({ provider: "openrouter", model: "openrouter/test-model" }),
@@ -161,6 +164,23 @@ describe("GlobalLayout", () => {
     expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
   });
 
+  it("keeps the figlet banner on home, the one cover screen", () => {
+    routerState.pathname = "/";
+
+    renderShell();
+
+    expect(screen.getByRole("img", { name: "diffgazer" })).toBeInTheDocument();
+  });
+
+  it("gives the setup wizard the same compact wordmark as every other work screen", () => {
+    routerState.pathname = "/onboarding";
+
+    renderShell();
+
+    expect(screen.queryByRole("img", { name: "diffgazer" })).not.toBeInTheDocument();
+    expect(screen.getByText("DIFFGAZER")).toBeInTheDocument();
+  });
+
   it("keeps the configured header when only provider status fails", async () => {
     vi.mocked(mockApi.getProviderStatus).mockRejectedValue(
       new Error("provider status unavailable"),
@@ -169,9 +189,34 @@ describe("GlobalLayout", () => {
     renderShell();
 
     const status = await screen.findByLabelText(
-      "Provider: openrouter / openrouter/test-model, active",
+      "Provider: openrouter / openrouter/test-model, active; server live",
     );
     expect(status).toHaveTextContent("active");
+  });
+
+  it("keeps the shell mounted and names the cause when the server stops answering", async () => {
+    const user = userEvent.setup();
+    vi.mocked(mockApi.request).mockRejectedValue(new Error("connection refused"));
+
+    renderShell();
+
+    expect(await screen.findByText(/server not responding/i)).toBeVisible();
+    expect(screen.getByRole("main")).toHaveTextContent("Help content");
+    expect(await screen.findByLabelText(/server offline$/)).toHaveTextContent("Offline");
+
+    vi.mocked(mockApi.request).mockResolvedValue(new Response(null, { status: 200 }));
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+
+    await screen.findByLabelText(/server live$/);
+    expect(screen.queryByText(/server not responding/i)).not.toBeInTheDocument();
+  });
+
+  it("shows no connection strip while the server answers", async () => {
+    renderShell();
+
+    await screen.findByLabelText(/server live$/);
+    expect(screen.queryByText(/server not responding/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
   });
 
   it("labels an init failure without presenting an unconfigured provider", async () => {
@@ -179,7 +224,9 @@ describe("GlobalLayout", () => {
 
     renderShell();
 
-    const status = await screen.findByLabelText("Provider: Configuration unavailable, idle");
+    const status = await screen.findByLabelText(
+      "Provider: Configuration unavailable, idle; server live",
+    );
     expect(status).toHaveTextContent("idle");
     expect(screen.queryByLabelText(/Provider: Not configured/i)).not.toBeInTheDocument();
   });

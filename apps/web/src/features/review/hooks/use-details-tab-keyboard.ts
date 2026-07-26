@@ -12,7 +12,7 @@ interface UseReviewDetailsTabKeyboardOptions {
   scrollDetails: (delta: number) => void;
   setActiveTab: (tab: IssueTab) => void;
   enterList: () => void;
-  onToggleStep: (step: number) => void;
+  onToggleStep: (stepIndex: number) => void;
 }
 
 interface UseReviewDetailsTabKeyboardResult {
@@ -61,8 +61,7 @@ export function useReviewDetailsTabKeyboard({
     fixPlan.length > 0 ? Math.min(rawFocusedStepIndex, fixPlan.length - 1) : 0;
 
   const toggleFocusedStep = () => {
-    const step = fixPlan[focusedStepIndex];
-    if (step) onToggleStep(step.step);
+    if (fixPlan[focusedStepIndex]) onToggleStep(focusedStepIndex);
   };
 
   const setFocusedStepIndex = (index: number) => {

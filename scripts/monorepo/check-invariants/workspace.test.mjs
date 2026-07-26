@@ -79,7 +79,7 @@ test("nested metadata scan ignores git-ignored paths and reports nonignored path
     runInvariantChecks({
       rootDir: root,
       packageFiles: PACKAGE_FILES,
-      commandOutputs: { gitLsFilesStaged: "", nestedRepoConfig: "" },
+      commandOutputs: { gitLsFilesStaged: "", submoduleConfig: "" },
       checks,
     });
 
@@ -111,7 +111,7 @@ test("nested metadata scan prunes nuke audit workspaces but still reports author
     runInvariantChecks({
       rootDir: root,
       packageFiles: PACKAGE_FILES,
-      commandOutputs: { gitLsFilesStaged: "", nestedRepoConfig: "" },
+      commandOutputs: { gitLsFilesStaged: "", submoduleConfig: "" },
       checks,
     });
 

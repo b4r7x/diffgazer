@@ -8,14 +8,14 @@ import { type RefObject, useState } from "react";
 import { useSettingsFormFooter } from "./use-settings-form-footer";
 
 interface UseSettingsFormActionsOptions {
-  canSave: boolean;
+  saveAvailable: boolean;
   getSettingsPayload: () => Partial<SettingsConfig>;
   contentShortcuts: Shortcut[];
   focusFallbackRef?: RefObject<HTMLElement | null>;
 }
 
 export function useSettingsFormActions({
-  canSave: saveAvailable,
+  saveAvailable,
   getSettingsPayload,
   contentShortcuts,
   focusFallbackRef,

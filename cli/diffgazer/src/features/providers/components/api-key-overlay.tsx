@@ -1,4 +1,5 @@
 import { useSaveConfig } from "@diffgazer/core/api/hooks";
+import { usePageFooter } from "@diffgazer/core/footer";
 import type { InputMethod } from "@diffgazer/core/onboarding";
 import { useApiKeyEntry } from "@diffgazer/core/providers";
 import { sanitizeTerminalText } from "@diffgazer/core/review";
@@ -7,6 +8,7 @@ import {
   type CredentialRef,
   PROVIDER_ENV_VARS,
 } from "@diffgazer/core/schemas/config";
+import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useEffect, useEffectEvent, useState } from "react";
@@ -17,6 +19,13 @@ import { Spinner } from "../../../components/ui/spinner";
 import { useActionRow } from "../../../hooks/use-action-row";
 import { useTheme } from "../../../theme/provider";
 import { isOverlayFooterNavActive } from "../lib/overlay-footer-gate";
+
+const API_KEY_SHORTCUTS: Shortcut[] = [
+  { key: "Tab", label: "Focus Key Field" },
+  { key: "←/→", label: "Switch Action" },
+  { key: "Enter", label: "Confirm" },
+];
+const API_KEY_RIGHT_SHORTCUTS: Shortcut[] = [{ ...BACK_SHORTCUT, label: "Close" }];
 
 interface ApiKeyOverlayProps {
   open: boolean;
@@ -80,6 +89,11 @@ export function ApiKeyOverlay({
     },
     { isActive: open && !saving },
   );
+
+  usePageFooter({
+    shortcuts: API_KEY_SHORTCUTS,
+    rightShortcuts: API_KEY_RIGHT_SHORTCUTS,
+  });
 
   const footerNavActive = isOverlayFooterNavActive({ open, saving, inputFocused });
   const actions = useActionRow({

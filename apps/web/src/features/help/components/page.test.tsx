@@ -12,6 +12,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
+import { expectSingleReticle } from "@/testing/reticle";
 import { HelpPage } from "./page";
 
 function renderPage() {
@@ -44,11 +45,50 @@ describe("HelpPage", () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: /keyboard shortcuts/i })).toBeVisible();
-    expect(screen.getByRole("list", { name: /keyboard shortcuts/i })).toBeVisible();
-    expect(screen.getByText("Navigate Menus and Lists")).toBeVisible();
+    expect(screen.getByRole("list", { name: "Anywhere" })).toBeVisible();
+    expect(screen.getAllByText("Move the highlight")).toHaveLength(1);
 
     await user.keyboard("{Escape}");
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+  });
+
+  it("renders exactly one bracketed element: the help sheet itself", () => {
+    const { container } = renderPage();
+
+    expectSingleReticle(container);
+  });
+
+  it("groups the shortcuts by context in the canonical order", () => {
+    renderPage();
+
+    const groupHeadings = screen
+      .getAllByRole("heading", { level: 3 })
+      .map((heading) => heading.textContent);
+    expect(groupHeadings).toEqual(["Anywhere", "In lists", "In a review", "In history"]);
+
+    for (const name of ["Anywhere", "In lists", "In a review", "In history"]) {
+      expect(screen.getByRole("list", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("keeps the two ↑/↓ rows apart by context instead of by label", () => {
+    renderPage();
+
+    const lists = ["In lists", "In a review"].map((name) =>
+      screen.getByRole("list", { name }),
+    ) as HTMLElement[];
+    expect(within(lists[0] as HTMLElement).getByText("↑/↓")).toBeVisible();
+    expect(within(lists[0] as HTMLElement).getByText("Move the highlight")).toBeVisible();
+    expect(within(lists[1] as HTMLElement).getByText("↑/↓")).toBeVisible();
+    expect(within(lists[1] as HTMLElement).getByText("Scroll the focused pane")).toBeVisible();
+  });
+
+  it("advertises history search in its own context group", () => {
+    renderPage();
+
+    const history = screen.getByRole("list", { name: "In history" });
+    expect(within(history).getByText("Search Runs")).toBeVisible();
+    expect(within(history).getByText("/")).toBeVisible();
   });
 
   it("advertises the live web-only h and ? bindings and omits the nonexistent r/R rows", () => {
@@ -60,14 +100,28 @@ describe("HelpPage", () => {
     expect(screen.queryByText("Review Staged Changes")).not.toBeInTheDocument();
   });
 
-  it("shows one row per action instead of repeating the scroll label per key", () => {
+  it("gives each review scroll key its own truthful row", () => {
     renderPage();
 
-    expect(screen.getAllByText("Scroll Content")).toHaveLength(1);
-
-    const shortcuts = screen.getByRole("list", { name: /keyboard shortcuts/i });
-    for (const key of ["↑/↓", "PgUp/PgDn", "Home/End"]) {
+    const shortcuts = screen.getByRole("list", { name: "In a review" });
+    const rows: [string, string][] = [
+      ["↑/↓", "Scroll the focused pane"],
+      ["PgUp/PgDn", "Page up or down"],
+      ["Home/End", "Jump to start or end"],
+    ];
+    for (const [key, label] of rows) {
       expect(within(shortcuts).getAllByText(key).length).toBeGreaterThan(0);
+      expect(within(shortcuts).getByText(label)).toBeVisible();
+    }
+  });
+
+  it("still collapses the keys that do share one action into a single row", () => {
+    renderPage();
+
+    const lists = screen.getByRole("list", { name: "In lists" });
+    expect(within(lists).getAllByText("Move the highlight")).toHaveLength(1);
+    for (const key of ["↑/↓", "j/k"]) {
+      expect(within(lists).getAllByText(key).length).toBeGreaterThan(0);
     }
   });
 

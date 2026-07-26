@@ -1,3 +1,4 @@
+import "./model-select-overlay.terminal-mock";
 import type { BoundApi } from "@diffgazer/core/api";
 import type { ActivateProviderResponse } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";

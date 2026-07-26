@@ -36,6 +36,12 @@ describe("IssuePreviewItem", () => {
     expect(screen.getByText("security")).toBeInTheDocument();
   });
 
+  it("speaks severity as a word, never as a glyph the reader has to decode", () => {
+    const { container } = render(<IssuePreviewItem {...BASE_PROPS} />);
+
+    expect(container).not.toHaveTextContent("▲");
+  });
+
   it("keeps the complete location available when the visible path is truncated", () => {
     const file = "src/features/review/components/a/very/long/location/issue-preview-item.tsx";
     render(<IssuePreviewItem {...BASE_PROPS} file={file} />);

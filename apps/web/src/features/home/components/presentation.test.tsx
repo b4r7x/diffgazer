@@ -15,6 +15,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockRouterNavigate,
 }));
 
+import { expectSingleReticle } from "@/testing/reticle";
 import { HomePagePresentation, type HomePagePresentationProps } from "./presentation";
 
 type Navigate = HomePagePresentationProps["navigate"];
@@ -102,6 +103,16 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
     mockRouterNavigate.mockReset();
   });
 
+  it("brackets only the menu, the pane the keys drive", () => {
+    const { container } = renderPresentation(buildProps());
+
+    expectSingleReticle(container);
+    expect(screen.getByRole("region", { name: /main menu/i })).toHaveAttribute(
+      "data-state",
+      "focused",
+    );
+  });
+
   it("renders trusted, provider, and last-run context when data is present", () => {
     renderPresentation(
       buildProps({
@@ -119,7 +130,7 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
     expect(screen.getByText("openrouter (openrouter/test-model)")).toBeInTheDocument();
     expect(screen.getByText("Last Run")).toBeInTheDocument();
     expect(screen.getByText("#12345678")).toBeInTheDocument();
-    expect(screen.getByText("(2 issues)")).toBeInTheDocument();
+    expect(screen.getByText("2 issues")).toBeInTheDocument();
     expect(screen.queryByText(/12345678-1234/)).not.toBeInTheDocument();
   });
 
@@ -423,6 +434,34 @@ describe("HomePagePresentation — menu jump keys", () => {
         params: { reviewId: "rev-unstaged" },
       }),
     );
+  });
+
+  it("opens the last run from the advertised o key", async () => {
+    const navigateMock = createNavigateMock();
+    const user = userEvent.setup();
+    renderPresentation(
+      buildProps({
+        context: { ...baseContext, lastRunId: "rev-last", lastRunIssueCount: 4 },
+        navigate: navigateMock.navigate,
+      }),
+    );
+
+    await user.keyboard("o");
+
+    expect(navigateMock.mock).toHaveBeenCalledWith({
+      to: "/review/{-$reviewId}",
+      params: { reviewId: "rev-last" },
+    });
+  });
+
+  it("leaves o inert when there is no previous run", async () => {
+    const navigateMock = createNavigateMock();
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ navigate: navigateMock.navigate }));
+
+    await user.keyboard("o");
+
+    expect(navigateMock.mock).not.toHaveBeenCalled();
   });
 
   it("ignores the jump keys of items the menu renders as disabled", async () => {

@@ -82,8 +82,8 @@ const failureCases = [
     options: { commandOutputs: { gitLsFilesStaged: "160000 abcdef 0\tvendor/lib\n" } },
   },
   {
-    name: "no nested repo config",
-    options: { commandOutputs: { nestedRepoConfig: "submodule.vendor.url git@example.com:x/y" } },
+    name: "no git submodule config",
+    options: { commandOutputs: { submoduleConfig: "submodule.vendor.url git@example.com:x/y" } },
   },
   {
     name: "no nested .git directories",

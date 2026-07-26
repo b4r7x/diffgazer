@@ -5,6 +5,12 @@ export const inputDoc: ComponentDoc = {
     "Terminal-styled text input primitives with size variants, invalid state, and optional prefix/suffix grouping.",
   notes: [
     {
+      title: "Read-only vs Disabled",
+      content:
+        "Input styles the two states on different channels so they cannot be confused. Disabled dashes the border and dims the ink: the field is not part of this form. Read-only fills the surface with the recessed token and keeps full-contrast ink: the value matters, it just cannot be edited. A read-only field stays focusable and copyable, and the focus ring still applies on top of the fill because one is an edge and the other a surface.",
+    },
+
+    {
       title: "Invalid State",
       content:
         "Set aria-invalid=true on Input or InputGroup to apply the destructive border treatment. Field.Control sets aria-invalid automatically when Field.invalid is true.",

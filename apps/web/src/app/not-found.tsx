@@ -1,9 +1,10 @@
-import { Button } from "@diffgazer/ui/components/button";
-import { Typography } from "@diffgazer/ui/components/typography";
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { FailureView } from "@/components/shared/failure-view";
 
 export function NotFoundPage() {
+  const navigate = useNavigate();
+
   useEffect(() => {
     const previousTitle = document.title;
     const notFoundTitle = "Page not found — Diffgazer";
@@ -15,22 +16,15 @@ export function NotFoundPage() {
   }, []);
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-background text-foreground font-mono">
-      <div className="text-center">
-        <Typography as="h1" size="2xl" className="text-error-text mb-2">
-          Page not found
-        </Typography>
-        <p className="text-muted-foreground text-sm mb-4">
-          The page you were looking for does not exist.
-        </p>
-        <Button variant="secondary">
-          {({ className }) => (
-            <Link to="/" className={className}>
-              Go home
-            </Link>
-          )}
-        </Button>
-      </div>
-    </div>
+    <FailureView
+      title="Page Not Found"
+      message="The page you were looking for does not exist."
+      scope="not-found"
+      titleAs="h1"
+      primary={{ label: "Go to Home", onAction: () => void navigate({ to: "/" }) }}
+      secondary={{ label: "Reload", onAction: () => window.location.reload() }}
+      // Esc runs the secondary action, so the label must name it.
+      footerRightShortcuts={[{ key: "Esc", label: "Reload" }]}
+    />
   );
 }

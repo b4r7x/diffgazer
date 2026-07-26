@@ -1,5 +1,5 @@
 import { type Cleanup, createEffectScope } from "./effect-scope";
-import { initCopyButtons } from "./effects/copy";
+import { initCopyButtons, initPackageManagerSwitch } from "./effects/copy";
 import { initCursor } from "./effects/cursor";
 import { createField } from "./effects/field";
 import { initFindings } from "./effects/findings";
@@ -93,6 +93,7 @@ export function bootstrap(doc: Document = document, flags: Flags = getFlags()): 
 
   wireEnvLinks(doc);
   scope.addCleanup(initCopyButtons(doc, 1400, scope.signal));
+  scope.addCleanup(initPackageManagerSwitch(doc, scope.signal));
   let activeFlags = flags;
   let stopVisualEffects = startVisualEffects(doc, activeFlags, scope.signal);
   scope.addCleanup(() => stopVisualEffects());

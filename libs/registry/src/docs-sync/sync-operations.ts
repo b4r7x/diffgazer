@@ -1,6 +1,5 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { log } from "../logger.js";
 import { normalizeOrigin } from "../origin.js";
 import { collectJsonFiles, ensureExists, resetDir, resolveInside } from "../utils/fs.js";
 import { rewriteSecondaryDemoIndexImports } from "./demo-index-rewrite.js";
@@ -239,7 +238,7 @@ function copyExamplesForLibrary(
   );
   mkdirSync(targetExamplesDir, { recursive: true });
   cpSync(artExamplesDir, targetExamplesDir, { recursive: true });
-  log.info(`[docs-sync] Copied ${artifact.id} examples to registry/examples/${artifact.id}/`);
+  console.log(`[docs-sync] Copied ${artifact.id} examples to registry/examples/${artifact.id}/`);
 }
 
 // Precondition: every `artifact.id` (including `primaryArtifact.id`) must already
@@ -295,6 +294,6 @@ export function runDocsSyncPass(params: {
     });
   }
 
-  log.info(`[docs-sync] Syncing registries (origin asserted: ${origin})...`);
+  console.log(`[docs-sync] Syncing registries (origin asserted: ${origin})...`);
   syncRegistries(artifacts, paths.publicRegistryDir, origin, sourceOrigin);
 }

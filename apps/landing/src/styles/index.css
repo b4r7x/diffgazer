@@ -69,7 +69,6 @@ main { position: relative; z-index: 10; }
    Corner HUD — the viewport is the viewfinder
    ============================================================ */
 .hud { position: fixed; z-index: 60; font-size: 12px; letter-spacing: 0.18em; mix-blend-mode: normal; }
-.hud-tl { top: 22px; left: 26px; font-family: var(--display); font-weight: 400; font-size: 14px; letter-spacing: 0.2em; }
 .hud-tr { top: 16px; right: 20px; display: flex; gap: 2px; }
 .hud-bl { bottom: 18px; left: 26px; color: var(--muted); display: flex; gap: 10px; align-items: center; font-family: var(--display); }
 .hud-br { bottom: 16px; right: 20px; }
@@ -144,12 +143,6 @@ main { position: relative; z-index: 10; }
 .reveal[data-delay="2"] { transition-delay: 0.2s; }
 .reveal[data-delay="3"] { transition-delay: 0.3s; }
 
-/* Giant ghost word bleeding offscreen (behind content) */
-.ghost-word { position: absolute; z-index: -1; font-family: var(--display); font-weight: 400; letter-spacing: 0;
-  font-size: clamp(120px, 22vw, 320px); line-height: 1; color: transparent;
-  -webkit-text-stroke: 1px color-mix(in oklab, var(--muted) 34%, transparent);
-  user-select: none; pointer-events: none; white-space: nowrap; }
-
 /* ============================================================
    Scene 1 — hero / aperture
    ============================================================ */
@@ -205,6 +198,16 @@ main { position: relative; z-index: 10; }
 [data-magnetic] { will-change: transform; }
 #s1 .sub { max-width: 44ch; }
 .install-row { display: flex; gap: 10px; margin-top: 40px; flex-wrap: wrap; justify-content: center; align-items: center; }
+/* Package-manager switch (install scene only; the hero keeps one npm line).
+   Three plain toggle buttons in the page's bracket idiom — aria-pressed, normal
+   tab order, native activation — so the conversion point needs no hand-rolled
+   widget. Deliberately shorter than the 46px command row: it reads as a
+   subordinate control above the command, not a second primary button. */
+.pm-switch { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 40px; }
+.pm-switch + .install-row { margin-top: 14px; }
+.pm-btn { height: 36px; padding: 0 14px; font-size: 12px; color: var(--muted); }
+.pm-btn[aria-pressed="true"] { background: var(--selection); color: var(--foreground); }
+.pm-btn[aria-pressed="true"] .bracket { color: var(--foreground); }
 .install-cmd {
   display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 20px;
   border: 1px solid var(--hairline); border-radius: var(--radius); font-size: 14px;
@@ -286,7 +289,6 @@ main { position: relative; z-index: 10; }
    Scene 4 — findings (light inversion)
    ============================================================ */
 #s4 { padding: 12vh 0; }
-#s4 .ghost-word { top: -0.18em; right: -6vw; }
 .sev { display: inline-flex; align-items: center; height: 20px; padding: 0 8px;
   font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
   border-radius: 0.125rem; border: 1px solid; flex: none; }
@@ -354,9 +356,16 @@ html[data-scene-theme="light"] .fd-fix .rem { color: #cf222e; }
 #figlet .fl:nth-child(5) > span { transition-delay: 0.24s; }
 #figlet .fl:nth-child(6) > span { transition-delay: 0.3s; }
 #s6 .note { margin-top: 18px; color: var(--muted); font-size: 13px; }
-.foot-links { margin-top: 56px; display: flex; justify-content: center; gap: 26px;
-  font-size: 12px; color: var(--muted); }
+/* The page opens and closes in one idiom: the same bracket treatment .hud a
+   carries at the top corners. */
+.foot-links { margin-top: 56px; display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 26px; font-size: 12px; color: var(--muted); }
+/* A bracket pair is one mark: at 390 "[ MIT License ]" broke after "[ MIT" and
+   read as a rendering bug. Links wrap between themselves, never inside one. */
+.foot-links a { white-space: nowrap; }
 .foot-links a:hover { color: var(--foreground); }
+.foot-links .bracket { color: var(--muted); transition: color 0.15s ease; }
+.foot-links a:hover .bracket, .foot-links a:focus-visible .bracket { color: var(--foreground); }
 
 /* ============================================================
    Responsive
@@ -441,6 +450,7 @@ html[data-scene-theme="light"] .fd-fix .rem { color: #cf222e; }
    wide touch viewports that keep it (below 920px it is hidden outright). */
 @media (pointer: coarse) {
   .hud-install { height: 44px; }
+  .pm-btn { height: 44px; padding: 0 16px; }
 }
 
 /* Hero diff: restore breathing room over the compact contract defaults.
@@ -483,14 +493,32 @@ html[data-scene-theme="light"] .fd-fix .rem { color: #cf222e; }
   .gaze-diff .diff-code { overflow: hidden; text-overflow: ellipsis; }
 }
 
-/* HUD logo: the figlet wordmark, scaled down */
-.hud-tl { padding: 0; }
-.logo-figlet { margin: 0; font-family: var(--mono); font-size: 4.2px; line-height: 1.2;
-  letter-spacing: 0; color: var(--foreground); white-space: pre; }
-/* Below 920px the figlet would render at ~3.4px and smear, so the plain
-   letter-spaced wordmark takes over — .hud-tl already carries its typography. */
-.logo-word { display: none; }
-@media (max-width: 920px) {
-  .logo-figlet { display: none; }
-  .logo-word { display: inline; }
+/* HUD logo: the figlet wordmark, one mark at every width.
+   Box-drawing art holds together only while every glyph keeps the same metrics,
+   so the art is laid out at a whole 10px step and the finished block is scaled
+   by one transform — the same technique the docs chrome uses. Sizing the font
+   down instead rounded each glyph on its own and broke the strokes apart, which
+   is why the page used to swap in a plain letter-spaced word below 920px; it no
+   longer needs a second identity. The mark is largest on phones (0.42), where it
+   is the only chrome in the band, and steps back above 921px (0.3), where it
+   shares the frame with three other HUD corners and the hero heading.
+   Transforms do not affect layout, so .hud-tl reserves the scaled box itself in
+   the art's own 10px mono metrics (63 columns x 6 rows). */
+.hud-tl {
+  top: 22px;
+  left: 26px;
+  padding: 0;
+  --wm-scale: 0.42;
+  width: calc(63ch * var(--wm-scale));
+  height: calc(6em * var(--wm-scale));
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0;
 }
+@media (min-width: 921px) {
+  .hud-tl { --wm-scale: 0.3; }
+}
+.logo-figlet { margin: 0; font-family: var(--mono); font-size: 10px; line-height: 1;
+  letter-spacing: 0; color: var(--foreground); white-space: pre;
+  transform: scale(var(--wm-scale)); transform-origin: top left; }

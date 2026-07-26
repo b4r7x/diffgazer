@@ -66,13 +66,48 @@ describe("CommandPalette CSS contract", () => {
     expect(body).toContain("font-size: var(--text-2xs)");
   });
 
-  it("routes every floating frame shadow through the single hard-shadow token", () => {
+  it("routes every floating frame shadow through the single hard-shadow token plus the shared lip", () => {
     for (const frame of ["border", "viewfinder", "terminal", "card"]) {
       const body = ruleBody(`[data-slot="command-palette-content"][data-frame="${frame}"]`);
       expect(body).not.toBeNull();
-      expect(body).toContain("box-shadow: var(--command-palette-shadow, var(--shadow-hard))");
+      // Modal overlay tier: the shared --surface-1 inner lip composited with the
+      // library's only sanctioned drop shadow, in one box-shadow so neither wins.
+      expect(body).toContain("inset 0 1px 0 var(--surface-1-highlight)");
+      expect(body).toContain("var(--command-palette-shadow, var(--shadow-hard))");
     }
     expect(css).not.toContain("oklch(0% 0 0");
+  });
+
+  it("expands the Esc close control to a 44px touch target without moving its chip", () => {
+    const body = ruleBody('[data-slot="command-palette-close"]::before');
+    expect(body).not.toBeNull();
+    expect(body).toContain("min-width: 44px");
+    expect(body).toContain("min-height: 44px");
+    expect(body).toContain("position: absolute");
+    // Anchored to the chip's leading edge, so the extra width grows away from
+    // the readout and the input instead of overhanging them.
+    expect(body).toContain("inset-inline-start: 0");
+    expect(body).not.toContain("left: 50%");
+    expect(body).toContain("translate: 0 -50%");
+  });
+
+  it("pads the footer past the home indicator with a safe fallback", () => {
+    const body = ruleBody('[data-slot="command-palette-footer"]');
+    expect(body).toContain("padding: 8px 12px max(8px, env(safe-area-inset-bottom))");
+  });
+
+  it("reserves a fixed-width tabular slot for the count readout", () => {
+    const body = ruleBody('[data-slot="command-palette-count"]');
+    expect(body).toContain("font-variant-numeric: tabular-nums");
+    expect(body).toContain("min-width: 7ch");
+    expect(ruleBody('[data-slot="command-palette-count"][data-empty]')).toContain(
+      "color: var(--error)",
+    );
+  });
+
+  it("fills the palette from the shared overlay surface step, not the page background", () => {
+    const body = ruleBody('[data-slot="command-palette-content"]');
+    expect(body).toContain("background: var(--command-palette-bg, var(--surface-1))");
   });
 
   it("leaves the bare embedding frame without a shadow", () => {
@@ -122,7 +157,7 @@ describe("CommandPalette CSS contract", () => {
       '[data-slot="command-palette-content"][data-frame="terminal"] [data-slot="command-palette-item"][data-highlighted][data-tone]:not([data-tone="neutral"])::before',
     );
     expect(body).not.toBeNull();
-    expect(body).toContain("background: var(--command-palette-bg, var(--background))");
+    expect(body).toContain("background: var(--command-palette-bg, var(--surface-1))");
   });
 
   it("collapses the list padding when nothing is rendered inside it", () => {

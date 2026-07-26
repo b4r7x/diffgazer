@@ -5,6 +5,7 @@ import {
   collectTreeParityErrors,
   rewriteDemoIndexForViteGlob,
 } from "@diffgazer/registry";
+import { errorMessage } from "./error-message.mjs";
 import { resolveInside, toPosixPath } from "./paths.mjs";
 
 const SOURCE_ARCHIVE_SUFFIX = ".source.json";
@@ -105,7 +106,7 @@ function collectGeneratedOutputErrors({ docsRoot, primaryLibraryId, artifacts = 
         errors.push(...collectPrimaryDemoIndexErrors(docsRoot, artifact));
       }
     } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
+      errors.push(errorMessage(error));
     }
   }
 
@@ -127,7 +128,7 @@ function collectExpectedPublicSourceArchives(artifacts, errors) {
         `${artifact.id} generated artifact path`,
       );
     } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
+      errors.push(errorMessage(error));
       continue;
     }
 
@@ -162,7 +163,7 @@ function collectPublicSourceDataErrors({ docsRoot, artifacts = [] }) {
     try {
       publicPath = resolveInside(publicRoot, relativePath, "docs public source-data path");
     } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
+      errors.push(errorMessage(error));
       continue;
     }
 

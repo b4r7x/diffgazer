@@ -1,8 +1,7 @@
 "use client";
 
 import type { ComponentProps } from "react";
-import { cn } from "@/lib/utils";
-import { Kbd } from "../kbd/kbd";
+import { OverlayHints } from "../shared/overlay-hints";
 
 export interface KeyboardHint {
   key: string;
@@ -17,6 +16,12 @@ export interface DialogKeyboardHintsProps extends ComponentProps<"div"> {
   size?: "sm" | "md";
 }
 
+/**
+ * Dialog's slice of the shared overlay hint legend. Key names stay exposed to
+ * AT (`aria-hidden={false}`) so keyboard users can discover the shortcut — that
+ * is Dialog's long-standing behaviour and the reason it opts out of the
+ * primitive's default.
+ */
 export function DialogKeyboardHints({
   hints,
   size = "md",
@@ -26,18 +31,12 @@ export function DialogKeyboardHints({
   if (!hints.length) return null;
 
   return (
-    <div
-      className={cn("flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs", className)}
-      {...props}
-    >
+    <OverlayHints aria-hidden={false} className={className} {...props}>
       {hints.map((hint) => (
-        <span key={`${hint.key}-${hint.label}`} className="inline-flex items-center gap-1">
-          {/* Key name stays exposed to AT (no aria-hidden) so keyboard users can
-              discover the shortcut — CommandPaletteInput's Kbd is the model. */}
-          <Kbd size={size}>{hint.key}</Kbd>
-          <span>{hint.label}</span>
-        </span>
+        <OverlayHints.Item key={`${hint.key}-${hint.label}`} keys={[hint.key]} size={size}>
+          {hint.label}
+        </OverlayHints.Item>
       ))}
-    </div>
+    </OverlayHints>
   );
 }

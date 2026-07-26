@@ -10,6 +10,11 @@ export const tocDoc: ComponentDoc = {
   ],
   notes: [
     {
+      title: "Current-location mark",
+      content:
+        'The library spells "you are here" one way: a 2px left rail in --primary (registry/lib/marker-rail.ts). Full-bleed inversion is reserved for the TRANSIENT keyboard highlight; a row that is both the current location and the highlight keeps the inversion and flips its rail to --primary-foreground so the mark survives. The rail is reserved transparently in the resting state and pulled back by its own width, so a row\'s label never shifts horizontally when it becomes current \u2014 that anti-shift geometry is the contract, and it is why the rail costs 0px of label width at 375/390 where a full-bleed fill reads as a solid slab. Toc is the reference implementation of that rail.',
+    },
+    {
       title: "Headless-friendly",
       content:
         "Toc/TocList/TocItem are presentation primitives. Pair them with your own heading tracking logic (e.g. IntersectionObserver or Fumadocs AnchorProvider).",

@@ -164,9 +164,10 @@
     justify-content: center;
   }
 
-  /* Chrome="dots" anywhere: anchor dots to the header strip, balance the
-     centered label with symmetric padding (12px outer + 3*9 dots + 2*6 gaps
-     ≈ 51 → round to 52). */
+  /* Chrome="dots" anywhere: anchor the marks to the header strip and balance
+     the centered label with symmetric padding. The strip is 36px wide
+     (3*8 marks + 2*6 gaps) and starts at the 12px inset, so it ends at 48px;
+     52px keeps a 4px breathing gap before the centered label on both sides. */
   [data-slot="code-block"][data-chrome="dots"] [data-slot="code-block-header"] {
     position: relative;
     justify-content: center;
@@ -186,11 +187,24 @@
     pointer-events: none;
   }
 
+  /* Three hard 8px marks on the shared cell module, not macOS traffic lights:
+     the library has no circles and depicts no window chrome. The descending
+     opacity ramp encodes a fading tail — the same gesture the Spinner's snake
+     makes — instead of three interchangeable ornaments. */
   [data-slot="code-block-dots"] span {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: color-mix(in oklab, var(--code-block-border, var(--border)) 70%, transparent);
+    width: 8px;
+    height: 8px;
+    border-radius: 0;
+  }
+
+  [data-slot="code-block-dots"] span:nth-child(1) {
+    background: color-mix(in oklab, var(--code-block-fg, var(--foreground)) 42%, transparent);
+  }
+  [data-slot="code-block-dots"] span:nth-child(2) {
+    background: color-mix(in oklab, var(--code-block-fg, var(--foreground)) 28%, transparent);
+  }
+  [data-slot="code-block-dots"] span:nth-child(3) {
+    background: color-mix(in oklab, var(--code-block-fg, var(--foreground)) 16%, transparent);
   }
 
   /* Self-protecting: hide chrome dots if no header is rendered. */
@@ -356,5 +370,11 @@
 
   [data-slot="code-block-copy-button"]:focus-visible {
     outline-color: Highlight;
+  }
+
+  /* color-mix tints are dropped in forced colors, and the ramp is decoration
+     rather than information, so flatten all three marks. */
+  [data-slot="code-block-dots"] span {
+    background: GrayText;
   }
 }

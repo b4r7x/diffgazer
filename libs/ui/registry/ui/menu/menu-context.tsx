@@ -1,8 +1,16 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 
 export type CustomActivator = () => void;
+
+/** The submenu currently replacing the item list in drill-down (`stack`) mode. */
+export interface MenuSubEntry {
+  /** Sub-trigger item id, so popping can restore the highlight to it. */
+  id: string;
+  /** Trigger label, echoed in the back row so the parent context stays legible. */
+  label: ReactNode;
+}
 
 /** Context value shared by menu. */
 export interface MenuContextValue {
@@ -39,6 +47,18 @@ export interface MenuContextValue {
   registerActivator: (id: string, handler: CustomActivator) => void;
   /** Unregisters activator from menu. */
   unregisterActivator: (id: string) => void;
+  /** Submenu currently drilled into, or null at the root level. */
+  activeSub: MenuSubEntry | null;
+  /** Replaces the item list with a submenu. One level; a sibling push replaces. */
+  pushSub: (entry: MenuSubEntry) => void;
+  /**
+   * Returns to the parent item list and restores the highlight to the trigger.
+   * Pass an entry id to pop only that entry, so a submenu tearing down after a
+   * sibling already pushed does not clobber the sibling.
+   */
+  popSub: (id?: string) => void;
+  /** Element a stacked submenu portals its items into, or null while at the root. */
+  stackContainer: HTMLElement | null;
 }
 
 /** React context backing menu. */

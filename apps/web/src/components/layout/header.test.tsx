@@ -33,7 +33,7 @@ describe("Header", () => {
     // The aria-label replaces the row's children for assistive tech, so it has
     // to carry the status word the sighted user reads beside the name.
     const status = screen.getByLabelText(
-      "Provider: OpenAI / a-provider-model-name-that-needs-to-fit, active",
+      "Provider: OpenAI / a-provider-model-name-that-needs-to-fit, active; server live",
     );
     expect(status).toBeInTheDocument();
     expect(status).toHaveTextContent("OpenAI / a-provider-model-name-that-needs-to-fit");
@@ -62,5 +62,39 @@ describe("Header", () => {
   it("omits the back button when onBack is not provided", () => {
     render(<Header providerName="OpenAI" providerStatus="idle" />);
     expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
+  });
+
+  it("tells the truth about the transport instead of the provider alone", () => {
+    const { rerender } = render(
+      <Header
+        providerName="gemini"
+        providerStatus="active"
+        wordmark="line"
+        serverState="offline"
+      />,
+    );
+
+    expect(screen.getByLabelText("Provider: gemini, active; server offline")).toHaveTextContent(
+      "Offline",
+    );
+
+    rerender(
+      <Header
+        providerName="gemini"
+        providerStatus="active"
+        wordmark="line"
+        serverState="retrying"
+      />,
+    );
+
+    expect(
+      screen.getByLabelText("Provider: gemini, active; server reconnecting"),
+    ).toHaveTextContent("Reconnecting");
+
+    rerender(<Header providerName="gemini" providerStatus="active" wordmark="line" />);
+
+    expect(screen.getByLabelText("Provider: gemini, active; server live")).toHaveTextContent(
+      "active",
+    );
   });
 });

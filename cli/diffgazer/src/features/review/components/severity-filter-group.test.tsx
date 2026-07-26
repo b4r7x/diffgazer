@@ -9,7 +9,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { flush } from "../../../testing/flush";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../theme/provider";
-import { SeverityFilterGroup } from "./severity-filter-group";
+import { getSeverityChipLayout, SeverityFilterGroup } from "./severity-filter-group";
 
 const ARROW_RIGHT = "[C";
 
@@ -66,16 +66,33 @@ describe("CLI SeverityFilterGroup keyboard model", () => {
     expect(lastFrame()).not.toContain("[BLOCKER (0)]");
   });
 
-  test("abbreviates severity chips when the pane cannot fit the full labels", () => {
+  test("wraps full severity chips onto a second row before abbreviating them", () => {
     const { lastFrame } = render(<Harness contentWidth={24} />);
     const frame = lastFrame() ?? "";
 
-    expect(frame).toContain("B0 H0 M0 L0 N0");
-    expect(frame).not.toContain("[BLOCK");
-    expect(frame.split("\n")).toHaveLength(1);
+    expect(frame).toContain("[BLOCKER 0]");
+    expect(frame).not.toContain("B0 H0");
+    expect(frame.split("\n").length).toBeGreaterThan(1);
   });
 
-  test("keeps all realistic severity chips on one row in an 80x24 root frame", async () => {
+  test("wraps chip rows contiguously, without spending a blank row between them", () => {
+    const { lastFrame } = render(<Harness contentWidth={24} />);
+    const rows = (lastFrame() ?? "").split("\n").filter((row) => row.trim().length > 0);
+
+    expect(rows.length).toBeGreaterThan(1);
+    expect((lastFrame() ?? "").split("\n")).toHaveLength(rows.length);
+  });
+
+  test("abbreviates severity chips only when a single chip cannot fit", () => {
+    const { lastFrame } = render(<Harness contentWidth={10} />);
+    const frame = lastFrame() ?? "";
+
+    expect(frame).toContain("B0 H0 M0");
+    expect(frame).toContain("L0 N0");
+    expect(frame).not.toContain("[BLOCK");
+  });
+
+  test("keeps realistic severity chips readable in a narrow pane of an 80x24 root frame", async () => {
     const { lastFrame } = renderRootFrame(
       80,
       24,
@@ -88,10 +105,11 @@ describe("CLI SeverityFilterGroup keyboard model", () => {
       />,
     );
 
-    await vi.waitFor(() => expect(lastFrame()).toContain("B1 H3 M3 L3 N2"));
+    await vi.waitFor(() => expect(lastFrame()).toContain("[BLOCKER 1]"));
     const frame = lastFrame() ?? "";
     expect(frame.split("\n")).toHaveLength(24);
-    expect(frame.split("\n").filter((line) => /B1|H3|M3|L3|N2/.test(line))).toHaveLength(1);
+    expect(frame).toContain("[NIT 2]");
+    expect(frame).not.toContain("B1 H3");
   });
 
   test("Enter toggles the focused severity into the filter set", async () => {
@@ -288,5 +306,29 @@ describe("CLI SeverityFilterGroup focus clamping", () => {
     expect(consoleError).not.toHaveBeenCalled();
     // Component still renders its severities after the clamp.
     expect(lastFrame()).toContain(SEVERITY_LABELS[SEVERITY_ORDER[0]]);
+  });
+});
+
+describe("getSeverityChipLayout", () => {
+  const LABELS = ["BLOCKER 1", "HIGH 3", "MED 3", "LOW 3", "NIT 2"];
+
+  test("keeps every chip on one row when the row fits", () => {
+    expect(getSeverityChipLayout({ labels: LABELS, hasReset: false, contentWidth: 56 })).toEqual({
+      mode: "full",
+      rows: 1,
+    });
+  });
+
+  test("wraps rather than abbreviating when a whole chip still fits", () => {
+    expect(getSeverityChipLayout({ labels: LABELS, hasReset: false, contentWidth: 31 })).toEqual({
+      mode: "wrapped",
+      rows: 2,
+    });
+  });
+
+  test("abbreviates only when the widest chip cannot fit on a line", () => {
+    expect(getSeverityChipLayout({ labels: LABELS, hasReset: false, contentWidth: 10 }).mode).toBe(
+      "short",
+    );
   });
 });

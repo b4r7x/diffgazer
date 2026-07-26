@@ -8,7 +8,7 @@ import type { Result } from "../../result.js";
 import { err, ok } from "../../result.js";
 import type { StreamReviewError } from "../../review/index.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
-import { requirePromise, requireValue } from "../../testing/assertions.js";
+import { requireValue } from "../../testing/assertions.js";
 import { createDeferred } from "../../testing/deferred.js";
 import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
@@ -92,7 +92,7 @@ describe("useReviewStream", () => {
 
     await act(async () => {
       resolveResume(ok(fakeResumeResult("stop-review")));
-      await requirePromise(resumePromise, "stop resume promise");
+      await requireValue(resumePromise, "stop resume promise");
     });
   });
 
@@ -125,7 +125,7 @@ describe("useReviewStream", () => {
 
     await act(async () => {
       resolveResume(ok(fakeResumeResult("abort-review")));
-      await requirePromise(resumePromise, "abort resume promise");
+      await requireValue(resumePromise, "abort resume promise");
     });
   });
 
@@ -190,7 +190,7 @@ describe("useReviewStream", () => {
     // subsequent stop() would have nothing to abort.
     await act(async () => {
       resolveFirst(ok(fakeResumeResult("first-review")));
-      await requirePromise(firstPromise, "first resume promise");
+      await requireValue(firstPromise, "first resume promise");
     });
 
     // The second stream can still be stopped (controller ref not nulled)
@@ -201,7 +201,7 @@ describe("useReviewStream", () => {
 
     await act(async () => {
       resolveSecond(ok(fakeResumeResult("second-review")));
-      await requirePromise(secondPromise, "second resume promise");
+      await requireValue(secondPromise, "second resume promise");
     });
   });
 
@@ -236,7 +236,7 @@ describe("useReviewStream", () => {
 
     await act(async () => {
       resolveResume(ok(fakeResumeResult("cancel-review")));
-      await requirePromise(resumePromise, "cancel resume promise");
+      await requireValue(resumePromise, "cancel resume promise");
     });
   });
 
@@ -273,7 +273,7 @@ describe("useReviewStream", () => {
 
     await act(async () => {
       resolveResume(ok(fakeResumeResult("preserve-review")));
-      await requirePromise(resumePromise, "preserve-state cancel resume promise");
+      await requireValue(resumePromise, "preserve-state cancel resume promise");
     });
   });
 
@@ -310,7 +310,7 @@ describe("useReviewStream", () => {
 
     await act(async () => {
       resolveResume(ok(fakeResumeResult("cancel-terminal-review")));
-      await requirePromise(resumePromise, "cancel terminal resume promise");
+      await requireValue(resumePromise, "cancel terminal resume promise");
     });
   });
 
@@ -350,7 +350,7 @@ describe("useReviewStream", () => {
 
     await act(async () => {
       cancelResult.reject(new Error("cancel endpoint down"));
-      await requirePromise(cancelPromise, "stale cancel promise");
+      await requireValue(cancelPromise, "stale cancel promise");
     });
 
     expect(result.current.state.reviewId).toBe("second-review");
@@ -359,11 +359,11 @@ describe("useReviewStream", () => {
 
     await act(async () => {
       firstResume.resolve(ok(fakeResumeResult("first-review")));
-      await requirePromise(firstPromise, "first resume promise");
+      await requireValue(firstPromise, "first resume promise");
     });
     await act(async () => {
       secondResume.resolve(ok(fakeResumeResult("second-review")));
-      await requirePromise(secondPromise, "second resume promise");
+      await requireValue(secondPromise, "second resume promise");
     });
   });
 
@@ -398,7 +398,7 @@ describe("useReviewStream", () => {
 
     await act(async () => {
       resolveResume(ok(fakeResumeResult("cancel-throws-review")));
-      await requirePromise(resumePromise, "cancel throws resume promise");
+      await requireValue(resumePromise, "cancel throws resume promise");
     });
   });
 

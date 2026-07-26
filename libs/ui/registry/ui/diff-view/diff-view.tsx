@@ -35,10 +35,26 @@ export type DiffViewPalette = "default" | "okabe-ito";
 interface DiffViewBaseProps extends Omit<ComponentProps<"figure">, "children"> {
   /** Inline unified view or side-by-side split panes (Old / New). */
   mode?: "unified" | "split";
-  /** Renders line-number gutters. Surfaces as data-line-numbers on the rows container. */
+  /**
+   * Renders line-number gutters. Surfaces as data-line-numbers on the rows container.
+   * Defaults to true — findings are written as file:line, so the addressing scheme
+   * ships on. variant="bare" defaults to false: a gutter is chrome.
+   */
   showLineNumbers?: boolean;
   /** Disables intra-line word-level highlighting on added/removed rows. */
   disableWordDiff?: boolean;
+  /**
+   * Renders the `+adds −removes` readout at the end of the figcaption. On by
+   * default; a diff with no add/remove changes renders nothing either way.
+   */
+  stat?: boolean;
+  /**
+   * Soft-wraps long code lines with a hanging indent instead of scrolling them
+   * horizontally. Leave unset to let CSS own the default: containers under 40rem
+   * and coarse pointers wrap, everything else keeps the filmstrip. Surfaces as
+   * data-wrap="on" / "off" on the figure.
+   */
+  wrap?: boolean;
   /**
    * Fallback accessible name applied as aria-label when no native ARIA name or figcaption names the
    * figure (variant="bare" or a patch without paths).
@@ -123,6 +139,22 @@ function resolveActiveHunk(
   return activeHunkState.value;
 }
 
+function countChanges(parsed: ParsedDiff): { adds: number; removes: number } {
+  let adds = 0;
+  let removes = 0;
+  for (const hunk of parsed.hunks) {
+    for (const change of hunk.changes) {
+      if (change.type === "add") adds += 1;
+      else if (change.type === "remove") removes += 1;
+    }
+  }
+  return { adds, removes };
+}
+
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
 function getFileLabel(oldPath: string | null, newPath: string | null): string | null {
   if (!oldPath && !newPath) return null;
   if (oldPath && newPath && oldPath !== newPath) return `${oldPath} → ${newPath}`;
@@ -137,8 +169,10 @@ export function DiffView(props: DiffViewProps) {
     after,
     diff,
     mode = "unified",
-    showLineNumbers = false,
+    showLineNumbers,
     disableWordDiff = false,
+    stat = true,
+    wrap,
     label,
     regionLabel,
     oldSideLabel = "Old",
@@ -207,6 +241,14 @@ export function DiffView(props: DiffViewProps) {
       : "";
 
   const resolvedDensity = density ?? (variant === "dense" ? "compact" : "default");
+  // Line numbers are the product's addressing scheme, so they ship on — except
+  // under "bare", whose whole contract is no chrome.
+  const resolvedLineNumbers = showLineNumbers ?? variant !== "bare";
+  // Tri-state on purpose: absent leaves the responsive default to CSS.
+  let wrapAttribute: "on" | "off" | undefined;
+  if (wrap !== undefined) wrapAttribute = wrap ? "on" : "off";
+  // O(lines) over data the renderer already walks — no state, no memo.
+  const { adds, removes } = countChanges(parsed);
   const fileLabel = getFileLabel(parsed.oldPath, parsed.newPath);
   const showFigCaption = variant !== "bare" && fileLabel !== null;
 
@@ -231,7 +273,7 @@ export function DiffView(props: DiffViewProps) {
     body = (
       <DiffViewSplit
         parsed={parsed}
-        showLineNumbers={showLineNumbers}
+        showLineNumbers={resolvedLineNumbers}
         disableWordDiff={disableWordDiff}
         isDense={isDense}
         activeHunk={activeHunk}
@@ -248,7 +290,7 @@ export function DiffView(props: DiffViewProps) {
     body = (
       <DiffViewUnified
         parsed={parsed}
-        showLineNumbers={showLineNumbers}
+        showLineNumbers={resolvedLineNumbers}
         disableWordDiff={disableWordDiff}
         isDense={isDense}
         activeHunk={activeHunk}
@@ -270,6 +312,7 @@ export function DiffView(props: DiffViewProps) {
       data-density={resolvedDensity}
       data-diff-palette={palette}
       data-mode={mode}
+      data-wrap={wrapAttribute}
       data-max-h={maxHeight ? "true" : undefined}
       aria-roledescription={ariaRoleDescriptionProp ?? "diff"}
       aria-label={ariaLabel}
@@ -287,12 +330,27 @@ export function DiffView(props: DiffViewProps) {
       )}
       {showFigCaption && (
         <figcaption id={captionId} data-slot="diff-view-caption">
-          {fileLabel}
+          <span data-slot="diff-view-caption-path">{fileLabel}</span>
+          {stat && adds + removes > 0 && (
+            <span data-slot="diff-view-stat">
+              {/* U+2212 MINUS, not a hyphen, so it optically matches the plus. */}
+              <span className="diff-stat-add">+{adds}</span>
+              <span className="diff-stat-remove">−{removes}</span>
+              <span className="sr-only">
+                {`${plural(adds, "addition")}, ${plural(removes, "deletion")}`}
+              </span>
+            </span>
+          )}
         </figcaption>
       )}
       {/* biome-ignore lint/a11y/useSemanticElements: role="status" announces the empty diff state; <output> carries form-association semantics that do not fit here. */}
-      <div data-slot="diff-view-empty" role="status" className={hasHunks ? "sr-only" : undefined}>
-        {hasHunks ? "" : emptyLabel}
+      <div
+        data-slot="diff-view-empty"
+        data-empty={hasHunks ? undefined : "true"}
+        role="status"
+        className={hasHunks ? "sr-only" : undefined}
+      >
+        {hasHunks ? "" : <span data-slot="diff-view-empty-label">{emptyLabel}</span>}
       </div>
       {hasHunks && maxHeight ? (
         <div data-slot="diff-view-scroll-v" className="scrollbar-thin">

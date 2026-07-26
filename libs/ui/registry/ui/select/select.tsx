@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { cn } from "@/lib/utils";
+import { OVERLAY_SURFACE } from "../shared/overlay-surface";
 import { SelectContext, type SelectOptionMetadata } from "./select-context";
 import { SelectFormMirror } from "./select-form-mirror";
 import { SelectItem, type SelectItemProps } from "./select-item";
@@ -95,7 +96,7 @@ const selectRootVariants = cva("relative", {
   variants: {
     variant: {
       default: "",
-      card: "border border-foreground bg-background shadow-(--shadow-hard)",
+      card: OVERLAY_SURFACE,
     },
     width: {
       sm: "w-48",

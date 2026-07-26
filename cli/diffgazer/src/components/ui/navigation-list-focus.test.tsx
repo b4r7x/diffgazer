@@ -4,7 +4,7 @@ import stripAnsi from "strip-ansi";
 import { afterAll, afterEach, describe, expect, test, vi } from "vitest";
 import { flush } from "../../testing/flush";
 import { frameBackgrounds, frameForegrounds } from "../../testing/frame-colors";
-import { selectionFill } from "../../theme/chrome";
+import { selectionHue } from "../../theme/chrome";
 import { darkPalette } from "../../theme/palettes";
 import { CliThemeProvider } from "../../theme/provider";
 import { NavigationList } from "./navigation-list";
@@ -47,7 +47,7 @@ describe("NavigationList focus", () => {
     const { lastFrame } = renderList(true);
     await flush();
 
-    expect(frameBackgrounds(lastFrame() ?? "")).toEqual([selectionFill(darkPalette)]);
+    expect(frameBackgrounds(lastFrame() ?? "")).toEqual([selectionHue(darkPalette)]);
   });
 
   test("drops the fill to a quiet marker once the list loses focus", async () => {
@@ -57,7 +57,7 @@ describe("NavigationList focus", () => {
     // Two lists side by side must not both claim the highlight, so the one
     // without focus names its row instead of painting it.
     expect(frameBackgrounds(lastFrame() ?? "")).toEqual([]);
-    expect(frameForegrounds(lastFrame() ?? "")).toContain(selectionFill(darkPalette));
+    expect(frameForegrounds(lastFrame() ?? "")).toContain(selectionHue(darkPalette));
     expect(stripAnsi(lastFrame() ?? "")).toContain("> Alpha");
   });
 });

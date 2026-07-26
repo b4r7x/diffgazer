@@ -176,6 +176,19 @@ describe("ModelStep", () => {
     expect(flashRadio).toHaveTextContent(/free/i);
   });
 
+  it("gives a model with nothing left to say no description line", async () => {
+    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>().mockResolvedValue({
+      ...GEMINI_CATALOG,
+      models: [{ id: "bare-model", name: "Bare Model", description: "", tier: "free" }],
+    });
+    render(<ModelStep provider="gemini" value={null} onChange={vi.fn()} onCommit={vi.fn()} />, {
+      wrapper: makeWrapper({ ...createApi({ baseUrl: "http://localhost" }), getProviderModels }),
+    });
+
+    const bare = await screen.findByRole("radio", { name: /Bare Model/ });
+    expect(bare).not.toHaveAttribute("aria-describedby");
+  });
+
   it("shows snapshot provenance and retries an empty fallback catalog", async () => {
     const user = userEvent.setup();
     const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>();

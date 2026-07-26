@@ -18,6 +18,20 @@ export function getTestForm(label: string | RegExp = "Test form") {
   return screen.getByRole("form", { name: label }) as HTMLFormElement;
 }
 
+export interface SelectHarnessOptions {
+  readonly multiple?: boolean;
+  readonly variant?: "default" | "card";
+  readonly defaultValue?: string | string[];
+  readonly value?: string | string[];
+  readonly onChange?: (v: string | string[]) => void;
+  readonly open?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
+  readonly defaultOpen?: boolean;
+  readonly disabled?: boolean;
+  readonly highlighted?: string | null;
+  readonly onHighlightChange?: (id: string | null) => void;
+}
+
 function buildSelectProps({
   multiple,
   variant,
@@ -30,28 +44,18 @@ function buildSelectProps({
   disabled,
   highlighted,
   onHighlightChange,
-}: {
-  multiple?: boolean;
-  variant?: "default" | "card";
-  defaultValue?: string | string[];
-  value?: string | string[];
-  onChange?: (v: string | string[]) => void;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  defaultOpen?: boolean;
-  disabled?: boolean;
-  highlighted?: string | null;
-  onHighlightChange?: (id: string | null) => void;
-}): SelectProps {
+}: SelectHarnessOptions): SelectProps {
+  // Select derives controlled mode from `"open" in props` / `"highlighted" in props`,
+  // so those two must stay absent rather than undefined.
   const commonProps = {
     variant,
     children: null,
+    onOpenChange,
+    defaultOpen,
+    disabled,
+    onHighlightChange,
     ...(open !== undefined ? { open } : {}),
-    ...(onOpenChange ? { onOpenChange } : {}),
-    ...(defaultOpen !== undefined ? { defaultOpen } : {}),
-    ...(disabled ? { disabled: true } : {}),
     ...(highlighted !== undefined ? { highlighted } : {}),
-    ...(onHighlightChange ? { onHighlightChange } : {}),
   };
   return multiple
     ? {
@@ -84,20 +88,10 @@ export function renderSelect({
   withSearch = false,
   variant = "card",
   tagsClassName,
-}: {
-  multiple?: boolean;
-  defaultValue?: string | string[];
-  value?: string | string[];
-  onChange?: (v: string | string[]) => void;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  defaultOpen?: boolean;
-  disabled?: boolean;
-  highlighted?: string | null;
-  items?: string[];
-  withSearch?: boolean;
-  variant?: "default" | "card";
-  tagsClassName?: string;
+}: SelectHarnessOptions & {
+  readonly items?: string[];
+  readonly withSearch?: boolean;
+  readonly tagsClassName?: string;
 } = {}): RenderResult {
   const props = buildSelectProps({
     multiple,
@@ -134,15 +128,8 @@ export function renderSelect({
   );
 }
 
-export interface InlineRenderProps {
+export interface InlineRenderProps extends SelectHarnessOptions {
   readonly children: ReactNode;
-  readonly multiple?: boolean;
-  readonly variant?: "default" | "card";
-  readonly defaultValue?: string | string[];
-  readonly onChange?: (v: string | string[]) => void;
-  readonly defaultOpen?: boolean;
-  readonly highlighted?: string | null;
-  readonly onHighlightChange?: (id: string | null) => void;
 }
 
 export function renderSelectInline({

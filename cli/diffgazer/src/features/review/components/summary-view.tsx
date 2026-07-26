@@ -15,11 +15,9 @@ import { pluralize } from "@diffgazer/core/strings";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useContentZone } from "../../../components/layout/global";
-import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { ScrollArea } from "../../../components/ui/scroll-area";
 import { SectionHeader } from "../../../components/ui/section-header";
-import { useActionRow } from "../../../hooks/use-action-row";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../theme/provider";
 import { CategoryStatsTable } from "./category-stats-table";
@@ -40,7 +38,9 @@ export interface ReviewSummaryViewProps {
 
 const SUMMARY_SHORTCUTS_LEFT: Shortcut[] = [{ key: "Enter", label: "View Results" }];
 const SUMMARY_SHORTCUTS_RIGHT: Shortcut[] = [BACK_SHORTCUT];
-const SUMMARY_FIXED_ROWS = 4;
+// Header rule only: the shortcut bar is the single action surface, so the view
+// spends no rows restating [Enter] View Results as a button.
+const SUMMARY_FIXED_ROWS = 2;
 
 export function ReviewSummaryView({
   issues,
@@ -62,15 +62,11 @@ export function ReviewSummaryView({
     rightShortcuts: onBack ? SUMMARY_SHORTCUTS_RIGHT : [],
   });
 
-  const actionCallbacks = [onContinue, onBack].filter(
-    (callback): callback is () => void => callback !== undefined,
-  );
-  const actions = useActionRow({
-    actionCount: actionCallbacks.length,
-    onAction: (index) => actionCallbacks[index]?.(),
-  });
-
   useInput((_input, key) => {
+    if (key.return && onContinue) {
+      onContinue();
+      return;
+    }
     if (key.escape && onBack) onBack();
   });
 
@@ -191,27 +187,6 @@ export function ReviewSummaryView({
             </Box>
           ) : null}
         </ScrollArea>
-
-        <Box gap={2} marginTop={1}>
-          {onContinue ? (
-            <Button
-              variant="primary"
-              isActive={actions.isActionActive(0)}
-              onPress={() => actions.activate(0)}
-            >
-              View Results (Enter)
-            </Button>
-          ) : null}
-          {onBack ? (
-            <Button
-              variant="secondary"
-              isActive={actions.isActionActive(onContinue ? 1 : 0)}
-              onPress={() => actions.activate(onContinue ? 1 : 0)}
-            >
-              Back (Esc)
-            </Button>
-          ) : null}
-        </Box>
       </Box>
     </Box>
   );

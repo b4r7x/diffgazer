@@ -4,7 +4,7 @@ import { createContext, useContext } from "react";
 import { type ListNavigationItem, useListNavigation } from "../../hooks/use-list-navigation";
 import { useListNavigationInput } from "../../hooks/use-list-navigation-input";
 import { collectChildItems } from "../../lib/collect-child-items";
-import { type RowTone, rowTone, selectionFill } from "../../theme/chrome";
+import { type RowTone, rowTone, selectionHue } from "../../theme/chrome";
 import type { CliColorTokens } from "../../theme/palettes";
 import { useTheme } from "../../theme/provider";
 
@@ -99,7 +99,7 @@ function NavigationListItem({ id, disabled = false, children }: NavigationListIt
     );
   }
 
-  const markerColor = isSelected && !isHighlighted ? selectionFill(ctx.tokens) : tone.primary;
+  const markerColor = isSelected && !isHighlighted ? selectionHue(ctx.tokens) : tone.primary;
 
   return (
     <Box width="100%" backgroundColor={tone.background}>

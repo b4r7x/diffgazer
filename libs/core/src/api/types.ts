@@ -42,30 +42,21 @@ export interface ApiClientConfig {
  */
 export type ResponseValidator<T> = (body: unknown) => T;
 
+/** Tail options for the query verbs (`get`, `delete`). */
+export interface QueryRequestOptions<T> extends Omit<RequestOptions, "body"> {
+  schema?: ResponseValidator<T>;
+}
+
+/** Tail options for the body verbs (`post`, `put`). */
+export interface BodyRequestOptions<T> extends Omit<RequestOptions, "body" | "params"> {
+  schema?: ResponseValidator<T>;
+}
+
 export interface ApiClient {
-  get: <T>(
-    path: string,
-    params?: Record<string, string>,
-    schema?: ResponseValidator<T>,
-    options?: Omit<RequestOptions, "body" | "params">,
-  ) => Promise<T>;
-  post: <T>(
-    path: string,
-    body?: unknown,
-    options?: Omit<RequestOptions, "body" | "params">,
-    schema?: ResponseValidator<T>,
-  ) => Promise<T>;
-  put: <T>(
-    path: string,
-    body?: unknown,
-    options?: Omit<RequestOptions, "body" | "params">,
-    schema?: ResponseValidator<T>,
-  ) => Promise<T>;
-  delete: <T>(
-    path: string,
-    params?: Record<string, string>,
-    schema?: ResponseValidator<T>,
-  ) => Promise<T>;
+  get: <T>(path: string, options?: QueryRequestOptions<T>) => Promise<T>;
+  post: <T>(path: string, body?: unknown, options?: BodyRequestOptions<T>) => Promise<T>;
+  put: <T>(path: string, body?: unknown, options?: BodyRequestOptions<T>) => Promise<T>;
+  delete: <T>(path: string, options?: QueryRequestOptions<T>) => Promise<T>;
   /**
    * Issue a raw HTTP request and return the unparsed `Response`. Used for
    * streaming bodies (SSE) and any endpoint where the caller does not want

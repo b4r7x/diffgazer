@@ -97,6 +97,16 @@ describe("HorizontalStepper ascii variant", () => {
     expect(review).toHaveTextContent("[ ]");
   });
 
+  it("keeps the screen-reader status text outside the split glyph", () => {
+    renderStepper("config", "ascii");
+    const config = closestElement(screen.getByText("Config"), "li", "Config list item");
+
+    // The glyph is three spans (chrome, mark, chrome) plus the sr-only status span; the status
+    // text must stay a sibling of the split so it is never read as part of the glyph.
+    expect(screen.getByText("Current:")).toHaveClass("sr-only");
+    expect(config).toHaveTextContent("[~]");
+  });
+
   it("interleaves ── connectors between steps", () => {
     const { container } = renderStepper("config", "ascii");
     const presentations = container.querySelectorAll('[role="presentation"]');
@@ -170,21 +180,61 @@ describe("HorizontalStepper constrained containers", () => {
     expect(screen.getByText("Review")).not.toHaveClass("sr-only");
   });
 
-  it("drops the glyph run below 20rem so only the step text is left", () => {
+  it("derives the window threshold from the step count, not from a blanket width", () => {
+    // Same class-as-contract rationale as the test above: the threshold literals are the only
+    // thing that makes the window engage from need. A four-step run keeps its full run down to
+    // 18rem, where a twelve-step run of the same variant has to window from 32rem — a blanket
+    // threshold would elide steps at widths where the short run fits trivially.
+    function renderRun(total: number) {
+      const ids = Array.from({ length: total }, (_, index) => `s${index}`);
+      return render(
+        <HorizontalStepper steps={ids} value="s1" aria-label="Run">
+          {ids.map((id) => (
+            <HorizontalStepper.Step key={id} value={id}>
+              {id}
+            </HorizontalStepper.Step>
+          ))}
+        </HorizontalStepper>,
+      );
+    }
+
+    const four = renderRun(4);
+    expect(closestElement(screen.getByText("s3"), "li", "last step")).toHaveClass(
+      "@max-[18rem]/horizontal-stepper:sr-only",
+    );
+    four.unmount();
+
+    const twelve = renderRun(12);
+    expect(closestElement(screen.getByText("s11"), "li", "last step")).toHaveClass(
+      "@max-[32rem]/horizontal-stepper:sr-only",
+    );
+    twelve.unmount();
+
+    // Three steps ARE the window, so no window threshold and no markers can ever apply. (The
+    // 14rem active-only tier is a different collapse and still rides along.)
+    renderRun(3);
+    for (const item of screen.getAllByRole("listitem")) {
+      expect(item.className).not.toMatch(/@max-\[(18|22|26|32|40|48|64)rem\]/);
+    }
+    expect(screen.queryByText(/^\+\d+$/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the active glyph below 14rem instead of dropping the run", () => {
     renderStepper("config", "ascii", true);
 
-    // Tier 2 rides the container query even when compact is forced, because a forced-compact
-    // stepper can still land in a container too narrow for its glyph run.
+    // The narrowest tier rides the container query even when compact is forced, because a
+    // forced-compact stepper can still land in a container too narrow for a three-cell window.
     const intro = closestElement(screen.getByText("Intro"), "li", "Intro list item");
     const config = closestElement(screen.getByText("Config"), "li", "Config list item");
-    expect(intro).toHaveClass("@max-xs/horizontal-stepper:sr-only");
-    // The active step stays: it carries the text the tier is named for.
-    expect(config).not.toHaveClass("@max-xs/horizontal-stepper:sr-only");
-    expect(config.querySelector("span")).toHaveClass("@max-xs/horizontal-stepper:sr-only");
+    expect(intro).toHaveClass("@max-[14rem]/horizontal-stepper:sr-only");
+    // The active step stays whole — glyph included. A progress indicator that shows no progress
+    // is the failure this tier used to produce.
+    expect(config).not.toHaveClass("@max-[14rem]/horizontal-stepper:sr-only");
+    expect(config).toHaveTextContent("[~]");
     expect(config).toHaveTextContent("Step 2/4");
   });
 
-  it("keeps every step announced in the text-only tier", () => {
+  it("keeps every step announced in the active-only tier", () => {
     renderStepper("config", "ascii", true);
 
     // sr-only, not hidden: the collapsed steps leave the layout, not the accessibility tree.
@@ -245,6 +295,78 @@ describe("HorizontalStepper compact", () => {
 
   it("has no a11y violations", async () => {
     const { container } = renderStepper("config", "ascii", true);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe("HorizontalStepper window", () => {
+  const seven = ["a", "b", "c", "d", "e", "f", "g"];
+
+  function renderSeven(active: string, variant?: "ascii" | "numbered" | "breadcrumb") {
+    return render(
+      <HorizontalStepper steps={seven} value={active} variant={variant} compact aria-label="Run">
+        {seven.map((step) => (
+          <HorizontalStepper.Step key={step} value={step}>
+            {step.toUpperCase()}
+          </HorizontalStepper.Step>
+        ))}
+      </HorizontalStepper>,
+    );
+  }
+
+  it("counts the elided steps on either side of the window", () => {
+    renderSeven("d");
+
+    // active index 3 of 7 → the window keeps steps 2-4, so two steps fall outside on each side.
+    const markers = screen.getAllByText(/^\+\d+$/);
+    expect(markers.map((marker) => marker.textContent)).toEqual(["+2", "+2"]);
+    for (const marker of markers) expect(marker).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("keeps every step in the accessibility tree while the window is engaged", () => {
+    renderSeven("d");
+
+    expect(screen.getAllByRole("listitem")).toHaveLength(7);
+    expect(screen.getByText("A")).toBeInTheDocument();
+    expect(screen.getByText("G")).toBeInTheDocument();
+    expect(screen.getAllByText(/^(Completed|Current|Upcoming):$/)).toHaveLength(7);
+    expect(
+      screen
+        .getAllByRole("listitem")
+        .filter((item) => item.getAttribute("aria-current") === "step"),
+    ).toHaveLength(1);
+  });
+
+  it("renders no markers when the run is short enough to be its own window", () => {
+    render(
+      <HorizontalStepper steps={["a", "b", "c"]} value="b" compact aria-label="Run">
+        <HorizontalStepper.Step value="a">A</HorizontalStepper.Step>
+        <HorizontalStepper.Step value="b">B</HorizontalStepper.Step>
+        <HorizontalStepper.Step value="c">C</HorizontalStepper.Step>
+      </HorizontalStepper>,
+    );
+
+    expect(screen.queryByText(/^\+\d+$/)).not.toBeInTheDocument();
+  });
+
+  it("omits the marker on the side that has nothing hidden", () => {
+    renderSeven("b");
+    // active index 1 → nothing hidden before, four steps hidden after.
+    expect(screen.getAllByText(/^\+\d+$/).map((m) => m.textContent)).toEqual(["+4"]);
+  });
+
+  it("keeps the active glyph in every variant under the window", () => {
+    for (const variant of ["ascii", "breadcrumb"] as const) {
+      const { unmount } = renderSeven("d", variant);
+      const active = closestElement(screen.getByText("D"), "li", "active list item");
+      expect(active).toHaveAttribute("aria-current", "step");
+      expect(active.textContent).not.toBe("");
+      unmount();
+    }
+  });
+
+  it("has no a11y violations with the window engaged", async () => {
+    const { container } = renderSeven("d");
     expect(await axe(container)).toHaveNoViolations();
   });
 });

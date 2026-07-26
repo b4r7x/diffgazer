@@ -15,16 +15,13 @@ function stripMarkdownCodeBlock(content: string): string {
   return cleaned.trim();
 }
 
-export function safeParseJson<E = undefined>(
-  content: string,
-  errorFactory: (message: string, details?: string) => E,
-): Result<unknown, E> {
+export function safeParseJson(content: string): Result<unknown, string> {
   const cleaned = stripMarkdownCodeBlock(content);
 
   try {
     return ok(JSON.parse(cleaned));
   } catch (error) {
-    const details = error instanceof Error ? error.message : undefined;
-    return err(errorFactory("Invalid JSON", details));
+    const details = error instanceof Error ? error.message : null;
+    return err(details ? `Invalid JSON: ${details}` : "Invalid JSON");
   }
 }

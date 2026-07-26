@@ -10,6 +10,7 @@ import {
 } from "./keyring.js";
 import type {
   ConfigState,
+  EnvCredentialRef,
   SecretsState,
   SecretsStorageError,
   SecretsStorageErrorCode,
@@ -47,6 +48,45 @@ export function rollbackKeyringWrites(
         ),
       )
     : ok(undefined);
+}
+
+/**
+ * Writes each literal secret to the keyring, verifying it by read-back, and
+ * rolls every write back if any step fails. A rollback failure takes precedence
+ * over the error that triggered it.
+ */
+function writeVerifiedKeyringSecrets(
+  entries: ReadonlyArray<readonly [providerId: string, apiKey: string]>,
+): Result<KeyringWriteRollback[], SecretsStorageError> {
+  const written: KeyringWriteRollback[] = [];
+  for (const [providerId, apiKey] of entries) {
+    const previousResult = readKeyringSecret(getApiKeyName(providerId));
+    if (!previousResult.ok) {
+      const rollbackResult = rollbackKeyringWrites(written);
+      return rollbackResult.ok ? previousResult : rollbackResult;
+    }
+
+    written.push({ providerId, previousValue: previousResult.value });
+
+    const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
+    if (!writeResult.ok) {
+      const rollbackResult = rollbackKeyringWrites(written);
+      return rollbackResult.ok ? writeResult : rollbackResult;
+    }
+
+    const verifyResult = readKeyringSecret(getApiKeyName(providerId));
+    if (!verifyResult.ok || verifyResult.value !== apiKey) {
+      const failure = err<SecretsStorageError>(
+        createError<SecretsStorageErrorCode>(
+          "SECRETS_MIGRATION_FAILED",
+          `Keyring read-back verification failed for provider '${providerId}'`,
+        ),
+      );
+      const rollbackResult = rollbackKeyringWrites(written);
+      return rollbackResult.ok ? failure : rollbackResult;
+    }
+  }
+  return ok(written);
 }
 
 export interface MigrationResult {
@@ -87,44 +127,18 @@ export function migrateSecretsStorage(
       );
     }
 
-    const envEntries: Record<string, { kind: "env"; varName: string }> = {};
-    const writtenProviders: KeyringWriteRollback[] = [];
-
+    const envEntries: Record<string, EnvCredentialRef> = {};
+    const literalEntries: [string, string][] = [];
     for (const [providerId, entry] of Object.entries(secretsState.providers)) {
-      if (typeof entry !== "string" && entry.kind === "env") {
+      if (typeof entry === "string") {
+        literalEntries.push([providerId, entry]);
+      } else {
         envEntries[providerId] = entry;
-        continue;
-      }
-      const apiKey = typeof entry === "string" ? entry : "";
-      const previousResult = readKeyringSecret(getApiKeyName(providerId));
-      if (!previousResult.ok) {
-        const rollbackResult = rollbackKeyringWrites(writtenProviders);
-        return rollbackResult.ok ? previousResult : rollbackResult;
-      }
-
-      writtenProviders.push({
-        providerId,
-        previousValue: previousResult.value,
-      });
-
-      const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
-      if (!writeResult.ok) {
-        const rollbackResult = rollbackKeyringWrites(writtenProviders);
-        return rollbackResult.ok ? writeResult : rollbackResult;
-      }
-
-      const verifyResult = readKeyringSecret(getApiKeyName(providerId));
-      if (!verifyResult.ok || verifyResult.value !== apiKey) {
-        const failure = err<SecretsStorageError>(
-          createError<SecretsStorageErrorCode>(
-            "SECRETS_MIGRATION_FAILED",
-            `Keyring read-back verification failed for provider '${providerId}'`,
-          ),
-        );
-        const rollbackResult = rollbackKeyringWrites(writtenProviders);
-        return rollbackResult.ok ? failure : rollbackResult;
       }
     }
+
+    const writeResult = writeVerifiedKeyringSecrets(literalEntries);
+    if (!writeResult.ok) return writeResult;
 
     return ok({
       nextSecrets: {
@@ -132,7 +146,7 @@ export function migrateSecretsStorage(
         ...(secretsState.unknownSecrets ? { unknownSecrets: secretsState.unknownSecrets } : {}),
       },
       keyringDeletions: [],
-      keyringWrites: writtenProviders,
+      keyringWrites: writeResult.value,
     });
   }
 
@@ -214,50 +228,21 @@ export interface KeyringReconciliation {
 export function reconcileKeyringSecrets(
   secretsState: SecretsState,
 ): Result<KeyringReconciliation | null, SecretsStorageError> {
-  const literalEntries = Object.entries(secretsState.providers).filter(
-    ([, entry]) => typeof entry === "string",
-  );
-  if (literalEntries.length === 0) return ok(null);
-
-  const written: KeyringWriteRollback[] = [];
+  const literalEntries: [string, string][] = [];
   const nextProviders: SecretsState["providers"] = {};
   for (const [providerId, entry] of Object.entries(secretsState.providers)) {
-    if (typeof entry !== "string") {
+    if (typeof entry === "string") {
+      literalEntries.push([providerId, entry]);
+    } else {
       nextProviders[providerId] = entry;
     }
   }
+  if (literalEntries.length === 0) return ok(null);
 
-  const migrated: string[] = [];
-  for (const [providerId, entry] of literalEntries) {
-    const apiKey = entry as string;
-    const previousResult = readKeyringSecret(getApiKeyName(providerId));
-    if (!previousResult.ok) {
-      const rollbackResult = rollbackKeyringWrites(written);
-      return rollbackResult.ok ? previousResult : rollbackResult;
-    }
+  const writeResult = writeVerifiedKeyringSecrets(literalEntries);
+  if (!writeResult.ok) return writeResult;
 
-    written.push({ providerId, previousValue: previousResult.value });
-
-    const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
-    if (!writeResult.ok) {
-      const rollbackResult = rollbackKeyringWrites(written);
-      return rollbackResult.ok ? writeResult : rollbackResult;
-    }
-
-    const verifyResult = readKeyringSecret(getApiKeyName(providerId));
-    if (!verifyResult.ok || verifyResult.value !== apiKey) {
-      const failure = err<SecretsStorageError>(
-        createError<SecretsStorageErrorCode>(
-          "SECRETS_MIGRATION_FAILED",
-          `Keyring read-back verification failed for provider '${providerId}'`,
-        ),
-      );
-      const rollbackResult = rollbackKeyringWrites(written);
-      return rollbackResult.ok ? failure : rollbackResult;
-    }
-
-    migrated.push(providerId);
-  }
+  const migrated = literalEntries.map(([providerId]) => providerId);
 
   return ok({
     nextSecrets: {

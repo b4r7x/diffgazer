@@ -51,7 +51,9 @@ export function buildPageSeo({
   type = "article",
 }: PageSeoInput): PageSeoOutput {
   const canonical = buildCanonicalUrl(pathname);
-  const resolvedDescription = description ?? DEFAULT_SITE_DESCRIPTION;
+  // Frontmatter descriptions are markdown: the page header typesets their code
+  // spans as chips, and meta tags take the same prose without the delimiters.
+  const resolvedDescription = description?.replaceAll("`", "") ?? DEFAULT_SITE_DESCRIPTION;
 
   const meta: MetaTag[] = [
     { title },

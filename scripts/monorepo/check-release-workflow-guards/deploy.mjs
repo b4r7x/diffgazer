@@ -1,4 +1,5 @@
 import { parse } from "yaml";
+import { errorMessage } from "../lib/error-message.mjs";
 import { REQUIRED_READINESS_JOB_IDS } from "./readiness.mjs";
 import { DEPLOY_WORKFLOW_PATH, RELEASE_READINESS_WORKFLOW_PATH } from "./workflow-source.mjs";
 
@@ -9,8 +10,7 @@ export function collectDeployReadinessLinkFailures(deploySource, readinessSource
     deploy = parse(deploySource);
     readiness = parse(readinessSource);
   } catch (error) {
-    const message =
-      error && typeof error === "object" && "message" in error ? error.message : String(error);
+    const message = errorMessage(error);
     return [`deploy/readiness workflow linkage: failed to parse YAML: ${message}`];
   }
 
@@ -46,8 +46,7 @@ export function collectDeployTransactionFailures(source) {
   try {
     workflow = parse(source);
   } catch (error) {
-    const message =
-      error && typeof error === "object" && "message" in error ? error.message : String(error);
+    const message = errorMessage(error);
     return [`${DEPLOY_WORKFLOW_PATH}: failed to parse workflow YAML: ${message}`];
   }
 

@@ -1,6 +1,6 @@
 import { Box, Text, useInput } from "ink";
-import Spinner from "ink-spinner";
-import { selectionFill } from "../../theme/chrome";
+import InkSpinner from "ink-spinner";
+import { selectionHue } from "../../theme/chrome";
 import { useTheme } from "../../theme/provider";
 
 export interface ButtonProps {
@@ -49,12 +49,12 @@ export function Button({
     <Box paddingX={1}>
       <Text
         color={interactive ? tokens.bg : color}
-        backgroundColor={interactive ? selectionFill(tokens) : undefined}
+        backgroundColor={interactive ? selectionHue(tokens) : undefined}
         bold={interactive}
       >
         {loading ? (
           <>
-            <Spinner type="dots" />
+            <InkSpinner type="dots" />
             <Text> </Text>
           </>
         ) : null}

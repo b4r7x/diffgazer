@@ -1,11 +1,12 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import { FooterProvider } from "@diffgazer/core/footer";
+import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 import type { ProviderModelsResponse, ProviderStatus } from "@diffgazer/core/schemas/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
+import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { GlobalShortcuts } from "../../../app/global-shortcuts";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
@@ -20,6 +21,25 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@diffgazer/core/api/hooks")>()),
   useInit: () => ({ data: undefined, isLoading: false }),
 }));
+
+// The overlays read the zone GlobalLayout provides; the plain `render` cases
+// here mount the screen without it, so derive the zone from the terminal.
+vi.mock("../../../components/layout/global", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../components/layout/global")>();
+  const { useTerminalDimensions } = await import("../../../hooks/use-terminal-dimensions");
+  return {
+    ...actual,
+    useContentZone: () => {
+      const { columns, rows } = useTerminalDimensions();
+      return {
+        columns,
+        rows,
+        contentColumns: columns,
+        contentRows: actual.getContentZoneRows(rows),
+      };
+    },
+  };
+});
 
 const TAB = "\t";
 const ENTER = "\r";
@@ -94,6 +114,13 @@ function Wrapper({ children, api }: { children: ReactNode; api?: BoundApi }) {
   );
 }
 
+function FooterProbe() {
+  const { shortcuts, rightShortcuts } = useFooterData();
+  const format = (list: typeof shortcuts) =>
+    list.map((shortcut) => `[${shortcut.key}] ${shortcut.label}`).join(" ");
+  return <Text>{`FOOTER ${format(shortcuts)} | ${format(rightShortcuts)}`}</Text>;
+}
+
 function RouteProbe() {
   const { route } = useNavigation();
   return <Text>{`route:${route.screen}`}</Text>;
@@ -110,24 +137,35 @@ function ProvidersApiBoundary({ api }: { api: BoundApi }) {
 }
 
 describe("ProvidersScreen keyboard zones", () => {
-  test("does not leave details focus armed when Tab is pressed before a provider is selected", async () => {
+  test("opens with the active provider already in the details pane", async () => {
+    const { lastFrame } = render(
+      <Wrapper>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+
+    const frame = lastFrame() ?? "";
+    expect(frame).not.toContain("Select a provider to view details");
+    expect(frame).toContain("Google Gemini");
+  });
+
+  test("moves the details pane with the highlight, without pressing Enter", async () => {
     const { stdin, lastFrame } = render(
       <Wrapper>
         <ProvidersScreen />
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Select a provider to view details") ?? false);
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
 
-    stdin.write(TAB);
-    await flush();
-    stdin.write(ENTER);
-    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    expect(lastFrame()).toContain("gemini");
 
-    stdin.write(ENTER);
-    await flush();
+    stdin.write("\u001b[B");
+    await flushUntil(() => lastFrame()?.includes("zai") ?? false);
 
-    expect(lastFrame()).not.toContain("Choose how to provide");
+    expect(lastFrame()).toContain("zai");
   });
 
   test("moves to provider details with Tab after a provider is selected", async () => {
@@ -137,7 +175,7 @@ describe("ProvidersScreen keyboard zones", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Select a provider to view details") ?? false);
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
 
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
@@ -163,7 +201,7 @@ describe("ProvidersScreen keyboard zones", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Select a provider to view details") ?? false);
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
     stdin.write(TAB);
@@ -195,7 +233,7 @@ describe("ProvidersScreen keyboard zones", () => {
     await flushUntil(() => lastFrame()?.includes(message) ?? false);
 
     expect(lastFrame()).toContain(message);
-    expect(lastFrame()).not.toContain("Select a provider to view details");
+    expect(lastFrame()).not.toContain("Google Gemini");
   });
 
   test("activates a configured provider with its resolved model", async () => {
@@ -214,7 +252,7 @@ describe("ProvidersScreen keyboard zones", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Select a provider to view details") ?? false);
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("Set Active") ?? false);
     stdin.write(TAB);
@@ -232,7 +270,7 @@ describe("ProvidersScreen keyboard zones", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Select a provider to view details") ?? false);
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("Configure API Key") ?? false);
 
@@ -241,6 +279,18 @@ describe("ProvidersScreen keyboard zones", () => {
     expect(frame).toContain("Select Model");
     expect(frame).toContain("Remove Key");
     expect(frame).not.toMatch(/\[●\s+needs\s*\n/i);
+  });
+
+  test("runs its panes down to the shortcut bar at 100x30", async () => {
+    const view = renderRootFrame(100, 30, <ProvidersApiBoundary api={makeApi()} />);
+
+    await flushUntil(() => view.lastFrame()?.includes("Google Gemini") ?? false);
+    const lines = stripAnsi(view.lastFrame() ?? "").split("\n");
+    const bottomBorder = lines.findLastIndex((line) => /[\u2514\u2517]/.test(line));
+
+    expect(bottomBorder).toBeGreaterThan(0);
+    // No ragged gap between the pane bottoms and the key bar.
+    expect(lines.length - 1 - bottomBorder).toBeLessThanOrEqual(1);
   });
 
   test.each([
@@ -252,9 +302,7 @@ describe("ProvidersScreen keyboard zones", () => {
   }) => {
     const view = renderRootFrame(80, 24, <ProvidersApiBoundary api={makeApi()} />);
 
-    await flushUntil(
-      () => view.lastFrame()?.includes("Select a provider to view details") ?? false,
-    );
+    await flushUntil(() => view.lastFrame()?.includes("Google Gemini") ?? false);
     view.stdin.write(ENTER);
     await flushUntil(() => view.lastFrame()?.includes("gemini-2.5-flash") ?? false);
     view.stdin.write(TAB);
@@ -268,7 +316,50 @@ describe("ProvidersScreen keyboard zones", () => {
 
     const frame = view.lastFrame() ?? "";
     expect(frame).toContain(title);
-    expect(frame).not.toContain("Select a provider to view details");
+  });
+
+  test.each([
+    {
+      title: "Select Model",
+      moveToAction: 1,
+      expectedFooter:
+        "FOOTER [Tab] Switch Zone [/] Search [f] Filter Tier [Enter] Select | [Esc] Close",
+    },
+    {
+      title: "Configure API Key",
+      moveToAction: 0,
+      expectedFooter:
+        "FOOTER [Tab] Focus Key Field [←/→] Switch Action [Enter] Confirm | [Esc] Close",
+    },
+  ])("hands the shortcut bar to the $title overlay while it is open", async ({
+    title,
+    moveToAction,
+    expectedFooter,
+  }) => {
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <FooterProbe />
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    await flushUntil(() => lastFrame()?.includes("[Enter] Select") ?? false);
+    expect(lastFrame()).toContain("FOOTER [Esc] Back [Enter] Select |");
+
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    stdin.write(TAB);
+    await flush();
+    for (let index = 0; index < moveToAction; index += 1) {
+      stdin.write(ARROW_RIGHT);
+      await flush();
+    }
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes(title) ?? false);
+    await flushUntil(() => lastFrame()?.includes(expectedFooter) ?? false);
+
+    expect(lastFrame()).toContain(expectedFooter);
   });
 
   test("suppresses the help shortcut while the model dialog is open", async () => {
@@ -280,7 +371,7 @@ describe("ProvidersScreen keyboard zones", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Select a provider to view details") ?? false);
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
     stdin.write(TAB);

@@ -10,7 +10,6 @@ import { Timer } from "./timer";
 interface ReviewMetricsFooterProps {
   metrics: ReviewProgressMetrics;
   startTime?: Date;
-  isRunning: boolean;
 }
 
 function getMetricVariant(id: ReviewMetricId, issuesFound: number) {
@@ -19,8 +18,8 @@ function getMetricVariant(id: ReviewMetricId, issuesFound: number) {
   return "default";
 }
 
-export function ReviewMetricsFooter({ metrics, startTime, isRunning }: ReviewMetricsFooterProps) {
-  const rows = buildReviewMetricsRows(metrics, <Timer startTime={startTime} running={isRunning} />);
+export function ReviewMetricsFooter({ metrics, startTime }: ReviewMetricsFooterProps) {
+  const rows = buildReviewMetricsRows(metrics, <Timer startTime={startTime} />);
 
   return (
     <div className="shrink-0 pt-4 pb-6 border-t border-border">

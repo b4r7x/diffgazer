@@ -1,23 +1,17 @@
 import type { DisplayStatus } from "../schemas/config/index.js";
 import type { BadgeVariant } from "../schemas/presentation/index.js";
 
-interface DisplayStatusConfig {
-  badgeLabel: string;
-  badgeVariant: BadgeVariant;
-}
-
-const DISPLAY_STATUS_CONFIG: Record<DisplayStatus, DisplayStatusConfig> = {
-  active: { badgeLabel: "active", badgeVariant: "success" },
-  configured: { badgeLabel: "configured", badgeVariant: "info" },
-  "needs-key": { badgeLabel: "needs key", badgeVariant: "neutral" },
-} as const;
+const DISPLAY_STATUS_CONFIG: Record<DisplayStatus, { label: string; variant: BadgeVariant }> = {
+  active: { label: "active", variant: "success" },
+  configured: { label: "configured", variant: "info" },
+  "needs-key": { label: "needs key", variant: "neutral" },
+};
 
 export function getDisplayStatusBadge(status: DisplayStatus): {
   label: string;
   variant: BadgeVariant;
 } {
-  const config = DISPLAY_STATUS_CONFIG[status];
-  return { label: config.badgeLabel, variant: config.badgeVariant };
+  return DISPLAY_STATUS_CONFIG[status];
 }
 
 export type ProviderDisplayStatus = "active" | "idle";

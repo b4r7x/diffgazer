@@ -1,20 +1,16 @@
 import { existsInRoot, invariantResult, readJsonInRoot, readTextInRoot } from "./context.mjs";
 
-const LICENSE_MARKERS = {
+export const LICENSE_MARKERS = {
   MIT: "MIT License",
   "Apache-2.0": "Apache License",
 };
 
-export { LICENSE_MARKERS };
-
-const PUBLISHABLE_PACKAGE_FILES = [
+export const PUBLISHABLE_PACKAGE_FILES = [
   "cli/add/package.json",
   "cli/diffgazer/package.json",
   "libs/keys/package.json",
   "libs/ui/package.json",
 ];
-
-export { PUBLISHABLE_PACKAGE_FILES };
 
 const EXPECTED_WORKSPACE_PACKAGE_FILES = [
   "apps/docs/package.json",

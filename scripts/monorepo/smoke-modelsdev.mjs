@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ENV } from "./lib/env.mjs";
+import { errorMessage } from "./lib/error-message.mjs";
 import {
   assertCatalogProviders,
   collectReachableBundleFiles,
@@ -102,6 +103,6 @@ async function run() {
 }
 
 run().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  console.error(errorMessage(error));
   process.exit(1);
 });

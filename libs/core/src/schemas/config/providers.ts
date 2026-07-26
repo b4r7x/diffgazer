@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { timestampFields } from "../fields.js";
 import { SettingsConfigSchema, TrustConfigSchema } from "./settings.js";
 
 export const AI_PROVIDERS = [
@@ -40,7 +39,8 @@ export const UserConfigSchema = z
   .object({
     provider: AIProviderSchema,
     model: z.string().optional(),
-    ...timestampFields,
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime(),
   })
   .refine((data) => data.model === undefined || data.model.trim().length > 0, {
     error: "Model must not be empty",

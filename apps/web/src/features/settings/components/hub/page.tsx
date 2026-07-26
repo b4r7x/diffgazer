@@ -115,7 +115,9 @@ export function SettingsHubPage() {
     // jump as the user moves between the hub and its children.
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-7 pb-4">
       <div className="mx-auto w-full max-w-2xl">
-        <Panel frame="viewfinder" density="compact" aria-labelledby={titleId}>
+        {/* The hub is a single pane and its menu owns the arrow keys, so it is
+            the screen's one reticle and renders it in the focused hue. */}
+        <Panel frame="viewfinder" focused density="compact" aria-labelledby={titleId}>
           <Panel.Label>
             <h1 id={titleId}>Settings Hub</h1>
           </Panel.Label>

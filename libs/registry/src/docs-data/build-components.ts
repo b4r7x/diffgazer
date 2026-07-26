@@ -1,6 +1,5 @@
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { log } from "../logger.js";
 import type { Registry, RegistryItem } from "../registry-types.js";
 import { cleanDir } from "../utils/fs.js";
 import { writeJson } from "../utils/json.js";
@@ -42,7 +41,7 @@ export async function buildComponentsData(params: {
   const componentDataMap: Record<string, Record<string, unknown>> = {};
 
   for (const item of componentItems) {
-    log.info(`Processing: ${item.name}`);
+    console.log(`Processing: ${item.name}`);
     try {
       const data = await componentsConfig.processComponent(item, highlighter, registry);
       if (data) {
@@ -57,7 +56,7 @@ export async function buildComponentsData(params: {
     writeJson(resolve(componentsDir, `${name}.json`), data);
   }
   const componentsCount = Object.keys(componentDataMap).length;
-  log.info(`Wrote ${componentsCount} per-component JSON files`);
+  console.log(`Wrote ${componentsCount} per-component JSON files`);
 
   const componentList = sortedItems
     .filter((item) => componentDataMap[item.name])
@@ -67,7 +66,7 @@ export async function buildComponentsData(params: {
       description: getDescription(componentDataMap[item.name], item),
     }));
   writeJson(resolve(outputDir, "component-list.json"), componentList);
-  log.info(`Wrote component-list.json (${componentList.length} entries)`);
+  console.log(`Wrote component-list.json (${componentList.length} entries)`);
 
   mkdirSync(componentsConfig.contentDir, { recursive: true });
 

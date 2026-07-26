@@ -281,6 +281,10 @@
    * directly. All 8 directional tokens are kept (vs. collapsed to a single pair) so consumers
    * can override per side with transform-based keyframes; `--ui-content-transform-origin` is
    * set automatically by FloatingPanel for those overrides. Reduced motion overrides below.
+   *
+   * `--ui-content-enter-duration` / `--ui-content-exit-duration` are the overlay-wide duration
+   * contract: the modal tier (shared/dialog.css) reads them too, so one knob retimes every
+   * overlay. Do not re-fork a per-component duration.
    */
   --ui-content-enter-duration: 60ms;
   --ui-content-exit-duration: 40ms;

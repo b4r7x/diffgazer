@@ -4,10 +4,7 @@
   "title": "Skeleton",
   "description": "Loading placeholder with pulse animation",
   "dependencies": [],
-  "registryDependencies": [
-    "https://r.b4r7.dev/r/ui/theme.json",
-    "https://r.b4r7.dev/r/ui/utils.json"
-  ],
+  "registryDependencies": ["https://r.b4r7.dev/r/ui/theme.json"],
   "files": [
     {
       "path": "registry/ui/skeleton/index.ts",
@@ -17,9 +14,15 @@
     },
     {
       "path": "registry/ui/skeleton/skeleton.tsx",
-      "content": "import type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for skeleton. */\nexport type SkeletonProps = Omit<ComponentProps<\"div\">, \"aria-hidden\">;\n\n/** Decorative placeholder div. Use className to set width and height. */\nexport function Skeleton({ className, ref, ...props }: SkeletonProps) {\n  return (\n    <div\n      ref={ref}\n      data-slot=\"skeleton\"\n      className={cn(\"rounded-sm bg-border motion-safe:animate-pulse\", className)}\n      {...props}\n      aria-hidden=\"true\"\n    />\n  );\n}\n",
+      "content": "import type { ComponentProps, CSSProperties } from \"react\";\n\n/** Props for skeleton. */\nexport type SkeletonProps = Omit<ComponentProps<\"div\">, \"aria-hidden\"> & {\n  /**\n   * Width of the placeholder in character cells, so it reserves the width of the\n   * value it stands in for. Surfaces as data-chars plus the --skeleton-chars\n   * custom property; omit and set width via className instead.\n   */\n  chars?: number;\n};\n\n/** Decorative character-cell placeholder. Use chars or className to set width and height. */\nexport function Skeleton({ chars, className, ref, style, ...props }: SkeletonProps) {\n  return (\n    <div\n      ref={ref}\n      data-slot=\"skeleton\"\n      data-chars={chars === undefined ? undefined : String(chars)}\n      className={className}\n      style={\n        chars === undefined ? style : ({ ...style, \"--skeleton-chars\": chars } as CSSProperties)\n      }\n      {...props}\n      aria-hidden=\"true\"\n    />\n  );\n}\n",
       "type": "registry:ui",
       "target": "@ui/skeleton/skeleton.tsx"
+    },
+    {
+      "path": "registry/ui/skeleton/skeleton.css",
+      "content": "/*\n * Skeleton renders as a character-cell strip, not a rounded blob: the same\n * alphabet Spinner (pixel grid) and BlockBar (U+2588/U+2591 cells) already\n * speak. The cells are cut out of the fill with a mask rather than painted as\n * a gradient background, so a consumer-set background class still tiles into\n * cells instead of covering them.\n *\n * Every custom property here is component-scoped (--skeleton-*), so nothing in\n * the shared theme token contract moves.\n */\n@layer components {\n  [data-slot=\"skeleton\"] {\n    --skeleton-cell: 8px;\n    --skeleton-gap: 1px;\n    /* Deliberately below text contrast: the strip is decorative and\n       aria-hidden, and must never read as content. Light needs the extra\n       points because a dark tint at equal alpha reads lighter than a light\n       tint on near-black. */\n    --skeleton-cell-fill: color-mix(in oklab, var(--foreground) 13%, transparent);\n\n    position: relative;\n    overflow: hidden;\n    border-radius: 0;\n    min-height: 12px;\n    background-color: var(--skeleton-cell-fill);\n    -webkit-mask-image: repeating-linear-gradient(\n      90deg,\n      #000 0 calc(var(--skeleton-cell) - var(--skeleton-gap)),\n      transparent calc(var(--skeleton-cell) - var(--skeleton-gap)) var(--skeleton-cell)\n    );\n    mask-image: repeating-linear-gradient(\n      90deg,\n      #000 0 calc(var(--skeleton-cell) - var(--skeleton-gap)),\n      transparent calc(var(--skeleton-cell) - var(--skeleton-gap)) var(--skeleton-cell)\n    );\n  }\n\n  [data-theme=\"light\"] [data-slot=\"skeleton\"],\n  [data-theme=\"light\"][data-slot=\"skeleton\"] {\n    --skeleton-cell-fill: color-mix(in oklab, var(--foreground) 15%, transparent);\n  }\n\n  /* `chars` reserves the width of the value the placeholder stands in for.\n     The component writes the count into --skeleton-chars and marks the element\n     with data-chars, so the width rule never has to guess whether the property\n     was set. */\n  [data-slot=\"skeleton\"][data-chars] {\n    width: calc(var(--skeleton-cell) * var(--skeleton-chars));\n  }\n\n  /* Scan sweep. The element mask applies to the pseudo-element too, so what\n     travels is cells lighting up left to right — not a glossy shimmer bar. */\n  [data-slot=\"skeleton\"]::after {\n    content: \"\";\n    position: absolute;\n    inset-block: 0;\n    inset-inline-start: 0;\n    width: 40%;\n    background: linear-gradient(\n      90deg,\n      transparent,\n      color-mix(in oklab, var(--foreground) 9%, transparent) 45%,\n      transparent\n    );\n    animation: skeleton-scan 1400ms linear infinite;\n  }\n}\n\n@keyframes skeleton-scan {\n  from {\n    transform: translateX(-60%);\n  }\n  to {\n    transform: translateX(260%);\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  /* No sweep at all — a static cell grid still reads as \"pending\". */\n  [data-slot=\"skeleton\"]::after {\n    content: none;\n  }\n}\n\n@media (forced-colors: active) {\n  /* Forced-colors strips mask support unevenly, so drop the cell grid and fall\n     back to a plain outlined band. */\n  [data-slot=\"skeleton\"] {\n    background: Canvas;\n    border: 1px solid GrayText;\n    -webkit-mask-image: none;\n    mask-image: none;\n  }\n\n  [data-slot=\"skeleton\"]::after {\n    content: none;\n  }\n}\n",
+      "type": "registry:style",
+      "target": "~/styles/skeleton.css"
     }
   ],
   "meta": {

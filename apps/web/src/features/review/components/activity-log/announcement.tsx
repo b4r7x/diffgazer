@@ -13,6 +13,11 @@ export interface ActivityLogAnnouncementProps {
   tailEvent: ReviewEvent | undefined;
   latestEntry: Pick<LogEntryData, "id" | "message"> | undefined;
   sourceFilter: string | null;
+  /**
+   * The pinned tail row's sentence without its ticking clock, so it is announced
+   * when the run changes state and never once a second.
+   */
+  tailStatus?: string | null;
   enabled: boolean;
 }
 
@@ -20,6 +25,7 @@ export function ActivityLogAnnouncement({
   tailEvent,
   latestEntry,
   sourceFilter,
+  tailStatus = null,
   enabled,
 }: ActivityLogAnnouncementProps) {
   const announcementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -62,6 +68,7 @@ export function ActivityLogAnnouncement({
   return (
     <output aria-live="polite" aria-atomic="true" className="sr-only">
       {announcement && <span key={announcement.id}>{announcement.message}</span>}
+      {tailStatus && <span key={tailStatus}>{tailStatus}</span>}
     </output>
   );
 }

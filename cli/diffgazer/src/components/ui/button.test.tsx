@@ -1,7 +1,7 @@
 import { cleanup, render } from "ink-testing-library";
 import { afterAll, afterEach, describe, expect, test, vi } from "vitest";
 import { frameBackgrounds, frameForegrounds } from "../../testing/frame-colors";
-import { selectionFill } from "../../theme/chrome";
+import { selectionHue } from "../../theme/chrome";
 import { darkPalette } from "../../theme/palettes";
 import { CliThemeProvider } from "../../theme/provider";
 import type { ButtonProps } from "./button";
@@ -44,7 +44,7 @@ describe("Button focus", () => {
   test.each(VARIANTS)("fills a focused %s button with the selection hue", (variant) => {
     const { lastFrame } = renderButton({ variant, isActive: true });
 
-    expect(frameBackgrounds(lastFrame() ?? "")).toEqual([selectionFill(darkPalette)]);
+    expect(frameBackgrounds(lastFrame() ?? "")).toEqual([selectionHue(darkPalette)]);
     expect(frameForegrounds(lastFrame() ?? "")).toContain(darkPalette.bg);
   });
 

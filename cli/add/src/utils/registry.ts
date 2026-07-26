@@ -1,4 +1,4 @@
-import { metaField } from "@diffgazer/registry/cli";
+import { metaFlag } from "@diffgazer/registry/cli";
 import type { RegistryFile, RegistryItem, ResolvedConfig } from "../context.js";
 import {
   rewriteKeysPackageImportsForCopy,
@@ -65,6 +65,6 @@ export function prepareFileContentForIntegration(
   content = content.replace(CSS_SIDE_EFFECT_IMPORT_RE, "").replace(/\n{3,}/g, "\n\n");
   content = rewriteRelativeJsExtensionsForCopy(content);
   content = transformImports(content, config.aliases);
-  content = handleRscDirective(content, metaField(item, "client", true), config.rsc);
+  content = handleRscDirective(content, metaFlag(item, "client", true), config.rsc);
   return content;
 }

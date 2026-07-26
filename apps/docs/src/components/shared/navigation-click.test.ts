@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 import { describe, expect, it } from "vitest";
-import { isPrimaryNavigationClick } from "./sidebar";
+import { isPrimaryNavigationClick } from "./navigation-click";
 
 function clickEvent(overrides: Partial<MouseEvent> = {}): MouseEvent {
   return {

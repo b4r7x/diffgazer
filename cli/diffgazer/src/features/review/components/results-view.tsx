@@ -13,7 +13,7 @@ import { Box, Text } from "ink";
 import { type ReactElement, useState } from "react";
 import { useContentZone } from "../../../components/layout/global";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
-import { focusBorder, SURFACE_BORDER } from "../../../theme/chrome";
+import { paneBorder } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
 import { useReviewKeyboard } from "../hooks/use-keyboard";
 import { computePaneGeometry } from "../lib/pane-geometry";
@@ -44,7 +44,7 @@ export function ReviewResultsView({
   onBack,
 }: ReviewResultsViewProps): ReactElement {
   const { tokens } = useTheme();
-  const { columns, isNarrow, isMedium } = useResponsive();
+  const { columns, isNarrow } = useResponsive();
   const { contentRows } = useContentZone();
   const [severityFilter, setSeverityFilter] = useState<UISeverityFilter>(() => new Set());
   const [selectedIssueId, setSelectedIssueId] = useState<string | undefined>(() =>
@@ -115,13 +115,12 @@ export function ReviewResultsView({
     columns,
     contentRows,
     isNarrow,
-    isMedium,
     hasDuplicateNotice: Boolean(duplicateNotice),
   });
   const reviewIdLabel = reviewId ? formatRunId(reviewId) : "#unknown";
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" width="100%">
       <Box paddingX={1}>
         <Text color={tokens.accent} bold>
           {`Review ${reviewIdLabel}`}
@@ -138,8 +137,7 @@ export function ReviewResultsView({
           height={listPaneHeight}
           flexShrink={isNarrow ? undefined : 0}
           overflowY="hidden"
-          borderStyle={SURFACE_BORDER}
-          borderColor={focusBorder(tokens, activeZone === "list")}
+          {...paneBorder(tokens, activeZone === "list")}
         >
           <IssueListPane
             issues={filteredIssues}
@@ -156,11 +154,12 @@ export function ReviewResultsView({
           />
         </Box>
         <Box
-          flexGrow={1}
+          width={isNarrow ? undefined : Math.max(columns - listWidth, 1)}
+          flexGrow={isNarrow ? 1 : 0}
+          minWidth={0}
           height={detailsPaneHeight}
           overflowY="hidden"
-          borderStyle={SURFACE_BORDER}
-          borderColor={focusBorder(tokens, activeZone === "details")}
+          {...paneBorder(tokens, activeZone === "details")}
         >
           <IssueDetailsPane
             issue={selectedIssue}

@@ -1,6 +1,6 @@
 import type { MenuAction } from "../schemas/presentation/navigation.js";
 import type { ReviewMode } from "../schemas/review/index.js";
-import { isReviewStartAction } from "./menu-disabling.js";
+import { isReviewStartAction, type ReviewStartAction } from "./menu-disabling.js";
 
 type ResumableMode = Extract<ReviewMode, "unstaged" | "staged">;
 
@@ -59,7 +59,7 @@ export type HomeMenuActivation =
   | { kind: "blocked-untrusted" }
   | { kind: "noop" };
 
-const REVIEW_START_MODE: Partial<Record<MenuAction, ResumableMode>> = {
+const REVIEW_START_MODE: Record<ReviewStartAction, ResumableMode> = {
   "review-unstaged": "unstaged",
   "review-staged": "staged",
 };
@@ -86,8 +86,7 @@ export function resolveHomeMenuActivation(
     if (!isTrusted) {
       return { kind: "blocked-untrusted" };
     }
-    const mode = REVIEW_START_MODE[action];
-    return mode ? { kind: "start-review", mode } : { kind: "noop" };
+    return { kind: "start-review", mode: REVIEW_START_MODE[action] };
   }
 
   if (action === "resume-review") {

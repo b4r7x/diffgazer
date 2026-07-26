@@ -33,10 +33,8 @@ export function summarizeHistoryWarnings(
         summary.indexRewriteFailed = true;
         break;
       default: {
-        const unhandledWarning: never = warning;
-        throw new Error(
-          `Unhandled history warning kind: ${(unhandledWarning as { kind: string }).kind}`,
-        );
+        const _exhaustive: never = warning;
+        throw new Error(`Unhandled history warning: ${JSON.stringify(_exhaustive)}`);
       }
     }
   }
