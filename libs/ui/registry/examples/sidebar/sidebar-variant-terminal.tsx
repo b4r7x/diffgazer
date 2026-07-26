@@ -11,7 +11,7 @@ import {
 
 export default function SidebarVariantTerminal() {
   return (
-    <Sidebar variant="terminal" className="h-full">
+    <Sidebar embedded variant="terminal" className="h-full">
       <SidebarHeader>
         <span className="text-xs font-mono text-muted-foreground">~/ui/docs</span>
       </SidebarHeader>

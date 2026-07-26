@@ -20,7 +20,11 @@ const focusReachabilityCases = [
 }>;
 
 test.describe("Docs navigation", () => {
-  test("desktop sidebar links navigate between docs pages", async ({ page }) => {
+  test("desktop sidebar links navigate between docs pages", async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name === "mobile-chromium",
+      "the docs sidebar is inside a drawer on a phone; the drawer path is the test below",
+    );
     await page.goto("/ui/components/button");
     await expect(page.getByRole("heading", { level: 1, name: "Button" })).toBeVisible();
 
@@ -54,6 +58,11 @@ test.describe("Docs navigation", () => {
     const searchButton = page.getByRole("button", { name: /^search docs/i, includeHidden: true });
 
     await expect(scrim).toBeVisible();
+    // The drawer takes focus itself, so opening it never lights a control's
+    // focus ring; Tab still enters the trap at that first control.
+    await expect(sidebar).toBeFocused();
+    await expect(initialDrawerControl).not.toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(initialDrawerControl).toBeFocused();
     expect(await skipLink.evaluate((element) => element.closest("[inert]") !== null)).toBe(true);
 
@@ -72,6 +81,10 @@ test.describe("Docs navigation", () => {
 
     await expect(page).toHaveURL(/\/ui\/components\/accordion$/);
     await expect(page.getByRole("heading", { level: 1, name: "Accordion" })).toBeVisible();
+    // Same focus-on-navigate contract the desktop test asserts: the drawer's own
+    // focus restore runs as it closes here, and it must hand focus to the new
+    // page rather than back to the control that opened it.
+    await expect(page.locator("#main-content")).toBeFocused();
     await expect(
       page.getByRole("button", { name: /close sidebar navigation/i, includeHidden: true }),
     ).toHaveAttribute("inert", "");
@@ -80,6 +93,50 @@ test.describe("Docs navigation", () => {
     ).toHaveAttribute("inert", "");
     await expect(menuButton).toHaveAttribute("aria-expanded", "false");
     expect(await skipLink.evaluate((element) => element.closest("[inert]") === null)).toBe(true);
+  });
+
+  test("mobile drawer highlights the active row from the tree rail out", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/ui/components/button");
+    await page.getByRole("button", { name: /open navigation menu/i }).click();
+
+    const sidebar = page.getByRole("complementary", { name: /sidebar navigation/i });
+    const geometry = await sidebar.evaluate((element) => {
+      const rows = Array.from(
+        element.querySelectorAll<HTMLElement>("[data-diffgazer-navigation-item]"),
+      );
+      const active = rows.find((row) => row.hasAttribute("data-selected"));
+      const plain = rows.find((row) => !row.hasAttribute("data-selected"));
+      if (!active || !plain) throw new Error("expected a selected and an unselected tree row");
+
+      const scroller = active.closest<HTMLElement>("[data-slot='scroll-area']");
+      if (!scroller) throw new Error("expected the tree rows to live in a scroll area");
+
+      const edges = (row: HTMLElement) => {
+        const box = row.getBoundingClientRect();
+        return {
+          left: box.x,
+          right: box.right,
+          trunk: box.x + Number.parseFloat(getComputedStyle(row, "::before").left),
+        };
+      };
+      return {
+        active: edges(active),
+        plain: edges(plain),
+        overflow: scroller.scrollWidth - scroller.clientWidth,
+      };
+    });
+
+    // The fill starts on the trunk rather than bleeding past it into the shell's
+    // gutter, and the trunk runs as one straight line through selected and
+    // unselected rows alike.
+    expect(geometry.active.left).toBeCloseTo(geometry.active.trunk, 1);
+    expect(geometry.active.trunk).toBeCloseTo(geometry.plain.trunk, 1);
+    expect(geometry.active.right).toBeCloseTo(geometry.plain.right, 1);
+    // The rail indent must come out of the row's width, not push it off the
+    // edge: a sideways overflow would let scrolling the active row into view
+    // drag the whole tree out from under its gutter.
+    expect(geometry.overflow).toBe(0);
   });
 
   test("mobile drawer focus trap skips closed details descendants at both boundaries", async ({
@@ -107,15 +164,12 @@ test.describe("Docs navigation", () => {
 
     const summary = page.locator("#focus-trap-closed-details summary");
     const hiddenAction = page.locator("#focus-trap-closed-details button");
-    const initialDrawerControl = sidebar.getByRole("combobox", {
-      name: "Select documentation library",
-    });
     await hiddenAction.focus();
     await expect(hiddenAction).toBeFocused();
     await page.locator("#focus-trap-closed-details").evaluate((element) => {
       element.removeAttribute("open");
     });
-    await expect(initialDrawerControl).toBeFocused();
+    await expect(sidebar).toBeFocused();
 
     await summary.focus();
     await expect(summary).toBeFocused();
@@ -171,9 +225,7 @@ test.describe("Docs navigation", () => {
 
         const sidebar = page.getByRole("complementary", { name: /sidebar navigation/i });
         const scrim = page.getByRole("button", { name: /close sidebar navigation/i });
-        await expect(
-          sidebar.getByRole("combobox", { name: "Select documentation library" }),
-        ).toBeFocused();
+        await expect(sidebar).toBeFocused();
         await sidebar.evaluate((element, matrixCase) => {
           const boundary = document.createElement("button");
           boundary.type = "button";

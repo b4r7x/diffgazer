@@ -88,14 +88,18 @@ const clientLoader = browserCollections.docs.createClientLoader({
     const description = d?.docs?.description ?? d?.description ?? frontmatter.description;
 
     return (
-      <DocsPageLayout toc={toc}>
-        <DocsPageHeader
-          title={title}
-          description={description}
-          tags={d?.docs?.tags}
-          lib={lib}
-          slug={_splat}
-        />
+      <DocsPageLayout
+        toc={toc}
+        header={
+          <DocsPageHeader
+            title={title}
+            description={description}
+            tags={d?.docs?.tags}
+            lib={lib}
+            slug={_splat}
+          />
+        }
+      >
         <DocsPageBody>
           <MDX components={useMDXComponents()} />
         </DocsPageBody>

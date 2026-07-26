@@ -31,7 +31,7 @@ export default function SidebarRail() {
   return (
     <SidebarProvider defaultState="rail">
       <div className="flex items-stretch h-80 bg-background">
-        <Sidebar variant="bar">
+        <Sidebar embedded variant="bar">
           <SidebarHeader>
             <span className="text-xs font-mono font-bold">DG</span>
           </SidebarHeader>

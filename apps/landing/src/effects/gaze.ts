@@ -11,6 +11,41 @@ export interface GazeController {
 
 const NOOP: GazeController = { tilt: () => {}, placeCallouts: () => {}, cleanup: () => {} };
 
+/**
+ * Below this width the hero diff clips its lines to an ellipsis instead of
+ * scrolling (see the matching `max-width: 700px` block in styles/index.css), so
+ * the rows are no longer a scroll container and the authored tab stop would be a
+ * focusable element with nothing to operate. Landing has no framework to derive
+ * markup from state, so the attribute pair is driven off the same media query
+ * the stylesheet uses; the two have to move together.
+ */
+const CLIPPED_DIFF_QUERY = "(max-width: 700px)";
+
+/** Keep the diff rows in the tab order only while they are really scrollable. */
+function trackDiffScroller(diff: HTMLElement): Cleanup {
+  if (typeof matchMedia !== "function") return () => {};
+  const label = diff.getAttribute("aria-label") ?? "";
+  const clipped = matchMedia(CLIPPED_DIFF_QUERY);
+  const apply = (): void => {
+    if (clipped.matches) {
+      diff.removeAttribute("tabindex");
+      diff.removeAttribute("aria-label");
+    } else {
+      diff.tabIndex = 0;
+      diff.setAttribute("aria-label", label);
+    }
+  };
+  apply();
+  clipped.addEventListener("change", apply);
+  // Restore the authored markup so a re-init (a motion-preference flip restarts
+  // every effect) reads the real label back rather than an emptied attribute.
+  return () => {
+    clipped.removeEventListener("change", apply);
+    diff.tabIndex = 0;
+    diff.setAttribute("aria-label", label);
+  };
+}
+
 function formatIssueCount(count: number): string {
   return `${count} ${count === 1 ? "issue" : "issues"}`;
 }
@@ -111,6 +146,7 @@ export function initGaze(
   };
 
   placeCallouts();
+  const stopDiffScroller = trackDiffScroller(diff);
 
   // A motion-preference flip re-runs this init over a DOM the other branch may
   // have left mid-scan, so drop animated state before taking either path.
@@ -123,10 +159,11 @@ export function initGaze(
     status.textContent = formatIssueCount(gazeFindings.length);
     for (const row of [...removed, ...added]) row.classList.add("lit");
     for (const callout of callouts) callout?.classList.add("on");
-    return { tilt: () => {}, placeCallouts, cleanup: () => {} };
+    return { tilt: () => {}, placeCallouts, cleanup: stopDiffScroller };
   }
 
   const scope = createEffectScope(signal);
+  scope.addCleanup(stopDiffScroller);
   const spinTimer = setInterval(() => {
     spin.textContent = spinAt(Math.floor(performance.now() / 110));
   }, 110);

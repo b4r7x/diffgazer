@@ -76,6 +76,9 @@ describe("ParameterTable", () => {
 
     expect(screen.getByRole("columnheader", { name: "Description" })).toBeVisible();
 
+    const scrollRegion = screen.getByRole("region", { name: "Component parameters" });
+    expect(within(scrollRegion).getByRole("table")).toBe(table);
+
     const openRow = within(table).getByRole("row", { name: /^open/ });
     const [openName, openType, openDefault, openDescription] = within(openRow).getAllByRole("cell");
     expect(openName).toHaveTextContent("open");

@@ -37,6 +37,11 @@ export function CalloutDismiss({
       className={cn(
         "self-center inline-flex items-center justify-center shrink-0",
         "w-6 h-6 p-1 rounded-[var(--radius)] font-mono cursor-pointer",
+        // variants.mdx recipe 3: the 24px box keeps its density and a transparent
+        // ::before overhangs 10px per side for a 44px touch target. Growing sideways
+        // is safe here, unlike in a button row — the dismiss stands alone at the
+        // callout's top edge with the title's own padding beside it.
+        "relative pointer-coarse:before:absolute pointer-coarse:before:-inset-2.5 pointer-coarse:before:content-['']",
         "text-muted-foreground hover:text-foreground hover:bg-foreground/5",
         "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
         "transition-colors",

@@ -6,7 +6,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HomeLibrary } from "../data";
-import { ModulesIndexTable } from "./modules-index-table";
+import { RegistryDirectory } from "./registry-directory";
 import { SessionPanel } from "./session-panel";
 
 const routeCalls = vi.hoisted(() => vi.fn());
@@ -81,7 +81,7 @@ describe("SessionPanel", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("2 findings")).toBeInTheDocument();
     expect(screen.getByText("1 suggestion")).toBeInTheDocument();
-    expect(screen.getByText("coverage gap · parser.ts")).toBeInTheDocument();
+    expect(screen.getByText("coverage gap")).toBeInTheDocument();
     expect(screen.getByText(/press j\/k to browse the registry/)).toBeInTheDocument();
 
     // The typing/spinner phases are skipped entirely under reduced motion.
@@ -98,7 +98,7 @@ describe("SessionPanel", () => {
     await runAnimation();
 
     expect(screen.getByText("diffgazer")).toBeInTheDocument();
-    expect(screen.getByText("coverage gap · parser.ts")).toBeInTheDocument();
+    expect(screen.getByText("coverage gap")).toBeInTheDocument();
   });
 
   it("restarts the animation from the top when replay is pressed", async () => {
@@ -139,7 +139,7 @@ describe("SessionPanel", () => {
     act(() => reducedMotion.setMatches(true));
 
     expect(screen.getByText("diffgazer")).toBeInTheDocument();
-    expect(screen.getByText("coverage gap · parser.ts")).toBeInTheDocument();
+    expect(screen.getByText("coverage gap")).toBeInTheDocument();
     expect(screen.queryByText(/reviewing 3 changed files/)).not.toBeInTheDocument();
 
     act(() => reducedMotion.setMatches(false));
@@ -159,7 +159,7 @@ describe("SessionPanel", () => {
     const onSidebarToggle = vi.fn();
     render(
       <KeyboardProvider>
-        <ModulesIndexTable libraries={TEST_LIBRARIES} />
+        <RegistryDirectory libraries={TEST_LIBRARIES} />
         <SessionPanel />
         <input aria-label="Search docs" />
         <button type="button" onClick={onSidebarToggle}>

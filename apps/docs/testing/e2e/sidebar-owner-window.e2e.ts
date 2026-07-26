@@ -50,10 +50,25 @@ test.describe("Sidebar iframe viewport ownership", () => {
       };
     });
 
+    // The at-rest sidebar subscribed before the shim above existed, so its
+    // listener lives on the native matchMedia and is invisible to the stats.
+    // One remount recreates the subscription through the patched window.
+    await page.getByRole("button", { name: "Unmount frame sidebar", exact: true }).click();
     await page.getByRole("button", { name: "Mount frame sidebar", exact: true }).click();
+
     const frame = page.frameLocator('iframe[title="Sidebar owner window"]');
     const navigation = frame.getByRole("navigation", { name: "Frame navigation" });
     const dialog = frame.getByRole("dialog", { name: "Frame navigation" });
+    const frameTrigger = frame.getByRole("button", { name: "Open navigation" });
+
+    // The sidebar is mounted at rest, and the 420px frame is below breakpoint
+    // 600, so the nav lives in a sheet that starts closed: only the trigger is
+    // on the page until it is tapped.
+    await expect(frameTrigger).toBeVisible();
+    await expect(dialog).toHaveCount(0);
+    await expect(navigation).toHaveCount(0);
+
+    await frameTrigger.click();
     await expect(dialog).toBeVisible();
     await expect(navigation).toHaveAttribute("data-mobile", "true");
     await expect
@@ -80,6 +95,10 @@ test.describe("Sidebar iframe viewport ownership", () => {
     await iframe.evaluate((element) => {
       element.setAttribute("style", "width: 420px");
     });
+    // Crossing back below the breakpoint resets the sheet's own open state, so
+    // the sheet must stay closed until it is reopened deliberately.
+    await expect(dialog).toHaveCount(0);
+    await frameTrigger.click();
     await expect(dialog).toBeVisible();
     await expect(navigation).toHaveAttribute("data-mobile", "true");
 
@@ -88,6 +107,7 @@ test.describe("Sidebar iframe viewport ownership", () => {
     await page.setViewportSize({ width: 1200, height: 900 });
     await page.getByRole("button", { name: "Unmount frame sidebar", exact: true }).click();
     await expect(navigation).toHaveCount(0);
+    await expect(frameTrigger).toHaveCount(0);
     await expect
       .poll(() =>
         iframe.evaluate((element) => {
@@ -99,5 +119,21 @@ test.describe("Sidebar iframe viewport ownership", () => {
         }),
       )
       .toMatchObject({ active: 0, removed: 1 });
+
+    // Remounting re-subscribes against the frame window, which is the half of
+    // the lifecycle the unmount assertions above cannot prove on their own.
+    await page.getByRole("button", { name: "Mount frame sidebar", exact: true }).click();
+    await expect(frameTrigger).toBeVisible();
+    await expect
+      .poll(() =>
+        iframe.evaluate((element) => {
+          const view = (element as HTMLIFrameElement).contentWindow;
+          return Reflect.get(view ?? {}, "__sidebarMqlStats") as {
+            active: number;
+            removed: number;
+          };
+        }),
+      )
+      .toMatchObject({ active: 1, removed: 1 });
   });
 });

@@ -9,7 +9,7 @@ export default function ScrollAreaHorizontal() {
   return (
     // The 1px inset keeps the scrollbar track off the container border so the
     // two hairlines never read as one doubled edge.
-    <div className="border border-border p-px">
+    <div className="w-full min-w-0 border border-border p-px">
       <ScrollArea aria-label="Horizontal strip" orientation="horizontal" className="p-2">
         <div className="flex gap-2 w-[800px]">
           {HORIZONTAL_BLOCKS.map((block) => (

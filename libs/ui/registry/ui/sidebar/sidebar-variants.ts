@@ -34,6 +34,12 @@ export const sidebarItemVariants = cva(
   [
     // group/item is consumed by the marker glyph in sidebar-item (hover preview).
     "group/item flex items-center gap-2 w-full min-w-0 px-2 py-1 text-sm",
+    // Coarse-pointer floor (variants.mdx recipe 1): px-2 py-1 + text-sm is a 28px
+    // row, below the 44px touch target bar. Rows live in SidebarContent, a
+    // `flex-1 overflow-y-auto` column that is allowed to grow, so a real minimum
+    // size is safe here; a negative margin would break the tree variant's
+    // contiguous trunk and a pseudo overhang would be clipped by the scroller.
+    "pointer-coarse:min-h-11",
     "cursor-pointer transition-colors motion-reduce:transition-none",
     "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
     "disabled:cursor-not-allowed",
@@ -94,13 +100,28 @@ export const sidebarItemVariants = cva(
           "data-[selected]:text-foreground data-[selected]:border-l-foreground",
           "data-[selected]:hover:border-l-foreground",
         ].join(" "),
-        // Connectors are drawn per item in sidebar.css. They rely on contiguous
-        // rows (py, no gap) for an unbroken trunk, and on pl-6 clearing the
-        // tick while aligning item text with a collapsible section title's text
-        // (px-2 + 12px chevron + gap-1 = 24px). Non-collapsible titles have no
-        // chevron and sit at 8px, so items indent past them.
+        // Connectors are drawn per item in sidebar.css, from the row's own left
+        // edge. They rely on contiguous rows (py, no gap) for an unbroken trunk.
+        //
+        // --sidebar-tree-rail is that left edge: the row is pushed in by it so
+        // the trunk lands under a collapsible section title's fold chevron
+        // (px-2 gutter + half of the 12px chevron), and the padding gives back
+        // what the margin took so the label still sits at 24px, aligned with
+        // the title's text (px-2 + 12px chevron + gap-1). Non-collapsible titles
+        // have no chevron and sit at 8px, so items indent past them.
+        //
+        // Starting the box at the trunk is also what keeps the selected/hover
+        // band tied to the tree: it fills from the rail out to the row's end
+        // instead of bleeding into the gutter and cutting the trunk in half.
+        // No parent-padding math — the row owns both halves of the offset.
+        //
+        // w-auto replaces the base w-full: a full-width row plus a left margin
+        // overflows its column by the margin, and SidebarContent then has a
+        // horizontal scroll it can only hide, shifting the whole tree sideways
+        // the first time an active row is scrolled into view.
         tree: [
-          "relative pl-6 py-1.5 group-data-[state=rail]/sidebar:pl-0",
+          "[--sidebar-tree-rail:14px] relative ml-(--sidebar-tree-rail) w-auto pl-[calc(1.5rem-var(--sidebar-tree-rail))] py-1.5",
+          "group-data-[state=rail]/sidebar:ml-0 group-data-[state=rail]/sidebar:pl-0",
           "text-foreground/70 hover:text-foreground hover:bg-foreground/5",
           "data-[selected]:bg-foreground/8 data-[selected]:text-foreground",
           "data-[selected]:hover:bg-foreground/10",

@@ -1,17 +1,14 @@
 import { Kbd } from "@diffgazer/ui/components/kbd";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { useRouterState } from "@tanstack/react-router";
-import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
+import { CHROME_ACTION_TARGET_CLASS, CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
 import { useMobileNav } from "@/hooks/mobile-nav-context";
 import { useSearchOpen } from "@/hooks/search-context";
 import { getDocsLibraryConfig, getDocsLibraryFromPathname } from "@/lib/library";
 
 function MobileNavToggle() {
-  const { open, setOpen, isDesktop, sidebarEnabled, menuButtonRef } = useMobileNav();
-
-  if (isDesktop || !sidebarEnabled) {
-    return null;
-  }
+  const { open, setOpen, menuButtonRef } = useMobileNav();
 
   return (
     <button
@@ -20,7 +17,16 @@ function MobileNavToggle() {
       aria-label="Open navigation menu"
       aria-expanded={open}
       aria-controls="sidebar-nav"
-      className="mr-3 flex h-6 w-6 shrink-0 flex-col justify-center gap-1"
+      className={cn(
+        // Both conditions are CSS so the toggle ships in the prerendered markup
+        // and paints with the first frame instead of appearing at hydration:
+        // `max-lg` mirrors the drawer's own breakpoint in tui-two-pane, and the
+        // `has` check keeps surfaces that mount no drawer (the global 404) from
+        // offering a control that opens nothing.
+        "hidden group-has-[#sidebar-nav]/shell:max-lg:flex",
+        "-ml-2 mr-1 h-11 w-11 shrink-0 flex-col items-center justify-center gap-1",
+        FOCUS_RING_CLASS,
+      )}
       onClick={() => setOpen(true)}
     >
       <span className="block h-px w-4 bg-foreground" />
@@ -37,7 +43,7 @@ export function CommandRow() {
   const scope = library ? getDocsLibraryConfig(library).displayName : "root";
 
   return (
-    <div className="flex shrink-0 items-center border-b border-border bg-background px-4 py-2">
+    <div className="flex shrink-0 items-center border-b border-border bg-background px-4 py-1.5 pointer-coarse:py-1">
       <MobileNavToggle />
       <span className="mr-3 font-bold text-foreground" aria-hidden="true">
         ❯
@@ -45,7 +51,11 @@ export function CommandRow() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`flex min-w-0 flex-1 cursor-text items-center bg-transparent text-left font-mono text-sm text-muted-foreground transition-colors hover:text-foreground ${FOCUS_RING_CLASS}`}
+        className={cn(
+          "flex min-w-0 flex-1 cursor-text items-center bg-transparent text-left font-mono text-sm text-muted-foreground transition-colors hover:text-foreground",
+          CHROME_ACTION_TARGET_CLASS,
+          FOCUS_RING_CLASS,
+        )}
       >
         <span className="truncate">search docs, components, hooks…</span>
         <Kbd size="sm" className="ml-auto shrink-0 text-muted-foreground">

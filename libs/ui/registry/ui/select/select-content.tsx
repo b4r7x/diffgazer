@@ -200,12 +200,9 @@ export function SelectContent({
         "border border-border bg-background shadow-(--shadow-hard) rounded-sm overflow-y-auto outline-none",
         className,
       )}
-      // Cap the dropdown to the room FloatingPanel reports and scroll long lists
-      // instead of overflowing the viewport (the var is set on this element).
-      style={{
-        width: "var(--ui-floating-trigger-width)",
-        maxHeight: "var(--floating-panel-available-height)",
-      }}
+      // No max-height here: FloatingPanel caps this element to the room it measured, so
+      // the overflow-y-auto above scrolls long lists instead of overflowing the viewport.
+      style={{ width: "var(--ui-floating-trigger-width)" }}
     >
       <SelectDropdownInitializer
         open={open}

@@ -14,6 +14,21 @@ import {
   renderSelectInline,
 } from "./select-test-utils";
 
+function stubTriggerRect(trigger: HTMLElement, top: number) {
+  trigger.getBoundingClientRect = () =>
+    ({
+      x: 40,
+      y: top,
+      left: 40,
+      top,
+      right: 240,
+      bottom: top + 32,
+      width: 200,
+      height: 32,
+      toJSON: () => ({}),
+    }) as DOMRect;
+}
+
 describe("Select active-descendant ownership", () => {
   it("makes the search input the editable combobox and reduces the trigger to a toggle when search is present", async () => {
     renderSelect({ withSearch: true, defaultOpen: true });
@@ -313,6 +328,11 @@ describe("Select respects prefers-reduced-motion", () => {
   });
 });
 
+/** SelectContent's default gap between trigger and dropdown. */
+const SIDE_OFFSET = 4;
+/** FloatingPanel's default gap between the dropdown and the viewport edge. */
+const COLLISION_PADDING = 8;
+
 describe("Select dropdown width", () => {
   it("clamps dropdown to trigger width via the CSS variable", async () => {
     renderSelect({
@@ -329,15 +349,36 @@ describe("Select dropdown width", () => {
     expect(listbox.style.minWidth).toBe("");
   });
 
-  it("bounds a long dropdown to the available height and makes it scrollable", async () => {
+  // FloatingPanel owns the cap: it writes the resolved px max-height last, so it wins over
+  // the caller style on the same element and the public
+  // --floating-panel-available-height var carries the same number for inner scroll regions.
+  // jsdom compiles no Tailwind, so the scroll box itself is not observable; the listbox is
+  // the scroller, asserted through its documented overflow class.
+  it("bounds a long dropdown to the room below the trigger and scrolls the overflow", async () => {
     renderSelect({
       defaultOpen: true,
       variant: "default",
       items: Array.from({ length: 40 }, (_, i) => `Option ${i}`),
     });
-
+    const trigger = getSelectTrigger();
     const listbox = await screen.findByRole("listbox");
-    expect(listbox.style.maxHeight).toBe("var(--floating-panel-available-height)");
+
+    stubTriggerRect(trigger, 100);
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+
+    // Room below the trigger, minus the two gaps the dropdown reserves.
+    const available =
+      window.innerHeight - trigger.getBoundingClientRect().bottom - SIDE_OFFSET - COLLISION_PADDING;
+    await waitFor(() => {
+      expect(listbox.style.maxHeight).toBe(`${available}px`);
+    });
+    expect(listbox).toHaveAttribute("data-side", "bottom");
+    expect(listbox.style.getPropertyValue("--floating-panel-available-height")).toBe(
+      `${available}px`,
+    );
+    expect(listbox).toHaveClass("overflow-y-auto");
   });
 });
 
@@ -383,21 +424,6 @@ describe("Select trigger focus indicator", () => {
 });
 
 describe("Select open listbox anchor tracking", () => {
-  function stubTriggerRect(trigger: HTMLElement, top: number) {
-    trigger.getBoundingClientRect = () =>
-      ({
-        x: 40,
-        y: top,
-        left: 40,
-        top,
-        right: 240,
-        bottom: top + 32,
-        width: 200,
-        height: 32,
-        toJSON: () => ({}),
-      }) as DOMRect;
-  }
-
   it("follows the trigger while the page scrolls and stops painting once the trigger scrolls off screen", async () => {
     renderSelect({ defaultOpen: true, variant: "default" });
     const trigger = getSelectTrigger();

@@ -105,7 +105,7 @@ function ModelInfoList({
             key={model.id}
             value={model.id}
             label={
-              <span className="flex items-center gap-2">
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 {model.name}
                 {model.recommended && (
                   <Badge variant="success" size="sm" className="text-3xs">

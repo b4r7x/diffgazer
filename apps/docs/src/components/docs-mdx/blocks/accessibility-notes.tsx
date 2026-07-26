@@ -21,7 +21,7 @@ export function AccessibilityNotes() {
           <Typography as="h4" size="sm" className="font-bold text-foreground mb-1.5">
             {note.title}
           </Typography>
-          <Typography as="p" size="sm" className="max-w-3xl">
+          <Typography as="p" size="sm" className="max-w-3xl break-words">
             {note.content}
           </Typography>
         </div>

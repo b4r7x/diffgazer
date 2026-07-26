@@ -43,7 +43,7 @@ const resolveLibrarySwitchPath = createServerFn({ method: "GET" })
   });
 
 const selectTriggerClassName = cn(
-  "h-auto min-h-0 w-auto min-w-0 flex-1 justify-start gap-2 rounded-none border-0 bg-transparent px-0 py-0 text-left shadow-none",
+  "h-auto min-h-6 w-auto min-w-0 flex-1 justify-start gap-2 rounded-none border-0 bg-transparent px-0 py-1 text-left shadow-none pointer-coarse:min-h-11",
   "text-xs font-mono font-bold text-foreground",
   "hover:bg-secondary/40 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring",
 );
@@ -52,7 +52,8 @@ export function SidebarChrome({ library, tree }: { library: DocsLibraryId; tree:
   const pathname = useLocation({ select: (location) => location.pathname });
   const pendingDocsPathname = usePendingDocsRoute();
   const navigate = useNavigate();
-  const { setOpen: setMobileNavOpen } = useMobileNav();
+  const { setOpen: setMobileNavOpen, isDesktop } = useMobileNav();
+  const [selectHost, setSelectHost] = useState<HTMLDivElement | null>(null);
   const transitionTokenRef = useRef(0);
   const currentRouteRef = useRef({ library, pathname, pendingPathname: pendingDocsPathname });
   const [pendingSwitch, setPendingSwitch] = useState<{
@@ -131,40 +132,45 @@ export function SidebarChrome({ library, tree }: { library: DocsLibraryId; tree:
     <SidebarPanelHeader>
       <SidebarPanelHeaderRow aria-busy={isHeaderBusy}>
         <SidebarPanelHeaderLabel>Scope</SidebarPanelHeaderLabel>
-        <Select value={library} onChange={(v) => void handleLibraryChange(v)}>
-          <SelectTrigger
-            className={cn(selectTriggerClassName, switching && "pointer-events-none opacity-50")}
-            aria-disabled={switching || undefined}
-            aria-label="Select documentation library"
-          >
-            <span className="truncate">
-              <span className="text-muted-foreground">[ </span>
-              {activeLibrary.displayName}
-              <span className="text-muted-foreground"> ]</span>
-            </span>
-            {isHeaderBusy ? <Spinner size="sm" className="shrink-0 text-muted-foreground" /> : null}
-          </SelectTrigger>
-          <SelectContent
-            className="min-w-[12rem] rounded-none border border-border bg-background p-0 shadow-none"
-            sideOffset={0}
-            align="start"
-          >
-            {DOCS_LIBRARY_IDS.map((id) => {
-              const config = getDocsLibraryConfig(id);
-              return (
-                <SelectItem
-                  key={id}
-                  value={id}
-                  disabled={!config.enabled}
-                  indicator="radio"
-                  className="rounded-none bg-background px-3 py-1.5 text-xs text-foreground/55 aria-selected:bg-foreground/[0.08] aria-selected:font-semibold aria-selected:text-foreground data-[highlighted]:bg-foreground/[0.06] data-[highlighted]:text-foreground"
-                >
-                  {config.enabled ? config.displayName : `${config.displayName} (coming soon)`}
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
+        <div ref={setSelectHost} className="contents">
+          <Select value={library} onChange={(v) => void handleLibraryChange(v)}>
+            <SelectTrigger
+              className={cn(selectTriggerClassName, switching && "pointer-events-none opacity-50")}
+              aria-disabled={switching || undefined}
+              aria-label="Select documentation library"
+            >
+              <span className="truncate">
+                <span className="text-muted-foreground">[ </span>
+                {activeLibrary.displayName}
+                <span className="text-muted-foreground"> ]</span>
+              </span>
+              {isHeaderBusy ? (
+                <Spinner size="sm" className="shrink-0 text-muted-foreground" />
+              ) : null}
+            </SelectTrigger>
+            <SelectContent
+              className="min-w-[12rem] rounded-none border border-border bg-background p-0 shadow-none"
+              sideOffset={0}
+              align="start"
+              portalContainer={isDesktop ? undefined : selectHost}
+            >
+              {DOCS_LIBRARY_IDS.map((id) => {
+                const config = getDocsLibraryConfig(id);
+                return (
+                  <SelectItem
+                    key={id}
+                    value={id}
+                    disabled={!config.enabled}
+                    indicator="radio"
+                    className="rounded-none bg-background px-3 py-1.5 text-xs text-foreground/55 aria-selected:bg-foreground/[0.08] aria-selected:font-semibold aria-selected:text-foreground data-[highlighted]:bg-foreground/[0.06] data-[highlighted]:text-foreground"
+                  >
+                    {config.enabled ? config.displayName : `${config.displayName} (coming soon)`}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
       </SidebarPanelHeaderRow>
 
       {showBreadcrumbs ? (

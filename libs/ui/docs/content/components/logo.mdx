@@ -39,6 +39,12 @@ const ascii = await getFigletText("DG", "Big")
 `figlet` is an optional peer dependency. Install it with
 `npm install figlet @types/figlet` before using `getFigletText`.
 
+ASCII art has a fixed column count, so it does not reflow. Scale the font size
+from the container width instead of setting a fixed `text-*` class — for
+example `clamp()`, a container query, or the measured container width divided by
+the art's column count. Logo clips accidental overflow inside itself
+(`max-w-full overflow-hidden`) so it never scrolls the page horizontally.
+
 ## Examples
 
 <Examples hero="logo-default" />

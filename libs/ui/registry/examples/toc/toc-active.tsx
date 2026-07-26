@@ -31,8 +31,8 @@ export default function TocActive() {
   const { activeId, scrollTo } = useActiveHeading({ ids, containerId, topOffset: 24 });
 
   return (
-    <div className="flex gap-8">
-      <Toc title="On this page" className="w-full max-w-xs shrink-0">
+    <div className="flex flex-col gap-6 sm:flex-row sm:gap-8">
+      <Toc title="On this page" className="w-full sm:max-w-xs sm:shrink-0">
         <TocList>
           {sections.map((section) => (
             <TocItem

@@ -1,5 +1,7 @@
+import { cn } from "@diffgazer/ui/lib/utils";
 import type { ReactNode } from "react";
 import { MobileNavProvider, useMobileNav } from "@/hooks/mobile-nav-context";
+import { DOCS_SHELL_CLASS } from "@/lib/docs-chrome";
 import { CommandRow } from "./command-row";
 import { FooterBar } from "./footer-bar";
 import { StatusBar } from "./status-bar";
@@ -9,7 +11,9 @@ function TuiShellChrome({ children }: { children: ReactNode }) {
   const chromeInert = (open && !isDesktop) || undefined;
 
   return (
-    <div className="docs-chrome flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+    // group/shell lets the command row's nav toggle ask whether this surface
+    // rendered a drawer at all, without waiting for the route to report in.
+    <div className={cn(DOCS_SHELL_CLASS, "group/shell")}>
       <div className="contents" inert={chromeInert}>
         <a
           href="#main-content"

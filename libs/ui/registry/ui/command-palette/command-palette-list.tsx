@@ -33,7 +33,7 @@ export function CommandPaletteList({
       role="listbox"
       aria-label={ariaLabel}
       data-slot="command-palette-list"
-      className={cn("flex-1 overflow-y-auto", className)}
+      className={cn("flex-1 overflow-y-auto overscroll-contain", className)}
     >
       {children}
     </div>

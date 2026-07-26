@@ -73,6 +73,30 @@ describe("DemoPreview inset/fill frames", () => {
   });
 });
 
+describe("DemoPreview stage overflow", () => {
+  const WorkingDemo = lazy(async () => ({ default: () => <p>Working preview</p> }));
+
+  it.each<PreviewFrame>([
+    "default",
+    "compact",
+    "fill",
+  ])("keeps the %s stage a keyboard-reachable scroll region so wide demos never pan the page", async (frame) => {
+    const user = userEvent.setup();
+    renderPreview({ frame, demo: WorkingDemo });
+    expect(await screen.findByText("Working preview")).toBeInTheDocument();
+
+    const stage = screen.getByRole("region", { name: "Example preview" });
+    expect(within(stage).getByText("Working preview")).toBeInTheDocument();
+
+    // Tab trigger → tab panel → stage: the stage is the next stop after the
+    // panel that holds it, so a keyboard user reaches the scroller by tabbing.
+    screen.getByRole("tab", { name: "Preview" }).focus();
+    await user.tab();
+    await user.tab();
+    expect(stage).toHaveFocus();
+  });
+});
+
 describe("DemoPreview import failures", () => {
   afterEach(() => {
     vi.restoreAllMocks();

@@ -228,6 +228,33 @@ describe("useProvidersKeyboard", () => {
     await waitFor(() => expect(screen.getByRole("listbox", { name: "Providers" })).toHaveFocus());
   });
 
+  it("reclaims focus to the provider list without scrolling the page container", async () => {
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
+
+    try {
+      renderSubject({ listReady: true });
+
+      const providerList = screen.getByRole("listbox", { name: "Providers" });
+      await waitFor(() => expect(providerList).toHaveFocus());
+
+      // jsdom cannot measure scroll, so the focus option IS the behavior contract:
+      // without preventScroll the browser scrolls the list into view on mount and
+      // clips the sticky section header under the app header. Every reclaim has to
+      // carry it — one bare call is enough to jump the page.
+      const listFocusOptions = focusSpy.mock.instances
+        .map((instance, index) => ({ instance, options: focusSpy.mock.calls[index]?.[0] }))
+        .filter((call) => call.instance === providerList)
+        .map((call) => call.options);
+
+      expect(listFocusOptions.length).toBeGreaterThan(0);
+      for (const options of listFocusOptions) {
+        expect(options).toEqual({ preventScroll: true });
+      }
+    } finally {
+      focusSpy.mockRestore();
+    }
+  });
+
   it("does not steal focus from another focused control when the list becomes ready", async () => {
     const { rerender } = render(
       <KeyboardProvider>

@@ -9,7 +9,11 @@ export interface SidebarTriggerProps extends ButtonHTMLAttributes<HTMLButtonElem
   ref?: Ref<HTMLButtonElement>;
 }
 
-/** Toggle button. Desktop cycles open ↔ rail; mobile cycles open ↔ hidden. */
+/**
+ * Toggle button. Desktop cycles open ↔ rail; mobile opens and closes the sheet.
+ * On coarse pointers the button grows to a 44px square, so host it in a row that can be at least
+ * that tall (SidebarHeader's `min-h-11` is exactly that).
+ */
 export function SidebarTrigger({
   ref,
   className,
@@ -18,8 +22,8 @@ export function SidebarTrigger({
   "aria-label": ariaLabel,
   ...props
 }: SidebarTriggerProps) {
-  const { state, isMobile, contentId, toggleSidebar, onStateChange } = useSidebar();
-  const isOpen = isMobile ? state !== "hidden" : state === "open";
+  const { state, isMobile, openMobile, contentId, toggleSidebar } = useSidebar();
+  const isOpen = isMobile ? openMobile : state === "open";
   const visualState: "open" | "collapsed" = isOpen ? "open" : "collapsed";
   let labelDefault = isOpen ? "Collapse sidebar" : "Expand sidebar";
   if (isMobile) {
@@ -29,11 +33,7 @@ export function SidebarTrigger({
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     onClick?.(event);
     if (event.defaultPrevented) return;
-    if (isMobile) {
-      onStateChange(isOpen ? "hidden" : "open");
-    } else {
-      toggleSidebar();
-    }
+    toggleSidebar();
   };
 
   return (
@@ -45,7 +45,11 @@ export function SidebarTrigger({
       aria-expanded={isOpen}
       aria-label={ariaLabel ?? labelDefault}
       data-state={visualState}
-      className={cn("inline-flex min-h-6 min-w-6 items-center justify-center font-mono", className)}
+      className={cn(
+        "inline-flex min-h-6 min-w-6 items-center justify-center font-mono",
+        "pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+        className,
+      )}
       onClick={handleClick}
     >
       {children ?? <span aria-hidden="true">{isOpen ? "[×]" : "[≡]"}</span>}

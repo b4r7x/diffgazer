@@ -80,7 +80,6 @@ export function CommandPaletteInput({
         }}
         placeholder={placeholder}
         className="flex-1 min-w-0 bg-transparent border-0 outline-none p-0 text-foreground placeholder-muted-foreground/70 font-mono caret-foreground"
-        style={{ fontSize: "var(--command-palette-text-size)" }}
       />
       {suffix !== undefined ? (
         <span data-slot="command-palette-input-suffix">{suffix}</span>

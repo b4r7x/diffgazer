@@ -40,6 +40,8 @@ describe("IssuePreviewItem", () => {
     const file = "src/features/review/components/a/very/long/location/issue-preview-item.tsx";
     render(<IssuePreviewItem {...BASE_PROPS} file={file} />);
 
-    expect(screen.getByText(`${file}:42`)).toHaveAttribute("title", `${file}:42`);
+    // The location renders through PathValue, which splits it so the ellipsis
+    // lands on the directories; the whole path stays readable in the tooltip.
+    expect(screen.getByTitle(`${file}:42`)).toHaveTextContent(`${file}:42`);
   });
 });

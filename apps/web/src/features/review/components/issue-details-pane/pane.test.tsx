@@ -90,16 +90,25 @@ function makeAllEvidenceIssue(): ReviewIssue {
   });
 }
 
+/**
+ * Paths render through `PathValue`, which splits the value into a truncating head
+ * and an always-visible tail segment, so the full string is no longer one text node.
+ */
+function expectPathValue(fullValue: string, tail: string) {
+  const tailNode = screen.getByText(tail);
+  expect(tailNode.closest("[title]")).toHaveAttribute("title", fullValue);
+}
+
 function expectAllEvidenceVariants() {
   expect(screen.getByRole("region", { name: "Evidence" })).toHaveTextContent(
     "const value = JSON.parse(input);",
   );
   expect(screen.getByText("Unsafe parser")).toBeInTheDocument();
   expect(screen.getByText("source:parser")).toBeInTheDocument();
-  expect(screen.getByText("src/parser.ts")).toBeInTheDocument();
+  expectPathValue("src/parser.ts", "/parser.ts");
   expect(screen.getByText("Empty parser evidence")).toBeInTheDocument();
   expect(screen.getByText("source:empty-parser")).toBeInTheDocument();
-  expect(screen.getByText("src/empty-parser.ts")).toBeInTheDocument();
+  expectPathValue("src/empty-parser.ts", "/empty-parser.ts");
   expect(
     screen.getByRole("region", { name: "Code evidence: Empty parser evidence" }),
   ).toHaveTextContent("(empty excerpt)");
@@ -152,7 +161,27 @@ describe("IssueDetailsPane", () => {
     const file = "src/features/review/components/a/very/long/location/issue-details-pane.tsx";
     renderPane(makeIssue({ file, line_start: 120, line_end: null }));
 
-    expect(screen.getByText(`${file}:120`)).toHaveAttribute("title", `${file}:120`);
+    expectPathValue(`${file}:120`, "/issue-details-pane.tsx:120");
+  });
+
+  it("keeps the evidence file name readable when the path outruns the pane", () => {
+    const file = "cli/diffgazer/src/features/history/components/history-list.tsx";
+    renderPane(
+      makeIssue({
+        evidence: [
+          {
+            type: "code",
+            title: "Long path evidence",
+            sourceId: "source:long-path",
+            file,
+            range: { start: 3, end: 3 },
+            excerpt: "const rows = [];",
+          },
+        ],
+      }),
+    );
+
+    expectPathValue(file, "/history-list.tsx");
   });
 
   it("shows both semantic input and output summaries in the trace tab", () => {
@@ -335,7 +364,7 @@ describe("IssueDetailsPane", () => {
     renderPane(savedReview.result.issues[0] ?? null);
 
     expectAllEvidenceVariants();
-    expect(screen.getByText("src/auth.ts:14-18")).toBeInTheDocument();
+    expectPathValue("src/auth.ts:14-18", "/auth.ts:14-18");
     expect(screen.getByText("security")).toBeInTheDocument();
     expect(screen.getByText("88%")).toBeInTheDocument();
     expect(
@@ -449,8 +478,8 @@ describe("IssueDetailsPane", () => {
   it("does not fabricate a line number when issue location has no line", () => {
     renderPane(makeIssue({ file: "src/db.ts", line_start: null, line_end: null }));
 
-    expect(screen.getByText("src/db.ts:?")).toBeInTheDocument();
-    expect(screen.queryByText("src/db.ts:0")).not.toBeInTheDocument();
+    expectPathValue("src/db.ts:?", "/db.ts:?");
+    expect(screen.queryByText("/db.ts:0")).not.toBeInTheDocument();
   });
 
   it("keeps multi-file suggested patches visible instead of dropping later files", () => {

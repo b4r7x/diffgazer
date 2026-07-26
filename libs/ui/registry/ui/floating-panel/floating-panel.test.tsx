@@ -586,6 +586,108 @@ describe("FloatingPanel collision handling", () => {
   });
 });
 
+describe("FloatingPanel available-size caps", () => {
+  const originalInnerWidth = Object.getOwnPropertyDescriptor(window, "innerWidth");
+  const originalInnerHeight = Object.getOwnPropertyDescriptor(window, "innerHeight");
+
+  function setViewport(width: number, height: number) {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: height });
+  }
+
+  afterEach(() => {
+    if (originalInnerWidth) Object.defineProperty(window, "innerWidth", originalInnerWidth);
+    if (originalInnerHeight) Object.defineProperty(window, "innerHeight", originalInnerHeight);
+  });
+
+  it("caps a panel wider than the viewport to the available size for the resolved side", async () => {
+    const viewport = { width: 400, height: 700 };
+    const trigger = { x: 100, y: 100, width: 140, height: 32 };
+    setViewport(viewport.width, viewport.height);
+
+    render(
+      <Harness
+        initialOpen
+        avoidCollisions
+        side="bottom"
+        panelLabel="capped"
+        triggerX={trigger.x}
+        triggerY={trigger.y}
+        triggerWidth={trigger.width}
+        triggerHeight={trigger.height}
+        panelRefCallback={(node) => {
+          // Content far wider than viewport - 2 x collisionPadding: without the caps the
+          // panel would run off the right edge instead of scrolling inside.
+          mountTriggerRect(node, { x: 0, y: 0, width: 500, height: 120 });
+        }}
+      />,
+    );
+
+    const panel = await screen.findByRole("dialog", { name: "capped" });
+    expect(panel).toHaveAttribute("data-side", "bottom");
+
+    // Literals, not a call to the production helper the implementation itself uses — otherwise
+    // a bug inside that helper would satisfy both sides of the assertion. Harness passes
+    // sideOffset={4}; collisionPadding stays at the FloatingPanel default of 8.
+    //   availableWidth  = vp.width 400 - 2 x padding 8                          = 384
+    //   availableHeight = vp.height 700 - trigger.bottom 132 - offset 4 - pad 8 = 556
+    expect(panel.style.maxWidth).toBe("384px");
+    expect(panel.style.maxHeight).toBe("556px");
+  });
+
+  it("caps a panel that fits nowhere to the padded viewport rather than to a side with zero room", async () => {
+    // H-3: the trigger sits past the bottom edge, so the preferred side leaves 0px of room.
+    // Before the best-fit fallback the panel kept the preferred side and rendered
+    // `max-height: 0px` while staying mounted and focusable.
+    setViewport(400, 300);
+
+    render(
+      <Harness
+        initialOpen
+        avoidCollisions
+        side="bottom"
+        panelLabel="zero-room"
+        triggerX={100}
+        triggerY={290}
+        triggerWidth={140}
+        triggerHeight={32}
+        panelRefCallback={(node) => {
+          mountTriggerRect(node, { x: 0, y: 0, width: 500, height: 500 });
+        }}
+      />,
+    );
+
+    const panel = await screen.findByRole("dialog", { name: "zero-room" });
+    expect(panel.style.maxHeight).not.toBe("0px");
+    // Padded viewport: 300 - 2 x 8 = 284 tall, 400 - 2 x 8 = 384 wide.
+    expect(panel.style.maxHeight).toBe("284px");
+    expect(panel.style.maxWidth).toBe("384px");
+    expect(panel.style.visibility).toBe("visible");
+  });
+
+  it("emits no caps when the consumer opts out of collision avoidance, keeping the custom properties", async () => {
+    setViewport(400, 300);
+
+    render(
+      <Harness
+        initialOpen
+        avoidCollisions={false}
+        side="bottom"
+        panelLabel="uncapped"
+        triggerX={100}
+        triggerY={290}
+        triggerWidth={140}
+        triggerHeight={32}
+      />,
+    );
+
+    const panel = await screen.findByRole("dialog", { name: "uncapped" });
+    expect(panel.style.maxHeight).toBe("");
+    expect(panel.style.maxWidth).toBe("");
+    expect(panel.style.getPropertyValue("--floating-panel-available-height")).not.toBe("");
+  });
+});
+
 describe("FloatingPanel alignOffset", () => {
   it("shifts the panel cross-axis by alignOffset when align=start on a vertical side", () => {
     render(

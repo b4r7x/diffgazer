@@ -86,7 +86,12 @@ describe("TuiShell", () => {
     const lastSidebarLink = screen.getByRole("link", { name: "Last sidebar item" });
     const scrim = screen.getByRole("button", { name: /close sidebar navigation/i });
     expect(skipLink.closest("[inert]")).not.toBeNull();
-    await waitFor(() => expect(firstSidebarLink).toHaveFocus());
+    const sidebarRegion = screen.getByRole("complementary", { name: "Sidebar navigation" });
+    await waitFor(() => expect(sidebarRegion).toHaveFocus());
+    expect(firstSidebarLink).not.toHaveFocus();
+
+    await user.tab();
+    expect(firstSidebarLink).toHaveFocus();
 
     lastSidebarLink.focus();
     await user.tab();

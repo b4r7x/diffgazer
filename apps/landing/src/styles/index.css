@@ -368,16 +368,31 @@ html[data-scene-theme="light"] .fd-fix .rem { color: #cf222e; }
   #s3 { position: relative; height: auto; padding: 18vh 0; }
   .hud-tr { gap: 0; }
   .hud-tr a { padding: 6px 5px; font-size: 11px; letter-spacing: 0.1em; }
-  .hud-bl { display: none; }
-  /* Scene 4's giant heading sweeps the top-left corner at these widths and
-     would print straight through the fixed wordmark. The HUD scene tracker
-     flips data-scene-theme for exactly that scene, so the wordmark steps aside
-     for its whole pass; visibility (not just opacity) keeps it out of the tab
-     order while hidden. This rides on scene 4 being the only inverted scene
-     (data-theme-scene="light" in index.html) — a second light scene would need
-     its own hiding attribute rather than this one. */
-  .hud.hud-tl { transition: color 0.15s ease, opacity 0.45s ease, visibility 0.45s; }
-  html[data-scene-theme="light"] .hud-tl { opacity: 0; visibility: hidden; transition: none; }
+  /* Both bottom corners step aside: there is no gutter left beside the content
+     column at these widths, so a fixed corner sits ON the scene — and with no
+     scroll snapping every offset is a resting state, so an opaque chip covers
+     code lines and finding titles at a large share of them. Install stays
+     reachable from the hero install row and from scene 6. */
+  .hud-bl, .hud-br { display: none; }
+  /* Full-bleed scene headings sweep the top corners at these widths and would
+     print straight through the fixed wordmark and the docs/github links. The
+     HUD scene tracker publishes the scene that owns the viewport as
+     data-osd-scene, so both top corners step aside on every non-hero scene and
+     only the hero (s1) keeps them; visibility (not just opacity) keeps the
+     hidden links out of the tab order. Docs/GitHub stay reachable on the hero
+     HUD and in the scene 6 .foot-links.
+     The hero's own h1 sweeps the same corners while s1 still owns the viewport,
+     which the scene attribute cannot express — data-hud-band covers that window. */
+  .hud.hud-tl, .hud.hud-tr { transition: color 0.15s ease, opacity 0.45s ease, visibility 0.45s; }
+  html:not([data-osd-scene="s1"]) .hud-tl,
+  html:not([data-osd-scene="s1"]) .hud-tr,
+  html[data-hud-band="occupied"] .hud-tl,
+  html[data-hud-band="occupied"] .hud-tr { opacity: 0; visibility: hidden; transition: none; }
+  /* Scrolling while a corner link holds focus would otherwise hide the focused
+     element out from under the user (WCAG 2.4.11). Keeping the group visible
+     while it contains focus costs nothing: an already-hidden group is not
+     focusable, so this only ever fires on a corner the user reached first. */
+  html .hud-tr:focus-within { opacity: 1; visibility: visible; }
 }
 
 /* ============================================================
@@ -422,6 +437,12 @@ html[data-scene-theme="light"] .fd-fix .rem { color: #cf222e; }
   .fd-fix pre { overflow: hidden; text-overflow: ellipsis; }
 }
 
+/* The install chip is a tap target wherever touch is the pointer, including the
+   wide touch viewports that keep it (below 920px it is hidden outright). */
+@media (pointer: coarse) {
+  .hud-install { height: 44px; }
+}
+
 /* Hero diff: restore breathing room over the compact contract defaults.
    DiffView rows are subgrids, so column sizing must live on the rows-grid
    TRACKS. A cell wider than its shared track (e.g. a 22px .diff-marker in the
@@ -443,8 +464,33 @@ html[data-scene-theme="light"] .fd-fix .rem { color: #cf222e; }
 .gaze-diff [data-slot="diff-view-caption"] { padding: 9px 14px; }
 .gaze-diff .diff-code { padding-inline-start: 0.5ch; padding-inline-end: 1ch; }
 
+@media (max-width: 700px) {
+  /* Hero diff lines outrun the card here. Same call as .fd-fix pre above:
+     truncate on an ellipsis instead of scrolling — wrapping would fake diff
+     rows, and an unaffordanced horizontal scroll reads as a rendering bug.
+     effects/gaze.ts mirrors this exact breakpoint to drop the rows' tab stop
+     once they stop being a scroll container: the two must be edited together,
+     or the page ships a focusable element with nothing to scroll. */
+  .gaze-diff [data-slot="diff-view-rows"] {
+    overflow-x: hidden;
+    grid-template-columns:
+      [num-l] minmax(26px, max-content)
+      [num-r] minmax(26px, max-content)
+      [marker] 22px
+      [code] minmax(0, 1fr);
+  }
+  .gaze-diff [data-slot="diff-view-rows"] > [data-row] { min-width: 0; }
+  .gaze-diff .diff-code { overflow: hidden; text-overflow: ellipsis; }
+}
+
 /* HUD logo: the figlet wordmark, scaled down */
 .hud-tl { padding: 0; }
 .logo-figlet { margin: 0; font-family: var(--mono); font-size: 4.2px; line-height: 1.2;
   letter-spacing: 0; color: var(--foreground); white-space: pre; }
-@media (max-width: 920px) { .logo-figlet { font-size: 3.4px; } }
+/* Below 920px the figlet would render at ~3.4px and smear, so the plain
+   letter-spaced wordmark takes over — .hud-tl already carries its typography. */
+.logo-word { display: none; }
+@media (max-width: 920px) {
+  .logo-figlet { display: none; }
+  .logo-word { display: inline; }
+}

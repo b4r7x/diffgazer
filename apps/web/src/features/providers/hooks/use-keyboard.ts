@@ -76,7 +76,7 @@ export function useProvidersKeyboard({
   const inButtons = effectiveFocusZone === "buttons";
 
   const focusProviderList = () => {
-    listContainerRef.current?.focus();
+    listContainerRef.current?.focus({ preventScroll: true });
   };
 
   const { buttonIndex, enterButtons, getActionButtonProps } = useProvidersActionButtons({

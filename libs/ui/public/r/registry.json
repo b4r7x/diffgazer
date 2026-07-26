@@ -1705,7 +1705,8 @@
         "https://r.b4r7.dev/r/ui/kbd.json",
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json",
-        "https://r.b4r7.dev/r/ui/dom-id.json"
+        "https://r.b4r7.dev/r/ui/dom-id.json",
+        "https://r.b4r7.dev/r/keys/scroll-lock.json"
       ],
       "meta": {
         "client": true,

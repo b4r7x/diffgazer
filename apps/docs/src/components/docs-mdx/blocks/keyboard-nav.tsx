@@ -24,7 +24,7 @@ export function KeyboardNav() {
         Keyboard Navigation
       </Typography>
       {hasDescription && (
-        <Typography as="p" size="sm" className="mb-4">
+        <Typography as="p" size="sm" className="mb-4 break-words">
           {description}
         </Typography>
       )}

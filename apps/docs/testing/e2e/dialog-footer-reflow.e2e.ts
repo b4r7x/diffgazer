@@ -45,7 +45,20 @@ for (const viewport of viewports) {
           const rect = button.getBoundingClientRect();
           return rect.left >= footerRect.left && rect.right <= footerRect.right;
         }),
-        rows: new Set(actionButtons.map((button) => button.getBoundingClientRect().top)).size,
+        // The actions are `items-center`, so two buttons of different heights on the
+        // same row have different `top` values — counting distinct tops reports a
+        // wrap that is not there. Vertical overlap is what "same row" means.
+        rows: actionButtons.reduce<Array<{ top: number; bottom: number }>>((acc, button) => {
+          const rect = button.getBoundingClientRect();
+          const row = acc.find((it) => rect.top < it.bottom && rect.bottom > it.top);
+          if (row) {
+            row.top = Math.min(row.top, rect.top);
+            row.bottom = Math.max(row.bottom, rect.bottom);
+            return acc;
+          }
+          acc.push({ top: rect.top, bottom: rect.bottom });
+          return acc;
+        }, []).length,
       };
     });
 

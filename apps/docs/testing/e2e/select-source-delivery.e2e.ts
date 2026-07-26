@@ -68,10 +68,14 @@ test.describe("Select source delivery", () => {
     await page.waitForLoadState("networkidle");
     expect(sourceRequests).toEqual([]);
 
-    const openCardExample = page.getByRole("combobox", { name: "Framework" });
-    await expect(openCardExample).toHaveAttribute("aria-expanded", "true", { timeout: 15_000 });
-    await openCardExample.press("Enter");
-    await expect(openCardExample).toHaveAttribute("aria-expanded", "false");
+    // Both `defaultOpen` examples have to go: a leftover overlay layer makes the
+    // dismiss stack swallow the click that opens the source disclosure below.
+    for (const name of ["Framework", "Commands"]) {
+      const openExample = page.getByRole("combobox", { name, exact: true });
+      await expect(openExample).toHaveAttribute("aria-expanded", "true", { timeout: 15_000 });
+      await openExample.press("Enter");
+      await expect(openExample).toHaveAttribute("aria-expanded", "false");
+    }
 
     const sourceDisclosure = page.getByRole("button", { name: /View component source/i });
     await sourceDisclosure.scrollIntoViewIfNeeded();

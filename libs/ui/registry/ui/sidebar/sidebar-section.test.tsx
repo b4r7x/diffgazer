@@ -232,6 +232,95 @@ describe("SidebarSection collapsible", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
+  it("moves the row padding onto the collapsible toggle so the whole row is tappable", () => {
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Section collapsible>
+              <Sidebar.SectionTitle>Files</Sidebar.SectionTitle>
+              <Sidebar.Item>file.txt</Sidebar.Item>
+            </Sidebar.Section>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    // Public styling contract (fix-spec-b1 OV-01, Strategy T1 + T3): the padding
+    // tokens live on the interactive element and the coarse-pointer floor makes
+    // the row a >=44px target. jsdom cannot compute layout, so the class tokens
+    // are the assertable contract.
+    const toggle = screen.getByRole("button", { name: "Files" });
+    expect(toggle).toHaveClass("px-2", "pt-4", "pb-1.5", "pointer-coarse:min-h-11");
+
+    const heading = screen.getByRole("heading", { name: "Files" });
+    expect(heading).not.toHaveClass("pt-4");
+    expect(heading).not.toHaveClass("pt-2");
+  });
+
+  it("moves the tree-variant row padding onto the collapsible toggle", () => {
+    render(
+      <Sidebar.Provider>
+        <Sidebar variant="tree">
+          <Sidebar.Content>
+            <Sidebar.Section collapsible>
+              <Sidebar.SectionTitle>Files</Sidebar.SectionTitle>
+              <Sidebar.Item>file.txt</Sidebar.Item>
+            </Sidebar.Section>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    // Same public styling contract as above for the tree heading padding scale.
+    const toggle = screen.getByRole("button", { name: "Files" });
+    expect(toggle).toHaveClass("px-2", "pt-2", "pb-1", "pointer-coarse:min-h-11");
+    expect(screen.getByRole("heading", { name: "Files" })).not.toHaveClass("pt-2");
+  });
+
+  it("keeps the row padding on the heading for non-interactive titles", () => {
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Section>
+              <Sidebar.SectionTitle>Files</Sidebar.SectionTitle>
+              <Sidebar.Item>file.txt</Sidebar.Item>
+            </Sidebar.Section>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    // Public styling contract: a non-interactive title has no toggle to carry
+    // the row padding, so it stays on the heading itself. jsdom cannot compute
+    // layout, so the class tokens are the assertable contract.
+    expect(screen.getByRole("heading", { name: "Files" })).toHaveClass("px-2", "pt-4", "pb-1.5");
+    expect(screen.queryByRole("button", { name: "Files" })).not.toBeInTheDocument();
+  });
+
+  it("gives nav rows the same coarse-pointer floor as the section title", () => {
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Section collapsible>
+              <Sidebar.SectionTitle>Files</Sidebar.SectionTitle>
+              <Sidebar.Item as="button">file.txt</Sidebar.Item>
+            </Sidebar.Section>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    // Nav rows are the most-tapped elements in the mobile sheet and must clear
+    // the same 44px floor as the heading that labels them — otherwise the
+    // heading is a bigger target than its own links. jsdom cannot compute
+    // layout, so the class token is the assertable contract.
+    expect(screen.getByRole("button", { name: "file.txt" })).toHaveClass("pointer-coarse:min-h-11");
+    expect(screen.getByRole("button", { name: "Files" })).toHaveClass("pointer-coarse:min-h-11");
+  });
+
   it("renders the section title as a real h3 heading", () => {
     render(
       <Sidebar.Provider>

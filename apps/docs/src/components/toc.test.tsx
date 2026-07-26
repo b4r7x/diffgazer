@@ -4,7 +4,19 @@ import userEvent from "@testing-library/user-event";
 import type { TableOfContents } from "fumadocs-core/toc";
 import { describe, expect, it, vi } from "vitest";
 import { SectionHeading } from "./docs-mdx/section-heading";
-import { TableOfContentsPanel } from "./toc";
+import { MobileTocPanel, TableOfContentsPanel, useDocsToc } from "./toc";
+
+// Mirrors DocsPageLayout: the TOC is resolved once and handed to whichever
+// panel the width calls for.
+function SidebarToc({ toc }: { toc: TableOfContents }) {
+  const { entries, activeId, scrollTo } = useDocsToc(toc);
+  return <TableOfContentsPanel entries={entries} activeId={activeId} scrollTo={scrollTo} />;
+}
+
+function MobileToc({ toc }: { toc: TableOfContents }) {
+  const { entries, scrollTo } = useDocsToc(toc);
+  return <MobileTocPanel entries={entries} scrollTo={scrollTo} />;
+}
 
 function renderWithHeadings(
   headings: Array<{ tag: "h2" | "h3"; id?: string; text: string }>,
@@ -17,7 +29,7 @@ function renderWithHeadings(
           {text}
         </Tag>
       ))}
-      <TableOfContentsPanel toc={toc} />
+      <SidebarToc toc={toc} />
     </main>,
   );
 }
@@ -159,7 +171,7 @@ describe("TableOfContentsPanel", () => {
     render(
       <main id="main-content">
         <SectionHeading id="api-reference">API Reference</SectionHeading>
-        <TableOfContentsPanel toc={[]} />
+        <SidebarToc toc={[]} />
       </main>,
     );
 
@@ -250,5 +262,71 @@ describe("TableOfContentsPanel", () => {
     overviewHeading.getBoundingClientRect = () => new DOMRect(0, 200, 100, 20);
     await user.click(overview);
     expect(mainScroll).toHaveBeenCalledWith({ top: 104, behavior });
+  });
+});
+
+describe("MobileTocPanel", () => {
+  function renderMobileToc(toc: TableOfContents = []) {
+    const result = render(
+      <main id="main-content">
+        <h2 id="setup">Setup</h2>
+        <h3 id="details">Details</h3>
+        <h2 id="result">Result</h2>
+        <MobileToc toc={toc} />
+      </main>,
+    );
+    // jsdom does not implement Element.scrollTo; the scroll itself is the
+    // active-heading hook's contract, not this panel's.
+    Object.defineProperty(document.getElementById("main-content"), "scrollTo", {
+      configurable: true,
+      value: vi.fn(),
+    });
+    return result;
+  }
+
+  it("keeps the heading list collapsed until the reader opens the disclosure", async () => {
+    renderMobileToc([{ title: "Setup", url: "#setup", depth: 2 }]);
+
+    const nav = await screen.findByRole("navigation", { name: "On this page" });
+    expect(nav).not.toBeVisible();
+    expect(screen.getByText("On this page")).toBeVisible();
+  });
+
+  it("discloses every rendered heading, including runtime ones the compile-time TOC misses", async () => {
+    const user = userEvent.setup();
+    renderMobileToc([{ title: "Setup", url: "#setup", depth: 2 }]);
+
+    await user.click(await screen.findByText("On this page"));
+
+    const nav = screen.getByRole("navigation", { name: "On this page" });
+    expect(
+      within(nav)
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("href")),
+    ).toEqual(["#setup", "#details", "#result"]);
+    expect(within(nav).getByRole("list")).toBeInTheDocument();
+  });
+
+  it("collapses again once the reader picks a heading", async () => {
+    const user = userEvent.setup();
+    renderMobileToc();
+
+    await user.click(await screen.findByText("On this page"));
+    const nav = screen.getByRole("navigation", { name: "On this page" });
+    await user.click(within(nav).getByRole("link", { name: "Details" }));
+
+    expect(nav).not.toBeVisible();
+  });
+
+  it("renders nothing when the page has no headings", () => {
+    render(
+      <main id="main-content">
+        <p>No headings here.</p>
+        <MobileToc toc={[]} />
+      </main>,
+    );
+
+    expect(screen.queryByText("On this page")).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
   });
 });

@@ -2,7 +2,7 @@ import type { ComponentDoc } from "./types";
 
 export const sidebarDoc: ComponentDoc = {
   description:
-    "Full-height navigation sidebar with tri-state visibility (open/rail/hidden), five active-marker variants, collapsible sections, optional intent tones, mobile sheet, and a configurable global hotkey. Composable parts plus two context providers.",
+    "Full-height navigation sidebar with tri-state visibility (open/rail/hidden), five active-marker variants, collapsible sections, optional intent tones, mobile sheet, and a configurable global hotkey. Composable parts plus two context providers. The mobile sheet has its own open state that always starts closed and never writes the desktop tri-state.",
   anatomy: [
     {
       name: "SidebarProvider",
@@ -42,7 +42,7 @@ export const sidebarDoc: ComponentDoc = {
     {
       name: "SidebarTrigger",
       indent: 1,
-      note: "Toggle button. Desktop cycles open ↔ rail; mobile cycles open ↔ hidden.",
+      note: "Toggle button. Desktop cycles open ↔ rail; mobile opens and closes the sheet.",
     },
   ],
   notes: [
@@ -54,22 +54,22 @@ export const sidebarDoc: ComponentDoc = {
     {
       title: "Tri-state visibility",
       content:
-        'Sidebar tracks three states via SidebarProvider: "open" (full width), "rail" (collapsed glyph rail, desktop only), and "hidden" (off-canvas; mobile sheet target). Mobile presents every non-hidden state as open while preserving the provider value for a later desktop resize. Hidden desktop navigation marks the complete nav shell aria-hidden and inert, including Header, Content, and Footer. Keep a SidebarTrigger outside that shell or use the provider hotkey so users can reopen it. The provider exposes state/defaultState/onStateChange and helpers toggleSidebar (desktop open ↔ rail; mobile visible ↔ hidden) and toggleHidden (open ↔ hidden).',
+        'Sidebar tracks three states via SidebarProvider: "open" (full width), "rail" (collapsed glyph rail, desktop only), and "hidden" (off-canvas). Below the breakpoint the tri-state describes the desktop layout only — the sheet is driven by its own internal open state, so a desktop → mobile → desktop round trip restores the exact state it started with. Hidden desktop navigation marks the complete nav shell aria-hidden and inert, including Header, Content, and Footer. Keep a SidebarTrigger outside that shell or use the provider hotkey so users can reopen it. The provider exposes state/defaultState/onStateChange and helpers toggleSidebar (desktop open ↔ rail) and toggleHidden (desktop open ↔ hidden); on mobile both toggle the sheet instead.',
     },
     {
       title: "Mobile sheet",
       content:
-        "Below the breakpoint (default 1024px) the nav renders inside a Dialog sheet anchored to the viewport's left edge. The SidebarTrigger flips behaviour automatically: desktop toggles rail; mobile toggles the hidden sheet. The breakpoint is configurable on SidebarProvider.",
+        "Below the breakpoint (default 1024px) the nav renders inside a Dialog sheet anchored to the viewport's left edge. The sheet starts closed and opens from SidebarTrigger, the global hotkey, or useSidebar().onMobileOpenChange. No mobile transition — entering the sheet, opening it, closing it, or leaving for desktop — emits onStateChange. state and defaultState control the desktop presentation only, so a controlled parent pinning a value does not block the sheet. The breakpoint is configurable on SidebarProvider.",
     },
     {
       title: "Global hotkey",
       content:
-        'An explicit SidebarProvider binds a configurable global shortcut. Cmd/Ctrl+<key> cycles open ↔ rail on desktop and visible ↔ hidden on mobile; Shift+Cmd/Ctrl+<key> toggles hidden. Default key is "b" (VS Code convention). Pass shortcutKey={null} to disable. A Sidebar used without a provider never binds the hotkey — global keys are an app-level contract, so opt in by mounting the provider. Editable targets (input/textarea/contenteditable/select) skip the handler.',
+        'An explicit SidebarProvider binds a configurable global shortcut. On desktop Cmd/Ctrl+<key> cycles open ↔ rail and Shift+Cmd/Ctrl+<key> toggles hidden; on mobile both toggle the sheet and neither writes the desktop state. Default key is "b" (VS Code convention). Pass shortcutKey={null} to disable. A Sidebar used without a provider never binds the hotkey — global keys are an app-level contract, so opt in by mounting the provider. Editable targets (input/textarea/contenteditable/select) skip the handler.',
     },
     {
       title: "SidebarProvider vs standalone",
       content:
-        "Wrap Sidebar in SidebarProvider when you need to control state from outside the sidebar, react to it elsewhere (e.g. a header trigger), or enable the global hotkey. When Sidebar is used without a provider it instantiates one internally without the hotkey. Read state from any descendant via useSidebar().",
+        "Wrap Sidebar in SidebarProvider when you need to control state from outside the sidebar, react to it elsewhere (e.g. a header trigger), or enable the global hotkey. When Sidebar is used without a provider it instantiates one internally without the hotkey. Read state, isMobile, openMobile, onStateChange, and onMobileOpenChange from any descendant via useSidebar().",
     },
     {
       title: "Visual variants",
@@ -99,7 +99,7 @@ export const sidebarDoc: ComponentDoc = {
     {
       title: "SSR persistence",
       content:
-        "The provider exports SIDEBAR_STATE_COOKIE but intentionally does not read or write it. SSR frameworks should parse the cookie in their loader, pass the resolved value as defaultState, and mirror onStateChange writes back via document.cookie (SameSite=Lax, 1y).",
+        "The provider exports SIDEBAR_STATE_COOKIE but intentionally does not read or write it. SSR frameworks should parse the cookie in their loader, pass the resolved value as defaultState, and mirror onStateChange writes back via document.cookie (SameSite=Lax, 1y). Mirroring is unconditional: mobile transitions never fire it, so the stored desktop preference survives a phone visit.",
     },
   ],
   usage: { example: "sidebar-default" },
@@ -132,11 +132,11 @@ export const sidebarDoc: ComponentDoc = {
       },
       {
         keys: "Cmd/Ctrl+B",
-        action: "Cycles desktop open ↔ rail or mobile visible ↔ hidden.",
+        action: "Cycles desktop open ↔ rail, or opens/closes the mobile sheet.",
       },
       {
         keys: "Shift+Cmd/Ctrl+B",
-        action: "Toggles the hidden/mobile-sheet state.",
+        action: "Toggles the desktop hidden state, or opens/closes the mobile sheet.",
       },
     ],
     examples: [
@@ -237,13 +237,14 @@ export const sidebarDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          'Controlled visibility state. "open" = full width, "rail" = collapsed glyph rail (desktop), "hidden" = off-canvas (used by the mobile sheet).',
+          'Controlled desktop visibility state. "open" = full width, "rail" = collapsed glyph rail, "hidden" = off-canvas. Below the breakpoint the sheet has its own open state, so this value only describes the next desktop layout.',
       },
       defaultState: {
         type: '"open" | "rail" | "hidden"',
         required: false,
         defaultValue: '"open"',
-        description: "Initial visibility state for uncontrolled use.",
+        description:
+          "Initial visibility state for uncontrolled use. Below the breakpoint this value is not used for presentation — the mobile sheet has its own internal open state that always starts closed — but it is preserved untouched for the next desktop layout.",
       },
       onStateChange: {
         type: '(state: "open" | "rail" | "hidden") => void',
@@ -263,7 +264,7 @@ export const sidebarDoc: ComponentDoc = {
         required: false,
         defaultValue: '"b"',
         description:
-          "Case-insensitive hotkey. Cmd/Ctrl+<key> cycles open ↔ rail on desktop and visible ↔ hidden on mobile; Shift+Cmd/Ctrl+<key> toggles hidden. Pass null to disable.",
+          "Case-insensitive hotkey. On desktop Cmd/Ctrl+<key> cycles open ↔ rail and Shift+Cmd/Ctrl+<key> toggles hidden. On mobile both combinations toggle the sheet, and neither writes the desktop state. Pass null to disable.",
       },
       children: {
         type: "ReactNode",

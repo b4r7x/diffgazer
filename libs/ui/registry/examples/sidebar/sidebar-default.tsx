@@ -12,7 +12,7 @@ import {
 
 export default function SidebarDefault() {
   return (
-    <Sidebar className="h-full">
+    <Sidebar embedded className="h-full">
       <SidebarHeader>
         <span className="text-sm font-mono font-bold">Project Explorer</span>
       </SidebarHeader>

@@ -29,6 +29,11 @@ export function BreadcrumbsLink({ children, className, ref, ...props }: Breadcru
   const renderProps: BreadcrumbsLinkRenderProps = {
     ref: ref ?? null,
     className: cn(
+      // Same hit-area recipe as Pager.Link: padding grows the target, the negative
+      // margin gives it back to the inline run, and pointer-coarse trades the pull-back
+      // for a real 44px minimum. No horizontal pull-back — breadcrumb links sit on one
+      // line and must not overlap their separators.
+      "inline-flex items-center py-2 -my-2 px-1 pointer-coarse:my-0 pointer-coarse:min-h-11",
       "transition-colors hover:text-foreground hover:underline hover:underline-offset-2",
       "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
       className,

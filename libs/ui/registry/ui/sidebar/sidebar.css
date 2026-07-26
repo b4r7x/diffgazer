@@ -61,16 +61,17 @@
  * gap) and CSS :last-child for the corner — tree items must be direct
  * siblings; a non-item element after the last item mislabels the corner.
  *
- * Geometry (assumes a collapsible tree section): the trunk descends from the
- * section title's fold chevron (px-2 gutter + half of the 12px chevron =
- * 14px); the 6px tick ends 4px before the item text at pl-6 (24px), which
- * lines up with that title text. A non-collapsible title has no chevron — its
- * text sits at 8px, so items indent past it.
+ * Geometry: the trunk and tick are drawn from the row's own left edge, and the
+ * tree item variant offsets that edge by --sidebar-tree-rail so it lands under
+ * a collapsible section title's fold chevron. Reading the row edge rather than
+ * a hardcoded inset is what keeps the connectors welded to the selected row's
+ * background band, whatever gutter the surrounding shell uses. The 6px tick
+ * ends 4px before the item text, which lines up with the title text.
  */
 [data-slot="sidebar"][data-variant="tree"] [data-diffgazer-navigation-item]::before {
   content: "";
   position: absolute;
-  left: 14px;
+  left: 0;
   top: 0;
   bottom: 0;
   border-left: 1px solid color-mix(in oklab, var(--border) 75%, transparent);
@@ -83,7 +84,7 @@
 [data-slot="sidebar"][data-variant="tree"] [data-diffgazer-navigation-item]::after {
   content: "";
   position: absolute;
-  left: 14px;
+  left: 0;
   top: 50%;
   width: 6px;
   border-top: 1px solid color-mix(in oklab, var(--border) 75%, transparent);

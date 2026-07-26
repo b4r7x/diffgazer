@@ -232,6 +232,36 @@
     outline-offset: 2px;
   }
 
+  /* Coarse pointers get a real 44px hit box: the interactive box itself grows,
+     while the icon inside it stays 24px, so the visual chrome is unchanged. A
+     pseudo-element extension does not work here — the figure is overflow:hidden
+     and the content <pre> paints after the header, so anything spilling out of
+     the 32px header row is clipped above and covered below. The header row grows
+     with the control for the same reason. */
+  @media (pointer: coarse) {
+    [data-slot="code-block-header"] {
+      min-height: 44px;
+    }
+
+    [data-slot="code-block-dots"] {
+      height: 100%;
+    }
+
+    [data-slot="code-block-copy-button"] {
+      width: 44px;
+      height: 44px;
+    }
+
+    /* Pull the wider control back into the 12px header padding so the icon stays
+       optically aligned with the header edge. Skipped for the chrome="dots" and
+       terminal headers: both center their label against symmetric padding, and a
+       one-sided pull would visibly shift that centring. */
+    [data-slot="code-block"]:not([data-chrome="dots"]):not([data-variant="terminal"])
+      [data-slot="code-block-copy-button"] {
+      margin-right: -10px;
+    }
+  }
+
   /* Token color classes, addressable from inline-tokenized content
      (CodeBlockToken { className }) and from the lowlight-emitted
      hljs-* classes via the compatibility map below. */

@@ -7,6 +7,7 @@ import {
   type CodeBlockLineProps,
 } from "@diffgazer/ui/components/code-block";
 import { Panel, PanelFooter } from "@diffgazer/ui/components/panel";
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@diffgazer/ui/components/tabs";
 import { Typography } from "@diffgazer/ui/components/typography";
@@ -92,15 +93,21 @@ function DefaultPreviewPane({
         <div data-slot="panel-header">
           <span className={CHROME_LABEL_CLASS}>Preview</span>
         </div>
-        <div
-          className={cn(
-            DOT_GRID_CLASS,
-            "flex items-center justify-center px-8",
-            compact ? "min-h-[96px] py-6" : "min-h-[240px] py-12",
-          )}
+        {/* The stage scrolls its own overflow so wide demos never pan the page. */}
+        <ScrollArea
+          orientation="horizontal"
+          aria-label="Example preview"
+          className={cn(DOT_GRID_CLASS, "flex min-w-0", compact ? "min-h-[96px]" : "min-h-[240px]")}
         >
-          <DemoNode demo={demo} />
-        </div>
+          <div
+            className={cn(
+              "flex w-full items-center justify-center-safe px-8",
+              compact ? "py-6" : "py-12",
+            )}
+          >
+            <DemoNode demo={demo} />
+          </div>
+        </ScrollArea>
         {rawCode.length > 0 && (
           <PanelFooter>
             <CopyButton text={rawCode} label="copy jsx" className="ml-auto uppercase" />
@@ -119,11 +126,17 @@ function FillPreviewPane({
   theme: string;
 }) {
   return (
-    <div data-demo-preview data-theme={theme} className="border border-border bg-background">
+    <ScrollArea
+      orientation="horizontal"
+      aria-label="Example preview"
+      data-demo-preview
+      data-theme={theme}
+      className="border border-border bg-background"
+    >
       <div className="w-full [&>*]:w-full">
         <DemoNode demo={demo} />
       </div>
-    </div>
+    </ScrollArea>
   );
 }
 
@@ -136,7 +149,7 @@ function PreviewPane({
   frame: PreviewFrame;
   rawCode: string;
 }) {
-  const { theme } = useTheme();
+  const { resolved: theme } = useTheme();
   if (frame === "inset") {
     return (
       <div data-demo-preview data-theme={theme}>

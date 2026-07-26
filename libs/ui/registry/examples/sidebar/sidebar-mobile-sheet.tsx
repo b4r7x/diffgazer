@@ -59,6 +59,9 @@ function Pane({ label, children }: { label: string; children: ReactNode }) {
  * The left pane renders the same nav with `embedded` so the sheet body stays
  * visible at rest: the sheet is a Dialog and only exists while open, which a
  * static page cannot show without trapping focus on load.
+ *
+ * Below the breakpoint the sheet has its own open state that starts closed, and
+ * opening or closing it never writes the provider's tri-state.
  */
 export default function SidebarMobileSheet() {
   return (
@@ -74,7 +77,7 @@ export default function SidebarMobileSheet() {
       </Pane>
 
       <Pane label="closed — tap the trigger">
-        <SidebarProvider breakpoint={9999} defaultState="hidden" shortcutKey={null}>
+        <SidebarProvider breakpoint={9999} shortcutKey={null}>
           <div className="flex max-w-[280px] flex-col gap-3">
             <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
               <SidebarTrigger className="border border-border px-2 py-1" />

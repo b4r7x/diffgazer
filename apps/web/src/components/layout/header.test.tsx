@@ -6,20 +6,20 @@ import { Header } from "./header";
 describe("Header", () => {
   it("renders the diffgazer wordmark with an accessible label", () => {
     render(<Header providerName="OpenAI" providerStatus="idle" />);
-    expect(screen.getByRole("img", { name: "DIFFGAZER" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "diffgazer" })).toBeInTheDocument();
   });
 
   it("renders a single ascii wordmark with no plain-text fallback", () => {
     render(<Header providerName="OpenAI" providerStatus="idle" />);
 
-    expect(screen.getAllByRole("img", { name: "DIFFGAZER" })).toHaveLength(1);
+    expect(screen.getAllByRole("img", { name: "diffgazer" })).toHaveLength(1);
     expect(screen.queryByText("DIFFGAZER")).not.toBeInTheDocument();
   });
 
   it("swaps the figlet banner for a one-line wordmark on work screens", () => {
     render(<Header providerName="OpenAI" providerStatus="idle" wordmark="line" />);
 
-    expect(screen.queryByRole("img", { name: "DIFFGAZER" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "diffgazer" })).not.toBeInTheDocument();
     expect(screen.getByText("DIFFGAZER")).toBeInTheDocument();
   });
 

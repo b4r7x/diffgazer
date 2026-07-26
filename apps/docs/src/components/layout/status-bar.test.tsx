@@ -4,6 +4,7 @@ import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { WORDMARK_ASCII, WORDMARK_COLS, WORDMARK_ROWS } from "@/generated/logo-ascii";
 import { ThemeProvider } from "@/hooks/theme-context";
 import { StatusBar } from "./status-bar";
 
@@ -100,7 +101,7 @@ describe("StatusBar", () => {
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute("href", "/app");
     expect(screen.getByRole("link", { name: "Components" })).toHaveAttribute("href", "/ui");
     expect(screen.getByRole("link", { name: "Keys" })).toHaveAttribute("href", "/keys");
-    expect(screen.getByRole("button", { name: /switch to light theme/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^theme:/i })).toBeInTheDocument();
   });
 
   it("exposes focusable links inside the Primary navigation landmark", async () => {
@@ -116,12 +117,27 @@ describe("StatusBar", () => {
       screen.getByRole("link", { name: "Components" }),
       screen.getByRole("link", { name: "Keys" }),
       screen.getByRole("link", { name: "GitHub" }),
-      screen.getByRole("button", { name: /switch to light theme/i }),
+      screen.getByRole("button", { name: /^theme:/i }),
     ];
 
     for (const element of tabOrder) {
       await user.tab();
       expect(element).toHaveFocus();
+    }
+  });
+});
+
+describe("generated wordmark grid", () => {
+  // The bar reserves the scaled art as WORDMARK_COLS ch by WORDMARK_ROWS em, and
+  // index.css reveals it in WORDMARK_ROWS animation steps. Both only hold while
+  // the generated block really is that rectangle, so regenerating art of another
+  // shape has to fail here rather than quietly desync the chrome.
+  it("is WORDMARK_ROWS rows of WORDMARK_COLS columns", () => {
+    const rows = WORDMARK_ASCII.split("\n");
+
+    expect(rows).toHaveLength(WORDMARK_ROWS);
+    for (const row of rows) {
+      expect(row).toHaveLength(WORDMARK_COLS);
     }
   });
 });

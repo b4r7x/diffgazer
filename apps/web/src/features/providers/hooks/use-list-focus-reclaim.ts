@@ -30,6 +30,6 @@ export function useProvidersListFocusReclaim({
     if (!focusIsUnclaimed && !containsActiveElement(listContainer)) return;
 
     setZone("list");
-    listContainer.focus();
+    listContainer.focus({ preventScroll: true });
   }, [dialogOpen, listReady, listContainerRef, setZone]);
 }

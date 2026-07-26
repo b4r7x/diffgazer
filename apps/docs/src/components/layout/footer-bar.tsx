@@ -3,7 +3,7 @@ import { Kbd } from "@diffgazer/ui/components/kbd";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Fragment } from "react";
-import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
+import { CHROME_ACTION_TARGET_CLASS, CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
 
 type FooterRouteMatch = {
@@ -54,7 +54,7 @@ export function FooterBar() {
   return (
     <footer
       className={cn(
-        "flex shrink-0 items-center justify-between border-t border-border bg-background px-4 py-1",
+        "flex shrink-0 items-center justify-between border-t border-border bg-background px-4 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]",
         CHROME_LABEL_CLASS,
       )}
     >
@@ -79,13 +79,21 @@ export function FooterBar() {
       <div className="flex items-center gap-6">
         <Link
           to="/privacy"
-          className={`hidden transition-colors hover:text-foreground ${FOCUS_RING_CLASS} sm:inline`}
+          className={cn(
+            CHROME_ACTION_TARGET_CLASS,
+            "transition-colors hover:text-foreground",
+            FOCUS_RING_CLASS,
+          )}
         >
           Privacy
         </Link>
         <Link
           to="/terms"
-          className={`hidden transition-colors hover:text-foreground ${FOCUS_RING_CLASS} sm:inline`}
+          className={cn(
+            CHROME_ACTION_TARGET_CLASS,
+            "transition-colors hover:text-foreground",
+            FOCUS_RING_CLASS,
+          )}
         >
           Terms
         </Link>

@@ -107,7 +107,9 @@ describe("IssueListPane severity accessibility", () => {
       />,
     );
 
-    expect(screen.getByText("src/db.ts")).toBeVisible();
+    // The location renders through PathValue, which splits the directory off
+    // the filename; the tooltip carries the whole path.
+    expect(screen.getByTitle("src/db.ts")).toBeVisible();
     expect(screen.queryByText("src/db.ts:null")).not.toBeInTheDocument();
   });
 

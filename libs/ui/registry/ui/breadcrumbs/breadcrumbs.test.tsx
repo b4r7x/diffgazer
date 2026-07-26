@@ -212,6 +212,51 @@ describe("Breadcrumbs", () => {
     expect(ref.current).toBe(link);
   });
 
+  // Breadcrumb links are an inline run inside a wrapping <ol>: the padding grows the target, the
+  // vertical pull-back keeps the run's line box unchanged, and pointer-coarse trades that pull-back
+  // for a real 44px minimum. There is no horizontal pull-back, so a link never overlaps its
+  // separator. jsdom computes no layout, so the recipe is asserted through its class tokens.
+  it("applies the inline-run hit-area recipe to links", () => {
+    render(
+      <Breadcrumbs>
+        <Breadcrumbs.Item>
+          <Breadcrumbs.Link href="/">Home</Breadcrumbs.Link>
+        </Breadcrumbs.Item>
+        <Breadcrumbs.Item>
+          <Breadcrumbs.Link href="/about">About</Breadcrumbs.Link>
+        </Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+    expect(screen.getByRole("link", { name: "Home" })).toHaveClass(
+      "inline-flex",
+      "py-2",
+      "-my-2",
+      "px-1",
+      "pointer-coarse:my-0",
+      "pointer-coarse:min-h-11",
+    );
+    expect(screen.getByRole("link", { name: "Home" })).not.toHaveClass("-mx-1");
+  });
+
+  it("passes the hit-area recipe into render-prop className", () => {
+    let injected = "";
+    render(
+      <Breadcrumbs>
+        <Breadcrumbs.Item>
+          <Breadcrumbs.Link href="/about">
+            {(props) => {
+              injected = props.className;
+              return <a {...props}>Custom About</a>;
+            }}
+          </Breadcrumbs.Link>
+        </Breadcrumbs.Item>
+      </Breadcrumbs>,
+    );
+    expect(injected).toContain("py-2");
+    expect(injected).toContain("-my-2");
+    expect(injected).toContain("pointer-coarse:min-h-11");
+  });
+
   it("exposes sr-only 'More' on the ellipsis while keeping the glyph decorative", () => {
     render(
       <Breadcrumbs>

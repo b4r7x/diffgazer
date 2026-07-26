@@ -53,16 +53,19 @@ const trackVariants = cva(
     "relative inline-flex items-center shrink-0",
     "font-mono cursor-pointer select-none",
     "border border-border rounded-sm",
-    "transition-colors duration-150",
+    "transition-colors duration-150 motion-reduce:transition-none",
     "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
   ],
   {
     variants: {
       size: {
-        // sm keeps a 20px visual track but extends a transparent ≥24px pointer
-        // hit area (WCAG 2.5.8 AA) via a pseudo-element with negative vertical inset.
-        sm: "h-5 w-9 text-xs before:absolute before:inset-x-0 before:-inset-y-0.5 before:content-['']",
-        md: "h-6 w-11 text-sm",
+        // Both sizes keep their visual track and extend a transparent pointer hit
+        // area via a pseudo-element with negative insets, reaching 44x44px on
+        // pointer:coarse (WCAG 2.5.5). sm also carries a 2px fine-pointer extension
+        // because its 20px track would otherwise miss the 24px floor of WCAG 2.5.8;
+        // md is 24x44 on its own and gets no fine-pointer pseudo at all.
+        sm: "h-5 w-9 text-xs before:absolute before:inset-x-0 before:-inset-y-0.5 before:content-[''] pointer-coarse:before:-inset-y-3 pointer-coarse:before:-inset-x-1",
+        md: "h-6 w-11 text-sm pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:-inset-y-2.5 pointer-coarse:before:content-['']",
       },
       checked: {
         true: "bg-primary border-primary",
@@ -86,7 +89,7 @@ const trackVariants = cva(
 const thumbVariants = cva(
   [
     "rounded-sm bg-background text-foreground border border-border",
-    "transition-transform duration-150",
+    "transition-transform duration-150 motion-reduce:transition-none",
     "font-mono leading-none flex items-center justify-center",
   ],
   {

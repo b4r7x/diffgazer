@@ -102,6 +102,15 @@ describe("Radio", () => {
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
+  // touch-target contract (mobile campaign): pointer-coarse hit-area is the public contract; jsdom
+  // cannot measure layout.
+  it("row reserves a 44px coarse-pointer touch target", () => {
+    render(<Radio label="Option A" />);
+    expect(screen.getByRole("radio", { name: /option a/i }).className).toContain(
+      "pointer-coarse:min-h-11",
+    );
+  });
+
   it("has no a11y violations (standalone)", async () => {
     const { container } = render(<Radio label="Option A" aria-label="Option A" />);
     expect(await axe(container)).toHaveNoViolations();

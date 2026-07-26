@@ -17,11 +17,20 @@ async function expectDocumentFocus(locator: Locator): Promise<void> {
     .toBe(true);
 }
 
-async function closeDefaultOpenCard(page: Page): Promise<void> {
-  const openCardExample = page.getByRole("combobox", { name: "Framework" });
-  await expect(openCardExample).toHaveAttribute("aria-expanded", "true", { timeout: 15_000 });
-  await openCardExample.press("Enter");
-  await expect(openCardExample).toHaveAttribute("aria-expanded", "false");
+// The page renders more than one `defaultOpen` example ("Framework" on the card
+// variant, "Commands" on the open-listbox variant). Any one of them left open is an
+// overlay layer, and the dismiss stack deliberately swallows the click that closes a
+// layer — so a single leftover would eat the first click of every test below.
+const DEFAULT_OPEN_EXAMPLES = ["Framework", "Commands"] as const;
+
+async function closeDefaultOpenExamples(page: Page): Promise<void> {
+  for (const name of DEFAULT_OPEN_EXAMPLES) {
+    const trigger = page.getByRole("combobox", { name, exact: true });
+    await expect(trigger).toHaveAttribute("aria-expanded", "true", { timeout: 15_000 });
+    await trigger.press("Enter");
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  }
+  await expect(page.locator('[role="combobox"][aria-expanded="true"]')).toHaveCount(0);
 }
 
 function getDefaultBranchTrigger(page: Page): Locator {
@@ -54,7 +63,7 @@ test.describe("Select", () => {
     page,
   }) => {
     await page.goto("/ui/components/select");
-    await closeDefaultOpenCard(page);
+    await closeDefaultOpenExamples(page);
     const trigger = getDefaultBranchTrigger(page);
 
     await selectSecondBranch(page, trigger, () => trigger.click());
@@ -64,7 +73,7 @@ test.describe("Select", () => {
     page,
   }) => {
     await page.goto("/ui/components/select");
-    await closeDefaultOpenCard(page);
+    await closeDefaultOpenExamples(page);
     const trigger = getDefaultBranchTrigger(page);
 
     await selectSecondBranch(page, trigger, async () => {
@@ -77,7 +86,7 @@ test.describe("Select", () => {
     page,
   }) => {
     await page.goto("/ui/components/select");
-    await closeDefaultOpenCard(page);
+    await closeDefaultOpenExamples(page);
     const trigger = getDefaultBranchTrigger(page);
     const triggerId = await trigger.getAttribute("id");
     if (!triggerId) throw new Error("Select trigger did not expose an id");
@@ -100,7 +109,7 @@ test.describe("Select", () => {
     page,
   }) => {
     await page.goto("/ui/components/select");
-    await closeDefaultOpenCard(page);
+    await closeDefaultOpenExamples(page);
     const searchablePreview = page
       .getByRole("heading", { level: 4, name: "Searchable (bottom)" })
       .locator("..");
@@ -121,7 +130,7 @@ test.describe("Select", () => {
   test("opens listbox via keyboard and reports no a11y violations", async ({ page }) => {
     await page.goto("/ui/components/select");
     await expect(page.getByRole("heading", { level: 1, name: /select/i })).toBeVisible();
-    await closeDefaultOpenCard(page);
+    await closeDefaultOpenExamples(page);
 
     const combo = page.getByRole("main").getByRole("combobox").first();
     await combo.focus();

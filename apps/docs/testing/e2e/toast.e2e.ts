@@ -10,7 +10,9 @@ test.describe("Toast", () => {
     await trigger.click();
 
     const region = page.getByRole("region", { name: /notifications/i });
-    const toast = region.getByRole("status").first();
+    // The page also renders a static example that publishes its own toast on mount,
+    // so the region is not empty at rest — pick the one this trigger raised.
+    const toast = region.getByRole("status").filter({ hasText: /saved/i }).first();
     await toast.waitFor({ state: "visible" });
     await expect(toast).toContainText(/saved/i);
     await expect(toast).toHaveScreenshot("toast-visible.png");

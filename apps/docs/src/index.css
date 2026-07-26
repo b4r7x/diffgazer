@@ -50,3 +50,56 @@
 .docs-md-list-ordered > li::before {
   content: counter(list-counter, decimal) ". " / "";
 }
+
+/* The one terminal caret blink for the docs home panels. Keyframes are not
+   expressible as Tailwind utilities, so the recipe lives here instead of being
+   duplicated into a <style> tag per panel. The iteration count is finite
+   (WCAG 2.2.2): the caret blinks through the boot sequence and settles solid
+   inside the five-second budget rather than flashing for the page's lifetime. */
+@keyframes dg-caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.dg-caret {
+  animation: dg-caret-blink 1s steps(1, end) 4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dg-caret {
+    animation: none;
+  }
+}
+
+/* The wordmark boot reveal for the docs hero panel. Same reasoning as the caret
+   above: keyframes are not expressible as Tailwind utilities, so the recipe
+   lives here rather than being injected per panel. */
+@keyframes dg-wordmark-boot {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+
+/* The step count is a derivation, not a design value: one reveal step per row of
+   the generated wordmark art, which is WORDMARK_ROWS (6) rows tall — regenerate
+   art of another height and this has to follow, which the WORDMARK_ROWS shape
+   test in status-bar.test.tsx catches. The two durations are design-tuned motion
+   (420ms over 6 rows is 70ms a row, after a 120ms beat). */
+.dg-wordmark-boot {
+  animation: dg-wordmark-boot 420ms steps(6, end) 120ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dg-wordmark-boot {
+    animation: none;
+  }
+}

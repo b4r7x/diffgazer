@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { KeyboardProvider } from "@diffgazer/keys";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { MobileNavProvider } from "@/hooks/mobile-nav-context";
@@ -59,7 +59,7 @@ const TREE: PageTree = {
 };
 
 describe("DocsContentLayout mobile sidebar", () => {
-  it("moves focus to the Scope select trigger on open and restores it on Escape close", async () => {
+  it("moves focus to the drawer on open, into it on Tab, and restores it on Escape close", async () => {
     stubMatchMedia({ isDesktop: false });
     Element.prototype.scrollIntoView = () => {};
     const user = userEvent.setup();
@@ -80,8 +80,13 @@ describe("DocsContentLayout mobile sidebar", () => {
     const menuButton = screen.getByRole("button", { name: /open navigation menu/i });
     await user.click(menuButton);
 
+    const drawer = screen.getByRole("complementary", { name: /sidebar navigation/i });
     const scopeTrigger = screen.getByRole("combobox", { name: /select documentation library/i });
-    await waitFor(() => expect(scopeTrigger).toHaveFocus());
+    await waitFor(() => expect(drawer).toHaveFocus());
+    expect(scopeTrigger).not.toHaveFocus();
+
+    await user.tab();
+    expect(scopeTrigger).toHaveFocus();
 
     await user.keyboard("{Escape}");
     await waitFor(() => expect(menuButton).toHaveFocus());
@@ -89,6 +94,42 @@ describe("DocsContentLayout mobile sidebar", () => {
 
     await user.click(menuButton);
     await waitFor(() => expect(menuButton).toHaveAttribute("aria-expanded", "true"));
-    await waitFor(() => expect(scopeTrigger).toHaveFocus());
+    await waitFor(() => expect(drawer).toHaveFocus());
+  });
+});
+
+const SECTIONED_TREE: PageTree = {
+  name: "ui",
+  children: [
+    { type: "separator", name: "Components" },
+    { type: "page", name: "Button", url: "/ui/components/button" },
+  ],
+};
+
+describe("DocsContentLayout content breadcrumbs", () => {
+  it("exposes a Breadcrumb landmark inside the main content column", () => {
+    stubMatchMedia({ isDesktop: false });
+    routerBoundary.pathname = "/ui/components/button";
+
+    render(
+      <KeyboardProvider>
+        <MobileNavProvider>
+          <SearchProvider>
+            <DocsContentLayout tree={SECTIONED_TREE} library="ui">
+              <p>Docs body</p>
+            </DocsContentLayout>
+          </SearchProvider>
+        </MobileNavProvider>
+      </KeyboardProvider>,
+    );
+
+    const main = screen.getByRole("main");
+    const path = within(main).getByRole("navigation", { name: "Breadcrumb" });
+
+    expect(within(path).getByRole("link", { name: "components" })).toHaveAttribute(
+      "href",
+      "/ui/components",
+    );
+    expect(within(main).getByText("button")).toBeInTheDocument();
   });
 });

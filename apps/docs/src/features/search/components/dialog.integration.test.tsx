@@ -139,6 +139,12 @@ describe("SearchDialog integration", () => {
     expect(mocks.navigate).toHaveBeenCalledWith({ to: "/ui/components/shared" });
   });
 
+  it("prompts for a query before any search has run", async () => {
+    await renderOpenDialog();
+
+    expect(screen.getByText("Type to search docs...")).toBeInTheDocument();
+  });
+
   it("announces search failures assertively outside the listbox", async () => {
     const user = setupUser();
     mocks.doSearch.mockRejectedValue(new Error("network down"));
@@ -176,5 +182,28 @@ describe("SearchDialog integration", () => {
     // The listbox holds only option children (zero here) during the empty state.
     const listbox = screen.getByRole("listbox");
     expect(within(listbox).queryAllByRole("option")).toHaveLength(0);
+  });
+
+  // jsdom always reports a fine pointer, so this covers the close action's
+  // behavior only; that it is *revealed* on touch is proven by the
+  // mobile-chromium project in testing/e2e/pointer-coarse.e2e.ts.
+  it("closes the dialog and clears the query from the Close search action", async () => {
+    const user = setupUser();
+    mocks.doSearch.mockResolvedValue([pageResult("button", "Button")]);
+
+    const input = await renderOpenDialog();
+    await user.type(input, "button");
+    expect(await screen.findByText("Button")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Close search" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("combobox", { name: /command search/i })).not.toBeInTheDocument(),
+    );
+
+    await user.keyboard("/");
+
+    const reopened = await screen.findByRole("combobox", { name: /command search/i });
+    expect(reopened).toHaveValue("");
   });
 });

@@ -11,7 +11,7 @@ import {
 
 export default function SidebarVariantBar() {
   return (
-    <Sidebar variant="bar" className="h-full">
+    <Sidebar embedded variant="bar" className="h-full">
       <SidebarHeader>
         <span className="text-xs font-mono text-muted-foreground">~/ui/docs</span>
       </SidebarHeader>

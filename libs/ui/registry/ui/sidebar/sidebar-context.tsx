@@ -13,8 +13,16 @@ export interface SidebarContextValue {
   contentId: string;
   /** Whether sidebar is mobile. */
   isMobile: boolean;
+  /**
+   * Whether the mobile sheet is open. Independent of `state`: below the breakpoint the sheet owns
+   * its own presentation, so entering, opening, closing, and leaving it never write the desktop
+   * tri-state.
+   */
+  openMobile: boolean;
   /** Called when state change occurs. */
   onStateChange: (state: SidebarState) => void;
+  /** Opens or closes the mobile sheet. */
+  onMobileOpenChange: (open: boolean) => void;
   /** Toggles sidebar. */
   toggleSidebar: () => void;
   /** Toggles hidden. */

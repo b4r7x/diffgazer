@@ -18,4 +18,22 @@ describe("SeverityBreakdown", () => {
       expect(meter).toHaveAttribute("aria-valuetext", `${label}: 0`);
     }
   });
+
+  test("mutes zero counts and keeps the severity color on non-zero counts", () => {
+    const counts: SeverityCounts = { blocker: 0, high: 0, medium: 2, low: 0, nit: 0 };
+    render(<SeverityBreakdown counts={counts} />);
+
+    // Sanctioned class assertion: the severity color class IS the visual contract
+    // under test here — zero rows must not be painted in alarm colors. The row is
+    // reached through its meter, the one element the severity name accessibly
+    // identifies; the same text also appears inside the meter's value text.
+    const countOf = (label: string) =>
+      screen.getByRole("meter", { name: label }).parentElement?.lastElementChild;
+
+    expect(countOf("BLOCKER")).toHaveTextContent("0");
+    expect(countOf("BLOCKER")).not.toHaveClass("text-severity-blocker");
+    expect(countOf("BLOCKER")).toHaveClass("text-muted-foreground");
+    expect(countOf("MED")).toHaveTextContent("2");
+    expect(countOf("MED")).toHaveClass("text-severity-medium");
+  });
 });

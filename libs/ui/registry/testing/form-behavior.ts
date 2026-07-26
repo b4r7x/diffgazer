@@ -81,20 +81,25 @@ export async function expectResetClearsInvalid(
   control: HTMLElement,
 ): Promise<void> {
   expect(form.reportValidity(), "form should report invalid before reset").toBe(false);
-  await waitFor(() =>
-    expect(
-      control,
-      'control should report aria-invalid="true" after failed validation',
-    ).toHaveAttribute("aria-invalid", "true"),
+  // Explicit timeout: the default 1000ms flakes for this family under parallel test load.
+  await waitFor(
+    () =>
+      expect(
+        control,
+        'control should report aria-invalid="true" after failed validation',
+      ).toHaveAttribute("aria-invalid", "true"),
+    { timeout: 5000 },
   );
 
   form.reset();
 
-  await waitFor(() =>
-    expect(control, "form reset should clear aria-invalid").not.toHaveAttribute(
-      "aria-invalid",
-      "true",
-    ),
+  await waitFor(
+    () =>
+      expect(control, "form reset should clear aria-invalid").not.toHaveAttribute(
+        "aria-invalid",
+        "true",
+      ),
+    { timeout: 5000 },
   );
 }
 

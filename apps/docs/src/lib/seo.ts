@@ -18,8 +18,6 @@ export const PUBLIC_ORIGIN: string = (() => {
 export const DEFAULT_SITE_NAME = "diffgazer docs";
 export const DEFAULT_SITE_DESCRIPTION =
   "Unified documentation for diffgazer libraries and UI primitives.";
-// Matches the lib --base-bg dark value so the browser/PWA chrome aligns with the page.
-export const DEFAULT_THEME_COLOR = "#0a0a0a";
 
 type MetaTag =
   | { title: string }
@@ -76,10 +74,9 @@ export function buildPageSeo({
 export function buildRootHeadDefaults(): { meta: MetaTag[]; links: LinkTag[] } {
   const meta: MetaTag[] = [
     { charSet: "utf-8" },
-    { name: "viewport", content: "width=device-width, initial-scale=1" },
+    { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
     { title: DEFAULT_SITE_NAME },
     { name: "description", content: DEFAULT_SITE_DESCRIPTION },
-    { name: "theme-color", content: DEFAULT_THEME_COLOR },
     { property: "og:site_name", content: DEFAULT_SITE_NAME },
     { property: "og:type", content: "website" },
     { property: "og:url", content: PUBLIC_ORIGIN },

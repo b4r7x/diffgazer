@@ -8,6 +8,7 @@ import {
   SidebarHeader,
   SidebarItem,
   SidebarProvider,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 
 const FRAME_DOCUMENT = `<!doctype html>
@@ -20,6 +21,9 @@ export default function SidebarOwnerWindow() {
   const [frameBody, setFrameBody] = useState<HTMLElement | null>(null);
   // Mounted by default so the frame renders a sidebar instead of an empty box
   // on first paint; the buttons still exercise the mount/unmount lifecycle.
+  // The sheet's viewport is the iframe, not the host page: with breakpoint 600
+  // and a 420px frame the nav is a mobile sheet however wide the host window is,
+  // and resizing the host alone never flips it.
   const [mounted, setMounted] = useState(true);
 
   const handleFrameLoad = (event: SyntheticEvent<HTMLIFrameElement>) => {
@@ -56,6 +60,10 @@ export default function SidebarOwnerWindow() {
       {mounted && frameBody
         ? createPortal(
             <SidebarProvider breakpoint={600} shortcutKey={null}>
+              <div className="flex items-center gap-2 border-b border-border px-2 py-1 font-mono text-xs">
+                <SidebarTrigger />
+                <span>~/frame</span>
+              </div>
               <Sidebar aria-label="Frame navigation">
                 <SidebarHeader>iframe viewport</SidebarHeader>
                 <SidebarContent>

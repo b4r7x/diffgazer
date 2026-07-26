@@ -2,6 +2,7 @@ import type { IssueDetailsPresentation } from "@diffgazer/core/review";
 import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { Typography } from "@diffgazer/ui/components/typography";
 import { cn } from "@diffgazer/ui/lib/utils";
+import { PathValue } from "@/components/shared/path-value";
 import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
 
 export interface IssueHeaderProps {
@@ -22,9 +23,7 @@ export function IssueHeader({ title, severity, presentation, className }: IssueH
       </Typography>
       <div className="flex min-w-0 text-xs text-muted-foreground">
         <span className="shrink-0">Location:&nbsp;</span>
-        <span className="min-w-0 truncate text-foreground" title={presentation.location}>
-          {presentation.location}
-        </span>
+        <PathValue value={presentation.location} className="text-foreground" />
       </div>
       <div className="flex flex-wrap gap-x-4 text-xs text-muted-foreground">
         <span>

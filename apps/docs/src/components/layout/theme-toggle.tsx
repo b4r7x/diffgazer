@@ -1,26 +1,32 @@
 import { cn } from "@diffgazer/ui/lib/utils";
-import { useTheme } from "@/hooks/theme-context";
+import { CHROME_ACTION_TARGET_CLASS } from "@/components/shared/chrome-label";
+import { nextThemePreference, themeToggleLabel, useTheme } from "@/hooks/theme-context";
 
 const focusRingClassName =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
 
 export function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
-  const nextTheme = theme === "dark" ? "light" : "dark";
+  const { theme, setTheme } = useTheme();
 
   return (
     <button
       type="button"
       data-docs-theme-toggle=""
+      // suppressHydrationWarning: the head bootstrap's MutationObserver rewrites this
+      // button's aria-label and its text child as the SSR markup is parsed, so both
+      // differ from what the server sent. React's flag covers the element's own
+      // attributes and its direct text child only — wrap a future non-text child and
+      // the guard silently stops reaching it.
       suppressHydrationWarning
-      onClick={toggleTheme}
-      aria-label={`Switch to ${nextTheme} theme`}
+      onClick={() => setTheme(nextThemePreference(theme))}
+      aria-label={themeToggleLabel(theme)}
       className={cn(
-        "px-1 uppercase transition-colors hover:bg-secondary hover:text-foreground",
+        "px-1 uppercase transition-colors hover:bg-secondary hover:text-foreground pointer-coarse:px-2",
+        CHROME_ACTION_TARGET_CLASS,
         focusRingClassName,
       )}
     >
-      {nextTheme}
+      {theme}
     </button>
   );
 }

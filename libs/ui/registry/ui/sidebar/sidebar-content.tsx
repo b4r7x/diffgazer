@@ -48,7 +48,7 @@ export function SidebarContent({
       hidden={hidden || props.hidden || undefined}
       data-state={state}
       className={cn(
-        "flex-1 overflow-y-auto p-4",
+        "flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin p-4",
         // Rail mode: zero horizontal padding so items center inside the 48px
         // rail. Vertical padding stays so the first/last items breathe.
         "group-data-[state=rail]/sidebar:px-0",

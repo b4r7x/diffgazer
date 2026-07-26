@@ -160,6 +160,19 @@ describe("Callout dismiss", () => {
     expect(screen.queryByText("Alert")).not.toBeInTheDocument();
   });
 
+  it("dismiss extends the coarse-pointer hit area to 44px", () => {
+    render(
+      <Callout>
+        <Callout.Title>Alert</Callout.Title>
+        <Callout.Dismiss />
+      </Callout>,
+    );
+    // touch-target contract (mobile campaign): pointer-coarse hit-area is the public contract; jsdom cannot measure layout.
+    const dismiss = screen.getByRole("button", { name: "Dismiss" });
+    expect(dismiss).toHaveClass("relative");
+    expect(dismiss).toHaveClass("pointer-coarse:before:-inset-2.5");
+  });
+
   it("uses visible text children as the dismiss accessible name (no clobbering aria-label)", () => {
     render(
       <Callout>

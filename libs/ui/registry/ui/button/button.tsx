@@ -16,7 +16,7 @@ const LazySpinner = lazy(() => import("../spinner/spinner").then((m) => ({ defau
 
 /** Class variants for button. */
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center wrap-anywhere text-center font-mono transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 cursor-pointer disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40",
+  "inline-flex items-center justify-center wrap-break-word text-center font-mono transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 cursor-pointer disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40",
   {
     variants: {
       // One filled voice (primary, on the --action pair) so a screen never
@@ -42,11 +42,29 @@ export const buttonVariants = cva(
         outline: "border border-border bg-transparent text-foreground hover:bg-secondary",
         link: "bg-transparent text-info-text underline-offset-2 hover:underline",
       },
+      // Sizes are pointer:fine densities. On pointer:coarse, sm/md/icon extend a
+      // transparent pseudo-element hit area to a 44px effective target without
+      // changing the visual box (buttons live in fixed-height toolbars and panel
+      // headers). `relative` rides along with each of those sizes so the size
+      // itself is the pseudo-element's containing block; lg is already 44px and
+      // stays position:static.
+      //
+      // Two preconditions the call site owns, because the button cannot see them:
+      // 1. Room for the overhang inside the nearest `overflow-hidden` ancestor.
+      //    One is nearly always present (app shells and panel frames are clipped
+      //    boxes); what matters is the gap — a button sitting closer to that clip
+      //    edge than the overhang reaches loses it, and the target silently
+      //    shrinks back to the visual box.
+      // 2. A minimum vertical gap to the next interactive row: 16px for sm,
+      //    8px for md and icon. Below that the extended areas overlap and taps
+      //    land on the wrong control. Horizontal neighbours are safe: the
+      //    extension is vertical only (`inset-x-0`), except icon, which also
+      //    widens by 4px per side to reach 44px across.
       size: {
-        sm: "min-h-7 h-auto max-w-full whitespace-normal px-3 py-1 text-xs",
-        md: "min-h-9 h-auto max-w-full whitespace-normal px-4 py-2 text-sm",
+        sm: "relative min-h-7 h-auto max-w-full whitespace-normal px-3 py-1 text-xs pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:-inset-y-2 pointer-coarse:before:content-['']",
+        md: "relative min-h-9 h-auto max-w-full whitespace-normal px-4 py-2 text-sm pointer-coarse:before:absolute pointer-coarse:before:inset-x-0 pointer-coarse:before:-inset-y-1 pointer-coarse:before:content-['']",
         lg: "min-h-11 h-auto max-w-full whitespace-normal px-6 py-2 text-base",
-        icon: "h-9 w-9 max-w-none shrink-0 whitespace-nowrap p-0",
+        icon: "relative h-9 w-9 max-w-none shrink-0 whitespace-nowrap p-0 pointer-coarse:before:absolute pointer-coarse:before:-inset-x-1 pointer-coarse:before:-inset-y-1 pointer-coarse:before:content-['']",
       },
       // Virtual focus from a parent collection wears the same outside ring as
       // real focus (one focus grammar, one token), just without focus-visible.

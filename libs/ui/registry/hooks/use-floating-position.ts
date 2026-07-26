@@ -11,6 +11,7 @@ import {
 import {
   computeAvailableSize,
   computePosition,
+  computeViewportAvailableSize,
   isAnchorClippedOut,
   resolveCollisionPosition,
   shift,
@@ -24,7 +25,14 @@ import type {
   Viewport,
 } from "@/lib/floating-position-constants";
 
-export { computePosition, isAnchorClippedOut, resolveCollisionPosition, shift, wouldOverflow };
+export {
+  computePosition,
+  computeViewportAvailableSize,
+  isAnchorClippedOut,
+  resolveCollisionPosition,
+  shift,
+  wouldOverflow,
+};
 export type { FloatingAlign, FloatingPlacement, FloatingSide };
 
 /** Options for positioning floating content relative to a trigger element. */
@@ -117,6 +125,75 @@ function isOverflowElement(element: Element): boolean {
   );
 }
 
+// An ancestor establishes a containing block for fixed-position descendants when
+// any of these properties leave their initial value (CSS spec: transforms,
+// perspective, filters, will-change on those, layout/paint containment).
+function isContainingBlockForFixed(element: Element): boolean {
+  const view = element.ownerDocument?.defaultView ?? window;
+  // A property the engine does not implement is simply absent from the declaration, and an
+  // absent property must read as its initial value: comparing `undefined` against "none"
+  // succeeds and would report every ancestor as a containing block. Normalizing once means a
+  // reader does not have to know which of these properties the browser baseline happens to
+  // expose (backdrop-filter and content-visibility are the two that can be missing in the
+  // supported Safari range) to see that the function is safe.
+  const cs = view.getComputedStyle(element) as unknown as Record<string, string | undefined>;
+  const changed = (property: string, initial = "none") => {
+    const value = cs[property] ?? initial;
+    return value !== initial && value !== "";
+  };
+  return (
+    changed("transform") ||
+    changed("translate") ||
+    changed("scale") ||
+    changed("rotate") ||
+    changed("perspective") ||
+    changed("filter") ||
+    changed("backdropFilter") ||
+    changed("contentVisibility", "visible") ||
+    /transform|translate|scale|rotate|perspective|filter/.test(cs.willChange ?? "") ||
+    /paint|layout|strict|content/.test(cs.contain ?? "")
+  );
+}
+
+// Walks up from the trigger collecting only ancestors whose overflow can
+// actually clip it: a fixed subject escapes everything except its fixed
+// containing block; an absolute subject escapes static, non-containing-block
+// ancestors; normal-flow subjects are clipped by every overflow ancestor.
+// After passing a positioned escape's containing block, clipping continues
+// with that ancestor's own positioning mode.
+function getClipAncestors(trigger: HTMLElement): Element[] {
+  const view = trigger.ownerDocument?.defaultView ?? window;
+  const toEscape = (position: string): "none" | "absolute" | "fixed" => {
+    if (position === "fixed") return "fixed";
+    if (position === "absolute") return "absolute";
+    return "none";
+  };
+  let escapeMode = toEscape(view.getComputedStyle(trigger).position);
+  const clip: Element[] = [];
+  let node: Node = trigger;
+  while (true) {
+    const parent = getParentNode(node);
+    if (parent === node || isLastTraversableNode(parent)) break;
+    node = parent;
+    const HTMLElementCtor = parent.ownerDocument?.defaultView?.HTMLElement;
+    if (!HTMLElementCtor || !(parent instanceof HTMLElementCtor)) continue;
+    const cs = view.getComputedStyle(parent);
+    const cbForFixed = isContainingBlockForFixed(parent);
+    const positioned = cs.position !== "static";
+    let clips: boolean;
+    if (escapeMode === "none") {
+      clips = true;
+    } else if (escapeMode === "absolute") {
+      clips = positioned || cbForFixed;
+    } else {
+      clips = cbForFixed;
+    }
+    if (clips && isOverflowElement(parent)) clip.push(parent);
+    if (escapeMode === "none" || clips) escapeMode = toEscape(cs.position);
+  }
+  return clip;
+}
+
 function getNearestOverflowAncestor(node: Node): HTMLElement | null {
   const parent = getParentNode(node);
   if (isLastTraversableNode(parent)) {
@@ -178,9 +255,9 @@ export function useFloatingPosition({
     setContent(node);
   }, []);
   const frameRef = useRef<number | null>(null);
-  // Populated by the open effect, which already walks these ancestors to subscribe to
-  // their scroll events; reused here so anchor-visibility checks stay O(ancestors) per
-  // frame instead of re-walking the DOM.
+  // Populated by the open effect with the subset of overflow ancestors that can actually
+  // clip the trigger (see getClipAncestors); cached here so anchor-visibility checks stay
+  // O(ancestors) per frame instead of re-walking the DOM.
   const clipAncestorsRef = useRef<readonly Element[]>([]);
 
   // Ref-to-state promotion with equality bail; must observe every render.
@@ -201,6 +278,7 @@ export function useFloatingPosition({
       x: resolvedX,
       y: resolvedY,
       side: finalSide,
+      fitted,
     } = avoidCollisions
       ? resolveCollisionPosition(
           triggerRect,
@@ -222,19 +300,22 @@ export function useFloatingPosition({
             alignOffset,
           ),
           side: preferredSide,
+          fitted: true,
         };
 
     const pos = avoidCollisions
       ? shift(resolvedX, resolvedY, contentRect, collisionPadding, vp)
       : { x: resolvedX, y: resolvedY };
 
-    const { availableHeight, availableWidth } = computeAvailableSize(
-      triggerRect,
-      finalSide,
-      sideOffset,
-      collisionPadding,
-      vp,
-    );
+    // A side that fits leaves at least the panel's own measured extent on its placement axis, so
+    // the cap can never be 0 there; when nothing fits, `shift()` clamps the panel into the padded
+    // viewport, which is then the room it really has. Between the two the zero-height case is
+    // unreachable, which is why there is no hard-coded floor. The pairing is also stable: capping
+    // a panel can only turn a non-fitting side into a fitting one, and the newly computed side
+    // room is then at least the capped size, so the caps do not oscillate.
+    const { availableHeight, availableWidth } = fitted
+      ? computeAvailableSize(triggerRect, finalSide, sideOffset, collisionPadding, vp)
+      : computeViewportAvailableSize(collisionPadding, vp);
 
     setPosition({
       x: pos.x,
@@ -278,9 +359,11 @@ export function useFloatingPosition({
     }
 
     // Discovered before the first measurement so the anchor-visibility check inside
-    // update() sees the same clip regions the scroll subscriptions below use.
+    // update() already sees its clip regions. Scroll subscriptions stay on the FULL
+    // overflow-ancestor list (any of them can move the trigger), while the clip check
+    // only gets the ancestors that can actually clip it given its positioning mode.
     const scrollParents = getOverflowAncestors(trigger);
-    clipAncestorsRef.current = scrollParents;
+    clipAncestorsRef.current = getClipAncestors(trigger);
 
     update();
 

@@ -1,47 +1,48 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { bootstrap } from "./bootstrap";
 import { mountLanding } from "./testing/markup";
 
 let cleanup = () => {};
 
-function stubReducedMotion(): void {
-  const reducedQuery = {
-    matches: true,
-    media: "(prefers-reduced-motion: reduce)",
+/** Reduced motion throughout; `matches` decides every other query under test. */
+function bootLanding(matches: (query: string) => boolean): void {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: query.includes("prefers-reduced-motion") || matches(query),
+    media: query,
     onchange: null,
     addEventListener: () => {},
     removeEventListener: () => {},
     addListener: () => {},
     removeListener: () => {},
     dispatchEvent: () => false,
-  };
-
-  vi.stubGlobal("matchMedia", (query: string) =>
-    query.includes("prefers-reduced-motion")
-      ? reducedQuery
-      : { ...reducedQuery, matches: true, media: query },
-  );
+  }));
+  mountLanding();
+  cleanup = bootstrap(document);
 }
+
+const diffRows = () => document.querySelector<HTMLElement>("#gz-diff");
 
 describe("landing accessibility contracts", () => {
   describe("bootstrap under reduced motion", () => {
-    beforeEach(() => {
-      stubReducedMotion();
-      mountLanding();
-      cleanup = bootstrap(document);
-    });
-
     afterEach(() => {
       cleanup();
       cleanup = () => {};
       vi.unstubAllGlobals();
+      document.body.innerHTML = "";
     });
 
-    it("makes the mobile diff scroller keyboard focusable", () => {
-      const diffRows = document.querySelector<HTMLElement>("#gz-diff");
+    it("keeps the diff scroller in the tab order while it really scrolls", () => {
+      bootLanding(() => false);
 
-      expect(diffRows?.tabIndex).toBe(0);
-      expect(diffRows?.getAttribute("aria-label")).toBe("Example diff rows");
+      expect(diffRows()?.tabIndex).toBe(0);
+      expect(diffRows()?.getAttribute("aria-label")).toBe("Example diff rows");
+    });
+
+    it("drops the tab stop where the diff clips to an ellipsis instead of scrolling", () => {
+      bootLanding((query) => query.includes("max-width: 700px"));
+
+      expect(diffRows()?.hasAttribute("tabindex")).toBe(false);
+      expect(diffRows()?.hasAttribute("aria-label")).toBe(false);
     });
   });
 
@@ -62,13 +63,28 @@ describe("landing accessibility contracts", () => {
       }
     });
 
+    it("names the HUD wordmark once, with both visual variants hidden from the a11y tree", () => {
+      mountLanding();
+
+      const wordmark = document.querySelector<HTMLElement>(".hud-tl");
+      const figlet = wordmark?.querySelector<HTMLElement>(".logo-figlet");
+      const word = wordmark?.querySelector<HTMLElement>(".logo-word");
+
+      // One canonical accessible spelling across landing, web, and docs: the
+      // brand is lowercase, however loudly the ascii art renders it.
+      expect(wordmark?.getAttribute("aria-label")).toBe("diffgazer");
+      expect(figlet?.getAttribute("aria-hidden")).toBe("true");
+      expect(word?.getAttribute("aria-hidden")).toBe("true");
+      expect(word?.textContent).toBe("DIFFGAZER");
+    });
+
     it("exposes the install figlet as a single labeled image, not raw ascii", () => {
       mountLanding();
 
       const figlet = document.querySelector<HTMLElement>("#figlet");
 
       expect(figlet?.getAttribute("role")).toBe("img");
-      expect(figlet?.getAttribute("aria-label")).toBe("Diffgazer");
+      expect(figlet?.getAttribute("aria-label")).toBe("diffgazer");
     });
   });
 });

@@ -13,13 +13,36 @@ describe("CommandPalette CSS contract", () => {
     css = readFileSync(CSS_PATH, "utf8");
   });
 
-  function ruleBody(selectorFragment: string): string | null {
-    const escaped = selectorFragment
+  function whitespaceTolerant(fragment: string): string {
+    return fragment
       .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
       .replace(/\s+/g, "\\s+")
       .replace(/:not\\\(/g, ":not\\(\\s*")
       .replace(/\\\)/g, "\\s*\\)");
-    const match = css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+  }
+
+  /** Text between the braces of `atRule`, brace-matched so nested rules stay intact. */
+  function atRuleScope(atRule: string): string | null {
+    const start = css.match(new RegExp(`${whitespaceTolerant(atRule)}\\s*\\{`));
+    if (start?.index === undefined) return null;
+    let depth = 1;
+    const from = start.index + start[0].length;
+    for (let i = from; i < css.length; i += 1) {
+      if (css[i] === "{") depth += 1;
+      else if (css[i] === "}") {
+        depth -= 1;
+        if (depth === 0) return css.slice(from, i);
+      }
+    }
+    return null;
+  }
+
+  function ruleBody(selectorFragment: string, options?: { atRule?: string }): string | null {
+    const source = options?.atRule ? atRuleScope(options.atRule) : css;
+    if (source === null) return null;
+    const match = source.match(
+      new RegExp(`${whitespaceTolerant(selectorFragment)}\\s*\\{([^}]*)\\}`),
+    );
     return match?.[1] ?? null;
   }
 
@@ -102,10 +125,28 @@ describe("CommandPalette CSS contract", () => {
     expect(body).toContain("background: var(--command-palette-bg, var(--background))");
   });
 
+  it("collapses the list padding when nothing is rendered inside it", () => {
+    const body = ruleBody('[data-slot="command-palette-list"]:empty');
+    expect(body).not.toBeNull();
+    expect(body).toContain("padding: 0");
+  });
+
   it("disabled items hide the tone bar", () => {
     const body = ruleBody('[data-slot="command-palette-item"][aria-disabled="true"]::before');
     expect(body).not.toBeNull();
     expect(body).toContain("display: none");
+  });
+
+  it("floors the search input font-size at 16px on coarse pointers", () => {
+    const base = ruleBody('[data-slot="command-palette-input"] input');
+    expect(base).not.toBeNull();
+    expect(base).toContain("font-size: var(--command-palette-text-size)");
+
+    const coarse = ruleBody('[data-slot="command-palette-input"] input', {
+      atRule: "@media (pointer: coarse)",
+    });
+    expect(coarse).not.toBeNull();
+    expect(coarse).toContain("font-size: max(16px, var(--command-palette-text-size))");
   });
 
   it("card frame defines a rounded shell with a gradient surface", () => {

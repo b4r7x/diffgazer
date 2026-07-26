@@ -61,8 +61,12 @@ export const selectableVariants = cva(
   },
 );
 
-/** Inner layout class for selectable control content. */
-export const selectableContainerClass = "flex items-center gap-3 px-3 py-2";
+/**
+ * Inner layout class for selectable control content. The row keeps its
+ * pointer:fine density (36px) and grows to a 44px touch target on coarse
+ * pointers; the row container flows freely, so this is a real height bump.
+ */
+export const selectableContainerClass = "flex items-center gap-3 px-3 py-2 pointer-coarse:min-h-11";
 
 /** Indicator variants for selectable controls. */
 export const selectableIndicatorVariants = cva("font-bold shrink-0 whitespace-nowrap", {

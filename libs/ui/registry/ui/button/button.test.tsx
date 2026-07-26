@@ -13,12 +13,16 @@ describe("Button", () => {
   // Reflow is a layout guarantee jsdom cannot measure, so this asserts the classes that carry it.
   // They are the contract, not incidental styling: a long label must wrap inside the button instead
   // of pushing its own row wider, and only the icon size opts back out.
+  // The wrap mode is `wrap-break-word`, never `wrap-anywhere`: `anywhere` drops the button's
+  // min-content width to a single character, so any min-w-0 ancestor collapses a short label
+  // ("Small", "Disabled") into a one-letter vertical slab.
   it("keeps text sizes reflowable and reserves no-wrap sizing for icon buttons", () => {
     const minimumHeights = { sm: "min-h-7", md: "min-h-9", lg: "min-h-11" } as const;
     for (const size of ["sm", "md", "lg"] as const) {
       const classes = buttonVariants({ size }).split(" ");
       expect(classes).toContain("max-w-full");
-      expect(classes).toContain("wrap-anywhere");
+      expect(classes).toContain("wrap-break-word");
+      expect(classes).not.toContain("wrap-anywhere");
       expect(classes).toContain("whitespace-normal");
       expect(classes).toContain(minimumHeights[size]);
       expect(classes).not.toContain("whitespace-nowrap");
@@ -321,6 +325,64 @@ describe("Button", () => {
       </Button>,
     );
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+// touch-target contract (mobile campaign): the pointer-coarse hit area is the public contract and
+// jsdom cannot measure layout, so these assert the tokens that carry it. One Tailwind spacing unit
+// is 4px, so an `-inset-y-N` overhang is N*4px per side.
+describe("Button coarse-pointer hit area", () => {
+  const TAILWIND_UNIT_PX = 4;
+  /** Per-size vertical overhang in Tailwind units, and the minimum stacking gap the docs promise. */
+  const COARSE_SIZES = [
+    ["sm", 2, 16],
+    ["md", 1, 8],
+    ["icon", 1, 8],
+  ] as const satisfies ReadonlyArray<readonly ["sm" | "md" | "icon", number, number]>;
+
+  it("extends sm, md, and icon to 44px from their own containing block", () => {
+    for (const [size, overhangUnits] of COARSE_SIZES) {
+      const classes = buttonVariants({ size }).split(" ");
+      // The pseudo-element is positioned against the size itself, not an ancestor.
+      expect(classes).toContain("relative");
+      expect(classes).toContain("pointer-coarse:before:absolute");
+      expect(classes).toContain(`pointer-coarse:before:-inset-y-${overhangUnits}`);
+    }
+    // lg already measures 44px, so it neither grows nor becomes a containing block.
+    const lgClasses = buttonVariants({ size: "lg" }).split(" ");
+    expect(lgClasses).toContain("min-h-11");
+    expect(lgClasses).not.toContain("relative");
+    expect(lgClasses.join(" ")).not.toContain("pointer-coarse:before");
+  });
+
+  it("keeps the text sizes vertical-only so a button row never overlaps, and widens icon", () => {
+    expect(buttonVariants({ size: "sm" }).split(" ")).toContain("pointer-coarse:before:inset-x-0");
+    expect(buttonVariants({ size: "md" }).split(" ")).toContain("pointer-coarse:before:inset-x-0");
+    // icon is 36px wide, so it is the one size that must also grow horizontally.
+    expect(buttonVariants({ size: "icon" }).split(" ")).toContain(
+      "pointer-coarse:before:-inset-x-1",
+    );
+  });
+
+  // Stacked buttons are the shape this recipe can break: the overhang is symmetric, so two
+  // vertically adjacent buttons need at least twice the overhang between them or their hit areas
+  // overlap and a tap lands on the wrong control.
+  it("gives stacked buttons an overhang matching the documented minimum gap", () => {
+    render(
+      <div>
+        <Button size="sm">First</Button>
+        <Button size="sm">Second</Button>
+      </div>,
+    );
+    for (const name of ["First", "Second"]) {
+      expect(screen.getByRole("button", { name }).className).toContain(
+        "pointer-coarse:before:-inset-y-2",
+      );
+    }
+
+    for (const [, overhangUnits, documentedGapPx] of COARSE_SIZES) {
+      expect(overhangUnits * TAILWIND_UNIT_PX * 2).toBe(documentedGapPx);
+    }
   });
 });
 

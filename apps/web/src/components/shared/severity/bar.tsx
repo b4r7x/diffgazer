@@ -29,7 +29,9 @@ export function SeverityBar({ label, count, max, severity, className }: Severity
       >
         <BlockBar.Segment value={count} className={color} />
       </BlockBar>
-      <span className={cn("w-6 text-right font-bold", color)}>{count}</span>
+      <span className={cn("w-6 text-right font-bold", count > 0 ? color : "text-muted-foreground")}>
+        {count}
+      </span>
     </div>
   );
 }

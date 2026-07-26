@@ -453,6 +453,16 @@
   .ui-floating-panel {
     transform-origin: var(--ui-content-transform-origin, center);
     z-index: var(--ui-floating-z, var(--z-popover));
+    /*
+     * The max-width/max-height caps FloatingPanel emits need a scroll container on the same
+     * element, or a capped panel just clips its own border and background while the content
+     * keeps painting past the viewport edge. Both axes are authored in one shorthand because a
+     * lone overflow-y computes the other axis to auto anyway, so the shorthand is the honest
+     * spelling. Consumers that intentionally paint outside the box opt out with an
+     * overflow-visible utility (this rule is in @layer components), which also opts out of the
+     * caps' scroll guarantee.
+     */
+    overflow: auto;
   }
   .ui-floating-panel[data-state="open"][data-positioned][data-side="bottom"] {
     animation: var(--ui-content-enter-from-top);

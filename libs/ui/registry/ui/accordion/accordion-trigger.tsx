@@ -12,12 +12,15 @@ import {
 
 /** Class variants for trigger. */
 export const accordionTriggerVariants = cva(
-  "flex w-full items-center gap-2 font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:cursor-not-allowed disabled:hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+  "flex w-full items-center gap-2 font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:cursor-not-allowed disabled:hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring py-2 -mt-2 -mb-2 pointer-coarse:mt-0 pointer-coarse:mb-0 pointer-coarse:min-h-11",
   {
     variants: {
       variant: {
         default: "text-sm",
-        source: "text-xs mb-2",
+        // mb-0 compensates the base pb-2, which now supplies the 8px gap below the trigger.
+        // The base spells its pull-back as -mt-2/-mb-2 rather than -my-2 so this longhand
+        // override wins on its own, without depending on shorthand/longhand rule order.
+        source: "text-xs mb-0",
       },
       disabled: {
         true: "opacity-50 cursor-not-allowed hover:text-muted-foreground",

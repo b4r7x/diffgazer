@@ -145,7 +145,9 @@ describe("ReviewSummaryView", () => {
       ],
     });
 
-    expect(screen.getByText("src/db.ts")).toBeInTheDocument();
+    // The location renders through PathValue, which splits the directory off
+    // the filename; the tooltip carries the whole path.
+    expect(screen.getByTitle("src/db.ts")).toBeInTheDocument();
     expect(screen.queryByText("src/db.ts:0")).not.toBeInTheDocument();
   });
 

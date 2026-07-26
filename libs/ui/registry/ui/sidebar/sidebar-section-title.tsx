@@ -36,10 +36,12 @@ export interface SidebarSectionTitleProps extends Omit<ComponentProps<"h2">, "re
 // rail. The section divider (top border between sibling sections) becomes the
 // visual group separator in rail.
 const HEADING_CLASS_NAME =
-  "px-2 pt-4 pb-1.5 text-muted-foreground text-xs font-mono font-medium uppercase tracking-wider m-0 group-data-[state=rail]/sidebar:hidden";
+  "text-muted-foreground text-xs font-mono font-medium uppercase tracking-wider m-0 group-data-[state=rail]/sidebar:hidden";
+const HEADING_PADDING = "px-2 pt-4 pb-1.5";
 
 const TREE_HEADING_CLASS_NAME =
-  "px-2 pt-2 pb-1 text-foreground text-sm font-mono font-bold normal-case tracking-normal m-0 group-data-[state=rail]/sidebar:hidden";
+  "text-foreground text-sm font-mono font-bold normal-case tracking-normal m-0 group-data-[state=rail]/sidebar:hidden";
+const TREE_HEADING_PADDING = "px-2 pt-2 pb-1";
 
 /** Section label heading. Disclosure-pattern toggle when collapsible. */
 export function SidebarSectionTitle({
@@ -59,6 +61,9 @@ export function SidebarSectionTitle({
   const defaultHandle = <Chevron open={open} size="sm" />;
   const resolvedHandle = handle === undefined ? defaultHandle : handle;
   const headingClassName = isTree ? TREE_HEADING_CLASS_NAME : HEADING_CLASS_NAME;
+  // Interactive titles move the row padding onto the button so the tap target
+  // is the whole padded row instead of the bare text line (WCAG 2.5.8).
+  const headingPadding = isTree ? TREE_HEADING_PADDING : HEADING_PADDING;
   const isInteractive = collapsible || !!onClick;
   const resolvedTitleId = id ?? titleId;
 
@@ -80,8 +85,10 @@ export function SidebarSectionTitle({
         {...(rest as ComponentProps<"button">)}
         type="button"
         className={cn(
-          "text-left w-full appearance-none cursor-pointer select-none bg-transparent border-0 p-0 m-0",
+          "text-left w-full appearance-none cursor-pointer select-none bg-transparent border-0 m-0",
           "font-[inherit] text-[inherit]",
+          headingPadding,
+          "pointer-coarse:min-h-11",
           // Intentional asymmetry: only the collapsible branch needs the row
           // layout, because only that branch renders the chevron handle next
           // to the label. A non-collapsible `onClick` title is just label
@@ -100,7 +107,12 @@ export function SidebarSectionTitle({
 
   return createElement(
     headingLevel,
-    { ...rest, ref, id: resolvedTitleId, className: cn(headingClassName, className) },
+    {
+      ...rest,
+      ref,
+      id: resolvedTitleId,
+      className: cn(headingClassName, headingPadding, className),
+    },
     children,
   );
 }

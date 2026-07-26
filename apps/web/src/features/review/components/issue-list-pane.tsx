@@ -9,6 +9,7 @@ import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent, Ref } from "react";
+import { PathValue } from "@/components/shared/path-value";
 import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
 import { SeverityFilterGroup } from "./severity-filter-group";
 
@@ -152,7 +153,7 @@ export function IssueListPane({
                 density="compact"
                 className="border-b border-border last:border-b-0"
               >
-                <NavigationList.Title className="min-w-0">
+                <NavigationList.Title className="min-w-0 items-start">
                   <span className="sr-only">{issue.severity} severity: </span>
                   <span
                     className={cn(
@@ -164,10 +165,15 @@ export function IssueListPane({
                   >
                     {config.icon}
                   </span>
-                  <span className="min-w-0 truncate">{issue.title}</span>
+                  <span className="min-w-0 line-clamp-2">{issue.title}</span>
                 </NavigationList.Title>
                 <NavigationList.Meta className="min-w-0 overflow-hidden">
-                  <NavigationList.Subtitle>{location}</NavigationList.Subtitle>
+                  {/* PathValue owns the truncation here, so the subtitle's own
+                      `truncate` is neutralised down to its clipping box: the
+                      ellipsis has to land on the directory, not on the filename. */}
+                  <NavigationList.Subtitle className="whitespace-normal text-clip">
+                    <PathValue value={location} />
+                  </NavigationList.Subtitle>
                 </NavigationList.Meta>
               </NavigationList.Item>
             );

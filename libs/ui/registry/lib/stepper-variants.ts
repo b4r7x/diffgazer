@@ -143,7 +143,8 @@ export const stepperLabelVariants = cva("text-[13px] leading-[1.4] font-medium",
 
 /** Button-like trigger variants for interactive stepper rows. */
 export const stepperTriggerVariants = cva(
-  "flex items-start gap-2.5 appearance-none bg-transparent border-0 p-0 text-left w-full " +
+  "flex items-start gap-2.5 appearance-none bg-transparent border-0 text-left w-full " +
+    "px-0 py-2 -my-2 pointer-coarse:my-0 pointer-coarse:min-h-11 " +
     "font-[inherit] cursor-pointer rounded-none " +
     "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 " +
     "disabled:cursor-not-allowed " +

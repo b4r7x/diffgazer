@@ -2,8 +2,9 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { MobileNavProvider, useMobileNav } from "@/hooks/mobile-nav-context";
+import { MobileNavProvider } from "@/hooks/mobile-nav-context";
 import { SearchProvider, useSearchOpen } from "@/hooks/search-context";
 import { stubMatchMedia } from "@/testing/match-media";
 import { CommandRow } from "./command-row";
@@ -22,15 +23,6 @@ vi.mock("@tanstack/react-router", () => ({
 function SearchProbe() {
   const { open } = useSearchOpen();
   return <output aria-label="Search state">{open ? "open" : "closed"}</output>;
-}
-
-function RegisterSidebarProbe() {
-  const { registerSidebar } = useMobileNav();
-  return (
-    <button type="button" onClick={() => registerSidebar()}>
-      Register sidebar
-    </button>
-  );
 }
 
 describe("CommandRow", () => {
@@ -96,21 +88,30 @@ describe("CommandRow", () => {
     expect(screen.getByText("[SCOPE: @diffgazer/ui]")).toBeInTheDocument();
   });
 
-  it("shows the mobile menu toggle only after a sidebar registers", async () => {
-    stubMatchMedia({ isDesktop: false });
-    const user = userEvent.setup();
-    render(
+  it("ships the mobile menu toggle in the server markup, before any client state settles", () => {
+    routerBoundary.pathname = "/ui/components/button";
+
+    const html = renderToStaticMarkup(
       <MobileNavProvider>
         <SearchProvider>
-          <RegisterSidebarProbe />
           <CommandRow />
         </SearchProvider>
       </MobileNavProvider>,
     );
 
-    expect(screen.queryByRole("button", { name: /open navigation menu/i })).not.toBeInTheDocument();
+    expect(html).toContain('aria-label="Open navigation menu"');
+    expect(html).toContain('aria-controls="sidebar-nav"');
+  });
 
-    await user.click(screen.getByRole("button", { name: "Register sidebar" }));
+  it("renders the mobile menu toggle on a desktop viewport too, leaving the breakpoint to CSS", () => {
+    stubMatchMedia({ isDesktop: true });
+    render(
+      <MobileNavProvider>
+        <SearchProvider>
+          <CommandRow />
+        </SearchProvider>
+      </MobileNavProvider>,
+    );
 
     expect(screen.getByRole("button", { name: /open navigation menu/i })).toBeInTheDocument();
   });

@@ -1,5 +1,6 @@
 import { requireValue } from "@diffgazer/core/testing/assertions";
-import { act, render, screen } from "@testing-library/react";
+import { stubControllableMatchMedia, stubMatchMedia } from "@diffgazer/core/testing/match-media";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
@@ -7,42 +8,6 @@ import { Sidebar } from "./index";
 
 describe("Sidebar mobile sheet", () => {
   const originalMatchMedia = window.matchMedia;
-
-  function stubMatchMedia(isMobile: boolean) {
-    let matches = isMobile;
-    const listeners = new Set<EventListenerOrEventListenerObject>();
-    const mql = {
-      get matches() {
-        return matches;
-      },
-      media: "(max-width: 1023px)",
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn((_type: string, listener: EventListenerOrEventListenerObject) => {
-        listeners.add(listener);
-      }),
-      removeEventListener: vi.fn((_type: string, listener: EventListenerOrEventListenerObject) => {
-        listeners.delete(listener);
-      }),
-      dispatchEvent: vi.fn(),
-    } as MediaQueryList;
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      writable: true,
-      value: vi.fn().mockReturnValue(mql),
-    });
-    return {
-      setMobile(next: boolean) {
-        matches = next;
-        const event = new Event("change");
-        for (const listener of listeners) {
-          if (typeof listener === "function") listener(event);
-          else listener.handleEvent(event);
-        }
-      },
-    };
-  }
 
   afterEach(() => {
     Object.defineProperty(window, "matchMedia", {
@@ -52,49 +17,11 @@ describe("Sidebar mobile sheet", () => {
     });
   });
 
-  it("renders the Dialog sheet branch when the viewport matches the mobile breakpoint", () => {
+  it("mounts closed on mobile with the default provider state", () => {
+    const onStateChange = vi.fn();
     stubMatchMedia(true);
     render(
-      <Sidebar.Provider>
-        <Sidebar>
-          <Sidebar.Content>
-            <Sidebar.Item as="button">Item</Sidebar.Item>
-          </Sidebar.Content>
-        </Sidebar>
-      </Sidebar.Provider>,
-    );
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-  });
-
-  it.each([
-    ["uncontrolled", { defaultState: "rail" as const }],
-    ["controlled", { state: "rail" as const }],
-  ])("presents a %s rail state as an open mobile sidebar", (_mode, providerProps) => {
-    stubMatchMedia(true);
-    render(
-      <Sidebar.Provider {...providerProps}>
-        <Sidebar>
-          <Sidebar.Content>
-            <Sidebar.Item as="button">
-              <Sidebar.ItemLabel>Item label</Sidebar.ItemLabel>
-            </Sidebar.Item>
-          </Sidebar.Content>
-        </Sidebar>
-      </Sidebar.Provider>,
-    );
-
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
-      "data-state",
-      "open",
-    );
-    expect(screen.getByText("Item label")).toBeInTheDocument();
-  });
-
-  it("restores a desktop rail presentation after a mobile resize", () => {
-    const viewport = stubMatchMedia(false);
-    render(
-      <Sidebar.Provider defaultState="rail">
+      <Sidebar.Provider onStateChange={onStateChange}>
         <Sidebar>
           <Sidebar.Content>
             <Sidebar.Item as="button">Item</Sidebar.Item>
@@ -103,31 +30,15 @@ describe("Sidebar mobile sheet", () => {
       </Sidebar.Provider>,
     );
 
-    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
-      "data-state",
-      "rail",
-    );
-
-    act(() => viewport.setMobile(true));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
-      "data-state",
-      "open",
-    );
-
-    act(() => viewport.setMobile(false));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
-      "data-state",
-      "rail",
-    );
+    expect(onStateChange).not.toHaveBeenCalled();
   });
 
-  it("toggles every visible mobile state through hidden and back to open", async () => {
+  it("opens the sheet from the trigger and closes it again", async () => {
     const user = userEvent.setup();
     stubMatchMedia(true);
     render(
-      <Sidebar.Provider defaultState="rail">
+      <Sidebar.Provider>
         <Sidebar>
           <Sidebar.Content>
             <Sidebar.Item as="button">Item</Sidebar.Item>
@@ -137,18 +48,61 @@ describe("Sidebar mobile sheet", () => {
       </Sidebar.Provider>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Close navigation" }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const trigger = screen.getByRole("button", { name: "Open navigation" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
 
-    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    await user.click(trigger);
+
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
       "data-state",
       "open",
     );
+    expect(screen.getByRole("button", { name: "Close navigation" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Close navigation" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open navigation" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
   });
 
-  it("uses the mobile visible-hidden transition for Cmd+B", () => {
+  it.each([
+    ["open" as const],
+    ["rail" as const],
+  ])("keeps the sheet closed when a desktop %s state flips to mobile", async (defaultState) => {
+    const user = userEvent.setup();
+    const onStateChange = vi.fn();
+    const viewport = stubControllableMatchMedia(false);
+    render(
+      <Sidebar.Provider defaultState={defaultState} onStateChange={onStateChange}>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+        <Sidebar.Trigger>Toggle</Sidebar.Trigger>
+      </Sidebar.Provider>,
+    );
+
+    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
+      "data-state",
+      defaultState,
+    );
+
+    act(() => viewport.setMatches(true));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(onStateChange).not.toHaveBeenCalled();
+  });
+
+  it("opens the sheet on the first Cmd+B after a fresh mobile mount", () => {
     const onStateChange = vi.fn();
     stubMatchMedia(true);
     render(
@@ -164,20 +118,65 @@ describe("Sidebar mobile sheet", () => {
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "b", metaKey: true }));
     });
-    expect(onStateChange).toHaveBeenLastCalledWith("hidden");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    act(() => {
-      window.dispatchEvent(new KeyboardEvent("keydown", { key: "b", metaKey: true }));
-    });
-    expect(onStateChange).toHaveBeenLastCalledWith("open");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(onStateChange).not.toHaveBeenCalled();
   });
 
-  it("requests hidden from a controlled mobile rail without exposing rail presentation", async () => {
+  it("never writes the provider state when entering, opening, or closing the sheet", async () => {
     const user = userEvent.setup();
     const onStateChange = vi.fn();
     stubMatchMedia(true);
+    render(
+      <Sidebar.Provider defaultState="rail" onStateChange={onStateChange}>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+        <Sidebar.Trigger>Toggle</Sidebar.Trigger>
+      </Sidebar.Provider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    const dialog = screen.getByRole("dialog");
+
+    // fireEvent retained: native <dialog> cancel event has no user-event equivalent
+    fireEvent(dialog, new Event("cancel", { bubbles: false }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    // A cookie-backed consumer mirrors every onStateChange write, so a phone
+    // visit must not emit one at all or it overwrites the desktop preference.
+    expect(onStateChange).not.toHaveBeenCalled();
+  });
+
+  it("renders inline navigation on mobile when embedded is true and never writes state", () => {
+    const onStateChange = vi.fn();
+    stubMatchMedia(true);
+    render(
+      <Sidebar.Provider onStateChange={onStateChange}>
+        <Sidebar embedded>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Item" })).toBeInTheDocument();
+    expect(onStateChange).not.toHaveBeenCalled();
+  });
+
+  it("opens the sheet from a controlled state that a parent never changes", async () => {
+    const user = userEvent.setup();
+    const onStateChange = vi.fn();
+    stubMatchMedia(true);
+
+    // `state` controls the desktop presentation only; a parent pinning "rail"
+    // and ignoring every callback must not be able to make the sheet
+    // unopenable while the trigger claims it is expanded.
     render(
       <Sidebar.Provider state="rail" onStateChange={onStateChange}>
         <Sidebar>
@@ -189,13 +188,102 @@ describe("Sidebar mobile sheet", () => {
       </Sidebar.Provider>,
     );
 
+    expect(screen.getByRole("button", { name: "Open navigation" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close navigation" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Close navigation" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(onStateChange).not.toHaveBeenCalled();
+  });
+
+  it("restores a desktop rail presentation after a mobile resize", async () => {
+    const user = userEvent.setup();
+    const onStateChange = vi.fn();
+    const viewport = stubControllableMatchMedia(false);
+    render(
+      <Sidebar.Provider defaultState="rail" onStateChange={onStateChange}>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+        <Sidebar.Trigger>Toggle</Sidebar.Trigger>
+      </Sidebar.Provider>,
+    );
+
+    act(() => viewport.setMatches(true));
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    act(() => viewport.setMatches(false));
+
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+    expect(nav).toHaveAttribute("data-state", "rail");
+    expect(nav).not.toHaveAttribute("aria-hidden");
+    expect(nav).not.toHaveAttribute("inert");
+    expect(onStateChange).not.toHaveBeenCalled();
+  });
+
+  it("returns to a closed sheet after a desktop round trip", async () => {
+    const user = userEvent.setup();
+    const viewport = stubControllableMatchMedia(true);
+    render(
+      <Sidebar.Provider defaultState="rail">
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+        <Sidebar.Trigger>Toggle</Sidebar.Trigger>
+      </Sidebar.Provider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    act(() => viewport.setMatches(false));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
       "data-state",
-      "open",
+      "rail",
     );
-    await user.click(screen.getByRole("button", { name: "Close navigation" }));
-    expect(onStateChange).toHaveBeenCalledWith("hidden");
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    act(() => viewport.setMatches(true));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open navigation" })).toBeInTheDocument();
+  });
+
+  it("keeps the sheet body interactive when the provider sits at hidden", async () => {
+    const user = userEvent.setup();
+    stubMatchMedia(true);
+    render(
+      <Sidebar.Provider defaultState="hidden">
+        <Sidebar>
+          <Sidebar.Content data-testid="sheet-content">
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+        <Sidebar.Trigger>Toggle</Sidebar.Trigger>
+      </Sidebar.Provider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+
+    // "hidden" describes the desktop layout, so it must not follow the nav into
+    // the sheet and take the open sheet's own body out of the a11y tree.
+    const content = screen.getByTestId("sheet-content");
+    expect(content).not.toHaveAttribute("aria-hidden");
+    expect(content).not.toHaveAttribute("inert");
+    expect(screen.getByRole("button", { name: "Item" })).toBeInTheDocument();
   });
 
   it("renders the plain nav (no Dialog) on desktop viewports", () => {
@@ -213,24 +301,11 @@ describe("Sidebar mobile sheet", () => {
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
   });
 
-  it("renders inline navigation on mobile when embedded is true", () => {
-    stubMatchMedia(true);
-    render(
-      <Sidebar.Provider>
-        <Sidebar embedded>
-          <Sidebar.Content>
-            <Sidebar.Item as="button">Item</Sidebar.Item>
-          </Sidebar.Content>
-        </Sidebar>
-      </Sidebar.Provider>,
-    );
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Item" })).toBeInTheDocument();
-  });
-
   it("subscribes to the sidebar owner window and cleans up the exact media query", () => {
     stubMatchMedia(false);
+    // Spy on the stubbed top-level matchMedia so "the sidebar asked its own
+    // document, never this window" stays assertable below.
+    const topLevelMatchMedia = vi.spyOn(window, "matchMedia");
     const iframe = document.createElement("iframe");
     document.body.append(iframe);
     const frameDocument = requireValue(iframe.contentDocument, "iframe document");
@@ -292,9 +367,11 @@ describe("Sidebar mobile sheet", () => {
       { baseElement: frameDocument.body, container: frameDocument.body },
     );
 
-    expect(rendered.getByRole("dialog")).toBeInTheDocument();
+    // The frame reports mobile, so the sheet branch is active — and the sheet's
+    // own open state starts closed instead of trapping focus on load.
+    expect(rendered.queryByRole("dialog")).not.toBeInTheDocument();
     expect(frameMatchMedia).toHaveBeenCalledTimes(1);
-    expect(window.matchMedia).not.toHaveBeenCalled();
+    expect(topLevelMatchMedia).not.toHaveBeenCalled();
     expect(addEventListener).toHaveBeenCalledTimes(1);
 
     act(() => {
@@ -305,8 +382,12 @@ describe("Sidebar mobile sheet", () => {
       }
     });
 
+    // Back on desktop the inline nav renders at the untouched provider default.
     expect(rendered.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(rendered.getByRole("navigation", { name: "Primary" })).toBeInTheDocument();
+    expect(rendered.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
+      "data-state",
+      "open",
+    );
 
     rendered.unmount();
     expect(removeEventListener).toHaveBeenCalledWith("change", addEventListener.mock.calls[0]?.[1]);
@@ -314,7 +395,8 @@ describe("Sidebar mobile sheet", () => {
     iframe.remove();
   });
 
-  it("has no a11y violations", async () => {
+  it("has no a11y violations with the sheet open", async () => {
+    const user = userEvent.setup();
     stubMatchMedia(true);
     const { container } = render(
       <Sidebar.Provider>
@@ -323,8 +405,30 @@ describe("Sidebar mobile sheet", () => {
             <Sidebar.Item as="button">Item</Sidebar.Item>
           </Sidebar.Content>
         </Sidebar>
+        <Sidebar.Trigger>Toggle</Sidebar.Trigger>
       </Sidebar.Provider>,
     );
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe("SidebarContent overflow", () => {
+  it("hides horizontal overflow on the scroller", () => {
+    render(
+      <Sidebar embedded>
+        <Sidebar.Content data-testid="sidebar-content">
+          <Sidebar.Item as="button">Item</Sidebar.Item>
+        </Sidebar.Content>
+      </Sidebar>,
+    );
+
+    // Public styling contract (fix-spec-b1 SEED-02B): the scroller authors both
+    // axes explicitly so a one-axis `overflow-y-auto` cannot compute overflow-x
+    // to `auto` and pan the sheet horizontally. jsdom cannot compute layout, so
+    // the class token is the assertable contract.
+    expect(screen.getByTestId("sidebar-content")).toHaveClass("overflow-x-hidden");
   });
 });

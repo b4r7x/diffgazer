@@ -99,14 +99,25 @@ describe("HomeView", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Documentation" })).toBeInTheDocument();
   });
 
-  it("renders the SYS_INFO status block", () => {
+  it("renders the hero meta line", () => {
     renderHome();
-    expect(screen.getByText("STATUS:")).toBeInTheDocument();
-    expect(screen.getByText("ONLINE")).toBeInTheDocument();
-    expect(screen.getByText(/REGISTRY:/)).toBeInTheDocument();
+    expect(screen.getByText(/version v\d+\.\d+\.\d+/i)).toBeInTheDocument();
+    expect(screen.getByText(/registry r\.b4r7\.dev/i)).toBeInTheDocument();
   });
 
-  it("lists packages in the modules index table", () => {
+  it("renders the ascii wordmark hero", () => {
+    renderHome();
+    expect(screen.getByRole("img", { name: "diffgazer" })).toBeInTheDocument();
+  });
+
+  it("hides the decorative shell prompt above the registry directory", () => {
+    renderHome();
+
+    const prompt = screen.getByText("ls registry/");
+    expect(prompt.closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it("lists packages in the registry directory", () => {
     renderHome();
 
     const modules = screen.getByRole("navigation", { name: "Documentation packages" });
@@ -120,6 +131,21 @@ describe("HomeView", () => {
     );
     expect(within(modules).getByText("47 Comp")).toBeInTheDocument();
     expect(within(modules).getByText("9 Hooks")).toBeInTheDocument();
+    expect(within(modules).getByText("CLI")).toBeInTheDocument();
+  });
+
+  it("describes what each package is next to its entry", () => {
+    renderHome();
+
+    expect(packageLink(/^diffgazer\b/i)).toHaveTextContent(
+      "AI code review in your terminal. Local-first.",
+    );
+    expect(packageLink(/^@diffgazer\/ui\b/i)).toHaveTextContent(
+      "Primitive & compound TUI building blocks.",
+    );
+    expect(packageLink(/^@diffgazer\/keys\b/i)).toHaveTextContent(
+      "Headless keyboard, focus, & scope primitives.",
+    );
   });
 
   it("renders a tree sidebar with library sections", () => {

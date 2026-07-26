@@ -109,10 +109,10 @@ export function InsetPreviewPane({ demo }: { demo: LazyExoticComponent<Component
       {/* The rail is exactly sidebar-width (w-64) so demos sit flush against
           the rail border and a wider demo can never crush the faux page. */}
       <div className="grid grid-cols-[16rem_1fr] h-[440px]">
-        <div className="border-r border-border flex flex-col items-stretch bg-background overflow-auto scrollbar-thin [&>*]:min-w-0">
+        <div className="flex flex-col items-stretch bg-background overflow-y-auto overflow-x-hidden scrollbar-thin [&>*]:min-w-0">
           <DemoSlot demo={demo} />
         </div>
-        <div className="@container/pane flex flex-col min-w-0 bg-background relative">
+        <div className="@container/pane flex flex-col min-w-0 bg-background relative border-l border-border">
           <FauxDocsTopbar />
           <FauxDocsBody>
             <p className="text-muted-foreground text-xs leading-7 max-w-[60ch]">

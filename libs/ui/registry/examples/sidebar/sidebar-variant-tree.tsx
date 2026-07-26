@@ -10,7 +10,7 @@ import {
 
 export default function SidebarVariantTree() {
   return (
-    <Sidebar variant="tree" className="h-full">
+    <Sidebar embedded variant="tree" className="h-full">
       <SidebarHeader>
         <span className="text-xs font-mono text-muted-foreground">[ 01 / FS_TREE ]</span>
       </SidebarHeader>

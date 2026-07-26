@@ -3,6 +3,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { type ReactNode, useCallback, useRef, useState } from "react";
 import { useFocusRestore } from "@/hooks/use-focus-restore";
+import { useScrollLock } from "@/hooks/use-scroll-lock";
 import { cn } from "@/lib/utils";
 import { DialogShell } from "../shared/dialog-shell";
 import { PortalContainerProvider } from "../shared/portal-context";
@@ -15,7 +16,7 @@ export type CommandPaletteDensity = "compact" | "comfortable" | "dense";
 
 /** Class variants for command palette content. */
 export const commandPaletteContentVariants = cva(
-  "relative flex flex-col max-h-[80vh] m-auto w-full font-mono",
+  "relative flex flex-col max-h-[80dvh] m-auto w-full font-mono",
   {
     variants: {
       size: { sm: "max-w-sm", md: "max-w-xl", lg: "max-w-2xl" },
@@ -78,8 +79,10 @@ export function CommandPaletteContent({
   const { open, onOpenChange, search, onSearchChange, itemCount, inputRef } =
     useCommandPaletteContext();
   const shellRef = useRef<HTMLDialogElement>(null);
+  const scrollLockTargetRef = useRef<HTMLElement>(null);
   const [container, setContainer] = useState<Element | null>(null);
   const focusRestore = useFocusRestore({ restoreOnUnmount: true });
+  useScrollLock({ target: scrollLockTargetRef, enabled: open && modal });
 
   const resolvedFrame = frame ?? "border";
   const resolvedDensity = density ?? "compact";
@@ -87,6 +90,7 @@ export function CommandPaletteContent({
   // Stable identity for DialogShell's dialogRef callback so the underlying ref isn't re-attached on every render.
   const setDialogRef = useCallback((node: HTMLDialogElement | null) => {
     shellRef.current = node;
+    scrollLockTargetRef.current = node?.ownerDocument.body ?? null;
     setContainer(node);
   }, []);
 

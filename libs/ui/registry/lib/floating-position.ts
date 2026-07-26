@@ -152,7 +152,30 @@ export function computeAvailableSize(
   };
 }
 
-/** Picks the first placement that fits, trying preferred, opposite, then cross-axis sides. */
+/**
+ * Room inside the padded viewport, ignoring the trigger.
+ *
+ * Used when no placement fits: the panel is going to be clamped into the padded viewport by
+ * `shift()` anyway, so the padded viewport — not the room at the trigger edge, which can be
+ * ~0 on a short viewport — is the size it actually has.
+ */
+export function computeViewportAvailableSize(
+  collisionPadding: number,
+  vp: Viewport,
+): { availableHeight: number; availableWidth: number } {
+  return {
+    availableHeight: Math.max(0, vp.height - 2 * collisionPadding),
+    availableWidth: Math.max(0, vp.width - 2 * collisionPadding),
+  };
+}
+
+/**
+ * Picks the first placement that fits, trying preferred, opposite, then cross-axis sides.
+ *
+ * When nothing fits it falls back to the best-fitting candidate instead of the preferred one and
+ * reports `fitted: false`, so the caller can cap the panel against the viewport rather than
+ * against a side that leaves no room.
+ */
 export function resolveCollisionPosition(
   triggerRect: DOMRect,
   contentRect: DOMRect,
@@ -162,7 +185,7 @@ export function resolveCollisionPosition(
   alignOffset: number,
   collisionPadding: number,
   vp: Viewport,
-): { x: number; y: number; side: FloatingSide } {
+): { x: number; y: number; side: FloatingSide; fitted: boolean } {
   const candidates: FloatingSide[] = [
     preferredSide,
     OPPOSITE_SIDE[preferredSide],
@@ -179,19 +202,46 @@ export function resolveCollisionPosition(
       alignOffset,
     );
     if (!wouldOverflowOnPlacementAxis(pos.x, pos.y, contentRect, collisionPadding, vp, side)) {
-      return { ...pos, side };
+      return { ...pos, side, fitted: true };
+    }
+  }
+
+  // Nothing fits. Rank by overflow on each candidate's own placement axis rather than by raw
+  // room: raw room would compare a height against a width, while overflow is measured against
+  // the panel's own extent on that axis and is therefore comparable. Floored at 0 so sides that
+  // are large enough and failed only on position — which shift() resolves — all tie, and strict
+  // `<` keeps candidate order on a tie, so the preferred side wins one.
+  let bestSide = preferredSide;
+  let bestOverflow = Number.POSITIVE_INFINITY;
+  for (const side of candidates) {
+    const { availableHeight, availableWidth } = computeAvailableSize(
+      triggerRect,
+      side,
+      sideOffset,
+      collisionPadding,
+      vp,
+    );
+    const overflow = Math.max(
+      0,
+      side === "top" || side === "bottom"
+        ? contentRect.height - availableHeight
+        : contentRect.width - availableWidth,
+    );
+    if (overflow < bestOverflow) {
+      bestOverflow = overflow;
+      bestSide = side;
     }
   }
 
   const fallback = computePosition(
     triggerRect,
     contentRect,
-    preferredSide,
+    bestSide,
     preferredAlign,
     sideOffset,
     alignOffset,
   );
-  return { ...fallback, side: preferredSide };
+  return { ...fallback, side: bestSide, fitted: false };
 }
 
 function wouldOverflowOnPlacementAxis(

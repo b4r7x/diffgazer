@@ -57,14 +57,18 @@ test.describe("Button", () => {
           centerHits: hit === button || button.contains(hit),
         };
       };
-      const [localizedGeometry, shortGeometry, documentGeometry] = await Promise.all([
-        localized.evaluate(readGeometry),
-        short.evaluate(readGeometry),
-        page.evaluate(() => ({
-          documentWidth: document.documentElement.scrollWidth,
-          viewportWidth: document.documentElement.clientWidth,
-        })),
-      ]);
+      // The example stage is its own horizontal ScrollArea, so a button can sit
+      // outside the pane's visible box without the page ever scrolling. Bring each
+      // one into view before measuring: the contract is that every button is
+      // reachable and tappable, not that the whole row fits at once.
+      await short.scrollIntoViewIfNeeded();
+      const shortGeometry = await short.evaluate(readGeometry);
+      await localized.scrollIntoViewIfNeeded();
+      const localizedGeometry = await localized.evaluate(readGeometry);
+      const documentGeometry = await page.evaluate(() => ({
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: document.documentElement.clientWidth,
+      }));
 
       expect(documentGeometry.documentWidth).toBeLessThanOrEqual(documentGeometry.viewportWidth);
       expect(localizedGeometry).toEqual({ fits: true, centerHits: true });

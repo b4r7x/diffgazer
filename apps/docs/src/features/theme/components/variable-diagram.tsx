@@ -8,7 +8,7 @@ interface VariableDiagramProps {
 }
 
 export function VariableDiagram({ className }: VariableDiagramProps) {
-  const { theme } = useTheme();
+  const { resolved: theme } = useTheme();
   const [highlighted, setHighlighted] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [lines, setLines] = useState<

@@ -942,6 +942,145 @@ describe("useFloatingPosition", () => {
     });
   });
 
+  describe("clip-ancestor filtering by positioning mode", () => {
+    // Inline styles are what jsdom's getComputedStyle reflects, so the containing-block
+    // and overflow decisions under test are driven by real computed values here.
+    function ClipHarness({ triggerCss, wrapperCss }: { triggerCss: string; wrapperCss: string }) {
+      const triggerRef = useRef<HTMLElement | null>(null);
+      const { position, contentRef } = useFloatingPosition({
+        triggerRef,
+        open: true,
+        side: "bottom",
+        align: "start",
+        avoidCollisions: false,
+      });
+
+      return createElement(
+        "div",
+        null,
+        createElement(
+          "div",
+          {
+            // Named so a test can stub getComputedStyle for this node alone.
+            id: "clip-wrapper",
+            ref: (node: HTMLDivElement | null) => {
+              if (!node) return;
+              node.style.cssText = wrapperCss;
+              // Clip region sits above the trigger: bottom edge at 300, trigger top at 400.
+              node.getBoundingClientRect = () => makeDOMRect(0, 100, 400, 200);
+            },
+          },
+          createElement("button", {
+            type: "button",
+            ref: (node: HTMLButtonElement | null) => {
+              triggerRef.current = node;
+              if (!node) return;
+              node.style.cssText = triggerCss;
+              node.getBoundingClientRect = () => makeDOMRect(100, 400, 80, 40);
+            },
+          }),
+        ),
+        createElement(
+          "div",
+          {
+            ref: (node: HTMLDivElement | null) => {
+              if (node) node.getBoundingClientRect = () => contentRect;
+              contentRef(node);
+            },
+          },
+          createElement(
+            "output",
+            { "data-anchor-hidden": position?.anchorHidden ? "" : undefined },
+            formatPosition(position),
+          ),
+        ),
+      );
+    }
+
+    it.each([
+      {
+        name: "a fixed trigger is not clipped by a static overflow ancestor it has escaped",
+        triggerCss: "position: fixed;",
+        wrapperCss: "overflow: hidden; position: static;",
+        hidden: false,
+      },
+      {
+        name: "a normal-flow trigger outside its overflow ancestor stays hidden",
+        triggerCss: "",
+        wrapperCss: "overflow: hidden;",
+        hidden: true,
+      },
+      {
+        name: "a fixed trigger is clipped by an overflow ancestor that is its containing block",
+        triggerCss: "position: fixed;",
+        wrapperCss: "overflow: hidden; transform: translateX(0px);",
+        hidden: true,
+      },
+      {
+        name: "an absolute trigger is not clipped by a static, non-containing-block overflow ancestor",
+        triggerCss: "position: absolute;",
+        wrapperCss: "overflow: hidden; position: static;",
+        hidden: false,
+      },
+      {
+        name: "an absolute trigger is clipped by a positioned overflow ancestor",
+        triggerCss: "position: absolute;",
+        wrapperCss: "overflow: hidden; position: relative;",
+        hidden: true,
+      },
+    ])("$name", async ({ triggerCss, wrapperCss, hidden }) => {
+      setViewport();
+      render(createElement(ClipHarness, { triggerCss, wrapperCss }));
+
+      // The trigger sits well inside the viewport, so only ancestor clipping can hide it.
+      await waitFor(() => {
+        expect(screen.getByRole("status")).toHaveTextContent("bottom:100:446");
+      });
+
+      if (hidden) {
+        expect(screen.getByRole("status")).toHaveAttribute("data-anchor-hidden", "");
+      } else {
+        expect(screen.getByRole("status")).not.toHaveAttribute("data-anchor-hidden");
+      }
+    });
+
+    it("treats transform properties missing from the computed style as unset, not as a containing block", async () => {
+      setViewport();
+      const originalGetComputedStyle = window.getComputedStyle;
+      // Boundary mock: an engine that does not implement translate/scale/rotate/perspective/
+      // filter omits them from the declaration entirely. jsdom always returns "" for all of
+      // them, so this absence is not reproducible without a stub — and reading an absent
+      // property as a changed value would make every ancestor a fixed containing block, hiding
+      // panels whose anchors are perfectly visible.
+      window.getComputedStyle = ((el: Element) => {
+        if (el instanceof HTMLElement && el.id === "clip-wrapper") {
+          return {
+            transform: "none",
+            overflow: "hidden",
+            overflowX: "hidden",
+            overflowY: "hidden",
+            display: "block",
+            position: "static",
+            willChange: "auto",
+            contain: "none",
+          } as unknown as CSSStyleDeclaration;
+        }
+        return originalGetComputedStyle.call(window, el);
+      }) as typeof window.getComputedStyle;
+
+      try {
+        render(createElement(ClipHarness, { triggerCss: "position: fixed;", wrapperCss: "" }));
+
+        await waitFor(() => {
+          expect(screen.getByRole("status")).toHaveTextContent("bottom:100:446");
+        });
+        expect(screen.getByRole("status")).not.toHaveAttribute("data-anchor-hidden");
+      } finally {
+        window.getComputedStyle = originalGetComputedStyle;
+      }
+    });
+  });
+
   describe("anchor visibility", () => {
     it("keeps the anchor visible while it is partly on screen and reports it hidden once it scrolls fully past the viewport edge", async () => {
       setViewport();

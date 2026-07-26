@@ -145,6 +145,24 @@ describe("Sidebar", () => {
     expect(trigger).toHaveAccessibleName("Expand sidebar");
   });
 
+  it("grows the trigger to a coarse-pointer target", () => {
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Trigger>Toggle</Sidebar.Trigger>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    // On mobile this is the only affordance that opens the navigation sheet, so
+    // it has to clear the 44px touch floor. jsdom cannot compute layout, so the
+    // class tokens are the assertable contract.
+    expect(screen.getByRole("button", { name: "Collapse sidebar" })).toHaveClass(
+      "pointer-coarse:min-h-11",
+      "pointer-coarse:min-w-11",
+    );
+  });
+
   it("does not toggle when trigger click is prevented", async () => {
     const user = userEvent.setup();
     render(

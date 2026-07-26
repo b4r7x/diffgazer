@@ -6,6 +6,7 @@ import {
 } from "@diffgazer/core/schemas/review";
 import { CodeBlock } from "@diffgazer/ui/components/code-block";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { PathValue } from "@/components/shared/path-value";
 import { FixPlanChecklist } from "../fix-plan-checklist";
 
 export function DetailsTabContent({
@@ -127,8 +128,9 @@ function CodeEvidence({
       <div className="text-xs text-muted-foreground">
         Source: <span className="font-mono text-foreground/80">{item.sourceText}</span>
       </div>
-      <div className="mb-1 text-xs text-muted-foreground">
-        File: <span className="font-mono text-foreground/80">{item.file}</span>
+      <div className="mb-1 flex min-w-0 text-xs text-muted-foreground">
+        <span className="shrink-0">File:&nbsp;</span>
+        <PathValue value={item.file} className="text-foreground/80" />
       </div>
       <CodeBlock label={`${item.label}: ${item.title}`}>
         <CodeBlock.Content tabIndex={-1}>

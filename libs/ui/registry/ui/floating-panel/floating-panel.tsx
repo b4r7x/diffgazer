@@ -63,7 +63,10 @@ export interface FloatingPanelProps extends Omit<ComponentPropsWithoutRef<"div">
   sideOffset?: number;
   /** Pixel offset along the alignment axis. */
   alignOffset?: number;
-  /** Flips to the opposite side, then cross-axis sides, then shifts within the viewport. */
+  /**
+   * Flips to the opposite side, then cross-axis sides, then shifts within the viewport. When
+   * false the panel is also left uncapped — no `max-width`/`max-height` is emitted.
+   */
   avoidCollisions?: boolean;
   /** Minimum gap between the panel and the viewport edge during collision avoidance. */
   collisionPadding?: number;
@@ -130,6 +133,7 @@ function computeTransformOrigin(side: FloatingSide, align: FloatingAlign): strin
 function buildPanelStyle(
   position: ReturnType<typeof useFloatingPosition>["position"],
   matchTriggerWidth: boolean,
+  avoidCollisions: boolean,
 ): FloatingCSS {
   if (!position) {
     return { position: "fixed", top: 0, left: 0, visibility: "hidden" };
@@ -143,6 +147,19 @@ function buildPanelStyle(
     // drop focus out of an open overlay) but stop painting it, so it never reads as a
     // stray box clamped against the viewport edge.
     ...(position.anchorHidden ? { opacity: 0, pointerEvents: "none" as const } : null),
+    // Structural caps: the panel never exceeds the room the resolved side leaves inside
+    // the collision padding, so a too-wide/too-tall panel scrolls (`.ui-floating-panel` is
+    // its own scroll container) instead of running off the viewport edge. Merged last, so
+    // caller `style` cannot override these two keys. Omitted when the consumer opted out of
+    // collision avoidance: there is no flip to rescue a bad side then, so clamping to the
+    // viewport would contradict the opt-out. The custom properties below stay, so an opted-out
+    // consumer can still cap by hand.
+    ...(avoidCollisions
+      ? {
+          maxWidth: `${position.availableWidth}px`,
+          maxHeight: `${position.availableHeight}px`,
+        }
+      : null),
     "--ui-content-transform-origin": computeTransformOrigin(position.side, position.align),
     // Room the panel has before overflowing the viewport for the resolved side.
     // Custom panels can cap their scrollable region with these (e.g.
@@ -159,10 +176,13 @@ function buildPanelStyle(
 /**
  * Floating overlay positioned against a trigger with collision avoidance.
  *
- * Exposes two CSS variables on its element for custom panels that need to cap
- * their size to the viewport and scroll overflow instead of clipping it:
- * `--floating-panel-available-height` and `--floating-panel-available-width`
- * (the room the panel has for the resolved side, e.g.
+ * `.ui-floating-panel` is a scroll container (`overflow: auto`), so the `max-width`/`max-height`
+ * caps make content beyond the available room scroll inside the panel instead of painting past
+ * the viewport edge. A consumer that overrides `overflow` owns the resulting sizing.
+ *
+ * Exposes two CSS variables on its element for custom panels that need to cap an inner region
+ * instead: `--floating-panel-available-height` and `--floating-panel-available-width` (the room
+ * the panel has for the resolved side, e.g.
  * `max-height: var(--floating-panel-available-height); overflow-y: auto`).
  */
 export function FloatingPanel({
@@ -215,7 +235,7 @@ export function FloatingPanel({
 
   if (!present) return null;
 
-  const positionedStyle = buildPanelStyle(position, matchTriggerWidth);
+  const positionedStyle = buildPanelStyle(position, matchTriggerWidth, avoidCollisions);
 
   return (
     <Portal container={portalContainer}>

@@ -26,6 +26,7 @@ export interface PagerLinkProps extends Omit<ComponentPropsWithRef<"a">, "childr
 export function PagerLink({ className, ref, children, direction, ...props }: PagerLinkProps) {
   const rel = direction === "previous" ? "prev" : "next";
   const resolvedClassName = cn(
+    "inline-flex items-center gap-1 py-2 -my-2 pointer-coarse:my-0 pointer-coarse:min-h-11",
     "text-xs font-mono text-muted-foreground hover:text-foreground transition-colors",
     "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
     direction === "next" && "ml-auto",
@@ -40,9 +41,9 @@ export function PagerLink({ className, ref, children, direction, ...props }: Pag
 
   return (
     <a ref={ref} rel={rel} className={resolvedClassName} {...props}>
-      {direction === "previous" && <span aria-hidden="true">&larr; </span>}
+      {direction === "previous" && <span aria-hidden="true">&larr;</span>}
       {children}
-      {direction === "next" && <span aria-hidden="true"> &rarr;</span>}
+      {direction === "next" && <span aria-hidden="true">&rarr;</span>}
     </a>
   );
 }

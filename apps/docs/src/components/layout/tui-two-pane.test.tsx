@@ -18,6 +18,11 @@ function MenuButton() {
   );
 }
 
+function DrawerState() {
+  const { open } = useMobileNav();
+  return <output aria-label="Drawer state">{open ? "open" : "closed"}</output>;
+}
+
 function renderTwoPane(props: Partial<TuiTwoPaneProps> = {}) {
   return render(
     <KeyboardProvider>
@@ -85,13 +90,42 @@ describe("TuiTwoPane", () => {
 
     const menuButton = screen.getByRole("button", { name: "Open menu" });
     await user.click(menuButton);
-    await waitFor(() => expect(screen.getByRole("link", { name: "Sidebar item" })).toHaveFocus());
+    await waitFor(() => expect(sidebar()).toHaveFocus());
 
     act(() => viewport.setDesktop(true));
     expect(scrim()).toHaveAttribute("inert");
 
     act(() => viewport.setDesktop(false));
     expect(menuButton).not.toHaveFocus();
+  });
+
+  it("closes the drawer when the pane unmounts so a sidebar-less surface never inherits it", async () => {
+    stubControllableMatchMedia({ isDesktop: false });
+    const user = userEvent.setup();
+
+    function Harness({ withPane }: { withPane: boolean }) {
+      return (
+        <KeyboardProvider>
+          <MobileNavProvider>
+            <MenuButton />
+            <DrawerState />
+            {withPane ? (
+              <TuiTwoPane sidebar={() => <a href="/ui">Sidebar item</a>}>
+                <p>Body</p>
+              </TuiTwoPane>
+            ) : null}
+          </MobileNavProvider>
+        </KeyboardProvider>
+      );
+    }
+
+    const { rerender } = render(<Harness withPane />);
+    await user.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(screen.getByRole("status", { name: "Drawer state" })).toHaveTextContent("open");
+
+    rerender(<Harness withPane={false} />);
+
+    expect(screen.getByRole("status", { name: "Drawer state" })).toHaveTextContent("closed");
   });
 
   it("marks the sidebar navigation region as busy when sidebarBusy is true", () => {

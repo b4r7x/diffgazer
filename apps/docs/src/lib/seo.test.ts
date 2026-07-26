@@ -214,12 +214,16 @@ describe("buildPageSeo", () => {
 });
 
 describe("buildRootHeadDefaults", () => {
-  it("emits charset, viewport, theme-color, and the SEO defaults", () => {
+  it("emits charset, viewport, and the SEO defaults", () => {
     const { meta, links } = buildRootHeadDefaults();
 
     expect(meta.some((tag) => "charSet" in tag && tag.charSet === "utf-8")).toBe(true);
-    expect(findMeta(meta, "name", "viewport")?.content).toBe("width=device-width, initial-scale=1");
-    expect(findMeta(meta, "name", "theme-color")?.content).toBe("#0a0a0a");
+    expect(findMeta(meta, "name", "viewport")?.content).toBe(
+      "width=device-width, initial-scale=1, viewport-fit=cover",
+    );
+    // theme-color is not here: the inline theme bootstrap adds it for the theme
+    // it resolves, so React never hoists a competing copy.
+    expect(findMeta(meta, "name", "theme-color")).toBeUndefined();
     expect(findMeta(meta, "name", "description")?.content).toBe(DEFAULT_SITE_DESCRIPTION);
     expect(findMeta(meta, "name", "twitter:card")?.content).toBe("summary");
     expect(findTitle(meta)?.title).toBe(DEFAULT_SITE_NAME);

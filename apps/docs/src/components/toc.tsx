@@ -1,10 +1,15 @@
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { Toc, TocItem, TocList } from "@diffgazer/ui/components/toc";
-import { type ActiveHeadingActivation, useActiveHeading } from "@diffgazer/ui/hooks/active-heading";
+import { useActiveHeading } from "@diffgazer/ui/hooks/active-heading";
+import { cn } from "@diffgazer/ui/lib/utils";
 import type { TableOfContents } from "fumadocs-core/toc";
 import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { CHROME_LABEL_CLASS } from "./shared/chrome-label";
 
-interface TocEntry {
+const CONTENT_CONTAINER_ID = "main-content";
+const TOC_TITLE = "On this page";
+
+export interface TocEntry {
   depth: number;
   title: ReactNode;
   id: string;
@@ -69,6 +74,13 @@ function isPlainLeftClick(event: MouseEvent<HTMLAnchorElement>): boolean {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
+function syncLocationHash(id: string): void {
+  const nextHash = `#${encodeURIComponent(id)}`;
+  if (window.location.hash !== nextHash) {
+    window.history.replaceState(window.history.state, "", nextHash);
+  }
+}
+
 function getScrollBehavior(element: Element): ScrollBehavior {
   const view = element.ownerDocument.defaultView;
   return view &&
@@ -78,31 +90,15 @@ function getScrollBehavior(element: Element): ScrollBehavior {
     : "smooth";
 }
 
-interface TableOfContentsPanelProps {
-  toc: TableOfContents;
-  activation?: ActiveHeadingActivation;
-  topOffset?: number;
-  scrollOffset?: number;
-  bottomLock?: boolean;
-}
-
-export function TableOfContentsPanel({
-  toc,
-  activation = "top-line",
-  topOffset = 96,
-  scrollOffset = topOffset,
-  bottomLock = true,
-}: TableOfContentsPanelProps) {
-  const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
-
+// Source the rendered entries from the DOM after mount. Headings arrive
+// asynchronously (Suspense-loaded MDX) and include runtime-injected ones
+// (`<Step>` titles, API reference), so the static TOC alone is incomplete.
+// Observe the content container to refresh as headings appear or change.
+function useTocEntries(toc: TableOfContents): TocEntry[] {
   const [tocEntries, setTocEntries] = useState<TocEntry[]>(() => entriesFromToc(toc));
 
-  // Source the rendered entries from the DOM after mount. Headings arrive
-  // asynchronously (Suspense-loaded MDX) and include runtime-injected ones
-  // (`<Step>` titles, API reference), so the static TOC alone is incomplete.
-  // Observe the content container to refresh as headings appear or change.
   useEffect(() => {
-    const containerId = "main-content";
+    const containerId = CONTENT_CONTAINER_ID;
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -129,16 +125,96 @@ export function TableOfContentsPanel({
     return () => observer.disconnect();
   }, [toc]);
 
-  const headingIds = tocEntries.map((e) => e.id);
+  return tocEntries;
+}
 
+/**
+ * The page's table of contents, resolved once per page. Both the mobile
+ * disclosure and the sidebar panel render from this single result, so a page
+ * never runs two heading observers or two scroll spies over the same content.
+ */
+export function useDocsToc(toc: TableOfContents): {
+  entries: TocEntry[];
+  activeId: string | null;
+  scrollTo: (id: string) => void;
+} {
+  const entries = useTocEntries(toc);
   const { activeId, scrollTo } = useActiveHeading({
-    ids: headingIds,
-    containerId: "main-content",
-    activation,
-    topOffset,
-    scrollOffset,
-    bottomLock,
+    ids: entries.map((entry) => entry.id),
+    containerId: CONTENT_CONTAINER_ID,
   });
+
+  return { entries, activeId, scrollTo };
+}
+
+export interface TocPanelProps {
+  entries: TocEntry[];
+  scrollTo: (id: string) => void;
+}
+
+/**
+ * Below xl the sidebar TOC is hidden, leaving long pages with no in-page
+ * navigation. A native `<details>` disclosure above the article restores it
+ * without duplicating the sidebar's open/close state in React.
+ */
+export function MobileTocPanel({ entries, scrollTo }: TocPanelProps) {
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+
+  if (entries.length === 0) return null;
+
+  const onEntryClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
+    if (!isPlainLeftClick(event)) return;
+    event.preventDefault();
+
+    // The disclosure sits between the reader and the heading they picked;
+    // leaving it open would push the target back off screen.
+    if (detailsRef.current) detailsRef.current.open = false;
+
+    scrollTo(id);
+    syncLocationHash(id);
+  };
+
+  return (
+    <details ref={detailsRef} className="group mb-6 border border-border xl:hidden">
+      <summary
+        className={cn(
+          CHROME_LABEL_CLASS,
+          "flex min-h-9 cursor-pointer select-none list-none items-center gap-2 px-3 pointer-coarse:min-h-11 [&::-webkit-details-marker]:hidden",
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className="transition-transform group-open:rotate-90 motion-reduce:transition-none"
+        >
+          ›
+        </span>
+        {TOC_TITLE}
+      </summary>
+      <nav aria-label={TOC_TITLE} className="border-t border-border px-3 py-2">
+        <TocList>
+          {entries.map((entry) => (
+            <TocItem
+              key={entry.id}
+              href={`#${encodeURIComponent(entry.id)}`}
+              depth={entry.depth}
+              className="flex min-h-8 items-center pointer-coarse:min-h-11"
+              onClick={(event) => onEntryClick(event, entry.id)}
+            >
+              {entry.title}
+            </TocItem>
+          ))}
+        </TocList>
+      </nav>
+    </details>
+  );
+}
+
+export function TableOfContentsPanel({
+  entries,
+  activeId,
+  scrollTo,
+}: TocPanelProps & { activeId: string | null }) {
+  const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
 
   // Keep active TOC item visible in the sidebar scroll area.
   // Don't use scrollIntoView — it scrolls ALL scrollable ancestors,
@@ -152,7 +228,7 @@ export function TableOfContentsPanel({
     // before main-content to avoid moving the page.
     let scrollParent: HTMLElement | null = el.parentElement;
     while (scrollParent) {
-      if (scrollParent.id === "main-content") return;
+      if (scrollParent.id === CONTENT_CONTAINER_ID) return;
       const style = getComputedStyle(scrollParent);
       if (
         (style.overflowY === "auto" || style.overflowY === "scroll") &&
@@ -183,23 +259,18 @@ export function TableOfContentsPanel({
   const onItemClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     if (!isPlainLeftClick(event)) return;
     event.preventDefault();
-
     scrollTo(id);
-
-    const nextHash = `#${encodeURIComponent(id)}`;
-    if (window.location.hash !== nextHash) {
-      window.history.replaceState(window.history.state, "", nextHash);
-    }
+    syncLocationHash(id);
   };
 
-  if (tocEntries.length === 0) return null;
+  if (entries.length === 0) return null;
 
   return (
     <Toc className="hidden w-56 shrink-0 py-8 pr-4 xl:block">
-      <div className="sticky top-16 max-h-[calc(100vh-6rem)]">
-        <ScrollArea className="h-[calc(100vh-8rem)] pr-2">
+      <div className="sticky top-16 max-h-[calc(100dvh-6rem)]">
+        <ScrollArea className="h-[calc(100dvh-8rem)] pr-2">
           <TocList>
-            {tocEntries.map((entry) => {
+            {entries.map((entry) => {
               const isActive = activeId === entry.id;
 
               return (

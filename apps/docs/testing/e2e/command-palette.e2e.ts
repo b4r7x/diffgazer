@@ -9,14 +9,17 @@ test.describe("CommandPalette", () => {
     const trigger = page.getByRole("button", { name: /open command palette/i }).first();
     await trigger.click();
 
-    const search = page.getByRole("combobox", { name: /command search/i });
+    // Every inline palette example on the page owns a "Command search" combobox and
+    // an option list, so scope the whole interaction to the dialog this trigger opened.
+    const palette = page.getByRole("dialog");
+    const search = palette.getByRole("combobox", { name: /command search/i });
     await expect(search).toBeVisible();
     await search.fill("a");
 
-    await expect(page.getByRole("option", { name: "Run Diagnostics" })).toBeVisible();
-    await expect(page.getByRole("option")).toHaveCount(1);
-    await expect(page.getByRole("option", { name: "Go to History" })).toHaveCount(0);
-    await expect(page.getByRole("option", { name: "Switch Theme" })).toHaveCount(0);
+    await expect(palette.getByRole("option", { name: "Run Diagnostics" })).toBeVisible();
+    await expect(palette.getByRole("option")).toHaveCount(1);
+    await expect(palette.getByRole("option", { name: "Go to History" })).toHaveCount(0);
+    await expect(palette.getByRole("option", { name: "Switch Theme" })).toHaveCount(0);
 
     await expect(search).toHaveScreenshot("command-palette-filtered.png");
 

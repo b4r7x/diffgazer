@@ -20,23 +20,16 @@ export function TuiTwoPane({
   contentInPanel = true,
   children,
 }: TuiTwoPaneProps) {
-  const {
-    open: sidebarOpen,
-    setOpen: setSidebarOpen,
-    isDesktop,
-    registerSidebar,
-    unregisterSidebar,
-  } = useMobileNav();
+  const { open: sidebarOpen, setOpen: setSidebarOpen, isDesktop } = useMobileNav();
   const sidebarInert = !isDesktop && !sidebarOpen;
   const panelInert = !isDesktop && sidebarOpen;
   const drawerRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
-  const initialSidebarFocusRef = useRef<HTMLElement>(null);
   const lastSidebarFocusRef = useRef<HTMLElement>(null);
 
   useFocusTrap(drawerRef, {
     enabled: sidebarOpen && !isDesktop,
-    initialFocus: initialSidebarFocusRef,
+    initialFocus: sidebarRef,
     restoreFocus: true,
   });
 
@@ -45,21 +38,15 @@ export function TuiTwoPane({
 
   useKey("escape", closeSidebar, { enabled: sidebarOpen && !isDesktop, preventDefault: true });
 
-  useEffect(() => {
-    registerSidebar();
-    return unregisterSidebar;
-  }, [registerSidebar, unregisterSidebar]);
+  // The drawer exists only while this pane does, so a surface that renders none
+  // (the global 404) must not inherit an open one.
+  useEffect(() => () => setSidebarOpen(false), [setSidebarOpen]);
 
   useEffect(() => {
     if (!isDesktop) return;
     const target = lastSidebarFocusRef.current;
     if (target?.isConnected) target.focus();
   }, [isDesktop]);
-
-  const setSidebarRef = (node: HTMLElement | null) => {
-    sidebarRef.current = node;
-    initialSidebarFocusRef.current = node?.querySelector<HTMLElement>("a[href], button") ?? null;
-  };
 
   const rememberSidebarFocus = (event: FocusEvent<HTMLDivElement>) => {
     if (event.target instanceof HTMLElement && sidebarRef.current?.contains(event.target)) {
@@ -86,21 +73,28 @@ export function TuiTwoPane({
         aria-label="Close sidebar navigation"
         inert={!sidebarOpen || undefined}
         className={cn(
-          "fixed inset-0 z-(--z-overlay) bg-(--scrim) transition-opacity duration-300 motion-reduce:transition-none lg:hidden",
+          "fixed inset-0 z-(--z-overlay) bg-(--scrim) transition-opacity duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none lg:hidden",
           sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none",
         )}
         onClick={closeSidebar}
       />
 
       <aside
-        ref={setSidebarRef}
+        ref={sidebarRef}
         id="sidebar-nav"
         aria-label="Sidebar navigation"
         aria-busy={sidebarBusy}
+        // Opening the drawer focuses the drawer itself, not its first control:
+        // a control would arm its own :focus ring on a tap that never touched
+        // it. Tab from here enters the trap at the first control as usual.
+        tabIndex={-1}
         inert={sidebarInert || undefined}
         className={cn(
-          "fixed inset-y-0 left-0 z-(--z-overlay) flex w-72 flex-col transition-transform duration-300 ease-out motion-reduce:transition-none",
-          "lg:static lg:z-auto lg:col-start-1 lg:row-start-1 lg:h-full lg:min-h-0 lg:w-auto lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-(--z-overlay) flex w-72 flex-col outline-hidden transition-transform duration-[180ms] ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
+          // The drawer escapes the shell's safe-area padding while it is fixed,
+          // so it carries its own insets against the notch and the home bar.
+          "pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]",
+          "lg:static lg:z-auto lg:col-start-1 lg:row-start-1 lg:h-full lg:min-h-0 lg:w-auto lg:translate-x-0 lg:pb-0 lg:pl-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >

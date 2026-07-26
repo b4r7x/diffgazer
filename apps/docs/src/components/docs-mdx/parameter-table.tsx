@@ -1,3 +1,4 @@
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 
 interface Parameter {
@@ -14,24 +15,20 @@ const headerClass = `${CHROME_LABEL_CLASS} px-3 pb-2 text-left align-bottom font
 
 export function ParameterTable({ params }: { params: Parameter[] }) {
   return (
-    <div
-      className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-      // biome-ignore lint/a11y/noNoninteractiveTabindex: horizontal overflow must be keyboard reachable.
-      tabIndex={0}
-    >
-      <table className="w-full min-w-[42rem] border-collapse text-sm">
+    <ScrollArea orientation="horizontal" aria-label="Component parameters">
+      <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-border/60">
-            <th scope="col" className={headerClass}>
+            <th scope="col" className={`${headerClass} min-w-28`}>
               Name
             </th>
-            <th scope="col" className={headerClass}>
+            <th scope="col" className={`${headerClass} min-w-32`}>
               Type
             </th>
-            <th scope="col" className={headerClass}>
+            <th scope="col" className={`${headerClass} min-w-20`}>
               Default
             </th>
-            <th scope="col" className={headerClass}>
+            <th scope="col" className={`${headerClass} min-w-[14rem]`}>
               Description
             </th>
           </tr>
@@ -58,6 +55,6 @@ export function ParameterTable({ params }: { params: Parameter[] }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollArea>
   );
 }

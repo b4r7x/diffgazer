@@ -98,10 +98,11 @@ export const segmentedItemVariants = cva(
         ].join(" "),
       },
       size: {
-        // sm = docs-toolbar density (36px). Assumes pointer:fine.
-        // md = WCAG 2.5.8 touch target (44px). Use for mobile primary actions
-        //      and any control consumed on coarse-pointer devices.
-        sm: "min-h-9 px-3 text-xs",
+        // sm = docs-toolbar density (36px) on pointer:fine; auto-raises to the
+        //      44px touch target on pointer:coarse.
+        // md = WCAG 2.5.8 touch target (44px) always. Use for mobile primary
+        //      actions and any control consumed on coarse-pointer devices.
+        sm: "min-h-9 px-3 text-xs pointer-coarse:min-h-11",
         md: "min-h-11 px-4 text-sm",
       },
       highlighted: {

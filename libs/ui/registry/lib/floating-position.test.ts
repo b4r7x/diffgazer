@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeAvailableSize,
   computePosition,
+  computeViewportAvailableSize,
   resolveCollisionPosition,
   shift,
   wouldOverflow,
@@ -104,11 +105,45 @@ describe("resolveCollisionPosition", () => {
     expect(result).toMatchObject({ side: "top", x: 80, y: 484 });
   });
 
-  it("falls back to the preferred side when every candidate overflows", () => {
-    // A viewport smaller than the content forces every placement to overflow.
+  it("reports a fit when the preferred side is used", () => {
+    expect(resolveCollisionPosition(trigger, content, "bottom", "start", 6, 0, 8, vp).fitted).toBe(
+      true,
+    );
+  });
+
+  it("falls back to the smallest-overflow side, not the preferred one, when nothing fits", () => {
+    // 400x260 viewport, 300x200 panel, trigger 80x20 at (150, 160). No side fits.
+    // Room per side (sideOffset 6, padding 8): right 156, top 146, left 136, bottom 66.
+    // The preferred side (right) therefore has the MOST raw room, but its overflow is
+    // 300 - 156 = 144, while top overflows by only 200 - 146 = 54. Ranking by overflow picks
+    // top; ranking by raw room would have kept right.
+    const shortVp = { width: 400, height: 260 };
+    const wideContent = makeDOMRect(0, 0, 300, 200);
+    const nearBottom = makeDOMRect(150, 160, 80, 20);
+
+    const result = resolveCollisionPosition(
+      nearBottom,
+      wideContent,
+      "right",
+      "center",
+      6,
+      0,
+      8,
+      shortVp,
+    );
+
+    // top: y = 160 - 200 - 6 = -46; center x = 150 + 40 - 150 = 40.
+    expect(result).toEqual({ side: "top", x: 40, y: -46, fitted: false });
+  });
+
+  it("keeps the preferred side when no candidate fits and every overflow ties", () => {
+    // A viewport smaller than the content forces every placement to overflow, and all four
+    // available sizes clamp to the same value, so candidate order decides.
     const tinyVp = { width: 10, height: 10 };
-    const result = resolveCollisionPosition(trigger, content, "left", "start", 6, 0, 8, tinyVp);
-    expect(result).toEqual({ side: "left", x: -26, y: 100 });
+    const square = makeDOMRect(0, 0, 120, 120);
+    const offscreen = makeDOMRect(0, 0, 0, 0);
+    const result = resolveCollisionPosition(offscreen, square, "left", "start", 6, 0, 8, tinyVp);
+    expect(result).toMatchObject({ side: "left", fitted: false });
   });
 });
 
@@ -132,5 +167,21 @@ describe("computeAvailableSize", () => {
   it("clamps negative available space to zero", () => {
     const offscreen = makeDOMRect(0, -200, 80, 40);
     expect(computeAvailableSize(offscreen, "top", 6, 8, vp).availableHeight).toBe(0);
+  });
+});
+
+describe("computeViewportAvailableSize", () => {
+  it("returns the padded viewport on both axes", () => {
+    expect(computeViewportAvailableSize(8, vp)).toEqual({
+      availableHeight: 584,
+      availableWidth: 784,
+    });
+  });
+
+  it("floors at zero when the padding exceeds the viewport", () => {
+    expect(computeViewportAvailableSize(40, { width: 60, height: 50 })).toEqual({
+      availableHeight: 0,
+      availableWidth: 0,
+    });
   });
 });

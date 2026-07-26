@@ -112,7 +112,7 @@ CSS files handle things Tailwind utilities cannot express. Put **only** these in
 |---|---|
 | `stepper.css` | `@keyframes stepper-blink`, CSS counter for numbered variant, `::before` connector line positioning |
 | `sidebar.css` | `grid-template-rows` transition with data-attribute state selectors |
-| `code-block.css` | Syntax token color classes (`.code-*`, `.hljs-*`), variant chrome via multi-attribute selectors, forced-colors |
+| `code-block.css` | Syntax token color classes (`.code-*`, `.hljs-*`), variant chrome via multi-attribute selectors, forced-colors, and the `@media (pointer: coarse)` block that grows the header row and the copy button to 44px (see *Coarse-pointer hit areas*) |
 | `diff-view.css` | Row state coloring via multi-attribute selectors, colorblind palette via `[data-diff-palette]`, forced-colors |
 | `dialog.css` | Corner accent `::before`/`::after` geometry, `body:has(dialog[open])` scroll lock, open/close keyframes |
 | `command-palette.css` | Density CSS custom properties, multi-attribute frame/density/tone selectors, forced-colors |
@@ -127,6 +127,57 @@ CSS files handle things Tailwind utilities cannot express. Put **only** these in
 - Conditional styling driven by component props
 - Layout and spacing
 - `@apply` blocks
+
+---
+
+## Coarse-pointer hit areas
+
+WCAG 2.5.5 asks for a 44x44 CSS px target on touch. Our fine-pointer densities are smaller than that on purpose, so the coarse-pointer target is added on top of the visual box with one of exactly three recipes. Pick by asking what the control is allowed to do to its surroundings.
+
+### 1. Real minimum size
+
+```
+pointer-coarse:min-h-11        /* or a plain width/height in CSS */
+```
+
+The control simply becomes 44px on coarse pointers. This is the default recipe and by far the most used one: `CodeBlock`'s copy button (via `code-block.css`, which also grows the header row so the taller control is not clipped), `Toast`'s close button, `SearchInput`'s clear button, `Sidebar.Trigger`, sidebar rows and section titles, the `Checkbox`/`Radio` row (`selectable-variants.ts`), and `Tabs`/`ToggleGroup` at `sm` (`segmented-variants.ts`). Grep `pointer-coarse:min-h-11` for the live list.
+
+**Preconditions:** the control's row is allowed to grow. Fails inside a fixed-height chrome — a toolbar, a status bar, a header with a pinned height — where the extra pixels either overflow or get clipped.
+
+### 2. Padding plus negative margin
+
+```
+py-2 -mt-2 -mb-2 pointer-coarse:mt-0 pointer-coarse:mb-0 pointer-coarse:min-h-11
+```
+
+Padding grows the target, the negative margin hands the space back so the surrounding rhythm is unchanged, and on coarse pointers the pull-back is dropped for a real minimum height. Used by `Accordion.Trigger`, `Pager.Link`, `Breadcrumbs.Link`, and the `Stepper` row trigger (`stepper-variants.ts`). Grep `pointer-coarse:my-0` for the live list.
+
+**Preconditions:**
+
+- The control participates in normal flow (inline or block) — negative margins do nothing useful on an absolutely positioned or grid-placed box.
+- The pull-back stays vertical. A horizontal pull-back makes an inline run overlap its own separators.
+- Spell the pull-back longhand (`-mt-2 -mb-2`) whenever a variant overrides one side, so the override does not depend on shorthand/longhand rule order.
+
+### 3. Transparent pseudo-element
+
+```
+relative pointer-coarse:before:absolute pointer-coarse:before:inset-x-0
+pointer-coarse:before:-inset-y-2 pointer-coarse:before:content-['']
+```
+
+The visual box never changes; an invisible `::before` overhangs it and catches the tap. Used by `Button` (sm/md/icon), `Switch`, and `Callout.Dismiss` — controls that live in fixed-height toolbars, dense rows, and a callout's own top edge, where recipes 1 and 2 would reflow the layout. Grep `pointer-coarse:before` for the live list.
+
+**Preconditions:**
+
+- The element itself carries `relative`, so it is the pseudo-element's containing block. Put `relative` on the sizes that need it, not on the shared base — a size that is already 44px (`Button` `lg`) should stay `position: static`.
+- Room for the overhang inside the nearest `overflow-hidden` ancestor. Such an ancestor is almost always there — the app shells and panel frames wrap nearly every control in one — and it only bites when the control sits closer to that ancestor's clip edge than the overhang reaches: then the overhang is cut and the target silently shrinks back to its visual size. Check the gap, not the presence of the ancestor. `CodeBlock`'s copy button is the case that fails it (its header is the clip edge on both sides), which is why it uses recipe 1 instead.
+- Not inside a floating panel. `Popover`, `Menu`, and `Select` content is a scroll container (`.ui-floating-panel` sets `overflow: auto` so the viewport size caps scroll instead of clipping), so a pseudo-element hit area on a control inside one is clipped at the panel edge. Use recipe 1 or panel padding there.
+- A minimum gap to the next interactive row, equal to twice the overhang: 16px for `Button` `sm`, 8px for `Button` `md`/`icon`. Below that, neighbouring hit areas overlap and a tap lands on the wrong control.
+- Grow vertically only unless the box is also too narrow. `Button` `icon` is the one case that widens (4px per side, 36 → 44), because horizontal growth in a button row is otherwise an overlap.
+
+### Documented exception: text inputs
+
+`Input` `sm` and `md` stay below 44px on coarse pointers, and this is deliberate. A text field is not a point target — it is dragged, tapped mid-string, and stacked in dense forms. Auto-raising every field would reflow whole forms on touch, and none of the three recipes is safe here: recipes 1 and 2 change the form's vertical rhythm, and recipe 3 would put a transparent overlay across the caret area of the neighbouring field. Consumers that need a large field opt into `size="lg"`.
 
 ---
 

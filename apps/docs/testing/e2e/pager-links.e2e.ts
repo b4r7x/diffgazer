@@ -11,10 +11,13 @@ test.describe("Pager example links", () => {
     test(`navigates to ${destination.href}`, async ({ page }) => {
       await page.goto("/ui/components/pager");
 
+      // Several pager examples ("Resting/Hover/Focused page navigation") link to the
+      // same destination, so more than one match is expected and correct — they are
+      // the same link in different visual states. Drive the first one.
       const pager = page
         .getByRole("navigation", { name: "Page navigation" })
         .filter({ has: page.getByRole("link", { name: destination.name, exact: true }) });
-      const link = pager.getByRole("link", { name: destination.name, exact: true });
+      const link = pager.getByRole("link", { name: destination.name, exact: true }).first();
       await expect(link).toHaveAttribute("href", destination.href);
 
       await link.click();

@@ -337,6 +337,34 @@ describe("Switch", () => {
     expect(screen.getByRole("switch")).toHaveAttribute("aria-checked", "false");
   });
 
+  // touch-target contract (mobile campaign): pointer-coarse hit-area is the public contract; jsdom
+  // cannot measure layout. sm is 20x36 and md is 24x44, so each size needs its own overhang to
+  // reach 44x44.
+  it("extends the coarse-pointer hit area to 44px on both sizes", () => {
+    const { rerender } = render(<Switch aria-label="x" size="sm" />);
+    const sm = screen.getByRole("switch");
+    expect(sm.className).toContain("pointer-coarse:before:-inset-y-3");
+    expect(sm.className).toContain("pointer-coarse:before:-inset-x-1");
+
+    rerender(<Switch aria-label="x" size="md" />);
+    const md = screen.getByRole("switch");
+    expect(md.className).toContain("pointer-coarse:before:-inset-y-2.5");
+    expect(md.className).toContain("pointer-coarse:before:inset-x-0");
+    // md is already 24x44 on fine pointers, so it carries no unconditional pseudo-element.
+    expect(md.className.split(" ")).not.toContain("before:absolute");
+  });
+
+  // motion contract (mobile campaign): the reduced-motion class is the public contract; jsdom does
+  // not evaluate media queries or transitions.
+  it("disables track and thumb transitions under reduced motion", () => {
+    const { container } = render(<Switch aria-label="Toggle" />);
+    expect(screen.getByRole("switch").className).toContain("motion-reduce:transition-none");
+
+    const thumb = container.querySelector('[data-slot="switch-thumb"]');
+    expect(thumb).not.toBeNull();
+    expect(thumb?.className).toContain("motion-reduce:transition-none");
+  });
+
   it("has no a11y violations across states", async () => {
     const { container, rerender } = render(<Switch aria-label="Toggle" />);
     expect(await axe(container)).toHaveNoViolations();

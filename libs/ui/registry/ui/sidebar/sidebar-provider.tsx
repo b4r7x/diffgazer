@@ -1,7 +1,7 @@
 "use client";
 
 import { isEditableElement } from "@diffgazer/keys";
-import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { SidebarContext, type SidebarState } from "./sidebar-context";
@@ -14,7 +14,11 @@ export interface SidebarProviderProps {
    * the semantic names for this tri-state control.
    */
   state?: SidebarState;
-  /** Initial visibility state for uncontrolled use. */
+  /**
+   * Initial visibility state for uncontrolled use. Below the breakpoint this value is not used for
+   * presentation — the mobile sheet has its own internal open state that always starts closed —
+   * but it is preserved untouched for the next desktop layout.
+   */
   defaultState?: SidebarState;
   /** Fired when the visibility state changes (controlled and uncontrolled). */
   onStateChange?: (state: SidebarState) => void;
@@ -24,8 +28,9 @@ export interface SidebarProviderProps {
    */
   breakpoint?: number;
   /**
-   * Case-insensitive hotkey. Cmd/Ctrl+<key> cycles open ↔ rail on desktop and visible ↔ hidden
-   * on mobile; Shift+Cmd/Ctrl+<key> toggles hidden. Pass null to disable.
+   * Case-insensitive hotkey. On desktop Cmd/Ctrl+<key> cycles open ↔ rail and
+   * Shift+Cmd/Ctrl+<key> toggles hidden. On mobile both combinations toggle the sheet, and
+   * neither writes the desktop state. Pass null to disable.
    */
   shortcutKey?: string | null;
   /** Sidebar and main content that need access to the state via useSidebar(). */
@@ -59,18 +64,32 @@ export function SidebarProvider({
     onChange: onStateChange,
   });
   const isMobile = useIsMobile(breakpoint, anchorRef);
-  const presentationState = isMobile && state !== "hidden" ? "open" : state;
+  const [openMobile, setOpenMobile] = useState(false);
+  const [wasMobile, setWasMobile] = useState(isMobile);
+  // Crossing the breakpoint always lands on a closed sheet: entering mobile must not inherit a
+  // visible desktop state, and leaving it must not leave the sheet armed for the next crossing.
+  // `state` is deliberately untouched, so desktop -> mobile -> desktop restores exactly what it
+  // started with. Render-phase adjustment per the React "adjust state when props change" pattern.
+  if (isMobile !== wasMobile) {
+    setWasMobile(isMobile);
+    setOpenMobile(false);
+  }
 
   const toggleSidebar = useCallback(() => {
-    setState((prev) => {
-      if (isMobile) return prev === "hidden" ? "open" : "hidden";
-      return prev === "open" ? "rail" : "open";
-    });
+    if (isMobile) {
+      setOpenMobile((prev) => !prev);
+      return;
+    }
+    setState((prev) => (prev === "open" ? "rail" : "open"));
   }, [isMobile, setState]);
 
   const toggleHidden = useCallback(() => {
+    if (isMobile) {
+      setOpenMobile((prev) => !prev);
+      return;
+    }
     setState((prev) => (prev === "hidden" ? "open" : "hidden"));
-  }, [setState]);
+  }, [isMobile, setState]);
 
   useEffect(() => {
     if (!shortcutKey) return;
@@ -98,14 +117,16 @@ export function SidebarProvider({
 
   const contextValue = useMemo(
     () => ({
-      state: presentationState,
+      state,
       contentId: `${sidebarId}-content`,
       isMobile,
+      openMobile,
       onStateChange: setState,
+      onMobileOpenChange: setOpenMobile,
       toggleSidebar,
       toggleHidden,
     }),
-    [presentationState, isMobile, setState, sidebarId, toggleSidebar, toggleHidden],
+    [state, isMobile, openMobile, setState, sidebarId, toggleSidebar, toggleHidden],
   );
 
   return (

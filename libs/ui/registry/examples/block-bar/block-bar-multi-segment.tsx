@@ -4,7 +4,7 @@ export default function BlockBarMultiSegment() {
   return (
     <BlockBar
       max={100}
-      barWidth={32}
+      barWidth={24}
       label="Coverage"
       segments={[
         { value: 60, variant: "success" },

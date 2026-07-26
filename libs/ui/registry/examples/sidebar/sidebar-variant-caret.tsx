@@ -11,7 +11,7 @@ import {
 
 export default function SidebarVariantCaret() {
   return (
-    <Sidebar variant="caret" className="h-full">
+    <Sidebar embedded variant="caret" className="h-full">
       <SidebarHeader>
         <span className="text-xs font-mono text-muted-foreground">~/ui/docs</span>
       </SidebarHeader>

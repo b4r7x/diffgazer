@@ -7,14 +7,14 @@ import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
 
 const COMMAND = "diffgazer";
 const SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏".split("");
-const AGENT_COLUMN = 13;
+const AGENT_COLUMN = 12;
 
 const VERDICTS = [
   { agent: "correctness", result: "2 findings", tone: "finding" },
   { agent: "security", result: "clean", tone: "clean" },
   { agent: "performance", result: "clean", tone: "clean" },
   { agent: "simplicity", result: "1 suggestion", tone: "finding" },
-  { agent: "tests", result: "coverage gap · parser.ts", tone: "finding" },
+  { agent: "tests", result: "coverage gap", tone: "finding" },
 ] as const;
 
 const REVEAL_LINE_10 = VERDICTS.length + 1;
@@ -26,12 +26,6 @@ const SPINNER_INTERVAL = 80;
 const REVIEW_DURATION = 1200;
 const VERDICT_STAGGER = 140;
 const FOOTER_STAGGER = 220;
-
-const CARET_CSS = `
-@keyframes dg-caret-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
-.dg-caret { animation: dg-caret-blink 1s steps(1, end) infinite; }
-@media (prefers-reduced-motion: reduce) { .dg-caret { animation: none; } }
-`;
 
 type Stage = "typing" | "reviewing" | "streaming" | "settled";
 
@@ -123,7 +117,7 @@ export function SessionPanel() {
   }, [runId]);
 
   return (
-    <Panel frame="hairline" className="flex min-w-0 flex-1 flex-col">
+    <Panel frame="hairline" className="flex w-full shrink-0 flex-col lg:w-80 xl:w-96">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <span className={CHROME_LABEL_CLASS}>SESSION —</span>
@@ -140,23 +134,26 @@ export function SessionPanel() {
         </button>
       </div>
 
-      <div className={cn("relative flex-1 p-5 md:p-6", DOT_GRID_CLASS)}>
+      <div className={cn("relative flex-1 p-5", DOT_GRID_CLASS)}>
         <div
           role="img"
           aria-label="Session terminal"
-          className="relative overflow-x-auto font-mono text-sm leading-relaxed"
+          className="relative overflow-x-auto font-mono text-xs leading-relaxed"
         >
           <div className="whitespace-pre">
             <span className="text-muted-foreground">$</span>{" "}
             <span className="text-foreground">{COMMAND.slice(0, typedCount)}</span>
+            {/* align-middle keeps the 16px caret inside the 19.5px line box; a
+                baseline-aligned inline-block grew the first row by 3px and made the
+                whole terminal jump when the caret unmounted after typing. */}
             {stage === "typing" ? (
-              <span className="dg-caret ml-px inline-block h-4 w-2 translate-y-[3px] bg-foreground" />
+              <span className="dg-caret ml-px inline-block h-4 w-2 align-middle bg-foreground" />
             ) : null}
           </div>
 
           <div
             className={cn(
-              "whitespace-pre text-muted-foreground",
+              "whitespace-pre-wrap text-muted-foreground",
               stage === "typing" && "invisible",
             )}
           >
@@ -193,7 +190,7 @@ export function SessionPanel() {
 
           <div className="whitespace-pre">{" "}</div>
 
-          <div className={cn("whitespace-pre", reveal < REVEAL_LINE_10 && "invisible")}>
+          <div className={cn("whitespace-pre-wrap", reveal < REVEAL_LINE_10 && "invisible")}>
             <span className="text-muted-foreground">rendered with </span>
             <span className="text-foreground">@diffgazer/ui</span>
             <span className="text-muted-foreground"> — driven by </span>
@@ -215,7 +212,6 @@ export function SessionPanel() {
           clean, performance clean, simplicity 1 suggestion, tests coverage gap. Press j/k to browse
           the registry.
         </p>
-        <style>{CARET_CSS}</style>
       </div>
     </Panel>
   );

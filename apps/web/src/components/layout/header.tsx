@@ -142,9 +142,12 @@ function DiffgazerWordmark({ variant }: { variant: WordmarkVariant }) {
    * Logo's `leading-none`, and at any looser leading the box-drawing strokes
    * break into dashes instead of letterforms.
    */
+  // The ascii art has no readable text of its own, so `text` is purely the
+  // accessible name here: the product spells itself lowercase, and that spelling
+  // is what every other surface announces.
   return (
     <Logo
-      text={WORDMARK_TEXT.toUpperCase()}
+      text={WORDMARK_TEXT}
       asciiText={WORDMARK_ASCII}
       className="text-[min(2.2cqw,1rem)]/[1] font-bold text-info-text"
     />

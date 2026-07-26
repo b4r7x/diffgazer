@@ -122,6 +122,16 @@ describe("CommandPalette", () => {
     expect(screen.getByText("No results found")).toBeInTheDocument();
   });
 
+  it("leaves the listbox without rendered children once every item is filtered out", async () => {
+    const user = userEvent.setup();
+    renderPalette();
+    await user.type(screen.getByRole("combobox"), "zzzzz");
+
+    // The :empty rule in command-palette.css collapses the list padding, so an
+    // item-less list must stay child-free or it renders as a bare sliver.
+    expect(screen.getByRole("listbox").childNodes).toHaveLength(0);
+  });
+
   it("renders Empty as a presentational node with exactly one no-results announcer", async () => {
     const user = userEvent.setup();
     renderPalette();
@@ -722,5 +732,62 @@ describe("CommandPaletteContent embedded mode", () => {
       </CommandPalette>,
     );
     expect(screen.queryByRole("group", { name: "Embedded palette" })).not.toBeInTheDocument();
+  });
+});
+
+describe("CommandPaletteContent mobile viewport contract", () => {
+  function ModalPalette({ open, modal = true }: { open: boolean; modal?: boolean }) {
+    return (
+      <CommandPalette open={open}>
+        <CommandPalette.Content modal={modal} label="Mobile palette">
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>
+    );
+  }
+
+  // Public styling contract exception (fix-spec-b1 OV-03): the dvh unit IS the fix
+  // and jsdom cannot compute viewport-relative layout.
+  it("caps the surface against the dynamic viewport height", () => {
+    render(<ModalPalette open />);
+    const content = screen.getByRole("dialog", { name: "Mobile palette" });
+    expect(content.className).toContain("max-h-[80dvh]");
+    expect(content.className).not.toContain("max-h-[80vh]");
+  });
+
+  it("locks background scrolling while the modal palette is open and releases it on close", () => {
+    document.body.style.overflow = "auto";
+    const { rerender } = render(<ModalPalette open />);
+
+    expect(document.body).toHaveAttribute("data-scroll-locked");
+    expect(document.body.style.overflow).toBe("hidden");
+
+    rerender(<ModalPalette open={false} />);
+
+    expect(document.body).not.toHaveAttribute("data-scroll-locked");
+    expect(document.body.style.overflow).toBe("auto");
+  });
+
+  it("never locks background scrolling for an inline palette", () => {
+    document.body.style.overflow = "auto";
+    render(<ModalPalette open modal={false} />);
+
+    expect(document.body).not.toHaveAttribute("data-scroll-locked");
+    expect(document.body.style.overflow).toBe("auto");
+  });
+
+  // Public styling contract exception (fix-spec-b1 OV-04): overscroll containment
+  // is not observable in jsdom.
+  it("contains overscroll inside the results scroller", () => {
+    render(<ModalPalette open />);
+    expect(screen.getByRole("listbox").className).toContain("overscroll-contain");
+  });
+
+  it("leaves the search input font-size to CSS so touch densities can floor it at 16px", () => {
+    render(<ModalPalette open />);
+    expect(screen.getByRole("combobox").style.fontSize).toBe("");
   });
 });

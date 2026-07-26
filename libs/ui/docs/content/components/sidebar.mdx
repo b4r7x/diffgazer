@@ -14,6 +14,10 @@ component: "sidebar"
 
 <UsageSnippet />
 
+### Mobile
+
+Below the `breakpoint` the sidebar renders as a Dialog sheet that owns its own open state. That state always starts closed — on a fresh mobile mount and on every breakpoint crossing — and opens only from `SidebarTrigger`, the Cmd/Ctrl+B hotkey, or `useSidebar().onMobileOpenChange`. No mobile transition writes `state` or fires `onStateChange`, so `state`/`defaultState` describe the desktop presentation only: a controlled parent pinning `"rail"` still gets a working sheet, a `desktop → mobile → desktop` round trip comes back to exactly the state it left, and persistence layers can mirror `onStateChange` unconditionally without a phone visit overwriting the stored desktop preference. Sidebars rendered with `embedded` keep their inline navigation.
+
 ## Variants
 
 Five active-marker variants — caret, inverted, bar, terminal, and tree — share one rule: structure is permanent, markers appear on the active row. `caret` and `terminal` reserve a chevron marker slot that stays invisible at rest, previews dim on hover, and lights to foreground on the active item — `terminal` adds the TUI rail, a continuous 1px hairline down the rows with no background fill. `tree` renders bold section headers with stroke-chevron folds and draws its connectors — trunk, tick, corner — as a single CSS hairline; the active item's tick gains a soft background fill. Switch between them below to compare.

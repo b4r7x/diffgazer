@@ -10,6 +10,7 @@ import {
 import { Kbd } from "@diffgazer/ui/components/kbd";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { useNavigate } from "@tanstack/react-router";
+import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
 import { useSearchOpen } from "@/hooks/search-context";
 import { getEnabledDocsLibraries } from "@/lib/library";
 import { type SearchStatus, useSearch } from "../hooks/use-search";
@@ -68,6 +69,11 @@ export function SearchDialog() {
   const statusView = getSearchStatusView(hasQuery, status, error);
   const showsResults = hasQuery && status === "success";
 
+  const closeSearch = () => {
+    search("");
+    setOpen(false);
+  };
+
   useKey(
     {
       "mod+k": () => setOpen(true),
@@ -103,15 +109,35 @@ export function SearchDialog() {
     <CommandPalette
       open={open}
       onOpenChange={(next) => {
-        if (!next) search("");
-        setOpen(next);
+        if (next) setOpen(true);
+        else closeSearch();
       }}
       search={query}
       onSearchChange={search}
       shouldFilter={false}
     >
       <CommandPaletteContent size="md">
-        <CommandPaletteInput placeholder="Search docs..." />
+        <CommandPaletteInput
+          placeholder="Search docs..."
+          suffix={
+            <>
+              {/* Touch has no Esc key, so the coarse-pointer affordance is a real
+                  close button: one tap closes, and its visible text matches the
+                  accessible name (WCAG 2.5.3). */}
+              <button
+                type="button"
+                aria-label="Close search"
+                onClick={closeSearch}
+                className={`hidden min-h-11 min-w-11 items-center justify-center px-2 font-mono text-2xs uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground pointer-coarse:inline-flex ${FOCUS_RING_CLASS}`}
+              >
+                [ close ]
+              </button>
+              <Kbd size="sm" className="pointer-coarse:hidden">
+                Esc
+              </Kbd>
+            </>
+          }
+        />
         {statusContent}
         <CommandPaletteList className={showsResults ? "min-h-[240px]" : undefined}>
           {showsResults &&
@@ -139,7 +165,7 @@ export function SearchDialog() {
             ))}
         </CommandPaletteList>
         <CommandPaletteFooter>
-          <div className="flex gap-3">
+          <div className="flex gap-3 pointer-coarse:hidden">
             <span className="flex items-center gap-1">
               <Kbd size="sm">↑↓</Kbd> Navigate
             </span>
@@ -147,7 +173,8 @@ export function SearchDialog() {
               <Kbd size="sm">↵</Kbd> Select
             </span>
           </div>
-          <div className="flex gap-2">
+          <span className="hidden pointer-coarse:inline">tap a result to open</span>
+          <div className="flex gap-2 pointer-coarse:hidden">
             <span className="flex items-center gap-1">
               Triggered by <Kbd size="sm">⌘K</Kbd>
             </span>

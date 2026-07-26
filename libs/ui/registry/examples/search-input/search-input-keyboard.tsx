@@ -64,7 +64,7 @@ export default function SearchInputKeyboard() {
             role="option"
             data-value={item}
             aria-selected={isHighlighted(item)}
-            className={`px-3 py-1.5 ${
+            className={`flex items-center px-3 py-1.5 pointer-coarse:min-h-11 ${
               isHighlighted(item)
                 ? "bg-foreground text-background font-bold"
                 : "text-muted-foreground"

@@ -103,24 +103,31 @@ async function mockProviderApi(page: Page) {
   );
 }
 
-test("onboarding progress shows compact text below md and the full stepper at md and above", async ({
-  page,
-}, testInfo) => {
+test("onboarding progress renders the compact stepper at every width", async ({ page }) => {
   await mockOnboardingApi(page);
   await page.goto("/onboarding", { waitUntil: "domcontentloaded" });
 
   await expect(page.getByRole("heading", { level: 1, name: /secrets storage/i })).toBeVisible();
 
-  const compactProgress = page.getByText("Step 1/6 · Storage");
-  const fullProgress = page.getByRole("list", { name: "Setup progress" });
+  // The wizard passes `compact` unconditionally: six labelled ascii steps measure far wider
+  // than the card's content box, so the treatment no longer depends on the viewport and the
+  // same contract has to hold in both projects.
+  const progress = page.getByRole("list", { name: "Setup progress" });
+  await expect(progress).toBeVisible();
 
-  if (testInfo.project.name === "mobile-chromium") {
-    await expect(compactProgress).toBeVisible();
-    await expect(fullProgress).toBeHidden();
-  } else {
-    await expect(compactProgress).toBeHidden();
-    await expect(fullProgress).toBeVisible();
-  }
+  // Compact collapses the non-active labels to sr-only; it does not drop steps from the
+  // accessibility tree, so all six stay announced.
+  await expect(progress.getByRole("listitem")).toHaveCount(6);
+
+  const active = progress.locator("li[aria-current='step']");
+  await expect(active).toHaveCount(1);
+
+  // The counter prefix carries the position the hidden labels no longer show. It is
+  // aria-hidden (the list and aria-current already convey position), so it is asserted as
+  // visible text and it renders directly in front of the active label with no separating space.
+  const counter = progress.getByText("Step 1/6 ·", { exact: true });
+  await expect(counter).toBeVisible();
+  await expect(active).toContainText("Step 1/6 ·Storage");
 });
 
 test("provider panes and controls adapt to the rendered viewport", async ({ page }, testInfo) => {
@@ -213,7 +220,7 @@ test("the rendered app shell consumes nonzero safe-area insets", async ({ page }
 
   const footer = page.locator("footer");
   const shortcutLegend = page.locator("[data-shortcut-legend]");
-  const asciiWordmark = page.getByRole("img", { name: "DIFFGAZER" });
+  const asciiWordmark = page.getByRole("img", { name: "diffgazer" });
 
   if (testInfo.project.name === "mobile-chromium") {
     // Coarse pointer has no keyboard legend, so the footer is removed rather than
@@ -421,7 +428,7 @@ test("the ascii wordmark scales to fit narrow viewports", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/testing/fixtures/results-layout.html?view=shell");
 
-  const logo = page.getByRole("img", { name: "DIFFGAZER" });
+  const logo = page.getByRole("img", { name: "diffgazer" });
   await expect(logo).toBeVisible();
   const metrics = await logo.evaluate((element) => ({
     width: element.getBoundingClientRect().width,

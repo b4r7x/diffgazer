@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { KeyboardProvider } from "@diffgazer/keys";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { FooterBar } from "./footer-bar";
@@ -42,8 +42,15 @@ describe("FooterBar", () => {
     );
 
     expect(screen.getByRole("link", { name: /theme/i })).toHaveAttribute("href", "/ui/theme");
-    expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
-    expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
+
+    // Privacy and Terms are the only entry points to the legal pages, so they
+    // must live in the footer landmark rather than in the route body.
+    const footer = screen.getByRole("contentinfo");
+    expect(within(footer).getByRole("link", { name: "Privacy" })).toHaveAttribute(
+      "href",
+      "/privacy",
+    );
+    expect(within(footer).getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
   });
 
   it("navigates to the theme page when F2 is pressed", async () => {

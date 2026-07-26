@@ -3,21 +3,32 @@ import { cn } from "@diffgazer/ui/lib/utils";
 import type { TableOfContents } from "fumadocs-core/toc";
 import type { ReactNode } from "react";
 import { CHROME_LABEL_CLASS } from "./shared/chrome-label";
-import { TableOfContentsPanel } from "./toc";
+import { MobileTocPanel, TableOfContentsPanel, useDocsToc } from "./toc";
 
 export function DocsPageLayout({
   toc,
+  header,
   children,
   showToc = true,
 }: {
   toc: TableOfContents;
+  /** Page title block. Rendered above the mobile TOC so the h1 stays first in reading order. */
+  header?: ReactNode;
   children: ReactNode;
   showToc?: boolean;
 }) {
+  const { entries, activeId, scrollTo } = useDocsToc(toc);
+
   return (
-    <div className="flex flex-1 flex-row gap-8">
-      <div className="flex-1 min-w-0 py-8 px-6">{children}</div>
-      {showToc && <TableOfContentsPanel toc={toc} />}
+    <div className="flex flex-1 gap-8">
+      <div className="min-w-0 flex-1 px-6 py-8">
+        {header}
+        {showToc && <MobileTocPanel entries={entries} scrollTo={scrollTo} />}
+        {children}
+      </div>
+      {showToc && (
+        <TableOfContentsPanel entries={entries} activeId={activeId} scrollTo={scrollTo} />
+      )}
     </div>
   );
 }
@@ -73,7 +84,7 @@ export function DocsPageHeader({
       )}
 
       {hasDescription && (
-        <Typography as="p" className="max-w-3xl">
+        <Typography as="p" className="max-w-3xl break-words">
           {description}
         </Typography>
       )}

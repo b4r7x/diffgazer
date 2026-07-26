@@ -3,7 +3,13 @@
 import { type ComponentProps, type ReactNode, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "../dialog";
-import { SidebarChromeContext, useOptionalSidebar, useSidebar } from "./sidebar-context";
+import {
+  SidebarChromeContext,
+  SidebarContext,
+  type SidebarState,
+  useOptionalSidebar,
+  useSidebar,
+} from "./sidebar-context";
 import { SidebarProvider } from "./sidebar-provider";
 import { type SidebarVariant, sidebarContainerVariants } from "./sidebar-variants";
 
@@ -35,6 +41,7 @@ export interface SidebarProps extends ComponentProps<"nav"> {
 
 function SidebarNav({
   ref,
+  state,
   variant,
   autoTone,
   className,
@@ -44,10 +51,10 @@ function SidebarNav({
   children,
   ...rest
 }: ComponentProps<"nav"> & {
+  state: SidebarState;
   variant: SidebarVariant;
   autoTone: boolean;
 }) {
-  const { state } = useSidebar();
   const hidden = state === "hidden";
   return (
     <nav
@@ -83,30 +90,43 @@ function SidebarShell({
   className?: string;
   children: ReactNode;
 } & ComponentProps<"nav">) {
-  const { state, isMobile, onStateChange } = useSidebar();
-  const open = state !== "hidden";
+  const sidebar = useSidebar();
+  const { state, isMobile, openMobile, onMobileOpenChange } = sidebar;
+  const isSheet = isMobile && !embedded;
+  // Inside the sheet the tri-state has no presentation to describe, so the
+  // subtree sees "open". Without this a provider sitting at "hidden" would make
+  // SidebarContent aria-hidden and inert inside an open sheet. The provider's
+  // own value is untouched — this override never propagates upward and never
+  // fires onStateChange, so the desktop round trip still restores it exactly.
+  const sheetContext = useMemo(() => ({ ...sidebar, state: "open" as const }), [sidebar]);
 
-  if (isMobile && !embedded) {
-    // Mobile: render the same chrome inside a Dialog sheet. Width is fixed
-    // by the sheet wrapper (86vw / max 320px) and the inner nav fills it.
+  if (isSheet) {
+    // Mobile sheet: the Dialog's presence is the open/closed signal, so the nav
+    // inside it is always the full-width layout — rail and hidden have no
+    // meaning here — and the desktop tri-state is left alone for the next
+    // desktop layout. Width is fixed by the sheet wrapper (86vw / max 320px)
+    // and the inner nav fills it.
     return (
-      <Dialog open={open} onOpenChange={(next) => onStateChange(next ? "open" : "hidden")}>
+      <Dialog open={openMobile} onOpenChange={onMobileOpenChange}>
         <DialogContent
           aria-label={ariaLabel ?? "Primary navigation"}
           className="!max-w-[min(86vw,320px)] !h-[100dvh] !max-h-[100dvh] !m-0 !border-r border-border !rounded-none p-0 pb-[env(safe-area-inset-bottom)]"
           frame="none"
         >
-          <SidebarNav
-            ref={ref}
-            variant={variant}
-            autoTone={autoTone}
-            className={cn("h-full w-full", className)}
-            data-mobile="true"
-            aria-label={ariaLabel}
-            {...rest}
-          >
-            {children}
-          </SidebarNav>
+          <SidebarContext value={sheetContext}>
+            <SidebarNav
+              ref={ref}
+              state="open"
+              variant={variant}
+              autoTone={autoTone}
+              className={cn("h-full w-full", className)}
+              data-mobile="true"
+              aria-label={ariaLabel}
+              {...rest}
+            >
+              {children}
+            </SidebarNav>
+          </SidebarContext>
         </DialogContent>
       </Dialog>
     );
@@ -115,6 +135,7 @@ function SidebarShell({
   return (
     <SidebarNav
       ref={ref}
+      state={state}
       variant={variant}
       autoTone={autoTone}
       className={className}

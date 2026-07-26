@@ -175,6 +175,17 @@
       var(--command-palette-border-soft, color-mix(in oklab, var(--border) 60%, transparent));
   }
 
+  [data-slot="command-palette-input"] input {
+    font-size: var(--command-palette-text-size);
+  }
+
+  @media (pointer: coarse) {
+    [data-slot="command-palette-input"] input {
+      /* >=16px on touch: keeps iOS Safari from auto-zooming the focused input. */
+      font-size: max(16px, var(--command-palette-text-size));
+    }
+  }
+
   [data-slot="command-palette-input-prefix"] {
     color: var(--command-palette-muted, var(--muted-foreground));
     font-size: var(--command-palette-prefix-size);
@@ -195,6 +206,13 @@
   /* List */
   [data-slot="command-palette-list"] {
     padding: var(--command-palette-list-p);
+  }
+
+  /* A list with nothing to show must take no space. Without this the padding
+     alone renders as an empty sliver whenever every item is filtered out or the
+     consumer keeps its empty/status copy outside the listbox. */
+  [data-slot="command-palette-list"]:empty {
+    padding: 0;
   }
 
   /* Group */

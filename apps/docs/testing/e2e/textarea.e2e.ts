@@ -22,7 +22,7 @@ async function readMetrics(textarea: Locator): Promise<TextareaMetrics> {
 }
 
 test.describe("Textarea sizes", () => {
-  test("Small, Medium, and Large scale padding and font size while every example shares the resizable baseline", async ({
+  test("Small, Medium, and Large scale padding, font size, and minimum height while every example stays vertically resizable", async ({
     page,
   }) => {
     await page.goto("/ui/components/textarea");
@@ -38,14 +38,19 @@ test.describe("Textarea sizes", () => {
     expect(medium.paddingLeft).toBeLessThan(large.paddingLeft);
     expect(small.paddingTop).toBeLessThan(medium.paddingTop);
 
+    // The minimum height scales with the size too, so it is an ordering contract,
+    // not a shared constant. What every example does share is vertical resizing.
+    expect(small.minHeight).toBeGreaterThan(0);
+    expect(small.minHeight).toBeLessThan(medium.minHeight);
+    expect(medium.minHeight).toBeLessThan(large.minHeight);
+
     const textareas = page.getByRole("textbox");
     const count = await textareas.count();
     expect(count).toBeGreaterThanOrEqual(6);
-    expect(small.minHeight).toBeGreaterThan(0);
 
     for (let index = 0; index < count; index += 1) {
       const metrics = await readMetrics(textareas.nth(index));
-      expect(metrics.minHeight).toBe(small.minHeight);
+      expect(metrics.minHeight).toBeGreaterThanOrEqual(small.minHeight);
       expect(metrics.resize).toBe("vertical");
     }
   });

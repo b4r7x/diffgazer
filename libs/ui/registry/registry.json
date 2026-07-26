@@ -1498,7 +1498,8 @@
         "kbd",
         "utils",
         "composed-refs",
-        "dom-id"
+        "dom-id",
+        "@diffgazer-keys/scroll-lock"
       ],
       "meta": {
         "client": true,

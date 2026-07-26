@@ -19,6 +19,11 @@ export const buttonDoc: ComponentDoc = {
         "Disabled and loading primaries drop the --action fill for a dashed border and a --muted-foreground label rather than fading it. Fading a filled button drags its label toward the page background with it and the pair falls under 4.5:1; emptying the fill leaves the label on the ambient surface, where it keeps its own contrast in both themes, and the dashed edge matches the treatment disabled inputs already use.",
     },
     {
+      title: "Coarse-Pointer Hit Area",
+      content:
+        "On pointer:coarse the sm, md, and icon sizes extend a transparent ::before to a 44x44 effective target instead of growing: buttons live in fixed-height toolbars and panel headers where a real min-height would reflow the row. lg is already 44px tall and is left alone. Those three sizes therefore carry position:relative so the size itself is the pseudo-element's containing block — do not rely on Button being relatively positioned at lg. Two preconditions belong to the call site: no overflow-hidden ancestor between the button and the scroll root (it clips the overhang and the target silently shrinks back), and a minimum vertical gap to the next interactive row — 16px for sm, 8px for md and icon — otherwise stacked hit areas overlap and taps land on the wrong control. The extension is vertical only, so horizontal neighbours in a button row are safe; icon additionally widens by 4px per side to reach 44px across.",
+    },
+    {
       title: "Bracket Mode",
       content:
         "The bracket prop wraps the button label in [ ] characters, mimicking terminal UI conventions. When loading is true, bracket mode shows [ ... ] instead of [...].",

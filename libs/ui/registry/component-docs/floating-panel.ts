@@ -12,7 +12,7 @@ export const floatingPanelDoc: ComponentDoc = {
     {
       title: "Positioning",
       content:
-        "Resolves placement against `triggerRef` with `side`, `align`, `sideOffset`, and `alignOffset`. When `avoidCollisions` is true (default), the panel flips to the opposite side, then cross-axis sides, then shifts within the viewport. Final values land on `data-side` and `data-align`.",
+        "Resolves placement against `triggerRef` with `side`, `align`, `sideOffset`, and `alignOffset`. When `avoidCollisions` is true (default), the panel flips to the opposite side, then cross-axis sides, then shifts within the viewport. If no side fits, it takes the side that overflows least rather than the preferred one, and its size caps come from the padded viewport it is about to be shifted into — so a panel anchored to a trigger with no room left never collapses to zero. Final values land on `data-side` and `data-align`.",
     },
     {
       title: "CSS Custom Properties",
@@ -27,7 +27,7 @@ export const floatingPanelDoc: ComponentDoc = {
     {
       title: "Style Merging",
       content:
-        "Caller `style` merges before internal positioning styles. Structural keys (`position`, `top`, `left`, `visibility`, `--ui-content-transform-origin`, `--floating-panel-available-height`, `--floating-panel-available-width`, `--ui-floating-trigger-width`, plus `opacity`/`pointer-events` while `data-anchor-hidden` is set) cannot be overridden; everything else (background, min-width, border, transform, etc.) passes through.",
+        "Caller `style` merges before internal positioning styles. Structural keys (`position`, `top`, `left`, `visibility`, `max-width`, `max-height`, `--ui-content-transform-origin`, `--floating-panel-available-height`, `--floating-panel-available-width`, `--ui-floating-trigger-width`, plus `opacity`/`pointer-events` while `data-anchor-hidden` is set) cannot be overridden; everything else (background, min-width, border, transform, etc.) passes through. The `max-width`/`max-height` caps hold the panel inside the collision padding, and the panel is its own scroll container (`overflow: auto` from `.ui-floating-panel`), so content beyond either cap scrolls inside the panel instead of running off the viewport edge. A consumer who overrides `overflow` — e.g. a panel that intentionally paints outside its box — owns the resulting sizing. The caps are omitted entirely when `avoidCollisions` is false; the `--floating-panel-available-*` custom properties are still written, so an opted-out consumer can cap by hand.",
     },
     {
       title: "Accessibility",
@@ -150,7 +150,7 @@ export const floatingPanelDoc: ComponentDoc = {
         required: false,
         defaultValue: "true",
         description:
-          "Flips to the opposite side, then cross-axis sides, then shifts within the viewport.",
+          "Flips to the opposite side, then cross-axis sides, then shifts within the viewport. When false the panel is also left uncapped — no `max-width`/`max-height` is emitted.",
       },
       collisionPadding: {
         type: "number",

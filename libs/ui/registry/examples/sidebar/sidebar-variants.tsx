@@ -51,7 +51,7 @@ export default function SidebarVariants() {
         </ToggleGroup>
       </div>
 
-      <Sidebar variant={variant} className="flex-1">
+      <Sidebar embedded variant={variant} className="flex-1">
         <SidebarHeader>
           <span className="text-sm font-mono font-bold">Docs</span>
         </SidebarHeader>

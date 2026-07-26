@@ -20,6 +20,10 @@ export function Logo({ ref, text, asciiText, className, ...props }: LogoProps) {
       data-slot="logo"
       {...(asciiText ? { role: "img", "aria-label": text } : undefined)}
       className={cn(
+        // <pre> does not wrap, so both branches need the same overflow guard: a long
+        // wordmark or a wide ASCII block must clip inside the component instead of
+        // widening its container and scrolling the page sideways.
+        "max-w-full overflow-hidden",
         asciiText
           ? "font-mono whitespace-pre leading-none select-none"
           : "text-lg font-bold tracking-widest",

@@ -188,3 +188,39 @@ describe("Accordion prefers-reduced-motion", () => {
     expect(getComputedStyle(transitionWrapper).transitionProperty).toBe("none");
   });
 });
+
+describe("Accordion trigger touch target", () => {
+  // The trigger sits in a stack of rows: the padding grows the target, the vertical pull-back keeps
+  // the row rhythm unchanged, and pointer-coarse trades that pull-back for a real 44px minimum. The
+  // pull-back is spelled longhand so the source variant's mb-0 can override one side without
+  // depending on shorthand/longhand rule order. jsdom computes no layout, so the recipe is asserted
+  // through its class tokens.
+  it("applies the touch hit-area recipe to the default trigger", () => {
+    renderAccordion();
+    const trigger = screen.getByRole("button", { name: "Section One" });
+    expect(trigger).toHaveClass(
+      "py-2",
+      "-mt-2",
+      "-mb-2",
+      "pointer-coarse:mt-0",
+      "pointer-coarse:mb-0",
+      "pointer-coarse:min-h-11",
+    );
+  });
+
+  it("keeps the recipe on the source variant and drops its compensating margin", () => {
+    render(
+      <Accordion>
+        <Accordion.Item value="src">
+          <Accordion.Header>
+            <Accordion.Trigger variant="source">Show source</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>Source</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    );
+    const trigger = screen.getByRole("button", { name: "Show source" });
+    expect(trigger).toHaveClass("py-2", "-mt-2", "pointer-coarse:min-h-11", "mb-0");
+    expect(trigger).not.toHaveClass("-mb-2");
+  });
+});

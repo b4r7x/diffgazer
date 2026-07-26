@@ -3,6 +3,7 @@ import type { ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { cn } from "@diffgazer/ui/lib/utils";
+import { PathValue } from "@/components/shared/path-value";
 import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
 
 export interface IssuePreviewItemProps {
@@ -53,12 +54,7 @@ function IssuePreviewContent({
           >
             {title}
           </div>
-          <div
-            className="min-w-0 truncate text-xs text-muted-foreground font-mono"
-            title={location}
-          >
-            {location}
-          </div>
+          <PathValue value={location} className="text-xs text-muted-foreground" />
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-4">

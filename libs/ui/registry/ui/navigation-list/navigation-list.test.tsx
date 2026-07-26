@@ -671,6 +671,30 @@ describe("NavigationList", () => {
     expect(describedBy).toContain("-two-desc-sub");
   });
 
+  it("keeps the subtitle a truncating block, not a flex container", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Subtitle>
+            a very long subtitle that will not fit into the available row width at all
+          </NavigationList.Subtitle>
+        </NavigationList.Item>
+      </NavigationList>,
+    );
+
+    const option = screen.getByRole("option", { name: /One/ });
+    expect(option.getAttribute("aria-describedby")).toContain(`${option.id}-desc-sub`);
+
+    const subtitle = document.getElementById(`${option.id}-desc-sub`);
+    expect(subtitle).not.toBeNull();
+    // Truncation contract: the rendered ellipsis is unobservable in jsdom, so this asserts its
+    // necessary conditions — a block box that can shrink (min-w-0) and text-overflow, and no flex
+    // display, which would make text-overflow inapplicable.
+    expect(subtitle).toHaveClass("block", "min-w-0", "truncate");
+    expect(subtitle?.className).not.toContain("flex");
+  });
+
   it("keeps item ids unchanged while encoding DOM id references", async () => {
     const id = "release notes/v1.2?";
     const onSelect = vi.fn();

@@ -13,7 +13,7 @@ import {
 
 export default function SidebarRenderProp() {
   return (
-    <Sidebar className="h-full">
+    <Sidebar embedded className="h-full">
       <SidebarHeader>
         <span className="text-sm font-mono font-bold">Navigation</span>
       </SidebarHeader>
