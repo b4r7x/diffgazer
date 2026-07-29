@@ -214,9 +214,9 @@
       "name": "textarea",
       "type": "registry:ui",
       "title": "Textarea",
-      "description": "Terminal-styled multi-line text area",
+      "description": "Terminal-styled multi-line text area with directional resize handles",
       "dependencies": ["class-variance-authority"],
-      "registryDependencies": ["theme", "input-variants", "utils"],
+      "registryDependencies": ["theme", "input-variants", "utils", "composed-refs"],
       "meta": {
         "client": true
       },
@@ -227,6 +227,14 @@
         },
         {
           "path": "registry/ui/textarea/textarea.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/textarea/textarea-resizer.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/textarea/use-textarea-resize.ts",
           "type": "registry:ui"
         }
       ]

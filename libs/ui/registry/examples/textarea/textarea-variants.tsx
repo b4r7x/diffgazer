@@ -1,32 +1,37 @@
 import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 
+// Same two-line message at every size, so the axis you are comparing is the
+// font size and padding — not the content.
+const MESSAGE = "chore: trim the branch list\nDrop merged branches from the picker.";
+
 export default function TextareaVariants() {
   return (
-    <div className="flex flex-col gap-4 max-w-sm">
+    <div className="flex w-full max-w-sm flex-col gap-4">
       <Field>
         <Field.Label>Small</Field.Label>
         <Field.Control>
-          <Textarea size="sm" placeholder="Small textarea" />
+          <Textarea size="sm" defaultValue={MESSAGE} />
         </Field.Control>
       </Field>
       <Field>
         <Field.Label>Medium (default)</Field.Label>
         <Field.Control>
-          <Textarea size="md" placeholder="Medium textarea (default)" />
+          <Textarea size="md" defaultValue={MESSAGE} />
         </Field.Control>
       </Field>
       <Field>
         <Field.Label>Large</Field.Label>
         <Field.Control>
-          <Textarea size="lg" placeholder="Large textarea" />
+          <Textarea size="lg" defaultValue={MESSAGE} />
         </Field.Control>
       </Field>
       <Field invalid>
         <Field.Label>Error state</Field.Label>
         <Field.Control>
-          <Textarea placeholder="Error state" />
+          <Textarea placeholder="Commit message" />
         </Field.Control>
+        <Field.Error>A commit message is required.</Field.Error>
       </Field>
       <Field disabled>
         <Field.Label>Disabled</Field.Label>

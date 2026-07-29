@@ -21,6 +21,7 @@ import SelectStates from "./select/select-states";
 import SelectTagsExample from "./select/select-tags";
 import TextareaDefault from "./textarea/textarea-default";
 import TextareaFocus from "./textarea/textarea-focus";
+import TextareaResizeDirections from "./textarea/textarea-resize-directions";
 import TextareaVariants from "./textarea/textarea-variants";
 import ToggleGroupCounts from "./toggle-group/toggle-group-counts";
 import ToggleGroupDefault from "./toggle-group/toggle-group-default";
@@ -64,6 +65,7 @@ const examples: Array<[string, () => React.JSX.Element]> = [
   ["field-controls", FieldControls],
   ["search-input-states", SearchInputStates],
   ["textarea-default", TextareaDefault],
+  ["textarea-resize-directions", TextareaResizeDirections],
   ["textarea-variants", TextareaVariants],
   ["textarea-focus", TextareaFocus],
   ["toggle-group-default", ToggleGroupDefault],

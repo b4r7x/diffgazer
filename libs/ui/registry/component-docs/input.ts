@@ -13,7 +13,7 @@ export const inputDoc: ComponentDoc = {
     {
       title: "Invalid State",
       content:
-        "Set aria-invalid=true on Input or InputGroup to apply the destructive border treatment. Field.Control sets aria-invalid automatically when Field.invalid is true.",
+        "Set aria-invalid=true on Input or InputGroup to apply the error border. The error ring joins on focus, so focus stays the strongest edge a field shows. Field.Control sets aria-invalid automatically when Field.invalid is true.",
     },
     {
       title: "InputGroup",
@@ -43,7 +43,7 @@ export const inputDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          'The native ARIA invalid state. The destructive border treatment applies to true/"true". Field.Control sets this automatically when Field.invalid is true.',
+          'The native ARIA invalid state. The error border applies to true/"true"; the error ring joins on focus. Field.Control sets this automatically when Field.invalid is true.',
       },
     },
     InputGroup: {

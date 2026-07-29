@@ -16,8 +16,10 @@ export const inputSizeClasses = {
 /** Base input styling with size variants and invalid-state selectors. */
 export const inputVariants = cva(
   // Focus is the inset grammar shared by every editable field: the 1px border
-  // switches to --ring and a 1px ring doubles it. Invalid swaps both to --error
-  // and keeps the border at 1px, so validity toggles never resize the content box.
+  // switches to --ring and a 1px ring doubles it. Focus is the strongest edge a
+  // field ever shows, so invalid at rest is only a tint: the border switches to
+  // --error and the error ring waits for focus, where it replaces the focus
+  // color. Validity toggles never resize the content box either way.
   //
   // `outline-hidden` rather than `outline-none`: forced-colors drops the ring
   // (a box-shadow) and forces border-color to the system palette, so both halves of
@@ -30,7 +32,7 @@ export const inputVariants = cva(
   // matters, you just cannot change it"). Fill is the one dimension neither disabled nor invalid
   // nor focus uses, so read-only cannot be confused with any of them and stays focusable and
   // copyable with its full-contrast ink.
-  "flex w-full bg-background border border-border text-foreground font-mono placeholder:text-foreground/55 transition-colors focus:border-ring focus:ring-1 focus:ring-ring focus:outline-hidden disabled:opacity-50 disabled:border-dashed disabled:cursor-not-allowed read-only:bg-secondary read-only:border-border read-only:text-foreground read-only:placeholder:text-foreground/40 read-only:cursor-default aria-invalid:border-error aria-invalid:ring-1 aria-invalid:ring-error aria-invalid:focus:border-error aria-invalid:focus:ring-error",
+  "flex w-full bg-background border border-border text-foreground font-mono placeholder:text-foreground/55 transition-colors focus:border-ring focus:ring-1 focus:ring-ring focus:outline-hidden disabled:opacity-50 disabled:border-dashed disabled:cursor-not-allowed read-only:bg-secondary read-only:border-border read-only:text-foreground read-only:placeholder:text-foreground/40 read-only:cursor-default aria-invalid:border-error aria-invalid:focus:border-error aria-invalid:focus:ring-error",
   {
     variants: {
       size: inputSizeClasses,
