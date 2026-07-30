@@ -1,6 +1,7 @@
 import browserCollections from "fumadocs-mdx:collections/browser";
 import { Suspense } from "react";
 import { ContentSpinner } from "@/components/content-spinner";
+import { MdxPreloadMarker } from "@/components/mdx-preload-marker";
 import { DocsPageBody, DocsPageHeader } from "@/components/page-layout";
 import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import type { LegalPageLoaderData } from "@/features/legal/lib/load-legal-page";
@@ -31,11 +32,14 @@ export function LegalPageView({
   panelLabel: string;
 }) {
   return (
-    <LegalPageLayout panelLabel={panelLabel}>
-      <Suspense fallback={<ContentSpinner />}>
-        <LegalMdxContent path={data.path} lastUpdated={data.lastUpdated} />
-      </Suspense>
-    </LegalPageLayout>
+    <>
+      <MdxPreloadMarker collection="legal" path={data.path} />
+      <LegalPageLayout panelLabel={panelLabel}>
+        <Suspense fallback={<ContentSpinner />}>
+          <LegalMdxContent path={data.path} lastUpdated={data.lastUpdated} />
+        </Suspense>
+      </LegalPageLayout>
+    </>
   );
 }
 

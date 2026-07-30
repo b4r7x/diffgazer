@@ -72,8 +72,7 @@ test.describe("Docs security headers", () => {
 
     await page.goto("/");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-    // Each retry advances the toggle one step, so the loop walks the system ->
-    // dark -> light cycle until the nonce-allowed handler has reached light.
+    // The nonce-allowed handler only attaches after hydration, so retry until it runs.
     await expect(async () => {
       await page.getByRole("button", { name: /^theme:/i }).click();
       await expect(page.locator("html")).toHaveAttribute("data-theme", "light");

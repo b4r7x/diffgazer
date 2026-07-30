@@ -56,6 +56,16 @@ export type EscapeKeyLayerHandle = {
 };
 
 export const DEFAULT_OVERLAY_PRIORITY = 1;
+const OVERLAY_TRIGGER_ATTRIBUTE = "data-diffgazer-overlay-trigger";
+/** Marks an activation target that intentionally replaces the current overlay layer. */
+export const OVERLAY_TRIGGER_PROPS = { [OVERLAY_TRIGGER_ATTRIBUTE]: "" } as const;
+
+export function markOverlayTrigger(node: HTMLElement): (() => void) | undefined {
+  if (node.hasAttribute(OVERLAY_TRIGGER_ATTRIBUTE)) return;
+  node.setAttribute(OVERLAY_TRIGGER_ATTRIBUTE, "");
+  return () => node.removeAttribute(OVERLAY_TRIGGER_ATTRIBUTE);
+}
+
 const CLICK_SWALLOW_TIMEOUT_MS = 750;
 const TOUCH_FALLBACK_DEDUPE_MS = 750;
 const DOCUMENT_POINTER_LISTENER_OPTIONS: AddEventListenerOptions = { capture: true };
@@ -86,6 +96,22 @@ function isInEntry(event: Event, target: Node, entry: OutsideClickEntry): boolea
       (r) => pathContains(path, r.current) || isTargetInside(target, r.current),
     ) ?? false
   );
+}
+
+function isOverlayTriggerActivation(
+  event: Event,
+  target: Node,
+  View: Window & typeof globalThis,
+): boolean {
+  const isMarkedTrigger = (candidate: EventTarget | null): candidate is Element =>
+    candidate instanceof View.Element && candidate.hasAttribute(OVERLAY_TRIGGER_ATTRIBUTE);
+  const targetElement = target instanceof View.Element ? target : target.parentElement;
+  const trigger =
+    getComposedPath(event).find(isMarkedTrigger) ??
+    targetElement?.closest(`[${OVERLAY_TRIGGER_ATTRIBUTE}]`);
+  // A marked trigger whose own overlay is already open is toggling it closed, not
+  // switching layers, so it is not exempt.
+  return trigger != null && trigger.getAttribute("aria-expanded") !== "true";
 }
 
 function getEntryElements(entry: OutsideClickEntry): HTMLElement[] {
@@ -187,10 +213,9 @@ function isDuplicateTouchFallback(event: Event): boolean {
   return isDuplicate;
 }
 
-// After an outside-pointerdown dismisses a layer, swallow the same gesture's
-// follow-up click exactly once so the press that closed a select/popover cannot
-// also close a dialog under it (backdrop-click path) or activate an underlying
-// link/button (click-through). Radix's "one layer per outside press" contract.
+// Outside presses swallow their follow-up click so dismissing one layer cannot also
+// close a dialog or activate content behind it. Marked overlay triggers are exempt:
+// the same gesture intentionally switches layers.
 function getGestureCleanupTypes(pressType: string) {
   if (pressType === "pointerdown") {
     return {
@@ -257,7 +282,9 @@ function makeDocumentOutsidePointerHandler(ownerDocument: Document) {
     if (handledPointerEvents.has(event)) return;
     handledPointerEvents.add(event);
     if (isInEntry(event, event.target, entry)) return;
-    swallowNextClick(ownerDocument, View, event.type);
+    if (!isOverlayTriggerActivation(event, event.target, View)) {
+      swallowNextClick(ownerDocument, View, event.type);
+    }
     entry.handler();
   };
 }

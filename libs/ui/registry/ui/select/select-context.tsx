@@ -14,6 +14,8 @@ export interface SelectOptionMetadata {
 export interface SelectContextValue {
   /** Controlled open state. Pair with onOpenChange. */
   open: boolean;
+  /** Whether the current open state comes from the Select's initial render. */
+  isInitialOpen: boolean;
   /** Disable the trigger and prevent open. */
   disabled: boolean;
   searchable: boolean;

@@ -143,9 +143,11 @@ function buildPanelStyle(
     left: position.x,
     visibility: "visible",
     // Anchor scrolled out of view: keep the panel mounted and focusable (hiding it would
-    // drop focus out of an open overlay) but stop painting it, so it never reads as a
-    // stray box clamped against the viewport edge.
-    ...(position.anchorHidden ? { opacity: 0, pointerEvents: "none" as const } : null),
+    // drop focus out of an open overlay) but stop painting it. CSS animations outrank
+    // inline opacity, so cancel them too or a keyframe briefly paints the hidden panel.
+    ...(position.anchorHidden
+      ? { opacity: 0, pointerEvents: "none" as const, animation: "none" }
+      : null),
     // Structural caps: the panel never exceeds the room the resolved side leaves inside
     // the collision padding, so a too-wide/too-tall panel scrolls (`.ui-floating-panel` is
     // its own scroll container) instead of running off the viewport edge. Merged last, so

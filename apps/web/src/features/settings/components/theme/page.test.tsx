@@ -3,7 +3,6 @@ import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
-import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
@@ -21,7 +20,7 @@ vi.mock("@tanstack/react-router", () => ({
 import { SettingsThemePage } from "./page";
 
 const SETTINGS_FIXTURE: SettingsConfig = {
-  theme: "auto",
+  theme: "dark",
   defaultLenses: [],
   defaultProfile: null,
   severityThreshold: "low",
@@ -66,20 +65,15 @@ function renderPage() {
   return { ...render(<SettingsThemePage />, { wrapper: Wrapper }), queryClient };
 }
 
-async function waitForThemeReady() {
-  await waitFor(() => {
-    expect(screen.getByRole("radio", { name: /auto/i })).toHaveAttribute("aria-checked", "true");
-  });
-}
-
 async function waitForSelectedTheme(name: RegExp) {
   await waitFor(() => {
     expect(screen.getByRole("radio", { name })).toHaveAttribute("aria-checked", "true");
   });
 }
 
-function setSystemPrefersDark(prefersDark: boolean): void {
-  stubMatchMedia((query) => (query === "(prefers-color-scheme: dark)" ? prefersDark : false));
+/** The fixture saves dark, so the list settles with Dark selected and focused. */
+async function waitForThemeReady() {
+  await waitForSelectedTheme(/dark/i);
 }
 
 describe("SettingsThemePage keyboard behavior", () => {
@@ -88,7 +82,6 @@ describe("SettingsThemePage keyboard behavior", () => {
     mockNavigate.mockReset();
     mockGetSettings = vi.fn<BoundApi["getSettings"]>().mockResolvedValue(SETTINGS_FIXTURE);
     mockSaveSettings = vi.fn<BoundApi["saveSettings"]>().mockResolvedValue(undefined);
-    setSystemPrefersDark(false);
     localStorage.clear();
   });
 
@@ -97,18 +90,19 @@ describe("SettingsThemePage keyboard behavior", () => {
     renderPage();
     await waitForThemeReady();
 
-    const autoRadio = screen.getByRole("radio", { name: /auto/i });
     const darkRadio = screen.getByRole("radio", { name: /dark/i });
+    const lightRadio = screen.getByRole("radio", { name: /light/i });
     const cancelButton = screen.getByRole("button", { name: /^cancel$/i });
 
-    await waitFor(() => expect(autoRadio).toHaveFocus());
-    expect(autoRadio).toHaveAttribute("aria-checked", "true");
+    await waitFor(() => expect(darkRadio).toHaveFocus());
+    expect(darkRadio).toHaveAttribute("aria-checked", "true");
 
     await user.keyboard("{ArrowDown}");
-    expect(autoRadio).toHaveAttribute("aria-checked", "true");
-    expect(darkRadio).toHaveAttribute("aria-checked", "false");
+    expect(lightRadio).toHaveFocus();
+    expect(darkRadio).toHaveAttribute("aria-checked", "true");
+    expect(lightRadio).toHaveAttribute("aria-checked", "false");
 
-    await user.keyboard("{ArrowDown}{ArrowDown}");
+    await user.keyboard("{ArrowDown}");
     expect(cancelButton).toHaveFocus();
 
     await user.keyboard("{Enter}");
@@ -136,7 +130,9 @@ describe("SettingsThemePage keyboard behavior", () => {
     expect(darkRadio).toHaveFocus();
     expect(darkRadio).toHaveAttribute("aria-checked", "true");
 
-    mockGetSettings.mockResolvedValue({ ...SETTINGS_FIXTURE, theme: "auto" });
+    // The server still reports light while the draft says dark; the refetch
+    // must not overwrite what the reader picked.
+    mockGetSettings.mockResolvedValue({ ...SETTINGS_FIXTURE, theme: "light" });
     await act(async () => {
       await queryClient.invalidateQueries();
     });
@@ -161,12 +157,11 @@ describe("SettingsThemePage keyboard behavior", () => {
     renderPage();
     await waitForThemeReady();
 
-    const autoRadio = screen.getByRole("radio", { name: /auto/i });
     const darkRadio = screen.getByRole("radio", { name: /dark/i });
     const lightRadio = screen.getByRole("radio", { name: /light/i });
-    await waitFor(() => expect(autoRadio).toHaveFocus());
+    await waitFor(() => expect(darkRadio).toHaveFocus());
 
-    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
+    await user.keyboard("{ArrowDown}{ArrowDown}");
     expect(screen.getByRole("button", { name: /^cancel$/i })).toHaveFocus();
 
     await user.click(darkRadio);
@@ -181,14 +176,14 @@ describe("SettingsThemePage keyboard behavior", () => {
     renderPage();
     await waitForThemeReady();
 
-    const autoRadio = screen.getByRole("radio", { name: /auto/i });
     const darkRadio = screen.getByRole("radio", { name: /dark/i });
+    const lightRadio = screen.getByRole("radio", { name: /light/i });
     const saveButton = screen.getByRole("button", { name: /^save$/i });
 
     await user.keyboard("{ArrowDown} ");
 
-    expect(darkRadio).toHaveAttribute("aria-checked", "true");
-    expect(autoRadio).toHaveAttribute("aria-checked", "false");
+    expect(lightRadio).toHaveAttribute("aria-checked", "true");
+    expect(darkRadio).toHaveAttribute("aria-checked", "false");
     expect(saveButton).toBeEnabled();
     expect(mockSaveSettings).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
@@ -199,7 +194,7 @@ describe("SettingsThemePage keyboard behavior", () => {
     renderPage();
     await waitForThemeReady();
 
-    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+    await user.keyboard("{ArrowDown}{Enter}");
 
     await waitFor(() => {
       expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "light" });
@@ -212,20 +207,19 @@ describe("SettingsThemePage keyboard behavior", () => {
     renderPage();
     await waitForThemeReady();
 
-    document.documentElement.setAttribute("data-theme", "dark");
+    // Pinned to the theme the preview is not showing, so a leak would be visible.
+    document.documentElement.setAttribute("data-theme", "light");
 
     const preview = screen.getByRole("region", { name: /theme preview/i });
 
-    expect(preview.getAttribute("data-theme")).toBe("light");
-    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
-
-    await user.keyboard("{ArrowDown}");
     expect(preview.getAttribute("data-theme")).toBe("dark");
-    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
 
     await user.keyboard("{ArrowDown}");
     expect(preview.getAttribute("data-theme")).toBe("light");
-    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+
+    await user.keyboard("{ArrowUp}");
+    expect(preview.getAttribute("data-theme")).toBe("dark");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
   it("updates preview on hover from focused list item even after entering button zone", async () => {
@@ -234,38 +228,30 @@ describe("SettingsThemePage keyboard behavior", () => {
     await waitForThemeReady();
 
     const preview = screen.getByRole("region", { name: /theme preview/i });
-    const darkRadio = screen.getByRole("radio", { name: /dark/i });
+    const lightRadio = screen.getByRole("radio", { name: /light/i });
 
-    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
+    await user.keyboard("{ArrowDown}{ArrowDown}");
 
-    await user.hover(darkRadio);
-    expect(preview.getAttribute("data-theme")).toBe("dark");
+    await user.hover(lightRadio);
+    expect(preview.getAttribute("data-theme")).toBe("light");
   });
 
-  it("previews the raw system theme for Auto when the saved theme is light", async () => {
-    setSystemPrefersDark(true);
+  it("restores the focused theme preview once a hover ends", async () => {
     mockGetSettings.mockResolvedValue({ ...SETTINGS_FIXTURE, theme: "light" });
     const user = userEvent.setup();
     renderPage();
     await waitForSelectedTheme(/light/i);
 
     const preview = screen.getByRole("region", { name: /theme preview/i });
-    const autoRadio = screen.getByRole("radio", { name: /auto/i });
-    const lightRadio = screen.getByRole("radio", { name: /light/i });
+    const darkRadio = screen.getByRole("radio", { name: /dark/i });
 
     expect(preview.getAttribute("data-theme")).toBe("light");
 
-    await user.hover(autoRadio);
+    await user.hover(darkRadio);
     expect(preview.getAttribute("data-theme")).toBe("dark");
 
-    await user.unhover(autoRadio);
+    await user.unhover(darkRadio);
     await waitFor(() => expect(preview.getAttribute("data-theme")).toBe("light"));
-
-    await waitFor(() => expect(lightRadio).toHaveFocus());
-    await user.keyboard("{ArrowUp}{ArrowUp}");
-
-    await waitFor(() => expect(autoRadio).toHaveFocus());
-    expect(preview.getAttribute("data-theme")).toBe("dark");
   });
 
   it("still selects theme by clicking list items", async () => {
@@ -273,12 +259,12 @@ describe("SettingsThemePage keyboard behavior", () => {
     renderPage();
     await waitForThemeReady();
 
-    const darkRadio = screen.getByRole("radio", { name: /dark/i });
+    const lightRadio = screen.getByRole("radio", { name: /light/i });
     const saveButton = screen.getByRole("button", { name: /^save$/i });
 
-    await user.click(darkRadio);
+    await user.click(lightRadio);
 
-    expect(darkRadio).toHaveAttribute("aria-checked", "true");
+    expect(lightRadio).toHaveAttribute("aria-checked", "true");
     expect(saveButton).toBeEnabled();
   });
 
@@ -295,9 +281,9 @@ describe("SettingsThemePage keyboard behavior", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Network unreachable");
-    expect(screen.getByRole("radio", { name: /auto/i })).toHaveAttribute("aria-checked", "false");
-    expect(screen.getByRole("radio", { name: /dark/i })).toHaveAttribute("aria-checked", "true");
-    expect(document.documentElement).toHaveAttribute("data-theme", "light");
+    expect(screen.getByRole("radio", { name: /dark/i })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("radio", { name: /light/i })).toHaveAttribute("aria-checked", "true");
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -314,7 +300,7 @@ describe("SettingsThemePage keyboard behavior", () => {
     await waitForThemeReady();
     await user.keyboard("{ArrowDown}{Enter}");
 
-    await waitFor(() => expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "dark" }));
+    await waitFor(() => expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "light" }));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });
 
@@ -328,7 +314,7 @@ describe("SettingsThemePage keyboard behavior", () => {
     await waitForThemeReady();
     await user.keyboard("{ArrowDown}{Enter}");
 
-    await waitFor(() => expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "dark" }));
+    await waitFor(() => expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "light" }));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });
 
@@ -352,7 +338,7 @@ describe("SettingsThemePage keyboard behavior", () => {
     // could navigate or roll back over the newer state.
     await user.keyboard("{Enter}");
     expect(mockSaveSettings).toHaveBeenCalledTimes(1);
-    expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "dark" });
+    expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "light" });
     expect(mockNavigate).not.toHaveBeenCalled();
 
     resolveSave?.();

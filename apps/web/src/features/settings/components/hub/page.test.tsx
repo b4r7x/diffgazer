@@ -23,7 +23,7 @@ vi.mock("@tanstack/react-router", () => ({
 import { SettingsHubPage } from "./page";
 
 const SETTINGS_FIXTURE: SettingsConfig = {
-  theme: "auto",
+  theme: "dark",
   defaultLenses: [],
   defaultProfile: null,
   severityThreshold: "low",

@@ -12,8 +12,10 @@ import {
   type ReactNode,
   type Ref,
   type RefCallback,
+  useCallback,
   useEffect,
 } from "react";
+import { markOverlayTrigger } from "@/hooks/overlay-dismiss-stack";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { mergeIds } from "@/lib/aria";
 import { cn } from "@/lib/utils";
@@ -119,11 +121,18 @@ export function PopoverTrigger({ children, className, ref }: PopoverTriggerProps
     popupRole,
   } = usePopoverContext();
 
+  const isClick = triggerMode === "click";
   const childRef = isValidElement<HoverTriggerElementProps>(children)
     ? children.props.ref
     : undefined;
-  const composedRef = useComposedRefs(triggerRef, ref, childRef);
-  const isClick = triggerMode === "click";
+  const overlayTriggerRef = useCallback(
+    (node: HTMLElement | null) => {
+      if (!isClick || !enabled || node === null) return;
+      return markOverlayTrigger(node);
+    },
+    [enabled, isClick],
+  );
+  const composedRef = useComposedRefs(triggerRef, ref, childRef, overlayTriggerRef);
   const isRenderProp = typeof children === "function";
   const hoverClassName = isRenderProp ? className : cn("inline-flex", className);
 

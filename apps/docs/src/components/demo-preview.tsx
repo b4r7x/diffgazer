@@ -25,6 +25,7 @@ import type { PreviewFrame } from "@/lib/example-frames";
 interface DemoPreviewProps {
   title?: string;
   demo: LazyExoticComponent<ComponentType> | null;
+  loading?: boolean;
   code: CodeBlockLineProps[];
   rawCode: string;
   frame?: PreviewFrame;
@@ -35,11 +36,13 @@ function DefaultPreviewPane({
   rawCode,
   theme,
   compact = false,
+  loading = false,
 }: {
   demo: LazyExoticComponent<ComponentType> | null;
   rawCode: string;
   theme: string;
   compact?: boolean;
+  loading?: boolean;
 }) {
   return (
     <div data-demo-preview data-theme={theme}>
@@ -62,7 +65,7 @@ function DefaultPreviewPane({
               compact ? "py-6" : "py-12",
             )}
           >
-            <DemoNode demo={demo} />
+            <DemoNode demo={demo} loading={loading} />
           </div>
         </ScrollArea>
         {rawCode.length > 0 && (
@@ -78,9 +81,11 @@ function DefaultPreviewPane({
 function FillPreviewPane({
   demo,
   theme,
+  loading = false,
 }: {
   demo: LazyExoticComponent<ComponentType> | null;
   theme: string;
+  loading?: boolean;
 }) {
   return (
     <ScrollArea
@@ -91,7 +96,7 @@ function FillPreviewPane({
       className="border border-border bg-background"
     >
       <div className="w-full [&>*]:w-full">
-        <DemoNode demo={demo} />
+        <DemoNode demo={demo} loading={loading} />
       </div>
     </ScrollArea>
   );
@@ -101,20 +106,22 @@ function PreviewPane({
   demo,
   frame,
   rawCode,
+  loading = false,
 }: {
   demo: LazyExoticComponent<ComponentType> | null;
   frame: PreviewFrame;
   rawCode: string;
+  loading?: boolean;
 }) {
-  const { resolved: theme } = useTheme();
+  const { theme } = useTheme();
   if (frame === "inset") {
     return (
       <div data-demo-preview data-theme={theme}>
-        <InsetPreviewPane demo={demo} />
+        <InsetPreviewPane demo={demo} loading={loading} />
       </div>
     );
   }
-  if (frame === "fill") return <FillPreviewPane demo={demo} theme={theme} />;
+  if (frame === "fill") return <FillPreviewPane demo={demo} theme={theme} loading={loading} />;
   if (frame === "default" || frame === "compact")
     return (
       <DefaultPreviewPane
@@ -122,6 +129,7 @@ function PreviewPane({
         rawCode={rawCode}
         theme={theme}
         compact={frame === "compact"}
+        loading={loading}
       />
     );
   frame satisfies never;
@@ -144,7 +152,14 @@ function CodePane({ code, rawCode }: { code: CodeBlockLineProps[]; rawCode: stri
   );
 }
 
-export function DemoPreview({ title, demo, code, rawCode, frame = "default" }: DemoPreviewProps) {
+export function DemoPreview({
+  title,
+  demo,
+  loading = false,
+  code,
+  rawCode,
+  frame = "default",
+}: DemoPreviewProps) {
   const shared = usePreviewMode();
   const [localMode, setLocalMode] = useState<PreviewMode>("preview");
   const rootRef = useRef<HTMLDivElement>(null);
@@ -185,7 +200,7 @@ export function DemoPreview({ title, demo, code, rawCode, frame = "default" }: D
               </output>
             }
           >
-            <PreviewPane demo={demo} frame={frame} rawCode={rawCode} />
+            <PreviewPane demo={demo} frame={frame} rawCode={rawCode} loading={loading} />
           </ErrorBoundary>
         </TabsContent>
         <TabsContent value="code">

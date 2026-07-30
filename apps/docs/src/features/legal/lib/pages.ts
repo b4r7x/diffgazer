@@ -23,13 +23,17 @@ export function getLegalPageEntry(slug: LegalPageSlug): LegalPageEntry {
   return entry;
 }
 
-export function legalRouteOptions(slug: LegalPageSlug) {
+export function legalRouteOptions(
+  slug: LegalPageSlug,
+  preloadContent: (path: string) => Promise<unknown>,
+) {
   const page = getLegalPageEntry(slug);
   return {
     loader: async (): Promise<LegalPageLoaderData> => {
       const { loadLegalPage } = await import("@/features/legal/lib/load-legal-page");
       const data = await loadLegalPage({ data: { slug } });
       if (!data) throw notFound();
+      await preloadContent(data.path);
       return data;
     },
     head: ({ loaderData }: { loaderData?: LegalPageLoaderData }) => {

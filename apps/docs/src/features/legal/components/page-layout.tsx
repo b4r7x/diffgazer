@@ -1,5 +1,6 @@
 import { Button } from "@diffgazer/ui/components/button";
 import type { ReactNode } from "react";
+import { ArticleSkeleton } from "@/components/article-skeleton";
 import { SidebarNavHeader } from "@/components/layout/sidebar-nav-header";
 import {
   SidebarPanelHeaderLabel,
@@ -8,6 +9,7 @@ import {
 import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
 import { TuiTwoPane } from "@/components/layout/tui-two-pane";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
+import { usePendingLegalRoute } from "@/features/legal/hooks/use-pending-legal-route";
 import { LegalSidebar } from "./legal-sidebar";
 
 export interface LegalPageLayoutProps {
@@ -16,6 +18,9 @@ export interface LegalPageLayoutProps {
 }
 
 export function LegalPageLayout({ panelLabel, children }: LegalPageLayoutProps) {
+  const pendingLegalPath = usePendingLegalRoute();
+  const isPending = pendingLegalPath !== null;
+
   return (
     <TuiTwoPane
       sidebar={(closeSidebar) => <LegalSidebar onNavigate={closeSidebar} />}
@@ -23,12 +28,15 @@ export function LegalPageLayout({ panelLabel, children }: LegalPageLayoutProps) 
     >
       <div className="shrink-0 border-b border-border bg-background">
         <SidebarPanelHeaderRow>
-          <SidebarPanelHeaderLabel>[ LEGAL / {panelLabel} ]</SidebarPanelHeaderLabel>
+          <SidebarPanelHeaderLabel>
+            [ LEGAL / {isPending ? "LOADING" : panelLabel} ]
+          </SidebarPanelHeaderLabel>
         </SidebarPanelHeaderRow>
       </div>
       <main
         id="main-content"
         tabIndex={-1}
+        aria-busy={isPending}
         className="flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar-thin px-6 py-10 outline-hidden"
       >
         <ErrorBoundary
@@ -47,9 +55,17 @@ export function LegalPageLayout({ panelLabel, children }: LegalPageLayoutProps) 
             />
           }
         >
-          {children}
+          {isPending ? <LegalPageLoadingFrame /> : children}
         </ErrorBoundary>
       </main>
     </TuiTwoPane>
+  );
+}
+
+function LegalPageLoadingFrame() {
+  return (
+    <section className="mx-auto w-full max-w-7xl">
+      <ArticleSkeleton label="Loading legal page" />
+    </section>
   );
 }

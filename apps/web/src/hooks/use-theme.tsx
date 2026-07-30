@@ -1,5 +1,4 @@
 import { useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
-import { resolveSelectableTheme, toSelectableTheme } from "@diffgazer/core/schemas/config";
 import {
   createContext,
   type ReactNode,
@@ -8,31 +7,21 @@ import {
   useEffect,
   useMemo,
   useState,
-  useSyncExternalStore,
 } from "react";
-import type { ResolvedTheme, ThemeContextValue, WebTheme } from "@/types/theme";
-
-function subscribeToSystemTheme(callback: () => void): () => void {
-  const media = window.matchMedia("(prefers-color-scheme: dark)");
-  media.addEventListener("change", callback);
-  return () => media.removeEventListener("change", callback);
-}
-
-function getSystemTheme(): ResolvedTheme {
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
+import { isWebTheme, type ThemeContextValue, type WebTheme } from "@/types/theme";
 
 const STORAGE_KEY = "diffgazer-theme";
-const THEME_COLORS: Record<ResolvedTheme, string> = {
+const DEFAULT_THEME: WebTheme = "dark";
+const THEME_COLORS: Record<WebTheme, string> = {
   dark: "#0d1117",
   light: "#ffffff",
 };
 
 export const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-function resolveWebTheme(value: string | null): WebTheme {
-  if (value === "dark" || value === "light" || value === "auto") return value;
-  return "auto";
+/** The single narrowing point between the shared config schema and the web app. */
+function toWebTheme(value: string | null | undefined): WebTheme {
+  return value !== undefined && isWebTheme(value) ? value : DEFAULT_THEME;
 }
 
 function accessThemeStorage<T>(operation: (storage: Storage) => T, fallback: T): T {
@@ -55,30 +44,23 @@ function writeStoredTheme(theme: string | null): void {
   }, undefined);
 }
 
-function getInitialFallbackTheme(): WebTheme {
-  return resolveWebTheme(readStoredTheme());
-}
-
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [localOverride, setLocalOverride] = useState<WebTheme | null>(null);
-  const [fallbackTheme] = useState<WebTheme>(getInitialFallbackTheme);
+  const [fallbackTheme] = useState<WebTheme>(() => toWebTheme(readStoredTheme()));
 
   const { data: settings } = useSettings();
   const { mutateAsync: saveSettingsAsync } = useSaveSettings();
 
-  const system: ResolvedTheme = useSyncExternalStore(subscribeToSystemTheme, getSystemTheme);
-
-  const settingsTheme = settings?.theme ? toSelectableTheme(settings.theme) : null;
-  const effectiveTheme: WebTheme = localOverride ?? settingsTheme ?? fallbackTheme;
-  const resolved = resolveSelectableTheme(effectiveTheme, system);
+  const settingsTheme = settings?.theme ? toWebTheme(settings.theme) : null;
+  const theme: WebTheme = localOverride ?? settingsTheme ?? fallbackTheme;
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", resolved);
-    document.documentElement.style.colorScheme = resolved;
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.style.colorScheme = theme;
     document
       .querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-      ?.setAttribute("content", THEME_COLORS[resolved]);
-  }, [resolved]);
+      ?.setAttribute("content", THEME_COLORS[theme]);
+  }, [theme]);
 
   const setTheme = useCallback(
     async (newTheme: WebTheme): Promise<void> => {
@@ -97,15 +79,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     [localOverride, saveSettingsAsync],
   );
 
-  const value = useMemo<ThemeContextValue>(
-    () => ({
-      theme: effectiveTheme,
-      resolved,
-      system,
-      setTheme,
-    }),
-    [effectiveTheme, resolved, system, setTheme],
-  );
+  const value = useMemo<ThemeContextValue>(() => ({ theme, setTheme }), [theme, setTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

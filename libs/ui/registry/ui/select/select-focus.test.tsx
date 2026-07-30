@@ -135,10 +135,61 @@ describe("Select open-focus stability", () => {
     expect(onChange).toHaveBeenCalledWith("apple");
   });
 
-  it("focuses searchable content when default-open Select mounts with unowned focus", async () => {
-    renderSelect({ variant: "default", defaultOpen: true, withSearch: true });
+  it.each([
+    {
+      label: "default-open dropdown",
+      variant: "default" as const,
+      controlled: false,
+      searchable: false,
+    },
+    {
+      label: "controlled-open dropdown",
+      variant: "default" as const,
+      controlled: true,
+      searchable: false,
+    },
+    {
+      label: "default-open card",
+      variant: "card" as const,
+      controlled: false,
+      searchable: false,
+    },
+    {
+      label: "controlled-open card",
+      variant: "card" as const,
+      controlled: true,
+      searchable: false,
+    },
+    {
+      label: "default-open searchable dropdown",
+      variant: "default" as const,
+      controlled: false,
+      searchable: true,
+    },
+    {
+      label: "controlled-open searchable dropdown",
+      variant: "default" as const,
+      controlled: true,
+      searchable: true,
+    },
+  ])("initializes a $label without moving document focus", async ({
+    variant,
+    controlled,
+    searchable,
+  }) => {
+    renderSelect({
+      variant,
+      withSearch: searchable,
+      ...(controlled ? { open: true } : { defaultOpen: true }),
+    });
 
-    await waitFor(() => expect(getSearchInput()).toHaveFocus());
+    const listbox = await screen.findByRole("listbox");
+    const apple = screen.getByRole("option", { name: "Apple" });
+    const activeDescendantOwner = searchable ? getSearchInput() : listbox;
+    await waitFor(() =>
+      expect(activeDescendantOwner).toHaveAttribute("aria-activedescendant", apple.id),
+    );
+    expect(document.body).toHaveFocus();
   });
 
   it.each([
@@ -185,11 +236,93 @@ describe("Select open-focus stability", () => {
     expect(focusOwner).toHaveFocus();
   });
 
-  it("focuses the listbox on open but does not re-steal focus on later re-renders while open", async () => {
+  it("focuses and scrolls conditionally mounted content after a controlled open transition", async () => {
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const scrolledElements: Element[] = [];
+    const scrollFn = vi.fn(function (this: Element) {
+      scrolledElements.push(this);
+    });
+    Element.prototype.scrollIntoView = scrollFn;
+
+    function Harness({ open }: { open: boolean }) {
+      return (
+        <Select variant="default" open={open} defaultValue="banana">
+          <Select.Trigger aria-label="Fruit">
+            <Select.Value placeholder={PICK_FRUIT} />
+          </Select.Trigger>
+          {open && (
+            <Select.Content>
+              <Select.Item value="apple">Apple</Select.Item>
+              <Select.Item value="banana">Banana</Select.Item>
+            </Select.Content>
+          )}
+        </Select>
+      );
+    }
+
+    try {
+      const { rerender } = render(<Harness open={false} />);
+      rerender(<Harness open />);
+
+      const listbox = await screen.findByRole("listbox");
+      const banana = screen.getByRole("option", { name: "Banana" });
+      await waitFor(() => expect(listbox).toHaveFocus());
+      await waitFor(() => expect(scrolledElements).toContain(banana));
+      expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" });
+    } finally {
+      if (originalScrollIntoView) {
+        Element.prototype.scrollIntoView = originalScrollIntoView;
+      } else {
+        Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+      }
+    }
+  });
+
+  it.each([
+    { label: "dropdown", variant: "default" as const, searchable: false },
+    { label: "searchable dropdown", variant: "default" as const, searchable: true },
+    { label: "card", variant: "card" as const, searchable: false },
+  ])(
+    "focuses the open content and reveals the selected option when an initially-open $label is closed and reopened",
+    async ({ variant, searchable }) => {
+      const user = userEvent.setup();
+      const originalScrollIntoView = Element.prototype.scrollIntoView;
+      const scrolledElements: Element[] = [];
+      const scrollFn = vi.fn(function (this: Element) {
+        scrolledElements.push(this);
+      });
+      Element.prototype.scrollIntoView = scrollFn;
+
+      try {
+        renderSelect({ variant, withSearch: searchable, defaultOpen: true, defaultValue: "banana" });
+        await user.click(document.body);
+        expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false");
+
+        await user.click(getSelectTrigger());
+
+        const listbox = await screen.findByRole("listbox");
+        const focusOwner = searchable ? getSearchInput() : listbox;
+        await waitFor(() => expect(focusOwner).toHaveFocus());
+        const banana = screen.getByRole("option", { name: "Banana" });
+        await waitFor(() => expect(scrolledElements).toContain(banana));
+        expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" });
+      } finally {
+        if (originalScrollIntoView) {
+          Element.prototype.scrollIntoView = originalScrollIntoView;
+        } else {
+          Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+        }
+      }
+    },
+  );
+
+  it("focuses the listbox after opening but does not re-steal focus on later re-renders", async () => {
+    const user = userEvent.setup();
+
     function Harness({ extra }: { extra: string }) {
       return (
         <>
-          <Select variant="default" defaultOpen>
+          <Select variant="default">
             <Select.Trigger>
               <Select.Value placeholder="Pick" />
             </Select.Trigger>
@@ -204,7 +337,8 @@ describe("Select open-focus stability", () => {
     }
 
     const { rerender } = render(<Harness extra="x" />);
-    const listbox = await screen.findByRole("listbox");
+    await user.click(getSelectTrigger());
+    const listbox = screen.getByRole("listbox");
     await waitFor(() => expect(listbox).toHaveFocus());
 
     const outside = screen.getByRole("button", { name: "Outside" });
@@ -216,7 +350,9 @@ describe("Select open-focus stability", () => {
   });
 
   it("has no a11y violations while the listbox holds focus after opening", async () => {
-    const { container } = renderSelect({ defaultOpen: true });
+    const user = userEvent.setup();
+    const { container } = renderSelect();
+    await user.click(getSelectTrigger());
     await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
     expect(await axe(container)).toHaveNoViolations();
   });

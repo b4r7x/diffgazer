@@ -1,22 +1,24 @@
-import {
-  isSelectableTheme,
-  SELECTABLE_THEME_OPTIONS,
-  type SelectableTheme,
-} from "@diffgazer/core/schemas/config";
+import { SELECTABLE_THEME_OPTIONS } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { type KeyboardEvent, useId, useState } from "react";
+import { isWebTheme, type WebTheme } from "@/types/theme";
+
+/** The shared list still carries Auto for the TUI; the web app renders only what it can apply. */
+const THEME_OPTIONS = SELECTABLE_THEME_OPTIONS.flatMap((option) =>
+  isWebTheme(option.value) ? [{ ...option, value: option.value }] : [],
+);
 
 export interface ThemeSelectorContentProps {
-  value: SelectableTheme;
-  onChange: (value: SelectableTheme) => void;
-  highlighted?: SelectableTheme | null;
-  onHighlightChange?: (value: SelectableTheme) => void;
-  onPreviewValueChange?: (value: SelectableTheme | null) => void;
-  onSelect?: (value: SelectableTheme) => void;
-  onEnter?: (value: SelectableTheme) => void;
-  onFocus?: (value: SelectableTheme) => void;
+  value: WebTheme;
+  onChange: (value: WebTheme) => void;
+  highlighted?: WebTheme | null;
+  onHighlightChange?: (value: WebTheme) => void;
+  onPreviewValueChange?: (value: WebTheme | null) => void;
+  onSelect?: (value: WebTheme) => void;
+  onEnter?: (value: WebTheme) => void;
+  onFocus?: (value: WebTheme) => void;
   onBoundaryReached?: (direction: "up" | "down") => void;
   enabled?: boolean;
 }
@@ -34,18 +36,12 @@ export function ThemeSelectorContent({
   enabled = true,
 }: ThemeSelectorContentProps) {
   const labelId = useId();
-  const options = SELECTABLE_THEME_OPTIONS;
-  const optionValues = options.map((option) => option.value);
 
-  const [internalHighlight, setInternalHighlight] = useState<SelectableTheme>(highlighted ?? value);
-  const rawHighlighted = highlighted ?? internalHighlight;
-  const effectiveHighlighted = optionValues.includes(rawHighlighted)
-    ? rawHighlighted
-    : (optionValues[0] ?? "auto");
+  const [internalHighlight, setInternalHighlight] = useState<WebTheme>(highlighted ?? value);
+  const effectiveHighlighted = highlighted ?? internalHighlight;
 
   const handleHighlightChange = (nextValue: string | null) => {
-    if (nextValue === null) return;
-    if (!isSelectableTheme(nextValue) || !optionValues.includes(nextValue)) return;
+    if (!isWebTheme(nextValue)) return;
 
     setInternalHighlight(nextValue);
     onHighlightChange?.(nextValue);
@@ -53,18 +49,18 @@ export function ThemeSelectorContent({
   };
 
   const handleChange = (nextValue: string) => {
-    if (isSelectableTheme(nextValue) && optionValues.includes(nextValue)) onChange(nextValue);
+    if (isWebTheme(nextValue)) onChange(nextValue);
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!enabled) return;
 
-    if (e.key === " " && effectiveHighlighted) {
+    if (e.key === " ") {
       e.preventDefault();
       onSelect?.(effectiveHighlighted);
       return;
     }
-    if (e.key === "Enter" && effectiveHighlighted) {
+    if (e.key === "Enter") {
       e.preventDefault();
       if (onEnter) onEnter(effectiveHighlighted);
       else onSelect?.(effectiveHighlighted);
@@ -93,7 +89,7 @@ export function ThemeSelectorContent({
         autoFocus={enabled}
         wrap={false}
       >
-        {options.map((option) => (
+        {THEME_OPTIONS.map((option) => (
           // biome-ignore lint/a11y/noStaticElementInteractions: onMouseEnter/onMouseLeave drive a mouse-only hover preview over the keyboard-accessible RadioGroupItem; keyboard users select and preview through the radio itself.
           <div
             key={option.value}

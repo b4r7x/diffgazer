@@ -5,7 +5,7 @@ import { useTheme } from "@/hooks/theme-context";
 import { THEME_DOCS_COLOR_GROUPS } from "../lib/token-presentation";
 
 export function ColorGrid() {
-  const { resolved: theme } = useTheme();
+  const { theme } = useTheme();
   return (
     <div data-demo-preview data-theme={theme} className="space-y-8">
       {THEME_DOCS_COLOR_GROUPS.map((group) => (

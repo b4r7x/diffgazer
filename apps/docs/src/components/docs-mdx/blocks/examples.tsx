@@ -18,7 +18,7 @@ export function Examples({
 }) {
   const data = useDocData();
   const library = useCurrentLibrary();
-  const demos = useDemos(library);
+  const { demos, isLoading } = useDemos(library);
 
   if (!data) return null;
   const d = data.data;
@@ -35,12 +35,13 @@ export function Examples({
           throw new Error(`Missing ${library} docs example source: ${ex.name}`);
         }
         const demo = demos[ex.name] ?? null;
-        if (demo) {
+        if (isLoading || demo) {
           return (
             <DemoPreview
               key={ex.name}
               title={ex.title}
               demo={demo}
+              loading={isLoading}
               code={src.highlighted}
               rawCode={src.raw}
               frame={resolvePreviewFrame(ex.name)}

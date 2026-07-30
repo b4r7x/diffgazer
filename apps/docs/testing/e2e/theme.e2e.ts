@@ -3,8 +3,13 @@ import { expect, type Page, test } from "@playwright/test";
 const LIGHT_BACKGROUND = "rgb(247, 248, 245)";
 const THEME_COLOR_DARK = "#0a0a0a";
 const THEME_COLOR_LIGHT = "#f7f8f5";
-/** Verbatim slice of the head bootstrap; no other inline script reads this key. */
-const THEME_BOOTSTRAP_MARKER = 'localStorage.getItem("@diffgazer/docs-theme")';
+/**
+ * Verbatim slice of the head bootstrap, and of nothing else in the document.
+ * The script reads `localStorage.getItem(config.storageKey)`, so the key reaches
+ * the page only through the serialized config argument — match that, not a
+ * `getItem("...")` call that the source never spells out.
+ */
+const THEME_BOOTSTRAP_MARKER = '"storageKey":"@diffgazer/docs-theme"';
 /**
  * These specs run against the built docs, so React ships minified and a mismatch
  * says only "Minified React error #418; visit https://react.dev/errors/418". The
@@ -41,30 +46,26 @@ function colorScheme(page: Page) {
 }
 
 /**
- * The toggle's onClick is attached only after React hydration, and Playwright's
- * actionability auto-wait does not wait for hydration. Retry the first click of
- * a spec until the cycle actually advances off the system theme.
+ * Playwright's actionability auto-wait does not wait for hydration, and the toggle's
+ * onClick only exists after it, so the click has to be retried.
  */
-async function clickUntilHydrated(page: Page) {
+async function clickUntilTheme(page: Page, theme: "dark" | "light") {
   await expect(async () => {
     await themeToggle(page).click();
-    await expect(themeToggle(page)).toHaveText(/dark/i);
+    await expect(themeToggle(page)).toHaveText(new RegExp(theme, "i"));
   }).toPass();
 }
 
 test.describe("Docs theme", () => {
-  test("the chrome toggle cycles dark, light, and system, and persists the choice", async ({
+  test("the chrome toggle flips between dark and light, and persists the choice", async ({
     page,
   }) => {
     await page.goto("/");
-    // No stored preference: a first-time reader follows the OS, emulated dark.
-    await expect(themeToggle(page)).toHaveText(/system/i);
+    // No stored theme: a first-time reader lands on dark.
+    await expect(themeToggle(page)).toHaveText(/dark/i);
     await expect(documentTheme(page)).toHaveAttribute("data-theme", "dark");
 
-    await clickUntilHydrated(page);
-    await expect(documentTheme(page)).toHaveAttribute("data-theme", "dark");
-
-    await themeToggle(page).click();
+    await clickUntilTheme(page, "light");
     await expect(documentTheme(page)).toHaveAttribute("data-theme", "light");
     // Light theme background is --base-bg: #f7f8f5.
     expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(
@@ -75,55 +76,23 @@ test.describe("Docs theme", () => {
     await expect(documentTheme(page)).toHaveAttribute("data-theme", "light");
     await expect(themeToggle(page)).toHaveText(/light/i);
 
-    await themeToggle(page).click();
-    await expect(themeToggle(page)).toHaveText(/system/i);
-    await expect(documentTheme(page)).toHaveAttribute("data-theme", "dark");
-  });
-
-  test("a pinned theme outranks the OS scheme across a reload", async ({ page }) => {
-    await page.goto("/");
-    await clickUntilHydrated(page);
-    await expect(documentTheme(page)).toHaveAttribute("data-theme", "dark");
-
-    await page.emulateMedia({ colorScheme: "light" });
-    await expect(documentTheme(page)).toHaveAttribute("data-theme", "dark");
-
-    await page.reload();
-    await expect(documentTheme(page)).toHaveAttribute("data-theme", "dark");
-    await expect(themeToggle(page)).toHaveText(/dark/i);
-    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).not.toBe(
-      LIGHT_BACKGROUND,
-    );
-  });
-
-  test("the system theme follows a live OS change without a reload", async ({ page }) => {
-    await page.goto("/");
-
-    // Cycle all the way back to the system theme; the first click doubles as the
-    // hydration gate, so the media listener is attached by the time it lands.
-    await clickUntilHydrated(page);
-    await themeToggle(page).click();
-    await themeToggle(page).click();
-    await expect(themeToggle(page)).toHaveText(/system/i);
-    await expect(documentTheme(page)).toHaveAttribute("data-theme", "dark");
-
-    await page.emulateMedia({ colorScheme: "light" });
-    await expect(documentTheme(page)).toHaveAttribute("data-theme", "light");
-    await expect(themeToggle(page)).toHaveText(/system/i);
-    expect(await colorScheme(page)).toBe("light");
-
-    await page.emulateMedia({ colorScheme: "dark" });
+    await clickUntilTheme(page, "dark");
     await expect(documentTheme(page)).toHaveAttribute("data-theme", "dark");
     expect(await colorScheme(page)).toBe("dark");
   });
 
-  test("a first-time reader on a light OS lands on the light theme", async ({ page }) => {
+  test("the dark default holds on a light OS, with no theme following the OS", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "light" });
     await page.goto("/");
 
+    await expect(documentTheme(page)).toHaveAttribute("data-theme", "dark");
+    await expect(themeToggle(page)).toHaveText(/dark/i);
+    expect(await colorScheme(page)).toBe("dark");
+
+    await clickUntilTheme(page, "light");
+    await page.emulateMedia({ colorScheme: "dark" });
+
     await expect(documentTheme(page)).toHaveAttribute("data-theme", "light");
-    await expect(themeToggle(page)).toHaveText(/system/i);
-    expect(await colorScheme(page)).toBe("light");
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
       "content",
       THEME_COLOR_LIGHT,
@@ -135,10 +104,9 @@ test.describe("Docs theme", () => {
     const themeColor = page.locator('meta[name="theme-color"]');
     await expect(themeColor).toHaveAttribute("content", THEME_COLOR_DARK);
 
-    await clickUntilHydrated(page);
+    await clickUntilTheme(page, "light");
     // Hydration must leave the meta the bootstrap added alone, not hoist a second.
     await expect(themeColor).toHaveCount(1);
-    await themeToggle(page).click();
 
     await expect(documentTheme(page)).toHaveAttribute("data-theme", "light");
     await expect(themeColor).toHaveAttribute("content", THEME_COLOR_LIGHT);
@@ -152,7 +120,7 @@ test.describe("Docs theme", () => {
     // just as happily against a document that never carried the bootstrap.
     expect((await response?.text()) ?? "").toContain(THEME_BOOTSTRAP_MARKER);
 
-    await clickUntilHydrated(page);
+    await clickUntilTheme(page, "light");
 
     // ScriptOnce appends document.currentScript.remove(), so no inline head
     // script may still carry the bootstrap: not the served tag surviving, and

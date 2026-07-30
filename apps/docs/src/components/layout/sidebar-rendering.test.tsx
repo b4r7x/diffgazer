@@ -13,11 +13,12 @@ const routerBoundary = vi.hoisted(() => ({
 
 // Boundary mock: @tanstack/react-router is the external route context boundary.
 vi.mock("@tanstack/react-router", async () => {
-  const { RouterLinkMock, useLocationMock, useRouterStateMock } = await import(
+  const { RouterLinkMock, ScriptOnceMock, useLocationMock, useRouterStateMock } = await import(
     "@/testing/router-mock"
   );
   return {
     Link: RouterLinkMock,
+    ScriptOnce: ScriptOnceMock,
     ...useLocationMock({
       get pathname() {
         return routerBoundary.pathname;

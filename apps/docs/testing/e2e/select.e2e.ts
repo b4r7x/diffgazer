@@ -17,10 +17,8 @@ async function expectDocumentFocus(locator: Locator): Promise<void> {
     .toBe(true);
 }
 
-// The page renders more than one `defaultOpen` example ("Framework" on the card
-// variant, "Commands" on the open-listbox variant). Any one of them left open is an
-// overlay layer, and the dismiss stack deliberately swallows the click that closes a
-// layer — so a single leftover would eat the first click of every test below.
+// The page renders two `defaultOpen` examples; most tests isolate one Select so their
+// focus and listbox assertions do not observe multiple open overlays.
 const DEFAULT_OPEN_EXAMPLES = ["Framework", "Commands"] as const;
 
 async function closeDefaultOpenExamples(page: Page): Promise<void> {
@@ -31,6 +29,21 @@ async function closeDefaultOpenExamples(page: Page): Promise<void> {
     await expect(trigger).toHaveAttribute("aria-expanded", "false");
   }
   await expect(page.locator('[role="combobox"][aria-expanded="true"]')).toHaveCount(0);
+}
+
+async function expectDefaultOpenExamplesAtPageTop(page: Page): Promise<void> {
+  await expect(page.getByRole("heading", { level: 1, name: "Select" })).toBeVisible();
+  for (const name of DEFAULT_OPEN_EXAMPLES) {
+    const trigger = page.getByRole("combobox", { name, exact: true });
+    await expect(trigger).toHaveAttribute("aria-expanded", "true", { timeout: 15_000 });
+    const listboxId = await trigger.getAttribute("aria-controls");
+    if (!listboxId) throw new Error(`${name} did not expose aria-controls`);
+    await expect(page.locator(`[id="${listboxId}"]`)).toHaveAttribute(
+      "aria-activedescendant",
+      /.+/,
+    );
+  }
+  expect(await page.locator("#main-content").evaluate((element) => element.scrollTop)).toBe(0);
 }
 
 function getDefaultBranchTrigger(page: Page): Locator {
@@ -59,6 +72,50 @@ async function selectSecondBranch(
 }
 
 test.describe("Select", () => {
+  test("keeps a direct load at the page top with default-open examples", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto("/ui/components/select");
+    await expectDefaultOpenExamplesAtPageTop(page);
+  });
+
+  test("keeps cold sidebar navigation at the page top with default-open examples", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto("/ui/components/button");
+    await expect(page.getByRole("heading", { level: 1, name: "Button" })).toBeVisible();
+    await page.locator("#main-content").evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await expect
+      .poll(() => page.locator("#main-content").evaluate((element) => element.scrollTop))
+      .toBeGreaterThan(0);
+    const sidebar = page.getByRole("complementary", { name: /sidebar navigation/i });
+    await sidebar.getByRole("link", { name: "Select", exact: true }).click();
+
+    await expect(page).toHaveURL(/\/ui\/components\/select$/);
+    await expectDefaultOpenExamplesAtPageTop(page);
+  });
+
+  test("opens Branch on the first click while default-open examples are mounted", async ({
+    page,
+  }) => {
+    await page.goto("/ui/components/select");
+    for (const name of DEFAULT_OPEN_EXAMPLES) {
+      await expect(page.getByRole("combobox", { name, exact: true })).toHaveAttribute(
+        "aria-expanded",
+        "true",
+        { timeout: 15_000 },
+      );
+    }
+
+    const trigger = getDefaultBranchTrigger(page);
+    await trigger.click();
+
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    await getOpenListbox(page, trigger);
+  });
+
   test("focuses the listbox after a pointer open and selects with ArrowDown and Enter", async ({
     page,
   }) => {

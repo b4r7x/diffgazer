@@ -2,12 +2,14 @@
 
 import { cva } from "class-variance-authority";
 import type { ComponentPropsWithRef, KeyboardEvent, ReactNode } from "react";
+import { OVERLAY_TRIGGER_PROPS } from "@/hooks/overlay-dismiss-stack";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
 import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
 import { useSelectContext } from "./select-context";
 import { isActiveOptionVisible, toOptionId } from "./selection";
+import { focusOpenContent } from "./use-content-navigation";
 import { useSelectTypeahead } from "./use-typeahead";
 import { getVisibleEnabledOptions } from "./visible-options";
 
@@ -61,6 +63,8 @@ export function SelectTrigger({
     searchable,
     onOpenChange,
     triggerRef,
+    contentRef,
+    searchInputRef,
     variant,
     triggerId,
     listboxId,
@@ -88,7 +92,6 @@ export function SelectTrigger({
       : undefined;
   const composedDescribedBy = mergeIds(ariaDescribedByProp, ariaDescribedBy);
   const composedLabelledBy = mergeIds(ariaLabelledByProp, ariaLabelledBy);
-
   // APG closed-combobox keys: only while closed (the open listbox owns nav) and
   // not searchable (its search input is the combobox).
   const highlightFirstOrLast = (edge: "first" | "last") => {
@@ -109,7 +112,11 @@ export function SelectTrigger({
       case "ArrowDown":
       case "ArrowUp":
         e.preventDefault();
-        if (!open) onOpenChange(true);
+        if (open) {
+          focusOpenContent(searchInputRef, contentRef);
+        } else {
+          onOpenChange(true);
+        }
         return;
     }
 
@@ -132,6 +139,7 @@ export function SelectTrigger({
     // biome-ignore lint/a11y/useAriaPropsSupportedByRole: role is conditionally "combobox" (Biome cannot resolve the ternary); aria-activedescendant is applied in that same branch and is valid for the combobox role.
     <button
       {...props}
+      {...(disabled ? {} : OVERLAY_TRIGGER_PROPS)}
       ref={composedRef}
       id={triggerId}
       type="button"

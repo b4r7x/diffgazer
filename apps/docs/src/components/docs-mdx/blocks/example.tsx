@@ -7,7 +7,7 @@ import { useCurrentLibrary } from "./use-current-library";
 export function Example({ name }: { name: string }) {
   const data = useDocData();
   const library = useCurrentLibrary();
-  const demos = useDemos(library);
+  const { demos, isLoading } = useDemos(library);
 
   if (!data) return null;
   const d = data.data;
@@ -19,6 +19,7 @@ export function Example({ name }: { name: string }) {
   return (
     <DemoPreview
       demo={demos[name] ?? null}
+      loading={isLoading}
       code={src.highlighted}
       rawCode={src.raw}
       frame={resolvePreviewFrame(name)}

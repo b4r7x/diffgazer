@@ -230,12 +230,16 @@ describe("TableOfContentsPanel", () => {
     expect(links[0]).toHaveAttribute("href", "#duplicate");
   });
 
+  // Both moves jump under reduced motion, spelled differently: the article scroll is
+  // @diffgazer/ui's useActiveHeading asking for `auto`, while the docs' own rail asks
+  // for `instant` so a stylesheet's scroll-behavior cannot re-animate it.
   it.each([
-    { reducedMotion: true, behavior: "auto" },
-    { reducedMotion: false, behavior: "smooth" },
-  ] as const)("uses $behavior scrolling for main content and an overflowed sidebar", async ({
+    { reducedMotion: true, railBehavior: "instant", articleBehavior: "auto" },
+    { reducedMotion: false, railBehavior: "smooth", articleBehavior: "smooth" },
+  ] as const)("uses $railBehavior rail scrolling and $articleBehavior article scrolling", async ({
     reducedMotion,
-    behavior,
+    railBehavior,
+    articleBehavior,
   }) => {
     const user = userEvent.setup();
     stubMatchMedia((query) => reducedMotion && query === "(prefers-reduced-motion: reduce)");
@@ -291,11 +295,13 @@ describe("TableOfContentsPanel", () => {
     // fireEvent retained: scroll has no user-event equivalent and is the external event observed by the scroll-spy.
     fireEvent.scroll(mainContent);
     await waitFor(() => expect(overview).toHaveAttribute("aria-current", "location"));
-    await waitFor(() => expect(sidebarScroll).toHaveBeenCalledWith({ top: 48, behavior }));
+    await waitFor(() =>
+      expect(sidebarScroll).toHaveBeenCalledWith({ top: 48, behavior: railBehavior }),
+    );
 
     overviewHeading.getBoundingClientRect = () => new DOMRect(0, 200, 100, 20);
     await user.click(overview);
-    expect(mainScroll).toHaveBeenCalledWith({ top: 104, behavior });
+    expect(mainScroll).toHaveBeenCalledWith({ top: 104, behavior: articleBehavior });
   });
 });
 

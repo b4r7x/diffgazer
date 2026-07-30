@@ -1,9 +1,72 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { DocsPageHeader } from "./page-layout";
+import { render, screen, within } from "@testing-library/react";
+import type { TableOfContents } from "fumadocs-core/toc";
+import { afterEach, describe, expect, it } from "vitest";
+import { DocsPageHeader, DocsPageLayout } from "./page-layout";
+
+const TOC: TableOfContents = [
+  { depth: 2, url: "#install", title: "Install" },
+  { depth: 2, url: "#usage", title: "Usage" },
+];
+
+function Article() {
+  return (
+    <>
+      <h2 id="install">Install</h2>
+      <h2 id="usage">Usage</h2>
+    </>
+  );
+}
+
+/** useDocsToc reports ready only once it finds `<main id="main-content">`. */
+function renderInContentContainer(): void {
+  const main = document.createElement("main");
+  main.id = "main-content";
+  document.body.append(main);
+
+  render(
+    <DocsPageLayout toc={TOC}>
+      <Article />
+    </DocsPageLayout>,
+    { container: main },
+  );
+}
+
+afterEach(() => {
+  document.body.replaceChildren();
+});
+
+describe("DocsPageLayout table of contents", () => {
+  it("resolves the loading skeletons into real tables of contents", () => {
+    renderInContentContainer();
+
+    // The mobile disclosure and the desktop rail swap on the same ready flag.
+    const tocs = screen.getAllByRole("navigation", { name: "On this page" });
+    expect(tocs).toHaveLength(2);
+
+    for (const toc of tocs) {
+      expect(toc).not.toHaveAttribute("aria-hidden");
+      // A skeleton carries no links, so an unresolved table of contents fails here.
+      const hrefs = within(toc)
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("href"));
+      expect(hrefs).toEqual(["#install", "#usage"]);
+    }
+  });
+
+  it("keeps the skeleton out of the accessibility tree until the content container exists", () => {
+    render(
+      <DocsPageLayout toc={TOC}>
+        <Article />
+      </DocsPageLayout>,
+    );
+
+    expect(screen.queryAllByRole("navigation", { name: "On this page" })).toEqual([]);
+    expect(screen.queryAllByRole("link")).toEqual([]);
+  });
+});
 
 describe("DocsPageHeader", () => {
   it("renders the lib/slug scope line above the title", () => {

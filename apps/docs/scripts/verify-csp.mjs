@@ -16,6 +16,7 @@ const REQUEST_TIMEOUT_MS = 10_000;
 const PATHS = ["/", "/app/architecture"];
 
 const INLINE_SCRIPT = /<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/g;
+const ANY_SCRIPT = /<script[\s>]/;
 
 const { waitForListeningOrigin } = createNitroReadyWatcher("[verify-csp]");
 
@@ -32,6 +33,12 @@ function waitForExit(child) {
 }
 
 function assertPage(path, csp, html) {
+  // A page with no scripts at all satisfies every nonce assertion below, so reject
+  // that shape first or a document that lost its client entry passes this gate.
+  if (!ANY_SCRIPT.test(html)) {
+    throw new Error(`[verify-csp] ${path}: page has no <script> tags at all; it cannot hydrate`);
+  }
+
   const scriptSrc = csp
     .split(";")
     .map((directive) => directive.trim())

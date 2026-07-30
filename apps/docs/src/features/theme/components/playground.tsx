@@ -17,7 +17,7 @@ function buildDefaultPrimitives(theme: DocsTheme): Record<string, string> {
 }
 
 export function ThemePlayground() {
-  const { resolved: theme } = useTheme();
+  const { theme } = useTheme();
   const [primitives, setPrimitives] = useState<Record<string, string>>(() =>
     buildDefaultPrimitives(theme),
   );

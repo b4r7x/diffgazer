@@ -10,6 +10,12 @@ import { MobileNavProvider } from "@/hooks/mobile-nav-context";
 import { stubMatchMedia } from "@/testing/match-media";
 import { LegalPageLayout } from "./page-layout";
 
+const legalRouteBoundary = vi.hoisted(() => ({ pendingPath: null as string | null }));
+
+vi.mock("@/features/legal/hooks/use-pending-legal-route", () => ({
+  usePendingLegalRoute: () => legalRouteBoundary.pendingPath,
+}));
+
 // Boundary mock: TanStack Router is the external routing library; legal links/current path are controlled here.
 vi.mock("@tanstack/react-router", async () => {
   const { RouterLinkMock, useLocationMock } = await import("@/testing/router-mock");
@@ -20,6 +26,7 @@ vi.mock("@tanstack/react-router", async () => {
 });
 
 beforeEach(() => {
+  legalRouteBoundary.pendingPath = null;
   stubMatchMedia({ isDesktop: true });
   Element.prototype.scrollIntoView = () => {};
 });
@@ -64,6 +71,21 @@ describe("LegalPageLayout", () => {
     const main = screen.getByRole("main");
     main.focus();
     expect(main).toHaveFocus();
+  });
+
+  it("replaces stale legal content with a loading frame during navigation", () => {
+    legalRouteBoundary.pendingPath = "/terms";
+
+    renderLegalLayout(
+      <LegalPageLayout panelLabel="PRIVACY">
+        <h1>Privacy policy</h1>
+      </LegalPageLayout>,
+    );
+
+    expect(screen.queryByRole("heading", { name: "Privacy policy" })).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Loading legal page");
+    expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByText("[ LEGAL / LOADING ]")).toBeInTheDocument();
   });
 
   it("keeps the legal layout available and offers reload when content rendering fails", async () => {

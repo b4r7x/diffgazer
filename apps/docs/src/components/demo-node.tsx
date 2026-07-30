@@ -10,7 +10,14 @@ const LOADING_FALLBACK = (
 );
 
 /** Renders a lazily-loaded example, or a silent placeholder when a page has none. */
-export function DemoNode({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
+export function DemoNode({
+  demo: Demo,
+  loading = false,
+}: {
+  demo: LazyExoticComponent<ComponentType> | null;
+  loading?: boolean;
+}) {
+  if (loading) return LOADING_FALLBACK;
   if (!Demo) return EMPTY_FALLBACK;
   return (
     <Suspense fallback={LOADING_FALLBACK}>

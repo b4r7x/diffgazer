@@ -10,8 +10,12 @@ export const getRouter = () =>
     scrollRestoration: true,
     scrollRestorationBehavior: "instant",
     scrollToTopSelectors: ["#main-content"],
+    // A document opened at a #hash must be at the anchor by its first painted frame.
+    // Nothing in the docs reaches a hash through the router today — the TOC scrolls
+    // itself and MDX links are plain anchors — so this only decides how the first
+    // `<Link hash>` will behave.
     defaultHashScrollIntoView: {
-      behavior: "smooth",
+      behavior: "instant",
       block: "start",
       inline: "nearest",
     },

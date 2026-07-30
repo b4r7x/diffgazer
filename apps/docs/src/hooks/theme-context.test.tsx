@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { themeBootstrap } from "./theme-bootstrap";
 import {
@@ -11,21 +10,16 @@ import {
   themeToggleLabel,
 } from "./theme-context";
 
-function stubSystemTheme(theme: "dark" | "light") {
-  stubMatchMedia((query) => query.includes("prefers-color-scheme: dark") && theme === "dark");
-}
-
 beforeEach(() => {
   localStorage.clear();
   document.documentElement.removeAttribute("data-theme");
   document.documentElement.removeAttribute("style");
-  stubSystemTheme("light");
 });
 
 afterEach(() => {
   localStorage.clear();
   for (const meta of document.head.querySelectorAll('meta[name="theme-color"]')) meta.remove();
-  stubMatchMedia(false);
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -39,19 +33,12 @@ describe("theme bootstrap", () => {
   }
 
   it.each([
-    { stored: undefined, system: "dark", expected: "dark", label: "missing preference" },
-    { stored: undefined, system: "light", expected: "light", label: "missing preference" },
-    { stored: "auto", system: "dark", expected: "dark", label: "invalid preference" },
-    { stored: "system", system: "light", expected: "light", label: "system preference" },
-    { stored: "system", system: "dark", expected: "dark", label: "system preference" },
-    { stored: "dark", system: "light", expected: "dark", label: "pinned dark preference" },
-    { stored: "light", system: "dark", expected: "light", label: "pinned light preference" },
-  ] as const)("bootstraps $expected for a $label under a $system system theme", ({
-    stored,
-    system,
-    expected,
-  }) => {
-    stubSystemTheme(system);
+    { stored: undefined, expected: "dark", label: "missing theme" },
+    { stored: "system", expected: "dark", label: "legacy system preference" },
+    { stored: "auto", expected: "dark", label: "unrecognized theme" },
+    { stored: "dark", expected: "dark", label: "stored dark theme" },
+    { stored: "light", expected: "light", label: "stored light theme" },
+  ] as const)("bootstraps $expected for a $label", ({ stored, expected }) => {
     if (stored !== undefined) localStorage.setItem("@diffgazer/docs-theme", stored);
 
     executeThemeBootstrap();
@@ -72,22 +59,21 @@ describe("theme bootstrap", () => {
     finishThemeBootstrap();
   });
 
-  it("labels a server-rendered toggle with the stored preference before hydration", () => {
-    localStorage.setItem("@diffgazer/docs-theme", "system");
+  it("labels a server-rendered toggle with the stored theme before hydration", () => {
+    localStorage.setItem("@diffgazer/docs-theme", "light");
     const toggle = document.createElement("button");
     toggle.dataset.docsThemeToggle = "";
     document.body.append(toggle);
 
     executeThemeBootstrap();
 
-    expect(toggle).toHaveAttribute("aria-label", themeToggleLabel("system"));
-    expect(toggle).toHaveTextContent("system");
+    expect(toggle).toHaveAttribute("aria-label", themeToggleLabel("light"));
+    expect(toggle).toHaveTextContent("light");
     finishThemeBootstrap();
     toggle.remove();
   });
 
-  it("falls back to the system theme when theme storage throws", () => {
-    stubSystemTheme("dark");
+  it("falls back to the default theme when theme storage throws", () => {
     const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new DOMException("Storage unavailable", "SecurityError");
     });
@@ -113,22 +99,14 @@ describe("theme bootstrap", () => {
     finishThemeBootstrap();
   });
 
-  it("bails out without throwing when the browser has no matchMedia", () => {
-    // The script runs in <head> before the first paint, so a stripped webview
-    // must get a silent bail-out that leaves the served theme alone rather than
-    // an uncaught error on every load.
-    document.documentElement.setAttribute("data-theme", "dark");
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      writable: true,
-      value: () => {
-        throw new TypeError("matchMedia is not a function");
-      },
+  it("bails out without throwing when the browser has no MutationObserver", () => {
+    localStorage.setItem("@diffgazer/docs-theme", "light");
+    vi.stubGlobal("MutationObserver", () => {
+      throw new TypeError("MutationObserver is not a constructor");
     });
 
     expect(executeThemeBootstrap).not.toThrow();
 
-    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-    expect(document.head.querySelectorAll('meta[name="theme-color"]')).toHaveLength(0);
+    expect(document.documentElement).toHaveAttribute("data-theme", "light");
   });
 });

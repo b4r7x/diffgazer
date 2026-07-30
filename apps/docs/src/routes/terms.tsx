@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LegalPageView } from "@/features/legal/components/page-view";
+import { LegalPageView, legalClientLoader } from "@/features/legal/components/page-view";
 import { getLegalPageEntry, legalRouteOptions } from "@/features/legal/lib/pages";
 
 const page = getLegalPageEntry("terms");
 
 export const Route = createFileRoute("/terms")({
   component: TermsPage,
-  ...legalRouteOptions(page.slug),
+  ...legalRouteOptions(page.slug, (path) => legalClientLoader.preload(path)),
 });
 
 function TermsPage() {

@@ -41,6 +41,26 @@ describe("Select keyboard navigation", () => {
     expect(searchInput).toHaveAttribute("aria-controls", screen.getByRole("listbox").id);
   });
 
+  it.each([
+    { label: "dropdown", variant: "default" as const, withSearch: false },
+    { label: "searchable dropdown", variant: "default" as const, withSearch: true },
+    { label: "card", variant: "card" as const, withSearch: false },
+    { label: "searchable card", variant: "card" as const, withSearch: true },
+  ])("hands keyboard focus into an initially-open $label", async ({ variant, withSearch }) => {
+    const user = userEvent.setup();
+    renderSelect({ variant, withSearch, defaultOpen: true });
+    const trigger = getSelectTrigger();
+    const focusTarget = withSearch ? getSearchInput() : screen.getByRole("listbox");
+    const banana = screen.getByRole("option", { name: "Banana" });
+
+    trigger.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(focusTarget).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(focusTarget).toHaveAttribute("aria-activedescendant", banana.id);
+  });
+
   it("closes with Escape key", async () => {
     const user = userEvent.setup();
     renderSelect({ variant: "default", defaultOpen: true });
@@ -435,6 +455,35 @@ describe("Select keyboard navigation", () => {
     }
   });
 
+  it.each([
+    { label: "default-open dropdown", variant: "default" as const, controlled: false },
+    { label: "controlled-open dropdown", variant: "default" as const, controlled: true },
+    { label: "default-open card", variant: "card" as const, controlled: false },
+    { label: "controlled-open card", variant: "card" as const, controlled: true },
+  ])("does not scroll an initially $label into view", async ({ variant, controlled }) => {
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const scrollFn = vi.fn();
+    Element.prototype.scrollIntoView = scrollFn;
+
+    try {
+      renderSelect({
+        variant,
+        ...(controlled ? { open: true } : { defaultOpen: true }),
+      });
+
+      const listbox = await screen.findByRole("listbox");
+      const apple = screen.getByRole("option", { name: "Apple" });
+      await waitFor(() => expect(listbox).toHaveAttribute("aria-activedescendant", apple.id));
+      expect(scrollFn).not.toHaveBeenCalled();
+    } finally {
+      if (originalScrollIntoView) {
+        Element.prototype.scrollIntoView = originalScrollIntoView;
+      } else {
+        Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+      }
+    }
+  });
+
   it("scrolls the new highlighted option into view on listbox typeahead", async () => {
     const user = userEvent.setup();
     const originalScrollIntoView = Element.prototype.scrollIntoView;
@@ -446,11 +495,12 @@ describe("Select keyboard navigation", () => {
 
     try {
       renderSelect({ defaultOpen: true });
-      await waitFor(() => expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" }));
-      scrollFn.mockClear();
-      scrolledElements.length = 0;
+      const listbox = screen.getByRole("listbox");
+      const apple = screen.getByRole("option", { name: /apple/i });
+      await waitFor(() => expect(listbox).toHaveAttribute("aria-activedescendant", apple.id));
+      expect(scrollFn).not.toHaveBeenCalled();
 
-      screen.getByRole("listbox").focus();
+      listbox.focus();
       await user.keyboard("b");
 
       await waitFor(() => expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" }));
@@ -475,11 +525,12 @@ describe("Select keyboard navigation", () => {
 
     try {
       renderSelect({ withSearch: true, defaultOpen: true });
-      await waitFor(() => expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" }));
-      scrollFn.mockClear();
-      scrolledElements.length = 0;
+      const searchInput = getSearchInput();
+      const apple = screen.getByRole("option", { name: /apple/i });
+      await waitFor(() => expect(searchInput).toHaveAttribute("aria-activedescendant", apple.id));
+      expect(scrollFn).not.toHaveBeenCalled();
 
-      await user.type(getSearchInput(), "{ArrowDown}");
+      await user.type(searchInput, "{ArrowDown}");
 
       await waitFor(() => expect(scrollFn).toHaveBeenCalledWith({ block: "nearest" }));
       expect(scrolledElements).toContain(screen.getByRole("option", { name: /banana/i }));
@@ -520,7 +571,9 @@ describe("Select keyboard navigation", () => {
   it("has no a11y violations with the listbox open via keyboard navigation", async () => {
     const user = userEvent.setup();
     const { container } = renderSelect({ defaultOpen: true });
+    getSelectTrigger().focus();
     await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("listbox")).toHaveFocus();
     expect(await axe(container)).toHaveNoViolations();
   });
 });

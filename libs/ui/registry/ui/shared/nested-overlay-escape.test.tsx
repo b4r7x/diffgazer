@@ -51,7 +51,7 @@ describe("Nested overlay: Popover inside Dialog", () => {
 });
 
 describe("Nested overlay: Select inside Popover", () => {
-  it("closes the select before the surrounding popover on successive Escape presses", async () => {
+  it("closes an initially open select before its popover when focus is still on the page", async () => {
     const user = userEvent.setup();
     const onPopoverChange = vi.fn();
     const onSelectChange = vi.fn();
@@ -75,6 +75,47 @@ describe("Nested overlay: Select inside Popover", () => {
 
     const popover = screen.getByRole("dialog", { name: "Settings" });
     const selectTrigger = screen.getByRole("combobox", { name: "Branch" });
+    await screen.findByRole("listbox");
+    expect(document.body).toHaveFocus();
+
+    await user.keyboard("{Escape}");
+
+    expect(onSelectChange).toHaveBeenCalledWith(false);
+    expect(onPopoverChange).not.toHaveBeenCalled();
+    expect(selectTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(popover).toHaveAttribute("data-state", "open");
+
+    await user.keyboard("{Escape}");
+
+    expect(onPopoverChange).toHaveBeenCalledWith(false);
+    expect(popover).toHaveAttribute("data-state", "closed");
+  });
+
+  it("closes the select before the surrounding popover on successive Escape presses", async () => {
+    const user = userEvent.setup();
+    const onPopoverChange = vi.fn();
+    const onSelectChange = vi.fn();
+
+    render(
+      <Popover triggerMode="click" defaultOpen onOpenChange={onPopoverChange}>
+        <Popover.Trigger>Open Popover</Popover.Trigger>
+        <Popover.Content role="dialog" aria-label="Settings" autoFocus={false}>
+          <Select onOpenChange={onSelectChange}>
+            <Select.Trigger aria-label="Branch">
+              <SelectValue placeholder="Choose a branch" />
+            </Select.Trigger>
+            <SelectContent>
+              <SelectItem value="main">main</SelectItem>
+              <SelectItem value="develop">develop</SelectItem>
+            </SelectContent>
+          </Select>
+        </Popover.Content>
+      </Popover>,
+    );
+
+    const popover = screen.getByRole("dialog", { name: "Settings" });
+    const selectTrigger = screen.getByRole("combobox", { name: "Branch" });
+    await user.click(selectTrigger);
     const listbox = await screen.findByRole("listbox");
     await waitFor(() => expect(listbox).toHaveFocus());
 

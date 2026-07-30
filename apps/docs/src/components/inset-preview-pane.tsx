@@ -85,7 +85,13 @@ function FauxDocsBody({ children }: { children: ReactNode }) {
   );
 }
 
-export function InsetPreviewPane({ demo }: { demo: LazyExoticComponent<ComponentType> | null }) {
+export function InsetPreviewPane({
+  demo,
+  loading = false,
+}: {
+  demo: LazyExoticComponent<ComponentType> | null;
+  loading?: boolean;
+}) {
   return (
     <div className="border border-border bg-background overflow-hidden">
       <InsetToolbar />
@@ -93,7 +99,7 @@ export function InsetPreviewPane({ demo }: { demo: LazyExoticComponent<Component
           the rail border and a wider demo can never crush the faux page. */}
       <div className="grid grid-cols-[16rem_1fr] h-[440px]">
         <div className="flex flex-col items-stretch bg-background overflow-y-auto overflow-x-hidden scrollbar-thin [&>*]:min-w-0">
-          <DemoNode demo={demo} />
+          <DemoNode demo={demo} loading={loading} />
         </div>
         <div className="@container/pane flex flex-col min-w-0 bg-background relative border-l border-border">
           <FauxDocsTopbar />

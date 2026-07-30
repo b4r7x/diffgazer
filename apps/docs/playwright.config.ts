@@ -24,10 +24,8 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "retain-on-failure",
-    // A reader with no stored preference now follows the OS, so the emulated
-    // scheme decides what every spec renders. Pinning dark keeps the visual
-    // baselines and the chrome specs on the theme they were authored against;
-    // the theme spec emulates light explicitly where it needs the other side.
+    // The site ignores the OS scheme, but the browser still paints its own widgets
+    // (scrollbars, form controls) from it inside the visual baselines.
     colorScheme: "dark",
   },
   projects: [

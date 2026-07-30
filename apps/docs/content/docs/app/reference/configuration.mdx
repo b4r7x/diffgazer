@@ -29,7 +29,7 @@ These are the fields in the settings config. Anything you do not set falls back 
 
 | Setting | Type | Default | Description |
 | --- | --- | --- | --- |
-| `theme` | `auto` \| `dark` \| `light` \| `terminal` | `auto` | The UI theme. `auto` follows your system preference. |
+| `theme` | `auto` \| `dark` \| `light` \| `terminal` | `auto` | The UI theme. In the TUI, `auto` matches your terminal; the web UI offers dark and light and shows `auto` as dark. |
 | `defaultLenses` | array of lens ids | `correctness`, `security`, `performance`, `simplicity`, `tests` | Which review lenses run by default. All five are on out of the box. |
 | `defaultProfile` | profile id or `null` | `null` | A saved review profile to apply by default. `null` means no profile is preselected. |
 | `severityThreshold` | `blocker` \| `high` \| `medium` \| `low` \| `nit` | `low` | The lowest severity an issue can have and still be shown. `low` keeps almost everything; `nit` would keep even the smallest notes. |

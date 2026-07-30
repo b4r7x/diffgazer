@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
+import { stubMatchMedia as stubCoreMatchMedia } from "@diffgazer/core/testing/match-media";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PageTree } from "@/lib/page-tree";
 import { stubMatchMedia } from "@/testing/match-media";
@@ -11,13 +13,16 @@ const routerBoundary = vi.hoisted(() => ({
   pathname: "/ui/components/button",
 }));
 
+const scrollIntoView = vi.fn();
+
 // Boundary mock: @tanstack/react-router is the external route context boundary.
 vi.mock("@tanstack/react-router", async () => {
-  const { RouterLinkMock, useLocationMock, useRouterStateMock } = await import(
+  const { RouterLinkMock, ScriptOnceMock, useLocationMock, useRouterStateMock } = await import(
     "@/testing/router-mock"
   );
   return {
     Link: RouterLinkMock,
+    ScriptOnce: ScriptOnceMock,
     ...useLocationMock({
       get pathname() {
         return routerBoundary.pathname;
@@ -48,12 +53,59 @@ function renderSidebar(onNavigate = vi.fn()) {
 
 beforeEach(() => {
   stubMatchMedia({ isDesktop: true });
-  Element.prototype.scrollIntoView = () => {};
+  scrollIntoView.mockReset();
+  Element.prototype.scrollIntoView = scrollIntoView;
   routerBoundary.pathname = "/ui/components/button";
   window.history.replaceState(null, "", routerBoundary.pathname);
 });
 
+function renderStrict() {
+  const getUi = () => (
+    <StrictMode>
+      <DocsSidebar tree={TREE} library="ui" />
+    </StrictMode>
+  );
+  const view = render(getUi());
+  return {
+    navigateTo(pathname: string) {
+      routerBoundary.pathname = pathname;
+      view.rerender(getUi());
+    },
+    latestScroll: () => ({
+      target: scrollIntoView.mock.contexts.at(-1),
+      options: scrollIntoView.mock.lastCall?.[0],
+    }),
+  };
+}
+
 describe("DocsSidebar navigation", () => {
+  it("centers the active page on initial load and minimally reveals later pages", () => {
+    const { navigateTo, latestScroll } = renderStrict();
+
+    expect(latestScroll()).toEqual({
+      target: screen.getByRole("link", { name: "Button" }),
+      options: { block: "center", behavior: "instant" },
+    });
+
+    navigateTo("/ui/components/callout");
+
+    expect(latestScroll()).toEqual({
+      target: screen.getByRole("link", { name: "Callout" }),
+      options: { block: "nearest", behavior: "smooth" },
+    });
+  });
+
+  it("jumps to the newly active page instead of animating under reduced motion", () => {
+    stubCoreMatchMedia(
+      (query) => query.includes("prefers-reduced-motion") || query.includes("min-width"),
+    );
+    const { navigateTo, latestScroll } = renderStrict();
+
+    navigateTo("/ui/components/callout");
+
+    expect(latestScroll().options).toEqual({ block: "nearest", behavior: "instant" });
+  });
+
   it("does not navigate again when the active sidebar link is clicked", async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();

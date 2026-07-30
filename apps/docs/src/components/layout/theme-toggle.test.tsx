@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useLayoutEffect } from "react";
@@ -19,25 +18,15 @@ import { ThemeToggle } from "./theme-toggle";
 
 const STORAGE_KEY = "@diffgazer/docs-theme";
 
-function prefersDark(theme: "dark" | "light") {
-  return (query: string) => query.includes("prefers-color-scheme: dark") && theme === "dark";
-}
-
-function stubSystemTheme(theme: "dark" | "light") {
-  return stubMatchMedia(prefersDark(theme));
-}
-
 beforeEach(() => {
   localStorage.clear();
   document.documentElement.removeAttribute("data-theme");
   document.documentElement.removeAttribute("style");
-  stubSystemTheme("light");
 });
 
 afterEach(() => {
   localStorage.clear();
   for (const meta of document.head.querySelectorAll('meta[name="theme-color"]')) meta.remove();
-  stubMatchMedia(false);
   vi.restoreAllMocks();
 });
 
@@ -56,7 +45,6 @@ describe("ThemeToggle", () => {
 
   it("bridges the visible SSR toggle to the bootstrapped light theme before hydration", async () => {
     const user = userEvent.setup();
-    stubSystemTheme("dark");
     localStorage.setItem(STORAGE_KEY, "light");
     executeThemeBootstrap();
     expect(document.documentElement).toHaveAttribute("data-theme", "light");
@@ -68,8 +56,9 @@ describe("ThemeToggle", () => {
     );
     const button = container.querySelector("button");
     expect(button).not.toHaveAttribute("hidden");
-    expect(button).toHaveAttribute("aria-label", themeToggleLabel("system"));
-    expect(button).toHaveTextContent("system");
+    // The server can only render the default theme; the bootstrap corrects it.
+    expect(button).toHaveAttribute("aria-label", themeToggleLabel("dark"));
+    expect(button).toHaveTextContent("dark");
     document.body.append(container);
 
     await vi.waitFor(() => {
@@ -112,17 +101,16 @@ describe("ThemeToggle", () => {
 
     await vi.waitFor(() => expect(snapshots.length).toBeGreaterThan(0));
     expect(snapshots[0]).toEqual({ label: themeToggleLabel("light") });
-    expect(snapshots).not.toContainEqual({ label: themeToggleLabel("system") });
+    expect(snapshots).not.toContainEqual({ label: themeToggleLabel("dark") });
     expect(screen.getByRole("button", { name: themeToggleLabel("light") })).toBeEnabled();
     expect(document.documentElement).toHaveAttribute("data-theme", "light");
     expect(hydrationErrors).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: themeToggleLabel("light") }));
-    // light hands the choice back to the OS, which reports dark here.
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-    expect(localStorage.getItem(STORAGE_KEY)).toBe("system");
-    expect(button).toHaveAttribute("aria-label", themeToggleLabel("system"));
-    expect(button).toHaveTextContent("system");
+    expect(localStorage.getItem(STORAGE_KEY)).toBe("dark");
+    expect(button).toHaveAttribute("aria-label", themeToggleLabel("dark"));
+    expect(button).toHaveTextContent("dark");
     expect(hydrationErrors).not.toHaveBeenCalled();
 
     view.unmount();
@@ -137,29 +125,23 @@ describe("ThemeToggle", () => {
       </ThemeProvider>,
     );
 
-    expect(screen.getByRole("button", { name: themeToggleLabel("system") })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: themeToggleLabel("dark") })).toHaveAttribute(
       "aria-keyshortcuts",
       "F2",
     );
   });
 
-  it("cycles dark, light, then back to the system theme and persists each choice", async () => {
+  it("cycles between dark and light and persists each choice", async () => {
     const user = userEvent.setup();
-    stubSystemTheme("dark");
     render(
       <ThemeProvider>
         <ThemeToggle />
       </ThemeProvider>,
     );
 
-    // No stored preference: the site starts on the system theme.
+    // No stored theme: the site starts dark.
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
     expect(document.documentElement.style.colorScheme).toBe("dark");
-
-    await user.click(screen.getByRole("button", { name: themeToggleLabel("system") }));
-
-    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-    expect(localStorage.getItem(STORAGE_KEY)).toBe("dark");
 
     await user.click(screen.getByRole("button", { name: themeToggleLabel("dark") }));
 
@@ -170,7 +152,8 @@ describe("ThemeToggle", () => {
     await user.click(screen.getByRole("button", { name: themeToggleLabel("light") }));
 
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-    expect(localStorage.getItem(STORAGE_KEY)).toBe("system");
+    expect(document.documentElement.style.colorScheme).toBe("dark");
+    expect(localStorage.getItem(STORAGE_KEY)).toBe("dark");
   });
 
   it("repaints the browser chrome color for the active theme", async () => {
@@ -193,46 +176,7 @@ describe("ThemeToggle", () => {
     expect(meta).toHaveAttribute("content", THEME_COLORS.light);
   });
 
-  it("follows a live OS theme change while on the system theme, and stops on unmount", () => {
-    const system = stubSystemTheme("light");
-    const view = render(
-      <ThemeProvider>
-        <ThemeToggle />
-      </ThemeProvider>,
-    );
-
-    expect(document.documentElement).toHaveAttribute("data-theme", "light");
-
-    act(() => system.setMatches(prefersDark("dark")));
-
-    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-    expect(screen.getByRole("button", { name: themeToggleLabel("system") })).toBeInTheDocument();
-
-    view.unmount();
-    act(() => system.setMatches(prefersDark("light")));
-
-    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-  });
-
-  it("ignores a live OS theme change once a theme is pinned", async () => {
-    const user = userEvent.setup();
-    const system = stubSystemTheme("light");
-    render(
-      <ThemeProvider>
-        <ThemeToggle />
-      </ThemeProvider>,
-    );
-
-    await user.click(screen.getByRole("button", { name: themeToggleLabel("system") }));
-    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-
-    act(() => system.setMatches(prefersDark("light")));
-
-    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-  });
-
-  it("adopts a preference another tab stored, and stops on unmount", () => {
-    stubSystemTheme("dark");
+  it("adopts a theme another tab stored, and stops on unmount", () => {
     const view = render(
       <ThemeProvider>
         <ThemeToggle />
@@ -270,17 +214,16 @@ describe("ThemeToggle", () => {
       throw new DOMException("Storage unavailable", "SecurityError");
     });
     const user = userEvent.setup();
-    stubSystemTheme("light");
     render(
       <ThemeProvider>
         <ThemeToggle />
       </ThemeProvider>,
     );
 
-    await user.click(screen.getByRole("button", { name: themeToggleLabel("system") }));
+    await user.click(screen.getByRole("button", { name: themeToggleLabel("dark") }));
 
-    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-    expect(screen.getByRole("button", { name: themeToggleLabel("dark") })).toBeInTheDocument();
+    expect(document.documentElement).toHaveAttribute("data-theme", "light");
+    expect(screen.getByRole("button", { name: themeToggleLabel("light") })).toBeInTheDocument();
 
     setItem.mockRestore();
   });

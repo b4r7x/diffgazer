@@ -1,6 +1,6 @@
-import { act, render, renderHook, screen, within } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useRef, useState } from "react";
+import { type CSSProperties, useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FloatingAlign, FloatingSide } from "@/hooks/use-floating-position";
 import { axe } from "../../../testing/axe";
@@ -80,6 +80,7 @@ interface HarnessProps {
   onPanelMouseEnter?: () => void;
   onPanelMouseLeave?: () => void;
   panelRefCallback?: (node: HTMLDivElement | null) => void;
+  panelStyle?: CSSProperties;
 }
 
 function Harness({
@@ -103,6 +104,7 @@ function Harness({
   onPanelMouseEnter,
   onPanelMouseLeave,
   panelRefCallback,
+  panelStyle,
 }: HarnessProps) {
   const [open, setOpen] = useState(initialOpen);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -143,6 +145,7 @@ function Harness({
         onKeyDown={onPanelKeyDown}
         onMouseEnter={onPanelMouseEnter}
         onMouseLeave={onPanelMouseLeave}
+        style={panelStyle}
         ref={panelRefCallback}
       >
         panel body
@@ -182,6 +185,69 @@ describe("FloatingPanel presence", () => {
     } finally {
       restoreAnimationName();
     }
+  });
+
+  it("cancels animations while the anchor is hidden and unmounts without an exit fallback", async () => {
+    const onExitComplete = vi.fn();
+    render(
+      <Harness
+        initialOpen
+        triggerY={1000}
+        exitFallbackMs={5000}
+        panelLabel="hidden-anchor"
+        panelStyle={{ animation: "consumer-fade 10s linear" }}
+        onExitComplete={onExitComplete}
+      />,
+    );
+    const panel = screen.getByRole("dialog", { name: "hidden-anchor" });
+
+    expect(panel).toHaveAttribute("data-anchor-hidden", "");
+    expect(panel.style.opacity).toBe("0");
+    expect(panel.style.pointerEvents).toBe("none");
+    expect(panel.style.animation).toBe("none");
+
+    act(() => {
+      screen.getByRole("button", { name: "toggle" }).click();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "hidden-anchor" })).not.toBeInTheDocument();
+    });
+    expect(onExitComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores the consumer animation when the anchor scrolls back into view", async () => {
+    const consumerAnimation = "consumer-fade 10s linear";
+    const { rerender } = render(
+      <Harness
+        initialOpen
+        triggerY={1000}
+        panelLabel="unhidden-anchor"
+        panelStyle={{ animation: consumerAnimation }}
+      />,
+    );
+    const panel = screen.getByRole("dialog", { name: "unhidden-anchor" });
+    expect(panel).toHaveAttribute("data-anchor-hidden", "");
+    expect(panel.style.animation).toBe("none");
+
+    rerender(
+      <Harness
+        initialOpen
+        triggerY={100}
+        panelLabel="unhidden-anchor"
+        panelStyle={{ animation: consumerAnimation }}
+      />,
+    );
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+
+    await waitFor(() => {
+      expect(panel).not.toHaveAttribute("data-anchor-hidden");
+    });
+    expect(panel.style.animation).toBe(consumerAnimation);
+    expect(panel.style.opacity).toBe("");
+    expect(panel.style.pointerEvents).toBe("");
   });
 });
 
@@ -365,6 +431,7 @@ describe("FloatingPanel prop forwarding", () => {
               left: 999,
               visibility: "hidden",
               backgroundColor: "rgb(0, 128, 255)",
+              animation: "consumer-fade 1s linear",
             }}
           >
             x
@@ -380,6 +447,7 @@ describe("FloatingPanel prop forwarding", () => {
     expect(panel.style.top).not.toBe("999px");
     expect(panel.style.left).not.toBe("999px");
     expect(panel.style.visibility).not.toBe("hidden");
+    expect(panel.style.animation).toBe("consumer-fade 1s linear");
   });
 });
 

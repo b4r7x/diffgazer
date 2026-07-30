@@ -213,14 +213,15 @@ export const selectDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: null,
-        description: "Controlled open state. Pair with onOpenChange.",
+        description:
+          "Controlled open state. An initially true value initializes without moving focus or scrolling; later false-to-true transitions focus the content and reveal the active option.",
       },
       defaultOpen: {
         type: "boolean",
         required: false,
         defaultValue: "false",
         description:
-          'Initial open state for uncontrolled usage. Useful with variant="card" for a settings-panel layout that renders its list immediately.',
+          'Initial open state for uncontrolled usage. The list initializes without moving document focus or scrolling, which is useful for an immediately visible variant="card" layout.',
       },
       onOpenChange: {
         type: "(open: boolean) => void",

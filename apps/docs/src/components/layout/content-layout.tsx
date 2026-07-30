@@ -1,9 +1,11 @@
-import { useLocation, useRouter } from "@tanstack/react-router";
+import { ScriptOnce, useLocation, useRouter } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef } from "react";
+import { DocsPageLoadingFrame } from "@/components/page-layout";
 import { DocsTreeProvider } from "@/hooks/docs-tree-context";
 import { useDocsHistory, useDocsSearchScope } from "@/hooks/search-context";
 import { usePendingDocsRoute } from "@/hooks/use-pending-docs-route";
 import type { DocsLibraryId } from "@/lib/library";
+import { MAIN_SCROLL_INIT_SCRIPT, MAIN_SCROLL_RESTORATION_ID } from "@/lib/main-scroll-bootstrap";
 import {
   collectLandingSections,
   findPageByUrl,
@@ -31,7 +33,9 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
 
   useEffect(() => {
     const unsubscribe = router.subscribe("onResolved", () => {
-      mainRef.current?.focus();
+      // Focusing a scroller drags it to wherever the focus ring lands, which would
+      // undo the offset the router just restored (or the anchor it just jumped to).
+      mainRef.current?.focus({ preventScroll: true });
     });
     return unsubscribe;
   }, [router]);
@@ -71,6 +75,7 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
       <main
         ref={mainRef}
         id="main-content"
+        data-scroll-restoration-id={MAIN_SCROLL_RESTORATION_ID}
         tabIndex={-1}
         aria-busy={isDocsRoutePending}
         className="min-h-0 flex-1 overflow-y-auto scrollbar-thin outline-hidden transition-opacity duration-150 aria-busy:opacity-60"
@@ -79,8 +84,14 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
             the tree travels by context because the header is rendered by the
             route, several levels below this shell. */}
         <div className="mx-auto flex min-h-full max-w-7xl flex-col px-6 py-10">
-          <DocsTreeProvider tree={tree}>{children}</DocsTreeProvider>
+          <DocsTreeProvider tree={tree}>
+            {isDocsRoutePending ? <DocsPageLoadingFrame /> : children}
+          </DocsTreeProvider>
         </div>
+
+        {/* Last inside the scroller so the parser has laid out the whole article
+            before the restore runs. */}
+        <ScriptOnce>{MAIN_SCROLL_INIT_SCRIPT}</ScriptOnce>
       </main>
     </TuiTwoPane>
   );

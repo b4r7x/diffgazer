@@ -3,7 +3,7 @@
 import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@/hooks/theme-context";
 import { type ComponentPageData, DocDataProvider, type HookPageData } from "./doc-data-context";
 import { ComponentDocScaffold, HookDocScaffold } from "./scaffolds";
@@ -13,7 +13,11 @@ vi.mock("@tanstack/react-router", async () => {
   return useLocationMock({ pathname: "/ui/hooks/use-example" });
 });
 
-vi.mock("@/hooks/use-demos", () => ({ useDemos: () => ({}) }));
+const demoBoundary = vi.hoisted(() => ({
+  result: { demos: {}, isLoading: false },
+}));
+
+vi.mock("@/hooks/use-demos", () => ({ useDemos: () => demoBoundary.result }));
 
 const highlighted = [{ number: 1, content: [{ text: "const example = true;" }] }];
 const source = { raw: "const example = true;", highlighted };
@@ -87,7 +91,26 @@ function Providers({ children }: { children: ReactNode }) {
   return <ThemeProvider>{children}</ThemeProvider>;
 }
 
+beforeEach(() => {
+  demoBoundary.result = { demos: {}, isLoading: false };
+});
+
 describe("documentation scaffolds", () => {
+  it("renders loading previews instead of temporary code-only examples while demos load", () => {
+    demoBoundary.result = { demos: {}, isLoading: true };
+
+    render(
+      <Providers>
+        <DocDataProvider value={{ type: "component", data: populatedComponent }}>
+          <ComponentDocScaffold hero="example-default" />
+        </DocDataProvider>
+      </Providers>,
+    );
+
+    expect(screen.getAllByRole("status", { name: "Loading" })).toHaveLength(2);
+    expect(screen.getAllByRole("tab", { name: "Preview" })).toHaveLength(2);
+  });
+
   it("renders every populated component and hook section from DocDataProvider data", () => {
     const component = render(
       <Providers>

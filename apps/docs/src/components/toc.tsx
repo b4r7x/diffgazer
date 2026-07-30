@@ -3,7 +3,15 @@ import { Toc, TocItem, TocList } from "@diffgazer/ui/components/toc";
 import { useActiveHeading } from "@diffgazer/ui/hooks/active-heading";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { TableOfContents } from "fumadocs-core/toc";
-import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { scrollBehaviorFor } from "@/lib/scroll-behavior";
 import { CHROME_LABEL_CLASS } from "./shared/chrome-label";
 import { isPrimaryNavigationClick } from "./shared/navigation-click";
 
@@ -82,23 +90,15 @@ function syncLocationHash(id: string): void {
   }
 }
 
-function getScrollBehavior(element: Element): ScrollBehavior {
-  const view = element.ownerDocument.defaultView;
-  return view &&
-    typeof view.matchMedia === "function" &&
-    view.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ? "auto"
-    : "smooth";
-}
-
 // Source the rendered entries from the DOM after mount. Headings arrive
 // asynchronously (Suspense-loaded MDX) and include runtime-injected ones
 // (`<Step>` titles, API reference), so the static TOC alone is incomplete.
 // Observe the content container to refresh as headings appear or change.
-function useTocEntries(toc: TableOfContents): TocEntry[] {
+function useTocEntries(toc: TableOfContents): { entries: TocEntry[]; isReady: boolean } {
   const [tocEntries, setTocEntries] = useState<TocEntry[]>(() => entriesFromToc(toc));
+  const [readyToc, setReadyToc] = useState<TableOfContents | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const containerId = CONTENT_CONTAINER_ID;
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -114,6 +114,7 @@ function useTocEntries(toc: TableOfContents): TocEntry[] {
     };
 
     sync();
+    setReadyToc(toc);
 
     const observer = new MutationObserver(sync);
     observer.observe(container, {
@@ -126,7 +127,7 @@ function useTocEntries(toc: TableOfContents): TocEntry[] {
     return () => observer.disconnect();
   }, [toc]);
 
-  return tocEntries;
+  return { entries: tocEntries, isReady: readyToc === toc };
 }
 
 /**
@@ -136,16 +137,17 @@ function useTocEntries(toc: TableOfContents): TocEntry[] {
  */
 export function useDocsToc(toc: TableOfContents): {
   entries: TocEntry[];
+  isReady: boolean;
   activeId: string | null;
   scrollTo: (id: string) => void;
 } {
-  const entries = useTocEntries(toc);
+  const { entries, isReady } = useTocEntries(toc);
   const { activeId, scrollTo } = useActiveHeading({
     ids: entries.map((entry) => entry.id),
     containerId: CONTENT_CONTAINER_ID,
   });
 
-  return { entries, activeId, scrollTo };
+  return { entries, isReady, activeId, scrollTo };
 }
 
 export interface TocPanelProps {
@@ -247,12 +249,12 @@ export function TableOfContentsPanel({
     if (elRect.top < parentRect.top) {
       scrollParent.scrollBy({
         top: elRect.top - parentRect.top - 8,
-        behavior: getScrollBehavior(el),
+        behavior: scrollBehaviorFor(el),
       });
     } else if (elRect.bottom > parentRect.bottom) {
       scrollParent.scrollBy({
         top: elRect.bottom - parentRect.bottom + 8,
-        behavior: getScrollBehavior(el),
+        behavior: scrollBehaviorFor(el),
       });
     }
   }, [activeId]);

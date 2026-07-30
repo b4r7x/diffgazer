@@ -1,11 +1,10 @@
-import type { DocsTheme, ThemePreference } from "./theme-context";
+import type { DocsTheme } from "./theme-context";
 
 export interface ThemeBootstrapConfig {
   storageKey: string;
-  defaultPreference: ThemePreference;
-  darkQuery: string;
+  defaultTheme: DocsTheme;
   themeColors: Record<DocsTheme, string>;
-  toggleLabels: Record<ThemePreference, string>;
+  toggleLabels: Record<DocsTheme, string>;
 }
 
 /**
@@ -18,28 +17,23 @@ export interface ThemeBootstrapConfig {
  * meta as a hoistable it matches by attributes during hydration, so a tag this script
  * had already retinted would be duplicated rather than adopted.
  *
- * The whole body is wrapped in one try/catch, as next-themes' own ThemeScript is: this
- * runs in <head> before anything is painted, so a browser missing matchMedia or
- * MutationObserver would otherwise abort half-applied and report an uncaught error on
- * every load. Bailing out leaves the shell's served theme in place. The inner storage
- * try/catch is a partial failure the script recovers from rather than a reason to quit.
+ * The whole body is wrapped in one try/catch, as next-themes' own ThemeScript is: a
+ * browser missing MutationObserver would otherwise abort half-applied and throw on
+ * every load. The inner storage try/catch is a partial failure it recovers from.
  */
 export function themeBootstrap(config: ThemeBootstrapConfig): void {
   try {
     const root = document.documentElement;
 
-    let preference = config.defaultPreference;
+    let theme = config.defaultTheme;
     try {
       const stored = localStorage.getItem(config.storageKey);
-      if (stored === "dark" || stored === "light" || stored === "system") {
-        preference = stored;
+      if (stored === "dark" || stored === "light") {
+        theme = stored;
       }
     } catch {
-      // Storage is unreadable in locked-down browsers; keep the default preference.
+      // Storage is unreadable in locked-down browsers; keep the default theme.
     }
-
-    const systemTheme: DocsTheme = window.matchMedia(config.darkQuery).matches ? "dark" : "light";
-    const theme = preference === "system" ? systemTheme : preference;
 
     root.setAttribute("data-theme", theme);
     root.style.colorScheme = theme;
@@ -50,8 +44,8 @@ export function themeBootstrap(config: ThemeBootstrapConfig): void {
     document.head.appendChild(meta);
 
     const labelToggle = (toggle: Element) => {
-      toggle.setAttribute("aria-label", config.toggleLabels[preference]);
-      toggle.textContent = preference;
+      toggle.setAttribute("aria-label", config.toggleLabels[theme]);
+      toggle.textContent = theme;
     };
 
     const labelTogglesIn = (node: Node) => {

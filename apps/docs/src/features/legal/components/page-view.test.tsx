@@ -73,6 +73,10 @@ vi.mock("@tanstack/react-router", async () => {
   };
 });
 
+vi.mock("@/features/legal/hooks/use-pending-legal-route", () => ({
+  usePendingLegalRoute: () => null,
+}));
+
 beforeEach(() => {
   stubMatchMedia({ isDesktop: true });
   Element.prototype.scrollIntoView = () => {};
@@ -143,6 +147,11 @@ describe("LegalPageView", () => {
     expect(screen.getByText(privacyFixture.frontmatter.description)).toBeInTheDocument();
     expect(screen.getByText(privacyFixture.body)).toBeInTheDocument();
     expect(screen.getByText("Last updated: January 5, 2026")).toBeInTheDocument();
+    expect(
+      document.querySelector(
+        '[data-mdx-preload][data-mdx-collection="legal"][data-mdx-path="privacy.mdx"]',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("[ LEGAL / PRIVACY ]")).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "Sidebar navigation" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Privacy/ })).toHaveAttribute("href", "/privacy");

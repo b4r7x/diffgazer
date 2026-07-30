@@ -14,14 +14,16 @@ function renderPreview({
   frame = "default",
   rawCode = "const example = <Button />;",
   demo = null,
+  loading = false,
 }: {
   frame?: PreviewFrame;
   rawCode?: string;
   demo?: LazyExoticComponent<ComponentType> | null;
+  loading?: boolean;
 } = {}) {
   return render(
     <ThemeProvider>
-      <DemoPreview demo={demo} code={[]} rawCode={rawCode} frame={frame} />
+      <DemoPreview demo={demo} loading={loading} code={[]} rawCode={rawCode} frame={frame} />
     </ThemeProvider>,
   );
 }
@@ -33,6 +35,12 @@ function chromeLabels() {
 }
 
 describe("DemoPreview default (specimen) frame", () => {
+  it("shows a loading indicator on the first render while the demo index loads", () => {
+    renderPreview({ loading: true });
+
+    expect(screen.getByRole("status", { name: "Loading" })).toBeInTheDocument();
+  });
+
   it("renders the PREVIEW chrome label above the stage", () => {
     renderPreview();
     expect(chromeLabels()).toHaveLength(1);

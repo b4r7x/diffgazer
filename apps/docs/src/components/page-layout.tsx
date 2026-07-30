@@ -1,9 +1,12 @@
 import { InlineCode } from "@diffgazer/ui/components/code-block";
+import { Skeleton } from "@diffgazer/ui/components/skeleton";
+import { Toc } from "@diffgazer/ui/components/toc";
 import { Typography } from "@diffgazer/ui/components/typography";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { TableOfContents } from "fumadocs-core/toc";
 import { Fragment, type ReactNode } from "react";
 import { useDocsTree } from "@/hooks/docs-tree-context";
+import { ArticleSkeleton } from "./article-skeleton";
 import { DocsPathBreadcrumbs } from "./docs-path-breadcrumbs";
 import { PreviewModeProvider } from "./preview-mode-context";
 import { CHROME_LABEL_CLASS } from "./shared/chrome-label";
@@ -21,21 +24,83 @@ export function DocsPageLayout({
   children: ReactNode;
   showToc?: boolean;
 }) {
-  const { entries, activeId, scrollTo } = useDocsToc(toc);
+  const { entries, isReady: isTocReady, activeId, scrollTo } = useDocsToc(toc);
+  let mobileToc: ReactNode = null;
+  let desktopToc: ReactNode = null;
+
+  if (showToc) {
+    mobileToc = isTocReady ? (
+      <MobileTocPanel entries={entries} scrollTo={scrollTo} />
+    ) : (
+      <MobileTocLoadingPanel />
+    );
+    desktopToc = isTocReady ? (
+      <TableOfContentsPanel entries={entries} activeId={activeId} scrollTo={scrollTo} />
+    ) : (
+      <DocsPageLoadingTocPanel />
+    );
+  }
 
   return (
     <PreviewModeProvider>
-      <div className="flex flex-1 gap-8">
-        <div className="min-w-0 flex-1 px-6 py-8">
-          {header}
-          {showToc && <MobileTocPanel entries={entries} scrollTo={scrollTo} />}
-          {children}
-        </div>
-        {showToc && (
-          <TableOfContentsPanel entries={entries} activeId={activeId} scrollTo={scrollTo} />
-        )}
-      </div>
+      <DocsPageFrame
+        article={
+          <>
+            {header}
+            {mobileToc}
+            {children}
+          </>
+        }
+        toc={desktopToc}
+      />
     </PreviewModeProvider>
+  );
+}
+
+export function DocsPageLoadingFrame() {
+  return (
+    <DocsPageFrame
+      article={
+        <section>
+          <ArticleSkeleton label="Loading documentation page" eyebrow />
+        </section>
+      }
+      toc={<DocsPageLoadingTocPanel />}
+    />
+  );
+}
+
+function DocsPageFrame({ article, toc }: { article: ReactNode; toc: ReactNode }) {
+  return (
+    <div className="flex flex-1 gap-8">
+      <div className="min-w-0 flex-1 px-6 py-8">{article}</div>
+      {toc}
+    </div>
+  );
+}
+
+function DocsPageLoadingTocPanel() {
+  return (
+    <Toc aria-hidden="true" className="hidden w-56 shrink-0 py-8 pr-4 xl:block">
+      {/* Sticky like the real TOC, so a page restored to a deep offset shows the
+          skeleton at the viewport rather than at page top. */}
+      <div className="sticky top-16 max-h-[calc(100dvh-6rem)]">
+        <div className="space-y-3 pr-2">
+          <Skeleton className="h-3 w-4/5" />
+          <Skeleton className="h-3 w-3/5" />
+          <Skeleton className="h-3 w-2/3" />
+          <Skeleton className="h-3 w-1/2" />
+        </div>
+      </div>
+    </Toc>
+  );
+}
+
+function MobileTocLoadingPanel() {
+  return (
+    <div aria-hidden="true" className="mb-6 border border-border px-3 py-3 xl:hidden">
+      <Skeleton className="h-3 w-32" />
+    </div>
   );
 }
 

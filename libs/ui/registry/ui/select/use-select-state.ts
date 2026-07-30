@@ -19,14 +19,17 @@ import type { SelectContextValue, SelectOptionMetadata } from "./select-context"
 type SelectValue = string | null | string[];
 
 interface UseSelectStateBaseOptions {
-  /** Controlled open state. Pair with onOpenChange. */
+  /**
+   * Controlled open state. An initially true value initializes without moving focus or scrolling;
+   * later false-to-true transitions focus the content and reveal the active option.
+   */
   open?: boolean;
   openControlled?: boolean;
   /** Called when open state changes. */
   onOpenChange?: (open: boolean) => void;
   /**
-   * Initial open state for uncontrolled usage. Useful with variant="card" for a settings-panel
-   * layout that renders its list immediately.
+   * Initial open state for uncontrolled usage. The list initializes without moving document
+   * focus or scrolling, which is useful for an immediately visible variant="card" layout.
    */
   defaultOpen?: boolean;
   /** Controlled highlighted item id. Pair with onHighlightChange. */
@@ -187,10 +190,12 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     onChange: onHighlightChange,
   });
   const [previousIsOpen, setPreviousIsOpen] = useState(isOpen);
+  const [isInitialOpen, setIsInitialOpen] = useState(isOpen);
 
   if (previousIsOpen !== isOpen) {
     setPreviousIsOpen(isOpen);
     if (!isOpen) {
+      setIsInitialOpen(false);
       setSearchQuery("");
       resetUncontrolledHighlighted(null);
     }
@@ -334,6 +339,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
   const contextValue: SelectContextValue = useMemo(
     () => ({
       open: isOpen,
+      isInitialOpen,
       disabled,
       searchable,
       onOpenChange: handleOpenChange,
@@ -361,6 +367,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
     }),
     [
       isOpen,
+      isInitialOpen,
       disabled,
       searchable,
       handleOpenChange,

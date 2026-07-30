@@ -110,6 +110,18 @@ This is a documented exception to the generic `value/defaultValue/onChange(value
 - Keyboard handlers must ignore editable targets unless the component explicitly owns the input interaction.
 - Navigation utilities should accept disabled/skipped items and preserve DOM/user-visible order.
 
+## Docs Scroll Behavior Contract (apps/docs)
+
+Source-verified against MDN, Docusaurus, fumadocs, shadcn/ui docs, and tanstack.com (2026-07); NN/g scroll-restoration guidance. apps/docs scrolls an inner container (`#main-content`), so nothing here is browser-native — every rule is app-owned and guarded by tests.
+
+- F5/reload and back/forward: restore the content scroll position, instantly, before first paint (pre-paint inline script + TanStack scroll restoration cache). Never animate a restore.
+- New-page navigation: content starts at top, instantly. No site animates route-change scroll; neither do we.
+- `#hash` on initial document load: land on the anchor instantly. In-page TOC clicks scroll smooth with a `prefers-reduced-motion` fallback (app-level `scroll-behavior` helper in `apps/docs/src/lib`, not in libs/ui).
+- Sidebar: position on the active item only when it is outside the sidebar viewport — instantly pre-paint on entry/F5, smoothly (reduced-motion → instant) on later SPA navigations. The sidebar's position is always derived from the active item, never restored from the router cache (its cache entry is deleted pre-paint to prevent a post-hydration double-move).
+- Pre-paint positioning uses parser-blocking inline scripts (`ScriptOnce`, serialized self-contained functions, CSP nonce) — the pattern of `theme-bootstrap.ts`; hydration-visible attributes they stamp live on `documentElement` (suppressHydrationWarning) only.
+- Programmatic focus of scroll containers uses `focus({ preventScroll: true })` so focus management never fights scroll management.
+- Mirrored router internals (e.g. the scroll-restoration sessionStorage key) must be pinned by a test resolving the real value from the router package, so version bumps fail loudly.
+
 ## UI Library Rules
 
 - Follow the variant conventions in `libs/ui/docs/content/patterns/variants.mdx`: CVA for named variant dimensions, CSS files only for things Tailwind cannot express, Records only for non-class values, plain Tailwind for single boolean conditionals.

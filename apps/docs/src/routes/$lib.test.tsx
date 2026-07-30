@@ -63,6 +63,37 @@ vi.mock("@tanstack/react-start", () => ({
 // (a globally disabled primary would loop the redirect target).
 const { disabledLibrary } = vi.hoisted(() => ({ disabledLibrary: { id: "" } }));
 
+// Lets a test hold the real clientLoader's preload open and watch the route loader wait.
+const { docsPreload } = vi.hoisted(() => ({
+  docsPreload: { gate: null as Promise<void> | null, paths: [] as string[] },
+}));
+
+// The virtual "fumadocs-mdx:collections/browser" id only resolves for files in
+// tsconfig.json (vite-tsconfig-paths excludes tests), so mock its target file.
+vi.mock("../../.source/browser.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("fumadocs-mdx:collections/browser")>();
+  const { docs } = actual.default;
+  return {
+    default: {
+      ...actual.default,
+      docs: {
+        ...docs,
+        createClientLoader: (options: Parameters<typeof docs.createClientLoader>[0]) => {
+          const loader = docs.createClientLoader(options);
+          return {
+            ...loader,
+            preload: async (path: string) => {
+              docsPreload.paths.push(path);
+              if (docsPreload.gate) await docsPreload.gate;
+              return loader.preload(path);
+            },
+          };
+        },
+      },
+    },
+  };
+});
+
 // Boundary mock: docs library config is file-backed app configuration; this test overrides one config row to cover disabled-library routing.
 vi.mock("@/lib/library", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/library")>();
@@ -125,13 +156,47 @@ describe("$lib unknown-segment handling", () => {
   it("completes an enabled library content route without redirecting or root not-found", async () => {
     const router = renderRoute("/ui/getting-started");
 
-    expect(await screen.findByRole("link", { name: "Overview" })).toHaveAttribute(
-      "href",
-      "/ui/getting-started",
-    );
+    expect(
+      await screen.findByRole("link", { name: "Overview" }, { timeout: 5_000 }),
+    ).toHaveAttribute("href", "/ui/getting-started");
 
     await vi.waitFor(() => expect(router.state.status).toBe("idle"));
     expect(router.state.location.pathname).toBe("/ui/getting-started");
     expect(screen.queryByRole("heading", { name: "Page not found" })).not.toBeInTheDocument();
+  });
+});
+
+describe("$lib content-route loader", () => {
+  beforeEach(() => {
+    docsPreload.paths.length = 0;
+  });
+
+  afterEach(() => {
+    docsPreload.gate = null;
+  });
+
+  it("does not settle the route loader until the MDX preload resolves", async () => {
+    let releasePreload!: () => void;
+    docsPreload.gate = new Promise((resolve) => {
+      releasePreload = resolve;
+    });
+
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ["/ui/getting-started"] }),
+    });
+
+    let loaderSettled = false;
+    const load = router.load().then(() => {
+      loaderSettled = true;
+    });
+
+    await vi.waitFor(() => expect(docsPreload.paths).toContain(uiGettingStartedPage.path));
+    // Let the loader's other Promise.all members finish, leaving only the gated preload.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(loaderSettled).toBe(false);
+
+    releasePreload();
+    await load;
   });
 });

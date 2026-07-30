@@ -17,6 +17,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { OVERLAY_TRIGGER_PROPS } from "@/hooks/overlay-dismiss-stack";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useIsMobile, usePointerCoarse } from "@/hooks/use-is-mobile";
@@ -225,6 +226,7 @@ export function MenuSubTrigger({
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: arrow/Enter open-submenu handling is centralized on the menu container, not on this item.
     <div
+      {...(disabled ? {} : OVERLAY_TRIGGER_PROPS)}
       ref={composedRef}
       id={itemId}
       // APG: a submenu trigger is always a menuitem, never menuitemradio. Pinning

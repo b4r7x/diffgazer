@@ -90,6 +90,32 @@ describe("verify-csp", () => {
     ).rejects.toThrow("/: an inline <script> is missing the CSP nonce and would be blocked");
   });
 
+  it("rejects a page carrying no scripts, which would satisfy the nonce checks vacuously", async () => {
+    const entry = writeChild(`
+      import { createServer } from "node:http";
+      const server = createServer((_request, response) => {
+        response.writeHead(200, { "content-security-policy": ${JSON.stringify(CSP)} });
+        response.end(${JSON.stringify("<!doctype html><title>Fixture</title><p>static</p>")});
+      });
+      server.listen(0, "127.0.0.1", () => {
+        const address = server.address();
+        console.log(\`➜ Listening on: http://127.0.0.1:\${address.port}/\`);
+      });
+      process.on("SIGTERM", () => server.close(() => process.exit(0)));
+    `);
+
+    await expect(
+      runCspVerification({
+        serverEntry: entry,
+        paths: ["/"],
+        readyTimeoutMs: 2_000,
+        requestTimeoutMs: 1_000,
+        stdout: new PassThrough(),
+        stderr: new PassThrough(),
+      }),
+    ).rejects.toThrow("/: page has no <script> tags at all; it cannot hydrate");
+  });
+
   it("fails when Nitro exits even if a CSP-valid foreign site owns the legacy port", async () => {
     const foreign = createServer((_request, response) => {
       response.writeHead(200, { "content-security-policy": CSP });

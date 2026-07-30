@@ -18,6 +18,16 @@ import { getVisibleEnabledOptions } from "./visible-options";
 
 const SEARCH_INPUT_NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter"]);
 
+export function focusOpenContent(
+  searchInputRef: RefObject<HTMLInputElement | null>,
+  containerRef: RefObject<HTMLDivElement | null>,
+): boolean {
+  const focusTarget = searchInputRef.current ?? containerRef.current;
+  if (!focusTarget) return false;
+  focusTarget.focus();
+  return true;
+}
+
 function isComposingKeyEvent(event: { isComposing?: boolean; keyCode?: number }): boolean {
   return event.isComposing === true || event.keyCode === 229;
 }
@@ -36,6 +46,7 @@ export function useSelectContentNavigation({
 }: UseSelectContentNavigationOptions) {
   const {
     open,
+    isInitialOpen,
     multiple,
     value,
     highlighted,
@@ -120,12 +131,20 @@ export function useSelectContentNavigation({
   }
 
   const initializeHighlight = () => {
+    const shouldScroll = !isInitialOpen;
+    const setHighlightForOpen = (optionValue: string) => {
+      if (shouldScroll) {
+        setHighlightedAndScroll(optionValue);
+        return;
+      }
+      setHighlighted(optionValue);
+    };
     const isAvailable = (optionValue: string) => {
       const option = options.get(optionValue);
       return option !== undefined && !option.disabled && matchesSearch(option.label, searchQuery);
     };
     if (highlighted !== null && isAvailable(highlighted)) {
-      scrollOptionIntoView(highlighted);
+      if (shouldScroll) scrollOptionIntoView(highlighted);
       return true;
     }
     let selectedValues: string[] = [];
@@ -136,32 +155,34 @@ export function useSelectContentNavigation({
     }
     const firstSelected = selectedValues[0];
     if (firstSelected !== undefined && isAvailable(firstSelected)) {
-      setHighlightedAndScroll(firstSelected);
+      setHighlightForOpen(firstSelected);
       return true;
     }
     for (const [itemValue, option] of options) {
       if (!option.disabled && matchesSearch(option.label, searchQuery)) {
-        setHighlightedAndScroll(itemValue);
+        setHighlightForOpen(itemValue);
         return true;
       }
     }
     return false;
   };
 
-  const focusOpenContent = () => {
-    const focusTarget = searchInputRef.current ?? containerRef.current;
-    if (!focusTarget) return false;
+  const focusOpenContentIfUnowned = () => {
+    if (isInitialOpen) return true;
 
-    const { activeElement, body } = focusTarget.ownerDocument;
+    const doc = containerRef.current?.ownerDocument;
+    if (!doc) return false;
+
+    const { activeElement, body } = doc;
     if (activeElement === null || activeElement === body || activeElement === triggerRef.current) {
-      focusTarget.focus();
+      return focusOpenContent(searchInputRef, containerRef);
     }
     return true;
   };
 
   // Read current option state without re-running initialization on unrelated renders.
   const runOpenInit = useEffectEvent(() => {
-    focusOpenContent();
+    focusOpenContentIfUnowned();
     return initializeHighlight();
   });
 
@@ -187,6 +208,7 @@ export function useSelectContentNavigation({
     open && isDropdown,
     {
       ref: selectContentRef,
+      excludeRefs: [triggerRef],
       contains: (target) =>
         target !== null && (selectContentRef.current?.contains(target) ?? false),
     },
@@ -235,7 +257,7 @@ export function useSelectContentNavigation({
   return {
     handleKeyDown,
     activeDescendant,
-    focusOpenContent,
+    focusOpenContent: focusOpenContentIfUnowned,
     initializeHighlight,
   };
 }

@@ -6,13 +6,18 @@ import {
 } from "@diffgazer/ui/components/sidebar";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { Link, useLocation } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { Link, ScriptOnce, useLocation } from "@tanstack/react-router";
+import { useLayoutEffect, useRef } from "react";
 import { isPrimaryNavigationClick } from "@/components/shared/navigation-click";
 import { CHROME_SIDEBAR_ITEM_CLASS } from "@/components/shared/sidebar-item";
 import { usePendingDocsRoute } from "@/hooks/use-pending-docs-route";
 import { DOCS_LIBRARY_IDS, type DocsLibraryId, routeSplatFromDocsPath } from "@/lib/library";
 import type { PageTree, PageTreeNode } from "@/lib/page-tree";
+import { scrollBehaviorFor } from "@/lib/scroll-behavior";
+import {
+  consumePrePaintPositioning,
+  SIDEBAR_SCROLL_INIT_SCRIPT,
+} from "@/lib/sidebar-scroll-bootstrap";
 import { TreeSidebarShell } from "./tree-sidebar-shell";
 
 interface DocsSidebarProps {
@@ -124,10 +129,30 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
   const pathname = useLocation({ select: (l) => l.pathname });
   const pendingPathname = usePendingDocsRoute();
   const navContainerRef = useRef<HTMLDivElement>(null);
+  const lastPositioningRef = useRef<{
+    pathname: string;
+    options: ScrollIntoViewOptions;
+  } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = navContainerRef.current?.querySelector<HTMLElement>(`[data-value="${pathname}"]`);
-    el?.scrollIntoView({ block: "nearest", behavior: "instant" });
+    if (!el) return;
+
+    // `nearest` leaves an item the reader can already see exactly where it is.
+    const last = lastPositioningRef.current;
+    let options: ScrollIntoViewOptions;
+    if (last?.pathname === pathname) {
+      options = last.options;
+    } else if (last) {
+      options = { block: "nearest", behavior: scrollBehaviorFor(el) };
+    } else {
+      // The first positioning has no previous offset to travel from, and must not
+      // redo what the pre-paint script settled — either would show up as a jump.
+      options = { block: consumePrePaintPositioning() ? "nearest" : "center", behavior: "instant" };
+    }
+
+    el.scrollIntoView(options);
+    lastPositioningRef.current = { pathname, options };
   }, [pathname]);
 
   const sections = groupBySection(tree.children);
@@ -213,6 +238,11 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
           </SidebarSection>
         );
       })}
+
+      {/* Last inside the scroll area so the parser has laid out every item before the
+          script runs. ScriptOnce is SSR-only (renders null on the client) and stamps
+          the per-request CSP nonce. */}
+      <ScriptOnce>{SIDEBAR_SCROLL_INIT_SCRIPT}</ScriptOnce>
     </TreeSidebarShell>
   );
 }

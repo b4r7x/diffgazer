@@ -1,10 +1,10 @@
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Menu, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel } from "@diffgazer/ui/components/panel";
-import type { ResolvedTheme } from "@/types/theme";
+import type { WebTheme } from "@/types/theme";
 
 interface ThemePreviewCardProps {
-  previewTheme: ResolvedTheme;
+  previewTheme: WebTheme;
 }
 
 export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {

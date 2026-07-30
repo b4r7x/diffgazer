@@ -5,12 +5,17 @@ type LocationMock = {
 };
 
 type RouterStateMock = {
+  isLoading: boolean;
   location: LocationMock;
-  status: "idle";
 };
 
 type RouterPathnameMockOptions = {
   pathname: string;
+};
+
+type RouterStateMockOptions = {
+  pathname: string;
+  isLoading?: boolean;
 };
 
 type RouterLinkMockProps = {
@@ -55,6 +60,11 @@ export function RouterLinkMock({ to, params, children, onClick, ...rest }: Route
   );
 }
 
+/** Mirrors the real ScriptOnce, which emits its inline script only during SSR. */
+export function ScriptOnceMock() {
+  return null;
+}
+
 export function useLocationMock(options: RouterPathnameMockOptions): {
   useLocation: UseLocationMock;
 } {
@@ -68,14 +78,14 @@ export function useLocationMock(options: RouterPathnameMockOptions): {
   return { useLocation };
 }
 
-export function useRouterStateMock(options: RouterPathnameMockOptions): {
+export function useRouterStateMock(options: RouterStateMockOptions): {
   useRouterState: UseRouterStateMock;
 } {
   return {
     useRouterState: ({ select }) =>
       select({
+        isLoading: options.isLoading ?? false,
         location: { pathname: options.pathname },
-        status: "idle",
       }),
   };
 }

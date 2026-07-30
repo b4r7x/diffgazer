@@ -27,8 +27,10 @@ vi.mock("@tanstack/react-start", () => {
 // Boundary mock: pager links and layout chrome use router context without a live router.
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-router")>();
+  const { ScriptOnceMock } = await import("@/testing/router-mock");
   return {
     ...actual,
+    ScriptOnce: ScriptOnceMock,
     useNavigate: () => () => {},
     useRouter: () => ({ subscribe: () => () => {} }),
     useRouterState: ({ select }: { select: (state: object) => unknown }) =>
@@ -102,6 +104,11 @@ describe("MdxDocsPage", () => {
       await screen.findByRole("heading", { name: "Documentation page unavailable" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "Sidebar navigation" })).toBeInTheDocument();
+    expect(
+      document.querySelector(
+        '[data-mdx-preload][data-mdx-collection="docs"][data-mdx-path="ui/beta.mdx"]',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Previous: Alpha/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Next: Gamma/ })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Something went wrong" })).not.toBeInTheDocument();
@@ -110,5 +117,32 @@ describe("MdxDocsPage", () => {
 
     expect(reload).toHaveBeenCalledTimes(1);
     consoleError.mockRestore();
+  });
+
+  it("keeps the desktop TOC rail while MDX content is loading", () => {
+    const PendingMdx = lazy(() => new Promise<{ default: () => null }>(() => {}));
+
+    const { container } = render(
+      <KeyboardProvider>
+        <MobileNavProvider>
+          <SearchProvider>
+            <MdxDocsPage
+              path="ui/beta.mdx"
+              pageUrl="/ui/beta"
+              tree={tree}
+              library="ui"
+              componentData={null}
+              hookData={null}
+            >
+              <PendingMdx />
+            </MdxDocsPage>
+          </SearchProvider>
+        </MobileNavProvider>
+      </KeyboardProvider>,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading documentation page");
+    expect(screen.queryByRole("navigation", { name: "On this page" })).not.toBeInTheDocument();
+    expect(container.querySelector('nav[data-slot="toc"][aria-hidden="true"]')).toBeInTheDocument();
   });
 });

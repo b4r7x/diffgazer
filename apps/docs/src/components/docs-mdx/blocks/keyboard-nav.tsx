@@ -8,7 +8,7 @@ import { useCurrentLibrary } from "./use-current-library";
 export function KeyboardNav() {
   const data = useComponentData();
   const library = useCurrentLibrary();
-  const demos = useDemos(library);
+  const { demos, isLoading } = useDemos(library);
 
   if (!data?.docs?.keyboard) return null;
   const { description, examples, keys } = data.docs.keyboard;
@@ -57,6 +57,7 @@ export function KeyboardNav() {
               key={ex.name}
               title={ex.title}
               demo={demos[ex.name] ?? null}
+              loading={isLoading}
               code={data.exampleSource[ex.name]?.highlighted ?? []}
               rawCode={data.exampleSource[ex.name]?.raw ?? ""}
               frame={resolvePreviewFrame(ex.name)}

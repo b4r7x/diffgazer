@@ -1,7 +1,6 @@
 import { useSettings } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { deriveSaveState, useSubmitGuard } from "@diffgazer/core/forms";
-import { isSelectableTheme, resolveSelectableTheme } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { useKey, useScope } from "@diffgazer/keys";
 import { Callout } from "@diffgazer/ui/components/callout";
@@ -10,7 +9,7 @@ import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
 import { useId, useState } from "react";
 import { useTheme } from "@/hooks/use-theme";
-import type { ResolvedTheme, WebTheme } from "@/types/theme";
+import type { WebTheme } from "@/types/theme";
 import { useSettingsFormFooter } from "../../hooks/use-form-footer";
 import { SettingsFormActions } from "../form-actions";
 import { renderSettingsFormPending } from "../form-pending";
@@ -19,7 +18,7 @@ import { ThemeSelectorContent } from "./selector-content";
 
 export function SettingsThemePage() {
   const settingsQuery = useSettings();
-  const { theme: savedTheme, system, setTheme } = useTheme();
+  const { theme: savedTheme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [saveError, setSaveError] = useState<string | null>(null);
   const { isSubmitting, withGuard } = useSubmitGuard();
@@ -49,7 +48,6 @@ export function SettingsThemePage() {
   return (
     <SettingsThemeEditor
       savedTheme={savedTheme}
-      system={system}
       saveError={saveError}
       isSaving={isSubmitting}
       onSave={saveAndExit}
@@ -59,7 +57,6 @@ export function SettingsThemePage() {
 
 interface SettingsThemeEditorProps {
   savedTheme: WebTheme;
-  system: ResolvedTheme;
   saveError: string | null;
   isSaving: boolean;
   onSave: (theme: WebTheme) => void;
@@ -67,7 +64,6 @@ interface SettingsThemeEditorProps {
 
 function SettingsThemeEditor({
   savedTheme,
-  system,
   saveError,
   isSaving,
   onSave,
@@ -80,7 +76,6 @@ function SettingsThemeEditor({
   const [hoveredTheme, setHoveredTheme] = useState<WebTheme | null>(null);
 
   const previewTheme = hoveredTheme ?? focusedTheme ?? selectedTheme;
-  const previewResolved = resolveSelectableTheme(previewTheme, system);
   useScope("settings-theme");
 
   const { canSave } = deriveSaveState<WebTheme>({
@@ -115,12 +110,7 @@ function SettingsThemeEditor({
     setFocusedTheme(theme);
   };
 
-  const handleChange = (value: string) => {
-    if (isSelectableTheme(value)) selectTheme(value);
-  };
-
-  const handleEnterOnList = (value: string) => {
-    if (!isSelectableTheme(value)) return;
+  const handleEnterOnList = (value: WebTheme) => {
     selectTheme(value);
     onSave(value);
   };
@@ -145,15 +135,11 @@ function SettingsThemeEditor({
             <ThemeSelectorContent
               value={selectedTheme}
               highlighted={focusedTheme}
-              onHighlightChange={(value) => {
-                if (isSelectableTheme(value)) setFocusedTheme(value);
-              }}
-              onPreviewValueChange={(value) => {
-                setHoveredTheme(isSelectableTheme(value) ? value : null);
-              }}
-              onChange={handleChange}
+              onHighlightChange={setFocusedTheme}
+              onPreviewValueChange={setHoveredTheme}
+              onChange={selectTheme}
               onEnter={handleEnterOnList}
-              onSelect={handleChange}
+              onSelect={selectTheme}
               onFocus={() => footer.reset()}
               enabled={!footer.inActions}
               onBoundaryReached={(direction) => {
@@ -196,7 +182,7 @@ function SettingsThemeEditor({
             <h2 id={previewTitleId}>Live Preview</h2>
           </Panel.Label>
           <Panel.Content className="flex items-center justify-center">
-            <ThemePreviewCard previewTheme={previewResolved} />
+            <ThemePreviewCard previewTheme={previewTheme} />
           </Panel.Content>
         </Panel>
       </div>
