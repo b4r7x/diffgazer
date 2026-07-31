@@ -1,139 +1,151 @@
 /** @vitest-environment jsdom */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-import type { ProviderModelsResponse } from "../../schemas/config/index.js";
+import { describe, expect, it, vi } from "vitest";
+import { PRODUCT_REGISTRY } from "../../providers/product-registry.js";
+import type {
+  ClientConfigurationAction,
+  ClientConfigurationActionResponse,
+  ConfigurationInitResponse,
+  ConfigurationListResponse,
+} from "../../schemas/config/index.js";
+import {
+  ClientConfigurationActionResponseSchema,
+  READINESS_PRESENTATION,
+} from "../../schemas/config/index.js";
 import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
-import {
-  useDeleteProviderCredentials,
-  useOpenRouterModels,
-  useProviderModels,
-  useSaveConfig,
-} from "./config.js";
+import { useConfigurationAction, useConfigurationInit, useConfigurations } from "./config.js";
 import { configQueries } from "./queries/config.js";
 
-function makeResponse(id: string): ProviderModelsResponse {
-  return {
-    models: [{ id, name: id, description: id, tier: "free" }],
-    fetchedAt: new Date().toISOString(),
-    source: "live",
-    cached: false,
-  };
-}
+const notice = {
+  ...PRODUCT_REGISTRY.gemini.notice,
+  billing: [...PRODUCT_REGISTRY.gemini.notice.billing],
+  privacy: [...PRODUCT_REGISTRY.gemini.notice.privacy],
+};
+
+const acknowledgement = {
+  status: "accepted" as const,
+  noticeId: notice.id,
+  noticeVersion: notice.noticeVersion,
+  acceptedAt: "2026-07-31T12:00:00.000Z",
+};
+
+const hostedInput = {
+  transportFamily: "hosted-api" as const,
+  productId: "gemini" as const,
+  endpoint: "https://generativelanguage.googleapis.com/v1beta",
+};
+
+const supportedConfiguration = {
+  configurationId: "gemini-primary",
+  revision: 1,
+  status: "supported" as const,
+  transportFamily: "hosted-api" as const,
+  productId: "gemini" as const,
+  endpoint: hostedInput.endpoint,
+  selectedModelId: "gemini-2.5-flash",
+  notices: [notice],
+  availableActions: ["inspect", "select", "test", "update", "delete"] as const,
+};
+
+const actions = [
+  { action: "create", input: hostedInput },
+  { action: "inspect", configurationId: "gemini-primary" },
+  { action: "select", configurationId: "gemini-primary", modelId: "gemini-2.5-flash" },
+  { action: "test", configurationId: "gemini-primary" },
+  {
+    action: "update",
+    configurationId: "gemini-primary",
+    expectedRevision: 1,
+    input: hostedInput,
+    acknowledgement,
+  },
+  { action: "delete", configurationId: "gemini-primary", expectedRevision: 1 },
+] as const satisfies readonly ClientConfigurationAction[];
+
+const configurationList: ConfigurationListResponse = {
+  schemaVersion: 2,
+  configurations: [],
+  selectedConfigurationId: null,
+};
+
+const configurationInit: ConfigurationInitResponse = {
+  ...configurationList,
+  settings: {
+    theme: "auto",
+    defaultLenses: ["correctness"],
+    defaultProfile: null,
+    severityThreshold: "low",
+    secretsStorage: null,
+    agentExecution: "parallel",
+  },
+  project: { path: "/repo", projectId: null, trust: null },
+};
 
 function makeWrapper(api: Partial<BoundApi>) {
   return createTestQueryWrapper({ api }).Wrapper;
 }
 
-describe("useProviderModels", () => {
-  let getProviderModels: Mock<BoundApi["getProviderModels"]>;
-  let api: Partial<BoundApi>;
-
-  beforeEach(() => {
-    getProviderModels = vi.fn<BoundApi["getProviderModels"]>(async (id) => makeResponse(id));
-    api = { getProviderModels };
-  });
-
-  it("does not fetch when disabled", () => {
-    renderHook(() => useProviderModels("gemini", { enabled: false }), {
-      wrapper: makeWrapper(api),
+describe("configuration queries", () => {
+  it("loads the V2 initialization payload", async () => {
+    const loadConfigurationInit = vi.fn(async () => configurationInit);
+    const { result } = renderHook(() => useConfigurationInit(), {
+      wrapper: makeWrapper({ loadConfigurationInit }),
     });
-    expect(getProviderModels).not.toHaveBeenCalled();
+
+    await waitFor(() => expect(result.current.data).toEqual(configurationInit));
+    expect(loadConfigurationInit).toHaveBeenCalledOnce();
   });
 
-  it("refetches with the new provider id across rerender", async () => {
-    const { result, rerender } = renderHook(
-      ({ id }: { id: "gemini" | "groq" }) => useProviderModels(id),
-      { wrapper: makeWrapper(api), initialProps: { id: "gemini" } },
+  it("loads configuration summaries from their own cache key", async () => {
+    const listConfigurations = vi.fn(async () => configurationList);
+    const harness = createTestQueryWrapper({ api: { listConfigurations } });
+    const { result } = renderHook(() => useConfigurations(), { wrapper: harness.Wrapper });
+
+    await waitFor(() => expect(result.current.data).toEqual(configurationList));
+    expect(listConfigurations).toHaveBeenCalledOnce();
+    expect(configQueries.configurations(harness.api).queryKey).not.toEqual(
+      configQueries.init(harness.api).queryKey,
     );
-    await waitFor(() => expect(result.current.data?.models[0]?.id).toBe("gemini"));
-    expect(result.current.isSuccess).toBe(true);
-    rerender({ id: "groq" });
-    await waitFor(() => expect(result.current.data?.models[0]?.id).toBe("groq"));
   });
 });
 
-describe("OpenRouter credential cache identity", () => {
-  it("drops models fetched with the previous credential before the replacement refetch", async () => {
-    const getOpenRouterModels = vi.fn(async () => {
-      throw new Error("replacement credential rejected");
-    });
-    const saveConfig: BoundApi["saveConfig"] = vi.fn(async () => {});
-    const harness = createTestQueryWrapper({
-      api: { getOpenRouterModels, saveConfig },
-    });
-    harness.queryClient.setQueryData(configQueries.openRouterModels(harness.api).queryKey, {
-      models: [
-        {
-          id: "old/model",
-          name: "Old model",
-          description: "Only valid for the old credential",
-          contextLength: 4096,
-          pricing: { prompt: "0", completion: "0" },
-          isFree: true,
-        },
-      ],
-      fetchedAt: new Date().toISOString(),
-      cached: false,
-    });
-
-    const { result } = renderHook(
-      () => ({ models: useOpenRouterModels(), save: useSaveConfig() }),
-      { wrapper: harness.Wrapper },
+describe("useConfigurationAction", () => {
+  it.each(actions)("dispatches and invalidates V2 state for $action", async (action) => {
+    const executeConfigurationAction = vi.fn(
+      async (input: ClientConfigurationAction): Promise<ClientConfigurationActionResponse> =>
+        ClientConfigurationActionResponseSchema.parse({
+          action: input.action,
+          status: "succeeded",
+          ...(input.action !== "delete" ? { configuration: supportedConfiguration } : {}),
+          ...(input.action === "test"
+            ? {
+                readiness: {
+                  status: "ready",
+                  ready: true,
+                  evidenceStatus: "passed",
+                  checkedAt: "2026-07-31T12:00:00.000Z",
+                  acknowledgement,
+                  ...READINESS_PRESENTATION.ready,
+                },
+              }
+            : {}),
+        }),
     );
-    expect(result.current.models.data?.models[0]?.id).toBe("old/model");
+    const harness = createTestQueryWrapper({ api: { executeConfigurationAction } });
+    const initKey = configQueries.init(harness.api).queryKey;
+    const configurationsKey = configQueries.configurations(harness.api).queryKey;
+    harness.queryClient.setQueryData(initKey, configurationInit);
+    harness.queryClient.setQueryData(configurationsKey, configurationList);
 
+    const { result } = renderHook(() => useConfigurationAction(), { wrapper: harness.Wrapper });
     await act(async () => {
-      await result.current.save.mutateAsync({
-        provider: "openrouter",
-        apiKey: "replacement-key",
-      });
+      await result.current.mutateAsync(action);
     });
 
-    await waitFor(() => expect(result.current.models.isError).toBe(true));
-    expect(result.current.models.data).toBeUndefined();
-    expect(result.current.models.error?.message).toBe("replacement credential rejected");
-  });
-
-  it("removes OpenRouter models after deleting its credential", async () => {
-    const deleteProviderCredentials = vi.fn(async () => ({
-      deleted: true,
-      provider: "openrouter",
-    }));
-    const harness = createTestQueryWrapper({
-      api: { deleteProviderCredentials } as Partial<BoundApi>,
-    });
-    const queryKey = configQueries.openRouterModels(harness.api).queryKey;
-    harness.queryClient.setQueryData(queryKey, {
-      models: [
-        {
-          id: "old/model",
-          name: "Old model",
-          contextLength: 4096,
-          pricing: { prompt: "0", completion: "0" },
-          isFree: true,
-        },
-      ],
-      fetchedAt: new Date().toISOString(),
-      cached: false,
-    });
-
-    const { result } = renderHook(
-      () => ({
-        models: useOpenRouterModels({ enabled: false }),
-        deleteCredentials: useDeleteProviderCredentials(),
-      }),
-      { wrapper: harness.Wrapper },
-    );
-
-    expect(result.current.models.data?.models[0]?.id).toBe("old/model");
-
-    await act(async () => {
-      await result.current.deleteCredentials.mutateAsync("openrouter");
-    });
-
-    expect(deleteProviderCredentials).toHaveBeenCalledWith("openrouter");
-    await waitFor(() => expect(result.current.models.data).toBeUndefined());
+    expect(executeConfigurationAction).toHaveBeenCalledWith(action);
+    expect(harness.queryClient.getQueryState(initKey)?.isInvalidated).toBe(true);
+    expect(harness.queryClient.getQueryState(configurationsKey)?.isInvalidated).toBe(true);
   });
 });

@@ -1,5 +1,53 @@
 import type { AppError } from "@diffgazer/core/errors";
 import type { ProviderStatus, SettingsConfig, TrustConfig } from "@diffgazer/core/schemas/config";
+import type { ConfigurationId, DecodedProviderConfigurationRecord } from "./provider-config.js";
+
+export const CONFIG_SCHEMA_VERSION_V2 = 2 as const;
+
+/** The non-secret V2 document persisted by the server. */
+export interface ConfigDocumentV2 {
+  readonly schemaVersion: typeof CONFIG_SCHEMA_VERSION_V2;
+  readonly settings: Record<string, unknown>;
+  readonly selectedConfigurationId: ConfigurationId | null;
+  readonly configurations: readonly DecodedProviderConfigurationRecord[];
+  /** Present for an unmodified decode so a byte-identical round trip is possible. */
+  readonly rawBytes?: Uint8Array;
+  readonly rawSettingsBytes?: Uint8Array;
+}
+
+/** A V1 provider entry is only executable after an explicit migration step. */
+export type V1ConfigurationRecord =
+  | {
+      readonly status: "migrate-v1";
+      readonly record: {
+        readonly provider: "gemini" | "zai" | "openrouter" | "groq" | "cerebras";
+        readonly hasApiKey: boolean;
+        readonly isActive: boolean;
+        readonly model?: string;
+      };
+      readonly rawBytes: Uint8Array;
+    }
+  | {
+      readonly status: "removed";
+      readonly record: {
+        readonly provider: "zai-coding";
+        readonly hasApiKey: boolean;
+        readonly isActive: boolean;
+        readonly model?: string;
+      };
+      readonly rawBytes: Uint8Array;
+    }
+  | {
+      readonly status: "unknown";
+      readonly rawBytes: Uint8Array;
+    };
+
+export interface ConfigDocumentV1 {
+  readonly schemaVersion: 1;
+  readonly settings: Record<string, unknown>;
+  readonly providers: readonly V1ConfigurationRecord[];
+  readonly rawBytes: Uint8Array;
+}
 
 export interface ConfigState {
   settings: SettingsConfig;

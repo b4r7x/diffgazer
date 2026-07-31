@@ -8,13 +8,30 @@ export {
   type SettingsPayload,
   saveWizard,
 } from "./save-wizard.js";
+export {
+  buildSetupPlan,
+  type RemovedSetupPlan,
+  type RunnableSetupPlan,
+  type RunnableSetupStep,
+  type SetupPlan,
+  type SetupProductId,
+  type SetupRemediation,
+} from "./setup-plan.js";
 export { getOnboardingProgressLabel, STEP_LABELS, STEP_TITLES } from "./steps.js";
 export type {
-  InputMethod,
+  OnboardingAcknowledgement,
+  OnboardingConformanceStatus,
+  OnboardingState,
   OnboardingStep,
-  WizardData,
+  RemovedOnboardingState,
+  RunnableOnboardingState,
 } from "./types.js";
-export { INPUT_METHODS, isInputMethod, WIZARD_STEPS } from "./types.js";
+export {
+  ONBOARDING_CONFORMANCE_STATUSES,
+  OnboardingAcknowledgementSchema,
+  OnboardingConformanceStatusSchema,
+  OnboardingStateSchema,
+} from "./types.js";
 export {
   type UseWizardStateOptions,
   type UseWizardStateResult,

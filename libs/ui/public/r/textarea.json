@@ -13,7 +13,7 @@
   "files": [
     {
       "path": "registry/ui/textarea/index.ts",
-      "content": "\"use client\";\n\nimport { Textarea, type TextareaProps, type TextareaResize } from \"./textarea\";\nimport type { TextareaResizeHandles } from \"./textarea\";\nimport type { TextareaResizeHandle } from \"./textarea-resizer\";\n\nexport { Textarea };\nexport type { TextareaProps, TextareaResize, TextareaResizeHandle, TextareaResizeHandles };\n",
+      "content": "\"use client\";\n\nimport type { TextareaResizeHandles } from \"./textarea\";\nimport { Textarea, type TextareaProps, type TextareaResize } from \"./textarea\";\nimport type { TextareaResizeHandle } from \"./textarea-resizer\";\n\nexport { Textarea };\nexport type { TextareaProps, TextareaResize, TextareaResizeHandle, TextareaResizeHandles };\n",
       "type": "registry:ui",
       "target": "@ui/textarea/index.ts"
     },

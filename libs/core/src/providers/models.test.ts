@@ -5,7 +5,7 @@ import { cycleTierFilter, filterModels, TIER_FILTERS } from "./models.js";
 const makeModel = (
   id: string,
   name: string,
-  tier: "free" | "paid",
+  tier: "free" | "paid" | "local" | "ambient",
   description = "",
 ): ModelInfo => ({ id, name, tier, description });
 
@@ -14,13 +14,22 @@ const MODELS: ModelInfo[] = [
   makeModel("gpt-35", "GPT-3.5", "free", "Fast and cheap"),
   makeModel("claude", "Claude", "paid", "Anthropic model"),
   makeModel("gemini", "Gemini", "free", "Google model"),
+  makeModel("ollama-local", "Ollama", "local", "Local runtime"),
+  makeModel("codex-ambient", "Codex CLI", "ambient", "Vendor-managed local auth"),
 ];
 
 const ids = (models: ModelInfo[]) => models.map((m) => m.id);
 
 describe("filterModels", () => {
   it("returns all models when filter is 'all' and no search", () => {
-    expect(ids(filterModels(MODELS, "all", ""))).toEqual(["gpt-4", "gpt-35", "claude", "gemini"]);
+    expect(ids(filterModels(MODELS, "all", ""))).toEqual([
+      "gpt-4",
+      "gpt-35",
+      "claude",
+      "gemini",
+      "ollama-local",
+      "codex-ambient",
+    ]);
   });
 
   it("filters to free tier only", () => {
@@ -29,6 +38,13 @@ describe("filterModels", () => {
 
   it("filters to paid tier only", () => {
     expect(ids(filterModels(MODELS, "paid", ""))).toEqual(["gpt-4", "claude"]);
+  });
+
+  it("does not classify neutral local or ambient models as free or paid", () => {
+    expect(ids(filterModels(MODELS, "free", ""))).not.toContain("ollama-local");
+    expect(ids(filterModels(MODELS, "free", ""))).not.toContain("codex-ambient");
+    expect(ids(filterModels(MODELS, "paid", ""))).not.toContain("ollama-local");
+    expect(ids(filterModels(MODELS, "paid", ""))).not.toContain("codex-ambient");
   });
 
   it("filters by search query against name and description", () => {

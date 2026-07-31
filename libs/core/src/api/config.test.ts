@@ -1,24 +1,62 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReadinessAcknowledgement } from "../schemas/config/readiness.js";
 import { createApiClient } from "./client.js";
 import {
-  activateProvider,
-  deleteProviderCredentials,
-  getOpenRouterModels,
-  getProviderModels,
-  getProviderStatus,
+  bindConfig,
+  createConfiguration,
+  deleteConfiguration,
+  inspectConfiguration,
+  listConfigurations,
+  loadConfigurationInit,
+  selectConfiguration,
+  testConfiguration,
+  updateConfiguration,
 } from "./config.js";
 import { createMockClient } from "./test-helpers.js";
 import { type ApiClient, isApiError } from "./types.js";
 
-const providerPathCases = [
-  ["slash", "unknown/provider", "unknown%2Fprovider"],
-  ["percent", "provider%name", "provider%25name"],
-  ["literal encoded slash", "provider%2Fname", "provider%252Fname"],
-  ["Unicode", "模型", "%E6%A8%A1%E5%9E%8B"],
-  ["query delimiter", "provider?mode=test", "provider%3Fmode%3Dtest"],
-  ["fragment delimiter", "provider#details", "provider%23details"],
-  ["spaces", "provider name", "provider%20name"],
-] as const;
+const checkedAt = "2026-07-31T12:00:00.000Z";
+const acknowledgement: Extract<ReadinessAcknowledgement, { status: "accepted" }> = {
+  status: "accepted",
+  noticeId: "groq-hosted-api",
+  noticeVersion: 1,
+  acceptedAt: checkedAt,
+};
+const groqNotice = {
+  id: "groq-hosted-api",
+  noticeVersion: 1,
+  acknowledgement: "required",
+  acknowledgeBefore: "first-context-send",
+  renewAcknowledgementOn: "material-notice-change",
+  billing: ["Current account and model limits are verified during setup."],
+  privacy: ["Data handling follows the selected Groq API account and model terms."],
+} as const;
+const input = {
+  transportFamily: "hosted-api",
+  productId: "groq",
+  endpoint: "https://api.groq.com/openai/v1",
+} as const;
+const configuration = {
+  status: "supported",
+  configurationId: "groq-primary",
+  revision: 7,
+  transportFamily: "hosted-api",
+  productId: "groq",
+  endpoint: "https://api.groq.com/openai/v1",
+  selectedModelId: "openai/gpt-oss-120b",
+  notices: [groqNotice],
+  availableActions: ["inspect", "select", "test", "update", "delete"],
+} as const;
+const readiness = {
+  status: "ready",
+  ready: true,
+  evidenceStatus: "passed",
+  checkedAt,
+  acknowledgement,
+  action: "inspect",
+  explanation: "The exact configured review path is ready.",
+  remediation: { code: "none", message: "No remediation is required." },
+} as const;
 
 describe("config API functions", () => {
   let client: ApiClient;
@@ -27,29 +65,190 @@ describe("config API functions", () => {
     client = createMockClient();
   });
 
-  it("getProviderStatus returns the unwrapped providers list from the config endpoint", async () => {
-    const providers = [{ provider: "gemini", hasApiKey: true, isActive: true }];
-    vi.mocked(client.get).mockResolvedValue({ providers });
+  it("serializes all six configuration actions to the single frozen endpoint", async () => {
+    vi.mocked(client.post)
+      .mockResolvedValueOnce({ action: "create", status: "succeeded", configuration })
+      .mockResolvedValueOnce({ action: "inspect", status: "succeeded", configuration })
+      .mockResolvedValueOnce({ action: "select", status: "succeeded", configuration })
+      .mockResolvedValueOnce({
+        action: "test",
+        status: "succeeded",
+        configuration,
+        readiness,
+      })
+      .mockResolvedValueOnce({ action: "update", status: "succeeded", configuration })
+      .mockResolvedValueOnce({ action: "delete", status: "succeeded" });
 
-    const result = await getProviderStatus(client);
+    const created = await createConfiguration(client, input);
+    await inspectConfiguration(client, "groq-primary");
+    await selectConfiguration(client, "groq-primary", "openai/gpt-oss-120b");
+    await testConfiguration(client, "groq-primary");
+    await updateConfiguration(client, "groq-primary", 7, input, acknowledgement);
+    await deleteConfiguration(client, "groq-primary", 7);
 
-    expect(client.get).toHaveBeenCalledWith("/api/config/providers", {
-      schema: expect.any(Function),
+    expect(client.post).toHaveBeenNthCalledWith(
+      1,
+      "/api/config/actions",
+      { action: "create", input },
+      { schema: expect.any(Function) },
+    );
+    expect(client.post).toHaveBeenNthCalledWith(
+      2,
+      "/api/config/actions",
+      { action: "inspect", configurationId: "groq-primary" },
+      { schema: expect.any(Function) },
+    );
+    expect(client.post).toHaveBeenNthCalledWith(
+      3,
+      "/api/config/actions",
+      {
+        action: "select",
+        configurationId: "groq-primary",
+        modelId: "openai/gpt-oss-120b",
+      },
+      { schema: expect.any(Function) },
+    );
+    expect(client.post).toHaveBeenNthCalledWith(
+      4,
+      "/api/config/actions",
+      { action: "test", configurationId: "groq-primary" },
+      { schema: expect.any(Function) },
+    );
+    expect(client.post).toHaveBeenNthCalledWith(
+      5,
+      "/api/config/actions",
+      {
+        action: "update",
+        configurationId: "groq-primary",
+        expectedRevision: 7,
+        input,
+        acknowledgement,
+      },
+      { schema: expect.any(Function) },
+    );
+    expect(client.post).toHaveBeenNthCalledWith(
+      6,
+      "/api/config/actions",
+      { action: "delete", configurationId: "groq-primary", expectedRevision: 7 },
+      { schema: expect.any(Function) },
+    );
+    expect(created.configuration).toMatchObject({
+      configurationId: "groq-primary",
+      revision: 7,
     });
-    expect(result).toEqual(providers);
   });
 
-  it("rejects a drifted provider payload with ApiError", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(Response.json({ providers: [{ provider: "not-a-provider" }] }));
+  it("rejects a response for a different action", async () => {
+    vi.mocked(client.post).mockResolvedValue({ action: "delete", status: "succeeded" });
+
+    await expect(inspectConfiguration(client, "groq-primary")).rejects.toThrow(
+      "Configuration action response mismatch: expected inspect, received delete",
+    );
+  });
+
+  it("rejects a successful response bound to a different configuration", async () => {
+    vi.mocked(client.post).mockResolvedValue({
+      action: "inspect",
+      status: "succeeded",
+      configuration: { ...configuration, configurationId: "other-configuration" },
+    });
+
+    await expect(inspectConfiguration(client, "groq-primary")).rejects.toThrow(
+      "Configuration action response belongs to a different configuration",
+    );
+  });
+
+  it("rejects a successful selection response for a different model", async () => {
+    vi.mocked(client.post).mockResolvedValue({
+      action: "select",
+      status: "succeeded",
+      configuration: { ...configuration, selectedModelId: "openai/gpt-oss-20b" },
+    });
+
+    await expect(
+      selectConfiguration(client, "groq-primary", "openai/gpt-oss-120b"),
+    ).rejects.toThrow("Configuration action response selected a different model");
+  });
+
+  it("rejects stale update and delete response revisions", async () => {
+    vi.mocked(client.post)
+      .mockResolvedValueOnce({
+        action: "update",
+        status: "succeeded",
+        configuration: { ...configuration, revision: 6 },
+      })
+      .mockResolvedValueOnce({
+        action: "delete",
+        status: "succeeded",
+        configuration: {
+          configurationId: "groq-primary",
+          revision: 6,
+          status: "removed",
+          transportFamily: "hosted-api",
+          productId: "zai-coding",
+          selectedModelId: null,
+          notices: [],
+          availableActions: ["inspect", "delete"],
+        },
+      });
+
+    await expect(
+      updateConfiguration(client, "groq-primary", 7, input, acknowledgement),
+    ).rejects.toThrow("Configuration action response returned a stale revision");
+    await expect(deleteConfiguration(client, "groq-primary", 7)).rejects.toThrow(
+      "Configuration delete response returned a stale revision",
+    );
+  });
+
+  it("rejects successful actions that claim a removed configuration", async () => {
+    vi.mocked(client.post).mockResolvedValue({
+      action: "test",
+      status: "succeeded",
+      configuration: {
+        configurationId: "groq-primary",
+        revision: 7,
+        status: "removed",
+        transportFamily: "hosted-api",
+        productId: "zai-coding",
+        selectedModelId: null,
+        notices: [],
+        availableActions: ["inspect", "delete"],
+      },
+      readiness: {
+        status: "removed",
+        ready: false,
+        evidenceStatus: "not-checked",
+        checkedAt: null,
+        acknowledgement: { status: "not-applicable" },
+        action: "delete",
+        explanation: "This saved product has been removed and cannot run reviews.",
+        remediation: {
+          code: "migrate-or-delete",
+          message: "Create a supported replacement or explicitly delete this record.",
+        },
+      },
+    });
+
+    await expect(testConfiguration(client, "groq-primary")).rejects.toThrow(
+      "A successful test response must contain a supported configuration",
+    );
+  });
+
+  it("rejects secret-bearing action responses at the HTTP boundary", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        action: "create",
+        status: "succeeded",
+        credential: "must-not-cross-the-boundary",
+      }),
+    );
     const originalFetch = globalThis.fetch;
     vi.stubGlobal("fetch", fetchMock);
 
     const apiClient = createApiClient({ baseUrl: "http://localhost:3000" });
     let error: unknown;
     try {
-      await getProviderStatus(apiClient);
+      await createConfiguration(apiClient, input);
     } catch (caught) {
       error = caught;
     } finally {
@@ -57,73 +256,55 @@ describe("config API functions", () => {
     }
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:3000/api/config/providers",
-      expect.objectContaining({ method: "GET" }),
+      "http://localhost:3000/api/config/actions",
+      expect.objectContaining({ method: "POST" }),
     );
     expect(isApiError(error)).toBe(true);
     if (!isApiError(error)) throw new Error("Expected ApiError");
-    expect(error.status).toBe(422);
-    expect(error.code).toBe("INVALID_RESPONSE");
+    expect(error).toMatchObject({ status: 422, code: "INVALID_RESPONSE" });
   });
 
-  it.each([
-    {
-      label: "with model='gemini-2.5-flash'",
-      model: "gemini-2.5-flash" as string | undefined,
-      expectedBody: { model: "gemini-2.5-flash" },
-    },
-    {
-      label: "with model=undefined",
-      model: undefined as string | undefined,
-      expectedBody: {},
-    },
-  ])("activateProvider activates the chosen provider $label", async ({ model, expectedBody }) => {
-    vi.mocked(client.post).mockResolvedValue({ provider: "gemini" });
+  it("loads safe V2 configuration bootstrap and list projections", async () => {
+    const list = {
+      schemaVersion: 2,
+      configurations: [{ configuration, readiness }],
+      selectedConfigurationId: "groq-primary",
+    } as const;
+    const init = {
+      ...list,
+      settings: {
+        theme: "auto",
+        defaultLenses: ["correctness"],
+        defaultProfile: null,
+        severityThreshold: "info",
+        secretsStorage: null,
+        agentExecution: "sequential",
+      },
+      project: { path: "/repo", projectId: null, trust: null },
+    } as const;
+    vi.mocked(client.get).mockResolvedValueOnce(init).mockResolvedValueOnce(list);
 
-    await activateProvider(client, "gemini", model);
-
-    expect(client.post).toHaveBeenCalledWith("/api/config/provider/gemini/activate", expectedBody, {
+    await expect(loadConfigurationInit(client)).resolves.toEqual(init);
+    await expect(listConfigurations(client)).resolves.toEqual(list);
+    expect(client.get).toHaveBeenNthCalledWith(1, "/api/config/init", {
+      schema: expect.any(Function),
+    });
+    expect(client.get).toHaveBeenNthCalledWith(2, "/api/config/providers", {
       schema: expect.any(Function),
     });
   });
 
-  it.each(
-    providerPathCases,
-  )("getProviderModels encodes a provider containing %s exactly once", async (_label, providerId, encodedProviderId) => {
-    await getProviderModels(client, providerId);
-
-    expect(client.get).toHaveBeenCalledWith(`/api/config/provider/${encodedProviderId}/models`, {
-      schema: expect.any(Function),
-    });
-  });
-
-  it.each(
-    providerPathCases,
-  )("activateProvider encodes a provider containing %s exactly once", async (_label, providerId, encodedProviderId) => {
-    vi.mocked(client.post).mockResolvedValue({ provider: "gemini" });
-
-    await activateProvider(client, providerId, undefined);
-
-    expect(client.post).toHaveBeenCalledWith(
-      `/api/config/provider/${encodedProviderId}/activate`,
-      {},
-      { schema: expect.any(Function) },
-    );
-  });
-
-  it.each(
-    providerPathCases,
-  )("deleteProviderCredentials encodes a provider containing %s exactly once", async (_label, providerId, encodedProviderId) => {
-    await deleteProviderCredentials(client, providerId);
-
-    expect(client.delete).toHaveBeenCalledWith(`/api/config/provider/${encodedProviderId}`);
-  });
-
-  it("keeps the OpenRouter models endpoint constant", async () => {
-    await getOpenRouterModels(client);
-
-    expect(client.get).toHaveBeenCalledWith("/api/config/provider/openrouter/models", {
-      schema: expect.any(Function),
-    });
+  it("binds only the V2 bootstrap and configuration action surface", () => {
+    expect(Object.keys(bindConfig(client)).sort()).toEqual([
+      "createConfiguration",
+      "deleteConfiguration",
+      "executeConfigurationAction",
+      "inspectConfiguration",
+      "listConfigurations",
+      "loadConfigurationInit",
+      "selectConfiguration",
+      "testConfiguration",
+      "updateConfiguration",
+    ]);
   });
 });

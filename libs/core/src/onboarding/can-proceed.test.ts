@@ -1,60 +1,335 @@
 import { describe, expect, it } from "vitest";
+import { PRODUCT_REGISTRY } from "../providers/product-registry.js";
 import { canProceed } from "./can-proceed.js";
-import { getInitialWizardData } from "./defaults.js";
-import type { WizardData } from "./types.js";
+import { getInitialWizardData, type OnboardingDraft } from "./defaults.js";
 
-function withData(overrides: Partial<WizardData>): WizardData {
-  return { ...getInitialWizardData(), ...overrides };
-}
+describe("setup-plan progression", () => {
+  it("lets local HTTP skip credentials while retaining endpoint and compatibility gates", () => {
+    const local = getInitialWizardData("local-openai");
 
-describe("canProceed", () => {
-  it("blocks storage step when no storage method is selected", () => {
-    expect(canProceed("storage", withData({ secretsStorage: null }))).toBe(false);
+    expect(local.plan.requiredFields).not.toContain("credential");
+    expect(canProceed("endpoint-binding", local)).toBe(true);
+    expect(canProceed("authentication", local)).toBe(true);
+    expect(canProceed("model", local)).toBe(false);
+    expect(
+      canProceed("model", {
+        ...local,
+        selectedModelId: "local-model",
+      }),
+    ).toBe(true);
   });
 
-  it("allows storage step when a storage method is selected", () => {
-    expect(canProceed("storage", withData({ secretsStorage: "file" }))).toBe(true);
-    expect(canProceed("storage", withData({ secretsStorage: "keyring" }))).toBe(true);
+  it("requires a selected CLI installation and passing compatibility evidence", () => {
+    const initial = getInitialWizardData("codex-cli");
+    if (initial.configurationInput.transportFamily !== "local-cli") {
+      throw new Error("Expected local CLI configuration");
+    }
+    const compatibilityStep = initial.plan.steps.find((step) => step.id === "conformance");
+    const withInstallation = {
+      ...initial,
+      configurationInput: {
+        ...initial.configurationInput,
+        installationId: "codex-installation",
+      },
+    } satisfies OnboardingDraft;
+    const withModel = {
+      ...withInstallation,
+      selectedModelId: "gpt-5-codex",
+    } satisfies OnboardingDraft;
+
+    expect(compatibilityStep).toMatchObject({
+      requiredChecks: [
+        "installation",
+        "runtime-version",
+        "account-plan",
+        "model-discovery",
+        "negative-capabilities",
+        "structured-output",
+        "cancellation",
+        "acknowledgement",
+      ],
+    });
+    expect(canProceed("authentication", initial)).toBe(false);
+    expect(canProceed("authentication", withInstallation)).toBe(true);
+    expect(canProceed("conformance", withModel)).toBe(false);
+    expect(
+      canProceed("conformance", {
+        ...withModel,
+        conformanceStatus: "passed",
+      }),
+    ).toBe(true);
   });
 
-  it("blocks provider step when no provider is selected", () => {
-    expect(canProceed("provider", withData({ provider: null }))).toBe(false);
+  it("never infers acknowledgement from save, test, or HTTP success", () => {
+    const notice = PRODUCT_REGISTRY.mistral.notice;
+    const initial = getInitialWizardData("mistral");
+    if (initial.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    const successfulSignals = {
+      ...initial,
+      configurationInput: {
+        ...initial.configurationInput,
+        credential: { kind: "environment" as const },
+      },
+      selectedModelId: "mistral-small-2603",
+      conformanceStatus: "passed",
+      saveStatus: "saved",
+      testStatus: "passed",
+      httpStatus: 200,
+    } satisfies OnboardingDraft & {
+      readonly saveStatus: "saved";
+      readonly testStatus: "passed";
+      readonly httpStatus: 200;
+    };
+
+    expect(canProceed("acknowledgement", successfulSignals)).toBe(false);
+    expect(
+      canProceed("acknowledgement", {
+        ...successfulSignals,
+        acknowledgement: {
+          status: "accepted",
+          noticeId: notice.id,
+          noticeVersion: notice.noticeVersion,
+          acceptedAt: "2026-07-31T12:00:00.000Z",
+        },
+      }),
+    ).toBe(true);
   });
 
-  it("allows provider step when a provider is selected", () => {
-    expect(canProceed("provider", withData({ provider: "gemini" }))).toBe(true);
+  it("rejects acknowledgement for a different notice version", () => {
+    const notice = PRODUCT_REGISTRY.mistral.notice;
+    const initial = getInitialWizardData("mistral");
+    if (initial.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    const data = {
+      ...initial,
+      configurationInput: {
+        ...initial.configurationInput,
+        credential: { kind: "environment" },
+      },
+      selectedModelId: "mistral-small-2603",
+      conformanceStatus: "passed",
+      acknowledgement: {
+        status: "accepted",
+        noticeId: notice.id,
+        noticeVersion: notice.noticeVersion + 1,
+        acceptedAt: "2026-07-31T12:00:00.000Z",
+      },
+    } satisfies OnboardingDraft;
+
+    expect(canProceed("acknowledgement", data)).toBe(false);
   });
 
-  it("allows api-key step when env method is selected even without a key", () => {
-    expect(canProceed("api-key", withData({ inputMethod: "env", apiKey: "" }))).toBe(true);
+  it("rejects latest aliases even when the product policy accepts discovered exact IDs", () => {
+    const initial = getInitialWizardData("gemini");
+    if (initial.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    const configured = {
+      ...initial,
+      configurationInput: {
+        ...initial.configurationInput,
+        credential: { kind: "environment" as const },
+      },
+    } satisfies OnboardingDraft;
+
+    expect(canProceed("model", { ...configured, selectedModelId: "gemini-latest" })).toBe(false);
+    expect(canProceed("model", { ...configured, selectedModelId: "gemini-2.5-flash" })).toBe(true);
   });
 
-  it("blocks api-key step when paste method has empty key", () => {
-    expect(canProceed("api-key", withData({ inputMethod: "paste", apiKey: "" }))).toBe(false);
+  it.each([
+    "gpt-4.1-mini",
+    "openrouter/auto",
+    "openrouter/openrouter",
+    "provider/automatic",
+    "provider/default",
+    "provider/cheapest",
+    "provider/free",
+    "provider/fallback",
+    "provider/exacto",
+    "provider/extended",
+    "provider/fastest",
+    "provider/floor",
+    "provider/nitro",
+    "provider/online",
+    "provider/random",
+    "provider/route",
+    "provider/openrouter",
+    "provider/thinking",
+    "openai/gpt-4.1-mini:free",
+    "openai/gpt-4.1-mini:online",
+    "openai/gpt-4.1-mini/thinking",
+  ] as const)("rejects forged OpenRouter route selector %s", (selectedModelId) => {
+    const initial = getInitialWizardData("openrouter");
+    if (initial.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    const configured = {
+      ...initial,
+      configurationInput: {
+        ...initial.configurationInput,
+        credential: { kind: "environment" as const },
+      },
+      selectedModelId,
+    } satisfies OnboardingDraft;
+
+    expect(canProceed("model", configured)).toBe(false);
   });
 
-  it("allows api-key step when paste method has a key", () => {
-    expect(canProceed("api-key", withData({ inputMethod: "paste", apiKey: "secret" }))).toBe(true);
+  it("requires an exact downstream provider/model pair for OpenRouter", () => {
+    const initial = getInitialWizardData("openrouter");
+    if (initial.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    const configured = {
+      ...initial,
+      configurationInput: {
+        ...initial.configurationInput,
+        credential: { kind: "environment" as const },
+      },
+    } satisfies OnboardingDraft;
+
+    expect(
+      canProceed("model", {
+        ...configured,
+        selectedModelId: "anthropic/claude-3.7-sonnet",
+      }),
+    ).toBe(true);
+    expect(
+      canProceed("model", {
+        ...configured,
+        selectedModelId: "openrouterish/openrouter-model",
+      }),
+    ).toBe(true);
+    expect(
+      canProceed("model", {
+        ...configured,
+        selectedModelId: "provider/openrouterish",
+      }),
+    ).toBe(true);
+    expect(
+      canProceed("model", {
+        ...configured,
+        selectedModelId: "OpenRouter/claude-3.7-sonnet",
+      }),
+    ).toBe(false);
   });
 
-  it("blocks model step when model is null", () => {
-    expect(canProceed("model", withData({ model: null }))).toBe(false);
+  it("fails closed for Z.AI Flash until an explicit model opt-in is represented", () => {
+    const initial = getInitialWizardData("zai");
+    if (initial.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    const configured = {
+      ...initial,
+      configurationInput: {
+        ...initial.configurationInput,
+        credential: { kind: "environment" as const },
+      },
+      selectedModelId: "glm-4.7-flash",
+    } satisfies OnboardingDraft;
+
+    // Discovery, conformance, and the product notice are not model opt-in.
+    expect(canProceed("model", configured)).toBe(false);
+    expect(
+      canProceed("conformance", {
+        ...configured,
+        conformanceStatus: "passed",
+      }),
+    ).toBe(false);
+    expect(
+      canProceed("acknowledgement", {
+        ...configured,
+        conformanceStatus: "passed",
+        acknowledgement: {
+          status: "accepted",
+          noticeId: PRODUCT_REGISTRY.zai.notice.id,
+          noticeVersion: PRODUCT_REGISTRY.zai.notice.noticeVersion,
+          acceptedAt: "2026-07-31T12:00:00.000Z",
+        },
+      }),
+    ).toBe(false);
   });
 
-  it("allows model step when model is selected", () => {
-    expect(canProceed("model", withData({ model: "gemini-2.5-pro" }))).toBe(true);
+  it("does not let a passed status bypass a changed endpoint or missing authentication", () => {
+    const initial = getInitialWizardData("qwen");
+    if (initial.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    const configured = {
+      ...initial,
+      configurationInput: {
+        ...initial.configurationInput,
+        workspace: "workspace-reference",
+        credential: { kind: "environment" as const },
+      },
+      selectedModelId: "qwen3-coder-flash",
+      conformanceStatus: "passed",
+    } satisfies OnboardingDraft;
+
+    expect(canProceed("conformance", configured)).toBe(true);
+    expect(
+      canProceed("conformance", {
+        ...configured,
+        configurationInput: {
+          ...configured.configurationInput,
+          endpoint: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        },
+      }),
+    ).toBe(false);
+    expect(
+      canProceed("conformance", {
+        ...configured,
+        configurationInput: { ...configured.configurationInput, credential: undefined },
+      }),
+    ).toBe(false);
   });
 
-  it("blocks analysis step when no lenses are selected", () => {
-    expect(canProceed("analysis", withData({ defaultLenses: [] }))).toBe(false);
-  });
+  it("keeps Qwen Plus unavailable until output-limit and review evidence exists", () => {
+    const initial = getInitialWizardData("qwen");
+    if (initial.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    const configured = {
+      ...initial,
+      configurationInput: {
+        ...initial.configurationInput,
+        workspace: "workspace-reference",
+        credential: { kind: "environment" as const },
+      },
+      selectedModelId: "qwen3-coder-plus",
+    } satisfies OnboardingDraft;
 
-  it("allows analysis step when at least one lens is selected", () => {
-    expect(canProceed("analysis", withData({ defaultLenses: ["security"] }))).toBe(true);
-  });
+    // The draft carries only generic conformance status, not the required
+    // server-verified output-limit and review-conformance evidence.
+    expect(canProceed("model", configured)).toBe(false);
+    expect(
+      canProceed("conformance", {
+        ...configured,
+        conformanceStatus: "passed",
+      }),
+    ).toBe(false);
+    expect(
+      canProceed("acknowledgement", {
+        ...configured,
+        conformanceStatus: "passed",
+        acknowledgement: {
+          status: "accepted",
+          noticeId: PRODUCT_REGISTRY.qwen.notice.id,
+          noticeVersion: PRODUCT_REGISTRY.qwen.notice.noticeVersion,
+          acceptedAt: "2026-07-31T12:00:00.000Z",
+        },
+      }),
+    ).toBe(false);
 
-  it("allows execution step regardless of mode", () => {
-    expect(canProceed("execution", withData({ agentExecution: "parallel" }))).toBe(true);
-    expect(canProceed("execution", withData({ agentExecution: "sequential" }))).toBe(true);
+    expect(
+      canProceed("conformance", {
+        ...configured,
+        selectedModelId: "qwen3-coder-flash",
+        conformanceStatus: "passed",
+      }),
+    ).toBe(true);
   });
 });

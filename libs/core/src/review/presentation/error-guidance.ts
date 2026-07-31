@@ -1,5 +1,5 @@
 import { isApiError } from "../../api/types.js";
-import type { SetupStatus } from "../../schemas/config/index.js";
+import type { Readiness } from "../../schemas/config/index.js";
 import { ErrorCode } from "../../schemas/errors.js";
 
 export interface ApiKeyMissingCopy {
@@ -16,24 +16,12 @@ export const CONFIGURATION_ERROR_COPY = {
 
 export function getApiKeyMissingCopy(input: {
   provider?: string;
-  missing: Readonly<SetupStatus["missing"]>;
+  readiness: Readiness;
 }): ApiKeyMissingCopy {
-  const forProvider = input.provider ? ` for ${input.provider}` : "";
-  if (input.missing.includes("secretsStorage")) {
-    return {
-      title: "Secrets Storage Required",
-      body: "Choose a secrets storage backend in Settings before starting a review.",
-    };
-  }
-  if (!input.missing.includes("provider") && input.missing.includes("model")) {
-    return {
-      title: "Model Required",
-      body: `No model selected${forProvider}. Set up a model in Settings to start reviewing code.`,
-    };
-  }
+  const providerLabel = input.provider ? ` (${input.provider})` : "";
   return {
-    title: "API Key Required",
-    body: `No API key configured${forProvider}. Add your API key in Settings to start reviewing code.`,
+    title: `Configuration Not Ready${providerLabel}`,
+    body: `${input.readiness.explanation} ${input.readiness.remediation.message}`,
   };
 }
 

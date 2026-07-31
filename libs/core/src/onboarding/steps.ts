@@ -1,28 +1,35 @@
-import { type OnboardingStep, WIZARD_STEPS } from "./types.js";
+import type { SetupPlan } from "./setup-plan.js";
+import type { OnboardingStep } from "./types.js";
 
-export const STEP_LABELS: Record<OnboardingStep, string> = {
-  storage: "Storage",
-  provider: "Provider",
-  "api-key": "API Key",
+export const STEP_LABELS = {
+  product: "Product",
+  "endpoint-binding": "Endpoint",
+  authentication: "Authentication",
   model: "Model",
-  analysis: "Analysis",
-  execution: "Execution",
-};
+  conformance: "Conformance",
+  acknowledgement: "Notice",
+  migration: "Migration",
+  delete: "Delete",
+} as const satisfies Record<OnboardingStep, string>;
 
-export const STEP_TITLES: Record<OnboardingStep, string> = {
-  storage: "Secrets Storage",
-  provider: "AI Provider",
-  "api-key": "API Key",
-  model: "Model Selection",
-  analysis: "Analysis Configuration",
-  execution: "Agent Execution",
-};
+export const STEP_TITLES = {
+  product: "Select Product",
+  "endpoint-binding": "Configure Endpoint",
+  authentication: "Configure Authentication",
+  model: "Select Model",
+  conformance: "Verify Conformance",
+  acknowledgement: "Accept Product Notice",
+  migration: "Create a General Z.AI Configuration",
+  delete: "Delete Removed Configuration",
+} as const satisfies Record<OnboardingStep, string>;
 
-export function getStepAt(index: number): OnboardingStep {
-  return WIZARD_STEPS[index] ?? "storage";
+export function getStepAt(plan: SetupPlan, index: number): OnboardingStep {
+  const step = plan.steps[index];
+  if (!step) throw new RangeError(`No onboarding step at index ${index}`);
+  return step.id;
 }
 
-export function getOnboardingProgressLabel(index: number): string {
-  const step = getStepAt(index);
-  return `Step ${index + 1} of ${WIZARD_STEPS.length}: ${STEP_LABELS[step]}`;
+export function getOnboardingProgressLabel(plan: SetupPlan, index: number): string {
+  const step = getStepAt(plan, index);
+  return `Step ${index + 1} of ${plan.steps.length}: ${STEP_LABELS[step]}`;
 }

@@ -1,378 +1,184 @@
 import { describe, expect, it } from "vitest";
-import { requireValue } from "../testing/assertions.js";
+import { CANDIDATE_VERDICTS, PRODUCT_REGISTRY } from "../providers/product-registry.js";
 import { RAW_CATALOG } from "./fixtures.js";
-import { PROVIDER_OVERLAY, type ProviderOverlay } from "./provider-overlay.js";
-import { parseModelsDevCatalog } from "./schema.js";
-import {
-  canRunReview,
-  catalogToModelInfo,
-  findModelLimit,
-  isModelFreeToUse,
-  mergeModelsAcrossSources,
-} from "./transform.js";
+import { transformCatalogObservation } from "./transform.js";
 
-const catalog = parseModelsDevCatalog(RAW_CATALOG);
+const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 
-const byId = (id: string, provider: keyof typeof PROVIDER_OVERLAY) => {
-  const sourceId = requireValue(
-    PROVIDER_OVERLAY[provider].modelsDevIds[0],
-    `${provider} catalog source id`,
-  );
-  return requireValue(catalog[sourceId]?.models[id], `${provider} model ${id}`);
-};
+function transform(catalog: unknown = RAW_CATALOG) {
+  return transformCatalogObservation({
+    source: "models.dev-snapshot",
+    checkedAt: CHECKED_AT,
+    catalog,
+  });
+}
 
-describe("isModelFreeToUse", () => {
-  it("gemini-2.5-flash is free despite a positive sticker price (in freeTier.ids)", () => {
-    expect(isModelFreeToUse(byId("gemini-2.5-flash", "gemini"), PROVIDER_OVERLAY.gemini)).toBe(
-      true,
-    );
-  });
-  it("gemini-3-pro-preview is paid (priced and NOT in the freeTier selector)", () => {
-    expect(isModelFreeToUse(byId("gemini-3-pro-preview", "gemini"), PROVIDER_OVERLAY.gemini)).toBe(
-      false,
-    );
-  });
-  it("zai glm-4.7-flash is free (zero list price, no curation needed)", () => {
-    expect(isModelFreeToUse(byId("glm-4.7-flash", "zai"), PROVIDER_OVERLAY.zai)).toBe(true);
-  });
-  it("zai glm-4.7 is paid (priced, no provider selector)", () => {
-    expect(isModelFreeToUse(byId("glm-4.7", "zai"), PROVIDER_OVERLAY.zai)).toBe(false);
-  });
-  it("zai-coding glm-4.7 is paid despite cost 0/0 (hasFreeTier: false)", () => {
-    expect(isModelFreeToUse(byId("glm-4.7", "zai-coding"), PROVIDER_OVERLAY["zai-coding"])).toBe(
-      false,
-    );
-  });
-  it("groq priced model is free (freeTier: 'all')", () => {
-    expect(
-      isModelFreeToUse(
-        byId("meta-llama/llama-4-scout-17b-16e-instruct", "groq"),
-        PROVIDER_OVERLAY.groq,
-      ),
-    ).toBe(true);
-  });
-  it("cerebras priced model is free (freeTier: 'all')", () => {
-    expect(isModelFreeToUse(byId("gpt-oss-120b", "cerebras"), PROVIDER_OVERLAY.cerebras)).toBe(
-      true,
-    );
-  });
+describe("transformCatalogObservation", () => {
+  it("joins bounded observations through product-registry identities without conferring admission", () => {
+    const observations = transform();
 
-  it("a priced model whose family is in freeTier.families is free", () => {
-    const overlay: ProviderOverlay = {
-      ...PROVIDER_OVERLAY.gemini,
-      freeTier: { families: ["gemini-flash"] },
-    };
-    expect(isModelFreeToUse(byId("gemini-2.5-flash", "gemini"), overlay)).toBe(true);
-  });
-  it("a priced model whose family is not listed in freeTier.families is paid", () => {
-    const overlay: ProviderOverlay = {
-      ...PROVIDER_OVERLAY.gemini,
-      freeTier: { families: ["gemini-flash"] },
-    };
-    expect(isModelFreeToUse(byId("gemini-2.5-pro", "gemini"), overlay)).toBe(false);
-  });
-});
+    expect(observations.map(({ productId }) => productId)).toEqual([
+      "gemini",
+      "zai",
+      "openrouter",
+      "groq",
+      "cerebras",
+      "mistral",
+    ]);
 
-describe("catalogToModelInfo", () => {
-  it("produces ModelInfo with derived tier, name, description, and recommended flag", () => {
-    const models = catalogToModelInfo(catalog, "gemini");
-    const flash = requireValue(
-      models.find((m) => m.id === "gemini-2.5-flash"),
-      "Gemini Flash model info",
-    );
-    expect(flash.tier).toBe("free");
-    expect(flash.recommended).toBe(true);
-    expect(flash.name).toBe("Gemini 2.5 Flash");
-    // The name is already the row's title, so the description carries only the
-    // fact the title does not.
-    expect(flash.description).toBe("1M context");
-    expect(flash.contextLength).toBe(1048576);
-    expect(flash.maxOutputTokens).toBe(65536);
-    const pro3 = requireValue(
-      models.find((m) => m.id === "gemini-3-pro-preview"),
-      "Gemini 3 Pro model info",
-    );
-    expect(pro3.tier).toBe("paid");
-    expect(pro3.recommended).toBeUndefined();
-  });
+    for (const observation of observations) {
+      expect(observation.transportFamily).toBe(
+        PRODUCT_REGISTRY[observation.productId].transportFamily,
+      );
+      expect(observation.source).toBe("models.dev-snapshot");
+      expect(observation.checkedAt).toBe(CHECKED_AT);
+      expect(Object.keys(observation).sort()).toEqual([
+        "checkedAt",
+        "models",
+        "productId",
+        "source",
+        "transportFamily",
+      ]);
 
-  it("filters out the embedding model (output limit below the review floor)", () => {
-    const models = catalogToModelInfo(catalog, "gemini");
-    expect(models.find((m) => m.id === "gemini-embedding-001")).toBeUndefined();
-  });
-
-  it("filters out an audio-output (TTS) model via modalities", () => {
-    const models = catalogToModelInfo(catalog, "gemini");
-    expect(models.find((m) => m.id === "gemini-2.5-flash-preview-tts")).toBeUndefined();
-  });
-
-  it("describes a model's context with the same K label as the capability card", () => {
-    const models = catalogToModelInfo(catalog, "groq");
-    const llama = requireValue(
-      models.find((m) => m.id === "meta-llama/llama-4-scout-17b-16e-instruct"),
-      "Groq Llama model info",
-    );
-    expect(llama.description).toContain("131K context");
-  });
-
-  it("leaves the description empty for a model with no usable context window", () => {
-    const noContext = parseModelsDevCatalog({
-      google: {
-        id: "google",
-        models: {
-          "gemini-2.5-flash": {
-            id: "gemini-2.5-flash",
-            name: "Bare Flash",
-            cost: { input: 1, output: 1 },
-          },
-        },
-      },
-    });
-    const [model] = catalogToModelInfo(noContext, "gemini");
-    expect(model?.name).toBe("Bare Flash");
-    expect(model?.description).toBe("");
-  });
-
-  it("falls back to the model id for the name when it is absent", () => {
-    const noName = parseModelsDevCatalog({
-      google: {
-        id: "google",
-        models: {
-          "gemini-2.5-flash": { id: "gemini-2.5-flash", cost: { input: 1, output: 1 } },
-        },
-      },
-    });
-    const [model] = catalogToModelInfo(noName, "gemini");
-    expect(model?.name).toBe("gemini-2.5-flash");
-    expect(model?.description).toBe("");
-  });
-
-  it("keeps the raw model id verbatim while sanitizing only the display label", () => {
-    const styledName = parseModelsDevCatalog({
-      google: {
-        id: "google",
-        models: {
-          flash: {
-            id: "gemini-2.5-flash",
-            name: "Gemini \x1b]8;;https://evil.example\x07Flash\x1b]8;;\x07",
-            cost: { input: 1, output: 1 },
-            limit: { output: 8192 },
-          },
-        },
-      },
-    });
-    const [model] = catalogToModelInfo(styledName, "gemini");
-    expect(model?.id).toBe("gemini-2.5-flash");
-    expect(model?.name).toBe("Gemini Flash");
-  });
-
-  it("drops a model whose id needs destructive sanitization instead of mutating its identity", () => {
-    const hostile = parseModelsDevCatalog({
-      google: {
-        id: "google",
-        models: {
-          clean: {
-            id: "gemini-flash",
-            name: "Clean",
-            cost: { input: 1, output: 1 },
-            limit: { output: 8192 },
-          },
-          hostile: {
-            id: "gemini-\x07flash",
-            name: "Hostile",
-            cost: { input: 1, output: 1 },
-            limit: { output: 8192 },
-          },
-        },
-      },
-    });
-    const ids = catalogToModelInfo(hostile, "gemini").map((m) => m.id);
-    expect(ids).toContain("gemini-flash");
-    expect(ids).not.toContain("gemini-\x07flash");
-    expect(new Set(ids).size).toBe(ids.length);
-  });
-
-  it("orders Gemini free-first, then deterministically by name (pinned overlay order)", () => {
-    const ids = catalogToModelInfo(catalog, "gemini").map((m) => m.id);
-    const freeIds = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"];
-    const paidIds = ["gemini-3-pro-preview"];
-    expect(new Set(ids.slice(0, 3))).toEqual(new Set(freeIds));
-    for (const free of freeIds) {
-      for (const paid of paidIds) {
-        expect(ids.indexOf(free)).toBeLessThan(ids.indexOf(paid));
+      for (const model of observation.models) {
+        expect(
+          Object.keys(model).every((key) =>
+            ["contextTokens", "modelId", "modelName", "outputTokens", "sourceProviderId"].includes(
+              key,
+            ),
+          ),
+        ).toBe(true);
       }
     }
-    expect(catalogToModelInfo(catalog, "gemini").map((m) => m.id)).toEqual(ids);
-  });
-});
 
-describe("canRunReview", () => {
-  it("keeps a text-output model with a usable output limit", () => {
-    expect(canRunReview({ id: "x", limit: { context: 131072, output: 8192 } })).toBe(true);
-  });
-
-  it("rejects an audio-output model regardless of its output limit", () => {
-    expect(
-      canRunReview({
-        id: "tts",
-        limit: { context: 8192, output: 16384 },
-        modalities: { input: ["text"], output: ["audio"] },
-      }),
-    ).toBe(false);
+    const serialized = JSON.stringify(observations);
+    for (const forbidden of [
+      "admitted",
+      "api",
+      "cost",
+      "enabled",
+      "env",
+      "free",
+      "private",
+      "ready",
+      "selectable",
+    ]) {
+      expect(serialized).not.toContain(`"${forbidden}"`);
+    }
   });
 
-  it("rejects a model whose output limit is below the review floor", () => {
-    expect(canRunReview({ id: "embedding", limit: { context: 2048, output: 1 } })).toBe(false);
-    expect(canRunReview({ id: "guard", limit: { context: 512, output: 512 } })).toBe(false);
-  });
-
-  it("keeps a model with no declared limit or modalities (cannot prove it unusable)", () => {
-    expect(canRunReview({ id: "unknown" })).toBe(true);
-  });
-});
-
-describe("findModelLimit", () => {
-  it("resolves the output and context limits for a selected model", () => {
-    expect(findModelLimit(catalog, "groq", "meta-llama/llama-4-scout-17b-16e-instruct")).toEqual({
-      context: 131072,
-      output: 8192,
-    });
-  });
-
-  it("returns an empty object for an unknown model id", () => {
-    expect(findModelLimit(catalog, "gemini", "no-such-model")).toEqual({});
-  });
-});
-
-describe("mergeModelsAcrossSources", () => {
-  it("merges by id across alias modelsDevIds, keeping the freshest last_updated entry", () => {
-    const aliased = parseModelsDevCatalog({
+  it("keeps unknown upstream and wire-compatible records outside product observations", () => {
+    const observations = transform({
       google: {
         id: "google",
         models: {
-          "dup-model": {
-            id: "dup-model",
-            name: "Old Name",
-            cost: { input: 1, output: 1 },
-            last_updated: "2024-01-01",
-          },
-          "google-only": {
-            id: "google-only",
-            name: "Google Only",
-            cost: { input: 1, output: 1 },
-            last_updated: "2024-06-01",
+          "upstream/exact:model-1": {
+            id: "upstream/exact:model-1",
+            name: "Upstream exact model",
           },
         },
       },
-      "google-extra": {
-        id: "google-extra",
+      "wire-compatible-clone": {
+        id: "wire-compatible-clone",
+        api: "https://generativelanguage.googleapis.com/v1beta",
         models: {
-          "dup-model": {
-            id: "dup-model",
-            name: "New Name",
-            cost: { input: 2, output: 2 },
-            last_updated: "2025-12-01",
-          },
-          "extra-only": {
-            id: "extra-only",
-            name: "Extra Only",
-            cost: { input: 3, output: 3 },
-            last_updated: "2025-01-01",
-          },
+          "clone-model": { id: "clone-model", name: "Clone model" },
+        },
+      },
+      "unknown-upstream": {
+        id: "unknown-upstream",
+        models: {
+          "unknown-model": { id: "unknown-model", name: "Unknown model" },
         },
       },
     });
 
-    const merged = mergeModelsAcrossSources(aliased, ["google", "google-extra"]);
-    const byId = new Map(merged.map((m) => [m.id, m]));
-
-    expect(byId.get("dup-model")?.name).toBe("New Name");
-    expect(byId.get("dup-model")?.last_updated).toBe("2025-12-01");
-    expect(byId.get("google-only")?.name).toBe("Google Only");
-    expect(byId.get("extra-only")?.name).toBe("Extra Only");
-    expect(merged).toHaveLength(3);
+    const gemini = observations.find(({ productId }) => productId === "gemini");
+    expect(gemini?.models).toEqual([
+      {
+        modelId: "upstream/exact:model-1",
+        modelName: "Upstream exact model",
+        sourceProviderId: "google",
+      },
+    ]);
+    expect(JSON.stringify(observations)).not.toContain("clone-model");
+    expect(JSON.stringify(observations)).not.toContain("unknown-model");
+    expect(gemini?.models[0]).not.toHaveProperty("selectable");
+    expect(gemini?.models[0]).not.toHaveProperty("enabled");
   });
 
-  it("ranks a real last_updated above an entry carrying only a newer release_date", () => {
-    const aliased = parseModelsDevCatalog({
+  it("preserves exact model IDs and rejects aliases or mismatches instead of rewriting them", () => {
+    const observations = transform({
       google: {
         id: "google",
         models: {
-          "dup-model": {
-            id: "dup-model",
-            name: "Has last_updated",
-            cost: { input: 1, output: 1 },
-            last_updated: "2025-12-01",
+          "provider/exact.model:1": {
+            id: "provider/exact.model:1",
+            name: "Exact",
+            limit: { context: 131072, output: 8192 },
           },
-        },
-      },
-      "google-extra": {
-        id: "google-extra",
-        models: {
-          "dup-model": {
-            id: "dup-model",
-            name: "Release only",
-            cost: { input: 2, output: 2 },
-            release_date: "2026-01-01",
+          "provider/model/latest": {
+            id: "provider/model/latest",
+            name: "Marketing alias",
+          },
+          mismatch: {
+            id: "different-model",
+            name: "Mismatched identity",
+          },
+          hostile: {
+            id: "model\u001b[31m",
+            name: "Hostile identity",
           },
         },
       },
     });
 
-    const merged = mergeModelsAcrossSources(aliased, ["google", "google-extra"]);
-    expect(merged).toHaveLength(1);
-    expect(merged[0]?.name).toBe("Has last_updated");
+    const gemini = observations.find(({ productId }) => productId === "gemini");
+    expect(gemini?.models).toEqual([
+      {
+        modelId: "provider/exact.model:1",
+        modelName: "Exact",
+        sourceProviderId: "google",
+        contextTokens: 131072,
+        outputTokens: 8192,
+      },
+    ]);
   });
 
-  it("falls back to release_date when no entry carries last_updated, newest winning", () => {
-    const aliased = parseModelsDevCatalog({
+  it("skips unsafe model labels before they reach product observations", () => {
+    const observations = transform({
       google: {
         id: "google",
         models: {
-          "dup-model": {
-            id: "dup-model",
-            name: "Older release",
-            cost: { input: 1, output: 1 },
-            release_date: "2024-01-01",
-          },
-        },
-      },
-      "google-extra": {
-        id: "google-extra",
-        models: {
-          "dup-model": {
-            id: "dup-model",
-            name: "Newer release",
-            cost: { input: 2, output: 2 },
-            release_date: "2025-06-01",
-          },
+          safe: { id: "safe", name: "Safe model" },
+          secret: { id: "secret", name: "apiKey: sk-live-adversarial-secret" },
+          path: { id: "path", name: "/usr/local/bin/diffgazer" },
+          control: { id: "control", name: "Model\u001b[31m" },
         },
       },
     });
 
-    const merged = mergeModelsAcrossSources(aliased, ["google", "google-extra"]);
-    expect(merged).toHaveLength(1);
-    expect(merged[0]?.name).toBe("Newer release");
+    const gemini = observations.find(({ productId }) => productId === "gemini");
+    expect(gemini?.models).toEqual([
+      {
+        modelId: "safe",
+        modelName: "Safe model",
+        sourceProviderId: "google",
+      },
+    ]);
+    expect(JSON.stringify(observations)).not.toMatch(/sk-live|\/usr|\\\\build-host/);
   });
 
-  it("keeps the first-seen entry when neither duplicate carries any date", () => {
-    const aliased = parseModelsDevCatalog({
-      google: {
-        id: "google",
-        models: {
-          "dup-model": { id: "dup-model", name: "First seen", cost: { input: 1, output: 1 } },
-        },
-      },
-      "google-extra": {
-        id: "google-extra",
-        models: {
-          "dup-model": { id: "dup-model", name: "Second seen", cost: { input: 2, output: 2 } },
-        },
-      },
-    });
+  it("keeps excluded and removed identities out of the shared fixture", () => {
+    const providerIds = Object.keys(RAW_CATALOG);
 
-    const merged = mergeModelsAcrossSources(aliased, ["google", "google-extra"]);
-    expect(merged).toHaveLength(1);
-    expect(merged[0]?.name).toBe("First seen");
+    expect(providerIds).toEqual(["google", "zai", "groq", "cerebras", "openrouter", "mistral"]);
+    expect(providerIds).not.toContain("zai-coding");
+    expect(providerIds).not.toContain("zai-coding-plan");
+    expect(providerIds).not.toContain("github-models");
+    for (const candidateId of Object.keys(CANDIDATE_VERDICTS)) {
+      expect(providerIds, candidateId).not.toContain(candidateId);
+    }
+    expect(JSON.stringify(RAW_CATALOG)).not.toContain('"enabled":true');
   });
 });

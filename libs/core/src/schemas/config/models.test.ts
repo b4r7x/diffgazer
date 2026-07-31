@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ModelTierSchema,
   OpenRouterModelCacheSchema,
   OpenRouterModelSchema,
   OpenRouterModelsResponseSchema,
@@ -15,6 +16,24 @@ const validOpenRouterModel = {
 };
 
 describe("schemas/config/models", () => {
+  it.each([
+    "free",
+    "paid",
+    "local",
+    "ambient",
+  ] as const)("accepts the %s model tier without inferring billing", (tier) => {
+    expect(ModelTierSchema.safeParse(tier).success).toBe(true);
+    const result = ProviderModelsResponseSchema.safeParse({
+      models: [{ id: "m", name: "M", description: "d", tier }],
+      fetchedAt: "2026-06-02T00:00:00.000Z",
+      source: "live",
+      cached: false,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.models[0]?.tier).toBe(tier);
+  });
+
   it.each([
     "live",
     "cache",

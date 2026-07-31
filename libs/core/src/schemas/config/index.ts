@@ -16,49 +16,99 @@ export {
   ProviderModelsResponseSchema,
 } from "./models.js";
 export {
-  ALLOWED_CREDENTIAL_ENV_VARS,
-  AVAILABLE_PROVIDERS,
-  OPENROUTER_PROVIDER_ID,
-  PROVIDER_CAPABILITIES,
-  PROVIDER_ENV_VARS,
-} from "./provider-registry.js";
+  CLIENT_CONFIGURATION_ACTIONS,
+  type ClientConfigurationAction,
+  type ClientConfigurationActionName,
+  ClientConfigurationActionNameSchema,
+  type ClientConfigurationActionResponse,
+  ClientConfigurationActionResponseSchema,
+  ClientConfigurationActionSchema,
+  type ClientConfigurationInput,
+  ClientConfigurationInputSchema,
+  type ClientConfigurationNotice,
+  ClientConfigurationNoticeSchema,
+  type ClientConfigurationSummary,
+  ClientConfigurationSummarySchema,
+  CONFIGURATION_OPERATION_STATUSES,
+  type ConfigurationId,
+  ConfigurationIdSchema,
+  type ConfigurationOperationStatus,
+  ConfigurationOperationStatusSchema,
+  type ConfigurationRevision,
+  ConfigurationRevisionSchema,
+  type ExactModelId,
+  ExactModelIdSchema,
+  type HostedApiConfigurationInput,
+  HostedApiConfigurationInputSchema,
+  type LocalCliConfigurationInput,
+  LocalCliConfigurationInputSchema,
+  type LocalHttpConfigurationInput,
+  LocalHttpConfigurationInputSchema,
+  type WriteOnlySecretInput,
+  WriteOnlySecretInputSchema,
+} from "./provider-config.js";
+export { SELECTABLE_PRODUCTS } from "./provider-registry.js";
 export {
-  type ActivateProviderResponse,
-  ActivateProviderResponseSchema,
-  AI_PROVIDERS,
-  type AIProvider,
-  AIProviderSchema,
-  type ConfigCheckResponse,
-  ConfigCheckResponseSchema,
-  type CredentialRef,
-  CredentialRefSchema,
-  type CurrentConfigResponse,
-  CurrentConfigResponseSchema,
-  type DeleteConfigResponse,
-  DeleteConfigResponseSchema,
-  type DeleteProviderCredentialsResponse,
-  DeleteProviderCredentialsResponseSchema,
-  type DisplayStatus,
-  type InitResponse,
-  InitResponseSchema,
+  type ConfigurationInitResponse,
+  ConfigurationInitResponseSchema,
+  type ConfigurationListResponse,
+  ConfigurationListResponseSchema,
+  type ConfigurationStatus,
+  ConfigurationStatusSchema,
+  type DecodedProviderConfigurationRecord,
+  DecodedProviderConfigurationRecordSchema,
+  decodeProviderConfigurationRecord,
+  LEGACY_PROVIDER_IDS_V1,
+  type LegacyProviderConfigV1,
+  LegacyProviderConfigV1Schema,
+  type LegacyProviderIdV1,
+  LegacyProviderIdV1Schema,
+  type LegacyRemovedProviderRecordV1,
+  LegacyRemovedProviderRecordV1Schema,
   type ProjectInfo,
   ProjectInfoSchema,
-  type ProviderInfo,
-  ProviderInfoSchema,
-  type ProviderStatus,
-  ProviderStatusSchema,
-  type ProvidersStatusResponse,
-  ProvidersStatusResponseSchema,
-  type ProviderWithStatus,
-  ProviderWithStatusSchema,
-  type SaveConfigRequest,
-  SaveConfigRequestSchema,
-  type SetupField,
-  type SetupStatus,
-  SetupStatusSchema,
-  type UserConfig,
-  UserConfigSchema,
 } from "./providers.js";
+
+/**
+ * Internal projection retained for the diagnostics adapter while callers move
+ * to the V2 configuration/readiness response. It is derived from V2 data and
+ * is not a server payload or a credential/provider authority.
+ */
+export interface SetupStatus {
+  readonly hasSecretsStorage: boolean;
+  readonly hasProvider: boolean;
+  readonly hasModel: boolean;
+  readonly hasTrust: boolean;
+  readonly isConfigured: boolean;
+  readonly isReady: boolean;
+  readonly missing: readonly string[];
+}
+
+/** @internal Compatibility constant for the restored provider-detail adapter. */
+export const OPENROUTER_PROVIDER_ID = "openrouter" as const;
+
+export {
+  AcceptedAcknowledgementSchema,
+  NotApplicableAcknowledgementSchema,
+  READINESS_ACTIONS,
+  READINESS_EVIDENCE_STATUSES,
+  READINESS_PRESENTATION,
+  READINESS_REMEDIATION_CODES,
+  READINESS_STATUSES,
+  type Readiness,
+  type ReadinessAcknowledgement,
+  ReadinessAcknowledgementSchema,
+  type ReadinessAction,
+  ReadinessActionSchema,
+  type ReadinessEvidenceStatus,
+  ReadinessEvidenceStatusSchema,
+  type ReadinessRemediationCode,
+  ReadinessRemediationCodeSchema,
+  ReadinessSchema,
+  type ReadinessStatus,
+  ReadinessStatusSchema,
+  RequiredAcknowledgementSchema,
+} from "./readiness.js";
 export {
   AGENT_EXECUTION_MODES,
   type AgentExecution,
@@ -80,7 +130,13 @@ export {
   TrustConfigSchema,
   TrustResponseSchema,
 } from "./settings.js";
-export { buildHubValues, type SettingsHubInput } from "./settings-hub.js";
+export {
+  buildHubValues,
+  buildProviderSettingsRows,
+  type ProviderSettingsRow,
+  type ProviderSettingsRowId,
+  type SettingsHubInput,
+} from "./settings-hub.js";
 export {
   AGENT_EXECUTION_OPTIONS,
   isAgentExecution,
@@ -96,6 +152,53 @@ export {
   type SettingsOption,
   toSelectableTheme,
 } from "./settings-options.js";
+export {
+  CANDIDATE_PRODUCT_IDS,
+  type CandidateProductId,
+  CandidateProductIdSchema,
+  DEFERRED_PRODUCT_IDS,
+  EXPERIMENTAL_PRODUCT_IDS,
+  HOSTED_API_PRODUCT_IDS,
+  type HostedApiEndpoint,
+  HostedApiEndpointSchema,
+  type HostedApiProductId,
+  HostedApiProductIdSchema,
+  type HostedApiTransportInput,
+  HostedApiTransportInputSchema,
+  LOCAL_CLI_PRODUCT_IDS,
+  LOCAL_HTTP_AUTHENTICATION_MODES,
+  LOCAL_HTTP_PRODUCT_IDS,
+  LOCAL_OPENAI_PRESET_ENDPOINTS,
+  LOCAL_OPENAI_PRESET_IDS,
+  type LocalCliInstallationId,
+  LocalCliInstallationIdSchema,
+  type LocalCliProductId,
+  LocalCliProductIdSchema,
+  type LocalCliTransportInput,
+  LocalCliTransportInputSchema,
+  type LocalHttpAuthenticationMode,
+  LocalHttpAuthenticationModeSchema,
+  type LocalHttpProductId,
+  LocalHttpProductIdSchema,
+  type LocalHttpTransportInput,
+  LocalHttpTransportInputSchema,
+  type LocalOpenAIPresetId,
+  LocalOpenAIPresetIdSchema,
+  type LoopbackHttpEndpoint,
+  LoopbackHttpEndpointSchema,
+  REJECTED_PRODUCT_IDS,
+  REMOVED_PRODUCT_IDS,
+  type RemovedProductId,
+  RemovedProductIdSchema,
+  RUNNABLE_PRODUCT_IDS,
+  type RunnableProductId,
+  RunnableProductIdSchema,
+  TRANSPORT_FAMILIES,
+  type TransportFamily,
+  TransportFamilySchema,
+  type TransportInput,
+  TransportInputSchema,
+} from "./transports.js";
 export {
   DEFAULT_TRUST_PROMPT_CAPABILITIES,
   fromSelectedCapabilityIds,

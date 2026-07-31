@@ -1,93 +1,75 @@
 import { describe, expect, it } from "vitest";
-import { PROVIDER_OVERLAY, SURFACED_OVERLAYS } from "./provider-overlay.js";
+import {
+  CANDIDATE_VERDICTS,
+  PRODUCT_REGISTRY,
+  SELECTABLE_PRODUCT_IDS,
+} from "../providers/product-registry.js";
+import { PROVIDER_OVERLAY, projectCatalogAvailabilityObservations } from "./provider-overlay.js";
 
-describe("PROVIDER_OVERLAY", () => {
-  it("maps gemini -> ['google'] with GOOGLE_API_KEY and curated free-tier ids", () => {
-    const o = PROVIDER_OVERLAY.gemini;
-    expect(o.modelsDevIds).toEqual(["google"]);
-    expect(o.diffgazerEnvVar).toBe("GOOGLE_API_KEY");
-    expect(o.displayName).toBe("Google Gemini");
-    expect(o.hasFreeTier).toBe(true);
-    expect(o.freeTier).toEqual({
-      ids: ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"],
-    });
-    expect(o.defaultModel).toBe("gemini-2.5-flash");
-    expect(o.recommendedModelId).toBe("gemini-2.5-flash");
-    expect(o.sdkKind).toBe("google");
-    expect(o.enabled).toBe(true);
-  });
+const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 
-  it("only gemini carries a curated displayName override (others derive from models.dev)", () => {
-    for (const [id, o] of Object.entries(PROVIDER_OVERLAY)) {
-      if (id === "gemini") continue;
-      expect(o.displayName, `${id} should derive its name from models.dev`).toBeUndefined();
-    }
-  });
-
-  it("keeps zai on ZAI_API_KEY (never models.dev's ZHIPU_API_KEY) with no free selector", () => {
-    const o = PROVIDER_OVERLAY.zai;
-    expect(o.modelsDevIds).toEqual(["zai"]);
-    expect(o.diffgazerEnvVar).toBe("ZAI_API_KEY");
-    expect(o.hasFreeTier).toBe(true);
-    expect(o.freeTier).toBeUndefined();
-    expect(o.sdkKind).toBe("zhipu");
-    expect(o.baseURL).toBe("https://api.z.ai/api/paas/v4");
-  });
-
-  it("maps zai-coding -> ['zai-coding-plan'] with hasFreeTier false and the coding baseURL", () => {
-    const o = PROVIDER_OVERLAY["zai-coding"];
-    expect(o.modelsDevIds).toEqual(["zai-coding-plan"]);
-    expect(o.diffgazerEnvVar).toBe("ZAI_API_KEY");
-    expect(o.hasFreeTier).toBe(false);
-    expect(o.freeTier).toBeUndefined();
-    expect(o.sdkKind).toBe("zhipu");
-    expect(o.baseURL).toBe("https://api.z.ai/api/coding/paas/v4");
-  });
-
-  it("keeps openrouter on its own live path (enabled, openrouter sdkKind)", () => {
-    const o = PROVIDER_OVERLAY.openrouter;
-    expect(o.modelsDevIds).toEqual(["openrouter"]);
-    expect(o.diffgazerEnvVar).toBe("OPENROUTER_API_KEY");
-    expect(o.sdkKind).toBe("openrouter");
-    expect(o.enabled).toBe(true);
-  });
-
-  it("enables groq with freeTier 'all' and the scout default model", () => {
-    const o = PROVIDER_OVERLAY.groq;
-    expect(o.modelsDevIds).toEqual(["groq"]);
-    expect(o.diffgazerEnvVar).toBe("GROQ_API_KEY");
-    expect(o.hasFreeTier).toBe(true);
-    expect(o.freeTier).toBe("all");
-    expect(o.defaultModel).toBe("meta-llama/llama-4-scout-17b-16e-instruct");
-    expect(o.sdkKind).toBe("openai-compatible");
-    expect(o.baseURL).toBe("https://api.groq.com/openai/v1");
-    expect(o.enabled).toBe(true);
-  });
-
-  it("enables cerebras with freeTier 'all', gpt-oss-120b default, and a free-tier note", () => {
-    const o = PROVIDER_OVERLAY.cerebras;
-    expect(o.modelsDevIds).toEqual(["cerebras"]);
-    expect(o.diffgazerEnvVar).toBe("CEREBRAS_API_KEY");
-    expect(o.hasFreeTier).toBe(true);
-    expect(o.freeTier).toBe("all");
-    expect(o.defaultModel).toBe("gpt-oss-120b");
-    expect(o.sdkKind).toBe("openai-compatible");
-    expect(o.baseURL).toBe("https://api.cerebras.ai/v1");
-    expect(o.freeTierNote).toContain("1M");
-    expect(o.enabled).toBe(true);
-  });
-});
-
-describe("SURFACED_OVERLAYS (data-only, not AIProvider members)", () => {
-  it("surfaces mistral, huggingface, github-models as disabled", () => {
-    expect(Object.keys(SURFACED_OVERLAYS).sort()).toEqual(
-      ["github-models", "huggingface", "mistral"].sort(),
+describe("catalog provider observations", () => {
+  it("leaves exact 13-product eligibility with the product registry", () => {
+    expect(SELECTABLE_PRODUCT_IDS).toEqual([
+      "gemini",
+      "zai",
+      "openrouter",
+      "groq",
+      "cerebras",
+      "deepseek",
+      "qwen",
+      "moonshot",
+      "mistral",
+      "ollama",
+      "local-openai",
+      "codex-cli",
+      "copilot-cli",
+    ]);
+    expect(SELECTABLE_PRODUCT_IDS).toEqual(
+      Object.values(PRODUCT_REGISTRY)
+        .filter((product) => product.kind === "runnable")
+        .map((product) => product.id),
     );
-    for (const row of Object.values(SURFACED_OVERLAYS)) {
-      expect(row.enabled).toBe(false);
+    expect(Object.keys(PROVIDER_OVERLAY)).toEqual([
+      "gemini",
+      "zai",
+      "openrouter",
+      "groq",
+      "cerebras",
+      "mistral",
+    ]);
+  });
+
+  it("keeps offline catalog data observational and unable to enable products or models", () => {
+    const observations = projectCatalogAvailabilityObservations("models.dev-snapshot", CHECKED_AT);
+
+    expect(observations).toHaveLength(6);
+    for (const observation of observations) {
+      expect(observation).toEqual({
+        productId: observation.productId,
+        modelsDevIds: observation.modelsDevIds,
+        source: "models.dev-snapshot",
+        checkedAt: CHECKED_AT,
+      });
+      expect(observation).not.toHaveProperty("enabled");
+      expect(observation).not.toHaveProperty("selectable");
+      expect(observation).not.toHaveProperty("models");
     }
-    expect(SURFACED_OVERLAYS.mistral?.diffgazerEnvVar).toBe("MISTRAL_API_KEY");
-    expect(SURFACED_OVERLAYS.huggingface?.diffgazerEnvVar).toBe("HF_TOKEN");
-    expect(SURFACED_OVERLAYS["github-models"]?.diffgazerEnvVar).toBe("GITHUB_TOKEN");
+  });
+
+  it("excludes removed and candidate IDs from availability projections", () => {
+    const observations = projectCatalogAvailabilityObservations("models.dev-live", CHECKED_AT);
+    const projectedIds = new Set([
+      ...observations.map((observation) => observation.productId),
+      ...observations.flatMap((observation) => observation.modelsDevIds),
+    ]);
+
+    expect(projectedIds.has("zai-coding")).toBe(false);
+    expect(projectedIds.has("zai-coding-plan")).toBe(false);
+    expect(projectedIds.has("github-models")).toBe(false);
+    expect(projectedIds.has("huggingface")).toBe(false);
+    for (const candidateId of Object.keys(CANDIDATE_VERDICTS)) {
+      expect(projectedIds.has(candidateId), candidateId).toBe(false);
+    }
   });
 });

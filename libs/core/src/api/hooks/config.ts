@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { SaveConfigRequest, SettingsConfig } from "../../schemas/config/index.js";
+import type {
+  ClientConfigurationAction,
+  ConfigurationInitResponse,
+  SettingsConfig,
+  SetupStatus,
+} from "../../schemas/config/index.js";
 import { useApi } from "./context.js";
 import { configQueries } from "./queries/config.js";
 
@@ -8,29 +13,64 @@ export function useSettings() {
   return useQuery(configQueries.settings(api));
 }
 
-export function useInit() {
+export function useConfigurationInit() {
   const api = useApi();
   return useQuery(configQueries.init(api));
 }
 
-export function useConfigCheck() {
-  const api = useApi();
-  return useQuery(configQueries.check(api));
+function projectSetupStatus(init: ConfigurationInitResponse): SetupStatus {
+  const selectedConfiguration = init.configurations.find(
+    ({ configuration }) => configuration.configurationId === init.selectedConfigurationId,
+  );
+  const hasProvider = selectedConfiguration !== undefined;
+  const hasModel = selectedConfiguration?.configuration.selectedModelId != null;
+  const hasTrust = init.project.trust !== null;
+  const hasSecretsStorage = init.settings.secretsStorage !== null;
+  const isConfigured = hasProvider;
+  const isReady = selectedConfiguration?.readiness.status === "ready";
+  const missing: string[] = [];
+
+  if (!hasProvider) missing.push("provider");
+  if (!hasModel) missing.push("model");
+  if (!hasTrust) missing.push("trust");
+  if (!hasSecretsStorage) missing.push("secrets storage");
+
+  return {
+    hasSecretsStorage,
+    hasProvider,
+    hasModel,
+    hasTrust,
+    isConfigured,
+    isReady,
+    missing,
+  };
 }
 
-export function useProviderStatus() {
-  const api = useApi();
-  return useQuery(configQueries.providers(api));
+/**
+ * Internal compatibility adapter for the restored diagnostics hook. New
+ * callers use useConfigurationInit and consume the V2 response directly.
+ */
+type ConfigurationInitWithSetup = ConfigurationInitResponse & { readonly setup: SetupStatus };
+type ConfigurationInitQuery = Omit<ReturnType<typeof useConfigurationInit>, "data"> & {
+  data: ConfigurationInitWithSetup | undefined;
+};
+
+export function useInit(): ConfigurationInitQuery {
+  const query = useConfigurationInit();
+  return {
+    ...query,
+    data: query.data
+      ? {
+          ...query.data,
+          setup: projectSetupStatus(query.data),
+        }
+      : query.data,
+  };
 }
 
-export function useOpenRouterModels(options?: { enabled?: boolean }) {
+export function useConfigurations() {
   const api = useApi();
-  return useQuery({ ...configQueries.openRouterModels(api), ...options });
-}
-
-export function useProviderModels(providerId: string, options?: { enabled?: boolean }) {
-  const api = useApi();
-  return useQuery({ ...configQueries.providerModels(api, providerId), ...options });
+  return useQuery(configQueries.configurations(api));
 }
 
 export function useSaveSettings() {
@@ -47,50 +87,12 @@ export function useSaveSettings() {
   });
 }
 
-export function useSaveConfig() {
+export function useConfigurationAction() {
   const api = useApi();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (config: SaveConfigRequest) => api.saveConfig(config),
-    onSuccess: async (_result, config) => {
-      if (config.provider === "openrouter") {
-        qc.removeQueries({
-          queryKey: configQueries.openRouterModels(api).queryKey,
-          exact: true,
-        });
-      }
-      await qc.invalidateQueries({ queryKey: configQueries.all() });
-    },
-  });
-}
-
-export function useActivateProvider() {
-  const api = useApi();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ providerId, model }: { providerId: string; model?: string }) =>
-      api.activateProvider(providerId, model),
+    mutationFn: (action: ClientConfigurationAction) => api.executeConfigurationAction(action),
     onSuccess: async () => {
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: configQueries.providers(api).queryKey }),
-        qc.invalidateQueries({ queryKey: configQueries.init(api).queryKey }),
-      ]);
-    },
-  });
-}
-
-export function useDeleteProviderCredentials() {
-  const api = useApi();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (providerId: string) => api.deleteProviderCredentials(providerId),
-    onSuccess: async (_result, providerId) => {
-      if (providerId === "openrouter") {
-        qc.removeQueries({
-          queryKey: configQueries.openRouterModels(api).queryKey,
-          exact: true,
-        });
-      }
       await qc.invalidateQueries({ queryKey: configQueries.all() });
     },
   });

@@ -1,251 +1,242 @@
-/**
- * @vitest-environment jsdom
- */
-import { renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+/** @vitest-environment jsdom */
 
-const mockUseOpenRouterModels = vi.fn();
+import { renderHook, waitFor } from "@testing-library/react";
+import { describe, expect, it, type Mock, vi } from "vitest";
+import type { BoundApi } from "../api/bound.js";
+import type {
+  ClientConfigurationActionResponse,
+  ClientConfigurationSummary,
+} from "../schemas/config/provider-config.js";
+import type { Readiness } from "../schemas/config/readiness.js";
+import { createTestQueryWrapper } from "../testing/query-wrapper.js";
+import { PRODUCT_REGISTRY } from "./product-registry.js";
+import {
+  getCompatibilityLabel,
+  type OpenRouterConfigurationSummary,
+  useOpenRouterModelsMapped,
+} from "./use-openrouter-models-mapped.js";
 
-// Boundary mock: useOpenRouterModels is the OpenRouter HTTP-data fetch hook; we provide canned hook return values to drive UI behavior assertions.
-vi.mock("../api/hooks/config", () => ({
-  useOpenRouterModels: (...args: unknown[]) => mockUseOpenRouterModels(...args),
-}));
+type TestConfigurationResponse = Extract<ClientConfigurationActionResponse, { action: "test" }>;
 
-const { useOpenRouterModelsMapped, getCompatibilityLabel } = await import(
-  "./use-openrouter-models-mapped.js"
-);
+const checkedAt = "2026-07-31T12:00:00.000Z";
+const openRouterNotice = PRODUCT_REGISTRY.openrouter.notice;
+function copyOpenRouterNotice() {
+  return {
+    ...openRouterNotice,
+    billing: [...openRouterNotice.billing],
+    privacy: [...openRouterNotice.privacy],
+  };
+}
 
-describe("getCompatibilityLabel", () => {
-  it("reports no models available when total is zero", () => {
-    expect(getCompatibilityLabel({ total: 0, compatible: 0, hasParams: false })).toBe(
-      "No models available.",
+const configuration = {
+  status: "supported",
+  configurationId: "openrouter-primary",
+  revision: 4,
+  transportFamily: "hosted-api",
+  productId: "openrouter",
+  endpoint: "https://openrouter.ai/api/v1",
+  selectedModelId: "anthropic/claude-sonnet-4",
+  notices: [copyOpenRouterNotice()],
+  availableActions: ["inspect", "select", "test", "update", "delete"],
+} as const satisfies ClientConfigurationSummary;
+
+const ready: Readiness = {
+  status: "ready",
+  ready: true,
+  evidenceStatus: "passed",
+  checkedAt,
+  acknowledgement: {
+    status: "accepted",
+    noticeId: openRouterNotice.id,
+    noticeVersion: openRouterNotice.noticeVersion,
+    acceptedAt: checkedAt,
+  },
+  action: "inspect",
+  explanation: "The exact configured review path is ready.",
+  remediation: { code: "none", message: "No remediation is required." },
+};
+
+const skipped: Readiness = {
+  status: "skipped",
+  ready: false,
+  evidenceStatus: "skipped",
+  checkedAt,
+  acknowledgement: { status: "not-applicable" },
+  action: "test",
+  explanation: "The live readiness check was intentionally skipped.",
+  remediation: {
+    code: "enable-live-probe",
+    message: "Satisfy the live-check prerequisites, then test the configuration again.",
+  },
+};
+
+function response(
+  testedConfiguration: OpenRouterConfigurationSummary = configuration,
+  readiness: Readiness = ready,
+  status: TestConfigurationResponse["status"] = "succeeded",
+): TestConfigurationResponse {
+  return { action: "test", status, configuration: testedConfiguration, readiness };
+}
+
+describe("useOpenRouterModelsMapped", () => {
+  it("exposes an exact pinned route only after its configuration action passes", async () => {
+    const testConfiguration: Mock<BoundApi["testConfiguration"]> = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockResolvedValue(response());
+    const { Wrapper } = createTestQueryWrapper({ api: { testConfiguration } });
+    const { result } = renderHook(() => useOpenRouterModelsMapped(true, configuration), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("passed"));
+
+    expect(result.current).toMatchObject({
+      configurationId: "openrouter-primary",
+      productId: "openrouter",
+      transportFamily: "hosted-api",
+      total: 1,
+      pinned: 1,
+      checkedAt,
+    });
+    expect(result.current.models.map(({ id }) => id)).toEqual(["anthropic/claude-sonnet-4"]);
+    expect(testConfiguration).toHaveBeenCalledWith("openrouter-primary");
+    expect(getCompatibilityLabel(result.current)).toBe("Showing 1 exact pinned downstream route.");
+  });
+
+  it.each([
+    "auto/model",
+    "automatic/model",
+    "cheapest/model",
+    "default/model",
+    "exacto/model",
+    "extended/model",
+    "free/model",
+    "fallback/model",
+    "fastest/model",
+    "floor/model",
+    "nitro/model",
+    "online/model",
+    "random/model",
+    "route/model",
+    "thinking/model",
+    "provider/auto",
+    "provider/automatic",
+    "provider/cheapest",
+    "provider/default",
+    "provider/exacto",
+    "provider/extended",
+    "provider/free",
+    "provider/fallback",
+    "provider/fastest",
+    "provider/floor",
+    "provider/nitro",
+    "provider/online",
+    "provider/openrouter",
+    "provider/random",
+    "provider/route",
+    "provider/thinking",
+    "AUTO/model",
+    "provider/Fallback",
+    "openrouter/gpt-4.1",
+    "OpenRouter/gpt-4.1",
+    "provider/OpenRouter",
+    "meta-llama/llama-3.3-70b:free",
+  ] as const)("fails closed instead of enabling OpenRouter route %s", async (selectedModelId) => {
+    const testedConfiguration = { ...configuration, selectedModelId };
+    const testConfiguration: Mock<BoundApi["testConfiguration"]> = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockResolvedValue(response(testedConfiguration));
+    const { Wrapper } = createTestQueryWrapper({ api: { testConfiguration } });
+    const { result } = renderHook(() => useOpenRouterModelsMapped(true, testedConfiguration), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("error"));
+
+    expect(result.current.models).toEqual([]);
+    // The shared configuration-bound discovery hook rejects forged selectors
+    // before the OpenRouter adapter sees them, so there is no passed source
+    // catalogue to count.
+    expect(result.current).toMatchObject({ total: 0, pinned: 0 });
+    expect(result.current.error).toBe("Model discovery did not prove an eligible exact model ID.");
+  });
+
+  it.each([
+    "freeform/model",
+    "provider/fallback-v2",
+    "automaticity/model",
+  ] as const)("preserves exact downstream route segments that only contain a reserved selector: %s", async (selectedModelId) => {
+    const testedConfiguration = { ...configuration, selectedModelId };
+    const testConfiguration: Mock<BoundApi["testConfiguration"]> = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockResolvedValue(response(testedConfiguration));
+    const { Wrapper } = createTestQueryWrapper({ api: { testConfiguration } });
+    const { result } = renderHook(() => useOpenRouterModelsMapped(true, testedConfiguration), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("passed"));
+
+    expect(result.current.models.map(({ id }) => id)).toEqual([selectedModelId]);
+    expect(result.current).toMatchObject({ total: 1, pinned: 1 });
+  });
+
+  it("rejects latest aliases before exposing an OpenRouter route", async () => {
+    const testedConfiguration = { ...configuration, selectedModelId: "anthropic/claude-latest" };
+    const testConfiguration: Mock<BoundApi["testConfiguration"]> = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockResolvedValue(response(testedConfiguration));
+    const { Wrapper } = createTestQueryWrapper({ api: { testConfiguration } });
+    const { result } = renderHook(() => useOpenRouterModelsMapped(true, testedConfiguration), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("error"));
+    expect(result.current.models).toEqual([]);
+    expect(result.current).toMatchObject({ total: 0, pinned: 0 });
+  });
+
+  it("keeps skipped live evidence empty without substituting catalog routes", async () => {
+    const testConfiguration: Mock<BoundApi["testConfiguration"]> = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockResolvedValue(response(configuration, skipped, "failed"));
+    const { Wrapper } = createTestQueryWrapper({ api: { testConfiguration } });
+    const { result } = renderHook(() => useOpenRouterModelsMapped(true, configuration), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("skipped"));
+
+    expect(result.current.models).toEqual([]);
+    expect(result.current).toMatchObject({ total: 0, pinned: 0 });
+    expect(result.current.reason).toBe(
+      "The live readiness check was intentionally skipped. Satisfy the live-check prerequisites, then test the configuration again.",
     );
   });
 
-  it("reports filtered compatibility ratio when compatible < total", () => {
-    expect(getCompatibilityLabel({ total: 100, compatible: 42, hasParams: true })).toBe(
-      "Showing 42/100 models that support structured outputs.",
-    );
-  });
+  it("stays idle without testing while closed", () => {
+    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>();
+    const { Wrapper } = createTestQueryWrapper({ api: { testConfiguration } });
+    const { result } = renderHook(() => useOpenRouterModelsMapped(false, configuration), {
+      wrapper: Wrapper,
+    });
 
-  it("reports full compatibility when all models match", () => {
-    expect(getCompatibilityLabel({ total: 5, compatible: 5, hasParams: true })).toBe(
-      "Showing models that support structured outputs.",
-    );
-  });
-
-  it("reports unknown compatibility when no model exposes params", () => {
-    expect(getCompatibilityLabel({ total: 5, compatible: 5, hasParams: false })).toBe(
-      "Compatibility unknown; showing all models.",
-    );
+    expect(result.current).toMatchObject({
+      status: "idle",
+      models: [],
+      total: 0,
+      pinned: 0,
+    });
+    expect(testConfiguration).not.toHaveBeenCalled();
   });
 });
 
-describe("useOpenRouterModelsMapped", () => {
-  beforeEach(() => {
-    mockUseOpenRouterModels.mockReset();
-  });
-
-  it("filters to compatible models and maps them", () => {
-    mockUseOpenRouterModels.mockReturnValue({
-      data: {
-        models: [
-          {
-            id: "openrouter/free-model",
-            name: "Free Model",
-            description: "supports structured outputs",
-            isFree: true,
-            supportedParameters: ["structured_outputs"],
-          },
-          {
-            id: "openrouter/other-model",
-            name: "Other Model",
-            description: "not compatible",
-            isFree: false,
-            supportedParameters: ["temperature"],
-          },
-        ],
-        fetchedAt: new Date().toISOString(),
-        cached: false,
-      },
-      isLoading: false,
-      error: null,
-    });
-
-    const { result } = renderHook(() => useOpenRouterModelsMapped(true, "openrouter"));
-
-    expect(result.current.loading).toBe(false);
-    expect(result.current.total).toBe(2);
-    expect(result.current.compatible).toBe(1);
-    expect(result.current.models).toEqual([
-      {
-        id: "openrouter/free-model",
-        name: "Free Model",
-        description: "supports structured outputs",
-        tier: "free",
-      },
-    ]);
-  });
-
-  it("reports loading while the credential-scoped catalog query is in flight", () => {
-    const refetch = vi.fn();
-    mockUseOpenRouterModels.mockReturnValue({
-      data: undefined,
-      isLoading: true,
-      error: null,
-      refetch,
-    });
-
-    const { result } = renderHook(() => useOpenRouterModelsMapped(true, "openrouter"));
-
-    expect(result.current.loading).toBe(true);
-    expect(result.current.models).toEqual([]);
-    expect(result.current.error).toBeNull();
-
-    result.current.retry();
-
-    expect(refetch).toHaveBeenCalledOnce();
-  });
-
-  it("returns error state when query has error", () => {
-    mockUseOpenRouterModels.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: new Error("Network error"),
-    });
-
-    const { result } = renderHook(() => useOpenRouterModelsMapped(true, "openrouter"));
-
-    expect(result.current.loading).toBe(false);
-    expect(result.current.error).toBe("Network error");
-    expect(result.current.models).toEqual([]);
-  });
-
-  it("refetches the credential-scoped catalog on retry", () => {
-    const refetch = vi.fn();
-    mockUseOpenRouterModels.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: new Error("Network error"),
-      refetch,
-    });
-
-    const { result } = renderHook(() => useOpenRouterModelsMapped(true, "openrouter"));
-    result.current.retry();
-
-    expect(refetch).toHaveBeenCalledOnce();
-  });
-
-  it("keeps the last-good models when a background refetch fails", () => {
-    mockUseOpenRouterModels.mockReturnValue({
-      data: {
-        models: [
-          {
-            id: "openrouter/known",
-            name: "Known",
-            description: "supports structured outputs",
-            isFree: true,
-            supportedParameters: ["structured_outputs"],
-          },
-        ],
-        fetchedAt: new Date().toISOString(),
-        cached: false,
-      },
-      isLoading: false,
-      error: new Error("Network error"),
-    });
-
-    const { result } = renderHook(() => useOpenRouterModelsMapped(true, "openrouter"));
-
-    expect(result.current.error).toBeNull();
-    expect(result.current.compatible).toBe(1);
-    expect(result.current.models.map((model) => model.id)).toEqual(["openrouter/known"]);
-  });
-
-  it("returns empty state when provider is not openrouter", () => {
-    mockUseOpenRouterModels.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: null,
-    });
-
-    const { result } = renderHook(() => useOpenRouterModelsMapped(true, "gemini"));
-
-    expect(result.current.loading).toBe(false);
-    expect(result.current.models).toEqual([]);
-    expect(mockUseOpenRouterModels).toHaveBeenCalledWith({ enabled: false });
-  });
-
-  it("returns empty state when dialog is closed", () => {
-    mockUseOpenRouterModels.mockReturnValue({
-      data: undefined,
-      isLoading: false,
-      error: null,
-    });
-
-    const { result } = renderHook(() => useOpenRouterModelsMapped(false, "openrouter"));
-
-    expect(result.current.loading).toBe(false);
-    expect(result.current.models).toEqual([]);
-    expect(mockUseOpenRouterModels).toHaveBeenCalledWith({ enabled: false });
-  });
-
-  it("falls back to all models when no model has supported parameters", () => {
-    mockUseOpenRouterModels.mockReturnValue({
-      data: {
-        models: [
-          {
-            id: "or/unknown",
-            name: "Unknown",
-            description: "no params",
-            isFree: false,
-          },
-        ],
-        fetchedAt: new Date().toISOString(),
-        cached: false,
-      },
-      isLoading: false,
-      error: null,
-    });
-
-    const { result } = renderHook(() => useOpenRouterModelsMapped(true, "openrouter"));
-
-    expect(result.current.hasParams).toBe(false);
-    expect(result.current.compatible).toBe(1);
-    expect(result.current.models).toHaveLength(1);
-  });
-
-  it("returns zero compatible models when every model exposes parameters but none support structured outputs", () => {
-    mockUseOpenRouterModels.mockReturnValue({
-      data: {
-        models: [
-          {
-            id: "or/text-a",
-            name: "Text A",
-            description: "text only",
-            isFree: false,
-            supportedParameters: ["temperature"],
-          },
-          {
-            id: "or/text-b",
-            name: "Text B",
-            description: "text only",
-            isFree: true,
-            supportedParameters: ["top_p"],
-          },
-        ],
-        fetchedAt: new Date().toISOString(),
-        cached: false,
-      },
-      isLoading: false,
-      error: null,
-    });
-
-    const { result } = renderHook(() => useOpenRouterModelsMapped(true, "openrouter"));
-
-    expect(result.current.hasParams).toBe(true);
-    expect(result.current.total).toBe(2);
-    expect(result.current.compatible).toBe(0);
-    expect(result.current.models).toEqual([]);
+describe("getCompatibilityLabel", () => {
+  it.each([
+    [{ total: 0, pinned: 0 }, "No exact pinned downstream routes available."],
+    [{ total: 1, pinned: 1 }, "Showing 1 exact pinned downstream route."],
+    [{ total: 3, pinned: 3 }, "Showing 3 exact pinned downstream routes."],
+  ] as const)("describes pinned route counts for %j", (state, label) => {
+    expect(getCompatibilityLabel(state)).toBe(label);
   });
 });

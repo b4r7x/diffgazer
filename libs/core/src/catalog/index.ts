@@ -1,17 +1,28 @@
-export { deriveCapabilities, type ProviderCapabilities } from "./capabilities.js";
+export {
+  type CapabilityObservationWindow,
+  deriveCapabilities,
+  type ModelCapabilityObservation,
+  type ProviderCapabilities,
+} from "./capabilities.js";
 export { CATALOG_SNAPSHOT } from "./catalog-snapshot.js";
 export { getCatalogFallbackNotice } from "./fallback-notice.js";
-export { formatContextTokens } from "./format.js";
 export {
   assertCatalogSnapshotBundleEvidence,
+  type CatalogAvailabilityObservation,
   type CatalogSnapshotBundleEvidence,
   getCatalogSnapshotBundleEvidence,
-  isAIProvider,
   PROVIDER_OVERLAY,
   type ProviderOverlay,
-  SURFACED_OVERLAYS,
+  projectCatalogAvailabilityObservations,
 } from "./provider-overlay.js";
 export {
+  CATALOG_OBSERVATION_SOURCES,
+  type CatalogObservation,
+  CatalogObservationSchema,
+  type CatalogObservationSource,
+  CatalogObservationSourceSchema,
+  type CatalogSelectableModelId,
+  CatalogSelectableModelIdSchema,
   type ModelsDevCatalog,
   ModelsDevCatalogSchema,
   type ModelsDevModel,
@@ -20,9 +31,8 @@ export {
   parseModelsDevCatalog,
 } from "./schema.js";
 export {
-  canRunReview,
-  catalogToModelInfo,
-  findModelLimit,
-  isModelFreeToUse,
-  mergeModelsAcrossSources,
+  type CatalogModelObservation,
+  type ProductCatalogObservation,
+  type RawCatalogObservation,
+  transformCatalogObservation,
 } from "./transform.js";

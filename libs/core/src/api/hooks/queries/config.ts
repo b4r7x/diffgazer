@@ -14,35 +14,14 @@ export const configQueries = {
   init: (api: BoundApi) =>
     queryOptions({
       queryKey: [...configQueries.all(), "init"] as const,
-      queryFn: () => api.loadInit(),
+      queryFn: () => api.loadConfigurationInit(),
       staleTime: 5 * 60_000,
     }),
 
-  check: (api: BoundApi) =>
+  configurations: (api: BoundApi) =>
     queryOptions({
-      queryKey: [...configQueries.all(), "check"] as const,
-      queryFn: () => api.checkConfig(),
+      queryKey: [...configQueries.all(), "configurations"] as const,
+      queryFn: () => api.listConfigurations(),
       staleTime: 30_000,
-    }),
-
-  providers: (api: BoundApi) =>
-    queryOptions({
-      queryKey: [...configQueries.all(), "providers"] as const,
-      queryFn: () => api.getProviderStatus(),
-      staleTime: 30_000,
-    }),
-
-  openRouterModels: (api: BoundApi) =>
-    queryOptions({
-      queryKey: [...configQueries.all(), "openrouter-models"] as const,
-      queryFn: () => api.getOpenRouterModels(),
-      staleTime: 5 * 60_000,
-    }),
-
-  providerModels: (api: BoundApi, providerId: string) =>
-    queryOptions({
-      queryKey: [...configQueries.all(), "provider-models", providerId] as const,
-      queryFn: () => api.getProviderModels(providerId),
-      staleTime: 5 * 60_000,
     }),
 };

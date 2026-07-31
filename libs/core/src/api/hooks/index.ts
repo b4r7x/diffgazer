@@ -1,14 +1,9 @@
 export type { StreamReviewError } from "../review.js";
 
 export {
-  useActivateProvider,
-  useConfigCheck,
-  useDeleteProviderCredentials,
-  useInit,
-  useOpenRouterModels,
-  useProviderModels,
-  useProviderStatus,
-  useSaveConfig,
+  useConfigurationAction,
+  useConfigurationInit,
+  useConfigurations,
   useSaveSettings,
   useSettings,
 } from "./config.js";

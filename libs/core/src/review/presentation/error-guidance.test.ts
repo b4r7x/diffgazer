@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { SetupStatus } from "../../schemas/config/index.js";
+import { READINESS_PRESENTATION, ReadinessSchema } from "../../schemas/config/index.js";
 import {
   CONFIGURATION_ERROR_COPY,
   CONFIGURE_PROVIDER_LABEL,
@@ -9,33 +9,23 @@ import {
 } from "./error-guidance.js";
 
 describe("review error-guidance presentation", () => {
-  it("derives setup copy from the authoritative missing fields", () => {
-    const providerMissing: SetupStatus["missing"] = ["provider"];
-    const modelMissing = ["model"] as const satisfies Readonly<SetupStatus["missing"]>;
-    const providerAndModelMissing: SetupStatus["missing"] = ["provider", "model"];
+  it("derives setup copy from safe readiness guidance", () => {
+    const readiness = ReadinessSchema.parse({
+      status: "local-endpoint-unreachable",
+      ready: false,
+      evidenceStatus: "failed",
+      checkedAt: "2026-07-31T12:00:00.000Z",
+      acknowledgement: {
+        status: "required",
+        noticeId: "ollama-local-http",
+        noticeVersion: 1,
+      },
+      ...READINESS_PRESENTATION["local-endpoint-unreachable"],
+    });
 
-    expect(getApiKeyMissingCopy({ provider: "openai", missing: providerMissing })).toEqual({
-      title: "API Key Required",
-      body: "No API key configured for openai. Add your API key in Settings to start reviewing code.",
-    });
-    expect(getApiKeyMissingCopy({ provider: "openai", missing: modelMissing })).toEqual({
-      title: "Model Required",
-      body: "No model selected for openai. Set up a model in Settings to start reviewing code.",
-    });
-    expect(getApiKeyMissingCopy({ missing: providerAndModelMissing })).toEqual({
-      title: "API Key Required",
-      body: "No API key configured. Add your API key in Settings to start reviewing code.",
-    });
-    const secretsStorageWithOthersMissing: SetupStatus["missing"] = [
-      "provider",
-      "model",
-      "secretsStorage",
-    ];
-    expect(
-      getApiKeyMissingCopy({ provider: "openai", missing: secretsStorageWithOthersMissing }),
-    ).toEqual({
-      title: "Secrets Storage Required",
-      body: "Choose a secrets storage backend in Settings before starting a review.",
+    expect(getApiKeyMissingCopy({ provider: "ollama", readiness })).toEqual({
+      title: "Configuration Not Ready (ollama)",
+      body: "The configured local server could not be reached. Start the selected local server, then test the configuration again.",
     });
     expect(CONFIGURATION_ERROR_COPY).toEqual({
       title: "Configuration Unavailable",

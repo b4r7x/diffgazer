@@ -58,26 +58,12 @@ export const RAW_CATALOG: Record<string, unknown> = {
         release_date: "2025-11-18",
         last_updated: "2025-11-18",
       },
-      // No `cost` => pricingTier 'unknown' (must NOT collapse to 'paid').
-      // `limit.output: 1` marks it as an embedding model the review picker filters out.
       "gemini-embedding-001": {
         id: "gemini-embedding-001",
         name: "Gemini Embedding 001",
         family: "gemini-embedding",
         limit: { context: 2048, output: 1 },
         modalities: { input: ["text"], output: ["text"] },
-        release_date: "2025-05-01",
-        last_updated: "2025-05-01",
-      },
-      // Audio output (TTS): a usable output limit but no text output, so the
-      // review picker filters it via `modalities.output`, not the floor.
-      "gemini-2.5-flash-preview-tts": {
-        id: "gemini-2.5-flash-preview-tts",
-        name: "Gemini 2.5 Flash Preview TTS",
-        family: "gemini-flash",
-        cost: { input: 0.5, output: 10 },
-        limit: { context: 8192, output: 16384 },
-        modalities: { input: ["text"], output: ["audio"] },
         release_date: "2025-05-01",
         last_updated: "2025-05-01",
       },
@@ -110,25 +96,6 @@ export const RAW_CATALOG: Record<string, unknown> = {
         reasoning: true,
         release_date: "2026-01-19",
         last_updated: "2026-01-19",
-      },
-    },
-  },
-  "zai-coding-plan": {
-    id: "zai-coding-plan",
-    name: "Z.AI Coding Plan",
-    api: "https://api.z.ai/api/coding/paas/v4",
-    env: ["ZHIPU_API_KEY"],
-    models: {
-      "glm-4.7": {
-        id: "glm-4.7",
-        name: "GLM-4.7",
-        family: "glm",
-        cost: { input: 0, output: 0, cache_read: 0, cache_write: 0 },
-        limit: { context: 204800, output: 131072 },
-        tool_call: true,
-        reasoning: true,
-        release_date: "2025-12-22",
-        last_updated: "2025-12-22",
       },
     },
   },
@@ -182,6 +149,23 @@ export const RAW_CATALOG: Record<string, unknown> = {
         limit: { context: 128000 },
         tool_call: true,
         structured_output: true,
+      },
+    },
+  },
+  mistral: {
+    id: "mistral",
+    name: "Mistral",
+    models: {
+      "mistral-small-2603": {
+        id: "mistral-small-2603",
+        name: "Mistral Small 2603",
+        family: "mistral-small",
+        cost: { input: 0.1, output: 0.3 },
+        limit: { context: 131072, output: 32768 },
+        tool_call: true,
+        structured_output: true,
+        release_date: "2026-03-01",
+        last_updated: "2026-03-01",
       },
     },
   },

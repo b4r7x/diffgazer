@@ -4,6 +4,118 @@ import { homePath, readJson, tempHome, writeJson } from "./persistence.test-supp
 
 import "./persistence.test-support.js";
 
+const encoder = new TextEncoder();
+
+describe("V2 secrets persistence", () => {
+  it("binds secret references to configuration identity and revision", () => {
+    return import("./secrets.js").then(({ decodeSecretsV2, serializeSecretsV2 }) => {
+      const input = encoder.encode(
+        '{"schemaVersion":2,"bindings":[{"configurationId":"gemini-primary","revision":3,"status":"active","kind":"environment-reference","varName":"GOOGLE_API_KEY"}]}\n',
+      );
+
+      const document = decodeSecretsV2(input);
+
+      expect(document.bindings[0]).toMatchObject({
+        status: "supported",
+        binding: { configurationId: "gemini-primary", revision: 3 },
+      });
+      expect(new TextDecoder().decode(serializeSecretsV2(document))).toContain(
+        '"configurationId":"gemini-primary","revision":3',
+      );
+    });
+  });
+
+  it("retains removed and unknown bindings without making unknown data client-visible", async () => {
+    const { decodeSecretsV2, serializeSecretsV2, toSafeSecretsV2 } = await import("./secrets.js");
+    const removed = {
+      configurationId: "legacy-zai-coding",
+      revision: 4,
+      status: "removed",
+      kind: "keyring-reference",
+      keyId: "private-keyring-location",
+    };
+    const unknown = {
+      configurationId: "future-configuration",
+      revision: 9,
+      status: "active",
+      kind: "future-secret-store",
+      secret: "must-not-leak",
+    };
+    const document = decodeSecretsV2(
+      encoder.encode(JSON.stringify({ schemaVersion: 2, bindings: [removed, unknown] })),
+    );
+
+    expect(document.bindings.map((binding) => binding.status)).toEqual(["removed", "unknown"]);
+    const serialized = new TextDecoder().decode(serializeSecretsV2(document));
+    expect(serialized).toContain("future-secret-store");
+    expect(serialized).toContain("must-not-leak");
+    const safe = JSON.stringify(toSafeSecretsV2(document));
+    expect(safe).toContain("legacy-zai-coding");
+    expect(safe).not.toContain("private-keyring-location");
+    expect(safe).not.toContain("future-configuration");
+    expect(safe).not.toContain("must-not-leak");
+  });
+
+  it("writes atomically with mode 0600 and loads the same bindings", async () => {
+    const { decodeSecretsV2, loadSecretsV2, persistSecretsV2 } = await import("./secrets.js");
+    const document = decodeSecretsV2(
+      encoder.encode(
+        '{"schemaVersion":2,"bindings":[{"configurationId":"config-a","revision":2,"status":"active","kind":"none"}]}',
+      ),
+    );
+
+    await persistSecretsV2(document);
+
+    const path = homePath("secrets.json");
+    expect((await stat(path)).mode & 0o777).toBe(0o600);
+    expect(loadSecretsV2().bindings[0]).toMatchObject({
+      binding: { configurationId: "config-a", revision: 2, kind: "none" },
+    });
+  });
+
+  it("returns an empty V2 document when no secrets file exists", async () => {
+    const { loadSecretsV2 } = await import("./secrets.js");
+    expect(loadSecretsV2()).toEqual({ schemaVersion: 2, bindings: [] });
+  });
+
+  it("recovers the prior V2 binding document from a mode-0600 sidecar", async () => {
+    const { decodeSecretsV2, loadSecretsV2, persistSecretsV2 } = await import("./secrets.js");
+    const {
+      getSecretsRecoveryPath,
+      readSecretsRecoveryV2,
+      reconcileSecretsRecoveryV2AtStartup,
+      writeSecretsRecoveryV2,
+    } = await import("./secrets-recovery.js");
+    const previous = decodeSecretsV2(
+      encoder.encode(
+        '{"schemaVersion":2,"bindings":[{"configurationId":"config-before","revision":7,"status":"removed","kind":"none"}]}',
+      ),
+    );
+    await writeSecretsRecoveryV2(previous);
+    expect((await stat(getSecretsRecoveryPath())).mode & 0o777).toBe(0o600);
+    const read = readSecretsRecoveryV2();
+    expect(read.kind).toBe("valid");
+    if (read.kind !== "valid") return;
+    expect(read.previousSecrets?.bindings[0]).toMatchObject({
+      status: "removed",
+      binding: { configurationId: "config-before", revision: 7 },
+    });
+
+    await persistSecretsV2(
+      decodeSecretsV2(
+        encoder.encode(
+          '{"schemaVersion":2,"bindings":[{"configurationId":"config-after","revision":8,"status":"active","kind":"none"}]}',
+        ),
+      ),
+    );
+    await expect(reconcileSecretsRecoveryV2AtStartup()).resolves.toBeNull();
+    expect(loadSecretsV2().bindings[0]).toMatchObject({
+      binding: { configurationId: "config-before", revision: 7 },
+    });
+    await expect(stat(getSecretsRecoveryPath())).rejects.toMatchObject({ code: "ENOENT" });
+  });
+});
+
 describe("secrets persistence", () => {
   it("loads default secrets when no file exists", async () => {
     const { loadSecrets } = await import("./secrets.js");

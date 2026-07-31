@@ -1,10 +1,21 @@
 import { z } from "zod";
 
+/**
+ * Billing-neutral model classifications used by discovery payloads.
+ *
+ * `free` and `paid` are only used when the applicable provider has established
+ * that billing classification. Local runtimes and ambient vendor-managed CLI
+ * auth deliberately use neutral values: neither value makes a cost or quota
+ * promise.
+ */
+export const ModelTierSchema = z.enum(["free", "paid", "local", "ambient"]);
+export type ModelTier = z.infer<typeof ModelTierSchema>;
+
 const ModelInfoSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
-  tier: z.enum(["free", "paid"]),
+  tier: ModelTierSchema,
   recommended: z.boolean().optional(),
   contextLength: z.number().int().positive().optional(),
   maxOutputTokens: z.number().int().positive().optional(),

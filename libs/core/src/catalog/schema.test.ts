@@ -1,13 +1,32 @@
 import { describe, expect, it } from "vitest";
 import { requireValue } from "../testing/assertions.js";
 import { RAW_CATALOG, RAW_CATALOG_WITH_BAD_MODEL } from "./fixtures.js";
-import { ModelsDevModelSchema, parseModelsDevCatalog } from "./schema.js";
+import {
+  CatalogModelNameSchema,
+  CatalogObservationSchema,
+  CatalogSelectableModelIdSchema,
+  ModelsDevModelSchema,
+  parseModelsDevCatalog,
+} from "./schema.js";
+
+const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 
 describe("parseModelsDevCatalog", () => {
-  it("parses all six enabled providers from the trimmed live fixture", () => {
+  it("parses the exact upstream observations without product admission fields", () => {
     const catalog = parseModelsDevCatalog(RAW_CATALOG);
-    for (const id of ["google", "zai", "zai-coding-plan", "groq", "cerebras", "openrouter"]) {
-      expect(catalog[id], `provider ${id} should parse`).toBeDefined();
+    expect(Object.keys(catalog)).toEqual([
+      "google",
+      "zai",
+      "groq",
+      "cerebras",
+      "openrouter",
+      "mistral",
+    ]);
+    expect(catalog).not.toHaveProperty("zai-coding");
+    expect(catalog).not.toHaveProperty("zai-coding-plan");
+    for (const provider of Object.values(catalog)) {
+      expect(provider).not.toHaveProperty("enabled");
+      expect(provider).not.toHaveProperty("selectable");
     }
     expect(Object.keys(requireValue(catalog.google?.models, "Google provider models"))).toContain(
       "gemini-2.5-flash",
@@ -65,6 +84,112 @@ describe("parseModelsDevCatalog", () => {
   it("accepts structured_output: null (nullable badge hint, never a parse failure)", () => {
     const parsed = ModelsDevModelSchema.safeParse({ id: "x", structured_output: null });
     expect(parsed.success).toBe(true);
+  });
+
+  it("accepts bounded display names and rejects secret, path, and control payloads", () => {
+    expect(CatalogModelNameSchema.safeParse("Gemini 2.5 Flash").success).toBe(true);
+    expect(CatalogModelNameSchema.safeParse("é".repeat(256)).success).toBe(true);
+
+    for (const name of [
+      "sk-live-adversarial-secret",
+      "apiKey: sk-live-adversarial-secret",
+      "Bearer abcdefghijklmnop",
+      "\u001b[31mhostile\u001b[0m",
+      "model\u0000name",
+      "Executable path: /usr/local/bin/diffgazer",
+      "Auth file: C:\\Program Files\\Diffgazer\\auth.json",
+      "\\\\build-host\\Program Files\\Diffgazer\\auth.json",
+      "x".repeat(513),
+      "é".repeat(257),
+    ]) {
+      expect(CatalogModelNameSchema.safeParse(name).success, name).toBe(false);
+    }
+  });
+
+  it("drops unsafe display names without dropping valid sibling models", () => {
+    const catalog = parseModelsDevCatalog({
+      google: {
+        id: "google",
+        models: {
+          safe: { id: "safe", name: "Safe model" },
+          secret: { id: "secret", name: "apiKey: sk-live-adversarial-secret" },
+          control: { id: "control", name: "Model\u001b[31m" },
+          path: { id: "path", name: "/usr/local/bin/diffgazer" },
+        },
+      },
+    });
+
+    expect(Object.keys(catalog.google?.models ?? {})).toEqual(["safe"]);
+  });
+
+  it("accepts only safe exact model IDs for selection", () => {
+    for (const modelId of ["glm-4.7", "openai/gpt-4o", "qwen3-coder-flash"]) {
+      expect(CatalogSelectableModelIdSchema.safeParse(modelId).success, modelId).toBe(true);
+    }
+
+    for (const modelId of [
+      "Gemini 2.5 Flash",
+      "openai/gpt-4o/latest",
+      "gpt-4o-latest",
+      "latest",
+      "provider/model/variant",
+      "model\u001b[31m",
+    ]) {
+      expect(CatalogSelectableModelIdSchema.safeParse(modelId).success, modelId).toBe(false);
+    }
+  });
+
+  it("keeps opaque upstream IDs as observations without making them selectable", () => {
+    const parsed = CatalogObservationSchema.parse({
+      source: "models.dev-live",
+      checkedAt: CHECKED_AT,
+      catalog: {
+        upstream: {
+          id: "upstream",
+          models: {
+            "Marketing Name (latest)": {
+              id: "Marketing Name (latest)",
+              name: "Marketing Name",
+              selectable: true,
+              enabled: true,
+            },
+          },
+        },
+      },
+    });
+
+    const model = parsed.catalog.upstream?.models["Marketing Name (latest)"];
+    expect(model?.id).toBe("Marketing Name (latest)");
+    expect(CatalogSelectableModelIdSchema.safeParse(model?.id).success).toBe(false);
+    expect(model).not.toHaveProperty("selectable");
+    expect(model).not.toHaveProperty("enabled");
+    expect(parsed).not.toHaveProperty("ready");
+    expect(parsed).not.toHaveProperty("admitted");
+  });
+
+  it("requires a known observation source and checkedAt timestamp", () => {
+    const catalog = { upstream: { id: "upstream", models: {} } };
+
+    expect(CatalogObservationSchema.safeParse({ checkedAt: CHECKED_AT, catalog }).success).toBe(
+      false,
+    );
+    expect(CatalogObservationSchema.safeParse({ source: "models.dev-live", catalog }).success).toBe(
+      false,
+    );
+    expect(
+      CatalogObservationSchema.safeParse({
+        source: "marketing-page",
+        checkedAt: CHECKED_AT,
+        catalog,
+      }).success,
+    ).toBe(false);
+    expect(
+      CatalogObservationSchema.safeParse({
+        source: "models.dev-snapshot",
+        checkedAt: "yesterday",
+        catalog,
+      }).success,
+    ).toBe(false);
   });
 
   const UNSAFE_KEY_CASES: Array<{ key: string; raw: unknown }> = [

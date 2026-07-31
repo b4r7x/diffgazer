@@ -1,95 +1,154 @@
-import { describe, expect, it } from "vitest";
-import { deriveCapabilities } from "./capabilities.js";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import type { RunnableProductId } from "../schemas/config/transports.js";
+import { deriveCapabilities, type ModelCapabilityObservation } from "./capabilities.js";
 import { RAW_CATALOG } from "./fixtures.js";
-import { parseModelsDevCatalog } from "./schema.js";
+import {
+  type CatalogSelectableModelId,
+  CatalogSelectableModelIdSchema,
+  parseModelsDevCatalog,
+} from "./schema.js";
 
+const CHECKED_AT = "2026-07-31T12:00:00.000Z";
+const FRESH_AFTER = "2026-07-31T11:00:00.000Z";
 const catalog = parseModelsDevCatalog(RAW_CATALOG);
 
-describe("deriveCapabilities", () => {
-  it("reports the max limit.context across the provider's models", () => {
-    const caps = deriveCapabilities(catalog, "gemini");
-    expect(caps.contextWindow).toContain("1M");
+function observe(productId: RunnableProductId) {
+  return deriveCapabilities(catalog, productId, {
+    source: "models.dev-snapshot",
+    checkedAt: CHECKED_AT,
+    freshAfter: FRESH_AFTER,
+  });
+}
+
+describe("catalog capability observations", () => {
+  it("carries the validated catalog model-id type through observations and evidence", () => {
+    expectTypeOf<ModelCapabilityObservation["modelId"]>().toEqualTypeOf<CatalogSelectableModelId>();
+    expectTypeOf<
+      ModelCapabilityObservation["evidence"]["exactModelId"]
+    >().toEqualTypeOf<CatalogSelectableModelId>();
+
+    const [observation] = observe("gemini");
+    expect(observation).toBeDefined();
+    const parsedModelId = CatalogSelectableModelIdSchema.safeParse(observation?.modelId);
+    expect(parsedModelId.success).toBe(true);
+    expect(observation?.evidence.exactModelId).toBe(observation?.modelId);
   });
 
-  it("sets tier 'mixed' when the provider has both free and paid models", () => {
-    expect(deriveCapabilities(catalog, "gemini").tier).toBe("mixed");
+  it("emits volatile exact-model observations only with structured-output evidence", () => {
+    const observations = observe("gemini");
+    const flash = observations.find((observation) => observation.modelId === "gemini-2.5-flash");
+
+    expect(flash).toEqual({
+      productId: "gemini",
+      modelId: "gemini-2.5-flash",
+      source: "models.dev-snapshot",
+      checkedAt: CHECKED_AT,
+      evidence: {
+        exactModelId: "gemini-2.5-flash",
+        structuredOutput: "catalog-observed",
+      },
+      observedCapabilities: ["structured-output", "tool-calling", "reasoning"],
+      limits: { contextTokens: 1_048_576, outputTokens: 65_536 },
+    });
+    expect(observations.some((observation) => observation.modelId === "gemini-embedding-001")).toBe(
+      false,
+    );
   });
 
-  it("derives tierBadge FREE from hasFreeTier true, PAID otherwise", () => {
-    expect(deriveCapabilities(catalog, "gemini").tierBadge).toBe("FREE");
-    expect(deriveCapabilities(catalog, "zai-coding").tierBadge).toBe("PAID");
-  });
-
-  it("derives capability flags from any model exposing tool_call / structured_output / reasoning", () => {
-    const caps = deriveCapabilities(catalog, "gemini");
-    expect(caps.capabilities).toContain("TOOLS");
-    expect(caps.capabilities).toContain("JSON");
-    expect(caps.capabilities).toContain("REASONING");
-
-    const noReasoningCaps = deriveCapabilities(catalog, "groq");
-    expect(noReasoningCaps.capabilities).not.toContain("REASONING");
-  });
-
-  it("keeps the JSON capability when no model advertises structured_output (zai)", () => {
-    // zai's fixture models carry no structured_output field, so the positive
-    // hint is absent — the contract is that JSON is still offered, never gated.
-    const zaiModels = Object.values(catalog.zai?.models ?? {});
-    expect(zaiModels.length).toBeGreaterThan(0);
-    expect(zaiModels.every((m) => m.structured_output !== true)).toBe(true);
-
-    const caps = deriveCapabilities(catalog, "zai");
-
-    expect(caps.capabilities).toContain("JSON");
-    expect(caps.jsonMode).toMatch(/JSON/i);
-  });
-
-  it("resolves cerebras to the free tier via the 'all' selector with curated free-tier prose", () => {
-    const caps = deriveCapabilities(catalog, "cerebras");
-
-    expect(caps.tier).toBe("free");
-    expect(caps.tierBadge).toBe("FREE");
-    expect(caps.costDescription).toMatch(/^Cerebras free tier: ~1M tokens\/day\./);
-  });
-
-  it("resolves groq to the free tier via the 'all' selector despite priced models", () => {
-    const caps = deriveCapabilities(catalog, "groq");
-
-    expect(caps.tier).toBe("free");
-    expect(caps.tierBadge).toBe("FREE");
-  });
-
-  it("resolves a paid-only provider (zai-coding) to tier 'paid' with paid cost prose", () => {
-    const caps = deriveCapabilities(catalog, "zai-coding");
-
-    expect(caps.tier).toBe("paid");
-    expect(caps.costDescription).toMatch(/paid/i);
-  });
-
-  it("keeps tier consistent with the FREE badge when the provider has no models", () => {
-    const empty = parseModelsDevCatalog({});
-
-    // gemini has hasFreeTier:true; an empty model list must not flip tier to 'paid'
-    // and contradict the FREE tierBadge.
-    const caps = deriveCapabilities(empty, "gemini");
-    expect(caps.tierBadge).toBe("FREE");
-    expect(caps.tier).toBe("free");
-
-    // zai-coding has hasFreeTier:false, so an empty list stays paid.
-    expect(deriveCapabilities(empty, "zai-coding").tier).toBe("paid");
-  });
-
-  it("reports 'Varies by model' context when no model carries a context limit", () => {
-    const noContext = parseModelsDevCatalog({
-      google: { id: "google", models: { "gemini-2.5-flash": { id: "gemini-2.5-flash" } } },
+  it("does not turn catalog prices or capability hints into readiness, free, or privacy claims", () => {
+    const zeroPriced = parseModelsDevCatalog({
+      google: {
+        id: "google",
+        models: {
+          "gemini-2.5-flash": {
+            id: "gemini-2.5-flash",
+            cost: { input: 0, output: 0 },
+            structured_output: true,
+          },
+        },
+      },
+    });
+    const [observation] = deriveCapabilities(zeroPriced, "gemini", {
+      source: "models.dev-live",
+      checkedAt: CHECKED_AT,
+      freshAfter: FRESH_AFTER,
     });
 
-    expect(deriveCapabilities(noContext, "gemini").contextWindow).toBe("Varies by model");
+    expect(observation?.modelId).toBe("gemini-2.5-flash");
+    for (const forbidden of [
+      "ready",
+      "selectable",
+      "enabled",
+      "free",
+      "tier",
+      "tierBadge",
+      "private",
+      "privacy",
+      "admission",
+      "conformance",
+    ]) {
+      expect(observation).not.toHaveProperty(forbidden);
+    }
   });
 
-  it("upgrades jsonMode prose to structured-output wording only when a model advertises it", () => {
-    // gemini's models set structured_output:true -> the upgraded wording.
-    expect(deriveCapabilities(catalog, "gemini").jsonMode).toMatch(/structured output/i);
-    // zai's models do not -> the plain fallback wording.
-    expect(deriveCapabilities(catalog, "zai").jsonMode).toMatch(/where the model offers/i);
+  it("rejects stale or malformed observation times", () => {
+    expect(
+      deriveCapabilities(catalog, "gemini", {
+        source: "models.dev-live",
+        checkedAt: "2026-07-30T12:00:00.000Z",
+        freshAfter: FRESH_AFTER,
+      }),
+    ).toEqual([]);
+    expect(
+      deriveCapabilities(catalog, "gemini", {
+        source: "models.dev-live",
+        checkedAt: "not-a-date",
+        freshAfter: FRESH_AFTER,
+      }),
+    ).toEqual([]);
+  });
+
+  it("rejects latest aliases and model-key mismatches without rewriting exact IDs", () => {
+    const aliases = parseModelsDevCatalog({
+      google: {
+        id: "google",
+        models: {
+          "kimi-latest": { id: "kimi-latest", structured_output: true },
+          "model-LATEST-v2": { id: "model-LATEST-v2", structured_output: true },
+          "model.latest.v2": { id: "model.latest.v2", structured_output: true },
+          mismatch: { id: "actual-model", structured_output: true },
+          "provider/model/variant": {
+            id: "provider/model/variant",
+            structured_output: true,
+          },
+          "provider/exact.model:1": {
+            id: "provider/exact.model:1",
+            structured_output: true,
+          },
+        },
+      },
+    });
+
+    expect(
+      deriveCapabilities(aliases, "gemini", {
+        source: "models.dev-live",
+        checkedAt: CHECKED_AT,
+        freshAfter: FRESH_AFTER,
+      }).map((observation) => observation.modelId),
+    ).toEqual(["provider/exact.model:1"]);
+  });
+
+  it("requires positive structured-output evidence instead of inferring it", () => {
+    expect(observe("zai")).toEqual([]);
+  });
+
+  it("never projects capabilities for the removed zai-coding identity", () => {
+    expect(
+      deriveCapabilities(catalog, "zai-coding", {
+        source: "models.dev-live",
+        checkedAt: CHECKED_AT,
+        freshAfter: FRESH_AFTER,
+      }),
+    ).toEqual([]);
   });
 });
