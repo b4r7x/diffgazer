@@ -1,3 +1,4 @@
+export type { RunnableProductId } from "../schemas/config/transports.js";
 export {
   type ClientMetadataPayload,
   ClientMetadataPayloadSchema,
@@ -17,7 +18,12 @@ export {
   getProviderDisplayStatus,
   type ProviderDisplayStatus,
 } from "./display-status.js";
-export { mapProviderList, type ProviderListRow } from "./list.js";
+export {
+  findProviderById,
+  getProviderRowId,
+  mapProviderList,
+  type ProviderListRow,
+} from "./list.js";
 export { cycleTierFilter, filterModels, TIER_FILTERS, type TierFilter } from "./models.js";
 export {
   type AdmissionCheck,
@@ -27,15 +33,24 @@ export {
   type CandidateVerdict,
   type ConfigurationField,
   type EndpointProfile,
+  isModelIdAllowedForProduct,
+  isPinnedDownstreamRouteModelId,
   type ModelPolicy,
+  matchesModelPolicy,
   PRODUCT_REGISTRY,
   type ProductAdmissionPolicy,
   type ProductNotice,
   type ProductRegistry,
   type RemovedProductDescriptor,
   type RunnableProductDescriptor,
+  requiresExplicitModelSelection,
   SELECTABLE_PRODUCT_IDS,
 } from "./product-registry.js";
+export {
+  type UseApiKeyEntryOptions,
+  type UseApiKeyEntryResult,
+  useApiKeyEntry,
+} from "./use-api-key-entry.js";
 export { useModelFilter } from "./use-model-filter.js";
 export { type ModelSourceState, useModelSource } from "./use-model-source.js";
 export {
@@ -43,4 +58,21 @@ export {
   type OpenRouterModelsState,
   useOpenRouterModelsMapped,
 } from "./use-openrouter-models-mapped.js";
+export {
+  type CreatedConfigurationResponse,
+  type ModelDialogOwner,
+  PROVIDER_MANAGEMENT_ACTIONS,
+  type ProviderDialogOwner,
+  type ProviderManagementAction,
+  type ProviderManagementEvent,
+  type ProviderManagementFailure,
+  type ProviderManagementMutations,
+  type ProviderManagementNotifier,
+  type ProviderManagementOutcome,
+  type SetupDialogOwner,
+  type UpdateConfigurationRequest,
+  type UseProviderManagementInput,
+  type UseProviderManagementResult,
+  useProviderManagement,
+} from "./use-provider-management.js";
 export { type ProviderModelsState, useProviderModelsMapped } from "./use-provider-models-mapped.js";

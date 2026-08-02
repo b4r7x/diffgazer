@@ -124,8 +124,8 @@ export function ReviewContainer({
   if (state.gate === "unconfigured") {
     return (
       <ApiKeyMissingView
-        provider={state.provider ?? undefined}
-        missing={state.initState.missing}
+        productLabel={state.productLabel ?? undefined}
+        readiness={state.readiness}
         onGoToSettings={() => {
           reset();
           navigate({ screen: "settings/providers" });
@@ -185,6 +185,7 @@ export function ReviewContainer({
           isStreaming={state.isStreaming}
           error={state.error}
           errorCode={state.errorCode}
+          transportFamily={state.transportFamily}
           notices={state.notices}
           onCancel={() => {
             void cancel().then((error) => {

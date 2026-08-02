@@ -122,7 +122,7 @@ describe("useApiKeyEntry", () => {
     const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
 
     act(() => result.current.setMethod("env"));
-    expect(result.current.canSubmit).toBe(false);
+    expect(result.current.canSubmit).toBe(true);
 
     act(() => result.current.setValue("MY_KEY_VAR"));
     await act(async () => {

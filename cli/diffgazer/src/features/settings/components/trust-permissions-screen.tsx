@@ -7,6 +7,7 @@ import {
 import { usePageFooter } from "@diffgazer/core/footer";
 import { sanitizeTerminalText } from "@diffgazer/core/review";
 import { NAVIGATE_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
@@ -37,7 +38,10 @@ export function TrustPermissionsScreen(): ReactElement {
   };
 
   const queryGuardPanels = useQueryGuardPanels("Loading trust permissions...");
-  const guard = guardQueryState(initQuery, queryGuardPanels);
+  const guard = guardQueryState(
+    initQuery as UseQueryResult<NonNullable<typeof initQuery.data>>,
+    queryGuardPanels,
+  );
   if (guard) return guard;
 
   return <LoadedTrustPermissionsScreen columns={columns} rows={rows} editorInput={editorInput} />;

@@ -6,6 +6,7 @@ import {
   getOverallStatus,
   makeContextResponse,
   makeInitResponse,
+  makeUnconfiguredInitResponse,
   mockGetReviewContext,
   mockLoadInit,
   mockRequest,
@@ -42,13 +43,13 @@ describe("SettingsDiagnosticsPage diagnostics status", () => {
       expect(within(diagnosticsPanel).getByText(label)).toBeVisible();
     }
     expect(
-      await within(diagnosticsPanel).findByText("openrouter (openrouter/test-model)"),
+      await within(diagnosticsPanel).findByText("Google Gemini (gemini-2.5-flash)"),
     ).toBeVisible();
   });
 
   it("keeps error, loading, setup-needed, and ready precedence across source transitions", async () => {
     const healthRecovery = createDeferred<Awaited<ReturnType<BoundApi["request"]>>>();
-    const init = createDeferred<Awaited<ReturnType<BoundApi["loadInit"]>>>();
+    const init = createDeferred<Awaited<ReturnType<BoundApi["loadConfigurationInit"]>>>();
     const context = createDeferred<Awaited<ReturnType<BoundApi["getReviewContext"]>>>();
     mockRequest
       .mockRejectedValueOnce(new Error("server down"))
@@ -64,20 +65,7 @@ describe("SettingsDiagnosticsPage diagnostics status", () => {
     healthRecovery.resolve(new Response(null));
     await healthRefetch;
 
-    init.resolve(
-      makeInitResponse({
-        config: null,
-        setup: {
-          hasSecretsStorage: true,
-          hasProvider: false,
-          hasModel: false,
-          hasTrust: true,
-          isConfigured: false,
-          isReady: false,
-          missing: ["provider", "model"],
-        },
-      }),
-    );
+    init.resolve(makeUnconfiguredInitResponse());
     await waitFor(() => expect(getOverallStatus()).toHaveTextContent("Checking"));
 
     context.reject(Object.assign(new Error("context missing"), { status: 404 }));
@@ -110,20 +98,7 @@ describe("SettingsDiagnosticsPage diagnostics status", () => {
   });
 
   it("reports incomplete setup even when context is ready", async () => {
-    mockLoadInit.mockReset().mockResolvedValue(
-      makeInitResponse({
-        config: null,
-        setup: {
-          hasSecretsStorage: true,
-          hasProvider: false,
-          hasModel: false,
-          hasTrust: true,
-          isConfigured: false,
-          isReady: false,
-          missing: ["provider", "model"],
-        },
-      }),
-    );
+    mockLoadInit.mockReset().mockResolvedValue(makeUnconfiguredInitResponse());
     renderPage();
 
     await waitFor(() => expect(getOverallStatus()).toHaveTextContent("Setup needed"));

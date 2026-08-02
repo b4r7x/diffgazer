@@ -6,6 +6,7 @@ import {
   ConfigurationRevisionSchema,
   ExactModelIdSchema,
 } from "../schemas/config/index.js";
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { LensIdSchema } from "../schemas/review/index.js";
 import { buildSetupPlan, type RemovedSetupPlan, type RunnableSetupPlan } from "./setup-plan.js";
 
@@ -76,7 +77,7 @@ const RunnableOnboardingStateInputSchema = z
 
 const RemovedOnboardingStateInputSchema = z.strictObject({
   kind: z.literal("removed"),
-  productId: z.literal("zai-coding"),
+  productId: z.literal(REMOVED_PRODUCT_ID),
   configurationId: ConfigurationIdSchema,
   expectedRevision: ConfigurationRevisionSchema,
 });

@@ -5,6 +5,18 @@ export {
   PROVIDER_DISABLED,
 } from "./catalog-errors.js";
 export {
+  type ConfigurationInitResponse,
+  ConfigurationInitResponseSchema,
+  type ConfigurationListResponse,
+  ConfigurationListResponseSchema,
+  type ConfigurationStatus,
+  ConfigurationStatusSchema,
+  type ProjectInfo,
+  ProjectInfoSchema,
+  resolveSelectedConfiguration,
+  type SetupStatus,
+} from "./configuration-status.js";
+export {
   type ModelInfo,
   type OpenRouterModel,
   type OpenRouterModelCache,
@@ -49,43 +61,19 @@ export {
 } from "./provider-config.js";
 export { SELECTABLE_PRODUCTS } from "./provider-registry.js";
 export {
-  type ConfigurationInitResponse,
-  ConfigurationInitResponseSchema,
-  type ConfigurationListResponse,
-  ConfigurationListResponseSchema,
-  type ConfigurationStatus,
-  ConfigurationStatusSchema,
   type DecodedProviderConfigurationRecord,
   DecodedProviderConfigurationRecordSchema,
   decodeProviderConfigurationRecord,
   LEGACY_PROVIDER_IDS_V1,
+  LEGACY_V1_HAS_API_KEY_PROPERTY,
   type LegacyProviderConfigV1,
   LegacyProviderConfigV1Schema,
   type LegacyProviderIdV1,
   LegacyProviderIdV1Schema,
   type LegacyRemovedProviderRecordV1,
   LegacyRemovedProviderRecordV1Schema,
-  type ProjectInfo,
-  ProjectInfoSchema,
+  REMOVED_PRODUCT_ID,
 } from "./providers.js";
-
-/**
- * Internal projection retained for the diagnostics adapter while callers move
- * to the V2 configuration/readiness response. It is derived from V2 data and
- * is not a server payload or a credential/provider authority.
- */
-export interface SetupStatus {
-  readonly hasSecretsStorage: boolean;
-  readonly hasProvider: boolean;
-  readonly hasModel: boolean;
-  readonly hasTrust: boolean;
-  readonly isConfigured: boolean;
-  readonly isReady: boolean;
-  readonly missing: readonly string[];
-}
-
-/** @internal Compatibility constant for the restored provider-detail adapter. */
-export const OPENROUTER_PROVIDER_ID = "openrouter" as const;
 
 export {
   AcceptedAcknowledgementSchema,

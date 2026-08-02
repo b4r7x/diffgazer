@@ -2,6 +2,9 @@ import "./model-select-overlay.terminal-mock";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
+import type { ProviderListRow } from "@diffgazer/core/providers";
+import type { ClientConfigurationInput } from "@diffgazer/core/schemas/config";
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
@@ -10,7 +13,13 @@ import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { flush } from "../../../testing/flush";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
+import {
+  buildProviderRows,
+  LOCAL_OPENAI_CONFIGURATION,
+  unconfiguredRow,
+} from "../testing/fixtures";
 import { ApiKeyOverlay } from "./api-key-overlay";
+import { flushUntil } from "./model-select-overlay.test-support";
 
 function makeQueryClient(): QueryClient {
   return new QueryClient({
@@ -35,22 +44,45 @@ function Wrapper({ children, api }: { children: ReactNode; api: BoundApi }) {
   );
 }
 
-describe("ApiKeyOverlay", () => {
+function hostedRow(): ProviderListRow {
+  return requireValue(
+    buildProviderRows().find((row) => row.product.productId === "gemini"),
+    "gemini row",
+  );
+}
+
+function localRow(): ProviderListRow {
+  return requireValue(
+    buildProviderRows().find((row) => row.configuration?.configurationId === "local-openai-1"),
+    "local-openai-1 row",
+  );
+}
+
+describe("ApiKeyOverlay hosted write-only flow", () => {
   afterEach(() => {
     cleanup();
   });
 
-  test("saves via keyboard Enter on the focused Save button without passing secrets to onSaved", async () => {
-    const saveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
-    const onSaved = vi.fn();
-    const api = { ...createApi({ baseUrl: "http://localhost" }), saveConfig } satisfies BoundApi;
+  test("saves via keyboard Enter without passing secrets to onCreate callbacks", async () => {
+    const onCreate = vi.fn(async (_input: ClientConfigurationInput) => {});
+    const api = { ...createApi({ baseUrl: "http://localhost" }) } satisfies BoundApi;
+    const row = unconfiguredRow("gemini");
 
     const view = render(
       <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="gemini" onOpenChange={() => {}} onSaved={onSaved} />
+        <ApiKeyOverlay
+          open
+          row={row}
+          onOpenChange={() => {}}
+          onCreate={onCreate}
+          onUpdate={async () => {}}
+        />
       </Wrapper>,
     );
 
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+    view.stdin.write("a");
+    await flush();
     view.stdin.write("\t");
     await flush();
     view.stdin.write("sk-test-secret");
@@ -58,146 +90,38 @@ describe("ApiKeyOverlay", () => {
     view.stdin.write("\t");
     await flush();
     view.stdin.write("\r");
-    await waitUntil(() => onSaved.mock.calls.length > 0);
+    await waitUntil(() => onCreate.mock.calls.length > 0);
 
-    expect(saveConfig).toHaveBeenCalledWith({
-      provider: "gemini",
-      apiKey: { kind: "literal", value: "sk-test-secret" },
-    });
-    expect(onSaved).toHaveBeenCalledWith();
-    expect(onSaved.mock.calls[0]?.length ?? 0).toBe(0);
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transportFamily: "hosted-api",
+        productId: "gemini",
+        credential: { kind: "literal", value: "sk-test-secret" },
+      }),
+      expect.anything(),
+    );
+    expect(view.lastFrame()).not.toContain("sk-test-secret");
   });
 
-  test("ignores footer arrows while the key input is focused so Enter submits instead of cancelling", async () => {
-    const saveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
-    const onOpenChange = vi.fn();
-    const api = { ...createApi({ baseUrl: "http://localhost" }), saveConfig } satisfies BoundApi;
-
+  test("submits environment credentials without exposing a typed secret in the frame", async () => {
+    const onCreate = vi.fn(async (_input: ClientConfigurationInput) => {});
+    const api = { ...createApi({ baseUrl: "http://localhost" }) } satisfies BoundApi;
+    const row = unconfiguredRow("gemini");
     const view = render(
       <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="gemini" onOpenChange={onOpenChange} />
+        <ApiKeyOverlay
+          open
+          row={row}
+          onOpenChange={() => {}}
+          onCreate={onCreate}
+          onUpdate={async () => {}}
+        />
       </Wrapper>,
     );
 
-    // Tab focuses the input; → must not move focus to Cancel while typing (F-347b).
-    view.stdin.write("\t");
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+    view.stdin.write("a");
     await flush();
-    view.stdin.write("sk-typed-key");
-    await flush();
-    view.stdin.write("[C"); // right arrow
-    await flush();
-    view.stdin.write("\r"); // Enter
-    await waitUntil(() => onOpenChange.mock.calls.length > 0);
-
-    expect(saveConfig).toHaveBeenCalledWith({
-      provider: "gemini",
-      apiKey: { kind: "literal", value: "sk-typed-key" },
-    });
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-  });
-
-  test("saves once when Enter follows Cancel selection and input focus", async () => {
-    const saveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
-    const onOpenChange = vi.fn();
-    const api = { ...createApi({ baseUrl: "http://localhost" }), saveConfig } satisfies BoundApi;
-
-    const view = render(
-      <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="gemini" onOpenChange={onOpenChange} />
-      </Wrapper>,
-    );
-
-    view.stdin.write("\u001B[C");
-    await flush();
-    view.stdin.write("\t");
-    await flush();
-    view.stdin.write("sk-cancel-then-save");
-    await flush();
-    view.stdin.write("\r");
-    await waitUntil(() => onOpenChange.mock.calls.length > 0);
-
-    expect(saveConfig).toHaveBeenCalledTimes(1);
-    expect(saveConfig).toHaveBeenCalledWith({
-      provider: "gemini",
-      apiKey: { kind: "literal", value: "sk-cancel-then-save" },
-    });
-    expect(onOpenChange).toHaveBeenCalledTimes(1);
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-  });
-
-  test("clears typed secrets when the overlay closes", async () => {
-    const saveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
-    const api = { ...createApi({ baseUrl: "http://localhost" }), saveConfig } satisfies BoundApi;
-
-    const view = render(
-      <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="gemini" onOpenChange={() => {}} />
-      </Wrapper>,
-    );
-
-    view.stdin.write("\t");
-    await flush();
-    view.stdin.write("sk-visible-secret");
-    await flush();
-
-    view.rerender(
-      <Wrapper api={api}>
-        <ApiKeyOverlay open={false} providerId="gemini" onOpenChange={() => {}} />
-      </Wrapper>,
-    );
-    await flush();
-
-    view.rerender(
-      <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="gemini" onOpenChange={() => {}} />
-      </Wrapper>,
-    );
-    await flush();
-
-    const frame = view.lastFrame() ?? "";
-    expect(frame).not.toContain("sk-visible-secret");
-    expect(frame).not.toContain("*".repeat("sk-visible-secret".length));
-  });
-
-  test("clears typed secrets when the provider changes while open", async () => {
-    const saveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
-    const api = { ...createApi({ baseUrl: "http://localhost" }), saveConfig } satisfies BoundApi;
-
-    const view = render(
-      <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="gemini" onOpenChange={() => {}} />
-      </Wrapper>,
-    );
-
-    view.stdin.write("\t");
-    await flush();
-    view.stdin.write("sk-provider-secret");
-    await flush();
-
-    view.rerender(
-      <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="openrouter" onOpenChange={() => {}} />
-      </Wrapper>,
-    );
-    await flush();
-
-    const frame = view.lastFrame() ?? "";
-    expect(frame).toContain("Configure API Key");
-    expect(frame).toContain("openrouter");
-    expect(frame).not.toContain("sk-provider-secret");
-    expect(frame).not.toContain("*".repeat("sk-provider-secret".length));
-  });
-
-  test("keeps a pasted secret out of the fixed environment-variable credential", async () => {
-    const saveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
-    const api = { ...createApi({ baseUrl: "http://localhost" }), saveConfig } satisfies BoundApi;
-
-    const view = render(
-      <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="gemini" onOpenChange={() => {}} />
-      </Wrapper>,
-    );
-
     view.stdin.write("\t");
     await flush();
     view.stdin.write("sk-never-an-env-name");
@@ -206,77 +130,156 @@ describe("ApiKeyOverlay", () => {
     await flush();
     view.stdin.write("\u001B[B");
     await flush();
-
-    const envFrame = view.lastFrame() ?? "";
-    expect(envFrame).toContain("GOOGLE_API_KEY");
-    expect(envFrame).toContain("Fixed for this provider");
-    expect(envFrame).not.toContain("sk-never-an-env-name");
-    expect(envFrame).not.toContain("*".repeat("sk-never-an-env-name".length));
-
-    view.stdin.write("\t");
-    view.stdin.write("ATTACKER_VAR");
-    await flush();
-    expect(view.lastFrame()).not.toContain("ATTACKER_VAR");
-
+    expect(view.lastFrame()).not.toContain("sk-never-an-env-name");
     view.stdin.write("\r");
-    await flush(8);
+    await waitUntil(() => onCreate.mock.calls.length > 0);
 
-    expect(saveConfig).toHaveBeenCalledWith({
-      provider: "gemini",
-      apiKey: { kind: "env", varName: "GOOGLE_API_KEY" },
+    expect(onCreate).toHaveBeenCalled();
+    const input = onCreate.mock.calls[0]?.[0];
+    expect(input).toMatchObject({
+      transportFamily: "hosted-api",
+      productId: "gemini",
+      credential: { kind: "environment" },
     });
   });
 
-  test("ignores close requests during a deferred save and closes after a failed save settles", async () => {
-    let rejectSave: ((reason: Error) => void) | undefined;
-    const saveConfig = vi.fn<BoundApi["saveConfig"]>(
-      () =>
-        new Promise<never>((_resolve, reject) => {
-          rejectSave = reject;
-        }),
-    );
-    const onOpenChange = vi.fn();
-    const api = { ...createApi({ baseUrl: "http://localhost" }), saveConfig } satisfies BoundApi;
-
+  test("clears typed secrets when the overlay closes", async () => {
+    const api = { ...createApi({ baseUrl: "http://localhost" }) } satisfies BoundApi;
+    const row = hostedRow();
     const view = render(
       <Wrapper api={api}>
-        <ApiKeyOverlay open providerId="gemini" onOpenChange={onOpenChange} />
+        <ApiKeyOverlay
+          open
+          row={row}
+          onOpenChange={() => {}}
+          onCreate={async () => {}}
+          onUpdate={async () => {}}
+        />
       </Wrapper>,
     );
 
+    await flushUntil(() => view.lastFrame()?.includes("Update Configuration") ?? false);
     view.stdin.write("\t");
     await flush();
-    view.stdin.write("sk-pending-secret");
+    view.stdin.write("sk-visible-secret");
+    await flush();
+
+    view.rerender(
+      <Wrapper api={api}>
+        <ApiKeyOverlay
+          open={false}
+          row={row}
+          onOpenChange={() => {}}
+          onCreate={async () => {}}
+          onUpdate={async () => {}}
+        />
+      </Wrapper>,
+    );
+    await flush();
+    view.rerender(
+      <Wrapper api={api}>
+        <ApiKeyOverlay
+          open
+          row={row}
+          onOpenChange={() => {}}
+          onCreate={async () => {}}
+          onUpdate={async () => {}}
+        />
+      </Wrapper>,
+    );
+    await flush();
+
+    const frame = view.lastFrame() ?? "";
+    expect(frame).not.toContain("sk-visible-secret");
+  });
+});
+
+describe("ApiKeyOverlay family-specific layout", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  test("forbids local credential controls for local-http setup", async () => {
+    const row = localRow();
+    const view = render(
+      <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
+        <ApiKeyOverlay
+          open
+          row={row}
+          onOpenChange={() => {}}
+          onCreate={async () => {}}
+          onUpdate={async () => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(
+      () => view.lastFrame()?.includes("without storing hosted credentials") ?? false,
+    );
+    const frame = view.lastFrame() ?? "";
+    expect(frame).toContain(LOCAL_OPENAI_CONFIGURATION.endpoint);
+    expect(frame).not.toContain("Paste API key directly");
+    expect(frame).not.toContain("sk-");
+  });
+
+  test("forbids credential controls for local-cli setup", async () => {
+    const row = requireValue(
+      buildProviderRows().find((entry) => entry.product.productId === "codex-cli"),
+      "codex-cli row",
+    );
+    expect(row.configuration).toMatchObject({
+      status: "supported",
+      transportFamily: "local-cli",
+    });
+    const view = render(
+      <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
+        <ApiKeyOverlay
+          open
+          row={row}
+          onOpenChange={() => {}}
+          onCreate={async () => {}}
+          onUpdate={async () => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => view.lastFrame()?.includes("Update Configuration") ?? false);
+    const frame = view.lastFrame() ?? "";
+    expect(frame).toContain("OpenAI Codex CLI");
+    expect(frame).not.toContain("Paste API key directly");
+    expect(frame).not.toContain("Use environment variable");
+  });
+
+  test("requires explicit notice acknowledgement before hosted save", async () => {
+    const onCreate = vi.fn(async (_input: ClientConfigurationInput) => {});
+    const row = unconfiguredRow("gemini");
+    const view = render(
+      <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
+        <ApiKeyOverlay
+          open
+          row={row}
+          onOpenChange={() => {}}
+          onCreate={onCreate}
+          onUpdate={async () => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+    view.stdin.write("\t");
+    await flush();
+    view.stdin.write("sk-hosted-secret");
     await flush();
     view.stdin.write("\t");
     await flush();
     view.stdin.write("\r");
     await flush();
+    expect(onCreate).not.toHaveBeenCalled();
 
-    expect(view.lastFrame()).toContain("Saving...");
-    view.stdin.write("\u001B");
+    view.stdin.write("a");
     await flush();
-
-    expect(onOpenChange).not.toHaveBeenCalled();
-    expect(view.lastFrame()).toContain("Saving...");
-
-    rejectSave?.(new Error("save rejected"));
-    await waitUntil(() => {
-      const frame = view.lastFrame() ?? "";
-      return (
-        frame.includes("save rejected") &&
-        !frame.includes("Saving...") &&
-        frame.includes("Save") &&
-        frame.includes("Cancel")
-      );
-    });
-
-    expect(view.lastFrame()).toContain("save rejected");
-    expect(onOpenChange).not.toHaveBeenCalled();
-    view.stdin.write("\u001B");
-    await waitUntil(() => onOpenChange.mock.calls.length > 0);
-
-    expect(onOpenChange).toHaveBeenCalledOnce();
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    view.stdin.write("\r");
+    await waitUntil(() => onCreate.mock.calls.length > 0);
+    expect(onCreate).toHaveBeenCalledOnce();
   });
 });

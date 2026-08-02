@@ -1,20 +1,47 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import { extractOrchestratorStats, mapStepsToProgressData } from "@diffgazer/core/review";
-import type { ReviewMode } from "@diffgazer/core/schemas/review";
+import type {
+  ReviewMode,
+  TerminalOutcome,
+  UsageAvailability,
+} from "@diffgazer/core/schemas/review";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { useConfigActions, useConfigData } from "@/hooks/use-config";
 import { type ReviewCompleteData, useReviewLifecycle } from "../hooks/use-lifecycle";
-import { ApiKeyMissingView, ConfigurationErrorView } from "./api-key-missing-view";
+import { getReadinessActionLabel } from "../lib/readiness-presentation";
+import {
+  ApiKeyMissingView,
+  ConfigurationErrorView,
+  ReviewTerminalErrorView,
+  ReviewTerminalReceiptView,
+} from "./api-key-missing-view";
 import { NoChangesView } from "./no-changes-view";
 import { ReviewProgressView } from "./progress-view";
 
 export type { ReviewCompleteData };
 
-export interface ReviewContainerProps {
+export type FailedTerminalOutcome = Exclude<TerminalOutcome, "completed">;
+
+interface ReviewStreamProps {
   mode: ReviewMode;
+  allowResumeWithoutSetup?: boolean;
   onComplete?: (data: ReviewCompleteData) => void;
   onStreamNotFound?: (reviewId: string) => void;
 }
+
+/**
+ * A review that already reached a failed terminal outcome has nothing left to
+ * stream, so the receipt is rendered without engaging the review lifecycle; the
+ * route supplies the exit because there is no session to cancel.
+ */
+interface ReviewTerminalReceiptProps {
+  mode?: ReviewMode;
+  terminalOutcome: FailedTerminalOutcome;
+  usageAvailability?: UsageAvailability;
+  onBack: () => void;
+}
+
+export type ReviewContainerProps = ReviewStreamProps | ReviewTerminalReceiptProps;
 
 export function ReviewLoadingMessage({ message }: { message: string }) {
   usePageFooter({ shortcuts: [] });
@@ -22,7 +49,25 @@ export function ReviewLoadingMessage({ message }: { message: string }) {
   return <CenteredStatus>{message}</CenteredStatus>;
 }
 
-export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewContainerProps) {
+export function ReviewContainer(props: ReviewContainerProps) {
+  if ("terminalOutcome" in props) {
+    return (
+      <ReviewTerminalReceiptView
+        outcome={props.terminalOutcome}
+        usageAvailability={props.usageAvailability}
+        onBack={props.onBack}
+      />
+    );
+  }
+  return <ReviewStreamContainer {...props} />;
+}
+
+function ReviewStreamContainer({
+  mode,
+  allowResumeWithoutSetup,
+  onComplete,
+  onStreamNotFound,
+}: ReviewStreamProps) {
   const { loadState } = useConfigData();
   const { refresh } = useConfigActions();
   const {
@@ -30,7 +75,8 @@ export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewCo
     gate,
     contextSnapshot,
     loadingMessage,
-    provider,
+    readiness,
+    selectedConfiguration,
     isTransitionPending,
     handleCancel,
     handleBack,
@@ -38,7 +84,7 @@ export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewCo
     handleRetry,
     handleSetupProvider,
     handleSwitchMode,
-  } = useReviewLifecycle({ mode, onComplete, onStreamNotFound });
+  } = useReviewLifecycle({ mode, allowResumeWithoutSetup, onComplete, onStreamNotFound });
 
   const steps = mapStepsToProgressData(state.steps);
   const filesIncludedInPrompt = state.fileProgress.completed.length;
@@ -72,11 +118,12 @@ export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewCo
     return <ReviewLoadingMessage message={loadingMessage ?? "Loading review..."} />;
   }
 
-  if (gate === "unconfigured") {
+  if (gate === "unconfigured" && readiness) {
     return (
       <ApiKeyMissingView
-        activeProvider={provider}
-        missing={loadState.setupStatus.missing}
+        readiness={readiness}
+        productLabel={selectedConfiguration?.productId}
+        primaryLabel={getReadinessActionLabel(readiness.action)}
         onNavigateSettings={handleSetupProvider}
         onBack={handleCancel}
         primaryDisabled={isTransitionPending}
@@ -95,11 +142,12 @@ export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewCo
     );
   }
 
-  // Enable View Results only once the report step is completed. The server now
-  // emits step_complete("report") strictly AFTER the durable saveReview, so a
-  // completed report step is equivalent to a successful terminal `complete` and
-  // the saved review is guaranteed openable. Do NOT gate on !isStreaming alone --
-  // that is also true after errors, which would navigate to an empty results page.
+  if (gate === "terminal-error") {
+    return (
+      <ReviewTerminalErrorView message={state.error ?? "Review failed."} onBack={handleBack} />
+    );
+  }
+
   const reportStep = state.steps.find((s) => s.id === "report");
   const canViewResults = reportStep?.status === "completed";
 
@@ -109,6 +157,11 @@ export function ReviewContainer({ mode, onComplete, onStreamNotFound }: ReviewCo
       isRunning={state.isStreaming}
       error={state.error}
       errorCode={state.errorCode}
+      transportFamily={
+        selectedConfiguration?.status === "supported"
+          ? selectedConfiguration.transportFamily
+          : undefined
+      }
       reviewId={state.reviewId}
       onRetry={handleRetry}
       onViewResults={canViewResults ? handleViewResults : undefined}

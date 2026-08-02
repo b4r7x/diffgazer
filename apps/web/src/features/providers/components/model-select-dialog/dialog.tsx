@@ -1,6 +1,6 @@
-import { getCatalogFallbackNotice } from "@diffgazer/core/catalog";
-import { getCompatibilityLabel, useModelFilter, useModelSource } from "@diffgazer/core/providers";
-import type { AIProvider } from "@diffgazer/core/schemas/config";
+import { getDateLabel } from "@diffgazer/core/format";
+import { useModelFilter, useModelSource } from "@diffgazer/core/providers";
+import type { ClientConfigurationSummary, ExactModelId } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { Button } from "@diffgazer/ui/components/button";
 import {
@@ -20,12 +20,14 @@ import { ModelList } from "./list";
 import { ModelSearchInput } from "./search-input";
 import { useModelDialogKeyboard } from "./use-dialog-keyboard";
 
+type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
+
 interface ModelSelectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  provider: AIProvider;
+  configuration: SupportedConfigurationSummary;
   currentModel: string | undefined;
-  onSelect: (modelId: string) => void;
+  onSelect: (modelId: ExactModelId) => void;
   isSaving?: boolean;
 }
 
@@ -39,13 +41,12 @@ const FOOTER_HINTS: KeyboardHint[] = [
 export function ModelSelectDialog({
   open,
   onOpenChange,
-  provider,
+  configuration,
   currentModel,
   onSelect,
   isSaving = false,
 }: ModelSelectDialogProps) {
-  const { models, loading, error, isOpenRouter, openRouter, source, fetchedAt, retry } =
-    useModelSource(open, provider);
+  const source = useModelSource(open, configuration);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
   const handleOpenChange = (nextOpen: boolean) => {
@@ -61,7 +62,17 @@ export function ModelSelectDialog({
     filteredModels,
     cycleTierFilter,
     resetFilters,
-  } = useModelFilter(models);
+  } = useModelFilter(source.models);
+
+  const discoveryStatus = isSaving ? "passed" : source.status;
+  const discoveryReason = source.status === "skipped" ? source.reason : null;
+  const discoveryError = source.status === "error" ? source.error : null;
+  const loading = source.status === "loading" || source.status === "idle";
+  const canSelect = !isSaving && source.status === "passed" && filteredModels.length > 0;
+  const emptyLabel =
+    discoveryError ??
+    discoveryReason ??
+    (source.models.length === 0 ? "No models available" : "No models match your search");
 
   const {
     focusZone,
@@ -85,8 +96,9 @@ export function ModelSelectDialog({
     open,
     isSaving,
     currentModel,
-    models,
+    models: source.models,
     filteredModels,
+    discoveryStatus,
     searchQuery,
     setSearchQuery,
     cycleTierFilter,
@@ -97,8 +109,7 @@ export function ModelSelectDialog({
     onOpenChange: handleOpenChange,
   });
 
-  const emptyLabel = error ?? "No models match your search";
-  const fallbackNotice = getCatalogFallbackNotice(source, fetchedAt);
+  const checkedAtLabel = source.checkedAt ? getDateLabel(source.checkedAt) : null;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -111,7 +122,16 @@ export function ModelSelectDialog({
       >
         <DialogHeader>
           <div className="flex items-center justify-between gap-3">
-            <DialogTitle className="min-w-0 flex-1">Select Model</DialogTitle>
+            <div className="min-w-0 flex-1">
+              <DialogTitle>Select Model</DialogTitle>
+              <p className="mt-1 text-2xs text-muted-foreground">
+                {configuration.productId}
+                {source.models.length > 0
+                  ? ` · ${source.models.length} ${source.models.length === 1 ? "model" : "models"}`
+                  : ""}
+                {checkedAtLabel ? ` · checked ${checkedAtLabel}` : ""}
+              </p>
+            </div>
             <DialogClose
               {...getCloseButtonProps()}
               size="sm"
@@ -129,7 +149,7 @@ export function ModelSelectDialog({
             onFocus={() => setFocusZone("search")}
             onEscape={handleSearchEscape}
             onArrowDown={handleSearchArrowDown}
-            disabled={isSaving}
+            disabled={isSaving || loading}
           />
 
           <ModelFilterTabs
@@ -143,35 +163,21 @@ export function ModelSelectDialog({
               setFocusZone("filters");
               setFilterIndex(idx);
             }}
+            disabled={isSaving || loading || source.status !== "passed"}
           />
-          {isOpenRouter && !loading && !error && (
-            <div className="px-5 pb-2 text-2xs text-muted-foreground">
-              {getCompatibilityLabel(openRouter)}
-            </div>
-          )}
-          {fallbackNotice && (
-            <output className="mx-5 mb-2 flex items-center justify-between gap-3 text-2xs text-warning-text">
-              <span>{fallbackNotice}</span>
+
+          {(discoveryReason || discoveryError) && !isSaving ? (
+            // Not a live region: the empty-state message below announces the same
+            // discovery text, and two polite regions read it twice.
+            <div className="mx-5 mb-2 flex items-center justify-between gap-3 text-2xs text-warning-text">
+              <span>{discoveryReason ?? discoveryError}</span>
               <Button
                 type="button"
                 size="sm"
                 variant="secondary"
-                onClick={retry}
+                onClick={source.retry}
                 disabled={isSaving}
                 className="shrink-0"
-              >
-                Retry
-              </Button>
-            </output>
-          )}
-          {error ? (
-            <div className="mx-5 mb-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={retry}
-                disabled={isSaving}
               >
                 Retry
               </Button>
@@ -183,12 +189,14 @@ export function ModelSelectDialog({
             models={filteredModels}
             focusedModelId={focusedModelId}
             currentModelId={checkedModelId}
-            isFocused={focusZone === "list" && !isSaving}
+            isFocused={focusZone === "list" && !isSaving && source.status === "passed"}
             onSelect={handleListSelect}
             onConfirm={handleConfirm}
             onHighlightChange={handleListHighlightChange}
             onBoundaryReached={handleListBoundaryReached}
-            isLoading={loading}
+            discoveryStatus={discoveryStatus}
+            discoveryReason={discoveryReason}
+            discoveryError={discoveryError}
             isSaving={isSaving}
             emptyLabel={emptyLabel}
           />
@@ -210,12 +218,9 @@ export function ModelSelectDialog({
             variant="primary"
             size="sm"
             bracket
-            disabled={isSaving || filteredModels.length === 0}
+            disabled={!canSelect}
             highlighted={
-              focusZone === "footer" &&
-              footerButtonIndex === 1 &&
-              !isSaving &&
-              filteredModels.length > 0
+              focusZone === "footer" && footerButtonIndex === 1 && !isSaving && canSelect
             }
             onClick={(event) => {
               event.preventDefault();

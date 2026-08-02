@@ -75,7 +75,18 @@ export function ReviewPage() {
     ? resolveSavedReviewOutcome(toSavedReviewQueryState(savedReviewQuery), streamNotFound)
     : null;
   const savedOutcomeKind = savedOutcome?.kind ?? null;
+  // A saved review that ended in a failed terminal outcome carries its receipt
+  // durably; the container renders it instead of a results screen with no findings.
+  const savedExecution = shouldLoadSavedReview
+    ? savedReviewQuery.data?.review.executionSnapshot
+    : undefined;
+  const failedTerminalOutcome =
+    savedExecution && savedExecution.receipt.outcome !== "completed"
+      ? savedExecution.receipt.outcome
+      : null;
   const savedErrorForReport = savedOutcome?.kind === "report-error" ? savedOutcome.error : null;
+  const allowResumeWithoutSetup =
+    isLiveNavigation || (shouldLoadSavedReview && savedOutcomeKind === "fallback-to-stream");
 
   const handleComplete = (data: ReviewCompleteData) => {
     setLiveState({ phase: "summary", reviewData: data });
@@ -106,6 +117,16 @@ export function ReviewPage() {
       navigate({ to: "/" });
     }
   }, [nextRouteKey, savedOutcomeKind, navigate]);
+
+  if (failedTerminalOutcome && savedExecution) {
+    return (
+      <ReviewContainer
+        terminalOutcome={failedTerminalOutcome}
+        usageAvailability={savedExecution.receipt.usageAvailability}
+        onBack={handleBack}
+      />
+    );
+  }
 
   // `fallback-to-stream` is handled by deriving the streaming view below
   // (the live state falls back to a fresh stream), so it intentionally does
@@ -151,6 +172,7 @@ export function ReviewPage() {
         <ReviewContainer
           key={reviewId}
           mode={reviewMode}
+          allowResumeWithoutSetup={allowResumeWithoutSetup}
           onComplete={handleComplete}
           onStreamNotFound={handleStreamNotFound}
         />

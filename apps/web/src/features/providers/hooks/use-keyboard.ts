@@ -1,4 +1,4 @@
-import type { AIProvider, ProviderWithStatus } from "@diffgazer/core/schemas/config";
+import type { ProviderListRow } from "@diffgazer/core/providers";
 import { useFocusZone, useKey } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import type { RefObject } from "react";
@@ -10,22 +10,22 @@ import { useProvidersListNavigation } from "./use-list-navigation";
 const PROVIDER_ZONES = ["input", "filters", "list", "buttons"] as const;
 
 interface ProvidersKeyboardOptions {
-  selectedProvider: ProviderWithStatus | null;
-  filteredProviders: Array<{ id: string }>;
+  selectedRow: ProviderListRow | null;
+  filteredProviders: ProviderListRow[];
   listReady: boolean;
   filter: ProviderFilter;
   setSelectedId: (id: string | null) => void;
   dialogOpen: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
   listContainerRef: RefObject<HTMLDivElement | null>;
-  onSetApiKey: () => void;
+  onSetup: () => void;
   onSelectModel: () => void;
-  onRemoveKey: (id: AIProvider) => Promise<unknown>;
-  onActivateProvider: (provider: ProviderWithStatus) => void;
+  onDelete: () => void;
+  onDispatchAction: (row: ProviderListRow) => void;
 }
 
 export function useProvidersKeyboard({
-  selectedProvider,
+  selectedRow,
   filteredProviders,
   listReady,
   filter,
@@ -33,10 +33,10 @@ export function useProvidersKeyboard({
   dialogOpen,
   inputRef,
   listContainerRef,
-  onSetApiKey,
+  onSetup,
   onSelectModel,
-  onRemoveKey,
-  onActivateProvider,
+  onDelete,
+  onDispatchAction,
 }: ProvidersKeyboardOptions) {
   const navigate = useNavigate();
 
@@ -47,28 +47,28 @@ export function useProvidersKeyboard({
     enabled: !dialogOpen,
   });
 
-  const effectiveFocusZone =
-    !selectedProvider && internalZone === "buttons" ? "list" : internalZone;
+  const effectiveFocusZone = !selectedRow && internalZone === "buttons" ? "list" : internalZone;
   const inButtons = effectiveFocusZone === "buttons";
 
   const focusProviderList = () => {
     listContainerRef.current?.focus({ preventScroll: true });
   };
 
-  const { buttonIndex, enterButtons, getActionButtonProps } = useProvidersActionButtons({
-    selectedProvider,
-    dialogOpen,
-    inButtons,
-    setZone,
-    focusProviderList,
-    onSetApiKey,
-    onSelectModel,
-    onRemoveKey,
-    onActivateProvider,
-  });
+  const { buttonIndex, enterButtons, getActionButtonProps, getActionSlot } =
+    useProvidersActionButtons({
+      selectedRow,
+      dialogOpen,
+      inButtons,
+      setZone,
+      focusProviderList,
+      onSetup,
+      onSelectModel,
+      onDelete,
+      onDispatchAction,
+    });
 
   const list = useProvidersListNavigation({
-    selectedProvider,
+    selectedRow,
     filteredProviders,
     filter,
     dialogOpen,
@@ -95,6 +95,7 @@ export function useProvidersKeyboard({
     focusZone: effectiveFocusZone,
     buttonIndex,
     getActionButtonProps,
+    getActionSlot,
     ...list,
   };
 }

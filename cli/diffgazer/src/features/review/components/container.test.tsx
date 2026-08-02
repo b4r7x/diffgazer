@@ -14,6 +14,81 @@ import { flush } from "../../../testing/flush";
 import { makeReviewLifecycleBase } from "../../../testing/review-lifecycle-base";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
+import { makeConfigurationListResponse } from "../../providers/testing/fixtures";
+
+const shellList = makeConfigurationListResponse();
+
+function makeReadyInitResponse() {
+  return {
+    schemaVersion: 2 as const,
+    configurations: shellList.configurations,
+    selectedConfigurationId: shellList.selectedConfigurationId,
+    settings: {
+      theme: "dark" as const,
+      defaultLenses: [],
+      defaultProfile: null,
+      severityThreshold: "low" as const,
+      secretsStorage: "file" as const,
+      agentExecution: "sequential" as const,
+    },
+    project: {
+      projectId: "project-1",
+      path: "/Users/dev/Projects/diffgazer-workspace",
+      trust: {
+        repoRoot: "/Users/dev/Projects/diffgazer-workspace",
+        capabilities: { readFiles: true, runCommands: false },
+        projectId: "project-1",
+        trustedAt: "2026-01-01T00:00:00.000Z",
+        trustMode: "persistent" as const,
+      },
+    },
+    setup: {
+      hasSecretsStorage: true,
+      hasProvider: true,
+      hasModel: true,
+      hasTrust: true,
+      isConfigured: true,
+      isReady: true,
+      missing: [],
+    },
+  };
+}
+
+function makeUnconfiguredInitResponse() {
+  return {
+    schemaVersion: 2 as const,
+    configurations: [],
+    selectedConfigurationId: null,
+    settings: {
+      theme: "dark" as const,
+      defaultLenses: [],
+      defaultProfile: null,
+      severityThreshold: "low" as const,
+      secretsStorage: "file" as const,
+      agentExecution: "sequential" as const,
+    },
+    project: {
+      projectId: "project-1",
+      path: "/Users/dev/Projects/diffgazer-workspace",
+      trust: {
+        repoRoot: "/Users/dev/Projects/diffgazer-workspace",
+        capabilities: { readFiles: true, runCommands: false },
+        projectId: "project-1",
+        trustedAt: "2026-01-01T00:00:00.000Z",
+        trustMode: "persistent" as const,
+      },
+    },
+    setup: {
+      hasSecretsStorage: true,
+      hasProvider: false,
+      hasModel: false,
+      hasTrust: true,
+      isConfigured: false,
+      isReady: false,
+      missing: ["provider", "model"],
+    },
+  };
+}
 
 const apiMocks = vi.hoisted(() => ({
   clearActiveSession: vi.fn(),
@@ -24,14 +99,18 @@ const apiMocks = vi.hoisted(() => ({
 }));
 
 // Boundary mock: core API hooks wrap fetch-backed review lifecycle calls.
-vi.mock("@diffgazer/core/api/hooks", () => ({
-  useCreateReview: apiMocks.useCreateReview,
-  useInit: apiMocks.useInit,
-  useReviewLifecycleBase: apiMocks.useReviewLifecycleBase,
-  useReviewSessionCache: () => ({
-    clearActiveSession: apiMocks.clearActiveSession,
-  }),
-}));
+vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@diffgazer/core/api/hooks")>();
+  return {
+    ...actual,
+    useCreateReview: apiMocks.useCreateReview,
+    useInit: apiMocks.useInit,
+    useReviewLifecycleBase: apiMocks.useReviewLifecycleBase,
+    useReviewSessionCache: () => ({
+      clearActiveSession: apiMocks.clearActiveSession,
+    }),
+  };
+});
 
 vi.mock("../../../components/layout/global", () => ({
   getContentZoneRows: (rows: number) => Math.max(rows - 4, 0),
@@ -52,19 +131,7 @@ beforeEach(() => {
   );
   apiMocks.useCreateReview.mockReturnValue({ mutateAsync: apiMocks.createReview });
   apiMocks.useInit.mockReturnValue({
-    data: {
-      config: { provider: "gemini", model: "gemini-2.5-flash" },
-      configured: true,
-      setup: {
-        hasSecretsStorage: true,
-        hasProvider: true,
-        hasModel: true,
-        hasTrust: true,
-        isConfigured: true,
-        isReady: true,
-        missing: [],
-      },
-    },
+    data: makeReadyInitResponse(),
     isLoading: false,
   });
   apiMocks.useReviewLifecycleBase.mockImplementation(({ onComplete }) => {
@@ -307,19 +374,7 @@ describe("ReviewContainer", () => {
 
   test("review gates replace stale home footer shortcuts", async () => {
     apiMocks.useInit.mockReturnValue({
-      data: {
-        config: { provider: null, model: null },
-        configured: false,
-        setup: {
-          hasSecretsStorage: true,
-          hasProvider: false,
-          hasModel: false,
-          hasTrust: true,
-          isConfigured: false,
-          isReady: false,
-          missing: ["provider", "model"],
-        },
-      },
+      data: makeUnconfiguredInitResponse(),
       isLoading: false,
     });
     apiMocks.useReviewLifecycleBase.mockReturnValue(
@@ -336,25 +391,13 @@ describe("ReviewContainer", () => {
     const frame = lastFrame() ?? "";
     expect(frame).not.toContain("Home Menu");
     expect(frame).toContain("right: Esc Back");
-    expect(frame).toContain("API Key Required");
-    expect(frame).not.toContain("Model Required");
+    expect(frame).toContain("Configuration Not Ready");
+    expect(frame).toContain("This product has not been configured");
   });
 
   test("Switch Mode from an unconfigured resumed no-diff review opens provider setup without resetting first", async () => {
     apiMocks.useInit.mockReturnValue({
-      data: {
-        config: { provider: null, model: null },
-        configured: false,
-        setup: {
-          hasSecretsStorage: true,
-          hasProvider: false,
-          hasModel: false,
-          hasTrust: true,
-          isConfigured: false,
-          isReady: false,
-          missing: ["provider", "model"],
-        },
-      },
+      data: makeUnconfiguredInitResponse(),
       isLoading: false,
     });
     const lifecycle = makeReviewLifecycleBase({

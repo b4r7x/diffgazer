@@ -1,12 +1,11 @@
+import { useConfigurationAction, useSaveSettings } from "@diffgazer/core/api/hooks";
+import type { InputMethod } from "@diffgazer/core/onboarding";
 import {
-  useDeleteProviderCredentials,
-  useSaveConfig,
-  useSaveSettings,
-} from "@diffgazer/core/api/hooks";
-import { isAIProvider } from "@diffgazer/core/catalog";
-import { isInputMethod, type OnboardingStep, useWizardState } from "@diffgazer/core/onboarding";
-import { isAgentExecution, isSecretsStorage } from "@diffgazer/core/schemas/config";
-import type { LensId } from "@diffgazer/core/schemas/review";
+  getInitialWizardData,
+  type OnboardingStep,
+  useWizardState,
+} from "@diffgazer/core/onboarding";
+import type { RunnableProductId, WriteOnlySecretInput } from "@diffgazer/core/schemas/config";
 import { useState } from "react";
 import { useRegisterExitPreparation } from "../../../hooks/use-exit";
 import { useNavigation } from "../../../hooks/use-navigation";
@@ -14,93 +13,153 @@ import { useNavigation } from "../../../hooks/use-navigation";
 type FocusArea = "step" | "nav";
 type WizardFocusZone = "step" | "nav" | "api-key-method" | "api-key-input";
 
-function getStepFocusZone(step: OnboardingStep): WizardFocusZone {
-  return step === "api-key" ? "api-key-method" : "step";
+// Only the hosted credential step renders a method selector; local families
+// show explanatory copy with no control, so they must not add a focus stop.
+function getStepFocusZone(step: OnboardingStep, hasCredentialControls: boolean): WizardFocusZone {
+  return step === "authentication" && hasCredentialControls ? "api-key-method" : "step";
 }
 
 function reportCleanupError(message: string): void {
   console.error(`Warning: ${message}`);
 }
 
+function inputMethodFromCredential(credential: WriteOnlySecretInput | undefined): InputMethod {
+  return credential?.kind === "environment" ? "env" : "paste";
+}
+
+function credentialFromInput(method: InputMethod, apiKey: string): WriteOnlySecretInput {
+  return method === "env" ? { kind: "environment" } : { kind: "literal", value: apiKey };
+}
+
 export function useOnboardingWizard() {
   const { navigate } = useNavigation();
   const saveSettings = useSaveSettings();
-  const saveConfig = useSaveConfig();
-  const deleteCredentials = useDeleteProviderCredentials();
+  const runConfigurationAction = useConfigurationAction();
   const [focusZone, setFocusZone] = useState<WizardFocusZone>("step");
   const [navIndex, setNavIndex] = useState(0);
+  const [_inputMethod, setInputMethod] = useState<InputMethod>("paste");
+  const [apiKeyDraft, setApiKeyDraft] = useState("");
 
   const wizard = useWizardState({
+    initial: getInitialWizardData(),
     callbacks: {
       saveSettings: (payload) => saveSettings.mutateAsync(payload),
-      saveConfig: (payload) => saveConfig.mutateAsync(payload),
-      deleteCredentials: (provider) => deleteCredentials.mutateAsync(provider),
+      runConfigurationAction: (action) => runConfigurationAction.mutateAsync(action),
     },
     onComplete: () => navigate({ screen: "home" }),
     onCleanupError: reportCleanupError,
   });
 
-  useRegisterExitPreparation(wizard.cleanupEarlySave);
+  useRegisterExitPreparation(wizard.cleanupCreatedConfiguration);
 
-  const isSaving = saveSettings.isPending || saveConfig.isPending || wizard.isEarlySaving;
+  const wizardData = wizard.wizardData;
+  const isRunnable = wizardData.kind === "runnable";
+  const runnableDraft = isRunnable ? wizardData : null;
+  const hostedCredential =
+    runnableDraft?.configurationInput.transportFamily === "hosted-api"
+      ? runnableDraft.configurationInput.credential
+      : undefined;
+  const hasCredentialControls = runnableDraft?.configurationInput.transportFamily === "hosted-api";
+  const effectiveInputMethod = inputMethodFromCredential(hostedCredential);
+  const effectiveApiKey =
+    hostedCredential?.kind === "literal" ? hostedCredential.value : apiKeyDraft;
+
+  const isSaving = saveSettings.isPending || wizard.isSubmitting || wizard.isReconciling;
   const focusArea: FocusArea = focusZone === "nav" ? "nav" : "step";
   const apiKeyInputFocused = focusZone === "api-key-input";
 
-  function handleProviderChange(v: string) {
-    if (isAIProvider(v)) wizard.setProvider(v);
+  function syncCredentialDraft(method: InputMethod, apiKey: string) {
+    if (!runnableDraft || runnableDraft.configurationInput.transportFamily !== "hosted-api") {
+      return;
+    }
+    wizard.updateData({
+      configurationInput: {
+        ...runnableDraft.configurationInput,
+        credential: credentialFromInput(method, apiKey),
+      },
+    });
   }
 
-  function handleSecretsStorageChange(v: string) {
-    if (isSecretsStorage(v)) wizard.updateData({ secretsStorage: v });
+  function handleProductChange(productId: RunnableProductId) {
+    wizard.setProduct(productId);
+    setInputMethod("paste");
+    setApiKeyDraft("");
+    setFocusZone("step");
+    setNavIndex(0);
   }
 
-  function handleAgentExecutionChange(v: string) {
-    if (isAgentExecution(v)) wizard.updateData({ agentExecution: v });
+  function handleInputMethodChange(method: InputMethod) {
+    setInputMethod(method);
+    syncCredentialDraft(method, effectiveApiKey);
   }
 
-  function handleInputMethodChange(v: string) {
-    if (isInputMethod(v)) wizard.updateData({ inputMethod: v });
+  function handleApiKeyChange(value: string) {
+    setApiKeyDraft(value);
+    syncCredentialDraft(effectiveInputMethod, value);
   }
 
-  function handleApiKeyChange(v: string) {
-    wizard.updateData({ apiKey: v });
+  function handleModelChange(modelId: string) {
+    wizard.updateData({ selectedModelId: modelId });
   }
 
-  function handleModelChange(v: string) {
-    wizard.updateData({ model: v });
+  function handleConformanceConfirm() {
+    wizard.updateData({ conformanceStatus: "passed" });
   }
 
-  function handleLensesChange(v: LensId[]) {
-    wizard.updateData({ defaultLenses: v });
+  function handleAcknowledgementAccept() {
+    if (!runnableDraft) return;
+    const noticeStep = runnableDraft.plan.steps.find((step) => step.id === "acknowledgement");
+    const notice = noticeStep?.id === "acknowledgement" ? noticeStep.notice : null;
+    if (!notice) return;
+    wizard.updateData({
+      acknowledgement: {
+        status: "accepted",
+        noticeId: notice.id,
+        noticeVersion: notice.noticeVersion,
+        acceptedAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  function enterStep(step: OnboardingStep | undefined) {
+    setFocusZone(step ? getStepFocusZone(step, hasCredentialControls) : "step");
+    setNavIndex(0);
+    // The model step reads models back from a persisted record, so the draft
+    // tuple is committed as the user arrives rather than invented client-side.
+    if (step === "model") void wizard.prepareDraftConfiguration();
   }
 
   function handleNext() {
     if (!wizard.canProceed) return;
     if (wizard.isLastStep) {
+      if (wizardData.kind === "removed") {
+        void wizard.deleteRemovedConfiguration();
+        return;
+      }
       void wizard.complete();
       return;
     }
     const nextStep = wizard.steps[wizard.stepIndex + 1];
     wizard.next();
-    setFocusZone(nextStep ? getStepFocusZone(nextStep) : "step");
-    setNavIndex(0);
+    enterStep(nextStep);
   }
 
   function handleBack() {
     if (wizard.isFirstStep) return;
     const previousStep = wizard.steps[wizard.stepIndex - 1];
     wizard.back();
-    setFocusZone(previousStep ? getStepFocusZone(previousStep) : "step");
-    setNavIndex(0);
+    enterStep(previousStep);
   }
 
   function toggleFocusArea() {
-    setFocusZone((current) => (current === "nav" ? getStepFocusZone(wizard.currentStep) : "nav"));
+    setFocusZone((current) =>
+      current === "nav" ? getStepFocusZone(wizard.currentStep, hasCredentialControls) : "nav",
+    );
     setNavIndex(0);
   }
 
   function cycleFocusZone() {
-    if (wizard.currentStep !== "api-key") {
+    if (wizard.currentStep !== "authentication" || !hasCredentialControls) {
       toggleFocusArea();
       return;
     }
@@ -115,7 +174,7 @@ export function useOnboardingWizard() {
       setNavIndex(0);
       return;
     }
-    if (wizard.wizardData.inputMethod === "paste") {
+    if (effectiveInputMethod === "paste") {
       setFocusZone("api-key-input");
       return;
     }
@@ -127,16 +186,21 @@ export function useOnboardingWizard() {
     setFocusZone(focused ? "api-key-input" : "api-key-method");
   }
 
+  function retryDraftConfiguration() {
+    void wizard.prepareDraftConfiguration();
+  }
+
   function moveNavIndex(direction: 1 | -1) {
     const buttonCount = wizard.isFirstStep ? 1 : 2;
-    setNavIndex((i) => Math.max(0, Math.min(buttonCount - 1, i + direction)));
+    setNavIndex((index) => Math.max(0, Math.min(buttonCount - 1, index + direction)));
   }
 
   return {
-    wizardData: wizard.wizardData,
+    wizardData,
     currentStep: wizard.currentStep,
     stepIndex: wizard.stepIndex,
     steps: wizard.steps,
+    plan: wizardData.plan,
     isFirstStep: wizard.isFirstStep,
     isLastStep: wizard.isLastStep,
     canProceed: wizard.canProceed,
@@ -144,20 +208,25 @@ export function useOnboardingWizard() {
     focusArea,
     navIndex,
     apiKeyInputFocused,
+    inputMethod: effectiveInputMethod,
+    apiKey: effectiveApiKey,
     isSaving,
-    error: wizard.error ?? wizard.earlySaveError,
+    error: wizard.error,
+    draftConfiguration: wizard.draftConfiguration,
+    isPreparingDraftConfiguration: wizard.isPreparingDraftConfiguration,
 
-    handleProviderChange,
-    handleSecretsStorageChange,
-    handleAgentExecutionChange,
+    retryDraftConfiguration,
+    handleProductChange,
     handleInputMethodChange,
     handleApiKeyChange,
     handleModelChange,
-    handleLensesChange,
+    handleConformanceConfirm,
+    handleAcknowledgementAccept,
     handleNext,
     handleBack,
     cycleFocusZone,
     setApiKeyInputFocused,
     moveNavIndex,
+    updateData: wizard.updateData,
   };
 }

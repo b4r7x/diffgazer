@@ -1,6 +1,11 @@
 import { useServerStatus } from "@diffgazer/core/api/hooks";
 import { useFooterData } from "@diffgazer/core/footer";
-import { getProviderDisplay, getProviderDisplayStatus } from "@diffgazer/core/providers";
+import {
+  getProviderDisplay,
+  getProviderDisplayStatus,
+  PRODUCT_REGISTRY,
+  type ProviderDisplayStatus,
+} from "@diffgazer/core/providers";
 import { useKey, useKeyboardContext } from "@diffgazer/keys";
 import { useCanGoBack, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
@@ -50,12 +55,46 @@ function ConnectedHeader({ serverState }: { serverState: HeaderServerState }) {
   const router = useRouter();
   const canGoBack = useCanGoBack();
   const { pathname } = useLocation();
-  const { loadState, provider, model, isConfigured } = useConfigData();
+  const { loadState, selectedConfiguration, selectedReadiness } = useConfigData();
 
-  const providerStatus = getProviderDisplayStatus(loadState.status !== "ready", isConfigured);
-  let providerName = getProviderDisplay(provider, model);
-  if (loadState.status === "loading") providerName = "Loading configuration";
-  if (loadState.status === "error") providerName = "Configuration unavailable";
+  let providerStatus: ProviderDisplayStatus = {
+    status: "unconfigured",
+    action: "create",
+    label: "Not configured",
+    variant: "warning",
+    explanation: "",
+    remediation: "",
+    accessibleText: "Not configured",
+  };
+  let providerName = "Not configured";
+
+  if (loadState.status === "loading") {
+    providerName = "Loading configuration";
+    providerStatus = {
+      ...providerStatus,
+      label: "Loading",
+      accessibleText: "Loading configuration",
+    };
+  } else if (loadState.status === "error") {
+    providerName = "Configuration unavailable";
+    providerStatus = {
+      ...providerStatus,
+      label: "Unavailable",
+      accessibleText: "Configuration unavailable",
+    };
+  } else if (selectedConfiguration && selectedReadiness) {
+    providerStatus = getProviderDisplayStatus(
+      selectedReadiness,
+      selectedConfiguration.transportFamily,
+    );
+    providerName =
+      selectedConfiguration.status === "supported"
+        ? getProviderDisplay(
+            PRODUCT_REGISTRY[selectedConfiguration.productId].presentation.name,
+            selectedConfiguration.selectedModelId ?? undefined,
+          )
+        : PRODUCT_REGISTRY[selectedConfiguration.productId].presentation.name;
+  }
   const backAction = resolveBackAction(pathname, canGoBack);
 
   const onBack = () => {

@@ -4,13 +4,14 @@ interface UseModelSearchFocusOptions {
   open: boolean;
   inSearch: boolean;
   searchQuery: string;
-  filterIndex: number;
   setSearchQuery: (query: string) => void;
   blurSearchInput: () => void;
   focusSearchInput: () => void;
   focusCloseButton: () => void;
-  focusFilterButton: (index: number) => void;
-  enterListFromBoundary: (target: "first" | "last") => void;
+  /** Moves to the first zone below the search box that can hold focus. */
+  focusZoneBelowSearch: () => void;
+  /** Escape jumps past the filter row straight into the model list when it is usable. */
+  escapeSearchZone: () => void;
 }
 
 interface UseModelSearchFocusResult {
@@ -26,23 +27,21 @@ export function useModelSearchFocus({
   open,
   inSearch,
   searchQuery,
-  filterIndex,
   setSearchQuery,
   blurSearchInput,
   focusSearchInput,
   focusCloseButton,
-  focusFilterButton,
-  enterListFromBoundary,
+  focusZoneBelowSearch,
+  escapeSearchZone,
 }: UseModelSearchFocusOptions): UseModelSearchFocusResult {
-  // Leaving the search box for the filter row, shared by the document-level
-  // useKey fallback and the input's onArrowDown so the two dispatch paths cannot
-  // drift.
-  const moveToFilterRow = () => {
+  // Leaving the search box downward, shared by the document-level useKey
+  // fallback and the input's onArrowDown so the two dispatch paths cannot drift.
+  const moveDown = () => {
     blurSearchInput();
-    focusFilterButton(filterIndex);
+    focusZoneBelowSearch();
   };
 
-  useKey("ArrowDown", moveToFilterRow, {
+  useKey("ArrowDown", moveDown, {
     enabled: open && inSearch,
     allowInInput: true,
     preventDefault: true,
@@ -64,11 +63,11 @@ export function useModelSearchFocus({
   const handleSearchEscape = () => {
     if (searchQuery) {
       setSearchQuery("");
-    } else {
-      blurSearchInput();
-      enterListFromBoundary("first");
+      return;
     }
+    blurSearchInput();
+    escapeSearchZone();
   };
 
-  return { handleSearchEscape, handleSearchArrowDown: moveToFilterRow };
+  return { handleSearchEscape, handleSearchArrowDown: moveDown };
 }

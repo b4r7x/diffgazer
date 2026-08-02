@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { buildSetupPlan, type SetupPlan } from "./setup-plan.js";
 import { getOnboardingProgressLabel, getStepAt, STEP_LABELS, STEP_TITLES } from "./steps.js";
 
@@ -52,7 +53,7 @@ describe("setup-plan-derived onboarding steps", () => {
   it("formats progress from each plan's actual length and order", () => {
     const hostedPlan = setupPlan("gemini");
     const cliPlan = setupPlan("codex-cli");
-    const removedPlan = setupPlan("zai-coding");
+    const removedPlan = setupPlan(REMOVED_PRODUCT_ID);
 
     expect(getStepAt(hostedPlan, 1)).toBe("endpoint-binding");
     expect(getOnboardingProgressLabel(hostedPlan, 1)).toBe("Step 2 of 6: Endpoint");

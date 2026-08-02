@@ -1,3 +1,4 @@
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import type { RemovedProductId, RunnableProductId } from "../schemas/config/transports.js";
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";
 import {
@@ -88,7 +89,7 @@ export function deriveCapabilities(
   window: CapabilityObservationWindow,
 ): ModelCapabilityObservation[] {
   if (!hasFreshObservation(window)) return [];
-  if (productId === "zai-coding") return [];
+  if (productId === REMOVED_PRODUCT_ID) return [];
 
   const overlay = PROVIDER_OVERLAY[productId];
   if (!overlay) return [];

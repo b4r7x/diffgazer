@@ -4,6 +4,7 @@ import {
   PRODUCT_REGISTRY,
   SELECTABLE_PRODUCT_IDS,
 } from "../providers/product-registry.js";
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { PROVIDER_OVERLAY, projectCatalogAvailabilityObservations } from "./provider-overlay.js";
 
 const CHECKED_AT = "2026-07-31T12:00:00.000Z";
@@ -64,7 +65,7 @@ describe("catalog provider observations", () => {
       ...observations.flatMap((observation) => observation.modelsDevIds),
     ]);
 
-    expect(projectedIds.has("zai-coding")).toBe(false);
+    expect(projectedIds.has(REMOVED_PRODUCT_ID)).toBe(false);
     expect(projectedIds.has("zai-coding-plan")).toBe(false);
     expect(projectedIds.has("github-models")).toBe(false);
     expect(projectedIds.has("huggingface")).toBe(false);

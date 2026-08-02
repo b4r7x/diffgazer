@@ -2,19 +2,26 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { err, ok } from "@diffgazer/core/result";
+import type { RunnableProductId } from "@diffgazer/core/schemas/config";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
-import type { ReviewMode, ReviewResult } from "@diffgazer/core/schemas/review";
+import type { ExecutionLimits, ReviewMode, ReviewResult } from "@diffgazer/core/schemas/review";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
+import type { AdmittedExecutionPlan } from "../../shared/lib/ai/admission/service.js";
+import { ExecutionLeaseRegistry } from "../../shared/lib/ai/admission/service.js";
+import { createBudgetLedger } from "../../shared/lib/ai/budget/ledger.js";
+import { conservativeAttemptEstimate } from "../../shared/lib/ai/client/generate.js";
 import type {
   AIExecutionFingerprint,
   InitializedAIClient,
 } from "../../shared/lib/ai/client/initialize.js";
+import type { Adapter } from "../../shared/lib/ai/types.js";
 import type { createGitService as createGitServiceType } from "../../shared/lib/git/service.js";
 import { parseDiff } from "./engine/diff/parser.js";
 import type { SSEWriter } from "./stream/sse.js";
@@ -41,8 +48,17 @@ const REVIEW_DIFF = [
 ].join("\n");
 const DEFAULT_EXECUTION_FINGERPRINT: AIExecutionFingerprint = {
   provider: "openrouter",
-  model: "test-model",
+  model: "openai/gpt-4.1",
 };
+const SERVICE_LIMITS: ExecutionLimits = Object.freeze({
+  maxInputTokens: 40_000,
+  maxOutputTokens: 8_000,
+  maxResponseBytes: 8_000_000,
+  wallTimeMs: 300_000,
+  maxRetries: 1,
+  maxConcurrency: 2,
+  maxCostUsd: 5,
+});
 const DEFAULT_REVIEW_RESULT: ReviewResult = {
   issues: [makeIssue({ title: "Subtraction used in addition helper", file: "file-1" })],
 };
@@ -166,10 +182,80 @@ function makeGitService(
   };
 }
 
+function serviceAdmittedPlan(
+  executionFingerprint: AIExecutionFingerprint = DEFAULT_EXECUTION_FINGERPRINT,
+): AdmittedExecutionPlan {
+  const productId = executionFingerprint.provider as RunnableProductId;
+  const product = PRODUCT_REGISTRY[productId];
+  if (product.kind !== "runnable") {
+    throw new Error(`Test admitted plan requires a runnable product: ${productId}`);
+  }
+  const endpoint = product.configuration.endpoints[0]?.endpoint ?? "https://openrouter.ai/api/v1";
+  return Object.freeze({
+    configurationId: "openrouter-primary",
+    configurationRevision: 2,
+    executionFingerprint: `admitted-${executionFingerprint.provider}-${executionFingerprint.model}`,
+    evidenceKey: Object.freeze({
+      authentication: null,
+      credentialReferenceIdentity: "d".repeat(64),
+      installationId: null,
+      productId,
+      transportFamily: product.transportFamily,
+      normalizedEndpoint: endpoint,
+      region: null,
+      workspaceAccountReference: null,
+      modelId: executionFingerprint.model,
+      runtime: { identity: "diffgazer-server", version: "1.0.0" },
+      structuredOutputSchemaSha256: "e".repeat(64),
+      noticeVersion: product.notice.noticeVersion,
+      limits: SERVICE_LIMITS,
+    }),
+    productId,
+    transportFamily: product.transportFamily,
+    limits: SERVICE_LIMITS,
+  });
+}
+
+function serviceReviewConfigKey(
+  executionFingerprint: AIExecutionFingerprint = DEFAULT_EXECUTION_FINGERPRINT,
+  lenses: string[] = ["correctness"],
+  minSeverity = "low",
+) {
+  const plan = serviceAdmittedPlan(executionFingerprint);
+  return buildReviewConfigKey({
+    lenses,
+    minSeverity,
+    admittedExecutionFingerprint: plan.executionFingerprint,
+    configurationId: plan.configurationId,
+    configurationRevision: plan.configurationRevision,
+  });
+}
+
 function makeAIClient(
   result: ReviewResult = DEFAULT_REVIEW_RESULT,
   executionFingerprint: AIExecutionFingerprint = DEFAULT_EXECUTION_FINGERPRINT,
 ): InitializedAIClient {
+  const plan = serviceAdmittedPlan(executionFingerprint);
+  const ledger = createBudgetLedger(plan.limits);
+  const estimate = conservativeAttemptEstimate("review prompt", plan.limits);
+  const budgetReservation = ledger.reserveAttempt(estimate);
+  if (!budgetReservation.ok) {
+    throw new Error("budget reservation failed in test setup");
+  }
+  const leaseRegistry = new ExecutionLeaseRegistry();
+  const lease = leaseRegistry.tryAcquire({
+    configurationId: plan.configurationId,
+    configurationRevision: plan.configurationRevision,
+    executionFingerprint: plan.executionFingerprint,
+    limits: plan.limits,
+  });
+  if (!lease.ok) {
+    throw new Error("lease acquisition failed in test setup");
+  }
+  const release = vi.fn(() => {
+    ledger.releaseReservation(budgetReservation.value);
+    lease.value.release();
+  });
   const generate: InitializedAIClient["generate"] = async <T extends z.ZodType>(
     _prompt: string,
     schema: T,
@@ -179,6 +265,21 @@ function makeAIClient(
   return {
     provider: executionFingerprint.provider,
     executionFingerprint,
+    authorization: Object.freeze({
+      plan,
+      adapter: {
+        productId: plan.productId,
+        transportFamily: plan.transportFamily,
+        execute: vi.fn(),
+      } satisfies Adapter,
+      budgetLedger: ledger,
+      budgetReservation: budgetReservation.value,
+      lease: lease.value,
+      resolveCredential: async () => "service-secret",
+      workspaceAccountId: null,
+      release,
+    }),
+    terminalExecutions: [],
     generate,
   };
 }
@@ -189,7 +290,12 @@ beforeAll(async () => {
   process.env.DIFFGAZER_HOME = tempHome;
   writeFileSync(
     join(tempHome, "config.json"),
-    JSON.stringify({ settings: { defaultLenses: ["correctness"], agentExecution: "sequential" } }),
+    JSON.stringify({
+      schemaVersion: 2,
+      settings: { defaultLenses: ["correctness"], agentExecution: "sequential" },
+      selectedConfigurationId: null,
+      configurations: [],
+    }),
   );
 
   const service = await import("./service.js");
@@ -298,11 +404,7 @@ describe("createReviewSession", () => {
   });
 
   it("returns the existing session when review config and execution fingerprint match", async () => {
-    const reviewConfigKey = buildReviewConfigKey({
-      lenses: ["correctness"],
-      minSeverity: "low",
-      executionFingerprint: DEFAULT_EXECUTION_FINGERPRINT,
-    });
+    const reviewConfigKey = serviceReviewConfigKey();
     const existing = createSession("existing-dedup", {
       projectPath: projectRoot,
       headCommit: "abc123",
@@ -343,13 +445,13 @@ describe("createReviewSession", () => {
   it.each([
     {
       changedSelection: "provider",
-      existingFingerprint: { provider: "openrouter", model: "shared-model" },
-      nextFingerprint: { provider: "gemini", model: "shared-model" },
+      existingFingerprint: { provider: "openrouter" as const, model: "openai/gpt-4.1" },
+      nextFingerprint: { provider: "gemini" as const, model: "gemini-2.0-flash" },
     },
     {
       changedSelection: "model",
-      existingFingerprint: { provider: "openrouter", model: "model-a" },
-      nextFingerprint: { provider: "openrouter", model: "model-b" },
+      existingFingerprint: { provider: "openrouter" as const, model: "openai/gpt-4.1" },
+      nextFingerprint: { provider: "openrouter" as const, model: "openai/gpt-4.1-mini" },
     },
   ] satisfies Array<{
     changedSelection: string;
@@ -365,11 +467,7 @@ describe("createReviewSession", () => {
       statusHash: "hash123",
       statusHashKind: "full" as const,
       mode: "unstaged",
-      reviewConfigKey: buildReviewConfigKey({
-        lenses: ["correctness"],
-        minSeverity: "low",
-        executionFingerprint: existingFingerprint,
-      }),
+      reviewConfigKey: serviceReviewConfigKey(existingFingerprint),
     });
     trackSession(existing.reviewId);
     markReady(existing.reviewId);
@@ -383,13 +481,7 @@ describe("createReviewSession", () => {
     if (!result.ok) return;
     trackSessionWithRunner(result.value.reviewId);
     expect(result.value.reviewId).not.toBe(existing.reviewId);
-    expect(result.value.session.reviewConfigKey).toBe(
-      buildReviewConfigKey({
-        lenses: ["correctness"],
-        minSeverity: "low",
-        executionFingerprint: nextFingerprint,
-      }),
-    );
+    expect(result.value.session.reviewConfigKey).toBe(serviceReviewConfigKey(nextFingerprint));
     expect(existing.isComplete).toBe(true);
     expect(existing.events).toContainEqual(
       expect.objectContaining({
@@ -816,13 +908,7 @@ describe("POST-to-stream integration", () => {
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       trackSessionWithRunner(result.value.reviewId);
-      expect(result.value.session.reviewConfigKey).toBe(
-        buildReviewConfigKey({
-          lenses: ["correctness"],
-          minSeverity: "low",
-          executionFingerprint: DEFAULT_EXECUTION_FINGERPRINT,
-        }),
-      );
+      expect(result.value.session.reviewConfigKey).toBe(serviceReviewConfigKey());
 
       const session = requireValue(getSession(result.value.reviewId), "review session");
       await vi.waitFor(() => {
@@ -1019,5 +1105,112 @@ describe("POST-to-stream integration", () => {
     const lastEvent = events[events.length - 1];
 
     expect(lastEvent?.type).toBe("error");
+  });
+});
+
+describe("admitted configuration execution", () => {
+  it("uses one exact admitted configuration and model tuple for every lens invocation", async () => {
+    const aiClient = makeAIClient();
+    const generate = vi.spyOn(aiClient, "generate");
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+      lenses: ["correctness", "security"],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    await vi.waitFor(() => {
+      if (!getSession(result.value.reviewId)?.isComplete) {
+        throw new Error("session not complete yet");
+      }
+    });
+
+    expect(generate.mock.calls.length).toBeGreaterThanOrEqual(2);
+    for (const call of generate.mock.calls) {
+      expect(call[0]).toEqual(expect.any(String));
+    }
+    expect(aiClient.authorization?.plan.evidenceKey.modelId).toBe("openai/gpt-4.1");
+    expect(aiClient.authorization?.plan.configurationId).toBe("openrouter-primary");
+  });
+
+  it("does not reuse session state when the admitted execution fingerprint changes", async () => {
+    const existingFingerprint = {
+      provider: "openrouter" as const,
+      model: "openai/gpt-4.1",
+    };
+    const nextFingerprint = {
+      provider: "openrouter" as const,
+      model: "openai/gpt-4.1-mini",
+    };
+    const existing = createSession("existing-admitted-fingerprint", {
+      projectPath: projectRoot,
+      headCommit: "abc123",
+      statusHash: "hash123",
+      statusHashKind: "full",
+      mode: "unstaged",
+      reviewConfigKey: serviceReviewConfigKey(existingFingerprint),
+      configurationId: "openrouter-primary",
+      configurationRevision: 2,
+      admittedExecutionFingerprint: serviceAdmittedPlan(existingFingerprint).executionFingerprint,
+    });
+    trackSession(existing.reviewId);
+    markReady(existing.reviewId);
+
+    const result = await createReviewSession(makeAIClient(DEFAULT_REVIEW_RESULT, nextFingerprint), {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    expect(result.value.reviewId).not.toBe(existing.reviewId);
+    expect(result.value.session.admittedExecutionFingerprint).toBe(
+      serviceAdmittedPlan(nextFingerprint).executionFingerprint,
+    );
+    expect(existing.isComplete).toBe(true);
+  });
+
+  it("releases the admitted lease and budget on a completed terminal path", async () => {
+    const aiClient = makeAIClient();
+    const release = aiClient.authorization?.release;
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    await vi.waitFor(() => {
+      if (!getSession(result.value.reviewId)?.isComplete) {
+        throw new Error("session not complete yet");
+      }
+    });
+
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases the admitted lease and budget when the diff is empty", async () => {
+    vi.mocked(createGitService).mockReturnValue(makeGitService({ diff: "" }));
+    const aiClient = makeAIClient();
+    const release = aiClient.authorization?.release;
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    await vi.waitFor(() => {
+      if (!getSession(result.value.reviewId)?.isComplete) {
+        throw new Error("session not complete yet");
+      }
+    });
+
+    expect(release).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,151 +1,212 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MAX_RESPONSE_BYTES } from "../http-json.js";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import {
+  CANDIDATE_PRODUCT_IDS,
+  LOCAL_OPENAI_PRESET_ENDPOINTS,
+  REMOVED_PRODUCT_IDS,
+  RUNNABLE_PRODUCT_IDS,
+  type RunnableProductId,
+} from "@diffgazer/core/schemas/config";
+
+const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
+
+import type { EvidenceKey, ExecutionLimits } from "@diffgazer/core/schemas/review";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { AdmittedExecutionPlan } from "../admission/service.js";
+import { ADAPTER_REGISTRY, getAdapter } from "../providers/registry.js";
 import { loadCreate, setupClientTestHome, teardownClientTestHome } from "./client-test-env.js";
 
-// Boundary mock: zhipu-ai-provider is the Zhipu external HTTP client; tests provide a no-op model factory.
-vi.mock("zhipu-ai-provider", () => ({
-  createZhipu: vi.fn(() => vi.fn(() => ({}))),
-}));
+const SCHEMA_SHA256 = "1".repeat(64);
+const CREDENTIAL_REFERENCE_IDENTITY = "3".repeat(64);
+const WORKSPACE_ACCOUNT_REFERENCE = "4".repeat(64);
+const INSTALLATION_ID = "codex-installation-1";
 
-// Boundary mock: @openrouter/ai-sdk-provider is the OpenRouter external HTTP client; tests provide a no-op chat factory.
-vi.mock("@openrouter/ai-sdk-provider", () => ({
-  createOpenRouter: vi.fn(() => ({
-    chat: vi.fn(() => ({
-      doGenerate: vi.fn(),
-      doStream: vi.fn(),
-    })),
-  })),
-}));
-
-// Boundary mock: @ai-sdk/openai-compatible is the OpenAI-compatible external HTTP client (groq, cerebras).
-vi.mock("@ai-sdk/openai-compatible", () => ({
-  createOpenAICompatible: vi.fn(() => ({
-    chatModel: vi.fn(() => ({ doGenerate: vi.fn(), doStream: vi.fn() })),
-  })),
-}));
-
-describe("createLanguageModel openai-compatible providers", () => {
-  beforeEach(setupClientTestHome);
-  afterEach(teardownClientTestHome);
-
-  it.each([
-    { provider: "groq" as const, baseURL: "https://api.groq.com/openai/v1" },
-    { provider: "cerebras" as const, baseURL: "https://api.cerebras.ai/v1" },
-  ])("creates a $provider client via the openai-compatible factory using the overlay baseURL", async ({
-    provider,
-    baseURL,
-  }) => {
-    const { createOpenAICompatible } = await import("@ai-sdk/openai-compatible");
-    const { createAIClient } = await loadCreate();
-    const result = createAIClient({ apiKey: "test-key", provider });
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.provider).toBe(provider);
-    expect(createOpenAICompatible).toHaveBeenCalledWith(
-      expect.objectContaining({ apiKey: "test-key", baseURL, name: provider }),
-    );
-  });
-
-  it("uses the overlay defaultModel when no model is supplied for an openai-compatible provider", async () => {
-    const { createOpenAICompatible } = await import("@ai-sdk/openai-compatible");
-    const { PROVIDER_OVERLAY } = await import("@diffgazer/core/catalog");
-    const { createAIClient } = await loadCreate();
-    const result = createAIClient({ apiKey: "test-key", provider: "cerebras" });
-    expect(result.ok).toBe(true);
-    const chatModel = vi.mocked(createOpenAICompatible).mock.results[0]?.value.chatModel;
-    expect(chatModel).toHaveBeenCalledWith(PROVIDER_OVERLAY.cerebras.defaultModel);
-  });
+const LIMITS: ExecutionLimits = Object.freeze({
+  maxInputTokens: 32_000,
+  maxOutputTokens: 8_000,
+  maxResponseBytes: 65_536,
+  wallTimeMs: 60_000,
+  maxRetries: 2,
+  maxConcurrency: 1,
+  maxCostUsd: 0.5,
 });
 
-describe("createLanguageModel zhipu providers", () => {
+function suggestedModelId(productId: RunnableProductId): string {
+  const policy = PRODUCT_REGISTRY[productId].modelPolicy;
+  if ("suggestedModelId" in policy && policy.suggestedModelId) {
+    return policy.suggestedModelId;
+  }
+  if (productId === "openrouter") return "openai/gpt-4.1-mini";
+  if (productId === "moonshot") return "kimi-k3-2026-01";
+  if (productId === "ollama") return "llama3.2";
+  if (productId === "codex-cli") return "gpt-5-codex";
+  if (productId === "copilot-cli") return "gpt-5";
+  return "model-1";
+}
+
+function evidenceKeyFor(productId: RunnableProductId): EvidenceKey {
+  const product = PRODUCT_REGISTRY[productId];
+  const endpoint = product.configuration.endpoints[0];
+  const modelId = suggestedModelId(productId);
+  const noticeVersion = product.notice.noticeVersion;
+
+  switch (product.transportFamily) {
+    case "hosted-api": {
+      const region = endpoint && "region" in endpoint ? (endpoint.region ?? null) : null;
+      return {
+        authentication: null,
+        credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
+        installationId: null,
+        productId,
+        transportFamily: "hosted-api",
+        normalizedEndpoint: endpoint?.endpoint ?? "https://example.invalid/v1",
+        region,
+        workspaceAccountReference:
+          endpoint && "workspaceBound" in endpoint && endpoint.workspaceBound
+            ? WORKSPACE_ACCOUNT_REFERENCE
+            : null,
+        modelId,
+        runtime: { identity: "diffgazer-server", version: "1.2.3" },
+        structuredOutputSchemaSha256: SCHEMA_SHA256,
+        noticeVersion,
+        limits: LIMITS,
+      };
+    }
+    case "local-http":
+      return {
+        authentication: "none",
+        credentialReferenceIdentity: null,
+        installationId: null,
+        productId,
+        transportFamily: "local-http",
+        normalizedEndpoint:
+          productId === "local-openai"
+            ? LOCAL_OPENAI_PRESET_ENDPOINTS["llama-cpp"]
+            : (endpoint?.endpoint ?? "http://127.0.0.1:11434"),
+        region: null,
+        workspaceAccountReference: null,
+        modelId,
+        runtime:
+          productId === "local-openai"
+            ? { identity: "llama-cpp", version: "b-version-2026-07" }
+            : { identity: "ollama", version: "0.6.0" },
+        structuredOutputSchemaSha256: SCHEMA_SHA256,
+        noticeVersion,
+        limits: LIMITS,
+      };
+    case "local-cli":
+      return {
+        authentication: null,
+        credentialReferenceIdentity: null,
+        installationId: productId === "codex-cli" ? INSTALLATION_ID : "copilot-installation",
+        productId,
+        transportFamily: "local-cli",
+        normalizedEndpoint: null,
+        region: null,
+        workspaceAccountReference: null,
+        modelId,
+        runtime: { identity: productId, version: "0.1.0" },
+        structuredOutputSchemaSha256: SCHEMA_SHA256,
+        noticeVersion,
+        limits: LIMITS,
+      };
+  }
+}
+
+function admittedPlan(productId: RunnableProductId): AdmittedExecutionPlan {
+  const evidenceKey = evidenceKeyFor(productId);
+  return Object.freeze({
+    configurationId: `${productId}-configuration`,
+    configurationRevision: 1,
+    executionFingerprint: `${productId}-fingerprint`,
+    evidenceKey: Object.freeze({
+      ...evidenceKey,
+      runtime: Object.freeze({ ...evidenceKey.runtime }),
+      limits: Object.freeze({ ...evidenceKey.limits }),
+    }),
+    productId,
+    transportFamily: PRODUCT_REGISTRY[productId].transportFamily,
+    limits: Object.freeze({ ...LIMITS }),
+  });
+}
+
+describe("createFromAdmittedPlan registry routing", () => {
   beforeEach(setupClientTestHome);
   afterEach(teardownClientTestHome);
 
-  it.each([
-    "zai",
-    "zai-coding",
-  ] as const)("creates a %s client via the zhipu factory using the overlay baseURL", async (provider) => {
-    const { createZhipu } = await import("zhipu-ai-provider");
-    const { PROVIDER_OVERLAY } = await import("@diffgazer/core/catalog");
-    const { createAIClient } = await loadCreate();
-    const result = createAIClient({ apiKey: "test-key", provider });
+  it("covers every runnable product with a one-to-one registry adapter", () => {
+    expect(Object.keys(ADAPTER_REGISTRY).sort()).toEqual([...RUNNABLE_PRODUCT_IDS].sort());
+    for (const productId of RUNNABLE_PRODUCT_IDS) {
+      expect(getAdapter(productId).productId).toBe(productId);
+    }
+  });
+
+  it.each(
+    RUNNABLE_PRODUCT_IDS,
+  )("creates a client for %s via the exhaustive adapter registry without fallback", async (productId) => {
+    const { createFromAdmittedPlan } = await loadCreate();
+    const result = createFromAdmittedPlan(admittedPlan(productId));
+
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.provider).toBe(provider);
-    expect(createZhipu).toHaveBeenCalledWith({
-      apiKey: "test-key",
-      baseURL: PROVIDER_OVERLAY[provider].baseURL,
-      fetch: expect.any(Function),
-    });
+    if (!result.ok) return;
+    expect(result.value.productId).toBe(productId);
+    expect(result.value.modelId).toBe(suggestedModelId(productId));
+    expect(result.value.transportFamily).toBe(PRODUCT_REGISTRY[productId].transportFamily);
   });
 
-  it("rejects an oversized declared response before the Zhipu SDK can read it", async () => {
-    const response = new Response("{}", {
-      headers: { "content-length": String(MAX_RESPONSE_BYTES + 1) },
-    });
-    if (!response.body) throw new Error("response body missing");
-    const getReader = vi.spyOn(response.body, "getReader");
-    const upstreamFetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
-    const { createZhipu } = await import("zhipu-ai-provider");
-    const { createAIClient } = await loadCreate();
+  it.each([
+    ...REMOVED_PRODUCT_IDS,
+    ...CANDIDATE_PRODUCT_IDS.slice(0, 3),
+  ])("has no adapter for forbidden product %s", async (productId) => {
+    expect(() => getAdapter(productId)).toThrow(/Adapter unavailable/);
 
-    createAIClient({ apiKey: "test-key", provider: "zai" });
-    const limitingFetch = vi.mocked(createZhipu).mock.calls[0]?.[0]?.fetch;
-    if (!limitingFetch) throw new Error("Zhipu limiting fetch missing");
-
-    await expect(limitingFetch("https://api.z.ai/test")).rejects.toThrow("response too large");
-    expect(upstreamFetch).toHaveBeenCalledOnce();
-    expect(getReader).not.toHaveBeenCalled();
-  });
-
-  it("allows a headerless Zhipu response at the exact byte ceiling", async () => {
-    const response = new Response(new Uint8Array(MAX_RESPONSE_BYTES));
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
-    const { createZhipu } = await import("zhipu-ai-provider");
-    const { createAIClient } = await loadCreate();
-
-    createAIClient({ apiKey: "test-key", provider: "zai" });
-    const limitingFetch = vi.mocked(createZhipu).mock.calls[0]?.[0]?.fetch;
-    if (!limitingFetch) throw new Error("Zhipu limiting fetch missing");
-
-    const limited = await limitingFetch("https://api.z.ai/test");
-    await expect(limited.arrayBuffer()).resolves.toHaveProperty("byteLength", MAX_RESPONSE_BYTES);
-  });
-
-  it("cancels a headerless Zhipu stream on the first byte above the ceiling", async () => {
-    const cancel = vi.fn();
-    const response = new Response(
-      new ReadableStream<Uint8Array>({
-        start(controller) {
-          controller.enqueue(new Uint8Array(MAX_RESPONSE_BYTES));
-          controller.enqueue(new Uint8Array(1));
-        },
-        cancel,
+    const { createFromAdmittedPlan } = await loadCreate();
+    const plan = Object.freeze({
+      ...admittedPlan("gemini"),
+      productId,
+      evidenceKey: Object.freeze({
+        ...evidenceKeyFor("gemini"),
+        productId,
       }),
-    );
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
-    const { createZhipu } = await import("zhipu-ai-provider");
-    const { createAIClient } = await loadCreate();
-
-    createAIClient({ apiKey: "test-key", provider: "zai" });
-    const limitingFetch = vi.mocked(createZhipu).mock.calls[0]?.[0]?.fetch;
-    if (!limitingFetch) throw new Error("Zhipu limiting fetch missing");
-
-    const limited = await limitingFetch("https://api.z.ai/test");
-    await expect(limited.arrayBuffer()).rejects.toThrow(`${MAX_RESPONSE_BYTES + 1} bytes`);
-    expect(cancel).toHaveBeenCalledOnce();
-  });
-});
-
-describe("createLanguageModel openrouter without a model", () => {
-  beforeEach(setupClientTestHome);
-  afterEach(teardownClientTestHome);
-
-  it("rejects an empty model id as MODEL_ERROR instead of forwarding it to the SDK", async () => {
-    const { createAIClient } = await loadCreate();
-    const result = createAIClient({ apiKey: "test-key", provider: "openrouter" });
+    }) as unknown as AdmittedExecutionPlan;
+    const result = createFromAdmittedPlan(plan);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.code).toBe("MODEL_ERROR");
+      expect(result.error.code).toBe("UNSUPPORTED_PROVIDER");
     }
+  });
+
+  it("rejects REMOVED_PRODUCT_ID as a removed decoder-only product", async () => {
+    const { createFromAdmittedPlan } = await loadCreate();
+    const plan = Object.freeze({
+      ...admittedPlan("gemini"),
+      productId: REMOVED_PRODUCT_ID,
+      evidenceKey: Object.freeze({
+        ...evidenceKeyFor("gemini"),
+        productId: REMOVED_PRODUCT_ID,
+        modelId: "glm-4.7",
+      }),
+    }) as unknown as AdmittedExecutionPlan;
+
+    const result = createFromAdmittedPlan(plan);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("UNSUPPORTED_PROVIDER");
+    }
+  });
+
+  it("passes the admitted plan tuple unchanged to adapter execute", async () => {
+    const { createFromAdmittedPlan } = await loadCreate();
+    const productId = "groq" as const;
+    const plan = admittedPlan(productId);
+    const clientResult = createFromAdmittedPlan(plan);
+    expect(clientResult.ok).toBe(true);
+    if (!clientResult.ok) return;
+
+    const execution = await clientResult.value.execute("review prompt");
+    expect(execution.receipt.productId).toBe(productId);
+    expect(execution.receipt.modelId).toBe(suggestedModelId(productId));
+    expect(execution.result.issues).toEqual([]);
   });
 });

@@ -1,1 +1,7 @@
-export type ApiKeyFocusTarget = "paste" | "input" | "env" | "cancel" | "confirm";
+export type ApiKeyFocusTarget =
+  | "paste"
+  | "input"
+  | "env"
+  | "acknowledgement"
+  | "cancel"
+  | "confirm";

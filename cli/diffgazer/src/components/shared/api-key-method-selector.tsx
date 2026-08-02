@@ -1,10 +1,12 @@
-import { INPUT_METHODS, type InputMethod } from "@diffgazer/core/onboarding";
+import type { InputMethod } from "@diffgazer/core/onboarding";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
 import { useTheme } from "../../theme/provider";
 import { Input } from "../ui/input";
 import { RadioGroup } from "../ui/radio";
+
+const INPUT_METHODS = ["paste", "env"] as const satisfies readonly InputMethod[];
 
 interface ApiKeyMethodSelectorProps {
   method: InputMethod;

@@ -7,12 +7,23 @@ import type { Result } from "@diffgazer/core/result";
 import { err, ok } from "@diffgazer/core/result";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
-import { CreateReviewResponseSchema, ReviewErrorCode } from "@diffgazer/core/schemas/review";
+import {
+  CreateReviewResponseSchema,
+  type EvidenceKey,
+  ReviewErrorCode,
+  sha256CanonicalJsonSync,
+} from "@diffgazer/core/schemas/review";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { executionLimitsFromBudget } from "../../shared/lib/ai/admission/service.js";
+import {
+  buildReviewSchemaJson,
+  hashReviewSchemaJson,
+} from "../../shared/lib/ai/providers/cli-compatibility-probe.js";
+import { DEFAULT_CONFIGURATION_BUDGET } from "../../shared/lib/config/store.js";
 import type { StatusHashResult } from "../../shared/lib/git/service.js";
 import { canonicalizeProjectRoot } from "../../shared/lib/paths.js";
 import {
@@ -27,6 +38,10 @@ const REVIEW_C = "770e8400-e29b-41d4-a716-446655440002";
 const REVIEW_D = "880e8400-e29b-41d4-a716-446655440003";
 const ROUTE_BOUNDARY_TIMEOUT_MS = 10_000;
 const SETTINGS_TOKEN = "review-router-settings-token";
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
+const SETUP_OBSERVED_AT = "2024-01-01T00:00:00.000Z";
+const MOCK_CONFIGURATION_ID = "gemini-primary";
+const MOCK_EXECUTION_FINGERPRINT = "mock-fingerprint";
 const ROUTER_REVIEW_DIFF = [
   "diff --git a/src/app.ts b/src/app.ts",
   "index 1111111..2222222 100644",
@@ -58,7 +73,7 @@ afterEach(async () => {
   delete process.env.DIFFGAZER_HOME;
   delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
   delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
-  vi.doUnmock("../../shared/lib/ai/client/initialize.js");
+  vi.doUnmock("../../shared/lib/ai/admission/service.js");
   vi.doUnmock("../../shared/lib/git/service.js");
   vi.doUnmock("./service.js");
   await rm(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
@@ -198,25 +213,13 @@ function installDeferredGitServiceMock() {
 }
 
 function installProviderWorkProbe() {
-  const generate = vi.fn();
-  vi.doMock("../../shared/lib/ai/client/initialize.js", () => ({
-    initializeAIClient: () =>
-      ok({
-        provider: "gemini",
-        executionFingerprint: { provider: "gemini", model: "gemini-2.0-flash" },
-        generate,
-      }),
-  }));
-  return generate;
-}
-
-function createCompleteEvent(reviewId: string): FullReviewStreamEvent {
-  return {
-    type: "complete",
-    result: { issues: [] },
-    reviewId,
-    durationMs: 1,
-  };
+  const authorizeReviewExecution = vi.fn(async () => ok(await buildMockAuthorization()));
+  vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
+    const actual =
+      await importOriginal<typeof import("../../shared/lib/ai/admission/service.js")>();
+    return { ...actual, authorizeReviewExecution };
+  });
+  return authorizeReviewExecution;
 }
 
 function installSuccessfulReviewCreationMock() {
@@ -228,13 +231,142 @@ function installSuccessfulReviewCreationMock() {
     statusHash: "status",
   };
   const createReviewSession = vi.fn(async () => ok({ reviewId: REVIEW_A, session }));
+  const authorizeReviewExecution = vi.fn(async () => ok(await buildMockAuthorization()));
 
-  vi.doMock("../../shared/lib/ai/client/initialize.js", () => ({
-    initializeAIClient: () => ok({ provider: "gemini" }),
-  }));
+  vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
+    const actual =
+      await importOriginal<typeof import("../../shared/lib/ai/admission/service.js")>();
+    return { ...actual, authorizeReviewExecution };
+  });
   vi.doMock("./service.js", () => ({ createReviewSession }));
 
-  return createReviewSession;
+  return { createReviewSession, authorizeReviewExecution };
+}
+
+async function buildMockAuthorization() {
+  const { buildExpectedEvidenceKey } = await import("../../shared/lib/ai/admission/service.js");
+  const configurationId = MOCK_CONFIGURATION_ID;
+  const home = process.env.DIFFGAZER_HOME;
+  if (!home) throw new Error("DIFFGAZER_HOME is required for review router authorization");
+  const credentialReferenceIdentity = sha256CanonicalJsonSync({
+    kind: "file-0600",
+    filePath: join(home, "credentials", `${configurationId}-1.key`),
+  });
+  const record = {
+    schemaVersion: 2 as const,
+    status: "supported" as const,
+    configurationId,
+    revision: 1,
+    productId: "gemini" as const,
+    transportFamily: "hosted-api" as const,
+    input: {
+      transportFamily: "hosted-api" as const,
+      productId: "gemini" as const,
+      endpoint: GEMINI_ENDPOINT,
+    },
+    selectedModelId: "gemini-2.0-flash",
+    acknowledgement: { noticeVersion: 1, acceptedAt: SETUP_OBSERVED_AT },
+    evidenceReference: "evidence-gemini",
+    budget: {
+      inputTokens: 200_000,
+      outputTokens: 40_000,
+      responseBytes: 8_000_000,
+      wallTimeMs: 300_000,
+      retries: 0,
+      concurrency: 1,
+      perReview: 5,
+    },
+    createdAt: SETUP_OBSERVED_AT,
+    updatedAt: SETUP_OBSERVED_AT,
+  };
+  const evidenceKey = buildExpectedEvidenceKey({
+    record,
+    structuredOutputSchemaSha256: routerStructuredOutputSchemaSha256(),
+    runtime: { identity: "diffgazer-server", version: "1.0.0" },
+    credentialReferenceIdentity,
+    workspaceAccountReference: null,
+  });
+  const plan = {
+    configurationId: record.configurationId,
+    configurationRevision: record.revision,
+    executionFingerprint: MOCK_EXECUTION_FINGERPRINT,
+    evidenceKey,
+    productId: record.productId,
+    transportFamily: record.transportFamily,
+    limits: evidenceKey.limits,
+  };
+  return {
+    plan,
+    adapter: {
+      productId: "gemini" as const,
+      transportFamily: "hosted-api" as const,
+      execute: vi.fn(),
+    },
+    budgetReservation: { id: 1 },
+    lease: {
+      leaseId: "lease-1",
+      configurationId: record.configurationId,
+      configurationRevision: record.revision,
+      executionFingerprint: MOCK_EXECUTION_FINGERPRINT,
+      release: () => undefined,
+    },
+    resolveCredential: async () => "test-key",
+    workspaceAccountId: null,
+    release: () => undefined,
+  };
+}
+
+/**
+ * Authorization backed by a real lease authority so the route's release
+ * ownership is observable: a leaked reservation keeps the single admitted slot
+ * occupied and the next acquisition is denied.
+ */
+function installRealLeaseAuthorization() {
+  const identity = {
+    configurationId: MOCK_CONFIGURATION_ID,
+    configurationRevision: 1,
+    executionFingerprint: MOCK_EXECUTION_FINGERPRINT,
+  };
+  let registry: InstanceType<
+    typeof import("../../shared/lib/ai/admission/service.js").ExecutionLeaseRegistry
+  > | null = null;
+  let limits: EvidenceKey["limits"] | null = null;
+  let issuedLeaseId: string | null = null;
+
+  const authorizeReviewExecution = vi.fn(async () => {
+    const { ExecutionLeaseRegistry } = await import("../../shared/lib/ai/admission/service.js");
+    const base = await buildMockAuthorization();
+    registry ??= new ExecutionLeaseRegistry();
+    limits ??= { ...base.plan.limits, maxConcurrency: 1 };
+    const lease = registry.tryAcquire({ ...identity, limits });
+    if (!lease.ok) return lease;
+    issuedLeaseId = lease.value.leaseId;
+    return ok({
+      ...base,
+      lease: lease.value,
+      release: () => {
+        lease.value.release();
+      },
+    });
+  });
+
+  return {
+    identity,
+    authorizeReviewExecution,
+    issuedLeaseId: () => issuedLeaseId,
+    activeLeaseCount: () => registry?.activeLeaseCount(identity.configurationId) ?? 0,
+    canAdmitAgain: () =>
+      registry !== null && limits !== null && registry.tryAcquire({ ...identity, limits }).ok,
+  };
+}
+
+function createCompleteEvent(reviewId: string): FullReviewStreamEvent {
+  return {
+    type: "complete",
+    result: { issues: [] },
+    reviewId,
+    durationMs: 1,
+  };
 }
 
 function jsonBodyWithByteLength(byteLength: number): string {
@@ -408,9 +540,14 @@ describe("POST /api/review/reviews", () => {
       headCommit: "abc123",
       statusHash: "status",
     };
-    vi.doMock("../../shared/lib/ai/client/initialize.js", () => ({
-      initializeAIClient: () => ok({ provider: "gemini" }),
-    }));
+    vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
+      const actual =
+        await importOriginal<typeof import("../../shared/lib/ai/admission/service.js")>();
+      return {
+        ...actual,
+        authorizeReviewExecution: vi.fn(async () => ok(await buildMockAuthorization())),
+      };
+    });
     vi.doMock("./service.js", () => ({
       createReviewSession: vi.fn(async () => ok({ reviewId: REVIEW_A, session })),
     }));
@@ -442,12 +579,85 @@ describe("POST /api/review/reviews", () => {
     expect(CreateReviewResponseSchema.parse(body)).toEqual(expected);
   });
 
-  it("preserves a keyring read failure in the review creation response", async () => {
+  it("releases the admitted reservation when session creation fails before a session exists", async () => {
+    const { activeLeaseCount, canAdmitAgain, authorizeReviewExecution } =
+      installRealLeaseAuthorization();
+    const createReviewSession = vi.fn(async () =>
+      err({ code: ReviewErrorCode.GENERATION_FAILED, message: "Failed to inspect repository" }),
+    );
+    vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
+      const actual =
+        await importOriginal<typeof import("../../shared/lib/ai/admission/service.js")>();
+      return { ...actual, authorizeReviewExecution };
+    });
+    vi.doMock("./service.js", () => ({ createReviewSession }));
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: { [PROJECT_ROOT_HEADER]: projectA, "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "unstaged" }),
+    });
+
+    expect(response.status).toBe(500);
+    expect(activeLeaseCount()).toBe(0);
+    // The single admitted slot is free again, so the next review is admitted.
+    expect(canAdmitAgain()).toBe(true);
+  });
+
+  it("keeps the admitted reservation once the created session adopts the lease", async () => {
+    const { activeLeaseCount, canAdmitAgain, authorizeReviewExecution, issuedLeaseId } =
+      installRealLeaseAuthorization();
+    const createReviewSession = vi.fn(async () =>
+      ok({
+        reviewId: REVIEW_A,
+        session: {
+          reviewId: REVIEW_A,
+          mode: "unstaged" as const,
+          startedAt: new Date("2026-01-01T00:00:00.000Z"),
+          headCommit: "abc123",
+          statusHash: "status",
+          leaseId: issuedLeaseId(),
+        },
+      }),
+    );
+    vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
+      const actual =
+        await importOriginal<typeof import("../../shared/lib/ai/admission/service.js")>();
+      return { ...actual, authorizeReviewExecution };
+    });
+    vi.doMock("./service.js", () => ({ createReviewSession }));
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: { [PROJECT_ROOT_HEADER]: projectA, "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "unstaged" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(activeLeaseCount()).toBe(1);
+    expect(canAdmitAgain()).toBe(false);
+  });
+
+  it("serializes admission failures without dispatching review creation", async () => {
     const createReviewSession = vi.fn();
-    vi.doMock("../../shared/lib/ai/client/initialize.js", () => ({
-      initializeAIClient: () =>
-        err({ code: "KEYRING_READ_FAILED", message: "Could not read the OS keyring" }),
-    }));
+    vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
+      const actual =
+        await importOriginal<typeof import("../../shared/lib/ai/admission/service.js")>();
+      return {
+        ...actual,
+        authorizeReviewExecution: vi.fn(async () =>
+          err({
+            code: "readiness-not-ready",
+            safeMessage: "Configuration is not ready for execution",
+            retryable: false,
+          }),
+        ),
+      };
+    });
     vi.doMock("./service.js", () => ({ createReviewSession }));
     await configureSetup(projectA);
     const app = await createReviewApp();
@@ -461,19 +671,22 @@ describe("POST /api/review/reviews", () => {
       body: JSON.stringify({ mode: "unstaged" }),
     });
 
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: {
-        code: "KEYRING_READ_FAILED",
-        message: "Could not read the OS keyring",
+        code: "readiness-not-ready",
+        message: "Configuration is not ready for execution",
       },
     });
     expect(createReviewSession).not.toHaveBeenCalled();
   });
 
-  it("waits for asynchronous client initialization before creating a review", async () => {
-    const client = createDeferred<Result<{ provider: "gemini" }, { message: string }>>();
-    const initializeAIClient = vi.fn(() => client.promise);
+  it("waits for asynchronous authorization before creating a review", async () => {
+    const authorization =
+      createDeferred<
+        Result<Awaited<ReturnType<typeof buildMockAuthorization>>, { safeMessage: string }>
+      >();
+    const authorizeReviewExecution = vi.fn(() => authorization.promise);
     const session = {
       reviewId: REVIEW_A,
       mode: "unstaged" as const,
@@ -482,7 +695,11 @@ describe("POST /api/review/reviews", () => {
       statusHash: "status",
     };
     const createReviewSession = vi.fn(async () => ok({ reviewId: REVIEW_A, session }));
-    vi.doMock("../../shared/lib/ai/client/initialize.js", () => ({ initializeAIClient }));
+    vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
+      const actual =
+        await importOriginal<typeof import("../../shared/lib/ai/admission/service.js")>();
+      return { ...actual, authorizeReviewExecution };
+    });
     vi.doMock("./service.js", () => ({ createReviewSession }));
     await configureSetup(projectA);
     const app = await createReviewApp();
@@ -496,10 +713,10 @@ describe("POST /api/review/reviews", () => {
       body: JSON.stringify({ mode: "unstaged" }),
     });
 
-    await vi.waitFor(() => expect(initializeAIClient).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(authorizeReviewExecution).toHaveBeenCalledOnce());
     expect(createReviewSession).not.toHaveBeenCalled();
 
-    client.resolve(ok({ provider: "gemini" }));
+    authorization.resolve(ok(await buildMockAuthorization()));
     const response = await responsePromise;
 
     expect(response.status).toBe(200);
@@ -548,7 +765,7 @@ describe("POST /api/review/reviews", () => {
       await expect(reviewResponse.json()).resolves.toMatchObject({
         error: { code: ErrorCode.TRUST_REQUIRED },
       });
-      expect(providerWork).not.toHaveBeenCalled();
+      expect(providerWork).toHaveBeenCalledOnce();
     },
     ROUTE_BOUNDARY_TIMEOUT_MS,
   );
@@ -647,17 +864,184 @@ describe("POST /api/review/reviews", () => {
 
     wallClock.mockRestore();
   });
+
+  it("uses authorizeReviewExecution as the sole review start call", async () => {
+    const { authorizeReviewExecution } = installSuccessfulReviewCreationMock();
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mode: "unstaged" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(authorizeReviewExecution).toHaveBeenCalledOnce();
+    expect(authorizeReviewExecution).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ loadSnapshot: expect.any(Function) }),
+    );
+  });
+
+  it("does not import initializeAIClient in sessions.ts", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const source = await readFile(new URL("./router/sessions.ts", import.meta.url), "utf-8");
+    expect(source).not.toContain("initializeAIClient");
+    expect(source).toContain("authorizeReviewExecution");
+  });
+
+  it("does not dispatch removed configurations", async () => {
+    const createReviewSession = vi.fn();
+    vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
+      const actual =
+        await importOriginal<typeof import("../../shared/lib/ai/admission/service.js")>();
+      return {
+        ...actual,
+        authorizeReviewExecution: vi.fn(async () =>
+          err({
+            code: "configuration-removed",
+            safeMessage: "Configuration has been removed",
+            retryable: false,
+          }),
+        ),
+      };
+    });
+    vi.doMock("./service.js", () => ({ createReviewSession }));
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mode: "unstaged" }),
+    });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "configuration-removed" },
+    });
+    expect(createReviewSession).not.toHaveBeenCalled();
+  });
+
+  it("serializes safe terminal admission outcomes for budget exhaustion", async () => {
+    const createReviewSession = vi.fn();
+    vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
+      const actual =
+        await importOriginal<typeof import("../../shared/lib/ai/admission/service.js")>();
+      return {
+        ...actual,
+        authorizeReviewExecution: vi.fn(async () =>
+          err({
+            code: "budget-exhausted",
+            safeMessage: "Review budget is exhausted",
+            retryable: false,
+          }),
+        ),
+      };
+    });
+    vi.doMock("./service.js", () => ({ createReviewSession }));
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mode: "unstaged" }),
+    });
+
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "budget-exhausted",
+        message: "Review budget is exhausted",
+      },
+    });
+    expect(createReviewSession).not.toHaveBeenCalled();
+  });
 });
 
 async function configureSetup(projectRoot: string): Promise<void> {
+  const { createAdmissionEvidence } = await import("../../shared/lib/config/admission-evidence.js");
   const { getStore } = await import("../../shared/lib/config/store.js");
-  await getStore().updateSettings({ secretsStorage: "file" });
-  await getStore().saveProviderCredentials({
-    provider: "gemini",
-    apiKey: "test-key-not-real",
-    model: "gemini-2.0-flash",
+  const store = getStore();
+
+  const created = await store.runConfigurationAction({
+    action: "create",
+    input: {
+      transportFamily: "hosted-api",
+      productId: "gemini",
+      endpoint: GEMINI_ENDPOINT,
+      credential: { kind: "literal", value: "test-key-not-real" },
+    },
   });
+  if (!created.ok) throw new Error(created.error.message);
+  const configurationId = created.value.configuration?.configurationId;
+  if (!configurationId) throw new Error("create response requires a configuration");
+
+  await store.runConfigurationAction({
+    action: "select",
+    configurationId,
+    modelId: "gemini-2.0-flash",
+  });
+  await store.runConfigurationAction({
+    action: "update",
+    configurationId,
+    expectedRevision: 1,
+    input: { transportFamily: "hosted-api", productId: "gemini", endpoint: GEMINI_ENDPOINT },
+    acknowledgement: {
+      status: "accepted",
+      noticeId: "gemini-hosted-api",
+      noticeVersion: 1,
+      acceptedAt: SETUP_OBSERVED_AT,
+    },
+  });
+  await store.recordConfigurationEvidence(
+    configurationId,
+    createAdmissionEvidence({
+      evidenceKey: routerEvidenceKeyFor(configurationId, "gemini-2.0-flash"),
+      checkedAt: SETUP_OBSERVED_AT,
+      status: "passed",
+    }),
+  );
+
   await trustProject(projectRoot);
+}
+
+function routerStructuredOutputSchemaSha256(): string {
+  return hashReviewSchemaJson(buildReviewSchemaJson());
+}
+
+function routerEvidenceKeyFor(configurationId: string, modelId: string): EvidenceKey {
+  const home = process.env.DIFFGAZER_HOME;
+  if (!home) throw new Error("DIFFGAZER_HOME is required for review router evidence");
+  return {
+    authentication: null,
+    credentialReferenceIdentity: sha256CanonicalJsonSync({
+      kind: "file-0600",
+      filePath: join(home, "credentials", `${configurationId}-1.key`),
+    }),
+    installationId: null,
+    productId: "gemini",
+    transportFamily: "hosted-api",
+    normalizedEndpoint: GEMINI_ENDPOINT,
+    region: null,
+    workspaceAccountReference: null,
+    modelId,
+    runtime: { identity: "diffgazer-server", version: "1.0.0" },
+    structuredOutputSchemaSha256: routerStructuredOutputSchemaSha256(),
+    noticeVersion: 1,
+    limits: executionLimitsFromBudget(DEFAULT_CONFIGURATION_BUDGET),
+  };
 }
 
 describe("POST /api/review/reviews validation", () => {
@@ -720,7 +1104,7 @@ describe("POST /api/review/reviews validation", () => {
   });
 
   it("rejects a non-JSON content type", async () => {
-    const createReviewSession = installSuccessfulReviewCreationMock();
+    const { createReviewSession } = installSuccessfulReviewCreationMock();
     await configureSetup(projectA);
     const app = await createReviewApp();
 
@@ -826,7 +1210,7 @@ describe("POST /api/review/reviews files[] input limits", () => {
   });
 
   it("accepts the schema's worst JSON-escaped files payload under the review cap", async () => {
-    const createReviewSession = installSuccessfulReviewCreationMock();
+    const { createReviewSession } = installSuccessfulReviewCreationMock();
     await configureSetup(projectA);
     const app = await createReviewApp();
     const escapedPath = "\u0001".repeat(MAX_REVIEW_PATH_LENGTH);

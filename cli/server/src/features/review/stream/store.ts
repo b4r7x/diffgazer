@@ -1,6 +1,5 @@
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
-import type { AIExecutionFingerprint } from "../../../shared/lib/ai/client/initialize.js";
 import { log } from "../../../shared/lib/log.js";
 import {
   registerSession,
@@ -29,6 +28,10 @@ export interface ActiveSession {
   reviewConfigKey: string;
   reviewInputHash: string;
   provider: string | null;
+  configurationId: string | null;
+  configurationRevision: number | null;
+  admittedExecutionFingerprint: string | null;
+  leaseId: string | null;
   startedAt: Date;
   lastEventAt: Date;
   lastActivityTick: number;
@@ -66,7 +69,9 @@ export function buildReviewConfigKey(params: {
   lenses?: string[];
   profile?: string;
   minSeverity?: string;
-  executionFingerprint?: AIExecutionFingerprint;
+  admittedExecutionFingerprint?: string;
+  configurationId?: string;
+  configurationRevision?: number;
 }): string {
   const parts: string[] = [];
   if (params.lenses && params.lenses.length > 0) {
@@ -78,11 +83,45 @@ export function buildReviewConfigKey(params: {
   if (params.minSeverity) {
     parts.push(`s:${params.minSeverity}`);
   }
-  if (params.executionFingerprint) {
-    const { provider, model } = params.executionFingerprint;
-    parts.push(`ai:${JSON.stringify([provider, model])}`);
+  if (params.configurationId) {
+    parts.push(`c:${params.configurationId}`);
+  }
+  if (params.configurationRevision !== undefined) {
+    parts.push(`r:${params.configurationRevision}`);
+  }
+  if (params.admittedExecutionFingerprint) {
+    parts.push(`f:${params.admittedExecutionFingerprint}`);
   }
   return parts.join("|");
+}
+
+type ConfigurationCancelOptions = SessionCancelOptions & {
+  configurationId?: string;
+  configurationRevision?: number;
+  admittedExecutionFingerprint?: string;
+};
+
+function matchesConfigurationCancellation(
+  session: ActiveSession,
+  options?: ConfigurationCancelOptions,
+): boolean {
+  if (!options?.configurationId) {
+    return !options?.provider || session.provider === options.provider;
+  }
+  if (session.configurationId !== options.configurationId) return false;
+  if (
+    options.configurationRevision !== undefined &&
+    session.configurationRevision !== options.configurationRevision
+  ) {
+    return false;
+  }
+  if (
+    options.admittedExecutionFingerprint &&
+    session.admittedExecutionFingerprint !== options.admittedExecutionFingerprint
+  ) {
+    return false;
+  }
+  return true;
 }
 
 // A `status-only` session cannot prove its diff content is unchanged (the repo hash
@@ -301,6 +340,10 @@ export function createSession(
     reviewConfigKey?: string;
     reviewInputHash?: string;
     provider?: string | null;
+    configurationId?: string;
+    configurationRevision?: number;
+    admittedExecutionFingerprint?: string;
+    leaseId?: string;
     monotonicNow?: () => number;
   },
 ): ActiveSession {
@@ -327,6 +370,10 @@ export function createSession(
     reviewConfigKey: options.reviewConfigKey ?? "",
     reviewInputHash: options.reviewInputHash ?? "",
     provider: options.provider ?? null,
+    configurationId: options.configurationId ?? null,
+    configurationRevision: options.configurationRevision ?? null,
+    admittedExecutionFingerprint: options.admittedExecutionFingerprint ?? null,
+    leaseId: options.leaseId ?? null,
     startedAt,
     lastEventAt: startedAt,
     lastActivityTick: monotonicNow(),
@@ -343,9 +390,13 @@ export function createSession(
   activeSessions.set(reviewId, session);
   registerSession(reviewId, {
     projectKey: session.projectPath,
+    configurationId: session.configurationId,
+    configurationRevision: session.configurationRevision,
+    admittedExecutionFingerprint: session.admittedExecutionFingerprint,
+    leaseId: session.leaseId,
     cancel: (options?: SessionCancelOptions) => {
       if (session.isComplete) return;
-      if (options?.provider && session.provider !== options.provider) return;
+      if (!matchesConfigurationCancellation(session, options)) return;
       cancelSession(reviewId, { message: options?.message, reason: options?.reason });
     },
   });
@@ -456,6 +507,33 @@ function cancelSessionWithError(
     },
     2 * 60 * 1000,
   ).unref();
+}
+
+export function cancelSessionsForConfiguration(
+  configurationId: string,
+  options?: {
+    configurationRevision?: number;
+    admittedExecutionFingerprint?: string;
+    message?: string;
+    reason?: string;
+  },
+): void {
+  for (const [reviewId, session] of activeSessions) {
+    if (session.isComplete) continue;
+    if (
+      !matchesConfigurationCancellation(session, {
+        configurationId,
+        configurationRevision: options?.configurationRevision,
+        admittedExecutionFingerprint: options?.admittedExecutionFingerprint,
+      })
+    ) {
+      continue;
+    }
+    cancelSession(reviewId, {
+      message: options?.message,
+      reason: options?.reason,
+    });
+  }
 }
 
 export function cancelStaleSessionsForProjectMode(

@@ -1,47 +1,55 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
-import type { InitResponse, ProviderStatus, SetupStatus } from "@diffgazer/core/schemas/config";
+import { configurationFingerprint } from "@diffgazer/core/api/hooks";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import type {
+  ConfigurationInitResponse,
+  ConfigurationListResponse,
+} from "@diffgazer/core/schemas/config";
+import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider, useConfigActions, useConfigData } from "@/hooks/use-config";
+import {
+  createConfigurationActionMocks,
+  readyConfigurationStatus,
+} from "@/testing/configuration-action-mocks";
+import {
+  makeConfigurationInitResponse,
+  makeConfigurationListResponse,
+  READY_GEMINI_CONFIGURATION,
+} from "@/testing/configuration-fixtures";
 
-function makeSetupStatus(overrides: Partial<SetupStatus> = {}): SetupStatus {
+const geminiEndpoint =
+  READY_GEMINI_CONFIGURATION.transportFamily === "hosted-api"
+    ? READY_GEMINI_CONFIGURATION.endpoint
+    : "";
+
+const acknowledgement = {
+  status: "accepted" as const,
+  noticeId: PRODUCT_REGISTRY.gemini.notice.id,
+  noticeVersion: PRODUCT_REGISTRY.gemini.notice.noticeVersion,
+  acceptedAt: "2026-07-31T12:00:00.000Z",
+};
+
+function makeInitResponse(
+  overrides: Partial<ConfigurationInitResponse> = {},
+): ConfigurationInitResponse {
   return {
-    hasSecretsStorage: true,
-    hasProvider: true,
-    hasModel: true,
-    hasTrust: false,
-    isConfigured: true,
-    isReady: true,
-    missing: [],
+    ...makeConfigurationInitResponse([readyConfigurationStatus]),
     ...overrides,
   };
 }
 
-function makeInitResponse(overrides: Partial<InitResponse> = {}): InitResponse {
+function makeConfigurationList(
+  overrides: Partial<ConfigurationListResponse> = {},
+): ConfigurationListResponse {
   return {
-    configPath: "/tmp/diffgazer/config.json",
-    config: { provider: "gemini", model: "gemini-2.5-flash" },
-    providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
-    settings: {
-      theme: "terminal",
-      defaultLenses: [],
-      defaultProfile: null,
-      severityThreshold: "low",
-      secretsStorage: null,
-      agentExecution: "parallel",
-    },
-    configured: true,
-    project: { projectId: "proj-1", path: "/tmp/repo", trust: null },
-    setup: makeSetupStatus(),
+    ...makeConfigurationListResponse(makeInitResponse()),
     ...overrides,
   };
-}
-
-function makeProviderStatus(): ProviderStatus[] {
-  return [{ provider: "gemini", hasApiKey: true, isActive: true }];
 }
 
 function createMockApi() {
@@ -49,11 +57,9 @@ function createMockApi() {
 
   return {
     ...api,
-    loadInit: vi.fn().mockResolvedValue(makeInitResponse()),
-    getProviderStatus: vi.fn().mockResolvedValue(makeProviderStatus()),
-    activateProvider: vi.fn().mockResolvedValue({ provider: "gemini", model: "gemini-2.5-pro" }),
-    saveConfig: vi.fn().mockResolvedValue(undefined),
-    deleteProviderCredentials: vi.fn().mockResolvedValue({ deleted: true }),
+    loadConfigurationInit: vi.fn().mockResolvedValue(makeInitResponse()),
+    listConfigurations: vi.fn().mockResolvedValue(makeConfigurationList()),
+    ...createConfigurationActionMocks(),
   } satisfies BoundApi;
 }
 
@@ -63,31 +69,67 @@ function ConfigConsumer() {
 
   return (
     <div>
-      <p>Provider: {data.provider ?? "none"}</p>
-      <p>Model: {data.model ?? "none"}</p>
-      <p>Configured: {String(data.isConfigured)}</p>
       <p>Loading: {String(data.isLoading)}</p>
       <p>Config load: {data.loadState.status}</p>
+      <p>Configured: {String(data.isConfigured)}</p>
+      <p>Ready: {String(data.isReady)}</p>
+      <p>Rows: {data.configurations.length}</p>
+      <p>Selected: {data.selectedConfiguration?.configurationId ?? "none"}</p>
+      <p>Revision: {data.selectedIdentity?.revision ?? "none"}</p>
+      <p>Fingerprint: {data.selectedIdentity?.fingerprint ?? "none"}</p>
       <p>Project: {data.projectId ?? "none"}</p>
-      <p>Provider rows: {data.providerStatus.length}</p>
+      <pre data-testid="context-json">{JSON.stringify(data)}</pre>
+      <button type="button" onClick={() => void actions.inspectConfiguration("gemini-primary")}>
+        Inspect configuration
+      </button>
+      <button
+        type="button"
+        onClick={() => void actions.selectConfiguration("gemini-primary", "gemini-2.5-flash")}
+      >
+        Select configuration
+      </button>
+      <button type="button" onClick={() => void actions.testConfiguration("gemini-primary")}>
+        Test configuration
+      </button>
       <button
         type="button"
         onClick={() =>
-          void actions.activateProvider("gemini", "gemini-2.5-pro").catch(() => {
-            // The activate action rejects; the consumer swallows it.
+          void actions.updateConfiguration({
+            configurationId: "gemini-primary",
+            expectedRevision: 1,
+            input: {
+              transportFamily: "hosted-api",
+              productId: "gemini",
+              endpoint: geminiEndpoint,
+            },
+            acknowledgement,
           })
         }
       >
-        Activate Gemini
+        Update configuration
       </button>
       <button
         type="button"
-        onClick={() => actions.saveCredentials("gemini", "sk-key", "gemini-2.5-flash")}
+        onClick={() =>
+          void actions.deleteConfiguration({
+            configurationId: "gemini-primary",
+            expectedRevision: 1,
+          })
+        }
       >
-        Save Gemini credentials
+        Delete configuration
       </button>
-      <button type="button" onClick={() => actions.deleteProviderCredentials("gemini")}>
-        Delete Gemini credentials
+      <button
+        type="button"
+        onClick={() =>
+          void actions.createConfiguration({
+            transportFamily: "hosted-api",
+            productId: "gemini",
+            endpoint: geminiEndpoint,
+          })
+        }
+      >
+        Create configuration
       </button>
     </div>
   );
@@ -124,63 +166,7 @@ describe("ConfigProvider", () => {
     queryClient = undefined;
   });
 
-  it("shows initial config after loading", async () => {
-    renderWithProvider();
-
-    await waitFor(() => {
-      expect(screen.getByText("Loading: false")).toBeInTheDocument();
-    });
-
-    expect(screen.getByText("Provider: gemini")).toBeInTheDocument();
-    expect(screen.getByText("Model: gemini-2.5-flash")).toBeInTheDocument();
-    expect(screen.getByText("Project: proj-1")).toBeInTheDocument();
-  });
-
-  it("provides isConfigured=true when init reports configured", async () => {
-    renderWithProvider();
-
-    await waitFor(() => {
-      expect(screen.getByText("Loading: false")).toBeInTheDocument();
-    });
-
-    expect(screen.getByText("Configured: true")).toBeInTheDocument();
-  });
-
-  it("provides isConfigured=false when no provider is configured", async () => {
-    mockApi.loadInit.mockResolvedValue(
-      makeInitResponse({
-        config: null,
-        setup: makeSetupStatus({ isConfigured: false, hasProvider: false, hasModel: false }),
-      }),
-    );
-
-    renderWithProvider();
-
-    await waitFor(() => {
-      expect(screen.getByText("Loading: false")).toBeInTheDocument();
-    });
-
-    expect(screen.getByText("Configured: false")).toBeInTheDocument();
-    expect(screen.getByText("Provider: none")).toBeInTheDocument();
-  });
-
-  it("settles loading and reports no provider when the init request fails", async () => {
-    mockApi.loadInit.mockRejectedValue(new Error("Server down"));
-
-    renderWithProvider();
-
-    await waitFor(() => {
-      expect(screen.getByText("Loading: false")).toBeInTheDocument();
-    });
-
-    expect(screen.getByText("Provider: none")).toBeInTheDocument();
-    expect(screen.getByText("Configured: false")).toBeInTheDocument();
-    expect(screen.getByText("Config load: error")).toBeInTheDocument();
-  });
-
-  it("falls back to the init provider rows when the provider-status request fails", async () => {
-    mockApi.getProviderStatus.mockRejectedValue(new Error("Provider status unavailable"));
-
+  it("exposes safe configuration summaries without legacy provider-status facades", async () => {
     renderWithProvider();
 
     await waitFor(() => {
@@ -188,186 +174,114 @@ describe("ConfigProvider", () => {
     });
 
     expect(screen.getByText("Config load: ready")).toBeInTheDocument();
-    expect(screen.getByText("Provider: gemini")).toBeInTheDocument();
-    expect(screen.getByText("Project: proj-1")).toBeInTheDocument();
-    expect(screen.getByText("Provider rows: 1")).toBeInTheDocument();
+    expect(screen.getByText("Selected: gemini-primary")).toBeInTheDocument();
+    expect(screen.getByText("Ready: true")).toBeInTheDocument();
+    expect(screen.getByText("Rows: 1")).toBeInTheDocument();
+
+    const serialized = screen.getByTestId("context-json").textContent ?? "";
+    expect(serialized).not.toContain("providerStatus");
+    expect(serialized).not.toContain("saveCredentials");
+    expect(serialized).not.toContain("activateProvider");
+    expect(serialized).not.toContain("deleteProviderCredentials");
+    expect(serialized).not.toContain(LEGACY_V1_HAS_API_KEY_PROPERTY);
+    expect(serialized).not.toContain('"apiKey"');
+    expect(serialized).not.toContain("sk-");
+    expect(serialized).not.toMatch(/"secret"\s*:/);
   });
 
-  it("keeps loaded init data visible while provider status is still pending", async () => {
-    mockApi.getProviderStatus.mockReturnValue(new Promise(() => {}));
+  it("keeps both context values referentially stable across a configuration mutation", async () => {
+    const dataValues: unknown[] = [];
+    const actionValues: unknown[] = [];
 
-    renderWithProvider();
+    function IdentityProbe() {
+      dataValues.push(useConfigData());
+      actionValues.push(useConfigActions());
+      return null;
+    }
 
-    await waitFor(() => {
-      expect(screen.getByText("Config load: ready")).toBeInTheDocument();
-    });
-
-    expect(screen.getByText("Loading: true")).toBeInTheDocument();
-    expect(screen.getByText("Provider: gemini")).toBeInTheDocument();
-    expect(screen.getByText("Project: proj-1")).toBeInTheDocument();
-  });
-
-  it("reports loading=true while init requests are still pending", async () => {
-    mockApi.loadInit.mockReturnValue(new Promise(() => {}));
-
-    renderWithProvider();
-
-    // Provider rows land from the settled provider-status query, so loading is
-    // still true purely because init has not resolved.
-    await waitFor(() => {
-      expect(screen.getByText("Provider rows: 1")).toBeInTheDocument();
-    });
-
-    expect(screen.getByText("Config load: loading")).toBeInTheDocument();
-    expect(screen.getByText("Loading: true")).toBeInTheDocument();
-  });
-
-  it("shows the refreshed active model after activating a provider", async () => {
     const user = userEvent.setup();
-    mockApi.loadInit.mockResolvedValueOnce(makeInitResponse()).mockResolvedValueOnce(
-      makeInitResponse({
-        config: { provider: "gemini", model: "gemini-2.5-pro" },
-      }),
+    render(
+      <>
+        <ConfigConsumer />
+        <IdentityProbe />
+      </>,
+      { wrapper: createConfigWrapper() },
+    );
+    await waitFor(() => expect(screen.getByText("Loading: false")).toBeInTheDocument());
+
+    const dataBefore = dataValues.at(-1);
+    const actionsBefore = actionValues.at(-1);
+    const rendersBefore = dataValues.length;
+
+    await user.click(screen.getByRole("button", { name: "Inspect configuration" }));
+    await waitFor(() => expect(mockApi.inspectConfiguration).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mockApi.loadConfigurationInit.mock.calls.length).toBeGreaterThan(1));
+
+    // The mutation transition re-renders the provider; unchanged context values
+    // mean app-wide consumers are never woken by it.
+    expect(dataValues.length).toBe(rendersBefore);
+    expect(dataValues.at(-1)).toBe(dataBefore);
+    expect(actionValues.at(-1)).toBe(actionsBefore);
+  });
+
+  it("propagates selected configuration ID, revision, and fingerprint", async () => {
+    renderWithProvider();
+
+    await waitFor(() => {
+      expect(screen.getByText("Loading: false")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Revision: 1")).toBeInTheDocument();
+    expect(
+      screen.getByText(`Fingerprint: ${configurationFingerprint(READY_GEMINI_CONFIGURATION)}`),
+    ).toBeInTheDocument();
+  });
+
+  it("reports unconfigured when no configuration is selected", async () => {
+    mockApi.loadConfigurationInit.mockResolvedValue(
+      makeInitResponse({ selectedConfigurationId: null, configurations: [] }),
     );
 
     renderWithProvider();
 
     await waitFor(() => {
-      expect(screen.getByText("Loading: false")).toBeInTheDocument();
+      expect(screen.getByText("Configured: false")).toBeInTheDocument();
     });
-
-    await user.click(screen.getByRole("button", { name: /activate gemini/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Model: gemini-2.5-pro")).toBeInTheDocument();
-    });
-
-    expect(mockApi.activateProvider).toHaveBeenCalledWith("gemini", "gemini-2.5-pro");
+    expect(screen.getByText("Ready: false")).toBeInTheDocument();
+    expect(screen.getByText("Selected: none")).toBeInTheDocument();
   });
 
-  it("shows the saved provider state after saving credentials", async () => {
-    const user = userEvent.setup();
-    mockApi.loadInit
-      .mockResolvedValueOnce(
-        makeInitResponse({
-          config: null,
-          setup: makeSetupStatus({ isConfigured: false, hasProvider: false, hasModel: false }),
-        }),
-      )
-      .mockResolvedValueOnce(makeInitResponse());
+  it("settles to error when initialization fails", async () => {
+    mockApi.loadConfigurationInit.mockRejectedValue(new Error("Server down"));
 
     renderWithProvider();
 
     await waitFor(() => {
-      expect(screen.getByText("Loading: false")).toBeInTheDocument();
+      expect(screen.getByText("Config load: error")).toBeInTheDocument();
     });
-    expect(screen.getByText("Provider: none")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /save gemini credentials/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Provider: gemini")).toBeInTheDocument();
-    });
-
-    expect(mockApi.saveConfig).toHaveBeenCalledWith({
-      provider: "gemini",
-      apiKey: "sk-key",
-      model: "gemini-2.5-flash",
-    });
-    expect(screen.getByText("Configured: true")).toBeInTheDocument();
-  });
-
-  it("shows the cleared provider state after deleting credentials", async () => {
-    const user = userEvent.setup();
-    mockApi.loadInit.mockResolvedValueOnce(makeInitResponse()).mockResolvedValueOnce(
-      makeInitResponse({
-        config: null,
-        providers: [{ provider: "gemini", hasApiKey: false, isActive: false }],
-        setup: makeSetupStatus({ isConfigured: false, hasProvider: false, hasModel: false }),
-      }),
-    );
-
-    renderWithProvider();
-
-    await waitFor(() => {
-      expect(screen.getByText("Loading: false")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole("button", { name: /delete gemini credentials/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Provider: none")).toBeInTheDocument();
-    });
-
-    expect(mockApi.deleteProviderCredentials).toHaveBeenCalledWith("gemini");
     expect(screen.getByText("Configured: false")).toBeInTheDocument();
   });
 
-  it("keeps the current model when activating a provider fails", async () => {
+  it.each([
+    ["Inspect configuration", "inspectConfiguration"],
+    ["Select configuration", "selectConfiguration"],
+    ["Test configuration", "testConfiguration"],
+    ["Update configuration", "updateConfiguration"],
+    ["Delete configuration", "deleteConfiguration"],
+    ["Create configuration", "createConfiguration"],
+  ] as const)("dispatches the $1 action through V2 hooks", async (label, method) => {
     const user = userEvent.setup();
-    mockApi.activateProvider.mockRejectedValue(new Error("Activation failed"));
-
     renderWithProvider();
 
     await waitFor(() => {
       expect(screen.getByText("Loading: false")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole("button", { name: /activate gemini/i }));
+    await user.click(screen.getByRole("button", { name: label }));
 
     await waitFor(() => {
-      expect(mockApi.activateProvider).toHaveBeenCalledWith("gemini", "gemini-2.5-pro");
+      expect(mockApi[method as keyof typeof mockApi]).toHaveBeenCalled();
     });
-    expect(screen.getByText("Model: gemini-2.5-flash")).toBeInTheDocument();
-  });
-
-  it("keeps the actions context value referentially stable across a mutation isPending flip", async () => {
-    const user = userEvent.setup();
-    let resolveSave: (() => void) | undefined;
-    mockApi.saveConfig.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveSave = () => resolve();
-        }),
-    );
-
-    const actionsRefs: Array<ReturnType<typeof useConfigActions>> = [];
-    let savePromise: Promise<void> | undefined;
-
-    function ActionsProbe() {
-      const actions = useConfigActions();
-      actionsRefs.push(actions);
-      return (
-        <button
-          type="button"
-          onClick={() => {
-            savePromise = actions.saveCredentials("gemini", "sk-key", "gemini-2.5-flash");
-          }}
-        >
-          Save
-        </button>
-      );
-    }
-
-    render(<ActionsProbe />, { wrapper: createConfigWrapper(mockApi) });
-
-    const initialActions = actionsRefs[actionsRefs.length - 1];
-
-    await user.click(screen.getByRole("button", { name: /save/i }));
-
-    // The save mutation is now pending (isPending flipped true); the actions value must not change identity.
-    expect(actionsRefs.at(-1)).toBe(initialActions);
-
-    resolveSave?.();
-
-    await act(async () => {
-      await savePromise;
-    });
-
-    expect(mockApi.saveConfig).toHaveBeenCalled();
-
-    // After the pending flag settles back, the actions value identity is still stable.
-    expect(actionsRefs.at(-1)).toBe(initialActions);
   });
 
   it("throws when useConfigData is called outside the provider", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PRODUCT_ENDPOINT_TUPLES, PRODUCT_REGISTRY } from "../../providers/product-registry.js";
+import { REMOVED_PRODUCT_ID } from "./providers.js";
 import {
   CANDIDATE_PRODUCT_IDS,
   CandidateProductIdSchema,
@@ -66,15 +67,15 @@ describe("transport family contract", () => {
     }
   });
 
-  it("decodes zai-coding only as removed and never as runnable input", () => {
-    expect(REMOVED_PRODUCT_IDS).toEqual(["zai-coding"]);
-    expect(RemovedProductIdSchema.parse("zai-coding")).toBe("zai-coding");
-    expect(RunnableProductIdSchema.safeParse("zai-coding").success).toBe(false);
-    expect(CandidateProductIdSchema.safeParse("zai-coding").success).toBe(false);
+  it("decodes REMOVED_PRODUCT_ID only as removed and never as runnable input", () => {
+    expect(REMOVED_PRODUCT_IDS).toEqual([REMOVED_PRODUCT_ID]);
+    expect(RemovedProductIdSchema.parse(REMOVED_PRODUCT_ID)).toBe(REMOVED_PRODUCT_ID);
+    expect(RunnableProductIdSchema.safeParse(REMOVED_PRODUCT_ID).success).toBe(false);
+    expect(CandidateProductIdSchema.safeParse(REMOVED_PRODUCT_ID).success).toBe(false);
     expect(
       TransportInputSchema.safeParse({
         transportFamily: "hosted-api",
-        productId: "zai-coding",
+        productId: REMOVED_PRODUCT_ID,
         endpoint: "https://api.z.ai/api/paas/v4",
       }).success,
     ).toBe(false);

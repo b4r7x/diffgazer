@@ -1,11 +1,18 @@
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { spawn as spawnPty } from "node-pty";
 import stripAnsi from "strip-ansi";
 import { CommandFailedError, runArgv } from "../smoke-shared/command.mjs";
 
 const TUI_BOOT_TIMEOUT_MS = 30_000;
 const TUI_EXIT_TIMEOUT_MS = 10_000;
+
+// Main menu (configured), size gate, or first-run onboarding product step.
+const TUI_INTERACTIVE_SHELL =
+  /(?:Main Menu|Terminal too small|SELECT PRODUCT|Step \d+ of \d+: Product)/;
+const TUI_BOOT_FAILURE =
+  /(?:Server Failed to Start|Server Disconnected|Configuration Check Failed)/;
 
 async function runFailureArgv(root, command, args, cwd = root) {
   try {
@@ -26,64 +33,97 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function failTuiBoot(rejectPromise, terminal, bootTimer, exitTimer, message, output) {
+  clearTimeout(bootTimer);
+  clearTimeout(exitTimer);
+  terminal.kill();
+  rejectPromise(new Error(`${message}:\n${stripAnsi(output).slice(-1_000)}`));
+}
+
 async function runTuiBootSmoke(root, diffgazerBin) {
+  const fixtureHome = mkdtempSync(join(tmpdir(), "diffgazer-smoke-home-"));
   let output = "";
 
-  await new Promise((resolvePromise, rejectPromise) => {
-    let sawBootFrame = false;
-    let exitTimer;
-    const terminal = spawnPty(process.execPath, [diffgazerBin, "--tui"], {
-      name: "xterm-256color",
-      cols: 80,
-      rows: 24,
-      cwd: root,
-      env: { ...process.env, NO_COLOR: "1", TERM: "xterm-256color" },
-    });
+  try {
+    await new Promise((resolvePromise, rejectPromise) => {
+      let sawBootFrame = false;
+      let exitTimer;
+      const terminal = spawnPty(process.execPath, [diffgazerBin, "--tui"], {
+        name: "xterm-256color",
+        cols: 80,
+        rows: 24,
+        cwd: root,
+        env: {
+          ...process.env,
+          DIFFGAZER_HOME: fixtureHome,
+          NO_COLOR: "1",
+          TERM: "xterm-256color",
+        },
+      });
 
-    const bootTimer = setTimeout(() => {
-      terminal.kill();
-      rejectPromise(
-        new Error(
-          `TUI did not render its home or size gate within ${TUI_BOOT_TIMEOUT_MS}ms:\n${stripAnsi(output).slice(-1_000)}`,
-        ),
-      );
-    }, TUI_BOOT_TIMEOUT_MS);
-
-    terminal.onData((data) => {
-      output = `${output}${data}`.slice(-64_000);
-      if (sawBootFrame || !/(Main Menu|Terminal too small)/.test(stripAnsi(output))) return;
-
-      sawBootFrame = true;
-      clearTimeout(bootTimer);
-      terminal.write("q");
-      exitTimer = setTimeout(() => {
-        terminal.kill();
-        rejectPromise(
-          new Error(
-            `TUI did not exit after q within ${TUI_EXIT_TIMEOUT_MS}ms:\n${stripAnsi(output).slice(-1_000)}`,
-          ),
+      const bootTimer = setTimeout(() => {
+        failTuiBoot(
+          rejectPromise,
+          terminal,
+          bootTimer,
+          exitTimer,
+          `TUI did not reach an interactive shell within ${TUI_BOOT_TIMEOUT_MS}ms`,
+          output,
         );
-      }, TUI_EXIT_TIMEOUT_MS);
-    });
+      }, TUI_BOOT_TIMEOUT_MS);
 
-    terminal.onExit(({ exitCode, signal }) => {
-      clearTimeout(bootTimer);
-      clearTimeout(exitTimer);
-      if (!sawBootFrame) {
-        rejectPromise(
-          new Error(
-            `TUI exited before rendering its home or size gate:\n${stripAnsi(output).slice(-1_000)}`,
-          ),
-        );
-        return;
-      }
-      if (exitCode !== 0) {
-        rejectPromise(new Error(`TUI exited with code ${exitCode} and signal ${signal}`));
-        return;
-      }
-      resolvePromise();
+      terminal.onData((data) => {
+        output = `${output}${data}`.slice(-64_000);
+        const plain = stripAnsi(output);
+        if (!sawBootFrame && TUI_BOOT_FAILURE.test(plain)) {
+          failTuiBoot(
+            rejectPromise,
+            terminal,
+            bootTimer,
+            exitTimer,
+            "TUI reported a startup or configuration failure",
+            output,
+          );
+          return;
+        }
+        if (sawBootFrame || !TUI_INTERACTIVE_SHELL.test(plain)) return;
+
+        sawBootFrame = true;
+        clearTimeout(bootTimer);
+        terminal.write("q");
+        exitTimer = setTimeout(() => {
+          failTuiBoot(
+            rejectPromise,
+            terminal,
+            bootTimer,
+            exitTimer,
+            `TUI did not exit after q within ${TUI_EXIT_TIMEOUT_MS}ms`,
+            output,
+          );
+        }, TUI_EXIT_TIMEOUT_MS);
+      });
+
+      terminal.onExit(({ exitCode, signal }) => {
+        clearTimeout(bootTimer);
+        clearTimeout(exitTimer);
+        if (!sawBootFrame) {
+          rejectPromise(
+            new Error(
+              `TUI exited before reaching an interactive shell:\n${stripAnsi(output).slice(-1_000)}`,
+            ),
+          );
+          return;
+        }
+        if (exitCode !== 0) {
+          rejectPromise(new Error(`TUI exited with code ${exitCode} and signal ${signal}`));
+          return;
+        }
+        resolvePromise();
+      });
     });
-  });
+  } finally {
+    rmSync(fixtureHome, { recursive: true, force: true });
+  }
 
   console.log("OK: diffgazer --tui boots in an 80x24 pseudo-terminal and exits with q");
 }

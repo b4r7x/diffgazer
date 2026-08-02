@@ -1,172 +1,70 @@
-import type { ProviderWithStatus } from "@diffgazer/core/schemas/config";
-import { KeyboardProvider } from "@diffgazer/keys";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { useProvidersActionButtons } from "../hooks/use-action-buttons";
+import { buildProviderRows } from "../testing/fixtures";
 import { ProviderDetails } from "./details";
 
+const ROWS = buildProviderRows();
+const GEMINI_ROW = ROWS.find((row) => row.configuration?.configurationId === "gemini-primary");
+if (!GEMINI_ROW) throw new Error("Missing gemini fixture");
+
 const NOOP_ACTIONS = {
-  onSetApiKey: vi.fn(),
+  onSetup: vi.fn(),
   onSelectModel: vi.fn(),
-  onRemoveKey: vi.fn(),
-  onSelectProvider: vi.fn(),
+  onDelete: vi.fn(),
+  onDispatchAction: vi.fn(),
 };
 
-function makeProvider(overrides: Partial<ProviderWithStatus> = {}): ProviderWithStatus {
-  const base: ProviderWithStatus = {
-    id: "gemini",
-    name: "Gemini",
-    displayStatus: "configured",
-    hasApiKey: false,
-    isActive: false,
-    model: undefined,
-    defaultModel: "gemini-2.5-flash",
-  };
-  return { ...base, ...overrides };
-}
-
-function ActionNavigationSubject() {
-  const [zone, setZone] = useState<"input" | "filters" | "list" | "buttons">("buttons");
-  const provider = makeProvider({ hasApiKey: true, model: "gemini-2.5-flash" });
-  const navigation = useProvidersActionButtons({
-    selectedProvider: provider,
-    dialogOpen: false,
-    inButtons: zone === "buttons",
-    setZone,
-    focusProviderList: () => screen.getByRole("button", { name: "Outside actions" }).focus(),
-    onSetApiKey: vi.fn(),
-    onSelectModel: vi.fn(),
-    onRemoveKey: vi.fn(async () => {}),
-    onActivateProvider: vi.fn(),
-  });
-
-  return (
-    <>
-      <button type="button" onFocus={() => setZone("list")}>
-        Outside actions
-      </button>
-      <ProviderDetails
-        provider={provider}
-        actions={NOOP_ACTIONS}
-        isFocused={zone === "buttons"}
-        focusedButtonIndex={navigation.buttonIndex}
-        getButtonProps={navigation.getActionButtonProps}
-      />
-    </>
-  );
-}
-
-describe("ProviderDetails (catalog)", () => {
-  it("routes the primary button through the supplied activation action", async () => {
+describe("ProviderDetails", () => {
+  it("routes the primary action through the supplied dispatch callback", async () => {
     const user = userEvent.setup();
-    const onSelectProvider = vi.fn();
-    render(
-      <ProviderDetails
-        provider={makeProvider({ hasApiKey: false })}
-        actions={{
-          ...NOOP_ACTIONS,
-          onSelectProvider,
-        }}
-      />,
-    );
+    const onDispatchAction = vi.fn();
+    render(<ProviderDetails row={GEMINI_ROW} actions={{ ...NOOP_ACTIONS, onDispatchAction }} />);
 
-    await user.click(screen.getByRole("button", { name: "Select Provider" }));
+    await user.click(screen.getByRole("button", { name: /Select configuration/i }));
 
-    expect(onSelectProvider).toHaveBeenCalledOnce();
+    expect(onDispatchAction).toHaveBeenCalledOnce();
   });
 
-  it("shows the default model placeholder when no model is selected", () => {
-    render(<ProviderDetails provider={makeProvider()} actions={NOOP_ACTIONS} />);
-    expect(screen.getByText(/gemini-2\.5-flash \(default\)/)).toBeInTheDocument();
+  it("shows exact selected model and readiness without API-key status", () => {
+    render(<ProviderDetails row={GEMINI_ROW} actions={NOOP_ACTIONS} />);
+
+    expect(screen.getByRole("status", { name: /Ready\./i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Ready\./i)).toBeInTheDocument();
+    expect(screen.queryByText(/API Key Status/i)).not.toBeInTheDocument();
   });
 
-  it("shows the OpenRouter placeholder where the user always picks a model", () => {
-    render(
-      <ProviderDetails
-        provider={makeProvider({ id: "openrouter", name: "OpenRouter", defaultModel: undefined })}
-        actions={NOOP_ACTIONS}
-      />,
-    );
-    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
-    expect(screen.getByText(/Model required/)).toBeInTheDocument();
+  it("shows CLI unsupported evidence for unsupported CLI rows", () => {
+    const cliRow = ROWS.find((row) => row.configuration?.configurationId === "codex-cli-1");
+    if (!cliRow) throw new Error("Missing CLI fixture");
+
+    render(<ProviderDetails row={cliRow} actions={NOOP_ACTIONS} />);
+    expect(screen.getByLabelText(/CLI unsupported\./i)).toBeInTheDocument();
   });
 
-  it("degrades gracefully when an enabled provider has no default model", () => {
-    render(
-      <ProviderDetails
-        provider={makeProvider({ id: "groq", name: "Groq", defaultModel: undefined })}
-        actions={NOOP_ACTIONS}
-      />,
+  it("shows removed migration guidance without selectable actions", () => {
+    const removedRow = ROWS.find(
+      (row) => row.configuration?.configurationId === "legacy-removed-zai-plan",
     );
-    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
-    expect(screen.getByText(/No default model/)).toBeInTheDocument();
+    if (!removedRow) throw new Error("Missing removed fixture");
+
+    render(<ProviderDetails row={removedRow} actions={NOOP_ACTIONS} />);
+    expect(screen.getByText(/Migration/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Removed records cannot be selected/i }),
+    ).toBeDisabled();
   });
 
   it("prompts to select a provider when none is provided", () => {
-    render(<ProviderDetails provider={null} actions={NOOP_ACTIONS} />);
+    render(<ProviderDetails row={null} actions={NOOP_ACTIONS} />);
     expect(screen.getByText(/select a provider to view details/i)).toBeInTheDocument();
   });
 
   it("disables every provider action while a mutation is pending", () => {
-    render(
-      <ProviderDetails
-        provider={makeProvider({ hasApiKey: true, model: "gemini-2.5-flash" })}
-        actions={NOOP_ACTIONS}
-        isPending
-      />,
-    );
+    render(<ProviderDetails row={GEMINI_ROW} actions={NOOP_ACTIONS} isPending />);
 
     for (const button of screen.getAllByRole("button")) {
       expect(button).toBeDisabled();
     }
-  });
-
-  it("prevents native scrolling only when vertical navigation moves between provider actions", async () => {
-    const user = userEvent.setup();
-    render(
-      <KeyboardProvider>
-        <ActionNavigationSubject />
-      </KeyboardProvider>,
-    );
-
-    const firstAction = screen.getByRole("button", { name: "Select Provider" });
-    const secondAction = screen.getByRole("button", { name: "Configure API Key" });
-    await user.click(firstAction);
-
-    const handled = new KeyboardEvent("keydown", {
-      key: "ArrowDown",
-      bubbles: true,
-      cancelable: true,
-    });
-    act(() => firstAction.dispatchEvent(handled));
-
-    expect(handled.defaultPrevented).toBe(true);
-    await waitFor(() => expect(secondAction).toHaveFocus());
-
-    const lastAction = screen.getByRole("button", { name: "Select Model" });
-    await user.click(lastAction);
-    const boundary = new KeyboardEvent("keydown", {
-      key: "ArrowDown",
-      bubbles: true,
-      cancelable: true,
-    });
-    act(() => lastAction.dispatchEvent(boundary));
-
-    expect(boundary.defaultPrevented).toBe(false);
-    expect(lastAction).toHaveFocus();
-
-    const outside = screen.getByRole("button", { name: "Outside actions" });
-    await user.click(outside);
-    const native = new KeyboardEvent("keydown", {
-      key: "ArrowDown",
-      bubbles: true,
-      cancelable: true,
-    });
-    act(() => outside.dispatchEvent(native));
-
-    expect(native.defaultPrevented).toBe(false);
-    expect(outside).toHaveFocus();
   });
 });

@@ -1,95 +1,118 @@
 import { FooterProvider } from "@diffgazer/core/footer";
+import { readinessUsesTransportNeutralCopy } from "@diffgazer/core/review";
+import { REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import {
+  CLI_UNSUPPORTED_CONFIGURATION,
+  LOCAL_OPENAI_CONFIGURATION,
+  makeReadiness,
+  REMOVED_ZAI_CODING_CONFIGURATION,
+} from "@/testing/configuration-fixtures";
+import { getReadinessActionLabel } from "../lib/readiness-presentation";
+import {
   ApiKeyMissingView,
   type ApiKeyMissingViewProps,
   ConfigurationErrorView,
+  ReviewTerminalReceiptView,
 } from "./api-key-missing-view";
 
-const PROVIDER_MISSING = ["provider"] as const;
-
-type RenderViewProps = Pick<ApiKeyMissingViewProps, "missing"> &
-  Partial<Omit<ApiKeyMissingViewProps, "missing">>;
+type RenderViewProps = Pick<ApiKeyMissingViewProps, "readiness" | "primaryLabel"> &
+  Partial<Omit<ApiKeyMissingViewProps, "readiness" | "primaryLabel">>;
 
 function renderView(props: RenderViewProps) {
+  const readiness = props.readiness ?? makeReadiness("unconfigured");
   const onBack = props.onBack ?? vi.fn();
   const onNavigateSettings = props.onNavigateSettings ?? vi.fn();
+  const primaryLabel = props.primaryLabel ?? getReadinessActionLabel(readiness.action);
 
   const view = render(
     <KeyboardProvider>
       <FooterProvider>
         <ApiKeyMissingView
-          activeProvider={props.activeProvider}
+          readiness={readiness}
+          productLabel={props.productLabel}
+          primaryLabel={primaryLabel}
           onBack={onBack}
           onNavigateSettings={onNavigateSettings}
-          missing={props.missing}
           primaryDisabled={props.primaryDisabled}
         />
       </FooterProvider>
     </KeyboardProvider>,
   );
 
-  return { ...view, onBack, onNavigateSettings };
+  return { ...view, onBack, onNavigateSettings, readiness, primaryLabel };
 }
 
 describe("ApiKeyMissingView", () => {
-  it("focuses the Configure Provider action by default", async () => {
-    renderView({ missing: PROVIDER_MISSING });
+  it("focuses the readiness action by default", async () => {
+    const readiness = makeReadiness("unconfigured");
+    renderView({ readiness, primaryLabel: getReadinessActionLabel(readiness.action) });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Configure Provider" })).toHaveFocus();
+      expect(screen.getByRole("button", { name: "Create configuration" })).toHaveFocus();
     });
   });
 
   it("moves focus between actions with ArrowRight/ArrowLeft", async () => {
     const user = userEvent.setup();
-    renderView({ missing: PROVIDER_MISSING });
+    const readiness = makeReadiness("unconfigured");
+    renderView({ readiness, primaryLabel: getReadinessActionLabel(readiness.action) });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Configure Provider" })).toHaveFocus();
+      expect(screen.getByRole("button", { name: "Create configuration" })).toHaveFocus();
     });
 
     await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("button", { name: "Back to Home" })).toHaveFocus();
 
     await user.keyboard("{ArrowLeft}");
-    expect(screen.getByRole("button", { name: "Configure Provider" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Create configuration" })).toHaveFocus();
   });
 
   it("Enter on the focused Back action calls only onBack (regression: no double-fire)", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     const onNavigateSettings = vi.fn();
-    renderView({ missing: PROVIDER_MISSING, onBack, onNavigateSettings });
+    const readiness = makeReadiness("unconfigured");
+    renderView({
+      readiness,
+      primaryLabel: getReadinessActionLabel(readiness.action),
+      onBack,
+      onNavigateSettings,
+    });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Configure Provider" })).toHaveFocus();
+      expect(screen.getByRole("button", { name: "Create configuration" })).toHaveFocus();
     });
 
     await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("button", { name: "Back to Home" })).toHaveFocus();
 
     await user.keyboard("{Enter}");
-    // call-count IS the contract: this test guards a regression where Enter double-fires (count must be exactly 1, not 2)
     expect(onBack).toHaveBeenCalledTimes(1);
     expect(onNavigateSettings).not.toHaveBeenCalled();
   });
 
-  it("Enter on the focused Configure Provider action calls only onNavigateSettings", async () => {
+  it("Enter on the focused readiness action calls only onNavigateSettings", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     const onNavigateSettings = vi.fn();
-    renderView({ missing: PROVIDER_MISSING, onBack, onNavigateSettings });
+    const readiness = makeReadiness("unconfigured");
+    renderView({
+      readiness,
+      primaryLabel: getReadinessActionLabel(readiness.action),
+      onBack,
+      onNavigateSettings,
+    });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Configure Provider" })).toHaveFocus();
+      expect(screen.getByRole("button", { name: "Create configuration" })).toHaveFocus();
     });
 
     await user.keyboard("{Enter}");
-    // call-count IS the contract: Enter on focused action must fire exactly once (no double-fire regression)
     expect(onNavigateSettings).toHaveBeenCalledTimes(1);
     expect(onBack).not.toHaveBeenCalled();
   });
@@ -98,14 +121,19 @@ describe("ApiKeyMissingView", () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     const onNavigateSettings = vi.fn();
-    renderView({ missing: PROVIDER_MISSING, onBack, onNavigateSettings });
+    const readiness = makeReadiness("unconfigured");
+    renderView({
+      readiness,
+      primaryLabel: getReadinessActionLabel(readiness.action),
+      onBack,
+      onNavigateSettings,
+    });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Configure Provider" })).toHaveFocus();
+      expect(screen.getByRole("button", { name: "Create configuration" })).toHaveFocus();
     });
 
     await user.keyboard("{Escape}");
-    // call-count IS the contract: Escape must fire onBack exactly once (no double-fire regardless of focused action)
     expect(onBack).toHaveBeenCalledTimes(1);
     expect(onNavigateSettings).not.toHaveBeenCalled();
   });
@@ -114,14 +142,16 @@ describe("ApiKeyMissingView", () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
     const onNavigateSettings = vi.fn();
+    const readiness = makeReadiness("unconfigured");
     renderView({
-      missing: PROVIDER_MISSING,
+      readiness,
+      primaryLabel: getReadinessActionLabel(readiness.action),
       onBack,
       onNavigateSettings,
       primaryDisabled: true,
     });
 
-    const configure = screen.getByRole("button", { name: "Configure Provider" });
+    const configure = screen.getByRole("button", { name: "Create configuration" });
     const back = screen.getByRole("button", { name: "Back to Home" });
     expect(configure).toBeDisabled();
     expect(back).toBeEnabled();
@@ -134,9 +164,43 @@ describe("ApiKeyMissingView", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it("renders the storage requirement from the loaded setup status", () => {
-    renderView({ missing: ["secretsStorage"] });
-    expect(screen.getByText("Secrets Storage Required")).toBeInTheDocument();
+  it("renders transport-neutral local unreachable readiness without API-key copy", () => {
+    const readiness = makeReadiness("local-endpoint-unreachable", "local-openai");
+    renderView({
+      readiness,
+      productLabel: LOCAL_OPENAI_CONFIGURATION.productId,
+      primaryLabel: getReadinessActionLabel(readiness.action),
+    });
+
+    expect(screen.getByText(/Configuration Not Ready \(local-openai\)/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Test readiness" })).toBeInTheDocument();
+    expect(readinessUsesTransportNeutralCopy(readiness)).toBe(true);
+    expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
+  });
+
+  it("routes CLI unsupported readiness to the inspect action without API-key copy", () => {
+    const readiness = makeReadiness("unsupported", "codex-cli");
+    renderView({
+      readiness,
+      productLabel: CLI_UNSUPPORTED_CONFIGURATION.productId,
+      primaryLabel: getReadinessActionLabel(readiness.action),
+    });
+
+    expect(screen.getByRole("button", { name: "Inspect configuration" })).toBeInTheDocument();
+    expect(screen.getByText(/not supported in the current environment/i)).toBeInTheDocument();
+    expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
+  });
+
+  it("routes removed readiness to the delete action", () => {
+    const readiness = makeReadiness("removed", REMOVED_PRODUCT_ID);
+    renderView({
+      readiness,
+      productLabel: REMOVED_ZAI_CODING_CONFIGURATION.productId,
+      primaryLabel: getReadinessActionLabel(readiness.action),
+    });
+
+    expect(screen.getByRole("button", { name: "Delete configuration" })).toBeInTheDocument();
+    expect(screen.getByText(/removed and cannot run reviews/i)).toBeInTheDocument();
   });
 });
 
@@ -156,5 +220,44 @@ describe("ConfigurationErrorView", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Configuration Unavailable");
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+});
+
+describe("ReviewTerminalReceiptView", () => {
+  it("reports usage unavailable with shared presentation copy", () => {
+    render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <ReviewTerminalReceiptView
+            outcome="cancelled"
+            usageAvailability="unavailable"
+            onBack={() => {}}
+          />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Review Cancelled");
+    expect(
+      screen.getByText(/Usage unavailable: Usage reporting is not available/i),
+    ).toBeInTheDocument();
+  });
+
+  it("exposes no secret values in the rendered receipt DOM", () => {
+    const { container } = render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <ReviewTerminalReceiptView
+            outcome="transport-failed"
+            usageAvailability="required-missing"
+            onBack={() => {}}
+          />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    expect(container.textContent).not.toMatch(/sk-[A-Za-z0-9_-]{8,}/i);
+    expect(container.textContent).not.toMatch(/Bearer\s+/i);
+    expect(container.textContent).not.toMatch(/\/Users\//);
   });
 });

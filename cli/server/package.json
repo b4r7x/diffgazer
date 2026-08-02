@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -R src/shared/lib/ai/providers/fixtures dist/shared/lib/ai/providers/fixtures",
     "dev": "tsx src/serve.ts",
     "start": "node dist/serve.js",
     "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
@@ -20,16 +20,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@ai-sdk/google": "^3.0.21",
-    "@ai-sdk/openai-compatible": "^2.0.48",
     "@diffgazer/core": "workspace:*",
     "@hono/node-server": "^1.19.13",
     "@hono/zod-validator": "^0.7.6",
     "@napi-rs/keyring": "^1.2.0",
-    "@openrouter/ai-sdk-provider": "^2.1.1",
-    "ai": "^6.0.71",
     "hono": "^4.12.18",
-    "zhipu-ai-provider": "^0.2.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {

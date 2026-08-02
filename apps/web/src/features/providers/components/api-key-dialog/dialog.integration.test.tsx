@@ -1,11 +1,18 @@
 import { FooterProvider } from "@diffgazer/core/footer";
+import type { ProviderListRow, ProviderManagementOutcome } from "@diffgazer/core/providers";
+import type { ClientConfigurationSummary } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { ApiKeyDialog, type ApiKeyDialogProps } from "./dialog";
+import {
+  buildProviderRows,
+  LOCAL_OPENAI_CONFIGURATION,
+  unconfiguredRow,
+} from "../../testing/fixtures";
+import { ApiKeyDialog } from "./dialog";
 
 beforeAll(() => {
   if (typeof HTMLDialogElement === "undefined") return;
@@ -17,95 +24,140 @@ beforeAll(() => {
   };
 });
 
-function renderOpenApiKeyDialog() {
-  return render(
+function requireProviderRow(predicate: (row: ProviderListRow) => boolean): ProviderListRow {
+  const row = buildProviderRows().find(predicate);
+  if (!row) {
+    throw new Error("Expected provider row fixture was not found");
+  }
+  return row;
+}
+
+function localHttpRow(): ProviderListRow {
+  return requireProviderRow((row) => row.configuration?.configurationId === "local-openai-1");
+}
+
+function localCliRow(): ProviderListRow {
+  return requireProviderRow((row) => row.product.productId === "codex-cli");
+}
+
+import type { ApiKeyDialogProps } from "./dialog";
+
+const SUCCEEDED = { status: "succeeded" } as const;
+
+function renderSetupDialog(
+  row: ProviderListRow,
+  handlers: Partial<Pick<ApiKeyDialogProps, "onCreate" | "onUpdate">> = {},
+) {
+  const onCreate = vi.fn().mockResolvedValue(SUCCEEDED);
+  const onUpdate = vi.fn().mockResolvedValue(SUCCEEDED);
+  const onOpenChange = vi.fn();
+
+  render(
     <FooterProvider>
       <KeyboardProvider>
         <ApiKeyDialog
           open
-          onOpenChange={vi.fn()}
-          providerName="Z.AI"
-          envVarName="ZAI_API_KEY"
-          onSubmit={vi.fn().mockResolvedValue(true)}
+          row={row}
+          onOpenChange={onOpenChange}
+          onCreate={handlers.onCreate ?? onCreate}
+          onUpdate={handlers.onUpdate ?? onUpdate}
         />
       </KeyboardProvider>
     </FooterProvider>,
   );
+
+  return { onCreate, onUpdate, onOpenChange };
 }
 
-function DeferredApiKeyDialog({ onSubmit }: Pick<ApiKeyDialogProps, "onSubmit">) {
-  const [open, setOpen] = useState(true);
+describe("ApiKeyDialog family-specific setup controls", () => {
+  it("shows hosted credential methods for hosted-api setup", () => {
+    renderSetupDialog(unconfiguredRow("gemini"));
 
-  return (
-    <FooterProvider>
-      <KeyboardProvider>
-        <ApiKeyDialog
-          open={open}
-          onOpenChange={setOpen}
-          providerName="Z.AI"
-          envVarName="ZAI_API_KEY"
-          onSubmit={onSubmit}
-        />
-      </KeyboardProvider>
-    </FooterProvider>
-  );
-}
-
-function ReopenableApiKeyDialog({ onSubmit }: Pick<ApiKeyDialogProps, "onSubmit">) {
-  const [open, setOpen] = useState(true);
-
-  return (
-    <FooterProvider>
-      <KeyboardProvider>
-        <button type="button" onClick={() => setOpen(true)}>
-          Reopen API Key
-        </button>
-        <ApiKeyDialog
-          open={open}
-          onOpenChange={setOpen}
-          providerName="Z.AI"
-          envVarName="ZAI_API_KEY"
-          onSubmit={onSubmit}
-        />
-      </KeyboardProvider>
-    </FooterProvider>
-  );
-}
-
-function mockDialogBounds(dialog: HTMLElement) {
-  vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
-    x: 100,
-    y: 100,
-    width: 320,
-    height: 240,
-    top: 100,
-    right: 420,
-    bottom: 340,
-    left: 100,
-    toJSON() {},
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("radio", { name: "Paste Key Now" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("radio", { name: "Import from Env" })).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/Google Gemini API Key/i)).toBeInTheDocument();
   });
-}
 
-describe("ApiKeyDialog footer integration", () => {
-  it("renders dialog kbd hints with the standardized wording and glyphs while open", () => {
-    renderOpenApiKeyDialog();
+  it("forbids credential controls for local-http setup", () => {
+    renderSetupDialog(localHttpRow());
 
-    const dialog = screen.getByRole("dialog", { name: /API Key/ });
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/without storing hosted credentials/i)).toBeInTheDocument();
+    expect(within(dialog).queryByRole("radio", { name: "Paste Key Now" })).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText(/api key/i)).not.toBeInTheDocument();
+  });
 
-    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Confirm" })).toBeInTheDocument();
+  it("forbids credential controls for local-cli setup", () => {
+    renderSetupDialog(localCliRow());
 
-    const kbdNodes = within(dialog).getAllByText((_, element) => element?.tagName === "KBD");
-    const kbdTexts = kbdNodes.map((node) => node.textContent);
-    expect(kbdTexts).toEqual(expect.arrayContaining(["↑/↓", "Enter/Space", "Esc", "Enter"]));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/without storing hosted credentials/i)).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole("radio", { name: "Import from Env" }),
+    ).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText(/api key/i)).not.toBeInTheDocument();
+  });
 
-    expect(within(dialog).getByText("Navigate")).toBeInTheDocument();
-    expect(within(dialog).getByText("Select")).toBeInTheDocument();
+  it("forbids CLI credential, token, and path inputs for local-cli setup", () => {
+    renderSetupDialog(localCliRow());
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByLabelText(/token/i)).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText(/path/i)).not.toBeInTheDocument();
+    expect(within(dialog).queryByLabelText(/credential/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("ApiKeyDialog acknowledgement and write-only secrets", () => {
+  it("requires explicit notice acknowledgement before hosted save", async () => {
+    const user = userEvent.setup();
+    const { onCreate } = renderSetupDialog(unconfiguredRow("gemini"));
+
+    const dialog = screen.getByRole("dialog");
+    const keyInput = within(dialog).getByLabelText(/Google Gemini API Key/i);
+    await user.type(keyInput, "sk-hosted-secret");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(onCreate).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transportFamily: "hosted-api",
+        productId: "gemini",
+        credential: { kind: "literal", value: "sk-hosted-secret" },
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("submits environment credentials without keeping the typed secret in the DOM", async () => {
+    const user = userEvent.setup();
+    const { onCreate } = renderSetupDialog(unconfiguredRow("gemini"));
+
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
+    await user.keyboard("{ArrowUp}{Enter}");
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        credential: { kind: "environment" },
+      }),
+      expect.anything(),
+    );
+    expect(dialog.textContent).not.toContain("sk-");
   });
 
   it("announces a failed save inline and marks the key input invalid without a toast", async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn().mockRejectedValue(new Error("Storage not configured"));
+    const onCreate = vi.fn(async () => {
+      throw new Error("Storage not configured");
+    });
 
     render(
       <FooterProvider>
@@ -113,60 +165,78 @@ describe("ApiKeyDialog footer integration", () => {
           <ApiKeyDialog
             open
             onOpenChange={vi.fn()}
-            providerName="Z.AI"
-            envVarName="ZAI_API_KEY"
-            onSubmit={onSubmit}
+            row={unconfiguredRow("gemini")}
+            onCreate={onCreate}
+            onUpdate={vi.fn()}
           />
         </KeyboardProvider>
       </FooterProvider>,
     );
 
-    const dialog = screen.getByRole("dialog", { name: /API Key/ });
-    const keyInput = within(dialog).getByLabelText("Z.AI API Key");
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
+    const keyInput = within(dialog).getByLabelText(/Google Gemini API Key/i);
     await user.type(keyInput, "sk-test-key");
-    await user.click(within(dialog).getByRole("button", { name: "Confirm" }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
-    // WCAG 3.3.1/4.1.3: the failure is announced inside the focus-trapped dialog.
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
     const alert = await within(dialog).findByRole("alert");
     expect(alert).toHaveTextContent("Storage not configured");
     expect(keyInput).toHaveAttribute("aria-invalid", "true");
     expect(keyInput).toHaveAttribute("aria-describedby", alert.id);
-    // The dialog owns the report; nothing closes it on failure.
+    expect(dialog.textContent).not.toContain("sk-test-key");
     expect(dialog).toBeInTheDocument();
+  });
+});
+
+describe("ApiKeyDialog accessible submit, cancel, and focus", () => {
+  it("renders dialog kbd hints with the standardized wording and glyphs while open", () => {
+    renderSetupDialog(unconfiguredRow("gemini"));
+
+    const dialog = screen.getByRole("dialog", { name: /Create Configuration/ });
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeInTheDocument();
+
+    const kbdNodes = within(dialog).getAllByText((_, element) => element?.tagName === "KBD");
+    const kbdTexts = kbdNodes.map((node) => node.textContent);
+    expect(kbdTexts).toEqual(expect.arrayContaining(["↑/↓", "Enter/Space", "Esc", "Enter"]));
   });
 
   it("submits the method committed with Enter on the real selector", async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn<ApiKeyDialogProps["onSubmit"]>().mockResolvedValue(true);
+    const onCreate = vi.fn().mockResolvedValue(SUCCEEDED);
 
-    render(<DeferredApiKeyDialog onSubmit={onSubmit} />);
+    function StatefulDialog() {
+      const [open, setOpen] = useState(true);
+      return (
+        <ApiKeyDialog
+          open={open}
+          onOpenChange={setOpen}
+          row={unconfiguredRow("gemini")}
+          onCreate={onCreate}
+          onUpdate={vi.fn()}
+        />
+      );
+    }
 
-    const dialog = screen.getByRole("dialog", { name: /API Key/ });
-    const env = within(dialog).getByRole("radio", { name: "Import from Env" });
-    env.focus();
-    await user.keyboard("{Enter}");
+    render(
+      <FooterProvider>
+        <KeyboardProvider>
+          <StatefulDialog />
+        </KeyboardProvider>
+      </FooterProvider>,
+    );
 
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith("env", "ZAI_API_KEY"));
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
+    await user.keyboard("{ArrowUp}{Enter}");
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ credential: { kind: "environment" } }),
+      expect.anything(),
+    );
     await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"));
-  });
-
-  it("resets to Paste when reopened after an environment save", async () => {
-    const user = userEvent.setup();
-    const onSubmit = vi.fn<ApiKeyDialogProps["onSubmit"]>().mockResolvedValue(true);
-
-    render(<ReopenableApiKeyDialog onSubmit={onSubmit} />);
-
-    const dialog = screen.getByRole("dialog", { name: /API Key/ });
-    await user.click(within(dialog).getByRole("radio", { name: "Import from Env" }));
-    await user.click(within(dialog).getByRole("button", { name: "Confirm" }));
-
-    await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"));
-    expect(onSubmit).toHaveBeenCalledWith("env", "ZAI_API_KEY");
-
-    await user.click(screen.getByRole("button", { name: "Reopen API Key" }));
-    const reopenedDialog = screen.getByRole("dialog", { name: /API Key/ });
-    expect(within(reopenedDialog).getByRole("radio", { name: "Paste Key Now" })).toBeChecked();
-    expect(within(reopenedDialog).getByLabelText("Z.AI API Key")).toBeEnabled();
   });
 
   it.each([
@@ -175,37 +245,101 @@ describe("ApiKeyDialog footer integration", () => {
     "backdrop",
   ] as const)("keeps the dialog open when %s is used during a save", async (dismissal) => {
     const user = userEvent.setup();
-    const save = createDeferred<boolean>();
-    const onSubmit = vi.fn<ApiKeyDialogProps["onSubmit"]>().mockReturnValue(save.promise);
+    const save = createDeferred<ProviderManagementOutcome>();
+    const onCreate = vi.fn().mockReturnValue(save.promise);
 
-    render(<DeferredApiKeyDialog onSubmit={onSubmit} />);
+    function StatefulDialog() {
+      const [open, setOpen] = useState(true);
+      return (
+        <ApiKeyDialog
+          open={open}
+          onOpenChange={setOpen}
+          row={unconfiguredRow("gemini")}
+          onCreate={onCreate}
+          onUpdate={vi.fn()}
+        />
+      );
+    }
 
-    const dialog = screen.getByRole("dialog", { name: /API Key/ });
-    const keyInput = within(dialog).getByLabelText("Z.AI API Key");
+    render(
+      <FooterProvider>
+        <KeyboardProvider>
+          <StatefulDialog />
+        </KeyboardProvider>
+      </FooterProvider>,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
+    const keyInput = within(dialog).getByLabelText(/Google Gemini API Key/i);
     await user.type(keyInput, "sk-deferred");
-    await user.click(within(dialog).getByRole("button", { name: "Confirm" }));
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith("paste", "sk-deferred"));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalled());
 
     if (dismissal === "Cancel") {
       expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled();
       await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     } else if (dismissal === "Escape") {
-      // fireEvent retained: jsdom does not synthesize a native dialog cancel event from Escape.
+      // fireEvent retained: dialog cancel is a native Event; userEvent has no cancel dispatch.
       fireEvent(dialog, new Event("cancel", { bubbles: false }));
     } else {
-      mockDialogBounds(dialog);
-      // fireEvent retained: backdrop dismissal requires matching pointer/click coordinates.
+      vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
+        x: 100,
+        y: 100,
+        width: 320,
+        height: 240,
+        top: 100,
+        right: 420,
+        bottom: 340,
+        left: 100,
+        toJSON() {},
+      });
+      // fireEvent retained: outside-click dismissal needs exact client coordinates vs getBoundingClientRect.
       fireEvent.pointerDown(dialog, { clientX: 80, clientY: 120 });
+      // fireEvent retained: outside-click dismissal needs exact client coordinates vs getBoundingClientRect.
       fireEvent.click(dialog, { clientX: 80, clientY: 120 });
     }
 
-    expect(screen.getByRole("dialog", { name: /API Key/ })).toBe(dialog);
+    expect(screen.getByRole("dialog")).toBe(dialog);
 
     await act(async () => {
-      save.resolve(true);
+      save.resolve(SUCCEEDED);
       await save.promise;
     });
     await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"));
+  });
+
+  it("renders a rejected local-http save inline and keeps the dialog open", async () => {
+    const user = userEvent.setup();
+    const onUpdate = vi
+      .fn()
+      .mockResolvedValue({ status: "failed", message: "Local endpoint rejected the write" });
+    const onOpenChange = vi.fn();
+
+    render(
+      <FooterProvider>
+        <KeyboardProvider>
+          <ApiKeyDialog
+            open
+            row={localHttpRow()}
+            onOpenChange={onOpenChange}
+            onCreate={vi.fn().mockResolvedValue(SUCCEEDED)}
+            onUpdate={onUpdate}
+          />
+        </KeyboardProvider>
+      </FooterProvider>,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce());
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Local endpoint rejected the write",
+    );
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(dialog).toBeInTheDocument();
   });
 
   it("returns focus to the trigger button after the dialog closes", async () => {
@@ -216,14 +350,14 @@ describe("ApiKeyDialog footer integration", () => {
       return (
         <>
           <button type="button" onClick={() => setOpen(true)}>
-            Open API Key
+            Open Setup
           </button>
           <ApiKeyDialog
             open={open}
             onOpenChange={setOpen}
-            providerName="Z.AI"
-            envVarName="ZAI_API_KEY"
-            onSubmit={vi.fn().mockResolvedValue(true)}
+            row={unconfiguredRow("gemini")}
+            onCreate={vi.fn().mockResolvedValue(SUCCEEDED)}
+            onUpdate={vi.fn()}
           />
         </>
       );
@@ -237,19 +371,46 @@ describe("ApiKeyDialog footer integration", () => {
       </FooterProvider>,
     );
 
-    const trigger = screen.getByRole("button", { name: "Open API Key" });
+    const trigger = screen.getByRole("button", { name: "Open Setup" });
     await user.click(trigger);
 
-    const dialog = await screen.findByRole("dialog", { name: /API Key/ });
-    expect(dialog).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
-    const cancel = within(dialog).getByRole("button", { name: "Cancel" });
-    await user.click(cancel);
-
-    // fireEvent retained: animationend has no user-event equivalent; dialog close transition completes on this event
     const dialogElement = document.querySelector("dialog");
+    // fireEvent retained: animationEnd is required to finish Radix close before focus restore asserts.
     if (dialogElement) fireEvent.animationEnd(dialogElement);
 
     await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it("completes local-http setup without key or env controls", async () => {
+    const user = userEvent.setup();
+    const { onUpdate } = renderSetupDialog(localHttpRow());
+
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce());
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          transportFamily: "local-http",
+          productId: "local-openai",
+          endpoint: (
+            LOCAL_OPENAI_CONFIGURATION as Extract<
+              ClientConfigurationSummary,
+              { transportFamily: "local-http" }
+            >
+          ).endpoint,
+          authentication: "none",
+          presetId: "lm-studio",
+        }),
+        acknowledgement: expect.objectContaining({ status: "accepted" }),
+      }),
+      expect.anything(),
+    );
+    expect(dialog.textContent).not.toContain("sk-");
   });
 });

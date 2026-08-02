@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -6,6 +6,10 @@ import { describe, expect, it } from "vitest";
 
 const packageRoot = dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
 const configPath = join(packageRoot, "tsconfig.config.json");
+const cliCompatibilityFixturesSource = join(
+  packageRoot,
+  "../server/src/shared/lib/ai/providers/fixtures/cli-compatibility",
+);
 
 const formatDiagnostics = (diagnostics: readonly ts.Diagnostic[]): string =>
   ts.formatDiagnosticsWithColorAndContext(diagnostics, {
@@ -13,6 +17,20 @@ const formatDiagnostics = (diagnostics: readonly ts.Diagnostic[]): string =>
     getCurrentDirectory: () => packageRoot,
     getNewLine: () => "\n",
   });
+
+describe("diffgazer bundle CLI compatibility fixtures", () => {
+  it("ships the empty bundled compatibility records contract from server source fixtures", () => {
+    const compatibilityPath = join(cliCompatibilityFixturesSource, "compatibility-records.json");
+    const unsupportedPath = join(cliCompatibilityFixturesSource, "unsupported-records.json");
+    expect(existsSync(compatibilityPath)).toBe(true);
+    expect(existsSync(unsupportedPath)).toBe(true);
+
+    const compatibilityBundle = JSON.parse(readFileSync(compatibilityPath, "utf-8")) as {
+      records?: unknown[];
+    };
+    expect(compatibilityBundle.records ?? []).toEqual([]);
+  });
+});
 
 describe("root executable TypeScript configs", () => {
   it("type-checks both package configs with resolved Node types", () => {

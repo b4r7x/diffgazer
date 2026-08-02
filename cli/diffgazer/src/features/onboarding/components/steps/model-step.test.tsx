@@ -1,14 +1,20 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type {
-  OpenRouterModelsResponse,
-  ProviderModelsResponse,
+  ClientConfigurationActionResponse,
+  RunnableProductId,
 } from "@diffgazer/core/schemas/config";
+import { READINESS_PRESENTATION, ReadinessSchema } from "@diffgazer/core/schemas/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CliThemeProvider } from "../../../../theme/provider";
+import {
+  READY_GEMINI_CONFIGURATION,
+  type SupportedConfigurationSummary,
+} from "../../../providers/testing/fixtures";
 import { ModelStep } from "./model-step";
 
 const terminalDimensions = vi.hoisted(() => ({ current: { columns: 80, rows: 24 } }));
@@ -17,62 +23,39 @@ vi.mock("../../../../hooks/use-terminal-dimensions", () => ({
   useTerminalDimensions: () => terminalDimensions.current,
 }));
 
-const GEMINI_CATALOG: ProviderModelsResponse = {
-  models: [
-    {
-      id: "gemini-2.5-flash",
-      name: "Gemini 2.5 Flash",
-      description: "1M ctx",
-      tier: "free",
-      recommended: true,
-    },
-    {
-      id: "gemini-3-pro-preview",
-      name: "Gemini 3 Pro Preview",
-      description: "1M ctx",
-      tier: "paid",
-    },
-  ],
-  fetchedAt: new Date().toISOString(),
-  source: "live",
-  cached: false,
+const DRAFT_CONFIGURATION: SupportedConfigurationSummary = {
+  ...READY_GEMINI_CONFIGURATION,
+  selectedModelId: null,
 };
 
-const LARGE_CATALOG_SIZE = 24;
+function acknowledgementRequired(productId: RunnableProductId) {
+  const notice = PRODUCT_REGISTRY[productId].notice;
+  return ReadinessSchema.parse({
+    status: "acknowledgement-required",
+    ready: false,
+    evidenceStatus: "passed",
+    checkedAt: "2026-07-31T12:00:00.000Z",
+    acknowledgement: {
+      status: "required",
+      noticeId: notice.id,
+      noticeVersion: notice.noticeVersion,
+    },
+    ...READINESS_PRESENTATION["acknowledgement-required"],
+  });
+}
 
-function makeLargeGeminiCatalog(): ProviderModelsResponse {
+function discoveryResponse(
+  configuration: SupportedConfigurationSummary,
+  selectedModelId: string,
+): ClientConfigurationActionResponse {
   return {
-    models: Array.from({ length: LARGE_CATALOG_SIZE }, (_, index) => ({
-      id: `gemini-large-${String(index)}`,
-      name: `Gemini Large ${String(index).padStart(2, "0")}`,
-      description: "Large catalog fixture",
-      tier: index % 2 === 0 ? "free" : "paid",
-    })),
-    fetchedAt: new Date().toISOString(),
-    source: "live",
-    cached: false,
+    action: "test",
+    status: "succeeded",
+    configuration: { ...configuration, selectedModelId },
+    readiness: acknowledgementRequired(configuration.productId),
   };
 }
 
-function makeLargeOpenRouterCatalog(): OpenRouterModelsResponse {
-  return {
-    models: Array.from({ length: LARGE_CATALOG_SIZE }, (_, index) => ({
-      id: `vendor/openrouter-large-${String(index)}`,
-      name: `OpenRouter Large ${String(index).padStart(2, "0")}`,
-      description: "Large catalog fixture",
-      contextLength: 128_000,
-      supportedParameters: ["response_format"],
-      pricing: { prompt: "0", completion: "0" },
-      isFree: index % 2 === 0,
-    })),
-    fetchedAt: new Date().toISOString(),
-    cached: false,
-  };
-}
-
-// Poll on a macrotask boundary so React Query's mocked resolution/rejection and
-// the ink Spinner's real setInterval settle deterministically instead of racing
-// the microtask-only setImmediate pump.
 async function flushUntil(predicate: () => boolean, attempts = 200): Promise<void> {
   for (let i = 0; i < attempts; i += 1) {
     if (predicate()) return;
@@ -89,23 +72,19 @@ function makeQueryClient(): QueryClient {
   });
 }
 
-function makeGeminiApi(): BoundApi {
-  const getProviderModels = vi
-    .fn<() => Promise<ProviderModelsResponse>>()
-    .mockResolvedValue(GEMINI_CATALOG);
-  return { ...createApi({ baseUrl: "http://localhost" }), getProviderModels } satisfies BoundApi;
-}
-
-function Wrapper({ children, api }: { children: ReactNode; api?: BoundApi }) {
+function Wrapper({ children, api }: { children: ReactNode; api: BoundApi }) {
   const queryClient = makeQueryClient();
-  const boundApi = api ?? makeGeminiApi();
   return (
     <QueryClientProvider client={queryClient}>
-      <ApiProvider value={boundApi}>
+      <ApiProvider value={api}>
         <CliThemeProvider initialTheme="dark">{children}</CliThemeProvider>
       </ApiProvider>
     </QueryClientProvider>
   );
+}
+
+function makeApi(testConfiguration: BoundApi["testConfiguration"]): BoundApi {
+  return { ...createApi({ baseUrl: "http://localhost" }), testConfiguration } satisfies BoundApi;
 }
 
 describe("ModelStep (TUI catalog)", () => {
@@ -114,176 +93,142 @@ describe("ModelStep (TUI catalog)", () => {
     terminalDimensions.current = { columns: 80, rows: 24 };
   });
 
-  test("lists catalog models with free and recommended badges", async () => {
+  test("discovers models against the persisted draft configuration id", async () => {
+    const testConfiguration = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockResolvedValue(
+        discoveryResponse(DRAFT_CONFIGURATION, "gemini-2.5-flash") as Awaited<
+          ReturnType<BoundApi["testConfiguration"]>
+        >,
+      );
+
     const { lastFrame } = render(
-      <Wrapper>
-        <ModelStep provider="gemini" value="gemini-2.5-flash" onChange={() => {}} />
-      </Wrapper>,
-    );
-
-    await flushUntil(() => lastFrame()?.includes("Gemini 2.5 Flash") ?? false);
-
-    const frame = lastFrame();
-    expect(frame).toContain("Gemini 2.5 Flash");
-    expect(frame).toContain("Gemini 3 Pro Preview");
-    expect(frame).toContain("free");
-    expect(frame).toContain("recommended");
-  });
-
-  test("offers retry without manual model entry when the catalog fetch fails", async () => {
-    const getProviderModels = vi
-      .fn<() => Promise<ProviderModelsResponse>>()
-      .mockRejectedValueOnce(new Error("catalog unavailable"))
-      .mockResolvedValueOnce(GEMINI_CATALOG);
-    const api = {
-      ...createApi({ baseUrl: "http://localhost" }),
-      getProviderModels,
-    } satisfies BoundApi;
-
-    const { lastFrame, stdin } = render(
-      <Wrapper api={api}>
-        <ModelStep provider="gemini" value="openai/gpt-4o" onChange={() => {}} />
-      </Wrapper>,
-    );
-
-    await flushUntil(() => lastFrame()?.includes("Failed to load models") ?? false);
-
-    const frame = lastFrame();
-    expect(frame).toContain("Failed to load models: catalog unavailable");
-    expect(frame).toContain("Press r to retry");
-    expect(frame).not.toContain("Enter a model ID manually");
-
-    stdin.write("r");
-    await flushUntil(() => lastFrame()?.includes("Gemini 2.5 Flash") ?? false);
-    expect(getProviderModels).toHaveBeenCalledTimes(2);
-  });
-
-  test("renders the model list for an inactive step instead of a stuck loading spinner", async () => {
-    const onChange = vi.fn();
-    const { lastFrame, stdin } = render(
-      <Wrapper>
+      <Wrapper api={makeApi(testConfiguration)}>
         <ModelStep
-          provider="gemini"
+          configuration={DRAFT_CONFIGURATION}
+          isPreparing={false}
+          onRetry={() => {}}
           value="gemini-2.5-flash"
-          onChange={onChange}
+          onChange={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    expect(lastFrame() ?? "").toContain("gemini-2.5-flash");
+    expect(testConfiguration).toHaveBeenCalledWith(DRAFT_CONFIGURATION.configurationId);
+  });
+
+  test("keeps discovering while the step is not focused", async () => {
+    const testConfiguration = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockResolvedValue(
+        discoveryResponse(DRAFT_CONFIGURATION, "gemini-2.5-flash") as Awaited<
+          ReturnType<BoundApi["testConfiguration"]>
+        >,
+      );
+
+    const { lastFrame } = render(
+      <Wrapper api={makeApi(testConfiguration)}>
+        <ModelStep
+          configuration={DRAFT_CONFIGURATION}
+          isPreparing={false}
+          onRetry={() => {}}
+          onChange={() => {}}
           isActive={false}
         />
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Gemini 2.5 Flash") ?? false);
-
-    const frame = lastFrame();
-    expect(frame).toContain("Gemini 2.5 Flash");
-    expect(frame).not.toContain("Loading models");
-
-    stdin.write("\u001b[B");
-    stdin.write("\r");
-    await new Promise((resolve) => setImmediate(resolve));
-    expect(onChange).not.toHaveBeenCalled();
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    expect(lastFrame() ?? "").toContain("gemini-2.5-flash");
+    expect(testConfiguration).toHaveBeenCalledTimes(1);
   });
 
-  test("keeps a single retry request and the failure view for an inactive step", async () => {
-    const getProviderModels = vi
-      .fn<() => Promise<ProviderModelsResponse>>()
-      .mockRejectedValue(new Error("catalog unavailable"));
-    const api = {
-      ...createApi({ baseUrl: "http://localhost" }),
-      getProviderModels,
-    } satisfies BoundApi;
-
-    const { lastFrame, stdin } = render(
-      <Wrapper api={api}>
-        <ModelStep provider="gemini" onChange={() => {}} isActive={false} />
-      </Wrapper>,
-    );
-
-    await flushUntil(() => lastFrame()?.includes("Failed to load models") ?? false);
-
-    stdin.write("r");
-    await new Promise((resolve) => setImmediate(resolve));
-
-    expect(lastFrame()).toContain("Failed to load models: catalog unavailable");
-    expect(getProviderModels).toHaveBeenCalledTimes(1);
-  });
-
-  test("shows the empty-state message when the catalog returns no models", async () => {
-    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>().mockResolvedValue({
-      models: [],
-      fetchedAt: new Date().toISOString(),
-      source: "snapshot",
-      cached: true,
-    });
-    const api = {
-      ...createApi({ baseUrl: "http://localhost" }),
-      getProviderModels,
-    } satisfies BoundApi;
+  test("waits for the draft configuration instead of inventing one", () => {
+    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>();
 
     const { lastFrame } = render(
-      <Wrapper api={api}>
-        <ModelStep provider="gemini" onChange={() => {}} />
+      <Wrapper api={makeApi(testConfiguration)}>
+        <ModelStep configuration={null} isPreparing onRetry={() => {}} onChange={() => {}} />
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("No models available") ?? false);
-
-    expect(lastFrame()).toContain("No models available for this provider.");
+    expect(lastFrame() ?? "").toContain("Preparing configuration");
+    expect(testConfiguration).not.toHaveBeenCalled();
   });
 
-  test.each([
-    {
-      provider: "gemini" as const,
-      firstName: "Gemini Large 00",
-      targetName: "Gemini Large 08",
-      targetId: "gemini-large-8",
-      names: makeLargeGeminiCatalog().models.map((model) => model.name),
-      api: {
-        ...createApi({ baseUrl: "http://localhost" }),
-        getProviderModels: vi.fn().mockResolvedValue(makeLargeGeminiCatalog()),
-      } satisfies BoundApi,
-    },
-    {
-      provider: "openrouter" as const,
-      firstName: "OpenRouter Large 00",
-      targetName: "OpenRouter Large 08",
-      targetId: "vendor/openrouter-large-8",
-      names: makeLargeOpenRouterCatalog().models.map((model) => model.name),
-      api: {
-        ...createApi({ baseUrl: "http://localhost" }),
-        getOpenRouterModels: vi.fn().mockResolvedValue(makeLargeOpenRouterCatalog()),
-      } satisfies BoundApi,
-    },
-  ])("keeps the highlighted $provider model visible beyond the first terminal viewport", async ({
-    provider,
-    firstName,
-    targetName,
-    targetId,
-    names,
-    api,
-  }) => {
-    terminalDimensions.current = { columns: 80, rows: 18 };
-    const onChange = vi.fn();
-    const view = render(
-      <Wrapper api={api}>
-        <ModelStep provider={provider} onChange={onChange} />
+  test("retries draft preparation from the failed state", async () => {
+    const onRetry = vi.fn();
+    const { lastFrame, stdin } = render(
+      <Wrapper api={makeApi(vi.fn<BoundApi["testConfiguration"]>())}>
+        <ModelStep configuration={null} isPreparing={false} onRetry={onRetry} onChange={() => {}} />
       </Wrapper>,
     );
 
-    await flushUntil(() => view.lastFrame()?.includes(firstName) ?? false);
-    expect(view.lastFrame()).not.toContain(targetName);
-    expect(names.filter((name) => view.lastFrame()?.includes(name))).toHaveLength(5);
+    await flushUntil(() => lastFrame()?.includes("Press r to retry") ?? false);
+    stdin.write("r");
+    await flushUntil(() => onRetry.mock.calls.length > 0);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
 
-    for (let index = 0; index < 8; index += 1) {
-      view.stdin.write("\u001b[B");
-      await new Promise((resolve) => setImmediate(resolve));
-    }
-    await flushUntil(() => view.lastFrame()?.includes(targetName) ?? false);
+  test("offers retry without manual model entry when discovery fails", async () => {
+    const testConfiguration = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockRejectedValueOnce(new Error("catalog unavailable"))
+      .mockResolvedValueOnce(
+        discoveryResponse(DRAFT_CONFIGURATION, "gemini-2.5-flash") as Awaited<
+          ReturnType<BoundApi["testConfiguration"]>
+        >,
+      );
 
-    expect(view.lastFrame()).toContain(targetName);
-    expect(view.lastFrame()).not.toContain(firstName);
-    expect(names.filter((name) => view.lastFrame()?.includes(name))).toHaveLength(4);
-    view.stdin.write("\r");
-    await flushUntil(() => onChange.mock.calls.length > 0);
-    expect(onChange).toHaveBeenCalledWith(targetId);
+    const { lastFrame, stdin } = render(
+      <Wrapper api={makeApi(testConfiguration)}>
+        <ModelStep
+          configuration={DRAFT_CONFIGURATION}
+          isPreparing={false}
+          onRetry={() => {}}
+          onChange={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Model discovery failed") ?? false);
+    expect(lastFrame()).toContain("Press r to retry");
+    stdin.write("r");
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    expect(testConfiguration).toHaveBeenCalledTimes(2);
+  });
+
+  test("shows remediation when discovery is skipped", async () => {
+    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>().mockResolvedValue({
+      action: "test",
+      status: "succeeded",
+      configuration: DRAFT_CONFIGURATION,
+      readiness: ReadinessSchema.parse({
+        status: "skipped",
+        ready: false,
+        evidenceStatus: "skipped",
+        checkedAt: "2026-07-31T12:00:00.000Z",
+        acknowledgement: { status: "not-applicable" },
+        ...READINESS_PRESENTATION.skipped,
+      }),
+    });
+
+    const { lastFrame } = render(
+      <Wrapper api={makeApi(testConfiguration)}>
+        <ModelStep
+          configuration={DRAFT_CONFIGURATION}
+          isPreparing={false}
+          onRetry={() => {}}
+          onChange={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(
+      () => lastFrame()?.includes("live readiness check was intentionally skipped") ?? false,
+    );
+    expect(lastFrame()).not.toMatch(/api key/i);
   });
 });

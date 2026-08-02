@@ -96,6 +96,9 @@ export function makeReviewLifecycleBase(
     start: {
       hasStarted: overrides.hasStarted ?? true,
       hasStreamed: overrides.hasStreamed ?? true,
+      canStart: overrides.gate !== "unconfigured",
+      identity: null,
+      readinessGate: "ready",
     },
     reset: overrides.reset ?? vi.fn(),
     gate: resolveGate({ gate: overrides.gate, isNoDiffError, isTerminalStreamError }),

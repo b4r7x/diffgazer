@@ -287,7 +287,7 @@ describe("ReviewScreen", () => {
 
     const fresh = renderReviewScreen({ screen: "review", mode: "staged" });
 
-    expect(fresh.lastFrame()).toMatch(/model required|api key/i);
+    expect(fresh.lastFrame()).toMatch(/configuration not ready/i);
     expect(apiMocks.createReview).not.toHaveBeenCalled();
   });
 });

@@ -237,6 +237,7 @@ describe("ReviewProgressView (TUI) layout", () => {
         fileProgress={{ total: 12, current: 1, currentFile: "src/a.ts", completed: [] }}
         isStreaming={false}
         error="API-key rejected"
+        transportFamily="hosted-api"
         notices={[]}
         onGoToSettings={vi.fn()}
         issuesFound={0}

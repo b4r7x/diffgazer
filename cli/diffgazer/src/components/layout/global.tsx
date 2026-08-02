@@ -37,9 +37,24 @@ export function useContentZone(): ContentZone {
 function ConnectedHeader() {
   const { canGoBack } = useNavigation();
   const { data, isLoading } = useInit();
-
-  const providerStatus = getProviderDisplayStatus(isLoading, data?.configured ?? false);
-  const providerName = getProviderDisplay(data?.config?.provider, data?.config?.model);
+  const selected = data?.configurations?.find(
+    ({ configuration }) => configuration.configurationId === data?.selectedConfigurationId,
+  );
+  const providerStatus = selected
+    ? getProviderDisplayStatus(selected.readiness, selected.configuration.transportFamily)
+    : {
+        status: "unconfigured" as const,
+        action: "create" as const,
+        label: isLoading ? "Loading" : "Not configured",
+        variant: "warning" as const,
+        explanation: "",
+        remediation: "",
+        accessibleText: isLoading ? "Loading" : "Not configured",
+      };
+  const providerName = getProviderDisplay(
+    selected?.configuration.status === "supported" ? selected.configuration.productId : undefined,
+    selected?.configuration.selectedModelId ?? undefined,
+  );
 
   return (
     <Header providerName={providerName} providerStatus={providerStatus} showBack={canGoBack} />

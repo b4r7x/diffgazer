@@ -7,6 +7,7 @@ import {
   ClientConfigurationNoticeSchema,
   ClientConfigurationSummarySchema,
 } from "./provider-config.js";
+import { REMOVED_PRODUCT_ID } from "./providers.js";
 import { READINESS_PRESENTATION } from "./readiness.js";
 
 const hostedInput = {
@@ -257,11 +258,11 @@ describe("client configuration actions", () => {
     ).toBe(false);
   });
 
-  it("rejects zai-coding as configuration input while preserving ID-based deletion", () => {
+  it("rejects REMOVED_PRODUCT_ID as configuration input while preserving ID-based deletion", () => {
     expect(
       ClientConfigurationActionSchema.safeParse({
         action: "create",
-        input: { ...hostedInput, productId: "zai-coding" },
+        input: { ...hostedInput, productId: REMOVED_PRODUCT_ID },
         acknowledgement,
       }).success,
     ).toBe(false);
@@ -270,7 +271,7 @@ describe("client configuration actions", () => {
         action: "update",
         configurationId: "configuration-1",
         expectedRevision: 3,
-        input: { ...hostedInput, productId: "zai-coding" },
+        input: { ...hostedInput, productId: REMOVED_PRODUCT_ID },
         acknowledgement,
       }).success,
     ).toBe(false);
@@ -594,12 +595,12 @@ describe("client configuration responses", () => {
         revision: 1,
         status: "removed",
         transportFamily: "hosted-api",
-        productId: "zai-coding",
+        productId: REMOVED_PRODUCT_ID,
         selectedModelId: null,
         notices: [],
         availableActions: ["inspect", "delete"],
       }),
-    ).toMatchObject({ status: "removed", productId: "zai-coding" });
+    ).toMatchObject({ status: "removed", productId: REMOVED_PRODUCT_ID });
   });
 
   it.each([

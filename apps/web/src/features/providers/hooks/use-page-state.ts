@@ -1,18 +1,40 @@
+import {
+  findProviderById,
+  getProviderRowId,
+  type ProviderDialogOwner,
+  type ProviderListRow,
+} from "@diffgazer/core/providers";
 import { resolveSelectedId } from "@diffgazer/core/review";
-import type { ProviderWithStatus } from "@diffgazer/core/schemas/config";
 import { useRef, useState } from "react";
 import { useProvidersKeyboard } from "@/features/providers/hooks/use-keyboard";
 import {
-  type ApiKeyDialogOwner,
   type ModelDialogOwner,
+  type SetupDialogOwner,
   useProviderManagement,
 } from "@/features/providers/hooks/use-provider-management";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
-import { filterProviders, findProviderById, type ProviderFilter } from "../lib/filter";
+import { filterProviders, type ProviderFilter } from "../lib/filter";
 
 type ProviderDialog =
-  | { kind: "api-key"; owner: ApiKeyDialogOwner; provider: ProviderWithStatus }
-  | { kind: "model"; owner: ModelDialogOwner; provider: ProviderWithStatus };
+  | { kind: "setup"; owner: SetupDialogOwner; row: ProviderListRow }
+  | { kind: "model"; owner: ModelDialogOwner; row: ProviderListRow };
+
+/**
+ * A row's id flips from its product id to its configuration id the moment a
+ * configuration is created, so a model dialog opened during that transition must
+ * be resolved by the configuration it was opened for -- the id it captured is
+ * the only identity that survives the refresh.
+ */
+function findDialogRow(
+  providers: ProviderListRow[],
+  owner: ProviderDialogOwner | null,
+): ProviderListRow | null {
+  if (!owner) return null;
+  if (owner.kind === "setup") return findProviderById(providers, owner.rowId);
+  return (
+    findProviderById(providers, owner.configurationId) ?? findProviderById(providers, owner.rowId)
+  );
+}
 
 export function useProvidersPageState() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -27,85 +49,77 @@ export function useProvidersPageState() {
     isLoading,
     isSubmitting,
     dialogOwner,
-    openApiKeyDialog,
+    openSetupDialog,
     openModelDialog,
     closeDialog,
-    handleSaveApiKey,
-    handleRemoveKey,
-    handleSelectProvider,
+    handleCreateConfiguration,
+    handleUpdateConfiguration,
+    handleDeleteConfiguration,
     handleSelectModel,
+    handleDispatchReadinessAction,
   } = useProviderManagement();
 
   const filteredProviders = filterProviders(providers, filter, searchQuery);
-
-  const effectiveSelectedId = resolveSelectedId(selectedId, filteredProviders);
-
-  const selectedProvider = effectiveSelectedId
+  const effectiveSelectedId = resolveSelectedId(
+    selectedId,
+    filteredProviders.map((row) => ({ id: getProviderRowId(row) })),
+  );
+  const selectedRow = effectiveSelectedId
     ? findProviderById(filteredProviders, effectiveSelectedId)
     : null;
-  const dialogProvider = findProviderById(providers, dialogOwner?.providerId ?? null);
+  const dialogRow = findDialogRow(providers, dialogOwner);
+
   let dialog: ProviderDialog | null = null;
-  if (dialogOwner && dialogProvider) {
+  if (dialogOwner && dialogRow) {
     dialog =
-      dialogOwner.kind === "api-key"
-        ? { kind: "api-key", owner: dialogOwner, provider: dialogProvider }
-        : { kind: "model", owner: dialogOwner, provider: dialogProvider };
+      dialogOwner.kind === "setup"
+        ? { kind: "setup", owner: dialogOwner, row: dialogRow }
+        : { kind: "model", owner: dialogOwner, row: dialogRow };
   }
 
-  const dialogOpen = dialogOwner !== null;
-
-  const activateProvider = (provider: ProviderWithStatus) => {
-    if (isSubmitting) return;
-    if (!provider.hasApiKey) {
-      openApiKeyDialog(provider.id);
-      return;
-    }
-
-    const model = provider.model || provider.defaultModel;
-    if (!model) {
-      openModelDialog(provider.id);
-      return;
-    }
-
-    void handleSelectProvider(provider.id, provider.name, model);
+  const dispatchSelectedAction = (row: ProviderListRow) => {
+    if (isSubmitting || row.product.status === "removed") return;
+    void handleDispatchReadinessAction(row);
   };
 
-  // Guards on `isSubmitting` are unnecessary here: the dialog openers and
-  // `withGuard` already reject while a submit is in flight.
   const actions = {
-    onSetApiKey: () => {
-      if (selectedProvider) openApiKeyDialog(selectedProvider.id);
+    onSetup: () => {
+      if (selectedRow) openSetupDialog(getProviderRowId(selectedRow));
     },
     onSelectModel: () => {
-      if (selectedProvider) openModelDialog(selectedProvider.id);
+      if (selectedRow) openModelDialog(getProviderRowId(selectedRow));
     },
-    onRemoveKey: () => {
-      if (selectedProvider) void handleRemoveKey(selectedProvider.id);
+    onDelete: () => {
+      const configurationId = selectedRow?.configuration?.configurationId;
+      const revision = selectedRow?.configuration?.revision;
+      if (configurationId != null && revision != null) {
+        void handleDeleteConfiguration(configurationId, revision);
+      }
     },
-    onSelectProvider: () => {
-      if (selectedProvider) activateProvider(selectedProvider);
+    onDispatchAction: () => {
+      if (selectedRow) dispatchSelectedAction(selectedRow);
     },
   };
 
   const keyboard = useProvidersKeyboard({
-    selectedProvider,
+    selectedRow,
     filteredProviders,
     listReady: !isLoading && filteredProviders.length > 0,
     filter,
     setSelectedId,
-    dialogOpen,
+    dialogOpen: dialogOwner !== null,
     inputRef,
     listContainerRef,
-    onSetApiKey: actions.onSetApiKey,
+    onSetup: actions.onSetup,
     onSelectModel: actions.onSelectModel,
-    onRemoveKey: handleRemoveKey,
-    onActivateProvider: activateProvider,
+    onDelete: actions.onDelete,
+    onDispatchAction: dispatchSelectedAction,
   });
 
   return {
     isLoading,
     filteredProviders,
-    selectedProvider,
+    selectedRow,
 
     search: {
       inputRef,
@@ -123,13 +137,14 @@ export function useProvidersPageState() {
     dialogs: {
       current: dialog,
       close: closeDialog,
-      anyOpen: dialogOpen,
+      anyOpen: dialogOwner !== null,
     },
 
     handlers: {
-      saveApiKey: handleSaveApiKey,
+      createConfiguration: handleCreateConfiguration,
+      updateConfiguration: handleUpdateConfiguration,
       selectModel: handleSelectModel,
-      activateProvider,
+      dispatchAction: dispatchSelectedAction,
     },
 
     actions,

@@ -1,26 +1,22 @@
-import {
-  getProviderDetailModelLabel,
-  PROVIDER_DETAIL_ACTION_LABELS,
-  PROVIDER_DETAIL_EMPTY_LABEL,
-} from "@diffgazer/core/providers";
-import type { ProviderWithStatus } from "@diffgazer/core/schemas/config";
-import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
+import type { ProviderListRow } from "@diffgazer/core/providers";
+import { getProviderDisplayStatus } from "@diffgazer/core/providers";
+import { buildProviderSettingsRows } from "@diffgazer/core/schemas/config";
 import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { KeyValue } from "@diffgazer/ui/components/key-value";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import type { RefCallback } from "react";
-import { CapabilityCard } from "./capability-card";
+import { getProviderActionSlots } from "../hooks/use-action-buttons";
 
 export interface ProviderActions {
-  onSetApiKey: () => void;
+  onSetup: () => void;
   onSelectModel: () => void;
-  onRemoveKey: () => void;
-  onSelectProvider: () => void;
+  onDelete: () => void;
+  onDispatchAction: () => void;
 }
 
 export interface ProviderDetailsProps {
-  provider: ProviderWithStatus | null;
+  row: ProviderListRow | null;
   actions: ProviderActions;
   isPending?: boolean;
   focusedButtonIndex?: number;
@@ -28,53 +24,28 @@ export interface ProviderDetailsProps {
   getButtonProps?: (index: number) => {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
+    "aria-disabled"?: boolean;
+    title?: string;
   };
 }
 
-function getButtonConfig(
-  actions: ProviderActions,
-  provider: ProviderWithStatus,
-  isPending: boolean,
-) {
-  return [
-    {
-      action: actions.onSelectProvider,
-      label: PROVIDER_DETAIL_ACTION_LABELS.selectProvider,
-      variant: "primary" as const,
-      disabled: isPending,
-    },
-    {
-      action: actions.onSetApiKey,
-      label: PROVIDER_DETAIL_ACTION_LABELS.configureApiKey,
-      variant: "secondary" as const,
-      disabled: isPending,
-    },
-    {
-      action: actions.onRemoveKey,
-      label: PROVIDER_DETAIL_ACTION_LABELS.removeKey,
-      variant: "destructive" as const,
-      disabled: isPending || !provider.hasApiKey,
-    },
-    // Secondary, not link: a borderless label in an action row reads as text, and
-    // the row already has one filled CTA plus one semantic destructive intent.
-    {
-      action: actions.onSelectModel,
-      label: PROVIDER_DETAIL_ACTION_LABELS.selectModel,
-      variant: "secondary" as const,
-      disabled: isPending || !provider.hasApiKey,
-    },
-  ];
+const PROVIDER_DETAIL_EMPTY_LABEL = "Select a provider to view details";
+
+function actionButtonVariant(index: number): "primary" | "secondary" | "destructive" {
+  if (index === 0) return "primary";
+  if (index === 2) return "destructive";
+  return "secondary";
 }
 
 export function ProviderDetails({
-  provider,
+  row,
   actions,
   isPending = false,
   focusedButtonIndex,
   isFocused = false,
   getButtonProps,
 }: ProviderDetailsProps) {
-  if (!provider) {
+  if (!row) {
     return (
       <div className="@container flex flex-1 flex-col overflow-y-auto">
         <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
@@ -85,106 +56,78 @@ export function ProviderDetails({
     );
   }
 
-  const capabilities = PROVIDER_CAPABILITIES[provider.id];
-  if (!capabilities) {
-    return (
-      <div className="@container flex flex-1 flex-col overflow-y-auto">
-        <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
-          <SectionHeader as="h2">Provider Details: {provider.name}</SectionHeader>
-        </div>
-        <EmptyState className="flex-1">Unknown provider: {provider.id}</EmptyState>
-      </div>
-    );
-  }
-
-  const buttons = getButtonConfig(actions, provider, isPending);
+  const displayStatus = getProviderDisplayStatus(row.readiness, row.product.transportFamily);
+  const settingsRows = buildProviderSettingsRows(row);
+  const slots = getProviderActionSlots(row);
+  const buttonActions = [
+    actions.onDispatchAction,
+    actions.onSetup,
+    actions.onDelete,
+    actions.onSelectModel,
+  ];
 
   return (
     <div className="@container flex flex-1 flex-col overflow-y-auto">
       <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
-        <SectionHeader as="h2">Provider Details: {provider.name}</SectionHeader>
-        {provider.displayStatus === "active" && (
-          // Same bracketed status token the provider list uses, not a third chip style.
-          <span className="shrink-0 font-mono text-2xs text-success-text">[ ACTIVE ]</span>
-        )}
+        <SectionHeader as="h2">Provider Details: {row.product.name}</SectionHeader>
+        {/* biome-ignore lint/a11y/useSemanticElements: role="status" matches the header StatusIndicator live-readout pattern; <output> carries form-association semantics that do not fit here. */}
+        <span
+          role="status"
+          aria-label={displayStatus.accessibleText}
+          className="shrink-0 font-mono text-2xs text-muted-foreground"
+        >
+          [ {displayStatus.label.toUpperCase()} ]
+        </span>
       </div>
 
       <div className="p-6">
         <section className="mb-6">
           <SectionHeader variant="muted" bordered className="mb-4 border-border">
-            Capabilities
-          </SectionHeader>
-          <div
-            className="grid grid-cols-1 gap-4 @md:grid-cols-2"
-            data-layout-grid="provider-capabilities"
-          >
-            <CapabilityCard label="Tool Calling" value={capabilities.toolCalling} />
-            <CapabilityCard label="JSON Mode" value={capabilities.jsonMode} />
-            <CapabilityCard label="Streaming" value={capabilities.streaming} />
-            <CapabilityCard label="Context Window" value={capabilities.contextWindow} />
-          </div>
-        </section>
-
-        <section className="mb-6">
-          <SectionHeader variant="muted" bordered className="mb-4 border-border">
-            Cost Tier
-          </SectionHeader>
-          <div className="border-l-2 border-success pl-4">
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {capabilities.costDescription}
-            </p>
-          </div>
-        </section>
-
-        <section className="mb-6">
-          <SectionHeader variant="muted" bordered className="mb-4 border-border">
-            Status
+            Configuration
           </SectionHeader>
           <KeyValue>
-            <KeyValue.Item
-              label="API Key Status"
-              value={
-                provider.hasApiKey ? (
-                  <span className="font-mono text-info-text">[ STORED ]</span>
-                ) : (
-                  <span className="text-muted-foreground">Not configured</span>
-                )
-              }
-              bordered
-            />
-            <KeyValue.Item
-              label="Selected Model"
-              value={
-                provider.model ? (
-                  <span className="text-foreground">{provider.model}</span>
-                ) : (
-                  <span className="text-muted-foreground">
-                    {getProviderDetailModelLabel(
-                      provider.id,
-                      provider.model,
-                      provider.defaultModel,
-                    )}
-                  </span>
-                )
-              }
-              bordered
-            />
+            {settingsRows.map((settingsRow) => (
+              <KeyValue.Item
+                key={settingsRow.id}
+                label={settingsRow.label}
+                value={
+                  settingsRow.description
+                    ? `${settingsRow.value} — ${settingsRow.description}`
+                    : settingsRow.value
+                }
+                bordered
+              />
+            ))}
           </KeyValue>
         </section>
 
+        {row.product.status === "removed" ? (
+          <section className="mb-6">
+            <SectionHeader variant="muted" bordered className="mb-4 border-border">
+              Migration
+            </SectionHeader>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {displayStatus.remediation}
+            </p>
+          </section>
+        ) : null}
+
         <section className="mt-auto">
           <div className="flex flex-wrap gap-3 pt-4">
-            {buttons.map((btn, index) => (
+            {slots.map((slot, index) => (
               <Button
-                key={btn.label}
+                key={slot.label}
                 {...getButtonProps?.(index)}
-                variant={btn.variant}
+                variant={actionButtonVariant(index)}
                 bracket
-                onClick={btn.action}
-                disabled={btn.disabled}
-                highlighted={isFocused && focusedButtonIndex === index && !btn.disabled}
+                onClick={buttonActions[index]}
+                disabled={isPending || !slot.enabled}
+                highlighted={isFocused && focusedButtonIndex === index && slot.enabled}
+                aria-label={
+                  slot.disabledReason ? `${slot.label}. ${slot.disabledReason}` : slot.label
+                }
               >
-                {btn.label}
+                {slot.label}
               </Button>
             ))}
           </div>

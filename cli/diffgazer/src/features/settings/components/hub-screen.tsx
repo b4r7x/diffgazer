@@ -7,6 +7,7 @@ import {
   SETTINGS_SHORTCUTS,
   type SettingsAction,
 } from "@diffgazer/core/schemas/presentation";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { Box, Text } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { Menu } from "../../../components/ui/menu";
@@ -87,7 +88,7 @@ export function SettingsHubScreen(): ReactElement {
     navigate(SETTINGS_ROUTE_MAP[id]);
   };
 
-  const guard = guardQueryState(initQuery, {
+  const guard = guardQueryState(initQuery as UseQueryResult<NonNullable<typeof initQuery.data>>, {
     loading: () => (
       <HubFrame columns={columns}>
         <Spinner label="Loading settings..." />
@@ -114,9 +115,14 @@ export function SettingsHubScreen(): ReactElement {
     isConfigured: initQuery.data?.setup?.isConfigured ?? false,
     hasStorage: Boolean(settingsQuery.data?.secretsStorage),
   };
+  const selected = initQuery.data?.configurations?.find(
+    ({ configuration }) =>
+      configuration.configurationId === initQuery.data?.selectedConfigurationId,
+  );
+  const selectedProductId =
+    selected?.configuration.status === "supported" ? selected.configuration.productId : null;
   const values = buildHubValues({
-    provider: initQuery.data?.config?.provider,
-    isConfigured: setup.isConfigured,
+    selectedProductId,
     isTrusted: setup.isTrusted,
     theme: settingsQuery.data?.theme,
     secretsStorage: settingsQuery.data?.secretsStorage,
@@ -132,7 +138,7 @@ export function SettingsHubScreen(): ReactElement {
       footer={
         <Box marginTop={1} gap={2}>
           <Text color={tokens.muted}>
-            config path: {sanitizeTerminalText(initQuery.data?.configPath ?? "unknown")}
+            project path: {sanitizeTerminalText(initQuery.data?.project.path ?? "unknown")}
           </Text>
           <Text color={tokens.muted}>|</Text>
           <Text color={settingsError ? tokens.error : tokens.muted}>

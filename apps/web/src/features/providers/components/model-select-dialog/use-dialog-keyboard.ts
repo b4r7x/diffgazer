@@ -20,6 +20,7 @@ import { useModelFilters } from "./use-filter-row-keyboard";
 import { useModelSearchFocus } from "./use-search-focus";
 
 type FocusZone = "close" | "search" | "filters" | "list" | "footer";
+type DiscoveryStatus = "idle" | "loading" | "passed" | "skipped" | "error";
 
 interface ModelDialogKeyboardOptions {
   open: boolean;
@@ -27,6 +28,7 @@ interface ModelDialogKeyboardOptions {
   currentModel: string | undefined;
   models: ModelInfo[];
   filteredModels: ModelInfo[];
+  discoveryStatus: DiscoveryStatus;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   cycleTierFilter: () => void;
@@ -86,6 +88,7 @@ export function useModelDialogKeyboard({
   currentModel,
   models,
   filteredModels,
+  discoveryStatus,
   searchQuery,
   setSearchQuery,
   cycleTierFilter,
@@ -100,7 +103,14 @@ export function useModelDialogKeyboard({
   const hasHandledInitialFocusRef = useRef(false);
   const hadFilteredModelsRef = useRef(false);
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
-  const canConfirm = !isSaving && filteredModels.length > 0;
+  const listInteractive = !isSaving && discoveryStatus === "passed" && filteredModels.length > 0;
+  const canConfirm = listInteractive;
+  // The filter row is disabled unless discovery passed and the search box is
+  // disabled while discovery is still running; navigation must skip whichever
+  // zone cannot take focus, or the browser drops focus to document.body.
+  const filtersInteractive = !isSaving && discoveryStatus === "passed";
+  const searchInteractive =
+    !isSaving && discoveryStatus !== "idle" && discoveryStatus !== "loading";
 
   const {
     focusZone,
@@ -109,7 +119,7 @@ export function useModelDialogKeyboard({
     focusCloseButton,
     focusSearchInput,
     getCloseButtonProps,
-  } = useModelDialogZones({ open, searchInputRef, hasHandledInitialFocusRef });
+  } = useModelDialogZones({ open, searchInteractive, searchInputRef, hasHandledInitialFocusRef });
 
   const blurSearchInput = () => searchInputRef.current?.blur();
 
@@ -138,7 +148,7 @@ export function useModelDialogKeyboard({
     onNavigationBoundaryReached: (direction) => {
       if (direction !== "previous") return;
       if (filteredModels.length === 0) {
-        focusFilterButton(filterIndex);
+        focusZoneAboveList();
         return;
       }
       setFocusZone("list");
@@ -189,6 +199,20 @@ export function useModelDialogKeyboard({
     else filterButtonRefs.current.delete(index);
   };
 
+  // The first enabled zone above the model list, so leaving the list or the
+  // footer upward always lands on an element that can hold focus.
+  const focusZoneAboveList = () => {
+    if (filtersInteractive) {
+      focusFilterButton(filterIndex);
+      return;
+    }
+    if (searchInteractive) {
+      focusSearchInput();
+      return;
+    }
+    focusCloseButton();
+  };
+
   const handleListBoundaryReached = (direction: "previous" | "next") => {
     if (direction === "previous") {
       focusFilterButton(0);
@@ -200,7 +224,7 @@ export function useModelDialogKeyboard({
   const { highlighted: focusedModelId, highlight: focusModel } = useScopedNavigation({
     containerRef: listContainerRef,
     role: "radio",
-    enabled: open && !isSaving && isZone("list") && filteredModels.length > 0,
+    enabled: open && listInteractive && isZone("list"),
     wrap: false,
     moveFocus: true,
     upKeys: ["k"],
@@ -239,7 +263,8 @@ export function useModelDialogKeyboard({
     open,
     inFilters: isZone("filters"),
     inSearch: isZone("search"),
-    hasFilteredModels: filteredModels.length > 0,
+    hasFilteredModels: listInteractive,
+    discoveryStatus,
     cycleTierFilter,
     registerFilterButton,
     focusFilterAtIndex,
@@ -248,17 +273,34 @@ export function useModelDialogKeyboard({
     enterFooter,
   });
 
+  const focusZoneBelowSearch = () => {
+    if (filtersInteractive) {
+      focusFilterButton(filterIndex);
+      return;
+    }
+    if (listInteractive) {
+      enterListFromBoundary("first");
+      return;
+    }
+    enterFooter(0);
+  };
+
   const search = useModelSearchFocus({
     open,
     inSearch: isZone("search"),
     searchQuery,
-    filterIndex,
     setSearchQuery,
     blurSearchInput,
     focusSearchInput,
     focusCloseButton,
-    focusFilterButton,
-    enterListFromBoundary,
+    focusZoneBelowSearch,
+    escapeSearchZone: () => {
+      if (listInteractive) {
+        enterListFromBoundary("first");
+        return;
+      }
+      focusZoneBelowSearch();
+    },
   });
 
   const resetDialogState = useEffectEvent(() => {
@@ -307,10 +349,10 @@ export function useModelDialogKeyboard({
 
   const filteredIdsKey = filteredModels.map((m) => m.id).join("\0");
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filteredIdsKey is the serialized form of filteredModels (ids joined); depending on the array identity would re-run this effect on every commit while the dialog is open, so the filteredModels read inside repairListFocus is covered by filteredIdsKey. isSaving retries empty-list recovery when saving completes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filteredIdsKey is the serialized form of filteredModels (ids joined); depending on the array identity would re-run this effect on every commit while the dialog is open, so the filteredModels read inside repairListFocus is covered by filteredIdsKey. isSaving and discoveryStatus retry empty-list recovery when saving completes or discovery becomes ready.
   useEffect(() => {
     if (!open) return;
-    if (filteredModels.length === 0) {
+    if (!listInteractive) {
       if (focusZone === "list" && hadFilteredModelsRef.current) {
         moveEmptyListFocusToCancel();
       }
@@ -319,7 +361,7 @@ export function useModelDialogKeyboard({
     hadFilteredModelsRef.current = true;
     if (focusZone !== "list") return;
     repairListFocus();
-  }, [open, focusZone, filteredIdsKey, isSaving]);
+  }, [open, focusZone, filteredIdsKey, isSaving, discoveryStatus]);
 
   const handleListSelect = (modelId: string) => {
     setFocusZone("list");

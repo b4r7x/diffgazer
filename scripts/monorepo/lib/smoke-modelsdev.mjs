@@ -18,13 +18,145 @@ export function assertCatalogProviders(catalog, providers, resolve, source) {
 /**
  * The snapshot-backed enabled roster: providers whose offline picker is served
  * from the bundled CATALOG_SNAPSHOT. Derived from PROVIDER_OVERLAY so it can
- * never drift from the roster, and auto-extends when a provider is enabled.
+ * never drift from the roster, and auto-extends when a provider is added.
  * OpenRouter is excluded — it resolves through its own live key-gated path.
  */
 export function enabledSnapshotProviders(overlay) {
-  return Object.entries(overlay)
-    .filter(([, o]) => o.enabled && o.sdkKind !== "openrouter")
-    .map(([id]) => id);
+  return Object.keys(overlay).filter((id) => id !== "openrouter");
+}
+
+export const PROVIDER_PROBE_STATUSES = ["passed", "failed", "skipped"];
+export const PROVIDER_PROBE_REASONS = [
+  "none",
+  "network-disabled",
+  "credential-missing",
+  "entitlement-missing",
+  "live-opt-in-missing",
+  "runner-unavailable",
+  "probe-failed",
+];
+
+/**
+ * Probe dispositions are typed by WHY a probe did or did not run, because strict
+ * mode treats the two non-ready kinds differently:
+ *
+ * - `not-requested` — the run never asked for live probes (no network, or the
+ *   opt-in env is unset). Emitting `skipped` is the truthful REQ-089 record and
+ *   is not a strict failure; the offline release smoke is expected to report it.
+ * - `unavailable` — live probing WAS requested but a prerequisite is absent
+ *   (credential, entitlement, or a probe runner that was never built). Strict
+ *   mode fails on these: the operator asked for evidence and got none.
+ */
+const NOT_REQUESTED_REASONS = new Set(["network-disabled", "live-opt-in-missing"]);
+
+export const LIVE_PROBE_OPT_IN_ENV = "DIFFGAZER_LIVE_PROBES";
+
+export const HOSTED_PROBE_CREDENTIAL_ENVS = {
+  gemini: "GOOGLE_API_KEY",
+  zai: "ZAI_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+  groq: "GROQ_API_KEY",
+  cerebras: "CEREBRAS_API_KEY",
+  deepseek: "DEEPSEEK_API_KEY",
+  qwen: "QWEN_API_KEY",
+  moonshot: "MOONSHOT_API_KEY",
+  mistral: "MISTRAL_API_KEY",
+};
+
+export function formatProviderProbeLine({ providerId, modelId, status, reason, checkedAt }) {
+  return (
+    `{"type":"provider-probe","providerId":${JSON.stringify(providerId)},` +
+    `"modelId":${JSON.stringify(modelId)},` +
+    `"status":${JSON.stringify(status)},` +
+    `"reason":${JSON.stringify(reason)},` +
+    `"checkedAt":${JSON.stringify(checkedAt)}}`
+  );
+}
+
+export function probeDispositionKind(reason) {
+  return NOT_REQUESTED_REASONS.has(reason) ? "not-requested" : "unavailable";
+}
+
+export function resolveLiveProbeDisposition(tuple, env, networkEnabled) {
+  if (!networkEnabled) {
+    return { kind: "not-requested", reason: "network-disabled" };
+  }
+  if (env[LIVE_PROBE_OPT_IN_ENV] !== "1") {
+    return { kind: "not-requested", reason: "live-opt-in-missing" };
+  }
+  const credentialEnv = HOSTED_PROBE_CREDENTIAL_ENVS[tuple.providerId];
+  if (credentialEnv && !env[credentialEnv]) {
+    return { kind: "unavailable", reason: "credential-missing" };
+  }
+  if (tuple.requiresEntitlement && !env[tuple.entitlementEnv]) {
+    return { kind: "unavailable", reason: "entitlement-missing" };
+  }
+  return { kind: "ready", reason: "none" };
+}
+
+/**
+ * `runProbe` returns the completed verdict (`{ passed }`) or, when the probe
+ * could not run at all, `{ unavailable: <reason> }` — a missing prerequisite is
+ * a skip, never a negative verdict (REQ-089).
+ */
+function resolveProbeOutcome(result) {
+  if (result.unavailable) {
+    return { status: "skipped", reason: result.unavailable };
+  }
+  return result.passed
+    ? { status: "passed", reason: "none" }
+    : { status: "failed", reason: "probe-failed" };
+}
+
+export async function emitProviderProbeResults(tuples, options) {
+  const checkedAt = options.checkedAt ?? new Date().toISOString();
+  const lines = [];
+  const results = [];
+
+  for (const tuple of tuples) {
+    const disposition = resolveLiveProbeDisposition(tuple, options.env, options.networkEnabled);
+    const outcome =
+      disposition.kind === "ready"
+        ? resolveProbeOutcome(await options.runProbe(tuple))
+        : { status: "skipped", reason: disposition.reason };
+
+    const line = formatProviderProbeLine({
+      providerId: tuple.providerId,
+      modelId: tuple.modelId,
+      status: outcome.status,
+      reason: outcome.reason,
+      checkedAt,
+    });
+    lines.push(line);
+    results.push({ tuple, status: outcome.status, reason: outcome.reason });
+    options.emit?.(line);
+  }
+
+  return { lines, results, checkedAt };
+}
+
+/**
+ * Strict mode fails on every emitted result that is not a pass, except skips
+ * whose reason means live probing was never requested for this run.
+ */
+export function collectStrictProbeViolations(results) {
+  return results.filter(
+    ({ status, reason }) =>
+      status === "failed" ||
+      (status === "skipped" && probeDispositionKind(reason) === "unavailable"),
+  );
+}
+
+export function finalizeStrictProbeResults(results, strictSkips) {
+  if (!strictSkips) return;
+  const violations = collectStrictProbeViolations(results);
+  if (violations.length === 0) return;
+  const detail = violations
+    .map(({ tuple, status, reason }) => `${tuple.providerId} ${status}/${reason}`)
+    .join(", ");
+  throw new Error(
+    `strict probes: ${violations.length} provider probe(s) did not pass after emission (${detail})`,
+  );
 }
 
 const RELATIVE_BUNDLE_IMPORT_RE = /(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)(["'])(\.\/[^"']+\.js)\1/g;

@@ -51,6 +51,7 @@ describe("ReviewProgressView (TUI) status", () => {
       isStreaming: false,
       error: "Provider rejected the API key",
       errorCode: "API_KEY_MISSING",
+      transportFamily: "hosted-api",
       onGoToSettings: vi.fn(),
     });
 
@@ -62,12 +63,27 @@ describe("ReviewProgressView (TUI) status", () => {
     expect(frame).not.toContain("Cancel");
   });
 
+  test("does not offer API key recovery on a local transport", () => {
+    const { lastFrame } = renderView({
+      isStreaming: false,
+      error: "Provider rejected the API key",
+      errorCode: "API_KEY_MISSING",
+      transportFamily: "local-cli",
+      onGoToSettings: vi.fn(),
+    });
+
+    const frame = lastFrame() ?? "";
+    expect(frame).not.toContain("API Key Error");
+    expect(frame).toContain("Review Error");
+  });
+
   test("reaches settings from the API-key error through the s key alone", async () => {
     const onGoToSettings = vi.fn();
     const { stdin, lastFrame } = renderView({
       isStreaming: false,
       error: "Provider rejected the API key",
       errorCode: "API_KEY_MISSING",
+      transportFamily: "hosted-api",
       onGoToSettings,
     });
 

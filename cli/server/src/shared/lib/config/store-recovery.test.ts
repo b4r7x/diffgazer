@@ -1,538 +1,282 @@
-import { chmodSync, existsSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { describe, expect, it, vi } from "vitest";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
+
+const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
+
+import { dirname, join } from "node:path";
+import { describe, expect, it } from "vitest";
 import {
   configPath,
-  expectFileMissingEventually,
+  diffgazerHome,
   fsHooks,
-  keyring,
   loadStore,
   loadStoreFactory,
   readJson,
   secretsPath,
-  secretsRecoveryPath,
   writeJson,
 } from "./store.test-support.js";
 
-describe("config store", () => {
-  it("rolls back file-backed credential writes when config persistence fails", async () => {
-    const store = await loadStore();
-    await store.updateSettings({ secretsStorage: "file" });
-    fsHooks.writeJsonFileHook = async (filePath, data, _mode) => {
-      if (filePath.endsWith("config.json")) {
-        throw new Error("Injected config.json write failure");
-      }
-      writeJson(filePath, data);
-      return undefined;
-    };
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
+const CREATED_AT = "2026-01-01T00:00:00.000Z";
 
-    try {
-      const result = await store.saveProviderCredentials({
-        provider: "gemini",
-        apiKey: "new-key",
-        model: "gemini-2.5-flash",
-      });
+const DEFAULT_BUDGET = {
+  inputTokens: 200_000,
+  outputTokens: 40_000,
+  responseBytes: 8_000_000,
+  wallTimeMs: 300_000,
+  retries: 0,
+  concurrency: 1,
+  perReview: 5,
+};
 
-      expect(result).toMatchObject({
-        ok: false,
-        error: { code: "PERSIST_FAILED" },
-      });
-      expect(store.getProviderApiKey("gemini")).toEqual({ ok: true, value: null });
-      await expectFileMissingEventually(secretsPath());
-    } finally {
-      fsHooks.writeJsonFileHook = null;
-    }
-  });
+const v2Config = (
+  records: unknown[],
+  selectedConfigurationId: string | null = null,
+  settings: Record<string, unknown> = {},
+) => ({
+  schemaVersion: 2,
+  settings,
+  selectedConfigurationId,
+  configurations: records,
+});
 
-  it("restores deleted file-backed credentials when config persistence fails", async () => {
-    writeJson(configPath(), {
-      settings: { secretsStorage: "file" },
-      providers: [
-        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
-      ],
-    });
-    writeJson(secretsPath(), { providers: { gemini: "existing-key" } });
-    const store = await loadStore();
-    fsHooks.writeJsonFileHook = async (filePath, data, _mode) => {
-      if (filePath.endsWith("config.json")) {
-        throw new Error("Injected config.json write failure");
-      }
-      writeJson(filePath, data);
-      return undefined;
-    };
+const v2Secrets = (bindings: unknown[] = []) => ({ schemaVersion: 2, bindings });
 
-    try {
-      const result = await store.deleteProviderCredentials("gemini");
+const supportedRecord = (overrides: Record<string, unknown> = {}) => ({
+  schemaVersion: 2,
+  status: "supported",
+  configurationId: "cfg-existing",
+  revision: 1,
+  transportFamily: "hosted-api",
+  productId: "gemini",
+  input: { transportFamily: "hosted-api", productId: "gemini", endpoint: GEMINI_ENDPOINT },
+  selectedModelId: null,
+  acknowledgement: { noticeVersion: 1, acceptedAt: null },
+  evidenceReference: null,
+  budget: DEFAULT_BUDGET,
+  createdAt: CREATED_AT,
+  updatedAt: CREATED_AT,
+  ...overrides,
+});
 
-      expect(result).toMatchObject({
-        ok: false,
-        error: { code: "PERSIST_FAILED" },
-      });
-      expect(store.getProviderApiKey("gemini")).toEqual({ ok: true, value: "existing-key" });
-      expect(store.getProviders().find((provider) => provider.provider === "gemini")).toMatchObject(
+const removedRecord = () => ({
+  schemaVersion: 2,
+  status: "removed",
+  configurationId: "cfg-removed",
+  revision: 1,
+  productId: REMOVED_PRODUCT_ID,
+  transportFamily: "hosted-api",
+  selectedModelId: null,
+  acknowledgement: null,
+  evidenceReference: null,
+  budget: null,
+  createdAt: CREATED_AT,
+  updatedAt: CREATED_AT,
+});
+
+const createGeminiAction = (
+  credential: { kind: "literal"; value: string } | { kind: "environment" },
+) =>
+  ({
+    action: "create",
+    input: {
+      transportFamily: "hosted-api",
+      productId: "gemini",
+      endpoint: GEMINI_ENDPOINT,
+      credential,
+    },
+  }) as const;
+
+const literalSecretPathFor = (configurationId: string, revision: number): string =>
+  join(diffgazerHome, "credentials", `${configurationId}-${revision}.key`);
+
+describe("config store recovery", () => {
+  it("restores exact prior bytes, revisions, and bindings when a delete fails during persistence and stays consistent on restart", async () => {
+    const bindingPath = literalSecretPathFor("cfg-existing", 1);
+    writeJson(configPath(), v2Config([supportedRecord()]));
+    writeJson(
+      secretsPath(),
+      v2Secrets([
         {
-          hasApiKey: true,
-          isActive: true,
+          configurationId: "cfg-existing",
+          revision: 1,
+          kind: "file-0600",
+          filePath: bindingPath,
+          status: "active",
         },
-      );
-      expect(readJson<{ providers: Record<string, string> }>(secretsPath())).toEqual({
-        providers: { gemini: "existing-key" },
-      });
-    } finally {
-      fsHooks.writeJsonFileHook = null;
+      ]),
+    );
+    mkdirSync(dirname(bindingPath), { recursive: true });
+    writeFileSync(bindingPath, "sk-proj-recovery-delete-secret", { mode: 0o600 });
+    const store = await loadStore();
+    const configBefore = readFileSync(configPath(), "utf8");
+    const secretsBefore = readFileSync(secretsPath(), "utf8");
+    fsHooks.removeFileSyncHook = (filePath) => {
+      if (filePath === secretsPath()) throw new Error("Injected secrets removal failure");
+      return false;
+    };
+
+    const deleted = await store.runConfigurationAction({
+      action: "delete",
+      configurationId: "cfg-existing",
+      expectedRevision: 1,
+    });
+
+    expect(deleted.ok).toBe(false);
+    if (!deleted.ok) {
+      expect(deleted.error.code).toBe("PERSIST_FAILED");
+      expect(deleted.error.message).toBe("Failed to persist configuration");
+      expect(deleted.error.message).not.toContain(diffgazerHome);
+      expect(deleted.error.message).not.toContain("secrets.json");
+      expect(deleted.error.message).not.toContain("sk-proj-recovery-delete-secret");
     }
+    expect(readFileSync(configPath(), "utf8")).toBe(configBefore);
+    expect(readFileSync(secretsPath(), "utf8")).toBe(secretsBefore);
+    expect(readFileSync(bindingPath, "utf8")).toBe("sk-proj-recovery-delete-secret");
+    const persisted = readJson<{ configurations: Array<{ revision: number }> }>(configPath());
+    expect(persisted.configurations[0]?.revision).toBe(1);
+
+    fsHooks.removeFileSyncHook = null;
+    const restarted = (await loadStoreFactory())();
+    const inspected = await restarted.runConfigurationAction({
+      action: "inspect",
+      configurationId: "cfg-existing",
+    });
+    expect(inspected).toMatchObject({
+      ok: true,
+      value: {
+        status: "succeeded",
+        configuration: { configurationId: "cfg-existing", revision: 1 },
+      },
+    });
+
+    const retried = await restarted.runConfigurationAction({
+      action: "delete",
+      configurationId: "cfg-existing",
+      expectedRevision: 1,
+    });
+    expect(retried).toMatchObject({ ok: true, value: { action: "delete", status: "succeeded" } });
+    expect(existsSync(secretsPath())).toBe(false);
+    expect(existsSync(bindingPath)).toBe(false);
   });
 
-  it("recovers an interrupted file-backed credential update after restart", async () => {
-    writeJson(configPath(), {
-      settings: { secretsStorage: "file" },
-      providers: [{ provider: "gemini", hasApiKey: true, isActive: false }],
-    });
-    const futureEntry = { kind: "future-ref", value: "opaque-value" };
-    writeJson(secretsPath(), {
-      providers: { gemini: "old-key", openrouter: "", future_provider: futureEntry },
-    });
-    const store = await loadStore();
-    const events: string[] = [];
-    let secretsWriteCount = 0;
-    fsHooks.writeJsonFileHook = async (filePath, data, mode) => {
-      if (filePath === secretsRecoveryPath()) {
-        events.push("recovery");
-        writeJson(filePath, data);
-        if (mode !== undefined) chmodSync(filePath, mode);
-        return;
-      }
-      if (filePath === secretsPath()) {
-        secretsWriteCount += 1;
-        events.push(secretsWriteCount === 1 ? "secrets-primary" : "secrets-rollback");
-        if (secretsWriteCount === 2) throw new Error("Injected secrets rollback failure");
-        writeJson(filePath, data);
-        return;
-      }
-      if (filePath === configPath()) {
-        events.push("config-failed");
-        throw new Error("Injected config write failure");
-      }
-      writeJson(filePath, data);
-    };
-
-    const result = await store.saveProviderCredentials({
-      provider: "gemini",
-      apiKey: "new-key",
-    });
-
-    expect(result).toMatchObject({ ok: false, error: { code: "ROLLBACK_FAILED" } });
-    expect(events).toEqual(["recovery", "secrets-primary", "config-failed", "secrets-rollback"]);
-    expect(store.getProviderApiKey("gemini")).toMatchObject({
-      ok: false,
-      error: { code: "ROLLBACK_FAILED" },
-    });
-    expect(readJson<{ providers: Record<string, string> }>(secretsPath()).providers.gemini).toBe(
-      "new-key",
+  it("keeps a removed record's secret binding until the explicit delete action", async () => {
+    const removedKeyPath = literalSecretPathFor("cfg-removed", 1);
+    writeJson(configPath(), v2Config([removedRecord()]));
+    writeJson(
+      secretsPath(),
+      v2Secrets([
+        {
+          configurationId: "cfg-removed",
+          revision: 1,
+          kind: "file-0600",
+          filePath: removedKeyPath,
+          status: "removed",
+        },
+      ]),
     );
-    expect(existsSync(secretsRecoveryPath())).toBe(true);
-    expect(statSync(secretsRecoveryPath()).mode & 0o777).toBe(0o600);
+    mkdirSync(dirname(removedKeyPath), { recursive: true });
+    writeFileSync(removedKeyPath, "sk-zai-coding-secret", { mode: 0o600 });
+    const store = await loadStore();
+
+    const created = await store.runConfigurationAction(
+      createGeminiAction({ kind: "literal", value: "sk-proj-active-secret" }),
+    );
+    expect(created.ok).toBe(true);
+
+    expect(existsSync(removedKeyPath)).toBe(true);
+    expect(readFileSync(removedKeyPath, "utf8")).toBe("sk-zai-coding-secret");
+    const secretsAfterCreate = readJson<{
+      bindings: Array<{ configurationId: string; status: string }>;
+    }>(secretsPath());
     expect(
-      readJson<{
-        previousConfigFileExisted: boolean;
-        previousFileExisted: boolean;
-        previousSecrets: { providers: Record<string, unknown> };
-      }>(secretsRecoveryPath()),
-    ).toMatchObject({
-      previousConfigFileExisted: true,
-      previousFileExisted: true,
-      previousSecrets: {
-        providers: { gemini: "old-key", openrouter: "", future_provider: futureEntry },
+      secretsAfterCreate.bindings.some(
+        (binding) => binding.configurationId === "cfg-removed" && binding.status === "removed",
+      ),
+    ).toBe(true);
+
+    const inspected = await store.runConfigurationAction({
+      action: "inspect",
+      configurationId: "cfg-removed",
+    });
+    expect(inspected).toMatchObject({
+      ok: true,
+      value: {
+        status: "succeeded",
+        configuration: { status: "removed", productId: REMOVED_PRODUCT_ID },
       },
     });
+    expect(JSON.stringify(inspected)).not.toContain("sk-zai-coding-secret");
+    expect(JSON.stringify(inspected)).not.toContain("credentials/");
 
-    fsHooks.writeJsonFileHook = null;
-    const restartedStore = (await loadStoreFactory())();
-    await expect(restartedStore.ready()).resolves.toMatchObject({ ok: true });
-    expect(restartedStore.getProviderApiKey("gemini")).toEqual({ ok: true, value: "old-key" });
-    expect(readJson<{ providers: Record<string, string> }>(secretsPath()).providers.gemini).toBe(
-      "old-key",
+    const deleted = await store.runConfigurationAction({
+      action: "delete",
+      configurationId: "cfg-removed",
+      expectedRevision: 1,
+    });
+    expect(deleted).toMatchObject({ ok: true, value: { action: "delete", status: "succeeded" } });
+    expect(existsSync(removedKeyPath)).toBe(false);
+    const secretsAfterDelete = readJson<{ bindings: Array<{ configurationId: string }> }>(
+      secretsPath(),
     );
-    expect(readJson<{ providers: Record<string, unknown> }>(secretsPath()).providers).toMatchObject(
-      {
-        openrouter: "",
-        future_provider: futureEntry,
-      },
+    expect(
+      secretsAfterDelete.bindings.some((binding) => binding.configurationId === "cfg-removed"),
+    ).toBe(false);
+    const persisted = readJson<{ configurations: Array<{ configurationId: string }> }>(
+      configPath(),
     );
-    expect(existsSync(secretsRecoveryPath())).toBe(false);
+    expect(
+      persisted.configurations.some((record) => record.configurationId === "cfg-removed"),
+    ).toBe(false);
   });
 
-  it("recovers an interrupted file-backed credential create after restart", async () => {
-    writeJson(configPath(), { settings: { secretsStorage: "file" }, providers: [] });
+  it("recovered state exposes no secret values, environment names, or credential paths", async () => {
     const store = await loadStore();
-    const events: string[] = [];
-    fsHooks.writeJsonFileHook = async (filePath, data) => {
-      if (filePath === secretsRecoveryPath()) {
-        events.push("recovery");
-        writeJson(filePath, data);
-        return;
-      }
-      if (filePath === secretsPath()) {
-        events.push("secrets-primary");
-        writeJson(filePath, data);
-        return;
-      }
-      if (filePath === configPath()) {
-        events.push("config-failed");
-        throw new Error("Injected config write failure");
-      }
-      writeJson(filePath, data);
-    };
+    const created = await store.runConfigurationAction(
+      createGeminiAction({ kind: "literal", value: "sk-proj-recovery-secret" }),
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const configurationId = created.value.configuration?.configurationId;
+    if (!configurationId) throw new Error("create response requires a configuration");
+
     fsHooks.removeFileSyncHook = (filePath) => {
-      if (filePath === secretsPath()) {
-        events.push("secrets-rollback");
-        throw new Error("Injected secrets rollback failure");
-      }
+      if (filePath === secretsPath()) throw new Error("Injected secrets removal failure");
       return false;
     };
-
-    const result = await store.saveProviderCredentials({
-      provider: "gemini",
-      apiKey: "created-key",
+    const failed = await store.runConfigurationAction({
+      action: "delete",
+      configurationId,
+      expectedRevision: 1,
     });
-
-    expect(result).toMatchObject({ ok: false, error: { code: "ROLLBACK_FAILED" } });
-    expect(events).toEqual(["recovery", "secrets-primary", "config-failed", "secrets-rollback"]);
-    expect(store.getProviderApiKey("gemini")).toMatchObject({
-      ok: false,
-      error: { code: "ROLLBACK_FAILED" },
-    });
-    expect(existsSync(secretsRecoveryPath())).toBe(true);
-
-    fsHooks.writeJsonFileHook = null;
+    expect(failed).toMatchObject({ ok: false, error: { code: "PERSIST_FAILED" } });
     fsHooks.removeFileSyncHook = null;
-    const restartedStore = (await loadStoreFactory())();
-    await expect(restartedStore.ready()).resolves.toMatchObject({ ok: true });
-    expect(restartedStore.getProviderApiKey("gemini")).toEqual({ ok: true, value: null });
-    expect(existsSync(secretsPath())).toBe(false);
-    expect(existsSync(secretsRecoveryPath())).toBe(false);
-  });
 
-  it("recovers an interrupted file-backed credential delete after restart", async () => {
-    writeJson(configPath(), {
-      settings: { secretsStorage: "file" },
-      providers: [{ provider: "gemini", hasApiKey: true, isActive: false }],
+    const restarted = (await loadStoreFactory())();
+    const inspected = await restarted.runConfigurationAction({
+      action: "inspect",
+      configurationId,
     });
-    writeJson(secretsPath(), { providers: { gemini: "old-key" } });
-    const store = await loadStore();
-    const events: string[] = [];
-    fsHooks.removeFileSyncHook = (filePath) => {
-      if (filePath === secretsPath()) {
-        events.push("secrets-primary");
-        rmSync(filePath, { force: true });
-        return true;
-      }
-      return false;
-    };
-    fsHooks.writeJsonFileHook = async (filePath, data) => {
-      if (filePath === secretsRecoveryPath()) {
-        events.push("recovery");
-        writeJson(filePath, data);
-        return;
-      }
-      if (filePath === configPath()) {
-        events.push("config-failed");
-        throw new Error("Injected config write failure");
-      }
-      if (filePath === secretsPath()) {
-        events.push("secrets-rollback");
-        throw new Error("Injected secrets rollback failure");
-      }
-      writeJson(filePath, data);
-    };
-
-    const result = await store.deleteProviderCredentials("gemini");
-
-    expect(result).toMatchObject({ ok: false, error: { code: "ROLLBACK_FAILED" } });
-    expect(events).toEqual(["recovery", "secrets-primary", "config-failed", "secrets-rollback"]);
-    expect(store.getProviderApiKey("gemini")).toMatchObject({
-      ok: false,
-      error: { code: "ROLLBACK_FAILED" },
+    expect(inspected).toMatchObject({ ok: true, value: { status: "succeeded" } });
+    const selected = await restarted.runConfigurationAction({
+      action: "select",
+      configurationId,
+      modelId: "gemini-2.5-flash",
     });
-    expect(existsSync(secretsRecoveryPath())).toBe(true);
+    expect(selected.ok).toBe(true);
 
-    fsHooks.writeJsonFileHook = null;
-    fsHooks.removeFileSyncHook = null;
-    const restartedStore = (await loadStoreFactory())();
-    await expect(restartedStore.ready()).resolves.toMatchObject({ ok: true });
-    expect(restartedStore.getProviderApiKey("gemini")).toEqual({ ok: true, value: "old-key" });
-    expect(readJson<{ providers: Record<string, string> }>(secretsPath()).providers.gemini).toBe(
-      "old-key",
-    );
-    expect(existsSync(secretsRecoveryPath())).toBe(false);
-  });
+    const serialized = JSON.stringify([failed, inspected, selected]);
+    expect(serialized).not.toContain("sk-proj-recovery-secret");
+    expect(serialized).not.toContain("GOOGLE_API_KEY");
+    expect(serialized).not.toContain("credentials/");
+    expect(serialized).not.toContain(diffgazerHome);
+    expect(serialized).not.toContain("file-0600");
+    expect(serialized).not.toContain("keyId");
+    expect(serialized).not.toContain("evidenceReference");
+    expect(serialized).not.toContain("credentialReferenceIdentity");
 
-  it("does not mutate secrets when the recovery record cannot be persisted", async () => {
-    writeJson(configPath(), { settings: { secretsStorage: "file" }, providers: [] });
-    const store = await loadStore();
-    const writes: string[] = [];
-    fsHooks.writeJsonFileHook = async (filePath, data) => {
-      writes.push(filePath);
-      if (filePath === secretsRecoveryPath()) {
-        throw new Error("Injected recovery record write failure");
-      }
-      writeJson(filePath, data);
-    };
-
-    const result = await store.saveProviderCredentials({
-      provider: "gemini",
-      apiKey: "new-key",
-    });
-
-    expect(result).toMatchObject({ ok: false, error: { code: "PERSIST_FAILED" } });
-    expect(writes).toEqual([secretsRecoveryPath()]);
-    expect(existsSync(secretsPath())).toBe(false);
-  });
-
-  it("returns rollback-failed when keyring compensation cannot restore the prior value", async () => {
-    writeJson(configPath(), {
-      settings: { secretsStorage: "keyring" },
-      providers: [{ provider: "gemini", hasApiKey: true, isActive: false }],
-    });
-    let keyringValue = "old-key";
-    keyring.readKeyringSecret.mockImplementation(() => ({ ok: true, value: keyringValue }));
-    keyring.writeKeyringSecret.mockImplementation((_name, value) => {
-      if (value === "old-key" && keyringValue === "new-key") {
-        return {
-          ok: false,
-          error: { code: "KEYRING_WRITE_FAILED", message: "Injected keyring rollback failure" },
-        };
-      }
-      keyringValue = value;
-      return { ok: true, value: undefined };
-    });
-    const store = await loadStore();
-    fsHooks.writeJsonFileHook = async (filePath, data) => {
-      if (filePath === configPath()) throw new Error("Injected config write failure");
-      writeJson(filePath, data);
-    };
-
-    const result = await store.saveProviderCredentials({
-      provider: "gemini",
-      apiKey: "new-key",
-    });
-
-    expect(result).toMatchObject({ ok: false, error: { code: "ROLLBACK_FAILED" } });
-    expect(keyringValue).toBe("new-key");
-    expect(store.getProviderApiKey("gemini")).toEqual({ ok: true, value: "new-key" });
-  });
-
-  it("fails closed when the startup recovery record is corrupt", async () => {
-    writeJson(configPath(), { settings: { secretsStorage: "file" }, providers: [] });
-    writeJson(secretsPath(), { providers: { gemini: "uncommitted-key" } });
-    writeFileSync(secretsRecoveryPath(), "{ malformed", "utf-8");
-
-    const store = await loadStore();
-
-    expect(store.getProviderApiKey("gemini")).toMatchObject({
-      ok: false,
-      error: { code: "ROLLBACK_FAILED" },
-    });
-    await expect(
-      store.saveProviderCredentials({ provider: "gemini", apiKey: "another-key" }),
-    ).resolves.toMatchObject({ ok: false, error: { code: "ROLLBACK_FAILED" } });
-    expect(readJson<{ providers: Record<string, string> }>(secretsPath()).providers.gemini).toBe(
-      "uncommitted-key",
-    );
-  });
-
-  it("keeps a failed startup replay pending and blocks ordinary mutations", async () => {
-    const previousConfig = { settings: { secretsStorage: "file" }, providers: [] };
-    writeJson(configPath(), previousConfig);
-    writeJson(secretsPath(), { providers: { gemini: "uncommitted-key" } });
-    writeJson(secretsRecoveryPath(), {
-      version: 1,
-      previousConfigFileExisted: true,
-      previousConfig,
-      previousFileExisted: true,
-      previousSecrets: { providers: { gemini: "old-key" } },
-    });
-    fsHooks.writeJsonFileSyncHook = (filePath) => {
-      if (filePath === secretsPath()) throw new Error("Injected startup replay failure");
-    };
-
-    const store = await loadStore();
-
-    expect(existsSync(secretsRecoveryPath())).toBe(true);
-    expect(store.getProviderApiKey("gemini")).toMatchObject({
-      ok: false,
-      error: { code: "ROLLBACK_FAILED" },
-    });
-    await expect(store.deleteProviderCredentials("gemini")).resolves.toMatchObject({
-      ok: false,
-      error: { code: "ROLLBACK_FAILED" },
-    });
-    expect(readJson<{ providers: Record<string, string> }>(secretsPath()).providers.gemini).toBe(
-      "uncommitted-key",
-    );
-  });
-
-  it("does not replay another store's WAL while that store still owns the config lock", async () => {
-    const previousConfig = {
-      settings: { secretsStorage: "file" },
-      providers: [{ provider: "gemini", hasApiKey: true, isActive: false }],
-    };
-    writeJson(configPath(), previousConfig);
-    writeJson(secretsPath(), { providers: { gemini: "old-key" } });
-    const createStore = await loadStoreFactory();
-    const storeA = createStore();
-    await expect(storeA.ready()).resolves.toMatchObject({ ok: true });
-
-    let releaseSecretsWrite = () => {};
-    const secretsWriteHeld = new Promise<void>((resolve) => {
-      releaseSecretsWrite = resolve;
-    });
-    let markSecretsWritten = () => {};
-    const secretsWritten = new Promise<void>((resolve) => {
-      markSecretsWritten = resolve;
-    });
-    fsHooks.writeJsonFileHook = async (filePath, data, mode) => {
-      const { writeJsonFile } = await vi.importActual<typeof import("../fs.js")>("../fs.js");
-      await writeJsonFile(filePath, data, mode);
-      if (filePath === secretsPath()) {
-        markSecretsWritten();
-        await secretsWriteHeld;
-      }
-    };
-
-    const save = storeA.saveProviderCredentials({ provider: "gemini", apiKey: "new-key" });
-    await secretsWritten;
-    expect(existsSync(secretsRecoveryPath())).toBe(true);
-    expect(readJson<{ providers: Record<string, string> }>(secretsPath()).providers.gemini).toBe(
-      "new-key",
-    );
-
-    const storeB = createStore();
-    expect(storeB.getProviderApiKey("gemini")).toMatchObject({
-      ok: false,
-      error: { code: "ROLLBACK_FAILED" },
-    });
-    await Promise.resolve();
-    expect(existsSync(secretsRecoveryPath())).toBe(true);
-    expect(readJson<{ providers: Record<string, string> }>(secretsPath()).providers.gemini).toBe(
-      "new-key",
-    );
-
-    releaseSecretsWrite();
-    await expect(save).resolves.toMatchObject({ ok: true });
-    await expect(storeB.ready()).resolves.toMatchObject({ ok: true });
-    expect(storeB.getProviderApiKey("gemini")).toEqual({ ok: true, value: "new-key" });
-    expect(existsSync(secretsRecoveryPath())).toBe(false);
-  });
-
-  it("replays a crashed store's WAL only after acquiring the released config lock", async () => {
-    const previousConfig = {
-      settings: { secretsStorage: "file" },
-      providers: [{ provider: "gemini", hasApiKey: true, isActive: false }],
-    };
-    writeJson(configPath(), previousConfig);
-    writeJson(secretsPath(), { providers: { gemini: "old-key" } });
-    const { withConfigFileTransaction } = await import("./persistence/config.js");
-    let releaseOwner = () => {};
-    const ownerHeld = new Promise<void>((resolve) => {
-      releaseOwner = resolve;
-    });
-    let markPartialWrite = () => {};
-    const partialWriteDone = new Promise<void>((resolve) => {
-      markPartialWrite = resolve;
-    });
-    const owner = withConfigFileTransaction(async () => {
-      writeJson(secretsRecoveryPath(), {
-        version: 1,
-        previousConfigFileExisted: true,
-        previousConfig,
-        previousFileExisted: true,
-        previousSecrets: { providers: { gemini: "old-key" } },
-      });
-      writeJson(secretsPath(), { providers: { gemini: "uncommitted-key" } });
-      markPartialWrite();
-      await ownerHeld;
-    });
-    await partialWriteDone;
-
-    const storeB = (await loadStoreFactory())();
-    expect(storeB.getProviderApiKey("gemini")).toMatchObject({
-      ok: false,
-      error: { code: "ROLLBACK_FAILED" },
-    });
-    expect(readJson<{ providers: Record<string, string> }>(secretsPath()).providers.gemini).toBe(
-      "uncommitted-key",
-    );
-    expect(existsSync(secretsRecoveryPath())).toBe(true);
-
-    releaseOwner();
-    await owner;
-    await expect(storeB.ready()).resolves.toMatchObject({ ok: true });
-    expect(storeB.getProviderApiKey("gemini")).toEqual({ ok: true, value: "old-key" });
-    expect(readJson(secretsPath())).toEqual({ providers: { gemini: "old-key" } });
-    expect(existsSync(secretsRecoveryPath())).toBe(false);
-  });
-
-  it("retains recovery evidence when cleanup and config rollback both fail", async () => {
-    writeJson(configPath(), { settings: { secretsStorage: "file" }, providers: [] });
-    const store = await loadStore();
-    const events: string[] = [];
-    let configWriteCount = 0;
-    let recoveryRemovalCount = 0;
-    fsHooks.writeJsonFileHook = async (filePath, data) => {
-      if (filePath === secretsRecoveryPath()) {
-        events.push("recovery");
-      } else if (filePath === secretsPath()) {
-        events.push(events.includes("config-committed") ? "secrets-rollback" : "secrets-primary");
-      } else if (filePath === configPath()) {
-        configWriteCount += 1;
-        if (configWriteCount === 2) {
-          events.push("config-rollback-failed");
-          throw new Error("Injected config rollback failure");
-        }
-        events.push("config-committed");
-      }
-      writeJson(filePath, data);
-    };
-    fsHooks.removeFileSyncHook = (filePath) => {
-      if (filePath !== secretsRecoveryPath()) return false;
-      recoveryRemovalCount += 1;
-      if (recoveryRemovalCount === 1) {
-        events.push("cleanup-failed");
-        throw new Error("Injected recovery cleanup failure");
-      }
-      rmSync(filePath, { force: true });
-      return true;
-    };
-
-    const result = await store.saveProviderCredentials({
-      provider: "gemini",
-      apiKey: "new-key",
-    });
-
-    expect(result).toMatchObject({ ok: false, error: { code: "ROLLBACK_FAILED" } });
-    expect(events).toEqual([
-      "recovery",
-      "secrets-primary",
-      "config-committed",
-      "cleanup-failed",
-      "config-rollback-failed",
-    ]);
-    expect(store.getProviderApiKey("gemini")).toMatchObject({
-      ok: false,
-      error: { code: "ROLLBACK_FAILED" },
-    });
-    expect(readJson<{ providers: Record<string, string> }>(secretsPath()).providers.gemini).toBe(
-      "new-key",
-    );
-    expect(existsSync(secretsRecoveryPath())).toBe(true);
-
-    fsHooks.writeJsonFileHook = null;
-    fsHooks.removeFileSyncHook = null;
-    const restartedStore = (await loadStoreFactory())();
-    await expect(restartedStore.ready()).resolves.toMatchObject({ ok: true });
-    expect(restartedStore.getProviderApiKey("gemini")).toEqual({ ok: true, value: null });
-    expect(existsSync(secretsPath())).toBe(false);
-    expect(existsSync(secretsRecoveryPath())).toBe(false);
-    expect(readJson<{ providers: unknown[] }>(configPath()).providers).toEqual([]);
+    const configText = readFileSync(configPath(), "utf8");
+    expect(configText).not.toContain("sk-proj-recovery-secret");
+    expect(readFileSync(secretsPath(), "utf8")).not.toContain("sk-proj-recovery-secret");
   });
 });

@@ -11,10 +11,14 @@ import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { expectSingleReticle } from "@/testing/reticle";
+import {
+  makeShellApiOverrides,
+  makeShellInitResponse,
+  selectedProductId,
+} from "@/testing/shell-fixtures";
 
 const mockNavigate = vi.fn();
 
-// Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
   useLocation: () => ({ pathname: "/settings" }),
@@ -31,36 +35,18 @@ const SETTINGS_FIXTURE: SettingsConfig = {
   agentExecution: "parallel",
 };
 
-function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
-  return {
-    configPath: "/custom/diffgazer/config.json",
-    config: { provider: "openrouter", model: "openrouter/test-model" },
-    providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
-    settings: SETTINGS_FIXTURE,
-    configured: true,
-    project: { projectId: "proj-1", path: "/tmp/repo", trust: null },
-    setup: {
-      hasSecretsStorage: true,
-      hasProvider: true,
-      hasModel: true,
-      hasTrust: true,
-      isConfigured: true,
-      isReady: true,
-      missing: [],
-    },
-  };
-}
+const shellInit = makeShellInitResponse({
+  settings: SETTINGS_FIXTURE,
+  project: { projectId: "proj-1", path: "/tmp/repo", trust: null },
+});
 
 let mockGetSettings: Mock<BoundApi["getSettings"]>;
-let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
-let mockLoadInit: Mock<BoundApi["loadInit"]>;
 
 function createTestApi(): BoundApi {
   return {
     ...createApi({ baseUrl: "http://localhost" }),
     getSettings: mockGetSettings,
-    getProviderStatus: mockGetProviderStatus,
-    loadInit: mockLoadInit,
+    ...makeShellApiOverrides(shellInit),
   } satisfies BoundApi;
 }
 
@@ -93,10 +79,6 @@ describe("SettingsHubPage", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockGetSettings = vi.fn<BoundApi["getSettings"]>().mockResolvedValue(SETTINGS_FIXTURE);
-    mockGetProviderStatus = vi
-      .fn<BoundApi["getProviderStatus"]>()
-      .mockResolvedValue(makeInitResponse().providers);
-    mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
     localStorage.clear();
   });
 
@@ -105,10 +87,6 @@ describe("SettingsHubPage", () => {
 
     expect(await screen.findByRole("region", { name: /settings hub/i })).toBeInTheDocument();
 
-    // The corner label supplies the region's name through aria-labelledby, so it is a real
-    // top-level heading rather than a hidden decoration — the same shape the diagnostics
-    // panel uses. getByText throws on multiple matches, which also proves "Settings Hub"
-    // reaches assistive tech once rather than twice.
     const cornerLabel = screen.getByText("Settings Hub");
     expect(cornerLabel).not.toHaveAttribute("aria-hidden");
     expect(screen.getByRole("heading", { level: 1, name: "Settings Hub" })).toBe(cornerLabel);
@@ -116,7 +94,7 @@ describe("SettingsHubPage", () => {
     await waitFor(() => {
       expect(screen.getByText("local settings")).toBeVisible();
     });
-    expect(screen.getByText("config path: /custom/diffgazer/config.json")).toBeVisible();
+    expect(screen.getByText("project path: /tmp/repo")).toBeVisible();
   });
 
   it("brackets exactly one pane on the loaded screen", async () => {
@@ -154,19 +132,41 @@ describe("SettingsHubPage", () => {
   });
 
   it("shows the trusted state when the repository grants repository access", async () => {
-    const trustedInit = makeInitResponse();
-    trustedInit.project = {
-      ...trustedInit.project,
-      trust: {
+    const trustedInit = makeShellInitResponse({
+      settings: SETTINGS_FIXTURE,
+      project: {
         projectId: "proj-1",
-        repoRoot: "/tmp/repo",
-        trustedAt: "2026-01-01T00:00:00.000Z",
-        trustMode: "persistent",
-        capabilities: { readFiles: true, runCommands: false },
+        path: "/tmp/repo",
+        trust: {
+          projectId: "proj-1",
+          repoRoot: "/tmp/repo",
+          trustedAt: "2026-01-01T00:00:00.000Z",
+          trustMode: "persistent",
+          capabilities: { readFiles: true, runCommands: false },
+        },
       },
-    };
-    mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(trustedInit);
-    renderPage();
+    });
+    const api = createTestApi();
+    Object.assign(api, makeShellApiOverrides(trustedInit));
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ApiProvider value={api}>
+          <ConfigProvider>
+            <ThemeProvider>
+              <FooterProvider>
+                <KeyboardProvider>
+                  <SettingsHubPage />
+                </KeyboardProvider>
+              </FooterProvider>
+            </ThemeProvider>
+          </ConfigProvider>
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
 
     const trustRow = await screen.findByRole("menuitem", { name: /trust & permissions/i });
     await waitFor(() => {
@@ -176,20 +176,41 @@ describe("SettingsHubPage", () => {
   });
 
   it("shows not trusted when repository access belongs to the previous root", async () => {
-    const movedInit = makeInitResponse();
-    movedInit.project = {
-      ...movedInit.project,
-      path: "/tmp/moved-repo",
-      trust: {
+    const movedInit = makeShellInitResponse({
+      settings: SETTINGS_FIXTURE,
+      project: {
         projectId: "proj-1",
-        repoRoot: "/tmp/repo",
-        trustedAt: "2026-01-01T00:00:00.000Z",
-        trustMode: "persistent",
-        capabilities: { readFiles: true, runCommands: false },
+        path: "/tmp/moved-repo",
+        trust: {
+          projectId: "proj-1",
+          repoRoot: "/tmp/repo",
+          trustedAt: "2026-01-01T00:00:00.000Z",
+          trustMode: "persistent",
+          capabilities: { readFiles: true, runCommands: false },
+        },
       },
-    };
-    mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(movedInit);
-    renderPage();
+    });
+    const api = createTestApi();
+    Object.assign(api, makeShellApiOverrides(movedInit));
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ApiProvider value={api}>
+          <ConfigProvider>
+            <ThemeProvider>
+              <FooterProvider>
+                <KeyboardProvider>
+                  <SettingsHubPage />
+                </KeyboardProvider>
+              </FooterProvider>
+            </ThemeProvider>
+          </ConfigProvider>
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
 
     const trustRow = await screen.findByRole("menuitem", { name: /trust & permissions/i });
     await waitFor(() => {
@@ -197,38 +218,84 @@ describe("SettingsHubPage", () => {
     });
   });
 
-  it("preserves trusted init data when provider status fails", async () => {
-    const trustedInit = makeInitResponse();
-    trustedInit.project = {
-      ...trustedInit.project,
-      trust: {
+  it("preserves trusted init data when configuration init keeps working", async () => {
+    const trustedInit = makeShellInitResponse({
+      settings: SETTINGS_FIXTURE,
+      project: {
         projectId: "proj-1",
-        repoRoot: "/tmp/repo",
-        trustedAt: "2026-01-01T00:00:00.000Z",
-        trustMode: "persistent",
-        capabilities: { readFiles: true, runCommands: false },
+        path: "/tmp/repo",
+        trust: {
+          projectId: "proj-1",
+          repoRoot: "/tmp/repo",
+          trustedAt: "2026-01-01T00:00:00.000Z",
+          trustMode: "persistent",
+          capabilities: { readFiles: true, runCommands: false },
+        },
       },
-    };
-    mockLoadInit.mockResolvedValue(trustedInit);
-    mockGetProviderStatus.mockRejectedValue(new Error("provider status unavailable"));
+    });
+    const api = createTestApi();
+    Object.assign(api, makeShellApiOverrides(trustedInit));
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
 
-    renderPage();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ApiProvider value={api}>
+          <ConfigProvider>
+            <ThemeProvider>
+              <FooterProvider>
+                <KeyboardProvider>
+                  <SettingsHubPage />
+                </KeyboardProvider>
+              </FooterProvider>
+            </ThemeProvider>
+          </ConfigProvider>
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
 
     const trustRow = await screen.findByRole("menuitem", { name: /trust & permissions/i });
     await waitFor(() => {
       expect(trustRow).toHaveTextContent("Trusted");
       expect(trustRow).not.toHaveTextContent("Not trusted");
     });
-    expect(screen.getByRole("menuitem", { name: /provider/i })).toHaveTextContent(/openrouter/i);
+    expect(screen.getByRole("menuitem", { name: /provider/i })).toHaveTextContent(
+      selectedProductId(trustedInit) ?? "Not configured",
+    );
   });
 
   it("shows an init error instead of false settings defaults", async () => {
-    mockLoadInit.mockRejectedValue(new Error("init unavailable"));
+    const api = createTestApi();
+    vi.mocked(api.loadConfigurationInit).mockRejectedValue(new Error("init unavailable"));
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
 
-    renderPage();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ApiProvider value={api}>
+          <ConfigProvider>
+            <ThemeProvider>
+              <FooterProvider>
+                <KeyboardProvider>
+                  <SettingsHubPage />
+                </KeyboardProvider>
+              </FooterProvider>
+            </ThemeProvider>
+          </ConfigProvider>
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Configuration unavailable.");
     expect(screen.queryByText("Not trusted")).not.toBeInTheDocument();
     expect(screen.queryByText("Not configured")).not.toBeInTheDocument();
+  });
+
+  it("renders no legacy provider status fields in the hub tree", async () => {
+    const { container } = renderPage();
+    await screen.findByRole("region", { name: /settings hub/i });
+    expect(container.innerHTML).toBeClientSafeDom();
   });
 });

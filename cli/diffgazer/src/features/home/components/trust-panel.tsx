@@ -8,6 +8,7 @@ import {
 } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { TRUST_FOOTER_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
+import type { UseQueryResult } from "@tanstack/react-query";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
@@ -65,7 +66,10 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
   }
 
   const queryGuardPanels = useQueryGuardPanels("Loading project info...");
-  const guard = guardQueryState(initQuery, queryGuardPanels);
+  const guard = guardQueryState(
+    initQuery as UseQueryResult<NonNullable<typeof initQuery.data>>,
+    queryGuardPanels,
+  );
   if (guard) return guard;
 
   return (

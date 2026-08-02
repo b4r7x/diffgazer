@@ -1,49 +1,44 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
+import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type RenderResult, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { expect, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import {
+  makeShellApiOverrides,
+  makeShellInitResponse,
+  SHELL_TRUSTED_PROJECT,
+} from "@/testing/shell-fixtures";
 import { SettingsDiagnosticsPage } from "../components/diagnostics/page";
 
 export const mockNavigate: Mock = vi.fn();
 
-// Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-export function makeInitResponse(
-  overrides: Partial<Awaited<ReturnType<BoundApi["loadInit"]>>> = {},
-): Awaited<ReturnType<BoundApi["loadInit"]>> {
-  return {
-    configPath: "/tmp/diffgazer/config.json",
-    config: { provider: "openrouter", model: "openrouter/test-model" },
-    providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
+export function makeInitResponse(overrides: Partial<ConfigurationInitResponse> = {}) {
+  return makeShellInitResponse(overrides);
+}
+
+export function makeUnconfiguredInitResponse(): ConfigurationInitResponse {
+  return makeShellInitResponse({
+    configurations: [],
+    selectedConfigurationId: null,
+    project: SHELL_TRUSTED_PROJECT,
     settings: {
       theme: "terminal",
       defaultLenses: [],
       defaultProfile: null,
       severityThreshold: "low",
-      secretsStorage: null,
+      secretsStorage: "file",
       agentExecution: "parallel",
     },
-    configured: true,
-    project: { projectId: "proj-1", path: "/tmp/repo", trust: null },
-    setup: {
-      hasSecretsStorage: true,
-      hasProvider: true,
-      hasModel: true,
-      hasTrust: true,
-      isConfigured: true,
-      isReady: true,
-      missing: [],
-    },
-    ...overrides,
-  };
+  });
 }
 
 export function makeContextResponse(): Awaited<ReturnType<BoundApi["getReviewContext"]>> {
@@ -71,18 +66,18 @@ export function makeContextResponse(): Awaited<ReturnType<BoundApi["getReviewCon
 }
 
 export let mockRequest: Mock<BoundApi["request"]>;
-export let mockLoadInit: Mock<BoundApi["loadInit"]>;
-export let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
 export let mockGetReviewContext: Mock<BoundApi["getReviewContext"]>;
 export let mockRefreshReviewContext: Mock<BoundApi["refreshReviewContext"]>;
+export let mockLoadInit: Mock<BoundApi["loadConfigurationInit"]>;
+let shellApiOverrides: Partial<BoundApi>;
 
 function createTestApi(): BoundApi {
   const baseApi = createApi({ baseUrl: "http://localhost" });
   return {
     ...baseApi,
     request: mockRequest,
-    loadInit: mockLoadInit,
-    getProviderStatus: mockGetProviderStatus,
+    ...shellApiOverrides,
+    loadConfigurationInit: mockLoadInit,
     getReviewContext: mockGetReviewContext,
     refreshReviewContext: mockRefreshReviewContext,
   } satisfies BoundApi;
@@ -91,16 +86,14 @@ function createTestApi(): BoundApi {
 export function setupDiagnosticsMocks() {
   mockNavigate.mockReset();
   mockRequest = vi.fn<BoundApi["request"]>().mockResolvedValue(new Response(null));
-  mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
-  mockGetProviderStatus = vi
-    .fn<BoundApi["getProviderStatus"]>()
-    .mockResolvedValue([{ provider: "openrouter", hasApiKey: true, isActive: true }]);
   mockGetReviewContext = vi
     .fn<BoundApi["getReviewContext"]>()
     .mockResolvedValue(makeContextResponse());
   mockRefreshReviewContext = vi
     .fn<BoundApi["refreshReviewContext"]>()
     .mockResolvedValue(makeContextResponse());
+  shellApiOverrides = makeShellApiOverrides(makeInitResponse());
+  mockLoadInit = shellApiOverrides.loadConfigurationInit as Mock<BoundApi["loadConfigurationInit"]>;
 }
 
 export function renderPage(): RenderResult & { queryClient: QueryClient } {

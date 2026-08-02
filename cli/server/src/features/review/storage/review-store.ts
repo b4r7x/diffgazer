@@ -21,6 +21,23 @@ export type DetailedReviewRead =
 
 const createStoreError = createError<StoreErrorCode>;
 
+function serializeReview(review: SavedReview): string {
+  if (!review.execution) {
+    return `${JSON.stringify(review, null, 2)}\n`;
+  }
+
+  const normalized = SavedReviewSchema.parse({
+    ...review,
+    result: review.execution.receipt.outcome === "completed" ? review.result : { issues: [] },
+    execution: {
+      receipt: review.execution.receipt,
+      result:
+        review.execution.receipt.outcome === "completed" ? review.execution.result : { issues: [] },
+    },
+  });
+  return `${JSON.stringify(normalized, null, 2)}\n`;
+}
+
 // Return a path-free client message; log the raw cause (which carries the absolute
 // daemon path) server-side so clients never see host filesystem internals.
 function storeIoError(
@@ -139,7 +156,14 @@ async function write(review: SavedReview): Promise<Result<void, StoreError>> {
   const ensureResult = await ensureReviewsDir();
   if (!ensureResult.ok) return ensureResult;
 
-  return safeAtomicWrite(path, `${JSON.stringify(review, null, 2)}\n`);
+  const validation = SavedReviewSchema.safeParse(review);
+  if (!validation.success) {
+    return err(
+      createStoreError("VALIDATION_ERROR", "review failed validation", validation.error.message),
+    );
+  }
+
+  return safeAtomicWrite(path, serializeReview(validation.data));
 }
 
 /** The single on-disk review collection: one JSON document per review id. */

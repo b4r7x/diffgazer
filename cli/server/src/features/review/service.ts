@@ -32,7 +32,8 @@ import {
   markComplete,
   markReady,
 } from "./stream/store.js";
-import type { EmitFn, StreamReviewParams } from "./types.js";
+import type { EmitFn, ReviewExecutionContext, StreamReviewParams } from "./types.js";
+import { createReviewExecutionContext } from "./types.js";
 
 /** Logs per-step latency from the review stream so each phase is observable. */
 function logStepTiming(
@@ -170,11 +171,14 @@ export async function createReviewSession(
   const statusHash = statusHashResult.kind === "unavailable" ? "" : statusHashResult.hash;
   const scopeKey = buildScopeKey({ files, lenses: lensIds, profile: profileId });
   const reviewDefaults = resolveReviewDefaults({ lensIds, profileId });
+  const admittedPlan = aiClient.authorization?.plan;
   const reviewConfigKey = buildReviewConfigKey({
     lenses: reviewDefaults.activeLenses,
     profile: reviewDefaults.effectiveProfileId,
     minSeverity: reviewDefaults.severityFilter?.minSeverity,
-    executionFingerprint: aiClient.executionFingerprint,
+    admittedExecutionFingerprint: admittedPlan?.executionFingerprint,
+    configurationId: admittedPlan?.configurationId,
+    configurationRevision: admittedPlan?.configurationRevision,
   });
   const reviewId = randomUUID();
   const bufferedEvents: FullReviewStreamEvent[] = [];
@@ -230,6 +234,10 @@ export async function createReviewSession(
       reviewConfigKey,
       reviewInputHash,
       provider: aiClient.provider,
+      configurationId: admittedPlan?.configurationId,
+      configurationRevision: admittedPlan?.configurationRevision,
+      admittedExecutionFingerprint: admittedPlan?.executionFingerprint,
+      leaseId: aiClient.authorization?.lease.leaseId,
     });
     const stepStartedAt = new Map<StepId, number>();
     const emit: EmitFn = async (event) => {
@@ -241,8 +249,18 @@ export async function createReviewSession(
     }
     markReady(reviewId);
 
+    const executionContext = aiClient.authorization
+      ? createReviewExecutionContext(aiClient.authorization)
+      : null;
+
     if (!parsedResult.ok) {
-      void handleReviewFailure(parsedResult.error, emit, reviewId, session.controller.signal);
+      void (async () => {
+        try {
+          await handleReviewFailure(parsedResult.error, emit, reviewId, session.controller.signal);
+        } finally {
+          executionContext?.releaseOnce();
+        }
+      })();
     } else {
       void runReviewSession({
         aiClient,
@@ -256,8 +274,10 @@ export async function createReviewSession(
         branch,
         elapsedStart,
         emit,
+        executionContext,
       }).catch((error) => {
         handleDetachedReviewSessionError(reviewId, error);
+        executionContext?.releaseOnce();
       });
     }
 
@@ -292,6 +312,7 @@ interface RunReviewSessionOptions {
   branch: string | null;
   elapsedStart: number;
   emit: EmitFn;
+  executionContext: ReviewExecutionContext | null;
 }
 
 async function runReviewSession({
@@ -306,6 +327,7 @@ async function runReviewSession({
   branch,
   elapsedStart,
   emit,
+  executionContext,
 }: RunReviewSessionOptions): Promise<void> {
   try {
     signal.throwIfAborted();
@@ -318,13 +340,19 @@ async function runReviewSession({
     });
     signal.throwIfAborted();
 
-    const outcomeResult = await executeReview({ aiClient, parsed, config, emit, signal });
+    const outcomeResult = await executeReview({
+      aiClient,
+      parsed,
+      config,
+      emit,
+      signal,
+      ...(executionContext ? { executionContext } : {}),
+    });
     if (!outcomeResult.ok) {
       await handleReviewFailure(outcomeResult.error, emit, reviewId, signal);
       return;
     }
     const outcome = outcomeResult.value;
-
     const durationMs = Math.round(performance.now() - elapsedStart);
 
     const finalized = await finalizeReview({
@@ -347,5 +375,7 @@ async function runReviewSession({
     }
   } catch (error) {
     await handleReviewFailure(error, emit, reviewId, signal);
+  } finally {
+    executionContext?.releaseOnce();
   }
 }

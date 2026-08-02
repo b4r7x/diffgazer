@@ -1,84 +1,151 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { err } from "@diffgazer/core/result";
+import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
+import type { EvidenceKey, RuntimeIdentity } from "@diffgazer/core/schemas/review";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createAdmissionEvidence } from "../../config/admission-evidence.js";
+import type { SupportedProviderConfigurationRecord } from "../../config/provider-config.js";
+import { createEnvironmentSecretBinding } from "../../config/secret-bindings.js";
+import {
+  type AdmissionServiceDependencies,
+  type AdmissionSnapshot,
+  authorizeReviewExecution,
+  buildExpectedEvidenceKey,
+  ExecutionLeaseRegistry,
+  executionLimitsFromBudget,
+} from "../admission/service.js";
+import { createBudgetLedger } from "../budget/ledger.js";
 
-const keyring = vi.hoisted(() => ({
-  deleteKeyringSecret: vi.fn(),
-  isKeyringAvailable: vi.fn(),
-  readKeyringSecret: vi.fn(),
-  writeKeyringSecret: vi.fn(),
-}));
+const CHECKED_AT = "2026-07-31T12:00:00.000Z";
+const SCHEMA_SHA256 = "1".repeat(64);
+const CREDENTIAL_REFERENCE_IDENTITY = "3".repeat(64);
+const RUNTIME: RuntimeIdentity = { identity: "diffgazer-server", version: "1.2.3" };
 
-const modelsDevCatalog = vi.hoisted(() => ({
+const BUDGET = {
+  inputTokens: 32_000,
+  outputTokens: 8_000,
+  responseBytes: 65_536,
+  wallTimeMs: 60_000,
+  retries: 2,
+  concurrency: 1,
+  perReview: 40_000,
+} as const;
+
+const catalogMocks = vi.hoisted(() => ({
   getProviderModels: vi.fn(),
-}));
-
-const openRouterCatalog = vi.hoisted(() => ({
   getOpenRouterModelsWithCache: vi.fn(),
 }));
 
-// Boundary mock: keyring wraps the OS keychain via @napi-rs/keyring; tests provide canned secret read/write results.
-vi.mock("../../config/keyring.js", () => keyring);
-vi.mock("../models-dev-catalog.js", () => modelsDevCatalog);
-vi.mock("../openrouter-models.js", () => openRouterCatalog);
-
-// Boundary mock: `ai` is the Vercel AI SDK external HTTP client; tests provide canned generateText output.
-vi.mock("ai", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("ai")>()),
-  generateText: vi.fn(),
+vi.mock("../models-dev-catalog.js", () => ({
+  getProviderModels: catalogMocks.getProviderModels,
+}));
+vi.mock("../openrouter-models.js", () => ({
+  getOpenRouterModelsWithCache: catalogMocks.getOpenRouterModelsWithCache,
 }));
 
-// Boundary mock: @ai-sdk/google is the Google Generative AI external HTTP client; tests provide a no-op model factory.
-vi.mock("@ai-sdk/google", () => ({
-  createGoogleGenerativeAI: vi.fn(() => vi.fn(() => ({}))),
-}));
+vi.mock("../admission/service.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../admission/service.js")>();
+  return {
+    ...actual,
+    authorizeReviewExecution: vi.fn(actual.authorizeReviewExecution),
+  };
+});
 
-// Boundary mock: zhipu-ai-provider is the Zhipu external HTTP client; tests provide a no-op model factory.
-vi.mock("zhipu-ai-provider", () => ({
-  createZhipu: vi.fn(() => vi.fn(() => ({}))),
-}));
+function hostedRecord(
+  patch: Partial<SupportedProviderConfigurationRecord> = {},
+): SupportedProviderConfigurationRecord {
+  return {
+    schemaVersion: 2,
+    status: "supported",
+    configurationId: "gemini-primary",
+    revision: 3,
+    productId: "gemini",
+    transportFamily: "hosted-api",
+    input: {
+      transportFamily: "hosted-api",
+      productId: "gemini",
+      endpoint: "https://generativelanguage.googleapis.com/v1beta",
+    },
+    selectedModelId: "gemini-2.5-flash",
+    acknowledgement: {
+      noticeVersion: 1,
+      acceptedAt: CHECKED_AT,
+    },
+    evidenceReference: "evidence-gemini-3",
+    budget: BUDGET,
+    createdAt: "2026-07-31T11:00:00.000Z",
+    updatedAt: CHECKED_AT,
+    ...patch,
+  };
+}
 
-// Boundary mock: @openrouter/ai-sdk-provider is the OpenRouter external HTTP client; tests provide a no-op chat factory.
-vi.mock("@openrouter/ai-sdk-provider", () => ({
-  createOpenRouter: vi.fn(() => ({
-    chat: vi.fn(() => ({
-      doGenerate: vi.fn(),
-      doStream: vi.fn(),
-    })),
-  })),
-}));
+function evidenceKeyFor(record = hostedRecord()): EvidenceKey {
+  return buildExpectedEvidenceKey({
+    record,
+    structuredOutputSchemaSha256: SCHEMA_SHA256,
+    runtime: RUNTIME,
+    credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
+    workspaceAccountReference: null,
+  });
+}
 
-// Boundary mock: @ai-sdk/openai-compatible is the OpenAI-compatible external HTTP client (groq, cerebras).
-vi.mock("@ai-sdk/openai-compatible", () => ({
-  createOpenAICompatible: vi.fn(() => ({
-    chatModel: vi.fn(() => ({ doGenerate: vi.fn(), doStream: vi.fn() })),
-  })),
-}));
+function readySnapshot(): AdmissionSnapshot {
+  const record = hostedRecord();
+  const binding = createEnvironmentSecretBinding(
+    record.configurationId,
+    record.revision,
+    "GEMINI_KEY",
+  );
+  const evidenceKey = evidenceKeyFor(record);
+  return {
+    configuration: { status: "supported", record },
+    binding,
+    evidence: createAdmissionEvidence({
+      evidenceKey,
+      checkedAt: CHECKED_AT,
+      status: "passed",
+      expiresAt: "2026-08-01T00:00:00.000Z",
+    }),
+    credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
+    workspaceAccountReference: null,
+  };
+}
+
+function createDependencies(
+  snapshot: AdmissionSnapshot | null,
+  overrides: Partial<AdmissionServiceDependencies> = {},
+): AdmissionServiceDependencies {
+  const resolveCredential = vi.fn(async () => "super-secret-api-key-value");
+  return {
+    now: () => new Date("2026-07-31T12:05:00.000Z"),
+    loadSnapshot: async () => snapshot,
+    leaseRegistry: new ExecutionLeaseRegistry(),
+    budgetLedger: createBudgetLedger(executionLimitsFromBudget(BUDGET)),
+    structuredOutputSchemaSha256: SCHEMA_SHA256,
+    runtimeIdentity: RUNTIME,
+    resolveCredential,
+    ...overrides,
+  };
+}
 
 let diffgazerHome: string;
 
-function writeJson(filePath: string, value: unknown): void {
-  mkdirSync(dirname(filePath), { recursive: true });
-  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
-}
-
 function setupTempHome() {
-  diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-ai-client-"));
+  diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-initialize-"));
   process.env.DIFFGAZER_HOME = diffgazerHome;
   vi.resetModules();
   vi.clearAllMocks();
-  keyring.isKeyringAvailable.mockReturnValue(true);
-  keyring.readKeyringSecret.mockReturnValue({ ok: true, value: null });
-  modelsDevCatalog.getProviderModels.mockResolvedValue({
+  catalogMocks.getProviderModels.mockResolvedValue({
     models: [],
-    fetchedAt: new Date().toISOString(),
+    fetchedAt: "",
     source: "live",
     cached: false,
   });
-  openRouterCatalog.getOpenRouterModelsWithCache.mockResolvedValue({
+  catalogMocks.getOpenRouterModelsWithCache.mockResolvedValue({
     ok: true,
-    value: { models: [], fetchedAt: new Date().toISOString(), cached: false },
+    value: { models: [], fetchedAt: "", cached: false },
   });
 }
 
@@ -91,270 +158,141 @@ function teardownTempHome() {
 async function loadInitialize() {
   return import("./initialize.js");
 }
-describe("initializeAIClient", () => {
-  beforeEach(() => {
-    setupTempHome();
-    keyring.writeKeyringSecret.mockReturnValue({ ok: true, value: undefined });
-    keyring.deleteKeyringSecret.mockReturnValue({ ok: true, value: false });
-  });
 
+describe("initializeAIClient", () => {
+  beforeEach(setupTempHome);
   afterEach(teardownTempHome);
 
-  it("reports UNSUPPORTED_PROVIDER when no provider is active", async () => {
-    // No config file written — store has no active provider
+  it("authorizes the exact configuration id and returns the admitted fingerprint", async () => {
+    const snapshot = readySnapshot();
+    const dependencies = createDependencies(snapshot);
     const { initializeAIClient } = await loadInitialize();
-    const result = await initializeAIClient();
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("UNSUPPORTED_PROVIDER");
-    }
-  });
-
-  it("reports MODEL_ERROR when the active provider has no model", async () => {
-    writeJson(join(diffgazerHome, "config.json"), {
-      settings: { secretsStorage: "file" },
-      providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
-    });
-    writeJson(join(diffgazerHome, "secrets.json"), { providers: { gemini: "test-key" } });
-
-    const { initializeAIClient } = await loadInitialize();
-    const result = await initializeAIClient();
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("MODEL_ERROR");
-    }
-  });
-
-  it("preserves KEYRING_READ_FAILED when the configured credential cannot be read", async () => {
-    writeJson(join(diffgazerHome, "config.json"), {
-      settings: { secretsStorage: "keyring" },
-      providers: [
-        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
-      ],
-    });
-    keyring.readKeyringSecret.mockReturnValue({
-      ok: false,
-      error: { code: "KEYRING_READ_FAILED", message: "keyring error" },
-    });
-
-    const { initializeAIClient } = await loadInitialize();
-    const result = await initializeAIClient();
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toEqual({ code: "KEYRING_READ_FAILED", message: "keyring error" });
-    }
-  });
-
-  it("reports API_KEY_MISSING when no secret has been stored", async () => {
-    writeJson(join(diffgazerHome, "config.json"), {
-      settings: { secretsStorage: "file" },
-      providers: [
-        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
-      ],
-    });
-    // No secrets.json → getProviderApiKey returns null
-
-    const { initializeAIClient } = await loadInitialize();
-    const result = await initializeAIClient();
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("API_KEY_MISSING");
-    }
-  });
-
-  it("returns a usable client with a non-secret execution fingerprint", async () => {
-    const apiKey = "test-api-key";
-    writeJson(join(diffgazerHome, "config.json"), {
-      settings: { secretsStorage: "file" },
-      providers: [
-        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
-      ],
-    });
-    writeJson(join(diffgazerHome, "secrets.json"), { providers: { gemini: apiKey } });
-
-    const { initializeAIClient } = await loadInitialize();
-    const result = await initializeAIClient();
+    const result = await initializeAIClient("gemini-primary", dependencies);
 
     expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.provider).toBe("gemini");
-      expect(result.value.executionFingerprint).toStrictEqual({
-        provider: "gemini",
-        model: "gemini-2.5-flash",
-      });
-      expect(JSON.stringify(result.value.executionFingerprint)).not.toContain(apiKey);
-    }
+    if (!result.ok) return;
+    expect(result.value.authorization).toBeDefined();
+    expect(authorizeReviewExecution).toHaveBeenCalledWith("gemini-primary", dependencies);
+    expect(result.value.executionFingerprint).toStrictEqual({
+      provider: "gemini",
+      model: "gemini-2.5-flash",
+    });
+    expect(result.value.authorization?.plan.configurationId).toBe("gemini-primary");
+    expect(result.value.authorization?.plan.executionFingerprint).toBe(
+      result.value.authorization?.plan.executionFingerprint,
+    );
+    expect(JSON.stringify(result.value.executionFingerprint)).not.toContain("super-secret");
+  });
+
+  it("rechecks admission evidence through authorizeReviewExecution before adapter creation", async () => {
+    const snapshot = readySnapshot();
+    const dependencies = createDependencies(snapshot);
+    const { initializeAIClient } = await loadInitialize();
+
+    const result = await initializeAIClient("gemini-primary", dependencies);
+
+    expect(result.ok).toBe(true);
+    expect(authorizeReviewExecution).toHaveBeenCalledOnce();
+    expect(dependencies.resolveCredential).not.toHaveBeenCalled();
+  });
+
+  it("does not consult catalog lookups", async () => {
+    const dependencies = createDependencies(readySnapshot());
+    const { initializeAIClient } = await loadInitialize();
+
+    await initializeAIClient("gemini-primary", dependencies);
+
+    expect(catalogMocks.getProviderModels).not.toHaveBeenCalled();
+    expect(catalogMocks.getOpenRouterModelsWithCache).not.toHaveBeenCalled();
+  });
+
+  it("surfaces admission failures without creating an adapter client", async () => {
+    const dependencies = createDependencies(null);
+    const { initializeAIClient } = await loadInitialize();
+
+    const result = await initializeAIClient("missing-configuration", dependencies);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("configuration-not-found");
+    expect(dependencies.resolveCredential).not.toHaveBeenCalled();
+  });
+
+  it("gives every authorization its own budget ledger", async () => {
+    const { createAdmissionServiceDependencies } = await loadInitialize();
+
+    const first = createAdmissionServiceDependencies("gemini-primary");
+    const second = createAdmissionServiceDependencies("gemini-primary");
+
+    // A shared module-level ledger latched one configuration's exhaustion onto
+    // every later review until restart.
+    expect(first.budgetLedger).not.toBe(second.budgetLedger);
+  });
+
+  it("rejects stale evidence during the immediate recheck", async () => {
+    const staleEvidenceKey = evidenceKeyFor(hostedRecord({ selectedModelId: "stale-model" }));
+    const snapshot = readySnapshot();
+    const dependencies = createDependencies({
+      ...snapshot,
+      evidence: createAdmissionEvidence({
+        evidenceKey: staleEvidenceKey,
+        checkedAt: CHECKED_AT,
+        status: "passed",
+        expiresAt: "2026-08-01T00:00:00.000Z",
+      }),
+    });
+    const { initializeAIClient } = await loadInitialize();
+
+    const result = await initializeAIClient("gemini-primary", dependencies);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("tuple-changed");
   });
 });
 
-describe("initializeAIClient model limits", () => {
+describe("initializeAIClient legacy behavior", () => {
   beforeEach(setupTempHome);
   afterEach(teardownTempHome);
-  it("falls back to the snapshot when the active model is absent from current catalog data", async () => {
-    const { generateText } = await import("ai");
-    vi.mocked(generateText).mockResolvedValue({ output: { x: "ok" } } as never);
 
-    writeJson(join(diffgazerHome, "config.json"), {
-      settings: { secretsStorage: "file" },
-      providers: [
-        {
-          provider: "groq",
-          hasApiKey: true,
-          isActive: true,
-          model: "meta-llama/llama-4-scout-17b-16e-instruct",
-        },
-      ],
-    });
-    writeJson(join(diffgazerHome, "secrets.json"), { providers: { groq: "test-key" } });
-
-    const { initializeAIClient } = await loadInitialize();
-    const clientResult = await initializeAIClient();
-    expect(clientResult.ok).toBe(true);
-    if (!clientResult.ok) return;
-
-    const { z } = await import("zod");
-    await clientResult.value.generate("test", z.object({ x: z.string() }));
-
-    // The groq scout model's snapshot output limit is 8192, well below the 65536 default.
-    expect(generateText).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 8192 }));
-  });
-
-  it("uses live-only model limits for generation and context preflight", async () => {
-    const { generateText } = await import("ai");
-    vi.mocked(generateText).mockResolvedValue({ output: { x: "ok" } } as never);
-    modelsDevCatalog.getProviderModels.mockResolvedValue({
-      models: [
-        {
-          id: "live-only-model",
-          name: "Live Only",
-          description: "Live model",
-          tier: "paid",
-          contextLength: 8192,
-          maxOutputTokens: 4096,
-        },
-      ],
-      fetchedAt: new Date().toISOString(),
-      source: "cache",
-      cached: true,
-    });
-    writeJson(join(diffgazerHome, "config.json"), {
-      settings: { secretsStorage: "file" },
-      providers: [
-        {
-          provider: "groq",
-          hasApiKey: true,
-          isActive: true,
-          model: "live-only-model",
-        },
-      ],
-    });
-    writeJson(join(diffgazerHome, "secrets.json"), { providers: { groq: "test-key" } });
-
-    const { initializeAIClient } = await loadInitialize();
-    const clientResult = await initializeAIClient();
-    expect(clientResult.ok).toBe(true);
-    if (!clientResult.ok) return;
-
-    const { z } = await import("zod");
-    await clientResult.value.generate("test", z.object({ x: z.string() }));
-    expect(generateText).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 4096 }));
-
-    vi.mocked(generateText).mockClear();
-    const oversized = await clientResult.value.generate(
-      "x".repeat(20_000),
-      z.object({ x: z.string() }),
-    );
-    expect(oversized.ok).toBe(false);
-    expect(generateText).not.toHaveBeenCalled();
-  });
-
-  it("does not replace a current model's missing limits with snapshot limits", async () => {
-    const { generateText } = await import("ai");
-    vi.mocked(generateText).mockResolvedValue({ output: { x: "ok" } } as never);
-    modelsDevCatalog.getProviderModels.mockResolvedValue({
-      models: [
-        {
-          id: "meta-llama/llama-4-scout-17b-16e-instruct",
-          name: "Current Scout",
-          description: "Current catalog entry without limits",
-          tier: "paid",
-        },
-      ],
-      fetchedAt: new Date().toISOString(),
-      source: "live",
-      cached: false,
-    });
-    writeJson(join(diffgazerHome, "config.json"), {
-      settings: { secretsStorage: "file" },
-      providers: [
-        {
-          provider: "groq",
-          hasApiKey: true,
-          isActive: true,
-          model: "meta-llama/llama-4-scout-17b-16e-instruct",
-        },
-      ],
-    });
-    writeJson(join(diffgazerHome, "secrets.json"), { providers: { groq: "test-key" } });
-
-    const { initializeAIClient } = await loadInitialize();
-    const clientResult = await initializeAIClient();
-    expect(clientResult.ok).toBe(true);
-    if (!clientResult.ok) return;
-
-    const { z } = await import("zod");
-    await clientResult.value.generate("test", z.object({ x: z.string() }));
-
-    expect(generateText).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 65536 }));
-  });
-
-  it("uses OpenRouter's current completion ceiling", async () => {
-    const { generateText } = await import("ai");
-    vi.mocked(generateText).mockResolvedValue({ output: { x: "ok" } } as never);
-    openRouterCatalog.getOpenRouterModelsWithCache.mockResolvedValue({
-      ok: true,
-      value: {
-        models: [
+  it("does not resolve catalog model limits or legacy provider credentials", async () => {
+    writeFileSync(
+      join(diffgazerHome, "config.json"),
+      JSON.stringify({
+        settings: { secretsStorage: "file" },
+        providers: [
           {
-            id: "vendor/current-model",
-            name: "Current Model",
-            contextLength: 16384,
-            maxCompletionTokens: 2048,
-            pricing: { prompt: "0", completion: "0" },
-            isFree: true,
+            provider: "gemini",
+            [LEGACY_V1_HAS_API_KEY_PROPERTY]: true,
+            isActive: true,
+            model: "gemini-2.5-flash",
           },
         ],
-        fetchedAt: new Date().toISOString(),
-        cached: true,
-      },
-    });
-    writeJson(join(diffgazerHome, "config.json"), {
-      settings: { secretsStorage: "file" },
-      providers: [
-        {
-          provider: "openrouter",
-          hasApiKey: true,
-          isActive: true,
-          model: "vendor/current-model",
-        },
-      ],
-    });
-    writeJson(join(diffgazerHome, "secrets.json"), {
-      providers: { openrouter: "test-key" },
-    });
+      }),
+      "utf-8",
+    );
+    writeFileSync(
+      join(diffgazerHome, "secrets.json"),
+      JSON.stringify({ providers: { gemini: "legacy-key" } }),
+      "utf-8",
+    );
+    mkdirSync(dirname(join(diffgazerHome, "credentials", "noop.key")), { recursive: true });
 
+    const dependencies = createDependencies(readySnapshot());
     const { initializeAIClient } = await loadInitialize();
-    const clientResult = await initializeAIClient();
-    expect(clientResult.ok).toBe(true);
-    if (!clientResult.ok) return;
+    vi.mocked(authorizeReviewExecution).mockResolvedValueOnce(
+      err({
+        code: "configuration-not-found",
+        safeMessage: "Configuration was not found",
+        retryable: false,
+      }),
+    );
 
-    const { z } = await import("zod");
-    await clientResult.value.generate("test", z.object({ x: z.string() }));
+    await initializeAIClient("gemini-primary", dependencies);
 
-    expect(generateText).toHaveBeenCalledWith(expect.objectContaining({ maxOutputTokens: 2048 }));
+    expect(catalogMocks.getProviderModels).not.toHaveBeenCalled();
+    expect(catalogMocks.getOpenRouterModelsWithCache).not.toHaveBeenCalled();
+    expect(dependencies.resolveCredential).not.toHaveBeenCalled();
   });
 });

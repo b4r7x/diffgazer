@@ -7,11 +7,7 @@ import {
   ExactModelIdSchema,
 } from "../schemas/config/provider-config.js";
 import { READINESS_PRESENTATION, type Readiness } from "../schemas/config/readiness.js";
-import {
-  isPinnedDownstreamRouteModelId,
-  type ModelPolicy,
-  PRODUCT_REGISTRY,
-} from "./product-registry.js";
+import { isModelIdAllowedForProduct, PRODUCT_REGISTRY } from "./product-registry.js";
 
 type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
 
@@ -216,10 +212,6 @@ function configurationMatches(
   );
 }
 
-function matchesPinnedDownstreamRoute(modelId: string): boolean {
-  return isPinnedDownstreamRouteModelId(modelId);
-}
-
 function modelMatchesProduct(
   modelId: string,
   productId: SupportedConfigurationSummary["productId"],
@@ -231,25 +223,7 @@ function modelMatchesProduct(
     return false;
   }
 
-  const policy: ModelPolicy = PRODUCT_REGISTRY[productId].modelPolicy;
-  switch (policy.kind) {
-    case "discovered-allowlist":
-      if (!policy.modelIds.includes(modelId)) return false;
-      return !(
-        policy.higherCostModelEvidence !== undefined && policy.higherCostModelIds?.includes(modelId)
-      );
-    case "discovered-family":
-      return (
-        !policy.rejectedAliases.some((alias) => alias === modelId) &&
-        policy.familyPrefixes.some(
-          (prefix) => modelId === prefix || modelId.startsWith(`${prefix}-`),
-        )
-      );
-    case "discovered-exact":
-      return !policy.explicitOptInSuffixes?.some((suffix) => modelId.endsWith(suffix));
-    case "pinned-downstream-route":
-      return matchesPinnedDownstreamRoute(modelId);
-  }
+  return isModelIdAllowedForProduct(productId, modelId);
 }
 
 function modelEvidenceDescription(

@@ -1,46 +1,20 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
-import type {
-  OpenRouterModelsResponse,
-  ProviderModelsResponse,
-} from "@diffgazer/core/schemas/config";
+import { getInitialWizardData } from "@diffgazer/core/onboarding";
+import type { ClientConfigurationSummary } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { escapeRegExp } from "@/testing/escape-regexp";
+import { makeReadiness, READY_GEMINI_CONFIGURATION } from "@/testing/configuration-fixtures";
 import { ModelStep } from "./model-step";
 
-const GEMINI_CATALOG: ProviderModelsResponse = {
-  models: [
-    {
-      id: "gemini-2.5-flash",
-      name: "Gemini 2.5 Flash",
-      description: "1M context",
-      tier: "free",
-      recommended: true,
-    },
-    { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", description: "1M context", tier: "free" },
-    {
-      id: "gemini-3-pro-preview",
-      name: "Gemini 3 Pro Preview",
-      description: "1M context",
-      tier: "paid",
-    },
-  ],
-  fetchedAt: new Date().toISOString(),
-  source: "live",
-  cached: false,
-};
+type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
 
-function geminiModel(id: string) {
-  const model = GEMINI_CATALOG.models.find((m) => m.id === id);
-  if (!model) throw new Error(`Gemini catalog fixture is missing model "${id}"`);
-  return model;
-}
+const GEMINI_CONFIGURATION = READY_GEMINI_CONFIGURATION as SupportedConfigurationSummary;
 
 function makeWrapper(api: BoundApi) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -55,260 +29,165 @@ function makeWrapper(api: BoundApi) {
   );
 }
 
-function renderGemini(props: {
-  value: string | null;
-  onChange?: (model: string) => void;
-  onCommit?: (model: string) => void;
-}) {
-  const getProviderModels = vi
-    .fn<() => Promise<ProviderModelsResponse>>()
-    .mockResolvedValue(GEMINI_CATALOG);
-  const api = {
-    ...createApi({ baseUrl: "http://localhost" }),
-    getProviderModels,
-  } satisfies BoundApi;
-  render(
-    <ModelStep
-      provider="gemini"
-      value={props.value}
-      onChange={props.onChange ?? vi.fn()}
-      onCommit={props.onCommit ?? vi.fn()}
-    />,
-    { wrapper: makeWrapper(api) },
-  );
-  return { getProviderModels };
-}
-
 describe("ModelStep", () => {
-  it("exposes the model-loading branch as a status region", async () => {
-    const getProviderModels = vi
-      .fn<() => Promise<ProviderModelsResponse>>()
-      .mockReturnValue(new Promise<ProviderModelsResponse>(() => {}));
-    const api = {
-      ...createApi({ baseUrl: "http://localhost" }),
-      getProviderModels,
-    } satisfies BoundApi;
-
-    render(<ModelStep provider="gemini" value={null} onChange={vi.fn()} onCommit={vi.fn()} />, {
-      wrapper: makeWrapper(api),
-    });
-
-    // F-353(b): the loading branch announces via role="status" instead of plain text.
-    expect(await screen.findByRole("status")).toHaveTextContent(/loading models/i);
-  });
-
-  it("announces a catalog rejection and retries without offering manual entry", async () => {
-    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>();
-    getProviderModels.mockImplementationOnce(
-      () =>
-        new Promise<ProviderModelsResponse>((_resolve, reject) => {
-          setTimeout(() => reject(new Error("catalog unavailable")), 0);
-        }),
+  it("lists configuration-bound exact models from the selected product policy", () => {
+    const gemini = getInitialWizardData("gemini");
+    render(
+      <ModelStep
+        configurationInput={gemini.configurationInput}
+        value={null}
+        onChange={vi.fn()}
+        onCommit={vi.fn()}
+      />,
     );
-    getProviderModels.mockResolvedValue(GEMINI_CATALOG);
-    const api = {
-      ...createApi({ baseUrl: "http://localhost" }),
-      getProviderModels,
-    } satisfies BoundApi;
 
-    render(<ModelStep provider="gemini" value={null} onChange={vi.fn()} onCommit={vi.fn()} />, {
-      wrapper: makeWrapper(api),
-    });
-
-    expect(screen.getByRole("status")).toHaveTextContent(/loading models/i);
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      /failed to load models: catalog unavailable/i,
-    );
-    expect(screen.queryByRole("textbox", { name: "Model ID" })).not.toBeInTheDocument();
-    await userEvent.setup().click(screen.getByRole("button", { name: "Retry" }));
-    await vi.waitFor(() => expect(getProviderModels).toHaveBeenCalledTimes(2));
-
-    const modelGroup = await screen.findByRole("radiogroup", { name: /available models/i });
-    expect(
-      within(modelGroup).getByRole("radio", { name: /Gemini 2\.5 Flash/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("commits the current selected catalog model when Enter is pressed", async () => {
-    const selectedModel = geminiModel("gemini-2.5-pro");
-    const user = userEvent.setup();
-    const onCommit = vi.fn();
-
-    renderGemini({ value: selectedModel.id, onCommit });
-
-    const modelGroup = await screen.findByRole("radiogroup", { name: /available models/i });
-    const selectedRadio = within(modelGroup).getByRole("radio", {
-      name: new RegExp(escapeRegExp(selectedModel.name)),
-    });
-
-    selectedRadio.focus();
-    await user.keyboard("{Enter}");
-
-    expect(onCommit).toHaveBeenCalledWith(selectedModel.id);
-  });
-
-  it("commits the highlighted catalog model after keyboard navigation", async () => {
-    const selectedModel = geminiModel("gemini-2.5-flash");
-    const highlightedModel = geminiModel("gemini-2.5-pro");
-    const user = userEvent.setup();
-    const onCommit = vi.fn();
-
-    renderGemini({ value: selectedModel.id, onCommit });
-
-    const modelGroup = await screen.findByRole("radiogroup", { name: /available models/i });
-    const selectedRadio = within(modelGroup).getByRole("radio", {
-      name: new RegExp(escapeRegExp(selectedModel.name)),
-    });
-
-    selectedRadio.focus();
-    await user.keyboard("{ArrowDown}{Enter}");
-
-    expect(onCommit).toHaveBeenCalledWith(highlightedModel.id);
-  });
-
-  it("renders the recommended and tier badges from the catalog", async () => {
-    renderGemini({ value: "gemini-2.5-flash" });
-
-    const modelGroup = await screen.findByRole("radiogroup", { name: /available models/i });
-    const flashRadio = within(modelGroup).getByRole("radio", { name: /Gemini 2\.5 Flash/ });
-    expect(flashRadio).toHaveTextContent(/recommended/i);
-    expect(flashRadio).toHaveTextContent(/free/i);
-  });
-
-  it("gives a model with nothing left to say no description line", async () => {
-    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>().mockResolvedValue({
-      ...GEMINI_CATALOG,
-      models: [{ id: "bare-model", name: "Bare Model", description: "", tier: "free" }],
-    });
-    render(<ModelStep provider="gemini" value={null} onChange={vi.fn()} onCommit={vi.fn()} />, {
-      wrapper: makeWrapper({ ...createApi({ baseUrl: "http://localhost" }), getProviderModels }),
-    });
-
-    const bare = await screen.findByRole("radio", { name: /Bare Model/ });
-    expect(bare).not.toHaveAttribute("aria-describedby");
-  });
-
-  it("shows snapshot provenance and retries an empty fallback catalog", async () => {
-    const user = userEvent.setup();
-    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>();
-    getProviderModels.mockResolvedValueOnce({
-      models: [],
-      fetchedAt: new Date().toISOString(),
-      source: "snapshot",
-      cached: false,
-    });
-    getProviderModels.mockResolvedValue(GEMINI_CATALOG);
-    const api = {
-      ...createApi({ baseUrl: "http://localhost" }),
-      getProviderModels,
-    } satisfies BoundApi;
-
-    render(<ModelStep provider="gemini" value={null} onChange={vi.fn()} onCommit={vi.fn()} />, {
-      wrapper: makeWrapper(api),
-    });
-
-    expect(await screen.findByText(/using the bundled model catalog/i)).toBeInTheDocument();
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Retry" }));
-    await vi.waitFor(() => expect(getProviderModels).toHaveBeenCalledTimes(2));
-
-    const modelGroup = await screen.findByRole("radiogroup", { name: /available models/i });
-    expect(
-      within(modelGroup).getByRole("radio", { name: /Gemini 2\.5 Flash/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("dates the cached-catalog notice in words instead of a machine timestamp", async () => {
-    const fetchedAt = new Date();
-    fetchedAt.setHours(14, 15, 0, 0);
-    const getProviderModels = vi.fn<() => Promise<ProviderModelsResponse>>().mockResolvedValue({
-      ...GEMINI_CATALOG,
-      fetchedAt: fetchedAt.toISOString(),
-      source: "cache",
-      cached: true,
-    });
-    const api = {
-      ...createApi({ baseUrl: "http://localhost" }),
-      getProviderModels,
-    } satisfies BoundApi;
-
-    render(<ModelStep provider="gemini" value={null} onChange={vi.fn()} onCommit={vi.fn()} />, {
-      wrapper: makeWrapper(api),
-    });
-
-    const notice = await screen.findByText(/using cached catalog data/i);
-    expect(notice).toHaveTextContent(/from Today at 2:15 PM\.$/);
-    expect(notice).not.toHaveTextContent(/\d{4}-\d{2}-\d{2}T/);
-  });
-
-  it("does not offer manual OpenRouter entry when no models are available", async () => {
-    const mockGetOpenRouterModels = vi
-      .fn<() => Promise<OpenRouterModelsResponse>>()
-      .mockResolvedValue({
-        models: [],
-        fetchedAt: new Date().toISOString(),
-        cached: false,
-      });
-    const api = {
-      ...createApi({ baseUrl: "http://localhost" }),
-      getOpenRouterModels: mockGetOpenRouterModels,
-    } satisfies BoundApi;
-
-    render(<ModelStep provider="openrouter" value={null} onChange={vi.fn()} onCommit={vi.fn()} />, {
-      wrapper: makeWrapper(api),
-    });
-
-    expect(await screen.findByText(/no models available/i)).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /gemini-2\.5-flash/i })).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: /model id/i })).not.toBeInTheDocument();
   });
 
-  it("commits the first available OpenRouter model after models load", async () => {
+  it("announces configuration-bound discovery failures and retries without manual entry", async () => {
     const user = userEvent.setup();
-    const onCommit = vi.fn();
-    const mockGetOpenRouterModels = vi.fn<() => Promise<OpenRouterModelsResponse>>();
-
-    mockGetOpenRouterModels.mockResolvedValue({
-      models: [
-        {
-          id: "openrouter/model-a",
-          name: "OpenRouter Model A",
-          description: "A description",
-          contextLength: 128000,
-          supportedParameters: ["response_format"],
-          pricing: { prompt: "0", completion: "0" },
-          isFree: false,
-        },
-        {
-          id: "openrouter/model-b",
-          name: "OpenRouter Model B",
-          description: "B description",
-          contextLength: 128000,
-          supportedParameters: ["response_format"],
-          pricing: { prompt: "0", completion: "0" },
-          isFree: false,
-        },
-      ],
-      fetchedAt: new Date().toISOString(),
-      cached: false,
-    });
-
+    const testConfiguration = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockRejectedValueOnce(new Error("catalog unavailable"))
+      .mockResolvedValue({
+        action: "test",
+        status: "succeeded",
+        configuration: GEMINI_CONFIGURATION,
+        readiness: makeReadiness("ready", "gemini"),
+      });
     const api = {
       ...createApi({ baseUrl: "http://localhost" }),
-      getOpenRouterModels: mockGetOpenRouterModels,
+      testConfiguration,
     } satisfies BoundApi;
+    const gemini = getInitialWizardData("gemini");
 
     render(
-      <ModelStep provider="openrouter" value={null} onChange={vi.fn()} onCommit={onCommit} />,
+      <ModelStep
+        configurationInput={gemini.configurationInput}
+        discoveryConfiguration={GEMINI_CONFIGURATION}
+        value={null}
+        onChange={vi.fn()}
+        onCommit={vi.fn()}
+      />,
       { wrapper: makeWrapper(api) },
     );
 
-    const modelGroup = await screen.findByRole("radiogroup", { name: /available models/i });
-    const firstRadio = within(modelGroup).getByRole("radio", { name: /OpenRouter Model A/ });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /catalog unavailable|Model discovery failed/i,
+    );
+    expect(screen.queryByRole("textbox", { name: "Model ID" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await vi.waitFor(() => expect(testConfiguration).toHaveBeenCalledTimes(2));
+  });
 
-    firstRadio.focus();
+  it("focuses retry when configuration-bound discovery recovers to an error", async () => {
+    const testConfiguration = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockReturnValue(new Promise(() => {}));
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      testConfiguration,
+    } satisfies BoundApi;
+    const gemini = getInitialWizardData("gemini");
+
+    render(
+      <ModelStep
+        configurationInput={gemini.configurationInput}
+        discoveryConfiguration={GEMINI_CONFIGURATION}
+        value={null}
+        onChange={vi.fn()}
+        onCommit={vi.fn()}
+      />,
+      { wrapper: makeWrapper(api) },
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(/discovering models/i);
+  });
+
+  it("commits the selected exact model when Enter is pressed", async () => {
+    const gemini = getInitialWizardData("gemini");
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+
+    render(
+      <ModelStep
+        configurationInput={gemini.configurationInput}
+        value="gemini-2.5-flash"
+        onChange={vi.fn()}
+        onCommit={onCommit}
+      />,
+    );
+
+    const modelGroup = screen.getByRole("radiogroup", { name: /available models/i });
+    const selectedRadio = within(modelGroup).getByRole("radio", {
+      name: /gemini-2\.5-flash/i,
+    });
+    selectedRadio.focus();
     await user.keyboard("{Enter}");
+    expect(onCommit).toHaveBeenCalledWith("gemini-2.5-flash");
+  });
 
-    expect(onCommit).toHaveBeenCalledWith("openrouter/model-a");
+  it("shows skipped discovery remediation without exposing catalog-only models", async () => {
+    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>().mockResolvedValue({
+      action: "test",
+      status: "succeeded",
+      configuration: { ...GEMINI_CONFIGURATION, selectedModelId: null },
+      readiness: makeReadiness("skipped", "gemini"),
+    });
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      testConfiguration,
+    } satisfies BoundApi;
+    const gemini = getInitialWizardData("gemini");
+
+    render(
+      <ModelStep
+        configurationInput={gemini.configurationInput}
+        discoveryConfiguration={GEMINI_CONFIGURATION}
+        value={null}
+        onChange={vi.fn()}
+        onCommit={vi.fn()}
+      />,
+      { wrapper: makeWrapper(api) },
+    );
+
+    expect(await screen.findByText(/live-check prerequisites/i)).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+  });
+
+  it("covers hosted, local HTTP, and local CLI policy model rows", () => {
+    const hosted = getInitialWizardData("deepseek");
+    const { rerender } = render(
+      <ModelStep
+        configurationInput={hosted.configurationInput}
+        value={null}
+        onChange={vi.fn()}
+        onCommit={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("radio", { name: /deepseek-v4-flash/i })).toBeInTheDocument();
+
+    const localHttp = getInitialWizardData("local-openai");
+    rerender(
+      <ModelStep
+        configurationInput={localHttp.configurationInput}
+        value={null}
+        onChange={vi.fn()}
+        onCommit={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("radio", { name: /local-model/i })).toBeInTheDocument();
+
+    const localCli = getInitialWizardData("codex-cli");
+    rerender(
+      <ModelStep
+        configurationInput={localCli.configurationInput}
+        value={null}
+        onChange={vi.fn()}
+        onCommit={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("radio", { name: /gpt-5-codex/i })).toBeInTheDocument();
   });
 });

@@ -44,6 +44,7 @@ function TestInteractiveModelDialogKeyboard({
     currentModel,
     models,
     filteredModels: models,
+    discoveryStatus: models.length > 0 ? "passed" : "error",
     searchQuery,
     setSearchQuery,
     cycleTierFilter: vi.fn(),
@@ -94,6 +95,8 @@ function TestInteractiveModelDialogKeyboard({
       },
       onKeyDown: keyboard.handleFilterKeyDown,
       getTabProps: keyboard.getFilterButtonProps,
+      // Mirrors the dialog: the tier row is disabled unless discovery passed.
+      disabled: models.length === 0,
     }),
     createElement(
       "div",
@@ -198,17 +201,28 @@ describe("useModelDialogKeyboard navigation", () => {
     expect(screen.getByRole("textbox", { name: /search models/i })).toHaveFocus();
   });
 
-  it("moves from model filters to cancel when no models are focusable", async () => {
+  it("skips the disabled tier filters and lands on cancel when discovery failed", async () => {
     const { user } = renderInteractiveSubject(vi.fn(), { models: [] });
 
     await user.keyboard("/");
     await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("radio", { name: "all" })).toHaveFocus();
 
-    await user.keyboard("{ArrowDown}");
-
+    expect(screen.getByRole("radio", { name: "all" })).not.toHaveFocus();
     expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
     expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
+  });
+
+  it("keeps focus out of the disabled tier filters when leaving the footer upward", async () => {
+    const { user } = renderInteractiveSubject(vi.fn(), { models: [] });
+
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    await user.click(cancel);
+    expect(cancel).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+
+    expect(screen.getByRole("radio", { name: "all" })).not.toHaveFocus();
+    expect(screen.getByRole("textbox", { name: /search models/i })).toHaveFocus();
   });
 
   it("restores native close focus during open to the current model", async () => {

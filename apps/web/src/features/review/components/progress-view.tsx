@@ -7,6 +7,7 @@ import {
   type ReviewEvent,
   type ReviewStreamErrorGuidance,
 } from "@diffgazer/core/review";
+import type { TransportFamily } from "@diffgazer/core/schemas/config";
 import type { AgentState, LensStat } from "@diffgazer/core/schemas/events";
 import type {
   BadgeVariant,
@@ -50,6 +51,8 @@ export interface ReviewProgressViewProps {
   isRunning: boolean;
   error?: string | null;
   errorCode?: string | null;
+  /** Transport of the executing configuration; recovery guidance fails neutral without it. */
+  transportFamily?: TransportFamily;
   reviewId?: string | null;
   onRetry?: (reviewId: string) => void;
   onViewResults?: () => void;
@@ -203,6 +206,7 @@ export function ReviewProgressView({
   isRunning,
   error,
   errorCode,
+  transportFamily,
   reviewId,
   onRetry,
   onViewResults,
@@ -229,7 +233,7 @@ export function ReviewProgressView({
     hasError,
   });
 
-  const errorGuidance = error ? classifyReviewStreamError(error, errorCode) : null;
+  const errorGuidance = error ? classifyReviewStreamError(error, errorCode, transportFamily) : null;
 
   const agentOptions = agents.map((agent) => ({
     id: agent.id,

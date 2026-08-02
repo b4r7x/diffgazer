@@ -1,6 +1,7 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
@@ -10,11 +11,11 @@ import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
 import { TrustPanel } from "./trust-panel";
 
-function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
+function makeInitResponse(): ConfigurationInitResponse {
   return {
-    configPath: "/tmp/diffgazer/config.json",
-    config: null,
-    providers: [],
+    schemaVersion: 2,
+    configurations: [],
+    selectedConfigurationId: null,
     settings: {
       theme: "dark",
       defaultLenses: [],
@@ -23,20 +24,10 @@ function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
       secretsStorage: "file",
       agentExecution: "sequential",
     },
-    configured: true,
     project: {
       projectId: "project-1",
       path: "/tmp/repo",
       trust: null,
-    },
-    setup: {
-      hasSecretsStorage: true,
-      hasProvider: false,
-      hasModel: false,
-      hasTrust: false,
-      isConfigured: true,
-      isReady: false,
-      missing: ["provider", "model", "trust"],
     },
   };
 }
@@ -77,7 +68,9 @@ describe("TrustPanel", () => {
   });
 
   test("marks runCommands unavailable and never submits it when accepting trust", async () => {
-    const loadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
+    const loadConfigurationInit = vi
+      .fn<BoundApi["loadConfigurationInit"]>()
+      .mockResolvedValue(makeInitResponse());
     const saveResponse: Awaited<ReturnType<BoundApi["saveTrust"]>> = {
       trust: {
         projectId: "project-1",
@@ -96,7 +89,7 @@ describe("TrustPanel", () => {
     );
     const api = {
       ...createApi({ baseUrl: "http://localhost" }),
-      loadInit,
+      loadConfigurationInit,
       saveTrust,
     } satisfies BoundApi;
     const onAccept = vi.fn();
@@ -142,13 +135,15 @@ describe("TrustPanel", () => {
   });
 
   test("keeps the sanitized failure message visible and skips onAccept when saveTrust rejects", async () => {
-    const loadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
+    const loadConfigurationInit = vi
+      .fn<BoundApi["loadConfigurationInit"]>()
+      .mockResolvedValue(makeInitResponse());
     const saveTrust = vi
       .fn<BoundApi["saveTrust"]>()
       .mockRejectedValue(new Error("Trust save failed\x1b[31m: disk full\x1b[0m"));
     const api = {
       ...createApi({ baseUrl: "http://localhost" }),
-      loadInit,
+      loadConfigurationInit,
       saveTrust,
     } satisfies BoundApi;
     const onAccept = vi.fn();
@@ -177,8 +172,13 @@ describe("TrustPanel", () => {
     { keyName: "Enter", input: "\r" },
     { keyName: "Space", input: " " },
   ])("toggles readFiles with $keyName while the capability list is focused", async ({ input }) => {
-    const loadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse());
-    const api = { ...createApi({ baseUrl: "http://localhost" }), loadInit } satisfies BoundApi;
+    const loadConfigurationInit = vi
+      .fn<BoundApi["loadConfigurationInit"]>()
+      .mockResolvedValue(makeInitResponse());
+    const api = {
+      ...createApi({ baseUrl: "http://localhost" }),
+      loadConfigurationInit,
+    } satisfies BoundApi;
 
     const view = render(
       <Wrapper api={api}>

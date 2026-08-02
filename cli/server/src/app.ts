@@ -12,11 +12,13 @@ import { reviewRouter } from "./features/review/router.js";
 import { rekeyProjectReviews } from "./features/review/storage/rekey.js";
 import { settingsRouter } from "./features/settings/router.js";
 import { shutdownRouter } from "./features/shutdown/router.js";
-import { setReviewRekeyHandler } from "./shared/lib/config/store.js";
+import { bundledCatalogSnapshotSize } from "./shared/lib/ai/catalog-bundle-anchor.js";
+import { setConfigurationLeaseHooks, setReviewRekeyHandler } from "./shared/lib/config/store.js";
 import { safeTokenMatch } from "./shared/lib/crypto.js";
 import { errorResponse, httpExceptionResponse } from "./shared/lib/http/response.js";
 import { log } from "./shared/lib/log.js";
 import { isPackaged } from "./shared/lib/paths.js";
+import { createConfigurationLeaseHooks } from "./shared/lib/session-registry.js";
 import { type RequestLoggerEnv, requestLogger } from "./shared/middlewares/request-logger.js";
 
 const isLocalhostOrigin = (origin: string): boolean => {
@@ -54,6 +56,10 @@ const getHostname = (hostHeader: string | null | undefined): string | null => {
 export type AppEnv = RequestLoggerEnv;
 
 export const createApp = (): Hono<AppEnv> => {
+  if (bundledCatalogSnapshotSize() === 0) {
+    throw new Error("Bundled catalog snapshot is empty");
+  }
+
   const app = new Hono<AppEnv>();
 
   // Wire the config store's move hook to the review-storage re-key helper so a
@@ -61,6 +67,12 @@ export const createApp = (): Hono<AppEnv> => {
   // `features/`, so the composition root registers it here. Project persistence
   // commits the new root only when this migration reports complete.
   setReviewRekeyHandler(rekeyProjectReviews);
+
+  // Configuration deletion must revoke, cancel, and drain the admitted leases
+  // before secret material is removed. `shared/` cannot reach the session
+  // registry's runtime authority on its own, so the composition root installs
+  // the fail-closed hooks here; a drain timeout aborts the delete.
+  setConfigurationLeaseHooks(createConfigurationLeaseHooks());
 
   // Split dev (not packaged, no configured token) intentionally leaves the
   // /api/* token gate open; the residual exposure is a hostile localhost origin

@@ -21,7 +21,6 @@ function Subject({
       onChange={setMethod}
       keyValue=""
       onKeyValueChange={vi.fn()}
-      envVarName="GEMINI_API_KEY"
       providerName="Gemini"
       inputRef={inputRef}
       focused={focused}
@@ -42,7 +41,7 @@ function Subject({
   );
 }
 
-describe("ApiKeyMethodSelector", () => {
+describe("ApiKeyMethodSelector hosted-only secret methods", () => {
   it("preserves input handoff from the paste method", async () => {
     const user = userEvent.setup();
 
@@ -56,16 +55,13 @@ describe("ApiKeyMethodSelector", () => {
     expect(screen.getByLabelText("Gemini API Key")).toHaveFocus();
   });
 
-  it("renders the environment variable with the shared input shell", () => {
+  it("describes environment import without requiring a typed env var name", () => {
     render(<Subject />);
 
-    const envInput = screen.getByRole("textbox", {
-      name: "GEMINI_API_KEY environment variable",
-    });
-
-    expect(envInput).toHaveValue("GEMINI_API_KEY");
-    expect(envInput).toHaveAttribute("readonly");
-    expect(envInput).toHaveAttribute("tabindex", "-1");
+    expect(screen.getByText(/configured environment variable binding/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("textbox", { name: /environment variable/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps Env focused when disabled paste padding is clicked", async () => {

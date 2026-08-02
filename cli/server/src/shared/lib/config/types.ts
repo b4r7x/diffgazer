@@ -1,6 +1,22 @@
 import type { AppError } from "@diffgazer/core/errors";
-import type { ProviderStatus, SettingsConfig, TrustConfig } from "@diffgazer/core/schemas/config";
+import type {
+  LegacyProviderConfigV1,
+  LegacyProviderIdV1,
+  LegacyRemovedProviderRecordV1,
+  TrustConfig,
+} from "@diffgazer/core/schemas/config";
 import type { ConfigurationId, DecodedProviderConfigurationRecord } from "./provider-config.js";
+
+/** A V1 entry narrowed to the ids this binary can still execute. */
+export type RunnableV1Record = Omit<LegacyProviderConfigV1, "provider"> & {
+  provider: ExecutableLegacyProviderId;
+};
+
+/** Legacy V1 executable provider ids used by the aggregate read bridge. */
+export type ExecutableLegacyProviderId = "gemini" | "zai" | "openrouter" | "groq" | "cerebras";
+
+/** Legacy V1 provider ids retained for decoder-only and migration records. */
+export type AIProvider = LegacyProviderIdV1;
 
 export const CONFIG_SCHEMA_VERSION_V2 = 2 as const;
 
@@ -19,22 +35,12 @@ export interface ConfigDocumentV2 {
 export type V1ConfigurationRecord =
   | {
       readonly status: "migrate-v1";
-      readonly record: {
-        readonly provider: "gemini" | "zai" | "openrouter" | "groq" | "cerebras";
-        readonly hasApiKey: boolean;
-        readonly isActive: boolean;
-        readonly model?: string;
-      };
+      readonly record: RunnableV1Record;
       readonly rawBytes: Uint8Array;
     }
   | {
       readonly status: "removed";
-      readonly record: {
-        readonly provider: "zai-coding";
-        readonly hasApiKey: boolean;
-        readonly isActive: boolean;
-        readonly model?: string;
-      };
+      readonly record: LegacyRemovedProviderRecordV1;
       readonly rawBytes: Uint8Array;
     }
   | {
@@ -47,19 +53,6 @@ export interface ConfigDocumentV1 {
   readonly settings: Record<string, unknown>;
   readonly providers: readonly V1ConfigurationRecord[];
   readonly rawBytes: Uint8Array;
-}
-
-export interface ConfigState {
-  settings: SettingsConfig;
-  providers: ProviderStatus[];
-  /**
-   * Provider entries from a newer binary that did not validate against the
-   * current schema. Carried opaquely so they round-trip on persist instead of
-   * being destroyed (F-445).
-   */
-  unknownProviders?: unknown[];
-  /** Settings fields this binary does not recognize, preserved for round-trip (F-445). */
-  unknownSettings?: Record<string, unknown>;
 }
 
 /** An env-var credential reference stored in the secrets file instead of a literal key. */
@@ -104,3 +97,13 @@ export type SecretsStorageErrorCode =
   | "STORAGE_NOT_CONFIGURED";
 
 export type SecretsStorageError = AppError<SecretsStorageErrorCode>;
+
+export type ConfigurationActionErrorCode =
+  | "CONFIGURATION_NOT_FOUND"
+  | "CONFIGURATION_UNSUPPORTED"
+  | "CONFIGURATION_CONFLICT"
+  | "SECRET_BINDING_FAILED"
+  | "INVALID_ACTION"
+  | SecretsStorageErrorCode;
+
+export type ConfigurationActionError = AppError<ConfigurationActionErrorCode>;

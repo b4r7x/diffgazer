@@ -14,7 +14,6 @@ import { HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
 import { act, screen } from "@testing-library/react";
 import {
   makeInitResponse,
-  mockGetProviderStatus,
   mockGetReviews,
   mockLoadInit,
   projectWithoutReadAccess,
@@ -74,13 +73,13 @@ describe("HistoryPage trust workflow", () => {
     expect(mockGetReviews).not.toHaveBeenCalled();
   });
 
-  it("keeps trusted history available when only provider status fails", async () => {
+  it("keeps trusted history available when review list loading fails", async () => {
     mockLoadInit.mockResolvedValue(makeInitResponse(trustedProject()));
-    mockGetProviderStatus.mockRejectedValue(new Error("provider status unavailable"));
+    mockGetReviews.mockRejectedValue(new Error("reviews unavailable"));
 
     renderHistoryPage(<HistoryPage />);
 
-    expect(await screen.findByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER)).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Reviews Unavailable");
     expect(screen.queryByText("Trust This Repository?")).not.toBeInTheDocument();
   });
 });

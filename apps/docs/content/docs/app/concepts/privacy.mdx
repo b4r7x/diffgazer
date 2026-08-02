@@ -3,76 +3,80 @@ title: Privacy and security
 description: How Diffgazer handles source, credentials, and provider requests.
 ---
 
-Diffgazer runs an embedded local server and reviews your code on your own machine, so your source and API keys never reach a service we run. Your code leaves only when you ask for a review: at that point the diff and the prompt built around it go to the model provider you chose, under that provider's policy. One other kind of request goes out before that — while you set a provider up, Diffgazer asks for that provider's list of models so the picker can show real options — but it never carries your code. Neither request passes through a Diffgazer-hosted relay.
+Diffgazer runs an embedded local server and reviews your code on your own machine. Your source and credentials never reach a Diffgazer-hosted relay. Your code leaves only when you ask for a review: at that point the diff and the prompt built around it go to the admitted product you configured, under that product's policy.
+
+## Server-only boundaries
+
+Several sensitive concerns stay on the server and never appear in Web, Ink, or CLI client payloads:
+
+- **Provider secrets and credential material** — literal provider keys, provider tokens, environment values, and auth file paths stay in server-side storage. Client-safe summaries expose only configuration identity, readiness, notices, and generic actions. The one credential the browser does hold is the per-run shutdown token described below: it authorizes the local API and nothing else, and it never reaches a provider.
+- **Admission evidence and diagnostics** — raw provider errors, account identifiers, workspace identifiers, executable paths, and probe envelopes are normalized or redacted before any client-visible copy is produced.
+- **Budget and execution leases** — spend limits, lease revocation, and cancellation drain run only in the embedded server and review pipeline.
+- **Review receipts** — terminal outcomes, usage normalization, and execution fingerprints are assembled server-side and projected through safe presentation copy.
+
+Diffgazer does not fall back to another product, reuse a removed credential, or treat HTTP compatibility as authorization when admission fails.
 
 ## Localhost binding and the host allowlist
 
-The embedded server only answers requests that came from your own machine. Before any route runs, it reads the `Host` header and checks it against a fixed allowlist of `localhost`, `127.0.0.1`, and `::1`. A request that arrives with any other host gets a `403 Forbidden` and goes no further. That guard runs as early middleware, registered before any route handler, so it covers every endpoint, not just the API.
+The embedded server only answers requests that came from your own machine. Before any route runs, it reads the `Host` header and checks it against a fixed allowlist of `localhost`, `127.0.0.1`, and `::1`. A request with any other host gets `403 Forbidden`.
 
-This matters because a host that is not on the list usually means the request was aimed at the machine from somewhere else, for example through a DNS name that resolves to your box. Pinning to localhost names closes that path. Combined with the server binding to `127.0.0.1` when it starts, there is no public interface for someone on your network to reach.
+Combined with the server binding to `127.0.0.1` when it starts, there is no public interface for someone on your network to reach the API.
 
 ## CSRF protection on writes
 
-Even on localhost, a page open in your browser could try to call the API in the background. Diffgazer blocks the dangerous version of that. For any state-changing method (`POST`, `PUT`, `PATCH`, or `DELETE`), the server inspects the request `Origin`. If an origin is present and it is not a localhost origin, the request is rejected with a `403`. A random site you happen to be visiting cannot quietly drive your review backend.
-
-Cross-origin rules are enforced again at the CORS layer. In a packaged build the server only reflects an origin back when it exactly matches the request host; in local development it allows localhost origins. Either way, browsers will not hand a foreign page a usable response from the API.
+For any state-changing method (`POST`, `PUT`, `PATCH`, or `DELETE`), the server inspects the request `Origin`. If an origin is present and it is not a localhost origin, the request is rejected with `403`.
 
 ## Hardening headers
 
-Every response carries a small set of headers that lock down how a browser may treat it:
-
-| Header | Value | What it does |
-| --- | --- | --- |
-| `X-Frame-Options` | `DENY` | The UI cannot be framed by another site, which blocks clickjacking. |
-| `X-Content-Type-Options` | `nosniff` | The browser will not guess a content type, so a response cannot be coerced into running as the wrong type. |
-| `Permissions-Policy` | camera, microphone, geolocation, payment, USB, Bluetooth, MIDI, and display-capture all disabled | The page cannot ask for these device capabilities. |
-| `Referrer-Policy` | `no-referrer` | Outbound navigations do not leak the local URL you came from. |
-
-These apply to the whole app, set by middleware that runs on every request.
+Every response carries `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, a restrictive `Permissions-Policy`, and `Referrer-Policy: no-referrer`.
 
 ## The shutdown token
 
-The server protects its API with a per-run secret. On startup the CLI generates a fresh token from 32 random bytes and hands it to the server through the environment. Every API request, with two deliberate exceptions, has to present that token in the `x-diffgazer-shutdown-token` header, and the server compares it with a constant-time check so a wrong guess leaks nothing through timing. A request without a valid token gets a `401 Unauthorized`.
+The server protects its API with a per-run secret. Every API request, except `/api/health` and `OPTIONS` preflight, must present the token in the `x-diffgazer-shutdown-token` header. Packaged builds always require it.
 
-The two exceptions are the health check at `/api/health`, so a probe can confirm the server is up without holding the secret, and `OPTIONS` preflight requests, which carry no body. The enforcement rule is fail-closed where it counts: a packaged build always requires the token, and any run that has a token configured enforces it in every mode. A split development setup without a shared token is the only case that runs without it.
-
-Because the token is minted new on each run and lives only in process memory and the environment, it is not written to disk and does not persist between sessions.
+This token is deliberately client-held: the browser app receives it so it can call the local API at all. It is scoped to this run's localhost server, is not a provider credential, and grants no access to stored secrets.
 
 ## Where secrets are stored
 
-Diffgazer prefers your operating system keyring, the same vault your OS uses for other credentials, through a native keyring binding registered under the app name `diffgazer`. Before trusting it, Diffgazer runs a quick self-test that writes, reads back, and deletes a throwaway value, so it only uses the keyring when the keyring actually works on your system.
+Diffgazer prefers your operating system keyring when available. Otherwise it stores literal credentials in separate `0600` files under your Diffgazer home. Environment references store only the variable name.
 
-When the keyring is not available, Diffgazer falls back to a file under your global config directory. The file backend stores secrets as plaintext JSON and writes that file with `0600` permissions, meaning only your user account can read or write it; group and other users get nothing. The same `0600` mode is used for the config, secrets, and trust files, and for the per-project info file.
+Hosted products may use either method. Local HTTP products accept only an optional loopback bearer token. Local CLI products use **vendor-managed local auth**; Diffgazer does not import or proxy CLI credentials.
 
-> Tip: If you would rather keep keys out of Diffgazer-managed storage entirely, providers can also be backed by an environment variable reference instead of a stored secret. See [Providers and models](/app/concepts/providers-and-models) and [Configuration](/app/reference/configuration) for how that is set up.
+## Removed Z.AI Coding Plan records
+
+The old Z.AI Coding Plan configuration is removed. **HTTP compatibility is not authorization.** Diffgazer keeps any previously saved value only until you **explicitly delete the removed record**. That secret is **retained but never copied, tested, or sent** during setup, probes, or review.
+
+Create a **new general Z.AI PAYG configuration** for the supported `zai` product instead of reusing the removed record.
 
 ## The trust gate
 
-Reading your repository is not automatic. Routes that touch repository files run behind a trust gate that checks two things before letting the request through. First, the current project must have been granted the `readFiles` capability; without it the request is refused with a `403` and a message telling you to update Trust and Permissions. Second, the trust grant has to match the exact repository root you are working in. If trust was granted for a different directory, the server refuses and asks you to re-grant for this one, so a grant for one repo cannot be reused to read another.
-
-This is what makes "Diffgazer reads your code" an explicit decision per repository rather than a blanket permission.
+Reading your repository is not automatic. Routes that touch repository files require an explicit `readFiles` grant for the exact repository root you are working in.
 
 ## What leaves the machine
 
-Two kinds of request cross the network boundary: the review request itself, and the model-catalog requests Diffgazer makes while you set a provider up. Neither passes through a Diffgazer-hosted relay.
+Two kinds of request cross the network boundary: model-catalog requests during setup, and the review request itself. Neither passes through a Diffgazer-hosted relay.
 
 ### The review request, when you ask for one
 
-When you run a review, Diffgazer builds a client for your active provider, one of Google Gemini, Z.AI, Z.AI Coding Plan, OpenRouter, Groq, or Cerebras, using the API key and model you configured, and sends the review prompt directly to that provider's endpoint. Your diff and the prompt built around it go to your provider under your account, governed by your provider's data policy, not ours. We never see it. If you want the request itself to leave less behind, that is a question of which provider and model you choose, which is covered in [Providers and models](/app/concepts/providers-and-models).
+When you run a review, Diffgazer uses the admitted configuration and exact model you selected and sends the review prompt directly to that product's endpoint or CLI transport. Your diff and prompt go to your provider under your account and that product's documented terms.
+
+Local HTTP products: Diffgazer verifies only that the **first network hop is loopback**. Any downstream routing, data residency, storage, or telemetry beyond that hop is the server operator's responsibility. Ollama Cloud is not the Ollama loopback transport.
+
+Local CLI products: Diffgazer uses existing vendor-managed local auth and does not import CLI tokens. Consumer and business or enterprise data handling differ by account or plan and must match the active CLI posture. Cancellation and timeout behavior are bounded to what the pinned CLI review profile can prove during admission.
 
 ### Model-catalog requests, during setup
 
-Before any review, opening the model picker for a provider can make Diffgazer fetch a current model list. This runs during setup, ahead of your first review, and what it sends depends on the provider:
+Before any review, opening the model picker for a catalog-backed hosted product can make Diffgazer fetch a current model list:
 
-- For Google Gemini, Z.AI, Z.AI Coding Plan, Groq, and Cerebras, Diffgazer reads the public models.dev catalog at `https://models.dev/api.json`. That request carries no key and no code; it is a plain read of an external catalog shared across those five providers. Setting `DIFFGAZER_OFFLINE` skips the live fetch and serves cached or bundled catalog data instead, so no catalog request leaves for these providers.
-- For OpenRouter, a non-empty cache that is less than a day old and belongs to the same API key is served without a network request. When that matching cache is missing or stale, Diffgazer calls `https://openrouter.ai/api/v1/models` with your OpenRouter API key, so the returned list is scoped to your account. This is the one setup request that carries a credential. `DIFFGAZER_OFFLINE` governs only the models.dev catalog and does not suppress a needed OpenRouter refresh. If that refresh fails, Diffgazer can fall back to a stale cache only when it belongs to the same API key; a cache from another key is never reused.
+- For Google Gemini, Z.AI, Groq, Cerebras, and Mistral, Diffgazer may read the public models.dev catalog at `https://models.dev/api.json`. That request carries no key and no code. `DIFFGAZER_OFFLINE` skips the live fetch.
+- For OpenRouter, Diffgazer may call `https://openrouter.ai/api/v1/models` with your OpenRouter API key when a fresh per-key cache is unavailable. This is the one catalog request that carries a credential.
 
-Both catalog caches treat an entry as fresh for up to one day, so the picker does not re-fetch on every open, and neither request includes your source or your diff.
+DeepSeek, Qwen International, and Moonshot Open Platform discover models through their configured hosted tuple rather than the shared models.dev snapshot. Local HTTP and local CLI products discover models from the loopback server or installed CLI.
 
-> Note: A provider may use what you send according to its own terms. Diffgazer keeps your code local up to the moment you send a review, but it cannot control what happens on the provider side. Choose a provider whose data policy you are comfortable with.
+> Note: A provider may use what you send according to its own terms. Diffgazer keeps your code local up to the moment you send a review, but it cannot control provider-side handling. Choose a product whose notice you accept explicitly during setup.
 
 ## Related
 
-- [The review pipeline](/app/concepts/review-pipeline) — what each review step does and where the provider call happens.
-- [Providers and models](/app/concepts/providers-and-models) — bringing your own model and keys, and where they go.
-- [How it works](/app/concepts/how-it-works) — the overview of the CLI, the embedded server, and the UI.
+- [The review pipeline](/app/concepts/review-pipeline)
+- [Providers and models](/app/concepts/providers-and-models)
+- [How it works](/app/concepts/how-it-works)

@@ -1,9 +1,5 @@
 import { CatalogSelectableModelIdSchema } from "../catalog/schema.js";
-import {
-  isPinnedDownstreamRouteModelId,
-  type ModelPolicy,
-  PRODUCT_REGISTRY,
-} from "../providers/product-registry.js";
+import { isModelIdAllowedForProduct, PRODUCT_REGISTRY } from "../providers/product-registry.js";
 import {
   HostedApiConfigurationInputSchema,
   LocalCliConfigurationInputSchema,
@@ -13,10 +9,6 @@ import {
 import type { OnboardingDraft } from "./defaults.js";
 import type { RunnableSetupStep } from "./setup-plan.js";
 import { OnboardingAcknowledgementSchema } from "./types.js";
-
-function matchesPinnedDownstreamRoute(modelId: string): boolean {
-  return isPinnedDownstreamRouteModelId(modelId);
-}
 
 function hasCurrentProduct(data: OnboardingDraft): boolean {
   const { configurationInput, plan } = data;
@@ -67,51 +59,11 @@ function hasConfiguredTransport(data: OnboardingDraft): boolean {
   return hasEndpointBinding(data) && hasAuthentication(data);
 }
 
-function matchesModelPolicy(modelId: string, policy: ModelPolicy): boolean {
-  if (!CatalogSelectableModelIdSchema.safeParse(modelId).success) return false;
-
-  if (policy.kind === "discovered-allowlist") return policy.modelIds.includes(modelId);
-  if (policy.kind === "discovered-family") {
-    return (
-      !policy.rejectedAliases.includes(modelId) &&
-      policy.familyPrefixes.some((prefix) => modelId === prefix || modelId.startsWith(`${prefix}-`))
-    );
-  }
-  if (policy.kind === "pinned-downstream-route") return matchesPinnedDownstreamRoute(modelId);
-  return true;
-}
-
-/**
- * Explicit model opt-in is deliberately not inferred from discovery, a passing
- * conformance probe, or the product notice acknowledgement.  The current V2
- * setup draft has no opt-in field, so a policy that requires one must remain
- * unsupported until that state is represented by the setup plan.
- */
-function hasRequiredModelOptIn(modelId: string, policy: ModelPolicy): boolean {
-  if (policy.kind !== "discovered-exact" || !policy.explicitOptInSuffixes?.length) return true;
-  return !policy.explicitOptInSuffixes.some((suffix) => modelId.endsWith(suffix));
-}
-
-/**
- * The onboarding draft has no client-safe representation of the live evidence
- * required by a higher-cost model policy.  Keep those models unavailable until
- * the server can carry and verify that evidence instead of treating generic
- * conformance as sufficient.
- */
-function hasRequiredHigherCostEvidence(modelId: string, policy: ModelPolicy): boolean {
-  if (policy.kind !== "discovered-allowlist" || !policy.higherCostModelEvidence) return true;
-  return !policy.higherCostModelIds?.includes(modelId);
-}
-
 function hasExactModel(data: OnboardingDraft): boolean {
   const modelId = data.selectedModelId;
   if (!modelId) return false;
-  const policy = PRODUCT_REGISTRY[data.plan.productId].modelPolicy;
-  return (
-    matchesModelPolicy(modelId, policy) &&
-    hasRequiredModelOptIn(modelId, policy) &&
-    hasRequiredHigherCostEvidence(modelId, policy)
-  );
+  if (!CatalogSelectableModelIdSchema.safeParse(modelId).success) return false;
+  return isModelIdAllowedForProduct(data.plan.productId, modelId);
 }
 
 function hasPassedConformance(data: OnboardingDraft): boolean {

@@ -5,7 +5,7 @@ description: The localhost API exposed by the embedded Diffgazer server.
 
 The API documented here is the local API used by the Diffgazer web app. It is not a hosted public API and it is not meant to be deployed as a standalone internet service.
 
-In web mode, the `diffgazer` CLI starts the embedded server, serves the browser app, and keeps both on the same localhost origin. `DIFFGAZER_SHUTDOWN_TOKEN` enables the API gate in every mode. Packaged runs require the `x-diffgazer-shutdown-token` header for API access outside health checks and preflight requests. A split-development web build must use the same value through `VITE_DIFFGAZER_SHUTDOWN_TOKEN`; packaged web mode receives it through `window.__DIFFGAZER_SHUTDOWN_TOKEN__`. See [Environment variables](/app/reference/environment-variables) for the paired setup.
+In web mode, the `diffgazer` CLI starts the embedded server, serves the browser app, and keeps both on the same localhost origin. `DIFFGAZER_SHUTDOWN_TOKEN` enables the API gate in every mode. Packaged runs require the `x-diffgazer-shutdown-token` header for API access outside health checks and preflight requests.
 
 ## Health
 
@@ -14,24 +14,68 @@ In web mode, the `diffgazer` CLI starts the embedded server, serves the browser 
 | `GET` | `/health` | Server health check mounted at the root router. |
 | `GET` | `/api/health` | Server health check mounted under `/api`. |
 
-Health responses include a status and timestamp. They are intentionally lightweight and do not require repository trust.
+Health responses are lightweight and do not require repository trust.
 
-## Config
+## V2 configuration actions
+
+`POST /api/config/actions` is the only configuration write route. It accepts the six generic configuration actions as a discriminated union on `action`, requires repository trust, and rejects bodies over the shared request size limit. Every response is a client-safe summary: configuration identity, readiness, notices, remediation, and available actions. Literal secrets, environment values, auth paths, and raw diagnostics are never returned.
+
+| Action | Purpose |
+| --- | --- |
+| `create` | Create a new configuration for a selectable product. |
+| `inspect` | Read the current safe summary and readiness evidence. |
+| `select` | Pin an exact admitted model and make that configuration the selected one. |
+| `test` | Run the readiness and conformance probe for the configured tuple, which is also how models are discovered. |
+| `update` | Update endpoint, region, workspace, credential reference, or notice acknowledgement. |
+| `delete` | Delete the configuration after active review leases drain. |
+
+Every response carries an operation `status` of `succeeded`, `failed`, or `conflict`, plus the optional safe projection. Example shape without secrets:
+
+```json
+{
+  "status": "succeeded",
+  "configuration": {
+    "configurationId": "cfg-example",
+    "revision": 1,
+    "status": "supported",
+    "transportFamily": "hosted-api",
+    "productId": "gemini",
+    "endpoint": "https://generativelanguage.googleapis.com/v1beta",
+    "selectedModelId": "gemini-2.5-pro",
+    "notices": [],
+    "availableActions": ["inspect", "select", "test", "update", "delete"]
+  },
+  "readiness": {
+    "status": "ready",
+    "ready": true,
+    "evidenceStatus": "passed",
+    "checkedAt": "2026-01-01T00:00:00.000Z",
+    "acknowledgement": {
+      "status": "accepted",
+      "noticeId": "gemini-billing-privacy",
+      "noticeVersion": 1,
+      "acceptedAt": "2026-01-01T00:00:00.000Z"
+    },
+    "action": "inspect",
+    "explanation": "The exact configured review path is ready.",
+    "remediation": {
+      "code": "none",
+      "message": "No remediation is required."
+    }
+  }
+}
+```
+
+Readiness may also report `skipped`. A skipped live probe is evidence only and **never enables a product**. Remediation code `enable-live-probe` means the configuration must be tested again after prerequisites are satisfied.
+
+The only other config routes are reads:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/config/init` | Resolve initial setup state for the current project. |
-| `GET` | `/api/config/check` | Check whether global configuration is valid. |
-| `GET` | `/api/config` | Read the saved configuration. |
-| `POST` | `/api/config` | Save configuration. |
-| `DELETE` | `/api/config` | Delete saved configuration. |
-| `GET` | `/api/config/providers` | List provider status and availability. |
-| `GET` | `/api/config/provider/openrouter/models` | Fetch OpenRouter models. |
-| `GET` | `/api/config/provider/:id/models` | Fetch catalog-backed models for a provider. |
-| `POST` | `/api/config/provider/:providerId/activate` | Set the global active provider and model. Requires trust for the requesting project. |
-| `DELETE` | `/api/config/provider/:providerId` | Remove a provider from saved config. |
+| `GET` | `/api/config/providers` | List client-safe product metadata and saved configuration summaries. |
 
-Config writes use JSON body validation and body-size limits. Provider model routes have route-specific rate limits.
+There is no per-provider activate, delete, or model-listing route. Model discovery is a result of the `test` action, and `select` both pins the exact model and makes that configuration the globally selected one.
 
 ## Settings and trust
 
@@ -43,9 +87,7 @@ Config writes use JSON body validation and body-size limits. Provider model rout
 | `POST` | `/api/settings/trust` | Save trust for the current project. |
 | `DELETE` | `/api/settings/trust` | Remove trust for the current project. |
 
-The server derives project identity itself when saving trust. Client-supplied identity fields are not trusted. Command execution trust is currently stripped to `false` because command execution is not supported.
-
-Unlike the rest of the API, the three trust routes always require the `x-diffgazer-shutdown-token` header, including in split development. When no token is configured they fail closed with `401`, so a split-dev server started without `DIFFGAZER_SHUTDOWN_TOKEN` cannot read, save, or delete trust at all.
+Trust routes always require the shutdown token and fail closed when it is missing.
 
 ## Git
 
@@ -55,13 +97,13 @@ Unlike the rest of the API, the three trust routes always require the `x-diffgaz
 | `GET` | `/api/git/diff?mode=unstaged` | Read unstaged diff. |
 | `GET` | `/api/git/diff?mode=staged` | Read staged diff. |
 
-Git routes require repository trust. If the current directory is not a git repository, the API returns a structured error instead of attempting a review.
+Git routes require repository trust.
 
 ## Review
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `POST` | `/api/review/reviews` | Create and start a review. |
+| `POST` | `/api/review/reviews` | Create and start a review from a ready configuration. |
 | `GET` | `/api/review/reviews/:id/stream` | Resume or replay a review event stream. |
 | `GET` | `/api/review/sessions/active` | Read the active review session for a diff mode. |
 | `DELETE` | `/api/review/sessions/:id` | Cancel an active review session. |
@@ -70,7 +112,18 @@ Git routes require repository trust. If the current directory is not a git repos
 | `GET` | `/api/review/reviews` | List saved reviews. |
 | `GET` | `/api/review/reviews/:id` | Read one saved review. |
 
-Review creation requires setup, repository trust, JSON validation, a body-size limit, and a route-specific rate limit.
+Saved reviews persist an immutable execution snapshot, normalized usage when available, and one terminal outcome:
+
+| Outcome | Meaning |
+| --- | --- |
+| `completed` | **Review Completed** — schema-valid findings were produced. |
+| `cancelled` | **Review Cancelled** — the run stopped before completion. |
+| `timed-out` | **Review Timed Out** — the wall-time limit was exceeded. |
+| `transport-failed` | **Transport Failed** — the admitted transport could not finish. |
+| `schema-failed` | **Schema Validation Failed** — output did not match the review schema. |
+| `budget-exhausted` | **Budget Exhausted** — a configured budget limit was reached. |
+
+Non-completed outcomes do not carry findings. Receipts and usage summaries are client-safe and contain no secrets.
 
 ## Shutdown
 
@@ -78,10 +131,8 @@ Review creation requires setup, repository trust, JSON validation, a body-size l
 | --- | --- | --- |
 | `POST` | `/api/shutdown` | Ask the embedded server to terminate the CLI process gracefully. |
 
-Shutdown is protected by the same local API guard and internal token behavior as the rest of the packaged API. If the server does not know which process to stop, it returns an unavailable response instead of killing anything.
-
 ## Related
 
-- [Server lifecycle and ports](/app/reference/server)
-- [Architecture](/app/architecture)
+- [Configuration](/app/reference/configuration)
+- [Troubleshooting](/app/operations/troubleshooting)
 - [Privacy and security](/app/concepts/privacy)

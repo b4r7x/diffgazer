@@ -14,7 +14,6 @@ import {
   type KeyringSecretStore,
   markSecretBindingRemoved,
   resolveSecretBinding,
-  retainUnknownSecretBinding,
   SecretBindingError,
   serializeSecretBinding,
   toSafeSecretBinding,
@@ -135,17 +134,17 @@ describe("configuration-bound secret bindings", () => {
   });
 
   it("retains unknown and removed bindings without making them executable", async () => {
-    const active = createKeyringSecretBinding("legacy-zai-coding", 4, "legacy/4");
-    const unknown = retainUnknownSecretBinding(active);
+    const active = createKeyringSecretBinding("legacy-removed-zai-plan", 4, "legacy/4");
+    const unknown = createKeyringSecretBinding("legacy-removed-zai-plan", 4, "legacy/4", "unknown");
     const removed = markSecretBindingRemoved(active);
 
     expect(JSON.parse(serializeSecretBinding(unknown))).toMatchObject({
-      configurationId: "legacy-zai-coding",
+      configurationId: "legacy-removed-zai-plan",
       revision: 4,
       status: "unknown",
     });
     expect(JSON.parse(serializeSecretBinding(removed))).toMatchObject({
-      configurationId: "legacy-zai-coding",
+      configurationId: "legacy-removed-zai-plan",
       revision: 4,
       status: "removed",
     });
@@ -162,18 +161,18 @@ describe("configuration-bound secret bindings", () => {
     expect(serializeSecretBinding(removed)).not.toContain('"productId":"zai"');
   });
 
-  it("never relabels or sends a removed zai-coding binding", async () => {
+  it("never relabels or sends a removed-product binding", async () => {
     const keyring = createMemoryKeyring();
     const removed = markSecretBindingRemoved(
-      createKeyringSecretBinding("legacy-zai-coding", 1, "legacy-zai-coding/1"),
+      createKeyringSecretBinding("legacy-removed-zai-plan", 1, "legacy-removed-zai-plan/1"),
     );
 
     await expect(resolveSecretBinding(removed, { keyring })).rejects.toBeInstanceOf(
       SecretBindingError,
     );
-    expect(await keyring.read("legacy-zai-coding/1")).toBeNull();
+    expect(await keyring.read("legacy-removed-zai-plan/1")).toBeNull();
     expect(toSafeSecretBinding(removed)).toMatchObject({
-      configurationId: "legacy-zai-coding",
+      configurationId: "legacy-removed-zai-plan",
       status: "removed",
     });
   });
@@ -207,15 +206,21 @@ describe("configuration-bound secret bindings", () => {
     const binding = createFileSecretBinding("config-a", 3, filePath);
     await writeFile(filePath, "secret", { mode: 0o600 });
 
+    const events: string[] = [];
     await expect(
       deleteSecretBindingTransactional(binding, {
-        revoke: () => undefined,
+        revoke: () => {
+          events.push("revoke");
+        },
         cancel: () => {
           throw new Error("cancelled work could not drain");
         },
-        drain: () => undefined,
+        drain: () => {
+          events.push("drain");
+        },
       }),
     ).rejects.toThrow("cancelled work could not drain");
+    expect(events).toEqual(["revoke"]);
     await expect(stat(filePath)).resolves.toBeDefined();
     await expect(deleteSecretBinding(binding)).resolves.toBe(true);
   });

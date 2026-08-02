@@ -8,6 +8,7 @@ import {
   describeReviewStartError,
   extractOrchestratorStats,
   getAlternateReviewMode,
+  sanitizePresentationText,
   sessionTerminationCopy,
 } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
@@ -29,18 +30,27 @@ export interface ReviewCompleteData {
 
 interface UseReviewLifecycleOptions {
   mode: ReviewMode;
+  allowResumeWithoutSetup?: boolean;
   onComplete?: (data: ReviewCompleteData) => void;
   onStreamNotFound?: (reviewId: string) => void;
 }
 
 export function useReviewLifecycle({
   mode,
+  allowResumeWithoutSetup = false,
   onComplete,
   onStreamNotFound,
 }: UseReviewLifecycleOptions) {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
-  const { loadState, isConfigured, provider } = useConfigData();
+  const {
+    loadState,
+    isConfigured,
+    isReady,
+    selectedReadiness,
+    selectedIdentity,
+    selectedConfiguration,
+  } = useConfigData();
   const createReview = useCreateReview();
   const reviewSessionCache = useReviewSessionCache();
   const transitionRef = useRef<symbol | null>(null);
@@ -85,6 +95,9 @@ export function useReviewLifecycle({
   const base = useReviewLifecycleBase({
     configLoading: loadState.status === "loading",
     isConfigured,
+    readiness: selectedReadiness,
+    configuration: selectedIdentity,
+    allowResumeWithoutSetup,
     reviewId: params.reviewId,
     onStreamComplete: () => clearActiveSession(base.stream.state.reviewId ?? params.reviewId),
     onComplete: emitComplete,
@@ -131,16 +144,17 @@ export function useReviewLifecycle({
   const cancelOnServer = (preserveState = false): Promise<string | null> =>
     base.stream.cancel(base.stream.state.reviewId ?? params.reviewId ?? null, { preserveState });
 
-  // A thrown cancel (network drop, aborted fetch) reads to the user exactly like
-  // the server-reported failure above, so it gets the same toast unless the
-  // caller overrides it.
-  const reportCancelFailure = (error: unknown, token: symbol) => {
-    if (!isCurrentTransition(token)) return;
-    toast.error("Cancel failed", { message: getErrorMessage(error, "Unknown error") });
+  // Every review failure message is server- or transport-authored, so it passes
+  // through the presentation sanitizer before it can reach the user.
+  const reportFailure = (title: string, message: string) => {
+    toast.error(title, { message: sanitizePresentationText(message) });
   };
 
-  // Cancels the server session under the transition token guard, then runs the
-  // site-specific continuation.
+  const reportCancelFailure = (error: unknown, token: symbol) => {
+    if (!isCurrentTransition(token)) return;
+    reportFailure("Cancel failed", getErrorMessage(error, "Unknown error"));
+  };
+
   const runCancelTransition = (
     preserveState: boolean,
     onCancelled: (token: symbol) => void | Promise<void>,
@@ -153,7 +167,7 @@ export function useReviewLifecycle({
         const error = await cancelOnServer(preserveState);
         if (!isCurrentTransition(token)) return;
         if (error) {
-          toast.error("Cancel failed", { message: error });
+          reportFailure("Cancel failed", error);
           return;
         }
         clearActiveSession(activeReviewId);
@@ -177,8 +191,6 @@ export function useReviewLifecycle({
     });
   };
 
-  // Leaves a running review without touching the server session, so it remains
-  // resumable from home's "Resume Last Review".
   const handleBack = () => {
     invalidateTransition();
     if (base.checks.isTerminalStreamError) {
@@ -218,7 +230,7 @@ export function useReviewLifecycle({
       (error, token) => {
         if (!isCurrentTransition(token)) return;
         const { title, message } = describeReviewStartError(error);
-        toast.error(title, { message });
+        reportFailure(title, message);
       },
     );
   };
@@ -228,7 +240,12 @@ export function useReviewLifecycle({
     gate: base.gate,
     contextSnapshot: base.contextSnapshot,
     loadingMessage: base.checks.loadingMessage,
-    provider,
+    readiness: selectedReadiness,
+    selectedConfiguration,
+    startIdentity: base.start.identity,
+    readinessGate: base.start.readinessGate,
+    canStart: base.start.canStart,
+    isReady,
     isTransitionPending,
     handleCancel,
     handleBack,

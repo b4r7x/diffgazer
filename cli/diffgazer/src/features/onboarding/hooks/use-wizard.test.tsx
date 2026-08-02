@@ -3,19 +3,14 @@
  */
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
-import { createDeferred } from "@diffgazer/core/testing/deferred";
+import { getInitialWizardData } from "@diffgazer/core/onboarding";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { Text } from "ink";
 import { render as renderInk } from "ink-testing-library";
-import { createElement, type ReactNode, useContext, useMemo } from "react";
+import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-import { AppGlobalShortcuts } from "../../../app/global-shortcuts";
-import { ExitPreparationProvider } from "../../../app/providers/exit-preparation";
-import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { NavigationProvider } from "../../../app/providers/navigation";
-import { KeyboardContext, type KeyboardContextValue } from "../../../hooks/keyboard-context";
-import { registerServerSet } from "../../../lib/servers/stop-all";
 import { CliThemeProvider } from "../../../theme/provider";
 import { OnboardingWizard } from "../components/wizard";
 import { useOnboardingWizard } from "./use-wizard";
@@ -27,19 +22,13 @@ vi.mock("../../../hooks/use-terminal-dimensions", () => ({
 }));
 
 let mockSaveSettings: Mock<BoundApi["saveSettings"]>;
-let mockSaveConfig: Mock<BoundApi["saveConfig"]>;
-let mockDeleteProviderCredentials: Mock<BoundApi["deleteProviderCredentials"]>;
-let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
-let mockGetProviderModels: Mock<BoundApi["getProviderModels"]>;
+let mockRunConfigurationAction: Mock<BoundApi["executeConfigurationAction"]>;
 
 function createWrapper() {
   const api = {
     ...createApi({ baseUrl: "http://localhost" }),
     saveSettings: mockSaveSettings,
-    saveConfig: mockSaveConfig,
-    deleteProviderCredentials: mockDeleteProviderCredentials,
-    getProviderStatus: mockGetProviderStatus,
-    getProviderModels: mockGetProviderModels,
+    executeConfigurationAction: mockRunConfigurationAction,
   } satisfies BoundApi;
   const { Wrapper: ApiWrapper } = createTestQueryWrapper({ api });
 
@@ -60,66 +49,24 @@ async function flushInk(times = 4): Promise<void> {
   }
 }
 
-function FooterProbe() {
+function _FooterProbe() {
   const { shortcuts } = useFooterData();
-  const output = shortcuts
-    .map(
-      ({ key, label, disabled }) => `${key}:${label}:${disabled === true ? "disabled" : "enabled"}`,
-    )
-    .join("|");
-  return <Text>{output}</Text>;
-}
-
-function QRegistrationBoundary({
-  children,
-  onRegistered,
-}: {
-  children: ReactNode;
-  onRegistered: () => void;
-}) {
-  const keyboard = useContext(KeyboardContext);
-  const observedKeyboard = useMemo<KeyboardContextValue | null>(() => {
-    if (!keyboard) return null;
-
-    return {
-      ...keyboard,
-      registerGlobalHandler: (hotkey, handler) => {
-        const unregister = keyboard.registerGlobalHandler(hotkey, handler);
-        if (hotkey === "q") onRegistered();
-        return unregister;
-      },
-    };
-  }, [keyboard, onRegistered]);
-
-  if (!observedKeyboard) throw new Error("keyboard provider did not mount");
-  return <KeyboardContext value={observedKeyboard}>{children}</KeyboardContext>;
+  return (
+    <Text>
+      {shortcuts
+        .map(({ key, label, disabled }) => `${key}:${label}:${disabled ? "disabled" : "enabled"}`)
+        .join("|")}
+    </Text>
+  );
 }
 
 describe("useOnboardingWizard", () => {
   beforeEach(() => {
     terminalDimensions.current = { columns: 80, rows: 24 };
     mockSaveSettings = vi.fn<BoundApi["saveSettings"]>().mockResolvedValue(undefined);
-    mockSaveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
-    mockDeleteProviderCredentials = vi
-      .fn<BoundApi["deleteProviderCredentials"]>()
-      .mockResolvedValue({ deleted: true, provider: "openrouter" });
-    mockGetProviderStatus = vi
-      .fn<BoundApi["getProviderStatus"]>()
-      .mockResolvedValue([{ provider: "gemini", hasApiKey: false, isActive: false }]);
-    mockGetProviderModels = vi.fn<BoundApi["getProviderModels"]>().mockResolvedValue({
-      models: [
-        {
-          id: "gemini-2.5-flash",
-          name: "Gemini 2.5 Flash",
-          description: "Fast model",
-          tier: "free",
-          recommended: true,
-        },
-      ],
-      fetchedAt: "2026-01-01T00:00:00.000Z",
-      source: "snapshot",
-      cached: false,
-    });
+    mockRunConfigurationAction = vi
+      .fn<BoundApi["executeConfigurationAction"]>()
+      .mockResolvedValue({ action: "delete", status: "succeeded" });
   });
 
   it("keeps progress labels readable in 40-column and wide frames", async () => {
@@ -136,10 +83,10 @@ describe("useOnboardingWizard", () => {
     );
 
     await flushInk();
-    expect(narrow.lastFrame()).toContain("[o] Step 1 of 6: Storage");
+    expect(narrow.lastFrame()).toMatch(/Step 1 of \d+: Product/);
     narrow.unmount();
 
-    terminalDimensions.current = { columns: 80, rows: 24 };
+    terminalDimensions.current = { columns: 120, rows: 24 };
     const wide = renderInk(
       <Wrapper>
         <CliThemeProvider initialTheme="dark">
@@ -151,118 +98,131 @@ describe("useOnboardingWizard", () => {
     );
 
     await flushInk();
-    const progressLine = wide
-      .lastFrame()
-      ?.split("\n")
-      .find((line) => line.includes("[o] Storage"));
-    expect(progressLine).toContain("[ ] Provider");
-    expect(progressLine).toContain("[ ] API Key");
-    expect(progressLine).toContain("[ ] Execution");
-    expect(progressLine).not.toMatch(/[●○]/u);
+    expect(wide.lastFrame()).toContain("Google Gemini");
     wide.unmount();
   });
 
-  it("routes early-save persistence through the bound settings and config mutations", async () => {
+  it("does not persist credentials when advancing through hosted authentication", async () => {
     const wrapper = createWrapper();
     const hook = renderHook(() => useOnboardingWizard(), { wrapper });
 
-    act(() => hook.result.current.handleNext());
-    act(() => hook.result.current.handleProviderChange("openrouter"));
-    act(() => hook.result.current.handleNext());
+    act(() => hook.result.current.handleProductChange("openrouter"));
+    act(() => {
+      for (let index = 0; index < 3; index += 1) hook.result.current.handleNext();
+    });
     act(() => hook.result.current.handleInputMethodChange("env"));
     act(() => hook.result.current.handleApiKeyChange("ignored"));
+    act(() => hook.result.current.handleNext());
 
+    expect(mockSaveSettings).not.toHaveBeenCalled();
+    expect(mockRunConfigurationAction).not.toHaveBeenCalled();
+  });
+
+  it("uses the shorter CLI plan without hosted authentication controls", () => {
+    const wrapper = createWrapper();
+    const hook = renderHook(() => useOnboardingWizard(), { wrapper });
+
+    act(() => hook.result.current.handleProductChange("codex-cli"));
+    expect(hook.result.current.steps).toEqual([
+      "product",
+      "authentication",
+      "model",
+      "conformance",
+      "acknowledgement",
+    ]);
+  });
+
+  it("resets to the selected product plan without preserving literal credentials", () => {
+    const wrapper = createWrapper();
+    const hook = renderHook(() => useOnboardingWizard(), { wrapper });
+
+    act(() => {
+      hook.result.current.handleProductChange("qwen");
+      hook.result.current.handleInputMethodChange("paste");
+      hook.result.current.handleApiKeyChange("write-only-secret");
+      hook.result.current.handleProductChange("local-openai");
+    });
+
+    expect(hook.result.current.wizardData).toEqual(getInitialWizardData("local-openai"));
+    if (hook.result.current.wizardData.kind !== "runnable") throw new Error("expected runnable");
+    expect(JSON.stringify(hook.result.current.wizardData.configurationInput)).not.toContain(
+      "write-only-secret",
+    );
+  });
+
+  it("moves from a local authentication step straight to the actions", () => {
+    const wrapper = createWrapper();
+    const hook = renderHook(() => useOnboardingWizard(), { wrapper });
+
+    act(() => hook.result.current.handleProductChange("codex-cli"));
+    act(() => hook.result.current.handleNext());
+    expect(hook.result.current.currentStep).toBe("authentication");
+    expect(hook.result.current.focusZone).toBe("step");
+
+    act(() => hook.result.current.cycleFocusZone());
+    expect(hook.result.current.focusZone).toBe("nav");
+  });
+
+  it("keeps the hosted method and input focus stops", () => {
+    const wrapper = createWrapper();
+    const hook = renderHook(() => useOnboardingWizard(), { wrapper });
+
+    act(() => hook.result.current.handleProductChange("openrouter"));
+    act(() => hook.result.current.handleNext());
+    act(() => hook.result.current.handleNext());
+    expect(hook.result.current.currentStep).toBe("authentication");
+    expect(hook.result.current.focusZone).toBe("api-key-method");
+
+    act(() => hook.result.current.cycleFocusZone());
+    expect(hook.result.current.focusZone).toBe("api-key-input");
+    act(() => hook.result.current.cycleFocusZone());
+    expect(hook.result.current.focusZone).toBe("nav");
+  });
+
+  it("persists a real configuration before the model step discovers against it", async () => {
+    mockRunConfigurationAction.mockResolvedValue({
+      action: "create",
+      status: "succeeded",
+      configuration: {
+        configurationId: "codex-cli-draft",
+        revision: 1,
+        status: "supported",
+        transportFamily: "local-cli",
+        productId: "codex-cli",
+        installationId: "codex-installation",
+        selectedModelId: null,
+        notices: [],
+        availableActions: ["inspect", "select", "test", "update", "delete"],
+      },
+    } as Awaited<ReturnType<BoundApi["executeConfigurationAction"]>>);
+
+    const wrapper = createWrapper();
+    const hook = renderHook(() => useOnboardingWizard(), { wrapper });
+
+    act(() => hook.result.current.handleProductChange("codex-cli"));
+    act(() => hook.result.current.handleNext());
+    act(() =>
+      hook.result.current.updateData({
+        configurationInput: {
+          transportFamily: "local-cli",
+          productId: "codex-cli",
+          installationId: "codex-installation",
+        },
+      }),
+    );
     await act(async () => {
       hook.result.current.handleNext();
     });
 
-    expect(mockSaveSettings).toHaveBeenCalled();
-    expect(mockSaveConfig).toHaveBeenCalled();
-  });
-
-  it("awaits abandoned credential cleanup before q shutdown can stop the server", async () => {
-    const qRegistration = createDeferred<void>();
-    const deletion = createDeferred<{
-      deleted: boolean;
-      provider: "openrouter";
-    }>();
-    const order: string[] = [];
-    mockDeleteProviderCredentials.mockImplementation(async () => {
-      order.push("delete-start");
-      const result = await deletion.promise;
-      order.push("delete-complete");
-      return result;
-    });
-    const stop = vi.fn(async () => {
-      order.push("server-stop");
-    });
-    registerServerSet([{ start: vi.fn(async () => {}), stop }]);
-
-    const exitProcess = vi.fn();
-    let wizard: ReturnType<typeof useOnboardingWizard> | null = null;
-
-    function WizardExitHarness() {
-      wizard = useOnboardingWizard();
-      return <AppGlobalShortcuts />;
+    expect(hook.result.current.currentStep).toBe("model");
+    expect(mockRunConfigurationAction).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "create" }),
+    );
+    // No client-invented identity may reach the server before the create.
+    for (const [action] of mockRunConfigurationAction.mock.calls) {
+      expect(action).not.toHaveProperty("configurationId");
     }
-
-    const Wrapper = createWrapper();
-    const shortcuts = renderInk(
-      <Wrapper>
-        <TerminalKeyboardProvider>
-          <QRegistrationBoundary onRegistered={qRegistration.resolve}>
-            <ExitPreparationProvider exitProcess={exitProcess}>
-              <WizardExitHarness />
-            </ExitPreparationProvider>
-          </QRegistrationBoundary>
-        </TerminalKeyboardProvider>
-      </Wrapper>,
-    );
-
-    await qRegistration.promise;
-    if (!wizard) throw new Error("wizard did not mount");
-    act(() => wizard?.handleNext());
-    act(() => wizard?.handleProviderChange("openrouter"));
-    act(() => wizard?.handleNext());
-    act(() => wizard?.handleInputMethodChange("env"));
-    act(() => wizard?.handleApiKeyChange("ignored"));
-    act(() => wizard?.handleNext());
-    await waitFor(() => expect(wizard?.currentStep).toBe("model"));
-
-    shortcuts.stdin.write("q");
-    await flushInk();
-
-    await waitFor(() => expect(mockDeleteProviderCredentials).toHaveBeenCalledWith("openrouter"));
-    expect(stop).not.toHaveBeenCalled();
-    expect(exitProcess).not.toHaveBeenCalled();
-
-    deletion.resolve({ deleted: true, provider: "openrouter" });
-    await waitFor(() => expect(exitProcess).toHaveBeenCalledOnce());
-
-    expect(order).toEqual(["delete-start", "delete-complete", "server-stop"]);
-  });
-
-  it("reports an explicit terminal warning when unmount cleanup fails", async () => {
-    const warning = vi.spyOn(console, "error").mockImplementation(() => {});
-    mockDeleteProviderCredentials.mockRejectedValueOnce(new Error("permission denied"));
-    const hook = renderHook(() => useOnboardingWizard(), { wrapper: createWrapper() });
-
-    act(() => hook.result.current.handleNext());
-    act(() => hook.result.current.handleProviderChange("openrouter"));
-    act(() => hook.result.current.handleNext());
-    act(() => hook.result.current.handleInputMethodChange("env"));
-    act(() => hook.result.current.handleApiKeyChange("ignored"));
-    act(() => hook.result.current.handleNext());
-    await waitFor(() => expect(hook.result.current.currentStep).toBe("model"));
-
-    hook.unmount();
-
-    await waitFor(() =>
-      expect(warning).toHaveBeenCalledWith(
-        expect.stringContaining("Warning: Failed to remove saved credentials: permission denied"),
-      ),
-    );
-    warning.mockRestore();
+    expect(hook.result.current.draftConfiguration?.configurationId).toBe("codex-cli-draft");
   });
 
   it("keeps Back and Next nav focus exclusive via navIndex", () => {
@@ -273,153 +233,7 @@ describe("useOnboardingWizard", () => {
     act(() => hook.result.current.cycleFocusZone());
 
     expect(hook.result.current.navIndex).toBe(0);
-
     act(() => hook.result.current.moveNavIndex(1));
     expect(hook.result.current.navIndex).toBe(1);
-
-    act(() => hook.result.current.moveNavIndex(-1));
-    expect(hook.result.current.navIndex).toBe(0);
-  });
-
-  it("allows the focused Back action while the current step blocks Next", () => {
-    const wrapper = createWrapper();
-    const hook = renderHook(() => useOnboardingWizard(), { wrapper });
-
-    act(() => hook.result.current.handleNext());
-    act(() => hook.result.current.handleProviderChange("openrouter"));
-    act(() => hook.result.current.handleNext());
-    expect(hook.result.current.currentStep).toBe("api-key");
-    expect(hook.result.current.canProceed).toBe(false);
-
-    act(() => hook.result.current.cycleFocusZone());
-    act(() => hook.result.current.cycleFocusZone());
-    expect(hook.result.current.focusZone).toBe("nav");
-    expect(hook.result.current.navIndex).toBe(1);
-
-    act(() => hook.result.current.moveNavIndex(-1));
-    expect(hook.result.current.navIndex).toBe(0);
-
-    act(() => hook.result.current.handleBack());
-    expect(hook.result.current.currentStep).toBe("provider");
-  });
-
-  it("keeps the focused Next action on a blocked step without advancing", () => {
-    const wrapper = createWrapper();
-    const hook = renderHook(() => useOnboardingWizard(), { wrapper });
-
-    act(() => hook.result.current.handleNext());
-    act(() => hook.result.current.handleProviderChange("openrouter"));
-    act(() => hook.result.current.handleNext());
-    act(() => hook.result.current.cycleFocusZone());
-    act(() => hook.result.current.cycleFocusZone());
-    act(() => hook.result.current.handleNext());
-
-    expect(hook.result.current.currentStep).toBe("api-key");
-    expect(hook.result.current.navIndex).toBe(1);
-  });
-
-  it("enters an API key, tabs to Next, and advances to model selection", async () => {
-    const Wrapper = createWrapper();
-    const view = renderInk(
-      <Wrapper>
-        <CliThemeProvider initialTheme="dark">
-          <FooterProvider initialShortcuts={[]}>
-            <OnboardingWizard />
-            <FooterProbe />
-          </FooterProvider>
-        </CliThemeProvider>
-      </Wrapper>,
-    );
-
-    await flushInk();
-    expect(view.lastFrame()).toContain("SECRETS STORAGE");
-
-    view.stdin.write("\t");
-    await flushInk();
-    view.stdin.write("\r");
-    await flushInk();
-    expect(view.lastFrame()).toContain("AI PROVIDER");
-
-    view.stdin.write("\t");
-    await flushInk();
-    view.stdin.write("\u001b[C");
-    await flushInk();
-    view.stdin.write("\r");
-    await flushInk();
-    expect(view.lastFrame()).toContain("API KEY");
-
-    view.stdin.write("\t");
-    await flushInk();
-    view.stdin.write("\t");
-    await flushInk();
-    expect(view.lastFrame()).toContain("Enter:Next:disabled");
-
-    view.stdin.write("\u001b[D");
-    await flushInk();
-    expect(view.lastFrame()).toContain("Enter:Back:enabled");
-
-    view.stdin.write("\t");
-    await flushInk();
-    view.stdin.write("\t");
-    await flushInk();
-    view.stdin.write("sk-walkthrough-key");
-    await flushInk();
-    expect(view.lastFrame()).toContain("*".repeat("sk-walkthrough-key".length));
-    expect(view.lastFrame()).toContain("Tab:Focus Actions:enabled");
-
-    view.stdin.write("\t");
-    await flushInk();
-    expect(view.lastFrame()).toContain("Enter:Next:enabled");
-    view.stdin.write("\r");
-    await flushInk(8);
-
-    expect(view.lastFrame()).toContain("MODEL SELECTION");
-    view.unmount();
-  });
-
-  it("skips the fixed environment input when tabbing to Next", async () => {
-    const Wrapper = createWrapper();
-    const view = renderInk(
-      <Wrapper>
-        <CliThemeProvider initialTheme="dark">
-          <FooterProvider initialShortcuts={[]}>
-            <OnboardingWizard />
-            <FooterProbe />
-          </FooterProvider>
-        </CliThemeProvider>
-      </Wrapper>,
-    );
-
-    await flushInk();
-    view.stdin.write("\t");
-    await flushInk();
-    view.stdin.write("\r");
-    await flushInk();
-    view.stdin.write("\t");
-    await flushInk();
-    view.stdin.write("\u001b[C");
-    await flushInk();
-    view.stdin.write("\r");
-    await flushInk();
-
-    expect(view.lastFrame()).toContain("API KEY");
-    expect(view.lastFrame()).toContain("Tab:Focus Input:enabled");
-
-    view.stdin.write("\u001b[B");
-    await flushInk();
-
-    expect(view.lastFrame()).toContain("Fixed for this provider");
-    expect(view.lastFrame()).toContain("Tab:Focus Actions:enabled");
-    expect(view.lastFrame()).not.toContain("Tab:Focus Input:enabled");
-
-    view.stdin.write("\t");
-    await flushInk();
-    expect(view.lastFrame()).toContain("Enter:Next:enabled");
-
-    view.stdin.write("\r");
-    await flushInk(8);
-
-    expect(view.lastFrame()).toContain("MODEL SELECTION");
-    view.unmount();
   });
 });

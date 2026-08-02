@@ -2,7 +2,12 @@ import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SavedReview } from "@diffgazer/core/schemas/review";
+import {
+  hashExecutionReceiptFingerprintSync,
+  type SavedReview,
+  SavedReviewSchema,
+  TERMINAL_OUTCOMES,
+} from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -170,6 +175,87 @@ function makeProjectReview(id: string, createdAt: string, projectPath = "/proj/a
     ...review,
     metadata: { ...review.metadata, id, createdAt, projectPath },
   };
+}
+
+const executionLimits = {
+  maxInputTokens: 20_000,
+  maxOutputTokens: 4_000,
+  maxResponseBytes: 1_048_576,
+  wallTimeMs: 120_000,
+  maxRetries: 2,
+  maxConcurrency: 1,
+  maxCostUsd: 0.5,
+} as const;
+
+function makeExecutionReceipt(
+  outcome: (typeof TERMINAL_OUTCOMES)[number],
+  fingerprintSeed: string,
+) {
+  const receipt = {
+    schemaVersion: 1 as const,
+    executionFingerprint: "0".repeat(64),
+    configurationId: `configuration-${fingerprintSeed}`,
+    configurationRevision: 1,
+    credentialReferenceIdentity: "c".repeat(64),
+    installationId: null,
+    productId: "openrouter" as const,
+    transportFamily: "hosted-api" as const,
+    modelId: "openai/gpt-4.1-mini",
+    normalizedEndpoint: "https://openrouter.ai/api/v1",
+    runtime: { identity: "diffgazer-server", version: "1.2.3" },
+    structuredOutputSchemaSha256: "a".repeat(64),
+    noticeVersion: 1,
+    limits: executionLimits,
+    attemptCount: 1,
+    startedAt: "2026-07-31T10:00:00.000Z",
+    finishedAt: "2026-07-31T10:00:05.000Z",
+    usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+    usageAvailability: "reported" as const,
+    outcome,
+  };
+  return {
+    ...receipt,
+    executionFingerprint: hashExecutionReceiptFingerprintSync({
+      configurationId: receipt.configurationId,
+      configurationRevision: receipt.configurationRevision,
+      authentication: null,
+      credentialReferenceIdentity: receipt.credentialReferenceIdentity,
+      installationId: receipt.installationId,
+      productId: receipt.productId,
+      transportFamily: receipt.transportFamily,
+      modelId: receipt.modelId,
+      normalizedEndpoint: receipt.normalizedEndpoint,
+      region: null,
+      workspaceAccountReference: null,
+      runtime: receipt.runtime,
+      structuredOutputSchemaSha256: receipt.structuredOutputSchemaSha256,
+      noticeVersion: receipt.noticeVersion,
+      limits: receipt.limits,
+    }),
+  };
+}
+
+function makeSavedReviewWithExecution(
+  outcome: (typeof TERMINAL_OUTCOMES)[number],
+  fingerprintSeed: string,
+  overrides: Partial<SavedReview> = {},
+): SavedReview {
+  const review = makeSavedReview(overrides);
+  const receipt = makeExecutionReceipt(outcome, fingerprintSeed);
+  return SavedReviewSchema.parse({
+    ...review,
+    metadata: {
+      ...review.metadata,
+      issueCount: outcome === "completed" ? review.result.issues.length : 0,
+      highCount: outcome === "completed" ? review.metadata.highCount : 0,
+      mediumCount: outcome === "completed" ? review.metadata.mediumCount : 0,
+    },
+    result: outcome === "completed" ? review.result : { issues: [] },
+    execution: {
+      receipt,
+      result: { issues: outcome === "completed" ? review.result.issues : [] },
+    },
+  });
 }
 
 describe("reviews storage", () => {
@@ -1036,6 +1122,82 @@ describe("reviews storage", () => {
     }
   });
 
+  it("lists and reads a completed review with a versioned execution snapshot", async () => {
+    const review = makeSavedReviewWithExecution("completed", "history-a", {
+      metadata: { ...makeSavedReview().metadata, projectPath: "/proj/exec" },
+    });
+    await writeSavedReview(review);
+
+    const { getReview, listReviewPage } = await loadStorage();
+    const listed = await listReviewPage("/proj/exec", { limit: 10 });
+    const read = await getReview(REVIEW_ID);
+
+    expect(listed.ok).toBe(true);
+    if (listed.ok) {
+      expect(listed.value.items).toHaveLength(1);
+      expect(listed.value.items[0]?.issueCount).toBe(2);
+    }
+    expect(read.ok).toBe(true);
+    if (read.ok) {
+      expect(read.value.execution?.receipt.executionFingerprint).toBe(
+        review.execution?.receipt.executionFingerprint,
+      );
+      expect(read.value.execution?.receipt.outcome).toBe("completed");
+      expect(read.value.result.issues).toHaveLength(2);
+    }
+  });
+
+  it("retains legacy reviews without execution metadata during durable history reads", async () => {
+    const legacy = makeSavedReview({
+      metadata: { ...makeSavedReview().metadata, projectPath: "/proj/legacy-exec" },
+    });
+    await writeSavedReview(legacy);
+
+    const { getReview, listReviewPage } = await loadStorage();
+    const listed = await listReviewPage("/proj/legacy-exec", { limit: 10 });
+    const read = await getReview(REVIEW_ID);
+
+    expect(listed.ok).toBe(true);
+    if (listed.ok) expect(listed.value.items[0]?.issueCount).toBe(2);
+    expect(read.ok).toBe(true);
+    if (read.ok) {
+      expect(read.value.execution).toBeUndefined();
+      expect(read.value.result.issues).toHaveLength(2);
+    }
+  });
+
+  it("drops corrupt execution metadata during lenient salvage without losing legacy findings", async () => {
+    const rawReview = {
+      metadata: {
+        ...makeSavedReview().metadata,
+        projectPath: "/proj/corrupt-exec",
+      },
+      result: {
+        summary: "Legacy review",
+        issues: [makeIssue({ id: "kept", severity: "high", file: "a.ts" })],
+      },
+      execution: {
+        receipt: { schemaVersion: 1, outcome: "transport-failed", executionFingerprint: "bad" },
+        result: { issues: [makeIssue({ id: "partial", severity: "high", file: "b.ts" })] },
+      },
+      gitContext: makeSavedReview().gitContext,
+    };
+    await mkdir(reviewsDir(), { recursive: true });
+    await writeFile(reviewPath(REVIEW_ID), `${JSON.stringify(rawReview, null, 2)}\n`, "utf-8");
+
+    const { getReview, listReviewPage } = await loadStorage();
+    const read = await getReview(REVIEW_ID);
+    const listed = await listReviewPage("/proj/corrupt-exec", { limit: 10 });
+
+    expect(read.ok).toBe(true);
+    if (read.ok) {
+      expect(read.value.execution).toBeUndefined();
+      expect(read.value.result.issues.map((issue) => issue.id)).toEqual(["kept"]);
+    }
+    expect(listed.ok).toBe(true);
+    if (listed.ok) expect(listed.value.items[0]?.issueCount).toBe(1);
+  });
+
   it("migrates legacy metadata when serving a certified cursor page", async () => {
     const current = makeSavedReview({
       metadata: {
@@ -1650,6 +1812,81 @@ describe("reviews storage", () => {
     expect(read.ok).toBe(true);
     if (read.ok) {
       expect(read.value.result.issues[0]).toMatchObject({ line_start: 4, line_end: 8 });
+    }
+  });
+
+  it.each(
+    TERMINAL_OUTCOMES,
+  )("preserves the exact %s receipt fingerprint through durable history reads", async (outcome) => {
+    const review = makeSavedReviewWithExecution(outcome, outcome, {
+      metadata: { ...makeSavedReview().metadata, projectPath: `/proj/outcome-${outcome}` },
+    });
+    await writeSavedReview(review);
+
+    const { getReview } = await loadStorage();
+    const read = await getReview(REVIEW_ID);
+
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.value.execution?.receipt.executionFingerprint).toBe(
+      review.execution?.receipt.executionFingerprint,
+    );
+    expect(read.value.execution?.receipt.outcome).toBe(outcome);
+  });
+
+  it.each(
+    TERMINAL_OUTCOMES.filter((outcome) => outcome !== "completed"),
+  )("strips resumable partial findings for %s terminal outcomes", async (outcome) => {
+    const review = makeSavedReviewWithExecution(outcome, outcome);
+    const corruptOnDisk = {
+      ...review,
+      result: makeSavedReview().result,
+      metadata: {
+        ...review.metadata,
+        issueCount: 2,
+        highCount: 1,
+        mediumCount: 1,
+      },
+    };
+    await writeSavedReview(corruptOnDisk);
+
+    const { getReview, listReviewPage } = await loadStorage();
+    const read = await getReview(REVIEW_ID);
+    const listed = await listReviewPage(review.metadata.projectPath, { limit: 10 });
+
+    expect(read.ok).toBe(true);
+    if (read.ok) {
+      expect(read.value.result.issues).toEqual([]);
+      expect(read.value.execution?.result.issues).toEqual([]);
+      expect(read.value.metadata.issueCount).toBe(0);
+    }
+    expect(listed.ok).toBe(true);
+    if (listed.ok) expect(listed.value.items[0]?.issueCount).toBe(0);
+  });
+
+  it("does not expose failed execution findings as resumable partial results", async () => {
+    const review = makeSavedReviewWithExecution("transport-failed", "partial-resume");
+    await writeSavedReview({
+      ...review,
+      result: {
+        issues: [makeIssue({ id: "partial", severity: "high", file: "a.ts" })],
+      },
+      metadata: {
+        ...review.metadata,
+        issueCount: 1,
+        highCount: 1,
+        mediumCount: 0,
+      },
+    });
+
+    const { getReview } = await loadStorage();
+    const read = await getReview(REVIEW_ID);
+
+    expect(read.ok).toBe(true);
+    if (read.ok) {
+      expect(read.value.execution?.receipt.outcome).toBe("transport-failed");
+      expect(read.value.result.issues).toEqual([]);
+      expect(read.value.execution?.result.issues).toEqual([]);
     }
   });
 

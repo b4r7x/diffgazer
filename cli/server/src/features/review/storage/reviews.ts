@@ -13,6 +13,7 @@ import type {
 import { isNodeError } from "../../../shared/lib/fs.js";
 import { log } from "../../../shared/lib/log.js";
 import type { ReviewSalvageDiagnostics } from "./lenient-read.js";
+import { prohibitResumablePartialFindings } from "./lenient-read.js";
 import {
   addToProjectIndex,
   clearReconcileMarker,
@@ -122,7 +123,7 @@ function readReviewMetadata(ids: readonly string[]) {
     return {
       id,
       result: ok<ReviewMetadataRead>({
-        metadata: result.value.item.metadata,
+        metadata: presentDurableReviewMetadata(result.value.item),
         diagnostics: result.value.diagnostics,
       }),
     };
@@ -145,6 +146,15 @@ function appendSalvageWarning(
 
 function countFailedLenses(lensStats: SavedReview["lensStats"]): number {
   return lensStats?.filter((lens) => lens.status === "failed").length ?? 0;
+}
+
+function presentDurableReviewRead(review: SavedReview): SavedReview {
+  const migrated = migrateReview(review);
+  return prohibitResumablePartialFindings(migrated ?? review);
+}
+
+function presentDurableReviewMetadata(review: SavedReview): ReviewMetadata {
+  return prohibitResumablePartialFindings(review).metadata;
 }
 
 function migrateReview(review: SavedReview): SavedReview | null {
@@ -241,6 +251,7 @@ export async function saveReview(
       ? { droppedBelowThreshold: options.droppedBelowThreshold }
       : {}),
     ...(options.minSeverity !== undefined ? { minSeverity: options.minSeverity } : {}),
+    ...(options.execution ? { execution: options.execution } : {}),
   };
 
   const writeResult = await reviewStore.write(savedReview);
@@ -285,8 +296,10 @@ async function migrateMetadataList(items: ReviewMetadata[]): Promise<ReviewMetad
       const migrated = migrateReview(reviewResult.value);
       if (migrated) {
         void persistMigrationLocked(metadata.id);
-        return migrated.metadata;
+        return presentDurableReviewMetadata(migrated);
       }
+
+      return presentDurableReviewMetadata(reviewResult.value);
     }
 
     return metadata;
@@ -514,20 +527,15 @@ export async function getReview(reviewId: string): Promise<Result<SavedReview, S
   const result = await reviewStore.readDetailed(reviewId);
   if (!result.ok) return result;
 
-  const review = result.value.item;
+  const stored = result.value.item;
   if (result.value.diagnostics?.droppedIssueCount) {
     log("warn", "review_issues_salvaged", {
       reviewId,
       droppedIssueCount: result.value.diagnostics.droppedIssueCount,
     });
   }
-  const migrated = migrateReview(review);
-  if (migrated) {
-    if (!result.value.salvaged) {
-      void persistMigrationLocked(review.metadata.id);
-    }
-    return ok(migrated);
+  if (!result.value.salvaged && migrateReview(stored)) {
+    void persistMigrationLocked(stored.metadata.id);
   }
-
-  return ok(review);
+  return ok(presentDurableReviewRead(stored));
 }

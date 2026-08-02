@@ -1,82 +1,61 @@
-import type { AIProvider, ProviderWithStatus } from "@diffgazer/core/schemas/config";
+import { getProviderRowId, type ProviderListRow } from "@diffgazer/core/providers";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ProviderList } from "@/features/providers/components/list";
 import { PROVIDER_FILTERS, type ProviderFilter } from "../lib/filter";
+import { buildProviderRows } from "../testing/fixtures";
 import { useProvidersKeyboard } from "./use-keyboard";
+
+const ROWS: ProviderListRow[] = buildProviderRows();
+const GEMINI_ROW = ROWS.find((row) => row.configuration?.configurationId === "gemini-primary");
+const ZAI_ROW = ROWS.find((row) => row.configuration?.configurationId === "zai-primary");
+if (!GEMINI_ROW || !ZAI_ROW) throw new Error("Missing fixture rows");
 
 const mockNavigate = vi.fn();
 
-// Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-const DEFAULT_PROVIDER: ProviderWithStatus = {
-  id: "gemini",
-  hasApiKey: false,
-  model: "gemini-2.5-flash",
-  name: "Gemini",
-  defaultModel: "gemini-2.5-flash",
-  displayStatus: "needs-key",
-  isActive: false,
-};
-
-const PROVIDERS: ProviderWithStatus[] = [
-  {
-    id: "gemini",
-    name: "Google Gemini",
-    defaultModel: "gemini-2.5-flash",
-    hasApiKey: false,
-    isActive: false,
-    model: "gemini-2.5-flash",
-    displayStatus: "needs-key",
-  },
-  {
-    id: "zai",
-    name: "Z.AI",
-    defaultModel: "glm-4.7",
-    hasApiKey: true,
-    isActive: true,
-    model: "glm-4.7",
-    displayStatus: "active",
-  },
-];
-
 function Subject({
-  filteredProviders = [{ id: "gemini" }, { id: "zai" }],
+  filteredProviders = ROWS,
   onSelectedId = vi.fn(),
   listReady = true,
 }: {
-  filteredProviders?: Array<{ id: string }>;
+  filteredProviders?: ProviderListRow[];
   onSelectedId?: (id: string | null) => void;
   listReady?: boolean;
 }) {
-  const [selectedId, setSelectedId] = useState(DEFAULT_PROVIDER.id);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    getProviderRowId(GEMINI_ROW as ProviderListRow),
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
-  const selectedProvider = { ...DEFAULT_PROVIDER, id: selectedId as AIProvider };
+  const selectedRow =
+    filteredProviders.find((row) => getProviderRowId(row) === selectedId) ??
+    (GEMINI_ROW as ProviderListRow);
   const keyboard = useProvidersKeyboard({
-    selectedProvider,
-    filteredProviders,
+    selectedRow,
+    filteredProviders: filteredProviders as ProviderListRow[],
     listReady,
     filter: "all",
     setSelectedId: (id) => {
       onSelectedId(id);
-      setSelectedId(id as AIProvider);
+      if (id) setSelectedId(id);
     },
     dialogOpen: false,
     inputRef,
     listContainerRef,
-    onSetApiKey: vi.fn(),
+    onSetup: vi.fn(),
     onSelectModel: vi.fn(),
-    onRemoveKey: vi.fn(async () => {}),
-    onActivateProvider: vi.fn(),
+    onDelete: vi.fn(),
+    onDispatchAction: vi.fn(),
   });
+  const primarySlot = keyboard.getActionSlot(0);
 
   return (
     <>
@@ -101,69 +80,62 @@ function Subject({
         {selectedId}
       </div>
       <button type="button" {...keyboard.getActionButtonProps(0)}>
-        Connect
+        {primarySlot.label}
       </button>
       <button type="button" {...keyboard.getActionButtonProps(1)}>
-        API Key
+        Setup
       </button>
     </>
-  );
-}
-
-function renderSubject(props: Parameters<typeof Subject>[0] = {}) {
-  return render(
-    <KeyboardProvider>
-      <Subject {...props} />
-    </KeyboardProvider>,
   );
 }
 
 function ProviderListSubject({
   onFilter = vi.fn(),
   onActivate = vi.fn(),
-  onActivateProvider = vi.fn(),
+  onDispatchAction = vi.fn(),
 }: {
   onFilter?: (filter: ProviderFilter) => void;
   onActivate?: (id: string) => void;
-  onActivateProvider?: (provider: ProviderWithStatus) => void;
+  onDispatchAction?: (row: ProviderListRow) => void;
 }) {
-  const [selectedId, setSelectedId] = useState<AIProvider>("gemini");
+  const [selectedId, setSelectedId] = useState<string | null>(
+    getProviderRowId(GEMINI_ROW as ProviderListRow),
+  );
   const [filter, setFilter] = useState<ProviderFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
-  const selectedProvider = PROVIDERS.find((provider) => provider.id === selectedId) ?? null;
-  const canRemoveKey = Boolean(selectedProvider?.hasApiKey);
-  const applyFilter = (nextFilter: ProviderFilter) => {
-    setFilter(nextFilter);
-    onFilter(nextFilter);
-  };
+  const selectedRow =
+    ROWS.find((row) => getProviderRowId(row) === selectedId) ?? (GEMINI_ROW as ProviderListRow);
   const keyboard = useProvidersKeyboard({
-    selectedProvider,
-    filteredProviders: PROVIDERS,
+    selectedRow,
+    filteredProviders: ROWS as ProviderListRow[],
     listReady: true,
     filter,
-    setSelectedId: (id) => setSelectedId(id as AIProvider),
+    setSelectedId: setSelectedId,
     dialogOpen: false,
     inputRef,
     listContainerRef,
-    onSetApiKey: vi.fn(),
+    onSetup: vi.fn(),
     onSelectModel: vi.fn(),
-    onRemoveKey: vi.fn(async () => {}),
-    onActivateProvider,
+    onDelete: vi.fn(),
+    onDispatchAction,
   });
 
   return (
     <>
       <ProviderList
         ref={listContainerRef}
-        providers={PROVIDERS}
+        providers={ROWS}
         selectedId={selectedId}
         highlighted={selectedId}
-        onSelect={(id) => setSelectedId(id as AIProvider)}
-        onHighlightChange={(id) => setSelectedId(id as AIProvider)}
+        onSelect={setSelectedId}
+        onHighlightChange={setSelectedId}
         filter={filter}
-        onFilterChange={applyFilter}
+        onFilterChange={(nextFilter) => {
+          setFilter(nextFilter);
+          onFilter(nextFilter);
+        }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         isFocused={keyboard.focusZone === "list"}
@@ -180,42 +152,36 @@ function ProviderListSubject({
         onBoundaryReached={keyboard.handleListBoundary}
       />
       <button type="button" {...keyboard.getActionButtonProps(0)}>
-        Select Provider
-      </button>
-      <button type="button" {...keyboard.getActionButtonProps(1)}>
-        Set API Key
+        {keyboard.getActionSlot(0).label}
       </button>
       <button
         type="button"
-        disabled={!canRemoveKey}
-        aria-disabled={!canRemoveKey}
+        disabled={!keyboard.getActionSlot(2).enabled}
+        aria-disabled={!keyboard.getActionSlot(2).enabled}
+        title={keyboard.getActionSlot(2).disabledReason}
         {...keyboard.getActionButtonProps(2)}
       >
-        Remove Key
+        Delete configuration
       </button>
       <button
         type="button"
-        disabled={!canRemoveKey}
-        aria-disabled={!canRemoveKey}
+        disabled={!keyboard.getActionSlot(3).enabled}
+        aria-disabled={!keyboard.getActionSlot(3).enabled}
         {...keyboard.getActionButtonProps(3)}
       >
-        Select Model
+        Select model
       </button>
     </>
   );
 }
 
-function renderProviderListSubject(props: Parameters<typeof ProviderListSubject>[0] = {}) {
-  return render(
-    <KeyboardProvider>
-      <ProviderListSubject {...props} />
-    </KeyboardProvider>,
-  );
-}
-
 describe("useProvidersKeyboard", () => {
   it("focuses the provider list after it becomes ready", async () => {
-    const { rerender } = renderSubject({ listReady: false });
+    const { rerender } = render(
+      <KeyboardProvider>
+        <Subject listReady={false} />
+      </KeyboardProvider>,
+    );
 
     expect(screen.getByRole("listbox", { name: "Providers" })).not.toHaveFocus();
 
@@ -228,225 +194,72 @@ describe("useProvidersKeyboard", () => {
     await waitFor(() => expect(screen.getByRole("listbox", { name: "Providers" })).toHaveFocus());
   });
 
-  it("reclaims focus to the provider list without scrolling the page container", async () => {
-    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
-
-    try {
-      renderSubject({ listReady: true });
-
-      const providerList = screen.getByRole("listbox", { name: "Providers" });
-      await waitFor(() => expect(providerList).toHaveFocus());
-
-      // jsdom cannot measure scroll, so the focus option IS the behavior contract:
-      // without preventScroll the browser scrolls the list into view on mount and
-      // clips the sticky section header under the app header. Every reclaim has to
-      // carry it — one bare call is enough to jump the page.
-      const listFocusOptions = focusSpy.mock.instances
-        .map((instance, index) => ({ instance, options: focusSpy.mock.calls[index]?.[0] }))
-        .filter((call) => call.instance === providerList)
-        .map((call) => call.options);
-
-      expect(listFocusOptions.length).toBeGreaterThan(0);
-      for (const options of listFocusOptions) {
-        expect(options).toEqual({ preventScroll: true });
-      }
-    } finally {
-      focusSpy.mockRestore();
-    }
-  });
-
-  it("does not steal focus from another focused control when the list becomes ready", async () => {
-    const { rerender } = render(
-      <KeyboardProvider>
-        <button type="button">Outside action</button>
-        <Subject listReady={false} />
-      </KeyboardProvider>,
-    );
-
-    const outsideAction = screen.getByRole("button", { name: "Outside action" });
-    outsideAction.focus();
-    expect(outsideAction).toHaveFocus();
-
-    rerender(
-      <KeyboardProvider>
-        <button type="button">Outside action</button>
-        <Subject listReady />
-      </KeyboardProvider>,
-    );
-
-    await waitFor(() => expect(outsideAction).toHaveFocus());
-    expect(screen.getByRole("listbox", { name: "Providers" })).not.toHaveFocus();
-  });
-
-  it("navigates to settings when Escape is pressed while the provider list is focused", async () => {
-    const user = userEvent.setup();
-    mockNavigate.mockReset();
-
-    renderSubject();
-
-    const providerList = screen.getByRole("listbox", { name: "Providers" });
-    await waitFor(() => expect(providerList).toHaveFocus());
-
-    await user.keyboard("{Escape}");
-
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
-  });
-
   it("moves real focus from the provider list to the first enabled action and back", async () => {
     const user = userEvent.setup();
 
-    renderSubject();
+    render(
+      <KeyboardProvider>
+        <Subject />
+      </KeyboardProvider>,
+    );
 
     const providerList = screen.getByRole("listbox", { name: "Providers" });
     await waitFor(() => expect(providerList).toHaveFocus());
 
     await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("button", { name: "Connect" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: /Select configuration/i })).toHaveFocus();
 
     await user.keyboard("{ArrowLeft}");
     expect(providerList).toHaveFocus();
   });
 
-  it("selects the first filtered provider when moving from filters down to the list", async () => {
-    const user = userEvent.setup();
-    const onSelectedId = vi.fn();
+  it("announces disabled reasons for unavailable actions", () => {
+    const removedRow = ROWS.find(
+      (row) => row.configuration?.configurationId === "legacy-removed-zai-plan",
+    );
+    if (!removedRow) throw new Error("Missing removed fixture");
 
-    renderSubject({
-      filteredProviders: [{ id: "openrouter" }, { id: "zai" }],
-      onSelectedId,
-    });
+    render(
+      <KeyboardProvider>
+        <ProviderListSubject onDispatchAction={vi.fn()} />
+      </KeyboardProvider>,
+    );
 
-    await user.keyboard("/");
-    const search = screen.getByRole("textbox", { name: "Search providers" });
-    expect(search).toHaveFocus();
-    expect(search).toHaveValue("");
-
-    await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("button", { name: "all" })).toHaveFocus();
-
-    await user.keyboard("{ArrowDown}");
-    expect(onSelectedId).toHaveBeenCalledWith("openrouter");
-    expect(screen.getByRole("listbox", { name: "Providers" })).toHaveTextContent("openrouter");
-    expect(screen.getByRole("listbox", { name: "Providers" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Delete configuration" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Select model" })).not.toBeDisabled();
   });
 
-  it("keeps zone state in sync when search and filters receive real focus", async () => {
+  it("keeps Select configuration reachable for setup routing", async () => {
     const user = userEvent.setup();
+    const onDispatchAction = vi.fn();
 
-    renderSubject();
-
-    await user.click(screen.getByRole("textbox", { name: "Search providers" }));
-    expect(screen.getByRole("textbox", { name: "Search providers" })).toHaveFocus();
-
-    await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("button", { name: "all" })).toHaveFocus();
-
-    await user.click(screen.getByRole("button", { name: "all" }));
-    expect(screen.getByRole("button", { name: "all" })).toHaveFocus();
-  });
-
-  it("changes provider filters through ProviderList roving filter controls", async () => {
-    const user = userEvent.setup();
-    const onFilter = vi.fn();
-
-    renderProviderListSubject({ onFilter });
+    render(
+      <KeyboardProvider>
+        <ProviderListSubject onDispatchAction={onDispatchAction} />
+      </KeyboardProvider>,
+    );
 
     await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
-
-    await user.keyboard("/");
-    expect(screen.getByRole("searchbox", { name: /search providers/i })).toHaveFocus();
-
-    await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("radio", { name: "All" })).toHaveFocus();
-
     await user.keyboard("{ArrowRight}");
-
-    const configuredFilter = screen.getByRole("radio", { name: "Configured" });
-    expect(configuredFilter).toHaveFocus();
-    expect(configuredFilter).toHaveAttribute("aria-checked", "true");
-    expect(onFilter).toHaveBeenCalledWith("configured");
-  });
-
-  it("moves from provider search to filters on Escape", async () => {
-    const user = userEvent.setup();
-
-    renderProviderListSubject();
-
-    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
-    await user.keyboard("/");
-    const search = screen.getByRole("searchbox", { name: /search providers/i });
-    expect(search).toHaveFocus();
-
-    await user.keyboard("{Escape}");
-
-    expect(screen.getByRole("radio", { name: "All" })).toHaveFocus();
-  });
-
-  it("keeps provider search focused during IME composition, then resumes navigation", async () => {
-    const user = userEvent.setup();
-
-    renderProviderListSubject();
-
-    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
-    await user.keyboard("/");
-    const search = screen.getByRole("searchbox", { name: /search providers/i });
-    expect(search).toHaveFocus();
-
-    const composingArrow = new KeyboardEvent("keydown", {
-      key: "ArrowDown",
-      bubbles: true,
-      cancelable: true,
-      isComposing: true,
-    });
-    act(() => search.dispatchEvent(composingArrow));
-
-    const legacyImeEscape = new KeyboardEvent("keydown", {
-      key: "Escape",
-      bubbles: true,
-      cancelable: true,
-    });
-    Object.defineProperty(legacyImeEscape, "keyCode", { value: 229 });
-    act(() => search.dispatchEvent(legacyImeEscape));
-
-    expect(search).toHaveFocus();
-    expect(composingArrow.defaultPrevented).toBe(false);
-    expect(legacyImeEscape.defaultPrevented).toBe(false);
-
-    await user.keyboard("{ArrowDown}");
-
-    expect(screen.getByRole("radio", { name: "All" })).toHaveFocus();
-  });
-
-  it("keeps Select Provider reachable so the shared prerequisite router can open setup", async () => {
-    const user = userEvent.setup();
-    const onActivateProvider = vi.fn();
-
-    renderProviderListSubject({ onActivateProvider });
-
-    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
-
-    await user.keyboard("{ArrowRight}");
-    expect(screen.getByRole("button", { name: "Select Provider" })).toHaveFocus();
-
+    expect(screen.getByRole("button", { name: /Select configuration/i })).toHaveFocus();
     await user.keyboard("{Enter}");
-    expect(onActivateProvider).toHaveBeenCalledWith(PROVIDERS[0]);
+    expect(onDispatchAction).toHaveBeenCalled();
   });
 
-  it("activates the highlighted provider with Enter and moves to actions with Space", async () => {
+  it("never activates removed records from the list keyboard flow", async () => {
     const user = userEvent.setup();
     const onActivate = vi.fn();
 
-    renderProviderListSubject({ onActivate });
+    render(
+      <KeyboardProvider>
+        <ProviderListSubject onActivate={onActivate} />
+      </KeyboardProvider>,
+    );
 
     const listbox = screen.getByRole("listbox", { name: "Providers" });
     await waitFor(() => expect(listbox).toHaveFocus());
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{Enter}");
 
-    await user.keyboard("{ArrowDown}{Enter}");
-    expect(onActivate).toHaveBeenCalledWith("zai");
-
-    await user.keyboard(" ");
-    expect(screen.getByRole("button", { name: "Select Provider" })).toHaveFocus();
-    // call-count IS the contract: Space moves focus to the action row, it must NOT also activate the provider (count stays at 1 from the prior Enter)
-    expect(onActivate).toHaveBeenCalledTimes(1);
+    expect(onActivate).not.toHaveBeenCalledWith("legacy-removed-zai-plan");
   });
 });

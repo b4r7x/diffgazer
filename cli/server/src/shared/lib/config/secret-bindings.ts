@@ -224,10 +224,6 @@ export function createNoneSecretBinding(
   ) as NoneSecretBinding;
 }
 
-export function retainUnknownSecretBinding(binding: SecretBinding): SecretBinding {
-  return { ...binding, status: "unknown" };
-}
-
 export function markSecretBindingRemoved(binding: SecretBinding): SecretBinding {
   return { ...binding, status: "removed" };
 }
@@ -501,5 +497,3 @@ export async function deleteSecretBindingTransactional(
     deleted,
   };
 }
-
-export const deleteSecretBindingAfterDrain = deleteSecretBindingTransactional;

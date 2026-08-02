@@ -7,11 +7,11 @@ These are the questions people ask most often, with a link to the page that cove
 
 ### Does my code leave my machine?
 
-Only when you ask for a review, and only to the model provider you chose. Diffgazer runs an embedded server on your own machine and never relays anything through a service we run, so your source and your API keys stay off our infrastructure. But a review request is not empty: it carries your diff and the prompt built around it straight to your provider, under your own account and that provider's data policy. Nothing leaves until you start a review. See [Privacy and security](/app/concepts/privacy) for how that holds up layer by layer.
+Only when you ask for a review, and only to the model provider you chose. Diffgazer runs an embedded server on your own machine and never relays anything through a service we run, so your source and your API keys stay off our infrastructure. But a review request is not empty: it carries your diff and the prompt built around it straight to your provider, under your own account and that provider's data policy. Your code never leaves before that; setup itself can make a model-catalog lookup that carries no code. See [Privacy and security](/app/concepts/privacy) for how that holds up layer by layer.
 
 ### Which providers can I use?
 
-Six are enabled and selectable: Google Gemini, Z.ai, Z.ai Coding Plan, OpenRouter, Groq, and Cerebras. You bring your own key for whichever one you pick, either stored by Diffgazer or read from an environment variable you name. The [Providers reference](/app/reference/providers) lists the env var, default model, and base URL for each one.
+Thirteen products are selectable, across hosted APIs (Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Qwen International, Moonshot Open Platform, Mistral), local HTTP servers (Ollama, Local OpenAI-compatible), and local CLIs (OpenAI Codex CLI, GitHub Copilot CLI). Hosted products take your own key, either stored by Diffgazer or read from the environment variable that product is bound to. The [Providers reference](/app/reference/providers) lists the credential kind, endpoint, and enablement gate for each one, and [Environment variables](/app/reference/environment-variables) lists the reference names.
 
 ### Can I run Diffgazer in Docker or on a server?
 
@@ -27,7 +27,7 @@ Not yet. The terminal UI is a beta and still incomplete, so web mode is the defa
 
 ### Where is my config stored?
 
-Globally, under `~/.diffgazer`: settings in `config.json`, API keys in `secrets.json`, and per-project trust records in `trust.json`. Each repository you review also gets a small `.diffgazer/project.json` inside it that pins a stable id for trust to point at. You can move the global directory by setting `DIFFGAZER_HOME`; the full layout is in [Configuration](/app/reference/configuration).
+Globally, under `~/.diffgazer`: settings in `config.json`, credential references in `secrets.json` (literal keys go to the OS keyring or separate `0600` files), and per-project trust records in `trust.json`. Each repository you review also gets a small `.diffgazer/project.json` inside it that pins a stable id for trust to point at. You can move the global directory by setting `DIFFGAZER_HOME`; the full layout is in [Configuration](/app/reference/configuration).
 
 ### Still stuck?
 

@@ -3,6 +3,7 @@ import {
   type ClientConfigurationSummary,
   ClientConfigurationSummarySchema,
 } from "../schemas/config/provider-config.js";
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { READINESS_PRESENTATION, ReadinessSchema } from "../schemas/config/readiness.js";
 import {
   REMOVED_PRODUCT_IDS,
@@ -72,7 +73,7 @@ function sourceForConfiguration(configuration: ClientConfigurationSummary): Clie
     configuration,
     readiness: readiness(
       status,
-      configuration.productId === "zai-coding" ? "qwen" : configuration.productId,
+      configuration.productId === REMOVED_PRODUCT_ID ? "qwen" : configuration.productId,
     ),
     notices: configuration.notices,
     actions: [...configuration.availableActions],
@@ -201,7 +202,7 @@ const CONFIGURATIONS = [
     revision: 1,
     status: "removed",
     transportFamily: "hosted-api",
-    productId: "zai-coding",
+    productId: REMOVED_PRODUCT_ID,
     selectedModelId: null,
     notices: [],
     availableActions: ["inspect", "delete"],
@@ -751,7 +752,7 @@ describe("client metadata projection", () => {
       }).success,
     ).toBe(false);
     expect(removedPayload.product).toMatchObject({
-      productId: "zai-coding",
+      productId: REMOVED_PRODUCT_ID,
       status: "removed",
       selectable: false,
     });

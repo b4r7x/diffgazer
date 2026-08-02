@@ -1,4 +1,6 @@
+import { configQueries } from "@diffgazer/core/api/hooks";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { KeyboardProvider } from "@diffgazer/keys";
 import {
@@ -16,6 +18,14 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
 import { ConfigProvider } from "@/hooks/use-config";
+import { api as appApi } from "@/lib/api";
+import { queryClient as appQueryClient } from "@/lib/query-client";
+import { assertClientSafePayload } from "@/testing/client-safe-assertions";
+import {
+  makeReadyInitResponse,
+  READY_GEMINI_CONFIGURATION,
+} from "@/testing/configuration-fixtures";
+import { requireConfigured } from "../lib/config-guards";
 import { NotFoundPage } from "./not-found";
 import { RouteRecoveryPage } from "./route-error-boundary";
 import { lazyRoute } from "./route-import";
@@ -30,6 +40,11 @@ vi.mock("../lib/config-guards", () => ({
 vi.mock("@/lib/shutdown", () => ({
   shutdown: vi.fn().mockResolvedValue({ status: "closed" as const }),
   reportShutdownResult: vi.fn(),
+}));
+
+vi.mock("@/components/layout/global", () => ({
+  GlobalLayout: ({ children }: { children: React.ReactNode }) => children,
+  GlobalShortcuts: () => null,
 }));
 
 function delay(ms: number) {
@@ -276,36 +291,22 @@ function productionRouteHead(fullPath: string) {
 }
 
 function createConnectedTitleRouter(initialEntries: string[]) {
-  const { Wrapper: QueryWrapper } = createTestQueryWrapper({
+  const initResponse = makeReadyInitResponse();
+  const {
+    Wrapper: QueryWrapper,
+    queryClient,
+    api,
+  } = createTestQueryWrapper({
     api: {
-      loadInit: vi.fn().mockResolvedValue({
-        config: { provider: "gemini", model: "gemini-2.5-flash" },
-        configured: true,
-        project: { projectId: "proj-1", path: "/repo", trust: null },
-        providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
-        settings: {
-          agentExecution: "parallel",
-          defaultLenses: [],
-          defaultProfile: null,
-          secretsStorage: null,
-          severityThreshold: "low",
-          theme: "terminal",
-        },
-        setup: {
-          hasModel: true,
-          hasProvider: true,
-          hasSecretsStorage: true,
-          hasTrust: false,
-          isConfigured: true,
-          isReady: true,
-          missing: [],
-        },
+      loadConfigurationInit: vi.fn().mockResolvedValue(initResponse),
+      listConfigurations: vi.fn().mockResolvedValue({
+        schemaVersion: 2,
+        configurations: initResponse.configurations,
+        selectedConfigurationId: initResponse.selectedConfigurationId,
       }),
-      getProviderStatus: vi
-        .fn()
-        .mockResolvedValue([{ provider: "gemini", hasApiKey: true, isActive: true }]),
     },
   });
+  queryClient.setQueryData(configQueries.init(api).queryKey, initResponse);
 
   const rootRoute = createRootRoute({
     component: () => (
@@ -496,5 +497,54 @@ describe("review route id validation", () => {
 
     expect(testRouter.state.location.pathname).toBe("/");
     expect(testRouter.state.location.search).toEqual({ error: "invalid-review-id" });
+  });
+});
+
+describe("protected review route readiness", () => {
+  const REVIEW_ID = "6ba7b810-9dad-11d1-80b4-00c04fd430c8";
+
+  async function loadProductionReviewRoute(init: ConfigurationInitResponse) {
+    appQueryClient.setQueryData(configQueries.init(appApi).queryKey, init);
+    const testRouter = createRouter({
+      routeTree: router.routeTree,
+      history: createMemoryHistory({ initialEntries: [`/review/${REVIEW_ID}`] }),
+    });
+    await testRouter.load();
+    return testRouter;
+  }
+
+  beforeEach(async () => {
+    // Run the real guard (the rest of the file stubs it) so the assertions
+    // below observe the production admission decision, not a fixture.
+    const guards =
+      await vi.importActual<typeof import("../lib/config-guards")>("../lib/config-guards");
+    vi.mocked(requireConfigured).mockImplementation(guards.requireConfigured);
+  });
+
+  afterEach(() => {
+    appQueryClient.clear();
+    vi.mocked(requireConfigured).mockReset();
+  });
+
+  it("admits the selected ready configuration to the production /review route", async () => {
+    const init = makeReadyInitResponse();
+    expect(init.selectedConfigurationId).toBe(READY_GEMINI_CONFIGURATION.configurationId);
+
+    const testRouter = await loadProductionReviewRoute(init);
+
+    expect(testRouter.state.location.pathname).toBe(`/review/${REVIEW_ID}`);
+    assertClientSafePayload(
+      testRouter.state.matches.map((match) => match.params),
+      "review params",
+    );
+  });
+
+  it("redirects the production /review route to onboarding when no configuration is selected", async () => {
+    const testRouter = await loadProductionReviewRoute({
+      ...makeReadyInitResponse(),
+      selectedConfigurationId: null,
+    });
+
+    expect(testRouter.state.location.pathname).toBe("/onboarding");
   });
 });

@@ -1,82 +1,50 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
-import type { InitResponse } from "@diffgazer/core/schemas/config";
+import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import {
+  configurationStatus,
+  LOCAL_OPENAI_CONFIGURATION,
+  makeConfigurationInitResponse,
+  makeReadyInitResponse,
+} from "@/testing/configuration-fixtures";
 import { expectSingleReticle } from "@/testing/reticle";
 import { ReviewContainer } from "./container";
 
+const mockUseReviewLifecycle = vi.fn();
+
 vi.mock("../hooks/use-lifecycle", () => ({
-  extractOrchestratorStats: () => ({}),
-  useReviewLifecycle: () => ({
-    state: {
-      steps: [],
-      agents: [],
-      events: [],
-      issues: [],
-      notices: [],
-      fileProgress: { total: 0, completed: [] },
-      startedAt: null,
-      isStreaming: false,
-      error: null,
-    },
-    gate: "unconfigured",
-    contextSnapshot: null,
-    loadingMessage: null,
-    provider: undefined,
-    isTransitionPending: false,
-    handleCancel: vi.fn(),
-    handleBack: vi.fn(),
-    handleViewResults: vi.fn(),
-    handleSetupProvider: vi.fn(),
-    handleSwitchMode: vi.fn(),
-  }),
+  useReviewLifecycle: (...args: unknown[]) => mockUseReviewLifecycle(...args),
 }));
 
-let mockLoadInit: Mock<BoundApi["loadInit"]>;
-let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
+let mockLoadConfigurationInit: Mock<BoundApi["loadConfigurationInit"]>;
 
-function makeModelMissingInitResponse(): InitResponse {
-  return {
-    configPath: "/tmp/diffgazer/config.json",
-    config: { provider: "openrouter" },
-    providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
-    settings: {
-      theme: "terminal",
-      defaultLenses: [],
-      defaultProfile: null,
-      severityThreshold: "low",
-      secretsStorage: "file",
-      agentExecution: "parallel",
-    },
-    configured: false,
-    project: { projectId: "project-1", path: "/repo", trust: null },
-    setup: {
-      hasSecretsStorage: true,
-      hasProvider: true,
-      hasModel: false,
-      hasTrust: false,
-      isConfigured: false,
-      isReady: false,
-      missing: ["model"],
-    },
-  };
-}
-
-function createTestApi(): BoundApi {
+function createTestApi(init = makeReadyInitResponse()): BoundApi {
   return {
     ...createApi({ baseUrl: "http://localhost" }),
-    loadInit: mockLoadInit,
-    getProviderStatus: mockGetProviderStatus,
+    loadConfigurationInit: mockLoadConfigurationInit,
+    listConfigurations: vi.fn().mockResolvedValue({
+      schemaVersion: 2,
+      configurations: init.configurations,
+      selectedConfigurationId: init.selectedConfigurationId,
+    }),
+    inspectConfiguration: vi.fn(),
+    selectConfiguration: vi.fn(),
+    testConfiguration: vi.fn(),
+    updateConfiguration: vi.fn(),
+    deleteConfiguration: vi.fn(),
+    executeConfigurationAction: vi.fn(),
+    createConfiguration: vi.fn(),
   } satisfies BoundApi;
 }
 
-function renderReviewContainer() {
+function renderReviewContainer(props: Partial<ComponentProps<typeof ReviewContainer>> = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -96,46 +64,136 @@ function renderReviewContainer() {
     );
   }
 
-  return render(<ReviewContainer mode="staged" />, { wrapper: Wrapper });
+  return render(<ReviewContainer mode="staged" {...props} />, { wrapper: Wrapper });
 }
 
 describe("ReviewContainer configuration gates", () => {
   beforeEach(() => {
-    mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockRejectedValue(new Error("init unavailable"));
-    mockGetProviderStatus = vi
-      .fn<BoundApi["getProviderStatus"]>()
-      .mockRejectedValue(new Error("providers unavailable"));
+    mockLoadConfigurationInit = vi
+      .fn<BoundApi["loadConfigurationInit"]>()
+      .mockRejectedValue(new Error("init unavailable"));
+    mockUseReviewLifecycle.mockReturnValue({
+      state: {
+        steps: [],
+        agents: [],
+        events: [],
+        issues: [],
+        notices: [],
+        fileProgress: { total: 0, completed: [] },
+        startedAt: null,
+        isStreaming: false,
+        error: null,
+      },
+      gate: "unconfigured",
+      contextSnapshot: null,
+      loadingMessage: null,
+      readiness: configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable")
+        .readiness,
+      selectedConfiguration: LOCAL_OPENAI_CONFIGURATION,
+      isTransitionPending: false,
+      handleCancel: vi.fn(),
+      handleBack: vi.fn(),
+      handleViewResults: vi.fn(),
+      handleSetupProvider: vi.fn(),
+      handleSwitchMode: vi.fn(),
+    });
   });
 
-  it("shows the retryable error gate when init and provider status both fail", async () => {
+  it("shows the retryable error gate when configuration init fails", async () => {
     renderReviewContainer();
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("Configuration Unavailable");
     });
-    expect(screen.queryByText("Model Required")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Configuration Not Ready/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the readiness gate with the generic action label", async () => {
+    const readiness = configurationStatus(
+      LOCAL_OPENAI_CONFIGURATION,
+      "local-endpoint-unreachable",
+    ).readiness;
+    mockLoadConfigurationInit.mockResolvedValue(
+      makeConfigurationInitResponse([
+        configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
+      ]),
+    );
+    mockUseReviewLifecycle.mockReturnValue({
+      state: {
+        steps: [],
+        agents: [],
+        events: [],
+        issues: [],
+        notices: [],
+        fileProgress: { total: 0, completed: [] },
+        startedAt: null,
+        isStreaming: false,
+        error: null,
+      },
+      gate: "unconfigured",
+      contextSnapshot: null,
+      loadingMessage: null,
+      readiness,
+      selectedConfiguration: LOCAL_OPENAI_CONFIGURATION,
+      isTransitionPending: false,
+      handleCancel: vi.fn(),
+      handleBack: vi.fn(),
+      handleViewResults: vi.fn(),
+      handleSetupProvider: vi.fn(),
+      handleSwitchMode: vi.fn(),
+    });
+
+    renderReviewContainer();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Configuration Not Ready \(local-openai\)/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Test readiness" })).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
   });
 
   it("brackets exactly one pane on the rendered gate", async () => {
-    mockLoadInit.mockResolvedValue(makeModelMissingInitResponse());
+    mockLoadConfigurationInit.mockResolvedValue(
+      makeConfigurationInitResponse([
+        configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
+      ]),
+    );
     const { container } = renderReviewContainer();
 
     await waitFor(() => {
-      expect(screen.getByText("Model Required")).toBeInTheDocument();
+      expect(screen.getByText(/Configuration Not Ready/i)).toBeInTheDocument();
     });
 
     expectSingleReticle(container);
   });
 
-  it("uses valid init setup data when only provider status fails", async () => {
-    mockLoadInit.mockResolvedValue(makeModelMissingInitResponse());
-    mockGetProviderStatus.mockRejectedValue(new Error("providers unavailable"));
+  it("renders a safe terminal receipt without raw diagnostics", () => {
+    const { container } = renderReviewContainer({
+      terminalOutcome: "transport-failed",
+      usageAvailability: "unavailable",
+      onBack: vi.fn(),
+    });
 
-    renderReviewContainer();
+    expect(screen.getByRole("alert")).toHaveTextContent("Transport Failed");
+    expect(screen.getByText(/Usage unavailable/i)).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/Bearer\s+/i);
+    expect(container.textContent).not.toMatch(/\/Users\//);
+  });
+
+  it("exposes no secret values in the rendered gate DOM", async () => {
+    mockLoadConfigurationInit.mockResolvedValue(
+      makeConfigurationInitResponse([
+        configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
+      ]),
+    );
+    const { container } = renderReviewContainer();
 
     await waitFor(() => {
-      expect(screen.getByText("Model Required")).toBeInTheDocument();
+      expect(screen.getByText(/Configuration Not Ready/i)).toBeInTheDocument();
     });
-    expect(screen.queryByText("Configuration Unavailable")).not.toBeInTheDocument();
+
+    expect(container.textContent).not.toMatch(/sk-[A-Za-z0-9_-]{8,}/i);
+    expect(container.textContent).not.toMatch(new RegExp(LEGACY_V1_HAS_API_KEY_PROPERTY, "i"));
+    expect(container.innerHTML).not.toContain("provider-status");
   });
 });

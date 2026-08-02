@@ -1,12 +1,72 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ClientConfigurationAction,
+  ClientConfigurationInput,
+  ClientConfigurationSummary,
+  ConfigurationId,
   ConfigurationInitResponse,
+  ConfigurationRevision,
+  ExactModelId,
   SettingsConfig,
   SetupStatus,
 } from "../../schemas/config/index.js";
+import type { ReadinessAcknowledgement } from "../../schemas/config/readiness.js";
+import type { BoundApi } from "../bound.js";
 import { useApi } from "./context.js";
-import { configQueries } from "./queries/config.js";
+import {
+  type ConfigurationFingerprint,
+  configQueries,
+  configurationDiscoveryQuery,
+  configurationFingerprint,
+  configurationReadinessQuery,
+} from "./queries/config.js";
+
+type AcceptedAcknowledgement = Extract<ReadinessAcknowledgement, { status: "accepted" }>;
+type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
+
+function actionConfigurationId(action: ClientConfigurationAction): ConfigurationId | undefined {
+  return "configurationId" in action ? action.configurationId : undefined;
+}
+
+export async function invalidateConfigurationCaches(
+  queryClient: QueryClient,
+  api: BoundApi,
+  configurationId?: ConfigurationId,
+) {
+  const invalidations = [
+    queryClient.invalidateQueries({ queryKey: configQueries.init(api).queryKey }),
+    queryClient.invalidateQueries({ queryKey: configQueries.configurations(api).queryKey }),
+  ];
+
+  if (configurationId) {
+    invalidations.push(
+      queryClient.invalidateQueries({
+        queryKey: [...configQueries.all(), "inspect", configurationId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [...configQueries.all(), "discovery", configurationId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [...configQueries.all(), "readiness", configurationId],
+      }),
+    );
+  } else {
+    invalidations.push(
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey;
+          return (
+            Array.isArray(key) &&
+            key[0] === "config" &&
+            (key[1] === "inspect" || key[1] === "discovery" || key[1] === "readiness")
+          );
+        },
+      }),
+    );
+  }
+
+  await Promise.all(invalidations);
+}
 
 export function useSettings() {
   const api = useApi();
@@ -68,9 +128,77 @@ export function useInit(): ConfigurationInitQuery {
   };
 }
 
+/**
+ * Lightweight configured/not-configured gate for CLI surfaces. Derives from the
+ * V2 init payload because legacy GET /api/config/check was removed.
+ */
+export function useConfigCheck() {
+  const query = useInit();
+  return {
+    ...query,
+    data: query.data ? { configured: query.data.setup.isConfigured } : undefined,
+  };
+}
+
 export function useConfigurations() {
   const api = useApi();
   return useQuery(configQueries.configurations(api));
+}
+
+export function useConfigurationInspect(configurationId: ConfigurationId | null | undefined) {
+  const api = useApi();
+  return useQuery({
+    ...configQueries.inspect(api, configurationId ?? ""),
+    enabled: configurationId != null && configurationId.length > 0,
+  });
+}
+
+export function useConfigurationDiscovery(
+  configuration: SupportedConfigurationSummary | null | undefined,
+  fingerprint?: ConfigurationFingerprint,
+) {
+  const api = useApi();
+  const discoveryOptions =
+    configuration != null
+      ? configurationDiscoveryQuery(api, configuration, fingerprint)
+      : undefined;
+
+  return useQuery({
+    queryKey:
+      discoveryOptions?.queryKey ??
+      ([...configQueries.all(), "discovery", "__disabled__", ""] as const),
+    queryFn:
+      discoveryOptions?.queryFn ??
+      (async () => {
+        throw new Error("Discovery query is disabled");
+      }),
+    staleTime: discoveryOptions?.staleTime ?? 0,
+    enabled: discoveryOptions != null,
+  });
+}
+
+export function useConfigurationReadiness(
+  configuration: SupportedConfigurationSummary | null | undefined,
+  fingerprint?: ConfigurationFingerprint,
+) {
+  const api = useApi();
+  const readinessOptions =
+    configuration != null
+      ? configurationReadinessQuery(api, configuration, fingerprint)
+      : undefined;
+
+  return useQuery({
+    queryKey:
+      readinessOptions?.queryKey ??
+      ([...configQueries.all(), "readiness", "__disabled__", ""] as const),
+    queryFn:
+      readinessOptions?.queryFn ??
+      (async () => {
+        throw new Error("Readiness query is disabled");
+      }),
+    staleTime: readinessOptions?.staleTime ?? 0,
+    enabled: readinessOptions != null,
+  });
 }
 
 export function useSaveSettings() {
@@ -87,13 +215,103 @@ export function useSaveSettings() {
   });
 }
 
+export function useCreateConfiguration() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ClientConfigurationInput) => api.createConfiguration(input),
+    onSuccess: async (response) => {
+      await invalidateConfigurationCaches(qc, api, response.configuration?.configurationId);
+    },
+  });
+}
+
+export function useInspectConfiguration() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (configurationId: ConfigurationId) => api.inspectConfiguration(configurationId),
+    onSuccess: async (_response, configurationId) => {
+      await invalidateConfigurationCaches(qc, api, configurationId);
+    },
+  });
+}
+
+export function useSelectConfiguration() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      configurationId,
+      modelId,
+    }: {
+      configurationId: ConfigurationId;
+      modelId: ExactModelId;
+    }) => api.selectConfiguration(configurationId, modelId),
+    onSuccess: async (_response, { configurationId }) => {
+      await invalidateConfigurationCaches(qc, api, configurationId);
+    },
+  });
+}
+
+export function useTestConfiguration() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (configurationId: ConfigurationId) => api.testConfiguration(configurationId),
+    onSuccess: async (_response, configurationId) => {
+      await invalidateConfigurationCaches(qc, api, configurationId);
+    },
+  });
+}
+
+export function useUpdateConfiguration() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      configurationId,
+      expectedRevision,
+      input,
+      acknowledgement,
+    }: {
+      configurationId: ConfigurationId;
+      expectedRevision: ConfigurationRevision;
+      input: ClientConfigurationInput;
+      acknowledgement: AcceptedAcknowledgement;
+    }) => api.updateConfiguration(configurationId, expectedRevision, input, acknowledgement),
+    onSuccess: async (_response, { configurationId }) => {
+      await invalidateConfigurationCaches(qc, api, configurationId);
+    },
+  });
+}
+
+export function useDeleteConfiguration() {
+  const api = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      configurationId,
+      expectedRevision,
+    }: {
+      configurationId: ConfigurationId;
+      expectedRevision: ConfigurationRevision;
+    }) => api.deleteConfiguration(configurationId, expectedRevision),
+    onSuccess: async (_response, { configurationId }) => {
+      await invalidateConfigurationCaches(qc, api, configurationId);
+    },
+  });
+}
+
 export function useConfigurationAction() {
   const api = useApi();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (action: ClientConfigurationAction) => api.executeConfigurationAction(action),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: configQueries.all() });
+    onSuccess: async (_response, action) => {
+      await invalidateConfigurationCaches(qc, api, actionConfigurationId(action));
     },
   });
 }
+
+export { configurationFingerprint };

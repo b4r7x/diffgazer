@@ -1,35 +1,38 @@
-import { getOnboardingProgressLabel } from "@diffgazer/core/onboarding";
+import type { SetupPlan } from "@diffgazer/core/onboarding";
+import { getOnboardingProgressLabel, STEP_LABELS } from "@diffgazer/core/onboarding";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { useTheme } from "../../../theme/provider";
 import { WIZARD_PROGRESS_MARKERS } from "../lib/wizard-progress";
 
 interface WizardProgressProps {
-  steps: string[];
+  plan: SetupPlan;
   currentStep: number;
   compact?: boolean;
 }
 
 export function WizardProgress({
-  steps,
+  plan,
   currentStep,
   compact = false,
 }: WizardProgressProps): ReactElement {
   const { tokens } = useTheme();
+  const labels = plan.steps.map((step) => STEP_LABELS[step.id]);
 
   if (compact) {
     return (
       <Text color={tokens.accent} bold>
-        {WIZARD_PROGRESS_MARKERS.current} {getOnboardingProgressLabel(currentStep)}
+        {WIZARD_PROGRESS_MARKERS.current} {getOnboardingProgressLabel(plan, currentStep)}
       </Text>
     );
   }
 
   return (
     <Box gap={2}>
-      {steps.map((label, index) => {
+      {labels.map((label, index) => {
         const isCompleted = index < currentStep;
         const isCurrent = index === currentStep;
+        const stepId = plan.steps[index]?.id ?? label;
 
         let indicator: string;
         let color: string;
@@ -46,7 +49,7 @@ export function WizardProgress({
         }
 
         return (
-          <Text key={label} color={color} bold={isCurrent}>
+          <Text key={stepId} color={color} bold={isCurrent}>
             {indicator} {label}
           </Text>
         );

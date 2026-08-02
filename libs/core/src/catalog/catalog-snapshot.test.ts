@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CANDIDATE_VERDICTS, SELECTABLE_PRODUCT_IDS } from "../providers/product-registry.js";
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { CATALOG_SNAPSHOT } from "./catalog-snapshot.js";
 import { PROVIDER_DERIVED } from "./provider-derived.js";
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";
@@ -45,7 +46,9 @@ describe("CATALOG_SNAPSHOT", () => {
     expect(generatorSource).toContain("writeFileSync(DERIVED_OUT, derivedHeader");
     expect(generatorSource).not.toContain("rmSync(");
     expect(generatorSource).not.toMatch(/F-084|F-225|design D6/);
-    expect(derivedSource).not.toMatch(/zai-coding|github-models|candidate/i);
+    expect(derivedSource).not.toMatch(
+      new RegExp(`${REMOVED_PRODUCT_ID}|github-models|candidate`, "i"),
+    );
   });
 
   it("keeps derived product keys registry-owned and client-safe", () => {
@@ -110,7 +113,7 @@ describe("CATALOG_SNAPSHOT", () => {
   it("does not project removed, GitHub Models, or candidate products", () => {
     const productIds = new Set<string>(snapshotObservations().map(({ productId }) => productId));
 
-    expect(productIds.has("zai-coding")).toBe(false);
+    expect(productIds.has(REMOVED_PRODUCT_ID)).toBe(false);
     expect(productIds.has("github-models")).toBe(false);
     for (const candidateId of Object.keys(CANDIDATE_VERDICTS)) {
       expect(productIds.has(candidateId), candidateId).toBe(false);

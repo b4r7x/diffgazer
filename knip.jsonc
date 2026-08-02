@@ -49,12 +49,18 @@
       "entry": ["scripts/monorepo/**/*.mjs", "scripts/monorepo/**/*.test.mjs"]
     },
     "apps/web": {
-      "entry": ["src/main.tsx", "src/app/routes/**/*.tsx", "testing/fixtures/results-layout.tsx"]
+      "entry": ["src/main.tsx", "src/app/routes/**/*.tsx", "testing/fixtures/results-layout.tsx"],
+      // Ambient matcher declarations: consumed by tsconfig.test.json, never imported.
+      "ignore": ["src/vitest.d.ts"]
     },
     "apps/landing": {
       "entry": ["src/main.ts", "index.html"]
     },
     "apps/docs": {
+      // The scroll-bootstrap tests pin router internals by resolving
+      // @tanstack/router-core through @tanstack/react-router on purpose, so a
+      // direct dependency would let the two versions drift apart.
+      "ignoreDependencies": ["@tanstack/router-core"],
       "entry": [
         "src/client.tsx",
         "src/server.ts",

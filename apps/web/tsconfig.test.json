@@ -8,6 +8,6 @@
     "noUnusedParameters": false,
     "types": ["node", "vite/client", "@testing-library/jest-dom"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "*.test.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "*.test.ts", "src/vitest.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

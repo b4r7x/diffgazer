@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CANDIDATE_VERDICTS, PRODUCT_REGISTRY } from "../providers/product-registry.js";
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { RAW_CATALOG } from "./fixtures.js";
 import { transformCatalogObservation } from "./transform.js";
 
@@ -173,7 +174,7 @@ describe("transformCatalogObservation", () => {
     const providerIds = Object.keys(RAW_CATALOG);
 
     expect(providerIds).toEqual(["google", "zai", "groq", "cerebras", "openrouter", "mistral"]);
-    expect(providerIds).not.toContain("zai-coding");
+    expect(providerIds).not.toContain(REMOVED_PRODUCT_ID);
     expect(providerIds).not.toContain("zai-coding-plan");
     expect(providerIds).not.toContain("github-models");
     for (const candidateId of Object.keys(CANDIDATE_VERDICTS)) {

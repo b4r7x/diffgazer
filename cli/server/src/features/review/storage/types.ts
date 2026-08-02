@@ -1,6 +1,7 @@
 import type { AppError } from "@diffgazer/core/errors";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import type {
+  ExecutionResult,
   LensId,
   ProfileId,
   ReviewMode,
@@ -33,4 +34,5 @@ export interface SaveReviewOptions {
   droppedDuplicates?: number;
   droppedBelowThreshold?: number;
   minSeverity?: ReviewSeverity;
+  execution?: ExecutionResult;
 }

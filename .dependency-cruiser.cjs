@@ -61,7 +61,7 @@ module.exports = {
           // in the runtime dependency crawl.
           "(^|/)(src|registry)/testing/(assertions|navigation-behavior)\\.tsx?$",
           "^libs/ui/testing/",
-          "^apps/web/src/testing/(escape-regexp|render|reticle)\\.tsx?$",
+          "^apps/web/src/testing/(configuration-fixtures|escape-regexp|render|reticle)\\.tsx?$",
           "^apps/docs/src/testing/(match-media|router-mock)\\.tsx?$",
           "(^|/)test-setup\\.ts$",
           "\\.(test|spec|e2e|stories)\\.[jt]sx?$",

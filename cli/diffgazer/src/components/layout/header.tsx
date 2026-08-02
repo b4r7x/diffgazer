@@ -34,9 +34,9 @@ export function Header({ providerName, providerStatus, showBack }: HeaderProps) 
   const { tokens } = useTheme();
   const { columns, isNarrow } = useResponsive();
 
-  const statusColor = providerStatus === "active" ? tokens.success : tokens.muted;
+  const statusColor = providerStatus.variant === "success" ? tokens.success : tokens.muted;
   const sideWidth = Math.max(Math.floor((columns - 2 - terminalCellWidth(WORDMARK)) / 2), 10);
-  const statusSuffix = isNarrow ? "" : ` · ${providerStatus}`;
+  const statusSuffix = isNarrow ? "" : ` · ${providerStatus.label}`;
   const statusColumns = sideWidth - WORDMARK_GAP;
   const label = fitProviderLabel(
     providerName,

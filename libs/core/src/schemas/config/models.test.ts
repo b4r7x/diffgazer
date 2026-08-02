@@ -51,6 +51,20 @@ describe("schemas/config/models", () => {
     if (result.success) expect(result.data).toMatchObject({ source, fetchedAt });
   });
 
+  it.each([
+    { source: "live", cached: true },
+    { source: "snapshot", cached: true },
+    { source: "cache", cached: false },
+  ] as const)("rejects the contradictory pair source=$source cached=$cached", (provenance) => {
+    expect(
+      ProviderModelsResponseSchema.safeParse({
+        models: [],
+        fetchedAt: "2026-06-02T00:00:00.000Z",
+        ...provenance,
+      }).success,
+    ).toBe(false);
+  });
+
   it("keeps the OpenRouter schemas for the live OpenRouter path", () => {
     const model = OpenRouterModelSchema.safeParse({
       ...validOpenRouterModel,

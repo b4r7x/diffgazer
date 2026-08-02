@@ -7,8 +7,8 @@ import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { render as renderInk } from "ink-testing-library";
 import { createElement, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-
 import { NavigationProvider } from "../../../app/providers/navigation";
+import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 import { OnboardingWizard } from "./wizard";
 
@@ -19,19 +19,13 @@ vi.mock("../../../hooks/use-terminal-dimensions", () => ({
 }));
 
 let mockSaveSettings: Mock<BoundApi["saveSettings"]>;
-let mockSaveConfig: Mock<BoundApi["saveConfig"]>;
-let mockDeleteProviderCredentials: Mock<BoundApi["deleteProviderCredentials"]>;
-let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
-let mockGetProviderModels: Mock<BoundApi["getProviderModels"]>;
+let mockRunConfigurationAction: Mock<BoundApi["executeConfigurationAction"]>;
 
 function createWrapper() {
   const api = {
     ...createApi({ baseUrl: "http://localhost" }),
     saveSettings: mockSaveSettings,
-    saveConfig: mockSaveConfig,
-    deleteProviderCredentials: mockDeleteProviderCredentials,
-    getProviderStatus: mockGetProviderStatus,
-    getProviderModels: mockGetProviderModels,
+    executeConfigurationAction: mockRunConfigurationAction,
   } satisfies BoundApi;
   const { Wrapper: ApiWrapper } = createTestQueryWrapper({ api });
 
@@ -56,33 +50,12 @@ describe("OnboardingWizard interaction", () => {
   beforeEach(() => {
     terminalDimensions.current = { columns: 80, rows: 24 };
     mockSaveSettings = vi.fn<BoundApi["saveSettings"]>().mockResolvedValue(undefined);
-    mockSaveConfig = vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined);
-    mockDeleteProviderCredentials = vi
-      .fn<BoundApi["deleteProviderCredentials"]>()
-      .mockResolvedValue({ deleted: true, provider: "openrouter" });
-    mockGetProviderStatus = vi.fn<BoundApi["getProviderStatus"]>().mockResolvedValue([
-      { provider: "gemini", hasApiKey: false, isActive: false },
-      { provider: "openrouter", hasApiKey: false, isActive: false },
-    ]);
-    mockGetProviderModels = vi.fn<BoundApi["getProviderModels"]>().mockResolvedValue({
-      models: [
-        {
-          id: "gemini-2.5-flash",
-          name: "Gemini 2.5 Flash",
-          description: "Fast model",
-          tier: "free",
-          recommended: true,
-        },
-      ],
-      fetchedAt: "2026-01-01T00:00:00.000Z",
-      source: "snapshot",
-      cached: false,
-    });
+    mockRunConfigurationAction = vi
+      .fn<BoundApi["executeConfigurationAction"]>()
+      .mockResolvedValue({ action: "delete", status: "succeeded" });
   });
 
-  it("shows the API Key step and storage callout when early save fails", async () => {
-    mockSaveConfig.mockRejectedValueOnce(new Error("STORAGE_NOT_CONFIGURED"));
-
+  it("walks a hosted product through authentication without early persistence", async () => {
     const Wrapper = createWrapper();
     const view = renderInk(
       <Wrapper>
@@ -98,39 +71,18 @@ describe("OnboardingWizard interaction", () => {
     view.stdin.write("\t");
     await flushInk();
     view.stdin.write("\r");
-    await flushInk();
-
-    await vi.waitFor(() => expect(view.lastFrame()).toContain("Select an AI provider"));
-
-    view.stdin.write("\u001b[B");
-    await flushInk();
-    view.stdin.write("\r");
-    await flushInk();
+    await waitUntil(() => view.lastFrame()?.includes("CONFIGURE ENDPOINT") ?? false);
 
     view.stdin.write("\t");
     await flushInk();
     view.stdin.write("\u001b[C");
     await flushInk();
     view.stdin.write("\r");
-    await flushInk();
+    await waitUntil(() => view.lastFrame()?.includes("CONFIGURE AUTHENTICATION") ?? false);
 
-    await vi.waitFor(() =>
-      expect(view.lastFrame()).toContain("Provide your API key for OpenRouter"),
-    );
-
-    view.stdin.write("\u001b[B");
-    await flushInk();
-    view.stdin.write("\t");
-    await flushInk();
-    view.stdin.write("\r");
-    await flushInk(8);
-
-    await vi.waitFor(() => {
-      const frame = view.lastFrame() ?? "";
-      expect(frame).toContain("API KEY");
-      expect(frame).toContain("STORAGE_NOT_CONFIGURED");
-    });
-
+    expect(view.lastFrame()).toContain("Paste API key directly");
+    expect(mockSaveSettings).not.toHaveBeenCalled();
+    expect(mockRunConfigurationAction).not.toHaveBeenCalled();
     view.unmount();
   });
 });

@@ -1,6 +1,16 @@
 export {
   canonicalJson,
   canonicalJsonBytes,
+  parseCanonicalJson,
+  sha256CanonicalJson,
+  sha256CanonicalJsonSync,
+} from "../canonical-json.js";
+export {
+  SAVED_REVIEW_EXECUTION_SCHEMA_VERSION,
+  type SavedReviewExecutionSchemaVersion,
+  SavedReviewExecutionSchemaVersionSchema,
+} from "./enums.js";
+export {
   type EvidenceKey,
   EvidenceKeySchema,
   type ExecutionFingerprintInput,
@@ -19,13 +29,10 @@ export {
   hashExecutionReceiptFingerprintSync,
   type NormalizedUsage,
   NormalizedUsageSchema,
-  parseCanonicalJson,
   type RuntimeIdentity,
   RuntimeIdentitySchema,
   type Sha256Hex,
   Sha256HexSchema,
-  sha256CanonicalJson,
-  sha256CanonicalJsonSync,
   TERMINAL_OUTCOMES,
   type TerminalOutcome,
   TerminalOutcomeSchema,
@@ -107,5 +114,8 @@ export {
   type ReviewsResponse,
   ReviewsResponseSchema,
   type SavedReview,
+  type SavedReviewExecutionSnapshot,
+  SavedReviewExecutionSnapshotSchema,
   SavedReviewSchema,
+  toSavedReviewExecutionSnapshot,
 } from "./storage.js";

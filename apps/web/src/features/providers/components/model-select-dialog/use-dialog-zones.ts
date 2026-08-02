@@ -7,6 +7,8 @@ const MODEL_DIALOG_ZONES = ["close", "search", "filters", "list", "footer"] as c
 
 interface UseModelDialogZonesOptions {
   open: boolean;
+  /** Whether the search box can currently take focus; it is disabled while discovery runs. */
+  searchInteractive: boolean;
   searchInputRef: RefObject<HTMLInputElement | null>;
   hasHandledInitialFocusRef: { current: boolean };
 }
@@ -29,6 +31,7 @@ interface UseModelDialogZonesResult {
  */
 export function useModelDialogZones({
   open,
+  searchInteractive,
   searchInputRef,
   hasHandledInitialFocusRef,
 }: UseModelDialogZonesOptions): UseModelDialogZonesResult {
@@ -64,7 +67,12 @@ export function useModelDialogZones({
     },
   });
 
-  useKey("ArrowDown", focusSearchInput, { enabled: open && isZone("close"), preventDefault: true });
+  // Leaving the close button downward is suppressed while the search box is
+  // disabled, so focus stays on the close button instead of falling to the body.
+  useKey("ArrowDown", focusSearchInput, {
+    enabled: open && searchInteractive && isZone("close"),
+    preventDefault: true,
+  });
 
   return {
     focusZone,

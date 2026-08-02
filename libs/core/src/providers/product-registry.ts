@@ -1,3 +1,4 @@
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import type {
   CandidateProductId,
   HostedApiProductId,
@@ -131,6 +132,57 @@ export type ModelPolicy =
       readonly automaticRouting: "forbidden";
       readonly aliases: "forbidden";
     };
+
+/**
+ * The single model-policy predicate.  Every boundary that decides whether a
+ * model id is admissible for a product — onboarding, client projection,
+ * client-safe summaries, discovery mapping, and the execution tuple — must call
+ * this so the interpretations cannot drift apart.
+ *
+ * It deliberately fails closed for the two policy shapes whose extra evidence
+ * has no client-safe representation: an `explicitOptInSuffixes` model needs an
+ * opt-in the V2 contracts do not carry, and a `higherCostModelIds` model needs
+ * the named live output-limit and review-conformance observations, which are
+ * server-only.  Neither may be inferred from discovery, conformance, or notice
+ * acknowledgement.
+ *
+ * Model-id shape validation is deliberately left to the caller, because the
+ * applicable shape schema differs per boundary.
+ */
+export function matchesModelPolicy(modelId: string, policy: ModelPolicy): boolean {
+  switch (policy.kind) {
+    case "discovered-exact":
+      return !policy.explicitOptInSuffixes?.some((suffix) => modelId.endsWith(suffix));
+    case "discovered-allowlist":
+      if (!policy.modelIds.includes(modelId)) return false;
+      return !(
+        policy.higherCostModelEvidence !== undefined && policy.higherCostModelIds?.includes(modelId)
+      );
+    case "discovered-family":
+      return (
+        !policy.rejectedAliases.includes(modelId) &&
+        policy.familyPrefixes.some(
+          (prefix) => modelId === prefix || modelId.startsWith(`${prefix}-`),
+        )
+      );
+    case "pinned-downstream-route":
+      return isPinnedDownstreamRouteModelId(modelId);
+  }
+}
+
+/** Applies {@link matchesModelPolicy} to the product's registered policy. */
+export function isModelIdAllowedForProduct(productId: RunnableProductId, modelId: string): boolean {
+  return matchesModelPolicy(modelId, PRODUCT_REGISTRY[productId].modelPolicy);
+}
+
+/**
+ * A pinned-downstream-route product has no meaningful default: the exact route
+ * is the identity, so presentation must ask for an explicit selection instead of
+ * naming a fallback model.
+ */
+export function requiresExplicitModelSelection(productId: RunnableProductId): boolean {
+  return PRODUCT_REGISTRY[productId].modelPolicy.kind === "pinned-downstream-route";
+}
 
 export interface ProductNotice {
   readonly id: string;
@@ -894,8 +946,8 @@ export const PRODUCT_REGISTRY = {
       ],
     },
   },
-  "zai-coding": {
-    id: "zai-coding",
+  [REMOVED_PRODUCT_ID]: {
+    id: REMOVED_PRODUCT_ID,
     kind: "removed",
     selectable: false,
     decoderOnly: true,

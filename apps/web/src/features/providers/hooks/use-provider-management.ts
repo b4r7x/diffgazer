@@ -1,118 +1,92 @@
-import { getErrorMessage } from "@diffgazer/core/errors";
-import { useSubmitGuard } from "@diffgazer/core/forms";
-import { mapProvidersWithStatus } from "@diffgazer/core/providers";
-import type { AIProvider, CredentialRef } from "@diffgazer/core/schemas/config";
+import {
+  mapProviderList,
+  type ProviderManagementEvent,
+  type ProviderManagementFailure,
+  type ProviderManagementMutations,
+  useProviderManagement as useProviderManagementMachine,
+} from "@diffgazer/core/providers";
 import { toast } from "@diffgazer/ui/components/toast";
-import { useRef, useState } from "react";
 import { useConfigActions, useConfigData } from "@/hooks/use-config";
 
-export type ApiKeyDialogOwner = {
-  kind: "api-key";
-  id: number;
-  providerId: AIProvider;
+export type {
+  ModelDialogOwner,
+  ProviderManagementOutcome,
+  SetupDialogOwner,
+} from "@diffgazer/core/providers";
+
+const SUCCESS_COPY: Record<
+  ProviderManagementEvent["action"],
+  ((event: ProviderManagementEvent) => { title: string; message: string }) | null
+> = {
+  create: () => ({ title: "Configuration Created", message: "Provider configured" }),
+  update: () => ({ title: "Configuration Updated", message: "Provider configured" }),
+  delete: () => ({
+    title: "Configuration Deleted",
+    message: "Provider configuration deleted",
+  }),
+  // Inspection results are rendered in the provider details pane, so a toast
+  // would duplicate what the user is already looking at.
+  inspect: null,
+  test: () => ({ title: "Readiness Tested", message: "Configuration readiness updated" }),
+  select: (event) => ({
+    title: "Configuration Selected",
+    message: `${event.row?.product.name ?? "Provider"} is now active`,
+  }),
+  "select-model": (event) => ({
+    title: "Model Selected",
+    message: `Selected ${event.modelId ?? "model"}`,
+  }),
 };
 
-export type ModelDialogOwner = {
-  kind: "model";
-  id: number;
-  providerId: AIProvider;
+const FAILURE_TITLES: Record<ProviderManagementEvent["action"], string | null> = {
+  // The setup dialog stays open and renders create/update failures inline, so a
+  // toast would report the same failure twice.
+  create: null,
+  update: null,
+  delete: "Failed to Delete",
+  inspect: "Failed to Inspect",
+  test: "Failed to Test",
+  select: "Failed to Select",
+  "select-model": "Failed to Select Model",
 };
 
-type ProviderDialogOwner = ApiKeyDialogOwner | ModelDialogOwner;
+function reportSucceeded(event: ProviderManagementEvent) {
+  const copy = SUCCESS_COPY[event.action]?.(event);
+  if (copy) toast.success(copy.title, { message: copy.message });
+}
+
+function reportFailed(failure: ProviderManagementFailure) {
+  const title = FAILURE_TITLES[failure.action];
+  if (title) toast.error(title, { message: failure.message });
+}
 
 export function useProviderManagement() {
-  const { isLoading, providerStatus } = useConfigData();
-  const { saveCredentials, deleteProviderCredentials, activateProvider } = useConfigActions();
-  const providers = mapProvidersWithStatus(providerStatus);
-  const [dialogOwner, setDialogOwner] = useState<ProviderDialogOwner | null>(null);
-  const nextDialogOwnerId = useRef(0);
-  const { isSubmitting, withGuard } = useSubmitGuard();
+  const { isLoading, configurations } = useConfigData();
+  const {
+    createConfiguration,
+    inspectConfiguration,
+    selectConfiguration,
+    testConfiguration,
+    updateConfiguration,
+    deleteConfiguration,
+    dispatchConfigurationAction,
+  } = useConfigActions();
 
-  const createModelDialogOwner = (providerId: AIProvider): ModelDialogOwner => {
-    nextDialogOwnerId.current += 1;
-    return { kind: "model", id: nextDialogOwnerId.current, providerId };
+  const providers = mapProviderList(configurations);
+  const mutations: ProviderManagementMutations = {
+    createConfiguration,
+    updateConfiguration,
+    deleteConfiguration,
+    inspectConfiguration,
+    testConfiguration,
+    selectConfiguration,
   };
 
-  const openApiKeyDialog = (providerId: AIProvider) => {
-    if (isSubmitting) return;
-    nextDialogOwnerId.current += 1;
-    setDialogOwner({ kind: "api-key", id: nextDialogOwnerId.current, providerId });
-  };
-
-  const openModelDialog = (providerId: AIProvider) => {
-    if (isSubmitting) return;
-    setDialogOwner(createModelDialogOwner(providerId));
-  };
-
-  const closeDialog = (owner: ProviderDialogOwner) => {
-    setDialogOwner((current) => (current === owner ? null : current));
-  };
-
-  const handleSaveApiKey = async (
-    owner: ApiKeyDialogOwner,
-    value: string | CredentialRef,
-    opts?: { openModelDialog?: boolean },
-  ) => {
-    const modelOwner = opts?.openModelDialog ? createModelDialogOwner(owner.providerId) : null;
-    return withGuard(async () => {
-      await saveCredentials(owner.providerId, value);
-      setDialogOwner((current) => (current === owner ? modelOwner : current));
-      toast.success("API Key Saved", { message: "Provider configured" });
-    });
-  };
-
-  const handleRemoveKey = async (providerId: AIProvider) => {
-    return withGuard(async () => {
-      await deleteProviderCredentials(providerId);
-      toast.success("API Key Removed", { message: "Provider key deleted" });
-    }).catch((error) => {
-      toast.error("Failed to Remove", { message: getErrorMessage(error, "Unknown error") });
-      return false;
-    });
-  };
-
-  const handleSelectProvider = async (
-    providerId: AIProvider,
-    providerName: string,
-    model: string | undefined,
-  ) => {
-    if (isSubmitting) return false;
-    if (!model) {
-      toast.error("Model Required", { message: "Select a model first" });
-      openModelDialog(providerId);
-      return false;
-    }
-    return withGuard(async () => {
-      await activateProvider(providerId, model);
-      toast.success("Provider Activated", { message: `${providerName} is now active` });
-    }).catch((error) => {
-      toast.error("Failed to Activate", { message: getErrorMessage(error, "Unknown error") });
-      return false;
-    });
-  };
-
-  const handleSelectModel = async (owner: ModelDialogOwner, modelId: string) => {
-    return withGuard(async () => {
-      await activateProvider(owner.providerId, modelId);
-      setDialogOwner((current) => (current === owner ? null : current));
-      toast.success("Model Selected", { message: `Selected ${modelId}` });
-    }).catch((error) => {
-      toast.error("Failed to Select Model", { message: getErrorMessage(error, "Unknown error") });
-      return false;
-    });
-  };
-
-  return {
+  const management = useProviderManagementMachine({
     providers,
-    isLoading,
-    isSubmitting,
-    dialogOwner,
-    openApiKeyDialog,
-    openModelDialog,
-    closeDialog,
-    handleSaveApiKey,
-    handleRemoveKey,
-    handleSelectProvider,
-    handleSelectModel,
-  };
+    mutations,
+    notifier: { onSucceeded: reportSucceeded, onFailed: reportFailed },
+  });
+
+  return { ...management, providers, isLoading, dispatchConfigurationAction };
 }

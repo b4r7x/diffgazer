@@ -13,11 +13,12 @@ import {
   type OnboardingDraft,
   resetWizardProduct,
 } from "./defaults.js";
-import { type SaveWizardCallbacks, saveWizard } from "./save-wizard.js";
+import { buildConfigPayload, type SaveWizardCallbacks, saveWizard } from "./save-wizard.js";
 import { getStepAt } from "./steps.js";
 import type { OnboardingStep, RemovedOnboardingState } from "./types.js";
 
 const CLEANUP_ERROR_PREFIX = "Failed to remove the incomplete configuration";
+const DRAFT_CONFIGURATION_ERROR_PREFIX = "Could not prepare this configuration for model discovery";
 const SAVE_COMPLETION_ERROR_PREFIX = "Configuration saved, but completion failed";
 const DELETE_COMPLETION_ERROR_PREFIX = "Configuration deleted, but completion failed";
 const CLIENT_ERROR_MAX_BYTES = 512;
@@ -164,6 +165,14 @@ export interface UseWizardStateResult {
   isReconciling: boolean;
   isSubmitting: boolean;
   error: string | null;
+  /**
+   * The persisted record that configuration-bound model discovery addresses.
+   * It is `null` until {@link UseWizardStateResult.prepareDraftConfiguration}
+   * has committed a record for the current transport tuple.
+   */
+  draftConfiguration: SupportedConfigurationSummary | null;
+  isPreparingDraftConfiguration: boolean;
+  prepareDraftConfiguration: () => Promise<SupportedConfigurationSummary | null>;
   next: (partial?: OnboardingDraftUpdate) => void;
   back: () => void;
   updateData: (partial: OnboardingDraftUpdate) => void;
@@ -173,6 +182,7 @@ export interface UseWizardStateResult {
   cleanupCreatedConfiguration: () => Promise<void>;
 }
 
+type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
 type CreatedConfiguration = Pick<ClientConfigurationSummary, "configurationId" | "revision">;
 type OnboardingDraftUpdate = Partial<Omit<OnboardingDraft, "kind" | "plan">>;
 type WizardData = OnboardingDraft | RemovedOnboardingState;
@@ -350,7 +360,15 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   }));
   const [isReconciling, setIsReconciling] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [draftConfiguration, setDraftConfiguration] =
+    useState<SupportedConfigurationSummary | null>(null);
+  const [isPreparingDraftConfiguration, setIsPreparingDraftConfiguration] = useState(false);
   const createdConfigurationRef = useRef<CreatedConfiguration | null>(null);
+  // The ref pair is the authority for the async guard; the state copy only
+  // drives rendering and would be stale inside back-to-back prepare calls.
+  const draftInputRef = useRef<OnboardingConfigurationDraft | null>(null);
+  const draftConfigurationRef = useRef<SupportedConfigurationSummary | null>(null);
+  const pendingDraftRef = useRef<Promise<SupportedConfigurationSummary> | null>(null);
   const pendingSaveRef = useRef<Promise<boolean> | null>(null);
   const pendingRemovedDeleteRef = useRef<Promise<boolean> | null>(null);
   const pendingCleanupRef = useRef<Promise<CleanupResult> | null>(null);
@@ -370,6 +388,15 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === steps.length - 1;
   const canProceedNow = canCurrentStepProceed(wizardData, stepIndex);
+  // A persisted draft is only addressable while it still describes the edited
+  // transport tuple. Model selection alone must not invalidate it.
+  const draftInput = draftInputRef.current;
+  const activeDraftConfiguration =
+    wizardData.kind === "runnable" &&
+    draftInput !== null &&
+    areConfigurationInputsEqual(draftInput, wizardData.configurationInput)
+      ? draftConfiguration
+      : null;
 
   // A new initial draft is a new commit generation as soon as it is rendered.
   // The effect below still performs cleanup and installs the draft, but the
@@ -447,6 +474,9 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
       createdConfigurationRef.current.revision === created.revision
     ) {
       createdConfigurationRef.current = null;
+      draftInputRef.current = null;
+      draftConfigurationRef.current = null;
+      setDraftConfiguration(null);
       // Deleting a partial configuration invalidates the commit marker even
       // when the wizard remains on the same product tuple. Do not advance
       // the generation here: callers may already be waiting on its token.
@@ -495,6 +525,69 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
           wizardData,
         )}`,
       );
+    }
+  };
+
+  // Configuration-bound discovery may only address a record the server has
+  // actually committed. The wizard therefore persists the draft tuple before
+  // the model step reads it back, and revokes it again through the existing
+  // cleanup paths when the tuple changes or setup is abandoned.
+  const prepareDraftConfiguration = async (): Promise<SupportedConfigurationSummary | null> => {
+    if (!callbacks || wizardData.kind !== "runnable") return null;
+    const data = wizardData;
+    const preparedInput = draftInputRef.current;
+    const prepared = draftConfigurationRef.current;
+    if (
+      prepared &&
+      preparedInput &&
+      areConfigurationInputsEqual(preparedInput, data.configurationInput)
+    ) {
+      return prepared;
+    }
+    const pending = pendingDraftRef.current;
+    if (pending) return pending.catch(() => null);
+
+    const generation = generationRef.current;
+    setIsPreparingDraftConfiguration(true);
+    draftConfigurationRef.current = null;
+    setDraftConfiguration(null);
+
+    const prepare = (async (): Promise<SupportedConfigurationSummary> => {
+      if (createdConfigurationRef.current) await removeCreatedConfiguration();
+      const response = await runConfigurationAction(buildConfigPayload(data));
+      if (
+        response.action !== "create" ||
+        response.status !== "succeeded" ||
+        response.configuration?.status !== "supported"
+      ) {
+        throw new Error("Configuration create did not return a supported configuration");
+      }
+      return response.configuration;
+    })();
+    pendingDraftRef.current = prepare;
+
+    try {
+      const configuration = await prepare;
+      if (generation !== generationRef.current) return null;
+      draftInputRef.current = data.configurationInput;
+      draftConfigurationRef.current = configuration;
+      setDraftConfiguration(configuration);
+      return configuration;
+    } catch (cause) {
+      if (generation === generationRef.current) {
+        setWizardState((current) => ({
+          ...current,
+          error: `${DRAFT_CONFIGURATION_ERROR_PREFIX}: ${getClientSafeError(
+            cause,
+            "Retry model discovery.",
+            data,
+          )}`,
+        }));
+      }
+      return null;
+    } finally {
+      if (pendingDraftRef.current === prepare) pendingDraftRef.current = null;
+      setIsPreparingDraftConfiguration(false);
     }
   };
 
@@ -621,6 +714,9 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     setWizardState((current) => ({ ...current, error: null }));
 
     const save = (async () => {
+      // saveWizard owns the create for the final tuple. Revoke the discovery
+      // draft first so the completed setup cannot orphan an extra record.
+      if (createdConfigurationRef.current) await removeCreatedConfiguration();
       const result = await saveWizard(wizardData, {
         saveSettings: callbacks.saveSettings,
         runConfigurationAction,
@@ -709,6 +805,10 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
         hasCommittedRef.current = true;
         return finishCommittedOperation(DELETE_COMPLETION_ERROR_PREFIX, generation);
       } catch (cause) {
+        // A rejection that arrives after the wizard moved on belongs to a
+        // superseded generation; writing it would overwrite the replacement
+        // state with a stale failure.
+        if (generation !== generationRef.current) return false;
         setWizardState((current) => ({
           ...current,
           error: getClientSafeError(cause, "Delete failed", wizardData),
@@ -767,6 +867,9 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     isReconciling,
     isSubmitting,
     error,
+    draftConfiguration: activeDraftConfiguration,
+    isPreparingDraftConfiguration,
+    prepareDraftConfiguration,
     next,
     back,
     updateData,

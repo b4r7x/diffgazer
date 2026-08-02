@@ -1,15 +1,22 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
   CATALOG_SNAPSHOT,
-  catalogToModelInfo,
+  type CatalogObservationSource,
   type ModelsDevCatalog,
   ModelsDevCatalogSchema,
+  type ModelsDevModel,
   PROVIDER_OVERLAY,
   parseModelsDevCatalog,
+  transformCatalogObservation,
 } from "@diffgazer/core/catalog";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
-import type { AIProvider, ProviderModelsResponse } from "@diffgazer/core/schemas/config";
+import type {
+  ConfigurationId,
+  ModelInfo,
+  ProviderModelsResponse,
+  RunnableProductId,
+} from "@diffgazer/core/schemas/config";
 import { z } from "zod";
 import { quarantineCorruptFile, readJsonFileSyncSafe } from "../fs.js";
 import { log } from "../log.js";
@@ -29,6 +36,30 @@ export const ModelsDevCatalogCacheSchema = z.object({
 });
 type ModelsDevCatalogCache = z.infer<typeof ModelsDevCatalogCacheSchema>;
 
+export type CatalogObservableProductId = keyof typeof PROVIDER_OVERLAY & RunnableProductId;
+
+export interface CatalogDiscoveryTuple {
+  readonly configurationId: ConfigurationId;
+  readonly productId: RunnableProductId;
+}
+
+export type ConfigurationCatalogDiscovery =
+  | (CatalogDiscoveryTuple & {
+      readonly status: "passed";
+      readonly models: ModelInfo[];
+      readonly fetchedAt: string;
+      readonly source: ProviderModelsResponse["source"];
+      readonly cached: boolean;
+      readonly observationSource: CatalogObservationSource;
+      readonly checkedAt: string;
+    })
+  | (CatalogDiscoveryTuple & {
+      readonly status: "skipped";
+      readonly models: [];
+      readonly reason: string;
+      readonly checkedAt: string;
+    });
+
 interface ParsedCacheMemo {
   path: string;
   identity: string;
@@ -46,7 +77,7 @@ interface CatalogFetchGeneration {
 }
 
 interface CatalogFlight {
-  requestedProviders: Set<AIProvider>;
+  requestedProducts: Set<CatalogObservableProductId>;
   promise: Promise<CatalogFetchGeneration>;
 }
 
@@ -55,6 +86,68 @@ const catalogFlights = new Map<string, CatalogFlight>();
 let parsedCacheMemo: ParsedCacheMemo | null = null;
 
 const CacheGenerationSchema = z.object({ generationId: z.uuid() });
+
+const CATALOG_SKIPPED_REASON =
+  "Catalog observations are unavailable for this configuration product.";
+
+const CATALOG_EMPTY_MODELS_REASON =
+  "No catalog models are available for this configuration product.";
+
+/** Curated free-quota coverage for overlay-populated products — not admission. */
+type CatalogFreeTierCoverage =
+  | "all"
+  | "zero-priced-only"
+  | { ids?: readonly string[]; families?: readonly string[] };
+
+const CATALOG_FREE_TIER_COVERAGE: Partial<
+  Record<CatalogObservableProductId, CatalogFreeTierCoverage>
+> = {
+  gemini: {
+    ids: ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"],
+  },
+  zai: "zero-priced-only",
+  openrouter: "zero-priced-only",
+  groq: "all",
+  cerebras: "all",
+  mistral: "zero-priced-only",
+};
+
+const pricingTierOf = (model: ModelsDevModel): "free" | "paid" | "unknown" => {
+  if (!model.cost) return "unknown";
+  return model.cost.input === 0 && model.cost.output === 0 ? "free" : "paid";
+};
+
+const matchesFreeTierCoverage = (
+  model: ModelsDevModel,
+  coverage: Exclude<CatalogFreeTierCoverage, "all" | "zero-priced-only">,
+): boolean => {
+  if (coverage.ids?.includes(model.id)) return true;
+  if (model.family && coverage.families?.includes(model.family)) return true;
+  return false;
+};
+
+const isCatalogModelFreeTier = (
+  model: ModelsDevModel,
+  productId: CatalogObservableProductId,
+): boolean => {
+  if (pricingTierOf(model) === "free") return true;
+
+  const coverage = CATALOG_FREE_TIER_COVERAGE[productId];
+  if (!coverage || coverage === "zero-priced-only") return false;
+  if (coverage === "all") return true;
+  return matchesFreeTierCoverage(model, coverage);
+};
+
+const lookupCatalogModel = (
+  catalog: ModelsDevCatalog,
+  sourceProviderId: string,
+  modelId: string,
+): ModelsDevModel | undefined => {
+  const provider = catalog[sourceProviderId];
+  if (!provider) return undefined;
+  const model = provider.models[modelId];
+  return model?.id === modelId ? model : undefined;
+};
 
 const getCacheIdentity = (raw: unknown): string => {
   const generation = CacheGenerationSchema.safeParse(raw);
@@ -98,24 +191,76 @@ const countRawModels = (payload: unknown): number => {
   return total;
 };
 
-/** Source ids of every enabled overlay provider — the providers a picker can request. */
-const enabledOverlaySourceIds = (): Set<string> => {
+const isCatalogObservableProduct = (
+  productId: RunnableProductId,
+): productId is CatalogObservableProductId => PROVIDER_OVERLAY[productId] !== undefined;
+
+/** Registry-owned overlay source ids — catalog observations never enable products. */
+const catalogOverlaySourceIds = (): Set<string> => {
   const ids = new Set<string>();
   for (const overlay of Object.values(PROVIDER_OVERLAY)) {
-    if (!overlay.enabled) continue;
+    if (!overlay) continue;
     for (const sourceId of overlay.modelsDevIds) ids.add(sourceId);
   }
   return ids;
 };
 
-/** Enabled overlay source ids that carry at least one model in the given catalog. */
-const populatedEnabledSourceIds = (catalog: ModelsDevCatalog): Set<string> => {
+/** Overlay source ids that carry at least one model in the given catalog. */
+const populatedCatalogOverlaySourceIds = (catalog: ModelsDevCatalog): Set<string> => {
   const populated = new Set<string>();
-  for (const sourceId of enabledOverlaySourceIds()) {
+  for (const sourceId of catalogOverlaySourceIds()) {
     const source = catalog[sourceId];
     if (source && Object.keys(source.models).length > 0) populated.add(sourceId);
   }
   return populated;
+};
+
+const observationSourceForResult = (
+  source: ProviderModelsResponse["source"],
+): CatalogObservationSource => (source === "snapshot" ? "models.dev-snapshot" : "models.dev-live");
+
+const describeObservation = (contextTokens?: number): string => {
+  if (contextTokens === undefined || contextTokens < 1000) return "";
+  const thousands = Math.round(contextTokens / 1000);
+  if (thousands >= 1000) {
+    const millions = (contextTokens / 1_000_000).toFixed(1).replace(/\.0$/, "");
+    return `${millions}M context`;
+  }
+  return `${thousands}K context`;
+};
+
+/** Map bounded product observations to picker rows without conferring admission or billing. */
+export const modelInfoFromBoundedObservation = (
+  catalog: ModelsDevCatalog,
+  productId: CatalogObservableProductId,
+  observationSource: CatalogObservationSource,
+  checkedAt: string,
+): ModelInfo[] => {
+  const observations = transformCatalogObservation({
+    source: observationSource,
+    checkedAt,
+    catalog,
+  });
+  const productObservation = observations.find(
+    (observation) => observation.productId === productId,
+  );
+  if (!productObservation) return [];
+
+  return productObservation.models.map((model) => {
+    const catalogModel = lookupCatalogModel(catalog, model.sourceProviderId, model.modelId);
+    const tier =
+      catalogModel && isCatalogModelFreeTier(catalogModel, productId)
+        ? ("free" as const)
+        : ("paid" as const);
+    return {
+      id: model.modelId,
+      name: model.modelName,
+      description: describeObservation(model.contextTokens),
+      tier,
+      ...(model.contextTokens === undefined ? {} : { contextLength: model.contextTokens }),
+      ...(model.outputTokens === undefined ? {} : { maxOutputTokens: model.outputTokens }),
+    };
+  });
 };
 
 const isOffline = (): boolean => {
@@ -171,58 +316,71 @@ export const fetchModelsDevCatalog = async (options?: {
 
 type ResultSource = ProviderModelsResponse["source"];
 
-// Returns null when the catalog yields no models for the provider so the caller
+// Returns null when the catalog yields no models for the product so the caller
 // falls through to the next tier instead of serving a blank picker. `cached` is
 // derived from `source` so the pair can't be constructed inconsistently.
 const resultIfNonEmpty = (
   catalog: ModelsDevCatalog,
-  provider: AIProvider,
+  productId: CatalogObservableProductId,
   fetchedAt: string,
   source: ResultSource,
 ): ProviderModelsResponse | null => {
-  const models = catalogToModelInfo(catalog, provider);
+  const models = modelInfoFromBoundedObservation(
+    catalog,
+    productId,
+    observationSourceForResult(source),
+    fetchedAt,
+  );
   return models.length > 0 ? { models, fetchedAt, source, cached: source === "cache" } : null;
 };
 
-const snapshotResult = (provider: AIProvider): ProviderModelsResponse => ({
-  models: catalogToModelInfo(CATALOG_SNAPSHOT, provider),
-  fetchedAt: new Date().toISOString(),
-  source: "snapshot",
-  cached: false,
-});
+const snapshotResult = (productId: CatalogObservableProductId): ProviderModelsResponse => {
+  const fetchedAt = new Date().toISOString();
+  return {
+    models: modelInfoFromBoundedObservation(
+      CATALOG_SNAPSHOT,
+      productId,
+      "models.dev-snapshot",
+      fetchedAt,
+    ),
+    fetchedAt,
+    source: "snapshot",
+    cached: false,
+  };
+};
 
 const resolveCatalogGeneration = async (options: {
   key: string;
   path: string;
-  providerId: AIProvider;
+  productId: CatalogObservableProductId;
   baselineModelCount: number;
   trustedCache: ModelsDevCatalogCache | null;
 }): Promise<CatalogFetchGeneration> => {
   const active = catalogFlights.get(options.key);
   if (active) {
-    active.requestedProviders.add(options.providerId);
+    active.requestedProducts.add(options.productId);
     return active.promise;
   }
 
-  const requestedProviders = new Set<AIProvider>([options.providerId]);
+  const requestedProducts = new Set<CatalogObservableProductId>([options.productId]);
   const promise = (async (): Promise<CatalogFetchGeneration> => {
     const result = await fetchModelsDevCatalog({
       baselineModelCount: options.baselineModelCount,
     });
     const fetchedAt = new Date().toISOString();
-    const servesRequestedProvider =
+    const servesRequestedProduct =
       result.ok &&
-      [...requestedProviders].some(
-        (providerId) => resultIfNonEmpty(result.value, providerId, fetchedAt, "live") !== null,
+      [...requestedProducts].some(
+        (productId) => resultIfNonEmpty(result.value, productId, fetchedAt, "live") !== null,
       );
 
-    if (result.ok && servesRequestedProvider) {
+    if (result.ok && servesRequestedProduct) {
       persistIfNotDroppingProviders(options.path, result.value, options.trustedCache, fetchedAt);
     }
 
     return { result, fetchedAt };
   })();
-  const flight = { requestedProviders, promise };
+  const flight = { requestedProducts, promise };
   catalogFlights.set(options.key, flight);
 
   try {
@@ -232,12 +390,8 @@ const resolveCatalogGeneration = async (options: {
   }
 };
 
-// Keeps its own three-tier orchestration instead of the shared withTtlAndFallback:
-// it adds a bundled-snapshot tier, per-provider non-empty fall-through, a
-// single-provider-drop poison guard, and a corrupt-cache quarantine that still
-// seeds a shrink-guard baseline. See design.md D6 for the recorded exception.
-export const getProviderModels = async (
-  providerId: AIProvider,
+const resolveProviderModels = async (
+  productId: CatalogObservableProductId,
 ): Promise<ProviderModelsResponse> => {
   const path = getGlobalModelsDevCatalogPath();
   const loadedCache = loadCacheStateMemoized(path);
@@ -256,7 +410,7 @@ export const getProviderModels = async (
   const cache = cacheState.status === "ok" ? cacheState.entry : null;
 
   if (cache && isEntryFresh(cache, CACHE_TTL_MS)) {
-    const fresh = resultIfNonEmpty(cache.catalog, providerId, cache.fetchedAt, "cache");
+    const fresh = resultIfNonEmpty(cache.catalog, productId, cache.fetchedAt, "cache");
     if (fresh) return fresh;
   }
 
@@ -264,16 +418,16 @@ export const getProviderModels = async (
     if (cache) {
       // A cache served here is stale-beyond-TTL (the fresh tier above already returned
       // for a fresh hit); fetchedAt carries the honest staleness signal.
-      const stale = resultIfNonEmpty(cache.catalog, providerId, cache.fetchedAt, "cache");
+      const stale = resultIfNonEmpty(cache.catalog, productId, cache.fetchedAt, "cache");
       if (stale) {
         log("info", "models_dev_catalog_offline_stale_serve", {
           fetchedAt: cache.fetchedAt,
-          providerId,
+          productId,
         });
         return stale;
       }
     }
-    return snapshotResult(providerId);
+    return snapshotResult(productId);
   }
 
   // Shrink-guard baseline: the trusted cache, or the snapshot count when a corrupt
@@ -287,30 +441,81 @@ export const getProviderModels = async (
   const generation = await resolveCatalogGeneration({
     key: JSON.stringify([path, loadedCache.identity]),
     path,
-    providerId,
+    productId,
     baselineModelCount,
     trustedCache: cache,
   });
 
   if (generation.result.ok) {
-    const live = resultIfNonEmpty(
-      generation.result.value,
-      providerId,
-      generation.fetchedAt,
-      "live",
-    );
+    const live = resultIfNonEmpty(generation.result.value, productId, generation.fetchedAt, "live");
     if (live) return live;
-    // Healthy fetch but no models for this provider: fall through rather than persist a poisoned catalog.
+    // Healthy fetch but no models for this product: fall through rather than persist a poisoned catalog.
   }
 
   if (cache) {
-    const stale = resultIfNonEmpty(cache.catalog, providerId, cache.fetchedAt, "cache");
+    const stale = resultIfNonEmpty(cache.catalog, productId, cache.fetchedAt, "cache");
     if (stale) return stale;
   }
-  return snapshotResult(providerId);
+  return snapshotResult(productId);
 };
 
-// MUST NOT overwrite a trusted cache with one that drops an enabled overlay provider
+/** Shared reader so discovery and picker paths stay aligned; tests may spy on `.get`. */
+export const catalogProviderModels = {
+  get: (productId: CatalogObservableProductId): Promise<ProviderModelsResponse> =>
+    resolveProviderModels(productId),
+};
+
+// Keeps its own three-tier orchestration instead of the shared withTtlAndFallback:
+// it adds a bundled-snapshot tier, per-product non-empty fall-through, a
+// single-source-drop poison guard, and a corrupt-cache quarantine that still
+// seeds a shrink-guard baseline. See design.md D6 for the recorded exception.
+export const getProviderModels = async (
+  productId: RunnableProductId,
+): Promise<ProviderModelsResponse> => {
+  if (!isCatalogObservableProduct(productId)) {
+    const fetchedAt = new Date().toISOString();
+    return { models: [], fetchedAt, source: "snapshot", cached: false };
+  }
+  return catalogProviderModels.get(productId);
+};
+
+export const discoverConfigurationCatalog = async (
+  tuple: CatalogDiscoveryTuple,
+): Promise<ConfigurationCatalogDiscovery> => {
+  const checkedAt = new Date().toISOString();
+  if (!isCatalogObservableProduct(tuple.productId)) {
+    return {
+      ...tuple,
+      status: "skipped",
+      models: [],
+      reason: CATALOG_SKIPPED_REASON,
+      checkedAt,
+    };
+  }
+
+  const response = await catalogProviderModels.get(tuple.productId);
+  if (response.models.length === 0) {
+    return {
+      ...tuple,
+      status: "skipped",
+      models: [],
+      reason: CATALOG_EMPTY_MODELS_REASON,
+      checkedAt,
+    };
+  }
+  return {
+    ...tuple,
+    status: "passed",
+    models: response.models,
+    fetchedAt: response.fetchedAt,
+    source: response.source,
+    cached: response.cached,
+    observationSource: observationSourceForResult(response.source),
+    checkedAt: response.fetchedAt,
+  };
+};
+
+// MUST NOT overwrite a trusted cache with one that drops a registry overlay source
 // the trusted cache still had — a single upstream drop would poison the shared cache.
 // Best-effort write: a disk failure must not fail a request whose data is in hand.
 const persistIfNotDroppingProviders = (
@@ -320,8 +525,8 @@ const persistIfNotDroppingProviders = (
   fetchedAt: string,
 ): void => {
   if (trustedCache) {
-    const before = populatedEnabledSourceIds(trustedCache.catalog);
-    const after = populatedEnabledSourceIds(catalog);
+    const before = populatedCatalogOverlaySourceIds(trustedCache.catalog);
+    const after = populatedCatalogOverlaySourceIds(catalog);
     for (const sourceId of before) {
       if (!after.has(sourceId)) {
         log("warn", "models_dev_catalog_persist_refused", { droppedSource: sourceId });

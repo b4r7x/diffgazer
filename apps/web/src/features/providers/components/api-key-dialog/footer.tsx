@@ -26,7 +26,7 @@ const HINTS: KeyboardHint[] = [
   NAVIGATE_SHORTCUT,
   { key: "Enter/Space", label: "Select" },
   { key: "Esc", label: "Cancel" },
-  { key: "Enter", label: "Confirm" },
+  { key: "Enter", label: "Save" },
 ];
 
 export function ApiKeyFooter({
@@ -68,7 +68,7 @@ export function ApiKeyFooter({
         }}
         onFocus={confirmProps.onFocus}
       >
-        Confirm
+        {isSubmitting ? "Saving..." : "Save"}
       </DialogAction>
     </DialogFooter>
   );

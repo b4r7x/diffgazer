@@ -1,34 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-
-const providers = [
-  { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
-  { provider: "openrouter", hasApiKey: true, isActive: false, model: "openai/gpt-4o" },
-];
-
-const initResponse = {
-  configPath: "/tmp/diffgazer/config.json",
-  config: { provider: "gemini", model: "gemini-2.5-flash" },
-  configured: true,
-  project: { projectId: "responsive-contract", path: "/repo", trust: null },
-  providers,
-  settings: {
-    agentExecution: "parallel",
-    defaultLenses: ["correctness"],
-    defaultProfile: null,
-    secretsStorage: "file",
-    severityThreshold: "low",
-    theme: "terminal",
-  },
-  setup: {
-    hasModel: true,
-    hasProvider: true,
-    hasSecretsStorage: true,
-    hasTrust: false,
-    isConfigured: true,
-    isReady: true,
-    missing: [],
-  },
-};
+import { mockProtectedProviderApi, ONBOARDING_E2E_INIT } from "./provider-fixture";
 
 const safeAreaInsets = { top: 40, right: 36, bottom: 56, left: 48 };
 
@@ -37,53 +8,25 @@ async function emulateSafeArea(page: Page) {
   await session.send("Emulation.setSafeAreaInsetsOverride", { insets: safeAreaInsets });
 }
 
-const onboardingInitResponse = {
-  configPath: "/tmp/diffgazer/config.json",
-  config: { provider: "gemini", model: "gemini-2.5-flash" },
-  configured: false,
-  project: { projectId: "onboarding-responsive", path: "/repo", trust: null },
-  providers: [{ provider: "gemini", hasApiKey: false, isActive: false }],
-  settings: {
-    agentExecution: "parallel",
-    defaultLenses: ["correctness"],
-    defaultProfile: null,
-    secretsStorage: null,
-    severityThreshold: "low",
-    theme: "terminal",
-  },
-  setup: {
-    hasModel: false,
-    hasProvider: false,
-    hasSecretsStorage: false,
-    hasTrust: false,
-    isConfigured: false,
-    isReady: false,
-    missing: ["secretsStorage", "provider", "model"],
-  },
-};
-
 async function mockOnboardingApi(page: Page) {
   await page.route("**/api/health", (route) => route.fulfill({ status: 200, json: { ok: true } }));
   await page.route("**/api/settings", (route) =>
-    route.fulfill({ json: onboardingInitResponse.settings }),
+    route.fulfill({ json: ONBOARDING_E2E_INIT.settings }),
   );
-  await page.route("**/api/config/init", (route) =>
-    route.fulfill({ json: onboardingInitResponse }),
-  );
+  await page.route("**/api/config/init", (route) => route.fulfill({ json: ONBOARDING_E2E_INIT }));
   await page.route("**/api/config/providers", (route) =>
     route.fulfill({
       json: {
-        providers: onboardingInitResponse.providers,
+        schemaVersion: 2,
+        configurations: ONBOARDING_E2E_INIT.configurations,
+        selectedConfigurationId: ONBOARDING_E2E_INIT.selectedConfigurationId,
       },
     }),
   );
 }
 
 async function mockProviderApi(page: Page) {
-  await page.route("**/api/config/init", (route) => route.fulfill({ json: initResponse }));
-  await page.route("**/api/config/providers", (route) =>
-    route.fulfill({ json: { providers, activeProvider: "gemini" } }),
-  );
+  await mockProtectedProviderApi(page);
   await page.route("**/api/config/provider/gemini/models", (route) =>
     route.fulfill({
       json: {
@@ -107,32 +50,21 @@ test("onboarding progress renders the compact stepper at every width", async ({ 
   await mockOnboardingApi(page);
   await page.goto("/onboarding", { waitUntil: "domcontentloaded" });
 
-  await expect(page.getByRole("heading", { level: 1, name: /secrets storage/i })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: /select product/i })).toBeVisible();
 
-  // The wizard passes `compact` unconditionally: six labelled ascii steps measure far wider
-  // than the card's content box, so the treatment no longer depends on the viewport and the
-  // same contract has to hold in both projects.
   const progress = page.getByRole("list", { name: "Setup progress" });
   await expect(progress).toBeVisible();
-
-  // Compact collapses the non-active labels to sr-only; it does not drop steps from the
-  // accessibility tree, so all six stay announced.
   await expect(progress.getByRole("listitem")).toHaveCount(6);
 
   const active = progress.locator("li[aria-current='step']");
   await expect(active).toHaveCount(1);
-
-  // The counter prefix carries the position the hidden labels no longer show. It is
-  // aria-hidden (the list and aria-current already convey position), so it is asserted as
-  // visible text and it renders directly in front of the active label with no separating space.
-  const counter = progress.getByText("Step 1/6 ·", { exact: true });
-  await expect(counter).toBeVisible();
-  await expect(active).toContainText("Step 1/6 ·Storage");
+  await expect(page.getByText("Step 1 of 6: Product")).toBeVisible();
+  await expect(active).toContainText("Product");
 });
 
 test("provider panes and controls adapt to the rendered viewport", async ({ page }, testInfo) => {
   await mockProviderApi(page);
-  await page.goto("/testing/fixtures/results-layout.html?view=providers");
+  await page.goto("/settings/providers");
 
   const listPane = page.locator('[data-layout-pane="provider-list"]');
   await expect(listPane).toBeVisible();
@@ -162,19 +94,23 @@ test("provider panes and controls adapt to the rendered viewport", async ({ page
     );
   }
 
-  const capabilityGrid = page.locator('[data-layout-grid="provider-capabilities"]');
-  const capabilityCards = capabilityGrid.locator("> div");
-  const firstCard = await capabilityCards.nth(0).boundingBox();
-  const secondCard = await capabilityCards.nth(1).boundingBox();
-  expect(firstCard).not.toBeNull();
-  expect(secondCard).not.toBeNull();
+  const selectConfiguration = detailsPane.getByRole("button", { name: /Select configuration/i });
+  const updateConfiguration = detailsPane.getByRole("button", { name: /Update configuration/i });
+  const firstButton = await selectConfiguration.boundingBox();
+  const secondButton = await updateConfiguration.boundingBox();
+  expect(firstButton).not.toBeNull();
+  expect(secondButton).not.toBeNull();
   if (testInfo.project.name === "mobile-chromium") {
-    expect(secondCard?.y).toBeGreaterThanOrEqual((firstCard?.y ?? 0) + (firstCard?.height ?? 0));
+    expect(secondButton?.y).toBeGreaterThanOrEqual(
+      (firstButton?.y ?? 0) + (firstButton?.height ?? 0),
+    );
   } else {
-    expect(secondCard?.x).toBeGreaterThanOrEqual((firstCard?.x ?? 0) + (firstCard?.width ?? 0));
+    expect(secondButton?.x).toBeGreaterThanOrEqual(
+      (firstButton?.x ?? 0) + (firstButton?.width ?? 0),
+    );
   }
 
-  await page.getByRole("button", { name: "Select Model" }).click();
+  await page.getByRole("button", { name: /Select model/i }).click();
   const dialog = page.getByRole("dialog", { name: "Select Model" });
   await expect(dialog).toBeVisible();
   const modelList = dialog.locator('[data-layout-region="model-list"]');

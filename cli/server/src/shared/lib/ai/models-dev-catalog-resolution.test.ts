@@ -1,9 +1,13 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { ProviderModelsResponseSchema } from "@diffgazer/core/schemas/config";
+import { ProviderModelsResponseSchema, REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const POISONED_CATALOG_ENTRY = new RegExp(
+  `${REMOVED_PRODUCT_ID}|github-models|xiaomi-mimo|glm-4\\.7|gpt-4\\.1|mimo-v2`,
+);
 
 const writeJsonFileSyncFailPaths = vi.hoisted(() => new Set<string>());
 
@@ -23,9 +27,16 @@ vi.mock("../fs.js", async (importOriginal) => {
   };
 });
 
+import { CANDIDATE_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { MODELS_DEV_SAMPLE } from "../testing/models-dev-sample.js";
-import { getProviderModels, ModelsDevCatalogCacheSchema } from "./models-dev-catalog.js";
+import * as modelsDevCatalog from "./models-dev-catalog.js";
+import {
+  discoverConfigurationCatalog,
+  getProviderModels,
+  ModelsDevCatalogCacheSchema,
+  modelInfoFromBoundedObservation,
+} from "./models-dev-catalog.js";
 
 const okResponse = (body: unknown, headers?: Record<string, string>): Response =>
   ({ ok: true, status: 200, headers: new Headers(headers), json: async () => body }) as Response;
@@ -325,7 +336,7 @@ describe("getProviderModels — three-tier fallback", () => {
     expect(result.models.length).toBeGreaterThan(0);
   });
 
-  it("live fetch dropping one enabled provider: serves that provider from the trusted cache and does not overwrite it", async () => {
+  it("live fetch dropping one overlay-populated provider: serves that provider from the trusted cache and does not overwrite it", async () => {
     // Trusted (stale) cache holds every sample provider, so a fetch is attempted.
     writeCache(MODELS_DEV_SAMPLE, stale());
     // Live payload is overall healthy but has dropped groq entirely.
@@ -354,7 +365,7 @@ describe("getProviderModels — three-tier fallback", () => {
     expect(result.models.length).toBeGreaterThan(0);
 
     // The dropped provider must survive in the on-disk cache: the trusted cache
-    // is not overwritten by a catalog that loses an enabled provider.
+    // is not overwritten by a catalog that loses an overlay-populated provider.
     const persisted = readCache() as { catalog: Record<string, unknown> };
     expect(persisted.catalog.groq).toBeDefined();
   });
@@ -389,5 +400,220 @@ describe("getProviderModels — three-tier fallback", () => {
     // The corrupt file is quarantined (renamed), not left in place to keep failing.
     expect(fs.existsSync(cachePath())).toBe(false);
     expect(fs.readdirSync(testHome).some((f) => f.includes(".backup"))).toBe(true);
+  });
+});
+
+describe("configuration-bound catalog observations", () => {
+  it("labels live responses with models.dev-live observations", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
+    const live = await discoverConfigurationCatalog({
+      configurationId: "cfg-gemini-live",
+      productId: "gemini",
+    });
+    expect(live.status).toBe("passed");
+    if (live.status === "passed") {
+      expect(live.configurationId).toBe("cfg-gemini-live");
+      expect(live.source).toBe("live");
+      expect(live.observationSource).toBe("models.dev-live");
+      expect(live.cached).toBe(false);
+    }
+  });
+
+  it("labels cache responses with models.dev-live observations", async () => {
+    writeCache(MODELS_DEV_SAMPLE, fresh());
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const cached = await discoverConfigurationCatalog({
+      configurationId: "cfg-gemini-cache",
+      productId: "gemini",
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(cached.status).toBe("passed");
+    if (cached.status === "passed") {
+      expect(cached.configurationId).toBe("cfg-gemini-cache");
+      expect(cached.source).toBe("cache");
+      expect(cached.observationSource).toBe("models.dev-live");
+      expect(cached.cached).toBe(true);
+    }
+  });
+
+  it("labels snapshot fallbacks with models.dev-snapshot observations", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+    const snapshot = await discoverConfigurationCatalog({
+      configurationId: "cfg-gemini-snapshot",
+      productId: "gemini",
+    });
+    expect(snapshot.status).toBe("passed");
+    if (snapshot.status === "passed") {
+      expect(snapshot.configurationId).toBe("cfg-gemini-snapshot");
+      expect(snapshot.source).toBe("snapshot");
+      expect(snapshot.observationSource).toBe("models.dev-snapshot");
+      expect(snapshot.cached).toBe(false);
+    }
+  });
+
+  it("returns skipped with empty models when catalog discovery does not apply to the product tuple", async () => {
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-ollama-loopback",
+      productId: "ollama",
+    });
+    expect(result).toMatchObject({
+      status: "skipped",
+      configurationId: "cfg-ollama-loopback",
+      productId: "ollama",
+      models: [],
+      reason: "Catalog observations are unavailable for this configuration product.",
+    });
+    expect(result.status).not.toBe("passed");
+  });
+
+  it("keeps skipped distinct from passed catalog observations", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
+    const passed = await discoverConfigurationCatalog({
+      configurationId: "cfg-gemini",
+      productId: "gemini",
+    });
+    const skipped = await discoverConfigurationCatalog({
+      configurationId: "cfg-codex",
+      productId: "codex-cli",
+    });
+
+    expect(passed.status).toBe("passed");
+    if (passed.status === "passed") expect(passed.models.length).toBeGreaterThan(0);
+    expect(skipped.status).toBe("skipped");
+    if (skipped.status === "skipped") {
+      expect(skipped.models).toEqual([]);
+      expect(skipped.reason).toBeTruthy();
+    }
+    expect(skipped.status).not.toBe(passed.status);
+  });
+
+  it("returns skipped when overlay product discovery yields no catalog models", async () => {
+    vi.spyOn(modelsDevCatalog.catalogProviderModels, "get").mockResolvedValue({
+      models: [],
+      fetchedAt: fresh(),
+      source: "snapshot",
+      cached: false,
+    });
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-gemini-empty",
+      productId: "gemini",
+    });
+
+    expect(result).toMatchObject({
+      status: "skipped",
+      configurationId: "cfg-gemini-empty",
+      productId: "gemini",
+      models: [],
+      reason: "No catalog models are available for this configuration product.",
+    });
+    expect(result.status).not.toBe("passed");
+  });
+
+  it("preserves exact upstream model IDs without alias rewriting", async () => {
+    const exactId = "provider/exact.model:1";
+    writeCache(
+      {
+        google: {
+          id: "google",
+          models: {
+            [exactId]: {
+              id: exactId,
+              name: "Exact",
+              limit: { context: 131072, output: 8192 },
+            },
+            "provider/model/latest": {
+              id: "provider/model/latest",
+              name: "Marketing alias",
+            },
+          },
+        },
+      },
+      fresh(),
+    );
+
+    const result = await getProviderModels("gemini");
+    expect(result.models.map((model) => model.id)).toEqual([exactId]);
+    expect(result.models[0]).toMatchObject({
+      id: exactId,
+      name: "Exact",
+      contextLength: 131072,
+      maxOutputTokens: 8192,
+    });
+  });
+
+  it(`does not project ${REMOVED_PRODUCT_ID}, GitHub Models, or candidate products from catalog observations`, () => {
+    const checkedAt = fresh();
+    const catalog = {
+      google: {
+        id: "google",
+        models: {
+          "gemini-2.5-flash": { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+        },
+      },
+      "zai-coding-plan": {
+        id: "zai-coding-plan",
+        models: { "glm-4.7": { id: "glm-4.7", name: "Removed plan model" } },
+      },
+      "github-models": {
+        id: "github-models",
+        models: { "gpt-4.1": { id: "gpt-4.1", name: "GitHub Models entry" } },
+      },
+      "xiaomi-mimo": {
+        id: "xiaomi-mimo",
+        models: { "mimo-v2": { id: "mimo-v2", name: "Candidate model" } },
+      },
+    };
+
+    const models = modelInfoFromBoundedObservation(catalog, "gemini", "models.dev-live", checkedAt);
+    const serialized = JSON.stringify(models);
+
+    expect(models.map((model) => model.id)).toEqual(["gemini-2.5-flash"]);
+    expect(serialized).not.toMatch(POISONED_CATALOG_ENTRY);
+    for (const candidateId of CANDIDATE_PRODUCT_IDS) {
+      expect(serialized).not.toContain(candidateId);
+    }
+  });
+
+  it(`does not surface ${REMOVED_PRODUCT_ID}, GitHub Models, or candidate products through discoverConfigurationCatalog`, async () => {
+    writeCache(
+      {
+        google: {
+          id: "google",
+          models: {
+            "gemini-2.5-flash": { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+          },
+        },
+        "zai-coding-plan": {
+          id: "zai-coding-plan",
+          models: { "glm-4.7": { id: "glm-4.7", name: "Removed plan model" } },
+        },
+        "github-models": {
+          id: "github-models",
+          models: { "gpt-4.1": { id: "gpt-4.1", name: "GitHub Models entry" } },
+        },
+        "xiaomi-mimo": {
+          id: "xiaomi-mimo",
+          models: { "mimo-v2": { id: "mimo-v2", name: "Candidate model" } },
+        },
+      },
+      fresh(),
+    );
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-gemini-poisoned-catalog",
+      productId: "gemini",
+    });
+
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") throw new Error("Expected passed catalog discovery");
+
+    const serialized = JSON.stringify(result.models);
+    expect(result.configurationId).toBe("cfg-gemini-poisoned-catalog");
+    expect(result.models.map((model) => model.id)).toEqual(["gemini-2.5-flash"]);
+    expect(serialized).not.toMatch(POISONED_CATALOG_ENTRY);
+    for (const candidateId of CANDIDATE_PRODUCT_IDS) {
+      expect(serialized).not.toContain(candidateId);
+    }
   });
 });

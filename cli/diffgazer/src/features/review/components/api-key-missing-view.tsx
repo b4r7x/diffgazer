@@ -3,28 +3,31 @@ import {
   CONFIGURE_PROVIDER_LABEL,
   getApiKeyMissingCopy,
 } from "@diffgazer/core/review";
-import type { SetupStatus } from "@diffgazer/core/schemas/config";
+import type { Readiness } from "@diffgazer/core/schemas/config";
 import { ReviewGateView } from "./review-gate-view";
 
 export interface ApiKeyMissingViewProps {
-  provider?: string;
-  missing: Readonly<SetupStatus["missing"]>;
+  productLabel?: string;
+  readiness: Readiness;
   onGoToSettings: () => void;
   onBack: () => void;
+  disabled?: boolean;
 }
 
 export interface ConfigurationErrorViewProps {
   onRetry: () => void;
   onBack: () => void;
+  disabled?: boolean;
 }
 
 export function ApiKeyMissingView({
-  provider,
-  missing,
+  productLabel,
+  readiness,
   onGoToSettings,
   onBack,
+  disabled = false,
 }: ApiKeyMissingViewProps) {
-  const { title, body } = getApiKeyMissingCopy({ provider, missing });
+  const { title, body } = getApiKeyMissingCopy({ productLabel, readiness });
 
   return (
     <ReviewGateView
@@ -34,11 +37,16 @@ export function ApiKeyMissingView({
       primaryLabel={CONFIGURE_PROVIDER_LABEL}
       onPrimary={onGoToSettings}
       onBack={onBack}
+      disabled={disabled}
     />
   );
 }
 
-export function ConfigurationErrorView({ onRetry, onBack }: ConfigurationErrorViewProps) {
+export function ConfigurationErrorView({
+  onRetry,
+  onBack,
+  disabled = false,
+}: ConfigurationErrorViewProps) {
   return (
     <ReviewGateView
       title={CONFIGURATION_ERROR_COPY.title}
@@ -47,6 +55,7 @@ export function ConfigurationErrorView({ onRetry, onBack }: ConfigurationErrorVi
       primaryLabel="Retry"
       onPrimary={onRetry}
       onBack={onBack}
+      disabled={disabled}
     />
   );
 }

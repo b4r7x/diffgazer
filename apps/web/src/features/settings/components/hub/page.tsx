@@ -37,7 +37,7 @@ function getSettingsMenuHighlighted(value: string | null): string | null {
 export function SettingsHubPage() {
   const navigate = useNavigate();
   const titleId = useId();
-  const { loadState, provider, isConfigured, repoRoot, trust, configPath } = useConfigData();
+  const { loadState, selectedProductId, isConfigured, repoRoot, trust } = useConfigData();
   const { theme } = useTheme();
   const [highlighted, setHighlighted] = useScopedRouteState<string | null>(
     SETTINGS_HIGHLIGHTED_KEY,
@@ -65,8 +65,7 @@ export function SettingsHubPage() {
 
   const isTrusted = hasRepositoryReadAccess(trust, repoRoot);
   const values = buildHubValues({
-    provider,
-    isConfigured,
+    selectedProductId,
     isTrusted,
     theme,
     secretsStorage: settings?.secretsStorage,
@@ -152,7 +151,7 @@ export function SettingsHubPage() {
           {/* Stacks below sm so the long config path and its caption never wrap
               into two colliding right-aligned columns at 375. */}
           <Panel.Footer className="flex-col items-start gap-1 font-mono sm:flex-row sm:items-center sm:gap-3">
-            <span className="min-w-0 break-all">config path: {configPath}</span>
+            <span className="min-w-0 break-all">project path: {repoRoot ?? "unknown"}</span>
             <span className="shrink-0">{settingsError ?? "local settings"}</span>
           </Panel.Footer>
         </Panel>

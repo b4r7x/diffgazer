@@ -1,11 +1,13 @@
 import type { ReviewGate, UseReviewLifecycleBaseResult } from "@diffgazer/core/api/hooks";
 import {
+  configurationFingerprint,
   useCreateReview,
   useInit,
   useReviewLifecycleBase,
   useReviewSessionCache,
 } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type {
   FileProgress,
   OrchestratorStats,
@@ -17,7 +19,14 @@ import {
   extractOrchestratorStats,
   sessionTerminationCopy,
 } from "@diffgazer/core/review";
-import type { SetupStatus } from "@diffgazer/core/schemas/config";
+import type {
+  ConfigurationInitResponse,
+  ConfigurationStatus,
+  Readiness,
+  SetupStatus,
+  TransportFamily,
+} from "@diffgazer/core/schemas/config";
+import { READINESS_PRESENTATION, ReadinessSchema } from "@diffgazer/core/schemas/config";
 import type { AgentState, StepState } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
 import { useEffect, useState } from "react";
@@ -26,7 +35,7 @@ type LifecyclePhase = ReviewScreenPhase | "completing" | "loading";
 type ReviewInitState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; missing: SetupStatus["missing"] };
+  | { status: "ready"; missing: SetupStatus["missing"]; readiness: Readiness };
 
 type ReviewStartResult = "started" | "setup-required" | "failed";
 
@@ -40,6 +49,26 @@ export function getDisplayPhase(input: {
   if (!input.hasStarted) return "loading";
   if (input.isCompleting) return "completing";
   return input.phase;
+}
+
+function unconfiguredReadiness(): Readiness {
+  return ReadinessSchema.parse({
+    status: "unconfigured",
+    ready: false,
+    evidenceStatus: "not-checked",
+    checkedAt: null,
+    acknowledgement: { status: "not-applicable" },
+    ...READINESS_PRESENTATION.unconfigured,
+  });
+}
+
+function resolveSelectedStatus(init: ConfigurationInitResponse): ConfigurationStatus | null {
+  if (!init.selectedConfigurationId) return null;
+  return (
+    init.configurations?.find(
+      ({ configuration }) => configuration.configurationId === init.selectedConfigurationId,
+    ) ?? null
+  );
 }
 
 export interface ReviewLifecycleState {
@@ -61,6 +90,9 @@ export interface ReviewLifecycleState {
   errorCode: string | null;
   isStreaming: boolean;
   provider: string | null;
+  productLabel: string | null;
+  transportFamily: TransportFamily | null;
+  readiness: Readiness;
   initState: ReviewInitState;
   loadingMessage: string | null;
 }
@@ -90,11 +122,33 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   const [startError, setStartError] = useState<string | null>(null);
   const requestedReviewId = startedReviewId ?? options.reviewId;
 
-  const isConfigured = initData?.setup.isConfigured ?? false;
-  const provider = initData?.config?.provider ?? null;
+  const selectedStatus = initData ? resolveSelectedStatus(initData) : null;
+  const readiness = selectedStatus?.readiness ?? unconfiguredReadiness();
+  const productLabel =
+    selectedStatus?.configuration.status === "supported"
+      ? PRODUCT_REGISTRY[selectedStatus.configuration.productId].presentation.name
+      : null;
+  const transportFamily =
+    selectedStatus?.configuration.status === "supported"
+      ? selectedStatus.configuration.transportFamily
+      : null;
+  const configurationIdentity =
+    selectedStatus?.configuration.status === "supported"
+      ? {
+          configurationId: selectedStatus.configuration.configurationId,
+          fingerprint: configurationFingerprint(selectedStatus.configuration),
+        }
+      : null;
+  const legacyConfigured = initData?.setup.isConfigured ?? false;
+  const provider = selectedStatus?.configuration.productId ?? null;
+
   let initState: ReviewInitState;
   if (initData) {
-    initState = { status: "ready", missing: initData.setup.missing };
+    initState = {
+      status: "ready",
+      missing: initData.setup.missing,
+      readiness,
+    };
   } else if (initQuery.isLoading || initQuery.isFetching) {
     initState = { status: "loading" };
   } else {
@@ -112,7 +166,9 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
 
   const lifecycle = useReviewLifecycleBase({
     configLoading: initState.status === "loading",
-    isConfigured,
+    isConfigured: legacyConfigured,
+    readiness,
+    configuration: configurationIdentity,
     allowResumeWithoutSetup: options.allowResumeWithoutSetup,
     reviewId: requestedReviewId,
     onStreamComplete: () => {
@@ -142,8 +198,6 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   }, [clearCachedActiveSession, lifecycle.checks.isNoDiffError, mode, terminalReviewId]);
 
   const hasStartFailed = startError !== null;
-  // When start fails we drop the "loading" / "completing" guards so the
-  // container's `state.error && phase !== streaming/completing` Callout fires.
   const displayPhase = getDisplayPhase({
     hasStartFailed,
     hasStarted: lifecycle.start.hasStarted,
@@ -151,8 +205,24 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     phase,
   });
 
+  const setupReady = selectedStatus !== null ? readiness.ready : legacyConfigured;
+
   async function start(selectedMode: ReviewMode): Promise<ReviewStartResult> {
-    if (!isConfigured) {
+    if (lifecycle.gate === "unconfigured" && !options.allowResumeWithoutSetup) {
+      return "setup-required";
+    }
+    if (selectedMode !== mode && !setupReady) {
+      return "setup-required";
+    }
+    if (options.reviewId && options.allowResumeWithoutSetup) {
+      setMode(selectedMode);
+      setStartError(null);
+      setStartedReviewId(undefined);
+      lifecycle.reset();
+      setPhase("streaming");
+      return "started";
+    }
+    if (!lifecycle.start.canStart) {
       return "setup-required";
     }
     setMode(selectedMode);
@@ -221,6 +291,9 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     errorCode: startError ? null : lifecycle.stream.state.errorCode,
     isStreaming: lifecycle.stream.state.isStreaming,
     provider,
+    productLabel,
+    transportFamily,
+    readiness,
     initState,
     loadingMessage: lifecycle.checks.loadingMessage,
   };

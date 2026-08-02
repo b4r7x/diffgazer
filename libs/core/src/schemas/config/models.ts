@@ -54,13 +54,22 @@ export const OpenRouterModelsResponseSchema = z.object({
 
 export type OpenRouterModelsResponse = z.infer<typeof OpenRouterModelsResponseSchema>;
 
-export const ProviderModelsResponseSchema = z.object({
-  models: z.array(ModelInfoSchema),
-  fetchedAt: z.iso.datetime(),
-  source: z.enum(["live", "cache", "snapshot"]),
-  // `cached` mirrors `source === "cache"`; kept to match the OpenRouter response
-  // shape (which has no `source`) so both wire contracts expose one freshness flag.
-  cached: z.boolean(),
-});
+/**
+ * `cached` is the freshness flag both discovery wire contracts expose (the
+ * OpenRouter response has no `source`).  It is not independent state: it is
+ * exactly `source === "cache"`, so a contradictory pair must fail to parse
+ * rather than reach a consumer that trusts one field over the other.
+ */
+export const ProviderModelsResponseSchema = z
+  .object({
+    models: z.array(ModelInfoSchema),
+    fetchedAt: z.iso.datetime(),
+    source: z.enum(["live", "cache", "snapshot"]),
+    cached: z.boolean(),
+  })
+  .refine((response) => response.cached === (response.source === "cache"), {
+    path: ["cached"],
+    message: "cached must be true only when source is cache",
+  });
 
 export type ProviderModelsResponse = z.infer<typeof ProviderModelsResponseSchema>;

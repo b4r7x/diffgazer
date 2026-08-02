@@ -6,7 +6,12 @@ import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test } from "vitest";
 import { ModelSelectOverlay } from "./model-select-overlay";
 import { setTestTerminalDimensions } from "./model-select-overlay.terminal-mock";
-import { flushUntil, geminiName, Wrapper } from "./model-select-overlay.test-support";
+import {
+  flushUntil,
+  GEMINI_CONFIGURATION,
+  geminiName,
+  Wrapper,
+} from "./model-select-overlay.test-support";
 
 function FooterProbe() {
   const { shortcuts, rightShortcuts } = useFooterData();
@@ -19,12 +24,7 @@ function renderOverlay() {
   return render(
     <Wrapper>
       <FooterProbe />
-      <ModelSelectOverlay
-        open={true}
-        onOpenChange={() => {}}
-        providerId="gemini"
-        onSelect={() => {}}
-      />
+      <ModelSelectOverlay open onOpenChange={() => {}} configuration={GEMINI_CONFIGURATION} />
     </Wrapper>,
   );
 }
@@ -51,14 +51,14 @@ describe("ModelSelectOverlay reads as an overlay", () => {
     expect(topBorder.length).toBeLessThan(columns);
   });
 
-  test("names the provider it is picking a model for", async () => {
+  test("names the configuration it is picking a model for", async () => {
     const { lastFrame } = renderOverlay();
 
     await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
     const frame = stripAnsi(lastFrame() ?? "");
 
     expect(frame).toContain("Select Model");
-    expect(frame).toContain("Google Gemini · 5 models");
+    expect(frame).toContain("gemini · 1 model");
   });
 
   test("publishes its keys to the one shortcut-bar grammar instead of an inline hint row", async () => {
@@ -79,7 +79,6 @@ describe("ModelSelectOverlay reads as an overlay", () => {
 
     await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
     const frame = stripAnsi(lastFrame() ?? "");
-
     expect(frame).toContain("· ALL");
   });
 });

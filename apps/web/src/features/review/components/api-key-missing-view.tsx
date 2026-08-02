@@ -1,29 +1,34 @@
 import {
   CONFIGURATION_ERROR_COPY,
-  CONFIGURE_PROVIDER_LABEL,
-  getApiKeyMissingCopy,
+  describeTerminalOutcome,
+  describeUsageAvailability,
+  getConfigurationNotReadyCopy,
+  sanitizePresentationText,
 } from "@diffgazer/core/review";
-import type { AIProvider, SetupStatus } from "@diffgazer/core/schemas/config";
+import type { Readiness } from "@diffgazer/core/schemas/config";
+import type { TerminalOutcome, UsageAvailability } from "@diffgazer/core/schemas/review";
 import { FailureView } from "@/components/shared/failure-view";
 
 export interface ApiKeyMissingViewProps {
-  activeProvider?: AIProvider;
+  readiness: Readiness;
+  productLabel?: string;
+  primaryLabel: string;
   onNavigateSettings: () => void;
   onBack: () => void;
-  missing: Readonly<SetupStatus["missing"]>;
   primaryDisabled?: boolean;
 }
 
 const REVIEW_SETUP_GATE_SCOPE = "review-setup-gate";
 
 export function ApiKeyMissingView({
-  activeProvider,
+  readiness,
+  productLabel,
+  primaryLabel,
   onNavigateSettings,
   onBack,
-  missing,
   primaryDisabled,
 }: ApiKeyMissingViewProps) {
-  const copy = getApiKeyMissingCopy({ provider: activeProvider, missing });
+  const copy = getConfigurationNotReadyCopy({ productLabel, readiness });
 
   return (
     <FailureView
@@ -32,7 +37,7 @@ export function ApiKeyMissingView({
       tone="warning"
       scope={REVIEW_SETUP_GATE_SCOPE}
       primary={{
-        label: CONFIGURE_PROVIDER_LABEL,
+        label: primaryLabel,
         onAction: onNavigateSettings,
         disabled: primaryDisabled,
       }}
@@ -56,6 +61,49 @@ export function ConfigurationErrorView({
       message={CONFIGURATION_ERROR_COPY.body}
       scope={REVIEW_SETUP_GATE_SCOPE}
       primary={{ label: "Retry", onAction: onRetry, disabled: primaryDisabled }}
+      secondary={{ label: "Back to Home", onAction: onBack }}
+    />
+  );
+}
+
+export function ReviewTerminalReceiptView({
+  outcome,
+  usageAvailability,
+  onBack,
+}: {
+  outcome: TerminalOutcome;
+  usageAvailability?: UsageAvailability;
+  onBack: () => void;
+}) {
+  const { title, message } = describeTerminalOutcome(outcome);
+  const usage = usageAvailability ? describeUsageAvailability(usageAvailability) : null;
+
+  return (
+    <FailureView
+      title={title}
+      message={usage ? `${message} ${usage.label}: ${usage.detail}` : message}
+      tone="error"
+      scope={REVIEW_SETUP_GATE_SCOPE}
+      primary={{ label: "Back to Home", onAction: onBack }}
+      secondary={{ label: "Back to Home", onAction: onBack }}
+    />
+  );
+}
+
+export function ReviewTerminalErrorView({
+  message,
+  onBack,
+}: {
+  message: string;
+  onBack: () => void;
+}) {
+  return (
+    <FailureView
+      title="Review failed"
+      message={sanitizePresentationText(message)}
+      tone="error"
+      scope={REVIEW_SETUP_GATE_SCOPE}
+      primary={{ label: "Back to Home", onAction: onBack }}
       secondary={{ label: "Back to Home", onAction: onBack }}
     />
   );

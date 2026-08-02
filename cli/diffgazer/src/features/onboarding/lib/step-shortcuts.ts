@@ -1,4 +1,5 @@
 import type { InputMethod, OnboardingStep } from "@diffgazer/core/onboarding";
+import { STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
 import { NAVIGATE_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 
 interface StepShortcutState {
@@ -10,6 +11,7 @@ interface StepShortcutState {
   canProceed: boolean;
   inputMethod: InputMethod;
   apiKeyInputFocused: boolean;
+  transportFamily?: "hosted-api" | "local-http" | "local-cli";
 }
 
 export function getStepShortcuts({
@@ -21,6 +23,7 @@ export function getStepShortcuts({
   canProceed,
   inputMethod,
   apiKeyInputFocused,
+  transportFamily,
 }: StepShortcutState): Shortcut[] {
   if (focusArea === "nav") {
     const isBackFocused = !isFirstStep && navIndex === 0;
@@ -38,19 +41,22 @@ export function getStepShortcuts({
   }
 
   switch (currentStep) {
-    case "storage":
+    case "product":
       return [
-        NAVIGATE_SHORTCUT,
-        { key: "Enter/Space", label: "Select Storage" },
+        { key: "↑/↓", label: "Navigate Products" },
+        { key: "Enter/Space", label: "Select Product" },
         { key: "Tab", label: "Focus Actions" },
       ];
-    case "provider":
+    case "endpoint-binding":
       return [
-        { key: "↑/↓", label: "Navigate Providers" },
-        { key: "Enter/Space", label: "Select Provider" },
+        { key: "↑/↓", label: "Navigate Endpoints" },
+        { key: "Enter/Space", label: "Select Endpoint" },
         { key: "Tab", label: "Focus Actions" },
       ];
-    case "api-key":
+    case "authentication":
+      if (transportFamily !== "hosted-api") {
+        return [{ key: "Tab", label: "Focus Actions" }];
+      }
       if (apiKeyInputFocused) {
         return [{ key: "Tab", label: "Focus Actions" }];
       }
@@ -65,17 +71,25 @@ export function getStepShortcuts({
         { key: "Enter/Space", label: "Select Model" },
         { key: "Tab", label: "Focus Actions" },
       ];
-    case "analysis":
+    case "conformance":
       return [
-        NAVIGATE_SHORTCUT,
-        { key: "Space", label: "Toggle Option" },
+        { key: "Enter/Space", label: "Confirm Conformance" },
         { key: "Tab", label: "Focus Actions" },
       ];
-    case "execution":
+    case "acknowledgement":
       return [
-        { key: "↑/↓", label: "Navigate Modes" },
-        { key: "Enter/Space", label: "Select Mode" },
+        { key: "Enter/Space", label: "Accept Notice" },
         { key: "Tab", label: "Focus Actions" },
       ];
+    case "migration":
+      return [{ key: "Tab", label: "Focus Actions" }, NAVIGATE_SHORTCUT];
+    case "delete":
+      return [{ key: "Tab", label: "Focus Actions" }];
   }
 }
+
+export function getStepLabelList(steps: readonly OnboardingStep[]): string[] {
+  return steps.map((step) => STEP_LABELS[step]);
+}
+
+export { STEP_TITLES };

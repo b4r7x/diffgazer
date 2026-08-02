@@ -72,7 +72,6 @@ export let diffgazerHome: string;
 
 export const configPath = (): string => join(diffgazerHome, "config.json");
 export const secretsPath = (): string => join(diffgazerHome, "secrets.json");
-export const secretsRecoveryPath = (): string => `${secretsPath()}.recovery`;
 export const trustPath = (): string => join(diffgazerHome, "trust.json");
 
 export function writeJson(filePath: string, value: unknown): void {
@@ -94,22 +93,23 @@ export async function readJsonEventually<T>(filePath: string): Promise<T> {
   );
 }
 
-export async function expectFileMissingEventually(filePath: string): Promise<void> {
-  await vi.waitFor(
-    () => {
-      if (existsSync(filePath)) throw new Error(`Expected ${filePath} to be absent`);
-    },
-    { timeout: 1000, interval: 10 },
-  );
+// Deletion fails closed without a lease authority, so tests install the same
+// process-wide one the composition root installs.
+async function installConfigurationLeaseHooks(): Promise<void> {
+  const { setConfigurationLeaseHooks } = await import("./store.js");
+  const { createConfigurationLeaseHooks } = await import("../session-registry.js");
+  setConfigurationLeaseHooks(createConfigurationLeaseHooks());
 }
 
 export async function loadStore() {
   const { getStore } = await import("./store.js");
+  await installConfigurationLeaseHooks();
   return getStore();
 }
 
 export async function loadStoreFactory() {
   const { createConfigStore } = await import("./store.js");
+  await installConfigurationLeaseHooks();
   return createConfigStore;
 }
 

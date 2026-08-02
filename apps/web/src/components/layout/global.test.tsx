@@ -8,6 +8,12 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import {
+  makeShellApiOverrides,
+  makeShellInitResponse,
+  selectedModelLabel,
+  selectedProductLabel,
+} from "@/testing/shell-fixtures";
 
 // Boundary mock: Router is the routing library; the shell reads location/back state.
 const { navigateSpy, backSpy, routerState } = vi.hoisted(() => ({
@@ -27,6 +33,11 @@ import { GlobalLayout } from "./global";
 
 let queryClient: QueryClient;
 let mockApi: BoundApi;
+const shellInit = makeShellInitResponse();
+
+function providerStatusLabel(): string {
+  return "Ready";
+}
 
 beforeEach(() => {
   queryClient = new QueryClient({
@@ -67,41 +78,15 @@ function createMockApi(): BoundApi {
 
   return {
     ...api,
-    // The shell polls /api/health for its transport lamp; a healthy server is
-    // the baseline every other assertion here is written against.
     request: vi.fn().mockResolvedValue(new Response(null, { status: 200 })),
-    activateProvider: vi
-      .fn()
-      .mockResolvedValue({ provider: "openrouter", model: "openrouter/test-model" }),
-    deleteProviderCredentials: vi.fn().mockResolvedValue({ deleted: true }),
-    getProviderStatus: vi
-      .fn()
-      .mockResolvedValue([{ provider: "openrouter", hasApiKey: true, isActive: true }]),
-    loadInit: vi.fn().mockResolvedValue({
-      config: { provider: "openrouter", model: "openrouter/test-model" },
-      configured: true,
-      project: { projectId: "proj-1", path: "/repo", trust: null },
-      providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
-      settings: {
-        agentExecution: "parallel",
-        defaultLenses: [],
-        defaultProfile: null,
-        secretsStorage: null,
-        severityThreshold: "low",
-        theme: "terminal",
-      },
-      setup: {
-        hasModel: true,
-        hasProvider: true,
-        hasSecretsStorage: true,
-        hasTrust: false,
-        isConfigured: true,
-        isReady: true,
-        missing: [],
-      },
-    }),
-    saveConfig: vi.fn().mockResolvedValue(undefined),
+    ...makeShellApiOverrides(shellInit),
   };
+}
+
+function expectedProviderLabel(): string {
+  const product = selectedProductLabel(shellInit);
+  const model = selectedModelLabel(shellInit);
+  return model ? `${product} / ${model}` : product;
 }
 
 describe("GlobalLayout", () => {
@@ -181,17 +166,13 @@ describe("GlobalLayout", () => {
     expect(screen.getByText("DIFFGAZER")).toBeInTheDocument();
   });
 
-  it("keeps the configured header when only provider status fails", async () => {
-    vi.mocked(mockApi.getProviderStatus).mockRejectedValue(
-      new Error("provider status unavailable"),
-    );
-
+  it("keeps the configured header when configuration init succeeds", async () => {
     renderShell();
 
     const status = await screen.findByLabelText(
-      "Provider: openrouter / openrouter/test-model, active; server live",
+      `Provider: ${expectedProviderLabel()}, ${providerStatusLabel()}; server live`,
     );
-    expect(status).toHaveTextContent("active");
+    expect(status).toHaveTextContent(expectedProviderLabel());
   });
 
   it("keeps the shell mounted and names the cause when the server stops answering", async () => {
@@ -220,14 +201,20 @@ describe("GlobalLayout", () => {
   });
 
   it("labels an init failure without presenting an unconfigured provider", async () => {
-    vi.mocked(mockApi.loadInit).mockRejectedValue(new Error("init unavailable"));
+    vi.mocked(mockApi.loadConfigurationInit).mockRejectedValue(new Error("init unavailable"));
 
     renderShell();
 
     const status = await screen.findByLabelText(
-      "Provider: Configuration unavailable, idle; server live",
+      "Provider: Configuration unavailable, Unavailable; server live",
     );
-    expect(status).toHaveTextContent("idle");
+    expect(status).toHaveTextContent("Configuration unavailable");
     expect(screen.queryByLabelText(/Provider: Not configured/i)).not.toBeInTheDocument();
+  });
+
+  it("serializes no secret-bearing provider fields in the rendered shell", async () => {
+    const { container } = renderShell();
+    await screen.findByLabelText(/server live$/);
+    expect(container.innerHTML).toBeClientSafeDom();
   });
 });

@@ -10,11 +10,11 @@ The `diffgazer` binary takes options only. It accepts no positional arguments, s
 ```text
 Usage: diffgazer [options]
 
-Product CLI for reviewing code changes with Diffgazer.
+Review code changes with Diffgazer in your browser or terminal.
 
 Options:
-  --tui              Start the beta terminal UI (incomplete; not recommended)
-  --theme <theme>    Start TUI with a specific theme (only with --tui)
+  --tui              Start the terminal UI
+  --theme <theme>    Start TUI with a theme: auto, dark, light, high-contrast (only with --tui)
   -V, --version      Display version
   -h, --help         Display help
 ```
@@ -23,8 +23,8 @@ Options:
 
 | Option | Description |
 |--------|-------------|
-| `--tui` | Start the beta terminal UI (incomplete; not recommended). See [the TUI overview](/app/tui). |
-| `--theme <theme>` | Start the TUI with a specific theme. Only valid together with `--tui`. See [TUI themes](/app/tui/themes). |
+| `--tui` | Start the terminal UI. See [the TUI overview](/app/tui). |
+| `--theme <theme>` | Start the TUI with one of `auto`, `dark`, `light`, or `high-contrast`. Only valid together with `--tui`. See [TUI themes](/app/tui/themes). |
 | `-V, --version` | Print the version and exit. |
 | `-h, --help` | Print the usage text shown above and exit. |
 
@@ -33,13 +33,13 @@ Options:
 ## Behavior
 
 - With no options, `diffgazer` starts the web environment and opens your browser.
-- `--tui` starts the beta terminal UI and does not open a browser. The TUI module is loaded only when you pass this flag.
+- `--tui` starts the terminal UI and does not open a browser. The TUI module is loaded only when you pass this flag.
 - `--theme <theme>` selects the starting theme for the TUI. The theme value is read only when `--tui` is also present.
 - `--theme` without `--tui` is a usage error. The CLI throws `--theme requires --tui.` and exits with a non-zero status.
 - Unknown options and any positional argument fail parsing. The parser runs in strict mode with positionals disabled, so a typo'd flag or a stray argument stops the CLI before it launches anything.
 - `--version` prints the binary version. A build stamps the real version in; running from source instead reports the `0.0.0-dev` fallback.
 
-> Note: The `--tui` flag is documented because it ships in the help text, but the terminal UI is a beta and is not recommended for day-to-day reviews. Use the web environment unless you are specifically testing the TUI.
+> Note: The terminal UI is still catching up to the web environment. Use web mode for day-to-day reviews unless you specifically want the TUI.
 
 ## Exit and signals
 

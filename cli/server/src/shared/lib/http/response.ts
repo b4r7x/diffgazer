@@ -9,7 +9,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 // The validator callback below must match that internal type exactly.
 import type { core } from "zod";
 import type { AIErrorCode } from "../ai/types.js";
-import type { SecretsStorageErrorCode } from "../config/types.js";
+import type { ConfigurationActionErrorCode, SecretsStorageErrorCode } from "../config/types.js";
 import type {
   ConfigServiceErrorCode,
   ProviderModelsErrorCode,
@@ -28,6 +28,7 @@ export type WireErrorCode =
   | CatalogErrorCode
   | AIErrorCode
   | SecretsStorageErrorCode
+  | ConfigurationActionErrorCode
   | StoreErrorCode
   | ConfigServiceErrorCode
   | ProviderModelsErrorCode;

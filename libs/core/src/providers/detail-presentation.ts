@@ -1,4 +1,5 @@
-import { OPENROUTER_PROVIDER_ID } from "../schemas/config/index.js";
+import type { RunnableProductId } from "../schemas/config/transports.js";
+import { requiresExplicitModelSelection } from "./product-registry.js";
 
 export const PROVIDER_DETAIL_ACTION_LABELS = {
   selectProvider: "Select Provider",
@@ -10,12 +11,12 @@ export const PROVIDER_DETAIL_ACTION_LABELS = {
 export const PROVIDER_DETAIL_EMPTY_LABEL = "Select a provider to view details";
 
 export function getProviderDetailModelLabel(
-  providerId: string,
+  productId: RunnableProductId,
   model: string | undefined,
   defaultModel: string | undefined,
 ): string {
   if (model) return model;
-  if (providerId === OPENROUTER_PROVIDER_ID) return "Model required";
+  if (requiresExplicitModelSelection(productId)) return "Model required";
   if (defaultModel) return `${defaultModel} (default)`;
   return "No default model";
 }

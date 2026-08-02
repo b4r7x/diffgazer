@@ -1,27 +1,37 @@
-import { guardQueryState, useProviderStatus } from "@diffgazer/core/api/hooks";
-import type { ProviderStatus } from "@diffgazer/core/schemas/config";
-import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
+import {
+  type BillingMode,
+  PRODUCT_REGISTRY,
+  type RunnableProductId,
+  SELECTABLE_PRODUCT_IDS,
+} from "@diffgazer/core/providers";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
+import { Badge } from "../../../../components/ui/badge";
 import { RadioGroup } from "../../../../components/ui/radio";
-import { Spinner } from "../../../../components/ui/spinner";
 import { useTheme } from "../../../../theme/provider";
 
 interface ProviderStepProps {
-  value?: string;
-  onChange: (v: string) => void;
+  value?: RunnableProductId;
+  onChange: (productId: RunnableProductId) => void;
   isActive?: boolean;
 }
 
-function getProviderLabel(status: ProviderStatus): string {
-  const info = AVAILABLE_PROVIDERS.find((p) => p.id === status.provider);
-  return info?.name ?? status.provider;
+function getTierBadge(productId: RunnableProductId): "FREE" | "PAID" | "LOCAL" | "AMBIENT" {
+  const product = PRODUCT_REGISTRY[productId];
+  if (product.transportFamily === "local-http") return "LOCAL";
+  if (product.transportFamily === "local-cli") return "AMBIENT";
+  // Structured billing modes are the badge authority; notice prose describes
+  // free tiers it does not offer and omits ones it does.
+  const modes: readonly BillingMode[] = product.billing.modes;
+  return modes.includes("free-tier") ? "FREE" : "PAID";
 }
 
-function getProviderDescription(status: ProviderStatus): string {
-  return status.provider === OPENROUTER_PROVIDER_ID
-    ? "Access multiple providers via a single API"
-    : "";
+function getTierBadgeVariant(
+  tierBadge: ReturnType<typeof getTierBadge>,
+): "success" | "neutral" | "info" {
+  if (tierBadge === "FREE") return "success";
+  if (tierBadge === "PAID") return "neutral";
+  return "info";
 }
 
 export function ProviderStep({
@@ -30,30 +40,32 @@ export function ProviderStep({
   isActive = true,
 }: ProviderStepProps): ReactElement {
   const { tokens } = useTheme();
-  const query = useProviderStatus();
-
-  const guard = guardQueryState(query, {
-    loading: () => <Spinner label="Loading providers..." />,
-    error: (err) => (
-      <Box>
-        <Text color={tokens.error}>Error: {err.message}</Text>
-      </Box>
-    ),
-  });
-  if (guard) return guard;
 
   return (
     <Box flexDirection="column" gap={1}>
       <Text color={tokens.muted}>Select an AI provider for code reviews.</Text>
-      <RadioGroup value={value} onChange={onChange} isActive={isActive}>
-        {(query.data ?? []).map((status) => (
-          <RadioGroup.Item
-            key={status.provider}
-            value={status.provider}
-            label={getProviderLabel(status)}
-            description={getProviderDescription(status)}
-          />
-        ))}
+      <RadioGroup
+        value={value}
+        onChange={(next) => onChange(next as RunnableProductId)}
+        isActive={isActive}
+      >
+        {SELECTABLE_PRODUCT_IDS.map((productId) => {
+          const product = PRODUCT_REGISTRY[productId];
+          const tierBadge = getTierBadge(productId);
+          return (
+            <RadioGroup.Item
+              key={productId}
+              value={productId}
+              label={
+                <Box gap={1}>
+                  <Text>{product.presentation.name}</Text>
+                  <Badge variant={getTierBadgeVariant(tierBadge)}>{tierBadge}</Badge>
+                </Box>
+              }
+              description={product.presentation.description}
+            />
+          );
+        })}
       </RadioGroup>
     </Box>
   );

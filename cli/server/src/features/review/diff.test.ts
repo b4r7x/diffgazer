@@ -243,6 +243,7 @@ describe("createReviewSession canonical file-scoped identity", () => {
     return {
       provider: "openrouter",
       executionFingerprint: { provider: "openrouter", model: "test-model" },
+      terminalExecutions: [],
       generate,
     };
   }
@@ -286,12 +287,17 @@ describe("createReviewSession canonical file-scoped identity", () => {
     for (const id of trackedSessionIds) {
       getSession(id)?.controller.abort("test_cleanup");
     }
-    await vi.waitFor(() => {
-      for (const id of sessionsWithRunners) {
-        const session = getSession(id);
-        if (session && !session.isComplete) throw new Error(`session ${id} not yet complete`);
-      }
-    });
+    // These runners drive real git and a real review save, so the default 1s
+    // waitFor budget is not enough when the suite runs under load.
+    await vi.waitFor(
+      () => {
+        for (const id of sessionsWithRunners) {
+          const session = getSession(id);
+          if (session && !session.isComplete) throw new Error(`session ${id} not yet complete`);
+        }
+      },
+      { timeout: 8_000 },
+    );
     for (const id of trackedSessionIds) {
       deleteSession(id);
     }
@@ -364,7 +370,6 @@ describe("createReviewSession canonical file-scoped identity", () => {
       lenses: reviewDefaults.activeLenses,
       profile: reviewDefaults.effectiveProfileId,
       minSeverity: reviewDefaults.severityFilter?.minSeverity,
-      executionFingerprint: aiClient.executionFingerprint,
     });
     const reviewInputHash = buildReviewInputHash({
       headCommit: headCommitResult.value,

@@ -1,47 +1,59 @@
+import type { OnboardingConfigurationDraft } from "@diffgazer/core/onboarding";
 import { STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
-import type { AgentExecution } from "@diffgazer/core/schemas/config";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
+import { Checkbox } from "@diffgazer/ui/components/checkbox";
+import { Field } from "@diffgazer/ui/components/field";
 import { HorizontalStepper } from "@diffgazer/ui/components/horizontal-stepper";
+import { InputGroup } from "@diffgazer/ui/components/input";
+import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useRef } from "react";
 import { CardLayout } from "@/components/layout/card-layout";
+import { useConfigData } from "@/hooks/use-config";
 import { useOnboardingKeyboard } from "../hooks/use-keyboard";
 import { useOnboarding } from "../hooks/use-onboarding";
-import { AnalysisStep } from "./steps/analysis-step";
 import { ApiKeyStep } from "./steps/api-key-step";
-import { ExecutionStep } from "./steps/execution-step";
 import { ModelStep } from "./steps/model-step";
 import { ProviderStep } from "./steps/provider-step";
-import { StorageStep } from "./steps/storage-step";
 
-function getPrimaryLabel(isLastStep: boolean, isBusy: boolean): string {
+function getPrimaryLabel(isLastStep: boolean, isBusy: boolean, primaryLabel: string): string {
   if (!isLastStep) return "Next";
-  return isBusy ? "Saving..." : "Complete Setup";
+  return isBusy ? "Saving..." : primaryLabel;
 }
 
 export function OnboardingWizard() {
   const focusFallbackRef = useRef<HTMLDivElement>(null);
+  const { configurations } = useConfigData();
   const {
     currentStep,
     wizardData,
     steps,
+    stepIndex,
     isFirstStep,
     isLastStep,
     canProceed,
+    isReconciling,
     isSubmitting,
-    isEarlySaving,
     error,
-    earlySaveError,
     next,
     back,
     updateData,
-    setProvider,
+    setProduct,
     complete,
+    deleteRemovedConfiguration,
   } = useOnboarding();
+
+  const removedRecord = configurations.find(
+    ({ configuration }) => configuration.status === "removed",
+  );
 
   const {
     footer,
     primaryButtonIndex,
+    primaryLabel,
+    progressLabel,
     isBusy,
     canActivatePrimary,
     handleBack,
@@ -51,92 +63,278 @@ export function OnboardingWizard() {
   } = useOnboardingKeyboard({
     currentStep,
     wizardData,
+    stepIndex,
+    planSteps: wizardData.plan.steps,
     isFirstStep,
     isLastStep,
     canProceed,
     isSubmitting,
-    isEarlySaving,
+    isReconciling,
     next,
     back,
     complete,
+    deleteRemovedConfiguration,
     focusFallbackRef,
   });
 
-  const renderStep = () => {
+  const renderRunnableStep = () => {
+    if (wizardData.kind !== "runnable") return null;
+    const { configurationInput, selectedModelId, conformanceStatus, acknowledgement, plan } =
+      wizardData;
+
     switch (currentStep) {
-      case "storage":
-        return (
-          <StorageStep
-            value={wizardData.secretsStorage}
-            onChange={(secretsStorage) => updateData({ secretsStorage })}
-            onCommit={(secretsStorage) => handleStepCommit({ secretsStorage })}
-            keyboardNavigation={!footer.inActions}
-            onBoundaryReached={handleStepBoundary}
-          />
-        );
-      case "provider":
+      case "product":
         return (
           <ProviderStep
-            value={wizardData.provider}
-            onChange={setProvider}
-            onCommit={(provider) => handleStepCommit({ provider })}
+            value={plan.productId}
+            removedRecord={
+              removedRecord?.configuration.productId === REMOVED_PRODUCT_ID
+                ? {
+                    name: PRODUCT_REGISTRY[REMOVED_PRODUCT_ID].presentation.name,
+                    description: PRODUCT_REGISTRY[REMOVED_PRODUCT_ID].presentation.description,
+                    replacementName: PRODUCT_REGISTRY.zai.presentation.name,
+                  }
+                : null
+            }
+            onChange={setProduct}
+            onCommit={() => handleStepCommit()}
             enabled={!footer.inActions}
             onBoundaryReached={handleStepBoundary}
           />
         );
-      case "api-key":
-        return wizardData.provider ? (
+      case "endpoint-binding": {
+        const product = PRODUCT_REGISTRY[plan.productId];
+        if (configurationInput.transportFamily === "hosted-api") {
+          const workspaceRequired = product.configuration.endpoints.some(
+            (endpoint) => "workspaceBound" in endpoint && endpoint.workspaceBound,
+          );
+          return (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground font-mono">
+                Choose the endpoint tuple for {product.presentation.name}.
+              </p>
+              <RadioGroup
+                aria-label="Endpoint profile"
+                value={configurationInput.endpoint}
+                onChange={(endpoint) => {
+                  const profile = product.configuration.endpoints.find(
+                    (candidate) => candidate.endpoint === endpoint,
+                  );
+                  if (!profile) return;
+                  updateData({
+                    configurationInput: {
+                      ...configurationInput,
+                      endpoint,
+                      ...("region" in profile ? { region: profile.region } : {}),
+                      workspace:
+                        "workspaceBound" in profile && profile.workspaceBound
+                          ? (configurationInput.workspace ?? "")
+                          : undefined,
+                    },
+                  });
+                }}
+                onEnter={() => handleStepCommit()}
+                keyboardNavigation={!footer.inActions}
+                onNavigationBoundaryReached={() => handleStepBoundary("down")}
+                className="space-y-1"
+              >
+                {product.configuration.endpoints.map((endpoint) => (
+                  <RadioGroupItem
+                    key={endpoint.id}
+                    value={endpoint.endpoint}
+                    label={endpoint.label}
+                    description={endpoint.endpoint}
+                  />
+                ))}
+              </RadioGroup>
+              {workspaceRequired ? (
+                <Field>
+                  <Field.Label>Workspace reference</Field.Label>
+                  <Field.Control>
+                    <InputGroup
+                      value={configurationInput.workspace ?? ""}
+                      onChange={(event) =>
+                        updateData({
+                          configurationInput: {
+                            ...configurationInput,
+                            workspace: event.target.value,
+                          },
+                        })
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          handleStepCommit();
+                        }
+                      }}
+                      aria-label="Workspace reference"
+                    />
+                  </Field.Control>
+                </Field>
+              ) : null}
+            </div>
+          );
+        }
+
+        if (configurationInput.transportFamily === "local-http") {
+          return (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground font-mono">
+                Configure the loopback endpoint for {product.presentation.name}.
+              </p>
+              <RadioGroup
+                aria-label="Loopback endpoint"
+                value={configurationInput.presetId ?? configurationInput.endpoint}
+                onChange={(presetId) => {
+                  const profile = product.configuration.endpoints.find(
+                    (candidate) => candidate.id === presetId,
+                  );
+                  if (!profile || !("endpoint" in profile)) return;
+                  const nextInput: OnboardingConfigurationDraft = {
+                    ...configurationInput,
+                    endpoint: profile.endpoint,
+                  };
+                  if (plan.productId === "local-openai") {
+                    updateData({
+                      configurationInput: {
+                        ...nextInput,
+                        presetId: profile.id as "lm-studio" | "llama-cpp",
+                      },
+                    });
+                    return;
+                  }
+                  updateData({ configurationInput: nextInput });
+                }}
+                onEnter={() => handleStepCommit()}
+                keyboardNavigation={!footer.inActions}
+                className="space-y-1"
+              >
+                {product.configuration.endpoints.map((endpoint) => (
+                  <RadioGroupItem
+                    key={endpoint.id}
+                    value={endpoint.id}
+                    label={endpoint.label}
+                    description={endpoint.endpoint}
+                  />
+                ))}
+              </RadioGroup>
+            </div>
+          );
+        }
+
+        return (
+          <p className="text-sm text-muted-foreground font-mono">
+            {product.presentation.setupLabel} does not require endpoint binding.
+          </p>
+        );
+      }
+      case "authentication":
+        return (
           <ApiKeyStep
-            provider={wizardData.provider}
-            value={wizardData.inputMethod}
-            onChange={(inputMethod) => updateData({ inputMethod })}
-            keyValue={wizardData.apiKey}
-            onKeyValueChange={(apiKey) => updateData({ apiKey })}
-            onCommit={(payload) => handleStepCommit(payload)}
+            configurationInput={configurationInput}
+            onChange={(nextInput) => updateData({ configurationInput: nextInput })}
+            onCommit={() => handleStepCommit()}
             enabled={!footer.inActions}
             onBoundaryReached={handleStepBoundary}
           />
-        ) : null;
+        );
       case "model":
-        return wizardData.provider ? (
+        return (
           <ModelStep
-            provider={wizardData.provider}
-            value={wizardData.model}
-            onChange={(model) => updateData({ model })}
-            onCommit={(model) => handleStepCommit({ model })}
-            enabled={!footer.inActions}
-            onBoundaryReached={handleStepBoundary}
-          />
-        ) : null;
-      case "analysis":
-        return (
-          <AnalysisStep
-            lenses={wizardData.defaultLenses}
-            onLensesChange={(defaultLenses) => updateData({ defaultLenses })}
-            onCommit={(payload) => handleStepCommit(payload)}
+            configurationInput={configurationInput}
+            value={selectedModelId}
+            onChange={(model) => updateData({ selectedModelId: model })}
+            onCommit={(model) => handleStepCommit({ selectedModelId: model })}
             enabled={!footer.inActions}
             onBoundaryReached={handleStepBoundary}
           />
         );
-      case "execution":
+      case "conformance":
         return (
-          <ExecutionStep
-            value={wizardData.agentExecution}
-            onChange={(agentExecution: AgentExecution) => updateData({ agentExecution })}
-            onCommit={(agentExecution) => handleStepCommit({ agentExecution })}
-            enabled={!footer.inActions}
-            onBoundaryReached={handleStepBoundary}
-          />
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground font-mono">
+              Confirm the configured transport tuple and exact model are ready for conformance
+              verification.
+            </p>
+            <Checkbox
+              checked={conformanceStatus === "passed"}
+              onChange={(checked) =>
+                updateData({ conformanceStatus: checked ? "passed" : "not-tested" })
+              }
+              label="I verified the configuration tuple and exact model selection."
+            />
+          </div>
         );
+      case "acknowledgement": {
+        const notice = plan.steps.find((step) => step.id === "acknowledgement")?.notice;
+        if (!notice) return null;
+        const accepted =
+          acknowledgement.status === "accepted" &&
+          acknowledgement.noticeId === notice.id &&
+          acknowledgement.noticeVersion === notice.noticeVersion;
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground font-mono">
+              Review and explicitly accept the current product notice before completing setup.
+            </p>
+            <div className="space-y-2 text-xs font-mono">
+              {notice.billing.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+              {notice.privacy.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </div>
+            <Checkbox
+              checked={accepted}
+              onChange={(checked) =>
+                updateData({
+                  acknowledgement: checked
+                    ? {
+                        status: "accepted",
+                        noticeId: notice.id,
+                        noticeVersion: notice.noticeVersion,
+                        acceptedAt: new Date().toISOString(),
+                      }
+                    : { status: "required" },
+                })
+              }
+              label="I accept the billing and privacy notice for this product."
+            />
+          </div>
+        );
+      }
+      default:
+        return null;
     }
+  };
+
+  const renderRemovedStep = () => {
+    if (wizardData.kind !== "removed") return null;
+    if (currentStep === "migration") {
+      return (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground font-mono">
+            Create a {PRODUCT_REGISTRY.zai.presentation.name} configuration to replace this removed
+            record. Existing credentials stay server-side until you explicitly delete the removed
+            record.
+          </p>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground font-mono">
+          Delete the removed {PRODUCT_REGISTRY[REMOVED_PRODUCT_ID].presentation.name} record after
+          migration is complete.
+        </p>
+      </div>
+    );
   };
 
   return (
     <CardLayout
       title={STEP_TITLES[currentStep]}
-      // The flow used to name itself again on a subtitle row that read the same on
-      // all six steps. It now rides the frame's top rule, and the step position
-      // stays with the stepper below rather than being printed twice.
       readout="Setup"
       footer={
         <>
@@ -153,9 +351,6 @@ export function OnboardingWizard() {
               Back
             </Button>
           )}
-          {/* One primary voice for the whole wizard: the commit action keeps the same
-              filled --action chip from step 1 to Complete Setup, so the CTA never changes
-              color mid-flow or between themes. */}
           <Button
             {...footer.getActionProps(primaryButtonIndex)}
             size="sm"
@@ -166,16 +361,12 @@ export function OnboardingWizard() {
             onClick={handlePrimaryAction}
             disabled={!canActivatePrimary}
           >
-            {getPrimaryLabel(isLastStep, isBusy)}
+            {getPrimaryLabel(isLastStep, isBusy, primaryLabel)}
           </Button>
         </>
       }
     >
       <div ref={focusFallbackRef} tabIndex={-1} className="space-y-4 focus:outline-none">
-        {/* Compact at every width, not below a breakpoint: six labelled ascii steps with their
-            connectors measure ~1075px, and this card's content box tops out at 616px, so the
-            full run would spill past the panel border on desktop just as it did on mobile.
-            Narrow phones drop to the stepper's text-only tier on their own. */}
         <HorizontalStepper compact steps={steps} value={currentStep} aria-label="Setup progress">
           {steps.map((step) => (
             <HorizontalStepper.Step key={step} value={step}>
@@ -183,12 +374,13 @@ export function OnboardingWizard() {
             </HorizontalStepper.Step>
           ))}
         </HorizontalStepper>
-        {(error ?? earlySaveError) && (
+        <p className="text-xs text-muted-foreground font-mono">{progressLabel}</p>
+        {error ? (
           <Callout tone="error" live>
-            <Callout.Content>{error ?? earlySaveError}</Callout.Content>
+            <Callout.Content>{error}</Callout.Content>
           </Callout>
-        )}
-        {renderStep()}
+        ) : null}
+        {wizardData.kind === "removed" ? renderRemovedStep() : renderRunnableStep()}
       </div>
     </CardLayout>
   );

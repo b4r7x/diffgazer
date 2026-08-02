@@ -1,33 +1,8 @@
 import { z } from "zod";
-import { ClientConfigurationSummarySchema, ConfigurationIdSchema } from "./provider-config.js";
-import { ReadinessSchema } from "./readiness.js";
-import { SettingsConfigSchema, TrustConfigSchema } from "./settings.js";
 
-export const ConfigurationStatusSchema = z.strictObject({
-  configuration: ClientConfigurationSummarySchema,
-  readiness: ReadinessSchema,
-});
-export type ConfigurationStatus = z.infer<typeof ConfigurationStatusSchema>;
-
-export const ConfigurationListResponseSchema = z.strictObject({
-  schemaVersion: z.literal(2),
-  configurations: z.array(ConfigurationStatusSchema),
-  selectedConfigurationId: ConfigurationIdSchema.nullable(),
-});
-export type ConfigurationListResponse = z.infer<typeof ConfigurationListResponseSchema>;
-
-export const ProjectInfoSchema = z.strictObject({
-  path: z.string(),
-  projectId: z.string().nullable(),
-  trust: TrustConfigSchema.nullable(),
-});
-export type ProjectInfo = z.infer<typeof ProjectInfoSchema>;
-
-export const ConfigurationInitResponseSchema = ConfigurationListResponseSchema.safeExtend({
-  settings: SettingsConfigSchema,
-  project: ProjectInfoSchema,
-});
-export type ConfigurationInitResponse = z.infer<typeof ConfigurationInitResponseSchema>;
+export const REMOVED_PRODUCT_IDS = ["zai-coding"] as const;
+export const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
+export const LEGACY_V1_HAS_API_KEY_PROPERTY = "hasApiKey" as const;
 
 export const LEGACY_PROVIDER_IDS_V1 = [
   "gemini",
@@ -49,7 +24,7 @@ export const LegacyProviderConfigV1Schema = z.strictObject({
 export type LegacyProviderConfigV1 = z.infer<typeof LegacyProviderConfigV1Schema>;
 
 export const LegacyRemovedProviderRecordV1Schema = LegacyProviderConfigV1Schema.safeExtend({
-  provider: z.literal("zai-coding"),
+  provider: z.literal(REMOVED_PRODUCT_ID),
 });
 export type LegacyRemovedProviderRecordV1 = z.infer<typeof LegacyRemovedProviderRecordV1Schema>;
 
@@ -84,7 +59,7 @@ function copyBytes(rawBytes: Uint8Array): Uint8Array<ArrayBuffer> {
 
 // V1 records are untrusted bytes. Keep the decoder deliberately small and
 // bounded: duplicate object keys are rejected before JSON.parse can collapse
-// them to the last value (which could otherwise relabel `zai-coding` as `zai`).
+// them to the last value (which could otherwise collapse duplicate provider keys).
 const MAX_LEGACY_RECORD_BYTES = 64 * 1024;
 const MAX_LEGACY_JSON_DEPTH = 32;
 

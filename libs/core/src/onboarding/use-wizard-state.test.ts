@@ -5,6 +5,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PRODUCT_REGISTRY } from "../providers/product-registry.js";
 import { type ClientConfigurationAction, READINESS_PRESENTATION } from "../schemas/config/index.js";
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { getInitialWizardData, type OnboardingDraft } from "./defaults.js";
 import { OnboardingStateSchema } from "./types.js";
 import { useWizardState, type WizardSaveCallbacks } from "./use-wizard-state.js";
@@ -299,8 +300,8 @@ describe("useWizardState", () => {
   it("keeps removed legacy data untouched until the explicit delete action", async () => {
     const removed = OnboardingStateSchema.parse({
       kind: "removed",
-      productId: "zai-coding",
-      configurationId: "legacy-zai-coding",
+      productId: REMOVED_PRODUCT_ID,
+      configurationId: "legacy-removed-zai-plan",
       expectedRevision: 7,
     });
     const callbacks = makeCallbacks();
@@ -323,7 +324,7 @@ describe("useWizardState", () => {
     });
     expect(callbacks.runConfigurationAction).toHaveBeenCalledWith({
       action: "delete",
-      configurationId: "legacy-zai-coding",
+      configurationId: "legacy-removed-zai-plan",
       expectedRevision: 7,
     });
   });
@@ -571,8 +572,8 @@ describe("useWizardState", () => {
   it("single-flights removed deletion and never repeats it after completion fails", async () => {
     const removed = OnboardingStateSchema.parse({
       kind: "removed",
-      productId: "zai-coding",
-      configurationId: "legacy-zai-coding",
+      productId: REMOVED_PRODUCT_ID,
+      configurationId: "legacy-removed-zai-plan",
       expectedRevision: 7,
     });
     let resolveDelete: ((response: unknown) => void) | undefined;
@@ -606,6 +607,91 @@ describe("useWizardState", () => {
     expect(result.current.error).toBeNull();
     expect(callbacks.runConfigurationAction).toHaveBeenCalledTimes(1);
     expect(onComplete).toHaveBeenCalledTimes(2);
+  });
+
+  it("drops a stale delete rejection instead of overwriting the replacement wizard", async () => {
+    const removed = OnboardingStateSchema.parse({
+      kind: "removed",
+      productId: REMOVED_PRODUCT_ID,
+      configurationId: "legacy-removed-zai-plan",
+      expectedRevision: 7,
+    });
+    const replacement = OnboardingStateSchema.parse({
+      kind: "removed",
+      productId: REMOVED_PRODUCT_ID,
+      configurationId: "legacy-removed-zai-plan-2",
+      expectedRevision: 9,
+    });
+    let rejectDelete: ((cause: unknown) => void) | undefined;
+    const deleteResponse = new Promise<unknown>((_resolve, reject) => {
+      rejectDelete = reject;
+    });
+    const callbacks = makeCallbacks(async (action) => {
+      if (action.action === "delete" && action.configurationId === "legacy-removed-zai-plan") {
+        return deleteResponse;
+      }
+      return { action: "delete", status: "succeeded" };
+    });
+    const { result, rerender } = renderHook(
+      ({ initial }) => useWizardState({ initial, callbacks }),
+      { initialProps: { initial: removed } },
+    );
+
+    let deletion: Promise<boolean> | undefined;
+    act(() => {
+      deletion = result.current.deleteRemovedConfiguration();
+    });
+    rerender({ initial: replacement });
+
+    await act(async () => {
+      rejectDelete?.(new Error("delete failed"));
+      expect(await deletion).toBe(false);
+    });
+
+    expect(result.current.error).toBeNull();
+  });
+
+  it("persists one draft configuration for the current transport tuple", async () => {
+    const initial = readyDraft();
+    const callbacks = makeCallbacks();
+    const { result } = renderHook(() => useWizardState({ initial, callbacks }));
+
+    await act(async () => {
+      await result.current.prepareDraftConfiguration();
+      await result.current.prepareDraftConfiguration();
+    });
+
+    expect(result.current.draftConfiguration?.configurationId).toBe("created-configuration");
+    expect(callbacks.runConfigurationAction).toHaveBeenCalledTimes(1);
+    expect(callbacks.runConfigurationAction).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "create" }),
+    );
+  });
+
+  it("invalidates the draft configuration when the transport tuple changes", async () => {
+    const initial = readyDraft();
+    const callbacks = makeCallbacks();
+    const { result } = renderHook(() => useWizardState({ initial, callbacks }));
+
+    await act(async () => {
+      await result.current.prepareDraftConfiguration();
+    });
+    expect(result.current.draftConfiguration).not.toBeNull();
+
+    act(() => {
+      result.current.updateData({
+        configurationInput: {
+          transportFamily: "hosted-api",
+          productId: "qwen",
+          endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+          region: "international",
+          workspace: "a-different-workspace",
+          credential: { kind: "environment" },
+        },
+      });
+    });
+
+    expect(result.current.draftConfiguration).toBeNull();
   });
 
   it("treats equivalent configuration updates as no-ops", () => {

@@ -1,14 +1,13 @@
-import {
-  guardQueryState,
-  useActivateProvider,
-  useDeleteProviderCredentials,
-  useProviderStatus,
-} from "@diffgazer/core/api/hooks";
+import { guardQueryState, useConfigurations } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { mapProvidersWithStatus } from "@diffgazer/core/providers";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
-import type { AIProvider } from "@diffgazer/core/schemas/config";
-import { AVAILABLE_PROVIDERS, OPENROUTER_PROVIDER_ID } from "@diffgazer/core/schemas/config";
+import {
+  findProviderById,
+  getProviderRowId,
+  mapProviderList,
+  type ProviderListRow,
+} from "@diffgazer/core/providers";
+import { resolveSelectedId, sanitizeTerminalText } from "@diffgazer/core/review";
+import type { ClientConfigurationSummary } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
@@ -21,43 +20,34 @@ import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useResponsive } from "../../../hooks/use-terminal-dimensions";
 import { paneBorder } from "../../../theme/chrome";
 import { useTheme } from "../../../theme/provider";
+import { useProviderManagement } from "../hooks/use-provider-management";
 import { ApiKeyOverlay } from "./api-key-overlay";
-import type { ProviderDetailData } from "./details";
 import { COMFORTABLE_DETAILS_ROWS, ProviderDetails } from "./details";
-import type { ProviderListItem } from "./list";
 import { ProviderList } from "./list";
 import { ModelSelectOverlay } from "./model-select-overlay";
 
-const PROVIDER_IDS = AVAILABLE_PROVIDERS.map((provider) => provider.id);
-
 const BROWSE_SHORTCUTS: Shortcut[] = [BACK_SHORTCUT, { key: "Enter", label: "Select" }];
 
-/**
- * Branch-scoped footer publisher: it unmounts when an overlay takes over the
- * screen, so the overlay's own `usePageFooter` owns the bar while it is open
- * instead of being overwritten by a parent effect on the same commit.
- */
+const PROVIDER_LIST_ROW_CHROME = 4;
+const PROVIDER_LIST_SUBTITLE_MIN_COLUMNS = 18;
+
+function shouldCompactProviderList(contentWidth: number, providers: ProviderListRow[]): boolean {
+  if (providers.length === 0) return true;
+
+  const longestName = providers.reduce((max, row) => Math.max(max, row.product.name.length), 0);
+
+  return (
+    contentWidth <= longestName + PROVIDER_LIST_ROW_CHROME + PROVIDER_LIST_SUBTITLE_MIN_COLUMNS
+  );
+}
+
+type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
+
 function BrowseFooter(): null {
   usePageFooter({ shortcuts: BROWSE_SHORTCUTS });
   return null;
 }
 
-function isProviderId(value: string | undefined): value is AIProvider {
-  return PROVIDER_IDS.some((providerId) => providerId === value);
-}
-
-function toDetailData(provider: ProviderListItem): ProviderDetailData {
-  const info = AVAILABLE_PROVIDERS.find((p) => p.id === provider.id);
-  return {
-    id: provider.id,
-    name: provider.name,
-    displayStatus: provider.displayStatus,
-    model: provider.model,
-    defaultModel: info?.defaultModel,
-  };
-}
-
-/** The list is chosen by name, so it gets the width a provider name needs. */
 function getListWidth({
   isNarrow,
   columns,
@@ -69,80 +59,74 @@ function getListWidth({
   return Math.min(Math.max(Math.floor(columns * 0.4), 28), 48);
 }
 
+function toSupportedConfiguration(
+  configuration: ClientConfigurationSummary | null | undefined,
+): SupportedConfigurationSummary | null {
+  if (!configuration || configuration.status !== "supported") return null;
+  return configuration;
+}
+
 export function ProvidersScreen(): ReactElement {
   const { columns, isNarrow } = useResponsive();
   const { contentRows } = useContentZone();
   const { tokens } = useTheme();
   const listWidth = getListWidth({ isNarrow, columns });
 
-  const providerQuery = useProviderStatus();
-  const deleteCredentials = useDeleteProviderCredentials();
-  const activateProvider = useActivateProvider();
+  const configurationsQuery = useConfigurations();
+  const providers = configurationsQuery.data
+    ? mapProviderList(configurationsQuery.data.configurations)
+    : [];
+  const selectedConfigurationId = configurationsQuery.data?.selectedConfigurationId ?? null;
 
+  const management = useProviderManagement(providers);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
-  const [apiKeyOpen, setApiKeyOpen] = useState(false);
-  const [modelSelectOpen, setModelSelectOpen] = useState(false);
   const [zone, setZone] = useState<"list" | "details">("list");
 
-  const providers = providerQuery.data ? mapProvidersWithStatus(providerQuery.data) : [];
-  const error =
-    activateProvider.error?.message ??
-    deleteCredentials.error?.message ??
-    providerQuery.error?.message ??
-    null;
+  const effectiveSelectedId = resolveSelectedId(
+    selectedId ?? null,
+    providers.map((row) => ({ id: getProviderRowId(row) })),
+  );
+  const selectedRow = findProviderById(providers, effectiveSelectedId);
+  const dialogRow = findProviderById(providers, management.dialogOwner?.rowId);
 
-  // The highlighted row IS the inspected provider: the details pane never
-  // contradicts a row that already looks chosen. Derived, not synced.
-  const defaultSelectedId =
-    providers.find((provider) => provider.displayStatus === "active")?.id ?? providers[0]?.id;
-  const activeSelectionId = selectedId ?? defaultSelectedId;
-  const selectedProvider = providers.find((p) => p.id === activeSelectionId);
-  const selectedDetail = selectedProvider ? toDetailData(selectedProvider) : undefined;
-  const selectedProviderId = isProviderId(activeSelectionId) ? activeSelectionId : null;
-  const hasSelection = activeSelectionId !== undefined;
+  const setupDialog =
+    management.dialogOwner?.kind === "setup" && dialogRow
+      ? { owner: management.dialogOwner, row: dialogRow }
+      : null;
+  const modelDialog =
+    management.dialogOwner?.kind === "model" && dialogRow
+      ? { owner: management.dialogOwner, row: dialogRow }
+      : null;
 
-  function handleConfigureKey() {
-    if (activeSelectionId) setApiKeyOpen(true);
-  }
+  const error = management.mutationError ?? configurationsQuery.error?.message ?? null;
 
-  function handleSelectModel() {
-    if (activeSelectionId) setModelSelectOpen(true);
-  }
-
-  function handleApiKeySaved() {
-    void providerQuery.refetch();
-    if (selectedProvider?.id === OPENROUTER_PROVIDER_ID && !selectedProvider.model) {
-      setModelSelectOpen(true);
-    }
-  }
-
-  function handleRemoveProvider() {
-    if (!activeSelectionId) return;
-    deleteCredentials.mutate(activeSelectionId);
-  }
-
-  function handleSetActive() {
-    if (!selectedDetail || selectedDetail.displayStatus === "active") return;
-    if (selectedDetail.displayStatus === "needs-key") {
-      setApiKeyOpen(true);
-      return;
-    }
-    const model = selectedDetail.model ?? selectedDetail.defaultModel;
-    if (!model) {
-      setModelSelectOpen(true);
-      return;
-    }
-    activateProvider.mutate({ providerId: selectedDetail.id, model });
-  }
-
-  // The bordered section header and the gap under it, then the pane's own
-  // border rows: what is left is what the details body may spend.
-  const detailsRows = contentRows - 3 - 2;
-
-  const isOverlayOpen = apiKeyOpen || modelSelectOpen;
+  const hasSelection = effectiveSelectedId !== null;
+  const isOverlayOpen = setupDialog !== null || modelDialog !== null;
   const activeZone = hasSelection ? zone : "list";
   const isListActive = !isOverlayOpen && activeZone === "list";
   const isDetailsActive = !isOverlayOpen && activeZone === "details";
+  const detailsRows = contentRows - 3 - 2;
+  const listContentWidth = Math.max((listWidth ?? columns) - 4, 1);
+  const compactList = shouldCompactProviderList(listContentWidth, providers);
+
+  const actions = {
+    onSetup: () => {
+      if (selectedRow) management.openSetupDialog(getProviderRowId(selectedRow));
+    },
+    onSelectModel: () => {
+      if (selectedRow) management.openModelDialog(getProviderRowId(selectedRow));
+    },
+    onDelete: () => {
+      const configurationId = selectedRow?.configuration?.configurationId;
+      const revision = selectedRow?.configuration?.revision;
+      if (configurationId != null && revision != null) {
+        void management.handleDeleteConfiguration(configurationId, revision);
+      }
+    },
+    onDispatchAction: () => {
+      if (selectedRow) void management.handleDispatchReadinessAction(selectedRow);
+    },
+  };
 
   useInput(
     (_input, key) => {
@@ -159,7 +143,7 @@ export function ProvidersScreen(): ReactElement {
 
   useBackHandler({ isActive: !isOverlayOpen });
 
-  const guard = guardQueryState(providerQuery, {
+  const guard = guardQueryState(configurationsQuery, {
     loading: () => (
       <Box flexDirection="column" gap={1}>
         <BrowseFooter />
@@ -178,24 +162,48 @@ export function ProvidersScreen(): ReactElement {
 
   if (guard) return guard;
 
-  if (selectedProviderId && apiKeyOpen) {
+  if (setupDialog) {
     return (
       <ApiKeyOverlay
         open
-        onOpenChange={setApiKeyOpen}
-        providerId={selectedProviderId}
-        onSaved={handleApiKeySaved}
+        row={setupDialog.row}
+        onOpenChange={(open) => {
+          if (!open) management.closeDialog(setupDialog.owner);
+        }}
+        onCreate={async (input, opts) => {
+          await management.handleCreateConfiguration(setupDialog.owner, input, opts);
+        }}
+        onUpdate={async (input, opts) => {
+          const configuration = setupDialog.row.configuration;
+          if (!configuration || configuration.status !== "supported") return;
+          await management.handleUpdateConfiguration(
+            setupDialog.owner,
+            {
+              configurationId: configuration.configurationId,
+              expectedRevision: configuration.revision,
+              ...input,
+            },
+            opts,
+          );
+        }}
       />
     );
   }
 
-  if (selectedProviderId && modelSelectOpen) {
+  const modelConfiguration = modelDialog
+    ? toSupportedConfiguration(modelDialog.row.configuration ?? null)
+    : null;
+
+  if (modelDialog && modelConfiguration) {
     return (
       <ModelSelectOverlay
         open
-        onOpenChange={setModelSelectOpen}
-        providerId={selectedProviderId}
-        selectedId={selectedDetail?.model}
+        configuration={modelConfiguration}
+        onOpenChange={(open) => {
+          if (!open) management.closeDialog(modelDialog.owner);
+        }}
+        selectedId={modelDialog.row.configuration?.selectedModelId ?? undefined}
+        onSelect={(modelId) => management.handleSelectModel(modelDialog.owner, modelId)}
       />
     );
   }
@@ -210,8 +218,6 @@ export function ProvidersScreen(): ReactElement {
         flexGrow={1}
         minHeight={0}
       >
-        {/* The list is chosen by name, so it keeps the width the clamp granted
-            it instead of shrinking under the details pane's content. */}
         <Box
           flexDirection="column"
           width={listWidth}
@@ -221,13 +227,14 @@ export function ProvidersScreen(): ReactElement {
         >
           <ProviderList
             providers={providers}
-            selectedId={activeSelectionId}
-            highlightedId={activeSelectionId}
+            selectedId={effectiveSelectedId ?? undefined}
+            highlightedId={effectiveSelectedId ?? undefined}
+            selectedConfigurationId={selectedConfigurationId}
             onSelect={setSelectedId}
             onHighlightChange={setSelectedId}
             isActive={isListActive}
-            contentWidth={Math.max((listWidth ?? columns) - 4, 1)}
-            compact={(listWidth ?? columns) < 34}
+            contentWidth={listContentWidth}
+            compact={compactList}
           />
         </Box>
         <Box
@@ -238,18 +245,15 @@ export function ProvidersScreen(): ReactElement {
           {...paneBorder(tokens, isDetailsActive)}
         >
           <ProviderDetails
-            provider={selectedDetail}
+            row={selectedRow}
+            actions={actions}
             isActive={isDetailsActive}
-            onConfigureKey={handleConfigureKey}
-            onSelectModel={handleSelectModel}
-            onRemove={handleRemoveProvider}
-            onSetActive={handleSetActive}
-            isPending={activateProvider.isPending || deleteCredentials.isPending}
+            isPending={management.isSubmitting}
             compact={detailsRows < COMFORTABLE_DETAILS_ROWS}
           />
         </Box>
       </Box>
-      {error && <Text color={tokens.error}>{sanitizeTerminalText(error)}</Text>}
+      {error ? <Text color={tokens.error}>{sanitizeTerminalText(error)}</Text> : null}
     </Box>
   );
 }

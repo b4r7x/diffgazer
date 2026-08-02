@@ -1,13 +1,13 @@
 import type { AppError } from "@diffgazer/core/errors";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { Context } from "hono";
-import type { SecretsStorageErrorCode } from "../config/types.js";
+import type { ConfigurationActionErrorCode } from "../config/types.js";
 import type { ConfigServiceErrorCode, StoreErrorCode } from "./error-codes.js";
 import { type ErrorStatus, errorResponse } from "./response.js";
 
 export type StoreHttpErrorCode =
   | StoreErrorCode
-  | SecretsStorageErrorCode
+  | ConfigurationActionErrorCode
   | ConfigServiceErrorCode
   | typeof ErrorCode.CONFIG_NOT_FOUND;
 
@@ -19,6 +19,8 @@ export function storeErrorStatus(code: StoreHttpErrorCode): ErrorStatus {
     case "MODEL_ERROR":
     case "INVALID_BODY":
     case "STORAGE_NOT_CONFIGURED":
+    case "INVALID_ACTION":
+    case "CONFIGURATION_UNSUPPORTED":
       return 400;
     case "PERMISSION_ERROR":
       return 403;
@@ -26,8 +28,10 @@ export function storeErrorStatus(code: StoreHttpErrorCode): ErrorStatus {
     case ErrorCode.CONFIG_NOT_FOUND:
     case ErrorCode.PROVIDER_NOT_FOUND:
     case "SECRET_NOT_FOUND":
+    case "CONFIGURATION_NOT_FOUND":
       return 404;
     case "CONCURRENCY_CONFLICT":
+    case "CONFIGURATION_CONFLICT":
       return 409;
     case ErrorCode.INTERNAL_ERROR:
     case "PARSE_ERROR":
@@ -37,6 +41,7 @@ export function storeErrorStatus(code: StoreHttpErrorCode): ErrorStatus {
     case "KEYRING_WRITE_FAILED":
     case "KEYRING_DELETE_FAILED":
     case "SECRETS_MIGRATION_FAILED":
+    case "SECRET_BINDING_FAILED":
     case "PERSIST_FAILED":
     case "ROLLBACK_FAILED":
       return 500;

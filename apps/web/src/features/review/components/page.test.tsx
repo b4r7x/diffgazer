@@ -1,7 +1,9 @@
+import { type BoundApi, createApi } from "@diffgazer/core/api";
+import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import { formatRunId } from "@diffgazer/core/format";
 import { createInitialReviewState, reviewReducer } from "@diffgazer/core/review";
-import type { InitResponse } from "@diffgazer/core/schemas/config";
+import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { KeyboardProvider } from "@diffgazer/keys";
@@ -12,6 +14,14 @@ import userEvent from "@testing-library/user-event";
 import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import {
+  configurationStatus,
+  LOCAL_OPENAI_CONFIGURATION,
+  makeConfigurationInitResponse,
+  makeReadyInitResponse,
+  READY_GEMINI_CONFIGURATION,
+  selectedIdentityFrom,
+} from "@/testing/configuration-fixtures";
 
 type ReviewQueryState = {
   data?: unknown;
@@ -57,47 +67,12 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 // Boundary mock: api/hooks is the HTTP-data fetch boundary; we provide canned data and assert on the resulting UI.
-vi.mock("@diffgazer/core/api/hooks", async () => {
-  const { makeCreateReviewResponse } = await vi.importActual<
-    typeof import("@diffgazer/core/testing/factories")
-  >("@diffgazer/core/testing/factories");
-  const initResponse = {
-    configPath: "/tmp/diffgazer/config.json",
-    config: { provider: "gemini", model: "gemini-2.5-flash" },
-    providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
-    settings: {
-      theme: "terminal",
-      defaultLenses: [],
-      defaultProfile: null,
-      severityThreshold: "low",
-      secretsStorage: null,
-      agentExecution: "parallel",
-    },
-    configured: true,
-    project: { projectId: "project-1", path: "/repo", trust: null },
-    setup: {
-      hasSecretsStorage: true,
-      hasProvider: true,
-      hasModel: true,
-      hasTrust: false,
-      isConfigured: true,
-      isReady: true,
-      missing: [],
-    },
-  } satisfies InitResponse;
+vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@diffgazer/core/api/hooks")>();
+  const { makeCreateReviewResponse } = await import("@diffgazer/core/testing/factories");
 
   return {
-    configQueries: {
-      all: () => ["config"],
-    },
-    useActivateProvider: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
-    useDeleteProviderCredentials: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
-    useInit: () => ({ data: initResponse, error: null, isLoading: false }),
-    useProviderStatus: () => ({
-      data: [{ provider: "gemini", hasApiKey: true, isActive: true }],
-      error: null,
-      isLoading: false,
-    }),
+    ...actual,
     useReview: mockUseReview,
     useReviewContext: () => ({ data: null }),
     useReviewLifecycleBase: mockUseReviewLifecycleBase,
@@ -109,7 +84,6 @@ vi.mock("@diffgazer/core/api/hooks", async () => {
         makeCreateReviewResponse({ reviewId: "rev-alternate", session: { mode } }),
       ),
     }),
-    useSaveConfig: () => ({ isPending: false, error: null, mutateAsync: vi.fn() }),
   };
 });
 
@@ -144,25 +118,77 @@ function makeStreamState() {
   };
 }
 
-function renderPage({ strict = false }: { strict?: boolean } = {}) {
+function makeLifecycleBaseReturn(overrides: Record<string, unknown> = {}) {
+  return {
+    stream: { abort: vi.fn(), cancel: vi.fn(), state: makeStreamState() },
+    checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
+    completion: {
+      isCompleting: false,
+      completedAt: null,
+      skipDelay: vi.fn(),
+      resetCompletion: vi.fn(),
+    },
+    start: {
+      hasStarted: true,
+      hasStreamed: true,
+      canStart: true,
+      identity: selectedIdentityFrom(READY_GEMINI_CONFIGURATION),
+      readinessGate: "ready" as const,
+    },
+    gate: "running" as const,
+    contextSnapshot: null,
+    reset: vi.fn(),
+    ...overrides,
+  };
+}
+
+function createMockApi(init = makeReadyInitResponse()): BoundApi {
+  return {
+    ...createApi({ baseUrl: "http://localhost" }),
+    loadConfigurationInit: vi.fn().mockResolvedValue(init),
+    listConfigurations: vi.fn().mockResolvedValue({
+      schemaVersion: 2,
+      configurations: init.configurations,
+      selectedConfigurationId: init.selectedConfigurationId,
+    }),
+    inspectConfiguration: vi.fn(),
+    selectConfiguration: vi.fn(),
+    testConfiguration: vi.fn(),
+    updateConfiguration: vi.fn(),
+    deleteConfiguration: vi.fn(),
+    executeConfigurationAction: vi.fn(),
+    createConfiguration: vi.fn(),
+  };
+}
+
+function renderPage({
+  strict = false,
+  init = makeReadyInitResponse(),
+}: {
+  strict?: boolean;
+  init?: ReturnType<typeof makeReadyInitResponse>;
+} = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
       mutations: { retry: false },
     },
   });
+  const api = createMockApi(init);
 
   function Wrapper({ children }: { children: ReactNode }) {
     const tree = (
       <QueryClientProvider client={queryClient}>
-        <ConfigProvider>
-          <KeyboardProvider>
-            <FooterProvider>
-              {children}
-              <Toaster />
-            </FooterProvider>
-          </KeyboardProvider>
-        </ConfigProvider>
+        <ApiProvider value={api}>
+          <ConfigProvider>
+            <KeyboardProvider>
+              <FooterProvider>
+                {children}
+                <Toaster />
+              </FooterProvider>
+            </KeyboardProvider>
+          </ConfigProvider>
+        </ApiProvider>
       </QueryClientProvider>
     );
 
@@ -185,18 +211,7 @@ function resetReviewMocks() {
   mockUseReview.mockReset();
   mockUseReview.mockReturnValue(reviewQuery({}));
   mockUseReviewLifecycleBase.mockReset();
-  mockUseReviewLifecycleBase.mockReturnValue({
-    stream: { abort: vi.fn(), cancel: vi.fn(), state: makeStreamState() },
-    checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
-    completion: {
-      isCompleting: false,
-      completedAt: null,
-      skipDelay: vi.fn(),
-      resetCompletion: vi.fn(),
-    },
-    start: { hasStarted: true, hasStreamed: true },
-    reset: vi.fn(),
-  });
+  mockUseReviewLifecycleBase.mockReturnValue(makeLifecycleBaseReturn());
 }
 
 describe("ReviewPage saved review loading", () => {
@@ -208,6 +223,33 @@ describe("ReviewPage saved review loading", () => {
     renderPage();
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading review...");
+  });
+
+  it("renders the durable terminal receipt for a saved review that never completed", async () => {
+    routeState.params = { reviewId: "review-cancelled" };
+    routeState.search = { mode: "staged" };
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        isSuccess: true,
+        data: {
+          review: {
+            metadata: { id: "review-cancelled" },
+            result: { issues: [] },
+            executionSnapshot: {
+              schemaVersion: 1,
+              executionFingerprint: "a".repeat(64),
+              receipt: { outcome: "budget-exhausted", usageAvailability: "unavailable" },
+            },
+          },
+        },
+      }),
+    );
+
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Budget Exhausted");
+    expect(screen.getByText(/Usage unavailable/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Review Complete/)).not.toBeInTheDocument();
   });
 
   it("opens a saved review at its summary before letting the user view results", async () => {
@@ -342,33 +384,23 @@ describe("ReviewPage saved review loading", () => {
     );
   });
 
-  it("keeps a routed live review streaming instead of loading it from history", () => {
+  it("keeps a routed live review streaming instead of loading it from history", async () => {
     const reviewId = "11111111-1111-4111-8111-111111111111";
     routeState.params = { reviewId };
     routeState.search = { mode: "unstaged", live: true };
-    mockUseReviewLifecycleBase.mockReturnValue({
-      stream: {
-        abort: vi.fn(),
-        cancel: vi.fn(),
-        state: { ...makeStreamState(), reviewId },
-      },
-      checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
-      completion: {
-        isCompleting: false,
-        completedAt: null,
-        skipDelay: vi.fn(),
-        resetCompletion: vi.fn(),
-      },
-      start: {
-        hasStarted: true,
-        hasStreamed: true,
-      },
-      reset: vi.fn(),
-    });
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeLifecycleBaseReturn({
+        stream: {
+          abort: vi.fn(),
+          cancel: vi.fn(),
+          state: { ...makeStreamState(), reviewId },
+        },
+      }),
+    );
 
     renderPage();
 
-    expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Progress" })).toBeInTheDocument();
   });
 
   it("streams when the saved review returns 404", async () => {
@@ -486,25 +518,13 @@ describe("ReviewPage stale live session falls back to saved review", () => {
     mockUseReviewLifecycleBase.mockImplementation(
       (opts: { onNotFoundInSession?: (id: string) => void }) => {
         captured.onNotFoundInSession = opts.onNotFoundInSession ?? null;
-        return {
+        return makeLifecycleBaseReturn({
           stream: {
             abort: vi.fn(),
             cancel: vi.fn(),
             state: { ...makeStreamState(), reviewId: STALE_REVIEW_ID },
           },
-          checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
-          completion: {
-            isCompleting: false,
-            completedAt: null,
-            skipDelay: vi.fn(),
-            resetCompletion: vi.fn(),
-          },
-          start: {
-            hasStarted: true,
-            hasStreamed: true,
-          },
-          reset: vi.fn(),
-        };
+        });
       },
     );
   });
@@ -529,10 +549,8 @@ describe("ReviewPage stale live session falls back to saved review", () => {
 
     renderPage();
 
-    // Initially streaming
-    expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Progress" })).toBeInTheDocument();
 
-    // Simulate stream 404 -- onNotFoundInSession fires from use-review-start
     await act(() => {
       captured.onNotFoundInSession?.(STALE_REVIEW_ID);
     });
@@ -555,14 +573,12 @@ describe("ReviewPage stale live session falls back to saved review", () => {
 
     renderPage();
 
-    expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Progress" })).toBeInTheDocument();
 
-    // Simulate stream 404
     await act(() => {
       captured.onNotFoundInSession?.(STALE_REVIEW_ID);
     });
 
-    // Should show exactly one error toast and navigate home -- not loop
     const errorToast = await screen.findByRole("alert");
     expect(errorToast).toHaveTextContent(/live session has expired/i);
     expect(mockClearActiveSession).toHaveBeenCalledWith("staged", STALE_REVIEW_ID);
@@ -593,25 +609,13 @@ describe("ReviewPage reviewId changes", () => {
 
     mockUseReviewLifecycleBase.mockImplementation((opts: { onComplete?: () => void }) => {
       capturedOnComplete = opts.onComplete ?? null;
-      return {
+      return makeLifecycleBaseReturn({
         stream: {
           abort: vi.fn(),
           cancel: vi.fn(),
           state: { ...makeStreamState(), reviewId: FIRST_REVIEW_ID, issues: [firstIssue] },
         },
-        checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
-        completion: {
-          isCompleting: false,
-          completedAt: null,
-          skipDelay: vi.fn(),
-          resetCompletion: vi.fn(),
-        },
-        start: {
-          hasStarted: true,
-          hasStreamed: true,
-        },
-        reset: vi.fn(),
-      };
+      });
     });
 
     const view = renderPage();
@@ -625,25 +629,15 @@ describe("ReviewPage reviewId changes", () => {
     expect(mockClearActiveSession).toHaveBeenCalledWith("unstaged", FIRST_REVIEW_ID);
 
     routeState.params = { reviewId: SECOND_REVIEW_ID };
-    mockUseReviewLifecycleBase.mockReturnValue({
-      stream: {
-        abort: vi.fn(),
-        cancel: vi.fn(),
-        state: { ...makeStreamState(), reviewId: SECOND_REVIEW_ID },
-      },
-      checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
-      completion: {
-        isCompleting: false,
-        completedAt: null,
-        skipDelay: vi.fn(),
-        resetCompletion: vi.fn(),
-      },
-      start: {
-        hasStarted: true,
-        hasStreamed: true,
-      },
-      reset: vi.fn(),
-    });
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeLifecycleBaseReturn({
+        stream: {
+          abort: vi.fn(),
+          cancel: vi.fn(),
+          state: { ...makeStreamState(), reviewId: SECOND_REVIEW_ID },
+        },
+      }),
+    );
 
     view.rerender(<ReviewPage />);
 
@@ -728,7 +722,7 @@ describe("ReviewPage live review phase transitions", () => {
     });
     mockUseReviewLifecycleBase.mockImplementation((opts: { onComplete?: () => void }) => {
       capturedOnComplete = opts.onComplete ?? null;
-      return {
+      return makeLifecycleBaseReturn({
         stream: {
           abort: vi.fn(),
           cancel: vi.fn(),
@@ -738,19 +732,7 @@ describe("ReviewPage live review phase transitions", () => {
             reviewId: LIVE_REVIEW_ID,
           },
         },
-        checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
-        completion: {
-          isCompleting: false,
-          completedAt: null,
-          skipDelay: vi.fn(),
-          resetCompletion: vi.fn(),
-        },
-        start: {
-          hasStarted: true,
-          hasStreamed: true,
-        },
-        reset: vi.fn(),
-      };
+      });
     });
   });
 
@@ -772,7 +754,7 @@ describe("ReviewPage live review phase transitions", () => {
 
     renderPage();
 
-    expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Progress" })).toBeInTheDocument();
 
     await act(() => {
       capturedOnComplete?.();
@@ -795,6 +777,7 @@ describe("ReviewPage live review phase transitions", () => {
   async function openSummary() {
     const user = userEvent.setup();
     renderPage();
+    await screen.findByRole("region", { name: "Progress" });
     await act(() => {
       capturedOnComplete?.();
     });
@@ -830,5 +813,114 @@ describe("ReviewPage live review phase transitions", () => {
 
     expect(screen.getByRole("button", { name: /view results/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("ReviewPage protected route readiness", () => {
+  beforeEach(resetReviewMocks);
+
+  it("waits for readiness before starting a live review", async () => {
+    const reviewId = "11111111-1111-4111-8111-111111111111";
+    routeState.params = { reviewId };
+    routeState.search = { mode: "unstaged", live: true };
+    let capturedOptions: Parameters<typeof mockUseReviewLifecycleBase>[0] | undefined;
+    mockUseReviewLifecycleBase.mockImplementation((options) => {
+      capturedOptions = options;
+      return makeLifecycleBaseReturn({
+        stream: {
+          abort: vi.fn(),
+          cancel: vi.fn(),
+          state: { ...makeStreamState(), reviewId },
+        },
+        checks: {
+          loadingMessage: "Checking for changes...",
+          isNoDiffError: false,
+          isCheckingForChanges: true,
+        },
+        gate: "loading",
+      });
+    });
+
+    renderPage();
+
+    expect(screen.getByRole("status")).toHaveTextContent("Checking for changes...");
+    await waitFor(() => {
+      expect(capturedOptions?.readiness?.ready).toBe(true);
+      expect(capturedOptions?.configuration).toEqual(
+        selectedIdentityFrom(READY_GEMINI_CONFIGURATION),
+      );
+    });
+  });
+
+  it("sends the exact selected configuration fingerprint into the review lifecycle", async () => {
+    const reviewId = "11111111-1111-4111-8111-111111111111";
+    routeState.params = { reviewId };
+    routeState.search = { mode: "unstaged", live: true };
+    let capturedOptions: Parameters<typeof mockUseReviewLifecycleBase>[0] | undefined;
+    mockUseReviewLifecycleBase.mockImplementation((options) => {
+      capturedOptions = options;
+      return makeLifecycleBaseReturn({
+        stream: {
+          abort: vi.fn(),
+          cancel: vi.fn(),
+          state: { ...makeStreamState(), reviewId },
+        },
+      });
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(capturedOptions?.configuration).toEqual(
+        selectedIdentityFrom(READY_GEMINI_CONFIGURATION),
+      );
+    });
+    expect(JSON.stringify(capturedOptions?.configuration ?? {})).not.toMatch(
+      new RegExp(
+        String.raw`\b${LEGACY_V1_HAS_API_KEY_PROPERTY}\b|\bproviderStatus\b|provider-status`,
+        "i",
+      ),
+    );
+  });
+
+  it("resumes a saved completed review without falsely re-gating setup", async () => {
+    const issue = makeIssue({ id: "issue-1", title: "Saved result issue" });
+    routeState.params = { reviewId: "review-saved" };
+    routeState.search = { mode: "staged" };
+    mockUseReview.mockReturnValue(
+      reviewQuery({
+        isSuccess: true,
+        data: {
+          review: {
+            metadata: { id: "review-saved" },
+            result: { issues: [issue] },
+          },
+        },
+      }),
+    );
+    mockUseReviewLifecycleBase.mockImplementation((_options) =>
+      makeLifecycleBaseReturn({
+        start: {
+          ...makeLifecycleBaseReturn().start,
+          canStart: true,
+          readinessGate: "unreachable",
+        },
+        gate: "running",
+        checks: { loadingMessage: null, isNoDiffError: false, isCheckingForChanges: false },
+      }),
+    );
+
+    renderPage({
+      init: makeConfigurationInitResponse([
+        configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
+      ]),
+    });
+
+    expect(
+      await screen.findByText(`Review Complete ${formatRunId("review-saved")}`),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Saved result issue")).toBeInTheDocument();
+    expect(screen.queryByText(/Configuration Not Ready/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,8 @@
 import { LensStatSchema } from "@diffgazer/core/schemas/events";
 import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
 import {
+  type ExecutionResult,
+  ExecutionResultSchema,
   LensIdSchema,
   ParsedDiffSchema,
   ProfileIdSchema,
@@ -87,6 +89,35 @@ export function normalizeSavedReviewLineFields(review: SavedReview): SavedReview
   };
 }
 
+function salvageExecution(raw: unknown): ExecutionResult | undefined {
+  const parsed = ExecutionResultSchema.safeParse(raw);
+  if (parsed.success) return parsed.data;
+  return undefined;
+}
+
+/** Non-completed terminal outcomes must not expose resumable findings through history reads. */
+export function prohibitResumablePartialFindings(review: SavedReview): SavedReview {
+  if (!review.execution || review.execution.receipt.outcome === "completed") return review;
+
+  return {
+    ...review,
+    metadata: {
+      ...review.metadata,
+      issueCount: 0,
+      blockerCount: 0,
+      highCount: 0,
+      mediumCount: 0,
+      lowCount: 0,
+      nitCount: 0,
+    },
+    result: { issues: [] },
+    execution: ExecutionResultSchema.parse({
+      receipt: review.execution.receipt,
+      result: { issues: [] },
+    }),
+  };
+}
+
 /**
  * Salvages an immutable stored review whose strict-schema parse failed (e.g. a
  * 0.1.3-era record with line/evidence/vocabulary values the current write-side
@@ -113,27 +144,31 @@ export function lenientReadSavedReview(
   const salvagedIssues = salvageIssues(result.issues);
   const severityCounts = calculateSeverityCounts(salvagedIssues.items);
 
+  const execution = salvageExecution(record.execution);
+  const salvagedReview = normalizeSavedReviewLineFields({
+    metadata: {
+      ...metadataResult.data,
+      issueCount: salvagedIssues.items.length,
+      blockerCount: severityCounts.blocker,
+      highCount: severityCounts.high,
+      mediumCount: severityCounts.medium,
+      lowCount: severityCounts.low,
+      nitCount: severityCounts.nit,
+    },
+    result: {
+      issues: salvagedIssues.items,
+    },
+    ...withParsedOptional(record, "diff", ParsedDiffSchema),
+    gitContext,
+    ...withParsedOptional(record, "lensStats", z.array(LensStatSchema)),
+    ...withParsedOptional(record, "droppedDuplicates", CountFieldSchema),
+    ...withParsedOptional(record, "droppedBelowThreshold", CountFieldSchema),
+    ...withParsedOptional(record, "minSeverity", ReviewSeveritySchema),
+    ...(execution ? { execution } : {}),
+  });
+
   return {
-    item: normalizeSavedReviewLineFields({
-      metadata: {
-        ...metadataResult.data,
-        issueCount: salvagedIssues.items.length,
-        blockerCount: severityCounts.blocker,
-        highCount: severityCounts.high,
-        mediumCount: severityCounts.medium,
-        lowCount: severityCounts.low,
-        nitCount: severityCounts.nit,
-      },
-      result: {
-        issues: salvagedIssues.items,
-      },
-      ...withParsedOptional(record, "diff", ParsedDiffSchema),
-      gitContext,
-      ...withParsedOptional(record, "lensStats", z.array(LensStatSchema)),
-      ...withParsedOptional(record, "droppedDuplicates", CountFieldSchema),
-      ...withParsedOptional(record, "droppedBelowThreshold", CountFieldSchema),
-      ...withParsedOptional(record, "minSeverity", ReviewSeveritySchema),
-    }),
+    item: prohibitResumablePartialFindings(salvagedReview),
     diagnostics: { droppedIssueCount: salvagedIssues.droppedItemCount },
   };
 }

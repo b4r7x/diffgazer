@@ -2,65 +2,85 @@ import "./model-select-overlay.terminal-mock";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
-import type { ProviderModelsResponse } from "@diffgazer/core/schemas/config";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import type {
+  ClientConfigurationActionResponse,
+  ClientConfigurationSummary,
+  Readiness,
+  RunnableProductId,
+} from "@diffgazer/core/schemas/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import { vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { escapeRegExp } from "../../../testing/escape-regexp";
 import { CliThemeProvider } from "../../../theme/provider";
+import { makeConfigurationListResponse, READY_GEMINI_CONFIGURATION } from "../testing/fixtures";
 
-export const ARROW_UP = "\u001b[A";
 export const ARROW_DOWN = "\u001b[B";
 
-// Free-first 5-model Gemini layout (3 free, 2 paid), matching the catalog's
-// deterministic free-first ordering. The transform (P1) produces this order; the
-// overlay test feeds the same shape over the boundary-mocked api.
-export const GEMINI_CATALOG: ProviderModelsResponse = {
-  models: [
-    { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "1M ctx", tier: "free" },
-    {
-      id: "gemini-2.5-flash-lite",
-      name: "Gemini 2.5 Flash-Lite",
-      description: "1M ctx",
-      tier: "free",
+type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
+type TestConfigurationResponse = Extract<ClientConfigurationActionResponse, { action: "test" }>;
+
+export const CHECKED_AT = "2026-07-31T12:00:00.000Z";
+
+export function copyNotice(productId: RunnableProductId) {
+  const notice = PRODUCT_REGISTRY[productId].notice;
+  return { ...notice, billing: [...notice.billing], privacy: [...notice.privacy] };
+}
+
+export function readyFor(productId: RunnableProductId): Extract<Readiness, { status: "ready" }> {
+  const notice = PRODUCT_REGISTRY[productId].notice;
+  return {
+    status: "ready",
+    ready: true,
+    evidenceStatus: "passed",
+    checkedAt: CHECKED_AT,
+    acknowledgement: {
+      status: "accepted",
+      noticeId: notice.id,
+      noticeVersion: notice.noticeVersion,
+      acceptedAt: CHECKED_AT,
     },
-    { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", description: "1M ctx", tier: "free" },
-    {
-      id: "gemini-3-flash-preview",
-      name: "Gemini 3 Flash Preview",
-      description: "1M ctx",
-      tier: "paid",
-    },
-    {
-      id: "gemini-3-pro-preview",
-      name: "Gemini 3 Pro Preview",
-      description: "1M ctx",
-      tier: "paid",
-    },
-  ],
-  fetchedAt: new Date().toISOString(),
-  source: "live",
-  cached: false,
-};
+    action: "inspect",
+    explanation: "The exact configured review path is ready.",
+    remediation: { code: "none", message: "No remediation is required." },
+  };
+}
+
+export function testDiscoveryResponse(
+  configuration: SupportedConfigurationSummary,
+  readiness: Readiness = readyFor(configuration.productId),
+  status: TestConfigurationResponse["status"] = "succeeded",
+): TestConfigurationResponse {
+  return { action: "test", status, configuration, readiness };
+}
+
+export const GEMINI_CONFIGURATION = READY_GEMINI_CONFIGURATION;
+
+export const GEMINI_MODELS = [
+  {
+    id: "gemini-2.5-flash",
+    name: "gemini-2.5-flash",
+    description: "Exact credentialed production-path evidence passed.",
+    tier: "paid" as const,
+  },
+];
 
 export function geminiName(id: string): string {
-  const model = GEMINI_CATALOG.models.find((m) => m.id === id);
-  if (!model) throw new Error(`Gemini catalog fixture is missing model "${id}"`);
-  return model.name ?? id;
+  const model = GEMINI_MODELS.find((entry) => entry.id === id);
+  if (!model) throw new Error(`Gemini discovery fixture is missing model "${id}"`);
+  return model.name;
 }
 
 export { flush } from "../../../testing/flush";
 
-// Poll on a macrotask boundary. React Query resolves the mocked api over a
-// microtask chain whose React-scheduler commit can land a few macrotasks later,
-// and a mounted ink Spinner runs a real setInterval; yielding to setTimeout(0)
-// each attempt lets both settle deterministically instead of racing setImmediate.
 export async function flushUntil(predicate: () => boolean, attempts = 200): Promise<void> {
   for (let i = 0; i < attempts; i += 1) {
     if (predicate()) return;
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
+  throw new Error(`Timed out waiting for condition after ${attempts} attempts`);
 }
 
 export function makeQueryClient(): QueryClient {
@@ -73,10 +93,17 @@ export function makeQueryClient(): QueryClient {
 }
 
 export function makeGeminiApi(): BoundApi {
-  const getProviderModels = vi
-    .fn<() => Promise<ProviderModelsResponse>>()
-    .mockResolvedValue(GEMINI_CATALOG);
-  return { ...createApi({ baseUrl: "http://localhost" }), getProviderModels } satisfies BoundApi;
+  const listConfigurations = vi
+    .fn<BoundApi["listConfigurations"]>()
+    .mockResolvedValue(makeConfigurationListResponse());
+  const testConfiguration = vi
+    .fn<BoundApi["testConfiguration"]>()
+    .mockResolvedValue(testDiscoveryResponse(GEMINI_CONFIGURATION));
+  return {
+    ...createApi({ baseUrl: "http://localhost" }),
+    listConfigurations,
+    testConfiguration,
+  } satisfies BoundApi;
 }
 
 export function countPrefixes(
@@ -106,8 +133,6 @@ export function Wrapper({
   api?: BoundApi;
   queryClient?: QueryClient;
 }) {
-  // Held in state so a rerender keeps the same cache and api identity: building
-  // them in the body would drop the React Query cache on every commit.
   const [defaultQueryClient] = useState(makeQueryClient);
   const [defaultApi] = useState(makeGeminiApi);
   return (

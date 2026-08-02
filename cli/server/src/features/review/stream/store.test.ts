@@ -5,6 +5,7 @@ import {
   addEvent,
   buildScopeKey,
   cancelSession,
+  cancelSessionsForConfiguration,
   cancelStaleSessionsForProjectMode,
   cleanupStaleSessions,
   createSession,
@@ -32,6 +33,10 @@ function createTrackedSession(
     scopeKey?: string;
     mode?: "staged" | "unstaged";
     monotonicNow?: () => number;
+    provider?: string | null;
+    configurationId?: string | null;
+    configurationRevision?: number | null;
+    admittedExecutionFingerprint?: string | null;
   } = {},
 ) {
   createdSessionIds.add(reviewId);
@@ -44,6 +49,17 @@ function createTrackedSession(
     ...(options.monotonicNow === undefined ? {} : { monotonicNow: options.monotonicNow }),
     ...(options.reviewConfigKey === undefined ? {} : { reviewConfigKey: options.reviewConfigKey }),
     ...(options.scopeKey === undefined ? {} : { scopeKey: options.scopeKey }),
+    ...(options.provider === undefined ? {} : { provider: options.provider }),
+    ...(options.configurationId === undefined || options.configurationId === null
+      ? {}
+      : { configurationId: options.configurationId }),
+    ...(options.configurationRevision === undefined || options.configurationRevision === null
+      ? {}
+      : { configurationRevision: options.configurationRevision }),
+    ...(options.admittedExecutionFingerprint === undefined ||
+    options.admittedExecutionFingerprint === null
+      ? {}
+      : { admittedExecutionFingerprint: options.admittedExecutionFingerprint }),
   });
 }
 
@@ -807,6 +823,145 @@ describe("buildScopeKey", () => {
     expect(buildScopeKey({ files: ["a|b"] })).not.toBe(buildScopeKey({ files: ["a", "b"] }));
     // The key is order-independent so the same selection always dedupes.
     expect(buildScopeKey({ files: ["b", "a"] })).toBe(buildScopeKey({ files: ["a", "b"] }));
+  });
+});
+
+describe("configuration fingerprint concurrency", () => {
+  it("does not reuse active sessions across different admitted execution fingerprints", () => {
+    const first = createTrackedSession("fingerprint-a", {
+      mode: "unstaged",
+      reviewConfigKey: "f:admitted-a",
+      configurationId: "cfg-1",
+      configurationRevision: 1,
+      admittedExecutionFingerprint: "admitted-a",
+    });
+    const second = createTrackedSession("fingerprint-b", {
+      mode: "unstaged",
+      reviewConfigKey: "f:admitted-b",
+      configurationId: "cfg-1",
+      configurationRevision: 1,
+      admittedExecutionFingerprint: "admitted-b",
+    });
+    markReady(first.reviewId);
+    markReady(second.reviewId);
+
+    expect(
+      getActiveSessionForProject("/project", {
+        headCommit: "abc",
+        statusHash: "hash",
+        statusHashKind: "full",
+        mode: "unstaged",
+        reviewConfigKey: "f:admitted-a",
+      })?.reviewId,
+    ).toBe(first.reviewId);
+    expect(
+      getActiveSessionForProject("/project", {
+        headCommit: "abc",
+        statusHash: "hash",
+        statusHashKind: "full",
+        mode: "unstaged",
+        reviewConfigKey: "f:admitted-b",
+      })?.reviewId,
+    ).toBe(second.reviewId);
+  });
+
+  it("cancels only queued and active sessions for the exact configuration tuple", () => {
+    const exact = createTrackedSession("exact-config", {
+      mode: "unstaged",
+      configurationId: "cfg-1",
+      configurationRevision: 3,
+      admittedExecutionFingerprint: "admitted-exact",
+    });
+    const otherRevision = createTrackedSession("other-revision", {
+      mode: "unstaged",
+      configurationId: "cfg-1",
+      configurationRevision: 4,
+      admittedExecutionFingerprint: "admitted-exact",
+    });
+    const otherConfig = createTrackedSession("other-config", {
+      mode: "unstaged",
+      configurationId: "cfg-2",
+      configurationRevision: 3,
+      admittedExecutionFingerprint: "admitted-exact",
+    });
+    for (const session of [exact, otherRevision, otherConfig]) {
+      markReady(session.reviewId);
+    }
+
+    cancelSessionsForConfiguration("cfg-1", {
+      configurationRevision: 3,
+      admittedExecutionFingerprint: "admitted-exact",
+      message: "Configuration deleted.",
+    });
+
+    expect(exact.isComplete).toBe(true);
+    expect(otherRevision.isComplete).toBe(false);
+    expect(otherConfig.isComplete).toBe(false);
+  });
+
+  it("does not cancel unrelated provider sessions when an exact configuration cancellation is requested", () => {
+    const unrelated = createTrackedSession("legacy-provider", {
+      mode: "unstaged",
+      provider: "openrouter",
+      configurationId: null,
+      configurationRevision: null,
+      admittedExecutionFingerprint: null,
+    });
+    markReady(unrelated.reviewId);
+
+    cancelSessionsForConfiguration("cfg-1", {
+      configurationRevision: 1,
+      admittedExecutionFingerprint: "admitted-a",
+    });
+
+    expect(unrelated.isComplete).toBe(false);
+  });
+
+  it("emits distinct terminal outcomes for superseded and deleted configuration cancellations", () => {
+    const supersededEvents: FullReviewStreamEvent[] = [];
+    const deletedEvents: FullReviewStreamEvent[] = [];
+    const superseded = createTrackedSession("superseded", {
+      mode: "unstaged",
+      projectPath: "/superseded-project",
+    });
+    const deleted = createTrackedSession("deleted-config", {
+      mode: "unstaged",
+      projectPath: "/deleted-project",
+      configurationId: "cfg-delete",
+      configurationRevision: 1,
+      admittedExecutionFingerprint: "admitted-delete",
+    });
+    markReady(superseded.reviewId);
+    markReady(deleted.reviewId);
+    subscribe(superseded.reviewId, (event) => supersededEvents.push(event));
+    subscribe(deleted.reviewId, (event) => deletedEvents.push(event));
+
+    cancelStaleSessionsForProjectMode(
+      "/superseded-project",
+      "unstaged",
+      "abc",
+      "hash",
+      "full",
+      "l:security",
+      undefined,
+    );
+    cancelSessionsForConfiguration("cfg-delete", {
+      configurationRevision: 1,
+      admittedExecutionFingerprint: "admitted-delete",
+      message: "Configuration deleted.",
+    });
+
+    expect(supersededEvents.at(-1)).toMatchObject({
+      type: "error",
+      error: { code: ReviewErrorCode.SESSION_STALE },
+    });
+    expect(deletedEvents.at(-1)).toMatchObject({
+      type: "error",
+      error: {
+        code: ReviewErrorCode.SESSION_STALE,
+        message: "Configuration deleted.",
+      },
+    });
   });
 });
 

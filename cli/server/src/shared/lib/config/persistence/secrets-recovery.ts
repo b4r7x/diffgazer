@@ -1,58 +1,38 @@
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { z } from "zod";
-import {
-  atomicWriteFile,
-  readJsonFileSyncSafe,
-  removeFileSync,
-  writeJsonFileSync,
-} from "../../fs.js";
+import { atomicWriteFile, readJsonFileSyncSafe, removeFileSync } from "../../fs.js";
 import { log } from "../../log.js";
 import { getGlobalConfigPath, getGlobalSecretsPath } from "../../paths.js";
-import type { SecretsState, SecretsStorageError, SecretsStorageErrorCode } from "../types.js";
-import { decodeSecretsV2, type SecretsDocumentV2, serializeSecretsV2 } from "./secrets.js";
+import type { SecretsStorageError, SecretsStorageErrorCode } from "../types.js";
 
 /**
- * Write-ahead log for the config+secrets aggregate: a `.recovery` sidecar holding the
- * prior state of both files so an interrupted credential mutation can be replayed or
- * rolled back on the next startup.
+ * Write-ahead log for the config+secrets commit: a `.recovery` sidecar holding
+ * the exact prior bytes of both files so an interrupted two-file mutation is
+ * rolled back on the next startup. Bytes, not parsed JSON: unknown records from
+ * a newer binary must be restored byte-for-byte.
  */
-const SecretsRecoveryRecordSchema = z
+const FileSnapshotSchema = z
   .object({
-    version: z.literal(1),
-    previousConfigFileExisted: z.boolean(),
-    previousConfig: z.unknown(),
-    previousFileExisted: z.boolean(),
-    previousSecrets: z
-      .object({
-        providers: z.record(z.string(), z.unknown()),
-      })
-      .strict(),
-  })
-  .strict();
-
-export type SecretsRecoveryRecord = z.infer<typeof SecretsRecoveryRecordSchema>;
-
-const SecretsRecoveryRecordV2Schema = z
-  .object({
-    version: z.literal(2),
-    previousFileExisted: z.boolean(),
-    previousSecretsBase64: z.string().nullable(),
+    existed: z.boolean(),
+    base64: z.string().nullable(),
   })
   .strict()
   .refine(
-    (record) => record.previousFileExisted === (record.previousSecretsBase64 !== null),
-    "Secrets recovery snapshot does not match file state",
+    (snapshot) => snapshot.existed === (snapshot.base64 !== null),
+    "Recovery snapshot does not match file state",
   );
 
-export type SecretsRecoveryRecordV2 = z.infer<typeof SecretsRecoveryRecordV2Schema>;
+const DocumentRecoveryRecordSchema = z
+  .object({
+    version: z.literal(2),
+    previousConfig: FileSnapshotSchema,
+    previousSecrets: FileSnapshotSchema,
+  })
+  .strict();
+
+export type DocumentRecoveryRecord = z.infer<typeof DocumentRecoveryRecordSchema>;
 
 export const getSecretsRecoveryPath = (): string => `${getGlobalSecretsPath()}.recovery`;
-
-export const serializeSecretsState = (
-  state: SecretsState,
-): SecretsRecoveryRecord["previousSecrets"] => ({
-  providers: { ...state.unknownSecrets, ...state.providers },
-});
 
 export const rollbackFailure = (cause: unknown): SecretsStorageError => {
   log("error", "secrets_rollback_failed", { error: getErrorMessage(cause) });
@@ -62,65 +42,30 @@ export const rollbackFailure = (cause: unknown): SecretsStorageError => {
   );
 };
 
-const restoreRecoveryRecordSync = (record: SecretsRecoveryRecord): void => {
-  if (record.previousConfigFileExisted) {
-    writeJsonFileSync(getGlobalConfigPath(), record.previousConfig, 0o600);
-  } else {
-    removeFileSync(getGlobalConfigPath());
-  }
-  if (record.previousFileExisted) {
-    writeJsonFileSync(getGlobalSecretsPath(), record.previousSecrets, 0o600);
-  } else {
-    removeFileSync(getGlobalSecretsPath());
-  }
-};
+const snapshotOf = (bytes: Uint8Array | null): z.infer<typeof FileSnapshotSchema> => ({
+  existed: bytes !== null,
+  base64: bytes === null ? null : Buffer.from(bytes).toString("base64"),
+});
 
-export type SecretsRecoveryRead =
-  | { kind: "missing" }
-  | { kind: "valid"; record: SecretsRecoveryRecord }
-  | { kind: "invalid"; error: SecretsStorageError };
-
-export const readSecretsRecovery = (): SecretsRecoveryRead => {
-  const recoveryPath = getSecretsRecoveryPath();
-  const readResult = readJsonFileSyncSafe<unknown>(recoveryPath);
-  if (readResult.status === "missing") return { kind: "missing" };
-  if (readResult.status === "corrupt") {
-    return {
-      kind: "invalid",
-      error: rollbackFailure(new Error("Secrets recovery record is not valid JSON")),
-    };
-  }
-
-  const parsed = SecretsRecoveryRecordSchema.safeParse(readResult.data);
-  if (!parsed.success) {
-    return {
-      kind: "invalid",
-      error: rollbackFailure(new Error("Secrets recovery record failed validation")),
-    };
-  }
-
-  return { kind: "valid", record: parsed.data };
-};
-
-export type SecretsRecoveryReadV2 =
-  | { kind: "missing" }
-  | { kind: "valid"; record: SecretsRecoveryRecordV2; previousSecrets: SecretsDocumentV2 | null }
-  | { kind: "invalid"; error: SecretsStorageError };
-
-export const writeSecretsRecoveryV2 = async (
-  previousSecrets: SecretsDocumentV2 | null,
-): Promise<void> => {
-  const record: SecretsRecoveryRecordV2 = {
+export const writeDocumentRecovery = async (previous: {
+  readonly config: Uint8Array | null;
+  readonly secrets: Uint8Array | null;
+}): Promise<DocumentRecoveryRecord> => {
+  const record: DocumentRecoveryRecord = {
     version: 2,
-    previousFileExisted: previousSecrets !== null,
-    previousSecretsBase64: previousSecrets
-      ? Buffer.from(serializeSecretsV2(previousSecrets)).toString("base64")
-      : null,
+    previousConfig: snapshotOf(previous.config),
+    previousSecrets: snapshotOf(previous.secrets),
   };
   await atomicWriteFile(getSecretsRecoveryPath(), `${JSON.stringify(record, null, 2)}\n`, 0o600);
+  return record;
 };
 
-export const readSecretsRecoveryV2 = (): SecretsRecoveryReadV2 => {
+export type DocumentRecoveryRead =
+  | { kind: "missing" }
+  | { kind: "valid"; record: DocumentRecoveryRecord }
+  | { kind: "invalid"; error: SecretsStorageError };
+
+export const readDocumentRecovery = (): DocumentRecoveryRead => {
   const readResult = readJsonFileSyncSafe<unknown>(getSecretsRecoveryPath());
   if (readResult.status === "missing") return { kind: "missing" };
   if (readResult.status === "corrupt") {
@@ -129,62 +74,52 @@ export const readSecretsRecoveryV2 = (): SecretsRecoveryReadV2 => {
       error: rollbackFailure(new Error("Secrets recovery record is not valid JSON")),
     };
   }
-  const parsed = SecretsRecoveryRecordV2Schema.safeParse(readResult.data);
+  const parsed = DocumentRecoveryRecordSchema.safeParse(readResult.data);
   if (!parsed.success) {
     return {
       kind: "invalid",
       error: rollbackFailure(new Error("Secrets recovery record failed validation")),
     };
   }
-  try {
-    return {
-      kind: "valid",
-      record: parsed.data,
-      previousSecrets: parsed.data.previousSecretsBase64
-        ? decodeSecretsV2(Buffer.from(parsed.data.previousSecretsBase64, "base64"))
-        : null,
-    };
-  } catch (cause) {
-    return { kind: "invalid", error: rollbackFailure(cause) };
-  }
+  return { kind: "valid", record: parsed.data };
 };
 
-export const reconcileSecretsRecoveryV2AtStartup =
-  async (): Promise<SecretsStorageError | null> => {
-    const recovery = readSecretsRecoveryV2();
-    if (recovery.kind === "missing") return null;
-    if (recovery.kind === "invalid") return recovery.error;
+const restoreSnapshot = async (
+  filePath: string,
+  snapshot: z.infer<typeof FileSnapshotSchema>,
+): Promise<void> => {
+  if (snapshot.base64 === null) {
+    removeFileSync(filePath);
+    return;
+  }
+  await atomicWriteFile(filePath, Buffer.from(snapshot.base64, "base64").toString("utf8"), 0o600);
+};
 
-    try {
-      if (recovery.previousSecrets) {
-        await atomicWriteFile(
-          getGlobalSecretsPath(),
-          new TextDecoder().decode(serializeSecretsV2(recovery.previousSecrets)),
-          0o600,
-        );
-      } else {
-        removeFileSync(getGlobalSecretsPath());
-      }
-      removeFileSync(getSecretsRecoveryPath());
-      return null;
-    } catch (cause) {
-      return rollbackFailure(cause);
-    }
-  };
+export const clearDocumentRecovery = (): void => {
+  removeFileSync(getSecretsRecoveryPath());
+};
 
-// The caller must hold the config-file transaction lock. Recovery covers config and
-// secrets as one aggregate, so replaying it outside that lock can roll back an active
-// writer in another process.
-export const reconcileSecretsRecoveryAtStartup = (): SecretsStorageError | null => {
-  const recovery = readSecretsRecovery();
-  if (recovery.kind === "missing") return null;
-  if (recovery.kind === "invalid") return recovery.error;
-
+/**
+ * Roll both files back to their pre-mutation bytes. The caller must hold the
+ * config and secrets transaction locks: replaying outside them can undo another
+ * process's committed write.
+ */
+export const restoreDocumentRecovery = async (
+  record: DocumentRecoveryRecord,
+): Promise<SecretsStorageError | null> => {
   try {
-    restoreRecoveryRecordSync(recovery.record);
-    removeFileSync(getSecretsRecoveryPath());
+    await restoreSnapshot(getGlobalConfigPath(), record.previousConfig);
+    await restoreSnapshot(getGlobalSecretsPath(), record.previousSecrets);
+    clearDocumentRecovery();
     return null;
   } catch (cause) {
     return rollbackFailure(cause);
   }
+};
+
+export const reconcileDocumentRecoveryAtStartup = async (): Promise<SecretsStorageError | null> => {
+  const recovery = readDocumentRecovery();
+  if (recovery.kind === "missing") return null;
+  if (recovery.kind === "invalid") return recovery.error;
+  return restoreDocumentRecovery(recovery.record);
 };

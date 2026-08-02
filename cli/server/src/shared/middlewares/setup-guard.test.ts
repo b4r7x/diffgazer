@@ -1,13 +1,14 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
-import { requireValue } from "@diffgazer/core/testing/assertions";
+import { READINESS_PRESENTATION, type ReadinessStatus } from "@diffgazer/core/schemas/config";
 import { Hono } from "hono";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { SetupVerdict } from "../lib/config/setup-status.js";
 
-let diffgazerHome: string;
-let projectRoot: string;
+const { getSetupVerdict } = vi.hoisted(() => ({ getSetupVerdict: vi.fn() }));
+
+vi.mock("../lib/config/setup-status.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/config/setup-status.js")>();
+  return { ...actual, getSetupVerdict };
+});
 
 async function createApp(): Promise<Hono> {
   const { requireSetup } = await import("./setup-guard.js");
@@ -17,149 +18,132 @@ async function createApp(): Promise<Hono> {
   return app;
 }
 
-async function configureReadySetup(): Promise<void> {
-  const store = (await import("../lib/config/store.js")).getStore();
-  await store.updateSettings({ secretsStorage: "file" });
-  await store.saveProviderCredentials({
-    provider: "gemini",
-    apiKey: "sk-test",
-    model: "gemini-2.5-flash",
-  });
-  const project = store.ensureProjectFile(projectRoot);
-  await store.saveTrust({
-    projectId: requireValue(project.projectId, "project id"),
-    repoRoot: projectRoot,
-    trustedAt: "2024-01-01T00:00:00.000Z",
-    capabilities: { readFiles: true, runCommands: false },
-    trustMode: "persistent",
-  });
+function verdictFor(
+  status: ReadinessStatus,
+  configurationId: string | null = "cfg-existing",
+): SetupVerdict {
+  const presentation = READINESS_PRESENTATION[status];
+  return {
+    configurationId,
+    status,
+    ready: status === "ready",
+    action: presentation.action,
+    explanation: presentation.explanation,
+    remediation: { ...presentation.remediation },
+  };
 }
 
-async function request(app: Hono): Promise<Response> {
-  return app.request("/test", {
-    headers: { [PROJECT_ROOT_HEADER]: projectRoot },
+async function request(app: Hono): Promise<{ status: number; body: unknown }> {
+  const response = await app.request("/test");
+  return { status: response.status, body: await response.json() };
+}
+
+function expectBlocked(result: { status: number; body: unknown }, status: ReadinessStatus): void {
+  expect(result.status).toBe(503);
+  expect(result.body).toEqual({
+    error: {
+      code: "SETUP_REQUIRED",
+      message: `Setup incomplete (${status}): ${READINESS_PRESENTATION[status].remediation.message}`,
+    },
   });
 }
 
 describe("requireSetup", () => {
-  let warnSpy: ReturnType<typeof vi.spyOn>;
-
   beforeEach(() => {
-    diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-setup-home-"));
-    projectRoot = mkdtempSync(join(tmpdir(), "diffgazer-setup-project-"));
-    mkdirSync(join(projectRoot, ".git"));
-    process.env.DIFFGAZER_HOME = diffgazerHome;
-    process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";
-    // Suppress fire-and-forget persistence warnings emitted after teardown removes the temp dir.
-    // The config store dispatches persist*Async without awaiting, so a pending write can land
-    // after rmSync; production keeps this UX-friendly fire-and-forget pattern unchanged.
-    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    vi.resetModules();
+    getSetupVerdict.mockReset();
   });
 
-  afterEach(() => {
-    delete process.env.DIFFGAZER_HOME;
-    delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
-    rmSync(diffgazerHome, { recursive: true, force: true });
-    rmSync(projectRoot, { recursive: true, force: true });
-    warnSpy.mockRestore();
-  });
-
-  it("blocks requests until setup has storage, provider, model, and trust", async () => {
+  it("passes requests when the selected configuration verdict is ready", async () => {
+    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("ready") });
     const app = await createApp();
 
-    const response = await request(app);
-    const body = (await response.json()) as {
-      error: { code: string; message: string };
-    };
+    const result = await request(app);
 
-    expect(response.status).toBe(503);
-    expect(body.error.code).toBe("SETUP_REQUIRED");
-    expect(body.error.message).toContain("secretsStorage");
-    expect(body.error.message).toContain("provider");
-    expect(body.error.message).toContain("model");
-    expect(body.error.message).toContain("trust");
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual({ ok: true });
   });
 
-  it("passes requests once setup is ready", async () => {
-    await configureReadySetup();
+  it("blocks with SETUP_REQUIRED when no configuration is selected (configure remediation)", async () => {
+    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("unconfigured", null) });
     const app = await createApp();
 
-    const response = await request(app);
-    const body = (await response.json()) as { ok: boolean };
-
-    expect(response.status).toBe(200);
-    expect(body).toEqual({ ok: true });
+    expectBlocked(await request(app), "unconfigured");
   });
 
-  it("uses SETUP_REQUIRED for an active provider whose credential is absent", async () => {
+  it("blocks with SETUP_REQUIRED when the selected configuration was removed (migrate-or-delete remediation)", async () => {
+    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("removed") });
     const app = await createApp();
-    const store = (await import("../lib/config/store.js")).getStore();
-    vi.spyOn(store, "getProviders").mockReturnValue([
-      {
-        provider: "gemini",
-        hasApiKey: true,
-        isActive: true,
-        model: "gemini-2.5-flash",
-      },
-    ]);
-    vi.spyOn(store, "getProviderApiKey").mockReturnValue({ ok: true, value: null });
 
-    const response = await request(app);
+    expectBlocked(await request(app), "removed");
+  });
 
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      error: { code: "SETUP_REQUIRED", message: expect.stringContaining("provider") },
+  it("blocks with SETUP_REQUIRED while conformance evidence is pending (wait-for-conformance remediation)", async () => {
+    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("conformance-pending") });
+    const app = await createApp();
+
+    expectBlocked(await request(app), "conformance-pending");
+  });
+
+  it("blocks with SETUP_REQUIRED when the live readiness check was skipped (enable-live-probe remediation)", async () => {
+    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("skipped") });
+    const app = await createApp();
+
+    expectBlocked(await request(app), "skipped");
+  });
+
+  it("blocks with SETUP_REQUIRED when the local server is unreachable (start-local-server remediation)", async () => {
+    getSetupVerdict.mockResolvedValue({
+      ok: true,
+      value: verdictFor("local-endpoint-unreachable"),
     });
+    const app = await createApp();
+
+    expectBlocked(await request(app), "local-endpoint-unreachable");
   });
 
-  it("uses SETUP_REQUIRED for an active provider without a model", async () => {
+  it("blocks with SETUP_REQUIRED when the hosted service is unreachable (retry-connection remediation)", async () => {
+    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("unreachable") });
     const app = await createApp();
-    const store = (await import("../lib/config/store.js")).getStore();
-    vi.spyOn(store, "getSettings").mockReturnValue({
-      ...store.getSettings(),
-      secretsStorage: "file",
-    });
-    vi.spyOn(store, "getProviders").mockReturnValue([
-      { provider: "gemini", hasApiKey: true, isActive: true },
-    ]);
-    vi.spyOn(store, "getProviderApiKey").mockReturnValue({ ok: true, value: "file-key" });
 
-    const response = await request(app);
-
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      error: { code: "SETUP_REQUIRED", message: expect.stringContaining("model") },
-    });
+    expectBlocked(await request(app), "unreachable");
   });
 
-  it.each([
-    "KEYRING_UNAVAILABLE",
-    "KEYRING_READ_FAILED",
-  ] as const)("returns the concrete setup storage error %s", async (errorCode) => {
+  it("blocks with SETUP_REQUIRED when the configuration is unsupported (review-support remediation)", async () => {
+    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("unsupported") });
     const app = await createApp();
-    const store = (await import("../lib/config/store.js")).getStore();
-    vi.spyOn(store, "getProviders").mockReturnValue([
-      {
-        provider: "gemini",
-        hasApiKey: true,
-        isActive: true,
-        model: "gemini-2.5-flash",
-      },
-    ]);
-    vi.spyOn(store, "getProviderApiKey").mockReturnValue({
+
+    expectBlocked(await request(app), "unsupported");
+  });
+
+  it("fails closed with a storage error when the verdict cannot be read", async () => {
+    getSetupVerdict.mockResolvedValue({
       ok: false,
-      error: { code: errorCode, message: "Credential storage unavailable" },
+      error: { code: "PERSIST_FAILED", message: "Failed to read configuration" },
     });
+    const app = await createApp();
 
-    const response = await request(app);
+    const result = await request(app);
 
-    expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toMatchObject({
+    expect(result.status).toBe(500);
+    expect(result.body).toEqual({
       error: {
-        code: errorCode,
-        message: expect.stringContaining("Check secrets storage access and retry"),
+        code: "PERSIST_FAILED",
+        message:
+          "Could not verify setup status. Failed to read configuration. Check secrets storage access and retry.",
       },
     });
+  });
+
+  it("exposes no configuration identity or secret detail in blocked responses", async () => {
+    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("removed") });
+    const app = await createApp();
+
+    const response = await app.request("/test");
+    const text = await response.text();
+
+    expect(response.status).toBe(503);
+    expect(text).not.toContain("cfg-existing");
+    expect(text).not.toContain("sk-test");
+    expect(text).not.toContain("credentials");
   });
 });

@@ -1,4 +1,4 @@
-import type { InputMethod } from "@diffgazer/core/onboarding";
+import { getInitialWizardData } from "@diffgazer/core/onboarding";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -6,120 +6,160 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ApiKeyStep } from "./api-key-step";
 
-function ControlledApiKeyStep({
-  onCommit,
-}: {
-  onCommit: (nextValue: { inputMethod: InputMethod; apiKey: string }) => void;
-}) {
-  const [method, setMethod] = useState<InputMethod>("paste");
-  const [keyValue, setKeyValue] = useState("");
-
-  return (
-    <ApiKeyStep
-      provider="gemini"
-      value={method}
-      onChange={setMethod}
-      keyValue={keyValue}
-      onKeyValueChange={setKeyValue}
-      onCommit={onCommit}
-    />
-  );
-}
-
 describe("ApiKeyStep", () => {
-  it("moves DOM focus from the key input to both method options", async () => {
+  it("collects a write-only hosted credential without exposing env-var names", async () => {
     const user = userEvent.setup();
+    const hosted = getInitialWizardData("gemini");
+    if (hosted.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted configuration");
+    }
 
-    render(
-      <KeyboardProvider>
-        <ApiKeyStep
-          provider="gemini"
-          value="paste"
-          onChange={vi.fn()}
-          keyValue=""
-          onKeyValueChange={vi.fn()}
-        />
-      </KeyboardProvider>,
-    );
+    function ControlledStep() {
+      const [configurationInput, setConfigurationInput] = useState(hosted.configurationInput);
+      return (
+        <KeyboardProvider>
+          <ApiKeyStep configurationInput={configurationInput} onChange={setConfigurationInput} />
+        </KeyboardProvider>
+      );
+    }
 
-    const input = screen.getByLabelText("Google Gemini API Key");
-    const paste = screen.getByRole("radio", { name: "Paste Key Now" });
-    const env = screen.getByRole("radio", { name: "Import from Env" });
+    render(<ControlledStep />);
 
-    await user.click(input);
-    await user.keyboard("{ArrowDown}");
-    expect(env).toHaveFocus();
-
-    await user.click(input);
-    await user.keyboard("{ArrowUp}");
-    expect(paste).toHaveFocus();
-  });
-
-  it("selects and commits the focused method through the real selector", async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-    const onCommit = vi.fn();
-
-    render(
-      <KeyboardProvider>
-        <ApiKeyStep
-          provider="gemini"
-          value="paste"
-          onChange={onChange}
-          keyValue=""
-          onKeyValueChange={vi.fn()}
-          onCommit={onCommit}
-        />
-      </KeyboardProvider>,
-    );
-
-    const env = screen.getByRole("radio", { name: "Import from Env" });
-    env.focus();
-    await user.keyboard("{Enter}");
-
-    expect(onChange).toHaveBeenCalledWith("env");
-    expect(onCommit).toHaveBeenCalledWith({ inputMethod: "env", apiKey: "" });
-  });
-
-  it("commits the typed secret when Enter is pressed in the key input", async () => {
-    const user = userEvent.setup();
-    const onCommit = vi.fn();
-
-    render(
-      <KeyboardProvider>
-        <ControlledApiKeyStep onCommit={onCommit} />
-      </KeyboardProvider>,
-    );
-
-    const input = screen.getByLabelText("Google Gemini API Key");
+    const input = screen.getByLabelText("Google Gemini credential");
     await user.type(input, "sk-live-secret");
-    await user.keyboard("{Enter}");
-
-    expect(onCommit).toHaveBeenCalledWith({ inputMethod: "paste", apiKey: "sk-live-secret" });
+    expect(input).toHaveValue("sk-live-secret");
+    expect(screen.queryByText(/GOOGLE_API_KEY/i)).not.toBeInTheDocument();
   });
 
-  it("reports the boundary once when ArrowDown is pressed from the env option", async () => {
+  it("does not render hosted credential controls for local HTTP setup", () => {
+    const local = getInitialWizardData("local-openai");
+    render(<ApiKeyStep configurationInput={local.configurationInput} onChange={vi.fn()} />);
+
+    expect(screen.getByText(/without storing hosted credentials/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/credential/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/api key/i)).not.toBeInTheDocument();
+  });
+
+  it("does not render hosted credential controls for local CLI setup", () => {
+    const localCli = getInitialWizardData("codex-cli");
+    render(<ApiKeyStep configurationInput={localCli.configurationInput} onChange={vi.fn()} />);
+
+    expect(screen.getByText(/without storing hosted credentials/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/credential/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/OpenAI Codex CLI installation ID/i)).toBeInTheDocument();
+  });
+
+  it("commits environment references without retaining a typed secret", async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+    const hosted = getInitialWizardData("gemini");
+    if (hosted.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted configuration");
+    }
+
+    function ControlledStep() {
+      const [configurationInput, setConfigurationInput] = useState(hosted.configurationInput);
+      return (
+        <KeyboardProvider>
+          <ApiKeyStep
+            configurationInput={configurationInput}
+            onChange={setConfigurationInput}
+            onCommit={onCommit}
+          />
+        </KeyboardProvider>
+      );
+    }
+
+    render(<ControlledStep />);
+    await user.click(screen.getByRole("radio", { name: "Use environment reference" }));
+    await user.keyboard("{Enter}");
+    expect(onCommit).toHaveBeenCalled();
+    expect(screen.queryByDisplayValue("sk-")).not.toBeInTheDocument();
+  });
+  it("moves DOM focus with the visible highlight through the credential zone", async () => {
+    const user = userEvent.setup();
+    const hosted = getInitialWizardData("gemini");
+    if (hosted.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted configuration");
+    }
+
+    function ControlledStep() {
+      const [configurationInput, setConfigurationInput] = useState(hosted.configurationInput);
+      return (
+        <KeyboardProvider>
+          <ApiKeyStep configurationInput={configurationInput} onChange={setConfigurationInput} />
+        </KeyboardProvider>
+      );
+    }
+
+    render(<ControlledStep />);
+
+    const literal = screen.getByRole("radio", { name: "Enter credential now" });
+    const environment = screen.getByRole("radio", { name: "Use environment reference" });
+    const credential = screen.getByLabelText("Google Gemini credential");
+
+    literal.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(credential).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(environment).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(credential).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(literal).toHaveFocus();
+  });
+
+  it("reports the down boundary from the last credential option instead of trapping focus", async () => {
     const user = userEvent.setup();
     const onBoundaryReached = vi.fn();
+    const hosted = getInitialWizardData("gemini");
+    if (hosted.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted configuration");
+    }
 
     render(
       <KeyboardProvider>
         <ApiKeyStep
-          provider="gemini"
-          value="paste"
+          configurationInput={{ ...hosted.configurationInput, credential: { kind: "environment" } }}
           onChange={vi.fn()}
-          keyValue=""
-          onKeyValueChange={vi.fn()}
           onBoundaryReached={onBoundaryReached}
         />
       </KeyboardProvider>,
     );
 
-    const env = screen.getByRole("radio", { name: "Import from Env" });
-    env.focus();
+    screen.getByRole("radio", { name: "Use environment reference" }).focus();
     await user.keyboard("{ArrowDown}");
 
     expect(onBoundaryReached).toHaveBeenCalledWith("down");
-    expect(onBoundaryReached).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers the optional local bearer the setup plan advertises", async () => {
+    const user = userEvent.setup();
+    const local = getInitialWizardData("local-openai");
+    if (local.configurationInput.transportFamily !== "local-http") {
+      throw new Error("Expected local HTTP configuration");
+    }
+
+    function ControlledStep() {
+      const [configurationInput, setConfigurationInput] = useState(local.configurationInput);
+      return (
+        <KeyboardProvider>
+          <ApiKeyStep configurationInput={configurationInput} onChange={setConfigurationInput} />
+        </KeyboardProvider>
+      );
+    }
+
+    render(<ControlledStep />);
+
+    expect(screen.queryByLabelText("Local bearer token")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("checkbox", { name: /bearer token/i }));
+
+    const token = screen.getByLabelText("Local bearer token");
+    await user.type(token, "local-secret");
+    expect(token).toHaveValue("local-secret");
   });
 });

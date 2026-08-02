@@ -1,7 +1,6 @@
 import type { BoundApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
-import type { InitResponse } from "@diffgazer/core/schemas/config";
 import type { ReviewIssue, ReviewMetadata, ReviewResponse } from "@diffgazer/core/schemas/review";
 import { makeReviewMetadata } from "@diffgazer/core/testing/factories";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
@@ -12,57 +11,21 @@ import type { ReactNode } from "react";
 import { expect, type Mock, vi } from "vitest";
 import { Footer } from "@/components/layout/footer";
 import { ConfigProvider } from "@/hooks/use-config";
+import {
+  makeShellApiOverrides,
+  makeShellInitResponse,
+  SHELL_TRUSTED_PROJECT,
+} from "@/testing/shell-fixtures";
 
-const SETTINGS_FIXTURE: InitResponse["settings"] = {
-  theme: "terminal",
-  defaultLenses: [],
-  defaultProfile: null,
-  severityThreshold: "low",
-  secretsStorage: null,
-  agentExecution: "parallel",
-};
-
-const PROVIDERS_FIXTURE: InitResponse["providers"] = [
-  { provider: "gemini", hasApiKey: true, isActive: true },
-];
-
-export function makeInitResponse(
-  project: InitResponse["project"] = untrustedProject(),
-): InitResponse {
-  return {
-    configPath: "/tmp/diffgazer/config.json",
-    config: { provider: "gemini", model: "gemini-2.5-flash" },
-    providers: PROVIDERS_FIXTURE,
-    settings: SETTINGS_FIXTURE,
-    configured: true,
-    project,
-    setup: {
-      hasSecretsStorage: true,
-      hasProvider: true,
-      hasModel: true,
-      hasTrust: project.trust !== null,
-      isConfigured: true,
-      isReady: true,
-      missing: [],
-    },
-  };
+export function makeInitResponse(project = SHELL_TRUSTED_PROJECT) {
+  return makeShellInitResponse({ project });
 }
 
-export function trustedProject(): InitResponse["project"] {
-  return {
-    projectId: "proj-1",
-    path: "/repo",
-    trust: {
-      projectId: "proj-1",
-      repoRoot: "/repo",
-      capabilities: { readFiles: true, runCommands: false },
-      trustMode: "persistent" as const,
-      trustedAt: "2026-01-01T00:00:00.000Z",
-    },
-  };
+export function trustedProject() {
+  return SHELL_TRUSTED_PROJECT;
 }
 
-export function untrustedProject(): InitResponse["project"] {
+export function untrustedProject() {
   return {
     projectId: "proj-1",
     path: "/repo",
@@ -70,7 +33,7 @@ export function untrustedProject(): InitResponse["project"] {
   };
 }
 
-export function projectWithoutReadAccess(): InitResponse["project"] {
+export function projectWithoutReadAccess() {
   return {
     projectId: "proj-1",
     path: "/repo",
@@ -84,7 +47,7 @@ export function projectWithoutReadAccess(): InitResponse["project"] {
   };
 }
 
-export function projectWithTrustForPreviousRoot(): InitResponse["project"] {
+export function projectWithTrustForPreviousRoot() {
   return {
     projectId: "proj-1",
     path: "/moved/repo",
@@ -121,20 +84,19 @@ export function defaultReviewsResponse() {
   };
 }
 
-export let mockLoadInit: Mock<BoundApi["loadInit"]>;
-export let mockGetProviderStatus: Mock<BoundApi["getProviderStatus"]>;
 export let mockGetReviews: Mock<BoundApi["getReviews"]>;
 export let mockGetReview: Mock<BoundApi["getReview"]>;
+export let mockLoadInit: Mock<BoundApi["loadConfigurationInit"]>;
+let shellApiOverrides: Partial<BoundApi>;
 
-export function setupApiMocks(project: InitResponse["project"] = trustedProject()) {
-  mockLoadInit = vi.fn<BoundApi["loadInit"]>().mockResolvedValue(makeInitResponse(project));
-  mockGetProviderStatus = vi
-    .fn<BoundApi["getProviderStatus"]>()
-    .mockResolvedValue(PROVIDERS_FIXTURE);
+export function setupApiMocks(project = trustedProject()) {
+  shellApiOverrides = makeShellApiOverrides(makeInitResponse(project));
+  mockLoadInit = shellApiOverrides.loadConfigurationInit as Mock<BoundApi["loadConfigurationInit"]>;
   mockGetReviews = vi.fn<BoundApi["getReviews"]>().mockResolvedValue(defaultReviewsResponse());
   mockGetReview = vi
     .fn<BoundApi["getReview"]>()
     .mockImplementation(async (id) => makeReviewResponse(id));
+  return shellApiOverrides;
 }
 
 export function renderHistoryPage(
@@ -143,8 +105,7 @@ export function renderHistoryPage(
   const { Wrapper: ApiWrapper, queryClient } = createTestQueryWrapper({
     ApiProvider,
     api: {
-      loadInit: mockLoadInit,
-      getProviderStatus: mockGetProviderStatus,
+      ...shellApiOverrides,
       getReviews: mockGetReviews,
       getReview: mockGetReview,
     },

@@ -77,6 +77,12 @@ jobs:
       - name: Hosted registry live smoke
         run: pnpm run registry:live-check
 
+      - name: Legacy transport allowlist
+        run: node --test scripts/monorepo/provider-transport-legacy-allowlist.test.mjs
+
+      - name: Git whitespace check
+        run: git diff --check
+
       - name: Dirty-tree guard (post-verify and smoke)
         run: |
           status="$(git status --short)"
@@ -145,6 +151,11 @@ jobs:
         env:
           CI: "true"
         run: pnpm --filter @diffgazer/docs test:e2e
+
+      - name: Run Web provider Playwright tests
+        env:
+          CI: "true"
+        run: pnpm --filter @diffgazer/web exec playwright test testing/e2e/providers.e2e.ts --project=chromium --project=mobile-chromium
 
       - name: Run Web Playwright tests
         env:

@@ -442,11 +442,3 @@ export function computeProviderReadinessResult(
   const readiness = buildReadiness("ready", checkedAt, "passed", acknowledgement);
   return { readiness, details: detailsFor(readiness, input.evidence) };
 }
-
-/** Alias kept for service code that describes this operation as a calculation. */
-export const computeReadiness = computeProviderReadiness;
-
-/** Validate a readiness value before crossing the server/client boundary. */
-export function toSafeReadiness(readiness: Readiness): Readiness {
-  return ReadinessSchema.parse(readiness);
-}

@@ -1,3 +1,4 @@
+import type { ProviderDisplayStatus } from "@diffgazer/core/providers";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CliThemeProvider } from "../../theme/provider";
@@ -14,6 +15,16 @@ vi.mock("../../hooks/use-terminal-dimensions", () => ({
   }),
 }));
 
+const activeStatus: ProviderDisplayStatus = {
+  status: "ready",
+  action: "inspect",
+  label: "active",
+  variant: "success",
+  explanation: "",
+  remediation: "",
+  accessibleText: "active",
+};
+
 afterEach(() => {
   cleanup();
 });
@@ -24,7 +35,7 @@ describe("Header", () => {
     const providerName = `${uniquePrefix}OpenRouter · ${"model-segment-".repeat(4)}`;
     const view = render(
       <CliThemeProvider initialTheme="dark">
-        <Header providerName={providerName} providerStatus="active" showBack />
+        <Header providerName={providerName} providerStatus={activeStatus} showBack />
       </CliThemeProvider>,
     );
 
@@ -37,7 +48,7 @@ describe("Header", () => {
 
     view.rerender(
       <CliThemeProvider initialTheme="dark">
-        <Header providerName={providerName} providerStatus="active" showBack={false} />
+        <Header providerName={providerName} providerStatus={activeStatus} showBack={false} />
       </CliThemeProvider>,
     );
 

@@ -1,19 +1,48 @@
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { err, ok } from "@diffgazer/core/result";
-import type { SettingsConfig } from "@diffgazer/core/schemas/config";
+import type { RunnableProductId, SettingsConfig } from "@diffgazer/core/schemas/config";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
-import { LENS_IDS, ReviewErrorCode } from "@diffgazer/core/schemas/review";
+import {
+  type EvidenceKey,
+  type ExecutionLimits,
+  LENS_IDS,
+  type LensId,
+  ReviewErrorCode,
+} from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AdmittedExecutionPlan } from "../../shared/lib/ai/admission/service.js";
+import {
+  ExecutionLeaseRegistry,
+  toClientSafeAdmittedPlanJson,
+} from "../../shared/lib/ai/admission/service.js";
+import { createBudgetLedger } from "../../shared/lib/ai/budget/ledger.js";
+import {
+  buildExecutionResult,
+  conservativeAttemptEstimate,
+} from "../../shared/lib/ai/client/generate.js";
+import type { Adapter } from "../../shared/lib/ai/types.js";
 import { makeFileDiff, makeParsedDiff } from "./testing/factories.js";
+import { createReviewExecutionContext } from "./types.js";
 
 const saveReview = vi.fn();
+const orchestrateReview = vi.fn();
 // Boundary mock: filesystem storage - saveReview is the durable-write boundary finalizeReview gates the report step on.
 vi.mock("./storage/reviews.js", () => ({
   saveReview: (...args: unknown[]) => saveReview(...args),
 }));
+vi.mock("./engine/orchestrate.js", () => ({
+  orchestrateReview: (...args: unknown[]) => orchestrateReview(...args),
+}));
 
-import { executeReview, finalizeReview, resolveReviewDefaults } from "./pipeline.js";
+import {
+  executeReview,
+  finalizeReview,
+  prohibitPartialFindings,
+  releaseReviewExecutionResources,
+  resolveReviewDefaults,
+} from "./pipeline.js";
 import {
   addEvent,
   cancelSessionForUser,
@@ -134,7 +163,12 @@ describe("resolveReviewDefaults", () => {
 });
 
 describe("executeReview", () => {
+  afterEach(() => {
+    orchestrateReview.mockReset();
+  });
+
   it("preserves a classified orchestration error instead of collapsing it to AI_ERROR", async () => {
+    orchestrateReview.mockResolvedValue(err({ code: "NO_DIFF", message: "No files changed" }));
     const result = await executeReview({
       aiClient: {
         provider: "openrouter",
@@ -156,6 +190,293 @@ describe("executeReview", () => {
       ok: false,
       error: { code: "NO_DIFF", step: "review" },
     });
+  });
+});
+
+const PIPELINE_LIMITS: ExecutionLimits = Object.freeze({
+  maxInputTokens: 40_000,
+  maxOutputTokens: 8_000,
+  maxResponseBytes: 8_000_000,
+  wallTimeMs: 300_000,
+  maxRetries: 1,
+  maxConcurrency: 2,
+  maxCostUsd: 5,
+});
+
+function pipelineEvidenceKey(productId: RunnableProductId = "gemini"): EvidenceKey {
+  const product = PRODUCT_REGISTRY[productId];
+  const endpoint = product.configuration.endpoints[0];
+  return {
+    authentication: null,
+    credentialReferenceIdentity: "c".repeat(64),
+    installationId: null,
+    productId,
+    transportFamily: product.transportFamily,
+    normalizedEndpoint: endpoint?.endpoint ?? "https://example.invalid/v1",
+    region: endpoint && "region" in endpoint ? (endpoint.region ?? null) : null,
+    workspaceAccountReference: null,
+    modelId: "gemini-test-model",
+    runtime: { identity: "diffgazer-server", version: "1.0.0" },
+    structuredOutputSchemaSha256: "a".repeat(64),
+    noticeVersion: product.notice.noticeVersion,
+    limits: PIPELINE_LIMITS,
+  };
+}
+
+function pipelineAdmittedPlan(productId: RunnableProductId = "gemini"): AdmittedExecutionPlan {
+  const evidenceKey = pipelineEvidenceKey(productId);
+  return Object.freeze({
+    configurationId: "gemini-primary",
+    configurationRevision: 3,
+    executionFingerprint: "admitted-fingerprint-abc123",
+    evidenceKey: Object.freeze({ ...evidenceKey, limits: PIPELINE_LIMITS }),
+    productId,
+    transportFamily: PRODUCT_REGISTRY[productId].transportFamily,
+    limits: PIPELINE_LIMITS,
+  });
+}
+
+function authorizePipelineExecution(plan: AdmittedExecutionPlan, adapter: Adapter) {
+  const ledger = createBudgetLedger(plan.limits);
+  const estimate = conservativeAttemptEstimate("review prompt", plan.limits);
+  const budgetReservation = ledger.reserveAttempt(estimate);
+  if (!budgetReservation.ok) {
+    throw new Error("budget reservation failed in test setup");
+  }
+  const leaseRegistry = new ExecutionLeaseRegistry();
+  const lease = leaseRegistry.tryAcquire({
+    configurationId: plan.configurationId,
+    configurationRevision: plan.configurationRevision,
+    executionFingerprint: plan.executionFingerprint,
+    limits: plan.limits,
+  });
+  if (!lease.ok) {
+    throw new Error("lease acquisition failed in test setup");
+  }
+  const release = vi.fn(() => {
+    ledger.releaseReservation(budgetReservation.value);
+    lease.value.release();
+  });
+  return {
+    authorization: Object.freeze({
+      plan,
+      adapter,
+      budgetLedger: ledger,
+      budgetReservation: budgetReservation.value,
+      lease: lease.value,
+      resolveCredential: async () => "super-secret-token",
+      workspaceAccountId: null,
+      release,
+    }),
+    release,
+    ledger,
+    leaseRegistry,
+  };
+}
+
+function pipelineConfig() {
+  return {
+    activeLenses: ["correctness"] as LensId[],
+    effectiveProfileId: undefined,
+    profile: undefined,
+    severityFilter: undefined,
+    concurrency: 1,
+    projectContext: "",
+  };
+}
+
+function orchestrationSuccess(issues = [makePipelineIssue("1", "a.ts", "high")]) {
+  orchestrateReview.mockResolvedValue(
+    ok({
+      issues,
+      lensStats: [],
+      droppedDuplicates: 0,
+      droppedBelowThreshold: 0,
+    }),
+  );
+}
+
+describe("admitted execution lifecycle", () => {
+  afterEach(() => {
+    orchestrateReview.mockReset();
+  });
+
+  it("persists the exact completed receipt outcome through execution", async () => {
+    const plan = pipelineAdmittedPlan();
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrationSuccess();
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt).toMatchObject({
+      outcome: "completed",
+      configurationId: plan.configurationId,
+      configurationRevision: plan.configurationRevision,
+      modelId: plan.evidenceKey.modelId,
+      limits: plan.limits,
+    });
+    expect(result.value.issues).toHaveLength(1);
+  });
+
+  it("persists the exact cancelled receipt outcome when execution aborts before orchestration", async () => {
+    const plan = pipelineAdmittedPlan();
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+      signal: AbortSignal.abort(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.outcome).toBe("cancelled");
+    expect(result.value.issues).toEqual([]);
+    expect(orchestrateReview).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["transport-failed", { code: "AI_ERROR", message: "transport down" }],
+    ["schema-failed", { code: "PARSE_ERROR", message: "schema mismatch" }],
+  ] as const)("persists the exact %s receipt outcome for orchestration failures", async (outcome, error) => {
+    const plan = pipelineAdmittedPlan();
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrateReview.mockResolvedValue(err(error));
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.outcome).toBe(outcome);
+    expect(result.value.issues).toEqual([]);
+  });
+
+  it.each([
+    "timed-out",
+    "budget-exhausted",
+  ] as const)("persists the exact %s receipt outcome on the admitted execution result", (outcome) => {
+    const plan = pipelineAdmittedPlan();
+    const execution = buildExecutionResult(plan, outcome, {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:05.000Z",
+    });
+    expect(execution.receipt).toMatchObject({
+      outcome,
+      configurationId: plan.configurationId,
+      configurationRevision: plan.configurationRevision,
+    });
+    expect(execution.result.issues).toEqual([]);
+  });
+
+  it("releases lease and budget resources exactly once", () => {
+    const plan = pipelineAdmittedPlan();
+    const { authorization, release, leaseRegistry } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    const context = createReviewExecutionContext(authorization);
+
+    releaseReviewExecutionResources(context);
+    releaseReviewExecutionResources(context);
+
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(leaseRegistry.activeLeaseCount(plan.configurationId)).toBe(0);
+  });
+
+  it("normalizes reported usage and associates it with the admitted receipt fingerprint", () => {
+    const plan = pipelineAdmittedPlan();
+    const usage = {
+      inputTokens: 12,
+      outputTokens: 4,
+      totalTokens: 16,
+      cachedTokens: 0,
+      reasoningTokens: 0,
+    };
+    const execution = buildExecutionResult(plan, "completed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:01.000Z",
+      usage,
+      usageAvailability: "reported",
+      issues: [makePipelineIssue("1", "a.ts", "high")],
+    });
+
+    expect(execution.receipt.usageAvailability).toBe("reported");
+    expect(execution.receipt.usage).toEqual(usage);
+    expect(execution.receipt.executionFingerprint).toHaveLength(64);
+  });
+
+  it("prohibits partial findings for every non-completed terminal outcome", () => {
+    const plan = pipelineAdmittedPlan();
+    for (const outcome of [
+      "cancelled",
+      "timed-out",
+      "transport-failed",
+      "schema-failed",
+      "budget-exhausted",
+    ] as const) {
+      const execution = buildExecutionResult(plan, outcome, {
+        startedAt: "2026-07-31T10:00:00.000Z",
+      });
+      const sanitized = prohibitPartialFindings({
+        issues: [makePipelineIssue("partial", "a.ts", "high")],
+        execution,
+      });
+      expect(sanitized.issues).toEqual([]);
+      expect(sanitized.execution?.result.issues).toEqual([]);
+    }
+  });
+
+  it("exposes no secret values on the client-safe admitted plan surface", () => {
+    const plan = pipelineAdmittedPlan();
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    const clientSurface = toClientSafeAdmittedPlanJson(authorization.plan);
+
+    expect(clientSurface).not.toContain("super-secret-token");
+    expect(clientSurface).not.toContain("credential");
+    expect(clientSurface).toContain(plan.executionFingerprint);
   });
 });
 

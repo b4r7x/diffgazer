@@ -4,6 +4,7 @@ import {
   projectClientMetadata,
 } from "../../providers/client-metadata.js";
 import { PRODUCT_REGISTRY } from "../../providers/product-registry.js";
+import { REMOVED_PRODUCT_ID } from "./providers.js";
 import { READINESS_PRESENTATION, ReadinessSchema } from "./readiness.js";
 import type { ProviderSettingsRowId, SettingsHubInput } from "./settings-hub.js";
 import { buildHubValues, buildProviderSettingsRows } from "./settings-hub.js";
@@ -27,7 +28,7 @@ function metadataFor(productId: RunnableProductId | RemovedProductId) {
     return projectClientMetadata({
       productId: product.id,
       configuration: {
-        configurationId: "legacy-zai-coding",
+        configurationId: "legacy-removed-zai-plan",
         revision: 1,
         status: "removed",
         transportFamily: "hosted-api",
@@ -108,10 +109,10 @@ describe("buildProviderSettingsRows", () => {
   });
 
   test("renders only explicit migration and deletion actions for a removed product", () => {
-    const rows = buildProviderSettingsRows(metadataFor("zai-coding"));
+    const rows = buildProviderSettingsRows(metadataFor(REMOVED_PRODUCT_ID));
 
     expect(rows.map(({ id }) => id)).toEqual(["product", "transport", "readiness", "actions"]);
-    expect(rowValue("zai-coding", "actions")).toBe(
+    expect(rowValue(REMOVED_PRODUCT_ID, "actions")).toBe(
       "Create new Z.AI configuration, Delete removed record",
     );
   });

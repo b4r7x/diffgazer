@@ -7,8 +7,11 @@ import { errorMessage } from "./lib/error-message.mjs";
 import {
   assertCatalogProviders,
   collectReachableBundleFiles,
+  emitProviderProbeResults,
   enabledSnapshotProviders,
+  finalizeStrictProbeResults,
   findSnapshotInBundle,
+  HOSTED_PROBE_CREDENTIAL_ENVS,
 } from "./lib/smoke-modelsdev.mjs";
 import { fetchJsonWithLimit, networkAllowed } from "./smoke-shared/network.mjs";
 
@@ -17,6 +20,35 @@ const LABEL = "live models.dev catalog";
 const DIFFGAZER_DIST = resolve(root, "cli/diffgazer/dist");
 const DIFFGAZER_ENTRY = resolve(DIFFGAZER_DIST, "index.js");
 const MAX_LIVE_CATALOG_BYTES = 4 * 1024 * 1024;
+
+function buildHostedProbeTuples(productRegistry) {
+  return Object.values(productRegistry)
+    .filter((product) => product.kind === "runnable" && product.transportFamily === "hosted-api")
+    .map((product) => {
+      const modelPolicy = product.modelPolicy;
+      const modelId =
+        "suggestedModelId" in modelPolicy && modelPolicy.suggestedModelId
+          ? modelPolicy.suggestedModelId
+          : null;
+      return {
+        providerId: product.id,
+        modelId,
+        requiresEntitlement: product.id === "qwen",
+        entitlementEnv: "QWEN_WORKSPACE_ID",
+      };
+    });
+}
+
+async function loadHostedLiveProbeRunner() {
+  try {
+    const hostedFixtures = await import(
+      resolve(root, "cli/server/dist/shared/lib/ai/providers/hosted-fixtures.js")
+    );
+    return hostedFixtures.runHostedLiveProbe;
+  } catch {
+    return null;
+  }
+}
 
 // design D6: the diffgazer binary is tsup-bundled with `noExternal`, so the
 // CATALOG_SNAPSHOT must be INLINED into the emitted bundle (not loaded from a
@@ -52,15 +84,31 @@ function assertSnapshotInlinedInBundle(evidence, assertEvidence) {
 async function run() {
   const {
     assertCatalogSnapshotBundleEvidence,
-    catalogToModelInfo,
     CATALOG_SNAPSHOT,
     getCatalogSnapshotBundleEvidence,
     parseModelsDevCatalog,
+    PROVIDER_DERIVED,
     PROVIDER_OVERLAY,
-    SURFACED_OVERLAYS,
+    transformCatalogObservation,
   } = await import(resolve(root, "libs/core/dist/catalog/index.js"));
+  const { PRODUCT_REGISTRY } = await import(resolve(root, "libs/core/dist/providers/index.js"));
+
+  const catalogToModelInfo = (catalog, productId) => {
+    const observation = transformCatalogObservation({
+      source: "models.dev-snapshot",
+      checkedAt: "2020-01-01T00:00:00.000Z",
+      catalog,
+    }).find((entry) => entry.productId === productId);
+    return observation?.models ?? [];
+  };
 
   const enabledProviders = enabledSnapshotProviders(PROVIDER_OVERLAY);
+  const probeTuples = buildHostedProbeTuples(PRODUCT_REGISTRY);
+  const strictSkips = process.env[ENV.smokeStrictSkips] === "1";
+  const runHostedLiveProbe =
+    networkAllowed() && process.env.DIFFGAZER_LIVE_PROBES === "1"
+      ? await loadHostedLiveProbeRunner()
+      : null;
 
   // The bundled snapshot is the always-available offline guarantee (design D6:
   // the picker must never be blank on first run/offline). Validate it on every
@@ -75,9 +123,32 @@ async function run() {
   }
 
   const snapshotEvidence = getCatalogSnapshotBundleEvidence(CATALOG_SNAPSHOT, [
-    { PROVIDER_OVERLAY, SURFACED_OVERLAYS },
+    { PROVIDER_OVERLAY, PROVIDER_DERIVED, PRODUCT_REGISTRY },
   ]);
   assertSnapshotInlinedInBundle(snapshotEvidence, assertCatalogSnapshotBundleEvidence);
+
+  const { results } = await emitProviderProbeResults(probeTuples, {
+    env: process.env,
+    networkEnabled: networkAllowed(),
+    emit: (line) => console.log(line),
+    runProbe: async (tuple) => {
+      if (!runHostedLiveProbe) {
+        // The probe runner lives in the cli/server build; an unbuilt dist is an
+        // absent prerequisite, not a provider that failed its probe.
+        return { unavailable: "runner-unavailable" };
+      }
+      const descriptor = {
+        productId: tuple.providerId,
+        credentialEnv: HOSTED_PROBE_CREDENTIAL_ENVS[tuple.providerId],
+        modelId: tuple.modelId,
+        requiresEntitlement: tuple.requiresEntitlement,
+        workspaceAccountId: process.env.QWEN_WORKSPACE_ID ?? null,
+      };
+      const observation = await runHostedLiveProbe(descriptor);
+      return { passed: observation.status === "passed" };
+    },
+  });
+  finalizeStrictProbeResults(results, strictSkips);
 
   if (!networkAllowed()) {
     console.log(`OK: ${LABEL} offline snapshot smoke passed`);

@@ -1,10 +1,8 @@
-import { useActivateProvider } from "@diffgazer/core/api/hooks";
-import { getCatalogFallbackNotice } from "@diffgazer/core/catalog";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { getCompatibilityLabel, useModelFilter, useModelSource } from "@diffgazer/core/providers";
+import { getDateLabel } from "@diffgazer/core/format";
+import { useModelFilter, useModelSource } from "@diffgazer/core/providers";
 import { sanitizeTerminalText } from "@diffgazer/core/review";
-import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
+import type { ClientConfigurationSummary, ExactModelId } from "@diffgazer/core/schemas/config";
 import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
@@ -21,6 +19,7 @@ import { ModelSearchInput } from "./model-search-input";
 import { TierFilterTabs } from "./tier-filter-tabs";
 
 type FocusZone = "search" | "filters" | "list";
+type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
 
 const MODEL_SELECT_SHORTCUTS: Shortcut[] = [
   { key: "Tab", label: "Switch Zone" },
@@ -31,8 +30,6 @@ const MODEL_SELECT_SHORTCUTS: Shortcut[] = [
 const MODEL_SELECT_RETRY_SHORTCUT: Shortcut = { key: "r", label: "Retry" };
 const MODEL_SELECT_RIGHT_SHORTCUTS: Shortcut[] = [{ ...BACK_SHORTCUT, label: "Close" }];
 const MIN_MODEL_VIEWPORT_SIZE = 4;
-// Card border, padding, title + provider subtitle, header rule, search box,
-// tier tabs and the gaps between them.
 const MODEL_DIALOG_BASE_CHROME_ROWS = 12;
 
 function getModelViewportSize({
@@ -54,8 +51,9 @@ function getModelViewportSize({
 interface ModelListBodyProps {
   loading: boolean;
   sourceError: string | undefined;
-  models: ModelInfo[];
-  filteredModels: ModelInfo[];
+  reason: string | null;
+  models: ReturnType<typeof useModelSource>["models"];
+  filteredModels: ReturnType<typeof useModelFilter>["filteredModels"];
   focusZone: FocusZone;
   safeHighlightIndex: number;
   selectedId: string | undefined;
@@ -66,6 +64,7 @@ interface ModelListBodyProps {
 function ModelListBody({
   loading,
   sourceError,
+  reason,
   models,
   filteredModels,
   focusZone,
@@ -81,6 +80,9 @@ function ModelListBody({
   }
   if (sourceError) {
     return <Text color={tokens.error}>{sanitizeTerminalText(sourceError)}</Text>;
+  }
+  if (reason) {
+    return <Text color={tokens.warning}>{sanitizeTerminalText(reason)}</Text>;
   }
   if (filteredModels.length === 0) {
     return (
@@ -119,34 +121,23 @@ function ModelListBody({
 interface ModelSelectOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  providerId: AIProvider;
+  configuration: SupportedConfigurationSummary;
   selectedId?: string;
-  onSelect?: (id: string) => void;
+  onSelect?: (id: ExactModelId) => unknown;
+  isSaving?: boolean;
 }
 
 export function ModelSelectOverlay({
   open,
   onOpenChange,
-  providerId,
+  configuration,
   selectedId,
   onSelect,
+  isSaving = false,
 }: ModelSelectOverlayProps): ReactElement {
   const { tokens } = useTheme();
   const { columns, contentRows } = useContentZone();
-  const {
-    models,
-    loading,
-    error: sourceError,
-    isOpenRouter,
-    openRouter,
-    source,
-    fetchedAt,
-    retry,
-  } = useModelSource(open, providerId);
-  const activateProvider = useActivateProvider();
-
-  const saving = activateProvider.isPending;
-  const activationError = activateProvider.error?.message;
+  const source = useModelSource(open, configuration);
 
   const {
     searchQuery,
@@ -156,19 +147,26 @@ export function ModelSelectOverlay({
     filteredModels,
     cycleTierFilter,
     resetFilters,
-  } = useModelFilter(models);
+  } = useModelFilter(source.models);
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [highlightedModelId, setHighlightedModelId] = useState<string>();
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const saving = isSaving || isSelecting;
+
+  const loading = source.status === "loading" || source.status === "idle";
+  const sourceError = source.status === "error" ? source.error : undefined;
+  const skippedReason = source.status === "skipped" ? source.reason : null;
 
   const initialHighlightId =
-    (selectedId && models.some((model) => model.id === selectedId) ? selectedId : undefined) ??
-    models[0]?.id;
+    (selectedId && source.models.some((model) => model.id === selectedId)
+      ? selectedId
+      : undefined) ?? source.models[0]?.id;
   const activeHighlightId =
-    highlightedModelId && models.some((model) => model.id === highlightedModelId)
+    highlightedModelId && source.models.some((model) => model.id === highlightedModelId)
       ? highlightedModelId
       : initialHighlightId;
   const highlightedIndex = filteredModels.findIndex((model) => model.id === activeHighlightId);
-
   const safeHighlightIndex =
     filteredModels.length === 0 || highlightedIndex < 0 ? 0 : highlightedIndex;
 
@@ -183,34 +181,38 @@ export function ModelSelectOverlay({
     resetFilters();
     setFocusZone("list");
     setHighlightedModelId(undefined);
-    activateProvider.reset();
+    setSelectionError(null);
   });
 
   const resetOnClose = useEffectEvent(() => {
     setHighlightedModelId(undefined);
-    activateProvider.reset();
+    setSelectionError(null);
+    setIsSelecting(false);
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: providerId is a reset trigger; useEffectEvent keeps reset callbacks current without depending on unstable filter helpers.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: configuration identity is a reset trigger.
   useEffect(() => {
     if (open) {
       resetOnOpen();
       return;
     }
     resetOnClose();
-  }, [open, providerId]);
+  }, [open, configuration.configurationId, configuration.revision]);
 
-  function handleSelect(modelId: string) {
-    activateProvider.reset();
-    activateProvider.mutate(
-      { providerId, model: modelId },
-      {
-        onSuccess: () => {
-          onSelect?.(modelId);
-          onOpenChange(false);
-        },
-      },
-    );
+  // The overlay stays open and pending until the selection mutation settles;
+  // closing first would hide the only place its failure can be reported.
+  async function handleSelect(modelId: string) {
+    if (saving) return;
+    setSelectionError(null);
+    setIsSelecting(true);
+    try {
+      await onSelect?.(modelId as ExactModelId);
+      onOpenChange(false);
+    } catch (error) {
+      setSelectionError(error instanceof Error ? error.message : "Failed to select model");
+    } finally {
+      setIsSelecting(false);
+    }
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -242,32 +244,27 @@ export function ModelSelectOverlay({
 
       if (input === "f" && focusZone !== "search") {
         cycleTierFilter();
-        return;
       }
     },
     { isActive: open && !saving },
   );
 
-  const fallbackNotice = getCatalogFallbackNotice(source, fetchedAt);
-
   useInput(
     (input) => {
-      if (input.toLowerCase() === "r") retry();
+      if (input.toLowerCase() === "r") source.retry();
     },
     {
       isActive:
         open &&
         !saving &&
         focusZone !== "search" &&
-        (Boolean(sourceError) || fallbackNotice !== null),
+        (Boolean(sourceError) || Boolean(skippedReason)),
     },
   );
 
-  // One key-hint grammar: the overlay publishes to the global shortcut bar
-  // instead of drawing a second, lowercase-colon hint row inside the card.
   usePageFooter({
     shortcuts:
-      sourceError || fallbackNotice
+      sourceError || skippedReason
         ? [...MODEL_SELECT_SHORTCUTS, MODEL_SELECT_RETRY_SHORTCUT]
         : MODEL_SELECT_SHORTCUTS,
     rightShortcuts: MODEL_SELECT_RIGHT_SHORTCUTS,
@@ -287,21 +284,19 @@ export function ModelSelectOverlay({
       }
       if (key.return) {
         const model = filteredModels[safeHighlightIndex];
-        if (model) handleSelect(model.id);
-        return;
+        if (model) void handleSelect(model.id);
       }
     },
     { isActive: open && focusZone === "list" && !saving },
   );
 
-  // The card is bounded, so the rows measure against the card, not the screen.
   const contentWidth = Math.max(getDialogWidth(columns) - 6, 1);
-  const compatibilityLabel = isOpenRouter ? getCompatibilityLabel(openRouter) : null;
+  const checkedAtLabel = source.checkedAt != null ? getDateLabel(source.checkedAt) : null;
   const conditionalRows = [
-    compatibilityLabel && !loading && !sourceError ? 1 : 0,
-    fallbackNotice ? wrappedRowCount(`${fallbackNotice} Press r to retry.`, contentWidth) : 0,
+    checkedAtLabel ? 1 : 0,
+    skippedReason ? wrappedRowCount(`${skippedReason} Press r to retry.`, contentWidth) : 0,
     sourceError ? 1 : 0,
-    activationError ? wrappedRowCount(sanitizeTerminalText(activationError), contentWidth) : 0,
+    selectionError ? wrappedRowCount(sanitizeTerminalText(selectionError), contentWidth) : 0,
     saving ? 1 : 0,
   ].reduce((total, rowCount) => total + rowCount, 0);
   const modelViewportSize = getModelViewportSize({
@@ -310,8 +305,9 @@ export function ModelSelectOverlay({
     conditionalRows,
   });
 
-  const providerName =
-    AVAILABLE_PROVIDERS.find((provider) => provider.id === providerId)?.name ?? providerId;
+  const modelCountLabel = `${String(source.models.length)} ${
+    source.models.length === 1 ? "model" : "models"
+  }`;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} onEscapeKeyDown={handleEscapeKeyDown}>
@@ -319,7 +315,9 @@ export function ModelSelectOverlay({
         <Dialog.Header>
           <Dialog.Title>Select Model</Dialog.Title>
           <Dialog.Subtitle>
-            {`${providerName} · ${String(models.length)} ${models.length === 1 ? "model" : "models"}`}
+            {`${configuration.productId} · ${modelCountLabel}${
+              checkedAtLabel ? ` · checked ${checkedAtLabel}` : ""
+            }`}
           </Dialog.Subtitle>
         </Dialog.Header>
         <Dialog.Body>
@@ -336,18 +334,16 @@ export function ModelSelectOverlay({
               isActive={focusZone === "filters" && !saving}
             />
 
-            {compatibilityLabel && !loading && !sourceError && (
-              <Text color={tokens.muted}>{compatibilityLabel}</Text>
-            )}
-            {fallbackNotice ? (
-              <Text color={tokens.warning}>{fallbackNotice} Press r to retry.</Text>
+            {skippedReason ? (
+              <Text color={tokens.warning}>{skippedReason} Press r to retry.</Text>
             ) : null}
             {sourceError ? <Text color={tokens.muted}>Press r to retry.</Text> : null}
 
             <ModelListBody
               loading={loading}
-              sourceError={sourceError ?? undefined}
-              models={models}
+              sourceError={sourceError}
+              reason={skippedReason}
+              models={source.models}
               filteredModels={filteredModels}
               focusZone={focusZone}
               safeHighlightIndex={safeHighlightIndex}
@@ -355,10 +351,10 @@ export function ModelSelectOverlay({
               contentWidth={contentWidth}
               viewportSize={modelViewportSize}
             />
-            {activationError ? (
-              <Text color={tokens.error}>{sanitizeTerminalText(activationError)}</Text>
+            {selectionError ? (
+              <Text color={tokens.error}>{sanitizeTerminalText(selectionError)}</Text>
             ) : null}
-            {saving && <Spinner label="Saving…" />}
+            {saving ? <Spinner label="Saving…" /> : null}
           </Box>
         </Dialog.Body>
       </Dialog.Content>

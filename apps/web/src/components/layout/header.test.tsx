@@ -1,23 +1,44 @@
+import type { ProviderDisplayStatus } from "@diffgazer/core/providers";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Header } from "./header";
 
+const readyStatus: ProviderDisplayStatus = {
+  status: "ready",
+  action: "inspect",
+  label: "Ready",
+  variant: "success",
+  explanation: "",
+  remediation: "",
+  accessibleText: "Ready",
+};
+
+const idleStatus: ProviderDisplayStatus = {
+  status: "unconfigured",
+  action: "create",
+  label: "Not configured",
+  variant: "warning",
+  explanation: "",
+  remediation: "",
+  accessibleText: "Not configured",
+};
+
 describe("Header", () => {
   it("renders the diffgazer wordmark with an accessible label", () => {
-    render(<Header providerName="OpenAI" providerStatus="idle" />);
+    render(<Header providerName="OpenAI" providerStatus={idleStatus} />);
     expect(screen.getByRole("img", { name: "diffgazer" })).toBeInTheDocument();
   });
 
   it("renders a single ascii wordmark with no plain-text fallback", () => {
-    render(<Header providerName="OpenAI" providerStatus="idle" />);
+    render(<Header providerName="OpenAI" providerStatus={idleStatus} />);
 
     expect(screen.getAllByRole("img", { name: "diffgazer" })).toHaveLength(1);
     expect(screen.queryByText("DIFFGAZER")).not.toBeInTheDocument();
   });
 
   it("swaps the figlet banner for a one-line wordmark on work screens", () => {
-    render(<Header providerName="OpenAI" providerStatus="idle" wordmark="line" />);
+    render(<Header providerName="OpenAI" providerStatus={idleStatus} wordmark="line" />);
 
     expect(screen.queryByRole("img", { name: "diffgazer" })).not.toBeInTheDocument();
     expect(screen.getByText("DIFFGAZER")).toBeInTheDocument();
@@ -27,24 +48,24 @@ describe("Header", () => {
     render(
       <Header
         providerName="OpenAI / a-provider-model-name-that-needs-to-fit"
-        providerStatus="active"
+        providerStatus={readyStatus}
       />,
     );
     // The aria-label replaces the row's children for assistive tech, so it has
     // to carry the status word the sighted user reads beside the name.
     const status = screen.getByLabelText(
-      "Provider: OpenAI / a-provider-model-name-that-needs-to-fit, active; server live",
+      "Provider: OpenAI / a-provider-model-name-that-needs-to-fit, Ready; server live",
     );
     expect(status).toBeInTheDocument();
     expect(status).toHaveTextContent("OpenAI / a-provider-model-name-that-needs-to-fit");
-    expect(status).toHaveTextContent(/active/i);
+    expect(status).toHaveTextContent(/ready/i);
   });
 
   it("keeps the connection status visible when the model name truncates", () => {
     const longModel = "OpenAI / a-very-long-provider-model-name-that-overflows-the-mobile-row";
-    render(<Header providerName={longModel} providerStatus="active" onBack={() => {}} />);
+    render(<Header providerName={longModel} providerStatus={readyStatus} onBack={() => {}} />);
 
-    const status = screen.getByText("active");
+    const status = screen.getByText("Ready");
     const modelSegment = screen.getByText(longModel);
 
     expect(status).toBeInTheDocument();
@@ -54,13 +75,13 @@ describe("Header", () => {
   it("calls onBack when the back button is clicked", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
-    render(<Header providerName="OpenAI" providerStatus="idle" onBack={onBack} />);
+    render(<Header providerName="OpenAI" providerStatus={idleStatus} onBack={onBack} />);
     await user.click(screen.getByRole("button", { name: /back/i }));
     expect(onBack).toHaveBeenCalledOnce();
   });
 
   it("omits the back button when onBack is not provided", () => {
-    render(<Header providerName="OpenAI" providerStatus="idle" />);
+    render(<Header providerName="OpenAI" providerStatus={idleStatus} />);
     expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
   });
 
@@ -68,33 +89,33 @@ describe("Header", () => {
     const { rerender } = render(
       <Header
         providerName="gemini"
-        providerStatus="active"
+        providerStatus={readyStatus}
         wordmark="line"
         serverState="offline"
       />,
     );
 
-    expect(screen.getByLabelText("Provider: gemini, active; server offline")).toHaveTextContent(
+    expect(screen.getByLabelText("Provider: gemini, Ready; server offline")).toHaveTextContent(
       "Offline",
     );
 
     rerender(
       <Header
         providerName="gemini"
-        providerStatus="active"
+        providerStatus={readyStatus}
         wordmark="line"
         serverState="retrying"
       />,
     );
 
-    expect(
-      screen.getByLabelText("Provider: gemini, active; server reconnecting"),
-    ).toHaveTextContent("Reconnecting");
+    expect(screen.getByLabelText("Provider: gemini, Ready; server reconnecting")).toHaveTextContent(
+      "Reconnecting",
+    );
 
-    rerender(<Header providerName="gemini" providerStatus="active" wordmark="line" />);
+    rerender(<Header providerName="gemini" providerStatus={readyStatus} wordmark="line" />);
 
-    expect(screen.getByLabelText("Provider: gemini, active; server live")).toHaveTextContent(
-      "active",
+    expect(screen.getByLabelText("Provider: gemini, Ready; server live")).toHaveTextContent(
+      "Ready",
     );
   });
 });

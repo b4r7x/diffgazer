@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import {
   CANDIDATE_PRODUCT_IDS,
   DEFERRED_PRODUCT_IDS,
@@ -11,6 +12,7 @@ import {
 } from "../schemas/config/transports.js";
 import {
   CANDIDATE_VERDICTS,
+  isModelIdAllowedForProduct,
   isPinnedDownstreamRouteModelId,
   PRODUCT_ENDPOINT_TUPLES,
   PRODUCT_REGISTRY,
@@ -512,8 +514,8 @@ describe("product registry authority", () => {
     );
   });
 
-  it("keeps zai-coding decoder-only with explicit migration and deletion", () => {
-    const removed = PRODUCT_REGISTRY["zai-coding"];
+  it("keeps REMOVED_PRODUCT_ID decoder-only with explicit migration and deletion", () => {
+    const removed = PRODUCT_REGISTRY[REMOVED_PRODUCT_ID];
 
     expect(removed).toMatchObject({
       kind: "removed",
@@ -525,7 +527,7 @@ describe("product registry authority", () => {
         actions: ["create-new-zai-configuration", "delete-removed-record"],
       },
     });
-    expect(SELECTABLE_PRODUCT_IDS).not.toContain("zai-coding");
+    expect(SELECTABLE_PRODUCT_IDS).not.toContain(REMOVED_PRODUCT_ID);
   });
 
   it("keeps Qwen Plus opt-in and evidence-gated without inventing a limit", () => {
@@ -632,5 +634,44 @@ describe("product registry authority", () => {
     for (const descriptor of descriptors) {
       expect(hasForbiddenSerializedData(descriptor)).toBe(false);
     }
+  });
+});
+
+describe("the registry-owned model policy predicate", () => {
+  it.each([
+    { productId: "zai", modelId: "glm-4.7", allowed: true },
+    // Z.AI Flash needs an explicit opt-in no V2 contract carries yet.
+    { productId: "zai", modelId: "glm-4.7-flash", allowed: false },
+    { productId: "deepseek", modelId: "deepseek-v4-flash", allowed: true },
+    { productId: "deepseek", modelId: "deepseek-v5-flash", allowed: false },
+    // Qwen Plus needs server-only higher-cost evidence.
+    { productId: "qwen", modelId: "qwen3-coder-flash", allowed: true },
+    { productId: "qwen", modelId: "qwen3-coder-plus", allowed: false },
+    { productId: "moonshot", modelId: "kimi-k3-turbo", allowed: true },
+    { productId: "moonshot", modelId: "kimi-latest", allowed: false },
+    { productId: "openrouter", modelId: "openai/gpt-4.1-mini", allowed: true },
+    { productId: "openrouter", modelId: "openrouter/auto", allowed: false },
+    { productId: "gemini", modelId: "gemini-2.5-flash", allowed: true },
+  ] as const)("decides $productId/$modelId as allowed=$allowed", ({
+    productId,
+    modelId,
+    allowed,
+  }) => {
+    expect(isModelIdAllowedForProduct(productId, modelId)).toBe(allowed);
+  });
+
+  it("is the only interpretation every product policy kind is measured against", () => {
+    const coveredKinds = new Set(
+      SELECTABLE_PRODUCT_IDS.map((productId) => PRODUCT_REGISTRY[productId].modelPolicy.kind),
+    );
+
+    expect(coveredKinds).toEqual(
+      new Set([
+        "discovered-exact",
+        "discovered-allowlist",
+        "discovered-family",
+        "pinned-downstream-route",
+      ]),
+    );
   });
 });

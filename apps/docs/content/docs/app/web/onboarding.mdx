@@ -3,53 +3,60 @@ title: Onboarding
 description: First-run setup, step by step, before your first review.
 ---
 
-The first time you open Diffgazer in web mode it has no provider, no key, and no model to work with, so it shows a setup wizard instead of the Home screen. You only see this once: it walks you through six steps and saves a working config at the end. After that, Diffgazer returns to Home, where you choose **Review Unstaged** or **Review Staged** to start your first review. You can change any setup choice later from [Settings](/app/web/settings). This page covers each step in order. For the bigger picture of what web mode looks like once setup is done, see the [web overview](/app/web).
+The first time you open Diffgazer in web mode it has no configuration to work with, so it shows a setup wizard instead of the Home screen. You only see this once: it walks you through the setup plan for the product you pick and saves a working configuration at the end. After that, Diffgazer returns to Home, where you choose **Review Unstaged** or **Review Staged** to start your first review. You can change any setup choice later from [Settings](/app/web/settings). This page covers each step in order. For the bigger picture of what web mode looks like once setup is done, see the [web overview](/app/web).
 
-The wizard always runs in the same order: storage, then provider, then API key, then model, then analysis, then execution. A stepper across the top shows where you are. Use Next to move forward and Back to revisit a step; the Next button stays disabled until the current step has a valid choice.
+The wizard does not run a fixed list of screens. It runs the **setup plan of the product you selected**: Product, then Endpoint, Authentication, Model, Conformance, and Notice. A product that binds no endpoint — the local CLI products — has no Endpoint step, so its plan is five steps instead of six. A stepper across the top shows the plan, and a line under it reads out where you are, for example `Step 2 of 6: Endpoint`. Use Next to move forward and Back to revisit a step; the Next button stays disabled until the current step is satisfied.
 
-## Pick where secrets are stored
+## Select a product
 
-The first step asks where Diffgazer keeps your API keys. There are two options:
+The first step lists the thirteen selectable products, each with its description and a FREE or PAID badge derived from the product's billing modes. Diffgazer does not ship a model of its own, so you bring a product you already have access to: a hosted API, a local HTTP server on loopback, or a vendor CLI you already signed in to. Selecting a product builds the rest of the plan around it and resets any draft you had started for a different product. For the full list and what each one implies, see [providers and models](/app/concepts/providers-and-models) and the [providers reference](/app/reference/providers).
 
-- **File storage (local)** writes secrets to a local file with restrictive OS permissions (mode `0600`). It is simple and portable.
-- **System keyring** hands secrets to your operating system's keychain instead. It is better protected and integrated with the OS.
+If a removed product still has a saved record, this step shows a warning naming it and pointing at the replacement. See [Migrating a removed product](#migrating-a-removed-product) below.
 
-Pick one to continue. Nothing is written yet at this point; the choice is saved when you finish the wizard.
+## Configure the endpoint
 
-## Choose a provider and add a key
+Hosted products ask you to choose the endpoint tuple: a list of allowed endpoint profiles, each showing its label and the exact URL it binds. When a profile is region-bound the region comes with it, and when it is workspace-bound the step also asks for a workspace reference.
 
-The provider step lists the AI providers Diffgazer can talk to, each with a badge showing whether it has a free tier. Diffgazer does not ship a model of its own, so you bring a provider you already have an account with. Selecting a provider also preselects that provider's default model for the model step. For the full list of providers and how model choice affects a review, see [providers and models](/app/concepts/providers-and-models) and the [providers reference](/app/reference/providers).
+Local HTTP products ask for the loopback preset instead — `http://127.0.0.1:11434` for Ollama, and either LM Studio (`http://127.0.0.1:1234/v1`) or llama.cpp (`http://127.0.0.1:8080/v1`) for the Local OpenAI-compatible product. Diffgazer verifies that the first network hop is loopback; anything downstream of your local server is the server operator's responsibility.
 
-The next step is the key for that provider. You have two ways to supply it:
+Local CLI products bind no endpoint, so the plan skips this step entirely.
 
-- **Paste key now** types the key directly into a masked field. The Next button stays disabled until you enter something.
-- **Import from env** reads the key from an environment variable instead. The step shows the exact variable name Diffgazer will read for the provider you chose, and you can proceed without typing a key because the value comes from your environment at run time.
+## Configure authentication
 
-> Note: switching providers resets the key field and the input method back to paste, so re-enter the key if you change your mind about which provider to use.
+What this step asks for depends on the transport:
+
+- **Hosted API.** Pick how the credential is supplied. **Enter credential now** takes the key in a masked, write-only field. **Use environment reference** binds the product's environment variable instead, so nothing secret is stored — the server resolves the value at run time. See [Environment variables](/app/reference/environment-variables) for the name each product reads.
+- **Local HTTP.** No hosted credential is stored. If your server expects one, tick **This server requires a bearer token** and supply the token in the write-only field.
+- **Local CLI.** Diffgazer uses vendor-managed local auth: install and sign in with the vendor's own CLI, then identify that installation here. Diffgazer never asks for CLI tokens or auth file paths and does not import or proxy them.
 
 ## Select a model
 
-Once a key is in place, Diffgazer loads the model list for your provider and shows it as a pick list, with the provider's default already selected. A live response reflects the current provider catalog. If live data is unavailable, the step clearly labels a cached response with its fetch time or uses the bundled offline snapshot, and offers Retry. You must choose a model from the displayed list; the wizard does not accept an arbitrary model ID.
+Models are discovered for the configuration tuple you just built, and the selection is exact — aliases are rejected. To discover models against a real record, the wizard first persists the draft configuration server-side, then reads the model list back through it. That draft is revoked again when you change the tuple or leave the wizard, so an abandoned setup does not leave a configuration behind.
 
-One provider behaves a little differently here. For OpenRouter, Diffgazer saves your credentials as soon as you leave the key step and move to the model step, because it needs them to fetch OpenRouter's model list. If you close the wizard before finishing setup, those early-saved OpenRouter credentials are removed again, so abandoning the wizard does not leave a key behind. Finishing the wizard saves the full config normally.
+If discovery fails, is skipped, or returns nothing, the step says so and offers **Retry**. Products whose model policy already pins the acceptable IDs show that list directly instead.
 
-## Set analysis and execution
+## Verify conformance
 
-The analysis step picks which review agents run. Each agent (a "lens") looks at your changes from one angle, such as correctness or security. They all start selected; toggle off the ones you do not want, but keep at least one, because Next stays disabled with an empty list.
+The conformance step is where you confirm that the configured tuple and the exact model you picked are ready to be verified against the product's required checks. Tick the confirmation to continue.
 
-The execution step is the last choice and controls how those agents run:
+Changing anything upstream invalidates this: editing the configuration or picking a different model resets conformance to not-tested and takes the notice acceptance back to required, so you re-confirm what actually changed.
 
-- **Sequential** runs the agents one after another. It works with every provider and tier.
-- **Parallel** runs them all at once. It is faster but can hit rate limits on free tiers.
+## Accept the product notice
 
-On this final step the button reads Complete Setup. Activating it saves your storage choice, provider, key, model, lenses, and execution mode, then returns you to Home. Choose **Review Unstaged** or **Review Staged** there to start your first review. From here on, Diffgazer skips the wizard.
+The last step shows the current product's billing and privacy notice — the real lines for that product, not a generic blurb — and requires explicit acceptance. Notices are versioned; acceptance is recorded against the exact notice ID and version, and a material change to the notice asks again.
 
-> Tip: every step is keyboard-driven. Use the arrow keys to move through options, Space to select the highlighted one, and Enter to select and advance in a single keystroke.
+On this final step the button reads Complete Setup. Activating it saves the configuration and returns you to Home. Choose **Review Unstaged** or **Review Staged** there to start your first review. From here on, Diffgazer skips the wizard.
+
+> Tip: every step is keyboard-driven. Use the arrow keys to move through options, Space to select the highlighted one, and Enter to select and advance in a single keystroke. `↓` from the last option moves into the Back / Complete Setup buttons.
+
+## Migrating a removed product
+
+If a product Diffgazer used to support still has a saved record, the wizard runs a two-step migration plan instead: **Migration**, which asks you to create a replacement configuration, and **Delete**, which removes the old record. Existing credentials stay server-side and are never copied, tested, or sent — they go away only when you explicitly delete the record.
 
 ## Related
 
 - [Web overview](/app/web) — what web mode shows after setup
 - [Run a review](/app/web/reviewing) — start your first review once setup is done
-- [Providers and models](/app/concepts/providers-and-models) — choosing a provider and model
-- [Providers reference](/app/reference/providers) — the full per-provider table
+- [Providers and models](/app/concepts/providers-and-models) — choosing a product and model
+- [Providers reference](/app/reference/providers) — the full per-product table
 - [Your first review](/app/getting-started/first-review) — the end-to-end first run

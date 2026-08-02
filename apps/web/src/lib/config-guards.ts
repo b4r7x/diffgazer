@@ -5,7 +5,7 @@ import { queryClient } from "@/lib/query-client";
 
 async function fetchConfigured(): Promise<boolean> {
   const init = await queryClient.ensureQueryData(configQueries.init(api));
-  return init.setup.isConfigured;
+  return init.selectedConfigurationId != null;
 }
 
 export async function requireConfigured() {

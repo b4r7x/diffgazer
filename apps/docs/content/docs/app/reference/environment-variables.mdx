@@ -3,60 +3,73 @@ title: Environment variables
 description: The environment variables Diffgazer reads and sets in packaged mode.
 ---
 
-Diffgazer reads a handful of environment variables, and it sets a few internal values when it runs packaged. Most settings live in config rather than the environment, so reach for these only when you need to override where files live, how much it logs, or which port it binds.
+Diffgazer reads a handful of environment variables, and it sets a few internal values when it runs packaged. Most settings live in configuration rather than the environment, so reach for these only when you need to override where files live, how much it logs, or which port it binds.
+
+Hosted products can also be configured through **environment references** instead of stored literals. In that case Diffgazer records only that the credential comes from the environment, resolves the product's canonical variable name below on the server, and reads the live value at runtime.
 
 ## Variables you set
 
-These are safe to set in your shell or process environment. Anything not listed here is either a setting (see [Configuration](/app/reference/configuration)) or an internal variable covered below.
-
 | Variable | Effect | Default |
 | --- | --- | --- |
-| `PORT` | Port for the API server. It must be an integer from 1 to 65535; an out-of-range or non-numeric value fails fast with an error rather than falling back silently. | `3000` for the API server (the web dev server uses `3001`) |
-| `DIFFGAZER_HOME` | Moves the global directory somewhere other than `~/.diffgazer`. When set, `config.json`, `secrets.json`, and `trust.json` all resolve under this path. | `~/.diffgazer` |
-| `DIFFGAZER_PROJECT_ROOT` | The repository root the server reviews. The packaged CLI sets this for you from the project you launched in; set it yourself only when running the server outside the CLI. | The current working directory, walked up to its git root |
-| `DIFFGAZER_LOG_LEVEL` | The lowest log level the server emits: `debug`, `info`, `warn`, or `error`. An unrecognized value is ignored and the default applies. | `warn` when packaged, `info` for the standalone dev server |
-| `DIFFGAZER_OFFLINE` | Skips the live models.dev catalog fetch and uses the bundled snapshot. Any value except unset, empty, `0`, or `false` turns it on. | Off (the live fetch runs) |
-| `DIFFGAZER_FORCE_KILL_DELAY_MS` | Milliseconds to wait after `SIGTERM` before sending `SIGKILL` to a child process. Raise it for slow shutdowns, for example in CI. Must be an integer from `1` through `2147482647`; anything else is ignored. | `2000` |
-| `GOOGLE_API_KEY` | API key for Google Gemini. | Unset |
-| `ZAI_API_KEY` | API key for Z.ai and Z.ai Coding Plan. Both providers read the same variable. | Unset |
-| `OPENROUTER_API_KEY` | API key for OpenRouter. | Unset |
-| `GROQ_API_KEY` | API key for Groq. | Unset |
-| `CEREBRAS_API_KEY` | API key for Cerebras. | Unset |
+| `PORT` | Port for the API server. Must be an integer from 1 to 65535. | `3000` |
+| `DIFFGAZER_HOME` | Moves the global directory somewhere other than `~/.diffgazer`. | `~/.diffgazer` |
+| `DIFFGAZER_PROJECT_ROOT` | Repository root the server reviews. The packaged CLI sets this automatically. | Git root of the current working directory |
+| `DIFFGAZER_LOG_LEVEL` | Lowest log level: `debug`, `info`, `warn`, or `error`. | `warn` when packaged |
+| `DIFFGAZER_OFFLINE` | Skips the live models.dev catalog fetch and uses the bundled snapshot. | Off |
+| `DIFFGAZER_FORCE_KILL_DELAY_MS` | Milliseconds to wait after `SIGTERM` before `SIGKILL`. | `2000` |
+| `GOOGLE_API_KEY` | Credential reference for Google Gemini. | Unset |
+| `ZAI_API_KEY` | Credential reference for Z.AI general Open Platform PAYG. | Unset |
+| `OPENROUTER_API_KEY` | Credential reference for OpenRouter. | Unset |
+| `GROQ_API_KEY` | Credential reference for Groq. | Unset |
+| `CEREBRAS_API_KEY` | Credential reference for Cerebras. | Unset |
+| `DEEPSEEK_API_KEY` | Credential reference for DeepSeek. | Unset |
+| `QWEN_API_KEY` | Credential reference for Qwen International. | Unset |
+| `MOONSHOT_API_KEY` | Credential reference for Moonshot Open Platform. | Unset |
+| `MISTRAL_API_KEY` | Credential reference for Mistral. | Unset |
+| `OPENAI_API_KEY` | Optional bearer reference for Local OpenAI-compatible servers that require one. | Unset |
 
-The five provider keys map to the six enabled providers because Z.ai and Z.ai Coding Plan share `ZAI_API_KEY`. You do not have to put a key in the environment at all: you can store it in Diffgazer instead, or store only the variable's name and let Diffgazer read the live value each run. The root `.env.example` mirrors these user-set variables. For the full provider-to-variable mapping and how stored keys work, see [Providers](/app/reference/providers).
+Local HTTP and local CLI products do not require these hosted variables. Ollama, LM Studio, llama.cpp, OpenAI Codex CLI, and GitHub Copilot CLI use loopback endpoints or **vendor-managed local auth** instead.
+
+Example hosted reference without storing a literal in Diffgazer files:
+
+```bash
+export GOOGLE_API_KEY=your-provider-key
+diffgazer
+```
+
+Export the variable before you launch, then choose **Import from Env** during setup. You never type the variable name: each product is bound to the canonical name in the table above, and Diffgazer stores only that reference, never the value.
+
+> Note: Google Gemini reads `GOOGLE_API_KEY`, not `GEMINI_API_KEY`. The name follows the server-side credential map for the product.
 
 ### Development-only escape hatch
 
-`DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT=1` tells the standalone development server to trust the project-root request header. Packaged mode ignores it. Never enable it outside local development; the packaged CLI already sets the reviewed project root itself.
+`DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT=1` tells the standalone development server to trust the project-root request header. Packaged mode ignores it. Never enable it outside local development.
 
 ## Optional split-development security
 
-`DIFFGAZER_SHUTDOWN_TOKEN` enables the API token gate in every mode. The packaged CLI creates and sets it automatically. When you run the server and web app separately, set the same token on both sides if you want the API gate enabled or need to use the trust routes.
-
-The server expects the token in the `x-diffgazer-shutdown-token` request header. The web client reads `VITE_DIFFGAZER_SHUTDOWN_TOKEN` when the Vite dev server or build starts and sends that header. Restart the dev server or rebuild after changing the value. Packaged web mode receives the same value through `window.__DIFFGAZER_SHUTDOWN_TOKEN__` instead.
+`DIFFGAZER_SHUTDOWN_TOKEN` enables the API token gate in every mode. The packaged CLI creates and sets it automatically. When you run the server and web app separately, set the same token on both sides.
 
 ```bash
 # Terminal 1
-DIFFGAZER_SHUTDOWN_TOKEN="replace-with-one-random-value" pnpm --filter @diffgazer/server dev
+DIFFGAZER_SHUTDOWN_TOKEN=replace-with-one-random-value pnpm --filter @diffgazer/server dev
 
 # Terminal 2
-VITE_DIFFGAZER_SHUTDOWN_TOKEN="replace-with-one-random-value" pnpm --filter @diffgazer/web dev
+VITE_DIFFGAZER_SHUTDOWN_TOKEN=replace-with-one-random-value pnpm --filter @diffgazer/web dev
 ```
 
-In split development without a server token, the general API gate is disabled, but `/api/settings/trust` still fails closed with `401`. Warning: setting only the server variable makes the web app's requests fail with `401`; setting only the Vite variable does not configure the server. Configure both values together so the client and server use the same token.
+Configure both values together so the client and server use the same token.
 
 ## Set automatically
 
-The packaged CLI sets these itself so it and the embedded server can coordinate. The optional split-development token is documented above because it is also a supported manual setting. Do not set the variables in this table by hand.
+The packaged CLI sets these itself. Do not set them by hand.
 
 | Variable | What sets it | Why it exists |
 | --- | --- | --- |
-| `DIFFGAZER_CLI_PID` | The CLI, set to its own process id at startup. | Lets the embedded server terminate the parent CLI process when the app asks to shut down. |
-| `DIFFGAZER_PACKAGED` | The CLI, set to `1` when serving the embedded app. | Flags packaged mode, which changes defaults such as the log level and how the server resolves the project root. |
+| `DIFFGAZER_CLI_PID` | The CLI at startup | Lets the embedded server terminate the parent CLI on shutdown. |
+| `DIFFGAZER_PACKAGED` | The CLI when serving the embedded app | Flags packaged mode defaults such as log level and project-root resolution. |
 
 ## Related
 
-- [Providers](/app/reference/providers): the model providers and which environment variable each one reads for its key.
-- [Configuration](/app/reference/configuration): the config files and the settings that the environment overrides.
-- [Server](/app/reference/server): the embedded server and its packaged runtime variables.
-- [Troubleshooting](/app/operations/troubleshooting): what to check when a port, a key, or shutdown is not behaving.
+- [Providers](/app/reference/providers): the canonical support matrix and credential kinds.
+- [Configuration](/app/reference/configuration): V2 configuration actions and readiness gates.
+- [Troubleshooting](/app/operations/troubleshooting): port, credential, and shutdown issues.

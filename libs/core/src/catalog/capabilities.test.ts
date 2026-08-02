@@ -1,4 +1,5 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import type { RunnableProductId } from "../schemas/config/transports.js";
 import { deriveCapabilities, type ModelCapabilityObservation } from "./capabilities.js";
 import { RAW_CATALOG } from "./fixtures.js";
@@ -142,9 +143,9 @@ describe("catalog capability observations", () => {
     expect(observe("zai")).toEqual([]);
   });
 
-  it("never projects capabilities for the removed zai-coding identity", () => {
+  it("never projects capabilities for the removed REMOVED_PRODUCT_ID identity", () => {
     expect(
-      deriveCapabilities(catalog, "zai-coding", {
+      deriveCapabilities(catalog, REMOVED_PRODUCT_ID, {
         source: "models.dev-live",
         checkedAt: CHECKED_AT,
         freshAfter: FRESH_AFTER,

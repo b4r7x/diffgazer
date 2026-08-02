@@ -1,10 +1,10 @@
 import { chmod, readFile, stat } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
+import { atomicWriteFile } from "../../fs.js";
 import {
   decodeConfigV1,
   decodeConfigV2,
   loadConfigV2,
-  persistConfigV2,
   selectConfigV2,
   serializeConfigV2,
 } from "./config.js";
@@ -134,8 +134,8 @@ describe("V2 configuration persistence", () => {
       ),
     );
 
-    await persistConfigV2(document);
     const path = homePath("config.json");
+    await atomicWriteFile(path, new TextDecoder().decode(serializeConfigV2(document)), 0o600);
     const [written, metadata] = await Promise.all([readFile(path), stat(path)]);
     expect(new Uint8Array(written)).toEqual(serializeConfigV2(document));
     expect(metadata.mode & 0o777).toBe(0o600);

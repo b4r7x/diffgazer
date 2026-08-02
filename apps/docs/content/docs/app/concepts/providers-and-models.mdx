@@ -3,29 +3,34 @@ title: Providers and models
 description: Bring your own model; how Diffgazer talks to providers.
 ---
 
-Diffgazer does not run a model of its own. It is provider-agnostic: you supply an API key for a provider you already use, pick a model from that provider, and Diffgazer talks to it directly from your machine. Switching to a different provider or model is just a settings change, not a reinstall. Your key and your code never pass through a Diffgazer-hosted service. See [Privacy](/app/concepts/privacy) for where keys and source actually go.
+Diffgazer does not run a model of its own. It is provider-agnostic: you configure one of **thirteen selectable products**, satisfy that product's admission checks, pick an exact admitted model, and Diffgazer talks to it directly from your machine. Switching products or models is a configuration change, not a reinstall. Your credentials and source never pass through a Diffgazer-hosted service. See [Privacy](/app/concepts/privacy) for where credentials and review content actually go.
 
-## Supported providers
+## Supported products
 
-The provider picker offers six providers: Google Gemini, Z.AI, Z.AI Coding Plan, OpenRouter, Groq, and Cerebras. Each one needs its own API key, which you add during [onboarding](/app/web/onboarding).
+The provider picker lists thirteen selectable products drawn from the [canonical support matrix](/app/reference/providers#canonical-support-matrix): Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Qwen International, Moonshot Open Platform, Mistral, Ollama, Local OpenAI-compatible, OpenAI Codex CLI, and GitHub Copilot CLI.
 
-Most of these have a free tier you can review with before paying for anything. Five of the six advertise a free tier in the picker; the exception is the Z.AI Coding Plan, which is a paid plan. Free-tier terms are set by each provider, not by Diffgazer, so treat the badge as a hint and check the provider's own pricing for the current limits. The one quota Diffgazer spells out in its UI is Cerebras, whose free tier is roughly 1M tokens per day.
+Each product is a distinct transport contract. Hosted API products require a credential reference and an allowed endpoint or region tuple. Local HTTP products bind to a validated loopback endpoint. Local CLI products use vendor-managed local auth already on your machine. None of them share credentials across products, and Diffgazer does not fall back to another product when one fails.
 
-> Note: Diffgazer's catalog data also describes Mistral, Hugging Face, and GitHub Models, but those are catalog-only and disabled. They do not appear in the picker and cannot be selected, so do not plan on using them.
+Removed records such as the old Z.AI Coding Plan may still appear for migration, but they are not selectable. Experimental, deferred, and rejected candidates in the matrix are documentation-only in this tranche. **A compatible endpoint, free credit, or local binary cannot override the frozen verdict** at runtime.
 
 ## How models are listed
 
-You do not type model names by hand. For Google Gemini, Z.AI, Z.AI Coding Plan, Groq, and Cerebras, Diffgazer first uses a non-empty models.dev cache that is less than a day old, without making a network request. Otherwise, unless `DIFFGAZER_OFFLINE` is set, it requests the live shared catalog. When a live request is skipped, fails, or does not contain the selected provider, Diffgazer falls back to a non-empty cached list for that provider even if it is stale, then to the bundled offline snapshot. The snapshot keeps these five provider pickers populated on first use. The picker identifies cached and snapshot results, offers Retry, and shows when cached data was fetched; either fallback may lag behind models the provider has just shipped.
+You do not type model names by hand. Diffgazer discovers exact model IDs through the configured product tuple and rejects aliases, routing selectors, and marketing names.
 
-OpenRouter does not use the shared snapshot. Its picker first reuses a non-empty cache that is less than a day old and belongs to the same API key. When that cache is missing or stale, it requests OpenRouter's live, account-scoped model route; if the refresh fails, it can fall back only to a stale cache for that same key. If no matching cache exists, the picker has no models to show. See [Privacy: model-catalog requests](/app/concepts/privacy#model-catalog-requests-during-setup) for the network and offline behavior of both catalog paths.
+For catalog-backed hosted products, Diffgazer first uses a non-empty models.dev cache that is less than a day old when available. Otherwise, unless `DIFFGAZER_OFFLINE` is set, it requests the live shared catalog. When a live request is skipped, fails, or does not contain the selected provider, Diffgazer falls back to a non-empty cached list for that provider even if it is stale, then to the bundled offline snapshot. The picker identifies cached and snapshot results, offers Retry, and shows when cached data was fetched.
 
-For catalog-backed providers, the selected model must be present in the returned live, cached, or snapshot list. Diffgazer validates that membership when saving the selection; an arbitrary model ID that is absent from the displayed catalog is rejected.
+OpenRouter does not use the shared snapshot. Its picker first reuses a non-empty cache that is less than a day old and belongs to the same API key. When that cache is missing or stale, it requests OpenRouter's live, account-scoped model route; if the refresh fails, it can fall back only to a stale cache for that same key. OpenRouter requires a **pinned downstream route** — routing selectors are rejected.
+
+For every selectable product, the model you select must pass that product's exact-model policy and appear in the admitted discovery result for your configuration. Arbitrary model IDs are rejected at save time.
 
 ## Choosing a model
 
-Any model your provider lists will work; the right one depends on the trade-off you want between speed, cost, and review depth. Every provider except OpenRouter ships with a sensible default selected, so you can start there and change it later from settings. OpenRouter has no preset default, so you pick a model yourself before your first review. For a side-by-side view of every provider, its default model, and its free-tier status, see the [providers reference](/app/reference/providers). For how a chosen model is actually used during a review, see the [review pipeline](/app/concepts/review-pipeline).
+The right model depends on the trade-off you want between speed, cost, and review depth. Several hosted products ship with a suggested starting model, but every choice is explicit and exact. Higher-cost models such as Qwen Coder Plus require live evidence before they can be selected.
+
+For a side-by-side view of every product, transport family, endpoint, structured-output posture, and enablement gate, see the [providers reference](/app/reference/providers). For setup and readiness steps, see [Configuration](/app/reference/configuration) and [Your first review](/app/getting-started/first-review).
 
 ## Related
 
-- [Providers reference](/app/reference/providers) — the full per-provider table
-- [Onboarding](/app/web/onboarding) — add a provider key and pick your first model
+- [Providers reference](/app/reference/providers) — the full canonical support matrix
+- [Configuration](/app/reference/configuration) — V2 configuration identity and actions
+- [Onboarding](/app/web/onboarding) — create your first configuration in the UI

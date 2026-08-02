@@ -15,8 +15,10 @@ export function ModelListItem({ model, onDoubleClick }: ModelListItemProps) {
       className="w-full"
       label={
         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="min-w-0 font-bold">{model.name}</span>
-          {/* Same tier vocabulary as the provider list: FREE green, PAID neutral. */}
+          <span className="min-w-0 font-mono text-sm font-bold">{model.id}</span>
+          {model.name !== model.id ? (
+            <span className="min-w-0 text-xs text-muted-foreground">{model.name}</span>
+          ) : null}
           <Badge variant={model.tier === "free" ? "success" : "neutral"} size="xs">
             {model.tier}
           </Badge>

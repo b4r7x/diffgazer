@@ -3,25 +3,92 @@ title: Configuration
 description: Where Diffgazer stores config and what each setting does.
 ---
 
-Diffgazer keeps its configuration global by default. There is no single unified config file: settings, secrets, and trust each live in their own JSON file under `~/.diffgazer`, and a tiny per-project file records the repository's identity. Think of the global directory as your account-level defaults, with the per-project file pinning a stable id for the repo you are reviewing.
+Diffgazer keeps its configuration global by default. Settings, secrets, trust, and versioned provider **configurations** each live in their own files under `~/.diffgazer`, and a tiny per-project file records the repository's identity. Think of the global directory as your account-level defaults, with the per-project file pinning a stable id for the repo you are reviewing.
 
-The active provider and model are global settings for this Diffgazer installation. Activating them through the API still requires trust for the project making the request, but the selection is not stored per project.
+The active configuration and selected exact model are global for this Diffgazer installation. Activating them through the API still requires trust for the project making the request, but the selection is not stored per project.
 
 ## File locations
 
 | Path | Purpose |
 | --- | --- |
-| `~/.diffgazer/config.json` | Your settings and the list of known providers (theme, default lenses, severity threshold, agent execution, and so on). |
-| `~/.diffgazer/secrets.json` | Stored API keys and environment-variable references, keyed by provider. |
+| `~/.diffgazer/config.json` | Your settings and the list of known configurations (theme, default lenses, severity threshold, agent execution, and so on). |
+| `~/.diffgazer/secrets.json` | Stored credential references and metadata keyed by configuration. Literal secrets live in separate credential files with `0600` permissions. |
 | `~/.diffgazer/trust.json` | Per-project trust records: which repositories you have trusted and what they are allowed to do. |
 | `~/.diffgazer/triage-reviews/` | Saved review history, keyed by project path, plus a per-project index. |
 | `.diffgazer/project.json` | Lives inside the repository. Holds a generated `projectId` and the repo root, so trust records and review history can point at this project across runs. |
 
-Set `DIFFGAZER_HOME` to move the global directory somewhere other than `~/.diffgazer`. When it is set, every global file and the review history resolve under that path instead. Diffgazer writes every config file with `0600` permissions, so only your user account can read them.
+Set `DIFFGAZER_HOME` to move the global directory somewhere other than `~/.diffgazer`. Diffgazer writes every config file with `0600` permissions.
 
 ### Moving a repository
 
-When you move or rename a repository directory, Diffgazer treats it as a move rather than a new project: the `.diffgazer/project.json` keeps its `projectId` and its `repoRoot` is updated to the new location, and your saved review history follows automatically. Trust is the exception — for safety it stays gated, so the first request from the new path returns a trust prompt and you re-confirm trust once; that re-confirmation updates the same `projectId` record rather than creating a duplicate.
+When you move or rename a repository directory, Diffgazer treats it as a move rather than a new project: the `.diffgazer/project.json` keeps its `projectId` and its `repoRoot` is updated to the new location, and your saved review history follows automatically. Trust stays gated, so the first request from the new path returns a trust prompt and you re-confirm trust once.
+
+## V2 configuration identity
+
+Each saved provider setup is a **configuration** with:
+
+- `configurationId` — stable identifier for the record.
+- `revision` — monotonic version used for optimistic updates.
+- `executionFingerprint` — immutable identity for the admitted product tuple, credential reference, endpoint, region, workspace, and exact model.
+
+Client-safe summaries expose readiness, notices, remediation, and available actions. They never expose literal secrets, environment values, auth paths, account identifiers, or raw diagnostics.
+
+## Configuration actions
+
+The local API exposes six generic actions on `POST /api/config/actions`:
+
+| Action | When to use it |
+| --- | --- |
+| `create` | Start a new configuration for a selectable product. |
+| `inspect` | Read the current safe summary and readiness state. |
+| `select` | Choose an exact admitted model. |
+| `test` | Run the readiness and conformance probe for the configured tuple. |
+| `update` | Change endpoint, region, workspace, credential reference, or notice acknowledgement. |
+| `delete` | Remove the configuration after active review leases drain. |
+
+Every action returns a client-safe summary. A configuration becomes **ready** only after its product-specific admission checks pass, including structured-output conformance, required usage when applicable, and explicit notice acknowledgement.
+
+## Setup and readiness by product family
+
+Setup always ends in an observable **ready**, **unsupported**, or **skipped** state. Diffgazer never assumes a hosted API key for local HTTP or local CLI products.
+
+### Hosted API products
+
+For Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Qwen International, Moonshot Open Platform, and Mistral:
+
+1. `create` a configuration for the product.
+2. `update` it with either a stored literal credential or an environment reference. The reference carries no name: the server binds the canonical variable for that product, for example `GOOGLE_API_KEY` for Google Gemini.
+3. Bind the allowed endpoint and, when required, region and workspace.
+4. `select` an exact discovered model ID.
+5. `test` the configuration until readiness reports **ready** or a named remediation such as `credential-invalid`, `model-missing`, or `conformance-failed`.
+
+Hosted examples never embed literal secrets. Use an environment reference or the setup UI's write-only credential field instead.
+
+### Local HTTP products (Ollama, Local OpenAI-compatible)
+
+1. `create` the configuration and choose the loopback endpoint preset (Ollama default, LM Studio, or llama.cpp).
+2. Start the local server on the validated loopback address.
+3. `inspect` to discover exact model IDs from the local server.
+4. `select` a listed exact model and `test` structured-output conformance.
+
+Optional bearer tokens are supported only when your local server requires them. Diffgazer does not accept remote URLs, tunnels, or LAN addresses.
+
+### Local CLI products (OpenAI Codex CLI, GitHub Copilot CLI)
+
+1. `create` the configuration.
+2. Install and authenticate the CLI with the vendor's own tooling. Diffgazer uses **vendor-managed local auth** and does not import CLI tokens or auth files.
+3. `inspect` and `test` until the pinned CLI profile passes negative-capability, schema, and cancellation checks, or readiness reports **unsupported** with remediation to review support requirements.
+
+## Exact-model, conformance, and acknowledgement gates
+
+- **Exact model only.** Aliases, `latest`, and routing selectors are rejected.
+- **Conformance.** `test` must produce schema-valid review output for the exact configured tuple before the configuration is ready.
+- **Acknowledgement.** Each product's current billing and privacy notice must be explicitly accepted before the first context send.
+- **Skipped live probes.** When a live check is intentionally skipped, readiness stays non-ready with remediation code `enable-live-probe`. A skipped probe never enables a product.
+
+## Removed records
+
+The removed Z.AI Coding Plan record exposes only migration and delete actions. Create a new Z.AI configuration instead of reusing the removed credential. See [Providers reference](/app/reference/providers#removed-configuration-records).
 
 ## Settings
 
@@ -29,24 +96,25 @@ These are the fields in the settings config. Anything you do not set falls back 
 
 | Setting | Type | Default | Description |
 | --- | --- | --- | --- |
-| `theme` | `auto` \| `dark` \| `light` \| `terminal` | `auto` | The UI theme. In the TUI, `auto` matches your terminal; the web UI offers dark and light and shows `auto` as dark. |
-| `defaultLenses` | array of lens ids | `correctness`, `security`, `performance`, `simplicity`, `tests` | Which review lenses run by default. All five are on out of the box. |
-| `defaultProfile` | profile id or `null` | `null` | A saved review profile to apply by default. `null` means no profile is preselected. |
-| `severityThreshold` | `blocker` \| `high` \| `medium` \| `low` \| `nit` | `low` | The lowest severity an issue can have and still be shown. `low` keeps almost everything; `nit` would keep even the smallest notes. |
-| `secretsStorage` | `file` \| `keyring` \| `null` | `null` | Where API keys are stored. `null` means you have not chosen yet. |
+| `theme` | `auto` \| `dark` \| `light` \| `terminal` | `auto` | The UI theme. |
+| `defaultLenses` | array of lens ids | `correctness`, `security`, `performance`, `simplicity`, `tests` | Which review lenses run by default. |
+| `defaultProfile` | profile id or `null` | `null` | A saved review profile to apply by default. |
+| `severityThreshold` | `blocker` \| `high` \| `medium` \| `low` \| `nit` | `low` | The lowest severity an issue can have and still be shown. |
+| `secretsStorage` | `file` \| `keyring` \| `null` | `null` | Where literal credentials are stored when you choose stored secrets. |
 | `agentExecution` | `parallel` \| `sequential` | `sequential` | Whether review agents run one after another or at the same time. |
 
 ## Secrets storage
 
-`secretsStorage` decides where your API keys live once you save them. With `file`, keys are written as plaintext JSON to `~/.diffgazer/secrets.json` with the same `0600` permissions as the rest. With `keyring`, Diffgazer hands them to your operating system's credential store instead of writing them to that file. The default is `null`, which means the choice has not been made yet, so pick one before you save a key. Either way, credentials stay local to your machine. You can also skip stored secrets entirely and point a provider at an environment variable, which is covered under [Providers](/app/reference/providers) and [Environment variables](/app/reference/environment-variables).
+`secretsStorage` decides where literal credentials live when you choose stored secrets instead of an environment reference. With `file`, credentials are written to separate `0600` files under your Diffgazer home. With `keyring`, Diffgazer uses your operating system credential store. Environment references store only the variable name.
+
+Either way, credentials stay local to your machine. For hosted reference names, see [Environment variables](/app/reference/environment-variables).
 
 ## Trust
 
-Trust is granted per project, not globally. Each trust record names the project, when you trusted it, and a small set of capabilities: `readFiles` lets Diffgazer read files in the repository, and `runCommands` would let it run commands. A trust record also carries a mode, either `persistent` (the grant survives across runs) or `session` (it lasts for the current session only).
-
-> Note: `runCommands` is off by default. When trust is saved, the server forces `runCommands` to `false` regardless of what was requested, because running commands is not supported yet. So in practice, trusting a project grants file reads, not command execution. For the full picture of what stays on your machine, see [Privacy and security](/app/concepts/privacy).
+Trust is granted per project, not globally. Each trust record names the project, when you trusted it, and capabilities such as `readFiles`. `runCommands` is forced to `false` because command execution is not supported yet. See [Privacy and security](/app/concepts/privacy).
 
 ## Related
 
-- [Providers](/app/reference/providers): the model providers Diffgazer talks to and how bring-your-own-key fits each one.
-- [Environment variables](/app/reference/environment-variables): the variables Diffgazer reads and how they override config.
+- [Providers](/app/reference/providers): the canonical support matrix and per-product contracts.
+- [Environment variables](/app/reference/environment-variables): hosted credential reference names.
+- [Local API reference](/app/reference/api): the six configuration actions and review receipts.

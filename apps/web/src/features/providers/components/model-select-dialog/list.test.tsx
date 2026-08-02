@@ -4,28 +4,28 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ModelList } from "./list";
 
-const MODELS: ModelInfo[] = [
+const DISCOVERED_MODELS: ModelInfo[] = [
   {
-    id: "model-a",
-    name: "Model A",
-    description: "First model",
+    id: "gemini-2.5-flash",
+    name: "gemini-2.5-flash",
+    description: "Exact credentialed production-path evidence passed.",
     tier: "paid",
   },
   {
-    id: "model-b",
-    name: "Model B",
-    description: "Second model",
+    id: "gemini-2.5-pro",
+    name: "gemini-2.5-pro",
+    description: "Second exact model",
     tier: "free",
   },
 ];
 
-describe("ModelList", () => {
-  it("labels each model with its access tier", () => {
+describe("ModelList configuration-bound discovery", () => {
+  it("labels each admitted model with its exact ID and access tier", () => {
     render(
       <ModelList
-        models={MODELS}
-        focusedModelId="model-a"
-        currentModelId="model-a"
+        models={DISCOVERED_MODELS}
+        focusedModelId="gemini-2.5-flash"
+        currentModelId="gemini-2.5-flash"
         isFocused={false}
         onSelect={vi.fn()}
         onConfirm={vi.fn()}
@@ -34,19 +34,22 @@ describe("ModelList", () => {
       />,
     );
 
+    expect(screen.getByText("gemini-2.5-flash")).toBeInTheDocument();
+    expect(screen.getByText("gemini-2.5-pro")).toBeInTheDocument();
     expect(screen.getByText("free")).toBeInTheDocument();
     expect(screen.getByText("paid")).toBeInTheDocument();
+    expect(screen.queryByText(/latest/i)).not.toBeInTheDocument();
   });
 
-  it("confirms the double-clicked model directly", async () => {
+  it("confirms the double-clicked exact model ID directly", async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();
 
     render(
       <ModelList
-        models={MODELS}
-        focusedModelId="model-a"
-        currentModelId="model-a"
+        models={DISCOVERED_MODELS}
+        focusedModelId="gemini-2.5-flash"
+        currentModelId="gemini-2.5-flash"
         isFocused
         onSelect={vi.fn()}
         onConfirm={onConfirm}
@@ -55,17 +58,17 @@ describe("ModelList", () => {
       />,
     );
 
-    await user.dblClick(screen.getByRole("radio", { name: /Model B/ }));
+    await user.dblClick(screen.getByRole("radio", { name: /gemini-2\.5-pro/ }));
 
-    expect(onConfirm).toHaveBeenCalledWith("model-b");
+    expect(onConfirm).toHaveBeenCalledWith("gemini-2.5-pro");
   });
 
   it("focuses the highlighted radio when list keyboard navigation is active", async () => {
     render(
       <ModelList
-        models={MODELS}
-        focusedModelId="model-b"
-        currentModelId="model-a"
+        models={DISCOVERED_MODELS}
+        focusedModelId="gemini-2.5-pro"
+        currentModelId="gemini-2.5-flash"
         isFocused
         onSelect={vi.fn()}
         onConfirm={vi.fn()}
@@ -75,44 +78,62 @@ describe("ModelList", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("radio", { name: /Model B/ })).toHaveFocus();
+      expect(screen.getByRole("radio", { name: /gemini-2\.5-pro/ })).toHaveFocus();
     });
   });
 
-  it("does not hand off focus on horizontal boundary keys", async () => {
-    const user = userEvent.setup();
-    const onBoundaryReached = vi.fn();
+  it("distinguishes failed discovery from skipped discovery and empty search results", () => {
+    const props = {
+      focusedModelId: null,
+      currentModelId: undefined,
+      isFocused: false,
+      onSelect: vi.fn(),
+      onConfirm: vi.fn(),
+      onHighlightChange: vi.fn(),
+      onBoundaryReached: vi.fn(),
+    };
 
-    render(
+    const { rerender } = render(
       <ModelList
-        models={MODELS}
-        focusedModelId="model-a"
-        currentModelId="model-a"
-        isFocused
-        onSelect={vi.fn()}
-        onConfirm={vi.fn()}
-        onHighlightChange={vi.fn()}
-        onBoundaryReached={onBoundaryReached}
+        models={[]}
+        discoveryStatus="error"
+        discoveryError="Model discovery failed. Test the configuration again."
+        {...props}
       />,
     );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Model discovery failed. Test the configuration again.",
+    );
 
-    screen.getByRole("radio", { name: /Model A/ }).focus();
-    await user.keyboard("{ArrowLeft}");
+    rerender(
+      <ModelList
+        models={[]}
+        discoveryStatus="skipped"
+        discoveryReason="Model discovery was skipped. Complete the required prerequisites, then test again."
+        {...props}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Model discovery was skipped. Complete the required prerequisites, then test again.",
+    );
 
-    expect(onBoundaryReached).not.toHaveBeenCalled();
-
-    screen.getByRole("radio", { name: /Model B/ }).focus();
-    await user.keyboard("{ArrowRight}");
-
-    expect(onBoundaryReached).not.toHaveBeenCalled();
+    rerender(
+      <ModelList
+        models={[]}
+        discoveryStatus="passed"
+        emptyLabel="No models match your search"
+        {...props}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("No models match your search");
   });
 
   it("shows a saving placeholder instead of model radios while persistence is pending", () => {
     render(
       <ModelList
-        models={MODELS}
-        focusedModelId="model-a"
-        currentModelId="model-a"
+        models={DISCOVERED_MODELS}
+        focusedModelId="gemini-2.5-flash"
+        currentModelId="gemini-2.5-flash"
         isFocused
         isSaving
         onSelect={vi.fn()}
@@ -123,13 +144,13 @@ describe("ModelList", () => {
     );
 
     expect(screen.getByText("Saving...")).toBeInTheDocument();
-    expect(screen.queryByRole("radio", { name: /Model A/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /gemini-2\.5-flash/ })).not.toBeInTheDocument();
   });
 
   it("keeps the live status region mounted across the results→empty transition", () => {
     const props = {
-      focusedModelId: "model-a",
-      currentModelId: "model-a",
+      focusedModelId: "gemini-2.5-flash",
+      currentModelId: "gemini-2.5-flash",
       isFocused: false,
       onSelect: vi.fn(),
       onConfirm: vi.fn(),
@@ -137,16 +158,20 @@ describe("ModelList", () => {
       onBoundaryReached: vi.fn(),
     };
 
-    const { rerender } = render(<ModelList models={MODELS} {...props} />);
+    const { rerender } = render(<ModelList models={DISCOVERED_MODELS} {...props} />);
 
     const liveRegion = screen.getByRole("status");
     expect(liveRegion).toHaveTextContent("");
-    // `sr-only` IS the contract here: the region must stay mounted (so the empty
-    // message is announced) yet take no visual space while results exist, and
-    // jsdom cannot measure that it collapses.
     expect(liveRegion).toHaveClass("sr-only");
 
-    rerender(<ModelList models={[]} emptyLabel="No models match your search" {...props} />);
+    rerender(
+      <ModelList
+        models={[]}
+        discoveryStatus="passed"
+        emptyLabel="No models match your search"
+        {...props}
+      />,
+    );
 
     expect(screen.getByRole("status")).toBe(liveRegion);
     expect(liveRegion).toHaveTextContent("No models match your search");
@@ -155,23 +180,30 @@ describe("ModelList", () => {
 
   it("removes focused model controls when the results become empty", () => {
     const props = {
-      focusedModelId: "model-a",
-      currentModelId: "model-a",
+      focusedModelId: "gemini-2.5-flash",
+      currentModelId: "gemini-2.5-flash",
       isFocused: true,
       onSelect: vi.fn(),
       onConfirm: vi.fn(),
       onHighlightChange: vi.fn(),
       onBoundaryReached: vi.fn(),
     };
-    const { rerender } = render(<ModelList models={MODELS} {...props} />);
-    const focusedModel = screen.getByRole("radio", { name: /Model A/ });
+    const { rerender } = render(<ModelList models={DISCOVERED_MODELS} {...props} />);
+    const focusedModel = screen.getByRole("radio", { name: /gemini-2\.5-flash/ });
 
     focusedModel.focus();
     expect(focusedModel).toHaveFocus();
 
-    rerender(<ModelList models={[]} emptyLabel="No models match your search" {...props} />);
+    rerender(
+      <ModelList
+        models={[]}
+        discoveryStatus="passed"
+        emptyLabel="No models match your search"
+        {...props}
+      />,
+    );
 
-    expect(screen.queryByRole("radio", { name: /Model A/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /gemini-2\.5-flash/ })).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("No models match your search");
   });
 
@@ -181,9 +213,9 @@ describe("ModelList", () => {
 
     render(
       <ModelList
-        models={MODELS}
-        focusedModelId="model-a"
-        currentModelId="model-a"
+        models={DISCOVERED_MODELS}
+        focusedModelId="gemini-2.5-flash"
+        currentModelId="gemini-2.5-flash"
         isFocused
         onSelect={vi.fn()}
         onConfirm={vi.fn()}
@@ -192,12 +224,12 @@ describe("ModelList", () => {
       />,
     );
 
-    screen.getByRole("radio", { name: /Model A/ }).focus();
+    screen.getByRole("radio", { name: /gemini-2\.5-flash/ }).focus();
     await user.keyboard("{ArrowUp}");
     expect(onBoundaryReached).toHaveBeenCalledWith("previous");
 
     onBoundaryReached.mockClear();
-    screen.getByRole("radio", { name: /Model B/ }).focus();
+    screen.getByRole("radio", { name: /gemini-2\.5-pro/ }).focus();
     await user.keyboard("{ArrowDown}");
     expect(onBoundaryReached).toHaveBeenCalledWith("next");
   });

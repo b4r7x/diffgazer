@@ -7,23 +7,31 @@ interface StepActionLabels {
   enter: string;
 }
 
-// A Record keyed by OnboardingStep rather than a switch: a seventh step is a
-// compile error here instead of a silently empty footer.
 const STEP_ACTION_LABELS: Record<OnboardingStep, StepActionLabels> = {
-  storage: {
+  product: { navigate: "Navigate Products", select: "Select Product", enter: "Select & Next" },
+  "endpoint-binding": {
     navigate: NAVIGATE_SHORTCUT.label,
-    select: "Select Storage",
+    select: "Select Option",
     enter: "Select & Next",
   },
-  provider: { navigate: "Navigate Providers", select: "Select Provider", enter: "Select & Next" },
-  "api-key": { navigate: "Navigate Fields", select: "Select Method", enter: "Select & Next" },
-  model: { navigate: "Navigate Models", select: "Select Model", enter: "Select & Next" },
-  analysis: {
-    navigate: NAVIGATE_SHORTCUT.label,
-    select: "Toggle Option",
-    enter: "Toggle & Next",
+  authentication: {
+    navigate: "Navigate Fields",
+    select: "Select Method",
+    enter: "Select & Next",
   },
-  execution: { navigate: "Navigate Modes", select: "Select Mode", enter: "Select & Next" },
+  model: { navigate: "Navigate Models", select: "Select Model", enter: "Select & Next" },
+  conformance: {
+    navigate: NAVIGATE_SHORTCUT.label,
+    select: "Confirm Verification",
+    enter: "Confirm & Next",
+  },
+  acknowledgement: {
+    navigate: NAVIGATE_SHORTCUT.label,
+    select: "Accept Notice",
+    enter: "Accept & Next",
+  },
+  migration: { navigate: NAVIGATE_SHORTCUT.label, select: "Review Migration", enter: "Continue" },
+  delete: { navigate: NAVIGATE_SHORTCUT.label, select: "Confirm Delete", enter: "Delete Record" },
 };
 
 export function getStepShortcuts(

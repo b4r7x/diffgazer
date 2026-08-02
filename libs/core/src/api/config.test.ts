@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import type { ReadinessAcknowledgement } from "../schemas/config/readiness.js";
 import { createApiClient } from "./client.js";
 import {
@@ -13,7 +14,7 @@ import {
   updateConfiguration,
 } from "./config.js";
 import { createMockClient } from "./test-helpers.js";
-import { type ApiClient, isApiError } from "./types.js";
+import { type ApiClient, type BodyRequestOptions, isApiError } from "./types.js";
 
 const checkedAt = "2026-07-31T12:00:00.000Z";
 const acknowledgement: Extract<ReadinessAcknowledgement, { status: "accepted" }> = {
@@ -58,6 +59,17 @@ const readiness = {
   remediation: { code: "none", message: "No remediation is required." },
 } as const;
 
+function mockConfigurationActionPost(client: ApiClient, body: unknown): void {
+  vi.mocked(client.post).mockImplementationOnce(
+    async <T>(_path: string, _action: unknown, options?: BodyRequestOptions<T>) => {
+      if (options?.schema) {
+        return options.schema(body);
+      }
+      return body as T;
+    },
+  );
+}
+
 describe("config API functions", () => {
   let client: ApiClient;
 
@@ -66,18 +78,21 @@ describe("config API functions", () => {
   });
 
   it("serializes all six configuration actions to the single frozen endpoint", async () => {
-    vi.mocked(client.post)
-      .mockResolvedValueOnce({ action: "create", status: "succeeded", configuration })
-      .mockResolvedValueOnce({ action: "inspect", status: "succeeded", configuration })
-      .mockResolvedValueOnce({ action: "select", status: "succeeded", configuration })
-      .mockResolvedValueOnce({
+    for (const body of [
+      { action: "create", status: "succeeded", configuration },
+      { action: "inspect", status: "succeeded", configuration },
+      { action: "select", status: "succeeded", configuration },
+      {
         action: "test",
         status: "succeeded",
         configuration,
         readiness,
-      })
-      .mockResolvedValueOnce({ action: "update", status: "succeeded", configuration })
-      .mockResolvedValueOnce({ action: "delete", status: "succeeded" });
+      },
+      { action: "update", status: "succeeded", configuration },
+      { action: "delete", status: "succeeded" },
+    ]) {
+      mockConfigurationActionPost(client, body);
+    }
 
     const created = await createConfiguration(client, input);
     await inspectConfiguration(client, "groq-primary");
@@ -139,7 +154,7 @@ describe("config API functions", () => {
   });
 
   it("rejects a response for a different action", async () => {
-    vi.mocked(client.post).mockResolvedValue({ action: "delete", status: "succeeded" });
+    mockConfigurationActionPost(client, { action: "delete", status: "succeeded" });
 
     await expect(inspectConfiguration(client, "groq-primary")).rejects.toThrow(
       "Configuration action response mismatch: expected inspect, received delete",
@@ -147,7 +162,7 @@ describe("config API functions", () => {
   });
 
   it("rejects a successful response bound to a different configuration", async () => {
-    vi.mocked(client.post).mockResolvedValue({
+    mockConfigurationActionPost(client, {
       action: "inspect",
       status: "succeeded",
       configuration: { ...configuration, configurationId: "other-configuration" },
@@ -159,7 +174,7 @@ describe("config API functions", () => {
   });
 
   it("rejects a successful selection response for a different model", async () => {
-    vi.mocked(client.post).mockResolvedValue({
+    mockConfigurationActionPost(client, {
       action: "select",
       status: "succeeded",
       configuration: { ...configuration, selectedModelId: "openai/gpt-oss-20b" },
@@ -170,27 +185,59 @@ describe("config API functions", () => {
     ).rejects.toThrow("Configuration action response selected a different model");
   });
 
+  it("rejects a successful delete response that still contains a supported configuration", async () => {
+    mockConfigurationActionPost(client, {
+      action: "delete",
+      status: "succeeded",
+      configuration,
+    });
+
+    await expect(deleteConfiguration(client, "groq-primary", 7)).rejects.toThrow(
+      "A successful delete response cannot contain a supported configuration",
+    );
+  });
+
+  it("rejects a successful create response without a supported configuration", async () => {
+    mockConfigurationActionPost(client, {
+      action: "create",
+      status: "succeeded",
+      configuration: {
+        configurationId: "groq-primary",
+        revision: 1,
+        status: "removed",
+        transportFamily: "hosted-api",
+        productId: REMOVED_PRODUCT_ID,
+        selectedModelId: null,
+        notices: [],
+        availableActions: ["inspect", "delete"],
+      },
+    });
+
+    await expect(createConfiguration(client, input)).rejects.toThrow(
+      "A successful create response must contain a supported configuration",
+    );
+  });
+
   it("rejects stale update and delete response revisions", async () => {
-    vi.mocked(client.post)
-      .mockResolvedValueOnce({
-        action: "update",
-        status: "succeeded",
-        configuration: { ...configuration, revision: 6 },
-      })
-      .mockResolvedValueOnce({
-        action: "delete",
-        status: "succeeded",
-        configuration: {
-          configurationId: "groq-primary",
-          revision: 6,
-          status: "removed",
-          transportFamily: "hosted-api",
-          productId: "zai-coding",
-          selectedModelId: null,
-          notices: [],
-          availableActions: ["inspect", "delete"],
-        },
-      });
+    mockConfigurationActionPost(client, {
+      action: "update",
+      status: "succeeded",
+      configuration: { ...configuration, revision: 6 },
+    });
+    mockConfigurationActionPost(client, {
+      action: "delete",
+      status: "succeeded",
+      configuration: {
+        configurationId: "groq-primary",
+        revision: 6,
+        status: "removed",
+        transportFamily: "hosted-api",
+        productId: REMOVED_PRODUCT_ID,
+        selectedModelId: null,
+        notices: [],
+        availableActions: ["inspect", "delete"],
+      },
+    });
 
     await expect(
       updateConfiguration(client, "groq-primary", 7, input, acknowledgement),
@@ -201,7 +248,7 @@ describe("config API functions", () => {
   });
 
   it("rejects successful actions that claim a removed configuration", async () => {
-    vi.mocked(client.post).mockResolvedValue({
+    mockConfigurationActionPost(client, {
       action: "test",
       status: "succeeded",
       configuration: {
@@ -209,7 +256,7 @@ describe("config API functions", () => {
         revision: 7,
         status: "removed",
         transportFamily: "hosted-api",
-        productId: "zai-coding",
+        productId: REMOVED_PRODUCT_ID,
         selectedModelId: null,
         notices: [],
         availableActions: ["inspect", "delete"],

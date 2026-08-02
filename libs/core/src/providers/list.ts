@@ -1,9 +1,25 @@
+import type { ConfigurationStatus } from "../schemas/config/configuration-status.js";
 import { SELECTABLE_PRODUCTS } from "../schemas/config/provider-registry.js";
-import type { ConfigurationStatus } from "../schemas/config/providers.js";
 import { READINESS_PRESENTATION, type Readiness } from "../schemas/config/readiness.js";
 import { type ClientMetadataPayload, projectClientMetadata } from "./client-metadata.js";
 
 export type ProviderListRow = ClientMetadataPayload;
+
+/**
+ * The stable identity of a provider row: a configured row is identified by its
+ * configuration, an unconfigured placeholder row by its product.
+ */
+export function getProviderRowId(row: ProviderListRow): string {
+  return row.configuration?.configurationId ?? row.product.productId;
+}
+
+export function findProviderById(
+  rows: readonly ProviderListRow[],
+  rowId: string | null | undefined,
+): ProviderListRow | null {
+  if (rowId === null || rowId === undefined) return null;
+  return rows.find((row) => getProviderRowId(row) === rowId) ?? null;
+}
 
 const UNCONFIGURED_READINESS = {
   status: "unconfigured",

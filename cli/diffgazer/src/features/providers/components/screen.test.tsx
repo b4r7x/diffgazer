@@ -1,7 +1,8 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
-import type { ProviderModelsResponse, ProviderStatus } from "@diffgazer/core/schemas/config";
+import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
+import { requireValue } from "@diffgazer/core/testing/assertions";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
@@ -13,17 +14,49 @@ import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { NavigationProvider } from "../../../app/providers/navigation";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { flush } from "../../../testing/flush";
-import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
+import {
+  cleanupRootFrames,
+  type RootFrameView,
+  renderRootFrame,
+} from "../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../theme/provider";
+import {
+  buildProviderRows,
+  geminiDiscoveryResponse,
+  makeConfigurationListResponse,
+} from "../testing/fixtures";
 import { ProvidersScreen } from "./screen";
 
 vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@diffgazer/core/api/hooks")>()),
-  useInit: () => ({ data: undefined, isLoading: false }),
+  useInit: () => ({
+    data: {
+      schemaVersion: 2 as const,
+      configurations: makeConfigurationListResponse().configurations,
+      selectedConfigurationId: "gemini-primary" as const,
+      settings: {
+        theme: "terminal" as const,
+        defaultLenses: [],
+        defaultProfile: null,
+        severityThreshold: "low" as const,
+        secretsStorage: null,
+        agentExecution: "parallel" as const,
+      },
+      project: { projectId: "proj-1", path: "/repo", trust: null },
+      setup: {
+        hasSecretsStorage: false,
+        hasProvider: true,
+        hasModel: true,
+        hasTrust: false,
+        isConfigured: true,
+        isReady: true,
+        missing: ["trust", "secrets storage"],
+      },
+    },
+    isLoading: false,
+  }),
 }));
 
-// The overlays read the zone GlobalLayout provides; the plain `render` cases
-// here mount the screen without it, so derive the zone from the terminal.
 vi.mock("../../../components/layout/global", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../../components/layout/global")>();
   const { useTerminalDimensions } = await import("../../../hooks/use-terminal-dimensions");
@@ -45,10 +78,6 @@ const TAB = "\t";
 const ENTER = "\r";
 const ARROW_RIGHT = "\u001b[C";
 
-const PROVIDER_STATUS: ProviderStatus[] = [
-  { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
-];
-
 afterEach(() => {
   cleanup();
   cleanupRootFrames();
@@ -61,6 +90,23 @@ async function flushUntil(predicate: () => boolean, attempts = 200): Promise<voi
   }
 }
 
+async function pressRoot(view: RootFrameView, input: string): Promise<void> {
+  view.stdin.write(input);
+  await flush();
+}
+
+async function flushUntilRoot(
+  _view: RootFrameView,
+  predicate: () => boolean,
+  attempts = 500,
+): Promise<void> {
+  for (let i = 0; i < attempts; i += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  throw new Error(`Timed out waiting for root frame condition after ${attempts} attempts`);
+}
+
 function makeQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
@@ -70,30 +116,22 @@ function makeQueryClient(): QueryClient {
   });
 }
 
-function makeApi(providerStatus: ProviderStatus[] = PROVIDER_STATUS): BoundApi {
-  const getProviderStatus = vi
-    .fn<() => Promise<ProviderStatus[]>>()
-    .mockResolvedValue(providerStatus);
-  const models: ProviderModelsResponse = {
-    models: [
-      {
-        id: "gemini-2.5-flash",
-        name: "Gemini 2.5 Flash",
-        description: "Fast model",
-        tier: "free",
-      },
-    ],
-    fetchedAt: new Date().toISOString(),
-    source: "live",
-    cached: false,
-  };
-  const getProviderModels = vi
-    .fn<() => Promise<ProviderModelsResponse>>()
-    .mockResolvedValue(models);
+function makeApi(): BoundApi {
   return {
     ...createApi({ baseUrl: "http://localhost" }),
-    getProviderStatus,
-    getProviderModels,
+    listConfigurations: vi
+      .fn<BoundApi["listConfigurations"]>()
+      .mockResolvedValue(makeConfigurationListResponse()),
+    createConfiguration: vi.fn(),
+    updateConfiguration: vi.fn(),
+    selectConfiguration: vi.fn(),
+    deleteConfiguration: vi.fn(),
+    inspectConfiguration: vi.fn(),
+    // Model discovery is a real query: an undefined resolution makes React
+    // Query throw and the dialog renders an error footer instead of its list.
+    testConfiguration: vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockResolvedValue(geminiDiscoveryResponse()),
   } satisfies BoundApi;
 }
 
@@ -130,14 +168,20 @@ function ProvidersApiBoundary({ api }: { api: BoundApi }) {
   return (
     <QueryClientProvider client={makeQueryClient()}>
       <ApiProvider value={api}>
-        <ProvidersScreen />
+        <CliThemeProvider initialTheme="dark">
+          <TerminalKeyboardProvider>
+            <FooterProvider initialShortcuts={[]}>
+              <ProvidersScreen />
+            </FooterProvider>
+          </TerminalKeyboardProvider>
+        </CliThemeProvider>
       </ApiProvider>
     </QueryClientProvider>
   );
 }
 
-describe("ProvidersScreen keyboard zones", () => {
-  test("opens with the active provider already in the details pane", async () => {
+describe("ProvidersScreen V2 products and readiness", () => {
+  test("opens with the selected configuration already in the details pane", async () => {
     const { lastFrame } = render(
       <Wrapper>
         <ProvidersScreen />
@@ -149,8 +193,46 @@ describe("ProvidersScreen keyboard zones", () => {
     const frame = lastFrame() ?? "";
     expect(frame).not.toContain("Select a provider to view details");
     expect(frame).toContain("Google Gemini");
+    expect(frame).toContain("Ready");
+    expect(frame).not.toContain(LEGACY_V1_HAS_API_KEY_PROPERTY);
+    expect(frame).not.toContain("API Key Status");
   });
 
+  test("lists selectable products and removed records from the V2 roster", async () => {
+    const { lastFrame } = render(
+      <Wrapper>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    expect(lastFrame()).toContain("Z.AI Coding Plan");
+    expect(buildProviderRows().length).toBeGreaterThanOrEqual(13);
+  });
+
+  test("shows CLI unsupported evidence in the provider list", async () => {
+    const { lastFrame } = render(
+      <Wrapper>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("CLI unsupported") ?? false);
+  });
+
+  test("prevents removed-record selection in the list", async () => {
+    const { lastFrame } = render(
+      <Wrapper>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Z.AI Coding Plan") ?? false);
+    expect(lastFrame()).toContain("Removed record");
+  });
+});
+
+describe("ProvidersScreen keyboard zones", () => {
   test("moves the details pane with the highlight, without pressing Enter", async () => {
     const { stdin, lastFrame } = render(
       <Wrapper>
@@ -159,13 +241,9 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
-
-    expect(lastFrame()).toContain("gemini");
-
     stdin.write("\u001b[B");
-    await flushUntil(() => lastFrame()?.includes("zai") ?? false);
-
-    expect(lastFrame()).toContain("zai");
+    await flushUntil(() => lastFrame()?.includes("Z.AI") ?? false);
+    expect(lastFrame()).toContain("Z.AI");
   });
 
   test("moves to provider details with Tab after a provider is selected", async () => {
@@ -176,25 +254,21 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
-
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
-
     stdin.write(TAB);
     await flush();
     stdin.write(ENTER);
-
-    await flushUntil(() => lastFrame()?.includes("Choose how to provide") ?? false);
-
-    expect(lastFrame()).toContain("Choose how to provide");
+    await flushUntil(() => lastFrame()?.includes("Update configuration") ?? false);
+    expect(lastFrame()).toContain("Update configuration");
   });
 
-  test("renders a rejected credentials deletion exactly once", async () => {
-    const message = "credentials delete failed";
-    const deleteProviderCredentials = vi
-      .fn<BoundApi["deleteProviderCredentials"]>()
+  test("renders a rejected configuration deletion exactly once", async () => {
+    const message = "configuration delete failed";
+    const deleteConfiguration = vi
+      .fn<BoundApi["deleteConfiguration"]>()
       .mockRejectedValue(new Error(message));
-    const api = { ...makeApi(), deleteProviderCredentials } satisfies BoundApi;
+    const api = { ...makeApi(), deleteConfiguration } satisfies BoundApi;
     const { stdin, lastFrame } = render(
       <Wrapper api={api}>
         <ProvidersScreen />
@@ -206,24 +280,23 @@ describe("ProvidersScreen keyboard zones", () => {
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
     stdin.write(TAB);
     await flush();
-    stdin.write(ARROW_RIGHT);
-    await flush();
-    stdin.write(ARROW_RIGHT);
-    await flush();
+    for (let index = 0; index < 2; index += 1) {
+      stdin.write(ARROW_RIGHT);
+      await flush();
+    }
     stdin.write(ENTER);
-
     await flushUntil(() => lastFrame()?.includes(message) ?? false);
 
-    expect(deleteProviderCredentials).toHaveBeenCalledWith("gemini");
+    expect(deleteConfiguration).toHaveBeenCalled();
     expect(lastFrame()?.split(message)).toHaveLength(2);
   });
 
-  test("renders the sanitized error and hides the provider prompt when provider status fails to load", async () => {
-    const message = "provider status failed";
-    const getProviderStatus = vi
-      .fn<BoundApi["getProviderStatus"]>()
+  test("renders the sanitized error and hides provider rows when configurations fail to load", async () => {
+    const message = "configuration list failed";
+    const listConfigurations = vi
+      .fn<BoundApi["listConfigurations"]>()
       .mockRejectedValue(new Error(message));
-    const api = { ...makeApi(), getProviderStatus } satisfies BoundApi;
+    const api = { ...makeApi(), listConfigurations } satisfies BoundApi;
     const { lastFrame } = render(
       <Wrapper api={api}>
         <ProvidersScreen />
@@ -231,21 +304,22 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes(message) ?? false);
-
     expect(lastFrame()).toContain(message);
     expect(lastFrame()).not.toContain("Google Gemini");
   });
 
-  test("activates a configured provider with its resolved model", async () => {
-    const activateProvider = vi
-      .fn<BoundApi["activateProvider"]>()
-      .mockResolvedValue({ provider: "gemini", model: "gemini-2.5-flash" });
-    const api = {
-      ...makeApi([
-        { provider: "gemini", hasApiKey: true, isActive: false, model: "gemini-2.5-flash" },
-      ]),
-      activateProvider,
-    } satisfies BoundApi;
+  test("selects a ready configuration through the primary action", async () => {
+    const readyStatus = requireValue(
+      makeConfigurationListResponse().configurations[0],
+      "first configuration",
+    );
+    const inspectConfiguration = vi.fn<BoundApi["inspectConfiguration"]>().mockResolvedValue({
+      action: "inspect",
+      status: "succeeded",
+      configuration: readyStatus.configuration,
+      readiness: readyStatus.readiness,
+    });
+    const api = { ...makeApi(), inspectConfiguration } satisfies BoundApi;
     const { stdin, lastFrame } = render(
       <Wrapper api={api}>
         <ProvidersScreen />
@@ -253,17 +327,15 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
-    stdin.write(ENTER);
-    await flushUntil(() => lastFrame()?.includes("Set Active") ?? false);
     stdin.write(TAB);
     await flush();
     stdin.write(ENTER);
-    await flushUntil(() => activateProvider.mock.calls.length === 1);
+    await flushUntil(() => inspectConfiguration.mock.calls.length === 1);
 
-    expect(activateProvider).toHaveBeenCalledWith("gemini", "gemini-2.5-flash");
+    expect(inspectConfiguration).toHaveBeenCalledWith("gemini-primary");
   });
 
-  test("keeps medium provider rows and action labels on whole lines", async () => {
+  test("keeps provider rows and action labels on whole lines", async () => {
     const { stdin, lastFrame } = render(
       <Wrapper>
         <ProvidersScreen />
@@ -272,12 +344,12 @@ describe("ProvidersScreen keyboard zones", () => {
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
     stdin.write(ENTER);
-    await flushUntil(() => lastFrame()?.includes("Configure API Key") ?? false);
+    await flushUntil(() => lastFrame()?.includes("Update configuration") ?? false);
 
     const frame = lastFrame() ?? "";
-    expect(frame).toContain("Configure API Key");
-    expect(frame).toContain("Select Model");
-    expect(frame).toContain("Remove Key");
+    expect(frame).toContain("Update configuration");
+    expect(frame).toContain("Select model");
+    expect(frame).toContain("Delete configuration");
     expect(frame).not.toMatch(/\[●\s+needs\s*\n/i);
   });
 
@@ -289,45 +361,40 @@ describe("ProvidersScreen keyboard zones", () => {
     const bottomBorder = lines.findLastIndex((line) => /[\u2514\u2517]/.test(line));
 
     expect(bottomBorder).toBeGreaterThan(0);
-    // No ragged gap between the pane bottoms and the key bar.
     expect(lines.length - 1 - bottomBorder).toBeLessThanOrEqual(1);
   });
 
   test.each([
-    { title: "Configure API Key", moveToAction: 0 },
-    { title: "Select Model", moveToAction: 1 },
+    { title: "Update Configuration", moveToAction: 1 },
+    { title: "Select Model", moveToAction: 3 },
   ])("swaps provider panes for the $title dialog inside an 80 by 24 root frame", async ({
     title,
     moveToAction,
   }) => {
     const view = renderRootFrame(80, 24, <ProvidersApiBoundary api={makeApi()} />);
 
-    await flushUntil(() => view.lastFrame()?.includes("Google Gemini") ?? false);
-    view.stdin.write(ENTER);
-    await flushUntil(() => view.lastFrame()?.includes("gemini-2.5-flash") ?? false);
-    view.stdin.write(TAB);
-    await flush();
+    await flushUntilRoot(view, () => view.lastFrame()?.includes("Google Gemini") ?? false);
+    await pressRoot(view, ENTER);
+    await flushUntilRoot(view, () => view.lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    await pressRoot(view, TAB);
     for (let index = 0; index < moveToAction; index += 1) {
-      view.stdin.write(ARROW_RIGHT);
-      await flush();
+      await pressRoot(view, ARROW_RIGHT);
     }
-    view.stdin.write(ENTER);
-    await flushUntil(() => view.lastFrame()?.includes(title) ?? false);
-
-    const frame = view.lastFrame() ?? "";
-    expect(frame).toContain(title);
+    await pressRoot(view, ENTER);
+    await flushUntilRoot(view, () => view.lastFrame()?.includes(title) ?? false);
+    expect(view.lastFrame()).toContain(title);
   });
 
   test.each([
     {
       title: "Select Model",
-      moveToAction: 1,
+      moveToAction: 3,
       expectedFooter:
         "FOOTER [Tab] Switch Zone [/] Search [f] Filter Tier [Enter] Select | [Esc] Close",
     },
     {
-      title: "Configure API Key",
-      moveToAction: 0,
+      title: "Update Configuration",
+      moveToAction: 1,
       expectedFooter:
         "FOOTER [Tab] Focus Key Field [←/→] Switch Action [Enter] Confirm | [Esc] Close",
     },
@@ -358,7 +425,6 @@ describe("ProvidersScreen keyboard zones", () => {
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes(title) ?? false);
     await flushUntil(() => lastFrame()?.includes(expectedFooter) ?? false);
-
     expect(lastFrame()).toContain(expectedFooter);
   });
 
@@ -376,8 +442,10 @@ describe("ProvidersScreen keyboard zones", () => {
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
     stdin.write(TAB);
     await flush();
-    stdin.write(ARROW_RIGHT);
-    await flush();
+    for (let index = 0; index < 3; index += 1) {
+      stdin.write(ARROW_RIGHT);
+      await flush();
+    }
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("Select Model") ?? false);
     stdin.write("?");

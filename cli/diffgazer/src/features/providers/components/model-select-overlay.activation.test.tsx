@@ -1,6 +1,5 @@
 import "./model-select-overlay.terminal-mock";
 import type { BoundApi } from "@diffgazer/core/api";
-import type { ActivateProviderResponse } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -11,45 +10,110 @@ import {
   countPrefixes,
   flush,
   flushUntil,
+  GEMINI_CONFIGURATION,
   geminiName,
   makeGeminiApi,
   makeQueryClient,
+  testDiscoveryResponse,
   Wrapper,
 } from "./model-select-overlay.test-support";
 
-describe("ModelSelectOverlay selection (Enter -> activate -> close)", () => {
+describe("ModelSelectOverlay selection (Enter -> onSelect -> close)", () => {
   afterEach(() => {
     cleanup();
   });
 
-  test("activates the highlighted model on Enter, then calls onSelect with its id and closes after the activate mutation resolves", async () => {
+  test("selects the discovered model on Enter and closes the overlay", async () => {
     const onSelect = vi.fn();
     const onOpenChange = vi.fn();
-    const activateProvider = vi
-      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
-      .mockResolvedValue({ provider: "gemini", model: "gemini-2.5-flash" });
-    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
-
     const { stdin, lastFrame } = render(
-      <Wrapper api={api}>
+      <Wrapper>
         <ModelSelectOverlay
-          open={true}
+          open
           onOpenChange={onOpenChange}
-          providerId="gemini"
+          configuration={GEMINI_CONFIGURATION}
           onSelect={onSelect}
         />
       </Wrapper>,
     );
 
     await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
-
-    // The first model is highlighted by default; confirm Enter on it.
     stdin.write("\r");
     await flushUntil(() => onSelect.mock.calls.length > 0);
 
-    expect(activateProvider).toHaveBeenCalledWith("gemini", "gemini-2.5-flash");
     expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash");
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  test("stays open and pending until the selection mutation settles", async () => {
+    const deferred = createDeferred<void>();
+    const onSelect = vi.fn(() => deferred.promise);
+    const onOpenChange = vi.fn();
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <ModelSelectOverlay
+          open
+          onOpenChange={onOpenChange}
+          configuration={GEMINI_CONFIGURATION}
+          onSelect={onSelect}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+    stdin.write("\r");
+    await flushUntil(() => lastFrame()?.includes("Saving") ?? false);
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    deferred.resolve();
+    await flushUntil(() => onOpenChange.mock.calls.length > 0);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  test("keeps the overlay open and reports a rejected selection in place", async () => {
+    const onSelect = vi.fn(() => Promise.reject(new Error("Model select was rejected")));
+    const onOpenChange = vi.fn();
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <ModelSelectOverlay
+          open
+          onOpenChange={onOpenChange}
+          configuration={GEMINI_CONFIGURATION}
+          onSelect={onSelect}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+    stdin.write("\r");
+    await flushUntil(() => lastFrame()?.includes("Model select was rejected") ?? false);
+
+    expect(lastFrame()).toContain("Select Model");
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  test("ignores a second Enter while the first selection is still pending", async () => {
+    const deferred = createDeferred<void>();
+    const onSelect = vi.fn(() => deferred.promise);
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <ModelSelectOverlay
+          open
+          onOpenChange={() => {}}
+          configuration={GEMINI_CONFIGURATION}
+          onSelect={onSelect}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+    stdin.write("\r");
+    await flushUntil(() => lastFrame()?.includes("Saving") ?? false);
+    stdin.write("\r");
+    await flush();
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    deferred.resolve();
   });
 });
 
@@ -58,157 +122,103 @@ describe("ModelSelectOverlay saving state", () => {
     cleanup();
   });
 
-  test("shows the Saving spinner and freezes the highlight while the activate mutation is pending", async () => {
-    const deferred = createDeferred<ActivateProviderResponse>();
-    const activateProvider = vi
-      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
-      .mockReturnValue(deferred.promise);
-    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
-
+  test("shows the Saving spinner and freezes navigation while selection is pending", async () => {
+    const deferred = createDeferred<void>();
+    const onSelect = vi.fn(() => deferred.promise);
     const { stdin, lastFrame } = render(
-      <Wrapper api={api}>
+      <Wrapper>
         <ModelSelectOverlay
-          open={true}
+          open
           onOpenChange={() => {}}
-          providerId="gemini"
-          onSelect={() => {}}
+          configuration={GEMINI_CONFIGURATION}
+          onSelect={onSelect}
+          isSaving
         />
       </Wrapper>,
     );
 
     await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
-
-    const firstName = geminiName("gemini-2.5-flash");
-    expect(countPrefixes(lastFrame(), firstName).highlighted).toBe(1);
-
-    // Begin activation; the mutation never settles, so the overlay stays in the saving state.
-    stdin.write("\r");
-    await flushUntil(() => lastFrame()?.includes("Saving") ?? false);
-
-    expect(lastFrame()).toContain("Saving");
-
-    // Arrow keys must be inert while saving: the highlight stays on the first model.
     stdin.write(ARROW_DOWN);
     await flush();
-    stdin.write(ARROW_DOWN);
-    await flush();
-
-    expect(
-      countPrefixes(lastFrame(), firstName).highlighted,
-      `highlight should stay on the first model while saving. Frame: ${lastFrame()}`,
-    ).toBe(1);
-    const secondName = geminiName("gemini-2.5-flash-lite");
-    expect(countPrefixes(lastFrame(), secondName).highlighted).toBe(0);
+    expect(countPrefixes(lastFrame(), geminiName("gemini-2.5-flash")).highlighted).toBe(1);
   });
 
-  test("ignores Escape while model activation is pending", async () => {
-    const deferred = createDeferred<ActivateProviderResponse>();
-    const activateProvider = vi
-      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
-      .mockReturnValue(deferred.promise);
+  test("ignores Escape while model selection is pending", async () => {
     const onOpenChange = vi.fn();
-    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
     const { stdin, lastFrame } = render(
-      <Wrapper api={api}>
+      <Wrapper>
         <ModelSelectOverlay
           open
           onOpenChange={onOpenChange}
-          providerId="gemini"
-          onSelect={() => {}}
+          configuration={GEMINI_CONFIGURATION}
+          isSaving
         />
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
-    stdin.write("\r");
     await flushUntil(() => lastFrame()?.includes("Saving") ?? false);
     stdin.write("\u001B");
     await flush();
-
     expect(lastFrame()).toContain("Select Model");
-    expect(lastFrame()).toContain("Saving");
     expect(onOpenChange).not.toHaveBeenCalled();
   });
+});
 
-  test("keeps the failed row visible and navigable, then clears the error on retry", async () => {
-    const onSelect = vi.fn();
-    const activateProvider = vi
-      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
-      .mockRejectedValueOnce(new Error("Activation failed: missing credentials"))
-      .mockResolvedValueOnce({ provider: "gemini", model: "gemini-2.5-flash-lite" });
-    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
+describe("ModelSelectOverlay stale discovery", () => {
+  afterEach(() => {
+    cleanup();
+  });
 
-    const { stdin, lastFrame } = render(
+  test("rejects a stale configuration tuple and keeps retry available", async () => {
+    const staleConfiguration = {
+      ...GEMINI_CONFIGURATION,
+      endpoint: "https://generativelanguage.googleapis.com/v1beta-stale",
+    };
+    const testConfiguration = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockResolvedValue(testDiscoveryResponse(staleConfiguration));
+    const api = { ...makeGeminiApi(), testConfiguration } satisfies BoundApi;
+    const { lastFrame } = render(
       <Wrapper api={api}>
-        <ModelSelectOverlay
-          open={true}
-          onOpenChange={() => {}}
-          providerId="gemini"
-          onSelect={onSelect}
-        />
+        <ModelSelectOverlay open onOpenChange={() => {}} configuration={GEMINI_CONFIGURATION} />
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
-
-    stdin.write("\r");
-    await flushUntil(() => lastFrame()?.includes("Activation failed") ?? false);
-
-    expect(lastFrame()).toContain("Activation failed: missing credentials");
-    expect(lastFrame()).toContain(geminiName("gemini-2.5-flash"));
-    expect(countPrefixes(lastFrame(), geminiName("gemini-2.5-flash")).highlighted).toBe(1);
-
-    stdin.write(ARROW_DOWN);
     await flushUntil(
-      () => countPrefixes(lastFrame(), geminiName("gemini-2.5-flash-lite")).highlighted === 1,
+      () =>
+        lastFrame()?.includes("Model discovery returned a different configuration tuple.") ?? false,
     );
-    expect(lastFrame()).toContain("Activation failed: missing credentials");
-
-    stdin.write("\r");
-    await flushUntil(() => activateProvider.mock.calls.length === 2);
-    await flushUntil(() => onSelect.mock.calls.length === 1);
-
-    expect(activateProvider).toHaveBeenLastCalledWith("gemini", "gemini-2.5-flash-lite");
-    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash-lite");
-    expect(lastFrame()).not.toContain("Activation failed: missing credentials");
+    expect(lastFrame()).toContain("Press r to retry");
   });
 
-  test("clears activation errors when the provider changes while open", async () => {
+  test("clears discovery errors when the configuration changes while open", async () => {
     const queryClient = makeQueryClient();
-    const activateProvider = vi
-      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
-      .mockRejectedValue(new Error("Activation failed: missing credentials"));
-    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
+    const testConfiguration = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockRejectedValueOnce(new Error("Model discovery failed. Test the configuration again."))
+      .mockImplementation(async () =>
+        testDiscoveryResponse({ ...GEMINI_CONFIGURATION, revision: 2 }),
+      );
+    const api = { ...makeGeminiApi(), testConfiguration } satisfies BoundApi;
 
     const view = render(
       <Wrapper api={api} queryClient={queryClient}>
-        <ModelSelectOverlay
-          open={true}
-          onOpenChange={() => {}}
-          providerId="gemini"
-          onSelect={() => {}}
-        />
+        <ModelSelectOverlay open onOpenChange={() => {}} configuration={GEMINI_CONFIGURATION} />
       </Wrapper>,
     );
 
-    await flushUntil(() => view.lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
-
-    view.stdin.write("\r");
-    await flushUntil(() => view.lastFrame()?.includes("Activation failed") ?? false);
-
+    await flushUntil(() => view.lastFrame()?.includes("Model discovery failed") ?? false);
     view.rerender(
       <Wrapper api={api} queryClient={queryClient}>
         <ModelSelectOverlay
-          open={true}
+          open
           onOpenChange={() => {}}
-          providerId="groq"
-          onSelect={() => {}}
+          configuration={{ ...GEMINI_CONFIGURATION, revision: 2 }}
         />
       </Wrapper>,
     );
-    await flush();
-
-    expect(view.lastFrame()).not.toContain("Activation failed");
+    await flushUntil(() => view.lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+    expect(view.lastFrame()).not.toContain("Model discovery failed");
   });
 });
 
@@ -221,92 +231,19 @@ describe("ModelSelectOverlay selected marker", () => {
     const { lastFrame } = render(
       <Wrapper>
         <ModelSelectOverlay
-          open={true}
+          open
           onOpenChange={() => {}}
-          providerId="gemini"
-          selectedId="gemini-2.5-pro"
-          onSelect={() => {}}
+          configuration={GEMINI_CONFIGURATION}
+          selectedId="gemini-2.5-flash"
         />
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-pro")) ?? false);
-
-    const selectedName = geminiName("gemini-2.5-pro");
+    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
+    const selectedName = geminiName("gemini-2.5-flash");
     const frame = lastFrame() ?? "";
     const escapedSelected = escapeRegExp(selectedName);
-
-    // The selected row renders the "[*]" check; every other row renders "[ ]".
     expect(frame.match(new RegExp(`\\[\\*\\]\\s+${escapedSelected}`)) ?? []).toHaveLength(1);
-    expect(
-      (frame.match(/\[\*\]/g) ?? []).length,
-      `only one row should be marked selected. Frame: ${frame}`,
-    ).toBe(1);
-  });
-
-  test("starts on a non-first selected model so Enter reselects the current model", async () => {
-    const onSelect = vi.fn();
-    const onOpenChange = vi.fn();
-    const activateProvider = vi
-      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
-      .mockResolvedValue({ provider: "gemini", model: "gemini-2.5-pro" });
-    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
-
-    const { stdin, lastFrame } = render(
-      <Wrapper api={api}>
-        <ModelSelectOverlay
-          open={true}
-          onOpenChange={onOpenChange}
-          providerId="gemini"
-          selectedId="gemini-2.5-pro"
-          onSelect={onSelect}
-        />
-      </Wrapper>,
-    );
-
-    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-pro")) ?? false);
-
-    stdin.write("\r");
-    await flushUntil(() => onSelect.mock.calls.length > 0);
-
-    expect(activateProvider).toHaveBeenCalledWith("gemini", "gemini-2.5-pro");
-    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-pro");
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-  });
-
-  test("restores the highlighted model when a filter temporarily hides it", async () => {
-    const onSelect = vi.fn();
-    const activateProvider = vi
-      .fn<(providerId: string, model?: string) => Promise<ActivateProviderResponse>>()
-      .mockResolvedValue({ provider: "gemini", model: "gemini-2.5-pro" });
-    const api = { ...makeGeminiApi(), activateProvider } satisfies BoundApi;
-
-    const { stdin, lastFrame } = render(
-      <Wrapper api={api}>
-        <ModelSelectOverlay
-          open={true}
-          onOpenChange={() => {}}
-          providerId="gemini"
-          selectedId="gemini-2.5-pro"
-          onSelect={onSelect}
-        />
-      </Wrapper>,
-    );
-
-    await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-pro")) ?? false);
-
-    stdin.write("f");
-    await flush();
-    stdin.write("f");
-    await flush();
-    expect(lastFrame()).not.toContain(geminiName("gemini-2.5-pro"));
-
-    stdin.write("f");
-    await flush();
-    stdin.write("\r");
-    await flushUntil(() => onSelect.mock.calls.length > 0);
-
-    expect(activateProvider).toHaveBeenCalledWith("gemini", "gemini-2.5-pro");
-    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-pro");
+    expect((frame.match(/\[\*\]/g) ?? []).length).toBe(1);
   });
 });

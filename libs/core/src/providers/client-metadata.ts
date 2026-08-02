@@ -8,6 +8,7 @@ import {
   ClientConfigurationSummarySchema,
   ExactModelIdSchema,
 } from "../schemas/config/provider-config.js";
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import {
   type Readiness,
   type ReadinessAcknowledgement,
@@ -22,7 +23,7 @@ import {
   RunnableProductIdSchema,
 } from "../schemas/config/transports.js";
 import {
-  isPinnedDownstreamRouteModelId,
+  isModelIdAllowedForProduct,
   type ModelPolicy,
   PRODUCT_REGISTRY,
   type ProductNotice,
@@ -170,39 +171,9 @@ function isLatestAlias(modelId: string): boolean {
   return modelId.split(/[./:_-]/).some((segment) => segment.toLowerCase() === "latest");
 }
 
-function matchesPinnedDownstreamRoute(modelId: string): boolean {
-  return isPinnedDownstreamRouteModelId(modelId);
-}
-
-function matchesModelPolicy(modelId: string, policy: ModelPolicy): boolean {
+function isEligibleReadyModelId(modelId: string, productId: RunnableProductId): boolean {
   if (!ExactModelIdSchema.safeParse(modelId).success || isLatestAlias(modelId)) return false;
-
-  switch (policy.kind) {
-    case "discovered-allowlist":
-      if (!policy.modelIds.includes(modelId)) return false;
-
-      // A higher-cost model may be selected only after the server has
-      // collected the policy's named output-limit and review-conformance
-      // observations.  Those observations are intentionally not client-safe,
-      // so a ready/client projection must fail closed for that model.
-      return !(
-        policy.higherCostModelEvidence !== undefined && policy.higherCostModelIds?.includes(modelId)
-      );
-    case "discovered-family":
-      return (
-        !policy.rejectedAliases.includes(modelId) &&
-        policy.familyPrefixes.some(
-          (prefix) => modelId === prefix || modelId.startsWith(`${prefix}-`),
-        )
-      );
-    case "discovered-exact":
-      // The V2 client-safe tuple has no representation for the explicit
-      // opt-in required by Z.AI Flash.  Discovery, conformance, and notice
-      // acknowledgement cannot substitute for that missing opt-in.
-      return !policy.explicitOptInSuffixes?.some((suffix) => modelId.endsWith(suffix));
-    case "pinned-downstream-route":
-      return matchesPinnedDownstreamRoute(modelId);
-  }
+  return isModelIdAllowedForProduct(productId, modelId);
 }
 
 function validateReadyClaims(
@@ -222,10 +193,7 @@ function validateReadyClaims(
   }
 
   const selectedModelId = configuration.selectedModelId;
-  if (
-    selectedModelId === null ||
-    !matchesModelPolicy(selectedModelId, PRODUCT_REGISTRY[productId].modelPolicy)
-  ) {
+  if (selectedModelId === null || !isEligibleReadyModelId(selectedModelId, productId)) {
     context.addIssue({
       code: "custom",
       message: "Ready metadata requires an eligible exact selected model",
@@ -564,7 +532,7 @@ function toClientConfiguration(configuration: ClientConfigurationSummary | null)
 }
 
 function matchesProductEndpoint(configuration: ClientConfigurationSummary): boolean {
-  if (configuration.status === "removed") return configuration.productId === "zai-coding";
+  if (configuration.status === "removed") return configuration.productId === REMOVED_PRODUCT_ID;
 
   const product = PRODUCT_REGISTRY[configuration.productId];
   if (product.transportFamily !== configuration.transportFamily) {

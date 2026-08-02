@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PRODUCT_ENDPOINT_TUPLES } from "../../providers/product-registry.js";
+import { REMOVED_PRODUCT_IDS } from "./providers.js";
 
 export const TRANSPORT_FAMILIES = ["hosted-api", "local-http", "local-cli"] as const;
 export const TransportFamilySchema = z.enum(TRANSPORT_FAMILIES);
@@ -35,7 +36,7 @@ export const RUNNABLE_PRODUCT_IDS = [
 export const RunnableProductIdSchema = z.enum(RUNNABLE_PRODUCT_IDS);
 export type RunnableProductId = z.infer<typeof RunnableProductIdSchema>;
 
-export const REMOVED_PRODUCT_IDS = ["zai-coding"] as const;
+export { REMOVED_PRODUCT_IDS };
 export const RemovedProductIdSchema = z.enum(REMOVED_PRODUCT_IDS);
 export type RemovedProductId = z.infer<typeof RemovedProductIdSchema>;
 

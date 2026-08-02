@@ -1,77 +1,37 @@
-import { type BoundApi, createApi } from "@diffgazer/core/api";
-import { ApiProvider } from "@diffgazer/core/api/hooks";
-import type { ProviderStatus } from "@diffgazer/core/schemas/config";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "@diffgazer/core/providers";
+import { REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
 import { cleanup, render } from "ink-testing-library";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CliThemeProvider } from "../../../../theme/provider";
 import { ProviderStep } from "./provider-step";
-
-const PROVIDER_STATUS: ProviderStatus[] = [
-  { provider: "gemini", hasApiKey: false, isActive: false },
-  { provider: "openrouter", hasApiKey: false, isActive: false },
-];
-
-async function flushUntil(predicate: () => boolean, attempts = 200): Promise<void> {
-  for (let i = 0; i < attempts; i += 1) {
-    if (predicate()) return;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-}
-
-function makeQueryClient(): QueryClient {
-  return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, networkMode: "always" },
-      mutations: { retry: false, networkMode: "always" },
-    },
-  });
-}
-
-function makeApi(): BoundApi {
-  const getProviderStatus = vi
-    .fn<() => Promise<ProviderStatus[]>>()
-    .mockResolvedValue(PROVIDER_STATUS);
-  return { ...createApi({ baseUrl: "http://localhost" }), getProviderStatus } satisfies BoundApi;
-}
-
-function Wrapper({ children, api }: { children: ReactNode; api?: BoundApi }) {
-  const queryClient = makeQueryClient();
-  const boundApi = api ?? makeApi();
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ApiProvider value={boundApi}>
-        <CliThemeProvider initialTheme="dark">{children}</CliThemeProvider>
-      </ApiProvider>
-    </QueryClientProvider>
-  );
-}
 
 describe("ProviderStep (TUI)", () => {
   afterEach(() => {
     cleanup();
   });
 
-  test("lists providers by display name and describes OpenRouter", async () => {
+  test("lists all 13 selectable products with shared names and descriptions", async () => {
     const onChange = vi.fn();
     const { lastFrame, stdin } = render(
-      <Wrapper>
+      <CliThemeProvider initialTheme="dark">
         <ProviderStep value="gemini" onChange={onChange} />
-      </Wrapper>,
+      </CliThemeProvider>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
-
-    const frame = lastFrame();
-    expect(frame).toContain("Google Gemini");
-    expect(frame).toContain("OpenRouter");
-    expect(frame).toContain("Access multiple providers via a single API");
+    const frame = lastFrame() ?? "";
+    expect(SELECTABLE_PRODUCT_IDS).toHaveLength(13);
+    for (const productId of SELECTABLE_PRODUCT_IDS) {
+      expect(frame).toContain(PRODUCT_REGISTRY[productId].presentation.name);
+    }
+    expect(frame).not.toContain(REMOVED_PRODUCT_ID);
+    expect(frame).toContain(PRODUCT_REGISTRY.openrouter.presentation.description);
 
     stdin.write("\u001b[B");
     await new Promise((resolve) => setImmediate(resolve));
+    stdin.write("\u001b[B");
+    await new Promise((resolve) => setImmediate(resolve));
     stdin.write("\r");
-    await flushUntil(() => onChange.mock.calls.length > 0);
+    await new Promise((resolve) => setImmediate(resolve));
     expect(onChange).toHaveBeenCalledWith("openrouter");
   });
 });

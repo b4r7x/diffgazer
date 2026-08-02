@@ -1,70 +1,112 @@
-import { isDeepStrictEqual } from "node:util";
+import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { err, ok, type Result } from "@diffgazer/core/result";
-import type {
-  AIProvider,
-  CredentialRef,
-  ProjectInfo,
-  ProviderStatus,
-  SecretsStorage,
-  SettingsConfig,
-  TrustConfig,
+import {
+  type ClientConfigurationAction,
+  type ClientConfigurationActionName,
+  type ClientConfigurationActionResponse,
+  ClientConfigurationActionResponseSchema,
+  ClientConfigurationActionSchema,
+  type ClientConfigurationInput,
+  type ClientConfigurationNotice,
+  ClientConfigurationNoticeSchema,
+  type ClientConfigurationSummary,
+  ClientConfigurationSummarySchema,
+  type ConfigurationId,
+  type ConfigurationRevision,
+  ExactModelIdSchema,
+  type ProjectInfo,
+  READINESS_PRESENTATION,
+  REMOVED_PRODUCT_IDS,
+  type Readiness,
+  ReadinessSchema,
+  type RunnableProductId,
+  type SecretsStorage,
+  type SettingsConfig,
+  SettingsConfigSchema,
+  type TrustConfig,
+  type WriteOnlySecretInput,
 } from "@diffgazer/core/schemas/config";
-import { getFileMtimeMs, readJsonFileSyncSafe, removeFileSync, writeJsonFile } from "../fs.js";
+import {
+  type EvidenceKey,
+  type ExecutionLimits,
+  sha256CanonicalJsonSync,
+} from "@diffgazer/core/schemas/review";
+import { atomicWriteFile, readJsonFileSyncSafe, removeFileSync, writeJsonFile } from "../fs.js";
 import { log } from "../log.js";
 import { getGlobalConfigPath, getGlobalSecretsPath, resolveProjectRoot } from "../paths.js";
-import { deleteKeyringSecret, readKeyringSecret, writeKeyringSecret } from "./keyring.js";
+import { type AdmissionEvidence, AdmissionEvidenceSchema } from "./admission-evidence.js";
 import {
-  loadConfig,
-  type PersistConfigMerged,
-  parseConfigData,
-  withConfigFileTransaction,
+  type ConfigurationConformanceSubject,
+  runConfigurationConformance,
+} from "./conformance.js";
+import {
+  deleteKeyringSecret,
+  isKeyringAvailable,
+  readKeyringSecret,
+  writeKeyringSecret,
+} from "./keyring.js";
+import {
+  decodeConfigFile,
+  parseSettingsRecord,
+  selectConfigV2,
+  serializeConfigV2,
 } from "./persistence/config.js";
 import { createProjectFile, readProjectFile } from "./persistence/project.js";
 import {
-  loadSecrets,
-  parseSecretsData,
-  persistSecretsAsync,
-  syncProvidersWithSecrets,
+  type DecodedSecretBinding,
+  loadSecretsV1,
+  loadSecretsV2,
+  SECRETS_SCHEMA_VERSION_V2,
+  type SecretsDocumentV2,
+  serializeSecretsV2,
 } from "./persistence/secrets.js";
 import {
-  getSecretsRecoveryPath,
-  readSecretsRecovery,
-  reconcileSecretsRecoveryAtStartup,
-  rollbackFailure,
-  type SecretsRecoveryRecord,
-  serializeSecretsState,
+  clearDocumentRecovery,
+  type DocumentRecoveryRecord,
+  reconcileDocumentRecoveryAtStartup,
+  restoreDocumentRecovery,
+  writeDocumentRecovery,
 } from "./persistence/secrets-recovery.js";
 import {
-  activeProvider,
-  applyActiveProvider,
-  applyCredentialsWithoutModel,
-  clearProviderCredentials,
-  effectiveStorage,
-  ensureProviderEntry,
-  fileHasSecret,
-  isFileStorage,
-  isStorageConfigured,
-} from "./providers-store.js";
+  type ConfigurationBudgetLimits,
+  type DecodedProviderConfigurationRecord,
+  type NonSecretTransportInput,
+  NonSecretTransportInputSchema,
+  type ProviderConfigurationRecord,
+  type RemovedProviderConfigurationRecord,
+  type SupportedProviderConfigurationRecord,
+} from "./provider-config.js";
+import { computeProviderReadinessResult } from "./readiness.js";
 import {
-  deleteShadowedKeyringEntries,
-  finalizeKeyringDeletions,
-  findOrphanedKeyringEntries,
-  getApiKeyName,
-  migrateSecretsStorage,
-  reconcileKeyringSecrets,
-  rollbackKeyringWrites,
-} from "./secrets-migration.js";
-import { resolveSecretEntry, toSecretEntry } from "./secrets-store.js";
-import { runConfigTransaction } from "./transaction/mutation.js";
+  bindWriteOnlySecret,
+  createEnvironmentSecretBinding,
+  createLocalBearerBinding,
+  createNoneSecretBinding,
+  deleteSecretBinding,
+  type KeyringSecretStore,
+  type SecretBinding,
+  type SecretBindingIO,
+  SecretBindingSchema,
+} from "./secret-bindings.js";
+import { finalizeKeyringDeletions } from "./secrets-migration.js";
+import { getConfigurationSecretName } from "./secrets-store.js";
+import { withFileTransactionLock } from "./transaction/file-lock.js";
 import { createMutex } from "./transaction/mutex.js";
 import { createTrustStore, type TrustStore } from "./trust-store.js";
 import type {
-  ConfigState,
-  SecretsState,
+  ConfigDocumentV1,
+  ConfigDocumentV2,
+  ConfigurationActionError,
+  ConfigurationActionErrorCode,
   SecretsStorageError,
   SecretsStorageErrorCode,
 } from "./types.js";
+import { CONFIG_SCHEMA_VERSION_V2 } from "./types.js";
+import { upgradeV1Documents } from "./v1-upgrade.js";
 
 // Re-keys review history on a project move. `shared/` must not import `features/`, so
 // the review feature registers its implementation here at startup. The unregistered
@@ -80,6 +122,9 @@ export function setReviewRekeyHandler(handler: ReviewRekeyHandler): void {
   reviewRekeyHandler = handler;
 }
 
+// Legacy provider-keyed type retained for the V1 compatibility reads. The V2
+// action surface is keyed by configuration id and revision, never by provider.
+
 // Log the raw cause (which carries the absolute path) server-side and return a
 // path-free message so API clients never receive host paths or filenames.
 const persistFailure = (operation: "config" | "secrets", cause: unknown): SecretsStorageError => {
@@ -87,611 +132,1338 @@ const persistFailure = (operation: "config" | "secrets", cause: unknown): Secret
   return createError<SecretsStorageErrorCode>("PERSIST_FAILED", `Failed to persist ${operation}`);
 };
 
+const configurationActionFailure = (
+  code: ConfigurationActionErrorCode,
+  message: string,
+): ConfigurationActionError => createError<ConfigurationActionErrorCode>(code, message);
+
+const SUPPORTED_CONFIGURATION_ACTIONS: readonly ClientConfigurationActionName[] = [
+  "inspect",
+  "select",
+  "test",
+  "update",
+  "delete",
+];
+const REMOVED_CONFIGURATION_ACTIONS: readonly ClientConfigurationActionName[] = [
+  "inspect",
+  "delete",
+];
+
+/** The budget every configuration is created with, and the limits admission projects from it. */
+export const DEFAULT_CONFIGURATION_BUDGET: ConfigurationBudgetLimits = {
+  inputTokens: 200_000,
+  outputTokens: 40_000,
+  responseBytes: 8_000_000,
+  wallTimeMs: 300_000,
+  retries: 0,
+  concurrency: 1,
+  perReview: 5,
+};
+
+// A client-supplied `environment` credential carries no name; the server owns
+// the canonical environment variable per product. These names stay server-side
+// and never appear in client-safe projections.
+const CREDENTIAL_ENVIRONMENT_VARIABLES: Readonly<Record<string, string>> = {
+  gemini: "GOOGLE_API_KEY",
+  zai: "ZAI_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+  groq: "GROQ_API_KEY",
+  cerebras: "CEREBRAS_API_KEY",
+  deepseek: "DEEPSEEK_API_KEY",
+  qwen: "QWEN_API_KEY",
+  moonshot: "MOONSHOT_API_KEY",
+  mistral: "MISTRAL_API_KEY",
+  "local-openai": "OPENAI_API_KEY",
+};
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder("utf-8", { fatal: true });
+
+const encodeJsonBytes = (value: unknown): Uint8Array => textEncoder.encode(JSON.stringify(value));
+const decodeUtf8Bytes = (bytes: Uint8Array): string => textDecoder.decode(bytes);
+
+const createConfigurationId = (): ConfigurationId => `cfg-${randomUUID()}`;
+
+const literalSecretPath = (configurationId: string, revision: number): string =>
+  join(dirname(getGlobalSecretsPath()), "credentials", `${configurationId}-${revision}.key`);
+
+// Admission evidence is server-only and outlives the process: the record keeps
+// the reference, the payload lives in a sibling file named by that reference.
+const evidenceReferenceFor = (configurationId: string): string => `evidence-${configurationId}`;
+
+const evidencePath = (evidenceReference: string): string =>
+  join(dirname(getGlobalConfigPath()), "evidence", `${evidenceReference}.json`);
+
+/**
+ * Lease lifecycle hooks for the delete action. The composition root registers
+ * these at startup so deletion rejects new leases, cancels queued work, and
+ * waits for active work to release before credentials are removed. There is no
+ * default: an unregistered store cannot observe leases, so deletion fails
+ * closed rather than removing credentials an execution may still be using.
+ */
+export interface ConfigurationLeaseHooks {
+  revoke: (configurationId: ConfigurationId) => void | Promise<void>;
+  cancel: (configurationId: ConfigurationId) => void | Promise<void>;
+  drain: (configurationId: ConfigurationId) => void | Promise<void>;
+}
+
+let configurationLeaseHooks: ConfigurationLeaseHooks | null = null;
+
+export function setConfigurationLeaseHooks(hooks: ConfigurationLeaseHooks): void {
+  configurationLeaseHooks = hooks;
+}
+
+const keyringStore: KeyringSecretStore = {
+  read: (keyId) => {
+    const result = readKeyringSecret(keyId);
+    if (!result.ok) throw new Error(`Keyring read failed: ${result.error.message}`);
+    return result.value;
+  },
+  write: (keyId, value) => {
+    const result = writeKeyringSecret(keyId, value);
+    if (!result.ok) throw new Error(`Keyring write failed: ${result.error.message}`);
+  },
+  delete: (keyId) => {
+    const result = deleteKeyringSecret(keyId);
+    if (!result.ok) throw new Error(`Keyring delete failed: ${result.error.message}`);
+    return result.value;
+  },
+};
+
+const secretIO: SecretBindingIO = { keyring: keyringStore };
+
+const EMPTY_CONFIG_DOCUMENT: ConfigDocumentV2 = {
+  schemaVersion: CONFIG_SCHEMA_VERSION_V2,
+  settings: {},
+  selectedConfigurationId: null,
+  configurations: [],
+};
+
+const EMPTY_SECRETS_DOCUMENT: SecretsDocumentV2 = {
+  schemaVersion: SECRETS_SCHEMA_VERSION_V2,
+  bindings: [],
+};
+
 export interface ConfigStore {
   ready(): Promise<Result<void, SecretsStorageError>>;
   getSettings(): SettingsConfig;
   updateSettings(
     patch: Partial<SettingsConfig>,
-  ): Promise<Result<SettingsConfig, SecretsStorageError>>;
-  getProviders(): ProviderStatus[];
-  getActiveProvider(): ProviderStatus | null;
-  getProviderApiKey(providerId: string): Result<string | null, SecretsStorageError>;
+  ): Promise<Result<SettingsConfig, ConfigurationActionError>>;
   getProjectInfo(projectRoot?: string): ProjectInfo;
   ensureProjectFile(projectRoot: string): ProjectInfo;
   getTrust(projectId: string): TrustConfig | null;
   listTrustedProjects(): TrustConfig[];
   saveTrust(config: TrustConfig): Promise<Result<TrustConfig, SecretsStorageError>>;
   removeTrust(projectId: string): Promise<Result<boolean, SecretsStorageError>>;
-  saveProviderCredentials(input: {
-    provider: AIProvider;
-    apiKey: string | CredentialRef;
-    model?: string;
-  }): Promise<Result<ProviderStatus, SecretsStorageError>>;
-  activateProvider(input: {
-    provider: AIProvider;
-    model?: string;
-  }): Promise<Result<ProviderStatus | null, SecretsStorageError>>;
-  deleteProviderCredentials(providerId: AIProvider): Promise<Result<boolean, SecretsStorageError>>;
+  runConfigurationAction(
+    action: ClientConfigurationAction,
+  ): Promise<Result<ClientConfigurationActionResponse, ConfigurationActionError>>;
+  recordConfigurationEvidence(
+    configurationId: ConfigurationId,
+    evidence: AdmissionEvidence,
+  ): Promise<Result<boolean, ConfigurationActionError>>;
+  getConfigurationAdmissionEvidence(configurationId: ConfigurationId): AdmissionEvidence | null;
 }
 
-// config and secrets state stay inline (not extracted like trust): they are one shared
-// mutable aggregate that updateSettings and the provider-credential methods both mutate
-// through the same mtime-guarded persist wrappers, so splitting them would just thread
-// mutable state across module boundaries.
+// The V2 documents are the whole persisted state: `config.json` holds settings,
+// configuration records, and the selection; `secrets.json` holds the credential
+// bindings. Both are written by exactly one writer (the V2 codec in
+// `persistence/`), under both file locks, journalled by the `.recovery` WAL.
 export function createConfigStore(): ConfigStore {
-  const initialRecovery = readSecretsRecovery();
-  const canReadInitialState = initialRecovery.kind === "missing";
-  let startupRecoveryError = initialRecovery.kind === "invalid" ? initialRecovery.error : null;
-  // A store can be constructed while another process owns the config lock and has
-  // partially applied a recoverable secrets mutation. In that window, serve the
-  // WAL's prior aggregate snapshot and freeze mtime refreshes until initialization
-  // acquires the same lock. This keeps synchronous reads coherent without blocking
-  // the event loop or changing the public API to async getters.
-  let configState: ConfigState =
-    initialRecovery.kind === "valid"
-      ? parseConfigData(
-          initialRecovery.record.previousConfigFileExisted
-            ? initialRecovery.record.previousConfig
-            : null,
-        )
-      : loadConfig();
-  let secretsState: SecretsState =
-    initialRecovery.kind === "valid"
-      ? parseSecretsData(
-          initialRecovery.record.previousFileExisted
-            ? initialRecovery.record.previousSecrets
-            : null,
-        )
-      : loadSecrets();
   const trustStore: TrustStore = createTrustStore();
-  let initialized = false;
-
-  let configMtimeMs: number | null = getFileMtimeMs(getGlobalConfigPath());
-  let secretsMtimeMs: number | null = getFileMtimeMs(getGlobalSecretsPath());
-
   // Serialize config/secrets mutations so concurrent API calls never interleave at
   // their await points and each observes the previous mutation's settled state.
   const mutex = createMutex();
+  // Set only by a failed WAL replay: the prior bytes could not be restored, so
+  // `ready()` and every mutation keep failing closed instead of writing over a
+  // half-committed pair.
+  let startupError: SecretsStorageError | null = null;
+  // Set while a V1 document still awaits its upgrade. Reads stay available (the
+  // V1 settings are already served) but `ready()` reports it, and every mutation
+  // retries the upgrade instead of writing over the V1 file.
+  let upgradeError: SecretsStorageError | null = null;
 
-  const initialStorage = effectiveStorage(configState);
-  if (initialStorage !== null) {
-    configState.providers = syncProvidersWithSecrets(
-      configState.providers,
-      secretsState,
-      initialStorage,
-    );
-  }
+  // --- V2 configuration action orchestration ---------------------------------
 
-  const cloneConfigState = (state: ConfigState): ConfigState => ({
-    settings: { ...state.settings },
-    providers: state.providers.map((provider) => ({ ...provider })),
-    ...(state.unknownProviders ? { unknownProviders: state.unknownProviders } : {}),
-    ...(state.unknownSettings ? { unknownSettings: state.unknownSettings } : {}),
-  });
+  // The V2 documents are reloaded from disk at the start of every action while
+  // holding both file locks, so concurrent store instances observe each other's
+  // settled writes and stale in-memory state can never resurrect a deleted
+  // record or binding. Live admission evidence stays server-side in memory.
+  let configDocument: ConfigDocumentV2 = EMPTY_CONFIG_DOCUMENT;
+  let secretsDocument: SecretsDocumentV2 = EMPTY_SECRETS_DOCUMENT;
+  const evidenceByConfiguration = new Map<string, AdmissionEvidence>();
+  let configBytesBeforeMutation: Uint8Array | null = null;
+  let secretsBytesBeforeMutation: Uint8Array | null = null;
+  // A decoded V1 document waiting for its one-way upgrade. Its settings are
+  // already served; its records become V2 records the first time a mutation (or
+  // initialization) can hold both file locks.
+  let pendingV1Config: ConfigDocumentV1 | null = null;
 
-  const cloneSecretsState = (state: SecretsState): SecretsState => ({
-    providers: Object.fromEntries(
-      Object.entries(state.providers).map(([providerId, entry]) => [
-        providerId,
-        typeof entry === "string" ? entry : { ...entry },
-      ]),
-    ),
-    ...(state.unknownSecrets ? { unknownSecrets: state.unknownSecrets } : {}),
-  });
-
-  const syncLoadedProviders = (): void => {
-    const storage = effectiveStorage(configState);
-    if (storage === null) return;
-    configState.providers = syncProvidersWithSecrets(configState.providers, secretsState, storage);
+  const loadFileBytes = (filePath: string): Uint8Array | null => {
+    try {
+      return new Uint8Array(readFileSync(filePath));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+      throw error;
+    }
   };
 
-  const reloadConfigState = (currentMtime = getFileMtimeMs(getGlobalConfigPath())): void => {
-    configState = loadConfig();
-    configMtimeMs = currentMtime;
-    syncLoadedProviders();
+  // Disk is the single source of truth for evidence too: rehydrating here means a
+  // restart keeps the readiness the user was shown, and a record whose payload is
+  // gone falls back to pending instead of admitting on an unobserved tuple.
+  const reloadEvidence = (): void => {
+    evidenceByConfiguration.clear();
+    for (const entry of configDocument.configurations) {
+      if (entry.status !== "supported") continue;
+      const record = entry.record;
+      // Only the reference this server writes is honoured, so a hand-edited
+      // config.json cannot aim the loader at an arbitrary path.
+      if (record.evidenceReference !== evidenceReferenceFor(record.configurationId)) continue;
+      const read = readJsonFileSyncSafe<unknown>(evidencePath(record.evidenceReference));
+      if (read.status !== "ok") continue;
+      const parsed = AdmissionEvidenceSchema.safeParse(read.data);
+      if (parsed.success) evidenceByConfiguration.set(record.configurationId, parsed.data);
+    }
   };
 
-  const refreshConfigState = (): void => {
-    if (!initialized || startupRecoveryError) return;
-    const currentMtime = getFileMtimeMs(getGlobalConfigPath());
-    if (currentMtime === configMtimeMs) return;
-    reloadConfigState(currentMtime);
+  const removeEvidenceFile = (configurationId: ConfigurationId): void => {
+    try {
+      removeFileSync(evidencePath(evidenceReferenceFor(configurationId)));
+    } catch (cause) {
+      log("warn", "config_evidence_delete_failed", { error: getErrorMessage(cause) });
+    }
   };
 
-  const reloadSecretsState = (currentMtime = getFileMtimeMs(getGlobalSecretsPath())): void => {
-    secretsState = loadSecrets();
-    secretsMtimeMs = currentMtime;
-    syncLoadedProviders();
+  const clearConfigurationEvidence = (configurationId: ConfigurationId): void => {
+    evidenceByConfiguration.delete(configurationId);
+    removeEvidenceFile(configurationId);
   };
 
-  const refreshSecretsState = (): void => {
-    if (!initialized || startupRecoveryError) return;
-    const currentMtime = getFileMtimeMs(getGlobalSecretsPath());
-    if (currentMtime === secretsMtimeMs) return;
-    reloadSecretsState(currentMtime);
+  const loadDocumentsFromDisk = (): Result<void, ConfigurationActionError> => {
+    try {
+      configBytesBeforeMutation = loadFileBytes(getGlobalConfigPath());
+      secretsBytesBeforeMutation = loadFileBytes(getGlobalSecretsPath());
+      const decoded =
+        configBytesBeforeMutation === null ? null : decodeConfigFile(configBytesBeforeMutation);
+      if (decoded !== null && decoded.schemaVersion !== CONFIG_SCHEMA_VERSION_V2) {
+        // Settings are version-independent, so they are served immediately; the
+        // records stay empty until the upgrade commits, which keeps every V2
+        // action reporting the pending upgrade instead of a half-read document.
+        pendingV1Config = decoded;
+        configDocument = { ...EMPTY_CONFIG_DOCUMENT, settings: decoded.settings };
+        secretsDocument = EMPTY_SECRETS_DOCUMENT;
+      } else {
+        pendingV1Config = null;
+        configDocument = decoded ?? EMPTY_CONFIG_DOCUMENT;
+        secretsDocument = loadSecretsV2();
+      }
+      reloadEvidence();
+      return ok(undefined);
+    } catch (cause) {
+      log("warn", "config_v2_load_failed", { error: getErrorMessage(cause) });
+      return err(
+        configurationActionFailure(
+          "CONFIGURATION_UNSUPPORTED",
+          "Configuration file is not supported by this version",
+        ),
+      );
+    }
   };
 
-  const applyRecoverySnapshot = (record: SecretsRecoveryRecord): void => {
-    configState = parseConfigData(record.previousConfigFileExisted ? record.previousConfig : null);
-    secretsState = parseSecretsData(record.previousFileExisted ? record.previousSecrets : null);
-    configMtimeMs = Number.NaN;
-    secretsMtimeMs = Number.NaN;
-    syncLoadedProviders();
+  // Load the documents (and the evidence they reference) at construction so
+  // readiness reads served before the first mutation already reflect disk.
+  loadDocumentsFromDisk();
+
+  const persistV2Failure = (cause: unknown): ConfigurationActionError => {
+    log("error", "config_v2_persist_failed", { error: getErrorMessage(cause) });
+    return configurationActionFailure("PERSIST_FAILED", "Failed to persist configuration");
   };
 
   /**
-   * The read gate for the config+secrets aggregate, resolving four states: the on-disk
-   * `.recovery` record (another process is mid-mutation), `startupRecoveryError` (a WAL
-   * replay that failed and must keep failing closed), `canReadInitialState` (constructed
-   * while another process held the lock, before this store initialized), and the settled
-   * state (refresh from disk and serve). `getProviderApiKey` propagates the verdict; the
-   * value getters below drop it and serve the WAL snapshot on purpose, because
-   * `ConfigStore` gives synchronous getters no error channel.
+   * Commit both documents under the already-held locks. The `.recovery` journal
+   * records the exact prior bytes of both files first, so a failure between the
+   * two writes — or a crash — restores the pre-mutation pair instead of leaving
+   * a record without its binding.
    */
-  const prepareAggregateRead = (): Result<void, SecretsStorageError> => {
-    const recoveryBeforeRead = readSecretsRecovery();
-    if (recoveryBeforeRead.kind === "invalid") {
-      startupRecoveryError = recoveryBeforeRead.error;
-      return err(recoveryBeforeRead.error);
+  const writeV2Documents = async (): Promise<Result<void, ConfigurationActionError>> => {
+    let journal: DocumentRecoveryRecord;
+    try {
+      journal = await writeDocumentRecovery({
+        config: configBytesBeforeMutation,
+        secrets: secretsBytesBeforeMutation,
+      });
+    } catch (cause) {
+      return err(persistV2Failure(cause));
     }
-    if (recoveryBeforeRead.kind === "valid") {
-      applyRecoverySnapshot(recoveryBeforeRead.record);
-      return err(
-        createError<SecretsStorageErrorCode>(
-          "ROLLBACK_FAILED",
-          "Secrets recovery initialization has not completed",
-        ),
+
+    try {
+      await atomicWriteFile(
+        getGlobalConfigPath(),
+        decodeUtf8Bytes(serializeConfigV2(configDocument)),
+        0o600,
       );
-    }
-    if (startupRecoveryError) return err(startupRecoveryError);
-    if (!initialized) {
-      return canReadInitialState
-        ? ok(undefined)
-        : err(
-            createError<SecretsStorageErrorCode>(
-              "ROLLBACK_FAILED",
-              "Secrets recovery initialization has not completed",
-            ),
-          );
-    }
-
-    refreshConfigState();
-    refreshSecretsState();
-    const recoveryAfterRead = readSecretsRecovery();
-    if (recoveryAfterRead.kind === "invalid") {
-      startupRecoveryError = recoveryAfterRead.error;
-      return err(recoveryAfterRead.error);
-    }
-    if (recoveryAfterRead.kind === "valid") {
-      applyRecoverySnapshot(recoveryAfterRead.record);
-      return err(
-        createError<SecretsStorageErrorCode>(
-          "ROLLBACK_FAILED",
-          "Secrets recovery initialization has not completed",
-        ),
-      );
-    }
-    return ok(undefined);
-  };
-
-  // Pre-mutation snapshot persistConfig diffs against to tell which providers/settings
-  // THIS instance changed (overwrite disk) from those it left untouched (yield to a
-  // concurrent instance's write).
-  let providersBeforeMutation: ProviderStatus[] = configState.providers.map((p) => ({ ...p }));
-  let settingsBeforeMutation: SettingsConfig = { ...configState.settings };
-
-  const persistConfig = async (
-    persistMerged: PersistConfigMerged,
-  ): Promise<Result<void, SecretsStorageError>> => {
-    try {
-      // Merge at per-provider and per-settings-field granularity so a change another
-      // instance persisted during this window is not erased by this instance's full
-      // provider array or stale settings object.
-      configState = await persistMerged(
-        configState,
-        providersBeforeMutation,
-        settingsBeforeMutation,
-      );
-      syncLoadedProviders();
-      configMtimeMs = getFileMtimeMs(getGlobalConfigPath());
-      return ok(undefined);
-    } catch (cause) {
-      return err(persistFailure("config", cause));
-    }
-  };
-
-  const persistFileSecrets = async (
-    previousState: SecretsState,
-  ): Promise<Result<void, SecretsStorageError>> => {
-    try {
-      await persistSecretsAsync(secretsState, previousState);
-      secretsState = loadSecrets();
-      syncLoadedProviders();
-      secretsMtimeMs = getFileMtimeMs(getGlobalSecretsPath());
-      return ok(undefined);
-    } catch (cause) {
-      return err(persistFailure("secrets", cause));
-    }
-  };
-
-  let activeSecretsRecovery: SecretsRecoveryRecord | null = null;
-
-  const beginSecretsRecovery = async (
-    previousState: SecretsState,
-  ): Promise<Result<void, SecretsStorageError>> => {
-    if (activeSecretsRecovery) return ok(undefined);
-    const configRead = readJsonFileSyncSafe<unknown>(getGlobalConfigPath());
-    if (configRead.status === "corrupt") {
-      return err(persistFailure("config", new Error("Config snapshot is not valid JSON")));
-    }
-    const record: SecretsRecoveryRecord = {
-      version: 1,
-      previousConfigFileExisted: configRead.status === "ok",
-      previousConfig: configRead.status === "ok" ? configRead.data : null,
-      previousFileExisted: getFileMtimeMs(getGlobalSecretsPath()) !== null,
-      previousSecrets: serializeSecretsState(previousState),
-    };
-    try {
-      await writeJsonFile(getSecretsRecoveryPath(), record, 0o600);
-      activeSecretsRecovery = record;
-      return ok(undefined);
-    } catch (cause) {
-      return err(persistFailure("secrets", cause));
-    }
-  };
-
-  const clearSecretsRecovery = (): Result<void, SecretsStorageError> => {
-    if (!activeSecretsRecovery) return ok(undefined);
-    try {
-      removeFileSync(getSecretsRecoveryPath());
-      activeSecretsRecovery = null;
-      return ok(undefined);
-    } catch (cause) {
-      return err(rollbackFailure(cause));
-    }
-  };
-
-  const restoreSecretsState = async (
-    backup: SecretsState,
-  ): Promise<Result<void, SecretsStorageError>> => {
-    const failedState = cloneSecretsState(secretsState);
-    try {
-      if (activeSecretsRecovery) {
-        const currentConfig = readJsonFileSyncSafe<unknown>(getGlobalConfigPath());
-        const configAlreadyRestored = activeSecretsRecovery.previousConfigFileExisted
-          ? currentConfig.status === "ok" &&
-            isDeepStrictEqual(currentConfig.data, activeSecretsRecovery.previousConfig)
-          : currentConfig.status === "missing";
-        if (!configAlreadyRestored) {
-          if (activeSecretsRecovery.previousConfigFileExisted) {
-            await writeJsonFile(getGlobalConfigPath(), activeSecretsRecovery.previousConfig, 0o600);
-          } else {
-            removeFileSync(getGlobalConfigPath());
-          }
-        }
-        reloadConfigState();
-
-        if (activeSecretsRecovery.previousFileExisted) {
-          await writeJsonFile(getGlobalSecretsPath(), activeSecretsRecovery.previousSecrets, 0o600);
-        } else {
-          removeFileSync(getGlobalSecretsPath());
-        }
+      if (secretsDocument.bindings.length === 0) {
+        removeFileSync(getGlobalSecretsPath());
       } else {
-        secretsState = cloneSecretsState(backup);
-        const rollbackResult = await persistFileSecrets(failedState);
-        if (!rollbackResult.ok) throw new Error(rollbackResult.error.message);
+        await atomicWriteFile(
+          getGlobalSecretsPath(),
+          decodeUtf8Bytes(serializeSecretsV2(secretsDocument)),
+          0o600,
+        );
       }
-      secretsState = cloneSecretsState(backup);
-      secretsMtimeMs = getFileMtimeMs(getGlobalSecretsPath());
-      syncLoadedProviders();
     } catch (cause) {
-      reloadConfigState();
-      reloadSecretsState();
-      return err(rollbackFailure(cause));
+      const rollbackError = await restoreDocumentRecovery(journal);
+      // In-memory documents carry the rejected mutation, so they are re-read
+      // from the restored files before any reader is served again.
+      loadDocumentsFromDisk();
+      if (rollbackError) {
+        return err(
+          configurationActionFailure(
+            "ROLLBACK_FAILED",
+            "Failed to roll back configuration changes",
+          ),
+        );
+      }
+      return err(persistV2Failure(cause));
     }
 
-    return clearSecretsRecovery();
-  };
-
-  const persistRecoverableFileSecrets = async (
-    previousState: SecretsState,
-  ): Promise<Result<void, SecretsStorageError>> => {
-    const recoveryResult = await beginSecretsRecovery(previousState);
-    if (!recoveryResult.ok) return recoveryResult;
-
-    const persistResult = await persistFileSecrets(previousState);
-    if (persistResult.ok) return persistResult;
-
-    const rollbackResult = await restoreSecretsState(previousState);
-    return rollbackResult.ok ? persistResult : rollbackResult;
-  };
-
-  const restoreKeyringSecret = (
-    providerId: string,
-    previousValue: string | null,
-  ): Result<void, SecretsStorageError> => {
-    const rollbackResult =
-      previousValue === null
-        ? deleteKeyringSecret(getApiKeyName(providerId))
-        : writeKeyringSecret(getApiKeyName(providerId), previousValue);
-    if (!rollbackResult.ok) {
-      log("warn", "keyring_rollback_failed", {
-        providerId,
-        error: rollbackResult.error.message,
-      });
-      return err(rollbackFailure(rollbackResult.error));
+    try {
+      clearDocumentRecovery();
+    } catch (cause) {
+      // The pair is committed but the journal survives, so the next startup would
+      // undo it. Report the failure instead of claiming a durable commit.
+      log("error", "config_recovery_clear_failed", { error: getErrorMessage(cause) });
+      return err(
+        configurationActionFailure(
+          "ROLLBACK_FAILED",
+          "Failed to complete the configuration commit",
+        ),
+      );
     }
+    configBytesBeforeMutation = loadFileBytes(getGlobalConfigPath());
+    secretsBytesBeforeMutation = loadFileBytes(getGlobalSecretsPath());
     return ok(undefined);
   };
 
-  // Called at each mutation's snapshot point (after disk refresh, before mutation) to
-  // record the pre-mutation state persistConfig later merges against.
-  const markConfigBeforeMutation = (): void => {
-    providersBeforeMutation = configState.providers.map((p) => ({ ...p }));
-    settingsBeforeMutation = { ...configState.settings };
+  /**
+   * One-way V1 -> V2 upgrade, run under both locks. Credentials are copied to
+   * their configuration-keyed destination before the commit and provider-keyed
+   * keyring entries are deleted only after it, so an interrupted upgrade is
+   * re-runnable and never strands a secret.
+   */
+  const upgradePendingV1Document = async (): Promise<Result<void, ConfigurationActionError>> => {
+    const documentV1 = pendingV1Config;
+    if (!documentV1) return ok(undefined);
+
+    const upgraded = upgradeV1Documents(documentV1, loadSecretsV1(), {
+      budget: DEFAULT_CONFIGURATION_BUDGET,
+      filePathFor: ({ configurationId, revision }) => literalSecretPath(configurationId, revision),
+    });
+    if (!upgraded.ok) {
+      upgradeError = upgraded.error;
+      return err(upgraded.error);
+    }
+
+    configDocument = upgraded.value.configDocument;
+    secretsDocument = upgraded.value.secretsDocument;
+    const persisted = await writeV2Documents();
+    if (!persisted.ok) {
+      upgradeError = createError<SecretsStorageErrorCode>(
+        "PERSIST_FAILED",
+        "Failed to persist the upgraded configuration",
+      );
+      return persisted;
+    }
+
+    finalizeKeyringDeletions(upgraded.value.keyringDeletions);
+    pendingV1Config = null;
+    upgradeError = null;
+    reloadEvidence();
+    log("info", "config_v1_upgraded", { configurations: configDocument.configurations.length });
+    return ok(undefined);
   };
 
-  // The config-file transaction wrapper reloads before invoking these dependencies.
-  // Persist receives the callback-scoped writer so it cannot reacquire the same lock.
-  const configTransactionDeps = (persistMerged: PersistConfigMerged) => ({
-    refresh: () => {},
-    snapshot: () => {
-      markConfigBeforeMutation();
-      return cloneConfigState(configState);
-    },
-    restore: (backup: ConfigState) => {
-      configState = backup;
-    },
-    persist: () => persistConfig(persistMerged),
-  });
+  const reloadV2Documents = async (): Promise<Result<void, ConfigurationActionError>> => {
+    const loaded = loadDocumentsFromDisk();
+    if (!loaded.ok) return loaded;
+    return upgradePendingV1Document();
+  };
 
-  const runConfigFileMutation = async <T>(
-    operation: (persistMerged: PersistConfigMerged) => Promise<Result<T, SecretsStorageError>>,
-  ): Promise<Result<T, SecretsStorageError>> => {
+  const runV2Mutation = async <T>(
+    operation: () => Promise<Result<T, ConfigurationActionError>>,
+  ): Promise<Result<T, ConfigurationActionError>> => {
+    if (startupError) return err(startupError);
     try {
-      return await withConfigFileTransaction(async (persistMerged) => {
-        startupRecoveryError = reconcileSecretsRecoveryAtStartup();
-        if (startupRecoveryError) return err(startupRecoveryError);
-        activeSecretsRecovery = null;
-        // Reload unconditionally after acquiring the cross-process lock. An mtime
-        // equality check is not a transaction boundary and can miss same-tick writes.
-        reloadConfigState();
-        reloadSecretsState();
-        return operation(persistMerged);
-      });
+      return await mutex.run(() =>
+        withFileTransactionLock(getGlobalConfigPath(), () =>
+          withFileTransactionLock(getGlobalSecretsPath(), async () => {
+            const reloaded = await reloadV2Documents();
+            if (!reloaded.ok) return reloaded;
+            try {
+              return await operation();
+            } catch (cause) {
+              return err(persistV2Failure(cause));
+            }
+          }),
+        ),
+      );
     } catch (cause) {
-      return err(persistFailure("config", cause));
+      return err(persistV2Failure(cause));
     }
   };
 
-  const rollbackCommittedFileMutation = async (
-    secretsBackup: SecretsState,
-    failure: SecretsStorageError,
-  ): Promise<Result<never, SecretsStorageError>> => {
-    const secretsRollback = await restoreSecretsState(secretsBackup);
-    if (!secretsRollback.ok) return secretsRollback;
-    return err(failure);
-  };
-
-  // Complete an interrupted secrets-storage migration (crash between the config write
-  // and the file/keyring cleanup). Keyring mode moves stranded secrets.json
-  // literals into the keyring. Explicit file mode deletes only entries with a
-  // completed file copy. Best-effort keyring failures leave state intact.
-  const reconcileStartupStorage = async (): Promise<void> => {
-    if (startupRecoveryError) return;
-    const startupStorage = configState.settings.secretsStorage;
-    if (startupStorage === "keyring") {
-      const secretsBeforeReconcile = cloneSecretsState(secretsState);
-      const reconciled = reconcileKeyringSecrets(secretsState);
-      if (!reconciled.ok) {
-        log("warn", "secrets_reconcile_failed", { error: reconciled.error.message });
-      } else if (reconciled.value) {
-        secretsState = reconciled.value.nextSecrets;
-        const result = await persistFileSecrets(secretsBeforeReconcile);
-        if (!result.ok) {
-          log("warn", "secrets_reconcile_persist_failed", { error: result.error.message });
-        }
-        log("info", "secrets_reconciled", { migrated: reconciled.value.migrated.join(",") });
-      }
-      deleteShadowedKeyringEntries(secretsState);
-      return;
-    }
-
-    if (startupStorage === "file") {
-      const orphans = findOrphanedKeyringEntries(configState, secretsState);
-      if (!orphans.ok) {
-        log("warn", "keyring_reconcile_failed", { error: orphans.error.message });
-      } else if (orphans.value.length > 0) {
-        finalizeKeyringDeletions(orphans.value);
-        log("info", "keyring_reconciled", { deleted: orphans.value.join(",") });
-      }
-    }
-  };
-
+  // Replay an interrupted commit, then perform any pending V1 upgrade, before the
+  // first request is served. `ready()` resolves once this settles.
   const initialization = mutex.run(async () => {
     try {
-      await withConfigFileTransaction(async () => {
-        startupRecoveryError = reconcileSecretsRecoveryAtStartup();
-        if (startupRecoveryError) return;
-
-        reloadConfigState();
-        reloadSecretsState();
-        await reconcileStartupStorage();
-        reloadConfigState();
-        reloadSecretsState();
-      });
+      await withFileTransactionLock(getGlobalConfigPath(), () =>
+        withFileTransactionLock(getGlobalSecretsPath(), async () => {
+          startupError = await reconcileDocumentRecoveryAtStartup();
+          if (startupError) return;
+          await reloadV2Documents();
+        }),
+      );
     } catch (cause) {
-      startupRecoveryError = persistFailure("config", cause);
-    } finally {
-      initialized = true;
+      startupError = persistFailure("config", cause);
     }
   });
   void initialization.catch((cause: unknown) => {
     log("warn", "startup_reconcile_failed", { error: getErrorMessage(cause) });
   });
 
-  const getSettings = (): SettingsConfig => {
-    prepareAggregateRead();
-    return { ...configState.settings };
-  };
-
   const ready = async (): Promise<Result<void, SecretsStorageError>> => {
     await initialization;
-    return startupRecoveryError ? err(startupRecoveryError) : ok(undefined);
+    const failure = startupError ?? upgradeError;
+    return failure ? err(failure) : ok(undefined);
   };
 
-  const migrateStorage = async (
-    nextSettings: SettingsConfig,
-    currentStorage: SecretsStorage,
-    nextStorage: SecretsStorage,
-    persistMerged: PersistConfigMerged,
-  ): Promise<Result<SettingsConfig, SecretsStorageError>> => {
-    const migrateResult = migrateSecretsStorage(
-      configState,
-      secretsState,
-      currentStorage,
-      nextStorage,
+  const v2Storage = (): SecretsStorage =>
+    configDocument.settings.secretsStorage === "keyring" ? "keyring" : "file";
+
+  const literalBindingOptions = (configurationId: string, revision: number) =>
+    v2Storage() === "keyring"
+      ? { keyring: keyringStore, keyId: getConfigurationSecretName(configurationId, revision) }
+      : { keyring: keyringStore, filePath: literalSecretPath(configurationId, revision) };
+
+  const credentialEnvironmentVariable = (productId: RunnableProductId): string | null =>
+    CREDENTIAL_ENVIRONMENT_VARIABLES[productId] ?? null;
+
+  const bindEnvironmentSecret = (
+    productId: RunnableProductId,
+    configurationId: ConfigurationId,
+    revision: ConfigurationRevision,
+    localBearer: boolean,
+  ): Result<SecretBinding, ConfigurationActionError> => {
+    const varName = credentialEnvironmentVariable(productId);
+    if (varName === null) {
+      return err(
+        configurationActionFailure(
+          "SECRET_BINDING_FAILED",
+          "No canonical environment variable exists for this product",
+        ),
+      );
+    }
+    return ok(
+      localBearer
+        ? createLocalBearerBinding(configurationId, revision, "environment-reference", varName)
+        : createEnvironmentSecretBinding(configurationId, revision, varName),
     );
-    if (!migrateResult.ok) return migrateResult;
-
-    markConfigBeforeMutation();
-    const configBackup = cloneConfigState(configState);
-    const secretsBackup = cloneSecretsState(secretsState);
-    const recoveryPreparation = await beginSecretsRecovery(secretsBackup);
-    if (!recoveryPreparation.ok) {
-      const keyringRollback = rollbackKeyringWrites(migrateResult.value.keyringWrites);
-      return keyringRollback.ok ? recoveryPreparation : keyringRollback;
-    }
-
-    if (nextStorage === "keyring") {
-      configState = {
-        ...configState,
-        settings: nextSettings,
-      };
-      const configResult = await persistConfig(persistMerged);
-      if (!configResult.ok) {
-        configState = configBackup;
-        const recoveryRollback = await restoreSecretsState(secretsBackup);
-        const keyringRollback = rollbackKeyringWrites(migrateResult.value.keyringWrites);
-        if (!recoveryRollback.ok) return recoveryRollback;
-        return keyringRollback.ok ? configResult : keyringRollback;
-      }
-
-      secretsState = cloneSecretsState(migrateResult.value.nextSecrets);
-      const secretsResult = await persistRecoverableFileSecrets(secretsBackup);
-      if (!secretsResult.ok) {
-        const keyringRollback = rollbackKeyringWrites(migrateResult.value.keyringWrites);
-        return keyringRollback.ok ? secretsResult : keyringRollback;
-      }
-    } else {
-      secretsState = cloneSecretsState(migrateResult.value.nextSecrets);
-      const secretsResult = await persistRecoverableFileSecrets(secretsBackup);
-      if (!secretsResult.ok) {
-        secretsState = secretsBackup;
-        return secretsResult;
-      }
-
-      configState = {
-        ...configState,
-        settings: nextSettings,
-      };
-      configState.providers = syncProvidersWithSecrets(
-        configState.providers,
-        secretsState,
-        nextStorage,
-      );
-
-      const configResult = await persistConfig(persistMerged);
-      if (!configResult.ok) {
-        configState = configBackup;
-        const rollbackResult = await restoreSecretsState(secretsBackup);
-        return rollbackResult.ok ? configResult : rollbackResult;
-      }
-    }
-
-    const recoveryCompletion = clearSecretsRecovery();
-    if (!recoveryCompletion.ok) {
-      const rollbackResult = await rollbackCommittedFileMutation(
-        secretsBackup,
-        recoveryCompletion.error,
-      );
-      const keyringRollback = rollbackKeyringWrites(migrateResult.value.keyringWrites);
-      return keyringRollback.ok ? rollbackResult : keyringRollback;
-    }
-
-    if (migrateResult.value.keyringDeletions.length > 0) {
-      finalizeKeyringDeletions(migrateResult.value.keyringDeletions);
-    }
-
-    syncLoadedProviders();
-
-    return ok({ ...configState.settings });
   };
 
-  const updateSettings = (
-    patch: Partial<SettingsConfig>,
-  ): Promise<Result<SettingsConfig, SecretsStorageError>> =>
-    mutex.run(() =>
-      runConfigFileMutation(async (persistMerged) => {
-        const nextSettings: SettingsConfig = {
-          ...configState.settings,
-          ...patch,
-        };
+  const secretBindingFailure = (cause: unknown): ConfigurationActionError => {
+    log("warn", "config_secret_binding_failed", { error: getErrorMessage(cause) });
+    return configurationActionFailure(
+      "SECRET_BINDING_FAILED",
+      "Secret binding could not be persisted",
+    );
+  };
 
-        const currentStorage = effectiveStorage(configState);
-        const nextStorage = nextSettings.secretsStorage;
-
-        if (configState.settings.secretsStorage !== null && nextStorage === null) {
-          return err(
-            createError<SecretsStorageErrorCode>(
-              "STORAGE_NOT_CONFIGURED",
-              "Secrets storage cannot be cleared after configuration",
-            ),
-          );
+  const bindActionSecret = async (
+    configurationId: ConfigurationId,
+    revision: ConfigurationRevision,
+    input: ClientConfigurationInput,
+  ): Promise<Result<SecretBinding, ConfigurationActionError>> => {
+    try {
+      if (input.transportFamily === "local-cli") {
+        return ok(createNoneSecretBinding(configurationId, revision));
+      }
+      if (input.transportFamily === "hosted-api") {
+        const credential = input.credential;
+        if (!credential) return ok(createNoneSecretBinding(configurationId, revision));
+        if (credential.kind === "environment") {
+          return bindEnvironmentSecret(input.productId, configurationId, revision, false);
         }
+        return ok(
+          await bindWriteOnlySecret(configurationId, revision, credential, {
+            ...literalBindingOptions(configurationId, revision),
+          }),
+        );
+      }
+      if (input.authentication === "none") {
+        return ok(createNoneSecretBinding(configurationId, revision));
+      }
+      const bearerToken = input.bearerToken;
+      if (!bearerToken) {
+        return err(
+          configurationActionFailure(
+            "SECRET_BINDING_FAILED",
+            "Bearer credential is required for optional local bearer authentication",
+          ),
+        );
+      }
+      if (bearerToken.kind === "environment") {
+        return bindEnvironmentSecret(input.productId, configurationId, revision, true);
+      }
+      return ok(
+        await bindWriteOnlySecret(configurationId, revision, bearerToken, {
+          localBearer: true,
+          ...literalBindingOptions(configurationId, revision),
+        }),
+      );
+    } catch (cause) {
+      return err(secretBindingFailure(cause));
+    }
+  };
 
-        if (currentStorage !== null && nextStorage !== null && currentStorage !== nextStorage) {
-          return migrateStorage(nextSettings, currentStorage, nextStorage, persistMerged);
-        }
+  const discardBindingSecret = async (binding: SecretBinding): Promise<void> => {
+    try {
+      await deleteSecretBinding(binding, secretIO);
+    } catch (cause) {
+      log("warn", "config_binding_rollback_failed", { error: getErrorMessage(cause) });
+    }
+  };
 
-        return runConfigTransaction(configTransactionDeps(persistMerged), () => {
-          configState.settings = nextSettings;
-          return ok({ ...configState.settings });
+  const encodeDecodedBinding = (binding: SecretBinding): DecodedSecretBinding => ({
+    status: "supported",
+    binding,
+    rawBytes: encodeJsonBytes(binding),
+  });
+
+  const findDecodedRecord = (
+    configurationId: ConfigurationId,
+  ): DecodedProviderConfigurationRecord | undefined =>
+    configDocument.configurations.find((record) =>
+      record.status === "unknown"
+        ? record.configurationId === configurationId
+        : record.record.configurationId === configurationId,
+    );
+
+  const replaceRecordInDocument = (
+    record: DecodedProviderConfigurationRecord,
+    replacement: DecodedProviderConfigurationRecord,
+  ): ConfigDocumentV2 => ({
+    ...configDocument,
+    configurations: configDocument.configurations.map((candidate) =>
+      candidate === record ? replacement : candidate,
+    ),
+  });
+
+  const findBindingForIdentity = (
+    configurationId: ConfigurationId,
+    revision: ConfigurationRevision,
+  ): SecretBinding | null => {
+    for (const entry of secretsDocument.bindings) {
+      const binding = entry.binding;
+      if (binding && binding.configurationId === configurationId && binding.revision === revision) {
+        return binding;
+      }
+    }
+    return null;
+  };
+
+  const credentialReferenceIdentityFor = (binding: SecretBinding | null): string | null => {
+    if (!binding) return null;
+    switch (binding.kind) {
+      case "none":
+        return null;
+      case "environment-reference":
+        return sha256CanonicalJsonSync({ kind: "environment-reference", varName: binding.varName });
+      case "keyring-reference":
+        return sha256CanonicalJsonSync({ kind: "keyring-reference", keyId: binding.keyId });
+      case "file-0600":
+        return sha256CanonicalJsonSync({ kind: "file-0600", filePath: binding.filePath });
+      case "optional-local-bearer":
+        return sha256CanonicalJsonSync({
+          kind: "optional-local-bearer",
+          storage: binding.storage,
+          reference: binding.reference,
         });
+    }
+  };
+
+  const workspaceAccountReferenceFor = (
+    record: SupportedProviderConfigurationRecord,
+  ): string | null => {
+    if (record.input.transportFamily !== "hosted-api" || record.input.workspace === undefined) {
+      return null;
+    }
+    return sha256CanonicalJsonSync(record.input.workspace);
+  };
+
+  /**
+   * Delete the stored secret of every dropped binding row, except where a
+   * retained row still resolves through the same reference (a carried-forward
+   * credential shares its file or keyring entry with the previous revision).
+   * Returns the rows whose material could not be deleted; ENOENT is not a
+   * failure, so a returned row means the secret is still on disk.
+   */
+  const deleteRetiredSecretMaterial = async (
+    removed: readonly SecretBinding[],
+    retained: readonly DecodedSecretBinding[],
+  ): Promise<SecretBinding[]> => {
+    const retainedReferences = new Set<string>();
+    for (const entry of retained) {
+      const reference = credentialReferenceIdentityFor(entry.binding ?? null);
+      if (reference !== null) retainedReferences.add(reference);
+    }
+
+    const failed: SecretBinding[] = [];
+    for (const binding of removed) {
+      const reference = credentialReferenceIdentityFor(binding);
+      if (reference === null || retainedReferences.has(reference)) continue;
+      try {
+        await deleteSecretBinding(binding, secretIO);
+      } catch (cause) {
+        log("warn", "config_binding_delete_failed", { error: getErrorMessage(cause) });
+        failed.push(binding);
+      }
+    }
+    return failed;
+  };
+
+  const readinessFor = (configuration: ProviderConfigurationRecord | null): Readiness => {
+    if (!configuration) return computeProviderReadinessResult({ configuration: null }).readiness;
+    if (configuration.status !== "supported") {
+      return computeProviderReadinessResult({ configuration }).readiness;
+    }
+    const binding = findBindingForIdentity(configuration.configurationId, configuration.revision);
+    const evidence = evidenceByConfiguration.get(configuration.configurationId) ?? null;
+    return computeProviderReadinessResult({
+      configuration,
+      binding,
+      evidence,
+      evidenceKey: evidence?.evidenceKey ?? null,
+      credentialReferenceIdentity: binding ? credentialReferenceIdentityFor(binding) : null,
+      workspaceAccountReference: workspaceAccountReferenceFor(configuration),
+    }).readiness;
+  };
+
+  const skippedReadiness = (): Readiness =>
+    ReadinessSchema.parse({
+      status: "skipped",
+      ready: false,
+      evidenceStatus: "skipped",
+      checkedAt: new Date().toISOString(),
+      acknowledgement: { status: "not-applicable" },
+      ...READINESS_PRESENTATION.skipped,
+    });
+
+  const noticesFor = (
+    productId: RunnableProductId,
+  ): readonly ClientConfigurationNotice[] | null => {
+    const parsed = ClientConfigurationNoticeSchema.safeParse({
+      ...PRODUCT_REGISTRY[productId].notice,
+    });
+    return parsed.success ? [parsed.data] : null;
+  };
+
+  const summaryForSupportedRecord = (
+    record: SupportedProviderConfigurationRecord,
+  ): Result<ClientConfigurationSummary, ConfigurationActionError> => {
+    const notices = noticesFor(record.productId);
+    if (!notices) {
+      return err(
+        configurationActionFailure(
+          "CONFIGURATION_UNSUPPORTED",
+          "Configuration cannot be represented at the client boundary",
+        ),
+      );
+    }
+    const base = {
+      configurationId: record.configurationId,
+      revision: record.revision,
+      selectedModelId: record.selectedModelId,
+      notices,
+      availableActions: SUPPORTED_CONFIGURATION_ACTIONS,
+    };
+    const input = record.input;
+    let candidate: Record<string, unknown>;
+    switch (input.transportFamily) {
+      case "hosted-api":
+        candidate = {
+          status: "supported",
+          transportFamily: "hosted-api",
+          productId: record.productId,
+          endpoint: input.endpoint,
+          ...(input.region !== undefined ? { region: input.region } : {}),
+          ...(input.workspace !== undefined ? { workspace: input.workspace } : {}),
+          ...base,
+        };
+        break;
+      case "local-http":
+        candidate = {
+          status: "supported",
+          transportFamily: "local-http",
+          productId: record.productId,
+          endpoint: input.endpoint,
+          authentication: input.authentication,
+          ...(input.presetId !== undefined ? { presetId: input.presetId } : {}),
+          ...base,
+        };
+        break;
+      default:
+        candidate = {
+          status: "supported",
+          transportFamily: "local-cli",
+          productId: record.productId,
+          installationId: input.installationId,
+          ...base,
+        };
+        break;
+    }
+    const parsed = ClientConfigurationSummarySchema.safeParse(candidate);
+    if (!parsed.success) {
+      return err(
+        configurationActionFailure(
+          "CONFIGURATION_UNSUPPORTED",
+          "Configuration cannot be represented at the client boundary",
+        ),
+      );
+    }
+    return ok(parsed.data);
+  };
+
+  const summaryForRemovedRecord = (
+    record: RemovedProviderConfigurationRecord,
+  ): Result<ClientConfigurationSummary, ConfigurationActionError> => {
+    const parsed = ClientConfigurationSummarySchema.safeParse({
+      status: "removed",
+      configurationId: record.configurationId,
+      revision: record.revision,
+      transportFamily: "hosted-api",
+      productId: REMOVED_PRODUCT_IDS[0],
+      selectedModelId: null,
+      notices: [],
+      availableActions: REMOVED_CONFIGURATION_ACTIONS,
+    });
+    if (!parsed.success) {
+      return err(
+        configurationActionFailure(
+          "CONFIGURATION_UNSUPPORTED",
+          "Configuration cannot be represented at the client boundary",
+        ),
+      );
+    }
+    return ok(parsed.data);
+  };
+
+  const succeededActionResponse = <Action extends ClientConfigurationActionName>(
+    action: Action,
+    payload: {
+      configuration?: ClientConfigurationSummary;
+      readiness?: Readiness;
+      notices?: readonly ClientConfigurationNotice[];
+      availableActions?: readonly ClientConfigurationActionName[];
+    } = {},
+  ): ClientConfigurationActionResponse =>
+    ClientConfigurationActionResponseSchema.parse({
+      action,
+      status: "succeeded",
+      ...(payload.configuration !== undefined ? { configuration: payload.configuration } : {}),
+      ...(payload.readiness !== undefined ? { readiness: payload.readiness } : {}),
+      ...(payload.notices !== undefined ? { notices: [...payload.notices] } : {}),
+      ...(payload.availableActions !== undefined
+        ? { availableActions: [...payload.availableActions] }
+        : {}),
+    });
+
+  const toNonSecretInput = (input: ClientConfigurationInput): NonSecretTransportInput => {
+    if (input.transportFamily === "hosted-api") {
+      return NonSecretTransportInputSchema.parse({
+        transportFamily: input.transportFamily,
+        productId: input.productId,
+        endpoint: input.endpoint,
+        ...(input.region !== undefined ? { region: input.region } : {}),
+        ...(input.workspace !== undefined ? { workspace: input.workspace } : {}),
+      });
+    }
+    if (input.transportFamily === "local-http") {
+      return NonSecretTransportInputSchema.parse({
+        transportFamily: input.transportFamily,
+        productId: input.productId,
+        endpoint: input.endpoint,
+        authentication: input.authentication,
+        ...(input.presetId !== undefined ? { presetId: input.presetId } : {}),
+      });
+    }
+    return NonSecretTransportInputSchema.parse(input);
+  };
+
+  const runCreateAction = async (
+    action: Extract<ClientConfigurationAction, { action: "create" }>,
+  ): Promise<Result<ClientConfigurationActionResponse, ConfigurationActionError>> => {
+    const nonSecretInput = toNonSecretInput(action.input);
+    const configurationId = createConfigurationId();
+    const now = new Date().toISOString();
+    const productId = nonSecretInput.productId;
+    const record: SupportedProviderConfigurationRecord = {
+      schemaVersion: 2,
+      status: "supported",
+      configurationId,
+      revision: 1,
+      transportFamily: nonSecretInput.transportFamily,
+      productId,
+      input: nonSecretInput,
+      selectedModelId: null,
+      acknowledgement: {
+        noticeVersion: PRODUCT_REGISTRY[productId].notice.noticeVersion,
+        acceptedAt: null,
+      },
+      evidenceReference: null,
+      budget: DEFAULT_CONFIGURATION_BUDGET,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const summaryResult = summaryForSupportedRecord(record);
+    if (!summaryResult.ok) return summaryResult;
+    const bindingResult = await bindActionSecret(configurationId, 1, action.input);
+    if (!bindingResult.ok) return bindingResult;
+    const binding = bindingResult.value;
+    configDocument = {
+      ...configDocument,
+      configurations: [
+        ...configDocument.configurations,
+        { status: "supported", record, rawBytes: encodeJsonBytes(record) },
+      ],
+    };
+    secretsDocument = {
+      ...secretsDocument,
+      bindings: [...secretsDocument.bindings, encodeDecodedBinding(binding)],
+    };
+    const persistResult = await writeV2Documents();
+    if (!persistResult.ok) {
+      await discardBindingSecret(binding);
+      return persistResult;
+    }
+    const readiness = readinessFor(record);
+    return ok(
+      succeededActionResponse("create", {
+        configuration: summaryResult.value,
+        readiness,
+        notices: summaryResult.value.notices,
+        availableActions: SUPPORTED_CONFIGURATION_ACTIONS,
       }),
     );
-
-  const getProviders = (): ProviderStatus[] => {
-    prepareAggregateRead();
-    return configState.providers.map((provider) => ({ ...provider }));
   };
 
-  const getActiveProvider = (): ProviderStatus | null => {
-    prepareAggregateRead();
-    return activeProvider(configState);
-  };
-
-  const readProviderApiKey = (providerId: string): Result<string | null, SecretsStorageError> => {
-    if (!isStorageConfigured(configState)) {
-      return ok(null);
+  const runInspectAction = async (
+    action: Extract<ClientConfigurationAction, { action: "inspect" }>,
+  ): Promise<Result<ClientConfigurationActionResponse, ConfigurationActionError>> => {
+    const record = findDecodedRecord(action.configurationId);
+    if (!record) {
+      return err(configurationActionFailure("CONFIGURATION_NOT_FOUND", "Configuration not found"));
     }
-    if (isFileStorage(configState)) {
-      const entry = secretsState.providers[providerId];
-      if (entry === undefined) return ok(null);
-      return ok(resolveSecretEntry(entry));
+    if (record.status === "unknown") {
+      return err(
+        configurationActionFailure("CONFIGURATION_UNSUPPORTED", "Configuration is not supported"),
+      );
     }
-    const sidecarEntry = secretsState.providers[providerId];
-    if (sidecarEntry !== undefined) {
-      return ok(resolveSecretEntry(sidecarEntry));
+    if (record.status === "removed") {
+      const summaryResult = summaryForRemovedRecord(record.record);
+      if (!summaryResult.ok) return summaryResult;
+      return ok(
+        succeededActionResponse("inspect", {
+          configuration: summaryResult.value,
+          readiness: readinessFor(record.record),
+          availableActions: REMOVED_CONFIGURATION_ACTIONS,
+        }),
+      );
     }
-    return readKeyringSecret(getApiKeyName(providerId));
+    const summaryResult = summaryForSupportedRecord(record.record);
+    if (!summaryResult.ok) return summaryResult;
+    return ok(
+      succeededActionResponse("inspect", {
+        configuration: summaryResult.value,
+        readiness: readinessFor(record.record),
+        notices: summaryResult.value.notices,
+        availableActions: SUPPORTED_CONFIGURATION_ACTIONS,
+      }),
+    );
   };
 
-  const getProviderApiKey = (providerId: string): Result<string | null, SecretsStorageError> => {
-    const readPreparation = prepareAggregateRead();
-    if (!readPreparation.ok) return readPreparation;
-    return readProviderApiKey(providerId);
+  const runSelectAction = async (
+    action: Extract<ClientConfigurationAction, { action: "select" }>,
+  ): Promise<Result<ClientConfigurationActionResponse, ConfigurationActionError>> => {
+    const modelId = ExactModelIdSchema.safeParse(action.modelId);
+    if (!modelId.success) {
+      return err(configurationActionFailure("INVALID_ACTION", "Model id is not an exact model id"));
+    }
+    const record = findDecodedRecord(action.configurationId);
+    if (!record) {
+      return err(configurationActionFailure("CONFIGURATION_NOT_FOUND", "Configuration not found"));
+    }
+    if (record.status !== "supported") {
+      return err(
+        configurationActionFailure("CONFIGURATION_UNSUPPORTED", "Configuration is not supported"),
+      );
+    }
+    const now = new Date().toISOString();
+    const nextRecord: SupportedProviderConfigurationRecord = {
+      ...record.record,
+      selectedModelId: modelId.data,
+      evidenceReference: null,
+      updatedAt: now,
+    };
+    const summaryResult = summaryForSupportedRecord(nextRecord);
+    if (!summaryResult.ok) return summaryResult;
+    configDocument = selectConfigV2(
+      replaceRecordInDocument(record, {
+        status: "supported",
+        record: nextRecord,
+        rawBytes: encodeJsonBytes(nextRecord),
+      }),
+      action.configurationId,
+    );
+    clearConfigurationEvidence(action.configurationId);
+    const persistResult = await writeV2Documents();
+    if (!persistResult.ok) return persistResult;
+    const readiness = readinessFor(nextRecord);
+    return ok(
+      succeededActionResponse("select", {
+        configuration: summaryResult.value,
+        readiness,
+        notices: summaryResult.value.notices,
+        availableActions: SUPPORTED_CONFIGURATION_ACTIONS,
+      }),
+    );
   };
+
+  const conformanceSubjectFor = (
+    configurationId: ConfigurationId,
+  ): Result<ConfigurationConformanceSubject, ConfigurationActionError> => {
+    const record = findDecodedRecord(configurationId);
+    if (!record) {
+      return err(configurationActionFailure("CONFIGURATION_NOT_FOUND", "Configuration not found"));
+    }
+    if (record.status !== "supported") {
+      return err(
+        configurationActionFailure("CONFIGURATION_UNSUPPORTED", "Configuration is not supported"),
+      );
+    }
+    const binding = findBindingForIdentity(configurationId, record.record.revision);
+    return ok({
+      record: record.record,
+      binding,
+      credentialReferenceIdentity: credentialReferenceIdentityFor(binding),
+      workspaceAccountReference: workspaceAccountReferenceFor(record.record),
+    });
+  };
+
+  const projectTestResponse = (
+    configurationId: ConfigurationId,
+  ): Result<ClientConfigurationActionResponse, ConfigurationActionError> => {
+    const record = findDecodedRecord(configurationId);
+    if (!record || record.status !== "supported") {
+      return err(configurationActionFailure("CONFIGURATION_NOT_FOUND", "Configuration not found"));
+    }
+    const summaryResult = summaryForSupportedRecord(record.record);
+    if (!summaryResult.ok) return summaryResult;
+    const readiness = readinessFor(record.record);
+    // An observation that did not pass leaves no evidence behind, so readiness
+    // is still pending here. Report it as skipped: never as passed.
+    const testReadiness =
+      readiness.status === "conformance-pending" ? skippedReadiness() : readiness;
+    return ok(
+      succeededActionResponse("test", {
+        configuration: summaryResult.value,
+        readiness: testReadiness,
+        notices: summaryResult.value.notices,
+        availableActions: SUPPORTED_CONFIGURATION_ACTIONS,
+      }),
+    );
+  };
+
+  /**
+   * Test observes the configuration's immutable tuple once and reprojects
+   * readiness from whatever evidence that observation persisted. The probe runs
+   * between two short transactions, never while the config/secrets locks are
+   * held, so a bounded network observation cannot block other mutations.
+   */
+  const runTestAction = async (
+    action: Extract<ClientConfigurationAction, { action: "test" }>,
+  ): Promise<Result<ClientConfigurationActionResponse, ConfigurationActionError>> => {
+    const configurationId = action.configurationId;
+    const subject = await runV2Mutation(async () => conformanceSubjectFor(configurationId));
+    if (!subject.ok) return subject;
+
+    await runConfigurationConformance(subject.value, { recordConfigurationEvidence });
+
+    return runV2Mutation(async () => projectTestResponse(configurationId));
+  };
+
+  const secretInputFor = (input: ClientConfigurationInput): WriteOnlySecretInput | undefined => {
+    if (input.transportFamily === "hosted-api") return input.credential;
+    if (input.transportFamily === "local-http") return input.bearerToken;
+    return undefined;
+  };
+
+  const bindingIsAbsentFor = (input: ClientConfigurationInput): boolean =>
+    input.transportFamily === "local-cli" ||
+    (input.transportFamily === "local-http" && input.authentication === "none");
+
+  const runUpdateAction = async (
+    action: Extract<ClientConfigurationAction, { action: "update" }>,
+  ): Promise<Result<ClientConfigurationActionResponse, ConfigurationActionError>> => {
+    const configurationId = action.configurationId;
+    const record = findDecodedRecord(configurationId);
+    if (!record) {
+      return err(configurationActionFailure("CONFIGURATION_NOT_FOUND", "Configuration not found"));
+    }
+    if (record.status !== "supported") {
+      return err(
+        configurationActionFailure("CONFIGURATION_UNSUPPORTED", "Configuration is not supported"),
+      );
+    }
+    if (record.record.revision !== action.expectedRevision) {
+      return err(
+        configurationActionFailure("CONFIGURATION_CONFLICT", "Configuration revision conflict"),
+      );
+    }
+    const product = PRODUCT_REGISTRY[record.record.productId];
+    if (
+      action.acknowledgement.noticeId !== product.notice.id ||
+      action.acknowledgement.noticeVersion !== product.notice.noticeVersion
+    ) {
+      return err(
+        configurationActionFailure(
+          "CONFIGURATION_CONFLICT",
+          "Notice acknowledgement does not match the product",
+        ),
+      );
+    }
+    const nonSecretInput = toNonSecretInput(action.input);
+    const now = new Date().toISOString();
+    const nextRecord: SupportedProviderConfigurationRecord = {
+      ...record.record,
+      revision: record.record.revision + 1,
+      transportFamily: nonSecretInput.transportFamily,
+      productId: nonSecretInput.productId,
+      input: nonSecretInput,
+      acknowledgement: { noticeVersion: action.acknowledgement.noticeVersion, acceptedAt: now },
+      evidenceReference: null,
+      updatedAt: now,
+    };
+    const summaryResult = summaryForSupportedRecord(nextRecord);
+    if (!summaryResult.ok) return summaryResult;
+
+    const previousBinding = findBindingForIdentity(configurationId, record.record.revision);
+    const secretInput = secretInputFor(action.input);
+    const bindingResult =
+      secretInput !== undefined
+        ? await bindActionSecret(configurationId, nextRecord.revision, action.input)
+        : ok<SecretBinding | undefined>(undefined);
+    if (!bindingResult.ok) return bindingResult;
+    const newBinding = bindingResult.value;
+
+    const replacedBindings: SecretBinding[] = [];
+    let nextBindings = secretsDocument.bindings.filter((entry) => {
+      const binding = entry.binding;
+      const replaced =
+        binding &&
+        binding.configurationId === configurationId &&
+        binding.revision === record.record.revision;
+      if (replaced) replacedBindings.push(binding);
+      return !replaced;
+    });
+    if (newBinding !== undefined) {
+      nextBindings = [...nextBindings, encodeDecodedBinding(newBinding)];
+    } else if (bindingIsAbsentFor(action.input)) {
+      const noneBinding = createNoneSecretBinding(configurationId, nextRecord.revision);
+      nextBindings = [...nextBindings, encodeDecodedBinding(noneBinding)];
+    } else if (action.input.transportFamily === "local-http") {
+      return err(
+        configurationActionFailure(
+          "SECRET_BINDING_FAILED",
+          "Bearer credential is required for optional local bearer authentication",
+        ),
+      );
+    } else if (previousBinding) {
+      const carried = SecretBindingSchema.parse({
+        ...previousBinding,
+        revision: nextRecord.revision,
+      });
+      nextBindings = [...nextBindings, encodeDecodedBinding(carried)];
+    } else {
+      const noneBinding = createNoneSecretBinding(configurationId, nextRecord.revision);
+      nextBindings = [...nextBindings, encodeDecodedBinding(noneBinding)];
+    }
+
+    configDocument = replaceRecordInDocument(record, {
+      status: "supported",
+      record: nextRecord,
+      rawBytes: encodeJsonBytes(nextRecord),
+    });
+    secretsDocument = { ...secretsDocument, bindings: nextBindings };
+    clearConfigurationEvidence(configurationId);
+    const persistResult = await writeV2Documents();
+    if (!persistResult.ok) {
+      if (newBinding !== undefined) await discardBindingSecret(newBinding);
+      return persistResult;
+    }
+    // Rotation drops the previous revision's row; its secret material must go
+    // with it unless the new row still points at the same reference.
+    await deleteRetiredSecretMaterial(replacedBindings, nextBindings);
+    const readiness = readinessFor(nextRecord);
+    return ok(
+      succeededActionResponse("update", {
+        configuration: summaryResult.value,
+        readiness,
+        notices: summaryResult.value.notices,
+        availableActions: SUPPORTED_CONFIGURATION_ACTIONS,
+      }),
+    );
+  };
+
+  const runDeleteAction = async (
+    action: Extract<ClientConfigurationAction, { action: "delete" }>,
+  ): Promise<Result<ClientConfigurationActionResponse, ConfigurationActionError>> => {
+    const configurationId = action.configurationId;
+    const record = findDecodedRecord(configurationId);
+    if (!record) {
+      return err(configurationActionFailure("CONFIGURATION_NOT_FOUND", "Configuration not found"));
+    }
+    if (record.status === "unknown") {
+      return err(
+        configurationActionFailure("CONFIGURATION_UNSUPPORTED", "Configuration is not supported"),
+      );
+    }
+    if (record.record.revision !== action.expectedRevision) {
+      return err(
+        configurationActionFailure("CONFIGURATION_CONFLICT", "Configuration revision conflict"),
+      );
+    }
+    const leaseHooks = configurationLeaseHooks;
+    if (!leaseHooks) {
+      log("error", "configuration_lease_hooks_not_registered");
+      return err(
+        configurationActionFailure(
+          "SECRET_BINDING_FAILED",
+          "Configuration leases cannot be released",
+        ),
+      );
+    }
+    await leaseHooks.revoke(configurationId);
+    await leaseHooks.cancel(configurationId);
+    await leaseHooks.drain(configurationId);
+    const bindingsToDelete: SecretBinding[] = [];
+    for (const entry of secretsDocument.bindings) {
+      const binding = entry.binding;
+      if (!binding || binding.configurationId !== configurationId) continue;
+      bindingsToDelete.push(binding);
+    }
+    configDocument = {
+      ...configDocument,
+      configurations: configDocument.configurations.filter(
+        (candidate) =>
+          (candidate.status === "unknown"
+            ? candidate.configurationId
+            : candidate.record.configurationId) !== configurationId,
+      ),
+      selectedConfigurationId:
+        configDocument.selectedConfigurationId === configurationId
+          ? null
+          : configDocument.selectedConfigurationId,
+    };
+    secretsDocument = {
+      ...secretsDocument,
+      bindings: secretsDocument.bindings.filter((entry) => {
+        const binding = entry.binding;
+        return !binding || binding.configurationId !== configurationId;
+      }),
+    };
+    clearConfigurationEvidence(configurationId);
+    const persistResult = await writeV2Documents();
+    if (!persistResult.ok) return persistResult;
+    const undeleted = await deleteRetiredSecretMaterial(bindingsToDelete, secretsDocument.bindings);
+    // The records are gone, but credential material that survived the delete is
+    // unreferenced and unretryable. Report the delete as failed so the caller
+    // can retry instead of trusting a credential that is still readable.
+    if (undeleted.length > 0) {
+      return ok(
+        ClientConfigurationActionResponseSchema.parse({ action: "delete", status: "failed" }),
+      );
+    }
+    return ok(succeededActionResponse("delete"));
+  };
+
+  const limitsMatchBudget = (limits: ExecutionLimits, budget: ConfigurationBudgetLimits): boolean =>
+    limits.maxInputTokens === budget.inputTokens &&
+    limits.maxOutputTokens === budget.outputTokens &&
+    limits.maxResponseBytes === budget.responseBytes &&
+    limits.wallTimeMs === budget.wallTimeMs &&
+    limits.maxRetries === budget.retries &&
+    limits.maxConcurrency === budget.concurrency &&
+    limits.maxCostUsd === budget.perReview;
+
+  const evidenceKeyMatchesRecord = (
+    record: SupportedProviderConfigurationRecord,
+    key: EvidenceKey,
+  ): boolean => {
+    const expectedEndpoint =
+      record.input.transportFamily === "local-cli" ? null : record.input.endpoint;
+    const expectedRegion =
+      record.input.transportFamily === "hosted-api" ? (record.input.region ?? null) : null;
+    return (
+      key.productId === record.productId &&
+      key.transportFamily === record.transportFamily &&
+      key.normalizedEndpoint === expectedEndpoint &&
+      key.region === expectedRegion &&
+      key.modelId === record.selectedModelId &&
+      key.workspaceAccountReference === workspaceAccountReferenceFor(record) &&
+      key.credentialReferenceIdentity ===
+        credentialReferenceIdentityFor(
+          findBindingForIdentity(record.configurationId, record.revision),
+        ) &&
+      key.authentication ===
+        (record.input.transportFamily === "local-http" ? record.input.authentication : null) &&
+      key.installationId ===
+        (record.input.transportFamily === "local-cli" ? record.input.installationId : null) &&
+      limitsMatchBudget(key.limits, record.budget)
+    );
+  };
+
+  const runRecordEvidence = async (
+    configurationId: ConfigurationId,
+    evidence: AdmissionEvidence,
+  ): Promise<Result<boolean, ConfigurationActionError>> => {
+    const parsed = AdmissionEvidenceSchema.safeParse(evidence);
+    if (!parsed.success) {
+      return err(configurationActionFailure("INVALID_ACTION", "Invalid admission evidence"));
+    }
+    const record = findDecodedRecord(configurationId);
+    if (!record) {
+      return err(configurationActionFailure("CONFIGURATION_NOT_FOUND", "Configuration not found"));
+    }
+    if (record.status !== "supported") {
+      return err(
+        configurationActionFailure("CONFIGURATION_UNSUPPORTED", "Configuration is not supported"),
+      );
+    }
+    if (!evidenceKeyMatchesRecord(record.record, parsed.data.evidenceKey)) {
+      return err(
+        configurationActionFailure(
+          "CONFIGURATION_CONFLICT",
+          "Admission evidence does not match the configuration",
+        ),
+      );
+    }
+    const now = new Date().toISOString();
+    const evidenceReference = evidenceReferenceFor(configurationId);
+    const nextRecord: SupportedProviderConfigurationRecord = {
+      ...record.record,
+      evidenceReference,
+      updatedAt: now,
+    };
+    // Persist the payload before the record that references it, and take it back
+    // if the record never commits, so the two can never disagree.
+    try {
+      await writeJsonFile(evidencePath(evidenceReference), parsed.data, 0o600);
+    } catch (cause) {
+      return err(persistV2Failure(cause));
+    }
+    configDocument = replaceRecordInDocument(record, {
+      status: "supported",
+      record: nextRecord,
+      rawBytes: encodeJsonBytes(nextRecord),
+    });
+    const persistResult = await writeV2Documents();
+    if (!persistResult.ok) {
+      removeEvidenceFile(configurationId);
+      return persistResult;
+    }
+    evidenceByConfiguration.set(configurationId, parsed.data);
+    return ok(true);
+  };
+
+  const runConfigurationAction = (
+    action: ClientConfigurationAction,
+  ): Promise<Result<ClientConfigurationActionResponse, ConfigurationActionError>> => {
+    const parsedAction = ClientConfigurationActionSchema.safeParse(action);
+    if (!parsedAction.success) {
+      return Promise.resolve(
+        err(configurationActionFailure("INVALID_ACTION", "Invalid configuration action")),
+      );
+    }
+    const validAction = parsedAction.data;
+    // Test owns its own transactions: the bounded conformance observation runs
+    // between them instead of inside the held locks.
+    if (validAction.action === "test") return runTestAction(validAction);
+
+    return runV2Mutation(async () => {
+      switch (validAction.action) {
+        case "create":
+          return runCreateAction(validAction);
+        case "inspect":
+          return runInspectAction(validAction);
+        case "select":
+          return runSelectAction(validAction);
+        case "update":
+          return runUpdateAction(validAction);
+        case "delete":
+          return runDeleteAction(validAction);
+      }
+    });
+  };
+
+  const recordConfigurationEvidence = (
+    configurationId: ConfigurationId,
+    evidence: AdmissionEvidence,
+  ): Promise<Result<boolean, ConfigurationActionError>> =>
+    runV2Mutation(() => runRecordEvidence(configurationId, evidence));
+
+  const getConfigurationAdmissionEvidence = (
+    configurationId: ConfigurationId,
+  ): AdmissionEvidence | null => evidenceByConfiguration.get(configurationId) ?? null;
+
+  // --- Settings -------------------------------------------------------------
+
+  const getSettings = (): SettingsConfig => parseSettingsRecord(configDocument.settings).settings;
+
+  /**
+   * `secretsStorage` selects where a NEW credential is written. Existing
+   * bindings name their own storage (file path or keyring id), so switching it
+   * never moves, rewrites, or invalidates the credentials already bound.
+   */
+  const updateSettings = (
+    patch: Partial<SettingsConfig>,
+  ): Promise<Result<SettingsConfig, ConfigurationActionError>> =>
+    runV2Mutation(async () => {
+      const current = parseSettingsRecord(configDocument.settings);
+      const nextSettings: SettingsConfig = { ...current.settings, ...patch };
+
+      if (current.settings.secretsStorage !== null && nextSettings.secretsStorage === null) {
+        return err(
+          configurationActionFailure(
+            "STORAGE_NOT_CONFIGURED",
+            "Secrets storage cannot be cleared after configuration",
+          ),
+        );
+      }
+      if (nextSettings.secretsStorage === "keyring" && !isKeyringAvailable()) {
+        return err(
+          configurationActionFailure("KEYRING_UNAVAILABLE", "Keyring storage is not available"),
+        );
+      }
+
+      configDocument = {
+        ...configDocument,
+        settings: { ...current.unknown, ...SettingsConfigSchema.parse(nextSettings) },
+      };
+      const persisted = await writeV2Documents();
+      if (!persisted.ok) return persisted;
+      return ok(getSettings());
+    });
 
   const resolveRoot = (projectRoot?: string): string =>
     resolveProjectRoot({
@@ -725,260 +1497,19 @@ export function createConfigStore(): ConfigStore {
     };
   };
 
-  const saveProviderCredentials = (input: {
-    provider: AIProvider;
-    apiKey: string | CredentialRef;
-    model?: string;
-  }): Promise<Result<ProviderStatus, SecretsStorageError>> =>
-    mutex.run(() =>
-      runConfigFileMutation(async (persistMerged) => {
-        if (!isStorageConfigured(configState)) {
-          return err(
-            createError(
-              "STORAGE_NOT_CONFIGURED",
-              "Secrets storage backend must be configured before saving credentials",
-            ),
-          );
-        }
-
-        const { provider, apiKey, model } = input;
-        const { entry, resolvedValue } = toSecretEntry(apiKey, provider);
-        markConfigBeforeMutation();
-        const configBackup = cloneConfigState(configState);
-        const secretsBackup = cloneSecretsState(secretsState);
-        let previousKeyringValue: string | null = null;
-        let touchedKeyring = false;
-
-        if (isFileStorage(configState)) {
-          secretsState.providers[provider] = entry;
-          const secretsResult = await persistRecoverableFileSecrets(secretsBackup);
-          if (!secretsResult.ok) {
-            secretsState = secretsBackup;
-            return secretsResult;
-          }
-        } else if (typeof entry !== "string" && entry.kind === "env") {
-          // Switching to an env credential must delete this provider's keyring literal,
-          // or the sidecar env ref (resolved first on read) leaves it shadowed.
-          // Capture for rollback, persist the sidecar, then delete — a crash between is
-          // repaired at startup.
-          const previousKeyringResult = readKeyringSecret(getApiKeyName(provider));
-          if (!previousKeyringResult.ok) return previousKeyringResult;
-          previousKeyringValue = previousKeyringResult.value;
-
-          secretsState.providers[provider] = entry;
-          const secretsResult = await persistRecoverableFileSecrets(secretsBackup);
-          if (!secretsResult.ok) {
-            secretsState = secretsBackup;
-            return secretsResult;
-          }
-
-          if (previousKeyringValue !== null) {
-            const deleteResult = deleteKeyringSecret(getApiKeyName(provider));
-            if (!deleteResult.ok) {
-              const rollbackResult = await restoreSecretsState(secretsBackup);
-              return rollbackResult.ok ? deleteResult : rollbackResult;
-            }
-            touchedKeyring = true;
-          }
-        } else {
-          const previousKeyringResult = readKeyringSecret(getApiKeyName(provider));
-          if (!previousKeyringResult.ok) return previousKeyringResult;
-          previousKeyringValue = previousKeyringResult.value;
-          const keyValue = resolvedValue ?? (typeof entry === "string" ? entry : "");
-          const writeResult = writeKeyringSecret(getApiKeyName(provider), keyValue);
-          if (!writeResult.ok) return writeResult;
-          touchedKeyring = true;
-          if (fileHasSecret(secretsState, provider)) {
-            delete secretsState.providers[provider];
-            const secretsResult = await persistRecoverableFileSecrets(secretsBackup);
-            if (!secretsResult.ok) {
-              const keyringRollback = restoreKeyringSecret(provider, previousKeyringValue);
-              const rollbackResult = await restoreSecretsState(secretsBackup);
-              if (!keyringRollback.ok) return keyringRollback;
-              return rollbackResult.ok ? secretsResult : rollbackResult;
-            }
-          }
-        }
-
-        const ensured = ensureProviderEntry(configState.providers, provider, true);
-        configState.providers = ensured.providers;
-
-        if (!model) {
-          configState.providers = applyCredentialsWithoutModel(configState.providers, provider);
-        } else {
-          configState.providers = applyActiveProvider(configState.providers, {
-            providerId: provider,
-            model,
-            hasApiKey: true,
-          });
-        }
-
-        const configResult = await persistConfig(persistMerged);
-        if (!configResult.ok) {
-          configState = configBackup;
-          const rollbackResult = await restoreSecretsState(secretsBackup);
-          const keyringRollback = touchedKeyring
-            ? restoreKeyringSecret(provider, previousKeyringValue)
-            : ok(undefined);
-          if (!keyringRollback.ok) return keyringRollback;
-          return rollbackResult.ok ? configResult : rollbackResult;
-        }
-
-        const recoveryCompletion = clearSecretsRecovery();
-        if (!recoveryCompletion.ok) {
-          const rollbackResult = await rollbackCommittedFileMutation(
-            secretsBackup,
-            recoveryCompletion.error,
-          );
-          const keyringRollback = touchedKeyring
-            ? restoreKeyringSecret(provider, previousKeyringValue)
-            : ok(undefined);
-          if (!keyringRollback.ok) return keyringRollback;
-          return rollbackResult;
-        }
-
-        const savedProvider = configState.providers.find((item) => item.provider === provider);
-        return ok(savedProvider ? { ...savedProvider } : { ...ensured.entry, hasApiKey: true });
-      }),
-    );
-
-  const activateProvider = (input: {
-    provider: AIProvider;
-    model?: string;
-  }): Promise<Result<ProviderStatus | null, SecretsStorageError>> =>
-    mutex.run(() =>
-      runConfigFileMutation(async (persistMerged) => {
-        const result = await runConfigTransaction(configTransactionDeps(persistMerged), () => {
-          const { provider, model } = input;
-          const existing = configState.providers.find((item) => item.provider === provider);
-          if (!existing) return ok(null);
-          if (!model && !existing.model) return ok(null);
-
-          const apiKeyResult = readProviderApiKey(provider);
-          if (!apiKeyResult.ok) return apiKeyResult;
-          if (!apiKeyResult.value) {
-            return err(
-              createError(
-                "SECRET_NOT_FOUND",
-                "Provider credential was removed before activation completed",
-              ),
-            );
-          }
-
-          configState.providers = applyActiveProvider(configState.providers, {
-            providerId: provider,
-            model,
-            preserveModel: true,
-          });
-
-          return ok(activeProvider(configState));
-        });
-        if (!result.ok || result.value === null) return result;
-        return ok(activeProvider(configState));
-      }),
-    );
-
-  const deleteProviderCredentials = (
-    providerId: AIProvider,
-  ): Promise<Result<boolean, SecretsStorageError>> =>
-    mutex.run(() =>
-      runConfigFileMutation(async (persistMerged) => {
-        if (!isStorageConfigured(configState)) {
-          return err(
-            createError(
-              "STORAGE_NOT_CONFIGURED",
-              "Secrets storage backend must be configured before deleting credentials",
-            ),
-          );
-        }
-
-        const providerExists = configState.providers.some((item) => item.provider === providerId);
-        markConfigBeforeMutation();
-        const configBackup = cloneConfigState(configState);
-        const secretsBackup = cloneSecretsState(secretsState);
-        let hadSecret = false;
-        let previousKeyringValue: string | null = null;
-        let touchedKeyring = false;
-
-        if (isFileStorage(configState)) {
-          hadSecret = fileHasSecret(secretsState, providerId);
-          if (hadSecret) {
-            delete secretsState.providers[providerId];
-          }
-          const secretsResult = await persistRecoverableFileSecrets(secretsBackup);
-          if (!secretsResult.ok) {
-            secretsState = secretsBackup;
-            return secretsResult;
-          }
-        } else {
-          const previousKeyringResult = readKeyringSecret(getApiKeyName(providerId));
-          if (!previousKeyringResult.ok) return previousKeyringResult;
-          previousKeyringValue = previousKeyringResult.value;
-          if (previousKeyringValue !== null) {
-            const deleteResult = deleteKeyringSecret(getApiKeyName(providerId));
-            if (!deleteResult.ok) return deleteResult;
-            hadSecret = deleteResult.value;
-            touchedKeyring = deleteResult.value;
-          }
-          if (fileHasSecret(secretsState, providerId)) {
-            delete secretsState.providers[providerId];
-            const secretsResult = await persistRecoverableFileSecrets(secretsBackup);
-            if (!secretsResult.ok) {
-              const keyringRollback = touchedKeyring
-                ? restoreKeyringSecret(providerId, previousKeyringValue)
-                : ok(undefined);
-              const rollbackResult = await restoreSecretsState(secretsBackup);
-              if (!keyringRollback.ok) return keyringRollback;
-              return rollbackResult.ok ? secretsResult : rollbackResult;
-            }
-            hadSecret = true;
-          }
-        }
-
-        configState.providers = clearProviderCredentials(configState.providers, providerId);
-        const configResult = await persistConfig(persistMerged);
-        if (!configResult.ok) {
-          configState = configBackup;
-          const rollbackResult = await restoreSecretsState(secretsBackup);
-          const keyringRollback = touchedKeyring
-            ? restoreKeyringSecret(providerId, previousKeyringValue)
-            : ok(undefined);
-          if (!keyringRollback.ok) return keyringRollback;
-          return rollbackResult.ok ? configResult : rollbackResult;
-        }
-
-        const recoveryCompletion = clearSecretsRecovery();
-        if (!recoveryCompletion.ok) {
-          const rollbackResult = await rollbackCommittedFileMutation(
-            secretsBackup,
-            recoveryCompletion.error,
-          );
-          const keyringRollback = touchedKeyring
-            ? restoreKeyringSecret(providerId, previousKeyringValue)
-            : ok(undefined);
-          if (!keyringRollback.ok) return keyringRollback;
-          return rollbackResult;
-        }
-        return ok(providerExists || hadSecret);
-      }),
-    );
-
   return {
     ready,
     getSettings,
     updateSettings,
-    getProviders,
-    getActiveProvider,
-    getProviderApiKey,
     getProjectInfo,
     ensureProjectFile,
     getTrust: trustStore.getTrust,
     listTrustedProjects: trustStore.listTrustedProjects,
     saveTrust: trustStore.saveTrust,
     removeTrust: trustStore.removeTrust,
-    saveProviderCredentials,
-    activateProvider,
-    deleteProviderCredentials,
+    runConfigurationAction,
+    recordConfigurationEvidence,
+    getConfigurationAdmissionEvidence,
   };
 }
 

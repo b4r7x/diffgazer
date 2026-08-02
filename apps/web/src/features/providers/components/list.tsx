@@ -1,6 +1,5 @@
-import { getDisplayStatusBadge } from "@diffgazer/core/providers";
-import type { ProviderWithStatus } from "@diffgazer/core/schemas/config";
-import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
+import type { ProviderListRow } from "@diffgazer/core/providers";
+import { getProviderDisplayStatus, getProviderRowId } from "@diffgazer/core/providers";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import {
@@ -21,7 +20,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from "react";
 import { PROVIDER_FILTER_LABELS, type ProviderFilter } from "../lib/filter";
 
 interface ProviderListProps {
-  providers: ProviderWithStatus[];
+  providers: ProviderListRow[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onActivate?: (id: string) => void;
@@ -47,6 +46,20 @@ interface ProviderListProps {
   onHighlightChange?: (id: string | null) => void;
   onBoundaryReached?: (direction: "up" | "down") => void;
   ref?: React.Ref<HTMLDivElement>;
+}
+
+function getTierBadge(row: ProviderListRow): "FREE" | "PAID" {
+  if (row.product.status === "removed") return "PAID";
+  return row.product.billing.modes.includes("free-tier") ? "FREE" : "PAID";
+}
+
+function getModelSubtitle(row: ProviderListRow): string {
+  if (row.configuration?.selectedModelId) return row.configuration.selectedModelId;
+  if (row.product.status === "removed") return "Removed record";
+  if (row.readiness.status === "unsupported" && row.product.transportFamily === "local-cli") {
+    return "CLI unsupported";
+  }
+  return row.readiness.remediation.message;
 }
 
 export function ProviderList({
@@ -162,25 +175,31 @@ export function ProviderList({
               onBoundaryReached?.(toVerticalBoundaryDirection(direction));
             }}
           >
-            {providers.map((provider) => {
-              const capabilities = PROVIDER_CAPABILITIES[provider.id];
-              const tierBadge = capabilities?.tierBadge ?? "PAID";
-              const badge = getDisplayStatusBadge(provider.displayStatus);
-              // Padded brackets: one bracket grammar across statuses and buttons.
+            {providers.map((row) => {
+              const rowId = getProviderRowId(row);
+              const tierBadge = getTierBadge(row);
+              const badge = getProviderDisplayStatus(row.readiness, row.product.transportFamily);
               const statusText = `[ ${badge.label.toUpperCase()} ]`;
-              const subtitleText = provider.model || "Select model";
+              const subtitleText = getModelSubtitle(row);
+              const isRemoved = row.product.status === "removed";
 
               return (
                 <NavigationListItem
-                  key={provider.id}
-                  id={provider.id}
+                  key={rowId}
+                  id={rowId}
+                  disabled={isRemoved}
                   className={cn(
                     "border-l-2 border-l-transparent",
-                    !isFocused && selectedId === provider.id && "border-l-info/60 text-foreground",
+                    !isFocused && selectedId === rowId && "border-l-info/60 text-foreground",
+                    isRemoved && "opacity-70",
                   )}
                 >
-                  <NavigationListTitle>{provider.name}</NavigationListTitle>
-                  <NavigationListStatus>{statusText}</NavigationListStatus>
+                  <NavigationListTitle>{row.product.name}</NavigationListTitle>
+                  <NavigationListStatus>
+                    <span role="img" aria-label={badge.accessibleText}>
+                      {statusText}
+                    </span>
+                  </NavigationListStatus>
                   <div className="col-span-full row-start-2 flex min-w-0 items-center gap-2">
                     <NavigationListMeta className="shrink-0">
                       <NavigationListBadge

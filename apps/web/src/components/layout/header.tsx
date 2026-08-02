@@ -65,9 +65,12 @@ const LAYOUT = {
  * non-active provider. Nothing announces "offline": the real provider status is
  * the word the row renders.
  */
-const DOT_STATUS: Record<ProviderDisplayStatus, StatusIndicatorStatus> = {
-  active: "online",
-  idle: "offline",
+const DOT_STATUS: Record<ProviderDisplayStatus["variant"], StatusIndicatorStatus> = {
+  success: "online",
+  warning: "offline",
+  error: "busy",
+  info: "offline",
+  neutral: "offline",
 };
 
 /**
@@ -93,11 +96,8 @@ export function Header({
 }: HeaderProps) {
   const layout = LAYOUT[wordmark];
   const server = SERVER_STATE[serverState];
-  const statusWord = server.word ?? providerStatus;
-  // StatusIndicator ships three statuses and each carries its own shape, so a
-  // dead transport takes the filled square and a retry takes the hollow dot -
-  // the three states stay apart without relying on colour.
-  const dotStatus = server.dot ?? DOT_STATUS[providerStatus];
+  const statusWord = server.word ?? providerStatus.label;
+  const dotStatus = server.dot ?? DOT_STATUS[providerStatus.variant];
 
   return (
     <header className="@container shrink-0 p-4 pb-2">
@@ -129,7 +129,7 @@ export function Header({
           // An aria-label replaces the children for assistive tech, so the status
           // word has to be part of it; label={null} keeps StatusIndicator from
           // adding a second visible copy.
-          aria-label={`Provider: ${providerName}, ${providerStatus}; server ${server.aria}`}
+          aria-label={`Provider: ${providerName}, ${providerStatus.label}; server ${server.aria}`}
           className={cn(
             "min-w-0 justify-self-end gap-1.5 text-foreground normal-case tracking-normal",
             layout.status,

@@ -1,8 +1,10 @@
-import type { InitResponse, SettingsConfig } from "@diffgazer/core/schemas/config";
+import type { SettingsConfig } from "@diffgazer/core/schemas/config";
+import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import { cleanup, render } from "ink-testing-library";
 import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CliThemeProvider } from "../../../theme/provider";
+import { makeConfigurationListResponse } from "../../providers/testing/fixtures";
 
 const apiMocks = vi.hoisted(() => ({
   useInit: vi.fn(),
@@ -47,13 +49,14 @@ const SETTINGS: SettingsConfig = {
   agentExecution: "parallel",
 };
 
-function makeInitResponse(): InitResponse {
+const shellList = makeConfigurationListResponse();
+
+function makeInitResponse() {
   return {
-    configPath: "/custom/diffgazer/config.json",
-    config: { provider: "openrouter", model: "openrouter/test-model" },
-    providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
+    schemaVersion: 2 as const,
+    configurations: shellList.configurations,
+    selectedConfigurationId: shellList.selectedConfigurationId,
     settings: SETTINGS,
-    configured: true,
     project: {
       projectId: "proj-1",
       path: "/work/moved-repo",
@@ -139,10 +142,9 @@ describe("SettingsHubScreen", () => {
       </CliThemeProvider>,
     );
 
-    // Caps are the hub screen's display rule (buildHubValues returns neutral text so the
-    // web DOM stays unshouted), so the terminal lifts every value including this one.
     expect(view.lastFrame()).toContain("NOT TRUSTED");
-    expect(view.lastFrame()).toContain("config path: /custom/diffgazer/config.json");
+    expect(view.lastFrame()).toContain("project path:");
+    expect(view.lastFrame()).not.toMatch(new RegExp(LEGACY_V1_HAS_API_KEY_PROPERTY, "i"));
   });
 
   test("aligns every hub value to one trailing column without jamming the longest label", () => {
@@ -166,10 +168,7 @@ describe("SettingsHubScreen", () => {
 
     const rows = readHubRows(view.lastFrame() ?? "");
     expect(rows).toHaveLength(HUB_LABELS.length);
-    // Every value shares a single right-aligned trailing column.
     expect(new Set(rows.map((row) => row.trailingColumn)).size).toBe(1);
-    // The longest label ("Trust & Permissions") keeps a clear gap before its
-    // value instead of the value jamming against it.
     for (const row of rows) {
       expect(row.gapBeforeValue).toBeGreaterThanOrEqual(2);
     }

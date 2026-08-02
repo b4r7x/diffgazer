@@ -85,6 +85,7 @@ function renderView(props: Partial<ReviewProgressViewProps> = {}) {
           isRunning={props.isRunning ?? false}
           error={props.error}
           errorCode={props.errorCode}
+          transportFamily={props.transportFamily}
           reviewId={props.reviewId}
           onRetry={props.onRetry}
           onViewResults={props.onViewResults}
@@ -298,6 +299,7 @@ describe("ReviewProgressView", () => {
       isRunning: false,
       error: "Credentials rejected",
       errorCode: "API_KEY_MISSING",
+      transportFamily: "hosted-api",
       reviewId: "active-review",
       onRetry: vi.fn(),
       onBack: vi.fn(),
@@ -454,7 +456,12 @@ describe("ReviewProgressView", () => {
 
   it("leaves native Tab available on the error screen", async () => {
     const user = userEvent.setup();
-    renderView({ isRunning: false, error: "API key error", onBack: vi.fn() });
+    renderView({
+      isRunning: false,
+      error: "API key error",
+      transportFamily: "hosted-api",
+      onBack: vi.fn(),
+    });
 
     const back = await screen.findByRole("button", { name: "Back to Home" });
     const configure = screen.getByRole("button", { name: "Configure Provider" });

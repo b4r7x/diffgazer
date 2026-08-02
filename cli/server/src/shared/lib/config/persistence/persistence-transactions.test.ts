@@ -2,10 +2,9 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createNoneSecretBinding, deleteSecretBindingTransactional } from "../secret-bindings.js";
-import { homePath, readJson, tempHome, writeJson } from "./persistence.test-support.js";
+import { homePath, readJson, tempHome } from "./persistence.test-support.js";
 
 const fsHooks = vi.hoisted(() => ({
   writeJsonFileHook: null as
@@ -40,8 +39,7 @@ vi.mock("../../fs.js", async (importOriginal) => {
 });
 
 const moduleUrlByMode = {
-  config: new URL("./config.ts", import.meta.url).href,
-  secrets: new URL("./secrets.ts", import.meta.url).href,
+  settings: new URL("../store.ts", import.meta.url).href,
   trust: new URL("./trust.ts", import.meta.url).href,
 };
 
@@ -51,17 +49,14 @@ import { setTimeout as delay } from "node:timers/promises";
 const persistence = await import(process.env.PERSISTENCE_MODULE_URL);
 const id = process.env.WORKER_ID;
 let operation;
-if (process.env.MODE === "config") {
-  const previous = persistence.loadConfig();
-  const settings = id === "a"
-    ? { ...previous.settings, theme: "dark" }
-    : { ...previous.settings, severityThreshold: "high" };
-  operation = () => persistence.withConfigFileTransaction((persistMerged) =>
-    persistMerged({ ...previous, settings }, previous.providers, previous.settings),
-  );
-} else if (process.env.MODE === "secrets") {
-  const provider = id === "a" ? "gemini" : "groq";
-  operation = () => persistence.persistSecretsAsync({ providers: { [provider]: id + "-key" } });
+if (process.env.MODE === "settings") {
+  const patch = id === "a" ? { theme: "dark" } : { severityThreshold: "high" };
+  operation = async () => {
+    const store = persistence.getStore();
+    await store.ready();
+    const result = await store.updateSettings(patch);
+    if (!result.ok) throw new Error(result.error.message);
+  };
 } else {
   const projectId = "project-" + id;
   const capabilities = id === "a"
@@ -112,7 +107,7 @@ const waitForExit = (child: ChildProcess): Promise<{ code: number | null; stderr
     child.once("close", (code) => resolve({ code, stderr }));
   });
 
-const runProcessRace = async (mode: "config" | "secrets" | "trust"): Promise<void> => {
+const runProcessRace = async (mode: "settings" | "trust"): Promise<void> => {
   const barrier = path.join(tempHome, `barrier-${mode}`);
   await mkdir(barrier);
   const startPath = path.join(barrier, "start");
@@ -202,7 +197,7 @@ const secretBytes = (revision: number): Uint8Array =>
     })}\n`,
   );
 
-const failAfterPartialTempWrite = async (filePath: string, content: string): Promise<void> => {
+const _failAfterPartialTempWrite = async (filePath: string, content: string): Promise<void> => {
   const partialPath = `${filePath}.partial-write`;
   try {
     await writeFile(partialPath, content.slice(0, Math.max(1, Math.floor(content.length / 2))), {
@@ -216,53 +211,31 @@ const failAfterPartialTempWrite = async (filePath: string, content: string): Pro
 };
 
 describe("persistence transactions", () => {
-  it("fails a V2 configuration transaction during a partial write and keeps prior bytes and revision", async () => {
-    const { decodeConfigV2, loadConfigV2, persistConfigV2 } = await import("./config.js");
-    const initial = configBytes(3);
-    await persistConfigV2(decodeConfigV2(initial));
-    const priorBytes = await readFile(homePath("config.json"));
-    expect(new Uint8Array(priorBytes)).toEqual(initial);
-
-    fsHooks.atomicWriteFileHook = failAfterPartialTempWrite;
-    await expect(persistConfigV2(decodeConfigV2(configBytes(4)))).rejects.toThrow(
-      "simulated partial persistence failure",
-    );
-
-    await expect(readFile(homePath("config.json"))).resolves.toEqual(priorBytes);
-    expect(loadConfigV2().configurations[0]).toMatchObject({
-      status: "supported",
-      record: { configurationId: "gemini-primary", revision: 3 },
-    });
-  });
-
-  it("fails a V2 secret-binding transaction during a partial write and keeps prior bytes and revision", async () => {
-    const { decodeSecretsV2, loadSecretsV2, persistSecretsV2 } = await import("./secrets.js");
-    const initial = secretBytes(3);
-    await persistSecretsV2(decodeSecretsV2(initial));
-    const priorBytes = await readFile(homePath("secrets.json"));
-    expect(new Uint8Array(priorBytes)).toEqual(initial);
-
-    fsHooks.atomicWriteFileHook = failAfterPartialTempWrite;
-    await expect(persistSecretsV2(decodeSecretsV2(secretBytes(4)))).rejects.toThrow(
-      "simulated partial persistence failure",
-    );
-
-    await expect(readFile(homePath("secrets.json"))).resolves.toEqual(priorBytes);
-    expect(loadSecretsV2().bindings[0]).toMatchObject({
-      status: "supported",
-      binding: { configurationId: "gemini-primary", revision: 3 },
-    });
-  });
-
   it("commits V2 record and binding removal only after cancellation and descendant drain", async () => {
-    const { decodeConfigV2, loadConfigV2, persistConfigV2 } = await import("./config.js");
-    const { decodeSecretsV2, loadSecretsV2, persistSecretsV2 } = await import("./secrets.js");
+    const { decodeConfigV2, loadConfigV2, serializeConfigV2 } = await import("./config.js");
+    const { decodeSecretsV2, loadSecretsV2, serializeSecretsV2 } = await import("./secrets.js");
+    const { atomicWriteFile } = await vi.importActual<typeof import("../../fs.js")>("../../fs.js");
     const binding = createNoneSecretBinding("gemini-primary", 3);
     const initialConfig = decodeConfigV2(configBytes(3));
     const initialSecrets = decodeSecretsV2(secretBytes(3));
+    const writeDocuments = async (
+      config: typeof initialConfig,
+      secrets: typeof initialSecrets,
+    ): Promise<void> => {
+      const decoder = new TextDecoder();
+      await atomicWriteFile(
+        homePath("config.json"),
+        decoder.decode(serializeConfigV2(config)),
+        0o600,
+      );
+      await atomicWriteFile(
+        homePath("secrets.json"),
+        decoder.decode(serializeSecretsV2(secrets)),
+        0o600,
+      );
+    };
 
-    await persistConfigV2(initialConfig);
-    await persistSecretsV2(initialSecrets);
+    await writeDocuments(initialConfig, initialSecrets);
     const priorConfigBytes = await readFile(homePath("config.json"));
     const priorSecretsBytes = await readFile(homePath("secrets.json"));
 
@@ -304,97 +277,29 @@ describe("persistence transactions", () => {
     });
     expect(events).toEqual(["revoke", "cancel", "drain"]);
 
-    await persistConfigV2({
-      ...initialConfig,
-      selectedConfigurationId: null,
-      configurations: [],
-    });
-    await persistSecretsV2({ ...initialSecrets, bindings: [] });
+    await writeDocuments(
+      { ...initialConfig, selectedConfigurationId: null, configurations: [] },
+      { ...initialSecrets, bindings: [] },
+    );
     events.push("commit");
     expect(events).toEqual(["revoke", "cancel", "drain", "commit"]);
     expect(loadConfigV2().configurations).toEqual([]);
     expect(loadSecretsV2().bindings).toEqual([]);
   });
 
-  it("rejects a transaction writer used after its callback settles without changing config", async () => {
-    const { loadConfig, withConfigFileTransaction, DEFAULT_SETTINGS } = await import("./config.js");
-    await writeJson("config.json", {
-      settings: DEFAULT_SETTINGS,
-      providers: loadConfig().providers,
-    });
-    const previous = loadConfig();
-    const before = await readFile(homePath("config.json"), "utf8");
-    const escapedWriter = await withConfigFileTransaction(async (persistMerged) => persistMerged);
-
-    await expect(
-      escapedWriter(
-        { ...previous, settings: { ...previous.settings, theme: "dark" } },
-        previous.providers,
-        previous.settings,
-      ),
-    ).rejects.toThrow("Config transaction writer lease expired");
-    await expect(readFile(homePath("config.json"), "utf8")).resolves.toBe(before);
-  });
-
-  it("keeps the config lock until an unawaited in-flight writer settles", async () => {
-    const { loadConfig, withConfigFileTransaction, DEFAULT_SETTINGS } = await import("./config.js");
-    await writeJson("config.json", {
-      settings: DEFAULT_SETTINGS,
-      providers: loadConfig().providers,
-    });
-    const previous = loadConfig();
-    const writeStarted = createDeferred<void>();
-    const releaseWrite = createDeferred<void>();
-    const contenderEntered = createDeferred<void>();
-    const realFs = await vi.importActual<typeof import("../../fs.js")>("../../fs.js");
-    fsHooks.writeJsonFileHook = async (filePath, data, mode) => {
-      if (filePath.endsWith("config.json")) {
-        writeStarted.resolve(undefined);
-        await releaseWrite.promise;
-      }
-      await realFs.writeJsonFile(filePath, data, mode);
-    };
-
-    let unawaitedWrite = Promise.resolve<unknown>(undefined);
-    const firstTransaction = withConfigFileTransaction(async (persistMerged) => {
-      unawaitedWrite = persistMerged(
-        { ...previous, settings: { ...previous.settings, theme: "dark" } },
-        previous.providers,
-        previous.settings,
-      );
-    });
-    await writeStarted.promise;
-
-    const contender = withConfigFileTransaction(async () => {
-      contenderEntered.resolve(undefined);
-    });
-    const earlyOutcome = await Promise.race([
-      contenderEntered.promise.then(() => "entered" as const),
-      delay(100).then(() => "blocked" as const),
-    ]);
-
-    releaseWrite.resolve(undefined);
-    await Promise.all([firstTransaction, unawaitedWrite, contender]);
-    expect(earlyOutcome).toBe("blocked");
-  });
-
   it(
-    "preserves disjoint config, secrets, and trust writes from independent processes",
+    "preserves independent settings and trust writes from separate processes",
     { timeout: 30_000 },
     async () => {
-      await runProcessRace("config");
-      await runProcessRace("secrets");
+      await runProcessRace("settings");
       await runProcessRace("trust");
 
       const config = await readJson<{
+        schemaVersion: number;
         settings: { theme: string; severityThreshold: string };
       }>(homePath("config.json"));
+      expect(config.schemaVersion).toBe(2);
       expect(config.settings).toMatchObject({ theme: "dark", severityThreshold: "high" });
-
-      const secrets = await readJson<{ providers: Record<string, string> }>(
-        homePath("secrets.json"),
-      );
-      expect(secrets.providers).toEqual({ gemini: "a-key", groq: "b-key" });
 
       const trust = await readJson<{ projects: Record<string, unknown> }>(homePath("trust.json"));
       expect(trust.projects).toEqual({

@@ -1,4 +1,4 @@
-import type { AIProvider } from "@diffgazer/core/schemas/config";
+import { getProviderRowId, type ProviderListRow } from "@diffgazer/core/providers";
 import { useKey } from "@diffgazer/keys";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -12,8 +12,8 @@ import { PROVIDER_FILTERS, type ProviderFilter } from "../lib/filter";
 type FocusZone = "input" | "filters" | "list" | "buttons";
 
 interface UseProvidersListNavigationOptions {
-  selectedProvider: { id: AIProvider } | null;
-  filteredProviders: Array<{ id: string }>;
+  selectedRow: ProviderListRow | null;
+  filteredProviders: ProviderListRow[];
   filter: ProviderFilter;
   dialogOpen: boolean;
   zone: FocusZone;
@@ -46,7 +46,7 @@ interface UseProvidersListNavigationResult {
  * off to the action buttons.
  */
 export function useProvidersListNavigation({
-  selectedProvider,
+  selectedRow,
   filteredProviders,
   filter,
   dialogOpen,
@@ -61,7 +61,9 @@ export function useProvidersListNavigation({
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
 
   const focusFirstProvider = () => {
-    const firstProviderId = filteredProviders[0]?.id;
+    const firstProviderId = filteredProviders[0]
+      ? getProviderRowId(filteredProviders[0])
+      : undefined;
     if (firstProviderId) setSelectedId(firstProviderId);
   };
 
@@ -146,7 +148,7 @@ export function useProvidersListNavigation({
     () => {
       enterButtons(0);
     },
-    { enabled: !dialogOpen && zone === "list" && selectedProvider !== null },
+    { enabled: !dialogOpen && zone === "list" && selectedRow !== null },
   );
 
   useKey(

@@ -50,11 +50,43 @@ const RELEASE_CHECK_PACK_COMMANDS = [
   "diffgazer",
 ].map((pkg) => `pnpm --filter ${pkg} pack --dry-run`);
 
+const T105_PROVIDER_PLAYWRIGHT_COMMAND =
+  "pnpm --filter @diffgazer/web exec playwright test testing/e2e/providers.e2e.ts --project=chromium --project=mobile-chromium";
+
+const DOCS_BUILD_COMMAND = "pnpm --filter @diffgazer/docs build";
+
+const LEGACY_ALLOWLIST_COMMAND =
+  "node --test scripts/monorepo/provider-transport-legacy-allowlist.test.mjs";
+
+// T-121 non-optional release gates in command order — a commented-out or echo-only
+// segment must not satisfy these exact matches.
+const RELEASE_CHECK_NON_OPTIONAL_SEGMENTS = [
+  "pnpm run secret-scan",
+  "pnpm run validate:artifacts:check",
+  "pnpm run check",
+  "pnpm run test:scripts",
+  "turbo run type-check",
+  "turbo run test",
+  "turbo run test:types",
+  "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke",
+  T105_PROVIDER_PLAYWRIGHT_COMMAND,
+  DOCS_BUILD_COMMAND,
+  "pnpm run verify:monorepo",
+  LEGACY_ALLOWLIST_COMMAND,
+  "git diff --check",
+];
+
 // Active `run:` commands in jobs.verify.steps, in order — a commented-out or
 // relocated command has no `run` key on that step and so is excluded here.
 function activeVerifyStepRunCommands(workflowSource) {
   const workflow = parseYaml(workflowSource);
   const steps = workflow?.jobs?.verify?.steps ?? [];
+  return steps.map((step) => step?.run).filter((run) => typeof run === "string");
+}
+
+function activeE2eStepRunCommands(workflowSource) {
+  const workflow = parseYaml(workflowSource);
+  const steps = workflow?.jobs?.e2e?.steps ?? [];
   return steps.map((step) => step?.run).filter((run) => typeof run === "string");
 }
 
@@ -77,6 +109,26 @@ function scriptSegments(script) {
 // dirty-tree `git status --short` guards (a local worktree is expected to be dirty;
 // release-check keeps `git diff --check` for whitespace), the PR-only `changeset
 // status --since=origin/main`, and the Docs E2E Playwright/Lighthouse job.
+test("release-check includes non-optional release gates as exact command segments", () => {
+  const releaseCheck = scriptSegments(rootPackageJson.scripts["release-check"]);
+  for (const segment of RELEASE_CHECK_NON_OPTIONAL_SEGMENTS) {
+    assert.ok(
+      releaseCheck.includes(segment),
+      `release-check missing non-optional segment: ${segment}`,
+    );
+  }
+});
+
+test("release-check runs non-optional release gates in command order", () => {
+  const releaseCheck = scriptSegments(rootPackageJson.scripts["release-check"]);
+  let lastIndex = -1;
+  for (const segment of RELEASE_CHECK_NON_OPTIONAL_SEGMENTS) {
+    const index = releaseCheck.indexOf(segment);
+    assert.ok(index > lastIndex, `release-check segment out of order or missing: ${segment}`);
+    lastIndex = index;
+  }
+});
+
 test("release-check mirrors the CI no-publish readiness gates", () => {
   const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
   const verifyRunCommands = activeVerifyStepRunCommands(workflowSource);
@@ -132,6 +184,32 @@ test("an echo-only release-check segment does not satisfy the exact gate match",
 test("the release-readiness Verify step runs verify under strict skip mode", () => {
   const workflow = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
   assert.match(workflow, /DIFFGAZER_SMOKE_STRICT_SKIPS=1[^\n]*pnpm run verify/);
+});
+
+test("release-readiness workflow runs legacy allowlist and git whitespace gates", () => {
+  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
+  const verifyRunCommands = activeVerifyStepRunCommands(workflowSource);
+  assert.ok(
+    verifyRunCommands.includes(LEGACY_ALLOWLIST_COMMAND),
+    "CI verify job missing legacy allowlist step",
+  );
+  assert.ok(
+    verifyRunCommands.includes("git diff --check"),
+    "CI verify job missing git diff --check step",
+  );
+});
+
+test("release-readiness e2e job runs provider Playwright and docs build gates", () => {
+  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
+  const e2eRunCommands = activeE2eStepRunCommands(workflowSource);
+  assert.ok(
+    e2eRunCommands.includes(T105_PROVIDER_PLAYWRIGHT_COMMAND),
+    "CI e2e job missing T-105 provider Playwright step",
+  );
+  assert.ok(e2eRunCommands.includes(DOCS_BUILD_COMMAND), "CI e2e job missing docs build step");
+  const providerIndex = e2eRunCommands.indexOf(T105_PROVIDER_PLAYWRIGHT_COMMAND);
+  const docsBuildIndex = e2eRunCommands.indexOf(DOCS_BUILD_COMMAND);
+  assert.ok(providerIndex > docsBuildIndex, "provider Playwright must run after docs build");
 });
 
 // The dead review opt-in contract was removed; no script env name should
@@ -227,5 +305,19 @@ for (const { name, script, requiredSegment } of NON_RELEASE_ECHO_DECOY_CASES) {
   test(`an echo-only ${name} segment does not satisfy the exact gate match`, () => {
     const mutated = script.replace(requiredSegment, `echo ${requiredSegment}`);
     assert.ok(!scriptSegments(mutated).includes(requiredSegment));
+  });
+}
+
+for (const segment of RELEASE_CHECK_NON_OPTIONAL_SEGMENTS) {
+  test(`an echo-only release-check segment does not satisfy the non-optional gate: ${segment}`, () => {
+    const releaseCheckScript = rootPackageJson.scripts["release-check"];
+    const needle =
+      segment === "pnpm run check" ? "pnpm run check && pnpm run test:scripts" : segment;
+    const echoSegment =
+      segment === "pnpm run check"
+        ? "echo pnpm run check && pnpm run test:scripts"
+        : `echo ${segment}`;
+    const mutatedReleaseCheck = releaseCheckScript.replace(needle, echoSegment);
+    assert.ok(!scriptSegments(mutatedReleaseCheck).includes(segment));
   });
 }

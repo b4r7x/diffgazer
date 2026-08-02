@@ -1,4 +1,12 @@
 import type {
+  ConfigurationInitResponse,
+  ConfigurationListResponse,
+} from "../schemas/config/configuration-status.js";
+import {
+  ConfigurationInitResponseSchema,
+  ConfigurationListResponseSchema,
+} from "../schemas/config/configuration-status.js";
+import type {
   ClientConfigurationAction,
   ClientConfigurationActionResponse,
   ClientConfigurationInput,
@@ -7,14 +15,6 @@ import type {
   ExactModelId,
 } from "../schemas/config/provider-config.js";
 import { ClientConfigurationActionResponseSchema } from "../schemas/config/provider-config.js";
-import type {
-  ConfigurationInitResponse,
-  ConfigurationListResponse,
-} from "../schemas/config/providers.js";
-import {
-  ConfigurationInitResponseSchema,
-  ConfigurationListResponseSchema,
-} from "../schemas/config/providers.js";
 import type { ReadinessAcknowledgement } from "../schemas/config/readiness.js";
 import type { ApiClient } from "./types.js";
 
@@ -43,57 +43,46 @@ function parseBoundConfigurationActionResponse<Action extends ClientConfiguratio
     }
   }
 
-  if (response.status === "succeeded") {
-    if (action.action === "create" && configuration?.status !== "supported") {
-      throw new Error("A successful create response must contain a supported configuration");
+  if (response.status !== "succeeded") {
+    return response as ConfigurationActionResponse<Action["action"]>;
+  }
+
+  if (action.action === "delete") {
+    if (configuration !== undefined) {
+      if (configuration.status === "supported") {
+        throw new Error("A successful delete response cannot contain a supported configuration");
+      }
+      if (configuration.revision < action.expectedRevision) {
+        throw new Error("Configuration delete response returned a stale revision");
+      }
     }
-    if (
-      (action.action === "select" || action.action === "test" || action.action === "update") &&
-      configuration?.status !== "supported"
-    ) {
+    return response as ConfigurationActionResponse<Action["action"]>;
+  }
+
+  if (action.action !== "inspect") {
+    if (configuration?.status !== "supported") {
       throw new Error(
         `A successful ${action.action} response must contain a supported configuration`,
       );
     }
-    if (action.action === "select" && configuration?.selectedModelId !== action.modelId) {
+    if (action.action === "select" && configuration.selectedModelId !== action.modelId) {
       throw new Error("Configuration action response selected a different model");
     }
-    if (
-      action.action === "update" &&
-      configuration !== undefined &&
-      configuration.revision < action.expectedRevision
-    ) {
+    if (action.action === "update" && configuration.revision < action.expectedRevision) {
       throw new Error("Configuration action response returned a stale revision");
-    }
-    if (
-      action.action === "delete" &&
-      configuration !== undefined &&
-      configuration.status === "supported"
-    ) {
-      throw new Error("A successful delete response cannot contain a supported configuration");
-    }
-    if (
-      action.action === "delete" &&
-      configuration !== undefined &&
-      configuration.revision < action.expectedRevision
-    ) {
-      throw new Error("Configuration delete response returned a stale revision");
     }
   }
 
   return response as ConfigurationActionResponse<Action["action"]>;
 }
 
-export async function executeConfigurationAction<Action extends ClientConfigurationAction>(
+export function executeConfigurationAction<Action extends ClientConfigurationAction>(
   client: ApiClient,
   action: Action,
 ): Promise<ConfigurationActionResponse<Action["action"]>> {
-  const response = await client.post<ClientConfigurationActionResponse>(
-    "/api/config/actions",
-    action,
-    { schema: (body) => parseBoundConfigurationActionResponse(action, body) },
-  );
-  return parseBoundConfigurationActionResponse(action, response);
+  return client.post<ConfigurationActionResponse<Action["action"]>>("/api/config/actions", action, {
+    schema: (body) => parseBoundConfigurationActionResponse(action, body),
+  });
 }
 
 export function createConfiguration(client: ApiClient, input: ClientConfigurationInput) {

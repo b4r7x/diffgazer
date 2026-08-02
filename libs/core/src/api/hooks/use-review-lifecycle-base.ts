@@ -6,10 +6,13 @@ import {
   getLoadingMessage,
   type SessionTerminationCode,
 } from "../../review/lifecycle.js";
+import type { ConfigurationId } from "../../schemas/config/index.js";
+import type { Readiness } from "../../schemas/config/readiness.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 import type { ReviewContextResponse } from "../types.js";
 import { useSettings } from "./config.js";
 import { useApi } from "./context.js";
+import type { ConfigurationFingerprint } from "./queries/config.js";
 import { refreshReviewContextCache } from "./queries/review.js";
 import { useReviewContext } from "./review.js";
 import { useReviewCompletion } from "./use-review-completion.js";
@@ -23,9 +26,32 @@ import { useReviewStream } from "./use-review-stream.js";
  */
 export type ReviewGate = "loading" | "unconfigured" | "no-diff" | "terminal-error" | "running";
 
+export interface ReviewConfigurationIdentity {
+  configurationId: ConfigurationId;
+  fingerprint: ConfigurationFingerprint;
+}
+
+/**
+ * Distinct non-ready readiness reasons surfaced to review start/resume gates.
+ * These stay separate from legacy API-key-only setup copy.
+ */
+export type ReviewReadinessGateReason =
+  | "removed"
+  | "unreachable"
+  | "conformance-pending"
+  | "unsupported"
+  | "skipped"
+  | "not-ready";
+
 export interface UseReviewLifecycleBaseOptions {
   configLoading: boolean;
+  /**
+   * Legacy setup flag retained while Web/Ink callers migrate to `readiness`.
+   * When `readiness` is present it wins over this value.
+   */
   isConfigured: boolean;
+  readiness?: Readiness | null;
+  configuration?: ReviewConfigurationIdentity | null;
   allowResumeWithoutSetup?: boolean;
   reviewId?: string;
   onComplete: () => void;
@@ -54,12 +80,63 @@ export interface UseReviewLifecycleBaseResult {
   start: {
     hasStarted: boolean;
     hasStreamed: boolean;
+    canStart: boolean;
+    identity: ReviewConfigurationIdentity | null;
+    readinessGate: ReviewReadinessGateReason | "ready";
   };
 
   reset: () => void;
 
   gate: ReviewGate;
   contextSnapshot: ReviewContextResponse | null;
+}
+
+export function resolveReviewReadinessGate(
+  readiness: Readiness | null | undefined,
+): ReviewReadinessGateReason | "ready" {
+  if (readiness?.ready) return "ready";
+
+  switch (readiness?.status) {
+    case "removed":
+      return "removed";
+    case "unreachable":
+    case "local-endpoint-unreachable":
+      return "unreachable";
+    case "conformance-pending":
+      return "conformance-pending";
+    case "unsupported":
+      return "unsupported";
+    case "skipped":
+      return "skipped";
+    default:
+      return "not-ready";
+  }
+}
+
+export function resolveReviewStartReady(input: {
+  readiness?: Readiness | null;
+  isConfigured: boolean;
+}): boolean {
+  if (input.readiness != null) return input.readiness.ready;
+  return input.isConfigured;
+}
+
+export function canStartReview(input: {
+  readiness?: Readiness | null;
+  isConfigured: boolean;
+  allowResumeWithoutSetup?: boolean;
+}): boolean {
+  if (input.allowResumeWithoutSetup) return true;
+  return resolveReviewStartReady(input);
+}
+
+export function buildReviewStartIdentity(
+  configuration: ReviewConfigurationIdentity,
+): ReviewConfigurationIdentity {
+  return {
+    configurationId: configuration.configurationId,
+    fingerprint: configuration.fingerprint,
+  };
 }
 
 export function deriveReviewGate(input: {
@@ -87,12 +164,24 @@ export function useReviewLifecycleBase(
   const stream = useReviewStream();
   const { isLoading: settingsLoading } = useSettings();
   const allowResumeWithoutSetup = Boolean(options.reviewId && options.allowResumeWithoutSetup);
-  const isSetupSatisfied = options.isConfigured || allowResumeWithoutSetup;
+  const isReady = resolveReviewStartReady({
+    readiness: options.readiness,
+    isConfigured: options.isConfigured,
+  });
+  const isSetupSatisfied = canStartReview({
+    readiness: options.readiness,
+    isConfigured: options.isConfigured,
+    allowResumeWithoutSetup,
+  });
+  const readinessGate = resolveReviewReadinessGate(options.readiness);
+  const startIdentity = options.configuration
+    ? buildReviewStartIdentity(options.configuration)
+    : null;
 
   const { hasStarted, hasStreamed, setHasStarted, setHasStreamed } = useReviewStart({
     configLoading: options.configLoading,
     settingsLoading,
-    isConfigured: options.isConfigured,
+    isConfigured: isReady,
     allowResumeWithoutSetup,
     reviewId: options.reviewId,
     currentReviewId: stream.state.reviewId,
@@ -187,6 +276,9 @@ export function useReviewLifecycleBase(
     start: {
       hasStarted,
       hasStreamed,
+      canStart: isSetupSatisfied,
+      identity: startIdentity,
+      readinessGate,
     },
     reset,
     gate,

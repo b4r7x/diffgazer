@@ -6,12 +6,10 @@ import {
   ConfigurationRevisionSchema,
   type ExactModelId,
   ExactModelIdSchema,
-  type HostedApiConfigurationInput,
   HostedApiConfigurationInputSchema,
-  type LocalCliConfigurationInput,
   LocalCliConfigurationInputSchema,
-  type LocalHttpConfigurationInput,
   LocalHttpConfigurationInputSchema,
+  REMOVED_PRODUCT_IDS,
 } from "@diffgazer/core/schemas/config";
 import { z } from "zod";
 
@@ -76,16 +74,11 @@ export const NonSecretTransportInputSchema = z.discriminatedUnion("transportFami
   LocalCliConfigurationInputSchema,
 ]);
 export type NonSecretTransportInput = z.infer<typeof NonSecretTransportInputSchema>;
-export type TransportInput = NonSecretTransportInput;
-export type HostedApiTransportInput = Omit<HostedApiConfigurationInput, "credential">;
-export type LocalHttpTransportInput = Omit<LocalHttpConfigurationInput, "bearerToken">;
-export type LocalCliTransportInput = LocalCliConfigurationInput;
 
 export const ConfigurationAcknowledgementSchema = z.strictObject({
   noticeVersion: z.number().int().positive(),
   acceptedAt: TimestampSchema.nullable(),
 });
-export type ConfigurationAcknowledgement = z.infer<typeof ConfigurationAcknowledgementSchema>;
 
 /** Evidence is a non-secret identity/reference.  The evidence payload stays server-side. */
 export const ConfigurationEvidenceReferenceSchema = z
@@ -93,7 +86,6 @@ export const ConfigurationEvidenceReferenceSchema = z
   .min(1)
   .max(128)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
-export type ConfigurationEvidenceReference = z.infer<typeof ConfigurationEvidenceReferenceSchema>;
 
 const BudgetLimitSchema = z.number().int().positive().max(2_147_483_647);
 export const ConfigurationBudgetLimitsSchema = z.strictObject({
@@ -154,7 +146,7 @@ export const RemovedProviderConfigurationRecordSchema = z.strictObject({
   status: z.literal("removed"),
   configurationId: ConfigurationIdSchema,
   revision: ConfigurationRevisionSchema,
-  productId: z.literal("zai-coding"),
+  productId: z.literal(REMOVED_PRODUCT_IDS[0]),
   transportFamily: z.literal("hosted-api"),
   selectedModelId: z.null(),
   acknowledgement: ConfigurationAcknowledgementSchema.nullable(),
@@ -395,7 +387,8 @@ function parseKnownRecord(
 function parseRemovedLegacyRecord(input: unknown): RemovedProviderConfigurationRecord | null {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
   const record = input as Record<string, unknown>;
-  if (record.provider !== "zai-coding" || typeof record.configurationId !== "string") return null;
+  if (record.provider !== REMOVED_PRODUCT_IDS[0] || typeof record.configurationId !== "string")
+    return null;
   const now = new Date(0).toISOString();
   const revision =
     typeof record.revision === "number" && Number.isInteger(record.revision) && record.revision > 0
@@ -408,7 +401,7 @@ function parseRemovedLegacyRecord(input: unknown): RemovedProviderConfigurationR
     status: "removed",
     configurationId: parsedId.data,
     revision,
-    productId: "zai-coding",
+    productId: REMOVED_PRODUCT_IDS[0],
     transportFamily: "hosted-api",
     selectedModelId: null,
     acknowledgement: null,
@@ -597,8 +590,6 @@ export function encodeProviderConfigurationFile(file: ProviderConfigurationFile)
   );
 }
 
-export const serializeProviderConfigurationFile = encodeProviderConfigurationFile;
-
 /** Validate duplicate ids and ensure selected state never points at removed/unknown data. */
 export function assertProviderConfigurationFile(file: ProviderConfigurationFile): void {
   const ids = new Set<string>();
@@ -670,16 +661,6 @@ export function selectProviderConfiguration(
   return next;
 }
 
-export function findProviderConfiguration(
-  file: ProviderConfigurationFile,
-  configurationId: ConfigurationId,
-): ProviderConfigurationFileRecord | undefined {
-  return file.records.find((item) => {
-    const id = item.status === "unknown" ? item.configurationId : item.record.configurationId;
-    return id === configurationId;
-  });
-}
-
 /** Replace one supported record only when both id and expected revision match. */
 export function replaceProviderConfiguration(
   file: ProviderConfigurationFile,
@@ -704,13 +685,6 @@ export function replaceProviderConfiguration(
   const next = { ...file, records };
   assertProviderConfigurationFile(next);
   return next;
-}
-
-/** Runtime type guard used by later persistence/service tasks. */
-export function isSupportedProviderConfiguration(
-  record: ProviderConfigurationFileRecord | undefined,
-): record is { status: "supported"; record: SupportedProviderConfigurationRecord } {
-  return record?.status === "supported";
 }
 
 export type { ConfigurationId, ConfigurationRevision, ExactModelId };

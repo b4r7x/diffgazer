@@ -1,57 +1,112 @@
 ---
 title: Providers reference
-description: Per-provider environment variables, default models, and base URLs.
+description: Canonical support matrix, V2 configuration actions, and per-product setup contracts.
 ---
 
-This is the authoritative list of the providers Diffgazer can run reviews with: the environment variable each one reads for its key, the model it selects by default, and the base URL it talks to. For the conceptual side of how Diffgazer uses a provider, start with [providers and models](/app/concepts/providers-and-models).
+This page is the authoritative provider contract for Diffgazer. It lists every **add-now**, **experimental**, **deferred**, and **rejected** candidate exactly once, documents the thirteen selectable products, and explains how removed records are handled. For the conceptual overview, see [providers and models](/app/concepts/providers-and-models).
 
-## Providers
+## Selectable products
 
-Six providers are enabled and selectable in the picker. Each row is the contract Diffgazer actually uses at runtime, taken from the provider overlay and the env-var map rather than from any setup template.
+Diffgazer exposes **thirteen selectable products** in Web, Ink, and CLI setup. Each product is a distinct transport contract with its own credential kind, endpoint or installation profile, exact-model policy, admission checks, billing/privacy notice, and enablement gate. Nothing outside this list is selectable.
 
-| Provider | Env var | Default model | Base URL |
-| --- | --- | --- | --- |
-| Google Gemini | `GOOGLE_API_KEY` | `gemini-2.5-flash` | Provided by the Google SDK |
-| Z.ai | `ZAI_API_KEY` | `glm-4.7` | `https://api.z.ai/api/paas/v4` |
-| Z.ai Coding Plan | `ZAI_API_KEY` | `glm-4.7` | `https://api.z.ai/api/coding/paas/v4` |
-| OpenRouter | `OPENROUTER_API_KEY` | None (you pick a model) | Provided by the OpenRouter SDK |
-| Groq | `GROQ_API_KEY` | `meta-llama/llama-4-scout-17b-16e-instruct` | `https://api.groq.com/openai/v1` |
-| Cerebras | `CEREBRAS_API_KEY` | `gpt-oss-120b` | `https://api.cerebras.ai/v1` |
+The selectable roster is: Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Qwen International, Moonshot Open Platform, Mistral, Ollama, Local OpenAI-compatible, OpenAI Codex CLI, and GitHub Copilot CLI.
 
-A few details worth calling out:
+## Canonical support matrix
 
-- Z.ai and Z.ai Coding Plan are two separate providers that read the same key, `ZAI_API_KEY`. They differ only in their base URL, so one key covers both.
-- Gemini and OpenRouter have no base URL in the table because their SDKs target the provider's endpoint directly; you do not configure a URL for them.
-- OpenRouter ships no default model. You always choose one, and its model list comes from OpenRouter's own live route rather than the shared catalog.
+The matrix below is frozen documentation. **A compatible endpoint, free credit, or local binary cannot override the frozen verdict at runtime.** Experimental, deferred, and rejected rows remain non-runnable until a separately acknowledged scope satisfies the listed falsifier. Skipped live probes are evidence only; they never enable a product.
 
-> Note: Gemini reads `GOOGLE_API_KEY`, not `GEMINI_API_KEY`. The variable name follows the provider's own SDK convention even though the provider is labelled "Google Gemini" in the UI.
+### Add-now products
 
-When you do not override the model, Diffgazer falls back to the provider's default from the table above. Requests use fixed internal defaults in this release: temperature 0.7 and an output-token budget of 65536, clamped down to the selected model's documented output limit when the catalog has one.
+| ID | Product | Status | Transport | Credential/product | Endpoint/region | Structured output | Privacy/billing | Enablement gate | Falsifier |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `gemini` | Google Gemini | add-now | hosted-api | Hosted API key reference (`GOOGLE_API_KEY`) | Global — `https://generativelanguage.googleapis.com/v1beta` | strict JSON schema | Free and paid availability depends on the selected account and exact model. Data handling follows the configured Google API product and account terms. | credential, endpoint, model-discovery, structured-output, usage, acknowledgement | A models.dev observation or unseen alias does not bypass admission. |
+| `zai` | Z.AI | add-now | hosted-api | Hosted API key reference (`ZAI_API_KEY`) | General Open Platform PAYG — `https://api.z.ai/api/paas/v4` | JSON object with local validation | This configuration uses general Open Platform PAYG, never Coding Plan quota. API no-training and data-handling claims apply only to the exact general PAYG route. | credential, endpoint, model-discovery, structured-output, usage, acknowledgement | HTTP compatibility with a Coding Plan route does not authorize general PAYG use. |
+| `openrouter` | OpenRouter | add-now | hosted-api | Hosted API key reference (`OPENROUTER_API_KEY`) | OpenRouter API — `https://openrouter.ai/api/v1` | strict JSON schema | Billing and availability are disclosed for the exact pinned downstream route. Provider, region, license, and retention facts come from the pinned route, not the aggregator brand. | credential, endpoint, model-discovery, downstream-route, structured-output, usage, acknowledgement | Routing selectors or automatic routing do not replace a pinned downstream route. |
+| `groq` | Groq | add-now | hosted-api | Hosted API key reference (`GROQ_API_KEY`) | Global — `https://api.groq.com/openai/v1` | strict JSON schema | Current account and model limits are verified during setup. Data handling follows the selected Groq API account and model terms. | credential, endpoint, model-discovery, structured-output, usage, acknowledgement | A wire-compatible response without exact admission evidence enables nothing. |
+| `cerebras` | Cerebras | add-now | hosted-api | Hosted API key reference (`CEREBRAS_API_KEY`) | Global — `https://api.cerebras.ai/v1` | strict JSON schema | Current account and model limits are verified during setup. Data handling follows the selected Cerebras API account and model terms. | credential, endpoint, model-discovery, structured-output, usage, acknowledgement | A wire-compatible response without exact admission evidence enables nothing. |
+| `deepseek` | DeepSeek | add-now | hosted-api | Hosted API key reference (`DEEPSEEK_API_KEY`) | Open Platform PAYG — `https://api.deepseek.com/v1` | JSON object with local validation | This is opt-in pay-as-you-go usage with account-specific limits. Inputs and outputs may be processed and stored in the PRC. Retention duration is uncertain and the service-improvement setting provides an opt-out. DeepSeek is not presented as zero retention. | credential, endpoint, model-discovery, structured-output, usage, acknowledgement | Missing terminal usage or schema-valid review output enables nothing. |
+| `qwen` | Qwen International | add-now | hosted-api | Hosted API key reference (`QWEN_API_KEY`) | International — `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` (workspace-bound) | JSON object with local validation | The selected international region and workspace determine billing and availability. No international free quota is promised. Coding Plan and Token Plan credentials are excluded. The selected international region and workspace are bound to the configuration. Provider material permits retention where required by law and gives no fixed retention period. | credential, endpoint, region, workspace, model-discovery, structured-output, usage, acknowledgement | A Coding Plan credential or wrong region/workspace tuple enables nothing. |
+| `moonshot` | Moonshot Open Platform | add-now | hosted-api | Hosted API key reference (`MOONSHOT_API_KEY`) | Mainland China — `https://api.moonshot.cn/v1`; International — `https://api.moonshot.ai/v1` | strict JSON schema | Mainland and international accounts, balances, and endpoints are isolated. API no-training claims apply only to the selected Open Platform PAYG route. Consumer and Kimi Code products have different terms and are not substituted. | credential, endpoint, region, model-discovery, structured-output, usage, acknowledgement | Cross-region fallback or consumer-product aliases enable nothing. |
+| `mistral` | Mistral | add-now | hosted-api | Hosted API key reference (`MISTRAL_API_KEY`) | Global — `https://api.mistral.ai/v1`; European Union — `https://api.eu.mistral.ai/v1` | strict JSON schema | The selected global or EU endpoint and account determine price and limits. Free mode is evaluation/prototyping, not unlimited production capacity. Submitted data may be used for training unless the account opts out. API inputs and outputs normally have rolling 30-day retention. Zero data retention requires an eligible approved arrangement and is never inferred. | credential, endpoint, region, model-discovery, structured-output, usage, acknowledgement | A catalog-only model row or inferred zero-retention claim enables nothing. |
+| `ollama` | Ollama | add-now | local-http | None or optional local bearer | Default loopback — `http://127.0.0.1:11434` | strict JSON schema | No zero-cost or adequate-hardware claim is inferred from local operation. Diffgazer verifies only that the first network hop is loopback. Any downstream routing, data residency, storage, or telemetry is the selected server operator's responsibility. Ollama Cloud is not this transport. | endpoint, loopback, model-discovery, server-version, structured-output, cancellation, acknowledgement | A non-loopback first hop or remote Ollama Cloud endpoint enables nothing. |
+| `local-openai` | Local OpenAI-compatible | add-now | local-http | None or optional local bearer | LM Studio — `http://127.0.0.1:1234/v1`; llama.cpp — `http://127.0.0.1:8080/v1` | strict JSON schema | No zero-cost or adequate-hardware claim is inferred from local operation. Diffgazer verifies only that the first network hop is loopback. Any downstream routing, data residency, storage, or telemetry is the selected server operator's responsibility. | endpoint, loopback, model-discovery, server-version, structured-output, cancellation, acknowledgement | A LAN, tunnel, or remote-compatible URL enables nothing. |
+| `codex-cli` | OpenAI Codex CLI | add-now | local-cli | Vendor-managed local auth | Installation on this machine | pinned CLI terminal schema | The active account and plan class determine credits, rate limits, or API billing. Consumer and business/API data handling differ and must match the active account posture. Diffgazer uses existing vendor-managed local auth and does not import or proxy credentials. | installation, runtime-version, account-plan, model-discovery, negative-capabilities, structured-output, cancellation, acknowledgement | A compatible CLI install without exact negative-capability proof enables nothing. |
+| `copilot-cli` | GitHub Copilot CLI | add-now | local-cli | Vendor-managed local auth | Installation on this machine | pinned CLI terminal schema | The active plan and policy determine model entitlement, credits, and rate limits. Individual and business/enterprise data protections differ and must match the active plan. Diffgazer uses existing vendor-managed local auth and does not import or proxy credentials. | installation, runtime-version, account-plan, model-discovery, negative-capabilities, structured-output, cancellation, acknowledgement | A compatible CLI install without exact negative-capability proof enables nothing. |
 
-## Catalog-only providers
+### Experimental candidates
 
-Diffgazer's bundled catalog also carries data for a few providers that are present but switched off. They are not part of the selectable provider set, they do not appear in any picker, and you cannot activate them. They exist only so the catalog has model metadata for them; treat them as unavailable.
+| ID | Product | Status | Transport | Credential/product | Endpoint/region | Structured output | Privacy/billing | Enablement gate | Falsifier |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `xiaomi-mimo` | Xiaomi MiMo PAYG | experimental | hosted-api | Not implemented in this tranche | Not selectable | Not admitted | Ordinary international account access, funding, and review reliability are unproven. | Separate acknowledged experiment scope only | A funded eligible account passes exact schema, usage, latency, and moderation proof. |
+| `byteplus-modelark` | BytePlus ModelArk | experimental | hosted-api | Not implemented in this tranche | Not selectable | Not admitted | Tenant-specific model activation, regional availability, and strict output remain unproven. | Separate acknowledged experiment scope only | An eligible tenant passes exact regional model, schema, price, and limit proof. |
+| `cloudflare-workers-ai` | Cloudflare Workers AI | experimental | hosted-api | Not implemented in this tranche | Not selectable | Not admitted | Account-scoped setup and reliable JSON Schema conformance need separate proof. | Separate acknowledged experiment scope only | A narrow model allowlist passes repeated schema and account-bound privacy proof. |
+| `vllm` | vLLM | experimental | local-http | Not implemented in this tranche | Not selectable | Not admitted | Structured output depends on runtime configuration and remote deployments exceed local scope. | Separate acknowledged experiment scope only | A separately scoped loopback profile passes version-bound schema and abort proof. |
+| `minimax-token-plan` | MiniMax Token Plan | experimental | hosted-api | Not implemented in this tranche | Not selectable | Not admitted | The individual plan is throttled and lacks an established review schema contract. | Separate acknowledged experiment scope only | A user-triggered plan scope proves authorization, privacy, schema output, and bounds. |
+| `kimi-code-cli` | Kimi Code CLI | experimental | local-cli | Not implemented in this tranche | Not selectable | Not admitted | Prompt mode may approve tool calls and lacks a proven side-effect-free profile. | Separate acknowledged experiment scope only | A pinned release passes deny, isolation, schema, account, and cancellation proof. |
+| `kiro-cli` | Kiro CLI | experimental | local-cli | Not implemented in this tranche | Not selectable | Not admitted | Authorization and a pinned no-tools, no-MCP review profile remain unproven. | Separate acknowledged experiment scope only | AWS confirms this integration and a pinned profile passes all negative proofs. |
+| `cursor-agent-cli` | Cursor Agent CLI | experimental | local-cli | Not implemented in this tranche | Not selectable | Not admitted | The beta agent-first CLI lacks a proven side-effect-free review profile. | Separate acknowledged experiment scope only | A pinned release passes auth, deny, isolation, privacy, schema, and cancellation proof. |
 
-| Provider | Env var | Status |
-| --- | --- | --- |
-| Mistral | `MISTRAL_API_KEY` | Disabled, not shown in any picker |
-| Hugging Face | `HF_TOKEN` | Disabled, not shown in any picker |
-| GitHub Models | `GITHUB_TOKEN` | Disabled, not shown in any picker |
+### Deferred candidates
 
-The root `.env.example` lists the same enabled provider keys shown above.
+| ID | Product | Status | Transport | Credential/product | Endpoint/region | Structured output | Privacy/billing | Enablement gate | Falsifier |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `minimax-payg` | MiniMax PAYG | deferred | hosted-api | Not implemented in this tranche | Not selectable | Not admitted | Current review-oriented models lack a documented structured-output contract. | No hidden toggle or fallback route | An exact model documents and passes structured output plus terminal usage proof. |
+| `tencent-hunyuan-tokenhub` | Tencent Hunyuan / TokenHub | deferred | hosted-api | Not implemented in this tranche | Not selectable | Not admitted | The migration leaves model, price, region, output, and data terms unstable. | No hidden toggle or fallback route | TokenHub publishes a stable purchasable contract and passes end-to-end proof. |
+| `opencode-cli` | OpenCode CLI | deferred | local-cli | Not implemented in this tranche | Not selectable | Not admitted | Permissive defaults, event volatility, and subscription authorization remain unresolved. | No hidden toggle or fallback route | A pinned authorized profile passes deny, isolation, schema, and cancellation proof. |
+| `hugging-face-inference-providers` | Hugging Face Inference Providers | deferred | hosted-api | Not implemented in this tranche | Not selectable | Not admitted | Downstream route, privacy, region, license, and schema properties are provider-specific. | No hidden toggle or fallback route | One pinned downstream route can be persisted, disclosed, and conformance-proven. |
+| `together-ai` | Together AI | deferred | hosted-api | Not implemented in this tranche | Not selectable | Not admitted | No distinct cost, capability, or privacy benefit over the selected tranche is proven. | No hidden toggle or fallback route | A distinct exact product advantage and full conformance proof are established. |
+| `fireworks-ai` | Fireworks AI | deferred | hosted-api | Not implemented in this tranche | Not selectable | Not admitted | No distinct model, availability, cost, or privacy advantage is proven. | No hidden toggle or fallback route | A distinct exact product advantage and full conformance proof are established. |
+| `remote-custom-url` | Arbitrary remote custom URL | deferred | hosted-api | Not implemented in this tranche | Not selectable | Not admitted | A general remote connector would create an unbounded proxy and SSRF surface. | No hidden toggle or fallback route | A separately scoped trust and endpoint policy is approved and proven. |
+| `compatible-api-vendor-sdk` | Per-vendor compatible API SDK | deferred | hosted-api | Not implemented in this tranche | Not selectable | Not admitted | Ordinary compatible APIs do not justify additional vendor runtime dependencies. | No hidden toggle or fallback route | A safely typed protocol incompatibility is demonstrated. |
+
+### Rejected candidates
+
+| ID | Product | Status | Transport | Credential/product | Endpoint/region | Structured output | Privacy/billing | Enablement gate | Falsifier |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `zai-coding-plan` | Z.AI GLM Coding Plan | rejected | hosted-api | Not supported | Not selectable | Not admitted | Plan terms do not authorize direct use by a Diffgazer-owned service. | No adapter, credential flow, or fallback route | Written authorization covers this exact third-party integration. |
+| `kimi-code-http` | Kimi Code direct HTTP | rejected | hosted-api | Not supported | Not selectable | Not admitted | Plan benefits are limited to supported tools and do not authorize this client. | No adapter, credential flow, or fallback route | Written authorization covers this exact direct integration. |
+| `alibaba-coding-plan` | Alibaba Coding / Token Plan | rejected | hosted-api | Not supported | Not selectable | Not admitted | Plan endpoints are restricted to supported coding tools, not backend services. | No adapter, credential flow, or fallback route | Written authorization covers this exact backend integration. |
+| `byteplus-coding-plan` | BytePlus Coding / Token Plan | rejected | hosted-api | Not supported | Not selectable | Not admitted | Plan endpoints are restricted to supported coding tools and unauthorized use risks suspension. | No adapter, credential flow, or fallback route | Written authorization covers this exact backend integration. |
+| `volcengine-ark` | Volcengine Ark | rejected | hosted-api | Not supported | Not selectable | Not admitted | No official global account, billing, regional-processing, and availability contract exists. | No adapter, credential flow, or fallback route | A suitable official non-China product contract is published and proven. |
+| `gemini-cli` | Gemini CLI OAuth / subscription | rejected | local-cli | Not supported | Not selectable | Not admitted | Google prohibits third-party use of Gemini CLI OAuth and the individual service ended. | No adapter, credential flow, or fallback route | A separately approved BYOK API product is evaluated. |
+| `claude-code` | Claude Code subscription | rejected | local-cli | Not supported | Not selectable | Not admitted | Anthropic forbids unapproved third parties from offering Claude subscription login or limits. | No adapter, credential flow, or fallback route | Anthropic provides written authorization for this exact integration. |
+| `github-models` | GitHub Models | rejected | hosted-api | Not supported | Retired HTTP 410 service | Not admitted | The inference API and related service are retired and return HTTP 410. | No adapter, credential flow, or fallback route | A new official service receives a separate product decision. |
+| `nvidia-api-catalog` | NVIDIA hosted API Catalog/build API | rejected | hosted-api | Not supported | Not selectable | Not admitted | Evaluation terms do not permit the repository-input and product use required here. | No adapter, credential flow, or fallback route | A suitable commercial contract and exact provider proof are established. |
+| `sdk-product-registry` | AI SDK registry as product authority | rejected | n/a | Not supported | Not applicable | Not admitted | An SDK registry does not own Diffgazer product, readiness, notice, or persistence policy. | No adapter, credential flow, or fallback route | Never; SDK compatibility remains observation data, not product eligibility. |
+
+## Removed configuration records
+
+The saved **Z.AI Coding Plan** record is removed and decoder-only. **HTTP compatibility is not authorization.** Diffgazer does not present that route as selectable, does not migrate its secret into a general Z.AI PAYG configuration, and does not send the old value during setup or review.
+
+To move forward:
+
+1. **Create a new general Z.AI PAYG configuration** for the supported `zai` product with its own credential reference and exact model selection.
+2. Keep the old record only until you **explicitly delete the removed record**. The prior secret is **retained but never copied, tested, or sent** by Diffgazer.
+
+## V2 configuration and actions
+
+Each saved provider setup is a versioned **configuration** identified by `configurationId`, `revision`, and an immutable execution fingerprint. The local API exposes six generic actions on `POST /api/config/actions`:
+
+| Action | Purpose |
+| --- | --- |
+| `create` | Start a new configuration for a selectable product. |
+| `inspect` | Read the current safe summary, readiness, notices, and available actions. |
+| `select` | Choose an exact admitted model for the configuration. |
+| `test` | Run the readiness/conformance probe for the exact configured tuple. |
+| `update` | Change endpoint, region, workspace, credential reference, notice acknowledgement, or other allowed fields. |
+| `delete` | Remove the configuration after active review leases drain. |
+
+Client-safe responses never include literal secrets, environment values, auth paths, or raw diagnostics. See [Configuration](/app/reference/configuration) and [Local API reference](/app/reference/api).
 
 ## Credentials
 
-How a key is supplied and where it lives:
+Hosted add-now products accept either a stored literal credential or an environment reference. Local HTTP products accept an optional loopback bearer token only when the selected server requires one. Local CLI products use **vendor-managed local auth** already on your machine; Diffgazer does not import, proxy, or store CLI OAuth tokens.
 
-- A key can be stored two ways. As a literal value, Diffgazer keeps the secret itself. As an environment reference, Diffgazer stores only the name of the variable to read at runtime, so the secret never enters its own files. You choose between these when you add the key during [onboarding](/app/web/onboarding) or in [settings](/app/web/settings).
-- Stored secrets live in one of two places, depending on your Secrets Storage choice: your operating system keyring, or a local `secrets.json` file under `~/.diffgazer/`. The file backend stores plaintext JSON protected by `0600` filesystem permissions. Switching storage migrates existing keys to the new location.
-- An environment reference must point at that provider's own variable. The accepted names are exactly the env vars in the [Providers](#providers) table, the set `ALLOWED_CREDENTIAL_ENV_VARS` derived from the per-provider env-var map. Pointing one provider at another provider's variable is rejected, so for example a Groq credential may only reference `GROQ_API_KEY`.
-- Activating a provider checks the model. The model you select must exist in that provider's resolved catalog, or activation fails. OpenRouter is the exception: because its models come from its live key-gated route rather than the catalog, any model id you choose for it is accepted.
-
-> Tip: If you would rather not type a key into the app at all, set the provider's environment variable in your shell and use the environment-reference option. Diffgazer then reads the live variable each run and stores only its name.
+When you choose an environment reference, Diffgazer stores only the variable name and reads the live value at runtime. See [Environment variables](/app/reference/environment-variables) for the hosted reference names.
 
 ## Related
 
-- [Configuration](/app/reference/configuration) documents the config file and every field these choices write to.
-- [Environment variables](/app/reference/environment-variables) lists every variable Diffgazer reads, including these provider keys.
+- [Providers and models](/app/concepts/providers-and-models) — how Diffgazer chooses and validates models.
+- [Configuration](/app/reference/configuration) — where configurations are stored.
+- [Environment variables](/app/reference/environment-variables) — hosted credential reference names.
+- [Troubleshooting](/app/operations/troubleshooting) — readiness and review failure remediation.

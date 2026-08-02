@@ -1,4 +1,8 @@
+import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import { describe, expect, it } from "vitest";
+
+const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
+
 import {
   assertConfigurationIdentity,
   assertExpectedRevision,
@@ -51,9 +55,9 @@ const supportedRecord = (): SupportedProviderConfigurationRecord => ({
 const removedRecord = {
   schemaVersion: 2 as const,
   status: "removed" as const,
-  configurationId: "legacy-zai-coding",
+  configurationId: "legacy-removed-zai-plan",
   revision: 4,
-  productId: "zai-coding" as const,
+  productId: REMOVED_PRODUCT_IDS[0],
   transportFamily: "hosted-api" as const,
   selectedModelId: null,
   acknowledgement: null,
@@ -106,18 +110,18 @@ describe("server V2 provider configuration records", () => {
     expect(selected.selectedConfigurationId).toBe("gemini-primary");
   });
 
-  it("classifies zai-coding as removed and rejects it as selected/executable", () => {
+  it("classifies REMOVED_PRODUCT_ID as removed and rejects it as selected/executable", () => {
     const recordBytes = encoder.encode(JSON.stringify(removedRecord));
     const decodedRecord = decodeProviderConfigurationRecord(recordBytes);
     expect(decodedRecord.status).toBe("removed");
     if (decodedRecord.status !== "removed") return;
-    expect(decodedRecord.record.productId).toBe("zai-coding");
+    expect(decodedRecord.record.productId).toBe(REMOVED_PRODUCT_ID);
     expect(decodedRecord.record.selectedModelId).toBeNull();
 
     const decodedFile = decodeProviderConfigurationFile(
       encodeProviderConfigurationFile(fileWith({ status: "removed", record: removedRecord })),
     );
-    expect(() => selectProviderConfiguration(decodedFile, "legacy-zai-coding")).toThrow(
+    expect(() => selectProviderConfiguration(decodedFile, "legacy-removed-zai-plan")).toThrow(
       ProviderConfigurationConflictError,
     );
   });
@@ -147,7 +151,7 @@ describe("server V2 provider configuration records", () => {
     expect(
       SupportedProviderConfigurationRecordSchema.safeParse({
         ...supportedRecord(),
-        productId: "zai-coding",
+        productId: REMOVED_PRODUCT_ID,
       }).success,
     ).toBe(false);
     expect(

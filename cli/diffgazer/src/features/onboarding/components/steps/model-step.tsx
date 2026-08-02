@@ -1,22 +1,24 @@
-import { getCatalogFallbackNotice } from "@diffgazer/core/catalog";
-import { useModelSource } from "@diffgazer/core/providers";
-import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
+import { PRODUCT_REGISTRY, useModelSource } from "@diffgazer/core/providers";
+import { sanitizeTerminalText } from "@diffgazer/core/review";
+import type { ClientConfigurationSummary } from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { Badge } from "../../../../components/ui/badge";
 import { RadioGroup } from "../../../../components/ui/radio";
 import { Spinner } from "../../../../components/ui/spinner";
 import { useTerminalDimensions } from "../../../../hooks/use-terminal-dimensions";
-import { wrappedRowCount } from "../../../../lib/terminal-width";
 import { useTheme } from "../../../../theme/provider";
+
+type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
 
 const MODEL_STEP_RESERVED_ROWS = 12;
 
 interface ModelStepProps {
-  value?: string;
-  onChange: (v: string) => void;
-  provider: AIProvider;
+  configuration: SupportedConfigurationSummary | null;
+  isPreparing: boolean;
+  onRetry: () => void;
+  value?: string | null;
+  onChange: (modelId: string) => void;
   isActive?: boolean;
 }
 
@@ -26,99 +28,106 @@ interface ModelOption {
   badges: Array<{ label: string; variant: "info" | "success" | "warning" }>;
 }
 
-function modelInfoToOption(info: ModelInfo): ModelOption {
+function modelToOption(model: {
+  id: string;
+  name: string;
+  tier: string;
+  recommended?: boolean;
+}): ModelOption {
   const badges: ModelOption["badges"] = [];
-  if (info.tier === "free") {
-    badges.push({ label: "free", variant: "success" });
-  }
-  if (info.recommended) {
-    badges.push({ label: "recommended", variant: "info" });
-  }
-  return { id: info.id, name: info.name, badges };
+  if (model.tier === "free") badges.push({ label: "free", variant: "success" });
+  if (model.recommended) badges.push({ label: "recommended", variant: "info" });
+  return { id: model.id, name: model.name, badges };
 }
 
-function getSubtitle(provider: string): string {
-  const info = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
-  return `Select a model for ${info?.name ?? provider}.`;
+function RetryHint(): ReactElement {
+  const { tokens } = useTheme();
+  return <Text color={tokens.muted}>Press r to retry.</Text>;
 }
 
-export function ModelStep({
+interface DiscoveredModelsProps {
+  configuration: SupportedConfigurationSummary;
+  subtitle: string;
+  value?: string | null;
+  onChange: (modelId: string) => void;
+  isActive: boolean;
+}
+
+function DiscoveredModels({
+  configuration,
+  subtitle,
   value,
   onChange,
-  provider,
-  isActive = true,
-}: ModelStepProps): ReactElement {
+  isActive,
+}: DiscoveredModelsProps): ReactElement {
   const { tokens } = useTheme();
-  const { columns, rows } = useTerminalDimensions();
-  const {
-    models: sourceModels,
-    loading,
-    error,
-    isOpenRouter,
-    source,
-    fetchedAt,
-    retry,
-  } = useModelSource(true, provider);
-
-  const subtitle = isOpenRouter ? "Select a model from OpenRouter." : getSubtitle(provider);
-  const fallbackNotice = getCatalogFallbackNotice(source, fetchedAt);
+  const { rows } = useTerminalDimensions();
+  // Discovery is a configuration lifecycle concern, not a focus concern: moving
+  // focus off this step must not cancel or restart it.
+  const source = useModelSource(true, configuration);
 
   useInput(
     (input) => {
-      if (input.toLowerCase() === "r") retry();
+      if (input.toLowerCase() === "r") source.retry();
     },
     {
       isActive:
-        isActive && (Boolean(error) || sourceModels.length === 0 || fallbackNotice !== null),
+        isActive &&
+        (source.status === "error" || source.status === "skipped" || source.models.length === 0),
     },
   );
 
-  if (loading) {
+  if (source.status === "loading" || source.status === "idle") {
     return (
       <Box flexDirection="column" gap={1}>
         <Text color={tokens.muted}>{subtitle}</Text>
-        <Spinner label={isOpenRouter ? "Loading OpenRouter models…" : "Loading models…"} />
+        <Spinner label="Loading models…" />
       </Box>
     );
   }
 
-  if (error) {
+  if (source.status === "error") {
     return (
       <Box flexDirection="column" gap={1}>
         <Text color={tokens.muted}>{subtitle}</Text>
-        <Text color={tokens.error}>Failed to load models: {error}</Text>
-        <Text color={tokens.muted}>Press r to retry.</Text>
+        <Text color={tokens.error}>
+          {sanitizeTerminalText(source.error ?? "Model discovery failed.")}
+        </Text>
+        <RetryHint />
       </Box>
     );
   }
 
-  const models = sourceModels.map(modelInfoToOption);
+  if (source.status === "skipped") {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color={tokens.muted}>{subtitle}</Text>
+        <Text color={tokens.warning}>{sanitizeTerminalText(source.reason ?? "")}</Text>
+        <RetryHint />
+      </Box>
+    );
+  }
+
+  const models = source.models.map(modelToOption);
 
   if (models.length === 0) {
     return (
       <Box flexDirection="column" gap={1}>
         <Text color={tokens.muted}>{subtitle}</Text>
-        <Text color={tokens.muted}>No models available for this provider.</Text>
-        {fallbackNotice ? <Text color={tokens.warning}>{fallbackNotice}</Text> : null}
-        <Text color={tokens.muted}>Press r to retry.</Text>
+        <Text color={tokens.muted}>No models available for this configuration.</Text>
+        <RetryHint />
       </Box>
     );
   }
 
-  const fallbackMessage = fallbackNotice ? `${fallbackNotice} Press r to retry.` : null;
-  const fallbackRows = fallbackMessage
-    ? wrappedRowCount(fallbackMessage, Math.max(columns - 4, 1))
-    : 0;
-
   return (
     <Box flexDirection="column" gap={1}>
       <Text color={tokens.muted}>{subtitle}</Text>
-      {fallbackNotice ? <Text color={tokens.warning}>{fallbackMessage}</Text> : null}
       <RadioGroup
-        value={value}
+        value={value ?? undefined}
         onChange={onChange}
         isActive={isActive}
-        maxVisibleItems={Math.max(1, rows - MODEL_STEP_RESERVED_ROWS - fallbackRows)}
+        maxVisibleItems={Math.max(1, rows - MODEL_STEP_RESERVED_ROWS)}
       >
         {models.map((model) => (
           <RadioGroup.Item
@@ -138,5 +147,52 @@ export function ModelStep({
         ))}
       </RadioGroup>
     </Box>
+  );
+}
+
+export function ModelStep({
+  configuration,
+  isPreparing,
+  onRetry,
+  value,
+  onChange,
+  isActive = true,
+}: ModelStepProps): ReactElement {
+  const { tokens } = useTheme();
+
+  useInput(
+    (input) => {
+      if (input.toLowerCase() === "r") onRetry();
+    },
+    { isActive: isActive && configuration === null && !isPreparing },
+  );
+
+  if (configuration === null) {
+    return (
+      <Box flexDirection="column" gap={1}>
+        {isPreparing ? (
+          <Spinner label="Preparing configuration…" />
+        ) : (
+          <>
+            <Text color={tokens.muted}>
+              Models are discovered from the saved configuration for this product.
+            </Text>
+            <RetryHint />
+          </>
+        )}
+      </Box>
+    );
+  }
+
+  const productName = PRODUCT_REGISTRY[configuration.productId].presentation.name;
+
+  return (
+    <DiscoveredModels
+      configuration={configuration}
+      subtitle={`Select an exact model for ${productName}.`}
+      value={value}
+      onChange={onChange}
+      isActive={isActive}
+    />
   );
 }

@@ -373,6 +373,7 @@ describe("useReviewLifecycle resume and start routing", () => {
     expect(result.current.state.initState).toEqual({
       status: "ready",
       missing: ["provider", "model"],
+      readiness: expect.objectContaining({ status: "unconfigured", ready: false }),
     });
   });
 

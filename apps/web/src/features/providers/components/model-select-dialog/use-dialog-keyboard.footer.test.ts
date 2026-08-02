@@ -15,6 +15,16 @@ function makeModel(id: string): ModelInfo {
   };
 }
 
+function discoveryStatusForTest(
+  isSaving: boolean,
+  filteredModels: ModelInfo[],
+): "passed" | "error" {
+  if (isSaving || filteredModels.length > 0) {
+    return "passed";
+  }
+  return "error";
+}
+
 function TestModelFooterKeyboard({
   models,
   filteredModels = models,
@@ -36,6 +46,7 @@ function TestModelFooterKeyboard({
     currentModel: undefined,
     models,
     filteredModels,
+    discoveryStatus: discoveryStatusForTest(isSaving, filteredModels),
     searchQuery: "",
     setSearchQuery: vi.fn(),
     cycleTierFilter: vi.fn(),

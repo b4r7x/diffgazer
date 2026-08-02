@@ -6,6 +6,7 @@ import {
   type ReviewEvent,
   sanitizeTerminalText,
 } from "@diffgazer/core/review";
+import type { TransportFamily } from "@diffgazer/core/schemas/config";
 import type { AgentState, LensStat } from "@diffgazer/core/schemas/events";
 import {
   BACK_SHORTCUTS,
@@ -31,6 +32,8 @@ export interface ReviewProgressViewProps {
   isStreaming: boolean;
   error: string | null;
   errorCode?: string | null;
+  /** Admitted transport family; guidance fails neutral when it is absent. */
+  transportFamily?: TransportFamily | null;
   notices: string[];
   onCancel?: () => void;
   onBack?: () => void;
@@ -89,6 +92,7 @@ export function ReviewProgressView({
   isStreaming,
   error,
   errorCode,
+  transportFamily,
   notices,
   onCancel,
   onBack,
@@ -122,7 +126,9 @@ export function ReviewProgressView({
     return () => clearInterval(interval);
   }, [completedAt, isStreaming, startedAt]);
 
-  const errorGuidance = error ? classifyReviewStreamError(error, errorCode) : null;
+  const errorGuidance = error
+    ? classifyReviewStreamError(error, errorCode, transportFamily ?? undefined)
+    : null;
   const hasSettingsRecovery = Boolean(
     errorGuidance?.kind === "api-key" && onGoToSettings !== undefined,
   );

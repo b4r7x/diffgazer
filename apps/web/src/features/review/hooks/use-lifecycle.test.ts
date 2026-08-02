@@ -11,6 +11,16 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import {
+  CLI_UNSUPPORTED_CONFIGURATION,
+  configurationStatus,
+  LOCAL_OPENAI_CONFIGURATION,
+  makeConfigurationInitResponse,
+  makeReadyInitResponse,
+  READY_GEMINI_CONFIGURATION,
+  REMOVED_ZAI_CODING_CONFIGURATION,
+  selectedIdentityFrom,
+} from "@/testing/configuration-fixtures";
 import { REVIEW_PROGRESS_CONTROLS } from "./use-progress-keyboard";
 
 const {
@@ -135,7 +145,12 @@ function makeBaseReturn() {
     start: {
       hasStarted: true,
       hasStreamed: true,
+      canStart: true,
+      identity: selectedIdentityFrom(READY_GEMINI_CONFIGURATION),
+      readinessGate: "ready" as const,
     },
+    gate: "no-diff" as const,
+    contextSnapshot: null,
     reset: vi.fn(),
   };
 }
@@ -633,42 +648,167 @@ describe("useReviewLifecycle stale session termination", () => {
   });
 });
 
-function createMockApi(): BoundApi {
+describe("useReviewLifecycle readiness gate", () => {
+  beforeEach(() => {
+    mockNavigate.mockReset();
+    mockCreateReview.mockReset();
+    mockUseReviewLifecycleBase.mockReset();
+    mockToastError.mockReset();
+  });
+
+  it("only starts review when readiness is ready", async () => {
+    let capturedOptions: Parameters<typeof mockUseReviewLifecycleBase>[0] | undefined;
+    mockUseReviewLifecycleBase.mockImplementation((options) => {
+      capturedOptions = options;
+      return {
+        ...makeRunningBaseReturn(),
+        start: {
+          ...makeRunningBaseReturn().start,
+          canStart: true,
+          readinessGate: "ready",
+        },
+        gate: "running",
+      };
+    });
+
+    renderReviewLifecycle("unstaged");
+
+    await waitFor(() => {
+      expect(capturedOptions?.readiness?.ready).toBe(true);
+      expect(capturedOptions?.configuration).toEqual(
+        selectedIdentityFrom(READY_GEMINI_CONFIGURATION),
+      );
+    });
+  });
+
+  it("routes local unreachable readiness to the test action without API-key copy", async () => {
+    const init = makeConfigurationInitResponse([
+      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
+    ]);
+    mockApi = createMockApi(init);
+    let capturedOptions: Parameters<typeof mockUseReviewLifecycleBase>[0] | undefined;
+    mockUseReviewLifecycleBase.mockImplementation((options) => {
+      capturedOptions = options;
+      return {
+        ...makeRunningBaseReturn(),
+        start: {
+          ...makeRunningBaseReturn().start,
+          canStart: false,
+          readinessGate: "unreachable",
+        },
+        gate: "unconfigured",
+      };
+    });
+
+    const { result } = renderReviewLifecycle("unstaged");
+
+    await waitFor(() => {
+      expect(capturedOptions?.readiness?.status).toBe("local-endpoint-unreachable");
+      expect(capturedOptions?.readiness?.action).toBe("test");
+    });
+    expect(result.current.readiness?.remediation.message).not.toMatch(/api key/i);
+    expect(result.current.readinessGate).toBe("unreachable");
+  });
+
+  it("routes CLI unsupported readiness to the inspect action", async () => {
+    const init = makeConfigurationInitResponse([
+      configurationStatus(CLI_UNSUPPORTED_CONFIGURATION, "unsupported"),
+    ]);
+    mockApi = createMockApi(init);
+    mockUseReviewLifecycleBase.mockReturnValue({
+      ...makeRunningBaseReturn(),
+      start: {
+        ...makeRunningBaseReturn().start,
+        canStart: false,
+        readinessGate: "unsupported",
+      },
+      gate: "unconfigured",
+    });
+
+    const { result } = renderReviewLifecycle("staged");
+
+    await waitFor(() => {
+      expect(result.current.readiness?.status).toBe("unsupported");
+      expect(result.current.readiness?.action).toBe("inspect");
+    });
+  });
+
+  it("routes removed readiness to the delete action", async () => {
+    const init = makeConfigurationInitResponse([
+      configurationStatus(REMOVED_ZAI_CODING_CONFIGURATION, "removed"),
+    ]);
+    mockApi = createMockApi(init);
+    mockUseReviewLifecycleBase.mockReturnValue({
+      ...makeRunningBaseReturn(),
+      start: {
+        ...makeRunningBaseReturn().start,
+        canStart: false,
+        readinessGate: "removed",
+      },
+      gate: "unconfigured",
+    });
+
+    const { result } = renderReviewLifecycle("staged");
+
+    await waitFor(() => {
+      expect(result.current.readiness?.status).toBe("removed");
+      expect(result.current.readiness?.action).toBe("delete");
+    });
+  });
+
+  it("allows a saved completed review to resume without readiness", async () => {
+    const init = makeConfigurationInitResponse([
+      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
+    ]);
+    mockApi = createMockApi(init);
+    let capturedOptions: Parameters<typeof mockUseReviewLifecycleBase>[0] | undefined;
+    mockUseReviewLifecycleBase.mockImplementation((options) => {
+      capturedOptions = options;
+      return {
+        ...makeRunningBaseReturn(),
+        start: {
+          ...makeRunningBaseReturn().start,
+          canStart: true,
+          readinessGate: "unreachable",
+        },
+        gate: "running",
+      };
+    });
+
+    renderHook(
+      () =>
+        useReviewLifecycle({
+          mode: "staged",
+          allowResumeWithoutSetup: true,
+        }),
+      { wrapper: Wrapper },
+    );
+
+    await waitFor(() => {
+      expect(capturedOptions?.allowResumeWithoutSetup).toBe(true);
+      expect(capturedOptions?.readiness?.ready).toBe(false);
+    });
+  });
+});
+
+function createMockApi(init = makeReadyInitResponse()): BoundApi {
   const api = createApi({ baseUrl: "http://localhost" });
 
   return {
     ...api,
     createReview: mockCreateReview,
-    activateProvider: vi
-      .fn()
-      .mockResolvedValue({ provider: "openrouter", model: "openrouter/test-model" }),
-    deleteProviderCredentials: vi.fn().mockResolvedValue({ deleted: true }),
-    getProviderStatus: vi
-      .fn()
-      .mockResolvedValue([{ provider: "openrouter", hasApiKey: true, isActive: true }]),
-    loadInit: vi.fn().mockResolvedValue({
-      config: { provider: "openrouter", model: "openrouter/test-model" },
-      configured: true,
-      project: { projectId: "proj-1", path: "/repo", trust: null },
-      providers: [{ provider: "openrouter", hasApiKey: true, isActive: true }],
-      settings: {
-        agentExecution: "parallel",
-        defaultLenses: [],
-        defaultProfile: null,
-        secretsStorage: null,
-        severityThreshold: "low",
-        theme: "terminal",
-      },
-      setup: {
-        hasModel: true,
-        hasProvider: true,
-        hasSecretsStorage: true,
-        hasTrust: false,
-        isConfigured: true,
-        isReady: true,
-        missing: [],
-      },
+    loadConfigurationInit: vi.fn().mockResolvedValue(init),
+    listConfigurations: vi.fn().mockResolvedValue({
+      schemaVersion: 2,
+      configurations: init.configurations,
+      selectedConfigurationId: init.selectedConfigurationId,
     }),
-    saveConfig: vi.fn().mockResolvedValue(undefined),
+    inspectConfiguration: vi.fn(),
+    selectConfiguration: vi.fn(),
+    testConfiguration: vi.fn(),
+    updateConfiguration: vi.fn(),
+    deleteConfiguration: vi.fn(),
+    executeConfigurationAction: vi.fn(),
+    createConfiguration: vi.fn(),
   };
 }

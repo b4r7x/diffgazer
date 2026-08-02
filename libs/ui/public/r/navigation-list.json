@@ -42,7 +42,7 @@
     },
     {
       "path": "registry/ui/navigation-list/navigation-list-status.tsx",
-      "content": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for navigation list status. */\nexport interface NavigationListStatusProps {\n  /** Top-right status marker. */\n  children: ReactNode;\n  /** Additional class names merged onto the rendered element. */\n  className?: string;\n}\n\n/** Top-right status marker. */\nexport function NavigationListStatus({ children, className }: NavigationListStatusProps) {\n  return (\n    <span\n      className={cn(\n        \"col-start-2 row-start-1 self-center text-2xs font-bold text-muted-foreground group-data-[highlighted]:text-primary-foreground\",\n        className,\n      )}\n    >\n      {children}\n    </span>\n  );\n}\n",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithoutRef, ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for navigation list status. */\nexport interface NavigationListStatusProps extends ComponentPropsWithoutRef<\"span\"> {\n  /** Top-right status marker. */\n  children: ReactNode;\n}\n\n/** Top-right status marker. */\nexport function NavigationListStatus({ children, className, ...props }: NavigationListStatusProps) {\n  return (\n    <span\n      {...props}\n      className={cn(\n        \"col-start-2 row-start-1 self-center text-2xs font-bold text-muted-foreground group-data-[highlighted]:text-primary-foreground\",\n        className,\n      )}\n    >\n      {children}\n    </span>\n  );\n}\n",
       "type": "registry:ui",
       "target": "@ui/navigation-list/navigation-list-status.tsx"
     },

@@ -1,32 +1,28 @@
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { Context, Next } from "hono";
-import { getSetupStatus } from "../lib/config/setup-status.js";
-import { getProjectRoot } from "../lib/http/request.js";
+import { getSetupVerdict } from "../lib/config/setup-status.js";
 import { errorResponse } from "../lib/http/response.js";
 import { storeErrorStatus } from "../lib/http/store-error.js";
 
 export const requireSetup = async (c: Context, next: Next): Promise<Response | undefined> => {
-  const projectRoot = getProjectRoot(c);
-  const statusResult = getSetupStatus(projectRoot);
-  if (!statusResult.ok) {
+  const verdictResult = await getSetupVerdict();
+  if (!verdictResult.ok) {
     return errorResponse(
       c,
-      `Could not verify configured credentials. ${statusResult.error.message}. Check secrets storage access and retry.`,
-      statusResult.error.code,
-      storeErrorStatus(statusResult.error.code),
+      `Could not verify setup status. ${verdictResult.error.message}. Check secrets storage access and retry.`,
+      verdictResult.error.code,
+      storeErrorStatus(verdictResult.error.code),
     );
   }
-  const status = statusResult.value;
-
-  if (!status.isReady) {
+  const verdict = verdictResult.value;
+  if (!verdict.ready) {
     return errorResponse(
       c,
-      `Setup incomplete. Missing: ${status.missing.join(", ")}`,
+      `Setup incomplete (${verdict.status}): ${verdict.remediation.message}`,
       ErrorCode.SETUP_REQUIRED,
       503,
     );
   }
-
   await next();
   return undefined;
 };

@@ -83,28 +83,57 @@ export function createResponseLimitingFetch(
   };
 }
 
+/** Why a bounded response read stopped short of a complete body. */
+export type ResponseReadFailure = Readonly<{
+  code: "oversize-response" | "read-failed";
+  message: string;
+}>;
+
 /**
- * Read a fetch response as JSON with a hard byte ceiling: reject on a declared
- * Content-Length over the cap, otherwise stream the body and abort once the
- * received bytes exceed it. `label` names the upstream in error messages
- * (e.g. "OpenRouter models", "models.dev catalog").
+ * Read a fetch response as text with a hard byte ceiling: reject on a declared
+ * Content-Length over the cap, otherwise stream the body and cancel it the
+ * moment the received bytes exceed the cap, so an oversized upstream body is
+ * never fully buffered. `label` names the upstream in error messages.
  */
-export const readJsonResponseWithLimit = async (
+export const declaredLengthOverLimit = (
   response: Response,
+  maxBytes: number,
   label: string,
-): Promise<Result<unknown, { message: string }>> => {
+): ResponseReadFailure | null => {
   const declaredLength = Number(response.headers?.get?.("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
-    const body = response.body;
-    if (body) cancelBodyBestEffort(() => body.cancel(`${label} response exceeded the size limit`));
-    return err({ message: `${label} response too large: ${declaredLength} bytes` });
+  if (!Number.isFinite(declaredLength) || declaredLength <= maxBytes) {
+    return null;
+  }
+  const body = response.body;
+  if (body) cancelBodyBestEffort(() => body.cancel(`${label} response exceeded the size limit`));
+  return {
+    code: "oversize-response",
+    message: `${label} response too large: ${declaredLength} bytes`,
+  };
+};
+
+export const readTextResponseWithLimit = async (
+  response: Response,
+  maxBytes: number,
+  label: string,
+): Promise<Result<string, ResponseReadFailure>> => {
+  const declared = declaredLengthOverLimit(response, maxBytes, label);
+  if (declared) {
+    return err(declared);
   }
 
   if (!response.body) {
     try {
-      return ok((await response.json()) as unknown);
+      const text = await response.text();
+      if (new TextEncoder().encode(text).byteLength > maxBytes) {
+        return err({ code: "oversize-response", message: `${label} response too large` });
+      }
+      return ok(text);
     } catch (error) {
-      return err({ message: getErrorMessage(error, `${label} response was not JSON`) });
+      return err({
+        code: "read-failed",
+        message: getErrorMessage(error, `Failed to read ${label} response`),
+      });
     }
   }
 
@@ -120,9 +149,12 @@ export const readJsonResponseWithLimit = async (
       if (!value) continue;
 
       receivedBytes += value.byteLength;
-      if (receivedBytes > MAX_RESPONSE_BYTES) {
+      if (receivedBytes > maxBytes) {
         cancelBodyBestEffort(() => reader.cancel(`${label} response exceeded the size limit`));
-        return err({ message: `${label} response too large: ${receivedBytes} bytes` });
+        return err({
+          code: "oversize-response",
+          message: `${label} response too large: ${receivedBytes} bytes`,
+        });
       }
 
       text += decoder.decode(value, { stream: true });
@@ -130,11 +162,43 @@ export const readJsonResponseWithLimit = async (
 
     text += decoder.decode();
   } catch (error) {
-    return err({ message: getErrorMessage(error, `Failed to read ${label} response`) });
+    return err({
+      code: "read-failed",
+      message: getErrorMessage(error, `Failed to read ${label} response`),
+    });
+  }
+
+  return ok(text);
+};
+
+/**
+ * Read a fetch response as JSON with the 16 MiB upstream ceiling. `label` names
+ * the upstream in error messages (e.g. "OpenRouter models", "models.dev catalog").
+ */
+export const readJsonResponseWithLimit = async (
+  response: Response,
+  label: string,
+): Promise<Result<unknown, { message: string }>> => {
+  const declared = declaredLengthOverLimit(response, MAX_RESPONSE_BYTES, label);
+  if (declared) {
+    return err({ message: declared.message });
+  }
+
+  if (!response.body) {
+    try {
+      return ok((await response.json()) as unknown);
+    } catch (error) {
+      return err({ message: getErrorMessage(error, `${label} response was not JSON`) });
+    }
+  }
+
+  const text = await readTextResponseWithLimit(response, MAX_RESPONSE_BYTES, label);
+  if (!text.ok) {
+    return err({ message: text.error.message });
   }
 
   try {
-    return ok(JSON.parse(text) as unknown);
+    return ok(JSON.parse(text.value) as unknown);
   } catch (error) {
     return err({ message: getErrorMessage(error, `${label} response was not JSON`) });
   }

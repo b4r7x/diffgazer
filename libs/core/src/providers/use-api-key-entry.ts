@@ -26,6 +26,17 @@ export interface UseApiKeyEntryResult {
   reset: () => void;
 }
 
+function hasSubmittableEntry(
+  method: InputMethod,
+  value: string,
+  envVarName: string | undefined,
+): boolean {
+  if (method === "paste") return value.length > 0;
+  // An environment method with no configured variable name has nothing to
+  // validate here; the server resolves the reference on submit.
+  return envVarName === undefined || envVarName.length > 0;
+}
+
 /**
  * Single home for the provider API-key entry contract shared by the web dialog
  * and the TUI overlay: method/value state, a submit guard, and a captured error
@@ -54,18 +65,18 @@ export function useApiKeyEntry({
     setValueState(next);
   };
 
-  const canSubmit = method === "paste" ? value.length > 0 : (envVarName ?? value).length > 0;
+  const canSubmit = hasSubmittableEntry(method, value, envVarName);
 
   const submit = async (submitMethod: InputMethod = method): Promise<boolean> => {
     if (submittingRef.current) return false;
-    const submitValue = resolveSubmitValue(submitMethod);
-    if (!submitValue) return false;
+    if (submitMethod === "paste" && !value) return false;
+    if (submitMethod === "env" && envVarName !== undefined && !envVarName) return false;
 
     submittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
-      const committed = await onSubmit(submitMethod, submitValue);
+      const committed = await onSubmit(submitMethod, resolveSubmitValue(submitMethod));
       if (!committed) return false;
       setValueState("");
       return true;

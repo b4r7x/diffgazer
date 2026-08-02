@@ -3,114 +3,208 @@ title: Troubleshooting
 description: Fix the common failures when running Diffgazer.
 ---
 
-Most failures fall into a handful of buckets: setup isn't finished, the repo isn't trusted yet, the port is taken, the provider rejected the request, or there's nothing to review. Each one below gives you the symptom you'll see, why it happens, and how to get past it.
+Most failures fall into a handful of buckets: configuration is not ready, the repo is not trusted, the port is taken, admission rejected the configured tuple, or there is nothing to review. Each section below gives the symptom, cause, and fix using the same readiness and outcome language shown in Web, Ink, and CLI.
+
+## Configuration not ready
+
+**Symptom.** Review actions stay disabled or show **Configuration Not Ready** with remediation text from the current readiness state.
+
+**Cause.** A review starts only from a configuration whose product tuple passed admission. Until then, Diffgazer exposes the next safe action (`create`, `inspect`, `select`, `test`, `update`, or `delete`) instead of starting a review.
+
+**Fix.** Open **Configure Provider** in settings and follow the remediation for the reported readiness state below. Product-specific examples include Google Gemini, Ollama, and OpenAI Codex CLI.
+
+## Invalid credential
+
+**Symptom.** Readiness is `credential-invalid`. The UI explains: **The configured credential was rejected.**
+
+**Cause.** The hosted credential reference or stored literal value was rejected by the configured endpoint.
+
+**Fix.** Update the configuration with a valid credential reference. Use **Configure Provider**, choose **update**, and replace the credential reference. Diffgazer never shows the rejected literal value in client-safe copy.
+
+## Wrong product, region, or workspace
+
+**Symptom.** Readiness is `endpoint-invalid`, or Qwen or Moonshot setup cannot proceed even though a key appears to work elsewhere.
+
+**Cause.** The configured endpoint is not allowed for this product, or the selected region or workspace does not match the credential's admitted tuple.
+
+**Fix.** Choose an allowed endpoint for this product and transport. For Qwen International and Moonshot Open Platform, verify the region and workspace binding match the credential you configured. Diffgazer does not substitute consumer or coding-plan products.
+
+## Endpoint rejection
+
+**Symptom.** Readiness is `endpoint-invalid` with the explanation **The configured endpoint is not allowed for this product.**
+
+**Cause.** The saved endpoint does not match the product's allowed profile. Hosted endpoints must use the exact HTTPS profile. Local endpoints must resolve to loopback.
+
+**Fix.** Choose an allowed endpoint for this product and transport, then **test** the configuration again.
+
+## Model missing
+
+**Symptom.** Readiness is `model-missing`. The UI explains: **The selected model is not available for this configuration.**
+
+**Cause.** The saved exact model ID is not present in the current admitted discovery result for the configured tuple.
+
+**Fix.** Select an available exact model. Open the model picker, choose a listed exact ID, and **test** again. Aliases and routing selectors are rejected.
+
+## Schema failure
+
+**Symptom.** Readiness is `conformance-failed` with the explanation **The exact review path did not satisfy the structured output contract.**, or a review ends with **Schema Validation Failed** and the message **The provider response did not match Diffgazer's review schema.**
+
+**Cause.** The configured review path did not pass structured-output conformance for the exact tuple.
+
+**Fix.** Review the safe failure guidance, then test the exact model again. Remediation message: **Review the safe failure guidance, then test the exact model again.**
+
+## Missing usage
+
+**Symptom.** A completed or failed review shows **Usage unavailable** with the detail **This provider requires usage reporting, but none was returned.**
+
+**Cause.** The configured hosted product requires terminal usage reporting and the provider did not return it.
+
+**Fix.** Verify the configured product and exact model support usage reporting for your account, then **test** the configuration again. Diffgazer does not infer usage from marketing pages or partial responses.
+
+## Budget exhaustion
+
+**Symptom.** A review ends with **Budget Exhausted** and the message **The review stopped because a configured budget limit was reached.**
+
+**Cause.** The admitted execution plan hit a configured spend or token budget limit.
+
+**Fix.** Reduce review scope, raise the configured budget if your workflow allows it, or choose a different admitted model or product. Diffgazer does not continue the run after the budget is exhausted.
+
+## Local non-loopback rejection
+
+**Symptom.** Readiness is `local-endpoint-forbidden`. The UI explains: **The configured local endpoint is not an allowed loopback endpoint.**
+
+**Cause.** Ollama or Local OpenAI-compatible configurations must use a validated loopback first hop such as `127.0.0.1` or `[::1]`.
+
+**Fix.** Choose a validated loopback endpoint on this machine. Then **test** the configuration again. LAN addresses, tunnels, and remote URLs are rejected.
+
+## Local incompatibility
+
+**Symptom.** Readiness is `local-api-incompatible`. The UI explains: **The local server does not expose a compatible review API.**
+
+**Cause.** The loopback server responded, but its API or structured-output behavior does not satisfy the product contract.
+
+**Fix.** Use a supported local server and API configuration. Install a review-capable model if needed, then **test** again.
+
+## CLI version, account, or policy failure
+
+**Symptom.** Readiness is `unsupported` for OpenAI Codex CLI or GitHub Copilot CLI. The UI explains: **This configuration is not supported in the current environment.**
+
+**Cause.** The installed CLI version, account plan, or policy does not satisfy the pinned negative-capability and schema proof required for review.
+
+**Fix.** Review the supported products and environment requirements. See the [providers reference](/app/reference/providers), update the CLI, verify the active account or plan, and **test** again. Diffgazer does not import CLI auth files or tokens.
+
+## Cancellation
+
+**Symptom.** A review ends with **Review Cancelled** and the message **The review was cancelled before it completed.**
+
+**Cause.** You cancelled the active session or deleted it while work was still running.
+
+**Fix.** Start a new review when you are ready. Diffgazer does not resume cancelled runs as completed findings.
+
+## Timeout
+
+**Symptom.** A review ends with **Review Timed Out** and the message **The review exceeded the configured wall-time limit.**
+
+**Cause.** The admitted execution plan exceeded its wall-time budget.
+
+**Fix.** Review fewer files, choose a faster admitted model if one is ready, or adjust the execution limits for your workflow before retrying.
+
+## Intentionally skipped live probe
+
+**Symptom.** Readiness is `skipped`. The UI explains: **The live readiness check was intentionally skipped.**
+
+**Cause.** A required live probe was not run or could not run with the current prerequisites. A skipped probe is evidence only; it **never enables a product**.
+
+**Fix.** Satisfy the live-check prerequisites, then test the configuration again. Remediation code `enable-live-probe` means the configuration must be tested again after prerequisites are satisfied. In release smoke output, a skipped live probe is reported explicitly and does not count as passed.
+
+## Review completed successfully
+
+**Symptom.** A review ends with **Review Completed** and the message **The review finished with schema-valid findings.**
+
+**Cause.** The admitted configuration completed with schema-valid findings and a terminal receipt.
+
+**Fix.** No remediation is required. Open the saved review from history if you need to revisit the results.
+
+## Transport failed
+
+**Symptom.** A review ends with **Transport Failed** and the message **The configured transport could not complete the review.**
+
+**Cause.** The admitted transport failed after review admission, for example because the network path dropped or the CLI transport exited unexpectedly.
+
+**Fix.** Verify service availability for hosted or local HTTP products, confirm the CLI is installed and signed in, then **test** the configuration and start a new review.
 
 ## Setup required
 
-**Symptom.** A review won't start. The request comes back with a `503` and a `SETUP_REQUIRED` code, and the message names what's missing, for example "Setup incomplete. Missing: provider".
+**Symptom.** A review won't start. The request comes back with `503` / `SETUP_REQUIRED`.
 
-**Cause.** Some routes are gated behind a setup check that runs before the handler. Until onboarding is complete, the server refuses to start a review rather than fail halfway through. The check looks at your config and reports exactly which pieces aren't ready yet.
+**Cause.** No ready configuration exists yet.
 
-**Fix.** Finish onboarding. You need an active provider with a model and an API key in place. Once setup reports ready, the same request goes through. See [providers reference](/app/reference/providers) for which key each provider reads and what the default model is.
+**Fix.** Finish onboarding or create and **test** a configuration until readiness is **ready**.
 
 ## Trust required
 
-**Symptom.** A review or a file-touching action returns a `403` with a `TRUST_REQUIRED` code. The message is either "Repository access not granted. Update Trust & Permissions to continue." or "Trust was granted for a different repository root. Re-grant trust for this directory."
+**Symptom.** A review returns `403` / `TRUST_REQUIRED`.
 
-**Cause.** Reading your repository is an explicit, per-directory decision. Routes that read files run behind a trust gate that checks two things. First, the current project must have the read-files capability granted. Second, the grant has to match the exact repository root you're working in. A grant made for one directory does not carry over to another.
+**Cause.** The current project lacks a matching read-files grant.
 
-**Fix.** Open Trust and Permissions and grant repository access for the directory you're in. If you moved the project or opened a different checkout, re-grant trust for the new root. Granting trust covers reading files; it does not enable running commands. For the full picture of what stays local, see [privacy and security](/app/concepts/privacy).
+**Fix.** Open Trust and Permissions and grant repository access for the directory you are in.
 
 ## Credential storage unavailable
 
-**Symptom.** Setup initialization or a review returns `KEYRING_UNAVAILABLE` or `KEYRING_READ_FAILED`. The server does not report `SETUP_REQUIRED` because the provider is already configured.
+**Symptom.** Setup or review returns `KEYRING_UNAVAILABLE` or `KEYRING_READ_FAILED`.
 
-**Cause.** Diffgazer found the active provider but could not verify its credential. The system keychain may be locked or unavailable, or the process may lack permission to read the saved entry.
+**Cause.** Diffgazer could not read stored credentials from the system keychain.
 
-**Fix.** Unlock the system keychain and allow the terminal process to read it, then retry. If you meant to use local file storage, select it in Storage settings and save the provider key there.
+**Fix.** Unlock the keychain or switch to file storage in settings, then retry.
 
 ## No changes to review
 
-**Symptom.** A review stops immediately with a `NO_DIFF` code. In staged mode the message is "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead." In unstaged mode it's "No unstaged changes found. Make some edits first, or review staged changes instead."
+**Symptom.** A review stops with `NO_DIFF`.
 
-**Cause.** Diffgazer reviews a git diff. If the mode you picked has an empty diff, there's nothing to send to the model, so the run ends before it starts. Changes inside the `.diffgazer/` directory are filtered out too, so a change set that only touches Diffgazer's own files returns `NO_DIFF` before the review starts.
+**Cause.** The selected diff mode is empty.
 
-**Fix.** Make sure the mode matches where your changes are. Stage files with `git add` for a staged review, or edit some tracked files for an unstaged one. If you scoped the review to specific files and none of them have changes in that mode, widen the file selection.
+**Fix.** Stage or edit files, or switch between staged and unstaged review.
 
 ## Not a git repository
 
-**Symptom.** A review fails early with a git error before any diff is read.
+**Symptom.** A review fails before any diff is read.
 
-**Cause.** Diffgazer runs git in your project directory to produce the diff. If the directory isn't a git working tree, git has nothing to diff and the underlying command fails.
-
-**Fix.** Run Diffgazer from inside a git repository. Initialize one with `git init` if you haven't, or change into the project directory that already has a `.git` folder.
+**Fix.** Run Diffgazer inside a git repository.
 
 ## Diff too large
 
-**Symptom.** A review aborts with a message like "Diff too large (0.73MB exceeds 0.50MB limit). Try reviewing fewer files or use file filtering."
+**Symptom.** A review aborts because the combined diff exceeds the 512KB cap.
 
-**Cause.** A single review caps the combined diff at 512KB. The limit is on the total byte size of every changed file in the diff, not on any one file, so several medium files can cross it together.
-
-**Fix.** Review fewer files at once. Scope the run to the files you care about, or split a large change into smaller reviews. The cap protects the run from sending an oversized prompt to your provider.
+**Fix.** Review fewer files or split the change set.
 
 ## Port already in use
 
-**Symptom.** The server fails to start and the console prints "Port 3000 is already in use. Close the other process or set a different PORT." Under the hood this is an `EADDRINUSE` bind error on `127.0.0.1`.
+**Symptom.** The server fails to bind with `EADDRINUSE`.
 
-**Cause.** The embedded server binds to a fixed port (3000 by default). If another process already holds that port, the bind fails and the server can't come up.
-
-**Fix.** Free the port or pick another one. To run on a different port, set the `PORT` environment variable before launching:
+**Fix.**
 
 ```bash
 PORT=4000 diffgazer
 ```
 
-`PORT` must be an integer from 1 to 65535. Anything outside that range is rejected at startup with an "Invalid PORT" error rather than silently falling back. To free the default port instead, stop whatever is already listening on it.
-
-> Tip: If you're not sure what's holding the port, `lsof -i :3000` on macOS or Linux shows the process so you can stop it.
-
 ## Permission denied on the port
 
-**Symptom.** The server fails to start with "Permission denied binding to port 3000. Try a port above 1024." This is an `EACCES` error from the bind.
+**Symptom.** Bind fails with `EACCES` on a privileged port.
 
-**Cause.** On most systems, binding to a low port (below 1024) requires elevated privileges. If `PORT` is set to a privileged port and your process isn't allowed to claim it, the bind is denied.
-
-**Fix.** Use a non-privileged port. Set `PORT` to a value above 1024 and launch again:
-
-```bash
-PORT=8080 diffgazer
-```
+**Fix.** Use a port above 1024.
 
 ## Web assets not found
 
-**Symptom.** The server logs a "Web assets not found" error naming the path it looked in, and never opens the browser.
+**Symptom.** Web mode cannot find the bundled SPA.
 
-**Cause.** The web mode serves a built copy of the app bundled next to the server. If that bundle is missing from the install, the server has nothing to serve and stops before binding.
-
-**Fix.** Reinstall or rebuild Diffgazer so the web assets ship with the binary. A fresh install from the published package includes them. If you're running from a local checkout, build the project first so the web bundle exists.
-
-## Provider or key errors
-
-**Symptom.** Setup or activation rejects your provider, or a review fails partway through with a provider-side error. Common cases are a missing key, an invalid key, a rate limit from the provider, or a model that doesn't exist for the provider you chose.
-
-**Cause.** Diffgazer sends the review to the provider you configured, using the key and model you set. If the key is absent or wrong, the provider refuses. If you select a model that isn't in that provider's catalog, activation fails before any request goes out. OpenRouter is the exception there, since its model list comes from a live route rather than the bundled catalog.
-
-**Fix.** Confirm the provider has a valid key and a model it actually offers. The [providers reference](/app/reference/providers) lists the exact environment variable each provider reads, its default model, and its base URL. A frequent gotcha: Google Gemini reads `GOOGLE_API_KEY`, not `GEMINI_API_KEY`.
-
-> Note: Running several review passes in parallel can trip a provider's rate limit on a free tier. If you see rate-limit errors, slow the run down by reviewing fewer files at once, or move to a plan with higher limits.
+**Fix.** Reinstall or rebuild Diffgazer so the web assets ship with the binary.
 
 ## Stopping a stuck process
 
-**Symptom.** A review hangs, or the server won't quit cleanly.
+**Symptom.** A review hangs or shutdown feels slow.
 
-**Cause.** Web mode runs a server and waits. A review holds an open stream while it's in flight, which can make shutdown feel slow because the server drains that connection first.
-
-**Fix.** Press Ctrl+C in the terminal where Diffgazer is running. On the first signal it stops the server, aborts in-flight reviews, and exits. If a child process is slow to die after the stop signal, Diffgazer force-kills it after a short delay (2 seconds by default). You can lengthen that delay on a slow machine with `DIFFGAZER_FORCE_KILL_DELAY_MS`, set in milliseconds:
-
-```bash
-DIFFGAZER_FORCE_KILL_DELAY_MS=5000 diffgazer
-```
+**Fix.** Press `Ctrl+C` in the terminal where Diffgazer is running. Increase `DIFFGAZER_FORCE_KILL_DELAY_MS` on slow machines if needed.
 
 ## Still stuck
 
-If none of the above matches what you're seeing, check the [FAQ](/app/operations/faq) for the short answers to common questions. If it's a bug or something the docs don't cover, open an issue at https://github.com/b4r7x/diffgazer/issues with the error message and what you ran.
+Check the [FAQ](/app/operations/faq) or open an issue at https://github.com/b4r7x/diffgazer/issues with the visible error title and remediation text.

@@ -1,21 +1,20 @@
-import type { AIProvider, DisplayStatus } from "@diffgazer/core/schemas/config";
+import {
+  getProviderDisplayStatus,
+  getProviderRowId,
+  type ProviderListRow,
+} from "@diffgazer/core/providers";
+import type { ConfigurationId } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { NavigationList } from "../../../components/ui/navigation-list";
 import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
 
-export interface ProviderListItem {
-  id: AIProvider;
-  name: string;
-  displayStatus: DisplayStatus;
-  model?: string;
-}
-
 interface ProviderListProps {
-  providers: ProviderListItem[];
+  providers: ProviderListRow[];
   selectedId?: string;
   highlightedId?: string;
+  selectedConfigurationId?: ConfigurationId | null;
   onSelect?: (id: string) => void;
   onHighlightChange?: (id: string) => void;
   isActive?: boolean;
@@ -23,20 +22,53 @@ interface ProviderListProps {
   compact?: boolean;
 }
 
-/**
- * Status is a one-cell glyph so the row spends its width on the name it is
- * chosen by. The three glyphs differ in shape, so status survives a monochrome
- * terminal; the spelled-out status lives in the details pane.
- */
-const STATUS_GLYPH: Record<DisplayStatus, string> = {
-  active: "●",
-  configured: "○",
-  "needs-key": "!",
-};
+const PROVIDER_LIST_ROW_CHROME = 4;
 
-function getStatusColor(status: DisplayStatus, tokens: CliColorTokens): string {
-  if (status === "active") return tokens.success;
-  if (status === "needs-key") return tokens.warning;
+function canShowListSubtitle(
+  name: string,
+  subtitle: string | undefined,
+  contentWidth: number,
+  compact: boolean,
+): subtitle is string {
+  if (!subtitle) return false;
+  if (!compact) return true;
+  return name.length + subtitle.length + PROVIDER_LIST_ROW_CHROME <= contentWidth;
+}
+
+function getModelSubtitle(row: ProviderListRow): string | undefined {
+  if (row.configuration?.selectedModelId) return row.configuration.selectedModelId;
+  if (row.product.status === "removed") return "Removed record";
+  if (row.readiness.status === "unsupported" && row.product.transportFamily === "local-cli") {
+    return "CLI unsupported";
+  }
+  return row.readiness.remediation.message;
+}
+
+function getStatusGlyph(
+  row: ProviderListRow,
+  selectedConfigurationId: ConfigurationId | null | undefined,
+): string {
+  if (row.product.status === "removed") return "×";
+  if (row.readiness.ready) {
+    return row.configuration?.configurationId === selectedConfigurationId ? "●" : "○";
+  }
+  return "!";
+}
+
+function getStatusColor(
+  row: ProviderListRow,
+  tokens: CliColorTokens,
+  selectedConfigurationId: ConfigurationId | null | undefined,
+): string {
+  if (row.product.status === "removed") return tokens.error;
+  if (row.readiness.ready) {
+    return row.configuration?.configurationId === selectedConfigurationId
+      ? tokens.success
+      : tokens.muted;
+  }
+  const badge = getProviderDisplayStatus(row.readiness, row.product.transportFamily);
+  if (badge.variant === "error") return tokens.error;
+  if (badge.variant === "warning") return tokens.warning;
   return tokens.muted;
 }
 
@@ -44,6 +76,7 @@ export function ProviderList({
   providers,
   selectedId,
   highlightedId,
+  selectedConfigurationId,
   onSelect,
   onHighlightChange,
   isActive = true,
@@ -60,35 +93,44 @@ export function ProviderList({
       onHighlightChange={onHighlightChange}
       isActive={isActive}
     >
-      {providers.map((provider) => (
-        <NavigationList.Item key={provider.id} id={provider.id}>
-          {({ tone }) => (
-            <Box gap={1} width={contentWidth} flexWrap="nowrap" overflow="hidden">
-              <Box flexShrink={0}>
-                <Text
-                  color={
-                    tone.background ? tone.primary : getStatusColor(provider.displayStatus, tokens)
-                  }
-                >
-                  {STATUS_GLYPH[provider.displayStatus]}
-                </Text>
-              </Box>
-              <Box flexGrow={1} minWidth={1} overflow="hidden">
-                <Text color={tone.primary} bold wrap="truncate-end">
-                  {provider.name}
-                </Text>
-              </Box>
-              {!compact && provider.model ? (
-                <Box flexShrink={1} overflow="hidden">
-                  <Text color={tone.secondary} wrap="truncate-start">
-                    {provider.model}
+      {providers.map((row) => {
+        const rowId = getProviderRowId(row);
+        const isRemoved = row.product.status === "removed";
+        const subtitle = getModelSubtitle(row);
+        const showSubtitle = canShowListSubtitle(row.product.name, subtitle, contentWidth, compact);
+
+        return (
+          <NavigationList.Item key={rowId} id={rowId} disabled={isRemoved}>
+            {({ tone }) => (
+              <Box gap={1} width={contentWidth} flexWrap="nowrap" overflow="hidden">
+                <Box flexShrink={0}>
+                  <Text
+                    color={
+                      tone.background
+                        ? tone.primary
+                        : getStatusColor(row, tokens, selectedConfigurationId)
+                    }
+                  >
+                    {getStatusGlyph(row, selectedConfigurationId)}
                   </Text>
                 </Box>
-              ) : null}
-            </Box>
-          )}
-        </NavigationList.Item>
-      ))}
+                <Box flexShrink={0} overflow="hidden">
+                  <Text color={tone.primary} bold wrap="truncate-end">
+                    {row.product.name}
+                  </Text>
+                </Box>
+                {showSubtitle ? (
+                  <Box flexShrink={1} overflow="hidden">
+                    <Text color={tone.secondary} wrap="truncate-start">
+                      {subtitle}
+                    </Text>
+                  </Box>
+                ) : null}
+              </Box>
+            )}
+          </NavigationList.Item>
+        );
+      })}
     </NavigationList>
   );
 }

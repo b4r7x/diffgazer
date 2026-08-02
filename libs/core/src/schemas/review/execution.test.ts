@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { LOCAL_OPENAI_PRESET_ENDPOINTS } from "../config/transports.js";
 import {
   CanonicalJsonParseError,
+  canonicalJson,
   MAX_CANONICAL_JSON_BYTES,
   MAX_CANONICAL_JSON_COLLECTION_ITEMS,
   MAX_CANONICAL_JSON_DEPTH,
-} from "./execution.js";
+  parseCanonicalJson,
+  sha256CanonicalJson,
+  sha256CanonicalJsonSync,
+} from "../canonical-json.js";
+import { REMOVED_PRODUCT_ID } from "../config/providers.js";
+import { LOCAL_OPENAI_PRESET_ENDPOINTS } from "../config/transports.js";
 import {
-  canonicalJson,
   type EvidenceKey,
   EvidenceKeySchema,
   ExecutionFingerprintInputSchema,
@@ -20,10 +24,7 @@ import {
   hashExecutionReceiptFingerprintSync,
   type NormalizedUsage,
   NormalizedUsageSchema,
-  parseCanonicalJson,
   type RuntimeIdentity,
-  sha256CanonicalJson,
-  sha256CanonicalJsonSync,
   TERMINAL_OUTCOMES,
 } from "./index.js";
 
@@ -528,7 +529,7 @@ describe("execution contracts", () => {
   });
 
   it("rejects non-runnable identities, mismatched transports, and unsafe references", () => {
-    for (const productId of ["zai-coding", "xiaomi-mimo", "bogus-product"]) {
+    for (const productId of [REMOVED_PRODUCT_ID, "xiaomi-mimo", "bogus-product"]) {
       expect(EvidenceKeySchema.safeParse({ ...evidenceKey, productId }).success).toBe(false);
       expect(
         ExecutionReceiptSchema.safeParse(

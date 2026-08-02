@@ -1,8 +1,13 @@
+import { parseModelsDevCatalog } from "@diffgazer/core/catalog";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeChunkedResponse } from "../testing/http.js";
 import { MODELS_DEV_SAMPLE } from "../testing/models-dev-sample.js";
-import { fetchModelsDevCatalog, ModelsDevCatalogCacheSchema } from "./models-dev-catalog.js";
+import {
+  fetchModelsDevCatalog,
+  ModelsDevCatalogCacheSchema,
+  modelInfoFromBoundedObservation,
+} from "./models-dev-catalog.js";
 
 const okResponse = (body: unknown, headers?: Record<string, string>): Response =>
   ({ ok: true, status: 200, headers: new Headers(headers), json: async () => body }) as Response;
@@ -102,6 +107,45 @@ describe("fetchModelsDevCatalog", () => {
 
     const result = await fetchModelsDevCatalog();
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("modelInfoFromBoundedObservation", () => {
+  it("serves only checked observations and keeps snapshot/live sources distinct", () => {
+    const checkedAt = fresh();
+    const catalog = parseModelsDevCatalog(MODELS_DEV_SAMPLE);
+    const liveModels = modelInfoFromBoundedObservation(
+      catalog,
+      "gemini",
+      "models.dev-live",
+      checkedAt,
+    );
+    const snapshotModels = modelInfoFromBoundedObservation(
+      catalog,
+      "gemini",
+      "models.dev-snapshot",
+      checkedAt,
+    );
+
+    expect(liveModels.length).toBeGreaterThan(0);
+    expect(snapshotModels.map((model) => model.id)).toEqual(liveModels.map((model) => model.id));
+    expect(liveModels.every((model) => !("enabled" in model) && !("selectable" in model))).toBe(
+      true,
+    );
+    expect(JSON.stringify(liveModels)).not.toContain('"enabled"');
+    expect(JSON.stringify(snapshotModels)).not.toContain('"liveEvidence"');
+  });
+
+  it("maps at least one free-tier model to tier free from catalog observations", () => {
+    const catalog = parseModelsDevCatalog(MODELS_DEV_SAMPLE);
+    const models = modelInfoFromBoundedObservation(catalog, "gemini", "models.dev-live", fresh());
+
+    const freeModels = models.filter((model) => model.tier === "free");
+    expect(freeModels.length).toBeGreaterThan(0);
+    expect(freeModels.map((model) => model.id)).toContain("gemini-2.5-flash");
+
+    const paidModel = models.find((model) => model.id === "gemini-3-pro-preview");
+    expect(paidModel?.tier).toBe("paid");
   });
 });
 

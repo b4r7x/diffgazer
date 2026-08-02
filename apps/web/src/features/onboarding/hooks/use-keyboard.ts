@@ -1,47 +1,69 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import {
   canProceed as canProceedForStep,
+  getOnboardingProgressLabel,
+  type OnboardingDraft,
   type OnboardingStep,
-  type WizardData,
+  type RunnableSetupStep,
 } from "@diffgazer/core/onboarding";
 import { useActionRowNavigation, useScope } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import type { RefObject } from "react";
 import { getStepShortcuts } from "../lib/shortcuts";
 
+const RUNNABLE_SETUP_STEPS = new Set<OnboardingStep>([
+  "product",
+  "endpoint-binding",
+  "authentication",
+  "model",
+  "conformance",
+  "acknowledgement",
+]);
+
+type WizardData = ReturnType<typeof import("../hooks/use-onboarding").useOnboarding>["wizardData"];
+type WizardDraftUpdate = Partial<Omit<OnboardingDraft, "kind" | "plan">>;
+
 interface UseOnboardingKeyboardOptions {
   currentStep: OnboardingStep;
   wizardData: WizardData;
+  stepIndex: number;
+  planSteps: readonly { id: OnboardingStep }[];
   isFirstStep: boolean;
   isLastStep: boolean;
   canProceed: boolean;
   isSubmitting: boolean;
-  isEarlySaving: boolean;
-  next: (partial?: Partial<WizardData>) => void;
+  isReconciling: boolean;
+  next: (partial?: WizardDraftUpdate) => void;
   back: () => void;
   complete: () => Promise<boolean>;
+  deleteRemovedConfiguration: () => Promise<boolean>;
   focusFallbackRef: RefObject<HTMLDivElement | null>;
 }
 
 export function useOnboardingKeyboard({
   currentStep,
   wizardData,
+  stepIndex,
+  planSteps,
   isFirstStep,
   isLastStep,
   canProceed,
   isSubmitting,
-  isEarlySaving,
+  isReconciling,
   next,
   back,
   complete,
+  deleteRemovedConfiguration,
   focusFallbackRef,
 }: UseOnboardingKeyboardOptions) {
   const navigate = useNavigate();
+  const isRemoved = wizardData.kind === "removed";
+  const primaryLabel = isRemoved && currentStep === "delete" ? "Delete Record" : "Complete Setup";
 
   const buttonCount = isFirstStep ? 1 : 2;
   const primaryButtonIndex = isFirstStep ? 0 : 1;
-  const isBusy = isSubmitting || isEarlySaving;
-  const canActivatePrimary = isLastStep ? canProceed && !isBusy : canProceed && !isEarlySaving;
+  const isBusy = isSubmitting || isReconciling;
+  const canActivatePrimary = isLastStep ? canProceed && !isBusy : canProceed && !isReconciling;
   const disabledFooterActions = isFirstStep ? [!canActivatePrimary] : [isBusy, !canActivatePrimary];
 
   useScope("onboarding");
@@ -65,7 +87,7 @@ export function useOnboardingKeyboard({
     },
   });
 
-  const handleNext = (partial?: Partial<WizardData>) => {
+  const handleNext = (partial?: WizardDraftUpdate) => {
     next(partial);
     footer.reset();
   };
@@ -76,10 +98,8 @@ export function useOnboardingKeyboard({
   };
 
   const handleComplete = async () => {
-    // complete() reports failures through the wizard error state; only navigate on success.
-    if (await complete()) {
-      navigate({ to: "/" });
-    }
+    const succeeded = isRemoved ? await deleteRemovedConfiguration() : await complete();
+    if (succeeded) navigate({ to: "/" });
   };
 
   const handlePrimaryAction = () => {
@@ -100,9 +120,19 @@ export function useOnboardingKeyboard({
     footer.enterActions();
   };
 
-  const handleStepCommit = (partial: Partial<WizardData> = {}) => {
+  const handleStepCommit = (partial: WizardDraftUpdate = {}) => {
+    if (wizardData.kind === "removed") {
+      if (currentStep === "migration") handleNext();
+      return;
+    }
+
     const projectedData = { ...wizardData, ...partial };
-    if (!canProceedForStep(currentStep, projectedData)) return;
+    if (
+      RUNNABLE_SETUP_STEPS.has(currentStep) &&
+      !canProceedForStep(currentStep as RunnableSetupStep["id"], projectedData)
+    ) {
+      return;
+    }
 
     if (isLastStep) {
       footer.enterActions(primaryButtonIndex);
@@ -112,14 +142,19 @@ export function useOnboardingKeyboard({
     handleNext(partial);
   };
 
+  const progressLabel = getOnboardingProgressLabel(wizardData.plan, stepIndex);
+
   return {
     footer,
     primaryButtonIndex,
+    primaryLabel,
+    progressLabel,
     isBusy,
     canActivatePrimary,
     handleBack,
     handlePrimaryAction,
     handleStepBoundary,
     handleStepCommit,
+    stepCount: planSteps.length,
   };
 }

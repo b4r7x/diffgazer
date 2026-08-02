@@ -1,11 +1,24 @@
 export type { StreamReviewError } from "../review.js";
 
 export {
+  configurationFingerprint,
+  invalidateConfigurationCaches,
+  useConfigCheck,
   useConfigurationAction,
+  useConfigurationDiscovery,
   useConfigurationInit,
+  useConfigurationInspect,
+  useConfigurationReadiness,
   useConfigurations,
+  useCreateConfiguration,
+  useDeleteConfiguration,
+  useInit,
+  useInspectConfiguration,
   useSaveSettings,
+  useSelectConfiguration,
   useSettings,
+  useTestConfiguration,
+  useUpdateConfiguration,
 } from "./config.js";
 export { ApiProvider, useApi } from "./context.js";
 export { type DiagnosticsData, refreshAllDiagnostics, useDiagnosticsData } from "./diagnostics.js";
@@ -27,7 +40,13 @@ export {
   useReviewCompletion,
 } from "./use-review-completion.js";
 export {
+  buildReviewStartIdentity,
+  canStartReview,
+  type ReviewConfigurationIdentity,
   type ReviewGate,
+  type ReviewReadinessGateReason,
+  resolveReviewReadinessGate,
+  resolveReviewStartReady,
   type UseReviewLifecycleBaseOptions,
   type UseReviewLifecycleBaseResult,
   useReviewLifecycleBase,

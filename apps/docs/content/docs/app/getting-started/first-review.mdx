@@ -3,7 +3,7 @@ title: Your first review
 description: Install Diffgazer, run the setup wizard, and read your first review.
 ---
 
-The fastest path is three commands, run from inside a git repository that has uncommitted changes. Before a review can start you also need a key for one supported provider, which you paste during the setup wizard on first run.
+The fastest path is three commands, run from inside a git repository that has uncommitted changes. Before a review can start you need a **ready configuration** for one selectable product.
 
 ## Quick path
 
@@ -17,14 +17,14 @@ Before you press Review Unstaged or Review Staged, make sure:
 
 - Node.js 22 or newer and `git` are installed.
 - The repository has changes to review.
-- A provider is active, its API key is saved or referenced from the environment, and a model is selected.
+- A configuration is **ready**: the product tuple is admitted, an exact model is selected, required notices are accepted, and any required live probe has not been left in **skipped** state.
 - The current directory is trusted with read access.
 
 ## Prerequisites
 
-- A git repository with changes to review. Diffgazer reads your working diff, so it needs something uncommitted (or staged) to look at.
+- A git repository with changes to review.
 - Node.js 22 or newer, and a `git` binary on your PATH.
-- An API key for one supported provider. The wizard lists them on first run; the default is Google Gemini, which has a free tier.
+- A supported product configuration. The wizard lists all thirteen selectable products from the [providers reference](/app/reference/providers).
 
 ## Steps
 
@@ -39,8 +39,6 @@ npm install -g diffgazer
 </Step>
 
 <Step title="Change into your repo">
-
-Move into the repository you want to review:
 
 ```bash
 cd your-project
@@ -60,7 +58,7 @@ It prints a banner, starts a local server at `http://localhost:3000`, and opens 
 
 <Step title="Complete the setup wizard">
 
-Choose where secrets are stored, pick a provider, paste your key, select a model, confirm the analysis agents, and pick how they run. See [What the first run looks like](#what-the-first-run-looks-like) below for each step.
+Pick a product, then work through that product's setup plan: **Endpoint**, **Authentication**, **Model**, **Conformance**, and **Notice**. Local CLI products skip the endpoint step. See [What the first run looks like](#what-the-first-run-looks-like) below.
 
 </Step>
 
@@ -72,7 +70,7 @@ Trust the directory when prompted, leaving "read files" enabled so Diffgazer can
 
 <Step title="Start a review">
 
-From the main menu, choose `Review Unstaged` (or `Review Staged`) to start a review. At this point, Diffgazer sends the diff and prompt content to the provider you selected under that provider's policy.
+From the main menu, choose `Review Unstaged` (or `Review Staged`). At this point, Diffgazer sends the diff and prompt content to the admitted product you configured under that product's policy.
 
 </Step>
 
@@ -88,47 +86,62 @@ Skim the summary, press Enter to open the full review, then move through the iss
 
 ## What the first run looks like
 
-On first launch Diffgazer has no saved configuration, so the browser opens straight into the setup wizard. It walks through six steps in order:
+On first launch Diffgazer has no saved configuration, so the browser opens into the setup wizard. The steps come from the selected product's setup plan: product selection, endpoint binding, authentication, exact model selection, conformance, and the product notice.
 
-- **Secrets storage.** Where your API keys live: a plaintext JSON file saved with `0600` permissions, or your operating system keyring.
-- **Provider.** The AI provider to review with. The list is generated from the providers Diffgazer supports, and the top option is preselected.
-- **API key.** Paste your key, or point Diffgazer at the provider's environment variable if you already export one.
-- **Model.** The model to run. The list loads from the provider, with recommended and free-tier models tagged.
-- **Analysis.** Which review agents run. All five are on by default: correctness, security, performance, simplicity, and tests.
-- **Agent execution.** Run agents one after another (sequential, which works on every tier) or all at once (parallel, which is faster but more likely to hit rate limits on free tiers).
+### Hosted API setup (Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Qwen International, Moonshot Open Platform, Mistral)
 
-Finish with **Complete Setup**. For a step-by-step tour of every option, see [onboarding](/app/web/onboarding).
+1. Pick the product from the thirteen selectable entries.
+2. Bind the allowed endpoint and, when required, region and workspace.
+3. Choose how the credential is supplied: **Enter credential now** for a write-only literal, or **Use environment reference** to bind the product's environment variable. The variable name is fixed per product — there is nothing to type.
+4. Select an exact discovered model ID.
+5. Confirm conformance for the configured tuple and model.
+6. Review and accept the product's billing and privacy notice.
+
+Example environment-reference flow without embedding a secret:
+
+```bash
+export GOOGLE_API_KEY=your-provider-key
+diffgazer
+```
+
+In the wizard, choose **Use environment reference**. Diffgazer records the reference, resolves `GOOGLE_API_KEY` on the server side, and never stores the value. See [Environment variables](/app/reference/environment-variables) for each product's name.
+
+### Local HTTP setup (Ollama, Local OpenAI-compatible)
+
+1. Pick Ollama or Local OpenAI-compatible.
+2. Bind the validated loopback endpoint and start your local server there (`http://127.0.0.1:11434` for Ollama, `http://127.0.0.1:1234/v1` for LM Studio, or `http://127.0.0.1:8080/v1` for llama.cpp).
+3. Leave authentication as-is unless the server expects a bearer token; tick **This server requires a bearer token** and supply it if it does.
+4. Select an exact model listed by the local server.
+5. Confirm conformance, then run **Test** until readiness is **ready** or remediation tells you to start the server, use a loopback endpoint, or install a review-capable model.
+6. Review and accept the local billing and privacy notice.
+
+There is no API key step: local HTTP products never store hosted credentials.
+
+### Local CLI setup (OpenAI Codex CLI, GitHub Copilot CLI)
+
+1. Pick the CLI product. Local CLI products have no endpoint step.
+2. Install and sign in with the vendor CLI using its own tooling, then point the authentication step at that installation. Diffgazer uses **vendor-managed local auth** and does not ask for CLI tokens or auth file paths.
+3. Select an exact model.
+4. Confirm conformance, then run **Inspect** and **Test** until readiness is **ready** or **unsupported** with explicit remediation if the installed CLI version, account, or policy does not satisfy the pinned review profile.
+5. Review and accept the account notice.
 
 ## Trust the directory
 
-Before the first review, Diffgazer asks you to trust the current repository. The trust screen shows the target directory and a permissions list. "Read files" is enabled by default and is what a review needs; "run commands" is unavailable today. Choose **Trust & Continue** to save the grant for this directory.
-
-Trust is per directory. If you skip it, the menu's review actions stay blocked and starting one shows a "Repository Not Trusted" message.
+Before the first review, Diffgazer asks you to trust the current repository. Choose **Trust & Continue** to save the grant for this directory. If you skip it, review actions stay blocked.
 
 ## Run a review
 
-The main menu offers two ways to review your changes:
-
-- **Review Unstaged** looks at your working-tree changes that are not yet staged.
-- **Review Staged** looks at changes you have already `git add`-ed.
-
-Pick one and Diffgazer collects the diff, gathers surrounding code as context, and streams the run live. While it works you see a progress overview, the active agents, and a live activity log. If a repo has nothing to review in the mode you picked, Diffgazer says so and offers to switch modes instead. See [reviewing](/app/web/reviewing) for the run screen in detail.
+The main menu offers **Review Unstaged** and **Review Staged**. Pick one and Diffgazer collects the diff, gathers context, and streams the run live. See [reviewing](/app/web/reviewing) for the run screen in detail.
 
 ## Read the issues
 
-When the run finishes you land on a summary: total issues, files with issues, a breakdown by severity, and the top issues. Press Enter to open the full review.
-
-The full review is a two-pane layout. The left pane lists every issue and lets you filter by severity (blocker, high, medium, low, nit). The right pane shows the selected issue across a few tabs:
-
-- **Details.** The symptom, why it matters, a fix plan you can check off, and any suggested tests.
-- **Explain.** The rationale and recommendation in prose.
-- **Trace.** The steps the agent took, when that data is available.
-- **Patch.** A suggested patch, rendered with the diff viewer, when the issue includes one.
+When the run finishes you land on a summary with severity breakdown and top issues. Press Enter to open the full review and read Details, Explain, Trace, and Patch tabs for each issue.
 
 ## Where to go next
 
-- [Reviewing in the web environment](/app/web/reviewing) covers reading issues, drilling into a diff, and re-running a review.
-- [CLI reference](/app/reference/cli) lists every command and flag, including the terminal UI.
-- [Troubleshooting](/app/operations/troubleshooting) helps when setup looks complete but a review still will not start.
+- [Reviewing in the web environment](/app/web/reviewing)
+- [CLI reference](/app/reference/cli)
+- [Troubleshooting](/app/operations/troubleshooting)
+- [Configuration](/app/reference/configuration)
 
-> Tip: Stop Diffgazer with `Ctrl+C` in the terminal where it is running. That signals a graceful shutdown of the local server.
+> Tip: Stop Diffgazer with `Ctrl+C` in the terminal where it is running.

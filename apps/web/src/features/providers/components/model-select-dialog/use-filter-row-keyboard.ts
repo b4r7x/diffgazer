@@ -6,6 +6,7 @@ interface UseModelFiltersOptions {
   inFilters: boolean;
   inSearch: boolean;
   hasFilteredModels: boolean;
+  discoveryStatus: "idle" | "loading" | "passed" | "skipped" | "error";
   cycleTierFilter: () => void;
   registerFilterButton: (index: number, node: HTMLButtonElement | null) => void;
   focusFilterAtIndex: (index: number) => void;
@@ -31,6 +32,7 @@ export function useModelFilters({
   inFilters,
   inSearch,
   hasFilteredModels,
+  discoveryStatus,
   cycleTierFilter,
   registerFilterButton,
   focusFilterAtIndex,
@@ -51,7 +53,9 @@ export function useModelFilters({
     { enabled: open && inFilters, preventDefault: true },
   );
 
-  useKey("f", cycleTierFilter, { enabled: open && !inSearch });
+  useKey("f", cycleTierFilter, {
+    enabled: open && !inSearch && discoveryStatus === "passed",
+  });
 
   const getFilterButtonProps = (index: number) => ({
     ref: (node: HTMLButtonElement | null) => registerFilterButton(index, node),

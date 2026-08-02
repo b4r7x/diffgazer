@@ -1,18 +1,19 @@
-import { getCatalogFallbackNotice } from "@diffgazer/core/catalog";
-import { useModelSource } from "@diffgazer/core/providers";
-import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
-import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
+import type { OnboardingConfigurationDraft } from "@diffgazer/core/onboarding";
+import { PRODUCT_REGISTRY, useModelSource } from "@diffgazer/core/providers";
+import type { ClientConfigurationSummary, ModelInfo } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { useEffect, useRef, useState } from "react";
 import { resolveAvailableValue } from "../../lib/select";
 
+type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
+
 interface ModelStepProps {
-  provider: AIProvider;
+  configurationInput: OnboardingConfigurationDraft;
+  discoveryConfiguration?: SupportedConfigurationSummary | null;
   value: string | null;
   onChange: (model: string) => void;
   onCommit?: (model: string) => void;
@@ -20,9 +21,82 @@ interface ModelStepProps {
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
-interface ModelInfoListProps extends Omit<ModelStepProps, "provider"> {
-  subtitle: string;
-  models: ModelInfo[];
+function modelTierFor(
+  transportFamily: OnboardingConfigurationDraft["transportFamily"],
+): ModelInfo["tier"] {
+  return transportFamily === "hosted-api" ? "paid" : "free";
+}
+
+function derivePolicyModels(configurationInput: OnboardingConfigurationDraft): ModelInfo[] {
+  if (configurationInput.transportFamily === "hosted-api") {
+    const policy = PRODUCT_REGISTRY[configurationInput.productId].modelPolicy;
+    if (policy.kind === "discovered-allowlist") {
+      return policy.modelIds.map((id) => ({
+        id,
+        name: id,
+        description: "",
+        tier:
+          "higherCostModelIds" in policy &&
+          policy.higherCostModelIds?.some((candidate) => candidate === id)
+            ? "paid"
+            : "free",
+        recommended: id === policy.suggestedModelId,
+      }));
+    }
+    if (
+      policy.kind === "discovered-exact" &&
+      "suggestedModelId" in policy &&
+      policy.suggestedModelId
+    ) {
+      return [
+        {
+          id: policy.suggestedModelId,
+          name: policy.suggestedModelId,
+          description: "Exact model required by the selected configuration tuple.",
+          tier: modelTierFor(configurationInput.transportFamily),
+          recommended: true,
+        },
+      ];
+    }
+    if (policy.kind === "pinned-downstream-route") {
+      return [
+        {
+          id: "openrouter/anthropic/claude-3.7-sonnet",
+          name: "Pinned downstream route",
+          description: "OpenRouter routes to an exact downstream model ID.",
+          tier: "paid",
+        },
+      ];
+    }
+    return [];
+  }
+
+  const policy = PRODUCT_REGISTRY[configurationInput.productId].modelPolicy;
+  if (
+    policy.kind === "discovered-exact" &&
+    "suggestedModelId" in policy &&
+    policy.suggestedModelId
+  ) {
+    const suggestedModelId = String(policy.suggestedModelId);
+    return [
+      {
+        id: suggestedModelId,
+        name: suggestedModelId,
+        description: "",
+        tier: "free",
+        recommended: true,
+      },
+    ];
+  }
+
+  return [
+    {
+      id: configurationInput.transportFamily === "local-cli" ? "gpt-5-codex" : "local-model",
+      name: configurationInput.transportFamily === "local-cli" ? "gpt-5-codex" : "local-model",
+      description: "Exact model discovered for the configured transport tuple.",
+      tier: "free",
+    },
+  ];
 }
 
 function ModelInfoList({
@@ -33,7 +107,15 @@ function ModelInfoList({
   onCommit,
   enabled = true,
   onBoundaryReached,
-}: ModelInfoListProps) {
+}: {
+  subtitle: string;
+  models: ModelInfo[];
+  value: string | null;
+  onChange: (model: string) => void;
+  onCommit?: (model: string) => void;
+  enabled?: boolean;
+  onBoundaryReached?: (direction: "up" | "down") => void;
+}) {
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const effectiveHighlighted = resolveAvailableValue(
     models.map((model) => model.id),
@@ -41,26 +123,19 @@ function ModelInfoList({
     value,
   );
 
-  const handleChange = (nextValue: string) => {
-    setHighlighted(nextValue);
-    onChange(nextValue);
-  };
-
-  const handleEnter = (nextValue: string) => {
-    setHighlighted(nextValue);
-    onCommit?.(nextValue);
-  };
-
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground font-mono">{subtitle}</p>
       <RadioGroup
         aria-label="Available models"
         value={value ?? undefined}
-        onChange={handleChange}
+        onChange={(nextValue) => {
+          setHighlighted(nextValue);
+          onChange(nextValue);
+        }}
         highlighted={enabled ? effectiveHighlighted : null}
         onHighlightChange={setHighlighted}
-        onEnter={handleEnter}
+        onEnter={(nextValue) => onCommit?.(nextValue)}
         onNavigationBoundaryReached={(direction, event) => {
           const verticalDirection = toVerticalBoundaryDirection(direction, event.key);
           if (verticalDirection !== null) onBoundaryReached?.(verticalDirection);
@@ -78,11 +153,11 @@ function ModelInfoList({
             label={
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 {model.name}
-                {model.recommended && (
+                {model.recommended ? (
                   <Badge variant="success" size="sm" className="text-3xs">
                     RECOMMENDED
                   </Badge>
-                )}
+                ) : null}
                 <Badge
                   variant={model.tier === "free" ? "success" : "neutral"}
                   size="sm"
@@ -92,8 +167,6 @@ function ModelInfoList({
                 </Badge>
               </span>
             }
-            // An empty description means the name already said everything, so the
-            // row keeps one line and adds no empty node to aria-describedby.
             description={model.description || undefined}
           />
         ))}
@@ -102,33 +175,50 @@ function ModelInfoList({
   );
 }
 
-export function ModelStep({
-  provider,
+function PolicyModelStep({
+  configurationInput,
   value,
   onChange,
   onCommit,
   enabled = true,
   onBoundaryReached,
-}: ModelStepProps) {
-  const { models, loading, error, isOpenRouter, source, fetchedAt, retry } = useModelSource(
-    true,
-    provider,
+}: Omit<ModelStepProps, "discoveryConfiguration">) {
+  const product = PRODUCT_REGISTRY[configurationInput.productId];
+  return (
+    <ModelInfoList
+      subtitle={`Select an exact model for ${product.presentation.name}.`}
+      models={derivePolicyModels(configurationInput)}
+      value={value}
+      onChange={onChange}
+      onCommit={onCommit}
+      enabled={enabled}
+      onBoundaryReached={onBoundaryReached}
+    />
   );
+}
+
+function DiscoveryModelStep({
+  configurationInput,
+  discoveryConfiguration,
+  value,
+  onChange,
+  onCommit,
+  enabled = true,
+  onBoundaryReached,
+}: ModelStepProps & { discoveryConfiguration: SupportedConfigurationSummary }) {
   const loadingStateRef = useRef<HTMLDivElement>(null);
   const retryButtonRef = useRef<HTMLButtonElement>(null);
   const wasLoadingRef = useRef(false);
   const canFocusRecoveryRef = useRef(false);
-  const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
-  const fallbackNotice = getCatalogFallbackNotice(source, fetchedAt);
+  const product = PRODUCT_REGISTRY[configurationInput.productId];
+  const discovery = useModelSource(true, discoveryConfiguration);
 
   useEffect(() => {
-    if (!loading) return;
-
+    if (discovery.status !== "loading") return;
     wasLoadingRef.current = true;
     canFocusRecoveryRef.current = true;
     const ownerDocument = loadingStateRef.current?.ownerDocument;
     if (!ownerDocument) return;
-
     const preserveUserFocus = () => {
       canFocusRecoveryRef.current = false;
     };
@@ -138,62 +228,68 @@ export function ModelStep({
       ownerDocument.removeEventListener("pointerdown", preserveUserFocus, true);
       ownerDocument.removeEventListener("focusin", preserveUserFocus, true);
     };
-  }, [loading]);
+  }, [discovery.status]);
 
   useEffect(() => {
-    if (loading || !wasLoadingRef.current) return;
-
+    if (discovery.status === "loading" || !wasLoadingRef.current) return;
     wasLoadingRef.current = false;
-    const isRecovery = Boolean(error) || models.length === 0;
+    const isRecovery =
+      discovery.status === "error" ||
+      discovery.status === "skipped" ||
+      (discovery.status === "passed" && discovery.models.length === 0);
     if (isRecovery && canFocusRecoveryRef.current) retryButtonRef.current?.focus();
     canFocusRecoveryRef.current = false;
-  }, [error, loading, models.length]);
+  }, [discovery.status, discovery.models.length]);
 
-  if (loading) {
+  if (discovery.status === "loading" || discovery.status === "idle") {
     return (
       <div ref={loadingStateRef} className="space-y-4">
-        <Spinner variant="braille" className="text-muted-foreground">
-          {isOpenRouter ? "Loading OpenRouter models..." : "Loading models..."}
+        <Spinner variant="braille" className="text-muted-foreground" role="status">
+          Discovering models for the configured tuple...
         </Spinner>
       </div>
     );
   }
 
-  if (error) {
+  if (discovery.status === "error") {
     return (
       <div className="space-y-4">
         <p role="alert" className="text-sm text-error-text font-mono">
-          Failed to load models: {error}
+          {discovery.error}
         </p>
-        <Button ref={retryButtonRef} type="button" variant="secondary" onClick={retry}>
+        <Button ref={retryButtonRef} type="button" variant="secondary" onClick={discovery.retry}>
           Retry
         </Button>
       </div>
     );
   }
 
-  if (models.length === 0) {
+  if (discovery.status === "skipped") {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground font-mono">{discovery.reason}</p>
+        <Button ref={retryButtonRef} type="button" variant="secondary" onClick={discovery.retry}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  if (discovery.models.length === 0) {
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground font-mono">No models available.</p>
-        {fallbackNotice ? (
-          <output className="text-sm text-warning-text font-mono">{fallbackNotice}</output>
-        ) : null}
-        <Button ref={retryButtonRef} type="button" variant="secondary" onClick={retry}>
+        <Button ref={retryButtonRef} type="button" variant="secondary" onClick={discovery.retry}>
           Retry
         </Button>
       </div>
     );
   }
 
-  const list = (
+  return (
     <ModelInfoList
-      subtitle={
-        isOpenRouter
-          ? "Select a model from OpenRouter."
-          : `Select a model for ${providerInfo?.name ?? provider}.`
-      }
-      models={models}
+      subtitle={`Select an exact model for ${product.presentation.name}.`}
+      models={discovery.models}
       value={value}
       onChange={onChange}
       onCommit={onCommit}
@@ -201,21 +297,39 @@ export function ModelStep({
       onBoundaryReached={onBoundaryReached}
     />
   );
+}
 
-  const content = isOpenRouter ? <ScrollArea className="max-h-64">{list}</ScrollArea> : list;
+export function ModelStep({
+  configurationInput,
+  discoveryConfiguration = null,
+  value,
+  onChange,
+  onCommit,
+  enabled = true,
+  onBoundaryReached,
+}: ModelStepProps) {
+  if (discoveryConfiguration) {
+    return (
+      <DiscoveryModelStep
+        configurationInput={configurationInput}
+        discoveryConfiguration={discoveryConfiguration}
+        value={value}
+        onChange={onChange}
+        onCommit={onCommit}
+        enabled={enabled}
+        onBoundaryReached={onBoundaryReached}
+      />
+    );
+  }
 
-  if (!fallbackNotice) return content;
   return (
-    <div className="space-y-3">
-      <output className="flex items-center justify-between gap-3 text-sm text-warning-text">
-        <span>{fallbackNotice}</span>
-        {/* shrink-0: the notice is the flexible half of the row, so the control keeps its
-            label on one line instead of breaking mid-word. */}
-        <Button type="button" size="sm" variant="secondary" onClick={retry} className="shrink-0">
-          Retry
-        </Button>
-      </output>
-      {content}
-    </div>
+    <PolicyModelStep
+      configurationInput={configurationInput}
+      value={value}
+      onChange={onChange}
+      onCommit={onCommit}
+      enabled={enabled}
+      onBoundaryReached={onBoundaryReached}
+    />
   );
 }

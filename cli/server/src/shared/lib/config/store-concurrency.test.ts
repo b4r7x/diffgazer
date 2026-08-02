@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
 import {
   configPath,
+  diffgazerHome,
   fsHooks,
-  keyring,
   loadStore,
   loadStoreFactory,
   readJson,
@@ -10,205 +12,179 @@ import {
   writeJson,
 } from "./store.test-support.js";
 
-describe("config store", () => {
-  it("refreshes stale config before writing provider changes", async () => {
-    writeJson(configPath(), {
-      settings: { secretsStorage: "file", theme: "auto" },
-      providers: [],
-    });
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
+
+const v2Config = (records: unknown[] = []) => ({
+  schemaVersion: 2,
+  settings: {},
+  selectedConfigurationId: null,
+  configurations: records,
+});
+
+const literalSecretPathFor = (configurationId: string, revision: number): string =>
+  join(diffgazerHome, "credentials", `${configurationId}-${revision}.key`);
+
+const createGeminiAction = (value: string) =>
+  ({
+    action: "create",
+    input: {
+      transportFamily: "hosted-api",
+      productId: "gemini",
+      endpoint: GEMINI_ENDPOINT,
+      credential: { kind: "literal", value },
+    },
+  }) as const;
+
+const updateGeminiAction = (configurationId: string, expectedRevision: number) =>
+  ({
+    action: "update",
+    configurationId,
+    expectedRevision,
+    input: { transportFamily: "hosted-api", productId: "gemini", endpoint: GEMINI_ENDPOINT },
+    acknowledgement: {
+      status: "accepted",
+      noticeId: "gemini-hosted-api",
+      noticeVersion: 1,
+      acceptedAt: "2026-01-02T00:00:00.000Z",
+    },
+  }) as const;
+
+describe("config store concurrency", () => {
+  it("serializes V2 actions across store instances so the second sees the first's persisted state", async () => {
+    writeJson(configPath(), v2Config());
     const createStore = await loadStoreFactory();
     const storeA = createStore();
     const storeB = createStore();
 
-    await storeB.updateSettings({ theme: "dark" });
-    await storeA.saveProviderCredentials({
-      provider: "gemini",
-      apiKey: "new-key",
-      model: "gemini-2.5-flash",
-    });
+    const created = await storeA.runConfigurationAction(createGeminiAction("shared-key"));
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const configurationId = created.value.configuration?.configurationId;
+    if (!configurationId) throw new Error("create response requires a configuration");
 
-    expect(readJson<{ settings: { theme: string } }>(configPath())).toMatchObject({
-      settings: { theme: "dark" },
+    const inspected = await storeB.runConfigurationAction({
+      action: "inspect",
+      configurationId,
     });
+    expect(inspected).toMatchObject({ ok: true, value: { status: "succeeded" } });
   });
 
-  it("does not resurrect deleted secrets from stale in-memory state", async () => {
-    writeJson(configPath(), {
-      settings: { secretsStorage: "file" },
-      providers: [{ provider: "gemini", hasApiKey: true, isActive: false }],
-    });
-    writeJson(secretsPath(), { providers: { gemini: "existing-key" } });
+  it("does not resurrect deleted credentials from stale in-memory state", async () => {
+    writeJson(configPath(), v2Config());
     const createStore = await loadStoreFactory();
     const storeA = createStore();
     const storeB = createStore();
 
-    await storeB.deleteProviderCredentials("gemini");
-    await storeA.saveProviderCredentials({
-      provider: "openrouter",
-      apiKey: "new-key",
-      model: "openrouter/model",
+    const created = await storeA.runConfigurationAction(createGeminiAction("delete-me-key"));
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const configurationId = created.value.configuration?.configurationId;
+    if (!configurationId) throw new Error("create response requires a configuration");
+
+    const deleted = await storeB.runConfigurationAction({
+      action: "delete",
+      configurationId,
+      expectedRevision: 1,
     });
+    expect(deleted).toMatchObject({ ok: true, value: { status: "succeeded" } });
 
-    expect(readJson<{ providers: Record<string, string> }>(secretsPath())).toEqual({
-      providers: { openrouter: "new-key" },
-    });
-  });
+    const staleUpdate = await storeA.runConfigurationAction(updateGeminiAction(configurationId, 1));
+    expect(staleUpdate).toMatchObject({ ok: false, error: { code: "CONFIGURATION_NOT_FOUND" } });
 
-  it("serializes refresh through persist so a later explicit activation wins", async () => {
-    writeJson(configPath(), {
-      settings: { secretsStorage: "file" },
-      providers: [
-        { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
-        { provider: "openrouter", hasApiKey: true, isActive: false, model: "or/model" },
-      ],
-    });
-    writeJson(secretsPath(), { providers: { gemini: "gemini-key", openrouter: "router-key" } });
-    const createStore = await loadStoreFactory();
-    const storeA = createStore();
-    const storeB = createStore();
+    const replacement = await storeA.runConfigurationAction(createGeminiAction("replacement-key"));
+    expect(replacement.ok).toBe(true);
+    if (!replacement.ok) return;
 
-    let releaseFirstWrite = () => {};
-    const firstWriteHeld = new Promise<void>((resolve) => {
-      releaseFirstWrite = resolve;
-    });
-    let reportFirstWrite = () => {};
-    const firstWriteStarted = new Promise<void>((resolve) => {
-      reportFirstWrite = resolve;
-    });
-    let configWriteCount = 0;
-    fsHooks.writeJsonFileHook = async (filePath, data) => {
-      if (filePath.endsWith("config.json")) {
-        configWriteCount += 1;
-        if (configWriteCount === 1) {
-          reportFirstWrite();
-          await firstWriteHeld;
-        }
-      }
-      writeJson(filePath, data);
-    };
-
-    const activationB = storeB.activateProvider({ provider: "openrouter" });
-    await firstWriteStarted;
-    const activationA = storeA.activateProvider({ provider: "gemini" });
-    releaseFirstWrite();
-    const [resultA, resultB] = await Promise.all([activationA, activationB]);
-    expect(resultA).toEqual({
-      ok: true,
-      value: expect.objectContaining({ provider: "gemini" }),
-    });
-    expect(resultB).toEqual({
-      ok: true,
-      value: expect.objectContaining({ provider: "openrouter" }),
-    });
-
-    let mtimeGeneration = 0;
-    fsHooks.getFileMtimeMsHook = (filePath) => {
-      if (!filePath.endsWith("config.json")) return null;
-      mtimeGeneration += 1;
-      return mtimeGeneration;
-    };
-
-    const persisted = readJson<{
-      providers: Array<{ provider: string; isActive: boolean }>;
-    }>(configPath());
-    expect(persisted.providers.filter((provider) => provider.isActive)).toEqual([
-      expect.objectContaining({ provider: "gemini" }),
-    ]);
-    expect(storeA.getActiveProvider()?.provider).toBe("gemini");
-    expect(storeB.getActiveProvider()?.provider).toBe("gemini");
-  });
-
-  it("serializes concurrent mutators so the second sees the first's settled state", async () => {
-    writeJson(configPath(), { settings: { theme: "auto" }, providers: [] });
-    const store = await loadStore();
-
-    const order: string[] = [];
-    let releaseFirstWrite: () => void = () => {};
-    const firstWriteHeld = new Promise<void>((resolve) => {
-      releaseFirstWrite = resolve;
-    });
-    let reportFirstWrite: () => void = () => {};
-    const firstWriteStarted = new Promise<void>((resolve) => {
-      reportFirstWrite = resolve;
-    });
-
-    let writeCount = 0;
-    fsHooks.writeJsonFileHook = async (filePath, data) => {
-      writeCount += 1;
-      order.push(`write:${writeCount}`);
-      // Hold only the first config write open to prove the second mutation queues.
-      if (writeCount === 1) {
-        reportFirstWrite();
-        await firstWriteHeld;
-      }
-      writeJson(filePath, data);
-    };
-
-    const first = store.updateSettings({ theme: "dark" });
-    const second = store.updateSettings({ severityThreshold: "high" });
-
-    await firstWriteStarted;
-    expect(order).toEqual(["write:1"]);
-
-    releaseFirstWrite();
-    await first;
-    await second;
-
-    expect(order).toEqual(["write:1", "write:2"]);
-    expect(store.getSettings()).toMatchObject({ theme: "dark", severityThreshold: "high" });
-  });
-
-  it("serializes a held startup reconciliation before a newer credential save", async () => {
-    writeJson(configPath(), {
-      settings: { secretsStorage: "keyring" },
-      providers: [{ provider: "gemini", hasApiKey: true, isActive: true }],
-    });
-    writeJson(secretsPath(), {
-      providers: {
-        gemini: "stranded-literal-key",
-        zai: { kind: "env", varName: "ZAI_API_KEY" },
-      },
-    });
-    let keyringValue: string | null = null;
-    keyring.readKeyringSecret.mockImplementation(() => ({ ok: true, value: keyringValue }));
-    keyring.writeKeyringSecret.mockImplementation((_key: string, value: string) => {
-      keyringValue = value;
-      return { ok: true, value: undefined };
-    });
-
-    let releaseStartupWrite = () => {};
-    const startupWriteHeld = new Promise<void>((resolve) => {
-      releaseStartupWrite = resolve;
-    });
-    let secretsWriteCount = 0;
-    fsHooks.writeJsonFileHook = async (filePath, data, mode) => {
-      const { writeJsonFile } = await vi.importActual<typeof import("../fs.js")>("../fs.js");
-      if (filePath === secretsPath()) {
-        secretsWriteCount += 1;
-        if (secretsWriteCount === 1) await startupWriteHeld;
-      }
-      await writeJsonFile(filePath, data, mode);
-    };
-
-    const store = await loadStore();
-    await vi.waitFor(() => expect(secretsWriteCount).toBe(1));
-
-    const save = store.saveProviderCredentials({
-      provider: "gemini",
-      apiKey: { kind: "env", varName: "GOOGLE_API_KEY" },
-      model: "gemini-2.5-flash",
-    });
-    await Promise.resolve();
-    expect(secretsWriteCount).toBe(1);
-
-    releaseStartupWrite();
-    await expect(save).resolves.toMatchObject({ ok: true });
-
-    expect(readJson<{ providers: Record<string, unknown> }>(secretsPath()).providers).toMatchObject(
-      {
-        gemini: { kind: "env", varName: "GOOGLE_API_KEY" },
-        zai: { kind: "env", varName: "ZAI_API_KEY" },
-      },
+    const secrets = readJson<{ bindings: Array<{ configurationId: string }> }>(secretsPath());
+    expect(secrets.bindings.some((binding) => binding.configurationId === configurationId)).toBe(
+      false,
     );
+    const config = readJson<{ configurations: Array<{ configurationId: string }> }>(configPath());
+    expect(config.configurations.some((record) => record.configurationId === configurationId)).toBe(
+      false,
+    );
+  });
+
+  it("rejects a stale revision when another store already updated the record", async () => {
+    writeJson(configPath(), v2Config());
+    const createStore = await loadStoreFactory();
+    const storeA = createStore();
+    const storeB = createStore();
+
+    const created = await storeA.runConfigurationAction(createGeminiAction("first-key"));
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const configurationId = created.value.configuration?.configurationId;
+    if (!configurationId) throw new Error("create response requires a configuration");
+
+    const firstUpdate = await storeB.runConfigurationAction(updateGeminiAction(configurationId, 1));
+    expect(firstUpdate.ok).toBe(true);
+
+    const staleUpdate = await storeA.runConfigurationAction(updateGeminiAction(configurationId, 1));
+    expect(staleUpdate).toMatchObject({ ok: false, error: { code: "CONFIGURATION_CONFLICT" } });
+
+    const persisted = readJson<{ configurations: Array<{ revision: number }> }>(configPath());
+    expect(persisted.configurations[0]?.revision).toBe(2);
+  });
+
+  it("serializes concurrent creates on one store so every mutation is persisted", async () => {
+    writeJson(configPath(), v2Config());
+    const store = await loadStore();
+
+    const results = await Promise.all([
+      store.runConfigurationAction(createGeminiAction("key-a")),
+      store.runConfigurationAction(createGeminiAction("key-b")),
+      store.runConfigurationAction(createGeminiAction("key-c")),
+    ]);
+
+    const configurationIds = results.map((result) => {
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error("concurrent create failed");
+      return result.value.configuration?.configurationId;
+    });
+    expect(new Set(configurationIds).size).toBe(3);
+
+    const persisted = readJson<{ configurations: Array<{ configurationId: string }> }>(
+      configPath(),
+    );
+    expect(persisted.configurations).toHaveLength(3);
+    for (const configurationId of configurationIds) {
+      expect(
+        persisted.configurations.some((record) => record.configurationId === configurationId),
+      ).toBe(true);
+    }
+  });
+
+  it("restores the config file when the secrets write fails midway through a delete", async () => {
+    writeJson(configPath(), v2Config());
+    const store = await loadStore();
+    const created = await store.runConfigurationAction(createGeminiAction("rollback-key"));
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const configurationId = created.value.configuration?.configurationId;
+    if (!configurationId) throw new Error("create response requires a configuration");
+    const before = readFileSync(configPath(), "utf8");
+    fsHooks.removeFileSyncHook = (filePath) => {
+      if (filePath === secretsPath()) throw new Error("Injected secrets removal failure");
+      return false;
+    };
+
+    const deleted = await store.runConfigurationAction({
+      action: "delete",
+      configurationId,
+      expectedRevision: 1,
+    });
+
+    expect(deleted).toMatchObject({ ok: false, error: { code: "PERSIST_FAILED" } });
+    expect(readFileSync(configPath(), "utf8")).toBe(before);
+    expect(existsSync(literalSecretPathFor(configurationId, 1))).toBe(true);
+    expect(readFileSync(literalSecretPathFor(configurationId, 1), "utf8")).toBe("rollback-key");
+
+    fsHooks.removeFileSyncHook = null;
+    const inspected = await store.runConfigurationAction({
+      action: "inspect",
+      configurationId,
+    });
+    expect(inspected).toMatchObject({ ok: true, value: { status: "succeeded" } });
   });
 });

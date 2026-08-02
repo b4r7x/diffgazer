@@ -24,8 +24,8 @@ Run one command, get a review. Only the diff and prompt content go to the provid
 - **Review pipeline** - diff, context, review, enrich, and report steps run in order.
 - **Web and terminal modes** - use the browser UI by default, or the Ink terminal UI when you want to stay in the shell.
 - **Issue details** - read findings inline against your diff with evidence and fix guidance.
-- **Provider choice** - Gemini, Z.ai, Z.ai Coding Plan, OpenRouter, Groq, and Cerebras.
-- **Privacy controls** - localhost binding, host allowlist, CSRF protection, per-run token, and explicit repo trust.
+- **Provider choice** - thirteen selectable products across hosted API, local HTTP, and local CLI transports (see [providers reference](https://docs.b4r7.dev/app/reference/providers)).
+- **Privacy controls** - localhost binding, host allowlist, CSRF protection, per-run token, explicit repo trust, and server-only secret/admission boundaries.
 - **Registry and packages** - `@diffgazer/ui`, `@diffgazer/keys`, and `dgadd` support copy-first and package consumption paths.
 
 ## Quick Start
@@ -36,7 +36,7 @@ cd your-project
 diffgazer
 ```
 
-First run walks you through provider setup, credentials storage, model selection, and repo trust.
+First run walks you through product selection, endpoint binding, authentication, exact model selection, conformance, the product notice, and repo trust. The removed Z.AI Coding Plan record is not selectable; create a new Z.AI configuration instead. HTTP compatibility is not authorization, and the old secret is retained but never copied, tested, or sent until you explicitly delete the removed record.
 
 Diffgazer is also a pnpm monorepo for the CLI, docs app, shared registry tooling, keyboard hooks, and UI packages.
 

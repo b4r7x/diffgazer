@@ -1,7 +1,12 @@
 import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SavedReview } from "@diffgazer/core/schemas/review";
+import {
+  hashExecutionReceiptFingerprintSync,
+  type SavedReview,
+  SavedReviewSchema,
+  TERMINAL_OUTCOMES,
+} from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -48,6 +53,91 @@ function makeReview(id: string = REVIEW_ID): SavedReview {
     result: { issues: [makeIssue({ id: "i1", severity: "high", file: "a.ts" })] },
     gitContext: { branch: "main", commit: "abc123", fileCount: 1, additions: 1, deletions: 0 },
   };
+}
+
+const limits = {
+  maxInputTokens: 20_000,
+  maxOutputTokens: 4_000,
+  maxResponseBytes: 1_048_576,
+  wallTimeMs: 120_000,
+  maxRetries: 2,
+  maxConcurrency: 1,
+  maxCostUsd: 0.5,
+} as const;
+
+function makeExecutionReceipt(
+  outcome: (typeof TERMINAL_OUTCOMES)[number],
+  fingerprintSeed: string,
+) {
+  const receipt = {
+    schemaVersion: 1 as const,
+    executionFingerprint: "0".repeat(64),
+    configurationId: `configuration-${fingerprintSeed}`,
+    configurationRevision: 1,
+    credentialReferenceIdentity: "c".repeat(64),
+    installationId: null,
+    productId: "openrouter" as const,
+    transportFamily: "hosted-api" as const,
+    modelId: "openai/gpt-4.1-mini",
+    normalizedEndpoint: "https://openrouter.ai/api/v1",
+    runtime: { identity: "diffgazer-server", version: "1.2.3" },
+    structuredOutputSchemaSha256: "a".repeat(64),
+    noticeVersion: 1,
+    limits,
+    attemptCount: 1,
+    startedAt: "2026-07-31T10:00:00.000Z",
+    finishedAt: "2026-07-31T10:00:05.000Z",
+    usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+    usageAvailability: "reported" as const,
+    outcome,
+  };
+  return {
+    ...receipt,
+    executionFingerprint: hashExecutionReceiptFingerprintSync({
+      configurationId: receipt.configurationId,
+      configurationRevision: receipt.configurationRevision,
+      authentication: null,
+      credentialReferenceIdentity: receipt.credentialReferenceIdentity,
+      installationId: receipt.installationId,
+      productId: receipt.productId,
+      transportFamily: receipt.transportFamily,
+      modelId: receipt.modelId,
+      normalizedEndpoint: receipt.normalizedEndpoint,
+      region: null,
+      workspaceAccountReference: null,
+      runtime: receipt.runtime,
+      structuredOutputSchemaSha256: receipt.structuredOutputSchemaSha256,
+      noticeVersion: receipt.noticeVersion,
+      limits: receipt.limits,
+    }),
+  };
+}
+
+function makeReviewWithExecution(
+  id: string,
+  outcome: (typeof TERMINAL_OUTCOMES)[number],
+  fingerprintSeed: string,
+): SavedReview {
+  const review = makeReview(id);
+  const issue = review.result.issues[0];
+  expect(issue).toBeDefined();
+  if (!issue) {
+    throw new Error("makeReview fixture must include at least one issue");
+  }
+  const receipt = makeExecutionReceipt(outcome, fingerprintSeed);
+  return SavedReviewSchema.parse({
+    ...review,
+    metadata: {
+      ...review.metadata,
+      issueCount: outcome === "completed" ? 1 : 0,
+      highCount: outcome === "completed" ? 1 : 0,
+    },
+    result: outcome === "completed" ? review.result : { issues: [] },
+    execution: {
+      receipt,
+      result: { issues: outcome === "completed" ? [issue] : [] },
+    },
+  });
 }
 
 async function writeRawReview(id: string, content: string): Promise<void> {
@@ -170,5 +260,94 @@ describe("reviewStore", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe("WRITE_ERROR");
+  });
+
+  it("persists and reloads the exact durable execution snapshot bytes", async () => {
+    const { reviewStore } = await loadStore();
+    const review = makeReviewWithExecution(REVIEW_ID, "completed", "a");
+
+    const writeResult = await reviewStore.write(review);
+    expect(writeResult.ok).toBe(true);
+
+    const bytes = await readFile(join(reviewsDir, `${REVIEW_ID}.json`), "utf-8");
+    const readResult = await reviewStore.read(REVIEW_ID);
+
+    expect(readResult.ok).toBe(true);
+    if (!readResult.ok) return;
+    expect(bytes).toBe(`${JSON.stringify(readResult.value, null, 2)}\n`);
+    expect(readResult.value.execution?.receipt.executionFingerprint).toBe(
+      review.execution?.receipt.executionFingerprint,
+    );
+    expect(readResult.value.execution?.receipt.usage).toEqual({
+      inputTokens: 10,
+      outputTokens: 5,
+      totalTokens: 15,
+    });
+  });
+
+  it.each(
+    TERMINAL_OUTCOMES.filter((outcome) => outcome !== "completed"),
+  )("persists the exact %s terminal state without completed findings", async (outcome) => {
+    const { reviewStore } = await loadStore();
+    const review = makeReviewWithExecution(REVIEW_ID, outcome, outcome);
+
+    const writeResult = await reviewStore.write(review);
+    expect(writeResult.ok).toBe(true);
+
+    const readResult = await reviewStore.read(REVIEW_ID);
+    expect(readResult.ok).toBe(true);
+    if (!readResult.ok) return;
+    expect(readResult.value.execution?.receipt.outcome).toBe(outcome);
+    expect(readResult.value.result.issues).toEqual([]);
+    expect(readResult.value.execution?.result.issues).toEqual([]);
+  });
+
+  it("isolates execution fingerprints across persisted reviews", async () => {
+    const { reviewStore } = await loadStore();
+    const first = makeReviewWithExecution(REVIEW_ID, "completed", "a");
+    const second = makeReviewWithExecution(
+      "650e8400-e29b-41d4-a716-446655440001",
+      "completed",
+      "b",
+    );
+
+    await reviewStore.write(first);
+    await reviewStore.write(second);
+
+    const firstRead = await reviewStore.read(REVIEW_ID);
+    const secondRead = await reviewStore.read("650e8400-e29b-41d4-a716-446655440001");
+
+    expect(firstRead.ok && secondRead.ok).toBe(true);
+    if (!firstRead.ok || !secondRead.ok) return;
+    expect(firstRead.value.execution?.receipt.executionFingerprint).not.toBe(
+      secondRead.value.execution?.receipt.executionFingerprint,
+    );
+  });
+
+  it("rejects failed or partial execution state presented as completed findings", async () => {
+    const { reviewStore } = await loadStore();
+    const review = makeReviewWithExecution(REVIEW_ID, "transport-failed", "a");
+    const invalid = {
+      ...review,
+      result: makeReview().result,
+    };
+
+    const result = await reviewStore.write(invalid);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("redacts salvage diagnostics from detailed reads", async () => {
+    const { reviewStore } = await loadStore();
+    const review = makeReviewWithExecution(REVIEW_ID, "completed", "a");
+    await reviewStore.write(review);
+
+    const detailed = await reviewStore.readDetailed(REVIEW_ID);
+
+    expect(detailed.ok).toBe(true);
+    if (!detailed.ok) return;
+    expect(detailed.value.diagnostics).toBeNull();
+    expect(JSON.stringify(detailed.value.item)).not.toContain(tempHome);
   });
 });

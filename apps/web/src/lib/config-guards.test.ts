@@ -1,15 +1,17 @@
 import { configQueries } from "@diffgazer/core/api/hooks";
 import { isRedirect } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { makeReadyInitResponse } from "@/testing/configuration-fixtures";
+import { makeShellInitResponse, SHELL_TRUSTED_PROJECT } from "@/testing/shell-fixtures";
 
-const { mockLoadInit } = vi.hoisted(() => ({
-  mockLoadInit: vi.fn(),
+const { mockLoadConfigurationInit } = vi.hoisted(() => ({
+  mockLoadConfigurationInit: vi.fn(),
 }));
 
-// Boundary mock: @/lib/api is the apps/web HTTP-client singleton (createApi wraps fetch); tests provide canned loadInit responses to drive guard behavior.
+// Boundary mock: @/lib/api is the apps/web HTTP-client singleton (createApi wraps fetch); tests provide canned init responses to drive guard behavior.
 vi.mock("@/lib/api", () => ({
   api: {
-    loadInit: (...args: unknown[]) => mockLoadInit(...args),
+    loadConfigurationInit: (...args: unknown[]) => mockLoadConfigurationInit(...args),
   },
 }));
 
@@ -41,34 +43,40 @@ describe("config guards", () => {
   });
 
   it("passes a configured user through requireConfigured", async () => {
-    mockLoadInit.mockResolvedValue({ setup: { isConfigured: true } });
+    mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
 
     await expect(requireConfigured()).resolves.toBeUndefined();
   });
 
   it("redirects an unconfigured user to onboarding", async () => {
-    mockLoadInit.mockResolvedValue({ setup: { isConfigured: false } });
+    mockLoadConfigurationInit.mockResolvedValue(
+      makeShellInitResponse({
+        configurations: [],
+        selectedConfigurationId: null,
+        project: SHELL_TRUSTED_PROJECT,
+      }),
+    );
 
     await expectRedirectTo(requireConfigured(), "/onboarding");
   });
 
   it("redirects completed users away from onboarding on direct URL access", async () => {
-    mockLoadInit.mockResolvedValue({ setup: { isConfigured: true } });
+    mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
 
     await expectRedirectTo(requireNotConfigured(), "/");
   });
 
   it("does not redirect when init fails transiently", async () => {
-    mockLoadInit.mockRejectedValue(new Error("network down"));
+    mockLoadConfigurationInit.mockRejectedValue(new Error("network down"));
 
     await expect(requireConfigured()).resolves.toBeUndefined();
     await expect(requireNotConfigured()).resolves.toBeUndefined();
   });
 
   it("dedupes the init request shared with a concurrent ConfigProvider fetch", async () => {
-    let resolveInit: (value: { setup: { isConfigured: boolean } }) => void = () => {};
-    mockLoadInit.mockReturnValue(
-      new Promise<{ setup: { isConfigured: boolean } }>((resolve) => {
+    let resolveInit: (value: ReturnType<typeof makeReadyInitResponse>) => void = () => {};
+    mockLoadConfigurationInit.mockReturnValue(
+      new Promise<ReturnType<typeof makeReadyInitResponse>>((resolve) => {
         resolveInit = resolve;
       }),
     );
@@ -76,9 +84,9 @@ describe("config guards", () => {
     const guardPromise = requireConfigured();
     const providerPromise = queryClient.ensureQueryData(configQueries.init(api));
 
-    resolveInit({ setup: { isConfigured: true } });
+    resolveInit(makeReadyInitResponse());
     await Promise.all([guardPromise, providerPromise]);
 
-    expect(mockLoadInit).toHaveBeenCalledTimes(1);
+    expect(mockLoadConfigurationInit).toHaveBeenCalledTimes(1);
   });
 });

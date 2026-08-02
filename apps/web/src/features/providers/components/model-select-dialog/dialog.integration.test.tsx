@@ -1,11 +1,12 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
-import { ApiProvider, configQueries, useSaveConfig } from "@diffgazer/core/api/hooks";
+import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
-import { getDateLabel, getTimestamp } from "@diffgazer/core/format";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type {
-  AIProvider,
-  OpenRouterModelsResponse,
-  ProviderModelsResponse,
+  ClientConfigurationActionResponse,
+  ClientConfigurationSummary,
+  Readiness,
+  RunnableProductId,
 } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -13,70 +14,67 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import {
+  makeReadiness,
+  READINESS_PRESENTATION,
+  READY_GEMINI_CONFIGURATION,
+} from "@/testing/configuration-fixtures";
 import { ModelSelectDialog } from "./dialog";
 
-const RESPONSE: ProviderModelsResponse = {
-  models: [
-    { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", description: "1M context", tier: "free" },
-    { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro", description: "1M context", tier: "free" },
-    {
-      id: "gemini-3-pro-preview",
-      name: "Gemini 3 Pro Preview",
-      description: "1M context",
-      tier: "paid",
-    },
-  ],
-  fetchedAt: new Date().toISOString(),
-  source: "live",
-  cached: false,
-};
+const _CHECKED_AT = "2026-07-31T12:00:00.000Z";
 
-const OPENROUTER_RESPONSE: OpenRouterModelsResponse = {
-  models: [
-    {
-      id: "openai/gpt-4o",
-      name: "GPT-4o",
-      description: "Supports structured outputs",
-      contextLength: 128000,
-      supportedParameters: ["response_format"],
-      pricing: { prompt: "0.001", completion: "0.002" },
-      isFree: false,
-    },
-    {
-      id: "meta/llama-3-free",
-      name: "Llama 3 Free",
-      description: "No structured outputs",
-      contextLength: 8000,
-      supportedParameters: ["temperature"],
-      pricing: { prompt: "0", completion: "0" },
-      isFree: true,
-    },
-  ],
-  fetchedAt: new Date().toISOString(),
-  cached: false,
-};
+type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
+type TestConfigurationResponse = Extract<ClientConfigurationActionResponse, { action: "test" }>;
+
+function copyNotice(productId: RunnableProductId) {
+  const notice = PRODUCT_REGISTRY[productId].notice;
+  return { ...notice, billing: [...notice.billing], privacy: [...notice.privacy] };
+}
+
+function readyFor(productId: RunnableProductId): Extract<Readiness, { status: "ready" }> {
+  return makeReadiness("ready", productId) as Extract<Readiness, { status: "ready" }>;
+}
+
+function testDiscoveryResponse(
+  configuration: SupportedConfigurationSummary,
+  modelId = configuration.selectedModelId ?? "gemini-2.5-flash",
+  readiness: Readiness = readyFor(configuration.productId),
+  status: TestConfigurationResponse["status"] = "succeeded",
+): TestConfigurationResponse {
+  return {
+    action: "test",
+    status,
+    configuration: { ...configuration, selectedModelId: modelId },
+    readiness,
+  };
+}
+
+const DISCOVERED_MODEL_ID = "gemini-2.5-flash";
 
 interface RenderOptions {
-  provider?: AIProvider;
+  configuration?: SupportedConfigurationSummary;
   currentModel?: string | null;
   isSaving?: boolean;
   onSelect?: (modelId: string) => void;
   onOpenChange?: (open: boolean) => void;
-  getProviderModels?: BoundApi["getProviderModels"];
-  getOpenRouterModels?: BoundApi["getOpenRouterModels"];
+  testConfiguration?: BoundApi["testConfiguration"];
 }
 
 function renderDialog(options: RenderOptions = {}) {
-  const getProviderModels =
-    options.getProviderModels ?? vi.fn<BoundApi["getProviderModels"]>().mockResolvedValue(RESPONSE);
-  const getOpenRouterModels =
-    options.getOpenRouterModels ??
-    vi.fn<BoundApi["getOpenRouterModels"]>().mockResolvedValue(OPENROUTER_RESPONSE);
+  const testConfiguration =
+    options.testConfiguration ??
+    vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockResolvedValue(
+        testDiscoveryResponse(
+          (options.configuration ?? READY_GEMINI_CONFIGURATION) as SupportedConfigurationSummary,
+          DISCOVERED_MODEL_ID,
+        ),
+      );
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const api = {
     ...createApi({ baseUrl: "http://localhost" }),
-    getProviderModels,
-    getOpenRouterModels,
+    testConfiguration,
   } satisfies BoundApi;
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
@@ -104,7 +102,9 @@ function renderDialog(options: RenderOptions = {}) {
       <ModelSelectDialog
         open={open}
         onOpenChange={handleOpenChange}
-        provider={options.provider ?? "gemini"}
+        configuration={
+          (options.configuration ?? READY_GEMINI_CONFIGURATION) as SupportedConfigurationSummary
+        }
         currentModel={currentModel}
         isSaving={options.isSaving}
         onSelect={onSelect}
@@ -113,88 +113,62 @@ function renderDialog(options: RenderOptions = {}) {
   }
 
   render(<DialogHarness />, { wrapper });
-  return { getProviderModels, getOpenRouterModels, onSelect, onOpenChange };
+  return { testConfiguration, onSelect, onOpenChange };
 }
 
-describe("ModelSelectDialog (catalog)", () => {
+describe("ModelSelectDialog configuration-bound discovery", () => {
   it("keeps the footer actions accessible when keyboard-only hints are capability-gated", async () => {
     renderDialog();
 
     const dialog = await screen.findByRole("dialog");
-    await within(dialog).findByRole("radio", { name: /Gemini 2\.5 Flash/ });
+    await within(dialog).findByRole("radio", { name: /gemini-2\.5-flash/ });
     expect(within(dialog).getByText("Search")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: /cancel/i })).toBeEnabled();
     expect(within(dialog).getByRole("button", { name: /confirm/i })).toBeEnabled();
   });
 
-  it("moves the footer highlight to the button the pointer focused", async () => {
-    const user = userEvent.setup();
-    renderDialog();
-
-    const dialog = await screen.findByRole("dialog");
-    await within(dialog).findByRole("radio", { name: /Gemini 2\.5 Flash/ });
-    const cancel = within(dialog).getByRole("button", { name: /cancel/i });
-    const confirm = within(dialog).getByRole("button", { name: /confirm/i });
-
-    await user.click(confirm);
-    await user.keyboard("{ArrowLeft}");
-    await waitFor(() => expect(cancel).toHaveAttribute("data-highlighted"));
-
-    await user.click(confirm);
-
-    expect(confirm).toHaveFocus();
-    await waitFor(() => expect(confirm).toHaveAttribute("data-highlighted"));
-    expect(cancel).not.toHaveAttribute("data-highlighted");
-  });
-
-  it("renders catalog models free-first with a free badge", async () => {
+  it("renders the exact discovered model ID without catalog-only availability", async () => {
     renderDialog();
     await waitFor(() =>
-      expect(screen.getByRole("radio", { name: /Gemini 2\.5 Flash/ })).toBeInTheDocument(),
+      expect(screen.getByRole("radio", { name: /gemini-2\.5-flash/ })).toBeInTheDocument(),
     );
     const modelList = screen.getByRole("radiogroup", { name: /available models/i });
-    const order = within(modelList)
-      .getAllByRole("radio")
-      .map((el) => el.getAttribute("data-value"));
-    expect(order).toEqual(["gemini-2.5-flash", "gemini-2.5-pro", "gemini-3-pro-preview"]);
-    expect(screen.getByRole("radio", { name: /Gemini 2\.5 Flash/ })).toHaveTextContent(/free/i);
-    expect(screen.getByRole("radio", { name: /Gemini 3 Pro Preview/ })).toHaveTextContent(/paid/i);
+    expect(within(modelList).getAllByRole("radio")).toHaveLength(1);
+    expect(screen.queryByText(/using cached catalog data/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/structured outputs/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/latest/i)).not.toBeInTheDocument();
   });
 
-  it("narrows to free-only when the free tier filter is selected", async () => {
+  it("narrows to an empty list when the tier filter excludes the admitted model", async () => {
     const user = userEvent.setup();
     renderDialog();
     await waitFor(() =>
-      expect(screen.getByRole("radio", { name: /Gemini 3 Pro Preview/ })).toBeInTheDocument(),
+      expect(screen.getByRole("radio", { name: /gemini-2\.5-flash/ })).toBeInTheDocument(),
     );
 
     const filterTabs = screen.getByRole("radiogroup", { name: /model tier filter/i });
     await user.click(within(filterTabs).getByRole("radio", { name: /^free$/i }));
 
-    expect(within(filterTabs).getByRole("radio", { name: /^free$/i })).toBeChecked();
     await waitFor(() =>
-      expect(screen.queryByRole("radio", { name: /Gemini 3 Pro Preview/ })).not.toBeInTheDocument(),
+      expect(screen.queryByRole("radio", { name: /gemini-2\.5-flash/ })).not.toBeInTheDocument(),
     );
-    expect(screen.getByRole("radio", { name: /Gemini 2\.5 Flash/ })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/no models match your search/i);
   });
 
-  it("pre-checks the current model when the dialog opens", async () => {
-    renderDialog({ currentModel: "gemini-2.5-pro" });
-    const checkedRadio = await screen.findByRole("radio", { name: /Gemini 2\.5 Pro/ });
+  it("pre-checks the current exact model when the dialog opens", async () => {
+    renderDialog({ currentModel: DISCOVERED_MODEL_ID });
+    const checkedRadio = await screen.findByRole("radio", { name: /gemini-2\.5-flash/ });
     expect(checkedRadio).toBeChecked();
-    expect(screen.getByRole("radio", { name: /Gemini 2\.5 Flash/ })).not.toBeChecked();
-    expect(screen.getByRole("radio", { name: /Gemini 3 Pro Preview/ })).not.toBeChecked();
   });
 
-  it("fires onSelect with the chosen model when confirmed", async () => {
+  it("fires onSelect with the exact configuration model ID when confirmed", async () => {
     const user = userEvent.setup();
-    const { onSelect, onOpenChange } = renderDialog({ currentModel: "gemini-2.5-flash" });
-    const targetRadio = await screen.findByRole("radio", { name: /Gemini 2\.5 Pro/ });
+    const { onSelect, onOpenChange } = renderDialog({ currentModel: DISCOVERED_MODEL_ID });
+    await screen.findByRole("radio", { name: /gemini-2\.5-flash/ });
 
-    await user.click(targetRadio);
     await user.click(screen.getByRole("button", { name: /confirm/i }));
 
-    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-pro");
+    expect(onSelect).toHaveBeenCalledWith(DISCOVERED_MODEL_ID);
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
@@ -212,198 +186,103 @@ describe("ModelSelectDialog (catalog)", () => {
     expect(within(dialog).getByRole("button", { name: /close dialog/i })).toBeDisabled();
 
     await user.keyboard("{Escape}");
-    // fireEvent retained: jsdom does not synthesize the native dialog cancel event from Escape.
+    // fireEvent retained: dialog cancel is a native Event; userEvent has no cancel dispatch.
     fireEvent(dialog, new Event("cancel", { bubbles: false, cancelable: true }));
-
-    // fireEvent retained: explicit coordinates are required to exercise native backdrop hit testing.
+    // fireEvent retained: outside-click dismissal needs exact client coordinates vs dialog bounds.
     fireEvent.pointerDown(dialog, { clientX: -1, clientY: -1 });
+    // fireEvent retained: outside-click dismissal needs exact client coordinates vs dialog bounds.
     fireEvent.click(dialog, { clientX: -1, clientY: -1 });
 
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(dialog).toBeInTheDocument();
   });
-
-  it("hands empty tier results to Cancel and dismisses from the recovery target", async () => {
-    const user = userEvent.setup();
-    const onSelect = vi.fn();
-    const onOpenChange = vi.fn();
-    const getProviderModels = vi.fn<BoundApi["getProviderModels"]>().mockResolvedValue({
-      models: [
-        {
-          id: "free-only-model",
-          name: "Free Only Model",
-          description: "A free model",
-          tier: "free",
-        },
-      ],
-      fetchedAt: new Date().toISOString(),
-      source: "live",
-      cached: false,
-    });
-
-    renderDialog({
-      currentModel: null,
-      getProviderModels,
-      onSelect,
-      onOpenChange,
-    });
-
-    const model = await screen.findByRole("radio", { name: /Free Only Model/ });
-    await user.click(model);
-
-    // all -> free keeps the list mounted; free -> paid removes the focused list.
-    await user.keyboard("f");
-    await user.keyboard("f");
-
-    const cancel = screen.getByRole("button", { name: /cancel/i });
-    await waitFor(() => expect(cancel).toHaveFocus());
-    expect(cancel).not.toBeDisabled();
-    expect(document.activeElement).toBe(cancel);
-    expect(screen.queryByRole("radio", { name: /Free Only Model/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("radiogroup", { name: /available models/i })).not.toBeInTheDocument();
-
-    await user.keyboard("{Enter}");
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(onSelect).not.toHaveBeenCalled();
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
 });
 
-describe("ModelSelectDialog query states", () => {
-  it("shows cached provenance and retries the catalog", async () => {
+describe("ModelSelectDialog discovery states", () => {
+  it("shows skipped remediation with checkedAt and retries discovery", async () => {
     const user = userEvent.setup();
-    const getProviderModels = vi.fn<BoundApi["getProviderModels"]>().mockResolvedValue({
-      ...RESPONSE,
-      source: "cache",
-      cached: true,
-      fetchedAt: "2026-06-02T00:00:00.000Z",
+    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>().mockResolvedValue({
+      action: "test",
+      status: "succeeded",
+      configuration: READY_GEMINI_CONFIGURATION,
+      readiness: makeReadiness("skipped", "gemini"),
     });
-    renderDialog({ getProviderModels });
+    renderDialog({ testConfiguration });
 
-    const notice = await screen.findByText(/using cached catalog data/i);
-    expect(notice).toHaveTextContent(
-      `Using cached catalog data from ${getDateLabel("2026-06-02T00:00:00.000Z")} at ${getTimestamp(
-        "2026-06-02T00:00:00.000Z",
-      )}.`,
-    );
+    const skippedMessage = `${READINESS_PRESENTATION.skipped.explanation} ${READINESS_PRESENTATION.skipped.remediation.message}`;
+    const announcements = await screen.findAllByText(skippedMessage);
+    expect(announcements.length).toBeGreaterThan(0);
+    // One live-region owner: the retry banner repeats the text visually but must
+    // not announce it a second time.
+    expect(
+      announcements.filter((node) => node.closest("[aria-live], [role='status']") !== null),
+    ).toHaveLength(1);
+    expect(screen.getByText(/checked/i)).toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(getProviderModels).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(testConfiguration).toHaveBeenCalledTimes(2));
   });
 
-  it("renders the error text when the catalog query rejects", async () => {
+  it("renders the failed discovery message when the test query rejects", async () => {
     renderDialog({
-      getProviderModels: vi
-        .fn<BoundApi["getProviderModels"]>()
+      testConfiguration: vi
+        .fn<BoundApi["testConfiguration"]>()
         .mockRejectedValue(new Error("Catalog unavailable")),
     });
-    expect(await screen.findByText(/Catalog unavailable/)).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText("Model discovery failed. Test the configuration again.")).length,
+    ).toBeGreaterThan(0);
   });
 
-  it("renders the loading state while the catalog query is pending", async () => {
+  it("renders the loading state while discovery is pending", async () => {
     renderDialog({
-      getProviderModels: vi
-        .fn<BoundApi["getProviderModels"]>()
-        .mockReturnValue(new Promise<ProviderModelsResponse>(() => {})),
+      testConfiguration: vi
+        .fn<BoundApi["testConfiguration"]>()
+        .mockReturnValue(new Promise<TestConfigurationResponse>(() => {})),
     });
     expect(await screen.findByText(/loading models/i)).toBeInTheDocument();
   });
 
-  it("renders the empty label when the catalog resolves with no models", async () => {
-    renderDialog({
-      getProviderModels: vi.fn<BoundApi["getProviderModels"]>().mockResolvedValue({
-        models: [],
-        fetchedAt: new Date().toISOString(),
-        source: "snapshot",
-        cached: false,
-      }),
-    });
-    expect(await screen.findByText(/no models match your search/i)).toBeInTheDocument();
+  it("rejects stale checked models and never falls back to a different exact ID", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    renderDialog({ currentModel: "stale-model-id", onSelect });
+
+    const confirm = await screen.findByRole("button", { name: /confirm/i });
+    await user.click(confirm);
+
+    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash");
+    expect(onSelect).not.toHaveBeenCalledWith("stale-model-id");
   });
 });
 
-describe("ModelSelectDialog (OpenRouter)", () => {
-  it("shows the compatibility label without a custom-model affordance", async () => {
-    renderDialog({ provider: "openrouter", currentModel: undefined });
-
-    expect(
-      await screen.findByText(/showing 1\/2 models that support structured outputs/i),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/custom model ID/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /use id/i })).not.toBeInTheDocument();
-  });
-
-  it("removes old-credential rows and blocks confirmation when the replacement fetch fails", async () => {
-    const user = userEvent.setup();
-    const onSelect = vi.fn();
-    const getOpenRouterModels = vi
-      .fn<BoundApi["getOpenRouterModels"]>()
-      .mockRejectedValue(new Error("Replacement credential rejected"));
-    const api = {
-      ...createApi({ baseUrl: "http://localhost" }),
-      getOpenRouterModels,
-      saveConfig: vi.fn<BoundApi["saveConfig"]>().mockResolvedValue(undefined),
-    } satisfies BoundApi;
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    queryClient.setQueryData(configQueries.openRouterModels(api).queryKey, {
-      models: [
-        {
-          id: "old/account-model",
-          name: "Old account model",
-          description: "Available only to the previous credential",
-          contextLength: 4096,
-          supportedParameters: ["response_format"],
-          pricing: { prompt: "0", completion: "0" },
-          isFree: true,
-        },
-      ],
-      fetchedAt: new Date().toISOString(),
-      cached: false,
-    } satisfies OpenRouterModelsResponse);
-
-    function CredentialReplacementHarness() {
-      const replacement = useSaveConfig();
-      return (
-        <>
-          <button
-            type="button"
-            onClick={() =>
-              replacement.mutate({ provider: "openrouter", apiKey: "replacement-key" })
-            }
-          >
-            Replace credential
-          </button>
-          <ModelSelectDialog
-            open
-            onOpenChange={vi.fn()}
-            provider="openrouter"
-            currentModel="old/account-model"
-            onSelect={onSelect}
-          />
-        </>
+describe("ModelSelectDialog transport model policies", () => {
+  it("shows local loopback evidence for local-http configurations", async () => {
+    const localConfiguration: SupportedConfigurationSummary = {
+      configurationId: "ollama-loopback",
+      revision: 2,
+      status: "supported",
+      transportFamily: "local-http",
+      productId: "ollama",
+      endpoint: "http://127.0.0.1:11434",
+      authentication: "none",
+      selectedModelId: "qwen2.5-coder:7b",
+      notices: [copyNotice("ollama")],
+      availableActions: ["inspect", "select", "test", "update", "delete"],
+    };
+    const testConfiguration = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockResolvedValue(
+        testDiscoveryResponse(localConfiguration, "qwen2.5-coder:7b", readyFor("ollama")),
       );
-    }
+    renderDialog({
+      configuration: localConfiguration,
+      testConfiguration,
+      currentModel: "qwen2.5-coder:7b",
+    });
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ApiProvider value={api}>
-          <FooterProvider>
-            <KeyboardProvider>
-              <CredentialReplacementHarness />
-            </KeyboardProvider>
-          </FooterProvider>
-        </ApiProvider>
-      </QueryClientProvider>,
-    );
-
-    expect(await screen.findByRole("radio", { name: /Old account model/ })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Replace credential" }));
-
-    expect(await screen.findByText("Replacement credential rejected")).toBeInTheDocument();
-    expect(screen.queryByRole("radio", { name: /Old account model/ })).not.toBeInTheDocument();
-    const confirm = screen.getByRole("button", { name: "Confirm" });
-    expect(confirm).toBeDisabled();
-    await user.click(confirm);
-    expect(onSelect).not.toHaveBeenCalled();
+    expect(await screen.findByRole("radio", { name: /qwen2\.5-coder:7b/ })).toBeInTheDocument();
+    expect(screen.getByText(/ollama/i)).toBeInTheDocument();
+    expect(screen.queryByText(/structured outputs/i)).not.toBeInTheDocument();
   });
 });

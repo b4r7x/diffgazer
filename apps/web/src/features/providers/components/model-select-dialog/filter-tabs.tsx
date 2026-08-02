@@ -7,6 +7,7 @@ interface ModelFilterTabsProps {
   onChange: (value: TierFilter) => void;
   focusedIndex: number;
   isFocused: boolean;
+  disabled?: boolean;
   onTabClick: (index: number) => void;
   onKeyDown?: (event: ReactKeyboardEvent) => void;
   getTabProps?: (index: number) => {
@@ -20,6 +21,7 @@ export function ModelFilterTabs({
   onChange,
   focusedIndex,
   isFocused,
+  disabled = false,
   onTabClick,
   onKeyDown,
   getTabProps,
@@ -44,6 +46,7 @@ export function ModelFilterTabs({
       onKeyDown={onKeyDown}
       label="Model tier filter"
       className="px-5 pb-2"
+      disabled={disabled}
     >
       {TIER_FILTERS.map((filter, idx) => {
         const tabProps = getTabProps?.(idx);

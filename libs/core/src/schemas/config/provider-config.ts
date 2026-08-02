@@ -1,6 +1,6 @@
 import { z } from "zod";
 import {
-  type ModelPolicy,
+  isModelIdAllowedForProduct,
   PRODUCT_REGISTRY,
   type ProductNotice,
 } from "../../providers/product-registry.js";
@@ -340,61 +340,9 @@ function hasCanonicalProductNotice(
   );
 }
 
-const PINNED_ROUTE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
-const RESERVED_PINNED_ROUTE_SEGMENTS = new Set([
-  "auto",
-  "automatic",
-  "cheapest",
-  "default",
-  "exacto",
-  "extended",
-  "fallback",
-  "fastest",
-  "floor",
-  "free",
-  "nitro",
-  "online",
-  "openrouter",
-  "random",
-  "route",
-  "thinking",
-]);
-
 function hasAllowedSelectedModel(productId: RunnableProductId, modelId: string | null): boolean {
   if (modelId === null) return true;
-
-  const policy: ModelPolicy = PRODUCT_REGISTRY[productId].modelPolicy;
-  switch (policy.kind) {
-    case "discovered-exact": {
-      // Exact discovery is intentionally open-ended, but Z.AI Flash requires
-      // an explicit opt-in that is not represented by this client-safe tuple.
-      const explicitOptInSuffixes = policy.explicitOptInSuffixes ?? [];
-      return !explicitOptInSuffixes.some((suffix) => modelId.endsWith(suffix));
-    }
-    case "discovered-allowlist": {
-      if (!policy.modelIds.includes(modelId)) return false;
-      // Qwen Plus is a higher-cost model and its required output-limit and
-      // conformance evidence are server-only, so it must fail closed here.
-      const higherCostModelIds = policy.higherCostModelIds ?? [];
-      return !(
-        policy.higherCostModelEvidence !== undefined && higherCostModelIds.includes(modelId)
-      );
-    }
-    case "discovered-family":
-      return (
-        !policy.rejectedAliases.includes(modelId) &&
-        policy.familyPrefixes.some(
-          (prefix) => modelId === prefix || modelId.startsWith(`${prefix}-`),
-        )
-      );
-    case "pinned-downstream-route": {
-      if (!PINNED_ROUTE_PATTERN.test(modelId)) return false;
-      const [provider = "", route = ""] = modelId.split("/");
-      return ![provider, route].some((segment) =>
-        RESERVED_PINNED_ROUTE_SEGMENTS.has(segment.toLowerCase()),
-      );
-    }
-  }
+  return isModelIdAllowedForProduct(productId, modelId);
 }
 
 function validateSupportedSummaryBoundary(

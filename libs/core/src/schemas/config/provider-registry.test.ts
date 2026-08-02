@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { projectClientProduct } from "../../providers/client-metadata.js";
 import { SELECTABLE_PRODUCT_IDS as AUTHORITY_PRODUCT_IDS } from "../../providers/product-registry.js";
 import * as providerRegistry from "./provider-registry.js";
+import { REMOVED_PRODUCT_ID } from "./providers.js";
 import { CANDIDATE_PRODUCT_IDS } from "./transports.js";
 
 const SELECTABLE_PRODUCT_IDS = [
@@ -37,7 +38,7 @@ describe("selectable product presentation", () => {
   it("does not expose removed or rejected products", () => {
     const productIds = providerRegistry.SELECTABLE_PRODUCTS.map((product) => product.productId);
 
-    expect(productIds).not.toContain("zai-coding");
+    expect(productIds).not.toContain(REMOVED_PRODUCT_ID);
     expect(productIds).not.toContain("github-models");
   });
 

@@ -6,6 +6,7 @@ import {
 } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { deriveTrustStatus, selectResumableSession } from "@diffgazer/core/navigation";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { sanitizeTerminalText } from "@diffgazer/core/review";
 import type { ContextInfo, Shortcut } from "@diffgazer/core/schemas/presentation";
 import { buildHomeContextInfo, MAIN_MENU_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
@@ -93,10 +94,22 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
     repoRoot,
   });
 
+  const selected = initData.configurations?.find(
+    ({ configuration }) => configuration.configurationId === initData.selectedConfigurationId,
+  );
+  const provider =
+    selected?.configuration.status === "supported"
+      ? PRODUCT_REGISTRY[selected.configuration.productId].presentation.name
+      : undefined;
+  const model =
+    selected?.configuration.status === "supported"
+      ? (selected.configuration.selectedModelId ?? undefined)
+      : undefined;
+
   const context: ContextInfo = buildHomeContextInfo(
     {
-      provider: initData.config?.provider,
-      model: initData.config?.model,
+      provider,
+      model,
       trustedRepoRoot: trustConfig?.repoRoot,
     },
     mostRecent,

@@ -6,6 +6,7 @@ export {
 } from "./capabilities.js";
 export { CATALOG_SNAPSHOT } from "./catalog-snapshot.js";
 export { getCatalogFallbackNotice } from "./fallback-notice.js";
+export { PROVIDER_DERIVED } from "./provider-derived.js";
 export {
   assertCatalogSnapshotBundleEvidence,
   type CatalogAvailabilityObservation,

@@ -1,4 +1,4 @@
-import { type InputMethod, isInputMethod } from "@diffgazer/core/onboarding";
+import type { InputMethod } from "@diffgazer/core/onboarding";
 import { getVerticalArrowDirection } from "@diffgazer/keys";
 import { Field } from "@diffgazer/ui/components/field";
 import { InputGroup } from "@diffgazer/ui/components/input";
@@ -7,12 +7,18 @@ import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent, RefCallback, RefObject } from "react";
 import type { ApiKeyFocusTarget } from "@/types/api-key-focus-target";
 
+const INPUT_METHODS = ["paste", "env"] as const satisfies readonly InputMethod[];
+
+function isInputMethod(value: string): value is InputMethod {
+  return (INPUT_METHODS as readonly string[]).includes(value);
+}
+
 interface ApiKeyMethodSelectorProps {
   value: InputMethod;
   onChange: (method: InputMethod) => void;
   keyValue: string;
   onKeyValueChange: (value: string) => void;
-  envVarName: string;
+  envVarName?: string;
   providerName: string;
   inputRef: RefObject<HTMLInputElement | null>;
   focused: ApiKeyFocusTarget;
@@ -61,11 +67,11 @@ export function ApiKeyMethodSelector({
       onEnter={onMethodCommit}
       highlighted={highlightedMethod}
       onHighlightChange={(nextMethod) => {
-        if (isInputMethod(nextMethod)) onFocus(nextMethod);
+        if (nextMethod !== null && isInputMethod(nextMethod)) onFocus(nextMethod);
       }}
       onNavigationBoundaryReached={(direction, event) => {
         if (direction === "next" && getVerticalArrowDirection(event.key) === "down")
-          onFocus("cancel");
+          onFocus("acknowledgement");
       }}
       onKeyDown={(event) => {
         if (getVerticalArrowDirection(event.key) !== null && highlightedMethod) {
@@ -142,21 +148,27 @@ export function ApiKeyMethodSelector({
           }}
           label="Import from Env"
         />
-        <div className="pl-9">
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only convenience zone over a readOnly preview input; the keyboard-accessible "Import from Env" radio above owns selection. */}
-          {/* biome-ignore lint/a11y/useKeyWithClickEvents: env selection is reachable via the radio item above, so a key handler on this read-only preview wrapper would be redundant. */}
-          <div className="w-full cursor-pointer" onClick={() => onFocus("env")}>
-            <InputGroup
-              value={envVarName}
-              readOnly
-              tabIndex={-1}
-              prefix="$"
-              aria-label={`${envVarName} environment variable`}
-              className="bg-background border-border px-3 py-2 text-muted-foreground"
-              inputClassName="text-muted-foreground"
-            />
+        {envVarName ? (
+          <div className="pl-9">
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: mouse-only convenience zone over a readOnly preview input; the keyboard-accessible "Import from Env" radio above owns selection. */}
+            {/* biome-ignore lint/a11y/useKeyWithClickEvents: env selection is reachable via the radio item above, so a key handler on this padding wrapper would be redundant. */}
+            <div className="w-full cursor-pointer" onClick={() => onFocus("env")}>
+              <InputGroup
+                value={envVarName}
+                readOnly
+                tabIndex={-1}
+                prefix="$"
+                aria-label={`${envVarName} environment variable`}
+                className="bg-background border-border px-3 py-2 text-muted-foreground"
+                inputClassName="text-muted-foreground"
+              />
+            </div>
           </div>
-        </div>
+        ) : (
+          <p className="pl-9 text-xs text-muted-foreground">
+            Uses the provider&apos;s configured environment variable binding.
+          </p>
+        )}
       </div>
     </RadioGroup>
   );

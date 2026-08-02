@@ -1,3 +1,7 @@
+import { type BoundApi, createApi } from "@diffgazer/core/api";
+import { ApiProvider } from "@diffgazer/core/api/hooks";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { LEGACY_V1_HAS_API_KEY_PROPERTY, REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
 import { canonicalReviewFixture } from "@diffgazer/core/testing/review-facts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
@@ -6,18 +10,27 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { HistoryScreen } from "../features/history/components/screen";
 import { HomeScreen } from "../features/home/components/screen";
 import { ProvidersScreen } from "../features/providers/components/screen";
+import {
+  makeConfigurationListResponse,
+  READY_GEMINI_CONFIGURATION,
+} from "../features/providers/testing/fixtures";
 import { ReviewResultsView } from "../features/review/components/results-view";
 import { cleanupRootFrames, renderRootFrame } from "./render-root-frame";
 
 const f = canonicalReviewFixture;
+const shellInit = makeConfigurationListResponse();
+
+vi.mock("../hooks/use-back-handler", () => ({
+  useBackHandler: vi.fn(),
+}));
 
 vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@diffgazer/core/api/hooks")>()),
   useInit: () => ({
     data: {
-      configPath: "/tmp/diffgazer/config.json",
-      config: { provider: "gemini", model: "gemini-2.5-pro" },
-      providers: [],
+      schemaVersion: 2 as const,
+      configurations: shellInit.configurations,
+      selectedConfigurationId: shellInit.selectedConfigurationId,
       settings: {
         theme: "dark",
         defaultLenses: [],
@@ -26,13 +39,15 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
         secretsStorage: "file",
         agentExecution: "sequential",
       },
-      configured: true,
       project: {
         projectId: "project-1",
         path: "/Users/dev/Projects/diffgazer-workspace",
         trust: {
           repoRoot: "/Users/dev/Projects/diffgazer-workspace",
           capabilities: { readFiles: true, runCommands: false },
+          projectId: "project-1",
+          trustedAt: "2026-01-01T00:00:00.000Z",
+          trustMode: "persistent",
         },
       },
       setup: {
@@ -47,6 +62,12 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
     },
     error: null,
     isLoading: false,
+    refetch: vi.fn(),
+  }),
+  useConfigurations: () => ({
+    data: shellInit,
+    isLoading: false,
+    error: null,
     refetch: vi.fn(),
   }),
   useReviews: () => ({
@@ -70,14 +91,6 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
   useActiveReviewSession: () => ({ data: { session: null } }),
   useShutdown: () => ({ mutate: vi.fn() }),
   useSaveTrust: () => ({ isPending: false, error: null, mutate: vi.fn() }),
-  useProviderStatus: () => ({
-    data: [{ provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-pro" }],
-    isLoading: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
-  useActivateProvider: () => ({ mutate: vi.fn(), isPending: false, error: null }),
-  useDeleteProviderCredentials: () => ({ mutate: vi.fn(), isPending: false, error: null }),
 }));
 
 vi.mock("@diffgazer/core/review", async (importOriginal) => ({
@@ -122,37 +135,13 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// Below 80 columns every screen stacks its panes and each one gets the whole
-// frame width, so the narrow tier is not a like-for-like comparison. The
-// invariant this guards is the one the captures exposed: among the tiers that
-// split the frame, a WIDER terminal must never elide more than a narrower one.
 const SPLIT_WIDTHS = [80, 100, 120] as const;
 
-function withQueryClient(child: ReactElement): ReactElement {
-  const client = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, networkMode: "always" },
-      mutations: { retry: false, networkMode: "always" },
-    },
-  });
-  return <QueryClientProvider client={client}>{child}</QueryClientProvider>;
-}
-
-async function frameAt(columns: number, child: ReactElement, settled: string): Promise<string> {
-  const view = renderRootFrame(columns, 30, child);
-  await vi.waitFor(() => expect(view.lastFrame()).toContain(settled));
-  return stripAnsi(view.lastFrame() ?? "");
-}
-
-function countEllipses(frame: string): number {
-  return (frame.match(/…/g) ?? []).length;
-}
-
-const SCREENS: { name: string; settled: string; render: () => ReactElement }[] = [
+const MONOTONIC_SCREENS: { name: string; settled: string; render: () => ReactElement }[] = [
   { name: "home", settled: "Main Menu", render: () => <HomeScreen /> },
   {
     name: "providers",
-    settled: "Google Gemini",
+    settled: PRODUCT_REGISTRY.gemini.presentation.name,
     render: () => withQueryClient(<ProvidersScreen />),
   },
   { name: "history", settled: "RUNS", render: () => <HistoryScreen /> },
@@ -165,8 +154,52 @@ const SCREENS: { name: string; settled: string; render: () => ReactElement }[] =
   },
 ];
 
+const PROVIDERS_SCREEN = {
+  settled: PRODUCT_REGISTRY.gemini.presentation.name,
+  render: () => withQueryClient(<ProvidersScreen />),
+};
+
+function makeApi(): BoundApi {
+  return {
+    ...createApi({ baseUrl: "http://localhost" }),
+    listConfigurations: vi.fn<BoundApi["listConfigurations"]>().mockResolvedValue(shellInit),
+    createConfiguration: vi.fn(),
+    updateConfiguration: vi.fn(),
+    selectConfiguration: vi.fn(),
+    deleteConfiguration: vi.fn(),
+    inspectConfiguration: vi.fn(),
+    testConfiguration: vi.fn(),
+  } satisfies BoundApi;
+}
+
+function withQueryClient(child: ReactElement): ReactElement {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, networkMode: "always" },
+      mutations: { retry: false, networkMode: "always" },
+    },
+  });
+  return (
+    <QueryClientProvider client={client}>
+      <ApiProvider value={makeApi()}>{child}</ApiProvider>
+    </QueryClientProvider>
+  );
+}
+
+async function frameAt(columns: number, child: ReactElement, settled: string): Promise<string> {
+  const view = renderRootFrame(columns, 30, child);
+  await vi.waitFor(() => expect(view.lastFrame()).toContain(settled));
+  return stripAnsi(view.lastFrame() ?? "");
+}
+
+function countEllipses(frame: string): number {
+  return (frame.match(/…/g) ?? []).length;
+}
+
 describe("legibility invariant", () => {
-  test.each(SCREENS)("$name never elides more at a wider terminal than at a narrower one", async ({
+  test.each(
+    MONOTONIC_SCREENS,
+  )("$name never elides more at a wider terminal than at a narrower one", async ({
     settled,
     render,
   }) => {
@@ -185,15 +218,30 @@ describe("legibility invariant", () => {
   test("prints the home context values whole once the frame is 100 columns", async () => {
     const frame = await frameAt(100, <HomeScreen />, "Main Menu");
 
-    expect(frame).toContain("gemini-2.5-pro");
+    expect(frame).toContain(READY_GEMINI_CONFIGURATION.selectedModelId);
   });
 
   test("prints every provider name whole once the frame is 100 columns", async () => {
-    const frame = await frameAt(100, withQueryClient(<ProvidersScreen />), "Google Gemini");
+    const frame = await frameAt(100, PROVIDERS_SCREEN.render(), PROVIDERS_SCREEN.settled);
 
-    for (const name of ["Google Gemini", "OpenRouter", "Cerebras", "Z.AI Coding Plan"]) {
-      expect(frame).toContain(name);
+    for (const product of Object.values(PRODUCT_REGISTRY)) {
+      if (product.kind !== "runnable" || !product.selectable) continue;
+      expect(frame).toContain(product.presentation.name);
     }
+  });
+
+  test("providers screen exposes V2 product and readiness copy without secret fields", async () => {
+    const frame = await frameAt(100, PROVIDERS_SCREEN.render(), PROVIDERS_SCREEN.settled);
+
+    expect(frame).toContain(PRODUCT_REGISTRY.gemini.presentation.name);
+    expect(frame).toContain(PRODUCT_REGISTRY.zai.presentation.name);
+    expect(frame).toContain("Ready");
+    expect(frame).toContain("Removed record");
+    expect(frame).toContain(PRODUCT_REGISTRY[REMOVED_PRODUCT_ID].presentation.name);
+    expect(frame).not.toMatch(
+      new RegExp(String.raw`\b${LEGACY_V1_HAS_API_KEY_PROPERTY}\b|\bapiKey\b|\bsecret\b`, "i"),
+    );
+    expect(frame).not.toContain(REMOVED_PRODUCT_ID);
   });
 
   test("prints full severity chips in the results list at 100 columns", async () => {

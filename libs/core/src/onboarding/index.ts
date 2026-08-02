@@ -1,5 +1,11 @@
 export { canProceed } from "./can-proceed.js";
-export { getInitialWizardData } from "./defaults.js";
+export {
+  getInitialWizardData,
+  type LocalCliConfigurationDraft,
+  type OnboardingConfigurationDraft,
+  type OnboardingDraft,
+  resetWizardProduct,
+} from "./defaults.js";
 export {
   buildConfigPayload,
   buildSettingsPayload,
@@ -19,6 +25,7 @@ export {
 } from "./setup-plan.js";
 export { getOnboardingProgressLabel, STEP_LABELS, STEP_TITLES } from "./steps.js";
 export type {
+  InputMethod,
   OnboardingAcknowledgement,
   OnboardingConformanceStatus,
   OnboardingState,

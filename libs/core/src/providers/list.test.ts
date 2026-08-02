@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { ConfigurationStatus } from "../schemas/config/configuration-status.js";
 import type {
   ClientConfigurationNotice,
   ClientConfigurationSummary,
 } from "../schemas/config/provider-config.js";
 import { SELECTABLE_PRODUCTS } from "../schemas/config/provider-registry.js";
-import type { ConfigurationStatus } from "../schemas/config/providers.js";
+import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import {
   READINESS_PRESENTATION,
   type Readiness,
@@ -139,22 +140,22 @@ describe("mapProviderList", () => {
 
   it("appends removed records without making them selectable", () => {
     const removedConfiguration: ClientConfigurationSummary = {
-      configurationId: "legacy-zai-coding",
+      configurationId: "legacy-removed-zai-plan",
       revision: 4,
       status: "removed",
       transportFamily: "hosted-api",
-      productId: "zai-coding",
+      productId: REMOVED_PRODUCT_ID,
       selectedModelId: null,
       notices: [],
       availableActions: ["inspect", "delete"],
     };
     const rows = mapProviderList([status(removedConfiguration, readiness("removed"))]);
     const row = rows.find(
-      ({ configuration }) => configuration?.configurationId === "legacy-zai-coding",
+      ({ configuration }) => configuration?.configurationId === "legacy-removed-zai-plan",
     );
 
     expect(row).toMatchObject({
-      product: { productId: "zai-coding", status: "removed", selectable: false },
+      product: { productId: REMOVED_PRODUCT_ID, status: "removed", selectable: false },
       readiness: { status: "removed", ready: false, action: "delete" },
       notices: [],
       actions: ["inspect", "delete"],

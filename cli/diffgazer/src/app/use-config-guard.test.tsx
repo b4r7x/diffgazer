@@ -1,7 +1,6 @@
 /**
  * @vitest-environment jsdom
  */
-import type { BoundApi } from "@diffgazer/core/api";
 import { renderHook, waitFor } from "@testing-library/react";
 import { cleanup as cleanupInk, render as renderInk } from "ink-testing-library";
 import type { ReactNode } from "react";
@@ -57,6 +56,7 @@ vi.mock("./providers/server", () => ({
 }));
 
 import { HomeScreen } from "../features/home/components/screen";
+import { makeConfigurationListResponse } from "../features/providers/testing/fixtures";
 import { App, ConfigGate } from "./root";
 import { useConfigGuard } from "./use-config-guard";
 
@@ -67,20 +67,20 @@ const CONFIGURED_QUERY = {
   refetch: refetchConfigMock,
 };
 
-function makeInitResponse(): Awaited<ReturnType<BoundApi["loadInit"]>> {
+function makeInitResponse() {
+  const shell = makeConfigurationListResponse();
   return {
-    configPath: "/tmp/diffgazer/config.json",
-    config: { provider: "openrouter", model: "openrouter/test-model" },
-    providers: [],
+    schemaVersion: 2 as const,
+    configurations: shell.configurations,
+    selectedConfigurationId: shell.selectedConfigurationId,
     settings: {
-      theme: "dark",
+      theme: "dark" as const,
       defaultLenses: [],
       defaultProfile: null,
-      severityThreshold: "low",
-      secretsStorage: "file",
-      agentExecution: "sequential",
+      severityThreshold: "low" as const,
+      secretsStorage: "file" as const,
+      agentExecution: "sequential" as const,
     },
-    configured: true,
     project: {
       projectId: "project-1",
       path: "/tmp/repo",
@@ -223,7 +223,7 @@ describe("useConfigGuard", () => {
   test("treats loaded trust:null as a real trust prompt", () => {
     useConfigCheckMock.mockReturnValue(CONFIGURED_QUERY);
     useInitMock.mockReturnValue({
-      data: { ...makeInitResponse(), config: { provider: "openai", model: null } },
+      data: makeInitResponse(),
       isLoading: false,
       error: null,
       refetch: refetchInitMock,
@@ -233,7 +233,7 @@ describe("useConfigGuard", () => {
 
     expect(view.lastFrame()).toContain("TRUST THIS REPOSITORY?");
     expect(view.lastFrame()).toContain("/tmp/repo");
-    expect(view.lastFrame()).toContain("openai");
+    expect(view.lastFrame()).toMatch(/Provider:\s*Google Gemi/);
     expect(view.lastFrame()).not.toContain("Loading home data");
     expect(view.lastFrame()).not.toContain("Home Data Unavailable");
     expect(view.lastFrame()).not.toContain("Not configured");
