@@ -41,12 +41,16 @@ export function CardLayout({
   const { focusWithin, props: focusProps } = useFocusWithin<HTMLDivElement>();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
+      {/* Spare height splits 1:2 around the card — the hero-tier optical band
+          every hub/child/home screen shares — and the spacers collapse once the
+          card outgrows the viewport. */}
+      <div aria-hidden className="grow" />
       <Panel
         {...focusProps}
         focused={focusWithin}
         aria-labelledby={title ? titleId : undefined}
-        className="m-auto w-full max-w-2xl"
+        className="mx-auto w-full max-w-2xl"
       >
         {title && (
           <Panel.Label
@@ -68,6 +72,7 @@ export function CardLayout({
 
         {footer && <Panel.Footer className="justify-end gap-3">{footer}</Panel.Footer>}
       </Panel>
+      <div aria-hidden className="grow-[2]" />
     </div>
   );
 }

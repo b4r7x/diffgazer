@@ -57,6 +57,7 @@ export function ContextSidebar({
         )}
         <InfoField
           label={rows.provider.label}
+          tone="accent"
           onClick={() => navigateUnlessPending("/settings/providers")}
           ariaLabel="Configure provider settings"
         >
@@ -64,6 +65,7 @@ export function ContextSidebar({
         </InfoField>
         <InfoField
           label={rows.lastRun.label}
+          tone="success"
           onClick={pending ? undefined : onOpenLastRun}
           ariaLabel={
             rows.lastRun.meta === undefined
@@ -97,7 +99,9 @@ export function ContextSidebar({
             <span
               className={cn(
                 "mt-0.5 block truncate text-xs",
-                rows.lastRun.hasIssues ? "text-muted-foreground" : "text-success-text",
+                // Amber issue count is the pre-mobile signal: findings warrant a
+                // warmer hue than the structural gray, a clean run stays green.
+                rows.lastRun.hasIssues ? "text-warning-text" : "text-success-text",
               )}
             >
               {rows.lastRun.meta}

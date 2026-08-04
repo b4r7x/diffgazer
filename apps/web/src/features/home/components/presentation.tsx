@@ -239,12 +239,13 @@ export function HomePagePresentation({
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto px-4 py-12 md:px-6 lg:px-8">
-      {/* The shell header carries the hero wordmark, so home only centres its
-          panes in the space below it. Auto margins collapse to zero once the
-          column outgrows the viewport, so a short window scrolls from the top
-          instead of clipping. */}
-      <div className="home-composition m-auto flex w-full max-w-4xl flex-col gap-8">
+    <div className="flex flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
+      {/* Spare height splits 1:2 around the panes: they sit in the optical band
+          below the hero wordmark — neither glued to it nor sunk to dead center —
+          and the spacers collapse once the column overflows, so a short window
+          scrolls from the top. */}
+      <div aria-hidden className="grow" />
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
         {/* At desktop each pane keeps its own height instead of stretching to one
             bottom line, so the shorter context pane carries no dead band; below lg
             the cross axis is horizontal and the default stretch keeps both panes
@@ -270,6 +271,7 @@ export function HomePagePresentation({
           />
         </div>
       </div>
+      <div aria-hidden className="grow-[2]" />
     </div>
   );
 }

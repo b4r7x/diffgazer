@@ -42,8 +42,10 @@ export function HomeMenu({
       <Panel.Label>
         <h2 id={MENU_TITLE_ID}>Main Menu</h2>
       </Panel.Label>
-      {/* pb only: the first row starts flush at the top border so the tab chip seats over it. */}
-      <div className="flex flex-col pb-2">
+      {/* Rows run flush at both ends: the tab chip seats over the first row and
+          the last row's highlight terminates into the bottom border, matching
+          the settings hub. */}
+      <div className="flex flex-col">
         <Menu
           highlighted={highlighted}
           onHighlightChange={onHighlightChange}
@@ -70,7 +72,7 @@ export function HomeMenu({
           })}
         </Menu>
         {pending && (
-          <Spinner variant="braille" className="text-muted-foreground justify-center pt-2">
+          <Spinner variant="braille" className="text-muted-foreground justify-center py-2">
             Starting review…
           </Spinner>
         )}

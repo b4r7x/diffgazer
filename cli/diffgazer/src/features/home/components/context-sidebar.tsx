@@ -19,12 +19,16 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
       <Panel.Header>Context</Panel.Header>
       <Panel.Content grow>
         <Box flexDirection="column" gap={1}>
+          {/* The label carries each row's colour code (the web sidebar's ANSI
+              readout: trust blue/amber, provider accent, last run success) and
+              values stay in the plain foreground. */}
           {isTrusted ? (
             <KeyValue
               label={rows.trust.label}
+              labelColor={tokens.info}
               value={
                 <Box flexGrow={1} minWidth={1} overflow="hidden">
-                  <Text color={tokens.info} wrap="truncate-middle">
+                  <Text color={tokens.fg} wrap="truncate-middle">
                     {rows.trust.value}
                   </Text>
                 </Box>
@@ -33,9 +37,10 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
           ) : (
             <KeyValue
               label={rows.trust.label}
+              labelColor={tokens.warning}
               value={
                 <Box flexDirection="column" flexGrow={1} minWidth={1} overflow="hidden">
-                  <Text color={tokens.warning} wrap="truncate-middle">
+                  <Text color={tokens.fg} wrap="truncate-middle">
                     {rows.trust.value}
                   </Text>
                   <Text color={tokens.muted} wrap="truncate-end">
@@ -47,6 +52,7 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
           )}
           <KeyValue
             label={rows.provider.label}
+            labelColor={tokens.accent}
             value={
               <Box flexGrow={1} minWidth={1} overflow="hidden">
                 {/* Like the path row: the model id is identified by both ends,
@@ -57,6 +63,7 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
           />
           <KeyValue
             label={rows.lastRun.label}
+            labelColor={tokens.success}
             value={
               <Box flexGrow={1} minWidth={1} overflow="hidden">
                 <Text wrap="truncate-end">

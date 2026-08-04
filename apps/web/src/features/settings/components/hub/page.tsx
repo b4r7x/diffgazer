@@ -148,12 +148,15 @@ export function SettingsHubPage() {
   };
 
   return (
-    // Same wrapper rhythm and width as CardLayout so the panel does not jump as
-    // the user moves between the hub and its children. m-auto centers the card
-    // on both axes while the scroll container keeps the top edge reachable once
-    // the content outgrows the viewport.
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
-      <div className="m-auto w-full max-w-2xl">
+    // Same wrapper rhythm as CardLayout, one step wider: the hub's rows carry
+    // label + value pairs, so the card keeps the pre-mobile 3xl width while the
+    // single-column children stay at CardLayout's 2xl. Spare height splits 1:2
+    // around the card (the shared hero-tier optical band), so hub, children and
+    // home hold the same top line and the spacers collapse when content
+    // outgrows the viewport.
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
+      <div aria-hidden className="grow" />
+      <div className="mx-auto w-full max-w-3xl">
         {/* Resting chrome until focus actually enters the pane: the hub is a
             single pane, but nothing on screen may claim the focused hue while
             the keyboard is elsewhere. */}
@@ -209,6 +212,7 @@ export function SettingsHubPage() {
           </Panel.Footer>
         </Panel>
       </div>
+      <div aria-hidden className="grow-[2]" />
     </div>
   );
 }

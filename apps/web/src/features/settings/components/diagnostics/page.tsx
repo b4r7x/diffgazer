@@ -117,13 +117,14 @@ export function SettingsDiagnosticsPage() {
     // plus its own elevation. The panel is written out rather than reusing
     // CardLayout because the diagnostics region is the element that carries
     // aria-busy while a refresh is in flight.
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
+      <div aria-hidden className="grow" />
       <Panel
         {...focusProps}
         focused={focusWithin}
         aria-labelledby={titleId}
         aria-busy={isRefreshingAll || isRefreshing}
-        className="m-auto w-full max-w-2xl shadow-lg"
+        className="mx-auto w-full max-w-2xl shadow-lg"
       >
         <Panel.Label>
           <h1 id={titleId}>System Diagnostics</h1>
@@ -234,6 +235,7 @@ export function SettingsDiagnosticsPage() {
           </fieldset>
         </Panel.Footer>
       </Panel>
+      <div aria-hidden className="grow-[2]" />
     </div>
   );
 }

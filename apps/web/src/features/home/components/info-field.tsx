@@ -4,12 +4,12 @@ import { cn } from "@diffgazer/ui/lib/utils";
 import type { ReactNode } from "react";
 
 /**
- * Label treatment. Colour on the context panel means status and nothing else:
- * `default` is structural, `info`/`warning` mark a row whose label word carries
- * live state (Trusted / Not trusted). Provider and Last Run are data, not state,
- * so they stay structural instead of adding a third and fourth hue.
+ * Label treatment. The context panel is an ANSI-coded readout: every row keeps
+ * its own label hue (trust blue/amber, provider violet, last run green) while
+ * values stay neutral — the pre-mobile composition this panel is judged
+ * against, and the same colour vocabulary the TUI sidebar speaks.
  */
-export type InfoFieldTone = "default" | "info" | "warning";
+export type InfoFieldTone = "default" | "info" | "warning" | "accent" | "success";
 
 export interface InfoFieldProps {
   label: string;
@@ -24,6 +24,8 @@ const toneClasses: Record<InfoFieldTone, string> = {
   default: "text-muted-foreground",
   info: "text-info-text",
   warning: "text-warning-text",
+  accent: "text-accent",
+  success: "text-success-text",
 };
 
 export function InfoField({
