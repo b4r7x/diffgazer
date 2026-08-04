@@ -74,12 +74,14 @@ export function useHistoryPage() {
   };
 
   // Two-stage, matching the footer's "Esc Clear Search" promise: the first Escape
-  // clears a non-empty filter in place, the second leaves the search box.
+  // clears a non-empty filter in place, the second leaves the search box. With no
+  // runs list rendered there is nothing to leave to, so the field keeps focus.
   const handleSearchEscape = () => {
     if (history.searchQuery) {
       history.setSearchQuery("");
       return;
     }
+    if (mappedRuns.length === 0) return;
     searchInputRef.current?.blur();
     setFocusZone("runs");
   };

@@ -19,6 +19,8 @@ interface ProvidersKeyboardOptions {
   filter: ProviderFilter;
   setSelectedId: (id: string | null) => void;
   dialogOpen: boolean;
+  /** True while a provider mutation is in flight; the rendered action buttons disable on it. */
+  isPending: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
   listContainerRef: RefObject<HTMLDivElement | null>;
   /** The page layer's single action dispatcher, shared with the rendered action row. */
@@ -33,6 +35,7 @@ export function useProvidersKeyboard({
   filter,
   setSelectedId,
   dialogOpen,
+  isPending,
   inputRef,
   listContainerRef,
   runAction,
@@ -53,15 +56,17 @@ export function useProvidersKeyboard({
     listContainerRef.current?.focus({ preventScroll: true });
   };
 
-  const { buttonIndex, enterButtons, getActionButtonProps } = useProvidersActionButtons({
-    actions,
-    selectedRow,
-    dialogOpen,
-    inButtons,
-    setZone,
-    focusProviderList,
-    runAction,
-  });
+  const { buttonIndex, enterButtons, focusFallbackRef, getActionButtonProps } =
+    useProvidersActionButtons({
+      actions,
+      selectedRow,
+      dialogOpen,
+      isPending,
+      inButtons,
+      setZone,
+      focusProviderList,
+      runAction,
+    });
 
   const list = useProvidersListNavigation({
     selectedRow,
@@ -90,6 +95,7 @@ export function useProvidersKeyboard({
   return {
     focusZone: effectiveFocusZone,
     buttonIndex,
+    focusFallbackRef,
     getActionButtonProps,
     ...list,
   };

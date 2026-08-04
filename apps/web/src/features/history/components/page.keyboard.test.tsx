@@ -19,6 +19,7 @@ import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { MAIN_CONTENT_ID } from "@/lib/main-content";
 import { expectSingleReticle } from "@/testing/reticle";
 import {
+  defaultReviewsResponse,
   FooterView,
   focusRunsList,
   makeReviewResponse,
@@ -367,6 +368,87 @@ describe("HistoryPage keyboard navigation", () => {
     await waitFor(() => expect(document.activeElement).toBe(insightsList));
   });
 
+  it("moves focus and the footer to runs when the final page removes the load-more control", async () => {
+    const nextCursor =
+      "dg1_WyIyMDI2LTAyLTA4VDA5OjAwOjAwLjAwMFoiLCIyMjIyMjIyMi0yMjIyLTQyMjItODIyMi0yMjIyMjIyMjIyMjIiXQ";
+    mockGetReviews.mockImplementation(async (_projectPath, cursor) =>
+      cursor
+        ? {
+            reviews: [makeReviewMetadata({ id: "33333333-3333-4333-8333-333333333333" })],
+            nextCursor: null,
+          }
+        : {
+            reviews: defaultReviewsResponse().reviews,
+            nextCursor,
+          },
+    );
+
+    const user = userEvent.setup();
+    renderHistoryPage(
+      <>
+        <HistoryPage />
+        <FooterView />
+      </>,
+    );
+
+    const loadMore = await screen.findByRole("button", { name: "Load older runs" });
+    const runsList = await focusRunsList();
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(loadMore).toHaveFocus());
+    const footer = within(screen.getByRole("contentinfo"));
+    expect(footer.getByText("Load Older Runs")).toBeInTheDocument();
+
+    await user.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Load older runs" })).not.toBeInTheDocument(),
+    );
+    await waitFor(() => expect(runsList).toHaveFocus());
+    expect(footer.queryByText("Load Older Runs")).not.toBeInTheDocument();
+    expect(footer.getByText("Open Review")).toBeInTheDocument();
+  });
+
+  it("moves focus to the runs list when activating retry unmounts the error alert", async () => {
+    const detail = createDeferred<ReviewResponse>();
+    mockGetReview
+      .mockRejectedValueOnce(new Error("detail disk unreadable"))
+      .mockReturnValue(detail.promise);
+
+    const user = userEvent.setup();
+    renderHistoryPage(
+      <>
+        <HistoryPage />
+        <FooterView />
+      </>,
+    );
+
+    await screen.findByRole("alert");
+    const runsList = await focusRunsList();
+
+    await user.keyboard("{Tab}");
+    const retryButton = screen.getByRole("button", { name: "Retry" });
+    await waitFor(() => expect(retryButton).toHaveFocus());
+
+    await user.keyboard("{Enter}");
+
+    await screen.findByText("Loading review details...");
+    await waitFor(() => expect(runsList).toHaveFocus());
+    const footer = within(screen.getByRole("contentinfo"));
+    expect(footer.queryByText("Retry")).not.toBeInTheDocument();
+    expect(footer.getByText("Open Review")).toBeInTheDocument();
+
+    detail.resolve(
+      makeReviewResponse("11111111-1111-4111-8111-111111111111", [
+        makeIssue({ id: "retried-issue", title: "Retried issue" }),
+      ]),
+    );
+    const insightsList = await screen.findByRole("listbox", { name: /run issues/i });
+
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() => expect(insightsList).toHaveFocus());
+  });
+
   it("moves the insights highlight with j alias and routes Enter to the issue handler", async () => {
     mockGetReview.mockImplementation(async (id) =>
       makeReviewResponse(id, [
@@ -470,14 +552,15 @@ describe("HistoryPage keyboard navigation", () => {
     );
   });
 
-  it("rests every pane on an empty history instead of autofocusing the runs list", async () => {
+  it("falls back to the search input on an empty history and leaves every pane unbracketed", async () => {
     mockGetReviews.mockResolvedValue({ reviews: [] });
 
     renderHistoryPage(<HistoryPage />);
 
     await screen.findByText("No runs yet");
 
-    expect(document.activeElement).toBe(document.body);
+    const search = screen.getByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
+    await waitFor(() => expect(search).toHaveFocus());
     expect(screen.getByRole("region", { name: "Review runs" })).not.toHaveAttribute("data-state");
     expect(screen.getByRole("complementary", { name: "Review sections" })).not.toHaveAttribute(
       "data-state",
@@ -485,6 +568,28 @@ describe("HistoryPage keyboard navigation", () => {
     expect(screen.getByRole("complementary", { name: "Review insights" })).not.toHaveAttribute(
       "data-state",
     );
+  });
+
+  it("keeps focus in the search input when Escape has no runs list to return to", async () => {
+    mockGetReviews.mockResolvedValue({ reviews: [] });
+
+    const user = userEvent.setup();
+    renderHistoryPage(
+      <>
+        <HistoryPage />
+        <FooterView />
+      </>,
+    );
+
+    const search = await screen.findByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
+    await waitFor(() => expect(search).toHaveFocus());
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(search).toHaveFocus());
+    const footer = within(screen.getByRole("contentinfo"));
+    expect(footer.getByText("Clear Search")).toBeInTheDocument();
+    expect(footer.queryByText("Open Review")).not.toBeInTheDocument();
   });
 
   it("does not programmatically focus the insights pane when no run is selected", async () => {

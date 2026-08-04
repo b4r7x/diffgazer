@@ -169,6 +169,7 @@ export function ProvidersPage() {
             actions={providerActions}
             onAction={runProviderAction}
             isPending={isSubmitting}
+            focusFallbackRef={keyboard.focusFallbackRef}
             focusedButtonIndex={
               keyboard.focusZone === "buttons" && selectedRow ? keyboard.buttonIndex : undefined
             }

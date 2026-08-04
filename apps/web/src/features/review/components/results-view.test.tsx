@@ -163,14 +163,24 @@ describe("ReviewResultsView keyboard regression", () => {
     await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
   });
 
-  it("skips the issue list autofocus when the review has no issues", () => {
+  it("lands mount focus on the details region when the review has no issues", async () => {
+    const user = userEvent.setup();
     renderView([]);
 
     expect(screen.getByText("No issues found")).toBeInTheDocument();
-    // A clean run has nothing to drive, so the empty pane is left resting
-    // instead of being pulled into focus - and bracketed - on mount.
-    expect(screen.getByRole("listbox")).not.toHaveFocus();
-    expect(document.activeElement).toBe(document.body);
+    // A clean run has no list rows to focus, so mount focus must land on the
+    // always-visible details region instead of stranding keyboard users on
+    // document.body, from where no zone is reachable.
+    const details = screen.getByRole("region", { name: "Issue details" });
+    await waitFor(() => expect(details).toHaveFocus());
+
+    // Zone transitions stay live: ArrowLeft returns to the (empty) issue
+    // list, ArrowRight moves back into details.
+    await user.keyboard("{ArrowLeft}");
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() => expect(details).toHaveFocus());
   });
 
   it("navigates issue list with ArrowDown immediately in list view", async () => {
@@ -206,8 +216,8 @@ describe("ReviewResultsView keyboard regression", () => {
     const user = userEvent.setup();
     renderView([]);
 
-    // An empty list is never auto-focused, so the escape starts from the list
-    // the user actually focused.
+    // A clean run mounts with focus on the details region, so the escape
+    // starts from the list the user actually focused.
     const list = screen.getByRole("listbox");
     list.focus();
     await waitFor(() => expect(list).toHaveFocus());
@@ -416,6 +426,42 @@ describe("ReviewResultsView keyboard regression", () => {
     // k moves back up; Space untoggles the first step.
     await user.keyboard("k ");
     expect(firstStep).not.toBeChecked();
+  });
+
+  it("parks focus on the details region when a keyboard tab switch hides the focused step", async () => {
+    const user = userEvent.setup();
+    renderView([
+      createReviewIssue("issue-1", "Issue one", {
+        fixPlan: [
+          { step: 1, action: "Inspect issue one" },
+          { step: 2, action: "Patch issue one" },
+        ],
+      }),
+    ]);
+
+    screen.getByRole("listbox").focus();
+    await user.keyboard("{ArrowRight}");
+    const details = screen.getByRole("region", { name: "Issue details" });
+    await waitFor(() => expect(details).toHaveFocus());
+
+    await user.keyboard("j");
+    expect(screen.getByRole("checkbox", { name: "2. Patch issue one" })).toHaveFocus();
+
+    // Leaving the Details tab hides the step that owns DOM focus. Focus must
+    // land back on the details region, or the details zone silently loses the
+    // keyboard to a hidden element.
+    await user.keyboard("2");
+    expect(screen.getByRole("tab", { name: "Explain" })).toHaveAttribute("aria-selected", "true");
+    expect(details).toHaveFocus();
+
+    // The arrow-driven tab move parks the same way.
+    await user.keyboard("1");
+    await user.keyboard("j");
+    expect(screen.getByRole("checkbox", { name: "2. Patch issue one" })).toHaveFocus();
+
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: "Explain" })).toHaveAttribute("aria-selected", "true");
+    expect(details).toHaveFocus();
   });
 
   it("toggles the pointer-focused fix-plan step with the next Enter", async () => {
@@ -794,6 +840,46 @@ describe("ReviewResultsView mobile pane-swap", () => {
 
     expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "details");
     expect(screen.getByRole("region", { name: "Issue details" })).toHaveTextContent("Issue two");
+  });
+
+  it("lands mount focus on the visible details region for an issue deep link", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <ReviewResultsView
+            issues={[
+              createReviewIssue("issue-1", "Issue one"),
+              createReviewIssue("issue-2", "Issue two"),
+            ]}
+            reviewId="review-1"
+            initialIssueId="issue-2"
+          />
+          <FooterView />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    // A deep link hides the list pane below md, so mount focus must land on
+    // the details region — the only visible pane — not on the hidden list.
+    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "details");
+    const details = screen.getByRole("region", { name: "Issue details" });
+    await waitFor(() => expect(details).toHaveFocus());
+
+    // ArrowLeft at the leftmost tab still returns to the list zone and
+    // reveals the list pane.
+    await user.keyboard("{ArrowLeft}");
+    await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "list");
+  });
+
+  it("shows the details pane first on mobile for a clean run", () => {
+    const { container } = renderView([]);
+
+    // The clean run mounts in the details zone (see the focus test above), and
+    // the visible mobile pane must follow the zone or the focused target would
+    // be display:none below md.
+    expect(reviewRow(container)).toHaveAttribute("data-mobile-pane", "details");
   });
 
   it("swaps to details on selection and back to the list via the mobile back control", async () => {

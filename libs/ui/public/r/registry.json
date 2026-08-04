@@ -1340,6 +1340,7 @@
         "https://r.b4r7.dev/r/ui/outside-click.json",
         "https://r.b4r7.dev/r/ui/spinner.json",
         "https://r.b4r7.dev/r/ui/utils.json",
+        "https://r.b4r7.dev/r/keys/focus-restore.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
         "https://r.b4r7.dev/r/ui/top-layer-stack.json"
       ],

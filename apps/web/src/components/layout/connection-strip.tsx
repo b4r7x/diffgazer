@@ -30,7 +30,7 @@ export function ConnectionStrip({ state, onRetry }: ConnectionStripProps) {
         variant="secondary"
         size="sm"
         bracket
-        disabled={state === "retrying"}
+        loading={state === "retrying"}
         onClick={onRetry}
       >
         Retry

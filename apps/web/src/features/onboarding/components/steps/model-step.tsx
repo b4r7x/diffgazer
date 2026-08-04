@@ -201,6 +201,36 @@ function DiscoveredModels({
   );
 }
 
+function MissingConfiguration({
+  onRetry,
+  enabled,
+}: {
+  onRetry: ModelStepProps["onRetry"];
+  enabled: boolean;
+}) {
+  const retryRef = useRef<HTMLButtonElement>(null);
+
+  // Step entry focus: this branch has no self-focusing group, so without this
+  // the wizard lands with focus on the footer and Retry is arrow-unreachable.
+  // Keyed on `enabled` like the sibling branches, so a preparation that resolves
+  // without a configuration cannot pull focus off the footer actions.
+  useEffect(() => {
+    if (!enabled) return;
+    retryRef.current?.focus();
+  }, [enabled]);
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground font-mono">
+        Models are discovered from the saved configuration for this product.
+      </p>
+      <Button ref={retryRef} type="button" variant="secondary" onClick={onRetry}>
+        Retry
+      </Button>
+    </div>
+  );
+}
+
 export function ModelStep({
   configuration,
   isPreparing,
@@ -220,16 +250,7 @@ export function ModelStep({
   }
 
   if (!configuration) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-muted-foreground font-mono">
-          Models are discovered from the saved configuration for this product.
-        </p>
-        <Button type="button" variant="secondary" onClick={onRetry}>
-          Retry
-        </Button>
-      </div>
-    );
+    return <MissingConfiguration onRetry={onRetry} enabled={enabled} />;
   }
 
   return (

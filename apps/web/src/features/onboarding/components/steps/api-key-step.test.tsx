@@ -50,6 +50,20 @@ describe("ApiKeyStep", () => {
     expect(screen.getByLabelText(/OpenAI Codex CLI installation ID/i)).toBeInTheDocument();
   });
 
+  it("focuses the bearer checkbox when the local HTTP step becomes active", () => {
+    const local = getInitialWizardData("local-openai");
+    render(<ApiKeyStep configurationInput={local.configurationInput} onChange={vi.fn()} />);
+
+    expect(screen.getByRole("checkbox", { name: /bearer token/i })).toHaveFocus();
+  });
+
+  it("focuses the installation input when the local CLI step becomes active", () => {
+    const localCli = getInitialWizardData("codex-cli");
+    render(<ApiKeyStep configurationInput={localCli.configurationInput} onChange={vi.fn()} />);
+
+    expect(screen.getByLabelText(/OpenAI Codex CLI installation ID/i)).toHaveFocus();
+  });
+
   it("commits environment references without retaining a typed secret", async () => {
     const user = userEvent.setup();
     const onCommit = vi.fn();
@@ -77,6 +91,22 @@ describe("ApiKeyStep", () => {
     expect(onCommit).toHaveBeenCalled();
     expect(screen.queryByDisplayValue("sk-")).not.toBeInTheDocument();
   });
+
+  it("focuses the selected method when the step becomes active", () => {
+    const hosted = getInitialWizardData("gemini");
+    if (hosted.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted configuration");
+    }
+
+    render(
+      <KeyboardProvider>
+        <ApiKeyStep configurationInput={hosted.configurationInput} onChange={vi.fn()} />
+      </KeyboardProvider>,
+    );
+
+    expect(screen.getByRole("radio", { name: "Enter credential now" })).toHaveFocus();
+  });
+
   it("moves DOM focus with the visible highlight through the credential zone", async () => {
     const user = userEvent.setup();
     const hosted = getInitialWizardData("gemini");

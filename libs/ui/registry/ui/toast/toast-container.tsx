@@ -1,7 +1,7 @@
 "use client";
 
-import { isEditableElement } from "@diffgazer/keys";
-import { type FocusEvent, useEffect, useRef, useState } from "react";
+import { getRestorableFocusTarget, isEditableElement, restoreFocus } from "@diffgazer/keys";
+import { type FocusEvent, useEffect, useEffectEvent, useRef, useState } from "react";
 import { useTopLayerPosition } from "@/hooks/use-top-layer-position";
 import { createTopLayerStack } from "@/lib/top-layer-stack";
 import { cn } from "@/lib/utils";
@@ -18,15 +18,11 @@ import {
 import { toastPositionVariants } from "./toast-variants";
 import { useToastContainer } from "./use-container";
 
-function handleBlur(e: FocusEvent<HTMLDivElement>) {
+function focusLeftRegion(e: FocusEvent<HTMLDivElement>): boolean {
   const View = e.currentTarget.ownerDocument.defaultView;
-  if (
-    !View ||
-    !(e.relatedTarget instanceof View.Node) ||
-    !e.currentTarget.contains(e.relatedTarget)
-  ) {
-    resume("focus");
-  }
+  return (
+    !View || !(e.relatedTarget instanceof View.Node) || !e.currentTarget.contains(e.relatedTarget)
+  );
 }
 
 function supportsPopover(ownerDocument: Document): boolean {
@@ -64,6 +60,22 @@ export function Toaster({ position = "bottom-right", hotkey = "F8" }: ToasterPro
   const { toasts, dismissingIds } = useToastStore();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isTopToaster = useTopLayerPosition(toasterStack, containerRef, true);
+  // The hotkey inspection remembers its own opener rather than pushing onto
+  // useFocusRestore's per-document stack: that stack is shared with dialogs,
+  // and an inspection the user simply tabs away from would strand an entry
+  // there that outranks and silently defeats the next dialog's restore.
+  const inspectionOpener = useRef<HTMLElement | null>(null);
+  // Removing a focused toast moves activeElement to body without firing any
+  // blur event, so blur tracking alone cannot distinguish "the focused toast
+  // was removed" from "the user moved focus elsewhere". This ref keeps that
+  // distinction: it only flips false when a blur actually leaves the region.
+  const regionHadFocus = useRef(false);
+
+  const endInspection = (restore: boolean): boolean => {
+    const opener = inspectionOpener.current;
+    inspectionOpener.current = null;
+    return restore && restoreFocus(opener);
+  };
 
   const visibleToasts = isTopToaster ? toasts : [];
   useToastContainer(visibleToasts, dismissingIds, containerRef, isTopToaster);
@@ -139,11 +151,33 @@ export function Toaster({ position = "bottom-right", hotkey = "F8" }: ToasterPro
       const region = containerRef.current;
       if (!region) return;
       event.preventDefault();
+      // A repeated hotkey press while focus is already inside the region must
+      // not clobber the original opener with the region itself.
+      if (!region.contains(ownerDocument.activeElement)) {
+        inspectionOpener.current = getRestorableFocusTarget(ownerDocument);
+      }
       region.focus();
     };
     ownerDocument.addEventListener("keydown", onKeyDown);
     return () => ownerDocument.removeEventListener("keydown", onKeyDown);
   }, [hotkey, isTopToaster]);
+
+  // The always-mounted region would otherwise keep focus parked on an empty
+  // live-region container after the last toast is removed. Restore only while
+  // the region still owns focus: removal drops activeElement to body, so any
+  // other focused element means the user already moved on.
+  const restoreFocusFromEmptyRegion = useEffectEvent(() => {
+    const region = containerRef.current;
+    if (!region) return;
+    const active = region.ownerDocument.activeElement;
+    if (active && active !== region.ownerDocument.body && !region.contains(active)) return;
+    if (endInspection(true)) regionHadFocus.current = false;
+  });
+
+  useEffect(() => {
+    if (hasToasts || !regionHadFocus.current) return;
+    restoreFocusFromEmptyRegion();
+  }, [hasToasts]);
 
   // <dialog>.showModal() raises the dialog into the browser top-layer, which
   // z-index cannot beat; opting the container into the Popover API puts the
@@ -201,8 +235,29 @@ export function Toaster({ position = "bottom-right", hotkey = "F8" }: ToasterPro
       tabIndex={-1}
       onMouseEnter={() => pause("hover")}
       onMouseLeave={() => resume("hover")}
-      onFocus={() => pause("focus")}
-      onBlur={handleBlur}
+      onFocus={() => {
+        regionHadFocus.current = true;
+        pause("focus");
+      }}
+      onBlur={(e) => {
+        if (!focusLeftRegion(e)) return;
+        regionHadFocus.current = false;
+        // The user left on their own, so the inspection is over: drop the
+        // opener instead of holding it for a restore that must never happen.
+        endInspection(false);
+        resume("focus");
+      }}
+      onKeyDown={(event) => {
+        // Escape exits the hotkey inspection: it returns focus to where it was
+        // before the hotkey and consumes the key, so app-level Escape handlers
+        // (back navigation) cannot also fire from inside the region. Consuming
+        // it also skips the overlay-dismiss layer for this press — toasts stay
+        // visible; dismissal stays on the close buttons and timeouts.
+        if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing)
+          return;
+        event.preventDefault();
+        endInspection(true);
+      }}
       className={cn(
         // Override the UA [popover] stylesheet (inset:0, margin:auto, fit-content,
         // border/padding/background) so corner positioning and the transparent

@@ -6,7 +6,7 @@ import { Checkbox } from "@diffgazer/ui/components/checkbox";
 import { Field } from "@diffgazer/ui/components/field";
 import { InputGroup } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { type KeyboardEvent, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 type CredentialMethod = "literal" | "environment";
 type CredentialFocus = CredentialMethod | "input";
@@ -57,6 +57,8 @@ export function ApiKeyStep({
 }: ApiKeyStepProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const methodGroupRef = useRef<HTMLDivElement>(null);
+  const localCheckboxRef = useRef<HTMLDivElement>(null);
+  const localInputRef = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState<CredentialFocus>("literal");
   const isHosted = configurationInput.transportFamily === "hosted-api";
   const method = isHosted ? resolveCredentialMethod(configurationInput.credential) : "literal";
@@ -64,6 +66,15 @@ export function ApiKeyStep({
     isHosted && configurationInput.credential?.kind === "literal"
       ? configurationInput.credential.value
       : "";
+
+  // The hosted branch enters through RadioGroup autoFocus; the local branches
+  // render a bare checkbox or input, so step entry has to focus them here or
+  // arrows only reach the wizard footer.
+  useEffect(() => {
+    if (!enabled) return;
+    const target = localCheckboxRef.current ?? localInputRef.current;
+    target?.focus();
+  }, [enabled]);
 
   const setCredential = (credential: WriteOnlySecretInput) => {
     if (configurationInput.transportFamily !== "hosted-api") return;
@@ -137,6 +148,7 @@ export function ApiKeyStep({
         </p>
         {offersLocalBearer(configurationInput.productId) ? (
           <Checkbox
+            ref={localCheckboxRef}
             checked={bearerEnabled}
             onChange={setLocalBearerEnabled}
             value="local-bearer"
@@ -187,6 +199,7 @@ export function ApiKeyStep({
           <Field.Label>{product.presentation.name} installation</Field.Label>
           <Field.Control>
             <InputGroup
+              ref={localInputRef}
               value={configurationInput.installationId ?? ""}
               onChange={(event) =>
                 onChange({
@@ -236,6 +249,7 @@ export function ApiKeyStep({
         onNavigationBoundaryReached={(direction) => {
           onBoundaryReached?.(direction === "next" ? "down" : "up");
         }}
+        autoFocus={enabled}
         keyboardNavigation={enabled}
         activationMode="manual"
         wrap={false}

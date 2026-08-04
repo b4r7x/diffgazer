@@ -21,7 +21,7 @@ import {
 } from "@diffgazer/ui/components/navigation-list";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GlobalShortcuts } from "@/components/layout/global";
 import { HelpPage } from "@/features/help/components/page";
@@ -160,6 +160,7 @@ function ReviewContract({
 }) {
   useScope("help-review-contract");
   const [activeTab, setActiveTab] = useState<"details" | "explain" | "trace" | "patch">("details");
+  const detailsScrollRef = useRef<HTMLDivElement>(null);
   const keyboard = useReviewDetailsTabKeyboard({
     scope: "help-review-contract",
     enabled: true,
@@ -170,6 +171,7 @@ function ReviewContract({
       ],
     }),
     activeTab,
+    detailsScrollRef,
     moveTab: () => "moved",
     scrollDetails: onScroll,
     setActiveTab: (tab) => {

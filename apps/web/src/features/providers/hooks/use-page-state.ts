@@ -131,6 +131,7 @@ export function useProvidersPageState() {
     filter,
     setSelectedId,
     dialogOpen: dialogOwner !== null,
+    isPending: isSubmitting,
     inputRef,
     listContainerRef,
     runAction: runProviderAction,

@@ -8,7 +8,7 @@ import { Callout } from "@diffgazer/ui/components/callout";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTheme } from "@/hooks/use-theme";
 import type { ResolvedTheme, WebTheme } from "@/types/theme";
 import { useSettingsFormFooter } from "../../hooks/use-form-footer";
@@ -73,6 +73,7 @@ function SettingsThemeEditor({
   onSave,
 }: SettingsThemeEditorProps) {
   const navigate = useNavigate();
+  const focusFallbackRef = useRef<HTMLDivElement>(null);
   const [selectedTheme, setSelectedTheme] = useState<WebTheme>(savedTheme);
   const [focusedTheme, setFocusedTheme] = useState<WebTheme>(savedTheme);
   const [hoveredTheme, setHoveredTheme] = useState<WebTheme | null>(null);
@@ -101,6 +102,7 @@ function SettingsThemeEditor({
     disabledActions: [isSaving, isSaveDisabled],
     onCancel: handleCancel,
     onSave: handleSave,
+    focusFallbackRef,
     contentShortcuts: [
       NAVIGATE_SHORTCUT,
       { key: "Space", label: "Select Theme" },
@@ -135,20 +137,25 @@ function SettingsThemeEditor({
             <Panel.Title>Theme Settings</Panel.Title>
           </Panel.Header>
           <Panel.Content spacing="none" className="flex flex-1 flex-col">
-            <ThemeSelectorContent
-              value={selectedTheme}
-              highlighted={focusedTheme}
-              onHighlightChange={highlightTheme}
-              onPreviewValueChange={setHoveredTheme}
-              onChange={selectTheme}
-              onEnter={onSave}
-              enabled={!footer.inActions}
-              onBoundaryReached={(direction) => {
-                if (direction === "down") {
-                  footer.enterActions();
-                }
-              }}
-            />
+            {/* While both footer actions are disabled mid-save, the action row
+                parks focus here; keeping the selector disabled for that window
+                stops its re-arming autoFocus from yanking focus into the radios. */}
+            <div ref={focusFallbackRef} tabIndex={-1} className="focus:outline-none">
+              <ThemeSelectorContent
+                value={selectedTheme}
+                highlighted={focusedTheme}
+                onHighlightChange={highlightTheme}
+                onPreviewValueChange={setHoveredTheme}
+                onChange={selectTheme}
+                onEnter={onSave}
+                enabled={!footer.inActions && !isSaving}
+                onBoundaryReached={(direction) => {
+                  if (direction === "down") {
+                    footer.enterActions();
+                  }
+                }}
+              />
+            </div>
 
             <div className="mt-auto space-y-4 pt-6">
               <Callout tone="info" className="pointer-coarse:hidden">

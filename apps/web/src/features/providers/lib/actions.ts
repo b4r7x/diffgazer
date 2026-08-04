@@ -24,6 +24,15 @@ export interface ProviderAction {
   readonly disabledReason?: string;
 }
 
+/**
+ * The one disabled rule for a rendered provider action, shared by the renderer, the keyboard
+ * row's focus custody, and the activation guard. They must agree: the row only repairs the
+ * browser's disable-blur when it sees the focused index as disabled the way the DOM does.
+ */
+export function isProviderActionDisabled(action: ProviderAction, isPending: boolean): boolean {
+  return isPending || Boolean(action.disabledReason);
+}
+
 const ACTION_LABELS = {
   create: "Create configuration",
   inspect: "Inspect configuration",

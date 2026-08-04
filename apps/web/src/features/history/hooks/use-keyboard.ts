@@ -52,6 +52,32 @@ function buildTabCycle({
   return cycle;
 }
 
+// A zone's target can unmount while that zone is still selected: the last page
+// loads away the load-more button, activating retry swaps the error alert for
+// the loading note, and an empty history renders no runs list. Resolving the
+// zone during render keeps the footer, the key guards, and the focus target on
+// a control that still exists; useFocusZone sees the resolved zone change and
+// moves focus there, and that pane's own onFocus writes the page's zone state
+// back in sync.
+function resolveFocusZone({
+  zone,
+  hasRuns,
+  hasMore,
+  hasRetry,
+}: {
+  zone: HistoryFocusZone;
+  hasRuns: boolean;
+  hasMore: boolean;
+  hasRetry: boolean;
+}): HistoryFocusZone {
+  const targetGone =
+    (zone === "load-more" && !hasMore) ||
+    (zone === "retry" && !hasRetry) ||
+    (zone === "runs" && !hasRuns);
+  if (!targetGone) return zone;
+  return hasRuns ? "runs" : "search";
+}
+
 function getHistoryFooter(focusZone: HistoryFocusZone) {
   if (focusZone === "search") {
     return {
@@ -131,6 +157,7 @@ export function useHistoryKeyboard({
   const navigate = useNavigate();
 
   const tabCycle = buildTabCycle({ hasRuns, hasMore, hasInsights, hasRetry });
+  const effectiveFocusZone = resolveFocusZone({ zone: focusZone, hasRuns, hasMore, hasRetry });
 
   const zoneTargets: Record<KeyboardHistoryFocusZone, RefObject<HTMLElement | null>> = {
     search: searchInputRef,
@@ -144,7 +171,7 @@ export function useHistoryKeyboard({
   useFocusZone({
     initial: "runs",
     zones: ZONES,
-    zone: focusZone,
+    zone: effectiveFocusZone,
     onZoneChange: (zone) => setFocusZone(zone),
     scope: HISTORY_SCOPE,
     tabCycle,
@@ -189,7 +216,7 @@ export function useHistoryKeyboard({
     onHighlightChange: onHighlightIssue,
     wrap: false,
     scope: HISTORY_SCOPE,
-    enabled: enabled && focusZone === "insights",
+    enabled: enabled && effectiveFocusZone === "insights",
     upKeys: ["ArrowUp", "k"],
     downKeys: ["ArrowDown", "j"],
   });
@@ -201,7 +228,7 @@ export function useHistoryKeyboard({
     },
     {
       scope: HISTORY_SCOPE,
-      enabled: enabled && focusZone !== "search",
+      enabled: enabled && effectiveFocusZone !== "search",
       preventDefault: true,
     },
   );
@@ -214,11 +241,11 @@ export function useHistoryKeyboard({
 
   useKey("o", navigateToSelectedRun, {
     scope: HISTORY_SCOPE,
-    enabled: enabled && focusZone === "runs",
+    enabled: enabled && effectiveFocusZone === "runs",
   });
   useKey(" ", navigateToSelectedRun, {
     scope: HISTORY_SCOPE,
-    enabled: enabled && focusZone === "runs",
+    enabled: enabled && effectiveFocusZone === "runs",
   });
 
   useKey(
@@ -229,7 +256,7 @@ export function useHistoryKeyboard({
     { scope: HISTORY_SCOPE, enabled },
   );
 
-  const { shortcuts, rightShortcuts } = getHistoryFooter(focusZone);
+  const { shortcuts, rightShortcuts } = getHistoryFooter(effectiveFocusZone);
 
   // The error branch renders its own FailureView footer; publishing history
   // shortcuts here would overwrite it, since parent effects run last.

@@ -1224,6 +1224,7 @@
         "outside-click",
         "spinner",
         "utils",
+        "@diffgazer-keys/focus-restore",
         "@diffgazer-keys/navigation",
         "top-layer-stack"
       ],

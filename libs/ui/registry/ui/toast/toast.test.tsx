@@ -1,4 +1,5 @@
 import { act, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Dialog } from "../dialog/index";
@@ -30,6 +31,22 @@ function cleanupStore() {
     dismiss(id);
     remove(id);
   }
+}
+
+/** Focuses "Page control", presses the hotkey, and asserts the region took focus. */
+function inspectRegionViaHotkey(): { pageControl: HTMLElement; region: HTMLElement } {
+  const pageControl = screen.getByRole("button", { name: "Page control" });
+  const region = screen.getByRole("region", { name: "Notifications" });
+  act(() => {
+    pageControl.focus();
+  });
+  act(() => {
+    pageControl.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "F8", bubbles: true, cancelable: true }),
+    );
+  });
+  expect(region).toHaveFocus();
+  return { pageControl, region };
 }
 
 interface PopoverStub {
@@ -690,6 +707,146 @@ describe("Toast", () => {
 
     expect(regionHasFocus()).toBe(false);
     host.remove();
+  });
+
+  it("returns focus to the pre-hotkey element on Escape inside the region", () => {
+    render(
+      <div>
+        <button type="button">Page control</button>
+        <Toaster hotkey="F8" />
+      </div>,
+    );
+    act(() => {
+      toast("Returnable toast", { id: "esc-return", action: <button type="button">Undo</button> });
+    });
+    const { pageControl, region } = inspectRegionViaHotkey();
+
+    const escapeEvent = new KeyboardEvent("keydown", {
+      key: "Escape",
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      region.dispatchEvent(escapeEvent);
+    });
+    expect(pageControl).toHaveFocus();
+
+    // Escape exits the inspection and is consumed, so app-level Escape
+    // handlers (back navigation) cannot also fire and the stack stays visible.
+    expect(escapeEvent.defaultPrevented).toBe(true);
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.getByText("Returnable toast")).toBeInTheDocument();
+  });
+
+  it("returns focus to the pre-hotkey element when the last toast is dismissed from inside the region", () => {
+    render(
+      <div>
+        <button type="button">Page control</button>
+        <Toaster hotkey="F8" />
+      </div>,
+    );
+    act(() => {
+      toast("Final toast", { id: "last-focused" });
+    });
+    const { pageControl } = inspectRegionViaHotkey();
+
+    const dismissButton = screen.getByRole("button", { name: "Dismiss: Final toast" });
+    act(() => {
+      dismissButton.focus();
+    });
+    act(() => {
+      dismissButton.click();
+    });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.queryByText("Final toast")).not.toBeInTheDocument();
+    expect(pageControl).toHaveFocus();
+  });
+
+  it("leaves focus with the user when the last toast expires after focus left the region", () => {
+    render(
+      <div>
+        <button type="button">Page control</button>
+        <input aria-label="Elsewhere" />
+        <Toaster hotkey="F8" />
+      </div>,
+    );
+    act(() => {
+      toast("Expiring toast", { id: "expire-1", duration: 3000 });
+    });
+    inspectRegionViaHotkey();
+
+    const elsewhere = screen.getByRole("textbox", { name: "Elsewhere" });
+    act(() => {
+      elsewhere.focus();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.queryByText("Expiring toast")).not.toBeInTheDocument();
+    expect(elsewhere).toHaveFocus();
+  });
+
+  it("leaves an open dialog's focus restore intact after an abandoned hotkey inspection", () => {
+    // Triggerless dialog, as apps/web opens all of its dialogs: DialogContent
+    // has no trigger ref to fall back on, so its restore must survive on its
+    // own. An inspection started while the dialog is open and then abandoned
+    // used to strand an entry above the dialog's on the shared restore stack.
+    function ControlledDialog() {
+      const [open, setOpen] = useState(true);
+      return (
+        <div>
+          <button type="button" onClick={() => setOpen(true)}>
+            Page control
+          </button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <Dialog.Content>
+              <Dialog.Title>Settings</Dialog.Title>
+              <Dialog.Close>Close</Dialog.Close>
+            </Dialog.Content>
+          </Dialog>
+          <Toaster hotkey="F8" />
+        </div>
+      );
+    }
+
+    const opener = document.createElement("button");
+    opener.textContent = "Opener";
+    document.body.append(opener);
+    opener.focus();
+
+    render(<ControlledDialog />);
+    act(() => {
+      toast("Background toast", { id: "stack-1" });
+    });
+    const closeButton = screen.getByRole("button", { name: "Close" });
+
+    // Press the hotkey while the dialog is open. The dialog's focus trap keeps
+    // focus inside, so the inspection never really starts — but it must also
+    // not leave anything behind that outranks the dialog's own restore.
+    act(() => {
+      closeButton.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "F8", bubbles: true, cancelable: true }),
+      );
+    });
+
+    act(() => {
+      closeButton.click();
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
+    opener.remove();
   });
 
   it("renders a toast triggered while a modal dialog is open", () => {

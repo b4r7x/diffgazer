@@ -9,7 +9,7 @@ import { Field } from "@diffgazer/ui/components/field";
 import { HorizontalStepper } from "@diffgazer/ui/components/horizontal-stepper";
 import { InputGroup } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { CardLayout } from "@/components/layout/card";
 import { useConfigData } from "@/hooks/use-config";
 import { useOnboardingKeyboard } from "../hooks/use-keyboard";
@@ -25,6 +25,7 @@ function getPrimaryLabel(isLastStep: boolean, isBusy: boolean, primaryLabel: str
 
 export function OnboardingWizard() {
   const focusFallbackRef = useRef<HTMLDivElement>(null);
+  const stepCheckboxRef = useRef<HTMLDivElement>(null);
   const { configurations } = useConfigData();
   const {
     currentStep,
@@ -92,6 +93,23 @@ export function OnboardingWizard() {
     focusFallbackRef,
   });
 
+  // The radio steps focus their selected item through RadioGroup autoFocus;
+  // the checkbox steps have no self-focusing group, so step entry places focus
+  // on the checkbox here or arrows would only reach the footer. The removed
+  // flow renders prose only, so its steps park entry focus on the content
+  // wrapper to keep the ArrowDown-to-actions path alive. The step components key
+  // entry focus on their own active flag; this one keys on the step, the only
+  // input that changes between the two checkbox steps.
+  const isRemovedFlow = wizardData.kind === "removed";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: currentStep is never read in the body; it is the intentional re-trigger above. Dropping it stops entry focus from re-placing on conformance -> acknowledgement, where neither isRemovedFlow nor the refs change.
+  useEffect(() => {
+    if (stepCheckboxRef.current) {
+      stepCheckboxRef.current.focus();
+      return;
+    }
+    if (isRemovedFlow) focusFallbackRef.current?.focus();
+  }, [currentStep, isRemovedFlow]);
+
   const renderRunnableStep = () => {
     if (wizardData.kind !== "runnable") return null;
     const { configurationInput, selectedModelId, conformanceStatus, acknowledgement, plan } =
@@ -149,6 +167,7 @@ export function OnboardingWizard() {
                   });
                 }}
                 onEnter={() => handleStepCommit()}
+                autoFocus={!footer.inActions}
                 keyboardNavigation={!footer.inActions}
                 onNavigationBoundaryReached={() => handleStepBoundary("down")}
                 className="space-y-1"
@@ -221,6 +240,7 @@ export function OnboardingWizard() {
                   updateData({ configurationInput: nextInput });
                 }}
                 onEnter={() => handleStepCommit()}
+                autoFocus={!footer.inActions}
                 keyboardNavigation={!footer.inActions}
                 className="space-y-1"
               >
@@ -274,6 +294,7 @@ export function OnboardingWizard() {
               verification.
             </p>
             <Checkbox
+              ref={stepCheckboxRef}
               checked={conformanceStatus === "passed"}
               onChange={(checked) =>
                 updateData({ conformanceStatus: checked ? "passed" : "not-tested" })
@@ -303,6 +324,7 @@ export function OnboardingWizard() {
               ))}
             </div>
             <Checkbox
+              ref={stepCheckboxRef}
               checked={accepted}
               onChange={(checked) =>
                 updateData({

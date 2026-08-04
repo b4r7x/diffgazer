@@ -3,9 +3,10 @@ import { buildProviderSettingsRows } from "@diffgazer/core/schemas/config";
 import { buildProviderRows } from "@diffgazer/core/testing/provider-fixtures";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getProviderActions } from "../lib/actions";
-import { ProviderDetails } from "./details";
+import { ProviderDetails, type ProviderDetailsProps } from "./details";
 
 const ROWS = buildProviderRows();
 
@@ -19,7 +20,10 @@ function findRow(configurationId: string): ProviderListRow {
 
 const GEMINI_ROW = findRow("gemini-primary");
 
-function renderDetails(row: ProviderListRow | null, props: { isPending?: boolean } = {}) {
+function renderDetails(
+  row: ProviderListRow | null,
+  props: Pick<ProviderDetailsProps, "isPending" | "focusFallbackRef"> = {},
+) {
   const onAction = vi.fn();
   const view = render(
     <ProviderDetails row={row} actions={getProviderActions(row)} onAction={onAction} {...props} />,
@@ -130,5 +134,16 @@ describe("ProviderDetails", () => {
     for (const button of screen.getAllByRole("button")) {
       expect(button).toBeDisabled();
     }
+  });
+
+  it("parks programmatic focus on the details content through the fallback ref", () => {
+    const focusFallbackRef = createRef<HTMLDivElement>();
+    renderDetails(GEMINI_ROW, { isPending: true, focusFallbackRef });
+
+    // The keyboard row focuses this element while every action is disabled; it must
+    // accept programmatic focus without joining the tab order.
+    focusFallbackRef.current?.focus();
+    expect(focusFallbackRef.current).toHaveFocus();
+    expect(focusFallbackRef.current).toHaveAttribute("tabindex", "-1");
   });
 });

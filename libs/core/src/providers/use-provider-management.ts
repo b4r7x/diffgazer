@@ -161,43 +161,51 @@ export function useProviderManagement({
     replaceOwner(owner, null);
   };
 
-  const handleCreateConfiguration = (
+  const handleCreateConfiguration = async (
     owner: SetupDialogOwner,
     input: ClientConfigurationInput,
     options?: { continueToModelSelection?: boolean },
   ) => {
     const row = findProviderById(providers, owner.rowId);
-    return run({ action: "create", row, modelId: null }, async () => {
+    // The created configuration is the only reliable identity here: the row
+    // list has not refreshed yet, so it cannot supply the new id.
+    let configurationId: ConfigurationId | undefined;
+    const outcome = await run({ action: "create", row, modelId: null }, async () => {
       const response = await mutations.createConfiguration(input);
-      // The created configuration is the only reliable identity here: the row
-      // list has not refreshed yet, so it cannot supply the new id.
-      const configurationId = response.configuration?.configurationId;
-      const modelOwner: ModelDialogOwner | null =
-        options?.continueToModelSelection && configurationId
-          ? { kind: "model", id: takeDialogOwnerId(), rowId: owner.rowId, configurationId }
-          : null;
-      replaceOwner(owner, modelOwner);
+      configurationId = response.configuration?.configurationId;
     });
+    // Owner swaps happen after the submit guard has cleared: closing inside it
+    // unmounts the dialog while the trigger button is still natively disabled,
+    // so focus restore lands on <body> instead of the trigger.
+    if (outcome.status !== "succeeded") return outcome;
+    const modelOwner: ModelDialogOwner | null =
+      options?.continueToModelSelection && configurationId
+        ? { kind: "model", id: takeDialogOwnerId(), rowId: owner.rowId, configurationId }
+        : null;
+    replaceOwner(owner, modelOwner);
+    return outcome;
   };
 
-  const handleUpdateConfiguration = (
+  const handleUpdateConfiguration = async (
     owner: SetupDialogOwner,
     request: UpdateConfigurationRequest,
     options?: { continueToModelSelection?: boolean },
   ) => {
     const row = findProviderById(providers, owner.rowId);
-    return run({ action: "update", row, modelId: null }, async () => {
+    const outcome = await run({ action: "update", row, modelId: null }, async () => {
       await mutations.updateConfiguration(request);
-      const modelOwner: ModelDialogOwner | null = options?.continueToModelSelection
-        ? {
-            kind: "model",
-            id: takeDialogOwnerId(),
-            rowId: owner.rowId,
-            configurationId: request.configurationId,
-          }
-        : null;
-      replaceOwner(owner, modelOwner);
     });
+    if (outcome.status !== "succeeded") return outcome;
+    const modelOwner: ModelDialogOwner | null = options?.continueToModelSelection
+      ? {
+          kind: "model",
+          id: takeDialogOwnerId(),
+          rowId: owner.rowId,
+          configurationId: request.configurationId,
+        }
+      : null;
+    replaceOwner(owner, modelOwner);
+    return outcome;
   };
 
   const handleDeleteConfiguration = (
@@ -245,12 +253,13 @@ export function useProviderManagement({
     });
   };
 
-  const handleSelectModel = (owner: ModelDialogOwner, modelId: ExactModelId) => {
+  const handleSelectModel = async (owner: ModelDialogOwner, modelId: ExactModelId) => {
     const row = findProviderById(providers, owner.rowId);
-    return run({ action: "select-model", row, modelId }, async () => {
+    const outcome = await run({ action: "select-model", row, modelId }, async () => {
       await mutations.selectConfiguration(owner.configurationId, modelId);
-      replaceOwner(owner, null);
     });
+    if (outcome.status === "succeeded") replaceOwner(owner, null);
+    return outcome;
   };
 
   const handleDispatchReadinessAction = async (

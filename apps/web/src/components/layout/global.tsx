@@ -8,8 +8,9 @@ import {
 } from "@diffgazer/core/providers";
 import { useKey, useKeyboardContext } from "@diffgazer/keys";
 import { useCanGoBack, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { useConfigData } from "@/hooks/use-config";
+import { usePointerFocusGuard } from "@/hooks/use-pointer-focus-guard";
 import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
 import { getMainContent, MAIN_CONTENT_ID } from "@/lib/main-content";
 import { reportShutdownResult, shutdown } from "@/lib/shutdown";
@@ -153,6 +154,9 @@ interface GlobalLayoutProps {
 
 export function GlobalLayout({ children }: GlobalLayoutProps) {
   const transport = useTransportState();
+  const mainRef = useRef<HTMLElement>(null);
+
+  usePointerFocusGuard(mainRef);
 
   return (
     <div
@@ -171,7 +175,12 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
         <ConnectionStrip state={transport.state} onRetry={transport.retry} />
       )}
       <GlobalShortcuts />
-      <main id={MAIN_CONTENT_ID} tabIndex={-1} className="flex-1 flex flex-col overflow-hidden">
+      <main
+        ref={mainRef}
+        id={MAIN_CONTENT_ID}
+        tabIndex={-1}
+        className="flex-1 flex flex-col overflow-hidden"
+      >
         {children}
       </main>
       <ConnectedFooter />

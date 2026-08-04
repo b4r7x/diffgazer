@@ -106,6 +106,48 @@ describe("ModelStep", () => {
     expect(getConfigurationModels).not.toHaveBeenCalled();
   });
 
+  it("focuses Retry when no configuration is available for discovery", () => {
+    render(
+      <ModelStep
+        configuration={null}
+        isPreparing={false}
+        onRetry={vi.fn()}
+        value={null}
+        onChange={vi.fn()}
+      />,
+      { wrapper: makeWrapper(apiWithModels(vi.fn<BoundApi["getConfigurationModels"]>())) },
+    );
+
+    expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus();
+  });
+
+  it("leaves footer focus alone when preparation resolves without a configuration", () => {
+    const wrapper = makeWrapper(apiWithModels(vi.fn<BoundApi["getConfigurationModels"]>()));
+    const preparingStep = (isPreparing: boolean) => (
+      <>
+        <button type="button">Next</button>
+        <ModelStep
+          configuration={null}
+          isPreparing={isPreparing}
+          onRetry={vi.fn()}
+          value={null}
+          onChange={vi.fn()}
+          enabled={false}
+        />
+      </>
+    );
+
+    const { rerender } = render(preparingStep(true), { wrapper });
+
+    const footerAction = screen.getByRole("button", { name: "Next" });
+    footerAction.focus();
+
+    rerender(preparingStep(false));
+
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(footerAction).toHaveFocus();
+  });
+
   it("announces discovery failures, focuses retry, and retries without manual entry", async () => {
     const user = userEvent.setup();
     const getConfigurationModels = vi

@@ -2,6 +2,14 @@ import type { IssueFixStepPresentation } from "@diffgazer/core/review";
 import { Checkbox } from "@diffgazer/ui/components/checkbox";
 import { cn } from "@diffgazer/ui/lib/utils";
 
+/**
+ * Marks the checklist root so the details keyboard hook can find the rendered
+ * step checkboxes and move real DOM focus between them. The hook resolves it
+ * inside the details scroll body it already owns, so the marker never has to be
+ * unique document-wide.
+ */
+export const FIX_PLAN_CHECKLIST_SELECTOR = '[data-checklist="fix-plan"]';
+
 export interface FixPlanChecklistProps {
   steps: readonly IssueFixStepPresentation[];
   completedSteps: Set<number>;
@@ -20,12 +28,13 @@ export function FixPlanChecklist({
   className,
 }: FixPlanChecklistProps) {
   return (
-    <div className={cn("space-y-1 text-sm", className)}>
+    <div data-checklist="fix-plan" className={cn("space-y-1 text-sm", className)}>
       {steps.map((step) => {
         const isComplete = completedSteps.has(step.completionIndex);
         return (
           <Checkbox
             key={step.completionIndex}
+            data-value={String(step.completionIndex)}
             checked={isComplete}
             onChange={() => onToggle(step.completionIndex)}
             onFocus={() => onFocusedIndexChange?.(step.completionIndex)}

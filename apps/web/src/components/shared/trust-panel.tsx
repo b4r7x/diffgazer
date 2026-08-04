@@ -58,7 +58,11 @@ export function TrustPanel({ directory }: TrustPanelProps) {
     }
   }
 
-  const actionLabel = getTrustButtonLabel(isLoading, hasRepoAccess);
+  // The Button owns the busy affordance here: it renders a spinner and pushes
+  // its label sr-only while loading. Passing isLoading to the label as well
+  // would swap the button's accessible name to "Saving..." on top of that, so
+  // this surface keeps the label stable and lets the spinner say "busy".
+  const actionLabel = getTrustButtonLabel(false, hasRepoAccess);
 
   return (
     <CardLayout
@@ -70,7 +74,7 @@ export function TrustPanel({ directory }: TrustPanelProps) {
           variant="success"
           size="sm"
           onClick={handleTrust}
-          disabled={isLoading}
+          loading={isLoading}
           onKeyDown={handleButtonKeyDown}
         >
           {actionLabel}

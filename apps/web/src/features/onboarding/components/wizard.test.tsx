@@ -367,6 +367,35 @@ describe("OnboardingWizard", () => {
     ).toHaveLength(1);
   });
 
+  it("places keyboard focus inside each step's content as the wizard advances", async () => {
+    const user = userEvent.setup();
+    renderWizard();
+
+    await expectStep(/select product/i);
+    expect(screen.getByRole("radio", { name: /google gemini/i })).toHaveFocus();
+
+    await clickNext(user);
+    await expectStep(/configure endpoint/i);
+    expect(screen.getByRole("radio", { name: /global/i })).toHaveFocus();
+
+    await clickNext(user);
+    await expectStep(/configure authentication/i);
+    expect(screen.getByRole("radio", { name: /enter credential now/i })).toHaveFocus();
+
+    await user.click(screen.getByRole("radio", { name: /environment reference/i }));
+    await clickNext(user);
+    await expectStep(/select model/i);
+    await user.click(await screen.findByRole("radio", { name: /gemini-2\.5-pro/i }));
+    await clickNext(user);
+    await expectStep(/verify conformance/i);
+    expect(screen.getByRole("checkbox")).toHaveFocus();
+
+    await user.click(screen.getByRole("checkbox"));
+    await clickNext(user);
+    await expectStep(/accept product notice/i);
+    expect(screen.getByRole("checkbox")).toHaveFocus();
+  });
+
   it("skips hosted credential prompts for local CLI plans", async () => {
     const user = userEvent.setup();
     renderWizard();

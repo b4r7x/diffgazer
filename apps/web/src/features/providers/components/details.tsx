@@ -7,8 +7,8 @@ import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { cn } from "@diffgazer/ui/lib/utils";
-import type { RefCallback } from "react";
-import type { ProviderAction } from "../lib/actions";
+import type { RefCallback, RefObject } from "react";
+import { isProviderActionDisabled, type ProviderAction } from "../lib/actions";
 import { PROVIDER_STATUS_TONE } from "../lib/status-tone";
 
 export interface ProviderDetailsProps {
@@ -17,6 +17,8 @@ export interface ProviderDetailsProps {
   actions: readonly ProviderAction[];
   onAction: (action: ProviderAction) => void;
   isPending?: boolean;
+  /** Keyboard focus parks here while a pending mutation disables every action button. */
+  focusFallbackRef?: RefObject<HTMLDivElement | null>;
   focusedButtonIndex?: number;
   isFocused?: boolean;
   getButtonProps?: (index: number) => {
@@ -41,6 +43,7 @@ export function ProviderDetails({
   actions,
   onAction,
   isPending = false,
+  focusFallbackRef,
   focusedButtonIndex,
   isFocused = false,
   getButtonProps,
@@ -83,7 +86,11 @@ export function ProviderDetails({
         </span>
       </div>
 
-      <div className="flex flex-col gap-6 p-6 pt-3">
+      <div
+        ref={focusFallbackRef}
+        tabIndex={-1}
+        className="flex flex-col gap-6 p-6 pt-3 focus:outline-none"
+      >
         {actions.length > 0 ? (
           // biome-ignore lint/a11y/useSemanticElements: <fieldset> groups form controls and expects a <legend>; this is a labelled action row, and the group role is what makes "exactly one action row" observable.
           <div
@@ -99,7 +106,7 @@ export function ProviderDetails({
                 bracket
                 className={action.intent === "destructive" ? "sm:ml-auto" : undefined}
                 onClick={() => onAction(action)}
-                disabled={isPending || Boolean(action.disabledReason)}
+                disabled={isProviderActionDisabled(action, isPending)}
                 highlighted={isFocused && focusedButtonIndex === index && !action.disabledReason}
                 aria-label={
                   action.disabledReason ? `${action.label}. ${action.disabledReason}` : action.label

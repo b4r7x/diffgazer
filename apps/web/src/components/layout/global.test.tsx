@@ -116,6 +116,43 @@ describe("GlobalLayout", () => {
     expect(screen.getByRole("button", { name: "First content action" })).toHaveFocus();
   });
 
+  it("keeps focus with the active widget when a click lands on dead space in main", async () => {
+    const user = userEvent.setup();
+    renderShell(
+      <>
+        <div role="listbox" tabIndex={0} aria-label="Runs" />
+        <p>Static pane text</p>
+      </>,
+    );
+    const listbox = screen.getByRole("listbox", { name: "Runs" });
+
+    listbox.focus();
+    await user.click(screen.getByText("Static pane text"));
+
+    expect(listbox).toHaveFocus();
+  });
+
+  it("keeps focus with the active widget when a click lands on prose inside a pane focus park", async () => {
+    const user = userEvent.setup();
+    renderShell(
+      // Panes park programmatic focus on a tabIndex={-1} wrapper around their
+      // prose so focus survives a control disappearing; pressing that prose is
+      // still a dead-space press.
+      <>
+        <div role="listbox" tabIndex={0} aria-label="Runs" />
+        <div tabIndex={-1}>
+          <p>Static pane text</p>
+        </div>
+      </>,
+    );
+    const listbox = screen.getByRole("listbox", { name: "Runs" });
+
+    listbox.focus();
+    await user.click(screen.getByText("Static pane text"));
+
+    expect(listbox).toHaveFocus();
+  });
+
   it("navigates to the settings route without calling history back on a settings subroute", async () => {
     const user = userEvent.setup();
     routerState.pathname = "/settings/theme";
