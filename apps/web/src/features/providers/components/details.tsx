@@ -4,6 +4,7 @@ import { buildProviderSettingsRows } from "@diffgazer/core/schemas/config";
 import type { BadgeVariant } from "@diffgazer/core/schemas/presentation";
 import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { RefCallback } from "react";
@@ -46,12 +47,12 @@ export function ProviderDetails({
 }: ProviderDetailsProps) {
   if (!row) {
     return (
-      <div className="@container flex flex-1 flex-col overflow-y-auto max-md:overflow-y-visible">
-        <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
-          <SectionHeader as="h2">Provider Details</SectionHeader>
-        </div>
+      <ScrollArea
+        keyboardScrollable={false}
+        className="@container flex min-h-0 flex-1 flex-col max-md:overflow-x-visible max-md:overflow-y-visible"
+      >
         <EmptyState className="flex-1">{PROVIDER_DETAIL_EMPTY_LABEL}</EmptyState>
-      </div>
+      </ScrollArea>
     );
   }
 
@@ -64,21 +65,25 @@ export function ProviderDetails({
   const proseRows = settingsRows.filter(({ kind }) => kind === "prose");
 
   return (
-    <div className="@container flex flex-1 flex-col overflow-y-auto max-md:overflow-y-visible">
-      <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
-        <SectionHeader as="h2">Provider Details: {row.product.name}</SectionHeader>
+    <ScrollArea
+      keyboardScrollable={false}
+      className="@container flex min-h-0 flex-1 flex-col max-md:overflow-x-visible max-md:overflow-y-visible"
+    >
+      {/* Readiness readout seated under the pane chip, data-styled like the
+          history RUNS ordering readout rather than a bracketed control. */}
+      <div className="flex justify-end px-6 pt-3">
         {/* biome-ignore lint/a11y/useSemanticElements: role="status" matches the header StatusIndicator live-readout pattern; <output> carries form-association semantics that do not fit here. */}
         <span
           role="status"
           aria-label={displayStatus.accessibleText}
           data-tone={displayStatus.variant}
-          className={cn("shrink-0 font-mono text-2xs", PROVIDER_STATUS_TONE[displayStatus.variant])}
+          className={cn("font-mono text-2xs", PROVIDER_STATUS_TONE[displayStatus.variant])}
         >
           [ {displayStatus.label.toUpperCase()} ]
         </span>
       </div>
 
-      <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-6 p-6 pt-3">
         {actions.length > 0 ? (
           // biome-ignore lint/a11y/useSemanticElements: <fieldset> groups form controls and expects a <legend>; this is a labelled action row, and the group role is what makes "exactly one action row" observable.
           <div
@@ -156,6 +161,6 @@ export function ProviderDetails({
           </section>
         ))}
       </div>
-    </div>
+    </ScrollArea>
   );
 }

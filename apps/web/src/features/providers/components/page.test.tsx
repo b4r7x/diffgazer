@@ -69,9 +69,9 @@ function createMockApi() {
   } satisfies BoundApi;
 }
 
-// Both panes are unnamed regions, so the layout attribute the responsive-contracts
-// e2e already locates them by is the only handle; data-state="focused" is Panel's
-// documented bracket contract.
+// The layout attribute is the handle the responsive-contracts e2e already
+// locates the panes by; data-state="focused" is Panel's documented bracket
+// contract.
 function getPane(container: HTMLElement, pane: "provider-list" | "provider-details"): HTMLElement {
   const element = container.querySelector<HTMLElement>(`[data-layout-pane="${pane}"]`);
   if (!element) throw new Error(`Missing provider pane: ${pane}`);

@@ -553,10 +553,14 @@ test("the stacked providers view owns exactly one scroller and reaches the detai
   expect(emptyStateHeight).not.toBeNull();
   expect(emptyStateHeight ?? 0).toBeLessThanOrEqual(2);
 
-  // Wheel input anywhere over the list reaches the details pane below the fold.
+  // Wheel input anywhere over the visible part of the list reaches the details
+  // pane below the fold. The pane is taller than the viewport, so its midpoint
+  // can land past the fold where a wheel event hits nothing — sample a point
+  // that is both over the pane and on screen.
   const listBox = await listPane.boundingBox();
   if (!listBox) throw new Error("provider list has no bounding box");
-  await page.mouse.move(listBox.x + listBox.width / 2, listBox.y + listBox.height / 2);
+  const wheelY = Math.min(listBox.y + listBox.height / 2, 520);
+  await page.mouse.move(listBox.x + listBox.width / 2, wheelY);
   for (let step = 0; step < 6; step++) {
     await page.mouse.wheel(0, 400);
   }

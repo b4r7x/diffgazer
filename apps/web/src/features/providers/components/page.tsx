@@ -101,59 +101,82 @@ export function ProvidersPage() {
   const modelDialog = dialogs.current?.kind === "model" ? dialogs.current : null;
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto max-md:overflow-x-hidden md:flex-row md:overflow-hidden md:pb-2">
-      <Panel
-        {...listPane.props}
-        focused={listPane.focusWithin}
-        className="flex w-full flex-col rounded-none border-0 border-b border-border md:h-full md:w-2/5 md:border-r md:border-b-0"
-        data-layout-pane="provider-list"
-      >
-        <ProviderList
-          ref={keyboard.listContainerRef}
-          providers={filteredProviders}
-          selectedId={selection.effectiveSelectedId}
-          onSelect={(id) => {
-            keyboard.handleListFocus();
-            selection.setSelectedId(id);
-          }}
-          filter={selection.filter}
-          onFilterChange={selection.setFilter}
-          searchQuery={search.query}
-          onSearchChange={search.setQuery}
-          isFocused={keyboard.focusZone === "list"}
-          inputRef={search.inputRef}
-          onSearchFocus={keyboard.handleSearchFocus}
-          onSearchEscape={keyboard.handleSearchEscape}
-          onListFocus={keyboard.handleListFocus}
-          focusedFilterIndex={keyboard.focusZone === "filters" ? keyboard.filterIndex : undefined}
-          onFilterIndexChange={keyboard.handleFilterIndexChange}
-          onFilterKeyDown={keyboard.handleFilterKeyDown}
-          getFilterButtonProps={keyboard.getFilterButtonProps}
-          onListKeyDown={keyboard.handleListKeyDown}
-          highlighted={selection.effectiveSelectedId}
-          onHighlightChange={(id) => selection.setSelectedId(id)}
-          onActivate={handleProviderListActivate}
-          onBoundaryReached={keyboard.handleListBoundary}
-        />
-      </Panel>
-      <Panel
-        {...detailsPane.props}
-        focused={detailsPane.focusWithin}
-        className="flex w-full flex-col rounded-none border-0 md:h-full md:w-3/5"
-        data-layout-pane="provider-details"
-      >
-        <ProviderDetails
-          row={selectedRow}
-          actions={providerActions}
-          onAction={runProviderAction}
-          isPending={isSubmitting}
-          focusedButtonIndex={
-            keyboard.focusZone === "buttons" && selectedRow ? keyboard.buttonIndex : undefined
-          }
-          isFocused={keyboard.focusZone === "buttons" && !!selectedRow}
-          getButtonProps={keyboard.getActionButtonProps}
-        />
-      </Panel>
+    <div className="flex flex-1 flex-col overflow-hidden px-4 pt-2 pb-2">
+      {/*
+        Same pane rhythm as history: chip-labelled hairline Panels on a grid,
+        1px column gap so the frames read as one shared rule, pt-4 clearing the
+        notched Panel.Label overhang. Below md the grid row is the page's single
+        scroller and the panes grow intrinsically; from md each pane scrolls
+        internally.
+      */}
+      <div className="grid min-h-0 flex-1 gap-x-px gap-y-6 overflow-y-auto pt-4 [--panel-hairline:var(--border)] max-md:overflow-x-hidden md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:overflow-hidden">
+        <Panel
+          {...listPane.props}
+          focused={listPane.focusWithin}
+          as="section"
+          aria-label="Providers"
+          className="flex min-w-0 flex-col md:min-h-0"
+          data-layout-pane="provider-list"
+        >
+          <Panel.Label variant="border" aria-hidden="true">
+            Providers
+          </Panel.Label>
+          <ProviderList
+            ref={keyboard.listContainerRef}
+            providers={filteredProviders}
+            selectedId={selection.effectiveSelectedId}
+            onSelect={(id) => {
+              keyboard.handleListFocus();
+              selection.setSelectedId(id);
+            }}
+            filter={selection.filter}
+            onFilterChange={selection.setFilter}
+            searchQuery={search.query}
+            onSearchChange={search.setQuery}
+            isFocused={keyboard.focusZone === "list"}
+            inputRef={search.inputRef}
+            onSearchFocus={keyboard.handleSearchFocus}
+            onSearchEscape={keyboard.handleSearchEscape}
+            onListFocus={keyboard.handleListFocus}
+            focusedFilterIndex={keyboard.focusZone === "filters" ? keyboard.filterIndex : undefined}
+            onFilterIndexChange={keyboard.handleFilterIndexChange}
+            onFilterKeyDown={keyboard.handleFilterKeyDown}
+            getFilterButtonProps={keyboard.getFilterButtonProps}
+            onListKeyDown={keyboard.handleListKeyDown}
+            highlighted={selection.effectiveSelectedId}
+            onHighlightChange={(id) => selection.setSelectedId(id)}
+            onActivate={handleProviderListActivate}
+            onBoundaryReached={keyboard.handleListBoundary}
+          />
+        </Panel>
+        <Panel
+          {...detailsPane.props}
+          focused={detailsPane.focusWithin}
+          as="section"
+          aria-label="Provider details"
+          className="flex min-w-0 flex-col md:min-h-0"
+          data-layout-pane="provider-details"
+        >
+          <Panel.Label variant="border" aria-hidden="true">
+            Provider Details
+            {/* The provider name is data, not a label: keep its real casing. */}
+            {selectedRow ? (
+              <span className="normal-case"> · {selectedRow.product.name}</span>
+            ) : null}
+          </Panel.Label>
+          <ProviderDetails
+            row={selectedRow}
+            actions={providerActions}
+            onAction={runProviderAction}
+            isPending={isSubmitting}
+            focusedButtonIndex={
+              keyboard.focusZone === "buttons" && selectedRow ? keyboard.buttonIndex : undefined
+            }
+            isFocused={keyboard.focusZone === "buttons" && !!selectedRow}
+            getButtonProps={keyboard.getActionButtonProps}
+          />
+        </Panel>
+      </div>
 
       {setupDialog ? (
         <ApiKeyDialog

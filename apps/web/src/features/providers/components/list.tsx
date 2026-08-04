@@ -19,7 +19,6 @@ import {
 } from "@diffgazer/ui/components/navigation-list";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
-import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from "react";
@@ -116,7 +115,11 @@ export function ProviderList({
             </NavigationListBadge>
           </NavigationListMeta>
           {subtitle ? (
-            <NavigationListSubtitle className="min-w-0 truncate">{subtitle}</NavigationListSubtitle>
+            // /85 lifts the slug over the AA floor on the selection fill, the
+            // same override history applies to its run summaries.
+            <NavigationListSubtitle className="min-w-0 truncate group-data-[highlighted]:text-primary-foreground/85">
+              {subtitle}
+            </NavigationListSubtitle>
           ) : null}
         </div>
       </NavigationListItem>
@@ -124,14 +127,9 @@ export function ProviderList({
   };
 
   return (
-    <div className="flex flex-col md:h-full">
-      <div className="p-3 border-b border-border bg-secondary/30">
-        <SectionHeader as="h2" className="text-foreground">
-          Providers
-        </SectionHeader>
-      </div>
-
-      <div className="p-3 border-b border-border">
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* pt-4 keeps the search box clear of the notched PROVIDERS chip above it. */}
+      <div className="px-3 pb-3 pt-4 border-b border-border">
         <SearchInput
           ref={inputRef}
           size="md"
@@ -167,7 +165,7 @@ export function ProviderList({
             // Focus is the one signal that hands the filter row the keyboard
             // zone: arrow navigation, Tab, and pointer focus all land here.
             onFocus={() => onFilterIndexChange?.(index)}
-            className="text-2xs pointer-coarse:min-h-11 pointer-coarse:px-3"
+            className="h-6 min-h-0 px-2.5 text-2xs uppercase pointer-coarse:min-h-11 pointer-coarse:px-3"
           >
             {f.label}
           </ToggleGroupItem>
@@ -176,7 +174,7 @@ export function ProviderList({
 
       <ScrollArea
         keyboardScrollable={false}
-        className="flex-1 max-md:overflow-x-visible max-md:overflow-y-visible"
+        className="flex-1 pb-2 max-md:overflow-x-visible max-md:overflow-y-visible"
       >
         {providers.length > 0 ? (
           <NavigationList
