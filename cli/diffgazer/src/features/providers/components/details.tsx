@@ -93,10 +93,6 @@ export function ProviderDetails({
         />
       ))}
 
-      {row.product.status === "removed" ? (
-        <Text color={tokens.muted}>{displayStatus.remediation}</Text>
-      ) : null}
-
       <Box flexWrap="wrap" gap={1} marginTop={1}>
         {slots.map((slot, index) => (
           <Button

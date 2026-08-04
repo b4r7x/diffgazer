@@ -36,7 +36,6 @@ export interface ReviewConfigurationIdentity {
  * These stay separate from legacy API-key-only setup copy.
  */
 export type ReviewReadinessGateReason =
-  | "removed"
   | "unreachable"
   | "conformance-pending"
   | "unsupported"
@@ -97,8 +96,6 @@ export function resolveReviewReadinessGate(
   if (readiness?.ready) return "ready";
 
   switch (readiness?.status) {
-    case "removed":
-      return "removed";
     case "unreachable":
     case "local-endpoint-unreachable":
       return "unreachable";

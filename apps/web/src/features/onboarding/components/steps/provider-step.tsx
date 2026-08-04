@@ -3,7 +3,6 @@ import type { RunnableProductId } from "@diffgazer/core/schemas/config";
 import { SELECTABLE_PRODUCTS } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
-import { Callout } from "@diffgazer/ui/components/callout";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useState } from "react";
 import { resolveAvailableValue } from "../../lib/select";
@@ -14,17 +13,10 @@ function isRunnableProductId(value: string | null): value is RunnableProductId {
   return SELECTABLE_PRODUCT_IDS.some((productId) => productId === value);
 }
 
-interface RemovedMigrationRecord {
-  name: string;
-  description: string;
-  replacementName: string;
-}
-
 interface ProviderStepProps {
   value: RunnableProductId | null;
   onChange: (productId: RunnableProductId) => void;
   onCommit?: (productId: RunnableProductId) => void;
-  removedRecord?: RemovedMigrationRecord | null;
   enabled?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
@@ -33,7 +25,6 @@ export function ProviderStep({
   value,
   onChange,
   onCommit,
-  removedRecord = null,
   enabled = true,
   onBoundaryReached,
 }: ProviderStepProps) {
@@ -54,18 +45,6 @@ export function ProviderStep({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground font-mono">Select a product for code reviews.</p>
-      {removedRecord ? (
-        <Callout tone="warning">
-          <Callout.Content>
-            <p className="font-mono text-sm">{removedRecord.name}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{removedRecord.description}</p>
-            <p className="mt-2 text-xs">
-              Create a {removedRecord.replacementName} configuration or delete this removed record
-              from the migration flow.
-            </p>
-          </Callout.Content>
-        </Callout>
-      ) : null}
       <RadioGroup
         aria-label="Select product"
         value={value ?? undefined}

@@ -1,9 +1,9 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CANDIDATE_VERDICTS, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { CANDIDATE_VERDICTS } from "@diffgazer/core/providers";
 import { escapeRegExp } from "@diffgazer/core/redaction";
-import { REJECTED_PRODUCT_IDS, REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
+import { REJECTED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import { DOCS_CONTENT_ROOT, getPreRenderPages, type PreRenderPage } from "./generate-sitemap.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -143,9 +143,9 @@ export interface RouteContractViolation {
 }
 
 /**
- * A retired product is anything the registry refuses to run: a rejected
- * candidate or a removed record.  Both the id and the published name are
- * documented subjects, so both have to be guarded.
+ * A retired product is a rejected candidate: something the registry refuses to
+ * run.  Both the id and the published name are documented subjects, so both
+ * have to be guarded.
  */
 interface RetiredProductSubject {
   readonly productId: string;
@@ -157,14 +157,9 @@ function retiredProductSubject(productId: string, name: string): RetiredProductS
   return { productId, pattern: new RegExp(`(?<![\\w-])(?:${alternatives})(?![\\w-])`, "gi") };
 }
 
-const RETIRED_PRODUCT_SUBJECTS: readonly RetiredProductSubject[] = [
-  ...REJECTED_PRODUCT_IDS.map((productId) =>
-    retiredProductSubject(productId, CANDIDATE_VERDICTS[productId].name),
-  ),
-  ...REMOVED_PRODUCT_IDS.map((productId) =>
-    retiredProductSubject(productId, PRODUCT_REGISTRY[productId].presentation.name),
-  ),
-];
+const RETIRED_PRODUCT_SUBJECTS: readonly RetiredProductSubject[] = REJECTED_PRODUCT_IDS.map(
+  (productId) => retiredProductSubject(productId, CANDIDATE_VERDICTS[productId].name),
+);
 
 const AVAILABILITY_CLAIM_PATTERN = /\b(?:selectable|enabled|available|support(?:s|ed)?)\b/gi;
 const CLAIM_NEGATION_PATTERN =
@@ -232,8 +227,12 @@ function claimsAvailability(line: string, subject: RetiredProductSubject): boole
 function linksToRetiredSupport(line: string, subject: RetiredProductSubject): boolean {
   for (const [, text] of line.matchAll(SUPPORT_LINK_PATTERN)) {
     if (text === undefined) continue;
-    subject.pattern.lastIndex = 0;
-    if (subject.pattern.test(text) && SUPPORT_LINK_ACTION_PATTERN.test(text)) return true;
+    // Match through `matchRanges`, never `subject.pattern.test`: a successful
+    // `test` on a global pattern leaves `lastIndex` past the hit, which silently
+    // skips the same subject on every later line.
+    if (matchRanges(text, subject.pattern).length > 0 && SUPPORT_LINK_ACTION_PATTERN.test(text)) {
+      return true;
+    }
   }
   return false;
 }

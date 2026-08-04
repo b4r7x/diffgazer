@@ -1,8 +1,4 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import { dirname, join } from "node:path";
 import type { Result } from "@diffgazer/core/result";
 import type { ClientConfigurationAction } from "@diffgazer/core/schemas/config";
@@ -62,21 +58,6 @@ const supportedRecord = (overrides: Record<string, unknown> = {}) => ({
   createdAt: CREATED_AT,
   updatedAt: CREATED_AT,
   ...overrides,
-});
-
-const removedRecord = () => ({
-  schemaVersion: 2,
-  status: "removed",
-  configurationId: "cfg-removed",
-  revision: 1,
-  productId: REMOVED_PRODUCT_ID,
-  transportFamily: "hosted-api",
-  selectedModelId: null,
-  acknowledgement: null,
-  evidenceReference: null,
-  budget: null,
-  createdAt: CREATED_AT,
-  updatedAt: CREATED_AT,
 });
 
 const createGeminiAction = (
@@ -141,13 +122,13 @@ const recordFailure = <T, E>(target: unknown[], result: Result<T, E>): void => {
 };
 
 describe("config store errors", () => {
-  it("fails stale revisions, removed records, and unknown records with exact error codes and byte-identical state", async () => {
+  it("fails stale revisions and unknown records with exact error codes and byte-identical state", async () => {
     const unknownRecord =
       '{"schemaVersion":99,"configurationId":"cfg-future","future":{"nested":true}}';
     mkdirSync(dirname(configPath()), { recursive: true });
     writeFileSync(
       configPath(),
-      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${JSON.stringify(supportedRecord())},${JSON.stringify(removedRecord())},${unknownRecord}]}\n`,
+      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${JSON.stringify(supportedRecord())},${unknownRecord}]}\n`,
     );
     writeJson(secretsPath(), v2Secrets([fileBinding("cfg-existing", 1)]));
     const store = await loadStore();
@@ -165,17 +146,14 @@ describe("config store errors", () => {
       }),
     ).resolves.toMatchObject({ ok: false, error: { code: "CONFIGURATION_CONFLICT" } });
     await expect(
-      store.runConfigurationAction(updateGeminiAction("cfg-removed", 1)),
-    ).resolves.toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-    await expect(
       store.runConfigurationAction({
         action: "select",
-        configurationId: "cfg-removed",
+        configurationId: "cfg-future",
         modelId: "gemini-2.5-flash",
       }),
     ).resolves.toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
     await expect(
-      store.runConfigurationAction({ action: "test", configurationId: "cfg-removed" }),
+      store.runConfigurationAction({ action: "test", configurationId: "cfg-future" }),
     ).resolves.toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
     await expect(
       store.runConfigurationAction({ action: "inspect", configurationId: "cfg-future" }),
@@ -295,7 +273,7 @@ describe("config store errors", () => {
     mkdirSync(dirname(configPath()), { recursive: true });
     writeFileSync(
       configPath(),
-      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${JSON.stringify(supportedRecord())},${JSON.stringify(removedRecord())},${unknownRecord}]}\n`,
+      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${JSON.stringify(supportedRecord())},${unknownRecord}]}\n`,
     );
     writeJson(secretsPath(), v2Secrets([fileBinding("cfg-existing", 1)]));
     const store = await loadStore();
@@ -307,9 +285,9 @@ describe("config store errors", () => {
         action: "create",
         input: {
           transportFamily: "hosted-api",
-          productId: REMOVED_PRODUCT_ID,
+          productId: "future-product",
           endpoint: "https://api.example.invalid/v1",
-          credential: { kind: "literal", value: "sk-zai-coding-never-created" },
+          credential: { kind: "literal", value: "sk-proj-never-created" },
         },
       } as unknown as ClientConfigurationAction),
     );
@@ -329,13 +307,13 @@ describe("config store errors", () => {
       failures,
       await store.runConfigurationAction({
         action: "select",
-        configurationId: "cfg-removed",
+        configurationId: "cfg-future",
         modelId: "gemini-2.5-flash",
       }),
     );
     recordFailure(
       failures,
-      await store.runConfigurationAction({ action: "test", configurationId: "cfg-removed" }),
+      await store.runConfigurationAction({ action: "test", configurationId: "cfg-future" }),
     );
     recordFailure(
       failures,

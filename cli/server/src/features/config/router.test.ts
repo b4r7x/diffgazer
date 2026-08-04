@@ -1,11 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
 import type { ProviderModelsResponse } from "@diffgazer/core/schemas/config";
 import {
@@ -51,20 +47,7 @@ const updateGeminiAction = (configurationId: string, expectedRevision: number) =
     },
   }) as const;
 
-const removedRecord = () => ({
-  schemaVersion: 2,
-  status: "removed",
-  configurationId: "cfg-removed",
-  revision: 1,
-  productId: REMOVED_PRODUCT_ID,
-  transportFamily: "hosted-api",
-  selectedModelId: null,
-  acknowledgement: null,
-  evidenceReference: null,
-  budget: null,
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
-});
+const unknownRecord = () => ({ schemaVersion: 99, configurationId: "cfg-future" });
 
 async function loadRouter() {
   const { configRouter } = await import("./router.js");
@@ -309,7 +292,7 @@ describe("GET /config/providers/:configurationId/models", () => {
     });
   });
 
-  it("returns 400 for a removed configuration", async () => {
+  it("returns 400 for an unknown configuration", async () => {
     const app = await loadRouter();
     writeFileSync(
       join(diffgazerHome, "config.json"),
@@ -317,11 +300,11 @@ describe("GET /config/providers/:configurationId/models", () => {
         schemaVersion: 2,
         settings: {},
         selectedConfigurationId: null,
-        configurations: [removedRecord()],
+        configurations: [unknownRecord()],
       })}\n`,
     );
 
-    const response = await app.request("/config/providers/cfg-removed/models");
+    const response = await app.request("/config/providers/cfg-future/models");
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
@@ -536,39 +519,21 @@ describe("POST /config/actions protected delete and update", () => {
   });
 });
 
-describe("POST /config/actions removed rejection", () => {
-  it("rejects update actions against removed configurations", async () => {
+describe("POST /config/actions unknown rejection", () => {
+  it("rejects update actions against unknown configurations", async () => {
     const app = await loadRouter();
     await grantProjectTrust();
-    const secretPath = join(diffgazerHome, "credentials", "cfg-removed-1.key");
     writeFileSync(
       join(diffgazerHome, "config.json"),
       `${JSON.stringify({
         schemaVersion: 2,
         settings: {},
         selectedConfigurationId: null,
-        configurations: [removedRecord()],
+        configurations: [unknownRecord()],
       })}\n`,
     );
-    writeFileSync(
-      join(diffgazerHome, "secrets.json"),
-      `${JSON.stringify({
-        schemaVersion: 2,
-        bindings: [
-          {
-            configurationId: "cfg-removed",
-            revision: 1,
-            kind: "file-0600",
-            filePath: secretPath,
-            status: "removed",
-          },
-        ],
-      })}\n`,
-    );
-    mkdirSync(dirname(secretPath), { recursive: true });
-    writeFileSync(secretPath, "sk-zai-coding-secret", { mode: 0o600 });
 
-    const response = await postConfigurationAction(app, updateGeminiAction("cfg-removed", 1));
+    const response = await postConfigurationAction(app, updateGeminiAction("cfg-future", 1));
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({

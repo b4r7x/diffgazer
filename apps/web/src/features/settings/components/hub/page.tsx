@@ -154,9 +154,9 @@ export function SettingsHubPage() {
     // around the card (the shared hero-tier optical band), so hub, children and
     // home hold the same top line and the spacers collapse when content
     // outgrows the viewport.
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-4 md:p-6 lg:p-8">
       <div aria-hidden className="grow" />
-      <div className="mx-auto w-full max-w-3xl">
+      <div className="mx-auto flex w-full min-h-0 max-w-3xl flex-col">
         {/* Resting chrome until focus actually enters the pane: the hub is a
             single pane, but nothing on screen may claim the focused hue while
             the keyboard is elsewhere. */}
@@ -164,7 +164,9 @@ export function SettingsHubPage() {
           {...panelFocus.props}
           focused={panelFocus.focusWithin}
           density="compact"
-          className="shadow-2xl"
+          // Capped to the space below the header: the rows scroll inside the
+          // card so the page never scrolls and the footer caption stays put.
+          className="flex min-h-0 flex-col shadow-2xl"
           aria-labelledby={titleId}
         >
           <Panel.Label>
@@ -178,7 +180,7 @@ export function SettingsHubPage() {
             onHighlightChange={setHighlighted}
             onSelect={handleActivate}
             variant="detail"
-            className="flex flex-col text-sm"
+            className="flex min-h-0 flex-1 flex-col overflow-y-auto text-sm"
             aria-label="Settings"
             autoFocus
           >

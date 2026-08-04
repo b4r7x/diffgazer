@@ -37,7 +37,6 @@ function canShowListSubtitle(
 
 function getModelSubtitle(row: ProviderListRow): string | undefined {
   if (row.configuration?.selectedModelId) return row.configuration.selectedModelId;
-  if (row.product.status === "removed") return "Removed record";
   if (row.readiness.status === "unsupported" && row.product.transportFamily === "local-cli") {
     return "CLI unsupported";
   }
@@ -48,7 +47,6 @@ function getStatusGlyph(
   row: ProviderListRow,
   selectedConfigurationId: ConfigurationId | null | undefined,
 ): string {
-  if (row.product.status === "removed") return "×";
   if (row.readiness.ready) {
     return row.configuration?.configurationId === selectedConfigurationId ? "●" : "○";
   }
@@ -60,7 +58,6 @@ function getStatusColor(
   tokens: CliColorTokens,
   selectedConfigurationId: ConfigurationId | null | undefined,
 ): string {
-  if (row.product.status === "removed") return tokens.error;
   if (row.readiness.ready) {
     return row.configuration?.configurationId === selectedConfigurationId
       ? tokens.success
@@ -95,12 +92,11 @@ export function ProviderList({
     >
       {providers.map((row) => {
         const rowId = getProviderRowId(row);
-        const isRemoved = row.product.status === "removed";
         const subtitle = getModelSubtitle(row);
         const showSubtitle = canShowListSubtitle(row.product.name, subtitle, contentWidth, compact);
 
         return (
-          <NavigationList.Item key={rowId} id={rowId} disabled={isRemoved}>
+          <NavigationList.Item key={rowId} id={rowId}>
             {({ tone }) => (
               <Box gap={1} width={contentWidth} flexWrap="nowrap" overflow="hidden">
                 <Box flexShrink={0}>

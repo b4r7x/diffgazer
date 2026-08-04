@@ -15,8 +15,6 @@ import { type ReactNode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ModelSelectDialog } from "./dialog";
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 const CHECKED_AT = "2026-08-02T12:00:00.000Z";
 const CATALOG_SKIPPED_REASON =
   "Catalog observations are unavailable for this configuration product.";
@@ -26,7 +24,7 @@ function catalogModel(id: string, tier: ModelInfo["tier"] = "paid"): ModelInfo {
 }
 
 function catalogModelsResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   models: ModelInfo[],
 ): ConfigurationModelsResponse {
   return {
@@ -42,7 +40,7 @@ function catalogModelsResponse(
 }
 
 function skippedModelsResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   reason: string = CATALOG_SKIPPED_REASON,
 ): ConfigurationModelsResponse {
   return {
@@ -56,11 +54,11 @@ function skippedModelsResponse(
   };
 }
 
-const GEMINI_CONFIGURATION = READY_GEMINI_CONFIGURATION as SupportedConfigurationSummary;
+const GEMINI_CONFIGURATION = READY_GEMINI_CONFIGURATION as ClientConfigurationSummary;
 const GEMINI_CATALOG_MODELS = [catalogModel("gemini-2.5-flash"), catalogModel("gemini-2.5-pro")];
 
 interface RenderOptions {
-  configuration?: SupportedConfigurationSummary;
+  configuration?: ClientConfigurationSummary;
   currentModel?: string | null;
   isSaving?: boolean;
   /** Flip isSaving to true when a selection is confirmed, like the page container does. */
@@ -428,7 +426,7 @@ describe("ModelSelectDialog discovery states", () => {
 
 describe("ModelSelectDialog transport model policies", () => {
   it("shows the honest catalog-unavailable reason for local transports", async () => {
-    const localConfiguration: SupportedConfigurationSummary = {
+    const localConfiguration: ClientConfigurationSummary = {
       configurationId: "ollama-loopback",
       revision: 2,
       status: "supported",

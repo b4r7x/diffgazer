@@ -2,13 +2,10 @@ import { z } from "zod";
 import {
   AgentExecutionSchema,
   ClientConfigurationInputSchema,
-  ConfigurationIdSchema,
-  ConfigurationRevisionSchema,
   ExactModelIdSchema,
 } from "../schemas/config/index.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { LensIdSchema } from "../schemas/review/index.js";
-import { buildSetupPlan, type RemovedSetupPlan, type RunnableSetupPlan } from "./setup-plan.js";
+import { buildSetupPlan, type RunnableSetupPlan } from "./setup-plan.js";
 
 /**
  * @deprecated Internal compatibility type for the legacy API-key entry hook.
@@ -56,7 +53,7 @@ const RunnableOnboardingStateInputSchema = z
   })
   .superRefine((state, context) => {
     const plan = buildSetupPlan(state.configurationInput.productId);
-    if (!plan || plan.kind !== "runnable") {
+    if (!plan) {
       context.addIssue({ code: "custom", message: "Runnable product requires a setup plan" });
       return;
     }
@@ -75,37 +72,16 @@ const RunnableOnboardingStateInputSchema = z
     }
   });
 
-const RemovedOnboardingStateInputSchema = z.strictObject({
-  kind: z.literal("removed"),
-  productId: z.literal(REMOVED_PRODUCT_ID),
-  configurationId: ConfigurationIdSchema,
-  expectedRevision: ConfigurationRevisionSchema,
+export const OnboardingStateSchema = RunnableOnboardingStateInputSchema.transform((state) => {
+  const plan = buildSetupPlan(state.configurationInput.productId);
+  if (!plan) {
+    throw new Error(`Missing runnable setup plan for ${state.configurationInput.productId}`);
+  }
+  return { ...state, plan } satisfies z.infer<typeof RunnableOnboardingStateInputSchema> & {
+    readonly plan: RunnableSetupPlan;
+  };
 });
 
-export const OnboardingStateSchema = z
-  .union([RunnableOnboardingStateInputSchema, RemovedOnboardingStateInputSchema])
-  .transform((state) => {
-    if (state.kind === "runnable") {
-      const plan = buildSetupPlan(state.configurationInput.productId);
-      if (!plan || plan.kind !== "runnable") {
-        throw new Error(`Missing runnable setup plan for ${state.configurationInput.productId}`);
-      }
-      return { ...state, plan } satisfies z.infer<typeof RunnableOnboardingStateInputSchema> & {
-        readonly plan: RunnableSetupPlan;
-      };
-    }
-
-    const plan = buildSetupPlan(state.productId);
-    if (!plan || plan.kind !== "removed") {
-      throw new Error(`Missing removed setup plan for ${state.productId}`);
-    }
-    return { ...state, plan } satisfies z.infer<typeof RemovedOnboardingStateInputSchema> & {
-      readonly plan: RemovedSetupPlan;
-    };
-  });
-
 export type OnboardingState = z.infer<typeof OnboardingStateSchema>;
-export type RunnableOnboardingState = Extract<OnboardingState, { kind: "runnable" }>;
-export type RemovedOnboardingState = Extract<OnboardingState, { kind: "removed" }>;
 
 export type OnboardingStep = OnboardingState["plan"]["steps"][number]["id"];

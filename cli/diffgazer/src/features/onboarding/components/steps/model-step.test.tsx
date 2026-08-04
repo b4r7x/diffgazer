@@ -1,10 +1,10 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import type { ConfigurationModelsResponse } from "@diffgazer/core/schemas/config";
-import {
-  READY_GEMINI_CONFIGURATION,
-  type SupportedConfigurationSummary,
-} from "@diffgazer/core/testing/provider-fixtures";
+import type {
+  ClientConfigurationSummary,
+  ConfigurationModelsResponse,
+} from "@diffgazer/core/schemas/config";
+import { READY_GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
@@ -18,13 +18,13 @@ vi.mock("../../../../hooks/use-terminal-dimensions", () => ({
   useTerminalDimensions: () => terminalDimensions.current,
 }));
 
-const DRAFT_CONFIGURATION: SupportedConfigurationSummary = {
+const DRAFT_CONFIGURATION: ClientConfigurationSummary = {
   ...READY_GEMINI_CONFIGURATION,
   selectedModelId: null,
 };
 
 function catalogModelsResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   modelId: string,
 ): ConfigurationModelsResponse {
   return {

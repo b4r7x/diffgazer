@@ -1,13 +1,11 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { ProviderModelsResponseSchema, REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
+import { ProviderModelsResponseSchema } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const POISONED_CATALOG_ENTRY = new RegExp(
-  `${REMOVED_PRODUCT_ID}|github-models|xiaomi-mimo|glm-4\\.7|gpt-4\\.1|mimo-v2`,
-);
+const POISONED_CATALOG_ENTRY = /github-models|xiaomi-mimo|gpt-4\.1|mimo-v2/;
 
 const writeJsonFileSyncFailPaths = vi.hoisted(() => new Set<string>());
 
@@ -542,7 +540,7 @@ describe("configuration-bound catalog observations", () => {
     });
   });
 
-  it(`does not project ${REMOVED_PRODUCT_ID}, GitHub Models, or candidate products from catalog observations`, () => {
+  it("does not project GitHub Models or candidate products from catalog observations", () => {
     const checkedAt = fresh();
     const catalog = {
       google: {
@@ -550,10 +548,6 @@ describe("configuration-bound catalog observations", () => {
         models: {
           "gemini-2.5-flash": { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
         },
-      },
-      "zai-coding-plan": {
-        id: "zai-coding-plan",
-        models: { "glm-4.7": { id: "glm-4.7", name: "Removed plan model" } },
       },
       "github-models": {
         id: "github-models",
@@ -575,7 +569,7 @@ describe("configuration-bound catalog observations", () => {
     }
   });
 
-  it(`does not surface ${REMOVED_PRODUCT_ID}, GitHub Models, or candidate products through discoverConfigurationCatalog`, async () => {
+  it("does not surface GitHub Models or candidate products through discoverConfigurationCatalog", async () => {
     writeCache(
       {
         google: {
@@ -583,10 +577,6 @@ describe("configuration-bound catalog observations", () => {
           models: {
             "gemini-2.5-flash": { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
           },
-        },
-        "zai-coding-plan": {
-          id: "zai-coding-plan",
-          models: { "glm-4.7": { id: "glm-4.7", name: "Removed plan model" } },
         },
         "github-models": {
           id: "github-models",

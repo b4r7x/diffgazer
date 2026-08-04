@@ -14,9 +14,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ModelStep } from "./model-step";
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
-const GEMINI_CONFIGURATION = READY_GEMINI_CONFIGURATION as SupportedConfigurationSummary;
+const GEMINI_CONFIGURATION = READY_GEMINI_CONFIGURATION as ClientConfigurationSummary;
 
 function geminiModelsResponse(): ConfigurationModelsResponse {
   return {

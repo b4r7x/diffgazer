@@ -3,13 +3,8 @@ import {
   type ClientConfigurationSummary,
   ClientConfigurationSummarySchema,
 } from "../schemas/config/provider-config.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { READINESS_PRESENTATION, ReadinessSchema } from "../schemas/config/readiness.js";
-import {
-  REMOVED_PRODUCT_IDS,
-  RUNNABLE_PRODUCT_IDS,
-  type RunnableProductId,
-} from "../schemas/config/transports.js";
+import { RUNNABLE_PRODUCT_IDS, type RunnableProductId } from "../schemas/config/transports.js";
 import {
   ClientMetadataPayloadSchema,
   type ClientMetadataSource,
@@ -25,7 +20,6 @@ type TestReadinessStatus =
   | "conformance-failed"
   | "acknowledgement-required"
   | "unsupported"
-  | "removed"
   | "skipped"
   | "local-api-incompatible"
   | "local-selected-model-missing"
@@ -48,7 +42,7 @@ function readiness(status: TestReadinessStatus, productId: RunnableProductId) {
   }
   const notice = PRODUCT_REGISTRY[productId].notice;
   const acknowledgement =
-    status === "removed" || status === "unsupported"
+    status === "unsupported"
       ? { status: "not-applicable" as const }
       : {
           status: "required" as const,
@@ -67,14 +61,10 @@ function readiness(status: TestReadinessStatus, productId: RunnableProductId) {
 }
 
 function sourceForConfiguration(configuration: ClientConfigurationSummary): ClientMetadataSource {
-  const status = configuration.status === "removed" ? "removed" : "unsupported";
   return {
     productId: configuration.productId,
     configuration,
-    readiness: readiness(
-      status,
-      configuration.productId === REMOVED_PRODUCT_ID ? "qwen" : configuration.productId,
-    ),
+    readiness: readiness("unsupported", configuration.productId),
     notices: configuration.notices,
     actions: [...configuration.availableActions],
   };
@@ -197,16 +187,6 @@ const CONFIGURATIONS = [
     notices: [copyNotice(PRODUCT_REGISTRY["codex-cli"].notice)],
     availableActions: ["inspect", "select", "test", "update", "delete"],
   },
-  {
-    configurationId: "removed-1",
-    revision: 1,
-    status: "removed",
-    transportFamily: "hosted-api",
-    productId: REMOVED_PRODUCT_ID,
-    selectedModelId: null,
-    notices: [],
-    availableActions: ["inspect", "delete"],
-  },
 ] as const satisfies readonly ClientConfigurationSummary[];
 
 function serializedKeys(value: unknown) {
@@ -219,7 +199,6 @@ describe("client metadata projection", () => {
       projectClientMetadata(sourceForConfiguration(configuration)),
     );
     const hostedPayload = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[0]));
-    const removedPayload = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[3]));
     const [projectedNotice] = hostedPayload.notices;
 
     expect(projectedNotice).toBeDefined();
@@ -242,16 +221,6 @@ describe("client metadata projection", () => {
       "selectable",
       "setupFields",
       "setupLabel",
-      "status",
-      "transportFamily",
-    ]);
-    expect(serializedKeys(removedPayload.product)).toEqual([
-      "description",
-      "migrationActions",
-      "name",
-      "productId",
-      "replacementProductId",
-      "selectable",
       "status",
       "transportFamily",
     ]);
@@ -286,16 +255,6 @@ describe("client metadata projection", () => {
         "availableActions",
         "configurationId",
         "installationId",
-        "notices",
-        "productId",
-        "revision",
-        "selectedModelId",
-        "status",
-        "transportFamily",
-      ],
-      [
-        "availableActions",
-        "configurationId",
         "notices",
         "productId",
         "revision",
@@ -730,37 +689,6 @@ describe("client metadata projection", () => {
     ).toBe(false);
   });
 
-  it("rejects ready claims for the removed product and preserves its migration contract", () => {
-    const removedPayload = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[3]));
-
-    expect(
-      ClientMetadataPayloadSchema.safeParse({
-        ...removedPayload,
-        readiness: {
-          status: "ready",
-          ready: true,
-          evidenceStatus: "passed",
-          checkedAt: "2026-07-31T12:00:00.000Z",
-          acknowledgement: {
-            status: "accepted",
-            noticeId: PRODUCT_REGISTRY.zai.notice.id,
-            noticeVersion: PRODUCT_REGISTRY.zai.notice.noticeVersion,
-            acceptedAt: "2026-07-31T11:00:00.000Z",
-          },
-          ...READINESS_PRESENTATION.ready,
-        },
-      }).success,
-    ).toBe(false);
-    expect(removedPayload.product).toMatchObject({
-      productId: REMOVED_PRODUCT_ID,
-      status: "removed",
-      selectable: false,
-    });
-    expect(removedPayload.configuration?.selectedModelId).toBeNull();
-    expect(removedPayload.readiness.status).toBe("removed");
-    expect(removedPayload.actions).toEqual(["inspect", "delete"]);
-  });
-
   it("rejects secret-bearing values even when their fields are allowlisted", () => {
     const safePayload = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[0]));
     const safeConfiguration = safePayload.configuration;
@@ -847,43 +775,7 @@ describe("client metadata projection", () => {
     ).toBe(true);
   });
 
-  it("keeps removed records on their non-runnable state and action contract", () => {
-    const removedPayload = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[3]));
-
-    for (const actions of [
-      ["create"],
-      ["select"],
-      ["test"],
-      ["update"],
-      ["inspect", "delete", "test"],
-    ]) {
-      expect(ClientMetadataPayloadSchema.safeParse({ ...removedPayload, actions }).success).toBe(
-        false,
-      );
-    }
-
-    expect(
-      ClientMetadataPayloadSchema.safeParse({
-        ...removedPayload,
-        readiness: readiness("unsupported", "qwen"),
-      }).success,
-    ).toBe(false);
-    expect(
-      ClientMetadataPayloadSchema.safeParse({
-        ...removedPayload,
-        configuration: null,
-      }).success,
-    ).toBe(false);
-    expect(
-      ClientMetadataPayloadSchema.safeParse({
-        ...removedPayload,
-        configuration: { ...removedPayload.configuration, availableActions: ["inspect"] },
-        actions: ["inspect"],
-      }).success,
-    ).toBe(false);
-  });
-
-  it("keeps Web and Ink projection copy identical for all 13 products and removed records", () => {
+  it("keeps Web and Ink projection copy identical for all 13 products", () => {
     const sources: ClientMetadataSource[] = RUNNABLE_PRODUCT_IDS.map((productId) => ({
       productId,
       configuration: null,
@@ -891,18 +783,12 @@ describe("client metadata projection", () => {
       notices: [PRODUCT_REGISTRY[productId].notice],
       actions: ["create"],
     }));
-    sources.push(sourceForConfiguration(CONFIGURATIONS[3]));
 
     const webPayloads = sources.map(projectClientMetadata);
     const inkPayloads = sources.map(projectClientMetadata);
 
     expect(webPayloads).toEqual(inkPayloads);
-    expect(
-      webPayloads.slice(0, RUNNABLE_PRODUCT_IDS.length).map(({ product }) => product.productId),
-    ).toEqual(RUNNABLE_PRODUCT_IDS);
-    expect(
-      webPayloads.slice(RUNNABLE_PRODUCT_IDS.length).map(({ product }) => product.productId),
-    ).toEqual(REMOVED_PRODUCT_IDS);
+    expect(webPayloads.map(({ product }) => product.productId)).toEqual(RUNNABLE_PRODUCT_IDS);
     expect(webPayloads.map(({ product }) => product.name)).toEqual(
       inkPayloads.map(({ product }) => product.name),
     );

@@ -11,8 +11,6 @@ The wizard does not run a fixed list of screens. It runs the **setup plan of the
 
 The first step lists the thirteen selectable products, each with its description and a billing-tier badge derived from how the product bills you: FREE or PAID for hosted APIs, LOCAL for products you run yourself over loopback HTTP, and AMBIENT for vendor CLIs that ride a subscription you already pay for. Diffgazer does not ship a model of its own, so you bring a product you already have access to: a hosted API, a local HTTP server on loopback, or a vendor CLI you already signed in to. Selecting a product builds the rest of the plan around it and resets any draft you had started for a different product. For the full list and what each one implies, see [providers and models](/app/concepts/providers-and-models) and the [providers reference](/app/reference/providers).
 
-If a removed product still has a saved record, this step shows a warning naming it and pointing at the replacement. See [Migrating a removed product](#migrating-a-removed-product) below.
-
 ## Configure the endpoint
 
 Hosted products ask you to choose the endpoint tuple: a list of allowed endpoint profiles, each showing its label and the exact URL it binds. When a profile is region-bound the region comes with it, and when it is workspace-bound the step also asks for a workspace reference.
@@ -48,10 +46,6 @@ The last step shows the current product's billing and privacy notice — the rea
 On this final step the button reads Complete Setup. Activating it saves the configuration and returns you to Home. Choose **Review Unstaged** or **Review Staged** there to start your first review. From here on, Diffgazer skips the wizard.
 
 > Tip: every step is keyboard-driven. Use the arrow keys to move through options, Space to select the highlighted one, and Enter to select and advance in a single keystroke. `↓` from the last option moves into the Back / Complete Setup buttons.
-
-## Migrating a removed product
-
-If a product Diffgazer used to support still has a saved record, the wizard runs a two-step migration plan instead: **Migration**, which asks you to create a replacement configuration, and **Delete**, which removes the old record. Existing credentials stay server-side and are never copied, tested, or sent — they go away only when you explicitly delete the record.
 
 ## Related
 

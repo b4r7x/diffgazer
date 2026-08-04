@@ -1,6 +1,7 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { ConfigurationModelsResponse } from "@diffgazer/core/schemas/config";
 import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
@@ -219,7 +220,7 @@ describe("ProvidersScreen V2 products and readiness", () => {
     expect(frame).not.toContain("API Key Status");
   });
 
-  test("lists selectable products and removed records from the V2 roster", async () => {
+  test("lists selectable products from the V2 roster", async () => {
     const { lastFrame } = render(
       <Wrapper>
         <ProvidersScreen />
@@ -227,7 +228,7 @@ describe("ProvidersScreen V2 products and readiness", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
-    expect(lastFrame()).toContain("Z.AI Coding Plan");
+    expect(lastFrame()).toContain(PRODUCT_REGISTRY.zai.presentation.name);
     expect(buildProviderRows().length).toBeGreaterThanOrEqual(13);
   });
 
@@ -239,17 +240,6 @@ describe("ProvidersScreen V2 products and readiness", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("CLI unsupported") ?? false);
-  });
-
-  test("prevents removed-record selection in the list", async () => {
-    const { lastFrame } = render(
-      <Wrapper>
-        <ProvidersScreen />
-      </Wrapper>,
-    );
-
-    await flushUntil(() => lastFrame()?.includes("Z.AI Coding Plan") ?? false);
-    expect(lastFrame()).toContain("Removed record");
   });
 });
 

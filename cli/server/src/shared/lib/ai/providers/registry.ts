@@ -5,7 +5,6 @@ import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import {
   CANDIDATE_PRODUCT_IDS,
   type LOCAL_HTTP_PRODUCT_IDS,
-  REMOVED_PRODUCT_IDS,
   RUNNABLE_PRODUCT_IDS,
   type RunnableProductId,
 } from "@diffgazer/core/schemas/config";
@@ -120,10 +119,7 @@ export function isRunnableAdapterProductId(productId: string): productId is Runn
 }
 
 export function isForbiddenAdapterProductId(productId: string): boolean {
-  return (
-    (REMOVED_PRODUCT_IDS as readonly string[]).includes(productId) ||
-    (CANDIDATE_PRODUCT_IDS as readonly string[]).includes(productId)
-  );
+  return (CANDIDATE_PRODUCT_IDS as readonly string[]).includes(productId);
 }
 
 export function validateAdapterRegistry(

@@ -47,7 +47,6 @@ export {
   type ProductAdmissionPolicy,
   type ProductNotice,
   type ProductRegistry,
-  type RemovedProductDescriptor,
   type RunnableProductDescriptor,
   requiresExplicitModelSelection,
   SELECTABLE_PRODUCT_IDS,

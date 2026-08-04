@@ -24,7 +24,6 @@ import {
   type ExactModelId,
   type Readiness,
   type ReadinessAcknowledgement,
-  type RemovedProductId,
   type RunnableProductId,
   resolveSelectedConfiguration,
   type SecretsStorage,
@@ -57,7 +56,7 @@ interface ConfigDataContextValue {
   isConfigured: boolean;
   provider: string | undefined;
   model: string | undefined;
-  selectedProductId: RunnableProductId | RemovedProductId | undefined;
+  selectedProductId: RunnableProductId | undefined;
   projectId: string | null;
   repoRoot: string | null;
   trust: ConfigurationInitResponse["project"]["trust"];
@@ -122,8 +121,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     const selected = resolveSelectedConfiguration(initData);
     const selectedConfiguration = selected?.configuration ?? null;
     const selectedReadiness = selected?.readiness ?? null;
-    const selectedProductId =
-      selectedConfiguration?.status === "supported" ? selectedConfiguration.productId : undefined;
+    const selectedProductId = selectedConfiguration?.productId;
 
     return {
       loadState: toLoadState(initData, isLoading, initError),
@@ -145,10 +143,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         selectedProductId === undefined
           ? undefined
           : PRODUCT_REGISTRY[selectedProductId].presentation.name,
-      model:
-        selectedConfiguration?.status === "supported"
-          ? (selectedConfiguration.selectedModelId ?? undefined)
-          : undefined,
+      model: selectedConfiguration?.selectedModelId ?? undefined,
       selectedProductId,
       projectId: initData?.project.projectId ?? null,
       repoRoot: initData?.project.path ?? null,

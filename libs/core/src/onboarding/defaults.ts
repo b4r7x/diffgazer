@@ -83,9 +83,7 @@ export function getInitialWizardData(
   productId: RunnableProductId = SELECTABLE_PRODUCT_IDS[0],
 ): OnboardingDraft {
   const plan = buildSetupPlan(productId);
-  if (!plan || plan.kind !== "runnable") {
-    throw new Error(`Missing runnable setup plan for ${productId}`);
-  }
+  if (!plan) throw new Error(`Missing runnable setup plan for ${productId}`);
 
   return {
     kind: "runnable",

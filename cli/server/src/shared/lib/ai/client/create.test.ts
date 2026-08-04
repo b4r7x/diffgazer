@@ -5,7 +5,6 @@ import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import {
   CANDIDATE_PRODUCT_IDS,
   LOCAL_OPENAI_PRESET_ENDPOINTS,
-  REMOVED_PRODUCT_IDS,
   RUNNABLE_PRODUCT_IDS,
   type RunnableProductId,
 } from "@diffgazer/core/schemas/config";
@@ -197,27 +196,6 @@ describe("createFromAdmittedPlan", () => {
     expect(result.value.transportFamily).toBe("hosted-api");
     expect(result.value.configurationId).toBe(plan.configurationId);
     expect(result.value.executionFingerprint).toBe(plan.executionFingerprint);
-  });
-
-  it.each([
-    ...REMOVED_PRODUCT_IDS,
-  ])("rejects removed product %s before adapter dispatch", async (productId) => {
-    const { createFromAdmittedPlan } = await loadCreate();
-    const plan = Object.freeze({
-      ...admittedPlan("gemini"),
-      productId,
-      evidenceKey: Object.freeze({
-        ...evidenceKeyFor("gemini", suggestedModelId("gemini")),
-        productId,
-      }),
-    }) as unknown as AdmittedExecutionPlan;
-
-    const result = createFromAdmittedPlan(plan);
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("UNSUPPORTED_PROVIDER");
-    }
   });
 
   it.each(

@@ -1,7 +1,7 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import { LEGACY_V1_HAS_API_KEY_PROPERTY, REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
+import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import {
   makeAllConfigurationsListResponse,
   READY_GEMINI_CONFIGURATION,
@@ -236,12 +236,9 @@ describe("legibility invariant", () => {
     expect(frame).toContain(PRODUCT_REGISTRY.gemini.presentation.name);
     expect(frame).toContain(PRODUCT_REGISTRY.zai.presentation.name);
     expect(frame).toContain("Ready");
-    expect(frame).toContain("Removed record");
-    expect(frame).toContain(PRODUCT_REGISTRY[REMOVED_PRODUCT_ID].presentation.name);
     expect(frame).not.toMatch(
       new RegExp(String.raw`\b${LEGACY_V1_HAS_API_KEY_PROPERTY}\b|\bapiKey\b|\bsecret\b`, "i"),
     );
-    expect(frame).not.toContain(REMOVED_PRODUCT_ID);
   });
 
   test("prints full severity chips in the results list at 100 columns", async () => {

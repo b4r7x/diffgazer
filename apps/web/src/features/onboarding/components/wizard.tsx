@@ -1,7 +1,6 @@
 import type { OnboardingConfigurationDraft, OnboardingStep } from "@diffgazer/core/onboarding";
 import { STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import { REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Checkbox } from "@diffgazer/ui/components/checkbox";
@@ -11,22 +10,20 @@ import { InputGroup } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useEffect, useRef } from "react";
 import { CardLayout } from "@/components/layout/card";
-import { useConfigData } from "@/hooks/use-config";
 import { useOnboardingKeyboard } from "../hooks/use-keyboard";
 import { useOnboarding } from "../hooks/use-onboarding";
 import { ApiKeyStep } from "./steps/api-key-step";
 import { ModelStep } from "./steps/model-step";
 import { ProviderStep } from "./steps/provider-step";
 
-function getPrimaryLabel(isLastStep: boolean, isBusy: boolean, primaryLabel: string): string {
+function getPrimaryLabel(isLastStep: boolean, isBusy: boolean): string {
   if (!isLastStep) return "Next";
-  return isBusy ? "Saving..." : primaryLabel;
+  return isBusy ? "Saving..." : "Complete Setup";
 }
 
 export function OnboardingWizard() {
   const focusFallbackRef = useRef<HTMLDivElement>(null);
   const stepCheckboxRef = useRef<HTMLDivElement>(null);
-  const { configurations } = useConfigData();
   const {
     currentStep,
     wizardData,
@@ -46,12 +43,7 @@ export function OnboardingWizard() {
     updateData,
     setProduct,
     complete,
-    deleteRemovedConfiguration,
   } = useOnboarding();
-
-  const removedRecord = configurations.find(
-    ({ configuration }) => configuration.status === "removed",
-  );
 
   // The model step reads models back from a persisted record, so the draft
   // tuple is committed as the user arrives rather than invented client-side.
@@ -62,7 +54,6 @@ export function OnboardingWizard() {
   const {
     footer,
     primaryButtonIndex,
-    primaryLabel,
     progressLabel,
     isBusy,
     canActivatePrimary,
@@ -89,29 +80,20 @@ export function OnboardingWizard() {
       enterStep(steps[stepIndex - 1]);
     },
     complete,
-    deleteRemovedConfiguration,
     focusFallbackRef,
   });
 
   // The radio steps focus their selected item through RadioGroup autoFocus;
   // the checkbox steps have no self-focusing group, so step entry places focus
-  // on the checkbox here or arrows would only reach the footer. The removed
-  // flow renders prose only, so its steps park entry focus on the content
-  // wrapper to keep the ArrowDown-to-actions path alive. The step components key
-  // entry focus on their own active flag; this one keys on the step, the only
-  // input that changes between the two checkbox steps.
-  const isRemovedFlow = wizardData.kind === "removed";
-  // biome-ignore lint/correctness/useExhaustiveDependencies: currentStep is never read in the body; it is the intentional re-trigger above. Dropping it stops entry focus from re-placing on conformance -> acknowledgement, where neither isRemovedFlow nor the refs change.
+  // on the checkbox here or arrows would only reach the footer. The step
+  // components key entry focus on their own active flag; this one keys on the
+  // step, the only input that changes between the two checkbox steps.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: currentStep is never read in the body; it is the intentional re-trigger above. Dropping it stops entry focus from re-placing on conformance -> acknowledgement, where the ref does not change.
   useEffect(() => {
-    if (stepCheckboxRef.current) {
-      stepCheckboxRef.current.focus();
-      return;
-    }
-    if (isRemovedFlow) focusFallbackRef.current?.focus();
-  }, [currentStep, isRemovedFlow]);
+    stepCheckboxRef.current?.focus();
+  }, [currentStep]);
 
   const renderRunnableStep = () => {
-    if (wizardData.kind !== "runnable") return null;
     const { configurationInput, selectedModelId, conformanceStatus, acknowledgement, plan } =
       wizardData;
 
@@ -120,15 +102,6 @@ export function OnboardingWizard() {
         return (
           <ProviderStep
             value={plan.productId}
-            removedRecord={
-              removedRecord?.configuration.productId === REMOVED_PRODUCT_ID
-                ? {
-                    name: PRODUCT_REGISTRY[REMOVED_PRODUCT_ID].presentation.name,
-                    description: PRODUCT_REGISTRY[REMOVED_PRODUCT_ID].presentation.description,
-                    replacementName: PRODUCT_REGISTRY.zai.presentation.name,
-                  }
-                : null
-            }
             onChange={setProduct}
             onCommit={() => handleStepCommit()}
             enabled={!footer.inActions}
@@ -348,29 +321,6 @@ export function OnboardingWizard() {
     }
   };
 
-  const renderRemovedStep = () => {
-    if (wizardData.kind !== "removed") return null;
-    if (currentStep === "migration") {
-      return (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground font-mono">
-            Create a {PRODUCT_REGISTRY.zai.presentation.name} configuration to replace this removed
-            record. Existing credentials stay server-side until you explicitly delete the removed
-            record.
-          </p>
-        </div>
-      );
-    }
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-muted-foreground font-mono">
-          Delete the removed {PRODUCT_REGISTRY[REMOVED_PRODUCT_ID].presentation.name} record after
-          migration is complete.
-        </p>
-      </div>
-    );
-  };
-
   return (
     <CardLayout
       title={STEP_TITLES[currentStep]}
@@ -400,7 +350,7 @@ export function OnboardingWizard() {
             onClick={handlePrimaryAction}
             disabled={!canActivatePrimary}
           >
-            {getPrimaryLabel(isLastStep, isBusy, primaryLabel)}
+            {getPrimaryLabel(isLastStep, isBusy)}
           </Button>
         </>
       }
@@ -419,7 +369,7 @@ export function OnboardingWizard() {
             <Callout.Content>{error}</Callout.Content>
           </Callout>
         ) : null}
-        {wizardData.kind === "removed" ? renderRemovedStep() : renderRunnableStep()}
+        {renderRunnableStep()}
       </div>
     </CardLayout>
   );

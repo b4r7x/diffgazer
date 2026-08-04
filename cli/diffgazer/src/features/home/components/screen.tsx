@@ -97,14 +97,10 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
   const selected = initData.configurations?.find(
     ({ configuration }) => configuration.configurationId === initData.selectedConfigurationId,
   );
-  const provider =
-    selected?.configuration.status === "supported"
-      ? PRODUCT_REGISTRY[selected.configuration.productId].presentation.name
-      : undefined;
-  const model =
-    selected?.configuration.status === "supported"
-      ? (selected.configuration.selectedModelId ?? undefined)
-      : undefined;
+  const provider = selected
+    ? PRODUCT_REGISTRY[selected.configuration.productId].presentation.name
+    : undefined;
+  const model = selected?.configuration.selectedModelId ?? undefined;
 
   const context: ContextInfo = buildHomeContextInfo(
     {

@@ -5,6 +5,7 @@ import { err, ok, type Result } from "@diffgazer/core/result";
 import {
   ConfigurationIdSchema,
   ConfigurationRevisionSchema,
+  LEGACY_PROVIDER_IDS_V1,
   type SecretsStorage,
 } from "@diffgazer/core/schemas/config";
 import { log } from "../log.js";
@@ -46,7 +47,7 @@ export function finalizeKeyringDeletions(keyIds: readonly string[]): void {
 // ---------------------------------------------------------------------------
 
 /** The only V1 records that may become an executable V2 binding. */
-const MIGRATABLE_V1_PROVIDERS = new Set(["gemini", "zai", "openrouter", "groq", "cerebras"]);
+const MIGRATABLE_V1_PROVIDERS: ReadonlySet<string> = new Set(LEGACY_PROVIDER_IDS_V1);
 
 /**
  * The V1 provider record does not contain a configuration identity.  T-030
@@ -57,8 +58,6 @@ export interface LegacySecretConfiguration {
   readonly provider: string;
   readonly configurationId: string;
   readonly revision: number;
-  /** A removed V1 record is retained, never made executable. */
-  readonly status?: "supported" | "removed";
   /** Existing provider-keyed keyring name, when the V1 setting used keyring. */
   readonly legacyKeyringName?: string;
   /** Existing file reference, when a caller has already split a V1 file. */
@@ -86,7 +85,7 @@ export interface V1SecretBindingMigration {
 export interface V1SecretMigrationResult {
   /** New V2 bindings contain references only; never literal values. */
   readonly bindings: readonly SecretBinding[];
-  /** Removed/unknown legacy records remain named and untouched. */
+  /** Unknown legacy records remain named and untouched. */
   readonly retainedLegacy: readonly V1SecretBindingMigration[];
   /** Keyring deletions are deferred until the V2 file transaction commits. */
   readonly keyringDeletions: readonly string[];
@@ -114,44 +113,24 @@ const bindingForLegacyEntry = (
   item: LegacySecretConfiguration,
   entry: SecretEntry | undefined,
   options: V1SecretMigrationOptions,
-  removed: boolean,
 ): Result<SecretBinding, SecretsStorageError> => {
   const { configurationId, revision } = item;
   if (entry && typeof entry !== "string") {
-    const binding = createEnvironmentSecretBinding(
-      configurationId,
-      revision,
-      entry.varName,
-      removed ? "removed" : "active",
-    );
-    return ok(binding);
+    return ok(createEnvironmentSecretBinding(configurationId, revision, entry.varName));
   }
 
   if (options.storage === "keyring") {
     const keyId = item.legacyKeyringName ?? getApiKeyName(item.provider);
-    const binding = createKeyringSecretBinding(
-      configurationId,
-      revision,
-      keyId,
-      removed ? "removed" : "active",
-    );
-    return ok(binding);
+    return ok(createKeyringSecretBinding(configurationId, revision, keyId));
   }
 
   const filePath = item.legacyFilePath ?? options.filePathFor?.({ configurationId, revision });
   if (filePath) {
-    return ok(
-      createFileSecretBinding(configurationId, revision, filePath, removed ? "removed" : "active"),
-    );
+    return ok(createFileSecretBinding(configurationId, revision, filePath));
   }
 
-  // A missing V1 value is represented explicitly as `none`.  A removed
-  // record is still retained as removed so that it cannot become executable.
-  return ok(
-    removed
-      ? markSecretBindingRemoved(createNoneSecretBinding(configurationId, revision))
-      : createNoneSecretBinding(configurationId, revision),
-  );
+  // A missing V1 value is represented explicitly as `none`.
+  return ok(createNoneSecretBinding(configurationId, revision));
 };
 
 const validateMigrationIdentity = (item: LegacySecretConfiguration): string | null => {
@@ -229,8 +208,7 @@ const ensureKeyringCopy = (
  *
  * Literal values are used only for a one-way keyring/file copy and are never
  * present in the result.  No endpoint, model, conformance probe, or provider
- * adapter is invoked.  `zai-coding` is retained as a removed binding and is
- * intentionally excluded from all copy/delete operations.
+ * adapter is invoked.
  */
 export function migrateV1SecretsToBindings(
   state: SecretsState | Readonly<Record<string, SecretEntry>>,
@@ -261,27 +239,12 @@ export function migrateV1SecretsToBindings(
     seen.add(identityKey);
 
     const entry = entries[item.provider];
-    const removed = item.provider === "zai-coding" || item.status === "removed";
-    const bindingResult = bindingForLegacyEntry(item, entry, options, removed);
+    const bindingResult = bindingForLegacyEntry(item, entry, options);
     if (!bindingResult.ok) {
       const rollback = rollbackConfigurationKeyringWrites(keyringWrites);
       return rollback.ok ? bindingResult : rollback;
     }
     let binding = bindingResult.value;
-
-    // Removed records are an explicit retention boundary.  In particular, a
-    // zai-coding key is never read, copied, relabelled, tested, or deleted.
-    if (removed) {
-      const retained = {
-        configurationId: item.configurationId,
-        revision: item.revision,
-        provider: item.provider,
-        binding,
-      } satisfies V1SecretBindingMigration;
-      bindings.push(binding);
-      retainedLegacy.push(retained);
-      continue;
-    }
 
     if (!MIGRATABLE_V1_PROVIDERS.has(item.provider)) {
       // Unknown providers are preserved as non-executable opaque records by

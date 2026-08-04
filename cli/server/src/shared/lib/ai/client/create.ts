@@ -1,10 +1,6 @@
 import { createError } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
-import {
-  CANDIDATE_PRODUCT_IDS,
-  REMOVED_PRODUCT_IDS,
-  type RunnableProductId,
-} from "@diffgazer/core/schemas/config";
+import { CANDIDATE_PRODUCT_IDS, type RunnableProductId } from "@diffgazer/core/schemas/config";
 import type { ExecutionResult } from "@diffgazer/core/schemas/review";
 import {
   type AdmittedExecutionPlan,
@@ -30,7 +26,6 @@ export type AdmittedPlanClient = Readonly<{
 function isForbiddenPlanProductId(productId: string): boolean {
   return (
     isForbiddenAdapterProductId(productId) ||
-    (REMOVED_PRODUCT_IDS as readonly string[]).includes(productId) ||
     (CANDIDATE_PRODUCT_IDS as readonly string[]).includes(productId)
   );
 }

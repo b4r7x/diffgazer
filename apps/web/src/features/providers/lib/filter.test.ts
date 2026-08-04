@@ -13,7 +13,6 @@ import type {
 import {
   LEGACY_V1_HAS_API_KEY_PROPERTY,
   READINESS_PRESENTATION,
-  REMOVED_PRODUCT_ID,
   ReadinessSchema,
   SELECTABLE_PRODUCTS,
 } from "@diffgazer/core/schemas/config";
@@ -29,7 +28,6 @@ const NON_READY_EVIDENCE = {
   "conformance-pending": { evidenceStatus: "pending", checkedAt: "2026-07-31T12:00:00.000Z" },
   unsupported: { evidenceStatus: "not-checked", checkedAt: null },
   "local-endpoint-unreachable": { evidenceStatus: "failed", checkedAt: "2026-07-31T12:00:00.000Z" },
-  removed: { evidenceStatus: "not-checked", checkedAt: null },
 } as const;
 
 function configurationStatus(
@@ -127,41 +125,22 @@ const CLI_UNSUPPORTED = configurationStatus(
   "unsupported",
 );
 
-const REMOVED_ZAI_CODING = configurationStatus(
-  {
-    configurationId: "legacy-removed-zai-plan",
-    revision: 4,
-    status: "removed",
-    transportFamily: "hosted-api",
-    productId: REMOVED_PRODUCT_ID,
-    selectedModelId: null,
-    notices: [],
-    availableActions: ["inspect", "delete"],
-  },
-  "removed",
-);
-
 const ALL_ROWS = mapProviderList([
   READY_GEMINI,
   PENDING_DEEPSEEK,
   LOCAL_UNREACHABLE,
   CLI_UNSUPPORTED,
-  REMOVED_ZAI_CODING,
 ]);
 
 const rowIds = (rows: ProviderListRow[]) => rows.map(getProviderRowId);
 
 describe("filterProviders", () => {
-  it("returns all selectable products plus removed records", () => {
+  it("returns all selectable products", () => {
     expect(ALL_ROWS.filter(({ product }) => product.selectable)).toHaveLength(13);
-    expect(ALL_ROWS.some(({ product }) => product.productId === REMOVED_PRODUCT_ID)).toBe(true);
   });
 
-  it("returns every provider except removed records when filter is 'all'", () => {
-    const ids = rowIds(filterProviders(ALL_ROWS, "all"));
-
-    expect(ids).toEqual(rowIds(ALL_ROWS.filter(({ product }) => product.status !== "removed")));
-    expect(ids).not.toContain("legacy-removed-zai-plan");
+  it("returns every provider when filter is 'all'", () => {
+    expect(rowIds(filterProviders(ALL_ROWS, "all"))).toEqual(rowIds(ALL_ROWS));
   });
 
   it("keeps every stored configuration under 'configured' in list order", () => {
@@ -195,7 +174,6 @@ describe("filterProviders", () => {
     expect(ids).not.toContain("deepseek-pending");
     expect(ids).not.toContain("local-openai-1");
     expect(ids).not.toContain("codex-cli-1");
-    expect(ids).not.toContain("legacy-removed-zai-plan");
   });
 
   it("partitions 'all' into 'configured' and 'needs-key'", () => {
@@ -210,22 +188,15 @@ describe("filterProviders", () => {
   it("partitions free vs paid by product billing modes", () => {
     const freeIds = rowIds(filterProviders(ALL_ROWS, "free"));
     expect(freeIds).toContain("gemini-primary");
-    expect(freeIds).not.toContain("legacy-removed-zai-plan");
 
     const paidIds = rowIds(filterProviders(ALL_ROWS, "paid"));
     expect(paidIds).toContain("deepseek-pending");
     expect(paidIds).not.toContain("gemini-primary");
-    expect(paidIds).not.toContain("legacy-removed-zai-plan");
   });
 
   it("matches search query against product name and id", () => {
     expect(rowIds(filterProviders(ALL_ROWS, "all", "google"))).toEqual(["gemini-primary"]);
     expect(rowIds(filterProviders(ALL_ROWS, "all", "zai"))).toEqual(["zai"]);
-  });
-
-  it("does not treat removed REMOVED_PRODUCT_ID as a normal search match", () => {
-    expect(rowIds(filterProviders(ALL_ROWS, "all", "coding"))).toEqual([]);
-    expect(rowIds(filterProviders(ALL_ROWS, "all", REMOVED_PRODUCT_ID))).toEqual([]);
   });
 
   it("combines filter and search", () => {
@@ -238,12 +209,6 @@ describe("filterProviders", () => {
 
   it("exposes the canonical PROVIDER_FILTERS tuple", () => {
     expect(PROVIDER_FILTERS).toEqual(["all", "configured", "needs-key", "free", "paid"]);
-  });
-
-  it("preserves removed records with inspect and delete actions only", () => {
-    const removed = findProviderById(ALL_ROWS, "legacy-removed-zai-plan");
-    expect(removed?.actions).toEqual(["inspect", "delete"]);
-    expect(removed?.product.selectable).toBe(false);
   });
 
   it("distinguishes local unreachable and CLI unsupported readiness", () => {

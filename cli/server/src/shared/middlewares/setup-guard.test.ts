@@ -70,13 +70,6 @@ describe("requireSetup", () => {
     expectBlocked(await request(app), "unconfigured");
   });
 
-  it("blocks with SETUP_REQUIRED when the selected configuration was removed (migrate-or-delete remediation)", async () => {
-    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("removed") });
-    const app = await createApp();
-
-    expectBlocked(await request(app), "removed");
-  });
-
   it("blocks with SETUP_REQUIRED while conformance evidence is pending (run-conformance remediation)", async () => {
     getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("conformance-pending") });
     const app = await createApp();
@@ -135,7 +128,7 @@ describe("requireSetup", () => {
   });
 
   it("exposes no configuration identity or secret detail in blocked responses", async () => {
-    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("removed") });
+    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("unsupported") });
     const app = await createApp();
 
     const response = await app.request("/test");

@@ -11,7 +11,6 @@ import {
 } from "../schemas/config/index.js";
 import { canProceed } from "./can-proceed.js";
 import type { OnboardingDraft } from "./defaults.js";
-import type { RemovedOnboardingState } from "./types.js";
 
 export type SettingsPayload = Pick<SettingsConfig, "defaultLenses" | "agentExecution">;
 
@@ -22,7 +21,6 @@ export function buildSettingsPayload(data: OnboardingDraft): SettingsPayload {
   };
 }
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
 type CreateConfigurationAction = Extract<ClientConfigurationAction, { action: "create" }>;
 type SelectConfigurationAction = Extract<ClientConfigurationAction, { action: "select" }>;
 type UpdateConfigurationAction = Extract<ClientConfigurationAction, { action: "update" }>;
@@ -98,7 +96,6 @@ type CompletedStep = "settings" | "configuration" | "model-selection" | "conform
 
 export type SaveWizardResult =
   | { status: "complete"; configurationId: ConfigurationId }
-  | { status: "preserved-removed"; configurationId: ConfigurationId }
   | { status: "partial"; completedSteps: CompletedStep[]; error: unknown };
 
 function parseSucceededResponse<Action extends ClientConfigurationAction["action"]>(
@@ -117,8 +114,8 @@ function arraysMatch(left: readonly string[], right: readonly string[]): boolean
 }
 
 function noticesMatch(
-  expected: SupportedConfigurationSummary["notices"],
-  actual: SupportedConfigurationSummary["notices"],
+  expected: ClientConfigurationSummary["notices"],
+  actual: ClientConfigurationSummary["notices"],
 ): boolean {
   return (
     expected.length === actual.length &&
@@ -138,7 +135,7 @@ function noticesMatch(
   );
 }
 
-function expectedNotices(data: OnboardingDraft): SupportedConfigurationSummary["notices"] {
+function expectedNotices(data: OnboardingDraft): ClientConfigurationSummary["notices"] {
   const notice = getNotice(data);
   return [
     {
@@ -157,10 +154,9 @@ function matchesDraftTuple(
   data: OnboardingDraft,
   summary: ClientConfigurationSummary,
   selectedModelId: string | null,
-): summary is SupportedConfigurationSummary {
+): boolean {
   const input = ClientConfigurationInputSchema.parse(data.configurationInput);
   if (
-    summary.status !== "supported" ||
     summary.productId !== input.productId ||
     summary.transportFamily !== input.transportFamily ||
     summary.selectedModelId !== selectedModelId ||
@@ -191,11 +187,10 @@ function matchesDraftTuple(
 }
 
 function summariesMatch(
-  expected: SupportedConfigurationSummary,
+  expected: ClientConfigurationSummary,
   actual: ClientConfigurationSummary,
-): actual is SupportedConfigurationSummary {
+): boolean {
   if (
-    actual.status !== "supported" ||
     actual.configurationId !== expected.configurationId ||
     actual.revision !== expected.revision ||
     actual.productId !== expected.productId ||
@@ -230,9 +225,9 @@ function summariesMatch(
 
 function assertDiscoveryEvidence(
   data: OnboardingDraft,
-  created: SupportedConfigurationSummary,
+  created: ClientConfigurationSummary,
   response: Extract<ClientConfigurationActionResponse, { action: "test" }>,
-): SupportedConfigurationSummary {
+): ClientConfigurationSummary {
   const discovered = response.configuration;
   // A test action is discovery/conformance only. It must not mutate the
   // persisted selected model; that happens only through the explicit select
@@ -254,13 +249,9 @@ function assertDiscoveryEvidence(
 }
 
 export async function saveWizard(
-  data: OnboardingDraft | RemovedOnboardingState,
+  data: OnboardingDraft,
   { saveSettings, runConfigurationAction }: SaveWizardCallbacks,
 ): Promise<SaveWizardResult> {
-  if (data.kind === "removed") {
-    return { status: "preserved-removed", configurationId: data.configurationId };
-  }
-
   const completedSteps: CompletedStep[] = [];
 
   try {
@@ -270,7 +261,7 @@ export async function saveWizard(
     return { status: "partial", completedSteps, error };
   }
 
-  let createdConfiguration: SupportedConfigurationSummary;
+  let createdConfiguration: ClientConfigurationSummary;
   try {
     const createAction = buildConfigPayload(data);
     const response = parseSucceededResponse(
@@ -286,7 +277,7 @@ export async function saveWizard(
     return { status: "partial", completedSteps, error };
   }
 
-  let discoveredConfiguration: SupportedConfigurationSummary;
+  let discoveredConfiguration: ClientConfigurationSummary;
   try {
     const discoveryAction = {
       action: "test",
@@ -312,7 +303,7 @@ export async function saveWizard(
     };
   }
 
-  let selectedConfiguration: SupportedConfigurationSummary;
+  let selectedConfiguration: ClientConfigurationSummary;
   try {
     const selectAction = buildSelectPayload(
       data,
@@ -338,7 +329,7 @@ export async function saveWizard(
     return { status: "partial", completedSteps, error };
   }
 
-  let acknowledgedConfiguration: SupportedConfigurationSummary;
+  let acknowledgedConfiguration: ClientConfigurationSummary;
   try {
     const updateAction = buildUpdatePayload(
       { ...data, selectedModelId },

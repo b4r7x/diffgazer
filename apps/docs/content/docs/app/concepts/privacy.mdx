@@ -14,7 +14,7 @@ Several sensitive concerns stay on the server and never appear in Web, Ink, or C
 - **Budget and execution leases** — spend limits, lease revocation, and cancellation drain run only in the embedded server and review pipeline.
 - **Review receipts** — terminal outcomes, usage normalization, and execution fingerprints are assembled server-side and projected through safe presentation copy.
 
-Diffgazer does not fall back to another product, reuse a removed credential, or treat HTTP compatibility as authorization when admission fails.
+Diffgazer does not fall back to another product or treat HTTP compatibility as authorization when admission fails.
 
 ## Localhost binding and the host allowlist
 
@@ -41,12 +41,6 @@ This token is deliberately client-held: the browser app receives it so it can ca
 You choose where secrets live. Diffgazer offers your operating system keyring wherever the platform supports it — the server refuses to save that choice when the keyring is unavailable — and file storage everywhere. Until you pick the keyring, secrets go to files: literal credentials in separate `0600` files under your Diffgazer home. Environment references store only the variable name.
 
 Hosted products may use either method. Local HTTP products accept only an optional loopback bearer token. Local CLI products use **vendor-managed local auth**; Diffgazer does not import or proxy CLI credentials.
-
-## Removed Z.AI Coding Plan records
-
-The old Z.AI Coding Plan configuration is removed. **HTTP compatibility is not authorization.** Diffgazer keeps any previously saved value only until you **explicitly delete the removed record**. That secret is **retained but never copied, tested, or sent** during setup, probes, or review.
-
-Create a **new general Z.AI PAYG configuration** for the supported `zai` product instead of reusing the removed record.
 
 ## The trust gate
 

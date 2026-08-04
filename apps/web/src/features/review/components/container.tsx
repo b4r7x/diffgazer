@@ -159,11 +159,7 @@ function ReviewStreamContainer({
       isRunning={state.isStreaming}
       error={state.error}
       errorCode={state.errorCode}
-      transportFamily={
-        selectedConfiguration?.status === "supported"
-          ? selectedConfiguration.transportFamily
-          : undefined
-      }
+      transportFamily={selectedConfiguration?.transportFamily}
       reviewId={state.reviewId}
       onRetry={handleRetry}
       onViewResults={isCompleting ? handleViewResults : undefined}

@@ -9,12 +9,10 @@ import { Spinner } from "../../../../components/ui/spinner";
 import { useTerminalDimensions } from "../../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../../theme/provider";
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 const MODEL_STEP_RESERVED_ROWS = 12;
 
 interface ModelStepProps {
-  configuration: SupportedConfigurationSummary | null;
+  configuration: ClientConfigurationSummary | null;
   isPreparing: boolean;
   onRetry: () => void;
   value?: string | null;
@@ -46,7 +44,7 @@ function RetryHint(): ReactElement {
 }
 
 interface DiscoveredModelsProps {
-  configuration: SupportedConfigurationSummary;
+  configuration: ClientConfigurationSummary;
   subtitle: string;
   value?: string | null;
   onChange: (modelId: string) => void;

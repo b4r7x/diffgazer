@@ -1,5 +1,4 @@
 import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "@diffgazer/core/providers";
-import { REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CliThemeProvider } from "../../../../theme/provider";
@@ -23,7 +22,6 @@ describe("ProviderStep (TUI)", () => {
     for (const productId of SELECTABLE_PRODUCT_IDS) {
       expect(frame).toContain(PRODUCT_REGISTRY[productId].presentation.name);
     }
-    expect(frame).not.toContain(REMOVED_PRODUCT_ID);
     expect(frame).toContain(PRODUCT_REGISTRY.openrouter.presentation.description);
 
     stdin.write("\u001b[B");

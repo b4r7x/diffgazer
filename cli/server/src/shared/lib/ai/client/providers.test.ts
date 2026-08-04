@@ -2,13 +2,9 @@ import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import {
   CANDIDATE_PRODUCT_IDS,
   LOCAL_OPENAI_PRESET_ENDPOINTS,
-  REMOVED_PRODUCT_IDS,
   RUNNABLE_PRODUCT_IDS,
   type RunnableProductId,
 } from "@diffgazer/core/schemas/config";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import type { EvidenceKey, ExecutionLimits } from "@diffgazer/core/schemas/review";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -157,10 +153,9 @@ describe("createFromAdmittedPlan registry routing", () => {
     expect(result.value.transportFamily).toBe(PRODUCT_REGISTRY[productId].transportFamily);
   });
 
-  it.each([
-    ...REMOVED_PRODUCT_IDS,
-    ...CANDIDATE_PRODUCT_IDS.slice(0, 3),
-  ])("has no adapter for forbidden product %s", async (productId) => {
+  it.each(
+    CANDIDATE_PRODUCT_IDS.slice(0, 3),
+  )("has no adapter for forbidden product %s", async (productId) => {
     expect(() => getAdapter(productId)).toThrow(/Adapter unavailable/);
 
     const { createFromAdmittedPlan } = await loadCreate();
@@ -172,26 +167,6 @@ describe("createFromAdmittedPlan registry routing", () => {
         productId,
       }),
     }) as unknown as AdmittedExecutionPlan;
-    const result = createFromAdmittedPlan(plan);
-
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.code).toBe("UNSUPPORTED_PROVIDER");
-    }
-  });
-
-  it("rejects REMOVED_PRODUCT_ID as a removed decoder-only product", async () => {
-    const { createFromAdmittedPlan } = await loadCreate();
-    const plan = Object.freeze({
-      ...admittedPlan("gemini"),
-      productId: REMOVED_PRODUCT_ID,
-      evidenceKey: Object.freeze({
-        ...evidenceKeyFor("gemini"),
-        productId: REMOVED_PRODUCT_ID,
-        modelId: "glm-4.7",
-      }),
-    }) as unknown as AdmittedExecutionPlan;
-
     const result = createFromAdmittedPlan(plan);
 
     expect(result.ok).toBe(false);

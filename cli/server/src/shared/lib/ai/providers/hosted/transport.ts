@@ -401,7 +401,7 @@ function isRedirectError(error: unknown): boolean {
 
 function validateNoticeVersion(productId: HostedApiProductId, noticeVersion: number): boolean {
   const product = PRODUCT_REGISTRY[productId];
-  return product.kind === "runnable" && product.notice.noticeVersion === noticeVersion;
+  return product.notice.noticeVersion === noticeVersion;
 }
 
 export async function executeHostedReview(request: HostedExecuteRequest): Promise<ExecutionResult> {

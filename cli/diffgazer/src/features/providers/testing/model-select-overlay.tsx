@@ -22,8 +22,6 @@ import { CliThemeProvider } from "../../../theme/provider";
 
 export const ARROW_DOWN = "\u001b[B";
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 export const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 
 export function copyNotice(productId: RunnableProductId) {
@@ -43,7 +41,7 @@ export const GEMINI_MODELS: ModelInfo[] = [
 ];
 
 export function catalogModelsResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   models: ModelInfo[] = GEMINI_MODELS,
 ): ConfigurationModelsResponse {
   return {
@@ -59,7 +57,7 @@ export function catalogModelsResponse(
 }
 
 export function skippedCatalogModelsResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   reason: string,
 ): ConfigurationModelsResponse {
   return {

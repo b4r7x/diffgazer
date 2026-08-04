@@ -1,4 +1,4 @@
-import type { SetupPlan } from "./setup-plan.js";
+import type { RunnableSetupPlan } from "./setup-plan.js";
 import type { OnboardingStep } from "./types.js";
 
 export const STEP_LABELS = {
@@ -8,8 +8,6 @@ export const STEP_LABELS = {
   model: "Model",
   conformance: "Conformance",
   acknowledgement: "Notice",
-  migration: "Migration",
-  delete: "Delete",
 } as const satisfies Record<OnboardingStep, string>;
 
 export const STEP_TITLES = {
@@ -19,17 +17,15 @@ export const STEP_TITLES = {
   model: "Select Model",
   conformance: "Verify Conformance",
   acknowledgement: "Accept Product Notice",
-  migration: "Create a General Z.AI Configuration",
-  delete: "Delete Removed Configuration",
 } as const satisfies Record<OnboardingStep, string>;
 
-export function getStepAt(plan: SetupPlan, index: number): OnboardingStep {
+export function getStepAt(plan: RunnableSetupPlan, index: number): OnboardingStep {
   const step = plan.steps[index];
   if (!step) throw new RangeError(`No onboarding step at index ${index}`);
   return step.id;
 }
 
-export function getOnboardingProgressLabel(plan: SetupPlan, index: number): string {
+export function getOnboardingProgressLabel(plan: RunnableSetupPlan, index: number): string {
   const step = getStepAt(plan, index);
   return `Step ${index + 1} of ${plan.steps.length}: ${STEP_LABELS[step]}`;
 }

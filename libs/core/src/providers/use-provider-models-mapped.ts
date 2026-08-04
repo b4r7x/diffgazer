@@ -9,12 +9,10 @@ import {
   toClientSafeMessage,
 } from "./model-discovery-messages.js";
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 interface ProviderModelsIdentity {
-  configurationId: SupportedConfigurationSummary["configurationId"];
-  productId: SupportedConfigurationSummary["productId"];
-  transportFamily: SupportedConfigurationSummary["transportFamily"];
+  configurationId: ClientConfigurationSummary["configurationId"];
+  productId: ClientConfigurationSummary["productId"];
+  transportFamily: ClientConfigurationSummary["transportFamily"];
 }
 
 interface ProviderModelsStateBase extends ProviderModelsIdentity {
@@ -51,7 +49,7 @@ export type ProviderModelsState =
       error: string;
     });
 
-function identity(configuration: SupportedConfigurationSummary): ProviderModelsIdentity {
+function identity(configuration: ClientConfigurationSummary): ProviderModelsIdentity {
   return {
     configurationId: configuration.configurationId,
     productId: configuration.productId,
@@ -60,7 +58,7 @@ function identity(configuration: SupportedConfigurationSummary): ProviderModelsI
 }
 
 function emptyState(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   status: "idle" | "loading",
   retry: () => void,
 ): ProviderModelsState {
@@ -77,7 +75,7 @@ function emptyState(
 
 export function useProviderModelsMapped(
   open: boolean,
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
 ): ProviderModelsState {
   const api = useApi();
   const query = useQuery({

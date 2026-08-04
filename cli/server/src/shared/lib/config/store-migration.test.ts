@@ -1,18 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import {
-  LEGACY_V1_HAS_API_KEY_PROPERTY,
-  REMOVED_PRODUCT_IDS,
-} from "@diffgazer/core/schemas/config";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import { dirname, join } from "node:path";
-import type { ClientConfigurationAction } from "@diffgazer/core/schemas/config";
-import { sha256CanonicalJsonSync } from "@diffgazer/core/schemas/review";
+import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import { describe, expect, it } from "vitest";
-import { executionLimitsFromBudget } from "../ai/admission/service.js";
-import { createAdmissionEvidence } from "./admission-evidence.js";
-import { DEFAULT_CONFIGURATION_BUDGET } from "./store.js";
 import {
   configPath,
   diffgazerHome,
@@ -67,21 +56,6 @@ const supportedRecord = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const removedRecord = () => ({
-  schemaVersion: 2,
-  status: "removed",
-  configurationId: "cfg-removed",
-  revision: 1,
-  productId: REMOVED_PRODUCT_ID,
-  transportFamily: "hosted-api",
-  selectedModelId: null,
-  acknowledgement: null,
-  evidenceReference: null,
-  budget: null,
-  createdAt: CREATED_AT,
-  updatedAt: CREATED_AT,
-});
-
 const createGeminiAction = (
   credential: { kind: "literal"; value: string } | { kind: "environment" },
 ) =>
@@ -111,30 +85,6 @@ const updateGeminiAction = (configurationId: string, expectedRevision: number) =
 
 const literalSecretPathFor = (configurationId: string, revision: number): string =>
   join(diffgazerHome, "credentials", `${configurationId}-${revision}.key`);
-
-const evidenceFor = (configurationId: string) =>
-  createAdmissionEvidence({
-    evidenceKey: {
-      authentication: null,
-      credentialReferenceIdentity: sha256CanonicalJsonSync({
-        kind: "file-0600",
-        filePath: literalSecretPathFor(configurationId, 1),
-      }),
-      installationId: null,
-      productId: "gemini",
-      transportFamily: "hosted-api",
-      normalizedEndpoint: GEMINI_ENDPOINT,
-      region: null,
-      workspaceAccountReference: null,
-      modelId: "gemini-2.5-flash",
-      runtime: { identity: "diffgazer-server", version: "1.0.0" },
-      structuredOutputSchemaSha256: "1".repeat(64),
-      noticeVersion: 1,
-      limits: executionLimitsFromBudget(DEFAULT_CONFIGURATION_BUDGET),
-    },
-    checkedAt: "2026-01-02T00:00:00.000Z",
-    status: "passed",
-  });
 
 describe("config store V1 upgrade", () => {
   const v1Config = (
@@ -263,30 +213,27 @@ describe("config store V1 upgrade", () => {
     expect(keyring.deleteKeyringSecret).not.toHaveBeenCalled();
   });
 
-  it("retains a retired V1 record as a removed V2 record without reading its secret", async () => {
+  it("drops a V1 entry this binary cannot interpret without reading its secret", async () => {
     writeJson(
       configPath(),
       v1Config([
-        { provider: REMOVED_PRODUCT_ID, [LEGACY_V1_HAS_API_KEY_PROPERTY]: true, isActive: false },
+        { provider: "future-provider", [LEGACY_V1_HAS_API_KEY_PROPERTY]: true, isActive: false },
       ]),
     );
-    writeJson(secretsPath(), { providers: { [REMOVED_PRODUCT_ID]: "retired-key" } });
+    writeJson(secretsPath(), { providers: { "future-provider": "retired-key" } });
     const store = await loadStore();
 
     await expect(store.ready()).resolves.toMatchObject({ ok: true });
 
     const persisted = readJson<{
       selectedConfigurationId: string | null;
-      configurations: Array<{ status: string; productId: string }>;
+      configurations: unknown[];
     }>(configPath());
     expect(persisted.selectedConfigurationId).toBeNull();
-    expect(persisted.configurations[0]).toMatchObject({
-      status: "removed",
-      productId: REMOVED_PRODUCT_ID,
-    });
-    expect(
-      readJson<{ bindings: Array<{ status: string }> }>(secretsPath()).bindings[0],
-    ).toMatchObject({ status: "removed" });
+    expect(persisted.configurations).toEqual([]);
+    // The dropped entry keeps no credential material: the V1 plaintext file is gone.
+    expect(existsSync(secretsPath())).toBe(false);
+    expect(keyring.readKeyringSecret).not.toHaveBeenCalled();
     expect(keyring.deleteKeyringSecret).not.toHaveBeenCalled();
   });
 });
@@ -410,86 +357,6 @@ describe("config store settings persistence", () => {
 });
 
 describe("config store V2 documents", () => {
-  it("REMOVED_PRODUCT_ID removed records keep their binding and are never accepted by create, update, select, test, or evidence admission", async () => {
-    const removedKeyPath = literalSecretPathFor("cfg-removed", 1);
-    writeJson(configPath(), v2Config([removedRecord()]));
-    writeJson(
-      secretsPath(),
-      v2Secrets([
-        {
-          configurationId: "cfg-removed",
-          revision: 1,
-          kind: "file-0600",
-          filePath: removedKeyPath,
-          status: "removed",
-        },
-      ]),
-    );
-    mkdirSync(dirname(removedKeyPath), { recursive: true });
-    writeFileSync(removedKeyPath, "sk-zai-coding-secret", { mode: 0o600 });
-    const store = await loadStore();
-
-    const inspected = await store.runConfigurationAction({
-      action: "inspect",
-      configurationId: "cfg-removed",
-    });
-    expect(inspected).toMatchObject({
-      ok: true,
-      value: {
-        status: "succeeded",
-        configuration: {
-          configurationId: "cfg-removed",
-          status: "removed",
-          productId: REMOVED_PRODUCT_ID,
-        },
-      },
-    });
-
-    const created = await store.runConfigurationAction({
-      action: "create",
-      input: {
-        transportFamily: "hosted-api",
-        productId: REMOVED_PRODUCT_ID,
-        endpoint: "https://api.REMOVED_PRODUCT_ID.invalid/v1",
-        credential: { kind: "literal", value: "sk-zai-coding-never-created" },
-      },
-    } as unknown as ClientConfigurationAction);
-    expect(created).toMatchObject({ ok: false, error: { code: "INVALID_ACTION" } });
-    const updated = await store.runConfigurationAction(updateGeminiAction("cfg-removed", 1));
-    expect(updated).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-    const selected = await store.runConfigurationAction({
-      action: "select",
-      configurationId: "cfg-removed",
-      modelId: "gemini-2.5-flash",
-    });
-    expect(selected).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-    const tested = await store.runConfigurationAction({
-      action: "test",
-      configurationId: "cfg-removed",
-    });
-    expect(tested).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-    const evidenced = await store.recordConfigurationEvidence(
-      "cfg-removed",
-      evidenceFor("cfg-removed"),
-    );
-    expect(evidenced).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-
-    expect(existsSync(removedKeyPath)).toBe(true);
-    expect(readFileSync(removedKeyPath, "utf8")).toBe("sk-zai-coding-secret");
-    const persistedSecrets = readJson<{ bindings: Array<{ configurationId: string }> }>(
-      secretsPath(),
-    );
-    expect(
-      persistedSecrets.bindings.some((binding) => binding.configurationId === "cfg-removed"),
-    ).toBe(true);
-    const persistedConfig = readJson<{ configurations: Array<{ configurationId: string }> }>(
-      configPath(),
-    );
-    expect(
-      persistedConfig.configurations.some((record) => record.configurationId === "cfg-removed"),
-    ).toBe(true);
-  });
-
   it("unknown future records keep their exact bytes when a neighboring record is deleted", async () => {
     const unknownRecord =
       '{"schemaVersion":99,"configurationId":"cfg-future","futureField":{"nested":true},"oddValue":"\\u0041"}';

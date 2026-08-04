@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { requireValue } from "../testing/assertions.js";
 import { RAW_CATALOG, RAW_CATALOG_WITH_BAD_MODEL } from "./fixtures.js";
 import {
@@ -23,8 +22,6 @@ describe("parseModelsDevCatalog", () => {
       "openrouter",
       "mistral",
     ]);
-    expect(catalog).not.toHaveProperty(REMOVED_PRODUCT_ID);
-    expect(catalog).not.toHaveProperty("zai-coding-plan");
     for (const provider of Object.values(catalog)) {
       expect(provider).not.toHaveProperty("enabled");
       expect(provider).not.toHaveProperty("selectable");

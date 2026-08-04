@@ -117,14 +117,16 @@ export function SettingsDiagnosticsPage() {
     // plus its own elevation. The panel is written out rather than reusing
     // CardLayout because the diagnostics region is the element that carries
     // aria-busy while a refresh is in flight.
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-4 md:p-6 lg:p-8">
       <div aria-hidden className="grow" />
       <Panel
         {...focusProps}
         focused={focusWithin}
         aria-labelledby={titleId}
         aria-busy={isRefreshingAll || isRefreshing}
-        className="mx-auto w-full max-w-2xl shadow-lg"
+        // Capped to the space below the header so the snapshot list scrolls
+        // inside the card and the refresh actions stay on screen.
+        className="mx-auto flex w-full min-h-0 max-w-2xl flex-col shadow-lg"
       >
         <Panel.Label>
           <h1 id={titleId}>System Diagnostics</h1>
@@ -134,7 +136,7 @@ export function SettingsDiagnosticsPage() {
           ref={focusFallbackRef}
           tabIndex={-1}
           spacing="none"
-          className="focus:outline-none"
+          className="min-h-0 flex-1 overflow-y-auto focus:outline-none"
         >
           <Panel.Description className="mb-4">Runtime health for this workspace.</Panel.Description>
 
@@ -207,8 +209,11 @@ export function SettingsDiagnosticsPage() {
           )}
         </Panel.Content>
 
-        <Panel.Footer className="justify-end gap-3">
-          <fieldset className="flex min-w-0 flex-wrap justify-end gap-3 border-0 p-0">
+        {/* Centered while the actions stack on a narrow screen — right-aligning
+            two buttons of different widths leaves a ragged column — and back to
+            the trailing edge once they sit on one row. */}
+        <Panel.Footer className="justify-center gap-3 sm:justify-end">
+          <fieldset className="flex min-w-0 flex-wrap justify-center gap-3 border-0 p-0 sm:justify-end">
             <legend className="sr-only">Diagnostics actions</legend>
             <Button
               {...getActionProps(0)}

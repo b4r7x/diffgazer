@@ -7,7 +7,6 @@ import {
   type ProviderListRow,
 } from "@diffgazer/core/providers";
 import { resolveSelectedId, sanitizeTerminalText } from "@diffgazer/core/review";
-import type { ClientConfigurationSummary } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
@@ -41,8 +40,6 @@ function shouldCompactProviderList(contentWidth: number, providers: ProviderList
   );
 }
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 function BrowseFooter(): null {
   usePageFooter({ shortcuts: BROWSE_SHORTCUTS });
   return null;
@@ -57,13 +54,6 @@ function getListWidth({
 }): number | undefined {
   if (isNarrow) return undefined;
   return Math.min(Math.max(Math.floor(columns * 0.4), 28), 48);
-}
-
-function toSupportedConfiguration(
-  configuration: ClientConfigurationSummary | null | undefined,
-): SupportedConfigurationSummary | null {
-  if (!configuration || configuration.status !== "supported") return null;
-  return configuration;
 }
 
 export function ProvidersScreen(): ReactElement {
@@ -175,7 +165,7 @@ export function ProvidersScreen(): ReactElement {
         }}
         onUpdate={async (input, opts) => {
           const configuration = setupDialog.row.configuration;
-          if (!configuration || configuration.status !== "supported") return;
+          if (!configuration) return;
           await management.handleUpdateConfiguration(
             setupDialog.owner,
             {
@@ -190,9 +180,7 @@ export function ProvidersScreen(): ReactElement {
     );
   }
 
-  const modelConfiguration = modelDialog
-    ? toSupportedConfiguration(modelDialog.row.configuration ?? null)
-    : null;
+  const modelConfiguration = modelDialog?.row.configuration ?? null;
 
   if (modelDialog && modelConfiguration) {
     return (

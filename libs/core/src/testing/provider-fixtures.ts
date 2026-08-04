@@ -5,7 +5,6 @@ import {
   type ProviderListRow,
   projectClientMetadata,
 } from "../providers/index.js";
-import type { SupportedConfigurationSummary } from "../providers/use-model-source.js";
 import type {
   ClientConfigurationSummary,
   ConfigurationInitResponse,
@@ -17,24 +16,9 @@ import type {
   ReadinessStatus,
   RunnableProductId,
 } from "../schemas/config/index.js";
-import {
-  READINESS_PRESENTATION,
-  REMOVED_PRODUCT_ID,
-  ReadinessSchema,
-} from "../schemas/config/index.js";
-
-export type { SupportedConfigurationSummary };
+import { READINESS_PRESENTATION, ReadinessSchema } from "../schemas/config/index.js";
 
 const FIXTURE_TIMESTAMP = "2026-07-31T12:00:00.000Z";
-
-function productNotice(productId: ClientConfigurationSummary["productId"]) {
-  if (productId === REMOVED_PRODUCT_ID) {
-    throw new Error(
-      `No product notice exists for "${productId}"; a removed product only reaches the "removed" readiness.`,
-    );
-  }
-  return PRODUCT_REGISTRY[productId].notice;
-}
 
 function copyNotice(productId: RunnableProductId) {
   const notice = PRODUCT_REGISTRY[productId].notice;
@@ -43,7 +27,7 @@ function copyNotice(productId: RunnableProductId) {
 
 /**
  * Mirrors the server projection in `cli/server/src/shared/lib/config/readiness.ts`:
- * a missing, removed, or unsupported record carries no acknowledgement, an
+ * a missing or unsupported record carries no acknowledgement, an
  * `acknowledgement-required` record carries the unaccepted notice, and every
  * other status belongs to a configured record whose notice was accepted during
  * setup.
@@ -52,10 +36,10 @@ function acknowledgementFor(
   status: ReadinessStatus,
   productId: ClientConfigurationSummary["productId"],
 ): ReadinessAcknowledgement {
-  if (status === "unconfigured" || status === "unsupported" || status === "removed") {
+  if (status === "unconfigured" || status === "unsupported") {
     return { status: "not-applicable" };
   }
-  const notice = productNotice(productId);
+  const notice = PRODUCT_REGISTRY[productId].notice;
   if (status === "acknowledgement-required") {
     return { status: "required", noticeId: notice.id, noticeVersion: notice.noticeVersion };
   }
@@ -71,9 +55,7 @@ function evidenceStatusFor(status: ReadinessStatus): ReadinessEvidenceStatus {
   if (status === "ready" || status === "acknowledgement-required") return "passed";
   if (status === "conformance-pending") return "pending";
   if (status === "skipped") return "skipped";
-  if (status === "unconfigured" || status === "unsupported" || status === "removed") {
-    return "not-checked";
-  }
+  if (status === "unconfigured" || status === "unsupported") return "not-checked";
   return "failed";
 }
 
@@ -102,7 +84,7 @@ export const READY_GEMINI_CONFIGURATION = {
   selectedModelId: "gemini-2.5-flash",
   notices: [copyNotice("gemini")],
   availableActions: ["inspect", "select", "test", "update", "delete"],
-} satisfies SupportedConfigurationSummary;
+} satisfies ClientConfigurationSummary;
 
 export const READY_ZAI_CONFIGURATION = {
   configurationId: "zai-primary",
@@ -114,7 +96,7 @@ export const READY_ZAI_CONFIGURATION = {
   selectedModelId: "glm-4.7",
   notices: [copyNotice("zai")],
   availableActions: ["inspect", "select", "test", "update", "delete"],
-} satisfies SupportedConfigurationSummary;
+} satisfies ClientConfigurationSummary;
 
 export const LOCAL_OPENAI_CONFIGURATION = {
   configurationId: "local-openai-1",
@@ -128,7 +110,7 @@ export const LOCAL_OPENAI_CONFIGURATION = {
   selectedModelId: null,
   notices: [copyNotice("local-openai")],
   availableActions: ["inspect", "select", "test", "update", "delete"],
-} satisfies SupportedConfigurationSummary;
+} satisfies ClientConfigurationSummary;
 
 export const CLI_UNSUPPORTED_CONFIGURATION = {
   configurationId: "codex-cli-1",
@@ -140,18 +122,7 @@ export const CLI_UNSUPPORTED_CONFIGURATION = {
   selectedModelId: null,
   notices: [copyNotice("codex-cli")],
   availableActions: ["inspect", "select", "test", "update", "delete"],
-} satisfies SupportedConfigurationSummary;
-
-export const REMOVED_ZAI_CODING_CONFIGURATION: ClientConfigurationSummary = {
-  configurationId: "legacy-removed-zai-plan",
-  revision: 4,
-  status: "removed",
-  transportFamily: "hosted-api",
-  productId: REMOVED_PRODUCT_ID,
-  selectedModelId: null,
-  notices: [],
-  availableActions: ["inspect", "delete"],
-};
+} satisfies ClientConfigurationSummary;
 
 export function configurationStatus(
   configuration: ClientConfigurationSummary,
@@ -163,14 +134,13 @@ export function configurationStatus(
   };
 }
 
-/** One configuration per supported transport family, plus a removed record. */
+/** One configuration per supported transport family. */
 function allConfigurationStatuses(): ConfigurationStatus[] {
   return [
     configurationStatus(READY_GEMINI_CONFIGURATION, "ready"),
     configurationStatus(READY_ZAI_CONFIGURATION, "ready"),
     configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
     configurationStatus(CLI_UNSUPPORTED_CONFIGURATION, "unsupported"),
-    configurationStatus(REMOVED_ZAI_CODING_CONFIGURATION, "removed"),
   ];
 }
 

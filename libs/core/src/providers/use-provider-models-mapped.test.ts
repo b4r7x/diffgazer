@@ -14,8 +14,6 @@ import { createTestQueryWrapper } from "../testing/query-wrapper.js";
 import { PRODUCT_REGISTRY } from "./product-registry.js";
 import { useProviderModelsMapped } from "./use-provider-models-mapped.js";
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 function copyNotice(productId: RunnableProductId) {
   const notice = PRODUCT_REGISTRY[productId].notice;
   return { ...notice, billing: [...notice.billing], privacy: [...notice.privacy] };
@@ -89,7 +87,7 @@ function model(id: string, tier: ModelInfo["tier"] = "paid"): ModelInfo {
 }
 
 function passedResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   models: ModelInfo[],
   overrides: Partial<{
     configurationId: ConfigurationId;
@@ -110,7 +108,7 @@ function passedResponse(
   };
 }
 
-function skippedResponse(configuration: SupportedConfigurationSummary, reason: string) {
+function skippedResponse(configuration: ClientConfigurationSummary, reason: string) {
   return {
     status: "skipped" as const,
     configurationId: configuration.configurationId,
@@ -337,7 +335,7 @@ describe("useProviderModelsMapped", () => {
 
   it("does not reuse candidate lists across workspace-bound query cache entries", async () => {
     const secondCheckedAt = "2026-08-02T12:01:00.000Z";
-    const secondConfiguration: SupportedConfigurationSummary = {
+    const secondConfiguration: ClientConfigurationSummary = {
       ...configurations.qwen,
       workspace: "workspace-beta",
     };
@@ -348,9 +346,9 @@ describe("useProviderModelsMapped", () => {
         checkedAt: secondCheckedAt,
       });
     const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
-    const initialConfiguration: SupportedConfigurationSummary = configurations.qwen;
+    const initialConfiguration: ClientConfigurationSummary = configurations.qwen;
     const { result, rerender } = renderHook(
-      ({ configuration }: { configuration: SupportedConfigurationSummary }) =>
+      ({ configuration }: { configuration: ClientConfigurationSummary }) =>
         useProviderModelsMapped(true, configuration),
       { wrapper: Wrapper, initialProps: { configuration: initialConfiguration } },
     );

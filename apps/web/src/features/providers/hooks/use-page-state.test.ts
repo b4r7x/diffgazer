@@ -14,7 +14,6 @@ import {
   makeConfigurationListResponse,
   makeReadiness,
   READY_GEMINI_CONFIGURATION,
-  REMOVED_ZAI_CODING_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -44,7 +43,6 @@ function makeInitResponse(
       configurationStatus(READY_GEMINI_CONFIGURATION, "ready"),
       configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
       configurationStatus(CLI_UNSUPPORTED_CONFIGURATION, "unsupported"),
-      configurationStatus(REMOVED_ZAI_CODING_CONFIGURATION, "removed"),
     ]),
     ...overrides,
   };
@@ -125,22 +123,6 @@ describe("useProvidersPageState", () => {
       expect(result.current.selectedRow?.configuration?.revision).toBe(2);
       expect(result.current.selection.effectiveSelectedId).toBe("gemini-primary");
     });
-  });
-
-  it("excludes removed records from the filtered providers", async () => {
-    const { result } = renderPageHook();
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(
-      result.current.filteredProviders.some(
-        (row) => getProviderRowId(row) === "legacy-removed-zai-plan",
-      ),
-    ).toBe(false);
-
-    act(() => result.current.selection.setSelectedId("legacy-removed-zai-plan"));
-
-    expect(result.current.selection.effectiveSelectedId).not.toBe("legacy-removed-zai-plan");
-    expect(result.current.selectedRow?.product.status).not.toBe("removed");
   });
 
   it("keeps the model dialog on the created configuration after the row id changes", async () => {

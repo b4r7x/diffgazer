@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { PRODUCT_ENDPOINT_TUPLES, PRODUCT_REGISTRY } from "../../providers/product-registry.js";
-import { REMOVED_PRODUCT_ID } from "./providers.js";
 import {
   CANDIDATE_PRODUCT_IDS,
   CandidateProductIdSchema,
@@ -15,8 +14,6 @@ import {
   matchesHostedApiTransportTuple,
   matchesLocalHttpTransportTuple,
   REJECTED_PRODUCT_IDS,
-  REMOVED_PRODUCT_IDS,
-  RemovedProductIdSchema,
   RUNNABLE_PRODUCT_IDS,
   RunnableProductIdSchema,
   TRANSPORT_FAMILIES,
@@ -65,20 +62,6 @@ describe("transport family contract", () => {
       expect(CandidateProductIdSchema.parse(productId)).toBe(productId);
       expect(RunnableProductIdSchema.safeParse(productId).success).toBe(false);
     }
-  });
-
-  it("decodes REMOVED_PRODUCT_ID only as removed and never as runnable input", () => {
-    expect(REMOVED_PRODUCT_IDS).toEqual([REMOVED_PRODUCT_ID]);
-    expect(RemovedProductIdSchema.parse(REMOVED_PRODUCT_ID)).toBe(REMOVED_PRODUCT_ID);
-    expect(RunnableProductIdSchema.safeParse(REMOVED_PRODUCT_ID).success).toBe(false);
-    expect(CandidateProductIdSchema.safeParse(REMOVED_PRODUCT_ID).success).toBe(false);
-    expect(
-      TransportInputSchema.safeParse({
-        transportFamily: "hosted-api",
-        productId: REMOVED_PRODUCT_ID,
-        endpoint: "https://api.z.ai/api/paas/v4",
-      }).success,
-    ).toBe(false);
   });
 });
 

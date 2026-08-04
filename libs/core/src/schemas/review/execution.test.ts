@@ -9,7 +9,6 @@ import {
   sha256CanonicalJson,
   sha256CanonicalJsonSync,
 } from "../canonical-json.js";
-import { REMOVED_PRODUCT_ID } from "../config/providers.js";
 import { LOCAL_OPENAI_PRESET_ENDPOINTS } from "../config/transports.js";
 import {
   type EvidenceKey,
@@ -529,7 +528,7 @@ describe("execution contracts", () => {
   });
 
   it("rejects non-runnable identities, mismatched transports, and unsafe references", () => {
-    for (const productId of [REMOVED_PRODUCT_ID, "xiaomi-mimo", "bogus-product"]) {
+    for (const productId of ["xiaomi-mimo", "bogus-product"]) {
       expect(EvidenceKeySchema.safeParse({ ...evidenceKey, productId }).success).toBe(false);
       expect(
         ExecutionReceiptSchema.safeParse(

@@ -1,18 +1,9 @@
 import { z } from "zod";
 import { scanJsonRejectingDuplicateKeys } from "../canonical-json.js";
 
-export const REMOVED_PRODUCT_IDS = ["zai-coding"] as const;
-export const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
 export const LEGACY_V1_HAS_API_KEY_PROPERTY = "hasApiKey" as const;
 
-export const LEGACY_PROVIDER_IDS_V1 = [
-  "gemini",
-  "zai",
-  "zai-coding",
-  "openrouter",
-  "groq",
-  "cerebras",
-] as const;
+export const LEGACY_PROVIDER_IDS_V1 = ["gemini", "zai", "openrouter", "groq", "cerebras"] as const;
 export const LegacyProviderIdV1Schema = z.enum(LEGACY_PROVIDER_IDS_V1);
 export type LegacyProviderIdV1 = z.infer<typeof LegacyProviderIdV1Schema>;
 
@@ -24,24 +15,10 @@ export const LegacyProviderConfigV1Schema = z.strictObject({
 });
 export type LegacyProviderConfigV1 = z.infer<typeof LegacyProviderConfigV1Schema>;
 
-export const LegacyRemovedProviderRecordV1Schema = LegacyProviderConfigV1Schema.safeExtend({
-  provider: z.literal(REMOVED_PRODUCT_ID),
-});
-export type LegacyRemovedProviderRecordV1 = z.infer<typeof LegacyRemovedProviderRecordV1Schema>;
-
-const LegacyRunnableProviderRecordV1Schema = LegacyProviderConfigV1Schema.safeExtend({
-  provider: z.enum(["gemini", "zai", "openrouter", "groq", "cerebras"]),
-});
-
 export const DecodedProviderConfigurationRecordSchema = z.discriminatedUnion("status", [
   z.strictObject({
     status: z.literal("migrate-v1"),
-    record: LegacyRunnableProviderRecordV1Schema,
-  }),
-  z.strictObject({
-    status: z.literal("removed"),
-    record: LegacyRemovedProviderRecordV1Schema,
-    rawBytes: z.instanceof(Uint8Array),
+    record: LegacyProviderConfigV1Schema,
   }),
   z.strictObject({
     status: z.literal("unknown"),
@@ -60,7 +37,7 @@ function copyBytes(rawBytes: Uint8Array): Uint8Array<ArrayBuffer> {
 
 // V1 records are untrusted bytes, so they go through the shared bounded scanner
 // in canonical-json.ts, which rejects a repeated object key before JSON.parse
-// can collapse it to the last value (and so relabel a removed provider).
+// can collapse it to the last value (and so relabel one provider as another).
 const MAX_LEGACY_RECORD_BYTES = 64 * 1024;
 const MAX_LEGACY_JSON_DEPTH = 32;
 
@@ -90,16 +67,5 @@ export function decodeProviderConfigurationRecord(
   const legacyRecord = LegacyProviderConfigV1Schema.safeParse(input);
   if (!legacyRecord.success) return { status: "unknown", rawBytes };
 
-  if (legacyRecord.data.provider === "zai-coding") {
-    return {
-      status: "removed",
-      record: LegacyRemovedProviderRecordV1Schema.parse(legacyRecord.data),
-      rawBytes,
-    };
-  }
-
-  return {
-    status: "migrate-v1",
-    record: LegacyRunnableProviderRecordV1Schema.parse(legacyRecord.data),
-  };
+  return { status: "migrate-v1", record: legacyRecord.data };
 }

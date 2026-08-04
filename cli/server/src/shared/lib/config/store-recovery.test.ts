@@ -1,8 +1,4 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -57,21 +53,6 @@ const supportedRecord = (overrides: Record<string, unknown> = {}) => ({
   createdAt: CREATED_AT,
   updatedAt: CREATED_AT,
   ...overrides,
-});
-
-const removedRecord = () => ({
-  schemaVersion: 2,
-  status: "removed",
-  configurationId: "cfg-removed",
-  revision: 1,
-  productId: REMOVED_PRODUCT_ID,
-  transportFamily: "hosted-api",
-  selectedModelId: null,
-  acknowledgement: null,
-  evidenceReference: null,
-  budget: null,
-  createdAt: CREATED_AT,
-  updatedAt: CREATED_AT,
 });
 
 const createGeminiAction = (
@@ -160,23 +141,29 @@ describe("config store recovery", () => {
     expect(existsSync(bindingPath)).toBe(false);
   });
 
-  it("keeps a removed record's secret binding until the explicit delete action", async () => {
-    const removedKeyPath = literalSecretPathFor("cfg-removed", 1);
-    writeJson(configPath(), v2Config([removedRecord()]));
+  it("keeps an uninterpretable record's secret binding and key file across a neighboring create", async () => {
+    const futureKeyPath = literalSecretPathFor("cfg-future", 1);
+    const unknownRecord =
+      '{"schemaVersion":99,"configurationId":"cfg-future","futureField":{"nested":true}}';
+    mkdirSync(dirname(configPath()), { recursive: true });
+    writeFileSync(
+      configPath(),
+      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${unknownRecord}]}\n`,
+    );
     writeJson(
       secretsPath(),
       v2Secrets([
         {
-          configurationId: "cfg-removed",
+          configurationId: "cfg-future",
           revision: 1,
           kind: "file-0600",
-          filePath: removedKeyPath,
-          status: "removed",
+          filePath: futureKeyPath,
+          status: "active",
         },
       ]),
     );
-    mkdirSync(dirname(removedKeyPath), { recursive: true });
-    writeFileSync(removedKeyPath, "sk-zai-coding-secret", { mode: 0o600 });
+    mkdirSync(dirname(futureKeyPath), { recursive: true });
+    writeFileSync(futureKeyPath, "sk-future-secret", { mode: 0o600 });
     const store = await loadStore();
 
     const created = await store.runConfigurationAction(
@@ -184,50 +171,15 @@ describe("config store recovery", () => {
     );
     expect(created.ok).toBe(true);
 
-    expect(existsSync(removedKeyPath)).toBe(true);
-    expect(readFileSync(removedKeyPath, "utf8")).toBe("sk-zai-coding-secret");
-    const secretsAfterCreate = readJson<{
-      bindings: Array<{ configurationId: string; status: string }>;
-    }>(secretsPath());
-    expect(
-      secretsAfterCreate.bindings.some(
-        (binding) => binding.configurationId === "cfg-removed" && binding.status === "removed",
-      ),
-    ).toBe(true);
-
-    const inspected = await store.runConfigurationAction({
-      action: "inspect",
-      configurationId: "cfg-removed",
-    });
-    expect(inspected).toMatchObject({
-      ok: true,
-      value: {
-        status: "succeeded",
-        configuration: { status: "removed", productId: REMOVED_PRODUCT_ID },
-      },
-    });
-    expect(JSON.stringify(inspected)).not.toContain("sk-zai-coding-secret");
-    expect(JSON.stringify(inspected)).not.toContain("credentials/");
-
-    const deleted = await store.runConfigurationAction({
-      action: "delete",
-      configurationId: "cfg-removed",
-      expectedRevision: 1,
-    });
-    expect(deleted).toMatchObject({ ok: true, value: { action: "delete", status: "succeeded" } });
-    expect(existsSync(removedKeyPath)).toBe(false);
-    const secretsAfterDelete = readJson<{ bindings: Array<{ configurationId: string }> }>(
+    expect(readFileSync(configPath(), "utf8")).toContain(unknownRecord);
+    expect(existsSync(futureKeyPath)).toBe(true);
+    expect(readFileSync(futureKeyPath, "utf8")).toBe("sk-future-secret");
+    const bindings = readJson<{ bindings: Array<{ configurationId: string; filePath: string }> }>(
       secretsPath(),
+    ).bindings;
+    expect(bindings).toContainEqual(
+      expect.objectContaining({ configurationId: "cfg-future", filePath: futureKeyPath }),
     );
-    expect(
-      secretsAfterDelete.bindings.some((binding) => binding.configurationId === "cfg-removed"),
-    ).toBe(false);
-    const persisted = readJson<{ configurations: Array<{ configurationId: string }> }>(
-      configPath(),
-    );
-    expect(
-      persisted.configurations.some((record) => record.configurationId === "cfg-removed"),
-    ).toBe(false);
   });
 
   it("recovered state exposes no secret values, environment names, or credential paths", async () => {

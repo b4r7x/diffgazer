@@ -1,8 +1,4 @@
-import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import type { EvidenceKey, RuntimeIdentity } from "@diffgazer/core/schemas/review";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import {
   ExecutionFingerprintInputSchema,
   sha256CanonicalJsonSync,
@@ -269,39 +265,6 @@ describe("authorizeReviewExecution", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("budget-exhausted");
-    expect(dependencies.resolveCredential).not.toHaveBeenCalled();
-  });
-
-  it("rejects removed configuration ids before secret resolution", async () => {
-    const dependencies = createDependencies({
-      configuration: {
-        status: "removed",
-        record: {
-          schemaVersion: 2,
-          status: "removed",
-          configurationId: "legacy-removed-zai-plan",
-          revision: 1,
-          productId: REMOVED_PRODUCT_ID,
-          transportFamily: "hosted-api",
-          selectedModelId: null,
-          acknowledgement: null,
-          evidenceReference: null,
-          budget: null,
-          createdAt: CHECKED_AT,
-          updatedAt: CHECKED_AT,
-        },
-      },
-      binding: null,
-      evidence: null,
-      credentialReferenceIdentity: null,
-      workspaceAccountReference: null,
-    });
-
-    const result = await authorizeReviewExecution("legacy-removed-zai-plan", dependencies);
-
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error.code).toBe("configuration-removed");
     expect(dependencies.resolveCredential).not.toHaveBeenCalled();
   });
 

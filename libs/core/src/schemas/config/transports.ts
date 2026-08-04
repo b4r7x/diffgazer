@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { PRODUCT_ENDPOINT_TUPLES } from "../../providers/product-registry.js";
-import { REMOVED_PRODUCT_IDS } from "./providers.js";
 
 export const TRANSPORT_FAMILIES = ["hosted-api", "local-http", "local-cli"] as const;
 export const TransportFamilySchema = z.enum(TRANSPORT_FAMILIES);
@@ -36,10 +35,6 @@ export const RUNNABLE_PRODUCT_IDS = [
 export const RunnableProductIdSchema = z.enum(RUNNABLE_PRODUCT_IDS);
 export type RunnableProductId = z.infer<typeof RunnableProductIdSchema>;
 
-export { REMOVED_PRODUCT_IDS };
-export const RemovedProductIdSchema = z.enum(REMOVED_PRODUCT_IDS);
-export type RemovedProductId = z.infer<typeof RemovedProductIdSchema>;
-
 export const EXPERIMENTAL_PRODUCT_IDS = [
   "xiaomi-mimo",
   "byteplus-modelark",
@@ -63,7 +58,6 @@ export const DEFERRED_PRODUCT_IDS = [
 ] as const;
 
 export const REJECTED_PRODUCT_IDS = [
-  "zai-coding-plan",
   "kimi-code-http",
   "alibaba-coding-plan",
   "byteplus-coding-plan",

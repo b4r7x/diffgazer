@@ -44,21 +44,6 @@ const supportedRecord = {
   updatedAt: "2026-07-31T12:00:00.000Z",
 } as const;
 
-const removedRecord = {
-  schemaVersion: 2,
-  status: "removed",
-  configurationId: "legacy-zai-coding",
-  revision: 4,
-  productId: "zai-coding",
-  transportFamily: "hosted-api",
-  selectedModelId: null,
-  acknowledgement: null,
-  evidenceReference: null,
-  budget: null,
-  createdAt: "2026-07-31T11:00:00.000Z",
-  updatedAt: "2026-07-31T12:00:00.000Z",
-} as const;
-
 describe("V2 configuration persistence", () => {
   it("round-trips a V2 document byte-for-byte, including revisions, evidence, acknowledgement, and budgets", () => {
     const input = encoder.encode(
@@ -94,13 +79,13 @@ describe("V2 configuration persistence", () => {
     expect(output).toContain('"selectedConfigurationId":"gemini-primary"');
   });
 
-  it("decodes V1 hasApiKey only as an explicit migration record and classifies zai-coding as removed", () => {
+  it("decodes V1 hasApiKey only as an explicit migration record and keeps the rest unknown", () => {
     const input = encoder.encode(
       JSON.stringify({
         settings: { theme: "dark" },
         providers: [
           { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
-          { provider: "zai-coding", hasApiKey: true, isActive: false },
+          { provider: "future-provider", hasApiKey: true, isActive: false },
         ],
       }),
     );
@@ -110,10 +95,7 @@ describe("V2 configuration persistence", () => {
       status: "migrate-v1",
       record: { provider: "gemini", hasApiKey: true },
     });
-    expect(decoded.providers[1]).toMatchObject({
-      status: "removed",
-      record: { provider: "zai-coding", hasApiKey: true },
-    });
+    expect(decoded.providers[1]).toMatchObject({ status: "unknown" });
   });
 
   it("never emits hasApiKey in a V2 supported record", () => {
@@ -130,7 +112,7 @@ describe("V2 configuration persistence", () => {
   it("writes V2 atomically with restrictive permissions and loads the same document", async () => {
     const document = decodeConfigV2(
       encoder.encode(
-        `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${JSON.stringify(removedRecord)}]}`,
+        `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${JSON.stringify(supportedRecord)}]}`,
       ),
     );
 
@@ -141,8 +123,8 @@ describe("V2 configuration persistence", () => {
     expect(metadata.mode & 0o777).toBe(0o600);
     await chmod(path, 0o600);
     expect(loadConfigV2().configurations[0]).toMatchObject({
-      status: "removed",
-      record: { productId: "zai-coding", revision: 4 },
+      status: "supported",
+      record: { productId: "gemini", revision: 3 },
     });
   });
 

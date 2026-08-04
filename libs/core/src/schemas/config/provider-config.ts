@@ -19,7 +19,6 @@ import {
   LoopbackHttpEndpointSchema,
   matchesHostedApiTransportTuple,
   matchesLocalHttpTransportTuple,
-  RemovedProductIdSchema,
   type RunnableProductId,
 } from "./transports.js";
 
@@ -279,7 +278,6 @@ export type ClientConfigurationNotice = z.infer<typeof ClientConfigurationNotice
 const SupportedConfigurationActionsSchema = z.array(
   z.enum(["inspect", "select", "test", "update", "delete"]),
 );
-const RemovedConfigurationActionsSchema = z.array(z.enum(["inspect", "delete"]));
 
 const ConfigurationReferenceSchema = z
   .string()
@@ -459,28 +457,16 @@ const LocalCliConfigurationSummarySchema = z
     validateSupportedSummaryBoundary(summary, context);
   });
 
-const RemovedConfigurationSummarySchema = z.strictObject({
-  ...ConfigurationSummaryBaseShape,
-  status: z.literal("removed"),
-  transportFamily: z.literal("hosted-api"),
-  productId: RemovedProductIdSchema,
-  selectedModelId: z.null(),
-  availableActions: RemovedConfigurationActionsSchema,
-});
-
 export const ClientConfigurationSummarySchema = z.union([
   HostedApiConfigurationSummarySchema,
   LocalHttpConfigurationSummarySchema,
   LocalCliConfigurationSummarySchema,
-  RemovedConfigurationSummarySchema,
 ]);
 export type ClientConfigurationSummary = z.infer<typeof ClientConfigurationSummarySchema>;
 
 export const CONFIGURATION_OPERATION_STATUSES = ["succeeded", "failed", "conflict"] as const;
 export const ConfigurationOperationStatusSchema = z.enum(CONFIGURATION_OPERATION_STATUSES);
 export type ConfigurationOperationStatus = z.infer<typeof ConfigurationOperationStatusSchema>;
-
-type SupportedConfigurationSummary = Exclude<ClientConfigurationSummary, { status: "removed" }>;
 
 const ConfigurationActionResponseShape = {
   status: ConfigurationOperationStatusSchema,
@@ -490,7 +476,7 @@ const ConfigurationActionResponseShape = {
   availableActions: z.array(ClientConfigurationActionNameSchema).max(6).optional(),
 } as const;
 
-function matchesSupportedConfigurationTuple(configuration: SupportedConfigurationSummary): boolean {
+function matchesSupportedConfigurationTuple(configuration: ClientConfigurationSummary): boolean {
   if (configuration.transportFamily === "hosted-api") {
     return (
       getHostedApiEndpointTuple(
@@ -514,7 +500,7 @@ function matchesSupportedConfigurationTuple(configuration: SupportedConfiguratio
   return configuration.installationId.length > 0;
 }
 
-function hasSafeExactModel(configuration: SupportedConfigurationSummary): boolean {
+function hasSafeExactModel(configuration: ClientConfigurationSummary): boolean {
   const modelId = configuration.selectedModelId;
   if (modelId === null) return false;
 
@@ -523,10 +509,10 @@ function hasSafeExactModel(configuration: SupportedConfigurationSummary): boolea
 
 /**
  * A succeeded action must carry the summary its own outcome implies: delete
- * leaves nothing supported behind, inspect may report a supported or a removed
- * record, and every other action lands on a supported one. Owning this here
- * keeps the guarantee on the wire contract itself, so both the server that
- * emits a response and the client that parses one fail on the same shape.
+ * leaves nothing behind, and every other action reports the record it acted on.
+ * Owning this here keeps the guarantee on the wire contract itself, so both the
+ * server that emits a response and the client that parses one fail on the same
+ * shape.
  */
 function validateSucceededActionConfiguration(
   action: ClientConfigurationActionName,
@@ -534,10 +520,10 @@ function validateSucceededActionConfiguration(
   context: Pick<z.RefinementCtx<unknown>, "addIssue">,
 ): void {
   if (action === "delete") {
-    if (configuration?.status === "supported") {
+    if (configuration) {
       context.addIssue({
         code: "custom",
-        message: "A succeeded delete response cannot contain a supported configuration",
+        message: "A succeeded delete response cannot contain a configuration",
         path: ["configuration"],
       });
     }
@@ -548,15 +534,6 @@ function validateSucceededActionConfiguration(
     context.addIssue({
       code: "custom",
       message: "A succeeded configuration action requires its bound configuration summary",
-      path: ["configuration"],
-    });
-    return;
-  }
-
-  if (action !== "inspect" && configuration.status !== "supported") {
-    context.addIssue({
-      code: "custom",
-      message: `A succeeded ${action} response requires a supported configuration`,
       path: ["configuration"],
     });
   }
@@ -580,10 +557,10 @@ function validateActionResponseBinding(
   }
 
   if (response.notices !== undefined) {
-    if (!configuration || configuration.status === "removed") {
+    if (!configuration) {
       context.addIssue({
         code: "custom",
-        message: "Response notices require a supported bound configuration",
+        message: "Response notices require a bound configuration",
         path: ["notices"],
       });
     } else if (!hasCanonicalProductNotice(configuration.productId, response.notices)) {
@@ -610,7 +587,7 @@ function validateActionResponseBinding(
         message: "Readiness requires a bound configuration summary",
         path: ["readiness"],
       });
-    } else if (configuration.status === "supported") {
+    } else {
       const expectedNotice = PRODUCT_REGISTRY[configuration.productId].notice;
       const acknowledgement = response.readiness.acknowledgement;
       if (
@@ -624,17 +601,11 @@ function validateActionResponseBinding(
           path: ["readiness", "acknowledgement"],
         });
       }
-    } else if (response.readiness.status !== "removed") {
-      context.addIssue({
-        code: "custom",
-        message: "Removed configurations cannot claim supported readiness",
-        path: ["readiness"],
-      });
     }
   }
 }
 
-function hasCurrentNotice(configuration: SupportedConfigurationSummary): boolean {
+function hasCurrentNotice(configuration: ClientConfigurationSummary): boolean {
   const expected = PRODUCT_REGISTRY[configuration.productId].notice;
   const [notice] = configuration.notices;
   return (
@@ -663,10 +634,10 @@ function validateReadyActionResponse(
   }
 
   const configuration = response.configuration;
-  if (!configuration || configuration.status === "removed") {
+  if (!configuration) {
     context.addIssue({
       code: "custom",
-      message: "Ready readiness requires a supported configuration summary",
+      message: "Ready readiness requires a bound configuration summary",
       path: ["configuration"],
     });
     return;

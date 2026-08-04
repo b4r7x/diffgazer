@@ -10,7 +10,6 @@ import type {
 import {
   ClientConfigurationActionResponseSchema,
   READINESS_PRESENTATION,
-  REMOVED_PRODUCT_ID,
   SELECTABLE_PRODUCTS,
 } from "@diffgazer/core/schemas/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -190,28 +189,7 @@ function makeInitResponse(
 ): ConfigurationInitResponse {
   return {
     schemaVersion: 2,
-    configurations: [
-      {
-        configuration: {
-          configurationId: "legacy-removed-zai-plan",
-          revision: 4,
-          status: "removed",
-          transportFamily: "hosted-api",
-          productId: REMOVED_PRODUCT_ID,
-          selectedModelId: null,
-          notices: [],
-          availableActions: ["inspect", "delete"],
-        },
-        readiness: {
-          status: "removed",
-          ready: false,
-          evidenceStatus: "not-checked",
-          checkedAt: null,
-          acknowledgement: { status: "not-applicable" },
-          ...READINESS_PRESENTATION.removed,
-        },
-      },
-    ],
+    configurations: [],
     selectedConfigurationId: null,
     settings: {
       theme: "terminal",
@@ -307,14 +285,10 @@ describe("OnboardingWizard", () => {
     expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
   });
 
-  it("shows exactly 13 selectable products and removed migration guidance without a removed radio", async () => {
+  it("shows exactly 13 selectable products", async () => {
     renderWizard();
     await expectStep(/select product/i);
     expect(screen.getAllByRole("radio")).toHaveLength(13);
-    await waitFor(() => {
-      expect(screen.getByText(/Z\.AI Coding Plan/i)).toBeInTheDocument();
-    });
-    expect(screen.queryByRole("radio", { name: /Z\.AI Coding Plan/i })).not.toBeInTheDocument();
   });
 
   it("uses shared product names from the registry projection", async () => {

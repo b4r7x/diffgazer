@@ -30,8 +30,6 @@ const STEP_ACTION_LABELS: Record<OnboardingStep, StepActionLabels> = {
     select: "Accept Notice",
     enter: "Accept & Next",
   },
-  migration: { navigate: NAVIGATE_SHORTCUT.label, select: "Review Migration", enter: "Continue" },
-  delete: { navigate: NAVIGATE_SHORTCUT.label, select: "Confirm Delete", enter: "Delete Record" },
 };
 
 export function getStepShortcuts(

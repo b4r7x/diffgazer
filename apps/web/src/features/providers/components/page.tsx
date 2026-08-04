@@ -1,6 +1,5 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import { getProviderRowId } from "@diffgazer/core/providers";
-import type { ClientConfigurationSummary } from "@diffgazer/core/schemas/config";
 import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { CenteredStatus } from "@/components/shared/centered-status";
@@ -191,7 +190,7 @@ export function ProvidersPage() {
           onCreate={(input, opts) => handlers.createConfiguration(setupDialog.owner, input, opts)}
           onUpdate={(payload, opts) => {
             const configuration = setupDialog.row.configuration;
-            if (!configuration || configuration.status !== "supported") {
+            if (!configuration) {
               return Promise.resolve({
                 status: "failed" as const,
                 message: "This configuration can no longer be updated.",
@@ -210,19 +209,14 @@ export function ProvidersPage() {
         />
       ) : null}
 
-      {modelDialog && modelDialog.row.configuration?.status === "supported" ? (
+      {modelDialog?.row.configuration ? (
         <ModelSelectDialog
           key={`${getProviderRowId(modelDialog.row)}:${String(modelDialog.owner.id)}`}
           open
           onOpenChange={(open) => {
             if (!open) dialogs.close(modelDialog.owner);
           }}
-          configuration={
-            modelDialog.row.configuration as Extract<
-              ClientConfigurationSummary,
-              { status: "supported" }
-            >
-          }
+          configuration={modelDialog.row.configuration}
           currentModel={modelDialog.row.configuration.selectedModelId ?? undefined}
           isSaving={isSubmitting}
           onSelect={(modelId) => void handlers.selectModel(modelDialog.owner, modelId)}

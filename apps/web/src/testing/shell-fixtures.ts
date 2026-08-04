@@ -55,7 +55,7 @@ export function selectedProductId(init: ConfigurationInitResponse): string | und
   const selected = init.configurations.find(
     ({ configuration }) => configuration.configurationId === init.selectedConfigurationId,
   )?.configuration;
-  if (!selected || selected.status !== "supported") return undefined;
+  if (!selected) return undefined;
   return selected.productId;
 }
 
@@ -63,7 +63,7 @@ export function selectedProductLabel(init: ConfigurationInitResponse): string {
   const selected = init.configurations.find(
     ({ configuration }) => configuration.configurationId === init.selectedConfigurationId,
   )?.configuration;
-  if (!selected || selected.status !== "supported") return "Not configured";
+  if (!selected) return "Not configured";
   return PRODUCT_REGISTRY[selected.productId].presentation.name;
 }
 
@@ -71,7 +71,7 @@ export function selectedModelLabel(init: ConfigurationInitResponse): string | un
   const selected = init.configurations.find(
     ({ configuration }) => configuration.configurationId === init.selectedConfigurationId,
   )?.configuration;
-  if (!selected || selected.status !== "supported") return undefined;
+  if (!selected) return undefined;
   return selected.selectedModelId ?? undefined;
 }
 

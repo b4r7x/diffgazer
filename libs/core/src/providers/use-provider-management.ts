@@ -265,7 +265,7 @@ export function useProviderManagement({
   const handleDispatchReadinessAction = async (
     row: ProviderListRow,
   ): Promise<ProviderManagementOutcome> => {
-    if (isSubmitting || row.product.status === "removed") return INPUT_REQUIRED;
+    if (isSubmitting) return INPUT_REQUIRED;
 
     const action = row.readiness.action;
     if (action === "create" || action === "update") {
@@ -280,11 +280,6 @@ export function useProviderManagement({
     if (action === "test") return handleTestConfiguration(configurationId);
     if (action === "select")
       return handleSelectConfiguration(row, row.configuration?.selectedModelId ?? undefined);
-    if (action === "delete") {
-      const expectedRevision = row.configuration?.revision;
-      if (expectedRevision == null) return INPUT_REQUIRED;
-      return handleDeleteConfiguration(configurationId, expectedRevision);
-    }
 
     return INPUT_REQUIRED;
   };

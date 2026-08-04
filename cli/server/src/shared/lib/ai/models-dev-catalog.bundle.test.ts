@@ -12,10 +12,6 @@ import {
   transformCatalogObservation,
 } from "@diffgazer/core/catalog";
 import { CANDIDATE_VERDICTS, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import { CANDIDATE_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -120,7 +116,6 @@ describe("bundled catalog observations", () => {
     const productIds = new Set<string>(observations.map(({ productId }) => productId));
     const serialized = JSON.stringify(observations);
 
-    expect(productIds.has(REMOVED_PRODUCT_ID)).toBe(false);
     expect(productIds.has("github-models")).toBe(false);
     for (const candidateId of CANDIDATE_PRODUCT_IDS) {
       expect(productIds.has(candidateId), candidateId).toBe(false);

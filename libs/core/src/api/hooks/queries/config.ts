@@ -8,8 +8,6 @@ import type {
 } from "../../../schemas/config/index.js";
 import type { BoundApi } from "../../bound.js";
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 function noticeFingerprint(notices: ClientConfigurationSummary["notices"]) {
   return notices.map((notice) => [notice.id, notice.noticeVersion]);
 }
@@ -25,10 +23,6 @@ function configurationFingerprintInput(configuration: ClientConfigurationSummary
     notices: noticeFingerprint(configuration.notices),
     availableActions: configuration.availableActions,
   };
-
-  if (configuration.status === "removed") {
-    return base;
-  }
 
   if (configuration.transportFamily === "hosted-api") {
     return {
@@ -100,7 +94,7 @@ export const configQueries = {
  */
 function isSelectableModelForProduct(
   modelId: string,
-  productId: SupportedConfigurationSummary["productId"],
+  productId: ClientConfigurationSummary["productId"],
 ): boolean {
   return (
     CatalogSelectableModelIdSchema.safeParse(modelId).success &&
@@ -110,7 +104,7 @@ function isSelectableModelForProduct(
 
 export function configurationModelsQuery(
   api: BoundApi,
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   fingerprint: ConfigurationFingerprint = configurationFingerprint(configuration),
 ) {
   return queryOptions({

@@ -13,7 +13,6 @@ import {
   makeConfigurationInitResponse,
   makeReadyInitResponse,
   READY_GEMINI_CONFIGURATION,
-  REMOVED_ZAI_CODING_CONFIGURATION,
   selectedIdentityFrom,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -730,29 +729,6 @@ describe("useReviewLifecycle readiness gate", () => {
     await waitFor(() => {
       expect(result.current.readiness?.status).toBe("unsupported");
       expect(result.current.readiness?.action).toBe("inspect");
-    });
-  });
-
-  it("routes removed readiness to the delete action", async () => {
-    const init = makeConfigurationInitResponse([
-      configurationStatus(REMOVED_ZAI_CODING_CONFIGURATION, "removed"),
-    ]);
-    mockApi = createMockApi(init);
-    mockUseReviewLifecycleBase.mockReturnValue({
-      ...makeRunningBaseReturn(),
-      start: {
-        ...makeRunningBaseReturn().start,
-        canStart: false,
-        readinessGate: "removed",
-      },
-      gate: "unconfigured",
-    });
-
-    const { result } = renderReviewLifecycle("staged");
-
-    await waitFor(() => {
-      expect(result.current.readiness?.status).toBe("removed");
-      expect(result.current.readiness?.action).toBe("delete");
     });
   });
 

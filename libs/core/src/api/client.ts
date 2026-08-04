@@ -53,6 +53,14 @@ const BODY_SECRET_KEYS = new Set([
   "secretkey",
   "token",
 ]);
+/**
+ * Shown whenever a response fails its schema: the app and the server disagree
+ * about the payload shape, which in practice means they are running different
+ * builds. Restarting reloads both sides, so that is the action offered.
+ */
+const RESPONSE_VALIDATION_MESSAGE =
+  "The server returned data this build does not understand. Restart Diffgazer so the app and server run the same build.";
+
 const BODY_SECRET_SCAN_MAX_DEPTH = 16;
 const BODY_SECRET_SCAN_MAX_NODES = 512;
 const BODY_SECRET_VALUE_MAX_COUNT = 64;
@@ -72,6 +80,16 @@ function sanitizeText(
     .trim();
   if (sanitized.length === 0) return undefined;
   return truncateUtf8(sanitized, maxBytes);
+}
+
+/**
+ * A schema validator rejects with an issue list whose `message` is the serialized
+ * issues themselves. That text is machine output, never user copy, so it is
+ * recognised by shape rather than by class: the validator instance that threw may
+ * come from a different copy of the schema library than the one linked here.
+ */
+function isSchemaValidationFailure(cause: unknown): boolean {
+  return isRecord(cause) && Array.isArray((cause as { issues?: unknown }).issues);
 }
 
 function isUntrustedDiagnostic(value: string): boolean {
@@ -330,13 +348,14 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       try {
         return validate(body);
       } catch (cause) {
-        const rawMessage = getErrorMessage(cause, "Response validation failed");
+        const rawMessage = getErrorMessage(cause, RESPONSE_VALIDATION_MESSAGE);
         const safeMessage =
           sanitizeText(rawMessage, sensitiveValues, SAFE_MESSAGE_MAX_BYTES) ??
-          "Response validation failed";
-        const message = isUntrustedDiagnostic(rawMessage)
-          ? "Response validation failed"
-          : safeMessage;
+          RESPONSE_VALIDATION_MESSAGE;
+        const message =
+          isSchemaValidationFailure(cause) || isUntrustedDiagnostic(rawMessage)
+            ? RESPONSE_VALIDATION_MESSAGE
+            : safeMessage;
         throw createApiError(message, 422, ErrorCode.INVALID_RESPONSE, {
           safeMessage: message,
         });

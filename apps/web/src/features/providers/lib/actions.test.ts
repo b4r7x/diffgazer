@@ -12,8 +12,7 @@ import { describe, expect, it } from "vitest";
 import { getProviderActions } from "./actions";
 
 // Configured rows cover the readiness states that drive different action rows; buildProviderRows
-// adds an unconfigured placeholder row for every other selectable product. Removed records are
-// excluded before selection (filterProviders), so they never reach getProviderActions.
+// adds an unconfigured placeholder row for every other selectable product.
 const ROWS: ProviderListRow[] = buildProviderRows([
   configurationStatus(READY_GEMINI_CONFIGURATION, "ready"),
   configurationStatus(READY_ZAI_CONFIGURATION, "model-missing"),

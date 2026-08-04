@@ -1,5 +1,4 @@
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
-import type { RemovedProductId, RunnableProductId } from "../schemas/config/transports.js";
+import type { RunnableProductId } from "../schemas/config/transports.js";
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";
 import {
   type CatalogObservationSource,
@@ -85,11 +84,10 @@ function toObservation(
 
 export function deriveCapabilities(
   catalog: ModelsDevCatalog,
-  productId: RunnableProductId | RemovedProductId,
+  productId: RunnableProductId,
   window: CapabilityObservationWindow,
 ): ModelCapabilityObservation[] {
   if (!hasFreshObservation(window)) return [];
-  if (productId === REMOVED_PRODUCT_ID) return [];
 
   const overlay = PROVIDER_OVERLAY[productId];
   if (!overlay) return [];

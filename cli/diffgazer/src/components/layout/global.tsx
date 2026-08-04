@@ -49,7 +49,7 @@ function ConnectedHeader() {
     ? getProviderDisplayStatus(selected.readiness, selected.configuration.transportFamily)
     : getUnconfiguredDisplayStatus(loadingOverride);
   const providerName = getProviderDisplay(
-    selected?.configuration.status === "supported" ? selected.configuration.productId : undefined,
+    selected?.configuration.productId,
     selected?.configuration.selectedModelId ?? undefined,
   );
 

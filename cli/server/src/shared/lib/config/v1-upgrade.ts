@@ -2,7 +2,7 @@ import { isModelIdAllowedForProduct, PRODUCT_REGISTRY } from "@diffgazer/core/pr
 import { ok, type Result } from "@diffgazer/core/result";
 import {
   ExactModelIdSchema,
-  REMOVED_PRODUCT_IDS,
+  type LegacyProviderConfigV1,
   type RunnableProductId,
   type SecretsStorage,
 } from "@diffgazer/core/schemas/config";
@@ -13,7 +13,6 @@ import {
   type ConfigurationBudgetLimits,
   type DecodedProviderConfigurationRecord,
   NonSecretTransportInputSchema,
-  type RemovedProviderConfigurationRecord,
   type SupportedProviderConfigurationRecord,
 } from "./provider-config.js";
 import type { SecretBinding } from "./secret-bindings.js";
@@ -22,7 +21,6 @@ import {
   CONFIG_SCHEMA_VERSION_V2,
   type ConfigDocumentV1,
   type ConfigDocumentV2,
-  type RunnableV1Record,
   type SecretsState,
   type SecretsStorageError,
 } from "./types.js";
@@ -51,7 +49,7 @@ const upgradableProductId = (provider: string): RunnableProductId | null => {
   const product = PRODUCT_REGISTRY[provider as RunnableProductId] as
     | (typeof PRODUCT_REGISTRY)[RunnableProductId]
     | undefined;
-  if (!product || product.kind !== "runnable" || product.transportFamily !== "hosted-api") {
+  if (!product || product.transportFamily !== "hosted-api") {
     return null;
   }
   return product.id;
@@ -67,7 +65,7 @@ const upgradedConfigurationId = (provider: string): string => `cfg-v1-${provider
  * conformance-pending until the user runs a test.
  */
 const upgradeRunnableRecord = (
-  record: RunnableV1Record,
+  record: LegacyProviderConfigV1,
   productId: RunnableProductId,
   now: string,
   options: V1UpgradeOptions,
@@ -103,25 +101,6 @@ const upgradeRunnableRecord = (
     updatedAt: now,
   };
 };
-
-const upgradeRemovedRecord = (
-  provider: string,
-  now: string,
-  options: V1UpgradeOptions,
-): RemovedProviderConfigurationRecord => ({
-  schemaVersion: 2,
-  status: "removed",
-  configurationId: upgradedConfigurationId(provider),
-  revision: 1,
-  productId: REMOVED_PRODUCT_IDS[0],
-  transportFamily: "hosted-api",
-  selectedModelId: null,
-  acknowledgement: null,
-  evidenceReference: null,
-  budget: options.budget,
-  createdAt: now,
-  updatedAt: now,
-});
 
 const bindingsDocument = (bindings: readonly SecretBinding[]): SecretsDocumentV2 => ({
   schemaVersion: SECRETS_SCHEMA_VERSION_V2,
@@ -162,17 +141,6 @@ export function upgradeV1Documents(
       droppedEntries += 1;
       continue;
     }
-    if (entry.status === "removed") {
-      const record = upgradeRemovedRecord(entry.record.provider, now, options);
-      records.push({ status: "removed", record, rawBytes: encodeJsonBytes(record) });
-      legacyConfigurations.push({
-        provider: entry.record.provider,
-        configurationId: record.configurationId,
-        revision: 1,
-        status: "removed",
-      });
-      continue;
-    }
 
     const productId = upgradableProductId(entry.record.provider);
     const record = productId ? upgradeRunnableRecord(entry.record, productId, now, options) : null;
@@ -185,7 +153,6 @@ export function upgradeV1Documents(
       provider: entry.record.provider,
       configurationId: record.configurationId,
       revision: 1,
-      status: "supported",
     });
     if (entry.record.isActive) selectedConfigurationId ??= record.configurationId;
   }

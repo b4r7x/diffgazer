@@ -894,7 +894,7 @@ describe("POST /api/review/reviews", () => {
     expect(source).toContain("authorizeReviewExecution");
   });
 
-  it("does not dispatch removed configurations", async () => {
+  it("does not dispatch unsupported configurations", async () => {
     const createReviewSession = vi.fn();
     vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
       const actual =
@@ -903,8 +903,8 @@ describe("POST /api/review/reviews", () => {
         ...actual,
         authorizeReviewExecution: vi.fn(async () =>
           err({
-            code: "configuration-removed",
-            safeMessage: "Configuration has been removed",
+            code: "configuration-unsupported",
+            safeMessage: "Configuration is not supported",
             retryable: false,
           }),
         ),
@@ -925,7 +925,7 @@ describe("POST /api/review/reviews", () => {
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({
-      error: { code: "configuration-removed" },
+      error: { code: "configuration-unsupported" },
     });
     expect(createReviewSession).not.toHaveBeenCalled();
   });

@@ -4,7 +4,6 @@ import {
   PRODUCT_REGISTRY,
   SELECTABLE_PRODUCT_IDS,
 } from "../providers/product-registry.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { PROVIDER_OVERLAY, projectCatalogAvailabilityObservations } from "./provider-overlay.js";
 
 const CHECKED_AT = "2026-07-31T12:00:00.000Z";
@@ -58,15 +57,13 @@ describe("catalog provider observations", () => {
     }
   });
 
-  it("excludes removed and candidate IDs from availability projections", () => {
+  it("excludes candidate IDs from availability projections", () => {
     const observations = projectCatalogAvailabilityObservations("models.dev-live", CHECKED_AT);
     const projectedIds = new Set([
       ...observations.map((observation) => observation.productId),
       ...observations.flatMap((observation) => observation.modelsDevIds),
     ]);
 
-    expect(projectedIds.has(REMOVED_PRODUCT_ID)).toBe(false);
-    expect(projectedIds.has("zai-coding-plan")).toBe(false);
     expect(projectedIds.has("github-models")).toBe(false);
     expect(projectedIds.has("huggingface")).toBe(false);
     for (const candidateId of Object.keys(CANDIDATE_VERDICTS)) {

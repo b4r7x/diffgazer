@@ -1,8 +1,4 @@
-import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import { describe, expect, it } from "vitest";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import {
   assertConfigurationIdentity,
   assertExpectedRevision,
@@ -52,21 +48,6 @@ const supportedRecord = (): SupportedProviderConfigurationRecord => ({
   updatedAt: "2026-07-31T12:00:00.000Z",
 });
 
-const removedRecord = {
-  schemaVersion: 2 as const,
-  status: "removed" as const,
-  configurationId: "legacy-removed-zai-plan",
-  revision: 4,
-  productId: REMOVED_PRODUCT_IDS[0],
-  transportFamily: "hosted-api" as const,
-  selectedModelId: null,
-  acknowledgement: null,
-  evidenceReference: null,
-  budget: null,
-  createdAt: "2026-07-31T11:00:00.000Z",
-  updatedAt: "2026-07-31T12:00:00.000Z",
-};
-
 function fileWith(...records: ProviderConfigurationFile["records"]): ProviderConfigurationFile {
   return {
     schemaVersion: 2,
@@ -110,18 +91,19 @@ describe("server V2 provider configuration records", () => {
     expect(selected.selectedConfigurationId).toBe("gemini-primary");
   });
 
-  it("classifies REMOVED_PRODUCT_ID as removed and rejects it as selected/executable", () => {
-    const recordBytes = encoder.encode(JSON.stringify(removedRecord));
-    const decodedRecord = decodeProviderConfigurationRecord(recordBytes);
-    expect(decodedRecord.status).toBe("removed");
-    if (decodedRecord.status !== "removed") return;
-    expect(decodedRecord.record.productId).toBe(REMOVED_PRODUCT_ID);
-    expect(decodedRecord.record.selectedModelId).toBeNull();
+  it("keeps an unrecognized record opaque and refuses to select it", () => {
+    const unknown = '{"schemaVersion":2,"status":"experimental","configurationId":"future-config"}';
+    expect(decodeProviderConfigurationRecord(encoder.encode(unknown)).status).toBe("unknown");
 
     const decodedFile = decodeProviderConfigurationFile(
-      encodeProviderConfigurationFile(fileWith({ status: "removed", record: removedRecord })),
+      encoder.encode(
+        `{"schemaVersion":2,"selectedConfigurationId":null,"configurations":[${unknown}]}`,
+      ),
     );
-    expect(() => selectProviderConfiguration(decodedFile, "legacy-removed-zai-plan")).toThrow(
+    expect(new TextDecoder().decode(encodeProviderConfigurationFile(decodedFile))).toContain(
+      unknown,
+    );
+    expect(() => selectProviderConfiguration(decodedFile, "future-config")).toThrow(
       ProviderConfigurationConflictError,
     );
   });
@@ -147,13 +129,7 @@ describe("server V2 provider configuration records", () => {
     );
   });
 
-  it("does not accept a supported record carrying a removed product or secret input", () => {
-    expect(
-      SupportedProviderConfigurationRecordSchema.safeParse({
-        ...supportedRecord(),
-        productId: REMOVED_PRODUCT_ID,
-      }).success,
-    ).toBe(false);
+  it("does not accept a supported record carrying secret input", () => {
     expect(
       SupportedProviderConfigurationRecordSchema.safeParse({
         ...supportedRecord(),

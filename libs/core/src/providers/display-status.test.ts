@@ -42,7 +42,7 @@ function evidence(status: ReadinessStatus) {
     };
   }
 
-  if (status === "unconfigured" || status === "unsupported" || status === "removed") {
+  if (status === "unconfigured" || status === "unsupported") {
     return {
       ready: false,
       evidenceStatus: "not-checked",
@@ -91,7 +91,6 @@ function display(status: ReadinessStatus, family: TransportFamily) {
 
 describe("getProviderDisplayStatus", () => {
   it.each([
-    ["removed", "hosted-api", "Removed", "delete"],
     ["local-endpoint-unreachable", "local-http", "Local endpoint unreachable", "test"],
     ["unsupported", "local-cli", "CLI unsupported", "inspect"],
     ["acknowledgement-required", "hosted-api", "Acknowledgement required", "update"],
@@ -109,7 +108,6 @@ describe("getProviderDisplayStatus", () => {
 
   it("does not reduce distinct machine states to color or credential-only copy", () => {
     const results = [
-      display("removed", "hosted-api"),
       display("local-endpoint-unreachable", "local-http"),
       display("unsupported", "local-cli"),
       display("acknowledgement-required", "hosted-api"),

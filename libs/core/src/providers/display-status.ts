@@ -31,7 +31,6 @@ const READINESS_BADGES = {
     variant: "warning",
   },
   unsupported: { label: "Unsupported", shortLabel: "unsupported", variant: "warning" },
-  removed: { label: "Removed", shortLabel: "removed", variant: "error" },
   skipped: { label: "Readiness check skipped", shortLabel: "skipped", variant: "warning" },
   "local-endpoint-unreachable": {
     label: "Local endpoint unreachable",

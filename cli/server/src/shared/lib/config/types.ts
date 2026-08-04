@@ -1,18 +1,6 @@
 import type { AppError } from "@diffgazer/core/errors";
-import type {
-  LegacyProviderConfigV1,
-  LegacyRemovedProviderRecordV1,
-  TrustConfig,
-} from "@diffgazer/core/schemas/config";
+import type { LegacyProviderConfigV1, TrustConfig } from "@diffgazer/core/schemas/config";
 import type { ConfigurationId, DecodedProviderConfigurationRecord } from "./provider-config.js";
-
-/** A V1 entry narrowed to the ids this binary can still execute. */
-export type RunnableV1Record = Omit<LegacyProviderConfigV1, "provider"> & {
-  provider: ExecutableLegacyProviderId;
-};
-
-/** Legacy V1 executable provider ids used by the aggregate read bridge. */
-export type ExecutableLegacyProviderId = "gemini" | "zai" | "openrouter" | "groq" | "cerebras";
 
 export const CONFIG_SCHEMA_VERSION_V2 = 2 as const;
 
@@ -31,12 +19,7 @@ export interface ConfigDocumentV2 {
 export type V1ConfigurationRecord =
   | {
       readonly status: "migrate-v1";
-      readonly record: RunnableV1Record;
-      readonly rawBytes: Uint8Array;
-    }
-  | {
-      readonly status: "removed";
-      readonly record: LegacyRemovedProviderRecordV1;
+      readonly record: LegacyProviderConfigV1;
       readonly rawBytes: Uint8Array;
     }
   | {

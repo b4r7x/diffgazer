@@ -12,10 +12,6 @@ export const PROVIDER_FILTER_LABELS: { value: ProviderFilter; label: string }[] 
   { value: "paid", label: "Paid" },
 ];
 
-function isRemovedRow(row: ProviderListRow): boolean {
-  return row.product.status === "removed";
-}
-
 // "Configured" means a stored configuration exists; readiness (e.g. pending
 // conformance) is a separate axis and must not hide the row from this filter.
 function hasConfiguration(row: ProviderListRow): boolean {
@@ -37,8 +33,7 @@ export function filterProviders(
   filter: ProviderFilter,
   searchQuery = "",
 ): ProviderListRow[] {
-  // Removed configuration records stay in the data layer but never render in the list.
-  let filtered = providers.filter((row) => !isRemovedRow(row));
+  let filtered = providers;
 
   if (filter === "configured") {
     filtered = filtered.filter(hasConfiguration);

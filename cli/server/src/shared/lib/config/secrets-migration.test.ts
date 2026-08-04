@@ -121,17 +121,10 @@ describe("migrateV1SecretsToBindings", () => {
     expect(keyring.writeKeyringSecret).not.toHaveBeenCalled();
   });
 
-  it("retains a removed record's binding without reading, copying, or deleting its secret", () => {
+  it("retains an unmigratable provider's binding without reading, copying, or deleting its secret", () => {
     const result = migrateV1SecretsToBindings(
-      { providers: { "zai-coding": "retired-key" } },
-      [
-        {
-          provider: "zai-coding",
-          configurationId: "cfg-v1-zai-coding",
-          revision: 1,
-          status: "removed",
-        },
-      ],
+      { providers: { "future-provider": "retired-key" } },
+      [{ provider: "future-provider", configurationId: "cfg-v1-future-provider", revision: 1 }],
       { storage: "keyring", filePathFor },
     );
 

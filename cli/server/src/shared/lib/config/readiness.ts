@@ -322,15 +322,6 @@ export function computeProviderReadinessResult(
     return { readiness, details: detailsFor(readiness, input.evidence) };
   }
 
-  if (configuration.status === "removed") {
-    const readiness = buildReadiness(
-      "removed",
-      null,
-      "not-checked",
-      notApplicableAcknowledgement(),
-    );
-    return { readiness, details: detailsFor(readiness, input.evidence) };
-  }
   if (configuration.status === "unknown") {
     const readiness = buildReadiness(
       "unsupported",

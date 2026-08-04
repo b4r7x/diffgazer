@@ -124,21 +124,16 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
 
   const selectedStatus = initData ? resolveSelectedStatus(initData) : null;
   const readiness = selectedStatus?.readiness ?? unconfiguredReadiness();
-  const productLabel =
-    selectedStatus?.configuration.status === "supported"
-      ? PRODUCT_REGISTRY[selectedStatus.configuration.productId].presentation.name
-      : null;
-  const transportFamily =
-    selectedStatus?.configuration.status === "supported"
-      ? selectedStatus.configuration.transportFamily
-      : null;
-  const configurationIdentity =
-    selectedStatus?.configuration.status === "supported"
-      ? {
-          configurationId: selectedStatus.configuration.configurationId,
-          fingerprint: configurationFingerprint(selectedStatus.configuration),
-        }
-      : null;
+  const productLabel = selectedStatus
+    ? PRODUCT_REGISTRY[selectedStatus.configuration.productId].presentation.name
+    : null;
+  const transportFamily = selectedStatus?.configuration.transportFamily ?? null;
+  const configurationIdentity = selectedStatus
+    ? {
+        configurationId: selectedStatus.configuration.configurationId,
+        fingerprint: configurationFingerprint(selectedStatus.configuration),
+      }
+    : null;
   const legacyConfigured = initData?.setup.isConfigured ?? false;
   const provider = selectedStatus?.configuration.productId ?? null;
 

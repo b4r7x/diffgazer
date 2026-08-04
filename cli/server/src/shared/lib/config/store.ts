@@ -20,7 +20,6 @@ import {
   ExactModelIdSchema,
   type ProjectInfo,
   READINESS_PRESENTATION,
-  REMOVED_PRODUCT_IDS,
   type Readiness,
   type ReadinessAcknowledgement,
   ReadinessSchema,
@@ -79,7 +78,6 @@ import {
   type NonSecretTransportInput,
   NonSecretTransportInputSchema,
   type ProviderConfigurationRecord,
-  type RemovedProviderConfigurationRecord,
   type SupportedProviderConfigurationRecord,
 } from "./provider-config.js";
 import { computeProviderReadinessResult } from "./readiness.js";
@@ -131,10 +129,6 @@ const SUPPORTED_CONFIGURATION_ACTIONS: readonly ClientConfigurationActionName[] 
   "select",
   "test",
   "update",
-  "delete",
-];
-const REMOVED_CONFIGURATION_ACTIONS: readonly ClientConfigurationActionName[] = [
-  "inspect",
   "delete",
 ];
 
@@ -800,30 +794,6 @@ export function createConfigStore(): ConfigStore {
     return ok(parsed.data);
   };
 
-  const summaryForRemovedRecord = (
-    record: RemovedProviderConfigurationRecord,
-  ): Result<ClientConfigurationSummary, ConfigurationActionError> => {
-    const parsed = ClientConfigurationSummarySchema.safeParse({
-      status: "removed",
-      configurationId: record.configurationId,
-      revision: record.revision,
-      transportFamily: "hosted-api",
-      productId: REMOVED_PRODUCT_IDS[0],
-      selectedModelId: null,
-      notices: [],
-      availableActions: REMOVED_CONFIGURATION_ACTIONS,
-    });
-    if (!parsed.success) {
-      return err(
-        configurationActionFailure(
-          "CONFIGURATION_UNSUPPORTED",
-          "Configuration cannot be represented at the client boundary",
-        ),
-      );
-    }
-    return ok(parsed.data);
-  };
-
   const succeededActionResponse = <Action extends ClientConfigurationActionName>(
     action: Action,
     payload: {
@@ -933,17 +903,6 @@ export function createConfigStore(): ConfigStore {
     if (record.status === "unknown") {
       return err(
         configurationActionFailure("CONFIGURATION_UNSUPPORTED", "Configuration is not supported"),
-      );
-    }
-    if (record.status === "removed") {
-      const summaryResult = summaryForRemovedRecord(record.record);
-      if (!summaryResult.ok) return summaryResult;
-      return ok(
-        succeededActionResponse("inspect", {
-          configuration: summaryResult.value,
-          readiness: readinessFor(record.record),
-          availableActions: REMOVED_CONFIGURATION_ACTIONS,
-        }),
       );
     }
     const summaryResult = summaryForSupportedRecord(record.record);

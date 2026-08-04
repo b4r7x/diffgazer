@@ -69,7 +69,6 @@ function admissionFailureStatus(code: AdmissionFailureCode): number {
       return 404;
     case "budget-exhausted":
       return 429;
-    case "configuration-removed":
     case "configuration-revoking":
     case "configuration-unsupported":
     case "readiness-not-ready":

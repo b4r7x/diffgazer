@@ -5,7 +5,6 @@ import type {
   ClientConfigurationSummary,
 } from "../schemas/config/provider-config.js";
 import { SELECTABLE_PRODUCTS } from "../schemas/config/provider-registry.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import {
   READINESS_PRESENTATION,
   type Readiness,
@@ -21,7 +20,7 @@ const HOSTED_ENDPOINTS = {
   groq: "https://api.groq.com/openai/v1",
 } as const;
 
-type TestedReadinessStatus = "ready" | "unreachable" | "unsupported" | "removed";
+type TestedReadinessStatus = "ready" | "unreachable" | "unsupported";
 
 function readiness(status: TestedReadinessStatus): Readiness {
   const presentation = READINESS_PRESENTATION[status];
@@ -136,31 +135,6 @@ describe("mapProviderList", () => {
 
     expect(row?.readiness).toEqual(readiness(readinessStatus));
     expect(row?.actions).toEqual(["inspect", "select", "test", "update", "delete"]);
-  });
-
-  it("appends removed records without making them selectable", () => {
-    const removedConfiguration: ClientConfigurationSummary = {
-      configurationId: "legacy-removed-zai-plan",
-      revision: 4,
-      status: "removed",
-      transportFamily: "hosted-api",
-      productId: REMOVED_PRODUCT_ID,
-      selectedModelId: null,
-      notices: [],
-      availableActions: ["inspect", "delete"],
-    };
-    const rows = mapProviderList([status(removedConfiguration, readiness("removed"))]);
-    const row = rows.find(
-      ({ configuration }) => configuration?.configurationId === "legacy-removed-zai-plan",
-    );
-
-    expect(row).toMatchObject({
-      product: { productId: REMOVED_PRODUCT_ID, status: "removed", selectable: false },
-      readiness: { status: "removed", ready: false, action: "delete" },
-      notices: [],
-      actions: ["inspect", "delete"],
-    });
-    expect(rows).toHaveLength(14);
   });
 
   it("derives exactly the 13 selectable products from the product registry", () => {

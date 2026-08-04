@@ -1,10 +1,8 @@
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import type {
   CandidateProductId,
   HostedApiProductId,
   LocalCliProductId,
   LocalHttpProductId,
-  RemovedProductId,
   RunnableProductId,
   TransportFamily,
 } from "../schemas/config/transports.js";
@@ -241,27 +239,8 @@ export interface RunnableProductDescriptor<ProductId extends RunnableProductId> 
   readonly notice: ProductNotice;
 }
 
-export interface RemovedProductDescriptor<ProductId extends RemovedProductId> {
-  readonly id: ProductId;
-  readonly kind: "removed";
-  readonly selectable: false;
-  readonly decoderOnly: true;
-  readonly transportFamily: TransportFamily;
-  readonly presentation: {
-    readonly name: string;
-    readonly description: string;
-  };
-  readonly migration: {
-    readonly targetProductId: "zai";
-    readonly credentialHandling: "retain-until-explicit-delete-never-copy-test-or-send";
-    readonly actions: readonly ["create-new-zai-configuration", "delete-removed-record"];
-  };
-}
-
 export type ProductRegistry = {
   readonly [ProductId in RunnableProductId]: RunnableProductDescriptor<ProductId>;
-} & {
-  readonly [ProductId in RemovedProductId]: RemovedProductDescriptor<ProductId>;
 };
 
 const HOSTED_CHECKS = [
@@ -453,7 +432,7 @@ export const PRODUCT_REGISTRY = {
     },
     billing: {
       modes: ["pay-as-you-go"],
-      posture: "General Open Platform PAYG only; Coding Plan quota is a different product.",
+      posture: "General Open Platform pay-as-you-go only.",
     },
     notice: {
       id: "zai-general-payg",
@@ -461,7 +440,7 @@ export const PRODUCT_REGISTRY = {
       acknowledgement: "required",
       acknowledgeBefore: "first-context-send",
       renewAcknowledgementOn: "material-notice-change",
-      billing: ["This configuration uses general Open Platform PAYG, never Coding Plan quota."],
+      billing: ["This configuration uses general Open Platform pay-as-you-go billing."],
       privacy: [
         "API no-training and data-handling claims apply only to the exact general PAYG route.",
       ],
@@ -681,7 +660,7 @@ export const PRODUCT_REGISTRY = {
       billing: [
         "The selected international region and workspace determine billing and availability.",
         "No international free quota is promised.",
-        "Coding Plan and Token Plan credentials are excluded.",
+        "Subscription plan credentials are excluded.",
       ],
       privacy: [
         "The selected international region and workspace are bound to the configuration.",
@@ -946,23 +925,6 @@ export const PRODUCT_REGISTRY = {
       ],
     },
   },
-  [REMOVED_PRODUCT_ID]: {
-    id: REMOVED_PRODUCT_ID,
-    kind: "removed",
-    selectable: false,
-    decoderOnly: true,
-    transportFamily: "hosted-api",
-    presentation: {
-      name: "Z.AI Coding Plan",
-      description:
-        "Removed and unsupported: HTTP compatibility does not authorize Coding Plan use in Diffgazer.",
-    },
-    migration: {
-      targetProductId: "zai",
-      credentialHandling: "retain-until-explicit-delete-never-copy-test-or-send",
-      actions: ["create-new-zai-configuration", "delete-removed-record"],
-    },
-  },
 } as const satisfies ProductRegistry;
 
 export type CandidateVerdict = "experimental" | "deferred" | "rejected";
@@ -1159,16 +1121,6 @@ export const CANDIDATE_VERDICTS = {
     transportFamily: "hosted-api",
     reason: "Ordinary compatible APIs do not justify additional vendor runtime dependencies.",
     reconsiderWhen: "A safely typed protocol incompatibility is demonstrated.",
-  },
-  "zai-coding-plan": {
-    id: "zai-coding-plan",
-    name: "Z.AI GLM Coding Plan",
-    verdict: "rejected",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "Plan terms do not authorize direct use by a Diffgazer-owned service.",
-    reconsiderWhen: "Written authorization covers this exact third-party integration.",
   },
   "kimi-code-http": {
     id: "kimi-code-http",

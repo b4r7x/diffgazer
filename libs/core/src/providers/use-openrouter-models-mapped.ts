@@ -3,9 +3,7 @@ import type { ClientConfigurationSummary } from "../schemas/config/provider-conf
 import { isPinnedDownstreamRouteModelId } from "./product-registry.js";
 import { type ModelSourceState, useModelSource } from "./use-model-source.js";
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
-export type OpenRouterConfigurationSummary = SupportedConfigurationSummary & {
+export type OpenRouterConfigurationSummary = ClientConfigurationSummary & {
   transportFamily: "hosted-api";
   productId: "openrouter";
 };

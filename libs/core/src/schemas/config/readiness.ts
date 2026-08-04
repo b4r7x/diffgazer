@@ -10,7 +10,6 @@ export const READINESS_STATUSES = [
   "conformance-failed",
   "acknowledgement-required",
   "unsupported",
-  "removed",
   "skipped",
   "local-endpoint-unreachable",
   "local-endpoint-forbidden",
@@ -24,14 +23,7 @@ export const READINESS_STATUSES = [
 export const ReadinessStatusSchema = z.enum(READINESS_STATUSES);
 export type ReadinessStatus = z.infer<typeof ReadinessStatusSchema>;
 
-export const READINESS_ACTIONS = [
-  "create",
-  "inspect",
-  "select",
-  "test",
-  "update",
-  "delete",
-] as const;
+export const READINESS_ACTIONS = ["create", "inspect", "select", "test", "update"] as const;
 export const ReadinessActionSchema = z.enum(READINESS_ACTIONS);
 export type ReadinessAction = z.infer<typeof ReadinessActionSchema>;
 
@@ -55,7 +47,6 @@ export const READINESS_REMEDIATION_CODES = [
   "rerun-conformance",
   "accept-notice",
   "review-support",
-  "migrate-or-delete",
   "enable-live-probe",
   "start-local-server",
   "use-loopback-endpoint",
@@ -142,14 +133,6 @@ export const READINESS_PRESENTATION = {
     remediation: {
       code: "review-support",
       message: "Review the supported products and environment requirements.",
-    },
-  },
-  removed: {
-    action: "delete",
-    explanation: "This saved product has been removed and cannot run reviews.",
-    remediation: {
-      code: "migrate-or-delete",
-      message: "Create a supported replacement or explicitly delete this record.",
     },
   },
   skipped: {
@@ -314,13 +297,6 @@ export const ReadinessSchema = z.discriminatedUnion("status", [
   ),
   readinessVariant(
     "unsupported",
-    false,
-    "not-checked",
-    NotCheckedAtSchema,
-    NotApplicableAcknowledgementSchema,
-  ),
-  readinessVariant(
-    "removed",
     false,
     "not-checked",
     NotCheckedAtSchema,

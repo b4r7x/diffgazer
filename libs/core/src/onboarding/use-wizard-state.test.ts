@@ -6,9 +6,7 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { PRODUCT_REGISTRY } from "../providers/product-registry.js";
 import { type ClientConfigurationAction, READINESS_PRESENTATION } from "../schemas/config/index.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { getInitialWizardData, type OnboardingDraft } from "./defaults.js";
-import { OnboardingStateSchema } from "./types.js";
 import { useWizardState, type WizardSaveCallbacks } from "./use-wizard-state.js";
 
 const ACCEPTED_AT = "2026-07-31T12:00:00.000Z";
@@ -298,38 +296,6 @@ describe("useWizardState", () => {
     });
   });
 
-  it("keeps removed legacy data untouched until the explicit delete action", async () => {
-    const removed = OnboardingStateSchema.parse({
-      kind: "removed",
-      productId: REMOVED_PRODUCT_ID,
-      configurationId: "legacy-removed-zai-plan",
-      expectedRevision: 7,
-    });
-    const callbacks = makeCallbacks();
-    const { result, unmount } = renderHook(() => useWizardState({ initial: removed, callbacks }));
-
-    expect(result.current.steps).toEqual(["migration", "delete"]);
-    expect(result.current.canProceed).toBe(true);
-    act(() => result.current.next());
-    expect(result.current.currentStep).toBe("delete");
-    expect(result.current.canProceed).toBe(false);
-    await act(async () => {
-      await result.current.cleanupCreatedConfiguration();
-      unmount();
-    });
-    expect(callbacks.runConfigurationAction).not.toHaveBeenCalled();
-
-    const mounted = renderHook(() => useWizardState({ initial: removed, callbacks }));
-    await act(async () => {
-      expect(await mounted.result.current.deleteRemovedConfiguration()).toBe(true);
-    });
-    expect(callbacks.runConfigurationAction).toHaveBeenCalledWith({
-      action: "delete",
-      configurationId: "legacy-removed-zai-plan",
-      expectedRevision: 7,
-    });
-  });
-
   it("revokes a newly created partial configuration on abandon with its exact revision", async () => {
     const data = readyDraft();
     const callbacks = makeCallbacks(async (action) => {
@@ -568,88 +534,6 @@ describe("useWizardState", () => {
       expect.objectContaining({ action: "delete" }),
     );
     unmount();
-  });
-
-  it("single-flights removed deletion and never repeats it after completion fails", async () => {
-    const removed = OnboardingStateSchema.parse({
-      kind: "removed",
-      productId: REMOVED_PRODUCT_ID,
-      configurationId: "legacy-removed-zai-plan",
-      expectedRevision: 7,
-    });
-    let resolveDelete: ((response: unknown) => void) | undefined;
-    const deleteResponse = new Promise<unknown>((resolve) => {
-      resolveDelete = resolve;
-    });
-    const callbacks = makeCallbacks(async () => deleteResponse);
-    const onComplete = vi
-      .fn<() => Promise<void>>()
-      .mockRejectedValueOnce(new Error("navigation failed"))
-      .mockResolvedValue(undefined);
-    const { result } = renderHook(() =>
-      useWizardState({ initial: removed, callbacks, onComplete }),
-    );
-
-    let deletion: Promise<boolean> | undefined;
-    await act(async () => {
-      deletion = result.current.deleteRemovedConfiguration();
-      expect(await result.current.deleteRemovedConfiguration()).toBe(false);
-      resolveDelete?.({ action: "delete", status: "succeeded" });
-      expect(await deletion).toBe(true);
-    });
-    expect(result.current.error).toBe(
-      "Configuration deleted, but completion failed: navigation failed",
-    );
-
-    await act(async () => {
-      expect(await result.current.deleteRemovedConfiguration()).toBe(true);
-    });
-
-    expect(result.current.error).toBeNull();
-    expect(callbacks.runConfigurationAction).toHaveBeenCalledTimes(1);
-    expect(onComplete).toHaveBeenCalledTimes(2);
-  });
-
-  it("drops a stale delete rejection instead of overwriting the replacement wizard", async () => {
-    const removed = OnboardingStateSchema.parse({
-      kind: "removed",
-      productId: REMOVED_PRODUCT_ID,
-      configurationId: "legacy-removed-zai-plan",
-      expectedRevision: 7,
-    });
-    const replacement = OnboardingStateSchema.parse({
-      kind: "removed",
-      productId: REMOVED_PRODUCT_ID,
-      configurationId: "legacy-removed-zai-plan-2",
-      expectedRevision: 9,
-    });
-    let rejectDelete: ((cause: unknown) => void) | undefined;
-    const deleteResponse = new Promise<unknown>((_resolve, reject) => {
-      rejectDelete = reject;
-    });
-    const callbacks = makeCallbacks(async (action) => {
-      if (action.action === "delete" && action.configurationId === "legacy-removed-zai-plan") {
-        return deleteResponse;
-      }
-      return { action: "delete", status: "succeeded" };
-    });
-    const { result, rerender } = renderHook(
-      ({ initial }) => useWizardState({ initial, callbacks }),
-      { initialProps: { initial: removed } },
-    );
-
-    let deletion: Promise<boolean> | undefined;
-    act(() => {
-      deletion = result.current.deleteRemovedConfiguration();
-    });
-    rerender({ initial: replacement });
-
-    await act(async () => {
-      rejectDelete?.(new Error("delete failed"));
-      expect(await deletion).toBe(false);
-    });
-
-    expect(result.current.error).toBeNull();
   });
 
   it("persists one draft configuration for the current transport tuple", async () => {

@@ -60,21 +60,19 @@ export function ApiKeyOverlay({
   const { tokens } = useTheme();
   const [inputFocused, setInputFocused] = useState(false);
   // Only a stored acceptance pre-checks the notice: `not-applicable` means the row carries no
-  // acknowledgement yet (unconfigured or removed), so consent is still outstanding.
+  // acknowledgement yet (unconfigured), so consent is still outstanding.
   const [noticeAccepted, setNoticeAccepted] = useState(
     () => row.readiness.acknowledgement.status === "accepted",
   );
   const transportFamily = resolveSetupTransportFamily(row);
   const isHosted = transportFamily === "hosted-api";
-  const isUpdating =
-    row.configuration?.status === "supported" || row.configuration?.status === "removed";
+  const isUpdating = row.configuration != null;
 
   const entry = useApiKeyEntry({
     onSubmit: async (method, value) => {
       const input = buildSetupInput(row, transportFamily, toSetupCredential(method, value));
-      if (!input) return false;
       const acknowledgement = buildSetupAcknowledgement(row);
-      if (row.configuration?.status === "supported") {
+      if (row.configuration) {
         await onUpdate(
           { input, acknowledgement },
           {
@@ -97,9 +95,8 @@ export function ApiKeyOverlay({
     if (transportFamily !== "local-http" && transportFamily !== "local-cli") return;
 
     const input = buildSetupInput(row, transportFamily);
-    if (!input) return;
     const acknowledgement = buildSetupAcknowledgement(row);
-    if (row.configuration?.status === "supported") {
+    if (row.configuration) {
       await onUpdate({ input, acknowledgement });
     } else {
       await onCreate(input);

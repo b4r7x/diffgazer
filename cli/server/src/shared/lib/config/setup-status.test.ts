@@ -162,7 +162,6 @@ const EVIDENCE_STATUS_FOR: Record<ReadinessStatus, Readiness["evidenceStatus"]> 
   "conformance-failed": "failed",
   "acknowledgement-required": "passed",
   unsupported: "not-checked",
-  removed: "not-checked",
   skipped: "skipped",
   "local-endpoint-unreachable": "failed",
   "local-endpoint-forbidden": "failed",
@@ -190,7 +189,7 @@ function acknowledgementFor(status: ReadinessStatus): Readiness["acknowledgement
 }
 
 function readinessVariantFor(status: ReadinessStatus): Readiness {
-  const observed = status !== "unconfigured" && status !== "unsupported" && status !== "removed";
+  const observed = status !== "unconfigured" && status !== "unsupported";
   return ReadinessSchema.parse({
     status,
     ready: status === "ready",

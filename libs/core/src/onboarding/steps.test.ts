@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
-import { buildSetupPlan, type SetupPlan } from "./setup-plan.js";
+import { buildSetupPlan, type RunnableSetupPlan } from "./setup-plan.js";
 import { getOnboardingProgressLabel, getStepAt, STEP_LABELS, STEP_TITLES } from "./steps.js";
 
-function setupPlan(productId: Parameters<typeof buildSetupPlan>[0]): SetupPlan {
+function setupPlan(productId: Parameters<typeof buildSetupPlan>[0]): RunnableSetupPlan {
   const plan = buildSetupPlan(productId);
   if (!plan) throw new Error(`Missing setup plan for ${productId}`);
   return plan;
@@ -53,14 +52,11 @@ describe("setup-plan-derived onboarding steps", () => {
   it("formats progress from each plan's actual length and order", () => {
     const hostedPlan = setupPlan("gemini");
     const cliPlan = setupPlan("codex-cli");
-    const removedPlan = setupPlan(REMOVED_PRODUCT_ID);
 
     expect(getStepAt(hostedPlan, 1)).toBe("endpoint-binding");
     expect(getOnboardingProgressLabel(hostedPlan, 1)).toBe("Step 2 of 6: Endpoint");
     expect(getStepAt(cliPlan, 1)).toBe("authentication");
     expect(getOnboardingProgressLabel(cliPlan, 1)).toBe("Step 2 of 5: Authentication");
-    expect(getOnboardingProgressLabel(removedPlan, 0)).toBe("Step 1 of 2: Migration");
-    expect(getOnboardingProgressLabel(removedPlan, 1)).toBe("Step 2 of 2: Delete");
   });
 
   it("rejects an index outside the selected plan", () => {

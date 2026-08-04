@@ -12,7 +12,6 @@ import {
   makeConfigurationInitResponse,
   makeConfigurationListResponse,
   READY_GEMINI_CONFIGURATION,
-  REMOVED_ZAI_CODING_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { KeyboardProvider } from "@diffgazer/keys";
@@ -34,7 +33,6 @@ function makeInitResponse(): ConfigurationInitResponse {
     configurationStatus(READY_GEMINI_CONFIGURATION, "ready"),
     configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
     configurationStatus(CLI_UNSUPPORTED_CONFIGURATION, "unsupported"),
-    configurationStatus(REMOVED_ZAI_CODING_CONFIGURATION, "removed"),
   ]);
 }
 
@@ -119,15 +117,6 @@ describe("ProvidersPage", () => {
     renderProvidersPage();
 
     await waitFor(() => expect(screen.getByLabelText(/CLI unsupported/i)).toBeInTheDocument());
-  });
-
-  it("does not render removed records", async () => {
-    renderProvidersPage();
-
-    await waitFor(() =>
-      expect(screen.getByRole("option", { name: "Google Gemini" })).toBeInTheDocument(),
-    );
-    expect(screen.queryByText("Z.AI Coding Plan")).not.toBeInTheDocument();
   });
 
   it("preserves keyboard flow into enabled actions", async () => {

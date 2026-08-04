@@ -4,13 +4,9 @@ import {
   HOSTED_API_PRODUCT_IDS,
   LOCAL_HTTP_PRODUCT_IDS,
   LOCAL_OPENAI_PRESET_ENDPOINTS,
-  REMOVED_PRODUCT_IDS,
   RUNNABLE_PRODUCT_IDS,
   type RunnableProductId,
 } from "@diffgazer/core/schemas/config";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import {
   type EvidenceKey,
   type ExecutionResult,
@@ -216,10 +212,9 @@ describe("adapter registry", () => {
   });
 
   it.each([
-    ...REMOVED_PRODUCT_IDS,
     ...CANDIDATE_PRODUCT_IDS.slice(0, 3),
     "bogus-product",
-  ])("rejects removed, candidate, and unknown adapter registry keys (%s)", (productId) => {
+  ])("rejects candidate and unknown adapter registry keys (%s)", (productId) => {
     expect(() => getAdapter(productId)).toThrow(/Adapter unavailable/);
   });
 
@@ -227,7 +222,7 @@ describe("adapter registry", () => {
     expect(() =>
       validateAdapterRegistry({
         ...ADAPTER_REGISTRY,
-        [REMOVED_PRODUCT_ID]: ADAPTER_REGISTRY.zai,
+        [CANDIDATE_PRODUCT_IDS[0]]: ADAPTER_REGISTRY.zai,
       }),
     ).toThrow(/Forbidden adapter registry key/);
   });
@@ -327,12 +322,10 @@ describe("adapter registry", () => {
     ).toThrow(/cannot emit findings/);
   });
 
-  it("does not alias removed or candidate products into runnable adapters", () => {
+  it("does not alias candidate products into runnable adapters", () => {
     for (const productId of RUNNABLE_PRODUCT_IDS) {
-      expect(REMOVED_PRODUCT_IDS).not.toContain(productId);
       expect(CANDIDATE_PRODUCT_IDS).not.toContain(productId);
     }
-    expect(RUNNABLE_PRODUCT_IDS).not.toContain(REMOVED_PRODUCT_ID);
     expect(LOCAL_HTTP_PRODUCT_IDS).toHaveLength(2);
   });
 });

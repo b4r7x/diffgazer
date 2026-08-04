@@ -20,8 +20,6 @@ import { ModelSearchInput } from "./model-search-input";
 import { TierFilterTabs } from "./tier-filter-tabs";
 
 type FocusZone = "search" | "filters" | "list";
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 const MODEL_SELECT_SHORTCUTS: Shortcut[] = [
   { key: "Tab", label: "Switch Zone" },
   { key: "/", label: "Search" },
@@ -122,7 +120,7 @@ function ModelListBody({
 interface ModelSelectOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  configuration: SupportedConfigurationSummary;
+  configuration: ClientConfigurationSummary;
   selectedId?: string;
   onSelect?: (id: ExactModelId) => unknown;
   isSaving?: boolean;

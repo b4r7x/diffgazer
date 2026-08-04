@@ -41,7 +41,10 @@ export function CardLayout({
   const { focusWithin, props: focusProps } = useFocusWithin<HTMLDivElement>();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
+    // overflow-hidden, not auto: the card is capped to the space below the
+    // header and scrolls its own content, so the page never scrolls the
+    // wordmark away and the footer actions stay reachable at any height.
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-4 md:p-6 lg:p-8">
       {/* Spare height splits 1:2 around the card — the hero-tier optical band
           every hub/child/home screen shares — and the spacers collapse once the
           card outgrows the viewport. */}
@@ -50,7 +53,9 @@ export function CardLayout({
         {...focusProps}
         focused={focusWithin}
         aria-labelledby={title ? titleId : undefined}
-        className="mx-auto w-full max-w-2xl"
+        // min-h-0 lets the panel shrink past its content so the content area,
+        // not the page, absorbs the overflow.
+        className="mx-auto flex w-full min-h-0 max-w-2xl flex-col"
       >
         {title && (
           <Panel.Label
@@ -62,9 +67,15 @@ export function CardLayout({
           </Panel.Label>
         )}
 
+        {/* Plain overflow, not ScrollArea: ScrollArea takes a tab stop when it
+            can keyboard-scroll, which would land between the card's controls in
+            the traversal order. The browser scrolls focused rows into view. */}
         <Panel.Content
           spacing="none"
-          className={cn("transition-opacity", contentInactive && "opacity-60")}
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto transition-opacity",
+            contentInactive && "opacity-60",
+          )}
         >
           {subtitle && <Panel.Description className="mb-4">{subtitle}</Panel.Description>}
           {children}

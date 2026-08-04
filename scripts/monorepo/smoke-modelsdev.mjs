@@ -23,7 +23,7 @@ const MAX_LIVE_CATALOG_BYTES = 4 * 1024 * 1024;
 
 function buildHostedProbeTuples(productRegistry) {
   return Object.values(productRegistry)
-    .filter((product) => product.kind === "runnable" && product.transportFamily === "hosted-api")
+    .filter((product) => product.transportFamily === "hosted-api")
     .map((product) => {
       const modelPolicy = product.modelPolicy;
       const modelId =

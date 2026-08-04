@@ -7,7 +7,6 @@ import {
   ClientConfigurationNoticeSchema,
   ClientConfigurationSummarySchema,
 } from "./provider-config.js";
-import { REMOVED_PRODUCT_ID } from "./providers.js";
 import { READINESS_PRESENTATION } from "./readiness.js";
 
 const hostedInput = {
@@ -257,32 +256,6 @@ describe("client configuration actions", () => {
       }).success,
     ).toBe(false);
   });
-
-  it("rejects REMOVED_PRODUCT_ID as configuration input while preserving ID-based deletion", () => {
-    expect(
-      ClientConfigurationActionSchema.safeParse({
-        action: "create",
-        input: { ...hostedInput, productId: REMOVED_PRODUCT_ID },
-        acknowledgement,
-      }).success,
-    ).toBe(false);
-    expect(
-      ClientConfigurationActionSchema.safeParse({
-        action: "update",
-        configurationId: "configuration-1",
-        expectedRevision: 3,
-        input: { ...hostedInput, productId: REMOVED_PRODUCT_ID },
-        acknowledgement,
-      }).success,
-    ).toBe(false);
-    expect(
-      ClientConfigurationActionSchema.safeParse({
-        action: "delete",
-        configurationId: "removed-configuration-1",
-        expectedRevision: 3,
-      }).success,
-    ).toBe(true);
-  });
 });
 
 describe("client configuration responses", () => {
@@ -509,54 +482,7 @@ describe("client configuration responses", () => {
     ).toBe(false);
   });
 
-  it("binds a succeeded response to the configuration status its action implies", () => {
-    const removedSummary = {
-      configurationId: hostedSummary.configurationId,
-      revision: hostedSummary.revision,
-      status: "removed" as const,
-      transportFamily: "hosted-api" as const,
-      productId: REMOVED_PRODUCT_ID,
-      selectedModelId: null,
-      notices: [],
-      availableActions: ["inspect", "delete"] as const,
-    };
-    const removedReadiness = {
-      status: "removed" as const,
-      ready: false as const,
-      evidenceStatus: "not-checked" as const,
-      checkedAt: null,
-      acknowledgement: { status: "not-applicable" as const },
-      ...READINESS_PRESENTATION.removed,
-    };
-
-    for (const action of ["create", "select", "update"] as const) {
-      expect(
-        ClientConfigurationActionResponseSchema.safeParse({
-          action,
-          status: "succeeded",
-          configuration: removedSummary,
-        }).success,
-        action,
-      ).toBe(false);
-    }
-    expect(
-      ClientConfigurationActionResponseSchema.safeParse({
-        action: "test",
-        status: "succeeded",
-        configuration: removedSummary,
-        readiness: removedReadiness,
-      }).success,
-    ).toBe(false);
-
-    expect(
-      ClientConfigurationActionResponseSchema.safeParse({
-        action: "inspect",
-        status: "succeeded",
-        configuration: removedSummary,
-        readiness: removedReadiness,
-      }).success,
-    ).toBe(true);
-
+  it("rejects a configuration on a succeeded delete response and accepts delete without one", () => {
     expect(
       ClientConfigurationActionResponseSchema.safeParse({
         action: "delete",
@@ -568,7 +494,6 @@ describe("client configuration responses", () => {
       ClientConfigurationActionResponseSchema.safeParse({
         action: "delete",
         status: "succeeded",
-        configuration: removedSummary,
       }).success,
     ).toBe(true);
   });
@@ -650,21 +575,6 @@ describe("client configuration responses", () => {
         },
       }).success,
     ).toBe(false);
-  });
-
-  it("represents removed configurations without making them selectable or updatable", () => {
-    expect(
-      ClientConfigurationSummarySchema.parse({
-        configurationId: "removed-configuration-1",
-        revision: 1,
-        status: "removed",
-        transportFamily: "hosted-api",
-        productId: REMOVED_PRODUCT_ID,
-        selectedModelId: null,
-        notices: [],
-        availableActions: ["inspect", "delete"],
-      }),
-    ).toMatchObject({ status: "removed", productId: REMOVED_PRODUCT_ID });
   });
 
   it.each([

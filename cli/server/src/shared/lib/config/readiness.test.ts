@@ -1,8 +1,4 @@
-import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import { describe, expect, it } from "vitest";
 import { createAdmissionEvidence } from "./admission-evidence.js";
 import type { SupportedProviderConfigurationRecord } from "./provider-config.js";
@@ -146,25 +142,6 @@ describe("server V2 readiness calculation", () => {
         configuration: { status: "unknown", rawBytes: new TextEncoder().encode("opaque") },
       }).status,
     ).toBe("unsupported");
-    expect(
-      computeProviderReadiness({
-        configuration: {
-          status: "removed",
-          schemaVersion: 2,
-          configurationId: "legacy-removed-zai-plan",
-          revision: 1,
-          productId: REMOVED_PRODUCT_ID,
-          transportFamily: "hosted-api",
-          selectedModelId: null,
-          acknowledgement: null,
-          evidenceReference: null,
-          budget: null,
-          createdAt: CHECKED_AT,
-          updatedAt: CHECKED_AT,
-        },
-      }).status,
-    ).toBe("removed");
-
     expect(computeProviderReadiness({ configuration: record, binding: null }).status).toBe(
       "credential-invalid",
     );

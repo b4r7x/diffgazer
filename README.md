@@ -36,7 +36,7 @@ cd your-project
 diffgazer
 ```
 
-First run walks you through product selection, endpoint binding, authentication, exact model selection, conformance, the product notice, and repo trust. The removed Z.AI Coding Plan record is not selectable; create a new Z.AI configuration instead. HTTP compatibility is not authorization, and the old secret is retained but never copied, tested, or sent until you explicitly delete the removed record.
+First run walks you through product selection, endpoint binding, authentication, exact model selection, conformance, the product notice, and repo trust.
 
 Diffgazer is also a pnpm monorepo for the CLI, docs app, shared registry tooling, keyboard hooks, and UI packages.
 

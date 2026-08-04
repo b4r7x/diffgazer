@@ -17,13 +17,6 @@ export interface ActionSlot {
 }
 
 function getSetupSlot(row: ProviderListRow): ActionSlot {
-  if (row.product.status === "removed") {
-    return {
-      enabled: false,
-      label: "Setup",
-      disabledReason: "Removed records cannot be configured",
-    };
-  }
   if (row.actions.includes("create")) {
     return { enabled: true, label: "Create configuration" };
   }
@@ -41,14 +34,11 @@ function getDeleteSlot(row: ProviderListRow): ActionSlot {
       disabledReason: "Deletion is not available for this record",
     };
   }
-  return {
-    enabled: true,
-    label: row.product.status === "removed" ? "Delete removed record" : "Delete configuration",
-  };
+  return { enabled: true, label: "Delete configuration" };
 }
 
 function getSelectModelSlot(row: ProviderListRow): ActionSlot {
-  if (row.product.status === "removed" || !row.actions.includes("select")) {
+  if (!row.actions.includes("select")) {
     return {
       enabled: false,
       label: "Select model",
@@ -59,13 +49,6 @@ function getSelectModelSlot(row: ProviderListRow): ActionSlot {
 }
 
 function getDispatchSlot(row: ProviderListRow): ActionSlot {
-  if (row.product.status === "removed") {
-    return {
-      enabled: false,
-      label: ACTION_LABELS.inspect,
-      disabledReason: "Removed records cannot be selected",
-    };
-  }
   if (!row.readiness.ready && row.readiness.action === "create") {
     return {
       enabled: true,

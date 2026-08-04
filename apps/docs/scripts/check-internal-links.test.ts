@@ -1,7 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
 import { describe, expect, it } from "vitest";
 import {
   extractInternalLinks,
@@ -109,7 +108,7 @@ describe("internal link checker", () => {
       {
         filePath: "setup.mdx",
         routePath: "/app/getting-started/first-review",
-        content: `[Enable ${REMOVED_PRODUCT_ID} support](/app/reference/configuration)`,
+        content: "[Enable nvidia-api-catalog support](/app/reference/configuration)",
       },
     ];
 
@@ -122,9 +121,37 @@ describe("internal link checker", () => {
       },
       {
         kind: "stale-retired-provider-link",
-        detail: "zai-coding support link",
+        detail: "nvidia-api-catalog support link",
         filePath: "setup.mdx",
         line: 1,
+      },
+    ]);
+  });
+
+  it("keeps scanning a subject that already matched a support link on an earlier line", () => {
+    const files: MdxFile[] = [
+      {
+        filePath: "providers.mdx",
+        routePath: "/app/reference/providers",
+        content: [
+          "[Enable github-models support](/app/reference/configuration)",
+          "GitHub Models is available for setup in Diffgazer.",
+        ].join("\n"),
+      },
+    ];
+
+    expect(findStaleRetiredProviderSupportLinks(files)).toEqual([
+      {
+        kind: "stale-retired-provider-link",
+        detail: "github-models support link",
+        filePath: "providers.mdx",
+        line: 1,
+      },
+      {
+        kind: "stale-retired-provider-link",
+        detail: "github-models availability claim",
+        filePath: "providers.mdx",
+        line: 2,
       },
     ]);
   });
@@ -135,7 +162,7 @@ describe("internal link checker", () => {
         filePath: "providers.mdx",
         routePath: "/app/reference/providers",
         content: [
-          "Diffgazer now supports `zai-coding-plan` for hosted review.",
+          "Diffgazer now supports `alibaba-coding-plan` for hosted review.",
           "The NVIDIA hosted API Catalog/build API is selectable again.",
         ].join("\n"),
       },
@@ -144,7 +171,7 @@ describe("internal link checker", () => {
     expect(findStaleRetiredProviderSupportLinks(files)).toEqual([
       {
         kind: "stale-retired-provider-link",
-        detail: "zai-coding-plan availability claim",
+        detail: "alibaba-coding-plan availability claim",
         filePath: "providers.mdx",
         line: 1,
       },
@@ -163,8 +190,8 @@ describe("internal link checker", () => {
         filePath: "providers.mdx",
         routePath: "/app/reference/providers",
         content: [
-          "| `zai-coding-plan` | Z.AI GLM Coding Plan | rejected | hosted-api | Not supported | Not selectable | Not admitted | a | b | c |",
-          "Diffgazer does not present the Z.AI Coding Plan route as selectable.",
+          "| `alibaba-coding-plan` | Alibaba Coding / Token Plan | rejected | hosted-api | Not supported | Not selectable | Not admitted | a | b | c |",
+          "Diffgazer does not present the Alibaba Coding / Token Plan route as selectable.",
         ].join("\n"),
       },
     ];
@@ -192,7 +219,7 @@ describe("internal link checker", () => {
     try {
       writeFileSync(
         fixturePath,
-        "---\ntitle: Fixture\n---\n\n`zai-coding-plan` is available for setup again.\n",
+        "---\ntitle: Fixture\n---\n\n`alibaba-coding-plan` is available for setup again.\n",
         "utf8",
       );
       expect(run()).not.toBe(0);

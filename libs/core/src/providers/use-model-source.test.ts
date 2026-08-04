@@ -11,7 +11,7 @@ import {
   CATALOG_EMPTY_MODELS_REASON,
   CATALOG_SKIPPED_REASON,
 } from "./catalog-discovery-reasons.js";
-import { type SupportedConfigurationSummary, useModelSource } from "./use-model-source.js";
+import { useModelSource } from "./use-model-source.js";
 
 const configurations = {
   hosted: {
@@ -57,7 +57,7 @@ function model(id: string): ModelInfo {
 }
 
 function passedResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   modelIds: readonly string[],
 ): ConfigurationModelsResponse {
   return {
@@ -73,7 +73,7 @@ function passedResponse(
 }
 
 function skippedResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   reason: string,
 ): ConfigurationModelsResponse {
   return {

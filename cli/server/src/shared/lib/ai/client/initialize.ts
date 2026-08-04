@@ -125,17 +125,6 @@ async function loadAdmissionSnapshot(
     };
   }
 
-  if (record.status === "removed") {
-    const binding = bindingFor(record.record.configurationId, record.record.revision);
-    return {
-      configuration: { status: "removed", record: record.record },
-      binding,
-      evidence: store.getConfigurationAdmissionEvidence(configurationId),
-      credentialReferenceIdentity: binding ? credentialReferenceIdentityFor(binding) : null,
-      workspaceAccountReference: null,
-    };
-  }
-
   const binding = bindingFor(record.record.configurationId, record.record.revision);
   return {
     configuration: { status: "supported", record: record.record },

@@ -4,11 +4,14 @@ import {
   projectClientMetadata,
 } from "../../providers/client-metadata.js";
 import { PRODUCT_REGISTRY } from "../../providers/product-registry.js";
-import { REMOVED_PRODUCT_ID } from "./providers.js";
 import { READINESS_PRESENTATION, ReadinessSchema } from "./readiness.js";
 import type { ProviderSettingsRowId, SettingsHubInput } from "./settings-hub.js";
 import { buildHubValues, buildProviderSettingsRows } from "./settings-hub.js";
-import type { RemovedProductId, RunnableProductId } from "./transports.js";
+import { RUNNABLE_PRODUCT_IDS, type RunnableProductId } from "./transports.js";
+
+/** Imperative verbs a settings row must never use; the surfaces own the actions. */
+const ACTION_WORDING =
+  /\b(create|configure|update|select|choose|inspect|test|delete|remove|run|retry|accept|install|start)\b/i;
 
 function makeInput(overrides: Partial<SettingsHubInput> = {}): SettingsHubInput {
   return {
@@ -22,34 +25,8 @@ function makeInput(overrides: Partial<SettingsHubInput> = {}): SettingsHubInput 
   };
 }
 
-function metadataFor(productId: RunnableProductId | RemovedProductId) {
+function metadataFor(productId: RunnableProductId) {
   const product = PRODUCT_REGISTRY[productId];
-  if (product.kind === "removed") {
-    return projectClientMetadata({
-      productId: product.id,
-      configuration: {
-        configurationId: "legacy-removed-zai-plan",
-        revision: 1,
-        status: "removed",
-        transportFamily: "hosted-api",
-        productId: product.id,
-        selectedModelId: null,
-        notices: [],
-        availableActions: ["inspect", "delete"],
-      },
-      readiness: ReadinessSchema.parse({
-        status: "removed",
-        ready: false,
-        evidenceStatus: "not-checked",
-        checkedAt: null,
-        acknowledgement: { status: "not-applicable" },
-        ...READINESS_PRESENTATION.removed,
-      }),
-      notices: [],
-      actions: ["inspect", "delete"],
-    });
-  }
-
   const source: ClientMetadataSource = {
     productId,
     configuration: null,
@@ -71,7 +48,7 @@ function metadataFor(productId: RunnableProductId | RemovedProductId) {
   return projectClientMetadata(source);
 }
 
-function rowValue(productId: RunnableProductId | RemovedProductId, rowId: ProviderSettingsRowId) {
+function rowValue(productId: RunnableProductId, rowId: ProviderSettingsRowId) {
   const row = buildProviderSettingsRows(metadataFor(productId)).find(({ id }) => id === rowId);
   expect(row).toBeDefined();
   return row?.value ?? "";
@@ -108,10 +85,26 @@ describe("buildProviderSettingsRows", () => {
   });
 
   test("states facts only, never restating the actions the surfaces already render", () => {
-    const rows = buildProviderSettingsRows(metadataFor(REMOVED_PRODUCT_ID));
+    // Only `readiness.description` may name an action: it carries the remediation sentence.
+    for (const productId of RUNNABLE_PRODUCT_IDS) {
+      const rows = buildProviderSettingsRows(metadataFor(productId));
 
-    expect(rows.map(({ id }) => id)).toEqual(["product", "transport", "readiness"]);
-    expect(rowValue(REMOVED_PRODUCT_ID, "readiness")).toBe("Removed");
+      expect(rows.map(({ id }) => id)).toEqual([
+        "product",
+        "transport",
+        "billing",
+        "privacy",
+        "readiness",
+      ]);
+      for (const row of rows) {
+        const scanned = [
+          row.label,
+          row.value,
+          row.id === "readiness" ? "" : (row.description ?? ""),
+        ];
+        expect(scanned.join(" "), `${productId}/${row.id}`).not.toMatch(ACTION_WORDING);
+      }
+    }
   });
 
   test.each([

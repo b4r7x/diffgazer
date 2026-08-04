@@ -72,9 +72,6 @@ export {
   LegacyProviderConfigV1Schema,
   type LegacyProviderIdV1,
   LegacyProviderIdV1Schema,
-  type LegacyRemovedProviderRecordV1,
-  LegacyRemovedProviderRecordV1Schema,
-  REMOVED_PRODUCT_ID,
 } from "./providers.js";
 
 export {
@@ -177,9 +174,6 @@ export {
   type LoopbackHttpEndpoint,
   LoopbackHttpEndpointSchema,
   REJECTED_PRODUCT_IDS,
-  REMOVED_PRODUCT_IDS,
-  type RemovedProductId,
-  RemovedProductIdSchema,
   RUNNABLE_PRODUCT_IDS,
   type RunnableProductId,
   RunnableProductIdSchema,

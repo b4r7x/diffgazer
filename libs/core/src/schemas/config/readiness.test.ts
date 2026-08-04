@@ -33,7 +33,6 @@ const STATUS_CONTRACT = {
     checkedAt: CHECKED_AT,
   },
   unsupported: { ready: false, evidenceStatus: "not-checked", checkedAt: null },
-  removed: { ready: false, evidenceStatus: "not-checked", checkedAt: null },
   skipped: { ready: false, evidenceStatus: "skipped", checkedAt: CHECKED_AT },
   "local-endpoint-unreachable": {
     ready: false,
@@ -75,7 +74,7 @@ function readinessInput(status: ReadinessStatus) {
     | typeof REQUIRED_ACKNOWLEDGEMENT
     | { status: "not-applicable" } = REQUIRED_ACKNOWLEDGEMENT;
   if (status === "ready") acknowledgement = ACCEPTED_ACKNOWLEDGEMENT;
-  if (status === "unsupported" || status === "removed") {
+  if (status === "unsupported") {
     acknowledgement = { status: "not-applicable" };
   }
   return {
@@ -98,7 +97,6 @@ describe("readiness contract", () => {
       "conformance-failed",
       "acknowledgement-required",
       "unsupported",
-      "removed",
       "ready",
     ] as const;
 

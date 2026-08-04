@@ -36,9 +36,7 @@ const readFailure = (): SecretsStorageError =>
 const configurationIdFromRecord = (
   record: DecodedProviderConfigurationRecord,
 ): ConfigurationId | null => {
-  if (record.status === "supported" || record.status === "removed") {
-    return record.record.configurationId;
-  }
+  if (record.status === "supported") return record.record.configurationId;
   return record.configurationId ?? null;
 };
 
@@ -126,7 +124,7 @@ export const discoverConfigurationModels = async (
   if (!inspected.ok) return inspected;
 
   const configuration = inspected.value.configuration;
-  if (!configuration || configuration.status !== "supported") {
+  if (!configuration) {
     return err(
       createError<ConfigurationActionError["code"]>(
         "CONFIGURATION_UNSUPPORTED",

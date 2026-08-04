@@ -85,9 +85,9 @@ describe("settings trust routes — server-scoped project", () => {
     } else {
       process.env.DIFFGAZER_SHUTDOWN_TOKEN = originalToken;
     }
-    rmSync(diffgazerHome, { recursive: true, force: true });
-    rmSync(projectRootA, { recursive: true, force: true });
-    rmSync(projectRootB, { recursive: true, force: true });
+    rmSync(diffgazerHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
+    rmSync(projectRootA, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
+    rmSync(projectRootB, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
     warnSpy.mockRestore();
   });
 

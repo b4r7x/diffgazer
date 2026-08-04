@@ -14,7 +14,6 @@ import {
   ClientConfigurationActionResponseSchema,
   READINESS_PRESENTATION,
 } from "../../schemas/config/index.js";
-import { REMOVED_PRODUCT_ID } from "../../schemas/config/providers.js";
 import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
 import {
@@ -78,17 +77,6 @@ const alternateConfiguration = {
     },
   ],
 } satisfies Extract<ClientConfigurationSummary, { status: "supported" }>;
-
-const removedConfiguration = {
-  configurationId: "legacy-removed-zai-plan",
-  revision: 3,
-  status: "removed" as const,
-  transportFamily: "hosted-api" as const,
-  productId: REMOVED_PRODUCT_ID,
-  selectedModelId: null,
-  notices: [],
-  availableActions: ["inspect", "delete"],
-} satisfies Extract<ClientConfigurationSummary, { status: "removed" }>;
 
 const readiness = {
   status: "ready" as const,
@@ -402,45 +390,6 @@ describe("useConfigurationAction", () => {
     if ("configurationId" in action) {
       expectPerConfigurationInvalidated(harness, supportedConfiguration);
     }
-  });
-});
-
-describe("removed configuration state", () => {
-  it("keeps removed inspect responses separate from supported ones", async () => {
-    const harness = createTestQueryWrapper({
-      api: {
-        inspectConfiguration: vi.fn(async (configurationId: string) =>
-          configurationId === removedConfiguration.configurationId
-            ? ClientConfigurationActionResponseSchema.parse({
-                action: "inspect",
-                status: "succeeded",
-                configuration: removedConfiguration,
-              })
-            : succeededActionResponse({ action: "inspect", configurationId }),
-        ),
-      } as Partial<BoundApi>,
-    });
-
-    const removed = renderHook(() => useConfigurationInspect("legacy-removed-zai-plan"), {
-      wrapper: harness.Wrapper,
-    });
-    const supported = renderHook(() => useConfigurationInspect("gemini-primary"), {
-      wrapper: harness.Wrapper,
-    });
-
-    await waitFor(() => expect(removed.result.current.data?.configuration?.status).toBe("removed"));
-    await waitFor(() =>
-      expect(supported.result.current.data?.configuration?.status).toBe("supported"),
-    );
-
-    expect(
-      configQueries.inspect(harness.api, removedConfiguration.configurationId).queryKey,
-    ).not.toEqual(
-      configQueries.inspect(harness.api, supportedConfiguration.configurationId).queryKey,
-    );
-    expect(configurationFingerprint(removedConfiguration)).not.toEqual(
-      configurationFingerprint(supportedConfiguration),
-    );
   });
 });
 

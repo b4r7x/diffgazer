@@ -1,11 +1,9 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import { readinessUsesTransportNeutralCopy } from "@diffgazer/core/review";
-import { REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
 import {
   CLI_UNSUPPORTED_CONFIGURATION,
   LOCAL_OPENAI_CONFIGURATION,
   makeReadiness,
-  REMOVED_ZAI_CODING_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -190,18 +188,6 @@ describe("ApiKeyMissingView", () => {
     expect(screen.getByRole("button", { name: "Inspect configuration" })).toBeInTheDocument();
     expect(screen.getByText(/not supported in the current environment/i)).toBeInTheDocument();
     expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
-  });
-
-  it("routes removed readiness to the delete action", () => {
-    const readiness = makeReadiness("removed", REMOVED_PRODUCT_ID);
-    renderView({
-      readiness,
-      productLabel: REMOVED_ZAI_CODING_CONFIGURATION.productId,
-      primaryLabel: getReadinessActionLabel(readiness.action),
-    });
-
-    expect(screen.getByRole("button", { name: "Delete configuration" })).toBeInTheDocument();
-    expect(screen.getByText(/removed and cannot run reviews/i)).toBeInTheDocument();
   });
 });
 

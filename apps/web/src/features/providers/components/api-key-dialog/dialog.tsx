@@ -64,10 +64,8 @@ export function ApiKeyDialog({
   // The server never sends the variable name it will read, so the preview comes from
   // core's client-safe mirror. A product that binds no variable has no entry and the
   // selector falls back to its generic copy.
-  const envVarName =
-    row.product.status === "supported" ? CREDENTIAL_ENV_VARS[row.product.productId] : undefined;
-  const isUpdating =
-    row.configuration?.status === "supported" || row.configuration?.status === "removed";
+  const envVarName = CREDENTIAL_ENV_VARS[row.product.productId];
+  const isUpdating = row.configuration != null;
   const continueToModelSelection = row.product.productId === "openrouter";
   const [noticeAccepted, setNoticeAccepted] = useState(
     () => row.readiness.acknowledgement.status === "accepted",
@@ -85,10 +83,9 @@ export function ApiKeyDialog({
     onSubmit: async (method, value) => {
       if (!noticeAccepted) return false;
       const input = buildSetupInput(row, transportFamily, toSetupCredential(method, value));
-      if (!input) return false;
 
       const outcome =
-        row.configuration?.status === "supported"
+        row.configuration != null
           ? await onUpdate(
               { input, acknowledgement: buildSetupAcknowledgement(row) },
               { continueToModelSelection },

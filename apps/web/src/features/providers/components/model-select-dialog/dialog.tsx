@@ -21,12 +21,10 @@ import { ModelList } from "./list";
 import { ModelSearchInput } from "./search-input";
 import { useModelDialogKeyboard } from "./use-dialog-keyboard";
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 interface ModelSelectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  configuration: SupportedConfigurationSummary;
+  configuration: ClientConfigurationSummary;
   currentModel: string | undefined;
   onSelect: (modelId: ExactModelId) => void;
   isSaving?: boolean;

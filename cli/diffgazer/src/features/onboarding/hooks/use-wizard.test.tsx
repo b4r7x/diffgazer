@@ -144,7 +144,6 @@ describe("useOnboardingWizard", () => {
     });
 
     expect(hook.result.current.wizardData).toEqual(getInitialWizardData("local-openai"));
-    if (hook.result.current.wizardData.kind !== "runnable") throw new Error("expected runnable");
     expect(JSON.stringify(hook.result.current.wizardData.configurationInput)).not.toContain(
       "write-only-secret",
     );

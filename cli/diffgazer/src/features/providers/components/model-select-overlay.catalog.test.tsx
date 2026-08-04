@@ -1,6 +1,6 @@
 import "../testing/terminal-mock";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
-import type { SupportedConfigurationSummary } from "@diffgazer/core/testing/provider-fixtures";
+import type { ClientConfigurationSummary } from "@diffgazer/core/schemas/config";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
@@ -107,7 +107,7 @@ describe("ModelSelectOverlay family-specific discovery", () => {
       selectedModelId: "qwen2.5-coder:7b",
       notices: [copyNotice("ollama")],
       availableActions: ["inspect", "select", "test", "update", "delete"],
-    } satisfies SupportedConfigurationSummary;
+    } satisfies ClientConfigurationSummary;
     const getConfigurationModels = vi
       .fn<BoundApi["getConfigurationModels"]>()
       .mockResolvedValue(skippedCatalogModelsResponse(localConfiguration, CATALOG_SKIPPED_REASON));

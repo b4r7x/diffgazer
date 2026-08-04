@@ -1,8 +1,4 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
@@ -63,20 +59,7 @@ const supportedRecord = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const removedRecord = () => ({
-  schemaVersion: 2,
-  status: "removed",
-  configurationId: "cfg-removed",
-  revision: 1,
-  productId: REMOVED_PRODUCT_ID,
-  transportFamily: "hosted-api",
-  selectedModelId: null,
-  acknowledgement: null,
-  evidenceReference: null,
-  budget: null,
-  createdAt: CREATED_AT,
-  updatedAt: CREATED_AT,
-});
+const unknownRecord = () => ({ schemaVersion: 99, configurationId: "cfg-future" });
 
 const createGeminiAction = (
   credential: { kind: "literal"; value: string } | { kind: "environment" },
@@ -250,48 +233,6 @@ describe("configuration service actions", () => {
       modelId: "gemini/latest",
     });
     expect(selected).toMatchObject({ ok: false, error: { code: "INVALID_ACTION" } });
-  });
-
-  it("rejects removed configurations and surfaces the migrate-or-delete notice", async () => {
-    writeJson(configPath(), v2Config([removedRecord()]));
-    writeJson(
-      secretsPath(),
-      v2Secrets([
-        {
-          configurationId: "cfg-removed",
-          revision: 1,
-          kind: "file-0600",
-          filePath: literalSecretPathFor("cfg-removed", 1),
-          status: "removed",
-        },
-      ]),
-    );
-    mkdirSync(dirname(literalSecretPathFor("cfg-removed", 1)), { recursive: true });
-    writeFileSync(literalSecretPathFor("cfg-removed", 1), "sk-zai-coding-secret", { mode: 0o600 });
-    const { runConfigurationAction, listConfigurations } = await loadService();
-
-    const inspected = await runConfigurationAction({
-      action: "inspect",
-      configurationId: "cfg-removed",
-    });
-    expect(inspected.ok).toBe(true);
-    if (!inspected.ok) return;
-    expect(inspected.value.readiness).toMatchObject({
-      status: "removed",
-      remediation: {
-        code: "migrate-or-delete",
-        message: "Create a supported replacement or explicitly delete this record.",
-      },
-    });
-
-    const update = await runConfigurationAction(updateGeminiAction("cfg-removed", 1));
-    expect(update).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-
-    const listed = await listConfigurations();
-    expect(listed.ok).toBe(true);
-    if (!listed.ok) return;
-    expect(listed.value.configurations).toHaveLength(1);
-    expect(listed.value.configurations[0]?.readiness.remediation.code).toBe("migrate-or-delete");
   });
 
   it("serializes no secret material in action responses", async () => {
@@ -599,26 +540,12 @@ describe("configuration catalog model discovery", () => {
     expect(catalog.discoverConfigurationCatalog).not.toHaveBeenCalled();
   });
 
-  it("rejects removed configurations without touching the catalog", async () => {
-    writeJson(configPath(), v2Config([removedRecord()]));
-    writeJson(
-      secretsPath(),
-      v2Secrets([
-        {
-          configurationId: "cfg-removed",
-          revision: 1,
-          kind: "file-0600",
-          filePath: literalSecretPathFor("cfg-removed", 1),
-          status: "removed",
-        },
-      ]),
-    );
-    mkdirSync(dirname(literalSecretPathFor("cfg-removed", 1)), { recursive: true });
-    writeFileSync(literalSecretPathFor("cfg-removed", 1), "sk-zai-coding-secret", { mode: 0o600 });
+  it("rejects unknown configurations without touching the catalog", async () => {
+    writeJson(configPath(), v2Config([unknownRecord()]));
     const service = await loadService();
     await loadStore();
 
-    const result = await service.discoverConfigurationModels("cfg-removed");
+    const result = await service.discoverConfigurationModels("cfg-future");
 
     expect(result).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
     expect(catalog.discoverConfigurationCatalog).not.toHaveBeenCalled();

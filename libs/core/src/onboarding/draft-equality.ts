@@ -1,7 +1,4 @@
 import type { OnboardingConfigurationDraft, OnboardingDraft } from "./defaults.js";
-import type { RemovedOnboardingState } from "./types.js";
-
-export type WizardData = OnboardingDraft | RemovedOnboardingState;
 
 type WriteOnlySecret =
   | { readonly kind: "literal"; readonly value: string }
@@ -55,21 +52,6 @@ function isSameConfigurationGeneration(left: OnboardingDraft, right: OnboardingD
     left.selectedModelId === right.selectedModelId &&
     areConfigurationInputsEqual(left.configurationInput, right.configurationInput)
   );
-}
-
-export function isSameWizardGeneration(left: WizardData, right: WizardData): boolean {
-  if (left.kind !== right.kind) return false;
-  if (left.kind === "removed" && right.kind === "removed") {
-    return (
-      left.productId === right.productId &&
-      left.configurationId === right.configurationId &&
-      left.expectedRevision === right.expectedRevision
-    );
-  }
-  if (left.kind === "runnable" && right.kind === "runnable") {
-    return areDraftsEqual(left, right);
-  }
-  return false;
 }
 
 function areAcknowledgementsEqual(

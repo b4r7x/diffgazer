@@ -6,7 +6,6 @@ export const READINESS_ACTION_LABELS = {
   select: "Select model",
   test: "Test readiness",
   update: "Update configuration",
-  delete: "Delete configuration",
 } as const satisfies Record<ReadinessAction, string>;
 
 export function getReadinessActionLabel(action: ReadinessAction): string {

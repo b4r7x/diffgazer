@@ -43,9 +43,7 @@ function mapConfiguration({ configuration, readiness }: ConfigurationStatus): Pr
 export function mapProviderList(
   configurationStatuses: readonly ConfigurationStatus[],
 ): ProviderListRow[] {
-  const selectableRows = SELECTABLE_PRODUCTS.flatMap((product) => {
-    if (!product.selectable) return [];
-
+  return SELECTABLE_PRODUCTS.flatMap((product) => {
     const matchingConfigurations = configurationStatuses.filter(
       ({ configuration }) => configuration.productId === product.productId,
     );
@@ -64,10 +62,4 @@ export function mapProviderList(
       }),
     ];
   });
-
-  const removedRows = configurationStatuses
-    .filter(({ configuration }) => configuration.status === "removed")
-    .map(mapConfiguration);
-
-  return [...selectableRows, ...removedRows];
 }

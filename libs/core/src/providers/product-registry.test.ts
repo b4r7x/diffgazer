@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import {
   CANDIDATE_PRODUCT_IDS,
   DEFERRED_PRODUCT_IDS,
@@ -7,7 +6,6 @@ import {
   HostedApiProductIdSchema,
   LOCAL_OPENAI_PRESET_ENDPOINTS,
   REJECTED_PRODUCT_IDS,
-  REMOVED_PRODUCT_IDS,
   TransportInputSchema,
 } from "../schemas/config/transports.js";
 import {
@@ -221,7 +219,7 @@ describe("product registry authority", () => {
         usage: "optional",
         notice: notice(
           "zai-general-payg",
-          ["This configuration uses general Open Platform PAYG, never Coding Plan quota."],
+          ["This configuration uses general Open Platform pay-as-you-go billing."],
           ["API no-training and data-handling claims apply only to the exact general PAYG route."],
         ),
       },
@@ -340,7 +338,7 @@ describe("product registry authority", () => {
           [
             "The selected international region and workspace determine billing and availability.",
             "No international free quota is promised.",
-            "Coding Plan and Token Plan credentials are excluded.",
+            "Subscription plan credentials are excluded.",
           ],
           [
             "The selected international region and workspace are bound to the configuration.",
@@ -514,22 +512,6 @@ describe("product registry authority", () => {
     );
   });
 
-  it("keeps REMOVED_PRODUCT_ID decoder-only with explicit migration and deletion", () => {
-    const removed = PRODUCT_REGISTRY[REMOVED_PRODUCT_ID];
-
-    expect(removed).toMatchObject({
-      kind: "removed",
-      selectable: false,
-      decoderOnly: true,
-      migration: {
-        targetProductId: "zai",
-        credentialHandling: "retain-until-explicit-delete-never-copy-test-or-send",
-        actions: ["create-new-zai-configuration", "delete-removed-record"],
-      },
-    });
-    expect(SELECTABLE_PRODUCT_IDS).not.toContain(REMOVED_PRODUCT_ID);
-  });
-
   it("keeps Qwen Plus opt-in and evidence-gated without inventing a limit", () => {
     const policy = PRODUCT_REGISTRY.qwen.modelPolicy;
 
@@ -613,18 +595,11 @@ describe("product registry authority", () => {
     expect(PRODUCT_REGISTRY).not.toHaveProperty("github-models");
   });
 
-  it("keeps registry, removed, and candidate identities complete and disjoint", () => {
-    expect(Object.keys(PRODUCT_REGISTRY)).toEqual([
-      ...SELECTABLE_PRODUCT_IDS,
-      ...REMOVED_PRODUCT_IDS,
-    ]);
+  it("keeps registry and candidate identities complete and disjoint", () => {
+    expect(Object.keys(PRODUCT_REGISTRY)).toEqual([...SELECTABLE_PRODUCT_IDS]);
     expect(Object.keys(CANDIDATE_VERDICTS)).toEqual(CANDIDATE_PRODUCT_IDS);
 
-    const allProductIds = [
-      ...SELECTABLE_PRODUCT_IDS,
-      ...REMOVED_PRODUCT_IDS,
-      ...CANDIDATE_PRODUCT_IDS,
-    ];
+    const allProductIds = [...SELECTABLE_PRODUCT_IDS, ...CANDIDATE_PRODUCT_IDS];
     expect(new Set(allProductIds).size).toBe(allProductIds.length);
   });
 

@@ -29,7 +29,7 @@ function makeReadiness(status: ReadinessStatus) {
     noticeVersion?: number;
     acceptedAt?: string;
   };
-  if (status === "removed" || status === "unsupported") {
+  if (status === "unsupported") {
     acknowledgement = { status: "not-applicable" };
   } else if (status === "ready") {
     acknowledgement = {
@@ -53,7 +53,7 @@ function makeReadiness(status: ReadinessStatus) {
     evidenceStatus = "pending";
   } else if (status === "skipped") {
     evidenceStatus = "skipped";
-  } else if (status === "unsupported" || status === "removed" || status === "unconfigured") {
+  } else if (status === "unsupported" || status === "unconfigured") {
     evidenceStatus = "not-checked";
   } else {
     evidenceStatus = "failed";

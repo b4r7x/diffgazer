@@ -1,8 +1,4 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import { dirname, join } from "node:path";
 import type { Result } from "@diffgazer/core/result";
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
@@ -78,21 +74,6 @@ const supportedRecord = (overrides: Record<string, unknown> = {}) => ({
   createdAt: CREATED_AT,
   updatedAt: CREATED_AT,
   ...overrides,
-});
-
-const removedRecord = () => ({
-  schemaVersion: 2,
-  status: "removed",
-  configurationId: "cfg-removed",
-  revision: 1,
-  productId: REMOVED_PRODUCT_ID,
-  transportFamily: "hosted-api",
-  selectedModelId: null,
-  acknowledgement: null,
-  evidenceReference: null,
-  budget: null,
-  createdAt: CREATED_AT,
-  updatedAt: CREATED_AT,
 });
 
 const createGeminiAction = (
@@ -207,8 +188,8 @@ describe("config store actions", () => {
     expect(existsSync(literalSecretPathFor(configuration.configurationId, 1))).toBe(false);
   });
 
-  it("inspects a supported configuration and reports removed records as removed", async () => {
-    writeJson(configPath(), v2Config([supportedRecord(), removedRecord()]));
+  it("inspects a supported configuration and reports a missing one as not found", async () => {
+    writeJson(configPath(), v2Config([supportedRecord()]));
     const store = await loadStore();
 
     const supported = await store.runConfigurationAction({
@@ -221,24 +202,6 @@ describe("config store actions", () => {
       action: "inspect",
       status: "succeeded",
       configuration: { configurationId: "cfg-existing", revision: 1, status: "supported" },
-    });
-
-    const removed = await store.runConfigurationAction({
-      action: "inspect",
-      configurationId: "cfg-removed",
-    });
-    expect(removed.ok).toBe(true);
-    if (!removed.ok) return;
-    expect(removed.value).toMatchObject({
-      action: "inspect",
-      status: "succeeded",
-      configuration: {
-        configurationId: "cfg-removed",
-        status: "removed",
-        productId: REMOVED_PRODUCT_ID,
-        availableActions: ["inspect", "delete"],
-      },
-      readiness: { status: "removed" },
     });
 
     const missing = await store.runConfigurationAction({
@@ -455,32 +418,6 @@ describe("config store actions", () => {
       productId: "codex-cli",
       installationId: "codex-installation-1",
     });
-  });
-
-  it("rejects update, select, and test on removed configurations but allows delete", async () => {
-    writeJson(configPath(), v2Config([removedRecord()]));
-    const store = await loadStore();
-
-    const update = await store.runConfigurationAction(updateGeminiAction("cfg-removed", 1));
-    expect(update).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-    const select = await store.runConfigurationAction({
-      action: "select",
-      configurationId: "cfg-removed",
-      modelId: "gemini-2.5-flash",
-    });
-    expect(select).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-    const test = await store.runConfigurationAction({
-      action: "test",
-      configurationId: "cfg-removed",
-    });
-    expect(test).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-
-    const deleted = await store.runConfigurationAction({
-      action: "delete",
-      configurationId: "cfg-removed",
-      expectedRevision: 1,
-    });
-    expect(deleted).toMatchObject({ ok: true, value: { action: "delete", status: "succeeded" } });
   });
 
   it("serializes no secret values, environment names, paths, or evidence in responses", async () => {

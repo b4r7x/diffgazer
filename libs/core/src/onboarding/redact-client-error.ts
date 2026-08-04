@@ -1,6 +1,6 @@
 import { REDACTED, redactSecrets, truncateUtf8 } from "../redaction.js";
 import { sanitizeTerminalText } from "../review/sanitize-terminal.js";
-import type { WizardData } from "./draft-equality.js";
+import type { OnboardingDraft } from "./defaults.js";
 
 const CLIENT_ERROR_MAX_BYTES = 512;
 
@@ -47,8 +47,8 @@ function redactClientError(value: string, sensitiveValues: readonly string[]): s
     .trim();
 }
 
-function getWizardSensitiveValues(data: WizardData | undefined): readonly string[] {
-  if (!data || data.kind !== "runnable") return [];
+function getWizardSensitiveValues(data: OnboardingDraft | undefined): readonly string[] {
+  if (!data) return [];
 
   const values: string[] = [];
   const input = data.configurationInput;
@@ -62,7 +62,11 @@ function getWizardSensitiveValues(data: WizardData | undefined): readonly string
   return values;
 }
 
-export function getClientSafeError(cause: unknown, fallback: string, data?: WizardData): string {
+export function getClientSafeError(
+  cause: unknown,
+  fallback: string,
+  data?: OnboardingDraft,
+): string {
   if (!(cause instanceof Error) || cause.message.trim().length === 0) return fallback;
 
   const rawMessage = cause.message;

@@ -80,13 +80,10 @@ function ConnectedHeader({ serverState }: { serverState: HeaderServerState }) {
       selectedReadiness,
       selectedConfiguration.transportFamily,
     );
-    providerName =
-      selectedConfiguration.status === "supported"
-        ? getProviderDisplay(
-            PRODUCT_REGISTRY[selectedConfiguration.productId].presentation.name,
-            selectedConfiguration.selectedModelId ?? undefined,
-          )
-        : PRODUCT_REGISTRY[selectedConfiguration.productId].presentation.name;
+    providerName = getProviderDisplay(
+      PRODUCT_REGISTRY[selectedConfiguration.productId].presentation.name,
+      selectedConfiguration.selectedModelId ?? undefined,
+    );
   }
   const backAction = resolveBackAction(pathname, canGoBack);
 

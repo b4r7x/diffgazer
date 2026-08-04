@@ -10,14 +10,12 @@ import {
   type DecodedProviderConfigurationRecord,
   decodeProviderConfigurationRecord,
   ProviderConfigurationConflictError,
-  RemovedProviderConfigurationRecordSchema,
   SupportedProviderConfigurationRecordSchema,
 } from "../provider-config.js";
 import {
   CONFIG_SCHEMA_VERSION_V2,
   type ConfigDocumentV1,
   type ConfigDocumentV2,
-  type RunnableV1Record,
   type V1ConfigurationRecord,
 } from "../types.js";
 
@@ -282,7 +280,6 @@ const assertV2Document = (document: ConfigDocumentV2): void => {
     }
     if (record.status === "supported")
       SupportedProviderConfigurationRecordSchema.parse(record.record);
-    if (record.status === "removed") RemovedProviderConfigurationRecordSchema.parse(record.record);
     if (record.rawBytes.byteLength > MAX_V2_RECORD_BYTES) {
       throw new Error("Configuration record exceeds the size limit");
     }
@@ -389,12 +386,9 @@ export const decodeConfigV1 = (inputBytes: Uint8Array): ConfigDocumentV1 => {
     if (decoded.status === "migrate-v1") {
       return {
         status: "migrate-v1",
-        record: decoded.record as RunnableV1Record,
+        record: decoded.record,
         rawBytes: copyBytes(recordBytes),
       };
-    }
-    if (decoded.status === "removed") {
-      return { status: "removed", record: decoded.record, rawBytes: copyBytes(recordBytes) };
     }
     return { status: "unknown", rawBytes: copyBytes(recordBytes) };
   });

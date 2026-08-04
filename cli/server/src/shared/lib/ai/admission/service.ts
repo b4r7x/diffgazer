@@ -16,7 +16,6 @@ import {
 } from "../../config/admission-evidence.js";
 import type {
   ConfigurationBudgetLimits,
-  RemovedProviderConfigurationRecord,
   SupportedProviderConfigurationRecord,
 } from "../../config/provider-config.js";
 import { computeProviderReadiness } from "../../config/readiness.js";
@@ -32,7 +31,6 @@ import { type Adapter, getAdapter } from "../providers/registry.js";
 export type AdmissionFailureCode =
   | "configuration-not-found"
   | "configuration-unsupported"
-  | "configuration-removed"
   | "configuration-revoking"
   | "readiness-not-ready"
   | "evidence-missing"
@@ -54,7 +52,6 @@ export type AdmissionFailure = Readonly<{
 export type AdmissionSnapshot = Readonly<{
   configuration:
     | { readonly status: "supported"; readonly record: SupportedProviderConfigurationRecord }
-    | { readonly status: "removed"; readonly record: RemovedProviderConfigurationRecord }
     | { readonly status: "unknown" };
   binding: SecretBinding | null;
   evidence: AdmissionEvidence | null;
@@ -448,10 +445,6 @@ export async function authorizeReviewExecution(
     return err(
       admissionFailure("configuration-unsupported", "Configuration is not supported", false),
     );
-  }
-
-  if (snapshot.configuration.status === "removed") {
-    return err(admissionFailure("configuration-removed", "Configuration has been removed", false));
   }
 
   if (dependencies.leaseRegistry.isRevoked(configurationId)) {

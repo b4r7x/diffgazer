@@ -4,21 +4,11 @@ import {
   getOnboardingProgressLabel,
   type OnboardingDraft,
   type OnboardingStep,
-  type RunnableSetupStep,
 } from "@diffgazer/core/onboarding";
 import { useActionRowNavigation, useScope } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import type { RefObject } from "react";
 import { getStepShortcuts } from "../lib/shortcuts";
-
-const RUNNABLE_SETUP_STEPS = new Set<OnboardingStep>([
-  "product",
-  "endpoint-binding",
-  "authentication",
-  "model",
-  "conformance",
-  "acknowledgement",
-]);
 
 type WizardData = ReturnType<typeof import("../hooks/use-onboarding").useOnboarding>["wizardData"];
 type WizardDraftUpdate = Partial<Omit<OnboardingDraft, "kind" | "plan">>;
@@ -36,7 +26,6 @@ interface UseOnboardingKeyboardOptions {
   next: (partial?: WizardDraftUpdate) => void;
   back: () => void;
   complete: () => Promise<boolean>;
-  deleteRemovedConfiguration: () => Promise<boolean>;
   focusFallbackRef: RefObject<HTMLDivElement | null>;
 }
 
@@ -53,12 +42,9 @@ export function useOnboardingKeyboard({
   next,
   back,
   complete,
-  deleteRemovedConfiguration,
   focusFallbackRef,
 }: UseOnboardingKeyboardOptions) {
   const navigate = useNavigate();
-  const isRemoved = wizardData.kind === "removed";
-  const primaryLabel = isRemoved && currentStep === "delete" ? "Delete Record" : "Complete Setup";
 
   const buttonCount = isFirstStep ? 1 : 2;
   const primaryButtonIndex = isFirstStep ? 0 : 1;
@@ -98,8 +84,7 @@ export function useOnboardingKeyboard({
   };
 
   const handleComplete = async () => {
-    const succeeded = isRemoved ? await deleteRemovedConfiguration() : await complete();
-    if (succeeded) navigate({ to: "/" });
+    if (await complete()) navigate({ to: "/" });
   };
 
   const handlePrimaryAction = () => {
@@ -121,18 +106,8 @@ export function useOnboardingKeyboard({
   };
 
   const handleStepCommit = (partial: WizardDraftUpdate = {}) => {
-    if (wizardData.kind === "removed") {
-      if (currentStep === "migration") handleNext();
-      return;
-    }
-
     const projectedData = { ...wizardData, ...partial };
-    if (
-      RUNNABLE_SETUP_STEPS.has(currentStep) &&
-      !canProceedForStep(currentStep as RunnableSetupStep["id"], projectedData)
-    ) {
-      return;
-    }
+    if (!canProceedForStep(currentStep, projectedData)) return;
 
     if (isLastStep) {
       footer.enterActions(primaryButtonIndex);
@@ -147,7 +122,6 @@ export function useOnboardingKeyboard({
   return {
     footer,
     primaryButtonIndex,
-    primaryLabel,
     progressLabel,
     isBusy,
     canActivatePrimary,

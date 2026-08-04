@@ -8,11 +8,9 @@ import { Spinner } from "@diffgazer/ui/components/spinner";
 import { useEffect, useRef, useState } from "react";
 import { resolveAvailableValue } from "../../lib/select";
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 interface ModelStepProps {
   /** The persisted draft record discovery addresses; null until the wizard commits one. */
-  configuration: SupportedConfigurationSummary | null;
+  configuration: ClientConfigurationSummary | null;
   isPreparing: boolean;
   onRetry: () => void;
   value: string | null;
@@ -106,7 +104,7 @@ function DiscoveredModels({
   enabled = true,
   onBoundaryReached,
 }: Omit<ModelStepProps, "configuration" | "isPreparing" | "onRetry"> & {
-  configuration: SupportedConfigurationSummary;
+  configuration: ClientConfigurationSummary;
 }) {
   const loadingStateRef = useRef<HTMLDivElement>(null);
   const retryButtonRef = useRef<HTMLButtonElement>(null);

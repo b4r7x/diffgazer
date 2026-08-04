@@ -119,8 +119,7 @@ export function SettingsHubScreen(): ReactElement {
     ({ configuration }) =>
       configuration.configurationId === initQuery.data?.selectedConfigurationId,
   );
-  const selectedProductId =
-    selected?.configuration.status === "supported" ? selected.configuration.productId : null;
+  const selectedProductId = selected?.configuration.productId ?? null;
   const values = buildHubValues({
     selectedProductId,
     isTrusted: setup.isTrusted,

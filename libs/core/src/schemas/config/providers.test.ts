@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  ClientConfigurationActionSchema,
   ConfigurationListResponseSchema,
   ConfigurationStatusSchema,
   decodeProviderConfigurationRecord,
@@ -36,19 +35,6 @@ const skippedReadiness = {
 };
 
 describe("V2 provider configuration facade", () => {
-  it("rejects zai-coding configuration input", () => {
-    expect(
-      ClientConfigurationActionSchema.safeParse({
-        action: "create",
-        input: {
-          transportFamily: "hosted-api",
-          productId: "zai-coding",
-          endpoint: "https://api.z.ai/api/paas/v4",
-        },
-      }).success,
-    ).toBe(false);
-  });
-
   it("exposes no hasApiKey or secret field in V2 summaries", () => {
     const configurationStatus = ConfigurationStatusSchema.parse({
       configuration: hostedSummary,
@@ -93,22 +79,9 @@ describe("legacy provider record decoder", () => {
     );
   });
 
-  it("decodes zai-coding only as removed and retains its original bytes", () => {
+  it("rejects duplicate provider keys instead of relabeling one provider as another", () => {
     const rawBytes = encoder.encode(
-      ' { "provider": "zai-coding", "hasApiKey": true, "isActive": false } ',
-    );
-    const decoded = decodeProviderConfigurationRecord(rawBytes);
-
-    expect(decoded).toMatchObject({
-      status: "removed",
-      record: { provider: "zai-coding", hasApiKey: true, isActive: false },
-    });
-    expect(decoded.status === "removed" ? decoded.rawBytes : null).toEqual(rawBytes);
-  });
-
-  it("rejects duplicate provider keys instead of relabeling removed data", () => {
-    const rawBytes = encoder.encode(
-      '{"provider":"zai-coding","provider":"zai","hasApiKey":true,"isActive":true}',
+      '{"provider":"gemini","provider":"zai","hasApiKey":true,"isActive":true}',
     );
 
     expect(decodeProviderConfigurationRecord(rawBytes)).toEqual({

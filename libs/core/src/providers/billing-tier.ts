@@ -1,4 +1,4 @@
-import type { RemovedProductId, RunnableProductId } from "../schemas/config/transports.js";
+import type { RunnableProductId } from "../schemas/config/transports.js";
 import type { BadgeVariant } from "../schemas/presentation/index.js";
 import { type BillingMode, PRODUCT_REGISTRY } from "./product-registry.js";
 
@@ -22,11 +22,8 @@ export const BILLING_TIER_BADGES = {
   ambient: { label: "AMBIENT", variant: "info" },
 } as const satisfies Record<BillingTier, BillingTierBadge>;
 
-export function getBillingTier(productId: RunnableProductId | RemovedProductId): BillingTier {
+export function getBillingTier(productId: RunnableProductId): BillingTier {
   const product = PRODUCT_REGISTRY[productId];
-  // A removed product keeps no billing metadata; it is only ever shown as the
-  // hosted record it was before removal.
-  if (product.kind === "removed") return "paid";
   if (product.transportFamily === "local-http") return "local";
   if (product.transportFamily === "local-cli") return "ambient";
   // Structured billing modes are the authority; notice prose describes free

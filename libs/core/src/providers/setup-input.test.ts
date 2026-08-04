@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ConfigurationStatus } from "../schemas/config/configuration-status.js";
 import type { ClientConfigurationSummary } from "../schemas/config/provider-config.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import {
   READINESS_PRESENTATION,
   type Readiness,
@@ -20,7 +19,7 @@ import {
 
 const CONFIGURED_ACTIONS = ["inspect", "select", "test", "update", "delete"] as const;
 
-function readiness(status: "unconfigured" | "unreachable" | "removed"): Readiness {
+function readiness(status: "unconfigured" | "unreachable"): Readiness {
   return ReadinessSchema.parse({
     status,
     ready: false,
@@ -65,17 +64,6 @@ const PRESET_CONFIGURATION: ClientConfigurationSummary = {
   availableActions: [...CONFIGURED_ACTIONS],
 };
 
-const REMOVED_CONFIGURATION: ClientConfigurationSummary = {
-  configurationId: "legacy-removed-zai-plan",
-  revision: 4,
-  status: "removed",
-  transportFamily: "hosted-api",
-  productId: REMOVED_PRODUCT_ID,
-  selectedModelId: null,
-  notices: [],
-  availableActions: ["inspect", "delete"],
-};
-
 describe("resolveSetupTransportFamily", () => {
   it("reads the transport from the product until a configuration owns one", () => {
     expect(resolveSetupTransportFamily(unconfiguredRow("gemini"))).toBe("hosted-api");
@@ -86,18 +74,6 @@ describe("resolveSetupTransportFamily", () => {
         configuredRow({ configuration: PRESET_CONFIGURATION, readiness: readiness("unreachable") }),
       ),
     ).toBe("local-http");
-  });
-
-  it("configures nothing for a removed record", () => {
-    const row = configuredRow({
-      configuration: REMOVED_CONFIGURATION,
-      readiness: readiness("removed"),
-    });
-
-    expect(resolveSetupTransportFamily(row)).toBeNull();
-    expect(buildSetupInput(row, null)).toBeNull();
-    expect(() => buildSetupInput(row, "hosted-api")).toThrow(/not supported for setup/);
-    expect(() => buildSetupAcknowledgement(row)).toThrow(/not supported for setup/);
   });
 });
 
@@ -163,7 +139,7 @@ describe("buildSetupInput", () => {
 
   it("refuses to build an input for a transport the product does not speak", () => {
     expect(() => buildSetupInput(unconfiguredRow("gemini"), "local-http")).toThrow(
-      /requires a supported local-http product/,
+      /requires a local-http product/,
     );
   });
 });

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "../providers/product-registry.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { READINESS_PRESENTATION, type Readiness } from "../schemas/config/readiness.js";
 import { CANDIDATE_PRODUCT_IDS, type RunnableProductId } from "../schemas/config/transports.js";
 import { buildSetupPlan } from "./setup-plan.js";
@@ -116,24 +115,6 @@ describe("setup plan", () => {
         code: "use-compatible-api",
         message: "Use a supported local server and API configuration.",
       },
-    });
-  });
-
-  it("gives a removed record only explicit migration and deletion steps", () => {
-    const plan = buildSetupPlan(REMOVED_PRODUCT_ID);
-
-    expect(plan).toEqual({
-      kind: "removed",
-      productId: REMOVED_PRODUCT_ID,
-      steps: [
-        {
-          id: "migration",
-          action: "create-new-zai-configuration",
-          targetProductId: "zai",
-          credentialHandling: "retain-until-explicit-delete-never-copy-test-or-send",
-        },
-        { id: "delete", action: "delete-removed-record" },
-      ],
     });
   });
 

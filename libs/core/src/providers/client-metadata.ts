@@ -8,7 +8,6 @@ import {
   ClientConfigurationSummarySchema,
   ExactModelIdSchema,
 } from "../schemas/config/provider-config.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import {
   type Readiness,
   type ReadinessAcknowledgement,
@@ -17,8 +16,6 @@ import {
 import {
   matchesHostedApiTransportTuple,
   matchesLocalHttpTransportTuple,
-  type RemovedProductId,
-  RemovedProductIdSchema,
   type RunnableProductId,
   RunnableProductIdSchema,
 } from "../schemas/config/transports.js";
@@ -49,7 +46,6 @@ const BillingModeSchema = z.enum([
 
 const UNCONFIGURED_ACTIONS = ["create"] as const;
 const CONFIGURED_ACTIONS = ["inspect", "select", "test", "update", "delete"] as const;
-const REMOVED_ACTIONS = ["inspect", "delete"] as const;
 const LOCAL_HTTP_ONLY_READINESS = new Set<Readiness["status"]>([
   "local-endpoint-unreachable",
   "local-endpoint-forbidden",
@@ -119,25 +115,7 @@ const ClientRunnableProductSchema = z.strictObject({
   notice: ClientConfigurationNoticeSchema,
 });
 
-const ClientRemovedProductSchema = z.strictObject({
-  productId: RemovedProductIdSchema,
-  status: z.literal("removed"),
-  selectable: z.literal(false),
-  transportFamily: z.literal("hosted-api"),
-  name: z.string().min(1),
-  description: z.string().min(1),
-  replacementProductId: z.literal("zai"),
-  migrationActions: z.tuple([
-    z.literal("create-new-zai-configuration"),
-    z.literal("delete-removed-record"),
-  ]),
-});
-
-const ClientProductMetadataShapeSchema = z.union([
-  ClientRunnableProductSchema,
-  ClientRemovedProductSchema,
-]);
-export const ClientProductMetadataSchema = ClientProductMetadataShapeSchema.superRefine(
+export const ClientProductMetadataSchema = ClientRunnableProductSchema.superRefine(
   (product, context) => {
     if (JSON.stringify(product) !== JSON.stringify(buildClientProduct(product.productId))) {
       context.addIssue({
@@ -221,9 +199,8 @@ function validateReadyClaims(
  * configuration was tested (for example a failed or intentionally skipped
  * probe).  The acknowledgement is client-safe only when it refers to the
  * notice owned by the projected product.  `not-applicable` is retained for
- * states that cannot carry terms (unsupported/removed and early failures),
- * while every required or accepted acknowledgement is bound to the current
- * product notice.
+ * states that cannot carry terms (unsupported and early failures), while every
+ * required or accepted acknowledgement is bound to the current product notice.
  */
 function validateAcknowledgementClaims(
   productId: RunnableProductId,
@@ -251,9 +228,8 @@ function validatePayloadConsistency(
   context: z.RefinementCtx<ClientMetadataPayloadShape>,
 ): void {
   const { actions, configuration, notices, product, readiness } = payload;
-  const expectedNotices = product.status === "removed" ? [] : [product.notice];
 
-  if (JSON.stringify(notices) !== JSON.stringify(expectedNotices)) {
+  if (JSON.stringify(notices) !== JSON.stringify([product.notice])) {
     context.addIssue({
       code: "custom",
       message: "Payload notices must match the product registry projection",
@@ -299,34 +275,7 @@ function validatePayloadConsistency(
     }
   }
 
-  if (product.status === "removed") {
-    if (configuration?.status !== "removed" || readiness.status !== "removed") {
-      context.addIssue({
-        code: "custom",
-        message: "Removed product metadata requires a removed configuration and readiness",
-        path: ["product", "status"],
-      });
-    }
-    if (!matchesActions(actions, REMOVED_ACTIONS)) {
-      context.addIssue({
-        code: "custom",
-        message: "Removed records allow only inspection and deletion",
-        path: ["actions"],
-      });
-    }
-    return;
-  }
-
   validateAcknowledgementClaims(product.productId, readiness, context);
-
-  if (configuration?.status === "removed" || readiness.status === "removed") {
-    context.addIssue({
-      code: "custom",
-      message: "Supported product metadata has removed state",
-      path: ["product", "status"],
-    });
-    return;
-  }
 
   if (product.transportFamily === "hosted-api" && readiness.status.startsWith("local-")) {
     context.addIssue({
@@ -376,9 +325,7 @@ function validatePayloadConsistency(
     });
   }
 
-  if (configuration.status === "supported") {
-    validateReadyClaims(product.productId, configuration, readiness, context);
-  }
+  validateReadyClaims(product.productId, configuration, readiness, context);
 }
 
 export const ClientMetadataPayloadSchema = ClientMetadataPayloadShapeSchema.superRefine(
@@ -387,7 +334,7 @@ export const ClientMetadataPayloadSchema = ClientMetadataPayloadShapeSchema.supe
 export type ClientMetadataPayload = z.infer<typeof ClientMetadataPayloadSchema>;
 
 export interface ClientMetadataSource {
-  readonly productId: RunnableProductId | RemovedProductId;
+  readonly productId: RunnableProductId;
   readonly configuration: ClientConfigurationSummary | null;
   readonly readiness: Readiness;
   readonly notices: readonly (ProductNotice | ClientConfigurationNotice)[];
@@ -441,21 +388,8 @@ function toClientModelPolicy(modelPolicy: ModelPolicy) {
   }
 }
 
-function buildClientProduct(productId: RunnableProductId | RemovedProductId) {
+function buildClientProduct(productId: RunnableProductId) {
   const product = PRODUCT_REGISTRY[productId];
-
-  if (product.kind === "removed") {
-    return {
-      productId: product.id,
-      status: product.kind,
-      selectable: product.selectable,
-      transportFamily: product.transportFamily,
-      name: product.presentation.name,
-      description: product.presentation.description,
-      replacementProductId: product.migration.targetProductId,
-      migrationActions: [...product.migration.actions],
-    };
-  }
 
   return {
     productId: product.id,
@@ -486,9 +420,7 @@ function buildClientProduct(productId: RunnableProductId | RemovedProductId) {
   };
 }
 
-export function projectClientProduct(
-  productId: RunnableProductId | RemovedProductId,
-): ClientProductMetadata {
+export function projectClientProduct(productId: RunnableProductId): ClientProductMetadata {
   return ClientProductMetadataSchema.parse(buildClientProduct(productId));
 }
 
@@ -506,9 +438,6 @@ function toClientConfiguration(configuration: ClientConfigurationSummary | null)
     availableActions: [...configuration.availableActions],
   };
 
-  if (configuration.status === "removed") {
-    return ClientConfigurationSummarySchema.parse(base);
-  }
   if (configuration.transportFamily === "hosted-api") {
     return ClientConfigurationSummarySchema.parse({
       ...base,
@@ -532,8 +461,6 @@ function toClientConfiguration(configuration: ClientConfigurationSummary | null)
 }
 
 function matchesProductEndpoint(configuration: ClientConfigurationSummary): boolean {
-  if (configuration.status === "removed") return configuration.productId === REMOVED_PRODUCT_ID;
-
   const product = PRODUCT_REGISTRY[configuration.productId];
   if (product.transportFamily !== configuration.transportFamily) {
     return false;

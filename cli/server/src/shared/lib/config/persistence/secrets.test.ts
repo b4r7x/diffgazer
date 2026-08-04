@@ -28,7 +28,7 @@ describe("V2 secrets persistence", () => {
   it("retains removed and unknown bindings verbatim", async () => {
     const { decodeSecretsV2, serializeSecretsV2 } = await import("./secrets.js");
     const removed = {
-      configurationId: "legacy-zai-coding",
+      configurationId: "legacy-configuration",
       revision: 4,
       status: "removed",
       kind: "keyring-reference",

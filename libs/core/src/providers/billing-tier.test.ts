@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { BILLING_TIER_BADGES, getBillingTier } from "./billing-tier.js";
 
 describe("getBillingTier", () => {
@@ -15,10 +14,6 @@ describe("getBillingTier", () => {
   it("classifies hosted products by their declared billing modes", () => {
     expect(getBillingTier("gemini")).toBe("free");
     expect(getBillingTier("zai")).toBe("paid");
-  });
-
-  it("treats a removed record as the hosted product it was", () => {
-    expect(getBillingTier(REMOVED_PRODUCT_ID)).toBe("paid");
   });
 });
 

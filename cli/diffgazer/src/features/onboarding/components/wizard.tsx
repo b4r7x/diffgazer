@@ -1,7 +1,5 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { LocalOpenAIPresetId } from "@diffgazer/core/schemas/config";
-import { REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { Button } from "../../../components/ui/button";
@@ -27,7 +25,6 @@ interface WizardStepBodyProps {
 
 function EndpointBindingStep({ wizard }: WizardStepBodyProps): ReactElement | null {
   const { tokens } = useTheme();
-  if (wizard.wizardData.kind !== "runnable") return null;
   const draft = wizard.wizardData;
   const step = draft.plan.steps.find((candidate) => candidate.id === "endpoint-binding");
   if (!step || step.id !== "endpoint-binding") return null;
@@ -124,7 +121,6 @@ function EndpointBindingStep({ wizard }: WizardStepBodyProps): ReactElement | nu
 
 function ConformanceStep({ wizard }: WizardStepBodyProps): ReactElement | null {
   const { tokens } = useTheme();
-  if (wizard.wizardData.kind !== "runnable") return null;
   const step = wizard.wizardData.plan.steps.find((candidate) => candidate.id === "conformance");
   if (!step || step.id !== "conformance") return null;
 
@@ -152,7 +148,6 @@ function ConformanceStep({ wizard }: WizardStepBodyProps): ReactElement | null {
 
 function AcknowledgementStep({ wizard }: WizardStepBodyProps): ReactElement | null {
   const { tokens } = useTheme();
-  if (wizard.wizardData.kind !== "runnable") return null;
   const step = wizard.wizardData.plan.steps.find((candidate) => candidate.id === "acknowledgement");
   if (!step || step.id !== "acknowledgement") return null;
   const notice = step.notice;
@@ -182,44 +177,10 @@ function AcknowledgementStep({ wizard }: WizardStepBodyProps): ReactElement | nu
   );
 }
 
-function MigrationStep({ wizard }: WizardStepBodyProps): ReactElement | null {
-  const { tokens } = useTheme();
-  if (wizard.wizardData.kind !== "removed") return null;
-  const step = wizard.wizardData.plan.steps.find((candidate) => candidate.id === "migration");
-  if (!step || step.id !== "migration") return null;
-
-  return (
-    <Box flexDirection="column" gap={1}>
-      <Text color={tokens.warning}>
-        Create a new general Z.AI PAYG configuration. The removed {REMOVED_PRODUCT_ID} record is
-        retained until you explicitly delete it. Old secrets are never copied, tested, or sent.
-      </Text>
-      <Text color={tokens.muted}>
-        Target product: {PRODUCT_REGISTRY[step.targetProductId].presentation.name}
-      </Text>
-    </Box>
-  );
-}
-
-function DeleteRemovedStep({ wizard }: WizardStepBodyProps): ReactElement | null {
-  const { tokens } = useTheme();
-  if (wizard.wizardData.kind !== "removed") return null;
-
-  return (
-    <Box flexDirection="column" gap={1}>
-      <Text color={tokens.warning}>
-        Delete the removed {REMOVED_PRODUCT_ID} record after you create a supported replacement
-        configuration.
-      </Text>
-    </Box>
-  );
-}
-
 function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
   const isStepFocused = wizard.focusArea === "step";
   switch (wizard.currentStep) {
     case "product":
-      if (wizard.wizardData.kind !== "runnable") return null;
       return (
         <ProviderStep
           value={wizard.wizardData.configurationInput.productId}
@@ -230,7 +191,6 @@ function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
     case "endpoint-binding":
       return <EndpointBindingStep wizard={wizard} />;
     case "authentication":
-      if (wizard.wizardData.kind !== "runnable") return null;
       return (
         <ApiKeyStep
           productId={wizard.wizardData.configurationInput.productId}
@@ -245,7 +205,6 @@ function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
         />
       );
     case "model":
-      if (wizard.wizardData.kind !== "runnable") return null;
       return (
         <ModelStep
           configuration={wizard.draftConfiguration}
@@ -260,10 +219,6 @@ function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
       return <ConformanceStep wizard={wizard} />;
     case "acknowledgement":
       return <AcknowledgementStep wizard={wizard} />;
-    case "migration":
-      return <MigrationStep wizard={wizard} />;
-    case "delete":
-      return <DeleteRemovedStep wizard={wizard} />;
   }
 }
 
@@ -276,10 +231,7 @@ export function OnboardingWizard(): ReactElement {
   );
   const compactProgress = columns < fullProgressWidth;
   const nextActionIndex = wizard.isFirstStep ? 0 : 1;
-  const transportFamily =
-    wizard.wizardData.kind === "runnable"
-      ? wizard.wizardData.configurationInput.transportFamily
-      : undefined;
+  const transportFamily = wizard.wizardData.configurationInput.transportFamily;
 
   const actions = useActionRow({
     actionCount: wizard.isFirstStep ? 1 : 2,
@@ -312,12 +264,7 @@ export function OnboardingWizard(): ReactElement {
     if (key.tab) wizard.cycleFocusZone();
   });
 
-  let primaryLabel = "Next";
-  if (wizard.wizardData.kind === "removed" && wizard.currentStep === "delete") {
-    primaryLabel = "Delete Record";
-  } else if (wizard.isLastStep) {
-    primaryLabel = "Complete Setup";
-  }
+  const primaryLabel = wizard.isLastStep ? "Complete Setup" : "Next";
 
   if (wizard.isSaving) {
     return (

@@ -7,15 +7,10 @@ import {
 } from "./model-discovery-messages.js";
 import { useProviderModelsMapped } from "./use-provider-models-mapped.js";
 
-export type SupportedConfigurationSummary = Extract<
-  ClientConfigurationSummary,
-  { status: "supported" }
->;
-
 interface ModelSourceIdentity {
-  configurationId: SupportedConfigurationSummary["configurationId"];
-  productId: SupportedConfigurationSummary["productId"];
-  transportFamily: SupportedConfigurationSummary["transportFamily"];
+  configurationId: ClientConfigurationSummary["configurationId"];
+  productId: ClientConfigurationSummary["productId"];
+  transportFamily: ClientConfigurationSummary["transportFamily"];
 }
 
 interface ModelSourceBase extends ModelSourceIdentity {
@@ -53,7 +48,7 @@ export type ModelSourceState =
     });
 
 function emptyState(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   status: "idle" | "loading",
   retry: () => void,
 ): ModelSourceState {
@@ -72,7 +67,7 @@ function emptyState(
 
 function identityMatches(
   source: ModelSourceIdentity,
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
 ): boolean {
   return (
     source.configurationId === configuration.configurationId &&
@@ -83,7 +78,7 @@ function identityMatches(
 
 export function useModelSource(
   open: boolean,
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
 ): ModelSourceState {
   const source: ModelSourceState = useProviderModelsMapped(open, configuration);
 

@@ -629,6 +629,9 @@ describe("createApiClient", () => {
   });
 
   describe("response validation", () => {
+    const RESPONSE_VALIDATION_COPY =
+      "The server returned data this build does not understand. Restart Diffgazer so the app and server run the same build.";
+
     const numberSchema = (body: unknown): { value: number } => {
       if (
         typeof body !== "object" ||
@@ -670,10 +673,36 @@ describe("createApiClient", () => {
       };
 
       await expect(client.get("/api/test", { schema: unsafeSchema })).rejects.toMatchObject({
-        message: "Response validation failed",
+        message: RESPONSE_VALIDATION_COPY,
         status: 422,
         code: "INVALID_RESPONSE",
       });
+    });
+
+    it("never surfaces a schema validator's issue list as the message", async () => {
+      expect.assertions(3);
+      mockFetch.mockResolvedValue(jsonResponse({ status: "removed", productId: "zai-coding" }));
+
+      // Shaped like a zod rejection: its `message` is the serialized issues, which
+      // is exactly what used to reach the screen.
+      const issues = [
+        { code: "invalid_value", values: ["supported"], path: ["status"] },
+        { code: "custom", message: "Configuration notices must match the bound product notice" },
+      ];
+      const zodLikeSchema = (): never => {
+        const error = new Error(JSON.stringify(issues, null, 2));
+        Object.assign(error, { issues });
+        throw error;
+      };
+
+      try {
+        await client.get("/api/test", { schema: zodLikeSchema });
+      } catch (error) {
+        const { message } = error as Error;
+        expect(message).toBe(RESPONSE_VALIDATION_COPY);
+        expect(message).not.toContain("invalid_value");
+        expect(message).not.toContain("bound product notice");
+      }
     });
 
     it("fails closed for command-like validator diagnostics in body requests", async () => {
@@ -690,8 +719,8 @@ describe("createApiClient", () => {
           { schema: unsafeSchema },
         ),
       ).rejects.toMatchObject({
-        message: "Response validation failed",
-        safeMessage: "Response validation failed",
+        message: RESPONSE_VALIDATION_COPY,
+        safeMessage: RESPONSE_VALIDATION_COPY,
         status: 422,
         code: "INVALID_RESPONSE",
       });

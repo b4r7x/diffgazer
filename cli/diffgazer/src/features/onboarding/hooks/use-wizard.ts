@@ -53,13 +53,10 @@ export function useOnboardingWizard() {
   useRegisterExitPreparation(wizard.cleanupCreatedConfiguration);
 
   const wizardData = wizard.wizardData;
-  const isRunnable = wizardData.kind === "runnable";
-  const runnableDraft = isRunnable ? wizardData : null;
+  const configurationInput = wizardData.configurationInput;
   const hostedCredential =
-    runnableDraft?.configurationInput.transportFamily === "hosted-api"
-      ? runnableDraft.configurationInput.credential
-      : undefined;
-  const hasCredentialControls = runnableDraft?.configurationInput.transportFamily === "hosted-api";
+    configurationInput.transportFamily === "hosted-api" ? configurationInput.credential : undefined;
+  const hasCredentialControls = configurationInput.transportFamily === "hosted-api";
   const effectiveInputMethod = inputMethodFromCredential(hostedCredential);
   const effectiveApiKey =
     hostedCredential?.kind === "literal" ? hostedCredential.value : apiKeyDraft;
@@ -69,12 +66,10 @@ export function useOnboardingWizard() {
   const apiKeyInputFocused = focusZone === "api-key-input";
 
   function syncCredentialDraft(method: InputMethod, apiKey: string) {
-    if (!runnableDraft || runnableDraft.configurationInput.transportFamily !== "hosted-api") {
-      return;
-    }
+    if (configurationInput.transportFamily !== "hosted-api") return;
     wizard.updateData({
       configurationInput: {
-        ...runnableDraft.configurationInput,
+        ...configurationInput,
         credential: credentialFromInput(method, apiKey),
       },
     });
@@ -107,8 +102,7 @@ export function useOnboardingWizard() {
   }
 
   function handleAcknowledgementAccept() {
-    if (!runnableDraft) return;
-    const noticeStep = runnableDraft.plan.steps.find((step) => step.id === "acknowledgement");
+    const noticeStep = wizardData.plan.steps.find((step) => step.id === "acknowledgement");
     const notice = noticeStep?.id === "acknowledgement" ? noticeStep.notice : null;
     if (!notice) return;
     wizard.updateData({
@@ -132,10 +126,6 @@ export function useOnboardingWizard() {
   function handleNext() {
     if (!wizard.canProceed) return;
     if (wizard.isLastStep) {
-      if (wizardData.kind === "removed") {
-        void wizard.deleteRemovedConfiguration();
-        return;
-      }
       void wizard.complete();
       return;
     }

@@ -5,7 +5,6 @@ import {
   READINESS_PRESENTATION,
   type RunnableProductId,
 } from "../schemas/config/index.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { getInitialWizardData, type OnboardingDraft } from "./defaults.js";
 import {
   buildConfigPayload,
@@ -14,7 +13,6 @@ import {
   buildUpdatePayload,
   saveWizard,
 } from "./save-wizard.js";
-import { OnboardingStateSchema } from "./types.js";
 
 const ACCEPTED_AT = "2026-07-31T12:00:00.000Z";
 
@@ -375,26 +373,6 @@ describe("saveWizard", () => {
       completedSteps: ["settings", "configuration"],
     });
     expect(actions.map(({ action }) => action)).toEqual(["create", "test"]);
-  });
-
-  it("preserves removed REMOVED_PRODUCT_ID data without calling a mutation", async () => {
-    const removed = OnboardingStateSchema.parse({
-      kind: "removed",
-      productId: REMOVED_PRODUCT_ID,
-      configurationId: "legacy-removed-zai-plan",
-      expectedRevision: 2,
-    });
-    const callbacks = {
-      saveSettings: vi.fn(),
-      runConfigurationAction: vi.fn(),
-    };
-
-    await expect(saveWizard(removed, callbacks)).resolves.toEqual({
-      status: "preserved-removed",
-      configurationId: "legacy-removed-zai-plan",
-    });
-    expect(callbacks.saveSettings).not.toHaveBeenCalled();
-    expect(callbacks.runConfigurationAction).not.toHaveBeenCalled();
   });
 
   it("returns a partial result without creating a configuration when settings fail", async () => {
