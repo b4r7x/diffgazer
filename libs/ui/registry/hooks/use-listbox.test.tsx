@@ -429,6 +429,123 @@ describe("useListbox", () => {
     expect(onSelect).toHaveBeenCalledWith("b");
   });
 
+  it("moves the highlight with j and k when typeahead is disabled", async () => {
+    const onHighlight = vi.fn();
+    const user = userEvent.setup();
+    render(<Listbox items={defaultItems} defaultHighlighted="a" onHighlightChange={onHighlight} />);
+
+    const listbox = screen.getByRole("listbox");
+    listbox.focus();
+    await user.keyboard("j");
+    expect(onHighlight).toHaveBeenLastCalledWith("b");
+    expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "b"));
+
+    await user.keyboard("k");
+    expect(onHighlight).toHaveBeenLastCalledWith("a");
+    expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "a"));
+  });
+
+  it("navigates with j on an empty buffer instead of starting a typeahead query", async () => {
+    const items = [
+      { id: "a", label: "Alpha" },
+      { id: "b", label: "Beta" },
+      { id: "juno", label: "Juno" },
+    ];
+    const onHighlight = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Listbox items={items} defaultHighlighted="a" typeahead onHighlightChange={onHighlight} />,
+    );
+
+    const listbox = screen.getByRole("listbox");
+    listbox.focus();
+    await user.keyboard("j");
+
+    // Navigation steps to the next item; a typeahead match would have jumped to Juno.
+    expect(onHighlight).toHaveBeenLastCalledWith("b");
+    expect(onHighlight).not.toHaveBeenCalledWith("juno");
+  });
+
+  it("navigates with k on an empty buffer instead of matching a k-item", async () => {
+    const items = [
+      { id: "kilo", label: "Kilo" },
+      { id: "a", label: "Alpha" },
+      { id: "b", label: "Beta" },
+    ];
+    const onHighlight = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Listbox items={items} defaultHighlighted="b" typeahead onHighlightChange={onHighlight} />,
+    );
+
+    const listbox = screen.getByRole("listbox");
+    listbox.focus();
+    await user.keyboard("k");
+
+    expect(onHighlight).toHaveBeenLastCalledWith("a");
+    expect(onHighlight).not.toHaveBeenCalledWith("kilo");
+  });
+
+  it("extends an in-progress typeahead query with j instead of navigating", async () => {
+    const items = [
+      { id: "fjord", label: "Fjord" },
+      { id: "foo", label: "Foo" },
+      { id: "bar", label: "Bar" },
+    ];
+    const onHighlight = vi.fn();
+    const user = userEvent.setup();
+    render(<Listbox items={items} typeahead onHighlightChange={onHighlight} />);
+
+    const listbox = screen.getByRole("listbox");
+    listbox.focus();
+    await user.keyboard("fj");
+
+    // "f" matches Fjord; the buffered "j" narrows the query to "fj" instead of
+    // moving the highlight on to Foo.
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      getEncodedListboxItemId("lb", "fjord"),
+    );
+    expect(onHighlight).not.toHaveBeenCalledWith("foo");
+  });
+
+  it("reports j/k boundary hits through onNavigationBoundaryReached when wrap is false", async () => {
+    const onBoundary = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <Listbox
+        items={defaultItems}
+        defaultHighlighted="c"
+        wrap={false}
+        onNavigationBoundaryReached={onBoundary}
+      />,
+    );
+
+    screen.getByRole("listbox").focus();
+    await user.keyboard("j");
+    expect(onBoundary).toHaveBeenLastCalledWith("next", expect.anything(), "j");
+
+    await user.keyboard("{Home}");
+    await user.keyboard("k");
+    expect(onBoundary).toHaveBeenLastCalledWith("previous", expect.anything(), "k");
+  });
+
+  it("keeps j as native typing in an editable descendant instead of navigating", async () => {
+    const onHighlight = vi.fn();
+    render(<ListboxWithEditableChild kind="input" onHighlightChange={onHighlight} />);
+    const editable = screen.getByRole("textbox", { name: "Editable child" });
+    editable.focus();
+
+    await userEvent.setup().keyboard("j");
+
+    expect(onHighlight).not.toHaveBeenCalled();
+    expect(editable).toHaveValue("j");
+    expect(screen.getByRole("listbox", { name: "Editable listbox" })).toHaveAttribute(
+      "aria-activedescendant",
+      "editable-alpha",
+    );
+  });
+
   it("includes disabled menu items in typeahead focus without activating them", async () => {
     const onHighlight = vi.fn();
     const onSelect = vi.fn();

@@ -6,6 +6,15 @@
 @source "../components";
 @source "../features";
 
+/* Panel enclosures draw the full --border while inner header/footer/row
+   hairlines keep consuming the lib's dimmer --panel-hairline mix, so the app
+   reads three nesting steps: enclosure -> inner cards -> row hairlines. A bare
+   :root is safe here (unlike palette tokens): no theme block declares
+   --panel-border, so nothing outranks. */
+:root {
+  --panel-border: var(--border);
+}
+
 @layer base {
   html,
   body,
@@ -19,3 +28,15 @@
    scroller behind it unreachable. The root chain stays non-bouncing via the
    html/body/#root rule above; dialogs prevent background scroll with
    use-scroll-lock, not CSS containment. */
+
+/* Home centres its hero and panes in whatever height is left, which reads as a
+   cover screen on a tall window but pushes the menu under the fold on a laptop.
+   Tailwind has no viewport-height variants here, so the anchor is a plain media
+   query: drop the column's top auto margin and start it 10vh down instead. Left
+   unlayered on purpose — it has to outrank the `m-auto` utility. */
+@media (max-height: 800px) {
+  .home-composition {
+    margin-top: 0;
+    padding-top: 10vh;
+  }
+}

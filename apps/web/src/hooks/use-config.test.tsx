@@ -6,6 +6,11 @@ import type {
   ConfigurationListResponse,
 } from "@diffgazer/core/schemas/config";
 import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
+import {
+  makeConfigurationInitResponse,
+  makeConfigurationListResponse,
+  READY_GEMINI_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -16,11 +21,6 @@ import {
   createConfigurationActionMocks,
   readyConfigurationStatus,
 } from "@/testing/configuration-action-mocks";
-import {
-  makeConfigurationInitResponse,
-  makeConfigurationListResponse,
-  READY_GEMINI_CONFIGURATION,
-} from "@/testing/configuration-fixtures";
 
 const geminiEndpoint =
   READY_GEMINI_CONFIGURATION.transportFamily === "hosted-api"

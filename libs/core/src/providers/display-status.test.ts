@@ -1,80 +1,91 @@
 import { describe, expect, it } from "vitest";
 import {
   READINESS_PRESENTATION,
+  READINESS_STATUSES,
   type Readiness,
   ReadinessSchema,
+  type ReadinessStatus,
 } from "../schemas/config/readiness.js";
 import type { TransportFamily } from "../schemas/config/transports.js";
 import {
-  getDisplayStatusBadge,
   getProviderDisplay,
   getProviderDisplayStatus,
+  getUnconfiguredDisplayStatus,
 } from "./display-status.js";
 
 const CHECKED_AT = "2026-07-31T10:00:00.000Z";
-type TestedReadinessStatus =
-  | "ready"
-  | "acknowledgement-required"
-  | "local-endpoint-unreachable"
-  | "unsupported"
-  | "removed";
+const NOT_APPLICABLE = { status: "not-applicable" } as const;
+const REQUIRED = { status: "required", noticeId: "provider-notice", noticeVersion: 1 } as const;
+const ACCEPTED = {
+  status: "accepted",
+  noticeId: "provider-notice",
+  noticeVersion: 1,
+  acceptedAt: CHECKED_AT,
+} as const;
 
-function readiness(status: TestedReadinessStatus): Readiness {
-  const presentation = READINESS_PRESENTATION[status];
-
+function evidence(status: ReadinessStatus) {
   if (status === "ready") {
-    return ReadinessSchema.parse({
-      status,
+    return {
       ready: true,
       evidenceStatus: "passed",
       checkedAt: CHECKED_AT,
-      acknowledgement: {
-        status: "accepted",
-        noticeId: "provider-notice",
-        noticeVersion: 1,
-        acceptedAt: CHECKED_AT,
-      },
-      ...presentation,
-    });
+      acknowledgement: ACCEPTED,
+    };
   }
 
   if (status === "acknowledgement-required") {
-    return ReadinessSchema.parse({
-      status,
+    return {
       ready: false,
       evidenceStatus: "passed",
       checkedAt: CHECKED_AT,
-      acknowledgement: {
-        status: "required",
-        noticeId: "provider-notice",
-        noticeVersion: 1,
-      },
-      ...presentation,
-    });
+      acknowledgement: REQUIRED,
+    };
   }
 
-  if (status === "local-endpoint-unreachable") {
-    return ReadinessSchema.parse({
-      status,
+  if (status === "unconfigured" || status === "unsupported" || status === "removed") {
+    return {
       ready: false,
-      evidenceStatus: "failed",
-      checkedAt: CHECKED_AT,
-      acknowledgement: { status: "not-applicable" },
-      ...presentation,
-    });
+      evidenceStatus: "not-checked",
+      checkedAt: null,
+      acknowledgement: NOT_APPLICABLE,
+    };
   }
 
+  if (status === "conformance-pending") {
+    return {
+      ready: false,
+      evidenceStatus: "pending",
+      checkedAt: CHECKED_AT,
+      acknowledgement: NOT_APPLICABLE,
+    };
+  }
+
+  if (status === "skipped") {
+    return {
+      ready: false,
+      evidenceStatus: "skipped",
+      checkedAt: CHECKED_AT,
+      acknowledgement: NOT_APPLICABLE,
+    };
+  }
+
+  return {
+    ready: false,
+    evidenceStatus: "failed",
+    checkedAt: CHECKED_AT,
+    acknowledgement: NOT_APPLICABLE,
+  };
+}
+
+function readiness(status: ReadinessStatus): Readiness {
   return ReadinessSchema.parse({
     status,
-    ready: false,
-    evidenceStatus: "not-checked",
-    checkedAt: null,
-    acknowledgement: { status: "not-applicable" },
-    ...presentation,
+    ...evidence(status),
+    ...READINESS_PRESENTATION[status],
   });
 }
 
-function display(status: TestedReadinessStatus, family: TransportFamily) {
+function display(status: ReadinessStatus, family: TransportFamily) {
   return getProviderDisplayStatus(readiness(status), family);
 }
 
@@ -111,15 +122,59 @@ describe("getProviderDisplayStatus", () => {
   });
 });
 
-describe("getDisplayStatusBadge", () => {
+describe("status badge wording", () => {
   it("keeps readable text alongside the visual variant", () => {
-    expect(getDisplayStatusBadge(readiness("unsupported"), "local-cli")).toEqual({
+    expect(display("unsupported", "local-cli")).toMatchObject({
       label: "CLI unsupported",
+      shortLabel: "unsupported",
       variant: "warning",
     });
-    expect(getDisplayStatusBadge(readiness("ready"), "hosted-api")).toEqual({
+    expect(display("ready", "hosted-api")).toMatchObject({
       label: "Ready",
+      shortLabel: "ready",
       variant: "success",
+    });
+  });
+
+  it("describes compatibility checks in product language rather than conformance jargon", () => {
+    expect(display("conformance-pending", "hosted-api").label).toBe("Compatibility check needed");
+    expect(display("conformance-failed", "hosted-api").label).toBe("Compatibility check failed");
+  });
+
+  it("marks a missing model as needing attention, not as a failure", () => {
+    expect(display("model-missing", "hosted-api").variant).toBe("warning");
+  });
+});
+
+describe("status short labels", () => {
+  it.each(READINESS_STATUSES)("reduces %s to one lowercase status word", (status) => {
+    expect(display(status, "hosted-api").shortLabel).toMatch(/^[a-z]+$/);
+  });
+});
+
+describe("getUnconfiguredDisplayStatus", () => {
+  it("carries the shared unconfigured badge wording with nothing to explain yet", () => {
+    const { label, shortLabel, variant } = display("unconfigured", "hosted-api");
+    expect(getUnconfiguredDisplayStatus()).toEqual({
+      label,
+      shortLabel,
+      variant,
+      status: "unconfigured",
+      action: "create",
+      explanation: "",
+      remediation: "",
+      accessibleText: "Not configured",
+    });
+  });
+
+  it("lets a shell reword the status it is still resolving without losing the badge tone", () => {
+    const loading = getUnconfiguredDisplayStatus({ label: "Loading", shortLabel: "loading" });
+
+    expect(loading).toMatchObject({
+      label: "Loading",
+      shortLabel: "loading",
+      accessibleText: "Loading",
+      variant: "warning",
     });
   });
 });

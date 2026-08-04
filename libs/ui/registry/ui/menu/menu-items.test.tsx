@@ -15,6 +15,10 @@ function getMenuItemRadio(name: string | RegExp) {
 }
 
 describe("MenuItem hotkey prop", () => {
+  // The chip is decorative in both directions: hidden from assistive technology here, and
+  // hidden from coarse pointers by `pointer-coarse:hidden` on the span, since a keyboard
+  // accelerator means nothing on touch. jsdom cannot flip the pointer media query, so only
+  // the assistive-technology half is assertable in this suite.
   it("keeps an unbound hotkey decorative for assistive technology", async () => {
     const { container } = render(
       <Menu aria-label="Test menu">

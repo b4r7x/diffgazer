@@ -1,4 +1,3 @@
-import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import {
   DialogAction,
   DialogClose,
@@ -22,11 +21,12 @@ interface ApiKeyFooterProps {
   confirmHighlighted: boolean;
 }
 
+// The legend every dialog with a default action reads, in press order: pick a method,
+// save, back out. Enter is spelled once, against the verb the default action performs.
 const HINTS: KeyboardHint[] = [
-  NAVIGATE_SHORTCUT,
-  { key: "Enter/Space", label: "Select" },
-  { key: "Esc", label: "Cancel" },
+  { key: "Space", label: "Select" },
   { key: "Enter", label: "Save" },
+  { key: "Esc", label: "Cancel" },
 ];
 
 export function ApiKeyFooter({

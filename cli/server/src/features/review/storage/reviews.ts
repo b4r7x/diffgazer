@@ -12,8 +12,15 @@ import type {
 } from "@diffgazer/core/schemas/review";
 import { isNodeError } from "../../../shared/lib/fs.js";
 import { log } from "../../../shared/lib/log.js";
+import {
+  compareReviewOrder,
+  decodeReviewCursor,
+  encodeReviewCursor,
+  type ReviewCursorBoundary,
+} from "./cursor.js";
 import type { ReviewSalvageDiagnostics } from "./lenient-read.js";
 import { prohibitResumablePartialFindings } from "./lenient-read.js";
+import { withReviewLock } from "./lock.js";
 import {
   addToProjectIndex,
   clearReconcileMarker,
@@ -30,14 +37,7 @@ import {
   withProjectIndexLock,
   writeCursorProjectIndexLocked,
 } from "./project-index.js";
-import {
-  compareReviewOrder,
-  decodeReviewCursor,
-  encodeReviewCursor,
-  type ReviewCursorBoundary,
-} from "./review-cursor.js";
-import { withReviewLock } from "./review-lock.js";
-import { reviewStore } from "./review-store.js";
+import { reviewStore } from "./store.js";
 import type { DateFieldsOf, SaveReviewOptions, StoreError, StoreErrorCode } from "./types.js";
 
 function filterByProjectAndSort<T extends { id: string; projectPath: string }>(

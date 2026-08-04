@@ -11,12 +11,15 @@ import {
 
 describe("config store", () => {
   it("re-keys review history when a trusted project directory is moved", async () => {
-    const { setReviewRekeyHandler, createConfigStore } = await import("./store.js");
+    const { createConfigStore } = await import("./store.js");
+    const { registerConfigSeams, resetConfigSeams } = await import("./seams.js");
     const rekeys: Array<[string, string]> = [];
     let shouldComplete = false;
-    setReviewRekeyHandler(async (oldPath, newPath) => {
-      rekeys.push([oldPath, newPath]);
-      return shouldComplete;
+    registerConfigSeams({
+      reviewRekeyHandler: async (oldPath, newPath) => {
+        rekeys.push([oldPath, newPath]);
+        return shouldComplete;
+      },
     });
 
     const originalRoot = join(diffgazerHome, "original");
@@ -53,7 +56,7 @@ describe("config store", () => {
         ).toMatchObject({ repoRoot: movedRoot });
       });
     } finally {
-      setReviewRekeyHandler(async () => true);
+      resetConfigSeams();
     }
   });
 

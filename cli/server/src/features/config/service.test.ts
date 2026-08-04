@@ -7,11 +7,12 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
 import { sha256CanonicalJsonSync } from "@diffgazer/core/schemas/review";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { executionLimitsFromBudget } from "../../shared/lib/ai/admission/service.js";
 import { createAdmissionEvidence } from "../../shared/lib/config/admission-evidence.js";
 import { DEFAULT_CONFIGURATION_BUDGET } from "../../shared/lib/config/store.js";
 import {
+  catalog,
   configPath,
   diffgazerHome,
   loadStore,
@@ -133,25 +134,27 @@ async function loadService() {
 // Deletion fails closed without a lease authority, so these tests install the
 // same process-wide one the composition root installs.
 async function installLeaseAuthority(): Promise<void> {
-  const { setConfigurationLeaseHooks } = await import("../../shared/lib/config/store.js");
+  const { registerConfigSeams } = await import("../../shared/lib/config/seams.js");
   const { createConfigurationLeaseHooks } = await import("../../shared/lib/session-registry.js");
-  setConfigurationLeaseHooks(createConfigurationLeaseHooks());
+  registerConfigSeams({ leaseHooks: createConfigurationLeaseHooks() });
 }
 
 // `loadStore` reinstalls the real authority, so a test that wants to observe the
 // hook calls installs its own recorder after the store is loaded.
 async function recordLeaseHookCalls(): Promise<string[]> {
-  const { setConfigurationLeaseHooks } = await import("../../shared/lib/config/store.js");
+  const { registerConfigSeams } = await import("../../shared/lib/config/seams.js");
   const events: string[] = [];
-  setConfigurationLeaseHooks({
-    revoke: (configurationId) => {
-      events.push(`revoke:${configurationId}`);
-    },
-    cancel: (configurationId) => {
-      events.push(`cancel:${configurationId}`);
-    },
-    drain: (configurationId) => {
-      events.push(`drain:${configurationId}`);
+  registerConfigSeams({
+    leaseHooks: {
+      revoke: (configurationId) => {
+        events.push(`revoke:${configurationId}`);
+      },
+      cancel: (configurationId) => {
+        events.push(`cancel:${configurationId}`);
+      },
+      drain: (configurationId) => {
+        events.push(`drain:${configurationId}`);
+      },
     },
   });
   return events;
@@ -426,6 +429,33 @@ describe("configuration service actions", () => {
     expect(readFileSync(configPath(), "utf8")).toBe(configBefore);
   });
 
+  // Clients read the echoed summary instead of re-deriving what they asked for,
+  // so a succeeded response must carry the requested model and a revision that
+  // has actually moved past the one the caller held.
+  it("echoes the requested model on select and a moved revision on update", async () => {
+    writeJson(configPath(), v2Config([supportedRecord()]));
+    const { runConfigurationAction } = await loadService();
+
+    const selected = await runConfigurationAction({
+      action: "select",
+      configurationId: "cfg-existing",
+      modelId: "gemini-2.5-flash",
+    });
+    expect(selected).toMatchObject({
+      ok: true,
+      value: {
+        action: "select",
+        status: "succeeded",
+        configuration: { selectedModelId: "gemini-2.5-flash" },
+      },
+    });
+
+    const updated = await runConfigurationAction(updateGeminiAction("cfg-existing", 1));
+    expect(updated.ok).toBe(true);
+    if (!updated.ok) return;
+    expect(updated.value.configuration?.revision).toBeGreaterThan(1);
+  });
+
   it("revokes, cancels, and drains leases before transactional delete", async () => {
     const { runConfigurationAction } = await loadService();
     const { configurationId } = await seedGeminiConfiguration();
@@ -446,6 +476,152 @@ describe("configuration service actions", () => {
     ]);
     expect(readFileSync(configPath(), "utf8")).not.toBe(configBefore);
     expect(existsSync(literalSecretPathFor(configurationId, 1))).toBe(false);
+  });
+});
+
+describe("configuration catalog model discovery", () => {
+  const discoveredAt = "2026-08-02T12:00:00.000Z";
+
+  const catalogModel = (id: string, tier: "free" | "paid" = "paid") => ({
+    id,
+    name: id,
+    description: "128K context",
+    tier,
+  });
+
+  async function seedZaiConfiguration() {
+    const service = await loadService();
+    await loadStore();
+    const created = await service.runConfigurationAction({
+      action: "create",
+      input: {
+        transportFamily: "hosted-api",
+        productId: "zai",
+        endpoint: "https://api.z.ai/api/paas/v4",
+        credential: { kind: "literal", value: "sk-zai-service-secret" },
+      },
+    });
+    expect(created.ok).toBe(true);
+    if (!created.ok) throw new Error("expected zai configuration to be created");
+    const configurationId = created.value.configuration?.configurationId;
+    if (!configurationId) throw new Error("create response requires a configuration");
+    return { service, configurationId };
+  }
+
+  it("returns product-filtered catalog models for a supported configuration", async () => {
+    const { service, configurationId } = await seedZaiConfiguration();
+    catalog.discoverConfigurationCatalog.mockImplementation(
+      async (tuple: { configurationId: string; productId: string }) => ({
+        ...tuple,
+        status: "passed",
+        models: [catalogModel("glm-4.7"), catalogModel("glm-4.7-flash", "free")],
+        fetchedAt: discoveredAt,
+        source: "snapshot",
+        cached: false,
+        observationSource: "models.dev-snapshot",
+        checkedAt: discoveredAt,
+      }),
+    );
+
+    const result = await service.discoverConfigurationModels(configurationId);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toMatchObject({
+      status: "passed",
+      configurationId,
+      productId: "zai",
+      transportFamily: "hosted-api",
+      checkedAt: discoveredAt,
+      source: "snapshot",
+      cached: false,
+    });
+    if (result.value.status !== "passed") return;
+    expect(result.value.models.map(({ id }) => id)).toEqual(["glm-4.7"]);
+    expect(catalog.discoverConfigurationCatalog).toHaveBeenCalledWith({
+      configurationId,
+      productId: "zai",
+    });
+  });
+
+  it("passes the registry-owned skipped reason through verbatim", async () => {
+    const { service, configurationId } = await seedZaiConfiguration();
+    catalog.discoverConfigurationCatalog.mockImplementation(
+      async (tuple: { configurationId: string; productId: string }) => ({
+        ...tuple,
+        status: "skipped",
+        models: [],
+        reason: "Catalog observations are unavailable for this configuration product.",
+        checkedAt: discoveredAt,
+      }),
+    );
+
+    const result = await service.discoverConfigurationModels(configurationId);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toMatchObject({
+      status: "skipped",
+      configurationId,
+      models: [],
+      checkedAt: discoveredAt,
+      reason: "Catalog observations are unavailable for this configuration product.",
+    });
+  });
+
+  it("degrades an invalid discovery payload to a mapped error instead of throwing", async () => {
+    const { service, configurationId } = await seedZaiConfiguration();
+    catalog.discoverConfigurationCatalog.mockImplementation(
+      async (tuple: { configurationId: string; productId: string }) => ({
+        ...tuple,
+        status: "passed",
+        models: [{ ...catalogModel("glm-4.7"), contextLength: 0 }],
+        fetchedAt: discoveredAt,
+        source: "snapshot",
+        cached: false,
+        observationSource: "models.dev-snapshot",
+        checkedAt: discoveredAt,
+      }),
+    );
+
+    const result = await service.discoverConfigurationModels(configurationId);
+
+    expect(result).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
+  });
+
+  it("fails with CONFIGURATION_NOT_FOUND for an unknown configuration", async () => {
+    const service = await loadService();
+    await loadStore();
+
+    const result = await service.discoverConfigurationModels("cfg-missing");
+
+    expect(result).toMatchObject({ ok: false, error: { code: "CONFIGURATION_NOT_FOUND" } });
+    expect(catalog.discoverConfigurationCatalog).not.toHaveBeenCalled();
+  });
+
+  it("rejects removed configurations without touching the catalog", async () => {
+    writeJson(configPath(), v2Config([removedRecord()]));
+    writeJson(
+      secretsPath(),
+      v2Secrets([
+        {
+          configurationId: "cfg-removed",
+          revision: 1,
+          kind: "file-0600",
+          filePath: literalSecretPathFor("cfg-removed", 1),
+          status: "removed",
+        },
+      ]),
+    );
+    mkdirSync(dirname(literalSecretPathFor("cfg-removed", 1)), { recursive: true });
+    writeFileSync(literalSecretPathFor("cfg-removed", 1), "sk-zai-coding-secret", { mode: 0o600 });
+    const service = await loadService();
+    await loadStore();
+
+    const result = await service.discoverConfigurationModels("cfg-removed");
+
+    expect(result).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
+    expect(catalog.discoverConfigurationCatalog).not.toHaveBeenCalled();
   });
 });
 
@@ -499,7 +675,7 @@ describe("configuration service bootstrap reads", () => {
     temporaryProjectRoots.length = 0;
   });
 
-  it("returns an error when list encounters a configuration record without a configurationId", async () => {
+  it("drops a configuration record without a configurationId instead of blanking the list", async () => {
     const unknownWithoutId = '{"schemaVersion":99}';
     mkdirSync(dirname(configPath()), { recursive: true });
     writeFileSync(
@@ -510,43 +686,84 @@ describe("configuration service bootstrap reads", () => {
 
     const result = await listConfigurations();
 
-    expect(result).toMatchObject({
-      ok: false,
-      error: { code: "CONFIGURATION_UNSUPPORTED" },
-    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.configurations).toHaveLength(0);
   });
 
-  it("returns an error when list encounters an uninspectable configuration record", async () => {
+  it("keeps the readable rows when a record in the middle cannot be inspected", async () => {
     const unknownRecord = '{"schemaVersion":99,"configurationId":"cfg-future"}';
+    const firstRecord = supportedRecord({ configurationId: "cfg-first" });
+    const lastRecord = supportedRecord({ configurationId: "cfg-last" });
     mkdirSync(dirname(configPath()), { recursive: true });
     writeFileSync(
       configPath(),
-      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${JSON.stringify(supportedRecord())},${unknownRecord}]}\n`,
+      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${JSON.stringify(firstRecord)},${unknownRecord},${JSON.stringify(lastRecord)}]}\n`,
     );
     writeJson(
       secretsPath(),
-      v2Secrets([
-        {
-          configurationId: "cfg-existing",
+      v2Secrets(
+        ["cfg-first", "cfg-last"].map((configurationId) => ({
+          configurationId,
           revision: 1,
           kind: "file-0600",
-          filePath: literalSecretPathFor("cfg-existing", 1),
+          filePath: literalSecretPathFor(configurationId, 1),
           status: "active",
-        },
-      ]),
+        })),
+      ),
     );
-    mkdirSync(dirname(literalSecretPathFor("cfg-existing", 1)), { recursive: true });
-    writeFileSync(literalSecretPathFor("cfg-existing", 1), "sk-proj-existing-secret", {
-      mode: 0o600,
-    });
+    for (const configurationId of ["cfg-first", "cfg-last"]) {
+      mkdirSync(dirname(literalSecretPathFor(configurationId, 1)), { recursive: true });
+      writeFileSync(literalSecretPathFor(configurationId, 1), "sk-proj-existing-secret", {
+        mode: 0o600,
+      });
+    }
     const { listConfigurations } = await loadService();
 
     const result = await listConfigurations();
 
-    expect(result).toMatchObject({
-      ok: false,
-      error: { code: "CONFIGURATION_UNSUPPORTED" },
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(
+      result.value.configurations.map(({ configuration }) => configuration.configurationId),
+    ).toEqual(["cfg-first", "cfg-last"]);
+  });
+
+  it("keeps the readable rows when the middle record throws on inspect", async () => {
+    const configurationIds = ["cfg-first", "cfg-middle", "cfg-last"];
+    writeJson(
+      configPath(),
+      v2Config(configurationIds.map((configurationId) => supportedRecord({ configurationId }))),
+    );
+    writeJson(
+      secretsPath(),
+      v2Secrets(
+        configurationIds.map((configurationId) => ({
+          configurationId,
+          revision: 1,
+          kind: "file-0600",
+          filePath: literalSecretPathFor(configurationId, 1),
+          status: "active",
+        })),
+      ),
+    );
+    const { listConfigurations } = await loadService();
+    const store = await loadStore();
+    const runAction = store.runConfigurationAction.bind(store);
+    vi.spyOn(store, "runConfigurationAction").mockImplementation(async (action) => {
+      if (action.action === "inspect" && action.configurationId === "cfg-middle") {
+        throw new Error("inspect exploded");
+      }
+      return runAction(action);
     });
+
+    const result = await listConfigurations();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(
+      result.value.configurations.map(({ configuration }) => configuration.configurationId),
+    ).toEqual(["cfg-first", "cfg-last"]);
   });
 
   it("lists supported configurations with safe summaries and readiness", async () => {

@@ -64,7 +64,11 @@ const config = defineConfig(() => {
       ? {
           environment: "jsdom",
           setupFiles: ["./src/test-setup.ts"],
-          testTimeout: 10_000,
+          // Same budget as the other script-heavy workspaces (cli/add): the docs suite
+          // includes artifact-build, route-tree, and link-checker tests that spawn
+          // builds and read the shipped corpus. They run 1.5-3.2s alone but blow past
+          // 10s when `turbo run test` fans out across all 17 packages at once.
+          testTimeout: 30_000,
         }
       : undefined,
     server: {
@@ -102,6 +106,7 @@ const config = defineConfig(() => {
           import.meta.dirname,
           "./src/hooks/use-pending-docs-route",
         ),
+        "@/hooks/use-is-scrollable": resolve(import.meta.dirname, "./src/hooks/use-is-scrollable"),
         "@/hooks/mobile-nav-context": resolve(
           import.meta.dirname,
           "./src/hooks/mobile-nav-context",
@@ -121,7 +126,11 @@ const config = defineConfig(() => {
         "@/lib/floating-position": uiRegistryPath("lib/floating-position"),
         "@/lib/floating-position-constants": uiRegistryPath("lib/floating-position-constants"),
         "@/lib/input-variants": uiRegistryPath("lib/input-variants"),
+        "@/lib/listbox-children": uiRegistryPath("lib/listbox-children"),
+        "@/lib/listbox-dom": uiRegistryPath("lib/listbox-dom"),
+        "@/lib/listbox-metadata": uiRegistryPath("lib/listbox-metadata"),
         "@/lib/marker-rail": uiRegistryPath("lib/marker-rail"),
+        "@/lib/overlay-dismiss-stack": uiRegistryPath("lib/overlay-dismiss-stack"),
         "@/lib/search": uiRegistryPath("lib/search"),
         "@/lib/segmented-brackets": uiRegistryPath("lib/segmented-brackets"),
         "@/lib/segmented-variants": uiRegistryPath("lib/segmented-variants"),

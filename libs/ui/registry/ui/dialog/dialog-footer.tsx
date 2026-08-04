@@ -22,7 +22,9 @@ function DialogFooterRoot({ hints, className, children, ...props }: DialogFooter
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-wrap gap-3 items-center px-5 pt-3 pb-4 shrink-0 bg-background text-foreground",
+        // No background of its own: the footer inherits the dialog's --surface-1 fill so the
+        // action row never reads as a second-tone strip under the body.
+        "flex flex-wrap gap-3 items-center px-5 pt-3 pb-4 shrink-0",
         // corners="bold" draws 28px bracket arms; the footer insets past them so
         // an action button corner never collides with the bottom brackets.
         "[[data-corners=bold]_&]:px-8 [[data-corners=bold]_&]:pb-6",

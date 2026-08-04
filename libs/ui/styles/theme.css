@@ -131,6 +131,8 @@
      In dark the step goes lighter, so the lip is a soft foreground wash. */
   --surface-1: #111111;
   --surface-1-highlight: color-mix(in oklab, var(--base-fg) 12%, transparent);
+  /* Second elevation step — dialog header strip, panel tab chips. */
+  --surface-2: #181818;
 
   --trans-fast: 0.15s ease;
   --radius: 0.25rem;
@@ -255,4 +257,6 @@
      --surface-1-highlight lip on top keeps the step reading as raised. */
   --surface-1: #eef0f3;
   --surface-1-highlight: #ffffff;
+  /* Second elevation step — dialog header strip, panel tab chips. */
+  --surface-2: #e7eaee;
 }

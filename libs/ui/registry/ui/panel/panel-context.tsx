@@ -5,11 +5,6 @@ import { createContext, useContext } from "react";
 /** Context value shared by panel. */
 export interface PanelContextValue {
   /**
-   * True when the panel draws corner brackets (the viewfinder frame, or any frame while
-   * focused). PanelLabel reads it to clear the bracket arm instead of painting over it.
-   */
-  hasCorners: boolean;
-  /**
    * True while the panel is marked as the active pane. PanelLabel reads it so the
    * readout variant state-changes with the corner brackets as one instrument.
    */

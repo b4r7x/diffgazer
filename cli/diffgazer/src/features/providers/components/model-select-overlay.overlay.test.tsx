@@ -1,17 +1,17 @@
-import "./model-select-overlay.terminal-mock";
+import "../testing/terminal-mock";
 import { useFooterData } from "@diffgazer/core/footer";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test } from "vitest";
-import { ModelSelectOverlay } from "./model-select-overlay";
-import { setTestTerminalDimensions } from "./model-select-overlay.terminal-mock";
 import {
   flushUntil,
   GEMINI_CONFIGURATION,
   geminiName,
   Wrapper,
-} from "./model-select-overlay.test-support";
+} from "../testing/model-select-overlay";
+import { setTestTerminalDimensions } from "../testing/terminal-mock";
+import { ModelSelectOverlay } from "./model-select-overlay";
 
 function FooterProbe() {
   const { shortcuts, rightShortcuts } = useFooterData();

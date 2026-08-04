@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
-import { atRuleBody, ruleBody } from "../../testing/css-contract";
+import { atRuleBody, eachRule, ruleBody } from "../../testing/css-contract";
 
 describe("DiffView CSS contract", () => {
   // jsdom's CSSOM ignores rules nested in @layer and never resolves container
@@ -45,14 +45,13 @@ describe("DiffView CSS contract", () => {
     // data-wrap="off" is the documented escape hatch (apps/landing depends on it
     // for the hero diff), so every rule that turns wrapping on is either the
     // explicit [data-wrap="on"] opt-in or excludes [data-wrap="off"].
-    const source = css.replace(/\/\*[\s\S]*?\*\//g, "");
-    const triggers = [...source.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-      .filter((rule) => rule[2]?.includes("--diff-code-white-space: pre-wrap"))
-      .map((rule) => (rule[1] ?? "").replace(/\s+/g, " ").trim());
+    const triggers = eachRule(css).filter((rule) =>
+      rule.declarations.includes("--diff-code-white-space: pre-wrap"),
+    );
 
     expect(triggers.length).toBeGreaterThan(0);
-    for (const selector of triggers) {
-      expect(selector).toMatch(/\[data-wrap="on"\]|:not\(\[data-wrap="off"\]\)/);
+    for (const trigger of triggers) {
+      expect(trigger.selector).toMatch(/\[data-wrap="on"\]|:not\(\[data-wrap="off"\]\)/);
     }
   });
 });

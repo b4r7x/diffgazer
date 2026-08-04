@@ -3,7 +3,7 @@ import { Callout } from "@diffgazer/ui/components/callout";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { CardLayout } from "@/components/layout/card-layout";
+import { CardLayout } from "@/components/layout/card";
 
 // Gates a settings detail query: renders the page CardLayout with a spinner
 // while loading and a Callout on error, or null once the data is ready.

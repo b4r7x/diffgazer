@@ -24,8 +24,8 @@ import {
   getSafeAdapterIdentity,
   getSafeAdapterProductNotice,
 } from "../types.js";
-import { HOSTED_ADAPTERS } from "./hosted.js";
-import { localOpenaiAdapter, ollamaAdapter } from "./local-http.js";
+import { HOSTED_ADAPTERS } from "./hosted/transport.js";
+import { localOpenaiAdapter, ollamaAdapter } from "./local-http/transport.js";
 import {
   ADAPTER_REGISTRY,
   bundledCliCompatibilityRecordCount,

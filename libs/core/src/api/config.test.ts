@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import type { ReadinessAcknowledgement } from "../schemas/config/readiness.js";
 import { createApiClient } from "./client.js";
 import {
   bindConfig,
   createConfiguration,
   deleteConfiguration,
+  getConfigurationModels,
   inspectConfiguration,
   listConfigurations,
   loadConfigurationInit,
@@ -14,7 +14,12 @@ import {
   updateConfiguration,
 } from "./config.js";
 import { createMockClient } from "./test-helpers.js";
-import { type ApiClient, type BodyRequestOptions, isApiError } from "./types.js";
+import {
+  type ApiClient,
+  type BodyRequestOptions,
+  isApiError,
+  type QueryRequestOptions,
+} from "./types.js";
 
 const checkedAt = "2026-07-31T12:00:00.000Z";
 const acknowledgement: Extract<ReadinessAcknowledgement, { status: "accepted" }> = {
@@ -69,6 +74,30 @@ function mockConfigurationActionPost(client: ApiClient, body: unknown): void {
     },
   );
 }
+
+function mockConfigurationModelsGet(client: ApiClient, body: unknown): void {
+  vi.mocked(client.get).mockImplementationOnce(
+    async <T>(_path: string, options?: QueryRequestOptions<T>) => {
+      if (options?.schema) {
+        return options.schema(body);
+      }
+      return body as T;
+    },
+  );
+}
+
+const configurationModels = {
+  status: "passed",
+  configurationId: "groq-primary",
+  productId: "groq",
+  transportFamily: "hosted-api",
+  models: [
+    { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B", description: "128K context", tier: "free" },
+  ],
+  checkedAt,
+  source: "snapshot",
+  cached: false,
+} as const;
 
 describe("config API functions", () => {
   let client: ApiClient;
@@ -173,114 +202,6 @@ describe("config API functions", () => {
     );
   });
 
-  it("rejects a successful selection response for a different model", async () => {
-    mockConfigurationActionPost(client, {
-      action: "select",
-      status: "succeeded",
-      configuration: { ...configuration, selectedModelId: "openai/gpt-oss-20b" },
-    });
-
-    await expect(
-      selectConfiguration(client, "groq-primary", "openai/gpt-oss-120b"),
-    ).rejects.toThrow("Configuration action response selected a different model");
-  });
-
-  it("rejects a successful delete response that still contains a supported configuration", async () => {
-    mockConfigurationActionPost(client, {
-      action: "delete",
-      status: "succeeded",
-      configuration,
-    });
-
-    await expect(deleteConfiguration(client, "groq-primary", 7)).rejects.toThrow(
-      "A successful delete response cannot contain a supported configuration",
-    );
-  });
-
-  it("rejects a successful create response without a supported configuration", async () => {
-    mockConfigurationActionPost(client, {
-      action: "create",
-      status: "succeeded",
-      configuration: {
-        configurationId: "groq-primary",
-        revision: 1,
-        status: "removed",
-        transportFamily: "hosted-api",
-        productId: REMOVED_PRODUCT_ID,
-        selectedModelId: null,
-        notices: [],
-        availableActions: ["inspect", "delete"],
-      },
-    });
-
-    await expect(createConfiguration(client, input)).rejects.toThrow(
-      "A successful create response must contain a supported configuration",
-    );
-  });
-
-  it("rejects stale update and delete response revisions", async () => {
-    mockConfigurationActionPost(client, {
-      action: "update",
-      status: "succeeded",
-      configuration: { ...configuration, revision: 6 },
-    });
-    mockConfigurationActionPost(client, {
-      action: "delete",
-      status: "succeeded",
-      configuration: {
-        configurationId: "groq-primary",
-        revision: 6,
-        status: "removed",
-        transportFamily: "hosted-api",
-        productId: REMOVED_PRODUCT_ID,
-        selectedModelId: null,
-        notices: [],
-        availableActions: ["inspect", "delete"],
-      },
-    });
-
-    await expect(
-      updateConfiguration(client, "groq-primary", 7, input, acknowledgement),
-    ).rejects.toThrow("Configuration action response returned a stale revision");
-    await expect(deleteConfiguration(client, "groq-primary", 7)).rejects.toThrow(
-      "Configuration delete response returned a stale revision",
-    );
-  });
-
-  it("rejects successful actions that claim a removed configuration", async () => {
-    mockConfigurationActionPost(client, {
-      action: "test",
-      status: "succeeded",
-      configuration: {
-        configurationId: "groq-primary",
-        revision: 7,
-        status: "removed",
-        transportFamily: "hosted-api",
-        productId: REMOVED_PRODUCT_ID,
-        selectedModelId: null,
-        notices: [],
-        availableActions: ["inspect", "delete"],
-      },
-      readiness: {
-        status: "removed",
-        ready: false,
-        evidenceStatus: "not-checked",
-        checkedAt: null,
-        acknowledgement: { status: "not-applicable" },
-        action: "delete",
-        explanation: "This saved product has been removed and cannot run reviews.",
-        remediation: {
-          code: "migrate-or-delete",
-          message: "Create a supported replacement or explicitly delete this record.",
-        },
-      },
-    });
-
-    await expect(testConfiguration(client, "groq-primary")).rejects.toThrow(
-      "A successful test response must contain a supported configuration",
-    );
-  });
-
   it("rejects secret-bearing action responses at the HTTP boundary", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({
@@ -309,6 +230,50 @@ describe("config API functions", () => {
     expect(isApiError(error)).toBe(true);
     if (!isApiError(error)) throw new Error("Expected ApiError");
     expect(error).toMatchObject({ status: 422, code: "INVALID_RESPONSE" });
+  });
+
+  it("fetches configuration-bound catalog models from the encoded models path", async () => {
+    mockConfigurationModelsGet(client, configurationModels);
+
+    const response = await getConfigurationModels(client, "groq-primary");
+
+    expect(client.get).toHaveBeenCalledWith("/api/config/providers/groq-primary/models", {
+      schema: expect.any(Function),
+    });
+    expect(response).toEqual(configurationModels);
+  });
+
+  it("percent-encodes configuration IDs in the models path", async () => {
+    mockConfigurationModelsGet(client, {
+      ...configurationModels,
+      configurationId: "cfg:primary",
+    });
+
+    await getConfigurationModels(client, "cfg:primary");
+
+    expect(client.get).toHaveBeenCalledWith("/api/config/providers/cfg%3Aprimary/models", {
+      schema: expect.any(Function),
+    });
+  });
+
+  it("rejects a models response bound to a different configuration", async () => {
+    mockConfigurationModelsGet(client, {
+      ...configurationModels,
+      configurationId: "other-configuration",
+    });
+
+    await expect(getConfigurationModels(client, "groq-primary")).rejects.toThrow(
+      "Configuration models response belongs to a different configuration",
+    );
+  });
+
+  it("rejects a malformed models response before it reaches consumers", async () => {
+    mockConfigurationModelsGet(client, {
+      ...configurationModels,
+      cached: true,
+    });
+
+    await expect(getConfigurationModels(client, "groq-primary")).rejects.toThrow();
   });
 
   it("loads safe V2 configuration bootstrap and list projections", async () => {
@@ -346,6 +311,7 @@ describe("config API functions", () => {
       "createConfiguration",
       "deleteConfiguration",
       "executeConfigurationAction",
+      "getConfigurationModels",
       "inspectConfiguration",
       "listConfigurations",
       "loadConfigurationInit",

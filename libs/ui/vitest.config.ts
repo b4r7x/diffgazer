@@ -27,10 +27,11 @@ export default defineConfig({
             "registry/**/*.test.ts",
             "registry/**/*.test.tsx",
             "scripts/**/*.test.ts",
+            "styles/**/*.test.ts",
             "theme/**/*.test.ts",
           ],
           exclude: ["registry/**/*.ssr.test.tsx"],
-          setupFiles: ["./src/test-setup.ts"],
+          setupFiles: ["./testing/setup.ts"],
           // Typecheck runs only when `test:types` passes `--typecheck`, not on
           // plain `test`; the config below applies to that pass.
           typecheck: {
@@ -39,6 +40,7 @@ export default defineConfig({
               "registry/**/*.test.ts",
               "registry/**/*.test.tsx",
               "scripts/**/*.test.ts",
+              "styles/**/*.test.ts",
               "theme/**/*.test.ts",
             ],
             exclude: ["registry/**/*.ssr.test.tsx"],

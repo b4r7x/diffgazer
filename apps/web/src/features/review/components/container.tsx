@@ -77,6 +77,7 @@ function ReviewStreamContainer({
     loadingMessage,
     readiness,
     selectedConfiguration,
+    isCompleting,
     isTransitionPending,
     handleCancel,
     handleBack,
@@ -148,9 +149,10 @@ function ReviewStreamContainer({
     );
   }
 
-  const reportStep = state.steps.find((s) => s.id === "report");
-  const canViewResults = reportStep?.status === "completed";
-
+  // View Results skips the completion delay, so it is offered only once the
+  // completion machine is actually delaying: the report step can finish while
+  // the stream is still deduping issues, and skipping then would hand over a
+  // partial result with no duration.
   return (
     <ReviewProgressView
       data={progressData}
@@ -164,7 +166,7 @@ function ReviewStreamContainer({
       }
       reviewId={state.reviewId}
       onRetry={handleRetry}
-      onViewResults={canViewResults ? handleViewResults : undefined}
+      onViewResults={isCompleting ? handleViewResults : undefined}
       onCancel={handleCancel}
       onBack={handleBack}
       cancelDisabled={isTransitionPending}

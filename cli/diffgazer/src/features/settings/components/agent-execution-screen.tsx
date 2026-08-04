@@ -11,7 +11,7 @@ import type { ReactElement } from "react";
 import { useState } from "react";
 import { RadioGroup } from "../../../components/ui/radio";
 import { useNavigation } from "../../../hooks/use-navigation";
-import { SettingsFormScreen } from "./settings-form-screen";
+import { SettingsFormScreen } from "./form-screen";
 
 const LIST_SHORTCUTS: Shortcut[] = [NAVIGATE_SHORTCUT, { key: "Enter", label: "Select Mode" }];
 

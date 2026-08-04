@@ -32,6 +32,10 @@
       "types": "./dist/json.d.ts",
       "import": "./dist/json.js"
     },
+    "./redaction": {
+      "types": "./dist/redaction.d.ts",
+      "import": "./dist/redaction.js"
+    },
     "./onboarding": {
       "types": "./dist/onboarding/index.d.ts",
       "import": "./dist/onboarding/index.js"
@@ -135,6 +139,10 @@
     "./testing/match-media": {
       "types": "./dist/testing/match-media.d.ts",
       "import": "./dist/testing/match-media.js"
+    },
+    "./testing/provider-fixtures": {
+      "types": "./dist/testing/provider-fixtures.d.ts",
+      "import": "./dist/testing/provider-fixtures.js"
     },
     "./testing/query-wrapper": {
       "types": "./dist/testing/query-wrapper.d.ts",

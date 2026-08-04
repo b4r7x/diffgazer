@@ -14,7 +14,8 @@ import { Panel } from "@diffgazer/ui/components/panel";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { useId } from "react";
 import { useConfigData } from "@/hooks/use-config";
-import { useDiagnosticsKeyboard } from "./use-diagnostics-keyboard";
+import { useFocusWithin } from "@/hooks/use-focus-within";
+import { useDiagnosticsKeyboard } from "./use-keyboard";
 
 type OverallState = "loading" | "error" | "empty" | "success";
 
@@ -63,6 +64,7 @@ function getOverallState({
 
 export function SettingsDiagnosticsPage() {
   const titleId = useId();
+  const { focusWithin, props: focusProps } = useFocusWithin<HTMLDivElement>();
   const { provider, model } = useConfigData();
   const diagnostics = useDiagnosticsData();
   const {
@@ -111,16 +113,17 @@ export function SettingsDiagnosticsPage() {
   const contextTimestamp = formatTimestampOrNA(contextGeneratedAt, "Unavailable");
 
   return (
-    // Same wrapper padding, width, frame, and corner-label title as CardLayout. The
-    // panel is written out rather than reusing CardLayout because the diagnostics
-    // region is the element that carries aria-busy while a refresh is in flight.
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-7 pb-4">
+    // Same wrapper padding, width, frame, and corner-label title as CardLayout,
+    // plus its own elevation. The panel is written out rather than reusing
+    // CardLayout because the diagnostics region is the element that carries
+    // aria-busy while a refresh is in flight.
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
       <Panel
-        frame="viewfinder"
-        focused
+        {...focusProps}
+        focused={focusWithin}
         aria-labelledby={titleId}
         aria-busy={isRefreshingAll || isRefreshing}
-        className="mx-auto w-full max-w-2xl"
+        className="m-auto w-full max-w-2xl shadow-lg"
       >
         <Panel.Label>
           <h1 id={titleId}>System Diagnostics</h1>

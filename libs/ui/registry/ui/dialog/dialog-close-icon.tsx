@@ -14,8 +14,9 @@ export interface DialogCloseIconProps
 }
 
 /**
- * Optional top-right close button - render LAST inside DialogContent so DOM/Tab order is
- * correct (it absolute-positions itself)
+ * Top-right close button. Modal DialogContent renders one by default (opt out with
+ * closeIcon={false}); compose it manually - LAST inside DialogContent so DOM/Tab order is
+ * correct (it absolute-positions itself) - on inline dialogs.
  */
 export function DialogCloseIcon({
   ref,

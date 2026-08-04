@@ -38,7 +38,7 @@ export const panelDoc: ComponentDoc = {
     {
       name: "PanelLabel",
       indent: 1,
-      note: "Floating corner label (e.g. [ 01 / FS_TREE ]). The Panel root is the positioning context (panel.css sets position: relative on every frame), and the label's inline-start inset follows the frame's corner brackets.",
+      note: "Floating corner label (e.g. [ 01 / FS_TREE ]). The Panel root is the positioning context (panel.css sets position: relative on every frame), and the label sits at one constant inline-start inset that clears a corner bracket in every state.",
     },
   ],
   notes: [
@@ -46,6 +46,11 @@ export const panelDoc: ComponentDoc = {
       title: "Frames",
       content:
         "Pick one frame via the `frame` prop: hairline (default soft border + marker bar), rail (inline-start rail drawn in --border-strong so it reads as a deliberate frame rather than a stray divider), viewfinder (four corner brackets), surface (--surface-1 background with a hairline perimeter and a 1px inner top lip in --surface-1-highlight — the fill steps lighter in dark and darker in light, and the lip is what keeps both directions reading as raised). Frame is purely visual chrome and applies independently of tone and density.",
+    },
+    {
+      title: "Component tokens",
+      content:
+        "The perimeter paints `--panel-border-color`, whose default chain is `--panel-border` → `--panel-hairline` → a 60% `--border` mix. Set `--panel-border` on the panel or any ancestor (defaults resolve through var() fallbacks, so ancestor scoping reaches them) to lift the enclosure to a full-strength border while header, footer, and row hairlines stay on `--panel-hairline` — that split is what keeps the nesting ladder (panel enclosure → inner card → row hairline) readable. `--panel-border-color` itself is internal: `focused` repoints it at `--border-strong` on the hairline and surface frames (rail draws its own `--border-strong` edge, viewfinder has no border), and descendants inherit it, which is how a Panel.Label chip edge tracks the perimeter in every state without restating the chain. The other consumer tokens are `--panel-bg` (default `--background`), `--panel-fg` (default `--foreground`), `--panel-hairline`, and `--panel-tone` (the header marker bar, which `tone` overrides). Bracket geometry rides `--viewfinder-size` (12px), `--viewfinder-weight` (1px), `--viewfinder-color`, and `--viewfinder-offset` (-1px, seating the arm on the border line).",
     },
     {
       title: "Tone",
@@ -60,7 +65,7 @@ export const panelDoc: ComponentDoc = {
     {
       title: "Header marker",
       content:
-        '`PanelHeader marker="bar"` (default) renders a 4px foreground bar to the left of Title/Description, matching Dialog\'s marker="bar". Set `marker="none"` for rail/custom layouts where the bar would clash.',
+        '`PanelHeader marker="bar"` (default) renders a 4px foreground bar to the left of Title/Description. Set `marker="none"` for rail/custom layouts where the bar would clash.',
     },
     {
       title: "Accessibility",
@@ -75,17 +80,17 @@ export const panelDoc: ComponentDoc = {
     {
       title: "Corner labels",
       content:
-        "Use Panel.Label variant='border' for a boxed border label, variant='gap' for a border cutout label, or variant='readout' to seat the label on the panel's top rule between the two bracket arms (no box — the arms are the frame). The label sits at the standard 1rem inline-start inset on frames without corner brackets and steps past the arm when the panel draws them (frame='viewfinder', or any frame while focused), so its opaque background never covers a bracket. The readout tracks the arm's current length instead of a fixed offset, and repaints in --ring while the pane is focused, so label and corners read as one instrument. Every label publishes data-variant, data-inset ('edge' or 'corner'), and data-state='focused'; consumers do not hand-roll those offsets.",
+        "Use Panel.Label variant='border' for a tab chip seated on the panel border, variant='gap' for a border cutout label, or variant='readout' to seat the label on the panel's top rule between the two bracket arms (no box — the arms are the frame). The border chip recipe is fixed: 11px bold uppercase at 0.1em tracking in --muted-foreground, a --surface-2 fill, and a 1px border reading the panel's own --panel-border-color, so the chip edge matches the enclosure while resting and while focused. The inline-start inset is constant at 1rem: a bracket arm is the same 12px whether the panel is resting or focused, so one inset clears it in every state and the label never moves when focus arrives. The readout still sits just past the arm and repaints in --ring while the pane is focused, so label and corners read as one instrument. Every label publishes data-variant and data-state='focused'; consumers do not hand-roll those offsets.",
     },
     {
       title: "Focused pane",
       content:
-        '`focused` marks the panel as the active pane in a multi-pane layout: viewfinder corner brackets grow on any frame, drawn in --ring, longer and thicker than the resting corners. It emits data-state="focused" and changes nothing else — no border, padding, or shadow shift, so toggling it never reflows the layout. It is a visual affordance only: it does not move DOM focus and does not change roles, names, or ARIA. Drive it from whatever pane-focus state the app already owns, and keep a real focus-visible outline on the interactive elements inside.',
+        '`focused` marks the panel as the active pane in a multi-pane layout: corner brackets appear on any frame drawn in --ring, at the same 12px/1px geometry the viewfinder frame rests at (seated on the border line), and a hairline or surface perimeter firms to --border-strong with them. It emits data-state="focused" and shifts no size — no padding, bracket-length, or shadow change — so toggling it never reflows the layout. It is a visual affordance only: it does not move DOM focus and does not change roles, names, or ARIA. Drive it from whatever pane-focus state the app already owns, and keep a real focus-visible outline on the interactive elements inside.',
     },
     {
       title: "Reticle grammar",
       content:
-        'The corner brackets are a signature, not decoration, and they mean one thing: this is the pane the keyboard drives. Four rules, stated as prohibitions because those are the ones that get broken. (1) A panel that cannot receive keyboard focus must not use frame="viewfinder" and must not pass `focused`. (2) A screen renders at most one panel with data-state="focused" at any time — assert it with expectSingleReticle(container) in full-screen tests. (3) frame="viewfinder" without `focused` is reserved for surfaces where the reticle is the subject rather than the chrome, such as a marketing hero lens; on product screens the reticle always means focus. (4) Resting corners are --border-strong, focused corners are --ring, never --foreground — the inert state must not outweigh the active one.',
+        'The corner brackets are a signature, not decoration, and they mean one thing: this is the pane the keyboard drives. Four rules, stated as prohibitions because those are the ones that get broken. (1) A panel that cannot receive keyboard focus must not use frame="viewfinder" and must not pass `focused`. (2) A screen renders at most one panel with data-state="focused" at any time — in full-screen tests, assert that the selector [data-slot="panel"][data-state="focused"] matches exactly one element. (3) frame="viewfinder" without `focused` is reserved for surfaces where the reticle is the subject rather than the chrome, such as a marketing hero lens; on product screens the reticle always means focus. (4) Geometry never encodes state: resting and focused brackets are both 12px arms at 1px stroke centered on the border line, and focus changes color only (--foreground → --ring, while a hairline or surface perimeter firms to --border-strong). A bracket thickened or lengthened to mean "focused" is out of grammar.',
     },
   ],
   usage: { example: "panel-default" },
@@ -133,7 +138,7 @@ export const panelDoc: ComponentDoc = {
         required: false,
         defaultValue: "false",
         description:
-          "Marks the panel as the active pane: viewfinder corner brackets render in --ring, thicker and longer than the resting frame, on every frame. Visual affordance only — it does not move focus or change ARIA.",
+          "Marks the panel as the active pane: corner brackets render in --ring on every frame, at the geometry the viewfinder frame already rests at, and a framed perimeter firms to --border-strong — only the brackets carry --ring. Visual affordance only — it does not move focus or change ARIA.",
       },
       children: {
         type: "ReactNode",

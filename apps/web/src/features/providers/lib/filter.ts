@@ -1,4 +1,5 @@
 import type { ProviderListRow } from "@diffgazer/core/providers";
+import { getBillingTier } from "@diffgazer/core/providers";
 
 export const PROVIDER_FILTERS = ["all", "configured", "needs-key", "free", "paid"] as const;
 export type ProviderFilter = (typeof PROVIDER_FILTERS)[number];
@@ -15,22 +16,17 @@ function isRemovedRow(row: ProviderListRow): boolean {
   return row.product.status === "removed";
 }
 
-function isReadyRow(row: ProviderListRow): boolean {
-  return row.readiness.ready;
-}
-
-function needsSetupRow(row: ProviderListRow): boolean {
-  return !isRemovedRow(row) && !row.readiness.ready;
+// "Configured" means a stored configuration exists; readiness (e.g. pending
+// conformance) is a separate axis and must not hide the row from this filter.
+function hasConfiguration(row: ProviderListRow): boolean {
+  return row.configuration !== null;
 }
 
 function hasFreeTier(row: ProviderListRow): boolean {
-  if (row.product.status === "removed") return false;
-  return row.product.billing.modes.includes("free-tier");
+  return getBillingTier(row.product.productId) === "free";
 }
 
 function matchesSearch(row: ProviderListRow, query: string): boolean {
-  if (isRemovedRow(row)) return false;
-
   const name = row.product.name.toLowerCase();
   const productId = row.product.productId.toLowerCase();
   return name.includes(query) || productId.includes(query);
@@ -41,16 +37,17 @@ export function filterProviders(
   filter: ProviderFilter,
   searchQuery = "",
 ): ProviderListRow[] {
-  let filtered = providers;
+  // Removed configuration records stay in the data layer but never render in the list.
+  let filtered = providers.filter((row) => !isRemovedRow(row));
 
   if (filter === "configured") {
-    filtered = filtered.filter(isReadyRow);
+    filtered = filtered.filter(hasConfiguration);
   } else if (filter === "needs-key") {
-    filtered = filtered.filter(needsSetupRow);
+    filtered = filtered.filter((row) => !hasConfiguration(row));
   } else if (filter === "free") {
     filtered = filtered.filter(hasFreeTier);
   } else if (filter === "paid") {
-    filtered = filtered.filter((row) => !isRemovedRow(row) && !hasFreeTier(row));
+    filtered = filtered.filter((row) => !hasFreeTier(row));
   }
 
   const trimmed = searchQuery.trim();

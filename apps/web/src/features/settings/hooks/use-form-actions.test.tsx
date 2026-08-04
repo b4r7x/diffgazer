@@ -1,16 +1,22 @@
 // @vitest-environment jsdom
 
+import { FooterProvider } from "@diffgazer/core/footer";
+import { KeyboardProvider } from "@diffgazer/keys";
 import { act, renderHook } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockFooter, mockIsSaving, mockNavigate, mockSaveSettings, mockUseKey } = vi.hoisted(() => ({
-  mockFooter: vi.fn(() => ({ inActions: false })),
+const { mockIsSaving, mockNavigate, mockSaveSettings } = vi.hoisted(() => ({
   mockIsSaving: { current: false },
   mockNavigate: vi.fn(),
   mockSaveSettings: vi.fn(),
-  mockUseKey: vi.fn(),
 }));
 
+// Boundary mocks only: the settings mutation is the network edge and TanStack
+// Router is the external routing library. `@diffgazer/keys` and the footer
+// sibling run for real, so the Escape-cancel this hook advertises is exercised
+// instead of stubbed.
 vi.mock("@diffgazer/core/api/hooks", () => ({
   useSaveSettings: () => ({
     isPending: mockIsSaving.current,
@@ -18,30 +24,38 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
   }),
 }));
 
-vi.mock("@diffgazer/keys", () => ({ useKey: mockUseKey }));
 vi.mock("@tanstack/react-router", () => ({ useNavigate: () => mockNavigate }));
-vi.mock("./use-form-footer", () => ({ useSettingsFormFooter: mockFooter }));
 
 import { useSettingsFormActions } from "./use-form-actions";
 
+type FormActionsOptions = Parameters<typeof useSettingsFormActions>[0];
+
+function Wrapper({ children }: { children: ReactNode }) {
+  return (
+    <FooterProvider>
+      <KeyboardProvider>{children}</KeyboardProvider>
+    </FooterProvider>
+  );
+}
+
+function renderFormActions(options: FormActionsOptions) {
+  return renderHook(() => useSettingsFormActions(options), { wrapper: Wrapper });
+}
+
 describe("useSettingsFormActions", () => {
   beforeEach(() => {
-    mockFooter.mockClear();
     mockIsSaving.current = false;
     mockNavigate.mockReset();
     mockSaveSettings.mockReset();
-    mockUseKey.mockClear();
   });
 
   it("does not create or save a payload while saving is unavailable", async () => {
     const getSettingsPayload = vi.fn(() => ({ agentExecution: "parallel" as const }));
-    const { result } = renderHook(() =>
-      useSettingsFormActions({
-        saveAvailable: false,
-        getSettingsPayload,
-        contentShortcuts: [],
-      }),
-    );
+    const { result } = renderFormActions({
+      saveAvailable: false,
+      getSettingsPayload,
+      contentShortcuts: [],
+    });
 
     await act(() => result.current.onSave());
 
@@ -53,13 +67,11 @@ describe("useSettingsFormActions", () => {
   it("does not create or save a payload while a mutation is already pending", async () => {
     mockIsSaving.current = true;
     const getSettingsPayload = vi.fn(() => ({ agentExecution: "parallel" as const }));
-    const { result } = renderHook(() =>
-      useSettingsFormActions({
-        saveAvailable: true,
-        getSettingsPayload,
-        contentShortcuts: [],
-      }),
-    );
+    const { result } = renderFormActions({
+      saveAvailable: true,
+      getSettingsPayload,
+      contentShortcuts: [],
+    });
 
     await act(() => result.current.onSave());
 
@@ -70,13 +82,11 @@ describe("useSettingsFormActions", () => {
 
   it("saves the page payload and navigates only after the mutation succeeds", async () => {
     mockSaveSettings.mockResolvedValue(undefined);
-    const { result } = renderHook(() =>
-      useSettingsFormActions({
-        saveAvailable: true,
-        getSettingsPayload: () => ({ secretsStorage: "keyring" }),
-        contentShortcuts: [],
-      }),
-    );
+    const { result } = renderFormActions({
+      saveAvailable: true,
+      getSettingsPayload: () => ({ secretsStorage: "keyring" }),
+      contentShortcuts: [],
+    });
 
     await act(() => result.current.onSave());
 
@@ -86,13 +96,11 @@ describe("useSettingsFormActions", () => {
 
   it("surfaces a save error, then clears it on a successful retry", async () => {
     mockSaveSettings.mockRejectedValueOnce(new Error("Settings store is read-only"));
-    const { result } = renderHook(() =>
-      useSettingsFormActions({
-        saveAvailable: true,
-        getSettingsPayload: () => ({ agentExecution: "sequential" }),
-        contentShortcuts: [],
-      }),
-    );
+    const { result } = renderFormActions({
+      saveAvailable: true,
+      getSettingsPayload: () => ({ agentExecution: "sequential" }),
+      contentShortcuts: [],
+    });
 
     await act(() => result.current.onSave());
     expect(result.current.error).toBe("Settings store is read-only");
@@ -103,5 +111,32 @@ describe("useSettingsFormActions", () => {
 
     expect(result.current.error).toBeNull();
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
+  });
+
+  it("cancels back to the settings hub when Escape is pressed", async () => {
+    const user = userEvent.setup();
+    renderFormActions({
+      saveAvailable: true,
+      getSettingsPayload: () => ({ agentExecution: "parallel" }),
+      contentShortcuts: [],
+    });
+
+    await user.keyboard("{Escape}");
+
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
+  });
+
+  it("leaves Escape inert while a save is in flight", async () => {
+    mockIsSaving.current = true;
+    const user = userEvent.setup();
+    renderFormActions({
+      saveAvailable: true,
+      getSettingsPayload: () => ({ agentExecution: "parallel" }),
+      contentShortcuts: [],
+    });
+
+    await user.keyboard("{Escape}");
+
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,11 @@
-import type { ProviderListRow } from "@diffgazer/core/providers";
-import { getProviderDisplayStatus, getProviderRowId } from "@diffgazer/core/providers";
+import type { ProviderDisplayStatus, ProviderListRow } from "@diffgazer/core/providers";
+import {
+  BILLING_TIER_BADGES,
+  getBillingTier,
+  getProviderDisplayStatus,
+  getProviderRowId,
+} from "@diffgazer/core/providers";
+import type { BadgeVariant } from "@diffgazer/core/schemas/presentation";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import {
@@ -18,6 +24,7 @@ import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-gr
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from "react";
 import { PROVIDER_FILTER_LABELS, type ProviderFilter } from "../lib/filter";
+import { PROVIDER_STATUS_TONE } from "../lib/status-tone";
 
 interface ProviderListProps {
   providers: ProviderListRow[];
@@ -34,12 +41,10 @@ interface ProviderListProps {
   onSearchEscape?: () => void;
   onListFocus?: () => void;
   focusedFilterIndex?: number;
-  onFilterHighlightChange?: (index: number) => void;
-  onFilterFocus?: (index: number) => void;
+  onFilterIndexChange?: (index: number) => void;
   onFilterKeyDown?: (event: ReactKeyboardEvent) => void;
   getFilterButtonProps?: (index: number) => {
     ref: RefCallback<HTMLButtonElement>;
-    onFocus: () => void;
   };
   onListKeyDown?: (event: ReactKeyboardEvent) => void;
   highlighted?: string | null;
@@ -48,18 +53,11 @@ interface ProviderListProps {
   ref?: React.Ref<HTMLDivElement>;
 }
 
-function getTierBadge(row: ProviderListRow): "FREE" | "PAID" {
-  if (row.product.status === "removed") return "PAID";
-  return row.product.billing.modes.includes("free-tier") ? "FREE" : "PAID";
-}
-
-function getModelSubtitle(row: ProviderListRow): string {
-  if (row.configuration?.selectedModelId) return row.configuration.selectedModelId;
-  if (row.product.status === "removed") return "Removed record";
-  if (row.readiness.status === "unsupported" && row.product.transportFamily === "local-cli") {
-    return "CLI unsupported";
-  }
-  return row.readiness.remediation.message;
+function getStatusTone(status: ProviderDisplayStatus): BadgeVariant {
+  // A provider nobody has set up yet is an empty slot rather than a problem, so
+  // the list reads it muted grey; every other state follows its display variant.
+  if (status.status === "unconfigured") return "neutral";
+  return status.variant;
 }
 
 export function ProviderList({
@@ -77,8 +75,7 @@ export function ProviderList({
   onSearchEscape,
   onListFocus,
   focusedFilterIndex,
-  onFilterHighlightChange,
-  onFilterFocus,
+  onFilterIndexChange,
   onFilterKeyDown,
   getFilterButtonProps,
   onListKeyDown,
@@ -87,6 +84,45 @@ export function ProviderList({
   onBoundaryReached,
   ref,
 }: ProviderListProps) {
+  const renderRow = (row: ProviderListRow) => {
+    const rowId = getProviderRowId(row);
+    const tierBadge = BILLING_TIER_BADGES[getBillingTier(row.product.productId)];
+    const status = getProviderDisplayStatus(row.readiness, row.product.transportFamily);
+    const tone = getStatusTone(status);
+    const subtitle = row.configuration?.selectedModelId ?? null;
+
+    return (
+      <NavigationListItem
+        key={rowId}
+        id={rowId}
+        className={cn(
+          "border-l-2 border-l-transparent",
+          !isFocused && selectedId === rowId && "border-l-info/60 text-foreground",
+        )}
+      >
+        <NavigationListTitle>{row.product.name}</NavigationListTitle>
+        <NavigationListStatus
+          role="img"
+          aria-label={status.accessibleText}
+          data-tone={tone}
+          className={PROVIDER_STATUS_TONE[tone]}
+        >
+          {`[ ${status.label.toUpperCase()} ]`}
+        </NavigationListStatus>
+        <div className="col-span-full row-start-2 flex min-w-0 items-center gap-2">
+          <NavigationListMeta className="shrink-0">
+            <NavigationListBadge variant={tierBadge.variant} className="shrink-0 text-3xs">
+              {tierBadge.label}
+            </NavigationListBadge>
+          </NavigationListMeta>
+          {subtitle ? (
+            <NavigationListSubtitle className="min-w-0 truncate">{subtitle}</NavigationListSubtitle>
+          ) : null}
+        </div>
+      </NavigationListItem>
+    );
+  };
+
   return (
     <div className="flex flex-col md:h-full">
       <div className="p-3 border-b border-border bg-secondary/30">
@@ -98,7 +134,7 @@ export function ProviderList({
       <div className="p-3 border-b border-border">
         <SearchInput
           ref={inputRef}
-          size="sm"
+          size="md"
           value={searchQuery}
           onChange={onSearchChange}
           onFocus={onSearchFocus}
@@ -112,18 +148,7 @@ export function ProviderList({
         value={filter}
         onChange={(value) => {
           if (value === null) return;
-          const index = PROVIDER_FILTER_LABELS.findIndex((item) => item.value === value);
-          onFilterFocus?.(index);
-          onFilterHighlightChange?.(index);
           onFilterChange(value);
-        }}
-        onHighlightChange={(value) => {
-          if (value === null) return;
-          const index = PROVIDER_FILTER_LABELS.findIndex((item) => item.value === value);
-          if (index >= 0) {
-            onFilterFocus?.(index);
-            onFilterHighlightChange?.(index);
-          }
         }}
         highlighted={
           focusedFilterIndex === undefined
@@ -131,27 +156,22 @@ export function ProviderList({
             : (PROVIDER_FILTER_LABELS[focusedFilterIndex]?.value ?? null)
         }
         onKeyDown={onFilterKeyDown}
-        className="px-3 py-2 border-b border-border"
+        className="w-full px-3 py-2 border-b border-border"
         label="Provider filter"
       >
-        {PROVIDER_FILTER_LABELS.map((f, index) => {
-          const filterButtonProps = getFilterButtonProps?.(index);
-
-          return (
-            <ToggleGroupItem
-              key={f.value}
-              value={f.value}
-              ref={filterButtonProps?.ref}
-              onFocus={() => {
-                filterButtonProps?.onFocus();
-                onFilterFocus?.(index);
-              }}
-              className="text-2xs pointer-coarse:min-h-11 pointer-coarse:px-3"
-            >
-              {f.label}
-            </ToggleGroupItem>
-          );
-        })}
+        {PROVIDER_FILTER_LABELS.map((f, index) => (
+          <ToggleGroupItem
+            key={f.value}
+            value={f.value}
+            ref={getFilterButtonProps?.(index).ref}
+            // Focus is the one signal that hands the filter row the keyboard
+            // zone: arrow navigation, Tab, and pointer focus all land here.
+            onFocus={() => onFilterIndexChange?.(index)}
+            className="text-2xs pointer-coarse:min-h-11 pointer-coarse:px-3"
+          >
+            {f.label}
+          </ToggleGroupItem>
+        ))}
       </ToggleGroup>
 
       <ScrollArea
@@ -175,47 +195,7 @@ export function ProviderList({
               onBoundaryReached?.(toVerticalBoundaryDirection(direction));
             }}
           >
-            {providers.map((row) => {
-              const rowId = getProviderRowId(row);
-              const tierBadge = getTierBadge(row);
-              const badge = getProviderDisplayStatus(row.readiness, row.product.transportFamily);
-              const statusText = `[ ${badge.label.toUpperCase()} ]`;
-              const subtitleText = getModelSubtitle(row);
-              const isRemoved = row.product.status === "removed";
-
-              return (
-                <NavigationListItem
-                  key={rowId}
-                  id={rowId}
-                  disabled={isRemoved}
-                  className={cn(
-                    "border-l-2 border-l-transparent",
-                    !isFocused && selectedId === rowId && "border-l-info/60 text-foreground",
-                    isRemoved && "opacity-70",
-                  )}
-                >
-                  <NavigationListTitle>{row.product.name}</NavigationListTitle>
-                  <NavigationListStatus>
-                    <span role="img" aria-label={badge.accessibleText}>
-                      {statusText}
-                    </span>
-                  </NavigationListStatus>
-                  <div className="col-span-full row-start-2 flex min-w-0 items-center gap-2">
-                    <NavigationListMeta className="shrink-0">
-                      <NavigationListBadge
-                        variant={tierBadge === "FREE" ? "success" : "neutral"}
-                        className="shrink-0 text-3xs"
-                      >
-                        {tierBadge}
-                      </NavigationListBadge>
-                    </NavigationListMeta>
-                    <NavigationListSubtitle className="min-w-0 truncate">
-                      {subtitleText}
-                    </NavigationListSubtitle>
-                  </div>
-                </NavigationListItem>
-              );
-            })}
+            {providers.map(renderRow)}
           </NavigationList>
         ) : null}
         <EmptyState

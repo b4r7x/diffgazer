@@ -17,10 +17,7 @@ import type { AdmittedExecutionPlan } from "../../shared/lib/ai/admission/servic
 import { ExecutionLeaseRegistry } from "../../shared/lib/ai/admission/service.js";
 import { createBudgetLedger } from "../../shared/lib/ai/budget/ledger.js";
 import { conservativeAttemptEstimate } from "../../shared/lib/ai/client/generate.js";
-import type {
-  AIExecutionFingerprint,
-  InitializedAIClient,
-} from "../../shared/lib/ai/client/initialize.js";
+import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
 import type { Adapter } from "../../shared/lib/ai/types.js";
 import type { createGitService as createGitServiceType } from "../../shared/lib/git/service.js";
 import { parseDiff } from "./engine/diff/parser.js";
@@ -46,7 +43,13 @@ const REVIEW_DIFF = [
   "+  return a - b;",
   " }",
 ].join("\n");
-const DEFAULT_EXECUTION_FINGERPRINT: AIExecutionFingerprint = {
+/** The provider/model pair these tests vary to build distinct admitted plans. */
+interface ExecutionFingerprint {
+  readonly provider: RunnableProductId;
+  readonly model: string;
+}
+
+const DEFAULT_EXECUTION_FINGERPRINT: ExecutionFingerprint = {
   provider: "openrouter",
   model: "openai/gpt-4.1",
 };
@@ -183,9 +186,9 @@ function makeGitService(
 }
 
 function serviceAdmittedPlan(
-  executionFingerprint: AIExecutionFingerprint = DEFAULT_EXECUTION_FINGERPRINT,
+  executionFingerprint: ExecutionFingerprint = DEFAULT_EXECUTION_FINGERPRINT,
 ): AdmittedExecutionPlan {
-  const productId = executionFingerprint.provider as RunnableProductId;
+  const productId = executionFingerprint.provider;
   const product = PRODUCT_REGISTRY[productId];
   if (product.kind !== "runnable") {
     throw new Error(`Test admitted plan requires a runnable product: ${productId}`);
@@ -217,7 +220,7 @@ function serviceAdmittedPlan(
 }
 
 function serviceReviewConfigKey(
-  executionFingerprint: AIExecutionFingerprint = DEFAULT_EXECUTION_FINGERPRINT,
+  executionFingerprint: ExecutionFingerprint = DEFAULT_EXECUTION_FINGERPRINT,
   lenses: string[] = ["correctness"],
   minSeverity = "low",
 ) {
@@ -233,7 +236,7 @@ function serviceReviewConfigKey(
 
 function makeAIClient(
   result: ReviewResult = DEFAULT_REVIEW_RESULT,
-  executionFingerprint: AIExecutionFingerprint = DEFAULT_EXECUTION_FINGERPRINT,
+  executionFingerprint: ExecutionFingerprint = DEFAULT_EXECUTION_FINGERPRINT,
 ): InitializedAIClient {
   const plan = serviceAdmittedPlan(executionFingerprint);
   const ledger = createBudgetLedger(plan.limits);
@@ -264,7 +267,6 @@ function makeAIClient(
 
   return {
     provider: executionFingerprint.provider,
-    executionFingerprint,
     authorization: Object.freeze({
       plan,
       adapter: {
@@ -455,8 +457,8 @@ describe("createReviewSession", () => {
     },
   ] satisfies Array<{
     changedSelection: string;
-    existingFingerprint: AIExecutionFingerprint;
-    nextFingerprint: AIExecutionFingerprint;
+    existingFingerprint: ExecutionFingerprint;
+    nextFingerprint: ExecutionFingerprint;
   }>)("starts a new session and supersedes the active one when $changedSelection changes", async ({
     existingFingerprint,
     nextFingerprint,

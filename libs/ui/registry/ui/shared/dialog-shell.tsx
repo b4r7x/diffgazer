@@ -15,8 +15,9 @@ import {
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { usePresence } from "@/hooks/use-presence";
+import { useTopLayerPosition } from "@/hooks/use-top-layer-position";
 import { isHTMLDialogElement } from "@/lib/aria";
-import { createTopLayerStack, useTopLayerPosition } from "@/lib/top-layer-stack";
+import { createTopLayerStack } from "@/lib/top-layer-stack";
 
 /** Props for dialog shell. */
 export interface DialogShellProps extends ComponentProps<"dialog"> {

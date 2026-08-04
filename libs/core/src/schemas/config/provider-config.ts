@@ -521,6 +521,47 @@ function hasSafeExactModel(configuration: SupportedConfigurationSummary): boolea
   return !modelId.split(/[./:_-]/).some((segment) => segment.toLowerCase() === "latest");
 }
 
+/**
+ * A succeeded action must carry the summary its own outcome implies: delete
+ * leaves nothing supported behind, inspect may report a supported or a removed
+ * record, and every other action lands on a supported one. Owning this here
+ * keeps the guarantee on the wire contract itself, so both the server that
+ * emits a response and the client that parses one fail on the same shape.
+ */
+function validateSucceededActionConfiguration(
+  action: ClientConfigurationActionName,
+  configuration: ClientConfigurationSummary | undefined,
+  context: Pick<z.RefinementCtx<unknown>, "addIssue">,
+): void {
+  if (action === "delete") {
+    if (configuration?.status === "supported") {
+      context.addIssue({
+        code: "custom",
+        message: "A succeeded delete response cannot contain a supported configuration",
+        path: ["configuration"],
+      });
+    }
+    return;
+  }
+
+  if (!configuration) {
+    context.addIssue({
+      code: "custom",
+      message: "A succeeded configuration action requires its bound configuration summary",
+      path: ["configuration"],
+    });
+    return;
+  }
+
+  if (action !== "inspect" && configuration.status !== "supported") {
+    context.addIssue({
+      code: "custom",
+      message: `A succeeded ${action} response requires a supported configuration`,
+      path: ["configuration"],
+    });
+  }
+}
+
 function validateActionResponseBinding(
   action: ClientConfigurationActionName,
   response: {
@@ -534,12 +575,8 @@ function validateActionResponseBinding(
 ): void {
   const configuration = response.configuration;
 
-  if (response.status === "succeeded" && action !== "delete" && !configuration) {
-    context.addIssue({
-      code: "custom",
-      message: "A succeeded configuration action requires its bound configuration summary",
-      path: ["configuration"],
-    });
+  if (response.status === "succeeded") {
+    validateSucceededActionConfiguration(action, configuration, context);
   }
 
   if (response.notices !== undefined) {

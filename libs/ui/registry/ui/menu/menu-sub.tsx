@@ -17,12 +17,12 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { OVERLAY_TRIGGER_PROPS } from "@/hooks/overlay-dismiss-stack";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useIsMobile, usePointerCoarse } from "@/hooks/use-is-mobile";
 import { collectListboxItems, getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { useOutsideClick } from "@/hooks/use-outside-click";
+import { OVERLAY_TRIGGER_PROPS } from "@/lib/overlay-dismiss-stack";
 import { cn } from "@/lib/utils";
 import { FloatingPanel } from "../floating-panel/floating-panel";
 import { Chevron } from "../icons/chevron";

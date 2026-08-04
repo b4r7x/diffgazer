@@ -459,14 +459,13 @@ describe("KeyboardProvider", () => {
     expect(first).toHaveBeenCalledOnce();
   });
 
-  it("warns once per registration for an unknown modifier, never per keydown", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("never fires a handler registered with an unknown modifier", () => {
     const handler = vi.fn();
 
     function Consumer() {
       const { register } = useKeyboardContext();
       useEffect(() => {
-        // string type bypasses ValidateHotkey to reach the runtime registration-time warn.
+        // string type bypasses ValidateHotkey to reach the runtime reject path.
         const hotkey: string = "Hyper+a";
         return register("global", hotkey, handler);
       }, []);
@@ -479,16 +478,10 @@ describe("KeyboardProvider", () => {
       </KeyboardWrapper>,
     );
 
-    expect(warn).toHaveBeenCalledTimes(1);
-
-    act(() => pressKey("a"));
     act(() => pressKey("a"));
     act(() => pressKey("a"));
 
-    expect(warn).toHaveBeenCalledTimes(1);
     expect(handler).not.toHaveBeenCalled();
-
-    warn.mockRestore();
   });
 
   it.each([
@@ -497,7 +490,6 @@ describe("KeyboardProvider", () => {
   ])("keeps a typo'd modifier from colliding with a legitimate hotkey ($label)", ({
     typoFirst,
   }) => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
     const legit = vi.fn();
     const typo = vi.fn();
 
@@ -528,8 +520,6 @@ describe("KeyboardProvider", () => {
     act(() => pressKey("a"));
     expect(legit).toHaveBeenCalledOnce();
     expect(typo).not.toHaveBeenCalled();
-
-    vi.restoreAllMocks();
   });
 
   it("keeps processing subsequent events when a handler throws", () => {

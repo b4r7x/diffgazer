@@ -1,5 +1,5 @@
 import { ExecutionLeaseRegistry } from "./ai/admission/service.js";
-import type { ConfigurationLeaseHooks } from "./config/store.js";
+import type { ConfigurationLeaseHooks } from "./config/seams.js";
 
 export interface SessionCancelOptions {
   provider?: string;

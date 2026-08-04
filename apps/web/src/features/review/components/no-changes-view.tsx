@@ -58,7 +58,6 @@ export function NoChangesView({
   return (
     <div className="flex flex-1 items-center justify-center p-4">
       <Panel
-        frame="viewfinder"
         ref={focusFallbackRef}
         tabIndex={-1}
         className="w-full max-w-md p-6 text-center focus:outline-none"

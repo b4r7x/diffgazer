@@ -1,4 +1,4 @@
-import { extractImportSpecifiers } from "../../imports/import-specifiers.js";
+import { extractImportSpecifiers } from "../../imports/specifiers.js";
 
 const DEFAULT_PEER_DEPS = new Set<string>();
 const DEFAULT_ALIAS_PREFIXES = ["@/", "./", "../", "node:"];

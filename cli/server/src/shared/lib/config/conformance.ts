@@ -4,6 +4,7 @@ import type { ConfigurationId } from "@diffgazer/core/schemas/config";
 import { log } from "../log.js";
 import type { AdmissionEvidence } from "./admission-evidence.js";
 import type { SupportedProviderConfigurationRecord } from "./provider-config.js";
+import { getConfigSeams } from "./seams.js";
 import type { SecretBinding } from "./secret-bindings.js";
 import type { ConfigurationActionError } from "./types.js";
 
@@ -41,21 +42,6 @@ export interface ConfigurationEvidenceRecorder {
   ) => Promise<Result<boolean, ConfigurationActionError>>;
 }
 
-// `shared/` must not import transport features, so the composition root
-// registers the real probe at startup. The unregistered default reports a
-// skipped observation, which never becomes evidence: an unwired server refuses
-// to admit rather than admitting on an unobserved tuple.
-const unregisteredProbe: ConfigurationConformanceProbe = async () => {
-  log("error", "conformance_probe_not_registered");
-  return { status: "skipped", reason: "No conformance probe is registered" };
-};
-
-let conformanceProbe: ConfigurationConformanceProbe = unregisteredProbe;
-
-export function setConfigurationConformanceProbe(probe: ConfigurationConformanceProbe): void {
-  conformanceProbe = probe;
-}
-
 /**
  * Run the probe under the configuration's own admitted wall time. A probe that
  * ignores the abort signal still loses the race, so Test can never outlive the
@@ -78,7 +64,7 @@ export async function observeConfigurationConformance(
 
   try {
     return await Promise.race([
-      conformanceProbe({ subject, signal: controller.signal }),
+      getConfigSeams().conformanceProbe({ subject, signal: controller.signal }),
       exceededWallTime,
     ]);
   } catch (cause) {

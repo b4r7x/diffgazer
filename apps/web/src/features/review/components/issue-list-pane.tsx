@@ -1,18 +1,23 @@
-import {
-  calculateSeverityCounts,
-  SEVERITY_LABELS,
-  type UISeverityFilter,
-} from "@diffgazer/core/schemas/presentation";
+import { calculateSeverityCounts, SEVERITY_LABELS } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { cn } from "@diffgazer/ui/lib/utils";
-import type { KeyboardEvent, Ref } from "react";
+import type { Ref } from "react";
 import { PathValue } from "@/components/shared/path-value";
 import { SEVERITY_CONFIG } from "@/components/shared/severity/constants";
-import { SeverityFilterGroup } from "./severity-filter-group";
+import { useFocusWithin } from "@/hooks/use-focus-within";
+import { SeverityFilterGroup, type SeverityFilterGroupProps } from "./severity-filter-group";
+
+/**
+ * The severity filter row is the pane's, but its state belongs to whoever owns
+ * the review keyboard. It travels as one cluster so a new filter affordance is
+ * added to SeverityFilterGroup alone, not to every layer that forwards it. The
+ * pane derives `counts` from `allIssues` and owns the row's layout.
+ */
+export type IssueListFilter = Omit<SeverityFilterGroupProps, "counts" | "className">;
 
 export interface IssueListPaneProps {
   issues: ReviewIssue[];
@@ -23,15 +28,7 @@ export interface IssueListPaneProps {
   onHighlightIssue?: (id: string | null) => void;
   onListBoundaryReached?: (direction: "previous" | "next") => void;
   onListFocus?: () => void;
-  severityFilter: UISeverityFilter;
-  onSeverityFilterChange: (filter: UISeverityFilter) => void;
-  onSeverityFilterReset?: () => void;
-  onSeverityFilterBoundary?: (direction: "previous" | "next") => void;
-  focusedFilterIndex?: number;
-  onFocusedFilterIndexChange?: (index: number) => void;
-  isFilterFocused?: boolean;
-  onFilterKeyDown?: (event: KeyboardEvent) => void;
-  filterRef?: Ref<HTMLDivElement>;
+  filter: IssueListFilter;
   listRef?: Ref<HTMLDivElement>;
   listBodyRef?: Ref<HTMLDivElement>;
   isFocused: boolean;
@@ -48,39 +45,32 @@ export function IssueListPane({
   onHighlightIssue,
   onListBoundaryReached,
   onListFocus,
-  severityFilter,
-  onSeverityFilterChange,
-  onSeverityFilterReset,
-  onSeverityFilterBoundary,
-  focusedFilterIndex,
-  onFocusedFilterIndexChange,
-  isFilterFocused,
-  onFilterKeyDown,
-  filterRef,
+  filter,
   listRef,
   listBodyRef,
   isFocused,
   title = "Issues",
   className,
 }: IssueListPaneProps) {
+  // The severity filter and the list both live inside this pane, so tracking
+  // focus on the pane root covers either zone without a second flag.
+  const { focusWithin, props: focusProps } = useFocusWithin<HTMLElement>();
   const counts = calculateSeverityCounts(allIssues);
-  const isFilterActive = severityFilter.size > 0;
+  const isFilterActive = filter.activeFilter.size > 0;
   let emptyMessage = "No issues match filter";
   if (allIssues.length === 0) {
     emptyMessage = "No issues found";
   } else if (isFilterActive) {
     emptyMessage = "No issues match the current filters — press [Reset] to clear";
   }
-  // The severity filter visually lives inside this pane, so the pane
-  // keeps its focus outline while either zone is active.
-  const isPaneFocused = isFocused || !!isFilterFocused;
 
   return (
     <Panel
       as="aside"
+      {...focusProps}
       aria-label="Issue list"
       data-pane="list"
-      focused={isPaneFocused}
+      focused={focusWithin}
       className={cn(
         "mt-3 flex min-h-0 w-full flex-1 flex-col md:w-2/5 md:flex-initial md:basis-auto",
         className,
@@ -90,18 +80,7 @@ export function IssueListPane({
         {title} · {allIssues.length}
       </Panel.Label>
       <div className="px-3 pb-4 pt-3">
-        <SeverityFilterGroup
-          counts={counts}
-          activeFilter={severityFilter}
-          onFilterChange={onSeverityFilterChange}
-          onReset={onSeverityFilterReset}
-          onNavigationBoundaryReached={onSeverityFilterBoundary}
-          isFocused={isFilterFocused}
-          focusedIndex={focusedFilterIndex}
-          onFocusedIndexChange={onFocusedFilterIndexChange}
-          ref={filterRef}
-          onKeyDown={onFilterKeyDown}
-        />
+        <SeverityFilterGroup counts={counts} {...filter} />
       </div>
 
       <ScrollArea ref={listBodyRef} data-list-body="" className="flex min-w-0 flex-1 flex-col">
@@ -129,7 +108,10 @@ export function IssueListPane({
           onNavigationBoundaryReached={(direction) => onListBoundaryReached?.(direction)}
           focused={isFocused}
           wrap={false}
-          className="space-y-1"
+          // The pane clips at its own border, so the list keeps a bottom gutter:
+          // scrolled to the end, the last row lands clear of the edge instead of
+          // sitting half-cut against it.
+          className="space-y-1 pb-2"
         >
           {issues.map((issue) => {
             const config = SEVERITY_CONFIG[issue.severity];
@@ -140,7 +122,7 @@ export function IssueListPane({
                 key={issue.id}
                 id={issue.id}
                 density="compact"
-                className="border-b border-border last:border-b-0"
+                className="border-b border-border/50 last:border-b-0"
               >
                 {/* pe-3 is the gutter between the title cell and the severity
                     tag beside it: the row grid has no column gap, so a title
@@ -150,11 +132,27 @@ export function IssueListPane({
                       neither the option's name nor its description, so the
                       severity still reaches AT exactly once through here. */}
                   <span className="sr-only">{issue.severity} severity: </span>
-                  <span className="min-w-0 line-clamp-2">{issue.title}</span>
+                  {/* Rank mark for the at-a-glance scan down the column. It is
+                      hidden from AT because the prefix above already carries the
+                      severity, and a glyph would announce it a second time. */}
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "mr-1.5 shrink-0",
+                      config.color,
+                      "group-data-[highlighted]:text-primary-foreground",
+                    )}
+                  >
+                    {config.glyph}
+                  </span>
+                  {/* One line at desktop pitch so every row is the same height;
+                      below md the title gets a second line instead of a harder
+                      truncation on a narrow column. */}
+                  <span className="min-w-0 line-clamp-1 max-md:line-clamp-2">{issue.title}</span>
                 </NavigationList.Title>
-                {/* Severity decides what gets read first, so it is printed as a
-                    word rather than drawn as a 10px glyph the reader has to
-                    decode - the same form the history insights pane uses. */}
+                {/* The word stays beside the glyph rather than being replaced by
+                    it: shape and colour alone are not decodable, and this is the
+                    same form the history insights pane uses. */}
                 <NavigationList.Status
                   className={cn(
                     "tracking-[0.08em] tabular-nums",

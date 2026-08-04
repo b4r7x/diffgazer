@@ -64,10 +64,10 @@ export function HistoryInsightsPane({
     // the duration footer both take their natural height; from md up the pane is
     // a fixed-height track and only the list scrolls.
     <div className={cn("flex flex-col md:h-full md:min-h-0 md:overflow-hidden", className)}>
-      <ScrollArea className="space-y-6 overflow-visible p-4 pr-2 md:min-h-0 md:flex-1 md:overflow-x-hidden md:overflow-y-auto">
+      <ScrollArea className="space-y-6 overflow-visible px-4 pt-3 pb-4 md:min-h-0 md:flex-1 md:overflow-x-hidden md:overflow-y-auto">
         {severityCounts && (
           <div>
-            <SectionHeader as="h3" bordered className="mb-2">
+            <SectionHeader as="h3" bordered>
               Severity Breakdown
             </SectionHeader>
             <div className="mt-3">
@@ -91,7 +91,7 @@ export function HistoryInsightsPane({
 
         {detailState.status === "ready" && issues.length > 0 && (
           <div>
-            <SectionHeader as="h3" bordered className="mb-2">
+            <SectionHeader as="h3" bordered>
               {issues.length} Issues
             </SectionHeader>
             <NavigationList
@@ -117,7 +117,7 @@ export function HistoryInsightsPane({
                   id={issue.id}
                   onClick={() => onSelectIssue?.(issue.id)}
                   density="compact"
-                  className="border-b border-border last:border-b-0"
+                  className="border-b border-border last:border-b-0 py-1"
                 >
                   <NavigationList.Title className="min-w-0 items-start">
                     <span
@@ -129,11 +129,16 @@ export function HistoryInsightsPane({
                     >
                       [{capitalize(issue.severity)}]
                     </span>
-                    {/* The title is the only descriptive text on the row, so it wraps
-                        to two lines instead of dying at ~18 characters. */}
+                    {/* The title may take up to two lines that align under the
+                        title's own start (the tag is a separate flex item, so
+                        overflow no longer hangs under it); file:line stays on
+                        its own row. */}
                     <span className="min-w-0 line-clamp-2">{issue.title}</span>
                   </NavigationList.Title>
-                  <NavigationList.Meta>
+                  {/* Indent (glyph advance 1ch + its mr-2) aligns file:line
+                      under the severity tag instead of jutting left under the
+                      glyph. */}
+                  <NavigationList.Meta className="pl-[calc(1ch+0.5rem)]">
                     <NavigationList.Subtitle>{formatIssueLocation(issue)}</NavigationList.Subtitle>
                   </NavigationList.Meta>
                 </NavigationList.Item>
@@ -144,7 +149,7 @@ export function HistoryInsightsPane({
       </ScrollArea>
 
       {duration && (
-        <div className="border-t border-border bg-base-surface-1 p-3">
+        <div className="border-t border-border bg-base-surface-1 px-4 py-3">
           <SectionHeader as="h3" variant="muted" className="mb-1">
             Duration
           </SectionHeader>

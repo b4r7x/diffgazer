@@ -7,6 +7,7 @@ import {
   checkDockerFrozenInstallsCopyPatches,
   checkPnpmPinsMatchRootPackageManager,
 } from "./check-invariants/docker.mjs";
+import { checkCoreDistFreshness, checkKeysDistFreshness } from "./check-invariants/freshness.mjs";
 import {
   checkDependencyOverridesDocumented,
   checkLicensedPackagesInGovernanceSplit,
@@ -83,6 +84,8 @@ export const INVARIANT_CHECKS = [
   checkDependencyOverridesDocumented,
   checkLicensedPackagesInGovernanceSplit,
   checkSurfaceEnvExampleKeysStayInRootExample,
+  checkKeysDistFreshness,
+  checkCoreDistFreshness,
 ];
 
 export function runInvariantChecks(options = {}) {

@@ -30,6 +30,30 @@ test("local setup never exposes credential input", async ({ page }) => {
   await assertClientSafeDom(await page.locator("main").innerHTML());
 });
 
+test("provider actions render once each with the destructive action last", async ({ page }) => {
+  await mockProtectedProviderApi(page);
+  await page.goto("/settings/providers");
+
+  const localName = PRODUCT_REGISTRY["local-openai"].presentation.name;
+  await page.getByRole("option", { name: localName }).click();
+
+  const actionRow = page.getByRole("group", { name: "Provider actions" });
+  await expect(actionRow).toHaveCount(1);
+
+  const labels = await actionRow
+    .getByRole("button")
+    .evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label") ?? ""));
+
+  expect(labels).toEqual([
+    "Test readiness",
+    "Update configuration",
+    "Select model",
+    "Delete configuration",
+  ]);
+  expect(new Set(labels).size).toBe(labels.length);
+  await expect(page.getByText(/Available actions/i)).toHaveCount(0);
+});
+
 test("provider readiness remediation is keyboard reachable", async ({ page }) => {
   await mockProtectedProviderApi(page);
   await page.goto("/settings/providers");

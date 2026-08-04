@@ -55,7 +55,12 @@ export function TimelineList({
           className="border-b border-border last:border-b-0"
         >
           <NavigationList.Title>{item.label}</NavigationList.Title>
-          <NavigationList.Status>{item.count}</NavigationList.Status>
+          {/* The list is full-bleed, so the count keeps its own clearance from
+              the pane's right frame. Amber is the rail's one hierarchy accent;
+              the primitive's highlight rule still repaints it. */}
+          <NavigationList.Status className="pr-0.5 text-warning-text">
+            {item.count}
+          </NavigationList.Status>
           <NavigationList.Meta className="sr-only">
             {pluralize(item.count, "run")}
           </NavigationList.Meta>

@@ -5,7 +5,7 @@ import { NavigationContext } from "../../../hooks/use-navigation";
 import { buildResponsiveResult, getBreakpointTier } from "../../../lib/breakpoints";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../theme/provider";
-import { makeHistoryScreenState } from "../testing/history-screen-state";
+import { makeHistoryScreenState } from "../testing/screen-state";
 import { HistoryScreen } from "./screen";
 
 const useHistoryScreenStateMock = vi.hoisted(() => vi.fn());

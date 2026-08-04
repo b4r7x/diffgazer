@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { CREDENTIAL_ENV_VARS, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import {
   type ClientConfigurationAction,
@@ -22,6 +22,7 @@ import {
   READINESS_PRESENTATION,
   REMOVED_PRODUCT_IDS,
   type Readiness,
+  type ReadinessAcknowledgement,
   ReadinessSchema,
   type RunnableProductId,
   type SecretsStorage,
@@ -40,6 +41,7 @@ import { log } from "../log.js";
 import { getGlobalConfigPath, getGlobalSecretsPath, resolveProjectRoot } from "../paths.js";
 import { type AdmissionEvidence, AdmissionEvidenceSchema } from "./admission-evidence.js";
 import {
+  type ConfigurationConformanceObservation,
   type ConfigurationConformanceSubject,
   runConfigurationConformance,
 } from "./conformance.js";
@@ -81,6 +83,7 @@ import {
   type SupportedProviderConfigurationRecord,
 } from "./provider-config.js";
 import { computeProviderReadinessResult } from "./readiness.js";
+import { getConfigSeams } from "./seams.js";
 import {
   bindWriteOnlySecret,
   createEnvironmentSecretBinding,
@@ -107,20 +110,6 @@ import type {
 } from "./types.js";
 import { CONFIG_SCHEMA_VERSION_V2 } from "./types.js";
 import { upgradeV1Documents } from "./v1-upgrade.js";
-
-// Re-keys review history on a project move. `shared/` must not import `features/`, so
-// the review feature registers its implementation here at startup. The unregistered
-// default reports failure so a missing composition-root wiring leaves project.json on
-// the old root (a retried move) instead of silently claiming the history moved.
-type ReviewRekeyHandler = (oldProjectPath: string, newProjectPath: string) => Promise<boolean>;
-let reviewRekeyHandler: ReviewRekeyHandler = async () => {
-  log("error", "review_rekey_handler_not_registered");
-  return false;
-};
-
-export function setReviewRekeyHandler(handler: ReviewRekeyHandler): void {
-  reviewRekeyHandler = handler;
-}
 
 // Legacy provider-keyed type retained for the V1 compatibility reads. The V2
 // action surface is keyed by configuration id and revision, never by provider.
@@ -160,22 +149,6 @@ export const DEFAULT_CONFIGURATION_BUDGET: ConfigurationBudgetLimits = {
   perReview: 5,
 };
 
-// A client-supplied `environment` credential carries no name; the server owns
-// the canonical environment variable per product. These names stay server-side
-// and never appear in client-safe projections.
-const CREDENTIAL_ENVIRONMENT_VARIABLES: Readonly<Record<string, string>> = {
-  gemini: "GOOGLE_API_KEY",
-  zai: "ZAI_API_KEY",
-  openrouter: "OPENROUTER_API_KEY",
-  groq: "GROQ_API_KEY",
-  cerebras: "CEREBRAS_API_KEY",
-  deepseek: "DEEPSEEK_API_KEY",
-  qwen: "QWEN_API_KEY",
-  moonshot: "MOONSHOT_API_KEY",
-  mistral: "MISTRAL_API_KEY",
-  "local-openai": "OPENAI_API_KEY",
-};
-
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder("utf-8", { fatal: true });
 
@@ -193,25 +166,6 @@ const evidenceReferenceFor = (configurationId: string): string => `evidence-${co
 
 const evidencePath = (evidenceReference: string): string =>
   join(dirname(getGlobalConfigPath()), "evidence", `${evidenceReference}.json`);
-
-/**
- * Lease lifecycle hooks for the delete action. The composition root registers
- * these at startup so deletion rejects new leases, cancels queued work, and
- * waits for active work to release before credentials are removed. There is no
- * default: an unregistered store cannot observe leases, so deletion fails
- * closed rather than removing credentials an execution may still be using.
- */
-export interface ConfigurationLeaseHooks {
-  revoke: (configurationId: ConfigurationId) => void | Promise<void>;
-  cancel: (configurationId: ConfigurationId) => void | Promise<void>;
-  drain: (configurationId: ConfigurationId) => void | Promise<void>;
-}
-
-let configurationLeaseHooks: ConfigurationLeaseHooks | null = null;
-
-export function setConfigurationLeaseHooks(hooks: ConfigurationLeaseHooks): void {
-  configurationLeaseHooks = hooks;
-}
 
 const keyringStore: KeyringSecretStore = {
   read: (keyId) => {
@@ -546,8 +500,10 @@ export function createConfigStore(): ConfigStore {
       ? { keyring: keyringStore, keyId: getConfigurationSecretName(configurationId, revision) }
       : { keyring: keyringStore, filePath: literalSecretPath(configurationId, revision) };
 
+  // A client-supplied `environment` credential carries no name; core owns the
+  // canonical variable per product, and the setup surfaces preview that name.
   const credentialEnvironmentVariable = (productId: RunnableProductId): string | null =>
-    CREDENTIAL_ENVIRONMENT_VARIABLES[productId] ?? null;
+    CREDENTIAL_ENV_VARS[productId] ?? null;
 
   const bindEnvironmentSecret = (
     productId: RunnableProductId,
@@ -757,6 +713,16 @@ export function createConfigStore(): ConfigStore {
       checkedAt: new Date().toISOString(),
       acknowledgement: { status: "not-applicable" },
       ...READINESS_PRESENTATION.skipped,
+    });
+
+  const conformanceFailedReadiness = (acknowledgement: ReadinessAcknowledgement): Readiness =>
+    ReadinessSchema.parse({
+      status: "conformance-failed",
+      ready: false,
+      evidenceStatus: "failed",
+      checkedAt: new Date().toISOString(),
+      acknowledgement,
+      ...READINESS_PRESENTATION["conformance-failed"],
     });
 
   const noticesFor = (
@@ -1060,8 +1026,28 @@ export function createConfigStore(): ConfigStore {
     });
   };
 
+  /**
+   * An observation that did not pass persists no evidence, so the reprojected
+   * readiness is still pending. A probe that ran and failed becomes an observed
+   * conformance failure; the intentional-skip readiness is reserved for the
+   * observations the probe declined to make (unsupported transport family, no
+   * exact model selected, no probe registered). Never passed.
+   */
+  const observedTestReadiness = (
+    readiness: Readiness,
+    observation: ConfigurationConformanceObservation,
+  ): Readiness => {
+    if (readiness.status !== "conformance-pending") return readiness;
+    if (observation.status === "failed") {
+      return conformanceFailedReadiness(readiness.acknowledgement);
+    }
+    if (observation.status === "skipped") return skippedReadiness();
+    return readiness;
+  };
+
   const projectTestResponse = (
     configurationId: ConfigurationId,
+    observation: ConfigurationConformanceObservation,
   ): Result<ClientConfigurationActionResponse, ConfigurationActionError> => {
     const record = findDecodedRecord(configurationId);
     if (!record || record.status !== "supported") {
@@ -1069,17 +1055,14 @@ export function createConfigStore(): ConfigStore {
     }
     const summaryResult = summaryForSupportedRecord(record.record);
     if (!summaryResult.ok) return summaryResult;
-    const readiness = readinessFor(record.record);
-    // An observation that did not pass leaves no evidence behind, so readiness
-    // is still pending here. Report it as skipped: never as passed.
-    const testReadiness =
-      readiness.status === "conformance-pending" ? skippedReadiness() : readiness;
     return ok(
-      succeededActionResponse("test", {
+      ClientConfigurationActionResponseSchema.parse({
+        action: "test",
+        status: observation.status === "failed" ? "failed" : "succeeded",
         configuration: summaryResult.value,
-        readiness: testReadiness,
-        notices: summaryResult.value.notices,
-        availableActions: SUPPORTED_CONFIGURATION_ACTIONS,
+        readiness: observedTestReadiness(readinessFor(record.record), observation),
+        notices: [...summaryResult.value.notices],
+        availableActions: [...SUPPORTED_CONFIGURATION_ACTIONS],
       }),
     );
   };
@@ -1088,7 +1071,9 @@ export function createConfigStore(): ConfigStore {
    * Test observes the configuration's immutable tuple once and reprojects
    * readiness from whatever evidence that observation persisted. The probe runs
    * between two short transactions, never while the config/secrets locks are
-   * held, so a bounded network observation cannot block other mutations.
+   * held, so a bounded network observation cannot block other mutations. A
+   * failed observation is logged with its credential-safe reason — the response
+   * vocabulary carries no free-text field — and reported as a failed action.
    */
   const runTestAction = async (
     action: Extract<ClientConfigurationAction, { action: "test" }>,
@@ -1097,9 +1082,14 @@ export function createConfigStore(): ConfigStore {
     const subject = await runV2Mutation(async () => conformanceSubjectFor(configurationId));
     if (!subject.ok) return subject;
 
-    await runConfigurationConformance(subject.value, { recordConfigurationEvidence });
+    const observation = await runConfigurationConformance(subject.value, {
+      recordConfigurationEvidence,
+    });
+    if (observation.status === "failed") {
+      log("warn", "config_conformance_failed", { configurationId, reason: observation.reason });
+    }
 
-    return runV2Mutation(async () => projectTestResponse(configurationId));
+    return runV2Mutation(async () => projectTestResponse(configurationId, observation));
   };
 
   const secretInputFor = (input: ClientConfigurationInput): WriteOnlySecretInput | undefined => {
@@ -1243,7 +1233,7 @@ export function createConfigStore(): ConfigStore {
         configurationActionFailure("CONFIGURATION_CONFLICT", "Configuration revision conflict"),
       );
     }
-    const leaseHooks = configurationLeaseHooks;
+    const leaseHooks = getConfigSeams().leaseHooks;
     if (!leaseHooks) {
       log("error", "configuration_lease_hooks_not_registered");
       return err(
@@ -1473,7 +1463,7 @@ export function createConfigStore(): ConfigStore {
     });
 
   const onProjectMove = (oldRepoRoot: string, newRepoRoot: string): Promise<boolean> =>
-    reviewRekeyHandler(oldRepoRoot, newRepoRoot);
+    getConfigSeams().reviewRekeyHandler(oldRepoRoot, newRepoRoot);
 
   const getProjectInfo = (projectRoot?: string): ProjectInfo => {
     const resolvedRoot = resolveRoot(projectRoot);

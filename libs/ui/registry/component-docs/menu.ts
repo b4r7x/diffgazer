@@ -43,7 +43,7 @@ export const menuDoc: ComponentDoc = {
     {
       title: "Built-in Keyboard Navigation",
       content:
-        "Menu includes keyboard navigation via useListbox (Arrow keys, Home/End, Enter/Space). For custom key bindings or cross-component navigation, use the highlighted, onHighlightChange, and onKeyDown props to add external handlers alongside the built-in behavior.",
+        "Menu includes keyboard navigation via useListbox (Arrow keys and their vim aliases j/k, Home/End, Enter/Space). For custom key bindings or cross-component navigation, use the highlighted, onHighlightChange, and onKeyDown props to add external handlers alongside the built-in behavior.",
     },
   ],
   usage: { example: "menu-default" },
@@ -59,12 +59,17 @@ export const menuDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "Keyboard navigation is built-in. The Controlled Keyboard Navigation example above demonstrates controlled mode with explicit state management. Arrow keys move focus, Enter activates selection.",
+      "Keyboard navigation is built-in. The Controlled Keyboard Navigation example above demonstrates controlled mode with explicit state management. Arrow keys and their vim aliases j/k move the highlight, Enter activates selection.",
     keys: [
       {
-        keys: "ArrowUp / ArrowDown",
+        keys: "ArrowUp / k",
         action:
-          "Moves highlight to the previous or next item. Disabled items remain navigable and announced but cannot be activated.",
+          "Moves highlight to the previous item. Disabled items remain navigable and announced but cannot be activated.",
+      },
+      {
+        keys: "ArrowDown / j",
+        action:
+          "Moves highlight to the next item. Disabled items remain navigable and announced but cannot be activated.",
       },
       {
         keys: "Home / End",
@@ -77,7 +82,8 @@ export const menuDoc: ComponentDoc = {
       },
       {
         keys: "Printable character",
-        action: "Moves highlight with typeahead search when enabled by useListbox.",
+        action:
+          "Starts or extends a typeahead query and moves the highlight to the matching item. j/k still move the highlight on an empty query buffer and only extend a query already in progress.",
       },
       { keys: "Escape / Tab", action: "Calls onClose on the root menu." },
       {

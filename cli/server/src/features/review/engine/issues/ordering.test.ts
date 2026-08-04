@@ -1,6 +1,10 @@
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { describe, expect, it } from "vitest";
-import { deduplicateIssues, filterIssuesByMinSeverity, sortIssuesBySeverity } from "./ordering.js";
+import {
+  deduplicateIssues,
+  filterIssuesByMinSeverity,
+  orderIssuesDeterministic,
+} from "./ordering.js";
 
 describe("deduplicateIssues", () => {
   it("deduplicates by file, line, and case-insensitive title while keeping the highest severity", () => {
@@ -97,7 +101,7 @@ describe("deduplicateIssues", () => {
   });
 });
 
-describe("sortIssuesBySeverity", () => {
+describe("orderIssuesDeterministic", () => {
   it("sorts by severity, confidence, and file without mutating the input", () => {
     const issues = [
       makeIssue({ id: "low", severity: "low", file: "b.ts" }),
@@ -108,7 +112,7 @@ describe("sortIssuesBySeverity", () => {
     ];
     const originalOrder = issues.map((issue) => issue.id);
 
-    const result = sortIssuesBySeverity(issues);
+    const result = orderIssuesDeterministic(issues);
 
     expect(result.map((issue) => issue.id)).toEqual([
       "blocker",
@@ -137,7 +141,7 @@ describe("sortIssuesBySeverity", () => {
 
     const outputs = new Set(
       permutations.map((permutation) =>
-        sortIssuesBySeverity(permutation.filter((issue) => issue !== undefined))
+        orderIssuesDeterministic(permutation.filter((issue) => issue !== undefined))
           .map((issue) => issue.id)
           .join(","),
       ),

@@ -9,7 +9,7 @@ import { act, render as baseRender, fireEvent, screen, waitFor } from "@testing-
 import userEvent from "@testing-library/user-event";
 import type { KeyboardEvent, ReactElement, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { ReviewClockProvider } from "../../hooks/use-review-clock";
+import { ReviewClockProvider } from "../../hooks/use-clock";
 import { ActivityLog } from "./log";
 
 function RunningClock({ children }: { children: ReactNode }) {

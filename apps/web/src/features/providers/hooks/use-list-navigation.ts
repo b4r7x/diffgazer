@@ -26,15 +26,13 @@ interface UseProvidersListNavigationOptions {
 
 interface UseProvidersListNavigationResult {
   filterIndex: number;
-  setFilterIndex: (index: number | ((prev: number) => number)) => void;
   getFilterButtonProps: (index: number) => {
     ref: RefCallback<HTMLButtonElement>;
-    onFocus: () => void;
   };
+  handleFilterIndexChange: (index: number) => void;
   handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
   handleListKeyDown: (event: ReactKeyboardEvent) => void;
   handleSearchFocus: () => void;
-  handleFilterFocus: (index: number) => void;
   handleListFocus: () => void;
   handleSearchEscape: () => void;
   handleListBoundary: (direction: "up" | "down") => void;
@@ -67,13 +65,20 @@ export function useProvidersListNavigation({
     if (firstProviderId) setSelectedId(firstProviderId);
   };
 
+  // The single channel for "the filter row now owns index N": the list mirrors
+  // browser focus into it, and every internal transition below routes through
+  // it, so the zone and the recorded index cannot drift apart.
+  const handleFilterIndexChange = (index: number) => {
+    setZone("filters");
+    setFilterIndex(index);
+  };
+
   // Filter button ref management and focus logic is structurally similar to
   // model-select-dialog/use-dialog-keyboard but differs in index clamping (clamp here vs
   // modulo wrap there) and downstream zone transitions, so it stays local.
   const focusFilterButton = (index: number) => {
     const nextIndex = Math.max(0, Math.min(PROVIDER_FILTERS.length - 1, index));
-    setZone("filters");
-    setFilterIndex(nextIndex);
+    handleFilterIndexChange(nextIndex);
     filterButtonRefs.current.get(nextIndex)?.focus();
   };
 
@@ -82,19 +87,10 @@ export function useProvidersListNavigation({
       if (node) filterButtonRefs.current.set(index, node);
       else filterButtonRefs.current.delete(index);
     },
-    onFocus: () => {
-      setZone("filters");
-      setFilterIndex(index);
-    },
   });
 
   const handleSearchFocus = () => {
     setZone("input");
-  };
-
-  const handleFilterFocus = (index: number) => {
-    setZone("filters");
-    setFilterIndex(index);
   };
 
   const handleListFocus = () => {
@@ -187,12 +183,11 @@ export function useProvidersListNavigation({
 
   return {
     filterIndex,
-    setFilterIndex,
     getFilterButtonProps,
+    handleFilterIndexChange,
     handleFilterKeyDown,
     handleListKeyDown,
     handleSearchFocus,
-    handleFilterFocus,
     handleListFocus,
     handleSearchEscape,
     handleListBoundary,

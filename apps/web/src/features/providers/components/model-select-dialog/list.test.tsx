@@ -82,7 +82,7 @@ describe("ModelList configuration-bound discovery", () => {
     });
   });
 
-  it("distinguishes failed discovery from skipped discovery and empty search results", () => {
+  it("announces generic empty copy once and never restates a discovery failure", () => {
     const props = {
       focusedModelId: null,
       currentModelId: undefined,
@@ -94,38 +94,34 @@ describe("ModelList configuration-bound discovery", () => {
     };
 
     const { rerender } = render(
-      <ModelList
-        models={[]}
-        discoveryStatus="error"
-        discoveryError="Model discovery failed. Test the configuration again."
-        {...props}
-      />,
-    );
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Model discovery failed. Test the configuration again.",
+      <ModelList models={[]} emptyLabel="No models available" {...props} />,
     );
 
-    rerender(
-      <ModelList
-        models={[]}
-        discoveryStatus="skipped"
-        discoveryReason="Model discovery was skipped. Complete the required prerequisites, then test again."
-        {...props}
-      />,
-    );
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Model discovery was skipped. Complete the required prerequisites, then test again.",
-    );
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.getAllByText("No models available")).toHaveLength(1);
+    expect(screen.queryByText(/discovery/i)).not.toBeInTheDocument();
 
-    rerender(
-      <ModelList
-        models={[]}
-        discoveryStatus="passed"
-        emptyLabel="No models match your search"
-        {...props}
-      />,
-    );
+    rerender(<ModelList models={[]} emptyLabel="No models match your search" {...props} />);
     expect(screen.getByRole("status")).toHaveTextContent("No models match your search");
+  });
+
+  it("shows a loading placeholder while discovery is still running", () => {
+    render(
+      <ModelList
+        models={[]}
+        loading
+        emptyLabel="No models available"
+        focusedModelId={null}
+        isFocused={false}
+        onSelect={vi.fn()}
+        onConfirm={vi.fn()}
+        onHighlightChange={vi.fn()}
+        onBoundaryReached={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading models...");
+    expect(screen.queryByText("No models available")).not.toBeInTheDocument();
   });
 
   it("shows a saving placeholder instead of model radios while persistence is pending", () => {
@@ -164,14 +160,7 @@ describe("ModelList configuration-bound discovery", () => {
     expect(liveRegion).toHaveTextContent("");
     expect(liveRegion).toHaveClass("sr-only");
 
-    rerender(
-      <ModelList
-        models={[]}
-        discoveryStatus="passed"
-        emptyLabel="No models match your search"
-        {...props}
-      />,
-    );
+    rerender(<ModelList models={[]} emptyLabel="No models match your search" {...props} />);
 
     expect(screen.getByRole("status")).toBe(liveRegion);
     expect(liveRegion).toHaveTextContent("No models match your search");
@@ -194,14 +183,7 @@ describe("ModelList configuration-bound discovery", () => {
     focusedModel.focus();
     expect(focusedModel).toHaveFocus();
 
-    rerender(
-      <ModelList
-        models={[]}
-        discoveryStatus="passed"
-        emptyLabel="No models match your search"
-        {...props}
-      />,
-    );
+    rerender(<ModelList models={[]} emptyLabel="No models match your search" {...props} />);
 
     expect(screen.queryByRole("radio", { name: /gemini-2\.5-flash/ })).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("No models match your search");

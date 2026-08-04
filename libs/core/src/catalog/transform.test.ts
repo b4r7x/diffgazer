@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import { CANDIDATE_VERDICTS, PRODUCT_REGISTRY } from "../providers/product-registry.js";
 import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { RAW_CATALOG } from "./fixtures.js";
+import { type ModelsDevCatalog, parseModelsDevCatalog } from "./schema.js";
 import { transformCatalogObservation } from "./transform.js";
 
 const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 
-function transform(catalog: unknown = RAW_CATALOG) {
+// RAW_CATALOG mirrors the live API body, so it crosses the ingestion boundary
+// the same way production does before the transform ever sees it.
+function transform(catalog: ModelsDevCatalog = parseModelsDevCatalog(RAW_CATALOG)) {
   return transformCatalogObservation({
     source: "models.dev-snapshot",
     checkedAt: CHECKED_AT,
@@ -142,6 +145,42 @@ describe("transformCatalogObservation", () => {
         sourceProviderId: "google",
         contextTokens: 131072,
         outputTokens: 8192,
+      },
+    ]);
+  });
+
+  it("treats non-positive token limits as absent instead of forwarding them", () => {
+    const observations = transform({
+      groq: {
+        id: "groq",
+        models: {
+          "whisper-large-v3": {
+            id: "whisper-large-v3",
+            name: "Whisper Large V3",
+            limit: { context: 0, output: 0 },
+          },
+          "llama-3.3-70b-versatile": {
+            id: "llama-3.3-70b-versatile",
+            name: "Llama 3.3 70B Versatile",
+            limit: { context: 131072, output: 32768 },
+          },
+        },
+      },
+    });
+
+    const groq = observations.find(({ productId }) => productId === "groq");
+    expect(groq?.models).toEqual([
+      {
+        modelId: "llama-3.3-70b-versatile",
+        modelName: "Llama 3.3 70B Versatile",
+        sourceProviderId: "groq",
+        contextTokens: 131072,
+        outputTokens: 32768,
+      },
+      {
+        modelId: "whisper-large-v3",
+        modelName: "Whisper Large V3",
+        sourceProviderId: "groq",
       },
     ]);
   });

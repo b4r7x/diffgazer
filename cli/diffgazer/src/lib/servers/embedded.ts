@@ -22,6 +22,13 @@ const indexHtmlPath = join(webRoot, "index.html");
 
 type EmbeddedServerState = "idle" | "starting" | "running" | "stopped";
 
+/**
+ * The SPA ships one parser-blocking inline script of its own (the pre-paint
+ * theme bootstrap in `apps/web/index.html`). This CSP admits inline scripts
+ * only by nonce, so the placeholder it carries is filled with the same nonce.
+ */
+const CSP_NONCE_PLACEHOLDER = "{{cspNonce}}";
+
 export function buildHtmlShell(html: string, token: string): { body: string; csp: string } {
   const nonce = randomBytes(16).toString("base64");
   // Escape angle brackets so the serialized value can never terminate the
@@ -40,7 +47,8 @@ export function buildHtmlShell(html: string, token: string): { body: string; csp
     "frame-ancestors 'none'",
     "form-action 'self'",
   ].join("; ");
-  return { body: html.replace("</head>", `${script}</head>`), csp };
+  const body = html.replaceAll(CSP_NONCE_PLACEHOLDER, nonce).replace("</head>", `${script}</head>`);
+  return { body, csp };
 }
 
 function isHtmlShellPath(pathname: string): boolean {

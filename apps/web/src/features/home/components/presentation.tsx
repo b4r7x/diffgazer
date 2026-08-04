@@ -1,5 +1,6 @@
 import type { ShutdownResult } from "@diffgazer/core/api";
 import { usePageFooter } from "@diffgazer/core/footer";
+import { useSubmitGuard } from "@diffgazer/core/forms";
 import type { NavigableMenuAction } from "@diffgazer/core/navigation";
 import { isMenuActionDisabled, resolveHomeMenuActivation } from "@diffgazer/core/navigation";
 import { describeReviewStartError } from "@diffgazer/core/review";
@@ -13,7 +14,7 @@ import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { useKey, useScope } from "@diffgazer/keys";
 import { toast } from "@diffgazer/ui/components/toast";
 import type { useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { TRUST_PANEL_FOOTER_SHORTCUTS, TrustPanel } from "@/components/shared/trust-panel";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
 import { HomeMenu } from "@/features/home/components/menu";
@@ -84,19 +85,29 @@ export function HomePagePresentation({
   clearScopedRouteState,
   shutdown,
 }: HomePagePresentationProps) {
-  const [isStartingReview, setIsStartingReview] = useState(false);
+  const { isSubmitting: isStartingReview, withGuard } = useSubmitGuard();
   const hasResumableSession = resumableSession != null;
-  const activeReviewRequestRef = useRef<symbol | null>(null);
+  // Starting a review outlives this page: app-wide keys can leave home while the
+  // request is in flight, and a late navigate would pull the user off the screen
+  // they chose.
+  const isMountedRef = useRef(true);
   const invalidIdReportedRef = useRef(false);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
-      activeReviewRequestRef.current = null;
+      isMountedRef.current = false;
     };
   }, []);
 
   useEffect(() => {
-    if (searchError !== "invalid-review-id" || invalidIdReportedRef.current) return;
+    if (searchError !== "invalid-review-id") {
+      // Re-arm once the redirect cleaned the search param, so a second bad link
+      // in the same session is reported and cleaned too.
+      invalidIdReportedRef.current = false;
+      return;
+    }
+    if (invalidIdReportedRef.current) return;
     invalidIdReportedRef.current = true;
     toast.error("Invalid Review ID", { message: "The review ID format is invalid." });
     navigate({ to: "/", replace: true });
@@ -116,29 +127,17 @@ export function HomePagePresentation({
     });
   };
 
-  const startReview = async (mode: ReviewMode) => {
-    if (activeReviewRequestRef.current) return;
-    const request = Symbol();
-    activeReviewRequestRef.current = request;
-    setIsStartingReview(true);
-
-    const finishCurrentRequest = () => {
-      if (activeReviewRequestRef.current !== request) return false;
-      activeReviewRequestRef.current = null;
-      setIsStartingReview(false);
-      return true;
-    };
-
-    try {
-      const { reviewId } = await createReview({ mode });
-      if (!finishCurrentRequest()) return;
-      navigateToReview(reviewId, mode);
-    } catch (error) {
-      if (!finishCurrentRequest()) return;
-      const { title, message } = describeReviewStartError(error);
-      toast.error(title, { message });
-    }
-  };
+  const startReview = (mode: ReviewMode) =>
+    withGuard(async () => {
+      try {
+        const { reviewId } = await createReview({ mode });
+        if (isMountedRef.current) navigateToReview(reviewId, mode);
+      } catch (error) {
+        if (!isMountedRef.current) return;
+        const { title, message } = describeReviewStartError(error);
+        toast.error(title, { message });
+      }
+    });
 
   const resumeReview = () => {
     if (!resumableSession) {
@@ -240,29 +239,36 @@ export function HomePagePresentation({
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto px-4 pt-8 pb-4 md:px-6 lg:px-8">
-      {/* The block is centred in whatever height is left instead of hanging off
-          the hero, and the two panes stretch to one bottom line so the
-          composition closes at desktop. */}
-      <div className="m-auto flex w-full max-w-5xl flex-col items-stretch gap-8 lg:flex-row">
-        <HomeMenu
-          highlighted={effectiveHighlighted}
-          onHighlightChange={onHighlightChange}
-          onSelect={handleActivate}
-          items={MENU_ITEMS}
-          isTrusted={isTrusted}
-          hasResumableSession={hasResumableSession}
-          pending={isStartingReview}
-        />
-        {/* Menu first in source order so the actionable pane leads the stacked
-            layout; the context column returns to the left at desktop. */}
-        <ContextSidebar
-          context={context}
-          isTrusted={isTrusted}
-          projectPath={repoRoot ?? undefined}
-          pending={isStartingReview}
-          onOpenLastRun={context.lastRunId === undefined ? undefined : openLastRun}
-        />
+    <div className="flex flex-1 flex-col overflow-y-auto px-4 py-12 md:px-6 lg:px-8">
+      {/* The shell header carries the hero wordmark, so home only centres its
+          panes in the space below it. Auto margins collapse to zero once the
+          column outgrows the viewport, so a short window scrolls from the top
+          instead of clipping. */}
+      <div className="home-composition m-auto flex w-full max-w-4xl flex-col gap-8">
+        {/* At desktop each pane keeps its own height instead of stretching to one
+            bottom line, so the shorter context pane carries no dead band; below lg
+            the cross axis is horizontal and the default stretch keeps both panes
+            full width. */}
+        <div className="flex w-full flex-col gap-8 lg:flex-row lg:items-start">
+          <HomeMenu
+            highlighted={effectiveHighlighted}
+            onHighlightChange={onHighlightChange}
+            onSelect={handleActivate}
+            items={MENU_ITEMS}
+            isTrusted={isTrusted}
+            hasResumableSession={hasResumableSession}
+            pending={isStartingReview}
+          />
+          {/* Menu first in source order so the actionable pane leads the stacked
+              layout; the context column returns to the left at desktop. */}
+          <ContextSidebar
+            context={context}
+            isTrusted={isTrusted}
+            projectPath={repoRoot ?? undefined}
+            pending={isStartingReview}
+            onOpenLastRun={context.lastRunId === undefined ? undefined : openLastRun}
+          />
+        </div>
       </div>
     </div>
   );

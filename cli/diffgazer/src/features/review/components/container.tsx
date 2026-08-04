@@ -202,7 +202,9 @@ export function ReviewContainer({
           completedAt={state.completedAt}
           reviewId={state.reviewId}
           contextSnapshot={state.contextSnapshot}
-          onViewResults={goToSummary}
+          // Offered only while the completion delay runs: before the run ends
+          // there is no deduped result to show.
+          onViewResults={state.phase === "completing" ? goToSummary : undefined}
           onGoToSettings={() => navigate({ screen: "settings/providers" })}
         />
       );

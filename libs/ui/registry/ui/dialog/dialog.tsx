@@ -33,7 +33,7 @@ function useIdSetRegistry() {
 /**
  * Modal dialog with compound component architecture. Built on the native dialog element with
  * two orthogonal visual axes: frame (border or none) and corners (none, subtle, standard, bold,
- * or outset), and an optional header marker bar spanning the title and description.
+ * or outset), plus a header strip band carrying the title and its optional description.
  */
 function DialogRoot({ open: controlledOpen, defaultOpen, onOpenChange, children }: DialogProps) {
   const [isOpen, setIsOpen] = useControllableState({

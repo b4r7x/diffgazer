@@ -1,20 +1,15 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import type {
-  ClientConfigurationActionResponse,
-  RunnableProductId,
-} from "@diffgazer/core/schemas/config";
-import { READINESS_PRESENTATION, ReadinessSchema } from "@diffgazer/core/schemas/config";
+import type { ConfigurationModelsResponse } from "@diffgazer/core/schemas/config";
+import {
+  READY_GEMINI_CONFIGURATION,
+  type SupportedConfigurationSummary,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CliThemeProvider } from "../../../../theme/provider";
-import {
-  READY_GEMINI_CONFIGURATION,
-  type SupportedConfigurationSummary,
-} from "../../../providers/testing/fixtures";
 import { ModelStep } from "./model-step";
 
 const terminalDimensions = vi.hoisted(() => ({ current: { columns: 80, rows: 24 } }));
@@ -28,31 +23,19 @@ const DRAFT_CONFIGURATION: SupportedConfigurationSummary = {
   selectedModelId: null,
 };
 
-function acknowledgementRequired(productId: RunnableProductId) {
-  const notice = PRODUCT_REGISTRY[productId].notice;
-  return ReadinessSchema.parse({
-    status: "acknowledgement-required",
-    ready: false,
-    evidenceStatus: "passed",
-    checkedAt: "2026-07-31T12:00:00.000Z",
-    acknowledgement: {
-      status: "required",
-      noticeId: notice.id,
-      noticeVersion: notice.noticeVersion,
-    },
-    ...READINESS_PRESENTATION["acknowledgement-required"],
-  });
-}
-
-function discoveryResponse(
+function catalogModelsResponse(
   configuration: SupportedConfigurationSummary,
-  selectedModelId: string,
-): ClientConfigurationActionResponse {
+  modelId: string,
+): ConfigurationModelsResponse {
   return {
-    action: "test",
-    status: "succeeded",
-    configuration: { ...configuration, selectedModelId },
-    readiness: acknowledgementRequired(configuration.productId),
+    status: "passed",
+    configurationId: configuration.configurationId,
+    productId: configuration.productId,
+    transportFamily: configuration.transportFamily,
+    models: [{ id: modelId, name: modelId, description: "1M context", tier: "paid" }],
+    checkedAt: "2026-07-31T12:00:00.000Z",
+    source: "snapshot",
+    cached: false,
   };
 }
 
@@ -83,8 +66,11 @@ function Wrapper({ children, api }: { children: ReactNode; api: BoundApi }) {
   );
 }
 
-function makeApi(testConfiguration: BoundApi["testConfiguration"]): BoundApi {
-  return { ...createApi({ baseUrl: "http://localhost" }), testConfiguration } satisfies BoundApi;
+function makeApi(getConfigurationModels: BoundApi["getConfigurationModels"]): BoundApi {
+  return {
+    ...createApi({ baseUrl: "http://localhost" }),
+    getConfigurationModels,
+  } satisfies BoundApi;
 }
 
 describe("ModelStep (TUI catalog)", () => {
@@ -94,16 +80,12 @@ describe("ModelStep (TUI catalog)", () => {
   });
 
   test("discovers models against the persisted draft configuration id", async () => {
-    const testConfiguration = vi
-      .fn<BoundApi["testConfiguration"]>()
-      .mockResolvedValue(
-        discoveryResponse(DRAFT_CONFIGURATION, "gemini-2.5-flash") as Awaited<
-          ReturnType<BoundApi["testConfiguration"]>
-        >,
-      );
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(catalogModelsResponse(DRAFT_CONFIGURATION, "gemini-2.5-flash"));
 
     const { lastFrame } = render(
-      <Wrapper api={makeApi(testConfiguration)}>
+      <Wrapper api={makeApi(getConfigurationModels)}>
         <ModelStep
           configuration={DRAFT_CONFIGURATION}
           isPreparing={false}
@@ -116,20 +98,16 @@ describe("ModelStep (TUI catalog)", () => {
 
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
     expect(lastFrame() ?? "").toContain("gemini-2.5-flash");
-    expect(testConfiguration).toHaveBeenCalledWith(DRAFT_CONFIGURATION.configurationId);
+    expect(getConfigurationModels).toHaveBeenCalledWith(DRAFT_CONFIGURATION.configurationId);
   });
 
   test("keeps discovering while the step is not focused", async () => {
-    const testConfiguration = vi
-      .fn<BoundApi["testConfiguration"]>()
-      .mockResolvedValue(
-        discoveryResponse(DRAFT_CONFIGURATION, "gemini-2.5-flash") as Awaited<
-          ReturnType<BoundApi["testConfiguration"]>
-        >,
-      );
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(catalogModelsResponse(DRAFT_CONFIGURATION, "gemini-2.5-flash"));
 
     const { lastFrame } = render(
-      <Wrapper api={makeApi(testConfiguration)}>
+      <Wrapper api={makeApi(getConfigurationModels)}>
         <ModelStep
           configuration={DRAFT_CONFIGURATION}
           isPreparing={false}
@@ -142,26 +120,26 @@ describe("ModelStep (TUI catalog)", () => {
 
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
     expect(lastFrame() ?? "").toContain("gemini-2.5-flash");
-    expect(testConfiguration).toHaveBeenCalledTimes(1);
+    expect(getConfigurationModels).toHaveBeenCalledTimes(1);
   });
 
   test("waits for the draft configuration instead of inventing one", () => {
-    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>();
+    const getConfigurationModels = vi.fn<BoundApi["getConfigurationModels"]>();
 
     const { lastFrame } = render(
-      <Wrapper api={makeApi(testConfiguration)}>
+      <Wrapper api={makeApi(getConfigurationModels)}>
         <ModelStep configuration={null} isPreparing onRetry={() => {}} onChange={() => {}} />
       </Wrapper>,
     );
 
     expect(lastFrame() ?? "").toContain("Preparing configuration");
-    expect(testConfiguration).not.toHaveBeenCalled();
+    expect(getConfigurationModels).not.toHaveBeenCalled();
   });
 
   test("retries draft preparation from the failed state", async () => {
     const onRetry = vi.fn();
     const { lastFrame, stdin } = render(
-      <Wrapper api={makeApi(vi.fn<BoundApi["testConfiguration"]>())}>
+      <Wrapper api={makeApi(vi.fn<BoundApi["getConfigurationModels"]>())}>
         <ModelStep configuration={null} isPreparing={false} onRetry={onRetry} onChange={() => {}} />
       </Wrapper>,
     );
@@ -173,17 +151,13 @@ describe("ModelStep (TUI catalog)", () => {
   });
 
   test("offers retry without manual model entry when discovery fails", async () => {
-    const testConfiguration = vi
-      .fn<BoundApi["testConfiguration"]>()
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
       .mockRejectedValueOnce(new Error("catalog unavailable"))
-      .mockResolvedValueOnce(
-        discoveryResponse(DRAFT_CONFIGURATION, "gemini-2.5-flash") as Awaited<
-          ReturnType<BoundApi["testConfiguration"]>
-        >,
-      );
+      .mockResolvedValueOnce(catalogModelsResponse(DRAFT_CONFIGURATION, "gemini-2.5-flash"));
 
     const { lastFrame, stdin } = render(
-      <Wrapper api={makeApi(testConfiguration)}>
+      <Wrapper api={makeApi(getConfigurationModels)}>
         <ModelStep
           configuration={DRAFT_CONFIGURATION}
           isPreparing={false}
@@ -197,26 +171,22 @@ describe("ModelStep (TUI catalog)", () => {
     expect(lastFrame()).toContain("Press r to retry");
     stdin.write("r");
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
-    expect(testConfiguration).toHaveBeenCalledTimes(2);
+    expect(getConfigurationModels).toHaveBeenCalledTimes(2);
   });
 
-  test("shows remediation when discovery is skipped", async () => {
-    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>().mockResolvedValue({
-      action: "test",
-      status: "succeeded",
-      configuration: DRAFT_CONFIGURATION,
-      readiness: ReadinessSchema.parse({
-        status: "skipped",
-        ready: false,
-        evidenceStatus: "skipped",
-        checkedAt: "2026-07-31T12:00:00.000Z",
-        acknowledgement: { status: "not-applicable" },
-        ...READINESS_PRESENTATION.skipped,
-      }),
+  test("shows the skipped catalog reason without inventing models", async () => {
+    const getConfigurationModels = vi.fn<BoundApi["getConfigurationModels"]>().mockResolvedValue({
+      status: "skipped",
+      configurationId: DRAFT_CONFIGURATION.configurationId,
+      productId: DRAFT_CONFIGURATION.productId,
+      transportFamily: DRAFT_CONFIGURATION.transportFamily,
+      models: [],
+      checkedAt: "2026-07-31T12:00:00.000Z",
+      reason: "Catalog observations are unavailable for this configuration product.",
     });
 
     const { lastFrame } = render(
-      <Wrapper api={makeApi(testConfiguration)}>
+      <Wrapper api={makeApi(getConfigurationModels)}>
         <ModelStep
           configuration={DRAFT_CONFIGURATION}
           isPreparing={false}
@@ -226,9 +196,7 @@ describe("ModelStep (TUI catalog)", () => {
       </Wrapper>,
     );
 
-    await flushUntil(
-      () => lastFrame()?.includes("live readiness check was intentionally skipped") ?? false,
-    );
+    await flushUntil(() => lastFrame()?.includes("Catalog observations are unavailable") ?? false);
     expect(lastFrame()).not.toMatch(/api key/i);
   });
 });

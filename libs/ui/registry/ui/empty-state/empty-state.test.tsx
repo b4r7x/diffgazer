@@ -54,10 +54,10 @@ describe("EmptyState", () => {
     });
 
     it.each([
-      "sm",
-      "md",
-      "lg",
-    ] as const)("takes its type scale from the root size context (%s)", (size) => {
+      ["sm", "text-2xs"],
+      ["md", "text-2xs"],
+      ["lg", "text-xs"],
+    ] as const)("takes its type scale from the root size context (%s)", (size, step) => {
       const { container } = render(
         <EmptyState size={size}>
           <EmptyState.Hint>press slash</EmptyState.Hint>
@@ -67,8 +67,8 @@ describe("EmptyState", () => {
       // Same mechanism the sibling parts use: the root publishes data-size and
       // each part carries a step per size that resolves against it.
       expect(container.firstElementChild).toHaveAttribute("data-size", size);
-      expect(container.querySelector('[data-slot="empty-state-hint"]')?.className).toContain(
-        `group-data-[size=${size}]/es:`,
+      expect(container.querySelector('[data-slot="empty-state-hint"]')).toHaveClass(
+        `group-data-[size=${size}]/es:${step}`,
       );
     });
 

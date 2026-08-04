@@ -35,15 +35,8 @@ export function ReviewResultsView({
     handleListBoundary,
     activeTab,
     setActiveTab,
-    severityFilter,
-    setSeverityFilter,
-    resetSeverityFilter,
+    filter,
     focusZone,
-    focusedFilterIndex,
-    setFocusedFilterIndex,
-    filterRef,
-    handleFilterKeyDown,
-    handleSeverityFilterBoundary,
     handleDetailsTabsBoundary,
     handleListFocus,
     listRef,
@@ -69,7 +62,13 @@ export function ReviewResultsView({
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2 font-mono">
       <div className="py-2 mb-2 shrink-0">
-        <SectionHeader as="h2" variant="accent">
+        {/* The run id is an inline chip, not a full-width banner: it identifies
+            the run without competing with the panes below it. */}
+        <SectionHeader
+          as="h2"
+          variant="accent"
+          className="inline-flex w-fit border border-accent/40 px-2"
+        >
           Review {reviewId ? formatRunId(reviewId) : "#unknown"}
         </SectionHeader>
         {completenessNotice ? (
@@ -105,15 +104,7 @@ export function ReviewResultsView({
             onHighlightIssue={selectIssue}
             onListBoundaryReached={handleListBoundary}
             onListFocus={handleListFocus}
-            severityFilter={severityFilter}
-            onSeverityFilterChange={setSeverityFilter}
-            onSeverityFilterReset={resetSeverityFilter}
-            onSeverityFilterBoundary={handleSeverityFilterBoundary}
-            focusedFilterIndex={focusedFilterIndex}
-            onFocusedFilterIndexChange={setFocusedFilterIndex}
-            isFilterFocused={focusZone === "filters"}
-            onFilterKeyDown={handleFilterKeyDown}
-            filterRef={filterRef}
+            filter={filter}
             listRef={listRef}
             listBodyRef={listBodyRef}
             isFocused={focusZone === "list"}
@@ -130,7 +121,6 @@ export function ReviewResultsView({
             onFocusedStepIndexChange={setFocusedStepIndex}
             paneRef={detailsPaneRef}
             scrollAreaRef={detailsScrollRef}
-            isFocused={focusZone === "details"}
             emptyKind={detailsEmptyKind}
             onBackToList={backToList}
             className={detailsPaneClassName}

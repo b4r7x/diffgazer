@@ -3,7 +3,7 @@ import type { LogStreamState } from "@diffgazer/core/review";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import { pluralize } from "@diffgazer/core/strings";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { useReviewClock } from "../../hooks/use-review-clock";
+import { useReviewClock } from "../../hooks/use-clock";
 
 export interface TailStatusInput {
   state: LogStreamState;

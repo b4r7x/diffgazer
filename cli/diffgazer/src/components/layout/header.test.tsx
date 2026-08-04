@@ -19,6 +19,7 @@ const activeStatus: ProviderDisplayStatus = {
   status: "ready",
   action: "inspect",
   label: "active",
+  shortLabel: "ready",
   variant: "success",
   explanation: "",
   remediation: "",

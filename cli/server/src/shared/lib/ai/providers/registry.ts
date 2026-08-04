@@ -22,11 +22,11 @@ import {
   type CliCompatibilityTuple,
   matchCliCompatibilityTuple,
   parseCliCompatibilityRecord,
-} from "./cli-compatibility.js";
+} from "./cli-compatibility/compat.js";
 import { createCodexCliAdapter } from "./codex-cli.js";
-import { createCopilotCliAdapter } from "./copilot-cli.js";
-import { HOSTED_ADAPTERS } from "./hosted.js";
-import { localOpenaiAdapter, ollamaAdapter } from "./local-http.js";
+import { createCopilotCliAdapter } from "./copilot/cli.js";
+import { HOSTED_ADAPTERS } from "./hosted/transport.js";
+import { localOpenaiAdapter, ollamaAdapter } from "./local-http/transport.js";
 
 export type { Adapter } from "../types.js";
 

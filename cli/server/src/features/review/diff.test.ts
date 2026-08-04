@@ -242,7 +242,6 @@ describe("createReviewSession canonical file-scoped identity", () => {
 
     return {
       provider: "openrouter",
-      executionFingerprint: { provider: "openrouter", model: "test-model" },
       terminalExecutions: [],
       generate,
     };

@@ -10,7 +10,7 @@ import { StorageSelector } from "../../../components/shared/storage-selector";
 import { Callout } from "../../../components/ui/callout";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useTheme } from "../../../theme/provider";
-import { SettingsFormScreen } from "./settings-form-screen";
+import { SettingsFormScreen } from "./form-screen";
 
 const LIST_SHORTCUTS: Shortcut[] = [NAVIGATE_SHORTCUT, { key: "Enter", label: "Select Storage" }];
 

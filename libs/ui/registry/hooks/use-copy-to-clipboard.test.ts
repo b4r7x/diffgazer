@@ -1,22 +1,7 @@
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCopyToClipboard } from "./use-copy-to-clipboard";
-
-interface Deferred {
-  promise: Promise<void>;
-  resolve: () => void;
-  reject: (error: unknown) => void;
-}
-
-function createDeferred(): Deferred {
-  let resolve: () => void = () => {};
-  let reject: (error: unknown) => void = () => {};
-  const promise = new Promise<void>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
-}
 
 describe("useCopyToClipboard", () => {
   beforeEach(() => {
@@ -131,8 +116,8 @@ describe("useCopyToClipboard", () => {
   });
 
   it("keeps the latest attempt's outcome when an older copy settles afterward", async () => {
-    const deferredA = createDeferred();
-    const deferredB = createDeferred();
+    const deferredA = createDeferred<void>();
+    const deferredB = createDeferred<void>();
     const write = vi.fn((text: string) => (text === "A" ? deferredA : deferredB).promise);
     const onCopy = vi.fn();
     const onError = vi.fn();
@@ -158,8 +143,8 @@ describe("useCopyToClipboard", () => {
   });
 
   it("keeps a failed latest attempt when an older successful copy settles afterward", async () => {
-    const deferredA = createDeferred();
-    const deferredB = createDeferred();
+    const deferredA = createDeferred<void>();
+    const deferredB = createDeferred<void>();
     const write = vi.fn((text: string) => (text === "A" ? deferredA : deferredB).promise);
     const onCopy = vi.fn();
     const onError = vi.fn();

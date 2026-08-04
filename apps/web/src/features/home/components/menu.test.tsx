@@ -1,6 +1,6 @@
 import { MENU_ITEMS } from "@diffgazer/core/schemas/presentation";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -105,5 +105,34 @@ describe("HomeMenu — Resume Last Review gating", () => {
       "aria-disabled",
       "true",
     );
+  });
+});
+
+describe("HomeMenu — focus chrome", () => {
+  it("brackets the pane only while focus sits inside it", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <HomeMenu
+          highlighted={null}
+          onHighlightChange={vi.fn()}
+          onSelect={vi.fn()}
+          items={MENU_ITEMS}
+          isTrusted
+        />
+        <button type="button">Outside</button>
+      </>,
+      { wrapper: Wrapper },
+    );
+
+    // data-state="focused" is Panel's bracket contract. The menu autofocuses a
+    // frame after mount, so the brackets arrive with real focus, not at mount.
+    const pane = screen.getByRole("region", { name: /main menu/i });
+    await waitFor(() => expect(pane).toHaveAttribute("data-state", "focused"));
+
+    await user.click(screen.getByRole("button", { name: "Outside" }));
+
+    expect(screen.getByRole("button", { name: "Outside" })).toHaveFocus();
+    expect(pane).not.toHaveAttribute("data-state");
   });
 });

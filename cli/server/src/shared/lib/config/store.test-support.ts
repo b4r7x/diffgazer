@@ -11,7 +11,7 @@ type KeyringMocks = {
   writeKeyringSecret: Mock;
 };
 
-type CatalogMocks = { getProviderModels: Mock };
+type CatalogMocks = { getProviderModels: Mock; discoverConfigurationCatalog: Mock };
 
 const { keyring, fsHooks, catalog } = vi.hoisted(() => ({
   keyring: {
@@ -30,7 +30,10 @@ const { keyring, fsHooks, catalog } = vi.hoisted(() => ({
       | null,
     getFileMtimeMsHook: null as ((filePath: string) => number | null) | null,
   },
-  catalog: { getProviderModels: vi.fn() } as CatalogMocks,
+  catalog: {
+    getProviderModels: vi.fn(),
+    discoverConfigurationCatalog: vi.fn(),
+  } as CatalogMocks,
 }));
 
 export { catalog, fsHooks, keyring };
@@ -96,9 +99,9 @@ export async function readJsonEventually<T>(filePath: string): Promise<T> {
 // Deletion fails closed without a lease authority, so tests install the same
 // process-wide one the composition root installs.
 async function installConfigurationLeaseHooks(): Promise<void> {
-  const { setConfigurationLeaseHooks } = await import("./store.js");
+  const { registerConfigSeams } = await import("./seams.js");
   const { createConfigurationLeaseHooks } = await import("../session-registry.js");
-  setConfigurationLeaseHooks(createConfigurationLeaseHooks());
+  registerConfigSeams({ leaseHooks: createConfigurationLeaseHooks() });
 }
 
 export async function loadStore() {

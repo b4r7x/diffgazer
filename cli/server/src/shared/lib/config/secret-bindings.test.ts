@@ -98,6 +98,23 @@ describe("configuration-bound secret bindings", () => {
     await expect(resolveSecretBinding(binding)).rejects.toMatchObject({ code: "FILE_MODE_UNSAFE" });
   });
 
+  it("accepts owner-only modes stricter than 0600 and rejects any group or other access", async () => {
+    const directory = await createTempDirectory();
+    const filePath = join(directory, "hardened-secret");
+    const binding = createFileSecretBinding("config-a", 1, filePath);
+    await writeSecretBinding(binding, "hardened-value");
+
+    // A hardened install may drop the owner write bit; the file is still private.
+    await chmod(filePath, 0o400);
+    await expect(resolveSecretBinding(binding)).resolves.toBe("hardened-value");
+
+    await chmod(filePath, 0o640);
+    await expect(resolveSecretBinding(binding)).rejects.toMatchObject({ code: "FILE_MODE_UNSAFE" });
+
+    await chmod(filePath, 0o666);
+    await expect(resolveSecretBinding(binding)).rejects.toMatchObject({ code: "FILE_MODE_UNSAFE" });
+  });
+
   it("supports keyring, environment, none, and optional local bearer bindings", async () => {
     const keyring = createMemoryKeyring();
     const keyringBinding = createKeyringSecretBinding("config-a", 1, "config-a/1/credential");

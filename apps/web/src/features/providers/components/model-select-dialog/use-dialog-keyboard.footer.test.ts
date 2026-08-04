@@ -63,19 +63,25 @@ function TestModelFooterKeyboard({
     "div",
     null,
     createElement("input", { "aria-label": "Search models", ref: searchInputRef }),
+    // Mirrors the dialog: the container ref sits on the scroll wrapper while
+    // the rows' owning radiogroup is nested inside it.
     createElement(
       "div",
-      { ref: listContainerRef, role: "radiogroup" },
-      ...(isSaving ? [] : filteredModels).map((model) =>
-        createElement(
-          "div",
-          {
-            key: model.id,
-            role: "radio",
-            "data-value": model.id,
-            tabIndex: 0,
-          },
-          model.name,
+      { ref: listContainerRef },
+      createElement(
+        "div",
+        { role: "radiogroup", "aria-label": "Available models" },
+        ...(isSaving ? [] : filteredModels).map((model) =>
+          createElement(
+            "div",
+            {
+              key: model.id,
+              role: "radio",
+              "data-value": model.id,
+              tabIndex: 0,
+            },
+            model.name,
+          ),
         ),
       ),
     ),

@@ -375,9 +375,7 @@ describe("Button coarse-pointer hit area", () => {
       </div>,
     );
     for (const name of ["First", "Second"]) {
-      expect(screen.getByRole("button", { name }).className).toContain(
-        "pointer-coarse:before:-inset-y-2",
-      );
+      expect(screen.getByRole("button", { name })).toHaveClass("pointer-coarse:before:-inset-y-2");
     }
 
     for (const [, overhangUnits, documentedGapPx] of COARSE_SIZES) {
@@ -431,7 +429,8 @@ describe("disabled primary contrast (parsed from CSS)", () => {
 
   // The disabled treatment is a computed-color contract jsdom cannot measure, so this asserts the
   // classes that carry it: fading a filled button drags its label under 4.5:1, so the fill is
-  // emptied instead of dimmed.
+  // emptied instead of dimmed, and the emptied box keeps a half-strength solid edge — dashed and
+  // dotted borders are not part of this system's grammar.
   it("empties the disabled primary fill instead of fading it", () => {
     const classes = buttonVariants({ variant: "primary" }).split(" ");
     for (const state of ["disabled", "aria-disabled"]) {
@@ -439,6 +438,8 @@ describe("disabled primary contrast (parsed from CSS)", () => {
       expect(classes).toContain(`${state}:text-muted-foreground`);
       // Without this the base fade still applies and washes the pair out.
       expect(classes).toContain(`${state}:opacity-100`);
+      expect(classes).toContain(`${state}:border-border/50`);
+      expect(classes).not.toContain(`${state}:border-dashed`);
     }
   });
 

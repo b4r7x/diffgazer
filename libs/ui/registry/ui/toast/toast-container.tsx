@@ -2,7 +2,8 @@
 
 import { isEditableElement } from "@diffgazer/keys";
 import { type FocusEvent, useEffect, useRef, useState } from "react";
-import { createTopLayerStack, useTopLayerPosition } from "@/lib/top-layer-stack";
+import { useTopLayerPosition } from "@/hooks/use-top-layer-position";
+import { createTopLayerStack } from "@/lib/top-layer-stack";
 import { cn } from "@/lib/utils";
 import { Toast } from "./toast";
 import {

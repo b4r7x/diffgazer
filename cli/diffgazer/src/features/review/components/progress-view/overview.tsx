@@ -2,6 +2,7 @@ import type { ReviewContextResponse } from "@diffgazer/core/api/types";
 import type { FileProgress } from "@diffgazer/core/review";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import type { ProgressStepWithSubstepsData } from "@diffgazer/core/schemas/presentation";
+import { pluralize } from "@diffgazer/core/strings";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { SectionHeader } from "../../../../components/ui/section-header";
@@ -107,7 +108,7 @@ export function ReviewProgressOverview({
       {agents.length > 0 && !showAgentBoard && !hasCompletedSnapshot ? (
         <Box height={1} flexShrink={0} overflow="hidden">
           <Text color={tokens.muted} wrap="truncate-end">
-            {`${agents.length} ${agents.length === 1 ? "agent" : "agents"} running — press Tab for the log`}
+            {`${pluralize(agents.length, "agent")} running — press Tab for the log`}
           </Text>
         </Box>
       ) : null}

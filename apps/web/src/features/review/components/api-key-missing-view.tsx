@@ -85,7 +85,6 @@ export function ReviewTerminalReceiptView({
       tone="error"
       scope={REVIEW_SETUP_GATE_SCOPE}
       primary={{ label: "Back to Home", onAction: onBack }}
-      secondary={{ label: "Back to Home", onAction: onBack }}
     />
   );
 }
@@ -104,7 +103,6 @@ export function ReviewTerminalErrorView({
       tone="error"
       scope={REVIEW_SETUP_GATE_SCOPE}
       primary={{ label: "Back to Home", onAction: onBack }}
-      secondary={{ label: "Back to Home", onAction: onBack }}
     />
   );
 }

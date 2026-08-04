@@ -470,6 +470,23 @@ describe("HistoryPage keyboard navigation", () => {
     );
   });
 
+  it("rests every pane on an empty history instead of autofocusing the runs list", async () => {
+    mockGetReviews.mockResolvedValue({ reviews: [] });
+
+    renderHistoryPage(<HistoryPage />);
+
+    await screen.findByText("No runs yet");
+
+    expect(document.activeElement).toBe(document.body);
+    expect(screen.getByRole("region", { name: "Review runs" })).not.toHaveAttribute("data-state");
+    expect(screen.getByRole("complementary", { name: "Review sections" })).not.toHaveAttribute(
+      "data-state",
+    );
+    expect(screen.getByRole("complementary", { name: "Review insights" })).not.toHaveAttribute(
+      "data-state",
+    );
+  });
+
   it("does not programmatically focus the insights pane when no run is selected", async () => {
     mockGetReviews.mockResolvedValue({ reviews: [] });
 

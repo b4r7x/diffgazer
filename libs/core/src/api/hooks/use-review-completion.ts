@@ -108,10 +108,12 @@ export function useReviewCompletion({
   }, [isStreaming, isComplete, error, errorCode, hasStreamed]);
 
   function skipDelay() {
+    // Only a running completion delay can be skipped. Before the stream ends
+    // there is no deduped result and no duration to hand over, so an early call
+    // must emit nothing rather than complete the review with partial data.
+    if (completion.status !== "delaying") return;
     clearTimer(timerRef);
-    setCompletion((current) =>
-      current.status === "delaying" ? { ...current, status: "completed" } : current,
-    );
+    setCompletion({ status: "completed", completedAt: completion.completedAt });
     onComplete();
   }
 

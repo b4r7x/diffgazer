@@ -9,8 +9,9 @@
 
 /* Scoped to [data-theme="dark"] only: a bare `:root` here would outrank the
    lib's [data-theme="light"] block (equal specificity, later source order) and
-   keep the dark palette applied even in light mode. index.html sets
-   data-theme="dark" as the pre-mount default so first paint stays GitHub-dark. */
+   keep the dark palette applied even in light mode. index.html's parser-blocking
+   theme bootstrap stamps data-theme before first paint, so the reader's own
+   theme — not a hardcoded default — is what gets painted. */
 [data-theme="dark"] {
   /* GitHub-dark primitive overrides (lib ships monochrome values) */
   --base-bg: #0d1117;
@@ -27,13 +28,15 @@
 
   /* Semantic remaps that diverge from the lib dark block. --primary and
      --primary-foreground are a pair: highlighted rows read dark-on-info
-     (GitHub-style selection), not the lib's white-on-highlight. */
+     (GitHub-style selection), not the lib's white-on-highlight. --action
+     tracks that same blue: primary CTAs are blue app-wide and violet stays a
+     passive editorial accent, reachable only through --accent. */
   --primary: var(--base-info);
   --primary-foreground: var(--base-bg);
   --accent: var(--base-accent);
   --accent-foreground: var(--base-bg);
   --ring: var(--base-info);
-  --action: var(--base-accent);
+  --action: var(--base-info);
   --action-foreground: var(--base-bg);
   --muted-foreground: var(--base-muted);
 
@@ -41,9 +44,17 @@
      these the GitHub-dark surfaces inherit neutral gray (#9c9c9c edge, #111111
      fill) that reads cold-gray against the blue-black canvas. GitHub-dark's own
      steps: border-default #30363d -> border-muted-emphasis #484f58, canvas-default
-     #0d1117 -> canvas-subtle #161b22. */
+     #0d1117 -> canvas-subtle #161b22, then one step further for the second
+     elevation (dialog header strip, panel tab chips). */
   --border-strong: #484f58;
   --surface-1: #161b22;
+  --surface-2: #1c2128;
+
+  /* The lib mixes the hard shadow from --base-fg, which is a near-white in
+     GitHub-dark and paints a pale slab next to dialogs. Deriving it from the
+     border-strength tone over the inset canvas keeps the offset dark while
+     still separating from --background. */
+  --shadow-hard: 4px 4px 0 0 color-mix(in oklab, var(--border-strong) 30%, #010409);
 
   /* Domain-specific tokens (diffgazer-only, not in /ui) */
   --severity-blocker: var(--base-danger);
@@ -75,20 +86,26 @@
 
   /* Semantic remaps that diverge from the lib light block, mirroring the dark
      block above: the lib maps --primary/--ring/--accent to its near-black
-     highlight role, which would flip the app's selection and accent vocabulary
-     to a different hue family in light than in dark. The paired foregrounds
-     need no restatement here — the lib light block already resolves
-     --primary-foreground and --accent-foreground to #ffffff, which is the
-     correct pairing (5.19:1 on the blue, 5.05:1 on the violet). */
+     highlight role and --action to violet, which would flip the app's
+     selection, CTA, and accent vocabulary to a different hue family in light
+     than in dark. --primary-foreground and --accent-foreground need no
+     restatement — the lib light block already resolves them to #ffffff, the
+     correct pairing (5.19:1 on the blue, 5.05:1 on the violet); the same white
+     is spelled out beside the remapped --action so the CTA pair reads in one
+     place. */
   --primary: var(--base-info);
   --accent: var(--base-accent);
   --ring: var(--base-info);
+  --action: var(--base-info);
+  --action-foreground: #ffffff;
   --muted-foreground: var(--base-muted);
 
   /* GitHub-light counterparts of the lib structural tokens (see the dark block):
-     border-neutral-emphasis #8c959f and canvas-subtle #f6f8fa. */
+     border-neutral-emphasis #8c959f and canvas-subtle #f6f8fa, then one step
+     further down for the second elevation (light steps down, not up). */
   --border-strong: #8c959f;
   --surface-1: #f6f8fa;
+  --surface-2: #eaedf1;
 
   /* Domain-specific tokens (diffgazer-only) */
   --severity-blocker: var(--base-danger);

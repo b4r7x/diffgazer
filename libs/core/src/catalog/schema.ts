@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { utf8ByteLength } from "../redaction.js";
 import { ExactModelIdSchema } from "../schemas/config/provider-config.js";
 
 const OpaqueUpstreamIdSchema = z.string().min(1).max(512);
@@ -9,10 +10,6 @@ const MODEL_NAME_SECRET_PATTERN =
   /(?:\b(?:api(?:[-_ ]?key)|access[-_ ]?token|auth(?:orization)?|credential|password|passwd|secret|token|private[-_ ]?key)\b\s*(?::|=|\bis\s*)\s*[^\s,;)}\]]+|\b(?:bearer|basic)\s+[A-Za-z0-9+/_=.:-]{8,}|\b(?:sk|pk|rk|gsk|gh[pousr]|github_pat|AIza|ya29|xox[baprs]-)[A-Za-z0-9._~+\x2f-]{8,}=*)/i;
 const MODEL_NAME_PATH_PATTERN =
   /(?:^|[\s"'`([{=:])(?:~[\\/]|\.{1,2}[\\/]|[A-Za-z]:[\\/]|\\\\|\/(?:Users|home|private\/var|var\/folders|tmp|usr|bin|srv|opt|etc)(?:[\\/]|$))/i;
-
-function utf8ByteLength(value: string): number {
-  return new TextEncoder().encode(value).byteLength;
-}
 
 function containsUnsafeModelNameControl(value: string): boolean {
   return [...value].some((character) => {

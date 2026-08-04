@@ -6,6 +6,14 @@ import { createInitialReviewState, reviewReducer } from "@diffgazer/core/review"
 import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
+import {
+  configurationStatus,
+  LOCAL_OPENAI_CONFIGURATION,
+  makeConfigurationInitResponse,
+  makeReadyInitResponse,
+  READY_GEMINI_CONFIGURATION,
+  selectedIdentityFrom,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { Toaster, toast } from "@diffgazer/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -14,14 +22,6 @@ import userEvent from "@testing-library/user-event";
 import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
-import {
-  configurationStatus,
-  LOCAL_OPENAI_CONFIGURATION,
-  makeConfigurationInitResponse,
-  makeReadyInitResponse,
-  READY_GEMINI_CONFIGURATION,
-  selectedIdentityFrom,
-} from "@/testing/configuration-fixtures";
 
 type ReviewQueryState = {
   data?: unknown;
@@ -787,8 +787,8 @@ describe("ReviewPage live review phase transitions", () => {
     return user;
   }
 
-  // The summary screen carries no in-page Back button: the app header link and
-  // the Esc shortcut are the two back affordances, and both run this handler.
+  // The summary screen has three back affordances — the app header link, the Esc
+  // shortcut, and the in-page Back button — and all three run this handler.
   it("uses the safe home fallback for direct navigation via Escape", async () => {
     const user = await openSummary();
 
@@ -808,11 +808,17 @@ describe("ReviewPage live review phase transitions", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("keeps View Results as the only action on the summary screen", async () => {
-    await openSummary();
+  it("offers View Results beside a single Back button that runs the Escape handler", async () => {
+    routeState.canGoBack = true;
+    const user = await openSummary();
 
-    expect(screen.getByRole("button", { name: /view results/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /view results/i })).toBeVisible();
+    expect(screen.getAllByRole("button", { name: /back/i })).toHaveLength(1);
+
+    await user.click(screen.getByRole("button", { name: /back/i }));
+
+    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
 

@@ -11,7 +11,7 @@ import {
   registerEscapeKeyLayer,
   registerOutsideClickLayer,
   updateOutsideClickLayer,
-} from "./overlay-dismiss-stack";
+} from "@/lib/overlay-dismiss-stack";
 
 /** Shared stack options for outside-pointer and Escape-key overlay dismissal. */
 export interface OverlayStackOptions {

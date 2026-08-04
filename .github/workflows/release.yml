@@ -60,7 +60,12 @@ jobs:
       - name: Version PR or publish
         uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
         with:
-          publish: pnpm run release
+          # Named explicitly because the Version PR bumps all four release-managed
+          # packages while only `diffgazer` is past the first-publish gate; a bare
+          # `pnpm run release` would derive a pending set containing the gated
+          # scoped packages and reject the whole run. Add each name here as it is
+          # un-gated in guard-publish.mjs (PACKAGE_GOVERNANCE.md, Release Process).
+          publish: pnpm run release diffgazer
           version: pnpm run version-packages
           commit: "chore: version packages"
           title: "chore: version packages"
@@ -127,7 +132,8 @@ jobs:
       - name: Recover version metadata or publish
         uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
         with:
-          publish: pnpm run release
+          # Same explicit publishable subset as the primary job above.
+          publish: pnpm run release diffgazer
           version: pnpm run version-packages
           commit: "chore: version packages"
           title: "chore: version packages"

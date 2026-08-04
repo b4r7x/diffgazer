@@ -2,29 +2,25 @@ import type {
   ClientMetadataPayload,
   ClientProductMetadata,
 } from "../../providers/client-metadata.js";
+import { getProviderDisplayStatus } from "../../providers/display-status.js";
 import { pluralize } from "../../strings.js";
 import type { SettingsAction } from "../presentation/navigation.js";
-import type { ClientConfigurationActionName } from "./provider-config.js";
 import type { AgentExecution, SecretsStorage, Theme } from "./settings.js";
 import type { RemovedProductId, RunnableProductId } from "./transports.js";
 
 type RunnableProduct = Extract<ClientProductMetadata, { status: "supported" }>;
 type BillingMode = RunnableProduct["billing"]["modes"][number];
-type MigrationAction = Extract<
-  ClientProductMetadata,
-  { status: "removed" }
->["migrationActions"][number];
 
-export type ProviderSettingsRowId =
-  | "product"
-  | "transport"
-  | "billing"
-  | "privacy"
-  | "readiness"
-  | "actions";
+export type ProviderSettingsRowId = "product" | "transport" | "billing" | "privacy" | "readiness";
 
 export interface ProviderSettingsRow {
   readonly id: ProviderSettingsRowId;
+  /**
+   * Presentation shape, so surfaces group rows by kind instead of by an id
+   * allowlist that silently drops a row added here later. `fact` is a short
+   * label/value pair; `prose` is a paragraph the surface gives its own block.
+   */
+  readonly kind: "fact" | "prose";
   readonly label: string;
   readonly value: string;
   readonly description?: string;
@@ -45,25 +41,6 @@ const BILLING_MODE_LABELS = {
   "subscription-credit": "Subscription credit/rate limits",
 } as const satisfies Record<BillingMode, string>;
 
-const ACTION_LABELS = {
-  create: "Create",
-  inspect: "Inspect",
-  select: "Select model",
-  test: "Test readiness",
-  update: "Update",
-  delete: "Delete",
-} as const satisfies Record<ClientConfigurationActionName, string>;
-
-const MIGRATION_ACTION_LABELS = {
-  "create-new-zai-configuration": "Create new Z.AI configuration",
-  "delete-removed-record": "Delete removed record",
-} as const satisfies Record<MigrationAction, string>;
-
-function sentenceCase(value: string): string {
-  const words = value.split("-").join(" ");
-  return `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
-}
-
 export function buildProviderSettingsRows(
   metadata: ClientMetadataPayload,
 ): readonly ProviderSettingsRow[] {
@@ -71,12 +48,14 @@ export function buildProviderSettingsRows(
   const rows: ProviderSettingsRow[] = [
     {
       id: "product",
+      kind: "fact",
       label: "Product",
       value: product.name,
       description: product.description,
     },
     {
       id: "transport",
+      kind: "fact",
       label: "Transport",
       value: TRANSPORT_LABELS[product.transportFamily],
     },
@@ -86,12 +65,14 @@ export function buildProviderSettingsRows(
     rows.push(
       {
         id: "billing",
+        kind: "prose",
         label: "Billing",
         value: product.billing.modes.map((mode) => BILLING_MODE_LABELS[mode]).join(", "),
         description: [product.billing.posture, ...product.notice.billing].join(" "),
       },
       {
         id: "privacy",
+        kind: "prose",
         label: "Privacy",
         value: product.notice.privacy.join(" "),
       },
@@ -100,19 +81,10 @@ export function buildProviderSettingsRows(
 
   rows.push({
     id: "readiness",
+    kind: "fact",
     label: "Readiness",
-    value: sentenceCase(readiness.status),
+    value: getProviderDisplayStatus(readiness, product.transportFamily).label,
     description: `${readiness.explanation} ${readiness.remediation.message}`,
-  });
-
-  const actions =
-    product.status === "removed"
-      ? product.migrationActions.map((action) => MIGRATION_ACTION_LABELS[action])
-      : metadata.actions.map((action) => ACTION_LABELS[action]);
-  rows.push({
-    id: "actions",
-    label: "Available actions",
-    value: actions.length > 0 ? actions.join(", ") : "None",
   });
 
   return rows;

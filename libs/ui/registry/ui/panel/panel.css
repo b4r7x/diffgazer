@@ -103,9 +103,21 @@
 
   /* ============================================================
      Frame: hairline (default)
+
+     The perimeter reads --panel-border-color, an internal the focused
+     block below repoints at --border-strong. Its own default chain lets an app
+     lift the enclosure to a full-strength --panel-border while the
+     header/footer/row hairlines stay on --panel-hairline, which is how
+     the nesting ladder (enclosure → inner card → row) stays legible.
+     Descendants inherit it, so a label chip can match the perimeter in
+     every state without restating the chain.
      ============================================================ */
   [data-slot="panel"][data-frame="hairline"] {
-    border: 1px solid var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent));
+    --panel-border-color: var(
+      --panel-border,
+      var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent))
+    );
+    border: 1px solid var(--panel-border-color);
   }
   [data-slot="panel"][data-frame="hairline"] [data-slot="panel-header"] {
     border-block-end: 1px solid
@@ -157,19 +169,21 @@
      the resting bracket vars, and [data-state="focused"] declares its
      own on every frame (see the focused section below).
 
-     Contrast encodes focus, not just geometry: resting corners sit on
-     --border-strong so an inert pane never outweighs the active one.
-     Painting them in --foreground made the never-focusable pane the
-     heaviest object on the screen while the driven pane wore the lower
-     contrast --ring. Focused corners still clear 3:1 against the page
-     and against the resting color (WCAG 1.4.11), in both themes.
+     Both states draw the same 12px arm at the same 1px stroke, seated
+     on the border line (-1px offset), so geometry encodes nothing and
+     a focus toggle cannot reflow the box. Color alone carries the
+     signal: resting corners sit on --foreground because
+     frame="viewfinder" is reserved for surfaces where the reticle is
+     the subject rather than the chrome, and focused corners switch to
+     --ring while a framed perimeter firms to --border-strong. Both
+     tones clear 3:1 against the page (WCAG 1.4.11), in both themes.
      ============================================================ */
   [data-slot="panel"][data-frame="viewfinder"] {
-    --viewfinder-size: 16px;
-    --viewfinder-weight: 1.5px;
-    --viewfinder-color: var(--border-strong);
-    --viewfinder-offset: 0px;
-    /* Held at 8px across both corner sizes so a focus toggle never reflows. */
+    --viewfinder-size: 12px;
+    --viewfinder-weight: 1px;
+    --viewfinder-color: var(--foreground);
+    --viewfinder-offset: -1px;
+    /* Held at 8px so the frame's padding never depends on focus. */
     padding: 8px;
   }
   [data-slot="panel"] [data-slot="panel-corners"] > span {
@@ -221,7 +235,11 @@
      ============================================================ */
   [data-slot="panel"][data-frame="surface"] {
     background: var(--surface-1);
-    border: 1px solid var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent));
+    --panel-border-color: var(
+      --panel-border,
+      var(--panel-hairline, color-mix(in oklab, var(--border) 60%, transparent))
+    );
+    border: 1px solid var(--panel-border-color);
     box-shadow: inset 0 1px 0 var(--surface-1-highlight);
   }
   [data-slot="panel"][data-frame="surface"] [data-slot="panel-header"] {
@@ -328,20 +346,30 @@
   }
 
   /* ============================================================
-     Focused — the active-pane affordance. Corner brackets grow on
-     every frame in --ring: longer and thicker than the resting
-     viewfinder corners, so focus reads at a glance without moving
-     the box (no border, padding, or shadow change → no reflow).
-     Tone still owns border/rail/header color; only the brackets
-     switch to --ring. The [data-frame] selector is load-bearing:
-     it matches the specificity of the tone rules above, which set
-     --viewfinder-color, so source order decides and focus wins.
+     Focused — the active-pane affordance. Corner brackets appear on
+     every frame in --ring at the geometry the viewfinder frame already
+     rests at, so focus reads as presence and color rather than size
+     (no padding or shadow change → no reflow), and the framed
+     perimeter firms to --border-strong; the brackets alone carry
+     --ring. Tone still owns
+     border/rail/header color: a toned pane keeps its tone border and
+     switches only the brackets. The [data-frame] selector is
+     load-bearing: it matches the specificity of the tone rules above,
+     which set --viewfinder-color, so source order decides and focus
+     wins.
      ============================================================ */
   [data-slot="panel"][data-frame][data-state="focused"] {
-    --viewfinder-size: 28px;
-    --viewfinder-weight: 3px;
+    --viewfinder-size: 12px;
+    --viewfinder-weight: 1px;
     --viewfinder-color: var(--ring);
-    --viewfinder-offset: 0px;
+    --viewfinder-offset: -1px;
+  }
+
+  /* Only the framed perimeters follow focus: rail draws its own
+     --border-strong edge and viewfinder has no border to shift. */
+  [data-slot="panel"][data-frame="hairline"][data-state="focused"],
+  [data-slot="panel"][data-frame="surface"][data-state="focused"] {
+    --panel-border-color: var(--border-strong);
   }
 }
 

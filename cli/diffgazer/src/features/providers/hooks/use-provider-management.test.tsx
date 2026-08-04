@@ -4,10 +4,13 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { getProviderRowId } from "@diffgazer/core/providers";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
+import {
+  buildProviderRows,
+  READY_GEMINI_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { buildProviderRows, READY_GEMINI_CONFIGURATION } from "../testing/fixtures";
 import { useProviderManagement } from "./use-provider-management";
 
 const GEMINI_INPUT = {

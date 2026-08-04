@@ -17,6 +17,18 @@ function getRoot(container: HTMLElement): HTMLElement {
   return root;
 }
 
+/**
+ * The inset utilities that place a floating label — `left-4`, `-top-3`,
+ * `left-[calc(var(--viewfinder-size,12px)+10px)]`. "The label does not move" is a
+ * claim about these tokens alone, so a focus- or frame-only colour utility must
+ * not answer for it.
+ */
+function insetTokens(element: Element | null): string[] {
+  return [...(element?.classList ?? [])].filter((token) =>
+    /^-?(?:left|top|right|bottom)-/.test(token),
+  );
+}
+
 function OpaquePanelHeading() {
   return (
     <Panel.Header>
@@ -371,7 +383,7 @@ describe("Panel", () => {
     expect(getRoot(container)).not.toHaveAttribute("data-state");
   });
 
-  it("focused grows corner brackets on a frame that has none at rest", () => {
+  it("focused draws corner brackets on a frame that has none at rest", () => {
     const { container } = render(
       <Panel focused>
         <Panel.Content>Body</Panel.Content>
@@ -452,10 +464,10 @@ describe("Panel", () => {
     expect(label).toHaveTextContent("[ 01 / FS_TREE ]");
   });
 
-  // jsdom applies no stylesheet, so the inset decision is asserted through the
-  // attribute the label publishes, not the utility class that implements it: the
-  // label must step past a corner bracket it would otherwise paint over.
-  it("steps Panel.Label past the corner brackets when the panel draws them", () => {
+  // jsdom applies no stylesheet, so "the label does not move" is asserted as the
+  // label keeping the same inset utilities: one inset now clears a bracket arm in
+  // every state, and nothing is left to switch on focus.
+  it("keeps Panel.Label in one place whether or not the panel draws brackets", () => {
     function LabelledPanel({ focused }: { focused?: boolean }) {
       return (
         <Panel frame="hairline" focused={focused}>
@@ -466,21 +478,18 @@ describe("Panel", () => {
 
     const { container, rerender } = render(<LabelledPanel />);
     const label = () => container.querySelector('[data-slot="panel-label"]');
-
-    expect(label()).toHaveAttribute("data-inset", "edge");
+    const resting = insetTokens(label());
+    expect(resting.length).toBeGreaterThan(0);
 
     rerender(<LabelledPanel focused />);
-    expect(label()).toHaveAttribute("data-inset", "corner");
+    expect(insetTokens(label())).toEqual(resting);
 
     const { container: viewfinder } = render(
       <Panel frame="viewfinder">
         <Panel.Label>Details</Panel.Label>
       </Panel>,
     );
-    expect(viewfinder.querySelector('[data-slot="panel-label"]')).toHaveAttribute(
-      "data-inset",
-      "corner",
-    );
+    expect(insetTokens(viewfinder.querySelector('[data-slot="panel-label"]'))).toEqual(resting);
   });
 
   it("Panel.Label publishes its variant and defaults to the boxed border label", () => {
@@ -514,6 +523,34 @@ describe("Panel", () => {
 
     rerender(<ReadoutPanel focused />);
     expect(label()).toHaveAttribute("data-state", "focused");
+  });
+
+  it("Panel.Label readout holds one inline-start inset on a frame that draws no brackets", () => {
+    function ReadoutPanel({ focused }: { focused?: boolean }) {
+      return (
+        <Panel frame="hairline" focused={focused}>
+          <Panel.Label variant="readout">SETUP · 02/06 · PROVIDER</Panel.Label>
+        </Panel>
+      );
+    }
+
+    const { container, rerender } = render(<ReadoutPanel />);
+    const startInset = () =>
+      insetTokens(container.querySelector('[data-slot="panel-label"]')).filter((token) =>
+        token.startsWith("left-"),
+      );
+
+    const resting = startInset();
+    // A hairline pane declares no --viewfinder-size until focus draws its arms, so
+    // the fallback is the mechanism under test: without one the whole declaration
+    // is invalid at rest and the readout drops onto the panel corner, then slides
+    // once focus arrives. What the arm length is tuned to stays a design decision
+    // panel.css owns, so assert that a fallback exists rather than its value.
+    expect(resting).toHaveLength(1);
+    expect(resting[0]).toMatch(/var\(--viewfinder-size,[^)]+\)/);
+
+    rerender(<ReadoutPanel focused />);
+    expect(startInset()).toEqual(resting);
   });
 
   it("Panel.Label readout keeps its text in the accessibility tree", () => {
@@ -583,22 +620,39 @@ describe("Panel reticle grammar", () => {
   const css = readFileSync(resolve(fileURLToPath(import.meta.url), "../panel.css"), "utf8");
   const RESTING = '[data-slot="panel"][data-frame="viewfinder"]';
   const FOCUSED = '[data-slot="panel"][data-frame][data-state="focused"]';
+  const FOCUSED_PERIMETER =
+    '[data-slot="panel"][data-frame="hairline"][data-state="focused"], [data-slot="panel"][data-frame="surface"][data-state="focused"]';
 
-  it("keeps the resting corners lighter than the focused ones so contrast encodes focus", () => {
+  it("draws one bracket geometry in both states so color alone encodes focus", () => {
     const resting = ruleBody(css, RESTING);
     const focused = ruleBody(css, FOCUSED);
 
-    expect(resting).toContain("--viewfinder-color: var(--border-strong)");
-    expect(resting).toContain("--viewfinder-size: 16px");
-    expect(resting).toContain("--viewfinder-weight: 1.5px");
+    expect(resting).toContain("--viewfinder-size: 12px");
+    expect(resting).toContain("--viewfinder-weight: 1px");
+    expect(resting).toContain("--viewfinder-color: var(--foreground)");
+    // -1px seats the 1px arm exactly over the panel's 1px border line.
+    expect(resting).toContain("--viewfinder-offset: -1px");
 
+    expect(focused).toContain("--viewfinder-size: 12px");
+    expect(focused).toContain("--viewfinder-weight: 1px");
     expect(focused).toContain("--viewfinder-color: var(--ring)");
-    expect(focused).toContain("--viewfinder-size: 28px");
-    expect(focused).toContain("--viewfinder-weight: 3px");
+    expect(focused).toContain("--viewfinder-offset: -1px");
+  });
 
-    // Rule 4: the inert state must never be painted in --foreground, which is
-    // what made it outweigh the active pane.
-    expect(resting).not.toContain("var(--foreground)");
+  it("firms the framed perimeter to --border-strong with the brackets", () => {
+    expect(ruleBody(css, FOCUSED_PERIMETER)).toContain(
+      "--panel-border-color: var(--border-strong)",
+    );
+
+    for (const frame of ["hairline", "surface"]) {
+      const body = ruleBody(css, `[data-slot="panel"][data-frame="${frame}"]`);
+      // The perimeter reads the internal the focused rule repoints, and that
+      // internal defaults through --panel-border so an app can lift the
+      // enclosure without touching the dimmer header/footer/row hairlines.
+      expect(body).toContain("border: 1px solid var(--panel-border-color)");
+      expect(body).toContain("--panel-border-color: var(");
+      expect(body).toContain("--panel-border,");
+    }
   });
 
   it("declares the focused corner rule after the tone rules so focus wins on equal specificity", () => {

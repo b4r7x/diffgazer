@@ -291,6 +291,19 @@ test("a gated package in the pending set fails before publication", () => {
   );
 });
 
+test("the gated-package rejection names the publishable subset to pass explicitly", () => {
+  assert.throws(
+    () =>
+      createPublishPlan({
+        packages: packageFixtures,
+        publishedVersionsByName: new Map(Object.entries(publishedVersionsByName)),
+        allowlist: ["diffgazer"],
+        pendingNames: ["diffgazer", "@diffgazer/ui", "@diffgazer/keys"],
+      }),
+    /pnpm run release diffgazer$/m,
+  );
+});
+
 test("child publisher for the add rollout never attempts unrelated unpublished packages", () => {
   const { child, invocations } = runMainChild({
     allowlist: ["diffgazer", "@diffgazer/add"],

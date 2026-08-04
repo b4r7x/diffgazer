@@ -8,8 +8,8 @@ interface ModelFilterTabsProps {
   focusedIndex: number;
   isFocused: boolean;
   disabled?: boolean;
-  onTabClick: (index: number) => void;
   onKeyDown?: (event: ReactKeyboardEvent) => void;
+  /** Ref registry plus the dialog's focus mirror, the row's one index channel. */
   getTabProps?: (index: number) => {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
@@ -22,26 +22,17 @@ export function ModelFilterTabs({
   focusedIndex,
   isFocused,
   disabled = false,
-  onTabClick,
   onKeyDown,
   getTabProps,
 }: ModelFilterTabsProps) {
   const handleFilterChange = (nextValue: TierFilter | null) => {
-    if (!nextValue) return;
-    const index = TIER_FILTERS.indexOf(nextValue);
-    onTabClick(index);
-    onChange(nextValue);
-  };
-
-  const handleHighlightChange = (nextValue: TierFilter | null) => {
-    if (nextValue) onTabClick(TIER_FILTERS.indexOf(nextValue));
+    if (nextValue) onChange(nextValue);
   };
 
   return (
     <ToggleGroup<TierFilter>
       value={value}
       onChange={handleFilterChange}
-      onHighlightChange={handleHighlightChange}
       highlighted={isFocused ? (TIER_FILTERS[focusedIndex] ?? null) : null}
       onKeyDown={onKeyDown}
       label="Model tier filter"
@@ -56,14 +47,8 @@ export function ModelFilterTabs({
             key={filter}
             value={filter}
             ref={tabProps?.ref}
-            onFocus={() => {
-              tabProps?.onFocus();
-              onTabClick(idx);
-            }}
-            onClick={() => {
-              onTabClick(idx);
-            }}
-            className="text-2xs uppercase pointer-coarse:min-h-11 pointer-coarse:px-3"
+            onFocus={tabProps?.onFocus}
+            className="h-6 min-h-0 px-2.5 text-2xs uppercase pointer-coarse:min-h-11 pointer-coarse:px-3"
           >
             {filter}
           </ToggleGroupItem>

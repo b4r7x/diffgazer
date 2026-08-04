@@ -9,6 +9,7 @@ import {
 } from "./validate-registry-closure/public-registry.js";
 import {
   validateImportClosure,
+  validateNoBuildEnvReads,
   validateRegistryStructure,
 } from "./validate-registry-closure/source-registry.js";
 import type { ValidationError } from "./validate-registry-closure/types.js";
@@ -27,6 +28,7 @@ export function validateRegistryClosure(registryPath: string): boolean {
   const errors = [
     ...validateRegistryStructure(registry),
     ...validateImportClosure(registry, registryRoot),
+    ...validateNoBuildEnvReads(registry, registryRoot),
   ];
 
   const publicDir = resolve(registryRoot, "public", "r");

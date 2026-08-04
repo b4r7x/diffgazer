@@ -1,3 +1,4 @@
+import { parse as parseYaml } from "yaml";
 import {
   existsInRoot,
   invariantResult,
@@ -53,12 +54,10 @@ export function checkRootMetadata(context) {
 }
 
 export function checkWorkspaceGlobs(context) {
-  const workspaceYaml = readTextInRoot(context, "pnpm-workspace.yaml");
-  const globs = workspaceYaml
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("- "))
-    .map((line) => line.slice(2).replace(/"|'/g, ""));
+  // Parsed, not line-scraped: pnpm-workspace.yaml carries other sequences
+  // (minimumReleaseAgeExclude), and every `- ` line in the file is not a package glob.
+  const workspace = parseYaml(readTextInRoot(context, "pnpm-workspace.yaml"));
+  const globs = Array.isArray(workspace?.packages) ? workspace.packages : [];
 
   return invariantResult(
     "workspace globs match target roots",

@@ -13,7 +13,8 @@ import { rekeyProjectReviews } from "./features/review/storage/rekey.js";
 import { settingsRouter } from "./features/settings/router.js";
 import { shutdownRouter } from "./features/shutdown/router.js";
 import { bundledCatalogSnapshotSize } from "./shared/lib/ai/catalog-bundle-anchor.js";
-import { setConfigurationLeaseHooks, setReviewRekeyHandler } from "./shared/lib/config/store.js";
+import { createHostedConformanceProbe } from "./shared/lib/ai/providers/conformance-probe.js";
+import { registerConfigSeams } from "./shared/lib/config/seams.js";
 import { safeTokenMatch } from "./shared/lib/crypto.js";
 import { errorResponse, httpExceptionResponse } from "./shared/lib/http/response.js";
 import { log } from "./shared/lib/log.js";
@@ -62,17 +63,18 @@ export const createApp = (): Hono<AppEnv> => {
 
   const app = new Hono<AppEnv>();
 
-  // Wire the config store's move hook to the review-storage re-key helper so a
-  // moved repo's review history follows the move (F-447). `shared/` cannot import
-  // `features/`, so the composition root registers it here. Project persistence
-  // commits the new root only when this migration reports complete.
-  setReviewRekeyHandler(rekeyProjectReviews);
-
-  // Configuration deletion must revoke, cancel, and drain the admitted leases
-  // before secret material is removed. `shared/` cannot reach the session
-  // registry's runtime authority on its own, so the composition root installs
-  // the fail-closed hooks here; a drain timeout aborts the delete.
-  setConfigurationLeaseHooks(createConfigurationLeaseHooks());
+  // `shared/lib/config` cannot import `features/`, the session registry, or the
+  // ai adapters, so the composition root supplies all three of its seams here:
+  //   - re-key, so a moved repo's review history follows the move (F-447);
+  //     project persistence commits the new root only when it reports complete
+  //   - leases, so deletion revokes, cancels, and drains admitted leases before
+  //     secret material is removed; a drain timeout aborts the delete
+  //   - conformance, so the Test action observes over the real hosted transport
+  registerConfigSeams({
+    reviewRekeyHandler: rekeyProjectReviews,
+    leaseHooks: createConfigurationLeaseHooks(),
+    conformanceProbe: createHostedConformanceProbe(),
+  });
 
   // Split dev (not packaged, no configured token) intentionally leaves the
   // /api/* token gate open; the residual exposure is a hostile localhost origin

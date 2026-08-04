@@ -1,12 +1,12 @@
-import "./model-select-overlay.terminal-mock";
+import "../testing/terminal-mock";
 import type { BoundApi } from "@diffgazer/core/api";
+import { escapeRegExp } from "@diffgazer/core/redaction";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { escapeRegExp } from "../../../testing/escape-regexp";
-import { ModelSelectOverlay } from "./model-select-overlay";
 import {
   ARROW_DOWN,
+  catalogModelsResponse,
   countPrefixes,
   flush,
   flushUntil,
@@ -14,9 +14,9 @@ import {
   geminiName,
   makeGeminiApi,
   makeQueryClient,
-  testDiscoveryResponse,
   Wrapper,
-} from "./model-select-overlay.test-support";
+} from "../testing/model-select-overlay";
+import { ModelSelectOverlay } from "./model-select-overlay";
 
 describe("ModelSelectOverlay selection (Enter -> onSelect -> close)", () => {
   afterEach(() => {
@@ -137,9 +137,11 @@ describe("ModelSelectOverlay saving state", () => {
       </Wrapper>,
     );
 
+    await flushUntil(() => lastFrame()?.includes("Saving") ?? false);
     await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
     stdin.write(ARROW_DOWN);
     await flush();
+    expect(lastFrame()).toContain("Saving");
     expect(countPrefixes(lastFrame(), geminiName("gemini-2.5-flash")).highlighted).toBe(1);
   });
 
@@ -170,14 +172,11 @@ describe("ModelSelectOverlay stale discovery", () => {
   });
 
   test("rejects a stale configuration tuple and keeps retry available", async () => {
-    const staleConfiguration = {
-      ...GEMINI_CONFIGURATION,
-      endpoint: "https://generativelanguage.googleapis.com/v1beta-stale",
-    };
-    const testConfiguration = vi
-      .fn<BoundApi["testConfiguration"]>()
-      .mockResolvedValue(testDiscoveryResponse(staleConfiguration));
-    const api = { ...makeGeminiApi(), testConfiguration } satisfies BoundApi;
+    const getConfigurationModels = vi.fn<BoundApi["getConfigurationModels"]>().mockResolvedValue({
+      ...catalogModelsResponse(GEMINI_CONFIGURATION),
+      productId: "groq",
+    });
+    const api = { ...makeGeminiApi(), getConfigurationModels } satisfies BoundApi;
     const { lastFrame } = render(
       <Wrapper api={api}>
         <ModelSelectOverlay open onOpenChange={() => {}} configuration={GEMINI_CONFIGURATION} />
@@ -193,13 +192,13 @@ describe("ModelSelectOverlay stale discovery", () => {
 
   test("clears discovery errors when the configuration changes while open", async () => {
     const queryClient = makeQueryClient();
-    const testConfiguration = vi
-      .fn<BoundApi["testConfiguration"]>()
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
       .mockRejectedValueOnce(new Error("Model discovery failed. Test the configuration again."))
       .mockImplementation(async () =>
-        testDiscoveryResponse({ ...GEMINI_CONFIGURATION, revision: 2 }),
+        catalogModelsResponse({ ...GEMINI_CONFIGURATION, revision: 2 }),
       );
-    const api = { ...makeGeminiApi(), testConfiguration } satisfies BoundApi;
+    const api = { ...makeGeminiApi(), getConfigurationModels } satisfies BoundApi;
 
     const view = render(
       <Wrapper api={api} queryClient={queryClient}>

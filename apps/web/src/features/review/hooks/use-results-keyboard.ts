@@ -185,7 +185,10 @@ export function useReviewResultsKeyboard({
     tabCycleScope: "document",
     tabCycleBoundary: getMainContent,
     focus: {
-      autoFocus: true,
+      // A clean run has no rows to drive, so the empty list pane is left resting
+      // until the user focuses it instead of mounting with brackets around one
+      // line of empty-state text.
+      autoFocus: issues.length > 0,
       preventScroll: false,
       targets: {
         filters: {
@@ -343,15 +346,20 @@ export function useReviewResultsKeyboard({
     handleListBoundary,
     activeTab,
     setActiveTab,
-    severityFilter,
-    setSeverityFilter,
-    resetSeverityFilter,
+    // One cluster for the whole severity-filter concern: it is handed to
+    // IssueListPane as a single prop instead of nine.
+    filter: {
+      activeFilter: severityFilter,
+      onFilterChange: setSeverityFilter,
+      onReset: resetSeverityFilter,
+      onNavigationBoundaryReached: handleSeverityFilterBoundary,
+      focusedIndex: focusedFilterIndex,
+      onFocusedIndexChange: setFocusedFilterIndex,
+      isFocused: focusZone === "filters",
+      onKeyDown: handleFilterKeyDown,
+      ref: filterRef,
+    },
     focusZone,
-    focusedFilterIndex,
-    setFocusedFilterIndex,
-    filterRef,
-    handleFilterKeyDown,
-    handleSeverityFilterBoundary,
     handleDetailsTabsBoundary,
     handleListFocus,
     listRef,

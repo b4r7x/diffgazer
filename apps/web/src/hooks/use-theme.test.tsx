@@ -1,3 +1,5 @@
+import { createDeferred } from "@diffgazer/core/testing/deferred";
+import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider, useTheme } from "@/hooks/use-theme";
@@ -43,6 +45,10 @@ const storageMock: Storage = {
 };
 Object.defineProperty(globalThis, "localStorage", { value: storageMock, writable: true });
 
+function mockMatchMedia(matches: boolean) {
+  return stubMatchMedia((query) => (query === "(prefers-color-scheme: dark)" ? matches : false));
+}
+
 function ThemeConsumer({ onRender }: { onRender: (ctx: ThemeContextValue) => void }) {
   const ctx = useTheme();
   onRender(ctx);
@@ -54,6 +60,7 @@ let mockMutate: ReturnType<typeof vi.fn>;
 describe("ThemeProvider", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockMatchMedia(false); // default: system theme = light
     mockMutate = vi.fn();
     mockUseSaveSettings.mockReturnValue({
       mutate: mockMutate,
@@ -103,22 +110,18 @@ describe("ThemeProvider", () => {
     );
   });
 
-  it("applies the dark default when neither a setting nor a stored theme exists", () => {
+  it("falls back to the system preference when no user setting is present", () => {
     render(
       <ThemeProvider>
         <div />
       </ThemeProvider>,
     );
 
-    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
-    expect(document.documentElement.style.colorScheme).toBe("dark");
-    expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute(
-      "content",
-      "#0d1117",
-    );
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
   it("applies the persisted localStorage theme before settings arrive", () => {
+    mockMatchMedia(true); // system = dark
     localStorageStore.set("diffgazer-theme", "light");
 
     render(
@@ -130,7 +133,7 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
-  it("falls back to the default theme when storage reads are denied", () => {
+  it("falls back to the system theme when storage reads are denied", () => {
     vi.spyOn(storageMock, "getItem").mockImplementation(() => {
       throw new DOMException("Storage denied", "SecurityError");
     });
@@ -141,7 +144,7 @@ describe("ThemeProvider", () => {
       </ThemeProvider>,
     );
 
-    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
   it("prefers the saved settings theme over a stale localStorage value", () => {
@@ -160,6 +163,22 @@ describe("ThemeProvider", () => {
     );
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+  });
+
+  it("applies the dark theme when the system prefers dark", () => {
+    mockMatchMedia(true); // system = dark
+    render(
+      <ThemeProvider>
+        <div />
+      </ThemeProvider>,
+    );
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    expect(document.documentElement.style.colorScheme).toBe("dark");
+    expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute(
+      "content",
+      "#0d1117",
+    );
   });
 
   it("persists the chosen theme to localStorage and saves it through the API", async () => {
@@ -186,11 +205,11 @@ describe("ThemeProvider", () => {
     const setTheme = capturedSetTheme;
     if (!setTheme) throw new Error("setTheme was not captured");
     await act(async () => {
-      await setTheme("light");
+      await setTheme("dark");
     });
 
-    expect(localStorage.getItem("diffgazer-theme")).toBe("light");
-    expect(mockMutateAsync).toHaveBeenCalledWith({ theme: "light" });
+    expect(localStorage.getItem("diffgazer-theme")).toBe("dark");
+    expect(mockMutateAsync).toHaveBeenCalledWith({ theme: "dark" });
   });
 
   it("saves the chosen theme when storage writes are denied", async () => {
@@ -217,16 +236,15 @@ describe("ThemeProvider", () => {
     );
 
     await act(async () => {
-      await capturedSetTheme?.("light");
+      await capturedSetTheme?.("dark");
     });
 
-    expect(mockMutateAsync).toHaveBeenCalledWith({ theme: "light" });
-    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    expect(mockMutateAsync).toHaveBeenCalledWith({ theme: "dark" });
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
 
-  it("normalizes a legacy auto settings theme to dark and still applies a new choice", () => {
+  it("applies the chosen theme immediately even when the settings cache is stale", () => {
     let capturedSetTheme: ThemeContextValue["setTheme"] | undefined;
-    let renderedTheme: ThemeContextValue["theme"] | undefined;
 
     mockUseSettings.mockReturnValue({
       data: { theme: "auto" },
@@ -240,23 +258,21 @@ describe("ThemeProvider", () => {
         <ThemeConsumer
           onRender={(ctx) => {
             capturedSetTheme = ctx.setTheme;
-            renderedTheme = ctx.theme;
           }}
         />
       </ThemeProvider>,
     );
 
-    expect(renderedTheme).toBe("dark");
-    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
 
     act(() => {
-      capturedSetTheme?.("light");
+      capturedSetTheme?.("dark");
     });
 
-    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
 
-  it("normalizes the terminal settings theme to dark", () => {
+  it("resolves the terminal settings theme to auto", () => {
     let renderedTheme: ThemeContextValue["theme"] | undefined;
     mockUseSettings.mockReturnValue({
       data: { theme: "terminal" },
@@ -275,8 +291,8 @@ describe("ThemeProvider", () => {
       </ThemeProvider>,
     );
 
-    expect(renderedTheme).toBe("dark");
-    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    expect(renderedTheme).toBe("auto");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
   it("rolls back the local theme override when persistence fails", async () => {
@@ -306,10 +322,136 @@ describe("ThemeProvider", () => {
     if (!setTheme) throw new Error("setTheme was not captured");
 
     await act(async () => {
-      await expect(setTheme("light")).rejects.toThrow("Save failed");
+      await expect(setTheme("dark")).rejects.toThrow("Save failed");
+    });
+
+    expect(localStorage.getItem("diffgazer-theme")).toBe("dark");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+  });
+
+  it("keeps the newer theme when an older save fails after it", async () => {
+    let capturedSetTheme: ThemeContextValue["setTheme"] | undefined;
+    const slowSave = createDeferred<void>();
+    const mockMutateAsync = vi
+      .fn()
+      .mockReturnValueOnce(slowSave.promise)
+      .mockResolvedValue(undefined);
+    mockUseSaveSettings.mockReturnValue({
+      mutate: mockMutate,
+      mutateAsync: mockMutateAsync,
+      isPending: false,
+      error: null,
+    });
+
+    render(
+      <ThemeProvider>
+        <ThemeConsumer
+          onRender={(ctx) => {
+            capturedSetTheme = ctx.setTheme;
+          }}
+        />
+      </ThemeProvider>,
+    );
+
+    let firstSave: Promise<void> | undefined;
+    act(() => {
+      firstSave = capturedSetTheme?.("dark");
+    });
+    await act(async () => {
+      await capturedSetTheme?.("light");
+    });
+
+    // The stale failure must not drag the applied theme back to dark.
+    await act(async () => {
+      slowSave.reject(new Error("Save failed"));
+      await expect(firstSave).rejects.toThrow("Save failed");
     });
 
     expect(localStorage.getItem("diffgazer-theme")).toBe("light");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+  });
+
+  it("live-updates the applied theme when the system preference flips while Auto is selected", () => {
+    const media = mockMatchMedia(false);
+    mockUseSettings.mockReturnValue({
+      data: { theme: "auto" },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(
+      <ThemeProvider>
+        <div />
+      </ThemeProvider>,
+    );
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+
+    // No remount and no reload: the mounted tree repaints straight off the
+    // media-query subscription.
+    act(() => {
+      media.setMatches((query) => query === "(prefers-color-scheme: dark)");
+    });
+
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    expect(document.documentElement.style.colorScheme).toBe("dark");
+    expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute(
+      "content",
+      "#0d1117",
+    );
+  });
+
+  it("resolves a persisted auto config through the system and round-trips Auto/Dark/Light", async () => {
+    const mockMutateAsync = vi.fn().mockResolvedValue(undefined);
+    mockUseSaveSettings.mockReturnValue({
+      mutate: mockMutate,
+      mutateAsync: mockMutateAsync,
+      isPending: false,
+      error: null,
+    });
+    mockUseSettings.mockReturnValue({
+      data: { theme: "auto" },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    let context: ThemeContextValue | undefined;
+    render(
+      <ThemeProvider>
+        <ThemeConsumer
+          onRender={(ctx) => {
+            context = ctx;
+          }}
+        />
+      </ThemeProvider>,
+    );
+
+    // The system prefers light, so a persisted "auto" must resolve to light
+    // rather than silently degrading to dark.
+    expect(context?.theme).toBe("auto");
+    expect(context?.resolved).toBe("light");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+
+    await act(async () => {
+      await context?.setTheme("dark");
+    });
+    expect(context?.theme).toBe("dark");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+
+    await act(async () => {
+      await context?.setTheme("light");
+    });
+    expect(context?.theme).toBe("light");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+
+    await act(async () => {
+      await context?.setTheme("auto");
+    });
+    expect(context?.theme).toBe("auto");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    expect(localStorage.getItem("diffgazer-theme")).toBe("auto");
+    expect(mockMutateAsync).toHaveBeenLastCalledWith({ theme: "auto" });
   });
 });

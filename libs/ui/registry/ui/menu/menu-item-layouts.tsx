@@ -100,14 +100,14 @@ export function DefaultItemLayout({
         {children}
       </span>
       {hotkey !== undefined && (
-        // Keep the unbound label out of the accessible name and typeahead text.
+        // Keep the unbound label out of the accessible name and typeahead text, and
+        // off coarse pointers entirely — a keyboard accelerator says nothing to touch.
         <span
           aria-hidden="true"
-          className={
-            isEmphasized
-              ? "ml-4 shrink-0 tabular-nums"
-              : cn("ml-4 shrink-0 tabular-nums group-hover:text-foreground", idleColor)
-          }
+          className={cn(
+            "ml-4 shrink-0 tabular-nums pointer-coarse:hidden",
+            !isEmphasized && ["group-hover:text-foreground", idleColor],
+          )}
         >
           [{hotkey}]
         </span>

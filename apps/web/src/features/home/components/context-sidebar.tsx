@@ -35,10 +35,7 @@ export function ContextSidebar({
     // Brackets mark the pane the keys drive, and this readout is in no focus
     // cycle, so it identifies itself with the hairline box and its corner label
     // instead of a second reticle beside the menu.
-    <Panel
-      aria-labelledby={CONTEXT_TITLE_ID}
-      className="w-full lg:order-first lg:w-80 lg:shrink-0 xl:w-96"
-    >
+    <Panel aria-labelledby={CONTEXT_TITLE_ID} className="w-full lg:order-first lg:w-80 lg:shrink-0">
       <Panel.Label>
         <h2 id={CONTEXT_TITLE_ID}>Context</h2>
       </Panel.Label>

@@ -73,6 +73,19 @@ describe("buildHtmlShell", () => {
     expect(csp).toContain("frame-ancestors 'none'");
   });
 
+  it("nonces the SPA's own inline script so the CSP does not block it", () => {
+    const { body, csp } = buildHtmlShell(
+      '<!DOCTYPE html><html><head><script nonce="{{cspNonce}}">theme()</script></head><body></body></html>',
+      "tok",
+    );
+
+    expect(body).not.toContain("{{cspNonce}}");
+    const nonces = [...body.matchAll(/nonce="([A-Za-z0-9+/=]+)"/g)].map((match) => match[1]);
+    expect(nonces).toHaveLength(2);
+    expect(new Set(nonces).size).toBe(1);
+    expect(csp).toContain(`'nonce-${nonces[0]}'`);
+  });
+
   it("generates a unique nonce per call", () => {
     const a = buildHtmlShell(MINIMAL_HTML, "tok");
     const b = buildHtmlShell(MINIMAL_HTML, "tok");

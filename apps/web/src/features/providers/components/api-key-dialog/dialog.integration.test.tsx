@@ -2,16 +2,16 @@ import { FooterProvider } from "@diffgazer/core/footer";
 import type { ProviderListRow, ProviderManagementOutcome } from "@diffgazer/core/providers";
 import type { ClientConfigurationSummary } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
+import {
+  buildProviderRows,
+  LOCAL_OPENAI_CONFIGURATION,
+  unconfiguredRow,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import {
-  buildProviderRows,
-  LOCAL_OPENAI_CONFIGURATION,
-  unconfiguredRow,
-} from "../../testing/fixtures";
 import { ApiKeyDialog } from "./dialog";
 
 beforeAll(() => {
@@ -189,8 +189,49 @@ describe("ApiKeyDialog acknowledgement and write-only secrets", () => {
   });
 });
 
+describe("ApiKeyDialog chrome, consent gating, and environment binding", () => {
+  it("renders the header strip title and the default [x] close control", async () => {
+    const user = userEvent.setup();
+    const { onOpenChange } = renderSetupDialog(unconfiguredRow("gemini"));
+
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: /Create Configuration/ }),
+    ).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole("button", { name: "Close dialog" }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("previews the $ENV variable the environment method binds", () => {
+    renderSetupDialog(unconfiguredRow("gemini"));
+
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByRole("textbox", { name: "GOOGLE_API_KEY environment variable" }),
+    ).toHaveValue("GOOGLE_API_KEY");
+  });
+
+  it("keeps the confirm action visible while consent is outstanding, then enables it", async () => {
+    const user = userEvent.setup();
+    renderSetupDialog(unconfiguredRow("gemini"));
+
+    const dialog = screen.getByRole("dialog");
+    const save = within(dialog).getByRole("button", { name: "Save" });
+    await user.type(within(dialog).getByLabelText(/Google Gemini API Key/i), "sk-hosted-secret");
+
+    expect(save).toBeVisible();
+    expect(save).toBeDisabled();
+
+    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
+
+    expect(save).toBeEnabled();
+  });
+});
+
 describe("ApiKeyDialog accessible submit, cancel, and focus", () => {
-  it("renders dialog kbd hints with the standardized wording and glyphs while open", () => {
+  it("reads the standard key legend — Space Select, Enter Save, Esc Cancel — while open", () => {
     renderSetupDialog(unconfiguredRow("gemini"));
 
     const dialog = screen.getByRole("dialog", { name: /Create Configuration/ });
@@ -199,7 +240,7 @@ describe("ApiKeyDialog accessible submit, cancel, and focus", () => {
 
     const kbdNodes = within(dialog).getAllByText((_, element) => element?.tagName === "KBD");
     const kbdTexts = kbdNodes.map((node) => node.textContent);
-    expect(kbdTexts).toEqual(expect.arrayContaining(["↑/↓", "Enter/Space", "Esc", "Enter"]));
+    expect(kbdTexts).toEqual(["Space", "Enter", "Esc"]);
   });
 
   it("submits the method committed with Enter on the real selector", async () => {
@@ -331,7 +372,9 @@ describe("ApiKeyDialog accessible submit, cancel, and focus", () => {
     );
 
     const dialog = screen.getByRole("dialog");
-    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
+    // A configured row already accepted the current notice, so the dialog opens
+    // with the acknowledgement checked and the save only needs the button.
+    expect(within(dialog).getByRole("checkbox", { name: /accept billing/i })).toBeChecked();
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce());
@@ -378,7 +421,8 @@ describe("ApiKeyDialog accessible submit, cancel, and focus", () => {
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
     const dialogElement = document.querySelector("dialog");
-    // fireEvent retained: animationEnd is required to finish Radix close before focus restore asserts.
+    // fireEvent retained: animationend has no user-event equivalent; the libs/ui dialog
+    // completes its close presence transition — and restores focus — on this event.
     if (dialogElement) fireEvent.animationEnd(dialogElement);
 
     await waitFor(() => expect(trigger).toHaveFocus());
@@ -389,7 +433,7 @@ describe("ApiKeyDialog accessible submit, cancel, and focus", () => {
     const { onUpdate } = renderSetupDialog(localHttpRow());
 
     const dialog = screen.getByRole("dialog");
-    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
+    expect(within(dialog).getByRole("checkbox", { name: /accept billing/i })).toBeChecked();
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce());

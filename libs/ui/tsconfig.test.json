@@ -8,10 +8,10 @@
   "include": [
     "registry/**/*.ts",
     "registry/**/*.tsx",
+    "styles/**/*.test.ts",
     "testing/**/*.ts",
     "theme/**/*.ts",
-    "scripts/**/*.test.ts",
-    "src/test-setup.ts"
+    "scripts/**/*.test.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

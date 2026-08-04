@@ -6,11 +6,6 @@ import { sessionTerminationCopy } from "@diffgazer/core/review";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook, waitFor } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ConfigProvider } from "@/hooks/use-config";
 import {
   CLI_UNSUPPORTED_CONFIGURATION,
   configurationStatus,
@@ -20,7 +15,12 @@ import {
   READY_GEMINI_CONFIGURATION,
   REMOVED_ZAI_CODING_CONFIGURATION,
   selectedIdentityFrom,
-} from "@/testing/configuration-fixtures";
+} from "@diffgazer/core/testing/provider-fixtures";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ConfigProvider } from "@/hooks/use-config";
 import { REVIEW_PROGRESS_CONTROLS } from "./use-progress-keyboard";
 
 const {

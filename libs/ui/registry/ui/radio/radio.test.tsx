@@ -1,3 +1,4 @@
+import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -148,9 +149,7 @@ describe("Radio", () => {
   // cannot measure layout.
   it("row reserves a 44px coarse-pointer touch target", () => {
     render(<Radio label="Option A" />);
-    expect(screen.getByRole("radio", { name: /option a/i }).className).toContain(
-      "pointer-coarse:min-h-11",
-    );
+    expect(screen.getByRole("radio", { name: /option a/i })).toHaveClass("pointer-coarse:min-h-11");
   });
 
   it("has no a11y violations (standalone)", async () => {
@@ -877,6 +876,58 @@ describe("RadioGroup", () => {
     expect(blue).toHaveAttribute("aria-checked", "false");
   });
 
+  it("moves the selection with the j and k vim aliases", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onNavigate = vi.fn();
+    render(
+      <RadioGroup label="Colors" defaultValue="red" onChange={onChange} onNavigate={onNavigate}>
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>,
+    );
+
+    const red = screen.getByRole("radio", { name: /red/i });
+    const blue = screen.getByRole("radio", { name: /blue/i });
+
+    red.focus();
+    await user.keyboard("j");
+    expect(blue).toHaveFocus();
+    expect(blue).toHaveAttribute("aria-checked", "true");
+    expect(onChange).toHaveBeenLastCalledWith("blue");
+    expect(onNavigate).toHaveBeenLastCalledWith("blue", "next");
+
+    await user.keyboard("k");
+    expect(red).toHaveFocus();
+    expect(red).toHaveAttribute("aria-checked", "true");
+    expect(onChange).toHaveBeenLastCalledWith("red");
+    expect(onNavigate).toHaveBeenLastCalledWith("red", "previous");
+  });
+
+  it("types j and k into a nested text input instead of navigating", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <RadioGroup label="Credential" defaultValue="paste" onChange={onChange}>
+        <RadioGroup.Item value="paste" label="Paste key now" />
+        <input aria-label="API key" />
+        <RadioGroup.Item value="env" label="Import from env" />
+      </RadioGroup>,
+    );
+
+    const input = screen.getByRole("textbox", { name: "API key" });
+    await user.click(input);
+    await user.keyboard("jk");
+
+    expect(input).toHaveValue("jk");
+    expect(input).toHaveFocus();
+    expect(screen.getByRole("radio", { name: /paste key now/i })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it("lets a consumer onKeyDown handler suppress the built-in arrow navigation", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -951,6 +1002,46 @@ describe("RadioGroup", () => {
       "ArrowRight",
     );
     expect(blue).toHaveFocus();
+  });
+
+  it("hands vertical zone transitions to k and j at the list edges", async () => {
+    const user = userEvent.setup();
+    const onZoneChange = vi.fn();
+    render(
+      <RadioGroup
+        label="Colors"
+        defaultValue="red"
+        wrap={false}
+        onNavigationBoundaryReached={(direction, event) => {
+          // App zone owners filter the horizontal APG arrows out of vertical zone
+          // transitions with this helper; the vim aliases must survive it.
+          const verticalDirection = toVerticalBoundaryDirection(direction, event.key);
+          if (verticalDirection !== null) onZoneChange(verticalDirection);
+        }}
+      >
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>,
+    );
+
+    const red = screen.getByRole("radio", { name: /red/i });
+    const blue = screen.getByRole("radio", { name: /blue/i });
+
+    red.focus();
+    await user.keyboard("k");
+    expect(onZoneChange).toHaveBeenLastCalledWith("up");
+    expect(red).toHaveFocus();
+
+    await user.keyboard("j");
+    expect(blue).toHaveFocus();
+
+    await user.keyboard("j");
+    expect(onZoneChange).toHaveBeenLastCalledWith("down");
+    expect(blue).toHaveFocus();
+
+    onZoneChange.mockClear();
+    await user.keyboard("{ArrowRight}");
+    expect(onZoneChange).not.toHaveBeenCalled();
   });
 
   it("keeps arrow navigation scoped away from nested radio groups", async () => {

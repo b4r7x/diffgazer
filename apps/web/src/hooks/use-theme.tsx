@@ -1,4 +1,5 @@
 import { useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
+import { resolveSelectableTheme, toSelectableTheme } from "@diffgazer/core/schemas/config";
 import {
   createContext,
   type ReactNode,
@@ -6,22 +7,33 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
-import { isWebTheme, type ThemeContextValue, type WebTheme } from "@/types/theme";
+import { applyResolvedTheme, THEME_STORAGE_KEY } from "@/theme-bootstrap";
+import {
+  isWebTheme,
+  type ResolvedTheme,
+  type ThemeContextValue,
+  type WebTheme,
+} from "@/types/theme";
 
-const STORAGE_KEY = "diffgazer-theme";
-const DEFAULT_THEME: WebTheme = "dark";
-const THEME_COLORS: Record<WebTheme, string> = {
-  dark: "#0d1117",
-  light: "#ffffff",
-};
+function subscribeToSystemTheme(callback: () => void): () => void {
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
+
+function getSystemTheme(): ResolvedTheme {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
 
 export const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-/** The single narrowing point between the shared config schema and the web app. */
-function toWebTheme(value: string | null | undefined): WebTheme {
-  return value !== undefined && isWebTheme(value) ? value : DEFAULT_THEME;
+/** The single narrowing point between stored theme strings and the web app. */
+function toWebTheme(value: string | null): WebTheme {
+  return isWebTheme(value) ? value : "auto";
 }
 
 function accessThemeStorage<T>(operation: (storage: Storage) => T, fallback: T): T {
@@ -34,13 +46,13 @@ function accessThemeStorage<T>(operation: (storage: Storage) => T, fallback: T):
 }
 
 function readStoredTheme(): string | null {
-  return accessThemeStorage((storage) => storage.getItem(STORAGE_KEY), null);
+  return accessThemeStorage((storage) => storage.getItem(THEME_STORAGE_KEY), null);
 }
 
 function writeStoredTheme(theme: string | null): void {
   accessThemeStorage((storage) => {
-    if (theme === null) storage.removeItem(STORAGE_KEY);
-    else storage.setItem(STORAGE_KEY, theme);
+    if (theme === null) storage.removeItem(THEME_STORAGE_KEY);
+    else storage.setItem(THEME_STORAGE_KEY, theme);
   }, undefined);
 }
 
@@ -51,19 +63,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const { data: settings } = useSettings();
   const { mutateAsync: saveSettingsAsync } = useSaveSettings();
 
-  const settingsTheme = settings?.theme ? toWebTheme(settings.theme) : null;
-  const theme: WebTheme = localOverride ?? settingsTheme ?? fallbackTheme;
+  const system: ResolvedTheme = useSyncExternalStore(subscribeToSystemTheme, getSystemTheme);
+  const latestSaveRef = useRef(0);
 
+  const settingsTheme = settings?.theme ? toSelectableTheme(settings.theme) : null;
+  const effectiveTheme: WebTheme = localOverride ?? settingsTheme ?? fallbackTheme;
+  const resolved = resolveSelectableTheme(effectiveTheme, system);
+
+  // The pre-paint bootstrap in index.html already themed the document; this
+  // re-applies it once the stored settings resolve to a different theme.
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    document.documentElement.style.colorScheme = theme;
-    document
-      .querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-      ?.setAttribute("content", THEME_COLORS[theme]);
-  }, [theme]);
+    applyResolvedTheme(resolved);
+  }, [resolved]);
 
   const setTheme = useCallback(
     async (newTheme: WebTheme): Promise<void> => {
+      const save = ++latestSaveRef.current;
       const previousOverride = localOverride;
       const previousStored = readStoredTheme();
       setLocalOverride(newTheme);
@@ -71,15 +86,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       try {
         await saveSettingsAsync({ theme: newTheme });
       } catch (error) {
-        setLocalOverride(previousOverride);
-        writeStoredTheme(previousStored);
+        // A later pick already replaced this one; rolling back now would undo the
+        // theme the user is looking at.
+        if (latestSaveRef.current === save) {
+          setLocalOverride(previousOverride);
+          writeStoredTheme(previousStored);
+        }
         throw error;
       }
     },
     [localOverride, saveSettingsAsync],
   );
 
-  const value = useMemo<ThemeContextValue>(() => ({ theme, setTheme }), [theme, setTheme]);
+  const value = useMemo<ThemeContextValue>(
+    () => ({ theme: effectiveTheme, resolved, system, setTheme }),
+    [effectiveTheme, resolved, system, setTheme],
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

@@ -160,15 +160,19 @@ function ToastFixture() {
   );
 }
 
+const FIXTURE_PARAMS = new URLSearchParams(window.location.search);
+const FIXTURE_VIEW = FIXTURE_PARAMS.get("view");
+// The summary re-shapes its panel row for a clean run, and the canonical review
+// always has findings, so that half of the contract needs an empty run.
+const SUMMARY_IS_CLEAN = FIXTURE_PARAMS.get("issues") === "none";
+
 function ResultsFixture() {
-  const view = new URLSearchParams(window.location.search).get("view");
+  if (FIXTURE_VIEW === "providers") return <ProvidersFixture />;
+  if (FIXTURE_VIEW === "shell") return <ShellFixture />;
+  if (FIXTURE_VIEW === "progress") return <ProgressFixture />;
+  if (FIXTURE_VIEW === "toast") return <ToastFixture />;
 
-  if (view === "providers") return <ProvidersFixture />;
-  if (view === "shell") return <ShellFixture />;
-  if (view === "progress") return <ProgressFixture />;
-  if (view === "toast") return <ToastFixture />;
-
-  const showsSummary = view === "summary";
+  const showsSummary = FIXTURE_VIEW === "summary";
 
   return (
     <KeyboardProvider>
@@ -181,11 +185,11 @@ function ResultsFixture() {
         >
           {showsSummary ? (
             <ReviewSummaryView
-              issues={result.issues}
+              issues={SUMMARY_IS_CLEAN ? [] : result.issues}
               reviewId={metadata.id}
               durationMs={metadata.durationMs}
               lensStats={lensStats}
-              droppedDuplicates={droppedDuplicates}
+              droppedDuplicates={SUMMARY_IS_CLEAN ? 0 : droppedDuplicates}
               onEnterReview={() => undefined}
               onBack={() => undefined}
             />
@@ -202,15 +206,28 @@ function ResultsFixture() {
   );
 }
 
+// The shell fixture mounts GlobalLayout, and the header reads its wordmark tier
+// off the router pathname: home carries none, because the real home screen owns
+// its own hero. Parking the shell on a work-screen path is what puts the dense
+// wordmark in the header the responsive contracts measure.
+const SHELL_PATHNAME = "/history";
+
 const rootRoute = createRootRoute();
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: ResultsFixture,
 });
+const shellRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: SHELL_PATHNAME,
+  component: ResultsFixture,
+});
 const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute]),
-  history: createMemoryHistory({ initialEntries: ["/"] }),
+  routeTree: rootRoute.addChildren([indexRoute, shellRoute]),
+  history: createMemoryHistory({
+    initialEntries: [FIXTURE_VIEW === "shell" ? SHELL_PATHNAME : "/"],
+  }),
 });
 
 const root = document.getElementById("root");

@@ -33,19 +33,25 @@ function TestLazyLoadModelList({ models }: { models: ModelInfo[] }) {
     onOpenChange: vi.fn(),
   });
 
+  // Mirrors the dialog: the container ref sits on the scroll wrapper while
+  // the rows' owning radiogroup is nested inside it.
   return createElement(
     "div",
-    { ref: listContainerRef, role: "radiogroup" },
-    ...models.map((model) =>
-      createElement(
-        "div",
-        {
-          key: model.id,
-          role: "radio",
-          "data-value": model.id,
-          tabIndex: 0,
-        },
-        model.name,
+    { ref: listContainerRef },
+    createElement(
+      "div",
+      { role: "radiogroup", "aria-label": "Available models" },
+      ...models.map((model) =>
+        createElement(
+          "div",
+          {
+            key: model.id,
+            role: "radio",
+            "data-value": model.id,
+            tabIndex: 0,
+          },
+          model.name,
+        ),
       ),
     ),
   );

@@ -1,4 +1,5 @@
 import { TextDecoder, TextEncoder } from "node:util";
+import { scanJsonRejectingDuplicateKeys } from "@diffgazer/core/json";
 import {
   type ConfigurationId,
   ConfigurationIdSchema,
@@ -230,145 +231,21 @@ const MAX_PROVIDER_CONFIGURATION_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_JSON_DEPTH = 64;
 
 /**
- * Parse JSON while rejecting duplicate object keys. JSON.parse alone would let a
- * later key silently relabel a removed record as a supported one.
+ * Decode one bounded provider-configuration document. The shared scanner rejects
+ * a repeated object key, which `JSON.parse` alone would collapse to the last
+ * value — letting a crafted file relabel a removed record as a supported one.
  */
-function parseJsonWithoutDuplicateKeys(text: string): unknown {
-  let position = 0;
-  let depth = 0;
-
-  const fail = (message: string): never => {
-    throw new ProviderConfigurationDecodeError(`Invalid provider configuration JSON: ${message}`);
-  };
-  const skipWhitespace = (): void => {
-    while (
-      text[position] === " " ||
-      text[position] === "\t" ||
-      text[position] === "\n" ||
-      text[position] === "\r"
-    ) {
-      position += 1;
-    }
-  };
-  const parseString = (): string => {
-    const start = position;
-    if (text[position] !== '"') fail("expected string");
-    position += 1;
-    while (position < text.length) {
-      const character = text[position];
-      if (character === '"') {
-        position += 1;
-        try {
-          return JSON.parse(text.slice(start, position)) as string;
-        } catch {
-          fail("invalid string escape");
-        }
-      }
-      if (character === undefined || character < " ") fail("invalid string");
-      if (character === "\\") {
-        position += 1;
-        if (position >= text.length) fail("unterminated escape");
-        position += text[position] === "u" ? 4 : 1;
-      } else {
-        position += 1;
-      }
-    }
-    return fail("unterminated string");
-  };
-  const parseNumber = (): void => {
-    const start = position;
-    while (position < text.length && !",]} \t\n\r".includes(text[position] ?? "")) position += 1;
-    const value = text.slice(start, position);
-    if (!/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(value)) fail("invalid number");
-  };
-  const parseValue = (): void => {
-    skipWhitespace();
-    const character = text[position];
-    if (character === "{") {
-      parseObject();
-      return;
-    }
-    if (character === "[") {
-      parseArray();
-      return;
-    }
-    if (character === '"') {
-      parseString();
-      return;
-    }
-    for (const literal of ["true", "false", "null"]) {
-      if (text.startsWith(literal, position)) {
-        position += literal.length;
-        return;
-      }
-    }
-    if (character === "-" || (character !== undefined && /\d/.test(character))) {
-      parseNumber();
-      return;
-    }
-    fail("expected JSON value");
-  };
-  const parseObject = (): void => {
-    if (depth >= MAX_JSON_DEPTH) fail("maximum JSON depth exceeded");
-    depth += 1;
-    position += 1;
-    const keys = new Set<string>();
-    skipWhitespace();
-    if (text[position] === "}") {
-      position += 1;
-      depth -= 1;
-      return;
-    }
-    while (true) {
-      skipWhitespace();
-      const key = parseString();
-      if (keys.has(key)) fail(`duplicate object key ${JSON.stringify(key)}`);
-      keys.add(key);
-      skipWhitespace();
-      if (text[position] !== ":") fail("expected object separator");
-      position += 1;
-      parseValue();
-      skipWhitespace();
-      if (text[position] === "}") {
-        position += 1;
-        depth -= 1;
-        return;
-      }
-      if (text[position] !== ",") fail("expected object separator");
-      position += 1;
-    }
-  };
-  const parseArray = (): void => {
-    if (depth >= MAX_JSON_DEPTH) fail("maximum JSON depth exceeded");
-    depth += 1;
-    position += 1;
-    skipWhitespace();
-    if (text[position] === "]") {
-      position += 1;
-      depth -= 1;
-      return;
-    }
-    while (true) {
-      parseValue();
-      skipWhitespace();
-      if (text[position] === "]") {
-        position += 1;
-        depth -= 1;
-        return;
-      }
-      if (text[position] !== ",") fail("expected array separator");
-      position += 1;
-    }
-  };
-
-  parseValue();
-  skipWhitespace();
-  if (position !== text.length) fail("unexpected trailing input");
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return fail("invalid JSON");
-  }
+function parseProviderConfigurationJson(text: string, maxBytes: number): unknown {
+  scanJsonRejectingDuplicateKeys(text, {
+    maxBytes,
+    maxDepth: MAX_JSON_DEPTH,
+    onFail: ({ position, reason }) => {
+      throw new ProviderConfigurationDecodeError(
+        `Invalid provider configuration JSON at ${position}: ${reason}`,
+      );
+    },
+  });
+  return JSON.parse(text) as unknown;
 }
 
 function parseKnownRecord(
@@ -425,7 +302,7 @@ export function decodeProviderConfigurationRecord(
 
   let input: unknown;
   try {
-    input = parseJsonWithoutDuplicateKeys(text);
+    input = parseProviderConfigurationJson(text, MAX_PROVIDER_CONFIGURATION_RECORD_BYTES);
   } catch {
     return { status: "unknown", rawBytes };
   }
@@ -555,7 +432,7 @@ export function decodeProviderConfigurationFile(inputBytes: Uint8Array): Provide
   const text = decodeUtf8(rawBytes);
   if (text === null)
     throw new ProviderConfigurationDecodeError("Provider configuration file is not UTF-8");
-  const parsed = parseJsonWithoutDuplicateKeys(text);
+  const parsed = parseProviderConfigurationJson(text, MAX_PROVIDER_CONFIGURATION_FILE_BYTES);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new ProviderConfigurationDecodeError("Configuration file root must be an object");
   }

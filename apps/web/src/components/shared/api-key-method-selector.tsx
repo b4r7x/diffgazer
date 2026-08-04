@@ -5,6 +5,7 @@ import { InputGroup } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { KeyboardEvent, RefCallback, RefObject } from "react";
+import { SELECTED_OPTION_ROW } from "@/lib/selected-option-row";
 import type { ApiKeyFocusTarget } from "@/types/api-key-focus-target";
 
 const INPUT_METHODS = ["paste", "env"] as const satisfies readonly InputMethod[];
@@ -90,6 +91,7 @@ export function ApiKeyMethodSelector({
             onFocus("paste");
           }}
           label="Paste Key Now"
+          className={SELECTED_OPTION_ROW}
         />
         <Field className="pl-9" disabled={method !== "paste"} invalid={invalid}>
           <Field.Label className="sr-only">{providerName} API Key</Field.Label>
@@ -147,6 +149,7 @@ export function ApiKeyMethodSelector({
             onFocus("env");
           }}
           label="Import from Env"
+          className={SELECTED_OPTION_ROW}
         />
         {envVarName ? (
           <div className="pl-9">

@@ -6,8 +6,8 @@ import type { ReviewMetadata } from "@diffgazer/core/schemas/review";
 import { atomicWriteFile, isNodeError } from "../../../shared/lib/fs.js";
 import { log } from "../../../shared/lib/log.js";
 import { getGlobalDiffgazerDir } from "../../../shared/lib/paths.js";
+import { compareReviewOrder, type ReviewCursorBoundary } from "./cursor.js";
 import { createKeyedLock } from "./keyed-lock.js";
-import { compareReviewOrder, type ReviewCursorBoundary } from "./review-cursor.js";
 
 // Legacy on-disk directory name kept as "triage-reviews" to avoid data migration
 export const REVIEWS_DIR = join(getGlobalDiffgazerDir(), "triage-reviews");

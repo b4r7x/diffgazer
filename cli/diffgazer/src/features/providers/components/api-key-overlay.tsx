@@ -1,14 +1,17 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import type { ProviderListRow } from "@diffgazer/core/providers";
-import { useApiKeyEntry } from "@diffgazer/core/providers";
+import {
+  buildSetupAcknowledgement,
+  buildSetupInput,
+  getSetupLayoutCopy,
+  resolveSetupTransportFamily,
+  toSetupCredential,
+  useApiKeyEntry,
+} from "@diffgazer/core/providers";
 import { sanitizeTerminalText } from "@diffgazer/core/review";
 import type {
   ClientConfigurationInput,
-  HostedApiProductId,
-  LocalCliProductId,
-  LocalHttpProductId,
   ReadinessAcknowledgement,
-  WriteOnlySecretInput,
 } from "@diffgazer/core/schemas/config";
 import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
@@ -47,113 +50,6 @@ interface ApiKeyOverlayProps {
   ) => Promise<void>;
 }
 
-type SetupTransportFamily = "hosted-api" | "local-http" | "local-cli";
-type SupportedProviderProduct = Extract<ProviderListRow["product"], { status: "supported" }>;
-
-function getSupportedProduct(row: ProviderListRow): SupportedProviderProduct {
-  if (row.product.status !== "supported") {
-    throw new Error(`Product ${row.product.productId} is not supported for setup`);
-  }
-  return row.product;
-}
-
-function getProductNotice(row: ProviderListRow) {
-  if (row.product.status === "supported") {
-    return row.product.notice;
-  }
-  const notice = row.notices[0];
-  if (!notice) {
-    throw new Error(`Missing notice for product ${row.product.productId}`);
-  }
-  return notice;
-}
-
-function resolveSetupTransportFamily(row: ProviderListRow): SetupTransportFamily | null {
-  if (row.configuration?.status === "supported") {
-    return row.configuration.transportFamily;
-  }
-  if (row.product.status === "supported") {
-    return row.product.transportFamily;
-  }
-  return null;
-}
-
-function buildHostedInput(
-  row: ProviderListRow,
-  credential?: WriteOnlySecretInput,
-): ClientConfigurationInput {
-  const product = getSupportedProduct(row);
-  if (product.transportFamily !== "hosted-api") {
-    throw new Error("Hosted setup requires a supported hosted-api product");
-  }
-  const endpoint =
-    row.configuration?.status === "supported" && row.configuration.transportFamily === "hosted-api"
-      ? row.configuration.endpoint
-      : (product.endpoints[0]?.endpoint ?? "");
-  return {
-    transportFamily: "hosted-api",
-    productId: product.productId as HostedApiProductId,
-    endpoint,
-    ...(credential ? { credential } : {}),
-  };
-}
-
-function buildAcknowledgement(row: ProviderListRow): AcceptedAcknowledgement {
-  const notice = getProductNotice(row);
-  return {
-    status: "accepted",
-    noticeId: notice.id,
-    noticeVersion: notice.noticeVersion,
-    acceptedAt: new Date().toISOString(),
-  };
-}
-
-function toCredential(method: "paste" | "env", value: string): WriteOnlySecretInput {
-  if (method === "env") return { kind: "environment" };
-  return { kind: "literal", value };
-}
-
-function getLocalHttpCopy(row: ProviderListRow): string {
-  if (resolveSetupTransportFamily(row) !== "local-http") {
-    return "Local HTTP setup does not use API credentials.";
-  }
-  const product = row.product.status === "supported" ? row.product : null;
-  let endpoint: string | undefined;
-  if (
-    row.configuration?.status === "supported" &&
-    row.configuration.transportFamily === "local-http"
-  ) {
-    endpoint = row.configuration.endpoint;
-  } else if (product?.transportFamily === "local-http") {
-    endpoint = product.endpoints[0]?.endpoint;
-  }
-  return `Configure the local endpoint at ${endpoint ?? "the selected loopback URL"} without storing hosted credentials.`;
-}
-
-function getLayoutCopy(
-  row: ProviderListRow,
-  isHosted: boolean,
-  transportFamily: ReturnType<typeof resolveSetupTransportFamily>,
-): string {
-  if (isHosted) {
-    return `Choose how to provide credentials for ${row.product.name}:`;
-  }
-  if (transportFamily === "local-http") {
-    return getLocalHttpCopy(row);
-  }
-  return getLocalCliCopy(row);
-}
-
-function getLocalCliCopy(row: ProviderListRow): string {
-  const family = resolveSetupTransportFamily(row);
-  const productIsLocalCli =
-    row.product.status === "supported" && row.product.transportFamily === "local-cli";
-  if (family !== "local-cli" && !productIsLocalCli) {
-    return "Local CLI setup does not use API credentials.";
-  }
-  return "Configure the local CLI installation without storing hosted credentials.";
-}
-
 export function ApiKeyOverlay({
   open,
   onOpenChange,
@@ -163,10 +59,10 @@ export function ApiKeyOverlay({
 }: ApiKeyOverlayProps): ReactElement | null {
   const { tokens } = useTheme();
   const [inputFocused, setInputFocused] = useState(false);
+  // Only a stored acceptance pre-checks the notice: `not-applicable` means the row carries no
+  // acknowledgement yet (unconfigured or removed), so consent is still outstanding.
   const [noticeAccepted, setNoticeAccepted] = useState(
-    () =>
-      row.readiness.acknowledgement.status === "accepted" ||
-      row.readiness.acknowledgement.status === "not-applicable",
+    () => row.readiness.acknowledgement.status === "accepted",
   );
   const transportFamily = resolveSetupTransportFamily(row);
   const isHosted = transportFamily === "hosted-api";
@@ -175,9 +71,9 @@ export function ApiKeyOverlay({
 
   const entry = useApiKeyEntry({
     onSubmit: async (method, value) => {
-      const credential = toCredential(method, value);
-      const input = buildHostedInput(row, credential);
-      const acknowledgement = buildAcknowledgement(row);
+      const input = buildSetupInput(row, transportFamily, toSetupCredential(method, value));
+      if (!input) return false;
+      const acknowledgement = buildSetupAcknowledgement(row);
       if (row.configuration?.status === "supported") {
         await onUpdate(
           { input, acknowledgement },
@@ -198,58 +94,17 @@ export function ApiKeyOverlay({
 
   async function handleLocalSave() {
     if (!noticeAccepted || saving) return;
-    const acknowledgement = buildAcknowledgement(row);
-    if (transportFamily === "local-http") {
-      const product = getSupportedProduct(row);
-      if (product.transportFamily !== "local-http") {
-        throw new Error("Local HTTP setup requires a supported local-http product");
-      }
-      const endpoint =
-        row.configuration?.status === "supported" &&
-        row.configuration.transportFamily === "local-http"
-          ? row.configuration.endpoint
-          : product.endpoints[0]?.endpoint;
-      const input: Extract<ClientConfigurationInput, { transportFamily: "local-http" }> = {
-        transportFamily: "local-http",
-        productId: product.productId as LocalHttpProductId,
-        endpoint: endpoint ?? "",
-        authentication: "none",
-        presetId:
-          row.configuration?.status === "supported" &&
-          row.configuration.transportFamily === "local-http"
-            ? (row.configuration.presetId ?? undefined)
-            : undefined,
-      };
-      if (row.configuration?.status === "supported") {
-        await onUpdate({ input, acknowledgement });
-      } else {
-        await onCreate(input);
-      }
-      onOpenChange(false);
-      return;
+    if (transportFamily !== "local-http" && transportFamily !== "local-cli") return;
+
+    const input = buildSetupInput(row, transportFamily);
+    if (!input) return;
+    const acknowledgement = buildSetupAcknowledgement(row);
+    if (row.configuration?.status === "supported") {
+      await onUpdate({ input, acknowledgement });
+    } else {
+      await onCreate(input);
     }
-    if (transportFamily === "local-cli") {
-      const product = getSupportedProduct(row);
-      if (product.transportFamily !== "local-cli") {
-        throw new Error("Local CLI setup requires a supported local-cli product");
-      }
-      const installationId =
-        row.configuration?.status === "supported" &&
-        row.configuration.transportFamily === "local-cli"
-          ? row.configuration.installationId
-          : `${product.productId}-installation`;
-      const input: Extract<ClientConfigurationInput, { transportFamily: "local-cli" }> = {
-        transportFamily: "local-cli",
-        productId: product.productId as LocalCliProductId,
-        installationId: installationId ?? "",
-      };
-      if (row.configuration?.status === "supported") {
-        await onUpdate({ input, acknowledgement });
-      } else {
-        await onCreate(input);
-      }
-      onOpenChange(false);
-    }
+    onOpenChange(false);
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -307,7 +162,7 @@ export function ApiKeyOverlay({
     entry.reset();
     actions.reset();
     setInputFocused(false);
-    setNoticeAccepted(false);
+    setNoticeAccepted(row.readiness.acknowledgement.status === "accepted");
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: open/row identity are reset triggers.
@@ -316,7 +171,7 @@ export function ApiKeyOverlay({
   }, [open, row.product.productId, row.configuration?.configurationId]);
 
   const title = isUpdating ? "Update Configuration" : "Create Configuration";
-  const layoutCopy = getLayoutCopy(row, isHosted, transportFamily);
+  const layoutCopy = getSetupLayoutCopy(row, transportFamily);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

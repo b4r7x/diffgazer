@@ -1,7 +1,14 @@
-import { expect, type Page, test } from "@playwright/test";
+import { ConfigurationModelsResponseSchema } from "@diffgazer/core/schemas/config";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { mockProtectedProviderApi, ONBOARDING_E2E_INIT } from "./provider-fixture";
 
 const safeAreaInsets = { top: 40, right: 36, bottom: 56, left: 48 };
+
+async function boxOf(locator: Locator, name: string) {
+  const box = await locator.boundingBox();
+  if (!box) throw new Error(`${name} has no bounding box`);
+  return box;
+}
 
 async function emulateSafeArea(page: Page) {
   const session = await page.context().newCDPSession(page);
@@ -25,24 +32,33 @@ async function mockOnboardingApi(page: Page) {
   );
 }
 
+/**
+ * Twelve rows, built through the discovery schema. Both halves matter: the
+ * response has to parse *and* carry the identity of the configuration the
+ * dialog asked about, or the dialog renders its error strip and the layout
+ * contract below measures that instead; and enough rows have to arrive to
+ * outgrow the list's height cap, which the test then measures.
+ */
+const MODEL_DISCOVERY_RESPONSE = ConfigurationModelsResponseSchema.parse({
+  status: "passed",
+  configurationId: "gemini-primary",
+  productId: "gemini",
+  transportFamily: "hosted-api",
+  models: Array.from({ length: 12 }, (_, index) => ({
+    id: `gemini-2.5-flash-${index}`,
+    name: `Gemini 2.5 Flash ${index}`,
+    description: "Fast model",
+    tier: index % 2 === 0 ? "free" : "paid",
+  })),
+  checkedAt: "2026-01-01T00:00:00.000Z",
+  source: "snapshot",
+  cached: false,
+});
+
 async function mockProviderApi(page: Page) {
   await mockProtectedProviderApi(page);
-  await page.route("**/api/config/provider/gemini/models", (route) =>
-    route.fulfill({
-      json: {
-        models: [
-          {
-            id: "gemini-2.5-flash",
-            name: "Gemini 2.5 Flash",
-            description: "Fast model",
-            tier: "free",
-          },
-        ],
-        fetchedAt: "2026-01-01T00:00:00.000Z",
-        source: "snapshot",
-        cached: false,
-      },
-    }),
+  await page.route("**/api/config/providers/gemini-primary/models", (route) =>
+    route.fulfill({ json: MODEL_DISCOVERY_RESPONSE }),
   );
 }
 
@@ -60,6 +76,32 @@ test("onboarding progress renders the compact stepper at every width", async ({ 
   await expect(active).toHaveCount(1);
   await expect(page.getByText("Step 1 of 6: Product")).toBeVisible();
   await expect(active).toContainText("Product");
+});
+
+test("the setup panel readout label stays put when focus enters the pane", async ({ page }) => {
+  await mockOnboardingApi(page);
+  await page.goto("/onboarding", { waitUntil: "domcontentloaded" });
+
+  const panel = page.getByRole("region", { name: /select product/i });
+  const label = panel.locator('[data-slot="panel-label"][data-variant="readout"]');
+  await expect(label).toBeVisible();
+
+  // The step's product list takes focus on arrival, so the pane starts focused and
+  // the resting shape is reached by taking focus back out of it.
+  await expect(panel).toHaveAttribute("data-state", "focused");
+  const panelBox = await boxOf(panel, "setup panel");
+  const focused = await boxOf(label, "focused readout label");
+
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await expect(panel).not.toHaveAttribute("data-state", "focused");
+  const resting = await boxOf(label, "resting readout label");
+
+  // The readout is seated past the bracket arm the focused pane draws. The resting
+  // pane draws none, so the inset has to hold on its own — otherwise the label
+  // drops onto the panel corner and slides 30px the moment focus comes back.
+  expect(resting.x - panelBox.x).toBeGreaterThan(20);
+  expect(resting.x).toBeCloseTo(focused.x, 1);
+  expect(resting.y).toBeCloseTo(focused.y, 1);
 });
 
 test("provider panes and controls adapt to the rendered viewport", async ({ page }, testInfo) => {
@@ -83,8 +125,14 @@ test("provider panes and controls adapt to the rendered viewport", async ({ page
     );
     expect(detailsBounds?.width).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0);
 
-    const coarseTargets = page.getByRole("group", { name: "Provider filter" }).getByRole("button");
-    for (const target of await coarseTargets.all()) {
+    // The filter row is a single-select ToggleGroup, so its items are radios:
+    // querying buttons here would iterate nothing and pass without measuring.
+    const coarseTargets = await page
+      .getByRole("radiogroup", { name: "Provider filter" })
+      .getByRole("radio")
+      .all();
+    expect(coarseTargets.length).toBeGreaterThan(0);
+    for (const target of coarseTargets) {
       const bounds = await target.boundingBox();
       expect(bounds?.height).toBeGreaterThanOrEqual(44);
     }
@@ -113,15 +161,26 @@ test("provider panes and controls adapt to the rendered viewport", async ({ page
   await page.getByRole("button", { name: /Select model/i }).click();
   const dialog = page.getByRole("dialog", { name: "Select Model" });
   await expect(dialog).toBeVisible();
+  // Measure the discovered list, not the loading or error shape that replaces it.
+  const modelRows = dialog.getByRole("radiogroup", { name: "Available models" }).getByRole("radio");
+  await expect(modelRows.first()).toBeVisible();
   const modelList = dialog.locator('[data-layout-region="model-list"]');
   const listBox = await modelList.boundingBox();
+  // The rows outgrow the region, so the cap below is what holds the dialog to
+  // half the viewport rather than the fixture happening to be short enough.
+  const rowsHeight = await modelRows.evaluateAll((nodes) =>
+    nodes.reduce((total, node) => total + node.getBoundingClientRect().height, 0),
+  );
+  expect(rowsHeight).toBeGreaterThan(listBox?.height ?? 0);
   expect(listBox?.height).toBeLessThanOrEqual((page.viewportSize()?.height ?? 0) / 2);
 
   if (testInfo.project.name === "mobile-chromium") {
-    const modelTargets = dialog
-      .getByRole("group", { name: "Model tier filter" })
-      .getByRole("button");
-    for (const target of await modelTargets.all()) {
+    const modelTargets = await dialog
+      .getByRole("radiogroup", { name: "Model tier filter" })
+      .getByRole("radio")
+      .all();
+    expect(modelTargets.length).toBeGreaterThan(0);
+    for (const target of modelTargets) {
       const bounds = await target.boundingBox();
       expect(bounds?.height).toBeGreaterThanOrEqual(44);
     }
@@ -252,12 +311,15 @@ const sweepViewports = [
   { width: 1280, height: 800 },
 ] as const;
 
-test("no fixture view over-scrolls the document at mobile or desktop widths", async ({ page }) => {
-  await mockProviderApi(page);
-
-  for (const size of sweepViewports) {
-    await page.setViewportSize(size);
-    for (const view of sweepViews) {
+// One case per view/viewport pair: a single case sweeping all ten combinations spent
+// most of the default 30s budget and timed out under parallel load.
+for (const size of sweepViewports) {
+  for (const view of sweepViews) {
+    test(`the ${view} view does not over-scroll the document at ${size.width}x${size.height}`, async ({
+      page,
+    }) => {
+      await mockProviderApi(page);
+      await page.setViewportSize(size);
       await page.goto(`/testing/fixtures/results-layout.html?view=${view}`);
       await page.waitForFunction(() => {
         const root = document.getElementById("root");
@@ -277,9 +339,9 @@ test("no fixture view over-scrolls the document at mobile or desktop widths", as
         scroll.scrollHeight,
         `view=${view} at ${size.width}x${size.height} must not extend the document past the viewport`,
       ).toBe(scroll.clientHeight);
-    }
+    });
   }
-});
+}
 
 test("the live providers empty-state stays contained by its scroll parent", async ({ page }) => {
   await mockProviderApi(page);
@@ -372,6 +434,33 @@ test("the ascii wordmark scales to fit narrow viewports", async ({ page }) => {
   }));
   expect(metrics.width).toBeGreaterThan(0);
   expect(metrics.width).toBeLessThanOrEqual(390);
+  expect(metrics.docOverflow).toBe(false);
+});
+
+test("the banner wordmark keeps clear of both mobile viewport edges", async ({ page }) => {
+  await mockProviderApi(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/settings");
+
+  const logo = page.getByRole("img", { name: "diffgazer" });
+  await expect(logo).toBeVisible();
+
+  const metrics = await logo.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      width: rect.width,
+      left: rect.left,
+      right: rect.right,
+      docOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    };
+  });
+
+  // The banner tier is the widest rendering the app ships. On a phone it scales
+  // down to at most 90vw and keeps a 16px gutter either side, so the art is never
+  // clipped at the edge and never widens the document.
+  expect(metrics.width).toBeLessThanOrEqual(390 * 0.9);
+  expect(metrics.left).toBeGreaterThanOrEqual(16);
+  expect(metrics.right).toBeLessThanOrEqual(390 - 16);
   expect(metrics.docOverflow).toBe(false);
 });
 

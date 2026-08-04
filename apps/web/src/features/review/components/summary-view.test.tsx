@@ -16,6 +16,7 @@ function renderSummary(props?: {
   issues?: ReviewIssue[];
   reviewId?: string | null;
   durationMs?: number;
+  onBack?: () => void;
 }) {
   return render(
     <KeyboardProvider>
@@ -29,7 +30,7 @@ function renderSummary(props?: {
           minSeverity={props?.minSeverity}
           lensStats={props?.lensStats}
           onEnterReview={vi.fn()}
-          onBack={vi.fn()}
+          onBack={props?.onBack ?? vi.fn()}
         />
       </FooterProvider>
     </KeyboardProvider>,
@@ -176,6 +177,57 @@ describe("ReviewSummaryView", () => {
     // the filename; the tooltip carries the whole path.
     expect(screen.getByTitle("src/db.ts")).toBeInTheDocument();
     expect(screen.queryByText("src/db.ts:0")).not.toBeInTheDocument();
+  });
+
+  it("exposes a visible Back control that leaves the summary like Escape does", async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+    renderSummary({ onBack });
+
+    // Escape alone left the summary with no pointer-reachable exit.
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(onBack).toHaveBeenCalledTimes(1);
+
+    await user.keyboard("{Escape}");
+    expect(onBack).toHaveBeenCalledTimes(2);
+  });
+
+  it("focuses the summary region on mount so keys land somewhere instead of document.body", () => {
+    renderSummary();
+
+    expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
+  });
+
+  it("scrolls the focused summary region with arrow and page keys when content overflows", async () => {
+    const user = userEvent.setup();
+    renderSummary();
+    const region = screen.getByRole("region", { name: "Review summary" });
+    // jsdom has no layout; pin the metrics that make the region overflow.
+    Object.defineProperty(region, "clientHeight", { value: 100, configurable: true });
+    Object.defineProperty(region, "scrollHeight", { value: 1000, configurable: true });
+
+    expect(region).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(region.scrollTop).toBe(40);
+
+    await user.keyboard("{PageDown}");
+    expect(region.scrollTop).toBe(120);
+
+    await user.keyboard("{ArrowUp}");
+    expect(region.scrollTop).toBe(80);
+  });
+
+  it("keeps the Tab path summary region → Back → View Results", async () => {
+    const user = userEvent.setup();
+    renderSummary();
+
+    expect(screen.getByRole("region", { name: "Review summary" })).toHaveFocus();
+
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Back" })).toHaveFocus();
+
+    await user.tab();
+    expect(screen.getByRole("button", { name: /view results/i })).toHaveFocus();
   });
 
   it("invokes onEnterReview once for the global Enter shortcut and does not double-invoke it when Enter presses the focused View Results button", async () => {

@@ -17,6 +17,8 @@ export {
   type SetupStatus,
 } from "./configuration-status.js";
 export {
+  type ConfigurationModelsResponse,
+  ConfigurationModelsResponseSchema,
   type ModelInfo,
   type OpenRouterModel,
   type OpenRouterModelCache,

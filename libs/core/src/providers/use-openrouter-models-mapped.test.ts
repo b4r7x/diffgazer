@@ -3,30 +3,17 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, type Mock, vi } from "vitest";
 import type { BoundApi } from "../api/bound.js";
-import type {
-  ClientConfigurationActionResponse,
-  ClientConfigurationSummary,
-} from "../schemas/config/provider-config.js";
-import type { Readiness } from "../schemas/config/readiness.js";
+import type { ConfigurationModelsResponse, ModelInfo } from "../schemas/config/models.js";
+import type { ClientConfigurationSummary } from "../schemas/config/provider-config.js";
 import { createTestQueryWrapper } from "../testing/query-wrapper.js";
 import { PRODUCT_REGISTRY } from "./product-registry.js";
 import {
   getCompatibilityLabel,
-  type OpenRouterConfigurationSummary,
   useOpenRouterModelsMapped,
 } from "./use-openrouter-models-mapped.js";
 
-type TestConfigurationResponse = Extract<ClientConfigurationActionResponse, { action: "test" }>;
-
-const checkedAt = "2026-07-31T12:00:00.000Z";
+const checkedAt = "2026-08-02T12:00:00.000Z";
 const openRouterNotice = PRODUCT_REGISTRY.openrouter.notice;
-function copyOpenRouterNotice() {
-  return {
-    ...openRouterNotice,
-    billing: [...openRouterNotice.billing],
-    privacy: [...openRouterNotice.privacy],
-  };
-}
 
 const configuration = {
   status: "supported",
@@ -35,55 +22,49 @@ const configuration = {
   transportFamily: "hosted-api",
   productId: "openrouter",
   endpoint: "https://openrouter.ai/api/v1",
-  selectedModelId: "anthropic/claude-sonnet-4",
-  notices: [copyOpenRouterNotice()],
+  selectedModelId: null,
+  notices: [
+    {
+      ...openRouterNotice,
+      billing: [...openRouterNotice.billing],
+      privacy: [...openRouterNotice.privacy],
+    },
+  ],
   availableActions: ["inspect", "select", "test", "update", "delete"],
 } as const satisfies ClientConfigurationSummary;
 
-const ready: Readiness = {
-  status: "ready",
-  ready: true,
-  evidenceStatus: "passed",
-  checkedAt,
-  acknowledgement: {
-    status: "accepted",
-    noticeId: openRouterNotice.id,
-    noticeVersion: openRouterNotice.noticeVersion,
-    acceptedAt: checkedAt,
-  },
-  action: "inspect",
-  explanation: "The exact configured review path is ready.",
-  remediation: { code: "none", message: "No remediation is required." },
-};
+function model(id: string, tier: ModelInfo["tier"] = "paid"): ModelInfo {
+  return { id, name: id, description: "128K context", tier };
+}
 
-const skipped: Readiness = {
-  status: "skipped",
-  ready: false,
-  evidenceStatus: "skipped",
-  checkedAt,
-  acknowledgement: { status: "not-applicable" },
-  action: "test",
-  explanation: "The live readiness check was intentionally skipped.",
-  remediation: {
-    code: "enable-live-probe",
-    message: "Satisfy the live-check prerequisites, then test the configuration again.",
-  },
-};
+function passedResponse(models: ModelInfo[]): ConfigurationModelsResponse {
+  return {
+    status: "passed",
+    configurationId: configuration.configurationId,
+    productId: configuration.productId,
+    transportFamily: configuration.transportFamily,
+    models,
+    checkedAt,
+    source: "snapshot",
+    cached: false,
+  };
+}
 
-function response(
-  testedConfiguration: OpenRouterConfigurationSummary = configuration,
-  readiness: Readiness = ready,
-  status: TestConfigurationResponse["status"] = "succeeded",
-): TestConfigurationResponse {
-  return { action: "test", status, configuration: testedConfiguration, readiness };
+function mockModels(
+  response: ConfigurationModelsResponse,
+): Mock<BoundApi["getConfigurationModels"]> {
+  return vi.fn<BoundApi["getConfigurationModels"]>().mockResolvedValue(response);
 }
 
 describe("useOpenRouterModelsMapped", () => {
-  it("exposes an exact pinned route only after its configuration action passes", async () => {
-    const testConfiguration: Mock<BoundApi["testConfiguration"]> = vi
-      .fn<BoundApi["testConfiguration"]>()
-      .mockResolvedValue(response());
-    const { Wrapper } = createTestQueryWrapper({ api: { testConfiguration } });
+  it("exposes exact pinned routes from the configuration catalog discovery", async () => {
+    const getConfigurationModels = mockModels(
+      passedResponse([
+        model("anthropic/claude-sonnet-4"),
+        model("meta-llama/llama-3.3-70b", "free"),
+      ]),
+    );
+    const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
     const { result } = renderHook(() => useOpenRouterModelsMapped(true, configuration), {
       wrapper: Wrapper,
     });
@@ -94,113 +75,88 @@ describe("useOpenRouterModelsMapped", () => {
       configurationId: "openrouter-primary",
       productId: "openrouter",
       transportFamily: "hosted-api",
-      total: 1,
-      pinned: 1,
+      total: 2,
+      pinned: 2,
       checkedAt,
     });
-    expect(result.current.models.map(({ id }) => id)).toEqual(["anthropic/claude-sonnet-4"]);
-    expect(testConfiguration).toHaveBeenCalledWith("openrouter-primary");
-    expect(getCompatibilityLabel(result.current)).toBe("Showing 1 exact pinned downstream route.");
+    expect(result.current.models.map(({ id }) => id)).toEqual([
+      "anthropic/claude-sonnet-4",
+      "meta-llama/llama-3.3-70b",
+    ]);
+    expect(getConfigurationModels).toHaveBeenCalledWith("openrouter-primary");
+    expect(getCompatibilityLabel(result.current)).toBe("Showing 2 exact pinned downstream routes.");
   });
 
   it.each([
-    "auto/model",
-    "automatic/model",
-    "cheapest/model",
-    "default/model",
-    "exacto/model",
-    "extended/model",
-    "free/model",
-    "fallback/model",
-    "fastest/model",
-    "floor/model",
-    "nitro/model",
-    "online/model",
-    "random/model",
-    "route/model",
-    "thinking/model",
-    "provider/auto",
-    "provider/automatic",
-    "provider/cheapest",
-    "provider/default",
-    "provider/exacto",
-    "provider/extended",
-    "provider/free",
+    "openrouter/auto",
     "provider/fallback",
-    "provider/fastest",
-    "provider/floor",
-    "provider/nitro",
-    "provider/online",
-    "provider/openrouter",
-    "provider/random",
-    "provider/route",
-    "provider/thinking",
-    "AUTO/model",
-    "provider/Fallback",
-    "openrouter/gpt-4.1",
-    "OpenRouter/gpt-4.1",
-    "provider/OpenRouter",
     "meta-llama/llama-3.3-70b:free",
-  ] as const)("fails closed instead of enabling OpenRouter route %s", async (selectedModelId) => {
-    const testedConfiguration = { ...configuration, selectedModelId };
-    const testConfiguration: Mock<BoundApi["testConfiguration"]> = vi
-      .fn<BoundApi["testConfiguration"]>()
-      .mockResolvedValue(response(testedConfiguration));
-    const { Wrapper } = createTestQueryWrapper({ api: { testConfiguration } });
-    const { result } = renderHook(() => useOpenRouterModelsMapped(true, testedConfiguration), {
+    "gpt-4.1-mini",
+    "anthropic/claude-latest",
+  ] as const)("never exposes the unpinned catalog route %s", async (unpinnedId) => {
+    const getConfigurationModels = mockModels(
+      passedResponse([model("anthropic/claude-sonnet-4"), model(unpinnedId)]),
+    );
+    const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
+    const { result } = renderHook(() => useOpenRouterModelsMapped(true, configuration), {
       wrapper: Wrapper,
     });
 
-    await waitFor(() => expect(result.current.status).toBe("error"));
+    await waitFor(() => expect(result.current.status).toBe("passed"));
 
-    expect(result.current.models).toEqual([]);
-    // The shared configuration-bound discovery hook rejects forged selectors
-    // before the OpenRouter adapter sees them, so there is no passed source
-    // catalogue to count.
-    expect(result.current).toMatchObject({ total: 0, pinned: 0 });
-    expect(result.current.error).toBe("Model discovery did not prove an eligible exact model ID.");
+    expect(result.current.models.map(({ id }) => id)).toEqual(["anthropic/claude-sonnet-4"]);
+    expect(result.current).toMatchObject({ total: 1, pinned: 1 });
   });
 
   it.each([
     "freeform/model",
     "provider/fallback-v2",
     "automaticity/model",
-  ] as const)("preserves exact downstream route segments that only contain a reserved selector: %s", async (selectedModelId) => {
-    const testedConfiguration = { ...configuration, selectedModelId };
-    const testConfiguration: Mock<BoundApi["testConfiguration"]> = vi
-      .fn<BoundApi["testConfiguration"]>()
-      .mockResolvedValue(response(testedConfiguration));
-    const { Wrapper } = createTestQueryWrapper({ api: { testConfiguration } });
-    const { result } = renderHook(() => useOpenRouterModelsMapped(true, testedConfiguration), {
+  ] as const)("preserves exact route segments that only contain a reserved selector: %s", async (pinnedId) => {
+    const getConfigurationModels = mockModels(passedResponse([model(pinnedId)]));
+    const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
+    const { result } = renderHook(() => useOpenRouterModelsMapped(true, configuration), {
       wrapper: Wrapper,
     });
 
     await waitFor(() => expect(result.current.status).toBe("passed"));
 
-    expect(result.current.models.map(({ id }) => id)).toEqual([selectedModelId]);
+    expect(result.current.models.map(({ id }) => id)).toEqual([pinnedId]);
     expect(result.current).toMatchObject({ total: 1, pinned: 1 });
   });
 
-  it("rejects latest aliases before exposing an OpenRouter route", async () => {
-    const testedConfiguration = { ...configuration, selectedModelId: "anthropic/claude-latest" };
-    const testConfiguration: Mock<BoundApi["testConfiguration"]> = vi
-      .fn<BoundApi["testConfiguration"]>()
-      .mockResolvedValue(response(testedConfiguration));
-    const { Wrapper } = createTestQueryWrapper({ api: { testConfiguration } });
-    const { result } = renderHook(() => useOpenRouterModelsMapped(true, testedConfiguration), {
+  it("fails closed when no catalog route is an exact pinned downstream route", async () => {
+    const getConfigurationModels = mockModels(
+      passedResponse([model("openrouter/auto"), model("provider/thinking")]),
+    );
+    const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
+    const { result } = renderHook(() => useOpenRouterModelsMapped(true, configuration), {
       wrapper: Wrapper,
     });
 
     await waitFor(() => expect(result.current.status).toBe("error"));
+
     expect(result.current.models).toEqual([]);
     expect(result.current).toMatchObject({ total: 0, pinned: 0 });
+    expect(result.current.error).toBe(
+      "The tested OpenRouter model is not an exact pinned downstream route.",
+    );
+    expect(getCompatibilityLabel(result.current)).toBe(
+      "No exact pinned downstream routes available.",
+    );
   });
 
-  it("keeps skipped live evidence empty without substituting catalog routes", async () => {
-    const testConfiguration: Mock<BoundApi["testConfiguration"]> = vi
-      .fn<BoundApi["testConfiguration"]>()
-      .mockResolvedValue(response(configuration, skipped, "failed"));
-    const { Wrapper } = createTestQueryWrapper({ api: { testConfiguration } });
+  it("keeps skipped catalog discovery empty without substituting routes", async () => {
+    const getConfigurationModels = vi.fn<BoundApi["getConfigurationModels"]>().mockResolvedValue({
+      status: "skipped",
+      configurationId: configuration.configurationId,
+      productId: configuration.productId,
+      transportFamily: configuration.transportFamily,
+      models: [],
+      checkedAt,
+      reason: "No catalog models are available for this configuration product.",
+    });
+    const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
     const { result } = renderHook(() => useOpenRouterModelsMapped(true, configuration), {
       wrapper: Wrapper,
     });
@@ -210,13 +166,13 @@ describe("useOpenRouterModelsMapped", () => {
     expect(result.current.models).toEqual([]);
     expect(result.current).toMatchObject({ total: 0, pinned: 0 });
     expect(result.current.reason).toBe(
-      "The live readiness check was intentionally skipped. Satisfy the live-check prerequisites, then test the configuration again.",
+      "No catalog models are available for this configuration product.",
     );
   });
 
-  it("stays idle without testing while closed", () => {
-    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>();
-    const { Wrapper } = createTestQueryWrapper({ api: { testConfiguration } });
+  it("stays idle without fetching while closed", () => {
+    const getConfigurationModels = vi.fn<BoundApi["getConfigurationModels"]>();
+    const { Wrapper } = createTestQueryWrapper({ api: { getConfigurationModels } });
     const { result } = renderHook(() => useOpenRouterModelsMapped(false, configuration), {
       wrapper: Wrapper,
     });
@@ -227,7 +183,7 @@ describe("useOpenRouterModelsMapped", () => {
       total: 0,
       pinned: 0,
     });
-    expect(testConfiguration).not.toHaveBeenCalled();
+    expect(getConfigurationModels).not.toHaveBeenCalled();
   });
 });
 

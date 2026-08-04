@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
-import { atRuleBody, ruleBody } from "../../testing/css-contract";
+import { atRuleBody, type CssRule, eachRule, ruleBody } from "../../testing/css-contract";
 
 describe("OverlayHints CSS contract", () => {
   // jsdom's CSSOM ignores rules nested in @layer and never evaluates
@@ -10,31 +10,13 @@ describe("OverlayHints CSS contract", () => {
   const CSS_PATH = resolve(fileURLToPath(import.meta.url), "../overlay-hints.css");
   let css = "";
   let coarse = "";
+  let coarseRules: CssRule[] = [];
 
   beforeAll(() => {
     css = readFileSync(CSS_PATH, "utf8");
     coarse = atRuleBody(css, "@media (pointer: coarse)");
+    coarseRules = eachRule(coarse);
   });
-
-  function coarseRules(): { selector: string; body: string }[] {
-    const rules: { selector: string; body: string }[] = [];
-    let selectorStart = 0;
-    for (let i = 0; i < coarse.length; i += 1) {
-      if (coarse[i] !== "{") continue;
-      const end = coarse.indexOf("}", i);
-      rules.push({
-        selector: coarse
-          .slice(selectorStart, i)
-          .replace(/\/\*[\s\S]*?\*\//g, "")
-          .replace(/\s+/g, " ")
-          .trim(),
-        body: coarse.slice(i + 1, end),
-      });
-      selectorStart = end + 1;
-      i = end;
-    }
-    return rules;
-  }
 
   it("wraps hints to a second row instead of scrolling them", () => {
     // At 390 a fourth hint no longer fits on one line, and a horizontally
@@ -58,7 +40,7 @@ describe("OverlayHints CSS contract", () => {
   });
 
   it("collapses the host chrome row that exists only to hold the bar", () => {
-    const collapsing = coarseRules().filter((rule) =>
+    const collapsing = coarseRules.filter((rule) =>
       rule.selector.includes(':has(> [data-slot="overlay-hints"]'),
     );
 
@@ -71,13 +53,15 @@ describe("OverlayHints CSS contract", () => {
       '[aria-hidden="false"]:only-child):not(:has([data-touch]))',
     );
     for (const rule of collapsing) {
-      expect(rule.body).toMatch(/display: none|position: absolute/);
+      expect(rule.declarations).toMatch(/display: none|position: absolute/);
     }
   });
 
   it("never drops an AT-exposed legend out of the accessibility tree on touch", () => {
-    const removing = coarseRules().filter(
-      (rule) => rule.body.includes("display: none") || rule.body.includes("visibility: hidden"),
+    const removing = coarseRules.filter(
+      (rule) =>
+        rule.declarations.includes("display: none") ||
+        rule.declarations.includes("visibility: hidden"),
     );
     expect(removing.length).toBeGreaterThan(0);
 
@@ -91,15 +75,15 @@ describe("OverlayHints CSS contract", () => {
   });
 
   it("takes AT-exposed hints out of the visual flow instead", () => {
-    const srOnly = coarseRules().find((rule) =>
+    const srOnly = coarseRules.find((rule) =>
       rule.selector.includes(
         '[data-slot="overlay-hints"][aria-hidden="false"] [data-slot="overlay-hints-item"]:not([data-touch])',
       ),
     );
     expect(srOnly).toBeDefined();
-    expect(srOnly?.body).toContain("position: absolute");
-    expect(srOnly?.body).toContain("clip-path: inset(50%)");
-    expect(srOnly?.body).not.toContain("display: none");
+    expect(srOnly?.declarations).toContain("position: absolute");
+    expect(srOnly?.declarations).toContain("clip-path: inset(50%)");
+    expect(srOnly?.declarations).not.toContain("display: none");
   });
 
   it("never nests :has() inside :has() — the browser drops the whole rule", () => {

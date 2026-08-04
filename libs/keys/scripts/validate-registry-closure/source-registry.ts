@@ -4,12 +4,55 @@ import type { Registry } from "@diffgazer/registry/schemas";
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import { extractRelativeImports, type ValidationError, validationError } from "./types.js";
 
+const BUILD_ENV_TOKENS = ["process.env", "import.meta.env", "NODE_ENV"] as const;
+
 function isExistingFile(path: string): boolean {
   try {
     return existsSync(path) && statSync(path).isFile();
   } catch {
     return false;
   }
+}
+
+/**
+ * Copy/dgadd consumers paste this source into their own app, where `process` is
+ * undeclared under the stock Vite react-ts tsconfig and no bundler define is
+ * guaranteed. Shipped registry source therefore reads no build environment at all;
+ * diagnostics are hard throws, matching the shadcn copy-paste norm.
+ *
+ * `item.files` is the full transitive closure: {@link validateImportClosure} rejects
+ * any relative import that resolves outside it, so scanning the declared files scans
+ * everything a consumer receives.
+ */
+export function validateNoBuildEnvReads(
+  registry: Registry,
+  registryRoot: string,
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  for (const item of registry.items) {
+    if (item.type !== REGISTRY_ITEM_TYPE.hook) continue;
+
+    for (const file of item.files) {
+      const filePath = resolve(registryRoot, file.path);
+      // A missing file is already reported by validateImportClosure.
+      if (!isExistingFile(filePath)) continue;
+
+      const source = readFileSync(filePath, "utf-8");
+      const matched = BUILD_ENV_TOKENS.filter((token) => source.includes(token));
+      if (matched.length === 0) continue;
+
+      errors.push(
+        validationError(
+          "REGISTRY_BUILD_ENV_READ",
+          item.name,
+          `${file.path} reads ${matched.join(", ")}; shipped registry source must not depend on a build environment`,
+        ),
+      );
+    }
+  }
+
+  return errors;
 }
 
 export function validateImportClosure(registry: Registry, registryRoot: string): ValidationError[] {

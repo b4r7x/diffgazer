@@ -1,5 +1,5 @@
 import type { BoundApi } from "@diffgazer/core/api";
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -10,6 +10,7 @@ import {
   mockRequest,
   renderPage,
   setupDiagnosticsMocks,
+  waitForDiagnosticsActions,
   waitForReady,
 } from "../../testing/diagnostics-page";
 
@@ -68,6 +69,97 @@ describe("SettingsDiagnosticsPage diagnostics refresh", () => {
     await waitFor(() => {
       expect(diagnosticsPanel).toHaveAttribute("aria-busy", "false");
       expect(screen.getByRole("button", { name: "Refresh Diagnostics" })).toBeEnabled();
+    });
+  });
+
+  it.each([
+    "{Enter}",
+    "r",
+    "R",
+  ])("keeps focus inside the panel while %s runs refresh-all and returns it to the action row", async (key) => {
+    const user = userEvent.setup();
+    let resolveHealth: ((value: Awaited<ReturnType<BoundApi["request"]>>) => void) | undefined;
+    let resolveContext:
+      | ((value: Awaited<ReturnType<BoundApi["getReviewContext"]>>) => void)
+      | undefined;
+
+    renderPage();
+    await waitForDiagnosticsActions();
+
+    mockRequest.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveHealth = resolve;
+        }),
+    );
+    mockGetReviewContext.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveContext = resolve;
+        }),
+    );
+
+    await user.keyboard(key);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Refreshing..." })).toBeDisabled();
+    });
+    // The self-disabling action must park focus on the panel content, never body.
+    const diagnosticsPanel = screen.getByRole("region", { name: /system diagnostics/i });
+    expect(document.body).not.toHaveFocus();
+    expect(diagnosticsPanel.contains(document.activeElement)).toBe(true);
+
+    resolveHealth?.(new Response(null));
+    resolveContext?.(makeContextResponse());
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Refresh Diagnostics" })).toHaveFocus();
+    });
+  });
+
+  it("reclaims focus from document.body once refresh-all re-enables the actions", async () => {
+    const user = userEvent.setup();
+    let resolveHealth: ((value: Awaited<ReturnType<BoundApi["request"]>>) => void) | undefined;
+    let resolveContext:
+      | ((value: Awaited<ReturnType<BoundApi["getReviewContext"]>>) => void)
+      | undefined;
+
+    renderPage();
+    await waitForDiagnosticsActions();
+
+    mockRequest.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveHealth = resolve;
+        }),
+    );
+    mockGetReviewContext.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveContext = resolve;
+        }),
+    );
+
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Refreshing..." })).toBeDisabled();
+    });
+
+    // A real browser drops focus on document.body when the focused button turns
+    // disabled; jsdom parks it on the panel content instead, so recreate the
+    // browser's worst case before the refresh settles.
+    act(() => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) active.blur();
+    });
+    expect(document.body).toHaveFocus();
+
+    resolveHealth?.(new Response(null));
+    resolveContext?.(makeContextResponse());
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Refresh Diagnostics" })).toHaveFocus();
     });
   });
 

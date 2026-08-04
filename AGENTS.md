@@ -132,6 +132,7 @@ Source-verified against MDN, Docusaurus, fumadocs, shadcn/ui docs, and tanstack.
 - Direct shadcn/copy consumers must receive source that builds without unpublished package-only assumptions.
 - Registry source is environment-agnostic: no `process.env`, `import.meta.env`, `NODE_ENV`, or other dev/prod-gated code in anything shipped through copy or package paths. Env-gated dev warnings are a `node_modules` idiom (React/Radix/MUI); copied source follows the shadcn convention instead — misuse diagnostics are hard `throw`s on wiring errors (context guards), never console warnings. Enforced by `validate-registry-metadata` and the consumer-build e2e in `cli/add/testing/e2e`; do not weaken either gate.
 - Package consumers must receive complete exports, declarations, CSS/source contracts, and peer dependency behavior.
+- `libs/ui/registry/lib/utils.ts` is a sanctioned exception to the "no grab-bag basenames" naming rule: `@/lib/utils` is the shadcn import path every copied component and every downstream consumer expects. Keep it; do not add new grab-bag modules beside it.
 
 ## Registry, CLI, and Handoff
 

@@ -54,11 +54,38 @@ describe("FailureView", () => {
 
   it("maps Escape to the secondary action", async () => {
     const user = userEvent.setup();
-    const props = renderFailure();
+    const onSecondary = vi.fn();
+    renderFailure({ secondary: { label: "Back to Home", onAction: onSecondary } });
 
     await user.keyboard("{Escape}");
 
-    expect(props.secondary.onAction).toHaveBeenCalledOnce();
+    expect(onSecondary).toHaveBeenCalledOnce();
+  });
+
+  it("renders one action and maps Escape to it when the dead end has no secondary", async () => {
+    const user = userEvent.setup();
+    const onPrimary = vi.fn();
+    render(
+      <FooterProvider>
+        <KeyboardProvider>
+          <FailureView
+            title="Review Failed"
+            message="The provider dropped the connection."
+            scope="failure-view-single-action-test"
+            primary={{ label: "Back to Home", onAction: onPrimary }}
+          />
+          <FooterProbe />
+        </KeyboardProvider>
+      </FooterProvider>,
+    );
+
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    // Nowhere to move to, so the row hint stays off this screen.
+    expect(screen.getByRole("status")).not.toHaveTextContent("Move Action");
+
+    await user.keyboard("{Escape}");
+
+    expect(onPrimary).toHaveBeenCalledOnce();
   });
 
   it("publishes the focused action in the page footer", async () => {

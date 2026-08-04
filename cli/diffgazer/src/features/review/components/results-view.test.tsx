@@ -269,6 +269,43 @@ describe("ReviewResultsView (TUI)", () => {
     expect(frame).toContain("[ ] 2. Third fix step");
   });
 
+  test("j and k move the fix-plan cursor the footer advertises", async () => {
+    const { stdin, lastFrame } = render(
+      resultsElement([
+        makeIssue({
+          id: "issue-1",
+          symptom: "Details symptom text",
+          fixPlan: [
+            { step: 1, action: "First fix step" },
+            { step: 1, action: "Second fix step" },
+            { step: 2, action: "Third fix step" },
+          ],
+        }),
+      ]),
+    );
+    await flush();
+    expect(lastFrame() ?? "").toContain("j/k Navigate");
+
+    stdin.write("\t");
+    await flush();
+    stdin.write("\t");
+    await flush();
+
+    stdin.write("j");
+    await flush();
+    stdin.write("j");
+    await flush();
+    stdin.write("k");
+    await flush();
+    stdin.write(" ");
+    await flush();
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("[ ] 1. First fix step");
+    expect(frame).toContain("[x] 1. Second fix step");
+    expect(frame).toContain("[ ] 2. Third fix step");
+  });
+
   test("resets the details scroll and fix-plan cursor when selection changes", async () => {
     const longFixPlan = Array.from({ length: 24 }, (_, index) => ({
       step: index + 1,

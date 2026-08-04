@@ -6,6 +6,7 @@ export {
   type OnboardingDraft,
   resetWizardProduct,
 } from "./defaults.js";
+export type { WizardData } from "./draft-equality.js";
 export {
   buildConfigPayload,
   buildSettingsPayload,

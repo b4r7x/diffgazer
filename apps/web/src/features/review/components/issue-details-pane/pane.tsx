@@ -12,6 +12,7 @@ import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@diffgazer/ui/components/tabs";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { ReactNode, Ref } from "react";
+import { useFocusWithin } from "@/hooks/use-focus-within";
 import { IssueHeader } from "../issue-header";
 import { DetailsTabContent } from "./details";
 import { PatchTabContent } from "./patch";
@@ -30,7 +31,6 @@ export interface IssueDetailsPaneProps {
   onFocusedStepIndexChange?: (stepIndex: number) => void;
   paneRef?: Ref<HTMLElement>;
   scrollAreaRef?: Ref<HTMLDivElement>;
-  isFocused: boolean;
   emptyKind?: DetailsEmptyKind;
   onBackToList?: () => void;
   className?: string;
@@ -47,7 +47,6 @@ export function IssueDetailsPane({
   onFocusedStepIndexChange,
   paneRef,
   scrollAreaRef,
-  isFocused,
   emptyKind,
   onBackToList,
   className,
@@ -61,12 +60,7 @@ export function IssueDetailsPane({
 
   if (!issue) {
     return (
-      <DetailsPanel
-        paneRef={paneRef}
-        isFocused={isFocused}
-        onBackToList={onBackToList}
-        className={className}
-      >
+      <DetailsPanel paneRef={paneRef} onBackToList={onBackToList} className={className}>
         <div className="flex flex-1 min-h-0 flex-col px-3 py-2">
           <ScrollArea
             ref={scrollAreaRef}
@@ -92,12 +86,7 @@ export function IssueDetailsPane({
   const presentation = toIssueDetailsPresentation(issue);
 
   return (
-    <DetailsPanel
-      paneRef={paneRef}
-      isFocused={isFocused}
-      onBackToList={onBackToList}
-      className={className}
-    >
+    <DetailsPanel paneRef={paneRef} onBackToList={onBackToList} className={className}>
       <div className="flex flex-1 min-h-0 flex-col px-3">
         <Tabs value={activeTab} onChange={handleTabChange} className="flex flex-1 min-h-0 flex-col">
           <TabsList
@@ -172,24 +161,25 @@ export function IssueDetailsPane({
 
 function DetailsPanel({
   paneRef,
-  isFocused,
   onBackToList,
   className,
   children,
 }: {
   paneRef?: Ref<HTMLElement>;
-  isFocused: boolean;
   onBackToList?: () => void;
   className?: string;
   children: ReactNode;
 }) {
+  const { focusWithin, props: focusProps } = useFocusWithin<HTMLElement>();
+
   return (
     <Panel
       as="aside"
       ref={paneRef}
+      {...focusProps}
       aria-label="Issue details"
       data-pane="details"
-      focused={isFocused}
+      focused={focusWithin}
       className={cn(
         "mt-3 flex min-h-0 w-full flex-1 flex-col md:w-3/5 md:flex-initial md:basis-auto",
         className,

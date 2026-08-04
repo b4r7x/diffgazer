@@ -10,6 +10,19 @@ type ActionRowZone = "content" | "actions";
 const ACTION_ROW_ZONES = ["content", "actions"] as const;
 const EMPTY_DISABLED: readonly boolean[] = [];
 
+/**
+ * Which DOM focus the row believes is its own, and therefore may repair:
+ * `action` — an action the row focused or observed focused; `fallback` — the
+ * content fallback the row parked on because every action turned disabled;
+ * `none` — the row has no claim. A blur the row cannot attribute to its own
+ * disable/unmount (the user clicking empty space) lands on `none`, so later
+ * effect runs leave that focus alone instead of yanking it back to the row.
+ */
+type FocusCustody =
+  | { status: "none" }
+  | { status: "action"; index: number }
+  | { status: "fallback" };
+
 /** Options for two-zone keyboard navigation across row content and inline actions. */
 export interface UseActionRowNavigationOptions {
   /** Enables row keyboard handling. Pass the row's active or selected state. */
@@ -24,7 +37,9 @@ export interface UseActionRowNavigationOptions {
    * Content focus target used both when entering actions with no action enabled
    * and when ArrowUp exits the actions zone back to content. Provide it (or another
    * content focus target) so exiting returns focus to row content; without it,
-   * exiting only blurs the action and focus lands on `document.body`.
+   * exiting only blurs the action and focus lands on `document.body`. When every
+   * action disables itself mid-interaction, focus parks here and returns to the
+   * row once an action re-enables.
    */
   disabledFocusFallbackRef?: RefObject<HTMLElement | null>;
   /** When supplied, limits handling to one row subtree. Omit for global scope handling. */
@@ -145,6 +160,7 @@ export function useActionRowNavigation({
   const [focusedIndex, setFocusedIndex] = useState<number>(defaultIndex);
   const actionRefs = useRef(new Map<number, HTMLElement>());
   const hasFocusedDefaultRef = useRef(false);
+  const custodyRef = useRef<FocusCustody>({ status: "none" });
   const disabledKey = getDisabledKey(actionCount, disabledActions);
 
   const focusZone = useFocusZone<ActionRowZone>({
@@ -174,6 +190,7 @@ export function useActionRowNavigation({
       if (targetIndex === null) return null;
 
       setFocusedIndex(targetIndex);
+      custodyRef.current = { status: "action", index: targetIndex };
       actionRefs.current.get(targetIndex)?.focus();
       return targetIndex;
     },
@@ -195,12 +212,50 @@ export function useActionRowNavigation({
     return el ? containsActiveElement(el) : false;
   }, [focusedIndex]);
 
-  const shouldRepairActionFocus = useCallback(() => {
-    for (const action of actionRefs.current.values()) {
-      if (containsActiveElement(action)) return true;
+  const isFocusUnclaimed = useCallback(() => {
+    const anchor: HTMLElement | null =
+      actionRefs.current.values().next().value ?? disabledFocusFallbackRef?.current ?? null;
+    if (!anchor) return false;
+    const ownerDocument = anchor.ownerDocument;
+    const activeElement = ownerDocument.activeElement;
+    return activeElement === ownerDocument.body || activeElement === ownerDocument.documentElement;
+  }, [disabledFocusFallbackRef]);
+
+  const findFocusedActionIndex = useCallback(() => {
+    for (const [index, action] of actionRefs.current) {
+      if (containsActiveElement(action)) return index;
     }
-    return false;
+    return null;
   }, []);
+
+  // The action the row held is gone: it turned disabled or unregistered since
+  // the row claimed it, which is the only reason the row itself can have caused
+  // the blur.
+  const isDisplacedFromOwnAction = useCallback(() => {
+    const custody = custodyRef.current;
+    if (custody.status !== "action") return false;
+    if (!actionRefs.current.has(custody.index)) return true;
+    return !isIndexEnabled(custody.index, actionCount, disabledKey);
+  }, [actionCount, disabledKey]);
+
+  /**
+   * The one place custody changes from observation. Focus resting on a
+   * registered action is ours. Focus we no longer hold is ours only when the
+   * action we held was disabled or unmounted and nothing has claimed focus
+   * since — browsers blur a focused control onto the document body the moment
+   * it turns disabled. Every other loss releases custody, so a deliberate blur
+   * is never repaired.
+   */
+  const claimsCurrentFocus = useCallback(() => {
+    const activeIndex = findFocusedActionIndex();
+    if (activeIndex !== null) {
+      custodyRef.current = { status: "action", index: activeIndex };
+      return true;
+    }
+    if (isDisplacedFromOwnAction() && isFocusUnclaimed()) return true;
+    custodyRef.current = { status: "none" };
+    return false;
+  }, [findFocusedActionIndex, isDisplacedFromOwnAction, isFocusUnclaimed]);
 
   useEffect(() => {
     if (!enabled || defaultZone !== "actions" || !inActions || hasFocusedDefaultRef.current) return;
@@ -227,14 +282,30 @@ export function useActionRowNavigation({
   ]);
 
   useEffect(() => {
-    if (!enabled || !inActions) return;
-    if (!shouldRepairActionFocus()) return;
+    if (!enabled) return;
+    if (!inActions) {
+      if (custodyRef.current.status !== "fallback") return;
+      const fallback = disabledFocusFallbackRef?.current;
+      const fallbackHasFocus = fallback ? containsActiveElement(fallback) : false;
+      if (!fallbackHasFocus && !isFocusUnclaimed()) {
+        // The user moved focus elsewhere while the row was parked; let them keep it.
+        custodyRef.current = { status: "none" };
+        return;
+      }
+      const targetIndex = getEnabledTargetIndex(focusedIndex);
+      if (targetIndex === null) return;
+      setZone("actions");
+      focusAction(targetIndex);
+      return;
+    }
+    if (!claimsCurrentFocus()) return;
     if (isIndexEnabled(focusedIndex, actionCount, disabledKey)) {
       if (!isRegisteredActionFocused()) focusAction(focusedIndex);
       return;
     }
     const targetIndex = getFirstEnabled(actionCount, disabledKey);
     if (targetIndex === null) {
+      custodyRef.current = { status: "fallback" };
       setZone("content");
       focusDisabledFallback();
       return;
@@ -242,18 +313,22 @@ export function useActionRowNavigation({
     focusAction(targetIndex);
   }, [
     actionCount,
+    claimsCurrentFocus,
+    disabledFocusFallbackRef,
     disabledKey,
     enabled,
     focusAction,
     focusDisabledFallback,
     focusedIndex,
+    getEnabledTargetIndex,
     inActions,
+    isFocusUnclaimed,
     isRegisteredActionFocused,
     setZone,
-    shouldRepairActionFocus,
   ]);
 
   const reset = (initialIndex: number = 0) => {
+    custodyRef.current = { status: "none" };
     setZone("content");
     setFocusedIndex(initialIndex);
   };
@@ -274,6 +349,7 @@ export function useActionRowNavigation({
 
   const exitActions = () => {
     if (!canExitActions) return;
+    custodyRef.current = { status: "none" };
     setZone("content");
     setFocusedIndex(0);
     focusDisabledFallback();
@@ -339,6 +415,7 @@ export function useActionRowNavigation({
     "data-action-index": index,
     onFocus: () => {
       if (!isIndexEnabled(index, actionCount, disabledKey)) return;
+      custodyRef.current = { status: "action", index };
       setZone("actions");
       setFocusedIndex(index);
     },

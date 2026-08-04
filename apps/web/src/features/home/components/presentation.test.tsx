@@ -103,14 +103,14 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
     mockRouterNavigate.mockReset();
   });
 
-  it("brackets only the menu, the pane the keys drive", () => {
+  it("brackets only the menu, the pane the keys drive", async () => {
     const { container } = renderPresentation(buildProps());
 
+    // The menu autofocuses a frame after mount, so its brackets arrive with real
+    // focus instead of being claimed at mount.
+    const menu = screen.getByRole("region", { name: /main menu/i });
+    await waitFor(() => expect(menu).toHaveAttribute("data-state", "focused"));
     expectSingleReticle(container);
-    expect(screen.getByRole("region", { name: /main menu/i })).toHaveAttribute(
-      "data-state",
-      "focused",
-    );
   });
 
   it("renders trusted, provider, and last-run context when data is present", () => {
@@ -193,6 +193,37 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
       }),
     );
     expect(createReview).not.toHaveBeenCalled();
+  });
+});
+
+describe("HomePagePresentation — composition", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockRouterNavigate.mockReset();
+  });
+
+  it("renders no wordmark of its own — the shell header owns the hero", () => {
+    renderPresentation(buildProps());
+
+    expect(screen.queryByRole("img", { name: "diffgazer" })).not.toBeInTheDocument();
+    expect(screen.queryByText("─ ✦ ─ ✧ ─")).not.toBeInTheDocument();
+  });
+
+  it("lets each pane keep its own height instead of stretching both to one line", () => {
+    renderPresentation(buildProps());
+
+    const menu = screen.getByRole("region", { name: /main menu/i });
+    const context = screen.getByRole("region", { name: /context/i });
+    const paneRow = menu.parentElement;
+
+    expect(paneRow).not.toBeNull();
+    expect(context.parentElement).toBe(paneRow);
+    // jsdom computes no layout, so the guard pins the corrective class the fix
+    // depends on: `align-items` defaults to stretch, so the desktop dead band
+    // returns the moment `lg:items-start` leaves the shared row — no
+    // `items-stretch` class is ever written. Word-bounded so a longer utility
+    // that merely contains this name cannot satisfy it.
+    expect(paneRow?.className).toMatch(/\blg:items-start\b/);
   });
 });
 
@@ -352,6 +383,29 @@ describe("HomePagePresentation — invalid review id toast", () => {
     expect(screen.getAllByText("Invalid Review ID")).toHaveLength(1);
     expect(navigateMock.mock).toHaveBeenCalledTimes(1);
     expect(navigateMock.mock).toHaveBeenCalledWith(
+      expect.objectContaining({ replace: true, to: "/" }),
+    );
+  });
+
+  it("reports every invalid review link in a session, not only the first", async () => {
+    const navigateMock = createNavigateMock();
+    const props = buildProps({
+      searchError: "invalid-review-id",
+      navigate: navigateMock.navigate,
+    });
+    const { rerender } = renderPresentation(props);
+
+    expect(await screen.findByText("Invalid Review ID")).toBeInTheDocument();
+    expect(navigateMock.mock).toHaveBeenCalledTimes(1);
+
+    // The redirect strips ?error=invalid-review-id; opening a second bad link
+    // puts it back, and that one must be reported and cleaned too.
+    rerender(<HomePagePresentation {...props} searchError={undefined} />);
+    rerender(<HomePagePresentation {...props} />);
+
+    await waitFor(() => expect(screen.getAllByText("Invalid Review ID")).toHaveLength(2));
+    expect(navigateMock.mock).toHaveBeenCalledTimes(2);
+    expect(navigateMock.mock).toHaveBeenLastCalledWith(
       expect.objectContaining({ replace: true, to: "/" }),
     );
   });

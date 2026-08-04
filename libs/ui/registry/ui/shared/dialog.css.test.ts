@@ -24,11 +24,14 @@ describe("Dialog CSS contract", () => {
     }
   });
 
-  it("resolves --dialog-duration through the overlay-wide duration contract", () => {
-    expect(ruleBody(css, "dialog")).toContain(
-      "--dialog-duration: var(--ui-content-enter-duration)",
-    );
-    expect(css).not.toMatch(/--dialog-duration:\s*[\d.]/);
+  it("opens on the dialog-owned 150ms clock, not the anchored tier's", () => {
+    expect(ruleBody(css, "dialog")).toContain("--dialog-duration: 150ms");
+  });
+
+  // Regression: the CSS body lock and DialogContent's useScrollLock both
+  // compensated for the scrollbar, so opening a dialog shifted the page.
+  it("ships no CSS body scroll lock — useScrollLock is the only owner", () => {
+    expect(ruleBody(css, "body:has(dialog[open])")).toBeNull();
   });
 
   it("times every exit off the shared exit duration", () => {

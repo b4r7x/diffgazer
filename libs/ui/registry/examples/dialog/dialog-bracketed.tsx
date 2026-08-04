@@ -3,7 +3,6 @@ import {
   DialogAction,
   DialogBody,
   DialogClose,
-  DialogCloseIcon,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -33,7 +32,6 @@ export default function DialogBracketed() {
           </DialogClose>
           <DialogAction>Apply</DialogAction>
         </DialogFooter>
-        <DialogCloseIcon />
       </DialogContent>
     </Dialog>
   );

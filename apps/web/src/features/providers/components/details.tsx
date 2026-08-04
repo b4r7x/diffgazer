@@ -1,23 +1,20 @@
 import type { ProviderListRow } from "@diffgazer/core/providers";
-import { getProviderDisplayStatus } from "@diffgazer/core/providers";
+import { getProviderDisplayStatus, PROVIDER_DETAIL_EMPTY_LABEL } from "@diffgazer/core/providers";
 import { buildProviderSettingsRows } from "@diffgazer/core/schemas/config";
+import type { BadgeVariant } from "@diffgazer/core/schemas/presentation";
 import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
-import { KeyValue } from "@diffgazer/ui/components/key-value";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
+import { cn } from "@diffgazer/ui/lib/utils";
 import type { RefCallback } from "react";
-import { getProviderActionSlots } from "../hooks/use-action-buttons";
-
-export interface ProviderActions {
-  onSetup: () => void;
-  onSelectModel: () => void;
-  onDelete: () => void;
-  onDispatchAction: () => void;
-}
+import type { ProviderAction } from "../lib/actions";
+import { PROVIDER_STATUS_TONE } from "../lib/status-tone";
 
 export interface ProviderDetailsProps {
   row: ProviderListRow | null;
-  actions: ProviderActions;
+  /** Derived once per selection so the renderer and the keyboard row cannot diverge. */
+  actions: readonly ProviderAction[];
+  onAction: (action: ProviderAction) => void;
   isPending?: boolean;
   focusedButtonIndex?: number;
   isFocused?: boolean;
@@ -29,17 +26,19 @@ export interface ProviderDetailsProps {
   };
 }
 
-const PROVIDER_DETAIL_EMPTY_LABEL = "Select a provider to view details";
-
-function actionButtonVariant(index: number): "primary" | "secondary" | "destructive" {
-  if (index === 0) return "primary";
-  if (index === 2) return "destructive";
-  return "secondary";
-}
+/** Callout rail border per status variant; the text tone comes from the shared map. */
+const STATUS_RAIL: Record<BadgeVariant, string> = {
+  success: "border-success-border",
+  warning: "border-warning-border",
+  error: "border-error-border",
+  info: "border-info-border",
+  neutral: "border-border",
+};
 
 export function ProviderDetails({
   row,
   actions,
+  onAction,
   isPending = false,
   focusedButtonIndex,
   isFocused = false,
@@ -47,7 +46,7 @@ export function ProviderDetails({
 }: ProviderDetailsProps) {
   if (!row) {
     return (
-      <div className="@container flex flex-1 flex-col overflow-y-auto">
+      <div className="@container flex flex-1 flex-col overflow-y-auto max-md:overflow-y-visible">
         <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
           <SectionHeader as="h2">Provider Details</SectionHeader>
         </div>
@@ -57,81 +56,105 @@ export function ProviderDetails({
   }
 
   const displayStatus = getProviderDisplayStatus(row.readiness, row.product.transportFamily);
-  const settingsRows = buildProviderSettingsRows(row);
-  const slots = getProviderActionSlots(row);
-  const buttonActions = [
-    actions.onDispatchAction,
-    actions.onSetup,
-    actions.onDelete,
-    actions.onSelectModel,
-  ];
+  // Readiness already has two renderings on this screen (the header readout and the
+  // status rail below the actions), so it is the single row this view drops. Every
+  // other row — including any added to the builder later — renders by its kind.
+  const settingsRows = buildProviderSettingsRows(row).filter(({ id }) => id !== "readiness");
+  const factRows = settingsRows.filter(({ kind }) => kind === "fact");
+  const proseRows = settingsRows.filter(({ kind }) => kind === "prose");
 
   return (
-    <div className="@container flex flex-1 flex-col overflow-y-auto">
+    <div className="@container flex flex-1 flex-col overflow-y-auto max-md:overflow-y-visible">
       <div className="p-3 border-b border-border bg-secondary/30 flex justify-between items-center">
         <SectionHeader as="h2">Provider Details: {row.product.name}</SectionHeader>
         {/* biome-ignore lint/a11y/useSemanticElements: role="status" matches the header StatusIndicator live-readout pattern; <output> carries form-association semantics that do not fit here. */}
         <span
           role="status"
           aria-label={displayStatus.accessibleText}
-          className="shrink-0 font-mono text-2xs text-muted-foreground"
+          data-tone={displayStatus.variant}
+          className={cn("shrink-0 font-mono text-2xs", PROVIDER_STATUS_TONE[displayStatus.variant])}
         >
           [ {displayStatus.label.toUpperCase()} ]
         </span>
       </div>
 
-      <div className="p-6">
-        <section className="mb-6">
-          <SectionHeader variant="muted" bordered className="mb-4 border-border">
-            Configuration
-          </SectionHeader>
-          <KeyValue>
-            {settingsRows.map((settingsRow) => (
-              <KeyValue.Item
-                key={settingsRow.id}
-                label={settingsRow.label}
-                value={
-                  settingsRow.description
-                    ? `${settingsRow.value} — ${settingsRow.description}`
-                    : settingsRow.value
-                }
-                bordered
-              />
-            ))}
-          </KeyValue>
-        </section>
-
-        {row.product.status === "removed" ? (
-          <section className="mb-6">
-            <SectionHeader variant="muted" bordered className="mb-4 border-border">
-              Migration
-            </SectionHeader>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {displayStatus.remediation}
-            </p>
-          </section>
-        ) : null}
-
-        <section className="mt-auto">
-          <div className="flex flex-wrap gap-3 pt-4">
-            {slots.map((slot, index) => (
+      <div className="flex flex-col gap-6 p-6">
+        {actions.length > 0 ? (
+          // biome-ignore lint/a11y/useSemanticElements: <fieldset> groups form controls and expects a <legend>; this is a labelled action row, and the group role is what makes "exactly one action row" observable.
+          <div
+            role="group"
+            aria-label="Provider actions"
+            className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
+          >
+            {actions.map((action, index) => (
               <Button
-                key={slot.label}
+                key={action.id}
                 {...getButtonProps?.(index)}
-                variant={actionButtonVariant(index)}
+                variant={action.intent}
                 bracket
-                onClick={buttonActions[index]}
-                disabled={isPending || !slot.enabled}
-                highlighted={isFocused && focusedButtonIndex === index && slot.enabled}
+                className={action.intent === "destructive" ? "sm:ml-auto" : undefined}
+                onClick={() => onAction(action)}
+                disabled={isPending || Boolean(action.disabledReason)}
+                highlighted={isFocused && focusedButtonIndex === index && !action.disabledReason}
                 aria-label={
-                  slot.disabledReason ? `${slot.label}. ${slot.disabledReason}` : slot.label
+                  action.disabledReason ? `${action.label}. ${action.disabledReason}` : action.label
                 }
               >
-                {slot.label}
+                {action.label}
               </Button>
             ))}
           </div>
+        ) : null}
+
+        <div className={cn("border-l-2 pl-3", STATUS_RAIL[displayStatus.variant])}>
+          <p className="text-xs leading-relaxed text-foreground">{displayStatus.explanation}</p>
+          {row.readiness.remediation.code === "none" ? null : (
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {displayStatus.remediation}
+            </p>
+          )}
+        </div>
+
+        <section>
+          <SectionHeader variant="accent" bordered className="mb-3 border-border/60">
+            Configuration
+          </SectionHeader>
+          <dl className="border border-border/60">
+            {factRows.map((fact, index) => (
+              <div
+                key={fact.id}
+                className={cn(
+                  "grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-6 p-3",
+                  index > 0 && "border-t border-border/60",
+                )}
+              >
+                <dt className="text-xs text-muted-foreground">{fact.label}</dt>
+                <dd className="text-right text-xs font-bold text-foreground">{fact.value}</dd>
+                {fact.description ? (
+                  <dd className="col-span-2 mt-2 text-2xs leading-relaxed text-muted-foreground">
+                    {fact.description}
+                  </dd>
+                ) : null}
+              </div>
+            ))}
+          </dl>
         </section>
+
+        {proseRows.map((prose) => (
+          <section key={prose.id}>
+            <SectionHeader variant="accent" bordered className="mb-3 border-border/60">
+              {prose.label}
+            </SectionHeader>
+            <div className="border border-border/60 p-3">
+              <p className="text-xs leading-relaxed text-foreground">{prose.value}</p>
+              {prose.description ? (
+                <p className="mt-2 text-2xs leading-relaxed text-muted-foreground">
+                  {prose.description}
+                </p>
+              ) : null}
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   );

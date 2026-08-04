@@ -1,9 +1,14 @@
 import type { UseActionRowNavigationReturn } from "@diffgazer/keys";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { expectSingleReticle } from "@/testing/reticle";
 import { SettingsFormPage } from "./form-page";
+
+// The focused branch of the reticle selector: a resting panel publishes neither
+// this attribute nor corner brackets until focus actually enters it.
+const FOCUSED_PANEL = '[data-slot="panel"][data-state="focused"]';
 
 const stubFooter = {
   inActions: false,
@@ -62,11 +67,27 @@ describe("SettingsFormPage status semantics", () => {
     expect(screen.getByText("content")).toBeInTheDocument();
   });
 
-  it("keeps the panel bracketed while focus sits in the footer actions", () => {
+  it("rests unbracketed until focus enters the panel", async () => {
+    const user = userEvent.setup();
+    const { container } = renderShell(makeQuery({ data: { ok: true } }));
+
+    expect(container.querySelector(FOCUSED_PANEL)).toBeNull();
+
+    await user.tab();
+
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
+    expectSingleReticle(container);
+  });
+
+  it("keeps the panel bracketed while focus sits in the footer actions", async () => {
     // The actions live inside the panel, so dimming the content must not read
     // as "the keys moved somewhere else".
+    const user = userEvent.setup();
     const { container } = renderShell(makeQuery({ data: { ok: true } }), true);
 
+    await user.tab();
+
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
     expectSingleReticle(container);
   });
 });

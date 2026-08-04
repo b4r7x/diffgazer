@@ -9,7 +9,9 @@ import { KeyValueContext, type KeyValueLayout } from "./key-value-context";
 export const keyValueVariants = cva("grid", {
   variants: {
     layout: {
-      horizontal: "grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-6 gap-y-2",
+      // The label track is content-sized and the value track is the only shrinkable one, so a
+      // long value wraps inside its own column instead of squeezing the label out of legibility.
+      horizontal: "grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-6 gap-y-2",
       vertical: "grid-cols-1 gap-y-1",
     },
     bordered: {

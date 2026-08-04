@@ -23,6 +23,7 @@
     "check": "biome check scripts/monorepo package.json turbo.json biome.json knip.jsonc .dependency-cruiser.cjs && node scripts/monorepo/check-deploy-runbooks.mjs && turbo run check && pnpm run depcruise && pnpm run knip",
     "depcruise": "depcruise --config .dependency-cruiser.cjs apps cli libs",
     "check:packages": "node scripts/monorepo/check-packages.mjs",
+    "check:changesets": "node scripts/monorepo/check-changeset-coverage.mjs",
     "knip": "knip --no-config-hints",
     "verify": "sh scripts/monorepo/run-with-artifacts.sh sh -c 'pnpm run verify:monorepo && pnpm run validate:artifacts:check && pnpm run secret-scan && pnpm run check && pnpm run test:scripts && turbo run type-check && turbo run test && turbo run test:types && pnpm run smoke && pnpm run bench'",
     "test-ci": "sh scripts/monorepo/run-with-artifacts.sh sh -c 'pnpm run validate:artifacts:check && pnpm run secret-scan && pnpm run check && turbo run type-check && turbo run test && turbo run test:types && pnpm run test:scripts && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke && DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench && pnpm run verify:monorepo'",

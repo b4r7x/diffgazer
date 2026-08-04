@@ -49,18 +49,18 @@ export {
   computeStrictArtifactFingerprint,
   type InputsFingerprintResult,
 } from "./fingerprint.js";
+export { rewriteKeysPackageImportsInContent } from "./imports/keys-rewrite.js";
+export {
+  findRelativeJsSpecifiers,
+  stripRelativeJsExtensions,
+} from "./imports/relative-js.js";
 export {
   extractImportSpecifiers,
   extractStaticNamedImports,
   type ImportSpecifier,
   type ImportSpecifierKind,
   type StaticNamedImport,
-} from "./imports/import-specifiers.js";
-export { rewriteKeysPackageImportsInContent } from "./imports/keys-import-rewrite.js";
-export {
-  findRelativeJsSpecifiers,
-  stripRelativeJsExtensions,
-} from "./imports/relative-js-imports.js";
+} from "./imports/specifiers.js";
 export {
   type ArtifactManifest,
   createArtifactManifest,

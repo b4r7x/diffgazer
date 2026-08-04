@@ -6,7 +6,7 @@ import type { SharedErrorCode } from "@diffgazer/core/schemas/errors";
 import type { EvidenceKey, ExecutionResult } from "@diffgazer/core/schemas/review";
 import { ExecutionResultSchema } from "@diffgazer/core/schemas/review";
 import type { z } from "zod";
-import type { AIProvider, SecretsStorageErrorCode } from "../config/types.js";
+import type { SecretsStorageErrorCode } from "../config/types.js";
 
 export type AIErrorCode =
   | SharedErrorCode
@@ -22,7 +22,7 @@ export type AIError = AppError<AIErrorCode>;
 
 export interface AIClientConfig {
   apiKey: string;
-  provider: AIProvider;
+  provider: RunnableProductId;
   model?: string;
   temperature?: number;
   maxTokens?: number;
@@ -35,7 +35,7 @@ export interface AIClientConfig {
 }
 
 export interface AIClient {
-  readonly provider: AIProvider;
+  readonly provider: RunnableProductId;
   generate<T extends z.ZodType>(
     prompt: string,
     schema: T,

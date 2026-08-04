@@ -6,7 +6,7 @@ import {
   DocDataProvider,
   type HookPageData,
 } from "@/components/docs-mdx/doc-data-context";
-import { DocsContentLayout } from "@/components/layout/content-layout";
+import { DocsContentLayout } from "@/components/layout/content";
 import { DocsFooterPager } from "@/components/layout/footer-pager";
 import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
 import { MdxPreloadMarker } from "@/components/mdx-preload-marker";

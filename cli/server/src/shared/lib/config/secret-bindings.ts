@@ -5,6 +5,9 @@ import { z } from "zod";
 
 const FILE_MODE = 0o600;
 const DIRECTORY_MODE = 0o700;
+// Only group/other bits make a secret file unsafe. Stricter owner permissions
+// (0400 on a hardened install) stay readable and must not be rejected.
+const GROUP_OTHER_MASK = 0o077;
 
 export const SECRET_BINDING_KINDS = [
   "environment-reference",
@@ -292,8 +295,11 @@ async function readReference(
     }
     throw new SecretBindingError("BINDING_UNAVAILABLE", "Secret file cannot be read");
   }
-  if ((fileStats.mode & 0o777) !== FILE_MODE) {
-    throw new SecretBindingError("FILE_MODE_UNSAFE", "Secret file permissions must be 0600");
+  if ((fileStats.mode & GROUP_OTHER_MASK) !== 0) {
+    throw new SecretBindingError(
+      "FILE_MODE_UNSAFE",
+      "Secret file must not be readable or writable by group or others",
+    );
   }
   return readFile(reference, "utf8");
 }

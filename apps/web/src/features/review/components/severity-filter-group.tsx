@@ -104,7 +104,11 @@ export function SeverityFilterGroup({
               value={sev}
               aria-label={`${label} severity, ${pluralize(count, "issue")}`}
               className={cn(
-                "min-w-fit px-1.5 text-xs inline-flex items-center whitespace-nowrap tabular-nums pointer-coarse:min-h-11 pointer-coarse:px-3",
+                // h-5 min-h-0 is the fine-pointer chip: the segmented default is
+                // a 36px toolbar control, far too tall for a filter row sitting
+                // above a dense list. The pointer-coarse overrides come last so
+                // touch still gets the 44px target.
+                "h-5 min-h-0 min-w-fit px-1.5 text-xs inline-flex items-center whitespace-nowrap tabular-nums pointer-coarse:min-h-11 pointer-coarse:px-3",
                 isActive && SEVERITY_CONFIG[sev].color,
                 // A chip whose count is zero can only filter to an empty list, so
                 // it goes quiet and stops competing with the filters that can do
@@ -132,7 +136,10 @@ export function SeverityFilterGroup({
           onKeyDown={onKeyDown}
           aria-label="Reset severity filter"
           highlighted={isResetFocused}
-          className="min-w-fit px-1.5 text-xs pointer-coarse:min-h-11 pointer-coarse:px-3"
+          // Same fine-pointer chip height as the severity toggles it sits beside
+          // (py-0 because the button's own sm padding would push past h-5), with
+          // the pointer-coarse touch target restored last.
+          className="h-5 min-h-0 min-w-fit px-1.5 py-0 text-xs pointer-coarse:min-h-11 pointer-coarse:px-3"
           bracket
         >
           Reset

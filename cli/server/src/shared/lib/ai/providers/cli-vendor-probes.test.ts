@@ -2,7 +2,7 @@ import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildCliChildEnvironment } from "./cli-compatibility.js";
+import { buildCliChildEnvironment } from "./cli-compatibility/compat.js";
 import { probeCliAuthStore, probeCliModelPolicy } from "./cli-vendor-probes.js";
 
 const roots: string[] = [];

@@ -1,55 +1,63 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type {
-  ClientConfigurationActionResponse,
   ClientConfigurationSummary,
-  Readiness,
-  RunnableProductId,
+  ConfigurationModelsResponse,
+  ModelInfo,
 } from "@diffgazer/core/schemas/config";
+import { READY_GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import {
-  makeReadiness,
-  READINESS_PRESENTATION,
-  READY_GEMINI_CONFIGURATION,
-} from "@/testing/configuration-fixtures";
 import { ModelSelectDialog } from "./dialog";
 
-const _CHECKED_AT = "2026-07-31T12:00:00.000Z";
-
 type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-type TestConfigurationResponse = Extract<ClientConfigurationActionResponse, { action: "test" }>;
 
-function copyNotice(productId: RunnableProductId) {
-  const notice = PRODUCT_REGISTRY[productId].notice;
-  return { ...notice, billing: [...notice.billing], privacy: [...notice.privacy] };
+const CHECKED_AT = "2026-08-02T12:00:00.000Z";
+const CATALOG_SKIPPED_REASON =
+  "Catalog observations are unavailable for this configuration product.";
+
+function catalogModel(id: string, tier: ModelInfo["tier"] = "paid"): ModelInfo {
+  return { id, name: id, description: "128K context", tier };
 }
 
-function readyFor(productId: RunnableProductId): Extract<Readiness, { status: "ready" }> {
-  return makeReadiness("ready", productId) as Extract<Readiness, { status: "ready" }>;
-}
-
-function testDiscoveryResponse(
+function catalogModelsResponse(
   configuration: SupportedConfigurationSummary,
-  modelId = configuration.selectedModelId ?? "gemini-2.5-flash",
-  readiness: Readiness = readyFor(configuration.productId),
-  status: TestConfigurationResponse["status"] = "succeeded",
-): TestConfigurationResponse {
+  models: ModelInfo[],
+): ConfigurationModelsResponse {
   return {
-    action: "test",
-    status,
-    configuration: { ...configuration, selectedModelId: modelId },
-    readiness,
+    status: "passed",
+    configurationId: configuration.configurationId,
+    productId: configuration.productId,
+    transportFamily: configuration.transportFamily,
+    models,
+    checkedAt: CHECKED_AT,
+    source: "snapshot",
+    cached: false,
   };
 }
 
-const DISCOVERED_MODEL_ID = "gemini-2.5-flash";
+function skippedModelsResponse(
+  configuration: SupportedConfigurationSummary,
+  reason: string = CATALOG_SKIPPED_REASON,
+): ConfigurationModelsResponse {
+  return {
+    status: "skipped",
+    configurationId: configuration.configurationId,
+    productId: configuration.productId,
+    transportFamily: configuration.transportFamily,
+    models: [],
+    checkedAt: CHECKED_AT,
+    reason,
+  };
+}
+
+const GEMINI_CONFIGURATION = READY_GEMINI_CONFIGURATION as SupportedConfigurationSummary;
+const GEMINI_CATALOG_MODELS = [catalogModel("gemini-2.5-flash"), catalogModel("gemini-2.5-pro")];
 
 interface RenderOptions {
   configuration?: SupportedConfigurationSummary;
@@ -57,24 +65,20 @@ interface RenderOptions {
   isSaving?: boolean;
   onSelect?: (modelId: string) => void;
   onOpenChange?: (open: boolean) => void;
-  testConfiguration?: BoundApi["testConfiguration"];
+  getConfigurationModels?: BoundApi["getConfigurationModels"];
 }
 
 function renderDialog(options: RenderOptions = {}) {
-  const testConfiguration =
-    options.testConfiguration ??
+  const configuration = options.configuration ?? GEMINI_CONFIGURATION;
+  const getConfigurationModels =
+    options.getConfigurationModels ??
     vi
-      .fn<BoundApi["testConfiguration"]>()
-      .mockResolvedValue(
-        testDiscoveryResponse(
-          (options.configuration ?? READY_GEMINI_CONFIGURATION) as SupportedConfigurationSummary,
-          DISCOVERED_MODEL_ID,
-        ),
-      );
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(catalogModelsResponse(configuration, GEMINI_CATALOG_MODELS));
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const api = {
     ...createApi({ baseUrl: "http://localhost" }),
-    testConfiguration,
+    getConfigurationModels,
   } satisfies BoundApi;
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
@@ -102,9 +106,7 @@ function renderDialog(options: RenderOptions = {}) {
       <ModelSelectDialog
         open={open}
         onOpenChange={handleOpenChange}
-        configuration={
-          (options.configuration ?? READY_GEMINI_CONFIGURATION) as SupportedConfigurationSummary
-        }
+        configuration={configuration}
         currentModel={currentModel}
         isSaving={options.isSaving}
         onSelect={onSelect}
@@ -113,33 +115,65 @@ function renderDialog(options: RenderOptions = {}) {
   }
 
   render(<DialogHarness />, { wrapper });
-  return { testConfiguration, onSelect, onOpenChange };
+  return { getConfigurationModels, onSelect, onOpenChange };
 }
 
 describe("ModelSelectDialog configuration-bound discovery", () => {
-  it("keeps the footer actions accessible when keyboard-only hints are capability-gated", async () => {
+  it("keeps the footer actions accessible alongside the key legend", async () => {
     renderDialog();
 
     const dialog = await screen.findByRole("dialog");
     await within(dialog).findByRole("radio", { name: /gemini-2\.5-flash/ });
-    expect(within(dialog).getByText("Search")).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: /cancel/i })).toBeEnabled();
     expect(within(dialog).getByRole("button", { name: /confirm/i })).toBeEnabled();
   });
 
-  it("renders the exact discovered model ID without catalog-only availability", async () => {
+  it("renders a header strip with the title and exactly one close control", async () => {
     renderDialog();
+
+    const dialog = await screen.findByRole("dialog");
+    const heading = within(dialog).getByRole("heading", { name: "Select Model" });
+    const header = heading.closest('[data-slot="dialog-header"]');
+
+    expect(header).toBeInstanceOf(HTMLElement);
+    expect(header).toHaveTextContent(/gemini/i);
+    expect(within(dialog).getAllByRole("button", { name: /close dialog/i })).toHaveLength(1);
+  });
+
+  it("teaches the list keys with the fine-pointer key legend", async () => {
+    renderDialog();
+
+    const dialog = await screen.findByRole("dialog");
+    const legend = within(dialog).getByText("Space").closest('[data-slot="overlay-hints"]');
+    expect(legend).toBeInstanceOf(HTMLElement);
+
+    const hints = within(legend as HTMLElement);
+    expect(hints.getByText("Navigate")).toBeInTheDocument();
+    expect(hints.getByText("Search")).toBeInTheDocument();
+    expect(hints.getByText("Filter")).toBeInTheDocument();
+    expect(hints.getByText("Select")).toBeInTheDocument();
+    // Enter/Esc live on the visible [Confirm]/[Cancel] buttons, not the legend,
+    // so the legend fits one footer row beside the actions.
+    expect(hints.queryByText("Enter")).not.toBeInTheDocument();
+    expect(hints.queryByText("Esc")).not.toBeInTheDocument();
+  });
+
+  it("lists every catalog candidate model with the count and checked time", async () => {
+    renderDialog();
+
     await waitFor(() =>
       expect(screen.getByRole("radio", { name: /gemini-2\.5-flash/ })).toBeInTheDocument(),
     );
     const modelList = screen.getByRole("radiogroup", { name: /available models/i });
-    expect(within(modelList).getAllByRole("radio")).toHaveLength(1);
+    expect(within(modelList).getAllByRole("radio")).toHaveLength(2);
+    expect(screen.getByText(/2 models/)).toBeInTheDocument();
+    expect(screen.getByText(/checked/i)).toBeInTheDocument();
+    // No amber discovery strip on a passed catalog response.
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
     expect(screen.queryByText(/using cached catalog data/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/structured outputs/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/latest/i)).not.toBeInTheDocument();
   });
 
-  it("narrows to an empty list when the tier filter excludes the admitted model", async () => {
+  it("narrows to an empty list when the tier filter excludes every model", async () => {
     const user = userEvent.setup();
     renderDialog();
     await waitFor(() =>
@@ -156,19 +190,19 @@ describe("ModelSelectDialog configuration-bound discovery", () => {
   });
 
   it("pre-checks the current exact model when the dialog opens", async () => {
-    renderDialog({ currentModel: DISCOVERED_MODEL_ID });
+    renderDialog({ currentModel: "gemini-2.5-flash" });
     const checkedRadio = await screen.findByRole("radio", { name: /gemini-2\.5-flash/ });
     expect(checkedRadio).toBeChecked();
   });
 
   it("fires onSelect with the exact configuration model ID when confirmed", async () => {
     const user = userEvent.setup();
-    const { onSelect, onOpenChange } = renderDialog({ currentModel: DISCOVERED_MODEL_ID });
+    const { onSelect, onOpenChange } = renderDialog({ currentModel: "gemini-2.5-flash" });
     await screen.findByRole("radio", { name: /gemini-2\.5-flash/ });
 
     await user.click(screen.getByRole("button", { name: /confirm/i }));
 
-    expect(onSelect).toHaveBeenCalledWith(DISCOVERED_MODEL_ID);
+    expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash");
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
@@ -199,48 +233,113 @@ describe("ModelSelectDialog configuration-bound discovery", () => {
 });
 
 describe("ModelSelectDialog discovery states", () => {
-  it("shows skipped remediation with checkedAt and retries discovery", async () => {
+  it("shows the skipped catalog reason with checkedAt and retries discovery", async () => {
     const user = userEvent.setup();
-    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>().mockResolvedValue({
-      action: "test",
-      status: "succeeded",
-      configuration: READY_GEMINI_CONFIGURATION,
-      readiness: makeReadiness("skipped", "gemini"),
-    });
-    renderDialog({ testConfiguration });
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(skippedModelsResponse(GEMINI_CONFIGURATION));
+    renderDialog({ getConfigurationModels });
 
-    const skippedMessage = `${READINESS_PRESENTATION.skipped.explanation} ${READINESS_PRESENTATION.skipped.remediation.message}`;
-    const announcements = await screen.findAllByText(skippedMessage);
-    expect(announcements.length).toBeGreaterThan(0);
-    // One live-region owner: the retry banner repeats the text visually but must
-    // not announce it a second time.
+    // The alert row is the single discovery surface: the message renders once and
+    // exactly one live region announces it, while the list keeps generic copy.
+    expect(await screen.findAllByText(CATALOG_SKIPPED_REASON)).toHaveLength(1);
     expect(
-      announcements.filter((node) => node.closest("[aria-live], [role='status']") !== null),
+      screen
+        .getAllByRole("status")
+        .filter((region) => region.textContent?.includes(CATALOG_SKIPPED_REASON)),
     ).toHaveLength(1);
+    expect(screen.getByText("No models available")).toBeInTheDocument();
     expect(screen.getByText(/checked/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(testConfiguration).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(getConfigurationModels).toHaveBeenCalledTimes(2));
   });
 
-  it("renders the failed discovery message when the test query rejects", async () => {
+  it("renders the failed discovery message exactly once when the models query rejects", async () => {
     renderDialog({
-      testConfiguration: vi
-        .fn<BoundApi["testConfiguration"]>()
+      getConfigurationModels: vi
+        .fn<BoundApi["getConfigurationModels"]>()
         .mockRejectedValue(new Error("Catalog unavailable")),
     });
-    expect(
-      (await screen.findAllByText("Model discovery failed. Test the configuration again.")).length,
-    ).toBeGreaterThan(0);
+
+    const failureMessage = "Model discovery failed. Test the configuration again.";
+    expect(await screen.findAllByText(failureMessage)).toHaveLength(1);
+    expect(screen.getByText("No models available")).toBeInTheDocument();
   });
 
   it("renders the loading state while discovery is pending", async () => {
     renderDialog({
-      testConfiguration: vi
-        .fn<BoundApi["testConfiguration"]>()
-        .mockReturnValue(new Promise<TestConfigurationResponse>(() => {})),
+      getConfigurationModels: vi
+        .fn<BoundApi["getConfigurationModels"]>()
+        .mockReturnValue(new Promise<ConfigurationModelsResponse>(() => {})),
     });
     expect(await screen.findByText(/loading models/i)).toBeInTheDocument();
+  });
+
+  it("focuses the current model row once discovery resolves and drives the list with j/k", async () => {
+    const user = userEvent.setup();
+    let resolveModels!: (response: ConfigurationModelsResponse) => void;
+    const getConfigurationModels = vi.fn<BoundApi["getConfigurationModels"]>().mockReturnValue(
+      new Promise<ConfigurationModelsResponse>((resolve) => {
+        resolveModels = resolve;
+      }),
+    );
+    renderDialog({ currentModel: "gemini-2.5-pro", getConfigurationModels });
+
+    // While discovery is pending, open-time autofocus lands wherever the focus
+    // trap puts it; the dialog must repair to the current model afterwards.
+    expect(await screen.findByText(/loading models/i)).toBeInTheDocument();
+
+    await act(async () => {
+      resolveModels(catalogModelsResponse(GEMINI_CONFIGURATION, GEMINI_CATALOG_MODELS));
+    });
+
+    const currentRow = await screen.findByRole("radio", { name: /gemini-2\.5-pro/ });
+    await waitFor(() => expect(currentRow).toHaveFocus());
+
+    await user.keyboard("k");
+    expect(screen.getByRole("radio", { name: /gemini-2\.5-flash/ })).toHaveFocus();
+
+    await user.keyboard("j");
+    expect(currentRow).toHaveFocus();
+  });
+
+  it("keeps Navigate keypresses during the loading window from stranding focus outside the list", async () => {
+    const user = userEvent.setup();
+    let resolveModels!: (response: ConfigurationModelsResponse) => void;
+    const getConfigurationModels = vi.fn<BoundApi["getConfigurationModels"]>().mockReturnValue(
+      new Promise<ConfigurationModelsResponse>((resolve) => {
+        resolveModels = resolve;
+      }),
+    );
+    renderDialog({ currentModel: "gemini-2.5-pro", getConfigurationModels });
+
+    expect(await screen.findByText(/loading models/i)).toBeInTheDocument();
+
+    // Native <dialog> autofocus parks on [Cancel] while search and the tier
+    // filters are disabled during discovery.
+    const cancel = screen.getByRole("button", { name: /cancel/i });
+    act(() => cancel.focus());
+    expect(cancel).toHaveFocus();
+
+    // The footer advertises "j/k Navigate"; pressing them while the list does
+    // not exist yet must not consume the initial-focus window.
+    await user.keyboard("k");
+    await user.keyboard("j");
+
+    await act(async () => {
+      resolveModels(catalogModelsResponse(GEMINI_CONFIGURATION, GEMINI_CATALOG_MODELS));
+    });
+
+    const currentRow = await screen.findByRole("radio", { name: /gemini-2\.5-pro/ });
+    await waitFor(() => expect(currentRow).toHaveFocus());
+
+    const filterTabs = screen.getByRole("radiogroup", { name: /model tier filter/i });
+    expect(within(filterTabs).getByRole("radio", { name: /^all$/i })).not.toHaveFocus();
+
+    // The list is live after the repair: k moves to the previous row.
+    await user.keyboard("k");
+    expect(screen.getByRole("radio", { name: /gemini-2\.5-flash/ })).toHaveFocus();
   });
 
   it("rejects stale checked models and never falls back to a different exact ID", async () => {
@@ -249,6 +348,7 @@ describe("ModelSelectDialog discovery states", () => {
     renderDialog({ currentModel: "stale-model-id", onSelect });
 
     const confirm = await screen.findByRole("button", { name: /confirm/i });
+    await waitFor(() => expect(confirm).toBeEnabled());
     await user.click(confirm);
 
     expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash");
@@ -257,7 +357,7 @@ describe("ModelSelectDialog discovery states", () => {
 });
 
 describe("ModelSelectDialog transport model policies", () => {
-  it("shows local loopback evidence for local-http configurations", async () => {
+  it("shows the honest catalog-unavailable reason for local transports", async () => {
     const localConfiguration: SupportedConfigurationSummary = {
       configurationId: "ollama-loopback",
       revision: 2,
@@ -267,22 +367,22 @@ describe("ModelSelectDialog transport model policies", () => {
       endpoint: "http://127.0.0.1:11434",
       authentication: "none",
       selectedModelId: "qwen2.5-coder:7b",
-      notices: [copyNotice("ollama")],
+      notices: [],
       availableActions: ["inspect", "select", "test", "update", "delete"],
     };
-    const testConfiguration = vi
-      .fn<BoundApi["testConfiguration"]>()
-      .mockResolvedValue(
-        testDiscoveryResponse(localConfiguration, "qwen2.5-coder:7b", readyFor("ollama")),
-      );
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(skippedModelsResponse(localConfiguration));
     renderDialog({
       configuration: localConfiguration,
-      testConfiguration,
+      getConfigurationModels,
       currentModel: "qwen2.5-coder:7b",
     });
 
-    expect(await screen.findByRole("radio", { name: /qwen2\.5-coder:7b/ })).toBeInTheDocument();
+    expect(await screen.findByText(CATALOG_SKIPPED_REASON)).toBeInTheDocument();
     expect(screen.getByText(/ollama/i)).toBeInTheDocument();
-    expect(screen.queryByText(/structured outputs/i)).not.toBeInTheDocument();
+    expect(screen.getByText("No models available")).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: /qwen2\.5-coder/ })).not.toBeInTheDocument();
+    expect(getConfigurationModels).toHaveBeenCalledWith("ollama-loopback");
   });
 });

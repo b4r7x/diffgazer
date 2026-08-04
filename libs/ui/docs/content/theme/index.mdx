@@ -44,12 +44,14 @@ Surface tokens describe stepwise elevation above the page background (`--base-bg
 |-------------------------|-------------------------------------------------|---------------|-------------------------------------------------------------------------|
 | `--surface-1`           | `#111111`                                       | `#eef0f3`     | `Panel frame="surface"` for Linear/Raycast-style elevated card surfaces |
 | `--surface-1-highlight` | `color-mix(in oklab, var(--base-fg) 12%, transparent)` | `#ffffff` | The 1px inner top lip drawn on `--surface-1` fills |
+| `--surface-2`           | `#181818`                                       | `#e7eaee`     | `DialogHeader`'s strip band, and the `Panel.Label` / `CardLabel` corner chip in `variant="border"` |
 
-`--surface-1` is one step off `--base-bg`: lighter in dark, and *darker* in light, because an off-white page has no visible step left going lighter. `--surface-1-highlight` is the 1px inner top edge that keeps the step reading as raised in both directions. Override them on `:root` (or any ancestor) to retint every elevated panel without forking the component:
+`--surface-1` is one step off `--base-bg`: lighter in dark, and *darker* in light, because an off-white page has no visible step left going lighter. `--surface-1-highlight` is the 1px inner top edge that keeps the step reading as raised in both directions. `--surface-2` is the next step in the same direction, for chrome that has to sit above an already-elevated surface — the dialog header band and the chips seated on a panel or card border. Override them on `:root` (or any ancestor) to retint every elevated panel without forking the component; repoint `--surface-2` alongside `--surface-1` so the two steps keep reading as one ramp:
 
 ```css
 :root {
   --surface-1: #161616;
+  --surface-2: #1e1e1e;
 }
 ```
 

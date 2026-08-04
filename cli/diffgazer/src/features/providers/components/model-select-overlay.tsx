@@ -4,6 +4,7 @@ import { useModelFilter, useModelSource } from "@diffgazer/core/providers";
 import { sanitizeTerminalText } from "@diffgazer/core/review";
 import type { ClientConfigurationSummary, ExactModelId } from "@diffgazer/core/schemas/config";
 import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
+import { pluralize } from "@diffgazer/core/strings";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useEffect, useEffectEvent, useState } from "react";
@@ -270,15 +271,16 @@ export function ModelSelectOverlay({
     rightShortcuts: MODEL_SELECT_RIGHT_SHORTCUTS,
   });
 
+  // Only the list zone binds j/k, so typing them into the search query is unaffected.
   useInput(
-    (_input, key) => {
+    (input, key) => {
       if (filteredModels.length === 0) return;
 
-      if (key.upArrow) {
+      if (key.upArrow || input === "k") {
         modelNavigation.moveBy(-1);
         return;
       }
-      if (key.downArrow) {
+      if (key.downArrow || input === "j") {
         modelNavigation.moveBy(1);
         return;
       }
@@ -305,9 +307,7 @@ export function ModelSelectOverlay({
     conditionalRows,
   });
 
-  const modelCountLabel = `${String(source.models.length)} ${
-    source.models.length === 1 ? "model" : "models"
-  }`;
+  const modelCountLabel = pluralize(source.models.length, "model");
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange} onEscapeKeyDown={handleEscapeKeyDown}>

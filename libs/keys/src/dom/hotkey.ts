@@ -1,7 +1,3 @@
-// Ambient declaration so copy-mode consumers without @types/node can still
-// type-check the dev-only console.warn guards below.
-declare const process: { env: { NODE_ENV?: string } } | undefined;
-
 const KEY_ALIASES: Record<string, string> = {
   up: "arrowup",
   down: "arrowdown",
@@ -27,22 +23,10 @@ const KEY_ALIASES: Record<string, string> = {
 };
 
 /**
- * Closed hotkey modifier vocabulary. The compile-time {@link HotkeyModifier}
- * union and this runtime set are kept in lockstep by deriving the set from a
- * `Record<HotkeyModifier, true>` so a new modifier cannot be added to one
- * without the other.
+ * Closed hotkey modifier vocabulary. {@link ValidateHotkey} rejects anything
+ * outside it for string literals; {@link parseHotkey} flags the rest at runtime.
  */
 export type HotkeyModifier = "ctrl" | "meta" | "shift" | "alt" | "mod";
-
-const KNOWN_MODIFIERS: ReadonlySet<HotkeyModifier> = new Set(
-  Object.keys({
-    ctrl: true,
-    meta: true,
-    shift: true,
-    alt: true,
-    mod: true,
-  } satisfies Record<HotkeyModifier, true>) as HotkeyModifier[],
-);
 
 let _isMac: boolean | null = null;
 function isMac(): boolean {
@@ -144,16 +128,6 @@ export function parseHotkey(hotkey: string): ParsedHotkey {
   };
 }
 
-/** Emits a development warning for a hotkey containing an unknown modifier. */
-export function warnUnknownModifier(context: string, hotkey: string): void {
-  if (typeof process !== "undefined" && process.env.NODE_ENV !== "production") {
-    console.warn(
-      `${context}: unknown modifier in hotkey "${hotkey}". ` +
-        `Known modifiers: ${[...KNOWN_MODIFIERS].join(", ")}.`,
-    );
-  }
-}
-
 /**
  * Serializes a parsed hotkey into canonical modifier order while preserving
  * unknown modifier segments so typoed hotkeys cannot collide.
@@ -172,11 +146,7 @@ export function serializeParsedHotkey(parsed: ParsedHotkey): string {
  * single canonical form.
  */
 export function canonicalizeHotkey<S extends string>(hotkey: ValidateHotkey<S>): string {
-  const parsed = parseHotkey(hotkey as string);
-  if (parsed.unknownModifier) {
-    warnUnknownModifier("canonicalizeHotkey", hotkey as string);
-  }
-  return serializeParsedHotkey(parsed);
+  return serializeParsedHotkey(parseHotkey(hotkey as string));
 }
 
 /** Returns whether a keyboard event matches an already parsed hotkey. */
@@ -199,11 +169,7 @@ export function matchesHotkey<S extends string>(
   event: KeyboardEvent,
   hotkey: ValidateHotkey<S>,
 ): boolean {
-  const parsed = parseHotkey(hotkey as string);
-  if (parsed.unknownModifier) {
-    warnUnknownModifier("matchesHotkey", hotkey as string);
-  }
-  return eventMatchesParsedHotkey(event, parsed);
+  return eventMatchesParsedHotkey(event, parseHotkey(hotkey as string));
 }
 
 /**

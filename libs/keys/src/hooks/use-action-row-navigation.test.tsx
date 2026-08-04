@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { useActionRowNavigationDoc } from "../../docs/hook-docs/use-action-row-navigation.js";
 import { fireKey, KeyboardWrapper } from "../testing/internal/test-utils.js";
@@ -290,6 +290,35 @@ describe("useActionRowNavigation", () => {
     expect(onAction).not.toHaveBeenCalledWith(1);
   });
 
+  it("repairs focus that a disabled action dropped on the body", async () => {
+    const { rerenderActionRow } = renderActionRow();
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    // Browsers blur a focused control onto the body the moment it turns
+    // disabled; jsdom does not, so shed focus the way the browser would.
+    act(() => getButton("Cancel").blur());
+    rerenderActionRow({ disabledActions: [true, false] });
+
+    await waitFor(() => expectFocused(getButton("Save")));
+  });
+
+  it("leaves a deliberate blur alone when an unrelated action's disabled state changes", async () => {
+    const { rerenderActionRow } = renderActionRow();
+
+    await waitFor(() => expectFocused(getButton("Cancel")));
+
+    // The user clicked empty space: focus is on the body and no action of this
+    // row caused it. A later re-render must not yank focus back into the row.
+    act(() => getButton("Cancel").blur());
+    expect(document.activeElement).toBe(document.body);
+
+    rerenderActionRow({ disabledActions: [false, true] });
+
+    expect(getButton("Save").hasAttribute("disabled")).toBe(true);
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it("moves focus to the content fallback when every action becomes disabled while focus is in the row", async () => {
     const { onAction, rerenderActionRow, user } = renderActionRow();
 
@@ -301,6 +330,88 @@ describe("useActionRowNavigation", () => {
 
     await user.keyboard("{Enter}");
     expect(onAction).not.toHaveBeenCalled();
+  });
+
+  describe("self-disabling actions", () => {
+    let finishBusy: () => void;
+
+    function SelfDisablingActionRow() {
+      const [busy, setBusy] = useState(false);
+      finishBusy = () => setBusy(false);
+      const fallbackRef = useRef<HTMLDivElement>(null);
+      const row = useActionRowNavigation({
+        enabled: true,
+        actionCount: 2,
+        defaultZone: "actions",
+        disabledActions: [busy, busy],
+        disabledFocusFallbackRef: fallbackRef,
+        onAction: () => {
+          // Real browsers drop focus on document.body the moment the focused
+          // control turns disabled. jsdom neither blurs on disable nor honors
+          // blur() on an already-disabled control, so shed focus at activation
+          // time to hand the repair effect the same state a browser would.
+          const active = document.activeElement;
+          if (active instanceof HTMLElement) active.blur();
+          setBusy(true);
+        },
+      });
+
+      return (
+        <div>
+          <div ref={fallbackRef} tabIndex={-1} aria-label="Content fallback">
+            Content
+          </div>
+          <button type="button" disabled={busy} {...row.getActionProps(0)}>
+            Cancel
+          </button>
+          <button type="button" disabled={busy} {...row.getActionProps(1)}>
+            Save
+          </button>
+          <input aria-label="Outside input" />
+        </div>
+      );
+    }
+
+    it("parks focus on the fallback, never body, and reclaims the row when actions re-enable", async () => {
+      const user = userEvent.setup();
+      render(
+        <KeyboardWrapper>
+          <SelfDisablingActionRow />
+        </KeyboardWrapper>,
+      );
+
+      await waitFor(() => expectFocused(getButton("Cancel")));
+
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => expectFocused(screen.getByLabelText("Content fallback")));
+      expect(document.activeElement).not.toBe(document.body);
+
+      act(() => finishBusy());
+
+      await waitFor(() => expectFocused(getButton("Cancel")));
+    });
+
+    it("leaves focus with a control the user chose during the disabled window", async () => {
+      const user = userEvent.setup();
+      render(
+        <KeyboardWrapper>
+          <SelfDisablingActionRow />
+        </KeyboardWrapper>,
+      );
+
+      await waitFor(() => expectFocused(getButton("Cancel")));
+
+      await user.keyboard("{Enter}");
+      await waitFor(() => expectFocused(screen.getByLabelText("Content fallback")));
+
+      const outside = screen.getByRole("textbox", { name: "Outside input" });
+      act(() => outside.focus());
+
+      act(() => finishBusy());
+
+      expectFocused(outside);
+    });
   });
 
   it("repairs a disabled action inside an open shadow root without stealing outside focus", async () => {

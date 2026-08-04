@@ -1,21 +1,22 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import { readinessUsesTransportNeutralCopy } from "@diffgazer/core/review";
 import { REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
-import { KeyboardProvider } from "@diffgazer/keys";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
 import {
   CLI_UNSUPPORTED_CONFIGURATION,
   LOCAL_OPENAI_CONFIGURATION,
   makeReadiness,
   REMOVED_ZAI_CODING_CONFIGURATION,
-} from "@/testing/configuration-fixtures";
+} from "@diffgazer/core/testing/provider-fixtures";
+import { KeyboardProvider } from "@diffgazer/keys";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import { getReadinessActionLabel } from "../lib/readiness-presentation";
 import {
   ApiKeyMissingView,
   type ApiKeyMissingViewProps,
   ConfigurationErrorView,
+  ReviewTerminalErrorView,
   ReviewTerminalReceiptView,
 } from "./api-key-missing-view";
 
@@ -243,6 +244,24 @@ describe("ReviewTerminalReceiptView", () => {
     ).toBeInTheDocument();
   });
 
+  it("offers a single way home", async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+
+    render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <ReviewTerminalReceiptView outcome="cancelled" onBack={onBack} />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    expect(screen.getAllByRole("button", { name: "Back to Home" })).toHaveLength(1);
+
+    await user.keyboard("{Escape}");
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
   it("exposes no secret values in the rendered receipt DOM", () => {
     const { container } = render(
       <KeyboardProvider>
@@ -259,5 +278,26 @@ describe("ReviewTerminalReceiptView", () => {
     expect(container.textContent).not.toMatch(/sk-[A-Za-z0-9_-]{8,}/i);
     expect(container.textContent).not.toMatch(/Bearer\s+/i);
     expect(container.textContent).not.toMatch(/\/Users\//);
+  });
+});
+
+describe("ReviewTerminalErrorView", () => {
+  it("offers a single way home", async () => {
+    const user = userEvent.setup();
+    const onBack = vi.fn();
+
+    render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <ReviewTerminalErrorView message="The provider dropped the connection." onBack={onBack} />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Review failed");
+    expect(screen.getAllByRole("button", { name: "Back to Home" })).toHaveLength(1);
+
+    await user.keyboard("{Escape}");
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 });

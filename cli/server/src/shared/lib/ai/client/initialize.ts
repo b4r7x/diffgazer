@@ -5,6 +5,7 @@ import type {
   ExecutionLimits,
   ExecutionResult,
   RuntimeIdentity,
+  TerminalOutcome,
 } from "@diffgazer/core/schemas/review";
 import { sha256CanonicalJsonSync } from "@diffgazer/core/schemas/review";
 import type { z } from "zod";
@@ -27,18 +28,12 @@ import { createBudgetLedger } from "../budget/ledger.js";
 import {
   buildReviewSchemaJson,
   hashReviewSchemaJson,
-} from "../providers/cli-compatibility-probe.js";
+} from "../providers/cli-compatibility/probe.js";
 import type { AIClient, AIError, AIErrorCode } from "../types.js";
 import { createFromAdmittedPlan } from "./create.js";
 import { executeReviewGeneration } from "./generate.js";
 
-export interface AIExecutionFingerprint {
-  readonly provider: AIClient["provider"];
-  readonly model: string;
-}
-
 export interface InitializedAIClient extends AIClient {
-  readonly executionFingerprint: AIExecutionFingerprint;
   readonly authorization?: AuthorizedReviewExecution;
   /**
    * Terminal adapter executions dispatched by this client, in completion order.
@@ -48,8 +43,11 @@ export interface InitializedAIClient extends AIClient {
   readonly terminalExecutions: readonly ExecutionResult[];
 }
 
-const RUNTIME_IDENTITY: RuntimeIdentity = { identity: "diffgazer-server", version: "1.0.0" };
-const STRUCTURED_OUTPUT_SCHEMA_SHA256 = hashReviewSchemaJson(buildReviewSchemaJson());
+export const RUNTIME_IDENTITY: RuntimeIdentity = {
+  identity: "diffgazer-server",
+  version: "1.0.0",
+};
+export const STRUCTURED_OUTPUT_SCHEMA_SHA256 = hashReviewSchemaJson(buildReviewSchemaJson());
 
 /**
  * Fail-closed limits for a configuration whose record cannot be resolved.
@@ -195,7 +193,7 @@ export function resolveSelectedConfigurationId(): ConfigurationId | null {
   return loadConfigV2().selectedConfigurationId;
 }
 
-function terminalOutcomeToAIError(outcome: string): AIError {
+function terminalOutcomeToAIError(outcome: TerminalOutcome): AIError {
   return createError<AIErrorCode>("STREAM_ERROR", `Execution ended with outcome ${outcome}`);
 }
 
@@ -236,11 +234,7 @@ export function toInitializedAIClient(
   const { plan } = authorization;
   const terminalExecutions: ExecutionResult[] = [];
   return {
-    provider: plan.productId as AIClient["provider"],
-    executionFingerprint: {
-      provider: plan.productId as AIClient["provider"],
-      model: plan.evidenceKey.modelId,
-    },
+    provider: plan.productId,
     authorization,
     terminalExecutions,
     generate: createGenerateBridge(authorization, (execution) =>

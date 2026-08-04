@@ -77,7 +77,7 @@ describe("requireSetup", () => {
     expectBlocked(await request(app), "removed");
   });
 
-  it("blocks with SETUP_REQUIRED while conformance evidence is pending (wait-for-conformance remediation)", async () => {
+  it("blocks with SETUP_REQUIRED while conformance evidence is pending (run-conformance remediation)", async () => {
     getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("conformance-pending") });
     const app = await createApp();
 

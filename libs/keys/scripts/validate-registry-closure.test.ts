@@ -339,6 +339,44 @@ describe("target-path install closure validation", () => {
     }
   });
 
+  it("fails when a closure file reads the build environment", () => {
+    const root = mkdtempSync(join(tmpdir(), "dg-keys-build-env-"));
+    try {
+      mkdirSync(join(root, "registry"), { recursive: true });
+      mkdirSync(join(root, "src", "hooks"), { recursive: true });
+
+      writeFileSync(
+        join(root, "src", "hooks", "use-env-read.ts"),
+        'export const isDev = process.env.NODE_ENV !== "production";\n',
+      );
+      writeFileSync(
+        join(root, "registry", "registry.json"),
+        JSON.stringify({
+          items: [
+            {
+              name: "env-read",
+              type: REGISTRY_ITEM_TYPE.hook,
+              files: [{ path: "src/hooks/use-env-read.ts", type: REGISTRY_ITEM_TYPE.hook }],
+            },
+          ],
+        }),
+      );
+
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        expect(validateRegistryClosure(join(root, "registry", "registry.json"))).toBe(false);
+
+        const diagnostics = errorSpy.mock.calls.map((call) => call.join(" ")).join("\n");
+        expect(diagnostics).toContain("[REGISTRY_BUILD_ENV_READ]");
+        expect(diagnostics).toContain("src/hooks/use-env-read.ts reads process.env, NODE_ENV");
+      } finally {
+        errorSpy.mockRestore();
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("declares react as a peer dependency and exports the main entry point", () => {
     const pkgPath = resolve(KEYS_ROOT, "package.json");
     const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));

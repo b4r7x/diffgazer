@@ -1,12 +1,12 @@
 import type { BoundApi } from "@diffgazer/core/api";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
-import { vi } from "vitest";
 import {
   makeConfigurationListResponse,
   makeNonReadyInitResponse,
   makeReadyInitResponse,
-} from "@/testing/configuration-fixtures";
+} from "@diffgazer/core/testing/provider-fixtures";
+import { vi } from "vitest";
 
 export const SHELL_SETTINGS_FIXTURE: ConfigurationInitResponse["settings"] = {
   theme: "terminal",

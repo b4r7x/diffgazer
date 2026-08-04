@@ -9,9 +9,10 @@ export type CategoryStatsTableProps = {
 
 export function CategoryStatsTable({ categories, className }: CategoryStatsTableProps) {
   // A header row over nothing is a table that costs 240px to say nothing; a
-  // clean run gets a sentence instead.
+  // clean run gets a sentence instead. The sentence drops its own inset: the
+  // panel around it already pads it, and two paddings framed one line.
   if (categories.length === 0) {
-    return <EmptyState className={className}>Nothing to categorise.</EmptyState>;
+    return <EmptyState className={cn("p-0", className)}>Nothing to categorise.</EmptyState>;
   }
 
   return (

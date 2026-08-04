@@ -2,9 +2,9 @@
 
 import { cva } from "class-variance-authority";
 import type { ComponentPropsWithRef, KeyboardEvent, ReactNode } from "react";
-import { OVERLAY_TRIGGER_PROPS } from "@/hooks/overlay-dismiss-stack";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { mergeIds, resolveAriaInvalid } from "@/lib/aria";
+import { OVERLAY_TRIGGER_PROPS } from "@/lib/overlay-dismiss-stack";
 import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
 import { useSelectContext } from "./select-context";

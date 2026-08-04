@@ -20,6 +20,7 @@ import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { DOT_GRID_CLASS } from "@/components/shared/dot-grid";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { useTheme } from "@/hooks/theme-context";
+import { useIsScrollable } from "@/hooks/use-is-scrollable";
 import type { PreviewFrame } from "@/lib/example-frames";
 
 interface DemoPreviewProps {
@@ -44,17 +45,26 @@ function DefaultPreviewPane({
   compact?: boolean;
   loading?: boolean;
 }) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const isScrollable = useIsScrollable(stageRef);
+
   return (
     <div data-demo-preview data-theme={theme}>
-      <Panel frame="viewfinder">
+      {/* The stage wears the plain hairline frame so a rendered example shows
+          only its own chrome — a bracketed demo is never staged inside a second
+          set of brackets at another stroke weight. */}
+      <Panel frame="hairline">
         {/* The header slot is used directly (not PanelHeader) so the lone label
             stays left-aligned; PanelHeader routes a plain child to its right
-            end slot. The slot still gives the viewfinder hairline + density. */}
+            end slot. The slot still gives the frame hairline + density. */}
         <div data-slot="panel-header">
           <span className={CHROME_LABEL_CLASS}>Preview</span>
         </div>
-        {/* The stage scrolls its own overflow so wide demos never pan the page. */}
+        {/* The stage scrolls its own overflow so wide demos never pan the page,
+            and takes a tab stop only while it actually has something to scroll. */}
         <ScrollArea
+          ref={stageRef}
+          tabIndex={isScrollable ? 0 : -1}
           orientation="horizontal"
           aria-label="Example preview"
           className={cn(DOT_GRID_CLASS, "flex min-w-0", compact ? "min-h-[96px]" : "min-h-[240px]")}
@@ -87,8 +97,13 @@ function FillPreviewPane({
   theme: string;
   loading?: boolean;
 }) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const isScrollable = useIsScrollable(stageRef);
+
   return (
     <ScrollArea
+      ref={stageRef}
+      tabIndex={isScrollable ? 0 : -1}
       orientation="horizontal"
       aria-label="Example preview"
       data-demo-preview
@@ -173,7 +188,7 @@ export function DemoPreview({
   };
 
   return (
-    <div ref={rootRef} className="mb-6">
+    <div ref={rootRef} data-slot="demo-preview" className="mb-6">
       {title && (
         <Typography
           as="h4"

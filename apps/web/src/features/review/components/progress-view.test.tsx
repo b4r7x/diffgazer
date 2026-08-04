@@ -496,6 +496,19 @@ describe("ReviewProgressView", () => {
     expect(onViewResults).toHaveBeenCalledTimes(1);
   });
 
+  it("rests both panes once focus leaves them, instead of pinning the last active zone", async () => {
+    renderView();
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    const logPane = screen.getByRole("region", { name: "Live Activity Log" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    await waitFor(() => expect(progressPane).not.toHaveAttribute("data-state", "focused"));
+    expect(logPane).not.toHaveAttribute("data-state", "focused");
+  });
+
   it("marks the log pane focused when pointer focus lands inside it", async () => {
     const user = userEvent.setup();
     renderView();

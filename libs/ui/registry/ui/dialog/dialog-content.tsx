@@ -21,6 +21,7 @@ import { DialogShell } from "../shared/dialog-shell";
 import { OVERLAY_SURFACE_MODAL } from "../shared/overlay-surface";
 import { PortalContainerProvider } from "../shared/portal-context";
 import { Dialog as DialogRoot } from "./dialog";
+import { DialogCloseIcon } from "./dialog-close-icon";
 import { useDialogContext } from "./dialog-context";
 import { DialogDescription } from "./dialog-description";
 import { DialogTitle } from "./dialog-title";
@@ -97,6 +98,12 @@ export interface DialogContentProps
    * unmount when the consumer closes them.
    */
   modal?: boolean;
+  /**
+   * Renders the top-right [x] close control on a modal dialog (default). Pass false to opt out
+   * when the dialog owns its own dismissal affordance. Inline dialogs never render it — nothing
+   * is modal about them — so compose Dialog.CloseIcon explicitly there.
+   */
+  closeIcon?: boolean;
   /** When false, clicking the backdrop does not close the dialog (recommended for alertdialog). */
   closeOnBackdropClick?: boolean;
   /** Element that receives focus when the overlay opens. */
@@ -154,8 +161,8 @@ function resolveAccessibleName({
  * When a consumer component hides the title or description from the static child tree, pass
  * native `aria-label` and `aria-description` attributes so both are present during SSR.
  *
- * If none are present the dialog falls back to the label "Dialog" and warns in
- * dev so the dialog still has a usable name rather than failing to open.
+ * If none are present the dialog falls back to the accessible label "Dialog" so it still
+ * opens with a usable name rather than an unnamed one.
  */
 export function DialogContent({
   children,
@@ -163,6 +170,7 @@ export function DialogContent({
   size,
   frame,
   corners,
+  closeIcon = true,
   closeOnBackdropClick = true,
   initialFocus,
   modal = true,
@@ -229,6 +237,8 @@ export function DialogContent({
     <PortalContainerProvider container={container}>
       {resolvedCorners !== "none" ? <span aria-hidden="true" className="dlg-corners" /> : null}
       {children}
+      {/* Last in DOM so the [x] is the final tab stop, not an interception before the content. */}
+      {modal && closeIcon ? <DialogCloseIcon /> : null}
     </PortalContainerProvider>
   );
 

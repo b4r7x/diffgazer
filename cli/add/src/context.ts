@@ -15,7 +15,11 @@ import {
   resolveAliasedPaths,
 } from "@diffgazer/registry/cli";
 import { z } from "zod";
-import { normalizeProjectRelativePath, resolveProjectPath, toPosixPath } from "./utils/paths.js";
+import {
+  normalizeProjectRelativePath,
+  resolveProjectPath,
+  toRelativePosixSegments,
+} from "./utils/paths.js";
 
 export const VERSION = readPackageVersion(import.meta.url, "../package.json");
 
@@ -124,11 +128,15 @@ export function resolveConfig(raw: DiffgazerAddConfig, cwd?: string): ResolvedCo
   );
   const resolved = cwd
     ? {
-        components: toPosixPath(
+        components: toRelativePosixSegments(
           relative(resolve(cwd), resolveProjectPath(cwd, rawResolved.components)),
         ),
-        lib: toPosixPath(relative(resolve(cwd), resolveProjectPath(cwd, rawResolved.lib))),
-        hooks: toPosixPath(relative(resolve(cwd), resolveProjectPath(cwd, rawResolved.hooks))),
+        lib: toRelativePosixSegments(
+          relative(resolve(cwd), resolveProjectPath(cwd, rawResolved.lib)),
+        ),
+        hooks: toRelativePosixSegments(
+          relative(resolve(cwd), resolveProjectPath(cwd, rawResolved.hooks)),
+        ),
       }
     : rawResolved;
 
@@ -153,12 +161,12 @@ function deriveStylesFsPath(
   cwd?: string,
 ): string {
   if (tailwindCss) {
-    const dir = toPosixPath(dirname(tailwindCss));
+    const dir = toRelativePosixSegments(dirname(tailwindCss));
     if (!cwd) return dir;
     const absolute = isAbsolute(dir) ? dir : resolveProjectPath(cwd, dir);
-    return toPosixPath(relative(resolve(cwd), absolute));
+    return toRelativePosixSegments(relative(resolve(cwd), absolute));
   }
-  const parent = toPosixPath(dirname(libFsPath));
+  const parent = toRelativePosixSegments(dirname(libFsPath));
   return parent === "." ? "styles" : `${parent}/styles`;
 }
 

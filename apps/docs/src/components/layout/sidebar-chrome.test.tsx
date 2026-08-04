@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { toast } from "@diffgazer/ui/components/toast";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -99,16 +100,6 @@ function renderSidebarChrome() {
 async function selectKeysLibrary(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("combobox", { name: /select documentation library/i }));
   await user.click(await screen.findByRole("option", { name: "@diffgazer/keys" }));
-}
-
-function createDeferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
-    resolve = resolvePromise;
-    reject = rejectPromise;
-  });
-  return { promise, resolve, reject };
 }
 
 describe("SidebarChrome library switching", () => {

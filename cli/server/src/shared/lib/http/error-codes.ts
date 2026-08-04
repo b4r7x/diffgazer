@@ -1,4 +1,3 @@
-import type { CatalogErrorCode } from "@diffgazer/core/schemas/config";
 import type { ErrorCode } from "@diffgazer/core/schemas/errors";
 
 /**
@@ -13,12 +12,6 @@ export type ConfigServiceErrorCode =
   | typeof ErrorCode.INTERNAL_ERROR
   | "MODEL_ERROR"
   | "INVALID_BODY";
-
-/**
- * Error codes getProviderModels can return, so the router can map them to HTTP
- * statuses exhaustively instead of bucketing everything into 500.
- */
-export type ProviderModelsErrorCode = CatalogErrorCode | typeof ErrorCode.VALIDATION_ERROR;
 
 export type StoreErrorCode =
   | "NOT_FOUND"

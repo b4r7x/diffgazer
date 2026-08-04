@@ -111,10 +111,15 @@ export function createPublishPlan({ packages, publishedVersionsByName, allowlist
     (pkg) => versionsFor(publishedVersionsByName, pkg.name).length === 0 && !allowed.has(pkg.name),
   );
   if (gated.length > 0) {
+    const publishable = candidates.filter((pkg) => !gated.includes(pkg)).map((pkg) => pkg.name);
+    const hint =
+      publishable.length > 0
+        ? ` To publish only the un-gated subset, name it: pnpm run release ${publishable.join(" ")}`
+        : "";
     throw new Error(
       `Publish guard: refusing to first-publish gated packages: ${gated
         .map((pkg) => pkg.name)
-        .join(", ")}`,
+        .join(", ")}.${hint}`,
     );
   }
 

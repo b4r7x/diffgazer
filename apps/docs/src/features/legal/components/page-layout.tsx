@@ -9,8 +9,8 @@ import {
 import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
 import { TuiTwoPane } from "@/components/layout/tui-two-pane";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
-import { usePendingLegalRoute } from "@/features/legal/hooks/use-pending-legal-route";
-import { LegalSidebar } from "./legal-sidebar";
+import { usePendingLegalRoute } from "@/features/legal/hooks/use-pending-route";
+import { LegalSidebar } from "./sidebar";
 
 export interface LegalPageLayoutProps {
   panelLabel: string;

@@ -2,7 +2,6 @@ import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tansta
 import type {
   ClientConfigurationAction,
   ClientConfigurationInput,
-  ClientConfigurationSummary,
   ConfigurationId,
   ConfigurationInitResponse,
   ConfigurationRevision,
@@ -13,16 +12,9 @@ import type {
 import type { ReadinessAcknowledgement } from "../../schemas/config/readiness.js";
 import type { BoundApi } from "../bound.js";
 import { useApi } from "./context.js";
-import {
-  type ConfigurationFingerprint,
-  configQueries,
-  configurationDiscoveryQuery,
-  configurationFingerprint,
-  configurationReadinessQuery,
-} from "./queries/config.js";
+import { configQueries, configurationFingerprint } from "./queries/config.js";
 
 type AcceptedAcknowledgement = Extract<ReadinessAcknowledgement, { status: "accepted" }>;
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
 
 function actionConfigurationId(action: ClientConfigurationAction): ConfigurationId | undefined {
   return "configurationId" in action ? action.configurationId : undefined;
@@ -44,10 +36,7 @@ export async function invalidateConfigurationCaches(
         queryKey: [...configQueries.all(), "inspect", configurationId],
       }),
       queryClient.invalidateQueries({
-        queryKey: [...configQueries.all(), "discovery", configurationId],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: [...configQueries.all(), "readiness", configurationId],
+        queryKey: [...configQueries.all(), "models", configurationId],
       }),
     );
   } else {
@@ -58,7 +47,7 @@ export async function invalidateConfigurationCaches(
           return (
             Array.isArray(key) &&
             key[0] === "config" &&
-            (key[1] === "inspect" || key[1] === "discovery" || key[1] === "readiness")
+            (key[1] === "inspect" || key[1] === "models")
           );
         },
       }),
@@ -150,54 +139,6 @@ export function useConfigurationInspect(configurationId: ConfigurationId | null 
   return useQuery({
     ...configQueries.inspect(api, configurationId ?? ""),
     enabled: configurationId != null && configurationId.length > 0,
-  });
-}
-
-export function useConfigurationDiscovery(
-  configuration: SupportedConfigurationSummary | null | undefined,
-  fingerprint?: ConfigurationFingerprint,
-) {
-  const api = useApi();
-  const discoveryOptions =
-    configuration != null
-      ? configurationDiscoveryQuery(api, configuration, fingerprint)
-      : undefined;
-
-  return useQuery({
-    queryKey:
-      discoveryOptions?.queryKey ??
-      ([...configQueries.all(), "discovery", "__disabled__", ""] as const),
-    queryFn:
-      discoveryOptions?.queryFn ??
-      (async () => {
-        throw new Error("Discovery query is disabled");
-      }),
-    staleTime: discoveryOptions?.staleTime ?? 0,
-    enabled: discoveryOptions != null,
-  });
-}
-
-export function useConfigurationReadiness(
-  configuration: SupportedConfigurationSummary | null | undefined,
-  fingerprint?: ConfigurationFingerprint,
-) {
-  const api = useApi();
-  const readinessOptions =
-    configuration != null
-      ? configurationReadinessQuery(api, configuration, fingerprint)
-      : undefined;
-
-  return useQuery({
-    queryKey:
-      readinessOptions?.queryKey ??
-      ([...configQueries.all(), "readiness", "__disabled__", ""] as const),
-    queryFn:
-      readinessOptions?.queryFn ??
-      (async () => {
-        throw new Error("Readiness query is disabled");
-      }),
-    staleTime: readinessOptions?.staleTime ?? 0,
-    enabled: readinessOptions != null,
   });
 }
 

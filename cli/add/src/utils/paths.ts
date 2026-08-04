@@ -1,7 +1,13 @@
 import { posix, relative, resolve, win32 } from "node:path";
 import { ensureWithinDir } from "@diffgazer/registry/cli";
 
-export function toPosixPath(path: string): string {
+/**
+ * Joins a path's segments with "/", dropping empty ones — so leading and
+ * trailing separators are stripped. Every project path the CLI records is
+ * relative, which is what the name says. Not interchangeable with
+ * `@diffgazer/registry`'s `toPosixPath`, which preserves them.
+ */
+export function toRelativePosixSegments(path: string): string {
   return path
     .split(/[\\/]+/)
     .filter(Boolean)
@@ -12,12 +18,12 @@ export function normalizeProjectRelativePath(path: string): string {
   if (posix.isAbsolute(path) || win32.isAbsolute(path)) {
     throw new Error(`Project paths must be relative, received "${path}".`);
   }
-  return toPosixPath(path);
+  return toRelativePosixSegments(path);
 }
 
 export function normalizeManifestPath(cwd: string, absolutePath: string): string {
   ensureWithinDir(absolutePath, cwd);
-  return toPosixPath(relative(cwd, absolutePath));
+  return toRelativePosixSegments(relative(cwd, absolutePath));
 }
 
 export function resolveProjectPath(cwd: string, relativePath: string): string {

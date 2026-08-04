@@ -32,7 +32,7 @@ describe("Callout structure", () => {
     expect(root).toHaveAttribute("data-frame", "rail");
   });
 
-  it("bar frame renders a tone marker bar matching Dialog marker='bar'", () => {
+  it("bar frame renders a tone marker bar", () => {
     const { container } = render(
       <Callout frame="bar" tone="warning">
         <Callout.Title>Bar</Callout.Title>

@@ -12,7 +12,8 @@ import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review
 import { DECLINE, useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
-import { ReviewCompleteSummary } from "@/features/review/components/review-complete-summary";
+import { useEffect, useRef } from "react";
+import { ReviewCompleteSummary } from "@/features/review/components/complete-summary";
 import { RunDetailsPanel } from "@/features/review/components/run-details-panel";
 import { isInteractiveTarget } from "@/features/review/lib/interactive-target";
 
@@ -72,6 +73,16 @@ export function ReviewSummaryView({
   });
   useKey("Escape", onBack);
 
+  // Focus the summary region on mount so the screen opens with a real focus
+  // home instead of document.body: the app shell is overflow-hidden, so arrows
+  // on body scroll nothing and overflowing summary content would be
+  // keyboard-unreachable. The labelled ScrollArea owns Arrow/Page/Home/End
+  // scrolling and sits in the Tab order ahead of the action row.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    scrollRef.current?.focus({ preventScroll: true });
+  }, []);
+
   usePageFooter({
     shortcuts: [{ key: "Enter", label: "View Results" }],
     rightShortcuts: [BACK_SHORTCUT],
@@ -84,7 +95,11 @@ export function ReviewSummaryView({
     // waits for md: a sticky bottom-0 child docks to the scrollport inset by
     // that padding, which left a band under the phone action row for half-rows
     // to render in.
-    <ScrollArea className="flex-1 px-4 pt-4 scroll-pb-16 md:scroll-pb-0 md:pb-4">
+    <ScrollArea
+      ref={scrollRef}
+      aria-label="Review summary"
+      className="flex-1 px-4 pt-4 scroll-pb-16 md:scroll-pb-0 md:pb-4"
+    >
       <div className="w-full max-w-4xl mx-auto flex flex-col gap-6">
         <ReviewCompleteSummary
           stats={stats}
@@ -97,8 +112,12 @@ export function ReviewSummaryView({
         {/* The action row is the last element and stays reachable while the
             summary scrolls under it on phones, mirroring the pinned TUI CTA.
             The hairline is what makes a row disappearing under it read as a
-            docked bar rather than a clipped render. */}
-        <div className="sticky bottom-0 flex justify-center border-t border-border bg-background pb-2 pt-3 md:static md:border-t-0 md:pb-4">
+            docked bar rather than a clipped render. Back is rendered, not just
+            bound to Escape, so leaving the summary is discoverable by pointer. */}
+        <div className="sticky bottom-0 flex flex-wrap justify-center gap-3 border-t border-border bg-background pb-2 pt-3 md:static md:border-t-0 md:pb-4">
+          <Button variant="outline" size="lg" bracket onClick={onBack}>
+            <span aria-hidden="true">←</span> Back
+          </Button>
           <Button variant="primary" size="lg" bracket onClick={onEnterReview}>
             View Results
           </Button>

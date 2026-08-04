@@ -5,6 +5,17 @@ import type {
   ClientConfigurationSummary,
   ConfigurationInitResponse,
 } from "@diffgazer/core/schemas/config";
+import { READINESS_PRESENTATION } from "@diffgazer/core/schemas/config";
+import {
+  CLI_UNSUPPORTED_CONFIGURATION,
+  configurationStatus,
+  LOCAL_OPENAI_CONFIGURATION,
+  makeConfigurationInitResponse,
+  makeConfigurationListResponse,
+  makeReadiness,
+  READY_GEMINI_CONFIGURATION,
+  REMOVED_ZAI_CODING_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -13,17 +24,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { createConfigurationActionMocks } from "@/testing/configuration-action-mocks";
-import {
-  CLI_UNSUPPORTED_CONFIGURATION,
-  configurationStatus,
-  LOCAL_OPENAI_CONFIGURATION,
-  makeConfigurationInitResponse,
-  makeConfigurationListResponse,
-  makeReadiness,
-  READINESS_PRESENTATION,
-  READY_GEMINI_CONFIGURATION,
-  REMOVED_ZAI_CODING_CONFIGURATION,
-} from "@/testing/configuration-fixtures";
 import { useProvidersPageState } from "./use-page-state";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -127,20 +127,20 @@ describe("useProvidersPageState", () => {
     });
   });
 
-  it("rejects removed-record activation", async () => {
+  it("excludes removed records from the filtered providers", async () => {
     const { result } = renderPageHook();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    const removed = result.current.filteredProviders.find(
-      (row) => getProviderRowId(row) === "legacy-removed-zai-plan",
-    );
-    if (!removed) throw new Error("Expected removed row");
+    expect(
+      result.current.filteredProviders.some(
+        (row) => getProviderRowId(row) === "legacy-removed-zai-plan",
+      ),
+    ).toBe(false);
 
     act(() => result.current.selection.setSelectedId("legacy-removed-zai-plan"));
-    act(() => result.current.handlers.dispatchAction(removed));
 
-    expect(mockApi.selectConfiguration).not.toHaveBeenCalled();
-    expect(result.current.dialogs.anyOpen).toBe(false);
+    expect(result.current.selection.effectiveSelectedId).not.toBe("legacy-removed-zai-plan");
+    expect(result.current.selectedRow?.product.status).not.toBe("removed");
   });
 
   it("keeps the model dialog on the created configuration after the row id changes", async () => {
@@ -242,6 +242,53 @@ describe("useProvidersPageState", () => {
 
     expect(result.current.dialogs.current?.kind).toBe("setup");
     expect(result.current.dialogs.current?.row.product.transportFamily).toBe("local-http");
+  });
+
+  it("derives no actions when the filtered list leaves nothing selected", async () => {
+    const { result } = renderPageHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.search.setQuery("no-such-provider"));
+
+    expect(result.current.selectedRow).toBeNull();
+    expect(result.current.providerActions).toEqual([]);
+  });
+
+  it("derives a single action for an unconfigured provider", async () => {
+    const { result } = renderPageHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.selection.setSelectedId("openrouter"));
+
+    expect(result.current.providerActions.map((action) => action.label)).toEqual([
+      "Create configuration",
+    ]);
+  });
+
+  it("derives a de-duplicated action row for a ready provider", async () => {
+    const { result } = renderPageHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.selection.setSelectedId("gemini-primary"));
+
+    expect(result.current.providerActions.map((action) => action.label)).toEqual([
+      "Select configuration",
+      "Update configuration",
+      "Select model",
+      "Delete configuration",
+    ]);
+  });
+
+  it("routes a derived action to its handler", async () => {
+    const { result } = renderPageHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.selection.setSelectedId("openrouter"));
+    const create = result.current.providerActions[0];
+    if (!create) throw new Error("Expected a create action");
+    act(() => result.current.runProviderAction(create));
+
+    expect(result.current.dialogs.current?.kind).toBe("setup");
   });
 });
 

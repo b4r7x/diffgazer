@@ -1,4 +1,3 @@
-import type { OnboardingConfigurationDraft } from "@diffgazer/core/onboarding";
 import { PRODUCT_REGISTRY, useModelSource } from "@diffgazer/core/providers";
 import type { ClientConfigurationSummary, ModelInfo } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
@@ -12,91 +11,15 @@ import { resolveAvailableValue } from "../../lib/select";
 type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
 
 interface ModelStepProps {
-  configurationInput: OnboardingConfigurationDraft;
-  discoveryConfiguration?: SupportedConfigurationSummary | null;
+  /** The persisted draft record discovery addresses; null until the wizard commits one. */
+  configuration: SupportedConfigurationSummary | null;
+  isPreparing: boolean;
+  onRetry: () => void;
   value: string | null;
   onChange: (model: string) => void;
   onCommit?: (model: string) => void;
   enabled?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
-}
-
-function modelTierFor(
-  transportFamily: OnboardingConfigurationDraft["transportFamily"],
-): ModelInfo["tier"] {
-  return transportFamily === "hosted-api" ? "paid" : "free";
-}
-
-function derivePolicyModels(configurationInput: OnboardingConfigurationDraft): ModelInfo[] {
-  if (configurationInput.transportFamily === "hosted-api") {
-    const policy = PRODUCT_REGISTRY[configurationInput.productId].modelPolicy;
-    if (policy.kind === "discovered-allowlist") {
-      return policy.modelIds.map((id) => ({
-        id,
-        name: id,
-        description: "",
-        tier:
-          "higherCostModelIds" in policy &&
-          policy.higherCostModelIds?.some((candidate) => candidate === id)
-            ? "paid"
-            : "free",
-        recommended: id === policy.suggestedModelId,
-      }));
-    }
-    if (
-      policy.kind === "discovered-exact" &&
-      "suggestedModelId" in policy &&
-      policy.suggestedModelId
-    ) {
-      return [
-        {
-          id: policy.suggestedModelId,
-          name: policy.suggestedModelId,
-          description: "Exact model required by the selected configuration tuple.",
-          tier: modelTierFor(configurationInput.transportFamily),
-          recommended: true,
-        },
-      ];
-    }
-    if (policy.kind === "pinned-downstream-route") {
-      return [
-        {
-          id: "openrouter/anthropic/claude-3.7-sonnet",
-          name: "Pinned downstream route",
-          description: "OpenRouter routes to an exact downstream model ID.",
-          tier: "paid",
-        },
-      ];
-    }
-    return [];
-  }
-
-  const policy = PRODUCT_REGISTRY[configurationInput.productId].modelPolicy;
-  if (
-    policy.kind === "discovered-exact" &&
-    "suggestedModelId" in policy &&
-    policy.suggestedModelId
-  ) {
-    const suggestedModelId = String(policy.suggestedModelId);
-    return [
-      {
-        id: suggestedModelId,
-        name: suggestedModelId,
-        description: "",
-        tier: "free",
-        recommended: true,
-      },
-    ];
-  }
-
-  return [
-    {
-      id: configurationInput.transportFamily === "local-cli" ? "gpt-5-codex" : "local-model",
-      name: configurationInput.transportFamily === "local-cli" ? "gpt-5-codex" : "local-model",
-      description: "Exact model discovered for the configured transport tuple.",
-      tier: "free",
-    },
-  ];
 }
 
 function ModelInfoList({
@@ -175,43 +98,22 @@ function ModelInfoList({
   );
 }
 
-function PolicyModelStep({
-  configurationInput,
+function DiscoveredModels({
+  configuration,
   value,
   onChange,
   onCommit,
   enabled = true,
   onBoundaryReached,
-}: Omit<ModelStepProps, "discoveryConfiguration">) {
-  const product = PRODUCT_REGISTRY[configurationInput.productId];
-  return (
-    <ModelInfoList
-      subtitle={`Select an exact model for ${product.presentation.name}.`}
-      models={derivePolicyModels(configurationInput)}
-      value={value}
-      onChange={onChange}
-      onCommit={onCommit}
-      enabled={enabled}
-      onBoundaryReached={onBoundaryReached}
-    />
-  );
-}
-
-function DiscoveryModelStep({
-  configurationInput,
-  discoveryConfiguration,
-  value,
-  onChange,
-  onCommit,
-  enabled = true,
-  onBoundaryReached,
-}: ModelStepProps & { discoveryConfiguration: SupportedConfigurationSummary }) {
+}: Omit<ModelStepProps, "configuration" | "isPreparing" | "onRetry"> & {
+  configuration: SupportedConfigurationSummary;
+}) {
   const loadingStateRef = useRef<HTMLDivElement>(null);
   const retryButtonRef = useRef<HTMLButtonElement>(null);
   const wasLoadingRef = useRef(false);
   const canFocusRecoveryRef = useRef(false);
-  const product = PRODUCT_REGISTRY[configurationInput.productId];
-  const discovery = useModelSource(true, discoveryConfiguration);
+  const product = PRODUCT_REGISTRY[configuration.productId];
+  const discovery = useModelSource(true, configuration);
 
   useEffect(() => {
     if (discovery.status !== "loading") return;
@@ -300,31 +202,39 @@ function DiscoveryModelStep({
 }
 
 export function ModelStep({
-  configurationInput,
-  discoveryConfiguration = null,
+  configuration,
+  isPreparing,
+  onRetry,
   value,
   onChange,
   onCommit,
   enabled = true,
   onBoundaryReached,
 }: ModelStepProps) {
-  if (discoveryConfiguration) {
+  if (isPreparing) {
     return (
-      <DiscoveryModelStep
-        configurationInput={configurationInput}
-        discoveryConfiguration={discoveryConfiguration}
-        value={value}
-        onChange={onChange}
-        onCommit={onCommit}
-        enabled={enabled}
-        onBoundaryReached={onBoundaryReached}
-      />
+      <Spinner variant="braille" className="text-muted-foreground" role="status">
+        Preparing this configuration for model discovery...
+      </Spinner>
+    );
+  }
+
+  if (!configuration) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground font-mono">
+          Models are discovered from the saved configuration for this product.
+        </p>
+        <Button type="button" variant="secondary" onClick={onRetry}>
+          Retry
+        </Button>
+      </div>
     );
   }
 
   return (
-    <PolicyModelStep
-      configurationInput={configurationInput}
+    <DiscoveredModels
+      configuration={configuration}
       value={value}
       onChange={onChange}
       onCommit={onCommit}

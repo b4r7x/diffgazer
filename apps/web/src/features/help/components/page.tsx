@@ -11,7 +11,10 @@ import { Kbd } from "@diffgazer/ui/components/kbd";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
-import { useNavigate } from "@tanstack/react-router";
+import { useCanGoBack, useLocation, useRouter } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
+import { useFocusWithin } from "@/hooks/use-focus-within";
+import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
 
 // "h → History" is a web-only live binding, so it stays appended here per F-242
 // per-surface-extras scoping.
@@ -74,20 +77,40 @@ const SHORTCUT_GRID =
 const ROW_GRID = "col-span-2 grid grid-cols-subgrid items-baseline text-sm";
 
 export function HelpPage() {
-  const navigate = useNavigate();
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
+  const { pathname } = useLocation();
+  const { focusWithin, props: focusProps } = useFocusWithin<HTMLDivElement>();
 
   useScope("help");
-  useKey("Escape", () => navigate({ to: "/" }));
+  // The footer advertises "Esc Back", so Escape must mirror the header's
+  // ← Back: return to the screen help was opened from, with "/" only as the
+  // no-history fallback.
+  useKey("Escape", () => performBackAction(router, resolveBackAction(pathname, canGoBack)));
   usePageFooter({ shortcuts: BACK_SHORTCUTS });
 
+  // Focus the scroll region on mount so the screen opens with a real focus
+  // home instead of document.body: the app shell is overflow-hidden, so arrows
+  // on body scroll nothing and an overflowing shortcut table would be
+  // keyboard-unreachable on the very screen that documents the keyboard
+  // contract. The labelled ScrollArea owns Arrow/Page/Home/End scrolling.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    scrollRef.current?.focus({ preventScroll: true });
+  }, []);
+
   return (
-    <ScrollArea className="flex min-h-0 flex-1 flex-col px-4 pt-8 pb-4">
+    <ScrollArea
+      ref={scrollRef}
+      aria-label="Help content"
+      className="flex min-h-0 flex-1 flex-col px-4 py-4"
+    >
       <Panel
-        frame="viewfinder"
-        focused
+        {...focusProps}
+        focused={focusWithin}
         density="compact"
         aria-labelledby={HELP_TITLE_ID}
-        className="mx-auto w-full max-w-2xl lg:max-w-3xl"
+        className="m-auto w-full max-w-2xl shadow-2xl lg:max-w-3xl"
       >
         <Panel.Label>
           <h1 id={HELP_TITLE_ID}>Help</h1>

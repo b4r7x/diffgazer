@@ -4,7 +4,7 @@ import {
   getApiKeyMissingCopy,
 } from "@diffgazer/core/review";
 import type { Readiness } from "@diffgazer/core/schemas/config";
-import { ReviewGateView } from "./review-gate-view";
+import { ReviewGateView } from "./gate-view";
 
 export interface ApiKeyMissingViewProps {
   productLabel?: string;

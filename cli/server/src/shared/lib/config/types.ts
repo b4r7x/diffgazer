@@ -1,7 +1,6 @@
 import type { AppError } from "@diffgazer/core/errors";
 import type {
   LegacyProviderConfigV1,
-  LegacyProviderIdV1,
   LegacyRemovedProviderRecordV1,
   TrustConfig,
 } from "@diffgazer/core/schemas/config";
@@ -14,9 +13,6 @@ export type RunnableV1Record = Omit<LegacyProviderConfigV1, "provider"> & {
 
 /** Legacy V1 executable provider ids used by the aggregate read bridge. */
 export type ExecutableLegacyProviderId = "gemini" | "zai" | "openrouter" | "groq" | "cerebras";
-
-/** Legacy V1 provider ids retained for decoder-only and migration records. */
-export type AIProvider = LegacyProviderIdV1;
 
 export const CONFIG_SCHEMA_VERSION_V2 = 2 as const;
 
@@ -98,12 +94,16 @@ export type SecretsStorageErrorCode =
 
 export type SecretsStorageError = AppError<SecretsStorageErrorCode>;
 
-export type ConfigurationActionErrorCode =
+/** Failures the configuration action vocabulary owns, distinct from storage failures. */
+export type ConfigurationActionOnlyErrorCode =
   | "CONFIGURATION_NOT_FOUND"
   | "CONFIGURATION_UNSUPPORTED"
   | "CONFIGURATION_CONFLICT"
   | "SECRET_BINDING_FAILED"
-  | "INVALID_ACTION"
+  | "INVALID_ACTION";
+
+export type ConfigurationActionErrorCode =
+  | ConfigurationActionOnlyErrorCode
   | SecretsStorageErrorCode;
 
 export type ConfigurationActionError = AppError<ConfigurationActionErrorCode>;

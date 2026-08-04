@@ -18,11 +18,11 @@ const DEFAULT_TYPEAHEAD_RESET_MS = 500;
  */
 export function useTypeaheadBuffer(resetMs = DEFAULT_TYPEAHEAD_RESET_MS, resetKey?: unknown) {
   const bufferRef = useRef("");
-  const timerRef = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reset = useCallback(() => {
     bufferRef.current = "";
-    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
     timerRef.current = null;
   }, []);
 
@@ -33,16 +33,18 @@ export function useTypeaheadBuffer(resetMs = DEFAULT_TYPEAHEAD_RESET_MS, resetKe
   }, [reset, resetKey]);
 
   return useCallback(
-    (key: string): string | null => {
+    (key: string, { extendOnly = false }: { extendOnly?: boolean } = {}): string | null => {
       if (key.length !== 1) return null;
       // Space extends a non-empty query (multi-word labels like "New York") but
       // is rejected on an empty buffer so it stays available as the select/activate
-      // key (APG/Radix typeahead behavior).
-      if (key === " " && bufferRef.current === "") return null;
-      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+      // key (APG/Radix typeahead behavior). Callers opt other keys into the same
+      // extend-only contract via `extendOnly` (e.g. j/k, which navigate instead of
+      // starting a query).
+      if ((key === " " || extendOnly) && bufferRef.current === "") return null;
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
 
       bufferRef.current += key;
-      timerRef.current = window.setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         bufferRef.current = "";
         timerRef.current = null;
       }, resetMs);

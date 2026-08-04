@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Checkbox } from "../../registry/ui/checkbox";
 import { Radio, RadioGroup } from "../../registry/ui/radio";
@@ -79,30 +79,6 @@ function FieldsetFixture() {
 
 function RadioReachabilityFixture() {
   const [hideDynamic, setHideDynamic] = useState(false);
-  const ruleIndexRef = useRef<number | null>(null);
-  const adoptedSheetRef = useRef<CSSStyleSheet | null>(null);
-
-  const hideRuleSelected = () => {
-    const style = document.querySelector<HTMLStyleElement>("#radio-visibility-rules");
-    if (style?.sheet && ruleIndexRef.current === null) {
-      ruleIndexRef.current = style.sheet.insertRule(".rule-hidden { visibility: hidden; }");
-    }
-  };
-
-  const showRuleSelected = () => {
-    const style = document.querySelector<HTMLStyleElement>("#radio-visibility-rules");
-    if (!style?.sheet || ruleIndexRef.current === null) return;
-    style.sheet.deleteRule(ruleIndexRef.current);
-    ruleIndexRef.current = null;
-  };
-
-  const getAdoptedSheet = () => {
-    if (adoptedSheetRef.current) return adoptedSheetRef.current;
-    const sheet = new CSSStyleSheet();
-    adoptedSheetRef.current = sheet;
-    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
-    return sheet;
-  };
 
   return (
     <section aria-label="Radio reachability">
@@ -126,39 +102,6 @@ function RadioReachabilityFixture() {
         Toggle selected ancestor
       </button>
       <button type="button">Dynamic after</button>
-
-      <button type="button">Rule before</button>
-      <RadioGroup value="rule-red" label="Rule-hidden selected">
-        <div className="rule-hidden">
-          <RadioGroup.Item value="rule-red" label="Rule red" />
-        </div>
-        <RadioGroup.Item value="rule-blue" label="Rule blue" />
-      </RadioGroup>
-      <button type="button" onClick={hideRuleSelected}>
-        Hide selected with insertRule
-      </button>
-      <button type="button" onClick={showRuleSelected}>
-        Show selected with deleteRule
-      </button>
-      <button
-        type="button"
-        onClick={() => getAdoptedSheet().replaceSync(".rule-hidden { visibility: hidden; }")}
-      >
-        Hide selected with replaceSync
-      </button>
-      <button type="button" onClick={() => getAdoptedSheet().replaceSync("")}>
-        Show selected with replaceSync
-      </button>
-      <button
-        type="button"
-        onClick={() => getAdoptedSheet().replace(".rule-hidden { visibility: hidden; }")}
-      >
-        Hide selected with replace
-      </button>
-      <button type="button" onClick={() => getAdoptedSheet().replace("")}>
-        Show selected with replace
-      </button>
-      <button type="button">Rule after</button>
     </section>
   );
 }

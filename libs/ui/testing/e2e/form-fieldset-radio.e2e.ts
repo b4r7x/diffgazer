@@ -94,7 +94,22 @@ test("initially CSS-hidden selection leaves forward and reverse Tab entry on a v
   await expect(blue).toBeFocused();
 });
 
-test("external ancestor and stylesheet changes retarget radio Tab entry", async ({ page }) => {
+/**
+ * The two ways a stylesheet can take the selected radio out of the Tab order are
+ * covered by this file: hidden by a rule already in the cascade (the test above,
+ * read through getComputedStyle at mount) and hidden by a DOM change the group
+ * observes (below — the ancestor class flip, seen by the MutationObserver in
+ * selectable-collection-observer.ts).
+ *
+ * A rule mutated at runtime through the CSSOM alone — insertRule/deleteRule on a
+ * live sheet, replace/replaceSync on an adopted one — changes no DOM node, so
+ * nothing here notices it. The observer used to patch CSSStyleSheet.prototype to
+ * catch that case; 867f352e removed the patching deliberately and left these
+ * assertions behind, where they had been failing ever since. They are gone rather
+ * than reinstated: monkey-patching a platform prototype for it is not a trade the
+ * library takes, and both reachable paths above stay guarded.
+ */
+test("external ancestor changes retarget radio Tab entry", async ({ page }) => {
   const dynamicRed = page.locator('[role="radio"][data-value="dynamic-red"]');
   const dynamicBlue = page.getByRole("radio", { name: "Dynamic blue" });
   await expect(dynamicRed).toHaveAttribute("tabindex", "0");
@@ -112,39 +127,6 @@ test("external ancestor and stylesheet changes retarget radio Tab entry", async 
   await expect(page.getByRole("button", { name: "Toggle selected ancestor" })).toBeFocused();
   await page.keyboard.press("Shift+Tab");
   await expect(dynamicBlue).toBeFocused();
-
-  const ruleRed = page.locator('[role="radio"][data-value="rule-red"]');
-  const ruleBlue = page.getByRole("radio", { name: "Rule blue" });
-  await expect(ruleRed).toHaveAttribute("tabindex", "0");
-  const insertRule = page.getByRole("button", { name: "Hide selected with insertRule" });
-  await insertRule.click();
-  await expect(ruleRed).toHaveAttribute("tabindex", "-1");
-  await expect(ruleBlue).toHaveAttribute("tabindex", "0");
-
-  await page.getByRole("button", { name: "Rule before" }).focus();
-  await page.keyboard.press("Tab");
-  await expect(ruleBlue).toBeFocused();
-  await insertRule.focus();
-  await page.keyboard.press("Shift+Tab");
-  await expect(ruleBlue).toBeFocused();
-
-  await page.getByRole("button", { name: "Show selected with deleteRule" }).click();
-  await expect(ruleRed).toHaveAttribute("tabindex", "0");
-  await expect(ruleBlue).toHaveAttribute("tabindex", "-1");
-
-  await page.getByRole("button", { name: "Hide selected with replaceSync" }).click();
-  await expect(ruleRed).toHaveAttribute("tabindex", "-1");
-  await expect(ruleBlue).toHaveAttribute("tabindex", "0");
-  await page.getByRole("button", { name: "Show selected with replaceSync" }).click();
-  await expect(ruleRed).toHaveAttribute("tabindex", "0");
-  await expect(ruleBlue).toHaveAttribute("tabindex", "-1");
-
-  await page.getByRole("button", { name: "Hide selected with replace", exact: true }).click();
-  await expect(ruleRed).toHaveAttribute("tabindex", "-1");
-  await expect(ruleBlue).toHaveAttribute("tabindex", "0");
-  await page.getByRole("button", { name: "Show selected with replace", exact: true }).click();
-  await expect(ruleRed).toHaveAttribute("tabindex", "0");
-  await expect(ruleBlue).toHaveAttribute("tabindex", "-1");
 });
 
 test("default-selected and first-enabled group items are the Chromium Tab stops", async ({

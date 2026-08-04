@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentType, LazyExoticComponent } from "react";
 import { lazy } from "react";
@@ -84,12 +84,30 @@ describe("DemoPreview inset/fill frames", () => {
 
 describe("DemoPreview stage overflow", () => {
   const WorkingDemo = lazy(async () => ({ default: () => <p>Working preview</p> }));
+  const RealResizeObserver = globalThis.ResizeObserver;
+
+  afterEach(() => {
+    globalThis.ResizeObserver = RealResizeObserver;
+    vi.restoreAllMocks();
+  });
+
+  // Tab trigger → tab panel → the stop after it. The stage is that stop while it
+  // is in the tab order; otherwise tabbing walks straight past it.
+  async function tabPastTheTabPanel(user: ReturnType<typeof userEvent.setup>) {
+    screen.getByRole("tab", { name: "Preview" }).focus();
+    await user.tab();
+    await user.tab();
+  }
+
+  function overflowEveryElement() {
+    vi.spyOn(Element.prototype, "scrollWidth", "get").mockReturnValue(720);
+  }
 
   it.each<PreviewFrame>([
     "default",
     "compact",
     "fill",
-  ])("keeps the %s stage a keyboard-reachable scroll region so wide demos never pan the page", async (frame) => {
+  ])("keeps the %s stage out of the tab order while the example fits", async (frame) => {
     const user = userEvent.setup();
     renderPreview({ frame, demo: WorkingDemo });
     expect(await screen.findByText("Working preview")).toBeInTheDocument();
@@ -97,11 +115,52 @@ describe("DemoPreview stage overflow", () => {
     const stage = screen.getByRole("region", { name: "Example preview" });
     expect(within(stage).getByText("Working preview")).toBeInTheDocument();
 
-    // Tab trigger → tab panel → stage: the stage is the next stop after the
-    // panel that holds it, so a keyboard user reaches the scroller by tabbing.
-    screen.getByRole("tab", { name: "Preview" }).focus();
-    await user.tab();
-    await user.tab();
+    await tabPastTheTabPanel(user);
+    expect(stage).not.toHaveFocus();
+  });
+
+  it.each<PreviewFrame>([
+    "default",
+    "compact",
+    "fill",
+  ])("makes the %s stage a keyboard-reachable scroll region once the example overflows", async (frame) => {
+    overflowEveryElement();
+    const user = userEvent.setup();
+    renderPreview({ frame, demo: WorkingDemo });
+    expect(await screen.findByText("Working preview")).toBeInTheDocument();
+
+    const stages = screen.getAllByRole("region", { name: "Example preview" });
+    expect(stages).toHaveLength(1);
+
+    await tabPastTheTabPanel(user);
+    expect(stages[0]).toHaveFocus();
+  });
+
+  it("hands the stage its tab stop when a resize turns it into a scroller", async () => {
+    const resizeCallbacks: Array<() => void> = [];
+    globalThis.ResizeObserver = class {
+      constructor(callback: () => void) {
+        resizeCallbacks.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+
+    const user = userEvent.setup();
+    renderPreview({ demo: WorkingDemo });
+    expect(await screen.findByText("Working preview")).toBeInTheDocument();
+
+    const stage = screen.getByRole("region", { name: "Example preview" });
+    await tabPastTheTabPanel(user);
+    expect(stage).not.toHaveFocus();
+
+    overflowEveryElement();
+    act(() => {
+      for (const notifyResize of resizeCallbacks) notifyResize();
+    });
+
+    await tabPastTheTabPanel(user);
     expect(stage).toHaveFocus();
   });
 });
@@ -156,13 +215,15 @@ describe("DemoPreview import failures", () => {
 });
 
 describe("DemoPreview frame", () => {
-  // User veto on vf-07: default previews keep the permanent viewfinder frame.
-  it("keeps the permanent viewfinder frame on the default preview", () => {
+  // A rendered example shows only its own chrome: the stage frames it with a
+  // plain hairline, so a bracketed demo never sits inside a second bracket set.
+  it("frames the default preview stage without corner brackets", () => {
     renderPreview();
 
     const panel = document.querySelector('[data-slot="panel"]');
     expect(panel).not.toBeNull();
-    expect(panel).toHaveAttribute("data-frame", "viewfinder");
+    expect(panel).toHaveAttribute("data-frame", "hairline");
+    expect(document.querySelector('[data-slot="panel-corners"]')).toBeNull();
   });
 });
 
@@ -242,7 +303,7 @@ describe("DemoPreview page mode", () => {
 
     const secondCode = screen.getAllByRole("tab", { name: "Code" })[1];
     if (!secondCode) throw new Error("code trigger missing");
-    const secondRoot = secondCode.closest("div.mb-6");
+    const secondRoot = secondCode.closest('[data-slot="demo-preview"]');
     if (!(secondRoot instanceof HTMLElement)) throw new Error("example root missing");
 
     const tops = [300, 120];

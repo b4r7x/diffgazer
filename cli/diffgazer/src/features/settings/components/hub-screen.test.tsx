@@ -1,10 +1,16 @@
+import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
+import { SETTINGS_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
+import { makeAllConfigurationsListResponse } from "@diffgazer/core/testing/provider-fixtures";
 import { cleanup, render } from "ink-testing-library";
+import type { ReactElement } from "react";
 import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { Footer } from "../../../components/layout/footer";
+import { NavigationContext } from "../../../hooks/use-navigation";
+import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
-import { makeConfigurationListResponse } from "../../providers/testing/fixtures";
 
 const apiMocks = vi.hoisted(() => ({
   useInit: vi.fn(),
@@ -19,18 +25,6 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
     useSettings: apiMocks.useSettings,
   };
 });
-
-vi.mock("@diffgazer/core/footer", () => ({
-  usePageFooter: vi.fn(),
-}));
-
-vi.mock("../../../hooks/use-back-handler", () => ({
-  useBackHandler: vi.fn(),
-}));
-
-vi.mock("../../../hooks/use-navigation", () => ({
-  useNavigation: () => ({ navigate: vi.fn() }),
-}));
 
 const terminalDimensions = vi.hoisted(() => ({ current: { columns: 80, rows: 24 } }));
 
@@ -49,7 +43,11 @@ const SETTINGS: SettingsConfig = {
   agentExecution: "parallel",
 };
 
-const shellList = makeConfigurationListResponse();
+const shellList = makeAllConfigurationsListResponse();
+
+const DOWN = "\u001B[B";
+const ENTER = "\r";
+const ESCAPE = "\u001B";
 
 function makeInitResponse() {
   return {
@@ -78,6 +76,41 @@ function makeInitResponse() {
       missing: [],
     },
   };
+}
+
+const navigate = vi.fn();
+const goBack = vi.fn();
+
+/** Mirrors `ConnectedFooter` in the global layout: the footer the hub publishes to. */
+function ConnectedFooter(): ReactElement {
+  const { shortcuts, rightShortcuts } = useFooterData();
+  return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
+}
+
+function renderHub() {
+  apiMocks.useInit.mockReturnValue({
+    data: makeInitResponse(),
+    isLoading: false,
+    error: null,
+  });
+  apiMocks.useSettings.mockReturnValue({
+    data: SETTINGS,
+    isLoading: false,
+    error: null,
+  });
+
+  return render(
+    <CliThemeProvider initialTheme="dark">
+      <NavigationContext
+        value={{ route: { screen: "settings" }, navigate, goBack, canGoBack: true }}
+      >
+        <FooterProvider>
+          <SettingsHubScreen />
+          <ConnectedFooter />
+        </FooterProvider>
+      </NavigationContext>
+    </CliThemeProvider>,
+  );
 }
 
 afterEach(() => {
@@ -125,22 +158,7 @@ function readHubRows(frame: string): HubRow[] {
 
 describe("SettingsHubScreen", () => {
   test("shows not trusted when repository access belongs to the previous root", () => {
-    apiMocks.useInit.mockReturnValue({
-      data: makeInitResponse(),
-      isLoading: false,
-      error: null,
-    });
-    apiMocks.useSettings.mockReturnValue({
-      data: SETTINGS,
-      isLoading: false,
-      error: null,
-    });
-
-    const view = render(
-      <CliThemeProvider initialTheme="dark">
-        <SettingsHubScreen />
-      </CliThemeProvider>,
-    );
+    const view = renderHub();
 
     expect(view.lastFrame()).toContain("NOT TRUSTED");
     expect(view.lastFrame()).toContain("project path:");
@@ -149,22 +167,8 @@ describe("SettingsHubScreen", () => {
 
   test("aligns every hub value to one trailing column without jamming the longest label", () => {
     terminalDimensions.current = { columns: 120, rows: 40 };
-    apiMocks.useInit.mockReturnValue({
-      data: makeInitResponse(),
-      isLoading: false,
-      error: null,
-    });
-    apiMocks.useSettings.mockReturnValue({
-      data: SETTINGS,
-      isLoading: false,
-      error: null,
-    });
 
-    const view = render(
-      <CliThemeProvider initialTheme="dark">
-        <SettingsHubScreen />
-      </CliThemeProvider>,
-    );
+    const view = renderHub();
 
     const rows = readHubRows(view.lastFrame() ?? "");
     expect(rows).toHaveLength(HUB_LABELS.length);
@@ -172,5 +176,36 @@ describe("SettingsHubScreen", () => {
     for (const row of rows) {
       expect(row.gapBeforeValue).toBeGreaterThanOrEqual(2);
     }
+  });
+
+  test("publishes its shortcuts to the shared footer", async () => {
+    const view = renderHub();
+    await flush();
+
+    const frame = stripAnsi(view.lastFrame() ?? "");
+    for (const { key, label } of SETTINGS_SHORTCUTS) {
+      expect(frame).toContain(`[${key}] ${label}`);
+    }
+    // The provider's default legend, proving the screen published its own.
+    expect(frame).not.toContain("[?] Help");
+  });
+
+  test("handles every key the footer advertises", async () => {
+    const view = renderHub();
+    await flush();
+
+    // [↑/↓] Navigate, then [Enter] Edit: the second row opens the theme screen.
+    view.stdin.write(DOWN);
+    await flush();
+    view.stdin.write(ENTER);
+    await flush();
+
+    expect(navigate).toHaveBeenCalledExactlyOnceWith({ screen: "settings/theme" });
+
+    // [Esc] Back. Ink holds a bare Escape for 20ms to tell it apart from the
+    // start of a control sequence, so this one waits on a timer, not a frame.
+    view.stdin.write(ESCAPE);
+
+    await vi.waitFor(() => expect(goBack).toHaveBeenCalledTimes(1));
   });
 });

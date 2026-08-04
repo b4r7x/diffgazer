@@ -8,7 +8,7 @@ import type {
   ManifestOwnedFile,
 } from "../../context.js";
 import { ctx, getRegistry, VERSION } from "../../context.js";
-import { resolveProjectPath, toPosixPath } from "../../utils/paths.js";
+import { resolveProjectPath, toRelativePosixSegments } from "../../utils/paths.js";
 import { isOwnedFileOp } from "./file-ops.js";
 import type { ResolvedIntegrationSelection } from "./integration.js";
 
@@ -58,7 +58,7 @@ function isManifestTrusted(
 }
 
 function toManifestPath(op: FileOp): string {
-  return toPosixPath(`${op.installDir}/${op.relativePath}`);
+  return toRelativePosixSegments(`${op.installDir}/${op.relativePath}`);
 }
 
 function getSourceNames(op: FileOp): string[] {

@@ -7,7 +7,7 @@ import {
   resolveKeysCopyHookFiles,
   resolveKeysHooksFromRegistry,
 } from "../../utils/keys-copy-bundle.js";
-import { resolveProjectPath, toPosixPath } from "../../utils/paths.js";
+import { resolveProjectPath, toRelativePosixSegments } from "../../utils/paths.js";
 import type { ResolvedIntegrationSelection } from "./integration.js";
 
 type IntegrationMode = ResolvedIntegrationSelection["mode"];
@@ -187,7 +187,7 @@ function collectRetainedFilePaths(
       resolveHookManifestPath(
         cwd,
         hooksPath,
-        toPosixPath(`${config.hooksFsPath}/${file.relativePath}`),
+        toRelativePosixSegments(`${config.hooksFsPath}/${file.relativePath}`),
       ),
     );
   }

@@ -1,7 +1,7 @@
 import { configQueries } from "@diffgazer/core/api/hooks";
+import { makeReadyInitResponse } from "@diffgazer/core/testing/provider-fixtures";
 import { isRedirect } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { makeReadyInitResponse } from "@/testing/configuration-fixtures";
 import { makeShellInitResponse, SHELL_TRUSTED_PROJECT } from "@/testing/shell-fixtures";
 
 const { mockLoadConfigurationInit } = vi.hoisted(() => ({

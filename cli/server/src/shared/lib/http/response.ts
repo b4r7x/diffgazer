@@ -10,11 +10,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { core } from "zod";
 import type { AIErrorCode } from "../ai/types.js";
 import type { ConfigurationActionErrorCode, SecretsStorageErrorCode } from "../config/types.js";
-import type {
-  ConfigServiceErrorCode,
-  ProviderModelsErrorCode,
-  StoreErrorCode,
-} from "./error-codes.js";
+import type { ConfigServiceErrorCode, StoreErrorCode } from "./error-codes.js";
 
 /**
  * Every error code that may appear in an `{ error: { code } }` wire envelope.
@@ -30,32 +26,21 @@ export type WireErrorCode =
   | SecretsStorageErrorCode
   | ConfigurationActionErrorCode
   | StoreErrorCode
-  | ConfigServiceErrorCode
-  | ProviderModelsErrorCode;
+  | ConfigServiceErrorCode;
 
-const VALID_ERROR_STATUSES = {
-  400: 400,
-  401: 401,
-  403: 403,
-  404: 404,
-  409: 409,
-  413: 413,
-  415: 415,
-  422: 422,
-  429: 429,
-  500: 500,
-  502: 502,
-  503: 503,
-} satisfies Record<number, ContentfulStatusCode>;
-
-export type ErrorStatus = keyof typeof VALID_ERROR_STATUSES;
+/**
+ * Every status an `{ error: { code } }` envelope may carry. Narrower than
+ * `ContentfulStatusCode` on purpose: the emission site cannot invent a status
+ * outside the documented error vocabulary.
+ */
+export type ErrorStatus = 400 | 401 | 403 | 404 | 409 | 413 | 415 | 422 | 429 | 500 | 502 | 503;
 
 export const errorResponse = (
   ctx: Context,
   message: string,
   code: WireErrorCode,
   status: ErrorStatus,
-): Response => ctx.json({ error: { message, code } }, VALID_ERROR_STATUSES[status]);
+): Response => ctx.json({ error: { message, code } }, status);
 
 const httpExceptionCode = (status: ContentfulStatusCode): WireErrorCode | undefined => {
   switch (status) {

@@ -11,12 +11,15 @@ export type RadioGroupBoundaryDirection = "previous" | "next";
 /** Direction emitted by radiogroup navigation callbacks. */
 export type RadioGroupNavigationDirection = "previous" | "next" | "first" | "last";
 
-const RADIO_PREVIOUS_KEYS = ["ArrowUp", "ArrowLeft"] as const;
-const RADIO_NEXT_KEYS = ["ArrowDown", "ArrowRight"] as const;
+// k/j mirror ArrowUp/ArrowDown in every list composite -- the vim contract the
+// Help screen promises for lists. Radios carry no typeahead, and useNavigation
+// ignores editable targets, so the aliases stay safe next to nested inputs.
+const RADIO_PREVIOUS_KEYS = ["ArrowUp", "ArrowLeft", "k"] as const;
+const RADIO_NEXT_KEYS = ["ArrowDown", "ArrowRight", "j"] as const;
 
 function getRadioNavigationDirection(key: string): RadioGroupNavigationDirection | null {
-  if (key === "ArrowUp" || key === "ArrowLeft") return "previous";
-  if (key === "ArrowDown" || key === "ArrowRight") return "next";
+  if (key === "ArrowUp" || key === "ArrowLeft" || key === "k") return "previous";
+  if (key === "ArrowDown" || key === "ArrowRight" || key === "j") return "next";
   if (key === "Home") return "first";
   if (key === "End") return "last";
   return null;

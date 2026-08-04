@@ -23,7 +23,7 @@ export const calloutDoc: ComponentDoc = {
     {
       title: "Frame variants",
       content:
-        'frame="inline" (default): hairline border at tone color + subtle tone bg. frame="rail": no border, 2px inline-start rail at tone color. frame="bar": neutral border + 4px tone marker bar, matching Dialog.Header marker="bar".',
+        'frame="inline" (default): hairline border at tone color + subtle tone bg. frame="rail": no border, 2px inline-start rail at tone color. frame="bar": neutral border + 4px tone marker bar.',
     },
     {
       title: "Default icons",

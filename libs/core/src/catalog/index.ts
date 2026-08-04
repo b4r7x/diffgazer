@@ -33,7 +33,7 @@ export {
 } from "./schema.js";
 export {
   type CatalogModelObservation,
+  type CatalogObservationInput,
   type ProductCatalogObservation,
-  type RawCatalogObservation,
   transformCatalogObservation,
 } from "./transform.js";

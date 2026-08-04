@@ -3,19 +3,22 @@ import type { RunnableProductId, TransportFamily } from "../schemas/config/trans
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";
 import {
   CatalogModelNameSchema,
-  CatalogObservationSchema,
   type CatalogObservationSource,
   type CatalogSelectableModelId,
   CatalogSelectableModelIdSchema,
   type ModelsDevCatalog,
   type ModelsDevModel,
-  parseModelsDevCatalog,
 } from "./schema.js";
 
-export interface RawCatalogObservation {
+/**
+ * The catalog is already validated at its ingestion boundary — the live fetch
+ * and the snapshot generator both parse before anything reaches here. This
+ * module joins observations to products; it does not re-validate them.
+ */
+export interface CatalogObservationInput {
   readonly source: CatalogObservationSource;
   readonly checkedAt: string;
-  readonly catalog: unknown;
+  readonly catalog: ModelsDevCatalog;
 }
 
 export interface CatalogModelObservation {
@@ -34,6 +37,12 @@ export interface ProductCatalogObservation {
   readonly models: readonly CatalogModelObservation[];
 }
 
+// models.dev publishes 0 for limits it cannot state (e.g. groq whisper audio
+// models); only a positive integer is a usable token count downstream.
+function usableTokenLimit(value: number | undefined): number | undefined {
+  return value !== undefined && Number.isInteger(value) && value > 0 ? value : undefined;
+}
+
 function toModelObservation(
   sourceProviderId: string,
   modelId: CatalogSelectableModelId,
@@ -42,12 +51,14 @@ function toModelObservation(
   const modelName = CatalogModelNameSchema.safeParse(model.name ?? model.id);
   if (!modelName.success) return null;
 
+  const contextTokens = usableTokenLimit(model.limit?.context);
+  const outputTokens = usableTokenLimit(model.limit?.output);
   return {
     modelId,
     modelName: modelName.data,
     sourceProviderId,
-    ...(model.limit?.context === undefined ? {} : { contextTokens: model.limit.context }),
-    ...(model.limit?.output === undefined ? {} : { outputTokens: model.limit.output }),
+    ...(contextTokens === undefined ? {} : { contextTokens }),
+    ...(outputTokens === undefined ? {} : { outputTokens }),
   };
 }
 
@@ -78,14 +89,8 @@ function collectModelObservations(
 }
 
 export function transformCatalogObservation(
-  rawObservation: RawCatalogObservation,
+  observation: CatalogObservationInput,
 ): ProductCatalogObservation[] {
-  const observation = CatalogObservationSchema.parse({
-    source: rawObservation.source,
-    checkedAt: rawObservation.checkedAt,
-    catalog: parseModelsDevCatalog(rawObservation.catalog),
-  });
-
   return SELECTABLE_PRODUCT_IDS.flatMap((productId) => {
     const overlay = PROVIDER_OVERLAY[productId];
     if (!overlay) return [];

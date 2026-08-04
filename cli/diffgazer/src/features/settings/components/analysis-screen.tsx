@@ -8,7 +8,7 @@ import { useState } from "react";
 import { AnalysisSelector } from "../../../components/shared/analysis-selector";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useTheme } from "../../../theme/provider";
-import { SettingsFormScreen } from "./settings-form-screen";
+import { SettingsFormScreen } from "./form-screen";
 
 const LIST_SHORTCUTS: Shortcut[] = [NAVIGATE_SHORTCUT, { key: "Space", label: "Toggle Lens" }];
 

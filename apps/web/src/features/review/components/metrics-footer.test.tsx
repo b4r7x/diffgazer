@@ -2,7 +2,7 @@ import type { ReviewProgressMetrics } from "@diffgazer/core/schemas/presentation
 import { render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it } from "vitest";
-import { ReviewClockProvider } from "../hooks/use-review-clock";
+import { ReviewClockProvider } from "../hooks/use-clock";
 import { ReviewMetricsFooter } from "./metrics-footer";
 
 function makeMetrics(overrides: Partial<ReviewProgressMetrics> = {}): ReviewProgressMetrics {

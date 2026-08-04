@@ -1,7 +1,23 @@
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { IssueDetailsPane } from "./issue-details-pane/pane";
 import { IssueListPane } from "./issue-list-pane";
+
+/**
+ * Matches the row's location line by the text it shows. PathValue splits the
+ * path across a truncating head span and a tail span, so the line is the
+ * innermost element carrying the whole location — its ancestors repeat that
+ * text and are dropped here.
+ */
+function locationLine(issue: ReviewIssue) {
+  const location = `${issue.file}:${issue.line_start}`;
+  return (_content: string, element: Element | null) =>
+    element?.textContent === location &&
+    Array.from(element.children).every((child) => child.textContent !== location);
+}
 
 const issues = [
   makeIssue({
@@ -29,8 +45,7 @@ describe("IssueListPane row highlight inversion", () => {
         selectedIssueId="issue-1"
         highlightedIssueId="issue-1"
         onSelectIssue={vi.fn()}
-        severityFilter={new Set()}
-        onSeverityFilterChange={vi.fn()}
+        filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
         isFocused
       />,
     );
@@ -50,8 +65,7 @@ describe("IssueListPane row highlight inversion", () => {
         selectedIssueId="issue-1"
         highlightedIssueId="issue-1"
         onSelectIssue={vi.fn()}
-        severityFilter={new Set()}
-        onSeverityFilterChange={vi.fn()}
+        filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
         isFocused={false}
       />,
     );
@@ -71,8 +85,7 @@ describe("IssueListPane severity accessibility", () => {
         allIssues={issues}
         selectedIssueId="issue-1"
         onSelectIssue={vi.fn()}
-        severityFilter={new Set()}
-        onSeverityFilterChange={vi.fn()}
+        filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
         isFocused
       />,
     );
@@ -97,8 +110,7 @@ describe("IssueListPane severity accessibility", () => {
         allIssues={[issueWithoutLine]}
         selectedIssueId={issueWithoutLine.id}
         onSelectIssue={vi.fn()}
-        severityFilter={new Set()}
-        onSeverityFilterChange={vi.fn()}
+        filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
         isFocused
       />,
     );
@@ -116,8 +128,7 @@ describe("IssueListPane severity accessibility", () => {
         allIssues={issues}
         selectedIssueId={null}
         onSelectIssue={vi.fn()}
-        severityFilter={new Set()}
-        onSeverityFilterChange={vi.fn()}
+        filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
         isFocused
       />,
     );
@@ -132,8 +143,7 @@ describe("IssueListPane severity accessibility", () => {
         allIssues={[]}
         selectedIssueId={null}
         onSelectIssue={vi.fn()}
-        severityFilter={new Set()}
-        onSeverityFilterChange={vi.fn()}
+        filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
         isFocused
       />,
     );
@@ -143,15 +153,14 @@ describe("IssueListPane severity accessibility", () => {
 
   it("announces the filter-to-empty state as a live status region", () => {
     const onSelectIssue = vi.fn();
-    const onSeverityFilterChange = vi.fn();
+    const onFilterChange = vi.fn();
     const { rerender } = render(
       <IssueListPane
         issues={issues}
         allIssues={issues}
         selectedIssueId={null}
         onSelectIssue={onSelectIssue}
-        severityFilter={new Set()}
-        onSeverityFilterChange={onSeverityFilterChange}
+        filter={{ activeFilter: new Set(), onFilterChange }}
         isFocused
       />,
     );
@@ -165,8 +174,7 @@ describe("IssueListPane severity accessibility", () => {
         allIssues={issues}
         selectedIssueId={null}
         onSelectIssue={onSelectIssue}
-        severityFilter={new Set(["nit"])}
-        onSeverityFilterChange={onSeverityFilterChange}
+        filter={{ activeFilter: new Set(["nit"]), onFilterChange }}
         isFocused
       />,
     );
@@ -184,8 +192,7 @@ describe("IssueListPane severity", () => {
         allIssues={issues}
         selectedIssueId="issue-1"
         onSelectIssue={vi.fn()}
-        severityFilter={new Set()}
-        onSeverityFilterChange={vi.fn()}
+        filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
         isFocused
       />,
     );
@@ -210,16 +217,74 @@ describe("IssueListPane severity", () => {
     expect(screen.getByRole("option", { name: /^low severity:\s*Tighten type$/ })).toBeVisible();
   });
 
-  it("keeps a gutter between a full-width title and the severity tag", () => {
-    // Public styling contract exception: the row grid has no column gap and
-    // jsdom computes no layout, so the padding class is the only observable
-    // form of "these two cells never touch".
-    renderPane();
+  it("draws a severity glyph beside the title without dropping the severity word", () => {
+    const graded = [
+      { severity: "blocker", glyph: "✱", label: "BLOCKER" },
+      { severity: "high", glyph: "▲", label: "HIGH" },
+      { severity: "medium", glyph: "●", label: "MED" },
+      { severity: "low", glyph: "○", label: "LOW" },
+      { severity: "nit", glyph: "○", label: "NIT" },
+    ] as const;
+    const gradedIssues = graded.map(({ severity }, index) =>
+      makeIssue({
+        id: `issue-${severity}`,
+        severity,
+        title: `${severity} finding`,
+        file: "src/a.ts",
+        line_start: index + 1,
+      }),
+    );
 
-    const row = screen.getByRole("option", { name: /avoid unsafe cast/i });
-    const title = within(row).getByText("Avoid unsafe cast").parentElement;
+    render(
+      <IssueListPane
+        issues={gradedIssues}
+        allIssues={gradedIssues}
+        selectedIssueId={null}
+        onSelectIssue={vi.fn()}
+        filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
+        isFocused
+      />,
+    );
 
-    expect(title?.className).toContain("pe-3");
+    for (const { severity, glyph, label } of graded) {
+      const row = screen.getByRole("option", { name: new RegExp(`${severity} finding$`) });
+      expect(within(row).getByText(glyph)).toBeVisible();
+      expect(within(row).getByText(label)).toBeVisible();
+    }
+  });
+
+  it("keeps every row on the same line inventory so the desktop pitch is uniform", () => {
+    // jsdom computes no layout, so uniform row height is asserted as uniform
+    // structure: one title line plus one location line per row, whatever the
+    // title length. The clamp holding the title to that single line at >=768px
+    // is a rendered-layout fact and belongs to the desktop e2e contract.
+    const uneven = [
+      makeIssue({
+        id: "issue-long",
+        severity: "medium",
+        title: "A finding whose title is long enough to wrap onto a second line in a narrow pane",
+        file: "src/very/deep/nested/module.ts",
+        line_start: 120,
+      }),
+      makeIssue({ id: "issue-short", severity: "nit", title: "Short", file: "src/a.ts" }),
+    ];
+
+    render(
+      <IssueListPane
+        issues={uneven}
+        allIssues={uneven}
+        selectedIssueId={null}
+        onSelectIssue={vi.fn()}
+        filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
+        isFocused
+      />,
+    );
+
+    for (const issue of uneven) {
+      const row = screen.getByRole("option", { name: new RegExp(`${issue.title}$`) });
+      expect(within(row).getByText(issue.title)).toBeVisible();
+      expect(within(row).getAllByText(locationLine(issue))).toHaveLength(1);
+    }
   });
 
   it("keeps a zero-count filter chip labelled and operable", () => {
@@ -228,5 +293,57 @@ describe("IssueListPane severity", () => {
     const blocker = screen.getByRole("button", { name: "BLOCKER severity, 0 issues" });
     expect(blocker).toBeEnabled();
     expect(blocker).toHaveAttribute("aria-pressed", "false");
+  });
+});
+
+describe("Review pane chrome", () => {
+  function renderPanes() {
+    render(
+      <>
+        <IssueListPane
+          issues={issues}
+          allIssues={issues}
+          selectedIssueId="issue-1"
+          onSelectIssue={vi.fn()}
+          filter={{ activeFilter: new Set(), onFilterChange: vi.fn() }}
+          isFocused={false}
+        />
+        <IssueDetailsPane
+          issue={issues[0] ?? null}
+          activeTab="details"
+          onTabChange={vi.fn()}
+          completedSteps={new Set<number>()}
+          onToggleStep={vi.fn()}
+        />
+      </>,
+    );
+
+    return {
+      listPane: screen.getByRole("complementary", { name: "Issue list" }),
+      detailsPane: screen.getByRole("complementary", { name: "Issue details" }),
+    };
+  }
+
+  it("rests both panes in the same chrome until focus enters one of them", () => {
+    const { listPane, detailsPane } = renderPanes();
+
+    expect(listPane).not.toHaveAttribute("data-state", "focused");
+    expect(detailsPane).not.toHaveAttribute("data-state", "focused");
+    expect(listPane.getAttribute("data-frame")).toBe(detailsPane.getAttribute("data-frame"));
+  });
+
+  it("moves the focused chrome between the panes as focus moves", async () => {
+    const user = userEvent.setup();
+    const { listPane, detailsPane } = renderPanes();
+
+    await user.click(screen.getByRole("button", { name: "BLOCKER severity, 0 issues" }));
+
+    expect(listPane).toHaveAttribute("data-state", "focused");
+    expect(detailsPane).not.toHaveAttribute("data-state", "focused");
+
+    await user.click(screen.getByRole("tab", { name: "Details" }));
+
+    expect(detailsPane).toHaveAttribute("data-state", "focused");
+    expect(listPane).not.toHaveAttribute("data-state", "focused");
   });
 });

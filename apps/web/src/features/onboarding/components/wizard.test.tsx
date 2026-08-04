@@ -1,9 +1,11 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { getInitialWizardData, type OnboardingDraft } from "@diffgazer/core/onboarding";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { escapeRegExp } from "@diffgazer/core/redaction";
 import type {
   ClientConfigurationAction,
   ConfigurationInitResponse,
+  ConfigurationModelsResponse,
 } from "@diffgazer/core/schemas/config";
 import {
   ClientConfigurationActionResponseSchema,
@@ -16,7 +18,6 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-import { escapeRegExp } from "@/testing/escape-regexp";
 
 const mockNavigate = vi.fn();
 
@@ -42,7 +43,7 @@ function geminiWalkthroughDraft(): OnboardingDraft {
       ...draft.configurationInput,
       credential: { kind: "environment" },
     },
-    selectedModelId: "gemini-2.5-flash",
+    selectedModelId: "gemini-2.5-pro",
     conformanceStatus: "passed",
     acknowledgement: {
       status: "accepted",
@@ -171,6 +172,19 @@ function makeWizardActionHandler(data: OnboardingDraft) {
   };
 }
 
+function makeModelsResponse(modelIds: string[]): ConfigurationModelsResponse {
+  return {
+    status: "passed",
+    configurationId: "created-configuration",
+    productId: "gemini",
+    transportFamily: "hosted-api",
+    models: modelIds.map((id) => ({ id, name: id, description: "", tier: "paid" as const })),
+    checkedAt: "2026-07-31T12:02:00.000Z",
+    source: "snapshot",
+    cached: false,
+  };
+}
+
 function makeInitResponse(
   overrides: Partial<ConfigurationInitResponse> = {},
 ): ConfigurationInitResponse {
@@ -215,6 +229,7 @@ function makeInitResponse(
 let mockLoadConfigurationInit: Mock<BoundApi["loadConfigurationInit"]>;
 let mockSaveSettings: Mock<BoundApi["saveSettings"]>;
 let mockExecuteConfigurationAction: Mock<BoundApi["executeConfigurationAction"]>;
+let mockGetConfigurationModels: Mock<BoundApi["getConfigurationModels"]>;
 
 function createTestApi(): BoundApi {
   return {
@@ -222,6 +237,7 @@ function createTestApi(): BoundApi {
     loadConfigurationInit: mockLoadConfigurationInit,
     saveSettings: mockSaveSettings,
     executeConfigurationAction: mockExecuteConfigurationAction,
+    getConfigurationModels: mockGetConfigurationModels,
   } satisfies BoundApi;
 }
 
@@ -278,6 +294,9 @@ describe("OnboardingWizard", () => {
     mockExecuteConfigurationAction = vi
       .fn<BoundApi["executeConfigurationAction"]>()
       .mockImplementation(makeWizardActionHandler(geminiWalkthroughDraft()));
+    mockGetConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(makeModelsResponse(["gemini-2.5-pro"]));
   });
 
   it("marks progress from the dynamic setup plan length", async () => {
@@ -308,7 +327,7 @@ describe("OnboardingWizard", () => {
     );
   });
 
-  it("walks a hosted plan through explicit acknowledgement without early credential saves", async () => {
+  it("walks a hosted plan through discovered models and explicit acknowledgement without early credential saves", async () => {
     const user = userEvent.setup();
     renderWizard();
 
@@ -320,7 +339,11 @@ describe("OnboardingWizard", () => {
     await user.click(screen.getByRole("radio", { name: /environment reference/i }));
     await clickNext(user);
     await expectStep(/select model/i);
-    await user.click(getRadio(/gemini-2\.5-flash/i));
+    // The model step lists exactly what discovery returned for the draft
+    // record, never a client-side guess derived from the product policy.
+    await user.click(await screen.findByRole("radio", { name: /gemini-2\.5-pro/i }));
+    expect(screen.queryByRole("radio", { name: /gemini-2\.5-flash/i })).not.toBeInTheDocument();
+    expect(mockGetConfigurationModels).toHaveBeenCalledWith("created-configuration");
     await clickNext(user);
     await expectStep(/verify conformance/i);
     await user.click(screen.getByRole("checkbox"));
@@ -337,9 +360,11 @@ describe("OnboardingWizard", () => {
       ).toBe(true);
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
     });
+    // Model discovery persists a draft record. Completing setup revokes exactly
+    // that record before saving the final tuple, so no orphan is left behind.
     expect(
       mockExecuteConfigurationAction.mock.calls.filter(([action]) => action.action === "delete"),
-    ).toHaveLength(0);
+    ).toHaveLength(1);
   });
 
   it("skips hosted credential prompts for local CLI plans", async () => {
@@ -356,7 +381,13 @@ describe("OnboardingWizard", () => {
 
   it("shows an inline error when completion fails and keeps the user on the wizard", async () => {
     const user = userEvent.setup();
-    mockExecuteConfigurationAction.mockRejectedValueOnce(new Error("Save failed"));
+    const handleAction = makeWizardActionHandler(geminiWalkthroughDraft());
+    // Fail the model selection: it belongs to the save flow only, so the draft
+    // configuration the model step discovers from is still created normally.
+    mockExecuteConfigurationAction.mockImplementation(async (action) => {
+      if (action.action === "select") throw new Error("Save failed");
+      return handleAction(action);
+    });
     renderWizard();
 
     await expectStep(/select product/i);
@@ -367,7 +398,7 @@ describe("OnboardingWizard", () => {
     await user.click(screen.getByRole("radio", { name: /environment reference/i }));
     await clickNext(user);
     await expectStep(/select model/i);
-    await user.click(getRadio(/gemini-2\.5-flash/i));
+    await user.click(await screen.findByRole("radio", { name: /gemini-2\.5-pro/i }));
     await clickNext(user);
     await expectStep(/verify conformance/i);
     await user.click(screen.getByRole("checkbox"));

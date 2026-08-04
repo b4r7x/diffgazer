@@ -10,6 +10,7 @@ import {
   transformCatalogObservation,
 } from "@diffgazer/core/catalog";
 import { getErrorMessage } from "@diffgazer/core/errors";
+import { CATALOG_EMPTY_MODELS_REASON, CATALOG_SKIPPED_REASON } from "@diffgazer/core/providers";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type {
   ConfigurationId,
@@ -86,12 +87,6 @@ const catalogFlights = new Map<string, CatalogFlight>();
 let parsedCacheMemo: ParsedCacheMemo | null = null;
 
 const CacheGenerationSchema = z.object({ generationId: z.uuid() });
-
-const CATALOG_SKIPPED_REASON =
-  "Catalog observations are unavailable for this configuration product.";
-
-const CATALOG_EMPTY_MODELS_REASON =
-  "No catalog models are available for this configuration product.";
 
 /** Curated free-quota coverage for overlay-populated products — not admission. */
 type CatalogFreeTierCoverage =

@@ -38,9 +38,10 @@ interface PanelOwnProps {
   /** Padding rhythm. Default = 14/20; compact = 10/14. */
   density?: PanelDensity;
   /**
-   * Marks the panel as the active pane: viewfinder corner brackets render in --ring, thicker and
-   * longer than the resting frame, on every frame. Visual affordance only - it does not move focus
-   * or change ARIA.
+   * Marks the panel as the active pane: corner brackets render in --ring on every frame, at the
+   * geometry the viewfinder frame already rests at, and a framed perimeter firms to
+   * --border-strong - only the brackets carry --ring. Visual affordance only - it does not move
+   * focus or change ARIA.
    */
   focused?: boolean;
 }
@@ -97,13 +98,12 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
 
   const resolvedFrame = frame ?? "hairline";
   const resolvedDensity = density ?? "default";
-  // The viewfinder frame owns resting corners; `focused` grows them on any frame.
+  // The viewfinder frame owns resting corners; `focused` draws the same ones on any frame.
   const hasCorners = resolvedFrame === "viewfinder" || focused === true;
   const isFocused = focused === true;
 
   const contextValue = useMemo<PanelContextValue>(
     () => ({
-      hasCorners,
       focused: isFocused,
       titleId,
       descriptionId,
@@ -112,7 +112,7 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
       registerDescription: setRegisteredDescriptionId,
       unregisterDescription,
     }),
-    [hasCorners, isFocused, titleId, descriptionId, unregisterTitle, unregisterDescription],
+    [isFocused, titleId, descriptionId, unregisterTitle, unregisterDescription],
   );
 
   const resolvedTitleId = registeredTitleId ?? findPanelChildId(children, PanelTitle, titleId);

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 
@@ -6,10 +7,12 @@ const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
+import type { ProviderModelsResponse } from "@diffgazer/core/schemas/config";
 import {
   ClientConfigurationActionResponseSchema,
   ConfigurationInitResponseSchema,
   ConfigurationListResponseSchema,
+  ConfigurationModelsResponseSchema,
 } from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { Hono } from "hono";
@@ -67,9 +70,9 @@ async function loadRouter() {
   const { configRouter } = await import("./router.js");
   // Deletion fails closed without a lease authority, so the router test installs
   // the same process-wide one the composition root installs.
-  const { setConfigurationLeaseHooks } = await import("./service.js");
+  const { registerConfigSeams } = await import("../../shared/lib/config/seams.js");
   const { createConfigurationLeaseHooks } = await import("../../shared/lib/session-registry.js");
-  setConfigurationLeaseHooks(createConfigurationLeaseHooks());
+  registerConfigSeams({ leaseHooks: createConfigurationLeaseHooks() });
   const app = new Hono();
   app.route("/config", configRouter);
   return app;
@@ -175,6 +178,187 @@ describe("GET /config/providers", () => {
     expect(body.schemaVersion).toBe(2);
     expect(body.configurations).toEqual([]);
     expect(body.selectedConfigurationId).toBeNull();
+  });
+});
+
+describe("GET /config/providers/:configurationId/models", () => {
+  const catalogResponse = (models: ProviderModelsResponse["models"]): ProviderModelsResponse => ({
+    models,
+    fetchedAt: "2026-08-02T12:00:00.000Z",
+    source: "snapshot",
+    cached: false,
+  });
+
+  const catalogModel = (id: string) => ({
+    id,
+    name: id,
+    description: "128K context",
+    tier: "paid" as const,
+  });
+
+  async function spyCatalogModels(models: ProviderModelsResponse["models"]) {
+    const catalogModule = await import("../../shared/lib/ai/models-dev-catalog.js");
+    return vi
+      .spyOn(catalogModule.catalogProviderModels, "get")
+      .mockResolvedValue(catalogResponse(models));
+  }
+
+  it("returns passed catalog models for a supported configuration", async () => {
+    const app = await loadRouter();
+    const configurationId = await seedGeminiConfiguration(app);
+    const catalogSpy = await spyCatalogModels([
+      catalogModel("gemini-2.5-flash"),
+      catalogModel("gemini-2.5-pro"),
+    ]);
+
+    const response = await app.request(`/config/providers/${configurationId}/models`);
+
+    expect(response.status).toBe(200);
+    const body = ConfigurationModelsResponseSchema.parse(await response.json());
+    expect(body).toMatchObject({
+      status: "passed",
+      configurationId,
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      source: "snapshot",
+      cached: false,
+    });
+    if (body.status !== "passed") throw new Error("expected a passed models response");
+    expect(body.models.map(({ id }) => id)).toEqual(["gemini-2.5-flash", "gemini-2.5-pro"]);
+    expect(catalogSpy).toHaveBeenCalledWith("gemini");
+  });
+
+  it("keeps the exact /providers list route working next to the models route", async () => {
+    const app = await loadRouter();
+    await spyCatalogModels([catalogModel("gemini-2.5-flash")]);
+
+    const response = await app.request("/config/providers");
+
+    expect(response.status).toBe(200);
+    const body = ConfigurationListResponseSchema.parse(await response.json());
+    expect(body.schemaVersion).toBe(2);
+  });
+
+  it("passes discovery when the cached catalog carries a zero-limit model", async () => {
+    const app = await loadRouter();
+    const configurationId = await seedGeminiConfiguration(app);
+    // Real cache tier, no catalog spy: models.dev publishes limit 0 for audio
+    // models (groq whisper), which used to fail ModelInfo parsing with a 500.
+    writeFileSync(
+      join(diffgazerHome, "models-dev.json"),
+      JSON.stringify({
+        catalog: {
+          google: {
+            id: "google",
+            models: {
+              "gemini-2.5-flash": {
+                id: "gemini-2.5-flash",
+                name: "Gemini 2.5 Flash",
+                limit: { context: 1048576, output: 65536 },
+              },
+              "whisper-large-v3": {
+                id: "whisper-large-v3",
+                name: "Whisper Large V3",
+                limit: { context: 0, output: 0 },
+              },
+            },
+          },
+        },
+        fetchedAt: new Date().toISOString(),
+        generationId: randomUUID(),
+      }),
+    );
+
+    const response = await app.request(`/config/providers/${configurationId}/models`);
+
+    expect(response.status).toBe(200);
+    const body = ConfigurationModelsResponseSchema.parse(await response.json());
+    expect(body).toMatchObject({ status: "passed", source: "cache", cached: true });
+    if (body.status !== "passed") throw new Error("expected a passed models response");
+    expect(body.models.map(({ id }) => id)).toEqual(["gemini-2.5-flash", "whisper-large-v3"]);
+    const whisper = body.models.find(({ id }) => id === "whisper-large-v3");
+    expect(whisper).not.toHaveProperty("contextLength");
+    expect(whisper).not.toHaveProperty("maxOutputTokens");
+  });
+
+  it("returns a skipped response when the catalog has no models for the product", async () => {
+    const app = await loadRouter();
+    const configurationId = await seedGeminiConfiguration(app);
+    await spyCatalogModels([]);
+
+    const response = await app.request(`/config/providers/${configurationId}/models`);
+
+    expect(response.status).toBe(200);
+    const body = ConfigurationModelsResponseSchema.parse(await response.json());
+    expect(body).toMatchObject({
+      status: "skipped",
+      configurationId,
+      models: [],
+      reason: "No catalog models are available for this configuration product.",
+    });
+  });
+
+  it("returns 404 for an unknown configuration", async () => {
+    const app = await loadRouter();
+
+    const response = await app.request("/config/providers/cfg-missing/models");
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "CONFIGURATION_NOT_FOUND" },
+    });
+  });
+
+  it("returns 400 for a removed configuration", async () => {
+    const app = await loadRouter();
+    writeFileSync(
+      join(diffgazerHome, "config.json"),
+      `${JSON.stringify({
+        schemaVersion: 2,
+        settings: {},
+        selectedConfigurationId: null,
+        configurations: [removedRecord()],
+      })}\n`,
+    );
+
+    const response = await app.request("/config/providers/cfg-removed/models");
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "CONFIGURATION_UNSUPPORTED" },
+    });
+  });
+
+  it("rejects a malformed configurationId before service delegation", async () => {
+    const app = await loadRouter();
+    const service = await import("./service.js");
+    const discoverSpy = vi.spyOn(service, "discoverConfigurationModels");
+
+    const response = await app.request("/config/providers/-invalid/models");
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "VALIDATION_ERROR" },
+    });
+    expect(discoverSpy).not.toHaveBeenCalled();
+  });
+
+  it("rate-limits catalog model fetches after 30 requests per minute", async () => {
+    const app = await loadRouter();
+    const configurationId = await seedGeminiConfiguration(app);
+    await spyCatalogModels([catalogModel("gemini-2.5-flash")]);
+
+    for (let request = 0; request < 30; request += 1) {
+      const response = await app.request(`/config/providers/${configurationId}/models`);
+      expect(response.status).toBe(200);
+    }
+    const limited = await app.request(`/config/providers/${configurationId}/models`);
+
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("Retry-After")).toBeTruthy();
+    await expect(limited.json()).resolves.toMatchObject({
+      error: { code: "RATE_LIMITED" },
+    });
   });
 });
 

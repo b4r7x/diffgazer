@@ -2,6 +2,10 @@ import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { LEGACY_V1_HAS_API_KEY_PROPERTY, REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
+import {
+  makeAllConfigurationsListResponse,
+  READY_GEMINI_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { canonicalReviewFixture } from "@diffgazer/core/testing/review-facts";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
@@ -10,15 +14,11 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { HistoryScreen } from "../features/history/components/screen";
 import { HomeScreen } from "../features/home/components/screen";
 import { ProvidersScreen } from "../features/providers/components/screen";
-import {
-  makeConfigurationListResponse,
-  READY_GEMINI_CONFIGURATION,
-} from "../features/providers/testing/fixtures";
 import { ReviewResultsView } from "../features/review/components/results-view";
 import { cleanupRootFrames, renderRootFrame } from "./render-root-frame";
 
 const f = canonicalReviewFixture;
-const shellInit = makeConfigurationListResponse();
+const shellInit = makeAllConfigurationsListResponse();
 
 vi.mock("../hooks/use-back-handler", () => ({
   useBackHandler: vi.fn(),

@@ -50,7 +50,7 @@ export const navigationListDoc: ComponentDoc = {
     {
       title: "Built-in Keyboard API",
       content:
-        "NavigationList includes arrow-key navigation and exposes highlighted, onHighlightChange, onEnter, onNavigationBoundaryReached, autoFocus, focused, and onKeyDown for controlled highlight state or extra app-level shortcuts.",
+        "NavigationList includes arrow-key navigation with the vim aliases j/k and exposes highlighted, onHighlightChange, onEnter, onNavigationBoundaryReached, autoFocus, focused, and onKeyDown for controlled highlight state or extra app-level shortcuts.",
     },
     {
       title: "Group Expand/Collapse",
@@ -70,11 +70,15 @@ export const navigationListDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "Arrow keys navigate between items with wrapping. Enter activates the highlighted item. Home and End jump to the first and last items.",
+      "Arrow keys and their vim aliases j/k navigate between items with wrapping. Enter activates the highlighted item. Home and End jump to the first and last items.",
     keys: [
       {
-        keys: "ArrowUp / ArrowDown",
-        action: "Moves highlight to the previous or next enabled item.",
+        keys: "ArrowUp / k",
+        action: "Moves highlight to the previous enabled item.",
+      },
+      {
+        keys: "ArrowDown / j",
+        action: "Moves highlight to the next enabled item.",
       },
       { keys: "Home / End", action: "Moves highlight to the first or last enabled item." },
       { keys: "Enter", action: "Activates the highlighted item via onEnter or onSelect." },
@@ -88,9 +92,9 @@ export const navigationListDoc: ComponentDoc = {
       },
       { keys: "Enter / Space", action: "Toggles the highlighted group header." },
       {
-        keys: "Boundary arrow",
+        keys: "Boundary ArrowUp / ArrowDown / k / j",
         action:
-          "Calls onNavigationBoundaryReached when wrap is false and focus attempts to leave the list.",
+          "Calls onNavigationBoundaryReached with the pressed key when wrap is false and focus attempts to leave the list.",
       },
     ],
     examples: [

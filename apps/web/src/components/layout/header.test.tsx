@@ -8,6 +8,7 @@ const readyStatus: ProviderDisplayStatus = {
   status: "ready",
   action: "inspect",
   label: "Ready",
+  shortLabel: "ready",
   variant: "success",
   explanation: "",
   remediation: "",
@@ -18,54 +19,72 @@ const idleStatus: ProviderDisplayStatus = {
   status: "unconfigured",
   action: "create",
   label: "Not configured",
+  shortLabel: "setup",
   variant: "warning",
   explanation: "",
   remediation: "",
   accessibleText: "Not configured",
 };
 
-describe("Header", () => {
-  it("renders the diffgazer wordmark with an accessible label", () => {
-    render(<Header providerName="OpenAI" providerStatus={idleStatus} />);
-    expect(screen.getByRole("img", { name: "diffgazer" })).toBeInTheDocument();
-  });
+const pendingStatus: ProviderDisplayStatus = {
+  status: "conformance-pending",
+  action: "inspect",
+  label: "Checking compatibility",
+  shortLabel: "pending",
+  variant: "info",
+  explanation: "",
+  remediation: "",
+  accessibleText: "Checking compatibility",
+};
 
-  it("renders a single ascii wordmark with no plain-text fallback", () => {
-    render(<Header providerName="OpenAI" providerStatus={idleStatus} />);
+describe("Header", () => {
+  it("renders the ascii wordmark, never a plain-text one, at both tiers", () => {
+    const { rerender } = render(
+      <Header providerName="OpenAI" providerStatus={idleStatus} wordmark="hero" />,
+    );
+
+    expect(screen.getAllByRole("img", { name: "diffgazer" })).toHaveLength(1);
+    expect(screen.queryByText("DIFFGAZER")).not.toBeInTheDocument();
+
+    rerender(<Header providerName="OpenAI" providerStatus={idleStatus} wordmark="dense" />);
 
     expect(screen.getAllByRole("img", { name: "diffgazer" })).toHaveLength(1);
     expect(screen.queryByText("DIFFGAZER")).not.toBeInTheDocument();
   });
 
-  it("swaps the figlet banner for a one-line wordmark on work screens", () => {
-    render(<Header providerName="OpenAI" providerStatus={idleStatus} wordmark="line" />);
+  it("renders the ornament outside the wordmark art", () => {
+    render(<Header providerName="OpenAI" providerStatus={idleStatus} wordmark="hero" />);
 
-    expect(screen.queryByRole("img", { name: "diffgazer" })).not.toBeInTheDocument();
-    expect(screen.getByText("DIFFGAZER")).toBeInTheDocument();
+    const wordmark = screen.getByRole("img", { name: "diffgazer" });
+    const ornament = screen.getByText("─ ✦ ─ ✧ ─");
+
+    // Where the ornament lands relative to the art is a rendered-layout fact and
+    // belongs to the desktop e2e contract; jsdom can only see that the art does
+    // not carry it.
+    expect(wordmark).not.toContainElement(ornament);
   });
 
-  it("shows provider name and status when supplied", () => {
+  it("reads provider, model and a one-word status in the corner chip", () => {
     render(
       <Header
-        providerName="OpenAI / a-provider-model-name-that-needs-to-fit"
-        providerStatus={readyStatus}
+        providerName="Google Gemini / gemini-3-flash-preview"
+        providerStatus={pendingStatus}
       />,
     );
-    // The aria-label replaces the row's children for assistive tech, so it has
-    // to carry the status word the sighted user reads beside the name.
+
+    // The aria-label replaces the row's children for assistive tech, so it spells
+    // the status out where the chip shows the short word.
     const status = screen.getByLabelText(
-      "Provider: OpenAI / a-provider-model-name-that-needs-to-fit, Ready; server live",
+      "Provider: Google Gemini / gemini-3-flash-preview, Checking compatibility; server live",
     );
-    expect(status).toBeInTheDocument();
-    expect(status).toHaveTextContent("OpenAI / a-provider-model-name-that-needs-to-fit");
-    expect(status).toHaveTextContent(/ready/i);
+    expect(status).toHaveTextContent(/^Google Gemini \/ gemini-3-flash-preview\s*·\s*pending$/);
   });
 
   it("keeps the connection status visible when the model name truncates", () => {
     const longModel = "OpenAI / a-very-long-provider-model-name-that-overflows-the-mobile-row";
     render(<Header providerName={longModel} providerStatus={readyStatus} onBack={() => {}} />);
 
-    const status = screen.getByText("Ready");
+    const status = screen.getByText("ready");
     const modelSegment = screen.getByText(longModel);
 
     expect(status).toBeInTheDocument();
@@ -90,7 +109,7 @@ describe("Header", () => {
       <Header
         providerName="gemini"
         providerStatus={readyStatus}
-        wordmark="line"
+        wordmark="dense"
         serverState="offline"
       />,
     );
@@ -103,7 +122,7 @@ describe("Header", () => {
       <Header
         providerName="gemini"
         providerStatus={readyStatus}
-        wordmark="line"
+        wordmark="dense"
         serverState="retrying"
       />,
     );
@@ -112,10 +131,10 @@ describe("Header", () => {
       "Reconnecting",
     );
 
-    rerender(<Header providerName="gemini" providerStatus={readyStatus} wordmark="line" />);
+    rerender(<Header providerName="gemini" providerStatus={readyStatus} wordmark="dense" />);
 
     expect(screen.getByLabelText("Provider: gemini, Ready; server live")).toHaveTextContent(
-      "Ready",
+      "ready",
     );
   });
 });

@@ -31,7 +31,7 @@ const ZAI_CODING_CODE_ALLOWLIST_PATHS = new Set([
   "libs/core/src/schemas/config/providers.ts",
   "libs/core/src/schemas/config/providers.test.ts",
   "cli/server/src/shared/lib/config/persistence/config.ts",
-  "cli/server/src/shared/lib/config/persistence/persistence-config.test.ts",
+  "cli/server/src/shared/lib/config/persistence/config.test.ts",
   "cli/server/src/shared/lib/config/secrets-migration.ts",
   "cli/server/src/shared/lib/config/secrets-migration.test.ts",
 ]);
@@ -67,7 +67,7 @@ const ZAI_CODING_PATH_ALLOWLIST = new Set([
  * client-visible surface, so the reference is the assertion itself.
  */
 const LEGACY_V1_HAS_API_KEY_GUARD_PATHS = new Set([
-  "apps/docs/src/results-guide.test.ts",
+  "apps/docs/src/testing/content-contracts/results-guide.test.ts",
   "apps/web/src/testing/client-safe-assertions.ts",
   "apps/web/src/features/providers/lib/filter.test.ts",
   "apps/web/src/features/providers/components/page.test.tsx",
@@ -87,7 +87,7 @@ const LEGACY_V1_HAS_API_KEY_GUARD_PATHS = new Set([
  */
 const LEGACY_V1_HAS_API_KEY_SURFACE_PATHS = new Set([
   "libs/core/src/schemas/config/index.ts",
-  "cli/server/src/shared/lib/config/persistence/persistence-secrets.test.ts",
+  "cli/server/src/shared/lib/config/persistence/secrets.test.ts",
   "cli/server/src/shared/lib/config/store-migration.test.ts",
   "cli/server/src/shared/lib/ai/client/initialize.test.ts",
 ]);

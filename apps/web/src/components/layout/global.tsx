@@ -3,8 +3,8 @@ import { useFooterData } from "@diffgazer/core/footer";
 import {
   getProviderDisplay,
   getProviderDisplayStatus,
+  getUnconfiguredDisplayStatus,
   PRODUCT_REGISTRY,
-  type ProviderDisplayStatus,
 } from "@diffgazer/core/providers";
 import { useKey, useKeyboardContext } from "@diffgazer/keys";
 import { useCanGoBack, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
@@ -18,12 +18,17 @@ import { Footer } from "./footer";
 import { Header, type HeaderServerState } from "./header";
 
 /**
- * Home is the cover screen and the only brand moment; every other route —
- * including the setup wizard — keeps the one-line header, so the wizard's one
- * signature is the reticle around the step rather than a second masthead.
+ * Screens that open a section — home, help, the setup wizard — carry the full
+ * banner in the shell header, and the whole settings section keeps it so the
+ * wordmark never resizes moving between the hub and its children. Everything
+ * else is a dense working screen (history, review, 404), where the smaller
+ * block keeps the header compact.
  */
-function isBrandScreen(pathname: string): boolean {
-  return pathname === "/";
+const HERO_WORDMARK_ROUTES = new Set(["/", "/help", "/onboarding"]);
+
+export function getWordmarkTier(pathname: string): "hero" | "dense" {
+  if (pathname === "/settings" || pathname.startsWith("/settings/")) return "hero";
+  return HERO_WORDMARK_ROUTES.has(pathname) ? "hero" : "dense";
 }
 
 /**
@@ -57,31 +62,18 @@ function ConnectedHeader({ serverState }: { serverState: HeaderServerState }) {
   const { pathname } = useLocation();
   const { loadState, selectedConfiguration, selectedReadiness } = useConfigData();
 
-  let providerStatus: ProviderDisplayStatus = {
-    status: "unconfigured",
-    action: "create",
-    label: "Not configured",
-    variant: "warning",
-    explanation: "",
-    remediation: "",
-    accessibleText: "Not configured",
-  };
+  let providerStatus = getUnconfiguredDisplayStatus();
   let providerName = "Not configured";
 
   if (loadState.status === "loading") {
     providerName = "Loading configuration";
-    providerStatus = {
-      ...providerStatus,
-      label: "Loading",
-      accessibleText: "Loading configuration",
-    };
+    providerStatus = getUnconfiguredDisplayStatus({ label: "Loading", shortLabel: "loading" });
   } else if (loadState.status === "error") {
     providerName = "Configuration unavailable";
-    providerStatus = {
-      ...providerStatus,
+    providerStatus = getUnconfiguredDisplayStatus({
       label: "Unavailable",
-      accessibleText: "Configuration unavailable",
-    };
+      shortLabel: "unavailable",
+    });
   } else if (selectedConfiguration && selectedReadiness) {
     providerStatus = getProviderDisplayStatus(
       selectedReadiness,
@@ -107,7 +99,7 @@ function ConnectedHeader({ serverState }: { serverState: HeaderServerState }) {
       providerStatus={providerStatus}
       serverState={serverState}
       onBack={backAction.type === "none" ? undefined : onBack}
-      wordmark={isBrandScreen(pathname) ? "banner" : "line"}
+      wordmark={getWordmarkTier(pathname)}
     />
   );
 }

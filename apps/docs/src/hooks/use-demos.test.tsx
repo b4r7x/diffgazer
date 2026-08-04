@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { type ComponentType, type LazyExoticComponent, lazy } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,14 +18,6 @@ vi.mock("@/generated/demo-loaders", () => ({
   },
 }));
 
-function deferred<Result>() {
-  let resolve: (value: Result) => void = () => {};
-  const promise = new Promise<Result>((next) => {
-    resolve = next;
-  });
-  return { promise, resolve };
-}
-
 type TestDemoMap = Record<string, LazyExoticComponent<ComponentType>>;
 
 describe("useDemos", () => {
@@ -38,7 +31,7 @@ describe("useDemos", () => {
   });
 
   it("reports loading on the first render and exposes demos after the index resolves", async () => {
-    const load = deferred<{ demos: TestDemoMap }>();
+    const load = createDeferred<{ demos: TestDemoMap }>();
     const Demo = lazy(async () => ({ default: () => null }));
     loaders.ui.mockReturnValue(load.promise);
 
@@ -66,8 +59,8 @@ describe("useDemos", () => {
   });
 
   it("never exposes the previous library's demos while the next index loads", async () => {
-    const uiLoad = deferred<{ demos: TestDemoMap }>();
-    const keysLoad = deferred<{ demos: TestDemoMap }>();
+    const uiLoad = createDeferred<{ demos: TestDemoMap }>();
+    const keysLoad = createDeferred<{ demos: TestDemoMap }>();
     const UiDemo = lazy(async () => ({ default: () => null }));
     loaders.ui.mockReturnValue(uiLoad.promise);
     loaders.keys.mockReturnValue(keysLoad.promise);

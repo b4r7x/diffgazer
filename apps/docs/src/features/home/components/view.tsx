@@ -2,8 +2,8 @@ import { SidebarNavHeader } from "@/components/layout/sidebar-nav-header";
 import { TuiTwoPane } from "@/components/layout/tui-two-pane";
 import type { HomeLibrary } from "../data";
 import { HeroPanel } from "./hero-panel";
-import { HomeSidebar } from "./home-sidebar";
 import { SessionPanel } from "./session-panel";
+import { HomeSidebar } from "./sidebar";
 
 export function HomeView({ libraries }: { libraries: HomeLibrary[] }) {
   return (

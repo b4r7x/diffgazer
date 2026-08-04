@@ -112,6 +112,15 @@ describe("NoChangesView", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
+  it("rests without corner brackets — a dead end is not a focus target", () => {
+    const { container } = renderView({ onSwitchMode: vi.fn() });
+
+    // Panel's data attributes are the bracket contract: the viewfinder frame
+    // draws resting corners, data-state="focused" draws the focused ones.
+    expect(container.querySelector('[data-frame="viewfinder"]')).toBeNull();
+    expect(container.querySelector('[data-slot="panel"][data-state="focused"]')).toBeNull();
+  });
+
   it.each<[ReviewMode, { title: string; switchLabel: string }]>([
     ["staged", { title: "No Staged Changes", switchLabel: "Review Unstaged" }],
     ["unstaged", { title: "No Unstaged Changes", switchLabel: "Review Staged" }],

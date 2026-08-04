@@ -6,8 +6,6 @@ import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { ModelListItem } from "./list-item";
 
-type DiscoveryStatus = "idle" | "loading" | "passed" | "skipped" | "error";
-
 interface ModelListProps {
   models: ModelInfo[];
   focusedModelId: string | null;
@@ -17,25 +15,20 @@ interface ModelListProps {
   onConfirm: (modelId?: string) => void;
   onHighlightChange: (modelId: string | null) => void;
   onBoundaryReached: (direction: "previous" | "next") => void;
-  discoveryStatus?: DiscoveryStatus;
-  discoveryReason?: string | null;
-  discoveryError?: string | null;
+  loading?: boolean;
   isSaving?: boolean;
+  /** Generic copy for an empty result set. Failure reasons belong to the dialog's alert row. */
   emptyLabel?: string;
   ref?: React.Ref<HTMLDivElement>;
 }
 
 function StatusMessage({
-  discoveryStatus,
+  loading,
   isSaving,
-  discoveryReason,
-  discoveryError,
   emptyLabel,
 }: {
-  discoveryStatus: DiscoveryStatus;
+  loading: boolean;
   isSaving: boolean;
-  discoveryReason?: string | null;
-  discoveryError?: string | null;
   emptyLabel?: string;
 }) {
   if (isSaving) {
@@ -46,19 +39,13 @@ function StatusMessage({
       </>
     );
   }
-  if (discoveryStatus === "loading" || discoveryStatus === "idle") {
+  if (loading) {
     return (
       <>
         <Spinner variant="braille" size="sm" aria-hidden="true" />
         <EmptyState.Message>Loading models...</EmptyState.Message>
       </>
     );
-  }
-  if (discoveryStatus === "error" && discoveryError) {
-    return <EmptyState.Message>{discoveryError}</EmptyState.Message>;
-  }
-  if (discoveryStatus === "skipped" && discoveryReason) {
-    return <EmptyState.Message>{discoveryReason}</EmptyState.Message>;
   }
   return <EmptyState.Message>{emptyLabel ?? "No models match your search"}</EmptyState.Message>;
 }
@@ -72,14 +59,12 @@ export function ModelList({
   onConfirm,
   onHighlightChange,
   onBoundaryReached,
-  discoveryStatus = "passed",
-  discoveryReason = null,
-  discoveryError = null,
+  loading = false,
   isSaving = false,
   emptyLabel,
   ref,
 }: ModelListProps) {
-  const showList = !isSaving && discoveryStatus === "passed" && models.length > 0;
+  const showList = !isSaving && !loading && models.length > 0;
 
   return (
     // The dialog owns arrow-key navigation through the RadioGroup, so the scroll
@@ -113,13 +98,7 @@ export function ModelList({
       ) : null}
       <EmptyState size="sm" live className={showList ? "sr-only" : undefined}>
         {showList ? null : (
-          <StatusMessage
-            discoveryStatus={discoveryStatus}
-            isSaving={isSaving}
-            discoveryReason={discoveryReason}
-            discoveryError={discoveryError}
-            emptyLabel={emptyLabel}
-          />
+          <StatusMessage loading={loading} isSaving={isSaving} emptyLabel={emptyLabel} />
         )}
       </EmptyState>
     </ScrollArea>

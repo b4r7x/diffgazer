@@ -28,11 +28,12 @@ export const buttonVariants = cva(
         // coloured fill drags the label toward the page with it and the pair
         // collapses (~1.8:1 on light --action). Emptying the fill leaves the
         // muted label on the ambient surface, where it keeps its own contrast,
-        // and the dashed edge is the disabled grammar the inputs already speak.
+        // and a half-strength solid --border edge keeps the button's shape
+        // readable — no control in the system draws a dashed or dotted edge.
         // The transparent border reserves that edge so toggling disabled never
         // resizes the button.
         primary:
-          "border border-transparent bg-action text-action-foreground font-bold hover:bg-action/90 disabled:border-dashed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100 aria-disabled:border-dashed aria-disabled:border-border aria-disabled:bg-transparent aria-disabled:text-muted-foreground aria-disabled:opacity-100",
+          "border border-transparent bg-action text-action-foreground font-bold hover:bg-action/90 disabled:border-border/50 disabled:bg-transparent disabled:text-muted-foreground disabled:opacity-100 aria-disabled:border-border/50 aria-disabled:bg-transparent aria-disabled:text-muted-foreground aria-disabled:opacity-100",
         secondary: "border border-border bg-secondary text-secondary-foreground hover:bg-border",
         destructive:
           "text-error-text border border-error-border bg-transparent hover:bg-error-strong hover:text-error-strong-foreground",

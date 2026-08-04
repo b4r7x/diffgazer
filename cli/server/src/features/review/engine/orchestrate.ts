@@ -9,7 +9,7 @@ import type { ParsedDiff } from "./diff/types.js";
 import {
   deduplicateIssues,
   filterIssuesByMinSeverity,
-  sortIssuesBySeverity,
+  orderIssuesDeterministic,
 } from "./issues/ordering.js";
 import { getLenses } from "./lenses.js";
 import type {
@@ -209,7 +209,7 @@ export async function orchestrateReview(
   const droppedDuplicates = allIssues.length - deduplicated.length;
   const filtered = filterIssuesByMinSeverity(deduplicated, filter);
   const droppedBelowThreshold = deduplicated.length - filtered.length;
-  const sorted = sortIssuesBySeverity(filtered);
+  const sorted = orderIssuesDeterministic(filtered);
 
   onEvent({
     type: "orchestrator_complete",

@@ -3,22 +3,24 @@ import { ApiProvider } from "@diffgazer/core/api/hooks";
 import type { ProviderManagementOutcome } from "@diffgazer/core/providers";
 import { getProviderRowId, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
-import { ClientConfigurationActionResponseSchema } from "@diffgazer/core/schemas/config";
+import {
+  ClientConfigurationActionResponseSchema,
+  READINESS_PRESENTATION,
+} from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
+import {
+  configurationStatus,
+  makeConfigurationInitResponse,
+  makeConfigurationListResponse,
+  makeReadiness,
+  READY_GEMINI_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
 import { createConfigurationActionMocks } from "@/testing/configuration-action-mocks";
-import {
-  configurationStatus,
-  makeConfigurationInitResponse,
-  makeConfigurationListResponse,
-  makeReadiness,
-  READINESS_PRESENTATION,
-  READY_GEMINI_CONFIGURATION,
-} from "@/testing/configuration-fixtures";
 import { useProviderManagement } from "./use-provider-management";
 
 const toastMocks = vi.hoisted(() => ({

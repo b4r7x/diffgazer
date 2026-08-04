@@ -1,15 +1,16 @@
 import { useSettings } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { deriveSaveState, useSubmitGuard } from "@diffgazer/core/forms";
+import { resolveSelectableTheme } from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { useKey, useScope } from "@diffgazer/keys";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { useTheme } from "@/hooks/use-theme";
-import type { WebTheme } from "@/types/theme";
+import type { ResolvedTheme, WebTheme } from "@/types/theme";
 import { useSettingsFormFooter } from "../../hooks/use-form-footer";
 import { SettingsFormActions } from "../form-actions";
 import { renderSettingsFormPending } from "../form-pending";
@@ -18,7 +19,7 @@ import { ThemeSelectorContent } from "./selector-content";
 
 export function SettingsThemePage() {
   const settingsQuery = useSettings();
-  const { theme: savedTheme, setTheme } = useTheme();
+  const { theme: savedTheme, system, setTheme } = useTheme();
   const navigate = useNavigate();
   const [saveError, setSaveError] = useState<string | null>(null);
   const { isSubmitting, withGuard } = useSubmitGuard();
@@ -48,6 +49,7 @@ export function SettingsThemePage() {
   return (
     <SettingsThemeEditor
       savedTheme={savedTheme}
+      system={system}
       saveError={saveError}
       isSaving={isSubmitting}
       onSave={saveAndExit}
@@ -57,6 +59,7 @@ export function SettingsThemePage() {
 
 interface SettingsThemeEditorProps {
   savedTheme: WebTheme;
+  system: ResolvedTheme;
   saveError: string | null;
   isSaving: boolean;
   onSave: (theme: WebTheme) => void;
@@ -64,18 +67,19 @@ interface SettingsThemeEditorProps {
 
 function SettingsThemeEditor({
   savedTheme,
+  system,
   saveError,
   isSaving,
   onSave,
 }: SettingsThemeEditorProps) {
   const navigate = useNavigate();
-  const selectorTitleId = useId();
-  const previewTitleId = useId();
   const [selectedTheme, setSelectedTheme] = useState<WebTheme>(savedTheme);
-  const [focusedTheme, setFocusedTheme] = useState<WebTheme | null>(savedTheme);
+  const [focusedTheme, setFocusedTheme] = useState<WebTheme>(savedTheme);
   const [hoveredTheme, setHoveredTheme] = useState<WebTheme | null>(null);
 
-  const previewTheme = hoveredTheme ?? focusedTheme ?? selectedTheme;
+  const previewTheme = hoveredTheme ?? focusedTheme;
+  // Auto has no look of its own: the preview shows what it currently resolves to.
+  const previewResolved = resolveSelectableTheme(previewTheme, system);
   useScope("settings-theme");
 
   const { canSave } = deriveSaveState<WebTheme>({
@@ -110,37 +114,34 @@ function SettingsThemeEditor({
     setFocusedTheme(theme);
   };
 
-  const handleEnterOnList = (value: WebTheme) => {
-    selectTheme(value);
-    onSave(value);
+  // Highlight moves whenever the keyboard or a pointer lands on a row, which is
+  // also the moment the footer stops owning the keys.
+  const highlightTheme = (theme: WebTheme) => {
+    setFocusedTheme(theme);
+    footer.reset();
   };
 
   useKey("Escape", handleCancel, { enabled: !isSaving });
 
   return (
-    // Same wrapper padding and top line as CardLayout; the two panes stack until lg
-    // so the 768 column never gets narrow enough to wrap every radio description.
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-7 pb-4">
-      <div className="mx-auto grid w-full max-w-5xl grid-cols-1 items-start gap-8 lg:grid-cols-[2fr_3fr]">
-        {/* The selector is the interactive pane; the preview is passive output. */}
-        {/* Focused tracks where focus actually is: once the user steps into the footer
-            actions the selector is no longer the active pane, so the frame stops claiming
-            it is. */}
-        <Panel frame="viewfinder" focused={!footer.inActions} aria-labelledby={selectorTitleId}>
-          <Panel.Label>
-            <h1 id={selectorTitleId}>Theme Settings</h1>
-          </Panel.Label>
-          <Panel.Content spacing="none">
-            <Panel.Description className="mb-4">Choose how Diffgazer appears.</Panel.Description>
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
+      {/* Two full-height columns from md up; below md they stack full width. */}
+      <div className="grid min-h-full w-full grid-cols-1 gap-6 md:grid-cols-[2fr_3fr]">
+        {/* The app repoints --action to blue (theme-overrides.css), which turns
+            tone="accent" blue app-wide; this pane keeps the violet --accent frame
+            and marker so it reads distinct from the blue Live Preview panel. */}
+        <Panel tone="accent" className="flex flex-col border-accent [--panel-tone:var(--accent)]">
+          <Panel.Header>
+            <Panel.Title>Theme Settings</Panel.Title>
+          </Panel.Header>
+          <Panel.Content spacing="none" className="flex flex-1 flex-col">
             <ThemeSelectorContent
               value={selectedTheme}
               highlighted={focusedTheme}
-              onHighlightChange={setFocusedTheme}
+              onHighlightChange={highlightTheme}
               onPreviewValueChange={setHoveredTheme}
               onChange={selectTheme}
-              onEnter={handleEnterOnList}
-              onSelect={selectTheme}
-              onFocus={() => footer.reset()}
+              onEnter={onSave}
               enabled={!footer.inActions}
               onBoundaryReached={(direction) => {
                 if (direction === "down") {
@@ -149,7 +150,7 @@ function SettingsThemeEditor({
               }}
             />
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-auto space-y-4 pt-6">
               <Callout tone="info" className="pointer-coarse:hidden">
                 <Callout.Content>
                   Focus previews themes live. Space selects, Enter saves &amp; exits.
@@ -175,14 +176,12 @@ function SettingsThemeEditor({
           </Panel.Content>
         </Panel>
 
-        {/* Passive output: no brackets, so the selector stays the one reticle
-            on this screen even while focus sits in the footer actions. */}
-        <Panel aria-labelledby={previewTitleId}>
-          <Panel.Label>
-            <h2 id={previewTitleId}>Live Preview</h2>
-          </Panel.Label>
-          <Panel.Content className="flex items-center justify-center">
-            <ThemePreviewCard previewTheme={previewTheme} />
+        <Panel tone="info" className="flex flex-col md:overflow-hidden">
+          <Panel.Header>
+            <Panel.Title>Live Preview</Panel.Title>
+          </Panel.Header>
+          <Panel.Content spacing="none" className="flex flex-1 items-center justify-center p-0">
+            <ThemePreviewCard previewTheme={previewResolved} />
           </Panel.Content>
         </Panel>
       </div>

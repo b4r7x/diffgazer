@@ -28,7 +28,7 @@ export default function PanelFocused() {
       <Panel frame="viewfinder">
         <Panel.Header>
           <Panel.Title as="h3">Viewfinder resting</Panel.Title>
-          <Panel.Description>16px brackets in --border-strong.</Panel.Description>
+          <Panel.Description>12px arms, 1px stroke, in --foreground.</Panel.Description>
         </Panel.Header>
         <Panel.Content spacing="none">
           <Panel.Row label="Frame" value="viewfinder" />
@@ -38,7 +38,9 @@ export default function PanelFocused() {
       <Panel frame="viewfinder" focused>
         <Panel.Header>
           <Panel.Title as="h3">Viewfinder focused</Panel.Title>
-          <Panel.Description>28px brackets in --ring.</Panel.Description>
+          <Panel.Description>
+            Same 12px arms and 1px stroke, in --ring; the perimeter firms to --border-strong.
+          </Panel.Description>
         </Panel.Header>
         <Panel.Content spacing="none">
           <Panel.Row label="Frame" value="viewfinder" />

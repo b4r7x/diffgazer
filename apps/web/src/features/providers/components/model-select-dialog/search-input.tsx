@@ -42,7 +42,7 @@ export function ModelSearchInput({
         }}
         aria-label="Search models"
         placeholder="Search models..."
-        size="sm"
+        size="md"
         className="w-full bg-input-well"
       />
     </div>

@@ -1,5 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import {
@@ -7,34 +6,21 @@ import {
   type ReviewResult,
   ReviewResultSchema,
 } from "@diffgazer/core/schemas/review";
-import { type BudgetLedger, createBudgetLedger } from "../budget/ledger.js";
 import type { Adapter, AdapterExecuteRequest } from "../types.js";
 import {
   assertParserFieldPathAllowlisted,
-  buildCliChildEnvironment,
   type CliCompatibilityRecord,
   type CliCompatibilityTuple,
-  type CliProcessRunResult,
-  digestExecutableRealPath,
-  hashExecutableFileSha256,
-  matchCliCompatibilityTuple,
-  runCliArgvProcess,
-} from "./cli-compatibility.js";
-import { buildReviewSchemaJson } from "./cli-compatibility-probe.js";
+} from "./cli-compatibility/compat.js";
+import { buildReviewSchemaJson } from "./cli-compatibility/probe.js";
 import {
-  acquireCliVersion,
-  type CliAuthProbe,
-  type CliModelPolicyProbe,
-  probeCliAuthStore,
-  probeCliModelPolicy,
-} from "./cli-vendor-probes.js";
-import {
-  conservativeAttemptEstimate,
-  createCompletedExecutionResult,
-  createFailedExecutionResult,
-  type FailedTerminalOutcome,
-  ZERO_ATTEMPT_ACTUAL,
-} from "./execution-receipt.js";
+  buildCliCompatibilityTuple,
+  type CliReviewDependencies,
+  type CliReviewProduct,
+  type CliTerminalOutput,
+  createCliReviewAdapter,
+  executeCliReview,
+} from "./cli-review-driver.js";
 
 export const CODEX_CLI_ACCEPTED_FLAGS = [
   "--ephemeral",
@@ -48,56 +34,8 @@ export const CODEX_CLI_ACCEPTED_FLAGS = [
   "--model",
 ] as const;
 
-export type CodexCliExecutionInput = Readonly<{
-  executable: string;
-  argv: readonly string[];
-  cwd: string;
-  env: Readonly<Record<string, string>>;
-  resultPath: string;
-  signal?: AbortSignal;
-}>;
-
-export type CodexCliDependencies = Readonly<{
-  resolveCompatibilityRecord?: (
-    tuple: CliCompatibilityTuple,
-  ) => Promise<CliCompatibilityRecord | null>;
-  resolveExecutable?: () => Promise<Result<string, string>>;
-  acquireVersion?: (input: {
-    executable: string;
-    cwd: string;
-    env: Readonly<Record<string, string>>;
-  }) => Promise<Result<string, string>>;
-  probeAuth?: (input: {
-    executable: string;
-    cwd: string;
-    env: Readonly<Record<string, string>>;
-  }) => Promise<Result<CliAuthProbe, string>>;
-  probeModelPolicy?: (input: {
-    executable: string;
-    modelId: string;
-    cwd: string;
-    env: Readonly<Record<string, string>>;
-  }) => Promise<Result<CliModelPolicyProbe, string>>;
-  runProcess?: (input: CodexCliExecutionInput) => Promise<CliProcessRunResult>;
-  readResultFile?: (resultPath: string) => Promise<string>;
-  now?: () => Date;
-}>;
-
-let testDependencies: CodexCliDependencies = {};
-
-export function setCodexCliTestDependencies(dependencies: CodexCliDependencies): void {
-  testDependencies = dependencies;
-}
-
-function resolveDependencies(
-  dependencies: CodexCliDependencies = {},
-): Required<Pick<CodexCliDependencies, "now">> & CodexCliDependencies {
-  return {
-    now: dependencies.now ?? testDependencies.now ?? (() => new Date()),
-    ...testDependencies,
-    ...dependencies,
-  };
-}
+const REVIEW_SCHEMA_FILE = "review-schema.json";
+const RESULT_FILE = "result.json";
 
 export function buildCodexCliExecArgv(input: {
   reviewSchemaPath: string;
@@ -180,14 +118,40 @@ export function parseCodexOutputLastMessage(
   return ok(parsed.data);
 }
 
-function createFailedResult(
-  request: AdapterExecuteRequest,
-  outcome: FailedTerminalOutcome,
-  startedAt: string,
-  finishedAt: string,
-  attemptCount: number,
-): ExecutionResult {
-  return createFailedExecutionResult(request, outcome, { startedAt, finishedAt, attemptCount });
+/**
+ * Codex writes its review to the last-message file; a transcript that carries
+ * only lifecycle events is not evidence that the file was produced by this run.
+ */
+function isEventOnlyStdout(stdout: string): boolean {
+  const lines = stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length === 0) {
+    return false;
+  }
+  return lines.every((line) => {
+    try {
+      const event = JSON.parse(line) as Record<string, unknown>;
+      return typeof event.type === "string" && !("issues" in event);
+    } catch {
+      return false;
+    }
+  });
+}
+
+function parseCodexTerminalOutput(
+  output: CliTerminalOutput,
+  record: CliCompatibilityRecord,
+): Result<ReviewResult, { code: "malformed-json" | "schema-failed" | "parser-allowlist" }> {
+  const parsed = parseCodexOutputLastMessage(output.resultFile, record);
+  if (!parsed.ok) {
+    return parsed;
+  }
+  if (isEventOnlyStdout(output.stdout)) {
+    return err({ code: "schema-failed" });
+  }
+  return parsed;
 }
 
 export async function buildCodexCliCompatibilityTuple(
@@ -195,254 +159,41 @@ export async function buildCodexCliCompatibilityTuple(
   executablePath: string,
   version: string,
 ): Promise<CliCompatibilityTuple> {
-  const [realPathDigest, fileSha256] = await Promise.all([
-    digestExecutableRealPath(executablePath),
-    hashExecutableFileSha256(executablePath),
-  ]);
-
-  return {
-    provider: "codex-cli",
-    platform: {
-      nodePlatform: process.platform,
-      architecture: process.arch,
-    },
-    executable: {
-      realPathDigest,
-      fileSha256,
-      version,
-    },
-    modelId: request.evidenceKey.modelId,
-    reviewSchemaSha256: request.evidenceKey.structuredOutputSchemaSha256,
-  };
+  return buildCliCompatibilityTuple("codex-cli", request, executablePath, version);
 }
 
-export async function executeCodexCliReview(
+const CODEX_CLI_PRODUCT: CliReviewProduct = {
+  productId: "codex-cli",
+  tmpPrefix: "codex-cli-fixture-",
+  rejectedAuthEvidence: ["unavailable"],
+  resultFileName: RESULT_FILE,
+  prepareFixture: async (fixtureRoot) => {
+    await writeFile(
+      path.join(fixtureRoot, REVIEW_SCHEMA_FILE),
+      JSON.stringify(buildReviewSchemaJson()),
+      "utf8",
+    );
+  },
+  buildArgv: ({ fixtureRoot, modelId, prompt }) =>
+    buildCodexCliExecArgv({
+      reviewSchemaPath: path.join(fixtureRoot, REVIEW_SCHEMA_FILE),
+      resultPath: path.join(fixtureRoot, RESULT_FILE),
+      modelId,
+      prompt,
+    }),
+  assertArgvAllowed: assertCodexArgvFlagsAllowlisted,
+  parseTerminalOutput: parseCodexTerminalOutput,
+};
+
+export function executeCodexCliReview(
   request: AdapterExecuteRequest,
-  dependencies: CodexCliDependencies = {},
+  dependencies: CliReviewDependencies = {},
 ): Promise<ExecutionResult> {
-  const resolved = resolveDependencies(dependencies);
-  const now = resolved.now ?? (() => new Date());
-  const startedAt = now().toISOString();
-
-  if (request.evidenceKey.productId !== "codex-cli") {
-    return createFailedResult(request, "transport-failed", startedAt, startedAt, 1);
-  }
-
-  if (request.signal?.aborted) {
-    return createFailedResult(request, "cancelled", startedAt, startedAt, 1);
-  }
-
-  const envResult = buildCliChildEnvironment();
-  if (!envResult.ok) {
-    return createFailedResult(request, "transport-failed", startedAt, startedAt, 1);
-  }
-
-  const ledger: BudgetLedger = createBudgetLedger(request.evidenceKey.limits);
-  const reservation = ledger.reserveAttempt(
-    conservativeAttemptEstimate(request.evidenceKey.limits),
-  );
-  if (!reservation.ok) {
-    return createFailedResult(
-      request,
-      reservation.error.outcome,
-      startedAt,
-      now().toISOString(),
-      1,
-    );
-  }
-
-  const releaseReservation = () => {
-    ledger.releaseReservation(reservation.value);
-  };
-
-  let fixtureRoot: string | undefined;
-  try {
-    const resolveExecutable =
-      resolved.resolveExecutable ??
-      (async () => err("Executable resolver unavailable for codex-cli"));
-    const executableResult = await resolveExecutable();
-    if (!executableResult.ok) {
-      releaseReservation();
-      return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
-    }
-
-    fixtureRoot = await mkdtemp(path.join(tmpdir(), "codex-cli-fixture-"));
-    const acquireVersion =
-      resolved.acquireVersion ??
-      (async (input) => {
-        const acquired = await acquireCliVersion("codex-cli", input);
-        return acquired.ok ? ok(acquired.value.value) : err(acquired.error);
-      });
-    const versionResult = await acquireVersion({
-      executable: executableResult.value,
-      cwd: fixtureRoot,
-      env: envResult.value,
-    });
-    if (!versionResult.ok) {
-      releaseReservation();
-      return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
-    }
-
-    if (request.evidenceKey.runtime?.version !== versionResult.value) {
-      releaseReservation();
-      return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
-    }
-
-    const tuple = await buildCodexCliCompatibilityTuple(
-      request,
-      executableResult.value,
-      versionResult.value,
-    );
-
-    const resolveRecord =
-      resolved.resolveCompatibilityRecord ?? (async () => null as CliCompatibilityRecord | null);
-    const record = await resolveRecord(tuple);
-    const match = matchCliCompatibilityTuple(record, tuple);
-    if (!match.matched) {
-      releaseReservation();
-      return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
-    }
-    if (!record) {
-      releaseReservation();
-      return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
-    }
-
-    const probeAuth = resolved.probeAuth ?? ((input) => probeCliAuthStore("codex-cli", input));
-    const authResult = await probeAuth({
-      executable: executableResult.value,
-      cwd: fixtureRoot,
-      env: envResult.value,
-    });
-    if (!authResult.ok || authResult.value.authStoreEvidence === "unavailable") {
-      releaseReservation();
-      return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
-    }
-
-    const probeModelPolicy =
-      resolved.probeModelPolicy ?? ((input) => probeCliModelPolicy("codex-cli", input));
-    const modelPolicyResult = await probeModelPolicy({
-      executable: executableResult.value,
-      modelId: request.evidenceKey.modelId,
-      cwd: fixtureRoot,
-      env: envResult.value,
-    });
-    if (!modelPolicyResult.ok || !modelPolicyResult.value.accepted) {
-      releaseReservation();
-      return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
-    }
-
-    const reviewSchemaPath = path.join(fixtureRoot, "review-schema.json");
-    const resultPath = path.join(fixtureRoot, "result.json");
-    await writeFile(reviewSchemaPath, JSON.stringify(buildReviewSchemaJson()), "utf8");
-
-    const argv = buildCodexCliExecArgv({
-      reviewSchemaPath,
-      resultPath,
-      modelId: request.evidenceKey.modelId,
-      prompt: request.prompt,
-    });
-
-    try {
-      assertCodexArgvFlagsAllowlisted(record, argv);
-    } catch {
-      releaseReservation();
-      return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
-    }
-
-    const runProcess =
-      resolved.runProcess ??
-      ((input) =>
-        runCliArgvProcess({
-          executable: input.executable,
-          argv: input.argv,
-          cwd: input.cwd,
-          env: input.env,
-          signal: input.signal,
-        }));
-    const processResult = await runProcess({
-      executable: executableResult.value,
-      argv,
-      cwd: fixtureRoot,
-      env: envResult.value,
-      resultPath,
-      signal: request.signal,
-    });
-
-    if (processResult.cancelledLocally || request.signal?.aborted) {
-      releaseReservation();
-      return createFailedResult(request, "cancelled", startedAt, now().toISOString(), 1);
-    }
-
-    if (processResult.exitCode !== 0 || processResult.timedOut || processResult.outputTruncated) {
-      releaseReservation();
-      return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
-    }
-
-    const readResultFile =
-      resolved.readResultFile ?? ((filePath: string) => readFile(filePath, "utf8"));
-    let rawResult: string;
-    try {
-      rawResult = await readResultFile(resultPath);
-    } catch {
-      releaseReservation();
-      return createFailedResult(request, "schema-failed", startedAt, now().toISOString(), 1);
-    }
-
-    const parsed = parseCodexOutputLastMessage(rawResult, record);
-    if (!parsed.ok) {
-      releaseReservation();
-      return createFailedResult(request, "schema-failed", startedAt, now().toISOString(), 1);
-    }
-
-    if (processResult.stdout.trim().length > 0) {
-      const stdoutLines = processResult.stdout
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean);
-      const eventOnly =
-        stdoutLines.length > 0 &&
-        stdoutLines.every((line) => {
-          try {
-            const event = JSON.parse(line) as Record<string, unknown>;
-            return typeof event.type === "string" && !("issues" in event);
-          } catch {
-            return false;
-          }
-        });
-      if (eventOnly) {
-        releaseReservation();
-        return createFailedResult(request, "schema-failed", startedAt, now().toISOString(), 1);
-      }
-    }
-
-    const settle = ledger.settleAttempt(reservation.value, ZERO_ATTEMPT_ACTUAL);
-    if (!settle.ok) {
-      return createFailedResult(request, "budget-exhausted", startedAt, now().toISOString(), 1);
-    }
-
-    return createCompletedExecutionResult(request, parsed.value, {
-      startedAt,
-      finishedAt: now().toISOString(),
-      attemptCount: 1,
-    });
-  } catch {
-    releaseReservation();
-    return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
-  } finally {
-    if (fixtureRoot) {
-      await rm(fixtureRoot, { recursive: true, force: true });
-    }
-  }
+  return executeCliReview(request, CODEX_CLI_PRODUCT, dependencies);
 }
 
-export function createCodexCliAdapter(dependencies?: CodexCliDependencies): Adapter {
-  return {
-    productId: "codex-cli",
-    transportFamily: "local-cli",
-    async execute(request) {
-      return executeCodexCliReview(request, dependencies);
-    },
-  };
+export function createCodexCliAdapter(dependencies?: CliReviewDependencies): Adapter {
+  return createCliReviewAdapter(CODEX_CLI_PRODUCT, dependencies);
 }
 
 export const codexCliAdapter = createCodexCliAdapter();

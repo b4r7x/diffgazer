@@ -71,6 +71,30 @@ describe("Sidebar mobile sheet", () => {
     );
   });
 
+  it("renders no dialog close icon over the sheet header", async () => {
+    const user = userEvent.setup();
+    stubMatchMedia(true);
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Header>~/ui/docs</Sidebar.Header>
+          <Sidebar.Content>
+            <Sidebar.Item as="button">Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+        <Sidebar.Trigger>Toggle</Sidebar.Trigger>
+      </Sidebar.Provider>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open navigation" }));
+
+    // The sheet opts out of the dialog's default [x]: it is a drawer dismissed
+    // by Esc or an outside tap, and the button would absolute-position itself
+    // over the top-right corner the sheet gives to header content.
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Close dialog" })).not.toBeInTheDocument();
+  });
+
   it.each([
     ["open" as const],
     ["rail" as const],

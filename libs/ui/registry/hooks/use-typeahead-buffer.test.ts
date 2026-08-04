@@ -36,6 +36,19 @@ describe("useTypeaheadBuffer", () => {
     expect(result.current("y")).toBe("new y");
   });
 
+  it("rejects an extend-only key on an empty buffer without starting a query", () => {
+    const { result } = renderHook(() => useTypeaheadBuffer());
+    expect(result.current("j", { extendOnly: true })).toBeNull();
+    // The rejected key must not have been buffered.
+    expect(result.current("a")).toBe("a");
+  });
+
+  it("accepts an extend-only key into a non-empty buffer", () => {
+    const { result } = renderHook(() => useTypeaheadBuffer());
+    expect(result.current("f")).toBe("f");
+    expect(result.current("j", { extendOnly: true })).toBe("fj");
+  });
+
   it("resets the buffer after the idle window", () => {
     const { result } = renderHook(() => useTypeaheadBuffer(500));
     expect(result.current("a")).toBe("a");

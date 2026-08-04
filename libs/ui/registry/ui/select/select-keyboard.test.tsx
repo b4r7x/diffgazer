@@ -568,6 +568,76 @@ describe("Select keyboard navigation", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it("moves the listbox highlight with the j and k vim aliases", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderSelect({ onChange, defaultOpen: true });
+    const listbox = screen.getByRole("listbox");
+    listbox.focus();
+
+    await user.keyboard("j");
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: /banana/i }).id,
+    );
+
+    await user.keyboard("j");
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: /cherry/i }).id,
+    );
+
+    await user.keyboard("k");
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: /banana/i }).id,
+    );
+
+    await user.keyboard("{Enter}");
+    expect(onChange).toHaveBeenCalledWith("banana");
+  });
+
+  it("extends an in-progress listbox typeahead query with j instead of navigating", async () => {
+    const user = userEvent.setup();
+    renderSelectInline({
+      defaultOpen: true,
+      children: (
+        <>
+          <Select.Item value="fjord">Fjord</Select.Item>
+          <Select.Item value="foo">Foo</Select.Item>
+          <Select.Item value="zebra">Zebra</Select.Item>
+        </>
+      ),
+    });
+
+    const listbox = screen.getByRole("listbox");
+    listbox.focus();
+    await user.keyboard("f");
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: "Foo" }).id,
+    );
+
+    // "fj" matches Fjord; a navigating j would have moved on to Zebra instead.
+    await user.keyboard("j");
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: "Fjord" }).id,
+    );
+  });
+
+  it("types j into the search input instead of moving the highlight", async () => {
+    const user = userEvent.setup();
+    renderSelect({ withSearch: true, defaultOpen: true, items: ["Apple", "Jackfruit", "Banana"] });
+
+    const searchInput = getSearchInput();
+    await user.type(searchInput, "j");
+
+    expect(searchInput).toHaveValue("j");
+    expect(screen.getByRole("option", { name: /jackfruit/i })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /banana/i })).not.toBeInTheDocument();
+  });
+
   it("has no a11y violations with the listbox open via keyboard navigation", async () => {
     const user = userEvent.setup();
     const { container } = renderSelect({ defaultOpen: true });

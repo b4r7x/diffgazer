@@ -1,6 +1,10 @@
 import { configQueries } from "@diffgazer/core/api/hooks";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
+import {
+  makeReadyInitResponse,
+  READY_GEMINI_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { KeyboardProvider } from "@diffgazer/keys";
 import {
@@ -21,10 +25,6 @@ import { ConfigProvider } from "@/hooks/use-config";
 import { api as appApi } from "@/lib/api";
 import { queryClient as appQueryClient } from "@/lib/query-client";
 import { assertClientSafePayload } from "@/testing/client-safe-assertions";
-import {
-  makeReadyInitResponse,
-  READY_GEMINI_CONFIGURATION,
-} from "@/testing/configuration-fixtures";
 import { requireConfigured } from "../lib/config-guards";
 import { NotFoundPage } from "./not-found";
 import { RouteRecoveryPage } from "./route-error-boundary";
@@ -428,8 +428,8 @@ describe("not-found routing", () => {
     render(<RouterProvider router={notFoundRouter} />);
 
     await waitFor(() => expect(screen.getByText("Page Not Found")).toBeInTheDocument());
-    // Esc runs the secondary action, which reloads; "Back" would be a lie.
-    expect(screen.getByRole("status")).toHaveTextContent("Esc:Reload");
+    // Esc runs the view's only action, which goes home; "Back" would be a lie.
+    expect(screen.getByRole("status")).toHaveTextContent("Esc:Home");
   });
 
   it("sets the unmatched title and restores the matched title after returning home", async () => {

@@ -3,7 +3,7 @@ import { UuidSchema } from "@diffgazer/core/schemas/fields";
 import { LensIdSchema, ProfileIdSchema, ReviewModeSchema } from "@diffgazer/core/schemas/review";
 import { z } from "zod";
 import { isRepoRelativePath } from "../../shared/lib/paths.js";
-import { isReviewCursor } from "./storage/review-cursor.js";
+import { isReviewCursor } from "./storage/cursor.js";
 
 export const ReviewIdParamSchema = z.object({
   id: UuidSchema,

@@ -1,6 +1,6 @@
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { LocalCliProductId } from "@diffgazer/core/schemas/config";
-import { type CliCompatibilityRecord, runCliArgvProcess } from "./cli-compatibility.js";
+import { type CliCompatibilityRecord, runCliArgvProcess } from "./cli-compatibility/compat.js";
 
 /** Version string plus the argv and raw transcript that produced it. */
 export type CliVersionAcquisition = Readonly<{

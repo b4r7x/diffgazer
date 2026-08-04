@@ -36,6 +36,10 @@ describe("NavigationList keyboard navigation", () => {
       { key: "{ArrowUp}", expectedActiveIndex: 2, label: "ArrowUp wraps to end" },
       { key: "{End}", expectedActiveIndex: 2, label: "End jumps to last" },
       { key: "{Home}", expectedActiveIndex: 0, label: "Home stays at first" },
+      { key: "j", expectedActiveIndex: 1, label: "j moves down" },
+      { key: "jj", expectedActiveIndex: 2, label: "repeated j keeps navigating" },
+      { key: "jk", expectedActiveIndex: 0, label: "k moves back up" },
+      { key: "k", expectedActiveIndex: 2, label: "k wraps to end" },
     ],
   });
 

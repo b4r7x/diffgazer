@@ -55,8 +55,8 @@ vi.mock("./providers/server", () => ({
   useServerControls: () => ({ restartServers: () => Promise.resolve() }),
 }));
 
+import { makeAllConfigurationsListResponse } from "@diffgazer/core/testing/provider-fixtures";
 import { HomeScreen } from "../features/home/components/screen";
-import { makeConfigurationListResponse } from "../features/providers/testing/fixtures";
 import { App, ConfigGate } from "./root";
 import { useConfigGuard } from "./use-config-guard";
 
@@ -68,7 +68,7 @@ const CONFIGURED_QUERY = {
 };
 
 function makeInitResponse() {
-  const shell = makeConfigurationListResponse();
+  const shell = makeAllConfigurationsListResponse();
   return {
     schemaVersion: 2 as const,
     configurations: shell.configurations,

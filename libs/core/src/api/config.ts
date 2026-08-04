@@ -6,6 +6,8 @@ import {
   ConfigurationInitResponseSchema,
   ConfigurationListResponseSchema,
 } from "../schemas/config/configuration-status.js";
+import type { ConfigurationModelsResponse } from "../schemas/config/models.js";
+import { ConfigurationModelsResponseSchema } from "../schemas/config/models.js";
 import type {
   ClientConfigurationAction,
   ClientConfigurationActionResponse,
@@ -25,6 +27,14 @@ type ConfigurationActionResponse<Action extends ConfigurationActionName> = Extra
   { action: Action }
 >;
 
+/**
+ * Binds a parsed response back to the request that produced it. The response's
+ * own semantics — which summary a succeeded action must carry, which notices and
+ * readiness it may claim — belong to
+ * {@link ClientConfigurationActionResponseSchema}; only the two facts the schema
+ * cannot see, the echoed action and the addressed configuration, are checked
+ * here.
+ */
 function parseBoundConfigurationActionResponse<Action extends ClientConfigurationAction>(
   action: Action,
   body: unknown,
@@ -37,40 +47,12 @@ function parseBoundConfigurationActionResponse<Action extends ClientConfiguratio
   }
 
   const configuration = response.configuration;
-  if (configuration && action.action !== "create") {
-    if (configuration.configurationId !== action.configurationId) {
-      throw new Error("Configuration action response belongs to a different configuration");
-    }
-  }
-
-  if (response.status !== "succeeded") {
-    return response as ConfigurationActionResponse<Action["action"]>;
-  }
-
-  if (action.action === "delete") {
-    if (configuration !== undefined) {
-      if (configuration.status === "supported") {
-        throw new Error("A successful delete response cannot contain a supported configuration");
-      }
-      if (configuration.revision < action.expectedRevision) {
-        throw new Error("Configuration delete response returned a stale revision");
-      }
-    }
-    return response as ConfigurationActionResponse<Action["action"]>;
-  }
-
-  if (action.action !== "inspect") {
-    if (configuration?.status !== "supported") {
-      throw new Error(
-        `A successful ${action.action} response must contain a supported configuration`,
-      );
-    }
-    if (action.action === "select" && configuration.selectedModelId !== action.modelId) {
-      throw new Error("Configuration action response selected a different model");
-    }
-    if (action.action === "update" && configuration.revision < action.expectedRevision) {
-      throw new Error("Configuration action response returned a stale revision");
-    }
+  if (
+    configuration &&
+    action.action !== "create" &&
+    configuration.configurationId !== action.configurationId
+  ) {
+    throw new Error("Configuration action response belongs to a different configuration");
   }
 
   return response as ConfigurationActionResponse<Action["action"]>;
@@ -133,6 +115,24 @@ export function deleteConfiguration(
   });
 }
 
+export function getConfigurationModels(
+  client: ApiClient,
+  configurationId: ConfigurationId,
+): Promise<ConfigurationModelsResponse> {
+  return client.get<ConfigurationModelsResponse>(
+    `/api/config/providers/${encodeURIComponent(configurationId)}/models`,
+    {
+      schema: (body) => {
+        const response = ConfigurationModelsResponseSchema.parse(body);
+        if (response.configurationId !== configurationId) {
+          throw new Error("Configuration models response belongs to a different configuration");
+        }
+        return response;
+      },
+    },
+  );
+}
+
 export function loadConfigurationInit(client: ApiClient): Promise<ConfigurationInitResponse> {
   return client.get<ConfigurationInitResponse>("/api/config/init", {
     schema: (body) => ConfigurationInitResponseSchema.parse(body),
@@ -165,6 +165,8 @@ export const bindConfig = (client: ApiClient) => ({
     configurationId: ConfigurationId,
     expectedRevision: ConfigurationRevision,
   ) => deleteConfiguration(client, configurationId, expectedRevision),
+  getConfigurationModels: (configurationId: ConfigurationId) =>
+    getConfigurationModels(client, configurationId),
   loadConfigurationInit: () => loadConfigurationInit(client),
   listConfigurations: () => listConfigurations(client),
 });

@@ -394,7 +394,7 @@ describe("Checkbox", () => {
   // cannot measure layout.
   it("row reserves a 44px coarse-pointer touch target", () => {
     render(<Checkbox label="Accept terms" />);
-    expect(screen.getByRole("checkbox", { name: /accept terms/i }).className).toContain(
+    expect(screen.getByRole("checkbox", { name: /accept terms/i })).toHaveClass(
       "pointer-coarse:min-h-11",
     );
   });

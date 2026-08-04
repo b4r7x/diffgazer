@@ -1,10 +1,11 @@
 @layer base {
   dialog {
-    /* One duration source for the whole overlay family: the modal tier reads the
-       same --ui-content-* clock the anchored tier already uses (theme-base.css).
-       --dialog-duration stays a working per-instance override, it just no longer
-       holds an independent value that can drift out of sync. */
-    --dialog-duration: var(--ui-content-enter-duration);
+    /* The modal tier owns its entrance clock. A dialog takes over the viewport,
+       so it reads as a deliberate 150ms open; the anchored tier (Select,
+       Popover, Tooltip) stays on the 60ms --ui-content-* tokens in
+       theme-base.css, where anything slower feels laggy under the pointer.
+       --dialog-duration stays a working per-instance override. */
+    --dialog-duration: 150ms;
     padding: 0;
     border: none;
     background: transparent;
@@ -39,26 +40,18 @@
   }
 
   /*
-   * Scroll lock contract.
-   * Native <dialog>.showModal() does not lock body scroll on its own. This
-   * CSS-only lock activates whenever any descendant <dialog> exposes the
-   * [open] attribute, and unlocks once every dialog closes.
-   * scrollbar-gutter: stable avoids a horizontal layout shift when the
-   * scrollbar is hidden under hidden-overflow.
+   * Scroll lock contract: one owner, and it is not this file.
+   * Native <dialog>.showModal() does not lock background scroll, so
+   * DialogContent runs useScrollLock (reference counted, scrollbar-width
+   * compensated) while it is open and modal. The CSS-only body lock this file
+   * used to ship alongside it is gone: two locks compensated for the same
+   * scrollbar twice and the page jumped on every open. The JS lock is also the
+   * one that handles custom scroll roots and stacked dialogs, which a body-only
+   * rule cannot.
    *
-   * Limits (consumers in these cases must opt into a JS lock):
-   *   - Custom scroll roots: only the <body> is locked. Apps that scroll on
-   *     <html>, a wrapping element, or a scroll container handle their own
-   *     scroll lock.
-   *   - iOS Safari rubber-band: overflow:hidden on body does not prevent
-   *     touchmove from scrolling the visual viewport.
-   *   - :has() support floor: Chrome 105+, Safari 15.4+, Firefox 121+ — older
-   *     engines do not get any body lock.
+   * Consumers driving a raw <dialog> off this stylesheet alone therefore get no
+   * automatic background lock and own that themselves (useScrollLock drops in).
    */
-  body:has(dialog[open]) {
-    overflow: hidden;
-    scrollbar-gutter: stable;
-  }
 }
 
 /*

@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
-import { sanitizeTerminalText } from "../review/sanitize-terminal.js";
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import {
   type ClientConfigurationAction,
   ClientConfigurationActionResponseSchema,
@@ -13,6 +12,14 @@ import {
   type OnboardingDraft,
   resetWizardProduct,
 } from "./defaults.js";
+import {
+  areConfigurationInputsEqual,
+  areDraftsEqual,
+  isSameWizardGeneration,
+  scrubLiteralSecret,
+  type WizardData,
+} from "./draft-equality.js";
+import { getClientSafeError } from "./redact-client-error.js";
 import { buildConfigPayload, type SaveWizardCallbacks, saveWizard } from "./save-wizard.js";
 import { getStepAt } from "./steps.js";
 import type { OnboardingStep, RemovedOnboardingState } from "./types.js";
@@ -21,129 +28,6 @@ const CLEANUP_ERROR_PREFIX = "Failed to remove the incomplete configuration";
 const DRAFT_CONFIGURATION_ERROR_PREFIX = "Could not prepare this configuration for model discovery";
 const SAVE_COMPLETION_ERROR_PREFIX = "Configuration saved, but completion failed";
 const DELETE_COMPLETION_ERROR_PREFIX = "Configuration deleted, but completion failed";
-const CLIENT_ERROR_MAX_BYTES = 512;
-const REDACTED = "[REDACTED]";
-
-const PATH_BOUNDARY = String.raw`(^|[\s("'=<{[,:;])`;
-const PATH_CHARACTER = "[^\\\\/\\s\"'`<>{},;)]|[ \\t](?=[^\\\\/\\s\"'`<>{},;)])";
-
-const UNIX_PATH_PATTERN = new RegExp(
-  `${PATH_BOUNDARY}((?:~|\\/(?:Users|home|private\\/var\\/folders|var\\/folders|tmp|usr|bin|srv|opt|etc))(?:\\/[^\\s"'\`<>{},;)]*)*)`,
-  "gi",
-);
-const WINDOWS_PATH_PATTERN = new RegExp(
-  `${PATH_BOUNDARY}([A-Za-z]:[\\\\/](?:${PATH_CHARACTER})+(?:[\\\\/](?:${PATH_CHARACTER})+)*)`,
-  "gi",
-);
-const UNC_PATH_PATTERN = new RegExp(
-  `${PATH_BOUNDARY}(\\\\\\\\(?:${PATH_CHARACTER})+[\\\\/](?:${PATH_CHARACTER})+(?:[\\\\/](?:${PATH_CHARACTER})+)*)`,
-  "gi",
-);
-const RELATIVE_PATH_PATTERN =
-  /(^|[\s("'=<{[])((?:\.{1,2}[\\/]|(?:[A-Za-z0-9._-]+[\\/])+)[A-Za-z0-9._-]+(?:[\\/][A-Za-z0-9._-]+)*)/g;
-const AUTH_HEADER_PATTERN =
-  /\b(?:authorization|proxy-authorization|cookie|set-cookie)\s*[:=]\s*[^\s,;]+/gi;
-const BEARER_PATTERN = /\b(?:bearer|basic)\s+[A-Za-z0-9._~+\x2f-]{8,}=*/gi;
-const SECRET_ASSIGNMENT_PATTERN =
-  /\b(?:api(?:[-_ ]?key)|access[-_ ]?token|auth(?:orization)?|credential|password|passwd|secret|token|private[-_ ]?key|client[-_ ]?secret)\b\s*(?:[:=]|\bis\b)\s*["'`]?[^\s"'`,;)}\]]+/gi;
-const SECRET_FLAG_PATTERN =
-  /--?(?:api(?:[-_ ]?key)|auth(?:orization)?|bearer|cookie|credential|password|secret|token)\s+(?:["'`][^"'`]+["'`]|[^\s]+)/gi;
-const ENV_SECRET_PATTERN =
-  /\b[A-Z][A-Z0-9]*(?:[_-](?:API[_-]?KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH(?:ORIZATION)?|COOKIE))\b\s*=\s*[^\s,;]+/g;
-const TOKEN_PATTERN =
-  /\b(?:sk|pk|rk|ghp|github_pat|AIza|ya29|xox[baprs]-)[A-Za-z0-9._~+\x2f-]{8,}=*/gi;
-const PRIVATE_KEY_PATTERN =
-  /-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]*?-----END [A-Z ]+PRIVATE KEY-----/gi;
-const UNTRUSTED_PROVIDER_ERROR_PATTERN =
-  /\b(?:provider|upstream|model|endpoint|network|http|https|request|response|redirect|authorization|credential|token|secret|api[-_ ]?key|bearer|cookie|quota|rate[-_ ]?limit|timeout|timed? ?out|abort(?:ed)?|cancel(?:led)?|subprocess|command|exec(?:utable)?|stdout|stderr|parser|parse|json|schema|transport|dns|socket|econn|status\s*(?:code)?|cli)\b/i;
-
-function utf8ByteLength(value: string): number {
-  return new TextEncoder().encode(value).byteLength;
-}
-
-function truncateUtf8(value: string, maxBytes: number): string {
-  if (utf8ByteLength(value) <= maxBytes) return value;
-
-  let output = "";
-  let bytes = 0;
-  for (const character of value) {
-    const characterBytes = utf8ByteLength(character);
-    if (bytes + characterBytes > maxBytes) break;
-    output += character;
-    bytes += characterBytes;
-  }
-  return output;
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function redactPathMatch(_match: string, prefix: string, path: string): string {
-  const trailingPunctuation = path.match(/[.!?]+$/)?.[0] ?? "";
-  return `${prefix}${REDACTED}${trailingPunctuation}`;
-}
-
-function redactPaths(value: string): string {
-  return value
-    .replace(UNIX_PATH_PATTERN, redactPathMatch)
-    .replace(WINDOWS_PATH_PATTERN, redactPathMatch)
-    .replace(UNC_PATH_PATTERN, redactPathMatch)
-    .replace(RELATIVE_PATH_PATTERN, redactPathMatch);
-}
-
-function redactClientError(value: string, sensitiveValues: readonly string[]): string {
-  let redacted = value;
-  for (const sensitiveValue of sensitiveValues) {
-    if (sensitiveValue.length === 0) continue;
-    redacted = redacted.replace(new RegExp(escapeRegExp(sensitiveValue), "g"), REDACTED);
-  }
-
-  redacted = redactPaths(
-    redacted
-      .replace(PRIVATE_KEY_PATTERN, REDACTED)
-      .replace(AUTH_HEADER_PATTERN, REDACTED)
-      .replace(BEARER_PATTERN, REDACTED)
-      .replace(SECRET_ASSIGNMENT_PATTERN, REDACTED)
-      .replace(SECRET_FLAG_PATTERN, REDACTED)
-      .replace(ENV_SECRET_PATTERN, REDACTED)
-      .replace(TOKEN_PATTERN, REDACTED),
-  ).replace(/\n/g, " ");
-
-  return sanitizeTerminalText(redacted)
-    .replace(/[ \t\n]+/g, " ")
-    .trim();
-}
-
-function getWizardSensitiveValues(data: WizardData | undefined): readonly string[] {
-  if (!data || data.kind !== "runnable") return [];
-
-  const values: string[] = [];
-  const input = data.configurationInput;
-  if (input.transportFamily === "hosted-api") {
-    if (input.credential?.kind === "literal") values.push(input.credential.value);
-    if (input.workspace) values.push(input.workspace);
-  }
-  if (input.transportFamily === "local-http" && input.bearerToken?.kind === "literal") {
-    values.push(input.bearerToken.value);
-  }
-  return values;
-}
-
-function getClientSafeError(cause: unknown, fallback: string, data?: WizardData): string {
-  if (!(cause instanceof Error) || cause.message.trim().length === 0) return fallback;
-
-  const rawMessage = cause.message;
-  // Provider, CLI, subprocess, and transport errors are not an API for the
-  // client. Their details are useful to server diagnostics, but never safe to
-  // echo into the wizard, even after redaction. Keep the user-facing copy
-  // actionable without exposing an unknown parser/adapter envelope.
-  if (UNTRUSTED_PROVIDER_ERROR_PATTERN.test(rawMessage)) return fallback;
-
-  const redacted = redactClientError(rawMessage, getWizardSensitiveValues(data));
-  if (redacted.length === 0) return fallback;
-  return truncateUtf8(redacted, CLIENT_ERROR_MAX_BYTES);
-}
 
 export type WizardSaveCallbacks = SaveWizardCallbacks;
 
@@ -185,10 +69,12 @@ export interface UseWizardStateResult {
 type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
 type CreatedConfiguration = Pick<ClientConfigurationSummary, "configurationId" | "revision">;
 type OnboardingDraftUpdate = Partial<Omit<OnboardingDraft, "kind" | "plan">>;
-type WizardData = OnboardingDraft | RemovedOnboardingState;
-type WriteOnlySecret =
-  | { readonly kind: "literal"; readonly value: string }
-  | { readonly kind: "environment" };
+
+/** A committed draft record together with the transport tuple it addresses. */
+type PreparedDraftConfiguration = Readonly<{
+  input: OnboardingConfigurationDraft;
+  configuration: SupportedConfigurationSummary;
+}>;
 
 type CleanupResult =
   | { readonly success: true }
@@ -219,97 +105,6 @@ function invalidatesAcknowledgement(
   return partial.conformanceStatus !== undefined && partial.conformanceStatus !== "passed";
 }
 
-function areSecretsEqual(
-  left: WriteOnlySecret | undefined,
-  right: WriteOnlySecret | undefined,
-): boolean {
-  if (left?.kind !== right?.kind) return false;
-  if (left?.kind !== "literal" || right?.kind !== "literal") return true;
-  return left.value === right.value;
-}
-
-function areConfigurationInputsEqual(
-  left: OnboardingConfigurationDraft,
-  right: OnboardingConfigurationDraft,
-): boolean {
-  if (left.transportFamily !== right.transportFamily || left.productId !== right.productId) {
-    return false;
-  }
-
-  if (left.transportFamily === "hosted-api" && right.transportFamily === "hosted-api") {
-    return (
-      left.endpoint === right.endpoint &&
-      left.region === right.region &&
-      left.workspace === right.workspace &&
-      areSecretsEqual(left.credential, right.credential)
-    );
-  }
-
-  if (left.transportFamily === "local-http" && right.transportFamily === "local-http") {
-    return (
-      left.endpoint === right.endpoint &&
-      left.authentication === right.authentication &&
-      left.presetId === right.presetId &&
-      areSecretsEqual(left.bearerToken, right.bearerToken)
-    );
-  }
-
-  if (left.transportFamily === "local-cli" && right.transportFamily === "local-cli") {
-    return left.installationId === right.installationId;
-  }
-
-  return false;
-}
-
-function isSameConfigurationGeneration(left: OnboardingDraft, right: OnboardingDraft): boolean {
-  return (
-    left.plan.productId === right.plan.productId &&
-    left.selectedModelId === right.selectedModelId &&
-    areConfigurationInputsEqual(left.configurationInput, right.configurationInput)
-  );
-}
-
-function isSameWizardGeneration(left: WizardData, right: WizardData): boolean {
-  if (left.kind !== right.kind) return false;
-  if (left.kind === "removed" && right.kind === "removed") {
-    return (
-      left.productId === right.productId &&
-      left.configurationId === right.configurationId &&
-      left.expectedRevision === right.expectedRevision
-    );
-  }
-  if (left.kind === "runnable" && right.kind === "runnable") {
-    return areDraftsEqual(left, right);
-  }
-  return false;
-}
-
-function areAcknowledgementsEqual(
-  left: OnboardingDraft["acknowledgement"],
-  right: OnboardingDraft["acknowledgement"],
-): boolean {
-  if (left.status !== right.status) return false;
-  if (left.status === "required" && right.status === "required") return true;
-  return (
-    left.status === "accepted" &&
-    right.status === "accepted" &&
-    left.noticeId === right.noticeId &&
-    left.noticeVersion === right.noticeVersion &&
-    left.acceptedAt === right.acceptedAt
-  );
-}
-
-function areDraftsEqual(left: OnboardingDraft, right: OnboardingDraft): boolean {
-  return (
-    isSameConfigurationGeneration(left, right) &&
-    left.conformanceStatus === right.conformanceStatus &&
-    areAcknowledgementsEqual(left.acknowledgement, right.acknowledgement) &&
-    left.agentExecution === right.agentExecution &&
-    left.defaultLenses.length === right.defaultLenses.length &&
-    left.defaultLenses.every((lens, index) => lens === right.defaultLenses[index])
-  );
-}
-
 function updateRunnableDraft(
   current: OnboardingDraft,
   partial: OnboardingDraftUpdate,
@@ -334,23 +129,6 @@ function canCurrentStepProceed(data: WizardData, stepIndex: number): boolean {
   return canProceed(step.id, data);
 }
 
-function scrubLiteralSecret(data: OnboardingDraft): OnboardingDraft {
-  const configurationInput = { ...data.configurationInput };
-  if (
-    configurationInput.transportFamily === "hosted-api" &&
-    configurationInput.credential?.kind === "literal"
-  ) {
-    delete configurationInput.credential;
-  }
-  if (
-    configurationInput.transportFamily === "local-http" &&
-    configurationInput.bearerToken?.kind === "literal"
-  ) {
-    delete configurationInput.bearerToken;
-  }
-  return { ...data, configurationInput };
-}
-
 export function useWizardState(options: UseWizardStateOptions = {}): UseWizardStateResult {
   const { initial = getInitialWizardData(), callbacks, onComplete, onCleanupError } = options;
   const [wizardState, setWizardState] = useState<WizardState>(() => ({
@@ -360,14 +138,12 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   }));
   const [isReconciling, setIsReconciling] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [draftConfiguration, setDraftConfiguration] =
-    useState<SupportedConfigurationSummary | null>(null);
+  const [preparedDraft, setPreparedDraft] = useState<PreparedDraftConfiguration | null>(null);
   const [isPreparingDraftConfiguration, setIsPreparingDraftConfiguration] = useState(false);
   const createdConfigurationRef = useRef<CreatedConfiguration | null>(null);
-  // The ref pair is the authority for the async guard; the state copy only
-  // drives rendering and would be stale inside back-to-back prepare calls.
-  const draftInputRef = useRef<OnboardingConfigurationDraft | null>(null);
-  const draftConfigurationRef = useRef<SupportedConfigurationSummary | null>(null);
+  // The ref is the authority for the async guard; the state copy only drives
+  // rendering and would be stale inside back-to-back prepare calls.
+  const preparedDraftRef = useRef<PreparedDraftConfiguration | null>(null);
   const pendingDraftRef = useRef<Promise<SupportedConfigurationSummary> | null>(null);
   const pendingSaveRef = useRef<Promise<boolean> | null>(null);
   const pendingRemovedDeleteRef = useRef<Promise<boolean> | null>(null);
@@ -380,7 +156,6 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   const latestInitialRef = useRef<WizardData>(initial);
   const requestedProductRef = useRef<RunnableProductId | null>(null);
   const reconciliationRef = useRef(0);
-  latestInitialRef.current = initial;
 
   const { data: wizardData, stepIndex, error } = wizardState;
   const steps = wizardData.plan.steps.map((step) => step.id);
@@ -390,23 +165,12 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   const canProceedNow = canCurrentStepProceed(wizardData, stepIndex);
   // A persisted draft is only addressable while it still describes the edited
   // transport tuple. Model selection alone must not invalidate it.
-  const draftInput = draftInputRef.current;
   const activeDraftConfiguration =
     wizardData.kind === "runnable" &&
-    draftInput !== null &&
-    areConfigurationInputsEqual(draftInput, wizardData.configurationInput)
-      ? draftConfiguration
+    preparedDraft !== null &&
+    areConfigurationInputsEqual(preparedDraft.input, wizardData.configurationInput)
+      ? preparedDraft.configuration
       : null;
-
-  // A new initial draft is a new commit generation as soon as it is rendered.
-  // The effect below still performs cleanup and installs the draft, but the
-  // synchronous token advance prevents an in-flight save for the previous
-  // draft from committing in the gap before effects run.
-  if (!isSameWizardGeneration(initialRef.current, initial)) {
-    generationDataRef.current = initial;
-    generationRef.current += 1;
-    hasCommittedRef.current = false;
-  }
 
   const runConfigurationAction = async (action: ClientConfigurationAction) => {
     if (!callbacks) throw new Error("Wizard callbacks are required");
@@ -474,9 +238,8 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
       createdConfigurationRef.current.revision === created.revision
     ) {
       createdConfigurationRef.current = null;
-      draftInputRef.current = null;
-      draftConfigurationRef.current = null;
-      setDraftConfiguration(null);
+      preparedDraftRef.current = null;
+      setPreparedDraft(null);
       // Deleting a partial configuration invalidates the commit marker even
       // when the wizard remains on the same product tuple. Do not advance
       // the generation here: callers may already be waiting on its token.
@@ -535,22 +298,17 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   const prepareDraftConfiguration = async (): Promise<SupportedConfigurationSummary | null> => {
     if (!callbacks || wizardData.kind !== "runnable") return null;
     const data = wizardData;
-    const preparedInput = draftInputRef.current;
-    const prepared = draftConfigurationRef.current;
-    if (
-      prepared &&
-      preparedInput &&
-      areConfigurationInputsEqual(preparedInput, data.configurationInput)
-    ) {
-      return prepared;
+    const prepared = preparedDraftRef.current;
+    if (prepared && areConfigurationInputsEqual(prepared.input, data.configurationInput)) {
+      return prepared.configuration;
     }
     const pending = pendingDraftRef.current;
     if (pending) return pending.catch(() => null);
 
     const generation = generationRef.current;
     setIsPreparingDraftConfiguration(true);
-    draftConfigurationRef.current = null;
-    setDraftConfiguration(null);
+    preparedDraftRef.current = null;
+    setPreparedDraft(null);
 
     const prepare = (async (): Promise<SupportedConfigurationSummary> => {
       if (createdConfigurationRef.current) await removeCreatedConfiguration();
@@ -569,9 +327,9 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     try {
       const configuration = await prepare;
       if (generation !== generationRef.current) return null;
-      draftInputRef.current = data.configurationInput;
-      draftConfigurationRef.current = configuration;
-      setDraftConfiguration(configuration);
+      const nextPrepared = { input: data.configurationInput, configuration };
+      preparedDraftRef.current = nextPrepared;
+      setPreparedDraft(nextPrepared);
       return configuration;
     } catch (cause) {
       if (generation === generationRef.current) {
@@ -826,7 +584,12 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     }
   };
 
-  useEffect(() => {
+  // A new initial draft is a new commit generation. The advance runs in a layout
+  // effect so it lands synchronously with the commit, before an in-flight save
+  // for the previous draft can resolve; a render React discards never reaches
+  // the commit and so never invalidates a save that is still current.
+  useLayoutEffect(() => {
+    latestInitialRef.current = initial;
     if (isSameWizardGeneration(initialRef.current, initial)) return;
 
     initialRef.current = initial;

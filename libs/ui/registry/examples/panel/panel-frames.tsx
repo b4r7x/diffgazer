@@ -26,7 +26,9 @@ export default function PanelFrames() {
       <Panel frame="viewfinder">
         <Panel.Header>
           <Panel.Title>Viewfinder</Panel.Title>
-          <Panel.Description>Four corner brackets — Dialog-family parity.</Panel.Description>
+          <Panel.Description>
+            Four corner brackets — 12px arms, 1px stroke, seated on the border.
+          </Panel.Description>
         </Panel.Header>
         <Panel.Content>
           <Panel.Row label="Frame" value="viewfinder" />

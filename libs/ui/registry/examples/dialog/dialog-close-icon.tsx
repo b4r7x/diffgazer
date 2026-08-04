@@ -1,7 +1,7 @@
+import { InlineCode } from "@/components/ui/code-block";
 import {
   Dialog,
   DialogBody,
-  DialogCloseIcon,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -18,10 +18,11 @@ export default function DialogCloseIconExample() {
         </DialogHeader>
         <DialogBody>
           <p className="text-sm leading-relaxed">
-            The icon button in the top-right closes this dialog. Esc still closes too.
+            Every modal dialog renders the top-right icon button by default. It closes the dialog,
+            and Esc still closes too. Pass <InlineCode>closeIcon={"{false}"}</InlineCode> to opt
+            out.
           </p>
         </DialogBody>
-        <DialogCloseIcon />
       </DialogContent>
     </Dialog>
   );

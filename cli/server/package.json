@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "build": "tsc && cp -R src/shared/lib/ai/providers/fixtures dist/shared/lib/ai/providers/fixtures",
+    "build": "tsc && node -e \"require('node:fs').cpSync('src/shared/lib/ai/providers/fixtures', 'dist/shared/lib/ai/providers/fixtures', { recursive: true, force: true })\"",
     "dev": "tsx src/serve.ts",
     "start": "node dist/serve.js",
     "type-check": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
@@ -21,10 +21,10 @@
   },
   "dependencies": {
     "@diffgazer/core": "workspace:*",
-    "@hono/node-server": "^1.19.13",
+    "@hono/node-server": "^2.0.12",
     "@hono/zod-validator": "^0.7.6",
     "@napi-rs/keyring": "^1.2.0",
-    "hono": "^4.12.18",
+    "hono": "^4.12.34",
     "zod": "^4.3.6"
   },
   "devDependencies": {

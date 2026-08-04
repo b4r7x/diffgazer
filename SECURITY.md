@@ -17,10 +17,13 @@ session token (`DIFFGAZER_SHUTDOWN_TOKEN`).
 
 Every request (not just `/api/*`) must carry a localhost `Host` header
 (`localhost`, `127.0.0.1`, or `::1`); anything else is rejected with `403`.
-Origin handling is method-dependent: foreign-origin (non-localhost) `/api/*`
-requests are rejected with `403` only for unsafe methods (`POST`, `PUT`, `PATCH`,
-`DELETE`). A safe foreign-origin `GET` is not blocked at the edge, but CORS
-withholds the
+Origin handling depends on whether the token gate is enforced. When a token is in
+force (packaged mode, or any mode with `DIFFGAZER_SHUTDOWN_TOKEN` set),
+foreign-origin (non-localhost) `/api/*` requests are rejected with `403` only for
+unsafe methods (`POST`, `PUT`, `PATCH`, `DELETE`); a safe foreign-origin `GET` is
+not blocked at the edge. In tokenless split dev, foreign-origin `/api/*` requests
+are rejected with `403` for **every** method, safe ones included, because the
+token gate is not there to stop them. Either way CORS withholds the
 `Access-Control-Allow-Origin` response header (same-origin only when packaged,
 any localhost origin in split dev), so a browser on a foreign origin cannot read
 the response body.

@@ -1,8 +1,14 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import type { ConfigurationModelsResponse } from "@diffgazer/core/schemas/config";
 import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
+import {
+  buildProviderRows,
+  makeAllConfigurationsListResponse,
+  READY_GEMINI_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
@@ -20,11 +26,6 @@ import {
   renderRootFrame,
 } from "../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../theme/provider";
-import {
-  buildProviderRows,
-  geminiDiscoveryResponse,
-  makeConfigurationListResponse,
-} from "../testing/fixtures";
 import { ProvidersScreen } from "./screen";
 
 vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
@@ -32,7 +33,7 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
   useInit: () => ({
     data: {
       schemaVersion: 2 as const,
-      configurations: makeConfigurationListResponse().configurations,
+      configurations: makeAllConfigurationsListResponse().configurations,
       selectedConfigurationId: "gemini-primary" as const,
       settings: {
         theme: "terminal" as const,
@@ -116,12 +117,32 @@ function makeQueryClient(): QueryClient {
   });
 }
 
+function geminiCatalogModelsResponse(): ConfigurationModelsResponse {
+  return {
+    status: "passed",
+    configurationId: READY_GEMINI_CONFIGURATION.configurationId,
+    productId: READY_GEMINI_CONFIGURATION.productId,
+    transportFamily: READY_GEMINI_CONFIGURATION.transportFamily,
+    models: [
+      {
+        id: "gemini-2.5-flash",
+        name: "gemini-2.5-flash",
+        description: "1M context",
+        tier: "paid",
+      },
+    ],
+    checkedAt: "2026-07-31T12:00:00.000Z",
+    source: "snapshot",
+    cached: false,
+  };
+}
+
 function makeApi(): BoundApi {
   return {
     ...createApi({ baseUrl: "http://localhost" }),
     listConfigurations: vi
       .fn<BoundApi["listConfigurations"]>()
-      .mockResolvedValue(makeConfigurationListResponse()),
+      .mockResolvedValue(makeAllConfigurationsListResponse()),
     createConfiguration: vi.fn(),
     updateConfiguration: vi.fn(),
     selectConfiguration: vi.fn(),
@@ -129,9 +150,9 @@ function makeApi(): BoundApi {
     inspectConfiguration: vi.fn(),
     // Model discovery is a real query: an undefined resolution makes React
     // Query throw and the dialog renders an error footer instead of its list.
-    testConfiguration: vi
-      .fn<BoundApi["testConfiguration"]>()
-      .mockResolvedValue(geminiDiscoveryResponse()),
+    getConfigurationModels: vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(geminiCatalogModelsResponse()),
   } satisfies BoundApi;
 }
 
@@ -310,7 +331,7 @@ describe("ProvidersScreen keyboard zones", () => {
 
   test("selects a ready configuration through the primary action", async () => {
     const readyStatus = requireValue(
-      makeConfigurationListResponse().configurations[0],
+      makeAllConfigurationsListResponse().configurations[0],
       "first configuration",
     );
     const inspectConfiguration = vi.fn<BoundApi["inspectConfiguration"]>().mockResolvedValue({

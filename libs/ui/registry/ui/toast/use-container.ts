@@ -23,14 +23,17 @@ export function useToastContainer(
   enabled = true,
 ) {
   const handleEscape = (event: KeyboardEvent) => {
-    const last = toasts.findLast((t) => !dismissingIds.has(t.id));
-    if (!last) return;
+    const hasVisible = toasts.some((t) => !dismissingIds.has(t.id));
+    if (!hasVisible) return;
     // Mark the keypress handled so @diffgazer/keys' window-level dispatch
     // (skip-on-defaultPrevented) does not also run a scope's Escape binding —
-    // dismissing a toast must not double-fire navigate/cancel actions, and the
+    // dismissing toasts must not double-fire navigate/cancel actions, and the
     // region now sits above any open dialog so it must not also close the dialog.
     event.preventDefault();
-    dismiss(last.id);
+    // One Escape clears the entire visible stack. Dismissing one toast per
+    // press would leave the screen's advertised Esc action dead for N presses
+    // after an error burst; this keeps it at most one extra press away.
+    dismiss();
   };
 
   const hasToasts = toasts.length > 0;

@@ -25,9 +25,9 @@ Diagnostics is not a configuration editor. It offers **Refresh Diagnostics** plu
 
 ## Theme, storage, and agent execution
 
-Theme controls the look of the web UI. You choose between dark and light, with a live preview that follows whichever option is focused.
+Theme controls the look of the web UI. You choose between Auto, Dark, and Light, with a live preview that follows whichever option is focused. Auto follows your operating system's color scheme and tracks it live, so the app flips with the OS without a reload; the preview shows whichever of dark or light Auto currently resolves to.
 
-> Note: The stored theme schema also defines `auto` and `terminal` values — `terminal` is used by the TUI, and `auto` is a legacy web value that now resolves to dark. The schema is the source of truth for what can be saved; the web UI deliberately exposes only the two themes it renders.
+> Note: The stored theme schema also defines a `terminal` value, which the TUI uses. The schema is the source of truth for what can be saved; the web UI exposes only the three themes it renders.
 
 Secrets Storage decides where your API keys live. Two options exist:
 

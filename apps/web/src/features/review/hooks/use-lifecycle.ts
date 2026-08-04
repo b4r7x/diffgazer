@@ -245,6 +245,7 @@ export function useReviewLifecycle({
     startIdentity: base.start.identity,
     readinessGate: base.start.readinessGate,
     canStart: base.start.canStart,
+    isCompleting: base.completion.isCompleting,
     isReady,
     isTransitionPending,
     handleCancel,

@@ -13,8 +13,10 @@ export interface UseListNavigationInputOptions {
 
 /**
  * Binds Ink keyboard input to a `useListNavigation` instance: arrows move the
- * highlight along `orientation`, Enter activates. Components that own extra
- * keys (hotkeys, Escape) register their own `useInput` alongside this one.
+ * highlight along `orientation`, Enter activates. Vertical lists also take the
+ * vim keys the shared help table promises for lists (`j`/`k`); horizontal ones
+ * stay arrows-only. Components that own extra keys (hotkeys, Escape) register
+ * their own `useInput` alongside this one.
  */
 export function useListNavigationInput({
   navigation,
@@ -32,6 +34,14 @@ export function useListNavigationInput({
         return;
       }
       if (isVertical ? key.downArrow : key.rightArrow) {
+        navigation.moveBy(1);
+        return;
+      }
+      if (isVertical && input === "k") {
+        navigation.moveBy(-1);
+        return;
+      }
+      if (isVertical && input === "j") {
         navigation.moveBy(1);
         return;
       }

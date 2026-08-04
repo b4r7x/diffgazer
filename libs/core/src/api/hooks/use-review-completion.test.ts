@@ -208,6 +208,31 @@ describe("useReviewCompletion", () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
+  it("skipDelay emits nothing before the stream ends", () => {
+    const onComplete = vi.fn();
+    const onStreamComplete = vi.fn();
+    const { result } = renderHook(
+      (props: UseReviewCompletionOptions) => useReviewCompletion(props),
+      {
+        initialProps: createOptions({
+          isStreaming: true,
+          hasStreamed: true,
+          onComplete,
+          onStreamComplete,
+        }),
+      },
+    );
+
+    act(() => {
+      result.current.skipDelay();
+    });
+
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(onStreamComplete).not.toHaveBeenCalled();
+    expect(result.current.isCompleting).toBe(false);
+    expect(result.current.completedAt).toBeNull();
+  });
+
   it("skipDelay calls the current render onComplete callback", () => {
     const firstComplete = vi.fn();
     const secondComplete = vi.fn();

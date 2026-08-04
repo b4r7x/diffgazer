@@ -42,6 +42,15 @@ const MALICIOUS_TITLE = `${ESC}]0;HACK${BEL}Safe title`;
 const MALICIOUS_ERROR = `${ESC}]0;HACK${BEL}disk unreadable`;
 const SEVERITY_COUNTS = { blocker: 0, high: 1, medium: 0, low: 0, nit: 0 };
 
+/** The issue row carrying the selection rail, which only the highlighted issue renders. */
+function highlightedRow(frame: string | undefined): string {
+  return (
+    stripAnsi(frame ?? "")
+      .split("\n")
+      .find((row) => row.includes("│")) ?? ""
+  );
+}
+
 describe("HistoryInsightsPane (TUI)", () => {
   test("strips terminal escape sequences from persisted issue titles", () => {
     const { lastFrame } = render(
@@ -235,6 +244,38 @@ describe("HistoryInsightsPane (TUI)", () => {
     stdin.write("\r");
     await waitUntil(() => onOpenReview.mock.calls.length === 1);
     expect(onOpenReview).toHaveBeenCalledWith("issue-8");
+  });
+
+  test("j and k move the highlight through a scrolling issue list", async () => {
+    const issues = Array.from({ length: 8 }, (_, index) =>
+      makeIssue({ id: `issue-${index + 1}`, title: `SCROLLED-ISSUE-${index + 1}` }),
+    );
+    const { stdin, lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <HistoryInsightsPane
+          runId="run-1"
+          severityCounts={null}
+          issues={issues}
+          scrollHeight={5}
+          isActive
+        />
+      </CliThemeProvider>,
+    );
+
+    expect(highlightedRow(lastFrame())).toContain("SCROLLED-ISSUE-1");
+
+    stdin.write("k");
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(highlightedRow(lastFrame())).toContain("SCROLLED-ISSUE-1");
+
+    for (let index = 0; index < 7; index += 1) {
+      stdin.write("j");
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    await waitUntil(() => highlightedRow(lastFrame()).includes("SCROLLED-ISSUE-8"));
+
+    stdin.write("k");
+    await waitUntil(() => highlightedRow(lastFrame()).includes("SCROLLED-ISSUE-7"));
   });
 
   test("keeps a realistic insights window visible inside an 80x24 frame", async () => {

@@ -37,7 +37,13 @@ export function deduplicateIssues(issues: ReviewIssue[]): ReviewIssue[] {
   return Array.from(seen.values());
 }
 
-export function sortIssuesBySeverity(issues: ReviewIssue[]): ReviewIssue[] {
+/**
+ * Total order for the persisted review result: severity, then a rounded
+ * confidence bucket, then raw confidence, file, and id. Unlike the severity-only
+ * `sortIssuesBySeverity` in `@diffgazer/core/review`, this one is independent of
+ * the input order, so two runs over the same issues serialize identically.
+ */
+export function orderIssuesDeterministic(issues: ReviewIssue[]): ReviewIssue[] {
   return [...issues].sort((a, b) => {
     const severityDiff = severityRank(a.severity) - severityRank(b.severity);
     if (severityDiff !== 0) return severityDiff;

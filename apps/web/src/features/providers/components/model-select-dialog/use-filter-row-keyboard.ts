@@ -40,9 +40,11 @@ export function useModelFilters({
   enterListFromBoundary,
   enterFooter,
 }: UseModelFiltersOptions): UseModelFiltersResult {
-  useKey("ArrowUp", focusSearchInput, { enabled: open && inFilters, preventDefault: true });
+  // The dialog footer advertises "↑/↓ j/k Navigate" as one chip, so j/k must
+  // move through the filter row exactly like the arrow keys.
+  useKey(["ArrowUp", "k"], focusSearchInput, { enabled: open && inFilters, preventDefault: true });
   useKey(
-    "ArrowDown",
+    ["ArrowDown", "j"],
     () => {
       if (!hasFilteredModels) {
         enterFooter(0);
@@ -63,13 +65,13 @@ export function useModelFilters({
   });
 
   const handleFilterKeyDown = (event: ReactKeyboardEvent) => {
-    if (event.key === "ArrowUp") {
+    if (event.key === "ArrowUp" || event.key === "k") {
       event.preventDefault();
       focusSearchInput();
       return;
     }
 
-    if (event.key === "ArrowDown") {
+    if (event.key === "ArrowDown" || event.key === "j") {
       event.preventDefault();
       if (!hasFilteredModels) {
         enterFooter(0);

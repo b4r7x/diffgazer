@@ -2153,8 +2153,8 @@
           "type": "registry:hook"
         },
         {
-          "path": "registry/hooks/overlay-dismiss-stack.ts",
-          "type": "registry:hook"
+          "path": "registry/lib/overlay-dismiss-stack.ts",
+          "type": "registry:lib"
         }
       ]
     },
@@ -2340,6 +2340,10 @@
         {
           "path": "registry/lib/top-layer-stack.ts",
           "type": "registry:lib"
+        },
+        {
+          "path": "registry/hooks/use-top-layer-position.ts",
+          "type": "registry:hook"
         }
       ]
     },
@@ -2829,16 +2833,16 @@
           "type": "registry:hook"
         },
         {
-          "path": "registry/hooks/listbox-children.ts",
-          "type": "registry:hook"
+          "path": "registry/lib/listbox-children.ts",
+          "type": "registry:lib"
         },
         {
-          "path": "registry/hooks/listbox-dom.ts",
-          "type": "registry:hook"
+          "path": "registry/lib/listbox-dom.ts",
+          "type": "registry:lib"
         },
         {
-          "path": "registry/hooks/listbox-metadata.ts",
-          "type": "registry:hook"
+          "path": "registry/lib/listbox-metadata.ts",
+          "type": "registry:lib"
         }
       ]
     },

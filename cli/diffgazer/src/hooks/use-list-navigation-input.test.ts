@@ -14,8 +14,11 @@ vi.mock("ink", () => ({
 import type { ListNavigation, ListNavigationItem } from "./use-list-navigation";
 import { useListNavigationInput } from "./use-list-navigation-input";
 
+// Ink only calls a handler registered with `{ isActive: false }` again once it
+// becomes active, so the mock has to honour the same gate.
 function press(input: string, key: Record<string, boolean> = {}) {
-  const handler = useInputMock.mock.calls.at(-1)?.[0];
+  const [handler, options] = useInputMock.mock.calls.at(-1) ?? [];
+  if (options?.isActive === false) return;
   handler?.(input, key);
 }
 
@@ -60,6 +63,41 @@ describe("useListNavigationInput", () => {
     press("", { upArrow: true });
     press("", { downArrow: true });
     expect(navigation.moveBy).toHaveBeenCalledTimes(2);
+  });
+
+  test("vertical orientation moves on the vim keys the help table promises", () => {
+    useInputMock.mockReset();
+    const navigation = createNavigation();
+    renderHook(() => useListNavigationInput({ navigation, isActive: true }));
+
+    press("k");
+    expect(navigation.moveBy).toHaveBeenLastCalledWith(-1);
+
+    press("j");
+    expect(navigation.moveBy).toHaveBeenLastCalledWith(1);
+    expect(navigation.moveBy).toHaveBeenCalledTimes(2);
+  });
+
+  test("horizontal orientation ignores j/k", () => {
+    useInputMock.mockReset();
+    const navigation = createNavigation();
+    renderHook(() =>
+      useListNavigationInput({ navigation, isActive: true, orientation: "horizontal" }),
+    );
+
+    press("j");
+    press("k");
+    expect(navigation.moveBy).not.toHaveBeenCalled();
+  });
+
+  test("ignores j/k while the list is inactive", () => {
+    useInputMock.mockReset();
+    const navigation = createNavigation();
+    renderHook(() => useListNavigationInput({ navigation, isActive: false }));
+
+    press("j");
+    press("k");
+    expect(navigation.moveBy).not.toHaveBeenCalled();
   });
 
   test("activates the highlighted item on Enter, and on Space only when opted in", () => {

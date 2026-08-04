@@ -38,7 +38,7 @@ This token is deliberately client-held: the browser app receives it so it can ca
 
 ## Where secrets are stored
 
-Diffgazer prefers your operating system keyring when available. Otherwise it stores literal credentials in separate `0600` files under your Diffgazer home. Environment references store only the variable name.
+You choose where secrets live. Diffgazer offers your operating system keyring wherever the platform supports it — the server refuses to save that choice when the keyring is unavailable — and file storage everywhere. Until you pick the keyring, secrets go to files: literal credentials in separate `0600` files under your Diffgazer home. Environment references store only the variable name.
 
 Hosted products may use either method. Local HTTP products accept only an optional loopback bearer token. Local CLI products use **vendor-managed local auth**; Diffgazer does not import or proxy CLI credentials.
 

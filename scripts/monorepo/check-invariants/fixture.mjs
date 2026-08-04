@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach } from "node:test";
@@ -57,6 +57,11 @@ export function writeText(root, relPath, content) {
 
 export function writeJson(root, relPath, value) {
   writeText(root, relPath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+export function setFileMtime(root, relPath, timeMs) {
+  const time = new Date(timeMs);
+  utimesSync(join(root, relPath), time, time);
 }
 
 export function trackedFileEntry(path) {
@@ -193,6 +198,10 @@ export function createConformingFixture() {
     engines: { node: ">=22.0.0" },
   });
   writePackagePolicyFiles(root, "libs/keys");
+  // Fresh compiled bundle: src backdated so dist (written now) is newer.
+  writeText(root, "libs/keys/src/index.ts", "export {};\n");
+  setFileMtime(root, "libs/keys/src/index.ts", Date.now() - 60_000);
+  writeText(root, "libs/keys/dist/index.js", "export {};\n");
 
   createWorkspacePackage(root, "cli/diffgazer/package.json", {
     name: "diffgazer",

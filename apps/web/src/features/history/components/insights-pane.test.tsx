@@ -62,6 +62,34 @@ describe("HistoryInsightsPane", () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
+  it("renders the severity tag and title on one line with the location on its own line", () => {
+    render(
+      <HistoryInsightsPane
+        runId="run-1"
+        severityCounts={null}
+        issues={[
+          makeIssue({
+            id: "issue-1",
+            severity: "medium",
+            title: "Missing coverage for server state",
+            file: "src/components/layout/header.tsx",
+            line_start: 70,
+          }),
+        ]}
+      />,
+    );
+
+    // The single-line ellipsis itself is CSS, which jsdom does not compute; what
+    // is assertable is the two-line shape it exists for — tag and title share the
+    // first line, and the location is a separate element below rather than text
+    // trailing the title.
+    const title = screen.getByText("Missing coverage for server state");
+    const location = screen.getByText("header.tsx:70");
+
+    expect(title.parentElement).toContainElement(screen.getByText("[Medium]"));
+    expect(title.parentElement).not.toContainElement(location);
+  });
+
   it("falls back to the file name when a run issue has no line location", () => {
     render(
       <HistoryInsightsPane

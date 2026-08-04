@@ -10,10 +10,11 @@ import { ProviderList } from "@/features/providers/components/list";
 import { ModelSelectDialog } from "@/features/providers/components/model-select-dialog/dialog";
 import { useProvidersPageState } from "@/features/providers/hooks/use-page-state";
 import { useConfigData } from "@/hooks/use-config";
+import { useFocusWithin } from "@/hooks/use-focus-within";
 
 function getProvidersFooter(
   focusZone: "input" | "filters" | "list" | "buttons",
-  hasSelectedRow: boolean,
+  { hasSelectedRow, hasActions }: { hasSelectedRow: boolean; hasActions: boolean },
 ): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
   if (focusZone === "input") {
     return {
@@ -50,12 +51,8 @@ function getProvidersFooter(
   return {
     shortcuts: [
       { key: "↑/↓", label: "Navigate Providers" },
-      ...(hasSelectedRow
-        ? [
-            { key: "Enter", label: "Select Provider" },
-            { key: "Space/→", label: "Actions" },
-          ]
-        : []),
+      ...(hasSelectedRow ? [{ key: "Enter", label: "Select Provider" }] : []),
+      ...(hasActions ? [{ key: "Space/→", label: "Actions" }] : []),
       { key: "/", label: "Search" },
     ],
     rightShortcuts: [BACK_SHORTCUT],
@@ -71,16 +68,22 @@ export function ProvidersPage() {
     selection,
     dialogs,
     handlers,
-    actions,
+    providerActions,
+    runProviderAction,
     keyboard,
     isSubmitting,
   } = useProvidersPageState();
 
   const { secretsStorage } = useConfigData();
+  const listPane = useFocusWithin<HTMLDivElement>();
+  const detailsPane = useFocusWithin<HTMLDivElement>();
 
   const footer = dialogs.anyOpen
     ? { shortcuts: [] as Shortcut[], rightShortcuts: [] as Shortcut[] }
-    : getProvidersFooter(keyboard.focusZone, Boolean(selectedRow));
+    : getProvidersFooter(keyboard.focusZone, {
+        hasSelectedRow: Boolean(selectedRow),
+        hasActions: providerActions.length > 0,
+      });
 
   usePageFooter({ shortcuts: footer.shortcuts, rightShortcuts: footer.rightShortcuts });
 
@@ -98,10 +101,11 @@ export function ProvidersPage() {
   const modelDialog = dialogs.current?.kind === "model" ? dialogs.current : null;
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
+    <div className="flex flex-1 flex-col overflow-y-auto max-md:overflow-x-hidden md:flex-row md:overflow-hidden md:pb-2">
       <Panel
-        focused={keyboard.focusZone !== "buttons"}
-        className="flex w-full flex-col rounded-none border-0 border-b md:h-full md:w-2/5 md:border-r md:border-b-0"
+        {...listPane.props}
+        focused={listPane.focusWithin}
+        className="flex w-full flex-col rounded-none border-0 border-b border-border md:h-full md:w-2/5 md:border-r md:border-b-0"
         data-layout-pane="provider-list"
       >
         <ProviderList
@@ -122,8 +126,7 @@ export function ProvidersPage() {
           onSearchEscape={keyboard.handleSearchEscape}
           onListFocus={keyboard.handleListFocus}
           focusedFilterIndex={keyboard.focusZone === "filters" ? keyboard.filterIndex : undefined}
-          onFilterHighlightChange={keyboard.setFilterIndex}
-          onFilterFocus={keyboard.handleFilterFocus}
+          onFilterIndexChange={keyboard.handleFilterIndexChange}
           onFilterKeyDown={keyboard.handleFilterKeyDown}
           getFilterButtonProps={keyboard.getFilterButtonProps}
           onListKeyDown={keyboard.handleListKeyDown}
@@ -134,13 +137,15 @@ export function ProvidersPage() {
         />
       </Panel>
       <Panel
-        focused={keyboard.focusZone === "buttons" && !!selectedRow}
+        {...detailsPane.props}
+        focused={detailsPane.focusWithin}
         className="flex w-full flex-col rounded-none border-0 md:h-full md:w-3/5"
         data-layout-pane="provider-details"
       >
         <ProviderDetails
           row={selectedRow}
-          actions={actions}
+          actions={providerActions}
+          onAction={runProviderAction}
           isPending={isSubmitting}
           focusedButtonIndex={
             keyboard.focusZone === "buttons" && selectedRow ? keyboard.buttonIndex : undefined

@@ -1,9 +1,14 @@
+import {
+  buildProviderRows,
+  configurationStatus,
+  READY_ZAI_CONFIGURATION,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { buildProviderRows } from "../testing/fixtures";
+import { filterProviders } from "../lib/filter";
 import { ProviderList } from "./list";
 
-const ROWS = buildProviderRows();
+const ROWS = filterProviders(buildProviderRows(), "all");
 const GEMINI_ROW = ROWS.find((row) => row.configuration?.configurationId === "gemini-primary");
 if (!GEMINI_ROW) throw new Error("Missing gemini fixture");
 
@@ -25,19 +30,30 @@ describe("ProviderList", () => {
     expect(option).toHaveAccessibleDescription("FREE gemini-2.5-flash");
   });
 
-  it("marks removed records as non-selectable with removed status text", () => {
-    const removedRow = ROWS.find(
-      (row) => row.configuration?.configurationId === "legacy-removed-zai-plan",
-    );
-    if (!removedRow) throw new Error("Missing removed fixture");
+  it("publishes the display-status tone on each status chip", () => {
+    const modelMissingRow = buildProviderRows([
+      configurationStatus(READY_ZAI_CONFIGURATION, "model-missing"),
+    ]).find((row) => row.configuration?.configurationId === "zai-primary");
+    if (!modelMissingRow) throw new Error("Missing model-missing fixture");
 
-    render(<ProviderList providers={[removedRow]} {...DEFAULT_LIST_PROPS} selectedId={null} />);
+    render(<ProviderList providers={[GEMINI_ROW, modelMissingRow]} {...DEFAULT_LIST_PROPS} />);
 
-    expect(screen.getByRole("option", { name: "Z.AI Coding Plan" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
+    expect(screen.getByRole("img", { name: /^Ready\./ })).toHaveAttribute("data-tone", "success");
+    expect(screen.getByRole("img", { name: /^Model missing\./ })).toHaveAttribute(
+      "data-tone",
+      "warning",
     );
-    expect(screen.getByLabelText(/Removed\./i)).toBeInTheDocument();
+  });
+
+  it("keeps row subtitles free of remediation prose", () => {
+    render(<ProviderList providers={ROWS} {...DEFAULT_LIST_PROPS} />);
+
+    for (const row of ROWS) {
+      expect(screen.queryByText(row.readiness.remediation.message)).not.toBeInTheDocument();
+    }
+    expect(screen.getByRole("option", { name: "Google Gemini" })).toHaveAccessibleDescription(
+      "FREE gemini-2.5-flash",
+    );
   });
 
   it("keeps the same live status node when filtering removes every provider", () => {

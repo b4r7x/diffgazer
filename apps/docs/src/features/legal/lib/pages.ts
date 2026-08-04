@@ -1,5 +1,5 @@
 import { notFound } from "@tanstack/react-router";
-import type { LegalPageLoaderData } from "@/features/legal/lib/load-legal-page";
+import type { LegalPageLoaderData } from "@/features/legal/lib/load-page";
 import { buildPageSeo, DEFAULT_SITE_NAME } from "@/lib/seo";
 import type { LegalPageSlug } from "./slugs";
 
@@ -30,7 +30,7 @@ export function legalRouteOptions(
   const page = getLegalPageEntry(slug);
   return {
     loader: async (): Promise<LegalPageLoaderData> => {
-      const { loadLegalPage } = await import("@/features/legal/lib/load-legal-page");
+      const { loadLegalPage } = await import("@/features/legal/lib/load-page");
       const data = await loadLegalPage({ data: { slug } });
       if (!data) throw notFound();
       await preloadContent(data.path);

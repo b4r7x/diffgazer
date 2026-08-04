@@ -16,7 +16,15 @@ import { isActiveOptionVisible, toOptionId } from "./selection";
 import { useSelectTypeahead } from "./use-typeahead";
 import { getVisibleEnabledOptions } from "./visible-options";
 
+// The search input is a text field, so its keys stay arrows-only: j/k must type.
 const SEARCH_INPUT_NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter"]);
+
+// j/k mirror ArrowDown/ArrowUp in every listbox composite -- the vim contract the
+// Help screen promises for lists. On an empty typeahead buffer they navigate;
+// mid-query they extend the query the way Space does, and they never start one.
+function isVimNavigationKey(key: string): boolean {
+  return key === "j" || key === "k";
+}
 
 export function focusOpenContent(
   searchInputRef: RefObject<HTMLInputElement | null>,
@@ -70,6 +78,8 @@ export function useSelectContentNavigation({
     onSelect: selectItem,
     enabled: open,
     scopeToContainer: true,
+    upKeys: ["ArrowUp", "k"],
+    downKeys: ["ArrowDown", "j"],
   });
 
   // Non-arrow highlight paths (typeahead, searchable arrows) must scroll the
@@ -243,11 +253,14 @@ export function useSelectContentNavigation({
     }
 
     const isModified = e.ctrlKey || e.metaKey || e.altKey;
-    // Run typeahead before navKeyDown for Space so an in-progress query ("new y")
-    // extends the buffer instead of selecting.
-    if (e.key === " " && !isModified && handleTypeahead(e.key)) return;
+    // Run typeahead before navKeyDown for Space and j/k so an in-progress query
+    // ("new y", "fjord") extends the buffer instead of selecting or moving. On an
+    // empty buffer both decline the query and fall through to navigation.
+    const isVimKey = isVimNavigationKey(e.key);
+    const typeaheadFirst = e.key === " " || isVimKey;
+    if (typeaheadFirst && !isModified && handleTypeahead(e.key, { extendOnly: isVimKey })) return;
     navKeyDown(e);
-    if (e.key !== " " && !isModified) handleTypeahead(e.key);
+    if (!typeaheadFirst && !isModified) handleTypeahead(e.key);
   };
 
   const activeDescendant = isActiveOptionVisible(options, highlighted, searchQuery)

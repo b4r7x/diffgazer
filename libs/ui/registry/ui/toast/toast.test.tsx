@@ -427,7 +427,7 @@ describe("Toast", () => {
     vi.useFakeTimers();
   });
 
-  it("dismisses the last toast on Escape key", () => {
+  it("dismisses the entire visible stack on a single Escape key", () => {
     render(<Toaster />);
     act(() => {
       toast("First", { id: "k1" });
@@ -442,7 +442,35 @@ describe("Toast", () => {
     });
 
     expect(screen.queryByText("Second")).not.toBeInTheDocument();
-    expect(screen.getByText("First")).toBeInTheDocument();
+    expect(screen.queryByText("First")).not.toBeInTheDocument();
+  });
+
+  it("moves focus off a removed toast action after Escape dismisses the stack", () => {
+    render(<Toaster />);
+    act(() => {
+      toast("Actionable", { id: "focus-esc", action: <button type="button">Undo</button> });
+    });
+
+    const actionButton = screen.getByRole("button", { name: "Undo" });
+    act(() => {
+      actionButton.focus();
+    });
+    expect(document.activeElement).toBe(actionButton);
+
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+      );
+    });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(screen.queryByText("Actionable")).not.toBeInTheDocument();
+    expect(actionButton.isConnected).toBe(false);
+    // Focus must not be stranded on the detached node; it lands on body where
+    // the app's keyboard scopes take over.
+    expect(document.activeElement).toBe(document.body);
   });
 
   it("dismisses a toast on Escape while a dialog is open and marks the keypress handled", () => {
@@ -476,7 +504,7 @@ describe("Toast", () => {
     );
   });
 
-  it("does not double-fire a window-level Escape listener when a toast is dismissed", () => {
+  it("consumes exactly one Escape for a stacked error burst before a window-level listener", () => {
     const scopeEscape = vi.fn();
     const onWindowKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
@@ -487,27 +515,40 @@ describe("Toast", () => {
     try {
       render(<Toaster />);
       act(() => {
-        toast("Dismiss me", { id: "consume-escape" });
+        toast.error("Backend restarting", { id: "burst-1" });
+        toast.error("Error loading review", { id: "burst-2" });
       });
 
+      // The first press dismisses the whole stack and is consumed.
       act(() => {
         document.dispatchEvent(
           new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
         );
       });
-      act(() => {
-        vi.advanceTimersByTime(250);
-      });
-      expect(screen.queryByText("Dismiss me")).not.toBeInTheDocument();
       expect(scopeEscape).not.toHaveBeenCalled();
 
-      // With no toast left, Escape reaches the window scope again.
+      // The stack is already dismissing (exit animation running), so the next
+      // press falls through to the window scope without waiting for removal.
       act(() => {
         document.dispatchEvent(
           new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
         );
       });
       expect(scopeEscape).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(screen.queryByText("Backend restarting")).not.toBeInTheDocument();
+      expect(screen.queryByText("Error loading review")).not.toBeInTheDocument();
+
+      // With no toast left, Escape keeps reaching the window scope.
+      act(() => {
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+        );
+      });
+      expect(scopeEscape).toHaveBeenCalledTimes(2);
     } finally {
       window.removeEventListener("keydown", onWindowKeyDown);
     }

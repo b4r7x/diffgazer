@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ConfigurationModelsResponseSchema,
   ModelTierSchema,
   OpenRouterModelCacheSchema,
   OpenRouterModelSchema,
@@ -153,5 +154,72 @@ describe("schemas/config/models", () => {
     },
   ])("rejects invalid provider provenance/model tiers: $name", ({ input }) => {
     expect(ProviderModelsResponseSchema.safeParse(input).success).toBe(false);
+  });
+});
+
+describe("ConfigurationModelsResponseSchema", () => {
+  const passed = {
+    status: "passed",
+    configurationId: "cfg-v1-zai",
+    productId: "zai",
+    transportFamily: "hosted-api",
+    models: [{ id: "glm-4.7", name: "GLM-4.7", description: "128K context", tier: "paid" }],
+    checkedAt: "2026-08-02T00:00:00.000Z",
+    source: "snapshot",
+    cached: false,
+  };
+  const skipped = {
+    status: "skipped",
+    configurationId: "ollama-loopback",
+    productId: "ollama",
+    transportFamily: "local-http",
+    models: [],
+    checkedAt: "2026-08-02T00:00:00.000Z",
+    reason: "Catalog observations are unavailable for this configuration product.",
+  };
+
+  it.each([
+    "live",
+    "cache",
+    "snapshot",
+  ] as const)("accepts passed catalog provenance from %s", (source) => {
+    const result = ConfigurationModelsResponseSchema.safeParse({
+      ...passed,
+      source,
+      cached: source === "cache",
+    });
+    expect(result.success).toBe(true);
+    if (result.success && result.data.status === "passed") {
+      expect(result.data.models[0]?.id).toBe("glm-4.7");
+    }
+  });
+
+  it.each([
+    { source: "live", cached: true },
+    { source: "snapshot", cached: true },
+    { source: "cache", cached: false },
+  ] as const)("rejects contradictory provenance source=$source cached=$cached", (provenance) => {
+    expect(ConfigurationModelsResponseSchema.safeParse({ ...passed, ...provenance }).success).toBe(
+      false,
+    );
+  });
+
+  it("accepts a skipped response with an empty model list and a bounded reason", () => {
+    const result = ConfigurationModelsResponseSchema.safeParse(skipped);
+    expect(result.success).toBe(true);
+    if (result.success && result.data.status === "skipped") {
+      expect(result.data.reason).toBe(skipped.reason);
+    }
+  });
+
+  it.each([
+    { name: "skipped with models", input: { ...skipped, models: passed.models } },
+    { name: "skipped with an empty reason", input: { ...skipped, reason: "" } },
+    { name: "skipped with an oversize reason", input: { ...skipped, reason: "x".repeat(513) } },
+    { name: "unknown status", input: { ...passed, status: "pending" } },
+    { name: "passed with an extra key", input: { ...passed, credential: "sk-leak" } },
+    { name: "passed without provenance", input: { ...passed, source: undefined } },
+  ])("rejects $name", ({ input }) => {
+    expect(ConfigurationModelsResponseSchema.safeParse(input).success).toBe(false);
   });
 });

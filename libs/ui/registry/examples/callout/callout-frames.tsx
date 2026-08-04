@@ -23,7 +23,7 @@ export default function CalloutFrames() {
         <Callout.Icon />
         <Callout.Title>Bar frame</Callout.Title>
         <Callout.Content>
-          Neutral hairline border with a 4px tone marker bar — matches Dialog.Header marker="bar".
+          Neutral hairline border with a 4px tone marker bar — the heaviest of the three frames.
         </Callout.Content>
       </Callout>
     </div>

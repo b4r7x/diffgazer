@@ -1,6 +1,9 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import type { SecretsStorageError } from "../../shared/lib/config/types.js";
+import type {
+  ConfigurationActionErrorCode,
+  ConfigurationActionOnlyErrorCode,
+} from "../../shared/lib/config/types.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import {
   type ErrorStatus,
@@ -12,10 +15,12 @@ import {
   createBodyLimitMiddleware,
   DEFAULT_BODY_LIMIT_KB,
 } from "../../shared/middlewares/body-limit.js";
+import { createRateLimitMiddleware } from "../../shared/middlewares/rate-limit.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
-import { ClientConfigurationActionSchema } from "./schemas.js";
+import { ClientConfigurationActionSchema, ConfigurationModelsParamSchema } from "./schemas.js";
 import {
   type ConfigurationServiceError,
+  discoverConfigurationModels,
   getInitState,
   listConfigurations,
   runConfigurationAction,
@@ -24,21 +29,24 @@ import {
 const configRouter = new Hono();
 
 const bodyLimitMiddleware = createBodyLimitMiddleware(DEFAULT_BODY_LIMIT_KB);
+const catalogModelFetchLimit = createRateLimitMiddleware("config:catalog-models", {
+  maxRequests: 30,
+  windowMs: 60_000,
+});
 
-const CONFIGURATION_ACTION_ERROR_CODES = new Set<ConfigurationServiceError["code"]>([
+const CONFIGURATION_ACTION_ERROR_CODES = new Set<string>([
   "CONFIGURATION_NOT_FOUND",
   "CONFIGURATION_UNSUPPORTED",
   "CONFIGURATION_CONFLICT",
   "SECRET_BINDING_FAILED",
   "INVALID_ACTION",
-]);
+] satisfies ConfigurationActionOnlyErrorCode[]);
 
-// Everything outside the action vocabulary is a secrets-storage failure, so the
-// remaining codes are exactly `SecretsStorageError`'s.
-const isSecretsStorageError = (error: ConfigurationServiceError): error is SecretsStorageError =>
-  !CONFIGURATION_ACTION_ERROR_CODES.has(error.code);
+const isConfigurationActionErrorCode = (
+  code: ConfigurationActionErrorCode,
+): code is ConfigurationActionOnlyErrorCode => CONFIGURATION_ACTION_ERROR_CODES.has(code);
 
-const configurationActionErrorStatus = (code: ConfigurationServiceError["code"]): ErrorStatus => {
+const configurationActionErrorStatus = (code: ConfigurationActionOnlyErrorCode): ErrorStatus => {
   switch (code) {
     case "INVALID_ACTION":
     case "CONFIGURATION_UNSUPPORTED":
@@ -48,19 +56,7 @@ const configurationActionErrorStatus = (code: ConfigurationServiceError["code"])
     case "CONFIGURATION_CONFLICT":
       return 409;
     case "SECRET_BINDING_FAILED":
-    case "KEYRING_UNAVAILABLE":
-    case "KEYRING_READ_FAILED":
-    case "KEYRING_WRITE_FAILED":
-    case "KEYRING_DELETE_FAILED":
-    case "SECRETS_MIGRATION_FAILED":
-    case "PERSIST_FAILED":
-    case "ROLLBACK_FAILED":
       return 500;
-    case "SECRET_NOT_FOUND":
-    case "STORAGE_NOT_CONFIGURED":
-      return 400;
-    case "CONCURRENCY_CONFLICT":
-      return 409;
     default: {
       const unhandled: never = code;
       throw new Error(`Unhandled configuration error code: ${unhandled}`);
@@ -72,7 +68,9 @@ function handleConfigServiceError(
   ctx: Parameters<typeof errorResponse>[0],
   error: ConfigurationServiceError,
 ): Response {
-  if (isSecretsStorageError(error)) {
+  // Everything outside the action vocabulary is a secrets-storage failure, and
+  // those share one status table with the rest of the store errors.
+  if (!isConfigurationActionErrorCode(error.code)) {
     return handleStoreError(ctx, error);
   }
   return errorResponse(ctx, error.message, error.code, configurationActionErrorStatus(error.code));
@@ -94,6 +92,20 @@ configRouter.get("/providers", async (c): Promise<Response> => {
   }
   return c.json(result.value);
 });
+
+configRouter.get(
+  "/providers/:configurationId/models",
+  catalogModelFetchLimit,
+  zValidator("param", ConfigurationModelsParamSchema, zodErrorHandler),
+  async (c): Promise<Response> => {
+    const { configurationId } = c.req.valid("param");
+    const result = await discoverConfigurationModels(configurationId);
+    if (!result.ok) {
+      return handleConfigServiceError(c, result.error);
+    }
+    return c.json(result.value);
+  },
+);
 
 configRouter.post(
   "/actions",

@@ -13,6 +13,7 @@ import {
   useProviderManagement,
 } from "@/features/providers/hooks/use-provider-management";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
+import { getProviderActions, type ProviderAction } from "../lib/actions";
 import { filterProviders, type ProviderFilter } from "../lib/filter";
 
 type ProviderDialog =
@@ -78,7 +79,7 @@ export function useProvidersPageState() {
   }
 
   const dispatchSelectedAction = (row: ProviderListRow) => {
-    if (isSubmitting || row.product.status === "removed") return;
+    if (isSubmitting) return;
     void handleDispatchReadinessAction(row);
   };
 
@@ -101,7 +102,29 @@ export function useProvidersPageState() {
     },
   };
 
+  // The one derivation of the action row: the renderer and the keyboard zone both read this
+  // array, so their indexes and counts cannot drift apart.
+  const providerActions = getProviderActions(selectedRow);
+
+  const runProviderAction = (action: ProviderAction) => {
+    switch (action.id) {
+      case "dispatch":
+        actions.onDispatchAction();
+        break;
+      case "setup":
+        actions.onSetup();
+        break;
+      case "selectModel":
+        actions.onSelectModel();
+        break;
+      case "delete":
+        actions.onDelete();
+        break;
+    }
+  };
+
   const keyboard = useProvidersKeyboard({
+    actions: providerActions,
     selectedRow,
     filteredProviders,
     listReady: !isLoading && filteredProviders.length > 0,
@@ -110,10 +133,7 @@ export function useProvidersPageState() {
     dialogOpen: dialogOwner !== null,
     inputRef,
     listContainerRef,
-    onSetup: actions.onSetup,
-    onSelectModel: actions.onSelectModel,
-    onDelete: actions.onDelete,
-    onDispatchAction: dispatchSelectedAction,
+    runAction: runProviderAction,
   });
 
   return {
@@ -148,6 +168,8 @@ export function useProvidersPageState() {
     },
 
     actions,
+    providerActions,
+    runProviderAction,
 
     isSubmitting,
 

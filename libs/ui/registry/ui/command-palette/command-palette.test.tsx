@@ -756,8 +756,8 @@ describe("CommandPaletteContent mobile viewport contract", () => {
   it("caps the surface against the dynamic viewport height", () => {
     render(<ModalPalette open />);
     const content = screen.getByRole("dialog", { name: "Mobile palette" });
-    expect(content.className).toContain("max-h-[80dvh]");
-    expect(content.className).not.toContain("max-h-[80vh]");
+    expect(content).toHaveClass("max-h-[80dvh]");
+    expect(content).not.toHaveClass("max-h-[80vh]");
   });
 
   it("locks background scrolling while the modal palette is open and releases it on close", () => {
@@ -785,7 +785,7 @@ describe("CommandPaletteContent mobile viewport contract", () => {
   // is not observable in jsdom.
   it("contains overscroll inside the results scroller", () => {
     render(<ModalPalette open />);
-    expect(screen.getByRole("listbox").className).toContain("overscroll-contain");
+    expect(screen.getByRole("listbox")).toHaveClass("overscroll-contain");
   });
 
   it("leaves the search input font-size to CSS so touch densities can floor it at 16px", () => {

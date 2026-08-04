@@ -113,7 +113,7 @@ CSS files handle things Tailwind utilities cannot express. Put **only** these in
 | `sidebar.css` | `grid-template-rows` transition with data-attribute state selectors |
 | `code-block.css` | Syntax token color classes (`.code-*`, `.hljs-*`), variant chrome via multi-attribute selectors, forced-colors, and the `@media (pointer: coarse)` block that grows the header row and the copy button to 44px (see *Coarse-pointer hit areas*) |
 | `diff-view.css` | Row state coloring via multi-attribute selectors, colorblind palette via `[data-diff-palette]`, forced-colors |
-| `dialog.css` | Corner accent `::before`/`::after` geometry, `body:has(dialog[open])` scroll lock, open/close keyframes |
+| `dialog.css` | Corner accent `::before`/`::after` geometry, open/close keyframes on the `--dialog-duration` entrance clock, `prefers-reduced-motion` override |
 | `command-palette.css` | Density CSS custom properties, multi-attribute frame/density/tone selectors, forced-colors |
 | `callout.css` | Tone cascade via CSS custom properties, frame chrome via data-attributes, forced-colors |
 | `panel.css` | Frame chrome (hairline/rail/viewfinder/surface) via multi-attribute selectors, forced-colors |

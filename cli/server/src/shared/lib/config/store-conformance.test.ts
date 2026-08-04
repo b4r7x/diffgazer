@@ -18,6 +18,13 @@ import {
   writeJson,
 } from "./store.test-support.js";
 
+const { mockLog } = vi.hoisted(() => ({ mockLog: vi.fn() }));
+
+// Boundary mock: the structured logger writes process-visible diagnostics and is
+// silenced under VITEST, so the credential-safe conformance reason it carries can
+// only be asserted through the logging boundary itself.
+vi.mock("../log.js", () => ({ log: mockLog }));
+
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
 const CREATED_AT = "2026-01-01T00:00:00.000Z";
 const RUNTIME = { identity: "diffgazer-server", version: "1.0.0" } as const;
@@ -96,8 +103,8 @@ const passingProbe: ConfigurationConformanceProbe = async ({ subject }) => ({
 });
 
 const registerProbe = async (probe: ConfigurationConformanceProbe): Promise<void> => {
-  const { setConfigurationConformanceProbe } = await import("./conformance.js");
-  setConfigurationConformanceProbe(probe);
+  const { registerConfigSeams } = await import("./seams.js");
+  registerConfigSeams({ conformanceProbe: probe });
 };
 
 const createAdmittedConfiguration = async (
@@ -149,16 +156,42 @@ describe("configuration test action", () => {
     expect(inspected.readiness).toMatchObject({ status: "ready", ready: true });
   });
 
-  it("records no evidence when the observation does not pass", async () => {
+  it("reports a failed observation as a conformance failure and records no evidence", async () => {
     await registerProbe(async () => ({ status: "failed", reason: "endpoint unreachable" }));
     const store = await loadStore();
     const configurationId = await createAdmittedConfiguration(store);
 
     const tested = succeed(await store.runConfigurationAction({ action: "test", configurationId }));
 
-    expect(tested.readiness).toMatchObject({ status: "skipped", ready: false });
+    expect(tested).toMatchObject({ action: "test", status: "failed" });
+    expect(tested.readiness).toMatchObject({
+      status: "conformance-failed",
+      ready: false,
+      evidenceStatus: "failed",
+      remediation: { code: "rerun-conformance" },
+    });
+    expect(mockLog).toHaveBeenCalledWith("warn", "config_conformance_failed", {
+      configurationId,
+      reason: "endpoint unreachable",
+    });
     expect(existsSync(evidencePathFor(configurationId))).toBe(false);
     expect(store.getConfigurationAdmissionEvidence(configurationId)).toBeNull();
+  });
+
+  it("keeps the intentional-skip readiness for an observation the probe declined to make", async () => {
+    await registerProbe(async () => ({ status: "skipped", reason: "No exact model is selected" }));
+    const store = await loadStore();
+    const configurationId = await createAdmittedConfiguration(store);
+
+    const tested = succeed(await store.runConfigurationAction({ action: "test", configurationId }));
+
+    expect(tested).toMatchObject({ action: "test", status: "succeeded" });
+    expect(tested.readiness).toMatchObject({
+      status: "skipped",
+      ready: false,
+      evidenceStatus: "skipped",
+    });
+    expect(existsSync(evidencePathFor(configurationId))).toBe(false);
   });
 
   it("rejects an observation whose evidence does not match the configuration tuple", async () => {
@@ -184,7 +217,8 @@ describe("configuration test action", () => {
 
     const tested = succeed(await store.runConfigurationAction({ action: "test", configurationId }));
 
-    expect(tested.readiness).toMatchObject({ status: "skipped", ready: false });
+    expect(tested).toMatchObject({ action: "test", status: "failed" });
+    expect(tested.readiness).toMatchObject({ status: "conformance-failed", ready: false });
     expect(existsSync(evidencePathFor(configurationId))).toBe(false);
   });
 

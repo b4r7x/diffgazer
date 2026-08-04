@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { scanJsonRejectingDuplicateKeys } from "../canonical-json.js";
 
 export const REMOVED_PRODUCT_IDS = ["zai-coding"] as const;
 export const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
@@ -57,156 +58,11 @@ function copyBytes(rawBytes: Uint8Array): Uint8Array<ArrayBuffer> {
   return copy;
 }
 
-// V1 records are untrusted bytes. Keep the decoder deliberately small and
-// bounded: duplicate object keys are rejected before JSON.parse can collapse
-// them to the last value (which could otherwise collapse duplicate provider keys).
+// V1 records are untrusted bytes, so they go through the shared bounded scanner
+// in canonical-json.ts, which rejects a repeated object key before JSON.parse
+// can collapse it to the last value (and so relabel a removed provider).
 const MAX_LEGACY_RECORD_BYTES = 64 * 1024;
 const MAX_LEGACY_JSON_DEPTH = 32;
-
-function parseLegacyJson(text: string): unknown {
-  let position = 0;
-  let depth = 0;
-
-  const fail = (message: string): never => {
-    throw new TypeError(`Legacy JSON parse failed at ${position}: ${message}`);
-  };
-  const skipWhitespace = (): void => {
-    while (
-      text[position] === " " ||
-      text[position] === "\t" ||
-      text[position] === "\n" ||
-      text[position] === "\r"
-    ) {
-      position += 1;
-    }
-  };
-  const parseString = (): string => {
-    const start = position;
-    if (text[position] !== '"') fail("expected string");
-    position += 1;
-    while (position < text.length) {
-      const character = text[position];
-      if (character === '"') {
-        position += 1;
-        try {
-          return JSON.parse(text.slice(start, position)) as string;
-        } catch {
-          fail("invalid string escape");
-        }
-      }
-      if (character === undefined || character < " ") fail("invalid string");
-      if (character === "\\") {
-        position += 1;
-        if (position >= text.length) fail("unterminated escape");
-        if (text[position] === "u") position += 4;
-      }
-      position += 1;
-    }
-    return fail("unterminated string");
-  };
-  const parseNumber = (): void => {
-    while (
-      position < text.length &&
-      text[position] !== " " &&
-      text[position] !== "\t" &&
-      text[position] !== "\n" &&
-      text[position] !== "\r" &&
-      text[position] !== "," &&
-      text[position] !== "]" &&
-      text[position] !== "}"
-    ) {
-      position += 1;
-    }
-  };
-  const parseValue = (): void => {
-    skipWhitespace();
-    const character = text[position];
-    if (character === "{") {
-      parseObject();
-      return;
-    }
-    if (character === "[") {
-      parseArray();
-      return;
-    }
-    if (character === '"') {
-      parseString();
-      return;
-    }
-    for (const literal of ["true", "false", "null"]) {
-      if (text.startsWith(literal, position)) {
-        position += literal.length;
-        return;
-      }
-    }
-    if (character === "-" || (character !== undefined && /\d/.test(character))) {
-      parseNumber();
-      return;
-    }
-    fail("expected JSON value");
-  };
-  const parseObject = (): void => {
-    if (depth >= MAX_LEGACY_JSON_DEPTH) fail("maximum JSON depth exceeded");
-    depth += 1;
-    try {
-      position += 1;
-      const keys = new Set<string>();
-      skipWhitespace();
-      if (text[position] === "}") {
-        position += 1;
-        return;
-      }
-      while (true) {
-        skipWhitespace();
-        const key = parseString();
-        if (keys.has(key)) fail(`duplicate object key ${JSON.stringify(key)}`);
-        keys.add(key);
-        skipWhitespace();
-        if (text[position] !== ":") fail("expected object separator");
-        position += 1;
-        parseValue();
-        skipWhitespace();
-        if (text[position] === "}") {
-          position += 1;
-          return;
-        }
-        if (text[position] !== ",") fail("expected object separator");
-        position += 1;
-      }
-    } finally {
-      depth -= 1;
-    }
-  };
-  const parseArray = (): void => {
-    if (depth >= MAX_LEGACY_JSON_DEPTH) fail("maximum JSON depth exceeded");
-    depth += 1;
-    try {
-      position += 1;
-      skipWhitespace();
-      if (text[position] === "]") {
-        position += 1;
-        return;
-      }
-      while (true) {
-        parseValue();
-        skipWhitespace();
-        if (text[position] === "]") {
-          position += 1;
-          return;
-        }
-        if (text[position] !== ",") fail("expected array separator");
-        position += 1;
-      }
-    } finally {
-      depth -= 1;
-    }
-  };
-
-  parseValue();
-  skipWhitespace();
-  if (position !== text.length) fail("unexpected trailing input");
-  return JSON.parse(text) as unknown;
-}
 
 export function decodeProviderConfigurationRecord(
   inputBytes: Uint8Array,
@@ -218,7 +74,15 @@ export function decodeProviderConfigurationRecord(
     if (rawBytes.byteLength > MAX_LEGACY_RECORD_BYTES) {
       throw new TypeError("legacy record exceeds the bounded decoder limit");
     }
-    input = parseLegacyJson(new TextDecoder("utf-8", { fatal: true }).decode(rawBytes));
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(rawBytes);
+    scanJsonRejectingDuplicateKeys(text, {
+      maxBytes: MAX_LEGACY_RECORD_BYTES,
+      maxDepth: MAX_LEGACY_JSON_DEPTH,
+      onFail: ({ position, reason }) => {
+        throw new TypeError(`Legacy JSON parse failed at ${position}: ${reason}`);
+      },
+    });
+    input = JSON.parse(text) as unknown;
   } catch {
     return { status: "unknown", rawBytes };
   }

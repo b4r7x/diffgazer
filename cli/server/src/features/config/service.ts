@@ -1,4 +1,5 @@
-import { createError } from "@diffgazer/core/errors";
+import { createError, getErrorMessage } from "@diffgazer/core/errors";
+import { isModelIdAllowedForProduct } from "@diffgazer/core/providers";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type {
   ClientConfigurationAction,
@@ -6,6 +7,7 @@ import type {
   ConfigurationId,
   ConfigurationInitResponse,
   ConfigurationListResponse,
+  ConfigurationModelsResponse,
   ConfigurationStatus,
 } from "@diffgazer/core/schemas/config";
 import {
@@ -13,17 +15,18 @@ import {
   ClientConfigurationInputSchema,
   ConfigurationInitResponseSchema,
   ConfigurationListResponseSchema,
+  ConfigurationModelsResponseSchema,
 } from "@diffgazer/core/schemas/config";
+import { discoverConfigurationCatalog } from "../../shared/lib/ai/models-dev-catalog.js";
 import { loadConfigV2 } from "../../shared/lib/config/persistence/config.js";
 import type { DecodedProviderConfigurationRecord } from "../../shared/lib/config/provider-config.js";
-import { getStore, setConfigurationLeaseHooks } from "../../shared/lib/config/store.js";
+import { getStore } from "../../shared/lib/config/store.js";
 import type {
   ConfigDocumentV2,
   ConfigurationActionError,
   SecretsStorageError,
 } from "../../shared/lib/config/types.js";
-
-export { setConfigurationLeaseHooks };
+import { log } from "../../shared/lib/log.js";
 
 export type ConfigurationServiceError = ConfigurationActionError;
 
@@ -44,6 +47,20 @@ const projectSafeActionResponse = (
   response: ClientConfigurationActionResponse,
 ): ClientConfigurationActionResponse =>
   ClientConfigurationActionResponseSchema.parse({ ...response, action: action.action });
+
+// A malformed catalog entry must degrade to a mapped error, never a bare 500.
+const projectModelsResponse = (
+  payload: unknown,
+): Result<ConfigurationModelsResponse, ConfigurationServiceError> => {
+  const parsed = ConfigurationModelsResponseSchema.safeParse(payload);
+  if (parsed.success) return ok(parsed.data);
+  return err(
+    createError<ConfigurationActionError["code"]>(
+      "CONFIGURATION_UNSUPPORTED",
+      "Model discovery response failed safe projection",
+    ),
+  );
+};
 
 const validateWritableInput = (
   action: Extract<ClientConfigurationAction, { action: "create" | "update" }>,
@@ -102,6 +119,83 @@ const inspectConfigurationStatus = async (
   });
 };
 
+export const discoverConfigurationModels = async (
+  configurationId: ConfigurationId,
+): Promise<Result<ConfigurationModelsResponse, ConfigurationServiceError>> => {
+  const inspected = await runConfigurationAction({ action: "inspect", configurationId });
+  if (!inspected.ok) return inspected;
+
+  const configuration = inspected.value.configuration;
+  if (!configuration || configuration.status !== "supported") {
+    return err(
+      createError<ConfigurationActionError["code"]>(
+        "CONFIGURATION_UNSUPPORTED",
+        "Model discovery requires a supported configuration",
+      ),
+    );
+  }
+
+  const discovery = await discoverConfigurationCatalog({
+    configurationId: configuration.configurationId,
+    productId: configuration.productId,
+  });
+  const base = {
+    configurationId: configuration.configurationId,
+    productId: configuration.productId,
+    transportFamily: configuration.transportFamily,
+    checkedAt: discovery.checkedAt,
+  };
+  if (discovery.status === "skipped") {
+    return projectModelsResponse({
+      ...base,
+      status: "skipped",
+      models: [],
+      reason: discovery.reason,
+    });
+  }
+  return projectModelsResponse({
+    ...base,
+    status: "passed",
+    // Filter server-side so the picker never offers a model the select and
+    // readiness paths would reject (opt-in suffixes, reserved route segments).
+    models: discovery.models.filter((model) =>
+      isModelIdAllowedForProduct(configuration.productId, model.id),
+    ),
+    source: discovery.source,
+    cached: discovery.cached,
+  });
+};
+
+/**
+ * A record the store cannot inspect degrades to a dropped row, not a blank
+ * document: the record union already models per-row failure, and both
+ * `/api/config/providers` and `/api/config/init` are read at app startup, so one
+ * unreadable record must not take the whole surface down with it. The reason
+ * stays in the server log — `ConfigurationStatus` requires a client summary the
+ * store could not project, so there is nothing safe to put in the row.
+ */
+const inspectListRow = async (
+  record: DecodedProviderConfigurationRecord,
+): Promise<ConfigurationStatus | null> => {
+  const configurationId = configurationIdFromRecord(record);
+  if (configurationId === null) {
+    log("warn", "config_list_record_skipped", { reason: "missing configurationId" });
+    return null;
+  }
+  try {
+    const status = await inspectConfigurationStatus(configurationId);
+    if (status.ok) return status.value;
+    log("warn", "config_list_record_skipped", { configurationId, reason: status.error.code });
+    return null;
+  } catch (cause) {
+    log("warn", "config_list_record_skipped", {
+      configurationId,
+      reason: getErrorMessage(cause),
+    });
+    return null;
+  }
+};
+
 export const listConfigurations = async (): Promise<
   Result<ConfigurationListResponse, SecretsStorageError | ConfigurationServiceError>
 > => {
@@ -116,21 +210,8 @@ export const listConfigurations = async (): Promise<
     return err(readFailure());
   }
 
-  const configurations: ConfigurationStatus[] = [];
-  for (const record of document.configurations) {
-    const configurationId = configurationIdFromRecord(record);
-    if (configurationId === null) {
-      return err(
-        createError<ConfigurationActionError["code"]>(
-          "CONFIGURATION_UNSUPPORTED",
-          "Configuration record is missing a configurationId",
-        ),
-      );
-    }
-    const status = await inspectConfigurationStatus(configurationId);
-    if (!status.ok) return status;
-    configurations.push(status.value);
-  }
+  const inspected = await Promise.all(document.configurations.map(inspectListRow));
+  const configurations = inspected.filter((row) => row !== null);
 
   return ok(
     ConfigurationListResponseSchema.parse({

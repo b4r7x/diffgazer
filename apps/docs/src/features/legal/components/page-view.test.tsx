@@ -73,7 +73,7 @@ vi.mock("@tanstack/react-router", async () => {
   };
 });
 
-vi.mock("@/features/legal/hooks/use-pending-legal-route", () => ({
+vi.mock("@/features/legal/hooks/use-pending-route", () => ({
   usePendingLegalRoute: () => null,
 }));
 

@@ -42,7 +42,7 @@ function buildHostedProbeTuples(productRegistry) {
 async function loadHostedLiveProbeRunner() {
   try {
     const hostedFixtures = await import(
-      resolve(root, "cli/server/dist/shared/lib/ai/providers/hosted-fixtures.js")
+      resolve(root, "cli/server/dist/shared/lib/ai/providers/hosted/fixtures.js")
     );
     return hostedFixtures.runHostedLiveProbe;
   } catch {

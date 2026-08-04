@@ -2,6 +2,7 @@ import type { ProviderListRow } from "@diffgazer/core/providers";
 import { useFocusZone, useKey } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import type { RefObject } from "react";
+import type { ProviderAction } from "../lib/actions";
 import type { ProviderFilter } from "../lib/filter";
 import { useProvidersActionButtons } from "./use-action-buttons";
 import { useProvidersListFocusReclaim } from "./use-list-focus-reclaim";
@@ -10,6 +11,8 @@ import { useProvidersListNavigation } from "./use-list-navigation";
 const PROVIDER_ZONES = ["input", "filters", "list", "buttons"] as const;
 
 interface ProvidersKeyboardOptions {
+  /** The page layer's derived action row, forwarded untouched to the action-button zone. */
+  actions: readonly ProviderAction[];
   selectedRow: ProviderListRow | null;
   filteredProviders: ProviderListRow[];
   listReady: boolean;
@@ -18,13 +21,12 @@ interface ProvidersKeyboardOptions {
   dialogOpen: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
   listContainerRef: RefObject<HTMLDivElement | null>;
-  onSetup: () => void;
-  onSelectModel: () => void;
-  onDelete: () => void;
-  onDispatchAction: (row: ProviderListRow) => void;
+  /** The page layer's single action dispatcher, shared with the rendered action row. */
+  runAction: (action: ProviderAction) => void;
 }
 
 export function useProvidersKeyboard({
+  actions,
   selectedRow,
   filteredProviders,
   listReady,
@@ -33,10 +35,7 @@ export function useProvidersKeyboard({
   dialogOpen,
   inputRef,
   listContainerRef,
-  onSetup,
-  onSelectModel,
-  onDelete,
-  onDispatchAction,
+  runAction,
 }: ProvidersKeyboardOptions) {
   const navigate = useNavigate();
 
@@ -54,18 +53,15 @@ export function useProvidersKeyboard({
     listContainerRef.current?.focus({ preventScroll: true });
   };
 
-  const { buttonIndex, enterButtons, getActionButtonProps, getActionSlot } =
-    useProvidersActionButtons({
-      selectedRow,
-      dialogOpen,
-      inButtons,
-      setZone,
-      focusProviderList,
-      onSetup,
-      onSelectModel,
-      onDelete,
-      onDispatchAction,
-    });
+  const { buttonIndex, enterButtons, getActionButtonProps } = useProvidersActionButtons({
+    actions,
+    selectedRow,
+    dialogOpen,
+    inButtons,
+    setZone,
+    focusProviderList,
+    runAction,
+  });
 
   const list = useProvidersListNavigation({
     selectedRow,
@@ -95,7 +91,6 @@ export function useProvidersKeyboard({
     focusZone: effectiveFocusZone,
     buttonIndex,
     getActionButtonProps,
-    getActionSlot,
     ...list,
   };
 }

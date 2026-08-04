@@ -37,7 +37,7 @@ export const toastDoc: ComponentDoc = {
     {
       title: "Keyboard",
       content:
-        "Press Escape to dismiss the most recent toast. Toast Escape handling is global when toasts are present, so it runs before lower-priority page overlays that have not already handled the key. Press the focus hotkey (F8 by default, configurable via the Toaster `hotkey` prop) to move focus into the toast region so action and close buttons stay reachable before a timed toast disappears; the hotkey is ignored while an editable element has focus.",
+        "Press Escape to dismiss every visible toast at once, so the key a screen advertises for Escape is at most one extra press away even after an error burst. Toast Escape handling is global when toasts are present, so it runs before lower-priority page overlays that have not already handled the key. Press the focus hotkey (F8 by default, configurable via the Toaster `hotkey` prop) to move focus into the toast region so action and close buttons stay reachable before a timed toast disappears; the hotkey is ignored while an editable element has focus.",
     },
     {
       title: "Pause Behavior (WCAG 2.2.1)",
@@ -65,7 +65,7 @@ export const toastDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "Press Escape to dismiss the most recent toast. Toast Escape handling is global while toasts are present and runs before lower-priority page overlays unless another handler has already consumed the key. Press the focus hotkey (F8 by default, configurable via the Toaster `hotkey` prop) to move focus into the toast region.",
+      "Press Escape to dismiss every visible toast at once. Toast Escape handling is global while toasts are present and runs before lower-priority page overlays unless another handler has already consumed the key. Press the focus hotkey (F8 by default, configurable via the Toaster `hotkey` prop) to move focus into the toast region.",
     examples: [],
   },
   props: {

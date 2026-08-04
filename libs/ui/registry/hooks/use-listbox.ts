@@ -15,8 +15,7 @@ import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { type NavigationRole, useNavigation } from "@/hooks/use-navigation";
 import { useTypeaheadBuffer } from "@/hooks/use-typeahead-buffer";
-import { typeaheadSearch } from "@/lib/typeahead";
-import { collectListboxItems } from "./listbox-children";
+import { collectListboxItems } from "@/lib/listbox-children";
 import {
   getAccessibleText,
   getEncodedListboxItemId,
@@ -25,12 +24,20 @@ import {
   getListboxOwnerSelector,
   hasDomItem,
   resolveActiveDescendant,
-} from "./listbox-dom";
-import { hasEnabledMetadataItem, type ListboxMetadataItem } from "./listbox-metadata";
+} from "@/lib/listbox-dom";
+import { hasEnabledMetadataItem, type ListboxMetadataItem } from "@/lib/listbox-metadata";
+import { typeaheadSearch } from "@/lib/typeahead";
 
 export { collectListboxItems };
 export { getEncodedListboxItemId };
 export type { ListboxMetadataItem };
+
+// j/k mirror ArrowDown/ArrowUp in every listbox composite — the vim contract the
+// Help screen promises for lists. On an empty typeahead buffer they navigate;
+// mid-query they extend the query the way Space does, and they never start one.
+function isVimNavigationKey(key: string): boolean {
+  return key === "j" || key === "k";
+}
 
 /**
  * Options for shared listbox selection, highlight, keyboard navigation, and ARIA wiring.
@@ -76,7 +83,11 @@ export interface UseListboxOptions<TId extends string = string> {
   role?: "listbox" | "menu";
   /** ARIA role for each item element. @default "option" */
   itemRole?: Extract<NavigationRole, "option" | "menuitem" | "menuitemradio">;
-  /** Enable type-ahead character search to jump to matching items. @default false */
+  /**
+   * Enable type-ahead character search to jump to matching items. j and k are
+   * reserved as vim navigation keys: they move the highlight instead of starting
+   * a query, but still extend a query already in progress. @default false
+   */
   typeahead?: boolean;
   /** Optional metadata array describing each item. DOM lookup is still used for mounted item text and typeahead. */
   items?: ListboxMetadataItem<TId>[];
@@ -297,6 +308,8 @@ export function useListbox<TId extends string = string>({
     onEnter: handleItemEnter,
     onSelect: handleItemActivate,
     onNavigationBoundaryReached,
+    upKeys: ["ArrowUp", "k"],
+    downKeys: ["ArrowDown", "j"],
     scopeToContainer: true,
     // APG: menu items remain focusable when disabled.
     skipDisabled: containerRole !== "menu",
@@ -331,7 +344,9 @@ export function useListbox<TId extends string = string>({
       if (targetOwner && targetOwner !== container) return false;
     }
 
-    const queryText = readTypeaheadQuery(event.key);
+    const queryText = readTypeaheadQuery(event.key, {
+      extendOnly: isVimNavigationKey(event.key),
+    });
     if (queryText === null) return false;
 
     if (typeaheadItems.length === 0) return true;
@@ -362,12 +377,15 @@ export function useListbox<TId extends string = string>({
     onKeyDown?.(e);
     if (e.defaultPrevented) return;
     const isModified = e.ctrlKey || e.metaKey || e.altKey;
-    // Space extends an in-progress typeahead query instead of selecting; run
-    // typeahead first for Space so a non-empty buffer suppresses the Space-select
-    // that navKeyDown would otherwise dispatch for the same keystroke.
-    if (e.key === " " && !isModified && handleTypeahead(e)) return;
+    // Space extends an in-progress typeahead query instead of selecting, and j/k
+    // extend one instead of navigating; run typeahead first for those keys so a
+    // non-empty buffer suppresses the competing select/move that navKeyDown would
+    // otherwise dispatch for the same keystroke. On an empty buffer they decline
+    // the query (see useTypeaheadBuffer) and fall through to navigation.
+    const typeaheadFirst = e.key === " " || isVimNavigationKey(e.key);
+    if (typeaheadFirst && !isModified && handleTypeahead(e)) return;
     navKeyDown(e);
-    if (e.key !== " " && !isModified) handleTypeahead(e);
+    if (!typeaheadFirst && !isModified) handleTypeahead(e);
   };
 
   const getContainerProps = () => ({

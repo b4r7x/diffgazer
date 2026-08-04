@@ -46,18 +46,17 @@ export function IssueListPane({
   onSubZoneChange,
 }: IssueListPaneProps) {
   const { tokens } = useTheme();
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
-  const [trackedIssueCount, setTrackedIssueCount] = useState(issues.length);
   const [internalSubZone, setInternalSubZone] = useState<IssueListSubZone>("issues");
   const subZone = externalSubZone ?? internalSubZone;
   const effectiveSubZone = issues.length === 0 ? "filter" : subZone;
   const setSubZone = onSubZoneChange ?? setInternalSubZone;
   const counts = calculateSeverityCounts(allIssues);
-
-  if (issues.length !== trackedIssueCount) {
-    setTrackedIssueCount(issues.length);
-    setHighlightedIndex(0);
-  }
+  // The selected id is the only cursor: a second positional one would drift
+  // apart from it on a deep link or a filter change.
+  const highlightedIndex = Math.max(
+    0,
+    issues.findIndex((issue) => issue.id === selectedId),
+  );
 
   useInput(
     (input, key) => {
@@ -70,11 +69,9 @@ export function IssueListPane({
       }
 
       if (key.downArrow || input === "j") {
-        const nextIndex = clampIndex(highlightedIndex, 1, issues.length, false);
-        setHighlightedIndex(nextIndex);
-        const issue = issues[nextIndex];
-        if (issue) {
-          onHighlightChange?.(issue.id);
+        const nextIssue = issues[clampIndex(highlightedIndex, 1, issues.length, false)];
+        if (nextIssue) {
+          onHighlightChange?.(nextIssue.id);
         }
         return;
       }
@@ -84,11 +81,9 @@ export function IssueListPane({
           setSubZone("filter");
           return;
         }
-        const nextIndex = highlightedIndex - 1;
-        setHighlightedIndex(nextIndex);
-        const issue = issues[nextIndex];
-        if (issue) {
-          onHighlightChange?.(issue.id);
+        const previousIssue = issues[highlightedIndex - 1];
+        if (previousIssue) {
+          onHighlightChange?.(previousIssue.id);
         }
         return;
       }

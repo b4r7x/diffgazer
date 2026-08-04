@@ -28,6 +28,7 @@ describe("ApiKeyStep", () => {
     const input = screen.getByLabelText("Google Gemini credential");
     await user.type(input, "sk-live-secret");
     expect(input).toHaveValue("sk-live-secret");
+    expect(input).toHaveFocus();
     expect(screen.queryByText(/GOOGLE_API_KEY/i)).not.toBeInTheDocument();
   });
 
@@ -110,6 +111,10 @@ describe("ApiKeyStep", () => {
 
     await user.keyboard("{ArrowUp}");
     expect(literal).toHaveFocus();
+
+    // The j/k vim aliases move through the same zone as the vertical arrows.
+    await user.keyboard("j");
+    expect(credential).toHaveFocus();
   });
 
   it("reports the down boundary from the last credential option instead of trapping focus", async () => {

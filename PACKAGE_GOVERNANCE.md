@@ -13,7 +13,7 @@ Public package targets:
 
 All four published packages declare a single `engines.node: ">=22.0.0"` floor (ink 7's TUI runtime requires Node 22, and CI and Docker run Node 22). The `check-invariants` script asserts this floor is uniform across the published surface so it cannot drift.
 
-**Publish status is per package.** `diffgazer` is live on npm (`npm view diffgazer version` returns a version). The scoped libraries (`@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`) remain gated until `npm view` succeeds for each:
+**Publish status is per package.** Four packages are release-managed here — they take changesets, get versioned, and keep CHANGELOGs — but that is not the same as being publishable. Only `diffgazer` publishes today; it is live on npm (`npm view diffgazer version` returns a version). The scoped libraries (`@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`) are versioned locally but blocked from npm by the [first-publish gate](#first-publish-gate), and they remain gated until `npm view` succeeds for each:
 
 ```bash
 npm view diffgazer version
@@ -22,7 +22,7 @@ npm view @diffgazer/ui version
 npm view @diffgazer/keys version
 ```
 
-A 404 on a scoped package means that install path is still gated. See [Hosted Registry Status](#hosted-registry-status) for the registry-endpoint checks.
+A 404 on a scoped package means that install path is still gated — expected, not a release failure. A release run whose pending set is `diffgazer` alone is the normal shape; a run whose pending set includes a scoped package fails the preflight by design. See [Hosted Registry Status](#hosted-registry-status) for the registry-endpoint checks.
 
 Workspace-only packages:
 
@@ -103,8 +103,10 @@ The checked-in release-readiness workflow wires to the root scripts above and bl
 4. Publish updated packages:
 
    ```bash
-   pnpm run release
+   pnpm run release diffgazer
    ```
+
+   Name the packages explicitly while the scoped libraries are gated. `version-packages` bumps every package that had a changeset, so a bare `pnpm run release` derives a pending set containing `@diffgazer/ui`, `@diffgazer/keys`, and `@diffgazer/add`, and the [first-publish gate](#first-publish-gate) then rejects the whole run — `diffgazer` included. Passing the names selects the publishable subset; the same preflight still applies to it. Drop the argument once every name in the pending set is un-gated.
 
 5. Before publishing, verify tarball contents:
 
@@ -227,21 +229,26 @@ build/install steps. The optional `msw` postinstall is explicitly disabled becau
 does not need its interactive setup. Version-qualified approvals are intentional: a dependency
 update must review and update the approval instead of silently granting script execution to a new
 release.
-- `jiti` (`^2.7.0`), `hono` (`^4.12.25`), and `ws` (`^8.21.0`) are pinned so the config loader, the embedded server framework, and the WebSocket dependency each resolve to one version across the workspace and its dev/build tooling.
+- `jiti` (`^2.7.0`), `hono` (`^4.12.34`), and `ws` (`^8.21.0`) are pinned so the config loader, the embedded server framework, and the WebSocket dependency each resolve to one version across the workspace and its dev/build tooling. The `hono` floor is also security-driven — see the overrides list below.
 
-The `@tanstack/react-router` range is kept aligned across `apps/web` and `apps/docs` (both declare `^1.158.1`) so the two TanStack-Router consumers track one router minor; it is not overridden because the rest of the TanStack Start surface in `apps/docs` resolves its router transitively.
+The same file carries `minimumReleaseAgeExclude`, the reviewed list of versions allowed to install before pnpm's release-age quarantine expires. It holds `hono@4.12.34`, the patched release for the CORS ReDoS advisory: a security floor is worth taking ahead of the quarantine window. Drop the entry once the version ages past the window.
+
+The `@tanstack/react-router` range is kept aligned across `apps/web` and `apps/docs` (both declare `^1.170.18`) so the two TanStack-Router consumers track one router minor; it is not overridden because the rest of the TanStack Start surface in `apps/docs` resolves its router transitively. That transitive resolution is why the two ranges must move together with `@tanstack/react-start`: `@tanstack/react-start` depends on an exact `@tanstack/react-router`, and when the app's own router resolves to a different version the docs prerender crashes in `dehydrate` with two router instances loaded. Bump `@tanstack/react-start` and both app ranges in one change, then re-run `pnpm --filter @diffgazer/docs build`.
 
 Security-driven overrides — each clears one or more advisories from `pnpm audit --prod --audit-level=moderate`:
 
 - `rollup` pinned to `^4.59.0` to patch GHSA `1113515` (Arbitrary File Write via Path Traversal, high). Reached transitively through `apps/docs > @tailwindcss/vite > vite > rollup`. Sunset when `@tailwindcss/vite` ships a `vite` peer that resolves rollup `>= 4.59.0` naturally.
 - `vite` pinned to `^7.3.5` to patch GHSA `1116232` (`server.fs.deny` bypass with queries, high), `1116235` (Arbitrary File Read via dev-server WebSocket, high), and `1116230` (Path Traversal in optimized deps `.map` handling, moderate). Reached transitively through `apps/docs > @tailwindcss/vite > vite`. The advisories were patched at `7.3.2`; the pin tracks the current patch. Sunset when `@tailwindcss/vite` declares a `vite` peer floor at `>= 7.3.5`.
-- `undici` pinned to `^7.28.0` to patch GHSA `1114591`, `1114637`, `1114639` (WebSocket frame/length and decompression issues, high), plus `1114593`, `1114641`, `1114643` (HTTP smuggling, CRLF injection, DeduplicationHandler memory, moderate). Reached transitively through `apps/docs > @tanstack/react-start > @tanstack/start-plugin-core > cheerio > undici`. Sunset when `cheerio` ships with `undici >= 7.28.0`.
+- `undici` pinned to `^7.29.0` to patch GHSA `1114591`, `1114637`, `1114639` (WebSocket frame/length and decompression issues, high), GHSA-4cwx-7wf7-3272 (cross-user information disclosure and parse-time crash via degenerate private cache directives, high, affects `>=7.0.0 <7.29.0`), plus `1114593`, `1114641`, `1114643` (HTTP smuggling, CRLF injection, DeduplicationHandler memory, moderate). Reached transitively through `apps/docs > @tanstack/react-start > @tanstack/start-plugin-core > cheerio > undici`. Sunset when `cheerio` ships with `undici >= 7.29.0`.
+- `hono` pinned to `^4.12.34` to patch GHSA-8j4g-w8fx-2239 (CORS middleware ReDoS, affects `< 4.12.34`). This one is not transitive: `cli/server` and `cli/diffgazer` declare `hono` directly and `cli/server` uses `hono/cors`, so the vulnerable code would ship inside the published `diffgazer` binary. Sunset never — this is the workspace floor, raise it with each advisory.
 - `js-yaml@4` pinned to `^4.3.0` to clear the high-severity YAML merge-key quadratic-CPU advisory (affects `>=4.0.0 <4.3.0`). Reached transitively through `apps/docs > @tanstack/react-start > @tanstack/start-plugin-core > xmlbuilder2 > js-yaml` and `apps/docs > fumadocs-mdx > js-yaml`. The override is deliberately range-scoped to the v4 line: a blanket `js-yaml` override would force v4 onto the v3 consumers `read-yaml-file` and `@lhci/utils`, which call the v4-removed `safeLoad` API and sit on the release path. Sunset when the v4 consumers resolve a patched version naturally.
 - `sharp` pinned to `^0.35.0` to clear the high-severity inherited libvips advisory (affects `< 0.35.0`). Reached transitively through `apps/docs > fumadocs-core > next > sharp`; `next` still declares `sharp` as an optional dependency on the `^0.34.5` line, so the patched floor needs the override. The matching install-script approval is `sharp@0.35.3`. Sunset when `next` declares an optional `sharp` range at `>= 0.35.0`.
 
 Additional minimum-version floors added during dependency audit passes hold transitive packages at their patched releases without a full `^` pin: `h3` and its `h3-v2` alias (`>=2.0.1-rc.18`, reached through `apps/docs > @tanstack/react-start`), `fast-uri` (`>=3.1.2`), `express-rate-limit` (`>=8.2.2`), and `qs` (`>=6.15.2`). Drop each once its transitive parent resolves a patched version naturally.
 
-Note: `@tanstack/start-server-core` is NOT pinned because the natural transitive resolution from `@tanstack/react-start` is required to keep `@tanstack/start-plugin-core` and `@tanstack/start-server-core` version-compatible. Its moderate advisory (GHSA 1118887) remains visible in `pnpm audit --audit-level=moderate` output and does not fail CI under the HIGH-only gate; the related h3 advisories are cleared by the `h3` / `h3-v2` floor above rather than by pinning `@tanstack/start-server-core`.
+Note: `@tanstack/start-server-core` is NOT pinned because the natural transitive resolution from `@tanstack/react-start` is required to keep `@tanstack/start-plugin-core` and `@tanstack/start-server-core` version-compatible. Its moderate advisories are cleared by moving `@tanstack/react-start` instead: the `^1.168.34` range in `apps/docs` resolves `@tanstack/start-server-core 1.169.17`, past the `>= 1.167.30` floor for GHSA-9m65-766c-r333 (inbound server-function request deserialization could invoke a sibling client-referenced server function). `apps/docs` runs `createServerFn` and deploys as a live Node server, so this one needs a rebuild and redeploy of the docs image, not just a lockfile change. The related h3 advisories are cleared by the `h3` / `h3-v2` floor above rather than by pinning `@tanstack/start-server-core`.
+
+`@hono/node-server` is a direct dependency of `cli/server` and `cli/diffgazer`, held at `^2.0.12`. The 2.x line is required: GHSA-frvp-7c67-39w9 (Windows `serve-static` path traversal via an encoded backslash bypassing route middleware) is patched only at `>= 2.0.5`, and `cli/diffgazer` serves the embedded web SPA through `serveStatic`. The 2.0.0 breaking changes do not reach this workspace — it dropped Node 18 (the CLI packages require `>= 22`) and removed the Vercel adapter (unused).
 
 Workspace package manifests should keep declared ranges compatible with the override (e.g., declare `^25.2.3` for `@types/node` rather than `^22`), so an override removal does not silently regress a package to an older major.
 

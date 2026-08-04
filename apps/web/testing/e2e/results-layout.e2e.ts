@@ -45,8 +45,14 @@ test("the results panes swap without horizontal overflow at 320px", async ({ pag
   );
   const listBounds = await issueListPane.boundingBox();
   expect(listBounds).not.toBeNull();
+  // Severity chips stay compact on a mouse and only grow to the 44px touch target
+  // under pointer: coarse, so the height bound follows the same media query the
+  // chip height keys on rather than the project's viewport.
+  const coarsePointer = await page.evaluate(() => matchMedia("(pointer: coarse)").matches);
+  const chipHeight = coarsePointer ? { min: 44, max: 48 } : { min: 1, max: 24 };
   for (const bounds of filterBounds) {
-    expect(bounds.height).toBeGreaterThanOrEqual(24);
+    expect(bounds.height).toBeGreaterThanOrEqual(chipHeight.min);
+    expect(bounds.height).toBeLessThanOrEqual(chipHeight.max);
     expect(bounds.left).toBeGreaterThanOrEqual(listBounds?.x ?? 0);
     expect(bounds.right).toBeLessThanOrEqual((listBounds?.x ?? 0) + (listBounds?.width ?? 0));
   }

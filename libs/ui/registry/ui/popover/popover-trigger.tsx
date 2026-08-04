@@ -15,9 +15,9 @@ import {
   useCallback,
   useEffect,
 } from "react";
-import { markOverlayTrigger } from "@/hooks/overlay-dismiss-stack";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { mergeIds } from "@/lib/aria";
+import { markOverlayTrigger } from "@/lib/overlay-dismiss-stack";
 import { cn } from "@/lib/utils";
 import { isNativeInteractiveElement, mergeHandlers } from "../shared/trigger-interop";
 import { type PopoverPopupRole, usePopoverContext } from "./popover-context";

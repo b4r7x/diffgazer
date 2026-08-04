@@ -134,6 +134,18 @@ describe("ReviewResultsView run integrity", () => {
   });
 });
 
+describe("ReviewResultsView run id chip", () => {
+  it("keeps the run id a real h2 while rendering it as a chip sized to the id", () => {
+    renderView();
+
+    const heading = screen.getByRole("heading", { level: 2, name: "Review #review-1" });
+    expect(heading).toBeVisible();
+    // The id itself is the chip's content - it is not restated as a separate
+    // full-width banner row above the panes.
+    expect(heading).toHaveTextContent("#review-1");
+  });
+});
+
 describe("ReviewResultsView keyboard regression", () => {
   it("renders the persisted duplicate-collapse count transition", () => {
     renderView([createReviewIssue("issue-1", "Issue one")], 1);
@@ -149,6 +161,16 @@ describe("ReviewResultsView keyboard regression", () => {
     // Without focus.autoFocus the listbox never receives DOM focus on mount and a
     // screen reader hears nothing while j/k move aria-activedescendant.
     await waitFor(() => expect(screen.getByRole("listbox")).toHaveFocus());
+  });
+
+  it("skips the issue list autofocus when the review has no issues", () => {
+    renderView([]);
+
+    expect(screen.getByText("No issues found")).toBeInTheDocument();
+    // A clean run has nothing to drive, so the empty pane is left resting
+    // instead of being pulled into focus - and bracketed - on mount.
+    expect(screen.getByRole("listbox")).not.toHaveFocus();
+    expect(document.activeElement).toBe(document.body);
   });
 
   it("navigates issue list with ArrowDown immediately in list view", async () => {
@@ -183,6 +205,12 @@ describe("ReviewResultsView keyboard regression", () => {
   it("moves from an empty issue list boundary back to severity filters", async () => {
     const user = userEvent.setup();
     renderView([]);
+
+    // An empty list is never auto-focused, so the escape starts from the list
+    // the user actually focused.
+    const list = screen.getByRole("listbox");
+    list.focus();
+    await waitFor(() => expect(list).toHaveFocus());
 
     await user.keyboard("{ArrowUp}");
 

@@ -7,7 +7,7 @@ afterEach(() => {
 });
 
 // Unknown-modifier hotkeys are rejected by the compile-time ValidateHotkey type,
-// so the runtime warn/reject path is exercised through a string-typed variable
+// so the runtime reject path is exercised through a string-typed variable
 // (the documented dynamic escape hatch).
 const dynamicHotkey = (hotkey: string): string => hotkey;
 
@@ -110,20 +110,12 @@ describe("matchesHotkey", () => {
 
   describe("unknown modifier validation", () => {
     it("returns false for an unknown modifier", () => {
-      vi.spyOn(console, "warn").mockImplementation(() => {});
       expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), dynamicHotkey("Hyper+k"))).toBe(
         false,
       );
     });
 
-    it("warns in development for an unknown modifier", () => {
-      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      matchesHotkey(makeKeyEvent("k"), dynamicHotkey("Super+k"));
-      expect(spy).toHaveBeenCalledWith(expect.stringContaining("unknown modifier"));
-    });
-
     it("returns false for partially valid modifiers when one is unknown", () => {
-      vi.spyOn(console, "warn").mockImplementation(() => {});
       expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), dynamicHotkey("Ctrl+Hyper+k"))).toBe(
         false,
       );

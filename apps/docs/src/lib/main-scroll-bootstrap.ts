@@ -49,5 +49,5 @@ export const MAIN_SCROLL_BOOTSTRAP_CONFIG: MainScrollBootstrapConfig = {
   elementSelector: MAIN_SCROLL_SELECTOR,
 };
 
-/** {@link mainScrollBootstrap} serialized for the inline script in layout/content-layout.tsx. */
+/** {@link mainScrollBootstrap} serialized for the inline script in layout/content.tsx. */
 export const MAIN_SCROLL_INIT_SCRIPT = `(${mainScrollBootstrap.toString()})(${JSON.stringify(MAIN_SCROLL_BOOTSTRAP_CONFIG)});`;

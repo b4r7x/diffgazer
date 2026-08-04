@@ -27,11 +27,10 @@ export function useReviewProgressKeyboard({
 }: UseReviewProgressKeyboardOptions) {
   const progressPaneRef = useRef<HTMLElement>(null);
   const progressScrollRef = useRef<HTMLDivElement>(null);
-  const logPaneRef = useRef<HTMLElement>(null);
   const agentFilterRef = useRef<HTMLDivElement>(null);
   const logContentRef = useRef<HTMLDivElement>(null);
 
-  const { zone: focusPane, setZone } = useFocusZone({
+  const { setZone } = useFocusZone({
     initial: "progress",
     zones: ["progress", "log", "filters"] as const,
     scope: "review-progress",
@@ -100,10 +99,8 @@ export function useReviewProgressKeyboard({
   });
 
   return {
-    focusPane,
     progressPaneRef,
     progressScrollRef,
-    logPaneRef,
     agentFilterRef,
     logContentRef,
   };

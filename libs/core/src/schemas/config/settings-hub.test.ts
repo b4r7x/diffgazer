@@ -98,23 +98,20 @@ describe("buildProviderSettingsRows", () => {
     expect(privacy?.value).toContain("never inferred");
   });
 
-  test("renders readiness and generic actions from the client projection", () => {
+  test("renders readiness with the shared status label from the client projection", () => {
     const rows = buildProviderSettingsRows(metadataFor("zai"));
 
     expect(rows.find(({ id }) => id === "readiness")).toMatchObject({
-      value: "Unconfigured",
+      value: "Not configured",
       description: expect.stringContaining("Create a configuration to continue."),
     });
-    expect(rowValue("zai", "actions")).toBe("Create");
   });
 
-  test("renders only explicit migration and deletion actions for a removed product", () => {
+  test("states facts only, never restating the actions the surfaces already render", () => {
     const rows = buildProviderSettingsRows(metadataFor(REMOVED_PRODUCT_ID));
 
-    expect(rows.map(({ id }) => id)).toEqual(["product", "transport", "readiness", "actions"]);
-    expect(rowValue(REMOVED_PRODUCT_ID, "actions")).toBe(
-      "Create new Z.AI configuration, Delete removed record",
-    );
+    expect(rows.map(({ id }) => id)).toEqual(["product", "transport", "readiness"]);
+    expect(rowValue(REMOVED_PRODUCT_ID, "readiness")).toBe("Removed");
   });
 
   test.each([

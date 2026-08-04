@@ -174,15 +174,12 @@ describe("initializeAIClient", () => {
     if (!result.ok) return;
     expect(result.value.authorization).toBeDefined();
     expect(authorizeReviewExecution).toHaveBeenCalledWith("gemini-primary", dependencies);
-    expect(result.value.executionFingerprint).toStrictEqual({
-      provider: "gemini",
-      model: "gemini-2.5-flash",
-    });
+    expect(result.value.provider).toBe("gemini");
+    expect(result.value.authorization?.plan.evidenceKey.modelId).toBe("gemini-2.5-flash");
     expect(result.value.authorization?.plan.configurationId).toBe("gemini-primary");
-    expect(result.value.authorization?.plan.executionFingerprint).toBe(
-      result.value.authorization?.plan.executionFingerprint,
+    expect(JSON.stringify(result.value.authorization?.plan.evidenceKey)).not.toContain(
+      "super-secret",
     );
-    expect(JSON.stringify(result.value.executionFingerprint)).not.toContain("super-secret");
   });
 
   it("rechecks admission evidence through authorizeReviewExecution before adapter creation", async () => {

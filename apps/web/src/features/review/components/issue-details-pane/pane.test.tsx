@@ -33,7 +33,6 @@ function paneElement(
       onTabsBoundaryReached={callbacks.onTabsBoundaryReached}
       completedSteps={new Set<number>()}
       onToggleStep={vi.fn()}
-      isFocused={false}
     />
   );
 }
@@ -669,6 +668,38 @@ describe("IssueDetailsPane tab-strip navigation", () => {
 
     expect(onTabsBoundaryReached).toHaveBeenCalledWith("next");
     expect(onTabChange).not.toHaveBeenCalledWith("details");
+  });
+});
+
+describe("IssueDetailsPane chrome", () => {
+  it("rests until focus enters the pane, then wears the focused chrome", async () => {
+    const user = userEvent.setup();
+    renderPane(makeIssue());
+    const pane = screen.getByRole("complementary", { name: "Issue details" });
+
+    expect(pane).not.toHaveAttribute("data-state", "focused");
+
+    await user.click(screen.getByRole("tab", { name: "Details" }));
+
+    expect(pane).toHaveAttribute("data-state", "focused");
+  });
+
+  it("returns to resting chrome once focus leaves the pane", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        {paneElement(makeIssue())}
+        <button type="button">outside</button>
+      </>,
+    );
+    const pane = screen.getByRole("complementary", { name: "Issue details" });
+
+    await user.click(screen.getByRole("tab", { name: "Details" }));
+    expect(pane).toHaveAttribute("data-state", "focused");
+
+    await user.click(screen.getByRole("button", { name: "outside" }));
+
+    expect(pane).not.toHaveAttribute("data-state", "focused");
   });
 });
 

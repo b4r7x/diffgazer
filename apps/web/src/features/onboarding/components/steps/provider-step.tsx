@@ -1,4 +1,4 @@
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { BILLING_TIER_BADGES, getBillingTier } from "@diffgazer/core/providers";
 import type { RunnableProductId } from "@diffgazer/core/schemas/config";
 import { SELECTABLE_PRODUCTS } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
@@ -12,11 +12,6 @@ const SELECTABLE_PRODUCT_IDS = SELECTABLE_PRODUCTS.map((product) => product.prod
 
 function isRunnableProductId(value: string | null): value is RunnableProductId {
   return SELECTABLE_PRODUCT_IDS.some((productId) => productId === value);
-}
-
-function getTierBadge(productId: RunnableProductId): "FREE" | "PAID" {
-  const modes = PRODUCT_REGISTRY[productId].billing.modes as readonly string[];
-  return modes.includes("free-tier") ? "FREE" : "PAID";
 }
 
 interface RemovedMigrationRecord {
@@ -89,8 +84,7 @@ export function ProviderStep({
         className="space-y-1"
       >
         {SELECTABLE_PRODUCTS.map((product) => {
-          const productId = product.productId as RunnableProductId;
-          const tierBadge = getTierBadge(productId);
+          const tierBadge = BILLING_TIER_BADGES[getBillingTier(product.productId)];
           return (
             <RadioGroupItem
               key={product.productId}
@@ -98,12 +92,8 @@ export function ProviderStep({
               label={
                 <span className="flex items-center gap-2">
                   <span>{product.name}</span>
-                  <Badge
-                    variant={tierBadge === "FREE" ? "success" : "neutral"}
-                    size="sm"
-                    className="text-3xs"
-                  >
-                    {tierBadge}
+                  <Badge variant={tierBadge.variant} size="sm" className="text-3xs">
+                    {tierBadge.label}
                   </Badge>
                 </span>
               }

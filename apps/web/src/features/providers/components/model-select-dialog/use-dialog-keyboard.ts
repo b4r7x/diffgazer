@@ -61,6 +61,7 @@ interface ModelDialogKeyboardReturn {
   setFocusZone: (zone: FocusZone) => void;
   handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
   handleConfirm: (modelId?: string) => void;
+  handleSearchFocus: () => void;
   handleSearchEscape: () => void;
   handleSearchArrowDown: () => void;
   handleListHighlightChange: (modelId: string | null) => void;
@@ -164,6 +165,10 @@ export function useModelDialogKeyboard({
     return {
       ref: actionProps.ref,
       onFocus: () => {
+        // Native <dialog> autofocus can land here while models are still
+        // loading; mirroring it would overwrite the "list" zone and disable
+        // the initial-focus repair, so ignore focus until that settles.
+        if (!hasHandledInitialFocusRef.current) return;
         setFocusZone("footer");
         actionProps.onFocus();
       },
@@ -188,8 +193,10 @@ export function useModelDialogKeyboard({
 
   // Moves the zone to filters and records the active filter index without
   // re-focusing the button -- used by getFilterButtonProps.onFocus to mirror
-  // browser-driven focus into zone state.
+  // browser-driven focus into zone state. Suppressed until initial focus is
+  // handled so open-time autofocus cannot flip the zone.
   const focusFilterAtIndex = (index: number) => {
+    if (!hasHandledInitialFocusRef.current) return;
     setFocusZone("filters");
     setFilterIndex(index);
   };
@@ -214,6 +221,19 @@ export function useModelDialogKeyboard({
   };
 
   const handleListBoundaryReached = (direction: "previous" | "next") => {
+    // A Navigate keypress can reach the boundary while the initial-focus
+    // window is still open: the navigation handlers register when models
+    // arrive, but the focus repair runs in a later effect, so with no row
+    // focused yet the first j/k reads as a boundary hit. Leaving the list
+    // then would strand the user in the filter row or footer before they
+    // ever saw the list, so re-assert the list target instead.
+    if (!hasHandledInitialFocusRef.current) {
+      const targetId = getModelFocusTargetId({ filteredModels, focusedModelId, currentModel });
+      if (targetId !== undefined && focusModelElement(targetId)) {
+        hasHandledInitialFocusRef.current = true;
+      }
+      return;
+    }
     if (direction === "previous") {
       focusFilterButton(0);
       return;
@@ -221,9 +241,13 @@ export function useModelDialogKeyboard({
     enterFooter(1);
   };
 
+  // listContainerRef is the scroll wrapper, so the rows' owning composite is
+  // the nested RadioGroup, not the container; owner scoping would filter out
+  // every row. There is exactly one radio list inside, so disable it.
   const { highlighted: focusedModelId, highlight: focusModel } = useScopedNavigation({
     containerRef: listContainerRef,
     role: "radio",
+    ownerSelector: null,
     enabled: open && listInteractive && isZone("list"),
     wrap: false,
     moveFocus: true,
@@ -236,6 +260,7 @@ export function useModelDialogKeyboard({
     return findNavigationItemByValue(listContainerRef.current, {
       type: "radio",
       value: modelId,
+      ownerSelector: null,
     });
   };
 
@@ -311,8 +336,12 @@ export function useModelDialogKeyboard({
     setFilterIndex(0);
     setCheckedModelId(currentModel);
     const targetId = currentModel ?? models[0]?.id;
-    if (targetId) focusModelElement(targetId);
-    hasHandledInitialFocusRef.current = true;
+    // Only a focus that actually landed in the list closes the initial-focus
+    // window; while it stays open, the zone mirrors ignore open-time autofocus
+    // and the effect below finishes the job when models arrive.
+    if (targetId && focusModelElement(targetId)) {
+      hasHandledInitialFocusRef.current = true;
+    }
   });
 
   const repairListFocus = useEffectEvent(() => {
@@ -353,13 +382,24 @@ export function useModelDialogKeyboard({
   useEffect(() => {
     if (!open) return;
     if (!listInteractive) {
+      if (!hasHandledInitialFocusRef.current) {
+        // Keep the initial-focus window open while discovery can still deliver
+        // models; once it settles without a focusable list, land on Cancel
+        // instead of leaving native autofocus wherever it fell.
+        if (discoveryStatus === "idle" || discoveryStatus === "loading") return;
+        hasHandledInitialFocusRef.current = true;
+        moveEmptyListFocusToCancel();
+        return;
+      }
       if (focusZone === "list" && hadFilteredModelsRef.current) {
         moveEmptyListFocusToCancel();
       }
       return;
     }
     hadFilteredModelsRef.current = true;
-    if (focusZone !== "list") return;
+    // Until initial focus lands in the list, repair regardless of the current
+    // zone: open-time autofocus during the loading window must not disable it.
+    if (hasHandledInitialFocusRef.current && focusZone !== "list") return;
     repairListFocus();
   }, [open, focusZone, filteredIdsKey, isSaving, discoveryStatus]);
 
@@ -367,6 +407,13 @@ export function useModelDialogKeyboard({
     setFocusZone("list");
     focusModelElement(modelId);
     setCheckedModelId(modelId);
+  };
+
+  // Browser-focus mirror for the search input, suppressed like the other zone
+  // mirrors until the dialog's initial list focus has been handled.
+  const handleSearchFocus = () => {
+    if (!hasHandledInitialFocusRef.current) return;
+    setFocusZone("search");
   };
 
   const handleListHighlightChange = (modelId: string | null) => {
@@ -388,6 +435,7 @@ export function useModelDialogKeyboard({
     setFocusZone,
     handleFilterKeyDown: filters.handleFilterKeyDown,
     handleConfirm,
+    handleSearchFocus,
     handleSearchEscape: search.handleSearchEscape,
     handleSearchArrowDown: search.handleSearchArrowDown,
     handleListHighlightChange,

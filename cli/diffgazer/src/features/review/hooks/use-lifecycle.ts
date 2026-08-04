@@ -251,7 +251,10 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   }
 
   function goToSummary() {
+    // Skipping only shortens a running completion delay; the phase move is what
+    // actually shows the summary, so returning here from results works too.
     lifecycle.completion.skipDelay();
+    setPhase("summary");
   }
 
   function goToResults() {

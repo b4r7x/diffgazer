@@ -1,17 +1,16 @@
-import "./model-select-overlay.terminal-mock";
+import "../testing/terminal-mock";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { terminalCellWidth } from "../../../lib/terminal-width";
-import { ModelSelectOverlay } from "./model-select-overlay";
-import { setTestTerminalDimensions } from "./model-select-overlay.terminal-mock";
 import {
+  catalogModelsResponse,
   flushUntil,
   GEMINI_CONFIGURATION,
-  readyFor,
-  testDiscoveryResponse,
   Wrapper,
-} from "./model-select-overlay.test-support";
+} from "../testing/model-select-overlay";
+import { setTestTerminalDimensions } from "../testing/terminal-mock";
+import { ModelSelectOverlay } from "./model-select-overlay";
 
 describe("ModelSelectOverlay layout", () => {
   afterEach(() => {
@@ -20,18 +19,23 @@ describe("ModelSelectOverlay layout", () => {
 
   test("renders the discovered model within the bounded viewport", async () => {
     setTestTerminalDimensions({ columns: 80, rows: 19 });
-    const _longDescription = "Exact credentialed production-path evidence passed. FULLTAILVISIBLE";
     const configuration = {
       ...GEMINI_CONFIGURATION,
       selectedModelId: "gemini-2.5-flash" as const,
     };
-    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>().mockResolvedValue({
-      ...testDiscoveryResponse(configuration, readyFor("gemini")),
-      configuration,
-    });
+    const getConfigurationModels = vi.fn<BoundApi["getConfigurationModels"]>().mockResolvedValue(
+      catalogModelsResponse(configuration, [
+        {
+          id: "gemini-2.5-flash",
+          name: "gemini-2.5-flash",
+          description: "1M context FULLTAILVISIBLE",
+          tier: "paid",
+        },
+      ]),
+    );
     const api = {
       ...createApi({ baseUrl: "http://localhost" }),
-      testConfiguration,
+      getConfigurationModels,
     } satisfies BoundApi;
     const onSelect = vi.fn();
 

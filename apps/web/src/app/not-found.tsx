@@ -24,10 +24,10 @@ export function NotFoundPage() {
       message="The page you were looking for does not exist."
       scope="not-found"
       titleAs="h1"
+      // One way out of a route that does not exist: reloading it only fetches the
+      // same missing page again, so Home is both the action and the Esc target.
       primary={{ label: "Go to Home", onAction: () => void navigate({ to: "/" }) }}
-      secondary={{ label: "Reload", onAction: () => window.location.reload() }}
-      // Esc runs the secondary action, so the label must name it.
-      footerRightShortcuts={[{ key: "Esc", label: "Reload" }]}
+      footerRightShortcuts={[{ key: "Esc", label: "Home" }]}
     />
   );
 }

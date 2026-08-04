@@ -29,7 +29,7 @@ vi.mock("@tanstack/react-router", () => ({
   useCanGoBack: () => routerState.canGoBack,
 }));
 
-import { GlobalLayout } from "./global";
+import { GlobalLayout, getWordmarkTier } from "./global";
 
 let queryClient: QueryClient;
 let mockApi: BoundApi;
@@ -149,7 +149,7 @@ describe("GlobalLayout", () => {
     expect(screen.queryByRole("button", { name: /back/i })).not.toBeInTheDocument();
   });
 
-  it("keeps the figlet banner on home, the one cover screen", () => {
+  it("carries the banner wordmark in the shell header on home", () => {
     routerState.pathname = "/";
 
     renderShell();
@@ -157,13 +157,21 @@ describe("GlobalLayout", () => {
     expect(screen.getByRole("img", { name: "diffgazer" })).toBeInTheDocument();
   });
 
-  it("gives the setup wizard the same compact wordmark as every other work screen", () => {
+  it("opens the setup wizard with the banner wordmark", () => {
     routerState.pathname = "/onboarding";
 
     renderShell();
 
-    expect(screen.queryByRole("img", { name: "diffgazer" })).not.toBeInTheDocument();
-    expect(screen.getByText("DIFFGAZER")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "diffgazer" })).toBeInTheDocument();
+  });
+
+  it("renders the ascii wordmark, never a plain-text one, on a work screen", () => {
+    routerState.pathname = "/history";
+
+    renderShell();
+
+    expect(screen.getAllByRole("img", { name: "diffgazer" })).toHaveLength(1);
+    expect(screen.queryByText("DIFFGAZER")).not.toBeInTheDocument();
   });
 
   it("keeps the configured header when configuration init succeeds", async () => {
@@ -216,5 +224,29 @@ describe("GlobalLayout", () => {
     const { container } = renderShell();
     await screen.findByLabelText(/server live$/);
     expect(container.innerHTML).toBeClientSafeDom();
+  });
+});
+
+describe("getWordmarkTier", () => {
+  // Every path in app/router.tsx, plus an unmatched one standing in for the 404.
+  // The settings hub and all of its children share one tier: the wordmark must
+  // never change size while navigating within the settings flow.
+  it.each([
+    ["/", "hero"],
+    ["/settings", "hero"],
+    ["/help", "hero"],
+    ["/onboarding", "hero"],
+    ["/settings/theme", "hero"],
+    ["/settings/providers", "hero"],
+    ["/settings/storage", "hero"],
+    ["/settings/agent-execution", "hero"],
+    ["/settings/analysis", "hero"],
+    ["/settings/diagnostics", "hero"],
+    ["/settings/trust-permissions", "hero"],
+    ["/review/2f1b0d6e-6a0e-4a3a-9a1e-2b0c4d5e6f70", "dense"],
+    ["/history", "dense"],
+    ["/no-such-route", "dense"],
+  ])("gives %s the %s wordmark tier", (pathname, tier) => {
+    expect(getWordmarkTier(pathname)).toBe(tier);
   });
 });

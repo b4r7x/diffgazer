@@ -54,6 +54,44 @@ describe("Menu navigation", () => {
     expect(lastFrame()).toContain("> Charlie");
   });
 
+  test("moves the highlight on j and k, skipping disabled items", async () => {
+    const onHighlightChange = vi.fn();
+    const { lastFrame, stdin } = renderMenu({ onHighlightChange });
+    await flush();
+
+    stdin.write("j");
+    await flush();
+    expect(onHighlightChange).toHaveBeenLastCalledWith("c");
+    expect(lastFrame()).toContain("> Charlie");
+
+    stdin.write("k");
+    await flush();
+    expect(onHighlightChange).toHaveBeenLastCalledWith("a");
+    expect(lastFrame()).toContain("> Alpha");
+  });
+
+  test("a j hotkey never both moves the highlight and selects its item", async () => {
+    const onSelect = vi.fn();
+    const onHighlightChange = vi.fn();
+    const { stdin } = render(
+      <CliThemeProvider initialTheme="dark">
+        <Menu isActive onSelect={onSelect} onHighlightChange={onHighlightChange}>
+          <Menu.Item id="a">Alpha</Menu.Item>
+          <Menu.Item id="c" hotkey="j">
+            Charlie
+          </Menu.Item>
+        </Menu>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    stdin.write("j");
+    await flush();
+
+    expect(onHighlightChange).toHaveBeenCalledWith("c");
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   test("return selects the highlighted item and never selects a disabled item", async () => {
     const onSelect = vi.fn();
     const { stdin } = renderMenu({ onSelect });

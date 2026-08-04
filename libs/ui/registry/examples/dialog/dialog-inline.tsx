@@ -12,9 +12,10 @@ import {
 } from "@/components/ui/dialog";
 
 // modal={false} renders the dialog chrome in the document flow — same frame,
-// corners, header marker, eyebrow, and footer as the modal, without the
+// corners, header strip, eyebrow, and footer as the modal, without the
 // backdrop, focus trap, or top layer. That keeps the open state reviewable on a
-// static page. Product code opens a modal from a Dialog.Trigger instead.
+// static page. Product code opens a modal from a Dialog.Trigger instead. An
+// inline dialog gets no automatic [x], so the first one composes DialogCloseIcon.
 export default function DialogInlineExample() {
   return (
     <div className="flex flex-col gap-10">

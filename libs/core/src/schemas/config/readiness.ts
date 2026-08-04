@@ -51,7 +51,7 @@ export const READINESS_REMEDIATION_CODES = [
   "correct-endpoint",
   "retry-connection",
   "select-model",
-  "wait-for-conformance",
+  "run-conformance",
   "rerun-conformance",
   "accept-notice",
   "review-support",
@@ -113,11 +113,11 @@ export const READINESS_PRESENTATION = {
     remediation: { code: "select-model", message: "Select an available exact model." },
   },
   "conformance-pending": {
-    action: "inspect",
-    explanation: "Structured review conformance has not finished.",
+    action: "test",
+    explanation: "Structured review conformance has not been checked yet.",
     remediation: {
-      code: "wait-for-conformance",
-      message: "Wait for the current conformance check to finish.",
+      code: "run-conformance",
+      message: "Run Test readiness to verify structured review support.",
     },
   },
   "conformance-failed": {
@@ -185,7 +185,7 @@ export const READINESS_PRESENTATION = {
     },
   },
   "local-no-review-capable-model": {
-    action: "inspect",
+    action: "test",
     explanation: "The local server listed no review-capable model.",
     remediation: {
       code: "install-review-capable-model",
@@ -209,7 +209,7 @@ export const READINESS_PRESENTATION = {
     },
   },
   "local-cancellation-failed": {
-    action: "inspect",
+    action: "test",
     explanation: "The local runtime did not satisfy the cancellation contract.",
     remediation: {
       code: "repair-cancellation",

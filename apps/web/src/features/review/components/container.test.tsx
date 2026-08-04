@@ -1,31 +1,91 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
-import { ApiProvider } from "@diffgazer/core/api/hooks";
+import {
+  ApiProvider,
+  type UseReviewLifecycleBaseOptions,
+  type UseReviewLifecycleBaseResult,
+} from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
+import { createInitialReviewState } from "@diffgazer/core/review";
 import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
+import {
+  configurationStatus,
+  LOCAL_OPENAI_CONFIGURATION,
+  makeConfigurationInitResponse,
+  makeReadyInitResponse,
+  selectedIdentityFrom,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
-import {
-  configurationStatus,
-  LOCAL_OPENAI_CONFIGURATION,
-  makeConfigurationInitResponse,
-  makeReadyInitResponse,
-} from "@/testing/configuration-fixtures";
-import { expectSingleReticle } from "@/testing/reticle";
-import { ReviewContainer } from "./container";
 
-const mockUseReviewLifecycle = vi.fn();
-
-vi.mock("../hooks/use-lifecycle", () => ({
-  useReviewLifecycle: (...args: unknown[]) => mockUseReviewLifecycle(...args),
+const { mockNavigate, mockUseReviewLifecycleBase, routeParams } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockUseReviewLifecycleBase:
+    vi.fn<(options: UseReviewLifecycleBaseOptions) => UseReviewLifecycleBaseResult>(),
+  routeParams: {} as { reviewId?: string },
 }));
+
+// Boundary mock: the router is the external route context the review lifecycle
+// reads its reviewId from and navigates through.
+vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => mockNavigate,
+  useParams: () => routeParams,
+}));
+
+// Boundary mock: api/hooks owns the HTTP/SSE stream. Everything above it — the
+// real useReviewLifecycle composition and the real configuration load — runs, so
+// the arguments the container hands the lifecycle and the phase shape it consumes
+// are exercised here rather than fabricated.
+vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@diffgazer/core/api/hooks")>();
+  return { ...actual, useReviewLifecycleBase: mockUseReviewLifecycleBase };
+});
+
+import { ReviewContainer } from "./container";
 
 let mockLoadConfigurationInit: Mock<BoundApi["loadConfigurationInit"]>;
 
-function createTestApi(init = makeReadyInitResponse()): BoundApi {
+function makeLifecycleBaseReturn(
+  overrides: Partial<UseReviewLifecycleBaseResult> = {},
+): UseReviewLifecycleBaseResult {
+  return {
+    stream: {
+      state: { ...createInitialReviewState(), reviewId: null, hasCompleted: false, notices: [] },
+      abort: vi.fn(),
+      cancel: vi.fn().mockResolvedValue(null),
+      resume: vi.fn().mockResolvedValue(undefined),
+    },
+    checks: {
+      isNoDiffError: false,
+      isTerminalStreamError: false,
+      isCheckingForChanges: false,
+      loadingMessage: null,
+    },
+    completion: {
+      isCompleting: false,
+      completedAt: null,
+      skipDelay: vi.fn(),
+      resetCompletion: vi.fn(),
+    },
+    start: {
+      hasStarted: true,
+      hasStreamed: false,
+      canStart: false,
+      identity: null,
+      readinessGate: "unreachable",
+    },
+    reset: vi.fn(),
+    gate: "unconfigured",
+    contextSnapshot: null,
+    ...overrides,
+  };
+}
+
+function createTestApi(): BoundApi {
+  const init = makeReadyInitResponse();
   return {
     ...createApi({ baseUrl: "http://localhost" }),
     loadConfigurationInit: mockLoadConfigurationInit,
@@ -42,6 +102,12 @@ function createTestApi(init = makeReadyInitResponse()): BoundApi {
     executeConfigurationAction: vi.fn(),
     createConfiguration: vi.fn(),
   } satisfies BoundApi;
+}
+
+function unreachableLocalInit() {
+  return makeConfigurationInitResponse([
+    configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
+  ]);
 }
 
 function renderReviewContainer(props: Partial<ComponentProps<typeof ReviewContainer>> = {}) {
@@ -69,34 +135,13 @@ function renderReviewContainer(props: Partial<ComponentProps<typeof ReviewContai
 
 describe("ReviewContainer configuration gates", () => {
   beforeEach(() => {
+    routeParams.reviewId = undefined;
+    mockNavigate.mockReset();
     mockLoadConfigurationInit = vi
       .fn<BoundApi["loadConfigurationInit"]>()
       .mockRejectedValue(new Error("init unavailable"));
-    mockUseReviewLifecycle.mockReturnValue({
-      state: {
-        steps: [],
-        agents: [],
-        events: [],
-        issues: [],
-        notices: [],
-        fileProgress: { total: 0, completed: [] },
-        startedAt: null,
-        isStreaming: false,
-        error: null,
-      },
-      gate: "unconfigured",
-      contextSnapshot: null,
-      loadingMessage: null,
-      readiness: configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable")
-        .readiness,
-      selectedConfiguration: LOCAL_OPENAI_CONFIGURATION,
-      isTransitionPending: false,
-      handleCancel: vi.fn(),
-      handleBack: vi.fn(),
-      handleViewResults: vi.fn(),
-      handleSetupProvider: vi.fn(),
-      handleSwitchMode: vi.fn(),
-    });
+    mockUseReviewLifecycleBase.mockReset();
+    mockUseReviewLifecycleBase.mockReturnValue(makeLifecycleBaseReturn());
   });
 
   it("shows the retryable error gate when configuration init fails", async () => {
@@ -109,39 +154,7 @@ describe("ReviewContainer configuration gates", () => {
   });
 
   it("shows the readiness gate with the generic action label", async () => {
-    const readiness = configurationStatus(
-      LOCAL_OPENAI_CONFIGURATION,
-      "local-endpoint-unreachable",
-    ).readiness;
-    mockLoadConfigurationInit.mockResolvedValue(
-      makeConfigurationInitResponse([
-        configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
-      ]),
-    );
-    mockUseReviewLifecycle.mockReturnValue({
-      state: {
-        steps: [],
-        agents: [],
-        events: [],
-        issues: [],
-        notices: [],
-        fileProgress: { total: 0, completed: [] },
-        startedAt: null,
-        isStreaming: false,
-        error: null,
-      },
-      gate: "unconfigured",
-      contextSnapshot: null,
-      loadingMessage: null,
-      readiness,
-      selectedConfiguration: LOCAL_OPENAI_CONFIGURATION,
-      isTransitionPending: false,
-      handleCancel: vi.fn(),
-      handleBack: vi.fn(),
-      handleViewResults: vi.fn(),
-      handleSetupProvider: vi.fn(),
-      handleSwitchMode: vi.fn(),
-    });
+    mockLoadConfigurationInit.mockResolvedValue(unreachableLocalInit());
 
     renderReviewContainer();
 
@@ -152,19 +165,42 @@ describe("ReviewContainer configuration gates", () => {
     expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
   });
 
-  it("brackets exactly one pane on the rendered gate", async () => {
-    mockLoadConfigurationInit.mockResolvedValue(
-      makeConfigurationInitResponse([
-        configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
-      ]),
+  it("hands the selected configuration and its readiness to the review lifecycle", async () => {
+    mockLoadConfigurationInit.mockResolvedValue(unreachableLocalInit());
+    routeParams.reviewId = "review-1";
+    let capturedOptions: UseReviewLifecycleBaseOptions | undefined;
+    mockUseReviewLifecycleBase.mockImplementation((options) => {
+      capturedOptions = options;
+      return makeLifecycleBaseReturn();
+    });
+
+    renderReviewContainer({ allowResumeWithoutSetup: true });
+
+    await waitFor(() => {
+      expect(capturedOptions?.configLoading).toBe(false);
+    });
+    expect(capturedOptions?.readiness?.status).toBe("local-endpoint-unreachable");
+    expect(capturedOptions?.configuration).toEqual(
+      selectedIdentityFrom(LOCAL_OPENAI_CONFIGURATION),
     );
+    expect(capturedOptions?.isConfigured).toBe(true);
+    expect(capturedOptions?.allowResumeWithoutSetup).toBe(true);
+    expect(capturedOptions?.reviewId).toBe("review-1");
+  });
+
+  it("rests without corner brackets — a configuration gate is not a focus target", async () => {
+    mockLoadConfigurationInit.mockResolvedValue(unreachableLocalInit());
+
     const { container } = renderReviewContainer();
 
     await waitFor(() => {
       expect(screen.getByText(/Configuration Not Ready/i)).toBeInTheDocument();
     });
 
-    expectSingleReticle(container);
+    // Panel's data attributes are the bracket contract: the viewfinder frame
+    // draws resting corners, data-state="focused" draws the focused ones.
+    expect(container.querySelector('[data-frame="viewfinder"]')).toBeNull();
+    expect(container.querySelector('[data-slot="panel"][data-state="focused"]')).toBeNull();
   });
 
   it("renders a safe terminal receipt without raw diagnostics", () => {
@@ -181,11 +217,8 @@ describe("ReviewContainer configuration gates", () => {
   });
 
   it("exposes no secret values in the rendered gate DOM", async () => {
-    mockLoadConfigurationInit.mockResolvedValue(
-      makeConfigurationInitResponse([
-        configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
-      ]),
-    );
+    mockLoadConfigurationInit.mockResolvedValue(unreachableLocalInit());
+
     const { container } = renderReviewContainer();
 
     await waitFor(() => {

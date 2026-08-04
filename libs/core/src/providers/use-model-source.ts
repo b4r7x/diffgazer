@@ -1,6 +1,10 @@
 import type { ModelInfo } from "../schemas/config/models.js";
 import type { ClientConfigurationSummary } from "../schemas/config/provider-config.js";
-import { READINESS_PRESENTATION } from "../schemas/config/readiness.js";
+import {
+  MODEL_DISCOVERY_ERROR_FALLBACK,
+  MODEL_DISCOVERY_SKIPPED_FALLBACK,
+  toClientSafeMessage,
+} from "./model-discovery-messages.js";
 import { useProviderModelsMapped } from "./use-provider-models-mapped.js";
 
 export type SupportedConfigurationSummary = Extract<
@@ -17,34 +21,6 @@ interface ModelSourceIdentity {
 interface ModelSourceBase extends ModelSourceIdentity {
   models: ModelInfo[];
   retry: () => void;
-}
-
-const MODEL_DISCOVERY_ERROR = "Model discovery failed. Test the configuration again.";
-const MODEL_DISCOVERY_SKIPPED =
-  "Model discovery was skipped. Complete the required prerequisites, then test again.";
-
-const SAFE_MODEL_DISCOVERY_MESSAGES = new Set([
-  "Model discovery returned a different configuration tuple.",
-  "Model discovery acknowledgement did not match the current product notice.",
-  "Model discovery did not prove an eligible exact model ID.",
-  "The tested OpenRouter model is not an exact pinned downstream route.",
-  "The configured local endpoint is unreachable.",
-  "Live discovery prerequisites were unavailable.",
-  "Compatibility evidence is unavailable for this installation.",
-  ...Object.values(READINESS_PRESENTATION).map(
-    ({ explanation, remediation }) => `${explanation} ${remediation.message}`,
-  ),
-]);
-
-function utf8ByteLength(value: string): number {
-  return new TextEncoder().encode(value).byteLength;
-}
-
-function toClientSafeMessage(value: string, fallback: string): string {
-  if (SAFE_MODEL_DISCOVERY_MESSAGES.has(value) && utf8ByteLength(value) <= 512) {
-    return value;
-  }
-  return fallback;
 }
 
 export type ModelSourceState =
@@ -136,13 +112,13 @@ export function useModelSource(
       return {
         ...source,
         models: [],
-        reason: toClientSafeMessage(source.reason, MODEL_DISCOVERY_SKIPPED),
+        reason: toClientSafeMessage(source.reason, MODEL_DISCOVERY_SKIPPED_FALLBACK),
       };
     case "error":
       return {
         ...source,
         models: [],
-        error: toClientSafeMessage(source.error, MODEL_DISCOVERY_ERROR),
+        error: toClientSafeMessage(source.error, MODEL_DISCOVERY_ERROR_FALLBACK),
       };
   }
 }

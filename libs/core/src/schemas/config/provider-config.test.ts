@@ -509,6 +509,70 @@ describe("client configuration responses", () => {
     ).toBe(false);
   });
 
+  it("binds a succeeded response to the configuration status its action implies", () => {
+    const removedSummary = {
+      configurationId: hostedSummary.configurationId,
+      revision: hostedSummary.revision,
+      status: "removed" as const,
+      transportFamily: "hosted-api" as const,
+      productId: REMOVED_PRODUCT_ID,
+      selectedModelId: null,
+      notices: [],
+      availableActions: ["inspect", "delete"] as const,
+    };
+    const removedReadiness = {
+      status: "removed" as const,
+      ready: false as const,
+      evidenceStatus: "not-checked" as const,
+      checkedAt: null,
+      acknowledgement: { status: "not-applicable" as const },
+      ...READINESS_PRESENTATION.removed,
+    };
+
+    for (const action of ["create", "select", "update"] as const) {
+      expect(
+        ClientConfigurationActionResponseSchema.safeParse({
+          action,
+          status: "succeeded",
+          configuration: removedSummary,
+        }).success,
+        action,
+      ).toBe(false);
+    }
+    expect(
+      ClientConfigurationActionResponseSchema.safeParse({
+        action: "test",
+        status: "succeeded",
+        configuration: removedSummary,
+        readiness: removedReadiness,
+      }).success,
+    ).toBe(false);
+
+    expect(
+      ClientConfigurationActionResponseSchema.safeParse({
+        action: "inspect",
+        status: "succeeded",
+        configuration: removedSummary,
+        readiness: removedReadiness,
+      }).success,
+    ).toBe(true);
+
+    expect(
+      ClientConfigurationActionResponseSchema.safeParse({
+        action: "delete",
+        status: "succeeded",
+        configuration: hostedSummary,
+      }).success,
+    ).toBe(false);
+    expect(
+      ClientConfigurationActionResponseSchema.safeParse({
+        action: "delete",
+        status: "succeeded",
+        configuration: removedSummary,
+      }).success,
+    ).toBe(true);
+  });
+
   it("fails closed for product notices and model policies from the registry", () => {
     const zaiNotice = {
       ...PRODUCT_REGISTRY.zai.notice,

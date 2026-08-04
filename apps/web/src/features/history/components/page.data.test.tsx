@@ -62,7 +62,10 @@ describe("HistoryPage loading and error status", () => {
   it("brackets exactly one pane on the loaded screen", async () => {
     const { container } = renderHistoryPage(<HistoryPage />);
 
-    await screen.findByRole("listbox", { name: /review runs/i });
+    // Brackets follow real focus now, so the assertion waits for the runs list
+    // to actually receive it rather than for the pane to merely render.
+    const runsList = await screen.findByRole("listbox", { name: /review runs/i });
+    await waitFor(() => expect(runsList).toHaveFocus());
 
     expectSingleReticle(container);
   });
@@ -269,6 +272,43 @@ describe("HistoryPage review pagination", () => {
     expect(await screen.findByText(formatRunId(olderId))).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Load older runs" })).not.toBeInTheDocument();
     expect(mockGetReviews).toHaveBeenLastCalledWith(undefined, nextCursor);
+  });
+});
+
+describe("HistoryPage run list presentation", () => {
+  beforeEach(() => {
+    setupApiMocks(trustedProject());
+  });
+
+  it("closes the run list with an end marker counting the listed runs", async () => {
+    renderHistoryPage(<HistoryPage />);
+
+    const runsPanel = await screen.findByRole("region", { name: "Review runs" });
+    expect(within(runsPanel).getByText("── 2 runs ──")).toBeVisible();
+  });
+
+  it("omits the end marker when no runs are listed", async () => {
+    mockGetReviews.mockResolvedValue({ reviews: [] });
+
+    renderHistoryPage(<HistoryPage />);
+
+    const runsPanel = await screen.findByRole("region", { name: "Review runs" });
+    await waitFor(() => expect(within(runsPanel).getByRole("status")).toHaveTextContent("No runs"));
+    expect(within(runsPanel).queryByText(/──/)).not.toBeInTheDocument();
+  });
+
+  it("renders the run scope through the badge primitive, uppercased by CSS alone", async () => {
+    renderHistoryPage(<HistoryPage />);
+
+    const runsList = await screen.findByRole("listbox", { name: /review runs/i });
+    // The branch name stays lowercase in the DOM, so screen readers and copy/paste
+    // get the real ref while the badge recipe paints the uppercase tier (pinned in
+    // the ui library's own badge test).
+    const scopeChips = within(runsList).getAllByText("main");
+    expect(scopeChips).toHaveLength(2);
+    for (const chip of scopeChips) {
+      expect(chip).toHaveAttribute("data-slot", "badge");
+    }
   });
 });
 

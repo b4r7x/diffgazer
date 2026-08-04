@@ -17,9 +17,9 @@ describe("Dialog narrow-viewport geometry", () => {
     );
     const content = screen.getByRole("dialog", { name: "Settings" });
 
-    expect(content.className).toContain("max-sm:mx-3");
-    expect(content.className).toContain("max-sm:w-[calc(100%-1.5rem)]");
-    expect(content.className).toContain("max-sm:max-w-none");
+    expect(content).toHaveClass("max-sm:mx-3");
+    expect(content).toHaveClass("max-sm:w-[calc(100%-1.5rem)]");
+    expect(content).toHaveClass("max-sm:max-w-none");
   });
 
   it("clears the home indicator and keeps the OV-03 dynamic-viewport cap", () => {
@@ -32,8 +32,8 @@ describe("Dialog narrow-viewport geometry", () => {
     );
     const content = screen.getByRole("dialog", { name: "Settings" });
 
-    expect(content.className).toContain("max-sm:pb-[env(safe-area-inset-bottom)]");
-    expect(content.className).toContain("max-h-[90dvh]");
+    expect(content).toHaveClass("max-sm:pb-[env(safe-area-inset-bottom)]");
+    expect(content).toHaveClass("max-h-[90dvh]");
   });
 
   it("has no a11y violations with the narrow-viewport classes applied", async () => {

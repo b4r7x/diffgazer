@@ -1,5 +1,5 @@
 import type { ProviderListRow } from "@diffgazer/core/providers";
-import { getProviderDisplayStatus } from "@diffgazer/core/providers";
+import { getProviderDisplayStatus, PROVIDER_DETAIL_EMPTY_LABEL } from "@diffgazer/core/providers";
 import { buildProviderSettingsRows } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
@@ -9,8 +9,6 @@ import { KeyValue } from "../../../components/ui/key-value";
 import { useActionRow } from "../../../hooks/use-action-row";
 import { useTheme } from "../../../theme/provider";
 import { getProviderActionSlots } from "../lib/action-slots";
-
-export const PROVIDER_DETAIL_EMPTY_LABEL = "Select a provider to view details";
 
 /**
  * Rows the body needs to breathe: labelled settings rows plus the wrapped action

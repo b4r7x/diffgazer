@@ -1,4 +1,4 @@
-import type { OnboardingConfigurationDraft } from "@diffgazer/core/onboarding";
+import type { OnboardingConfigurationDraft, OnboardingStep } from "@diffgazer/core/onboarding";
 import { STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
@@ -10,7 +10,7 @@ import { HorizontalStepper } from "@diffgazer/ui/components/horizontal-stepper";
 import { InputGroup } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useRef } from "react";
-import { CardLayout } from "@/components/layout/card-layout";
+import { CardLayout } from "@/components/layout/card";
 import { useConfigData } from "@/hooks/use-config";
 import { useOnboardingKeyboard } from "../hooks/use-keyboard";
 import { useOnboarding } from "../hooks/use-onboarding";
@@ -37,6 +37,9 @@ export function OnboardingWizard() {
     isReconciling,
     isSubmitting,
     error,
+    draftConfiguration,
+    isPreparingDraftConfiguration,
+    prepareDraftConfiguration,
     next,
     back,
     updateData,
@@ -48,6 +51,12 @@ export function OnboardingWizard() {
   const removedRecord = configurations.find(
     ({ configuration }) => configuration.status === "removed",
   );
+
+  // The model step reads models back from a persisted record, so the draft
+  // tuple is committed as the user arrives rather than invented client-side.
+  const enterStep = (step: OnboardingStep | undefined) => {
+    if (step === "model") void prepareDraftConfiguration();
+  };
 
   const {
     footer,
@@ -70,8 +79,14 @@ export function OnboardingWizard() {
     canProceed,
     isSubmitting,
     isReconciling,
-    next,
-    back,
+    next: (partial) => {
+      next(partial);
+      enterStep(steps[stepIndex + 1]);
+    },
+    back: () => {
+      back();
+      enterStep(steps[stepIndex - 1]);
+    },
     complete,
     deleteRemovedConfiguration,
     focusFallbackRef,
@@ -241,7 +256,9 @@ export function OnboardingWizard() {
       case "model":
         return (
           <ModelStep
-            configurationInput={configurationInput}
+            configuration={draftConfiguration}
+            isPreparing={isPreparingDraftConfiguration}
+            onRetry={() => void prepareDraftConfiguration()}
             value={selectedModelId}
             onChange={(model) => updateData({ selectedModelId: model })}
             onCommit={(model) => handleStepCommit({ selectedModelId: model })}

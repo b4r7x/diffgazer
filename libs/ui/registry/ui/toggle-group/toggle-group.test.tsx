@@ -444,7 +444,7 @@ describe("ToggleGroup", () => {
   it("sm items reserve a 44px coarse-pointer touch target", () => {
     renderGroup({ size: "sm" });
     for (const item of getRadios()) {
-      expect(item.className).toContain("pointer-coarse:min-h-11");
+      expect(item).toHaveClass("pointer-coarse:min-h-11");
     }
   });
 

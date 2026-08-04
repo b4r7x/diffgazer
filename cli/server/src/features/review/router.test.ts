@@ -22,7 +22,7 @@ import { executionLimitsFromBudget } from "../../shared/lib/ai/admission/service
 import {
   buildReviewSchemaJson,
   hashReviewSchemaJson,
-} from "../../shared/lib/ai/providers/cli-compatibility-probe.js";
+} from "../../shared/lib/ai/providers/cli-compatibility/probe.js";
 import { DEFAULT_CONFIGURATION_BUDGET } from "../../shared/lib/config/store.js";
 import type { StatusHashResult } from "../../shared/lib/git/service.js";
 import { canonicalizeProjectRoot } from "../../shared/lib/paths.js";

@@ -8,8 +8,10 @@ import { ApiKeyMethodSelector } from "./api-key-method-selector";
 
 function Subject({
   onFocusChange = vi.fn(),
+  envVarName,
 }: {
   onFocusChange?: (value: ApiKeyFocusTarget) => void;
+  envVarName?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [method, setMethod] = useState<InputMethod>("paste");
@@ -21,6 +23,7 @@ function Subject({
       onChange={setMethod}
       keyValue=""
       onKeyValueChange={vi.fn()}
+      envVarName={envVarName}
       providerName="Gemini"
       inputRef={inputRef}
       focused={focused}
@@ -53,6 +56,33 @@ describe("ApiKeyMethodSelector hosted-only secret methods", () => {
     await user.keyboard("{ArrowDown}");
 
     expect(screen.getByLabelText("Gemini API Key")).toHaveFocus();
+  });
+
+  // aria-checked is what the selected-row presentation hangs off, so the state moving
+  // between rows is the contract; the fill, accent bar, and accent glyph follow it.
+  it("marks exactly one method row as the selected option", async () => {
+    const user = userEvent.setup();
+
+    render(<Subject />);
+
+    const paste = screen.getByRole("radio", { name: "Paste Key Now" });
+    const env = screen.getByRole("radio", { name: "Import from Env" });
+    expect(paste).toHaveAttribute("aria-checked", "true");
+    expect(env).toHaveAttribute("aria-checked", "false");
+
+    await user.click(env);
+
+    expect(env).toHaveAttribute("aria-checked", "true");
+    expect(paste).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("previews the $ENV variable name the env method binds", () => {
+    render(<Subject envVarName="GOOGLE_API_KEY" />);
+
+    expect(
+      screen.getByRole("textbox", { name: "GOOGLE_API_KEY environment variable" }),
+    ).toHaveValue("GOOGLE_API_KEY");
+    expect(screen.queryByText(/configured environment variable binding/i)).not.toBeInTheDocument();
   });
 
   it("describes environment import without requiring a typed env var name", () => {

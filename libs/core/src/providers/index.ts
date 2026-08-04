@@ -1,5 +1,14 @@
 export type { RunnableProductId } from "../schemas/config/transports.js";
 export {
+  BILLING_TIER_BADGES,
+  type BillingTier,
+  getBillingTier,
+} from "./billing-tier.js";
+export {
+  CATALOG_EMPTY_MODELS_REASON,
+  CATALOG_SKIPPED_REASON,
+} from "./catalog-discovery-reasons.js";
+export {
   type ClientMetadataPayload,
   ClientMetadataPayloadSchema,
   type ClientMetadataSource,
@@ -7,15 +16,12 @@ export {
   ClientProductMetadataSchema,
   projectClientMetadata,
 } from "./client-metadata.js";
+export { CREDENTIAL_ENV_VARS } from "./credential-env-vars.js";
+export { PROVIDER_DETAIL_EMPTY_LABEL } from "./detail-presentation.js";
 export {
-  getProviderDetailModelLabel,
-  PROVIDER_DETAIL_ACTION_LABELS,
-  PROVIDER_DETAIL_EMPTY_LABEL,
-} from "./detail-presentation.js";
-export {
-  getDisplayStatusBadge,
   getProviderDisplay,
   getProviderDisplayStatus,
+  getUnconfiguredDisplayStatus,
   type ProviderDisplayStatus,
 } from "./display-status.js";
 export {
@@ -47,6 +53,14 @@ export {
   SELECTABLE_PRODUCT_IDS,
 } from "./product-registry.js";
 export {
+  buildSetupAcknowledgement,
+  buildSetupInput,
+  getSetupLayoutCopy,
+  resolveSetupTransportFamily,
+  type SetupTransportFamily,
+  toSetupCredential,
+} from "./setup-input.js";
+export {
   type UseApiKeyEntryOptions,
   type UseApiKeyEntryResult,
   useApiKeyEntry,
@@ -75,4 +89,3 @@ export {
   type UseProviderManagementResult,
   useProviderManagement,
 } from "./use-provider-management.js";
-export { type ProviderModelsState, useProviderModelsMapped } from "./use-provider-models-mapped.js";

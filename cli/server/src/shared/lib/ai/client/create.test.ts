@@ -11,9 +11,13 @@ import {
 } from "@diffgazer/core/schemas/config";
 import type { EvidenceKey, ExecutionLimits } from "@diffgazer/core/schemas/review";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  loadCreate,
+  setupClientTestHome,
+  teardownClientTestHome,
+} from "../../testing/ai-client-env.js";
 import type { AdmittedExecutionPlan } from "../admission/service.js";
 import { ADAPTER_REGISTRY } from "../providers/registry.js";
-import { loadCreate, setupClientTestHome, teardownClientTestHome } from "./client-test-env.js";
 
 const SCHEMA_SHA256 = "1".repeat(64);
 const CREDENTIAL_REFERENCE_IDENTITY = "3".repeat(64);

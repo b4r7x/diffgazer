@@ -4,7 +4,7 @@ import { FooterProvider } from "@diffgazer/core/footer";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
@@ -40,21 +40,36 @@ const shellInit = makeShellInitResponse({
   project: { projectId: "proj-1", path: "/tmp/repo", trust: null },
 });
 
+const trustedShellInit = makeShellInitResponse({
+  settings: SETTINGS_FIXTURE,
+  project: {
+    projectId: "proj-1",
+    path: "/tmp/repo",
+    trust: {
+      projectId: "proj-1",
+      repoRoot: "/tmp/repo",
+      trustedAt: "2026-01-01T00:00:00.000Z",
+      trustMode: "persistent",
+      capabilities: { readFiles: true, runCommands: false },
+    },
+  },
+});
+
 let mockGetSettings: Mock<BoundApi["getSettings"]>;
 
-function createTestApi(): BoundApi {
+function createTestApi(init = shellInit): BoundApi {
   return {
     ...createApi({ baseUrl: "http://localhost" }),
     getSettings: mockGetSettings,
-    ...makeShellApiOverrides(shellInit),
+    ...makeShellApiOverrides(init),
   } satisfies BoundApi;
 }
 
-function renderPage() {
+function renderPage(init = shellInit) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  const api = createTestApi();
+  const api = createTestApi(init);
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -94,10 +109,13 @@ describe("SettingsHubPage", () => {
     await waitFor(() => {
       expect(screen.getByText("local settings")).toBeVisible();
     });
-    expect(screen.getByText("project path: /tmp/repo")).toBeVisible();
+    expect(screen.getByText(/project path:/)).toBeVisible();
+    // The path is middle-truncated for the single-line footer, so the full
+    // value lives on the title rather than in the visible text.
+    expect(screen.getByTitle("/tmp/repo")).toBeVisible();
   });
 
-  it("brackets exactly one pane on the loaded screen", async () => {
+  it("keeps the repo path and the settings caption on one footer row", async () => {
     const { container } = renderPage();
 
     await screen.findByRole("region", { name: /settings hub/i });
@@ -105,7 +123,50 @@ describe("SettingsHubPage", () => {
       expect(screen.getByText("local settings")).toBeVisible();
     });
 
+    const footer = container.querySelector('[data-slot="panel-footer"]');
+    const caption = screen.getByText("local settings");
+    expect(footer).toContainElement(screen.getByText(/project path:/));
+    expect(footer).toContainElement(screen.getByTitle("/tmp/repo"));
+    // Both ends are direct children of the one footer row: nothing stacks the
+    // caption under a wrapped path.
+    expect(caption.parentElement).toBe(footer);
+  });
+
+  it("brackets the pane only while the keyboard is inside it", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPage();
+
+    const region = await screen.findByRole("region", { name: /settings hub/i });
+    const menu = await screen.findByRole("menu", { name: /settings/i });
+
+    // The hub menu owns the arrow keys and takes focus on mount, so the pane
+    // starts bracketed.
+    await waitFor(() => expect(menu).toHaveFocus());
+    expect(region.querySelector('[data-slot="panel-corners"]')).not.toBeNull();
+
+    // Clicking away is the resting state this screen used to claim statically.
+    await user.click(document.body);
+    expect(region.querySelector('[data-slot="panel-corners"]')).toBeNull();
+
+    await user.tab();
+    expect(menu).toHaveFocus();
+    expect(region.querySelector('[data-slot="panel-corners"]')).not.toBeNull();
     expectSingleReticle(container);
+  });
+
+  it("renders TRUSTED as a chip and carries every other affirmative row on tone alone", async () => {
+    const { container } = renderPage(trustedShellInit);
+
+    const trustRow = await screen.findByRole("menuitem", { name: /trust & permissions/i });
+    await waitFor(() => {
+      expect(trustRow).toHaveTextContent("Trusted");
+    });
+
+    // A chip rather than prose, so the affirmative state reads at a glance
+    // without a glyph. jsdom cannot compute the green fill, so the tone itself
+    // stays a screenshot-level contract.
+    expect(within(trustRow).getByText("Trusted")).toHaveAttribute("data-slot", "badge");
+    expect(container.textContent).not.toContain("✓");
   });
 
   it("shows the settings load error in the footer instead of the default message", async () => {
@@ -132,22 +193,8 @@ describe("SettingsHubPage", () => {
   });
 
   it("shows the trusted state when the repository grants repository access", async () => {
-    const trustedInit = makeShellInitResponse({
-      settings: SETTINGS_FIXTURE,
-      project: {
-        projectId: "proj-1",
-        path: "/tmp/repo",
-        trust: {
-          projectId: "proj-1",
-          repoRoot: "/tmp/repo",
-          trustedAt: "2026-01-01T00:00:00.000Z",
-          trustMode: "persistent",
-          capabilities: { readFiles: true, runCommands: false },
-        },
-      },
-    });
     const api = createTestApi();
-    Object.assign(api, makeShellApiOverrides(trustedInit));
+    Object.assign(api, makeShellApiOverrides(trustedShellInit));
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
@@ -219,22 +266,8 @@ describe("SettingsHubPage", () => {
   });
 
   it("preserves trusted init data when configuration init keeps working", async () => {
-    const trustedInit = makeShellInitResponse({
-      settings: SETTINGS_FIXTURE,
-      project: {
-        projectId: "proj-1",
-        path: "/tmp/repo",
-        trust: {
-          projectId: "proj-1",
-          repoRoot: "/tmp/repo",
-          trustedAt: "2026-01-01T00:00:00.000Z",
-          trustMode: "persistent",
-          capabilities: { readFiles: true, runCommands: false },
-        },
-      },
-    });
     const api = createTestApi();
-    Object.assign(api, makeShellApiOverrides(trustedInit));
+    Object.assign(api, makeShellApiOverrides(trustedShellInit));
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
@@ -261,7 +294,7 @@ describe("SettingsHubPage", () => {
       expect(trustRow).not.toHaveTextContent("Not trusted");
     });
     expect(screen.getByRole("menuitem", { name: /provider/i })).toHaveTextContent(
-      selectedProductId(trustedInit) ?? "Not configured",
+      selectedProductId(trustedShellInit) ?? "Not configured",
     );
   });
 

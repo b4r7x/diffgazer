@@ -1,7 +1,7 @@
 import type { TierFilter } from "@diffgazer/core/providers";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createElement, useLayoutEffect, useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -19,22 +19,32 @@ function makeModel(id: string): ModelInfo {
 
 const DEFAULT_INTERACTIVE_MODELS = [makeModel("model-a"), makeModel("model-b")];
 
+interface InteractiveSubjectOptions {
+  onTierFilter: (filter: TierFilter) => void;
+  focusCloseDuringOpen?: boolean;
+  focusSearchDuringOpen?: boolean;
+  currentModel?: string;
+  models?: ModelInfo[];
+  discoveryStatus?: "loading" | "passed" | "error";
+  /** Exposes the hook result so tests can drive the RadioGroup boundary path. */
+  captureKeyboard?: (keyboard: ReturnType<typeof useModelDialogKeyboard>) => void;
+}
+
 function TestInteractiveModelDialogKeyboard({
   onTierFilter,
   focusCloseDuringOpen = false,
+  focusSearchDuringOpen = false,
   currentModel,
   models = DEFAULT_INTERACTIVE_MODELS,
-}: {
-  onTierFilter: (filter: TierFilter) => void;
-  focusCloseDuringOpen?: boolean;
-  currentModel?: string;
-  models?: ModelInfo[];
-}) {
+  discoveryStatus,
+  captureKeyboard,
+}: InteractiveSubjectOptions) {
   const [searchQuery, setSearchQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
+  const resolvedDiscoveryStatus = discoveryStatus ?? (models.length > 0 ? "passed" : "error");
   const applyTierFilter = (nextFilter: TierFilter) => {
     setTierFilter(nextFilter);
     onTierFilter(nextFilter);
@@ -44,7 +54,7 @@ function TestInteractiveModelDialogKeyboard({
     currentModel,
     models,
     filteredModels: models,
-    discoveryStatus: models.length > 0 ? "passed" : "error",
+    discoveryStatus: resolvedDiscoveryStatus,
     searchQuery,
     setSearchQuery,
     cycleTierFilter: vi.fn(),
@@ -54,13 +64,15 @@ function TestInteractiveModelDialogKeyboard({
     onSelect: vi.fn(),
     onOpenChange: vi.fn(),
   });
+  captureKeyboard?.(keyboard);
   const closeButtonProps = keyboard.getCloseButtonProps();
   const cancelProps = keyboard.getFooterButtonProps(0);
   const confirmProps = keyboard.getFooterButtonProps(1);
 
   useLayoutEffect(() => {
     if (focusCloseDuringOpen) closeButtonRef.current?.focus();
-  }, [focusCloseDuringOpen]);
+    if (focusSearchDuringOpen) searchInputRef.current?.focus();
+  }, [focusCloseDuringOpen, focusSearchDuringOpen]);
 
   return createElement(
     "div",
@@ -82,35 +94,37 @@ function TestInteractiveModelDialogKeyboard({
       ref: searchInputRef,
       value: searchQuery,
       onChange: (event) => setSearchQuery((event.target as HTMLInputElement).value),
-      onFocus: () => keyboard.setFocusZone("search"),
+      onFocus: keyboard.handleSearchFocus,
     }),
     createElement(ModelFilterTabs, {
       value: tierFilter,
       onChange: applyTierFilter,
       focusedIndex: keyboard.filterIndex,
       isFocused: keyboard.focusZone === "filters",
-      onTabClick: (index) => {
-        keyboard.setFocusZone("filters");
-        keyboard.setFilterIndex(index);
-      },
       onKeyDown: keyboard.handleFilterKeyDown,
       getTabProps: keyboard.getFilterButtonProps,
       // Mirrors the dialog: the tier row is disabled unless discovery passed.
-      disabled: models.length === 0,
+      disabled: resolvedDiscoveryStatus !== "passed",
     }),
+    // Mirrors the dialog: the container ref sits on the scroll wrapper while
+    // the rows' owning radiogroup is nested inside it.
     createElement(
       "div",
-      { ref: listContainerRef, role: "radiogroup" },
-      ...models.map((model) =>
-        createElement(
-          "div",
-          {
-            key: model.id,
-            role: "radio",
-            "data-value": model.id,
-            tabIndex: 0,
-          },
-          model.name,
+      { ref: listContainerRef },
+      createElement(
+        "div",
+        { role: "radiogroup", "aria-label": "Available models" },
+        ...models.map((model) =>
+          createElement(
+            "div",
+            {
+              key: model.id,
+              role: "radio",
+              "data-value": model.id,
+              tabIndex: 0,
+            },
+            model.name,
+          ),
         ),
       ),
     ),
@@ -138,11 +152,11 @@ function TestInteractiveModelDialogKeyboard({
 
 function renderInteractiveSubject(
   onTierFilter = vi.fn(),
-  options: { focusCloseDuringOpen?: boolean; currentModel?: string; models?: ModelInfo[] } = {},
+  options: Omit<InteractiveSubjectOptions, "onTierFilter"> = {},
 ) {
   const user = userEvent.setup();
 
-  render(
+  const view = render(
     createElement(
       KeyboardProvider,
       null,
@@ -150,7 +164,17 @@ function renderInteractiveSubject(
     ),
   );
 
-  return { user, onTierFilter };
+  const rerenderSubject = (nextOptions: Omit<InteractiveSubjectOptions, "onTierFilter">) => {
+    view.rerender(
+      createElement(
+        KeyboardProvider,
+        null,
+        createElement(TestInteractiveModelDialogKeyboard, { onTierFilter, ...nextOptions }),
+      ),
+    );
+  };
+
+  return { user, onTierFilter, rerenderSubject };
 }
 
 describe("useModelDialogKeyboard navigation", () => {
@@ -235,6 +259,151 @@ describe("useModelDialogKeyboard navigation", () => {
       expect(screen.getByRole("radio", { name: "model-b" })).toHaveFocus();
     });
     expect(screen.getByRole("button", { name: "Close" })).not.toHaveFocus();
+  });
+
+  it("restores native search focus during open to the current model", async () => {
+    renderInteractiveSubject(vi.fn(), {
+      currentModel: "model-b",
+      focusSearchDuringOpen: true,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "model-b" })).toHaveFocus();
+    });
+    expect(screen.getByRole("textbox", { name: /search models/i })).not.toHaveFocus();
+  });
+
+  it("moves the focused model row with j and k", async () => {
+    const { user } = renderInteractiveSubject(vi.fn(), { currentModel: "model-a" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "model-a" })).toHaveFocus();
+    });
+
+    await user.keyboard("j");
+    expect(screen.getByRole("radio", { name: "model-b" })).toHaveFocus();
+
+    await user.keyboard("k");
+    expect(screen.getByRole("radio", { name: "model-a" })).toHaveFocus();
+  });
+
+  it("jumps across the model list with Home and End", async () => {
+    const models = [makeModel("model-a"), makeModel("model-b"), makeModel("model-c")];
+    const { user } = renderInteractiveSubject(vi.fn(), { models, currentModel: "model-b" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "model-b" })).toHaveFocus();
+    });
+
+    await user.keyboard("{End}");
+    expect(screen.getByRole("radio", { name: "model-c" })).toHaveFocus();
+
+    await user.keyboard("{Home}");
+    expect(screen.getByRole("radio", { name: "model-a" })).toHaveFocus();
+  });
+
+  it("types j and k into the search field instead of moving the list", async () => {
+    const { user } = renderInteractiveSubject(vi.fn(), { currentModel: "model-a" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "model-a" })).toHaveFocus();
+    });
+
+    await user.keyboard("/");
+    const search = screen.getByRole("textbox", { name: /search models/i });
+    expect(search).toHaveFocus();
+
+    await user.keyboard("jk");
+    expect(search).toHaveValue("jk");
+    expect(search).toHaveFocus();
+  });
+
+  it("focuses the current model once models arrive even when footer autofocus landed during loading", async () => {
+    const { user, rerenderSubject } = renderInteractiveSubject(vi.fn(), {
+      currentModel: "model-a",
+      models: [],
+      discoveryStatus: "loading",
+    });
+
+    // Native <dialog> autofocus during the loading window: [Cancel] takes DOM
+    // focus before any model row exists.
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    act(() => cancel.focus());
+    expect(cancel).toHaveFocus();
+
+    rerenderSubject({
+      currentModel: "model-a",
+      models: DEFAULT_INTERACTIVE_MODELS,
+      discoveryStatus: "passed",
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "model-a" })).toHaveFocus();
+    });
+
+    // The list zone is live: j moves to the next row.
+    await user.keyboard("j");
+    expect(screen.getByRole("radio", { name: "model-b" })).toHaveFocus();
+  });
+
+  it("keeps a Navigate boundary during the loading window from stranding focus in the filter row", async () => {
+    let keyboard: ReturnType<typeof useModelDialogKeyboard> | null = null;
+    const captureKeyboard = (kb: ReturnType<typeof useModelDialogKeyboard>) => {
+      keyboard = kb;
+    };
+    const { user, rerenderSubject } = renderInteractiveSubject(vi.fn(), {
+      currentModel: "model-a",
+      models: [],
+      discoveryStatus: "loading",
+      captureKeyboard,
+    });
+
+    // Native <dialog> autofocus during the loading window: [Cancel] takes DOM
+    // focus before any model row exists.
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    act(() => cancel.focus());
+    expect(cancel).toHaveFocus();
+
+    // A Navigate keypress consumed by the list boundary while the initial-focus
+    // window is still open (the models-arrival race) must not leave the list.
+    act(() => keyboard?.handleListBoundaryReached("previous"));
+
+    rerenderSubject({
+      currentModel: "model-a",
+      models: DEFAULT_INTERACTIVE_MODELS,
+      discoveryStatus: "passed",
+      captureKeyboard,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "model-a" })).toHaveFocus();
+    });
+    expect(screen.getByRole("radio", { name: "all" })).not.toHaveFocus();
+
+    // The list zone survived the loading-window boundary: j moves to the next row.
+    await user.keyboard("j");
+    expect(screen.getByRole("radio", { name: "model-b" })).toHaveFocus();
+  });
+
+  it("moves out of the tier-filter row with j and k exactly like the arrow keys", async () => {
+    const { user } = renderInteractiveSubject(vi.fn(), { currentModel: "model-a" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "model-a" })).toHaveFocus();
+    });
+
+    await user.keyboard("/");
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("radio", { name: "all" })).toHaveFocus();
+
+    await user.keyboard("k");
+    expect(screen.getByRole("textbox", { name: /search models/i })).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("radio", { name: "all" })).toHaveFocus();
+
+    await user.keyboard("j");
+    expect(screen.getByRole("radio", { name: "model-a" })).toHaveFocus();
   });
 
   it("changes tier filters through ModelFilterTabs roving controls", async () => {

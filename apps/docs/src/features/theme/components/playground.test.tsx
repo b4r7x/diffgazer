@@ -3,6 +3,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ThemeProvider } from "@/hooks/theme-context";
+import { THEME_DOCS_PLAYGROUND_ORDER } from "../lib/token-presentation";
 import { ThemePlayground } from "./playground";
 
 function renderPlayground() {
@@ -33,5 +34,21 @@ describe("ThemePlayground panel headers", () => {
   it("demonstrates correct Panel usage in the preview with a titled panel", () => {
     renderPlayground();
     expect(screen.getByRole("heading", { name: "Panel Title", level: 4 })).toBeInTheDocument();
+  });
+});
+
+describe("ThemePlayground primitive controls", () => {
+  it("renders a color picker for every editable primitive, in documented order", () => {
+    renderPlayground();
+
+    for (const name of THEME_DOCS_PLAYGROUND_ORDER) {
+      expect(screen.getByLabelText(`Color picker for ${name}`)).toBeInTheDocument();
+    }
+
+    const pickerOrder = screen
+      .getAllByLabelText(/^Color picker for --base-/)
+      .map((picker) => (picker.getAttribute("aria-label") ?? "").replace("Color picker for ", ""));
+
+    expect(pickerOrder).toEqual([...THEME_DOCS_PLAYGROUND_ORDER]);
   });
 });

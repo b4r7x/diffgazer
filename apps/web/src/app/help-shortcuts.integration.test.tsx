@@ -39,15 +39,20 @@ import {
 import { ActivityLog } from "@/features/review/components/activity-log/log";
 import { useReviewDetailsTabKeyboard } from "@/features/review/hooks/use-details-tab-keyboard";
 
-const { mockNavigate, mockShutdown, mockReportShutdownResult } = vi.hoisted(() => ({
-  mockNavigate: vi.fn(),
-  mockShutdown: vi.fn(async () => ({ status: "closed" as const })),
-  mockReportShutdownResult: vi.fn(),
-}));
+const { mockNavigate, mockShutdown, mockReportShutdownResult, mockHistoryBack, mockRouterState } =
+  vi.hoisted(() => ({
+    mockNavigate: vi.fn(),
+    mockShutdown: vi.fn(async () => ({ status: "closed" as const })),
+    mockReportShutdownResult: vi.fn(),
+    mockHistoryBack: vi.fn(),
+    mockRouterState: { pathname: "/", canGoBack: false },
+  }));
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
-  useLocation: () => ({ pathname: "/" }),
+  useLocation: () => ({ pathname: mockRouterState.pathname }),
+  useRouter: () => ({ history: { back: mockHistoryBack }, navigate: mockNavigate }),
+  useCanGoBack: () => mockRouterState.canGoBack,
 }));
 
 vi.mock("@/lib/shutdown", () => ({
@@ -89,6 +94,10 @@ function readDisplayedShortcutRows(): ShortcutRow[] {
 }
 
 function renderHelpShortcutTable() {
+  // The help table only ever renders on /help, entered from another screen, so
+  // Esc resolves to a history back rather than the no-history "/" fallback.
+  mockRouterState.pathname = "/help";
+  mockRouterState.canGoBack = true;
   return render(
     <FooterProvider>
       <KeyboardProvider>
@@ -123,6 +132,11 @@ function NavigationContract({
       </NavigationListItem>
     </NavigationList>
   );
+}
+
+function activeOption(listbox: HTMLElement): HTMLElement | null {
+  const id = listbox.getAttribute("aria-activedescendant");
+  return id ? document.getElementById(id) : null;
 }
 
 function PaneContract({ onSwitch }: { onSwitch: () => void }) {
@@ -281,7 +295,7 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
     const user = userEvent.setup();
     renderHelpShortcutTable();
     await user.keyboard("{Escape}");
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+    expect(mockHistoryBack).toHaveBeenCalledOnce();
   },
 
   "Tab → Switch Pane": async () => {
@@ -309,17 +323,23 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
     expect(onSwitchTab).toHaveBeenCalledOnce();
   },
 
+  // The row is tagged "list", so it is backed by the shared listbox composite:
+  // j/k must move the highlight in every list, not only in review panes.
   "j/k → Move the highlight": async () => {
     const user = userEvent.setup();
+    const onNavigate = vi.fn();
     render(
       <KeyboardProvider>
-        <ReviewContract onScroll={vi.fn()} onSwitchTab={vi.fn()} />
+        <NavigationContract onNavigate={onNavigate} onSelect={vi.fn()} />
       </KeyboardProvider>,
     );
+    const listbox = screen.getByRole("listbox");
+    listbox.focus();
     await user.keyboard("j");
-    expect(screen.getByText("details:1")).toBeInTheDocument();
+    expect(activeOption(listbox)).toHaveTextContent("Second");
     await user.keyboard("k");
-    expect(screen.getByText("details:0")).toBeInTheDocument();
+    expect(activeOption(listbox)).toHaveTextContent("First");
+    expect(onNavigate).toHaveBeenCalledTimes(2);
   },
 
   "↑/↓ → Scroll the focused pane": async () => {
@@ -405,6 +425,9 @@ describe("help shortcut integration", () => {
     mockNavigate.mockReset();
     mockShutdown.mockReset();
     mockReportShutdownResult.mockReset();
+    mockHistoryBack.mockReset();
+    mockRouterState.pathname = "/";
+    mockRouterState.canGoBack = false;
   });
 
   it("renders the canonical shortcut table", () => {

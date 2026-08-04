@@ -2,6 +2,7 @@
  * @vitest-environment jsdom
  */
 import { act, renderHook } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { PRODUCT_REGISTRY } from "../providers/product-registry.js";
 import { type ClientConfigurationAction, READINESS_PRESENTATION } from "../schemas/config/index.js";
@@ -746,6 +747,52 @@ describe("useWizardState", () => {
 
     expect(result.current.stepIndex).toBe(1);
     expect(result.current.wizardData).toBe(before);
+  });
+
+  it("keeps an in-flight save valid when React discards a render that saw a new initial", async () => {
+    let releaseSettings: (() => void) | undefined;
+    const settingsStarted = new Promise<void>((resolve) => {
+      releaseSettings = resolve;
+    });
+    const draft = readyDraft();
+    const discarded = getInitialWizardData("local-openai");
+    const callbacks = makeCallbacks();
+    callbacks.saveSettings = vi.fn(async () => {
+      await settingsStarted;
+    });
+    const onComplete = vi.fn();
+    const noDecoy: { decoy: OnboardingDraft | null } = { decoy: null };
+    const { result, rerender } = renderHook(
+      ({ decoy }: { decoy: OnboardingDraft | null }) => {
+        // The render-phase update makes React throw this pass away and re-invoke
+        // the component with the original draft, the way a transition or a
+        // Suspense retry does: the hook body observes `decoy` in a render that
+        // never commits.
+        const [pending, setPending] = useState(true);
+        const initial = pending && decoy ? decoy : draft;
+        const state = useWizardState({ initial, callbacks, onComplete });
+        if (pending && decoy) setPending(false);
+        return state;
+      },
+      { initialProps: noDecoy },
+    );
+
+    let completion: Promise<boolean> | undefined;
+    act(() => {
+      completion = result.current.complete();
+    });
+    rerender({ decoy: discarded });
+
+    releaseSettings?.();
+    await act(async () => {
+      expect(await completion).toBe(true);
+    });
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(result.current.wizardData.plan.productId).toBe("qwen");
+    expect(callbacks.runConfigurationAction).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: "delete" }),
+    );
   });
 
   it("does not revoke a completed configuration when selecting the current product", async () => {

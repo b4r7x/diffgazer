@@ -205,7 +205,7 @@ return (
     {
       title: "Keyboard Navigation",
       content:
-        'Arrow keys move highlight through items with role="option" inside the container. Enter and Space select the highlighted item. Navigation uses @diffgazer/keys\'s useNavigation internally.',
+        'Arrow keys and their vim aliases j/k move highlight through items with role="option" inside the container. Enter and Space select the highlighted item. With typeahead enabled, j/k still move the highlight on an empty query buffer and only extend a query already in progress. Navigation uses @diffgazer/keys\'s useNavigation internally.',
     },
     {
       title: "Controlled & Uncontrolled",

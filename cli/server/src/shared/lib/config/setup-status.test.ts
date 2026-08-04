@@ -316,8 +316,8 @@ describe("getSetupVerdict", () => {
       status: "conformance-pending",
       ready: false,
       remediation: {
-        code: "wait-for-conformance",
-        message: "Wait for the current conformance check to finish.",
+        code: "run-conformance",
+        message: "Run Test readiness to verify structured review support.",
       },
     });
   });

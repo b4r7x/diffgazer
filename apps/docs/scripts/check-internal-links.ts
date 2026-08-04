@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CANDIDATE_VERDICTS, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { escapeRegExp } from "@diffgazer/core/redaction";
 import { REJECTED_PRODUCT_IDS, REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import { DOCS_CONTENT_ROOT, getPreRenderPages, type PreRenderPage } from "./generate-sitemap.ts";
 
@@ -149,10 +150,6 @@ export interface RouteContractViolation {
 interface RetiredProductSubject {
   readonly productId: string;
   readonly pattern: RegExp;
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function retiredProductSubject(productId: string, name: string): RetiredProductSubject {

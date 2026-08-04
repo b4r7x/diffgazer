@@ -1,10 +1,11 @@
 /**
- * Canonical JSON serialization, a bounded canonical-JSON parser, and the
- * synchronous SHA-256 over that canonical form.
+ * Canonical JSON serialization, the repo's one bounded duplicate-key-rejecting
+ * JSON decoder, and the synchronous SHA-256 over that canonical form.
  *
  * This is a leaf utility: it is generic, depends on nothing else in the
  * codebase, and must not import schema, review, or provider modules. Review
- * receipts merely happen to be its first caller.
+ * receipts merely happen to be its first caller; provider configuration
+ * decoding reaches the same decoder through `scanJsonRejectingDuplicateKeys`.
  */
 
 function serializeCanonicalJson(value: unknown, ancestors: Set<object>): string {
@@ -89,6 +90,21 @@ export const MAX_CANONICAL_JSON_DEPTH = 32;
 export const MAX_CANONICAL_JSON_COLLECTION_ITEMS = 4_096;
 export const MAX_CANONICAL_JSON_VALUES = 16_384;
 
+export type JsonScanFailure = Readonly<{ position: number; reason: string }>;
+
+/**
+ * Bounds for decoding one untrusted JSON document. `maxCollectionItems` and
+ * `maxValues` are optional: callers that already bound the input by byte size
+ * do not need a second cap. `onFail` must throw the caller's own error type.
+ */
+export type JsonScanLimits = Readonly<{
+  maxBytes: number;
+  maxDepth: number;
+  maxCollectionItems?: number;
+  maxValues?: number;
+  onFail: (failure: JsonScanFailure) => never;
+}>;
+
 export class CanonicalJsonParseError extends TypeError {
   readonly code = "canonical-json-parse-failed" as const;
   readonly position: number;
@@ -133,24 +149,23 @@ function isJsonWhitespace(character: string | undefined): boolean {
 }
 
 /**
- * Parses JSON while retaining duplicate-key detection that `JSON.parse` loses.
- * `canonicalJson` receives materialized values, so duplicate provenance cannot
- * be recovered there; callers handling raw JSON should use this parser first.
+ * Parses JSON while retaining duplicate-key detection that `JSON.parse` loses:
+ * `JSON.parse` keeps the last occurrence, which silently relabels a record when
+ * an attacker repeats a discriminant key. This is the only such decoder in the
+ * repo; every bounded-JSON caller goes through one of the two wrappers below.
  */
-export function parseCanonicalJson(text: string): unknown {
-  if (typeof text !== "string") {
-    throw new CanonicalJsonParseError(0, "input must be a string");
-  }
-  if (!utf8ByteLengthAtMost(text, MAX_CANONICAL_JSON_BYTES)) {
-    throw new CanonicalJsonParseError(0, "input exceeds the bounded 64 KiB limit");
-  }
-
+function parseBoundedJson(text: string, limits: JsonScanLimits): unknown {
+  const { maxBytes, maxCollectionItems, maxDepth, maxValues, onFail } = limits;
   let position = 0;
   let valueCount = 0;
 
-  const fail = (message: string): never => {
-    throw new CanonicalJsonParseError(position, message);
-  };
+  const fail = (reason: string): never => onFail({ position, reason });
+
+  if (typeof text !== "string") fail("input must be a string");
+  if (!utf8ByteLengthAtMost(text, maxBytes)) {
+    fail(`input exceeds the bounded ${maxBytes / 1024} KiB limit`);
+  }
+
   const skipWhitespace = () => {
     while (isJsonWhitespace(text[position])) position += 1;
   };
@@ -205,7 +220,9 @@ export function parseCanonicalJson(text: string): unknown {
   }
   function parseValue(depth: number): unknown {
     valueCount += 1;
-    if (valueCount > MAX_CANONICAL_JSON_VALUES) fail("maximum JSON value count exceeded");
+    if (maxValues !== undefined && valueCount > maxValues) {
+      fail("maximum JSON value count exceeded");
+    }
     skipWhitespace();
     const character = text[position];
     if (character === '"') return parseString();
@@ -226,7 +243,7 @@ export function parseCanonicalJson(text: string): unknown {
     return fail("expected JSON value");
   }
   function parseArray(depth: number): unknown[] {
-    if (depth >= MAX_CANONICAL_JSON_DEPTH) fail("maximum JSON depth exceeded");
+    if (depth >= maxDepth) fail("maximum JSON depth exceeded");
     position += 1;
     const values: unknown[] = [];
     skipWhitespace();
@@ -235,7 +252,7 @@ export function parseCanonicalJson(text: string): unknown {
       return values;
     }
     while (true) {
-      if (values.length >= MAX_CANONICAL_JSON_COLLECTION_ITEMS) {
+      if (maxCollectionItems !== undefined && values.length >= maxCollectionItems) {
         fail("maximum JSON collection size exceeded");
       }
       values.push(parseValue(depth + 1));
@@ -249,7 +266,7 @@ export function parseCanonicalJson(text: string): unknown {
     }
   }
   function parseObject(depth: number): Record<string, unknown> {
-    if (depth >= MAX_CANONICAL_JSON_DEPTH) fail("maximum JSON depth exceeded");
+    if (depth >= maxDepth) fail("maximum JSON depth exceeded");
     position += 1;
     const record: Record<string, unknown> = Object.create(null);
     const keys = new Set<string>();
@@ -259,7 +276,7 @@ export function parseCanonicalJson(text: string): unknown {
       return record;
     }
     while (true) {
-      if (keys.size >= MAX_CANONICAL_JSON_COLLECTION_ITEMS) {
+      if (maxCollectionItems !== undefined && keys.size >= maxCollectionItems) {
         fail("maximum JSON collection size exceeded");
       }
       skipWhitespace();
@@ -290,6 +307,29 @@ export function parseCanonicalJson(text: string): unknown {
   skipWhitespace();
   if (position !== text.length) fail("unexpected trailing input");
   return value;
+}
+
+/** Materializes untrusted JSON under the canonical receipt limits. */
+export function parseCanonicalJson(text: string): unknown {
+  return parseBoundedJson(text, {
+    maxBytes: MAX_CANONICAL_JSON_BYTES,
+    maxDepth: MAX_CANONICAL_JSON_DEPTH,
+    maxCollectionItems: MAX_CANONICAL_JSON_COLLECTION_ITEMS,
+    maxValues: MAX_CANONICAL_JSON_VALUES,
+    onFail: ({ position, reason }) => {
+      throw new CanonicalJsonParseError(position, reason);
+    },
+  });
+}
+
+/**
+ * Validates untrusted JSON against `limits` for callers that only need the
+ * duplicate-key and bounds guarantees and then hand the same text to
+ * `JSON.parse`. The failure reason never echoes the offending key, so an
+ * untrusted document cannot smuggle its own content into a diagnostic.
+ */
+export function scanJsonRejectingDuplicateKeys(text: string, limits: JsonScanLimits): void {
+  parseBoundedJson(text, limits);
 }
 
 const SHA256_ROUND_CONSTANTS: readonly number[] = [

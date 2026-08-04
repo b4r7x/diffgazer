@@ -5,7 +5,7 @@ import { type FileOp, warn } from "@diffgazer/registry/cli";
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import type { ResolvedConfig } from "../context.js";
 import { ctx } from "../context.js";
-import { resolveProjectPath, toPosixPath } from "./paths.js";
+import { resolveProjectPath, toRelativePosixSegments } from "./paths.js";
 
 // Sentinel markers wrap each chunk so re-runs detect installed chunks
 // structurally, not by substring (which breaks under whitespace/comment/reorder
@@ -219,7 +219,7 @@ export function planComponentCss(
       targetPath,
       content: updated,
       relativePath: basename(cssPath),
-      installDir: toPosixPath(dirname(cssPath)),
+      installDir: toRelativePosixSegments(dirname(cssPath)),
       overwrite: true,
     },
     chunksByItem,
@@ -340,7 +340,7 @@ export function removeCssChunks(
       targetPath,
       content: removal.content,
       relativePath: basename(cssPath),
-      installDir: toPosixPath(dirname(cssPath)),
+      installDir: toRelativePosixSegments(dirname(cssPath)),
       overwrite: true,
     },
     removedHashes: removal.removedHashes,

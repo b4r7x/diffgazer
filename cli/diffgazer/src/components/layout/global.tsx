@@ -1,6 +1,10 @@
 import { useInit } from "@diffgazer/core/api/hooks";
 import { useFooterData } from "@diffgazer/core/footer";
-import { getProviderDisplay, getProviderDisplayStatus } from "@diffgazer/core/providers";
+import {
+  getProviderDisplay,
+  getProviderDisplayStatus,
+  getUnconfiguredDisplayStatus,
+} from "@diffgazer/core/providers";
 import { Box } from "ink";
 import type { ReactNode } from "react";
 import { createContext, useContext } from "react";
@@ -40,17 +44,10 @@ function ConnectedHeader() {
   const selected = data?.configurations?.find(
     ({ configuration }) => configuration.configurationId === data?.selectedConfigurationId,
   );
+  const loadingOverride = isLoading ? { label: "Loading" } : undefined;
   const providerStatus = selected
     ? getProviderDisplayStatus(selected.readiness, selected.configuration.transportFamily)
-    : {
-        status: "unconfigured" as const,
-        action: "create" as const,
-        label: isLoading ? "Loading" : "Not configured",
-        variant: "warning" as const,
-        explanation: "",
-        remediation: "",
-        accessibleText: isLoading ? "Loading" : "Not configured",
-      };
+    : getUnconfiguredDisplayStatus(loadingOverride);
   const providerName = getProviderDisplay(
     selected?.configuration.status === "supported" ? selected.configuration.productId : undefined,
     selected?.configuration.selectedModelId ?? undefined,

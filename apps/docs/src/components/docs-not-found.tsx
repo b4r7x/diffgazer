@@ -1,4 +1,4 @@
-import { DocsContentLayout } from "@/components/layout/content-layout";
+import { DocsContentLayout } from "@/components/layout/content";
 import { TuiBracketLink } from "@/components/layout/tui-bracket-link";
 import { NotFoundState } from "@/components/not-found-state";
 import { type DocsLibraryId, getDocsLibraryConfig } from "@/lib/library";

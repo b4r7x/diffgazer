@@ -23,11 +23,12 @@ import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-gr
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useFocusWithin } from "@/hooks/use-focus-within";
+import { ReviewClockProvider, useReviewClock } from "../hooks/use-clock";
 import {
   REVIEW_PROGRESS_CONTROLS,
   useReviewProgressKeyboard,
 } from "../hooks/use-progress-keyboard";
-import { ReviewClockProvider, useReviewClock } from "../hooks/use-review-clock";
 import { useStreamLiveness } from "../hooks/use-stream-liveness";
 import { ActivityLog } from "./activity-log/log";
 import { AgentBoard } from "./agent-board";
@@ -126,11 +127,11 @@ function ErrorDisplay({
 
   return (
     <div className="shrink-0 px-4 pb-3">
-      <Panel tone="error" role="alert" aria-live="assertive" className="p-4 text-center">
+      <Panel tone="error" role="alert" aria-live="assertive" className="p-4 text-left max-w-prose">
         <div className="text-error-text mb-2 text-lg font-bold">{guidance.title}</div>
         <div className="text-muted-foreground font-mono text-sm mb-2">{error}</div>
         <div className="text-muted-foreground mb-4 text-sm">{guidance.guidance}</div>
-        <div className="flex flex-wrap justify-center gap-3">
+        <div className="flex flex-wrap gap-3">
           {onBack && (
             <Button variant="secondary" bracket onClick={onBack}>
               Back to Home
@@ -218,20 +219,16 @@ export function ReviewProgressView({
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const hasError = Boolean(error);
 
-  const {
-    focusPane,
-    progressPaneRef,
-    progressScrollRef,
-    logPaneRef,
-    agentFilterRef,
-    logContentRef,
-  } = useReviewProgressKeyboard({
-    onViewResults,
-    onBack,
-    onCancel: isRunning ? onCancel : undefined,
-    cancelDisabled,
-    hasError,
-  });
+  const progressPaneFocus = useFocusWithin<HTMLElement>();
+  const logPaneFocus = useFocusWithin<HTMLElement>();
+  const { progressPaneRef, progressScrollRef, agentFilterRef, logContentRef } =
+    useReviewProgressKeyboard({
+      onViewResults,
+      onBack,
+      onCancel: isRunning ? onCancel : undefined,
+      cancelDisabled,
+      hasError,
+    });
 
   const errorGuidance = error ? classifyReviewStreamError(error, errorCode, transportFamily) : null;
 
@@ -251,9 +248,10 @@ export function ReviewProgressView({
         <Panel
           ref={progressPaneRef}
           as="section"
+          {...progressPaneFocus.props}
           aria-label="Progress"
           data-pane="progress"
-          focused={focusPane === "progress"}
+          focused={progressPaneFocus.focusWithin}
           tone={PANEL_TONE_BY_LIVENESS[isRunning ? liveness.state : "flowing"]}
           className="flex w-full flex-col max-md:shrink-0 md:min-h-0 md:w-1/3"
         >
@@ -296,7 +294,7 @@ export function ReviewProgressView({
                   </Button>
                 )}
                 {onViewResults && (
-                  <Button variant="outline" bracket onClick={onViewResults}>
+                  <Button variant="primary" bracket onClick={onViewResults}>
                     View Results
                   </Button>
                 )}
@@ -306,11 +304,11 @@ export function ReviewProgressView({
         </Panel>
 
         <Panel
-          ref={logPaneRef}
           as="section"
+          {...logPaneFocus.props}
           aria-label="Live Activity Log"
           data-pane="log"
-          focused={focusPane === "log" || focusPane === "filters"}
+          focused={logPaneFocus.focusWithin}
           className="flex w-full flex-col max-md:shrink-0 md:min-h-0 md:flex-1"
         >
           <Panel.Label variant="border" aria-hidden="true">
@@ -364,7 +362,11 @@ export function ReviewProgressView({
               agents={agents}
               startTime={startTime}
               lastEventAt={liveness.lastEventAt}
-              className="flex-1 min-h-0 px-2 pb-2 max-md:h-[45dvh] max-md:flex-none"
+              // Below md the page scroller owns the whole stack: the log opts out of
+              // scrolling on both axes (one axis left non-visible forces the other back
+              // to auto) and grows with its content, floored at the height that keeps
+              // the pane reading as a log when the run has barely started.
+              className="flex-1 min-h-0 px-2 pb-2 max-md:min-h-[45dvh] max-md:flex-none max-md:overflow-x-visible max-md:overflow-y-visible"
             />
           </div>
         </Panel>

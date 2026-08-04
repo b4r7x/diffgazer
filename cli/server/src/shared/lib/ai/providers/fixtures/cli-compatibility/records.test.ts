@@ -11,7 +11,7 @@ import {
   matchCliCompatibilityTuple,
   parseCliCompatibilityRecord,
   validateCliCompatibilityEvidence,
-} from "../../cli-compatibility.js";
+} from "../../cli-compatibility/compat.js";
 
 const CLI_COMPATIBILITY_GENERATOR_MARKER = "cli-compatibility-probe" as const;
 const CLI_COMPATIBILITY_BUNDLE_SCHEMA_VERSION = 1 as const;

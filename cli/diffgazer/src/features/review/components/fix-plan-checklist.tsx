@@ -57,11 +57,11 @@ export function FixPlanChecklist({
   useInput(
     (input, key) => {
       if (steps.length === 0) return;
-      if (key.upArrow) {
+      if (key.upArrow || input === "k") {
         setHighlightIndex((i) => clampIndex(i, -1, steps.length, true));
         return;
       }
-      if (key.downArrow) {
+      if (key.downArrow || input === "j") {
         setHighlightIndex((i) => clampIndex(i, 1, steps.length, true));
         return;
       }

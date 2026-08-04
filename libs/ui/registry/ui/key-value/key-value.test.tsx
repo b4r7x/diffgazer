@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
-import { KeyValue } from "./index";
+import { KeyValue, keyValueVariants } from "./index";
 
 describe("KeyValue", () => {
   it("renders dt and dd as direct dl children", () => {
@@ -20,6 +20,18 @@ describe("KeyValue", () => {
     expect(children).toEqual(["dt", "dd", "dt", "dd"]);
     // querySelector retained: HTML rule says <dl> direct children must be <dt>/<dd>; asserting the ABSENCE of any <div> child is the structural contract (no role corresponds to "no div")
     expect(list.querySelector(":scope > div")).toBeNull();
+  });
+
+  // jsdom resolves no grid tracks, so the column contract rides on the exported variant (public
+  // API): an `auto` label track always fits its own text and `minmax(0,1fr)` leaves the value as
+  // the only shrinkable column, so a long value wraps in its own cell instead of painting over the
+  // label. Matching the whole grid-cols set also catches a second track utility riding along.
+  it("keeps the label track content-sized and the value track the only shrinkable one", () => {
+    const horizontal = keyValueVariants({ layout: "horizontal" }).split(" ");
+
+    expect(horizontal.filter((token) => token.startsWith("grid-cols-"))).toEqual([
+      "grid-cols-[auto_minmax(0,1fr)]",
+    ]);
   });
 
   it("renders bordered values without wrapping label-value pairs", () => {

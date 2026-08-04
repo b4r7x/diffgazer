@@ -25,14 +25,16 @@ function copyNotice(productId: RunnableProductId) {
   return { ...notice, billing: [...notice.billing], privacy: [...notice.privacy] };
 }
 
+const NON_READY_EVIDENCE = {
+  "conformance-pending": { evidenceStatus: "pending", checkedAt: "2026-07-31T12:00:00.000Z" },
+  unsupported: { evidenceStatus: "not-checked", checkedAt: null },
+  "local-endpoint-unreachable": { evidenceStatus: "failed", checkedAt: "2026-07-31T12:00:00.000Z" },
+  removed: { evidenceStatus: "not-checked", checkedAt: null },
+} as const;
+
 function configurationStatus(
   configuration: ClientConfigurationSummary,
-  readinessStatus:
-    | "ready"
-    | "unconfigured"
-    | "unsupported"
-    | "local-endpoint-unreachable"
-    | "removed",
+  readinessStatus: "ready" | keyof typeof NON_READY_EVIDENCE,
 ): ConfigurationStatus {
   const presentation = READINESS_PRESENTATION[readinessStatus];
   const readiness =
@@ -53,10 +55,7 @@ function configurationStatus(
       : ReadinessSchema.parse({
           status: readinessStatus,
           ready: false,
-          evidenceStatus:
-            readinessStatus === "local-endpoint-unreachable" ? "failed" : "not-checked",
-          checkedAt:
-            readinessStatus === "local-endpoint-unreachable" ? "2026-07-31T12:00:00.000Z" : null,
+          ...NON_READY_EVIDENCE[readinessStatus],
           acknowledgement: { status: "not-applicable" },
           ...presentation,
         });
@@ -79,7 +78,22 @@ const READY_GEMINI = configurationStatus(
   "ready",
 );
 
-const _UNCONFIGURED_ZAI = mapProviderList([]).find(({ product }) => product.productId === "zai");
+// The audited regression: key stored and model selected, but the structured
+// review conformance check has not run yet, so readiness.ready is false.
+const PENDING_DEEPSEEK = configurationStatus(
+  {
+    configurationId: "deepseek-pending",
+    revision: 1,
+    status: "supported",
+    transportFamily: "hosted-api",
+    productId: "deepseek",
+    endpoint: "https://api.deepseek.com/v1",
+    selectedModelId: "deepseek-v4-flash",
+    notices: [copyNotice("deepseek")],
+    availableActions: ["inspect", "select", "test", "update", "delete"],
+  },
+  "conformance-pending",
+);
 
 const LOCAL_UNREACHABLE = configurationStatus(
   {
@@ -129,6 +143,7 @@ const REMOVED_ZAI_CODING = configurationStatus(
 
 const ALL_ROWS = mapProviderList([
   READY_GEMINI,
+  PENDING_DEEPSEEK,
   LOCAL_UNREACHABLE,
   CLI_UNSUPPORTED,
   REMOVED_ZAI_CODING,
@@ -142,20 +157,54 @@ describe("filterProviders", () => {
     expect(ALL_ROWS.some(({ product }) => product.productId === REMOVED_PRODUCT_ID)).toBe(true);
   });
 
-  it("returns all providers when filter is 'all'", () => {
-    expect(rowIds(filterProviders(ALL_ROWS, "all"))).toEqual(rowIds(ALL_ROWS));
-  });
+  it("returns every provider except removed records when filter is 'all'", () => {
+    const ids = rowIds(filterProviders(ALL_ROWS, "all"));
 
-  it("filters to ready configurations", () => {
-    expect(rowIds(filterProviders(ALL_ROWS, "configured"))).toEqual(["gemini-primary"]);
-  });
-
-  it("filters to providers needing setup", () => {
-    const ids = rowIds(filterProviders(ALL_ROWS, "needs-key"));
-    expect(ids).toContain("local-openai-1");
-    expect(ids).toContain("codex-cli-1");
-    expect(ids).not.toContain("gemini-primary");
+    expect(ids).toEqual(rowIds(ALL_ROWS.filter(({ product }) => product.status !== "removed")));
     expect(ids).not.toContain("legacy-removed-zai-plan");
+  });
+
+  it("keeps every stored configuration under 'configured' in list order", () => {
+    expect(rowIds(filterProviders(ALL_ROWS, "configured"))).toEqual([
+      "gemini-primary",
+      "deepseek-pending",
+      "local-openai-1",
+      "codex-cli-1",
+    ]);
+  });
+
+  it("keeps a configured provider awaiting conformance under 'configured'", () => {
+    const pending = findProviderById(ALL_ROWS, "deepseek-pending");
+    expect(pending?.readiness.status).toBe("conformance-pending");
+    expect(pending?.readiness.ready).toBe(false);
+
+    expect(
+      findProviderById(filterProviders(ALL_ROWS, "configured"), "deepseek-pending"),
+    ).not.toBeNull();
+  });
+
+  it("leaves the 'configured' list non-empty when the only configuration is pending, so ArrowDown from the filters has a list target", () => {
+    const rows = mapProviderList([PENDING_DEEPSEEK]);
+    expect(rowIds(filterProviders(rows, "configured"))).toEqual(["deepseek-pending"]);
+  });
+
+  it("filters 'needs-key' to products without a stored configuration", () => {
+    const ids = rowIds(filterProviders(ALL_ROWS, "needs-key"));
+    expect(ids).toContain("zai");
+    expect(ids).not.toContain("gemini-primary");
+    expect(ids).not.toContain("deepseek-pending");
+    expect(ids).not.toContain("local-openai-1");
+    expect(ids).not.toContain("codex-cli-1");
+    expect(ids).not.toContain("legacy-removed-zai-plan");
+  });
+
+  it("partitions 'all' into 'configured' and 'needs-key'", () => {
+    const configured = rowIds(filterProviders(ALL_ROWS, "configured"));
+    const needsKey = rowIds(filterProviders(ALL_ROWS, "needs-key"));
+
+    expect([...configured, ...needsKey].sort()).toEqual(
+      rowIds(filterProviders(ALL_ROWS, "all")).sort(),
+    );
   });
 
   it("partitions free vs paid by product billing modes", () => {
@@ -164,6 +213,7 @@ describe("filterProviders", () => {
     expect(freeIds).not.toContain("legacy-removed-zai-plan");
 
     const paidIds = rowIds(filterProviders(ALL_ROWS, "paid"));
+    expect(paidIds).toContain("deepseek-pending");
     expect(paidIds).not.toContain("gemini-primary");
     expect(paidIds).not.toContain("legacy-removed-zai-plan");
   });

@@ -1,47 +1,36 @@
-import "./model-select-overlay.terminal-mock";
+import "../testing/terminal-mock";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
+import type { SupportedConfigurationSummary } from "@diffgazer/core/testing/provider-fixtures";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import type { SupportedConfigurationSummary } from "../testing/fixtures";
-import { ModelSelectOverlay } from "./model-select-overlay";
 import {
-  CHECKED_AT,
+  catalogModelsResponse,
   copyNotice,
   flushUntil,
   GEMINI_CONFIGURATION,
   geminiName,
-  readyFor,
-  testDiscoveryResponse,
+  skippedCatalogModelsResponse,
   Wrapper,
-} from "./model-select-overlay.test-support";
+} from "../testing/model-select-overlay";
+import { ModelSelectOverlay } from "./model-select-overlay";
+
+const CATALOG_SKIPPED_REASON =
+  "Catalog observations are unavailable for this configuration product.";
 
 describe("ModelSelectOverlay discovery provenance", () => {
   afterEach(() => {
     cleanup();
   });
 
-  test("shows tuple-bound model id, checkedAt, and remediation on skipped discovery", async () => {
-    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>().mockResolvedValue({
-      action: "test",
-      status: "succeeded",
-      configuration: GEMINI_CONFIGURATION,
-      readiness: {
-        status: "skipped",
-        ready: false,
-        evidenceStatus: "skipped",
-        checkedAt: CHECKED_AT,
-        acknowledgement: { status: "not-applicable" },
-        action: "test",
-        explanation: "The live readiness check was intentionally skipped.",
-        remediation: {
-          code: "enable-live-probe",
-          message: "Satisfy the live-check prerequisites, then test the configuration again.",
-        },
-      },
-    });
+  test("shows the skipped catalog reason, checkedAt, and retry hint", async () => {
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(
+        skippedCatalogModelsResponse(GEMINI_CONFIGURATION, CATALOG_SKIPPED_REASON),
+      );
     const api = {
       ...createApi({ baseUrl: "http://localhost" }),
-      testConfiguration,
+      getConfigurationModels,
     } satisfies BoundApi;
     const { lastFrame } = render(
       <Wrapper api={api}>
@@ -49,7 +38,7 @@ describe("ModelSelectOverlay discovery provenance", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Satisfy the live-check prerequisites") ?? false);
+    await flushUntil(() => lastFrame()?.includes("Catalog observations are unavailable") ?? false);
     const frame = lastFrame() ?? "";
     expect(frame).toContain("gemini");
     expect(frame).toContain("checked");
@@ -58,13 +47,13 @@ describe("ModelSelectOverlay discovery provenance", () => {
   });
 
   test("retries discovery with r after a rejected query", async () => {
-    const testConfiguration = vi
-      .fn<BoundApi["testConfiguration"]>()
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
       .mockRejectedValueOnce(new Error("Model discovery failed. Test the configuration again."))
-      .mockResolvedValueOnce(testDiscoveryResponse(GEMINI_CONFIGURATION));
+      .mockResolvedValueOnce(catalogModelsResponse(GEMINI_CONFIGURATION));
     const api = {
       ...createApi({ baseUrl: "http://localhost" }),
-      testConfiguration,
+      getConfigurationModels,
     } satisfies BoundApi;
     const { lastFrame, stdin } = render(
       <Wrapper api={api}>
@@ -75,16 +64,16 @@ describe("ModelSelectOverlay discovery provenance", () => {
     await flushUntil(() => lastFrame()?.includes("Model discovery failed") ?? false);
     stdin.write("r");
     await flushUntil(() => lastFrame()?.includes(geminiName("gemini-2.5-flash")) ?? false);
-    expect(testConfiguration).toHaveBeenCalledTimes(2);
+    expect(getConfigurationModels).toHaveBeenCalledTimes(2);
   });
 
-  test("renders the exact discovered model id without catalog-only enabling", async () => {
-    const testConfiguration = vi
-      .fn<BoundApi["testConfiguration"]>()
-      .mockResolvedValue(testDiscoveryResponse(GEMINI_CONFIGURATION));
+  test("renders the catalog candidate models without admission claims", async () => {
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(catalogModelsResponse(GEMINI_CONFIGURATION));
     const api = {
       ...createApi({ baseUrl: "http://localhost" }),
-      testConfiguration,
+      getConfigurationModels,
     } satisfies BoundApi;
     const { lastFrame } = render(
       <Wrapper api={api}>
@@ -97,7 +86,7 @@ describe("ModelSelectOverlay discovery provenance", () => {
     expect(frame).toContain("gemini-2.5-flash");
     expect(frame).toContain("1 model");
     expect(frame).not.toContain("Using cached catalog data");
-    expect(testConfiguration).toHaveBeenCalledWith("gemini-primary");
+    expect(getConfigurationModels).toHaveBeenCalledWith("gemini-primary");
   });
 });
 
@@ -106,7 +95,7 @@ describe("ModelSelectOverlay family-specific discovery", () => {
     cleanup();
   });
 
-  test("shows local loopback evidence for local-http configurations", async () => {
+  test("shows the honest catalog-unavailable reason for local transports", async () => {
     const localConfiguration = {
       configurationId: "ollama-loopback",
       revision: 2,
@@ -119,12 +108,12 @@ describe("ModelSelectOverlay family-specific discovery", () => {
       notices: [copyNotice("ollama")],
       availableActions: ["inspect", "select", "test", "update", "delete"],
     } satisfies SupportedConfigurationSummary;
-    const testConfiguration = vi
-      .fn<BoundApi["testConfiguration"]>()
-      .mockResolvedValue(testDiscoveryResponse(localConfiguration, readyFor("ollama")));
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(skippedCatalogModelsResponse(localConfiguration, CATALOG_SKIPPED_REASON));
     const api = {
       ...createApi({ baseUrl: "http://localhost" }),
-      testConfiguration,
+      getConfigurationModels,
     } satisfies BoundApi;
     const { lastFrame } = render(
       <Wrapper api={api}>
@@ -132,7 +121,10 @@ describe("ModelSelectOverlay family-specific discovery", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("qwen2.5-coder:7b") ?? false);
-    expect(lastFrame()).toContain("Exact loopbac");
+    await flushUntil(() => lastFrame()?.includes("Catalog observations are unavailable") ?? false);
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("ollama");
+    expect(frame).toContain("Press r to retry");
+    expect(frame).not.toContain("qwen2.5-coder:7b");
   });
 });

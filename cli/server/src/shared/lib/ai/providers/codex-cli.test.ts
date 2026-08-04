@@ -2,14 +2,13 @@ import { ok } from "@diffgazer/core/result";
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
 import { ExecutionResultSchema } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { AdapterExecuteRequest } from "../types.js";
 import {
   CLI_CREDENTIAL_ENV_KEYS,
   type CliCompatibilityRecord,
   HOSTILE_ATTEMPT_IDS,
-  setCliProcessTestDependencies,
-} from "./cli-compatibility.js";
+} from "./cli-compatibility/compat.js";
 import {
   assertCodexArgvFlagsAllowlisted,
   buildCodexCliCompatibilityTuple,
@@ -18,7 +17,6 @@ import {
   codexCliAdapter,
   executeCodexCliReview,
   parseCodexOutputLastMessage,
-  setCodexCliTestDependencies,
 } from "./codex-cli.js";
 
 const SHA = "a".repeat(64);
@@ -226,11 +224,6 @@ function successDependencies(record: CliCompatibilityRecord) {
     now: () => new Date("2026-01-01T00:00:00.000Z"),
   };
 }
-
-afterEach(() => {
-  setCodexCliTestDependencies({});
-  setCliProcessTestDependencies({});
-});
 
 describe("buildCodexCliExecArgv", () => {
   it("uses only verified Codex flags", () => {

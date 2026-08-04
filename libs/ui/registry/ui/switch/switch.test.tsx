@@ -343,26 +343,26 @@ describe("Switch", () => {
   it("extends the coarse-pointer hit area to 44px on both sizes", () => {
     const { rerender } = render(<Switch aria-label="x" size="sm" />);
     const sm = screen.getByRole("switch");
-    expect(sm.className).toContain("pointer-coarse:before:-inset-y-3");
-    expect(sm.className).toContain("pointer-coarse:before:-inset-x-1");
+    expect(sm).toHaveClass("pointer-coarse:before:-inset-y-3");
+    expect(sm).toHaveClass("pointer-coarse:before:-inset-x-1");
 
     rerender(<Switch aria-label="x" size="md" />);
     const md = screen.getByRole("switch");
-    expect(md.className).toContain("pointer-coarse:before:-inset-y-2.5");
-    expect(md.className).toContain("pointer-coarse:before:inset-x-0");
+    expect(md).toHaveClass("pointer-coarse:before:-inset-y-2.5");
+    expect(md).toHaveClass("pointer-coarse:before:inset-x-0");
     // md is already 24x44 on fine pointers, so it carries no unconditional pseudo-element.
-    expect(md.className.split(" ")).not.toContain("before:absolute");
+    expect(md).not.toHaveClass("before:absolute");
   });
 
   // motion contract (mobile campaign): the reduced-motion class is the public contract; jsdom does
   // not evaluate media queries or transitions.
   it("disables track and thumb transitions under reduced motion", () => {
     const { container } = render(<Switch aria-label="Toggle" />);
-    expect(screen.getByRole("switch").className).toContain("motion-reduce:transition-none");
+    expect(screen.getByRole("switch")).toHaveClass("motion-reduce:transition-none");
 
     const thumb = container.querySelector('[data-slot="switch-thumb"]');
     expect(thumb).not.toBeNull();
-    expect(thumb?.className).toContain("motion-reduce:transition-none");
+    expect(thumb).toHaveClass("motion-reduce:transition-none");
   });
 
   it("takes its accessible name from label and lets aria-label override it", () => {
@@ -404,7 +404,7 @@ describe("Switch", () => {
     // Touch-target contract from the mobile campaign; jsdom cannot measure layout, so the class
     // that reserves the height is the assertion, exactly as in Checkbox and Radio.
     const row = container.querySelector('[data-slot="switch-row"]');
-    expect(row?.className).toContain("pointer-coarse:min-h-11");
+    expect(row).toHaveClass("pointer-coarse:min-h-11");
   });
 
   it("renders no row when neither label nor description is set", () => {
@@ -422,12 +422,12 @@ describe("Switch", () => {
     // forced-colors mode repaints colors and ignores opacity, so a faded disabled switch was
     // indistinguishable from an enabled one. A dashed border survives that repaint.
     const { rerender } = render(<Switch aria-label="Toggle" />);
-    expect(screen.getByRole("switch").className).not.toContain("border-dashed");
+    expect(screen.getByRole("switch")).not.toHaveClass("border-dashed");
 
     rerender(<Switch disabled aria-label="Toggle" />);
     const track = screen.getByRole("switch");
-    expect(track.className).toContain("border-dashed");
-    expect(track.className).not.toContain("opacity-50");
+    expect(track).toHaveClass("border-dashed");
+    expect(track).not.toHaveClass("opacity-50");
   });
 
   it("has no a11y violations across states", async () => {

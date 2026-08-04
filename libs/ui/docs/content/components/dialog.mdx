@@ -1,6 +1,6 @@
 ---
 title: "Dialog"
-description: "Modal dialog with compound component architecture. Uses box-drawing title decoration, side borders, and native dialog element."
+description: "Native modal dialog with compound parts, configurable frame and corner treatments, and a header strip band carrying the title and its optional description."
 component: "dialog"
 ---
 
@@ -28,21 +28,15 @@ component: "dialog"
 
 ## Scroll lock
 
-Native `<dialog>.showModal()` does not lock background scroll. Dialog ships with a CSS-only body scroll lock instead of a JavaScript implementation:
+Native `<dialog>.showModal()` does not lock background scroll, so `Dialog.Content` locks it in JavaScript: [`useScrollLock`](/ui/integrations/keys-utilities#usescrolllock) from `@diffgazer/keys`, pointed at the dialog's own `ownerDocument.body` and enabled while the dialog is open and modal.
 
-```css
-body:has(dialog[open]) {
-  overflow: hidden;
-  scrollbar-gutter: stable;
-}
-```
-
-The selector matches whenever any `<dialog>` in the document carries the native `[open]` attribute, so the lock applies for the entire time a Dialog (or any stack of Dialogs) is open and releases automatically when the last one closes. `scrollbar-gutter: stable` keeps the page from shifting horizontally when the scrollbar is hidden.
+The lock is reference counted, so a stack of dialogs takes one lock and the last one to close restores the body's original `overflow` and `padding-right`. Compensation is measured rather than reserved: the hook adds the scrollbar's width to `padding-right` for the life of the lock, so hiding the scrollbar does not shift the page sideways. Inline dialogs (`modal={false}`) never lock — nothing is modal about them.
 
 Limits to be aware of:
 
-- **Custom scroll roots.** Only the `<body>` element is locked. Apps that scroll on `<html>`, on a wrapping layout element, or inside a dedicated scroll container handle background scroll-locking themselves (for example via `useScrollLock` from `@diffgazer/keys`).
+- **Custom scroll roots.** `Dialog` locks `<body>`. Apps that scroll on `<html>`, on a wrapping layout element, or inside a dedicated scroll container call `useScrollLock({ target })` themselves for that element.
 - **iOS Safari rubber-band.** `overflow: hidden` on `<body>` does not prevent touch scrolling of the visual viewport. If preventing rubber-band is required, layer a `touchmove` handler on top.
-- **`:has()` browser floor.** The selector requires Chrome 105+, Safari 15.4+, or Firefox 121+. Engines below the support floor ignore the rule and leave background scroll unlocked.
+
+Copy-mode installs pull `keys/scroll-lock` as a registry dependency of `dialog`, so the hook arrives with the component. A raw `<dialog>` driven off `dialog.css` alone gets no background lock and owns that itself.
 
 <SourceViewer />

@@ -24,7 +24,6 @@ import {
   parseHotkey,
   serializeParsedHotkey,
   type ValidateHotkey,
-  warnUnknownModifier,
 } from "../dom/hotkey.js";
 import {
   type HandlerOptions,
@@ -227,9 +226,6 @@ export function KeyboardProvider({
       options?: HandlerOptions,
     ) => {
       const parsed = parseHotkey(hotkey as string);
-      if (parsed.unknownModifier) {
-        warnUnknownModifier("register", hotkey as string);
-      }
       const canonical = serializeParsedHotkey(parsed);
       let scopeHandlers = handlers.current.get(scope);
       if (!scopeHandlers) {
@@ -276,9 +272,6 @@ export function KeyboardProvider({
       options?: HandlerOptions,
     ) => {
       const parsed = parseHotkey(hotkey as string);
-      if (parsed.unknownModifier) {
-        warnUnknownModifier("registerImplicit", hotkey as string);
-      }
       const canonical = serializeParsedHotkey(parsed);
       const existingEntries = implicitHandlers.current.get(canonical) ?? [];
       const entry: ImplicitHandlerEntry = {

@@ -9,7 +9,7 @@ import {
 import { useKey, useScope } from "@diffgazer/keys";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
-import { CardLayout } from "@/components/layout/card-layout";
+import { CardLayout } from "@/components/layout/card";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { useConfigData } from "@/hooks/use-config";
 

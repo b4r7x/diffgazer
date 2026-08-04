@@ -1,5 +1,6 @@
 import type {
   ClientConfigurationActionResponse,
+  ClientConfigurationSummary,
   ConfigurationInitResponse,
   ConfigurationListResponse,
   ConfigurationStatus,
@@ -8,17 +9,17 @@ import {
   ClientConfigurationActionResponseSchema,
   READINESS_PRESENTATION,
 } from "@diffgazer/core/schemas/config";
-import type { Page, Route } from "@playwright/test";
-import {
-  assertClientSafeDom,
-  assertClientSafePayload,
-} from "../../src/testing/client-safe-assertions";
 import {
   configurationStatus,
   LOCAL_OPENAI_CONFIGURATION,
   makeConfigurationInitResponse,
   READY_GEMINI_CONFIGURATION,
-} from "../../src/testing/configuration-fixtures";
+} from "@diffgazer/core/testing/provider-fixtures";
+import type { Page, Route } from "@playwright/test";
+import {
+  assertClientSafeDom,
+  assertClientSafePayload,
+} from "../../src/testing/client-safe-assertions";
 
 export { assertClientSafeDom, assertClientSafePayload };
 
@@ -69,7 +70,7 @@ export const PROVIDER_E2E_LIST: ConfigurationListResponse = {
 
 function succeededAction(
   action: ClientConfigurationActionResponse["action"],
-  configuration = LOCAL_OPENAI_CONFIGURATION,
+  configuration: ClientConfigurationSummary = LOCAL_OPENAI_CONFIGURATION,
 ): ClientConfigurationActionResponse {
   return ClientConfigurationActionResponseSchema.parse({
     action,

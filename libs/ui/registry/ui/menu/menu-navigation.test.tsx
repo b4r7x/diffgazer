@@ -81,6 +81,39 @@ describe("Menu typeahead", () => {
     expect(onSelect).toHaveBeenCalledWith("zulu");
   });
 
+  it("navigates with j on an empty buffer instead of jumping to a j-item", async () => {
+    const user = userEvent.setup();
+    render(
+      <Menu aria-label="Test menu">
+        <Menu.Item id="alpha">Alpha</Menu.Item>
+        <Menu.Item id="beta">Beta</Menu.Item>
+        <Menu.Item id="juno">Juno</Menu.Item>
+      </Menu>,
+    );
+    const menu = screen.getByRole("menu");
+    await user.click(menu);
+    await user.keyboard("j");
+
+    // j is a vim navigation key: it steps to the next item instead of starting
+    // a typeahead query that would have jumped to Juno.
+    expect(menu).toHaveAttribute("aria-activedescendant", getMenuItem("Alpha").id);
+  });
+
+  it("extends an in-progress typeahead query with j instead of navigating", async () => {
+    const user = userEvent.setup();
+    render(
+      <Menu aria-label="Test menu">
+        <Menu.Item id="fjord">Fjord</Menu.Item>
+        <Menu.Item id="foo">Foo</Menu.Item>
+      </Menu>,
+    );
+    const menu = screen.getByRole("menu");
+    await user.click(menu);
+    await user.keyboard("fj");
+
+    expect(menu).toHaveAttribute("aria-activedescendant", getMenuItem("Fjord").id);
+  });
+
   it.each([
     ["hidden", { hidden: true }],
     ["inert", { inert: true }],
@@ -157,6 +190,10 @@ describe("Menu keyboard navigation", () => {
         expectedActiveIndex: 0,
         label: "ArrowUp returns from second",
       },
+      { key: "j", expectedActiveIndex: 1, label: "j moves down" },
+      { key: "jj", expectedActiveIndex: 2, label: "repeated j keeps navigating" },
+      { key: "jk", expectedActiveIndex: 0, label: "k moves back up" },
+      { key: "k", expectedActiveIndex: 2, label: "k wraps to end" },
     ],
   });
 });

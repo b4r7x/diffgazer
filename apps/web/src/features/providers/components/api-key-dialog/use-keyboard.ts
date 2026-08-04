@@ -269,25 +269,6 @@ export function useApiKeyDialogKeyboard({
     { enabled: open && isZone("input"), allowInInput: true },
   );
 
-  useKey(
-    "ArrowUp",
-    () => {
-      if (isHosted) {
-        inputRef.current?.blur();
-        focusMethodOption("env");
-      }
-    },
-    { enabled: open && isZone("acknowledgement") && isHosted },
-  );
-
-  useKey(
-    "ArrowDown",
-    () => {
-      enterFooter(canSubmit ? 1 : 0);
-    },
-    { enabled: open && isZone("acknowledgement") },
-  );
-
   const inFooter = isZone("footer");
   const cancelHighlighted = inFooter && effectiveFocused === "cancel";
   const confirmHighlighted = inFooter && effectiveFocused === "confirm";

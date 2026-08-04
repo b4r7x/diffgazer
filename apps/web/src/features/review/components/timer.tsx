@@ -1,5 +1,5 @@
 import { formatTime } from "@diffgazer/core/format";
-import { useReviewClock } from "../hooks/use-review-clock";
+import { useReviewClock } from "../hooks/use-clock";
 
 export interface TimerProps {
   startTime?: Date;

@@ -1,19 +1,24 @@
 import type { ProviderListRow, ProviderManagementOutcome } from "@diffgazer/core/providers";
-import { useApiKeyEntry } from "@diffgazer/core/providers";
+import {
+  buildSetupAcknowledgement,
+  buildSetupInput,
+  CREDENTIAL_ENV_VARS,
+  getSetupLayoutCopy,
+  resolveSetupTransportFamily,
+  toSetupCredential,
+  useApiKeyEntry,
+} from "@diffgazer/core/providers";
 import type {
   ClientConfigurationInput,
-  HostedApiProductId,
-  LocalCliProductId,
-  LocalHttpProductId,
   ReadinessAcknowledgement,
   SecretsStorage,
-  WriteOnlySecretInput,
 } from "@diffgazer/core/schemas/config";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Checkbox } from "@diffgazer/ui/components/checkbox";
 import {
   Dialog,
   DialogBody,
+  DialogCloseIcon,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -24,7 +29,6 @@ import { ApiKeyFooter } from "./footer";
 import { useApiKeyDialogKeyboard } from "./use-keyboard";
 
 type AcceptedAcknowledgement = Extract<ReadinessAcknowledgement, { status: "accepted" }>;
-type SetupTransportFamily = "hosted-api" | "local-http" | "local-cli";
 
 export interface ApiKeyDialogProps {
   open: boolean;
@@ -44,124 +48,6 @@ export interface ApiKeyDialogProps {
   ) => Promise<ProviderManagementOutcome>;
 }
 
-function resolveSetupTransportFamily(row: ProviderListRow): SetupTransportFamily | null {
-  if (row.configuration?.status === "supported") {
-    return row.configuration.transportFamily;
-  }
-  if (row.product.status === "supported") {
-    return row.product.transportFamily;
-  }
-  return null;
-}
-
-function requireSupportedProduct(
-  row: ProviderListRow,
-): Extract<ProviderListRow["product"], { status: "supported" }> {
-  if (row.product.status !== "supported") {
-    throw new Error("Setup requires a supported product");
-  }
-  return row.product;
-}
-
-function buildHostedInput(
-  row: ProviderListRow,
-  credential?: WriteOnlySecretInput,
-): ClientConfigurationInput {
-  const product = requireSupportedProduct(row);
-  if (product.transportFamily !== "hosted-api") {
-    throw new Error("Hosted setup requires a supported hosted-api product");
-  }
-  const endpoint =
-    row.configuration?.status === "supported" && row.configuration.transportFamily === "hosted-api"
-      ? row.configuration.endpoint
-      : (product.endpoints[0]?.endpoint ?? "");
-  return {
-    transportFamily: "hosted-api",
-    productId: product.productId as HostedApiProductId,
-    endpoint,
-    ...(credential ? { credential } : {}),
-  };
-}
-
-function buildLocalHttpInput(row: ProviderListRow): ClientConfigurationInput {
-  const product = requireSupportedProduct(row);
-  const configured =
-    row.configuration?.status === "supported" && row.configuration.transportFamily === "local-http"
-      ? row.configuration
-      : null;
-  return {
-    transportFamily: "local-http",
-    productId: product.productId as LocalHttpProductId,
-    endpoint: configured?.endpoint ?? product.endpoints[0]?.endpoint ?? "",
-    authentication: "none",
-    ...(configured?.presetId ? { presetId: configured.presetId } : {}),
-  };
-}
-
-function buildLocalCliInput(row: ProviderListRow): ClientConfigurationInput {
-  const product = requireSupportedProduct(row);
-  const configured =
-    row.configuration?.status === "supported" && row.configuration.transportFamily === "local-cli"
-      ? row.configuration
-      : null;
-  return {
-    transportFamily: "local-cli",
-    productId: product.productId as LocalCliProductId,
-    installationId: configured?.installationId ?? `${product.productId}-installation`,
-  };
-}
-
-function buildAcknowledgement(row: ProviderListRow): AcceptedAcknowledgement {
-  const notice = requireSupportedProduct(row).notice;
-  return {
-    status: "accepted",
-    noticeId: notice.id,
-    noticeVersion: notice.noticeVersion,
-    acceptedAt: new Date().toISOString(),
-  };
-}
-
-function toCredential(method: "paste" | "env", value: string): WriteOnlySecretInput {
-  if (method === "env") return { kind: "environment" };
-  return { kind: "literal", value };
-}
-
-function getLocalHttpCopy(row: ProviderListRow): string {
-  if (resolveSetupTransportFamily(row) !== "local-http") {
-    return "Local HTTP setup does not use API credentials.";
-  }
-  const product = row.product.status === "supported" ? row.product : null;
-  const endpoint =
-    row.configuration?.status === "supported" && row.configuration.transportFamily === "local-http"
-      ? row.configuration.endpoint
-      : product?.endpoints[0]?.endpoint;
-  return `Configure the local endpoint at ${endpoint ?? "the selected loopback URL"} without storing hosted credentials.`;
-}
-
-function getLocalCliCopy(row: ProviderListRow): string {
-  const family = resolveSetupTransportFamily(row);
-  const productIsLocalCli =
-    row.product.status === "supported" && row.product.transportFamily === "local-cli";
-  if (family !== "local-cli" && !productIsLocalCli) {
-    return "Local CLI setup does not use API credentials.";
-  }
-  return "Configure the local CLI installation without storing hosted credentials.";
-}
-
-function getLayoutCopy(
-  row: ProviderListRow,
-  isHosted: boolean,
-  transportFamily: SetupTransportFamily | null,
-): string {
-  if (isHosted) {
-    return `Choose how to provide credentials for ${row.product.name}:`;
-  }
-  if (transportFamily === "local-http") {
-    return getLocalHttpCopy(row);
-  }
-  return getLocalCliCopy(row);
-}
-
 export function ApiKeyDialog({
   open,
   onOpenChange,
@@ -175,6 +61,11 @@ export function ApiKeyDialog({
   const errorId = useId();
   const transportFamily = resolveSetupTransportFamily(row);
   const isHosted = transportFamily === "hosted-api";
+  // The server never sends the variable name it will read, so the preview comes from
+  // core's client-safe mirror. A product that binds no variable has no entry and the
+  // selector falls back to its generic copy.
+  const envVarName =
+    row.product.status === "supported" ? CREDENTIAL_ENV_VARS[row.product.productId] : undefined;
   const isUpdating =
     row.configuration?.status === "supported" || row.configuration?.status === "removed";
   const continueToModelSelection = row.product.productId === "openrouter";
@@ -187,26 +78,19 @@ export function ApiKeyDialog({
       ? `Keys are stored in your OS keychain. Context is only sent to ${row.product.name}.`
       : `Keys are stored in a local file with OS permissions. Context is only sent to ${row.product.name}.`;
 
-  const buildInput = (method: "paste" | "env", value: string): ClientConfigurationInput | null => {
-    if (isHosted) return buildHostedInput(row, toCredential(method, value));
-    if (transportFamily === "local-http") return buildLocalHttpInput(row);
-    if (transportFamily === "local-cli") return buildLocalCliInput(row);
-    return null;
-  };
-
   // Every save family -- hosted credential, local HTTP, local CLI -- runs through
   // this one guarded machine, so a rejected save reports in place instead of
   // escaping the click handler as an unhandled rejection.
   const entry = useApiKeyEntry({
     onSubmit: async (method, value) => {
       if (!noticeAccepted) return false;
-      const input = buildInput(method, value);
+      const input = buildSetupInput(row, transportFamily, toSetupCredential(method, value));
       if (!input) return false;
 
       const outcome =
         row.configuration?.status === "supported"
           ? await onUpdate(
-              { input, acknowledgement: buildAcknowledgement(row) },
+              { input, acknowledgement: buildSetupAcknowledgement(row) },
               { continueToModelSelection },
             )
           : await onCreate(input, { continueToModelSelection });
@@ -275,12 +159,13 @@ export function ApiKeyDialog({
   }, [open]);
 
   const title = isUpdating ? "Update Configuration" : "Create Configuration";
-  const layoutCopy = getLayoutCopy(row, isHosted, transportFamily);
+  const layoutCopy = getSetupLayoutCopy(row, transportFamily);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="max-w-xl overflow-hidden"
+        closeIcon={false}
         closeOnBackdropClick={!entry.isSubmitting}
         onEscapeKeyDown={(event) => {
           if (entry.isSubmitting) event.preventDefault();
@@ -301,6 +186,7 @@ export function ApiKeyDialog({
               onChange={entry.setMethod}
               keyValue={entry.value}
               onKeyValueChange={entry.setValue}
+              envVarName={envVarName}
               providerName={row.product.name}
               inputRef={inputRef}
               focused={focused}
@@ -325,6 +211,9 @@ export function ApiKeyDialog({
             highlighted={acknowledgementHighlighted}
             value="accept-notice"
             label="Accept billing and privacy notice before saving"
+            // Flush with the dialog body's content edge: the selectable row's own
+            // horizontal padding pushed the consent line off the grid the prose sits on.
+            className="px-0"
           />
 
           {entry.error && (
@@ -351,6 +240,10 @@ export function ApiKeyDialog({
           cancelHighlighted={cancelHighlighted}
           confirmHighlighted={confirmHighlighted}
         />
+
+        {/* Composed manually, last in DOM like the built-in one, so the submit gate that
+            already blocks Escape and backdrop clicks is visible on the [x] too. */}
+        <DialogCloseIcon disabled={entry.isSubmitting} />
       </DialogContent>
     </Dialog>
   );

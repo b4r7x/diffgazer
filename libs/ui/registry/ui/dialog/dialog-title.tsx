@@ -46,7 +46,10 @@ export function DialogTitle({
         {...props}
         id={titleId}
         data-slot="dialog-title"
-        className={cn("flex items-center gap-2.5 text-sm font-bold text-foreground", className)}
+        className={cn(
+          "flex items-center gap-2.5 font-mono text-sm font-bold text-info-text",
+          className,
+        )}
       >
         {children}
       </Tag>
@@ -59,7 +62,10 @@ export function DialogTitle({
         {...props}
         id={titleId}
         data-slot="dialog-title"
-        className={cn("min-w-0 flex-1 truncate text-sm font-bold text-foreground", className)}
+        className={cn(
+          "min-w-0 flex-1 truncate font-mono text-sm font-bold text-info-text",
+          className,
+        )}
       >
         {children}
       </Tag>

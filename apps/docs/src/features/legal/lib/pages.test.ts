@@ -3,7 +3,7 @@ import { legalRouteOptions } from "./pages";
 
 const loadLegalPage = vi.hoisted(() => vi.fn());
 
-vi.mock("@/features/legal/lib/load-legal-page", () => ({ loadLegalPage }));
+vi.mock("@/features/legal/lib/load-page", () => ({ loadLegalPage }));
 
 describe("legalRouteOptions", () => {
   beforeEach(() => {

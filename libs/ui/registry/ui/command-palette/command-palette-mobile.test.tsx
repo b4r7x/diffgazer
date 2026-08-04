@@ -25,25 +25,25 @@ describe("CommandPalette narrow-viewport geometry", () => {
     renderPalette();
     const content = screen.getByRole("dialog", { name: "Mobile palette" });
 
-    expect(content.className).toContain("max-sm:mx-3");
-    expect(content.className).toContain("max-sm:w-[calc(100%-1.5rem)]");
-    expect(content.className).toContain("max-sm:max-w-none");
+    expect(content).toHaveClass("max-sm:mx-3");
+    expect(content).toHaveClass("max-sm:w-[calc(100%-1.5rem)]");
+    expect(content).toHaveClass("max-sm:max-w-none");
   });
 
   it("pins the panel to the top so the software keyboard cannot displace it", () => {
     renderPalette();
     const content = screen.getByRole("dialog", { name: "Mobile palette" });
 
-    expect(content.className).toContain("mt-[max(0.75rem,env(safe-area-inset-top))]");
-    expect(content.className).toContain("mb-auto");
-    expect(content.className.split(" ")).not.toContain("m-auto");
+    expect(content).toHaveClass("mt-[max(0.75rem,env(safe-area-inset-top))]");
+    expect(content).toHaveClass("mb-auto");
+    expect(content).not.toHaveClass("m-auto");
   });
 
   it("keeps the OV-03 dynamic-viewport height cap", () => {
     renderPalette();
     const content = screen.getByRole("dialog", { name: "Mobile palette" });
 
-    expect(content.className).toContain("max-h-[80dvh]");
+    expect(content).toHaveClass("max-h-[80dvh]");
   });
 });
 

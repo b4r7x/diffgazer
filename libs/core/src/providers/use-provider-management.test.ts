@@ -51,6 +51,24 @@ function readyStatus(): ConfigurationStatus {
   };
 }
 
+function pendingStatus(): ConfigurationStatus {
+  return {
+    configuration: readyStatus().configuration,
+    readiness: ReadinessSchema.parse({
+      status: "conformance-pending",
+      ready: false,
+      evidenceStatus: "pending",
+      checkedAt: CHECKED_AT,
+      acknowledgement: {
+        status: "required",
+        noticeId: GEMINI_NOTICE.id,
+        noticeVersion: GEMINI_NOTICE.noticeVersion,
+      },
+      ...READINESS_PRESENTATION["conformance-pending"],
+    }),
+  };
+}
+
 const HOSTED_INPUT = {
   transportFamily: "hosted-api",
   productId: "gemini",
@@ -222,6 +240,24 @@ describe("useProviderManagement", () => {
       message: "Secret material could not be removed",
     });
     expect(failures).toEqual([expect.objectContaining({ action: "delete" })]);
+  });
+
+  it("dispatches a pending compatibility check to the test mutation", async () => {
+    const mutations = makeMutations();
+    const { hook, succeeded, providers } = setup(mutations, mapProviderList([pendingStatus()]));
+    const row = providers.find(
+      ({ configuration }) => configuration?.configurationId === "gemini-primary",
+    );
+    if (!row) throw new Error("Expected the configured row");
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.handleDispatchReadinessAction(row);
+    });
+
+    expect(outcome).toEqual({ status: "succeeded" });
+    expect(mutations.testConfiguration).toHaveBeenCalledWith("gemini-primary");
+    expect(succeeded).toEqual(["test"]);
   });
 
   it("opens the model dialog instead of selecting a configuration without a model", async () => {

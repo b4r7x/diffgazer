@@ -8,6 +8,7 @@ import {
   summarizeHistoryWarnings,
 } from "@diffgazer/core/review";
 import type { ReviewListWarning } from "@diffgazer/core/schemas/review";
+import { pluralize } from "@diffgazer/core/strings";
 import { isListNavigationKey } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
@@ -27,6 +28,7 @@ import { TimelineList } from "@/features/history/components/timeline-list";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-keyboard";
 import { useHistoryPage } from "@/features/history/hooks/use-page";
 import { useConfigData } from "@/hooks/use-config";
+import { useFocusWithin } from "@/hooks/use-focus-within";
 
 function HistoryWarnings({ warnings }: { warnings: readonly ReviewListWarning[] }) {
   const messages = buildHistoryWarningMessages(summarizeHistoryWarnings(warnings));
@@ -124,6 +126,13 @@ function HistoryPageContent() {
     onHighlightIssue: setHighlightedIssueId,
   });
 
+  // Pane chrome follows real DOM focus, not the keyboard zone: the zone is
+  // already "runs" before anything is focused, so pinning it would bracket a
+  // pane nobody is driving.
+  const timelineFocus = useFocusWithin<HTMLElement>();
+  const runsFocus = useFocusWithin<HTMLElement>();
+  const insightsFocus = useFocusWithin<HTMLElement>();
+
   const handleRunsKeyDown = (event: KeyboardEvent) => {
     if (focusZone !== "runs") {
       if (isListNavigationKey(event.key)) event.preventDefault();
@@ -160,7 +169,7 @@ function HistoryPageContent() {
 
       <SearchInput
         ref={searchInputRef}
-        size="sm"
+        size="lg"
         value={searchQuery}
         onChange={setSearchQuery}
         onFocus={() => setFocusZone("search")}
@@ -180,7 +189,6 @@ function HistoryPageContent() {
             /
           </span>
         }
-        className="border-border bg-background"
         // At 375 the placeholder is wider than the field; ellipsize it instead of
         // hard-clipping mid-word.
         inputClassName="text-ellipsis"
@@ -210,15 +218,18 @@ function HistoryPageContent() {
           as="aside"
           aria-label="Review sections"
           data-pane="timeline"
-          focused={focusZone === "timeline"}
+          focused={timelineFocus.focusWithin}
+          {...timelineFocus.props}
           className="flex flex-col md:col-span-2 md:min-h-0 lg:col-span-1"
         >
           <Panel.Label variant="border" aria-hidden="true">
             Sections
           </Panel.Label>
           {/* Capped below lg so the date filter cannot push the first run row off
-              the first mobile/tablet viewport. */}
-          <ScrollArea className="max-h-40 px-2 pb-2 pt-3 lg:max-h-none lg:min-h-0 lg:flex-1">
+              the first mobile/tablet viewport. Full-bleed rows: pl-[2px] only
+              absorbs the marker rail's -ml-[2px] so row separators and the
+              selected rail terminate into the pane border instead of floating. */}
+          <ScrollArea className="max-h-40 pl-[2px] pt-3 pb-2 lg:max-h-none lg:min-h-0 lg:flex-1">
             <TimelineList
               items={timelineItems}
               selectedId={selectedDateId}
@@ -237,7 +248,8 @@ function HistoryPageContent() {
           as="section"
           aria-label="Review runs"
           data-pane="runs"
-          focused={focusZone === "runs" || focusZone === "load-more"}
+          focused={runsFocus.focusWithin}
+          {...runsFocus.props}
           className="flex min-w-0 flex-col md:min-h-0"
         >
           <Panel.Label variant="border" aria-hidden="true">
@@ -245,12 +257,14 @@ function HistoryPageContent() {
           </Panel.Label>
           {/* Ordering is fixed, so this reads as a datum rather than borrowing the
               bracketed-control vocabulary of the real actions on the page. */}
-          <div className="flex justify-end px-3 pt-3">
+          <div className="flex justify-end px-3 pt-2 pb-1">
             <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">
               Newest first
             </span>
           </div>
-          <ScrollArea className="p-2 md:min-h-0 md:flex-1">
+          {/* Full-bleed like SECTIONS: the highlighted row fill and every
+              border-b rule span border-to-border, TUI-style. */}
+          <ScrollArea className="pl-[2px] pt-1 pb-2 md:min-h-0 md:flex-1">
             {mappedRuns.length > 0 ? (
               <NavigationList
                 ref={runsListRef}
@@ -278,19 +292,30 @@ function HistoryPageContent() {
                     <NavigationList.Status className="text-muted-foreground group-data-[highlighted]:text-primary-foreground/70">
                       {run.timestamp}
                     </NavigationList.Status>
-                    {/* Branch and summary share row 2: a three-line run row halves
-                        the list density the terminal surface aims for. */}
-                    <NavigationList.Meta className="min-w-0">
+                    {/* flex-wrap plus the summary's min-w-full stack the branch
+                        chip and summary on their own lines, so a run reads as
+                        three lines and the list fills the pane. The indent (glyph
+                        advance 1ch + its mr-2) left-aligns rows 2-3 with the
+                        run-id text above. */}
+                    <NavigationList.Meta className="min-w-0 flex-wrap pl-[calc(1ch+0.5rem)]">
                       <NavigationList.Badge variant="neutral" size="sm">
                         {run.branch}
                       </NavigationList.Badge>
-                      <span className="min-w-0 line-clamp-2 text-sm text-muted-foreground group-data-[highlighted]:text-primary-foreground/85">
+                      <span className="min-w-full line-clamp-2 text-sm text-muted-foreground group-data-[highlighted]:text-primary-foreground/85">
                         {run.summary}
                       </span>
                     </NavigationList.Meta>
                   </NavigationList.Item>
                 ))}
               </NavigationList>
+            ) : null}
+            {/* The list ends well above the pane floor on a short history; the
+                marker names that void as the end of the runs rather than
+                inflating the cards to fill it. */}
+            {mappedRuns.length > 0 ? (
+              <p className="mt-6 text-center text-2xs text-muted-foreground">
+                ── {pluralize(mappedRuns.length, "run")} ──
+              </p>
             ) : null}
             {/* Live region stays mounted across the runs→empty transition so the
                 empty message is announced; empty (and collapsed) while runs exist. */}
@@ -313,17 +338,21 @@ function HistoryPageContent() {
               ) : null}
             </EmptyState>
             {hasMoreReviews ? (
-              <Button
-                ref={loadMoreRef}
-                variant="outline"
-                size="sm"
-                bracket
-                loading={isLoadingMoreReviews}
-                onClick={() => void loadMoreReviews()}
-                className="mt-2 w-full"
-              >
-                Load older runs
-              </Button>
+              // The list is full-bleed, so the button re-insets itself: a
+              // border-to-border control would read as another run row.
+              <div className="px-2 pt-2">
+                <Button
+                  ref={loadMoreRef}
+                  variant="outline"
+                  size="sm"
+                  bracket
+                  loading={isLoadingMoreReviews}
+                  onClick={() => void loadMoreReviews()}
+                  className="w-full"
+                >
+                  Load older runs
+                </Button>
+              </div>
             ) : null}
           </ScrollArea>
         </Panel>
@@ -332,7 +361,8 @@ function HistoryPageContent() {
           as="aside"
           aria-label="Review insights"
           data-pane="insights"
-          focused={focusZone === "insights" || focusZone === "retry"}
+          focused={insightsFocus.focusWithin}
+          {...insightsFocus.props}
           className="flex flex-col md:min-h-0"
         >
           <Panel.Label variant="border" aria-hidden="true">

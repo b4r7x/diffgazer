@@ -30,7 +30,7 @@
   ],
   "ignoreIssues": {
     "libs/registry/src/manifest.ts": ["types"],
-    "libs/ui/theme/index.ts": ["exports", "types"]
+    "libs/ui/theme/docs-tokens.ts": ["exports", "types"]
   },
   // Only build output and generated data belong here. Anything owned by one
   // workspace is ignored in that workspace's own block below, so a path stays

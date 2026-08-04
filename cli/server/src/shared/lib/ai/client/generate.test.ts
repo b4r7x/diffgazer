@@ -13,11 +13,11 @@ import {
 } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { setupClientTestHome, teardownClientTestHome } from "../../testing/ai-client-env.js";
 import type { AdmittedExecutionPlan } from "../admission/service.js";
 import { ExecutionLeaseRegistry } from "../admission/service.js";
 import { createBudgetLedger } from "../budget/ledger.js";
 import type { Adapter, AdapterExecuteRequest } from "../types.js";
-import { setupClientTestHome, teardownClientTestHome } from "./client-test-env.js";
 import {
   conservativeAttemptEstimate,
   estimatePromptTokens,

@@ -105,6 +105,13 @@ jobs:
           || github.event.pull_request.user.login != 'github-actions[bot]') }}
         run: pnpm changeset status --since=origin/main
 
+      # `changeset status` is package-granular, so a pending changeset already on
+      # main keeps it green for every further change to that package. This step
+      # asks the narrower question: does the public handoff contract this change
+      # set rewrites carry a changeset added in the same change set?
+      - name: Changeset coverage for public registry changes
+        run: pnpm run check:changesets
+
       - name: Pack @diffgazer/add
         run: pnpm --filter @diffgazer/add pack --dry-run
 

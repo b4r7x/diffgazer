@@ -4,6 +4,7 @@ import { Menu, MenuDivider, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { Spinner } from "@diffgazer/ui/components/spinner";
 import { Fragment } from "react";
+import { useFocusWithin } from "@/hooks/use-focus-within";
 
 interface HomeMenuProps {
   highlighted: string | null;
@@ -27,20 +28,22 @@ export function HomeMenu({
   pending = false,
 }: HomeMenuProps) {
   const annotated = withGroupDividers(items);
+  const { focusWithin, props: focusWithinProps } = useFocusWithin<HTMLDivElement>();
 
   return (
-    // The menu is the pane the arrow keys drive, so it carries the focused
-    // affordance while the read-only context panel stays at rest.
+    // The menu is the pane the arrow keys drive, and it autofocuses on mount, so
+    // its bracket affordance arrives from real focus instead of a static claim.
     <Panel
-      frame="viewfinder"
-      focused
+      {...focusWithinProps}
+      focused={focusWithin}
       aria-labelledby={MENU_TITLE_ID}
       className="flex w-full min-w-0 flex-col lg:flex-1"
     >
       <Panel.Label>
         <h2 id={MENU_TITLE_ID}>Main Menu</h2>
       </Panel.Label>
-      <div className="flex flex-col py-2">
+      {/* pb only: the first row starts flush at the top border so the tab chip seats over it. */}
+      <div className="flex flex-col pb-2">
         <Menu
           highlighted={highlighted}
           onHighlightChange={onHighlightChange}

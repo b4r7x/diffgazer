@@ -102,7 +102,7 @@ const panelRef = useRef<HTMLDivElement>(null)
 useScrollLock({ target: panelRef, enabled: isOpen })
 ```
 
-`Dialog` uses a CSS-only `body:has(dialog[open])` scroll lock with `scrollbar-gutter: stable` compensation. Use `useScrollLock` as the standalone alternative for app-owned overlays or custom scroll containers.
+`@diffgazer/ui`'s `DialogContent` and `CommandPaletteContent` own their background scroll lock through this hook, pointing it at the overlay's own `ownerDocument.body` while it is open and modal. The reference counting is what lets a stack of them hold one lock, and the hook adds the scrollbar's width to `padding-right` so hiding the scrollbar does not shift the page. Call it directly for app-owned overlays or custom scroll containers.
 
 ---
 

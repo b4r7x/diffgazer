@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { MAIN_SCROLL_RESTORATION_ID } from "@/lib/main-scroll-bootstrap";
 
 export type PreviewMode = "preview" | "code";
 
@@ -47,7 +48,15 @@ export function PreviewModeProvider({ children }: { children: ReactNode }) {
     setPendingAnchor(null);
     const delta = pendingAnchor.getBoundingClientRect().top - anchorTopRef.current;
     if (Math.abs(delta) < 0.5) return;
-    window.scrollBy({ top: delta, behavior: "instant" });
+    // The docs shell never scrolls the document: the article scrolls inside
+    // #main-content, so compensating the view would be inert. Only an example
+    // mounted outside that shell falls back to it.
+    const scroll: ScrollToOptions = { top: delta, behavior: "instant" };
+    const scroller =
+      pendingAnchor.closest(`#${MAIN_SCROLL_RESTORATION_ID}`) ??
+      pendingAnchor.ownerDocument.getElementById(MAIN_SCROLL_RESTORATION_ID);
+    if (scroller) scroller.scrollBy(scroll);
+    else pendingAnchor.ownerDocument.defaultView?.scrollBy(scroll);
   }, [pendingAnchor]);
 
   // The anchor bookkeeping re-renders this provider twice per click; the value

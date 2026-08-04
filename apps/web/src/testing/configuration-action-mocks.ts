@@ -1,11 +1,11 @@
 import type { BoundApi } from "@diffgazer/core/api";
 import { ClientConfigurationActionResponseSchema } from "@diffgazer/core/schemas/config";
-import { vi } from "vitest";
 import {
   configurationStatus,
   makeReadiness,
   READY_GEMINI_CONFIGURATION,
-} from "@/testing/configuration-fixtures";
+} from "@diffgazer/core/testing/provider-fixtures";
+import { vi } from "vitest";
 
 const readyReadiness = makeReadiness("ready", "gemini");
 

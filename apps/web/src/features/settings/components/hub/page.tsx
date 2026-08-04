@@ -7,12 +7,16 @@ import {
   type SettingsAction,
 } from "@diffgazer/core/schemas/presentation";
 import { useKey, useScope } from "@diffgazer/keys";
+import { Badge } from "@diffgazer/ui/components/badge";
 import { Menu, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel } from "@diffgazer/ui/components/panel";
+import { cn } from "@diffgazer/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { useId } from "react";
 import { ConfigurationStatus } from "@/components/shared/configuration-status";
+import { PathValue } from "@/components/shared/path-value";
 import { useConfigData } from "@/hooks/use-config";
+import { useFocusWithin } from "@/hooks/use-focus-within";
 import { SETTINGS_HIGHLIGHTED_KEY, useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -34,6 +38,44 @@ function getSettingsMenuHighlighted(value: string | null): string | null {
   return SETTINGS_MENU_ITEMS[0]?.id ?? null;
 }
 
+/**
+ * One value vocabulary for the whole column: trusted is loud enough to be a
+ * chip, affirmative means the user configured it, default is an always-present
+ * preference, and muted is unset or purely navigational.
+ */
+type HubValueTone = "trusted" | "affirmative" | "default" | "muted";
+
+/**
+ * Right-aligned row value. Uppercase is a display rule, not a content rule: the
+ * DOM text stays sentence case so screen readers do not spell it out.
+ *
+ * Affirmative rows carry "configured" in the green tone alone — the registry's
+ * success value variants prefix a ✓ this column no longer wants. On the
+ * highlighted row the tone hands back to the row foreground so green never sits
+ * on the blue fill, while the trusted chip keeps its own fill in every row
+ * state and stays legible there.
+ */
+function HubValue({ tone, children }: { tone: HubValueTone; children: string }) {
+  if (tone === "trusted") {
+    return (
+      <Badge variant="success" size="sm" className="bg-success text-success-foreground">
+        {children}
+      </Badge>
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        "text-sm uppercase tracking-[0.08em]",
+        tone === "affirmative" && "text-success group-data-[highlighted]:text-current",
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
 export function SettingsHubPage() {
   const navigate = useNavigate();
   const titleId = useId();
@@ -46,6 +88,7 @@ export function SettingsHubPage() {
   const effectiveHighlighted = getSettingsMenuHighlighted(highlighted);
   const { data: settings, error: settingsQueryError } = useSettings();
   const settingsError = settingsQueryError?.message ?? null;
+  const panelFocus = useFocusWithin<HTMLDivElement>();
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
 
@@ -73,50 +116,54 @@ export function SettingsHubPage() {
     selectedLensCount: settings?.defaultLenses?.length,
   });
 
-  // One value vocabulary for the whole column: success = the user configured it,
-  // default = an always-present preference, muted = unset or purely navigational.
-  const menuValues: Record<
-    SettingsAction,
-    { value: string; valueVariant?: "default" | "success" | "muted" }
-  > = {
+  const menuValues: Record<SettingsAction, { value: string; tone: HubValueTone }> = {
     trust: {
       value: values.trust,
-      valueVariant: isTrusted ? "success" : "muted",
+      tone: isTrusted ? "trusted" : "muted",
     },
     theme: {
       value: values.theme,
-      valueVariant: "default",
+      tone: "default",
     },
     provider: {
       value: values.provider,
-      valueVariant: isConfigured ? "success" : "muted",
+      tone: isConfigured ? "affirmative" : "muted",
     },
     storage: {
       value: values.storage,
-      valueVariant: settings?.secretsStorage ? "success" : "muted",
+      tone: settings?.secretsStorage ? "affirmative" : "muted",
     },
     "agent-execution": {
       value: values["agent-execution"],
-      valueVariant: "default",
+      tone: "default",
     },
     analysis: {
       value: values.analysis,
-      valueVariant: settings?.defaultLenses?.length ? "success" : "muted",
+      tone: settings?.defaultLenses?.length ? "affirmative" : "muted",
     },
     diagnostics: {
       value: values.diagnostics,
-      valueVariant: "muted",
+      tone: "muted",
     },
   };
 
   return (
-    // Same wrapper padding, width, and top line as CardLayout so the panel does not
-    // jump as the user moves between the hub and its children.
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-7 pb-4">
-      <div className="mx-auto w-full max-w-2xl">
-        {/* The hub is a single pane and its menu owns the arrow keys, so it is
-            the screen's one reticle and renders it in the focused hue. */}
-        <Panel frame="viewfinder" focused density="compact" aria-labelledby={titleId}>
+    // Same wrapper rhythm and width as CardLayout so the panel does not jump as
+    // the user moves between the hub and its children. m-auto centers the card
+    // on both axes while the scroll container keeps the top edge reachable once
+    // the content outgrows the viewport.
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+      <div className="m-auto w-full max-w-2xl">
+        {/* Resting chrome until focus actually enters the pane: the hub is a
+            single pane, but nothing on screen may claim the focused hue while
+            the keyboard is elsewhere. */}
+        <Panel
+          {...panelFocus.props}
+          focused={panelFocus.focusWithin}
+          density="compact"
+          className="shadow-2xl"
+          aria-labelledby={titleId}
+        >
           <Panel.Label>
             <h1 id={titleId}>Settings Hub</h1>
           </Panel.Label>
@@ -138,20 +185,26 @@ export function SettingsHubPage() {
                 <MenuItem
                   key={item.id}
                   id={item.id}
-                  // Uppercase is a display rule, not a content rule: the DOM text
-                  // stays sentence case so screen readers do not spell it out.
-                  value={<span className="uppercase tracking-wider">{meta.value}</span>}
-                  valueVariant={meta.valueVariant}
+                  // `group` unconditionally: the registry drops it on the very
+                  // state HubValue reads, the highlighted row. The last row
+                  // skips its hairline because the footer already draws one.
+                  className="group min-h-14 border-border/50 border-b text-base last:border-b-0"
+                  value={<HubValue tone={meta.tone}>{meta.value}</HubValue>}
+                  valueVariant={meta.tone === "muted" ? "muted" : "default"}
                 >
                   {item.label}
                 </MenuItem>
               );
             })}
           </Menu>
-          {/* Stacks below sm so the long config path and its caption never wrap
-              into two colliding right-aligned columns at 375. */}
-          <Panel.Footer className="flex-col items-start gap-1 font-mono sm:flex-row sm:items-center sm:gap-3">
-            <span className="min-w-0 break-all">project path: {repoRoot ?? "unknown"}</span>
+          {/* One line at every width: PathValue middle-truncates the repo path
+              instead of wrapping it, so the caption keeps its own end of the row
+              even at 375. */}
+          <Panel.Footer className="font-mono">
+            <span className="flex min-w-0 items-center">
+              <span className="shrink-0">project path:&nbsp;</span>
+              <PathValue value={repoRoot ?? "unknown"} />
+            </span>
             <span className="shrink-0">{settingsError ?? "local settings"}</span>
           </Panel.Footer>
         </Panel>

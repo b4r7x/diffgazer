@@ -1,10 +1,19 @@
-import "./model-select-overlay.terminal-mock";
+import "../testing/terminal-mock";
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { ProviderListRow } from "@diffgazer/core/providers";
-import type { ClientConfigurationInput } from "@diffgazer/core/schemas/config";
+import type {
+  ClientConfigurationInput,
+  ReadinessAcknowledgement,
+} from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
+import {
+  buildProviderRows,
+  configurationStatus,
+  LOCAL_OPENAI_CONFIGURATION,
+  unconfiguredRow,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
@@ -13,13 +22,8 @@ import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { flush } from "../../../testing/flush";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
-import {
-  buildProviderRows,
-  LOCAL_OPENAI_CONFIGURATION,
-  unconfiguredRow,
-} from "../testing/fixtures";
+import { flushUntil } from "../testing/model-select-overlay";
 import { ApiKeyOverlay } from "./api-key-overlay";
-import { flushUntil } from "./model-select-overlay.test-support";
 
 function makeQueryClient(): QueryClient {
   return new QueryClient({
@@ -54,6 +58,17 @@ function hostedRow(): ProviderListRow {
 function localRow(): ProviderListRow {
   return requireValue(
     buildProviderRows().find((row) => row.configuration?.configurationId === "local-openai-1"),
+    "local-openai-1 row",
+  );
+}
+
+/** A stored configuration whose current notice has not been accepted yet. */
+function unacknowledgedLocalRow(): ProviderListRow {
+  const rows = buildProviderRows([
+    configurationStatus(LOCAL_OPENAI_CONFIGURATION, "acknowledgement-required"),
+  ]);
+  return requireValue(
+    rows.find((row) => row.configuration?.configurationId === "local-openai-1"),
     "local-openai-1 row",
   );
 }
@@ -281,5 +296,88 @@ describe("ApiKeyOverlay family-specific layout", () => {
     view.stdin.write("\r");
     await waitUntil(() => onCreate.mock.calls.length > 0);
     expect(onCreate).toHaveBeenCalledOnce();
+  });
+});
+
+describe("ApiKeyOverlay notice acknowledgement state", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  test("saves an update on a stored acceptance without re-accepting the notice", async () => {
+    const onUpdate = vi.fn(
+      async (_payload: {
+        input: ClientConfigurationInput;
+        acknowledgement: ReadinessAcknowledgement;
+      }) => {},
+    );
+    const view = render(
+      <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
+        <ApiKeyOverlay
+          open
+          row={hostedRow()}
+          onOpenChange={() => {}}
+          onCreate={async () => {}}
+          onUpdate={onUpdate}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => view.lastFrame()?.includes("Update Configuration") ?? false);
+    expect(view.lastFrame()).toContain("Notice accepted");
+
+    view.stdin.write("\t");
+    await flush();
+    view.stdin.write("sk-rotated-key");
+    await flush();
+    view.stdin.write("\t");
+    await flush();
+    view.stdin.write("\r");
+    await waitUntil(() => onUpdate.mock.calls.length > 0);
+
+    expect(onUpdate).toHaveBeenCalledOnce();
+    expect(onUpdate.mock.calls[0]?.[0]).toMatchObject({
+      input: {
+        transportFamily: "hosted-api",
+        productId: "gemini",
+        credential: { kind: "literal", value: "sk-rotated-key" },
+      },
+      acknowledgement: { status: "accepted" },
+    });
+  });
+
+  test("requires acceptance when the row carries no stored acknowledgement", async () => {
+    const onUpdate = vi.fn(
+      async (_payload: {
+        input: ClientConfigurationInput;
+        acknowledgement: ReadinessAcknowledgement;
+      }) => {},
+    );
+    const view = render(
+      <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
+        <ApiKeyOverlay
+          open
+          row={unacknowledgedLocalRow()}
+          onOpenChange={() => {}}
+          onCreate={async () => {}}
+          onUpdate={onUpdate}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => view.lastFrame()?.includes("Update Configuration") ?? false);
+    expect(view.lastFrame()).toContain("Accept notice");
+
+    view.stdin.write("\r");
+    await flush();
+    expect(onUpdate).not.toHaveBeenCalled();
+
+    view.stdin.write("a");
+    await flush();
+    expect(view.lastFrame()).toContain("Notice accepted");
+    view.stdin.write("\r");
+    // Arity is left unasserted: on non-hosted rows Enter reaches both the overlay handler
+    // and the focused Save button, so one keypress submits twice.
+    await waitUntil(() => onUpdate.mock.calls.length > 0);
   });
 });

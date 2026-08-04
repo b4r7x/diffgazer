@@ -26,9 +26,13 @@ export function useSelectTypeahead({
   const readTypeaheadQuery = useTypeaheadBuffer(undefined, open);
 
   // Returns true when the key was buffered into the typeahead query so callers
-  // can suppress a competing Space-select for the same keystroke.
-  return function handleTypeahead(key: string): boolean {
-    const query = readTypeaheadQuery(key);
+  // can suppress a competing Space-select or vim-navigation move for the same
+  // keystroke. `extendOnly` keys are declined on an empty buffer.
+  return function handleTypeahead(
+    key: string,
+    { extendOnly = false }: { extendOnly?: boolean } = {},
+  ): boolean {
+    const query = readTypeaheadQuery(key, { extendOnly });
     if (query === null) return false;
 
     const visibleOptions = getVisibleEnabledOptionEntries(options, searchQuery);

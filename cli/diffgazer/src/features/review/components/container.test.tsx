@@ -2,6 +2,7 @@ import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
 import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
+import { makeAllConfigurationsListResponse } from "@diffgazer/core/testing/provider-fixtures";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import { act, type ReactElement, useEffect } from "react";
@@ -14,9 +15,8 @@ import { flush } from "../../../testing/flush";
 import { makeReviewLifecycleBase } from "../../../testing/review-lifecycle-base";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
-import { makeConfigurationListResponse } from "../../providers/testing/fixtures";
 
-const shellList = makeConfigurationListResponse();
+const shellList = makeAllConfigurationsListResponse();
 
 function makeReadyInitResponse() {
   return {

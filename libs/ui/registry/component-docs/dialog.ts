@@ -2,12 +2,12 @@ import type { ComponentDoc } from "./types";
 
 export const dialogDoc: ComponentDoc = {
   description:
-    "Native modal dialog with compound parts, configurable frame and corner treatments, and an optional header marker bar spanning the title and description.",
+    "Native modal dialog with compound parts, configurable frame and corner treatments, and a header strip band carrying the title and its optional description.",
   anatomy: [
     { name: "Dialog", indent: 0, note: "Root (manages open state)" },
     { name: "DialogTrigger", indent: 1, note: "Opens the dialog" },
     { name: "DialogContent", indent: 1, note: "Modal container (native dialog)" },
-    { name: "DialogHeader", indent: 2, note: "Header wrapper" },
+    { name: "DialogHeader", indent: 2, note: "Header strip band" },
     { name: "DialogTitle", indent: 3, note: "Accessible title" },
     { name: "DialogDescription", indent: 3, note: "Accessible description" },
     { name: "DialogBody", indent: 2, note: "Scrollable content" },
@@ -19,7 +19,7 @@ export const dialogDoc: ComponentDoc = {
     {
       name: "DialogCloseIcon",
       indent: 2,
-      note: "Optional top-right close button — render LAST inside DialogContent so DOM/Tab order is correct (it absolute-positions itself)",
+      note: "Top-right close button — rendered by default on modal dialogs; compose it LAST inside DialogContent when you render it yourself (it absolute-positions itself)",
     },
   ],
   notes: [
@@ -34,9 +34,24 @@ export const dialogDoc: ComponentDoc = {
         "Dialog is composed of 10 parts: Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter (with DialogFooter.Hints and DialogFooter.Actions sub-components), DialogClose, and DialogAction.",
     },
     {
+      title: "Header strip",
+      content:
+        "DialogHeader is a single form: a 44px band one surface step above the body (--surface-2) closed by a bottom hairline, laying its children out in one row. A DialogTitle renders as the 14px/700 mono title in the accent tone (--info-text) and a DialogDescription beside it as the 12px muted subtitle. Pass className to override padding, background, or direction — the overrides merge via tailwind-merge.",
+    },
+    {
+      title: "Close control",
+      content:
+        "A modal DialogContent renders the top-right [x] (DialogCloseIcon) by default, so every modal dialog carries a pointer dismissal affordance. Pass closeIcon={false} to opt out when the dialog owns its own dismissal control. Inline dialogs (modal={false}) never render it — compose DialogCloseIcon yourself there, last inside DialogContent so it stays the final tab stop.",
+    },
+    {
       title: "Native Dialog",
       content:
         "DialogContent uses the native <dialog> element with showModal(), which provides built-in focus management, inert background, top-layer rendering, and accessible modal semantics. Focus is restored to the trigger on close.",
+    },
+    {
+      title: "Scroll lock",
+      content:
+        "Background scroll lock has exactly one owner, and it is not the stylesheet. showModal() does not lock background scroll, so DialogContent runs useScrollLock (reference counted, scrollbar-width compensated) while it is open and modal — that lock is also the one that handles custom scroll roots and stacked dialogs. The CSS-only body lock shared/dialog.css used to ship alongside it is gone: two locks compensated for the same scrollbar twice, and the page jumped on every open. Consumers driving a raw <dialog> off the stylesheet alone therefore get no automatic lock and own that themselves (useScrollLock drops in). Inline dialogs (modal={false}) never lock.",
     },
     {
       title: "Alert Dialog",
@@ -71,7 +86,7 @@ export const dialogDoc: ComponentDoc = {
     {
       title: "Inline (non-modal)",
       content:
-        'Pass modal={false} to DialogContent to render the same frame, corners, header marker, and footer in the document flow — no backdrop, focus trap, scroll lock, or focus restoration. Because nothing is modal about it, the inline shell exposes role="group" (still named by DialogTitle) rather than a dialog role, and the role prop is ignored. Use it to embed dialog chrome in a page, or to make the open state visible on a static page — see the Open State example. Inline content still honours open, so it unmounts when the consumer closes it.',
+        'Pass modal={false} to DialogContent to render the same frame, corners, header strip, and footer in the document flow — no backdrop, focus trap, scroll lock, or focus restoration. Because nothing is modal about it, the inline shell exposes role="group" (still named by DialogTitle) rather than a dialog role, and the role prop is ignored. Use it to embed dialog chrome in a page, or to make the open state visible on a static page — see the Open State example. Inline content still honours open, so it unmounts when the consumer closes it.',
     },
     {
       title: "Surface and backdrop",
@@ -86,7 +101,7 @@ export const dialogDoc: ComponentDoc = {
     {
       title: "Entrance motion",
       content:
-        "The overlay family runs one entrance vector: opacity plus a 4px translateY drop, never a scale — a scale-in reads as a rubbery soft-UI surface, and on a wide dialog it grows the drawn border across every open. Timing comes from the overlay-wide --ui-content-enter-duration / --ui-content-exit-duration contract; --dialog-duration remains a per-instance override but no longer holds an independent value that can drift out of sync with anchored surfaces. prefers-reduced-motion: reduce drops the animation entirely.",
+        "The overlay family runs one entrance vector: opacity plus a 4px translateY drop, never a scale — a scale-in reads as a rubbery soft-UI surface, and on a wide dialog it grows the drawn border across every open. The modal tier owns its entrance clock: --dialog-duration is 150ms, because a dialog takes over the viewport and reads as a deliberate open, while the anchored tier (Select, Popover, Tooltip) stays on the 60ms --ui-content-* tokens where anything slower feels laggy under the pointer. The exit stays on --ui-content-exit-duration, and --dialog-duration remains a working per-instance override. prefers-reduced-motion: reduce drops the animation entirely.",
     },
     {
       title: "Extending DialogContent styles",
@@ -107,8 +122,7 @@ export const dialogDoc: ComponentDoc = {
     { name: "dialog-upload", title: "Upload" },
     { name: "dialog-keyboard", title: "Keyboard" },
     { name: "dialog-custom-trigger", title: "Custom Trigger" },
-    { name: "dialog-close-icon", title: "With Close Icon" },
-    { name: "dialog-header-flat", title: "Header (flat marker)" },
+    { name: "dialog-close-icon", title: "Close Icon" },
     { name: "dialog-popover", title: "Nested Popover" },
   ],
   keyboard: {
@@ -205,6 +219,13 @@ export const dialogDoc: ComponentDoc = {
         description:
           'Renders the dialog as a native modal in the browser top layer. Pass false to render the same frame, corners, and chrome in the document flow instead — no backdrop, focus trap, scroll lock, or focus restoration, and role="group" instead of a dialog role.',
       },
+      closeIcon: {
+        type: "boolean",
+        required: false,
+        defaultValue: "true",
+        description:
+          "Renders the top-right [x] close control on a modal dialog. Pass false to opt out when the dialog owns its own dismissal affordance. Inline dialogs never render it — compose DialogCloseIcon explicitly there.",
+      },
       closeOnBackdropClick: {
         type: "boolean",
         required: false,
@@ -231,15 +252,6 @@ export const dialogDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description: "Native cancel handler. Defaults to closing the dialog.",
-      },
-    },
-    DialogHeader: {
-      marker: {
-        type: '"bar" | "none"',
-        required: false,
-        defaultValue: '"bar"',
-        description:
-          'Header leading marker. "bar" (default) renders a 4px foreground accent bar with flex gap-3 outer spacing and a nested text column. "none" is the neutral form — no bar, no gap, children render as direct flex-col descendants — intended for headers with a background color, horizontal title-row layouts, or custom compositions. Consumer className overrides (padding, flex direction, background) merge cleanly on both variants via tailwind-merge.',
       },
     },
     DialogTitle: {

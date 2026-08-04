@@ -121,10 +121,11 @@ export function ApiKeyStep({
       onCommit?.();
       return;
     }
-    const direction = getVerticalArrowDirection(event.key);
-    if (direction === null) return;
+    // Arrows only: the j/k aliases are printable characters that must type into
+    // the credential field instead of leaving it.
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
     event.preventDefault();
-    focusMethod(direction === "down" ? "environment" : "literal");
+    focusMethod(event.key === "ArrowDown" ? "environment" : "literal");
   };
 
   if (configurationInput.transportFamily === "local-http") {

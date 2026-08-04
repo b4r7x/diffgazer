@@ -1,7 +1,7 @@
 import type { UseActionRowNavigationReturn } from "@diffgazer/keys";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { CardLayout } from "@/components/layout/card-layout";
+import { CardLayout } from "@/components/layout/card";
 import { SettingsFormActions } from "./form-actions";
 import { renderSettingsFormPending } from "./form-pending";
 

@@ -112,6 +112,11 @@ function SidebarShell({
           aria-label={ariaLabel ?? "Primary navigation"}
           className="!max-w-[min(86vw,320px)] !h-[100dvh] !max-h-[100dvh] !m-0 !border-r border-border !rounded-none p-0 pb-[env(safe-area-inset-bottom)]"
           frame="none"
+          // Edge-anchored drawer, not a dialog panel: it carries none of the
+          // dialog chrome (no frame, no padding), and dismissal is Esc or an
+          // outside tap. The dialog's default [x] absolute-positions itself into
+          // the top-right corner, which the sheet gives to SidebarHeader content.
+          closeIcon={false}
         >
           <SidebarContext value={sheetContext}>
             <SidebarNav

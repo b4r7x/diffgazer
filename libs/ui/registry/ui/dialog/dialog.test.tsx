@@ -24,7 +24,6 @@ function dialogTree(
       <Dialog.Content>
         <Dialog.Header>
           <Dialog.Title>Test Title</Dialog.Title>
-          <Dialog.Close />
         </Dialog.Header>
         <Dialog.Description>Test description</Dialog.Description>
         <Dialog.Body>Body content</Dialog.Body>
@@ -370,7 +369,6 @@ describe("Dialog", () => {
           <Dialog open={open} onOpenChange={setOpen}>
             <Dialog.Content>
               <Dialog.Title>Controlled dialog</Dialog.Title>
-              <Dialog.Close />
             </Dialog.Content>
           </Dialog>
         </>
@@ -872,7 +870,6 @@ describe("Dialog", () => {
         </Dialog.Trigger>
         <Dialog.Content>
           <Dialog.Title>Nested trigger target</Dialog.Title>
-          <Dialog.Close />
         </Dialog.Content>
       </Dialog>,
     );
@@ -897,14 +894,12 @@ describe("Dialog", () => {
           <Dialog.Trigger>Dialog 1</Dialog.Trigger>
           <Dialog.Content>
             <Dialog.Title>Dialog 1</Dialog.Title>
-            <Dialog.Close />
           </Dialog.Content>
         </Dialog>
         <Dialog onOpenChange={onOpenChange2} defaultOpen>
           <Dialog.Trigger>Dialog 2</Dialog.Trigger>
           <Dialog.Content>
             <Dialog.Title>Dialog 2</Dialog.Title>
-            <Dialog.Close />
           </Dialog.Content>
         </Dialog>
       </>,
@@ -1038,6 +1033,30 @@ describe("Dialog", () => {
     });
   });
 
+  describe("DialogFooter surface", () => {
+    it("paints no background of its own so it inherits the dialog fill", () => {
+      render(
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Title>Footer surface</Dialog.Title>
+            <Dialog.Footer>
+              <Dialog.Action>OK</Dialog.Action>
+            </Dialog.Footer>
+          </Dialog.Content>
+        </Dialog>,
+      );
+      const dialog = screen.getByRole("dialog", { name: "Footer surface" });
+      const footer = within(dialog)
+        .getByRole("button", { name: "OK" })
+        .closest('[data-slot="dialog-footer"]');
+      if (!footer) throw new Error("Expected dialog footer to be present");
+      // Class assertion retained: the footer's fill IS the public contract here
+      // (a second-tone strip under the body is the regression), and jsdom cannot
+      // compute the inherited background from the shipped stylesheet.
+      expect(footer).not.toHaveClass("bg-background");
+    });
+  });
+
   describe("DialogContent frame and corners", () => {
     it("defaults to frame='border' corners='none' and does not render a .dlg-corners host", () => {
       render(
@@ -1120,40 +1139,39 @@ describe("Dialog", () => {
     });
   });
 
-  describe("DialogHeader marker and DialogTitle meta", () => {
-    it("renders an aria-hidden bar marker inside the header by default", () => {
+  describe("DialogHeader strip and DialogTitle meta", () => {
+    it("bands the title and the close control across the top of the dialog", () => {
       render(
         <Dialog defaultOpen>
           <Dialog.Content>
             <Dialog.Header>
-              <Dialog.Title>Bar title</Dialog.Title>
+              <Dialog.Title>Strip title</Dialog.Title>
             </Dialog.Header>
+            <Dialog.Body>Body content</Dialog.Body>
           </Dialog.Content>
         </Dialog>,
       );
-      const dialog = screen.getByRole("dialog", { name: "Bar title" });
-      const header = dialog.querySelector('[data-slot="dialog-header"]');
-      if (!header) throw new Error("Expected dialog header");
-      // The header marker is a decorative aria-hidden bar with no role; the
-      // structural query is the only way to assert its `marker` prop contract.
-      const bar = header.querySelector(':scope > [aria-hidden="true"]');
-      expect(bar).not.toBeNull();
+      const dialog = screen.getByRole("dialog", { name: "Strip title" });
+      const heading = within(dialog).getByRole("heading", { name: "Strip title" });
+      expect(heading.closest('[data-slot="dialog-header"]')).not.toBeNull();
+      expect(within(dialog).getByRole("button", { name: "Close dialog" })).toBeInTheDocument();
     });
 
-    it("omits the bar when marker is 'none'", () => {
+    it("renders header children as direct descendants of the strip", () => {
       render(
         <Dialog defaultOpen>
           <Dialog.Content>
-            <Dialog.Header marker="none">
-              <Dialog.Title>Plain title</Dialog.Title>
+            <Dialog.Header>
+              <Dialog.Title>Flat header</Dialog.Title>
             </Dialog.Header>
           </Dialog.Content>
         </Dialog>,
       );
-      const dialog = screen.getByRole("dialog", { name: "Plain title" });
-      const header = dialog.querySelector('[data-slot="dialog-header"]');
+      const header = screen
+        .getByRole("dialog", { name: "Flat header" })
+        .querySelector('[data-slot="dialog-header"]') as HTMLElement | null;
       if (!header) throw new Error("Expected dialog header");
-      expect(header.querySelector(':scope > [aria-hidden="true"]')).toBeNull();
+      expect(header.firstElementChild).toHaveAttribute("data-slot", "dialog-title");
     });
 
     it("renders Title and Description inside the header subtree", () => {
@@ -1205,28 +1223,11 @@ describe("Dialog", () => {
       expect(within(dialog).queryByText("CONFIRM")).toBeNull();
     });
 
-    it("marker='none' renders children as direct descendants of the header (no inner wrapper)", () => {
+    it("preserves automatic accessible-name resolution through the strip", () => {
       render(
         <Dialog defaultOpen>
           <Dialog.Content>
-            <Dialog.Header marker="none">
-              <Dialog.Title>Flat header</Dialog.Title>
-            </Dialog.Header>
-          </Dialog.Content>
-        </Dialog>,
-      );
-      const header = screen
-        .getByRole("dialog", { name: "Flat header" })
-        .querySelector('[data-slot="dialog-header"]') as HTMLElement | null;
-      if (!header) throw new Error("Expected dialog header");
-      expect(header.firstElementChild).toHaveAttribute("data-slot", "dialog-title");
-    });
-
-    it("marker='none' preserves automatic accessible-name resolution via Dialog.Title", () => {
-      render(
-        <Dialog defaultOpen>
-          <Dialog.Content>
-            <Dialog.Header marker="none">
+            <Dialog.Header>
               <Dialog.Title>Auto labelled</Dialog.Title>
             </Dialog.Header>
           </Dialog.Content>
@@ -1356,106 +1357,6 @@ describe("Dialog", () => {
 
     const heading = screen.getByRole("heading", { name: "Heading level three", level: 3 });
     expect(heading.tagName).toBe("H3");
-  });
-});
-
-describe("Dialog body scroll lock (CSS-only)", () => {
-  // Source dialog.css lives at registry/ui/shared/dialog.css; this test reads
-  // the real file and asserts the body-lock rule both exists in source and
-  // takes effect on a live document, so any change to the selector or the
-  // declaration block is caught here. jsdom's CSSOM does not apply rules
-  // nested inside @layer blocks, so the rule is extracted and injected at the
-  // top level for the runtime assertions.
-  const DIALOG_CSS_PATH = resolve(fileURLToPath(import.meta.url), "../../shared/dialog.css");
-  const BODY_LOCK_RULE_RE = /body:has\(dialog\[open\]\)\s*\{[^}]*\}/;
-  let styleElement: HTMLStyleElement | null = null;
-
-  beforeAll(() => {
-    const sourceCss = readFileSync(DIALOG_CSS_PATH, "utf8");
-    const bodyLockRule = sourceCss.match(BODY_LOCK_RULE_RE)?.[0];
-    if (!bodyLockRule) {
-      throw new Error(
-        "dialog.css must declare a body:has(dialog[open]) rule for the scroll lock contract",
-      );
-    }
-    if (!/overflow\s*:\s*hidden/.test(bodyLockRule)) {
-      throw new Error("dialog.css body:has(dialog[open]) rule must set overflow: hidden");
-    }
-    styleElement = document.createElement("style");
-    styleElement.dataset.testSource = "dialog.css#body-lock";
-    styleElement.textContent = bodyLockRule;
-    document.head.appendChild(styleElement);
-  });
-
-  afterAll(() => {
-    styleElement?.remove();
-    styleElement = null;
-  });
-
-  it("locks body overflow while a Dialog is open and releases it on close", async () => {
-    const user = userEvent.setup();
-    const baselineOverflow = getComputedStyle(document.body).overflow;
-    expect(baselineOverflow).not.toBe("hidden");
-
-    render(
-      <Dialog defaultOpen>
-        <Dialog.Content>
-          <Dialog.Title>Scroll lock dialog</Dialog.Title>
-          <Dialog.Close />
-        </Dialog.Content>
-      </Dialog>,
-    );
-
-    const dialog = screen.getByRole("dialog", { name: "Scroll lock dialog" });
-    expect(getComputedStyle(document.body).overflow).toBe("hidden");
-
-    await user.click(screen.getByRole("button", { name: "Close dialog" }));
-    await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"));
-    // fireEvent retained: animationend has no user-event equivalent; presence transitions complete on this event
-    fireEvent.animationEnd(dialog);
-    await waitFor(() => expect(document.body).not.toContainElement(dialog));
-
-    expect(getComputedStyle(document.body).overflow).toBe(baselineOverflow);
-  });
-
-  it("keeps body locked while any of multiple open dialogs remains open", async () => {
-    const user = userEvent.setup();
-    render(
-      <>
-        <Dialog defaultOpen>
-          <Dialog.Content>
-            <Dialog.Title>Outer dialog</Dialog.Title>
-            <Dialog.Close>Close outer</Dialog.Close>
-          </Dialog.Content>
-        </Dialog>
-        <Dialog defaultOpen>
-          <Dialog.Content>
-            <Dialog.Title>Inner dialog</Dialog.Title>
-            <Dialog.Close>Close inner</Dialog.Close>
-          </Dialog.Content>
-        </Dialog>
-      </>,
-    );
-
-    expect(getComputedStyle(document.body).overflow).toBe("hidden");
-
-    const innerDialog = screen.getByRole("dialog", { name: "Inner dialog" });
-    await user.click(screen.getByRole("button", { name: "Close inner" }));
-    await waitFor(() => expect(innerDialog).toHaveAttribute("data-state", "closed"));
-    // fireEvent retained: animationend has no user-event equivalent
-    fireEvent.animationEnd(innerDialog);
-    await waitFor(() => expect(document.body).not.toContainElement(innerDialog));
-
-    expect(getComputedStyle(document.body).overflow).toBe("hidden");
-
-    const outerDialog = screen.getByRole("dialog", { name: "Outer dialog" });
-    await user.click(screen.getByRole("button", { name: "Close outer" }));
-    await waitFor(() => expect(outerDialog).toHaveAttribute("data-state", "closed"));
-    // fireEvent retained: animationend has no user-event equivalent
-    fireEvent.animationEnd(outerDialog);
-    await waitFor(() => expect(document.body).not.toContainElement(outerDialog));
-
-    expect(getComputedStyle(document.body).overflow).not.toBe("hidden");
   });
 });
 
@@ -1636,10 +1537,53 @@ describe("DialogContent corner CSS tokens (CSS-only)", () => {
 });
 
 describe("Dialog.CloseIcon", () => {
-  it("accepts a custom aria-label override", () => {
+  it("renders on every modal dialog without being composed", () => {
     render(
       <Dialog defaultOpen>
         <Dialog.Content>
+          <Dialog.Title>Default close</Dialog.Title>
+          <Dialog.Body>Body content</Dialog.Body>
+        </Dialog.Content>
+      </Dialog>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Default close" });
+    expect(within(dialog).getByRole("button", { name: "Close dialog" })).toHaveAttribute(
+      "data-slot",
+      "dialog-close-icon",
+    );
+  });
+
+  it("is opted out with closeIcon={false}", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content closeIcon={false}>
+          <Dialog.Title>No close icon</Dialog.Title>
+          <Dialog.Body>Body content</Dialog.Body>
+        </Dialog.Content>
+      </Dialog>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "No close icon" });
+    // Absence of a control is the contract; a negative role query is the only
+    // way to state it.
+    expect(within(dialog).queryByRole("button", { name: "Close dialog" })).toBeNull();
+  });
+
+  it("is not rendered on an inline dialog, which is not modal", () => {
+    render(
+      <Dialog open>
+        <Dialog.Content modal={false}>
+          <Dialog.Title>Inline close</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>,
+    );
+    const region = screen.getByRole("group", { name: "Inline close" });
+    expect(within(region).queryByRole("button", { name: "Close dialog" })).toBeNull();
+  });
+
+  it("accepts a custom aria-label override when composed explicitly", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content closeIcon={false}>
           <Dialog.Title>Localized</Dialog.Title>
           <Dialog.CloseIcon aria-label="Zamknij okno" />
         </Dialog.Content>
@@ -1655,7 +1599,6 @@ describe("Dialog.CloseIcon", () => {
       <Dialog defaultOpen>
         <Dialog.Content>
           <Dialog.Title>Click closes</Dialog.Title>
-          <Dialog.CloseIcon />
         </Dialog.Content>
       </Dialog>,
     );
@@ -1670,7 +1613,6 @@ describe("Dialog.CloseIcon", () => {
       <Dialog defaultOpen>
         <Dialog.Content>
           <Dialog.Title>Tabbable</Dialog.Title>
-          <Dialog.CloseIcon />
         </Dialog.Content>
       </Dialog>,
     );
@@ -1678,38 +1620,11 @@ describe("Dialog.CloseIcon", () => {
     await waitFor(() => expect(closeIcon).toHaveFocus());
   });
 
-  it('exposes data-slot="dialog-close-icon"', () => {
-    render(
-      <Dialog defaultOpen>
-        <Dialog.Content>
-          <Dialog.Title>Slotted</Dialog.Title>
-          <Dialog.CloseIcon />
-        </Dialog.Content>
-      </Dialog>,
-    );
-    const closeIcon = screen.getByRole("button", { name: "Close dialog" });
-    expect(closeIcon).toHaveAttribute("data-slot", "dialog-close-icon");
-  });
-
-  it("is opt-in: a dialog without Dialog.CloseIcon has no top-right close button", () => {
-    render(
-      <Dialog defaultOpen>
-        <Dialog.Content>
-          <Dialog.Title>No close icon</Dialog.Title>
-          <Dialog.Body>Body content</Dialog.Body>
-        </Dialog.Content>
-      </Dialog>,
-    );
-    const dialog = screen.getByRole("dialog", { name: "No close icon" });
-    expect(dialog.querySelector('[data-slot="dialog-close-icon"]')).toBeNull();
-    expect(screen.queryByRole("button", { name: "Close dialog" })).toBeNull();
-  });
-
   it("consumer onClick can preventDefault to keep the dialog open", async () => {
     const user = userEvent.setup();
     render(
       <Dialog defaultOpen>
-        <Dialog.Content>
+        <Dialog.Content closeIcon={false}>
           <Dialog.Title>Prevented</Dialog.Title>
           <Dialog.CloseIcon onClick={(e) => e.preventDefault()} />
         </Dialog.Content>
@@ -1725,7 +1640,6 @@ describe("Dialog.CloseIcon", () => {
       <Dialog defaultOpen>
         <Dialog.Content>
           <Dialog.Title>A11y</Dialog.Title>
-          <Dialog.CloseIcon />
         </Dialog.Content>
       </Dialog>,
     );
@@ -1783,7 +1697,6 @@ describe("Dialog focus trap", () => {
             <Dialog.Close>Cancel</Dialog.Close>
             <Dialog.Action>Confirm</Dialog.Action>
           </Dialog.Footer>
-          <Dialog.CloseIcon />
         </Dialog.Content>
       </Dialog>,
     );
@@ -1812,7 +1725,6 @@ describe("Dialog.Title meta eyebrow", () => {
       <Dialog defaultOpen>
         <Dialog.Content>
           <Dialog.Title meta="CONFIRM">Apply Patch</Dialog.Title>
-          <Dialog.CloseIcon />
         </Dialog.Content>
       </Dialog>,
     );

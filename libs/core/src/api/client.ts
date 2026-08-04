@@ -1,4 +1,5 @@
 import { getErrorMessage } from "../errors.js";
+import { redactSecrets, truncateUtf8, utf8ByteLength } from "../redaction.js";
 import { sanitizeTerminalText } from "../review/sanitize-terminal.js";
 import { ApiErrorEnvelopeSchema, ErrorCode } from "../schemas/errors.js";
 import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "./protocol.js";
@@ -15,7 +16,6 @@ import type {
 const RESPONSE_CAPTURE_MAX_BYTES = 64 * 1024;
 const SAFE_MESSAGE_MAX_BYTES = 512;
 const CODE_MAX_BYTES = 128;
-const REDACTED = "[REDACTED]";
 const GENERIC_REMEDIATION = "Review the error and try again.";
 const INVALID_JSON = Symbol("invalid-json");
 
@@ -28,27 +28,6 @@ type ApiErrorMetadata = {
 
 type SafeApiError = ApiError & ApiErrorMetadata;
 
-const ABSOLUTE_PATH_PATTERN =
-  /(^|[\s("'=:\u00a0])((?:~|\/(?:Users|home|private\/var|var\/folders|tmp|opt|etc|usr|bin|sbin|srv|run|root)(?:\/|$)|[A-Za-z]:[\\/](?:Users|home|AppData|ProgramData|Program Files|Windows)(?:[\\/]|$))[^\s"'`<>{},;)]*)/gi;
-const LABELED_PATH_PATTERN =
-  /\b(?:auth(?:entication)?[-_ ]?path|path|executable(?:[-_ ]?path)?|file)\s*[:=]\s*["'`]?\s*(?:~|\/|[A-Za-z]:[\\/]|\\\\)[^\s"'`<>{},;)]*/gi;
-const AUTH_HEADER_PATTERN =
-  /\b(?:authorization|proxy-authorization|cookie|set-cookie)\s*[:=]\s*(?:(?:bearer|basic)\s+)?[^\s,;]+/gi;
-const BEARER_PATTERN = /\b(?:bearer|basic)\s+[^\s,;]+/gi;
-const SECRET_ASSIGNMENT_PATTERN =
-  /\b(?:api(?:[-_ ]?key)|access[-_ ]?token|auth(?:orization)?|credential|password|passwd|secret|token|private[-_ ]?key|client[-_ ]?secret)\b\s*(?:[:=]|\bis\s*)\s*["'`]?[^\s"'`,;)}\]]+/gi;
-const SECRET_FLAG_PATTERN =
-  /--?(?:api(?:[-_ ]?key)|auth(?:orization)?|bearer|cookie|credential|password|secret|token)\s+(?:["'`][^"'`]+["'`]|[^\s]+)/gi;
-const ENV_SECRET_PATTERN =
-  /\b[A-Z][A-Z0-9]*(?:[_-](?:API[_-]?KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH(?:ORIZATION)?|COOKIE))\b\s*=\s*[^\s,;]+/g;
-const TOKEN_PATTERN =
-  /\b(?:sk|pk|rk|ghp|github_pat|AIza|ya29|xox[baprs]-)[A-Za-z0-9._~+\x2f-]{8,}=*/gi;
-const PRIVATE_KEY_PATTERN =
-  /-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]*?-----END [A-Z ]+PRIVATE KEY-----/gi;
-const ACCOUNT_ASSIGNMENT_PATTERN =
-  /\b(?:account(?:[-_ ]?id)?|workspace(?:[-_ ]?id)?|organization(?:[-_ ]?id)?|org(?:[-_ ]?id)?|tenant(?:[-_ ]?id)?|project(?:[-_ ]?id)?|subscription(?:[-_ ]?id)?)\b\s*(?:[:=]|\bis\s*)\s*["'`]?[^\s"'`,;)}\]]+/gi;
-const ACCOUNT_IDENTIFIER_PATTERN =
-  /\b(?:acct|account|workspace|organization|org|tenant|project|subscription)[._-][A-Za-z0-9._-]{4,}\b/gi;
 const SENSITIVE_HEADER_PATTERN =
   /\b(?:x[-_](?:api[-_]?key|auth(?:orization)?|access[-_]?token|credential|secret)|api[-_]?key|access[-_]?token)\s*[:=]/i;
 // Validators and HTTP envelopes can carry arbitrary provider/server output.
@@ -78,55 +57,8 @@ const BODY_SECRET_SCAN_MAX_DEPTH = 16;
 const BODY_SECRET_SCAN_MAX_NODES = 512;
 const BODY_SECRET_VALUE_MAX_COUNT = 64;
 
-function utf8ByteLength(value: string): number {
-  return new TextEncoder().encode(value).byteLength;
-}
-
-function truncateUtf8(value: string, maxBytes: number): string {
-  if (utf8ByteLength(value) <= maxBytes) return value;
-
-  let output = "";
-  let bytes = 0;
-  for (const character of value) {
-    const characterBytes = utf8ByteLength(character);
-    if (bytes + characterBytes > maxBytes) break;
-    output += character;
-    bytes += characterBytes;
-  }
-  return output;
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function redact(value: string, sensitiveValues: readonly string[]): string {
-  let redacted = value;
-
-  // Exact configured values are replaced before generic patterns. This keeps
-  // short-lived credentials safe even when they do not have a recognizable
-  // token prefix and ensures redaction happens before any byte bound.
-  for (const sensitiveValue of [...sensitiveValues].sort((a, b) => b.length - a.length)) {
-    if (sensitiveValue.length === 0) continue;
-    redacted = redacted.replace(new RegExp(escapeRegExp(sensitiveValue), "g"), REDACTED);
-  }
-
-  return redacted
-    .replace(PRIVATE_KEY_PATTERN, REDACTED)
-    .replace(AUTH_HEADER_PATTERN, REDACTED)
-    .replace(BEARER_PATTERN, REDACTED)
-    .replace(SECRET_ASSIGNMENT_PATTERN, REDACTED)
-    .replace(SECRET_FLAG_PATTERN, REDACTED)
-    .replace(ENV_SECRET_PATTERN, REDACTED)
-    .replace(TOKEN_PATTERN, REDACTED)
-    .replace(ACCOUNT_ASSIGNMENT_PATTERN, REDACTED)
-    .replace(ACCOUNT_IDENTIFIER_PATTERN, REDACTED)
-    .replace(LABELED_PATH_PATTERN, REDACTED)
-    .replace(ABSOLUTE_PATH_PATTERN, `$1${REDACTED}`);
 }
 
 function sanitizeText(
@@ -135,7 +67,7 @@ function sanitizeText(
   maxBytes: number,
 ): string | undefined {
   if (typeof value !== "string") return undefined;
-  const sanitized = sanitizeTerminalText(redact(value, sensitiveValues))
+  const sanitized = sanitizeTerminalText(redactSecrets(value, sensitiveValues))
     .replace(/\s+/g, " ")
     .trim();
   if (sanitized.length === 0) return undefined;

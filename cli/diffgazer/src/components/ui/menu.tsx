@@ -159,7 +159,9 @@ function MenuRoot<Id extends string = string>({
 
   useInput(
     (input) => {
-      if (input.length !== 1) return;
+      // j/k move the highlight in every vertical list, so a menu row can never
+      // claim them as a hotkey and have one keypress both move and activate.
+      if (input.length !== 1 || input === "j" || input === "k") return;
       for (const item of items) {
         if (item.hotkey == null || String(item.hotkey) !== input) continue;
         if (!navigation.findSelectableItem(item.id)) continue;

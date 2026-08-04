@@ -17,7 +17,8 @@ export interface FailureViewProps {
   title: string;
   message: string;
   primary: FailureAction;
-  secondary: FailureAction;
+  /** Omit when the dead end has one way forward; Esc then takes the primary action. */
+  secondary?: FailureAction;
   /** Error is the loud tone and announces itself; warning is a gate the user can pass. */
   tone?: "error" | "warning";
   /** Keys scope id: one per gate, shared by the screens that gate mutually excludes. */
@@ -28,10 +29,11 @@ export interface FailureViewProps {
 }
 
 /**
- * The app's one dead-end screen: viewfinder frame, one sentence of cause, and
- * always two ways forward. ←/→ move between the actions, Enter/Space activates,
- * Esc takes the secondary one. The frame stays at rest — a failure view is not
- * a focus target, so it does not borrow the accent focused corners.
+ * The app's one dead-end screen: a resting panel, one sentence of cause, and one
+ * or two ways forward. ←/→ move between the actions, Enter/Space activates, Esc
+ * takes the secondary one — or the primary when it is the only action. The panel
+ * stays at rest — a failure view is not a focus target, so it never wears the
+ * focused corner brackets.
  */
 export function FailureView({
   title,
@@ -45,25 +47,27 @@ export function FailureView({
 }: FailureViewProps) {
   useScope(scope);
   const focusFallbackRef = useRef<HTMLDivElement>(null);
-  const actions = [primary, secondary];
+  const actions = secondary ? [primary, secondary] : [primary];
+  const escapeAction = secondary ?? primary;
 
   const footer = useActionRowNavigation({
     enabled: true,
     actionCount: actions.length,
-    disabledActions: [primary.disabled === true, secondary.disabled === true],
+    disabledActions: actions.map((action) => action.disabled === true),
     defaultZone: "actions",
     disabledFocusFallbackRef: focusFallbackRef,
     onAction: (index) => actions[index]?.onAction(),
   });
 
-  useKey("Escape", secondary.onAction);
+  useKey("Escape", escapeAction.onAction);
 
-  const focusedLabel = footer.focusedIndex === 0 ? primary.label : secondary.label;
+  const focusedLabel = actions[footer.focusedIndex]?.label ?? primary.label;
   const isError = tone === "error";
 
   usePageFooter({
+    // A lone action has nowhere to move to, so the row hint stays off that screen.
     shortcuts: [
-      { key: "←/→", label: "Move Action" },
+      ...(secondary ? [{ key: "←/→", label: "Move Action" }] : []),
       { key: "Enter/Space", label: focusedLabel, disabled: footer.isFocusedActionDisabled },
     ],
     rightShortcuts: footerRightShortcuts,
@@ -72,7 +76,6 @@ export function FailureView({
   return (
     <div className="flex flex-1 items-center justify-center p-4">
       <Panel
-        frame="viewfinder"
         ref={focusFallbackRef}
         tabIndex={-1}
         className="w-full max-w-md p-6 text-center focus:outline-none"
@@ -83,7 +86,10 @@ export function FailureView({
         <div role={isError ? "alert" : undefined}>
           <TitleTag
             className={cn(
-              "mb-4 text-lg font-bold",
+              "mb-4 font-bold",
+              // The route-level dead end owns the page heading and reads at page scale;
+              // a failure inside a page stays at panel scale.
+              TitleTag === "h1" ? "text-2xl" : "text-lg",
               isError ? "text-error-text" : "text-warning-text",
             )}
           >
@@ -104,16 +110,18 @@ export function FailureView({
           >
             {primary.label}
           </Button>
-          <Button
-            {...footer.getActionProps(1)}
-            variant="secondary"
-            bracket
-            disabled={secondary.disabled}
-            highlighted={footer.inActions && footer.focusedIndex === 1}
-            onClick={secondary.onAction}
-          >
-            {secondary.label}
-          </Button>
+          {secondary && (
+            <Button
+              {...footer.getActionProps(1)}
+              variant="secondary"
+              bracket
+              disabled={secondary.disabled}
+              highlighted={footer.inActions && footer.focusedIndex === 1}
+              onClick={secondary.onAction}
+            >
+              {secondary.label}
+            </Button>
+          )}
         </div>
       </Panel>
     </div>
