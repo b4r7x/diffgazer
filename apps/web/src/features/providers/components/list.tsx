@@ -244,7 +244,7 @@ export function ProviderList({
 
       <ScrollArea
         keyboardScrollable={false}
-        className="flex-1 pb-2 max-md:overflow-x-visible max-md:overflow-y-visible"
+        className="flex-1 max-md:overflow-x-visible max-md:overflow-y-visible"
       >
         {rowCount > 0 ? (
           <NavigationList

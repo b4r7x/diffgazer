@@ -66,7 +66,7 @@
     },
     {
       "path": "registry/ui/dialog/dialog-body.tsx",
-      "content": "\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for dialog body. */\nexport interface DialogBodyProps extends ComponentProps<\"div\"> {}\n\n/** Scrollable content. */\nexport function DialogBody({ className, ...props }: DialogBodyProps) {\n  return (\n    <div\n      data-slot=\"dialog-body\"\n      className={cn(\"flex-1 overflow-y-auto overscroll-contain px-5 py-5\", className)}\n      {...props}\n    />\n  );\n}\n",
+      "content": "\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** Props for dialog body. */\nexport interface DialogBodyProps extends ComponentProps<\"div\"> {}\n\n/** Scrollable content. */\nexport function DialogBody({ className, ...props }: DialogBodyProps) {\n  return (\n    <div\n      data-slot=\"dialog-body\"\n      // scroll-py mirrors py: focus-driven scrolling (scrollIntoView, Tab) aligns\n      // a control flush with the clipped padding-box edge, cutting any focus ring\n      // painted outside its border box; scroll-padding keeps it at the resting inset.\n      className={cn(\"flex-1 overflow-y-auto overscroll-contain px-5 py-5 scroll-py-5\", className)}\n      {...props}\n    />\n  );\n}\n",
       "type": "registry:ui",
       "target": "@ui/dialog/dialog-body.tsx"
     },

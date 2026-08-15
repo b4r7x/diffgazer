@@ -131,7 +131,7 @@ function SettingsThemeEditor({
   useKey("Escape", handleCancel, { enabled: !isSaving });
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6 scroll-py-6">
       {/* Two full-height columns from md up; below md they stack full width. */}
       <div className="grid min-h-full w-full grid-cols-1 gap-6 md:grid-cols-[2fr_3fr]">
         {/* The app repoints --action to blue (theme-overrides.css), which turns

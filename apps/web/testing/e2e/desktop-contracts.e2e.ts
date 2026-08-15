@@ -370,3 +370,73 @@ test("opening a dialog moves nothing on the page and keeps its filter chips comp
     expect(height).toBeLessThanOrEqual(28);
   }
 });
+
+/**
+ * Enough rows to overflow the list's 50dvh cap at the desktop viewport; with the
+ * two-model fixture the scroll contract below would pass without ever scrolling.
+ */
+const LONG_MODEL_DISCOVERY_RESPONSE = ConfigurationModelsResponseSchema.parse({
+  ...MODEL_DISCOVERY_RESPONSE,
+  models: Array.from({ length: 14 }, (_, index) => ({
+    id: `gemini-row-${index}`,
+    name: `Gemini Row ${index}`,
+    description: "Scroll fixture",
+    tier: index % 2 === 0 ? "free" : "paid",
+  })),
+});
+
+/** The focused row's clearance from the model-list scrollport, in one synchronous read. */
+async function readFocusedRowClearance(page: Page) {
+  return page.evaluate(() => {
+    const scroller = document.querySelector('[data-layout-region="model-list"]');
+    const row = document.activeElement;
+    if (!scroller || !(row instanceof HTMLElement)) {
+      throw new Error("model-list scroller or focused row missing");
+    }
+    const scrollerBox = scroller.getBoundingClientRect();
+    const rowBox = row.getBoundingClientRect();
+    return {
+      role: row.getAttribute("role"),
+      topClearance: rowBox.top - scrollerBox.top,
+      bottomClearance: scrollerBox.bottom - rowBox.bottom,
+      overflows: scroller.scrollHeight > scroller.clientHeight,
+    };
+  });
+}
+
+test("arrow navigation keeps the highlighted model row's focus ring unclipped", async ({
+  page,
+}) => {
+  await mockAppApi(page);
+  await page.route("**/api/config/providers/*/models", (route) =>
+    route.fulfill({ json: LONG_MODEL_DISCOVERY_RESPONSE }),
+  );
+  await page.goto("/settings/providers");
+
+  await page.getByRole("option", { name: /Google Gemini/ }).click();
+  await page.getByRole("button", { name: /Select model/i }).click();
+  const dialog = page.getByRole("dialog", { name: "Select Model" });
+  const radios = dialog.getByRole("radiogroup", { name: "Available models" }).getByRole("radio");
+  await expect(radios).toHaveCount(14);
+  // The dialog opens with the list zone active and the first row focused, so
+  // 13 steps reach the last row and 13 more return, never crossing a boundary.
+  await expect(radios.first()).toBeFocused();
+
+  // Navigation scrolls rows via scrollIntoView({block: "nearest"}), which without
+  // scroll-padding parks them flush with the clipped edge and cuts the focus ring
+  // painted 1px outside the border box. The contract: after every step the row
+  // keeps at least ring-width clearance on both clipped edges.
+  const RING_WIDTH = 1;
+  const walk = async (key: "ArrowDown" | "ArrowUp", steps: number) => {
+    for (let step = 0; step < steps; step += 1) {
+      await page.keyboard.press(key);
+      const clearance = await readFocusedRowClearance(page);
+      expect(clearance.role).toBe("radio");
+      expect(clearance.overflows).toBe(true);
+      expect(clearance.topClearance).toBeGreaterThanOrEqual(RING_WIDTH);
+      expect(clearance.bottomClearance).toBeGreaterThanOrEqual(RING_WIDTH);
+    }
+  };
+  await walk("ArrowDown", 13);
+  await walk("ArrowUp", 13);
+});

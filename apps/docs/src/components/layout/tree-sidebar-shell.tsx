@@ -16,7 +16,13 @@ export function TreeSidebarShell({
     // (guarded by sidebar-navigation.test).
     <Sidebar variant="tree" embedded aria-label="Documentation tree" className="h-full w-full">
       <SidebarContent className="overflow-hidden p-0">
-        <ScrollArea className="h-full" data-scroll-restoration-id={SIDEBAR_SCROLL_RESTORATION_ID}>
+        {/* scroll-pt/pb mirror the inner padding: the active-item scrollIntoView
+            otherwise parks a row flush with the clipped edge, cutting its 4px
+            focus-ring outset. Restoration sets scrollTop directly and is unaffected. */}
+        <ScrollArea
+          className="h-full scroll-pt-2 scroll-pb-4"
+          data-scroll-restoration-id={SIDEBAR_SCROLL_RESTORATION_ID}
+        >
           <div className="px-3 pt-2 pb-4" ref={innerRef}>
             {children}
           </div>

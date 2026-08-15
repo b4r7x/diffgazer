@@ -103,7 +103,9 @@ export function IssueDetailsPane({
             aria-label="Issue details"
             keyboardScrollable={false}
             tabIndex={-1}
-            className="flex-1 min-h-0 pr-2 focus:outline-none"
+            // scroll-py keeps the fix-plan checkboxes' 1px focus ring inside the
+            // clipped edge when Tab-focus scrolls a row flush with it.
+            className="flex-1 min-h-0 pr-2 scroll-py-1 focus:outline-none"
           >
             <IssueHeader
               title={issue.title}

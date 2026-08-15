@@ -69,11 +69,12 @@ export function CardLayout({
 
         {/* Plain overflow, not ScrollArea: ScrollArea takes a tab stop when it
             can keyboard-scroll, which would land between the card's controls in
-            the traversal order. The browser scrolls focused rows into view. */}
+            the traversal order. The browser scrolls focused rows into view;
+            scroll-py keeps their 1px focus ring clear of the clipped edge. */}
         <Panel.Content
           spacing="none"
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto transition-opacity",
+            "min-h-0 flex-1 overflow-y-auto scroll-py-1 transition-opacity",
             contentInactive && "opacity-60",
           )}
         >

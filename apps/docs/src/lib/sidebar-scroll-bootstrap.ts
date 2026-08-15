@@ -62,8 +62,15 @@ export function sidebarScrollBootstrap(config: SidebarScrollBootstrapConfig): vo
 
   const activeRect = activePage.getBoundingClientRect();
   const scrollAreaRect = scrollArea.getBoundingClientRect();
+  // Visible means inside the scrollport inset by scroll-padding ("auto" → 0): the
+  // hydration effect's `scrollIntoView({ block: "nearest" })` targets that inset
+  // region, so an item left in the padding band here would move again after paint.
+  const scrollAreaStyle = getComputedStyle(scrollArea);
+  const scrollPaddingTop = parseFloat(scrollAreaStyle.scrollPaddingTop) || 0;
+  const scrollPaddingBottom = parseFloat(scrollAreaStyle.scrollPaddingBottom) || 0;
   const isActivePageVisible =
-    activeRect.top >= scrollAreaRect.top && activeRect.bottom <= scrollAreaRect.bottom;
+    activeRect.top >= scrollAreaRect.top + scrollPaddingTop &&
+    activeRect.bottom <= scrollAreaRect.bottom - scrollPaddingBottom;
 
   if (!isActivePageVisible) {
     const activeOffset = activeRect.top - scrollAreaRect.top + scrollArea.scrollTop;

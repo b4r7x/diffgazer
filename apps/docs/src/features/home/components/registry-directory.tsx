@@ -49,7 +49,9 @@ export function RegistryDirectory({ libraries }: { libraries: HomeLibrary[] }) {
     <nav
       ref={listRef}
       aria-label="Documentation packages"
-      className="px-2 py-1 sm:p-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+      // scroll-py-2 covers FOCUS_RING_CLASS's 4px outset (2px outline, 2px offset)
+      // so navigation never parks a row with its ring past the clipped edge.
+      className="px-2 py-1 sm:p-2 scroll-py-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
     >
       {libraries.map((library) => (
         <Link

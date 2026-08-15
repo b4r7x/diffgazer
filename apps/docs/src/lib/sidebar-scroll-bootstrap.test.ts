@@ -43,8 +43,10 @@ function rect({ top, height }: { top: number; height: number }): DOMRect {
   };
 }
 
-// The scroll area spans 100..500. An active page at 200 is one the reader can
-// already see; one at 700 sits below the fold and has to be scrolled to.
+// The scroll area spans 100..500, inset to 108..484 by the shell's scroll-padding
+// (`scroll-pt-2 scroll-pb-4` in tree-sidebar-shell). An active page at 200 is one
+// the reader can already see; one at 700 sits below the fold and has to be
+// scrolled to.
 const VISIBLE_PAGE_TOP = 200;
 const OFFSCREEN_PAGE_TOP = 700;
 
@@ -72,6 +74,8 @@ function renderSidebar({
   sidebar.append(scrollArea);
   document.body.append(sidebar);
 
+  scrollArea.style.scrollPaddingTop = "8px";
+  scrollArea.style.scrollPaddingBottom = "16px";
   Object.defineProperties(scrollArea, {
     clientHeight: { configurable: true, value: 400 },
     scrollHeight: { configurable: true, value: 1_200 },
@@ -112,6 +116,26 @@ describe("sidebarScrollBootstrap", () => {
     sidebarScrollBootstrap(SIDEBAR_SCROLL_BOOTSTRAP_CONFIG);
 
     expect(scrollArea.scrollTop).toBe(0);
+  });
+
+  it("centers an active page parked inside the bottom scroll-padding band", () => {
+    // 455..495 fits the raw scrollport but crosses the 484 inset bottom; the
+    // hydration `nearest` scroll would nudge it after paint if left alone here.
+    const { scrollArea } = renderSidebar({ activePageTop: 455 });
+
+    sidebarScrollBootstrap(SIDEBAR_SCROLL_BOOTSTRAP_CONFIG);
+
+    expect(scrollArea.scrollTop).toBe(175);
+  });
+
+  it("centers an active page parked inside the top scroll-padding band", () => {
+    // 104..144 fits the raw scrollport but crosses the 108 inset top.
+    const { scrollArea } = renderSidebar({ activePageTop: 104 });
+    scrollArea.scrollTop = 300;
+
+    sidebarScrollBootstrap(SIDEBAR_SCROLL_BOOTSTRAP_CONFIG);
+
+    expect(scrollArea.scrollTop).toBe(124);
   });
 
   it("reports a settled sidebar even when nothing had to move", () => {
