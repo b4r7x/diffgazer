@@ -10,7 +10,7 @@ Composable, scoped keyboard navigation hooks for React `>=19.2.0`.
 
 | Path | Standalone hooks | Provider-backed APIs |
 |------|-----------------|---------------------|
-| Manual copy / shadcn | Not available; use source checkout or a local registry preview | Not available |
+| Manual copy / shadcn (future) | Gated until the hosted registry is live — copy the hook source from this checkout | Not available |
 | `dgadd` CLI | `pnpm exec dgadd add keys/navigation` | Not available |
 | npm package | `npm install @diffgazer/keys` | `npm install @diffgazer/keys` |
 

@@ -83,9 +83,9 @@ return (
         "The rectangle is measured with getBoundingClientRect relative to the container. ResizeObserver and MutationObserver keep it current when layout or children change.",
     },
     {
-      title: "Selector Contract",
+      title: "Matching Contract",
       content:
-        "Items must expose data-value matching activeValue. Values are escaped before building the selector, so special characters in values are supported by modern browsers.",
+        "Items must expose data-value matching activeValue. The hook scans the container's [data-value] descendants and compares each attribute to activeValue by exact string equality, so any value is supported without escaping.",
     },
   ],
   tags: ["hook", "indicator", "measurement"],

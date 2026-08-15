@@ -3,6 +3,7 @@
 import {
   type AvatarProps,
   Avatar as AvatarRoot,
+  type AvatarSize,
   type AvatarStatus,
   avatarVariants,
 } from "./avatar";
@@ -18,7 +19,7 @@ const Avatar = Object.assign(AvatarRoot, {
   Indicator: AvatarIndicator,
 });
 
-export { Avatar, avatarVariants, type AvatarProps, type AvatarStatus };
+export { Avatar, avatarVariants, type AvatarProps, type AvatarSize, type AvatarStatus };
 export { AvatarImage, type AvatarImageProps };
 export { AvatarFallback, type AvatarFallbackProps };
 export { AvatarGroup, avatarGroupSpacingVariants, type AvatarGroupProps };

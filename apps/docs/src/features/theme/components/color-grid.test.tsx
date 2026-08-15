@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -19,14 +17,17 @@ function renderColorGrid() {
   );
 }
 
-function primitiveNamesFromCopyButtons(container: HTMLElement): string[] {
+/** The swatch's status region, mounted (and empty) from first paint. */
+function liveRegionOf(swatchButton: HTMLElement): HTMLElement {
+  const region = swatchButton.querySelector('[aria-live="polite"]');
+  if (!(region instanceof HTMLElement)) throw new Error("Swatch has no live status region");
+  return region;
+}
+
+function tokenNamesInVisualOrder(container: HTMLElement): string[] {
   return within(container)
     .getAllByRole("button")
-    .map((button) => {
-      const match = (button.getAttribute("aria-label") ?? "").match(/Copy (--[a-z0-9-]+)/);
-      return match?.[1];
-    })
-    .filter((name): name is string => name !== undefined);
+    .map((button) => within(button).getByText(/^--/).textContent ?? "");
 }
 
 const sampleSwatch = THEME_DOCS_COLOR_GROUPS[0]?.tokens[0];
@@ -50,11 +51,8 @@ describe("ColorGrid", () => {
       expect(screen.getByText(token.name)).toBeInTheDocument();
     }
 
-    const primitivesSection = screen.getByRole("heading", { name: "Primitives" }).parentElement;
-    if (primitivesSection === null) throw new Error("Primitives heading has no parent section");
-    expect(primitiveNamesFromCopyButtons(primitivesSection)).toEqual([
-      ...THEME_DOCS_COLOR_GRID_ORDER,
-    ]);
+    const primitives = screen.getByRole("region", { name: "Primitives" });
+    expect(tokenNamesInVisualOrder(primitives)).toEqual([...THEME_DOCS_COLOR_GRID_ORDER]);
   });
 
   it("copies the swatch CSS variable and shows success feedback", async () => {
@@ -69,7 +67,9 @@ describe("ColorGrid", () => {
     await user.click(swatchButton);
 
     expect(writeText).toHaveBeenCalledWith(`var(${sampleSwatch.name})`);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Copied" })).toBeInTheDocument());
+    await waitFor(() => expect(liveRegionOf(swatchButton)).toHaveTextContent("Copied!"));
+    // The control keeps its identity while it reports the result.
+    expect(swatchButton).toHaveAccessibleName(`Copy ${sampleSwatch.name} CSS variable`);
   });
 
   it("shows accessible feedback when clipboard copy fails", async () => {
@@ -81,11 +81,14 @@ describe("ColorGrid", () => {
     const swatchButton = screen.getByRole("button", {
       name: `Copy ${sampleSwatch.name} CSS variable`,
     });
+    // The region exists and is empty before the copy, so assistive technology has
+    // it registered by the time the failure text lands in it.
+    const status = liveRegionOf(swatchButton);
+    expect(status).toBeEmptyDOMElement();
+
     await user.click(swatchButton);
 
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Copy failed" })).toBeInTheDocument(),
-    );
-    expect(screen.getByText("Copy failed")).toBeInTheDocument();
+    await waitFor(() => expect(status).toHaveTextContent("Copy failed"));
+    expect(swatchButton).toHaveAccessibleName(`Copy ${sampleSwatch.name} CSS variable`);
   });
 });

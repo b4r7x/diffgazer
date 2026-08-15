@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { hashLocalConformanceIdentity } from "./discovery.js";
 import {
   assertAllGateObservationsPresent,
+  buildLocalConformanceIdentity,
   canProduceLocalReadyEvidence,
+  isLocalConformanceReady,
   isLocalHttpLiveProbeOptIn,
   isLocalRuntimeReachable,
   LOCAL_HTTP_GATE_IDS,
@@ -31,15 +33,17 @@ describe("REQ-087 local HTTP conformance fixtures", () => {
 
     const result = await runLocalHttpMockGateSuite(fixture);
     expect(result.identityHash).toBeTruthy();
-    expect(result.expectedIdentityHash).toBe(result.identityHash);
+    expect(result.expectedIdentityHash).toBe(
+      hashLocalConformanceIdentity(buildLocalConformanceIdentity(fixture)),
+    );
 
-    const mutated = hashLocalConformanceIdentity({
+    const mismatchedHash = hashLocalConformanceIdentity({
       productId: fixture.productId,
       normalizedEndpoint: fixture.endpoint,
       runtime: { identity: fixture.runtimeIdentity, version: "mutated-version" },
       modelId: fixture.modelId,
     });
-    expect(mutated).not.toBe(result.identityHash);
+    expect(isLocalConformanceReady(result.gates, result.identityHash, mismatchedHash)).toBe(false);
   });
 
   it("never reports ready when any gate observation fails", async () => {
@@ -48,18 +52,16 @@ describe("REQ-087 local HTTP conformance fixtures", () => {
     if (!fixture) return;
 
     const result = await runLocalHttpMockGateSuite(fixture);
-    const failingGate = result.gates.find((gate) => gate.gate === "schema-valid-review");
-    expect(failingGate?.status).toBe("passed");
+    const failingGates = result.gates.map((gate) =>
+      gate.gate === "abort-closure" ? { ...gate, status: "failed" as const } : gate,
+    );
 
-    const synthetic = {
-      ...result,
-      gates: result.gates.map((gate) =>
-        gate.gate === "abort-closure" ? { ...gate, status: "failed" as const } : gate,
-      ),
-      ready: false,
-    };
-    expect(synthetic.ready).toBe(false);
-    expect(canProduceLocalReadyEvidence(synthetic)).toBe(false);
+    expect(
+      isLocalConformanceReady(failingGates, result.identityHash, result.expectedIdentityHash),
+    ).toBe(false);
+    expect(canProduceLocalReadyEvidence({ ...result, gates: failingGates, ready: false })).toBe(
+      false,
+    );
   });
 });
 

@@ -7,13 +7,15 @@ vi.mock("../terminal.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../terminal.js")>();
   return {
     ...actual,
+    error: vi.fn(),
     info: vi.fn(),
     heading: vi.fn(),
     newline: vi.fn(),
-    isSilentMode: () => true,
+    isSilentMode: vi.fn(() => true),
   };
 });
 
+import * as terminal from "../terminal.js";
 import { info } from "../terminal.js";
 import { type DiffWorkflowFile, runDiffWorkflow } from "./diff.js";
 
@@ -48,6 +50,51 @@ describe("runDiffWorkflow", () => {
       upToDateMessage: "All items are up to date.",
     });
   }
+
+  it("builds scan context once for the whole invocation", () => {
+    let scanBuilds = 0;
+    const scan = { loaded: true };
+    const filesByName = {
+      button: [
+        {
+          itemName: "button",
+          relativePath: "button.tsx",
+          localPath: writeLocal("button.tsx", "same\n"),
+          registryContent: "same\n",
+        },
+      ],
+      card: [
+        {
+          itemName: "card",
+          relativePath: "card.tsx",
+          localPath: writeLocal("card.tsx", "same\n"),
+          registryContent: "same\n",
+        },
+      ],
+    };
+
+    runDiffWorkflow({
+      cwd: tempDir,
+      requestedNames: [],
+      requireConfig: () => null,
+      createScanContext: () => {
+        scanBuilds += 1;
+        return scan;
+      },
+      resolveDefaultNames: () => Object.keys(filesByName),
+      validateRequestedNames: (_names, ctx) => {
+        expect(ctx.scan).toBe(scan);
+      },
+      resolveFilesForName: ({ name, scan: built }) => {
+        expect(built).toBe(scan);
+        return filesByName[name as keyof typeof filesByName] ?? [];
+      },
+      noInstalledMessage: "No installed items found.",
+      upToDateMessage: "All items are up to date.",
+    });
+
+    expect(scanBuilds).toBe(1);
+  });
 
   function infoMessages(): string[] {
     return vi.mocked(info).mock.calls.map(([msg]) => msg);
@@ -119,5 +166,40 @@ describe("runDiffWorkflow", () => {
     run({});
 
     expect(infoMessages()).toContain("No installed items found.");
+  });
+
+  it("compares in-memory local content without requiring a scratch file", () => {
+    run({
+      button: [
+        {
+          itemName: "button",
+          relativePath: "button.css",
+          localContent: "installed chunk\n",
+          registryContent: "upstream chunk\n",
+        },
+      ],
+    });
+
+    expect(infoMessages()).toContain("Summary: 1 changed file(s).");
+  });
+
+  it("strips terminal control bytes from diff output", () => {
+    const hostile = "safe\x1b]0;evil\x1b\\tail\n";
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.mocked(terminal.isSilentMode).mockReturnValueOnce(false);
+    run({
+      button: [
+        {
+          itemName: "button",
+          relativePath: "button.tsx",
+          localContent: hostile,
+          registryContent: "upstream\n",
+        },
+      ],
+    });
+    const printed = logSpy.mock.calls.map(([line]) => String(line)).join("\n");
+    expect(printed).not.toContain("\x1b]0;");
+    expect(printed).toContain("safetail");
+    logSpy.mockRestore();
   });
 });

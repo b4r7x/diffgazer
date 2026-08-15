@@ -243,6 +243,93 @@ describe("validate-registry-metadata", () => {
     expect(stdout).toContain("[ui] registry metadata OK");
   });
 
+  it('rejects meta.client true when no source file starts with "use client"', () => {
+    const root = createKeysRequiredPeerFixture();
+    const registryPath = resolve(root, "registry/registry.json");
+    const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
+    const helper = registry.items.find((item: { name?: string }) => item.name === "helper");
+    helper.meta = { client: true };
+    writeJson(registryPath, registry);
+
+    const { status, stderr } = runValidator(root);
+
+    expect(status).not.toBe(0);
+    expect(stderr).toContain(
+      'helper declares meta.client but no source file starts with "use client"',
+    );
+  });
+
+  it("accepts a client directive after a BOM and license comments", () => {
+    const root = createKeysRequiredPeerFixture();
+    const registryPath = resolve(root, "registry/registry.json");
+    const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
+    const helper = registry.items.find((item: { name?: string }) => item.name === "helper");
+    helper.meta = { client: true };
+    writeJson(registryPath, registry);
+    writeFile(
+      resolve(root, "registry/lib/helper.ts"),
+      "﻿/* license */\n// generated\n'use client';\nexport const helper = 'helper';\n",
+    );
+
+    const { status } = runValidator(root);
+
+    expect(status).toBe(0);
+  });
+
+  it("rejects an expression that only prefixes the client directive", () => {
+    const root = createKeysRequiredPeerFixture();
+    const registryPath = resolve(root, "registry/registry.json");
+    const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
+    const helper = registry.items.find((item: { name?: string }) => item.name === "helper");
+    helper.meta = { client: true };
+    writeJson(registryPath, registry);
+    writeFile(
+      resolve(root, "registry/lib/helper.ts"),
+      "\"use client\".toString();\nexport const helper = 'helper';\n",
+    );
+
+    const { status, stderr } = runValidator(root);
+
+    expect(status).not.toBe(0);
+    expect(stderr).toContain(
+      'helper declares meta.client but no source file starts with "use client"',
+    );
+  });
+
+  it("rejects a member expression continued after a line break", () => {
+    const root = createKeysRequiredPeerFixture();
+    const registryPath = resolve(root, "registry/registry.json");
+    const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
+    const helper = registry.items.find((item: { name?: string }) => item.name === "helper");
+    helper.meta = { client: true };
+    writeJson(registryPath, registry);
+    writeFile(
+      resolve(root, "registry/lib/helper.ts"),
+      "\"use client\"\n.toString();\nexport const helper = 'helper';\n",
+    );
+
+    const { status } = runValidator(root);
+
+    expect(status).not.toBe(0);
+  });
+
+  it("rejects a binary in expression continued after a line break", () => {
+    const root = createKeysRequiredPeerFixture();
+    const registryPath = resolve(root, "registry/registry.json");
+    const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
+    const helper = registry.items.find((item: { name?: string }) => item.name === "helper");
+    helper.meta = { client: true };
+    writeJson(registryPath, registry);
+    writeFile(
+      resolve(root, "registry/lib/helper.ts"),
+      "\"use client\"\nin obj;\nexport const helper = 'helper';\n",
+    );
+
+    const { status } = runValidator(root);
+
+    expect(status).not.toBe(0);
+  });
+
   it("rejects re-flagging the keys peer optional when a public item imports keys hooks", () => {
     const { status, stderr } = runValidator(createKeysOptionalFlagFixture());
 
@@ -373,6 +460,82 @@ describe("validate-registry-metadata", () => {
 
     expect(status).not.toBe(0);
     expect(stderr).toContain(`registry/lib/helper.ts reads ${token}`);
+  });
+
+  it.each([
+    {
+      crossing: "a render-function child",
+      source: [
+        'import { Widget } from "@/components/ui/widget";',
+        "export default function Example() {",
+        "  return <Widget>{(props) => <a {...props}>go</a>}</Widget>;",
+        "}",
+        "",
+      ].join("\n"),
+    },
+    {
+      crossing: "a JSX event handler",
+      source: [
+        "export default function Example() {",
+        '  return <button type="button" onClick={() => undefined} />;',
+        "}",
+        "",
+      ].join("\n"),
+    },
+  ])('rejects an example that passes $crossing without "use client"', ({ crossing, source }) => {
+    const root = createKeysRequiredPeerFixture();
+    writeExample(root, "widget-boundary.tsx", source);
+
+    const { status, stderr } = runValidator(root);
+
+    expect(status).not.toBe(0);
+    expect(stderr).toContain(
+      `registry/examples/widget/widget-boundary.tsx passes ${crossing} but omits "use client"`,
+    );
+  });
+
+  it("accepts a boundary-crossing example that declares the directive", () => {
+    const root = createKeysRequiredPeerFixture();
+    writeExample(
+      root,
+      "widget-boundary.tsx",
+      [
+        '"use client";',
+        "",
+        "export default function Example() {",
+        '  return <button type="button" onClick={() => undefined} />;',
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const { status, stdout } = runValidator(root);
+
+    expect(status).toBe(0);
+    expect(stdout).toContain("[ui] registry metadata OK");
+  });
+
+  it("accepts an example whose only JSX handler lives inside a code sample string", () => {
+    const root = createKeysRequiredPeerFixture();
+    writeExample(
+      root,
+      "widget-sample.tsx",
+      [
+        "const sample = `export function Counter() {",
+        "  return <button onClick={() => setCount(count + 1)}>{count}</button>",
+        "}`;",
+        "",
+        "export default function Example() {",
+        "  return <pre>{sample}</pre>;",
+        "}",
+        "",
+      ].join("\n"),
+    );
+
+    const { status, stdout } = runValidator(root);
+
+    expect(status).toBe(0);
+    expect(stdout).toContain("[ui] registry metadata OK");
   });
 
   it("rejects a build-env read in an example as well as in component source", () => {

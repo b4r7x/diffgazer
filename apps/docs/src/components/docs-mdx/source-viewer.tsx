@@ -191,7 +191,7 @@ export function SourceViewer(props: SourceViewerProps) {
           )}
           {sourceHref && (
             <p className="mb-2 text-xs text-muted-foreground">
-              Highlighted source loads after this disclosure opens.{" "}
+              {(!isOpen || isLoading) && "Highlighted source loads after this disclosure opens. "}
               <a className="underline" href={sourceHref}>
                 Browse the source repository.
               </a>

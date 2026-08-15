@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  type EvidenceRef,
   LensReviewResultSchema,
   ReviewIssueSchema,
   type ReviewResult,
   ReviewResultSchema,
-  toEvidencePresentation,
 } from "./issues.js";
 
 function createIssueInput(overrides: Record<string, unknown> = {}) {
@@ -124,31 +122,6 @@ describe("LensReviewResultSchema", () => {
       issues: [],
       // @ts-expect-error summary was removed from the public result contract.
       summary: "Persisted prose",
-    });
-  });
-});
-
-describe("toEvidencePresentation", () => {
-  it("preserves a blank code excerpt and its backend array ordinal", () => {
-    const evidence: EvidenceRef = {
-      type: "code",
-      title: "Parser location",
-      sourceId: "source:parser",
-      file: "src/parser.ts",
-      range: { start: 7, end: 7 },
-      excerpt: "",
-    };
-
-    expect(toEvidencePresentation(evidence, "src/fallback.ts", 3)).toEqual({
-      kind: "code",
-      type: "code",
-      label: "Code evidence",
-      title: "Parser location",
-      sourceText: "source:parser",
-      file: "src/parser.ts",
-      startLine: 7,
-      excerpt: "",
-      ordinal: 3,
     });
   });
 });

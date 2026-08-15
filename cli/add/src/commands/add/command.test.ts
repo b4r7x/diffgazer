@@ -14,6 +14,8 @@ import { createCli, PACKAGE_MANAGER_LOCKFILES, withFileLock } from "@diffgazer/r
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { ctx } from "../../context.js";
 import { publicAvailableNames } from "../../utils/namespaces.js";
+import { expectCommandExit } from "../testing/expect-command-exit.js";
+import { writeProjectFixture } from "../testing/project-fixture.js";
 import { computeMissingDeps, createDiffgazerAddCommand } from "./command.js";
 
 let root: string;
@@ -68,15 +70,15 @@ function snapshotLockfiles(cwd: string): Map<string, Buffer | null> {
   );
 }
 
-function readInstalledComponents(cwd: string): Record<string, unknown> {
+function readInstalledItems(cwd: string): Record<string, unknown> {
   const manifest = JSON.parse(readFileSync(join(cwd, "diffgazer.json"), "utf-8")) as {
-    installedComponents?: Record<string, unknown>;
+    installedItems?: Record<string, unknown>;
   };
-  return manifest.installedComponents ?? {};
+  return manifest.installedItems ?? {};
 }
 
 function readInstalledAs(cwd: string, name: string): unknown {
-  const installed = readInstalledComponents(cwd)[name];
+  const installed = readInstalledItems(cwd)[name];
   if (typeof installed !== "object" || installed === null || !("installedAs" in installed)) {
     return undefined;
   }
@@ -84,27 +86,7 @@ function readInstalledAs(cwd: string, name: string): unknown {
 }
 
 function writeAddConfig(cwd: string): void {
-  writeFileSync(
-    join(cwd, "tsconfig.json"),
-    JSON.stringify({ compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } } }),
-  );
-  writeFileSync(
-    join(cwd, "diffgazer.json"),
-    JSON.stringify({
-      aliases: {
-        components: "@/components/ui",
-        utils: "@/lib/utils",
-        lib: "@/lib",
-        hooks: "@/hooks",
-      },
-      componentsFsPath: "src/components/ui",
-      libFsPath: "src/lib",
-      hooksFsPath: "src/hooks",
-      tailwind: { css: "src/styles/styles.css" },
-    }),
-  );
-  mkdirSync(join(cwd, "src/styles"), { recursive: true });
-  writeFileSync(join(cwd, "src/styles/styles.css"), '@import "./theme.css";\n');
+  writeProjectFixture(cwd, { stylesCss: '@import "./theme.css";\n' });
 }
 
 function createAddTestCli(name: string) {
@@ -119,12 +101,7 @@ function createAddTestCli(name: string) {
 
 describe("computeMissingDeps keys-version policy", () => {
   test("re-adds @diffgazer/keys when an explicit --keys-version differs from package.json", () => {
-    const missing = computeMissingDeps(
-      ["select"],
-      { mode: "@diffgazer/keys", hasKeyboardIntegration: true },
-      "^0.3.0",
-      root,
-    );
+    const missing = computeMissingDeps(["select"], { mode: "@diffgazer/keys" }, "^0.3.0", root);
 
     expect(missing).toContain("@diffgazer/keys@^0.3.0");
   });
@@ -138,12 +115,7 @@ describe("computeMissingDeps keys-version policy", () => {
       }),
     );
 
-    const missing = computeMissingDeps(
-      ["select"],
-      { mode: "@diffgazer/keys", hasKeyboardIntegration: true },
-      "^0.3.0",
-      root,
-    );
+    const missing = computeMissingDeps(["select"], { mode: "@diffgazer/keys" }, "^0.3.0", root);
 
     expect(missing.some((dep) => dep.startsWith("@diffgazer/keys@"))).toBe(false);
   });
@@ -163,7 +135,7 @@ describe("--all selection", () => {
     }
     expect(readInstalledAs(root, "ui/portal")).toBe("transitive");
     expect(readInstalledAs(root, "ui/dialog-shell")).toBe("transitive");
-    const installed = readInstalledComponents(root);
+    const installed = readInstalledItems(root);
     expect(installed["ui/logo-figlet"]).toBeUndefined();
     expect(installed["ui/code-block-highlight"]).toBeUndefined();
   });
@@ -185,7 +157,7 @@ describe("--all selection", () => {
 describe("add command transaction", () => {
   test("serializes concurrent stylesheet reconciliation so both CSS chunks survive", async () => {
     writeAddConfig(root);
-    const lockPath = join(root, ".diffgazer", "add.lock");
+    const lockPath = join(root, ".diffgazer", "mutation.lock");
     let releaseLock = () => {};
     let markLockAcquired = () => {};
     const lockAcquired = new Promise<void>((resolve) => {
@@ -262,7 +234,7 @@ describe("add command transaction", () => {
           libFsPath: "src/lib",
           hooksFsPath: "src/hooks",
           tailwind: { css: "src/styles/styles.css" },
-          installedComponents: {
+          installedItems: {
             "ui/existing": {
               installedAt: "2026-01-01T00:00:00.000Z",
               installedAs: "explicit",
@@ -291,7 +263,7 @@ describe("add command transaction", () => {
     }
 
     const sourceSnapshot = snapshotSourceFiles(root);
-    const manifestOwnershipSnapshot = readInstalledComponents(root);
+    const manifestOwnershipSnapshot = readInstalledItems(root);
     const lockfileSnapshot = snapshotLockfiles(root);
     const mutatedPackageBytes = Buffer.from(
       `${JSON.stringify({ dependencies: { "transaction-mutated": "1.0.0" } }, null, 2)}\n`,
@@ -326,7 +298,7 @@ describe("add command transaction", () => {
       | undefined;
     vi.spyOn(ctx.config, "writeConfig").mockImplementationOnce((cwd, config) => {
       writeConfigImpl(cwd, config);
-      const ownership = readInstalledComponents(root);
+      const ownership = readInstalledItems(root);
       stateAtFailure = {
         firstItemWritten:
           existsSync(firstExplicitPath) &&
@@ -341,7 +313,6 @@ describe("add command transaction", () => {
       };
       throw new Error("forced two-item manifest finalization failure");
     });
-    const exit = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
     const program = createAddTestCli("dgadd-transaction-test");
     const argv = [
       "add",
@@ -355,9 +326,8 @@ describe("add command transaction", () => {
       "--yes",
     ];
 
-    await program.parseAsync(argv, { from: "user" });
+    await expectCommandExit(() => program.parseAsync(argv, { from: "user" }));
 
-    expect(exit).toHaveBeenCalledWith(1);
     expect(stateAtFailure).toEqual({
       firstItemWritten: true,
       secondItemWritten: true,
@@ -368,21 +338,19 @@ describe("add command transaction", () => {
     });
     expect(snapshotSourceFiles(root)).toEqual(sourceSnapshot);
     expect(readFileSync(manifestPath)).toEqual(manifestBytes);
-    expect(readInstalledComponents(root)).toEqual(manifestOwnershipSnapshot);
-    expect(readInstalledComponents(root)["ui/accordion"]).toBeUndefined();
-    expect(readInstalledComponents(root)["ui/toast"]).toBeUndefined();
+    expect(readInstalledItems(root)).toEqual(manifestOwnershipSnapshot);
+    expect(readInstalledItems(root)["ui/accordion"]).toBeUndefined();
+    expect(readInstalledItems(root)["ui/toast"]).toBeUndefined();
     expect(readFileSync(packagePath)).toEqual(packageBytes);
     expect(snapshotLockfiles(root)).toEqual(lockfileSnapshot);
-    expect(existsSync(join(root, ".diffgazer", "add.lock"))).toBe(false);
+    expect(existsSync(join(root, ".diffgazer", "mutation.lock"))).toBe(false);
 
-    exit.mockClear();
     await program.parseAsync(argv, { from: "user" });
 
-    expect(exit).not.toHaveBeenCalled();
-    expect(readInstalledComponents(root)["ui/accordion"]).toEqual(
+    expect(readInstalledItems(root)["ui/accordion"]).toEqual(
       expect.objectContaining({ installedAs: "explicit" }),
     );
-    expect(readInstalledComponents(root)["ui/toast"]).toEqual(
+    expect(readInstalledItems(root)["ui/toast"]).toEqual(
       expect.objectContaining({ installedAs: "explicit" }),
     );
     expect(snapshotSourceFiles(root)).not.toEqual(sourceSnapshot);

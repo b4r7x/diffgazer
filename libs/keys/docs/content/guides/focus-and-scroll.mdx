@@ -103,13 +103,14 @@ Programmatic focus targets with negative `tabIndex` are focusable and can be use
 
 ### Tab cycling
 
-The trap only intercepts Tab at the **boundaries**. Regular Tab presses between focusable elements use browser-default behavior.
+Most Tab presses between tabbable elements use browser-default behavior. The trap intercepts Tab in these cases:
 
 - `Tab` on the **last** tabbable element wraps to the first
 - `Shift+Tab` on the **first** tabbable element wraps to the last
-- Everything in between is untouched
+- Focus sitting on a non-tabbable element inside the container (for example a `tabIndex={-1}` panel) moves to the nearest tabbable element in the Tab direction
+- Crossing a native radio group whose checked peer is not the next tab stop focuses that adjacent stop directly, so the trap matches native radio-group tab semantics
 
-This means you get native tab ordering for free. The trap only steps in to prevent focus from leaving the container.
+Outside those cases you get native tab ordering for free, and the trap steps in to prevent focus from leaving the container.
 
 ### Dynamic content
 
@@ -277,7 +278,7 @@ function useScrollLock(options?: UseScrollLockOptions): void;
 
 ### Default target
 
-If `target` is omitted or its `current` is `null`, the lock applies to `document.body`.
+If `target` is omitted, the lock applies to `document.body`. When `target` is supplied but its `current` is `null`, nothing is locked until the ref is populated.
 
 ```tsx
 // These are equivalent:

@@ -1,6 +1,6 @@
-import { formatRunId, getTimestamp } from "../../format.js";
-import type { SeverityCounts } from "../../schemas/presentation/index.js";
-import type { ReviewMetadata, ReviewSeverity } from "../../schemas/review/index.js";
+import { formatRunId, getTimestamp, type RunIdLookup } from "../../format.js";
+import { DETACHED_HEAD_BRANCH } from "../../schemas/git.js";
+import type { ReviewMetadata, ReviewSeverity, SeverityCounts } from "../../schemas/review/index.js";
 import { pluralize } from "../../strings.js";
 
 export interface SeverityPart {
@@ -17,13 +17,16 @@ export interface RunSummaryParts {
 }
 
 export function getRunBranchLabel(metadata: ReviewMetadata): string {
-  return metadata.mode === "staged" ? "Staged" : (metadata.branch ?? "Main");
+  if (metadata.mode === "staged") return "Staged";
+  if (metadata.branch === DETACHED_HEAD_BRANCH) return "Detached HEAD";
+  return metadata.branch ?? "Unknown branch";
 }
 
 export function getRunSummaryParts(metadata: ReviewMetadata): RunSummaryParts {
   const { blockerCount, highCount, mediumCount, lowCount, nitCount, issueCount } = metadata;
   const failedLensCount = metadata.failedLensCount ?? 0;
   const partial = failedLensCount > 0;
+  const terminalOutcome = metadata.terminalOutcome ?? "completed";
 
   const parts: SeverityPart[] = [];
   if (blockerCount > 0) parts.push({ severity: "blocker", count: blockerCount });
@@ -33,7 +36,7 @@ export function getRunSummaryParts(metadata: ReviewMetadata): RunSummaryParts {
   if (nitCount > 0) parts.push({ severity: "nit", count: nitCount });
 
   return {
-    passed: issueCount === 0 && !partial,
+    passed: terminalOutcome === "completed" && issueCount === 0 && !partial,
     partial,
     failedLensCount,
     parts,
@@ -43,6 +46,9 @@ export function getRunSummaryParts(metadata: ReviewMetadata): RunSummaryParts {
 
 export function getRunSummaryText(metadata: ReviewMetadata): string {
   const summary = getRunSummaryParts(metadata);
+  if (metadata.terminalOutcome && metadata.terminalOutcome !== "completed") {
+    return `Review ended with outcome ${metadata.terminalOutcome}.`;
+  }
   if (summary.partial) {
     const findings =
       summary.issueCount === 0
@@ -65,13 +71,17 @@ export interface HistoryRunSummary {
   summary: string;
 }
 
+export function resolveRunDisplayId(metadata: ReviewMetadata, runIdLookup?: RunIdLookup): string {
+  return runIdLookup?.get(metadata.id) ?? formatRunId(metadata.id);
+}
+
 export function buildHistoryRunSummary(
   metadata: ReviewMetadata,
-  peerIds: readonly string[] = [],
+  runIdLookup?: RunIdLookup,
 ): HistoryRunSummary {
   return {
     id: metadata.id,
-    displayId: formatRunId(metadata.id, peerIds),
+    displayId: resolveRunDisplayId(metadata, runIdLookup),
     branch: getRunBranchLabel(metadata),
     timestamp: getTimestamp(metadata.createdAt),
     summary: getRunSummaryText(metadata),

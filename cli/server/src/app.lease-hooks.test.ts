@@ -78,6 +78,11 @@ describe("createApp configuration lease hooks", () => {
     await vi.waitFor(() => expect(events).toContain("cancel"));
     expect(existsSync(secretPath)).toBe(true);
 
+    // The drain waits for a review, not for the documents: reads must not queue
+    // behind it for the whole admitted wall time.
+    const settingsDuringDrain = await store.readSettings();
+    expect(settingsDuringDrain.ok).toBe(true);
+
     events.push("release");
     lease.release();
 

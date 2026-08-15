@@ -19,5 +19,11 @@ The web dev server listens on port `3001` and proxies `/api` to `http://127.0.0.
 pnpm --filter @diffgazer/web build
 pnpm --filter @diffgazer/web preview
 pnpm --filter @diffgazer/web type-check
+pnpm --filter @diffgazer/web check
 pnpm --filter @diffgazer/web test
+pnpm --filter @diffgazer/web test:e2e
 ```
+
+`check` and `test:e2e` are the lint and browser gates CI enforces. See
+[testing/e2e/baselines/README.md](testing/e2e/baselines/README.md) for the
+screenshot-baseline regeneration procedure.

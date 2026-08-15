@@ -1,16 +1,10 @@
-export type { StreamReviewError } from "../review.js";
-
 export {
-  configurationFingerprint,
   invalidateConfigurationCaches,
-  useConfigCheck,
   useConfigurationAction,
   useConfigurationInit,
-  useConfigurationInspect,
   useConfigurations,
   useCreateConfiguration,
   useDeleteConfiguration,
-  useInit,
   useInspectConfiguration,
   useSaveSettings,
   useSelectConfiguration,
@@ -26,35 +20,17 @@ export {
   useActiveReviewSession,
   useCreateReview,
   useReview,
-  useReviewContext,
   useReviewSessionCache,
   useReviews,
 } from "./review.js";
 export { useServerStatus, useShutdown } from "./server.js";
 export { useDeleteTrust, useSaveTrust } from "./trust.js";
 export {
-  type UseReviewCompletionOptions,
-  type UseReviewCompletionResult,
-  useReviewCompletion,
-} from "./use-review-completion.js";
-export {
-  buildReviewStartIdentity,
-  canStartReview,
-  type ReviewConfigurationIdentity,
   type ReviewGate,
-  type ReviewReadinessGateReason,
-  resolveReviewReadinessGate,
-  resolveReviewStartReady,
   type UseReviewLifecycleBaseOptions,
   type UseReviewLifecycleBaseResult,
   useReviewLifecycleBase,
 } from "./use-review-lifecycle-base.js";
-export {
-  type UseReviewStartOptions,
-  type UseReviewStartResult,
-  useReviewStart,
-} from "./use-review-start.js";
-export { type ReviewStreamState, useReviewStream } from "./use-review-stream.js";
 export {
   TRUST_EDITOR_MESSAGES,
   type UseTrustEditorCallbacks,

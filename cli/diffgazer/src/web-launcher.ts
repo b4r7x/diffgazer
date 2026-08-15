@@ -1,8 +1,10 @@
 import { printDiffgazerBanner } from "./banner";
 import type { CliMode } from "./cli-options";
 import { config } from "./config";
+import { reportToTerminal } from "./lib/report-to-terminal";
 import { createServerFactories as createModeServerFactories } from "./lib/servers/factories";
 import type { ServerController } from "./lib/servers/types";
+import { SHUTDOWN_SIGNALS } from "./lib/shutdown-signals";
 import { ensureShutdownToken } from "./lib/shutdown-token";
 import { stopWithTimeout } from "./lib/stop-with-timeout";
 
@@ -37,7 +39,7 @@ export function startWeb(
   const handleStartupFailure = (message: string): void => {
     if (startupFailureHandled) return;
     startupFailureHandled = true;
-    console.error(message);
+    reportToTerminal(message);
     process.exitCode = 1;
     void stopWithTimeout(stop, config.shutdown.gracefulMs).finally(() => {
       process.exit(1);
@@ -57,8 +59,9 @@ export function startWeb(
     });
   };
 
-  process.once("SIGINT", stopAndExit);
-  process.once("SIGTERM", stopAndExit);
+  for (const signal of SHUTDOWN_SIGNALS) {
+    process.once(signal, stopAndExit);
+  }
 
   const printBanner = dependencies.printBanner ?? printDiffgazerBanner;
   printBanner();
@@ -67,8 +70,9 @@ export function startWeb(
   }
 
   return () => {
-    process.off("SIGINT", stopAndExit);
-    process.off("SIGTERM", stopAndExit);
+    for (const signal of SHUTDOWN_SIGNALS) {
+      process.off(signal, stopAndExit);
+    }
     return stop();
   };
 }

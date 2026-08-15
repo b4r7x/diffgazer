@@ -19,6 +19,10 @@ export function selectedIdentitySurfaces(target) {
   }
 }
 
+// The deploy job runs this poll inside its armed rollback trap, so its budget is
+// part of the job's timeout arithmetic; check-release-workflow-guards reads it.
+export const SOURCE_TAG_POLL_BUDGET_MS = 5 * 60_000;
+
 const defaultSleep = (ms) => new Promise((resolveDelay) => setTimeout(resolveDelay, ms));
 
 export async function waitForSourceTag({
@@ -28,7 +32,7 @@ export async function waitForSourceTag({
   fetchImpl = fetch,
   sleep = defaultSleep,
   now = Date.now,
-  timeoutMs = 5 * 60_000,
+  timeoutMs = SOURCE_TAG_POLL_BUDGET_MS,
   intervalMs = 15_000,
 }) {
   const deadline = now() + timeoutMs;

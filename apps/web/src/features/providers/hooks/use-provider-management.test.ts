@@ -1,7 +1,7 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import type { ProviderManagementOutcome } from "@diffgazer/core/providers";
 import { getProviderRowId, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import type { ProviderManagementOutcome } from "@diffgazer/core/providers/hooks";
 import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
 import {
   ClientConfigurationActionResponseSchema,
@@ -10,10 +10,10 @@ import {
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import {
   configurationStatus,
+  GEMINI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeConfigurationListResponse,
   makeReadiness,
-  READY_GEMINI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -48,8 +48,7 @@ const acknowledgement = {
   acceptedAt: "2026-07-31T12:00:00.000Z",
 };
 
-const _readiness = makeReadiness("ready", "gemini");
-const supportedConfiguration = READY_GEMINI_CONFIGURATION;
+const supportedConfiguration = GEMINI_CONFIGURATION;
 const geminiEndpoint =
   supportedConfiguration.transportFamily === "hosted-api" ? supportedConfiguration.endpoint : "";
 
@@ -188,6 +187,72 @@ describe("useProviderManagement", () => {
     expect(toastMocks.success).not.toHaveBeenCalled();
   });
 
+  it("reports a resolved-but-failed readiness test with the server explanation, not a success toast", async () => {
+    const explanation = READINESS_PRESENTATION["conformance-failed"].explanation;
+    vi.mocked(mockApi.loadConfigurationInit).mockResolvedValue(
+      makeInitResponse({
+        configurations: [configurationStatus(supportedConfiguration, "conformance-pending")],
+      }),
+    );
+    vi.mocked(mockApi.testConfiguration).mockResolvedValue(
+      ClientConfigurationActionResponseSchema.parse({
+        action: "test",
+        status: "failed",
+        configuration: supportedConfiguration,
+        readiness: makeReadiness("conformance-failed"),
+      }) as Awaited<ReturnType<BoundApi["testConfiguration"]>>,
+    );
+
+    const { result } = renderManagedHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const row = result.current.providers.find(
+      (provider) => getProviderRowId(provider) === "gemini-primary",
+    );
+    if (!row) throw new Error("Expected Gemini row");
+
+    await act(async () => {
+      await expect(result.current.handleDispatchReadinessAction(row)).resolves.toEqual({
+        status: "failed",
+        message: explanation,
+      });
+    });
+
+    expect(toastMocks.error).toHaveBeenCalledWith(
+      "Failed to Test",
+      expect.objectContaining({ message: explanation }),
+    );
+    expect(toastMocks.error).toHaveBeenCalledTimes(1);
+    expect(toastMocks.success).not.toHaveBeenCalled();
+  });
+
+  it("toasts Readiness Tested only for a test response that reports succeeded", async () => {
+    vi.mocked(mockApi.loadConfigurationInit).mockResolvedValue(
+      makeInitResponse({
+        configurations: [configurationStatus(supportedConfiguration, "conformance-pending")],
+      }),
+    );
+
+    const { result } = renderManagedHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const row = result.current.providers.find(
+      (provider) => getProviderRowId(provider) === "gemini-primary",
+    );
+    if (!row) throw new Error("Expected Gemini row");
+
+    await act(async () => {
+      await expect(result.current.handleDispatchReadinessAction(row)).resolves.toEqual({
+        status: "succeeded",
+      });
+    });
+
+    expect(mockApi.testConfiguration).toHaveBeenCalledWith("gemini-primary");
+    expect(toastMocks.success).toHaveBeenCalledWith("Readiness Tested", {
+      message: "Configuration readiness updated",
+    });
+    expect(toastMocks.success).toHaveBeenCalledOnce();
+    expect(toastMocks.error).not.toHaveBeenCalled();
+  });
+
   it("succeeds a delete with the expected API call and toast", async () => {
     const { result } = renderManagedHook();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -304,6 +369,13 @@ describe("useProviderManagement", () => {
     });
     const owner = result.current.dialogOwner;
     if (owner?.kind !== "setup") throw new Error("Expected OpenRouter setup dialog owner");
+    const openrouterAck = {
+      status: "accepted" as const,
+      noticeId: PRODUCT_REGISTRY.openrouter.notice.id,
+      noticeVersion: PRODUCT_REGISTRY.openrouter.notice.noticeVersion,
+      acceptedAt: "2026-01-01T00:00:00.000Z",
+    };
+
     await act(async () => {
       await result.current.handleCreateConfiguration(
         owner,
@@ -312,14 +384,17 @@ describe("useProviderManagement", () => {
           productId: "openrouter",
           endpoint: "https://openrouter.ai/api/v1",
         },
-        { continueToModelSelection: true },
+        { continueToModelSelection: true, acknowledgement: openrouterAck },
       );
     });
 
     expect(mockApi.createConfiguration).toHaveBeenCalledWith({
-      transportFamily: "hosted-api",
-      productId: "openrouter",
-      endpoint: "https://openrouter.ai/api/v1",
+      input: {
+        transportFamily: "hosted-api",
+        productId: "openrouter",
+        endpoint: "https://openrouter.ai/api/v1",
+      },
+      acknowledgement: openrouterAck,
     });
     expect(mockApi.createConfiguration).toHaveBeenCalledOnce();
 

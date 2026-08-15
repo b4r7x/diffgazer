@@ -46,7 +46,7 @@ The local API exposes six generic actions on `POST /api/config/actions`:
 | `update` | Change endpoint, region, workspace, credential reference, or notice acknowledgement. |
 | `delete` | Remove the configuration after active review leases drain. |
 
-Every action returns a client-safe summary. A configuration becomes **ready** only after its product-specific admission checks pass, including structured-output conformance, required usage when applicable, and explicit notice acknowledgement.
+Every action returns a client-safe summary. A configuration becomes **ready** only after its product-specific admission checks pass, including structured-output conformance, required usage when applicable, and explicit notice acknowledgement. Reviews do not wait for **ready**: a configuration whose only open item is structured-output conformance can start a review, and the review itself verifies it.
 
 ## Setup and readiness by product family
 
@@ -60,7 +60,7 @@ For Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Qwen Internationa
 2. `update` it with either a stored literal credential or an environment reference. The reference carries no name: the server binds the canonical variable for that product, for example `GOOGLE_API_KEY` for Google Gemini.
 3. Bind the allowed endpoint and, when required, region and workspace.
 4. `select` an exact discovered model ID.
-5. `test` the configuration until readiness reports **ready** or a named remediation such as `credential-invalid`, `model-missing`, or `conformance-failed`.
+5. Optionally `test` the configuration to verify structured-output conformance up front. Skipping it leaves readiness at `conformance-pending`, which still starts reviews; the first review verifies conformance and records the result.
 
 Hosted examples never embed literal secrets. Use an environment reference or the setup UI's write-only credential field instead.
 
@@ -68,8 +68,9 @@ Hosted examples never embed literal secrets. Use an environment reference or the
 
 1. `create` the configuration and choose the loopback endpoint preset (Ollama default, LM Studio, or llama.cpp).
 2. Start the local server on the validated loopback address.
-3. `inspect` to discover exact model IDs from the local server.
-4. `select` a listed exact model and `test` structured-output conformance.
+3. Look up the exact model ID from your local server (for example `ollama list`, or the LM Studio / llama.cpp UI). The setup wizard **Model** step does not list local-server models yet — it shows **Catalog observations are unavailable for this configuration product.** with **Retry** only, and **Next** stays disabled because the wizard does not read back an external `select`.
+4. `select` that exact model ID through the [local API](/app/reference/api). `test` verifies structured-output conformance up front; the first review verifies it otherwise.
+5. `update` to accept the product notice.
 
 Optional bearer tokens are supported only when your local server requires them. Diffgazer does not accept remote URLs, tunnels, or LAN addresses.
 
@@ -77,18 +78,16 @@ Optional bearer tokens are supported only when your local server requires them. 
 
 1. `create` the configuration.
 2. Install and authenticate the CLI with the vendor's own tooling. Diffgazer uses **vendor-managed local auth** and does not import CLI tokens or auth files.
-3. `inspect` and `test` until the pinned CLI profile passes negative-capability, schema, and cancellation checks, or readiness reports **unsupported** with remediation to review support requirements.
+3. Look up the exact model ID from the installed CLI or vendor docs. The setup wizard **Model** step does not list CLI models yet — it shows **Catalog observations are unavailable for this configuration product.** with **Retry** only, and **Next** stays disabled because the wizard does not read back an external `select`.
+4. `select` that exact model ID through the [local API](/app/reference/api), then `inspect` and `test` until the pinned CLI profile passes negative-capability, schema, and cancellation checks, or readiness reports **unsupported** with remediation to review support requirements.
+5. `update` to accept the account notice.
 
 ## Exact-model, conformance, and acknowledgement gates
 
 - **Exact model only.** Aliases, `latest`, and routing selectors are rejected.
-- **Conformance.** `test` must produce schema-valid review output for the exact configured tuple before the configuration is ready.
+- **Conformance.** Readiness reports **ready** only once schema-valid review output has been observed for the exact configured tuple. `test` is the optional way to observe it early; otherwise the first review observes it. A recorded conformance failure fast-fails later reviews on that exact tuple until the tuple changes.
 - **Acknowledgement.** Each product's current billing and privacy notice must be explicitly accepted before the first context send.
 - **Skipped live probes.** When a live check is intentionally skipped, readiness stays non-ready with remediation code `enable-live-probe`. A skipped probe never enables a product.
-
-## Removed records
-
-The removed Z.AI Coding Plan record exposes only migration and delete actions. Create a new Z.AI configuration instead of reusing the removed credential. See [Providers reference](/app/reference/providers#removed-configuration-records).
 
 ## Settings
 

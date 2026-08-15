@@ -2,6 +2,7 @@ import { FooterProvider } from "@diffgazer/core/footer";
 import { render } from "ink";
 import type { ReactNode } from "react";
 import { NavigationProvider } from "../app/providers/navigation";
+import { GateFrame } from "../app/root";
 import { GlobalLayout } from "../components/layout/global";
 import { CliThemeProvider } from "../theme/provider";
 import { TestInput, TestOutput } from "./ink-streams";
@@ -25,7 +26,9 @@ export function renderRootFrame(columns: number, rows: number, child: ReactNode)
     <NavigationProvider>
       <FooterProvider initialShortcuts={[]}>
         <CliThemeProvider initialTheme="dark">
-          <GlobalLayout>{child}</GlobalLayout>
+          <GateFrame>
+            <GlobalLayout>{child}</GlobalLayout>
+          </GateFrame>
         </CliThemeProvider>
       </FooterProvider>
     </NavigationProvider>,

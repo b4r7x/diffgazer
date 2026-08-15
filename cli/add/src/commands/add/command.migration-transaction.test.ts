@@ -14,12 +14,13 @@ import { fileURLToPath } from "node:url";
 import { createCli, PACKAGE_MANAGER_LOCKFILES } from "@diffgazer/registry/cli";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { ctx } from "../../context.js";
+import { expectCommandExit } from "../testing/expect-command-exit.js";
 import { addCommand } from "./command.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../..");
 
 interface InstalledManifest {
-  installedComponents: Record<
+  installedItems: Record<
     string,
     {
       installedAs?: "explicit" | "transitive";
@@ -50,7 +51,7 @@ function snapshotOwnedFiles(
   prefix: "ui/" | "keys/",
 ): Map<string, Buffer> {
   const snapshots = new Map<string, Buffer>();
-  for (const [name, record] of Object.entries(manifest.installedComponents)) {
+  for (const [name, record] of Object.entries(manifest.installedItems)) {
     if (!name.startsWith(prefix)) continue;
     for (const file of record.files ?? []) {
       const path = resolve(root, file.path);
@@ -122,10 +123,10 @@ describe("integration migration transaction", () => {
     const manifest = readManifest(root);
     const componentSnapshots = snapshotOwnedFiles(root, manifest, "ui/");
     const hookSnapshots = snapshotOwnedFiles(root, manifest, "keys/");
-    const copiedOwnershipNames = Object.keys(manifest.installedComponents).filter((name) =>
+    const copiedOwnershipNames = Object.keys(manifest.installedItems).filter((name) =>
       name.startsWith("keys/"),
     );
-    const dependencyOwnership = manifest.installedComponents["keys/navigation"];
+    const dependencyOwnership = manifest.installedItems["keys/navigation"];
     const selectNavigationPath = join(root, "src/components/ui/select/use-content-navigation.ts");
     const copySelectNavigation = readFileSync(selectNavigationPath, "utf-8");
 
@@ -190,7 +191,7 @@ describe("integration migration transaction", () => {
     vi.spyOn(ctx.config, "writeConfig").mockImplementation((cwd, config) => {
       writeConfigImpl(cwd, config);
       const migratedManifest = readManifest(root);
-      const migratedSelect = migratedManifest.installedComponents["ui/select"];
+      const migratedSelect = migratedManifest.installedItems["ui/select"];
       const migratedSelectFiles = migratedSelect?.files ?? [];
       stateAtFinalizationFailure = {
         componentMigrated:
@@ -203,7 +204,7 @@ describe("integration migration transaction", () => {
           migratedSelectFiles.length > 0 &&
           migratedSelectFiles.every((file) => file.integrationMode === "@diffgazer/keys"),
         copiedOwnershipRemoved: copiedOwnershipNames.every(
-          (name) => migratedManifest.installedComponents[name] === undefined,
+          (name) => migratedManifest.installedItems[name] === undefined,
         ),
         packageMutated: readFileSync(packagePath, "utf-8").includes("transaction-mutated"),
         lockfilesMutated: PACKAGE_MANAGER_LOCKFILES.every(
@@ -212,7 +213,6 @@ describe("integration migration transaction", () => {
       };
       throw new Error("forced manifest finalization failure");
     });
-    const exit = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
     const program = createCli({
       name: "dgadd-test",
       displayName: "DIFFGAZER ADD TEST",
@@ -221,12 +221,13 @@ describe("integration migration transaction", () => {
       commands: [addCommand],
     });
 
-    await program.parseAsync(
-      ["add", "ui/select", "--integration", "keys", "--overwrite", "--cwd", root, "--yes"],
-      { from: "user" },
+    await expectCommandExit(() =>
+      program.parseAsync(
+        ["add", "ui/select", "--integration", "keys", "--overwrite", "--cwd", root, "--yes"],
+        { from: "user" },
+      ),
     );
 
-    expect(exit).toHaveBeenCalledWith(1);
     expect(existsSync(installMarker)).toBe(true);
     expect(stateAtFinalizationFailure).toEqual({
       componentMigrated: true,
@@ -245,7 +246,7 @@ describe("integration migration transaction", () => {
       if (content) expect(readFileSync(path)).toEqual(content);
       else expect(existsSync(path)).toBe(false);
     }
-    expect(readManifest(root).installedComponents["keys/navigation"]).toEqual(dependencyOwnership);
+    expect(readManifest(root).installedItems["keys/navigation"]).toEqual(dependencyOwnership);
 
     runDgadd([
       "add",
@@ -258,8 +259,6 @@ describe("integration migration transaction", () => {
       "--yes",
       "--skip-install",
     ]);
-    expect(readManifest(root).installedComponents["ui/select"]?.integrationMode).toBe(
-      "@diffgazer/keys",
-    );
+    expect(readManifest(root).installedItems["ui/select"]?.integrationMode).toBe("@diffgazer/keys");
   });
 });

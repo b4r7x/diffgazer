@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ISSUE_TABS, type IssueTab } from "../schemas/presentation/issue-tabs.js";
-import type { ReviewIssue } from "../schemas/review/index.js";
+import { hasSuggestedPatch, type ReviewIssue } from "../schemas/review/index.js";
 
 /**
  * The tabs available for an issue: the patch tab only when a patch exists, and
@@ -10,7 +10,7 @@ import type { ReviewIssue } from "../schemas/review/index.js";
 export function getAvailableIssueTabs(issue: ReviewIssue | null | undefined): IssueTab[] {
   if (!issue) return [];
   return ISSUE_TABS.filter((tab) => {
-    if (tab === "patch") return Boolean(issue.suggested_patch);
+    if (tab === "patch") return hasSuggestedPatch(issue);
     if (tab === "trace") return Boolean(issue.trace?.length);
     return true;
   });
@@ -22,20 +22,20 @@ export function clampIssueTab(requested: IssueTab, available: IssueTab[]): Issue
 }
 
 /** Toggles a fix-plan step in a completed-steps set, returning a new set. */
-export function toggleFixPlanStep(completed: Set<number>, step: number): Set<number> {
+export function toggleFixPlanStep(completed: ReadonlySet<number>, step: number): Set<number> {
   const next = new Set(completed);
   if (next.has(step)) next.delete(step);
   else next.add(step);
   return next;
 }
 
-const EMPTY_COMPLETED_STEPS: Set<number> = new Set<number>();
+const EMPTY_COMPLETED_STEPS: ReadonlySet<number> = new Set<number>();
 
 export interface IssueDetailsState {
   activeTab: IssueTab;
   availableTabs: IssueTab[];
   setActiveTab: (tab: IssueTab) => void;
-  completedSteps: Set<number>;
+  completedSteps: ReadonlySet<number>;
   toggleStep: (step: number) => void;
 }
 
@@ -48,7 +48,9 @@ export function useIssueDetailsState(
   selectedIssue: ReviewIssue | null | undefined,
 ): IssueDetailsState {
   const [requestedTab, setRequestedTab] = useState<IssueTab>("details");
-  const [completedByIssue, setCompletedByIssue] = useState<Record<string, Set<number>>>({});
+  const [completedByIssue, setCompletedByIssue] = useState<Map<string, ReadonlySet<number>>>(
+    () => new Map(),
+  );
 
   const availableTabs = getAvailableIssueTabs(selectedIssue);
   const activeTab = clampIssueTab(requestedTab, availableTabs);
@@ -58,16 +60,17 @@ export function useIssueDetailsState(
   };
 
   const completedSteps = selectedIssue
-    ? (completedByIssue[selectedIssue.id] ?? EMPTY_COMPLETED_STEPS)
+    ? (completedByIssue.get(selectedIssue.id) ?? EMPTY_COMPLETED_STEPS)
     : EMPTY_COMPLETED_STEPS;
 
   const toggleStep = (step: number) => {
     if (!selectedIssue) return;
     const issueId = selectedIssue.id;
-    setCompletedByIssue((prev) => ({
-      ...prev,
-      [issueId]: toggleFixPlanStep(prev[issueId] ?? new Set<number>(), step),
-    }));
+    setCompletedByIssue((prev) => {
+      const next = new Map(prev);
+      next.set(issueId, toggleFixPlanStep(prev.get(issueId) ?? EMPTY_COMPLETED_STEPS, step));
+      return next;
+    });
   };
 
   return { activeTab, availableTabs, setActiveTab, completedSteps, toggleStep };

@@ -57,14 +57,8 @@ export function useAriaLinkedPortalContainer(
  */
 export function Portal({ children, container }: PortalProps) {
   const scopedContainer = usePortalContainer();
-  let fallback: Element | null = null;
-  if (scopedContainer !== undefined && !isPendingPortalContainer(scopedContainer)) {
-    fallback = scopedContainer.ownerDocument.body;
-  } else if (typeof document !== "undefined") {
-    fallback = document.body;
-  }
-
-  let target: PortalContainerValue | null = fallback;
+  // Reached only when neither a container prop nor a scoped container is present.
+  let target: PortalContainerValue | null = typeof document !== "undefined" ? document.body : null;
   if (container !== undefined) {
     target = container;
   } else if (scopedContainer !== undefined) {

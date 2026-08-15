@@ -1,12 +1,7 @@
 import { UuidSchema } from "@diffgazer/core/schemas/fields";
 import { ReviewModeSchema } from "@diffgazer/core/schemas/review";
-import {
-  createRootRoute,
-  createRoute,
-  createRouter,
-  Outlet,
-  redirect,
-} from "@tanstack/react-router";
+import { createRootRoute, createRoute, createRouter, redirect } from "@tanstack/react-router";
+import type { ComponentType } from "react";
 import { z } from "zod";
 import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
 import { requireConfigured, requireNotConfigured } from "../lib/config-guards";
@@ -15,7 +10,6 @@ import { RouteRecoveryPage } from "./route-error-boundary";
 import { lazyRoute } from "./route-import";
 import { RootLayout } from "./routes/__root";
 import { HomePage } from "./routes/home";
-import { ReviewPage } from "./routes/review";
 
 const SettingsHubPage = lazyRoute(() =>
   import("./routes/settings").then((m) => ({ default: m.SettingsHubPage })),
@@ -58,27 +52,42 @@ const SettingsAgentExecutionPage = lazyRoute(() =>
     default: m.SettingsAgentExecutionPage,
   })),
 );
+// ReviewPage is the one route component that reads its typed search/params off
+// this router, so the annotation here stops its module type from flowing back
+// into the router type — a cycle TypeScript resolves by widening that search to
+// `any`. The other lazy routes need no annotation because they read no route
+// state from the router they are registered into.
+const ReviewPage = lazyRoute(() =>
+  import("./routes/review").then((m): { default: ComponentType } => ({ default: m.ReviewPage })),
+);
 const HelpPage = lazyRoute(() => import("./routes/help").then((m) => ({ default: m.HelpPage })));
 const OnboardingPage = lazyRoute(() =>
   import("./routes/onboarding").then((m) => ({ default: m.OnboardingPage })),
 );
 
+// Every field parses totally: search values are user-editable text, and a
+// malformed one must degrade to the default rather than fail the match into the
+// recovery screen, whose only control re-runs matching against the same URL.
 const HomeSearchSchema = z.object({
-  error: z.string().optional(),
+  error: z.string().optional().catch(undefined),
 });
 
 const ReviewSearchSchema = z.object({
-  mode: ReviewModeSchema.optional().default("unstaged"),
-  live: z.boolean().optional(),
-  issueId: z.string().optional(),
+  mode: ReviewModeSchema.optional().default("unstaged").catch("unstaged"),
+  live: z.boolean().optional().catch(undefined),
+  issueId: z.string().optional().catch(undefined),
 });
 
-function SettingsLayout() {
-  return <Outlet />;
-}
+// Deep-link target for recovery flows: reconnect gates preselect the affected
+// product on the providers screen.
+const SettingsProvidersSearchSchema = z.object({
+  product: z.string().optional().catch(undefined),
+});
 
 const rootRoute = createRootRoute({
   component: RootLayout,
+  // This slot replaces RootLayout, so it renders outside the FooterProvider
+  // that ConnectedRootLayout mounts; clearing the footer here would throw.
   errorComponent: (props) => <RouteRecoveryPage {...props} clearFooter={false} />,
 });
 
@@ -135,7 +144,6 @@ const onboardingRoute = createRoute({
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
-  component: SettingsLayout,
   beforeLoad: requireConfigured,
 });
 
@@ -157,6 +165,7 @@ const settingsProvidersRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/providers",
   component: SettingsProvidersPage,
+  validateSearch: SettingsProvidersSearchSchema,
   head: () => ({ meta: [{ title: "Providers — Diffgazer" }] }),
 });
 

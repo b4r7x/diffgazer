@@ -127,3 +127,42 @@ describe("theme-base.css scrollbar capability contract", () => {
     });
   });
 });
+
+describe("theme-base.css shiki dual-theme contract", () => {
+  let shikiRules: CssRule[] = [];
+
+  beforeAll(() => {
+    shikiRules = eachRule(readFileSync(CSS_PATH, "utf8")).filter((rule) =>
+      rule.selector.includes(".shiki"),
+    );
+  });
+
+  it("resolves an unscoped code block to the dark set the bare :root palette paints", () => {
+    const unscoped = shikiRules.filter((rule) => !rule.selector.includes("[data-theme="));
+    const declarations = unscoped.flatMap(declarationsOf);
+
+    expect(unscoped).toHaveLength(1);
+    expect(declarations).toContainEqual({ prop: "color", value: "var(--shiki-dark)" });
+    expect(declarations).toContainEqual({
+      prop: "background-color",
+      value: "var(--shiki-dark-bg)",
+    });
+  });
+
+  it("gives a light subtree the light set through the only themed branch", () => {
+    // Themed branches share their specificity, so a [data-theme="dark"] copy
+    // would beat the light branch it follows and re-paint the code block dark
+    // inside an explicitly light subtree.
+    const themed = shikiRules.filter((rule) => rule.selector.includes("[data-theme="));
+    const declarations = themed.flatMap(declarationsOf);
+
+    expect(themed.map((rule) => rule.selector)).toEqual([
+      '[data-theme="light"] .shiki, [data-theme="light"] .shiki span',
+    ]);
+    expect(declarations).toContainEqual({ prop: "color", value: "var(--shiki-light)" });
+    expect(declarations).toContainEqual({
+      prop: "background-color",
+      value: "var(--shiki-light-bg)",
+    });
+  });
+});

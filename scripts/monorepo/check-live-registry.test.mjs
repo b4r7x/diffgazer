@@ -7,6 +7,9 @@ import { test } from "node:test";
 import {
   assertHeadOk,
   assertRegistryContentFresh,
+  availabilitySentinels,
+  buildAvailabilitySentinels,
+  parseServedCopyTrees,
   publicRegistryIsGated,
   registryFreshnessTargets,
   requiredEndpoints,
@@ -38,15 +41,7 @@ function bodyResponse(value) {
   };
 }
 
-const originalSentinels = new Set([
-  "https://r.b4r7.dev/r/ui/registry.json",
-  "https://r.b4r7.dev/r/ui/button.json",
-  "https://r.b4r7.dev/r/keys/navigation.json",
-  "https://r.b4r7.dev/schema/diffgazer.json",
-]);
-const nonSentinelUrls = registryFreshnessTargets
-  .map((target) => target.url)
-  .filter((url) => !originalSentinels.has(url));
+const nonSentinelUrls = requiredEndpoints.filter((url) => !availabilitySentinels.includes(url));
 
 test("required endpoints include the keys registry route", () => {
   assert.ok(requiredEndpoints.some((url) => url.includes("/r/keys/")));
@@ -56,6 +51,34 @@ test("required endpoints include the published editor schema", () => {
   assert.ok(requiredEndpoints.some((url) => url.endsWith("/schema/diffgazer.json")));
 });
 
+test("every served tree contributes one committed availability sentinel", () => {
+  const servedDestinations = [
+    ...new Set(
+      parseServedCopyTrees(readFileSync(join(root, "deploy/registry.Dockerfile"), "utf8")).map(
+        (tree) => tree.destination,
+      ),
+    ),
+  ];
+
+  assert.equal(availabilitySentinels.length, servedDestinations.length);
+  for (const destination of servedDestinations) {
+    assert.ok(
+      availabilitySentinels.some((url) => url.startsWith(`https://r.b4r7.dev/${destination}`)),
+      `no availability sentinel for served tree ${destination}`,
+    );
+  }
+  for (const sentinel of availabilitySentinels) {
+    assert.ok(requiredEndpoints.includes(sentinel));
+  }
+});
+
+test("a served tree with no declared sentinel fails instead of going unprobed", () => {
+  assert.throws(
+    () => buildAvailabilitySentinels([{ source: "libs/new/public/r/", destination: "r/new/" }]),
+    /No availability sentinel declared for served tree r\/new\//,
+  );
+});
+
 test("required endpoints exhaust every JSON in the Docker-copied public trees", () => {
   const copiedTrees = [
     { source: "libs/ui/public/r", destination: "r/ui" },
@@ -63,9 +86,15 @@ test("required endpoints exhaust every JSON in the Docker-copied public trees", 
     { source: "apps/docs/public/schema", destination: "schema" },
   ];
   const dockerfile = readFileSync(join(root, "deploy/registry.Dockerfile"), "utf8");
-  for (const { source, destination } of copiedTrees) {
-    assert.ok(dockerfile.includes(`COPY ${source}/ /usr/share/nginx/html/${destination}/`));
-  }
+  // Compare against every served COPY the Dockerfile actually has, so a tree
+  // added to the image cannot stay absent from both sides of the assertion.
+  assert.deepEqual(
+    parseServedCopyTrees(dockerfile),
+    copiedTrees.map(({ source, destination }) => ({
+      source: `${source}/`,
+      destination: `${destination}/`,
+    })),
+  );
   const expectedUrls = copiedTrees
     .flatMap(({ source, destination }) =>
       collectJsonRelativePaths(join(root, source)).map(
@@ -78,6 +107,31 @@ test("required endpoints exhaust every JSON in the Docker-copied public trees", 
   assert.deepEqual(
     requiredEndpoints.slice().sort(),
     registryFreshnessTargets.map((target) => target.url).sort(),
+  );
+});
+
+test("served COPY trees survive flags, extra sources, and continuations", () => {
+  const dockerfile = [
+    "FROM nginx AS runtime",
+    "# comment",
+    "COPY --chown=nginx:nginx libs/ui/public/r/ /usr/share/nginx/html/r/ui/",
+    "COPY libs/keys/public/r/ apps/docs/public/schema/ /usr/share/nginx/html/r/",
+    "COPY \\",
+    "  deploy/registry-nginx.conf /etc/nginx/conf.d/default.conf",
+    "",
+  ].join("\n");
+
+  assert.deepEqual(parseServedCopyTrees(dockerfile), [
+    { source: "libs/ui/public/r/", destination: "r/ui/" },
+    { source: "libs/keys/public/r/", destination: "r/" },
+    { source: "apps/docs/public/schema/", destination: "r/" },
+  ]);
+});
+
+test("a COPY the parser cannot read fails instead of dropping a served tree", () => {
+  assert.throws(
+    () => parseServedCopyTrees('COPY ["libs/ui/public/r/", "/usr/share/nginx/html/r/ui/"]\n'),
+    /Unreadable COPY instruction/,
   );
 });
 
@@ -156,7 +210,7 @@ test("publicRegistryIsGated ignores documentation prose before the exported decl
       log: () => {},
     });
 
-    assert.equal(networkCalls, 1 + requiredEndpoints.length * 2);
+    assert.equal(networkCalls, 1 + availabilitySentinels.length);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -173,36 +227,56 @@ test("publicRegistryIsGated fails loudly when the literal is gone", async () => 
   }
 });
 
-test("normal ungated entry flow rejects stale content even when every HEAD succeeds", async () => {
+test("ungated readiness passes against an origin still serving the previous deploy", async () => {
   const dir = mkdtempSync(join(tmpdir(), "live-registry-ungated-"));
-  const bodyByUrl = new Map(
-    registryFreshnessTargets.map((target) => [target.url, readFileSync(target.path)]),
-  );
-  const [staleUrl] = nonSentinelUrls;
-  assert.ok(staleUrl);
+  // The endpoint this change set adds: committed locally, still a 404 upstream
+  // until the deploy that this very readiness run gates.
+  const [addedUrl] = nonSentinelUrls;
+  assert.ok(addedUrl);
+
+  const headUrls = [];
+  let networkCalls = 0;
+  const fetchImpl = async (url, options) => {
+    networkCalls += 1;
+    if (options?.method === "HEAD") {
+      headUrls.push(url);
+      return { status: url === addedUrl ? 404 : 200 };
+    }
+    return url === addedUrl
+      ? { ok: false, status: 404, arrayBuffer: async () => toArrayBuffer("") }
+      : bodyResponse("stale\n");
+  };
 
   try {
     const metadataFilePath = join(dir, "metadata.ts");
     writeFileSync(metadataFilePath, "export const PUBLISH_GATED = false;\n");
-    const headUrls = [];
+
+    await runLiveRegistryCheck({
+      metadataFilePath,
+      required: false,
+      lookupImpl: async () => {
+        networkCalls += 1;
+      },
+      fetchImpl,
+      log: () => {},
+    });
+
+    assert.deepEqual(headUrls, availabilitySentinels);
+    assert.equal(networkCalls, 1 + availabilitySentinels.length);
+
+    // The exhaustive proof stays with the post-deploy caller, which sets
+    // DIFFGAZER_LIVE_REGISTRY_REQUIRED=1 after the image is serving.
     await assert.rejects(
       () =>
         runLiveRegistryCheck({
           metadataFilePath,
-          required: false,
+          required: true,
           lookupImpl: async () => {},
-          fetchImpl: async (url, options) => {
-            if (options?.method === "HEAD") {
-              headUrls.push(url);
-              return { status: 200 };
-            }
-            return url === staleUrl ? bodyResponse("stale\n") : bodyResponse(bodyByUrl.get(url));
-          },
+          fetchImpl,
           log: () => {},
         }),
-      new RegExp(`SHA mismatch for ${staleUrl.replaceAll("/", "\\/")}`),
+      new RegExp(`${addedUrl.replaceAll("/", "\\/")} returned 404`),
     );
-    assert.deepEqual(headUrls, requiredEndpoints);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

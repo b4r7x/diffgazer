@@ -21,6 +21,17 @@ describe("ProgressStep", () => {
     expect(lines).toEqual(["* Completed", "\u00b7 Pending"]);
   });
 
+  test("renders an error marker in the single-cell column", () => {
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <ProgressStep name="Failed" status="error" />
+      </CliThemeProvider>,
+    );
+
+    const lines = (lastFrame() ?? "").split("\n");
+    expect(lines).toEqual(["! Failed"]);
+  });
+
   test("marks the active step and starts every label at the same column", () => {
     const { lastFrame } = render(
       <CliThemeProvider initialTheme="dark">

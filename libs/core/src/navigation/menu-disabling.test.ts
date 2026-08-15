@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { MENU_ITEMS } from "../schemas/presentation/navigation.js";
+import { resolveHomeMenuActivation } from "./home-screen.js";
 import { isMenuActionDisabled, isReviewStartAction } from "./menu-disabling.js";
 
 describe("isReviewStartAction", () => {
@@ -48,5 +50,16 @@ describe("isMenuActionDisabled", () => {
     expect(isMenuActionDisabled("settings", ctx)).toBe(false);
     expect(isMenuActionDisabled("help", ctx)).toBe(false);
     expect(isMenuActionDisabled("quit", ctx)).toBe(false);
+  });
+});
+
+describe("home menu policy coverage", () => {
+  const fullyEnabled = { isTrusted: true, hasResumableSession: true };
+
+  it.each(
+    MENU_ITEMS.map((item) => item.id),
+  )("gives %s an enabled state and a real activation under a fully enabled home", (id) => {
+    expect(isMenuActionDisabled(id, fullyEnabled)).toBe(false);
+    expect(resolveHomeMenuActivation(id, fullyEnabled).kind).not.toBe("noop");
   });
 });

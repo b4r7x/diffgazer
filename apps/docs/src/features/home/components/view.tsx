@@ -1,5 +1,8 @@
+import { ScriptOnce } from "@tanstack/react-router";
 import { SidebarNavHeader } from "@/components/layout/sidebar-nav-header";
 import { TuiTwoPane } from "@/components/layout/tui-two-pane";
+import { MAIN_SCROLL_INIT_SCRIPT } from "@/lib/main-scroll-bootstrap";
+import { MAIN_SCROLL_RESTORATION_ID } from "@/lib/main-scroll-restoration";
 import type { HomeLibrary } from "../data";
 import { HeroPanel } from "./hero-panel";
 import { SessionPanel } from "./session-panel";
@@ -16,6 +19,7 @@ export function HomeView({ libraries }: { libraries: HomeLibrary[] }) {
       >
         <main
           id="main-content"
+          data-scroll-restoration-id={MAIN_SCROLL_RESTORATION_ID}
           tabIndex={-1}
           className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto outline-hidden lg:overflow-hidden"
         >
@@ -23,6 +27,7 @@ export function HomeView({ libraries }: { libraries: HomeLibrary[] }) {
             <HeroPanel libraries={libraries} />
             <SessionPanel />
           </div>
+          <ScriptOnce>{MAIN_SCROLL_INIT_SCRIPT}</ScriptOnce>
         </main>
       </TuiTwoPane>
     </>

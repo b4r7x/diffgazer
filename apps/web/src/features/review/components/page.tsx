@@ -28,6 +28,19 @@ type LiveReviewState =
 
 const REVIEW_ROUTE = "/review/{-$reviewId}" as const;
 
+/**
+ * The `issueId` search param is user-editable shared state, so a deep link is
+ * honored only when it names an issue this review actually produced. Both the
+ * saved and the live results branch resolve it here so neither can skip the guard.
+ */
+function resolveValidIssueId(
+  issues: readonly { id: string }[],
+  issueId: string | null,
+): string | null {
+  if (!issueId) return null;
+  return issues.some((issue) => issue.id === issueId) ? issueId : null;
+}
+
 function getLiveReviewId(state: LiveReviewState | null): string | null {
   if (!state) return null;
   if (state.phase === "streaming") return state.reviewId;
@@ -70,7 +83,7 @@ export function ReviewPage() {
   const liveReviewId = getLiveReviewId(liveState);
   const isLiveReviewRoute = Boolean(reviewId && liveReviewId === reviewId);
   const shouldLoadSavedReview = Boolean(reviewId && !isLiveReviewRoute && !liveState);
-  const savedReviewQuery = useReview(shouldLoadSavedReview ? (reviewId ?? "") : "");
+  const savedReviewQuery = useReview(shouldLoadSavedReview ? (reviewId ?? null) : null);
   const savedOutcome = shouldLoadSavedReview
     ? resolveSavedReviewOutcome(toSavedReviewQueryState(savedReviewQuery), streamNotFound)
     : null;
@@ -133,10 +146,7 @@ export function ReviewPage() {
   // not short-circuit here.
   if (savedOutcome && savedOutcome.kind !== "fallback-to-stream") {
     if (savedOutcome.kind === "results") {
-      const savedIssueId =
-        initialIssueId && savedOutcome.data.issues.some((issue) => issue.id === initialIssueId)
-          ? initialIssueId
-          : null;
+      const savedIssueId = resolveValidIssueId(savedOutcome.data.issues, initialIssueId);
 
       if (!savedResultsOpen && !savedIssueId) {
         return (
@@ -194,7 +204,7 @@ export function ReviewPage() {
         <ReviewResultsView
           issues={currentLiveState.reviewData.issues}
           reviewId={currentLiveState.reviewData.reviewId}
-          initialIssueId={initialIssueId}
+          initialIssueId={resolveValidIssueId(currentLiveState.reviewData.issues, initialIssueId)}
           droppedDuplicates={currentLiveState.reviewData.droppedDuplicates}
           lensStats={currentLiveState.reviewData.lensStats}
         />

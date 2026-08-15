@@ -12,7 +12,7 @@ const ESCAPE_PREFIX_HOLD_MS = 50;
  * ESCAPE_PREFIX_HOLD_MS so the byte that follows can decide between the two, and the
  * Proxy overrides only `read()` so Ink keeps the real stdin it needs for raw mode.
  */
-export type TerminalInputClassification = "ordinary" | "legacy-modified";
+type TerminalInputClassification = "ordinary" | "legacy-modified";
 
 export interface TerminalInputQueue {
   consume(): TerminalInputClassification | undefined;

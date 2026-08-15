@@ -57,6 +57,8 @@ export interface SearchInputProps
   onEnter?: () => void;
   /** Prefix content before the input. Pass null to hide it. */
   prefix?: ReactNode;
+  /** Accessible name for the clear button shown while the input has a value. */
+  clearLabel?: string;
   /** Height/padding/font size token, shared with Input and InputGroup. */
   size?: "sm" | "md" | "lg";
   /**
@@ -81,6 +83,7 @@ export function SearchInput({
   onKeyDown,
   placeholder = "Search...",
   prefix = defaultPrefix,
+  clearLabel = "Clear search",
   className,
   inputClassName,
   ref,
@@ -159,7 +162,7 @@ export function SearchInput({
         <button
           type="button"
           data-slot="search-input-clear"
-          aria-label="Clear search"
+          aria-label={clearLabel}
           disabled={disabled}
           className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center text-base leading-none text-foreground/70 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed pointer-coarse:right-0 pointer-coarse:size-11"
           onPointerDown={(event) => event.preventDefault()}

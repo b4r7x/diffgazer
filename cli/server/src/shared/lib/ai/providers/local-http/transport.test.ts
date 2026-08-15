@@ -1,15 +1,19 @@
+import { createServer, type RequestListener, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { LOCAL_OPENAI_PRESET_ENDPOINTS } from "@diffgazer/core/schemas/config";
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
+import { buildLensReviewResultJsonSchema } from "@diffgazer/core/schemas/review";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DnsLookupFn } from "../endpoints.js";
 import {
   discoverLocalHttpModels,
-  getLocalHttpPrivacyNotice,
   hashLocalConformanceIdentity,
   isOllamaCloudModel,
   mapDiscoveryFailureToObservation,
   mapSelectedModelMissing,
   probeLocalHttpConformance,
+  reviewResultJsonSchema,
 } from "./discovery.js";
 import {
   assertReadOnlyLocalHttpPath,
@@ -108,7 +112,7 @@ function ollamaRoutes(
         options.onChat?.();
         const payload = options.chatBody
           ? options.chatBody(request)
-          : { message: { content: '{"status":"ok"}' } };
+          : { message: { content: '{"issues":[]}' } };
         return jsonResponse(payload);
       },
     },
@@ -140,7 +144,7 @@ function openAiRoutes(
         options.onChat?.();
         const payload = options.chatBody
           ? options.chatBody(request)
-          : { choices: [{ message: { content: '{"status":"ok"}' } }] };
+          : { choices: [{ message: { content: '{"issues":[]}' } }] };
         return jsonResponse(payload);
       },
     },
@@ -263,13 +267,12 @@ describe("REQ-033 local readiness states", () => {
   });
 
   it("maps abort probe failure to cancellation-failed observation", async () => {
-    const fetch = vi.fn(async (input: FetchInput, init?: RequestInit) => {
+    const fetch = vi.fn(async (input: FetchInput) => {
       const url = fetchInputUrl(input);
       if (url.includes("/api/chat")) {
-        if (init?.signal?.aborted) {
-          return jsonResponse({ message: { content: '{"status":"ok"}' } });
-        }
-        return jsonResponse({ message: { content: '{"status":"ok"}' } });
+        // Deliberately ignores the abort signal: a server that answers a cancelled
+        // request is exactly what the cancellation probe must report.
+        return jsonResponse({ message: { content: '{"issues":[]}' } });
       }
       if (url.includes("/api/version")) {
         return jsonResponse({ version: "0.6.0" });
@@ -317,6 +320,65 @@ describe("REQ-033 local readiness states", () => {
     expect(probe.ok).toBe(true);
     if (!probe.ok) return;
     expect(probe.value).toBe("passed");
+  });
+
+  it("drives the probe with the review-result schema, not a tiny probe-only contract", async () => {
+    let probeBody: Record<string, unknown> | undefined;
+    const baseFetch = createMockFetch(
+      ollamaRoutes().map((route) =>
+        route.method === "POST"
+          ? {
+              ...route,
+              handler: async (request: Request) => {
+                probeBody ??= (await request.clone().json()) as Record<string, unknown>;
+                return route.handler(request);
+              },
+            }
+          : route,
+      ),
+    );
+    const fetch = vi.fn(async (input: FetchInput, init?: RequestInit) => {
+      if (fetchInputUrl(input).includes("/api/chat") && init?.signal?.aborted) {
+        throw new DOMException("Aborted", "AbortError");
+      }
+      return baseFetch(input, init);
+    });
+
+    const probe = await probeLocalHttpConformance(
+      {
+        productId: "ollama",
+        endpoint: OLLAMA_ENDPOINT,
+        modelId: "llama3.2",
+        auth: { authentication: "none" },
+        structuredOutputSchemaSha256: SCHEMA_SHA256,
+      },
+      { fetch, lookup: lookupLoopback() },
+    );
+
+    expect(probe.ok).toBe(true);
+    if (!probe.ok) return;
+    expect(probe.value).toBe("passed");
+    expect(probeBody?.format).toEqual(reviewResultJsonSchema());
+  });
+
+  it("fails conformance when the runtime answers the retired tiny probe contract", async () => {
+    const fetch = createMockFetch(
+      ollamaRoutes({ chatBody: () => ({ message: { content: '{"status":"ok"}' } }) }),
+    );
+    const probe = await probeLocalHttpConformance(
+      {
+        productId: "ollama",
+        endpoint: OLLAMA_ENDPOINT,
+        modelId: "llama3.2",
+        auth: { authentication: "none" },
+        structuredOutputSchemaSha256: SCHEMA_SHA256,
+      },
+      { fetch, lookup: lookupLoopback() },
+    );
+
+    expect(probe.ok).toBe(true);
+    if (!probe.ok) return;
+    expect(probe.value).toBe("conformance-failed");
   });
 });
 
@@ -545,7 +607,7 @@ describe("redirect oversize and cancel failures", () => {
 
 describe("truthful local notice", () => {
   it("states loopback-only first-hop verification without zero-cost or privacy guarantees", () => {
-    const notice = getLocalHttpPrivacyNotice("ollama");
+    const notice = PRODUCT_REGISTRY.ollama.notice.privacy;
     expect(notice.join(" ")).toMatch(/loopback/i);
     expect(notice.join(" ")).not.toMatch(
       /zero[- ]cost|unlimited|adequate hardware|zero retention/i,
@@ -612,6 +674,45 @@ describe("local-openai discovery and adapter export", () => {
     expect(result.result.issues).toEqual([]);
   });
 
+  it("resolves loopback DNS once on adapter execute happy path", async () => {
+    let lookupCalls = 0;
+    const lookup: DnsLookupFn = async () => {
+      lookupCalls += 1;
+      return [{ address: "127.0.0.1", family: 4 }];
+    };
+    const fetch = createMockFetch(
+      ollamaRoutes({
+        chatBody: () => ({ message: { content: '{"issues":[]}' } }),
+      }),
+    );
+    const adapter = createLocalHttpAdapter("ollama", { fetch, lookup });
+    const evidenceKey = {
+      authentication: "none",
+      credentialReferenceIdentity: null,
+      installationId: null,
+      productId: "ollama",
+      transportFamily: "local-http",
+      normalizedEndpoint: OLLAMA_ENDPOINT,
+      region: null,
+      workspaceAccountReference: null,
+      modelId: "llama3.2",
+      runtime: { identity: "ollama", version: "0.6.0" },
+      structuredOutputSchemaSha256: SCHEMA_SHA256,
+      noticeVersion: 1,
+      limits: LIMITS,
+    } satisfies EvidenceKey;
+
+    const result = await adapter.execute({
+      configurationId: "cfg-dns-once",
+      configurationRevision: 1,
+      evidenceKey,
+      prompt: "review",
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(lookupCalls).toBe(1);
+  });
+
   it("completes ollama adapter execution with schema-valid review output", async () => {
     const fetch = createMockFetch(
       ollamaRoutes({
@@ -661,7 +762,6 @@ describe("local-openai discovery and adapter export", () => {
     const adapter = createLocalHttpAdapter("ollama", {
       fetch,
       lookup: lookupLoopback(),
-      resolveBearerToken: async () => "local-bearer-token",
     });
     const evidenceKey = {
       authentication: "optional-local-bearer",
@@ -684,10 +784,117 @@ describe("local-openai discovery and adapter export", () => {
       configurationRevision: 1,
       evidenceKey,
       prompt: "review",
+      resolveCredential: async () => "local-bearer-token",
     });
 
     expect(result.receipt.outcome).toBe("completed");
     expect(authorizationHeaders).toContain("Bearer local-bearer-token");
+  });
+});
+
+describe("default adapter env proxy bypass", () => {
+  function listen(
+    host: string,
+    handler: RequestListener,
+  ): Promise<{ server: Server; port: number }> {
+    return new Promise((resolve, reject) => {
+      const server = createServer(handler);
+      server.once("error", reject);
+      server.listen(0, host, () => {
+        const address = server.address();
+        if (!address || typeof address === "string") {
+          reject(new Error("Expected a TCP listen address"));
+          return;
+        }
+        resolve({ server, port: (address as AddressInfo).port });
+      });
+    });
+  }
+
+  it("bypasses HTTP_PROXY on the default ollama adapter execute path", async () => {
+    const proxyConnections: string[] = [];
+    const authorizationHeaders: string[] = [];
+    let chatBody: Record<string, unknown> | undefined;
+
+    const proxy = await listen("127.0.0.1", (req, res) => {
+      proxyConnections.push(req.url ?? "");
+      res.writeHead(502);
+      res.end("proxy");
+    });
+
+    const target = await listen("127.0.0.1", (req, res) => {
+      const url = req.url ?? "/";
+      if (url.startsWith("/api/version")) {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ version: "0.6.0" }));
+        return;
+      }
+      if (url.startsWith("/api/tags")) {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ models: [{ name: "llama3.2", details: { family: "llama" } }] }));
+        return;
+      }
+      if (url.startsWith("/api/chat") && req.method === "POST") {
+        const authorization = req.headers.authorization;
+        if (authorization) authorizationHeaders.push(authorization);
+        let body = "";
+        req.on("data", (chunk) => {
+          body += chunk;
+        });
+        req.on("end", () => {
+          chatBody = JSON.parse(body) as Record<string, unknown>;
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ message: { content: '{"issues":[]}' } }));
+        });
+        return;
+      }
+      res.writeHead(404);
+      res.end("not found");
+    });
+
+    const previousProxy = process.env.HTTP_PROXY;
+    const previousNodeProxy = process.env.NODE_USE_ENV_PROXY;
+    process.env.HTTP_PROXY = `http://127.0.0.1:${proxy.port}`;
+    process.env.NODE_USE_ENV_PROXY = "1";
+
+    try {
+      const endpoint = `http://127.0.0.1:${target.port}`;
+      const evidenceKey = {
+        authentication: "optional-local-bearer",
+        credentialReferenceIdentity: "2".repeat(64),
+        installationId: null,
+        productId: "ollama",
+        transportFamily: "local-http",
+        normalizedEndpoint: endpoint,
+        region: null,
+        workspaceAccountReference: null,
+        modelId: "llama3.2",
+        runtime: { identity: "ollama", version: "0.6.0" },
+        structuredOutputSchemaSha256: SCHEMA_SHA256,
+        noticeVersion: 1,
+        limits: LIMITS,
+      } satisfies EvidenceKey;
+
+      const result = await ollamaAdapter.execute({
+        configurationId: "cfg-proxy-bypass",
+        configurationRevision: 1,
+        evidenceKey,
+        prompt: "review this diff",
+        resolveCredential: async () => "local-bearer-token",
+      });
+
+      expect(result.receipt.outcome).toBe("completed");
+      expect(proxyConnections).toEqual([]);
+      expect(authorizationHeaders).toContain("Bearer local-bearer-token");
+      expect(chatBody).toEqual(expect.objectContaining({ model: "llama3.2" }));
+    } finally {
+      proxy.server.close();
+      target.server.close();
+      if (previousProxy === undefined) delete process.env.HTTP_PROXY;
+      else process.env.HTTP_PROXY = previousProxy;
+      if (previousNodeProxy === undefined) delete process.env.NODE_USE_ENV_PROXY;
+      else process.env.NODE_USE_ENV_PROXY = previousNodeProxy;
+    }
   });
 });
 
@@ -708,7 +915,114 @@ const EVIDENCE_KEY = {
 } satisfies EvidenceKey;
 
 describe("local generation contract", () => {
-  it("sends the review-result schema for generation, not the conformance probe schema", async () => {
+  it("sends trusted instructions before the user review prompt on the local system and user channels", async () => {
+    const systemPrompt = "invariant reviewer instructions";
+    const prompt = "review this diff";
+    let chatBody: unknown;
+    const fetch = createMockFetch(
+      ollamaRoutes({
+        chatBody: () => ({ message: { content: JSON.stringify({ issues: [] }) } }),
+      }).map((route) =>
+        route.method === "POST"
+          ? {
+              ...route,
+              handler: async (request: Request) => {
+                chatBody = await request.clone().json();
+                return route.handler(request);
+              },
+            }
+          : route,
+      ),
+    );
+    const adapter = createLocalHttpAdapter("ollama", { fetch, lookup: lookupLoopback() });
+
+    const result = await adapter.execute({
+      configurationId: "cfg-system-user-channels",
+      configurationRevision: 1,
+      evidenceKey: EVIDENCE_KEY,
+      prompt,
+      systemPrompt,
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(chatBody).toEqual(
+      expect.objectContaining({
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt },
+        ],
+      }),
+    );
+  });
+
+  it("sends OpenAI-strict review schema for local-openai strict generation", async () => {
+    let chatBody: Record<string, unknown> | undefined;
+    const fetch = createMockFetch(
+      openAiRoutes({
+        serverVersion: "b-version-2026-07",
+        chatBody: () => ({ choices: [{ message: { content: '{"issues":[]}' } }] }),
+      }).map((route) =>
+        route.method === "POST"
+          ? {
+              ...route,
+              handler: async (request: Request) => {
+                chatBody = (await request.clone().json()) as Record<string, unknown>;
+                return route.handler(request);
+              },
+            }
+          : route,
+      ),
+    );
+    const adapter = createLocalHttpAdapter("local-openai", { fetch, lookup: lookupLoopback() });
+    const evidenceKey = {
+      authentication: "none",
+      credentialReferenceIdentity: null,
+      installationId: null,
+      productId: "local-openai",
+      transportFamily: "local-http",
+      normalizedEndpoint: LLAMA_CPP_ENDPOINT,
+      region: null,
+      workspaceAccountReference: null,
+      modelId: "local-model",
+      runtime: { identity: "llama-cpp", version: "b-version-2026-07" },
+      structuredOutputSchemaSha256: SCHEMA_SHA256,
+      noticeVersion: 1,
+      limits: LIMITS,
+    } satisfies EvidenceKey;
+
+    const result = await adapter.execute({
+      configurationId: "cfg-strict-schema",
+      configurationRevision: 1,
+      evidenceKey,
+      prompt: "review",
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+
+    const responseFormat = chatBody?.response_format as
+      | { type?: string; json_schema?: { strict?: boolean; schema?: Record<string, unknown> } }
+      | undefined;
+    expect(responseFormat?.type).toBe("json_schema");
+    expect(responseFormat?.json_schema?.strict).toBe(true);
+
+    const wireSchema = responseFormat?.json_schema?.schema;
+    expect(wireSchema).toEqual(reviewResultJsonSchema());
+    expect(wireSchema?.$schema).toBeUndefined();
+
+    const canonical = buildLensReviewResultJsonSchema() as Record<string, unknown>;
+    expect(canonical.$schema).toBe("http://json-schema.org/draft-07/schema#");
+
+    const issues = (wireSchema?.properties as Record<string, unknown> | undefined)?.issues as
+      | Record<string, unknown>
+      | undefined;
+    const issue = (issues?.items ?? {}) as Record<string, unknown>;
+    expect(issue.additionalProperties).toBe(false);
+    expect(issue.required).toEqual(
+      expect.arrayContaining(["fixPlan", "betterOptions", "testsToAdd", "trace"]),
+    );
+  });
+
+  it("sends the review-result schema for generation", async () => {
     let chatBody: Record<string, unknown> | undefined;
     const fetch = createMockFetch(
       ollamaRoutes({
@@ -738,6 +1052,89 @@ describe("local generation contract", () => {
     const format = chatBody?.format as { properties?: Record<string, unknown> } | undefined;
     expect(Object.keys(format?.properties ?? {})).toContain("issues");
     expect(Object.keys(format?.properties ?? {})).not.toContain("status");
+  });
+
+  it.each([
+    [
+      "ollama",
+      () => ollamaRoutes({ chatBody: () => ({ message: { content: '{"issues":[]}' } }) }),
+      EVIDENCE_KEY,
+      (body: Record<string, unknown>) =>
+        (body.options as { num_predict?: number } | undefined)?.num_predict,
+    ],
+    [
+      "local-openai",
+      () =>
+        openAiRoutes({
+          serverVersion: "b-version-2026-07",
+          chatBody: () => ({ choices: [{ message: { content: '{"issues":[]}' } }] }),
+        }),
+      {
+        ...EVIDENCE_KEY,
+        productId: "local-openai",
+        normalizedEndpoint: LLAMA_CPP_ENDPOINT,
+        modelId: "local-model",
+        runtime: { identity: "llama-cpp", version: "b-version-2026-07" },
+      } satisfies EvidenceKey,
+      (body: Record<string, unknown>) => body.max_tokens as number | undefined,
+    ],
+  ] as const)("sends the admitted output-token ceiling as the %s runtime's hard stop", async (productId, routes, evidenceKey, readCap) => {
+    let chatBody: Record<string, unknown> | undefined;
+    const fetch = createMockFetch(
+      routes().map((route) =>
+        route.method === "POST"
+          ? {
+              ...route,
+              handler: async (request: Request) => {
+                chatBody = (await request.clone().json()) as Record<string, unknown>;
+                return route.handler(request);
+              },
+            }
+          : route,
+      ),
+    );
+    const adapter = createLocalHttpAdapter(productId, { fetch, lookup: lookupLoopback() });
+
+    const result = await adapter.execute({
+      configurationId: "cfg-output-cap",
+      configurationRevision: 1,
+      evidenceKey,
+      prompt: "review this diff",
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(readCap(chatBody ?? {})).toBe(LIMITS.maxOutputTokens);
+  });
+
+  it("enforces one cumulative response-byte budget across discovery and generation", async () => {
+    const fetch = createMockFetch([
+      {
+        match: (url) => url.includes("/api/version"),
+        handler: () => jsonResponse({ version: "0.6.0" }),
+      },
+      {
+        match: (url) => url.includes("/api/tags"),
+        handler: () =>
+          jsonResponse({
+            models: [{ name: "llama3.2", details: { family: "llama" }, pad: "x".repeat(512) }],
+          }),
+      },
+      {
+        method: "POST",
+        match: (url) => url.includes("/api/chat"),
+        handler: () => jsonResponse({ message: { content: JSON.stringify({ issues: [] }) } }),
+      },
+    ]);
+    const adapter = createLocalHttpAdapter("ollama", { fetch, lookup: lookupLoopback() });
+
+    const result = await adapter.execute({
+      configurationId: "cfg-1",
+      configurationRevision: 1,
+      evidenceKey: { ...EVIDENCE_KEY, limits: { ...LIMITS, maxResponseBytes: 256 } },
+      prompt: "review this diff",
+    });
+
+    expect(result.receipt.outcome).toBe("transport-failed");
   });
 
   it("aborts a streamed response once it crosses the admitted byte cap", async () => {

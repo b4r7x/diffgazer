@@ -1,4 +1,4 @@
-import type { SetupPlan } from "@diffgazer/core/onboarding";
+import type { RunnableSetupPlan } from "@diffgazer/core/onboarding";
 import { getOnboardingProgressLabel, STEP_LABELS } from "@diffgazer/core/onboarding";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
@@ -6,7 +6,7 @@ import { useTheme } from "../../../theme/provider";
 import { WIZARD_PROGRESS_MARKERS } from "../lib/wizard-progress";
 
 interface WizardProgressProps {
-  plan: SetupPlan;
+  plan: RunnableSetupPlan;
   currentStep: number;
   compact?: boolean;
 }

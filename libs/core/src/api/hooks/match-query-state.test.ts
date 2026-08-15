@@ -1,13 +1,6 @@
-import type { UseQueryResult } from "@tanstack/react-query";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
-import { guardQueryState, matchQueryState } from "./match-query-state.js";
-
-type QueryShape<T> = Pick<UseQueryResult<T>, "isLoading" | "error" | "data" | "fetchStatus">;
-
-function queryResult<T>(shape: QueryShape<T>): UseQueryResult<T> {
-  return shape as UseQueryResult<T>;
-}
+import { guardQueryState, matchQueryState, type QueryState } from "./match-query-state.js";
 
 const handlers = {
   loading: () => "loading" as const,
@@ -17,56 +10,56 @@ const handlers = {
 
 describe("matchQueryState", () => {
   it("renders loading while a query is fetching", () => {
-    const query = queryResult<string>({
+    const query: QueryState<string> = {
       isLoading: true,
       error: null,
       data: undefined,
       fetchStatus: "fetching",
-    });
+    };
 
     expect(matchQueryState(query, handlers)).toBe("loading");
   });
 
   it("renders the error branch over stale data on refetch failure", () => {
-    const query = queryResult<string>({
+    const query: QueryState<string> = {
       isLoading: false,
       error: new Error("boom"),
       data: "stale",
       fetchStatus: "idle",
-    });
+    };
 
     expect(matchQueryState(query, handlers)).toBe("error:boom");
   });
 
   it("renders success once data resolves", () => {
-    const query = queryResult<string>({
+    const query: QueryState<string> = {
       isLoading: false,
       error: null,
       data: "models",
       fetchStatus: "idle",
-    });
+    };
 
     expect(matchQueryState(query, handlers)).toBe("success:models");
   });
 
   it("renders nothing for a disabled, idle query instead of a perpetual spinner", () => {
-    const query = queryResult<string>({
+    const query: QueryState<string> = {
       isLoading: false,
       error: null,
       data: undefined,
       fetchStatus: "idle",
-    });
+    };
 
     expect(matchQueryState(query, handlers)).toBeNull();
   });
 
   it("renders loading while a query is paused before its first data resolves", () => {
-    const query = queryResult<string>({
+    const query: QueryState<string> = {
       isLoading: false,
       error: null,
       data: undefined,
       fetchStatus: "paused",
-    });
+    };
 
     expect(matchQueryState(query, handlers)).toBe("loading");
   });
@@ -81,56 +74,56 @@ describe("guardQueryState", () => {
   };
 
   it("returns the loading element while a query is fetching", () => {
-    const query = queryResult<string>({
+    const query: QueryState<string> = {
       isLoading: true,
       error: null,
       data: undefined,
       fetchStatus: "fetching",
-    });
+    };
 
     expect(guardQueryState(query, guard)).toBe(loadingElement);
   });
 
   it("returns the error element on failure", () => {
-    const query = queryResult<string>({
+    const query: QueryState<string> = {
       isLoading: false,
       error: new Error("nope"),
       data: undefined,
       fetchStatus: "idle",
-    });
+    };
 
     expect(guardQueryState(query, guard)).toBe(errorElement);
   });
 
   it("returns null once data is available so the caller proceeds", () => {
-    const query = queryResult<string>({
+    const query: QueryState<string> = {
       isLoading: false,
       error: null,
       data: "ready",
       fetchStatus: "idle",
-    });
+    };
 
     expect(guardQueryState(query, guard)).toBeNull();
   });
 
   it("returns null for a disabled, idle query so it does not render a forever spinner", () => {
-    const query = queryResult<string>({
+    const query: QueryState<string> = {
       isLoading: false,
       error: null,
       data: undefined,
       fetchStatus: "idle",
-    });
+    };
 
     expect(guardQueryState(query, guard)).toBeNull();
   });
 
   it("returns the loading element while a query is paused before its first data resolves", () => {
-    const query = queryResult<string>({
+    const query: QueryState<string> = {
       isLoading: false,
       error: null,
       data: undefined,
       fetchStatus: "paused",
-    });
+    };
 
     expect(guardQueryState(query, guard)).toBe(loadingElement);
   });

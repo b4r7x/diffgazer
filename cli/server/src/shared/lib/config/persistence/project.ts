@@ -2,9 +2,18 @@ import { randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
-import { isNodeError, writeJsonFileSync, writeJsonFileSyncExclusive } from "../../fs.js";
+import {
+  isNodeError,
+  syncParentDirectorySync,
+  writeJsonFileSync,
+  writeJsonFileSyncExclusive,
+} from "../../fs.js";
 import { log } from "../../log.js";
-import { getProjectInfoPath } from "../../paths.js";
+import {
+  assertProjectDiffgazerDirContained,
+  getProjectInfoPath,
+  isProjectDiffgazerDirContained,
+} from "../../paths.js";
 import type { ProjectFile } from "../types.js";
 import { loadOrQuarantine, RESERVED_PROJECT_IDS } from "./load-json.js";
 
@@ -39,6 +48,8 @@ const projectFileMatchesRoot = (file: ProjectFile, projectRoot: string): boolean
 /** Migrates moved-project state and reports when project.json may commit the new root. */
 export interface ReadProjectFileOptions {
   onMove?: (oldRepoRoot: string, newRepoRoot: string) => Promise<boolean>;
+  /** When false, repoRoot mismatches are returned as-is with no writes or re-key side effects. */
+  reconcileMove?: boolean;
 }
 
 const projectMoveFlights = new Map<string, Promise<void>>();
@@ -77,10 +88,16 @@ export const readProjectFile = (
   projectRoot: string,
   options: ReadProjectFileOptions = {},
 ): ProjectFile | null => {
+  if (!isProjectDiffgazerDirContained(projectRoot)) {
+    return null;
+  }
   const projectInfoPath = getProjectInfoPath(projectRoot);
   const loaded = loadOrQuarantine(projectInfoPath, "project file", ProjectFileSchema);
   if (!loaded) return null;
   if (!projectFileMatchesRoot(loaded, projectRoot)) {
+    if (!options.reconcileMove) {
+      return loaded;
+    }
     const moved: ProjectFile = { ...loaded, repoRoot: projectRoot };
     if (options.onMove) {
       scheduleProjectMove(projectInfoPath, loaded, moved, options.onMove);
@@ -96,8 +113,13 @@ export const createProjectFile = (
   projectRoot: string,
   options: ReadProjectFileOptions = {},
 ): ProjectFile => {
+  assertProjectDiffgazerDirContained(projectRoot);
+  const projectInfoPath = getProjectInfoPath(projectRoot);
   const existing = readProjectFile(projectRoot, options);
-  if (existing) return existing;
+  if (existing) {
+    syncParentDirectorySync(projectInfoPath);
+    return existing;
+  }
 
   const created: ProjectFile = {
     projectId: randomUUID(),
@@ -106,13 +128,16 @@ export const createProjectFile = (
   };
 
   try {
-    writeJsonFileSyncExclusive(getProjectInfoPath(projectRoot), created, 0o600);
+    writeJsonFileSyncExclusive(projectInfoPath, created, 0o600);
     return created;
   } catch (error) {
     if (!isNodeError(error, "EEXIST")) throw error;
 
     const winner = readProjectFile(projectRoot, options);
-    if (winner) return winner;
+    if (winner) {
+      syncParentDirectorySync(projectInfoPath);
+      return winner;
+    }
     throw new Error("Project identity winner could not be read after exclusive creation", {
       cause: error,
     });

@@ -18,5 +18,5 @@ const patch = `--- a/src/utils/score.ts
 `;
 
 export default function DiffViewWithHeader() {
-  return <DiffView patch={patch} label="Score helper diff" mode="split" showLineNumbers />;
+  return <DiffView patch={patch} aria-label="Score helper diff" mode="split" showLineNumbers />;
 }

@@ -1,23 +1,21 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ComponentPropsWithRef, ReactNode } from "react";
 import { OverlayHints } from "../shared/overlay-hints";
 
 /** Props for command palette footer. */
-export interface CommandPaletteFooterProps {
+export interface CommandPaletteFooterProps extends ComponentPropsWithRef<"div"> {
   /**
    * Footer content. Omit it to render the palette's canonical keyboard legend
    * (Navigate / Select / Close) through the shared OverlayHints primitive.
    */
   children?: ReactNode;
-  /** Additional class names merged onto the rendered element. */
-  className?: string;
 }
 
 /** Hint bar / status area. */
-export function CommandPaletteFooter({ children, className }: CommandPaletteFooterProps) {
+export function CommandPaletteFooter({ children, className, ...props }: CommandPaletteFooterProps) {
   return (
-    <div data-slot="command-palette-footer" className={className}>
+    <div {...props} data-slot="command-palette-footer" className={className}>
       {children ?? <DefaultHints />}
     </div>
   );

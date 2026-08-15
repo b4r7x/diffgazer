@@ -32,13 +32,15 @@ describe("toastDoc", () => {
       type: "string",
       required: false,
       defaultValue: '"Dismiss: " + title',
-      description: "Accessible name for the dismiss button.",
+      description:
+        "Accessible name for the dismiss button. The `hud` variant does not render a close button, so this prop has no effect there.",
     });
     expect(toastProps?.toneLabel).toEqual({
       type: "string",
       required: false,
       defaultValue: "the tone value",
-      description: "Screen-reader tone text announced before the toast title.",
+      description:
+        "Accessible tone label: screen-reader tone text announced before the toast title.",
     });
   });
 
@@ -47,5 +49,16 @@ describe("toastDoc", () => {
     expect(durationDescription).toContain("rendered action");
     expect(durationDescription).toContain("`hud` variant does not render actions");
     expect(toastDoc.props?.["toast (function)"]?.action?.description).toContain("silently omits");
+  });
+
+  it("documents that hud omits the close button and auto-dismisses error and loading tones", () => {
+    const persistenceNote = toastDoc.notes?.find((note) => note.title === "Error Toasts Persist");
+    expect(persistenceNote?.content).toContain(
+      "The `hud` variant omits the close button and auto-dismisses even for error and loading tones",
+    );
+    expect(persistenceNote?.content).toContain("non-finite duration (Infinity) to opt out");
+    expect(toastDoc.props?.["toast (function)"]?.dismissLabel?.description).toContain(
+      "does not render a close button",
+    );
   });
 });

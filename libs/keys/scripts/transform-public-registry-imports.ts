@@ -1,59 +1,131 @@
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, posix, resolve } from "node:path";
-import { findRelativeJsSpecifiers, stripRelativeJsExtensions } from "@diffgazer/registry";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import {
+  findRelativeJsSpecifiers,
+  listPublicRegistryEntries,
+  readRegistryItem,
+  rewriteRelativeImportsForTargetLayout,
+  stripRelativeJsExtensions,
+} from "@diffgazer/registry";
 import type { RegistryItem } from "@diffgazer/registry/schemas";
-import { RegistrySchema } from "@diffgazer/registry/schemas";
+import { RegistryItemSchema, RegistrySchema } from "@diffgazer/registry/schemas";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function parseRegistryEntry(raw: unknown): RegistryItem {
-  const [item] = RegistrySchema.parse({ items: [raw] }).items;
-  if (!item) throw new Error("Missing registry item");
-  return item;
+/**
+ * Validates the index against the schema but hands back the raw JSON: every
+ * write-back below edits raw values, because reserializing parsed items would
+ * strip keys the schema omits.
+ */
+function readRawRegistryIndex(indexPath: string): {
+  json: Record<string, unknown>;
+  items: unknown[];
+} {
+  const json: unknown = JSON.parse(readFileSync(indexPath, "utf-8"));
+  RegistrySchema.parse(json);
+  if (!isRecord(json) || !Array.isArray(json.items)) {
+    throw new Error(`Registry index ${indexPath} is not a shadcn registry object`);
+  }
+  return { json, items: json.items };
 }
 
-export function transformKeysPublicRegistryImportContent(content: string): string {
+function isHiddenRawItem(raw: unknown): boolean {
+  return isRecord(raw) && isRecord(raw.meta) && raw.meta.hidden === true;
+}
+
+function transformKeysPublicRegistryImportContent(content: string): string {
   return stripRelativeJsExtensions(content);
 }
 
-export const RELATIVE_IMPORT =
-  /((?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)(["']))(\.{1,2}\/[^"']+)\2/g;
+const SRC_HOOKS_PREFIX = "src/hooks/";
+const HOOKS_TARGET_PREFIX = "@hooks/";
 
-export function rewriteImportsForTargetLayout(
+// shadcn 4.7.0 writes literal `src/hooks/...` targets to cwd-relative paths,
+// ignoring `resolvedPaths.hooks`. Pinning `@hooks/<subpath>` makes shadcn resolve
+// each file within the configured hooks alias root (mirrors the UI `@ui/` handoff).
+// Source registry keeps `src/hooks/...` targets for copy/package install paths.
+export function deriveKeysRegistryTarget(file: {
+  path?: string;
+  type?: string;
+  target?: string;
+}): string | undefined {
+  if (file.target?.startsWith(SRC_HOOKS_PREFIX)) {
+    return `${HOOKS_TARGET_PREFIX}${file.target.slice(SRC_HOOKS_PREFIX.length)}`;
+  }
+  if (file.path?.startsWith(SRC_HOOKS_PREFIX)) {
+    return `${HOOKS_TARGET_PREFIX}${file.path.slice(SRC_HOOKS_PREFIX.length)}`;
+  }
+  return file.target;
+}
+
+export function transformKeysPublicRegistrySourceItem(item: RegistryItem): RegistryItem {
+  let changed = false;
+  const files = item.files.map((file) => {
+    const target = deriveKeysRegistryTarget(file);
+    if (target === file.target) return file;
+    changed = true;
+    return { ...file, target };
+  });
+  return changed ? { ...item, files } : item;
+}
+
+function applyKeysRegistryTargetsToRawItem(rawItem: Record<string, unknown>): boolean {
+  if (!Array.isArray(rawItem.files)) return false;
+
+  let changed = false;
+  for (const rawFile of rawItem.files) {
+    if (!isRecord(rawFile) || typeof rawFile.path !== "string") continue;
+    const target = deriveKeysRegistryTarget({
+      path: rawFile.path,
+      type: typeof rawFile.type === "string" ? rawFile.type : undefined,
+      target: typeof rawFile.target === "string" ? rawFile.target : undefined,
+    });
+    if (target === rawFile.target) continue;
+    rawFile.target = target;
+    changed = true;
+  }
+  return changed;
+}
+
+export function applyKeysRegistryTargetsInPublicRegistry(outputDir: string): void {
+  const indexPath = join(outputDir, "registry.json");
+  const rawIndex = readRawRegistryIndex(indexPath);
+
+  let indexChanged = false;
+  for (const rawItem of rawIndex.items) {
+    if (isRecord(rawItem) && applyKeysRegistryTargetsToRawItem(rawItem)) indexChanged = true;
+  }
+  if (indexChanged) {
+    writeFileSync(indexPath, `${JSON.stringify(rawIndex.json, null, 2)}\n`);
+  }
+
+  for (const { entry, itemPath } of listPublicRegistryEntries(outputDir)) {
+    const rawItem: unknown = JSON.parse(readFileSync(itemPath, "utf-8"));
+    if (!isRecord(rawItem)) {
+      throw new Error(`Registry item ${entry} is not a shadcn item object`);
+    }
+    if (!applyKeysRegistryTargetsToRawItem(rawItem)) continue;
+    writeFileSync(itemPath, `${JSON.stringify(rawItem, null, 2)}\n`);
+  }
+}
+
+// The public shadcn build maps one registry item at a time, so an import into a
+// sibling item resolves to nothing here and must be left as written.
+function rewriteForPublicItemLayout(
   content: string,
   sourcePath: string,
   targetPath: string,
-  pathMap: Map<string, string>,
+  pathMap: ReadonlyMap<string, string>,
 ): string {
-  const sourceDir = dirname(sourcePath);
-  const targetDir = dirname(targetPath);
-
-  return content.replace(
-    RELATIVE_IMPORT,
-    (match: string, prefix: string, quote: string, specifier: string) => {
-      const resolvedSource = posix.normalize(posix.join(sourceDir, specifier));
-      const candidates = [resolvedSource, `${resolvedSource}.ts`, `${resolvedSource}.tsx`];
-
-      let resolvedTarget: string | null = null;
-      for (const candidate of candidates) {
-        const target = pathMap.get(candidate);
-        if (target) {
-          resolvedTarget = target;
-          break;
-        }
-      }
-
-      if (!resolvedTarget) return match;
-
-      const targetWithoutExt = resolvedTarget.replace(/\.(ts|tsx)$/, "");
-      let relative = posix.relative(targetDir, targetWithoutExt);
-      if (!relative.startsWith(".")) relative = `./${relative}`;
-
-      return `${prefix}${relative}${quote}`;
-    },
-  );
+  return rewriteRelativeImportsForTargetLayout({
+    content,
+    sourcePath,
+    targetPath,
+    pathMap,
+    unresolved: "keep",
+  });
 }
 
 function buildItemPathMaps(registryPath: string): Map<string, Map<string, string>> {
@@ -80,7 +152,7 @@ export function createKeysSourceContentTransform(
     const pathMap = itemPathMaps.get(itemName);
     const targetPath = pathMap?.get(filePath);
     if (pathMap && targetPath) {
-      transformed = rewriteImportsForTargetLayout(transformed, filePath, targetPath, pathMap);
+      transformed = rewriteForPublicItemLayout(transformed, filePath, targetPath, pathMap);
     }
     return transformed;
   };
@@ -89,10 +161,8 @@ export function createKeysSourceContentTransform(
 export function assertNoRelativeJsImports(outputDir: string): void {
   const offenders: string[] = [];
 
-  for (const entry of readdirSync(outputDir)) {
-    if (!entry.endsWith(".json") || entry === "registry.json") continue;
-
-    const item = parseRegistryEntry(JSON.parse(readFileSync(join(outputDir, entry), "utf-8")));
+  for (const { entry, itemPath } of listPublicRegistryEntries(outputDir)) {
+    const item = readRegistryItem(itemPath);
     for (const file of item.files) {
       if (typeof file.content !== "string") continue;
       const specifiers = findRelativeJsSpecifiers(file.content);
@@ -115,24 +185,19 @@ export function assertNoRelativeJsImports(outputDir: string): void {
 
 export function transformKeysPublicRegistryImports(outputDir: string): void {
   const indexPath = join(outputDir, "registry.json");
-  const indexJson: unknown = JSON.parse(readFileSync(indexPath, "utf-8"));
-  const index = RegistrySchema.parse(indexJson);
+  const rawIndex = readRawRegistryIndex(indexPath);
 
-  const before = index.items.length;
-  const publicItems = index.items.filter((item) => item.meta?.hidden !== true);
-  if (publicItems.length !== before) {
-    const nextIndex = isRecord(indexJson)
-      ? { ...indexJson, items: publicItems }
-      : { items: publicItems };
-    writeFileSync(indexPath, `${JSON.stringify(nextIndex, null, 2)}\n`);
+  const publicItems = rawIndex.items.filter((item) => !isHiddenRawItem(item));
+  if (publicItems.length !== rawIndex.items.length) {
+    writeFileSync(
+      indexPath,
+      `${JSON.stringify({ ...rawIndex.json, items: publicItems }, null, 2)}\n`,
+    );
   }
 
-  for (const entry of readdirSync(outputDir)) {
-    if (!entry.endsWith(".json") || entry === "registry.json") continue;
-
-    const itemPath = join(outputDir, entry);
+  for (const { entry, itemPath } of listPublicRegistryEntries(outputDir)) {
     const rawItem: unknown = JSON.parse(readFileSync(itemPath, "utf-8"));
-    const item = parseRegistryEntry(rawItem);
+    const item = RegistryItemSchema.parse(rawItem);
 
     const pathMap = new Map<string, string>();
     for (const file of item.files) {
@@ -148,7 +213,7 @@ export function transformKeysPublicRegistryImports(outputDir: string): void {
       let nextContent = transformKeysPublicRegistryImportContent(file.content);
 
       if (file.target && pathMap.size > 0) {
-        nextContent = rewriteImportsForTargetLayout(nextContent, file.path, file.target, pathMap);
+        nextContent = rewriteForPublicItemLayout(nextContent, file.path, file.target, pathMap);
       }
 
       if (nextContent !== file.content) rewrittenContent.set(index, nextContent);

@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -9,6 +9,8 @@ import {
 } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { assertTempHome } from "../../../shared/lib/testing/temp-home.js";
+import { drainReviewWrites } from "../testing/storage-drain.js";
 
 const REVIEW_ID = "550e8400-e29b-41d4-a716-446655440000";
 
@@ -17,14 +19,19 @@ let reviewsDir: string;
 
 beforeEach(async () => {
   tempHome = await mkdtemp(join(tmpdir(), "diffgazer-review-store-"));
+  assertTempHome(tempHome);
   reviewsDir = join(tempHome, "triage-reviews");
   process.env.DIFFGAZER_HOME = tempHome;
   vi.resetModules();
 });
 
+// Settle the fire-and-forget migration writes first, then remove the temp home, and only
+// then drop DIFFGAZER_HOME: `paths.ts` re-reads the variable per call, so restoring it
+// while a write is still pending re-points that write at the real ~/.diffgazer.
 afterEach(async () => {
+  await drainReviewWrites(tempHome);
+  await rm(tempHome, { recursive: true, force: true });
   delete process.env.DIFFGAZER_HOME;
-  await rm(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
 });
 
 async function loadStore() {
@@ -159,6 +166,17 @@ describe("reviewStore", () => {
     await expect(reviewStore.read(REVIEW_ID)).resolves.toEqual({ ok: true, value: review });
   });
 
+  it("tightens a reviews directory an earlier build left group and other readable", async () => {
+    const { reviewStore } = await loadStore();
+    await mkdir(reviewsDir, { recursive: true });
+    await chmod(reviewsDir, 0o755);
+
+    const writeResult = await reviewStore.write(makeReview());
+
+    expect(writeResult.ok).toBe(true);
+    expect((await stat(reviewsDir)).mode & 0o777).toBe(0o700);
+  });
+
   it("returns NOT_FOUND for a review that was never written", async () => {
     const { reviewStore } = await loadStore();
 
@@ -181,6 +199,19 @@ describe("reviewStore", () => {
     expect(invalidResult.ok).toBe(false);
     if (!invalidResult.ok) expect(invalidResult.error.code).toBe("VALIDATION_ERROR");
   });
+
+  it.skipIf(process.platform === "freebsd")(
+    "reports filesystem read failures separately from malformed JSON",
+    async () => {
+      const { reviewStore } = await loadStore();
+      await mkdir(join(reviewsDir, `${REVIEW_ID}.json`), { recursive: true });
+
+      const result = await reviewStore.read(REVIEW_ID);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.code).toBe("READ_ERROR");
+    },
+  );
 
   it("rejects a non-uuid review id before touching the filesystem", async () => {
     const { reviewStore } = await loadStore();
@@ -274,7 +305,11 @@ describe("reviewStore", () => {
 
     expect(readResult.ok).toBe(true);
     if (!readResult.ok) return;
-    expect(bytes).toBe(`${JSON.stringify(readResult.value, null, 2)}\n`);
+    const { execution: _runtimeView, ...durable } = readResult.value;
+    // The receipt lands once, as executionSnapshot; the runtime execution view is
+    // derived on read and must never double the record on disk.
+    expect(JSON.parse(bytes)).not.toHaveProperty("execution");
+    expect(bytes).toBe(`${JSON.stringify(durable, null, 2)}\n`);
     expect(readResult.value.execution?.receipt.executionFingerprint).toBe(
       review.execution?.receipt.executionFingerprint,
     );

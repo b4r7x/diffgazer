@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Toaster, toast } from "@/components/ui/toast";
+import { toast } from "@/components/ui/toast";
 
 function simulateAsync(shouldFail = false): Promise<{ count: number }> {
   return new Promise((resolve, reject) => {
@@ -14,39 +14,36 @@ function simulateAsync(shouldFail = false): Promise<{ count: number }> {
 
 export default function ToastPromise() {
   return (
-    <>
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() =>
-            toast.promise(simulateAsync(), {
+    <div className="flex flex-wrap gap-2">
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={() =>
+          toast.promise(simulateAsync(), {
+            loading: "Analyzing files...",
+            success: (data) => `Analysis complete: ${data.count} files`,
+            error: "Analysis failed",
+          })
+        }
+      >
+        Promise (Success)
+      </Button>
+      <Button
+        variant="destructive"
+        size="sm"
+        onClick={() =>
+          toast
+            .promise(simulateAsync(true), {
               loading: "Analyzing files...",
-              success: (data) => `Analysis complete: ${data.count} files`,
-              error: "Analysis failed",
+              success: "Done",
+              error: (err) => (err instanceof Error ? err.message : "Unknown error"),
             })
-          }
-        >
-          Promise (Success)
-        </Button>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() =>
-            toast
-              .promise(simulateAsync(true), {
-                loading: "Analyzing files...",
-                success: "Done",
-                error: (err) => (err instanceof Error ? err.message : "Unknown error"),
-              })
-              // toast.promise returns a promise that rejects when the input rejects.
-              .catch(() => {})
-          }
-        >
-          Promise (Error)
-        </Button>
-      </div>
-      <Toaster />
-    </>
+            // toast.promise returns a promise that rejects when the input rejects.
+            .catch(() => {})
+        }
+      >
+        Promise (Error)
+      </Button>
+    </div>
   );
 }

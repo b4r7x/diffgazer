@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { createBundler } from "@diffgazer/registry/cli";
+import { bundleRegistry } from "@diffgazer/registry/cli";
 
 const UI_ROOT = resolve(import.meta.dirname, "../../../libs/ui");
 
-const bundle = createBundler({
+bundleRegistry({
   rootDir: UI_ROOT,
   outputPath: resolve(import.meta.dirname, "../src/generated/registry-bundle.json"),
   excludedDeps: new Set(["class-variance-authority", "clsx", "tailwind-merge"]),
@@ -36,5 +36,3 @@ const bundle = createBundler({
     };
   },
 });
-
-bundle();

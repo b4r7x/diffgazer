@@ -1,21 +1,18 @@
 import { metaStringList, promptSelect, warn } from "@diffgazer/registry/cli";
-import { KEYS_REGISTRY_DEPENDENCY_PREFIXES } from "@diffgazer/registry/schemas";
+import { parseKeysDependencyRef } from "@diffgazer/registry/schemas";
 import { ctx, type ManifestIntegrationMode } from "../../context.js";
 
-export type IntegrationMode = "ask" | ManifestIntegrationMode;
-export type ResolvedIntegrationMode = Exclude<IntegrationMode, "ask">;
+type IntegrationMode = "ask" | ManifestIntegrationMode;
+type ResolvedIntegrationMode = Exclude<IntegrationMode, "ask">;
 
 export interface ResolvedIntegrationSelection {
   mode: ResolvedIntegrationMode;
-  hasKeyboardIntegration: boolean;
 }
 
 const KEYBOARD_NAVIGATION_INTEGRATION = "keyboard-navigation";
 
 function hasKeysRegistryDependency(item: { registryDependencies?: string[] }): boolean {
-  return (item.registryDependencies ?? []).some((dep) =>
-    KEYS_REGISTRY_DEPENDENCY_PREFIXES.some((prefix) => dep.startsWith(prefix)),
-  );
+  return (item.registryDependencies ?? []).some((dep) => parseKeysDependencyRef(dep) !== null);
 }
 
 function itemHasKeyboardIntegration(name: string): boolean {
@@ -36,10 +33,7 @@ export function applyIntegrationDeps(
 
   if (integrationSelection.mode === "copy") {
     depSet.delete("@diffgazer/keys");
-  } else if (
-    integrationSelection.mode === "@diffgazer/keys" &&
-    integrationSelection.hasKeyboardIntegration
-  ) {
+  } else if (integrationSelection.mode === "@diffgazer/keys") {
     depSet.delete("@diffgazer/keys");
     depSet.add(`@diffgazer/keys@${keysVersionSpec}`);
   }
@@ -84,7 +78,7 @@ export async function resolveIntegrations(
         "No selected components expose keyboard integration hooks. Continuing with base components.",
       );
     }
-    return { mode: "none", hasKeyboardIntegration: false };
+    return { mode: "none" };
   }
 
   switch (mode) {
@@ -95,9 +89,9 @@ export async function resolveIntegrations(
       );
     case "copy":
     case "@diffgazer/keys":
-      return { mode, hasKeyboardIntegration };
+      return { mode };
     case "ask":
-      return { mode: await promptIntegrationMode(skipPrompts), hasKeyboardIntegration };
+      return { mode: await promptIntegrationMode(skipPrompts) };
     default: {
       const exhaustive: never = mode;
       throw new Error(`Unhandled integration mode: ${String(exhaustive)}`);

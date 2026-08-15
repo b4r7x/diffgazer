@@ -70,7 +70,7 @@ return (
     {
       title: "Container Contract",
       content:
-        "The container's children must follow this order: [item0, item1, ..., itemN-1, indicator]. The first itemCount children are measured as items. The child at index itemCount is measured as the overflow indicator. The container must use CSS gap (e.g. Tailwind gap-*) — the hook reads it via getComputedStyle.",
+        "The container's children must follow this order: [item0, item1, ..., itemN-1, indicator]. The first itemCount children are measured as items. The child at index itemCount is measured as the overflow indicator. The container must use CSS gap (e.g. Tailwind gap-* or gap-x-*) — the hook reads the resolved column-gap via getComputedStyle, since it measures a single horizontal row.",
     },
     {
       title: "Hiding Overflow Items",

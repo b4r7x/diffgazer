@@ -6,12 +6,13 @@ import {
   ClientConfigurationInputSchema,
   type ClientConfigurationSummary,
   type ConfigurationId,
+  type ConfigurationRevision,
+  type ExactModelId,
   ExactModelIdSchema,
   type SettingsConfig,
 } from "../schemas/config/index.js";
 import { canProceed } from "./can-proceed.js";
 import type { OnboardingDraft } from "./defaults.js";
-import type { RemovedOnboardingState } from "./types.js";
 
 export type SettingsPayload = Pick<SettingsConfig, "defaultLenses" | "agentExecution">;
 
@@ -22,7 +23,6 @@ export function buildSettingsPayload(data: OnboardingDraft): SettingsPayload {
   };
 }
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
 type CreateConfigurationAction = Extract<ClientConfigurationAction, { action: "create" }>;
 type SelectConfigurationAction = Extract<ClientConfigurationAction, { action: "select" }>;
 type UpdateConfigurationAction = Extract<ClientConfigurationAction, { action: "update" }>;
@@ -33,14 +33,13 @@ function getNotice(data: OnboardingDraft) {
   return notice;
 }
 
-function assertExactModel(data: OnboardingDraft, modelId = data.selectedModelId): string {
-  const candidate = modelId === null ? data : { ...data, selectedModelId: modelId };
-  if (!canProceed("model", candidate)) {
+function assertExactModel(data: OnboardingDraft): ExactModelId {
+  if (!canProceed("model", data)) {
     throw new Error(
       "Cannot select a model before the configured transport and exact model are ready",
     );
   }
-  return ExactModelIdSchema.parse(modelId);
+  return ExactModelIdSchema.parse(data.selectedModelId);
 }
 
 function assertAcceptedNotice(data: OnboardingDraft) {
@@ -65,9 +64,8 @@ export function buildConfigPayload(data: OnboardingDraft): CreateConfigurationAc
 export function buildSelectPayload(
   data: OnboardingDraft,
   configurationId: ConfigurationId,
-  modelId = data.selectedModelId,
 ): SelectConfigurationAction {
-  const exactModelId = assertExactModel(data, modelId);
+  const exactModelId = assertExactModel(data);
   return {
     action: "select",
     configurationId,
@@ -92,13 +90,20 @@ export function buildUpdatePayload(
 export interface SaveWizardCallbacks {
   saveSettings: (payload: SettingsPayload) => Promise<unknown>;
   runConfigurationAction: (action: ClientConfigurationAction) => Promise<unknown>;
+  /**
+   * Fire-and-forget delete used when the page unloads. Must use a transport that
+   * survives tab close, such as `fetch` with `keepalive: true`.
+   */
+  revokeConfigurationOnPageHide?: (
+    configurationId: ConfigurationId,
+    expectedRevision: ConfigurationRevision,
+  ) => void;
 }
 
-type CompletedStep = "settings" | "configuration" | "model-selection" | "conformance";
+type CompletedStep = "settings" | "configuration" | "model-selection";
 
 export type SaveWizardResult =
   | { status: "complete"; configurationId: ConfigurationId }
-  | { status: "preserved-removed"; configurationId: ConfigurationId }
   | { status: "partial"; completedSteps: CompletedStep[]; error: unknown };
 
 function parseSucceededResponse<Action extends ClientConfigurationAction["action"]>(
@@ -117,8 +122,8 @@ function arraysMatch(left: readonly string[], right: readonly string[]): boolean
 }
 
 function noticesMatch(
-  expected: SupportedConfigurationSummary["notices"],
-  actual: SupportedConfigurationSummary["notices"],
+  expected: ClientConfigurationSummary["notices"],
+  actual: ClientConfigurationSummary["notices"],
 ): boolean {
   return (
     expected.length === actual.length &&
@@ -138,7 +143,7 @@ function noticesMatch(
   );
 }
 
-function expectedNotices(data: OnboardingDraft): SupportedConfigurationSummary["notices"] {
+function expectedNotices(data: OnboardingDraft): ClientConfigurationSummary["notices"] {
   const notice = getNotice(data);
   return [
     {
@@ -157,10 +162,9 @@ function matchesDraftTuple(
   data: OnboardingDraft,
   summary: ClientConfigurationSummary,
   selectedModelId: string | null,
-): summary is SupportedConfigurationSummary {
+): boolean {
   const input = ClientConfigurationInputSchema.parse(data.configurationInput);
   if (
-    summary.status !== "supported" ||
     summary.productId !== input.productId ||
     summary.transportFamily !== input.transportFamily ||
     summary.selectedModelId !== selectedModelId ||
@@ -190,77 +194,10 @@ function matchesDraftTuple(
   );
 }
 
-function summariesMatch(
-  expected: SupportedConfigurationSummary,
-  actual: ClientConfigurationSummary,
-): actual is SupportedConfigurationSummary {
-  if (
-    actual.status !== "supported" ||
-    actual.configurationId !== expected.configurationId ||
-    actual.revision !== expected.revision ||
-    actual.productId !== expected.productId ||
-    actual.transportFamily !== expected.transportFamily ||
-    actual.selectedModelId !== expected.selectedModelId ||
-    !arraysMatch(actual.availableActions, expected.availableActions) ||
-    !noticesMatch(expected.notices, actual.notices)
-  ) {
-    return false;
-  }
-
-  if (expected.transportFamily === "hosted-api") {
-    return (
-      actual.transportFamily === "hosted-api" &&
-      actual.endpoint === expected.endpoint &&
-      actual.region === expected.region &&
-      actual.workspace === expected.workspace
-    );
-  }
-  if (expected.transportFamily === "local-http") {
-    return (
-      actual.transportFamily === "local-http" &&
-      actual.endpoint === expected.endpoint &&
-      actual.authentication === expected.authentication &&
-      actual.presetId === expected.presetId
-    );
-  }
-  return (
-    actual.transportFamily === "local-cli" && actual.installationId === expected.installationId
-  );
-}
-
-function assertDiscoveryEvidence(
-  data: OnboardingDraft,
-  created: SupportedConfigurationSummary,
-  response: Extract<ClientConfigurationActionResponse, { action: "test" }>,
-): SupportedConfigurationSummary {
-  const discovered = response.configuration;
-  // A test action is discovery/conformance only. It must not mutate the
-  // persisted selected model; that happens only through the explicit select
-  // action below. Require the provisional summary shape here so a server
-  // cannot smuggle a discovered model into the save flow.
-  if (!discovered || !matchesDraftTuple(data, discovered, null)) {
-    throw new Error("Configuration discovery returned a different product tuple");
-  }
-  if (
-    discovered.configurationId !== created.configurationId ||
-    discovered.revision < created.revision
-  ) {
-    throw new Error("Configuration discovery did not return the created configuration");
-  }
-  if (response.readiness.evidenceStatus !== "passed" || response.readiness.checkedAt === null) {
-    throw new Error("Configuration discovery did not produce checked evidence");
-  }
-  return discovered;
-}
-
 export async function saveWizard(
-  data: OnboardingDraft | RemovedOnboardingState,
+  data: OnboardingDraft,
   { saveSettings, runConfigurationAction }: SaveWizardCallbacks,
 ): Promise<SaveWizardResult> {
-  if (data.kind === "removed") {
-    return { status: "preserved-removed", configurationId: data.configurationId };
-  }
-
   const completedSteps: CompletedStep[] = [];
 
   try {
@@ -270,7 +207,7 @@ export async function saveWizard(
     return { status: "partial", completedSteps, error };
   }
 
-  let createdConfiguration: SupportedConfigurationSummary;
+  let createdConfiguration: ClientConfigurationSummary;
   try {
     const createAction = buildConfigPayload(data);
     const response = parseSucceededResponse(
@@ -286,23 +223,6 @@ export async function saveWizard(
     return { status: "partial", completedSteps, error };
   }
 
-  let discoveredConfiguration: SupportedConfigurationSummary;
-  try {
-    const discoveryAction = {
-      action: "test",
-      configurationId: createdConfiguration.configurationId,
-    } as const;
-    const response = parseSucceededResponse(
-      await runConfigurationAction(discoveryAction),
-      discoveryAction.action,
-    );
-    discoveredConfiguration = assertDiscoveryEvidence(data, createdConfiguration, response);
-  } catch (error) {
-    return { status: "partial", completedSteps, error };
-  }
-
-  // Discovery is intentionally non-selecting. The model must already be an
-  // explicit client choice before save can continue to select/update/test it.
   const selectedModelId = data.selectedModelId;
   if (selectedModelId === null) {
     return {
@@ -312,13 +232,9 @@ export async function saveWizard(
     };
   }
 
-  let selectedConfiguration: SupportedConfigurationSummary;
+  let selectedConfiguration: ClientConfigurationSummary;
   try {
-    const selectAction = buildSelectPayload(
-      data,
-      createdConfiguration.configurationId,
-      selectedModelId,
-    );
+    const selectAction = buildSelectPayload(data, createdConfiguration.configurationId);
     const response = parseSucceededResponse(
       await runConfigurationAction(selectAction),
       selectAction.action,
@@ -330,7 +246,7 @@ export async function saveWizard(
       throw new Error("Configuration select did not return the exact selected tuple");
     }
     selectedConfiguration = response.configuration;
-    if (selectedConfiguration.revision < discoveredConfiguration.revision) {
+    if (selectedConfiguration.revision < createdConfiguration.revision) {
       throw new Error("Configuration select returned an older revision");
     }
     completedSteps.push("model-selection");
@@ -338,10 +254,9 @@ export async function saveWizard(
     return { status: "partial", completedSteps, error };
   }
 
-  let acknowledgedConfiguration: SupportedConfigurationSummary;
   try {
     const updateAction = buildUpdatePayload(
-      { ...data, selectedModelId },
+      data,
       selectedConfiguration.configurationId,
       selectedConfiguration.revision,
     );
@@ -351,46 +266,17 @@ export async function saveWizard(
     );
     if (
       !response.configuration ||
-      !matchesDraftTuple({ ...data, selectedModelId }, response.configuration, selectedModelId) ||
+      !matchesDraftTuple(data, response.configuration, selectedModelId) ||
       response.configuration.revision < selectedConfiguration.revision
     ) {
       throw new Error("Configuration update did not return the exact acknowledged tuple");
     }
-    acknowledgedConfiguration = response.configuration;
   } catch (error) {
     return { status: "partial", completedSteps, error };
   }
 
-  try {
-    const testAction = {
-      action: "test",
-      configurationId: acknowledgedConfiguration.configurationId,
-    } as const;
-    const response = parseSucceededResponse(
-      await runConfigurationAction(testAction),
-      testAction.action,
-    );
-    if (
-      !response.configuration ||
-      !summariesMatch(acknowledgedConfiguration, response.configuration)
-    ) {
-      throw new Error("Configuration test response did not match the selected tuple");
-    }
-    const acknowledgement = assertAcceptedNotice(data);
-    if (
-      response.readiness.status !== "ready" ||
-      !response.readiness.ready ||
-      response.readiness.evidenceStatus !== "passed" ||
-      response.readiness.acknowledgement.status !== "accepted" ||
-      response.readiness.acknowledgement.noticeId !== acknowledgement.noticeId ||
-      response.readiness.acknowledgement.noticeVersion !== acknowledgement.noticeVersion
-    ) {
-      throw new Error("Configuration test did not produce current readiness evidence");
-    }
-    completedSteps.push("conformance");
-  } catch (error) {
-    return { status: "partial", completedSteps, error };
-  }
-
+  // Structured-output conformance is not a save-time prerequisite: the saved
+  // configuration lands `conformance-pending`, and the first review proves or
+  // disproves it inline without a paid probe here.
   return { status: "complete", configurationId: selectedConfiguration.configurationId };
 }

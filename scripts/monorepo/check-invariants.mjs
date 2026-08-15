@@ -4,13 +4,16 @@ import { fileURLToPath } from "node:url";
 import { createInvariantContext, formatInvariantResult } from "./check-invariants/context.mjs";
 import {
   checkDockerArtifactFormatterInputs,
+  checkDockerCopiesWorkspaceManifests,
   checkDockerFrozenInstallsCopyPatches,
   checkPnpmPinsMatchRootPackageManager,
 } from "./check-invariants/docker.mjs";
 import { checkCoreDistFreshness, checkKeysDistFreshness } from "./check-invariants/freshness.mjs";
 import {
+  checkAllowBuildsDocumented,
   checkDependencyOverridesDocumented,
   checkLicensedPackagesInGovernanceSplit,
+  checkNodeDeclarationsMatchRuntime,
   checkSecurityReportingChannelsAgree,
   checkSurfaceEnvExampleKeysStayInRootExample,
 } from "./check-invariants/governance.mjs";
@@ -38,6 +41,7 @@ import {
   checkNoNestedGitDirectories,
   checkNoNestedPnpmLocks,
   checkNoNestedPnpmWorkspaces,
+  checkNoTrackedGeneratedArtifacts,
   checkRootMetadata,
   checkRootPolicyFiles,
   checkRootWorkspaceFile,
@@ -47,8 +51,6 @@ import {
 } from "./check-invariants/topology.mjs";
 import { runValidationChecks } from "./lib/run-checks.mjs";
 
-export { createInvariantContext } from "./check-invariants/context.mjs";
-
 export const INVARIANT_CHECKS = [
   checkRootWorkspaceFile,
   checkRootPolicyFiles,
@@ -56,6 +58,7 @@ export const INVARIANT_CHECKS = [
   checkPnpmPinsMatchRootPackageManager,
   checkDockerArtifactFormatterInputs,
   checkDockerFrozenInstallsCopyPatches,
+  checkDockerCopiesWorkspaceManifests,
   checkWorkspaceGlobs,
   checkNoGitmodules,
   checkNoGitlinkEntries,
@@ -64,6 +67,7 @@ export const INVARIANT_CHECKS = [
   checkNoNestedPnpmLocks,
   checkNoNestedPnpmWorkspaces,
   checkE2eScreenshotsUseBaselineDirectory,
+  checkNoTrackedGeneratedArtifacts,
   checkNoLinkOrFileLocalDeps,
   checkInternalLocalDepsUseWorkspaceProtocol,
   checkLicenseFilesMatch,
@@ -82,6 +86,8 @@ export const INVARIANT_CHECKS = [
   checkWebBuildUsesTurbo,
   checkSecurityReportingChannelsAgree,
   checkDependencyOverridesDocumented,
+  checkAllowBuildsDocumented,
+  checkNodeDeclarationsMatchRuntime,
   checkLicensedPackagesInGovernanceSplit,
   checkSurfaceEnvExampleKeysStayInRootExample,
   checkKeysDistFreshness,

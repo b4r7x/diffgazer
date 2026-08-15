@@ -1,11 +1,18 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Result } from "@diffgazer/core/result";
 import { err, ok } from "@diffgazer/core/result";
+import { ConfigurationIdSchema } from "@diffgazer/core/schemas/config";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/events";
-import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
+import {
+  ReviewErrorCode,
+  type ReviewMode,
+  type TerminalOutcome,
+} from "@diffgazer/core/schemas/review";
 import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
 import type { AIClient } from "../../shared/lib/ai/types.js";
+import { createAdmissionEvidence } from "../../shared/lib/config/admission-evidence.js";
+import { getStore } from "../../shared/lib/config/store.js";
 import { createGitService } from "../../shared/lib/git/service.js";
 import { log } from "../../shared/lib/log.js";
 import { activateSessionForProject } from "../../shared/lib/session-registry.js";
@@ -32,7 +39,7 @@ import {
   markComplete,
   markReady,
 } from "./stream/store.js";
-import type { EmitFn, ReviewExecutionContext, StreamReviewParams } from "./types.js";
+import type { EmitFn, ReviewExecutionContext, ReviewOutcome, StreamReviewParams } from "./types.js";
 import { createReviewExecutionContext } from "./types.js";
 
 /** Logs per-step latency from the review stream so each phase is observable. */
@@ -70,10 +77,11 @@ async function handleReviewFailure(
   }
 
   if (isReviewAbort(error)) {
+    const normalized = normalizeReviewStreamError(error);
     if (error.step) {
-      await emit(stepError(error.step, error.message));
+      await emit(stepError(error.step, normalized.message));
     }
-    await emit(reviewStreamError(error.message, error.code));
+    await emit(reviewStreamError(normalized.message, normalized.code));
     markComplete(reviewId);
     return;
   }
@@ -132,7 +140,10 @@ export async function createReviewSession(
 ): Promise<
   Result<
     CreateReviewSessionResult,
-    { code: ReviewErrorCode | typeof ErrorCode.TRUST_REQUIRED; message: string }
+    {
+      code: ReviewErrorCode | typeof ErrorCode.TRUST_REQUIRED | "SECRETS_MIGRATION_FAILED";
+      message: string;
+    }
   >
 > {
   const {
@@ -149,6 +160,18 @@ export async function createReviewSession(
       code: ErrorCode.TRUST_REQUIRED,
       message: "Repository access was revoked before the review could start.",
     });
+  }
+  const settings = await getStore().readSettings();
+  if (!settings.ok) {
+    return settings.error.code === "SECRETS_MIGRATION_FAILED"
+      ? err({
+          code: settings.error.code,
+          message: "Legacy configuration requires manual migration",
+        })
+      : err({
+          code: ReviewErrorCode.GENERATION_FAILED,
+          message: "Configuration settings are unavailable",
+        });
   }
 
   const elapsedStart = performance.now();
@@ -170,7 +193,7 @@ export async function createReviewSession(
   const statusHashKind = statusHashResult.kind;
   const statusHash = statusHashResult.kind === "unavailable" ? "" : statusHashResult.hash;
   const scopeKey = buildScopeKey({ files, lenses: lensIds, profile: profileId });
-  const reviewDefaults = resolveReviewDefaults({ lensIds, profileId });
+  const reviewDefaults = resolveReviewDefaults({ lensIds, profileId, settings: settings.value });
   const admittedPlan = aiClient.authorization?.plan;
   const reviewConfigKey = buildReviewConfigKey({
     lenses: reviewDefaults.activeLenses,
@@ -300,6 +323,53 @@ export async function createReviewSession(
   });
 }
 
+function conformanceEvidenceStatus(
+  receiptOutcome: TerminalOutcome | undefined,
+  evidenceState: "proven" | "unproven",
+): "failed" | "passed" | null {
+  if (receiptOutcome === "schema-failed") return "failed";
+  if (receiptOutcome === "completed" && evidenceState === "unproven") return "passed";
+  return null;
+}
+
+/**
+ * The review is the conformance check. A schema failure caches the fast-fail
+ * for this exact tuple; a completed review records the proof an unproven
+ * admission went without. Recording is best effort: a tuple edited mid-review
+ * loses the cache entry, never the review the user is watching.
+ */
+async function recordConformanceEvidence(
+  executionContext: ReviewExecutionContext,
+  outcome: ReviewOutcome,
+  reviewId: string,
+): Promise<void> {
+  const { authorization } = executionContext;
+  const status = conformanceEvidenceStatus(
+    outcome.execution?.receipt.outcome,
+    authorization.evidenceState,
+  );
+  if (!status) return;
+
+  const { plan } = authorization;
+  const recorded = await getStore().recordConfigurationEvidence(
+    ConfigurationIdSchema.parse(plan.configurationId),
+    createAdmissionEvidence({
+      evidenceKey: plan.evidenceKey,
+      checkedAt: new Date().toISOString(),
+      status,
+      expiresAt: null,
+    }),
+  );
+  if (!recorded.ok) {
+    log("warn", "review_conformance_evidence_unrecorded", {
+      reviewId,
+      configurationId: plan.configurationId,
+      status,
+      code: recorded.error.code,
+    });
+  }
+}
+
 interface RunReviewSessionOptions {
   aiClient: AIClient;
   mode: ReviewMode;
@@ -335,6 +405,7 @@ async function runReviewSession({
     const config = await resolveReviewConfig({
       defaults: reviewDefaults,
       projectPath,
+      focusPaths: parsed.files.map((file) => file.filePath),
       emit,
       signal,
     });
@@ -353,6 +424,9 @@ async function runReviewSession({
       return;
     }
     const outcome = outcomeResult.value;
+    if (executionContext) {
+      await recordConformanceEvidence(executionContext, outcome, reviewId);
+    }
     const durationMs = Math.round(performance.now() - elapsedStart);
 
     const finalized = await finalizeReview({

@@ -37,6 +37,22 @@ describe("HistoryPage trust workflow", () => {
     expect(screen.queryByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER)).not.toBeInTheDocument();
   });
 
+  it("shows the trust workflow on first-run before a project id exists", async () => {
+    mockLoadInit.mockResolvedValue(
+      makeInitResponse({
+        projectId: null,
+        path: "/repo",
+        trust: null,
+      }),
+    );
+
+    renderHistoryPage(<HistoryPage />);
+
+    expect(await screen.findByText("Trust This Repository?")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER)).not.toBeInTheDocument();
+    expect(mockGetReviews).not.toHaveBeenCalled();
+  });
+
   it("shows history after trust is granted and returns to trust workflow when trust is revoked", async () => {
     mockLoadInit.mockResolvedValue(makeInitResponse(trustedProject()));
     const { queryClient } = renderHistoryPage(<HistoryPage />);

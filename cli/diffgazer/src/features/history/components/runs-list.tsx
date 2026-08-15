@@ -1,9 +1,11 @@
 import type { HistoryRunSummary } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { EmptyState } from "../../../components/ui/empty-state";
 import { NavigationList } from "../../../components/ui/navigation-list";
 import { getListWindow, type ListWindow } from "../../../lib/list-window";
+import { terminalCellWidth, wrappedRowCount } from "../../../lib/terminal-width";
 import { useTheme } from "../../../theme/provider";
 
 interface RunsWindowOptions {
@@ -12,6 +14,8 @@ interface RunsWindowOptions {
   viewportRows: number;
   itemRows: number;
 }
+
+const SALVAGED_MARKER = "[Salvaged]";
 
 /**
  * A run spends two rows while a scroll caret spends one, so the window has to
@@ -50,6 +54,7 @@ export interface RunsListProps {
   width: number;
   hasMore?: boolean;
   isLoadingMore?: boolean;
+  salvagedRunIds?: ReadonlySet<string>;
 }
 
 export function RunsList({
@@ -63,17 +68,33 @@ export function RunsList({
   width,
   hasMore = false,
   isLoadingMore = false,
+  salvagedRunIds,
 }: RunsListProps): ReactElement {
   const { tokens } = useTheme();
-  const itemWidth = Math.max(width - 4, 1);
-  const statusWidth = Math.max(width - 2, 1);
   const paddingY = height >= 6 ? 1 : 0;
   const availableRows = Math.max(height - paddingY * 2, 1);
   let paginationStatus: string | null = null;
   if (isLoadingMore) paginationStatus = "Loading older runs...";
   else if (hasMore) paginationStatus = "l  Load older runs";
 
-  const itemRows = availableRows < 4 ? 1 : 2;
+  const displayIds = runs.map((run) => run.displayId);
+  const regularItemWidth = Math.max(width - 4, 1);
+  const hasSalvagedRun = runs.some((run) => salvagedRunIds?.has(run.id));
+  const tightIdentifierLayout = displayIds.some(
+    (displayId) =>
+      terminalCellWidth(displayId) > regularItemWidth ||
+      (hasSalvagedRun &&
+        terminalCellWidth(displayId) + SALVAGED_MARKER.length + 1 > regularItemWidth),
+  );
+  const itemWidth = tightIdentifierLayout ? Math.max(width, 1) : regularItemWidth;
+  const statusWidth = tightIdentifierLayout ? Math.max(width, 1) : Math.max(width - 2, 1);
+  const maxIdentifierRows = tightIdentifierLayout
+    ? Math.max(...displayIds.map((displayId) => wrappedRowCount(displayId, itemWidth)), 1)
+    : 1;
+  const defaultItemRows = availableRows < 4 ? 1 : 2;
+  const itemRows = tightIdentifierLayout
+    ? maxIdentifierRows + (hasSalvagedRun ? 1 : 0)
+    : defaultItemRows;
   const showsPaginationStatus = paginationStatus !== null && availableRows >= itemRows + 1;
   const listViewportRows = availableRows - (showsPaginationStatus ? 1 : 0);
   const selectedIndex = Math.max(
@@ -92,7 +113,7 @@ export function RunsList({
     <Box
       width={width}
       flexDirection="column"
-      paddingX={1}
+      paddingX={tightIdentifierLayout ? 0 : 1}
       paddingY={paddingY}
       height={height}
       overflow="hidden"
@@ -113,39 +134,79 @@ export function RunsList({
             wrap={false}
             navigationItems={runs.map((run) => ({ id: run.id, disabled: false }))}
           >
-            {visibleRuns.map((run) => (
-              <NavigationList.Item key={run.id} id={run.id}>
-                {({ tone }) =>
-                  itemRows === 1 ? (
-                    <Box width={itemWidth}>
-                      <Text wrap="truncate-end">
-                        <Text color={tone.primary} bold>
-                          {run.displayId}
-                        </Text>{" "}
-                        <Text color={tone.secondary}>{run.summary}</Text>
-                      </Text>
-                    </Box>
-                  ) : (
-                    <Box flexDirection="column">
-                      <Box width={itemWidth}>
-                        <Text wrap="truncate-end">
-                          <Text color={tone.primary} bold>
-                            {run.displayId}
-                          </Text>{" "}
-                          <Text color={tone.secondary}>[{run.branch}]</Text>{" "}
-                          <Text color={tone.secondary}>{run.timestamp}</Text>
-                        </Text>
+            {visibleRuns.map((run, visibleIndex) => {
+              const runIndex = window.start + visibleIndex;
+              const displayId = displayIds[runIndex] ?? run.displayId;
+              const safeBranch = run.branch ? sanitizeTerminalText(run.branch) : run.branch;
+              const isSalvaged = salvagedRunIds?.has(run.id) ?? false;
+              return (
+                <NavigationList.Item key={run.id} id={run.id}>
+                  {({ tone }) => {
+                    if (tightIdentifierLayout) {
+                      return (
+                        <Box flexDirection="column">
+                          <Box width={itemWidth} marginLeft={-2}>
+                            <Text wrap="wrap">
+                              <Text color={tone.primary} bold>
+                                {displayId}
+                              </Text>{" "}
+                            </Text>
+                          </Box>
+                          {hasSalvagedRun ? (
+                            <Box width={itemWidth} marginLeft={-2}>
+                              <Text color={tone.secondary} wrap="truncate-end">
+                                {isSalvaged ? (
+                                  <Text color={tokens.warning}>{SALVAGED_MARKER} </Text>
+                                ) : null}
+                                {run.summary}
+                              </Text>
+                            </Box>
+                          ) : null}
+                        </Box>
+                      );
+                    }
+
+                    if (itemRows === 1) {
+                      return (
+                        <Box width={itemWidth}>
+                          <Text wrap="truncate-end">
+                            <Text color={tone.primary} bold>
+                              {displayId}
+                            </Text>{" "}
+                            {isSalvaged ? (
+                              <Text color={tokens.warning}>{SALVAGED_MARKER} </Text>
+                            ) : null}
+                            <Text color={tone.secondary}>{run.summary}</Text>
+                          </Text>
+                        </Box>
+                      );
+                    }
+
+                    return (
+                      <Box flexDirection="column">
+                        <Box width={itemWidth}>
+                          <Text wrap="truncate-end">
+                            <Text color={tone.primary} bold>
+                              {displayId}
+                            </Text>{" "}
+                            <Text color={tone.secondary}>[{safeBranch}]</Text>{" "}
+                            <Text color={tone.secondary}>{run.timestamp}</Text>
+                          </Text>
+                        </Box>
+                        <Box width={itemWidth}>
+                          <Text color={tone.secondary} wrap="truncate-end">
+                            {isSalvaged ? (
+                              <Text color={tokens.warning}>{SALVAGED_MARKER} </Text>
+                            ) : null}
+                            {run.summary}
+                          </Text>
+                        </Box>
                       </Box>
-                      <Box width={itemWidth}>
-                        <Text color={tone.secondary} wrap="truncate-end">
-                          {run.summary}
-                        </Text>
-                      </Box>
-                    </Box>
-                  )
-                }
-              </NavigationList.Item>
-            ))}
+                    );
+                  }}
+                </NavigationList.Item>
+              );
+            })}
           </NavigationList>
           {window.canScrollDown ? <Text color={tokens.muted}>{"\u25BC"}</Text> : null}
         </>

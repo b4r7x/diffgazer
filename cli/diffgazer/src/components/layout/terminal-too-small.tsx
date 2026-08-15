@@ -1,8 +1,8 @@
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 
-export const MIN_TERMINAL_COLUMNS = 40;
-export const MIN_TERMINAL_ROWS = 12;
+const MIN_TERMINAL_COLUMNS = 40;
+const MIN_TERMINAL_ROWS = 12;
 
 export function isTerminalTooSmall(columns: number, rows: number): boolean {
   return columns < MIN_TERMINAL_COLUMNS || rows < MIN_TERMINAL_ROWS;

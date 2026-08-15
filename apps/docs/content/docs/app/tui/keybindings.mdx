@@ -18,6 +18,8 @@ These work on every screen once you are past onboarding. During onboarding only 
 
 `s` and `?` are no-ops when you are already on that screen, so pressing `s` inside settings does nothing rather than stacking another screen.
 
+While a review is streaming, `q` is taken over by the progress screen: it cancels the in-flight run instead of quitting. Press it again once the run has stopped to leave the app, or use Ctrl+C, which always quits.
+
 ## Home menu
 
 The home screen is a menu. You can move through it with the arrow keys and press Enter to pick an item, or jump straight to an item with its letter.
@@ -45,6 +47,8 @@ Inside a review the same letters do different work, because the screen owns the 
 | Tab | Switch pane |
 | ← / → | Switch tab in the details pane |
 | `1` - `4` | Switch directly to the matching available details tab |
+| `c` | Cancel the run, while a review is streaming |
+| `q` | Cancel the run, while a review is streaming; quit otherwise |
 | Esc | Go back |
 
 ## History
@@ -90,6 +94,7 @@ The help screen prints its own shortcut list and acts as the in-app cheat sheet.
 | `s` | Open settings |
 | `q` | Quit |
 | `?` | Open help |
+| `/` | Search runs (in history) |
 
 > Note: The help screen does not list every home-menu shortcut. On the home screen, `r` and `R` start a review, `l` resumes the last review, and `h` opens history. The table above reflects the keys the help screen itself prints.
 

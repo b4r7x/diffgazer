@@ -1,4 +1,5 @@
 import { getErrorMessage } from "@diffgazer/core/errors";
+import { sanitizePresentationText } from "@diffgazer/core/review";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import {
   type ReviewError,
@@ -11,6 +12,12 @@ export function isReviewStreamErrorCode(code: unknown): code is ReviewError["cod
   return ReviewErrorSchema.shape.code.safeParse(code).success;
 }
 
+/**
+ * The single boundary where an arbitrary exception message becomes a stream
+ * error. Provider and transport exceptions routinely carry home paths, bearer
+ * tokens, and correlation ids, so the message is sanitized here rather than in
+ * each renderer — the SSE body is what both Web and the TUI display verbatim.
+ */
 export function normalizeReviewStreamError(
   error: unknown,
   fallbackCode: ReviewError["code"] = ReviewErrorCode.GENERATION_FAILED,
@@ -19,21 +26,25 @@ export function normalizeReviewStreamError(
     isReviewStreamErrorCode(code) ? code : fallbackCode;
 
   if (isReviewAbort(error)) {
-    return { code: resolveCode(error.code), message: error.message };
+    return {
+      code: resolveCode(error.code),
+      message: sanitizePresentationText(error.message),
+    };
   }
 
   if (error && typeof error === "object") {
     const candidate = error as { code?: unknown; message?: unknown };
+    const message =
+      typeof candidate.message === "string" && candidate.message.length > 0
+        ? candidate.message
+        : getErrorMessage(error);
     return {
       code: resolveCode(candidate.code),
-      message:
-        typeof candidate.message === "string" && candidate.message.length > 0
-          ? candidate.message
-          : getErrorMessage(error),
+      message: sanitizePresentationText(message),
     };
   }
 
-  return { code: fallbackCode, message: getErrorMessage(error) };
+  return { code: fallbackCode, message: sanitizePresentationText(getErrorMessage(error)) };
 }
 
 export function reviewStreamError(

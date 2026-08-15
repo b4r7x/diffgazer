@@ -1,11 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { LensId } from "./lens.js";
-import {
-  deriveLensSelectionState,
-  isLensId,
-  isLensSelectionDirty,
-  resolveEffectiveLenses,
-} from "./lens-selection.js";
+import { deriveLensSelectionState, isLensId } from "./lens-selection.js";
 
 const ALL: LensId[] = ["correctness", "security", "performance", "simplicity", "tests"];
 
@@ -20,49 +15,35 @@ describe("isLensId", () => {
   });
 });
 
-describe("resolveEffectiveLenses", () => {
-  const fallback: LensId[] = ["correctness", "security"];
-
-  test("returns the user choice when one has been made", () => {
-    const choice: LensId[] = ["tests"];
-    expect(resolveEffectiveLenses(ALL, choice, fallback)).toEqual(choice);
-  });
-
-  test("returns persisted default lenses when no user choice and defaults are present", () => {
-    expect(resolveEffectiveLenses(ALL, null, fallback)).toEqual(ALL);
-  });
-
-  test("returns fallback when no user choice and persisted defaults are empty", () => {
-    expect(resolveEffectiveLenses([], null, fallback)).toEqual(fallback);
-  });
-
-  test("returns empty selection when the user explicitly cleared selection", () => {
-    expect(resolveEffectiveLenses(ALL, [], fallback)).toEqual([]);
-  });
-});
-
-describe("isLensSelectionDirty", () => {
-  test("is false when no user choice has been made", () => {
-    expect(isLensSelectionDirty(ALL, null)).toBe(false);
-  });
-
-  test("is false when selection matches current lenses regardless of order", () => {
-    const reordered: LensId[] = ["tests", "security", "correctness", "performance", "simplicity"];
-    expect(isLensSelectionDirty(ALL, reordered)).toBe(false);
-  });
-
-  test("is true when a lens is removed", () => {
-    const removed: LensId[] = ["correctness", "security", "performance", "simplicity"];
-    expect(isLensSelectionDirty(ALL, removed)).toBe(true);
-  });
-
-  test("is true when selection is cleared", () => {
-    expect(isLensSelectionDirty(ALL, [])).toBe(true);
-  });
-});
-
 describe("deriveLensSelectionState", () => {
   const fallback: LensId[] = ["correctness", "security"];
+
+  test("uses the user choice over the persisted defaults", () => {
+    const choice: LensId[] = ["tests"];
+    expect(deriveLensSelectionState(ALL, choice, fallback)).toEqual({
+      effective: choice,
+      isDirty: true,
+      hasSelection: true,
+    });
+  });
+
+  test("uses the persisted defaults when the user has not chosen", () => {
+    expect(deriveLensSelectionState(ALL, null, fallback)).toEqual({
+      effective: ALL,
+      isDirty: false,
+      hasSelection: true,
+    });
+  });
+
+  test("is not dirty when a reordered selection holds the same lenses", () => {
+    const reordered: LensId[] = ["tests", "security", "correctness", "performance", "simplicity"];
+    expect(deriveLensSelectionState(ALL, reordered, fallback).isDirty).toBe(false);
+  });
+
+  test("is dirty when a lens is removed from the persisted selection", () => {
+    const removed: LensId[] = ["correctness", "security", "performance", "simplicity"];
+    expect(deriveLensSelectionState(ALL, removed, fallback).isDirty).toBe(true);
+  });
 
   test("uses fallback lenses without marking an untouched selection dirty", () => {
     expect(deriveLensSelectionState([], null, fallback)).toEqual({

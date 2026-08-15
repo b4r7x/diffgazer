@@ -31,9 +31,11 @@ async function runTerminal(
   }
 }
 
-function attachTilt(terminal: HTMLElement, signal: AbortSignal): void {
-  const wrap = terminal.parentElement;
-  if (!wrap) return;
+function attachTilt(terminal: HTMLElement, wrap: HTMLElement, signal: AbortSignal): Cleanup {
+  const resetTilt = (): void => {
+    terminal.style.removeProperty("--rx");
+    terminal.style.removeProperty("--ry");
+  };
   wrap.addEventListener(
     "pointermove",
     (event) => {
@@ -45,14 +47,8 @@ function attachTilt(terminal: HTMLElement, signal: AbortSignal): void {
     },
     { signal },
   );
-  wrap.addEventListener(
-    "pointerleave",
-    () => {
-      terminal.style.setProperty("--ry", "0deg");
-      terminal.style.setProperty("--rx", "0deg");
-    },
-    { signal },
-  );
+  wrap.addEventListener("pointerleave", resetTilt, { signal });
+  return resetTilt;
 }
 
 export function initTerminal(
@@ -77,6 +73,7 @@ export function initTerminal(
     0.5,
   );
   scope.addCleanup(cleanupObserver);
-  if (flags.finePointer) attachTilt(terminal, scope.signal);
+  const wrap = terminal.parentElement;
+  if (flags.finePointer && wrap) scope.addCleanup(attachTilt(terminal, wrap, scope.signal));
   return scope.cleanup;
 }

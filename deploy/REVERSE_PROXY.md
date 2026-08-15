@@ -66,6 +66,14 @@ calls the selected Coolify webhooks. See
 - **Port**: `8080`
 - **Health Check Path**: `/r/ui/registry.json`
 - **Auto Deploy**: off
+- **Build configuration**: set the repository variable
+  `REGISTRY_TRAEFIK_PROXY_CIDR` to the exact Traefik container address with an
+  unpadded `/32` (IPv4) or `/128` (IPv6) prefix — normally the private address
+  Traefik holds on the Coolify Docker network, such as 172.18.0.5/32. Do not use
+  a supernet, host-bit alias, or equivalent IPv6 spelling; the registry image
+  validates this value and fails closed to `127.0.0.1/32` for local builds. The
+  peer is baked into the image at build time, so after changing it deploy a fresh
+  registry build instead of rolling back to an image built with the old peer.
 
 ### Docs (`docs.b4r7.dev`)
 
@@ -152,8 +160,11 @@ labels:
 ```
 
 Coolify's Traefik preserves `Host`, `X-Forwarded-Proto`, and
-`X-Forwarded-Host` for Docker Image resources. If an additional nginx hop is
-added in front of or behind Traefik, it must keep those headers and websocket
+`X-Forwarded-Host` for Docker Image resources. The registry trusts only the
+configured Traefik peer and uses the right-most `X-Forwarded-For` address, so
+Traefik must append the connected client address and must not trust a client-
+supplied forwarded chain as its own client identity. If an additional nginx hop
+is added in front of or behind Traefik, it must keep those headers and websocket
 upgrade headers instead of replacing them with container-local values:
 
 ```nginx

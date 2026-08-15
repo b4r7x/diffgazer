@@ -6,10 +6,9 @@ import { getProviderDisplayStatus } from "../../providers/display-status.js";
 import { pluralize } from "../../strings.js";
 import type { SettingsAction } from "../presentation/navigation.js";
 import type { AgentExecution, SecretsStorage, Theme } from "./settings.js";
-import type { RemovedProductId, RunnableProductId } from "./transports.js";
+import type { RunnableProductId } from "./transports.js";
 
-type RunnableProduct = Extract<ClientProductMetadata, { status: "supported" }>;
-type BillingMode = RunnableProduct["billing"]["modes"][number];
+type BillingMode = ClientProductMetadata["billing"]["modes"][number];
 
 export type ProviderSettingsRowId = "product" | "transport" | "billing" | "privacy" | "readiness";
 
@@ -45,7 +44,8 @@ export function buildProviderSettingsRows(
   metadata: ClientMetadataPayload,
 ): readonly ProviderSettingsRow[] {
   const { product, readiness } = metadata;
-  const rows: ProviderSettingsRow[] = [
+
+  return [
     {
       id: "product",
       kind: "fact",
@@ -59,49 +59,36 @@ export function buildProviderSettingsRows(
       label: "Transport",
       value: TRANSPORT_LABELS[product.transportFamily],
     },
+    {
+      id: "billing",
+      kind: "prose",
+      label: "Billing",
+      value: product.billing.modes.map((mode) => BILLING_MODE_LABELS[mode]).join(", "),
+      description: [product.billing.posture, ...product.notice.billing].join(" "),
+    },
+    {
+      id: "privacy",
+      kind: "prose",
+      label: "Privacy",
+      value: product.notice.privacy.join(" "),
+    },
+    {
+      id: "readiness",
+      kind: "fact",
+      label: "Readiness",
+      value: getProviderDisplayStatus(readiness, product.transportFamily).label,
+      description: `${readiness.explanation} ${readiness.remediation.message}`,
+    },
   ];
-
-  if (product.status === "supported") {
-    rows.push(
-      {
-        id: "billing",
-        kind: "prose",
-        label: "Billing",
-        value: product.billing.modes.map((mode) => BILLING_MODE_LABELS[mode]).join(", "),
-        description: [product.billing.posture, ...product.notice.billing].join(" "),
-      },
-      {
-        id: "privacy",
-        kind: "prose",
-        label: "Privacy",
-        value: product.notice.privacy.join(" "),
-      },
-    );
-  }
-
-  rows.push({
-    id: "readiness",
-    kind: "fact",
-    label: "Readiness",
-    value: getProviderDisplayStatus(readiness, product.transportFamily).label,
-    description: `${readiness.explanation} ${readiness.remediation.message}`,
-  });
-
-  return rows;
 }
 
 export interface SettingsHubInput {
-  selectedProductId: RunnableProductId | RemovedProductId | null | undefined;
+  selectedProductId: RunnableProductId | null | undefined;
   isTrusted: boolean;
   theme: Theme | null | undefined;
-  secretsStorage: SecretsStorage | null | undefined;
-  agentExecution: AgentExecution | null | undefined;
-  selectedLensCount: number | null | undefined;
-}
-
-function getAgentExecutionLabel(mode: AgentExecution | null | undefined): string {
-  if (mode === "parallel") return "Parallel";
-  return "Sequential";
+  secretsStorage: SecretsStorage | null;
+  agentExecution: AgentExecution;
+  selectedLensCount: number;
 }
 
 /**
@@ -124,16 +111,14 @@ export function buildHubValues({
   const themeLabel = theme ?? "auto";
   const storageLabel = secretsStorage ?? "Not set";
   const analysisLabel =
-    selectedLensCount && selectedLensCount > 0
-      ? pluralize(selectedLensCount, "lens", "lenses")
-      : "Default";
+    selectedLensCount > 0 ? pluralize(selectedLensCount, "lens", "lenses") : "Default";
 
   return {
     trust: isTrusted ? "Trusted" : "Not trusted",
     theme: themeLabel,
     provider: providerLabel,
     storage: storageLabel,
-    "agent-execution": getAgentExecutionLabel(agentExecution),
+    "agent-execution": agentExecution === "parallel" ? "Parallel" : "Sequential",
     analysis: analysisLabel,
     diagnostics: "Local",
   };

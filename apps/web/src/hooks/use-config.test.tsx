@@ -1,5 +1,4 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
-import { configurationFingerprint } from "@diffgazer/core/api/hooks";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type {
   ConfigurationInitResponse,
@@ -7,9 +6,9 @@ import type {
 } from "@diffgazer/core/schemas/config";
 import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import {
+  GEMINI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeConfigurationListResponse,
-  READY_GEMINI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
@@ -23,9 +22,7 @@ import {
 } from "@/testing/configuration-action-mocks";
 
 const geminiEndpoint =
-  READY_GEMINI_CONFIGURATION.transportFamily === "hosted-api"
-    ? READY_GEMINI_CONFIGURATION.endpoint
-    : "";
+  GEMINI_CONFIGURATION.transportFamily === "hosted-api" ? GEMINI_CONFIGURATION.endpoint : "";
 
 const acknowledgement = {
   status: "accepted" as const,
@@ -75,8 +72,6 @@ function ConfigConsumer() {
       <p>Ready: {String(data.isReady)}</p>
       <p>Rows: {data.configurations.length}</p>
       <p>Selected: {data.selectedConfiguration?.configurationId ?? "none"}</p>
-      <p>Revision: {data.selectedIdentity?.revision ?? "none"}</p>
-      <p>Fingerprint: {data.selectedIdentity?.fingerprint ?? "none"}</p>
       <p>Project: {data.projectId ?? "none"}</p>
       <pre data-testid="context-json">{JSON.stringify(data)}</pre>
       <button type="button" onClick={() => void actions.inspectConfiguration("gemini-primary")}>
@@ -123,9 +118,11 @@ function ConfigConsumer() {
         type="button"
         onClick={() =>
           void actions.createConfiguration({
-            transportFamily: "hosted-api",
-            productId: "gemini",
-            endpoint: geminiEndpoint,
+            input: {
+              transportFamily: "hosted-api",
+              productId: "gemini",
+              endpoint: geminiEndpoint,
+            },
           })
         }
       >
@@ -222,19 +219,6 @@ describe("ConfigProvider", () => {
     expect(dataValues.length).toBe(rendersBefore);
     expect(dataValues.at(-1)).toBe(dataBefore);
     expect(actionValues.at(-1)).toBe(actionsBefore);
-  });
-
-  it("propagates selected configuration ID, revision, and fingerprint", async () => {
-    renderWithProvider();
-
-    await waitFor(() => {
-      expect(screen.getByText("Loading: false")).toBeInTheDocument();
-    });
-
-    expect(screen.getByText("Revision: 1")).toBeInTheDocument();
-    expect(
-      screen.getByText(`Fingerprint: ${configurationFingerprint(READY_GEMINI_CONFIGURATION)}`),
-    ).toBeInTheDocument();
   });
 
   it("reports unconfigured when no configuration is selected", async () => {

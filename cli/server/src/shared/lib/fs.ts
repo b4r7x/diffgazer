@@ -1,19 +1,90 @@
 import { randomUUID } from "node:crypto";
 import * as fs from "node:fs";
+import type { FileHandle } from "node:fs/promises";
 import * as path from "node:path";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { log } from "./log.js";
+import { isNodeError } from "./node-error.js";
+
+export { isNodeError } from "./node-error.js";
 
 const DEFAULT_DIR_MODE = 0o700;
 const DEFAULT_FILE_MODE = 0o600;
 
-export const isNodeError = (error: unknown, code?: string): error is NodeJS.ErrnoException =>
-  error instanceof Error &&
-  "code" in error &&
-  (code === undefined || (error as NodeJS.ErrnoException).code === code);
+const isDirectoryFsyncUnsupported = (error: unknown): boolean =>
+  isNodeError(error, "EINVAL") ||
+  isNodeError(error, "ENOTSUP") ||
+  isNodeError(error, "EOPNOTSUPP") ||
+  (process.platform === "win32" && isNodeError(error, "EACCES"));
+
+const syncDirectory = async (directoryPath: string): Promise<void> => {
+  const handle = await fs.promises.open(directoryPath, "r");
+  let syncError: unknown;
+  let hasSyncError = false;
+  try {
+    await handle.sync();
+  } catch (error) {
+    if (!isDirectoryFsyncUnsupported(error)) {
+      syncError = error;
+      hasSyncError = true;
+    }
+  }
+
+  let closeError: unknown;
+  let hasCloseError = false;
+  try {
+    await handle.close();
+  } catch (error) {
+    closeError = error;
+    hasCloseError = true;
+  }
+
+  if (hasSyncError) throw syncError;
+  if (hasCloseError) throw closeError;
+};
+
+const syncDirectorySync = (directoryPath: string): void => {
+  const descriptor = fs.openSync(directoryPath, "r");
+  let syncError: unknown;
+  let hasSyncError = false;
+  try {
+    fs.fsyncSync(descriptor);
+  } catch (error) {
+    if (!isDirectoryFsyncUnsupported(error)) {
+      syncError = error;
+      hasSyncError = true;
+    }
+  }
+
+  let closeError: unknown;
+  let hasCloseError = false;
+  try {
+    fs.closeSync(descriptor);
+  } catch (error) {
+    closeError = error;
+    hasCloseError = true;
+  }
+
+  if (hasSyncError) throw syncError;
+  if (hasCloseError) throw closeError;
+};
 
 const ensureDirSync = (dirPath: string, mode: number = DEFAULT_DIR_MODE): void => {
   fs.mkdirSync(dirPath, { recursive: true, mode });
+};
+
+/**
+ * Tightens one app-owned state directory whose mode is looser than `mode`.
+ * `mkdir` applies its mode only at creation, so a directory made under a wider
+ * umask or by an earlier build keeps that mode forever. Only the named
+ * directory is touched, never its ancestors.
+ */
+export const restrictDirectoryMode = async (dirPath: string, mode: number): Promise<void> => {
+  // Windows synthesizes POSIX mode bits, so the comparison never describes a
+  // real ACL and chmod cannot express one.
+  if (process.platform === "win32") return;
+  const stats = await fs.promises.stat(dirPath);
+  if ((stats.mode & 0o777 & ~mode) !== 0) await fs.promises.chmod(dirPath, mode);
 };
 
 export type JsonReadResult<T> =
@@ -75,16 +146,34 @@ export const writeJsonFileSyncExclusive = (
 
   const tempPath = `${filePath}.${randomUUID()}.tmp`;
   const content = `${JSON.stringify(data, null, 2)}\n`;
+  let descriptor: number | undefined;
+  let tempCreated = false;
 
   try {
-    fs.writeFileSync(tempPath, content, { mode, flag: "wx" });
+    descriptor = fs.openSync(tempPath, "wx", mode);
+    tempCreated = true;
+    fs.writeFileSync(descriptor, content);
+    fs.fsyncSync(descriptor);
+    fs.closeSync(descriptor);
+    descriptor = undefined;
     fs.linkSync(tempPath, filePath);
-  } finally {
-    // The hard link is the durable result, so the temp name is always dropped; a
-    // leftover .tmp on an unlink failure is harmless (it is uniquely named).
-    try {
-      fs.unlinkSync(tempPath);
-    } catch {}
+    syncDirectorySync(dir);
+    fs.unlinkSync(tempPath);
+    tempCreated = false;
+    syncDirectorySync(dir);
+  } catch (error) {
+    if (descriptor !== undefined) {
+      try {
+        fs.closeSync(descriptor);
+      } catch {}
+    }
+    if (tempCreated) {
+      // Best-effort cleanup of the temp name owned by this operation.
+      try {
+        fs.unlinkSync(tempPath);
+      } catch {}
+    }
+    throw error;
   }
 };
 
@@ -98,6 +187,22 @@ export const removeFileSync = (filePath: string): boolean => {
   }
 };
 
+export const removeFileSyncDurable = (filePath: string): boolean => {
+  try {
+    fs.unlinkSync(filePath);
+  } catch (error) {
+    if (isNodeError(error, "ENOENT")) return false;
+    throw error;
+  }
+
+  syncDirectorySync(path.dirname(filePath));
+  return true;
+};
+
+export const syncParentDirectorySync = (filePath: string): void => {
+  syncDirectorySync(path.dirname(filePath));
+};
+
 export async function writeJsonFile(
   filePath: string,
   data: unknown,
@@ -109,36 +214,87 @@ export async function writeJsonFile(
   await atomicWriteFile(filePath, `${JSON.stringify(data, null, 2)}\n`, mode);
 }
 
+const TEMP_SIBLING_NAME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.tmp$/;
+
+/**
+ * Drop the temp siblings an atomic write strands when the process dies between
+ * its write and its rename. They can hold the full payload — including the
+ * recovery journal's copy of the secrets file — and nothing else ever sweeps
+ * them. The caller must hold the file's transaction lock so no live write is
+ * staging under this name.
+ */
+export function removeOrphanTempSiblings(filePath: string): void {
+  const directory = path.dirname(filePath);
+  const prefix = `${path.basename(filePath)}.`;
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(directory);
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (!entry.startsWith(prefix)) continue;
+    if (!TEMP_SIBLING_NAME.test(entry.slice(prefix.length))) continue;
+    try {
+      fs.unlinkSync(path.join(directory, entry));
+    } catch {}
+  }
+}
+
 function atomicWriteFileSync(filePath: string, content: string, mode: number): void {
   const tempPath = `${filePath}.${randomUUID()}.tmp`;
+  let descriptor: number | undefined;
+  let tempCreated = false;
   try {
-    fs.writeFileSync(tempPath, content, { mode });
+    descriptor = fs.openSync(tempPath, "wx", mode);
+    tempCreated = true;
+    fs.writeFileSync(descriptor, content);
+    fs.fsyncSync(descriptor);
+    fs.closeSync(descriptor);
+    descriptor = undefined;
     fs.renameSync(tempPath, filePath);
+    syncDirectorySync(path.dirname(filePath));
   } catch (error) {
-    // Best-effort temp-file cleanup; the original error is what callers need, and
-    // a leftover .tmp on an unlink failure is harmless (it is uniquely named).
-    try {
-      fs.unlinkSync(tempPath);
-    } catch {}
+    if (descriptor !== undefined) {
+      try {
+        fs.closeSync(descriptor);
+      } catch {}
+    }
+    if (tempCreated) {
+      // Best-effort cleanup of the temp name owned by this operation.
+      try {
+        fs.unlinkSync(tempPath);
+      } catch {}
+    }
     throw error;
   }
 }
 
 export async function atomicWriteFile(
   filePath: string,
-  content: string,
+  content: string | Uint8Array,
   mode: number = DEFAULT_FILE_MODE,
 ): Promise<void> {
   const tempPath = `${filePath}.${randomUUID()}.tmp`;
+  let handle: FileHandle | undefined;
+  let tempCreated = false;
   try {
-    await fs.promises.writeFile(tempPath, content, { mode });
+    handle = await fs.promises.open(tempPath, "wx", mode);
+    tempCreated = true;
+    await handle.writeFile(content);
+    await handle.sync();
+    await handle.close();
+    handle = undefined;
     await fs.promises.rename(tempPath, filePath);
+    await syncDirectory(path.dirname(filePath));
   } catch (error) {
-    // Best-effort temp-file cleanup; the original error is what callers need, and
-    // a leftover .tmp on an unlink failure is harmless (it is uniquely named).
-    try {
-      await fs.promises.unlink(tempPath);
-    } catch {}
+    await handle?.close().catch(() => undefined);
+    if (tempCreated) {
+      // Best-effort cleanup of the temp name owned by this operation.
+      try {
+        await fs.promises.unlink(tempPath);
+      } catch {}
+    }
     throw error;
   }
 }

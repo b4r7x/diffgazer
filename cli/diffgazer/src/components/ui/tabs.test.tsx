@@ -9,8 +9,8 @@ afterEach(() => {
   cleanup();
 });
 
-const ARROW_LEFT = "[D";
-const ARROW_RIGHT = "[C";
+const ARROW_LEFT = "\u001b[D";
+const ARROW_RIGHT = "\u001b[C";
 
 function renderTabs(
   listProps: Partial<Parameters<typeof Tabs.List>[0]> = {},

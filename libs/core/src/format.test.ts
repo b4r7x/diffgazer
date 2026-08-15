@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  buildRunIdLookup,
   formatDuration,
+  formatLocaleDateTimeOrFallback,
   formatRunId,
   formatTime,
   formatTimestamp,
-  formatTimestampOrNA,
   getDateKey,
   getDateLabel,
   getTimestamp,
@@ -51,18 +52,15 @@ function withFrozenNow(timeZone: string, run: () => void): void {
 
 describe("formatTime", () => {
   it.each([
-    [0, undefined, "00:00"],
-    [5000, undefined, "00:05"],
-    [90_000, undefined, "01:30"],
-    [3_661_000, undefined, "61:01"],
-    [3_600_000, undefined, "60:00"],
-    [7_261_000, undefined, "121:01"],
-    [3_661_000, "long" as const, "01:01:01"],
-    [0, "long" as const, "00:00:00"],
-    [1000, undefined, "00:01"],
-    [1000, "long" as const, "00:00:01"],
-  ])("formats %dms as %s", (ms, format, expected) => {
-    expect(formatTime(ms, format)).toBe(expected);
+    [0, "00:00"],
+    [5000, "00:05"],
+    [90_000, "01:30"],
+    [3_661_000, "61:01"],
+    [3_600_000, "60:00"],
+    [7_261_000, "121:01"],
+    [1000, "00:01"],
+  ])("formats %dms as %s", (ms, expected) => {
+    expect(formatTime(ms)).toBe(expected);
   });
 });
 
@@ -169,6 +167,12 @@ describe.each(TIME_ZONES)("getTimestamp (%s)", (timeZone) => {
     });
   });
 
+  it("formats noon boundary", () => {
+    inTimeZone(timeZone, () => {
+      expect(getTimestamp(localInstant(2026, 1, 9, 12, 0, 0))).toBe("12:00 PM");
+    });
+  });
+
   it("returns 'Invalid Date' for an unparseable date string", () => {
     inTimeZone(timeZone, () => {
       expect(getTimestamp("not-a-date")).toBe("Invalid Date");
@@ -176,16 +180,16 @@ describe.each(TIME_ZONES)("getTimestamp (%s)", (timeZone) => {
   });
 });
 
-describe("formatTimestampOrNA", () => {
+describe("formatLocaleDateTimeOrFallback", () => {
   it("returns the fallback when the value is missing", () => {
-    expect(formatTimestampOrNA(null)).toBe("N/A");
-    expect(formatTimestampOrNA(undefined)).toBe("N/A");
-    expect(formatTimestampOrNA("", "—")).toBe("—");
+    expect(formatLocaleDateTimeOrFallback(null)).toBe("N/A");
+    expect(formatLocaleDateTimeOrFallback(undefined)).toBe("N/A");
+    expect(formatLocaleDateTimeOrFallback("", "—")).toBe("—");
   });
 
   it("formats a present timestamp via the platform locale formatter", () => {
     const value = "2025-01-15T14:05:09Z";
-    expect(formatTimestampOrNA(value)).toBe(new Date(value).toLocaleString());
+    expect(formatLocaleDateTimeOrFallback(value)).toBe(new Date(value).toLocaleString());
   });
 });
 
@@ -193,17 +197,40 @@ describe("formatRunId", () => {
   it("displays a short id with a leading hash", () => {
     expect(formatRunId("abcdef00-0000-4000-8000-000000000000")).toBe("#abcdef00");
   });
+});
 
-  it("extends colliding minimum prefixes until each loaded run is unique", () => {
-    const ids = ["abcdef00-0000-4000-8000-000000000000", "abcdef00-1000-4000-8000-000000000000"];
+describe("buildRunIdLookup", () => {
+  it("labels every run in a batch with its shortest unique prefix", () => {
+    const ids = [
+      "abcdef00-0000-4000-8000-000000000000",
+      "abcdef00-1000-4000-8000-000000000000",
+      "fedcba99-2000-4000-8000-000000000000",
+    ];
+    const lookup = buildRunIdLookup(ids);
 
-    expect(formatRunId(ids[0] ?? "", ids)).toBe("#abcdef00-0");
-    expect(formatRunId(ids[1] ?? "", ids)).toBe("#abcdef00-1");
+    expect(ids.map((id) => lookup.get(id))).toEqual(["#abcdef00-0", "#abcdef00-1", "#fedcba99"]);
   });
 
   it("treats peer ids as case-insensitive when detecting a collision", () => {
     const ids = ["ABCDEF00-0000-4000-8000-000000000000", "abcdef00-1000-4000-8000-000000000000"];
+    const lookup = buildRunIdLookup(ids);
 
-    expect(formatRunId(ids[0] ?? "", ids)).not.toBe(formatRunId(ids[1] ?? "", ids));
+    expect(lookup.get(ids[0] ?? "")).toBe("#ABCDEF00-0");
+    expect(lookup.get(ids[1] ?? "")).toBe("#abcdef00-1");
+  });
+
+  it("keeps every label distinct across realistic history sizes", () => {
+    for (const size of [50, 500, 1000]) {
+      const ids = Array.from({ length: size }, (_, index) => {
+        const suffix = index.toString().padStart(4, "0");
+        return `abcdef00-${suffix}-4000-8000-000000000000`;
+      });
+
+      const lookup = buildRunIdLookup(ids);
+      const labels = ids.map((id) => lookup.get(id));
+
+      expect(lookup.size, `size ${size}`).toBe(size);
+      expect(new Set(labels).size, `size ${size}`).toBe(size);
+    }
   });
 });

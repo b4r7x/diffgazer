@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { runArgv } from "../smoke-shared/command.mjs";
+import { CommandFailedError, runArgv } from "../smoke-shared/command.mjs";
 import {
   declareTailwindV4Dependency,
   installViteFixtureDeps,
@@ -22,6 +22,26 @@ import { networkAllowed } from "../smoke-shared/network.mjs";
 
 function missingLocalDeps(root, deps) {
   return resolveAndCollectMissing(deps, (dep) => resolveWorkspaceDependency(root, dep));
+}
+
+/** Runs a command that must exit with `expectedExitCode`, returning its combined output. */
+async function runFailureArgv(command, args, expectedExitCode) {
+  const label = `${command} ${args.join(" ")}`;
+  let output;
+  try {
+    output = await runArgv(command, args);
+  } catch (err) {
+    if (!(err instanceof CommandFailedError)) throw err;
+    if (err.exitCode !== expectedExitCode) {
+      throw new Error(
+        `Expected exit ${expectedExitCode} but got ${err.exitCode}: ${label}\n${err.output.slice(0, 250)}`,
+      );
+    }
+    return err.output;
+  }
+  throw new Error(
+    `Expected exit ${expectedExitCode} but the command succeeded: ${label}\n${output.slice(0, 250)}`,
+  );
 }
 
 async function installDeps(root, fixture, depSpecs) {
@@ -214,14 +234,13 @@ export async function runCopyModeSmoke({ root, dgaddBin }) {
     await runArgv("pnpm", ["run", "typecheck"], fixture);
     await runArgv("pnpm", ["run", "build"], fixture);
     assertBuiltCss(fixture, { label: "Built copy-first" });
-    const removeOutput = await runArgv("node", [
-      dgaddBin,
-      "remove",
-      "keys/navigation",
-      "--cwd",
-      fixture,
-      "--yes",
-    ]);
+    // A requested item that is still installed afterwards exits non-zero, so a scripted caller
+    // can tell "removed" from "kept" without parsing output (see cli/add/testing/e2e/remove.e2e.ts).
+    const removeOutput = await runFailureArgv(
+      "node",
+      [dgaddBin, "remove", "keys/navigation", "--cwd", fixture, "--yes"],
+      1,
+    );
 
     if (!/Keeping keys\/navigation/.test(removeOutput)) {
       throw new Error(
@@ -230,7 +249,7 @@ export async function runCopyModeSmoke({ root, dgaddBin }) {
     }
 
     const config = JSON.parse(readFileSync(join(fixture, "diffgazer.json"), "utf-8"));
-    if (!config.installedComponents?.["keys/navigation"]) {
+    if (!config.installedItems?.["keys/navigation"]) {
       throw new Error(
         "keys/navigation manifest entry was removed while copy-mode UI still depends on it",
       );

@@ -19,7 +19,6 @@ function trackPointer(mouse: Mouse, signal: AbortSignal): void {
       mouse.y = event.clientY;
       mouse.nx = event.clientX / innerWidth - 0.5;
       mouse.ny = event.clientY / innerHeight - 0.5;
-      mouse.lastMove = performance.now();
     },
     { passive: true, signal },
   );

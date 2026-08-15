@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applyResolvedTheme, THEME_COLORS, THEME_STORAGE_KEY } from "@/theme-bootstrap";
 
 const indexHtml = readFileSync(resolve(import.meta.dirname, "../index.html"), "utf8");
@@ -34,6 +34,7 @@ describe("pre-paint theme bootstrap", () => {
 
   afterEach(() => {
     document.querySelector('meta[name="theme-color"]')?.remove();
+    vi.restoreAllMocks();
   });
 
   it("paints the stored light theme before the app mounts", () => {
@@ -73,6 +74,22 @@ describe("pre-paint theme bootstrap", () => {
     expect(document.documentElement.style.colorScheme).toBe("light");
   });
 
+  it("falls back to the OS preference when storage reads are denied", () => {
+    stubMatchMedia((query) => query === "(prefers-color-scheme: dark)");
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("access denied");
+    });
+
+    runInlineThemeBootstrap();
+
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.documentElement.style.colorScheme).toBe("dark");
+    expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute(
+      "content",
+      THEME_COLORS.dark,
+    );
+  });
+
   it("re-themes the document the same way once settings resolve", () => {
     applyResolvedTheme("light");
 
@@ -89,5 +106,13 @@ describe("pre-paint theme bootstrap", () => {
 
     expect(shell.documentElement.hasAttribute("data-theme")).toBe(false);
     expect(indexHtml).toContain(THEME_STORAGE_KEY);
+  });
+
+  it("declares the CSP nonce placeholder consumed by the embedded server", () => {
+    expect(indexHtml).toContain('nonce="{{cspNonce}}"');
+    const shell = new DOMParser().parseFromString(indexHtml, "text/html");
+    const inlineScript = shell.querySelector("head > script:not([src])");
+
+    expect(inlineScript?.getAttribute("nonce")).toBe("{{cspNonce}}");
   });
 });

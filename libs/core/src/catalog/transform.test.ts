@@ -1,9 +1,18 @@
-import { describe, expect, it } from "vitest";
-import { CANDIDATE_VERDICTS, PRODUCT_REGISTRY } from "../providers/product-registry.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import { CANDIDATE_VERDICTS } from "../providers/candidate-verdicts.js";
+import { isModelIdAllowedForProduct, PRODUCT_REGISTRY } from "../providers/product-registry.js";
 import { RAW_CATALOG } from "./fixtures.js";
-import { type ModelsDevCatalog, parseModelsDevCatalog } from "./schema.js";
-import { transformCatalogObservation } from "./transform.js";
+import {
+  CatalogSelectableModelIdSchema,
+  type ModelsDevCatalog,
+  parseModelsDevCatalog,
+} from "./schema.js";
+import {
+  type CatalogModelObservation,
+  isOfferableObservation,
+  isReviewCapableObservation,
+  transformCatalogObservation,
+} from "./transform.js";
 
 const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 
@@ -47,27 +56,28 @@ describe("transformCatalogObservation", () => {
       for (const model of observation.models) {
         expect(
           Object.keys(model).every((key) =>
-            ["contextTokens", "modelId", "modelName", "outputTokens", "sourceProviderId"].includes(
-              key,
-            ),
+            [
+              "billing",
+              "contextTokens",
+              "modelId",
+              "modelName",
+              "outputTokens",
+              "reviewCapability",
+              "sourceProviderId",
+            ].includes(key),
           ),
         ).toBe(true);
       }
     }
 
     const serialized = JSON.stringify(observations);
-    for (const forbidden of [
-      "admitted",
-      "api",
-      "cost",
-      "enabled",
-      "env",
-      "free",
-      "private",
-      "ready",
-      "selectable",
-    ]) {
+    for (const forbidden of ["admitted", "enabled", "private", "ready", "selectable"]) {
       expect(serialized).not.toContain(`"${forbidden}"`);
+    }
+    // `billing` restates the catalog's published price, so "free" is a legitimate
+    // value here; the raw upstream keys behind it still must not ride along.
+    for (const upstreamKey of ["api", "cost", "env"]) {
+      expect(serialized).not.toContain(`"${upstreamKey}":`);
     }
   });
 
@@ -103,6 +113,8 @@ describe("transformCatalogObservation", () => {
         modelId: "upstream/exact:model-1",
         modelName: "Upstream exact model",
         sourceProviderId: "google",
+        reviewCapability: "unknown",
+        billing: "unknown",
       },
     ]);
     expect(JSON.stringify(observations)).not.toContain("clone-model");
@@ -120,6 +132,8 @@ describe("transformCatalogObservation", () => {
             id: "provider/exact.model:1",
             name: "Exact",
             limit: { context: 131072, output: 8192 },
+            cost: { input: 0.3, output: 2.5 },
+            structured_output: true,
           },
           "provider/model/latest": {
             id: "provider/model/latest",
@@ -143,6 +157,8 @@ describe("transformCatalogObservation", () => {
         modelId: "provider/exact.model:1",
         modelName: "Exact",
         sourceProviderId: "google",
+        reviewCapability: "supported",
+        billing: "paid",
         contextTokens: 131072,
         outputTokens: 8192,
       },
@@ -174,6 +190,8 @@ describe("transformCatalogObservation", () => {
         modelId: "llama-3.3-70b-versatile",
         modelName: "Llama 3.3 70B Versatile",
         sourceProviderId: "groq",
+        reviewCapability: "unknown",
+        billing: "unknown",
         contextTokens: 131072,
         outputTokens: 32768,
       },
@@ -181,6 +199,8 @@ describe("transformCatalogObservation", () => {
         modelId: "whisper-large-v3",
         modelName: "Whisper Large V3",
         sourceProviderId: "groq",
+        reviewCapability: "unknown",
+        billing: "unknown",
       },
     ]);
   });
@@ -204,17 +224,176 @@ describe("transformCatalogObservation", () => {
         modelId: "safe",
         modelName: "Safe model",
         sourceProviderId: "google",
+        reviewCapability: "unknown",
+        billing: "unknown",
       },
     ]);
     expect(JSON.stringify(observations)).not.toMatch(/sk-live|\/usr|\\\\build-host/);
   });
 
-  it("keeps excluded and removed identities out of the shared fixture", () => {
+  it("carries the catalog's own capability and pricing onto every observation", () => {
+    const byId = new Map(
+      transform()
+        .flatMap(({ models }) => models)
+        .map((model) => [String(model.modelId), model]),
+    );
+
+    expect(byId.get("gemini-2.5-flash")).toMatchObject({
+      reviewCapability: "supported",
+      billing: "paid",
+    });
+    // Zero-priced upstream, but no structured-output declaration to stand on.
+    expect(byId.get("glm-4.7-flash")).toMatchObject({
+      reviewCapability: "unknown",
+      billing: "free",
+    });
+    expect(byId.get("gemini-embedding-001")).toMatchObject({
+      reviewCapability: "unknown",
+      billing: "unknown",
+    });
+  });
+
+  it("admits only models the catalog states can run the review contract", () => {
+    const capable = transform()
+      .flatMap(({ models }) => models)
+      .filter(isReviewCapableObservation)
+      .map(({ modelId }) => String(modelId));
+
+    expect(capable).toContain("gemini-2.5-flash");
+    // Declared-incapable and undeclared models are both withheld: an unproven
+    // model has no place in a list of what works.
+    expect(capable).not.toContain("glm-4.7");
+    expect(capable).not.toContain("gemini-embedding-001");
+  });
+
+  it("offers only capable models the product's own model policy admits", () => {
+    const observations = transform(
+      parseModelsDevCatalog({
+        openrouter: {
+          id: "openrouter",
+          models: {
+            "openai/gpt-4o": {
+              id: "openai/gpt-4o",
+              name: "GPT-4o",
+              cost: { input: 2.5, output: 10 },
+              structured_output: true,
+            },
+            // Zero-priced, capable, and a pinned identity: ':free' is a
+            // separately priced catalog entry, so the picker must offer it.
+            "openai/gpt-oss-20b:free": {
+              id: "openai/gpt-oss-20b:free",
+              name: "gpt-oss-20b (free)",
+              cost: { input: 0, output: 0 },
+              structured_output: true,
+            },
+            // Equally capable and zero-priced, but a genuine router: nothing
+            // pins which downstream model a review would actually run on.
+            "openrouter/free": {
+              id: "openrouter/free",
+              name: "Free Models Router",
+              cost: { input: 0, output: 0 },
+              structured_output: true,
+            },
+          },
+        },
+      }),
+    );
+
+    const openrouter = observations.find(({ productId }) => productId === "openrouter");
+    const capable = (openrouter?.models ?? []).filter(isReviewCapableObservation);
+    const offered = (openrouter?.models ?? []).filter((model) =>
+      isOfferableObservation("openrouter", model),
+    );
+
+    expect(capable.map(({ modelId }) => String(modelId))).toEqual([
+      "openai/gpt-4o",
+      "openai/gpt-oss-20b:free",
+      "openrouter/free",
+    ]);
+    expect(offered.map(({ modelId }) => String(modelId))).toEqual([
+      "openai/gpt-4o",
+      "openai/gpt-oss-20b:free",
+    ]);
+    expect(offered.some(({ billing }) => billing === "free")).toBe(true);
+  });
+
+  it("withholds a capable model behind an explicit opt-in suffix", () => {
+    const observations = transform(
+      parseModelsDevCatalog({
+        zai: {
+          id: "zai",
+          models: {
+            "glm-4.7": {
+              id: "glm-4.7",
+              name: "GLM-4.7",
+              cost: { input: 0.6, output: 2.2 },
+              structured_output: true,
+            },
+            "glm-4.7-flash": {
+              id: "glm-4.7-flash",
+              name: "GLM-4.7-Flash",
+              cost: { input: 0, output: 0 },
+              structured_output: true,
+            },
+          },
+        },
+      }),
+    );
+
+    const zai = observations.find(({ productId }) => productId === "zai");
+    const offered = (zai?.models ?? []).filter((model) => isOfferableObservation("zai", model));
+
+    expect(offered.map(({ modelId }) => String(modelId))).toEqual(["glm-4.7"]);
+  });
+
+  it("withholds a policy-admitted model whose capability the catalog never states", () => {
+    const observations = transform();
+    const zai = observations.find(({ productId }) => productId === "zai");
+    const undeclared = zai?.models.find(({ modelId }) => String(modelId) === "glm-4.7");
+
+    expect(undeclared?.reviewCapability).toBe("unknown");
+    expect(isModelIdAllowedForProduct("zai", "glm-4.7")).toBe(true);
+    expect(undeclared && isOfferableObservation("zai", undeclared)).toBe(false);
+  });
+
+  it("withholds a model that cannot emit text even when it declares structured output", () => {
+    const observations = transform(
+      parseModelsDevCatalog({
+        google: {
+          id: "google",
+          models: {
+            "tts-only": {
+              id: "tts-only",
+              name: "Speech Only",
+              structured_output: true,
+              modalities: { output: ["audio"] },
+            },
+          },
+        },
+      }),
+    );
+
+    const gemini = observations.find(({ productId }) => productId === "gemini");
+    expect(gemini?.models[0]?.reviewCapability).toBe("unsupported");
+    expect(gemini?.models.filter(isReviewCapableObservation)).toEqual([]);
+  });
+
+  it("admits only a parsed model ID into an observation, never a bare string", () => {
+    const modelId = CatalogSelectableModelIdSchema.parse("gemini-2.5-flash");
+    expectTypeOf(modelId).toEqualTypeOf<CatalogModelObservation["modelId"]>();
+    expectTypeOf<CatalogModelObservation["modelId"]>().not.toEqualTypeOf<string>();
+
+    const unparsed: string = "gemini-2.5-flash";
+    // @ts-expect-error an unparsed string never passed CatalogSelectableModelIdSchema
+    const forged: CatalogModelObservation["modelId"] = unparsed;
+
+    expect(forged).toBe(modelId);
+  });
+
+  it("keeps excluded identities out of the shared fixture", () => {
     const providerIds = Object.keys(RAW_CATALOG);
 
     expect(providerIds).toEqual(["google", "zai", "groq", "cerebras", "openrouter", "mistral"]);
-    expect(providerIds).not.toContain(REMOVED_PRODUCT_ID);
-    expect(providerIds).not.toContain("zai-coding-plan");
     expect(providerIds).not.toContain("github-models");
     for (const candidateId of Object.keys(CANDIDATE_VERDICTS)) {
       expect(providerIds, candidateId).not.toContain(candidateId);

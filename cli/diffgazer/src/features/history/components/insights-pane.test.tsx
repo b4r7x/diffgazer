@@ -16,7 +16,7 @@ const SUPPORT_FLOOR = { columns: 80, rows: 24 } as const;
 
 vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@diffgazer/core/api/hooks")>()),
-  useInit: () => ({ data: undefined, isLoading: false }),
+  useConfigurationInit: () => ({ data: undefined, isLoading: false }),
 }));
 
 vi.mock("../../../hooks/use-terminal-dimensions", () => ({

@@ -106,11 +106,15 @@ describe("TocActive", () => {
     }
   });
 
-  it("moves aria-current to the link the user clicks", async () => {
+  it("moves aria-current to the link the user clicks and scrolls the pane, not the page", async () => {
     // jsdom implements neither window.scrollTo nor Element.prototype.scrollTo;
-    // the demo scrolls its own container, so both are stubbed here.
-    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
-    Element.prototype.scrollTo = vi.fn();
+    // the demo scrolls its own container, so both are stubbed here — separately,
+    // so the test can tell which of the two the example actually drives.
+    const windowScrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    const scrolledElements: Element[] = [];
+    Element.prototype.scrollTo = function scrollToStub(this: Element) {
+      scrolledElements.push(this);
+    };
     try {
       const user = userEvent.setup();
       render(<TocActive />);
@@ -127,8 +131,16 @@ describe("TocActive", () => {
 
       expect(target).toHaveAttribute("aria-current", "location");
       expect(initiallyActive).not.toHaveAttribute("aria-current");
+
+      // containerId routes the programmatic scroll to the demo's own pane; without
+      // it the hook would scroll the host window instead.
+      expect(windowScrollTo).not.toHaveBeenCalled();
+      expect(scrolledElements).toHaveLength(1);
+      const pane = scrolledElements[0];
+      if (!(pane instanceof HTMLElement)) throw new Error("expected an element scroll target");
+      expect(pane).toContainElement(screen.getByRole("heading", { name: "Usage" }));
     } finally {
-      scrollTo.mockRestore();
+      windowScrollTo.mockRestore();
       Reflect.deleteProperty(Element.prototype, "scrollTo");
     }
   });

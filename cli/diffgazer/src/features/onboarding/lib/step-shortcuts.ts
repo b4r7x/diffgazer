@@ -1,6 +1,5 @@
 import type { InputMethod, OnboardingStep } from "@diffgazer/core/onboarding";
-import { STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
-import { NAVIGATE_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
+import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 
 interface StepShortcutState {
   currentStep: OnboardingStep;
@@ -81,15 +80,5 @@ export function getStepShortcuts({
         { key: "Enter/Space", label: "Accept Notice" },
         { key: "Tab", label: "Focus Actions" },
       ];
-    case "migration":
-      return [{ key: "Tab", label: "Focus Actions" }, NAVIGATE_SHORTCUT];
-    case "delete":
-      return [{ key: "Tab", label: "Focus Actions" }];
   }
 }
-
-export function getStepLabelList(steps: readonly OnboardingStep[]): string[] {
-  return steps.map((step) => STEP_LABELS[step]);
-}
-
-export { STEP_TITLES };

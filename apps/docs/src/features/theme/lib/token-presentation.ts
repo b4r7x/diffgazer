@@ -38,6 +38,7 @@ const THEME_DOCS_VARIABLE_DIAGRAM_ORDER = [
   "--base-dim",
   "--base-muted",
   "--base-highlight",
+  "--base-highlight-foreground",
   "--base-selection",
   "--base-input-bg",
 ] as const satisfies readonly ThemeDocsPrimitiveName[];
@@ -76,8 +77,13 @@ export const THEME_DOCS_PLAYGROUND_ORDER = [
   "--base-input-bg",
 ] as const satisfies readonly ThemeDocsPrimitiveName[];
 
-export const THEME_DOCS_MAPPED_PRIMITIVES = THEME_DOCS_VARIABLE_DIAGRAM_ORDER.map((name) =>
-  getThemeDocsPrimitive(name),
+/**
+ * The diagram lists every primitive (guarded like the other two orders) and lets
+ * the filter narrow it, so a new primitive with semantic edges cannot silently
+ * vanish from the diagram while the grid and playground fail loudly.
+ */
+export const THEME_DOCS_MAPPED_PRIMITIVES = orderThemeDocsPrimitives(
+  THEME_DOCS_VARIABLE_DIAGRAM_ORDER,
 ).filter(
   (primitive) =>
     primitive.semanticTokens.dark.length > 0 || primitive.semanticTokens.light.length > 0,

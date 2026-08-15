@@ -22,6 +22,9 @@ export type CliProbeInput = Readonly<{
   executable: string;
   cwd: string;
   env: Readonly<Record<string, string>>;
+  /** Remaining share of the admitted wall time; probes run inside it, not beside it. */
+  signal?: AbortSignal;
+  timeoutMs?: number;
 }>;
 
 const AUTH_STATUS_ARGV: Record<LocalCliProductId, readonly string[]> = {
@@ -47,6 +50,8 @@ export async function acquireCliVersion(
     argv: ["--version"],
     cwd: input.cwd,
     env: input.env,
+    signal: input.signal,
+    timeoutMs: input.timeoutMs,
   });
   const rawOutput = transcript(result).trim();
   if (result.exitCode !== 0 || result.timedOut || rawOutput.length === 0) {
@@ -58,6 +63,14 @@ export async function acquireCliVersion(
     rawOutput,
   });
 }
+
+/**
+ * Negated sign-in phrasings, checked before the positive match: `"unauthenticated"`
+ * and `"not authenticated"` both contain `"authenticated"`, so a substring test
+ * alone would read a signed-out transcript as signed in.
+ */
+const NEGATED_AUTH_STATUS =
+  /\b(?:not\s+(?:logged\s+in|authenticated|signed\s+in)|unauthenticated|logged\s+out|signed\s+out)\b/;
 
 /**
  * Sign-in evidence from the vendor's own auth-status subcommand. A runnable
@@ -73,13 +86,15 @@ export async function probeCliAuthStore(
     argv: [...AUTH_STATUS_ARGV[provider]],
     cwd: input.cwd,
     env: input.env,
+    signal: input.signal,
+    timeoutMs: input.timeoutMs,
   });
   const output = transcript(result).toLowerCase();
 
   if (output.includes("plaintext") || output.includes("fallback")) {
     return ok({ authStoreEvidence: "plaintext-fallback" });
   }
-  if (result.exitCode !== 0 || result.timedOut || output.includes("not logged in")) {
+  if (result.exitCode !== 0 || result.timedOut || NEGATED_AUTH_STATUS.test(output)) {
     return ok({ authStoreEvidence: "unavailable" });
   }
   if (!output.includes("logged in") && !output.includes("authenticated")) {
@@ -105,6 +120,8 @@ export async function probeCliModelPolicy(
     argv: [...MODEL_LISTING_ARGV[provider]],
     cwd: input.cwd,
     env: input.env,
+    signal: input.signal,
+    timeoutMs: input.timeoutMs,
   });
   const rawOutput = transcript(result);
   if (result.exitCode !== 0 || result.timedOut) {

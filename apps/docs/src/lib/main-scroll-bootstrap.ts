@@ -1,17 +1,12 @@
 /**
  * The sessionStorage key TanStack Router keeps its scroll cache under. It is only
  * reachable through `@tanstack/router-core`, and importing that package directly
- * gives the SSR build a second router instance (dehydration then throws), so the
- * value is mirrored here and pinned to the router's own by main-scroll-bootstrap.test.
+ * gives the SSR build a second router instance, so the value is mirrored here and
+ * pinned by main-scroll-bootstrap.test.
  */
+import { MAIN_SCROLL_RESTORATION_ID } from "./main-scroll-restoration";
+
 const SCROLL_RESTORATION_STORAGE_KEY = "tsr-scroll-restoration-v1_3";
-
-/**
- * Without this id the router keys the cached offset by a generated `nth-child` path,
- * which the pre-paint script below could not look up.
- */
-export const MAIN_SCROLL_RESTORATION_ID = "main-content";
-
 const MAIN_SCROLL_SELECTOR = `[data-scroll-restoration-id="${MAIN_SCROLL_RESTORATION_ID}"]`;
 
 export interface MainScrollBootstrapConfig {
@@ -25,7 +20,7 @@ export interface MainScrollBootstrapConfig {
  * and jumps a few frames later.
  *
  * Serialized with `Function.prototype.toString` and injected inline, so it must stay
- * self-contained: every value arrives through `config`, no imports or module constants.
+ * self-contained: every value arrives through `config`, with no module constants.
  */
 export function mainScrollBootstrap(config: MainScrollBootstrapConfig): void {
   try {
@@ -40,7 +35,7 @@ export function mainScrollBootstrap(config: MainScrollBootstrapConfig): void {
     element.scrollLeft = entry.scrollX;
     element.scrollTop = entry.scrollY;
   } catch {
-    // Unreadable storage or a malformed cache leaves the router's post-hydration restore.
+    // Unreadable storage or malformed cache leaves the router's post-hydration restore.
   }
 }
 
@@ -49,5 +44,5 @@ export const MAIN_SCROLL_BOOTSTRAP_CONFIG: MainScrollBootstrapConfig = {
   elementSelector: MAIN_SCROLL_SELECTOR,
 };
 
-/** {@link mainScrollBootstrap} serialized for the inline script in layout/content.tsx. */
+/** {@link mainScrollBootstrap} serialized for parser-blocking inline scripts. */
 export const MAIN_SCROLL_INIT_SCRIPT = `(${mainScrollBootstrap.toString()})(${JSON.stringify(MAIN_SCROLL_BOOTSTRAP_CONFIG)});`;

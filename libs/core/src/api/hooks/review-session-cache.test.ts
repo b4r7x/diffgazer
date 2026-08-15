@@ -94,28 +94,6 @@ describe("review active-session cache helpers", () => {
     });
   });
 
-  it("preserves unstaged active-session keys when the review id does not match", async () => {
-    const active = makeActiveSession({
-      reviewId: "22222222-2222-4222-8222-222222222222",
-      mode: "unstaged",
-    });
-    queryClient.setQueryData(reviewQueries.activeSession(api, "unstaged").queryKey, {
-      session: active,
-    });
-
-    const { result } = renderHook(() => useReviewSessionCache(), {
-      wrapper: Wrapper,
-    });
-
-    await act(async () => {
-      await result.current.clearActiveSession("unstaged", "11111111-1111-4111-8111-111111111111");
-    });
-
-    expect(queryClient.getQueryData(reviewQueries.activeSession(api, "unstaged").queryKey)).toEqual(
-      { session: active },
-    );
-  });
-
   it("caches a created unstaged active session under its mode key and clears by review id", async () => {
     const unstaged = makeActiveSession({ mode: "unstaged" });
     const harness = setup({

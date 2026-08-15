@@ -37,7 +37,13 @@ describe("selectResumableSession", () => {
   });
 
   it("falls back to the staged session when no unstaged session exists", () => {
-    expect(selectResumableSession(null, { reviewId: "rev-staged", mode: "staged" })).toEqual({
+    expect(
+      selectResumableSession(null, {
+        reviewId: "rev-staged",
+        mode: "staged",
+        startedAt: "2026-01-01T00:00:00.000Z",
+      }),
+    ).toEqual({
       reviewId: "rev-staged",
       mode: "staged",
     });
@@ -47,10 +53,10 @@ describe("selectResumableSession", () => {
     expect(selectResumableSession(null, undefined)).toBeNull();
   });
 
-  it("rejects a session whose mode is not a known review mode", () => {
+  it("rejects a files-mode session, which cannot be resumed from home", () => {
     expect(
       selectResumableSession(
-        { reviewId: "rev-invalid", mode: "bogus", startedAt: "2026-01-01T00:01:00.000Z" },
+        { reviewId: "rev-files", mode: "files", startedAt: "2026-01-01T00:01:00.000Z" },
         { reviewId: "rev-staged", mode: "staged", startedAt: "2026-01-01T00:00:00.000Z" },
       ),
     ).toEqual({ reviewId: "rev-staged", mode: "staged" });

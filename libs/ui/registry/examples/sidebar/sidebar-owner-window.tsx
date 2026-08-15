@@ -1,6 +1,6 @@
 "use client";
 
-import { type SyntheticEvent, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Sidebar,
@@ -13,9 +13,41 @@ import {
 
 const FRAME_DOCUMENT = `<!doctype html>
 <html>
-  <head><style>html,body,#root{height:100%;margin:0}body{font-family:monospace}</style></head>
+  <head></head>
   <body></body>
 </html>`;
+
+function syncHostStylesIntoFrame(frameDocument: Document): Promise<void> {
+  const frameHtml = frameDocument.documentElement;
+  const hostHtml = document.documentElement;
+
+  for (const { name, value } of Array.from(hostHtml.attributes)) {
+    if (name === "class" || name.startsWith("data-")) {
+      frameHtml.setAttribute(name, value);
+    }
+  }
+
+  const head = frameDocument.head;
+  const reset = frameDocument.createElement("style");
+  reset.textContent = "html,body{height:100%;margin:0}";
+  head.append(reset);
+
+  const loads: Promise<void>[] = [];
+  for (const node of document.head.querySelectorAll('link[rel="stylesheet"], style')) {
+    const clone = node.cloneNode(true);
+    if (clone instanceof HTMLLinkElement) {
+      loads.push(
+        new Promise((resolve) => {
+          clone.addEventListener("load", () => resolve(), { once: true });
+          clone.addEventListener("error", () => resolve(), { once: true });
+        }),
+      );
+    }
+    head.append(clone);
+  }
+
+  return loads.length > 0 ? Promise.all(loads).then(() => undefined) : Promise.resolve();
+}
 
 export default function SidebarOwnerWindow() {
   const [frameBody, setFrameBody] = useState<HTMLElement | null>(null);
@@ -25,10 +57,6 @@ export default function SidebarOwnerWindow() {
   // and a 420px frame the nav is a mobile sheet however wide the host window is,
   // and resizing the host alone never flips it.
   const [mounted, setMounted] = useState(true);
-
-  const handleFrameLoad = (event: SyntheticEvent<HTMLIFrameElement>) => {
-    setFrameBody(event.currentTarget.contentDocument?.body ?? null);
-  };
 
   return (
     <div className="flex flex-col gap-3 p-4 bg-background">
@@ -55,7 +83,11 @@ export default function SidebarOwnerWindow() {
         srcDoc={FRAME_DOCUMENT}
         className="h-72 border border-border bg-background"
         style={{ width: 420 }}
-        onLoad={handleFrameLoad}
+        onLoad={(event) => {
+          const frameDocument = event.currentTarget.contentDocument;
+          if (!frameDocument) return;
+          void syncHostStylesIntoFrame(frameDocument).then(() => setFrameBody(frameDocument.body));
+        }}
       />
       {mounted && frameBody
         ? createPortal(

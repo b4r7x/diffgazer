@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const diffViewDoc: ComponentDoc = {
   description:
@@ -145,14 +145,16 @@ export const diffViewDoc: ComponentDoc = {
     { name: "diff-view-stat", title: "File stat" },
     { name: "diff-view-wrap", title: "Wrapping long lines" },
     { name: "diff-view-compare", title: "Before / after compare" },
-    { name: "diff-view-with-header", title: "With header label" },
+    { name: "diff-view-with-header", title: "Header caption with a custom accessible name" },
   ],
   keyboard: {
     description:
-      "When the rows container is focused, j moves to the next hunk and k moves to the previous one. Navigation does not wrap. Escape clears the active hunk. The active hunk is highlighted with an inset ring and announced via an aria-live region.",
+      "When the rows container is focused, j moves to the next hunk and k moves to the previous one, while Home and End jump to the first and last hunk instead of scrolling the container natively. Navigation does not wrap. Escape clears the active hunk. The active hunk is highlighted with an inset ring and announced via an aria-live region.",
     keys: [
       { keys: "j", action: "Moves to the next hunk." },
       { keys: "k", action: "Moves to the previous hunk." },
+      { keys: "Home", action: "Jumps to the first hunk." },
+      { keys: "End", action: "Jumps to the last hunk." },
       { keys: "Escape", action: "Clears the active hunk highlight." },
     ],
     examples: [],
@@ -254,14 +256,14 @@ export const diffViewDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: null,
-        description:
-          "Unified diff string (git diff output). One of patch, before+after, or diff must be supplied.",
+        description: "Unified diff string.",
       },
       before: {
         type: "string",
         required: false,
         defaultValue: null,
-        description: "Old text. Pair with `after` to let DiffView compute the diff via LCS.",
+        description:
+          "Old text. Pair with `after` to let DiffView compute the diff via LCS. The LCS table is capped at 250,000 cells (about 499 lines per side), past which the comparison degrades to a whole-file rewrite; supply `patch` or `diff` for larger inputs.",
       },
       after: {
         type: "string",

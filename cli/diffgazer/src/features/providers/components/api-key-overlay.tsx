@@ -4,11 +4,12 @@ import {
   buildSetupAcknowledgement,
   buildSetupInput,
   getSetupLayoutCopy,
-  resolveSetupTransportFamily,
+  requiresExplicitModelSelection,
+  resolveCredentialEnvironmentVariable,
   toSetupCredential,
-  useApiKeyEntry,
 } from "@diffgazer/core/providers";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { useApiKeyEntry } from "@diffgazer/core/providers/hooks";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import type {
   ClientConfigurationInput,
   ReadinessAcknowledgement,
@@ -27,10 +28,12 @@ import { useTheme } from "../../../theme/provider";
 type AcceptedAcknowledgement = Extract<ReadinessAcknowledgement, { status: "accepted" }>;
 
 const SETUP_SHORTCUTS: Shortcut[] = [
-  { key: "Tab", label: "Focus Key Field" },
   { key: "←/→", label: "Switch Action" },
   { key: "Enter", label: "Confirm" },
 ];
+// Only hosted rows render a key field, so only they can offer the Tab focus swap.
+const HOSTED_KEY_FIELD_SHORTCUT: Shortcut = { key: "Tab", label: "Focus Key Field" };
+const LOCAL_NOTICE_SHORTCUT: Shortcut = { key: "a", label: "Accept Notice" };
 const SETUP_RIGHT_SHORTCUTS: Shortcut[] = [{ ...BACK_SHORTCUT, label: "Close" }];
 
 interface ApiKeyOverlayProps {
@@ -39,7 +42,10 @@ interface ApiKeyOverlayProps {
   row: ProviderListRow;
   onCreate: (
     input: ClientConfigurationInput,
-    opts?: { openModelDialog?: boolean },
+    opts: {
+      acknowledgement: AcceptedAcknowledgement;
+      openModelDialog?: boolean;
+    },
   ) => Promise<void>;
   onUpdate: (
     input: {
@@ -60,29 +66,23 @@ export function ApiKeyOverlay({
   const { tokens } = useTheme();
   const [inputFocused, setInputFocused] = useState(false);
   // Only a stored acceptance pre-checks the notice: `not-applicable` means the row carries no
-  // acknowledgement yet (unconfigured or removed), so consent is still outstanding.
+  // acknowledgement yet (unconfigured), so consent is still outstanding.
   const [noticeAccepted, setNoticeAccepted] = useState(
     () => row.readiness.acknowledgement.status === "accepted",
   );
-  const transportFamily = resolveSetupTransportFamily(row);
-  const isHosted = transportFamily === "hosted-api";
-  const isUpdating =
-    row.configuration?.status === "supported" || row.configuration?.status === "removed";
+  const isHosted = row.product.transportFamily === "hosted-api";
+  const isUpdating = row.configuration != null;
 
   const entry = useApiKeyEntry({
     onSubmit: async (method, value) => {
-      const input = buildSetupInput(row, transportFamily, toSetupCredential(method, value));
-      if (!input) return false;
+      if (!noticeAccepted) return false;
+      const input = buildSetupInput(row, toSetupCredential(method, value));
       const acknowledgement = buildSetupAcknowledgement(row);
-      if (row.configuration?.status === "supported") {
-        await onUpdate(
-          { input, acknowledgement },
-          {
-            openModelDialog: row.product.productId === "openrouter",
-          },
-        );
+      const openModelDialog = requiresExplicitModelSelection(row.product.productId);
+      if (row.configuration) {
+        await onUpdate({ input, acknowledgement }, { openModelDialog });
       } else {
-        await onCreate(input, { openModelDialog: row.product.productId === "openrouter" });
+        await onCreate(input, { acknowledgement, openModelDialog });
       }
       onOpenChange(false);
       return true;
@@ -91,21 +91,6 @@ export function ApiKeyOverlay({
 
   const { method, value, setMethod, setValue, canSubmit, isSubmitting: saving, error } = entry;
   const canConfirmHosted = canSubmit && noticeAccepted;
-
-  async function handleLocalSave() {
-    if (!noticeAccepted || saving) return;
-    if (transportFamily !== "local-http" && transportFamily !== "local-cli") return;
-
-    const input = buildSetupInput(row, transportFamily);
-    if (!input) return;
-    const acknowledgement = buildSetupAcknowledgement(row);
-    if (row.configuration?.status === "supported") {
-      await onUpdate({ input, acknowledgement });
-    } else {
-      await onCreate(input);
-    }
-    onOpenChange(false);
-  }
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen && saving) return;
@@ -122,16 +107,17 @@ export function ApiKeyOverlay({
       void entry.submit();
       return;
     }
-    void handleLocalSave();
+    if (!noticeAccepted || saving) return;
+    void entry.submitCredentialless();
   }
 
   useInput(
     (input) => {
-      if (input === "a" && !saving) {
+      if (input === "a" && !saving && !inputFocused) {
         setNoticeAccepted((accepted) => !accepted);
       }
     },
-    { isActive: open && !saving },
+    { isActive: open && !saving && !inputFocused },
   );
 
   useInput(
@@ -140,13 +126,15 @@ export function ApiKeyOverlay({
         setInputFocused((focused) => !focused);
         return;
       }
-      if (key.return && (inputFocused || !isHosted)) handleSave();
+      if (key.return && inputFocused) handleSave();
     },
     { isActive: open && !saving },
   );
 
   usePageFooter({
-    shortcuts: SETUP_SHORTCUTS,
+    shortcuts: isHosted
+      ? [HOSTED_KEY_FIELD_SHORTCUT, ...SETUP_SHORTCUTS]
+      : [...SETUP_SHORTCUTS, LOCAL_NOTICE_SHORTCUT],
     rightShortcuts: SETUP_RIGHT_SHORTCUTS,
   });
 
@@ -154,8 +142,9 @@ export function ApiKeyOverlay({
     actionCount: 2,
     disabledActions: [isHosted ? !canConfirmHosted : !noticeAccepted, false],
     onAction: (index) => (index === 0 ? handleSave() : handleClose()),
-    isActive: open && !saving && !inputFocused,
+    isActive: open && !saving && !inputFocused && (isHosted || noticeAccepted),
   });
+  const noticeButtonActive = open && !saving && !isHosted && !noticeAccepted;
 
   const resetSecrets = useEffectEvent(() => {
     if (entry.isSubmitting) return;
@@ -171,7 +160,7 @@ export function ApiKeyOverlay({
   }, [open, row.product.productId, row.configuration?.configurationId]);
 
   const title = isUpdating ? "Update Configuration" : "Create Configuration";
-  const layoutCopy = getSetupLayoutCopy(row, transportFamily);
+  const layoutCopy = getSetupLayoutCopy(row);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -188,7 +177,7 @@ export function ApiKeyOverlay({
                 onMethodChange={setMethod}
                 apiKey={value}
                 onApiKeyChange={setValue}
-                envVar=""
+                envVar={resolveCredentialEnvironmentVariable(row.product.productId)}
                 envVarReadOnly
                 isActive={open && !saving}
                 inputFocused={inputFocused}
@@ -200,7 +189,7 @@ export function ApiKeyOverlay({
             </Text>
             <Button
               variant="secondary"
-              isActive={false}
+              isActive={noticeButtonActive}
               onPress={() => setNoticeAccepted((accepted) => !accepted)}
               disabled={saving}
             >

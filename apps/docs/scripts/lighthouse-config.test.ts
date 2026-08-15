@@ -4,7 +4,9 @@ import lighthouseConfig from "../lighthouserc.json";
 describe("Lighthouse CI configuration", () => {
   it("leaves server startup and canonical URLs to the dynamic-port runner", () => {
     expect(lighthouseConfig.ci.collect).toEqual({
-      numberOfRuns: 1,
+      // Multiple runs so LHCI's median absorbs shared-runner variance before the
+      // error-level numeric budgets below decide a release gate.
+      numberOfRuns: 3,
       settings: {
         preset: "desktop",
       },

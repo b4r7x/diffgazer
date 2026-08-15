@@ -110,9 +110,54 @@ describe("docsDataRebuild", () => {
     callback(new Error("boom"), "", "prepare:generated failed");
 
     expect(stub.logger.error).toHaveBeenCalledWith(
-      "[docs-data] Build failed: prepare:generated failed",
+      "[docs-data] Build failed:\nprepare:generated failed",
     );
     expect(stub.wsSend).not.toHaveBeenCalled();
+  });
+
+  // pnpm/turbo run the inner build with inherited stdio, so a task failure
+  // summary reaches the exec stdout pipe and stderr stays empty.
+  it("reports a failure whose diagnostics arrived on stdout", async () => {
+    const { docsDataRebuild } = await import("./vite-plugin-docs-rebuild");
+    const stub = createStubServer();
+    const plugin = docsDataRebuild();
+
+    configurePlugin(plugin.configureServer, stub.server);
+
+    stub.emit("change", `${stub.added[0]}/manifest.json`);
+    vi.advanceTimersByTime(300);
+
+    const call = execMock.mock.calls[0];
+    if (!call) throw new Error("Expected rebuild subprocess call");
+    const [, , callback] = call;
+    callback(new Error("boom"), "ERROR: task prepare:library-artifacts failed", "");
+
+    expect(stub.logger.error).toHaveBeenCalledWith(
+      "[docs-data] Build failed:\nERROR: task prepare:library-artifacts failed",
+    );
+  });
+
+  it("ignores directory events fired while a rebuild is in flight", async () => {
+    const { docsDataRebuild } = await import("./vite-plugin-docs-rebuild");
+    const stub = createStubServer();
+    const plugin = docsDataRebuild();
+
+    configurePlugin(plugin.configureServer, stub.server);
+
+    const watchedDir = `${stub.added[0]}`;
+    stub.emit("change", `${watchedDir}/manifest.json`);
+    vi.advanceTimersByTime(300);
+    expect(execMock).toHaveBeenCalledTimes(1);
+
+    stub.emit("unlinkDir", `${watchedDir}/keys`);
+    stub.emit("addDir", `${watchedDir}/keys`);
+
+    const call = execMock.mock.calls[0];
+    if (!call) throw new Error("Expected rebuild subprocess call");
+    const [, , callback] = call;
+    callback(null, "", "");
+
+    expect(execMock).toHaveBeenCalledTimes(1);
   });
 
   it("runs one pending rebuild for watcher events fired while a rebuild is in flight", async () => {

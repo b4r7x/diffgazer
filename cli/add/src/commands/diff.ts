@@ -1,119 +1,110 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-import { createDiffCommand, ensureWithinDir } from "@diffgazer/registry/cli";
-import { ctx, type ManifestIntegrationMode, type ResolvedConfig } from "../context.js";
-import { buildExpectedChunkContentsForItem, extractCssChunkContents } from "../utils/css-chunks.js";
+import { createDiffCommand, ensureWithinDir, info } from "@diffgazer/registry/cli";
+import pc from "picocolors";
+import { ctx, type ManifestIntegrationMode, type ManifestItem } from "../context.js";
 import {
-  getNamespacedItem,
+  buildExpectedChunkContentsForItem,
+  extractCssChunkContents,
+  findCorruptedCssChunkHashes,
+  readCssChunkHashBoundaries,
+} from "../utils/css-chunks.js";
+import {
   parseInstallName,
-  validateInstallableNames,
+  tryGetNamespacedItem,
+  validateInstalledOrRegistryNames,
 } from "../utils/namespaces.js";
 import { resolveInstallPath, resolveProjectPath } from "../utils/paths.js";
 import {
   getInstallBaseForFilePath,
   getInstallDirForBase,
   prepareFileContentForIntegration,
+  prepareKeysHookFileContent,
 } from "../utils/registry.js";
 
+interface DiffScanContext {
+  manifest: Record<string, ManifestItem>;
+  installedChunks: Map<string, string>;
+  corruptedChunks: Set<string>;
+}
+
 function resolveIntegrationMode(
-  cwd: string,
+  manifest: Record<string, ManifestItem>,
   itemName: string,
   manifestPath: string,
 ): ManifestIntegrationMode | undefined {
-  const manifest = ctx.config.getManifestItems(cwd);
-  const entry = manifest?.[itemName];
+  const entry = manifest[itemName];
   const fileEntry = entry?.files?.find((file) => file.path === manifestPath);
   return fileEntry?.integrationMode ?? entry?.integrationMode;
 }
 
-// Materialize each extracted chunk to a tmp file so the diff workflow's
-// readFileSync(localPath) sees the chunk content rather than the full
-// styles.css. Unique dir via mkdtempSync, removed by cleanup handlers
-// registered the first time a scratch file is requested. A bare
-// `process.on("exit")` handler covers normal completion and the `process.exit`
-// the CLI error handler performs, but never runs on default SIGINT/SIGTERM
-// disposition — so those signals get their own handlers that clean up and
-// re-exit with the conventional code.
-let chunkScratchDir: string | null = null;
-
-function chunkScratchPath(itemName: string, hash: string): string {
-  if (!chunkScratchDir) {
-    chunkScratchDir = mkdtempSync(join(tmpdir(), "dgadd-diff-"));
-    installScratchCleanupHandlers();
-  }
-  const safeName = itemName.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const scratchPath = resolve(chunkScratchDir, `${safeName}-${hash}.css`);
-  ensureWithinDir(scratchPath, chunkScratchDir);
-  return scratchPath;
-}
-
-function cleanupChunkScratchDir(): void {
-  if (!chunkScratchDir) return;
-  try {
-    rmSync(chunkScratchDir, { recursive: true, force: true });
-  } catch {
-    // Non-critical: a failed rm only leaves an OS-tmp dir the OS reclaims.
-  }
-  chunkScratchDir = null;
-}
-
-const SIGNAL_EXIT_CODES = { SIGINT: 130, SIGTERM: 143 } as const;
-
-function installScratchCleanupHandlers(): void {
-  process.once("exit", cleanupChunkScratchDir);
-  for (const signal of Object.keys(SIGNAL_EXIT_CODES) as Array<keyof typeof SIGNAL_EXIT_CODES>) {
-    process.once(signal, () => {
-      cleanupChunkScratchDir();
-      process.exit(SIGNAL_EXIT_CODES[signal]);
-    });
-  }
-}
-
-interface ChunkDriftFile {
-  itemName: string;
-  relativePath: string;
-  localPath: string;
-  registryContent: string;
+function missingChunkLocalPath(cwd: string, hash: string): string {
+  const localPath = resolveProjectPath(cwd, `.diffgazer/.missing-css-chunk-${hash}`);
+  ensureWithinDir(localPath, resolveProjectPath(cwd, ".diffgazer"));
+  return localPath;
 }
 
 function buildCssChunkDriftFiles(
   itemName: string,
   cwd: string,
-  config: ResolvedConfig,
-): ChunkDriftFile[] {
-  const manifest = ctx.config.getManifestItems(cwd);
-  const chunkHashes = manifest?.[itemName]?.cssChunks ?? [];
+  scan: DiffScanContext,
+  expectedChunks: ReadonlyMap<string, string>,
+): Array<
+  {
+    itemName: string;
+    relativePath: string;
+    registryContent: string;
+  } & ({ localPath: string } | { localContent: string })
+> {
+  const chunkHashes = scan.manifest[itemName]?.cssChunks ?? [];
   if (chunkHashes.length === 0) return [];
 
-  const installedChunks = extractCssChunkContents(cwd, config);
-  const parsed = parseInstallName(itemName);
-  const expectedChunks =
-    parsed.namespace === "ui"
-      ? buildExpectedChunkContentsForItem(parsed.name)
-      : new Map<string, string>();
-
   return chunkHashes.map((hash) => {
-    const localContent = installedChunks.get(hash) ?? "";
     const registryContent = expectedChunks.get(hash) ?? "";
-    const localPath = chunkScratchPath(itemName, hash);
-    writeFileSync(localPath, localContent);
+    const installed = scan.installedChunks.get(hash);
+    if (scan.corruptedChunks.has(hash)) {
+      return {
+        itemName,
+        relativePath: `styles.css~chunk-${hash}`,
+        localContent: `Malformed managed CSS markers for chunk ${hash}. Restore exactly one matching start and end marker in the configured stylesheet.\n${installed ?? ""}`,
+        registryContent,
+      };
+    }
+    if (installed === undefined) {
+      if (registryContent === "") {
+        return {
+          itemName,
+          relativePath: `styles.css~chunk-${hash}`,
+          localPath: missingChunkLocalPath(cwd, hash),
+          registryContent,
+        };
+      }
+      return {
+        itemName,
+        relativePath: `styles.css~chunk-${hash}`,
+        localContent: "",
+        registryContent,
+      };
+    }
     return {
       itemName,
       relativePath: `styles.css~chunk-${hash}`,
-      localPath,
+      localContent: installed,
       registryContent,
     };
   });
 }
 
-function buildRetiredDriftFiles(itemName: string, cwd: string): ChunkDriftFile[] {
-  const files = ctx.config.getManifestItems(cwd)?.[itemName]?.files ?? [];
+function buildManifestOnlyDriftFiles(
+  itemName: string,
+  cwd: string,
+  manifest: Record<string, ManifestItem>,
+  coveredLocalPaths: Set<string>,
+) {
+  const files = manifest[itemName]?.files ?? [];
   return files
-    .filter((file) => file.retired)
+    .filter((file) => !coveredLocalPaths.has(resolveProjectPath(cwd, file.path)))
     .map((file) => ({
       itemName,
-      relativePath: `${file.path}~retired`,
+      relativePath: file.retired ? `${file.path}~retired` : `${file.path}~installed`,
       localPath: resolveProjectPath(cwd, file.path),
       registryContent: "",
     }));
@@ -121,16 +112,36 @@ function buildRetiredDriftFiles(itemName: string, cwd: string): ChunkDriftFile[]
 
 export const diffCommand = createDiffCommand({
   itemPlural: "items",
-  requireConfig: ctx.items.requireConfig,
-  resolveDefaultNames: ({ cwd }) => {
-    return Object.keys(ctx.config.getManifestItems(cwd) ?? {}).filter((name) => name.includes("/"));
+  requireConfig: (cwd) => ctx.items.requireConfig(cwd),
+  createScanContext: ({ cwd, config }) => ({
+    manifest: ctx.config.getManifestItems(cwd) ?? {},
+    installedChunks: extractCssChunkContents(cwd, config),
+    corruptedChunks: findCorruptedCssChunkHashes(readCssChunkHashBoundaries(cwd, config)),
+  }),
+  resolveDefaultNames: ({ scan }) => {
+    return Object.keys(scan.manifest).filter((name) => name.includes("/"));
   },
-  validateRequestedNames: validateInstallableNames,
-  resolveFilesForName: ({ name, cwd, config }) => {
+  validateRequestedNames: (names, { cwd }) => {
+    validateInstalledOrRegistryNames(cwd, names);
+  },
+  resolveFilesForName: ({ name, cwd, config, scan }) => {
     const parsed = parseInstallName(name);
-    const item = getNamespacedItem(name);
     const itemName = `${parsed.namespace}/${parsed.name}`;
-    const manifestEntry = ctx.config.getManifestItems(cwd)?.[itemName];
+    const manifestEntry = scan.manifest[itemName];
+    const item = tryGetNamespacedItem(name);
+
+    if (!item) {
+      info(`${itemName}: ${pc.yellow("upstream item unavailable in current registry")}`);
+      const isCssOnlyEntry =
+        manifestEntry?.files === undefined && (manifestEntry?.cssChunks?.length ?? 0) > 0;
+      return [
+        ...(isCssOnlyEntry
+          ? []
+          : buildManifestOnlyDriftFiles(itemName, cwd, scan.manifest, new Set())),
+        ...buildCssChunkDriftFiles(itemName, cwd, scan, new Map()),
+      ];
+    }
+
     const isCssOnlyEntry =
       manifestEntry?.files === undefined && (manifestEntry?.cssChunks?.length ?? 0) > 0;
     const fileEntries = (
@@ -142,23 +153,34 @@ export const diffCommand = createDiffCommand({
       const localPath = resolveInstallPath(cwd, installDir, relativePath);
       const manifestPath = `${installDir}/${relativePath}`.replace(/\\/g, "/");
 
+      const registryContent =
+        parsed.namespace === "keys"
+          ? prepareKeysHookFileContent(file.content, config)
+          : prepareFileContentForIntegration(
+              file,
+              item,
+              config,
+              resolveIntegrationMode(scan.manifest, itemName, manifestPath),
+            );
+
       return {
         itemName,
         relativePath,
         localPath,
-        registryContent: prepareFileContentForIntegration(
-          file,
-          item,
-          config,
-          resolveIntegrationMode(cwd, itemName, manifestPath),
-        ),
+        registryContent,
       };
     });
 
+    const coveredLocalPaths = new Set(fileEntries.map((file) => file.localPath));
+    const expectedChunks =
+      parsed.namespace === "ui"
+        ? buildExpectedChunkContentsForItem(parsed.name)
+        : new Map<string, string>();
+
     return [
       ...fileEntries,
-      ...buildRetiredDriftFiles(itemName, cwd),
-      ...buildCssChunkDriftFiles(itemName, cwd, config),
+      ...buildManifestOnlyDriftFiles(itemName, cwd, scan.manifest, coveredLocalPaths),
+      ...buildCssChunkDriftFiles(itemName, cwd, scan, expectedChunks),
     ];
   },
   noInstalledMessage: "No installed Diffgazer items found.",

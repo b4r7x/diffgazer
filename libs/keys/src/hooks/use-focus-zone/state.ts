@@ -24,7 +24,6 @@ export function useFocusZoneState<T extends string>(
   const requestedZone: T = controlledZone ?? internalZone;
   const safeZone = zones.includes(requestedZone) ? requestedZone : zones[0];
 
-  const lastFocusedZoneRef = useRef<T | null>(null);
   const zoneStateRef = useRef({
     safeZone,
     zones,
@@ -67,6 +66,5 @@ export function useFocusZoneState<T extends string>(
     canCycleTabs,
     zones,
     enabled,
-    lastFocusedZoneRef,
   };
 }

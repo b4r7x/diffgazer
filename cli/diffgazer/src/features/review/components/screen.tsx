@@ -5,9 +5,9 @@ import {
   type ReviewScreenPhase,
   resolveSavedReviewOutcome,
   type SavedReviewData,
-  sanitizeTerminalText,
   toSavedReviewQueryState,
 } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { BACK_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { Box } from "ink";
@@ -55,6 +55,7 @@ function SavedReviewView({ saved, initialIssueId, onClose }: SavedReviewViewProp
       reviewId={saved.reviewId}
       initialIssueId={hasInitialIssue ? initialIssueId : undefined}
       droppedDuplicates={saved.droppedDuplicates}
+      lensStats={saved.lensStats}
       onBack={() => setPhase("summary")}
     />
   );
@@ -96,6 +97,27 @@ function SavedReviewErrorView({
   );
 }
 
+function ReviewNotFoundView({ onBack }: { onBack: () => void }): ReactElement {
+  useBackHandler({ isActive: true });
+  usePageFooter({ shortcuts: [], rightShortcuts: BACK_SHORTCUTS });
+
+  return (
+    <Box flexDirection="column" gap={1}>
+      <Callout variant="error">
+        <Callout.Title>Review not found</Callout.Title>
+        <Callout.Content>
+          The live session has expired and no saved results are available.
+        </Callout.Content>
+      </Callout>
+      <Box gap={2}>
+        <Button variant="secondary" isActive onPress={onBack}>
+          Back
+        </Button>
+      </Box>
+    </Box>
+  );
+}
+
 export function ReviewScreen(): ReactElement {
   const { route, goBack } = useNavigation();
 
@@ -104,32 +126,65 @@ export function ReviewScreen(): ReactElement {
   const issueId = route.screen === "review" ? route.issueId : undefined;
   const isLiveRoute = route.screen === "review" && route.live === true;
 
-  const shouldLoadSavedReview = Boolean(reviewId && !isLiveRoute);
-  const savedReview = useReview(shouldLoadSavedReview ? (reviewId ?? "") : "");
+  const [streamNotFound, setStreamNotFound] = useState(false);
+  const routeKey = `${reviewId ?? ""}:${isLiveRoute}`;
+  const [savedRouteKey, setSavedRouteKey] = useState(routeKey);
+  if (savedRouteKey !== routeKey) {
+    setSavedRouteKey(routeKey);
+    setStreamNotFound(false);
+  }
 
-  if (reviewId && shouldLoadSavedReview) {
-    const outcome = resolveSavedReviewOutcome(toSavedReviewQueryState(savedReview), false);
+  // One discriminant carries both facts the saved-review path needs: whether to
+  // load it, and which id to load.
+  const savedReviewId = reviewId && (!isLiveRoute || streamNotFound) ? reviewId : null;
+  const savedReview = useReview(savedReviewId);
+  const savedOutcome = savedReviewId
+    ? resolveSavedReviewOutcome(toSavedReviewQueryState(savedReview), streamNotFound)
+    : null;
+  const allowResumeWithoutSetup = isLiveRoute || savedOutcome?.kind === "fallback-to-stream";
 
-    if (outcome.kind === "loading") {
+  const handleStreamNotFound = () => {
+    setStreamNotFound(true);
+  };
+
+  if (savedOutcome) {
+    if (savedOutcome.kind === "loading") {
       return <LoadingSavedView />;
     }
-    if (outcome.kind === "results") {
+    if (savedOutcome.kind === "results") {
       return (
         <SavedReviewView
-          key={`${outcome.data.reviewId}:${issueId ?? "summary"}`}
-          saved={outcome.data}
+          key={`${savedOutcome.data.reviewId}:${issueId ?? "summary"}`}
+          saved={savedOutcome.data}
           initialIssueId={issueId}
           onClose={goBack}
         />
       );
     }
-    if (outcome.kind === "report-error") {
-      const message = getErrorMessage(outcome.error, "Failed to load the saved review.");
+    if (savedOutcome.kind === "terminal") {
+      return (
+        <ReviewContainer
+          terminalOutcome={savedOutcome.data.outcome}
+          usageAvailability={savedOutcome.data.usageAvailability}
+          onBack={goBack}
+        />
+      );
+    }
+    if (savedOutcome.kind === "report-error") {
+      const message = getErrorMessage(savedOutcome.error, "Failed to load the saved review.");
       return <SavedReviewErrorView message={message} onBack={goBack} />;
+    }
+    if (savedOutcome.kind === "not-found") {
+      return <ReviewNotFoundView onBack={goBack} />;
     }
   }
 
   return (
-    <ReviewContainer mode={routeMode} reviewId={reviewId} allowResumeWithoutSetup={isLiveRoute} />
+    <ReviewContainer
+      mode={routeMode}
+      reviewId={reviewId}
+      allowResumeWithoutSetup={allowResumeWithoutSetup}
+      onStreamNotFound={handleStreamNotFound}
+    />
   );
 }

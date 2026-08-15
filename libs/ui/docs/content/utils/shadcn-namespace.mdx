@@ -36,11 +36,11 @@ When a UI source item depends on keys behavior, the published public JSON resolv
 
 ## CSS wiring
 
-Installing the theme item writes an aggregated `~/styles/styles.css` that already contains the shared theme seed plus every registry component's CSS (dialog backdrop and body-lock rules, command-palette, code-block, and the rest). Import it in the target app CSS entrypoint:
+Installing the theme item writes an aggregated `styles/styles.css` at the project root. The `~/` prefix in the registry target resolves from that root. From a CSS entrypoint one directory below it, such as `src/index.css` or `app/globals.css`, import the file with:
 
 ```css
 @import "tailwindcss";
-@import "./styles/styles.css";
+@import "../styles/styles.css";
 ```
 
 No per-component CSS import is required: the component CSS ships inside that aggregated `styles.css`, so components such as Dialog, CommandPalette, Select, Popover, and Tooltip are fully wired once it is imported.

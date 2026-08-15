@@ -117,6 +117,8 @@ export function TabBarDemo() {
             role="tabpanel"
             aria-labelledby={`${horizontalId}-tab-${tab.id}`}
             className="demo-tab-content"
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: WAI-ARIA tabs pattern — a tabpanel whose content holds no focusable child needs tabIndex 0 to be reachable by keyboard.
+            tabIndex={0}
             hidden={activeHTab !== tab.id}
           >
             {tab.content}
@@ -175,6 +177,8 @@ export function TabBarDemo() {
               aria-labelledby={`${verticalId}-tab-${tab.id}`}
               className="demo-tab-content"
               style={{ padding: 16, flex: 1 }}
+              // biome-ignore lint/a11y/noNoninteractiveTabindex: WAI-ARIA tabs pattern — a tabpanel whose content holds no focusable child needs tabIndex 0 to be reachable by keyboard.
+              tabIndex={0}
               hidden={activeVTab !== tab.id}
             >
               {tab.content}

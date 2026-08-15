@@ -35,14 +35,18 @@ function closingBraceIndex(source: string, open: number): number {
   return -1;
 }
 
-/** Everything between the braces of `selector`, nested blocks included. */
+/**
+ * Everything between the braces of `selector`, nested blocks included; null only
+ * when the selector is absent. An opener the reader cannot close throws instead,
+ * so a suite asserting a rule is gone never reads "absent" for CSS it failed to
+ * parse.
+ */
 export function ruleBody(source: string, selector: string): string | null {
   const opener = new RegExp(`${toSelectorPattern(selector)}\\s*\\{`).exec(source);
   if (!opener) return null;
 
   const open = opener.index + opener[0].length - 1;
-  const close = closingBraceIndex(source, open);
-  return close === -1 ? null : source.slice(open + 1, close);
+  return source.slice(open + 1, requireClosingBrace(source, open));
 }
 
 /**
@@ -53,7 +57,7 @@ export function ruleBody(source: string, selector: string): string | null {
  */
 export function atRuleBody(source: string, prelude: string): string {
   const body = ruleBody(source, prelude);
-  if (body === null) throw new Error(`missing or unbalanced ${prelude}`);
+  if (body === null) throw new Error(`missing ${prelude}`);
   return body;
 }
 

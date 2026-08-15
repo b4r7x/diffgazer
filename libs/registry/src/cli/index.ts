@@ -1,5 +1,5 @@
 export { REGISTRY_ORIGIN } from "../constants.js";
-export { createBundler } from "./bundler/bundle.js";
+export { bundleRegistry } from "./bundler/bundle.js";
 export type { BundleFile, BundleItem, BundleResult, BundlerConfig } from "./bundler/types.js";
 export { createAddCommand } from "./command-factories/add.js";
 export { createDiffCommand } from "./command-factories/diff.js";
@@ -9,6 +9,7 @@ export { createRemoveCommand } from "./command-factories/remove.js";
 export {
   aliasPathSchema,
   type ConfigLoadResult,
+  type ConfigLoadWithRawResult,
   createConfigModule,
   resolveAliasedPaths,
 } from "./config.js";
@@ -22,7 +23,7 @@ export {
 } from "./detect.js";
 export type { FileOp } from "./file-write-rollback.js";
 export { copyGeneratedDir } from "./fs/directories.js";
-export { withFileLock } from "./fs/file-lock.js";
+export { withFileLock, withProjectFileLock } from "./fs/file-lock.js";
 export { ensureWithinDir } from "./fs/path-safety.js";
 export { readTsConfigPaths } from "./fs/tsconfig-paths.js";
 export { atomicWriteFile, writeFileSafe } from "./fs/writes.js";

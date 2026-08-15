@@ -39,7 +39,16 @@ const sourceFileSchema = z
 
 const sourceFileWithPathSchema = sourceFileSchema.extend({ path: z.string().min(1) }).strict();
 
-const exampleRefSchema = z.object({ name: z.string(), title: z.string() }).strict();
+// `registryDependencies` / `optionalIntegrations` mirror the UI docs `ExampleRef` escape hatch
+// (libs/ui/registry/component-docs/types.ts): items an example needs only when it is copied.
+const exampleRefSchema = z
+  .object({
+    name: z.string(),
+    title: z.string(),
+    registryDependencies: z.array(z.string()).optional(),
+    optionalIntegrations: z.array(z.string()).optional(),
+  })
+  .strict();
 const noteSchema = z.object({ title: z.string(), content: z.string() }).strict();
 const usageSchema = z
   .object({

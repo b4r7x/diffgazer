@@ -166,6 +166,27 @@ describe("hosted-registry gating", () => {
     expect(tarballIndex).toBeLessThan(dgaddIndex);
   });
 
+  it("package README requires the tarball pack-and-install prerequisite before the first dgadd command", () => {
+    const readme = read("README.md");
+    const sectionStart = readme.indexOf("### Copy-first registry mode");
+    expect(
+      sectionStart,
+      "package README is missing the Copy-first registry mode section",
+    ).toBeGreaterThan(-1);
+    const sectionEnd = readme.indexOf("\n### ", sectionStart + 1);
+    const section = readme.slice(sectionStart, sectionEnd === -1 ? undefined : sectionEnd);
+
+    const prerequisiteIndex = section.indexOf("dgadd` is publish-gated");
+    const dgaddIndex = section.indexOf("pnpm exec dgadd");
+
+    expect(
+      prerequisiteIndex,
+      "Copy-first registry mode must document the dgadd publish gate before running dgadd",
+    ).toBeGreaterThan(-1);
+    expect(dgaddIndex, "Copy-first registry mode must run pnpm exec dgadd").toBeGreaterThan(-1);
+    expect(prerequisiteIndex).toBeLessThan(dgaddIndex);
+  });
+
   it("shadcn namespace docs point consumers at a currently-available install path", () => {
     const doc = read("docs/content/utils/shadcn-namespace.mdx");
     expect(doc).toContain("pnpm exec dgadd add ui/button");

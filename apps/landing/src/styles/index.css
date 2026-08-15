@@ -397,9 +397,12 @@ html[data-scene-theme="light"] .fd-fix .rem { color: #cf222e; }
   html[data-hud-band="occupied"] .hud-tl,
   html[data-hud-band="occupied"] .hud-tr { opacity: 0; visibility: hidden; transition: none; }
   /* Scrolling while a corner link holds focus would otherwise hide the focused
-     element out from under the user (WCAG 2.4.11). Keeping the group visible
-     while it contains focus costs nothing: an already-hidden group is not
-     focusable, so this only ever fires on a corner the user reached first. */
+     element out from under the user (WCAG 2.4.11). Both corners hold links —
+     the wordmark is an anchor to #s1 and the first tab stop in the document —
+     so both are guarded. Keeping a corner visible while it holds focus costs
+     nothing: an already-hidden corner is not focusable, so this only ever
+     fires on a corner the user reached first. */
+  html .hud-tl:focus-within,
   html .hud-tr:focus-within { opacity: 1; visibility: visible; }
 }
 

@@ -10,11 +10,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import {
-  isSeedElementSkipped,
-  isSelectableItemEligible,
-  useSelectableCollection,
-} from "@/lib/selectable-collection";
+import { isSeedElementSkipped, useSelectableCollection } from "@/lib/selectable-collection";
 import { isStepInteractive, type StepStatus } from "@/lib/step-status";
 import { StepperStep, type StepperStepProps } from "./stepper-step";
 import { StepperTrigger, type StepperTriggerProps } from "./stepper-trigger";
@@ -26,11 +22,25 @@ export interface StepDescriptor {
   disabled: boolean;
 }
 
-export type StepRegistrationDescriptor = Omit<StepDescriptor, "disabled">;
+type StepRegistrationDescriptor = Omit<StepDescriptor, "disabled">;
 
-function collectStepSeed(children: ReactNode): StepDescriptor[] {
+type SeedElementProps = {
+  children?: ReactNode;
+  hidden?: boolean;
+  inert?: boolean;
+  "aria-hidden"?: boolean | "true" | "false";
+};
+
+// SSR/first-render seed before the registration effects run, mirroring Tabs' collectTabSeed:
+// steps are commonly grouped inside consumer wrappers, so descend through anything that is not
+// a StepperStep. A skipped ancestor carries down so hidden/inert/aria-hidden wrappers exclude
+// the steps beneath them.
+function collectStepSeed(children: ReactNode, skippedAncestor = false): StepDescriptor[] {
   return Children.toArray(children).flatMap((child) => {
-    if (!isValidElement(child) || child.type !== StepperStep) return [];
+    if (!isValidElement<SeedElementProps>(child)) return [];
+    const skipped = skippedAncestor || isSeedElementSkipped(child.props);
+    if (child.type !== StepperStep) return collectStepSeed(child.props.children, skipped);
+
     const props = child.props as StepperStepProps;
     const trigger = extractTriggerSeed(props.children);
     return [
@@ -38,8 +48,7 @@ function collectStepSeed(children: ReactNode): StepDescriptor[] {
         id: props.stepId,
         status: props.status,
         label: trigger.label,
-        disabled:
-          !isStepInteractive(props.status) || trigger.disabled || isSeedElementSkipped(props),
+        disabled: !isStepInteractive(props.status) || trigger.disabled || skipped,
       },
     ];
   });
@@ -71,9 +80,14 @@ export function useStepCollection(
   >({});
   const {
     items: registeredSteps,
+    eligibleItems,
     registerItem: registerCollectionItem,
     unregisterItem: unregisterCollectionItem,
   } = useSelectableCollection(listRef);
+  const eligibleStepValues = useMemo(
+    () => new Set(eligibleItems.map((item) => item.value)),
+    [eligibleItems],
+  );
 
   const registerStep = useCallback(
     (
@@ -147,11 +161,11 @@ export function useStepCollection(
               id: item.value,
               status: meta?.status ?? "pending",
               label: meta?.label,
-              disabled: !isSelectableItemEligible(item),
+              disabled: !eligibleStepValues.has(item.value),
             };
           })
         : seed,
-    [registeredSteps, stepMeta, seed],
+    [eligibleStepValues, registeredSteps, stepMeta, seed],
   );
 
   const tabTargetId = useMemo(() => {

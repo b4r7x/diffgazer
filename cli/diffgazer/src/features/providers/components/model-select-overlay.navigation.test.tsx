@@ -1,6 +1,7 @@
 import "../testing/terminal-mock";
 import type { BoundApi } from "@diffgazer/core/api";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
+import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
@@ -8,7 +9,6 @@ import {
   countPrefixes,
   flush,
   flushUntil,
-  GEMINI_CONFIGURATION,
   geminiName,
   makeGeminiApi,
   Wrapper,

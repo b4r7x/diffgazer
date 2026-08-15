@@ -1,33 +1,30 @@
 import { FooterProvider } from "@diffgazer/core/footer";
-import { readinessUsesTransportNeutralCopy } from "@diffgazer/core/review";
-import { REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
+import { CONFIGURATION_ERROR_COPY, CONFIGURE_PROVIDER_LABEL } from "@diffgazer/core/review";
 import {
-  CLI_UNSUPPORTED_CONFIGURATION,
+  CODEX_CLI_CONFIGURATION,
   LOCAL_OPENAI_CONFIGURATION,
   makeReadiness,
-  REMOVED_ZAI_CODING_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { getReadinessActionLabel } from "../lib/readiness-presentation";
 import {
   ApiKeyMissingView,
   type ApiKeyMissingViewProps,
   ConfigurationErrorView,
-  ReviewTerminalErrorView,
   ReviewTerminalReceiptView,
 } from "./api-key-missing-view";
 
-type RenderViewProps = Pick<ApiKeyMissingViewProps, "readiness" | "primaryLabel"> &
-  Partial<Omit<ApiKeyMissingViewProps, "readiness" | "primaryLabel">>;
+type RenderViewProps = Pick<ApiKeyMissingViewProps, "readiness"> &
+  Partial<Omit<ApiKeyMissingViewProps, "readiness">>;
 
 function renderView(props: RenderViewProps) {
   const readiness = props.readiness ?? makeReadiness("unconfigured");
   const onBack = props.onBack ?? vi.fn();
   const onNavigateSettings = props.onNavigateSettings ?? vi.fn();
-  const primaryLabel = props.primaryLabel ?? getReadinessActionLabel(readiness.action);
+  const primaryLabel = props.primaryLabel ?? CONFIGURE_PROVIDER_LABEL;
 
   const view = render(
     <KeyboardProvider>
@@ -50,27 +47,27 @@ function renderView(props: RenderViewProps) {
 describe("ApiKeyMissingView", () => {
   it("focuses the readiness action by default", async () => {
     const readiness = makeReadiness("unconfigured");
-    renderView({ readiness, primaryLabel: getReadinessActionLabel(readiness.action) });
+    renderView({ readiness });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Create configuration" })).toHaveFocus();
+      expect(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL })).toHaveFocus();
     });
   });
 
   it("moves focus between actions with ArrowRight/ArrowLeft", async () => {
     const user = userEvent.setup();
     const readiness = makeReadiness("unconfigured");
-    renderView({ readiness, primaryLabel: getReadinessActionLabel(readiness.action) });
+    renderView({ readiness });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Create configuration" })).toHaveFocus();
+      expect(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL })).toHaveFocus();
     });
 
     await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("button", { name: "Back to Home" })).toHaveFocus();
 
     await user.keyboard("{ArrowLeft}");
-    expect(screen.getByRole("button", { name: "Create configuration" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL })).toHaveFocus();
   });
 
   it("Enter on the focused Back action calls only onBack (regression: no double-fire)", async () => {
@@ -80,13 +77,12 @@ describe("ApiKeyMissingView", () => {
     const readiness = makeReadiness("unconfigured");
     renderView({
       readiness,
-      primaryLabel: getReadinessActionLabel(readiness.action),
       onBack,
       onNavigateSettings,
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Create configuration" })).toHaveFocus();
+      expect(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL })).toHaveFocus();
     });
 
     await user.keyboard("{ArrowRight}");
@@ -104,13 +100,12 @@ describe("ApiKeyMissingView", () => {
     const readiness = makeReadiness("unconfigured");
     renderView({
       readiness,
-      primaryLabel: getReadinessActionLabel(readiness.action),
       onBack,
       onNavigateSettings,
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Create configuration" })).toHaveFocus();
+      expect(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL })).toHaveFocus();
     });
 
     await user.keyboard("{Enter}");
@@ -125,13 +120,12 @@ describe("ApiKeyMissingView", () => {
     const readiness = makeReadiness("unconfigured");
     renderView({
       readiness,
-      primaryLabel: getReadinessActionLabel(readiness.action),
       onBack,
       onNavigateSettings,
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Create configuration" })).toHaveFocus();
+      expect(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL })).toHaveFocus();
     });
 
     await user.keyboard("{Escape}");
@@ -146,13 +140,12 @@ describe("ApiKeyMissingView", () => {
     const readiness = makeReadiness("unconfigured");
     renderView({
       readiness,
-      primaryLabel: getReadinessActionLabel(readiness.action),
       onBack,
       onNavigateSettings,
       primaryDisabled: true,
     });
 
-    const configure = screen.getByRole("button", { name: "Create configuration" });
+    const configure = screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL });
     const back = screen.getByRole("button", { name: "Back to Home" });
     expect(configure).toBeDisabled();
     expect(back).toBeEnabled();
@@ -166,61 +159,117 @@ describe("ApiKeyMissingView", () => {
   });
 
   it("renders transport-neutral local unreachable readiness without API-key copy", () => {
-    const readiness = makeReadiness("local-endpoint-unreachable", "local-openai");
+    const readiness = makeReadiness("local-conformance-failed", "local-openai");
     renderView({
       readiness,
       productLabel: LOCAL_OPENAI_CONFIGURATION.productId,
-      primaryLabel: getReadinessActionLabel(readiness.action),
     });
 
     expect(screen.getByText(/Configuration Not Ready \(local-openai\)/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Test readiness" })).toBeInTheDocument();
-    expect(readinessUsesTransportNeutralCopy(readiness)).toBe(true);
+    expect(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL })).toBeInTheDocument();
     expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
   });
 
-  it("routes CLI unsupported readiness to the inspect action without API-key copy", () => {
+  it("renders CLI unsupported readiness without API-key copy", () => {
     const readiness = makeReadiness("unsupported", "codex-cli");
     renderView({
       readiness,
-      productLabel: CLI_UNSUPPORTED_CONFIGURATION.productId,
-      primaryLabel: getReadinessActionLabel(readiness.action),
+      productLabel: CODEX_CLI_CONFIGURATION.productId,
     });
 
-    expect(screen.getByRole("button", { name: "Inspect configuration" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL })).toBeInTheDocument();
     expect(screen.getByText(/not supported in the current environment/i)).toBeInTheDocument();
     expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
   });
-
-  it("routes removed readiness to the delete action", () => {
-    const readiness = makeReadiness("removed", REMOVED_PRODUCT_ID);
-    renderView({
-      readiness,
-      productLabel: REMOVED_ZAI_CODING_CONFIGURATION.productId,
-      primaryLabel: getReadinessActionLabel(readiness.action),
-    });
-
-    expect(screen.getByRole("button", { name: "Delete configuration" })).toBeInTheDocument();
-    expect(screen.getByText(/removed and cannot run reviews/i)).toBeInTheDocument();
-  });
 });
 
-describe("ConfigurationErrorView", () => {
-  it("announces the load failure and lets the user retry", async () => {
-    const user = userEvent.setup();
-    const onRetry = vi.fn();
+function renderConfigurationError(
+  overrides: Partial<ComponentProps<typeof ConfigurationErrorView>> = {},
+) {
+  const handlers = { onRetry: vi.fn(), onConfigureProvider: vi.fn(), onBack: vi.fn() };
 
-    render(
-      <KeyboardProvider>
-        <FooterProvider>
-          <ConfigurationErrorView onRetry={onRetry} onBack={() => {}} />
-        </FooterProvider>
-      </KeyboardProvider>,
-    );
+  render(
+    <KeyboardProvider>
+      <FooterProvider>
+        <ConfigurationErrorView {...handlers} {...overrides} />
+      </FooterProvider>
+    </KeyboardProvider>,
+  );
+
+  return handlers;
+}
+
+describe("ConfigurationErrorView", () => {
+  it("announces the load-failure copy, not the readiness copy, and lets the user retry", async () => {
+    const user = userEvent.setup();
+    const { onRetry, onConfigureProvider } = renderConfigurationError();
 
     expect(screen.getByRole("alert")).toHaveTextContent("Configuration Unavailable");
+    expect(screen.getByText(CONFIGURATION_ERROR_COPY.body)).toBeInTheDocument();
+    expect(screen.queryByText(/Configuration Not Ready/i)).not.toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(onRetry).toHaveBeenCalledOnce();
+    expect(onConfigureProvider).not.toHaveBeenCalled();
+  });
+
+  it("reaches Configure Provider by pointer and by keyboard without firing its neighbors", async () => {
+    const user = userEvent.setup();
+    const { onRetry, onConfigureProvider, onBack } = renderConfigurationError();
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus());
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "Configure Provider" })).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(onConfigureProvider).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: "Configure Provider" }));
+
+    expect(onConfigureProvider).toHaveBeenCalledTimes(2);
+    expect(onRetry).not.toHaveBeenCalled();
+    expect(onBack).not.toHaveBeenCalled();
+  });
+
+  it("keeps Escape on Back to Home, never the recovery action", async () => {
+    const user = userEvent.setup();
+    const { onBack, onConfigureProvider } = renderConfigurationError();
+
+    await user.keyboard("{Escape}");
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onConfigureProvider).not.toHaveBeenCalled();
+  });
+
+  it("disables the forward actions while a transition is pending, keeping Back active", () => {
+    renderConfigurationError({ actionsDisabled: true });
+
+    expect(screen.getByRole("button", { name: "Retry" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Configure Provider" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Back to Home" })).toBeEnabled();
+  });
+
+  it("names the session-token mismatch and offers Retry alone on 401", async () => {
+    const user = userEvent.setup();
+    const { onRetry, onConfigureProvider } = renderConfigurationError({
+      error: Object.assign(new Error("Unauthorized"), { status: 401, code: "UNAUTHORIZED" }),
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Session Not Authorized");
+    // Provider setup cannot fix a token mismatch, so the recovery action is dropped.
+    expect(screen.queryByRole("button", { name: "Configure Provider" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back to Home" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+    expect(onConfigureProvider).not.toHaveBeenCalled();
+  });
+
+  it("keeps the generic load-failure gate for non-401 errors", () => {
+    renderConfigurationError({ error: new Error("credential file corrupt") });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Configuration Unavailable");
+    expect(screen.queryByText("Session Not Authorized")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Configure Provider" })).toBeInTheDocument();
   });
 });
 
@@ -278,26 +327,5 @@ describe("ReviewTerminalReceiptView", () => {
     expect(container.textContent).not.toMatch(/sk-[A-Za-z0-9_-]{8,}/i);
     expect(container.textContent).not.toMatch(/Bearer\s+/i);
     expect(container.textContent).not.toMatch(/\/Users\//);
-  });
-});
-
-describe("ReviewTerminalErrorView", () => {
-  it("offers a single way home", async () => {
-    const user = userEvent.setup();
-    const onBack = vi.fn();
-
-    render(
-      <KeyboardProvider>
-        <FooterProvider>
-          <ReviewTerminalErrorView message="The provider dropped the connection." onBack={onBack} />
-        </FooterProvider>
-      </KeyboardProvider>,
-    );
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Review failed");
-    expect(screen.getAllByRole("button", { name: "Back to Home" })).toHaveLength(1);
-
-    await user.keyboard("{Escape}");
-    expect(onBack).toHaveBeenCalledTimes(1);
   });
 });

@@ -9,14 +9,14 @@ const RelativeArtifactPathSchema = z.string().min(1).refine(isRelativeSubpath, {
   error: "Path must be relative and must not contain '..' segments",
 });
 
-export const ArtifactManifestDocsSchema = z.object({
+const ArtifactManifestDocsSchema = z.object({
   contentDir: RelativeArtifactPathSchema,
   metaFile: RelativeArtifactPathSchema,
   generatedDir: RelativeArtifactPathSchema.optional(),
   assetsDir: RelativeArtifactPathSchema.optional(),
 });
 
-export const ArtifactManifestRegistrySchema = z.object({
+const ArtifactManifestRegistrySchema = z.object({
   namespace: z.string().regex(/^@[a-z0-9][\w-]*(?:\/[a-z0-9][\w-]*)?$/i),
   basePath: z.string().min(1),
   publicDir: RelativeArtifactPathSchema,
@@ -28,14 +28,14 @@ const ArtifactManifestSourceSchema = z.object({
   stylesDir: RelativeArtifactPathSchema.optional(),
 });
 
-export const ArtifactManifestIntegritySchema = z.object({
+const ArtifactManifestIntegritySchema = z.object({
   algorithm: z.literal("sha256"),
   fingerprintFile: RelativeArtifactPathSchema,
 });
 
 export const ArtifactManifestSchema = z.object({
   schemaVersion: z.literal(1),
-  origin: z.string().url().optional(),
+  origin: z.url().optional(),
   library: z.string().min(1),
   package: z.string().min(1),
   version: z.string().min(1),
@@ -49,9 +49,6 @@ export const ArtifactManifestSchema = z.object({
 });
 
 export type ArtifactManifest = z.infer<typeof ArtifactManifestSchema>;
-export type ArtifactManifestDocs = z.infer<typeof ArtifactManifestDocsSchema>;
-export type ArtifactManifestRegistry = z.infer<typeof ArtifactManifestRegistrySchema>;
-export type ArtifactManifestIntegrity = z.infer<typeof ArtifactManifestIntegritySchema>;
 
 interface ValidateManifestResult {
   success: true;
@@ -68,8 +65,8 @@ export interface CreateArtifactManifestOptions {
   library: string;
   packageName?: string;
   inputs: string[];
-  docs: ArtifactManifestDocs;
-  registry: ArtifactManifestRegistry;
+  docs: z.infer<typeof ArtifactManifestDocsSchema>;
+  registry: z.infer<typeof ArtifactManifestRegistrySchema>;
   source?: z.infer<typeof ArtifactManifestSourceSchema>;
   generated?: Record<string, string>;
 }

@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   ProjectContextGraph,
@@ -6,16 +5,21 @@ import type {
   ProjectContextSnapshot,
 } from "@diffgazer/core/schemas/context";
 import {
+  MAX_CONTEXT_TREE_NODES,
   ProjectContextGraphSchema,
   ProjectContextMetaSchema,
 } from "@diffgazer/core/schemas/context";
-import { buildFileTree, formatFileTree, MAX_TREE_NODES } from "../file-tree.js";
+import { readTextFileWithLimit } from "../../../../shared/lib/ai/bounded-file.js";
+import { buildFileTree, formatFileTree } from "../file-tree.js";
 import { discoverWorkspacePackages, type WorkspacePackage } from "../workspace/discovery.js";
 import { formatWorkspaceGraph } from "../workspace/format.js";
 import { readPackageManifest } from "../workspace/manifest.js";
 import { resolvesWithinRoot } from "./artifacts.js";
 
 const MAX_CONTEXT_BYTES = 50_000;
+// Only the first 40 lines survive, so the reviewed repository's README is read
+// under a ceiling rather than sized by the file itself.
+const MAX_README_BYTES = 256 * 1024;
 const DEFAULT_TREE_DEPTH = 5;
 
 function truncateToByteLimit(text: string, maxBytes: number): string {
@@ -51,12 +55,13 @@ export type BuildSnapshotContentInput = {
   statusHash: string;
   statusHashKind: ProjectContextMeta["statusHashKind"];
   headCommit: string;
+  focusPaths?: readonly string[];
 };
 
 export async function buildSnapshotContent(
   input: BuildSnapshotContentInput,
 ): Promise<ProjectContextSnapshot> {
-  const { projectPath, normalizedRoot, statusHash, statusHashKind, headCommit } = input;
+  const { projectPath, normalizedRoot, statusHash, statusHashKind, headCommit, focusPaths } = input;
 
   const packages = await discoverWorkspacePackages(projectPath);
   const workspaceSummary = formatWorkspaceGraph(packages);
@@ -64,6 +69,7 @@ export async function buildSnapshotContent(
   const fileTree = await buildFileTree(projectPath, {
     depth: DEFAULT_TREE_DEPTH,
     counter: treeCounter,
+    ...(focusPaths && focusPaths.length > 0 ? { focusPaths } : {}),
   });
 
   const packageJsonPath = path.join(projectPath, "package.json");
@@ -72,9 +78,10 @@ export async function buildSnapshotContent(
     : null;
 
   const readmePath = path.join(projectPath, "README.md");
-  const readmeRaw = (await resolvesWithinRoot(readmePath, normalizedRoot))
-    ? await readFile(readmePath, "utf8").catch(() => "")
-    : "";
+  const readmeRead = (await resolvesWithinRoot(readmePath, normalizedRoot))
+    ? await readTextFileWithLimit(readmePath, MAX_README_BYTES)
+    : null;
+  const readmeRaw = readmeRead?.ok ? readmeRead.value : "";
   const readmeLines = readmeRaw ? readmeRaw.split("\n").slice(0, 40).join("\n") : "";
 
   const markdownSections: string[] = [];
@@ -100,12 +107,12 @@ export async function buildSnapshotContent(
   }
   markdownSections.push("");
   markdownSections.push("## Workspace Summary");
-  markdownSections.push(workspaceSummary || "No workspace packages detected.");
+  markdownSections.push(workspaceSummary);
   markdownSections.push("");
   markdownSections.push("## File Tree");
   markdownSections.push(...formatFileTree(fileTree));
   if (treeCounter.truncated) {
-    markdownSections.push(`\n(File tree truncated at ${MAX_TREE_NODES} nodes)`);
+    markdownSections.push(`\n(File tree truncated at ${MAX_CONTEXT_TREE_NODES} nodes)`);
   }
 
   let rawMarkdown = markdownSections.join("\n");
@@ -138,7 +145,6 @@ export async function buildSnapshotContent(
     statusHashKind,
     headCommit: headCommit || undefined,
     charCount: rawMarkdown.length,
-    ...(treeCounter.truncated ? { treeTruncated: true } : {}),
   });
   if (!metaResult.success) {
     throw new Error(`Failed to build context metadata: ${metaResult.error.message}`);

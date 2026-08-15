@@ -2,7 +2,12 @@ import type { NavItem } from "../schemas/presentation/navigation.js";
 
 export type MenuGroup = NavItem["group"];
 
-const MENU_GROUP_ORDER: readonly MenuGroup[] = ["review", "navigation", "system"] as const;
+/** Exhaustive by construction: a new `MenuGroup` must state its rank here. */
+const MENU_GROUP_RANK = {
+  review: 0,
+  navigation: 1,
+  system: 2,
+} as const satisfies Record<MenuGroup, number>;
 
 export interface MenuItemWithDivider {
   item: NavItem;
@@ -12,7 +17,7 @@ export interface MenuItemWithDivider {
 /**
  * Annotates each item with whether a divider should be rendered before it.
  *
- * Output ordering matches the canonical `MENU_GROUP_ORDER`
+ * Output ordering matches the canonical `MENU_GROUP_RANK`
  * (review → navigation → system) regardless of the caller's input order.
  * Within each group, the relative order of items is preserved (stable sort).
  *
@@ -20,17 +25,9 @@ export interface MenuItemWithDivider {
  * callers do not need to keep their menu definitions group-sorted.
  */
 export function withGroupDividers(items: readonly NavItem[]): MenuItemWithDivider[] {
-  const groupRank = new Map<MenuGroup, number>(
-    MENU_GROUP_ORDER.map((group, index) => [group, index]),
-  );
-  const sorted = items
-    .map((item, index) => ({
-      item,
-      index,
-      rank: groupRank.get(item.group) ?? MENU_GROUP_ORDER.length,
-    }))
-    .sort((a, b) => a.rank - b.rank || a.index - b.index)
-    .map(({ item }) => item);
+  // Array.prototype.sort is stable, so equal-rank items keep the caller's input
+  // order without an explicit original-index tie-breaker.
+  const sorted = [...items].sort((a, b) => MENU_GROUP_RANK[a.group] - MENU_GROUP_RANK[b.group]);
 
   const result: MenuItemWithDivider[] = [];
   let lastGroup: MenuGroup | undefined;

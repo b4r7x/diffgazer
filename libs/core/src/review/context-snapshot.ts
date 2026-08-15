@@ -41,7 +41,8 @@ function markdownToPlainText(markdown: string): string {
         .replace(/^\s{0,3}#{1,6}\s+/, "")
         .replace(/^(\s*)[-*+]\s+/, "$1")
         .replace(/\[([^\]]+)]\([^\s)]+\)/g, "$1")
-        .replace(/([*_~])\1?([^*_~]+)\1?\1/g, "$2"),
+        .replace(/`([^`]+)`/g, "$1")
+        .replace(/(?<![\w\\])([*_~])\1([^*_~\n]+?)\1\1(?![\w])/g, "$2"),
     );
   }
 

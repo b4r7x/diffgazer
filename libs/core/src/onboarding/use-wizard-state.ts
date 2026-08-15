@@ -12,34 +12,26 @@ import {
   type OnboardingDraft,
   resetWizardProduct,
 } from "./defaults.js";
-import {
-  areConfigurationInputsEqual,
-  areDraftsEqual,
-  isSameWizardGeneration,
-  scrubLiteralSecret,
-  type WizardData,
-} from "./draft-equality.js";
+import { areConfigurationInputsEqual, areDraftsEqual } from "./draft-equality.js";
+import { scrubLiteralSecret } from "./draft-secrets.js";
 import { getClientSafeError } from "./redact-client-error.js";
 import { buildConfigPayload, type SaveWizardCallbacks, saveWizard } from "./save-wizard.js";
 import { getStepAt } from "./steps.js";
-import type { OnboardingStep, RemovedOnboardingState } from "./types.js";
+import type { OnboardingStep } from "./types.js";
 
 const CLEANUP_ERROR_PREFIX = "Failed to remove the incomplete configuration";
 const DRAFT_CONFIGURATION_ERROR_PREFIX = "Could not prepare this configuration for model discovery";
 const SAVE_COMPLETION_ERROR_PREFIX = "Configuration saved, but completion failed";
-const DELETE_COMPLETION_ERROR_PREFIX = "Configuration deleted, but completion failed";
-
-export type WizardSaveCallbacks = SaveWizardCallbacks;
 
 export interface UseWizardStateOptions {
-  initial?: OnboardingDraft | RemovedOnboardingState;
-  callbacks?: WizardSaveCallbacks;
+  initial?: OnboardingDraft;
+  callbacks?: SaveWizardCallbacks;
   onComplete?: () => Promise<void> | void;
   onCleanupError?: (message: string) => void;
 }
 
 export interface UseWizardStateResult {
-  wizardData: WizardData;
+  wizardData: OnboardingDraft;
   stepIndex: number;
   currentStep: OnboardingStep;
   steps: readonly OnboardingStep[];
@@ -54,26 +46,33 @@ export interface UseWizardStateResult {
    * It is `null` until {@link UseWizardStateResult.prepareDraftConfiguration}
    * has committed a record for the current transport tuple.
    */
-  draftConfiguration: SupportedConfigurationSummary | null;
+  draftConfiguration: ClientConfigurationSummary | null;
   isPreparingDraftConfiguration: boolean;
-  prepareDraftConfiguration: () => Promise<SupportedConfigurationSummary | null>;
+  prepareDraftConfiguration: () => Promise<ClientConfigurationSummary | null>;
   next: (partial?: OnboardingDraftUpdate) => void;
   back: () => void;
   updateData: (partial: OnboardingDraftUpdate) => void;
   setProduct: (productId: RunnableProductId) => void;
   complete: () => Promise<boolean>;
-  deleteRemovedConfiguration: () => Promise<boolean>;
   cleanupCreatedConfiguration: () => Promise<void>;
+  /** Best-effort revoke for tab-close cleanup via {@link SaveWizardCallbacks.revokeConfigurationOnPageHide}. */
+  revokeCreatedConfigurationOnPageHide: () => void;
 }
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
 type CreatedConfiguration = Pick<ClientConfigurationSummary, "configurationId" | "revision">;
+/**
+ * A patch for the current draft. `configurationInput` may only refine the
+ * product the draft already targets: the product/transport tuple is owned by
+ * the stored plan, and {@link UseWizardStateResult.setProduct} is the only
+ * product transition. Cross-product input is rejected by
+ * {@link keepsProductTuple}.
+ */
 type OnboardingDraftUpdate = Partial<Omit<OnboardingDraft, "kind" | "plan">>;
 
 /** A committed draft record together with the transport tuple it addresses. */
 type PreparedDraftConfiguration = Readonly<{
   input: OnboardingConfigurationDraft;
-  configuration: SupportedConfigurationSummary;
+  configuration: ClientConfigurationSummary;
 }>;
 
 type CleanupResult =
@@ -81,7 +80,7 @@ type CleanupResult =
   | { readonly success: false; readonly cause: unknown };
 
 interface WizardState {
-  readonly data: WizardData;
+  readonly data: OnboardingDraft;
   readonly stepIndex: number;
   readonly error: string | null;
 }
@@ -109,11 +108,15 @@ function updateRunnableDraft(
   current: OnboardingDraft,
   partial: OnboardingDraftUpdate,
 ): OnboardingDraft {
+  const configurationChanged =
+    partial.configurationInput !== undefined &&
+    !areConfigurationInputsEqual(partial.configurationInput, current.configurationInput);
   const next = { ...current, ...partial };
   if (!invalidatesAcknowledgement(current, partial)) return next;
 
   return {
     ...next,
+    ...(configurationChanged ? { selectedModelId: null } : {}),
     ...(partial.configurationInput || partial.selectedModelId !== undefined
       ? { conformanceStatus: "not-tested" as const }
       : {}),
@@ -121,13 +124,23 @@ function updateRunnableDraft(
   };
 }
 
-function canCurrentStepProceed(data: WizardData, stepIndex: number): boolean {
-  if (data.kind === "removed") return getStepAt(data.plan, stepIndex) === "migration";
-
-  const step = data.plan.steps[stepIndex];
-  if (!step) throw new RangeError(`No onboarding step at index ${stepIndex}`);
-  return canProceed(step.id, data);
+/**
+ * The product/transport tuple belongs to the stored plan, so a draft patch may
+ * only refine the product the draft already targets. `setProduct` stays the
+ * exclusive product transition, and a draft can never pair one product's
+ * configuration with another product's plan.
+ */
+function keepsProductTuple(current: OnboardingDraft, partial: OnboardingDraftUpdate): boolean {
+  const input = partial.configurationInput;
+  if (!input) return true;
+  return (
+    input.productId === current.plan.productId &&
+    input.transportFamily === current.plan.transportFamily
+  );
 }
+
+const CROSS_PRODUCT_UPDATE_ERROR =
+  "Onboarding draft updates cannot change the product; select the product first.";
 
 export function useWizardState(options: UseWizardStateOptions = {}): UseWizardStateResult {
   const { initial = getInitialWizardData(), callbacks, onComplete, onCleanupError } = options;
@@ -144,16 +157,15 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   // The ref is the authority for the async guard; the state copy only drives
   // rendering and would be stale inside back-to-back prepare calls.
   const preparedDraftRef = useRef<PreparedDraftConfiguration | null>(null);
-  const pendingDraftRef = useRef<Promise<SupportedConfigurationSummary> | null>(null);
+  const pendingDraftRef = useRef<Promise<ClientConfigurationSummary> | null>(null);
   const pendingSaveRef = useRef<Promise<boolean> | null>(null);
-  const pendingRemovedDeleteRef = useRef<Promise<boolean> | null>(null);
   const pendingCleanupRef = useRef<Promise<CleanupResult> | null>(null);
   const reportedCleanupRef = useRef<Promise<CleanupResult> | null>(null);
   const hasCommittedRef = useRef(false);
   const generationRef = useRef(0);
-  const generationDataRef = useRef<WizardData>(initial);
-  const initialRef = useRef<WizardData>(initial);
-  const latestInitialRef = useRef<WizardData>(initial);
+  const generationDataRef = useRef<OnboardingDraft>(initial);
+  const initialRef = useRef<OnboardingDraft>(initial);
+  const latestInitialRef = useRef<OnboardingDraft>(initial);
   const requestedProductRef = useRef<RunnableProductId | null>(null);
   const reconciliationRef = useRef(0);
 
@@ -162,11 +174,10 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   const currentStep = getStepAt(wizardData.plan, stepIndex);
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === steps.length - 1;
-  const canProceedNow = canCurrentStepProceed(wizardData, stepIndex);
+  const canProceedNow = canProceed(currentStep, wizardData);
   // A persisted draft is only addressable while it still describes the edited
   // transport tuple. Model selection alone must not invalidate it.
   const activeDraftConfiguration =
-    wizardData.kind === "runnable" &&
     preparedDraft !== null &&
     areConfigurationInputsEqual(preparedDraft.input, wizardData.configurationInput)
       ? preparedDraft.configuration
@@ -196,14 +207,15 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     return response;
   };
 
-  const ensureGenerationFor = useCallback((data: WizardData) => {
-    if (isSameWizardGeneration(generationDataRef.current, data)) return;
+  const ensureGenerationFor = useCallback((data: OnboardingDraft) => {
+    if (areDraftsEqual(generationDataRef.current, data)) return;
     generationDataRef.current = data;
     generationRef.current += 1;
     hasCommittedRef.current = false;
+    pendingDraftRef.current = null;
   }, []);
 
-  const finishCommittedOperation = async (errorPrefix: string, generation: number) => {
+  const finishCommittedOperation = async (generation: number) => {
     if (generation !== generationRef.current) return false;
     setWizardState((current) => ({ ...current, error: null }));
     try {
@@ -212,7 +224,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
       if (generation !== generationRef.current) return false;
       setWizardState((current) => ({
         ...current,
-        error: `${errorPrefix}: ${getClientSafeError(cause, "Retry completion.", wizardData)}`,
+        error: `${SAVE_COMPLETION_ERROR_PREFIX}: ${getClientSafeError(cause, "Retry completion.", wizardData)}`,
       }));
       return true;
     }
@@ -257,6 +269,15 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
       const pendingSave = pendingSaveRef.current;
       if (pendingSave) await pendingSave.catch(() => false);
 
+      const pendingDraft = pendingDraftRef.current;
+      if (pendingDraft) {
+        try {
+          await pendingDraft;
+        } catch {
+          // A rejected draft create never committed a configuration.
+        }
+      }
+
       try {
         await removeCreatedConfiguration();
         return { success: true };
@@ -291,12 +312,18 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     }
   };
 
+  const revokeCreatedConfigurationOnPageHide = () => {
+    const created = createdConfigurationRef.current;
+    if (!created) return;
+    callbacks?.revokeConfigurationOnPageHide?.(created.configurationId, created.revision);
+  };
+
   // Configuration-bound discovery may only address a record the server has
   // actually committed. The wizard therefore persists the draft tuple before
   // the model step reads it back, and revokes it again through the existing
   // cleanup paths when the tuple changes or setup is abandoned.
-  const prepareDraftConfiguration = async (): Promise<SupportedConfigurationSummary | null> => {
-    if (!callbacks || wizardData.kind !== "runnable") return null;
+  const prepareDraftConfiguration = async (): Promise<ClientConfigurationSummary | null> => {
+    if (!callbacks) return null;
     const data = wizardData;
     const prepared = preparedDraftRef.current;
     if (prepared && areConfigurationInputsEqual(prepared.input, data.configurationInput)) {
@@ -310,15 +337,15 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     preparedDraftRef.current = null;
     setPreparedDraft(null);
 
-    const prepare = (async (): Promise<SupportedConfigurationSummary> => {
+    const prepare = (async (): Promise<ClientConfigurationSummary> => {
       if (createdConfigurationRef.current) await removeCreatedConfiguration();
       const response = await runConfigurationAction(buildConfigPayload(data));
       if (
         response.action !== "create" ||
         response.status !== "succeeded" ||
-        response.configuration?.status !== "supported"
+        !response.configuration
       ) {
-        throw new Error("Configuration create did not return a supported configuration");
+        throw new Error("Configuration create did not return a configuration");
       }
       return response.configuration;
     })();
@@ -351,12 +378,9 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
 
   const next = (partial?: OnboardingDraftUpdate) => {
     setWizardState((current) => {
-      if (current.data.kind === "removed") {
-        const step = getStepAt(current.data.plan, current.stepIndex);
-        if (step !== "migration") return current;
-        return { ...current, stepIndex: current.stepIndex + 1, error: null };
+      if (partial && !keepsProductTuple(current.data, partial)) {
+        return { ...current, error: CROSS_PRODUCT_UPDATE_ERROR };
       }
-
       const step = current.data.plan.steps[current.stepIndex];
       if (!step) throw new RangeError(`No onboarding step at index ${current.stepIndex}`);
       const projectedData = partial ? updateRunnableDraft(current.data, partial) : current.data;
@@ -380,22 +404,21 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   };
 
   const updateData = (partial: OnboardingDraftUpdate) => {
-    setWizardState((current) =>
-      current.data.kind === "removed"
-        ? current
-        : (() => {
-            const data = updateRunnableDraft(current.data, partial);
-            if (areDraftsEqual(current.data, data)) return current;
-            ensureGenerationFor(data);
-            return { ...current, data };
-          })(),
-    );
+    setWizardState((current) => {
+      if (!keepsProductTuple(current.data, partial)) {
+        return { ...current, error: CROSS_PRODUCT_UPDATE_ERROR };
+      }
+      const data = updateRunnableDraft(current.data, partial);
+      if (areDraftsEqual(current.data, data)) return current;
+      ensureGenerationFor(data);
+      return { ...current, data };
+    });
   };
 
   const setProduct = (productId: RunnableProductId) => {
     const previousRequestedProduct = requestedProductRef.current;
     requestedProductRef.current = productId;
-    if (wizardData.kind === "runnable" && wizardData.plan.productId !== productId) {
+    if (wizardData.plan.productId !== productId) {
       // Product selection is a commit-relevant change even while cleanup is
       // waiting for an in-flight save. Invalidate that save before its next
       // continuation can observe the old generation.
@@ -403,7 +426,6 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
       hasCommittedRef.current = false;
     }
     if (
-      wizardData.kind === "runnable" &&
       wizardData.plan.productId === productId &&
       (previousRequestedProduct === null || previousRequestedProduct === productId)
     ) {
@@ -412,9 +434,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     const reset = () => {
       setWizardState((current) => {
         const requestedProduct = requestedProductRef.current ?? productId;
-        if (current.data.kind === "removed" || current.data.plan.productId === requestedProduct) {
-          return current;
-        }
+        if (current.data.plan.productId === requestedProduct) return current;
         const data = resetWizardProduct(current.data, requestedProduct);
         ensureGenerationFor(data);
         return {
@@ -428,7 +448,6 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
       reset();
       return;
     }
-    if (wizardData.kind === "removed") return;
 
     const reconciliation = ++reconciliationRef.current;
     setIsReconciling(true);
@@ -455,18 +474,10 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   };
 
   const complete = async () => {
-    if (
-      !callbacks ||
-      wizardData.kind === "removed" ||
-      pendingSaveRef.current ||
-      pendingCleanupRef.current ||
-      pendingRemovedDeleteRef.current
-    ) {
-      return false;
-    }
+    if (!callbacks || pendingSaveRef.current || pendingCleanupRef.current) return false;
     const generation = generationRef.current;
     if (hasCommittedRef.current) {
-      return finishCommittedOperation(SAVE_COMPLETION_ERROR_PREFIX, generation);
+      return finishCommittedOperation(generation);
     }
     setIsSubmitting(true);
     setWizardState((current) => ({ ...current, error: null }));
@@ -493,7 +504,6 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
       createdConfigurationRef.current = null;
       setWizardState((current) => {
         if (generation !== generationRef.current) return current;
-        if (current.data.kind !== "runnable") return current;
         const data = scrubLiteralSecret(current.data);
         // The successful save intentionally removes write-only literals from
         // the in-memory draft. Keep the generation identity aligned with the
@@ -501,7 +511,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
         generationDataRef.current = data;
         return { ...current, data };
       });
-      return finishCommittedOperation(SAVE_COMPLETION_ERROR_PREFIX, generation);
+      return finishCommittedOperation(generation);
     })();
     pendingSaveRef.current = save;
 
@@ -530,67 +540,13 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     }
   };
 
-  const deleteRemovedConfiguration = async () => {
-    if (
-      !callbacks ||
-      wizardData.kind !== "removed" ||
-      pendingRemovedDeleteRef.current ||
-      pendingCleanupRef.current
-    ) {
-      return false;
-    }
-    const generation = generationRef.current;
-    if (hasCommittedRef.current) {
-      return finishCommittedOperation(DELETE_COMPLETION_ERROR_PREFIX, generation);
-    }
-    setIsSubmitting(true);
-    setWizardState((current) => ({ ...current, error: null }));
-    const action = {
-      action: "delete",
-      configurationId: wizardData.configurationId,
-      expectedRevision: wizardData.expectedRevision,
-    } as const;
-
-    const deletion = (async () => {
-      try {
-        const response = ClientConfigurationActionResponseSchema.parse(
-          await callbacks.runConfigurationAction(action),
-        );
-        if (response.action !== "delete" || response.status !== "succeeded") {
-          throw new Error("Configuration delete did not succeed");
-        }
-        if (generation !== generationRef.current) return true;
-        hasCommittedRef.current = true;
-        return finishCommittedOperation(DELETE_COMPLETION_ERROR_PREFIX, generation);
-      } catch (cause) {
-        // A rejection that arrives after the wizard moved on belongs to a
-        // superseded generation; writing it would overwrite the replacement
-        // state with a stale failure.
-        if (generation !== generationRef.current) return false;
-        setWizardState((current) => ({
-          ...current,
-          error: getClientSafeError(cause, "Delete failed", wizardData),
-        }));
-        return false;
-      }
-    })();
-    pendingRemovedDeleteRef.current = deletion;
-
-    try {
-      return await deletion;
-    } finally {
-      if (pendingRemovedDeleteRef.current === deletion) pendingRemovedDeleteRef.current = null;
-      setIsSubmitting(false);
-    }
-  };
-
   // A new initial draft is a new commit generation. The advance runs in a layout
   // effect so it lands synchronously with the commit, before an in-flight save
   // for the previous draft can resolve; a render React discards never reaches
   // the commit and so never invalidates a save that is still current.
   useLayoutEffect(() => {
     latestInitialRef.current = initial;
-    if (isSameWizardGeneration(initialRef.current, initial)) return;
+    if (areDraftsEqual(initialRef.current, initial)) return;
 
     initialRef.current = initial;
     requestedProductRef.current = null;
@@ -638,7 +594,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     updateData,
     setProduct,
     complete,
-    deleteRemovedConfiguration,
     cleanupCreatedConfiguration,
+    revokeCreatedConfigurationOnPageHide,
   };
 }

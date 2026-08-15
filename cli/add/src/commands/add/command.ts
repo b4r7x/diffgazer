@@ -1,4 +1,3 @@
-import { resolve } from "node:path";
 import {
   createAddCommand,
   depName,
@@ -8,19 +7,20 @@ import {
   normalizeVersionSpec,
   parseEnumOption,
   readPackageJson,
-  withFileLock,
 } from "@diffgazer/registry/cli";
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import type { ResolvedConfig } from "../../context.js";
 import { ctx, getDefaultKeysVersionSpec } from "../../context.js";
 import { planComponentCss } from "../../utils/css-chunks.js";
 import { resolveKeysHooksFromRegistry } from "../../utils/keys-copy-bundle.js";
+import { withProjectMutationLock } from "../../utils/mutation-lock.js";
 import {
   publicAvailableNames,
   splitInstallNames,
   validateInstallableNames,
 } from "../../utils/namespaces.js";
 import { buildComponentFileOps, buildKeysFileOps } from "./file-ops.js";
+import { buildInstallRequiresByItem } from "./install-requires.js";
 import {
   applyIntegrationDeps,
   type ResolvedIntegrationSelection,
@@ -57,6 +57,14 @@ function installableAddonNames(): string[] {
     .map((item) => `ui/${item.name}`);
 }
 
+// `theme` is resolved as a registry dependency of most components but installs
+// nothing: its files are all CSS, css planning skips it, and no manifest row is
+// written. Naming it in the plan would advertise an item `list`, `diff`, and
+// `remove` all reject.
+function installsSomething(uiName: string): boolean {
+  return ctx.registry.getItem(uiName)?.type !== REGISTRY_ITEM_TYPE.theme;
+}
+
 function logIntegrationMode(mode: ResolvedIntegrationSelection["mode"]): void {
   if (mode === "copy") info("Including integration: keyboard-navigation (copy hooks)");
   if (mode === "@diffgazer/keys")
@@ -79,7 +87,7 @@ function collectFileOps(
   const fileOps = buildComponentFileOps(resolved, cwd, config, selection.mode);
   const cssPlan = planComponentCss(resolved, cwd, config, overwrite);
   if (cssPlan.fileOp) fileOps.push(cssPlan.fileOp);
-  if (selection.hasKeyboardIntegration && selection.mode === "copy") {
+  if (selection.mode === "copy") {
     fileOps.push(...buildKeysFileOps(neededKeysHooks, cwd, config));
   }
   return { fileOps, cssChunksByItem: cssPlan.chunksByItem };
@@ -130,7 +138,7 @@ export function createDiffgazerAddCommand() {
     // back to the public index before resolving transitive dependencies.
     getPublicNames: () => [...new Set([...publicAvailableNames(), ...installableAddonNames()])],
     validateRequestedNames: validateInstallableNames,
-    withLock: (cwd, operation) => withFileLock(resolve(cwd, ".diffgazer", "add.lock"), operation),
+    withLock: withProjectMutationLock,
     extraOptions: [
       {
         flags: "--integration <mode>",
@@ -190,25 +198,31 @@ export function createDiffgazerAddCommand() {
         neededKeysHooks,
         Boolean(opts.overwrite),
       );
+      const installedUiNames = resolved.filter(installsSomething);
       const resolvedPublicNames = [
-        ...resolved.map((name) => `ui/${name}`),
+        ...installedUiNames.map((name) => `ui/${name}`),
         ...namesByNamespace.keys.map((name) => `keys/${name}`),
       ];
       const updatedNames = new Set([
         ...resolvedPublicNames,
         ...(selection.mode === "copy" ? neededKeysHooks.map((name) => `keys/${name}`) : []),
       ]);
+      const requiresByItem = buildInstallRequiresByItem(
+        resolved,
+        namesByNamespace.keys,
+        selection.mode,
+      );
 
       return {
         resolvedNames: resolvedPublicNames,
         fileOps: [...collected.fileOps, ...buildKeysFileOps(namesByNamespace.keys, cwd, config)],
         missingDeps: computeMissingDeps(resolved, selection, keysVersionSpec, cwd),
-        extraDependencies: resolved
+        extraDependencies: installedUiNames
           .filter((r) => !namesByNamespace.ui.includes(r))
           .map((name) => `ui/${name}`),
         headingMessage: "Adding Diffgazer items...",
         onDryRun: () => {
-          if (selection.hasKeyboardIntegration && selection.mode === "copy") {
+          if (selection.mode === "copy") {
             info("Keys hooks would be installed from bundled offline sources.");
           }
         },
@@ -232,6 +246,7 @@ export function createDiffgazerAddCommand() {
               metadata: buildManifestMetadata(selection.mode, keysVersionSpec),
               explicitNames,
               cssChunksByItem: collected.cssChunksByItem,
+              requiresByItem,
               removeNames: integrationMigration.removeManifestNames,
               updatedNames,
               retainedFilesByItem: retiredOwnership?.retainedFilesByItem,
@@ -261,7 +276,7 @@ export function createDiffgazerAddCommand() {
             throw error;
           }
           for (const notice of retiredOwnership?.notices ?? []) info(notice);
-          if (selection.hasKeyboardIntegration && selection.mode === "copy") {
+          if (selection.mode === "copy") {
             info("Keyboard hooks copied alongside components. No additional packages needed.");
             info("For package imports, re-run with --integration=keys to use @diffgazer/keys.");
           }

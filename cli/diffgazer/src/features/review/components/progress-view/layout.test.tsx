@@ -5,11 +5,11 @@ import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { cleanupRootFrames, renderRootFrame } from "../../../../testing/render-root-frame";
-import { makeAgent } from "./test-support";
+import { makeAgent } from "../../testing/progress-view";
 import { ReviewProgressView } from "./view";
 
 vi.mock("@diffgazer/core/api/hooks", () => ({
-  useInit: () => ({ data: undefined, isLoading: false }),
+  useConfigurationInit: () => ({ data: undefined, isLoading: false }),
 }));
 
 afterEach(() => {
@@ -43,7 +43,7 @@ describe("ReviewProgressView (TUI) layout", () => {
         progressSteps={DEFAULT_STEPS.slice(0, stepCount)}
         agents={DEFAULT_AGENTS.slice(0, agentCount).map(makeAgent)}
         events={[]}
-        fileProgress={{ total: 23, current: 4, currentFile: "src/a.ts", completed: [] }}
+        fileProgress={{ total: 23, completed: [] }}
         isStreaming
         error={null}
         notices={[]}
@@ -94,9 +94,6 @@ describe("ReviewProgressView (TUI) layout", () => {
         events={[]}
         fileProgress={{
           total: 12,
-          current: 4,
-          currentFile:
-            "packages/review/src/generated/deeply/nested/current-file-with-a-long-name.typescript.ts",
           completed: [],
         }}
         isStreaming
@@ -134,7 +131,7 @@ describe("ReviewProgressView (TUI) layout", () => {
             timestamp: "2026-01-01T00:00:01.000Z",
           },
         ]}
-        fileProgress={{ total: 2, current: 1, currentFile: "src/a.ts", completed: [] }}
+        fileProgress={{ total: 2, completed: [] }}
         isStreaming
         error={null}
         notices={[]}
@@ -176,7 +173,7 @@ describe("ReviewProgressView (TUI) layout", () => {
         agents={[failedAgent]}
         lensStats={[{ lensId: "security", issueCount: 0, status: "failed" }]}
         events={events}
-        fileProgress={{ total: 1, current: 1, currentFile: null, completed: [] }}
+        fileProgress={{ total: 1, completed: [] }}
         isStreaming
         error={null}
         notices={["Stream notice"]}
@@ -199,7 +196,7 @@ describe("ReviewProgressView (TUI) layout", () => {
         progressSteps={DEFAULT_STEPS}
         agents={DEFAULT_AGENTS.slice(0, 3).map(makeAgent)}
         events={[]}
-        fileProgress={{ total: 12, current: 1, currentFile: "src/a.ts", completed: [] }}
+        fileProgress={{ total: 12, completed: [] }}
         isStreaming
         error={null}
         notices={[]}
@@ -234,7 +231,7 @@ describe("ReviewProgressView (TUI) layout", () => {
         progressSteps={DEFAULT_STEPS.slice(0, 3)}
         agents={DEFAULT_AGENTS.slice(0, 3).map(makeAgent)}
         events={[]}
-        fileProgress={{ total: 12, current: 1, currentFile: "src/a.ts", completed: [] }}
+        fileProgress={{ total: 12, completed: [] }}
         isStreaming={false}
         error="API-key rejected"
         transportFamily="hosted-api"
@@ -252,6 +249,35 @@ describe("ReviewProgressView (TUI) layout", () => {
     expect(lines).toHaveLength(24);
     // The recovery line is the callout's third content row, so the reserve has
     // to pay for it: the callout keeps its closing border inside the frame.
+    const recoveryRow = lines.findIndex((line) => line.includes("Press s to open Settings."));
+    expect(recoveryRow).toBeGreaterThan(-1);
+    expect(lines.slice(recoveryRow + 1).some((line) => line.includes("\u2518"))).toBe(true);
+  });
+
+  test("keeps the callout whole when the server error wraps past one row", async () => {
+    const { lastFrame } = renderRootFrame(
+      80,
+      24,
+      <ReviewProgressView
+        progressSteps={DEFAULT_STEPS.slice(0, 3)}
+        agents={DEFAULT_AGENTS.slice(0, 3).map(makeAgent)}
+        events={[]}
+        fileProgress={{ total: 12, completed: [] }}
+        isStreaming={false}
+        error={`API-key rejected. ${"The provider returned a long diagnostic. ".repeat(4)}`}
+        transportFamily="hosted-api"
+        notices={[]}
+        onGoToSettings={vi.fn()}
+        issuesFound={0}
+        startedAt={new Date("2026-01-01T00:00:00.000Z")}
+        completedAt={null}
+      />,
+    );
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("API Key Error"));
+    const lines = stripAnsi(lastFrame() ?? "").split("\n");
+
+    expect(lines).toHaveLength(24);
     const recoveryRow = lines.findIndex((line) => line.includes("Press s to open Settings."));
     expect(recoveryRow).toBeGreaterThan(-1);
     expect(lines.slice(recoveryRow + 1).some((line) => line.includes("\u2518"))).toBe(true);

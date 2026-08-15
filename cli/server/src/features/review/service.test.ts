@@ -4,7 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { err, ok } from "@diffgazer/core/result";
-import type { RunnableProductId } from "@diffgazer/core/schemas/config";
+import {
+  type HostedApiProductId,
+  LEGACY_V1_HAS_API_KEY_PROPERTY,
+} from "@diffgazer/core/schemas/config";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import type { ExecutionLimits, ReviewMode, ReviewResult } from "@diffgazer/core/schemas/review";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
@@ -16,12 +19,15 @@ import type { z } from "zod";
 import type { AdmittedExecutionPlan } from "../../shared/lib/ai/admission/service.js";
 import { ExecutionLeaseRegistry } from "../../shared/lib/ai/admission/service.js";
 import { createBudgetLedger } from "../../shared/lib/ai/budget/ledger.js";
-import { conservativeAttemptEstimate } from "../../shared/lib/ai/client/generate.js";
 import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
+import { promptAttemptEstimate } from "../../shared/lib/ai/providers/execution-receipt.js";
 import type { Adapter } from "../../shared/lib/ai/types.js";
+import { hashAdmissionEvidenceKeySync } from "../../shared/lib/config/admission-evidence.js";
 import type { createGitService as createGitServiceType } from "../../shared/lib/git/service.js";
+import { assertTempHome } from "../../shared/lib/testing/temp-home.js";
 import { parseDiff } from "./engine/diff/parser.js";
 import type { SSEWriter } from "./stream/sse.js";
+import { drainReviewWrites } from "./testing/storage-drain.js";
 
 // Boundary mock: git/service wraps the `git` CLI subprocess (external-process boundary); tests provide canned status/diff responses so review session lifecycle can be exercised without a real repository.
 vi.mock("../../shared/lib/git/service.js", () => ({
@@ -45,7 +51,7 @@ const REVIEW_DIFF = [
 ].join("\n");
 /** The provider/model pair these tests vary to build distinct admitted plans. */
 interface ExecutionFingerprint {
-  readonly provider: RunnableProductId;
+  readonly provider: HostedApiProductId;
   readonly model: string;
 }
 
@@ -73,7 +79,7 @@ let addEvent: SessionsModule["addEvent"];
 let cancelSession: SessionsModule["cancelSession"];
 let cancelSessionForUser: SessionsModule["cancelSessionForUser"];
 let createSession: SessionsModule["createSession"];
-let deleteSession: SessionsModule["deleteSession"];
+let deleteSessionForTests: SessionsModule["deleteSessionForTests"];
 let getSession: SessionsModule["getSession"];
 let getActiveSessionForProject: SessionsModule["getActiveSessionForProject"];
 let buildReviewConfigKey: SessionsModule["buildReviewConfigKey"];
@@ -114,7 +120,7 @@ async function cleanupTrackedSessions(): Promise<void> {
     }
   });
   for (const id of createdSessionIds) {
-    deleteSession(id);
+    deleteSessionForTests(id);
   }
   createdSessionIds.clear();
   sessionsWithRunners.clear();
@@ -240,7 +246,10 @@ function makeAIClient(
 ): InitializedAIClient {
   const plan = serviceAdmittedPlan(executionFingerprint);
   const ledger = createBudgetLedger(plan.limits);
-  const estimate = conservativeAttemptEstimate("review prompt", plan.limits);
+  const estimate = promptAttemptEstimate(
+    { prompt: "review prompt", systemPrompt: "review system prompt" },
+    plan.limits,
+  );
   const budgetReservation = ledger.reserveAttempt(estimate);
   if (!budgetReservation.ok) {
     throw new Error("budget reservation failed in test setup");
@@ -274,6 +283,7 @@ function makeAIClient(
         transportFamily: plan.transportFamily,
         execute: vi.fn(),
       } satisfies Adapter,
+      evidenceState: "proven" as const,
       budgetLedger: ledger,
       budgetReservation: budgetReservation.value,
       lease: lease.value,
@@ -282,13 +292,33 @@ function makeAIClient(
       release,
     }),
     terminalExecutions: [],
+    terminalDiagnostics: [],
     generate,
+  };
+}
+
+function makeConformanceAIClient(options: {
+  evidenceState: "proven" | "unproven";
+  structuredOutputFailure?: boolean;
+}): InitializedAIClient {
+  const base = makeAIClient();
+  const authorization = requireValue(base.authorization, "test client authorization");
+  return {
+    ...base,
+    authorization: Object.freeze({ ...authorization, evidenceState: options.evidenceState }),
+    ...(options.structuredOutputFailure
+      ? {
+          generate: async () =>
+            err({ code: "PARSE_ERROR", message: "Adapter response failed schema validation" }),
+        }
+      : {}),
   };
 }
 
 beforeAll(async () => {
   originalDiffgazerHome = process.env.DIFFGAZER_HOME;
   tempHome = mkdtempSync(join(tmpdir(), "diffgazer-review-service-home-"));
+  assertTempHome(tempHome);
   process.env.DIFFGAZER_HOME = tempHome;
   writeFileSync(
     join(tempHome, "config.json"),
@@ -311,7 +341,7 @@ beforeAll(async () => {
   cancelSession = sessions.cancelSession;
   cancelSessionForUser = sessions.cancelSessionForUser;
   createSession = sessions.createSession;
-  deleteSession = sessions.deleteSession;
+  deleteSessionForTests = sessions.deleteSessionForTests;
   getSession = sessions.getSession;
   getActiveSessionForProject = sessions.getActiveSessionForProject;
   buildReviewConfigKey = sessions.buildReviewConfigKey;
@@ -333,16 +363,96 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 
-afterAll(() => {
-  rmSync(tempHome, { recursive: true, force: true });
-  if (originalDiffgazerHome === undefined) {
-    delete process.env.DIFFGAZER_HOME;
-  } else {
-    process.env.DIFFGAZER_HOME = originalDiffgazerHome;
+// Settle the config store and the fire-and-forget review migration writes, then remove the
+// temp home, and only then restore DIFFGAZER_HOME: `paths.ts` re-reads the variable per
+// call, so restoring it while a document-lock acquisition or a review write is still
+// pending re-points that work at the real ~/.diffgazer.
+afterAll(async () => {
+  try {
+    const { getStore } = await import("../../shared/lib/config/store.js");
+    await getStore().ready();
+    await drainReviewWrites(tempHome);
+    rmSync(tempHome, { recursive: true, force: true });
+  } finally {
+    if (originalDiffgazerHome === undefined) {
+      delete process.env.DIFFGAZER_HOME;
+    } else {
+      process.env.DIFFGAZER_HOME = originalDiffgazerHome;
+    }
   }
 });
 
 describe("createReviewSession", () => {
+  it("rejects a cached-ready V1 replacement before git or review work", async () => {
+    const { getStore } = await import("../../shared/lib/config/store.js");
+    const store = getStore();
+    await expect(store.ready()).resolves.toEqual({ ok: true, value: undefined });
+    const gitService = makeGitService();
+    const headCommit = vi.spyOn(gitService, "getHeadCommit");
+    const statusHash = vi.spyOn(gitService, "getStatusHash");
+    vi.mocked(createGitService).mockReturnValue(gitService);
+    const configPath = join(tempHome, "config.json");
+    const v2Bytes = Buffer.from(
+      `${JSON.stringify({
+        schemaVersion: 2,
+        settings: { defaultLenses: ["correctness"], agentExecution: "sequential" },
+        selectedConfigurationId: null,
+        configurations: [],
+      })}\n`,
+    );
+    writeFileSync(
+      configPath,
+      `${JSON.stringify({
+        settings: { secretsStorage: "file" },
+        providers: [
+          {
+            provider: "gemini",
+            [LEGACY_V1_HAS_API_KEY_PROPERTY]: false,
+            isActive: true,
+            model: "gemini-2.5-flash",
+          },
+        ],
+      })}\n`,
+      { mode: 0o600 },
+    );
+    writeFileSync(join(tempHome, "secrets.json"), '{"providers":{"gemini":"hidden"}}\n', {
+      mode: 0o600,
+    });
+    writeFileSync(
+      join(tempHome, "secrets.json.recovery"),
+      `${JSON.stringify({
+        version: 2,
+        previousConfig: { existed: true, base64: v2Bytes.toString("base64") },
+        previousSecrets: { existed: false, base64: null },
+      })}\n`,
+      { mode: 0o600 },
+    );
+    const aiClient = makeAIClient();
+    const generate = vi.spyOn(aiClient, "generate");
+
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        code: "SECRETS_MIGRATION_FAILED",
+        message: "Legacy configuration requires manual migration",
+      },
+    });
+    expect(createGitService).not.toHaveBeenCalled();
+    expect(headCommit).not.toHaveBeenCalled();
+    expect(statusHash).not.toHaveBeenCalled();
+    expect(generate).not.toHaveBeenCalled();
+
+    writeFileSync(configPath, v2Bytes, { mode: 0o600 });
+    rmSync(join(tempHome, "secrets.json"), { force: true });
+    rmSync(join(tempHome, "secrets.json.recovery"), { force: true });
+    await expect(store.ready()).resolves.toEqual({ ok: true, value: undefined });
+  });
+
   it("returns a UUID-format reviewId and creates an active session", async () => {
     const result = await createReviewSession(makeAIClient(), {
       mode: "unstaged",
@@ -650,7 +760,6 @@ describe("streamActiveSessionToSSE", () => {
         type: "complete",
         result: { issues: [] },
         reviewId: session.reviewId,
-        durationMs: 100,
       },
     ];
     session.events.push(...events);
@@ -677,7 +786,6 @@ describe("streamActiveSessionToSSE", () => {
       type: "complete",
       result: { issues: [] },
       reviewId: session.reviewId,
-      durationMs: 50,
     });
 
     await replay;
@@ -695,7 +803,7 @@ describe("streamActiveSessionToSSE", () => {
       mode: "unstaged",
     });
     trackSession(session.reviewId);
-    deleteSession(session.reviewId);
+    deleteSessionForTests(session.reviewId);
 
     await streamActiveSessionToSSE(stream, session);
 
@@ -742,7 +850,6 @@ describe("streamActiveSessionToSSE", () => {
       type: "complete",
       result: { issues: [] },
       reviewId: session.reviewId,
-      durationMs: 200,
     });
     markComplete(session.reviewId);
 
@@ -832,7 +939,7 @@ describe("POST-to-stream integration", () => {
     }
   });
 
-  it("persists and emits one nonnegative duration when the wall clock moves backward", async () => {
+  it("persists a nonnegative duration when the wall clock moves backward", async () => {
     let wallClock = 1_000_000;
     const dateNow = vi.spyOn(Date, "now").mockImplementation(() => {
       wallClock -= 1_000;
@@ -853,16 +960,13 @@ describe("POST-to-stream integration", () => {
         if (!session.isComplete) throw new Error("session not complete yet");
       });
 
-      const complete = session.events.find((event) => event.type === "complete");
-      expect(complete?.type).toBe("complete");
-      if (complete?.type !== "complete") return;
+      expect(session.events.find((event) => event.type === "complete")).toBeDefined();
       const { getReview } = await import("./storage/reviews.js");
       const saved = await getReview(result.value.reviewId);
 
       expect(saved.ok, saved.ok ? undefined : JSON.stringify(saved.error)).toBe(true);
       if (!saved.ok) return;
       expect(saved.value.metadata.durationMs).toBeGreaterThanOrEqual(0);
-      expect(saved.value.metadata.durationMs).toBe(complete.durationMs);
     } finally {
       dateNow.mockRestore();
     }
@@ -871,7 +975,9 @@ describe("POST-to-stream integration", () => {
   it("keeps the session identity and executed configuration on the creation snapshot", async () => {
     const { getStore } = await import("../../shared/lib/config/store.js");
     const store = getStore();
-    const originalSettings = store.getSettings();
+    const originalSettingsResult = await store.readSettings();
+    if (!originalSettingsResult.ok) throw new Error(originalSettingsResult.error.message);
+    const originalSettings = originalSettingsResult.value;
     const diffStarted = createDeferred<void>();
     const releaseDiff = createDeferred<void>();
     const gitService = makeGitService();
@@ -1108,6 +1214,39 @@ describe("POST-to-stream integration", () => {
 
     expect(lastEvent?.type).toBe("error");
   });
+
+  it("sanitizes a path-bearing git failure before streaming the terminal error", async () => {
+    const getDiff = vi.fn(async () =>
+      err({ message: "fatal: unable to read /Users/someone/repo/.git/index" }),
+    );
+    vi.mocked(createGitService).mockReturnValue({ ...makeGitService(), getDiff });
+
+    const aiClient = makeAIClient();
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+
+    const session = getSession(result.value.reviewId);
+    const activeSession = requireValue(session, "review session");
+
+    await vi.waitFor(() => {
+      if (!activeSession.isComplete) throw new Error("session not complete yet");
+    });
+
+    const stream = makeMockStream();
+    await streamActiveSessionToSSE(stream, activeSession);
+
+    const events = parsedEvents(stream);
+    const lastEvent = events[events.length - 1];
+
+    expect(lastEvent?.type).toBe("error");
+    expect(JSON.stringify(events)).not.toContain("/Users/");
+  });
 });
 
 describe("admitted configuration execution", () => {
@@ -1193,6 +1332,93 @@ describe("admitted configuration execution", () => {
     });
 
     expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it("records passed evidence when an unproven review completes", async () => {
+    const { getStore } = await import("../../shared/lib/config/store.js");
+    const recordEvidence = vi.spyOn(getStore(), "recordConfigurationEvidence");
+    const aiClient = makeConformanceAIClient({ evidenceState: "unproven" });
+
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    await vi.waitFor(() => {
+      if (!getSession(result.value.reviewId)?.isComplete) {
+        throw new Error("session not complete yet");
+      }
+    });
+
+    const [configurationId, evidence] = requireValue(
+      recordEvidence.mock.calls[0],
+      "recorded conformance evidence",
+    );
+    expect(configurationId).toBe(serviceAdmittedPlan().configurationId);
+    expect(evidence).toMatchObject({ status: "passed", expiresAt: null });
+    expect(evidence.evidenceKeyHash).toBe(
+      hashAdmissionEvidenceKeySync(serviceAdmittedPlan().evidenceKey),
+    );
+    // The store holds no such configuration, so the record call fails: the
+    // review still completes, which is the warn-only contract.
+    expect(getSession(result.value.reviewId)?.isComplete).toBe(true);
+    recordEvidence.mockRestore();
+  });
+
+  it("records failed evidence when the review ends on a structured-output failure", async () => {
+    const { getStore } = await import("../../shared/lib/config/store.js");
+    const recordEvidence = vi.spyOn(getStore(), "recordConfigurationEvidence");
+    const aiClient = makeConformanceAIClient({
+      evidenceState: "unproven",
+      structuredOutputFailure: true,
+    });
+
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    await vi.waitFor(() => {
+      if (!getSession(result.value.reviewId)?.isComplete) {
+        throw new Error("session not complete yet");
+      }
+    });
+
+    const [, evidence] = requireValue(
+      recordEvidence.mock.calls[0],
+      "recorded conformance evidence",
+    );
+    expect(evidence).toMatchObject({ status: "failed", expiresAt: null });
+    recordEvidence.mockRestore();
+  });
+
+  it("does not rewrite evidence for a tuple admission already proved", async () => {
+    const { getStore } = await import("../../shared/lib/config/store.js");
+    const recordEvidence = vi.spyOn(getStore(), "recordConfigurationEvidence");
+    const aiClient = makeConformanceAIClient({ evidenceState: "proven" });
+
+    const result = await createReviewSession(aiClient, {
+      mode: "unstaged",
+      projectPath: projectRoot,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    trackSessionWithRunner(result.value.reviewId);
+    await vi.waitFor(() => {
+      if (!getSession(result.value.reviewId)?.isComplete) {
+        throw new Error("session not complete yet");
+      }
+    });
+
+    expect(recordEvidence).not.toHaveBeenCalled();
+    recordEvidence.mockRestore();
   });
 
   it("releases the admitted lease and budget when the diff is empty", async () => {

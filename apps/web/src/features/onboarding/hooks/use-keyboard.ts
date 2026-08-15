@@ -4,39 +4,27 @@ import {
   getOnboardingProgressLabel,
   type OnboardingDraft,
   type OnboardingStep,
-  type RunnableSetupStep,
 } from "@diffgazer/core/onboarding";
-import { useActionRowNavigation, useScope } from "@diffgazer/keys";
+import { useActionRowNavigation, useKey, useScope } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import type { RefObject } from "react";
 import { getStepShortcuts } from "../lib/shortcuts";
 
-const RUNNABLE_SETUP_STEPS = new Set<OnboardingStep>([
-  "product",
-  "endpoint-binding",
-  "authentication",
-  "model",
-  "conformance",
-  "acknowledgement",
-]);
-
-type WizardData = ReturnType<typeof import("../hooks/use-onboarding").useOnboarding>["wizardData"];
 type WizardDraftUpdate = Partial<Omit<OnboardingDraft, "kind" | "plan">>;
 
 interface UseOnboardingKeyboardOptions {
   currentStep: OnboardingStep;
-  wizardData: WizardData;
+  wizardData: OnboardingDraft;
   stepIndex: number;
-  planSteps: readonly { id: OnboardingStep }[];
   isFirstStep: boolean;
   isLastStep: boolean;
   canProceed: boolean;
   isSubmitting: boolean;
   isReconciling: boolean;
+  isPreparingDraftConfiguration: boolean;
   next: (partial?: WizardDraftUpdate) => void;
   back: () => void;
   complete: () => Promise<boolean>;
-  deleteRemovedConfiguration: () => Promise<boolean>;
   focusFallbackRef: RefObject<HTMLDivElement | null>;
 }
 
@@ -44,26 +32,25 @@ export function useOnboardingKeyboard({
   currentStep,
   wizardData,
   stepIndex,
-  planSteps,
   isFirstStep,
   isLastStep,
   canProceed,
   isSubmitting,
   isReconciling,
+  isPreparingDraftConfiguration,
   next,
   back,
   complete,
-  deleteRemovedConfiguration,
   focusFallbackRef,
 }: UseOnboardingKeyboardOptions) {
   const navigate = useNavigate();
-  const isRemoved = wizardData.kind === "removed";
-  const primaryLabel = isRemoved && currentStep === "delete" ? "Delete Record" : "Complete Setup";
 
   const buttonCount = isFirstStep ? 1 : 2;
   const primaryButtonIndex = isFirstStep ? 0 : 1;
-  const isBusy = isSubmitting || isReconciling;
-  const canActivatePrimary = isLastStep ? canProceed && !isBusy : canProceed && !isReconciling;
+  const isBusy = isSubmitting || isReconciling || isPreparingDraftConfiguration;
+  const canActivatePrimary = isLastStep
+    ? canProceed && !isBusy
+    : canProceed && !isReconciling && !isPreparingDraftConfiguration;
   const disabledFooterActions = isFirstStep ? [!canActivatePrimary] : [isBusy, !canActivatePrimary];
 
   useScope("onboarding");
@@ -73,7 +60,6 @@ export function useOnboardingKeyboard({
     actionCount: buttonCount,
     disabledActions: disabledFooterActions,
     disabledFocusFallbackRef: focusFallbackRef,
-    allowInInput: true,
     onAction: (index) => {
       if (isFirstStep) {
         handlePrimaryAction();
@@ -98,8 +84,7 @@ export function useOnboardingKeyboard({
   };
 
   const handleComplete = async () => {
-    const succeeded = isRemoved ? await deleteRemovedConfiguration() : await complete();
-    if (succeeded) navigate({ to: "/" });
+    if (await complete()) navigate({ to: "/" });
   };
 
   const handlePrimaryAction = () => {
@@ -115,24 +100,26 @@ export function useOnboardingKeyboard({
     shortcuts: getStepShortcuts(currentStep, footer.inActions, footer.isFocusedActionDisabled),
   });
 
-  const handleStepBoundary = (direction: "up" | "down") => {
-    if (direction !== "down") return;
-    footer.enterActions();
+  const focusFooterActions = () => {
+    footer.enterActions(primaryButtonIndex);
   };
 
-  const handleStepCommit = (partial: WizardDraftUpdate = {}) => {
-    if (wizardData.kind === "removed") {
-      if (currentStep === "migration") handleNext();
-      return;
-    }
+  const handleStepBoundary = (direction: "up" | "down") => {
+    if (direction !== "down") return;
+    focusFooterActions();
+  };
 
+  // ArrowDown from editable fields must reach the footer without re-enabling
+  // allowInInput on the whole action row (that would hijack L/R/Up in inputs).
+  useKey("ArrowDown", focusFooterActions, {
+    enabled: !footer.inActions,
+    allowInInput: true,
+    preventDefault: true,
+  });
+
+  const handleStepCommit = (partial: WizardDraftUpdate = {}) => {
     const projectedData = { ...wizardData, ...partial };
-    if (
-      RUNNABLE_SETUP_STEPS.has(currentStep) &&
-      !canProceedForStep(currentStep as RunnableSetupStep["id"], projectedData)
-    ) {
-      return;
-    }
+    if (!canProceedForStep(currentStep, projectedData)) return;
 
     if (isLastStep) {
       footer.enterActions(primaryButtonIndex);
@@ -147,7 +134,6 @@ export function useOnboardingKeyboard({
   return {
     footer,
     primaryButtonIndex,
-    primaryLabel,
     progressLabel,
     isBusy,
     canActivatePrimary,
@@ -155,6 +141,5 @@ export function useOnboardingKeyboard({
     handlePrimaryAction,
     handleStepBoundary,
     handleStepCommit,
-    stepCount: planSteps.length,
   };
 }

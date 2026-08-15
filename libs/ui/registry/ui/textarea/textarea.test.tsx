@@ -160,6 +160,20 @@ describe("Textarea", () => {
     ).toBeInTheDocument();
   });
 
+  it("names the resize handles with localized resizeLabels", () => {
+    render(
+      <Textarea
+        aria-label="Comment"
+        resize="both"
+        resizeLabels={{ vertical: "Hauteur", horizontal: "Largeur" }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Hauteur" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Largeur" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Resize textarea/ })).not.toBeInTheDocument();
+  });
+
   it("marks both edges with a wordless line handle by default", () => {
     render(<Textarea aria-label="Comment" resize="both" />);
 

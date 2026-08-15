@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
@@ -79,30 +79,34 @@ describe("ContextSnapshotPreview (TUI)", () => {
 
   test("saves all three snapshot formats to the selected directory", async () => {
     const outputDirectory = await mkdtemp(join(tmpdir(), "diffgazer-context-"));
-    const snapshot = makeSnapshot("/home/user/repo");
-    snapshot.markdown = "# Context\n\nMarkdown body";
-    const { lastFrame, stdin } = render(
-      <CliThemeProvider initialTheme="dark">
-        <ContextSnapshotPreview snapshot={snapshot} outputDirectory={outputDirectory} />
-      </CliThemeProvider>,
-    );
+    try {
+      const snapshot = makeSnapshot("/home/user/repo");
+      snapshot.markdown = "# Context\n\nMarkdown body";
+      const { lastFrame, stdin } = render(
+        <CliThemeProvider initialTheme="dark">
+          <ContextSnapshotPreview snapshot={snapshot} outputDirectory={outputDirectory} />
+        </CliThemeProvider>,
+      );
 
-    stdin.write("w");
+      stdin.write("w");
 
-    await expect.poll(() => lastFrame() ?? "").toContain("Saved context snapshot:");
-    const frame = lastFrame() ?? "";
-    expect(frame).toContain(join(outputDirectory, "context.txt"));
-    expect(frame).toContain(join(outputDirectory, "context.md"));
-    expect(frame).toContain(join(outputDirectory, "context.json"));
-    await expect(readFile(join(outputDirectory, "context.txt"), "utf8")).resolves.toBe(
-      snapshot.text,
-    );
-    await expect(readFile(join(outputDirectory, "context.md"), "utf8")).resolves.toBe(
-      snapshot.markdown,
-    );
-    await expect(readFile(join(outputDirectory, "context.json"), "utf8")).resolves.toBe(
-      `${JSON.stringify(snapshot.graph, null, 2)}\n`,
-    );
+      await expect.poll(() => lastFrame() ?? "").toContain("Saved context snapshot:");
+      const frame = lastFrame() ?? "";
+      expect(frame).toContain(join(outputDirectory, "context.txt"));
+      expect(frame).toContain(join(outputDirectory, "context.md"));
+      expect(frame).toContain(join(outputDirectory, "context.json"));
+      await expect(readFile(join(outputDirectory, "context.txt"), "utf8")).resolves.toBe(
+        snapshot.text,
+      );
+      await expect(readFile(join(outputDirectory, "context.md"), "utf8")).resolves.toBe(
+        snapshot.markdown,
+      );
+      await expect(readFile(join(outputDirectory, "context.json"), "utf8")).resolves.toBe(
+        `${JSON.stringify(snapshot.graph, null, 2)}\n`,
+      );
+    } finally {
+      await rm(outputDirectory, { recursive: true, force: true });
+    }
   });
 
   test("shows a filesystem diagnostic when the output directory does not exist", async () => {
@@ -124,6 +128,60 @@ describe("ContextSnapshotPreview (TUI)", () => {
       expect(lastFrame() ?? "").not.toContain("Saved context snapshot:");
     } finally {
       await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("refuses to overwrite an existing snapshot file", async () => {
+    const outputDirectory = await mkdtemp(join(tmpdir(), "diffgazer-context-collision-"));
+    await writeFile(join(outputDirectory, "context.txt"), "existing", "utf8");
+    try {
+      const { lastFrame, stdin } = render(
+        <CliThemeProvider initialTheme="dark">
+          <ContextSnapshotPreview
+            snapshot={makeSnapshot("/home/user/repo")}
+            outputDirectory={outputDirectory}
+          />
+        </CliThemeProvider>,
+      );
+
+      stdin.write("w");
+
+      await expect.poll(() => lastFrame() ?? "").toContain("EEXIST");
+      await expect(readFile(join(outputDirectory, "context.txt"), "utf8")).resolves.toBe(
+        "existing",
+      );
+      await expect(readFile(join(outputDirectory, "context.md"), "utf8")).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+      await expect(readFile(join(outputDirectory, "context.json"), "utf8")).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+    } finally {
+      await rm(outputDirectory, { recursive: true, force: true });
+    }
+  });
+
+  test("refuses to follow a pre-existing symlink at the export path", async () => {
+    const outputDirectory = await mkdtemp(join(tmpdir(), "diffgazer-context-symlink-"));
+    const outsideTarget = join(outputDirectory, "outside.txt");
+    await writeFile(outsideTarget, "protected", "utf8");
+    await symlink(outsideTarget, join(outputDirectory, "context.txt"));
+    try {
+      const { lastFrame, stdin } = render(
+        <CliThemeProvider initialTheme="dark">
+          <ContextSnapshotPreview
+            snapshot={makeSnapshot("/home/user/repo")}
+            outputDirectory={outputDirectory}
+          />
+        </CliThemeProvider>,
+      );
+
+      stdin.write("w");
+
+      await expect.poll(() => lastFrame() ?? "").toContain("EEXIST");
+      await expect(readFile(outsideTarget, "utf8")).resolves.toBe("protected");
+    } finally {
+      await rm(outputDirectory, { recursive: true, force: true });
     }
   });
 });

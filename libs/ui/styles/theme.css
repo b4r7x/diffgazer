@@ -260,3 +260,40 @@
   /* Second elevation step — dialog header strip, panel tab chips. */
   --surface-2: #e7eaee;
 }
+
+/*
+ * Increased contrast preference. It lives at the tail of the theme, not in the
+ * theme-base.css imported above: a media query adds no specificity, so the same
+ * tokens redeclared later on the same selectors win in every contrast state and
+ * a copy in the imported base would never be observable.
+ */
+@media (prefers-contrast: more) {
+  :root,
+  [data-theme="dark"] {
+    --base-dim: #b3b3b3;
+    --base-border: #777777;
+    --base-muted: #999999;
+    --base-accent: #b3b3b3;
+  }
+
+  [data-theme="light"] {
+    --base-dim: #4a4a4a;
+    --base-border: #6e6e6e;
+    --base-muted: #555555;
+  }
+}
+
+/*
+ * Windows High Contrast Mode. Same placement rule as the contrast block above: a media query
+ * adds no specificity, so these tokens have to be redeclared after both palettes or the
+ * palette rules above win at equal specificity and the block never applies. Only --ring is
+ * kept: forced-colors already forces color, background-color, and border-color at the UA
+ * level, while --ring is read through box-shadow and outline sites that need system Highlight.
+ */
+@media (forced-colors: active) {
+  :root,
+  [data-theme="dark"],
+  [data-theme="light"] {
+    --ring: Highlight;
+  }
+}

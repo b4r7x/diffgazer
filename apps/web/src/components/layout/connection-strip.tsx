@@ -18,8 +18,9 @@ const COPY: Record<ConnectionStripProps["state"], string> = {
  */
 export function ConnectionStrip({ state, onRetry }: ConnectionStripProps) {
   return (
-    <output
-      aria-live="polite"
+    // biome-ignore lint/a11y/useSemanticElements: role="status" is the outage row's live region; <output> carries form-association semantics that do not fit a message paired with a Retry control.
+    <div
+      role="status"
       data-connection-strip={state}
       className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-error-border bg-[color-mix(in_oklab,var(--error)_7%,transparent)] px-4 py-1.5 pointer-coarse:min-h-11"
     >
@@ -30,11 +31,11 @@ export function ConnectionStrip({ state, onRetry }: ConnectionStripProps) {
         variant="secondary"
         size="sm"
         bracket
-        disabled={state === "retrying"}
+        loading={state === "retrying"}
         onClick={onRetry}
       >
         Retry
       </Button>
-    </output>
+    </div>
   );
 }

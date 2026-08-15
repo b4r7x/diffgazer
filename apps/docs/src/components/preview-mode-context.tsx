@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { MAIN_SCROLL_RESTORATION_ID } from "@/lib/main-scroll-bootstrap";
+import { MAIN_SCROLL_RESTORATION_ID } from "@/lib/main-scroll-restoration";
 
 export type PreviewMode = "preview" | "code";
 

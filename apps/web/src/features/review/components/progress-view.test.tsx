@@ -1,16 +1,17 @@
-import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import { FooterProvider } from "@diffgazer/core/footer";
 import {
   createInitialReviewState,
   type ReviewEvent,
   type ReviewState,
   reviewReducer,
+  sanitizePresentationText,
 } from "@diffgazer/core/review";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { Footer } from "@/components/layout/footer";
+import { FooterView } from "@/testing/footer-view";
 
 // Boundary mock: TanStack Router is the external routing library; progress shortcuts navigate through it.
 vi.mock("@tanstack/react-router", () => ({
@@ -22,11 +23,6 @@ import {
   ReviewProgressView,
   type ReviewProgressViewProps,
 } from "./progress-view";
-
-function FooterView() {
-  const { shortcuts, rightShortcuts } = useFooterData();
-  return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
-}
 
 function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
   return {
@@ -87,6 +83,8 @@ function renderView(props: Partial<ReviewProgressViewProps> = {}) {
           errorCode={props.errorCode}
           transportFamily={props.transportFamily}
           reviewId={props.reviewId}
+          contextRefreshError={props.contextRefreshError}
+          onRetryContextRefresh={props.onRetryContextRefresh}
           onRetry={props.onRetry}
           onViewResults={props.onViewResults}
           onCancel={props.onCancel}
@@ -273,6 +271,17 @@ describe("ReviewProgressView", () => {
     expect(onBack).not.toHaveBeenCalled();
   });
 
+  it("sanitizes untrusted failure text before announcing it", () => {
+    const leaky = "Bearer sk-live-secret-12345678 failed at /Users/me/secret";
+    renderView({ isRunning: false, error: leaky, onCancel: vi.fn(), onBack: vi.fn() });
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(sanitizePresentationText(leaky));
+    expect(alert.textContent).not.toMatch(/sk-live-secret/i);
+    expect(alert.textContent).not.toMatch(/Bearer\s+/i);
+    expect(alert.textContent).not.toMatch(/\/Users\//);
+  });
+
   it("keeps prior activity visible and retries a dropped transport stream", async () => {
     const user = userEvent.setup();
     const onRetry = vi.fn();
@@ -390,17 +399,13 @@ describe("ReviewProgressView", () => {
     expect(screen.getAllByText(/^event-/)).toHaveLength(1);
   });
 
-  it("cycles pane focus with Tab from anywhere in the document", async () => {
+  it("cycles pane focus with Tab from inside a pane", async () => {
     const user = userEvent.setup();
     renderView();
 
     const progressPane = screen.getByRole("region", { name: "Progress" });
     const logPane = screen.getByRole("region", { name: "Live Activity Log" });
     await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
-
-    // Move focus outside both pane containers; document-scope Tab must still cycle.
-    (document.activeElement as HTMLElement | null)?.blur();
-    expect(document.body).toHaveFocus();
 
     await user.keyboard("{Tab}");
     await waitFor(() => expect(logPane).toHaveAttribute("data-state", "focused"));
@@ -411,6 +416,24 @@ describe("ReviewProgressView", () => {
     await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
     expect(logPane).not.toHaveAttribute("data-state", "focused");
     expect(progressPane.matches(":focus-within")).toBe(true);
+  });
+
+  it("leaves native Tab available while focus sits outside the panes", async () => {
+    const user = userEvent.setup();
+    renderView({ data: makeProgressData({ agents: [makeAgent()] }) });
+
+    const progressPane = screen.getByRole("region", { name: "Progress" });
+    await waitFor(() => expect(progressPane).toHaveAttribute("data-state", "focused"));
+
+    (document.activeElement as HTMLElement | null)?.blur();
+    expect(document.body).toHaveFocus();
+
+    // Outside every pane the cycle declines Tab, so controls rendered beside the
+    // panes (app chrome, skip link) keep their keyboard path.
+    await user.tab();
+
+    expect(screen.getByRole("radio", { name: "All" })).toHaveFocus();
+    expect(screen.getByRole("log")).not.toHaveFocus();
   });
 
   it("focuses the agent filter chips with f", async () => {
@@ -541,6 +564,58 @@ describe("ReviewProgressView", () => {
     const reviewStep = screen.getByRole("button", { name: /Review/ });
     expect(reviewStep).toBeDisabled();
     expect(reviewStep).not.toHaveAttribute("aria-expanded");
+  });
+
+  it("shows a context refresh failure with retry instead of silently omitting the snapshot", async () => {
+    const user = userEvent.setup();
+    const onRetryContextRefresh = vi.fn();
+
+    renderView({
+      isRunning: false,
+      contextRefreshError: "Failed to refresh the review context snapshot.",
+      onRetryContextRefresh,
+    });
+
+    const status = screen.getByText("Context snapshot unavailable").closest('[role="status"]');
+    if (!status) {
+      throw new Error("Context refresh callout did not render as a live status region");
+    }
+    expect(status).toHaveTextContent("Failed to refresh the review context snapshot.");
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetryContextRefresh).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Context Snapshot")).not.toBeInTheDocument();
+  });
+
+  it("prefers the loaded context snapshot over a cleared refresh error", () => {
+    renderView({
+      isRunning: false,
+      contextRefreshError: null,
+      data: makeProgressData({
+        contextSnapshot: {
+          text: "context",
+          markdown: "# Context",
+          graph: {
+            generatedAt: "2026-01-01T00:00:00.000Z",
+            root: "/repo",
+            packages: [],
+            edges: [],
+            fileTree: [],
+            changedFiles: [],
+          },
+          meta: {
+            generatedAt: "2026-01-01T00:00:00.000Z",
+            root: "/repo",
+            statusHash: "hash",
+            statusHashKind: "full",
+            charCount: 7,
+          },
+        },
+      }),
+    });
+
+    expect(screen.getByText("Context Snapshot")).toBeInTheDocument();
+    expect(screen.queryByText("Context snapshot unavailable")).not.toBeInTheDocument();
   });
 
   it("runs progress shortcuts when result and back actions are available", async () => {

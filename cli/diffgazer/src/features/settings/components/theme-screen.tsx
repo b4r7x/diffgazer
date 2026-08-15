@@ -1,8 +1,9 @@
 import { guardQueryState, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { deriveSaveState } from "@diffgazer/core/forms";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import {
+  SETTINGS_SCREEN_COPY,
   type SelectableTheme,
   type Theme,
   toSelectableTheme,
@@ -78,6 +79,7 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
   const [focusedTheme, setFocusedTheme] = useState<SelectableTheme>(savedTheme);
 
   const isSaving = saveSettings.isPending;
+  useBackHandler({ isActive: !isSaving });
   const { effective: effectiveTheme, canSave } = deriveSaveState<SelectableTheme>({
     persisted: savedTheme,
     choice: selectedTheme,
@@ -99,11 +101,11 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
   }
 
   function commitAndExit(next: SelectableTheme): void {
+    applyTheme(next);
     saveSettings.mutate(
       { theme: next },
       {
         onSuccess: () => {
-          applyTheme(next);
           goBack();
         },
       },
@@ -146,8 +148,8 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
           <Panel>
             <Panel.Content>
               <Box flexDirection="column" gap={isWide ? 1 : 0}>
-                <SectionHeader>Theme Settings</SectionHeader>
-                <Text color={activeTokens.muted}>Interface Theme</Text>
+                <SectionHeader>{SETTINGS_SCREEN_COPY.theme.title}</SectionHeader>
+                <Text color={activeTokens.muted}>{SETTINGS_SCREEN_COPY.theme.subtitle}</Text>
                 <ThemeSelector
                   value={selectedTheme}
                   onChange={(value) => {
@@ -201,8 +203,6 @@ function SettingsThemeEditor({ savedTheme }: SettingsThemeEditorProps): ReactEle
 }
 
 export function ThemeScreen(): ReactElement {
-  useBackHandler();
-
   const settingsQuery = useSettings();
   const queryGuardPanels = useQueryGuardPanels("Loading theme settings...");
 

@@ -1,28 +1,29 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
-import type { ProviderModelsResponse } from "@diffgazer/core/schemas/config";
+import { CATALOG_EMPTY_MODELS_REASON } from "@diffgazer/core/providers";
 import {
   ClientConfigurationActionResponseSchema,
   ConfigurationInitResponseSchema,
   ConfigurationListResponseSchema,
   ConfigurationModelsResponseSchema,
+  LEGACY_V1_HAS_API_KEY_PROPERTY,
+  type ProviderModelsResponse,
 } from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ConfigStore } from "../../shared/lib/config/store.js";
+import { assertTempHome } from "../../shared/lib/testing/temp-home.js";
 import { DEFAULT_BODY_LIMIT_KB } from "../../shared/middlewares/body-limit.js";
 
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
 
 let diffgazerHome: string;
 let projectRoot: string;
+const loadedStores = new Set<ConfigStore>();
 
 const createGeminiAction = (
   credential: { kind: "literal"; value: string } | { kind: "environment" },
@@ -51,20 +52,7 @@ const updateGeminiAction = (configurationId: string, expectedRevision: number) =
     },
   }) as const;
 
-const removedRecord = () => ({
-  schemaVersion: 2,
-  status: "removed",
-  configurationId: "cfg-removed",
-  revision: 1,
-  productId: REMOVED_PRODUCT_ID,
-  transportFamily: "hosted-api",
-  selectedModelId: null,
-  acknowledgement: null,
-  evidenceReference: null,
-  budget: null,
-  createdAt: "2026-01-01T00:00:00.000Z",
-  updatedAt: "2026-01-01T00:00:00.000Z",
-});
+const unknownRecord = () => ({ schemaVersion: 99, configurationId: "cfg-future" });
 
 async function loadRouter() {
   const { configRouter } = await import("./router.js");
@@ -75,12 +63,19 @@ async function loadRouter() {
   registerConfigSeams({ leaseHooks: createConfigurationLeaseHooks() });
   const app = new Hono();
   app.route("/config", configRouter);
+  await (await loadConfigStore()).ready();
   return app;
 }
 
-async function grantProjectTrust(): Promise<void> {
+async function loadConfigStore(): Promise<ConfigStore> {
   const { getStore } = await import("../../shared/lib/config/store.js");
   const store = getStore();
+  loadedStores.add(store);
+  return store;
+}
+
+async function grantProjectTrust(): Promise<void> {
+  const store = await loadConfigStore();
   const project = store.ensureProjectFile(projectRoot);
   const projectId = requireValue(project.projectId, "project id");
   await store.saveTrust({
@@ -90,6 +85,48 @@ async function grantProjectTrust(): Promise<void> {
     capabilities: { readFiles: true, runCommands: false },
     trustMode: "persistent",
   });
+}
+
+function writeBlockedV1Documents(recovery: "valid" | "corrupt"): void {
+  const configPath = join(diffgazerHome, "config.json");
+  const secretsPath = join(diffgazerHome, "secrets.json");
+  const priorConfig = Buffer.from(
+    `${JSON.stringify({
+      schemaVersion: 2,
+      settings: { theme: "dark" },
+      selectedConfigurationId: null,
+      configurations: [],
+    })}\n`,
+  );
+  writeFileSync(
+    configPath,
+    `${JSON.stringify({
+      settings: { secretsStorage: "file" },
+      providers: [
+        {
+          provider: "gemini",
+          [LEGACY_V1_HAS_API_KEY_PROPERTY]: false,
+          isActive: true,
+          model: "gemini-2.5-flash",
+        },
+      ],
+    })}\n`,
+    { mode: 0o600 },
+  );
+  writeFileSync(secretsPath, '{"providers":{"gemini":"route-secret-sentinel"}}\n', {
+    mode: 0o600,
+  });
+  writeFileSync(
+    `${secretsPath}.recovery`,
+    recovery === "valid"
+      ? `${JSON.stringify({
+          version: 2,
+          previousConfig: { existed: true, base64: priorConfig.toString("base64") },
+          previousSecrets: { existed: false, base64: null },
+        })}\n`
+      : "corrupt-route-recovery-sentinel",
+    { mode: 0o600 },
+  );
 }
 
 async function postConfigurationAction(
@@ -123,7 +160,9 @@ async function seedGeminiConfiguration(app: Hono): Promise<string> {
 }
 
 beforeEach(() => {
+  loadedStores.clear();
   diffgazerHome = mkdtempSync(join(tmpdir(), "dg-config-router-"));
+  assertTempHome(diffgazerHome);
   projectRoot = realpathSync.native(mkdtempSync(join(tmpdir(), "dg-config-router-project-")));
   mkdirSync(join(projectRoot, ".git"));
   process.env.DIFFGAZER_HOME = diffgazerHome;
@@ -132,11 +171,16 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
-afterEach(() => {
-  delete process.env.DIFFGAZER_HOME;
-  delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
-  rmSync(diffgazerHome, { recursive: true, force: true });
-  rmSync(projectRoot, { recursive: true, force: true });
+afterEach(async () => {
+  try {
+    for (const store of loadedStores) await store.ready();
+    rmSync(diffgazerHome, { recursive: true, force: true });
+    rmSync(projectRoot, { recursive: true, force: true });
+  } finally {
+    loadedStores.clear();
+    delete process.env.DIFFGAZER_HOME;
+    delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
+  }
 });
 
 describe("GET /config/init", () => {
@@ -154,6 +198,33 @@ describe("GET /config/init", () => {
     expect(body.configurations).toEqual([]);
   });
 
+  it("returns a fixed safe envelope when secrets JSON is malformed", async () => {
+    const sentinel = "Q7X";
+    writeFileSync(
+      join(diffgazerHome, "secrets.json"),
+      `{"schemaVersion":2,"bindings":[{"keyId":${sentinel}}]}\n`,
+    );
+    const app = await loadRouter();
+
+    const response = await app.request("/config/init", {
+      headers: { [PROJECT_ROOT_HEADER]: projectRoot },
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body).toEqual({
+      error: {
+        code: "CONFIGURATION_UNSUPPORTED",
+        message: "Configuration file is not supported by this version",
+      },
+    });
+    const serialized = JSON.stringify(body);
+    expect(serialized).not.toContain(sentinel);
+    expect(serialized).not.toContain(diffgazerHome);
+    expect(serialized).not.toContain("Unexpected token");
+    expect(serialized).not.toContain("is not valid JSON");
+  });
+
   it("includes created configuration summaries in bootstrap state", async () => {
     const app = await loadRouter();
     await seedGeminiConfiguration(app);
@@ -165,6 +236,42 @@ describe("GET /config/init", () => {
     const body = ConfigurationInitResponseSchema.parse(await response.json());
     expect(body.configurations).toHaveLength(1);
     expect(body.configurations[0]?.configuration.productId).toBe("gemini");
+  });
+
+  it.each([
+    "valid",
+    "corrupt",
+  ] as const)("returns the fixed migration envelope across init, list, and action with %s recovery", async (recovery) => {
+    const app = await loadRouter();
+    await expect(
+      (await loadConfigStore()).updateSettings({ theme: "dark" }),
+    ).resolves.toMatchObject({
+      ok: true,
+    });
+    await grantProjectTrust();
+    writeBlockedV1Documents(recovery);
+
+    const responses = await Promise.all([
+      app.request("/config/init", {
+        headers: { [PROJECT_ROOT_HEADER]: projectRoot },
+      }),
+      app.request("/config/providers"),
+      postConfigurationAction(
+        app,
+        { action: "inspect", configurationId: "cfg-existing" },
+        { trusted: true },
+      ),
+    ]);
+
+    for (const response of responses) {
+      expect(response.status).toBe(503);
+      await expect(response.json()).resolves.toEqual({
+        error: {
+          code: "SECRETS_MIGRATION_FAILED",
+          message: "Legacy configuration requires manual migration",
+        },
+      });
+    }
   });
 });
 
@@ -244,6 +351,8 @@ describe("GET /config/providers/:configurationId/models", () => {
     const configurationId = await seedGeminiConfiguration(app);
     // Real cache tier, no catalog spy: models.dev publishes limit 0 for audio
     // models (groq whisper), which used to fail ModelInfo parsing with a 500.
+    // Both declare structured output so the capability filter keeps them and
+    // the cache tier is exercised rather than skipped for an empty result.
     writeFileSync(
       join(diffgazerHome, "models-dev.json"),
       JSON.stringify({
@@ -255,11 +364,13 @@ describe("GET /config/providers/:configurationId/models", () => {
                 id: "gemini-2.5-flash",
                 name: "Gemini 2.5 Flash",
                 limit: { context: 1048576, output: 65536 },
+                structured_output: true,
               },
               "whisper-large-v3": {
                 id: "whisper-large-v3",
                 name: "Whisper Large V3",
                 limit: { context: 0, output: 0 },
+                structured_output: true,
               },
             },
           },
@@ -276,9 +387,6 @@ describe("GET /config/providers/:configurationId/models", () => {
     expect(body).toMatchObject({ status: "passed", source: "cache", cached: true });
     if (body.status !== "passed") throw new Error("expected a passed models response");
     expect(body.models.map(({ id }) => id)).toEqual(["gemini-2.5-flash", "whisper-large-v3"]);
-    const whisper = body.models.find(({ id }) => id === "whisper-large-v3");
-    expect(whisper).not.toHaveProperty("contextLength");
-    expect(whisper).not.toHaveProperty("maxOutputTokens");
   });
 
   it("returns a skipped response when the catalog has no models for the product", async () => {
@@ -294,7 +402,7 @@ describe("GET /config/providers/:configurationId/models", () => {
       status: "skipped",
       configurationId,
       models: [],
-      reason: "No catalog models are available for this configuration product.",
+      reason: CATALOG_EMPTY_MODELS_REASON,
     });
   });
 
@@ -309,7 +417,7 @@ describe("GET /config/providers/:configurationId/models", () => {
     });
   });
 
-  it("returns 400 for a removed configuration", async () => {
+  it("returns 400 for a record with an unsupported schema version", async () => {
     const app = await loadRouter();
     writeFileSync(
       join(diffgazerHome, "config.json"),
@@ -317,11 +425,11 @@ describe("GET /config/providers/:configurationId/models", () => {
         schemaVersion: 2,
         settings: {},
         selectedConfigurationId: null,
-        configurations: [removedRecord()],
+        configurations: [unknownRecord()],
       })}\n`,
     );
 
-    const response = await app.request("/config/providers/cfg-removed/models");
+    const response = await app.request("/config/providers/cfg-future/models");
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
@@ -536,39 +644,21 @@ describe("POST /config/actions protected delete and update", () => {
   });
 });
 
-describe("POST /config/actions removed rejection", () => {
-  it("rejects update actions against removed configurations", async () => {
+describe("POST /config/actions unknown rejection", () => {
+  it("rejects update actions against unknown configurations", async () => {
     const app = await loadRouter();
     await grantProjectTrust();
-    const secretPath = join(diffgazerHome, "credentials", "cfg-removed-1.key");
     writeFileSync(
       join(diffgazerHome, "config.json"),
       `${JSON.stringify({
         schemaVersion: 2,
         settings: {},
         selectedConfigurationId: null,
-        configurations: [removedRecord()],
+        configurations: [unknownRecord()],
       })}\n`,
     );
-    writeFileSync(
-      join(diffgazerHome, "secrets.json"),
-      `${JSON.stringify({
-        schemaVersion: 2,
-        bindings: [
-          {
-            configurationId: "cfg-removed",
-            revision: 1,
-            kind: "file-0600",
-            filePath: secretPath,
-            status: "removed",
-          },
-        ],
-      })}\n`,
-    );
-    mkdirSync(dirname(secretPath), { recursive: true });
-    writeFileSync(secretPath, "sk-zai-coding-secret", { mode: 0o600 });
 
-    const response = await postConfigurationAction(app, updateGeminiAction("cfg-removed", 1));
+    const response = await postConfigurationAction(app, updateGeminiAction("cfg-future", 1));
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({

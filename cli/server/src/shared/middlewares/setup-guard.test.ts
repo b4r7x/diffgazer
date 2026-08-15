@@ -70,42 +70,19 @@ describe("requireSetup", () => {
     expectBlocked(await request(app), "unconfigured");
   });
 
-  it("blocks with SETUP_REQUIRED when the selected configuration was removed (migrate-or-delete remediation)", async () => {
-    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("removed") });
+  it.each([
+    "conformance-pending",
+    "skipped",
+    "conformance-failed",
+    "local-conformance-failed",
+  ] as const)("passes %s through so admission can attempt or fast-fail the review", async (status) => {
+    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor(status) });
     const app = await createApp();
 
-    expectBlocked(await request(app), "removed");
-  });
+    const result = await request(app);
 
-  it("blocks with SETUP_REQUIRED while conformance evidence is pending (run-conformance remediation)", async () => {
-    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("conformance-pending") });
-    const app = await createApp();
-
-    expectBlocked(await request(app), "conformance-pending");
-  });
-
-  it("blocks with SETUP_REQUIRED when the live readiness check was skipped (enable-live-probe remediation)", async () => {
-    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("skipped") });
-    const app = await createApp();
-
-    expectBlocked(await request(app), "skipped");
-  });
-
-  it("blocks with SETUP_REQUIRED when the local server is unreachable (start-local-server remediation)", async () => {
-    getSetupVerdict.mockResolvedValue({
-      ok: true,
-      value: verdictFor("local-endpoint-unreachable"),
-    });
-    const app = await createApp();
-
-    expectBlocked(await request(app), "local-endpoint-unreachable");
-  });
-
-  it("blocks with SETUP_REQUIRED when the hosted service is unreachable (retry-connection remediation)", async () => {
-    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("unreachable") });
-    const app = await createApp();
-
-    expectBlocked(await request(app), "unreachable");
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual({ ok: true });
   });
 
   it("blocks with SETUP_REQUIRED when the configuration is unsupported (review-support remediation)", async () => {
@@ -113,6 +90,17 @@ describe("requireSetup", () => {
     const app = await createApp();
 
     expectBlocked(await request(app), "unsupported");
+  });
+
+  it.each([
+    "credential-invalid",
+    "model-missing",
+    "acknowledgement-required",
+  ] as const)("still blocks %s, which no review can resolve for itself", async (status) => {
+    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor(status) });
+    const app = await createApp();
+
+    expectBlocked(await request(app), status);
   });
 
   it("fails closed with a storage error when the verdict cannot be read", async () => {
@@ -134,8 +122,31 @@ describe("requireSetup", () => {
     });
   });
 
+  it("returns a fixed manual-migration response when V1 startup is blocked", async () => {
+    getSetupVerdict.mockResolvedValue({
+      ok: false,
+      error: {
+        code: "SECRETS_MIGRATION_FAILED",
+        message: "attacker-controlled migration detail /private/credential/path",
+      },
+    });
+    const app = await createApp();
+
+    const result = await request(app);
+
+    expect(result).toEqual({
+      status: 503,
+      body: {
+        error: {
+          code: "SECRETS_MIGRATION_FAILED",
+          message: "Legacy configuration requires manual migration",
+        },
+      },
+    });
+  });
+
   it("exposes no configuration identity or secret detail in blocked responses", async () => {
-    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("removed") });
+    getSetupVerdict.mockResolvedValue({ ok: true, value: verdictFor("unsupported") });
     const app = await createApp();
 
     const response = await app.request("/test");

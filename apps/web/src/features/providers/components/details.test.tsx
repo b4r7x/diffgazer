@@ -3,9 +3,10 @@ import { buildProviderSettingsRows } from "@diffgazer/core/schemas/config";
 import { buildProviderRows } from "@diffgazer/core/testing/provider-fixtures";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { createRef } from "react";
+import { describe, expect, it, vi } from "vitest";
 import { getProviderActions } from "../lib/actions";
-import { ProviderDetails } from "./details";
+import { ProviderDetails, type ProviderDetailsProps } from "./details";
 
 const ROWS = buildProviderRows();
 
@@ -19,7 +20,10 @@ function findRow(configurationId: string): ProviderListRow {
 
 const GEMINI_ROW = findRow("gemini-primary");
 
-function renderDetails(row: ProviderListRow | null, props: { isPending?: boolean } = {}) {
+function renderDetails(
+  row: ProviderListRow | null,
+  props: Pick<ProviderDetailsProps, "isPending" | "focusFallbackRef"> = {},
+) {
   const onAction = vi.fn();
   const view = render(
     <ProviderDetails row={row} actions={getProviderActions(row)} onAction={onAction} {...props} />,
@@ -31,10 +35,6 @@ function buttonNames(): string[] {
   return screen.getAllByRole("button").map((button) => button.getAttribute("aria-label") ?? "");
 }
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 describe("ProviderDetails", () => {
   it("renders one action row with no repeated accessible name", () => {
     renderDetails(GEMINI_ROW);
@@ -45,12 +45,14 @@ describe("ProviderDetails", () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
-  it("renders the action row without React key collisions", () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  it("announces why a listed action cannot run through its accessible name", () => {
+    const readyRow = findRow("zai-primary");
+    renderDetails({ ...readyRow, actions: ["inspect", "test", "update", "delete"] });
 
-    renderDetails(GEMINI_ROW);
-
-    expect(errorSpy).not.toHaveBeenCalled();
+    const select = screen.getByRole("button", {
+      name: "Select configuration. Selection is not available",
+    });
+    expect(select).toBeDisabled();
   });
 
   it("places the destructive action last", () => {
@@ -66,7 +68,7 @@ describe("ProviderDetails", () => {
 
     await user.click(screen.getByRole("button", { name: "Select configuration" }));
 
-    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ id: "dispatch" }));
+    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ id: "selectConfiguration" }));
   });
 
   it("shows the readiness guidance as a callout below the action row", () => {
@@ -130,5 +132,16 @@ describe("ProviderDetails", () => {
     for (const button of screen.getAllByRole("button")) {
       expect(button).toBeDisabled();
     }
+  });
+
+  it("parks programmatic focus on the details content through the fallback ref", () => {
+    const focusFallbackRef = createRef<HTMLDivElement>();
+    renderDetails(GEMINI_ROW, { isPending: true, focusFallbackRef });
+
+    // The keyboard row focuses this element while every action is disabled; it must
+    // accept programmatic focus without joining the tab order.
+    focusFallbackRef.current?.focus();
+    expect(focusFallbackRef.current).toHaveFocus();
+    expect(focusFallbackRef.current).toHaveAttribute("tabindex", "-1");
   });
 });

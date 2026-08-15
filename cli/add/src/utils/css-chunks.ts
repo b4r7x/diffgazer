@@ -7,6 +7,11 @@ import type { ResolvedConfig } from "../context.js";
 import { ctx } from "../context.js";
 import { resolveProjectPath, toRelativePosixSegments } from "./paths.js";
 
+/** Build the initial stylesheet written by `dgadd init` before item chunks are added. */
+export function buildStylesContent(registry: { styles: string }): string {
+  return `${registry.styles.trimEnd()}\n`;
+}
+
 // Sentinel markers wrap each chunk so re-runs detect installed chunks
 // structurally, not by substring (which breaks under whitespace/comment/reorder
 // edits from users or formatters). The hash is over the chunk content, not the
@@ -15,6 +20,7 @@ const MARKER_PREFIX = "/* dgadd:css ";
 const MARKER_SUFFIX = " */";
 const END_MARKER_PREFIX = "/* dgadd:css-end ";
 const CHUNK_HASH_RE = /\/\* dgadd:css ([a-f0-9]{16}) \*\//g;
+const END_CHUNK_HASH_RE = /\/\* dgadd:css-end ([a-f0-9]{16}) \*\//g;
 const HASH_LENGTH = 16;
 
 function chunkHash(content: string): string {
@@ -29,14 +35,83 @@ function endMarker(hash: string): string {
   return `${END_MARKER_PREFIX}${hash}${MARKER_SUFFIX}`;
 }
 
-function existingChunkHashes(existing: string): Set<string> {
-  const hashes = new Set<string>();
+export interface CssChunkHashBoundaries {
+  starts: number[];
+  ends: number[];
+}
+
+export function collectCssChunkHashBoundaries(
+  existing: string,
+): Map<string, CssChunkHashBoundaries> {
+  const boundaries = new Map<string, CssChunkHashBoundaries>();
+  const ensure = (hash: string): CssChunkHashBoundaries => {
+    const existingEntry = boundaries.get(hash);
+    if (existingEntry) return existingEntry;
+    const entry = { starts: [], ends: [] };
+    boundaries.set(hash, entry);
+    return entry;
+  };
+
   for (const match of existing.matchAll(CHUNK_HASH_RE)) {
     const hash = match[1];
-    if (hash && existing.includes(endMarker(hash))) {
-      hashes.add(hash);
+    if (hash && match.index !== undefined) ensure(hash).starts.push(match.index);
+  }
+  for (const match of existing.matchAll(END_CHUNK_HASH_RE)) {
+    const hash = match[1];
+    if (hash && match.index !== undefined) ensure(hash).ends.push(match.index);
+  }
+  return boundaries;
+}
+
+export function findCorruptedCssChunkHashes(
+  boundaries: Map<string, CssChunkHashBoundaries>,
+): Set<string> {
+  const corrupted = new Set<string>();
+  const malformedBoundaryPositions: number[] = [];
+  const completeChunks: Array<{ hash: string; start: number; end: number }> = [];
+  for (const [hash, boundary] of boundaries) {
+    const [start] = boundary.starts;
+    const [end] = boundary.ends;
+    if (
+      boundary.starts.length !== 1 ||
+      boundary.ends.length !== 1 ||
+      start === undefined ||
+      end === undefined ||
+      start > end
+    ) {
+      corrupted.add(hash);
+      malformedBoundaryPositions.push(...boundary.starts, ...boundary.ends);
+      continue;
+    }
+    completeChunks.push({ hash, start, end });
+  }
+
+  for (const chunk of completeChunks) {
+    if (
+      malformedBoundaryPositions.some(
+        (position) => position >= chunk.start && position <= chunk.end,
+      )
+    ) {
+      corrupted.add(chunk.hash);
     }
   }
+
+  completeChunks.sort((left, right) => left.start - right.start);
+  for (const [leftIndex, left] of completeChunks.entries()) {
+    for (const right of completeChunks.slice(leftIndex + 1)) {
+      if (right.start > left.end) break;
+      corrupted.add(left.hash);
+      corrupted.add(right.hash);
+    }
+  }
+  return corrupted;
+}
+
+function existingChunkHashes(existing: string): Set<string> {
+  const boundaries = collectCssChunkHashBoundaries(existing);
+  const corrupted = findCorruptedCssChunkHashes(boundaries);
+  const hashes = new Set<string>();
+  for (const hash of boundaries.keys()) if (!corrupted.has(hash)) hashes.add(hash);
   return hashes;
 }
 
@@ -81,7 +156,7 @@ function appendCssChunks(existing: string, wrappedChunks: string[]): string {
   return `${existing}${prefix}${wrappedChunks.join("\n\n")}\n`;
 }
 
-export interface ComponentCssPlan {
+interface ComponentCssPlan {
   fileOp: FileOp | null;
   chunksByItem: Map<string, string[]>;
 }
@@ -176,6 +251,12 @@ export function planComponentCss(
   const cssPath = config.tailwind.css;
   const targetPath = resolveProjectPath(cwd, cssPath);
   const existing = existsSync(targetPath) ? readFileSync(targetPath, "utf-8") : "";
+  const corruptedHashes = findCorruptedCssChunkHashes(collectCssChunkHashBoundaries(existing));
+  if (corruptedHashes.size > 0) {
+    throw new Error(
+      `Cannot reconcile ${cssPath}: malformed managed CSS markers for chunk(s) ${[...corruptedHashes].join(", ")}. Restore exactly one matching start and end marker for each chunk before adding items.`,
+    );
+  }
   const obsoleteRemoval = removeCssChunkContent(existing, obsoleteHashes, false);
   for (const hash of obsoleteRemoval.modifiedHashes) {
     const owners = obsoleteOwnersByHash.get(hash) ?? [];
@@ -307,7 +388,7 @@ function removeCssChunkContent(
   };
 }
 
-export interface CssRemovalResult {
+interface CssRemovalResult {
   fileOp: FileOp | null;
   removedHashes: string[];
   // Requested chunks whose body drifted; preserved (never in `fileOp`) unless
@@ -346,6 +427,16 @@ export function removeCssChunks(
     removedHashes: removal.removedHashes,
     modifiedHashes: removal.modifiedHashes,
   };
+}
+
+export function readCssChunkHashBoundaries(
+  cwd: string,
+  config: ResolvedConfig,
+): Map<string, CssChunkHashBoundaries> {
+  if (!config.tailwind?.css) return new Map();
+  const targetPath = resolveProjectPath(cwd, config.tailwind.css);
+  if (!existsSync(targetPath)) return new Map();
+  return collectCssChunkHashBoundaries(readFileSync(targetPath, "utf-8"));
 }
 
 export function readInstalledCssChunkHashes(cwd: string, config: ResolvedConfig): Set<string> {

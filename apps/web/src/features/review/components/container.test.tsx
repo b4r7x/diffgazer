@@ -5,18 +5,19 @@ import {
   type UseReviewLifecycleBaseResult,
 } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
-import { createInitialReviewState } from "@diffgazer/core/review";
+import { CONFIGURE_PROVIDER_LABEL, createInitialReviewState } from "@diffgazer/core/review";
 import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import {
   configurationStatus,
+  GEMINI_CONFIGURATION,
   LOCAL_OPENAI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeReadyInitResponse,
-  selectedIdentityFrom,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ComponentProps, ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
@@ -29,10 +30,15 @@ const { mockNavigate, mockUseReviewLifecycleBase, routeParams } = vi.hoisted(() 
 }));
 
 // Boundary mock: the router is the external route context the review lifecycle
-// reads its reviewId from and navigates through.
+// reads its reviewId from and navigates through. Navigate records like the
+// imperative form so redirect renders stay assertable.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
   useParams: () => routeParams,
+  Navigate: (options: Record<string, unknown>) => {
+    mockNavigate(options);
+    return null;
+  },
 }));
 
 // Boundary mock: api/hooks owns the HTTP/SSE stream. Everything above it — the
@@ -57,29 +63,28 @@ function makeLifecycleBaseReturn(
       abort: vi.fn(),
       cancel: vi.fn().mockResolvedValue(null),
       resume: vi.fn().mockResolvedValue(undefined),
+      isStreamControllerActive: vi.fn().mockReturnValue(false),
     },
     checks: {
       isNoDiffError: false,
       isTerminalStreamError: false,
-      isCheckingForChanges: false,
       loadingMessage: null,
     },
     completion: {
       isCompleting: false,
       completedAt: null,
       skipDelay: vi.fn(),
-      resetCompletion: vi.fn(),
     },
     start: {
       hasStarted: true,
-      hasStreamed: false,
       canStart: false,
-      identity: null,
-      readinessGate: "unreachable",
     },
+    resumeReview: vi.fn().mockResolvedValue(undefined),
     reset: vi.fn(),
     gate: "unconfigured",
     contextSnapshot: null,
+    contextRefreshError: null,
+    retryContextRefresh: vi.fn(),
     ...overrides,
   };
 }
@@ -106,7 +111,7 @@ function createTestApi(): BoundApi {
 
 function unreachableLocalInit() {
   return makeConfigurationInitResponse([
-    configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
+    configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
   ]);
 }
 
@@ -144,6 +149,42 @@ describe("ReviewContainer configuration gates", () => {
     mockUseReviewLifecycleBase.mockReturnValue(makeLifecycleBaseReturn());
   });
 
+  it("renders stream failures inside the progress view instead of a terminal dead end", async () => {
+    mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeLifecycleBaseReturn({
+        gate: "terminal-error",
+        stream: {
+          state: {
+            ...createInitialReviewState(),
+            reviewId: "review-1",
+            hasCompleted: false,
+            notices: [],
+            error: "Bearer sk-live-secret-12345678",
+            isStreaming: false,
+          },
+          abort: vi.fn(),
+          cancel: vi.fn().mockResolvedValue(null),
+          resume: vi.fn().mockResolvedValue(undefined),
+          isStreamControllerActive: vi.fn().mockReturnValue(false),
+        },
+        checks: {
+          isNoDiffError: false,
+          isTerminalStreamError: true,
+          loadingMessage: null,
+        },
+      }),
+    );
+
+    const { container } = renderReviewContainer();
+
+    await waitFor(() => {
+      expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("heading", { name: "Review failed" })).not.toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/sk-live-secret/i);
+  });
+
   it("shows the retryable error gate when configuration init fails", async () => {
     renderReviewContainer();
 
@@ -153,19 +194,121 @@ describe("ReviewContainer configuration gates", () => {
     expect(screen.queryByText(/Configuration Not Ready/i)).not.toBeInTheDocument();
   });
 
-  it("shows the readiness gate with the generic action label", async () => {
+  it("routes the error gate's Configure Provider action to provider settings", async () => {
+    const user = userEvent.setup();
+    renderReviewContainer();
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("Configuration Unavailable");
+    });
+
+    await user.click(screen.getByRole("button", { name: "Configure Provider" }));
+
+    await waitFor(() => {
+      // The configuration never loaded, so there is no product to deep-link.
+      expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings/providers", search: {} });
+    });
+  });
+
+  it("names the session-token mismatch and drops Configure Provider when init fails with 401", async () => {
+    mockLoadConfigurationInit.mockRejectedValue(
+      Object.assign(new Error("Unauthorized"), { status: 401, code: "UNAUTHORIZED" }),
+    );
+
+    renderReviewContainer();
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("Session Not Authorized");
+    });
+    // Provider setup cannot fix a token mismatch, so the gate offers Retry alone.
+    expect(screen.queryByRole("button", { name: "Configure Provider" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back to Home" })).toBeInTheDocument();
+  });
+
+  it("shows the retryable error gate when the selection no longer resolves to a configuration", async () => {
+    mockLoadConfigurationInit.mockResolvedValue(
+      makeConfigurationInitResponse([configurationStatus(GEMINI_CONFIGURATION, "ready")], null),
+    );
+
+    renderReviewContainer();
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent("Configuration Unavailable");
+    });
+    expect(screen.queryByRole("region", { name: "Progress" })).not.toBeInTheDocument();
+  });
+
+  it("names the readiness gate action for where it goes, beside the product's real name", async () => {
     mockLoadConfigurationInit.mockResolvedValue(unreachableLocalInit());
 
     renderReviewContainer();
 
     await waitFor(() => {
-      expect(screen.getByText(/Configuration Not Ready \(local-openai\)/)).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Test readiness" })).toBeInTheDocument();
+      expect(
+        screen.getByText(/Configuration Not Ready \(Local OpenAI-compatible\)/),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: CONFIGURE_PROVIDER_LABEL })).toBeInTheDocument();
     });
     expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
   });
 
-  it("hands the selected configuration and its readiness to the review lifecycle", async () => {
+  it("redirects a fresh install to onboarding instead of any error gate", async () => {
+    mockLoadConfigurationInit.mockResolvedValue(makeConfigurationInitResponse([], null));
+
+    renderReviewContainer();
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "/onboarding", replace: true }),
+      );
+    });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Configuration Unavailable/)).not.toBeInTheDocument();
+  });
+
+  it("renders the calm reconnect state for a rejected credential, metadata preserved", async () => {
+    mockLoadConfigurationInit.mockResolvedValue(
+      makeConfigurationInitResponse([
+        configurationStatus(GEMINI_CONFIGURATION, "credential-invalid"),
+      ]),
+    );
+
+    renderReviewContainer();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Reconnect Provider" })).toBeInTheDocument();
+    });
+    // Warning tone, never the alarm gate: no alert role and no error copy.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Configuration Unavailable/)).not.toBeInTheDocument();
+    // The configuration's identity survives the broken credential.
+    expect(screen.getByText("Google Gemini / Gemini 2.5 Flash")).toBeInTheDocument();
+    expect(screen.getByText(/missing or was rejected/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Enter API Key" })).toBeInTheDocument();
+  });
+
+  it("deep-links Enter API Key to the affected product on the providers screen", async () => {
+    const user = userEvent.setup();
+    mockLoadConfigurationInit.mockResolvedValue(
+      makeConfigurationInitResponse([
+        configurationStatus(GEMINI_CONFIGURATION, "credential-invalid"),
+      ]),
+    );
+
+    renderReviewContainer();
+
+    await user.click(await screen.findByRole("button", { name: "Enter API Key" }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/settings/providers",
+        search: { product: "gemini" },
+      });
+    });
+  });
+
+  it("hands selected readiness to the review lifecycle", async () => {
     mockLoadConfigurationInit.mockResolvedValue(unreachableLocalInit());
     routeParams.reviewId = "review-1";
     let capturedOptions: UseReviewLifecycleBaseOptions | undefined;
@@ -179,11 +322,7 @@ describe("ReviewContainer configuration gates", () => {
     await waitFor(() => {
       expect(capturedOptions?.configLoading).toBe(false);
     });
-    expect(capturedOptions?.readiness?.status).toBe("local-endpoint-unreachable");
-    expect(capturedOptions?.configuration).toEqual(
-      selectedIdentityFrom(LOCAL_OPENAI_CONFIGURATION),
-    );
-    expect(capturedOptions?.isConfigured).toBe(true);
+    expect(capturedOptions?.readiness?.status).toBe("local-conformance-failed");
     expect(capturedOptions?.allowResumeWithoutSetup).toBe(true);
     expect(capturedOptions?.reviewId).toBe("review-1");
   });
@@ -228,5 +367,63 @@ describe("ReviewContainer configuration gates", () => {
     expect(container.textContent).not.toMatch(/sk-[A-Za-z0-9_-]{8,}/i);
     expect(container.textContent).not.toMatch(new RegExp(LEGACY_V1_HAS_API_KEY_PROPERTY, "i"));
     expect(container.innerHTML).not.toContain("provider-status");
+  });
+});
+
+describe("ReviewContainer review start", () => {
+  beforeEach(() => {
+    routeParams.reviewId = "review-1";
+    mockNavigate.mockReset();
+    mockLoadConfigurationInit = vi
+      .fn<BoundApi["loadConfigurationInit"]>()
+      .mockResolvedValue(makeReadyInitResponse());
+    mockUseReviewLifecycleBase.mockReset();
+  });
+
+  it("draws the review surface while the admitted run is starting", async () => {
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeLifecycleBaseReturn({
+        gate: "loading",
+        checks: {
+          isNoDiffError: false,
+          isTerminalStreamError: false,
+          loadingMessage: "Checking for changes...",
+        },
+        start: { hasStarted: false, canStart: true },
+      }),
+    );
+
+    renderReviewContainer();
+
+    await waitFor(() => {
+      expect(screen.getByRole("region", { name: "Progress" })).toBeInTheDocument();
+    });
+    expect(screen.getByRole("region", { name: "Live Activity Log" })).toBeInTheDocument();
+    // Every step the run is about to walk is already on screen, so nothing is
+    // rebuilt when the first event lands.
+    expect(screen.getByText("Collect diff")).toBeInTheDocument();
+    expect(screen.getByText("Generate report")).toBeInTheDocument();
+    expect(screen.queryByText("Checking for changes...")).not.toBeInTheDocument();
+  });
+
+  it("keeps the plain readout while configuration is still unresolved", async () => {
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeLifecycleBaseReturn({
+        gate: "loading",
+        checks: {
+          isNoDiffError: false,
+          isTerminalStreamError: false,
+          loadingMessage: "Loading configuration...",
+        },
+        start: { hasStarted: false, canStart: false },
+      }),
+    );
+
+    renderReviewContainer();
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent("Loading configuration...");
+    });
+    expect(screen.queryByRole("region", { name: "Progress" })).not.toBeInTheDocument();
   });
 });

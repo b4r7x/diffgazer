@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { PRODUCT_ENDPOINT_TUPLES, PRODUCT_REGISTRY } from "../../providers/product-registry.js";
-import { REMOVED_PRODUCT_ID } from "./providers.js";
+import { PRODUCT_ENDPOINT_TUPLES } from "../../providers/product-endpoints.js";
+import { PRODUCT_REGISTRY } from "../../providers/product-registry.js";
+import { ClientConfigurationInputSchema } from "./provider-config.js";
 import {
   CANDIDATE_PRODUCT_IDS,
-  CandidateProductIdSchema,
   DEFERRED_PRODUCT_IDS,
   EXPERIMENTAL_PRODUCT_IDS,
   getHostedApiEndpointTuple,
@@ -15,19 +15,15 @@ import {
   matchesHostedApiTransportTuple,
   matchesLocalHttpTransportTuple,
   REJECTED_PRODUCT_IDS,
-  REMOVED_PRODUCT_IDS,
-  RemovedProductIdSchema,
   RUNNABLE_PRODUCT_IDS,
   RunnableProductIdSchema,
   TRANSPORT_FAMILIES,
   TransportFamilySchema,
-  TransportInputSchema,
 } from "./transports.js";
 
 describe("transport family contract", () => {
   it("contains exactly the three supported families", () => {
     expect(TRANSPORT_FAMILIES).toEqual(["hosted-api", "local-http", "local-cli"]);
-    expect(TRANSPORT_FAMILIES).toHaveLength(3);
 
     for (const family of TRANSPORT_FAMILIES) {
       expect(TransportFamilySchema.parse(family)).toBe(family);
@@ -51,7 +47,6 @@ describe("transport family contract", () => {
       "codex-cli",
       "copilot-cli",
     ]);
-    expect(new Set(RUNNABLE_PRODUCT_IDS)).toHaveLength(13);
   });
 
   it("keeps every experimental, deferred, and rejected candidate non-runnable", () => {
@@ -62,23 +57,8 @@ describe("transport family contract", () => {
     ]);
 
     for (const productId of CANDIDATE_PRODUCT_IDS) {
-      expect(CandidateProductIdSchema.parse(productId)).toBe(productId);
       expect(RunnableProductIdSchema.safeParse(productId).success).toBe(false);
     }
-  });
-
-  it("decodes REMOVED_PRODUCT_ID only as removed and never as runnable input", () => {
-    expect(REMOVED_PRODUCT_IDS).toEqual([REMOVED_PRODUCT_ID]);
-    expect(RemovedProductIdSchema.parse(REMOVED_PRODUCT_ID)).toBe(REMOVED_PRODUCT_ID);
-    expect(RunnableProductIdSchema.safeParse(REMOVED_PRODUCT_ID).success).toBe(false);
-    expect(CandidateProductIdSchema.safeParse(REMOVED_PRODUCT_ID).success).toBe(false);
-    expect(
-      TransportInputSchema.safeParse({
-        transportFamily: "hosted-api",
-        productId: REMOVED_PRODUCT_ID,
-        endpoint: "https://api.z.ai/api/paas/v4",
-      }).success,
-    ).toBe(false);
   });
 });
 
@@ -175,7 +155,7 @@ describe("endpoint tuple authority", () => {
     for (const productId of HOSTED_API_PRODUCT_IDS) {
       for (const endpoint of PRODUCT_ENDPOINT_TUPLES[productId]) {
         expect(
-          TransportInputSchema.safeParse({
+          ClientConfigurationInputSchema.safeParse({
             transportFamily: "hosted-api",
             productId,
             endpoint: endpoint.endpoint,
@@ -209,9 +189,9 @@ describe("transport-specific configuration", () => {
   };
 
   it("accepts one closed input shape for each transport family", () => {
-    expect(TransportInputSchema.parse(hostedInput)).toEqual(hostedInput);
-    expect(TransportInputSchema.parse(localHttpInput)).toEqual(localHttpInput);
-    expect(TransportInputSchema.parse(localCliInput)).toEqual(localCliInput);
+    expect(ClientConfigurationInputSchema.parse(hostedInput)).toEqual(hostedInput);
+    expect(ClientConfigurationInputSchema.parse(localHttpInput)).toEqual(localHttpInput);
+    expect(ClientConfigurationInputSchema.parse(localCliInput)).toEqual(localCliInput);
   });
 
   it.each([
@@ -221,7 +201,7 @@ describe("transport-specific configuration", () => {
     { ...localHttpInput, productId: "gemini" },
     { ...localCliInput, productId: "ollama" },
   ])("rejects fields or products from another transport family", (input) => {
-    expect(TransportInputSchema.safeParse(input).success).toBe(false);
+    expect(ClientConfigurationInputSchema.safeParse(input).success).toBe(false);
   });
 
   it.each([
@@ -235,7 +215,7 @@ describe("transport-specific configuration", () => {
       productId: "codex-cli",
     },
   ])("rejects a transport missing a family-required field", (input) => {
-    expect(TransportInputSchema.safeParse(input).success).toBe(false);
+    expect(ClientConfigurationInputSchema.safeParse(input).success).toBe(false);
   });
 
   it.each([
@@ -276,7 +256,7 @@ describe("transport-specific configuration", () => {
       account: "account-reference",
     },
   ])("rejects a hosted endpoint tuple outside its product contract", (input) => {
-    expect(TransportInputSchema.safeParse(input).success).toBe(false);
+    expect(ClientConfigurationInputSchema.safeParse(input).success).toBe(false);
   });
 
   it.each([
@@ -305,7 +285,7 @@ describe("transport-specific configuration", () => {
       region: "eu",
     },
   ])("accepts an exact regional endpoint tuple", (input) => {
-    expect(TransportInputSchema.parse(input)).toEqual(input);
+    expect(ClientConfigurationInputSchema.parse(input)).toEqual(input);
   });
 
   it("binds local-openai presets to their exact identities and URLs", () => {
@@ -318,7 +298,7 @@ describe("transport-specific configuration", () => {
     for (const presetId of LOCAL_OPENAI_PRESET_IDS) {
       const endpoint = LOCAL_OPENAI_PRESET_ENDPOINTS[presetId];
       expect(
-        TransportInputSchema.parse({
+        ClientConfigurationInputSchema.parse({
           transportFamily: "local-http",
           productId: "local-openai",
           endpoint,
@@ -337,7 +317,7 @@ describe("transport-specific configuration", () => {
 
   it("rejects a mismatched local-openai preset and an Ollama preset", () => {
     expect(
-      TransportInputSchema.safeParse({
+      ClientConfigurationInputSchema.safeParse({
         transportFamily: "local-http",
         productId: "local-openai",
         endpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["llama-cpp"],
@@ -346,7 +326,7 @@ describe("transport-specific configuration", () => {
       }).success,
     ).toBe(false);
     expect(
-      TransportInputSchema.safeParse({
+      ClientConfigurationInputSchema.safeParse({
         ...localHttpInput,
         presetId: "lm-studio",
       }).success,
@@ -371,13 +351,13 @@ describe("transport-specific configuration", () => {
 
     for (const controlCharacter of controlCharacters) {
       expect(
-        TransportInputSchema.safeParse({
+        ClientConfigurationInputSchema.safeParse({
           ...hostedInput,
           workspace: `workspace${controlCharacter}reference`,
         }).success,
       ).toBe(false);
       expect(
-        TransportInputSchema.safeParse({
+        ClientConfigurationInputSchema.safeParse({
           ...hostedInput,
           region: `international${controlCharacter}`,
         }).success,
@@ -390,7 +370,7 @@ describe("transport-specific configuration", () => {
       ...hostedInput,
       workspace: "référence-équipe_01",
     } as const;
-    expect(TransportInputSchema.parse(input)).toEqual(input);
+    expect(ClientConfigurationInputSchema.parse(input)).toEqual(input);
     expect(HostedApiEndpointSchema.parse(input.endpoint)).toBe(input.endpoint);
   });
 });

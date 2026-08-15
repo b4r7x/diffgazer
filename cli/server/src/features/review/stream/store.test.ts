@@ -1,15 +1,15 @@
 import type { FullReviewStreamEvent, StepId } from "@diffgazer/core/schemas/events";
 import { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { revokeProjectSessions } from "../../../shared/lib/session-registry.js";
 import {
   addEvent,
   buildScopeKey,
   cancelSession,
-  cancelSessionsForConfiguration,
   cancelStaleSessionsForProjectMode,
   cleanupStaleSessions,
   createSession,
-  deleteSession,
+  deleteSessionForTests,
   getActiveSessionForProject,
   getSession,
   hasReadySessionForProjectMode,
@@ -76,7 +76,6 @@ function completeEvent(reviewId: string): FullReviewStreamEvent {
     type: "complete",
     result: { issues: [] },
     reviewId,
-    durationMs: 100,
   };
 }
 
@@ -90,7 +89,7 @@ beforeEach(() => {
 
 afterEach(() => {
   for (const id of createdSessionIds) {
-    deleteSession(id);
+    deleteSessionForTests(id);
   }
   createdSessionIds.clear();
   vi.useRealTimers();
@@ -344,6 +343,33 @@ describe("session bounds and subscriber failures", () => {
     expect(pendingEvents).toMatchObject([
       { type: "error", error: { code: ReviewErrorCode.SESSION_EVICTED } },
     ]);
+  });
+
+  it("discards a completed replay-cache session before aborting an older running review", () => {
+    const runningEvents: FullReviewStreamEvent[] = [];
+    const running = createTrackedSession("evict-running");
+    subscribe(running.reviewId, (event) => runningEvents.push(event));
+
+    vi.advanceTimersByTime(1);
+    const completed = createTrackedSession("evict-completed");
+    markReady(completed.reviewId);
+    markComplete(completed.reviewId);
+
+    for (let index = 0; index < 48; index += 1) {
+      vi.advanceTimersByTime(1);
+      createTrackedSession(`evict-cost-fill-${index}`);
+    }
+
+    vi.advanceTimersByTime(1);
+    createTrackedSession("evict-cost-trigger");
+
+    expect(getSession(completed.reviewId)).toBeUndefined();
+    expect(getSession(running.reviewId)).toBe(running);
+    expect(
+      runningEvents.filter(
+        (event) => event.type === "error" && event.error.code === ReviewErrorCode.SESSION_EVICTED,
+      ),
+    ).toEqual([]);
   });
 
   it("does not terminate an actively-emitting session older than the timeout window", () => {
@@ -865,58 +891,6 @@ describe("configuration fingerprint concurrency", () => {
     ).toBe(second.reviewId);
   });
 
-  it("cancels only queued and active sessions for the exact configuration tuple", () => {
-    const exact = createTrackedSession("exact-config", {
-      mode: "unstaged",
-      configurationId: "cfg-1",
-      configurationRevision: 3,
-      admittedExecutionFingerprint: "admitted-exact",
-    });
-    const otherRevision = createTrackedSession("other-revision", {
-      mode: "unstaged",
-      configurationId: "cfg-1",
-      configurationRevision: 4,
-      admittedExecutionFingerprint: "admitted-exact",
-    });
-    const otherConfig = createTrackedSession("other-config", {
-      mode: "unstaged",
-      configurationId: "cfg-2",
-      configurationRevision: 3,
-      admittedExecutionFingerprint: "admitted-exact",
-    });
-    for (const session of [exact, otherRevision, otherConfig]) {
-      markReady(session.reviewId);
-    }
-
-    cancelSessionsForConfiguration("cfg-1", {
-      configurationRevision: 3,
-      admittedExecutionFingerprint: "admitted-exact",
-      message: "Configuration deleted.",
-    });
-
-    expect(exact.isComplete).toBe(true);
-    expect(otherRevision.isComplete).toBe(false);
-    expect(otherConfig.isComplete).toBe(false);
-  });
-
-  it("does not cancel unrelated provider sessions when an exact configuration cancellation is requested", () => {
-    const unrelated = createTrackedSession("legacy-provider", {
-      mode: "unstaged",
-      provider: "openrouter",
-      configurationId: null,
-      configurationRevision: null,
-      admittedExecutionFingerprint: null,
-    });
-    markReady(unrelated.reviewId);
-
-    cancelSessionsForConfiguration("cfg-1", {
-      configurationRevision: 1,
-      admittedExecutionFingerprint: "admitted-a",
-    });
-
-    expect(unrelated.isComplete).toBe(false);
-  });
-
   it("emits distinct terminal outcomes for superseded and deleted configuration cancellations", () => {
     const supersededEvents: FullReviewStreamEvent[] = [];
     const deletedEvents: FullReviewStreamEvent[] = [];
@@ -945,7 +919,8 @@ describe("configuration fingerprint concurrency", () => {
       "l:security",
       undefined,
     );
-    cancelSessionsForConfiguration("cfg-delete", {
+    revokeProjectSessions("/deleted-project", {
+      configurationId: "cfg-delete",
       configurationRevision: 1,
       admittedExecutionFingerprint: "admitted-delete",
       message: "Configuration deleted.",

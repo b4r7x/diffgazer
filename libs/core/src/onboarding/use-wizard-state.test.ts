@@ -6,10 +6,10 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { PRODUCT_REGISTRY } from "../providers/product-registry.js";
 import { type ClientConfigurationAction, READINESS_PRESENTATION } from "../schemas/config/index.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
+import { createDeferred } from "../testing/deferred.js";
 import { getInitialWizardData, type OnboardingDraft } from "./defaults.js";
-import { OnboardingStateSchema } from "./types.js";
-import { useWizardState, type WizardSaveCallbacks } from "./use-wizard-state.js";
+import type { SaveWizardCallbacks } from "./save-wizard.js";
+import { useWizardState } from "./use-wizard-state.js";
 
 const ACCEPTED_AT = "2026-07-31T12:00:00.000Z";
 
@@ -45,32 +45,60 @@ function configurationSummary(
   selectedModelId: string | null = null,
   revision = 3,
 ) {
-  if (data.configurationInput.transportFamily !== "hosted-api") {
-    throw new Error("Test fixture requires hosted configuration");
+  const input = data.configurationInput;
+  if (input.transportFamily === "hosted-api") {
+    return {
+      configurationId: "created-configuration",
+      revision,
+      status: "supported" as const,
+      transportFamily: "hosted-api" as const,
+      productId: input.productId,
+      endpoint: input.endpoint,
+      region: input.region,
+      workspace: input.workspace,
+      selectedModelId,
+      notices: [
+        {
+          id: PRODUCT_REGISTRY[data.plan.productId].notice.id,
+          noticeVersion: PRODUCT_REGISTRY[data.plan.productId].notice.noticeVersion,
+          acknowledgement: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgement,
+          acknowledgeBefore: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgeBefore,
+          renewAcknowledgementOn:
+            PRODUCT_REGISTRY[data.plan.productId].notice.renewAcknowledgementOn,
+          billing: [...PRODUCT_REGISTRY[data.plan.productId].notice.billing],
+          privacy: [...PRODUCT_REGISTRY[data.plan.productId].notice.privacy],
+        },
+      ],
+      availableActions: ["inspect", "select", "test", "update", "delete"] as const,
+    };
   }
-  return {
-    configurationId: "created-configuration",
-    revision,
-    status: "supported" as const,
-    transportFamily: "hosted-api" as const,
-    productId: data.configurationInput.productId,
-    endpoint: data.configurationInput.endpoint,
-    region: data.configurationInput.region,
-    workspace: data.configurationInput.workspace,
-    selectedModelId,
-    notices: [
-      {
-        id: PRODUCT_REGISTRY[data.plan.productId].notice.id,
-        noticeVersion: PRODUCT_REGISTRY[data.plan.productId].notice.noticeVersion,
-        acknowledgement: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgement,
-        acknowledgeBefore: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgeBefore,
-        renewAcknowledgementOn: PRODUCT_REGISTRY[data.plan.productId].notice.renewAcknowledgementOn,
-        billing: [...PRODUCT_REGISTRY[data.plan.productId].notice.billing],
-        privacy: [...PRODUCT_REGISTRY[data.plan.productId].notice.privacy],
-      },
-    ],
-    availableActions: ["inspect", "select", "test", "update", "delete"] as const,
-  };
+  if (input.transportFamily === "local-http") {
+    return {
+      configurationId: "created-configuration",
+      revision,
+      status: "supported" as const,
+      transportFamily: "local-http" as const,
+      productId: input.productId,
+      endpoint: input.endpoint,
+      authentication: input.authentication,
+      presetId: input.presetId,
+      selectedModelId,
+      notices: [
+        {
+          id: PRODUCT_REGISTRY[data.plan.productId].notice.id,
+          noticeVersion: PRODUCT_REGISTRY[data.plan.productId].notice.noticeVersion,
+          acknowledgement: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgement,
+          acknowledgeBefore: PRODUCT_REGISTRY[data.plan.productId].notice.acknowledgeBefore,
+          renewAcknowledgementOn:
+            PRODUCT_REGISTRY[data.plan.productId].notice.renewAcknowledgementOn,
+          billing: [...PRODUCT_REGISTRY[data.plan.productId].notice.billing],
+          privacy: [...PRODUCT_REGISTRY[data.plan.productId].notice.privacy],
+        },
+      ],
+      availableActions: ["inspect", "select", "test", "update", "delete"] as const,
+    };
+  }
+  throw new Error("Test fixture requires hosted or local HTTP configuration");
 }
 
 function readyReadiness(data: OnboardingDraft) {
@@ -105,7 +133,8 @@ function discoveryReadiness(data: OnboardingDraft) {
 
 function makeCallbacks(
   handler?: (action: ClientConfigurationAction) => Promise<unknown>,
-): WizardSaveCallbacks {
+  data: OnboardingDraft = readyDraft(),
+): SaveWizardCallbacks {
   let revision = 3;
   let modelSelected = false;
   return {
@@ -113,7 +142,6 @@ function makeCallbacks(
     runConfigurationAction: vi.fn(
       handler ??
         (async (action) => {
-          const data = readyDraft();
           if (action.action === "create") {
             return {
               action: "create",
@@ -199,11 +227,54 @@ describe("useWizardState", () => {
       "acknowledgement",
     ]);
     expect(result.current.wizardData).toEqual(getInitialWizardData("local-openai"));
-    if (result.current.wizardData.kind !== "runnable") throw new Error("Expected runnable state");
     expect(JSON.stringify(result.current.wizardData.configurationInput)).not.toMatch(
       /workspace|credential|region|qwen3-coder-flash/,
     );
     expect(result.current.stepIndex).toBe(0);
+  });
+
+  it("rejects a configuration input that targets a different product than the stored plan", () => {
+    const { result } = renderHook(() =>
+      useWizardState({ initial: getInitialWizardData("local-openai") }),
+    );
+
+    act(() => {
+      result.current.updateData({
+        configurationInput: {
+          transportFamily: "hosted-api",
+          productId: "qwen",
+          endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+          region: "international",
+        },
+      });
+    });
+
+    expect(result.current.wizardData).toEqual(getInitialWizardData("local-openai"));
+    expect(result.current.error).toMatch(/cannot change the product/);
+  });
+
+  it("applies a configuration input for the product selected in the same batch", () => {
+    const { result } = renderHook(() =>
+      useWizardState({ initial: getInitialWizardData("gemini") }),
+    );
+
+    act(() => {
+      result.current.setProduct("local-openai");
+      result.current.updateData({
+        configurationInput: {
+          transportFamily: "local-http",
+          productId: "local-openai",
+          endpoint: "http://127.0.0.1:8080/v1",
+          authentication: "none",
+        },
+      });
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.wizardData.configurationInput).toMatchObject({
+      productId: "local-openai",
+      endpoint: "http://127.0.0.1:8080/v1",
+    });
   });
 
   it("evaluates rapid navigation against the latest step without skipping or underflowing", () => {
@@ -252,7 +323,6 @@ describe("useWizardState", () => {
       "acknowledgement",
     ]);
     expect(result.current.wizardData).toEqual(getInitialWizardData("codex-cli"));
-    if (result.current.wizardData.kind !== "runnable") throw new Error("Expected runnable state");
     expect(JSON.stringify(result.current.wizardData.configurationInput)).not.toMatch(
       /endpoint|credential|apiKey/,
     );
@@ -293,41 +363,40 @@ describe("useWizardState", () => {
     );
 
     expect(result.current.wizardData).toMatchObject({
+      selectedModelId: null,
       conformanceStatus: "not-tested",
       acknowledgement: { status: "required" },
     });
   });
 
-  it("keeps removed legacy data untouched until the explicit delete action", async () => {
-    const removed = OnboardingStateSchema.parse({
-      kind: "removed",
-      productId: REMOVED_PRODUCT_ID,
-      configurationId: "legacy-removed-zai-plan",
-      expectedRevision: 7,
-    });
-    const callbacks = makeCallbacks();
-    const { result, unmount } = renderHook(() => useWizardState({ initial: removed, callbacks }));
+  it("requires a model from the new endpoint after the discovery tuple changes", () => {
+    const initial = readyDraft("local-openai");
+    const { result } = renderHook(() => useWizardState({ initial }));
 
-    expect(result.current.steps).toEqual(["migration", "delete"]);
+    act(() => {
+      result.current.next();
+      result.current.next();
+      result.current.next();
+    });
+    expect(result.current.currentStep).toBe("model");
     expect(result.current.canProceed).toBe(true);
-    act(() => result.current.next());
-    expect(result.current.currentStep).toBe("delete");
-    expect(result.current.canProceed).toBe(false);
-    await act(async () => {
-      await result.current.cleanupCreatedConfiguration();
-      unmount();
-    });
-    expect(callbacks.runConfigurationAction).not.toHaveBeenCalled();
 
-    const mounted = renderHook(() => useWizardState({ initial: removed, callbacks }));
-    await act(async () => {
-      expect(await mounted.result.current.deleteRemovedConfiguration()).toBe(true);
+    const configurationInput = initial.configurationInput;
+    if (configurationInput.transportFamily !== "local-http") {
+      throw new Error("Expected local HTTP configuration");
+    }
+    act(() => {
+      result.current.updateData({
+        configurationInput: {
+          ...configurationInput,
+          endpoint: "http://127.0.0.1:8080/v1",
+          presetId: "llama-cpp",
+        },
+      });
     });
-    expect(callbacks.runConfigurationAction).toHaveBeenCalledWith({
-      action: "delete",
-      configurationId: "legacy-removed-zai-plan",
-      expectedRevision: 7,
-    });
+
+    expect(result.current.wizardData.selectedModelId).toBeNull();
+    expect(result.current.canProceed).toBe(false);
   });
 
   it("revokes a newly created partial configuration on abandon with its exact revision", async () => {
@@ -415,26 +484,55 @@ describe("useWizardState", () => {
       expectedRevision: 3,
     });
     expect(result.current.wizardData).toEqual(getInitialWizardData("local-openai"));
-    if (result.current.wizardData.kind !== "runnable") throw new Error("Expected runnable state");
     expect(JSON.stringify(result.current.wizardData.configurationInput)).not.toMatch(
       /workspace|credential|region/,
     );
   });
 
-  it("waits for an in-flight create before switching and revokes only the partial configuration", async () => {
-    let releaseCreate: (() => void) | undefined;
-    const createStarted = new Promise<void>((resolve) => {
-      releaseCreate = resolve;
-    });
-    let resolveCreate: ((value: unknown) => void) | undefined;
-    const createResponse = new Promise<unknown>((resolve) => {
-      resolveCreate = resolve;
-    });
+  it("keeps the current product when cleanup fails during a product switch", async () => {
     const data = readyDraft();
     const callbacks = makeCallbacks(async (action) => {
       if (action.action === "create") {
-        releaseCreate?.();
-        return createResponse;
+        return { action: "create", status: "succeeded", configuration: configurationSummary(data) };
+      }
+      if (action.action === "delete") {
+        throw new Error("cleanup failed at /Users/voitz/.config/diffgazer");
+      }
+      return { action: action.action, status: "succeeded" };
+    });
+    const { result } = renderHook(() => useWizardState({ initial: data, callbacks }));
+
+    await act(async () => {
+      await result.current.prepareDraftConfiguration();
+    });
+    const retainedDraft = result.current.wizardData;
+
+    act(() => result.current.setProduct("local-openai"));
+    expect(result.current.isReconciling).toBe(true);
+
+    await vi.waitFor(() => expect(result.current.isReconciling).toBe(false));
+
+    expect(result.current.wizardData).toBe(retainedDraft);
+    expect(result.current.wizardData.plan.productId).toBe("qwen");
+    expect(result.current.draftConfiguration?.configurationId).toBe("created-configuration");
+    expect(result.current.error).toContain("Failed to remove the incomplete configuration");
+    expect(result.current.error).toContain("[REDACTED]");
+    expect(result.current.error).not.toContain("/Users/voitz");
+    expect(
+      vi
+        .mocked(callbacks.runConfigurationAction)
+        .mock.calls.filter(([action]) => action.action === "create"),
+    ).toHaveLength(1);
+  });
+
+  it("waits for an in-flight create before switching and revokes only the partial configuration", async () => {
+    const createStarted = createDeferred<void>();
+    const createResponse = createDeferred<unknown>();
+    const data = readyDraft();
+    const callbacks = makeCallbacks(async (action) => {
+      if (action.action === "create") {
+        createStarted.resolve();
+        return createResponse.promise;
       }
       if (action.action === "select") throw new Error("selection failed");
       return { action: action.action, status: "succeeded" };
@@ -445,12 +543,12 @@ describe("useWizardState", () => {
     act(() => {
       completion = result.current.complete();
     });
-    await createStarted;
+    await createStarted.promise;
     act(() => result.current.setProduct("local-openai"));
     expect(result.current.isReconciling).toBe(true);
     expect(result.current.wizardData.plan.productId).toBe("qwen");
 
-    resolveCreate?.({
+    createResponse.resolve({
       action: "create",
       status: "succeeded",
       configuration: configurationSummary(data),
@@ -469,14 +567,11 @@ describe("useWizardState", () => {
   });
 
   it("revokes a stale pending save when acknowledgement, conformance, or preferences change", async () => {
-    let releaseSettings: (() => void) | undefined;
-    const settingsStarted = new Promise<void>((resolve) => {
-      releaseSettings = resolve;
-    });
+    const settingsStarted = createDeferred<void>();
     const data = readyDraft();
     const callbacks = makeCallbacks();
     callbacks.saveSettings = vi.fn(async () => {
-      await settingsStarted;
+      await settingsStarted.promise;
     });
     const onComplete = vi.fn();
     const { result } = renderHook(() => useWizardState({ initial: data, callbacks, onComplete }));
@@ -499,7 +594,7 @@ describe("useWizardState", () => {
       agentExecution: "parallel",
     });
 
-    releaseSettings?.();
+    settingsStarted.resolve();
     await act(async () => {
       expect(await completion).toBe(false);
     });
@@ -563,103 +658,205 @@ describe("useWizardState", () => {
     });
 
     expect(result.current.error).toBeNull();
-    expect(callbacks.runConfigurationAction).toHaveBeenCalledTimes(5);
+    expect(callbacks.runConfigurationAction).toHaveBeenCalledTimes(3);
     expect(callbacks.runConfigurationAction).not.toHaveBeenCalledWith(
       expect.objectContaining({ action: "delete" }),
     );
     unmount();
   });
 
-  it("single-flights removed deletion and never repeats it after completion fails", async () => {
-    const removed = OnboardingStateSchema.parse({
-      kind: "removed",
-      productId: REMOVED_PRODUCT_ID,
-      configurationId: "legacy-removed-zai-plan",
-      expectedRevision: 7,
-    });
-    let resolveDelete: ((response: unknown) => void) | undefined;
-    const deleteResponse = new Promise<unknown>((resolve) => {
-      resolveDelete = resolve;
-    });
-    const callbacks = makeCallbacks(async () => deleteResponse);
-    const onComplete = vi
-      .fn<() => Promise<void>>()
-      .mockRejectedValueOnce(new Error("navigation failed"))
-      .mockResolvedValue(undefined);
-    const { result } = renderHook(() =>
-      useWizardState({ initial: removed, callbacks, onComplete }),
-    );
-
-    let deletion: Promise<boolean> | undefined;
-    await act(async () => {
-      deletion = result.current.deleteRemovedConfiguration();
-      expect(await result.current.deleteRemovedConfiguration()).toBe(false);
-      resolveDelete?.({ action: "delete", status: "succeeded" });
-      expect(await deletion).toBe(true);
-    });
-    expect(result.current.error).toBe(
-      "Configuration deleted, but completion failed: navigation failed",
-    );
+  it("scrubs a literal bearer token after completion succeeds", async () => {
+    const secret = "literal-local-value-9a";
+    const base = readyDraft("local-openai");
+    if (base.configurationInput.transportFamily !== "local-http") {
+      throw new Error("Expected local HTTP configuration");
+    }
+    const data = {
+      ...base,
+      configurationInput: {
+        ...base.configurationInput,
+        authentication: "optional-local-bearer" as const,
+        bearerToken: { kind: "literal", value: secret },
+      },
+      selectedModelId: "local-model",
+    } satisfies OnboardingDraft;
+    const callbacks = makeCallbacks(undefined, data);
+    const { result } = renderHook(() => useWizardState({ initial: data, callbacks }));
 
     await act(async () => {
-      expect(await result.current.deleteRemovedConfiguration()).toBe(true);
+      expect(await result.current.complete()).toBe(true);
     });
 
+    expect(JSON.stringify(result.current.wizardData)).not.toContain(secret);
     expect(result.current.error).toBeNull();
-    expect(callbacks.runConfigurationAction).toHaveBeenCalledTimes(1);
-    expect(onComplete).toHaveBeenCalledTimes(2);
   });
 
-  it("drops a stale delete rejection instead of overwriting the replacement wizard", async () => {
-    const removed = OnboardingStateSchema.parse({
-      kind: "removed",
-      productId: REMOVED_PRODUCT_ID,
-      configurationId: "legacy-removed-zai-plan",
-      expectedRevision: 7,
-    });
-    const replacement = OnboardingStateSchema.parse({
-      kind: "removed",
-      productId: REMOVED_PRODUCT_ID,
-      configurationId: "legacy-removed-zai-plan-2",
-      expectedRevision: 9,
-    });
-    let rejectDelete: ((cause: unknown) => void) | undefined;
-    const deleteResponse = new Promise<unknown>((_resolve, reject) => {
-      rejectDelete = reject;
-    });
-    const callbacks = makeCallbacks(async (action) => {
-      if (action.action === "delete" && action.configurationId === "legacy-removed-zai-plan") {
-        return deleteResponse;
-      }
-      return { action: "delete", status: "succeeded" };
-    });
-    const { result, rerender } = renderHook(
-      ({ initial }) => useWizardState({ initial, callbacks }),
-      { initialProps: { initial: removed } },
-    );
-
-    let deletion: Promise<boolean> | undefined;
-    act(() => {
-      deletion = result.current.deleteRemovedConfiguration();
-    });
-    rerender({ initial: replacement });
+  it("redacts literal bearer tokens from completion failures", async () => {
+    const secret = "literal-local-value-9a";
+    const base = readyDraft("local-openai");
+    if (base.configurationInput.transportFamily !== "local-http") {
+      throw new Error("Expected local HTTP configuration");
+    }
+    const data = {
+      ...base,
+      configurationInput: {
+        ...base.configurationInput,
+        authentication: "optional-local-bearer" as const,
+        bearerToken: { kind: "literal", value: secret },
+      },
+      selectedModelId: "local-model",
+    } satisfies OnboardingDraft;
+    const callbacks = makeCallbacks(undefined, data);
+    callbacks.saveSettings = vi
+      .fn()
+      .mockRejectedValue(new Error(`Cannot persist ${secret} from /Users/voitz/.config`));
+    const { result } = renderHook(() => useWizardState({ initial: data, callbacks }));
 
     await act(async () => {
-      rejectDelete?.(new Error("delete failed"));
-      expect(await deletion).toBe(false);
+      expect(await result.current.complete()).toBe(false);
     });
 
-    expect(result.current.error).toBeNull();
+    const message = result.current.error ?? "";
+    expect(message).toContain("[REDACTED]");
+    expect(message).not.toContain(secret);
+    expect(message).not.toContain("/Users/voitz");
+  });
+
+  it("re-prepares after back/edit/next during a slow draft create", async () => {
+    const initial = readyDraft();
+    const firstCreateGate = createDeferred<void>();
+    let createCount = 0;
+    const baseCallbacks = makeCallbacks();
+    const callbacks = makeCallbacks(async (action) => {
+      if (action.action !== "create") {
+        return baseCallbacks.runConfigurationAction(action);
+      }
+      createCount += 1;
+      if (createCount === 1) {
+        await firstCreateGate.promise;
+      }
+      return {
+        action: "create",
+        status: "succeeded",
+        configuration: configurationSummary(initial, null, 3 + createCount),
+      };
+    });
+
+    const { result } = renderHook(() => useWizardState({ initial, callbacks }));
+
+    act(() => {
+      result.current.next();
+      result.current.next();
+      result.current.next();
+    });
+    expect(result.current.currentStep).toBe("model");
+
+    let firstPrepare: Promise<unknown>;
+    act(() => {
+      firstPrepare = result.current.prepareDraftConfiguration();
+    });
+
+    act(() => {
+      result.current.back();
+      const configurationInput = initial.configurationInput;
+      if (configurationInput.transportFamily !== "hosted-api") {
+        throw new Error("Expected hosted-api draft for credential edit");
+      }
+      result.current.updateData({
+        configurationInput: {
+          ...configurationInput,
+          credential: { kind: "literal", value: "new-secret" },
+        },
+      });
+      result.current.next();
+    });
+    expect(result.current.currentStep).toBe("model");
+
+    await act(async () => {
+      firstCreateGate.resolve();
+      await firstPrepare!;
+      const secondConfiguration = await result.current.prepareDraftConfiguration();
+      expect(secondConfiguration?.configurationId).toBe("created-configuration");
+    });
+
+    expect(createCount).toBe(2);
+  });
+
+  it("deletes a configuration created by an in-flight draft prepare when the wizard unmounts", async () => {
+    const initial = readyDraft();
+    const createGate = createDeferred<void>();
+    const callbacks = makeCallbacks(async (action) => {
+      if (action.action === "create") {
+        await createGate.promise;
+        return {
+          action: "create",
+          status: "succeeded",
+          configuration: configurationSummary(initial),
+        };
+      }
+      if (action.action === "delete") {
+        return { action: "delete", status: "succeeded" };
+      }
+      return { action: action.action, status: "succeeded" };
+    });
+
+    const { result, unmount } = renderHook(() => useWizardState({ initial, callbacks }));
+
+    act(() => {
+      result.current.next();
+      result.current.next();
+      result.current.next();
+    });
+    expect(result.current.currentStep).toBe("model");
+
+    let preparePromise: Promise<unknown>;
+    act(() => {
+      preparePromise = result.current.prepareDraftConfiguration();
+    });
+
+    await act(async () => {
+      unmount();
+    });
+    createGate.resolve();
+    await act(async () => {
+      await preparePromise!.catch(() => {});
+    });
+
+    await vi.waitFor(() => {
+      expect(callbacks.runConfigurationAction).toHaveBeenCalledWith({
+        action: "delete",
+        configurationId: "created-configuration",
+        expectedRevision: 3,
+      });
+    });
   });
 
   it("persists one draft configuration for the current transport tuple", async () => {
     const initial = readyDraft();
-    const callbacks = makeCallbacks();
+    const createResponse = createDeferred<unknown>();
+    const callbacks = makeCallbacks(async (action) => {
+      if (action.action === "create") return createResponse.promise;
+      return { action: action.action, status: "succeeded" };
+    });
     const { result } = renderHook(() => useWizardState({ initial, callbacks }));
 
+    let firstPrepare!: ReturnType<typeof result.current.prepareDraftConfiguration>;
+    let secondPrepare!: ReturnType<typeof result.current.prepareDraftConfiguration>;
+    act(() => {
+      firstPrepare = result.current.prepareDraftConfiguration();
+      secondPrepare = result.current.prepareDraftConfiguration();
+    });
+
+    expect(callbacks.runConfigurationAction).toHaveBeenCalledTimes(1);
+
     await act(async () => {
-      await result.current.prepareDraftConfiguration();
-      await result.current.prepareDraftConfiguration();
+      createResponse.resolve({
+        action: "create",
+        status: "succeeded",
+        configuration: configurationSummary(initial),
+      });
+      const [firstResult, secondResult] = await Promise.all([firstPrepare, secondPrepare]);
+      expect(secondResult).toEqual(firstResult);
     });
 
     expect(result.current.draftConfiguration?.configurationId).toBe("created-configuration");
@@ -750,15 +947,12 @@ describe("useWizardState", () => {
   });
 
   it("keeps an in-flight save valid when React discards a render that saw a new initial", async () => {
-    let releaseSettings: (() => void) | undefined;
-    const settingsStarted = new Promise<void>((resolve) => {
-      releaseSettings = resolve;
-    });
+    const settingsStarted = createDeferred<void>();
     const draft = readyDraft();
     const discarded = getInitialWizardData("local-openai");
     const callbacks = makeCallbacks();
     callbacks.saveSettings = vi.fn(async () => {
-      await settingsStarted;
+      await settingsStarted.promise;
     });
     const onComplete = vi.fn();
     const noDecoy: { decoy: OnboardingDraft | null } = { decoy: null };
@@ -783,7 +977,7 @@ describe("useWizardState", () => {
     });
     rerender({ decoy: discarded });
 
-    releaseSettings?.();
+    settingsStarted.resolve();
     await act(async () => {
       expect(await completion).toBe(true);
     });
@@ -822,10 +1016,7 @@ describe("useWizardState", () => {
 
   it("shares cleanup between explicit cleanup and a product switch", async () => {
     const data = readyDraft();
-    let resolveDelete: ((response: unknown) => void) | undefined;
-    const deleteResponse = new Promise<unknown>((resolve) => {
-      resolveDelete = resolve;
-    });
+    const deleteResponse = createDeferred<unknown>();
     const callbacks = makeCallbacks(async (action) => {
       if (action.action === "create") {
         return { action: "create", status: "succeeded", configuration: configurationSummary(data) };
@@ -839,7 +1030,7 @@ describe("useWizardState", () => {
         };
       }
       if (action.action === "select") throw new Error("selection failed");
-      if (action.action === "delete") return deleteResponse;
+      if (action.action === "delete") return deleteResponse.promise;
       return { action: action.action, status: "succeeded" };
     });
     const { result } = renderHook(() => useWizardState({ initial: data, callbacks }));
@@ -855,7 +1046,7 @@ describe("useWizardState", () => {
     });
     expect(result.current.isReconciling).toBe(true);
 
-    resolveDelete?.({ action: "delete", status: "succeeded" });
+    deleteResponse.resolve({ action: "delete", status: "succeeded" });
     await act(async () => {
       await explicitCleanup;
       await Promise.resolve();
@@ -873,10 +1064,7 @@ describe("useWizardState", () => {
   it("applies the latest initial state after an in-flight cleanup", async () => {
     const initial = readyDraft();
     const replacement = getInitialWizardData("local-openai");
-    let resolveDelete: ((response: unknown) => void) | undefined;
-    const deleteResponse = new Promise<unknown>((resolve) => {
-      resolveDelete = resolve;
-    });
+    const deleteResponse = createDeferred<unknown>();
     const callbacks = makeCallbacks(async (action) => {
       if (action.action === "create") {
         return {
@@ -894,7 +1082,7 @@ describe("useWizardState", () => {
         };
       }
       if (action.action === "select") throw new Error("selection failed");
-      if (action.action === "delete") return deleteResponse;
+      if (action.action === "delete") return deleteResponse.promise;
       return { action: action.action, status: "succeeded" };
     });
     const { result, rerender } = renderHook(
@@ -907,7 +1095,7 @@ describe("useWizardState", () => {
     });
     rerender({ draft: replacement });
 
-    resolveDelete?.({ action: "delete", status: "succeeded" });
+    deleteResponse.resolve({ action: "delete", status: "succeeded" });
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
@@ -915,6 +1103,20 @@ describe("useWizardState", () => {
 
     expect(result.current.wizardData).toEqual(replacement);
     expect(result.current.stepIndex).toBe(0);
+  });
+
+  it("completes the save without dispatching a paid conformance test", async () => {
+    const callbacks = makeCallbacks();
+    const { result } = renderHook(() => useWizardState({ initial: readyDraft(), callbacks }));
+
+    await act(async () => {
+      expect(await result.current.complete()).toBe(true);
+    });
+
+    expect(callbacks.runConfigurationAction).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: "test" }),
+    );
+    expect(result.current.error).toBeNull();
   });
 
   it("uses generic copy for untrusted provider and CLI-shaped failures", async () => {

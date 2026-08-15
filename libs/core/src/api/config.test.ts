@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ReadinessAcknowledgement } from "../schemas/config/readiness.js";
+import {
+  READINESS_PRESENTATION,
+  type ReadinessAcknowledgement,
+} from "../schemas/config/readiness.js";
 import { createApiClient } from "./client.js";
 import {
   bindConfig,
@@ -9,6 +12,7 @@ import {
   inspectConfiguration,
   listConfigurations,
   loadConfigurationInit,
+  revokeConfigurationOnPageHide,
   selectConfiguration,
   testConfiguration,
   updateConfiguration,
@@ -123,7 +127,7 @@ describe("config API functions", () => {
       mockConfigurationActionPost(client, body);
     }
 
-    const created = await createConfiguration(client, input);
+    const created = await createConfiguration(client, { input, acknowledgement });
     await inspectConfiguration(client, "groq-primary");
     await selectConfiguration(client, "groq-primary", "openai/gpt-oss-120b");
     await testConfiguration(client, "groq-primary");
@@ -133,7 +137,7 @@ describe("config API functions", () => {
     expect(client.post).toHaveBeenNthCalledWith(
       1,
       "/api/config/actions",
-      { action: "create", input },
+      { action: "create", input, acknowledgement },
       { schema: expect.any(Function) },
     );
     expect(client.post).toHaveBeenNthCalledWith(
@@ -216,7 +220,7 @@ describe("config API functions", () => {
     const apiClient = createApiClient({ baseUrl: "http://localhost:3000" });
     let error: unknown;
     try {
-      await createConfiguration(apiClient, input);
+      await createConfiguration(apiClient, { input });
     } catch (caught) {
       error = caught;
     } finally {
@@ -276,6 +280,44 @@ describe("config API functions", () => {
     await expect(getConfigurationModels(client, "groq-primary")).rejects.toThrow();
   });
 
+  it("rejects cross-transport readiness at the list boundary as INVALID_RESPONSE", async () => {
+    const malformedList = {
+      schemaVersion: 2,
+      configurations: [
+        {
+          configuration,
+          readiness: {
+            status: "local-conformance-failed",
+            ready: false,
+            evidenceStatus: "failed",
+            checkedAt,
+            acknowledgement: { status: "not-applicable" },
+            ...READINESS_PRESENTATION["local-conformance-failed"],
+          },
+        },
+      ],
+      selectedConfigurationId: "groq-primary",
+    };
+
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(malformedList));
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    const apiClient = createApiClient({ baseUrl: "http://localhost:3000" });
+    let error: unknown;
+    try {
+      await listConfigurations(apiClient);
+    } catch (caught) {
+      error = caught;
+    } finally {
+      vi.stubGlobal("fetch", originalFetch);
+    }
+
+    expect(isApiError(error)).toBe(true);
+    if (!isApiError(error)) throw new Error("Expected ApiError");
+    expect(error).toMatchObject({ status: 422, code: "INVALID_RESPONSE" });
+  });
+
   it("loads safe V2 configuration bootstrap and list projections", async () => {
     const list = {
       schemaVersion: 2,
@@ -306,6 +348,21 @@ describe("config API functions", () => {
     });
   });
 
+  it("revokes a wizard draft with a keepalive action request on page unload", () => {
+    vi.mocked(client.request).mockResolvedValue(new Response());
+
+    revokeConfigurationOnPageHide(client, "groq-primary", 7);
+
+    expect(client.request).toHaveBeenCalledWith("POST", "/api/config/actions", {
+      body: {
+        action: "delete",
+        configurationId: "groq-primary",
+        expectedRevision: 7,
+      },
+      keepalive: true,
+    });
+  });
+
   it("binds only the V2 bootstrap and configuration action surface", () => {
     expect(Object.keys(bindConfig(client)).sort()).toEqual([
       "createConfiguration",
@@ -315,6 +372,7 @@ describe("config API functions", () => {
       "inspectConfiguration",
       "listConfigurations",
       "loadConfigurationInit",
+      "revokeConfigurationOnPageHide",
       "selectConfiguration",
       "testConfiguration",
       "updateConfiguration",

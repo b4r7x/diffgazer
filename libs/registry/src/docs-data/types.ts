@@ -1,4 +1,4 @@
-export interface DocNote {
+interface DocNote {
   title: string;
   content: string;
 }
@@ -14,7 +14,7 @@ export interface UsageSection {
   lang?: "tsx" | "typescript" | "css" | "bash" | "json" | "html";
 }
 
-export interface HookParameter {
+interface HookParameter {
   name: string;
   type: string;
   required: boolean;
@@ -22,7 +22,7 @@ export interface HookParameter {
   defaultValue?: string;
 }
 
-export interface HookReturn {
+interface HookReturn {
   type: string;
   description: string;
   properties?: HookParameter[];
@@ -101,7 +101,7 @@ export interface ComponentDoc {
  * `color`; `className` is reserved for runtime-side inline styling and is
  * unused by the docs-data pipeline.
  */
-export interface CodeBlockToken {
+interface CodeBlockToken {
   text: string;
   color?: string;
   className?: string;
@@ -134,7 +134,7 @@ export type ConsumptionLibrary = "ui" | "keys";
 
 export type ConsumptionItemKind = "component" | "hook" | "lib";
 
-export interface ConsumptionPathOption {
+interface ConsumptionPathOption {
   available: boolean;
   command?: string;
   note?: string;

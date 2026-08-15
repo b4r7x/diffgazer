@@ -1,44 +1,45 @@
-import type { ShutdownResult } from "@diffgazer/core/api";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { useSubmitGuard } from "@diffgazer/core/forms";
 import type { NavigableMenuAction } from "@diffgazer/core/navigation";
 import { isMenuActionDisabled, resolveHomeMenuActivation } from "@diffgazer/core/navigation";
 import { describeReviewStartError } from "@diffgazer/core/review";
-import type { ContextInfo, MenuAction } from "@diffgazer/core/schemas/presentation";
+import type { HomeContextInfo, MenuAction, Shortcut } from "@diffgazer/core/schemas/presentation";
 import {
   MAIN_MENU_SHORTCUTS,
   MENU_ITEMS,
-  TRUST_FOOTER_RIGHT_SHORTCUTS,
+  TRUST_PERMISSION_SHORTCUTS,
 } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { useKey, useScope } from "@diffgazer/keys";
 import { toast } from "@diffgazer/ui/components/toast";
 import type { useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
-import { TRUST_PANEL_FOOTER_SHORTCUTS, TrustPanel } from "@/components/shared/trust-panel";
+import { useEffect, useRef, useState } from "react";
+import { TrustPanel } from "@/components/shared/trust-panel";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
 import { HomeMenu } from "@/features/home/components/menu";
+import { useIsMountedRef } from "@/hooks/use-is-mounted";
 import {
   HISTORY_DATE_KEY,
   HISTORY_RUN_KEY,
   SETTINGS_HIGHLIGHTED_KEY,
 } from "@/hooks/use-scoped-route-state";
-import { reportShutdownResult } from "@/lib/shutdown";
+import { INVALID_REVIEW_ID_COPY } from "@/lib/review-error-copy";
+import { reportShutdownResult, type ShutdownResult } from "@/lib/shutdown";
 
 type Navigate = ReturnType<typeof useNavigate>;
-type CreateReview = (input: { mode: ReviewMode }) => Promise<{ reviewId: string }>;
+type CreateReview = (input: {
+  mode: Exclude<ReviewMode, "files">;
+}) => Promise<{ reviewId: string }>;
 type ResumableSession = { reviewId: string; mode: ReviewMode };
 
-type RouteConfig = { to: string; search?: Record<string, string> };
-const MENU_ITEM_IDS = new Set<string>(MENU_ITEMS.map((item) => item.id));
+// The trust prompt hides the menu, so the web footer keeps advertising the two
+// app-wide jump keys it would otherwise show as menu rows. The TUI trust panel
+// has no such right-hand footer, so these stay web-local.
+const TRUST_PANEL_JUMP_SHORTCUTS: Shortcut[] = [
+  { key: "s", label: "Settings" },
+  { key: "?", label: "Help" },
+];
 
-function getHomeMenuHighlighted(value: string | null): string | null {
-  if (!value) return value;
-  if (MENU_ITEM_IDS.has(value)) return value;
-  return MENU_ITEMS[0]?.id ?? null;
-}
-
-const MENU_ROUTES: Record<NavigableMenuAction, RouteConfig> = {
+const MENU_ROUTES: Record<NavigableMenuAction, { to: string }> = {
   history: { to: "/history" },
   settings: { to: "/settings" },
   help: { to: "/help" },
@@ -55,15 +56,16 @@ const MENU_ROUTE_SCOPED_KEYS: Record<NavigableMenuAction, readonly string[]> = {
 };
 
 export interface HomePagePresentationProps {
-  context: ContextInfo;
+  context: HomeContextInfo;
   isTrusted: boolean;
   needsTrust: boolean;
-  projectId: string | null;
   repoRoot: string | null;
   resumableSession: ResumableSession | null;
-  highlighted: string | null;
+  /** Set when the active-session requests failed, so an absent session is unknown, not none. */
+  isResumeUnavailable?: boolean;
+  highlighted: MenuAction | null;
   searchError: string | undefined;
-  onHighlightChange: (id: string | null) => void;
+  onHighlightChange: (id: MenuAction | null) => void;
   navigate: Navigate;
   createReview: CreateReview;
   clearScopedRouteState: (scope: string, key: string) => void;
@@ -74,9 +76,9 @@ export function HomePagePresentation({
   context,
   isTrusted,
   needsTrust,
-  projectId,
   repoRoot,
   resumableSession,
+  isResumeUnavailable = false,
   highlighted,
   searchError,
   onHighlightChange,
@@ -85,20 +87,18 @@ export function HomePagePresentation({
   clearScopedRouteState,
   shutdown,
 }: HomePagePresentationProps) {
-  const { isSubmitting: isStartingReview, withGuard } = useSubmitGuard();
-  const hasResumableSession = resumableSession != null;
-  // Starting a review outlives this page: app-wide keys can leave home while the
-  // request is in flight, and a late navigate would pull the user off the screen
-  // they chose.
-  const isMountedRef = useRef(true);
+  // The action being started is what the menu renders, so that single value also
+  // stands in for "in flight". A second activation can land before React
+  // re-renders the menu as disabled, so re-entrancy is refused off a ref.
+  const [startingAction, setStartingAction] = useState<MenuAction | null>(null);
+  const isStartingRef = useRef(false);
+  const isStartingReview = startingAction !== null;
+  // A failed active-session request proves nothing about whether a run is live,
+  // so the row stays reachable and says it cannot tell rather than holding
+  // itself shut behind "there is nothing to resume".
+  const hasResumableSession = resumableSession != null || isResumeUnavailable;
+  const isMountedRef = useIsMountedRef();
   const invalidIdReportedRef = useRef(false);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (searchError !== "invalid-review-id") {
@@ -109,11 +109,9 @@ export function HomePagePresentation({
     }
     if (invalidIdReportedRef.current) return;
     invalidIdReportedRef.current = true;
-    toast.error("Invalid Review ID", { message: "The review ID format is invalid." });
+    toast.error(INVALID_REVIEW_ID_COPY.title, { message: INVALID_REVIEW_ID_COPY.message });
     navigate({ to: "/", replace: true });
   }, [searchError, navigate]);
-
-  const effectiveHighlighted = getHomeMenuHighlighted(highlighted);
 
   const handleQuit = async () => {
     reportShutdownResult(await shutdown());
@@ -127,24 +125,35 @@ export function HomePagePresentation({
     });
   };
 
-  const startReview = (mode: ReviewMode) =>
-    withGuard(async () => {
-      try {
-        const { reviewId } = await createReview({ mode });
-        if (isMountedRef.current) navigateToReview(reviewId, mode);
-      } catch (error) {
-        if (!isMountedRef.current) return;
-        const { title, message } = describeReviewStartError(error);
-        toast.error(title, { message });
-      }
-    });
+  const startReview = async (mode: Exclude<ReviewMode, "files">, action: MenuAction) => {
+    if (isStartingRef.current) return;
+    isStartingRef.current = true;
+    setStartingAction(action);
+    try {
+      const { reviewId } = await createReview({ mode });
+      if (isMountedRef.current) navigateToReview(reviewId, mode);
+    } catch (error) {
+      if (!isMountedRef.current) return;
+      const { title, message } = describeReviewStartError(error);
+      toast.error(title, { message });
+    } finally {
+      isStartingRef.current = false;
+      setStartingAction(null);
+    }
+  };
 
   const resumeReview = () => {
-    if (!resumableSession) {
-      toast.warning("No Active Review", { message: "Start a new review from the menu." });
+    if (resumableSession) {
+      navigateToReview(resumableSession.reviewId, resumableSession.mode);
       return;
     }
-    navigateToReview(resumableSession.reviewId, resumableSession.mode);
+    if (isResumeUnavailable) {
+      toast.error("Active Review Unavailable", {
+        message: "The active review could not be read. Check History before starting a new one.",
+      });
+      return;
+    }
+    toast.warning("No Active Review", { message: "Start a new review from the menu." });
   };
 
   const navigateToMenuTarget = (target: NavigableMenuAction) => {
@@ -152,20 +161,15 @@ export function HomePagePresentation({
     for (const key of MENU_ROUTE_SCOPED_KEYS[target]) {
       clearScopedRouteState(route.to, key);
     }
-    navigate({ to: route.to, search: route.search });
+    navigate({ to: route.to });
   };
 
-  const handleActivate = (id: string) => {
-    if (!MENU_ITEM_IDS.has(id)) return;
-
-    const decision = resolveHomeMenuActivation(id as MenuAction, {
-      isTrusted,
-      hasResumableSession,
-    });
+  const handleActivate = (id: MenuAction) => {
+    const decision = resolveHomeMenuActivation(id, { isTrusted, hasResumableSession });
 
     switch (decision.kind) {
       case "start-review":
-        void startReview(decision.mode);
+        void startReview(decision.mode, id);
         return;
       case "resume":
         resumeReview();
@@ -190,16 +194,16 @@ export function HomePagePresentation({
     }
   };
 
-  // The trust prompt replaces the menu only when there is a project to grant it
-  // for; without one the menu renders instead, with every item already disabled.
+  // The trust prompt replaces the menu when there is a repo to grant trust for;
+  // without one the menu renders instead, with every item already disabled.
   // Footer copy and the jump keys follow that same branch.
-  const showsTrustPanel = needsTrust && projectId !== null && repoRoot !== null;
+  const showsTrustPanel = needsTrust && repoRoot !== null;
 
   usePageFooter({
     shortcuts: showsTrustPanel
-      ? [...TRUST_PANEL_FOOTER_SHORTCUTS, { key: "q", label: "Quit" }]
+      ? [...TRUST_PERMISSION_SHORTCUTS, { key: "q", label: "Quit" }]
       : MAIN_MENU_SHORTCUTS,
-    rightShortcuts: showsTrustPanel ? TRUST_FOOTER_RIGHT_SHORTCUTS : [],
+    rightShortcuts: showsTrustPanel ? TRUST_PANEL_JUMP_SHORTCUTS : [],
   });
   useScope("home");
 
@@ -239,30 +243,32 @@ export function HomePagePresentation({
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto px-4 py-12 md:px-6 lg:px-8">
-      {/* The shell header carries the hero wordmark, so home only centres its
-          panes in the space below it. Auto margins collapse to zero once the
-          column outgrows the viewport, so a short window scrolls from the top
-          instead of clipping. */}
-      <div className="home-composition m-auto flex w-full max-w-4xl flex-col gap-8">
+    <div className="flex flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
+      {/* Spare height splits 1:2 around the panes: they sit in the optical band
+          below the hero wordmark — neither glued to it nor sunk to dead center —
+          and the spacers collapse once the column overflows, so a short window
+          scrolls from the top. */}
+      <div aria-hidden className="grow" />
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
         {/* At desktop each pane keeps its own height instead of stretching to one
             bottom line, so the shorter context pane carries no dead band; below lg
             the cross axis is horizontal and the default stretch keeps both panes
             full width. */}
         <div className="flex w-full flex-col gap-8 lg:flex-row lg:items-start">
           <HomeMenu
-            highlighted={effectiveHighlighted}
+            highlighted={highlighted}
             onHighlightChange={onHighlightChange}
             onSelect={handleActivate}
             items={MENU_ITEMS}
             isTrusted={isTrusted}
             hasResumableSession={hasResumableSession}
-            pending={isStartingReview}
+            pendingAction={startingAction}
           />
           {/* Menu first in source order so the actionable pane leads the stacked
               layout; the context column returns to the left at desktop. */}
           <ContextSidebar
             context={context}
+            navigate={navigate}
             isTrusted={isTrusted}
             projectPath={repoRoot ?? undefined}
             pending={isStartingReview}
@@ -270,6 +276,7 @@ export function HomePagePresentation({
           />
         </div>
       </div>
+      <div aria-hidden className="grow-[2]" />
     </div>
   );
 }

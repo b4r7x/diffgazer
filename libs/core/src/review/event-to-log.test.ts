@@ -1,52 +1,23 @@
 import { describe, expect, it } from "vitest";
 import type { AgentStreamEvent, StepEvent } from "../schemas/events/index.js";
-import type { ReviewIssue } from "../schemas/review/index.js";
+import { AGENT_METADATA } from "../schemas/events/index.js";
+import { makeIssue } from "../testing/factories.js";
 import {
-  convertAgentEventsToLogEntries,
+  convertReviewEventsToLogEntries,
   convertReviewEventToLogEntry,
   getReviewEventLogSource,
 } from "./event-to-log.js";
 
 const timestamp = "2025-02-01T10:00:00Z";
 
-const detective = {
-  id: "detective",
-  lens: "correctness",
-  name: "Detective",
-  badgeLabel: "DET",
-  badgeVariant: "info",
-  description: "Finds bugs",
-} as const;
+const detective = AGENT_METADATA.detective;
+const guardian = AGENT_METADATA.guardian;
 
-const guardian = {
-  id: "guardian",
-  lens: "security",
-  name: "Guardian",
-  badgeLabel: "SEC",
-  badgeVariant: "warning",
-  description: "Security",
-} as const;
+const issue = makeIssue({ title: "SQL Injection risk", category: "security" });
 
-const issue: ReviewIssue = {
-  id: "issue-1",
-  title: "SQL Injection risk",
-  severity: "high",
-  category: "security",
-  file: "src/db.ts",
-  line_start: 42,
-  line_end: 42,
-  rationale: "Unparameterized query",
-  recommendation: "Use parameterized queries",
-  suggested_patch: null,
-  confidence: 0.9,
-  symptom: "User input flows into raw SQL",
-  whyItMatters: "Allows arbitrary database access",
-  evidence: [],
-};
-
-describe("convertAgentEventsToLogEntries", () => {
+describe("convertReviewEventsToLogEntries", () => {
   it("returns empty array for no events", () => {
-    expect(convertAgentEventsToLogEntries([])).toEqual([]);
+    expect(convertReviewEventsToLogEntries([])).toEqual([]);
   });
 
   it("converts only the requested absolute event range", () => {
@@ -57,7 +28,7 @@ describe("convertAgentEventsToLogEntries", () => {
       timestamp,
     }));
 
-    const entries = convertAgentEventsToLogEntries(events, { start: 2, end: 4 });
+    const entries = convertReviewEventsToLogEntries(events, { start: 2, end: 4 });
 
     expect(entries.map((entry) => [entry.id, entry.message])).toEqual([
       ["agent_thinking-2", "event-2"],
@@ -96,16 +67,6 @@ describe("convertAgentEventsToLogEntries", () => {
     [
       "agent_queued",
       { type: "agent_queued", agent: detective, position: 1, total: 1, timestamp },
-      undefined,
-    ],
-    [
-      "file_start",
-      { type: "file_start", file: "src/a.ts", index: 0, total: 1, timestamp },
-      undefined,
-    ],
-    [
-      "file_complete",
-      { type: "file_complete", file: "src/a.ts", index: 0, total: 1, timestamp },
       undefined,
     ],
     ["agent_start", { type: "agent_start", agent: detective, timestamp }, "Detective"],
@@ -155,7 +116,7 @@ describe("convertAgentEventsToLogEntries", () => {
     ],
   ])("keeps %s source indexing identical to its rendered entry", (_, event, source) => {
     expect(getReviewEventLogSource(event)).toBe(source);
-    expect(convertReviewEventToLogEntry(event, 0)?.source).toBe(source);
+    expect(convertReviewEventToLogEntry(event, 0).source).toBe(source);
   });
 
   it.each<
@@ -163,8 +124,8 @@ describe("convertAgentEventsToLogEntries", () => {
       string,
       AgentStreamEvent | StepEvent,
       {
-        tag?: string;
-        tagType?: string;
+        tag: string;
+        tagType: string;
         source?: string;
         isWarning?: boolean;
         isError?: boolean;
@@ -181,32 +142,47 @@ describe("convertAgentEventsToLogEntries", () => {
     [
       "step_complete",
       { type: "step_complete", step: "review", timestamp },
-      { tag: "DONE", messageIncludes: ["complete"] },
+      { tag: "DONE", tagType: "system", messageIncludes: ["complete"] },
     ],
     [
-      "step_error",
+      "fatal step_error",
       { type: "step_error", step: "report", error: "Timeout reached", timestamp },
-      { tag: "FAIL", tagType: "error", isWarning: true, messageIncludes: ["Timeout reached"] },
+      {
+        tag: "FAIL",
+        tagType: "error",
+        isError: true,
+        messageIncludes: ["Timeout reached"],
+      },
+    ],
+    [
+      "non-fatal context step_error",
+      { type: "step_error", step: "context", error: "Context unavailable", timestamp },
+      {
+        tag: "FAIL",
+        tagType: "error",
+        isWarning: true,
+        messageIncludes: ["Context unavailable"],
+      },
     ],
     [
       "review_started plural",
       { type: "review_started", reviewId: "r1", filesTotal: 5, timestamp },
-      { tag: "START", messageIncludes: ["5 files"] },
+      { tag: "START", tagType: "system", messageIncludes: ["5 files"] },
     ],
     [
       "review_started singular",
       { type: "review_started", reviewId: "r1", filesTotal: 1, timestamp },
-      { tag: "START", messageIncludes: ["1 file "] },
+      { tag: "START", tagType: "system", messageIncludes: ["1 file "] },
     ],
     [
       "orchestrator_start",
       { type: "orchestrator_start", agents: [detective], concurrency: 3, timestamp },
-      { tag: "ORCH", messageIncludes: ["1 agent", "concurrency 3"] },
+      { tag: "ORCH", tagType: "system", messageIncludes: ["1 agent", "concurrency 3"] },
     ],
     [
       "agent_queued",
       { type: "agent_queued", agent: detective, position: 1, total: 5, timestamp },
-      { tag: "QUEUE", messageIncludes: ["Detective", "1/5"] },
+      { tag: "QUEUE", tagType: "agent", messageIncludes: ["Detective", "1/5"] },
     ],
     [
       "agent_start",
@@ -222,27 +198,55 @@ describe("convertAgentEventsToLogEntries", () => {
         message: "Halfway done",
         timestamp,
       },
-      { messageIncludes: ["50%", "Halfway done"] },
+      {
+        tag: "PERF",
+        tagType: "agent",
+        source: "Optimizer",
+        messageIncludes: ["50%", "Halfway done"],
+      },
     ],
     [
       "agent_error",
       { type: "agent_error", agent: "detective", error: "API timeout", timestamp },
-      { tagType: "error", isError: true, messageIncludes: ["API timeout"] },
+      {
+        tag: "DET",
+        tagType: "error",
+        isError: true,
+        source: "Detective",
+        messageIncludes: ["API timeout"],
+      },
     ],
     [
       "issue_found",
       { type: "issue_found", agent: "guardian", issue, timestamp },
-      { tagType: "warning", isWarning: true, messageIncludes: ["SQL Injection risk"] },
+      {
+        tag: "SEC",
+        tagType: "warning",
+        isWarning: true,
+        source: "Guardian",
+        messageIncludes: ["SQL Injection risk"],
+      },
     ],
     [
       "agent_complete plural",
       { type: "agent_complete", agent: "detective", issueCount: 3, timestamp },
-      { messageIncludes: ["3 issues"] },
+      {
+        tag: "DET",
+        tagType: "agent",
+        source: "Detective",
+        messageIncludes: ["3 issues"],
+      },
     ],
     [
       "agent_complete singular",
       { type: "agent_complete", agent: "detective", issueCount: 1, timestamp },
-      { messageIncludes: ["1 issue"], messageExcludes: ["1 issues"] },
+      {
+        tag: "DET",
+        tagType: "agent",
+        source: "Detective",
+        messageIncludes: ["1 issue"],
+        messageExcludes: ["1 issues"],
+      },
     ],
     [
       "orchestrator_complete",
@@ -253,17 +257,7 @@ describe("convertAgentEventsToLogEntries", () => {
         filesAnalyzed: 10,
         timestamp,
       },
-      { tag: "DONE", messageIncludes: ["7 issues"] },
-    ],
-    [
-      "file_start",
-      { type: "file_start", file: "src/app.ts", index: 2, total: 10, timestamp },
-      { tag: "FILE", messageIncludes: ["src/app.ts", "3/10"] },
-    ],
-    [
-      "file_complete",
-      { type: "file_complete", file: "src/app.ts", index: 2, total: 10, timestamp },
-      { tag: "DONE", messageIncludes: ["src/app.ts"] },
+      { tag: "DONE", tagType: "system", messageIncludes: ["7 issues"] },
     ],
     [
       "file_progress",
@@ -275,18 +269,22 @@ describe("convertAgentEventsToLogEntries", () => {
         total: 10,
         timestamp,
       },
-      { tag: "FILE", messageIncludes: ["Included", "src/app.ts", "in prompt", "3/10"] },
+      {
+        tag: "FILE",
+        tagType: "system",
+        messageIncludes: ["Included", "src/app.ts", "in prompt", "3/10"],
+      },
     ],
   ])("maps %s", (_, event, expected) => {
-    const [entry] = convertAgentEventsToLogEntries([event]);
+    const [entry] = convertReviewEventsToLogEntries([event]);
 
     expect(entry).toEqual(
       expect.objectContaining({
-        ...(expected.tag && { tag: expected.tag }),
-        ...(expected.tagType && { tagType: expected.tagType }),
-        ...(expected.source && { source: expected.source }),
-        ...(expected.isWarning !== undefined && { isWarning: expected.isWarning }),
-        ...(expected.isError !== undefined && { isError: expected.isError }),
+        tag: expected.tag,
+        tagType: expected.tagType,
+        ...(expected.source !== undefined ? { source: expected.source } : {}),
+        ...(expected.isWarning !== undefined ? { isWarning: expected.isWarning } : {}),
+        ...(expected.isError !== undefined ? { isError: expected.isError } : {}),
       }),
     );
     for (const text of expected.messageIncludes ?? []) {
@@ -298,7 +296,7 @@ describe("convertAgentEventsToLogEntries", () => {
   });
 
   it("truncates long agent thoughts", () => {
-    const [entry] = convertAgentEventsToLogEntries([
+    const [entry] = convertReviewEventsToLogEntries([
       { type: "agent_thinking", agent: "detective", thought: "A".repeat(200), timestamp },
     ]);
 
@@ -307,7 +305,7 @@ describe("convertAgentEventsToLogEntries", () => {
   });
 
   it("preserves event order and generates unique ids", () => {
-    const entries = convertAgentEventsToLogEntries([
+    const entries = convertReviewEventsToLogEntries([
       { type: "review_started", reviewId: "r1", filesTotal: 3, timestamp },
       { type: "agent_complete", agent: "detective", issueCount: 1, timestamp },
       { type: "agent_complete", agent: "guardian", issueCount: 0, timestamp },

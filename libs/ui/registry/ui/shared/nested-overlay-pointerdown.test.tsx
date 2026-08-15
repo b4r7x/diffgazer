@@ -253,7 +253,7 @@ describe("Nested overlay: outside-press consumes exactly one layer", () => {
     // fireEvent retained: pointerdown/click coordinate pair asserts backdrop hit-testing and click-swallow ordering.
     fireEvent.pointerDown(dialog, { clientX: 10, clientY: 10 });
     // fireEvent retained: pointerdown/click coordinate pair asserts backdrop hit-testing and click-swallow ordering.
-    fireEvent.click(dialog, { clientX: 10, clientY: 10 });
+    fireEvent.click(dialog, { clientX: 10, clientY: 10, detail: 1 });
     await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
     expect(dialog).toHaveAttribute("data-state", "open");
     expect(onDialogChange).not.toHaveBeenCalled();
@@ -263,7 +263,7 @@ describe("Nested overlay: outside-press consumes exactly one layer", () => {
     // fireEvent retained: pointerdown/click coordinate pair asserts backdrop hit-testing once the select is closed.
     fireEvent.pointerDown(dialog, { clientX: 10, clientY: 10 });
     // fireEvent retained: pointerdown/click coordinate pair asserts backdrop hit-testing once the select is closed.
-    fireEvent.click(dialog, { clientX: 10, clientY: 10 });
+    fireEvent.click(dialog, { clientX: 10, clientY: 10, detail: 1 });
     await waitFor(() => expect(onDialogChange).toHaveBeenCalledWith(false));
   });
 
@@ -324,15 +324,17 @@ describe("Nested overlay: outside-press consumes exactly one layer", () => {
       // fireEvent retained: split pointerdown and click across macrotasks to model browser gesture timing.
       fireEvent.pointerDown(button);
       await vi.advanceTimersByTimeAsync(50);
+      // detail: 1 is what a browser reports for a pointer click; the swallow ignores
+      // detail: 0, which is how a keyboard activation arrives.
       // fireEvent retained: click must be swallowed even after delayed browser dispatch.
-      fireEvent.click(button);
+      fireEvent.click(button, { detail: 1 });
 
       expect(trigger).toHaveAttribute("aria-expanded", "false");
       expect(onButtonClick).not.toHaveBeenCalled();
 
       // fireEvent retained: a second, ordinary click on the same button proves
       // the swallow was one-shot and normal clicks still reach the handler.
-      fireEvent.click(button);
+      fireEvent.click(button, { detail: 1 });
       expect(onButtonClick).toHaveBeenCalledOnce();
     } finally {
       vi.useRealTimers();

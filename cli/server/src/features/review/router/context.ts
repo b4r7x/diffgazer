@@ -14,6 +14,7 @@ import {
   createBodyLimitMiddleware,
   DEFAULT_BODY_LIMIT_KB,
 } from "../../../shared/middlewares/body-limit.js";
+import { createRateLimitMiddleware } from "../../../shared/middlewares/rate-limit.js";
 import { requireSetup } from "../../../shared/middlewares/setup-guard.js";
 import { requireRepoAccess } from "../../../shared/middlewares/trust-guard.js";
 import { loadContextSnapshot } from "../context/snapshot/artifacts.js";
@@ -24,6 +25,12 @@ import { isValidProjectPath } from "../validation.js";
 const contextRouter = new Hono();
 
 const bodyLimitMiddleware = createBodyLimitMiddleware(DEFAULT_BODY_LIMIT_KB);
+// A forced refresh bypasses the snapshot cache and rescans the whole workspace,
+// so it gets a tighter budget than the cheaper review-creation route.
+const contextRefreshLimit = createRateLimitMiddleware("context:refresh", {
+  maxRequests: 5,
+  windowMs: 60_000,
+});
 
 contextRouter.get("/context", requireSetup, requireRepoAccess, async (c): Promise<Response> => {
   const projectRoot = getProjectRoot(c);
@@ -46,6 +53,7 @@ contextRouter.post(
   bodyLimitMiddleware,
   requireSetup,
   requireRepoAccess,
+  contextRefreshLimit,
   zValidator("json", ContextRefreshSchema, handleZodError),
   async (c): Promise<Response> => {
     const body = c.req.valid("json");

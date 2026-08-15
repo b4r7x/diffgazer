@@ -1,5 +1,3 @@
-"use client";
-
 export {
   Progress,
   type ProgressProps,

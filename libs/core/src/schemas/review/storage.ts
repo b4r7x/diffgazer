@@ -1,12 +1,14 @@
 import { z } from "zod";
+import { canonicalJson } from "../canonical-json.js";
 import { LensStatSchema } from "../events/agent.js";
 import { UuidSchema } from "../fields.js";
 import { SavedReviewExecutionSchemaVersionSchema } from "./enums.js";
 import {
   ExecutionReceiptSchema,
+  type ExecutionResult,
   ExecutionResultSchema,
   Sha256HexSchema,
-  TERMINAL_OUTCOMES,
+  TerminalOutcomeSchema,
 } from "./execution.js";
 import { ReviewResultSchema, ReviewSeveritySchema } from "./issues.js";
 import { LensIdSchema, ProfileIdSchema } from "./lens.js";
@@ -68,10 +70,11 @@ export const ReviewMetadataSchema = z
     nitCount: CountFieldSchema.default(0),
     fileCount: CountFieldSchema,
     durationMs: CountFieldSchema.optional(),
+    terminalOutcome: TerminalOutcomeSchema.optional(),
   })
-  .transform((data) => ({
+  .transform(({ staged, ...data }) => ({
     ...data,
-    mode: data.mode ?? (data.staged ? "staged" : "unstaged"),
+    mode: data.mode ?? (staged ? "staged" : "unstaged"),
   }));
 export type ReviewMetadata = z.infer<typeof ReviewMetadataSchema>;
 
@@ -90,8 +93,19 @@ export const SavedReviewExecutionSnapshotSchema = z
     executionFingerprint: Sha256HexSchema,
     receipt: ExecutionReceiptSchema,
   })
+  .refine((snapshot) => snapshot.executionFingerprint === snapshot.receipt.executionFingerprint, {
+    path: ["executionFingerprint"],
+    error: "Snapshot fingerprint must match the execution its receipt describes",
+  })
   .readonly();
 export type SavedReviewExecutionSnapshot = z.infer<typeof SavedReviewExecutionSnapshotSchema>;
+
+function resultsMatch(
+  left: z.infer<typeof ReviewResultSchema>,
+  right: z.infer<typeof ReviewResultSchema>,
+): boolean {
+  return canonicalJson(left.issues) === canonicalJson(right.issues);
+}
 
 function validateSavedReviewExecution(
   review: {
@@ -101,12 +115,13 @@ function validateSavedReviewExecution(
   },
   context: z.RefinementCtx,
 ) {
-  if (!review.execution) return;
+  const receipt = review.executionSnapshot?.receipt ?? review.execution?.receipt;
+  if (!receipt) return;
 
-  const { receipt, result } = review.execution;
   if (
+    review.execution &&
     review.executionSnapshot &&
-    review.executionSnapshot.executionFingerprint !== receipt.executionFingerprint
+    review.executionSnapshot.executionFingerprint !== review.execution.receipt.executionFingerprint
   ) {
     context.addIssue({
       code: "custom",
@@ -123,21 +138,20 @@ function validateSavedReviewExecution(
     });
   }
 
-  if (receipt.outcome === "completed" && review.result.issues.length > 0) {
-    const topLevelMismatch =
-      review.result.issues.length !== result.issues.length ||
-      review.result.issues.some((issue, index) => issue.id !== result.issues[index]?.id);
-    if (topLevelMismatch) {
-      context.addIssue({
-        code: "custom",
-        message: "Completed review findings must match the immutable execution result",
-        path: ["result", "issues"],
-      });
-    }
+  if (
+    receipt.outcome === "completed" &&
+    review.execution &&
+    !resultsMatch(review.result, review.execution.result)
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "Completed review findings must match the immutable execution result",
+      path: ["result", "issues"],
+    });
   }
 }
 
-export const SavedReviewSchema = z
+const SavedReviewObjectSchema = z
   .object({
     metadata: ReviewMetadataSchema,
     result: ReviewResultSchema,
@@ -158,7 +172,49 @@ export const SavedReviewSchema = z
     minSeverity: ReviewSeveritySchema.optional(),
   })
   .superRefine(validateSavedReviewExecution);
-export type SavedReview = z.infer<typeof SavedReviewSchema>;
+export type SavedReview = z.infer<typeof SavedReviewObjectSchema>;
+
+function toCanonicalExecutionResult(
+  review: Pick<SavedReview, "execution" | "executionSnapshot" | "result">,
+): ExecutionResult | undefined {
+  const receipt = review.executionSnapshot?.receipt ?? review.execution?.receipt;
+  if (!receipt) return undefined;
+
+  if (receipt.outcome === "completed") {
+    return {
+      receipt,
+      result: review.result,
+    };
+  }
+
+  return {
+    receipt,
+    result: { issues: [] },
+  };
+}
+
+/**
+ * `executionSnapshot` is the durable half; `execution` is the runtime view a
+ * reader derives from it, so the store omits `execution` when it serializes.
+ */
+function withDerivedSavedReviewExecution(review: SavedReview): SavedReview {
+  const executionSnapshot =
+    review.executionSnapshot ??
+    (review.execution ? toSavedReviewExecutionSnapshot(review.execution) : undefined);
+  const execution = toCanonicalExecutionResult({
+    execution: review.execution,
+    executionSnapshot,
+    result: review.result,
+  });
+
+  return {
+    ...review,
+    ...(executionSnapshot ? { executionSnapshot } : {}),
+    ...(execution ? { execution } : {}),
+  };
+}
+
+export const SavedReviewSchema = SavedReviewObjectSchema.transform(withDerivedSavedReviewExecution);
 
 export function toSavedReviewExecutionSnapshot(
   execution: z.infer<typeof ExecutionResultSchema>,
@@ -170,7 +226,13 @@ export function toSavedReviewExecutionSnapshot(
   });
 }
 
-export { TERMINAL_OUTCOMES };
+export function resolveSavedReviewExecutionSnapshot(
+  review: Pick<SavedReview, "execution" | "executionSnapshot">,
+): SavedReviewExecutionSnapshot | undefined {
+  if (review.executionSnapshot) return review.executionSnapshot;
+  if (!review.execution) return undefined;
+  return toSavedReviewExecutionSnapshot(review.execution);
+}
 
 export const ReviewCursorSchema = z
   .string()
@@ -188,6 +250,12 @@ export const ReviewListWarningSchema = z.discriminatedUnion("kind", [
     kind: z.literal("invalid_issues_dropped"),
     reviewId: UuidSchema,
     count: CountFieldSchema.positive(),
+  }),
+  // The salvaged record lost the execution receipt the durable snapshot carried,
+  // so its outcome and trace are unavailable until the review is re-run.
+  z.strictObject({
+    kind: z.literal("invalid_execution_dropped"),
+    reviewId: UuidSchema,
   }),
   z.strictObject({ kind: z.literal("index_build_failed") }),
   z.strictObject({ kind: z.literal("index_rewrite_failed") }),
@@ -227,6 +295,6 @@ export const CreateReviewResponseSchema = z
   })
   .refine((response) => response.reviewId === response.session.reviewId, {
     path: ["session", "reviewId"],
-    message: "session.reviewId must match reviewId",
+    error: "session.reviewId must match reviewId",
   });
 export type CreateReviewResponse = z.infer<typeof CreateReviewResponseSchema>;

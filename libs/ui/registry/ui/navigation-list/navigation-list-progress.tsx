@@ -21,13 +21,20 @@ const progressColorVariants = cva("", {
 
 type ProgressColor = "auto" | NonNullable<VariantProps<typeof progressColorVariants>["color"]>;
 
+// Same ceiling as the sibling BlockBar primitive: one finite number bound to
+// `width` must not ask String.repeat for a string it cannot allocate.
+const MAX_BAR_WIDTH = 200;
+
 /** Props for navigation list progress. */
 export interface NavigationListProgressProps {
-  /** Progress percentage (0-100). */
+  /** Progress percentage (0-100). Clamped; invalid values become zero. */
   value: number;
   /** Bar style. "block" uses █░ characters, "bar" uses [==-] characters. */
   variant?: ProgressVariant;
-  /** Number of characters for the progress bar. Rounded down; invalid values become zero. */
+  /**
+   * Number of characters for the progress bar. Rounded down and capped at 200;
+   * invalid values become zero.
+   */
   width?: number;
   /** Color token. Auto selects color based on value thresholds. */
   color?: ProgressColor;
@@ -61,8 +68,10 @@ export function NavigationListProgress({
   showLabel = true,
   className,
 }: NavigationListProgressProps) {
-  const value = Math.min(100, Math.max(0, rawValue));
-  const width = Number.isFinite(rawWidth) ? Math.max(0, Math.floor(rawWidth)) : 0;
+  const value = Number.isFinite(rawValue) ? Math.min(100, Math.max(0, rawValue)) : 0;
+  const width = Number.isFinite(rawWidth)
+    ? Math.min(MAX_BAR_WIDTH, Math.max(0, Math.floor(rawWidth)))
+    : 0;
   const filled = Math.round((value / 100) * width);
   const empty = width - filled;
   const bar = buildBar(variant, filled, empty);

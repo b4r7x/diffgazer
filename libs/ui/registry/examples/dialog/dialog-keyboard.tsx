@@ -40,23 +40,22 @@ export default function DialogKeyboard() {
             <span className="text-foreground font-mono">feature/auth-refactor</span>?
           </p>
         </DialogBody>
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard-navigation wrapper for the dialog action row; arrow-key handling is delegated here while focus stays on the inner buttons. */}
-        <div ref={containerRef} onKeyDown={onKeyDown}>
-          <DialogFooter
-            hints={[
-              { key: "Esc", label: "Close" },
-              { key: "←/→", label: "Navigate" },
-              { key: "Enter", label: "Confirm" },
-            ]}
-          >
-            <DialogClose data-value="cancel" bracket variant="ghost">
-              Cancel
-            </DialogClose>
-            <DialogAction data-value="delete" variant="destructive" bracket>
-              Delete
-            </DialogAction>
-          </DialogFooter>
-        </div>
+        <DialogFooter
+          ref={containerRef}
+          onKeyDown={onKeyDown}
+          hints={[
+            { key: "Esc", label: "Close" },
+            { key: "←/→", label: "Navigate" },
+            { key: "Enter", label: "Confirm" },
+          ]}
+        >
+          <DialogClose data-value="cancel" bracket>
+            Cancel
+          </DialogClose>
+          <DialogAction data-value="delete" variant="destructive">
+            Delete
+          </DialogAction>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

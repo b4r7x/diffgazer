@@ -1,17 +1,23 @@
 import { describe, expect, it } from "vitest";
-import type { ReviewIssue } from "../schemas/review/index.js";
+import type { ExecutionReceipt } from "../schemas/review/index.js";
 import {
-  extractOrchestratorStats,
   resolveSavedReviewOutcome,
   type SavedReviewQueryState,
   toSavedReviewQueryState,
 } from "./screen-state.js";
 
-function issue(id: string): ReviewIssue {
+function terminalReceipt(
+  outcome: Exclude<ExecutionReceipt["outcome"], "completed">,
+  usageAvailability: ExecutionReceipt["usageAvailability"] = "unavailable",
+): ExecutionReceipt {
+  return { outcome, usageAvailability } as ExecutionReceipt;
+}
+
+function issue(id: string) {
   return {
     id,
-    severity: "high",
-    category: "security",
+    severity: "high" as const,
+    category: "security" as const,
     title: "t",
     file: "f.ts",
     line_start: 1,
@@ -35,8 +41,6 @@ describe("resolveSavedReviewOutcome", () => {
         result: { issues: [issue("i-1")] },
         droppedDuplicates: 1,
       },
-      error: null,
-      notFound: false,
     };
     const outcome = resolveSavedReviewOutcome(state, false);
     expect(outcome.kind).toBe("results");
@@ -52,8 +56,6 @@ describe("resolveSavedReviewOutcome", () => {
     const state: SavedReviewQueryState = {
       status: "success",
       review: { metadata: { id: "abc" }, result: null },
-      error: null,
-      notFound: false,
     };
     expect(resolveSavedReviewOutcome(state, false).kind).toBe("fallback-to-stream");
   });
@@ -62,8 +64,6 @@ describe("resolveSavedReviewOutcome", () => {
     const state: SavedReviewQueryState = {
       status: "success",
       review: { metadata: { id: "abc" }, result: null },
-      error: null,
-      notFound: false,
     };
     expect(resolveSavedReviewOutcome(state, true).kind).toBe("not-found");
   });
@@ -71,7 +71,6 @@ describe("resolveSavedReviewOutcome", () => {
   it("falls back to streaming on a 404 read when the stream has not 404'd", () => {
     const state: SavedReviewQueryState = {
       status: "error",
-      review: null,
       error: Object.assign(new Error("not found"), { status: 404 }),
       notFound: true,
     };
@@ -81,7 +80,6 @@ describe("resolveSavedReviewOutcome", () => {
   it("reports not-found on a 404 read once the stream has also 404'd", () => {
     const state: SavedReviewQueryState = {
       status: "error",
-      review: null,
       error: Object.assign(new Error("not found"), { status: 404 }),
       notFound: true,
     };
@@ -92,7 +90,6 @@ describe("resolveSavedReviewOutcome", () => {
     const error = new Error("legacy review rejected");
     const state: SavedReviewQueryState = {
       status: "error",
-      review: null,
       error,
       notFound: false,
     };
@@ -106,11 +103,54 @@ describe("resolveSavedReviewOutcome", () => {
   it("returns loading while the query is pending", () => {
     const state: SavedReviewQueryState = {
       status: "pending",
-      review: null,
-      error: null,
-      notFound: false,
     };
     expect(resolveSavedReviewOutcome(state, false).kind).toBe("loading");
+  });
+
+  it("returns terminal before a truthy empty result for non-completed executions", () => {
+    const state: SavedReviewQueryState = {
+      status: "success",
+      review: {
+        metadata: { id: "abc", durationMs: 900 },
+        result: { issues: [] },
+        execution: {
+          receipt: terminalReceipt("cancelled"),
+        },
+      },
+    };
+
+    const outcome = resolveSavedReviewOutcome(state, false);
+    expect(outcome.kind).toBe("terminal");
+    if (outcome.kind === "terminal") {
+      expect(outcome.data.reviewId).toBe("abc");
+      expect(outcome.data.outcome).toBe("cancelled");
+      expect(outcome.data.usageAvailability).toBe("unavailable");
+    }
+  });
+
+  it("prefers executionSnapshot over raw execution for terminal resolution", () => {
+    const state: SavedReviewQueryState = {
+      status: "success",
+      review: {
+        metadata: { id: "abc" },
+        result: { issues: [] },
+        execution: {
+          receipt: {
+            outcome: "completed",
+            usageAvailability: "reported",
+          } as unknown as ExecutionReceipt,
+        },
+        executionSnapshot: {
+          receipt: terminalReceipt("transport-failed", "reported"),
+        },
+      },
+    };
+
+    const outcome = resolveSavedReviewOutcome(state, false);
+    expect(outcome.kind).toBe("terminal");
+    if (outcome.kind === "terminal") {
+      expect(outcome.data.outcome).toBe("transport-failed");
+    }
   });
 });
 
@@ -118,49 +158,15 @@ describe("saved review query presentation", () => {
   it("maps query status and recognizes API 404 errors", () => {
     const error = Object.assign(new Error("missing"), { status: 404 });
 
-    expect(
-      toSavedReviewQueryState({ isSuccess: false, isError: true, data: undefined, error }),
-    ).toEqual({ status: "error", review: null, error, notFound: true });
-  });
-
-  it("uses the latest orchestrator completion event", () => {
-    const result = extractOrchestratorStats({
-      events: [
-        {
-          type: "orchestrator_complete",
-          totalIssues: 1,
-          filesAnalyzed: 2,
-          lensStats: [
-            {
-              lensId: "security",
-              issueCount: 0,
-              status: "failed",
-              errorCode: "MODEL_ERROR",
-            },
-          ],
-          droppedDuplicates: 1,
-          timestamp: "2026-01-01T00:00:01.000Z",
-        },
-        {
-          type: "orchestrator_complete",
-          totalIssues: 2,
-          filesAnalyzed: 3,
-          lensStats: [
-            {
-              lensId: "security",
-              issueCount: 0,
-              status: "failed",
-              errorCode: "RATE_LIMITED",
-            },
-          ],
-          droppedDuplicates: 2,
-          minSeverity: "medium",
-          timestamp: "2026-01-01T00:00:02.000Z",
-        },
-      ],
+    expect(toSavedReviewQueryState({ status: "error", error })).toEqual({
+      status: "error",
+      error,
+      notFound: true,
     });
-
-    expect(result).toMatchObject({ droppedDuplicates: 2, minSeverity: "medium" });
-    expect(result.lensStats?.[0]?.errorCode).toBe("RATE_LIMITED");
+    expect(toSavedReviewQueryState({ status: "pending" })).toEqual({ status: "pending" });
+    expect(toSavedReviewQueryState({ status: "success", data: undefined })).toEqual({
+      status: "success",
+      review: null,
+    });
   });
 });

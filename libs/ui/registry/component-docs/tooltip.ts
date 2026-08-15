@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const tooltipDoc: ComponentDoc = {
   description:
@@ -78,7 +78,7 @@ export const tooltipDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          "Shorthand: when set, Tooltip renders children inside Tooltip.Trigger and content inside Tooltip.Content automatically. When omitted, compose Tooltip.Trigger and Tooltip.Content explicitly via children.",
+          "Shorthand: when set to renderable content, Tooltip renders children inside Tooltip.Trigger and content inside Tooltip.Content automatically. When omitted \u2014 or falsy, as in the conditional `content={isTruncated && label}` idiom \u2014 compose Tooltip.Trigger and Tooltip.Content explicitly via children.",
       },
       open: {
         type: "boolean",
@@ -131,7 +131,8 @@ export const tooltipDoc: ComponentDoc = {
         type: "ReactNode | (props: PopoverTriggerRenderProps) => ReactNode",
         required: true,
         defaultValue: null,
-        description: "Trigger element. Same render-prop and clone semantics as Popover.Trigger.",
+        description:
+          "Trigger element. Pass a single element, text, or a render function, with the same render-prop and clone semantics as Popover.Trigger.",
       },
     },
     "Tooltip.Content": {
@@ -163,7 +164,8 @@ export const tooltipDoc: ComponentDoc = {
         type: "boolean",
         required: false,
         defaultValue: "true",
-        description: "Flip and shift to keep the tooltip inside the viewport.",
+        description:
+          "Flips to the opposite side, then cross-axis sides, then shifts within the viewport to keep the tooltip inside it.",
       },
       collisionPadding: {
         type: "number",

@@ -135,13 +135,20 @@ function TabsRoot<TValue extends string = string>(props: TabsProps<TValue>) {
     () => (registeredPanels.length ? registeredPanels.map((item) => item.value) : seed.panelValues),
     [registeredPanels, seed.panelValues],
   );
-  const [value, setValue] = useControllableState<string>({
-    value: "value" in props ? (controlledValue ?? "") : undefined,
-    controlled: "value" in props,
-    defaultValue: defaultValue ?? "",
-    // TValue is a string subtype; downstream context matches on string at runtime.
-    onChange: onChange as ((value: string) => void) | undefined,
-  });
+  const [value, setValue] = useControllableState<string>(
+    "value" in props
+      ? {
+          controlled: true,
+          value: controlledValue ?? "",
+          defaultValue: defaultValue ?? "",
+          // TValue is a string subtype; downstream context matches on string at runtime.
+          onChange: onChange as ((value: string) => void) | undefined,
+        }
+      : {
+          defaultValue: defaultValue ?? "",
+          onChange: onChange as ((value: string) => void) | undefined,
+        },
+  );
   const [focusedValue, setFocusedValue] = useState<string | null>(null);
   const firstEnabledTab = enabledValues[0] ?? "";
   const resolvedValue = enabledValues.includes(value) ? value : firstEnabledTab;

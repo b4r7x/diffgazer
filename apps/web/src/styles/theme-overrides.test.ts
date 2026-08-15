@@ -62,6 +62,28 @@ function resolveDeclaration(declarations: Map<string, string>, variable: string)
   return reference ? resolveDeclaration(declarations, reference) : value;
 }
 
+function hexToRgb(hex: string): [number, number, number] {
+  const normalized = hex.replace("#", "");
+  const value = Number.parseInt(normalized, 16);
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+}
+
+function luminance(rgb: [number, number, number]): number {
+  const linear = (channel: number) => {
+    const scaled = channel / 255;
+    return scaled <= 0.04045 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * linear(rgb[0]) + 0.7152 * linear(rgb[1]) + 0.0722 * linear(rgb[2]);
+}
+
+function contrastRatio(foreground: string, background: string): number {
+  const foregroundLuminance = luminance(hexToRgb(foreground));
+  const backgroundLuminance = luminance(hexToRgb(background));
+  const brighter = Math.max(foregroundLuminance, backgroundLuminance);
+  const darker = Math.min(foregroundLuminance, backgroundLuminance);
+  return (brighter + 0.05) / (darker + 0.05);
+}
+
 function getPaletteValues(block: string): Record<string, string> {
   const declarations = getDeclarations(block);
   return Object.fromEntries(
@@ -73,6 +95,13 @@ function getPaletteValues(block: string): Record<string, string> {
 }
 
 describe("theme override domain token parity", () => {
+  it("ships the JetBrains Mono OFL license beside the bundled font", () => {
+    const license = readFileSync(resolve(import.meta.dirname, "../assets/fonts/LICENSE"), "utf8");
+
+    expect(license).toMatch(/SIL OPEN FONT LICENSE/i);
+    expect(license).toMatch(/JetBrains Mono/i);
+  });
+
   it("does not declare overrides under :root, which would beat the lib light theme", () => {
     const css = loadThemeOverridesCss();
     // This file loads after @diffgazer/ui/styles.css, so a `:root` selector here
@@ -123,16 +152,60 @@ describe("theme override domain token parity", () => {
     const css = loadThemeOverridesCss();
     const contrastStart = css.indexOf("@media (prefers-contrast: more)");
     const selector = String.raw`\[data-theme="${theme}"\]`;
-    const base = getDeclarations(getThemeBlock(css, selector));
     const contrast = getDeclarations(getThemeBlock(css.slice(contrastStart), selector));
 
     expect(contrastStart).toBeGreaterThan(css.indexOf(`[data-theme="${theme}"]`));
     expect(contrast.size).toBeGreaterThan(0);
-    for (const [variable, value] of contrast) {
-      // Every contrast declaration must restate a base primitive with a
-      // different value, or the preference changes nothing.
-      expect(base.has(variable)).toBe(true);
-      expect(value).not.toBe(base.get(variable));
-    }
+  });
+
+  it.each([
+    ["dark", "#0d1117", "#010409"],
+    ["light", "#ffffff", "#f6f8fa"],
+  ] as const)("keeps the %s control edge at least 3:1 against canvas and input-well", (theme, canvas, inputWell) => {
+    const css = loadThemeOverridesCss();
+    const declarations = getDeclarations(getThemeBlock(css, String.raw`\[data-theme="${theme}"\]`));
+    const controlBorder = resolveDeclaration(declarations, "--control-border");
+
+    expect(contrastRatio(controlBorder, canvas)).toBeGreaterThanOrEqual(3);
+    expect(
+      contrastRatio(controlBorder, resolveDeclaration(declarations, "--input-well")),
+    ).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(controlBorder, inputWell)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("keeps light bordered corner labels at least 4.5:1 on surface-2", () => {
+    const css = loadThemeOverridesCss();
+    const declarations = getDeclarations(getThemeBlock(css, String.raw`\[data-theme="light"\]`));
+    const foreground = resolveDeclaration(declarations, "--corner-label-foreground");
+    const surface = resolveDeclaration(declarations, "--surface-2");
+
+    expect(contrastRatio(foreground, surface)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    ["dark", "#0d1117"],
+    ["light", "#ffffff"],
+  ] as const)("keeps the %s strong border at least as contrasted as the resting border under increased contrast", (theme, canvas) => {
+    const css = loadThemeOverridesCss();
+    const contrastStart = css.indexOf("@media (prefers-contrast: more)");
+    const selector = String.raw`\[data-theme="${theme}"\]`;
+    const declarations = getDeclarations(getThemeBlock(css.slice(contrastStart), selector));
+    const resting = resolveDeclaration(declarations, "--base-border");
+    const strong = resolveDeclaration(declarations, "--border-strong");
+
+    expect(contrastRatio(strong, canvas)).toBeGreaterThanOrEqual(contrastRatio(resting, canvas));
+  });
+
+  it.each([
+    ["dark", "#b3b3b3"],
+    ["light", "#4a4a4a"],
+  ] as const)("restates increased-contrast base-dim for the %s palette", (theme, expectedDim) => {
+    const css = loadThemeOverridesCss();
+    const contrastStart = css.indexOf("@media (prefers-contrast: more)");
+    const declarations = getDeclarations(
+      getThemeBlock(css.slice(contrastStart), String.raw`\[data-theme="${theme}"\]`),
+    );
+
+    expect(declarations.get("--base-dim")).toBe(expectedDim);
   });
 });

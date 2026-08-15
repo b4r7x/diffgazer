@@ -1,15 +1,19 @@
 import { useKey } from "@diffgazer/keys";
 import { Kbd } from "@diffgazer/ui/components/kbd";
 import { cn } from "@diffgazer/ui/lib/utils";
+import type { AnyRouteMatch } from "@tanstack/react-router";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Fragment } from "react";
 import { CHROME_ACTION_TARGET_CLASS, CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
 import { nextThemePreference, useTheme } from "@/hooks/theme-context";
 
+// Structural so tests can hand-build matches, but `status` is pinned to the
+// router's own union: a renamed literal must fail to compile, not silently
+// stop matching below.
 type FooterRouteMatch = {
   routeId: string;
-  status: string;
+  status: AnyRouteMatch["status"];
   globalNotFound?: boolean;
 };
 
@@ -73,7 +77,11 @@ export function FooterBar() {
         <button
           type="button"
           onClick={toggleTheme}
-          className={`inline-flex items-center gap-1.5 transition-colors hover:text-foreground ${FOCUS_RING_CLASS}`}
+          className={cn(
+            CHROME_ACTION_TARGET_CLASS,
+            "gap-1.5 transition-colors hover:text-foreground",
+            FOCUS_RING_CLASS,
+          )}
         >
           <Kbd size="sm">F2</Kbd>
           <span>Theme</span>

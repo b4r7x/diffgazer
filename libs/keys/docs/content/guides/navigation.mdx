@@ -241,6 +241,7 @@ interface UseNavigationOptions {
   moveFocus?: boolean;              // default: false
   scopeToContainer?: boolean;       // default: true
   ownerSelector?: string | null;    // advanced owner override
+  itemSelector?: string;            // narrow items when the role query is broader
   upKeys?: string[];                // default: ["ArrowUp"] or ["ArrowLeft"]
   downKeys?: string[];              // default: ["ArrowDown"] or ["ArrowRight"]
 }

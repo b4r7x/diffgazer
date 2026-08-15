@@ -13,13 +13,14 @@ import { HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
 import type { ReviewResponse } from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue, makeReviewMetadata } from "@diffgazer/core/testing/factories";
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { MAIN_CONTENT_ID } from "@/lib/main-content";
+import { FooterView } from "@/testing/footer-view";
 import { expectSingleReticle } from "@/testing/reticle";
 import {
-  FooterView,
+  defaultReviewsResponse,
   focusRunsList,
   makeReviewResponse,
   mockGetReview,
@@ -59,6 +60,35 @@ describe("HistoryPage keyboard navigation", () => {
       to: "/review/{-$reviewId}",
       params: { reviewId: "22222222-2222-4222-8222-222222222222" },
     });
+  });
+
+  it("opens the highlighted run on Space", async () => {
+    const user = userEvent.setup();
+    renderHistoryPage(<HistoryPage />);
+
+    await focusRunsList();
+    await user.keyboard("{ArrowDown}");
+    await user.keyboard(" ");
+
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/review/{-$reviewId}",
+        params: { reviewId: "22222222-2222-4222-8222-222222222222" },
+      }),
+    );
+  });
+
+  it("lets Space extend an in-progress typeahead query instead of opening a run", async () => {
+    const user = userEvent.setup();
+    renderHistoryPage(<HistoryPage />);
+
+    await focusRunsList();
+    await user.keyboard("{ArrowDown}");
+    // A printable key starts the query; Space then belongs to it, not to select.
+    await user.keyboard("z");
+    await user.keyboard(" ");
+
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("keeps exactly one pane bracketed as focus moves between panes", async () => {
@@ -308,6 +338,59 @@ describe("HistoryPage keyboard navigation", () => {
     expect(screen.queryByText("Switch Focus")).not.toBeInTheDocument();
   });
 
+  it("adds high-cardinality warning details to the managed focus cycle", async () => {
+    const warningIds = Array.from(
+      { length: 50 },
+      (_, index) => `${index.toString(16).padStart(8, "0")}-1111-4111-8111-111111111111`,
+    );
+    mockGetReviews.mockResolvedValue({
+      reviews: [makeReviewMetadata({ id: "readable-review" })],
+      warnings: warningIds.map((reviewId) => ({ kind: "unreadable_review" as const, reviewId })),
+    });
+
+    const user = userEvent.setup();
+    renderHistoryPage(
+      <>
+        <HistoryPage />
+        <FooterView />
+      </>,
+    );
+
+    const runsList = await focusRunsList();
+    const warningRegion = await screen.findByRole("region", { name: "History warnings" });
+
+    await user.keyboard("{Tab}");
+
+    await waitFor(() => expect(warningRegion).toHaveFocus());
+    expect(
+      within(screen.getByRole("contentinfo")).getByText("Scroll Warnings"),
+    ).toBeInTheDocument();
+    expect(warningRegion).toHaveTextContent("00000031-1111-4111-8111-111111111111");
+    expect(runsList).not.toHaveFocus();
+  });
+
+  it("keeps retained history keyboardable after a background refetch error", async () => {
+    const user = userEvent.setup();
+    const { queryClient } = renderHistoryPage(<HistoryPage />);
+
+    await focusRunsList();
+    mockGetReviews.mockRejectedValueOnce(new Error("background refresh failed"));
+
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ["review", "list"], exact: true });
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("background refresh failed");
+    const search = screen.getByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
+    const runsList = screen.getByRole("listbox", { name: /review runs/i });
+    runsList.focus();
+    await waitFor(() => expect(runsList).toHaveFocus());
+
+    await user.keyboard("{Tab}");
+
+    await waitFor(() => expect(search).toHaveFocus());
+  });
+
   it("does not include runs or insights in the Tab cycle when there are no runs", async () => {
     mockGetReviews.mockResolvedValue({ reviews: [] });
 
@@ -367,41 +450,92 @@ describe("HistoryPage keyboard navigation", () => {
     await waitFor(() => expect(document.activeElement).toBe(insightsList));
   });
 
+  it("moves focus and the footer to runs when the final page removes the load-more control", async () => {
+    const nextCursor =
+      "dg1_WyIyMDI2LTAyLTA4VDA5OjAwOjAwLjAwMFoiLCIyMjIyMjIyMi0yMjIyLTQyMjItODIyMi0yMjIyMjIyMjIyMjIiXQ";
+    mockGetReviews.mockImplementation(async (cursor) =>
+      cursor
+        ? {
+            reviews: [makeReviewMetadata({ id: "33333333-3333-4333-8333-333333333333" })],
+            nextCursor: null,
+          }
+        : {
+            reviews: defaultReviewsResponse().reviews,
+            nextCursor,
+          },
+    );
+
+    const user = userEvent.setup();
+    renderHistoryPage(
+      <>
+        <HistoryPage />
+        <FooterView />
+      </>,
+    );
+
+    const loadMore = await screen.findByRole("button", { name: "Load older runs" });
+    const runsList = await focusRunsList();
+
+    await user.keyboard("{Tab}");
+    await waitFor(() => expect(loadMore).toHaveFocus());
+    const footer = within(screen.getByRole("contentinfo"));
+    expect(footer.getByText("Load Older Runs")).toBeInTheDocument();
+
+    await user.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Load older runs" })).not.toBeInTheDocument(),
+    );
+    await waitFor(() => expect(runsList).toHaveFocus());
+    expect(footer.queryByText("Load Older Runs")).not.toBeInTheDocument();
+    expect(footer.getByText("Open Review")).toBeInTheDocument();
+  });
+
+  it("moves focus to the runs list when activating retry unmounts the error alert", async () => {
+    const detail = createDeferred<ReviewResponse>();
+    mockGetReview
+      .mockRejectedValueOnce(new Error("detail disk unreadable"))
+      .mockReturnValue(detail.promise);
+
+    const user = userEvent.setup();
+    renderHistoryPage(
+      <>
+        <HistoryPage />
+        <FooterView />
+      </>,
+    );
+
+    await screen.findByRole("alert");
+    const runsList = await focusRunsList();
+
+    await user.keyboard("{Tab}");
+    const retryButton = screen.getByRole("button", { name: "Retry" });
+    await waitFor(() => expect(retryButton).toHaveFocus());
+
+    await user.keyboard("{Enter}");
+
+    await screen.findByText("Loading review details...");
+    await waitFor(() => expect(runsList).toHaveFocus());
+    const footer = within(screen.getByRole("contentinfo"));
+    expect(footer.queryByText("Retry")).not.toBeInTheDocument();
+    expect(footer.getByText("Open Review")).toBeInTheDocument();
+
+    detail.resolve(
+      makeReviewResponse("11111111-1111-4111-8111-111111111111", [
+        makeIssue({ id: "retried-issue", title: "Retried issue" }),
+      ]),
+    );
+    const insightsList = await screen.findByRole("listbox", { name: /run issues/i });
+
+    await user.keyboard("{ArrowRight}");
+    await waitFor(() => expect(insightsList).toHaveFocus());
+  });
+
   it("moves the insights highlight with j alias and routes Enter to the issue handler", async () => {
     mockGetReview.mockImplementation(async (id) =>
       makeReviewResponse(id, [
-        {
-          id: "issue-a",
-          severity: "high",
-          category: "correctness",
-          title: "Alpha",
-          file: "a.ts",
-          line_start: 1,
-          line_end: 1,
-          rationale: "",
-          recommendation: "",
-          suggested_patch: null,
-          confidence: 0.9,
-          symptom: "",
-          whyItMatters: "",
-          evidence: [],
-        },
-        {
-          id: "issue-b",
-          severity: "high",
-          category: "correctness",
-          title: "Beta",
-          file: "b.ts",
-          line_start: 2,
-          line_end: 2,
-          rationale: "",
-          recommendation: "",
-          suggested_patch: null,
-          confidence: 0.9,
-          symptom: "",
-          whyItMatters: "",
-          evidence: [],
-        },
+        makeIssue({ id: "issue-a", severity: "high", title: "Alpha", file: "a.ts", line_start: 1 }),
+        makeIssue({ id: "issue-b", severity: "high", title: "Beta", file: "b.ts", line_start: 2 }),
       ]),
     );
 
@@ -470,14 +604,15 @@ describe("HistoryPage keyboard navigation", () => {
     );
   });
 
-  it("rests every pane on an empty history instead of autofocusing the runs list", async () => {
+  it("falls back to the search input on an empty history and leaves every pane unbracketed", async () => {
     mockGetReviews.mockResolvedValue({ reviews: [] });
 
     renderHistoryPage(<HistoryPage />);
 
     await screen.findByText("No runs yet");
 
-    expect(document.activeElement).toBe(document.body);
+    const search = screen.getByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
+    await waitFor(() => expect(search).toHaveFocus());
     expect(screen.getByRole("region", { name: "Review runs" })).not.toHaveAttribute("data-state");
     expect(screen.getByRole("complementary", { name: "Review sections" })).not.toHaveAttribute(
       "data-state",
@@ -485,6 +620,28 @@ describe("HistoryPage keyboard navigation", () => {
     expect(screen.getByRole("complementary", { name: "Review insights" })).not.toHaveAttribute(
       "data-state",
     );
+  });
+
+  it("keeps focus in the search input when Escape has no runs list to return to", async () => {
+    mockGetReviews.mockResolvedValue({ reviews: [] });
+
+    const user = userEvent.setup();
+    renderHistoryPage(
+      <>
+        <HistoryPage />
+        <FooterView />
+      </>,
+    );
+
+    const search = await screen.findByPlaceholderText(HISTORY_SEARCH_PLACEHOLDER);
+    await waitFor(() => expect(search).toHaveFocus());
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(search).toHaveFocus());
+    const footer = within(screen.getByRole("contentinfo"));
+    expect(footer.getByText("Clear Search")).toBeInTheDocument();
+    expect(footer.queryByText("Open Review")).not.toBeInTheDocument();
   });
 
   it("does not programmatically focus the insights pane when no run is selected", async () => {

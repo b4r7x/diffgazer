@@ -1,25 +1,23 @@
-import { isArrayDirty } from "../../forms.js";
 import { isMember } from "../fields.js";
 import { LENS_IDS, type LensId } from "./lens.js";
+
+function isArrayDirty<T>(persisted: T[], choice: T[] | null): boolean {
+  if (choice === null) return false;
+  if (persisted.length !== choice.length) return true;
+  return persisted.some((item) => !choice.includes(item));
+}
 
 export function isLensId(value: string | null): value is LensId {
   return isMember(LENS_IDS, value);
 }
 
-export function resolveEffectiveLenses(
+function resolveEffectiveLenses(
   defaultLenses: LensId[],
   selectedLenses: LensId[] | null,
   fallbackLenses: LensId[],
 ): LensId[] {
   if (selectedLenses !== null) return selectedLenses;
   return defaultLenses.length > 0 ? defaultLenses : fallbackLenses;
-}
-
-export function isLensSelectionDirty(
-  currentLenses: LensId[],
-  selectedLenses: LensId[] | null,
-): boolean {
-  return isArrayDirty(currentLenses, selectedLenses);
 }
 
 export function deriveLensSelectionState(
@@ -33,7 +31,7 @@ export function deriveLensSelectionState(
 
   return {
     effective,
-    isDirty: isLensSelectionDirty(current, selected),
+    isDirty: isArrayDirty(current, selected),
     hasSelection: effective.length > 0,
   };
 }

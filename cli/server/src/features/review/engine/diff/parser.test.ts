@@ -38,6 +38,22 @@ describe("parseDiff", () => {
     expect(result.files[0]?.stats.deletions).toBe(1);
   });
 
+  it("does not parse combined-diff conflict blocks as reviewable files", () => {
+    const diff = `diff --cc conflicted.ts
+index 1111111,2222222..3333333 100644
+--- a/conflicted.ts
++++ b/conflicted.ts
+@@@ -1,3 -1,3 -1,6 @@@
+ line1
+-ours
++theirs
+ line3`;
+
+    const result = parseDiff(diff);
+
+    expect(result.files).toHaveLength(0);
+  });
+
   it("counts added content lines that begin with plus signs", () => {
     const diff = `diff --git a/file.ts b/file.ts
 --- a/file.ts
@@ -475,6 +491,24 @@ rename to "new \\"name\\".ts"
     expect(result.files[0]?.previousPath).toBe('old "name".ts');
   });
 
+  it("handles a rename whose header quotes only the new path", () => {
+    const diff = `diff --git a/plain.ts "b/we\\tird.ts"
+rename from plain.ts
+rename to "we\\tird.ts"
+--- a/plain.ts
++++ "b/we\\tird.ts"
+@@ -1 +1 @@
+-old
++new`;
+
+    const result = parseDiff(diff);
+
+    expect(result.files).toHaveLength(1);
+    expect(result.files[0]?.operation).toBe("rename");
+    expect(result.files[0]?.filePath).toBe("we\tird.ts");
+    expect(result.files[0]?.previousPath).toBe("plain.ts");
+  });
+
   it("decodes a git-quoted multi-byte UTF-8 path", () => {
     // git quotes `żółć/plik.ts` as octal bytes under default core.quotepath.
     const quoted = "\\305\\274\\303\\263\\305\\202\\304\\207/plik.ts";
@@ -491,5 +525,20 @@ rename to "new \\"name\\".ts"
     expect(result.files).toHaveLength(1);
     expect(result.files[0]?.filePath).toBe("żółć/plik.ts");
     expect(result.files[0]?.stats.additions).toBe(1);
+  });
+
+  it("decodes every single-character escape git emits in a quoted path", () => {
+    // git quotes BEL/BS/VT/FF the same way it quotes tab, newline, and CR.
+    const quoted = "bell\\abs\\bvt\\vff\\f.ts";
+    const diff = `diff --git "a/${quoted}" "b/${quoted}"
+--- "a/${quoted}"
++++ "b/${quoted}"
+@@ -1,1 +1,2 @@
+ line1
++added`;
+
+    const result = parseDiff(diff);
+
+    expect(result.files[0]?.filePath).toBe("bell\u0007bs\u0008vt\u000bff\u000c.ts");
   });
 });

@@ -5,13 +5,13 @@ import { getProjectRoot } from "../lib/http/request.js";
 import { errorResponse } from "../lib/http/response.js";
 
 export function hasRepoReadAccess(projectRoot: string): boolean {
-  const { trust } = getStore().getProjectInfo(projectRoot);
+  const { trust } = getStore().getProjectInfoForResolvedRoot(projectRoot);
   return trust?.capabilities.readFiles === true && trust.repoRoot === projectRoot;
 }
 
 export const requireRepoAccess = async (c: Context, next: Next): Promise<Response | undefined> => {
   const projectRoot = getProjectRoot(c);
-  const { trust } = getStore().getProjectInfo(projectRoot);
+  const { trust } = getStore().getProjectInfoForResolvedRoot(projectRoot);
 
   if (!trust?.capabilities.readFiles) {
     return errorResponse(

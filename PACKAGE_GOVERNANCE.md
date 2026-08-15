@@ -69,9 +69,22 @@ pnpm run release
 
 `pnpm run verify` runs monorepo invariants, type checks, tests, and smoke checks. `pnpm run smoke:packages` packs local workspace packages into temporary projects and verifies public imports/bins; it does not install from the public npm registry.
 
-`pnpm run test-ci` runs artifact preparation, validation, type-check, tests, strict smoke, and monorepo verification. It is the CI-safe local pre-release gate. The release workflow uses `pnpm run release-check`, which runs the same gate families plus package pack dry-runs.
+`pnpm run test-ci` is a strict wrapper around `pnpm run verify`. The independent `verify` chain runs
+`verify:monorepo`, artifact validation, the secret scan, `check` (Biome, deploy-runbook,
+Turbo, dependency-cruiser, and Knip checks), `test:scripts`, Turbo type-check/test/test-types,
+smoke, and the benchmark. It does not invoke `release-check`.
 
-`pnpm run release-check` runs the full no-publish release readiness sequence: artifact prep, artifact validation, type-check, tests, strict smoke, package smoke, pack dry-runs for all public packages, monorepo verification, and `git diff --check`. It does not run `changeset publish`.
+`pnpm run release-check` is an independent no-publish chain. It runs the production audit, secret
+scan, build, package checks, artifact validation, `check`, `test:scripts`, Turbo type-check/test/
+test-types, strict smoke, provider and embedded-production web E2E suites, the docs build, strict
+benchmark, live-registry and changeset checks, all four public-package pack dry-runs,
+`verify:monorepo`, and `git diff --check`. The `test:scripts` glob already includes the
+provider-transport legacy-allowlist test; `release-check` repeats that exact test directly near the
+end of the chain. The changeset check compares against the merge base with `main`, so it only
+examines a branch's own changes: it bites on a local pre-release run from a feature branch, and on
+the Release workflow's merged-main checkout the merge base is `HEAD`, so it passes without examining
+anything — the same reason release-readiness runs that step on pull requests only. It does not
+invoke `test-ci` or `changeset publish`.
 
 `smoke:packages` currently covers local tarball installs, all exported `@diffgazer/ui` subpaths, CSS export resolution, React SSR rendering, strict NodeNext type checking, and the shared React `>=19.2.0` floor. Public handoff also requires clean consumer checks in Vite and Next apps with npm, pnpm, yarn, and bun after the packages are actually published.
 
@@ -147,8 +160,8 @@ The current `smoke:packages` script validates packed local packages, not freshly
 Public hosting is separate from package publishing. Production deploys are manual
 only through `.github/workflows/deploy.yml` and are limited to docs, registry,
 and landing. The workflow requires `confirm_production=deploy`, refuses
-non-`main` refs, pushes SHA-tagged GHCR images, scans those pushed images, waits
-for the `production` environment approval, promotes the scanned SHA tags to
+non-`main` refs, pushes SHA-tagged GHCR images, scans those pushed images, runs
+promotion under the `production` environment, promotes the scanned SHA tags to
 `:prod`, and calls the selected Coolify webhooks.
 
 Docs and registry deploy together from the same SHA. Landing may deploy
@@ -170,8 +183,8 @@ setup, secret boundaries, public checks, and rollback steps are documented in
 
 Package lifecycle guards currently in the repo:
 
-- `diffgazer`: `prepack` runs the package build; `build` first runs the required workspace dependency builds for `@diffgazer/core`, `@diffgazer/server`, `@diffgazer/keys`, `@diffgazer/ui`, and `@diffgazer/web`.
-- `@diffgazer/add`: `prepublishOnly` runs build, type-check, test, and root artifact validation.
+- `diffgazer`: `prepack` owns the build — it fires on every pack, including the smoke tarball install, `attw --pack`, and the release-check dry-run, so the package suite must not hang off it; `prepublishOnly` runs type-check and test. `build` first runs the required workspace dependency builds for `@diffgazer/core`, `@diffgazer/server`, `@diffgazer/keys`, `@diffgazer/ui`, and `@diffgazer/web`.
+- `@diffgazer/add`: `prepack` owns the build; `prepublishOnly` runs type-check, test, and root artifact validation.
 - `@diffgazer/ui`: `prepublishOnly` runs build, type-check, test, and root artifact validation.
 - `@diffgazer/keys`: `prepublishOnly` runs build, type-check, test, and root artifact validation.
 
@@ -188,7 +201,7 @@ Public packages are published through the root `pnpm run release` script. Its ta
 Publishing runs from `.github/workflows/release.yml` via `changesets/action`:
 
 1. A contributor adds a changeset on their PR (`pnpm run changeset`); merging the PR to `main` triggers the release workflow, which opens (or updates) a `chore: version packages` PR that applies pending changesets, bumps versions, and updates CHANGELOGs.
-2. Merging the Version PR re-triggers the workflow, which runs `pnpm run release-check` and then `pnpm run release` under GitHub OIDC so npm records provenance attestations. `pnpm run release` runs the targeted publisher in `scripts/monorepo/guard-publish.mjs`.
+2. The Version PR is opened with `GITHUB_TOKEN`. GitHub does not trigger `pull_request` workflows for events created by that token, so the Version PR intentionally receives zero Release Readiness checks while open; no GitHub App or PAT is added. After it merges, the trusted push-to-main Release Readiness run verifies the merged commit and triggers the release workflow, which runs `pnpm run release-check` and then `pnpm run release` under GitHub OIDC so npm records provenance attestations. `pnpm run release` runs the targeted publisher in `scripts/monorepo/guard-publish.mjs`.
 3. The workflow requires `secrets.NPM_TOKEN` until each public package is configured for npm Trusted Publishers; once trusted publishing is enabled per package on npmjs.com, the token becomes optional.
 
 #### First-publish gate
@@ -199,7 +212,9 @@ An unfiltered workspace publisher would publish every public package whose versi
 
 If the publish step fails after the Version PR is merged (network blip, npm registry error, transient runner issue), first re-run the failed `Release` workflow run from the GitHub Actions UI. Packages are published one at a time. A retry derives the same pending set from the checked-out Version PR commit, skips any exact versions already present on npm, and still emits one exact `New tag: <name>@<version>` line for every recovered or newly published version after the complete set succeeds. This lets `changesets/action` create the missing Git tag and GitHub Release metadata without attempting a duplicate npm publication.
 
-If that workflow run is wedged, use the same `Release` workflow's **Run workflow** action and provide the full 40-character merged-main Version PR commit as `release_sha`. The `Recover Publish from Merged Main SHA` job validates that the selected commit is already contained in `main`, waits for approval through the protected `production` environment, and runs the normal release-readiness and first-publish-protected release chain on a GitHub-hosted runner with OIDC provenance. Do not run the publish command locally: local token authentication does not provide the supported CI identity required by the package provenance policy. For any failure, open an issue or contact a maintainer before starting recovery so the team can confirm registry state first.
+If that workflow run is wedged, use the same `Release` workflow's **Run workflow** action and provide the full 40-character merged-main Version PR commit as `release_sha`. The `Recover Publish from Merged Main SHA` job validates that the selected commit is already contained in `main`, requires the Release Readiness run for that exact commit to have completed with every required job green, binds the job to the `production` environment, and then runs `pnpm run release-check` followed by the first-publish-protected release chain on a GitHub-hosted runner with OIDC provenance. The checked-in workflow does not prove a protected `production` environment or required reviewer approval; those rules live in repository settings.
+
+`release-check` is defence in depth, not a replacement for the exact-SHA readiness evidence. It does not repeat the event-range Gitleaks scan (the action scans the current push or pull-request commit range; `fetch-depth: 0` does not make that scan full-history), the live models.dev fetch enabled by `DIFFGAZER_SMOKE_ALLOW_NETWORK=1`, the three `git status --short` dirty-tree guards after build, verify/smoke, and pack, or the remaining browser matrix (the docs Playwright suite, the broader web suite, the UI and landing suites, and the Lighthouse budgets). It still runs the provider and embedded-production web E2E suites listed above. Do not run the publish command locally: local token authentication does not provide the supported CI identity required by the package provenance policy. For any failure, open an issue or contact a maintainer before starting recovery so the team can confirm registry state first.
 
 ## Dependency Management
 
@@ -216,22 +231,34 @@ If that workflow run is wedged, use the same `Release` workflow's **Run workflow
 
 The root `pnpm-workspace.yaml` carries the `overrides` block to keep shared transitive packages on a single version across the workspace. The current pins collapse duplicates that otherwise drift across apps and tooling:
 
-- `@types/node` pinned to `^25.2.3` so docs, registry, ui, keys, server, core, and cli packages resolve to one major.
+- `@types/node` pinned to `^22.10.0` so workspace checks use the same Node major as CI and the repository's executable packages. Every Node-typed workspace declares that range, and every package with a Node engine declaration requires Node 22.
 - `@types/react` pinned to `^19.2.13` and `@types/react-dom` pinned to `^19.2.3` so the whole workspace resolves to one React 19.2 type line, matching the shared React `>=19.2.0` runtime floor. Declared package ranges stay on the 19.2 line (`@diffgazer/core` declares `^19.2.13`, ui/keys/docs `^19.2.0`, web/landing/diffgazer `^19.2.13`); the override collapses them to a single resolution so a stray `^19.1` cannot reappear.
 - `tailwindcss` pinned to `^4.3.0` so `apps/web` and `apps/docs` resolve to one minor (no `4.2.x` / `4.3.x` split).
 - `postcss` pinned to `^8.5.18` so transitive Vite/Tailwind resolvers share one patch line, at or above the patched release for the high-severity advisory affecting `postcss <= 8.5.17`.
 - `picomatch` pinned to `^4.0.4` so Vite, Vitest, Fumadocs, and Tailwind plugins share one version.
 - `vitest` pinned to `^4.1.0`, `@testing-library/react` to `^16.3.2`, `@testing-library/jest-dom` to `^6.9.1`, `jsdom` to `^28.1.0`, `@vitejs/plugin-react` to `^5.1.3`, and `axe-core` to `^4.11.4` so every workspace that imports a test tool resolves to one shared version of each (no `vitest 4.0` / `4.1`, `jsdom 27` / `28`, `@testing-library/react 16.0` / `16.2` / `16.3`, or `@vitejs/plugin-react 5.0` / `5.1` split).
 
-The same workspace file restricts dependency install scripts through `allowBuilds`. Only the
-reviewed lockfile versions `esbuild@0.27.3` and `sharp@0.35.3` may run their required native
-build/install steps. The optional `msw` postinstall is explicitly disabled because the workspace
-does not need its interactive setup. Version-qualified approvals are intentional: a dependency
-update must review and update the approval instead of silently granting script execution to a new
-release.
+The same workspace file restricts dependency install scripts through `allowBuilds`. That block is the
+complete install-script decision list for this workspace, and every entry in it is reviewed here:
+
+- `esbuild@0.27.3` — allowed. Fetches or builds the platform binary the bundler needs in order to run.
+- `sharp@0.35.3` — allowed. Builds the libvips binding the docs image pipeline needs; the approved
+  version tracks the `sharp` override floor listed below.
+- `node-pty@1.1.0` — allowed. Builds the native pty binding the CLI smoke harness
+  `scripts/monorepo/smoke-cli/product.mjs` spawns terminals with. Its install script is the one
+  `patches/node-pty@1.1.0.patch` amends, so that the prebuilt `spawn-helper` is made executable. The
+  root devDependency, build approval, resolved package, and patch all pin `1.1.0`.
+- `msw` — denied. The optional postinstall is turned off because the workspace does not need its
+  interactive setup.
+
+Every positive approval is exact-version-qualified. A dependency update must review the approval
+instead of silently granting script execution to a new release. `check-invariants` rejects a positive
+approval that is absent from the lockfile or out of step with its root dependency or patch. It also
+fails when an `allowBuilds` key is missing from this section, so the block and this list cannot drift
+apart.
 - `jiti` (`^2.7.0`), `hono` (`^4.12.34`), and `ws` (`^8.21.0`) are pinned so the config loader, the embedded server framework, and the WebSocket dependency each resolve to one version across the workspace and its dev/build tooling. The `hono` floor is also security-driven — see the overrides list below.
 
-The same file carries `minimumReleaseAgeExclude`, the reviewed list of versions allowed to install before pnpm's release-age quarantine expires. It holds `hono@4.12.34`, the patched release for the CORS ReDoS advisory: a security floor is worth taking ahead of the quarantine window. Drop the entry once the version ages past the window.
+The same file enables pnpm's 24-hour release-age quarantine with `minimumReleaseAge: 1440` (minutes). The temporary `minimumReleaseAgeExclude` exception for `hono@4.12.34` expired after the patched release passed that window and was removed; future emergency exceptions must be reviewed here and removed once they age out.
 
 The `@tanstack/react-router` range is kept aligned across `apps/web` and `apps/docs` (both declare `^1.170.18`) so the two TanStack-Router consumers track one router minor; it is not overridden because the rest of the TanStack Start surface in `apps/docs` resolves its router transitively. That transitive resolution is why the two ranges must move together with `@tanstack/react-start`: `@tanstack/react-start` depends on an exact `@tanstack/react-router`, and when the app's own router resolves to a different version the docs prerender crashes in `dehydrate` with two router instances loaded. Bump `@tanstack/react-start` and both app ranges in one change, then re-run `pnpm --filter @diffgazer/docs build`.
 
@@ -250,7 +277,7 @@ Note: `@tanstack/start-server-core` is NOT pinned because the natural transitive
 
 `@hono/node-server` is a direct dependency of `cli/server` and `cli/diffgazer`, held at `^2.0.12`. The 2.x line is required: GHSA-frvp-7c67-39w9 (Windows `serve-static` path traversal via an encoded backslash bypassing route middleware) is patched only at `>= 2.0.5`, and `cli/diffgazer` serves the embedded web SPA through `serveStatic`. The 2.0.0 breaking changes do not reach this workspace — it dropped Node 18 (the CLI packages require `>= 22`) and removed the Vercel adapter (unused).
 
-Workspace package manifests should keep declared ranges compatible with the override (e.g., declare `^25.2.3` for `@types/node` rather than `^22`), so an override removal does not silently regress a package to an older major.
+Workspace package manifests keep `@types/node` on the `^22.10.0` line. The monorepo invariant checks the CI version, override, manifest ranges, declared engine floors, and resolved lockfile majors together.
 
 `commander` intentionally is **not** overridden. `cli/add` and `libs/registry` declare `^13`, but external dependencies still pull majors 4 / 11 / 14; collapsing them would require validating each transitive consumer.
 
@@ -334,12 +361,11 @@ Until the hosted registry endpoints serve `200 OK` for `/r/ui/registry.json`, `/
   `npx shadcn add ./<component>.registry.json`. The archive includes transitive UI and keys files
   with the same local-import rewrites as `dgadd --integration copy`.
 
-Release readiness runs `pnpm run registry:live-check`. That script reads the docs consumption metadata and skips only while public hosted-registry install commands remain gated. If the registry is ungated, or if `DIFFGAZER_LIVE_REGISTRY_REQUIRED=1` is set, the check is a hard gate.
+Release readiness runs `pnpm run registry:live-check`. That script reads the docs consumption metadata (`PUBLISH_GATED` in `apps/docs/src/lib/consumption-metadata.ts`) and **skips** while public hosted-registry install commands remain gated and `DIFFGAZER_LIVE_REGISTRY_REQUIRED` is unset.
 
-After deployment or ungating, `registry:live-check` verifies that `r.b4r7.dev` resolves, then
-dynamically enumerates every JSON file in the UI, keys, and schema trees copied by
-`deploy/registry.Dockerfile`. Every corresponding hosted URL must return `200`, and its raw response
-bytes must match the committed file exactly.
+When the registry is ungated, the check is a hard gate for DNS resolution and `HEAD` reachability: `r.b4r7.dev` must resolve, and one long-lived sentinel endpoint per tree copied by `deploy/registry.Dockerfile` (`/r/ui/registry.json`, `/r/keys/registry.json`, `/schema/diffgazer.json`) must return `200`. Readiness proves the origin is serving, not that the change set under review is already deployed — sweeping every locally committed endpoint would fail any change that **adds** a registry file, which cannot be live until the deploy this readiness run gates. Ungated readiness also does **not** compare hosted bytes to the committed files.
+
+Set `DIFFGAZER_LIVE_REGISTRY_REQUIRED=1` for post-deploy verification. That mode runs the same DNS and `HEAD` checks, then fetches every endpoint and requires the raw response bytes to match the committed file exactly.
 
 Once those checks pass, un-gate the hosted-shadcn install snippets in `README.md`, `libs/ui/README.md`, `libs/keys/README.md`, and `apps/docs/content/docs/**/*.mdx`, and remove the "future" preambles added while the hosted registry was gated.
 

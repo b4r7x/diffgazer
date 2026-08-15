@@ -2,8 +2,9 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { FileTreeNode } from "@diffgazer/core/schemas/context";
+import { MAX_CONTEXT_TREE_NODES, validateBoundedFileTree } from "@diffgazer/core/schemas/context";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { buildFileTree, MAX_TREE_NODES } from "./file-tree.js";
+import { buildFileTree } from "./file-tree.js";
 
 let projectRoot: string;
 
@@ -19,6 +20,34 @@ async function writeProjectFile(relativePath: string, content = ""): Promise<voi
   const absolutePath = join(projectRoot, relativePath);
   await mkdir(dirname(absolutePath), { recursive: true });
   await writeFile(absolutePath, content, "utf-8");
+}
+
+/**
+ * The budget fixtures need more than MAX_CONTEXT_TREE_NODES files to be meaningful. Creating them
+ * with one mkdir plus bounded-concurrency writes costs ~6x less than a per-file sequential
+ * walk, which is what pushed this file past its budget when `turbo run test` fans out
+ * across every workspace at once.
+ */
+const FIXTURE_WRITE_CONCURRENCY = 64;
+
+async function writeProjectFiles(
+  relativeDir: string,
+  count: number,
+  extension: string,
+): Promise<void> {
+  const absoluteDir = join(projectRoot, relativeDir);
+  await mkdir(absoluteDir, { recursive: true });
+  const names = Array.from(
+    { length: count },
+    (_, index) => `file-${String(index).padStart(4, "0")}${extension}`,
+  );
+  for (let start = 0; start < names.length; start += FIXTURE_WRITE_CONCURRENCY) {
+    await Promise.all(
+      names
+        .slice(start, start + FIXTURE_WRITE_CONCURRENCY)
+        .map((name) => writeFile(join(absoluteDir, name), "", "utf-8")),
+    );
+  }
 }
 
 function collectNames(nodes: FileTreeNode[], names: Set<string> = new Set()): Set<string> {
@@ -43,9 +72,7 @@ describe("buildFileTree", () => {
     // A Python-repo-shaped fixture: an unexcludable heavy dir that sorts early
     // ("aaa-heavy" < "src") plus real source directories. A depth-first walker
     // would spend the whole budget inside the heavy subtree before reaching src.
-    for (let i = 0; i < 1500; i++) {
-      await writeProjectFile(`aaa-heavy/lib/pkg/file-${String(i).padStart(4, "0")}.py`);
-    }
+    await writeProjectFiles("aaa-heavy/lib/pkg", 1500, ".py");
     await writeProjectFile("src/index.ts");
     await writeProjectFile("tests/test_main.py");
     await writeProjectFile("docs/readme.md");
@@ -56,7 +83,7 @@ describe("buildFileTree", () => {
     const topLevel = tree.map((node) => node.name);
     expect(topLevel).toEqual(expect.arrayContaining(["aaa-heavy", "docs", "src", "tests"]));
     expect(counter.truncated).toBe(true);
-    expect(countNodes(tree)).toBeLessThanOrEqual(MAX_TREE_NODES);
+    expect(countNodes(tree)).toBeLessThanOrEqual(MAX_CONTEXT_TREE_NODES);
   });
 
   it("excludes common ecosystem dependency and build directories", async () => {
@@ -94,6 +121,22 @@ describe("buildFileTree", () => {
     expect(names.has("main.py")).toBe(true);
   });
 
+  it("keeps regular files whose names collide with excluded directory names", async () => {
+    await writeProjectFile("build", "#!/bin/sh\n");
+    await writeProjectFile("scripts/target", "");
+    await writeProjectFile("dist/bundle.js");
+
+    const tree = await buildFileTree(projectRoot, {
+      depth: 5,
+      counter: { count: 0, truncated: false },
+    });
+
+    const names = collectNames(tree);
+    expect(names.has("target")).toBe(true);
+    expect(names.has("dist")).toBe(false);
+    expect(tree).toEqual(expect.arrayContaining([{ name: "build", path: "build", type: "file" }]));
+  });
+
   it("renders a directory symlink as a file leaf without traversing it", async () => {
     await writeProjectFile("src/nested/file.ts");
     await symlink(projectRoot, join(projectRoot, "src", "nested", "root-link"), "dir");
@@ -123,15 +166,33 @@ describe("buildFileTree", () => {
   });
 
   it("enforces the node budget cap", async () => {
-    for (let i = 0; i < MAX_TREE_NODES + 200; i++) {
-      await writeProjectFile(`files/file-${String(i).padStart(4, "0")}.ts`);
-    }
+    await writeProjectFiles("files", MAX_CONTEXT_TREE_NODES + 200, ".ts");
 
     const counter = { count: 0, truncated: false };
     const tree = await buildFileTree(projectRoot, { depth: 5, counter });
 
     expect(counter.truncated).toBe(true);
-    expect(counter.count).toBe(MAX_TREE_NODES);
-    expect(countNodes(tree)).toBeLessThanOrEqual(MAX_TREE_NODES);
+    expect(counter.count).toBe(MAX_CONTEXT_TREE_NODES);
+    expect(countNodes(tree)).toBeLessThanOrEqual(MAX_CONTEXT_TREE_NODES);
+    expect(validateBoundedFileTree(tree)).toBe(true);
+  });
+
+  it("scopes the walk to focused diff paths and their ancestor directories", async () => {
+    await writeProjectFiles("aaa-heavy/lib/pkg", 1500, ".py");
+    await writeProjectFile("src/index.ts");
+    await writeProjectFile("src/use_review_stream.ts");
+
+    const counter = { count: 0, truncated: false };
+    const tree = await buildFileTree(projectRoot, {
+      depth: 5,
+      counter,
+      focusPaths: ["src/use_review_stream.ts"],
+    });
+
+    const names = collectNames(tree);
+    expect(names.has("src")).toBe(true);
+    expect(names.has("use_review_stream.ts")).toBe(true);
+    expect(names.has("aaa-heavy")).toBe(false);
+    expect(counter.truncated).toBe(false);
   });
 });

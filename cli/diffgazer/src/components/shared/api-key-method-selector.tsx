@@ -6,8 +6,6 @@ import { useTheme } from "../../theme/provider";
 import { Input } from "../ui/input";
 import { RadioGroup } from "../ui/radio";
 
-const INPUT_METHODS = ["paste", "env"] as const satisfies readonly InputMethod[];
-
 interface ApiKeyMethodSelectorProps {
   method: InputMethod;
   onMethodChange: (m: InputMethod) => void;
@@ -53,11 +51,10 @@ export function ApiKeyMethodSelector({
     { isActive: isActive && !isControlled },
   );
 
-  function selectMethod(value: string) {
-    if (!(INPUT_METHODS as readonly string[]).includes(value)) return;
+  function selectMethod(value: InputMethod) {
     if (isControlled) onInputFocusedChange?.(false);
     else setUncontrolledInputFocused(false);
-    onMethodChange(value as InputMethod);
+    onMethodChange(value);
   }
 
   return (

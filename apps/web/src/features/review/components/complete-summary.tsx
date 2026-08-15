@@ -1,10 +1,6 @@
 import { formatDuration, formatRunId } from "@diffgazer/core/format";
-import type {
-  AnalysisStats,
-  CategoryStats,
-  IssuePreview,
-  SeverityCounts,
-} from "@diffgazer/core/schemas/presentation";
+import type { CategoryStats } from "@diffgazer/core/schemas/presentation";
+import type { ReviewIssue, SeverityCounts } from "@diffgazer/core/schemas/review";
 import { pluralize } from "@diffgazer/core/strings";
 import { Panel, PanelContent } from "@diffgazer/ui/components/panel";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
@@ -13,6 +9,17 @@ import { cn } from "@diffgazer/ui/lib/utils";
 import { SeverityBreakdown } from "@/components/shared/severity/breakdown";
 import { CategoryStatsTable } from "./category-stats-table";
 import { IssuePreviewItem } from "./issue-preview-item";
+
+interface AnalysisStats {
+  runId: string | null;
+  totalIssues: number;
+  filesWithIssues: number;
+  blockerCount: number;
+}
+
+type IssuePreview = Pick<ReviewIssue, "id" | "title" | "file" | "category" | "severity"> & {
+  line?: ReviewIssue["line_start"];
+};
 
 export interface ReviewCompleteSummaryProps {
   stats: AnalysisStats;

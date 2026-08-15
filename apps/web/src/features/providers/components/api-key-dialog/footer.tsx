@@ -38,7 +38,6 @@ export function ApiKeyFooter({
   cancelHighlighted,
   confirmHighlighted,
 }: ApiKeyFooterProps) {
-  const canConfirm = canSubmit && !isSubmitting;
   const cancelProps = getCancelProps();
   const confirmProps = getConfirmProps();
 
@@ -60,7 +59,7 @@ export function ApiKeyFooter({
         variant="primary"
         size="sm"
         bracket
-        disabled={!canConfirm}
+        disabled={!canSubmit}
         highlighted={confirmHighlighted}
         onClick={(event) => {
           event.preventDefault();

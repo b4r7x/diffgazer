@@ -24,7 +24,10 @@ function expectBaseSecurityHeaders(response: APIResponse): void {
   }
 }
 
-function expectNonceCsp(response: APIResponse): void {
+/** Structural shape shared by Playwright's `APIResponse` and navigation `Response`. */
+type HeaderBearingResponse = { headers(): Record<string, string> };
+
+function expectNonceCsp(response: HeaderBearingResponse): void {
   const csp = response.headers()["content-security-policy"] ?? "";
   const scriptSrc = csp.split(";").find((directive) => directive.trim().startsWith("script-src"));
   expect(scriptSrc).toBeDefined();
@@ -48,13 +51,11 @@ test.describe("Docs security headers", () => {
       });
 
       const response = await page.goto(path);
-      const csp = response?.headers()["content-security-policy"] ?? "";
-      const scriptSrc = csp
-        .split(";")
-        .find((directive) => directive.trim().startsWith("script-src"));
-      expect(scriptSrc).toBeDefined();
-      expect(scriptSrc).not.toContain("'unsafe-inline'");
-      expect(scriptSrc).toMatch(/'nonce-[^']+'/);
+      if (!response) throw new Error(`No navigation response for ${path}`);
+
+      expectNonceCsp(response);
+
+      const csp = response.headers()["content-security-policy"] ?? "";
       // Fonts are now self-hosted; no Google allowances remain in the CSP.
       expect(csp).not.toContain("fonts.googleapis");
       expect(csp).not.toContain("fonts.gstatic");

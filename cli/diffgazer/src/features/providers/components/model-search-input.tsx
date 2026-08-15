@@ -1,4 +1,4 @@
-import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { Box, Text, useInput } from "ink";
 import { useInputMode } from "../../../hooks/use-input-mode";
 import { applyTextEditKey } from "../../../lib/text-edit-key";

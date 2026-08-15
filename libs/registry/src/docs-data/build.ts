@@ -14,12 +14,12 @@ import { createDocsHighlighter } from "./highlight.js";
 import type { HookRegistryItem } from "./hooks-source.js";
 import { generateHooksSource } from "./hooks-source.js";
 
-export interface DemoIndexConfig {
+interface DemoIndexConfig {
   importPathPrefix: string;
   items?: Array<{ name: string }>;
 }
 
-export interface LibsConfig {
+interface LibsConfig {
   filter: (item: import("../registry-types.js").RegistryItem) => boolean;
   outputFile: string;
 }

@@ -1,24 +1,27 @@
-import { chmod, mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { constants, statSync } from "node:fs";
+import { open, unlink } from "node:fs/promises";
 import { ConfigurationIdSchema, ConfigurationRevisionSchema } from "@diffgazer/core/schemas/config";
 import { z } from "zod";
+import {
+  CREDENTIAL_FILE_MODE,
+  CREDENTIAL_OPEN_NOFOLLOW,
+  resolveContainedCredentialPath,
+} from "./persistence/credential-file-path.js";
 
-const FILE_MODE = 0o600;
-const DIRECTORY_MODE = 0o700;
 // Only group/other bits make a secret file unsafe. Stricter owner permissions
 // (0400 on a hardened install) stay readable and must not be rejected.
 const GROUP_OTHER_MASK = 0o077;
 
-export const SECRET_BINDING_KINDS = [
+const SECRET_BINDING_KINDS = [
   "environment-reference",
   "keyring-reference",
   "file-0600",
   "optional-local-bearer",
   "none",
 ] as const;
-export type SecretBindingKind = (typeof SECRET_BINDING_KINDS)[number];
+type SecretBindingKind = (typeof SECRET_BINDING_KINDS)[number];
 
-export const SECRET_BINDING_STATUSES = ["active", "unknown", "removed"] as const;
+const SECRET_BINDING_STATUSES = ["active", "unknown", "removed"] as const;
 export type SecretBindingStatus = (typeof SECRET_BINDING_STATUSES)[number];
 
 const SecretBindingStatusSchema = z.enum(SECRET_BINDING_STATUSES).default("active");
@@ -71,7 +74,7 @@ export type OptionalLocalBearerBinding = z.infer<typeof LocalBearerSchema>;
 export type NoneSecretBinding = z.infer<typeof NoneBindingSchema>;
 export type SecretBinding = z.infer<typeof SecretBindingSchema>;
 
-export type SecretBindingReferenceInput =
+type SecretBindingReferenceInput =
   | {
       readonly kind: "environment-reference";
       readonly varName: string;
@@ -139,18 +142,13 @@ function identity(configurationId: string, revision: number): SecretBindingIdent
   return parsed.data;
 }
 
-function activeStatus(status: SecretBindingStatus = "active"): SecretBindingStatus {
-  if (status === "active" || status === "unknown" || status === "removed") return status;
-  throw new SecretBindingError("INVALID_BINDING", "Invalid binding status");
-}
-
-export function createSecretBinding(
+function createSecretBinding(
   configurationId: string,
   revision: number,
   input: SecretBindingReferenceInput,
   status: SecretBindingStatus = "active",
 ): SecretBinding {
-  const base = { ...identity(configurationId, revision), status: activeStatus(status) };
+  const base = { ...identity(configurationId, revision), status };
   const candidate = { ...base, ...input };
   const parsed = SecretBindingSchema.safeParse(candidate);
   if (!parsed.success) throw new SecretBindingError("INVALID_BINDING", "Invalid secret binding");
@@ -275,6 +273,34 @@ function assertResolvable(binding: SecretBinding): void {
   }
 }
 
+async function readCredentialFile(reference: string): Promise<string> {
+  let handle: Awaited<ReturnType<typeof open>>;
+  try {
+    const contained = await resolveContainedCredentialPath(reference);
+    handle = await open(contained, constants.O_RDONLY | CREDENTIAL_OPEN_NOFOLLOW);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new SecretBindingError("FILE_NOT_FOUND", "Secret file is missing");
+    }
+    throw new SecretBindingError("BINDING_UNAVAILABLE", "Secret file cannot be read");
+  }
+
+  try {
+    const fileStats = await handle.stat();
+    // libuv synthesizes 0o666/0o444 on Windows; only the read-only attribute is
+    // meaningful there, so the POSIX group/other check would reject every file.
+    if (process.platform !== "win32" && (fileStats.mode & GROUP_OTHER_MASK) !== 0) {
+      throw new SecretBindingError(
+        "FILE_MODE_UNSAFE",
+        "Secret file must not be readable or writable by group or others",
+      );
+    }
+    return await handle.readFile("utf8");
+  } finally {
+    await handle.close();
+  }
+}
+
 async function readReference(
   storage: OptionalLocalBearerBinding["storage"],
   reference: string,
@@ -285,23 +311,52 @@ async function readReference(
     if (!io.keyring) throw new SecretBindingError("KEYRING_UNAVAILABLE", "Keyring is unavailable");
     return (await io.keyring.read(reference)) ?? null;
   }
+  return readCredentialFile(reference);
+}
 
-  let fileStats: Awaited<ReturnType<typeof stat>>;
-  try {
-    fileStats = await stat(reference);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      throw new SecretBindingError("FILE_NOT_FOUND", "Secret file is missing");
-    }
-    throw new SecretBindingError("BINDING_UNAVAILABLE", "Secret file cannot be read");
+const environmentReferenceIsSet = (varName: string, io: SecretBindingIO): boolean => {
+  const value = (io.env ?? process.env)[varName];
+  return typeof value === "string" && value.length > 0;
+};
+
+const credentialFileExists = (filePath: string): boolean =>
+  statSync(filePath, { throwIfNoEntry: false })?.isFile() === true;
+
+const bearerReferenceIsResolvable = (
+  binding: OptionalLocalBearerBinding,
+  io: SecretBindingIO,
+): boolean => {
+  if (binding.storage === "environment-reference")
+    return environmentReferenceIsSet(binding.reference, io);
+  if (binding.storage === "file-0600") return credentialFileExists(binding.reference);
+  return true;
+};
+
+/**
+ * Whether the binding's backing material is still there, cheaply enough to run
+ * on every readiness read. Environment variables and credential files are
+ * checked for real; the keyring is not, because reading it can prompt for an
+ * unlock. Admission resolves the keyring properly before it admits.
+ */
+export function bindingCredentialAvailable(
+  binding: SecretBinding | null | undefined,
+  io: SecretBindingIO = {},
+): boolean {
+  const parsed = SecretBindingSchema.safeParse(binding);
+  if (!parsed.success || parsed.data.status !== "active") return false;
+
+  switch (parsed.data.kind) {
+    case "none":
+      return true;
+    case "environment-reference":
+      return environmentReferenceIsSet(parsed.data.varName, io);
+    case "file-0600":
+      return credentialFileExists(parsed.data.filePath);
+    case "optional-local-bearer":
+      return bearerReferenceIsResolvable(parsed.data, io);
+    case "keyring-reference":
+      return true;
   }
-  if ((fileStats.mode & GROUP_OTHER_MASK) !== 0) {
-    throw new SecretBindingError(
-      "FILE_MODE_UNSAFE",
-      "Secret file must not be readable or writable by group or others",
-    );
-  }
-  return readFile(reference, "utf8");
 }
 
 export async function resolveSecretBinding(
@@ -333,6 +388,32 @@ function requireSecretValue(value: string): void {
   }
 }
 
+async function writeCredentialFile(reference: string, value: string): Promise<void> {
+  let handle: Awaited<ReturnType<typeof open>>;
+  try {
+    const contained = await resolveContainedCredentialPath(reference, { createDirectory: true });
+    handle = await open(
+      contained,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | CREDENTIAL_OPEN_NOFOLLOW,
+      CREDENTIAL_FILE_MODE,
+    );
+  } catch {
+    throw new SecretBindingError("BINDING_UNAVAILABLE", "Secret file cannot be written");
+  }
+
+  try {
+    // open(2) applies its mode argument only when it creates the file, so a
+    // pre-existing loose-mode file would hold the secret at that mode. Tighten
+    // the descriptor before any secret byte reaches the disk.
+    await handle.chmod(CREDENTIAL_FILE_MODE);
+    await handle.writeFile(value, "utf8");
+  } catch {
+    throw new SecretBindingError("BINDING_UNAVAILABLE", "Secret file cannot be written");
+  } finally {
+    await handle.close();
+  }
+}
+
 async function writeReference(
   storage: "keyring-reference" | "file-0600",
   reference: string,
@@ -344,14 +425,7 @@ async function writeReference(
     await io.keyring.write(reference, value);
     return;
   }
-
-  try {
-    await mkdir(dirname(reference), { recursive: true, mode: DIRECTORY_MODE });
-    await writeFile(reference, value, { encoding: "utf8", mode: FILE_MODE });
-    await chmod(reference, FILE_MODE);
-  } catch {
-    throw new SecretBindingError("BINDING_UNAVAILABLE", "Secret file cannot be written");
-  }
+  return writeCredentialFile(reference, value);
 }
 
 export async function writeSecretBinding(
@@ -444,7 +518,7 @@ async function deleteReference(binding: SecretBinding, io: SecretBindingIO): Pro
       return Boolean(await io.keyring.delete(binding.keyId));
     case "file-0600":
       try {
-        await unlink(binding.filePath);
+        await unlink(await resolveContainedCredentialPath(binding.filePath));
         return true;
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
@@ -469,37 +543,4 @@ export async function deleteSecretBinding(
   const parsed = SecretBindingSchema.parse(binding);
   assertExpectedIdentity(parsed, expected);
   return deleteReference(parsed, io);
-}
-
-export interface SecretBindingDeletionHooks {
-  readonly revoke: () => void | Promise<void>;
-  readonly cancel: () => void | Promise<void>;
-  readonly drain: () => void | Promise<void>;
-}
-
-export interface SecretBindingDeletionResult {
-  readonly configurationId: string;
-  readonly revision: number;
-  readonly deleted: boolean;
-}
-
-/** Revoke, cancel, and drain before touching the named secret binding. */
-export async function deleteSecretBindingTransactional(
-  binding: SecretBinding,
-  hooks: SecretBindingDeletionHooks,
-  io: SecretBindingIO = {},
-): Promise<SecretBindingDeletionResult> {
-  const parsed = SecretBindingSchema.parse(binding);
-  await hooks.revoke();
-  await hooks.cancel();
-  await hooks.drain();
-  const deleted = await deleteSecretBinding(parsed, io, {
-    configurationId: parsed.configurationId,
-    revision: parsed.revision,
-  });
-  return {
-    configurationId: parsed.configurationId,
-    revision: parsed.revision,
-    deleted,
-  };
 }

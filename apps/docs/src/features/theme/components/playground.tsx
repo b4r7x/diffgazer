@@ -16,6 +16,17 @@ function buildDefaultPrimitives(theme: DocsTheme): Record<string, string> {
   );
 }
 
+/** Only edited primitives override the preview; unedited values inherit the adopted document theme. */
+function buildPreviewOverrides(
+  primitives: Record<string, string>,
+  defaults: Record<string, string>,
+): React.CSSProperties | undefined {
+  const overrides = Object.fromEntries(
+    Object.entries(primitives).filter(([key, value]) => value !== defaults[key]),
+  );
+  return Object.keys(overrides).length > 0 ? (overrides as React.CSSProperties) : undefined;
+}
+
 export function ThemePlayground() {
   const { theme } = useTheme();
   const [primitives, setPrimitives] = useState<Record<string, string>>(() =>
@@ -40,7 +51,7 @@ export function ThemePlayground() {
     setPrimitives(defaults);
   };
 
-  const scopedStyle = primitives as React.CSSProperties;
+  const previewStyle = buildPreviewOverrides(primitives, defaults);
 
   return (
     <div className="space-y-6">
@@ -69,7 +80,7 @@ export function ThemePlayground() {
             <PanelTitle as="h3">Preview</PanelTitle>
           </PanelHeader>
           <PanelContent spacing="none">
-            <div data-theme={theme} style={scopedStyle}>
+            <div style={previewStyle}>
               <PreviewPanel />
             </div>
           </PanelContent>
@@ -81,7 +92,7 @@ export function ThemePlayground() {
           <PanelTitle as="h3">Generated CSS</PanelTitle>
         </PanelHeader>
         <PanelContent spacing="none">
-          <CssOutput primitives={primitives} defaults={defaults} />
+          <CssOutput theme={theme} primitives={primitives} defaults={defaults} />
         </PanelContent>
       </Panel>
     </div>

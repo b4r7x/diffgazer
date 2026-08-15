@@ -59,9 +59,13 @@ function assertPage(path, csp, html) {
       );
     }
   }
+
+  return cspNonce;
 }
 
 async function verifyPages(origin, paths, server, fetchPage, timeoutMs) {
+  const nonces = new Set();
+
   for (const path of paths) {
     if (server.exitCode !== null || server.signalCode !== null) {
       throw new Error("[verify-csp] Docs server exited before CSP requests completed");
@@ -77,11 +81,25 @@ async function verifyPages(origin, paths, server, fetchPage, timeoutMs) {
       throw new Error(`[verify-csp] ${path}: request failed`, { cause: error });
     }
     if (!response.ok) throw new Error(`[verify-csp] ${path}: returned HTTP ${response.status}`);
-    assertPage(path, response.headers.get("content-security-policy") ?? "", await response.text());
+    nonces.add(
+      assertPage(
+        path,
+        response.headers.get("content-security-policy") ?? "",
+        await response.text(),
+      ),
+    );
 
     if (server.exitCode !== null || server.signalCode !== null) {
       throw new Error("[verify-csp] Docs server exited before CSP requests completed");
     }
+  }
+
+  // The nonce is per-request by design; a build-time constant would satisfy every
+  // per-response assertion above while handing every visitor the same value.
+  if (nonces.size !== paths.length) {
+    throw new Error(
+      `[verify-csp] ${paths.length} responses returned only ${nonces.size} distinct CSP nonce(s); the nonce is not per-request`,
+    );
   }
 }
 

@@ -99,6 +99,7 @@ describe("package-manager transaction files", () => {
         "yarn.lock",
         "bun.lockb",
         "bun.lock",
+        "npm-shrinkwrap.json",
         "package-lock.json",
       ]);
 

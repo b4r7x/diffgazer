@@ -25,8 +25,12 @@ const requireTrustRouteToken = async (c: Context, next: Next): Promise<Response 
   return undefined;
 };
 
-settingsRouter.get("/", (c) => {
-  return c.json(getStore().getSettings());
+settingsRouter.get("/", async (c) => {
+  const settings = await getStore().readSettings();
+  if (!settings.ok) {
+    return handleStoreError(c, settings.error);
+  }
+  return c.json(settings.value);
 });
 
 settingsRouter.post(
@@ -45,9 +49,11 @@ settingsRouter.post(
 
 settingsRouter.get("/trust", requireTrustRouteToken, (c) => {
   const projectRoot = getProjectRoot(c);
+  // A never-visited project has no identity file yet, which is the same answer
+  // as "no trust recorded" — a 404, not a server fault. Reads never create one.
   const project = getStore().getProjectInfo(projectRoot);
   if (!project.projectId) {
-    return errorResponse(c, "Failed to resolve project identity", ErrorCode.PROJECT_ERROR, 500);
+    return errorResponse(c, "Trust not found for project", ErrorCode.NOT_FOUND, 404);
   }
   const trust = getStore().getTrust(project.projectId);
   if (!trust) {
@@ -103,7 +109,7 @@ settingsRouter.delete("/trust", requireTrustRouteToken, async (c) => {
   const projectRoot = getProjectRoot(c);
   const project = getStore().getProjectInfo(projectRoot);
   if (!project.projectId) {
-    return errorResponse(c, "Failed to resolve project identity", ErrorCode.PROJECT_ERROR, 500);
+    return c.json({ removed: false });
   }
   const result = await getStore().removeTrust(project.projectId);
   if (!result.ok) {

@@ -1,6 +1,3 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ReturnsTable } from "./blocks/returns-table";
@@ -54,7 +51,7 @@ const hookData = {
 
 describe("ParameterTable", () => {
   it("uses one semantic table with each row's values, the required badge, and the em-dash placeholder", () => {
-    render(<ParameterTable params={params} />);
+    render(<ParameterTable params={params} label="Component parameters" />);
 
     const table = screen.getByRole("table");
     const headers = within(table).getAllByRole("columnheader");

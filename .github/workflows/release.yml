@@ -54,9 +54,32 @@ jobs:
           registry-url: https://registry.npmjs.org
           scope: '@diffgazer'
 
+      - name: Install Chromium
+        run: pnpm --filter @diffgazer/web exec playwright install --with-deps chromium
+
       - name: Release readiness gate
         run: pnpm run release-check
 
+      # The token goes into an auth header rather than the origin URL, so no git
+      # command echoes it and the teardown below has a single key to unset — the
+      # shape actions/checkout uses, which `persist-credentials: false` opted out
+      # of writing here.
+      - name: Configure ephemeral git credentials for changesets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git config http.https://github.com/.extraheader \
+            "AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 -w0)"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # GitHub raises no workflow-triggering event for anything `GITHUB_TOKEN`
+      # creates, so the `chore: version packages` PR this opens receives zero
+      # Release Readiness checks of its own. Its content is verified by the
+      # successful push-to-main run after it merges; manual recovery verifies an
+      # exact merged-main SHA (PACKAGE_GOVERNANCE.md, Publish Flow). No App or
+      # PAT is used for this intentional post-merge verification model.
       - name: Version PR or publish
         uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
         with:
@@ -77,6 +100,12 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
 
+      # Hand-written credentials get no post-job unset from actions/checkout, so
+      # the header must not outlive the step that needed it.
+      - name: Remove ephemeral git credentials
+        if: always()
+        run: git config --unset-all http.https://github.com/.extraheader || true
+
   recovery:
     name: Recover Publish from Merged Main SHA
     if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -84,11 +113,25 @@ jobs:
     environment: production
     timeout-minutes: 30
     permissions:
+      actions: read
       contents: write
       pull-requests: write
       id-token: write
       issues: write
     steps:
+      # workflow_dispatch executes the workflow definition from the ref the operator
+      # selected, so the steps that reach NPM_TOKEN and the OIDC identity must come
+      # from main. The environment reviewer sees a run name and a branch, never the
+      # diff — the same reason deploy.yml guards its privileged manual trigger.
+      - name: Require main branch
+        env:
+          RELEASE_REF: ${{ github.ref }}
+        run: |
+          if [ "${RELEASE_REF}" != "refs/heads/main" ]; then
+            echo "::error::Recovery publishes must run from refs/heads/main."
+            exit 1
+          fi
+
       - name: Validate recovery SHA format
         env:
           RELEASE_SHA: ${{ inputs.release_sha }}
@@ -120,14 +163,79 @@ jobs:
             exit 1
           fi
 
+      # Ancestry proves the commit is on main; it does not prove the commit was
+      # verified. The primary job gets that proof from its `workflow_run` trigger
+      # (Release Readiness, push, main, success). Recovery has no trigger edge, so
+      # it asks the API for the same evidence: every required readiness job green
+      # for this exact SHA. `release-check` below is defence in depth, not a
+      # substitute — it omits the event-range Gitleaks scan and the browser suites.
+      - name: Require Release Readiness success for recovery SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
+        run: |
+          set -euo pipefail
+
+          run_info="$(gh api \
+            "repos/${{ github.repository }}/actions/workflows/release-readiness.yml/runs?head_sha=${RELEASE_SHA}&per_page=20" \
+            --jq '[.workflow_runs[] | select(.event == "push" and .head_branch == "main" and .status == "completed")] | sort_by(.run_started_at // .created_at) | last | select(. != null) | [.id, .conclusion, .html_url] | @tsv')"
+          if [ -z "${run_info}" ]; then
+            echo "::error::No completed Release Readiness run found on main for ${RELEASE_SHA}."
+            exit 1
+          fi
+
+          IFS=$'\t' read -r run_id run_conclusion run_url <<< "${run_info}"
+          if [ "${run_conclusion}" != "success" ]; then
+            echo "::error::Release Readiness for ${RELEASE_SHA} concluded '${run_conclusion}', not success: ${run_url}"
+            exit 1
+          fi
+
+          jobs="$(gh api \
+            "repos/${{ github.repository }}/actions/runs/${run_id}/jobs?per_page=100" \
+            --jq '.jobs[] | [.name, .conclusion] | @tsv')"
+          expected_jobs=(
+            "Gitleaks Event-Range Scan"
+            "Build, Verify, and Pack"
+            "Browser E2E (Playwright + axe + visual)"
+          )
+          for expected_job in "${expected_jobs[@]}"; do
+            conclusion="$(awk -F '\t' -v job="${expected_job}" '$1 == job { print $2 }' <<< "${jobs}" | tail -n 1)"
+            if [ -z "${conclusion}" ]; then
+              echo "::error::Release Readiness job '${expected_job}' is missing for ${RELEASE_SHA}: ${run_url}"
+              exit 1
+            fi
+            if [ "${conclusion}" != "success" ]; then
+              echo "::error::Release Readiness job '${expected_job}' concluded '${conclusion}', not success: ${run_url}"
+              exit 1
+            fi
+          done
+          echo "Release Readiness run ${run_id} is green for ${RELEASE_SHA}."
+
       - name: Setup repo
         uses: ./.github/actions/setup-repo
         with:
           registry-url: https://registry.npmjs.org
           scope: '@diffgazer'
 
+      - name: Install Chromium
+        run: pnpm --filter @diffgazer/web exec playwright install --with-deps chromium
+
       - name: Release readiness gate
         run: pnpm run release-check
+
+      # The token goes into an auth header rather than the origin URL, so no git
+      # command echoes it and the teardown below has a single key to unset — the
+      # shape actions/checkout uses, which `persist-credentials: false` opted out
+      # of writing here.
+      - name: Configure ephemeral git credentials for changesets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git config http.https://github.com/.extraheader \
+            "AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GITHUB_TOKEN}" | base64 -w0)"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Recover version metadata or publish
         uses: changesets/action@63a615b9cd06ba9a3e6d13796c7fbcb080a60a0b # v1.8.0
@@ -142,3 +250,8 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
+
+      # Same teardown as the primary job: nothing else unsets a hand-written header.
+      - name: Remove ephemeral git credentials
+        if: always()
+        run: git config --unset-all http.https://github.com/.extraheader || true

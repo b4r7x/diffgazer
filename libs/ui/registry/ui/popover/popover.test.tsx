@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { FormEvent } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,6 +30,25 @@ afterEach(() => {
 });
 
 describe("Popover", () => {
+  it("keyboard-opens the basic example and auto-focuses its action before Tab can leave", async () => {
+    const user = userEvent.setup();
+    render(
+      <div>
+        <PopoverBasicExample />
+        <button type="button">Outside docs control</button>
+      </div>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "click me" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+
+    const action = screen.getByRole("button", { name: "action" });
+    await waitFor(() => expect(action).toHaveFocus());
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("dialog", { name: "Popover actions" })).toBeInTheDocument();
+  });
+
   it.each([
     ["basic", PopoverBasicExample, "click me", "Popover content with interactive elements."],
     ["controlled", PopoverControlledExample, "open", "Controlled popover"],

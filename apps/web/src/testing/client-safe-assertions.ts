@@ -11,25 +11,12 @@ const FORBIDDEN_SERIALIZED_PATTERN = new RegExp(
   "i",
 );
 
-const SCAN_MAX_DEPTH = 16;
-const SCAN_MAX_NODES = 512;
-
 function normalizeKey(key: string): string {
   return key.replace(/[^a-z0-9]/gi, "").toLowerCase();
 }
 
-function collectViolations(
-  value: unknown,
-  path: string,
-  depth: number,
-  nodes: { count: number },
-  violations: string[],
-): void {
-  if (depth > SCAN_MAX_DEPTH || nodes.count >= SCAN_MAX_NODES || violations.length > 0) {
-    return;
-  }
-
-  nodes.count += 1;
+function collectViolations(value: unknown, path: string, violations: string[]): void {
+  if (violations.length > 0) return;
 
   if (value === null || typeof value !== "object") {
     if (typeof value === "string" && FORBIDDEN_VALUE_PATTERN.test(value)) {
@@ -40,7 +27,7 @@ function collectViolations(
 
   if (Array.isArray(value)) {
     for (const [index, entry] of value.entries()) {
-      collectViolations(entry, `${path}[${index}]`, depth + 1, nodes, violations);
+      collectViolations(entry, `${path}[${index}]`, violations);
     }
     return;
   }
@@ -51,7 +38,7 @@ function collectViolations(
       violations.push(`${nextPath}: forbidden key`);
       continue;
     }
-    collectViolations(entry, nextPath, depth + 1, nodes, violations);
+    collectViolations(entry, nextPath, violations);
   }
 }
 
@@ -62,7 +49,7 @@ export function assertClientSafePayload(payload: unknown, label = "payload"): vo
   }
 
   const violations: string[] = [];
-  collectViolations(payload, label, 0, { count: 0 }, violations);
+  collectViolations(payload, label, violations);
   if (violations.length > 0) {
     throw new Error(violations.join("; "));
   }

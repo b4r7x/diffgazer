@@ -1,12 +1,12 @@
 "use client";
 
-import { useTypeaheadBuffer } from "@/hooks/use-typeahead-buffer";
 import { typeaheadSearch } from "@/lib/typeahead";
-import type { SelectOptionMetadata } from "./select-context";
+import type { SelectContextValue, SelectOptionMetadata } from "./select-context";
 import { getVisibleEnabledOptionEntries } from "./visible-options";
 
 interface UseSelectTypeaheadOptions {
-  open: boolean;
+  /** Reads the query buffer shared by the closed trigger and the open listbox. */
+  readTypeaheadQuery: SelectContextValue["readTypeaheadQuery"];
   options: ReadonlyMap<string, SelectOptionMetadata>;
   searchQuery: string;
   /** Controlled highlighted item id. Pair with onHighlightChange. */
@@ -17,14 +17,12 @@ interface UseSelectTypeaheadOptions {
 
 /** Provides select typeahead behavior. */
 export function useSelectTypeahead({
-  open,
+  readTypeaheadQuery,
   options,
   searchQuery,
   highlighted,
   setHighlighted,
 }: UseSelectTypeaheadOptions) {
-  const readTypeaheadQuery = useTypeaheadBuffer(undefined, open);
-
   // Returns true when the key was buffered into the typeahead query so callers
   // can suppress a competing Space-select or vim-navigation move for the same
   // keystroke. `extendOnly` keys are declined on an empty buffer.

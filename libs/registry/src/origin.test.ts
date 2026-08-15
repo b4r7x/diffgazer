@@ -36,7 +36,9 @@ describe("normalizeOrigin", () => {
   ])("rejects unsafe registry origin %s", (origin) => {
     expect(() => normalizeOrigin(origin)).toThrow(/REGISTRY_ORIGIN must be a hosted http\(s\) URL/);
   });
+});
 
+describe("buildShadcnRegistryWithOrigin", () => {
   it("keeps the path prefix through a successful registry build", () => {
     fixtureDir = mkdtempSync(resolve(tmpdir(), "diffgazer-origin-build-"));
     const binDir = resolve(fixtureDir, "node_modules/.bin");

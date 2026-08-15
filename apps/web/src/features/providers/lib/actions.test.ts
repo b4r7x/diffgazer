@@ -1,24 +1,23 @@
 import type { ProviderListRow } from "@diffgazer/core/providers";
 import {
   buildProviderRows,
-  CLI_UNSUPPORTED_CONFIGURATION,
+  CODEX_CLI_CONFIGURATION,
   configurationStatus,
+  GEMINI_CONFIGURATION,
   LOCAL_OPENAI_CONFIGURATION,
-  READY_GEMINI_CONFIGURATION,
-  READY_ZAI_CONFIGURATION,
   unconfiguredRow,
+  ZAI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { describe, expect, it } from "vitest";
 import { getProviderActions } from "./actions";
 
 // Configured rows cover the readiness states that drive different action rows; buildProviderRows
-// adds an unconfigured placeholder row for every other selectable product. Removed records are
-// excluded before selection (filterProviders), so they never reach getProviderActions.
+// adds an unconfigured placeholder row for every other selectable product.
 const ROWS: ProviderListRow[] = buildProviderRows([
-  configurationStatus(READY_GEMINI_CONFIGURATION, "ready"),
-  configurationStatus(READY_ZAI_CONFIGURATION, "model-missing"),
-  configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
-  configurationStatus(CLI_UNSUPPORTED_CONFIGURATION, "unsupported"),
+  configurationStatus(GEMINI_CONFIGURATION, "ready"),
+  configurationStatus(ZAI_CONFIGURATION, "model-missing"),
+  configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
+  configurationStatus(CODEX_CLI_CONFIGURATION, "unsupported"),
 ]);
 
 function findRow(configurationId: string): ProviderListRow {
@@ -70,7 +69,7 @@ describe("getProviderActions", () => {
     const actions = getProviderActions(findRow("gemini-primary"));
 
     expect(actions.map((action) => action.id)).toEqual([
-      "dispatch",
+      "selectConfiguration",
       "setup",
       "selectModel",
       "delete",
@@ -104,7 +103,7 @@ describe("getProviderActions", () => {
 
   it("routes a pending compatibility check to Test readiness first", () => {
     const rows = buildProviderRows([
-      configurationStatus(READY_GEMINI_CONFIGURATION, "conformance-pending"),
+      configurationStatus(GEMINI_CONFIGURATION, "conformance-pending"),
     ]);
     const row = rows.find(
       (candidate) => candidate.configuration?.configurationId === "gemini-primary",

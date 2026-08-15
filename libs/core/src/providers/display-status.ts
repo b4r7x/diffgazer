@@ -1,6 +1,8 @@
+import { CATALOG_MODEL_DERIVED } from "../catalog/model-derived.js";
 import type { Readiness, ReadinessAction, ReadinessStatus } from "../schemas/config/readiness.js";
-import type { TransportFamily } from "../schemas/config/transports.js";
+import type { RunnableProductId, TransportFamily } from "../schemas/config/transports.js";
 import type { BadgeVariant } from "../schemas/presentation/index.js";
+import { PRODUCT_REGISTRY } from "./product-registry.js";
 
 interface ReadinessBadge {
   readonly label: string;
@@ -12,8 +14,6 @@ interface ReadinessBadge {
 const READINESS_BADGES = {
   unconfigured: { label: "Not configured", shortLabel: "setup", variant: "warning" },
   "credential-invalid": { label: "Credential invalid", shortLabel: "invalid", variant: "error" },
-  "endpoint-invalid": { label: "Endpoint invalid", shortLabel: "invalid", variant: "error" },
-  unreachable: { label: "Service unreachable", shortLabel: "unreachable", variant: "error" },
   "model-missing": { label: "Model missing", shortLabel: "missing", variant: "warning" },
   "conformance-pending": {
     label: "Compatibility check needed",
@@ -31,40 +31,9 @@ const READINESS_BADGES = {
     variant: "warning",
   },
   unsupported: { label: "Unsupported", shortLabel: "unsupported", variant: "warning" },
-  removed: { label: "Removed", shortLabel: "removed", variant: "error" },
   skipped: { label: "Readiness check skipped", shortLabel: "skipped", variant: "warning" },
-  "local-endpoint-unreachable": {
-    label: "Local endpoint unreachable",
-    shortLabel: "unreachable",
-    variant: "error",
-  },
-  "local-endpoint-forbidden": {
-    label: "Local endpoint forbidden",
-    shortLabel: "forbidden",
-    variant: "error",
-  },
-  "local-api-incompatible": {
-    label: "Local API incompatible",
-    shortLabel: "incompatible",
-    variant: "error",
-  },
-  "local-no-review-capable-model": {
-    label: "No review-capable local model",
-    shortLabel: "missing",
-    variant: "error",
-  },
-  "local-selected-model-missing": {
-    label: "Local model missing",
-    shortLabel: "missing",
-    variant: "error",
-  },
   "local-conformance-failed": {
     label: "Local conformance failed",
-    shortLabel: "failed",
-    variant: "error",
-  },
-  "local-cancellation-failed": {
-    label: "Local cancellation failed",
     shortLabel: "failed",
     variant: "error",
   },
@@ -138,8 +107,85 @@ export function getUnconfiguredDisplayStatus(overrides?: {
   };
 }
 
-export function getProviderDisplay(productName?: string, modelId?: string): string {
-  if (!productName) return "Not configured";
-  if (modelId) return `${productName} / ${modelId}`;
+/**
+ * "Not configured · Not configured" says one thing twice. When either header
+ * chip segment already contains the other (case-insensitively), the name alone
+ * carries the row; distinct segments keep the "name · status" join. Each shell
+ * passes the status string it actually renders — the full label or the short
+ * word.
+ */
+export function isRedundantStatusSegment(providerName: string, statusText: string): boolean {
+  const name = providerName.toLowerCase();
+  const status = statusText.toLowerCase();
+  return name.includes(status) || status.includes(name);
+}
+
+/**
+ * The catalog display name for a model, or the id itself when the bounded
+ * catalog does not carry it — a model outside the catalog has one identity, and
+ * inventing a prettier one would name something the review cannot pin.
+ */
+export function getCatalogModelName(productId: RunnableProductId, modelId: string): string {
+  return CATALOG_MODEL_DERIVED[productId]?.[modelId]?.name ?? modelId;
+}
+
+export function getProviderDisplay(productId?: RunnableProductId, modelId?: string): string {
+  if (!productId) return "Not configured";
+  const productName = PRODUCT_REGISTRY[productId].presentation.name;
+  if (modelId) return `${productName} / ${getCatalogModelName(productId, modelId)}`;
   return productName;
+}
+
+/**
+ * What an app shell knows about its configuration when it draws the header: it
+ * is still loading, it failed to load, none is configured, or one is selected.
+ */
+export type ShellProviderState =
+  | { readonly status: "loading" }
+  | { readonly status: "error" }
+  | { readonly status: "unconfigured" }
+  | {
+      readonly status: "configured";
+      readonly readiness: Readiness;
+      readonly transportFamily: TransportFamily;
+      readonly productId: RunnableProductId;
+      readonly modelId?: string | null;
+    };
+
+export interface ShellProviderIdentity {
+  readonly providerName: string;
+  readonly providerStatus: ProviderDisplayStatus;
+}
+
+/**
+ * The provider identity a shell header shows for each state it can be in. Both
+ * shells ask the same question of the same data, so the pre-configuration
+ * wording lives here instead of being written once per surface and drifting.
+ */
+export function resolveShellProviderIdentity(state: ShellProviderState): ShellProviderIdentity {
+  if (state.status === "loading") {
+    return {
+      providerName: "Loading configuration",
+      providerStatus: getUnconfiguredDisplayStatus({ label: "Loading", shortLabel: "loading" }),
+    };
+  }
+
+  if (state.status === "error") {
+    return {
+      providerName: "Configuration unavailable",
+      providerStatus: getUnconfiguredDisplayStatus({
+        label: "Unavailable",
+        shortLabel: "unavailable",
+      }),
+    };
+  }
+
+  if (state.status === "unconfigured") {
+    return { providerName: getProviderDisplay(), providerStatus: getUnconfiguredDisplayStatus() };
+  }
+
+  return {
+    providerName: getProviderDisplay(state.productId, state.modelId ?? undefined),
+    providerStatus: getProviderDisplayStatus(state.readiness, state.transportFamily),
+  };
 }

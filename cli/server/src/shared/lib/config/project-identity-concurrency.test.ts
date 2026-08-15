@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { assertTempHome } from "../testing/temp-home.js";
 
 const CONCURRENCY_TEST_TIMEOUT_MS = 20_000;
 const storeModuleUrl = new URL("./store.ts", import.meta.url).href;
@@ -87,6 +88,7 @@ function readProjectId(filePath: string): string {
 describe("project identity concurrency", () => {
   beforeEach(() => {
     diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-project-identity-home-"));
+    assertTempHome(diffgazerHome);
     projectRootA = mkdtempSync(join(tmpdir(), "diffgazer-project-identity-proj-"));
     mkdirSync(join(projectRootA, ".git"));
     process.env.DIFFGAZER_HOME = diffgazerHome;
@@ -94,11 +96,19 @@ describe("project identity concurrency", () => {
     vi.resetModules();
   });
 
-  afterEach(() => {
-    delete process.env.DIFFGAZER_HOME;
-    delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
-    rmSync(diffgazerHome, { recursive: true, force: true });
-    rmSync(projectRootA, { recursive: true, force: true });
+  // Worker processes are awaited to exit by each test; only the in-process store can still
+  // hold queued persistence. Settle it, remove the temp dirs, and only then drop
+  // DIFFGAZER_HOME — `paths.ts` re-reads it per call, so the reverse order would aim any
+  // pending write at the real ~/.diffgazer.
+  afterEach(async () => {
+    try {
+      await (await loadStore()).ready();
+      rmSync(diffgazerHome, { recursive: true, force: true });
+      rmSync(projectRootA, { recursive: true, force: true });
+    } finally {
+      delete process.env.DIFFGAZER_HOME;
+      delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
+    }
   });
 
   it(

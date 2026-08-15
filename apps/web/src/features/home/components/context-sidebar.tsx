@@ -1,12 +1,14 @@
-import { buildHomeContextRows, type ContextInfo } from "@diffgazer/core/schemas/presentation";
+import { buildHomeContextRows, type HomeContextInfo } from "@diffgazer/core/schemas/presentation";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { useNavigate } from "@tanstack/react-router";
+import type { useNavigate } from "@tanstack/react-router";
 import { PathValue } from "@/components/shared/path-value";
 import { InfoField } from "./info-field";
 
 interface ContextSidebarProps {
-  context: ContextInfo;
+  context: HomeContextInfo;
+  /** Injected like the menu's, so the panel's two settings routes are observable. */
+  navigate: ReturnType<typeof useNavigate>;
   isTrusted: boolean;
   projectPath?: string;
   pending?: boolean;
@@ -18,12 +20,12 @@ const CONTEXT_TITLE_ID = "home-context-title";
 
 export function ContextSidebar({
   context,
+  navigate,
   isTrusted,
   projectPath,
   pending = false,
   onOpenLastRun,
 }: ContextSidebarProps) {
-  const navigate = useNavigate();
   const rows = buildHomeContextRows({ context, isTrusted, projectPath });
 
   const navigateUnlessPending = (to: "/settings/providers" | "/settings/trust-permissions") => {
@@ -57,6 +59,7 @@ export function ContextSidebar({
         )}
         <InfoField
           label={rows.provider.label}
+          tone="accent"
           onClick={() => navigateUnlessPending("/settings/providers")}
           ariaLabel="Configure provider settings"
         >
@@ -64,6 +67,7 @@ export function ContextSidebar({
         </InfoField>
         <InfoField
           label={rows.lastRun.label}
+          tone={rows.lastRun.status === "unavailable" ? "warning" : "success"}
           onClick={pending ? undefined : onOpenLastRun}
           ariaLabel={
             rows.lastRun.meta === undefined
@@ -97,7 +101,9 @@ export function ContextSidebar({
             <span
               className={cn(
                 "mt-0.5 block truncate text-xs",
-                rows.lastRun.hasIssues ? "text-muted-foreground" : "text-success-text",
+                // Amber issue count is the pre-mobile signal: findings warrant a
+                // warmer hue than the structural gray, a clean run stays green.
+                rows.lastRun.hasIssues ? "text-warning-text" : "text-success-text",
               )}
             >
               {rows.lastRun.meta}

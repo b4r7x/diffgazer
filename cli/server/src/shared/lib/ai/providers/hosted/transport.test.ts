@@ -3,8 +3,12 @@ import { HOSTED_API_PRODUCT_IDS, type HostedApiProductId } from "@diffgazer/core
 import { type EvidenceKey, ExecutionResultSchema } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createBudgetLedger } from "../../budget/ledger.js";
 import {
+  boundedFetchInit as canonicalBoundedFetchInit,
+  resolveHostedApiEndpoint,
+} from "../endpoints.js";
+import {
+  boundedFetchInit,
   createHostedAdapter,
   DEFAULT_HOSTED_REVIEW_SCHEMA,
   executeHostedReview,
@@ -14,6 +18,7 @@ import {
 
 type FetchFn = typeof globalThis.fetch;
 type MockFetchFn = ReturnType<typeof vi.fn<FetchFn>>;
+type HostedEvidenceKey = Extract<EvidenceKey, { transportFamily: "hosted-api" }>;
 
 const SCHEMA_SHA256 = "1".repeat(64);
 const CREDENTIAL_REFERENCE_IDENTITY = "3".repeat(64);
@@ -31,6 +36,13 @@ const STRUCTURED_OUTPUT_SCHEMA = {
   },
   required: ["issues"],
 } as const;
+
+type TransportExecuteRequest = Parameters<typeof executeHostedReview>[0];
+type TransportExecuteResult = Awaited<ReturnType<typeof executeHostedReview>>;
+const transportFacadeTypes: {
+  request: TransportExecuteRequest;
+  result: TransportExecuteResult;
+} | null = null;
 
 const limits = {
   maxInputTokens: 20_000,
@@ -54,7 +66,7 @@ function suggestedModelId(productId: HostedApiProductId): string {
 
 function evidenceKeyFor(
   productId: HostedApiProductId,
-  patch: Partial<EvidenceKey> = {},
+  patch: Partial<HostedEvidenceKey> = {},
 ): EvidenceKey {
   const product = PRODUCT_REGISTRY[productId];
   const endpoint = product.configuration.endpoints[0];
@@ -122,7 +134,7 @@ function mockFetchResponse(
   }) as FetchFn;
 }
 
-function executeRequest(productId: HostedApiProductId, patch: Partial<EvidenceKey> = {}) {
+function executeRequest(productId: HostedApiProductId, patch: Partial<HostedEvidenceKey> = {}) {
   return {
     configurationId: "configuration-1",
     configurationRevision: 3,
@@ -141,9 +153,30 @@ function hostedContext(fetch: FetchFn, patch: Record<string, unknown> = {}) {
   };
 }
 
-describe("validateHostedEndpoint", () => {
+function requestBodyAt(fetch: FetchFn, index: number): Record<string, unknown> {
+  const init = (fetch as MockFetchFn).mock.calls[index]?.[1];
+  return JSON.parse(String(init?.body)) as Record<string, unknown>;
+}
+
+describe("hosted transport facade", () => {
+  it("re-exports canonical endpoint helpers without changing identity or types", () => {
+    expect(boundedFetchInit).toBe(canonicalBoundedFetchInit);
+    expect(validateHostedEndpoint).toBe(resolveHostedApiEndpoint);
+    expect(transportFacadeTypes).toBeNull();
+
+    const boundedInit = boundedFetchInit({ method: "POST" });
+    expect(boundedInit).toEqual({ method: "POST", redirect: "error" });
+    const endpoint = validateHostedEndpoint({
+      productId: "groq",
+      endpoint: "https://api.groq.com/openai/v1",
+    });
+    expect(endpoint.ok).toBe(true);
+  });
+});
+
+describe("resolveHostedApiEndpoint", () => {
   it("rejects invalid hosted endpoints before secret resolution", () => {
-    const result = validateHostedEndpoint({
+    const result = resolveHostedApiEndpoint({
       productId: "groq",
       endpoint: "http://api.groq.com/openai/v1",
     });
@@ -222,7 +255,7 @@ describe("add-now PAYG tuple model and notice policies", () => {
 
     expect(result.receipt.outcome).toBe("completed");
     expect(result.receipt.region).toBe("international");
-    expect(result.receipt.workspace).toBe(WORKSPACE_ACCOUNT_REFERENCE);
+    expect(result.receipt.workspaceAccountReference).toBe(WORKSPACE_ACCOUNT_REFERENCE);
     expect(result.receipt.usageAvailability).toBe("reported");
 
     const [, init] = (fetch as MockFetchFn).mock.calls[0] ?? [];
@@ -265,9 +298,8 @@ describe("add-now PAYG tuple model and notice policies", () => {
     expect(result.receipt.usageAvailability).toBe("reported");
   });
 
-  it("rejects invalid hosted endpoint tuple before secret use", async () => {
-    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
-    const result = validateHostedEndpoint({
+  it("rejects a cross-region hosted endpoint tuple", () => {
+    const result = resolveHostedApiEndpoint({
       productId: "moonshot",
       endpoint: "https://api.moonshot.cn/v1",
       region: "international",
@@ -276,7 +308,6 @@ describe("add-now PAYG tuple model and notice policies", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe("cross-region");
-    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("honors Mistral notice version and regional endpoint choice", async () => {
@@ -373,6 +404,32 @@ describe("failure outcomes emit zero findings without fallback", () => {
     expect(result.result.issues).toEqual([]);
   });
 
+  it("releases the response body of a rejected upstream status", async () => {
+    let bodyCancelled = false;
+    const fetch = vi.fn(async () => {
+      const body = new ReadableStream<Uint8Array>({
+        pull() {
+          // Never resolves on its own: only an explicit cancel frees this stream.
+        },
+        cancel() {
+          bodyCancelled = true;
+        },
+      });
+      return new Response(body, {
+        status: 503,
+        headers: { "content-type": "application/json" },
+      });
+    }) as FetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("groq"),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("transport-failed");
+    expect(bodyCancelled).toBe(true);
+  });
+
   it("returns transport-failed for redirecting upstream responses", async () => {
     const fetch = vi.fn(async () => {
       throw new TypeError("redirect mode is error");
@@ -399,6 +456,23 @@ describe("failure outcomes emit zero findings without fallback", () => {
     expect(result.result.issues).toEqual([]);
   });
 
+  it("times out a request that stalls past the admitted wall time", async () => {
+    const fetch: FetchFn = (_url, init) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(new DOMException("aborted", "AbortError")),
+        );
+      });
+
+    const result = await executeHostedReview({
+      ...executeRequest("groq", { limits: { ...limits, wallTimeMs: 50 } }),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("timed-out");
+    expect(result.result.issues).toEqual([]);
+  });
+
   it("returns cancelled when the abort signal is already aborted", async () => {
     const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
     const controller = new AbortController();
@@ -415,20 +489,12 @@ describe("failure outcomes emit zero findings without fallback", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("returns budget-exhausted when the ledger cannot reserve an attempt", async () => {
+  it("returns budget-exhausted when the prompt exceeds the admitted input budget", async () => {
     const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
-    const ledger = createBudgetLedger({ ...limits, maxRetries: 0, maxConcurrency: 1 });
-    ledger.reserveAttempt({
-      inputTokens: 100,
-      outputTokens: 50,
-      responseBytes: 1_024,
-      wallTimeMs: 1_000,
-      costUsd: 0.01,
-    });
 
     const result = await executeHostedReview({
-      ...executeRequest("groq"),
-      context: hostedContext(fetch, { budgetLedger: ledger }),
+      ...executeRequest("groq", { limits: { ...limits, maxInputTokens: 1 } }),
+      context: hostedContext(fetch),
     });
 
     expect(result.receipt.outcome).toBe("budget-exhausted");
@@ -467,6 +533,45 @@ describe("failure outcomes emit zero findings without fallback", () => {
     expect(result.receipt.outcome).toBe("schema-failed");
     expect(result.receipt.attemptCount).toBe(2);
     expect(result.result.issues).toEqual([]);
+  });
+
+  it("counts the discarded malformed attempt's billed tokens in the terminal receipt", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "{" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 10, completion_tokens: 3, total_tokens: 13 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [
+              { message: { content: JSON.stringify({ issues: [] }) }, finish_reason: "stop" },
+            ],
+            usage: { prompt_tokens: 11, completion_tokens: 4, total_tokens: 15 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ) as FetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("zai"),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.receipt.attemptCount).toBe(2);
+    // Discarding the first attempt's content does not un-bill its tokens.
+    expect(result.receipt.usage).toMatchObject({
+      inputTokens: 21,
+      outputTokens: 7,
+      totalTokens: 28,
+    });
   });
 
   it("retries DeepSeek once for malformed output then fails closed", async () => {
@@ -520,6 +625,32 @@ describe("hosted adapter factory", () => {
     expect(result.result.issues).toEqual([]);
   });
 
+  it("fails closed without resolving credentials for a non-hosted evidence key", async () => {
+    const resolveCredential = vi.fn(async () => TEST_CREDENTIAL);
+    const adapter = createHostedAdapter("gemini");
+    const result = await adapter.execute({
+      ...executeRequest("gemini"),
+      evidenceKey: {
+        ...executeRequest("gemini").evidenceKey,
+        authentication: "none",
+        credentialReferenceIdentity: null,
+        installationId: null,
+        productId: "ollama",
+        transportFamily: "local-http",
+        normalizedEndpoint: "http://127.0.0.1:11434",
+        region: null,
+        workspaceAccountReference: null,
+        runtime: { identity: "ollama", version: "0.6.0" },
+        modelId: "llama3.2",
+      },
+      resolveCredential,
+    });
+
+    expect(result.receipt.outcome).toBe("transport-failed");
+    expect(result.result.issues).toEqual([]);
+    expect(resolveCredential).not.toHaveBeenCalled();
+  });
+
   it("executes with the credential the authorized execution channel resolves", async () => {
     const fetch = mockFetchResponse(googleSuccessBody({ issues: [] }));
     vi.spyOn(globalThis, "fetch").mockImplementation(fetch);
@@ -561,9 +692,421 @@ describe("hosted adapter factory", () => {
     expect(result.receipt.outcome).toBe("completed");
     expect(result.result.issues).toEqual([]);
   });
+
+  it("maps Gemini thinking usage so totals equal input plus output tokens", async () => {
+    const fetch = mockFetchResponse(
+      googleSuccessBody(
+        { issues: [] },
+        {
+          promptTokenCount: 8,
+          candidatesTokenCount: 12,
+          thoughtsTokenCount: 1076,
+          totalTokenCount: 1096,
+        },
+      ),
+    );
+
+    const result = await executeHostedReview({
+      ...executeRequest("gemini"),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.receipt.usage).toEqual({
+      inputTokens: 8,
+      outputTokens: 1088,
+      totalTokens: 1096,
+      reasoningTokens: 1076,
+    });
+  });
 });
 
 describe("admitted attempt accounting", () => {
+  it("reserves the combined system and user input before dispatch", async () => {
+    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
+    const result = await executeHostedReview({
+      ...executeRequest("zai", { limits: { ...limits, maxInputTokens: 4 } }),
+      systemPrompt: "trusted reviewer instructions",
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("budget-exhausted");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("reduces the provider output allowance after a billed malformed attempt", async () => {
+    const retryLimits = { ...limits, maxInputTokens: 40, maxOutputTokens: 10 } as const;
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "{" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 8, completion_tokens: 3, total_tokens: 11 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [
+              { message: { content: JSON.stringify({ issues: [] }) }, finish_reason: "stop" },
+            ],
+            usage: { prompt_tokens: 8, completion_tokens: 2, total_tokens: 10 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      ) as FetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("zai", { limits: retryLimits }),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(requestBodyAt(fetch, 0).max_tokens).toBe(10);
+    expect(requestBodyAt(fetch, 1).max_tokens).toBe(7);
+  });
+
+  it("does not issue a retry when the reported prompt leaves insufficient input budget", async () => {
+    const fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "{" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 16, completion_tokens: 1, total_tokens: 17 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+    ) as MockFetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("zai", { limits: { ...limits, maxInputTokens: 20 } }),
+      context: hostedContext(fetch),
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.receipt.outcome).toBe("budget-exhausted");
+    expect(result.receipt.usage).toMatchObject({ inputTokens: 16, outputTokens: 1 });
+  });
+
+  it("caps a retry response read at the remaining response-byte budget", async () => {
+    const firstBody = JSON.stringify({
+      choices: [{ message: { content: "{" }, finish_reason: "stop" }],
+      usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+    });
+    const firstBytes = new TextEncoder().encode(firstBody).byteLength;
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(firstBody, { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [
+              { message: { content: JSON.stringify({ issues: [] }) }, finish_reason: "stop" },
+            ],
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          }),
+          { status: 200 },
+        ),
+      ) as FetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("zai", {
+        limits: { ...limits, maxResponseBytes: firstBytes + 4 },
+      }),
+      context: hostedContext(fetch),
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.receipt.outcome).toBe("budget-exhausted");
+    expect(result.receipt.usage).toMatchObject({ inputTokens: 1, outputTokens: 1 });
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["invalid", { prompt_tokens: 1, completion_tokens: "not-a-number", total_tokens: 1 }],
+    ["inconsistent-total", { prompt_tokens: 1, completion_tokens: 1, total_tokens: 9 }],
+    ["total-below-input", { prompt_tokens: 4, total_tokens: 3 }],
+    ["total-below-output", { completion_tokens: 4, total_tokens: 3 }],
+    ["total-below-cached", { total_tokens: 3, prompt_tokens_details: { cached_tokens: 4 } }],
+    [
+      "total-below-reasoning",
+      { total_tokens: 3, completion_tokens_details: { reasoning_tokens: 4 } },
+    ],
+  ] as const)("does not retry when provider usage is %s", async (_label, usage) => {
+    const body = {
+      choices: [{ message: { content: "{" }, finish_reason: "stop" }],
+      ...(usage === undefined ? {} : { usage }),
+    };
+    const fetch = vi.fn(
+      async () =>
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    ) as MockFetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("zai"),
+      context: hostedContext(fetch),
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.receipt.outcome).toBe("schema-failed");
+    expect(result.receipt.usageAvailability).toBe("unavailable");
+    expect(result.receipt.usage).toBeUndefined();
+  });
+
+  it("records partial usage without treating it as retry-safe", async () => {
+    const fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "{" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 1 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+    ) as MockFetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("zai"),
+      context: hostedContext(fetch),
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.receipt.outcome).toBe("schema-failed");
+    expect(result.receipt.usageAvailability).toBe("reported");
+    expect(result.receipt.usage).toEqual({ inputTokens: 1 });
+  });
+
+  it("keeps a valid partial provider total as the known input component", async () => {
+    const fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "{" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 4, total_tokens: 4 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+    ) as MockFetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("zai"),
+      context: hostedContext(fetch),
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.receipt.outcome).toBe("schema-failed");
+    expect(result.receipt.usageAvailability).toBe("reported");
+    expect(result.receipt.usage).toEqual({ inputTokens: 4 });
+  });
+
+  it("does not treat a total-only provider report as available usage", async () => {
+    const fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "{" }, finish_reason: "stop" }],
+            usage: { total_tokens: 6 },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+    ) as MockFetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("zai"),
+      context: hostedContext(fetch),
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.receipt.outcome).toBe("schema-failed");
+    expect(result.receipt.usageAvailability).toBe("unavailable");
+    expect(result.receipt.usage).toBeUndefined();
+  });
+
+  it("fails closed for contradictory required-terminal usage", async () => {
+    const fetch = mockFetchResponse({
+      choices: [{ message: { content: "{" }, finish_reason: "stop" }],
+      usage: { prompt_tokens: 4, total_tokens: 3 },
+    });
+
+    const result = await executeHostedReview({
+      ...executeRequest("deepseek"),
+      context: hostedContext(fetch),
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(result.receipt.outcome).toBe("transport-failed");
+    expect(result.receipt.usageAvailability).toBe("unavailable");
+    expect(result.receipt.usage).toBeUndefined();
+    expect(result.result.issues).toEqual([]);
+  });
+
+  it("derives an omitted attempt total and accumulates every known token component", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "{" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 4, completion_tokens: 2, total_tokens: 6 },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [
+              { message: { content: JSON.stringify({ issues: [] }) }, finish_reason: "stop" },
+            ],
+            usage: { prompt_tokens: 4, completion_tokens: 2 },
+          }),
+          { status: 200 },
+        ),
+      ) as MockFetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("zai"),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.receipt.usageAvailability).toBe("reported");
+    expect(result.receipt.usage).toEqual({
+      inputTokens: 8,
+      outputTokens: 4,
+      totalTokens: 12,
+    });
+  });
+
+  it("drops a mixed partial total and derives the aggregate from known components", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "{" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 4, completion_tokens: 2, total_tokens: 6 },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [
+              { message: { content: JSON.stringify({ issues: [] }) }, finish_reason: "stop" },
+            ],
+            usage: { prompt_tokens: 4, total_tokens: 4 },
+          }),
+          { status: 200 },
+        ),
+      ) as MockFetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("zai"),
+      context: hostedContext(fetch),
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.receipt.usageAvailability).toBe("reported");
+    expect(result.receipt.usage).toEqual({
+      inputTokens: 8,
+      outputTokens: 2,
+      totalTokens: 10,
+    });
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["invalid", { prompt_tokens: 4, completion_tokens: "not-a-number", total_tokens: 6 }],
+  ] as const)("keeps the first trustworthy usage when the second response is %s", async (_label, usage) => {
+    const first = {
+      choices: [{ message: { content: "{" }, finish_reason: "stop" }],
+      usage: { prompt_tokens: 4, completion_tokens: 2, total_tokens: 6 },
+    };
+    const second = {
+      choices: [{ message: { content: JSON.stringify({ issues: [] }) }, finish_reason: "stop" }],
+      ...(usage === undefined ? {} : { usage }),
+    };
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(first), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(second), { status: 200 })) as MockFetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("zai", { limits: { ...limits, maxRetries: 1 } }),
+      context: hostedContext(fetch),
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.receipt.usageAvailability).toBe("reported");
+    expect(result.receipt.usage).toEqual({
+      inputTokens: 4,
+      outputTokens: 2,
+      totalTokens: 6,
+    });
+  });
+
+  it("retains the first attempt usage when the retry fails in transport", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "{" }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 4, completion_tokens: 2, total_tokens: 6 },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockRejectedValueOnce(new Error("upstream disconnected")) as MockFetchFn;
+
+    const result = await executeHostedReview({
+      ...executeRequest("zai"),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("transport-failed");
+    expect(result.receipt.usage).toMatchObject({
+      inputTokens: 4,
+      outputTokens: 2,
+      totalTokens: 6,
+    });
+  });
+
+  it("returns budget-exhausted with known provider usage over the admitted cap", async () => {
+    const fetch = mockFetchResponse(
+      openAiSuccessBody(
+        { issues: [] },
+        {
+          prompt_tokens: limits.maxInputTokens + 1,
+          completion_tokens: 1,
+          total_tokens: limits.maxInputTokens + 2,
+        },
+      ),
+    );
+
+    const result = await executeHostedReview({
+      ...executeRequest("groq"),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("budget-exhausted");
+    expect(result.receipt.usage).toMatchObject({
+      inputTokens: limits.maxInputTokens + 1,
+      outputTokens: 1,
+      totalTokens: limits.maxInputTokens + 2,
+    });
+  });
+
   it("honours an admitted maxRetries of 0 over the provider's malformed-output retry", async () => {
     const fetch = vi.fn(
       async () =>
@@ -583,7 +1126,7 @@ describe("admitted attempt accounting", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it("reserves every retry against the per-review ledger", async () => {
+  it("retries every admitted attempt when the provider keeps returning malformed output", async () => {
     const fetch = vi.fn(
       async () =>
         new Response(JSON.stringify(openAiSuccessBody("not-json-at-all")), {
@@ -591,44 +1134,15 @@ describe("admitted attempt accounting", () => {
           headers: { "content-type": "application/json" },
         }),
     ) as MockFetchFn;
-    const ledger = createBudgetLedger({ ...limits, maxRetries: 1 });
 
     const result = await executeHostedReview({
-      ...executeRequest("zai"),
-      context: hostedContext(fetch, { budgetLedger: ledger }),
+      ...executeRequest("zai", { limits: { ...limits, maxRetries: 1 } }),
+      context: hostedContext(fetch),
     });
 
     expect(result.receipt.outcome).toBe("schema-failed");
     expect(result.receipt.attemptCount).toBe(2);
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(ledger.snapshot().inFlightAttempts).toBe(0);
-  });
-
-  it("settles budget-exhausted when the ledger denies a further attempt", async () => {
-    const fetch = vi.fn(
-      async () =>
-        new Response(JSON.stringify(openAiSuccessBody("not-json-at-all")), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
-    ) as MockFetchFn;
-    const ledger = createBudgetLedger(limits);
-    const held = ledger.reserveAttempt({
-      inputTokens: limits.maxInputTokens,
-      outputTokens: limits.maxOutputTokens,
-      responseBytes: limits.maxResponseBytes,
-      wallTimeMs: limits.wallTimeMs,
-      costUsd: limits.maxCostUsd,
-    });
-    expect(held.ok).toBe(true);
-
-    const result = await executeHostedReview({
-      ...executeRequest("zai"),
-      context: hostedContext(fetch, { budgetLedger: ledger }),
-    });
-
-    expect(result.receipt.outcome).toBe("budget-exhausted");
-    expect(fetch).not.toHaveBeenCalled();
   });
 });
 
@@ -656,5 +1170,100 @@ describe("rate-limit diagnostics", () => {
 
     expect(result.receipt.outcome).toBe("transport-failed");
     expect(pulledChunks).toBeLessThanOrEqual(16);
+  });
+});
+
+describe("gemini thinking budget", () => {
+  function generationConfig(fetch: FetchFn): Record<string, unknown> {
+    return requestBodyAt(fetch, 0).generationConfig as Record<string, unknown>;
+  }
+
+  it("bounds thought spend for a thinking-by-default model without lowering the admitted output budget", async () => {
+    const fetch = mockFetchResponse(googleSuccessBody({ issues: [] }));
+
+    const result = await executeHostedReview({
+      ...executeRequest("gemini", { modelId: "gemini-2.5-pro" }),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(generationConfig(fetch).thinkingConfig).toEqual({ thinkingBudget: 2_048 });
+    expect(generationConfig(fetch).maxOutputTokens).toBe(limits.maxOutputTokens);
+  });
+
+  it("bounds thought spend for the registry's suggested gemini model", async () => {
+    const fetch = mockFetchResponse(googleSuccessBody({ issues: [] }));
+
+    await executeHostedReview({
+      ...executeRequest("gemini"),
+      context: hostedContext(fetch),
+    });
+
+    expect(generationConfig(fetch).thinkingConfig).toEqual({ thinkingBudget: 2_048 });
+  });
+
+  it.each([
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash",
+  ])("sends no thinking budget to %s, whose thinking is not on by default", async (modelId) => {
+    const fetch = mockFetchResponse(googleSuccessBody({ issues: [] }));
+
+    await executeHostedReview({
+      ...executeRequest("gemini", { modelId }),
+      context: hostedContext(fetch),
+    });
+
+    expect(generationConfig(fetch)).not.toHaveProperty("thinkingConfig");
+  });
+});
+
+describe("hosted trust boundary", () => {
+  function requestBody(fetch: FetchFn): Record<string, unknown> {
+    const init = (fetch as MockFetchFn).mock.calls[0]?.[1];
+    return JSON.parse(String(init?.body)) as Record<string, unknown>;
+  }
+
+  it("sends trusted instructions on the Google system channel, not the user turn", async () => {
+    const fetch = mockFetchResponse(googleSuccessBody({ issues: [] }));
+
+    const result = await executeHostedReview({
+      ...executeRequest("gemini"),
+      systemPrompt: "invariant reviewer instructions",
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    const body = requestBody(fetch);
+    expect(body.systemInstruction).toEqual({
+      parts: [{ text: "invariant reviewer instructions" }],
+    });
+    expect(body.contents).toEqual([{ role: "user", parts: [{ text: "review this diff" }] }]);
+  });
+
+  it("sends trusted instructions as an OpenAI system message ahead of the user turn", async () => {
+    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
+
+    const result = await executeHostedReview({
+      ...executeRequest("groq"),
+      systemPrompt: "invariant reviewer instructions",
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(requestBody(fetch).messages).toEqual([
+      { role: "system", content: "invariant reviewer instructions" },
+      { role: "user", content: "review this diff" },
+    ]);
+  });
+
+  it("keeps a single user turn when no system prompt is supplied", async () => {
+    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
+
+    await executeHostedReview({
+      ...executeRequest("groq"),
+      context: hostedContext(fetch),
+    });
+
+    expect(requestBody(fetch).messages).toEqual([{ role: "user", content: "review this diff" }]);
   });
 });

@@ -47,6 +47,93 @@ describe("runInitWorkflow rollback", () => {
     rmSync(tempDir, { recursive: true, force: true });
   });
 
+  it("removes empty planned parent directories when afterFiles fails", async () => {
+    await expect(
+      runInitWorkflow({
+        cwd: tempDir,
+        configFileName: "tool.json",
+        yes: true,
+        force: false,
+        loadConfig: () => ({ ok: false, error: "not_found" }),
+        detectProject: () => ({ display: [] }),
+        plannedPaths: () => [
+          "src/",
+          "src/lib/",
+          "src/lib/utils.ts",
+          "src/styles/",
+          "src/styles/theme.css",
+        ],
+        createFiles: (cwd) => {
+          mkdirSync(join(cwd, "src/lib"), { recursive: true });
+          mkdirSync(join(cwd, "src/styles"), { recursive: true });
+          writeFileSync(join(cwd, "src/lib/utils.ts"), "export {}\n");
+          writeFileSync(join(cwd, "src/styles/theme.css"), "/* theme */\n");
+          return [
+            { action: "created", path: "src/lib/utils.ts" },
+            { action: "created", path: "src/styles/theme.css" },
+          ];
+        },
+        afterFiles: async () => {
+          throw new Error("install failed");
+        },
+        writeConfig: () => {},
+        nextSteps: [],
+      }),
+    ).rejects.toThrow("install failed");
+
+    expect(existsSync(join(tempDir, "src"))).toBe(false);
+  });
+
+  it("removes directories createFiles made before it threw, without a result array", async () => {
+    await expect(
+      runInitWorkflow({
+        cwd: tempDir,
+        configFileName: "tool.json",
+        yes: true,
+        force: false,
+        loadConfig: () => ({ ok: false, error: "not_found" }),
+        detectProject: () => ({ display: [] }),
+        plannedPaths: () => ["src/components/ui/", "src/hooks/", "src/lib/utils.ts"],
+        createFiles: (cwd) => {
+          mkdirSync(join(cwd, "src/components/ui"), { recursive: true });
+          mkdirSync(join(cwd, "src/hooks"), { recursive: true });
+          throw new Error("seed write failed");
+        },
+        writeConfig: () => {},
+        nextSteps: [],
+      }),
+    ).rejects.toThrow("seed write failed");
+
+    expect(existsSync(join(tempDir, "src"))).toBe(false);
+    expect(existsSync(join(tempDir, "tool.json"))).toBe(false);
+  });
+
+  it("keeps a pre-existing planned directory when createFiles throws", async () => {
+    mkdirSync(join(tempDir, "src/hooks"), { recursive: true });
+    writeFileSync(join(tempDir, "src/hooks/keep.ts"), "export {}\n");
+
+    await expect(
+      runInitWorkflow({
+        cwd: tempDir,
+        configFileName: "tool.json",
+        yes: true,
+        force: false,
+        loadConfig: () => ({ ok: false, error: "not_found" }),
+        detectProject: () => ({ display: [] }),
+        plannedPaths: () => ["src/components/ui/", "src/hooks/"],
+        createFiles: (cwd) => {
+          mkdirSync(join(cwd, "src/components/ui"), { recursive: true });
+          throw new Error("seed write failed");
+        },
+        writeConfig: () => {},
+        nextSteps: [],
+      }),
+    ).rejects.toThrow("seed write failed");
+
+    expect(existsSync(join(tempDir, "src/components"))).toBe(false);
+    expect(readFileSync(join(tempDir, "src/hooks/keep.ts"), "utf-8")).toBe("export {}\n");
+  });
+
   it("removes created files and keeps skipped pre-existing files when afterFiles fails", async () => {
     mkdirSync(join(tempDir, "existing"), { recursive: true });
     writeFileSync(join(tempDir, "existing", "keep.txt"), "original\n");
@@ -169,6 +256,36 @@ describe("runInitWorkflow rollback", () => {
     expect(readFileSync(outputPath, "utf-8")).toBe("created\n");
   });
 
+  it("keeps the primary error's own cause when the rollback report is attached", async () => {
+    const outputPath = join(tempDir, "generated", "output.ts");
+    const rootCause = new Error("ENOSPC: no space left on device");
+    const primaryError = new Error("Failed to write config", { cause: rootCause });
+    fsObserver.rmFailurePath = outputPath;
+
+    await expect(
+      runInitWorkflow({
+        cwd: tempDir,
+        configFileName: "tool.json",
+        yes: true,
+        force: false,
+        loadConfig: () => ({ ok: false, error: "not_found" }),
+        detectProject: () => ({ display: [] }),
+        plannedPaths: () => ["generated/"],
+        createFiles: (cwd) => {
+          mkdirSync(join(cwd, "generated"), { recursive: true });
+          writeFileSync(outputPath, "created\n");
+          return [{ action: "created", path: "generated/output.ts" }];
+        },
+        writeConfig: () => {
+          throw primaryError;
+        },
+        nextSteps: [],
+      }),
+    ).rejects.toBe(primaryError);
+
+    expect((primaryError.cause as AggregateError).errors[0]).toBe(rootCause);
+  });
+
   it("preserves an existing config (including ownership manifest) when forced re-init fails mid-write", async () => {
     const originalConfig = {
       aliases: { components: "@/ui" },
@@ -250,24 +367,6 @@ describe("runInitWorkflow rollback", () => {
     }
 
     expect(existsSync(configFile)).toBe(true);
-  });
-
-  it("rejects when plannedPaths is missing so a forgotten callsite cannot silently widen rollback gaps", async () => {
-    await expect(
-      runInitWorkflow({
-        cwd: tempDir,
-        configFileName: "tool.json",
-        yes: true,
-        force: false,
-        loadConfig: () => ({ ok: false, error: "not_found" }),
-        detectProject: () => ({ display: [] }),
-        // as any: negative-input test — verifies behavior with deliberately-malformed input
-        plannedPaths: undefined as unknown as (cwd: string) => string[],
-        createFiles: () => [],
-        writeConfig: () => {},
-        nextSteps: [],
-      }),
-    ).rejects.toThrow(/plannedPaths/);
   });
 
   it("removes a freshly-created planned-path file on rollback so installer side effects do not leak", async () => {
@@ -372,5 +471,211 @@ describe("runInitWorkflow rollback", () => {
     expect(createFiles).not.toHaveBeenCalled();
     expect(afterFiles).not.toHaveBeenCalled();
     expect(writeConfig).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed configs without advertising --force as a ledger-safe recovery path", async () => {
+    writeFileSync(join(tempDir, "tool.json"), "{ not valid json\n");
+
+    await expect(
+      runInitWorkflow({
+        cwd: tempDir,
+        configFileName: "tool.json",
+        yes: true,
+        force: false,
+        loadConfig: () => ({
+          ok: false,
+          error: "parse_error",
+          message: "Unexpected token n",
+        }),
+        detectProject: () => ({ display: [] }),
+        plannedPaths: () => [],
+        createFiles: () => [],
+        writeConfig: () => {},
+        nextSteps: [],
+      }),
+    ).rejects.toThrow(/before re-initializing/);
+
+    await expect(
+      runInitWorkflow({
+        cwd: tempDir,
+        configFileName: "tool.json",
+        yes: true,
+        force: false,
+        loadConfig: () => ({
+          ok: false,
+          error: "validation_error",
+          message: "Invalid tool.json",
+        }),
+        detectProject: () => ({ display: [] }),
+        plannedPaths: () => [],
+        createFiles: () => [],
+        writeConfig: () => {},
+        nextSteps: [],
+      }),
+    ).rejects.toThrow(/before re-initializing/);
+
+    try {
+      await runInitWorkflow({
+        cwd: tempDir,
+        configFileName: "tool.json",
+        yes: true,
+        force: false,
+        loadConfig: () => ({
+          ok: false,
+          error: "parse_error",
+          message: "Unexpected token n",
+        }),
+        detectProject: () => ({ display: [] }),
+        plannedPaths: () => [],
+        createFiles: () => [],
+        writeConfig: () => {},
+        nextSteps: [],
+      });
+      throw new Error("expected malformed-config init to throw");
+    } catch (error) {
+      expect(String(error)).not.toMatch(/--force to re-initialize/);
+    }
+  });
+
+  it("rolls back created files and exits when installation is cancelled via SIGINT", async () => {
+    const targetPath = join(tempDir, "created.txt");
+    let releaseInstall: (() => void) | undefined;
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+      throw new Error(`process.exit:${code}`);
+    }) as typeof process.exit);
+
+    const plan = runInitWorkflow({
+      cwd: tempDir,
+      configFileName: "tool.json",
+      yes: true,
+      force: false,
+      loadConfig: () => ({ ok: false, error: "not_found" }),
+      detectProject: () => ({ display: [] }),
+      plannedPaths: () => ["created.txt"],
+      createFiles: () => {
+        writeFileSync(targetPath, "new\n");
+        return [{ action: "created", path: "created.txt" }];
+      },
+      afterFiles: async (_cwd, abortSignal) => {
+        await new Promise<void>((resolve, reject) => {
+          abortSignal?.addEventListener(
+            "abort",
+            () => {
+              reject(abortSignal.reason ?? new Error("aborted"));
+            },
+            { once: true },
+          );
+          releaseInstall = resolve;
+        });
+      },
+      writeConfig: () => {},
+      nextSteps: [],
+    });
+
+    await vi.waitFor(() => expect(releaseInstall).toBeDefined());
+    process.emit("SIGINT");
+    releaseInstall?.();
+
+    await expect(plan).rejects.toThrow("process.exit:130");
+    expect(existsSync(targetPath)).toBe(false);
+    exitSpy.mockRestore();
+  });
+
+  it("dry-run previews every planned target, its create/modify marker, and the dependencies", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    mkdirSync(join(tempDir, "src", "components"), { recursive: true });
+
+    try {
+      await runInitWorkflow({
+        cwd: tempDir,
+        configFileName: "tool.json",
+        yes: true,
+        force: false,
+        dryRun: true,
+        dependencies: ["left-pad@1.0.0"],
+        loadConfig: () => ({ ok: false, error: "not_found" }),
+        detectProject: () => ({ display: [] }),
+        plannedPaths: () => ["src/components/", "src/lib/utils.ts", "package.json"],
+        createFiles: () => {
+          throw new Error("createFiles should not run during dry-run");
+        },
+        writeConfig: () => {
+          throw new Error("writeConfig should not run during dry-run");
+        },
+        nextSteps: [],
+      });
+
+      const lines = log.mock.calls.map((call) => String(call[0] ?? ""));
+      const lineFor = (path: string) => lines.find((line) => line.includes(path)) ?? "";
+      expect(lineFor("src/components/")).toContain("~");
+      expect(lineFor("src/lib/utils.ts")).toContain("+");
+      expect(lineFor("package.json")).toContain("~");
+      expect(lineFor("tool.json")).toContain("+");
+      expect(lines.join("\n")).toContain("left-pad@1.0.0");
+    } finally {
+      log.mockRestore();
+    }
+
+    expect(existsSync(join(tempDir, "tool.json"))).toBe(false);
+    expect(existsSync(join(tempDir, "src", "lib"))).toBe(false);
+  });
+
+  it("dry-run omits dependencies when installation is skipped", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    try {
+      await runInitWorkflow({
+        cwd: tempDir,
+        configFileName: "tool.json",
+        yes: true,
+        force: false,
+        dryRun: true,
+        skipInstall: true,
+        dependencies: ["left-pad@1.0.0"],
+        loadConfig: () => ({ ok: false, error: "not_found" }),
+        detectProject: () => ({ display: [] }),
+        plannedPaths: () => ["package.json"],
+        createFiles: () => [],
+        writeConfig: () => {},
+        nextSteps: [],
+      });
+
+      const output = log.mock.calls.map((call) => String(call[0] ?? "")).join("\n");
+      expect(output).not.toContain("left-pad@1.0.0");
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("dry-run returns before confirmation in a non-interactive process", async () => {
+    const stdin = process.stdin.isTTY;
+    const stdout = process.stdout.isTTY;
+    process.stdin.isTTY = false;
+    process.stdout.isTTY = false;
+
+    try {
+      await expect(
+        runInitWorkflow({
+          cwd: tempDir,
+          configFileName: "tool.json",
+          yes: false,
+          force: false,
+          dryRun: true,
+          loadConfig: () => ({ ok: false, error: "not_found" }),
+          detectProject: () => ({ display: [["Package manager", "npm"]] }),
+          plannedPaths: () => ["package.json"],
+          createFiles: () => {
+            throw new Error("createFiles should not run during dry-run");
+          },
+          writeConfig: () => {
+            throw new Error("writeConfig should not run during dry-run");
+          },
+          nextSteps: [],
+        }),
+      ).resolves.toBeUndefined();
+    } finally {
+      process.stdin.isTTY = stdin;
+      process.stdout.isTTY = stdout;
+    }
   });
 });

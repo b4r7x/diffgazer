@@ -2,13 +2,16 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readRegistryItem } from "@diffgazer/registry";
 import type { Registry, RegistryItem } from "@diffgazer/registry/schemas";
 import { REGISTRY_ITEM_TYPE, RegistrySchema } from "@diffgazer/registry/schemas";
 import { describe, expect, it, vi } from "vitest";
 import {
   validateContentFreshness,
+  validateMetaFreshness,
   validatePublicTargetClosure,
 } from "./validate-registry-closure/public-registry.js";
+import { validateClientMetadata } from "./validate-registry-closure/source-registry.js";
 import { extractRelativeImports as extractRegistryRelativeImports } from "./validate-registry-closure/types.js";
 import { validateRegistryClosure } from "./validate-registry-closure.js";
 
@@ -23,8 +26,7 @@ function loadRegistry(): Registry {
 }
 
 function loadPublicItem(name: string): RegistryItem {
-  const itemPath = join(PUBLIC_DIR, `${name}.json`);
-  return parseRegistryEntry(JSON.parse(readFileSync(itemPath, "utf-8")));
+  return readRegistryItem(join(PUBLIC_DIR, `${name}.json`));
 }
 
 function loadPublicRegistry(): Registry {
@@ -39,31 +41,42 @@ function getRegistryItem(registry: Registry, name: string): RegistryItem {
   return item;
 }
 
-function parseRegistryEntry(raw: unknown): RegistryItem {
-  const [item] = RegistrySchema.parse({ items: [raw] }).items;
-  if (!item) throw new Error("Missing registry item");
-  return item;
-}
-
 describe("public registry target paths", () => {
   const registry = loadRegistry();
   const publicRegistry = loadPublicRegistry();
 
   const visibleItems = registry.items.filter((item) => !item.meta?.hidden);
   for (const sourceItem of visibleItems) {
-    const expectedTargets = sourceItem.files.map((file) => file.target ?? file.path).sort();
+    const expectedSourceTargets = sourceItem.files.map((file) => file.target ?? file.path).sort();
+    const expectedPublicTargets = sourceItem.files
+      .map((file) => {
+        const target = file.target ?? file.path;
+        return target.startsWith("src/hooks/")
+          ? `@hooks/${target.slice("src/hooks/".length)}`
+          : target;
+      })
+      .sort();
 
-    it(`${sourceItem.name} public registry targets match source registry`, () => {
+    it(`${sourceItem.name} public registry targets match derived shadcn handoff`, () => {
       const publicItem = getRegistryItem(publicRegistry, sourceItem.name);
       const publicTargets = publicItem.files.map((file) => file.target ?? file.path).sort();
-      expect(publicTargets).toEqual(expectedTargets);
+      expect(publicTargets).toEqual(expectedPublicTargets);
     });
 
-    it(`${sourceItem.name} target paths land under installable directories`, () => {
-      for (const target of expectedTargets) {
+    it(`${sourceItem.name} source targets land under src/hooks/`, () => {
+      for (const target of expectedSourceTargets) {
         expect(
           target.startsWith("src/hooks/"),
-          `${sourceItem.name}: target ${target} must live under src/hooks/ for shadcn install`,
+          `${sourceItem.name}: target ${target} must live under src/hooks/ for copy/package install`,
+        ).toBe(true);
+      }
+    });
+
+    it(`${sourceItem.name} public targets use @hooks/ alias-relative paths`, () => {
+      for (const target of expectedPublicTargets) {
+        expect(
+          target.startsWith("@hooks/"),
+          `${sourceItem.name}: public target ${target} must use @hooks/ for shadcn alias resolution`,
         ).toBe(true);
       }
     });
@@ -89,6 +102,7 @@ describe("focusable as transitive dependency", () => {
     const registry = loadRegistry();
     const focusable = getRegistryItem(registry, "focusable");
     expect(focusable.meta?.hidden).toBe(true);
+    expect(focusable.meta?.client).toBe(false);
   });
 
   it("focusable is excluded from public registry index but has per-item JSON", () => {
@@ -98,6 +112,7 @@ describe("focusable as transitive dependency", () => {
 
     const publicItem = loadPublicItem("focusable");
     expect(publicItem.meta?.hidden).toBe(true);
+    expect(publicItem.meta?.client).toBe(false);
   });
 
   it("focusable is included as a file in navigation and focus-trap items", () => {
@@ -107,6 +122,128 @@ describe("focusable as transitive dependency", () => {
 
     expect(navigation.files.some((file) => file.path.includes("focusable"))).toBe(true);
     expect(focusTrap.files.some((file) => file.path.includes("focusable"))).toBe(true);
+  });
+});
+
+describe("client registry metadata", () => {
+  it("keeps the real Keys registry's client metadata aligned with source directives", () => {
+    expect(validateClientMetadata(loadRegistry(), KEYS_ROOT)).toEqual([]);
+  });
+
+  it("rejects a client item whose source has no use-client directive", () => {
+    const root = mkdtempSync(join(tmpdir(), "dg-keys-client-metadata-"));
+    try {
+      mkdirSync(join(root, "src", "hooks"), { recursive: true });
+      writeFileSync(join(root, "src", "hooks", "use-test.ts"), "export const test = true;\n");
+
+      const registry = RegistrySchema.parse({
+        items: [
+          {
+            name: "client-without-directive",
+            type: REGISTRY_ITEM_TYPE.hook,
+            meta: { client: true },
+            files: [{ path: "src/hooks/use-test.ts", type: REGISTRY_ITEM_TYPE.hook }],
+          },
+        ],
+      });
+
+      expect(validateClientMetadata(registry, root)).toEqual([
+        {
+          code: "REGISTRY_CLIENT_METADATA",
+          item: "client-without-directive",
+          message: 'Item declares meta.client but no source file starts with "use client"',
+        },
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("accepts a client directive after a BOM and comments", () => {
+    const root = mkdtempSync(join(tmpdir(), "dg-keys-client-directive-"));
+    try {
+      mkdirSync(join(root, "src", "hooks"), { recursive: true });
+      writeFileSync(
+        join(root, "src", "hooks", "use-test.ts"),
+        "﻿/* license */\n// generated\n'use client';\nexport const test = true;\n",
+      );
+      const registry = RegistrySchema.parse({
+        items: [
+          {
+            name: "client-with-comments",
+            type: REGISTRY_ITEM_TYPE.hook,
+            meta: { client: true },
+            files: [{ path: "src/hooks/use-test.ts", type: REGISTRY_ITEM_TYPE.hook }],
+          },
+        ],
+      });
+
+      expect(validateClientMetadata(registry, root)).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects an expression that only prefixes the client directive", () => {
+    const root = mkdtempSync(join(tmpdir(), "dg-keys-client-expression-"));
+    try {
+      mkdirSync(join(root, "src", "hooks"), { recursive: true });
+      writeFileSync(
+        join(root, "src", "hooks", "use-test.ts"),
+        '"use client"\n.toString();\nexport const test = true;\n',
+      );
+      const registry = RegistrySchema.parse({
+        items: [
+          {
+            name: "client-expression",
+            type: REGISTRY_ITEM_TYPE.hook,
+            meta: { client: true },
+            files: [{ path: "src/hooks/use-test.ts", type: REGISTRY_ITEM_TYPE.hook }],
+          },
+        ],
+      });
+
+      expect(validateClientMetadata(registry, root)).toEqual([
+        {
+          code: "REGISTRY_CLIENT_METADATA",
+          item: "client-expression",
+          message: 'Item declares meta.client but no source file starts with "use client"',
+        },
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects an instanceof expression continued after a line break", () => {
+    const root = mkdtempSync(join(tmpdir(), "dg-keys-client-instanceof-"));
+    try {
+      mkdirSync(join(root, "src", "hooks"), { recursive: true });
+      writeFileSync(
+        join(root, "src", "hooks", "use-test.ts"),
+        '"use client"\ninstanceof String;\nexport const test = true;\n',
+      );
+      const registry = RegistrySchema.parse({
+        items: [
+          {
+            name: "client-instanceof",
+            type: REGISTRY_ITEM_TYPE.hook,
+            meta: { client: true },
+            files: [{ path: "src/hooks/use-test.ts", type: REGISTRY_ITEM_TYPE.hook }],
+          },
+        ],
+      });
+
+      expect(validateClientMetadata(registry, root)).toEqual([
+        {
+          code: "REGISTRY_CLIENT_METADATA",
+          item: "client-instanceof",
+          message: 'Item declares meta.client but no source file starts with "use client"',
+        },
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 
@@ -258,6 +395,32 @@ describe("target-path install closure validation", () => {
           item: "focus-trap",
           message:
             'Embedded content for src/hooks/use-focus-trap.ts is stale; run "pnpm --filter @diffgazer/keys build:shadcn" to regenerate',
+        },
+      ]);
+    } finally {
+      rmSync(publicDir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps every committed public item's meta in sync with the source registry", () => {
+    expect(validateMetaFreshness(PUBLIC_DIR, loadRegistry())).toEqual([]);
+  });
+
+  it("detects a published item whose meta drifted from its source item", () => {
+    const publicDir = mkdtempSync(join(tmpdir(), "dg-keys-meta-freshness-"));
+    try {
+      const item = loadPublicItem("focusable");
+      writeFileSync(
+        join(publicDir, "focusable.json"),
+        JSON.stringify({ ...item, meta: { ...item.meta, client: true } }),
+      );
+
+      expect(validateMetaFreshness(publicDir, loadRegistry())).toEqual([
+        {
+          code: "REGISTRY_STALE_META",
+          item: "focusable",
+          message:
+            'Published meta {"client":true,"hidden":true} does not match source meta {"client":false,"hidden":true}; run "pnpm --filter @diffgazer/keys build:shadcn" to regenerate',
         },
       ]);
     } finally {

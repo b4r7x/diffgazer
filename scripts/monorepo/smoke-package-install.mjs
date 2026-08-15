@@ -6,11 +6,14 @@
 // propagates. Do not swap the throws for process.exit() — that would bypass the
 // finally cleanup and leak temp project directories.
 
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   writeKeysPackageModeSmoke,
   writeKeysTestHelperSmoke,
 } from "./smoke-keys-package-fixtures.mjs";
 import { shouldRunPackageSmoke, withTempPackageProject } from "./smoke-package-runner.mjs";
+import { writeViteFixture } from "./smoke-shared/fixtures.mjs";
 import {
   verifyUiNextPackageSmoke,
   verifyUiVitePackageSmoke,
@@ -20,6 +23,19 @@ import {
   writeUiPackageModeSmoke,
   writeUiVitePackageSmoke,
 } from "./smoke-ui-package-fixtures.mjs";
+
+function writeDgaddTarballSmoke(projectDir) {
+  writeViteFixture(projectDir, { name: "dgadd-tarball-smoke" });
+}
+
+function verifyDgaddTarballSmoke(projectDir) {
+  const configPath = resolve(projectDir, "diffgazer.json");
+  const buttonPath = resolve(projectDir, "src/components/ui/button/button.tsx");
+  if (!existsSync(configPath) || !existsSync(buttonPath)) {
+    throw new Error("dgadd init/add did not write diffgazer.json or ui/button files");
+  }
+  return "OK: dgadd init and add work from installed tarball";
+}
 
 const root = process.cwd();
 
@@ -147,8 +163,19 @@ const packages = [
   },
   {
     name: "@diffgazer/add",
-    steps: [step("pnpm", "exec", "dgadd", "--help")],
-    expect: /Usage: dgadd|Install Diffgazer UI/i,
+    label: "@diffgazer/add init and add from installed tarball",
+    prepare: writeDgaddTarballSmoke,
+    assertTarball: (files) => {
+      if (!files.some((file) => file === "dist/generated/registry-bundle.json")) {
+        throw new Error("@diffgazer/add tarball is missing dist/generated/registry-bundle.json");
+      }
+    },
+    steps: [
+      step("pnpm", "exec", "dgadd", "init", "--yes", "--skip-install"),
+      step("pnpm", "exec", "dgadd", "add", "ui/button", "--yes", "--skip-install"),
+    ],
+    verify: verifyDgaddTarballSmoke,
+    expect: /OK: dgadd init and add work from installed tarball/,
   },
 ];
 

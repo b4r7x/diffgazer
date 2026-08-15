@@ -158,8 +158,9 @@ describe("setup-plan progression", () => {
     "provider/route",
     "provider/openrouter",
     "provider/thinking",
-    "openai/gpt-4.1-mini:free",
     "openai/gpt-4.1-mini:online",
+    "openai/gpt-4.1-mini:nitro",
+    "openai/gpt-4.1-mini:free:nitro",
     "openai/gpt-4.1-mini/thinking",
   ] as const)("rejects forged OpenRouter route selector %s", (selectedModelId) => {
     const initial = getInitialWizardData("openrouter");
@@ -201,6 +202,14 @@ describe("setup-plan progression", () => {
       canProceed("model", {
         ...configured,
         selectedModelId: "openrouterish/openrouter-model",
+      }),
+    ).toBe(true);
+    // A pinned variant suffix belongs to the downstream identity, so the pair
+    // stays exact and the wizard may proceed on it.
+    expect(
+      canProceed("model", {
+        ...configured,
+        selectedModelId: "openai/gpt-4.1-mini:free",
       }),
     ).toBe(true);
     expect(
@@ -251,6 +260,23 @@ describe("setup-plan progression", () => {
         },
       }),
     ).toBe(false);
+  });
+
+  it("lets endpoint-binding proceed after clearing a hosted credential on a later step", () => {
+    const initial = getInitialWizardData("gemini");
+    if (initial.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    const clearedCredential = {
+      ...initial,
+      configurationInput: {
+        ...initial.configurationInput,
+        credential: { kind: "literal" as const, value: "" },
+      },
+    } satisfies OnboardingDraft;
+
+    expect(canProceed("endpoint-binding", clearedCredential)).toBe(true);
+    expect(canProceed("authentication", clearedCredential)).toBe(false);
   });
 
   it("does not let a passed status bypass a changed endpoint or missing authentication", () => {
@@ -331,5 +357,112 @@ describe("setup-plan progression", () => {
         conformanceStatus: "passed",
       }),
     ).toBe(true);
+  });
+
+  it("requires only the selected family's configuration fields", () => {
+    const qwen = getInitialWizardData("qwen");
+    if (qwen.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    expect(canProceed("endpoint-binding", qwen)).toBe(false);
+    expect(
+      canProceed("endpoint-binding", {
+        ...qwen,
+        configurationInput: { ...qwen.configurationInput, workspace: "workspace-reference" },
+      }),
+    ).toBe(true);
+    expect(canProceed("authentication", qwen)).toBe(false);
+    expect(
+      canProceed("authentication", {
+        ...qwen,
+        configurationInput: {
+          ...qwen.configurationInput,
+          workspace: "workspace-reference",
+          credential: { kind: "environment" },
+        },
+      }),
+    ).toBe(true);
+
+    const localCli = getInitialWizardData("codex-cli");
+    expect(canProceed("endpoint-binding", localCli)).toBe(false);
+  });
+
+  it("blocks model and conformance progression until the exact admitted policy holds", () => {
+    const initial = getInitialWizardData("deepseek");
+    if (initial.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    const deepseek = {
+      ...initial,
+      configurationInput: {
+        ...initial.configurationInput,
+        credential: { kind: "environment" },
+      },
+    } satisfies OnboardingDraft;
+    expect(canProceed("model", deepseek)).toBe(false);
+    expect(canProceed("model", { ...deepseek, selectedModelId: "deepseek-latest" })).toBe(false);
+    expect(canProceed("model", { ...deepseek, selectedModelId: "deepseek-v4-flash" })).toBe(true);
+    expect(canProceed("conformance", { ...deepseek, selectedModelId: "deepseek-v4-flash" })).toBe(
+      false,
+    );
+    expect(
+      canProceed("conformance", {
+        ...deepseek,
+        selectedModelId: "deepseek-v4-flash",
+        conformanceStatus: "passed",
+      }),
+    ).toBe(true);
+  });
+
+  it("rechecks the configured transport before accepting final conformance or notice", () => {
+    const initial = getInitialWizardData("deepseek");
+    if (initial.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    const configured = {
+      ...initial,
+      configurationInput: {
+        ...initial.configurationInput,
+        credential: { kind: "environment" },
+      },
+      selectedModelId: "deepseek-v4-flash",
+      conformanceStatus: "passed",
+      acknowledgement: {
+        status: "accepted",
+        noticeId: PRODUCT_REGISTRY.deepseek.notice.id,
+        noticeVersion: PRODUCT_REGISTRY.deepseek.notice.noticeVersion,
+        acceptedAt: "2026-07-31T12:00:00.000Z",
+      },
+    } satisfies OnboardingDraft;
+
+    expect(canProceed("acknowledgement", configured)).toBe(true);
+    expect(
+      canProceed("acknowledgement", {
+        ...configured,
+        configurationInput: {
+          ...configured.configurationInput,
+          endpoint: "https://api.groq.com/openai/v1",
+        },
+      }),
+    ).toBe(false);
+    expect(
+      canProceed("acknowledgement", {
+        ...configured,
+        configurationInput: { ...configured.configurationInput, credential: undefined },
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects stale product plans after direct tuple mutation", () => {
+    const data = getInitialWizardData("gemini");
+    if (data.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted API configuration");
+    }
+    expect(
+      canProceed("product", {
+        ...data,
+        configurationInput: { ...data.configurationInput, productId: "zai" },
+      }),
+    ).toBe(false);
   });
 });

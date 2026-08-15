@@ -31,7 +31,7 @@ export interface CreateFocusTrapControllerOptions {
   MutationObserverCtor: typeof MutationObserver;
 }
 
-export interface FocusTrapReleaseResult {
+interface FocusTrapReleaseResult {
   hasOuterTrap: boolean;
 }
 

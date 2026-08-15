@@ -1,26 +1,35 @@
 import type { BoundApi } from "@diffgazer/core/api";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
-import type { ReviewIssue, ReviewResponse } from "@diffgazer/core/schemas/review";
+import type {
+  ReviewIssue,
+  ReviewListWarning,
+  ReviewResponse,
+} from "@diffgazer/core/schemas/review";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue, makeReviewMetadata } from "@diffgazer/core/testing/factories";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
+import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { NavigationProvider } from "../../../app/providers/navigation";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { buildResponsiveResult, getBreakpointTier } from "../../../lib/breakpoints";
+import { flush } from "../../../testing/flush";
+import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 import { HistoryScreen } from "./screen";
 
 const terminalSize = vi.hoisted(() => ({ columns: 100, rows: 30 }));
+const MIXED_VISIBLE_SALVAGED_ID = "abcdef00-0000-4000-8000-000000000000";
+const MIXED_WARNING_ONLY_COLLIDER_ID = "abcdef00-0000-4000-8000-000000000001";
 
 vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@diffgazer/core/api/hooks")>()),
-  useInit: () => ({ data: undefined, isLoading: false }),
+  useConfigurationInit: () => ({ data: undefined, isLoading: false }),
 }));
 
 vi.mock("../../../hooks/use-terminal-dimensions", () => ({
@@ -36,7 +45,6 @@ vi.mock("../../../components/layout/global", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../components/layout/global")>()),
   useContentZone: () => ({
     columns: terminalSize.columns,
-    rows: terminalSize.rows,
     contentColumns: terminalSize.columns,
     contentRows: terminalSize.rows - 4,
   }),
@@ -44,6 +52,7 @@ vi.mock("../../../components/layout/global", async (importOriginal) => ({
 
 afterEach(() => {
   cleanup();
+  cleanupRootFrames();
   terminalSize.columns = 100;
   terminalSize.rows = 30;
 });
@@ -122,6 +131,23 @@ function renderHistoryScreen(getReview: BoundApi["getReview"]) {
   );
 }
 
+function makeMixedWarnings(): ReviewListWarning[] {
+  const mixedIds = Array.from(
+    { length: 48 },
+    (_, index) => `${index.toString(16).padStart(8, "0")}-1111-4111-8111-111111111111`,
+  );
+  const mixedWarnings = mixedIds.flatMap<ReviewListWarning>((reviewId) => [
+    { kind: "unreadable_review", reviewId },
+    { kind: "invalid_issues_dropped", reviewId, count: 1 },
+  ]);
+
+  return [
+    { kind: "invalid_issues_dropped", reviewId: MIXED_VISIBLE_SALVAGED_ID, count: 1 },
+    { kind: "unreadable_review", reviewId: MIXED_WARNING_ONLY_COLLIDER_ID },
+    ...mixedWarnings,
+  ];
+}
+
 describe("HistoryScreen review details", () => {
   test("opens the highlighted Insights issue directly", async () => {
     const issue = makeIssue({ id: "loaded-issue", title: "Loaded detail issue" });
@@ -159,7 +185,7 @@ describe("HistoryScreen review details", () => {
     const pendingFrame = lastFrame() ?? "";
     expect(pendingFrame).toContain("SEVERITY BREAKDOWN");
     expect(pendingFrame).toContain("4m 12s");
-    expect(getReview).toHaveBeenCalledWith(REVIEW_ID);
+    expect(getReview).toHaveBeenCalledWith(REVIEW_ID, expect.any(AbortSignal));
 
     stdin.write("\t");
     await waitUntil(() => (lastFrame() ?? "").includes("Footer: Tab Switch Pane | / Search"));
@@ -204,5 +230,117 @@ describe("HistoryScreen review details", () => {
     const recoveredFrame = lastFrame() ?? "";
     expect(recoveredFrame).toContain("Footer: Tab Switch Pane | Enter Open Review | / Search");
     expect(recoveredFrame).not.toContain("Retry Details");
+  });
+
+  test("keeps the API-backed 50-target warning layout bounded at the 80 by 24 floor", async () => {
+    Object.assign(terminalSize, { columns: 80, rows: 24 });
+    const warnings = makeMixedWarnings();
+    const getReviews = vi.fn<BoundApi["getReviews"]>().mockResolvedValue({
+      reviews: [makeReviewMetadata({ id: MIXED_VISIBLE_SALVAGED_ID, issueCount: 1, highCount: 1 })],
+      warnings,
+    });
+    const getReview = vi.fn<BoundApi["getReview"]>().mockResolvedValue(makeReviewResponse([]));
+    const { Wrapper: QueryWrapper } = createTestQueryWrapper({ api: { getReviews, getReview } });
+    const view = renderRootFrame(
+      80,
+      24,
+      <QueryWrapper>
+        <HistoryScreen />
+      </QueryWrapper>,
+    );
+
+    await waitUntil(() =>
+      (view.lastFrame() ?? "").includes("Press w to view all affected run IDs."),
+    );
+
+    const collapsedFrame = stripAnsi(view.lastFrame() ?? "");
+    const assertPaneBottomsBeforeFooter = (frame: string, footerLabel: string) => {
+      const lines = frame.split("\n");
+      const footerIndex = lines.findIndex((line) => line.includes(footerLabel));
+      const paneBottomIndex = lines.findLastIndex((line) => line.includes("┗"));
+      expect(footerIndex).toBeGreaterThan(paneBottomIndex);
+      expect(footerIndex).toBe(lines.length - 1);
+      expect(lines[paneBottomIndex]).not.toContain(footerLabel);
+      expect(lines[paneBottomIndex]).toMatch(/└─+┘.*┗[━─]+┛.*└─+┘/);
+    };
+
+    const getWarningDetailPanel = (frame: string) => {
+      const lines = frame.split("\n");
+      const titleIndex = lines.findIndex((line) =>
+        line.includes("History warning · All affected run IDs"),
+      );
+      const bottomIndex = lines.findIndex(
+        (line, index) => index > titleIndex && /^\s*└─+┘\s*$/.test(line),
+      );
+      if (titleIndex < 0 || bottomIndex < 0) throw new Error("Missing warning detail panel");
+      return lines.slice(titleIndex, bottomIndex + 1).join("\n");
+    };
+
+    const assertDetailFrame = (frame: string, targetId: string) => {
+      assertPaneBottomsBeforeFooter(frame, "Scroll IDs");
+      expect(frame.split("\n")).toHaveLength(24);
+      expect(frame).toContain("History warning · All affected run IDs");
+      expect(frame).toContain(MIXED_VISIBLE_SALVAGED_ID);
+      const detailRemediation = "Press w or Esc to hide IDs.";
+      expect(frame).toContain(detailRemediation);
+      expect(frame).toContain("Search ID, branch, path, staged");
+      expect(frame).toContain("[Salvaged]");
+      expect(frame).toContain("Scroll IDs");
+      expect(frame).toContain("Hide IDs");
+      expect(frame).toContain("Close IDs");
+      expect(getWarningDetailPanel(frame)).toContain(targetId);
+    };
+
+    assertPaneBottomsBeforeFooter(collapsedFrame, "Open Review");
+    expect(collapsedFrame).toContain("History warning");
+    expect(collapsedFrame).toContain(MIXED_VISIBLE_SALVAGED_ID);
+    expect(collapsedFrame).toContain("Re-run the affected reviews for complete results.");
+    expect(collapsedFrame).toContain("Press w to view all affected run IDs.");
+    expect(collapsedFrame).toContain("[Salvaged]");
+    expect(collapsedFrame).toContain("Open Review");
+    expect(collapsedFrame).toContain("Search");
+    expect(collapsedFrame.split("\n")).toHaveLength(24);
+
+    const collapsedLines = collapsedFrame.split("\n");
+    const warningLine = collapsedLines.findIndex((line) => line.includes("History warning"));
+    const searchLine = collapsedLines.findIndex((line) =>
+      line.includes("Search ID, branch, path, staged"),
+    );
+    const runsLine = collapsedLines.findIndex((line) => line.includes("RUNS"));
+    const salvageLine = collapsedLines.findIndex((line) => line.includes("[Salvaged]"));
+    expect(warningLine).toBeGreaterThanOrEqual(0);
+    expect(searchLine).toBeGreaterThan(warningLine);
+    expect(runsLine).toBeGreaterThan(searchLine);
+    expect(salvageLine).toBeGreaterThan(runsLine);
+
+    view.stdin.write("w");
+    await waitUntil(() =>
+      (view.lastFrame() ?? "").includes("History warning · All affected run IDs"),
+    );
+    await flush();
+
+    const detailFrame = stripAnsi(view.lastFrame() ?? "");
+    assertDetailFrame(detailFrame, MIXED_WARNING_ONLY_COLLIDER_ID);
+    const initialWarningDetailPanel = getWarningDetailPanel(detailFrame);
+    expect(initialWarningDetailPanel).not.toContain(MIXED_VISIBLE_SALVAGED_ID);
+
+    const detailLines = detailFrame.split("\n");
+    const detailTitleLine = detailLines.findIndex((line) =>
+      line.includes("History warning · All affected run IDs"),
+    );
+    const detailSearchLine = detailLines.findIndex((line) =>
+      line.includes("Search ID, branch, path, staged"),
+    );
+    const detailRunsLine = detailLines.findIndex((line) => line.includes("RUNS"));
+    const detailSalvageLine = detailLines.findIndex((line) => line.includes("[Salvaged]"));
+    expect(detailSearchLine).toBeGreaterThan(detailTitleLine);
+    expect(detailRunsLine).toBeGreaterThan(detailSearchLine);
+    expect(detailSalvageLine).toBeGreaterThan(detailRunsLine);
+
+    view.stdin.write("\u001b[F");
+    await flush();
+    const tailDetailFrame = stripAnsi(view.lastFrame() ?? "");
+    expect(getWarningDetailPanel(tailDetailFrame)).not.toContain(MIXED_WARNING_ONLY_COLLIDER_ID);
+    assertDetailFrame(tailDetailFrame, MIXED_VISIBLE_SALVAGED_ID);
   });
 });

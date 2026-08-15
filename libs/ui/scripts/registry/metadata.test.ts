@@ -22,7 +22,10 @@ describe("@diffgazer/ui registry closure metadata", () => {
   }
 
   it("keeps accordion local utility imports reachable", () => {
-    expect(item("accordion").registryDependencies).toContain("compose-refs");
+    // accordion imports @/hooks/use-composed-refs, not @/lib/compose-refs, so the
+    // compose-refs source arrives through composed-refs rather than a direct edge.
+    expect(item("accordion").registryDependencies).toContain("composed-refs");
+    expect(transitiveRegistryDeps("accordion")).toContain("compose-refs");
   });
 
   it("uses the direct shadcn keys namespace for registry dependencies", () => {

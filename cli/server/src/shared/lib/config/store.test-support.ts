@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { TrustConfig } from "@diffgazer/core/schemas/config";
 import { afterEach, beforeEach, type Mock, vi } from "vitest";
+import { assertTempHome } from "../testing/temp-home.js";
+import type { ConfigStore } from "./store.js";
 
 type KeyringMocks = {
   deleteKeyringSecret: Mock;
@@ -22,6 +24,7 @@ const { keyring, fsHooks, catalog } = vi.hoisted(() => ({
   } as KeyringMocks,
   fsHooks: {
     removeFileSyncHook: null as ((filePath: string) => boolean) | null,
+    removeFileSyncDurableHook: null as ((filePath: string) => boolean) | null,
     writeJsonFileSyncHook: null as
       | ((filePath: string, data: unknown, mode?: number) => void)
       | null,
@@ -29,6 +32,9 @@ const { keyring, fsHooks, catalog } = vi.hoisted(() => ({
       | ((filePath: string, data: unknown, mode?: number) => Promise<void>)
       | null,
     getFileMtimeMsHook: null as ((filePath: string) => number | null) | null,
+    atomicWriteFileHook: null as
+      | ((filePath: string, content: string | Uint8Array, mode?: number) => Promise<void>)
+      | null,
   },
   catalog: {
     getProviderModels: vi.fn(),
@@ -45,9 +51,17 @@ vi.mock("../fs.js", async (importOriginal) => {
     ...real,
     removeFileSync: (filePath: string) => {
       if (fsHooks.removeFileSyncHook) {
-        return fsHooks.removeFileSyncHook(filePath);
+        const handled = fsHooks.removeFileSyncHook(filePath);
+        if (handled) return true;
       }
       return real.removeFileSync(filePath);
+    },
+    removeFileSyncDurable: (filePath: string) => {
+      if (fsHooks.removeFileSyncDurableHook) {
+        const handled = fsHooks.removeFileSyncDurableHook(filePath);
+        if (handled) return true;
+      }
+      return real.removeFileSyncDurable(filePath);
     },
     writeJsonFileSync: (filePath: string, data: unknown, mode?: number) => {
       if (fsHooks.writeJsonFileSyncHook) {
@@ -66,6 +80,12 @@ vi.mock("../fs.js", async (importOriginal) => {
         return fsHooks.getFileMtimeMsHook(filePath);
       }
       return real.getFileMtimeMs(filePath);
+    },
+    atomicWriteFile: async (filePath: string, content: string | Uint8Array, mode?: number) => {
+      if (fsHooks.atomicWriteFileHook) {
+        return fsHooks.atomicWriteFileHook(filePath, content, mode);
+      }
+      return real.atomicWriteFile(filePath, content, mode);
     },
   };
 });
@@ -104,16 +124,26 @@ async function installConfigurationLeaseHooks(): Promise<void> {
   registerConfigSeams({ leaseHooks: createConfigurationLeaseHooks() });
 }
 
-export async function loadStore() {
+// Retained so teardown can drain each store's queued work before the temp home is
+// removed and DIFFGAZER_HOME is dropped.
+const loadedStores = new Set<ConfigStore>();
+
+export async function loadStore(): Promise<ConfigStore> {
   const { getStore } = await import("./store.js");
   await installConfigurationLeaseHooks();
-  return getStore();
+  const store = getStore();
+  loadedStores.add(store);
+  return store;
 }
 
-export async function loadStoreFactory() {
+export async function loadStoreFactory(): Promise<() => ConfigStore> {
   const { createConfigStore } = await import("./store.js");
   await installConfigurationLeaseHooks();
-  return createConfigStore;
+  return () => {
+    const store = createConfigStore();
+    loadedStores.add(store);
+    return store;
+  };
 }
 
 export function trustConfig(overrides: Partial<TrustConfig> = {}): TrustConfig {
@@ -130,7 +160,9 @@ export function trustConfig(overrides: Partial<TrustConfig> = {}): TrustConfig {
 let warnSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  loadedStores.clear();
   diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-store-"));
+  assertTempHome(diffgazerHome);
   process.env.DIFFGAZER_HOME = diffgazerHome;
   warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   vi.resetModules();
@@ -141,12 +173,23 @@ beforeEach(() => {
   keyring.deleteKeyringSecret.mockReturnValue({ ok: true, value: false });
 });
 
-afterEach(() => {
+// Order matters: injected fs failures are lifted first so the drain can settle, then
+// every store's queued work is awaited, then the temp home is removed. Only after that
+// may DIFFGAZER_HOME be dropped — `paths.ts` re-reads it per call, so restoring it while
+// work is still pending re-points that work at the real ~/.diffgazer.
+afterEach(async () => {
   fsHooks.removeFileSyncHook = null;
+  fsHooks.removeFileSyncDurableHook = null;
   fsHooks.writeJsonFileSyncHook = null;
   fsHooks.writeJsonFileHook = null;
   fsHooks.getFileMtimeMsHook = null;
-  delete process.env.DIFFGAZER_HOME;
-  rmSync(diffgazerHome, { recursive: true, force: true });
-  warnSpy.mockRestore();
+  fsHooks.atomicWriteFileHook = null;
+  try {
+    for (const store of loadedStores) await store.ready();
+    rmSync(diffgazerHome, { recursive: true, force: true });
+  } finally {
+    loadedStores.clear();
+    delete process.env.DIFFGAZER_HOME;
+    warnSpy.mockRestore();
+  }
 });

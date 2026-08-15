@@ -11,12 +11,25 @@ interface FooterProps {
 function renderShortcuts(items: Shortcut[]) {
   const activeItems = items.filter((shortcut) => !shortcut.disabled);
 
-  return activeItems.map((shortcut, index) => (
-    <span key={`${shortcut.key}-${shortcut.label}`} className="whitespace-nowrap">
-      <Kbd variant="inverse">{shortcut.key}</Kbd> <span>{shortcut.label}</span>
-      {index < activeItems.length - 1 && <span className="text-background/60">•</span>}
-    </span>
-  ));
+  // The bullet is a sibling of the items, not a tail glyph inside one, so the
+  // row's gap sits on both sides of it instead of only to its right.
+  return activeItems.flatMap((shortcut, index) => {
+    const id = `${shortcut.key}-${shortcut.label}`;
+    const item = (
+      <span key={id} className="whitespace-nowrap">
+        <Kbd variant="inverse">{shortcut.key}</Kbd> <span>{shortcut.label}</span>
+      </span>
+    );
+
+    if (index === activeItems.length - 1) return [item];
+
+    return [
+      item,
+      <span key={`${id}-separator`} className="text-background/60">
+        •
+      </span>,
+    ];
+  });
 }
 
 export function Footer({ shortcuts, rightShortcuts, className = "" }: FooterProps) {

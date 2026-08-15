@@ -3,6 +3,7 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
+import { Sidebar } from "../sidebar";
 import { Accordion, type AccordionMultipleProps, type AccordionSingleProps } from "./index";
 
 type AccordionRenderProps =
@@ -240,6 +241,49 @@ describe("Accordion", () => {
     await user.keyboard("{ArrowDown}");
 
     expect(outerTwo).toHaveFocus();
+  });
+
+  it("keeps header arrow navigation on accordion triggers when an open panel contains sidebar items", async () => {
+    const user = userEvent.setup();
+    render(
+      <Accordion defaultValue="one">
+        <Accordion.Item value="one">
+          <Accordion.Header>
+            <Accordion.Trigger>Outer One</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>
+            <Sidebar.Provider>
+              <Sidebar embedded aria-label="Panel navigation">
+                <Sidebar.Content>
+                  <Sidebar.Item as="button" value="panel-one">
+                    Panel One
+                  </Sidebar.Item>
+                  <Sidebar.Item as="button" value="panel-two">
+                    Panel Two
+                  </Sidebar.Item>
+                </Sidebar.Content>
+              </Sidebar>
+            </Sidebar.Provider>
+          </Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="two">
+          <Accordion.Header>
+            <Accordion.Trigger>Outer Two</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>Outer Two content</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    );
+
+    const outerOne = screen.getByRole("button", { name: "Outer One" });
+    const outerTwo = screen.getByRole("button", { name: "Outer Two" });
+    const panelOne = screen.getByRole("button", { name: "Panel One" });
+
+    outerOne.focus();
+    await user.keyboard("{ArrowDown}");
+
+    expect(outerTwo).toHaveFocus();
+    expect(panelOne).not.toHaveFocus();
   });
 
   it("keeps aria-disabled non-collapsible triggers in roving order and skips disabled items", async () => {

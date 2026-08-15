@@ -1,8 +1,12 @@
-import { readFile } from "node:fs/promises";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { z } from "zod";
+import { readTextFileWithLimit } from "../../../../shared/lib/ai/bounded-file.js";
 import { formatSchemaIssues } from "../../../../shared/lib/errors.js";
 import { log } from "../../../../shared/lib/log.js";
+
+// The reviewed repository controls every manifest read here, so the read is
+// bounded rather than sized by the file itself.
+const MAX_MANIFEST_BYTES = 256 * 1024;
 
 const PackageManifestSchema = z.object({
   name: z.string().optional(),
@@ -16,16 +20,17 @@ const PackageManifestSchema = z.object({
 export type PackageManifest = z.infer<typeof PackageManifestSchema>;
 
 export async function readPackageManifest(filePath: string): Promise<PackageManifest | null> {
-  let raw: string;
-  try {
-    raw = await readFile(filePath, "utf8");
-  } catch {
+  const read = await readTextFileWithLimit(filePath, MAX_MANIFEST_BYTES);
+  if (!read.ok) {
+    if (read.error.code === "oversize-response") {
+      log("warn", "context_manifest_unreadable", { filePath, error: read.error.message });
+    }
     return null;
   }
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(read.value);
   } catch (error) {
     log("warn", "context_manifest_unreadable", { filePath, error: getErrorMessage(error) });
     return null;

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createRef, StrictMode } from "react";
+import { createRef, StrictMode, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { CommandPalette } from "./index";
@@ -127,9 +127,33 @@ describe("CommandPalette", () => {
     renderPalette();
     await user.type(screen.getByRole("combobox"), "zzzzz");
 
-    // The :empty rule in command-palette.css collapses the list padding, so an
-    // item-less list must stay child-free or it renders as a bare sliver.
+    // The collapse rule in command-palette.css keys off the absence of options,
+    // so an item-less list must expose none or it renders as a bare sliver.
     expect(screen.getByRole("listbox").childNodes).toHaveLength(0);
+    expect(screen.getByRole("listbox").querySelector('[role="option"]')).toBeNull();
+  });
+
+  it("leaves a grouped listbox without options once every item is filtered out", async () => {
+    const user = userEvent.setup();
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Group heading="Actions">
+              <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+              <CommandPalette.Item id="paste">Paste</CommandPalette.Item>
+            </CommandPalette.Group>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    );
+
+    await user.type(screen.getByRole("combobox"), "zzzzz");
+
+    // Groups stay mounted and hide themselves, so the listbox keeps children
+    // here; the padding collapse must key off the missing options instead.
+    expect(screen.getByRole("listbox").querySelector('[role="option"]')).toBeNull();
   });
 
   it("renders Empty as a presentational node with exactly one no-results announcer", async () => {
@@ -235,6 +259,39 @@ describe("CommandPalette", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it("ignores items rendered outside the list that keyboard navigation cannot reach", async () => {
+    const user = userEvent.setup();
+    const onActivate = vi.fn();
+    render(
+      <CommandPalette open onActivate={onActivate}>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+          </CommandPalette.List>
+          <CommandPalette.Item id="stray">Stray</CommandPalette.Item>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    );
+
+    const input = screen.getByRole("combobox");
+    const copy = screen.getByRole("option", { name: /copy/i });
+    expect(screen.getByRole("option", { name: /stray/i })).toBeInTheDocument();
+
+    // The stray row is outside the list the navigation is scoped to, so it never
+    // becomes the active descendant, and the readout counts only what navigation
+    // can reach instead of disagreeing with it.
+    expect(input).toHaveAttribute("aria-activedescendant", copy.id);
+    expect(document.querySelector('[data-slot="command-palette-count"]')).toHaveTextContent(
+      "[1/1]",
+    );
+    await user.keyboard("{ArrowDown}");
+    expect(input).toHaveAttribute("aria-activedescendant", copy.id);
+
+    await user.keyboard("{Enter}");
+    expect(onActivate).toHaveBeenCalledWith("copy");
+  });
+
   it("auto-selects the first item and updates after filtering", async () => {
     const user = userEvent.setup();
     renderPalette();
@@ -246,6 +303,48 @@ describe("CommandPalette", () => {
     expect(screen.getByRole("option", { name: /delete/i })).toHaveAttribute(
       "aria-selected",
       "true",
+    );
+  });
+
+  it("clears uncontrolled highlight when the palette closes", async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open palette
+          </button>
+          <CommandPalette open={open} onOpenChange={setOpen}>
+            <CommandPalette.Content>
+              <CommandPalette.Input />
+              <CommandPalette.List>
+                <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+                <CommandPalette.Item id="paste">Paste</CommandPalette.Item>
+                <CommandPalette.Item id="delete">Delete</CommandPalette.Item>
+              </CommandPalette.List>
+            </CommandPalette.Content>
+          </CommandPalette>
+        </>
+      );
+    }
+
+    render(<Harness />);
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+    expect(screen.getByRole("option", { name: /delete/i })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("combobox")).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: "Open palette" }));
+    await waitFor(() =>
+      expect(screen.getByRole("option", { name: /copy/i })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      ),
     );
   });
 

@@ -1,15 +1,26 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
-import type { ConfigurationModelsResponse } from "@diffgazer/core/schemas/config";
-import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
+import { PRODUCT_REGISTRY, UNRECOGNIZED_CONFIGURATION_COPY } from "@diffgazer/core/providers";
+import type {
+  ClientConfigurationSummary,
+  ConfigurationModelsResponse,
+} from "@diffgazer/core/schemas/config";
+import {
+  LEGACY_V1_HAS_API_KEY_PROPERTY,
+  READINESS_PRESENTATION,
+} from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import {
-  buildProviderRows,
+  configurationStatus,
+  GEMINI_CONFIGURATION,
   makeAllConfigurationsListResponse,
-  READY_GEMINI_CONFIGURATION,
+  makeConfigurationInitResponse,
+  makeConfigurationListResponse,
+  makeReadiness,
+  ZAI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
@@ -20,6 +31,7 @@ import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { NavigationProvider } from "../../../app/providers/navigation";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { flush } from "../../../testing/flush";
+import { createTestQueryClient } from "../../../testing/query-client";
 import {
   cleanupRootFrames,
   type RootFrameView,
@@ -30,7 +42,7 @@ import { ProvidersScreen } from "./screen";
 
 vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@diffgazer/core/api/hooks")>()),
-  useInit: () => ({
+  useConfigurationInit: () => ({
     data: {
       schemaVersion: 2 as const,
       configurations: makeAllConfigurationsListResponse().configurations,
@@ -67,7 +79,6 @@ vi.mock("../../../components/layout/global", async (importOriginal) => {
       const { columns, rows } = useTerminalDimensions();
       return {
         columns,
-        rows,
         contentColumns: columns,
         contentRows: actual.getContentZoneRows(rows),
       };
@@ -78,6 +89,7 @@ vi.mock("../../../components/layout/global", async (importOriginal) => {
 const TAB = "\t";
 const ENTER = "\r";
 const ARROW_RIGHT = "\u001b[C";
+const ARROW_LEFT = "\u001b[D";
 
 afterEach(() => {
   cleanup();
@@ -89,6 +101,7 @@ async function flushUntil(predicate: () => boolean, attempts = 200): Promise<voi
     if (predicate()) return;
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
+  throw new Error(`Timed out waiting for condition after ${attempts} attempts`);
 }
 
 async function pressRoot(view: RootFrameView, input: string): Promise<void> {
@@ -108,21 +121,12 @@ async function flushUntilRoot(
   throw new Error(`Timed out waiting for root frame condition after ${attempts} attempts`);
 }
 
-function makeQueryClient(): QueryClient {
-  return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, networkMode: "always" },
-      mutations: { retry: false, networkMode: "always" },
-    },
-  });
-}
-
 function geminiCatalogModelsResponse(): ConfigurationModelsResponse {
   return {
     status: "passed",
-    configurationId: READY_GEMINI_CONFIGURATION.configurationId,
-    productId: READY_GEMINI_CONFIGURATION.productId,
-    transportFamily: READY_GEMINI_CONFIGURATION.transportFamily,
+    configurationId: GEMINI_CONFIGURATION.configurationId,
+    productId: GEMINI_CONFIGURATION.productId,
+    transportFamily: GEMINI_CONFIGURATION.transportFamily,
     models: [
       {
         id: "gemini-2.5-flash",
@@ -159,7 +163,7 @@ function makeApi(): BoundApi {
 function Wrapper({ children, api }: { children: ReactNode; api?: BoundApi }) {
   const boundApi = api ?? makeApi();
   return (
-    <QueryClientProvider client={makeQueryClient()}>
+    <QueryClientProvider client={createTestQueryClient()}>
       <ApiProvider value={boundApi}>
         <CliThemeProvider initialTheme="dark">
           <TerminalKeyboardProvider>
@@ -187,7 +191,7 @@ function RouteProbe() {
 
 function ProvidersApiBoundary({ api }: { api: BoundApi }) {
   return (
-    <QueryClientProvider client={makeQueryClient()}>
+    <QueryClientProvider client={createTestQueryClient()}>
       <ApiProvider value={api}>
         <CliThemeProvider initialTheme="dark">
           <TerminalKeyboardProvider>
@@ -214,12 +218,14 @@ describe("ProvidersScreen V2 products and readiness", () => {
     const frame = lastFrame() ?? "";
     expect(frame).not.toContain("Select a provider to view details");
     expect(frame).toContain("Google Gemini");
+    // The pane names the configured model in full: catalog name, then the id a review pins.
+    expect(frame).toContain("Gemini 2.5 Flash · gemini-2.5-flash");
     expect(frame).toContain("Ready");
     expect(frame).not.toContain(LEGACY_V1_HAS_API_KEY_PROPERTY);
     expect(frame).not.toContain("API Key Status");
   });
 
-  test("lists selectable products and removed records from the V2 roster", async () => {
+  test("lists selectable products from the V2 roster", async () => {
     const { lastFrame } = render(
       <Wrapper>
         <ProvidersScreen />
@@ -227,8 +233,7 @@ describe("ProvidersScreen V2 products and readiness", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
-    expect(lastFrame()).toContain("Z.AI Coding Plan");
-    expect(buildProviderRows().length).toBeGreaterThanOrEqual(13);
+    expect(lastFrame()).toContain(PRODUCT_REGISTRY.zai.presentation.name);
   });
 
   test("shows CLI unsupported evidence in the provider list", async () => {
@@ -239,17 +244,40 @@ describe("ProvidersScreen V2 products and readiness", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("CLI unsupported") ?? false);
+    expect(lastFrame()).toContain("CLI unsupported");
   });
 
-  test("prevents removed-record selection in the list", async () => {
-    const { lastFrame } = render(
-      <Wrapper>
+  // Retiring a product turns its stored record into bytes this build cannot
+  // decode. It trails the product rows so it does not become permanent: it names
+  // itself honestly and offers removal alone.
+  test("offers only removal for a stored record this build could not decode", async () => {
+    const api = makeApi();
+    vi.mocked(api.listConfigurations).mockResolvedValue({
+      ...makeAllConfigurationsListResponse(),
+      unrecognizedConfigurations: [{ configurationId: "cfg-retired" }],
+    });
+
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
         <ProvidersScreen />
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Z.AI Coding Plan") ?? false);
-    expect(lastFrame()).toContain("Removed record");
+    await flushUntil(() => lastFrame()?.includes(UNRECOGNIZED_CONFIGURATION_COPY.label) ?? false);
+    // The list wraps, so one step up from the first product row lands on the
+    // record trailing every one of them.
+    stdin.write("\u001b[A");
+    // Both surfaces render the copy core owns, so neither can describe the same
+    // record differently. The pane wraps the sentence over its own width, so the
+    // frame is matched on the leading clause it keeps whole.
+    const [descriptionLead] = UNRECOGNIZED_CONFIGURATION_COPY.description.split(". ");
+    await flushUntil(() => lastFrame()?.includes(descriptionLead ?? "") ?? false);
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("cfg-retired");
+    expect(frame).toContain("Delete configuration");
+    expect(frame).not.toContain("Select model");
+    expect(frame).not.toContain("Update configuration");
   });
 });
 
@@ -312,6 +340,83 @@ describe("ProvidersScreen keyboard zones", () => {
     expect(lastFrame()?.split(message)).toHaveLength(2);
   });
 
+  test("reports a readiness test that the server answers as failed", async () => {
+    const explanation = READINESS_PRESENTATION["conformance-failed"].explanation;
+    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>().mockResolvedValue({
+      action: "test",
+      status: "failed",
+      configuration: GEMINI_CONFIGURATION,
+      readiness: makeReadiness("conformance-failed"),
+    });
+    const listConfigurations = vi
+      .fn<BoundApi["listConfigurations"]>()
+      .mockResolvedValue(
+        makeConfigurationListResponse(
+          makeConfigurationInitResponse([
+            configurationStatus(GEMINI_CONFIGURATION, "conformance-pending"),
+          ]),
+        ),
+      );
+    const api = { ...makeApi(), listConfigurations, testConfiguration } satisfies BoundApi;
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Test readiness") ?? false);
+    stdin.write(TAB);
+    await flush();
+    stdin.write(ENTER);
+    await flushUntil(() => testConfiguration.mock.calls.length === 1);
+    await flushUntil(() => lastFrame()?.includes(explanation) ?? false);
+
+    expect(lastFrame()).toContain(explanation);
+  });
+
+  test("drops a failed action once a later action succeeds", async () => {
+    const message = "configuration delete failed";
+    const deleteConfiguration = vi
+      .fn<BoundApi["deleteConfiguration"]>()
+      .mockRejectedValue(new Error(message));
+    const readyStatus = requireValue(
+      makeAllConfigurationsListResponse().configurations[0],
+      "first configuration",
+    );
+    const selectConfiguration = vi.fn<BoundApi["selectConfiguration"]>().mockResolvedValue({
+      action: "select",
+      status: "succeeded",
+      configuration: readyStatus.configuration,
+      readiness: readyStatus.readiness,
+    });
+    const api = { ...makeApi(), deleteConfiguration, selectConfiguration } satisfies BoundApi;
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    stdin.write(TAB);
+    await flush();
+    for (let index = 0; index < 2; index += 1) {
+      stdin.write(ARROW_RIGHT);
+      await flush();
+    }
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes(message) ?? false);
+
+    for (let index = 0; index < 2; index += 1) {
+      stdin.write(ARROW_LEFT);
+      await flush();
+    }
+    stdin.write(ENTER);
+    await flushUntil(() => selectConfiguration.mock.calls.length === 1);
+    await flushUntil(() => !(lastFrame()?.includes(message) ?? true));
+
+    expect(lastFrame()).not.toContain(message);
+  });
+
   test("renders the sanitized error and hides provider rows when configurations fail to load", async () => {
     const message = "configuration list failed";
     const listConfigurations = vi
@@ -334,13 +439,13 @@ describe("ProvidersScreen keyboard zones", () => {
       makeAllConfigurationsListResponse().configurations[0],
       "first configuration",
     );
-    const inspectConfiguration = vi.fn<BoundApi["inspectConfiguration"]>().mockResolvedValue({
-      action: "inspect",
+    const selectConfiguration = vi.fn<BoundApi["selectConfiguration"]>().mockResolvedValue({
+      action: "select",
       status: "succeeded",
       configuration: readyStatus.configuration,
       readiness: readyStatus.readiness,
     });
-    const api = { ...makeApi(), inspectConfiguration } satisfies BoundApi;
+    const api = { ...makeApi(), selectConfiguration } satisfies BoundApi;
     const { stdin, lastFrame } = render(
       <Wrapper api={api}>
         <ProvidersScreen />
@@ -351,9 +456,12 @@ describe("ProvidersScreen keyboard zones", () => {
     stdin.write(TAB);
     await flush();
     stdin.write(ENTER);
-    await flushUntil(() => inspectConfiguration.mock.calls.length === 1);
+    await flushUntil(() => selectConfiguration.mock.calls.length === 1);
 
-    expect(inspectConfiguration).toHaveBeenCalledWith("gemini-primary");
+    expect(selectConfiguration).toHaveBeenCalledWith(
+      "gemini-primary",
+      readyStatus.configuration.selectedModelId,
+    );
   });
 
   test("keeps provider rows and action labels on whole lines", async () => {
@@ -377,9 +485,12 @@ describe("ProvidersScreen keyboard zones", () => {
   test("runs its panes down to the shortcut bar at 100x30", async () => {
     const view = renderRootFrame(100, 30, <ProvidersApiBoundary api={makeApi()} />);
 
-    await flushUntil(() => view.lastFrame()?.includes("Google Gemini") ?? false);
+    await flushUntil(() => {
+      const lines = stripAnsi(view.lastFrame() ?? "").split("\n");
+      return lines.some((line) => /[└┗]/.test(line));
+    });
     const lines = stripAnsi(view.lastFrame() ?? "").split("\n");
-    const bottomBorder = lines.findLastIndex((line) => /[\u2514\u2517]/.test(line));
+    const bottomBorder = lines.findLastIndex((line) => /[└┗]/.test(line));
 
     expect(bottomBorder).toBeGreaterThan(0);
     expect(lines.length - 1 - bottomBorder).toBeLessThanOrEqual(1);
@@ -447,6 +558,112 @@ describe("ProvidersScreen keyboard zones", () => {
     await flushUntil(() => lastFrame()?.includes(title) ?? false);
     await flushUntil(() => lastFrame()?.includes(expectedFooter) ?? false);
     expect(lastFrame()).toContain(expectedFooter);
+  });
+
+  test("keeps the OpenRouter model overlay open after create and configuration refetch", async () => {
+    const openRouterNotice = PRODUCT_REGISTRY.openrouter.notice;
+    const openRouterConfiguration = {
+      configurationId: "openrouter-primary",
+      revision: 1,
+      status: "supported",
+      transportFamily: "hosted-api",
+      productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
+      selectedModelId: null,
+      notices: [
+        {
+          ...openRouterNotice,
+          billing: [...openRouterNotice.billing],
+          privacy: [...openRouterNotice.privacy],
+        },
+      ],
+      availableActions: ["inspect", "select", "test", "update", "delete"],
+    } satisfies ClientConfigurationSummary;
+    const openRouterStatus = configurationStatus(openRouterConfiguration, "model-missing");
+
+    let listResponse = makeConfigurationListResponse(
+      makeConfigurationInitResponse([
+        configurationStatus(GEMINI_CONFIGURATION, "ready"),
+        configurationStatus(ZAI_CONFIGURATION, "ready"),
+      ]),
+    );
+    const listConfigurations = vi
+      .fn<BoundApi["listConfigurations"]>()
+      .mockImplementation(async () => listResponse);
+    const createConfiguration = vi
+      .fn<BoundApi["createConfiguration"]>()
+      .mockImplementation(async () => {
+        listResponse = makeConfigurationListResponse(
+          makeConfigurationInitResponse([
+            configurationStatus(GEMINI_CONFIGURATION, "ready"),
+            openRouterStatus,
+          ]),
+        );
+        return {
+          action: "create",
+          status: "succeeded",
+          configuration: openRouterConfiguration,
+        };
+      });
+    const openRouterModels: ConfigurationModelsResponse = {
+      status: "passed",
+      configurationId: openRouterConfiguration.configurationId,
+      productId: openRouterConfiguration.productId,
+      transportFamily: openRouterConfiguration.transportFamily,
+      models: [
+        {
+          id: "anthropic/claude-sonnet-4",
+          name: "Claude Sonnet 4",
+          description: "200K context",
+          tier: "paid",
+        },
+      ],
+      checkedAt: "2026-07-31T12:00:00.000Z",
+      source: "snapshot",
+      cached: false,
+    };
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(openRouterModels);
+    const api = {
+      ...makeApi(),
+      listConfigurations,
+      createConfiguration,
+      getConfigurationModels,
+    } satisfies BoundApi;
+
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    stdin.write("\u001b[B");
+    await flush();
+    stdin.write("\u001b[B");
+    await flushUntil(
+      () => lastFrame()?.includes(PRODUCT_REGISTRY.openrouter.presentation.name) ?? false,
+    );
+    stdin.write(ENTER);
+    stdin.write(TAB);
+    await flush();
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("Create Configuration") ?? false);
+    stdin.write("a");
+    await flushUntil(() => lastFrame()?.includes("Notice accepted") ?? false);
+    stdin.write("\t");
+    await flush();
+    stdin.write("sk-openrouter-test");
+    await flush();
+    stdin.write("\t");
+    await flush();
+    stdin.write("\r");
+    await flushUntil(() => lastFrame()?.includes("Select Model") ?? false);
+
+    expect(createConfiguration).toHaveBeenCalledOnce();
+    expect(listConfigurations.mock.calls.length).toBeGreaterThan(1);
+    expect(lastFrame()).toContain("Select Model");
   });
 
   test("suppresses the help shortcut while the model dialog is open", async () => {

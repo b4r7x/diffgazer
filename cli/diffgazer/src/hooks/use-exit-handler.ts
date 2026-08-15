@@ -1,5 +1,6 @@
 import { useInput } from "ink";
 import { useEffect, useEffectEvent } from "react";
+import { SHUTDOWN_SIGNALS } from "../lib/shutdown-signals";
 import { useExit } from "./use-exit";
 
 interface ExitHandlerOptions {
@@ -16,12 +17,14 @@ export function useExitHandler(options: ExitHandlerOptions = {}): void {
   });
 
   useEffect(() => {
-    process.on("SIGINT", handleExit);
-    process.on("SIGTERM", handleExit);
+    for (const signal of SHUTDOWN_SIGNALS) {
+      process.on(signal, handleExit);
+    }
 
     return () => {
-      process.off("SIGINT", handleExit);
-      process.off("SIGTERM", handleExit);
+      for (const signal of SHUTDOWN_SIGNALS) {
+        process.off(signal, handleExit);
+      }
     };
   }, []);
 

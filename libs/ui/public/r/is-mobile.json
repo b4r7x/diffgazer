@@ -1,7 +1,7 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "is-mobile",
-  "title": "useIsMobile",
+  "title": "Is Mobile",
   "description": "matchMedia-backed hook that returns true when the viewport is narrower than a breakpoint (default 1024px).",
   "dependencies": [],
   "registryDependencies": [],

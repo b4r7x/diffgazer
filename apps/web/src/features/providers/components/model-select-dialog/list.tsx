@@ -72,6 +72,10 @@ export function ModelList({
     <ScrollArea
       ref={ref}
       keyboardScrollable={false}
+      // The saving window unmounts the radios and disables every other dialog
+      // control, so the container itself parks programmatic focus beside the
+      // Saving status instead of letting it fall to document.body.
+      tabIndex={isSaving ? -1 : undefined}
       className="max-h-[50dvh] overscroll-contain px-5 py-3"
       data-layout-region="model-list"
     >

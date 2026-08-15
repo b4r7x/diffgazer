@@ -191,6 +191,11 @@ describe("createGitService", () => {
         expect.arrayContaining(expectedArgs),
         expect.objectContaining({ cwd: "/test" }),
       );
+      const args = mockExecFileAsync.mock.calls.at(-1)?.[1] as string[];
+      expect(args).toContain("diff.noprefix=false");
+      expect(args).toContain("diff.mnemonicPrefix=false");
+      expect(args).toContain("diff.srcPrefix=a/");
+      expect(args).toContain("diff.dstPrefix=b/");
     });
 
     it("requires a non-empty explicit pathspec for files mode before spawning git", async () => {
@@ -393,6 +398,25 @@ describe("createGitService", () => {
         }
         expect(args).toContain("core.fsmonitor=false");
         expect(args).toContain("--no-optional-locks");
+        // Operands after `--` are client-chosen file names; without this a real
+        // file called `app/[slug]/page.tsx` would glob over unrelated files.
+        expect(args).toContain("--literal-pathspecs");
+      }
+    });
+
+    it("bounds both status reads with an explicit maxBuffer, not execFile's 1 MiB default", async () => {
+      setupStatusResult(" M file.ts");
+      const git = createGitService({ cwd: "/test" });
+
+      await git.getStatus();
+      await git.getStatusHash();
+
+      const statusCalls = mockExecFileAsync.mock.calls.filter((call) =>
+        (call[1] as string[]).includes("status"),
+      );
+      expect(statusCalls).toHaveLength(2);
+      for (const call of statusCalls) {
+        expect(call[2]?.maxBuffer).toBeGreaterThan(1024 * 1024);
       }
     });
 
@@ -415,6 +439,10 @@ describe("createGitService", () => {
       "GIT_PROXY_COMMAND",
       "GIT_HOOKS_PATH",
       "GIT_TEMPLATE_DIR",
+      "GIT_LITERAL_PATHSPECS",
+      "GIT_GLOB_PATHSPECS",
+      "GIT_NOGLOB_PATHSPECS",
+      "GIT_ICASE_PATHSPECS",
     ])("unsets %s from the environment to prevent parent pollution", async (envVar) => {
       process.env[envVar] = "/some/polluted/value";
       setupStatusResult("## main");
@@ -510,6 +538,27 @@ describe("createGitService", () => {
       const result = await git.getStatusHash();
 
       expect(result).toEqual({ kind: "unavailable" });
+    });
+
+    it("applies hardened diff prefix args to status-hash diff invocations", async () => {
+      mockExecFileAsync
+        .mockResolvedValueOnce({ stdout: " M file.ts\0", stderr: "" })
+        .mockResolvedValueOnce({ stdout: "unstaged diff", stderr: "" })
+        .mockResolvedValueOnce({ stdout: "staged diff", stderr: "" });
+      const git = createGitService({ cwd: "/test" });
+
+      await git.getStatusHash();
+
+      const diffCalls = mockExecFileAsync.mock.calls
+        .map((call) => call[1] as string[])
+        .filter((args) => args.includes("diff"));
+      expect(diffCalls).toHaveLength(2);
+      for (const args of diffCalls) {
+        expect(args).toContain("diff.noprefix=false");
+        expect(args).toContain("diff.mnemonicPrefix=false");
+        expect(args).toContain("diff.srcPrefix=a/");
+        expect(args).toContain("diff.dstPrefix=b/");
+      }
     });
   });
 });

@@ -1,20 +1,10 @@
-import type { AppError } from "@diffgazer/core/errors";
-import type {
-  LegacyProviderConfigV1,
-  LegacyRemovedProviderRecordV1,
-  TrustConfig,
-} from "@diffgazer/core/schemas/config";
+import { type AppError, createError } from "@diffgazer/core/errors";
+import type { LegacyProviderConfigV1, TrustConfig } from "@diffgazer/core/schemas/config";
+import type { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { ConfigurationId, DecodedProviderConfigurationRecord } from "./provider-config.js";
 
-/** A V1 entry narrowed to the ids this binary can still execute. */
-export type RunnableV1Record = Omit<LegacyProviderConfigV1, "provider"> & {
-  provider: ExecutableLegacyProviderId;
-};
-
-/** Legacy V1 executable provider ids used by the aggregate read bridge. */
-export type ExecutableLegacyProviderId = "gemini" | "zai" | "openrouter" | "groq" | "cerebras";
-
 export const CONFIG_SCHEMA_VERSION_V2 = 2 as const;
+export const V1_MIGRATION_FAILED_MESSAGE = "Legacy configuration requires manual migration";
 
 /** The non-secret V2 document persisted by the server. */
 export interface ConfigDocumentV2 {
@@ -31,12 +21,7 @@ export interface ConfigDocumentV2 {
 export type V1ConfigurationRecord =
   | {
       readonly status: "migrate-v1";
-      readonly record: RunnableV1Record;
-      readonly rawBytes: Uint8Array;
-    }
-  | {
-      readonly status: "removed";
-      readonly record: LegacyRemovedProviderRecordV1;
+      readonly record: LegacyProviderConfigV1;
       readonly rawBytes: Uint8Array;
     }
   | {
@@ -52,7 +37,7 @@ export interface ConfigDocumentV1 {
 }
 
 /** An env-var credential reference stored in the secrets file instead of a literal key. */
-export interface EnvCredentialRef {
+interface EnvCredentialRef {
   kind: "env";
   varName: string;
 }
@@ -62,12 +47,6 @@ export type SecretEntry = string | EnvCredentialRef;
 
 export interface SecretsState {
   providers: Record<string, SecretEntry>;
-  /**
-   * Secret entries this binary cannot resolve under current provider policy, such
-   * as a newer reference type, a future provider, or a ref that fails its allowlist.
-   * Carried opaquely so they round-trip instead of failing the whole file (F-445).
-   */
-  unknownSecrets?: Record<string, unknown>;
 }
 
 export interface TrustState {
@@ -80,17 +59,18 @@ export interface ProjectFile {
   createdAt: string;
 }
 
+// The codes the surfaces classify as credential-setup conditions are declared
+// against core's `ErrorCode`, so renaming one there breaks this compile instead
+// of silently dropping these failures onto the generic configuration gate.
 export type SecretsStorageErrorCode =
-  | "KEYRING_UNAVAILABLE"
-  | "KEYRING_READ_FAILED"
+  | typeof ErrorCode.KEYRING_UNAVAILABLE
+  | typeof ErrorCode.KEYRING_READ_FAILED
   | "KEYRING_WRITE_FAILED"
   | "KEYRING_DELETE_FAILED"
-  | "SECRET_NOT_FOUND"
   | "SECRETS_MIGRATION_FAILED"
   | "PERSIST_FAILED"
   | "ROLLBACK_FAILED"
-  | "CONCURRENCY_CONFLICT"
-  | "STORAGE_NOT_CONFIGURED";
+  | typeof ErrorCode.STORAGE_NOT_CONFIGURED;
 
 export type SecretsStorageError = AppError<SecretsStorageErrorCode>;
 
@@ -99,7 +79,7 @@ export type ConfigurationActionOnlyErrorCode =
   | "CONFIGURATION_NOT_FOUND"
   | "CONFIGURATION_UNSUPPORTED"
   | "CONFIGURATION_CONFLICT"
-  | "SECRET_BINDING_FAILED"
+  | typeof ErrorCode.SECRET_BINDING_FAILED
   | "INVALID_ACTION";
 
 export type ConfigurationActionErrorCode =
@@ -107,3 +87,8 @@ export type ConfigurationActionErrorCode =
   | SecretsStorageErrorCode;
 
 export type ConfigurationActionError = AppError<ConfigurationActionErrorCode>;
+
+export const configurationActionFailure = (
+  code: ConfigurationActionErrorCode,
+  message: string,
+): ConfigurationActionError => createError<ConfigurationActionErrorCode>(code, message);

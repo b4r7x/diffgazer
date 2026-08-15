@@ -16,11 +16,12 @@ import { useEffect, useRef } from "react";
 import { useFocusWithin } from "@/hooks/use-focus-within";
 import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
 
-// "h → History" is a web-only live binding, so it stays appended here per F-242
-// per-surface-extras scoping.
+// "h → History" and "o → Open Last Run" are web-only live bindings, so they stay
+// appended here per F-242 per-surface-extras scoping.
 const SHORTCUTS: Shortcut[] = [
   ...HELP_SHORTCUTS,
   { key: "h", label: "Open History", context: "global" },
+  { key: "o", label: "Open Last Run", context: "home" },
 ];
 
 const TOUCH_GESTURES = [
@@ -103,14 +104,15 @@ export function HelpPage() {
     <ScrollArea
       ref={scrollRef}
       aria-label="Help content"
-      className="flex min-h-0 flex-1 flex-col px-4 py-4"
+      className="flex min-h-0 flex-1 flex-col px-4 py-4 md:p-6 lg:p-8"
     >
+      <div aria-hidden className="grow" />
       <Panel
         {...focusProps}
         focused={focusWithin}
         density="compact"
         aria-labelledby={HELP_TITLE_ID}
-        className="m-auto w-full max-w-2xl shadow-2xl lg:max-w-3xl"
+        className="mx-auto w-full max-w-2xl shadow-2xl lg:max-w-3xl"
       >
         <Panel.Label>
           <h1 id={HELP_TITLE_ID}>Help</h1>
@@ -205,6 +207,7 @@ export function HelpPage() {
           </div>
         </Panel.Content>
       </Panel>
+      <div aria-hidden className="grow-[2]" />
     </ScrollArea>
   );
 }

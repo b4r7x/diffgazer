@@ -7,8 +7,8 @@ export const serverQueries = {
   health: (api: BoundApi) =>
     queryOptions({
       queryKey: [...serverQueries.all(), "health"] as const,
-      queryFn: async () => {
-        await api.request("GET", "/api/health");
+      queryFn: async ({ signal }) => {
+        await api.request("GET", "/api/health", { signal });
         return true as const;
       },
       refetchInterval: 30_000,

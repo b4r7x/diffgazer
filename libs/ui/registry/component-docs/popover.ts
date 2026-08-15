@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const popoverDoc: ComponentDoc = {
   description:
@@ -85,7 +85,8 @@ export const popoverDoc: ComponentDoc = {
           "Moves normally and closes click-mode content only after focus leaves the trigger/content pair.",
       },
     ],
-    examples: [{ name: "popover-basic", title: "Basic" }],
+    // popover-basic is the page hero; repeating it here rendered the same demo twice.
+    examples: [],
   },
   dataAttributes: [
     {

@@ -1,6 +1,6 @@
 import type { LIFECYCLE_STATUSES } from "../events/statuses.js";
 
-export type ProgressStatus = "completed" | "active" | "pending";
+export type ProgressStatus = "completed" | "active" | "pending" | "error";
 
 export interface ProgressSubstepData {
   id: string;
@@ -26,12 +26,12 @@ export interface ReviewProgressMetrics {
   issuesFound: number;
 }
 
-export type ReviewMetricId = "files-in-prompt" | "issues-found" | "elapsed";
+type ReviewMetricId = "files-in-prompt" | "issues-found" | "elapsed";
 
 /** Emphasis a surface gives a metric, so web and TUI highlight the same rows. */
 export type ReviewMetricTone = "default" | "info" | "warning";
 
-export interface ReviewMetricRow<TElapsed> {
+interface ReviewMetricRow<TElapsed> {
   id: ReviewMetricId;
   label: string;
   value: string | number | TElapsed;

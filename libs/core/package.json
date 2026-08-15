@@ -28,6 +28,10 @@
       "types": "./dist/format.d.ts",
       "import": "./dist/format.js"
     },
+    "./sanitize-terminal": {
+      "types": "./dist/sanitize-terminal.d.ts",
+      "import": "./dist/sanitize-terminal.js"
+    },
     "./json": {
       "types": "./dist/json.d.ts",
       "import": "./dist/json.js"
@@ -43,6 +47,10 @@
     "./providers": {
       "types": "./dist/providers/index.d.ts",
       "import": "./dist/providers/index.js"
+    },
+    "./providers/hooks": {
+      "types": "./dist/providers/hooks.d.ts",
+      "import": "./dist/providers/hooks.js"
     },
     "./catalog": {
       "types": "./dist/catalog/index.d.ts",
@@ -144,13 +152,17 @@
       "types": "./dist/testing/provider-fixtures.d.ts",
       "import": "./dist/testing/provider-fixtures.js"
     },
+    "./testing/catalog-bundle-evidence": {
+      "types": "./dist/testing/catalog-bundle-evidence.d.ts",
+      "import": "./dist/testing/catalog-bundle-evidence.js"
+    },
     "./testing/query-wrapper": {
       "types": "./dist/testing/query-wrapper.d.ts",
       "import": "./dist/testing/query-wrapper.js"
     }
   },
   "scripts": {
-    "build": "tsc && pnpm verify:dist-esm",
+    "build": "rm -rf dist && tsc && pnpm verify:dist-esm",
     "verify:dist-esm": "node --import tsx scripts/verify-dist-esm-imports.ts",
     "generate:catalog-snapshot": "node --import tsx scripts/generate-catalog-snapshot.ts",
     "dev": "tsc --watch",
@@ -178,7 +190,7 @@
     "@diffgazer/registry": "workspace:*",
     "@tanstack/react-query": "^5.80.7",
     "@testing-library/react": "^16.3.2",
-    "@types/node": "^25.2.3",
+    "@types/node": "^22.10.0",
     "@types/react": "^19.2.13",
     "jsdom": "^28.1.0",
     "react": "^19.2.4",

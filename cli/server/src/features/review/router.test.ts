@@ -1,31 +1,37 @@
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, rm, symlink, unlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rename, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api/protocol";
+import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import type { Result } from "@diffgazer/core/result";
 import { err, ok } from "@diffgazer/core/result";
+import { describeReviewStartError, isCredentialSetupError } from "@diffgazer/core/review";
+import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import {
   CreateReviewResponseSchema,
   type EvidenceKey,
   ReviewErrorCode,
-  sha256CanonicalJsonSync,
 } from "@diffgazer/core/schemas/review";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { executionLimitsFromBudget } from "../../shared/lib/ai/admission/service.js";
+import { STRUCTURED_OUTPUT_FAILURE_GUIDANCE } from "../../shared/lib/ai/admission/service.js";
+import type { InitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
 import {
   buildReviewSchemaJson,
   hashReviewSchemaJson,
-} from "../../shared/lib/ai/providers/cli-compatibility/probe.js";
+} from "../../shared/lib/ai/providers/cli-compatibility/review-schema.js";
+import { executionLimitsFromBudget } from "../../shared/lib/config/budget-ceiling.js";
+import type { ConfigStore } from "../../shared/lib/config/store.js";
 import { DEFAULT_CONFIGURATION_BUDGET } from "../../shared/lib/config/store.js";
 import type { StatusHashResult } from "../../shared/lib/git/service.js";
 import { canonicalizeProjectRoot } from "../../shared/lib/paths.js";
+import { assertTempHome } from "../../shared/lib/testing/temp-home.js";
 import {
   CREATE_REVIEW_BODY_LIMIT_KB,
   DEFAULT_BODY_LIMIT_KB,
@@ -56,9 +62,12 @@ const ROUTER_REVIEW_DIFF = [
 let tempHome: string;
 let projectA: string;
 let projectB: string;
+const loadedStores = new Set<ConfigStore>();
 
 beforeEach(async () => {
+  loadedStores.clear();
   tempHome = await mkdtemp(join(tmpdir(), "diffgazer-review-router-home-"));
+  assertTempHome(tempHome);
   projectA = canonicalizeProjectRoot(await mkdtemp(join(tmpdir(), "diffgazer-review-router-a-")));
   projectB = canonicalizeProjectRoot(await mkdtemp(join(tmpdir(), "diffgazer-review-router-b-")));
   await mkdir(join(projectA, ".git"));
@@ -70,19 +79,32 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  delete process.env.DIFFGAZER_HOME;
-  delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
-  delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
-  vi.doUnmock("../../shared/lib/ai/admission/service.js");
-  vi.doUnmock("../../shared/lib/git/service.js");
-  vi.doUnmock("./service.js");
-  await rm(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
-  await rm(projectA, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
-  await rm(projectB, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
+  try {
+    for (const store of loadedStores) await store.ready();
+    await rm(tempHome, { recursive: true, force: true });
+    await rm(projectA, { recursive: true, force: true });
+    await rm(projectB, { recursive: true, force: true });
+  } finally {
+    loadedStores.clear();
+    delete process.env.DIFFGAZER_HOME;
+    delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
+    delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    vi.doUnmock("../../shared/lib/ai/admission/service.js");
+    vi.doUnmock("../../shared/lib/git/service.js");
+    vi.doUnmock("./service.js");
+  }
 });
+
+async function loadConfigStore(): Promise<ConfigStore> {
+  const { getStore } = await import("../../shared/lib/config/store.js");
+  const store = getStore();
+  loadedStores.add(store);
+  return store;
+}
 
 async function createReviewApp(): Promise<Hono> {
   const { reviewRouter } = await import("./router.js");
+  await (await loadConfigStore()).ready();
   return new Hono().route("/api/review", reviewRouter);
 }
 
@@ -91,14 +113,15 @@ async function createReviewSettingsApp(): Promise<Hono> {
     import("./router.js"),
     import("../settings/router.js"),
   ]);
+  await (await loadConfigStore()).ready();
   return new Hono().route("/api/review", reviewRouter).route("/api/settings", settingsRouter);
 }
 
 async function trustProject(projectRoot: string): Promise<void> {
-  const { getStore } = await import("../../shared/lib/config/store.js");
+  const store = await loadConfigStore();
   const canonicalRoot = canonicalizeProjectRoot(projectRoot);
-  const project = getStore().ensureProjectFile(canonicalRoot);
-  await getStore().saveTrust({
+  const project = store.ensureProjectFile(canonicalRoot);
+  await store.saveTrust({
     projectId: requireValue(project.projectId, "project id"),
     repoRoot: canonicalRoot,
     trustedAt: "2024-01-01T00:00:00.000Z",
@@ -244,7 +267,9 @@ function installSuccessfulReviewCreationMock() {
 }
 
 async function buildMockAuthorization() {
-  const { buildExpectedEvidenceKey } = await import("../../shared/lib/ai/admission/service.js");
+  const { buildExpectedEvidenceKey } = await import(
+    "../../shared/lib/config/admission-evidence.js"
+  );
   const configurationId = MOCK_CONFIGURATION_ID;
   const home = process.env.DIFFGAZER_HOME;
   if (!home) throw new Error("DIFFGAZER_HOME is required for review router authorization");
@@ -265,7 +290,11 @@ async function buildMockAuthorization() {
       endpoint: GEMINI_ENDPOINT,
     },
     selectedModelId: "gemini-2.0-flash",
-    acknowledgement: { noticeVersion: 1, acceptedAt: SETUP_OBSERVED_AT },
+    acknowledgement: {
+      noticeId: "gemini-hosted-api",
+      noticeVersion: 1,
+      acceptedAt: SETUP_OBSERVED_AT,
+    },
     evidenceReference: "evidence-gemini",
     budget: {
       inputTokens: 200_000,
@@ -365,7 +394,6 @@ function createCompleteEvent(reviewId: string): FullReviewStreamEvent {
     type: "complete",
     result: { issues: [] },
     reviewId,
-    durationMs: 1,
   };
 }
 
@@ -530,7 +558,101 @@ describe("GET /api/review/reviews pagination", () => {
   });
 });
 
+describe("blocked V1 review routes", () => {
+  it.each([
+    "valid",
+    "corrupt",
+  ] as const)("returns the fixed migration envelope before context or review work with %s recovery", async (recovery) => {
+    const authorizeReviewExecution = installProviderWorkProbe();
+    const createReviewSession = vi.fn();
+    vi.doMock("./service.js", () => ({ createReviewSession }));
+    await configureSetup(projectA);
+    await writeBlockedV1ReviewState(recovery);
+    const app = await createReviewApp();
+
+    const responses = await Promise.all([
+      app.request("/api/review/context", requestOptions(projectA)),
+      app.request("/api/review/reviews", {
+        method: "POST",
+        headers: {
+          [PROJECT_ROOT_HEADER]: projectA,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ mode: "unstaged" }),
+      }),
+    ]);
+
+    for (const response of responses) {
+      expect(response.status).toBe(503);
+      await expect(response.json()).resolves.toEqual({
+        error: {
+          code: "SECRETS_MIGRATION_FAILED",
+          message: "Legacy configuration requires manual migration",
+        },
+      });
+    }
+    expect(authorizeReviewExecution).not.toHaveBeenCalled();
+    expect(createReviewSession).not.toHaveBeenCalled();
+  });
+});
+
 describe("POST /api/review/reviews", () => {
+  it("admits a configuration whose structured output is still unproven", async () => {
+    const session = {
+      reviewId: REVIEW_A,
+      mode: "unstaged" as const,
+      startedAt: new Date("2026-01-01T00:00:00.000Z"),
+      headCommit: "abc123",
+      statusHash: "status",
+    };
+    let admittedClient: InitializedAIClient | undefined;
+    const createReviewSession = vi.fn(async (client: InitializedAIClient) => {
+      admittedClient = client;
+      return ok({ reviewId: REVIEW_A, session });
+    });
+    vi.doMock("./service.js", () => ({ createReviewSession }));
+    await configureSetup(projectA, "none");
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mode: "unstaged" }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ reviewId: REVIEW_A });
+    expect(admittedClient?.authorization?.evidenceState).toBe("unproven");
+  });
+
+  it("fast-fails a configuration whose exact tuple already failed structured output", async () => {
+    const createReviewSession = vi.fn();
+    vi.doMock("./service.js", () => ({ createReviewSession }));
+    await configureSetup(projectA, "failed");
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mode: "unstaged" }),
+    });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: ErrorCode.SETUP_REQUIRED,
+        message: STRUCTURED_OUTPUT_FAILURE_GUIDANCE,
+      },
+    });
+    expect(createReviewSession).not.toHaveBeenCalled();
+  });
+
   it("returns the active session metadata for the created review", async () => {
     const startedAt = new Date("2026-01-01T00:00:00.000Z");
     const session = {
@@ -642,6 +764,56 @@ describe("POST /api/review/reviews", () => {
     expect(canAdmitAgain()).toBe(false);
   });
 
+  it("refuses a second review as a conflict with the running one, not a setup condition", async () => {
+    const { authorizeReviewExecution, issuedLeaseId } = installRealLeaseAuthorization();
+    const createReviewSession = vi.fn(async () =>
+      ok({
+        reviewId: REVIEW_A,
+        session: {
+          reviewId: REVIEW_A,
+          mode: "unstaged" as const,
+          startedAt: new Date("2026-01-01T00:00:00.000Z"),
+          headCommit: "abc123",
+          statusHash: "status",
+          leaseId: issuedLeaseId(),
+        },
+      }),
+    );
+    vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
+      const actual =
+        await importOriginal<typeof import("../../shared/lib/ai/admission/service.js")>();
+      return { ...actual, authorizeReviewExecution };
+    });
+    vi.doMock("./service.js", () => ({ createReviewSession }));
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+    const request = () =>
+      app.request("/api/review/reviews", {
+        method: "POST",
+        headers: { [PROJECT_ROOT_HEADER]: projectA, "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "unstaged" }),
+      });
+
+    expect((await request()).status).toBe(200);
+    const second = await request();
+
+    expect(second.status).toBe(409);
+    const body = (await second.json()) as { error: { code: string; message: string } };
+    expect(body.error.code).toBe(ErrorCode.REVIEW_IN_PROGRESS);
+    // What the client raises from that envelope, and what the surfaces make of
+    // it: a running review must never be presented as a credential problem.
+    const raised = Object.assign(new Error(body.error.message), {
+      status: second.status,
+      code: body.error.code,
+    });
+    expect(isCredentialSetupError(raised)).toBe(false);
+    expect(describeReviewStartError(raised)).toEqual({
+      title: "Review Already Running",
+      message:
+        "A review is already running for this configuration. Wait for it to finish or cancel it, then start a new one.",
+    });
+  });
+
   it("serializes admission failures without dispatching review creation", async () => {
     const createReviewSession = vi.fn();
     vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
@@ -674,7 +846,7 @@ describe("POST /api/review/reviews", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: {
-        code: "readiness-not-ready",
+        code: ErrorCode.SETUP_REQUIRED,
         message: "Configuration is not ready for execution",
       },
     });
@@ -887,14 +1059,7 @@ describe("POST /api/review/reviews", () => {
     );
   });
 
-  it("does not import initializeAIClient in sessions.ts", async () => {
-    const { readFile } = await import("node:fs/promises");
-    const source = await readFile(new URL("./router/sessions.ts", import.meta.url), "utf-8");
-    expect(source).not.toContain("initializeAIClient");
-    expect(source).toContain("authorizeReviewExecution");
-  });
-
-  it("does not dispatch removed configurations", async () => {
+  it("does not dispatch unsupported configurations", async () => {
     const createReviewSession = vi.fn();
     vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
       const actual =
@@ -903,8 +1068,8 @@ describe("POST /api/review/reviews", () => {
         ...actual,
         authorizeReviewExecution: vi.fn(async () =>
           err({
-            code: "configuration-removed",
-            safeMessage: "Configuration has been removed",
+            code: "configuration-unsupported",
+            safeMessage: "Configuration is not supported",
             retryable: false,
           }),
         ),
@@ -925,7 +1090,7 @@ describe("POST /api/review/reviews", () => {
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({
-      error: { code: "configuration-removed" },
+      error: { code: ErrorCode.SETUP_REQUIRED },
     });
     expect(createReviewSession).not.toHaveBeenCalled();
   });
@@ -962,18 +1127,59 @@ describe("POST /api/review/reviews", () => {
     expect(response.status).toBe(429);
     await expect(response.json()).resolves.toEqual({
       error: {
-        code: "budget-exhausted",
+        code: ErrorCode.RATE_LIMITED,
         message: "Review budget is exhausted",
+      },
+    });
+    expect(createReviewSession).not.toHaveBeenCalled();
+  });
+
+  it("maps manual-migration admission failures to the public store error", async () => {
+    const createReviewSession = vi.fn();
+    vi.doMock("../../shared/lib/ai/admission/service.js", async (importOriginal) => {
+      const actual =
+        await importOriginal<typeof import("../../shared/lib/ai/admission/service.js")>();
+      return {
+        ...actual,
+        authorizeReviewExecution: vi.fn(async () =>
+          err({
+            code: "configuration-migration-required",
+            safeMessage: "Legacy configuration requires manual migration",
+            retryable: false,
+          }),
+        ),
+      };
+    });
+    vi.doMock("./service.js", () => ({ createReviewSession }));
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mode: "unstaged" }),
+    });
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "SECRETS_MIGRATION_FAILED",
+        message: "Legacy configuration requires manual migration",
       },
     });
     expect(createReviewSession).not.toHaveBeenCalled();
   });
 });
 
-async function configureSetup(projectRoot: string): Promise<void> {
+async function configureSetup(
+  projectRoot: string,
+  evidence: "passed" | "failed" | "none" = "passed",
+): Promise<void> {
   const { createAdmissionEvidence } = await import("../../shared/lib/config/admission-evidence.js");
-  const { getStore } = await import("../../shared/lib/config/store.js");
-  const store = getStore();
+  const store = await loadConfigStore();
 
   const created = await store.runConfigurationAction({
     action: "create",
@@ -1005,16 +1211,55 @@ async function configureSetup(projectRoot: string): Promise<void> {
       acceptedAt: SETUP_OBSERVED_AT,
     },
   });
-  await store.recordConfigurationEvidence(
-    configurationId,
-    createAdmissionEvidence({
-      evidenceKey: routerEvidenceKeyFor(configurationId, "gemini-2.0-flash"),
-      checkedAt: SETUP_OBSERVED_AT,
-      status: "passed",
-    }),
-  );
+  if (evidence !== "none") {
+    await store.recordConfigurationEvidence(
+      configurationId,
+      createAdmissionEvidence({
+        evidenceKey: routerEvidenceKeyFor(configurationId, "gemini-2.0-flash"),
+        checkedAt: SETUP_OBSERVED_AT,
+        status: evidence,
+        expiresAt: null,
+      }),
+    );
+  }
 
   await trustProject(projectRoot);
+}
+
+async function writeBlockedV1ReviewState(recovery: "valid" | "corrupt"): Promise<void> {
+  const configPath = join(tempHome, "config.json");
+  const secretsPath = join(tempHome, "secrets.json");
+  const priorConfig = await readFile(configPath);
+  const priorSecrets = await readFile(secretsPath);
+  await writeFile(
+    configPath,
+    `${JSON.stringify({
+      settings: { secretsStorage: "file" },
+      providers: [
+        {
+          provider: "gemini",
+          [LEGACY_V1_HAS_API_KEY_PROPERTY]: false,
+          isActive: true,
+          model: "gemini-2.5-flash",
+        },
+      ],
+    })}\n`,
+    { mode: 0o600 },
+  );
+  await writeFile(secretsPath, '{"providers":{"gemini":"review-secret-sentinel"}}\n', {
+    mode: 0o600,
+  });
+  await writeFile(
+    `${secretsPath}.recovery`,
+    recovery === "valid"
+      ? `${JSON.stringify({
+          version: 2,
+          previousConfig: { existed: true, base64: priorConfig.toString("base64") },
+          previousSecrets: { existed: true, base64: priorSecrets.toString("base64") },
+        })}\n`
+      : "corrupt-review-recovery-sentinel",
+    { mode: 0o600 },
+  );
 }
 
 function routerStructuredOutputSchemaSha256(): string {
@@ -1045,6 +1290,70 @@ function routerEvidenceKeyFor(configurationId: string, modelId: string): Evidenc
 }
 
 describe("POST /api/review/reviews validation", () => {
+  it.each([
+    {
+      label: "profile only",
+      body: { mode: "unstaged", profile: "strict" },
+      expected: { profile: "strict", lenses: undefined },
+    },
+    {
+      label: "lenses only",
+      body: { mode: "unstaged", lenses: ["tests", "security", "tests"] },
+      expected: { profile: undefined, lenses: ["tests", "security"] },
+    },
+    {
+      label: "profile and lenses",
+      body: { mode: "unstaged", profile: "perf", lenses: ["performance", "correctness"] },
+      expected: { profile: "perf", lenses: ["performance", "correctness"] },
+    },
+  ])("forwards valid optional review selection for $label", async ({ body, expected }) => {
+    const { createReviewSession } = installSuccessfulReviewCreationMock();
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    expect(response.status).toBe(200);
+    expect(createReviewSession).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining(expected),
+    );
+  });
+
+  it.each([
+    { profile: "unknown-profile" },
+    { profile: null },
+    { lenses: ["correctness", "unknown-lens"] },
+    { lenses: [null] },
+  ])("rejects invalid optional review selection %j before authorization", async (body) => {
+    const { authorizeReviewExecution, createReviewSession } = installSuccessfulReviewCreationMock();
+    await configureSetup(projectA);
+    const app = await createReviewApp();
+
+    const response = await app.request("/api/review/reviews", {
+      method: "POST",
+      headers: {
+        [PROJECT_ROOT_HEADER]: projectA,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ mode: "unstaged", ...body }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: ErrorCode.VALIDATION_ERROR },
+    });
+    expect(authorizeReviewExecution).not.toHaveBeenCalled();
+    expect(createReviewSession).not.toHaveBeenCalled();
+  });
+
   it("rejects an invalid mode value", async () => {
     await configureSetup(projectA);
     const app = await createReviewApp();
@@ -1617,17 +1926,23 @@ describe("GET /api/review/context read-path security", () => {
     async () => {
       const outsideRoot = await mkdtemp(join(tmpdir(), "diffgazer-review-router-outside-"));
       try {
-        // Symlink `.diffgazer` before setup so trust is written through the link
-        // and repo-access passes, leaving the context guard as the only refusal.
-        await symlink(outsideRoot, join(projectA, ".diffgazer"));
+        // Setup writes trust through a real `.diffgazer`; relocating that state
+        // behind a symlink afterwards leaves a trusted project whose context
+        // now resolves outside the checkout.
         await configureSetup(projectA);
+        const contextDir = join(projectA, ".diffgazer");
+        await rm(outsideRoot, { recursive: true, force: true });
+        await rename(contextDir, outsideRoot);
+        await symlink(outsideRoot, contextDir);
         await writeContextSnapshot(outsideRoot, projectA, "SECRET_EXTERNAL_CONTEXT_MARKER");
         const app = await createReviewApp();
 
         const response = await app.request("/api/review/context", requestOptions(projectA));
         const text = await response.text();
 
-        expect(response.status).toBe(404);
+        // The symlinked state directory fails project resolution outright, so the
+        // request is refused before any context artifact is read.
+        expect(response.status).toBe(403);
         expect(text).not.toContain("SECRET_EXTERNAL_CONTEXT_MARKER");
       } finally {
         await rm(outsideRoot, { recursive: true, force: true });
@@ -1677,6 +1992,34 @@ describe("POST /api/review/context/refresh", () => {
 
     expect(response.status).toBe(200);
     expect(body.markdown).toContain("- Name: second");
+  });
+
+  it("returns 429 with Retry-After once the forced-refresh budget is spent", async () => {
+    const { resetRateLimitsForTests } = await import("../../shared/middlewares/rate-limit.js");
+    resetRateLimitsForTests();
+    await configureSetup(projectA);
+    installGitServiceMock();
+    const app = await createReviewApp();
+
+    const refresh = () =>
+      app.request("/api/review/context/refresh", {
+        method: "POST",
+        headers: {
+          [PROJECT_ROOT_HEADER]: projectA,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ force: true }),
+      });
+
+    let response = await refresh();
+    for (let i = 0; i < 5; i++) {
+      response = await refresh();
+    }
+
+    expect(response.status).toBe(429);
+    expect(Number(response.headers.get("Retry-After"))).toBeGreaterThan(0);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("RATE_LIMITED");
   });
 });
 

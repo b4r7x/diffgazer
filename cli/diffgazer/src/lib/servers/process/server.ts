@@ -1,13 +1,18 @@
 import { execa, type ResultPromise } from "execa";
 import { config as appConfig } from "../../../config";
+import { reportToTerminal } from "../../report-to-terminal";
 import type { ServerController } from "../types";
 import {
   appendDiagnosticTail,
   consumeCompleteLines,
+  formatDiagnosticOutput,
   formatProcessFailure,
   isProcessErrorLike,
 } from "./output";
 import { terminateProcess } from "./termination";
+
+const UNEXPECTED_EXIT = "Server exited unexpectedly";
+const EXIT_BEFORE_READY = "Server exited before readiness";
 
 export interface ProcessServerConfig {
   command: string;
@@ -132,14 +137,28 @@ export function createProcessServer(
     let stderrTail: Buffer = Buffer.alloc(0);
     let failureReported = false;
 
-    const reportFailure = (error: unknown): Error => {
-      const message = formatProcessFailure(error, stderrTail, stdoutTail);
+    // Failure diagnostics have exactly one owner: the coordinator when it supplies
+    // `onFailure` (it logs and shuts the peers down), the controller itself otherwise.
+    const report = (message: string, cause?: unknown): Error => {
       if (!failureReported) {
         failureReported = true;
-        console.error(message);
-        config.onFailure?.(message);
+        if (config.onFailure) {
+          config.onFailure(message);
+        } else {
+          reportToTerminal(message);
+        }
       }
-      return new Error(message, { cause: error });
+      return new Error(message, { cause });
+    };
+
+    const reportFailure = (error: unknown): Error =>
+      report(formatProcessFailure(error, stderrTail, stdoutTail), error);
+
+    // A clean exit carries no error to explain it, and the child's last output is the
+    // ready banner rather than a cause, so the reason leads and the output follows.
+    const reportCleanExit = (reason: string): Error => {
+      const output = formatDiagnosticOutput(stderrTail, stdoutTail);
+      return report(output ? `${reason}\n${output}` : reason);
     };
 
     childProcess.stdout?.on("data", (data: Buffer) => {
@@ -188,7 +207,11 @@ export function createProcessServer(
 
         serverProcess = null;
         signaledReady = false;
-        rejectStart?.(new Error("Server exited before readiness"));
+        if (rejectStart) {
+          rejectStart(reportCleanExit(EXIT_BEFORE_READY));
+        } else {
+          reportCleanExit(UNEXPECTED_EXIT);
+        }
         resolveStart = null;
         rejectStart = null;
         startPromise = null;
@@ -202,7 +225,8 @@ export function createProcessServer(
         signaledReady = false;
 
         if (!isProcessErrorLike(err) || !err.killed) {
-          rejectStart?.(reportFailure(err));
+          const failure = reportFailure(err);
+          rejectStart?.(failure);
         }
         resolveStart = null;
         rejectStart = null;

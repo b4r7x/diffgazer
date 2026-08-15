@@ -9,6 +9,7 @@ import type { RunnableProductId, WriteOnlySecretInput } from "@diffgazer/core/sc
 import { useState } from "react";
 import { useRegisterExitPreparation } from "../../../hooks/use-exit";
 import { useNavigation } from "../../../hooks/use-navigation";
+import { warnToTerminal } from "../../../lib/report-to-terminal";
 
 type FocusArea = "step" | "nav";
 type WizardFocusZone = "step" | "nav" | "api-key-method" | "api-key-input";
@@ -20,7 +21,7 @@ function getStepFocusZone(step: OnboardingStep, hasCredentialControls: boolean):
 }
 
 function reportCleanupError(message: string): void {
-  console.error(`Warning: ${message}`);
+  warnToTerminal(`Warning: ${message}`);
 }
 
 function inputMethodFromCredential(credential: WriteOnlySecretInput | undefined): InputMethod {
@@ -37,7 +38,6 @@ export function useOnboardingWizard() {
   const runConfigurationAction = useConfigurationAction();
   const [focusZone, setFocusZone] = useState<WizardFocusZone>("step");
   const [navIndex, setNavIndex] = useState(0);
-  const [_inputMethod, setInputMethod] = useState<InputMethod>("paste");
   const [apiKeyDraft, setApiKeyDraft] = useState("");
 
   const wizard = useWizardState({
@@ -53,13 +53,10 @@ export function useOnboardingWizard() {
   useRegisterExitPreparation(wizard.cleanupCreatedConfiguration);
 
   const wizardData = wizard.wizardData;
-  const isRunnable = wizardData.kind === "runnable";
-  const runnableDraft = isRunnable ? wizardData : null;
+  const configurationInput = wizardData.configurationInput;
   const hostedCredential =
-    runnableDraft?.configurationInput.transportFamily === "hosted-api"
-      ? runnableDraft.configurationInput.credential
-      : undefined;
-  const hasCredentialControls = runnableDraft?.configurationInput.transportFamily === "hosted-api";
+    configurationInput.transportFamily === "hosted-api" ? configurationInput.credential : undefined;
+  const hasCredentialControls = configurationInput.transportFamily === "hosted-api";
   const effectiveInputMethod = inputMethodFromCredential(hostedCredential);
   const effectiveApiKey =
     hostedCredential?.kind === "literal" ? hostedCredential.value : apiKeyDraft;
@@ -69,12 +66,10 @@ export function useOnboardingWizard() {
   const apiKeyInputFocused = focusZone === "api-key-input";
 
   function syncCredentialDraft(method: InputMethod, apiKey: string) {
-    if (!runnableDraft || runnableDraft.configurationInput.transportFamily !== "hosted-api") {
-      return;
-    }
+    if (configurationInput.transportFamily !== "hosted-api") return;
     wizard.updateData({
       configurationInput: {
-        ...runnableDraft.configurationInput,
+        ...configurationInput,
         credential: credentialFromInput(method, apiKey),
       },
     });
@@ -82,14 +77,12 @@ export function useOnboardingWizard() {
 
   function handleProductChange(productId: RunnableProductId) {
     wizard.setProduct(productId);
-    setInputMethod("paste");
     setApiKeyDraft("");
     setFocusZone("step");
     setNavIndex(0);
   }
 
   function handleInputMethodChange(method: InputMethod) {
-    setInputMethod(method);
     syncCredentialDraft(method, effectiveApiKey);
   }
 
@@ -107,8 +100,7 @@ export function useOnboardingWizard() {
   }
 
   function handleAcknowledgementAccept() {
-    if (!runnableDraft) return;
-    const noticeStep = runnableDraft.plan.steps.find((step) => step.id === "acknowledgement");
+    const noticeStep = wizardData.plan.steps.find((step) => step.id === "acknowledgement");
     const notice = noticeStep?.id === "acknowledgement" ? noticeStep.notice : null;
     if (!notice) return;
     wizard.updateData({
@@ -132,10 +124,6 @@ export function useOnboardingWizard() {
   function handleNext() {
     if (!wizard.canProceed) return;
     if (wizard.isLastStep) {
-      if (wizardData.kind === "removed") {
-        void wizard.deleteRemovedConfiguration();
-        return;
-      }
       void wizard.complete();
       return;
     }

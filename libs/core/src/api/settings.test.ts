@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { makeTrustConfig } from "../testing/factories.js";
 import { deleteTrust, getTrust } from "./settings.js";
 import { createMockClient } from "./test-helpers.js";
-import type { ApiClient } from "./types.js";
+import type { ApiClient, TrustResponse } from "./types.js";
 
 describe("settings API functions", () => {
   let client: ApiClient;
@@ -11,8 +12,8 @@ describe("settings API functions", () => {
   });
 
   it("getTrust queries the trust endpoint without a client-supplied projectId", async () => {
-    const trust = { projectId: "proj-1", trusted: true };
-    vi.mocked(client.get).mockResolvedValue({ trust });
+    const trust = makeTrustConfig();
+    vi.mocked(client.get).mockResolvedValue({ trust } satisfies TrustResponse);
 
     const result = await getTrust(client);
 

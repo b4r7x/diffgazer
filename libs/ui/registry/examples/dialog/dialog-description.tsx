@@ -31,9 +31,7 @@ export default function DialogDescriptionExample() {
           </p>
         </DialogBody>
         <DialogFooter hints={[{ key: "Esc", label: "Close" }]}>
-          <DialogClose bracket variant="ghost">
-            Cancel
-          </DialogClose>
+          <DialogClose bracket>Cancel</DialogClose>
           <DialogAction>Reset</DialogAction>
         </DialogFooter>
       </DialogContent>

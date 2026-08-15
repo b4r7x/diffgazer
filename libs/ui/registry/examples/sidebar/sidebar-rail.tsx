@@ -78,7 +78,7 @@ export default function SidebarRail() {
 // Glyph tile icon stand-in — swap for Lucide / inline SVG in real consumers.
 function RailItem({ glyph, label, active }: { glyph: string; label: string; active?: boolean }) {
   return (
-    <SidebarItem active={active} title={label}>
+    <SidebarItem active={active} href={`#${label}`} title={label}>
       <span
         aria-hidden="true"
         className="flex size-6 shrink-0 items-center justify-center rounded-sm border border-border"

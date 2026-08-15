@@ -6,7 +6,7 @@ import { Checkbox } from "@diffgazer/ui/components/checkbox";
 import { Field } from "@diffgazer/ui/components/field";
 import { InputGroup } from "@diffgazer/ui/components/input";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
-import { type KeyboardEvent, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 type CredentialMethod = "literal" | "environment";
 type CredentialFocus = CredentialMethod | "input";
@@ -17,20 +17,6 @@ interface ApiKeyStepProps {
   onCommit?: () => void;
   enabled?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
-}
-
-function getLocalHttpCopy(configurationInput: OnboardingConfigurationDraft): string {
-  if (configurationInput.transportFamily !== "local-http") {
-    return "Local HTTP setup does not use hosted credentials.";
-  }
-  return `Configure the local endpoint at ${configurationInput.endpoint} without storing hosted credentials.`;
-}
-
-function getLocalCliCopy(configurationInput: OnboardingConfigurationDraft): string {
-  if (configurationInput.transportFamily !== "local-cli") {
-    return "Local CLI setup does not use hosted credentials.";
-  }
-  return "Configure the local CLI installation without storing hosted credentials.";
 }
 
 function resolveCredentialMethod(credential: WriteOnlySecretInput | undefined): CredentialMethod {
@@ -57,6 +43,8 @@ export function ApiKeyStep({
 }: ApiKeyStepProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const methodGroupRef = useRef<HTMLDivElement>(null);
+  const localCheckboxRef = useRef<HTMLDivElement>(null);
+  const localInputRef = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState<CredentialFocus>("literal");
   const isHosted = configurationInput.transportFamily === "hosted-api";
   const method = isHosted ? resolveCredentialMethod(configurationInput.credential) : "literal";
@@ -64,6 +52,15 @@ export function ApiKeyStep({
     isHosted && configurationInput.credential?.kind === "literal"
       ? configurationInput.credential.value
       : "";
+
+  // The hosted branch enters through RadioGroup autoFocus; the local branches
+  // render a bare checkbox or input, so step entry has to focus them here or
+  // arrows only reach the wizard footer.
+  useEffect(() => {
+    if (!enabled) return;
+    const target = localCheckboxRef.current ?? localInputRef.current;
+    target?.focus();
+  }, [enabled]);
 
   const setCredential = (credential: WriteOnlySecretInput) => {
     if (configurationInput.transportFamily !== "hosted-api") return;
@@ -128,15 +125,24 @@ export function ApiKeyStep({
     focusMethod(event.key === "ArrowDown" ? "environment" : "literal");
   };
 
+  const handleFieldBoundaryKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      onBoundaryReached?.("down");
+    }
+  };
+
   if (configurationInput.transportFamily === "local-http") {
     const bearerEnabled = configurationInput.authentication === "optional-local-bearer";
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground font-mono">
-          {getLocalHttpCopy(configurationInput)}
+          Configure the local endpoint at {configurationInput.endpoint} without storing hosted
+          credentials.
         </p>
         {offersLocalBearer(configurationInput.productId) ? (
           <Checkbox
+            ref={localCheckboxRef}
             checked={bearerEnabled}
             onChange={setLocalBearerEnabled}
             value="local-bearer"
@@ -149,6 +155,7 @@ export function ApiKeyStep({
             <Field.Control>
               <InputGroup
                 type="password"
+                autoComplete="off"
                 value={
                   configurationInput.bearerToken?.kind === "literal"
                     ? configurationInput.bearerToken.value
@@ -164,7 +171,9 @@ export function ApiKeyStep({
                   if (event.key === "Enter") {
                     event.preventDefault();
                     onCommit?.();
+                    return;
                   }
+                  handleFieldBoundaryKeyDown(event);
                 }}
                 prefix="TOKEN:"
                 aria-label="Local bearer token"
@@ -181,12 +190,13 @@ export function ApiKeyStep({
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground font-mono">
-          {getLocalCliCopy(configurationInput)}
+          Configure the local CLI installation without storing hosted credentials.
         </p>
         <Field>
           <Field.Label>{product.presentation.name} installation</Field.Label>
           <Field.Control>
             <InputGroup
+              ref={localInputRef}
               value={configurationInput.installationId ?? ""}
               onChange={(event) =>
                 onChange({
@@ -198,7 +208,9 @@ export function ApiKeyStep({
                 if (event.key === "Enter") {
                   event.preventDefault();
                   onCommit?.();
+                  return;
                 }
+                handleFieldBoundaryKeyDown(event);
               }}
               prefix="ID:"
               aria-label={`${product.presentation.name} installation ID`}
@@ -236,6 +248,7 @@ export function ApiKeyStep({
         onNavigationBoundaryReached={(direction) => {
           onBoundaryReached?.(direction === "next" ? "down" : "up");
         }}
+        autoFocus={enabled}
         keyboardNavigation={enabled}
         activationMode="manual"
         wrap={false}
@@ -249,6 +262,7 @@ export function ApiKeyStep({
               <InputGroup
                 ref={inputRef}
                 type="password"
+                autoComplete="off"
                 value={secretValue}
                 onChange={(event) => setCredential({ kind: "literal", value: event.target.value })}
                 onFocus={() => setFocused("input")}

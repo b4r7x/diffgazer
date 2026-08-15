@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 interface JsonProject {
-  compilerOptions?: { tsBuildInfoFile?: string; types?: string[] };
+  compilerOptions?: { incremental?: boolean; tsBuildInfoFile?: string; types?: string[] };
   files?: string[];
   references?: Array<{ path: string }>;
   scripts?: Record<string, string>;
@@ -41,18 +41,6 @@ describe("web executable configuration type coverage", () => {
       cwd: packageRoot,
       encoding: "utf8",
     });
-    const config = execFileSync(
-      process.execPath,
-      [tscPath, "--showConfig", "--project", "tsconfig.config.json"],
-      { cwd: packageRoot, encoding: "utf8" },
-    );
-    const parsedConfig = JSON.parse(config) as JsonProject & { files?: string[] };
-    const e2eConfig = JSON.parse(
-      execFileSync(process.execPath, [tscPath, "--showConfig", "--project", "tsconfig.e2e.json"], {
-        cwd: packageRoot,
-        encoding: "utf8",
-      }),
-    ) as JsonProject;
     const packageJson = readProject(resolve(packageRoot, "package.json"));
     const solution = readProject(resolve(packageRoot, "tsconfig.json"));
     const projects = [
@@ -61,19 +49,24 @@ describe("web executable configuration type coverage", () => {
       "tsconfig.config.json",
       "tsconfig.e2e.json",
     ];
-    const buildInfoFiles = projects.map(
-      (project) =>
-        (
-          JSON.parse(
-            execFileSync(process.execPath, [tscPath, "--showConfig", "--project", project], {
-              cwd: packageRoot,
-              encoding: "utf8",
-            }),
-          ) as JsonProject
-        ).compilerOptions?.tsBuildInfoFile,
+    const resolvedProjects = new Map(
+      projects.map((project) => [
+        project,
+        JSON.parse(
+          execFileSync(process.execPath, [tscPath, "--showConfig", "--project", project], {
+            cwd: packageRoot,
+            encoding: "utf8",
+          }),
+        ) as JsonProject,
+      ]),
+    );
+    const parsedConfig = resolvedProjects.get("tsconfig.config.json");
+    const e2eConfig = resolvedProjects.get("tsconfig.e2e.json");
+    const buildInfoFiles = [...resolvedProjects.values()].map(
+      (project) => project.compilerOptions?.tsBuildInfoFile,
     );
 
-    expect(packageJson.scripts?.["type-check"]).toBe("tsc -b");
+    expect(packageJson.scripts?.["type-check"]).toBe("tsc -b --force");
     expect(solution.references?.map((reference) => reference.path)).toEqual([
       "./tsconfig.app.json",
       "./tsconfig.test.json",
@@ -82,18 +75,30 @@ describe("web executable configuration type coverage", () => {
     ]);
     expect(buildInfoFiles.every((path) => typeof path === "string" && path.length > 0)).toBe(true);
     expect(new Set(buildInfoFiles).size).toBe(projects.length);
+    // Every leaf is noEmit, so without incremental mode the `build` script's
+    // `tsc -b` and the editor re-check all four projects on every run instead of
+    // reusing the build-info files above. `type-check` opts out with `--force`:
+    // incremental state does not reliably invalidate on external `.d.ts` changes,
+    // so the gate re-checks from scratch rather than false-green on stale info.
+    expect(
+      [...resolvedProjects.values()].map((project) => project.compilerOptions?.incremental),
+    ).toEqual(projects.map(() => true));
     expect(buildPlan).toContain("tsconfig.config.json");
     expect(buildPlan).toContain("tsconfig.e2e.json");
-    expect(parsedConfig.files).toEqual(["./vite.config.ts", "./vitest.config.ts"]);
-    expect(parsedConfig.compilerOptions).toMatchObject({ types: ["node"] });
-    expect(e2eConfig.compilerOptions).toMatchObject({
+    expect(parsedConfig?.files).toEqual([
+      "./vite.config.ts",
+      "./vite.embedded.config.ts",
+      "./vitest.config.ts",
+    ]);
+    expect(parsedConfig?.compilerOptions).toMatchObject({ types: ["node"] });
+    expect(e2eConfig?.compilerOptions).toMatchObject({
       tsBuildInfoFile: "./node_modules/.tmp/tsconfig.e2e.tsbuildinfo",
-      types: ["node", "vite/client", "@playwright/test"],
+      types: ["node", "vite/client"],
     });
     const discoveredE2eFiles = discoverE2eTypeScriptFiles(packageRoot);
     expect(discoveredE2eFiles.length).toBeGreaterThan(0);
     for (const file of discoveredE2eFiles) {
-      expect(e2eConfig.files, `${file} should be included in tsconfig.e2e`).toContain(file);
+      expect(e2eConfig?.files, `${file} should be included in tsconfig.e2e`).toContain(file);
     }
   });
 });

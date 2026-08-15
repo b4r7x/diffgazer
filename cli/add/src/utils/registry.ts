@@ -42,19 +42,46 @@ export function getInstallDirForBase(
     stylesFsPath: string;
   },
 ): string {
-  if (base === "components") return config.componentsFsPath;
-  if (base === "hooks") return config.hooksFsPath;
-  if (base === "lib") return config.libFsPath;
-  return config.stylesFsPath;
+  switch (base) {
+    case "components":
+      return config.componentsFsPath;
+    case "hooks":
+      return config.hooksFsPath;
+    case "lib":
+      return config.libFsPath;
+    case "styles":
+      return config.stylesFsPath;
+    default: {
+      const exhaustive: never = base;
+      throw new Error(`Unhandled registry install base: ${String(exhaustive)}`);
+    }
+  }
 }
 
 function applyIntegrationRewrite(
   content: string,
   integrationMode: ManifestIntegrationMode | undefined,
 ): string {
-  if (integrationMode === "@diffgazer/keys") return rewriteLocalImportsForKeysPackage(content);
-  if (integrationMode === "copy") return rewriteKeysPackageImportsForCopy(content);
-  return content;
+  switch (integrationMode) {
+    case "@diffgazer/keys":
+      return rewriteLocalImportsForKeysPackage(content);
+    case "copy":
+      return rewriteKeysPackageImportsForCopy(content);
+    case "none":
+    case undefined:
+      return content;
+    default: {
+      const exhaustive: never = integrationMode;
+      throw new Error(`Unhandled integration mode: ${String(exhaustive)}`);
+    }
+  }
+}
+
+export function prepareKeysHookFileContent(
+  content: string,
+  config: Pick<ResolvedConfig, "aliases">,
+): string {
+  return transformImports(stripRelativeJsExtensions(content), config.aliases);
 }
 
 export function prepareFileContentForIntegration(

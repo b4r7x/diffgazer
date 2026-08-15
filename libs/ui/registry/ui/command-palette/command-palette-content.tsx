@@ -109,12 +109,15 @@ export function CommandPaletteContent({
     inputRef.current?.focus();
   }, [inputRef]);
 
-  const handleClose = useCallback(() => {
+  // Not memoized: useFocusRestore hands back a fresh object every render, so a
+  // useCallback keyed on it could never hit. DialogShell does not need a stable
+  // identity here either.
+  const handleClose = () => {
     const view = shellRef.current?.ownerDocument.defaultView ?? globalThis;
     view.requestAnimationFrame(() => {
       focusRestore.restore();
     });
-  }, [focusRestore]);
+  };
 
   const inner = (
     <PortalContainerProvider container={container}>

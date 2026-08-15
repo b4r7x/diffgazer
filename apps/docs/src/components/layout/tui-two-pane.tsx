@@ -33,7 +33,10 @@ export function TuiTwoPane({
     restoreFocus: true,
   });
 
-  const closeSidebar = () => setSidebarOpen(false);
+  const closeSidebar = () => {
+    lastSidebarFocusRef.current = null;
+    setSidebarOpen(false);
+  };
   const sidebarNode = sidebar(closeSidebar);
 
   useKey("escape", closeSidebar, { enabled: sidebarOpen && !isDesktop, preventDefault: true });
@@ -42,6 +45,10 @@ export function TuiTwoPane({
   // (the global 404) must not inherit an open one.
   useEffect(() => () => setSidebarOpen(false), [setSidebarOpen]);
 
+  // Going desktop CSS-hides the menu button the drawer trap restores focus to,
+  // so the drawer's last focus position is reclaimed on the static sidebar. Only
+  // a drawer the viewport closed qualifies: `closeSidebar` drops the position,
+  // so a later resize never pulls the reader off whatever they moved to.
   useEffect(() => {
     if (!isDesktop) return;
     const target = lastSidebarFocusRef.current;

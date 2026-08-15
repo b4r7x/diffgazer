@@ -76,6 +76,18 @@ describe("getAvailableIssueTabs", () => {
       "patch",
     ]);
   });
+
+  it("omits the patch tab for a whitespace-only patch", () => {
+    expect(
+      getAvailableIssueTabs({ ...createReviewIssue("a"), suggested_patch: "   \n\t " }),
+    ).toEqual(["details", "explain"]);
+  });
+
+  it("keeps a patch whose surrounding whitespace is part of the diff", () => {
+    expect(
+      getAvailableIssueTabs({ ...createReviewIssue("a"), suggested_patch: "  -old\n  +new\n" }),
+    ).toEqual(["details", "explain", "patch"]);
+  });
 });
 
 describe("clampIssueTab", () => {
@@ -119,6 +131,39 @@ describe("useIssueDetailsState", () => {
     expect(result.current.completedSteps.size).toBe(0);
 
     rerender(issueA);
+    expect([...result.current.completedSteps]).toEqual([1]);
+  });
+
+  it("tracks reserved-key issue ids independently across switches", () => {
+    const protoIssue = createReviewIssue("__proto__");
+    const constructorIssue = createReviewIssue("constructor");
+    const { result, rerender } = renderHook((issue: ReviewIssue) => useIssueDetailsState(issue), {
+      initialProps: protoIssue,
+    });
+
+    act(() => result.current.toggleStep(1));
+    expect([...result.current.completedSteps]).toEqual([1]);
+
+    rerender(constructorIssue);
+    expect(result.current.completedSteps.size).toBe(0);
+
+    act(() => result.current.toggleStep(2));
+    expect([...result.current.completedSteps]).toEqual([2]);
+
+    rerender(protoIssue);
+    expect([...result.current.completedSteps]).toEqual([1]);
+
+    rerender(constructorIssue);
+    expect([...result.current.completedSteps]).toEqual([2]);
+  });
+
+  it("returns a new completed-steps reference after toggle", () => {
+    const { result } = renderHook(() => useIssueDetailsState(createReviewIssue("a")));
+    const before = result.current.completedSteps;
+
+    act(() => result.current.toggleStep(1));
+
+    expect(result.current.completedSteps).not.toBe(before);
     expect([...result.current.completedSteps]).toEqual([1]);
   });
 

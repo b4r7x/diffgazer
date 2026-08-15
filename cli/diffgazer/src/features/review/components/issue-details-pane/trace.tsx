@@ -1,4 +1,5 @@
-import { type IssueDetailsPresentation, sanitizeTerminalText } from "@diffgazer/core/review";
+import type { IssueDetailsPresentation } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { Box, Text } from "ink";
 import { ScrollArea } from "../../../../components/ui/scroll-area";
 import { SectionHeader } from "../../../../components/ui/section-header";
@@ -22,7 +23,7 @@ export function TraceTab({
   return (
     <ScrollArea height={scrollHeight} isActive={isActive} contentIdentity={issueId}>
       <Box flexDirection="column" gap={1} paddingTop={1}>
-        <SectionHeader variant="muted">Agent Trace</SectionHeader>
+        <SectionHeader variant="muted">Reported Trace</SectionHeader>
         {trace.map((step) => (
           <Box key={step.step} flexDirection="column">
             <Box gap={1}>

@@ -104,8 +104,14 @@ function getServerSnapshot(): StoreState {
   return INITIAL_STATE;
 }
 
-function scheduleAutoDismiss(id: string, tone: ToastTone, duration?: number) {
-  if ((tone === "error" || tone === "loading") && duration === undefined) return;
+function scheduleAutoDismiss(
+  id: string,
+  tone: ToastTone,
+  duration?: number,
+  variant: Toast["variant"] = "card",
+) {
+  if ((tone === "error" || tone === "loading") && duration === undefined && variant !== "hud")
+    return;
   const resolved = duration ?? DEFAULT_DURATION;
   if (!Number.isFinite(resolved) || resolved <= 0) return;
   timers().schedule(id, resolved, state.paused);
@@ -114,9 +120,15 @@ function scheduleAutoDismiss(id: string, tone: ToastTone, duration?: number) {
 function isEvictable(t: Toast): boolean {
   // Persistent toasts (with actions and no explicit duration) and
   // error/loading toasts without duration should not be evicted before
-  // transient toasts (WCAG 2.2.1 — enough time).
+  // transient toasts (WCAG 2.2.1 — enough time). HUD auto-dismisses like
+  // scheduleAutoDismiss, so error/loading HUD toasts remain evictable.
   if (t.action && t.duration === undefined) return false;
-  if ((t.tone === "error" || t.tone === "loading") && t.duration === undefined) return false;
+  if (
+    (t.tone === "error" || t.tone === "loading") &&
+    t.duration === undefined &&
+    t.variant !== "hud"
+  )
+    return false;
   return true;
 }
 
@@ -172,7 +184,7 @@ function create(options: ToastOptions): string {
   // Persist indefinitely only when there's a real, rendered action (WCAG 2.2.1).
   // HUD drops the action, so a HUD with an "action" still auto-dismisses.
   if (!effectiveAction || options.duration !== undefined) {
-    scheduleAutoDismiss(id, tone, options.duration);
+    scheduleAutoDismiss(id, tone, options.duration, variant);
   }
 
   const nextToasts = resolveNextToasts(state.toasts, newToast);

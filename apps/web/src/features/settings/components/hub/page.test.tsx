@@ -65,11 +65,11 @@ function createTestApi(init = shellInit): BoundApi {
   } satisfies BoundApi;
 }
 
-function renderPage(init = shellInit) {
+/** The one provider stack for this suite; every test renders through it. */
+function renderWithProviders(api: BoundApi) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  const api = createTestApi(init);
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -88,6 +88,10 @@ function renderPage(init = shellInit) {
   }
 
   return render(<SettingsHubPage />, { wrapper: Wrapper });
+}
+
+function renderPage(init = shellInit) {
+  return renderWithProviders(createTestApi(init));
 }
 
 describe("SettingsHubPage", () => {
@@ -160,6 +164,7 @@ describe("SettingsHubPage", () => {
     const trustRow = await screen.findByRole("menuitem", { name: /trust & permissions/i });
     await waitFor(() => {
       expect(trustRow).toHaveTextContent("Trusted");
+      expect(trustRow).not.toHaveTextContent("Not trusted");
     });
 
     // A chip rather than prose, so the affirmative state reads at a glance
@@ -169,14 +174,17 @@ describe("SettingsHubPage", () => {
     expect(container.textContent).not.toContain("✓");
   });
 
-  it("shows the settings load error in the footer instead of the default message", async () => {
+  it("renders init-sourced settings while a redundant settings query is still pending", async () => {
     mockGetSettings = vi
       .fn<BoundApi["getSettings"]>()
-      .mockRejectedValue(new Error("settings unavailable"));
+      .mockImplementation(() => new Promise(() => {}));
     renderPage();
 
-    expect(await screen.findByText("settings unavailable")).toBeVisible();
-    expect(screen.queryByText("local settings")).not.toBeInTheDocument();
+    const agentExecutionRow = await screen.findByRole("menuitem", { name: /agent execution/i });
+    expect(agentExecutionRow).toHaveTextContent("Parallel");
+    expect(screen.getByRole("menuitem", { name: /storage/i })).toHaveTextContent("Not set");
+    expect(screen.queryByText("Loading")).not.toBeInTheDocument();
+    expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
   });
 
   it("names the persistent settings menu so it is not an unlabeled role=menu", async () => {
@@ -190,36 +198,6 @@ describe("SettingsHubPage", () => {
 
     await user.click(await screen.findByRole("menuitem", { name: /trust & permissions/i }));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings/trust-permissions" });
-  });
-
-  it("shows the trusted state when the repository grants repository access", async () => {
-    const api = createTestApi();
-    Object.assign(api, makeShellApiOverrides(trustedShellInit));
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    });
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ApiProvider value={api}>
-          <ConfigProvider>
-            <ThemeProvider>
-              <FooterProvider>
-                <KeyboardProvider>
-                  <SettingsHubPage />
-                </KeyboardProvider>
-              </FooterProvider>
-            </ThemeProvider>
-          </ConfigProvider>
-        </ApiProvider>
-      </QueryClientProvider>,
-    );
-
-    const trustRow = await screen.findByRole("menuitem", { name: /trust & permissions/i });
-    await waitFor(() => {
-      expect(trustRow).toHaveTextContent("Trusted");
-      expect(trustRow).not.toHaveTextContent("Not trusted");
-    });
   });
 
   it("shows not trusted when repository access belongs to the previous root", async () => {
@@ -237,27 +215,7 @@ describe("SettingsHubPage", () => {
         },
       },
     });
-    const api = createTestApi();
-    Object.assign(api, makeShellApiOverrides(movedInit));
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    });
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ApiProvider value={api}>
-          <ConfigProvider>
-            <ThemeProvider>
-              <FooterProvider>
-                <KeyboardProvider>
-                  <SettingsHubPage />
-                </KeyboardProvider>
-              </FooterProvider>
-            </ThemeProvider>
-          </ConfigProvider>
-        </ApiProvider>
-      </QueryClientProvider>,
-    );
+    renderPage(movedInit);
 
     const trustRow = await screen.findByRole("menuitem", { name: /trust & permissions/i });
     await waitFor(() => {
@@ -265,28 +223,8 @@ describe("SettingsHubPage", () => {
     });
   });
 
-  it("preserves trusted init data when configuration init keeps working", async () => {
-    const api = createTestApi();
-    Object.assign(api, makeShellApiOverrides(trustedShellInit));
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    });
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ApiProvider value={api}>
-          <ConfigProvider>
-            <ThemeProvider>
-              <FooterProvider>
-                <KeyboardProvider>
-                  <SettingsHubPage />
-                </KeyboardProvider>
-              </FooterProvider>
-            </ThemeProvider>
-          </ConfigProvider>
-        </ApiProvider>
-      </QueryClientProvider>,
-    );
+  it("carries the trusted row and the selected provider from one init response", async () => {
+    renderPage(trustedShellInit);
 
     const trustRow = await screen.findByRole("menuitem", { name: /trust & permissions/i });
     await waitFor(() => {
@@ -301,27 +239,10 @@ describe("SettingsHubPage", () => {
   it("shows an init error instead of false settings defaults", async () => {
     const api = createTestApi();
     vi.mocked(api.loadConfigurationInit).mockRejectedValue(new Error("init unavailable"));
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    });
+    renderWithProviders(api);
 
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ApiProvider value={api}>
-          <ConfigProvider>
-            <ThemeProvider>
-              <FooterProvider>
-                <KeyboardProvider>
-                  <SettingsHubPage />
-                </KeyboardProvider>
-              </FooterProvider>
-            </ThemeProvider>
-          </ConfigProvider>
-        </ApiProvider>
-      </QueryClientProvider>,
-    );
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("Configuration unavailable.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Configuration Unavailable");
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
     expect(screen.queryByText("Not trusted")).not.toBeInTheDocument();
     expect(screen.queryByText("Not configured")).not.toBeInTheDocument();
   });

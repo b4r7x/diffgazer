@@ -14,7 +14,11 @@ pnpm --filter @diffgazer/landing dev
 pnpm --filter @diffgazer/landing build
 pnpm --filter @diffgazer/landing preview
 pnpm --filter @diffgazer/landing type-check
+pnpm --filter @diffgazer/landing check
 pnpm --filter @diffgazer/landing test
+pnpm --filter @diffgazer/landing test:e2e
 ```
+
+`test:e2e` runs Playwright against `dist/`, so run `build` first.
 
 `apps/landing/src/boundary.test.ts` enforces the private landing boundary: `@diffgazer/ui` is the only workspace dependency declared or imported from source.

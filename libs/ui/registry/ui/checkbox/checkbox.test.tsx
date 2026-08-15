@@ -390,9 +390,7 @@ describe("Checkbox", () => {
     );
   });
 
-  // touch-target contract (mobile campaign): pointer-coarse hit-area is the public contract; jsdom
-  // cannot measure layout.
-  it("row reserves a 44px coarse-pointer touch target", () => {
+  it("applies the documented coarse-pointer min-height token to the row recipe", () => {
     render(<Checkbox label="Accept terms" />);
     expect(screen.getByRole("checkbox", { name: /accept terms/i })).toHaveClass(
       "pointer-coarse:min-h-11",

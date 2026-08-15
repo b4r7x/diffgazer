@@ -39,7 +39,8 @@ export function escapeRegExp(value: string): string {
 const PRIVATE_KEY_PATTERN =
   /-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]*?-----END [A-Z ]+PRIVATE KEY-----/gi;
 const AUTH_HEADER_PATTERN =
-  /\b(?:authorization|proxy-authorization|cookie|set-cookie)\s*[:=]\s*(?:(?:bearer|basic)\s+)?[^\s,;]+/gi;
+  /\b(?:authorization|proxy-authorization)\s*[:=]\s*(?:(?:bearer|basic)\s+)?[^\s,;]+/gi;
+const COOKIE_HEADER_PATTERN = /\b(?:cookie|set-cookie)\s*[:=]\s*[^\n]*/gi;
 const BEARER_PATTERN = /\b(?:bearer|basic)\s+[^\s,;]+/gi;
 const SECRET_ASSIGNMENT_PATTERN =
   /\b(?:api(?:[-_ ]?key)|access[-_ ]?token|auth(?:orization)?|credential|password|passwd|secret|token|private[-_ ]?key|client[-_ ]?secret)\b\s*(?:[:=]|\bis\s*)\s*["'`]?[^\s"'`,;)}\]]+/gi;
@@ -47,8 +48,11 @@ const SECRET_FLAG_PATTERN =
   /--?(?:api(?:[-_ ]?key)|auth(?:orization)?|bearer|cookie|credential|password|secret|token)\s+(?:["'`][^"'`]+["'`]|[^\s]+)/gi;
 const ENV_SECRET_PATTERN =
   /\b[A-Z][A-Z0-9]*(?:[_-](?:API[_-]?KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH(?:ORIZATION)?|COOKIE))\b\s*=\s*[^\s,;]+/g;
+// The prefixed key families all carry their own separator (`sk-…`, `ghp_…`), so
+// requiring it here keeps ordinary words like "pkg-config" or "skipping-checks"
+// out of the match without losing a documented key shape.
 const TOKEN_PATTERN =
-  /\b(?:sk|pk|rk|ghp|github_pat|AIza|ya29|xox[baprs]-)[A-Za-z0-9._~+\x2f-]{8,}=*/gi;
+  /\b(?:(?:sk|pk|rk)-|ghp_|github_pat_|AIza|ya29|xox[baprs]-)[A-Za-z0-9._~+\x2f-]{8,}=*/gi;
 const ACCOUNT_ASSIGNMENT_PATTERN =
   /\b(?:account(?:[-_ ]?id)?|workspace(?:[-_ ]?id)?|organization(?:[-_ ]?id)?|org(?:[-_ ]?id)?|tenant(?:[-_ ]?id)?|project(?:[-_ ]?id)?|subscription(?:[-_ ]?id)?)\b\s*(?:[:=]|\bis\s*)\s*["'`]?[^\s"'`,;)}\]]+/gi;
 const ACCOUNT_IDENTIFIER_PATTERN =
@@ -56,6 +60,7 @@ const ACCOUNT_IDENTIFIER_PATTERN =
 
 const CREDENTIAL_PATTERNS: readonly RegExp[] = [
   PRIVATE_KEY_PATTERN,
+  COOKIE_HEADER_PATTERN,
   AUTH_HEADER_PATTERN,
   BEARER_PATTERN,
   SECRET_ASSIGNMENT_PATTERN,

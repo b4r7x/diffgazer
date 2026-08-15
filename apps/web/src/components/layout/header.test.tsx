@@ -80,6 +80,25 @@ describe("Header", () => {
     expect(status).toHaveTextContent(/^Google Gemini \/ gemini-3-flash-preview\s*·\s*pending$/);
   });
 
+  it("renders a redundant status once, never 'Configuration unavailable · unavailable'", () => {
+    const unavailableStatus: ProviderDisplayStatus = {
+      status: "unconfigured",
+      action: "create",
+      label: "Unavailable",
+      shortLabel: "unavailable",
+      variant: "warning",
+      explanation: "",
+      remediation: "",
+      accessibleText: "Configuration unavailable",
+    };
+    render(<Header providerName="Configuration unavailable" providerStatus={unavailableStatus} />);
+
+    const chip = screen.getByLabelText(
+      "Provider: Configuration unavailable, Unavailable; server live",
+    );
+    expect(chip).toHaveTextContent(/^Configuration unavailable$/);
+  });
+
   it("keeps the connection status visible when the model name truncates", () => {
     const longModel = "OpenAI / a-very-long-provider-model-name-that-overflows-the-mobile-row";
     render(<Header providerName={longModel} providerStatus={readyStatus} onBack={() => {}} />);

@@ -1,6 +1,7 @@
-import { type IssueDetailsPresentation, sanitizeTerminalText } from "@diffgazer/core/review";
+import { type IssueDetailsPresentation, toEvidencePresentation } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { SEVERITY_LABELS } from "@diffgazer/core/schemas/presentation";
-import { type ReviewIssue, toEvidencePresentation } from "@diffgazer/core/schemas/review";
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import { Badge } from "../../../../components/ui/badge";
 import { ScrollArea } from "../../../../components/ui/scroll-area";
@@ -20,7 +21,7 @@ export function DetailsTab({
   presentation,
 }: {
   issue: ReviewIssue;
-  completedSteps: Set<number>;
+  completedSteps: ReadonlySet<number>;
   onToggleStep: (step: number) => void;
   subZone: "body" | "fix-plan";
   scrollHeight: number;

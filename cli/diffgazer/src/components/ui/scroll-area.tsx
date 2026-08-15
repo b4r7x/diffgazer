@@ -11,7 +11,7 @@ interface BaseScrollAreaProps {
   contentIdentity?: unknown;
 }
 
-export interface ScrollRange {
+interface ScrollRange {
   start: number;
   end: number;
 }

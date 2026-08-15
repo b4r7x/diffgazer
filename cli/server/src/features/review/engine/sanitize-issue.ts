@@ -1,4 +1,4 @@
-import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 
 /**
@@ -11,6 +11,11 @@ import type { ReviewIssue } from "@diffgazer/core/schemas/review";
  * target, details lookup), never terminal-rendered, and sanitizing it would
  * collapse two distinct findings whose ids differ only in control bytes into one
  * selection identity.
+ *
+ * Optional fields are re-emitted through conditional spreads so an absent field
+ * stays an absent key. `field: issue.field?.map(...)` would materialize an
+ * undefined-valued key, which canonical JSON rejects when the saved review is
+ * validated against its execution result.
  */
 export function sanitizeIssue(issue: ReviewIssue): ReviewIssue {
   return {
@@ -23,8 +28,12 @@ export function sanitizeIssue(issue: ReviewIssue): ReviewIssue {
     whyItMatters: sanitizeTerminalText(issue.whyItMatters),
     suggested_patch:
       issue.suggested_patch === null ? null : sanitizeTerminalText(issue.suggested_patch),
-    betterOptions: issue.betterOptions?.map(sanitizeTerminalText),
-    testsToAdd: issue.testsToAdd?.map(sanitizeTerminalText),
+    ...(issue.betterOptions === undefined
+      ? {}
+      : { betterOptions: issue.betterOptions.map(sanitizeTerminalText) }),
+    ...(issue.testsToAdd === undefined
+      ? {}
+      : { testsToAdd: issue.testsToAdd.map(sanitizeTerminalText) }),
     evidence: issue.evidence.map((ref) => ({
       ...ref,
       title: sanitizeTerminalText(ref.title),
@@ -33,20 +42,28 @@ export function sanitizeIssue(issue: ReviewIssue): ReviewIssue {
       ...(ref.sha === undefined ? {} : { sha: sanitizeTerminalText(ref.sha) }),
       excerpt: sanitizeTerminalText(ref.excerpt),
     })),
-    fixPlan: issue.fixPlan?.map((step) => ({
-      ...step,
-      action: sanitizeTerminalText(step.action),
-      ...(step.files === undefined ? {} : { files: step.files.map(sanitizeTerminalText) }),
-    })),
-    trace: issue.trace?.map((step) => ({
-      ...step,
-      tool: sanitizeTerminalText(step.tool),
-      inputSummary: sanitizeTerminalText(step.inputSummary),
-      outputSummary: sanitizeTerminalText(step.outputSummary),
-      timestamp: sanitizeTerminalText(step.timestamp),
-      ...(step.artifacts === undefined
-        ? {}
-        : { artifacts: step.artifacts.map(sanitizeTerminalText) }),
-    })),
+    ...(issue.fixPlan === undefined
+      ? {}
+      : {
+          fixPlan: issue.fixPlan.map((step) => ({
+            ...step,
+            action: sanitizeTerminalText(step.action),
+            ...(step.files === undefined ? {} : { files: step.files.map(sanitizeTerminalText) }),
+          })),
+        }),
+    ...(issue.trace === undefined
+      ? {}
+      : {
+          trace: issue.trace.map((step) => ({
+            ...step,
+            tool: sanitizeTerminalText(step.tool),
+            inputSummary: sanitizeTerminalText(step.inputSummary),
+            outputSummary: sanitizeTerminalText(step.outputSummary),
+            timestamp: sanitizeTerminalText(step.timestamp),
+            ...(step.artifacts === undefined
+              ? {}
+              : { artifacts: step.artifacts.map(sanitizeTerminalText) }),
+          })),
+        }),
   };
 }

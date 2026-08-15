@@ -1,20 +1,27 @@
 import type { ProviderListRow } from "@diffgazer/core/providers";
-import { getBillingTier } from "@diffgazer/core/providers";
+import {
+  getBillingTier,
+  offersFreeModels,
+  UNRECOGNIZED_CONFIGURATION_COPY,
+} from "@diffgazer/core/providers";
+import type { UnrecognizedConfiguration } from "@diffgazer/core/schemas/config";
 
 export const PROVIDER_FILTERS = ["all", "configured", "needs-key", "free", "paid"] as const;
 export type ProviderFilter = (typeof PROVIDER_FILTERS)[number];
 
-export const PROVIDER_FILTER_LABELS: { value: ProviderFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "configured", label: "Configured" },
-  { value: "needs-key", label: "Needs Setup" },
-  { value: "free", label: "Free" },
-  { value: "paid", label: "Paid" },
-];
+const FILTER_LABELS: Record<ProviderFilter, string> = {
+  all: "All",
+  configured: "Configured",
+  "needs-key": "Needs Setup",
+  free: "Free",
+  paid: "Paid",
+};
 
-function isRemovedRow(row: ProviderListRow): boolean {
-  return row.product.status === "removed";
-}
+// The keyboard layer records a filter as its index in PROVIDER_FILTERS and the
+// list resolves that index back through this array, so the two must share one
+// ordering. Deriving it from the tuple is what keeps them aligned.
+export const PROVIDER_FILTER_LABELS: { value: ProviderFilter; label: string }[] =
+  PROVIDER_FILTERS.map((value) => ({ value, label: FILTER_LABELS[value] }));
 
 // "Configured" means a stored configuration exists; readiness (e.g. pending
 // conformance) is a separate axis and must not hide the row from this filter.
@@ -22,7 +29,13 @@ function hasConfiguration(row: ProviderListRow): boolean {
   return row.configuration !== null;
 }
 
-function hasFreeTier(row: ProviderListRow): boolean {
+// A product selling both free and priced review-capable models belongs under
+// both filters; hiding it from either would misdescribe half its catalog.
+function hasFreeModels(row: ProviderListRow): boolean {
+  return offersFreeModels(getBillingTier(row.product.productId));
+}
+
+function hasOnlyFreeModels(row: ProviderListRow): boolean {
   return getBillingTier(row.product.productId) === "free";
 }
 
@@ -37,17 +50,16 @@ export function filterProviders(
   filter: ProviderFilter,
   searchQuery = "",
 ): ProviderListRow[] {
-  // Removed configuration records stay in the data layer but never render in the list.
-  let filtered = providers.filter((row) => !isRemovedRow(row));
+  let filtered = providers;
 
   if (filter === "configured") {
     filtered = filtered.filter(hasConfiguration);
   } else if (filter === "needs-key") {
     filtered = filtered.filter((row) => !hasConfiguration(row));
   } else if (filter === "free") {
-    filtered = filtered.filter(hasFreeTier);
+    filtered = filtered.filter(hasFreeModels);
   } else if (filter === "paid") {
-    filtered = filtered.filter((row) => !hasFreeTier(row));
+    filtered = filtered.filter((row) => !hasOnlyFreeModels(row));
   }
 
   const trimmed = searchQuery.trim();
@@ -57,4 +69,25 @@ export function filterProviders(
   }
 
   return filtered;
+}
+
+/**
+ * A record this build could not decode is still a stored configuration, so it
+ * belongs under All and Configured. Every other filter asks about a product it
+ * has none of, so it is not offered there.
+ */
+export function filterUnrecognizedConfigurations(
+  configurations: readonly UnrecognizedConfiguration[],
+  filter: ProviderFilter,
+  searchQuery = "",
+): UnrecognizedConfiguration[] {
+  if (filter !== "all" && filter !== "configured") return [];
+
+  const query = searchQuery.trim().toLowerCase();
+  if (!query) return [...configurations];
+
+  const label = UNRECOGNIZED_CONFIGURATION_COPY.label.toLowerCase();
+  return configurations.filter(
+    ({ configurationId }) => configurationId.toLowerCase().includes(query) || label.includes(query),
+  );
 }

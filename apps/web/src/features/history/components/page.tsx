@@ -1,13 +1,15 @@
 import { matchQueryState } from "@diffgazer/core/api/hooks";
-import { formatRunId } from "@diffgazer/core/format";
+import type { RunIdLookup } from "@diffgazer/core/format";
 import { deriveTrustStatus } from "@diffgazer/core/navigation";
 import {
   buildHistoryWarningMessages,
   deriveHistoryDetailState,
+  getHistoryWarningTargetIds,
   HISTORY_SEARCH_PLACEHOLDER,
+  HISTORY_WARNING_TARGET_SAMPLE_SIZE,
+  type HistoryWarningSummary,
   summarizeHistoryWarnings,
 } from "@diffgazer/core/review";
-import type { ReviewListWarning } from "@diffgazer/core/schemas/review";
 import { pluralize } from "@diffgazer/core/strings";
 import { isListNavigationKey } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
@@ -18,7 +20,7 @@ import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SearchInput } from "@diffgazer/ui/components/search-input";
 import { useNavigate } from "@tanstack/react-router";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, RefObject } from "react";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { FailureView } from "@/components/shared/failure-view";
@@ -30,16 +32,59 @@ import { useHistoryPage } from "@/features/history/hooks/use-page";
 import { useConfigData } from "@/hooks/use-config";
 import { useFocusWithin } from "@/hooks/use-focus-within";
 
-function HistoryWarnings({ warnings }: { warnings: readonly ReviewListWarning[] }) {
-  const messages = buildHistoryWarningMessages(summarizeHistoryWarnings(warnings));
-  if (messages.length === 0) return null;
+const HISTORY_WARNING_SCROLL_HINT_ID = "history-warning-scroll-hint";
 
+function HistoryWarnings({
+  summary,
+  runIdLookup,
+  targetIds,
+  warningRef,
+  onFocus,
+}: {
+  summary: HistoryWarningSummary;
+  runIdLookup: RunIdLookup;
+  targetIds: readonly string[];
+  warningRef: RefObject<HTMLDivElement | null>;
+  onFocus: () => void;
+}) {
+  const messages = buildHistoryWarningMessages(summary, runIdLookup, {
+    maxTargetIds: HISTORY_WARNING_TARGET_SAMPLE_SIZE,
+  });
+
+  // Keep the live copy separate from the scrollable detail so screen readers do
+  // not announce every ID in a large warning batch.
   return (
-    <output className="shrink-0 mb-1 block space-y-1 text-sm text-warning-text">
-      {messages.map((message) => (
-        <p key={message}>{message}</p>
-      ))}
-    </output>
+    <div className="shrink-0 break-words text-sm text-warning-text">
+      <div
+        aria-atomic="true"
+        aria-live="polite"
+        className={messages.length > 0 ? "mb-1" : undefined}
+      >
+        {messages.map((message) => (
+          <p key={message}>{message}</p>
+        ))}
+      </div>
+      {targetIds.length > 0 ? (
+        <ScrollArea
+          ref={warningRef}
+          aria-label="History warnings"
+          aria-describedby={HISTORY_WARNING_SCROLL_HINT_ID}
+          className="max-h-24 space-y-1"
+          onFocus={onFocus}
+        >
+          <p id={HISTORY_WARNING_SCROLL_HINT_ID} className="sr-only">
+            Focus this region to scroll warnings with Arrow Up, Arrow Down, Page Up, Page Down,
+            Home, or End.
+          </p>
+          <p className="sr-only">All affected review IDs</p>
+          <ul aria-label="All affected review IDs">
+            {targetIds.map((id) => (
+              <li key={id}>{`${runIdLookup.get(id) ?? id} ${id}`}</li>
+            ))}
+          </ul>
+        </ScrollArea>
+      ) : null}
+    </div>
   );
 }
 
@@ -52,7 +97,7 @@ export function HistoryPage() {
 
   const { isTrusted } = deriveTrustStatus({ trust, projectId, repoRoot });
 
-  if (!isTrusted && projectId && repoRoot) {
+  if (!isTrusted && repoRoot) {
     return <TrustPanel directory={repoRoot} />;
   }
 
@@ -63,9 +108,11 @@ function HistoryPageContent() {
   const {
     reviewsQuery,
     reviewDetailQuery,
+    runIdLookup,
     focusZone,
     searchQuery,
     searchInputRef,
+    warningsRef,
     timelineRef,
     runsListRef,
     loadMoreRef,
@@ -100,6 +147,10 @@ function HistoryPageContent() {
     setHighlightedIssueId,
   } = useHistoryPage();
   const navigate = useNavigate();
+  const hasLoadedReviews = reviewsQuery.data !== undefined;
+  const warnings = reviewsQuery.data?.warnings ?? [];
+  const warningSummary = summarizeHistoryWarnings(warnings);
+  const warningSummaryTargetIds = getHistoryWarningTargetIds(warningSummary);
 
   const insightsDetailState = deriveHistoryDetailState({
     isLoading: reviewDetailQuery.isLoading,
@@ -108,7 +159,7 @@ function HistoryPageContent() {
   });
 
   useHistoryKeyboard({
-    enabled: reviewsQuery.isSuccess,
+    enabled: hasLoadedReviews,
     focusZone,
     setFocusZone,
     activeRunId: selectedRunId,
@@ -116,7 +167,9 @@ function HistoryPageContent() {
     hasMore: hasMoreReviews,
     hasInsights: insightsDetailState.status === "ready" && sortedIssues.length > 0,
     hasRetry: insightsDetailState.status === "error",
+    hasWarnings: warningSummaryTargetIds.length > 0,
     searchInputRef,
+    warningsRef,
     timelineRef,
     runsListRef,
     loadMoreRef,
@@ -133,39 +186,74 @@ function HistoryPageContent() {
   const runsFocus = useFocusWithin<HTMLElement>();
   const insightsFocus = useFocusWithin<HTMLElement>();
 
+  // Space is deliberately absent: NavigationList already routes it to onSelect,
+  // and pre-empting it here would break the primitive's multi-word typeahead.
   const handleRunsKeyDown = (event: KeyboardEvent) => {
-    if (focusZone !== "runs") {
-      if (isListNavigationKey(event.key)) event.preventDefault();
-      return;
-    }
-
-    if (event.key === " " && selectedRunId) {
-      event.preventDefault();
-      handleRunActivate(selectedRunId);
-    }
+    if (focusZone !== "runs" && isListNavigationKey(event.key)) event.preventDefault();
   };
 
-  const guard = matchQueryState(reviewsQuery, {
-    loading: () => <CenteredStatus>Loading runs...</CenteredStatus>,
-    error: (err) => (
-      <FailureView
-        title="Reviews Unavailable"
-        message={`Diffgazer could not read the review history. ${err.message}`}
-        scope="history-error"
-        primary={{ label: "Retry", onAction: () => void reviewsQuery.refetch() }}
-        secondary={{ label: "Back to Home", onAction: () => void navigate({ to: "/" }) }}
-      />
-    ),
-    success: () => null,
-  });
+  const warningRegion = (
+    <HistoryWarnings
+      summary={warningSummary}
+      runIdLookup={runIdLookup}
+      targetIds={warningSummaryTargetIds}
+      warningRef={warningsRef}
+      onFocus={() => setFocusZone("warnings")}
+    />
+  );
+  const guard = hasLoadedReviews
+    ? null
+    : matchQueryState(reviewsQuery, {
+        loading: () => <CenteredStatus>Loading runs...</CenteredStatus>,
+        error: (err) => (
+          <FailureView
+            title="Reviews Unavailable"
+            message={`Diffgazer could not read the review history. ${err.message}`}
+            scope="history-error"
+            primary={{ label: "Retry", onAction: () => void reviewsQuery.refetch() }}
+            secondary={{ label: "Back to Home", onAction: () => void navigate({ to: "/" }) }}
+          />
+        ),
+        success: () => null,
+      });
 
-  if (guard) return guard;
+  if (guard) {
+    return (
+      <div className="flex flex-col flex-1 overflow-hidden px-4 pt-2 pb-2">
+        {warningRegion}
+        {guard}
+      </div>
+    );
+  }
 
-  const warnings = reviewsQuery.data?.warnings ?? [];
+  const listFetchError =
+    hasLoadedReviews &&
+    reviewsQuery.error &&
+    !reviewsQuery.isFetchingNextPage &&
+    !reviewsQuery.isFetchNextPageError
+      ? reviewsQuery.error.message
+      : null;
+  const salvagedRunIds = new Set(warningSummary.droppedIssueReviewIds);
+  const selectedRunDisplayId = selectedRun ? (runIdLookup.get(selectedRun.id) ?? null) : null;
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pt-2 pb-2">
-      <HistoryWarnings warnings={warnings} />
+      {warningRegion}
+
+      {listFetchError ? (
+        <div role="alert" className="shrink-0 mb-2 text-sm text-error-text">
+          <p>Could not refresh the review list. {listFetchError}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            bracket
+            className="mt-2"
+            onClick={() => void reviewsQuery.refetch()}
+          >
+            Retry
+          </Button>
+        </div>
+      ) : null}
 
       <SearchInput
         ref={searchInputRef}
@@ -301,6 +389,11 @@ function HistoryPageContent() {
                       <NavigationList.Badge variant="neutral" size="sm">
                         {run.branch}
                       </NavigationList.Badge>
+                      {salvagedRunIds.has(run.id) ? (
+                        <NavigationList.Badge variant="warning" size="sm">
+                          Salvaged
+                        </NavigationList.Badge>
+                      ) : null}
                       <span className="min-w-full line-clamp-2 text-sm text-muted-foreground group-data-[highlighted]:text-primary-foreground/85">
                         {run.summary}
                       </span>
@@ -340,7 +433,12 @@ function HistoryPageContent() {
             {hasMoreReviews ? (
               // The list is full-bleed, so the button re-insets itself: a
               // border-to-border control would read as another run row.
-              <div className="px-2 pt-2">
+              <div className="space-y-2 px-2 pt-2">
+                {reviewsQuery.isFetchNextPageError && reviewsQuery.error ? (
+                  <p className="text-center text-2xs text-error-text">
+                    Could not load older runs. {reviewsQuery.error.message}
+                  </p>
+                ) : null}
                 <Button
                   ref={loadMoreRef}
                   variant="outline"
@@ -368,8 +466,8 @@ function HistoryPageContent() {
           <Panel.Label variant="border" aria-hidden="true">
             Insights
             {/* The run hash is data, not a label: keep its real casing. */}
-            {selectedRun ? (
-              <span className="normal-case"> · {formatRunId(selectedRun.id)}</span>
+            {selectedRunDisplayId ? (
+              <span className="normal-case">{` · ${selectedRunDisplayId}`}</span>
             ) : null}
           </Panel.Label>
           <HistoryInsightsPane

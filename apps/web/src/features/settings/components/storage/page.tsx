@@ -5,9 +5,9 @@ import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { useScope } from "@diffgazer/keys";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { useRef, useState } from "react";
-import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
 import { useSettingsFormActions } from "../../hooks/use-form-actions";
 import { SettingsFormPage } from "../form-page";
+import { StorageSelectorContent } from "./selector-content";
 
 export function SettingsStoragePage() {
   const focusFallbackRef = useRef<HTMLDivElement>(null);

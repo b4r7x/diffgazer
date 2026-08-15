@@ -2,12 +2,12 @@ import { createHash } from "node:crypto";
 import { constants as fsConstants } from "node:fs";
 import { access, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { sha256CanonicalJsonSync } from "@diffgazer/core/schemas/review";
+import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 
-export const FIXTURE_TREE_ENTRY_KINDS = ["file", "directory"] as const;
-export type FixtureTreeEntryKind = (typeof FIXTURE_TREE_ENTRY_KINDS)[number];
+const FIXTURE_TREE_ENTRY_KINDS = ["file", "directory"] as const;
+type FixtureTreeEntryKind = (typeof FIXTURE_TREE_ENTRY_KINDS)[number];
 
-export type FixtureTreeManifestEntry = Readonly<{
+type FixtureTreeManifestEntry = Readonly<{
   relativePath: string;
   kind: FixtureTreeEntryKind;
   executable: boolean;
@@ -15,7 +15,7 @@ export type FixtureTreeManifestEntry = Readonly<{
   sha256: string | null;
 }>;
 
-export type FixtureTreeManifest = Readonly<{
+type FixtureTreeManifest = Readonly<{
   entries: readonly FixtureTreeManifestEntry[];
 }>;
 
@@ -39,7 +39,7 @@ function sha256FileBytes(bytes: Buffer): string {
   return sha256Hex(bytes);
 }
 
-export function normalizeFixtureRelativePath(root: string, targetPath: string): string {
+function normalizeFixtureRelativePath(root: string, targetPath: string): string {
   const relative = path.relative(root, targetPath);
   return relative.split(path.sep).join("/");
 }
@@ -97,13 +97,13 @@ async function collectFixtureEntries(
   return entries;
 }
 
-export function sortFixtureManifestEntries(
+function sortFixtureManifestEntries(
   entries: readonly FixtureTreeManifestEntry[],
 ): FixtureTreeManifestEntry[] {
   return [...entries].sort((left, right) => left.relativePath.localeCompare(right.relativePath));
 }
 
-export function hashFixtureTreeManifest(manifest: FixtureTreeManifest): string {
+function hashFixtureTreeManifest(manifest: FixtureTreeManifest): string {
   const entries = sortFixtureManifestEntries(manifest.entries);
   return sha256CanonicalJsonSync({ entries });
 }

@@ -16,10 +16,16 @@ import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../../..");
 const outputDir = resolve(root, "artifacts/parity");
+const failures = [];
+
 function run(command, args, label, env = process.env) {
   const result = spawnSync(command, args, { cwd: root, env, stdio: "inherit" });
-  if (result.status !== 0) {
-    throw new Error(`${label} failed with exit code ${String(result.status)}`);
+  if (result.error) {
+    failures.push(`${label} failed to start: ${result.error.message}`);
+  } else if (result.signal) {
+    failures.push(`${label} terminated by signal ${result.signal}`);
+  } else if (typeof result.status === "number" && result.status !== 0) {
+    failures.push(`${label} failed with exit code ${result.status}`);
   }
 }
 
@@ -45,4 +51,9 @@ run(
   ],
   "TUI parity frames",
 );
+
+if (failures.length > 0) {
+  throw new Error(`Parity capture failed:\n${failures.join("\n")}`);
+}
+
 console.log(`Parity captures written to ${outputDir}`);

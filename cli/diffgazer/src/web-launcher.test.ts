@@ -1,6 +1,7 @@
 import { createServer as createTcpServer } from "node:net";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createServerFactories } from "./lib/servers/factories";
+import { formatProcessFailure } from "./lib/servers/process/output";
 import { createProcessServer } from "./lib/servers/process/server";
 import type { ServerController } from "./lib/servers/types";
 import { startWeb } from "./web-launcher";
@@ -27,6 +28,27 @@ describe("startWeb", () => {
     vi.restoreAllMocks();
     ensureShutdownToken.mockReset();
     process.exitCode = undefined;
+  });
+
+  it("runs the coordinated shutdown for a hangup, not only for SIGINT/SIGTERM", () => {
+    const server = createMockServer();
+    const once = vi.spyOn(process, "once").mockReturnValue(process);
+    const off = vi.spyOn(process, "off").mockReturnValue(process);
+
+    const dispose = startWeb(
+      { mode: "prod", openBrowser: false },
+      {
+        createServerFactories: () => [() => server],
+        ensureShutdownToken,
+        printBanner: vi.fn(),
+      },
+    );
+
+    const registered = once.mock.calls.map(([signal]) => signal);
+    expect(registered).toEqual(expect.arrayContaining(["SIGINT", "SIGTERM", "SIGHUP"]));
+
+    void dispose();
+    expect(off.mock.calls.map(([signal]) => signal)).toEqual(registered);
   });
 
   it("calls start on every created server", () => {
@@ -124,6 +146,42 @@ describe("startWeb", () => {
       expect(exit).toHaveBeenCalledWith(1);
     });
     expect(process.exitCode).toBe(1);
+  });
+
+  it("strips terminal escapes from a child-reported startup failure before printing it", async () => {
+    vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // An OSC-52 clipboard write hidden in the child's stderr tail: the escape
+    // takes effect the instant the bytes reach the terminal.
+    const clipboardWrite = `\u001b]52;c;${Buffer.from("rm -rf ~").toString("base64")}\u0007`;
+    const stderrTail = Buffer.from(`${clipboardWrite}Server exited before readiness`);
+
+    startWeb(
+      { mode: "dev", openBrowser: false },
+      {
+        ensureShutdownToken,
+        printBanner: vi.fn(),
+        createServerFactories: ({ onStartupFailure }) => [
+          () => ({
+            async start() {
+              onStartupFailure?.(
+                formatProcessFailure(new Error("spawn failed"), stderrTail, Buffer.alloc(0)),
+              );
+            },
+            stop: () => Promise.resolve(),
+          }),
+        ],
+      },
+    );
+
+    await vi.waitFor(() => {
+      expect(errorSpy).toHaveBeenCalled();
+    });
+    const printed = errorSpy.mock.calls.map(([value]) => String(value)).join("\n");
+    expect(printed).toContain("Server exited before readiness");
+    expect(printed).not.toContain("\u001b");
+    expect(printed).not.toContain("]52;c;");
   });
 
   it("stops the Vite peer and exits nonzero when the real dev API child hits EADDRINUSE", async () => {

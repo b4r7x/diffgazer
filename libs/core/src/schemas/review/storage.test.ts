@@ -1,24 +1,22 @@
 import { describe, expect, it } from "vitest";
+import { requireValue } from "../../testing/assertions.js";
 import { SAVED_REVIEW_EXECUTION_SCHEMA_VERSION } from "./enums.js";
-import { hashExecutionReceiptFingerprintSync } from "./execution.js";
+import {
+  type ExecutionResult,
+  hashExecutionReceiptFingerprintSync,
+  TERMINAL_OUTCOMES,
+} from "./execution.js";
 import {
   CreateReviewResponseSchema,
-  ParsedDiffSchema,
   ReviewCursorSchema,
   ReviewListWarningSchema,
   ReviewMetadataSchema,
   ReviewsResponseSchema,
+  resolveSavedReviewExecutionSnapshot,
   SavedReviewExecutionSnapshotSchema,
   SavedReviewSchema,
-  TERMINAL_OUTCOMES,
   toSavedReviewExecutionSnapshot,
 } from "./storage.js";
-
-describe("ParsedDiffSchema ownership", () => {
-  it("is the schema used by stored reviews", () => {
-    expect(SavedReviewSchema.shape.diff.unwrap()).toBe(ParsedDiffSchema);
-  });
-});
 
 describe("ReviewCursorSchema", () => {
   const cursor = "dg1_eyJvcGFxdWUiOiJjdXJzb3IifQ";
@@ -46,6 +44,7 @@ describe("ReviewListWarningSchema", () => {
   it.each([
     { kind: "unreadable_review", reviewId },
     { kind: "invalid_issues_dropped", reviewId, count: 2 },
+    { kind: "invalid_execution_dropped", reviewId },
     { kind: "index_build_failed" },
     { kind: "index_rewrite_failed" },
   ])("accepts the $kind warning", (warning) => {
@@ -55,6 +54,7 @@ describe("ReviewListWarningSchema", () => {
   it.each([
     { kind: "unreadable_review" },
     { kind: "invalid_issues_dropped", reviewId, count: 0 },
+    { kind: "invalid_execution_dropped" },
     { kind: "index_build_failed", reviewId },
     "[reviews] Failed to build project index",
   ])("rejects an invalid warning payload", (warning) => {
@@ -105,10 +105,14 @@ describe("ReviewMetadataSchema transform — mode backwards compat", () => {
     expect(result.mode).toBe(expectedMode);
   });
 
+  it("drops the legacy staged field from the canonical metadata", () => {
+    const result = ReviewMetadataSchema.parse({ ...baseMetadata, mode: "staged", staged: false });
+
+    expect(result).not.toHaveProperty("staged");
+  });
+
   it("applies default counts for missing severity fields", () => {
-    const result = ReviewMetadataSchema.parse({
-      ...baseMetadata,
-    });
+    const result = ReviewMetadataSchema.parse(baseMetadata);
 
     expect(result.blockerCount).toBe(0);
     expect(result.highCount).toBe(0);
@@ -188,12 +192,12 @@ const limits = {
   maxCostUsd: 0.5,
 } as const;
 
-function makeReceipt(outcome: (typeof TERMINAL_OUTCOMES)[number]) {
+function makeReceipt(outcome: (typeof TERMINAL_OUTCOMES)[number], configurationRevision = 3) {
   const receipt = {
     schemaVersion: 1 as const,
     executionFingerprint: "0".repeat(64),
     configurationId: "configuration-1",
-    configurationRevision: 3,
+    configurationRevision,
     credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
     installationId: null,
     productId: "openrouter" as const,
@@ -283,16 +287,12 @@ describe("SavedReview durable execution wire format", () => {
       gitContext: baseGitContext,
     });
 
-    const execution = saved.execution;
-    expect(execution?.receipt.usage).toEqual({
+    const execution = requireValue(saved.execution, "saved execution");
+    expect(execution.receipt.usage).toEqual({
       inputTokens: 100,
       outputTokens: 40,
       totalTokens: 140,
     });
-    expect(execution).toBeDefined();
-    if (!execution) {
-      return;
-    }
     const snapshot = toSavedReviewExecutionSnapshot(execution);
     expect(snapshot).toEqual({
       schemaVersion: SAVED_REVIEW_EXECUTION_SCHEMA_VERSION,
@@ -300,6 +300,60 @@ describe("SavedReview durable execution wire format", () => {
       receipt,
     });
     expect(SavedReviewExecutionSnapshotSchema.parse(snapshot)).toEqual(snapshot);
+
+    const { execution: _runtimeView, ...durable } = saved;
+
+    expect(durable).toEqual({
+      metadata: {
+        ...baseMetadata,
+        issueCount: 1,
+        blockerCount: 0,
+        highCount: 1,
+        mediumCount: 0,
+        lowCount: 0,
+        nitCount: 0,
+      },
+      result: { issues: [sampleIssue] },
+      executionSnapshot: snapshot,
+      gitContext: baseGitContext,
+    });
+    expect(durable.result.issues).toEqual([sampleIssue]);
+    expect(durable.executionSnapshot).not.toHaveProperty("result");
+    expect(SavedReviewSchema.parse(durable).execution).toEqual(execution);
+  });
+
+  it("derives executionSnapshot from raw execution when the snapshot field is absent", () => {
+    const receipt = makeReceipt("cancelled");
+    const execution = { receipt, result: { issues: [] } } as ExecutionResult;
+
+    expect(resolveSavedReviewExecutionSnapshot({ execution })).toEqual(
+      toSavedReviewExecutionSnapshot(execution),
+    );
+    expect(
+      resolveSavedReviewExecutionSnapshot({
+        execution,
+        executionSnapshot: toSavedReviewExecutionSnapshot(execution),
+      }),
+    ).toEqual(toSavedReviewExecutionSnapshot(execution));
+  });
+
+  it("derives the runtime execution view from a receipt-only snapshot", () => {
+    const receipt = makeReceipt("completed");
+    const parsed = SavedReviewSchema.parse({
+      metadata: { ...baseMetadata, issueCount: 1, highCount: 1 },
+      result: { issues: [sampleIssue] },
+      executionSnapshot: {
+        schemaVersion: SAVED_REVIEW_EXECUTION_SCHEMA_VERSION,
+        executionFingerprint: receipt.executionFingerprint,
+        receipt,
+      },
+      gitContext: baseGitContext,
+    });
+
+    expect(parsed.execution).toEqual({
+      receipt,
+      result: { issues: [sampleIssue] },
+    });
   });
 
   it.each(
@@ -312,6 +366,39 @@ describe("SavedReview durable execution wire format", () => {
         execution: {
           receipt: makeReceipt(outcome),
           result: { issues: [] },
+        },
+        gitContext: baseGitContext,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects completed executions whose top-level findings are empty", () => {
+    const receipt = makeReceipt("completed");
+
+    expect(
+      SavedReviewSchema.safeParse({
+        metadata: baseMetadata,
+        result: { issues: [] },
+        execution: {
+          receipt,
+          result: { issues: [sampleIssue] },
+        },
+        gitContext: baseGitContext,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects completed executions whose finding payload drifts behind the same id", () => {
+    const receipt = makeReceipt("completed");
+    const driftedIssue = { ...sampleIssue, severity: "medium" as const };
+
+    expect(
+      SavedReviewSchema.safeParse({
+        metadata: { ...baseMetadata, issueCount: 1, mediumCount: 1 },
+        result: { issues: [driftedIssue] },
+        execution: {
+          receipt,
+          result: { issues: [sampleIssue] },
         },
         gitContext: baseGitContext,
       }).success,
@@ -359,6 +446,51 @@ describe("SavedReview durable execution wire format", () => {
     ).toBe(false);
   });
 
+  it("rejects a snapshot whose fingerprint drifts from its own receipt", () => {
+    expect(
+      SavedReviewExecutionSnapshotSchema.safeParse({
+        schemaVersion: SAVED_REVIEW_EXECUTION_SCHEMA_VERSION,
+        executionFingerprint: "f".repeat(64),
+        receipt: makeReceipt("completed"),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a receipt-only review whose snapshot fingerprint drifts from its receipt", () => {
+    expect(
+      SavedReviewSchema.safeParse({
+        metadata: baseMetadata,
+        result: { issues: [] },
+        executionSnapshot: {
+          schemaVersion: SAVED_REVIEW_EXECUTION_SCHEMA_VERSION,
+          executionFingerprint: "f".repeat(64),
+          receipt: makeReceipt("completed"),
+        },
+        gitContext: baseGitContext,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a snapshot whose receipt describes a different execution", () => {
+    const admitted = makeReceipt("completed");
+    const otherExecution = makeReceipt("transport-failed", 4);
+
+    expect(otherExecution.executionFingerprint).not.toBe(admitted.executionFingerprint);
+    expect(
+      SavedReviewSchema.safeParse({
+        metadata: baseMetadata,
+        result: { issues: [] },
+        execution: { receipt: admitted, result: { issues: [] } },
+        executionSnapshot: {
+          schemaVersion: SAVED_REVIEW_EXECUTION_SCHEMA_VERSION,
+          executionFingerprint: admitted.executionFingerprint,
+          receipt: otherExecution,
+        },
+        gitContext: baseGitContext,
+      }).success,
+    ).toBe(false);
+  });
+
   it("preserves legacy reviews without execution metadata", () => {
     const legacy = {
       metadata: baseMetadata,
@@ -373,19 +505,23 @@ describe("SavedReview durable execution wire format", () => {
     expect(parsed.execution).toBeUndefined();
   });
 
-  it("exposes only safe receipt identity fields and never secret values", () => {
-    const receipt = makeReceipt("completed");
-    const serialized = JSON.stringify(
-      SavedReviewSchema.parse({
+  it.each([
+    "apiKey",
+    "token",
+    "password",
+    "credentialValue",
+    "authorization",
+  ])("rejects a durable receipt carrying a %s field", (secretField) => {
+    expect(
+      SavedReviewSchema.safeParse({
         metadata: baseMetadata,
         result: { issues: [] },
-        execution: { receipt, result: { issues: [] } },
+        execution: {
+          receipt: { ...makeReceipt("completed"), [secretField]: "super-secret" },
+          result: { issues: [] },
+        },
         gitContext: baseGitContext,
-      }).execution?.receipt,
-    );
-
-    expect(serialized).toContain(CREDENTIAL_REFERENCE_IDENTITY);
-    expect(serialized).not.toMatch(/super-secret|Bearer\s+[A-Za-z0-9._-]+/);
-    expect(serialized).not.toContain("apiKey");
+      }).success,
+    ).toBe(false);
   });
 });

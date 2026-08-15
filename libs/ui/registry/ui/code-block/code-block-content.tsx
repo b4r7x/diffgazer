@@ -26,15 +26,13 @@ export function CodeBlockContent({
   const resolvedLabel = hasExplicitName ? ariaLabel : context.ariaLabel;
   const resolvedLabelledBy = hasExplicitName ? ariaLabelledBy : context.ariaLabelledBy;
 
-  const isString = typeof children === "string";
-  const lines = isString ? (children as string).split("\n") : null;
+  const lines = typeof children === "string" ? children.split("\n") : null;
   const lineCount = lines ? lines.length : Children.count(children);
   const gutterWidth = Math.max(String(lineCount).length, 2);
 
   return (
     <ScrollArea
       orientation="both"
-      tabIndex={0}
       ref={ref}
       aria-label={resolvedLabel}
       aria-labelledby={resolvedLabelledBy}

@@ -8,6 +8,9 @@ export function createRequireConfig<TResolved>(options: {
   return (cwd: string): TResolved => {
     const result = options.loadResolved(cwd);
     if (!result.ok) {
+      if (result.error === "read_error") {
+        throw new Error(`${result.message}\nFix the file permissions or path and try again.`);
+      }
       if (
         result.error === "parse_error" ||
         result.error === "validation_error" ||

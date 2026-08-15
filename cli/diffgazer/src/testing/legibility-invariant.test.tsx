@@ -1,13 +1,13 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import { LEGACY_V1_HAS_API_KEY_PROPERTY, REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
+import { getCatalogModelName, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import {
+  GEMINI_CONFIGURATION,
   makeAllConfigurationsListResponse,
-  READY_GEMINI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { canonicalReviewFixture } from "@diffgazer/core/testing/review-facts";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -15,6 +15,7 @@ import { HistoryScreen } from "../features/history/components/screen";
 import { HomeScreen } from "../features/home/components/screen";
 import { ProvidersScreen } from "../features/providers/components/screen";
 import { ReviewResultsView } from "../features/review/components/results-view";
+import { createTestQueryClient } from "./query-client";
 import { cleanupRootFrames, renderRootFrame } from "./render-root-frame";
 
 const f = canonicalReviewFixture;
@@ -26,7 +27,7 @@ vi.mock("../hooks/use-back-handler", () => ({
 
 vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@diffgazer/core/api/hooks")>()),
-  useInit: () => ({
+  useConfigurationInit: () => ({
     data: {
       schemaVersion: 2 as const,
       configurations: shellInit.configurations,
@@ -93,42 +94,42 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
   useSaveTrust: () => ({ isPending: false, error: null, mutate: vi.fn() }),
 }));
 
-vi.mock("@diffgazer/core/review", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@diffgazer/core/review")>()),
-  useHistoryScreenState: () => ({
-    reviewsQuery: { data: { reviews: [f.metadata], warnings: [] }, isLoading: false, error: null },
-    reviewDetailQuery: { isLoading: false, isError: false, error: null, refetch: vi.fn() },
-    reviews: [f.metadata],
-    timelineItems: [
-      { id: "all", label: "All", count: 2 },
-      { id: "2026-07-18", label: "Jul 18", count: 1 },
-    ],
-    selectedDateId: "all",
-    setSelectedDateId: vi.fn(),
-    searchQuery: "",
-    setSearchQuery: vi.fn(),
-    mappedRuns: [
-      {
-        id: f.metadata.id,
-        displayId: "#c0ffee",
-        branch: "feature/mobile-tui-parity",
-        timestamp: "Jul 18, 10:33",
-        summary: "8 issues · 1 blocker",
-      },
-    ],
-    selectedRunId: f.metadata.id,
-    setSelectedRunId: vi.fn(),
-    selectedRun: f.metadata,
-    severityCounts: { blocker: 1, high: 2, medium: 2, low: 2, nit: 1 },
-    sortedIssues: f.result.issues,
-    duration: "42.7s",
-    hasReviews: true,
-    emptyRunsMessage: "No runs yet",
-    hasMoreReviews: false,
-    isLoadingMoreReviews: false,
-    loadMoreReviews: vi.fn(),
-  }),
-}));
+vi.mock("@diffgazer/core/review", async (importOriginal) => {
+  // The history feature's own factory owns the state shape (and derives runIdLookup from the
+  // fixture ids), so a field added to the hook cannot silently go missing here.
+  const { makeHistoryScreenState } = await import("../features/history/testing/screen-state");
+  return {
+    ...(await importOriginal<typeof import("@diffgazer/core/review")>()),
+    useHistoryScreenState: () =>
+      makeHistoryScreenState({
+        reviewsQuery: {
+          data: { reviews: [f.metadata], warnings: [] },
+          isLoading: false,
+          error: null,
+        },
+        reviews: [f.metadata],
+        timelineItems: [
+          { id: "all", label: "All", count: 2 },
+          { id: "2026-07-18", label: "Jul 18", count: 1 },
+        ],
+        mappedRuns: [
+          {
+            id: f.metadata.id,
+            displayId: "#c0ffee",
+            branch: "feature/mobile-tui-parity",
+            timestamp: "Jul 18, 10:33",
+            summary: "8 issues · 1 blocker",
+          },
+        ],
+        selectedRunId: f.metadata.id,
+        selectedRun: f.metadata,
+        severityCounts: { blocker: 1, high: 2, medium: 2, low: 2, nit: 1 },
+        sortedIssues: f.result.issues,
+        duration: "42.7s",
+        hasReviews: true,
+      }),
+  };
+});
 
 afterEach(() => {
   cleanupRootFrames();
@@ -137,13 +138,14 @@ afterEach(() => {
 
 const SPLIT_WIDTHS = [80, 100, 120] as const;
 
+const PROVIDERS_SCREEN = {
+  settled: PRODUCT_REGISTRY.gemini.presentation.name,
+  render: () => withQueryClient(<ProvidersScreen />),
+};
+
 const MONOTONIC_SCREENS: { name: string; settled: string; render: () => ReactElement }[] = [
   { name: "home", settled: "Main Menu", render: () => <HomeScreen /> },
-  {
-    name: "providers",
-    settled: PRODUCT_REGISTRY.gemini.presentation.name,
-    render: () => withQueryClient(<ProvidersScreen />),
-  },
+  { name: "providers", ...PROVIDERS_SCREEN },
   { name: "history", settled: "RUNS", render: () => <HistoryScreen /> },
   {
     name: "review results",
@@ -153,11 +155,6 @@ const MONOTONIC_SCREENS: { name: string; settled: string; render: () => ReactEle
     ),
   },
 ];
-
-const PROVIDERS_SCREEN = {
-  settled: PRODUCT_REGISTRY.gemini.presentation.name,
-  render: () => withQueryClient(<ProvidersScreen />),
-};
 
 function makeApi(): BoundApi {
   return {
@@ -173,12 +170,7 @@ function makeApi(): BoundApi {
 }
 
 function withQueryClient(child: ReactElement): ReactElement {
-  const client = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, networkMode: "always" },
-      mutations: { retry: false, networkMode: "always" },
-    },
-  });
+  const client = createTestQueryClient();
   return (
     <QueryClientProvider client={client}>
       <ApiProvider value={makeApi()}>{child}</ApiProvider>
@@ -218,7 +210,9 @@ describe("legibility invariant", () => {
   test("prints the home context values whole once the frame is 100 columns", async () => {
     const frame = await frameAt(100, <HomeScreen />, "Main Menu");
 
-    expect(frame).toContain(READY_GEMINI_CONFIGURATION.selectedModelId);
+    expect(frame).toContain(
+      getCatalogModelName(GEMINI_CONFIGURATION.productId, GEMINI_CONFIGURATION.selectedModelId),
+    );
   });
 
   test("prints every provider name whole once the frame is 100 columns", async () => {
@@ -236,12 +230,9 @@ describe("legibility invariant", () => {
     expect(frame).toContain(PRODUCT_REGISTRY.gemini.presentation.name);
     expect(frame).toContain(PRODUCT_REGISTRY.zai.presentation.name);
     expect(frame).toContain("Ready");
-    expect(frame).toContain("Removed record");
-    expect(frame).toContain(PRODUCT_REGISTRY[REMOVED_PRODUCT_ID].presentation.name);
     expect(frame).not.toMatch(
       new RegExp(String.raw`\b${LEGACY_V1_HAS_API_KEY_PROPERTY}\b|\bapiKey\b|\bsecret\b`, "i"),
     );
-    expect(frame).not.toContain(REMOVED_PRODUCT_ID);
   });
 
   test("prints full severity chips in the results list at 100 columns", async () => {

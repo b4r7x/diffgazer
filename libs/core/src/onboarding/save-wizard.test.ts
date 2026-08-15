@@ -1,11 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { PRODUCT_REGISTRY } from "../providers/product-registry.js";
-import {
-  type ClientConfigurationAction,
-  READINESS_PRESENTATION,
-  type RunnableProductId,
-} from "../schemas/config/index.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
+import type { ClientConfigurationAction, RunnableProductId } from "../schemas/config/index.js";
+import { makeReadiness } from "../testing/provider-fixtures.js";
 import { getInitialWizardData, type OnboardingDraft } from "./defaults.js";
 import {
   buildConfigPayload,
@@ -14,7 +10,6 @@ import {
   buildUpdatePayload,
   saveWizard,
 } from "./save-wizard.js";
-import { OnboardingStateSchema } from "./types.js";
 
 const ACCEPTED_AT = "2026-07-31T12:00:00.000Z";
 
@@ -86,36 +81,6 @@ function configurationSummary(
       },
     ],
     availableActions: ["inspect", "select", "test", "update", "delete"] as const,
-  };
-}
-
-function readyReadiness(data: OnboardingDraft) {
-  if (data.acknowledgement.status !== "accepted") {
-    throw new Error("Test fixture requires an accepted acknowledgement");
-  }
-  return {
-    status: "ready" as const,
-    ready: true as const,
-    evidenceStatus: "passed" as const,
-    checkedAt: "2026-07-31T12:01:00.000Z",
-    acknowledgement: data.acknowledgement,
-    ...READINESS_PRESENTATION.ready,
-  };
-}
-
-function discoveryReadiness(data: OnboardingDraft) {
-  const notice = PRODUCT_REGISTRY[data.plan.productId].notice;
-  return {
-    status: "acknowledgement-required" as const,
-    ready: false as const,
-    evidenceStatus: "passed" as const,
-    checkedAt: "2026-07-31T12:01:00.000Z",
-    acknowledgement: {
-      status: "required" as const,
-      noticeId: notice.id,
-      noticeVersion: notice.noticeVersion,
-    },
-    ...READINESS_PRESENTATION["acknowledgement-required"],
   };
 }
 
@@ -250,7 +215,7 @@ describe("wizard payloads", () => {
 });
 
 describe("saveWizard", () => {
-  it("persists settings, the explicit notice, exact model, and production-path test", async () => {
+  it("persists settings, the exact model, and the explicit notice without a paid conformance test", async () => {
     const data = { ...qwen(), conformanceStatus: "not-tested" as const };
     const actions: ClientConfigurationAction[] = [];
     const saveSettings = vi.fn(async () => {});
@@ -261,20 +226,6 @@ describe("saveWizard", () => {
           action: "create",
           status: "succeeded",
           configuration: configurationSummary(data),
-        };
-      }
-      if (action.action === "test") {
-        const selected = actions.some((candidate) => candidate.action === "select");
-        return {
-          action: "test",
-          status: "succeeded",
-          configuration: configurationSummary(
-            data,
-            action.configurationId,
-            selected ? data.selectedModelId : null,
-            selected ? 3 : 1,
-          ),
-          readiness: selected ? readyReadiness(data) : discoveryReadiness(data),
         };
       }
       if (action.action === "select") {
@@ -308,7 +259,6 @@ describe("saveWizard", () => {
         action: "create",
         input: data.configurationInput,
       },
-      { action: "test", configurationId: "configuration-1" },
       {
         action: "select",
         configurationId: "configuration-1",
@@ -321,48 +271,78 @@ describe("saveWizard", () => {
         input: data.configurationInput,
         acknowledgement: data.acknowledgement,
       },
-      { action: "test", configurationId: "configuration-1" },
     ]);
+    expect(runConfigurationAction).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: "test" }),
+    );
   });
 
-  it("rejects a discovery response that selects a model before explicit select", async () => {
-    const data = { ...qwen(), selectedModelId: null, conformanceStatus: "not-tested" as const };
+  it("completes with store-aligned readiness projection without a pre-select test", async () => {
+    const data = qwen();
+    const productId = data.plan.productId;
     const actions: ClientConfigurationAction[] = [];
+    let revision = 1;
+
     const runConfigurationAction = vi.fn(async (action: ClientConfigurationAction) => {
       actions.push(action);
       if (action.action === "create") {
-        return { action: "create", status: "succeeded", configuration: configurationSummary(data) };
-      }
-      if (action.action === "test") {
-        const selected = actions.some((candidate) => candidate.action === "select");
         return {
-          action: "test",
+          action: "create",
+          status: "succeeded",
+          configuration: configurationSummary(data, "configuration-1", null, revision),
+          readiness: makeReadiness("model-missing", productId),
+        };
+      }
+      if (action.action === "select") {
+        revision = 2;
+        return {
+          action: "select",
           status: "succeeded",
           configuration: configurationSummary(
             data,
             action.configurationId,
-            // This is intentionally non-null: test must not be able to select
-            // or persist a model before the explicit select action.
-            "qwen3-coder-flash",
-            selected ? 3 : 1,
+            action.modelId,
+            revision,
           ),
-          readiness: selected
-            ? readyReadiness({ ...data, selectedModelId: "qwen3-coder-flash" })
-            : discoveryReadiness(data),
         };
+      }
+      if (action.action === "update") {
+        revision = 3;
+        return {
+          action: "update",
+          status: "succeeded",
+          configuration: configurationSummary(
+            data,
+            action.configurationId,
+            data.selectedModelId,
+            revision,
+          ),
+        };
+      }
+      throw new Error(`Unexpected action ${action.action}`);
+    });
+
+    await expect(
+      saveWizard(data, { saveSettings: vi.fn(async () => {}), runConfigurationAction }),
+    ).resolves.toEqual({
+      status: "complete",
+      configurationId: "configuration-1",
+    });
+    expect(actions.map(({ action }) => action)).toEqual(["create", "select", "update"]);
+    expect(makeReadiness("model-missing", productId).evidenceStatus).toBe("failed");
+  });
+
+  it("rejects a select response that does not match the explicit selected tuple", async () => {
+    const data = qwen();
+    const runConfigurationAction = vi.fn(async (action: ClientConfigurationAction) => {
+      if (action.action === "create") {
+        return { action: "create", status: "succeeded", configuration: configurationSummary(data) };
       }
       if (action.action === "select") {
         return {
           action: "select",
           status: "succeeded",
-          configuration: configurationSummary(data, action.configurationId, action.modelId, 2),
-        };
-      }
-      if (action.action === "update") {
-        return {
-          action: "update",
-          status: "succeeded",
-          configuration: configurationSummary(data, action.configurationId, "qwen3-coder-flash", 3),
+          configuration: configurationSummary(data, action.configurationId, "qwen-latest", 2),
         };
       }
       throw new Error(`Unexpected action ${action.action}`);
@@ -374,27 +354,6 @@ describe("saveWizard", () => {
       status: "partial",
       completedSteps: ["settings", "configuration"],
     });
-    expect(actions.map(({ action }) => action)).toEqual(["create", "test"]);
-  });
-
-  it("preserves removed REMOVED_PRODUCT_ID data without calling a mutation", async () => {
-    const removed = OnboardingStateSchema.parse({
-      kind: "removed",
-      productId: REMOVED_PRODUCT_ID,
-      configurationId: "legacy-removed-zai-plan",
-      expectedRevision: 2,
-    });
-    const callbacks = {
-      saveSettings: vi.fn(),
-      runConfigurationAction: vi.fn(),
-    };
-
-    await expect(saveWizard(removed, callbacks)).resolves.toEqual({
-      status: "preserved-removed",
-      configurationId: "legacy-removed-zai-plan",
-    });
-    expect(callbacks.saveSettings).not.toHaveBeenCalled();
-    expect(callbacks.runConfigurationAction).not.toHaveBeenCalled();
   });
 
   it("returns a partial result without creating a configuration when settings fail", async () => {
@@ -414,7 +373,9 @@ describe("saveWizard", () => {
 
   it("reports a created configuration when model selection fails", async () => {
     const data = qwen();
+    const actions: ClientConfigurationAction[] = [];
     const runConfigurationAction = vi.fn(async (action: ClientConfigurationAction) => {
+      actions.push(action);
       if (action.action === "create") {
         return {
           action: "create",
@@ -431,68 +392,6 @@ describe("saveWizard", () => {
       status: "partial",
       completedSteps: ["settings", "configuration"],
     });
-  });
-
-  it("fails closed when the production-path test omits readiness evidence", async () => {
-    const data = qwen();
-    const runConfigurationAction = vi.fn(async (action: ClientConfigurationAction) => {
-      if (action.action === "create") {
-        return {
-          action: "create",
-          status: "succeeded",
-          configuration: configurationSummary(data),
-        };
-      }
-      if (action.action === "test") {
-        return {
-          action: "test",
-          status: "succeeded",
-          configuration: configurationSummary(data, action.configurationId, data.selectedModelId),
-        };
-      }
-      return { action: "select", status: "succeeded" };
-    });
-
-    await expect(
-      saveWizard(data, { saveSettings: vi.fn(async () => {}), runConfigurationAction }),
-    ).resolves.toMatchObject({
-      status: "partial",
-      completedSteps: ["settings", "configuration"],
-    });
-  });
-
-  it("rejects readiness evidence for a different accepted notice", async () => {
-    const data = qwen();
-    const runConfigurationAction = vi.fn(async (action: ClientConfigurationAction) => {
-      if (action.action === "create") {
-        return {
-          action: "create",
-          status: "succeeded",
-          configuration: configurationSummary(data),
-        };
-      }
-      if (action.action === "test") {
-        return {
-          action: "test",
-          status: "succeeded",
-          configuration: configurationSummary(data, action.configurationId, data.selectedModelId),
-          readiness: {
-            ...readyReadiness(data),
-            acknowledgement: {
-              ...data.acknowledgement,
-              noticeId: "different-product-notice",
-            },
-          },
-        };
-      }
-      return { action: "select", status: "succeeded" };
-    });
-
-    await expect(
-      saveWizard(data, { saveSettings: vi.fn(async () => {}), runConfigurationAction }),
-    ).resolves.toMatchObject({
-      status: "partial",
-      completedSteps: ["settings", "configuration"],
-    });
+    expect(actions.map(({ action }) => action)).toEqual(["create", "select"]);
   });
 });

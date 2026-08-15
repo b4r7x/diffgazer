@@ -7,12 +7,12 @@ const tabs = [
   ["notifications", "Notification settings"],
 ] as const;
 
-function WrappedTabs({ variant, label }: { variant: "pill" | "underline"; label: string }) {
+function WrappedTabs({ variant }: { variant: "pill" | "underline" }) {
   return (
     // max-w-[26rem] fits two or three triggers per row, so the reflow reads as
     // wrapping rather than as a broken vertical stack.
     <Tabs defaultValue="overview" variant={variant} className="w-full max-w-[26rem]">
-      <TabsList aria-label={label} className="w-full">
+      <TabsList aria-label={`Wrapped ${variant} tabs`} className="w-full">
         {tabs.map(([value, title]) => (
           <TabsTrigger key={value} value={value}>
             {title}
@@ -36,7 +36,7 @@ export default function TabsReflowExample() {
           <span className="font-mono text-2xs uppercase tracking-widest text-muted-foreground">
             {variant}
           </span>
-          <WrappedTabs variant={variant} label={`Wrapped ${variant} tabs`} />
+          <WrappedTabs variant={variant} />
         </div>
       ))}
     </div>

@@ -162,17 +162,6 @@ export function eventMatchesParsedHotkey(event: KeyboardEvent, parsed: ParsedHot
 }
 
 /**
- * Returns whether a keyboard event matches a hotkey string, resolving aliases
- * and `mod` platform behavior before comparison.
- */
-export function matchesHotkey<S extends string>(
-  event: KeyboardEvent,
-  hotkey: ValidateHotkey<S>,
-): boolean {
-  return eventMatchesParsedHotkey(event, parseHotkey(hotkey as string));
-}
-
-/**
  * Compile-time validation for hotkey string literals: every `+`-delimited
  * segment before the final key must be a known {@link HotkeyModifier} (matched
  * case-insensitively, mirroring the runtime lowercase). The final key segment

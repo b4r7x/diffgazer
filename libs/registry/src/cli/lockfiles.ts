@@ -5,6 +5,7 @@ export const PACKAGE_MANAGER_LOCKFILE_ENTRIES = [
   { file: "yarn.lock", pm: "yarn" },
   { file: "bun.lockb", pm: "bun" },
   { file: "bun.lock", pm: "bun" },
+  { file: "npm-shrinkwrap.json", pm: "npm" },
   { file: "package-lock.json", pm: "npm" },
 ] as const satisfies ReadonlyArray<{ file: string; pm: PackageManager }>;
 

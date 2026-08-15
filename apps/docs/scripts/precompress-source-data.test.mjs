@@ -53,6 +53,23 @@ describe("precompressSourceData", () => {
     expect(readFileSync(`${fixture.archivePath}.br`)).toEqual(brotli);
   });
 
+  it("reuses both sidecars on an unchanged second run", async () => {
+    const fixture = makeFixture();
+    await precompressSourceData(fixture);
+    const gzip = readFileSync(`${fixture.archivePath}.gz`);
+    const brotli = readFileSync(`${fixture.archivePath}.br`);
+    const cache = readFileSync(fixture.cachePath, "utf8");
+
+    await expect(precompressSourceData(fixture)).resolves.toEqual({
+      archives: 1,
+      createdSidecars: 0,
+      cachedFiles: 1,
+    });
+    expect(readFileSync(`${fixture.archivePath}.gz`)).toEqual(gzip);
+    expect(readFileSync(`${fixture.archivePath}.br`)).toEqual(brotli);
+    expect(readFileSync(fixture.cachePath, "utf8")).toBe(cache);
+  });
+
   it("repairs a partial sidecar set and invalidates both encodings when source changes", async () => {
     const fixture = makeFixture();
     await precompressSourceData(fixture);

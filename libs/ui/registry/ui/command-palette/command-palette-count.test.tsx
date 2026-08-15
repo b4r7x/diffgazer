@@ -105,6 +105,54 @@ describe("CommandPalette.Count", () => {
     expect(screen.getByRole("option", { name: "Duplicate" })).toBeInTheDocument();
   });
 
+  it("counts disabled visible rows and reads their position in the rendered list", () => {
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="nope" disabled>
+              Nope
+            </CommandPalette.Item>
+            <CommandPalette.Item id="paste">Paste</CommandPalette.Item>
+          </CommandPalette.List>
+          <CommandPalette.Empty>No results found</CommandPalette.Empty>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    );
+
+    // Both rows are on screen; the highlight lands on the second one because the
+    // first is disabled, so the readout names it as row two of two.
+    expect(screen.getAllByRole("option")).toHaveLength(2);
+    expect(screen.getByRole("option", { name: "Paste" })).toHaveAttribute("aria-selected", "true");
+    expect(getCount()).toHaveTextContent("[2/2]");
+  });
+
+  it("keeps the empty state and the announcement away from a visible disabled match", async () => {
+    const user = userEvent.setup();
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="nope" disabled>
+              Nope
+            </CommandPalette.Item>
+            <CommandPalette.Item id="paste">Paste</CommandPalette.Item>
+          </CommandPalette.List>
+          <CommandPalette.Empty>No results found</CommandPalette.Empty>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    );
+
+    await user.type(screen.getByRole("combobox"), "nope");
+
+    await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(1));
+    expect(screen.queryByText("No results found")).not.toBeInTheDocument();
+    expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent("1 result available");
+    expect(getCount()).toHaveTextContent("[1]");
+  });
+
   it("steps aside for a consumer-supplied input suffix", () => {
     renderPalette({ suffix: <span>custom</span> });
 

@@ -7,7 +7,7 @@ const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
 function lastCall() {
-  const call = mockFetch.mock.calls[0];
+  const call = mockFetch.mock.calls.at(-1);
   if (!call) throw new Error("No fetch calls recorded");
   return call as [string, RequestInit];
 }
@@ -102,6 +102,18 @@ describe("createApiClient", () => {
       expect(lastHeaders().get("Content-Type")).toBeNull();
     });
 
+    it("forwards keepalive to fetch for unload-safe requests", async () => {
+      mockFetch.mockResolvedValue(jsonResponse({ ok: true }));
+
+      await client.request("POST", "/api/config/actions", {
+        body: { action: "delete", configurationId: "draft", expectedRevision: 1 },
+        keepalive: true,
+      });
+
+      const [, options] = lastCall();
+      expect(options.keepalive).toBe(true);
+    });
+
     it.each([
       "/home/zażółć/project",
       "/home/🚀/project",
@@ -176,7 +188,7 @@ describe("createApiClient", () => {
 
   describe("HTTP methods", () => {
     type MethodCase = {
-      method: "GET" | "POST" | "PUT" | "DELETE";
+      method: "GET" | "POST" | "DELETE";
       expectedBody: string | undefined;
       response: unknown;
       invoke: () => Promise<unknown>;
@@ -194,12 +206,6 @@ describe("createApiClient", () => {
         expectedBody: JSON.stringify({ name: "test" }),
         response: { id: "1" },
         invoke: () => client.post("/api/create", { name: "test" }),
-      },
-      {
-        method: "PUT",
-        expectedBody: JSON.stringify({ name: "updated" }),
-        response: { ok: true },
-        invoke: () => client.put("/api/update", { name: "updated" }),
       },
       {
         method: "DELETE",
@@ -269,7 +275,6 @@ describe("createApiClient", () => {
         error: {
           message: `provider stderr: bearer ${shutdownToken} accountId=${accountId} at ${projectRoot}/.config/vendor/auth.json`,
           code: "AI_ERROR",
-          retryable: true,
           details: `raw CLI output ${"x".repeat(2_000)} token=${shutdownToken}`,
           correlationId: `request-${accountId}`,
         },
@@ -289,19 +294,16 @@ describe("createApiClient", () => {
           code?: string;
           correlationId?: string;
           details?: string;
-          remediation?: string;
-          retryable?: boolean;
           truncatedDetails?: string;
         };
         expect(error.message).toBe("HTTP 502");
-        expect(error).toMatchObject({ status: 502, code: "AI_ERROR", retryable: true });
+        expect(error).toMatchObject({ status: 502, code: "AI_ERROR" });
         expect(error.message).not.toContain(shutdownToken);
         expect(error.message).not.toContain(projectRoot);
         expect(error.message).not.toContain(accountId);
         expect(error.details).toBeUndefined();
         expect(error.truncatedDetails).toBeUndefined();
         expect(error.correlationId).toBeUndefined();
-        expect(error.remediation).toBeUndefined();
         expect(new TextEncoder().encode(error.message).byteLength).toBeLessThanOrEqual(512);
       }
     });
@@ -338,137 +340,27 @@ describe("createApiClient", () => {
         const error = cause as Error & {
           correlationId?: string;
           details?: string;
-          remediation?: string;
-          safeMessage?: string;
           truncatedDetails?: string;
         };
         for (const secret of [hostedCredential, localBearer]) {
           expect(error.message).not.toContain(secret);
-          expect(error.safeMessage ?? "").not.toContain(secret);
           expect(error.details).toBeUndefined();
           expect(error.truncatedDetails).toBeUndefined();
           expect(error.correlationId).toBeUndefined();
-          expect(error.remediation).toBeUndefined();
         }
       }
     });
 
-    it("keeps status/code and a static remediation while dropping opaque diagnostics", async () => {
-      mockFetch.mockResolvedValue(
-        errorResponse(409, {
-          error: {
-            message: "Conflict",
-            code: "SESSION_STALE",
-            retryable: false,
-            details: "d".repeat(2_000),
-            truncatedDetails: "t".repeat(2_000),
-            remediation: "r".repeat(2_000),
-            correlationId: "request-123",
-          },
-        }),
-      );
-
-      try {
-        await client.get("/api/test");
-        throw new Error("Expected request to reject");
-      } catch (cause) {
-        const error = cause as Error & {
-          code?: string;
-          correlationId?: string;
-          details?: string;
-          remediation?: string;
-          retryable?: boolean;
-          truncatedDetails?: string;
-        };
-        expect(error).toMatchObject({
-          message: "Conflict",
-          status: 409,
-          code: "SESSION_STALE",
-          retryable: false,
-        });
-        expect(error.details).toBeUndefined();
-        expect(error.truncatedDetails).toBeUndefined();
-        expect(error.correlationId).toBeUndefined();
-        expect(error.remediation).toBe("Review the error and try again.");
-        expect(error.remediation).not.toContain("r".repeat(2_000));
-        expect(new TextEncoder().encode(error.message).byteLength).toBeLessThanOrEqual(512);
-      }
-    });
-
-    it("does not forward opaque diagnostic fields even when they look harmless", async () => {
-      const opaque = "opaque-secret-xyz";
-      mockFetch.mockResolvedValue(
-        errorResponse(502, {
-          error: {
-            message: "Upstream request failed",
-            code: "AI_ERROR",
-            details: opaque,
-            truncatedDetails: opaque,
-            remediation: opaque,
-            correlationId: opaque,
-          },
-        }),
-      );
-
-      try {
-        await client.get("/api/test");
-        throw new Error("Expected request to reject");
-      } catch (cause) {
-        const error = cause as Error & {
-          correlationId?: string;
-          details?: string;
-          remediation?: string;
-          truncatedDetails?: string;
-        };
-        expect(error).toMatchObject({
-          message: "Upstream request failed",
-          status: 502,
-          code: "AI_ERROR",
-        });
-        expect(error.details).toBeUndefined();
-        expect(error.truncatedDetails).toBeUndefined();
-        expect(error.correlationId).toBeUndefined();
-        expect(error.remediation).toBe("Review the error and try again.");
-        expect(JSON.stringify(error)).not.toContain(opaque);
-      }
-    });
-
-    it("does not trust safeMessage over the validated envelope message", async () => {
-      mockFetch.mockResolvedValue(
-        errorResponse(502, {
-          error: {
-            message: "Conflict",
-            safeMessage: "safe-message-secret",
-            code: "AI_ERROR",
-          },
-        }),
-      );
-
-      try {
-        await client.get("/api/test");
-        throw new Error("Expected request to reject");
-      } catch (cause) {
-        const error = cause as Error & { safeMessage?: string; status?: number };
-        expect(error).toMatchObject({
-          message: "Conflict",
-          safeMessage: "Conflict",
-          status: 502,
-        });
-        expect(error.message).not.toContain("safe-message-secret");
-        expect(error.safeMessage).not.toContain("safe-message-secret");
-      }
-    });
-
-    it("uses a bounded json fallback when Response.text is unavailable", async () => {
+    it("fails closed when a response has no readable body stream", async () => {
       const response = {
         ok: false,
         status: 500,
         body: null,
         headers: new Headers({ "content-length": "256" }),
-        text: vi.fn().mockRejectedValue(new Error("provider stderr bearer fallback-secret")),
+        text: vi.fn().mockRejectedValue(new Error("text unavailable")),
         json: vi.fn().mockResolvedValue({
           error: {
-            message: "provider stderr bearer fallback-secret at /Users/alice/.config/auth",
+            message: "provider stderr bearer fallback-secret",
             code: "INTERNAL_ERROR",
           },
         }),
@@ -478,13 +370,12 @@ describe("createApiClient", () => {
       await expect(client.get("/api/test")).rejects.toMatchObject({
         message: "HTTP 500",
         status: 500,
-        code: "INTERNAL_ERROR",
       });
-      expect(response.text).toHaveBeenCalledTimes(1);
-      expect(response.json).toHaveBeenCalledTimes(1);
+      expect(response.text).not.toHaveBeenCalled();
+      expect(response.json).not.toHaveBeenCalled();
     });
 
-    it("fails closed without materializing an unknown-length body-less fallback", async () => {
+    it("fails closed without materializing an unknown-length body-less response", async () => {
       const response = {
         ok: false,
         status: 500,
@@ -503,7 +394,7 @@ describe("createApiClient", () => {
       expect(response.json).not.toHaveBeenCalled();
     });
 
-    it("rejects an oversized text fallback before parsing", async () => {
+    it("rejects oversized streamed text before parsing", async () => {
       const response = {
         ok: false,
         status: 500,
@@ -522,29 +413,11 @@ describe("createApiClient", () => {
         message: "HTTP 500",
         status: 500,
       });
-      expect(response.text).toHaveBeenCalledTimes(1);
+      expect(response.text).not.toHaveBeenCalled();
       expect(response.json).not.toHaveBeenCalled();
     });
 
-    it("rejects an oversized json fallback after bounded serialization", async () => {
-      const response = {
-        ok: false,
-        status: 500,
-        body: null,
-        headers: new Headers({ "content-length": "32" }),
-        text: vi.fn().mockRejectedValue(new Error("text unavailable")),
-        json: vi.fn().mockResolvedValue({ error: { message: "x".repeat(70_000) } }),
-      } as unknown as Response;
-      mockFetch.mockResolvedValue(response);
-
-      await expect(client.get("/api/test")).rejects.toMatchObject({
-        message: "HTTP 500",
-        status: 500,
-      });
-      expect(response.json).toHaveBeenCalledTimes(1);
-    });
-
-    it("rejects oversized text before parsing or exposing its secret suffix", async () => {
+    it("rejects oversized streamed text before parsing or exposing its secret suffix", async () => {
       const secret = "sk-live-adversarial-secret";
       const oversized = `${JSON.stringify({ error: { message: `Conflict token=${secret}` } })}${"x".repeat(70_000)}`;
       mockFetch.mockResolvedValue(new Response(oversized, { status: 500 }));
@@ -608,27 +481,12 @@ describe("createApiClient", () => {
       expect(read).not.toHaveBeenCalled();
       expect(cancel).toHaveBeenCalledTimes(1);
     });
-
-    it("bounds body-less test-double json fallback after serialization", async () => {
-      const response = {
-        ok: false,
-        status: 500,
-        body: null,
-        text: vi.fn().mockRejectedValue(new Error("text unavailable")),
-        json: vi.fn().mockResolvedValue({ error: { message: "x".repeat(70_000) } }),
-        headers: new Headers({ "content-length": "256" }),
-      } as unknown as Response;
-      mockFetch.mockResolvedValue(response);
-
-      await expect(client.get("/api/test")).rejects.toMatchObject({
-        message: "HTTP 500",
-        status: 500,
-      });
-      expect(response.json).toHaveBeenCalledTimes(1);
-    });
   });
 
   describe("response validation", () => {
+    const RESPONSE_VALIDATION_COPY =
+      "The server returned data this build does not understand. Restart Diffgazer so the app and server run the same build.";
+
     const numberSchema = (body: unknown): { value: number } => {
       if (
         typeof body !== "object" ||
@@ -670,10 +528,36 @@ describe("createApiClient", () => {
       };
 
       await expect(client.get("/api/test", { schema: unsafeSchema })).rejects.toMatchObject({
-        message: "Response validation failed",
+        message: RESPONSE_VALIDATION_COPY,
         status: 422,
         code: "INVALID_RESPONSE",
       });
+    });
+
+    it("never surfaces a schema validator's issue list as the message", async () => {
+      expect.assertions(3);
+      mockFetch.mockResolvedValue(jsonResponse({ status: "removed", productId: "zai-coding" }));
+
+      // Shaped like a zod rejection: its `message` is the serialized issues, which
+      // is exactly what used to reach the screen.
+      const issues = [
+        { code: "invalid_value", values: ["supported"], path: ["status"] },
+        { code: "custom", message: "Configuration notices must match the bound product notice" },
+      ];
+      const zodLikeSchema = (): never => {
+        const error = new Error(JSON.stringify(issues, null, 2));
+        Object.assign(error, { issues });
+        throw error;
+      };
+
+      try {
+        await client.get("/api/test", { schema: zodLikeSchema });
+      } catch (error) {
+        const { message } = error as Error;
+        expect(message).toBe(RESPONSE_VALIDATION_COPY);
+        expect(message).not.toContain("invalid_value");
+        expect(message).not.toContain("bound product notice");
+      }
     });
 
     it("fails closed for command-like validator diagnostics in body requests", async () => {
@@ -690,8 +574,7 @@ describe("createApiClient", () => {
           { schema: unsafeSchema },
         ),
       ).rejects.toMatchObject({
-        message: "Response validation failed",
-        safeMessage: "Response validation failed",
+        message: RESPONSE_VALIDATION_COPY,
         status: 422,
         code: "INVALID_RESPONSE",
       });
@@ -703,6 +586,54 @@ describe("createApiClient", () => {
       const result = await client.get<{ value: number }>("/api/test");
 
       expect(result).toEqual({ value: "not-a-number" });
+    });
+
+    it("accepts successful responses above the default capture when maxResponseBytes is raised", async () => {
+      const markdown = "m".repeat(40_000);
+      const payload = {
+        text: markdown,
+        markdown,
+        graph: {
+          generatedAt: "2025-01-01T00:00:00Z",
+          root: "/repo",
+          packages: [],
+          edges: [],
+          fileTree: [],
+          changedFiles: [],
+        },
+        meta: {
+          generatedAt: "2025-01-01T00:00:00Z",
+          root: "/repo",
+          statusHash: "hash",
+          statusHashKind: "full" as const,
+          charCount: markdown.length,
+        },
+      };
+      const body = JSON.stringify(payload);
+      expect(new TextEncoder().encode(body).byteLength).toBeGreaterThan(64 * 1024);
+
+      mockFetch.mockResolvedValue(
+        new Response(body, {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+      await expect(
+        client.get("/api/review/context", { maxResponseBytes: body.length }),
+      ).resolves.toEqual(payload);
+    });
+
+    it("still rejects oversized successful responses without an endpoint-specific bound", async () => {
+      const body = JSON.stringify({ value: "x".repeat(70_000) });
+      mockFetch.mockResolvedValue(
+        new Response(body, {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+      await expect(client.get("/api/test")).rejects.toThrow("Invalid JSON response");
     });
   });
 

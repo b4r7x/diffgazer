@@ -6,6 +6,7 @@ on:
       - .dockerignore
       - Dockerfile
       - deploy/**
+      - scripts/**
       - apps/docs/**
       - apps/landing/**
       - libs/**
@@ -22,6 +23,7 @@ on:
       - .dockerignore
       - Dockerfile
       - deploy/**
+      - scripts/**
       - apps/docs/**
       - apps/landing/**
       - libs/**
@@ -62,3 +64,15 @@ jobs:
 
       - name: Build image
         run: docker build --pull -f "${{ matrix.dockerfile }}" -t "diffgazer-${{ matrix.image }}:ci" .
+
+      # Same severity gate deploy.yml applies to the pushed digest, run here on the
+      # image this change set produces. Without it a Dependabot base-image bump merges
+      # green and a CRITICAL/HIGH regression first surfaces inside a manual production
+      # deploy instead of on the PR that introduced it.
+      - name: Scan built image
+        uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
+        with:
+          image-ref: diffgazer-${{ matrix.image }}:ci
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH

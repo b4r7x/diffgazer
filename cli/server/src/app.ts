@@ -13,7 +13,7 @@ import { rekeyProjectReviews } from "./features/review/storage/rekey.js";
 import { settingsRouter } from "./features/settings/router.js";
 import { shutdownRouter } from "./features/shutdown/router.js";
 import { bundledCatalogSnapshotSize } from "./shared/lib/ai/catalog-bundle-anchor.js";
-import { createHostedConformanceProbe } from "./shared/lib/ai/providers/conformance-probe.js";
+import { createConformanceProbe } from "./shared/lib/ai/providers/conformance-probe.js";
 import { registerConfigSeams } from "./shared/lib/config/seams.js";
 import { safeTokenMatch } from "./shared/lib/crypto.js";
 import { errorResponse, httpExceptionResponse } from "./shared/lib/http/response.js";
@@ -73,7 +73,7 @@ export const createApp = (): Hono<AppEnv> => {
   registerConfigSeams({
     reviewRekeyHandler: rekeyProjectReviews,
     leaseHooks: createConfigurationLeaseHooks(),
-    conformanceProbe: createHostedConformanceProbe(),
+    conformanceProbe: createConformanceProbe(),
   });
 
   // Split dev (not packaged, no configured token) intentionally leaves the

@@ -8,17 +8,17 @@ export interface TrustStatusInput {
 }
 
 export interface DerivedTrustStatus {
-  /** Project is identified but trust has never been resolved — prompt user. */
+  /** Repository is known but trust has never been resolved — prompt user. */
   needsTrust: boolean;
   /** Read capability is granted. */
   isTrusted: boolean;
 }
 
 export function deriveTrustStatus(input: TrustStatusInput): DerivedTrustStatus {
-  const { trust, projectId, repoRoot } = input;
+  const { trust, repoRoot } = input;
 
   const isTrusted = hasRepositoryReadAccess(trust, repoRoot);
-  const needsTrust = Boolean(projectId && repoRoot && trust === null);
+  const needsTrust = Boolean(repoRoot && trust === null);
 
   return { needsTrust, isTrusted };
 }

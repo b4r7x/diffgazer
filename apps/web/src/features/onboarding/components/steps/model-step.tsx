@@ -1,4 +1,5 @@
-import { PRODUCT_REGISTRY, useModelSource } from "@diffgazer/core/providers";
+import { getModelTierBadge, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { useModelSource } from "@diffgazer/core/providers/hooks";
 import type { ClientConfigurationSummary, ModelInfo } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
@@ -8,11 +9,9 @@ import { Spinner } from "@diffgazer/ui/components/spinner";
 import { useEffect, useRef, useState } from "react";
 import { resolveAvailableValue } from "../../lib/select";
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 interface ModelStepProps {
   /** The persisted draft record discovery addresses; null until the wizard commits one. */
-  configuration: SupportedConfigurationSummary | null;
+  configuration: ClientConfigurationSummary | null;
   isPreparing: boolean;
   onRetry: () => void;
   value: string | null;
@@ -69,30 +68,37 @@ function ModelInfoList({
         wrap={false}
         className="space-y-1"
       >
-        {models.map((model) => (
-          <RadioGroupItem
-            key={model.id}
-            value={model.id}
-            label={
-              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                {model.name}
-                {model.recommended ? (
-                  <Badge variant="success" size="sm" className="text-3xs">
-                    RECOMMENDED
-                  </Badge>
-                ) : null}
-                <Badge
-                  variant={model.tier === "free" ? "success" : "neutral"}
-                  size="sm"
-                  className="text-3xs"
-                >
-                  {model.tier.toUpperCase()}
-                </Badge>
-              </span>
-            }
-            description={model.description || undefined}
-          />
-        ))}
+        {models.map((model) => {
+          const tierBadge = getModelTierBadge(model.tier);
+
+          return (
+            <RadioGroupItem
+              key={model.id}
+              value={model.id}
+              label={
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  {model.name}
+                  {model.id !== model.name ? (
+                    <span className="min-w-0 font-mono text-xs text-muted-foreground">
+                      {model.id}
+                    </span>
+                  ) : null}
+                  {model.recommended ? (
+                    <Badge variant="success" size="sm" className="text-3xs">
+                      RECOMMENDED
+                    </Badge>
+                  ) : null}
+                  {tierBadge ? (
+                    <Badge variant={tierBadge.variant} size="sm" className="text-3xs">
+                      {tierBadge.label}
+                    </Badge>
+                  ) : null}
+                </span>
+              }
+              description={model.description || undefined}
+            />
+          );
+        })}
       </RadioGroup>
     </div>
   );
@@ -106,7 +112,7 @@ function DiscoveredModels({
   enabled = true,
   onBoundaryReached,
 }: Omit<ModelStepProps, "configuration" | "isPreparing" | "onRetry"> & {
-  configuration: SupportedConfigurationSummary;
+  configuration: ClientConfigurationSummary;
 }) {
   const loadingStateRef = useRef<HTMLDivElement>(null);
   const retryButtonRef = useRef<HTMLButtonElement>(null);
@@ -201,6 +207,36 @@ function DiscoveredModels({
   );
 }
 
+function MissingConfiguration({
+  onRetry,
+  enabled,
+}: {
+  onRetry: ModelStepProps["onRetry"];
+  enabled: boolean;
+}) {
+  const retryRef = useRef<HTMLButtonElement>(null);
+
+  // Step entry focus: this branch has no self-focusing group, so without this
+  // the wizard lands with focus on the footer and Retry is arrow-unreachable.
+  // Keyed on `enabled` like the sibling branches, so a preparation that resolves
+  // without a configuration cannot pull focus off the footer actions.
+  useEffect(() => {
+    if (!enabled) return;
+    retryRef.current?.focus();
+  }, [enabled]);
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground font-mono">
+        Models are discovered from the saved configuration for this product.
+      </p>
+      <Button ref={retryRef} type="button" variant="secondary" onClick={onRetry}>
+        Retry
+      </Button>
+    </div>
+  );
+}
+
 export function ModelStep({
   configuration,
   isPreparing,
@@ -220,16 +256,7 @@ export function ModelStep({
   }
 
   if (!configuration) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-muted-foreground font-mono">
-          Models are discovered from the saved configuration for this product.
-        </p>
-        <Button type="button" variant="secondary" onClick={onRetry}>
-          Retry
-        </Button>
-      </div>
-    );
+    return <MissingConfiguration onRetry={onRetry} enabled={enabled} />;
   }
 
   return (

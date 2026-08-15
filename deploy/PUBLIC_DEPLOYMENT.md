@@ -20,14 +20,24 @@ Inputs:
 - `target=all` builds and deploys all three public surfaces.
 - `confirm_production` must equal `deploy`.
 
-The workflow refuses non-`main` refs before checkout, GHCR push, production
-environment approval, or Coolify secret access.
+The workflow refuses non-`main` refs before checkout, GHCR push, `production`
+environment access, or Coolify secret access.
 
 ## Images
 
-The build job pushes SHA tags first and scans those pushed images. After the
-`production` environment approval, the deploy job promotes the scanned SHA tags
-to `:prod` without rebuilding.
+The build job pushes SHA tags first, scans each pushed image by its manifest
+digest, and records that digest for the deploy job. The deploy job runs under the
+`production` environment and repoints `:prod` at the recorded digest without
+rebuilding, so production runs exactly the bytes that were scanned. Whether that
+environment requires a reviewer is a repository setting; the workflow does not
+assert it. A rollback reuses the digest records of the run that built and scanned
+the requested SHA rather than re-resolving that SHA's mutable tag.
+
+The first deploy of a surface has no `:prod` manifest to snapshot for rollback.
+The workflow reports it as a first deploy and promotes it normally; no manual
+bootstrap step is needed. A rollback has nothing to restore for that surface, so
+it logs an error and leaves `:prod` on the failed first deploy until the next
+deploy replaces it.
 
 | Surface | Dockerfile | SHA image | Coolify image | Internal port |
 |---|---|---|---|---:|
@@ -59,6 +69,8 @@ GitHub:
 - Store `COOLIFY_TOKEN`, `COOLIFY_WEBHOOK_DOCS`,
   `COOLIFY_WEBHOOK_REGISTRY`, and `COOLIFY_WEBHOOK_LANDING` as environment
   secrets.
+- Keep the repository artifact-retention setting at 90 days; it caps the deploy
+  workflow's digest records and with them the rollback window.
 - Protect `main` and require CODEOWNER review for workflow, Dockerfile, and
   deploy-runbook changes.
 - Enable GitHub secret scanning and push protection if available.
@@ -80,6 +92,15 @@ Coolify:
 - Set Auto Deploy off.
 - Set domains and health paths as documented in
   [`deploy/REVERSE_PROXY.md`](./REVERSE_PROXY.md).
+- Add the repository variable `REGISTRY_TRAEFIK_PROXY_CIDR` with the exact
+  Traefik container address and an unpadded `/32` (IPv4) or `/128` (IPv6)
+  prefix. On a Coolify Docker network that is normally a private address such as
+  172.18.0.5/32. The registry image validates canonical address spelling and
+  bakes this single peer into nginx; supernets such as 10.0.0.0/8,
+  172.16.0.0/12, or 192.168.0.0/16, host-bit aliases, and equivalent CIDR
+  spellings are rejected by the build. The peer is baked in at build time, so
+  after changing it deploy a fresh registry build — a rollback re-promotes an
+  image that still trusts the peer of its own build.
 - Store each resource webhook in the matching GitHub environment secret.
 
 DNS and firewall:
@@ -124,10 +145,12 @@ Deploy Public Surfaces -> Run workflow
   image_sha           = <full 40-char SHA of the last-good deploy>
 ```
 
-With `image_sha` set, the workflow skips the build matrix, re-promotes that SHA's
-existing GHCR images to `:prod`, triggers the selected Coolify webhooks, and reruns
-the post-deploy verification — no local imagetools retagging and no out-of-band
-webhook access. The rollback SHA is subject to the same Release Readiness CI-green
+With `image_sha` set, the workflow skips the build matrix, re-promotes the digests
+that SHA's deploy run scanned to `:prod`, triggers the selected Coolify webhooks,
+and reruns the post-deploy verification — no local imagetools retagging and no
+out-of-band webhook access. Those digest records are requested for 90 days and
+capped by the repository's artifact-retention setting; once they expire the
+rollback fails and asks for a fresh build instead of promoting an unscanned tag. The rollback SHA is subject to the same Release Readiness CI-green
 guard as a fresh deploy: it passed Release Readiness when it first landed, and the
 workflow re-checks it before promoting. Leaving `image_sha` empty deploys current
 `main` HEAD as before.

@@ -15,10 +15,6 @@ export type { StoreErrorCode };
 
 export type StoreError = AppError<StoreErrorCode>;
 
-export type DateFieldsOf<T> = {
-  [K in keyof T]: T[K] extends string ? K : never;
-}[keyof T];
-
 export interface SaveReviewOptions {
   reviewId?: string;
   projectPath: string;

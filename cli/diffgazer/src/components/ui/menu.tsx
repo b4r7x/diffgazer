@@ -1,6 +1,7 @@
 import { Box, Text, useInput } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { createContext, useContext } from "react";
+import { KeyboardContext } from "../../hooks/keyboard-context";
 import { useListNavigation } from "../../hooks/use-list-navigation";
 import { useListNavigationInput } from "../../hooks/use-list-navigation-input";
 import { collectChildItems } from "../../lib/collect-child-items";
@@ -19,7 +20,7 @@ export interface MenuProps<Id extends string = string> {
   children: ReactNode;
 }
 
-export interface MenuItemProps<Id extends string = string> {
+interface MenuItemProps<Id extends string = string> {
   id: Id;
   disabled?: boolean;
   variant?: "default" | "danger";
@@ -143,6 +144,7 @@ function MenuRoot<Id extends string = string>({
   children,
 }: MenuProps<Id>) {
   const { tokens } = useTheme();
+  const keyboard = useContext(KeyboardContext);
   const items = collectChildItems(children, extractMenuItem);
   const navigation = useListNavigation({
     items,
@@ -162,6 +164,10 @@ function MenuRoot<Id extends string = string>({
       // j/k move the highlight in every vertical list, so a menu row can never
       // claim them as a hotkey and have one keypress both move and activate.
       if (input.length !== 1 || input === "j" || input === "k") return;
+      // Ink dispatches every registered handler for one keypress. A row still
+      // advertises an app-owned key (q/s/?) as its hint, but the app-level
+      // handler runs it, so the key never fires two contracts at once.
+      if (keyboard?.hasGlobalHandler(input)) return;
       for (const item of items) {
         if (item.hotkey == null || String(item.hotkey) !== input) continue;
         if (!navigation.findSelectableItem(item.id)) continue;

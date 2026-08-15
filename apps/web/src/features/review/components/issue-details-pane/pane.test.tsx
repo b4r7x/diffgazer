@@ -111,17 +111,17 @@ function expectAllEvidenceVariants() {
   expect(
     screen.getByRole("region", { name: "Code evidence: Empty parser evidence" }),
   ).toHaveTextContent("(empty excerpt)");
-  expect(screen.getByText("Documentation")).toBeInTheDocument();
+  expect(screen.getByText("Unverified documentation reference")).toBeInTheDocument();
   expect(screen.getByText("Parser contract")).toBeInTheDocument();
   expect(screen.getByText("docs/reference/parser")).toBeInTheDocument();
   expect(screen.getByText("Invalid input must return a typed failure.")).toBeInTheDocument();
-  expect(screen.getByText("Trace evidence")).toBeInTheDocument();
+  expect(screen.getByText("Unverified trace reference")).toBeInTheDocument();
   expect(screen.getByText("Failure reproduction")).toBeInTheDocument();
   expect(screen.getByText("trace:parse-invalid-input")).toBeInTheDocument();
   expect(
     screen.getByText("Malformed JSON throws before the error boundary runs."),
   ).toBeInTheDocument();
-  expect(screen.getByText("External reference")).toBeInTheDocument();
+  expect(screen.getByText("Unverified external reference")).toBeInTheDocument();
   expect(screen.getByText("JSON parsing guidance")).toBeInTheDocument();
   expect(screen.getByText("javascript:alert('not-a-link')")).toBeInTheDocument();
   expect(screen.getByText("Treat parser failures as expected input errors.")).toBeInTheDocument();

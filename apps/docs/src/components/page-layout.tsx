@@ -16,30 +16,23 @@ export function DocsPageLayout({
   toc,
   header,
   children,
-  showToc = true,
 }: {
   toc: TableOfContents;
   /** Page title block. Rendered above the mobile TOC so the h1 stays first in reading order. */
   header?: ReactNode;
   children: ReactNode;
-  showToc?: boolean;
 }) {
   const { entries, isReady: isTocReady, activeId, scrollTo } = useDocsToc(toc);
-  let mobileToc: ReactNode = null;
-  let desktopToc: ReactNode = null;
-
-  if (showToc) {
-    mobileToc = isTocReady ? (
-      <MobileTocPanel entries={entries} scrollTo={scrollTo} />
-    ) : (
-      <MobileTocLoadingPanel />
-    );
-    desktopToc = isTocReady ? (
-      <TableOfContentsPanel entries={entries} activeId={activeId} scrollTo={scrollTo} />
-    ) : (
-      <DocsPageLoadingTocPanel />
-    );
-  }
+  const mobileToc = isTocReady ? (
+    <MobileTocPanel entries={entries} scrollTo={scrollTo} />
+  ) : (
+    <MobileTocLoadingPanel />
+  );
+  const desktopToc = isTocReady ? (
+    <TableOfContentsPanel entries={entries} activeId={activeId} scrollTo={scrollTo} />
+  ) : (
+    <DocsPageLoadingTocPanel />
+  );
 
   return (
     <PreviewModeProvider>

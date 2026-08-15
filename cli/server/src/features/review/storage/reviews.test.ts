@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import {
+  type EvidenceKey,
   hashExecutionReceiptFingerprintSync,
   type SavedReview,
   SavedReviewSchema,
@@ -11,6 +13,13 @@ import {
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createHostedAdapter } from "../../../shared/lib/ai/providers/hosted/transport.js";
+import {
+  createEnvironmentSecretBinding,
+  resolveSecretBinding,
+} from "../../../shared/lib/config/secret-bindings.js";
+import { assertTempHome } from "../../../shared/lib/testing/temp-home.js";
+import { drainReviewWrites } from "../testing/storage-drain.js";
 
 const REVIEW_ID = "550e8400-e29b-41d4-a716-446655440000";
 const REVIEW_ID_2 = "660e8400-e29b-41d4-a716-446655440001";
@@ -27,15 +36,18 @@ let tempHome: string;
 
 beforeEach(async () => {
   tempHome = await mkdtemp(join(tmpdir(), "diffgazer-reviews-"));
+  assertTempHome(tempHome);
   process.env.DIFFGAZER_HOME = tempHome;
   vi.resetModules();
 });
 
+// Settle the fire-and-forget migration writes first, then remove the temp home, and only
+// then drop DIFFGAZER_HOME: `paths.ts` re-reads the variable per call, so restoring it
+// while a write is still pending re-points that write at the real ~/.diffgazer.
 afterEach(async () => {
+  await drainReviewWrites(tempHome);
+  await rm(tempHome, { recursive: true, force: true });
   delete process.env.DIFFGAZER_HOME;
-  // Fire-and-forget index/migration writes may still be recreating .index/ at teardown;
-  // retry past the resulting ENOTEMPTY race.
-  await rm(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
 });
 
 async function loadStorage() {
@@ -187,6 +199,37 @@ const executionLimits = {
   maxCostUsd: 0.5,
 } as const;
 
+const RAW_CREDENTIAL_SENTINEL = "raw-credential-sentinel-for-receipt-erasure";
+const RAW_CREDENTIAL_SHA256 = createHash("sha256").update(RAW_CREDENTIAL_SENTINEL).digest("hex");
+const CREDENTIAL_CONFIGURATION_ID = "configuration-credential-erasure";
+const CREDENTIAL_CONFIGURATION_REVISION = 1;
+const CREDENTIAL_ENVIRONMENT_VARIABLE = "DIFFGAZER_TEST_HOSTED_CREDENTIAL";
+const CREDENTIAL_BINDING = createEnvironmentSecretBinding(
+  CREDENTIAL_CONFIGURATION_ID,
+  CREDENTIAL_CONFIGURATION_REVISION,
+  CREDENTIAL_ENVIRONMENT_VARIABLE,
+);
+const CREDENTIAL_REFERENCE_IDENTITY = sha256CanonicalJsonSync({
+  kind: CREDENTIAL_BINDING.kind,
+  varName: CREDENTIAL_BINDING.varName,
+});
+
+const productionEvidenceKey: EvidenceKey = {
+  authentication: null,
+  credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
+  installationId: null,
+  productId: "openrouter",
+  transportFamily: "hosted-api",
+  normalizedEndpoint: "https://openrouter.ai/api/v1",
+  region: null,
+  workspaceAccountReference: null,
+  modelId: "openai/gpt-4.1-mini",
+  runtime: { identity: "diffgazer-server", version: "1.0.0" },
+  structuredOutputSchemaSha256: "1".repeat(64),
+  noticeVersion: 1,
+  limits: executionLimits,
+};
+
 function makeExecutionReceipt(
   outcome: (typeof TERMINAL_OUTCOMES)[number],
   fingerprintSeed: string,
@@ -285,6 +328,7 @@ describe("reviews storage", () => {
         highCount: 1,
         nitCount: 1,
       });
+      expect(result.value).not.toHaveProperty("durationMs");
     }
 
     const savedReview = await readSavedReview(REVIEW_ID);
@@ -295,6 +339,117 @@ describe("reviews storage", () => {
     });
     expect(savedReview.diff).toEqual(saveOptions.diff);
     expect(savedReview?.result).not.toHaveProperty("summary");
+  });
+
+  it("persists executionSnapshot for non-completed terminal executions", async () => {
+    const { getReview, saveReview } = await loadStorage();
+    const review = makeSavedReviewWithExecution("cancelled", "snapshot-test");
+
+    const saved = await saveReview(
+      makeSaveOptions({
+        reviewId: REVIEW_ID,
+        result: { issues: [] },
+        execution: review.execution,
+      }),
+    );
+
+    expect(saved.ok).toBe(true);
+    const read = await getReview(REVIEW_ID);
+    expect(read.ok).toBe(true);
+    if (read.ok) {
+      expect(read.value.executionSnapshot?.receipt.outcome).toBe("cancelled");
+      expect(read.value.executionSnapshot?.executionFingerprint).toBe(
+        review.execution?.receipt.executionFingerprint,
+      );
+    }
+  });
+
+  it("erases a raw credential at the production receipt and durable persistence boundary", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
+      let requestUrl: string;
+      if (typeof input === "string") {
+        requestUrl = input;
+      } else if (input instanceof URL) {
+        requestUrl = input.href;
+      } else {
+        requestUrl = input.url;
+      }
+      expect(requestUrl).not.toContain(RAW_CREDENTIAL_SENTINEL);
+      const headers = new Headers(init?.headers);
+      expect(headers.get("authorization")).toBe(`Bearer ${RAW_CREDENTIAL_SENTINEL}`);
+      headers.forEach((value, name) => {
+        if (name !== "authorization") expect(value).not.toContain(RAW_CREDENTIAL_SENTINEL);
+      });
+      expect(String(init?.body)).not.toContain(RAW_CREDENTIAL_SENTINEL);
+      return new Response(
+        JSON.stringify({
+          choices: [
+            { message: { content: JSON.stringify({ issues: [] }) }, finish_reason: "stop" },
+          ],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(fetch);
+
+    try {
+      const resolveCredential = vi.fn(() =>
+        resolveSecretBinding(
+          CREDENTIAL_BINDING,
+          { env: { [CREDENTIAL_ENVIRONMENT_VARIABLE]: RAW_CREDENTIAL_SENTINEL } },
+          {
+            configurationId: CREDENTIAL_CONFIGURATION_ID,
+            revision: CREDENTIAL_CONFIGURATION_REVISION,
+          },
+        ),
+      );
+      const execution = await createHostedAdapter("openrouter").execute({
+        configurationId: CREDENTIAL_CONFIGURATION_ID,
+        configurationRevision: CREDENTIAL_CONFIGURATION_REVISION,
+        evidenceKey: productionEvidenceKey,
+        prompt: "review",
+        resolveCredential,
+      });
+
+      expect(resolveCredential).toHaveBeenCalledTimes(1);
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(execution.receipt.outcome).toBe("completed");
+      expect(execution.result).toEqual({ issues: [] });
+
+      const constructed = JSON.stringify(execution);
+      expect(constructed).not.toContain(RAW_CREDENTIAL_SENTINEL);
+      expect(constructed).not.toContain(RAW_CREDENTIAL_SHA256);
+      expect(constructed).toContain(CREDENTIAL_REFERENCE_IDENTITY);
+
+      const { getReview, saveReview } = await loadStorage();
+      const saved = await saveReview(
+        makeSaveOptions({
+          reviewId: REVIEW_ID,
+          result: execution.result,
+          execution,
+        }),
+      );
+
+      expect(saved.ok).toBe(true);
+      const durableJson = await readFile(reviewPath(REVIEW_ID), "utf-8");
+      expect(durableJson).not.toContain(RAW_CREDENTIAL_SENTINEL);
+      expect(durableJson).not.toContain(RAW_CREDENTIAL_SHA256);
+      expect(durableJson).toContain(CREDENTIAL_REFERENCE_IDENTITY);
+
+      const read = await getReview(REVIEW_ID);
+      expect(read.ok).toBe(true);
+      if (read.ok) {
+        expect(read.value.execution).toEqual(execution);
+        expect(JSON.stringify(read.value)).not.toContain(RAW_CREDENTIAL_SHA256);
+        expect(read.value.executionSnapshot?.receipt).toEqual(execution.receipt);
+        expect(read.value.executionSnapshot?.receipt.credentialReferenceIdentity).toBe(
+          CREDENTIAL_REFERENCE_IDENTITY,
+        );
+      }
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
   it("persists failed lens count through save, list, and detail reads", async () => {
@@ -915,7 +1070,7 @@ describe("reviews storage", () => {
     }
   });
 
-  it("reads only limit plus one review records after bootstrap", async () => {
+  it("serves an indexed metadata page without opening any review payload file", async () => {
     const ids = Array.from({ length: 7 }, (_, index) => makeReviewId(index + 10));
     await Promise.all(
       ids.map((id, index) =>
@@ -944,7 +1099,7 @@ describe("reviews storage", () => {
             !filePath.startsWith(`${join(reviewsDir(), ".index")}/`) &&
             filePath.endsWith(".json"),
         ),
-      ).toHaveLength(3);
+      ).toHaveLength(0);
     } finally {
       vi.doUnmock("node:fs/promises");
     }
@@ -1685,6 +1840,79 @@ describe("reviews storage", () => {
     }
   });
 
+  it("reports salvage loss on the detail read, not only in the listing", async () => {
+    const rawReview = {
+      metadata: makeSavedReview().metadata,
+      result: {
+        summary: "Legacy review",
+        issues: [
+          makeIssue({ id: "ok", file: "a.ts", severity: "high" }),
+          { ...makeIssue({ id: "bad" }), category: "imaginary" },
+        ],
+      },
+      diff: makeSaveOptions().diff,
+      gitContext: makeSavedReview().gitContext,
+    };
+    await mkdir(reviewsDir(), { recursive: true });
+    await writeFile(reviewPath(REVIEW_ID), `${JSON.stringify(rawReview, null, 2)}\n`, "utf-8");
+
+    const { getReviewDetail } = await loadStorage();
+    const detail = await getReviewDetail(REVIEW_ID);
+
+    expect(detail.ok).toBe(true);
+    if (!detail.ok) return;
+    expect(detail.value.warnings).toEqual([
+      { kind: "invalid_issues_dropped", reviewId: REVIEW_ID, count: 1 },
+    ]);
+    expect(detail.value.review.result.issues.map((issue) => issue.id)).toEqual(["ok"]);
+  });
+
+  it("warns that a salvaged review lost its execution record on every read path", async () => {
+    const projectPath = "/legacy/dropped-execution";
+    const rawReview = {
+      metadata: {
+        ...makeSavedReview().metadata,
+        projectPath,
+        issueCount: 0,
+        highCount: 0,
+        mediumCount: 0,
+        terminalOutcome: "cancelled",
+      },
+      result: { issues: [] },
+      gitContext: makeSavedReview().gitContext,
+      // The durable half of the terminal execution, with a receipt the strict
+      // schema rejects: the outcome and trace cannot come back from this read.
+      executionSnapshot: {
+        schemaVersion: 1,
+        executionFingerprint: "a".repeat(64),
+        receipt: { outcome: "cancelled" },
+      },
+    };
+    await mkdir(reviewsDir(), { recursive: true });
+    await writeFile(reviewPath(REVIEW_ID), `${JSON.stringify(rawReview, null, 2)}\n`, "utf-8");
+
+    const { getReviewDetail, listReviewPage } = await loadStorage();
+    const warning = { kind: "invalid_execution_dropped" as const, reviewId: REVIEW_ID };
+
+    const detail = await getReviewDetail(REVIEW_ID);
+    expect(detail.ok).toBe(true);
+    if (!detail.ok) return;
+    expect(detail.value.warnings).toEqual([warning]);
+    expect(detail.value.review.executionSnapshot).toBeUndefined();
+
+    const fromFullScan = await listReviewPage(projectPath, { limit: 10 });
+    expect(fromFullScan.ok).toBe(true);
+    if (!fromFullScan.ok) return;
+    expect(fromFullScan.value.warnings).toEqual([warning]);
+
+    // The second listing serves from the project index without reopening the
+    // record, so the loss has to survive in the index too.
+    const fromIndex = await listReviewPage(projectPath, { limit: 10 });
+    expect(fromIndex.ok).toBe(true);
+    if (!fromIndex.ok) return;
+    expect(fromIndex.value.warnings).toEqual([warning]);
+  });
+
   it("does not persist a lenient-salvaged record via the migration write-back", async () => {
     const diff = makeSaveOptions().diff;
     const rawReview = {
@@ -1714,7 +1942,10 @@ describe("reviews storage", () => {
     const read = await getReview(REVIEW_ID);
     expect(read.ok).toBe(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // The migration write-back is fire-and-forget through the FIFO review lock,
+    // so queueing behind it settles any scheduled write deterministically.
+    const { withReviewLock } = await import("./lock.js");
+    await withReviewLock(REVIEW_ID, async () => undefined);
     const stored = await readJson<typeof rawReview>(reviewPath(REVIEW_ID));
     expect(stored.diff).toEqual(diff);
     expect(stored.result.issues.some((issue) => issue.category === "imaginary")).toBe(true);
@@ -1792,7 +2023,10 @@ describe("reviews storage", () => {
       droppedIssueCount: 1,
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // The migration write-back is fire-and-forget through the FIFO review lock,
+    // so queueing behind it settles any scheduled write deterministically.
+    const { withReviewLock } = await import("./lock.js");
+    await withReviewLock(REVIEW_ID, async () => undefined);
     await expect(readFile(reviewPath(REVIEW_ID), "utf-8")).resolves.toBe(rawBytes);
     logSpy.mockRestore();
   });

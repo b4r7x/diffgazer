@@ -269,6 +269,23 @@ describe("resolveLoopbackHttpEndpoint", () => {
     if (result.ok) return;
     expect(result.error.code).toBe("dns-resolution-failed");
   });
+
+  it("rejects aborted DNS resolution before secret resolution", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const lookup: DnsLookupFn = async () => {
+      throw new Error("lookup should not run");
+    };
+
+    const result = await resolveLoopbackHttpEndpoint(
+      { endpoint: "http://localhost:11434" },
+      { lookup, signal: controller.signal },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("dns-resolution-failed");
+  });
 });
 
 describe("boundedFetchInit", () => {

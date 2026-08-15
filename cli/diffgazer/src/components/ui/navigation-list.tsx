@@ -19,12 +19,12 @@ export interface NavigationListProps {
   children: ReactNode;
 }
 
-export interface NavigationListItemState {
+interface NavigationListItemState {
   isHighlighted: boolean;
   tone: RowTone;
 }
 
-export interface NavigationListItemProps {
+interface NavigationListItemProps {
   id: string;
   disabled?: boolean;
   /**
@@ -36,7 +36,7 @@ export interface NavigationListItemProps {
   children: ReactNode | ((state: NavigationListItemState) => ReactNode);
 }
 
-export interface NavigationListTitleProps {
+interface NavigationListTitleProps {
   children: string;
 }
 

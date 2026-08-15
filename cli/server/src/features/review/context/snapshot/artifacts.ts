@@ -1,11 +1,18 @@
 import { createHash, randomUUID } from "node:crypto";
-import { lstat, readFile, realpath } from "node:fs/promises";
+import { lstat, readdir, readFile, realpath, unlink } from "node:fs/promises";
 import path from "node:path";
+import { scanJsonRejectingDuplicateKeys } from "@diffgazer/core/json";
 import type { ProjectContextSnapshot } from "@diffgazer/core/schemas/context";
 import {
+  MAX_CONTEXT_GRAPH_JSON_BYTES,
+  MAX_CONTEXT_JSON_DEPTH,
+  MAX_CONTEXT_MANIFEST_JSON_BYTES,
+  MAX_CONTEXT_MARKDOWN_BYTES,
+  MAX_CONTEXT_META_JSON_BYTES,
   ProjectContextSnapshotManifestSchema,
   ProjectContextSnapshotSchema,
 } from "@diffgazer/core/schemas/context";
+import { withFileTransactionLock } from "../../../../shared/lib/config/transaction/file-lock.js";
 import { formatSchemaIssues } from "../../../../shared/lib/errors.js";
 import { atomicWriteFile } from "../../../../shared/lib/fs.js";
 import { log } from "../../../../shared/lib/log.js";
@@ -45,6 +52,27 @@ async function isSymlinkedCacheFile(filePath: string): Promise<boolean> {
   return stats?.isSymbolicLink() ?? false;
 }
 
+async function readBoundedUtf8(filePath: string, maxBytes: number): Promise<string | null> {
+  const stats = await lstat(filePath).catch(() => null);
+  if (!stats?.isFile() || stats.size > maxBytes) return null;
+  return readFile(filePath, "utf8");
+}
+
+function parseBoundedJson(raw: string, maxBytes: number): unknown | null {
+  try {
+    scanJsonRejectingDuplicateKeys(raw, {
+      maxBytes,
+      maxDepth: MAX_CONTEXT_JSON_DEPTH,
+      onFail: () => {
+        throw new TypeError("context JSON exceeds bounded scan limits");
+      },
+    });
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export async function loadContextSnapshot(
   contextDir: string,
 ): Promise<ProjectContextSnapshot | null> {
@@ -60,8 +88,17 @@ export async function loadContextSnapshot(
       log("warn", "context_snapshot_symlinked_manifest", { contextDir });
       return null;
     }
-    const manifestRaw = await readFile(manifestPath, "utf8");
-    const manifestResult = ProjectContextSnapshotManifestSchema.safeParse(JSON.parse(manifestRaw));
+    const manifestRaw = await readBoundedUtf8(manifestPath, MAX_CONTEXT_MANIFEST_JSON_BYTES);
+    if (manifestRaw === null) {
+      log("warn", "context_snapshot_oversized_manifest", { contextDir });
+      return null;
+    }
+    const manifestJson = parseBoundedJson(manifestRaw, MAX_CONTEXT_MANIFEST_JSON_BYTES);
+    if (manifestJson === null) {
+      log("warn", "context_snapshot_invalid_manifest", { contextDir });
+      return null;
+    }
+    const manifestResult = ProjectContextSnapshotManifestSchema.safeParse(manifestJson);
     if (!manifestResult.success) {
       log("warn", "context_snapshot_invalid_manifest", { contextDir });
       return null;
@@ -88,10 +125,17 @@ export async function loadContextSnapshot(
       }
     }
     const [markdown, graphRaw, metaRaw] = await Promise.all([
-      readFile(markdownPath, "utf8"),
-      readFile(graphPath, "utf8"),
-      readFile(metaPath, "utf8"),
+      readBoundedUtf8(markdownPath, MAX_CONTEXT_MARKDOWN_BYTES),
+      readBoundedUtf8(graphPath, MAX_CONTEXT_GRAPH_JSON_BYTES),
+      readBoundedUtf8(metaPath, MAX_CONTEXT_META_JSON_BYTES),
     ]);
+    if (markdown === null || graphRaw === null || metaRaw === null) {
+      log("warn", "context_snapshot_oversized_artifact", {
+        contextDir,
+        generation: manifest.generation,
+      });
+      return null;
+    }
     if (
       sha256(markdown) !== manifest.artifacts.markdown.sha256 ||
       sha256(graphRaw) !== manifest.artifacts.graph.sha256 ||
@@ -103,10 +147,19 @@ export async function loadContextSnapshot(
       });
       return null;
     }
+    const graphJson = parseBoundedJson(graphRaw, MAX_CONTEXT_GRAPH_JSON_BYTES);
+    const metaJson = parseBoundedJson(metaRaw, MAX_CONTEXT_META_JSON_BYTES);
+    if (graphJson === null || metaJson === null) {
+      log("warn", "context_snapshot_invalid_json", {
+        contextDir,
+        generation: manifest.generation,
+      });
+      return null;
+    }
     const parsed = ProjectContextSnapshotSchema.safeParse({
       markdown,
-      graph: JSON.parse(graphRaw),
-      meta: JSON.parse(metaRaw),
+      graph: graphJson,
+      meta: metaJson,
     });
     if (!parsed.success) {
       log("warn", "context_snapshot_invalid", {
@@ -131,30 +184,77 @@ export async function loadContextSnapshot(
   }
 }
 
-export async function publishContextSnapshot(
+export function publishContextSnapshot(
   contextDir: string,
   snapshot: ProjectContextSnapshot,
 ): Promise<void> {
-  const generation = randomUUID();
-  const artifactNames = snapshotArtifactNames(generation);
-  const graphContent = JSON.stringify(snapshot.graph, null, 2);
-  const metaContent = JSON.stringify(snapshot.meta, null, 2);
-  await Promise.all([
-    atomicWriteFile(path.join(contextDir, artifactNames.graph), graphContent),
-    atomicWriteFile(path.join(contextDir, artifactNames.markdown), snapshot.markdown),
-    atomicWriteFile(path.join(contextDir, artifactNames.meta), metaContent),
-  ]);
-  const manifest = ProjectContextSnapshotManifestSchema.parse({
-    version: 1,
-    generation,
-    artifacts: {
-      markdown: { file: artifactNames.markdown, sha256: sha256(snapshot.markdown) },
-      graph: { file: artifactNames.graph, sha256: sha256(graphContent) },
-      meta: { file: artifactNames.meta, sha256: sha256(metaContent) },
-    },
+  const manifestPath = path.join(contextDir, SNAPSHOT_MANIFEST_FILE);
+  return withFileTransactionLock(manifestPath, async () => {
+    let previousGeneration: string | null = null;
+    try {
+      if (!(await isSymlinkedCacheFile(manifestPath))) {
+        const previousManifestRaw = await readBoundedUtf8(
+          manifestPath,
+          MAX_CONTEXT_MANIFEST_JSON_BYTES,
+        );
+        if (previousManifestRaw !== null) {
+          const previousManifestJson = parseBoundedJson(
+            previousManifestRaw,
+            MAX_CONTEXT_MANIFEST_JSON_BYTES,
+          );
+          if (previousManifestJson !== null) {
+            const previousManifest =
+              ProjectContextSnapshotManifestSchema.safeParse(previousManifestJson);
+            if (previousManifest.success) previousGeneration = previousManifest.data.generation;
+          }
+        }
+      }
+    } catch {
+      previousGeneration = null;
+    }
+
+    const generation = randomUUID();
+    const artifactNames = snapshotArtifactNames(generation);
+    const graphContent = JSON.stringify(snapshot.graph, null, 2);
+    const metaContent = JSON.stringify(snapshot.meta, null, 2);
+    await Promise.all([
+      atomicWriteFile(path.join(contextDir, artifactNames.graph), graphContent),
+      atomicWriteFile(path.join(contextDir, artifactNames.markdown), snapshot.markdown),
+      atomicWriteFile(path.join(contextDir, artifactNames.meta), metaContent),
+    ]);
+    const manifest = ProjectContextSnapshotManifestSchema.parse({
+      version: 1,
+      generation,
+      artifacts: {
+        markdown: { file: artifactNames.markdown, sha256: sha256(snapshot.markdown) },
+        graph: { file: artifactNames.graph, sha256: sha256(graphContent) },
+        meta: { file: artifactNames.meta, sha256: sha256(metaContent) },
+      },
+    });
+    await atomicWriteFile(manifestPath, JSON.stringify(manifest, null, 2));
+
+    const retainedGenerations = new Set(
+      previousGeneration === null ? [generation] : [generation, previousGeneration],
+    );
+    try {
+      const entries = await readdir(contextDir);
+      await Promise.all(
+        entries.map(async (entry) => {
+          if (entry === SNAPSHOT_MANIFEST_FILE) return;
+          const match = /^context\.([A-Za-z0-9_-]{1,128})\.(?:md|json|meta\.json)$/.exec(entry);
+          const artifactGeneration = match?.[1];
+          if (!artifactGeneration || retainedGenerations.has(artifactGeneration)) return;
+          const artifactPath = path.join(contextDir, entry);
+          const stats = await lstat(artifactPath).catch(() => null);
+          if (!stats?.isFile()) return;
+          await unlink(artifactPath);
+        }),
+      );
+    } catch (error) {
+      log("warn", "context_snapshot_cleanup_failed", {
+        contextDir,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
-  await atomicWriteFile(
-    path.join(contextDir, SNAPSHOT_MANIFEST_FILE),
-    JSON.stringify(manifest, null, 2),
-  );
 }

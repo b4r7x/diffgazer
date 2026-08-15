@@ -87,7 +87,14 @@ describe("baseUrl src wildcard alias", () => {
       { from: "user" },
     );
 
+    await add.parseAsync(
+      ["add", "ui/panel", "--integration", "none", "--cwd", root, "--yes", "--skip-install"],
+      { from: "user" },
+    );
+
     expect(existsSync(join(root, "src/components/ui/button/button.tsx"))).toBe(true);
     expect(existsSync(join(root, "components/ui/button/button.tsx"))).toBe(false);
+    const styles = readFileSync(join(root, "src/styles/styles.css"), "utf-8");
+    expect(styles.split('[data-slot="panel"]').length - 1).toBeGreaterThan(0);
   });
 });

@@ -1,34 +1,38 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const emptyStateDoc: ComponentDoc = {
   description:
-    "Composable placeholder content for empty views with centered and inline layout variants. Size propagates to all parts via context; variant controls root layout only.",
+    "Composable placeholder content for empty views with centered and inline layout variants. Size propagates to all parts through the root's data-size attribute; variant controls root layout only.",
   anatomy: [
     {
       name: "EmptyState",
       indent: 0,
-      note: "Root wrapper — provides size context to all parts. Variant controls root layout only.",
+      note: "Root wrapper — stamps data-size, which every part reads through group-data variants. Variant controls root layout only.",
     },
-    { name: "EmptyStateIcon", indent: 1, note: "Optional visual marker. Size adapts via context." },
+    {
+      name: "EmptyStateIcon",
+      indent: 1,
+      note: "Optional visual marker. Size adapts via the root's data-size.",
+    },
     {
       name: "EmptyStateMessage",
       indent: 1,
-      note: "Primary empty-state copy. Font size adapts via context.",
+      note: "Primary empty-state copy. Font size adapts via the root's data-size.",
     },
     {
       name: "EmptyStateDescription",
       indent: 1,
-      note: "Secondary supporting copy. Font size adapts via context.",
+      note: "Secondary supporting copy. Font size adapts via the root's data-size.",
     },
     {
       name: "EmptyStateActions",
       indent: 1,
-      note: "Optional action area for buttons/links. Gap adapts via context.",
+      note: "Optional action area for buttons/links. Gap adapts via the root's data-size.",
     },
     {
       name: "EmptyStateHint",
       indent: 1,
-      note: "Quiet keyboard affordance for Kbd children. Non-interactive; font size adapts via context.",
+      note: "Quiet keyboard affordance for Kbd children. Non-interactive; font size adapts via the root's data-size.",
     },
   ],
   notes: [
@@ -39,7 +43,7 @@ export const emptyStateDoc: ComponentDoc = {
     {
       title: "Size",
       content:
-        "sm for compact embedded contexts, md (default) for standard use, lg for full-page empty states. Size propagates to all parts via context.",
+        "sm for compact embedded contexts, md (default) for standard use, lg for full-page empty states. Size propagates to all parts through the root's data-size attribute.",
     },
     {
       title: "Icon",
@@ -49,7 +53,7 @@ export const emptyStateDoc: ComponentDoc = {
     {
       title: "Compound Composition",
       content:
-        "Compose semantic parts for icon, message, description, and actions. All parts consume size from the root via React context. Variant controls root layout only.",
+        "Compose semantic parts for icon, message, description, and actions. There is no React context here: the root stamps data-size and every part reads it through group-data variants, so a copy-mode consumer must keep the root's group/es class. Variant controls root layout only.",
     },
     {
       title: "Keyboard Hint",

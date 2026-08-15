@@ -18,3 +18,4 @@ export {
   type DiffViewProps,
   type DiffViewVariant,
 } from "./diff-view";
+export type { DiffRowState } from "./diff-view-line";

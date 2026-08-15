@@ -105,7 +105,7 @@ export function useOverflowItems({
       }
 
       const containerWidth = container.offsetWidth;
-      const gap = parseFloat(view.getComputedStyle(container).gap) || 0;
+      const gap = parseFloat(view.getComputedStyle(container).columnGap) || 0;
       const items = children.slice(0, safeItemCount);
       const indicator = children[safeItemCount];
       const itemWidths = items.map((element) => element.offsetWidth);

@@ -12,9 +12,10 @@ import { NavigationProvider } from "../../../app/providers/navigation";
 import { useNavigation } from "../../../hooks/use-navigation";
 import type { Route } from "../../../lib/routes";
 import { flush } from "../../../testing/flush";
-import { makeReviewLifecycleBase } from "../../../testing/review-lifecycle-base";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
+import { frameText, stripAnsi } from "../testing/frame-text";
+import { makeReviewLifecycleBase } from "../testing/review-lifecycle-base";
 
 const shellList = makeAllConfigurationsListResponse();
 
@@ -41,15 +42,6 @@ function makeReadyInitResponse() {
         trustedAt: "2026-01-01T00:00:00.000Z",
         trustMode: "persistent" as const,
       },
-    },
-    setup: {
-      hasSecretsStorage: true,
-      hasProvider: true,
-      hasModel: true,
-      hasTrust: true,
-      isConfigured: true,
-      isReady: true,
-      missing: [],
     },
   };
 }
@@ -78,15 +70,6 @@ function makeUnconfiguredInitResponse() {
         trustMode: "persistent" as const,
       },
     },
-    setup: {
-      hasSecretsStorage: true,
-      hasProvider: false,
-      hasModel: false,
-      hasTrust: true,
-      isConfigured: false,
-      isReady: false,
-      missing: ["provider", "model"],
-    },
   };
 }
 
@@ -94,7 +77,7 @@ const apiMocks = vi.hoisted(() => ({
   clearActiveSession: vi.fn(),
   createReview: vi.fn(),
   useCreateReview: vi.fn(),
-  useInit: vi.fn(),
+  useConfigurationInit: vi.fn(),
   useReviewLifecycleBase: vi.fn(),
 }));
 
@@ -104,7 +87,7 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
   return {
     ...actual,
     useCreateReview: apiMocks.useCreateReview,
-    useInit: apiMocks.useInit,
+    useConfigurationInit: apiMocks.useConfigurationInit,
     useReviewLifecycleBase: apiMocks.useReviewLifecycleBase,
     useReviewSessionCache: () => ({
       clearActiveSession: apiMocks.clearActiveSession,
@@ -114,7 +97,7 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
 
 vi.mock("../../../components/layout/global", () => ({
   getContentZoneRows: (rows: number) => Math.max(rows - 4, 0),
-  useContentZone: () => ({ columns: 100, rows: 30, contentColumns: 100, contentRows: 26 }),
+  useContentZone: () => ({ columns: 100, contentColumns: 100, contentRows: 26 }),
 }));
 
 import { ReviewContainer } from "./container";
@@ -130,7 +113,7 @@ beforeEach(() => {
     makeCreateReviewResponse({ reviewId: "review-123", session: { mode } }),
   );
   apiMocks.useCreateReview.mockReturnValue({ mutateAsync: apiMocks.createReview });
-  apiMocks.useInit.mockReturnValue({
+  apiMocks.useConfigurationInit.mockReturnValue({
     data: makeReadyInitResponse(),
     isLoading: false,
   });
@@ -252,7 +235,7 @@ describe("ReviewContainer", () => {
 
     const { lastFrame } = renderContainer();
 
-    expect(lastFrame() ?? "").toContain("Elapsed: 00:05");
+    expect(stripAnsi(lastFrame() ?? "")).toContain("Elapsed: 00:05");
 
     act(() => {
       vi.advanceTimersByTime(2300);
@@ -292,7 +275,10 @@ describe("ReviewContainer", () => {
   });
 
   test("running Escape returns home without cancelling or clearing the active session", async () => {
-    const cancel = vi.fn(async () => null);
+    const cancel = vi.fn(async () => ({
+      status: "cancelled" as const,
+      reason: "cancelled" as const,
+    }));
     apiMocks.useReviewLifecycleBase.mockReturnValue(
       makeReviewLifecycleBase({ cancel, isStreaming: true, reviewId: "review-123" }),
     );
@@ -310,7 +296,10 @@ describe("ReviewContainer", () => {
   });
 
   test("running c cancels on the server while Enter remains inert", async () => {
-    const cancel = vi.fn(async () => null);
+    const cancel = vi.fn(async () => ({
+      status: "cancelled" as const,
+      reason: "cancelled" as const,
+    }));
     apiMocks.useReviewLifecycleBase.mockReturnValue(
       makeReviewLifecycleBase({ cancel, isStreaming: true, reviewId: "review-123" }),
     );
@@ -329,7 +318,10 @@ describe("ReviewContainer", () => {
   });
 
   test("generic terminal stream errors show Back/Escape instead of streaming Cancel", async () => {
-    const cancel = vi.fn(async () => null);
+    const cancel = vi.fn(async () => ({
+      status: "cancelled" as const,
+      reason: "cancelled" as const,
+    }));
     apiMocks.useReviewLifecycleBase.mockReturnValue(
       makeReviewLifecycleBase({
         cancel,
@@ -355,7 +347,10 @@ describe("ReviewContainer", () => {
   });
 
   test("a reducer-stopped stream no longer exposes Cancel", () => {
-    const cancel = vi.fn(async () => null);
+    const cancel = vi.fn(async () => ({
+      status: "cancelled" as const,
+      reason: "cancelled" as const,
+    }));
     apiMocks.useReviewLifecycleBase.mockReturnValue(
       makeReviewLifecycleBase({
         cancel,
@@ -373,7 +368,7 @@ describe("ReviewContainer", () => {
   });
 
   test("review gates replace stale home footer shortcuts", async () => {
-    apiMocks.useInit.mockReturnValue({
+    apiMocks.useConfigurationInit.mockReturnValue({
       data: makeUnconfiguredInitResponse(),
       isLoading: false,
     });
@@ -395,8 +390,31 @@ describe("ReviewContainer", () => {
     expect(frame).toContain("This product has not been configured");
   });
 
+  test("config load failure offers provider setup recovery beside Retry", async () => {
+    const refetch = vi.fn(() => Promise.resolve());
+    apiMocks.useConfigurationInit.mockReturnValue({
+      data: undefined,
+      error: new Error("config load failed"),
+      isLoading: false,
+      refetch,
+    });
+    apiMocks.useReviewLifecycleBase.mockReturnValue(makeReviewLifecycleBase());
+
+    const { stdin, lastFrame } = renderContainer({ showFooterProbe: true });
+
+    await waitUntil(() => (lastFrame() ?? "").includes("Configuration Unavailable"));
+    await waitUntil(() => (lastFrame() ?? "").includes("p Providers"));
+    expect(lastFrame() ?? "").toContain("Configure Provider");
+
+    stdin.write("\r");
+    await waitUntil(() => refetch.mock.calls.length === 1);
+
+    stdin.write("p");
+    await waitUntil(() => (lastFrame() ?? "").includes("Route: settings/providers"));
+  });
+
   test("Switch Mode from an unconfigured resumed no-diff review opens provider setup without resetting first", async () => {
-    apiMocks.useInit.mockReturnValue({
+    apiMocks.useConfigurationInit.mockReturnValue({
       data: makeUnconfiguredInitResponse(),
       isLoading: false,
     });
@@ -424,7 +442,7 @@ describe("ReviewContainer", () => {
     expect(lastFrame() ?? "").toContain("Route: settings/providers");
     expect(apiMocks.createReview).not.toHaveBeenCalled();
     expect(lifecycle.stream.abort).not.toHaveBeenCalled();
-    expect(lifecycle.completion.resetCompletion).not.toHaveBeenCalled();
+    expect(lifecycle.reset).not.toHaveBeenCalled();
   });
 
   test("starts only one alternate review while the no-diff action is pending", async () => {
@@ -453,5 +471,97 @@ describe("ReviewContainer", () => {
 
     releaseCreateReview?.();
     await flush();
+  });
+
+  test("creates an alternate-mode review on a live route instead of stalling on loading", async () => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        gate: "no-diff",
+        isNoDiffError: true,
+        error: "No changes to review.",
+        errorCode: ReviewErrorCode.NO_DIFF,
+      }),
+    );
+
+    const { stdin, lastFrame } = renderContainer({
+      initialRoute: {
+        screen: "review",
+        reviewId: "review-123",
+        mode: "staged",
+        live: true,
+      },
+    });
+
+    expect(lastFrame() ?? "").toContain("No staged changes");
+    stdin.write("\r");
+
+    await waitUntil(() =>
+      apiMocks.createReview.mock.calls.some(([request]) => request.mode === "unstaged"),
+    );
+    expect(lastFrame() ?? "").not.toContain("Starting review...");
+  });
+
+  test("draws the review surface while the session is still being created", async () => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        hasStarted: false,
+        isStreaming: false,
+        startedAt: null,
+        reviewId: null,
+        steps: [
+          { id: "diff", label: "Collect diff", status: "pending" },
+          { id: "context", label: "Project context", status: "pending" },
+        ],
+      }),
+    );
+
+    const { lastFrame } = renderContainer({
+      initialRoute: { screen: "review", mode: "unstaged" },
+    });
+    await flush();
+
+    const frame = frameText(lastFrame());
+    expect(frame).toContain("PROGRESS OVERVIEW");
+    expect(frame).toContain("LIVE ACTIVITY LOG");
+    expect(frame).toContain("Collect diff");
+    expect(frame).not.toContain("Starting review");
+  });
+
+  test("keeps Escape live while the session is still being created", async () => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({ hasStarted: false, isStreaming: false, startedAt: null }),
+    );
+
+    const { stdin, lastFrame } = renderContainer({
+      initialRoute: { screen: "review", mode: "unstaged" },
+    });
+    await flush();
+
+    stdin.write(ESC);
+    await waitUntil(() => (lastFrame() ?? "").includes("Home route"));
+  });
+
+  test("keeps the plain readout while configuration is still loading", async () => {
+    apiMocks.useConfigurationInit.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isFetching: true,
+    });
+
+    const { lastFrame } = renderContainer({
+      initialRoute: { screen: "review", mode: "unstaged" },
+    });
+    await flush();
+
+    const frame = frameText(lastFrame());
+    expect(frame).toContain("Loading configuration");
+    expect(frame).not.toContain("PROGRESS OVERVIEW");
+
+    // The readout takes the frame the run would have filled instead of hanging
+    // off the top-left corner, so it must sit centered, not at column 0.
+    const readoutLine = stripAnsi(lastFrame())
+      .split("\n")
+      .find((line) => line.includes("Loading configuration"));
+    expect(readoutLine).toMatch(/^ {2,}\S/);
   });
 });

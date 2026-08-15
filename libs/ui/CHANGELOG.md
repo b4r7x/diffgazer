@@ -28,8 +28,10 @@
     `--ui-content-exit-to-{top|bottom|left|right}`,
     `--ui-content-enter-duration`, `--ui-content-exit-duration`,
     `--ui-content-transform-origin` (auto-set, readable from transform-based
-    keyframe overrides), and `--ui-floating-trigger-width` (set when
-    `matchTriggerWidth` is true).
+    keyframe overrides), `--ui-floating-trigger-width` (set when
+    `matchTriggerWidth` is true), and `--floating-panel-available-height` /
+    `--floating-panel-available-width` (set on every measure; read them to cap a
+    custom panel's own scrollable region).
 
   Removals:
   - `PopoverContent.externalOnAnimationEnd` — was a leaked internal prop. Native

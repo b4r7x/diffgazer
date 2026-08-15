@@ -23,6 +23,20 @@ describe("truncate", () => {
   ])("truncates %j to length %s with suffix %j", (input, maxLength, suffix, expected) => {
     expect(truncate(input, maxLength, suffix)).toBe(expected);
   });
+
+  it.each([
+    ["123\u{1F600}456", 7, undefined, "123\u{1F600}456"],
+    ["\u{1F600}".repeat(4), 3, "~", "\u{1F600}\u{1F600}~"],
+    ["e\u0301".repeat(4), 3, "~", "e\u0301e\u0301~"],
+    [
+      "\u{1F469}\u200D\u{1F469}\u200D\u{1F467}a",
+      2,
+      undefined,
+      "\u{1F469}\u200D\u{1F469}\u200D\u{1F467}a",
+    ],
+  ])("counts %j in grapheme clusters at length %s", (input, maxLength, suffix, expected) => {
+    expect(truncate(input, maxLength, suffix)).toBe(expected);
+  });
 });
 
 describe("pluralize", () => {

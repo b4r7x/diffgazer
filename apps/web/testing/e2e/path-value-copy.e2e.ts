@@ -32,7 +32,7 @@ async function copyText(pathValue: Locator): Promise<string> {
 
 test("copies a path as one unbroken line whether it wraps or truncates", async ({ page }) => {
   await page.setViewportSize(NARROW_VIEWPORT);
-  await page.goto("/testing/fixtures/results-layout.html?view=results");
+  await page.goto("/testing/fixtures/app-fixture.html?view=results");
 
   // Case 1: the issue list subtitle, where the path is narrow enough that the tail
   // drops to a second line box.

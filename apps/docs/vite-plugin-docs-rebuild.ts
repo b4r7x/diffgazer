@@ -24,10 +24,12 @@ export function docsDataRebuild(): Plugin {
     exec(
       "pnpm prepare:generated",
       { cwd: APP_ROOT, env: { ...process.env, DIFFGAZER_SKIP_ARTIFACT_PREPARE: "1" } },
-      (error, _stdout, stderr) => {
+      (error, stdout, stderr) => {
         rebuilding = false;
         if (error) {
-          server.config.logger.error(`[docs-data] Build failed: ${stderr}`);
+          // pnpm/turbo inherit stdio for the inner build, so task banners and
+          // most compiler diagnostics arrive on stdout, not stderr.
+          server.config.logger.error(`[docs-data] Build failed:\n${stdout}${stderr}`);
         } else {
           const elapsed = Date.now() - start;
           server.config.logger.info(`[docs-data] Rebuilt in ${elapsed}ms`, {
@@ -48,12 +50,11 @@ export function docsDataRebuild(): Plugin {
     apply: "serve",
     configureServer(s) {
       if (isVitest) return;
-      server = s;
-
-      let timer: ReturnType<typeof setTimeout> | null = null;
-
       // Only watch workspace artifact dirs in dev mode
       if (!IS_DEV) return;
+
+      server = s;
+      let timer: ReturnType<typeof setTimeout> | null = null;
 
       const watchPaths = getLibrariesWithArtifacts().map((lib) =>
         resolve(WORKSPACE_ROOT, lib.artifactSource.workspaceDir, "dist/artifacts"),
@@ -66,11 +67,13 @@ export function docsDataRebuild(): Plugin {
       server.watcher.on("all", (event, filePath) => {
         const isWatched = watchPaths.some((dir) => filePath.startsWith(dir));
         if (!isWatched) return;
+        // Discard directory and lifecycle events before they can queue a pending
+        // rebuild: an artifact regeneration emits addDir/unlinkDir mid-flight.
+        if (!["add", "change", "unlink"].includes(event)) return;
         if (rebuilding) {
           pendingRebuild = true;
           return;
         }
-        if (!["add", "change", "unlink"].includes(event)) return;
 
         if (timer) clearTimeout(timer);
         timer = setTimeout(runBuild, 300);

@@ -32,7 +32,9 @@ function Toggle({
       }`}
       onClick={() => setIsPressed((prev) => !prev)}
     >
-      <span className="text-xs">{isPressed ? "ON" : "OFF"}</span>
+      <span aria-hidden="true" className="text-xs">
+        {isPressed ? "ON" : "OFF"}
+      </span>
       {children}
     </button>
   );

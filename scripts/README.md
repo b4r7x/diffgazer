@@ -1,20 +1,19 @@
 # Monorepo Scripts
 
-Active scripts in this directory verify the single-repository Diffgazer workspace.
+`scripts/monorepo/` holds the invariant checks, artifact validators, smokes, and
+benchmarks that verify the single-repository Diffgazer workspace.
+
+Tests for the modules in this directory:
 
 ```bash
-pnpm run verify:monorepo
-pnpm run validate:artifacts:check
-pnpm run smoke:cli
-pnpm run smoke:packages
-pnpm run smoke:shadcn
-pnpm run test-ci
-pnpm run release-check
+pnpm run test:scripts
 ```
 
 ## Source of Truth
 
-The live monorepo scripts are wired through the root `package.json` scripts
-(`verify:monorepo`, `validate:artifacts:check`, `smoke:*`, `bench`, `smoke:modelsdev`,
-`release-check`); see `package.json` for the authoritative invocation list and
-`scripts/monorepo/` for the modules they run.
+The repo-wide gates these modules back (`verify:monorepo`, `validate:artifacts`,
+`smoke:*`, `bench`, `release-check`, `test-ci`) are wired through the root
+`package.json`; see it for the authoritative invocation list. Gates that read
+generated artifacts run through `scripts/monorepo/run-with-artifacts.sh`, so
+invoke the prepared wrapper (`validate:artifacts`) rather than its bare
+`:check` variant on a fresh clone.

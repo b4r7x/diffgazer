@@ -4,7 +4,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { log } from "../../../shared/lib/log.js";
 import { streamActiveSessionToSSE } from "./replay.js";
 import type { SSEWriter } from "./sse.js";
-import { addEvent, createSession, deleteSession, markComplete, markReady } from "./store.js";
+import {
+  addEvent,
+  createSession,
+  deleteSessionForTests,
+  markComplete,
+  markReady,
+} from "./store.js";
 
 // Boundary mock: logging writes process-visible diagnostics; replay tests assert stream behavior without emitting logs.
 vi.mock("../../../shared/lib/log.js", () => ({ log: vi.fn() }));
@@ -37,7 +43,6 @@ function completeEvent(reviewId: string): FullReviewStreamEvent {
     type: "complete",
     result: { issues: [] },
     reviewId,
-    durationMs: 100,
   };
 }
 
@@ -77,7 +82,7 @@ function failingTerminalWriter(failOn: readonly string[]): {
 
 afterEach(() => {
   for (const id of trackedIds) {
-    deleteSession(id);
+    deleteSessionForTests(id);
   }
   trackedIds.clear();
   vi.restoreAllMocks();
@@ -91,7 +96,7 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
     // is exercised. Removing the session from the active map (without
     // mutating `session.events`) keeps the caller's reference live while the
     // lookups inside `subscribe`/`onSessionComplete` return null.
-    deleteSession(session.reviewId);
+    deleteSessionForTests(session.reviewId);
     const { stream, failure } = failingTerminalWriter(["error"]);
 
     await expect(streamActiveSessionToSSE(stream, session)).rejects.toBe(failure);
@@ -121,7 +126,7 @@ describe("streamActiveSessionToSSE — terminal write failures", () => {
 
   it("resolves quietly when the client has already aborted before a write failure surfaces", async () => {
     const session = createTrackedSession("aborted-quiet");
-    deleteSession(session.reviewId);
+    deleteSessionForTests(session.reviewId);
     const controller = new AbortController();
     const { stream } = failingTerminalWriter(["error"]);
     // Wrap the stream so we can abort after the terminal write is queued but

@@ -7,12 +7,11 @@ import type { Readiness, ReadinessStatus } from "../schemas/config/readiness.js"
 import {
   CANDIDATE_PRODUCT_IDS,
   type CandidateProductId,
-  type RemovedProductId,
   type RunnableProductId,
   type TransportFamily,
 } from "../schemas/config/transports.js";
 
-export type SetupProductId = RunnableProductId | RemovedProductId | CandidateProductId;
+export type SetupProductId = RunnableProductId | CandidateProductId;
 
 type ConfigurationField =
   RunnableProductDescriptor<RunnableProductId>["configuration"]["fields"][number];
@@ -67,25 +66,6 @@ export interface RunnableSetupPlan {
   readonly steps: readonly RunnableSetupStep[];
   readonly remediation: SetupRemediation | null;
 }
-
-export interface RemovedSetupPlan {
-  readonly kind: "removed";
-  readonly productId: RemovedProductId;
-  readonly steps: readonly [
-    {
-      readonly id: "migration";
-      readonly action: "create-new-zai-configuration";
-      readonly targetProductId: "zai";
-      readonly credentialHandling: "retain-until-explicit-delete-never-copy-test-or-send";
-    },
-    {
-      readonly id: "delete";
-      readonly action: "delete-removed-record";
-    },
-  ];
-}
-
-export type SetupPlan = RunnableSetupPlan | RemovedSetupPlan;
 
 function isCandidateProductId(productId: SetupProductId): productId is CandidateProductId {
   return CANDIDATE_PRODUCT_IDS.some((candidateId) => candidateId === productId);
@@ -160,25 +140,19 @@ function buildRunnablePlan(
   };
 }
 
-export function buildSetupPlan(productId: SetupProductId, readiness?: Readiness): SetupPlan | null {
+export function buildSetupPlan(
+  productId: RunnableProductId,
+  readiness?: Readiness,
+): RunnableSetupPlan;
+export function buildSetupPlan(
+  productId: SetupProductId,
+  readiness?: Readiness,
+): RunnableSetupPlan | null;
+export function buildSetupPlan(
+  productId: SetupProductId,
+  readiness?: Readiness,
+): RunnableSetupPlan | null {
   if (isCandidateProductId(productId)) return null;
 
-  const product = PRODUCT_REGISTRY[productId];
-  if (product.kind === "removed") {
-    return {
-      kind: "removed",
-      productId: product.id,
-      steps: [
-        {
-          id: "migration",
-          action: product.migration.actions[0],
-          targetProductId: product.migration.targetProductId,
-          credentialHandling: product.migration.credentialHandling,
-        },
-        { id: "delete", action: product.migration.actions[1] },
-      ],
-    };
-  }
-
-  return buildRunnablePlan(product, readiness);
+  return buildRunnablePlan(PRODUCT_REGISTRY[productId], readiness);
 }

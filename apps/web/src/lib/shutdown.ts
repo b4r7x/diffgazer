@@ -1,11 +1,17 @@
-import {
-  isApiError,
-  SHUTDOWN_CLOSE_BLOCKED_MESSAGE,
-  SHUTDOWN_FAILED_MESSAGE,
-  type ShutdownResult,
-} from "@diffgazer/core/api";
+import { isApiError } from "@diffgazer/core/api";
 import { toast } from "@diffgazer/ui/components/toast";
 import { api } from "@/lib/api";
+
+/** Outcome of stopping the app process and closing this browser tab. */
+export type ShutdownResult =
+  | { status: "closed" }
+  | { status: "unsupported"; message: string }
+  | { status: "error"; message: string };
+
+const SHUTDOWN_CLOSE_BLOCKED_MESSAGE =
+  "The app process was stopped, but this browser blocked automatic tab closing. Close this tab manually.";
+export const SHUTDOWN_FAILED_MESSAGE =
+  "Could not stop the app process from this environment. Use Ctrl+C in the terminal.";
 
 export async function shutdown(): Promise<ShutdownResult> {
   try {

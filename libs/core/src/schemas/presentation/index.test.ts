@@ -1,24 +1,24 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   BadgeVariantSchema,
-  type ContextInfo,
+  type HomeContextInfo,
   type IssueTab,
   type LogEntryData,
   type LogTagType,
-  type SeverityCounts,
   type Shortcut,
   type ShortcutContext,
 } from "./index.js";
 
 describe("schemas/presentation public contracts", () => {
   it("keeps the presentation public types", () => {
-    expectTypeOf<ContextInfo>().toEqualTypeOf<{
+    expectTypeOf<HomeContextInfo>().toEqualTypeOf<{
       trustedDir?: string;
       providerName?: string;
       providerModel?: string;
       lastRunId?: string;
       lastRunIssueCount?: number;
       lastRunDurationMs?: number;
+      lastRunRequest?: "loading" | "unavailable";
     }>();
     expectTypeOf<IssueTab>().toEqualTypeOf<"details" | "explain" | "trace" | "patch">();
     expectTypeOf<LogTagType>().toEqualTypeOf<
@@ -33,13 +33,6 @@ describe("schemas/presentation public contracts", () => {
       isWarning?: boolean;
       source?: string;
       isError?: boolean;
-    }>();
-    expectTypeOf<SeverityCounts>().toEqualTypeOf<{
-      blocker: number;
-      high: number;
-      medium: number;
-      low: number;
-      nit: number;
     }>();
     expectTypeOf<Shortcut>().toEqualTypeOf<{
       key: string;

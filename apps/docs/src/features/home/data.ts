@@ -1,4 +1,3 @@
-import type { DocsLibraryConfigData } from "@/lib/libraries-config";
 import type { DocsLibraryId } from "@/lib/library";
 import type { LandingSection } from "@/lib/page-tree";
 
@@ -8,7 +7,7 @@ export interface HomeLibrary {
   sections: HomeSectionLink[];
 }
 
-export interface HomeSectionLink {
+interface HomeSectionLink {
   name: string;
   splat: string;
   count: number;
@@ -66,7 +65,7 @@ function pickAllSections(sections: LandingSection[]): HomeSectionLink[] {
 }
 
 export function buildHomeLibrary(
-  config: DocsLibraryConfigData,
+  displayName: string,
   library: DocsLibraryId,
   sections: LandingSection[],
 ): HomeLibrary {
@@ -74,7 +73,7 @@ export function buildHomeLibrary(
 
   return {
     id: library,
-    displayName: config.displayName,
+    displayName,
     sections: sectionLinks,
   };
 }

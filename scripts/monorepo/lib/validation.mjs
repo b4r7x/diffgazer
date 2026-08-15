@@ -287,20 +287,3 @@ export function collectBundleRelativeJsImportErrors(items, label) {
 
   return errors;
 }
-
-export function assertNoDuplicateDemoKeys(items, label) {
-  const seen = new Set();
-  const duplicates = new Set();
-
-  for (const item of items) {
-    const examples = item?.meta?.examples;
-    if (!examples || typeof examples !== "object") continue;
-    for (const key of Object.keys(examples)) {
-      const scopedKey = `${item.name}:${key}`;
-      if (seen.has(scopedKey)) duplicates.add(scopedKey);
-      seen.add(scopedKey);
-    }
-  }
-
-  return [...duplicates].map((key) => `${label}: duplicate demo key ${key}`);
-}

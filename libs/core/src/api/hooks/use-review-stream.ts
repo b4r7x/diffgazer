@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import { getErrorMessage } from "../../errors.js";
 import { err, ok, type Result } from "../../result.js";
 import { isSessionTerminationCode } from "../../review/lifecycle.js";
@@ -11,7 +11,12 @@ import {
 } from "../../review/state.js";
 import type { StreamReviewError } from "../../review/stream.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
+import type { CancelReason } from "../review.js";
 import { useApi } from "./context.js";
+
+export type CancelReviewOutcome =
+  | { status: "cancelled"; reason: CancelReason }
+  | { status: "error"; message: string };
 
 export interface ReviewStreamState extends ReviewState {
   reviewId: string | null;
@@ -59,15 +64,12 @@ function streamReducer(state: ReviewStreamState, action: StreamAction): ReviewSt
     };
   }
 
-  const next = reviewReducer(state, action);
-  return next === state
-    ? state
-    : {
-        ...next,
-        reviewId: state.reviewId,
-        hasCompleted: action.type === "COMPLETE_WITH_RESULT" ? true : state.hasCompleted,
-        notices: state.notices,
-      };
+  return {
+    ...reviewReducer(state, action),
+    reviewId: state.reviewId,
+    hasCompleted: action.type === "COMPLETE_WITH_RESULT" ? true : state.hasCompleted,
+    notices: state.notices,
+  };
 }
 
 export type UseReviewStreamResult = ReturnType<typeof useReviewStream>;
@@ -95,29 +97,36 @@ export function useReviewStream() {
   const cancel = async (
     reviewId: string | null,
     options: CancelReviewOptions = {},
-  ): Promise<string | null> => {
+  ): Promise<CancelReviewOutcome | null> => {
     cancelStream("cancel");
     const cancelToken = resumeTokenRef.current;
     const isCurrentCancel = () =>
       resumeTokenRef.current === cancelToken && abortControllerRef.current === null;
 
-    if (!options.preserveState) {
-      dispatch({ type: "CANCELLED" });
-    }
-
     if (!reviewId) {
-      return null;
+      if (!options.preserveState) {
+        dispatch({ type: "CANCELLED" });
+      }
+      return { status: "cancelled", reason: "cancelled" };
     }
 
     try {
-      await api.cancelReviewSession(reviewId);
-      return null;
+      const response = await api.cancelReviewSession(reviewId);
+      if (isCurrentCancel()) {
+        // A run the server had already finished or committed stops streaming
+        // without claiming a cancellation the user never got.
+        const claimsCancellation =
+          !options.preserveState &&
+          (response.reason === "cancelled" || response.reason === "not-found");
+        dispatch({ type: claimsCancellation ? "CANCELLED" : "SETTLE" });
+      }
+      return { status: "cancelled", reason: response.reason };
     } catch (error) {
       const message = getErrorMessage(error, "Failed to cancel the review session.");
       if (isCurrentCancel()) {
         dispatch({ type: "ERROR", error: message });
       }
-      return message;
+      return { status: "error", message };
     }
   };
 
@@ -172,7 +181,11 @@ export function useReviewStream() {
         isSessionTerminationCode(result.error.code) ||
         result.error.code === ReviewErrorCode.SESSION_NOT_FOUND
       ) {
-        dispatch({ type: "RESET" });
+        dispatch({
+          type: "ERROR",
+          error: result.error.message,
+          errorCode: result.error.code,
+        });
         return err(result.error);
       }
 
@@ -192,37 +205,6 @@ export function useReviewStream() {
     }
   };
 
-  const resumeAfterReconnect = useEffectEvent((reviewId: string) => {
-    void resume(reviewId);
-  });
-
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof document === "undefined") return;
-
-    const reconnect = () => {
-      const reviewId = state.reviewId;
-      if (
-        !reviewId ||
-        state.isStreaming ||
-        state.errorCode !== "STREAM_ERROR" ||
-        abortControllerRef.current
-      ) {
-        return;
-      }
-      resumeAfterReconnect(reviewId);
-    };
-    const reconnectWhenVisible = () => {
-      if (document.visibilityState === "visible") reconnect();
-    };
-
-    window.addEventListener("online", reconnect);
-    document.addEventListener("visibilitychange", reconnectWhenVisible);
-    return () => {
-      window.removeEventListener("online", reconnect);
-      document.removeEventListener("visibilitychange", reconnectWhenVisible);
-    };
-  }, [state.errorCode, state.isStreaming, state.reviewId]);
-
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -232,5 +214,7 @@ export function useReviewStream() {
     };
   }, []);
 
-  return { state, abort, cancel, resume };
+  const isStreamControllerActive = () => abortControllerRef.current !== null;
+
+  return { state, abort, cancel, resume, isStreamControllerActive };
 }

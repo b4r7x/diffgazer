@@ -8,7 +8,7 @@ import { CliThemeProvider } from "../../../theme/provider";
 import { ReviewSummaryView } from "./summary-view";
 
 vi.mock("@diffgazer/core/api/hooks", () => ({
-  useInit: () => ({ data: undefined, isLoading: false }),
+  useConfigurationInit: () => ({ data: undefined, isLoading: false }),
 }));
 
 const summaryContentZone = vi.hoisted(() => ({ columns: 100, rows: 40 }));
@@ -17,7 +17,6 @@ vi.mock("../../../components/layout/global", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../components/layout/global")>()),
   useContentZone: () => ({
     columns: summaryContentZone.columns,
-    rows: summaryContentZone.rows,
     contentColumns: summaryContentZone.columns,
     contentRows: summaryContentZone.rows - 4,
   }),

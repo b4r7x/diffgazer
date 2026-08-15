@@ -10,20 +10,13 @@ export interface BadgeProps {
    * badge label to carry the status.
    */
   color?: string;
-  size?: "sm" | "md";
   dot?: boolean;
   children: string;
 }
 
-const padding: Record<NonNullable<BadgeProps["size"]>, string> = {
-  sm: "",
-  md: " ",
-};
-
 export function Badge({
   variant = "neutral",
   color: colorOverride,
-  size = "sm",
   dot = false,
   children,
 }: BadgeProps) {
@@ -38,18 +31,13 @@ export function Badge({
   } as const;
 
   const color = colorOverride ?? colorMap[variant];
-  const pad = padding[size];
-
   const dotPrefix = dot ? "● " : "";
 
   return (
     <Box>
-      <Text color={color}>
-        [{pad}
-        {dotPrefix}
-      </Text>
+      <Text color={color}>[{dotPrefix}</Text>
       <Text color={color}>{children}</Text>
-      <Text color={color}>{pad}]</Text>
+      <Text color={color}>]</Text>
     </Box>
   );
 }

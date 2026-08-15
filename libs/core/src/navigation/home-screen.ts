@@ -1,5 +1,5 @@
 import type { MenuAction } from "../schemas/presentation/navigation.js";
-import type { ReviewMode } from "../schemas/review/index.js";
+import type { ActiveReviewSession, ReviewMode } from "../schemas/review/index.js";
 import {
   isReviewStartAction,
   type MenuDisablingContext,
@@ -13,11 +13,7 @@ interface ResumableSession {
   mode: ResumableMode;
 }
 
-interface ResumableSessionCandidate {
-  reviewId: string;
-  mode: string;
-  startedAt?: string;
-}
+type ResumableSessionCandidate = Pick<ActiveReviewSession, "reviewId" | "mode" | "startedAt">;
 
 interface RankedResumableSession extends ResumableSession {
   startedAtTime: number;
@@ -26,15 +22,14 @@ interface RankedResumableSession extends ResumableSession {
 function toRankedResumableSession(
   session: ResumableSessionCandidate | null | undefined,
 ): RankedResumableSession | null {
-  if (!session || (session.mode !== "unstaged" && session.mode !== "staged")) {
+  if (!session || session.mode === "files") {
     return null;
   }
 
-  const startedAtTime = session.startedAt ? Date.parse(session.startedAt) : 0;
   return {
     reviewId: session.reviewId,
     mode: session.mode,
-    startedAtTime: Number.isNaN(startedAtTime) ? 0 : startedAtTime,
+    startedAtTime: Date.parse(session.startedAt),
   };
 }
 
@@ -96,5 +91,6 @@ export function resolveHomeMenuActivation(
     return { kind: "navigate", target: action };
   }
 
-  return { kind: "noop" };
+  const _exhaustive: never = action;
+  throw new Error(`Unhandled menu action: ${JSON.stringify(_exhaustive)}`);
 }

@@ -18,7 +18,7 @@ export interface CheckboxGroupProps<T extends string = string> {
   children: ReactNode;
 }
 
-export interface CheckboxItemProps {
+interface CheckboxItemProps {
   value: string;
   label: ReactNode;
   description?: ReactNode;

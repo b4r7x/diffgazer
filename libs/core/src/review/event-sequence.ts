@@ -67,7 +67,7 @@ export function isReviewEventSequenceContinuation(
 // Cap on retained streaming events. A long review can emit thousands of agent
 // events; without a cap, `[...state.events, event]` becomes O(n) per dispatch
 // and the array dominates memory. Once the cap is reached, the oldest events
-// are dropped from the head. UI consumers (`convertAgentEventsToLogEntries`,
+// are dropped from the head. UI consumers (`convertReviewEventsToLogEntries`,
 // log rendering) operate on a windowed view, so dropping ancient events is
 // safe for the live log.
 const MAX_EVENTS = 5000;

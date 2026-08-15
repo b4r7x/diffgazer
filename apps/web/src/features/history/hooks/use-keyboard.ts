@@ -1,16 +1,12 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import {
-  BACK_SHORTCUT,
-  NAVIGATE_SHORTCUT,
-  SWITCH_PANE_SHORTCUT,
-} from "@diffgazer/core/schemas/presentation";
 import { useFocusZone, useKey, useScopedNavigation } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import type { RefObject } from "react";
+import { getHistoryFooter } from "@/features/history/lib/footer";
 import type { HistoryFocusZone } from "@/features/history/types";
 import { getMainContent } from "@/lib/main-content";
 
-const ZONES = ["timeline", "runs", "load-more", "insights", "retry", "search"] as const;
+const ZONES = ["warnings", "timeline", "runs", "load-more", "insights", "retry", "search"] as const;
 const HISTORY_SCOPE = "history";
 type KeyboardHistoryFocusZone = (typeof ZONES)[number];
 
@@ -23,7 +19,9 @@ interface UseHistoryKeyboardOptions {
   hasMore: boolean;
   hasInsights: boolean;
   hasRetry: boolean;
+  hasWarnings: boolean;
   searchInputRef: RefObject<HTMLInputElement | null>;
+  warningsRef: RefObject<HTMLDivElement | null>;
   timelineRef: RefObject<HTMLElement | null>;
   runsListRef: RefObject<HTMLDivElement | null>;
   loadMoreRef: RefObject<HTMLButtonElement | null>;
@@ -38,13 +36,17 @@ function buildTabCycle({
   hasMore,
   hasInsights,
   hasRetry,
+  hasWarnings,
 }: {
   hasRuns: boolean;
   hasMore: boolean;
   hasInsights: boolean;
   hasRetry: boolean;
+  hasWarnings: boolean;
 }): KeyboardHistoryFocusZone[] {
-  const cycle: KeyboardHistoryFocusZone[] = ["search", "timeline"];
+  const cycle: KeyboardHistoryFocusZone[] = [];
+  if (hasWarnings) cycle.push("warnings");
+  cycle.push("search", "timeline");
   if (hasRuns) cycle.push("runs");
   if (hasMore) cycle.push("load-more");
   if (hasInsights) cycle.push("insights");
@@ -52,62 +54,37 @@ function buildTabCycle({
   return cycle;
 }
 
-function getHistoryFooter(focusZone: HistoryFocusZone) {
-  if (focusZone === "search") {
-    return {
-      shortcuts: [{ key: "↓", label: "Timeline" }],
-      rightShortcuts: [{ key: "Esc", label: "Clear Search" }],
-    };
-  }
-
-  if (focusZone === "timeline") {
-    return {
-      shortcuts: [
-        SWITCH_PANE_SHORTCUT,
-        NAVIGATE_SHORTCUT,
-        { key: "Enter/Space", label: "Select Date" },
-        { key: "/", label: "Search" },
-      ],
-      rightShortcuts: [BACK_SHORTCUT],
-    };
-  }
-
-  if (focusZone === "insights") {
-    return {
-      shortcuts: [
-        SWITCH_PANE_SHORTCUT,
-        NAVIGATE_SHORTCUT,
-        { key: "Enter/Space", label: "Open Issue" },
-        { key: "←", label: "Runs" },
-        { key: "/", label: "Search" },
-      ],
-      rightShortcuts: [BACK_SHORTCUT],
-    };
-  }
-
-  if (focusZone === "load-more") {
-    return {
-      shortcuts: [SWITCH_PANE_SHORTCUT, { key: "Enter/Space", label: "Load Older Runs" }],
-      rightShortcuts: [BACK_SHORTCUT],
-    };
-  }
-
-  if (focusZone === "retry") {
-    return {
-      shortcuts: [SWITCH_PANE_SHORTCUT, { key: "Enter/Space", label: "Retry" }],
-      rightShortcuts: [BACK_SHORTCUT],
-    };
-  }
-
-  return {
-    shortcuts: [
-      SWITCH_PANE_SHORTCUT,
-      NAVIGATE_SHORTCUT,
-      { key: "Enter/Space", label: "Open Review" },
-      { key: "/", label: "Search" },
-    ],
-    rightShortcuts: [BACK_SHORTCUT],
-  };
+// A zone's target can unmount while that zone is still selected: the last page
+// loads away the load-more button, activating retry swaps the error alert for
+// the loading note, and an empty history renders no runs list. Resolving the
+// zone during render keeps the footer, the key guards, and the focus target on
+// a control that still exists; useFocusZone sees the resolved zone change and
+// moves focus there, and that pane's own onFocus writes the page's zone state
+// back in sync.
+function resolveFocusZone({
+  zone,
+  hasRuns,
+  hasMore,
+  hasInsights,
+  hasRetry,
+  hasWarnings,
+}: {
+  zone: HistoryFocusZone;
+  hasRuns: boolean;
+  hasMore: boolean;
+  hasInsights: boolean;
+  hasRetry: boolean;
+  hasWarnings: boolean;
+}): HistoryFocusZone {
+  const targetGone =
+    (zone === "load-more" && !hasMore) ||
+    (zone === "retry" && !hasRetry) ||
+    (zone === "runs" && !hasRuns) ||
+    (zone === "insights" && !hasInsights) ||
+    (zone === "warnings" && !hasWarnings);
+  if (!targetGone) return zone;
+  if (hasRetry) return "retry";
+  return hasRuns ? "runs" : "search";
 }
 
 export function useHistoryKeyboard({
@@ -119,7 +96,9 @@ export function useHistoryKeyboard({
   hasMore,
   hasInsights,
   hasRetry,
+  hasWarnings,
   searchInputRef,
+  warningsRef,
   timelineRef,
   runsListRef,
   loadMoreRef,
@@ -130,9 +109,18 @@ export function useHistoryKeyboard({
 }: UseHistoryKeyboardOptions) {
   const navigate = useNavigate();
 
-  const tabCycle = buildTabCycle({ hasRuns, hasMore, hasInsights, hasRetry });
+  const tabCycle = buildTabCycle({ hasRuns, hasMore, hasInsights, hasRetry, hasWarnings });
+  const effectiveFocusZone = resolveFocusZone({
+    zone: focusZone,
+    hasRuns,
+    hasMore,
+    hasInsights,
+    hasRetry,
+    hasWarnings,
+  });
 
   const zoneTargets: Record<KeyboardHistoryFocusZone, RefObject<HTMLElement | null>> = {
+    warnings: warningsRef,
     search: searchInputRef,
     timeline: timelineRef,
     runs: runsListRef,
@@ -144,7 +132,7 @@ export function useHistoryKeyboard({
   useFocusZone({
     initial: "runs",
     zones: ZONES,
-    zone: focusZone,
+    zone: effectiveFocusZone,
     onZoneChange: (zone) => setFocusZone(zone),
     scope: HISTORY_SCOPE,
     tabCycle,
@@ -161,14 +149,16 @@ export function useHistoryKeyboard({
       else if (hasRetry) insightsZone = "retry";
 
       const left: Record<KeyboardHistoryFocusZone, KeyboardHistoryFocusZone | null> = {
+        warnings: null,
         timeline: null,
         runs: "timeline",
         "load-more": "runs",
         insights: "runs",
         retry: "runs",
-        search: "runs",
+        search: hasWarnings ? "warnings" : "runs",
       };
       const right: Record<KeyboardHistoryFocusZone, KeyboardHistoryFocusZone | null> = {
+        warnings: "search",
         timeline: "runs",
         runs: hasMore ? "load-more" : insightsZone,
         "load-more": insightsZone,
@@ -189,7 +179,7 @@ export function useHistoryKeyboard({
     onHighlightChange: onHighlightIssue,
     wrap: false,
     scope: HISTORY_SCOPE,
-    enabled: enabled && focusZone === "insights",
+    enabled: enabled && effectiveFocusZone === "insights",
     upKeys: ["ArrowUp", "k"],
     downKeys: ["ArrowDown", "j"],
   });
@@ -201,7 +191,7 @@ export function useHistoryKeyboard({
     },
     {
       scope: HISTORY_SCOPE,
-      enabled: enabled && focusZone !== "search",
+      enabled: enabled && effectiveFocusZone !== "search",
       preventDefault: true,
     },
   );
@@ -212,13 +202,12 @@ export function useHistoryKeyboard({
     }
   };
 
+  // Space belongs to the runs listbox, which routes it to onSelect and gives an
+  // in-progress typeahead query precedence; a window-level duplicate would fire
+  // on the same keystroke and navigate mid-query.
   useKey("o", navigateToSelectedRun, {
     scope: HISTORY_SCOPE,
-    enabled: enabled && focusZone === "runs",
-  });
-  useKey(" ", navigateToSelectedRun, {
-    scope: HISTORY_SCOPE,
-    enabled: enabled && focusZone === "runs",
+    enabled: enabled && effectiveFocusZone === "runs",
   });
 
   useKey(
@@ -229,7 +218,7 @@ export function useHistoryKeyboard({
     { scope: HISTORY_SCOPE, enabled },
   );
 
-  const { shortcuts, rightShortcuts } = getHistoryFooter(focusZone);
+  const { shortcuts, rightShortcuts } = getHistoryFooter(effectiveFocusZone);
 
   // The error branch renders its own FailureView footer; publishing history
   // shortcuts here would overwrite it, since parent effects run last.

@@ -186,21 +186,38 @@ export function RadioGroup<TValue extends string = string>(props: RadioGroupProp
 
   // Public props narrow on TValue; internal state stays string-typed because the
   // selectable-collection layer keys items by data-value strings.
-  const [value, setValue, , resetValue] = useControllableState<string | undefined>({
-    value: controlledValue,
-    controlled: "value" in props,
-    defaultValue,
-    onChange: (next) => {
-      if (next === undefined) return;
-      onChange?.(next as TValue);
-    },
-  });
-  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
-    value: controlledHighlighted,
-    controlled: "highlighted" in props,
-    defaultValue: null,
-    onChange: onHighlightChange as ((value: string | null) => void) | undefined,
-  });
+  const [value, setValue, , resetValue] = useControllableState<string | undefined>(
+    "value" in props
+      ? {
+          controlled: true,
+          value: controlledValue,
+          defaultValue,
+          onChange: (next) => {
+            if (next === undefined) return;
+            onChange?.(next as TValue);
+          },
+        }
+      : {
+          defaultValue,
+          onChange: (next) => {
+            if (next === undefined) return;
+            onChange?.(next as TValue);
+          },
+        },
+  );
+  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>(
+    "highlighted" in props
+      ? {
+          controlled: true,
+          value: controlledHighlighted ?? null,
+          defaultValue: null,
+          onChange: onHighlightChange as ((value: string | null) => void) | undefined,
+        }
+      : {
+          defaultValue: null,
+          onChange: onHighlightChange as ((value: string | null) => void) | undefined,
+        },
+  );
 
   const enabledItems = getEnabledSelectableCollectionItems(items, isDisabled);
   const seededEnabledValues = isDisabled ? [] : collectEnabledDirectRadioValues(children);

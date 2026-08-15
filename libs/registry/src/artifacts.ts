@@ -16,17 +16,17 @@ import {
 import { ensureExists, resetDir } from "./utils/fs.js";
 import { writeJson } from "./utils/json.js";
 
-export interface CopyDirEntry {
+interface CopyDirEntry {
   from: string;
   to: string;
 }
 
-export interface RequiredPathEntry {
+interface RequiredPathEntry {
   path: string;
   label?: string;
 }
 
-export interface AfterCopyContext {
+interface AfterCopyContext {
   rootDir: string;
   artifactRoot: string;
   origin: string;

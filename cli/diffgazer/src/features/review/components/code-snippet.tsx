@@ -1,4 +1,4 @@
-import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { Box, type DOMElement, Text, useBoxMetrics } from "ink";
 import { useRef } from "react";
 import { SURFACE_BORDER } from "../../../theme/chrome";

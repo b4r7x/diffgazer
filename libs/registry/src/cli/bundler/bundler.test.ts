@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { BaseRegistryBundleSchema, createRegistryLoader } from "../registry.js";
-import { createBundler } from "./bundle.js";
+import { bundleRegistry } from "./bundle.js";
 import { detectNpmImports } from "./detect-imports.js";
 
 describe("detectNpmImports", () => {
@@ -20,7 +20,7 @@ describe("detectNpmImports", () => {
   });
 });
 
-describe("createBundler", () => {
+describe("bundleRegistry", () => {
   it("does not promote an import example string to a bundle dependency", () => {
     const rootDir = mkdtempSync(join(tmpdir(), "dg-registry-bundler-"));
     try {
@@ -74,10 +74,10 @@ describe("createBundler", () => {
         ].join("\n"),
       );
 
-      const result = createBundler({
+      const result = bundleRegistry({
         rootDir,
         outputPath: join(rootDir, "bundle.json"),
-      })();
+      });
 
       expect(result.items[0]?.dependencies).toEqual([
         "real-package",
@@ -130,11 +130,11 @@ describe("createBundler", () => {
       writeFileSync(join(uiDir, "button.ts"), "export const button = 'button';\n");
 
       const outputPath = join(rootDir, "bundle.json");
-      createBundler({
+      bundleRegistry({
         rootDir,
         outputPath,
         extraContent: () => ({ theme: "theme", styles: "styles" }),
-      })();
+      });
 
       const BundleSchema = BaseRegistryBundleSchema.extend({
         theme: z.string(),
@@ -188,10 +188,10 @@ describe("createBundler", () => {
       );
 
       expect(() =>
-        createBundler({
+        bundleRegistry({
           rootDir,
           outputPath: join(rootDir, "bundle.json"),
-        })(),
+        }),
       ).toThrow(expectedMessage);
     } finally {
       rmSync(join(tmpdir(), "outside-registry-source.ts"), { force: true });
@@ -234,10 +234,10 @@ describe("createBundler", () => {
         "import 'normalize.css/reset.css';\nexport const reset = true;\n",
       );
 
-      const result = createBundler({
+      const result = bundleRegistry({
         rootDir,
         outputPath: join(rootDir, "bundle.json"),
-      })();
+      });
 
       expect(result.items[0]).toMatchObject({
         name: "reset",

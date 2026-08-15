@@ -10,13 +10,20 @@ import { useKey, useScope } from "@diffgazer/keys";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
 import { CardLayout } from "@/components/layout/card";
+import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { useConfigData } from "@/hooks/use-config";
 
 const SETTINGS_TRUST_PERMISSIONS_SCOPE = "settings-trust-permissions";
 
 export function SettingsTrustPermissionsPage() {
-  const { projectId, repoRoot, trust } = useConfigData();
+  const { loadState, projectId, repoRoot, trust } = useConfigData();
+
+  // Same gate as the hub: without it a direct visit or a failed init mounts a
+  // fully interactive editor over a permanent "Loading..." directory.
+  if (loadState.status !== "ready") {
+    return <ConfigurationStatus status={loadState.status} />;
+  }
 
   return <TrustPermissionsEditor editorInput={{ projectId, repoRoot, trust }} />;
 }

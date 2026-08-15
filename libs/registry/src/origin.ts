@@ -73,7 +73,7 @@ export function resolveRegistryRoute(
   if (basePath !== "" && !url.pathname.startsWith(`${basePath}/`)) return null;
 
   const relativePath = basePath === "" ? url.pathname : url.pathname.slice(basePath.length);
-  const match = relativePath.match(/^\/r\/(ui|keys)\/((?:registry|[a-z0-9-]+)\.json)$/);
+  const match = relativePath.match(/^\/r\/(ui|keys)\/([a-z0-9-]+\.json)$/);
   return match ? `/${match[1]}/${match[2]}` : null;
 }
 

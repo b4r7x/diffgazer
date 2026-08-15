@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, type Hash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { REGISTRY_ORIGIN } from "./constants.js";
@@ -14,6 +14,17 @@ export interface InputsFingerprintResult {
 interface InputsFingerprintOptions {
   missingInputMode: "warn" | "collect";
   requireNonEmptyDirectories?: boolean;
+}
+
+// Length-framed records. With a bare separator, a file whose bytes spell
+// "<sep><path><sep><content>" impersonates a record boundary, so two different
+// input trees can hash to the same digest.
+function updateFileRecord(hash: Hash, relativePath: string, content: Buffer): void {
+  const path = Buffer.from(relativePath, "utf-8");
+  hash.update(`${path.byteLength}:`);
+  hash.update(path);
+  hash.update(`${content.byteLength}:`);
+  hash.update(content);
 }
 
 function recordMissingInput(
@@ -60,18 +71,12 @@ function computeInputsFingerprintResult(
       }
 
       for (const filePath of files) {
-        hash.update(toPosixPath(relative(rootAbs, filePath)));
-        hash.update("\n");
-        hash.update(readFileSync(filePath));
-        hash.update("\n");
+        updateFileRecord(hash, toPosixPath(relative(rootAbs, filePath)), readFileSync(filePath));
       }
       continue;
     }
 
-    hash.update(toPosixPath(relative(rootAbs, inputAbs)));
-    hash.update("\n");
-    hash.update(readFileSync(inputAbs));
-    hash.update("\n");
+    updateFileRecord(hash, toPosixPath(relative(rootAbs, inputAbs)), readFileSync(inputAbs));
   }
 
   return { fingerprint: hash.digest("hex"), missing };

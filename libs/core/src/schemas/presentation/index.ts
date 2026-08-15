@@ -1,25 +1,20 @@
-export type { AnalysisStats, IssuePreview } from "./analysis.js";
 export type { CategoryStats } from "./category-stats.js";
 export {
   buildHomeContextInfo,
   buildHomeContextRows,
-  type ContextInfo,
-  type HomeContextInit,
-  type HomeContextReview,
+  type HomeContextInfo,
+  type LastRunRequestState,
+  type LastRunStatus,
+  resolveLastRunRequest,
 } from "./context-info.js";
 export {
-  type ContextStatus,
-  type DiagnosticsActions,
-  type DiagnosticsActionsInput,
-  type DiagnosticsPresentation,
   deriveDiagnosticsActions,
   getContextActionLabel,
   getContextPresentation,
   getServerStatusPresentation,
   getSetupPresentation,
-  type SetupPresentationInput,
 } from "./diagnostics.js";
-export { ISSUE_TABS, type IssueTab, isIssueTab } from "./issue-tabs.js";
+export { type IssueTab, isIssueTab } from "./issue-tabs.js";
 export {
   type BadgeVariant,
   BadgeVariantSchema,
@@ -33,7 +28,6 @@ export {
   type NavItem,
   SETTINGS_MENU_ITEMS,
   type SettingsAction,
-  type SettingsMenuItem,
 } from "./navigation.js";
 export {
   buildReviewMetricsRows,
@@ -41,19 +35,10 @@ export {
   type ProgressStepData,
   type ProgressStepWithSubstepsData,
   type ProgressSubstepData,
-  type ReviewMetricId,
-  type ReviewMetricRow,
   type ReviewMetricTone,
   type ReviewProgressMetrics,
 } from "./progress.js";
-export {
-  calculateSeverityCounts,
-  SEVERITY_LABELS,
-  SEVERITY_ORDER,
-  type SeverityCounts,
-  severityRank,
-  type UISeverityFilter,
-} from "./severity.js";
+export { SEVERITY_LABELS, SEVERITY_ORDER, type UISeverityFilter } from "./severity.js";
 export {
   areShortcutsEqual,
   BACK_SHORTCUT,
@@ -64,12 +49,9 @@ export {
   NAVIGATE_SHORTCUT,
   SETTINGS_SHORTCUTS,
   SHORTCUT_CONTEXT_LABELS,
-  SHORTCUT_CONTEXT_ORDER,
   type Shortcut,
   type ShortcutContext,
-  type ShortcutGroup,
   SWITCH_PANE_SHORTCUT,
-  TRUST_FOOTER_RIGHT_SHORTCUTS,
-  TRUST_FOOTER_SHORTCUTS,
+  TRUST_PERMISSION_SHORTCUTS,
 } from "./shortcuts.js";
 export type { TimelineItem } from "./timeline.js";

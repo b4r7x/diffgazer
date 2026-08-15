@@ -31,11 +31,11 @@ The fix plan inside the Details tab is an interactive checklist, not a static li
 
 The **Explain** tab is the shorter read: the rationale for the issue followed by the recommendation, in prose. Reach for it when you want the reasoning without the full breakdown.
 
-The **Trace** tab shows the steps the agent took to reach the issue, each one naming the tool it used and a short summary of what came back. Not every issue has trace data; when there is none, the tab says so.
+The **Trace** tab shows the steps the agent took to reach the issue, each one naming the tool it used and a short summary of what came back. It only shows up when the review supplied at least one agent step; an issue without trace data has no Trace tab at all.
 
 The **Patch** tab only shows up when the review actually generated a suggested fix for that issue. When the patch is a clean single-file diff, it renders as a proper diff view with the change in context. If the patch does not parse that way, it falls back to a plain code block with added and removed lines marked, so the suggestion is always readable either way.
 
-> Note: The Patch tab is conditional. An issue with no suggested fix shows only Details, Explain, and Trace. If you expected a patch and do not see the tab, the review did not produce one for that issue.
+> Note: Trace and Patch are both conditional. Details and Explain are always there; Trace appears only when the review supplied agent steps, and Patch only when it produced a suggested fix. An issue with neither shows just Details and Explain. If you expected a patch and do not see the tab, the review did not produce one for that issue.
 
 ## Related
 

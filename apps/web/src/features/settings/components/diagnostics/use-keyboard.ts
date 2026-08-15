@@ -32,6 +32,7 @@ export function useDiagnosticsKeyboard({
   const {
     retryServer,
     refetchContext,
+    refetchInit,
     canRegenerate,
     isRefreshingContext,
     handleRefreshContext,
@@ -51,7 +52,7 @@ export function useDiagnosticsKeyboard({
     setIsRefreshingAll(true);
 
     try {
-      await refreshAllDiagnostics({ retryServer, refetchContext });
+      await refreshAllDiagnostics({ retryServer, refetchContext, refetchInit });
       setLastRefreshedAt(new Date().toISOString());
     } finally {
       setIsRefreshingAll(false);
@@ -65,15 +66,11 @@ export function useDiagnosticsKeyboard({
     }
   }, [contextStatus, lastRefreshedAt, serverState.status]);
 
+  // Plain dispatch: disabledActions below is the one statement of which action can
+  // run, and useActionRowNavigation refuses a disabled index before it gets here.
   const handleButtonAction = (index: number) => {
-    if (index === 0 && !isRefreshingAll) {
-      void handleRefreshAll();
-      return;
-    }
-
-    if (index === 1 && canRegenerate && !isRefreshingContext && !isRefreshingAll) {
-      handleRefreshContext();
-    }
+    if (index === 0) void handleRefreshAll();
+    else handleRefreshContext();
   };
 
   const { refreshAllDisabled, contextActionDisabled } = deriveDiagnosticsActions({

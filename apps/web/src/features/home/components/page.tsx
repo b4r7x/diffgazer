@@ -1,7 +1,11 @@
 import { useActiveReviewSession, useCreateReview, useReviews } from "@diffgazer/core/api/hooks";
 import { deriveTrustStatus, selectResumableSession } from "@diffgazer/core/navigation";
-import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
-import { buildHomeContextInfo, MENU_ITEMS } from "@diffgazer/core/schemas/presentation";
+import type { HomeContextInfo, MenuAction } from "@diffgazer/core/schemas/presentation";
+import {
+  buildHomeContextInfo,
+  MENU_ITEMS,
+  resolveLastRunRequest,
+} from "@diffgazer/core/schemas/presentation";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { useConfigData } from "@/hooks/use-config";
@@ -11,7 +15,8 @@ import { HomePagePresentation } from "./presentation";
 
 export function HomePage() {
   const { loadState, provider, model, trust, repoRoot, projectId } = useConfigData();
-  const reviews = useReviews().data?.reviews ?? [];
+  const reviewsQuery = useReviews();
+  const reviews = reviewsQuery.data?.reviews ?? [];
   const navigate = useNavigate();
   const search = useSearch({ strict: false });
   const createReview = useCreateReview();
@@ -24,13 +29,14 @@ export function HomePage() {
     stagedActive.data?.session,
   );
 
-  const context: ContextInfo = buildHomeContextInfo(
+  const context: HomeContextInfo = buildHomeContextInfo(
     { provider, model, trustedRepoRoot: trust?.repoRoot },
     reviews[0],
     isTrusted,
+    resolveLastRunRequest(reviewsQuery),
   );
 
-  const [highlighted, setHighlighted] = useScopedRouteState<string | null>(
+  const [highlighted, setHighlighted] = useScopedRouteState<MenuAction | null>(
     "highlighted",
     MENU_ITEMS[0]?.id ?? null,
   );
@@ -44,9 +50,9 @@ export function HomePage() {
       context={context}
       isTrusted={isTrusted}
       needsTrust={needsTrust}
-      projectId={projectId}
       repoRoot={repoRoot}
       resumableSession={resumableSession}
+      isResumeUnavailable={unstagedActive.isError || stagedActive.isError}
       highlighted={highlighted}
       searchError={typeof search.error === "string" ? search.error : undefined}
       onHighlightChange={setHighlighted}

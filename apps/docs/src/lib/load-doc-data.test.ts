@@ -151,11 +151,14 @@ describe("generated docs source data loader", () => {
   it("rejects unknown or unsafe archive paths before fetching", async () => {
     const fetchMock = stubFetch();
 
+    // The runtime guard must reject source types the signature cannot express.
+    const unsupportedType: string = "examples";
+
     await expect(loadDocSourceData("unknown", "components", "button")).resolves.toBeNull();
     await expect(loadDocSourceData("ui", "components", "../button")).resolves.toBeNull();
     await expect(loadDocSourceData("../ui", "components", "button")).resolves.toBeNull();
     await expect(
-      Reflect.apply(loadDocSourceData, undefined, ["ui", "examples", "button"]),
+      loadDocSourceData("ui", unsupportedType as "components", "button"),
     ).resolves.toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });

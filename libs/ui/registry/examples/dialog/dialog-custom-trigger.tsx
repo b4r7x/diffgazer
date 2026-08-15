@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,9 +36,7 @@ export default function DialogCustomTrigger() {
           </p>
         </DialogBody>
         <DialogFooter>
-          <DialogClose bracket variant="ghost">
-            Close
-          </DialogClose>
+          <DialogClose bracket>Close</DialogClose>
           <DialogAction>Confirm</DialogAction>
         </DialogFooter>
       </DialogContent>

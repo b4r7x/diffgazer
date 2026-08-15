@@ -31,6 +31,9 @@ export function SidebarContent({
     wrap: true,
     moveFocus: true,
     scopeToContainer: true,
+    // Sidebar items are the only navigable row here; nested buttons such as an
+    // accordion trigger inside an item stay out of the arrow order.
+    itemSelector: '[data-slot="sidebar-item"]',
   });
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {

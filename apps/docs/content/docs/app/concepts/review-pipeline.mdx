@@ -43,7 +43,7 @@ Which lenses run comes from an ordered fallback: an explicit lens list wins, the
 
 ## Sequential vs parallel
 
-The `agentExecution` setting decides whether agents run one at a time or all at once. It defaults to sequential, so by default each lens runs in turn rather than concurrently. Switching it to parallel raises the concurrency to the number of active lenses, so every agent runs at the same time. Findings from successful lenses use the same merge, filter, and sort rules in both modes, but the final reports are not guaranteed to match. The extra concurrency can trigger provider rate limits or transient failures. If one lens fails, the others continue and produce a partial report. You set this in [configuration](/app/reference/configuration); see [provider or key errors](/app/operations/troubleshooting#provider-or-key-errors) for rate-limit guidance.
+The `agentExecution` setting decides whether agents run one at a time or all at once. It defaults to sequential, so by default each lens runs in turn rather than concurrently. Switching it to parallel raises the concurrency to the number of active lenses, so every agent runs at the same time. Findings from successful lenses use the same merge, filter, and sort rules in both modes, but the final reports are not guaranteed to match. The extra concurrency can trigger provider rate limits or transient failures. If one lens fails, the others continue and produce a partial report. You set this in [configuration](/app/reference/configuration); see [transport failed](/app/operations/troubleshooting#transport-failed) for what to do when an agent drops out.
 
 ## Backend capabilities not in the UI
 

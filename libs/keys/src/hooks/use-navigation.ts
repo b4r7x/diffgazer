@@ -1,7 +1,11 @@
 "use client";
 
 import type { KeyboardEvent, RefObject } from "react";
-import { dispatchNavigationKey, resolveDirectionKeys } from "../core/navigation-dispatch.js";
+import {
+  dispatchNavigationKey,
+  matchConfiguredHotkey,
+  resolveDirectionKeys,
+} from "../core/navigation-dispatch.js";
 import {
   composedContains,
   getComposedEventTarget,
@@ -63,6 +67,11 @@ export interface UseNavigationOptions<TValue extends string = string> {
   scopeToContainer?: boolean;
   /** Advanced owner selector override for roles without a standard composite owner. */
   ownerSelector?: string | null;
+  /**
+   * Narrow the navigable items to those matching this selector, for containers whose
+   * role query is broader than their own item set.
+   */
+  itemSelector?: string;
 }
 
 /** Return value from `useNavigation`. */
@@ -113,10 +122,15 @@ export function useNavigation<TValue extends string = string>(
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.defaultPrevented) return;
     if (!enabled) return;
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
 
     const key = event.key;
-    const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);
+    const matchedUpKey = matchConfiguredHotkey(event.nativeEvent, resolvedUpKeys);
+    const matchedDownKey = matchConfiguredHotkey(event.nativeEvent, resolvedDownKeys);
+    const isMoveKey = matchedUpKey !== null || matchedDownKey !== null;
+    // A configured hotkey states its own modifiers; anything else modified is a
+    // browser or OS gesture the list must leave alone.
+    if (!isMoveKey && (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey)) return;
+
     const isActivationKey = (key === "Enter" && handlesEnter) || (key === " " && handlesSpace);
     const isSpecialKey = key === "Home" || key === "End" || isActivationKey;
     if (!isMoveKey && !isSpecialKey) return;
@@ -146,14 +160,16 @@ export function useNavigation<TValue extends string = string>(
 
     if (preventDefault) event.preventDefault();
 
-    dispatchNavigationKey(key, {
+    const navigationKey = matchedUpKey ?? matchedDownKey ?? key;
+
+    dispatchNavigationKey(navigationKey, {
       resolvedUpKeys,
       resolvedDownKeys,
-      move: (delta) => move(delta, event.nativeEvent, key),
+      move: (delta) => move(delta, event.nativeEvent, key, elements),
       focusIndex,
       handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
       handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,
-      total: elements.length,
+      elements,
       nativeEvent: event.nativeEvent,
     });
   };

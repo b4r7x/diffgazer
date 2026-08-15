@@ -1,8 +1,9 @@
-import { readFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { parseCliCompatibilityRecord } from "../cli-compatibility/compat.js";
+import { HOSTILE_ATTEMPT_IDS, parseCliCompatibilityRecord } from "../cli-compatibility/compat.js";
+import { defaultRunPositiveFixture } from "../cli-compatibility/probe-observation.js";
 import { parseCopilotJsonlTerminal } from "./cli.js";
 import { parseCopilotJsonlStream } from "./jsonl.js";
 
@@ -42,20 +43,7 @@ const RECORD = parseCliCompatibilityRecord({
     },
   },
   negativeFixture: {
-    attemptIds: [
-      "create",
-      "overwrite",
-      "delete",
-      "rename",
-      "shell-created",
-      "loopback-curl",
-      "fixture-mcp-ping",
-      "plugin",
-      "hook",
-      "subagent",
-      "export",
-      "repository-instruction",
-    ],
+    attemptIds: [...HOSTILE_ATTEMPT_IDS],
     beforeTreeSha256: SHA,
     afterTreeSha256: SHA,
     treeUnchanged: true,
@@ -105,19 +93,36 @@ describe("Copilot JSONL terminal contract", () => {
     expect(parsed.value.resultTextFieldPath).toBe("issues");
   });
 
-  it("is the single parser used by both the compatibility probe and the runtime adapter", async () => {
-    const directory = path.dirname(fileURLToPath(import.meta.url));
-    const [probeSource, runtimeSource] = await Promise.all([
-      readFile(path.join(directory, "..", "cli-compatibility", "probe.ts"), "utf8"),
-      readFile(path.join(directory, "cli.ts"), "utf8"),
-    ]);
+  it("is driven by the same parser from the compatibility probe", async () => {
+    const fixtureRoot = await mkdtemp(path.join(tmpdir(), "copilot-jsonl-fixture-"));
+    try {
+      const result = await defaultRunPositiveFixture({
+        provider: "copilot-cli",
+        executable: process.execPath,
+        modelId: "gpt-5-mini",
+        fixtureRoot,
+        env: { PATH: process.env.PATH ?? "/usr/bin", HOME: process.env.HOME ?? "/home/user" },
+        reviewSchemaPath: path.join(fixtureRoot, "review-schema.json"),
+        resultPath: path.join(fixtureRoot, "result.json"),
+        runProcess: async () => ({
+          exitCode: 0,
+          signal: null,
+          stdout: '{"type":"progress"}\n{"type":"result","issues":[]}\n',
+          stderr: "",
+          cancelledLocally: false,
+          descendantsTerminatedLocally: false,
+          outputTruncated: false,
+          timedOut: false,
+        }),
+      });
 
-    for (const { source, specifier } of [
-      { source: probeSource, specifier: "../copilot/jsonl.js" },
-      { source: runtimeSource, specifier: "./jsonl.js" },
-    ]) {
-      expect(source).toContain(`from "${specifier}"`);
-      expect(source).not.toContain("function extractCopilotTerminalFields");
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.acceptedEventKinds).toEqual(["progress", "result"]);
+      expect(result.value.acceptedFieldPaths).toEqual(["issues", "type"]);
+      expect(result.value.terminalPayload).toEqual({ issues: [] });
+    } finally {
+      await rm(fixtureRoot, { recursive: true, force: true });
     }
   });
 });

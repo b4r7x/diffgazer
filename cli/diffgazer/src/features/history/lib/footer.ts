@@ -21,6 +21,15 @@ export function getHistoryFooter(
   if (focusZone === "route") {
     return { shortcuts: [], rightShortcuts: BACK_SHORTCUTS };
   }
+  if (focusZone === "warning-detail") {
+    return {
+      shortcuts: [
+        { key: "↑/↓", label: "Scroll IDs" },
+        { key: "w", label: "Hide IDs" },
+      ],
+      rightShortcuts: [{ key: "Esc", label: "Close IDs" }],
+    };
+  }
   if (focusZone === "search") {
     return {
       shortcuts: [{ key: "↓", label: "Timeline" }],

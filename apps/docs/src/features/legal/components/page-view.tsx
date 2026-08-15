@@ -1,11 +1,11 @@
 import browserCollections from "fumadocs-mdx:collections/browser";
 import { Suspense } from "react";
 import { ContentSpinner } from "@/components/content-spinner";
+import { markdownMdxComponents } from "@/components/docs-mdx/markdown-renderers";
 import { MdxPreloadMarker } from "@/components/mdx-preload-marker";
 import { DocsPageBody, DocsPageHeader } from "@/components/page-layout";
 import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
 import type { LegalPageLoaderData } from "@/features/legal/lib/load-page";
-import { useMDXComponents } from "@/mdx-components";
 import { LegalPageLayout } from "./page-layout";
 
 export const legalClientLoader = browserCollections.legal.createClientLoader({
@@ -17,7 +17,9 @@ export const legalClientLoader = browserCollections.legal.createClientLoader({
       <>
         <DocsPageHeader title={title} description={description} />
         <DocsPageBody>
-          <MDX components={useMDXComponents()} />
+          {/* Legal prose is plain markdown: the app-tier docs registry (and the
+              theme feature it pulls in) has no business in this feature. */}
+          <MDX components={markdownMdxComponents} />
         </DocsPageBody>
       </>
     );

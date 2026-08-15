@@ -1,6 +1,3 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
 import { render, screen, within } from "@testing-library/react";
 import type { ComponentType, ReactNode } from "react";
 import { describe, expect, it } from "vitest";
@@ -43,6 +40,65 @@ describe("markdownMdxComponents", () => {
   it("exposes an explicit list role on ordered lists", () => {
     renderComponent("ol", <li>item</li>);
     expect(screen.getByRole("list")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["Warning: mind the gap.", "warning"],
+    ["**Warning**: mind the gap.", "warning"],
+    ["Error: this will fail.", "error"],
+    ["Tip: there is a shortcut.", "success"],
+    ["Just some context.", "info"],
+  ])("gives a blockquote starting %j the matching callout tone", (text, tone) => {
+    const { container } = renderComponent("blockquote", <p>{text}</p>);
+
+    expect(container.querySelector('[data-slot="callout"]')).toHaveAttribute("data-tone", tone);
+  });
+
+  it("labels a fenced block with the language the transformer stamped", () => {
+    const Pre = markdownMdxComponents.pre as ComponentType<{
+      children?: ReactNode;
+      "data-language"?: string;
+    }>;
+    const { container } = render(
+      <Pre data-language="tsx">
+        <code>const value = 1;</code>
+      </Pre>,
+    );
+
+    expect(screen.getByText("tsx")).toBeInTheDocument();
+    expect(container.querySelector('[data-slot="code-block"]')).toHaveAttribute(
+      "data-variant",
+      "hairline",
+    );
+  });
+
+  it("falls back to the language-* class and renders shell blocks as a terminal", () => {
+    const { container } = renderComponent(
+      "pre",
+      <code className="language-bash">pnpm install</code>,
+    );
+
+    expect(screen.getByText("bash")).toBeInTheDocument();
+    expect(container.querySelector('[data-slot="code-block"]')).toHaveAttribute(
+      "data-variant",
+      "terminal",
+    );
+  });
+
+  it("keeps fenced code untouched and styles only bare inline code", () => {
+    const Code = markdownMdxComponents.code as ComponentType<{
+      children?: ReactNode;
+      className?: string;
+    }>;
+
+    const { unmount } = render(<Code className="language-ts">const fenced = 1;</Code>);
+    // The Shiki language class must survive unchanged: a fenced child that got
+    // wrapped as inline code would arrive here with extra styling merged in.
+    expect(screen.getByText("const fenced = 1;")).toHaveAttribute("class", "language-ts");
+    unmount();
+
+    render(<Code>inline</Code>);
+    expect(screen.getByText("inline").className).not.toBe("");
   });
 
   it("opens external links in a new tab with a safe rel", () => {

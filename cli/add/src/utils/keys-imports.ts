@@ -9,10 +9,7 @@ function renderImport(specifiers: string[], target: string, quote: string): stri
 }
 
 export function rewriteKeysPackageImportsForCopy(content: string): string {
-  return rewriteKeysPackageImportsInContent(content, {
-    renderImport: (specifiers, target, quote, indent) =>
-      indent + renderImport(specifiers, target, quote),
-  });
+  return rewriteKeysPackageImportsInContent(content, { renderImport });
 }
 
 // Both are derived from the copy bundle, which `@diffgazer/registry` loads once
@@ -77,9 +74,7 @@ function parseKeysImportLine(options: ParseKeysImportLineOptions): ParsedKeysImp
   };
 }
 
-function buildConsolidatedImport(
-  parsed: ParsedKeysImport[],
-): { consolidated: string; quote: string } | null {
+function buildConsolidatedImport(parsed: ParsedKeysImport[]): string | null {
   const valueSpecs: string[] = [];
   const typeSpecs: string[] = [];
   let quote = '"';
@@ -93,10 +88,7 @@ function buildConsolidatedImport(
   const allSpecs = [...valueSpecs, ...typeSpecs.map((s) => `type ${s}`)];
   if (allSpecs.length === 0) return null;
 
-  return {
-    consolidated: `import { ${allSpecs.join(", ")} } from ${quote}@diffgazer/keys${quote};`,
-    quote,
-  };
+  return `import { ${allSpecs.join(", ")} } from ${quote}@diffgazer/keys${quote};`;
 }
 
 function replaceMatchedLines(
@@ -136,8 +128,8 @@ export function rewriteLocalImportsForKeysPackage(content: string): string {
   if (parsed.length === 0) return content;
 
   const matchedIndices = new Set(parsed.map((p) => p.lineIndex));
-  const built = buildConsolidatedImport(parsed);
-  const replacement = built ? [built.consolidated] : [];
+  const consolidated = buildConsolidatedImport(parsed);
+  const replacement = consolidated ? [consolidated] : [];
 
   return replaceMatchedLines(lines, matchedIndices, replacement).join("\n");
 }

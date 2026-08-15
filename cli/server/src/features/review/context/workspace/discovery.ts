@@ -1,9 +1,11 @@
 import { execFile } from "node:child_process";
-import { access, realpath } from "node:fs/promises";
+import { constants } from "node:fs";
+import { access, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { z } from "zod";
+import { buildCliChildEnvironment } from "../../../../shared/lib/ai/providers/cli-compatibility/child-environment.js";
 import { formatSchemaIssues } from "../../../../shared/lib/errors.js";
 import { readFileDirectory } from "../directory.js";
 import { readPackageManifest } from "./manifest.js";
@@ -27,6 +29,8 @@ export interface WorkspaceDiscoveryOptions {
 const execFileAsync = promisify(execFile);
 const PNPM_LIST_TIMEOUT_MS = 10_000;
 const PNPM_LIST_MAX_BUFFER_BYTES = 4 * 1024 * 1024;
+const PNPM_LIST_ARGS = ["--recursive", "--depth", "-1", "list", "--json"] as const;
+const WINDOWS_DEFAULT_PATHEXT = ".COM;.EXE;.BAT;.CMD";
 
 const PnpmWorkspaceListSchema = z
   .array(
@@ -75,16 +79,70 @@ async function hasPnpmWorkspace(projectPath: string): Promise<boolean> {
   }
 }
 
+function executableCandidateNames(command: string): string[] {
+  if (process.platform !== "win32") return [command];
+  const extensions = (process.env.PATHEXT ?? WINDOWS_DEFAULT_PATHEXT)
+    .split(";")
+    .filter((extension) => extension.length > 0);
+  return extensions.map((extension) => command + extension);
+}
+
+/**
+ * Resolves `command` against PATH only. The reviewed repository is the child's
+ * working directory, so a bare command name would let a `pnpm` planted at its
+ * root run instead — cmd.exe searches the working directory before PATH.
+ */
+async function resolveExecutableOnPath(command: string): Promise<string | null> {
+  const searchDirs = (process.env.PATH ?? "")
+    .split(path.delimiter)
+    .filter((dir) => dir.length > 0 && path.isAbsolute(dir));
+  const names = executableCandidateNames(command);
+
+  for (const dir of searchDirs) {
+    for (const name of names) {
+      const candidate = path.join(dir, name);
+      const candidateStat = await stat(candidate).catch(() => null);
+      if (!candidateStat?.isFile()) continue;
+      const isExecutable = await access(candidate, constants.X_OK).then(
+        () => true,
+        () => false,
+      );
+      if (isExecutable) return candidate;
+    }
+  }
+  return null;
+}
+
 async function runPnpmWorkspaceList(projectPath: string): Promise<string> {
+  const pnpmPath = await resolveExecutableOnPath("pnpm");
+  if (!pnpmPath) {
+    throw new Error("pnpm was not found on PATH");
+  }
+
+  // The child runs inside the reviewed repository, so it gets the same narrowed
+  // environment as a provider CLI: never the shutdown token or a provider key.
+  const childEnv = buildCliChildEnvironment();
+  if (!childEnv.ok) {
+    throw new Error(`refusing to spawn pnpm with ${childEnv.error.key} in the environment`);
+  }
+
+  // npm/corepack installs of pnpm on Windows are `pnpm.cmd` shims, and Node
+  // refuses to spawn batch files without a shell. Route through cmd.exe with the
+  // resolved absolute path, wrapped in the outer quote pair `/s` strips, instead
+  // of enabling shell interpolation.
+  const isWindows = process.platform === "win32";
   const { stdout } = await execFileAsync(
-    "pnpm",
-    ["--recursive", "--depth", "-1", "list", "--json"],
+    isWindows ? "cmd.exe" : pnpmPath,
+    isWindows
+      ? ["/d", "/s", "/c", `""${pnpmPath}" ${PNPM_LIST_ARGS.join(" ")}"`]
+      : [...PNPM_LIST_ARGS],
     {
       cwd: projectPath,
-      env: { ...process.env, CI: "1", npm_config_offline: "true" },
+      env: { ...childEnv.value, CI: "1", npm_config_offline: "true" },
       timeout: PNPM_LIST_TIMEOUT_MS,
       maxBuffer: PNPM_LIST_MAX_BUFFER_BYTES,
       windowsHide: true,
+      windowsVerbatimArguments: isWindows,
     },
   );
   return stdout;

@@ -8,12 +8,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
-import {
-  makeShellApiOverrides,
-  makeShellInitResponse,
-  selectedModelLabel,
-  selectedProductLabel,
-} from "@/testing/shell-fixtures";
+import { makeShellApiOverrides, makeShellInitResponse } from "@/testing/shell-fixtures";
 
 // Boundary mock: Router is the routing library; the shell reads location/back state.
 const { navigateSpy, backSpy, routerState } = vi.hoisted(() => ({
@@ -34,10 +29,6 @@ import { GlobalLayout, getWordmarkTier } from "./global";
 let queryClient: QueryClient;
 let mockApi: BoundApi;
 const shellInit = makeShellInitResponse();
-
-function providerStatusLabel(): string {
-  return "Ready";
-}
 
 beforeEach(() => {
   queryClient = new QueryClient({
@@ -83,12 +74,6 @@ function createMockApi(): BoundApi {
   };
 }
 
-function expectedProviderLabel(): string {
-  const product = selectedProductLabel(shellInit);
-  const model = selectedModelLabel(shellInit);
-  return model ? `${product} / ${model}` : product;
-}
-
 describe("GlobalLayout", () => {
   it("renders the app shell landmarks and skip link around page content", () => {
     renderShell();
@@ -114,6 +99,43 @@ describe("GlobalLayout", () => {
     skipLink.focus();
     await user.tab();
     expect(screen.getByRole("button", { name: "First content action" })).toHaveFocus();
+  });
+
+  it("keeps focus with the active widget when a click lands on dead space in main", async () => {
+    const user = userEvent.setup();
+    renderShell(
+      <>
+        <div role="listbox" tabIndex={0} aria-label="Runs" />
+        <p>Static pane text</p>
+      </>,
+    );
+    const listbox = screen.getByRole("listbox", { name: "Runs" });
+
+    listbox.focus();
+    await user.click(screen.getByText("Static pane text"));
+
+    expect(listbox).toHaveFocus();
+  });
+
+  it("keeps focus with the active widget when a click lands on prose inside a pane focus park", async () => {
+    const user = userEvent.setup();
+    renderShell(
+      // Panes park programmatic focus on a tabIndex={-1} wrapper around their
+      // prose so focus survives a control disappearing; pressing that prose is
+      // still a dead-space press.
+      <>
+        <div role="listbox" tabIndex={0} aria-label="Runs" />
+        <div tabIndex={-1}>
+          <p>Static pane text</p>
+        </div>
+      </>,
+    );
+    const listbox = screen.getByRole("listbox", { name: "Runs" });
+
+    listbox.focus();
+    await user.click(screen.getByText("Static pane text"));
+
+    expect(listbox).toHaveFocus();
   });
 
   it("navigates to the settings route without calling history back on a settings subroute", async () => {
@@ -178,9 +200,9 @@ describe("GlobalLayout", () => {
     renderShell();
 
     const status = await screen.findByLabelText(
-      `Provider: ${expectedProviderLabel()}, ${providerStatusLabel()}; server live`,
+      "Provider: Google Gemini / Gemini 2.5 Flash, Ready; server live",
     );
-    expect(status).toHaveTextContent(expectedProviderLabel());
+    expect(status).toHaveTextContent("Google Gemini / Gemini 2.5 Flash");
   });
 
   it("keeps the shell mounted and names the cause when the server stops answering", async () => {

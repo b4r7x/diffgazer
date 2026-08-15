@@ -111,7 +111,9 @@ export function ConsumptionBlock() {
   const itemKind = inferItemKind(library, itemId, routeItem?.section);
   const meta = getConsumptionMetadata(library, itemId, itemKind);
 
-  const localDestination = meta.paths.copy.available ? meta.copyPath : undefined;
+  // Each tab's destination is gated on its own path: dgadd writes the file whenever
+  // the dgadd tab is reachable, so its caption must not hang off the shadcn gate.
+  const copyDestination = meta.paths.copy.available ? meta.copyPath : undefined;
 
   const tabs: {
     value: string;
@@ -124,7 +126,7 @@ export function ConsumptionBlock() {
       label: "dgadd",
       path: meta.paths.dgadd,
       captions: [
-        { label: "Installs to", value: localDestination },
+        { label: "Installs to", value: meta.copyPath },
         { label: "Item", value: meta.dgaddName },
       ],
     },
@@ -132,7 +134,7 @@ export function ConsumptionBlock() {
       value: "shadcn",
       label: "shadcn CLI",
       path: meta.paths.copy,
-      captions: [{ label: "Copies to", value: localDestination }],
+      captions: [{ label: "Copies to", value: copyDestination }],
     },
     {
       value: "package",

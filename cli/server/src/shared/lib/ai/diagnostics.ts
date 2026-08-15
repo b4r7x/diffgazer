@@ -6,7 +6,7 @@ import {
   truncateUtf8,
   utf8ByteLength,
 } from "@diffgazer/core/redaction";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 
 export { REDACTED, truncateUtf8, utf8ByteLength };
 
@@ -53,7 +53,7 @@ export type DiagnosticSensitiveContext = Readonly<{
   accountIdentifiers?: readonly string[];
 }>;
 
-export type DiagnosticCaptureChannel = "stdout" | "stderr" | "response";
+type DiagnosticCaptureChannel = "stdout" | "stderr" | "response";
 
 export type DiagnosticCapture = Readonly<{
   channel: DiagnosticCaptureChannel;
@@ -105,10 +105,6 @@ export function boundDiagnosticText(
   return truncateUtf8(normalized, maxBytes);
 }
 
-export function boundCaptureText(value: string, sensitive?: DiagnosticSensitiveContext): string {
-  return boundDiagnosticText(value, CAPTURE_MAX_BYTES, sensitive);
-}
-
 export function createCorrelationId(): string {
   return `diag-${randomUUID()}`;
 }
@@ -121,7 +117,7 @@ function assembleTruncatedDetails(
   const lines: string[] = [];
 
   if (capture) {
-    const captureText = boundCaptureText(capture.text, sensitive);
+    const captureText = boundDiagnosticText(capture.text, CAPTURE_MAX_BYTES, sensitive);
     if (captureText.length > 0) {
       lines.push(
         boundDiagnosticText(`${capture.channel}: ${captureText}`, DETAIL_MAX_BYTES, sensitive),
@@ -240,19 +236,5 @@ export function serializeCancelDiagnostic(
     capture: input.capture,
     sensitive: input.sensitive,
     includeTruncatedDetails: input.details !== undefined || input.capture !== undefined,
-  });
-}
-
-export function serializeDebugDiagnostic(input: FailureDiagnosticInput): BoundedDiagnostic {
-  return serializeBoundedDiagnostic({
-    code: input.code,
-    message: input.message,
-    retryable: input.retryable ?? false,
-    remediation: input.remediation ?? "Inspect server diagnostics.",
-    correlationId: input.correlationId ?? createCorrelationId(),
-    details: input.details,
-    capture: input.capture,
-    sensitive: input.sensitive,
-    includeTruncatedDetails: true,
   });
 }

@@ -9,7 +9,6 @@ import type {
 } from "../../context.js";
 import { ctx, getRegistry, VERSION } from "../../context.js";
 import { resolveProjectPath, toRelativePosixSegments } from "../../utils/paths.js";
-import { isOwnedFileOp } from "./file-ops.js";
 import type { ResolvedIntegrationSelection } from "./integration.js";
 
 export function buildManifestMetadata(
@@ -23,8 +22,25 @@ export function buildManifestMetadata(
   return metadata;
 }
 
+// keys/* files are always bundled copies, whatever the ui/* integration
+// selection resolved to, so their ownership records must say so instead of
+// inheriting a package mode that never applied to them.
+function integrationModeFor(
+  itemName: string,
+  mode: ResolvedIntegrationSelection["mode"],
+): ResolvedIntegrationSelection["mode"] {
+  return itemName.startsWith("keys/") ? "copy" : mode;
+}
+
+function metadataFor(itemName: string, metadata: ManifestInstallMetadata): ManifestInstallMetadata {
+  if (!itemName.startsWith("keys/")) return metadata;
+  const copied: ManifestInstallMetadata = { ...metadata, integrationMode: "copy" };
+  delete copied.keysVersion;
+  return copied;
+}
+
 function preservedInstallAs(
-  existing: NonNullable<DiffgazerAddConfig["installedComponents"]>[string] | undefined,
+  existing: NonNullable<DiffgazerAddConfig["installedItems"]>[string] | undefined,
   isExplicit: boolean,
 ): "explicit" | "transitive" {
   if (isExplicit) return "explicit";
@@ -32,7 +48,7 @@ function preservedInstallAs(
 }
 
 function preservedCssChunks(
-  existing: NonNullable<DiffgazerAddConfig["installedComponents"]>[string] | undefined,
+  existing: NonNullable<DiffgazerAddConfig["installedItems"]>[string] | undefined,
   newChunks: string[] | undefined,
 ): string[] | undefined {
   const chunks = newChunks === undefined ? existing?.cssChunks : [...new Set(newChunks)];
@@ -44,7 +60,7 @@ function preservedCssChunks(
 // than claim files written by an older CLI/registry combination.
 function isManifestTrusted(
   manifestPath: string,
-  manifest: NonNullable<DiffgazerAddConfig["installedComponents"]>,
+  manifest: NonNullable<DiffgazerAddConfig["installedItems"]>,
   registryIntegrity: string | undefined,
 ): boolean {
   if (!registryIntegrity) return false;
@@ -62,7 +78,7 @@ function toManifestPath(op: FileOp): string {
 }
 
 function getSourceNames(op: FileOp): string[] {
-  const sourceNames = isOwnedFileOp(op) ? (op.sourceNames ?? []) : [];
+  const sourceNames = op.sourceNames ?? [];
   return [
     ...new Set(
       [op.sourceName, ...sourceNames].filter((name): name is string => name !== undefined),
@@ -87,7 +103,7 @@ function buildOwnedFile(
 }
 
 function ownedFileFor(
-  manifest: NonNullable<DiffgazerAddConfig["installedComponents"]>,
+  manifest: NonNullable<DiffgazerAddConfig["installedItems"]>,
   sourceName: string,
   manifestPath: string,
 ): ManifestOwnedFile | undefined {
@@ -97,7 +113,7 @@ function ownedFileFor(
 function buildOwnedFilesByItem(
   writeResult: { results: Array<{ op: FileOp; result: "written" | "skipped" | "overwritten" }> },
   mode: ResolvedIntegrationSelection["mode"],
-  existingManifest: NonNullable<DiffgazerAddConfig["installedComponents"]>,
+  existingManifest: NonNullable<DiffgazerAddConfig["installedItems"]>,
 ): Map<string, ManifestOwnedFile[]> {
   const registryIntegrity = getRegistry().integrity;
   const byItem = new Map<string, ManifestOwnedFile[]>();
@@ -112,7 +128,11 @@ function buildOwnedFilesByItem(
 
   function addOwnedFile(sourceName: string, op: FileOp): void {
     const path = toManifestPath(op);
-    pushOwnedFile(sourceName, path, buildOwnedFile(op, sourceName, registryIntegrity, mode));
+    pushOwnedFile(
+      sourceName,
+      path,
+      buildOwnedFile(op, sourceName, registryIntegrity, integrationModeFor(sourceName, mode)),
+    );
   }
 
   for (const { op, result } of writeResult.results) {
@@ -167,7 +187,7 @@ function buildOwnedFilesByItem(
   return byItem;
 }
 
-export interface RetiredOwnershipReconciliation {
+interface RetiredOwnershipReconciliation {
   removedFiles: Array<{ path: string; content: string }>;
   retainedFilesByItem: Map<string, ManifestOwnedFile[]>;
   notices: string[];
@@ -267,11 +287,12 @@ export function rollbackRetiredOwnership(result: RetiredOwnershipReconciliation)
   }
 }
 
-export interface OwnedManifestUpdate {
+interface OwnedManifestUpdate {
   writeResult: { results: Array<{ op: FileOp; result: "written" | "skipped" | "overwritten" }> };
   metadata: ManifestInstallMetadata;
   explicitNames: Set<string>;
   cssChunksByItem: Map<string, string[]>;
+  requiresByItem?: Map<string, string[]>;
   removeNames?: string[];
   updatedNames?: ReadonlySet<string>;
   retainedFilesByItem?: ReadonlyMap<string, ManifestOwnedFile[]>;
@@ -283,6 +304,7 @@ export function updateOwnedManifestEntries(cwd: string, update: OwnedManifestUpd
     metadata,
     explicitNames,
     cssChunksByItem,
+    requiresByItem = new Map<string, string[]>(),
     removeNames = [],
     updatedNames = new Set<string>(),
     retainedFilesByItem = new Map<string, ManifestOwnedFile[]>(),
@@ -293,7 +315,7 @@ export function updateOwnedManifestEntries(cwd: string, update: OwnedManifestUpd
   }
   const manifestPath = resolveProjectPath(cwd, "diffgazer.json");
   const manifestSnapshot = readFileSync(manifestPath, "utf-8");
-  const existingManifest = loaded.config.installedComponents ?? {};
+  const existingManifest = loaded.config.installedItems ?? {};
   const filesByItem = buildOwnedFilesByItem(
     writeResult,
     metadata.integrationMode ?? "none",
@@ -321,10 +343,14 @@ export function updateOwnedManifestEntries(cwd: string, update: OwnedManifestUpd
       delete nextManifest[name];
       continue;
     }
+    const requires = requiresByItem.has(name)
+      ? requiresByItem.get(name)
+      : existingManifest[name]?.requires;
     const itemMetadata: ManifestInstallMetadata = {
-      ...metadata,
+      ...metadataFor(name, metadata),
       installedAs,
     };
+    if (requires !== undefined) itemMetadata.requires = [...requires];
     if (files.length > 0) itemMetadata.files = files;
     if (cssChunks) itemMetadata.cssChunks = cssChunks;
     nextManifest[name] = { installedAt, ...itemMetadata };
@@ -334,9 +360,9 @@ export function updateOwnedManifestEntries(cwd: string, update: OwnedManifestUpd
 
   const nextConfig: DiffgazerAddConfig = { ...loaded.config };
   if (Object.keys(nextManifest).length > 0) {
-    nextConfig.installedComponents = nextManifest;
+    nextConfig.installedItems = nextManifest;
   } else {
-    delete nextConfig.installedComponents;
+    delete nextConfig.installedItems;
   }
 
   try {

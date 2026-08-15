@@ -1,6 +1,6 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { getInitialWizardData, type OnboardingDraft } from "@diffgazer/core/onboarding";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { PRODUCT_REGISTRY, SELECTABLE_PRODUCTS } from "@diffgazer/core/providers";
 import { escapeRegExp } from "@diffgazer/core/redaction";
 import type {
   ClientConfigurationAction,
@@ -9,9 +9,8 @@ import type {
 } from "@diffgazer/core/schemas/config";
 import {
   ClientConfigurationActionResponseSchema,
+  CONFORMANCE_TEST_COST_DISCLOSURE,
   READINESS_PRESENTATION,
-  REMOVED_PRODUCT_ID,
-  SELECTABLE_PRODUCTS,
 } from "@diffgazer/core/schemas/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -190,28 +189,8 @@ function makeInitResponse(
 ): ConfigurationInitResponse {
   return {
     schemaVersion: 2,
-    configurations: [
-      {
-        configuration: {
-          configurationId: "legacy-removed-zai-plan",
-          revision: 4,
-          status: "removed",
-          transportFamily: "hosted-api",
-          productId: REMOVED_PRODUCT_ID,
-          selectedModelId: null,
-          notices: [],
-          availableActions: ["inspect", "delete"],
-        },
-        readiness: {
-          status: "removed",
-          ready: false,
-          evidenceStatus: "not-checked",
-          checkedAt: null,
-          acknowledgement: { status: "not-applicable" },
-          ...READINESS_PRESENTATION.removed,
-        },
-      },
-    ],
+    configurations: [],
+    unrecognizedConfigurations: [],
     selectedConfigurationId: null,
     settings: {
       theme: "terminal",
@@ -307,14 +286,10 @@ describe("OnboardingWizard", () => {
     expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
   });
 
-  it("shows exactly 13 selectable products and removed migration guidance without a removed radio", async () => {
+  it("shows exactly 13 selectable products", async () => {
     renderWizard();
     await expectStep(/select product/i);
     expect(screen.getAllByRole("radio")).toHaveLength(13);
-    await waitFor(() => {
-      expect(screen.getByText(/Z\.AI Coding Plan/i)).toBeInTheDocument();
-    });
-    expect(screen.queryByRole("radio", { name: /Z\.AI Coding Plan/i })).not.toBeInTheDocument();
   });
 
   it("uses shared product names from the registry projection", async () => {
@@ -343,9 +318,23 @@ describe("OnboardingWizard", () => {
     // record, never a client-side guess derived from the product policy.
     await user.click(await screen.findByRole("radio", { name: /gemini-2\.5-pro/i }));
     expect(screen.queryByRole("radio", { name: /gemini-2\.5-flash/i })).not.toBeInTheDocument();
-    expect(mockGetConfigurationModels).toHaveBeenCalledWith("created-configuration");
+    expect(mockGetConfigurationModels).toHaveBeenCalledWith(
+      "created-configuration",
+      expect.any(AbortSignal),
+    );
     await clickNext(user);
     await expectStep(/verify conformance/i);
+    // The first review verifies structured output; Test readiness stays an
+    // optional diagnostic, so its cost is still disclosed here.
+    expect(screen.getByText(/your first review verifies structured review support/i)).toBeVisible();
+    expect(screen.getByText(CONFORMANCE_TEST_COST_DISCLOSURE)).toBeVisible();
+    // The step records an acknowledgement, so its consent copy must not claim a
+    // verification the wizard gives the user no means to perform.
+    expect(
+      screen.getByRole("checkbox", {
+        name: /i understand structured review support is verified on my first review/i,
+      }),
+    ).toBeVisible();
     await user.click(screen.getByRole("checkbox"));
     await clickNext(user);
     await expectStep(/accept product notice/i);
@@ -358,6 +347,10 @@ describe("OnboardingWizard", () => {
       expect(
         mockExecuteConfigurationAction.mock.calls.some(([action]) => action.action === "create"),
       ).toBe(true);
+      // Saving never spends a billed conformance probe.
+      expect(
+        mockExecuteConfigurationAction.mock.calls.some(([action]) => action.action === "test"),
+      ).toBe(false);
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
     });
     // Model discovery persists a draft record. Completing setup revokes exactly
@@ -365,6 +358,35 @@ describe("OnboardingWizard", () => {
     expect(
       mockExecuteConfigurationAction.mock.calls.filter(([action]) => action.action === "delete"),
     ).toHaveLength(1);
+  });
+
+  it("places keyboard focus inside each step's content as the wizard advances", async () => {
+    const user = userEvent.setup();
+    renderWizard();
+
+    await expectStep(/select product/i);
+    expect(screen.getByRole("radio", { name: /google gemini/i })).toHaveFocus();
+
+    await clickNext(user);
+    await expectStep(/configure endpoint/i);
+    expect(screen.getByRole("radio", { name: /global/i })).toHaveFocus();
+
+    await clickNext(user);
+    await expectStep(/configure authentication/i);
+    expect(screen.getByRole("radio", { name: /enter credential now/i })).toHaveFocus();
+
+    await user.click(screen.getByRole("radio", { name: /environment reference/i }));
+    await clickNext(user);
+    await expectStep(/select model/i);
+    await user.click(await screen.findByRole("radio", { name: /gemini-2\.5-pro/i }));
+    await clickNext(user);
+    await expectStep(/verify conformance/i);
+    expect(screen.getByRole("checkbox")).toHaveFocus();
+
+    await user.click(screen.getByRole("checkbox"));
+    await clickNext(user);
+    await expectStep(/accept product notice/i);
+    expect(screen.getByRole("checkbox")).toHaveFocus();
   });
 
   it("skips hosted credential prompts for local CLI plans", async () => {

@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const inputDoc: ComponentDoc = {
   description:
@@ -72,14 +72,14 @@ export const inputDoc: ComponentDoc = {
         required: false,
         defaultValue: "true for string/number prefixes; false otherwise",
         description:
-          "Controls whether the prefix wrapper is hidden from assistive technology. Overrides the content-based default.",
+          "Hide the prefix from assistive tech. Controls whether the prefix wrapper is hidden from assistive technology and overrides the content-based default.",
       },
       suffixAriaHidden: {
         type: "boolean",
         required: false,
         defaultValue: "true for string/number suffixes; false otherwise",
         description:
-          "Controls whether the suffix wrapper is hidden from assistive technology. Overrides the content-based default.",
+          "Hide the suffix from assistive tech. Controls whether the suffix wrapper is hidden from assistive technology and overrides the content-based default.",
       },
       inputClassName: {
         type: "string",

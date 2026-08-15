@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { stubMatchMedia as stubCoreMatchMedia } from "@diffgazer/core/testing/match-media";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -141,7 +139,7 @@ describe("DocsSidebar navigation", () => {
 
     await user.keyboard("{Meta>}b{/Meta}");
 
-    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveAttribute(
+    expect(screen.getByRole("navigation", { name: "Documentation tree" })).toHaveAttribute(
       "data-state",
       "open",
     );

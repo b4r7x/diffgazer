@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -8,8 +6,11 @@ import { ThemeProvider } from "@/hooks/theme-context";
 import { stubMatchMedia } from "@/testing/match-media";
 import { FooterBar } from "./footer-bar";
 
-const navigateMock = vi.hoisted(() => vi.fn());
-type RouterMatch = { routeId: string; status: string; globalNotFound?: boolean };
+type RouterMatch = {
+  routeId: string;
+  status: "success" | "error" | "notFound";
+  globalNotFound?: boolean;
+};
 const routerBoundary = vi.hoisted((): { matches: RouterMatch[] } => ({
   matches: [
     { routeId: "__root__", status: "success" },
@@ -17,12 +18,11 @@ const routerBoundary = vi.hoisted((): { matches: RouterMatch[] } => ({
   ],
 }));
 
-// Boundary mock: TanStack Router is the external routing library; F2 navigation and location-derived hints are asserted without a full route tree.
+// Boundary mock: TanStack Router is the external routing library; the match-derived hints are asserted without a full route tree.
 vi.mock("@tanstack/react-router", async () => {
   const { RouterLinkMock } = await import("@/testing/router-mock");
   return {
     Link: RouterLinkMock,
-    useNavigate: () => navigateMock,
     useRouterState: ({
       select,
     }: {
@@ -36,7 +36,6 @@ describe("FooterBar", () => {
     localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
     stubMatchMedia({ isDesktop: true });
-    navigateMock.mockClear();
   });
 
   afterEach(() => {
@@ -89,7 +88,10 @@ describe("FooterBar", () => {
     await user.keyboard("{F2}");
 
     expect(document.documentElement.getAttribute("data-theme")).not.toBe(before);
-    expect(navigateMock).not.toHaveBeenCalled();
+    // The F2 affordance stays a button: a link here would navigate away instead
+    // of flipping the theme in place.
+    expect(screen.getByRole("button", { name: /theme/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /theme/i })).not.toBeInTheDocument();
   });
 
   it("toggles the theme from the footer hint itself", async () => {
@@ -110,7 +112,7 @@ describe("FooterBar", () => {
     await user.click(screen.getByRole("button", { name: /theme/i }));
 
     expect(document.documentElement.getAttribute("data-theme")).not.toBe(before);
-    expect(navigateMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: /theme/i })).not.toBeInTheDocument();
   });
 
   it("shows list-navigation hints on the home page", () => {
@@ -152,7 +154,7 @@ describe("FooterBar", () => {
     expect(screen.queryByText("move")).not.toBeInTheDocument();
   });
 
-  it.each([
+  it.each<[string, RouterMatch[]]>([
     ["docs not-found", [{ routeId: "/$lib", status: "notFound" }]],
     ["root not-found", [{ routeId: "__root__", status: "success", globalNotFound: true }]],
     ["root error", [{ routeId: "__root__", status: "error" }]],

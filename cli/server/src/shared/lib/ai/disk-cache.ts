@@ -8,23 +8,6 @@ interface DatedEntry {
   fetchedAt: string;
 }
 
-export function createSingleFlight<T>(): (key: string, run: () => Promise<T>) => Promise<T> {
-  const inFlight = new Map<string, Promise<T>>();
-
-  return async (key, run) => {
-    const active = inFlight.get(key);
-    if (active) return active;
-
-    const flight = run();
-    inFlight.set(key, flight);
-    try {
-      return await flight;
-    } finally {
-      if (inFlight.get(key) === flight) inFlight.delete(key);
-    }
-  };
-}
-
 export const loadDiskCache = <T extends DatedEntry>(
   path: string,
   schema: z.ZodType<T>,

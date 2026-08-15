@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { act, fireEvent, render, screen } from "@testing-library/react";

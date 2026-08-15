@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { FooterProvider } from "@diffgazer/core/footer";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { act, renderHook } from "@testing-library/react";
@@ -92,6 +90,30 @@ describe("useSettingsFormActions", () => {
 
     expect(mockSaveSettings).toHaveBeenCalledWith({ secretsStorage: "keyring" });
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
+  });
+
+  it("does not pull the user back to settings when the page left during the save", async () => {
+    let resolveSave: () => void = () => {};
+    mockSaveSettings.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveSave = resolve;
+      }),
+    );
+    const { result, unmount } = renderFormActions({
+      saveAvailable: true,
+      getSettingsPayload: () => ({ secretsStorage: "keyring" }),
+      contentShortcuts: [],
+    });
+
+    const saving = result.current.onSave();
+    unmount();
+    await act(async () => {
+      resolveSave();
+      await saving;
+    });
+
+    expect(mockSaveSettings).toHaveBeenCalledWith({ secretsStorage: "keyring" });
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it("surfaces a save error, then clears it on a successful retry", async () => {

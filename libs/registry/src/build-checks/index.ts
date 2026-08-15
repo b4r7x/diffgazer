@@ -3,5 +3,6 @@ export { assertDistEsmRelativeImports } from "./verify-dist-esm.js";
 export {
   assertRscClientDirectives,
   assertSourceRscClientDirectives,
-  getUiPublicClientOutputMap,
+  getPublicClientOutputMap,
+  hasUseClientDirective,
 } from "./verify-rsc.js";

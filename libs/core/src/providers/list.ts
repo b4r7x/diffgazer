@@ -1,7 +1,7 @@
 import type { ConfigurationStatus } from "../schemas/config/configuration-status.js";
-import { SELECTABLE_PRODUCTS } from "../schemas/config/provider-registry.js";
 import { READINESS_PRESENTATION, type Readiness } from "../schemas/config/readiness.js";
 import { type ClientMetadataPayload, projectClientMetadata } from "./client-metadata.js";
+import { SELECTABLE_PRODUCTS } from "./selectable-products.js";
 
 export type ProviderListRow = ClientMetadataPayload;
 
@@ -19,6 +19,25 @@ export function findProviderById(
 ): ProviderListRow | null {
   if (rowId === null || rowId === undefined) return null;
   return rows.find((row) => getProviderRowId(row) === rowId) ?? null;
+}
+
+export type ProviderDialogRowOwner =
+  | { readonly kind: "setup"; readonly rowId: string }
+  | { readonly kind: "model"; readonly rowId: string; readonly configurationId: string };
+
+/**
+ * A row's id flips from its product id to its configuration id the moment a
+ * configuration is created, so a model dialog opened during that transition must
+ * be resolved by the configuration it was opened for — the id it captured is
+ * the only identity that survives the refresh.
+ */
+export function findProviderDialogRow(
+  rows: readonly ProviderListRow[],
+  owner: ProviderDialogRowOwner | null,
+): ProviderListRow | null {
+  if (!owner) return null;
+  if (owner.kind === "setup") return findProviderById(rows, owner.rowId);
+  return findProviderById(rows, owner.configurationId) ?? findProviderById(rows, owner.rowId);
 }
 
 const UNCONFIGURED_READINESS = {
@@ -43,9 +62,7 @@ function mapConfiguration({ configuration, readiness }: ConfigurationStatus): Pr
 export function mapProviderList(
   configurationStatuses: readonly ConfigurationStatus[],
 ): ProviderListRow[] {
-  const selectableRows = SELECTABLE_PRODUCTS.flatMap((product) => {
-    if (!product.selectable) return [];
-
+  return SELECTABLE_PRODUCTS.flatMap((product) => {
     const matchingConfigurations = configurationStatuses.filter(
       ({ configuration }) => configuration.productId === product.productId,
     );
@@ -64,10 +81,4 @@ export function mapProviderList(
       }),
     ];
   });
-
-  const removedRows = configurationStatuses
-    .filter(({ configuration }) => configuration.status === "removed")
-    .map(mapConfiguration);
-
-  return [...selectableRows, ...removedRows];
 }

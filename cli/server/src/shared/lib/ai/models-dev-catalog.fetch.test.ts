@@ -136,16 +136,41 @@ describe("modelInfoFromBoundedObservation", () => {
     expect(JSON.stringify(snapshotModels)).not.toContain('"liveEvidence"');
   });
 
-  it("maps at least one free-tier model to tier free from catalog observations", () => {
+  it("takes each model's tier from its published price, not from its provider", () => {
+    const catalog = parseModelsDevCatalog(MODELS_DEV_SAMPLE);
+    const gemini = modelInfoFromBoundedObservation(catalog, "gemini", "models.dev-live", fresh());
+    const zai = modelInfoFromBoundedObservation(catalog, "zai", "models.dev-live", fresh());
+
+    // Priced upstream, and a declared provider free tier does not change that.
+    expect(gemini.find((model) => model.id === "gemini-2.5-flash")?.tier).toBe("paid");
+    expect(gemini.find((model) => model.id === "gemini-3-pro-preview")?.tier).toBe("paid");
+    expect(zai.find((model) => model.id === "glm-5-turbo")?.tier).toBe("free");
+  });
+
+  it("offers only capable models the product's model policy also admits", () => {
+    const catalog = parseModelsDevCatalog(MODELS_DEV_SAMPLE);
+    const zai = modelInfoFromBoundedObservation(catalog, "zai", "models.dev-live", fresh());
+    const cerebras = modelInfoFromBoundedObservation(
+      catalog,
+      "cerebras",
+      "models.dev-live",
+      fresh(),
+    );
+
+    expect(zai.map((model) => model.id)).toEqual(["glm-5-turbo"]);
+    // glm-4.7 declares it cannot; cerebras/gpt-oss-120b declares nothing at all;
+    // glm-4.7-flash declares it can, but the product refuses '-flash' ids, so
+    // offering it would advertise a model the select path would reject.
+    expect(zai.map((model) => model.id)).not.toContain("glm-4.7");
+    expect(zai.map((model) => model.id)).not.toContain("glm-4.7-flash");
+    expect(cerebras).toEqual([]);
+  });
+
+  it("carries the catalog display name so pickers need not fall back to the id", () => {
     const catalog = parseModelsDevCatalog(MODELS_DEV_SAMPLE);
     const models = modelInfoFromBoundedObservation(catalog, "gemini", "models.dev-live", fresh());
 
-    const freeModels = models.filter((model) => model.tier === "free");
-    expect(freeModels.length).toBeGreaterThan(0);
-    expect(freeModels.map((model) => model.id)).toContain("gemini-2.5-flash");
-
-    const paidModel = models.find((model) => model.id === "gemini-3-pro-preview");
-    expect(paidModel?.tier).toBe("paid");
+    expect(models.find((model) => model.id === "gemini-2.5-flash")?.name).toBe("Gemini 2.5 Flash");
   });
 });
 

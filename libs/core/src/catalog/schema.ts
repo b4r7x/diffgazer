@@ -1,9 +1,12 @@
 import { z } from "zod";
 import { utf8ByteLength } from "../redaction.js";
+import {
+  isStructuralControlCharacter,
+  isUnicodeBidiFormattingControl,
+} from "../sanitize-terminal.js";
 import { ExactModelIdSchema } from "../schemas/config/provider-config.js";
 
 const OpaqueUpstreamIdSchema = z.string().min(1).max(512);
-const LATEST_ALIAS_PATTERN = /(?:^|[/:._-])latest(?:$|[/:._-])/i;
 
 const CATALOG_MODEL_NAME_MAX_BYTES = 512;
 const MODEL_NAME_SECRET_PATTERN =
@@ -14,19 +17,13 @@ const MODEL_NAME_PATH_PATTERN =
 function containsUnsafeModelNameControl(value: string): boolean {
   return [...value].some((character) => {
     const codePoint = character.codePointAt(0) ?? 0;
-    return (
-      codePoint <= 0x1f ||
-      (codePoint >= 0x7f && codePoint <= 0x9f) ||
-      codePoint === 0x2028 ||
-      codePoint === 0x2029
-    );
+    return isStructuralControlCharacter(codePoint) || isUnicodeBidiFormattingControl(codePoint);
   });
 }
 
 function isSafeCatalogModelName(value: string): boolean {
   return (
     value.trim().length > 0 &&
-    utf8ByteLength(value) <= CATALOG_MODEL_NAME_MAX_BYTES &&
     !containsUnsafeModelNameControl(value) &&
     !MODEL_NAME_SECRET_PATTERN.test(value) &&
     !MODEL_NAME_PATH_PATTERN.test(value)
@@ -36,17 +33,20 @@ function isSafeCatalogModelName(value: string): boolean {
 export const CatalogModelNameSchema = z
   .string()
   .min(1)
-  .max(CATALOG_MODEL_NAME_MAX_BYTES)
   .refine(
     (name) => utf8ByteLength(name) <= CATALOG_MODEL_NAME_MAX_BYTES,
     "Catalog model names must be at most 512 UTF-8 bytes",
   )
   .refine(isSafeCatalogModelName, "Catalog model names must be safe display text");
 
-export const CatalogSelectableModelIdSchema = ExactModelIdSchema.refine(
-  (modelId) => !LATEST_ALIAS_PATTERN.test(modelId),
-  "Marketing aliases are not exact model IDs",
-);
+/**
+ * Same accepted set as `ExactModelIdSchema` (which already owns marketing-alias
+ * rejection); the brand records provenance. A catalog observation may only carry
+ * a model id this schema parsed, so no producer can fabricate one from a bare
+ * string without going through the parse.
+ */
+export const CatalogSelectableModelIdSchema =
+  ExactModelIdSchema.brand<"CatalogSelectableModelId">();
 export type CatalogSelectableModelId = z.infer<typeof CatalogSelectableModelIdSchema>;
 
 export const CATALOG_OBSERVATION_SOURCES = ["models.dev-live", "models.dev-snapshot"] as const;
@@ -71,18 +71,19 @@ export const ModelsDevModelSchema = z.object({
       output: z.number().optional(),
     })
     .optional(),
-  tool_call: z.boolean().optional(),
-  structured_output: z.boolean().nullable().optional(),
-  reasoning: z.boolean().optional(),
   modalities: z
     .object({
       input: z.array(z.string()).optional(),
       output: z.array(z.string()).optional(),
     })
     .optional(),
-  release_date: z.string().optional(),
-  last_updated: z.string().optional(),
   knowledge: z.string().optional(),
+  // Upstream declares JSON-schema response support per model. The review
+  // contract is a structured generation, so this is the field that decides
+  // whether a model can run a review at all. Absent OR null upstream means
+  // unknown; both must stay tolerated, because rejecting an explicit null would
+  // drop the whole model instead of reading it as the unknown that it is.
+  structured_output: z.boolean().nullable().optional(),
 });
 export type ModelsDevModel = z.infer<typeof ModelsDevModelSchema>;
 
@@ -117,6 +118,7 @@ export function parseModelsDevCatalog(raw: unknown): ModelsDevCatalog {
   for (const [providerId, rawProvider] of Object.entries(raw as Record<string, unknown>)) {
     if (UNSAFE_RECORD_KEYS.has(providerId)) continue;
     if (!rawProvider || typeof rawProvider !== "object") continue;
+    if (providerId !== (rawProvider as { id?: unknown }).id) continue;
     const { models: rawModels, ...rest } = rawProvider as Record<string, unknown>;
 
     const models: Record<string, ModelsDevModel> = {};
@@ -124,12 +126,14 @@ export function parseModelsDevCatalog(raw: unknown): ModelsDevCatalog {
       for (const [modelId, rawModel] of Object.entries(rawModels as Record<string, unknown>)) {
         if (UNSAFE_RECORD_KEYS.has(modelId)) continue;
         const parsed = ModelsDevModelSchema.safeParse(rawModel);
-        if (parsed.success) models[modelId] = parsed.data;
+        if (!parsed.success || parsed.data.id !== modelId) continue;
+        models[modelId] = parsed.data;
       }
     }
 
     const provider = ModelsDevProviderSchema.safeParse({ ...rest, models });
-    if (provider.success) catalog[providerId] = provider.data;
+    if (!provider.success || provider.data.id !== providerId) continue;
+    catalog[providerId] = provider.data;
   }
 
   return catalog;

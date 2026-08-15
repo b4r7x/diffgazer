@@ -1,16 +1,20 @@
 import { useSettings } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { deriveSaveState, useSubmitGuard } from "@diffgazer/core/forms";
-import { resolveSelectableTheme } from "@diffgazer/core/schemas/config";
+import {
+  type ResolvedSelectableTheme,
+  resolveSelectableTheme,
+  SETTINGS_SCREEN_COPY,
+  type SelectableTheme,
+} from "@diffgazer/core/schemas/config";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { useKey, useScope } from "@diffgazer/keys";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Panel } from "@diffgazer/ui/components/panel";
-import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useIsMountedRef } from "@/hooks/use-is-mounted";
 import { useTheme } from "@/hooks/use-theme";
-import type { ResolvedTheme, WebTheme } from "@/types/theme";
 import { useSettingsFormFooter } from "../../hooks/use-form-footer";
 import { SettingsFormActions } from "../form-actions";
 import { renderSettingsFormPending } from "../form-pending";
@@ -23,25 +27,26 @@ export function SettingsThemePage() {
   const navigate = useNavigate();
   const [saveError, setSaveError] = useState<string | null>(null);
   const { isSubmitting, withGuard } = useSubmitGuard();
+  const isMountedRef = useIsMountedRef();
 
-  const saveAndExit = (theme: WebTheme) => {
+  const saveAndExit = (theme: SelectableTheme) => {
     void withGuard(async () => {
       setSaveError(null);
       try {
         await setTheme(theme);
-        navigate({ to: "/settings" });
+        if (isMountedRef.current) navigate({ to: "/settings" });
       } catch (error) {
-        const message = getErrorMessage(error, "Could not persist theme settings.");
-        setSaveError(message);
-        toast.error("Failed to Save Theme", { message });
+        // Save failures surface once, in the live Callout below — a toast on top
+        // of it announces the same event twice.
+        setSaveError(getErrorMessage(error, "Could not persist theme settings."));
       }
     });
   };
 
   const pendingUI = renderSettingsFormPending(
     settingsQuery,
-    "Theme Settings",
-    "Choose how Diffgazer appears.",
+    SETTINGS_SCREEN_COPY.theme.title,
+    SETTINGS_SCREEN_COPY.theme.subtitle,
   );
 
   if (pendingUI) return pendingUI;
@@ -58,11 +63,11 @@ export function SettingsThemePage() {
 }
 
 interface SettingsThemeEditorProps {
-  savedTheme: WebTheme;
-  system: ResolvedTheme;
+  savedTheme: SelectableTheme;
+  system: ResolvedSelectableTheme;
   saveError: string | null;
   isSaving: boolean;
-  onSave: (theme: WebTheme) => void;
+  onSave: (theme: SelectableTheme) => void;
 }
 
 function SettingsThemeEditor({
@@ -73,16 +78,17 @@ function SettingsThemeEditor({
   onSave,
 }: SettingsThemeEditorProps) {
   const navigate = useNavigate();
-  const [selectedTheme, setSelectedTheme] = useState<WebTheme>(savedTheme);
-  const [focusedTheme, setFocusedTheme] = useState<WebTheme>(savedTheme);
-  const [hoveredTheme, setHoveredTheme] = useState<WebTheme | null>(null);
+  const focusFallbackRef = useRef<HTMLDivElement>(null);
+  const [selectedTheme, setSelectedTheme] = useState<SelectableTheme>(savedTheme);
+  const [focusedTheme, setFocusedTheme] = useState<SelectableTheme>(savedTheme);
+  const [hoveredTheme, setHoveredTheme] = useState<SelectableTheme | null>(null);
 
   const previewTheme = hoveredTheme ?? focusedTheme;
   // Auto has no look of its own: the preview shows what it currently resolves to.
   const previewResolved = resolveSelectableTheme(previewTheme, system);
   useScope("settings-theme");
 
-  const { canSave } = deriveSaveState<WebTheme>({
+  const { canSave } = deriveSaveState<SelectableTheme>({
     persisted: savedTheme,
     choice: selectedTheme,
     saving: isSaving,
@@ -101,6 +107,7 @@ function SettingsThemeEditor({
     disabledActions: [isSaving, isSaveDisabled],
     onCancel: handleCancel,
     onSave: handleSave,
+    focusFallbackRef,
     contentShortcuts: [
       NAVIGATE_SHORTCUT,
       { key: "Space", label: "Select Theme" },
@@ -109,14 +116,14 @@ function SettingsThemeEditor({
     rightShortcuts: [{ key: "Esc", label: "Cancel" }],
   });
 
-  const selectTheme = (theme: WebTheme) => {
+  const selectTheme = (theme: SelectableTheme) => {
     setSelectedTheme(theme);
     setFocusedTheme(theme);
   };
 
   // Highlight moves whenever the keyboard or a pointer lands on a row, which is
   // also the moment the footer stops owning the keys.
-  const highlightTheme = (theme: WebTheme) => {
+  const highlightTheme = (theme: SelectableTheme) => {
     setFocusedTheme(theme);
     footer.reset();
   };
@@ -132,23 +139,28 @@ function SettingsThemeEditor({
             and marker so it reads distinct from the blue Live Preview panel. */}
         <Panel tone="accent" className="flex flex-col border-accent [--panel-tone:var(--accent)]">
           <Panel.Header>
-            <Panel.Title>Theme Settings</Panel.Title>
+            <Panel.Title>{SETTINGS_SCREEN_COPY.theme.title}</Panel.Title>
           </Panel.Header>
           <Panel.Content spacing="none" className="flex flex-1 flex-col">
-            <ThemeSelectorContent
-              value={selectedTheme}
-              highlighted={focusedTheme}
-              onHighlightChange={highlightTheme}
-              onPreviewValueChange={setHoveredTheme}
-              onChange={selectTheme}
-              onEnter={onSave}
-              enabled={!footer.inActions}
-              onBoundaryReached={(direction) => {
-                if (direction === "down") {
-                  footer.enterActions();
-                }
-              }}
-            />
+            {/* While both footer actions are disabled mid-save, the action row
+                parks focus here; keeping the selector disabled for that window
+                stops its re-arming autoFocus from yanking focus into the radios. */}
+            <div ref={focusFallbackRef} tabIndex={-1} className="focus:outline-none">
+              <ThemeSelectorContent
+                value={selectedTheme}
+                highlighted={focusedTheme}
+                onHighlightChange={highlightTheme}
+                onPreviewValueChange={setHoveredTheme}
+                onChange={selectTheme}
+                onEnter={onSave}
+                enabled={!footer.inActions && !isSaving}
+                onBoundaryReached={(direction) => {
+                  if (direction === "down") {
+                    footer.enterActions();
+                  }
+                }}
+              />
+            </div>
 
             <div className="mt-auto space-y-4 pt-6">
               <Callout tone="info" className="pointer-coarse:hidden">

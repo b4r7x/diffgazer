@@ -1,8 +1,11 @@
 /** @vitest-environment jsdom */
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  composedClosest,
+  composedContains,
   getComposedEventTarget,
   getOwnerView,
+  getShadowHost,
   isEditableElement,
   isHTMLElement,
   isHTMLInputElement,
@@ -92,13 +95,62 @@ describe("isNode", () => {
   });
 });
 
+describe("composed tree traversal", () => {
+  let host: HTMLDivElement;
+  let innerHost: HTMLDivElement;
+  let leaf: HTMLInputElement;
+
+  beforeEach(() => {
+    host = document.createElement("div");
+    host.className = "outer-host";
+    document.body.appendChild(host);
+    innerHost = document.createElement("div");
+    host.attachShadow({ mode: "open" }).appendChild(innerHost);
+    leaf = document.createElement("input");
+    innerHost.attachShadow({ mode: "open" }).appendChild(leaf);
+  });
+
+  afterEach(() => {
+    host.remove();
+  });
+
+  describe("getShadowHost", () => {
+    it("returns the host of the shadow root a node lives in", () => {
+      expect(getShadowHost(leaf)).toBe(innerHost);
+      expect(getShadowHost(innerHost)).toBe(host);
+    });
+
+    it("returns null for a light-DOM node", () => {
+      expect(getShadowHost(host)).toBeNull();
+    });
+  });
+
+  describe("composedContains", () => {
+    it("crosses every shadow boundary between target and container", () => {
+      expect(composedContains(host, leaf)).toBe(true);
+      expect(composedContains(document.body, leaf)).toBe(true);
+    });
+
+    it("returns false for a detached target and for null", () => {
+      expect(composedContains(host, document.createElement("div"))).toBe(false);
+      expect(composedContains(host, null)).toBe(false);
+    });
+  });
+
+  describe("composedClosest", () => {
+    it("matches a selector on an ancestor shadow host", () => {
+      expect(composedClosest(leaf, ".outer-host")).toBe(host);
+    });
+
+    it("returns null when nothing in the composed ancestry matches", () => {
+      expect(composedClosest(leaf, ".absent")).toBeNull();
+    });
+  });
+});
+
 describe("isInputElement", () => {
-  it.each([
-    { tag: "input", expected: true },
-    { tag: "textarea", expected: true },
-    { tag: "select", expected: true },
-  ])("classifies native <$tag> as an input element ($expected)", ({ tag, expected }) => {
-    expect(isInputElement(document.createElement(tag))).toBe(expected);
+  it.each(["input", "textarea", "select"])("classifies native <%s> as an input element", (tag) => {
+    expect(isInputElement(document.createElement(tag))).toBe(true);
   });
 
   it("returns a strict boolean false for a plain <div>", () => {

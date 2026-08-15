@@ -17,6 +17,7 @@
     "src/**/*.test.tsx",
     "registry/**/*.ts",
     "registry/**/*.tsx",
+    "docs/hook-docs/**/*.ts",
     "scripts/**/*.test.ts",
     "examples/playground/src/**/*.test.tsx"
   ],

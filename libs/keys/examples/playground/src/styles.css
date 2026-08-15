@@ -4,10 +4,11 @@
   --color-border: #e2e2e2;
   --color-text: #1a1a1a;
   --color-text-muted: #666666;
-  --color-accent: #2563eb;
+  /* Foreground values clear WCAG AA 4.5:1 on --color-bg and --color-accent-light. */
+  --color-accent: #1d4ed8;
   --color-accent-light: #dbeafe;
-  --color-accent-hover: #1d4ed8;
-  --color-success: #16a34a;
+  --color-accent-hover: #1e40af;
+  --color-success: #15803d;
   --color-danger: #dc2626;
   --font-mono: "SF Mono", "Cascadia Code", "Fira Code", monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -257,8 +258,12 @@ body {
 .demo-list-item {
   padding: 10px 12px;
   border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
   font-size: 14px;
+}
+
+/* Only the button variant is clickable; listbox options are keyboard-driven. */
+button.demo-list-item {
+  cursor: pointer;
 }
 
 .demo-list-item:last-child {

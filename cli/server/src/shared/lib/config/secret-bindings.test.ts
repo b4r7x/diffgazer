@@ -1,7 +1,19 @@
-import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { dirname, join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { assertTempHome } from "../testing/temp-home.js";
 import {
   bindWriteOnlySecret,
   createEnvironmentSecretBinding,
@@ -10,7 +22,6 @@ import {
   createLocalBearerBinding,
   createNoneSecretBinding,
   deleteSecretBinding,
-  deleteSecretBindingTransactional,
   type KeyringSecretStore,
   markSecretBindingRemoved,
   resolveSecretBinding,
@@ -22,16 +33,28 @@ import {
 
 const tempDirectories: string[] = [];
 
-async function createTempDirectory(): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), "diffgazer-secret-binding-"));
+async function createTempDirectory(prefix = "diffgazer-secret-binding-"): Promise<string> {
+  const directory = await mkdtemp(join(tmpdir(), prefix));
   tempDirectories.push(directory);
   return directory;
 }
 
+/** File-backed bindings only resolve inside the app-owned config directory. */
+async function createCredentialDirectory(): Promise<string> {
+  const home = await createTempDirectory();
+  assertTempHome(home);
+  process.env.DIFFGAZER_HOME = home;
+  return join(home, "credentials");
+}
+
+// Binding reads and writes are awaited by every test and start no background writer, so the
+// temp directories only have to fall before DIFFGAZER_HOME is dropped, which `paths.ts`
+// re-reads per call.
 afterEach(async () => {
   await Promise.all(
-    tempDirectories.splice(0).map((directory) => rm(directory, { recursive: true })),
+    tempDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })),
   );
+  delete process.env.DIFFGAZER_HOME;
 });
 
 function createMemoryKeyring(): KeyringSecretStore {
@@ -47,7 +70,7 @@ function createMemoryKeyring(): KeyringSecretStore {
 
 describe("configuration-bound secret bindings", () => {
   it("keeps write-only values out of serialized and safe projections", async () => {
-    const directory = await createTempDirectory();
+    const directory = await createCredentialDirectory();
     const filePath = join(directory, "secret");
     const binding = await bindWriteOnlySecret(
       "config-a",
@@ -85,7 +108,7 @@ describe("configuration-bound secret bindings", () => {
   });
 
   it("writes literal file secrets with mode 0600 and refuses unsafe files", async () => {
-    const directory = await createTempDirectory();
+    const directory = await createCredentialDirectory();
     const filePath = join(directory, "file-secret");
     const binding = createFileSecretBinding("config-a", 1, filePath);
 
@@ -98,8 +121,21 @@ describe("configuration-bound secret bindings", () => {
     await expect(resolveSecretBinding(binding)).rejects.toMatchObject({ code: "FILE_MODE_UNSAFE" });
   });
 
+  it("tightens a pre-existing group-readable credential file before writing the secret", async () => {
+    const directory = await createCredentialDirectory();
+    await mkdir(directory, { recursive: true, mode: 0o700 });
+    const filePath = join(directory, "preexisting-secret");
+    await writeFile(filePath, "stale", { mode: 0o644 });
+    const binding = createFileSecretBinding("config-a", 1, filePath);
+
+    await writeSecretBinding(binding, "rotated-value");
+
+    expect((await stat(filePath)).mode & 0o777).toBe(0o600);
+    await expect(resolveSecretBinding(binding)).resolves.toBe("rotated-value");
+  });
+
   it("accepts owner-only modes stricter than 0600 and rejects any group or other access", async () => {
-    const directory = await createTempDirectory();
+    const directory = await createCredentialDirectory();
     const filePath = join(directory, "hardened-secret");
     const binding = createFileSecretBinding("config-a", 1, filePath);
     await writeSecretBinding(binding, "hardened-value");
@@ -113,6 +149,75 @@ describe("configuration-bound secret bindings", () => {
 
     await chmod(filePath, 0o666);
     await expect(resolveSecretBinding(binding)).rejects.toMatchObject({ code: "FILE_MODE_UNSAFE" });
+  });
+
+  it("reads file secrets on Windows without applying the POSIX group/other gate", async () => {
+    const platformSpy = vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+    const directory = await createCredentialDirectory();
+    const filePath = join(directory, "win32-secret");
+    const binding = createFileSecretBinding("config-a", 1, filePath);
+    await writeSecretBinding(binding, "win32-value");
+    await chmod(filePath, 0o666);
+
+    await expect(resolveSecretBinding(binding)).resolves.toBe("win32-value");
+    platformSpy.mockRestore();
+  });
+
+  it("refuses to read, write, or delete a file binding pointing outside the app directory", async () => {
+    await createCredentialDirectory();
+    const outside = await createTempDirectory("diffgazer-secret-binding-victim-");
+    const victimPath = join(outside, "victim.key");
+    await writeFile(victimPath, "external-victim", { mode: 0o600 });
+    const before = await lstat(victimPath);
+    const binding = createFileSecretBinding("config-a", 1, victimPath);
+
+    await expect(writeSecretBinding(binding, "must-not-land")).rejects.toMatchObject({
+      code: "BINDING_UNAVAILABLE",
+    });
+    await expect(resolveSecretBinding(binding)).rejects.toMatchObject({
+      code: "BINDING_UNAVAILABLE",
+    });
+    await expect(deleteSecretBinding(binding)).rejects.toMatchObject({ code: "DELETE_FAILED" });
+
+    await expect(readFile(victimPath, "utf8")).resolves.toBe("external-victim");
+    expect(await readdir(outside)).toEqual(["victim.key"]);
+    expect((await lstat(victimPath)).ino).toBe(before.ino);
+  });
+
+  it("refuses a file binding naming another app-owned file in the Diffgazer home", async () => {
+    const credentials = await createCredentialDirectory();
+    const home = dirname(credentials);
+    const configPath = join(home, "config.json");
+    await writeFile(configPath, '{"schemaVersion":2}', { mode: 0o600 });
+    const binding = createFileSecretBinding("config-a", 1, configPath);
+
+    await expect(resolveSecretBinding(binding)).rejects.toMatchObject({
+      code: "BINDING_UNAVAILABLE",
+    });
+    await expect(deleteSecretBinding(binding)).rejects.toMatchObject({ code: "DELETE_FAILED" });
+
+    await expect(readFile(configPath, "utf8")).resolves.toBe('{"schemaVersion":2}');
+  });
+
+  it("refuses a credential file that is a symlink to a target outside the app directory", async () => {
+    const directory = await createCredentialDirectory();
+    const outside = await createTempDirectory("diffgazer-secret-binding-victim-");
+    const victimPath = join(outside, "victim.key");
+    await writeFile(victimPath, "external-victim", { mode: 0o600 });
+    const seed = createFileSecretBinding("config-a", 1, join(directory, "seed"));
+    await writeSecretBinding(seed, "seed-value");
+
+    const linkPath = join(directory, "linked-secret");
+    await symlink(victimPath, linkPath);
+    const binding = createFileSecretBinding("config-a", 1, linkPath);
+
+    await expect(resolveSecretBinding(binding)).rejects.toMatchObject({
+      code: "BINDING_UNAVAILABLE",
+    });
+    await expect(writeSecretBinding(binding, "must-not-land")).rejects.toMatchObject({
+      code: "BINDING_UNAVAILABLE",
+    });
+    await expect(readFile(victimPath, "utf8")).resolves.toBe("external-victim");
   });
 
   it("supports keyring, environment, none, and optional local bearer bindings", async () => {
@@ -192,53 +297,5 @@ describe("configuration-bound secret bindings", () => {
       configurationId: "legacy-removed-zai-plan",
       status: "removed",
     });
-  });
-
-  it("deletes only after revoke, cancellation, and descendant drain", async () => {
-    const directory = await createTempDirectory();
-    const filePath = join(directory, "deletable-secret");
-    const binding = createFileSecretBinding("config-a", 3, filePath);
-    await writeFile(filePath, "secret", { mode: 0o600 });
-    const events: string[] = [];
-
-    await deleteSecretBindingTransactional(binding, {
-      revoke: () => {
-        events.push("revoke");
-      },
-      cancel: () => {
-        events.push("cancel");
-      },
-      drain: () => {
-        events.push("drain");
-      },
-    });
-    events.push("deleted");
-    expect(events).toEqual(["revoke", "cancel", "drain", "deleted"]);
-    await expect(stat(filePath)).rejects.toMatchObject({ code: "ENOENT" });
-  });
-
-  it("does not delete a binding when cancellation or drain fails", async () => {
-    const directory = await createTempDirectory();
-    const filePath = join(directory, "retained-secret");
-    const binding = createFileSecretBinding("config-a", 3, filePath);
-    await writeFile(filePath, "secret", { mode: 0o600 });
-
-    const events: string[] = [];
-    await expect(
-      deleteSecretBindingTransactional(binding, {
-        revoke: () => {
-          events.push("revoke");
-        },
-        cancel: () => {
-          throw new Error("cancelled work could not drain");
-        },
-        drain: () => {
-          events.push("drain");
-        },
-      }),
-    ).rejects.toThrow("cancelled work could not drain");
-    expect(events).toEqual(["revoke"]);
-    await expect(stat(filePath)).resolves.toBeDefined();
-    await expect(deleteSecretBinding(binding)).resolves.toBe(true);
   });
 });

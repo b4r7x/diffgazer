@@ -1,3 +1,4 @@
+import type { ModelInfo } from "../schemas/config/models.js";
 import {
   CATALOG_EMPTY_MODELS_REASON,
   CATALOG_SKIPPED_REASON,
@@ -23,4 +24,21 @@ const SAFE_MODEL_DISCOVERY_MESSAGES = new Set([
 export function toClientSafeMessage(value: unknown, fallback: string): string {
   if (typeof value !== "string") return fallback;
   return SAFE_MODEL_DISCOVERY_MESSAGES.has(value) ? value : fallback;
+}
+
+/**
+ * The picker lists only models the catalog states can return structured review
+ * output, so a configuration saved before that filter existed can point at a
+ * model the list no longer shows. That configuration keeps working; this is the
+ * note that says so instead of letting the row silently vanish. Returns null
+ * while there is nothing to compare against — an empty or failed discovery is
+ * not evidence about the selected model.
+ */
+export function getRetainedModelNotice(
+  selectedModelId: string | null | undefined,
+  models: readonly ModelInfo[],
+): string | null {
+  if (!selectedModelId || models.length === 0) return null;
+  if (models.some((model) => model.id === selectedModelId)) return null;
+  return `${selectedModelId} stays configured, but the catalog does not confirm it can return structured review output. Choose a listed model to be sure.`;
 }

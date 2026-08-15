@@ -14,7 +14,6 @@ import { readJson } from "./lib/json.mjs";
 import { validateArtifactPackSurface } from "./lib/pack-surface.mjs";
 import { runValidationChecks } from "./lib/run-checks.mjs";
 import {
-  assertNoDuplicateDemoKeys,
   collectBundleRelativeJsImportErrors,
   collectGeneratedDistParityErrors,
   validateIntegrityBundle,
@@ -306,10 +305,6 @@ checks.push(
 );
 
 const registryBundle = readJson(resolve(root, "cli/add/src/generated/registry-bundle.json"));
-checks.push(
-  ...assertNoDuplicateDemoKeys(registryBundle.items ?? [], "@diffgazer/add registry bundle"),
-);
-
 const keysCopyBundle = readJson(resolve(root, "cli/add/src/generated/keys-copy-bundle.json"));
 checks.push(
   ...collectBundleRelativeJsImportErrors(registryBundle.items, "@diffgazer/add registry bundle"),

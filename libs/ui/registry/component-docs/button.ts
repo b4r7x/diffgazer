@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const buttonDoc: ComponentDoc = {
   description: "Terminal-inspired button with bracket notation and 7 variants.",
@@ -16,7 +16,7 @@ export const buttonDoc: ComponentDoc = {
     {
       title: "Disabled Primary",
       content:
-        "Disabled and loading primaries drop the --action fill for a dashed border and a --muted-foreground label rather than fading it. Fading a filled button drags its label toward the page background with it and the pair falls under 4.5:1; emptying the fill leaves the label on the ambient surface, where it keeps its own contrast in both themes, and the dashed edge matches the treatment disabled inputs already use.",
+        "Disabled and loading primaries drop the --action fill for a half-strength solid --border edge and a --muted-foreground label rather than fading it. Fading a filled button drags its label toward the page background with it and the pair falls under 4.5:1; emptying the fill leaves the label on the ambient surface, where it keeps its own contrast in both themes, and the retained edge keeps the button's shape readable. No control in the system draws a dashed or dotted edge.",
     },
     {
       title: "Coarse-Pointer Hit Area",

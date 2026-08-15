@@ -1,7 +1,8 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import { getDateLabel } from "@diffgazer/core/format";
-import { useModelFilter, useModelSource } from "@diffgazer/core/providers";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { getRetainedModelNotice } from "@diffgazer/core/providers";
+import { useModelFilter, useModelSource } from "@diffgazer/core/providers/hooks";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import type { ClientConfigurationSummary, ExactModelId } from "@diffgazer/core/schemas/config";
 import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
 import { pluralize } from "@diffgazer/core/strings";
@@ -20,8 +21,6 @@ import { ModelSearchInput } from "./model-search-input";
 import { TierFilterTabs } from "./tier-filter-tabs";
 
 type FocusZone = "search" | "filters" | "list";
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 const MODEL_SELECT_SHORTCUTS: Shortcut[] = [
   { key: "Tab", label: "Switch Zone" },
   { key: "/", label: "Search" },
@@ -122,7 +121,7 @@ function ModelListBody({
 interface ModelSelectOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  configuration: SupportedConfigurationSummary;
+  configuration: ClientConfigurationSummary;
   selectedId?: string;
   onSelect?: (id: ExactModelId) => unknown;
   isSaving?: boolean;
@@ -207,7 +206,7 @@ export function ModelSelectOverlay({
     setSelectionError(null);
     setIsSelecting(true);
     try {
-      await onSelect?.(modelId as ExactModelId);
+      await onSelect?.(modelId);
       onOpenChange(false);
     } catch (error) {
       setSelectionError(error instanceof Error ? error.message : "Failed to select model");
@@ -294,10 +293,12 @@ export function ModelSelectOverlay({
 
   const contentWidth = Math.max(getDialogWidth(columns) - 6, 1);
   const checkedAtLabel = source.checkedAt != null ? getDateLabel(source.checkedAt) : null;
+  const retainedModelNotice = saving ? null : getRetainedModelNotice(selectedId, source.models);
   const conditionalRows = [
     checkedAtLabel ? 1 : 0,
     skippedReason ? wrappedRowCount(`${skippedReason} Press r to retry.`, contentWidth) : 0,
     sourceError ? 1 : 0,
+    retainedModelNotice ? wrappedRowCount(retainedModelNotice, contentWidth) : 0,
     selectionError ? wrappedRowCount(sanitizeTerminalText(selectionError), contentWidth) : 0,
     saving ? 1 : 0,
   ].reduce((total, rowCount) => total + rowCount, 0);
@@ -338,6 +339,11 @@ export function ModelSelectOverlay({
               <Text color={tokens.warning}>{skippedReason} Press r to retry.</Text>
             ) : null}
             {sourceError ? <Text color={tokens.muted}>Press r to retry.</Text> : null}
+            {retainedModelNotice ? (
+              // The saved selection is not in the review-capable list. It keeps
+              // working, so this states the gap rather than dropping the row.
+              <Text color={tokens.muted}>{sanitizeTerminalText(retainedModelNotice)}</Text>
+            ) : null}
 
             <ModelListBody
               loading={loading}

@@ -1,12 +1,13 @@
 import type { EvidenceRef } from "@diffgazer/core/schemas/review";
 import { CodeBlock, type CodeBlockLineState } from "@diffgazer/ui/components/code-block";
-import { DiffView, parseDiff } from "@diffgazer/ui/components/diff-view";
+import { DiffView, type ParsedDiff, parseDiff } from "@diffgazer/ui/components/diff-view";
 
-function canRenderStructuredPatch(patch: string) {
+/** The single structured file DiffView can render, or null when the patch is not one. */
+function parseStructuredPatch(patch: string): ParsedDiff | null {
   const files = parseDiff(patch);
-  if (files.length !== 1) return false;
+  if (files.length !== 1) return null;
   const [file] = files;
-  return file !== undefined && file.hunks.length > 0;
+  return file && file.hunks.length > 0 ? file : null;
 }
 
 function getPatchLineState(line: string): CodeBlockLineState | undefined {
@@ -37,8 +38,9 @@ export function PatchTabContent({
   targetFile: string;
   evidence: EvidenceRef[];
 }) {
-  if (canRenderStructuredPatch(patch)) {
-    return <DiffView patch={patch} label="Suggested patch" />;
+  const structured = parseStructuredPatch(patch);
+  if (structured) {
+    return <DiffView diff={structured} label="Suggested patch" />;
   }
 
   if (!DIFF_MARKER_RE.test(patch)) {

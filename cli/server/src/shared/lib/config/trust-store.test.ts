@@ -13,13 +13,13 @@ import {
   writeJson,
 } from "./store.test-support.js";
 
-function isolatedTrust(readFiles: boolean, trustMode: TrustConfig["trustMode"]): TrustConfig {
+function isolatedTrust(readFiles: boolean): TrustConfig {
   return {
     projectId: "project-1",
     repoRoot: "/project",
     trustedAt: "2026-01-01T00:00:00.000Z",
     capabilities: { readFiles, runCommands: false },
-    trustMode,
+    trustMode: "persistent",
   };
 }
 
@@ -40,48 +40,46 @@ async function withTrustWriteFailure<T>(run: () => Promise<T>): Promise<T> {
 
 describe("createTrustStore", () => {
   it.each([
-    { sessionAccess: true, persistentAccess: false },
-    { sessionAccess: false, persistentAccess: true },
-  ])("replaces session readFiles=$sessionAccess with persistent readFiles=$persistentAccess", async ({
-    sessionAccess,
-    persistentAccess,
+    { previousAccess: true, updatedAccess: false },
+    { previousAccess: false, updatedAccess: true },
+  ])("replaces persistent readFiles=$previousAccess with persistent readFiles=$updatedAccess", async ({
+    previousAccess,
+    updatedAccess,
   }) => {
     const { createTrustStore } = await import("./trust-store.js");
     const store = createTrustStore();
 
-    await expect(store.saveTrust(isolatedTrust(sessionAccess, "session"))).resolves.toMatchObject({
+    await expect(store.saveTrust(isolatedTrust(previousAccess))).resolves.toMatchObject({
       ok: true,
     });
-    await expect(
-      store.saveTrust(isolatedTrust(persistentAccess, "persistent")),
-    ).resolves.toMatchObject({
+    await expect(store.saveTrust(isolatedTrust(updatedAccess))).resolves.toMatchObject({
       ok: true,
     });
 
     expect(store.getTrust("project-1")).toMatchObject({
       trustMode: "persistent",
-      capabilities: { readFiles: persistentAccess },
+      capabilities: { readFiles: updatedAccess },
     });
     expect(createTrustStore().getTrust("project-1")).toMatchObject({
       trustMode: "persistent",
-      capabilities: { readFiles: persistentAccess },
+      capabilities: { readFiles: updatedAccess },
     });
   });
 
-  it("retains session trust when the persistent write fails", async () => {
+  it("retains the previous persistent trust when an update write fails", async () => {
     const { createTrustStore } = await import("./trust-store.js");
     const store = createTrustStore();
-    await store.saveTrust(isolatedTrust(true, "session"));
+    await store.saveTrust(isolatedTrust(true));
 
     await withTrustWriteFailure(async () => {
-      await expect(store.saveTrust(isolatedTrust(false, "persistent"))).resolves.toMatchObject({
+      await expect(store.saveTrust(isolatedTrust(false))).resolves.toMatchObject({
         ok: false,
         error: { code: "PERSIST_FAILED" },
       });
     });
 
     expect(store.getTrust("project-1")).toMatchObject({
-      trustMode: "session",
+      trustMode: "persistent",
       capabilities: { readFiles: true },
     });
   });
@@ -156,64 +154,23 @@ describe("config store trust", () => {
     fsHooks.writeJsonFileHook = null;
   });
 
-  it("clears the persistent trust record when a project is downgraded to session trust", async () => {
-    const createStore = await loadStoreFactory();
-    const storeA = createStore();
-
-    await storeA.saveTrust(trustConfig({ trustMode: "persistent" }));
-    expect(
-      readJson<{ projects: Record<string, TrustConfig> }>(trustPath()).projects["proj-1"],
-    ).toMatchObject({ trustMode: "persistent" });
-
-    const downgrade = await storeA.saveTrust(trustConfig({ trustMode: "session" }));
-    expect(downgrade).toMatchObject({ ok: true, value: { trustMode: "session" } });
-
-    expect(storeA.getTrust("proj-1")).toMatchObject({ trustMode: "session" });
-    expect(
-      readJson<{ projects: Record<string, TrustConfig> }>(trustPath()).projects["proj-1"],
-    ).toBeUndefined();
-
-    const storeB = createStore();
-    expect(storeB.getTrust("proj-1")).toBeNull();
-  });
-
-  it("leaves no session grant applied when a downgrade's persistent removal fails", async () => {
-    const createStore = await loadStoreFactory();
-    const store = createStore();
-
-    await store.saveTrust(trustConfig({ trustMode: "persistent" }));
-
-    fsHooks.writeJsonFileHook = async (filePath) => {
-      if (filePath.endsWith("trust.json")) {
-        throw new Error("EACCES: permission denied");
-      }
-    };
-
-    const downgrade = await store.saveTrust(trustConfig({ trustMode: "session" }));
-    fsHooks.writeJsonFileHook = null;
-
-    expect(downgrade.ok).toBe(false);
-    expect(store.getTrust("proj-1")).toMatchObject({ trustMode: "persistent" });
-    expect(
-      readJson<{ projects: Record<string, TrustConfig> }>(trustPath()).projects["proj-1"],
-    ).toMatchObject({ trustMode: "persistent" });
-  });
-
-  it("keeps session precedence until a shadowed persistent removal finishes", async () => {
+  it("optimistically clears in-memory trust while a persistent removal is persisting", async () => {
     const createStore = await loadStoreFactory();
     const storeA = createStore();
     const storeB = createStore();
-    const sessionGrant = trustConfig({
-      trustMode: "session",
-      capabilities: { readFiles: true, runCommands: false },
-    });
     const persistentGrant = trustConfig({
       trustMode: "persistent",
       capabilities: { readFiles: true, runCommands: true },
     });
 
-    await storeA.saveTrust(sessionGrant);
-    await storeB.saveTrust(persistentGrant);
+    await storeA.saveTrust(persistentGrant);
+    await storeB.saveTrust(
+      trustConfig({
+        projectId: "proj-2",
+        repoRoot: "/projects/two",
+        trustMode: "persistent",
+      }),
+    );
 
     let releaseWrite = (): void => {};
     const writeHeld = new Promise<void>((resolve) => {
@@ -232,36 +189,38 @@ describe("config store trust", () => {
     };
 
     try {
-      const removal = storeA.removeTrust(sessionGrant.projectId);
+      const removal = storeA.removeTrust(persistentGrant.projectId);
       await writeStarted;
 
-      expect(storeA.getTrust(sessionGrant.projectId)).toEqual(sessionGrant);
+      expect(storeA.getTrust(persistentGrant.projectId)).toBeNull();
 
       releaseWrite();
       await expect(removal).resolves.toEqual({ ok: true, value: true });
-      expect(storeA.getTrust(sessionGrant.projectId)).toBeNull();
+      expect(storeA.getTrust(persistentGrant.projectId)).toBeNull();
     } finally {
       releaseWrite();
       fsHooks.writeJsonFileHook = null;
     }
   });
 
-  it("conserves disk and session trust when another store's persistent grant cannot be removed", async () => {
+  it("conserves disk trust when another store's persistent grant cannot be removed", async () => {
     const createStore = await loadStoreFactory();
     const storeA = createStore();
     const storeB = createStore();
-    const sessionGrant = trustConfig({
-      trustMode: "session",
-      capabilities: { readFiles: true, runCommands: false },
-    });
     const persistentGrant = trustConfig({
       trustMode: "persistent",
       capabilities: { readFiles: true, runCommands: true },
     });
 
-    await storeA.saveTrust(sessionGrant);
-    await storeB.saveTrust(persistentGrant);
-    expect(storeA.getTrust(sessionGrant.projectId)).toEqual(sessionGrant);
+    await storeA.saveTrust(persistentGrant);
+    await storeB.saveTrust(
+      trustConfig({
+        projectId: "proj-2",
+        repoRoot: "/projects/two",
+        trustMode: "persistent",
+      }),
+    );
+    expect(storeA.getTrust(persistentGrant.projectId)).toEqual(persistentGrant);
     const diskBefore = readFileSync(trustPath(), "utf8");
 
     fsHooks.writeJsonFileHook = async (filePath) => {
@@ -271,12 +230,12 @@ describe("config store trust", () => {
     };
 
     try {
-      const result = await storeA.removeTrust(sessionGrant.projectId);
+      const result = await storeA.removeTrust(persistentGrant.projectId);
 
       expect(result).toMatchObject({ ok: false, error: { code: "PERSIST_FAILED" } });
-      expect(storeA.getTrust(sessionGrant.projectId)).toEqual(sessionGrant);
+      expect(storeA.getTrust(persistentGrant.projectId)).toEqual(persistentGrant);
       expect(readFileSync(trustPath(), "utf8")).toBe(diskBefore);
-      expect(storeB.getTrust(sessionGrant.projectId)).toEqual(persistentGrant);
+      expect(storeB.getTrust(persistentGrant.projectId)).toEqual(persistentGrant);
     } finally {
       fsHooks.writeJsonFileHook = null;
     }

@@ -1,19 +1,6 @@
 export {
-  canonicalJson,
-  canonicalJsonBytes,
-  parseCanonicalJson,
-  sha256CanonicalJson,
-  sha256CanonicalJsonSync,
-} from "../canonical-json.js";
-export {
-  SAVED_REVIEW_EXECUTION_SCHEMA_VERSION,
-  type SavedReviewExecutionSchemaVersion,
-  SavedReviewExecutionSchemaVersionSchema,
-} from "./enums.js";
-export {
   type EvidenceKey,
   EvidenceKeySchema,
-  type ExecutionFingerprintInput,
   ExecutionFingerprintInputSchema,
   type ExecutionLimits,
   ExecutionLimitsSchema,
@@ -21,17 +8,15 @@ export {
   type ExecutionReceiptFingerprintInput,
   ExecutionReceiptFingerprintInputSchema,
   ExecutionReceiptSchema,
+  type ExecutionReceiptUsageState,
+  ExecutionReceiptUsageStateSchema,
   type ExecutionResult,
   ExecutionResultSchema,
-  hashEvidenceKey,
-  hashExecutionFingerprint,
-  hashExecutionReceiptFingerprint,
   hashExecutionReceiptFingerprintSync,
   type NormalizedUsage,
   NormalizedUsageSchema,
   type RuntimeIdentity,
   RuntimeIdentitySchema,
-  type Sha256Hex,
   Sha256HexSchema,
   TERMINAL_OUTCOMES,
   type TerminalOutcome,
@@ -41,9 +26,9 @@ export {
   UsageAvailabilitySchema,
 } from "./execution.js";
 export {
-  type EvidencePresentation,
   type EvidenceRef,
   type FixPlanStep,
+  hasSuggestedPatch,
   isValidEvidenceRange,
   type LensReviewResult,
   LensReviewResultSchema,
@@ -51,14 +36,12 @@ export {
   MAX_REVIEW_ISSUES_PER_LENS,
   REVIEW_CATEGORY,
   REVIEW_SEVERITY,
-  type ReviewCategory,
   ReviewCategorySchema,
   type ReviewError,
   ReviewErrorCode,
   ReviewErrorSchema,
   type ReviewIssue,
   ReviewIssueSchema,
-  type ReviewOptions,
   type ReviewResult,
   ReviewResultSchema,
   type ReviewSeverity,
@@ -66,31 +49,20 @@ export {
   type ReviewStreamEvent,
   ReviewStreamEventSchema,
   type SeverityFilter,
-  SeverityFilterSchema,
-  type TraceRef,
   TraceRefSchema,
-  toEvidencePresentation,
 } from "./issues.js";
 export {
   LENS_IDS,
   type Lens,
   type LensId,
   LensIdSchema,
-  LensSchema,
-  PROFILE_IDS,
   type ProfileId,
   ProfileIdSchema,
   type ReviewProfile,
-  ReviewProfileSchema,
   type SeverityRubric,
-  SeverityRubricSchema,
 } from "./lens.js";
-export {
-  deriveLensSelectionState,
-  isLensId,
-  isLensSelectionDirty,
-  resolveEffectiveLenses,
-} from "./lens-selection.js";
+export { deriveLensSelectionState, isLensId } from "./lens-selection.js";
+export { calculateSeverityCounts, type SeverityCounts, severityRank } from "./severity.js";
 export {
   type ActiveReviewSession,
   type ActiveReviewSessionResponse,
@@ -113,9 +85,16 @@ export {
   ReviewResponseSchema,
   type ReviewsResponse,
   ReviewsResponseSchema,
+  resolveSavedReviewExecutionSnapshot,
   type SavedReview,
   type SavedReviewExecutionSnapshot,
   SavedReviewExecutionSnapshotSchema,
   SavedReviewSchema,
   toSavedReviewExecutionSnapshot,
 } from "./storage.js";
+export {
+  buildLensReviewResultJsonSchema,
+  buildProviderLensReviewResultJsonSchema,
+  toGoogleResponseSchema,
+  toOpenAiStrictJsonSchema,
+} from "./structured-output-schema.js";

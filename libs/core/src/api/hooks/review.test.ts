@@ -2,40 +2,51 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { makeReviewMetadata } from "../../testing/factories.js";
 import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
+import type { BoundApi } from "../bound.js";
 import type { ReviewContextResponse } from "../types.js";
 import { reviewQueries } from "./queries/review.js";
 import { useRefreshReviewContext, useReviews } from "./review.js";
 
 describe("useReviews", () => {
   it("deduplicates typed warnings across cursor pages without collapsing distinct records", async () => {
-    const unreadable = {
+    const sharedReview = makeReviewMetadata({
+      id: "11111111-1111-4111-8111-111111111111",
+    });
+    const distinctReview = makeReviewMetadata({
+      id: "22222222-2222-4222-8222-222222222222",
+    });
+    const unreadableShared = {
       kind: "unreadable_review" as const,
-      reviewId: "11111111-1111-4111-8111-111111111111",
+      reviewId: sharedReview.id,
     };
-    const getReviews = vi.fn(async (_projectPath?: string, cursor?: string) =>
+    const unreadableDistinct = {
+      kind: "unreadable_review" as const,
+      reviewId: distinctReview.id,
+    };
+    const getReviews = vi.fn<BoundApi["getReviews"]>().mockImplementation(async (cursor) =>
       cursor
         ? {
-            reviews: [],
+            reviews: [distinctReview],
             warnings: [
-              unreadable,
-              { kind: "index_build_failed" as const },
+              unreadableDistinct,
               {
                 kind: "invalid_issues_dropped" as const,
-                reviewId: unreadable.reviewId,
+                reviewId: sharedReview.id,
                 count: 2,
               },
             ],
           }
         : {
-            reviews: [],
+            reviews: [sharedReview],
             nextCursor: "dg1_b2xkZXItcmV2aWV3cw",
             warnings: [
-              unreadable,
+              unreadableShared,
               { kind: "index_build_failed" as const },
               {
                 kind: "invalid_issues_dropped" as const,
-                reviewId: unreadable.reviewId,
+                reviewId: sharedReview.id,
                 count: 1,
               },
             ],
@@ -48,12 +59,17 @@ describe("useReviews", () => {
     await act(() => result.current.fetchNextPage());
 
     await waitFor(() =>
-      expect(result.current.data?.warnings).toEqual([
-        unreadable,
-        { kind: "index_build_failed" },
-        { kind: "invalid_issues_dropped", reviewId: unreadable.reviewId, count: 2 },
+      expect(result.current.data?.reviews.map((review) => review.id)).toEqual([
+        sharedReview.id,
+        distinctReview.id,
       ]),
     );
+    expect(result.current.data?.warnings).toEqual([
+      unreadableShared,
+      { kind: "index_build_failed" },
+      { kind: "invalid_issues_dropped", reviewId: sharedReview.id, count: 2 },
+      unreadableDistinct,
+    ]);
   });
 });
 

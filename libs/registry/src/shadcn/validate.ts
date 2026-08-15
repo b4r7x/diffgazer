@@ -48,7 +48,7 @@ export interface ValidatePublicRegistryFreshOptions {
 
 const PublicItemSchema = RegistryItemSchema.extend({
   files: z.array(RegistryFileSchema).optional(),
-}).passthrough();
+}).loose();
 
 // Keys of the Zod shape are exactly `keyof RegistryItem`, so this assertion is sound
 // and lets call sites index `RegistryItem` without per-field casts.
@@ -113,9 +113,7 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
   const allSourceItems = sourceRegistry.items;
   // Hidden items are intentionally stripped from the public registry index by
   // afterBuild transforms. Only compare visible items for the count check.
-  const visibleSourceItems = allSourceItems.filter(
-    (item) => !(item.meta as Record<string, unknown> | undefined)?.hidden,
-  );
+  const visibleSourceItems = allSourceItems.filter((item) => !item.meta?.hidden);
   const publicItems = publicRegistry.items;
   const publicByName = new Map(publicItems.map((item) => [item.name, item]));
 
@@ -132,7 +130,7 @@ export function validatePublicRegistryFresh(options: ValidatePublicRegistryFresh
       continue;
     }
 
-    const isHidden = (sourceItem.meta as Record<string, unknown> | undefined)?.hidden;
+    const isHidden = sourceItem.meta?.hidden;
     const expectedItem =
       transformSourceItem?.({
         itemName: sourceItem.name,

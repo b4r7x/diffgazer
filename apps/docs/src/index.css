@@ -30,6 +30,10 @@
 }
 
 .docs-chrome [data-demo-preview] {
+  /* Lib token from libs/ui/styles/theme.css (:root / [data-theme="dark"]).
+     Light [data-theme="light"] does not redeclare it, so without this reset
+     demos inherit docs-chrome's sharp-corner --radius: 0px. */
+  --radius: 0.25rem;
   --panel-hairline: initial;
 }
 
@@ -90,10 +94,11 @@
 }
 
 /* The step count is a derivation, not a design value: one reveal step per row of
-   the generated wordmark art, which is WORDMARK_ROWS (6) rows tall — regenerate
-   art of another height and this has to follow, which the WORDMARK_ROWS shape
-   test in status-bar.test.tsx catches. The two durations are design-tuned motion
-   (420ms over 6 rows is 70ms a row, after a 120ms beat). */
+   the generated wordmark art, which is WORDMARK_ROWS (6) rows tall. Regenerate
+   art of another height and this has to follow — the boot-animation step test in
+   status-bar.test.tsx reads this file and pins the count to WORDMARK_ROWS. The
+   two durations are design-tuned motion (420ms over 6 rows is 70ms a row, after
+   a 120ms beat). */
 .dg-wordmark-boot {
   animation: dg-wordmark-boot 420ms steps(6, end) 120ms both;
 }

@@ -27,9 +27,17 @@ export default function FloatingPositionBasicExample() {
       {open && (
         <div
           ref={contentRef}
+          data-anchor-hidden={position?.anchorHidden ? "" : undefined}
           style={
             position
-              ? { position: "fixed", left: position.x, top: position.y }
+              ? {
+                  position: "fixed",
+                  left: position.x,
+                  top: position.y,
+                  ...(position.anchorHidden
+                    ? { opacity: 0, pointerEvents: "none" as const, animation: "none" }
+                    : null),
+                }
               : { position: "fixed", opacity: 0 }
           }
           className="z-[var(--z-popover)] w-48 rounded-sm border border-border bg-background p-3 font-mono text-sm"

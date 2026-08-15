@@ -12,8 +12,8 @@
  *
  * Frame chrome (border, rail, bar background) is selected by [data-frame].
  * Grid layout (grid-template-areas) is driven by [data-frame] combined
- * with [data-has-icon] on the inner grid element. The icon column is
- * collapsed when no <Callout.Icon> child is present.
+ * with :has([data-slot="callout-icon"]) on the inner grid element. The icon column is
+ * collapsed when no callout icon child is present.
  *
  * This file owns the frame, the tone cascade, and the grid. The parts keep
  * their own typography and interactive chrome in Tailwind (Callout.Title
@@ -103,7 +103,7 @@
 /* ============================================================
    Grid layout: the inner [data-slot="callout-grid"] element owns the
    grid, with columns + template areas driven by [data-frame] and its
-   own [data-has-icon]. Each child takes its cell from the data-slot it
+   own [data-slot="callout-icon"] presence via :has(). Each child takes its cell from the data-slot it
    emits; the placement rules live here, the parts' own styling does not.
    ============================================================ */
 @layer components {
@@ -115,21 +115,23 @@
   }
 
   /* inline / rail columns. */
-  [data-slot="callout-grid"][data-has-icon="false"] {
+  [data-slot="callout-grid"]:not(:has([data-slot="callout-icon"])) {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas: "title dismiss" "body .";
   }
-  [data-slot="callout-grid"][data-has-icon="true"] {
+  [data-slot="callout-grid"]:has([data-slot="callout-icon"]) {
     grid-template-columns: 16px minmax(0, 1fr) auto;
     grid-template-areas: "icon title dismiss" ". body .";
   }
 
   /* bar frame prepends a 4px marker column. */
-  [data-slot="callout"][data-frame="bar"] > [data-slot="callout-grid"][data-has-icon="false"] {
+  [data-slot="callout"][data-frame="bar"]
+    > [data-slot="callout-grid"]:not(:has([data-slot="callout-icon"])) {
     grid-template-columns: 4px minmax(0, 1fr) auto;
     grid-template-areas: "bar title dismiss" "bar body .";
   }
-  [data-slot="callout"][data-frame="bar"] > [data-slot="callout-grid"][data-has-icon="true"] {
+  [data-slot="callout"][data-frame="bar"]
+    > [data-slot="callout-grid"]:has([data-slot="callout-icon"]) {
     grid-template-columns: 4px 16px minmax(0, 1fr) auto;
     grid-template-areas: "bar icon title dismiss" "bar . body .";
   }

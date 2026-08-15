@@ -16,7 +16,7 @@ const STATUS_TO_PROGRESS: Record<UIStepStatus, ProgressStatus> = {
   pending: "pending",
   running: "active",
   complete: "completed",
-  error: "pending",
+  error: "error",
 };
 
 function mapStepStatusToProgress(status: StepState["status"]): ProgressStatus {

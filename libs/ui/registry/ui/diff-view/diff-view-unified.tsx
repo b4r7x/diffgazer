@@ -57,7 +57,7 @@ export function DiffViewUnified({
       data-line-numbers={showLineNumbers ? "true" : "false"}
       role="region"
       aria-label={regionLabel}
-      aria-keyshortcuts="j k Escape"
+      aria-keyshortcuts="j k Home End Escape"
       // biome-ignore lint/a11y/noNoninteractiveTabindex: the container must be focusable (tabIndex=0) to receive j/k/Escape shortcuts that move between diff rows.
       tabIndex={0}
       onKeyDown={onKeyDown}

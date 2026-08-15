@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
+const EXAMPLE_EXTENSION = ".tsx";
 const TEST_EXAMPLE_FILE = /\.(?:test|spec)\.tsx$/i;
 const TEST_EXAMPLE_KEY = /\.(?:test|spec)$/i;
 
@@ -9,8 +10,8 @@ export function findExamples(examplesDir: string, itemName: string): string[] {
   if (!existsSync(itemDir)) return [];
 
   return readdirSync(itemDir)
-    .filter((fileName) => fileName.endsWith(".tsx") && !TEST_EXAMPLE_FILE.test(fileName))
-    .map((fileName) => fileName.replace(".tsx", ""))
+    .filter((fileName) => fileName.endsWith(EXAMPLE_EXTENSION) && !TEST_EXAMPLE_FILE.test(fileName))
+    .map((fileName) => fileName.slice(0, -EXAMPLE_EXTENSION.length))
     .sort();
 }
 
@@ -34,8 +35,8 @@ export function generateDemoIndex(config: {
       }
       const existing = seenKeys.get(exampleName);
       if (existing) {
-        console.warn(
-          `Demo index key collision: "${exampleName}" from "${item.name}" overwrites "${existing}"`,
+        throw new Error(
+          `Demo index key collision: "${exampleName}" from "${item.name}" conflicts with "${existing}"`,
         );
       }
       seenKeys.set(exampleName, item.name);

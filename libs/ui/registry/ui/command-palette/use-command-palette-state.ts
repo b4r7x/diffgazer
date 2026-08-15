@@ -42,12 +42,16 @@ export interface CommandPaletteContextValue {
    * (or id).
    */
   filter: (value: string, search: string) => boolean;
-  /** Number of items currently rendered in the list (post-filter). */
+  /**
+   * Number of rows currently rendered in the list (post-filter). Disabled rows
+   * stay mounted and visible, so they count here even though keyboard
+   * navigation skips them.
+   */
   itemCount: number;
   /**
    * 1-based position of the highlighted item within the rendered list, or null
-   * when nothing is highlighted. Derived during render from the same registry
-   * `itemCount` reads, so the readout can never disagree with the list.
+   * when nothing is highlighted. Derived during render from the same rendered
+   * rows `itemCount` counts, so the readout can never disagree with the list.
    */
   highlightedPosition: number | null;
   /** DOM id for list. */
@@ -119,29 +123,33 @@ export function useCommandPaletteState({
     defaultValue: "",
     onChange: controlledOnSearchChange,
   });
-  const [highlighted, setHighlighted, isHighlightedControlled] = useControllableState<
-    string | null
-  >({
-    value: controlledHighlighted,
-    controlled: controlledHighlighted !== undefined,
-    defaultValue: null,
-    onChange: onHighlightChange,
-  });
+  const [highlighted, setHighlighted, isHighlightedControlled, resetHighlighted] =
+    useControllableState<string | null>(
+      controlledHighlighted !== undefined
+        ? {
+            controlled: true,
+            value: controlledHighlighted ?? null,
+            defaultValue: null,
+            onChange: onHighlightChange,
+          }
+        : { defaultValue: null, onChange: onHighlightChange },
+    );
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const paletteId = useId();
 
-  const { itemIds, getItemOnSelect, registerItem, unregisterItem } = useCommandPaletteItemRegistry({
-    listRef,
-    enabled: isOpen,
-  });
+  const { itemIds, renderedIds, getItemOnSelect, registerItem, unregisterItem } =
+    useCommandPaletteItemRegistry({ listRef });
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
-      if (!next) setSearch("");
+      if (!next) {
+        setSearch("");
+        resetHighlighted(null);
+      }
       setIsOpen(next);
     },
-    [setIsOpen, setSearch],
+    [resetHighlighted, setIsOpen, setSearch],
   );
 
   const handleActivate = useCallback(
@@ -171,7 +179,7 @@ export function useCommandPaletteState({
   });
 
   const highlightedIndex =
-    effectiveHighlighted === null ? -1 : itemIds.indexOf(effectiveHighlighted);
+    effectiveHighlighted === null ? -1 : renderedIds.indexOf(effectiveHighlighted);
 
   // Not memoized: useNavigation hands back a fresh onKeyDown every render, so a
   // useMemo over this object could never hit.
@@ -185,7 +193,7 @@ export function useCommandPaletteState({
     onSearchChange: setSearch,
     shouldFilter,
     filter,
-    itemCount: itemIds.length,
+    itemCount: renderedIds.length,
     highlightedPosition: highlightedIndex === -1 ? null : highlightedIndex + 1,
     listId: `${paletteId}-list`,
     listRef,

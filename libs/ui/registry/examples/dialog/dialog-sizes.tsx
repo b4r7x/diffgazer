@@ -26,9 +26,7 @@ export default function DialogSizes() {
               </p>
             </DialogBody>
             <DialogFooter hints={[{ key: "Esc", label: "Close" }]}>
-              <DialogClose bracket variant="ghost">
-                Close
-              </DialogClose>
+              <DialogClose bracket>Close</DialogClose>
             </DialogFooter>
           </DialogContent>
         </Dialog>

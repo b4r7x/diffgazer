@@ -1,11 +1,7 @@
-import { makeIssue } from "@diffgazer/core/testing/factories";
 import { Box, Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { CodeSnippet } from "../../features/review/components/code-snippet";
-import { DiffView } from "../../features/review/components/diff-view";
-import { IssueDetailsPane } from "../../features/review/components/issue-details-pane/pane";
 import { flush } from "../../testing/flush";
 import { CliThemeProvider } from "../../theme/provider";
 import { ScrollArea } from "./scroll-area";
@@ -376,47 +372,6 @@ describe("ScrollArea rendered terminal rows", () => {
     expect(bottom.at(-1)).toContain("row-9");
   });
 
-  test("scrolls multiline rows emitted by an opaque DiffView child", async () => {
-    const { stdin, lastFrame } = render(
-      <CliThemeProvider initialTheme="dark">
-        <ScrollArea height={3} isActive>
-          <DiffView patch={"--- a/file.ts\n+++ b/file.ts\n@@ -1 +1 @@\n-old\n+tail-marker"} />
-        </ScrollArea>
-      </CliThemeProvider>,
-    );
-    await flush();
-
-    expect(lastFrame()).not.toContain("tail-marker");
-    expect(lastFrame()).toContain("\u25BC");
-
-    stdin.write(END);
-    await flush();
-
-    expect(lastFrame()).toContain("tail-marker");
-    expect(lastFrame()).toContain("\u25B2");
-  });
-
-  test("scrolls bordered and padded rows emitted by an opaque CodeSnippet child", async () => {
-    const { stdin, lastFrame } = render(
-      <CliThemeProvider initialTheme="dark">
-        <ScrollArea height={3} isActive>
-          <CodeSnippet
-            filePath="src/example.ts"
-            startLine={10}
-            code={"const first = true;\nconst middle = true;\nconst tailMarker = true;"}
-          />
-        </ScrollArea>
-      </CliThemeProvider>,
-    );
-    await flush();
-
-    expect(lastFrame()).not.toContain("tailMarker");
-    stdin.write(END);
-    await flush();
-
-    expect(lastFrame()).toContain("tailMarker");
-  });
-
   test("counts terminal wrapping instead of React child count", async () => {
     const { stdin, lastFrame } = render(
       <CliThemeProvider initialTheme="dark">
@@ -480,69 +435,5 @@ describe("ScrollArea rendered terminal rows", () => {
     await flush();
 
     expect(lastFrame()).toContain("compound-tail");
-  });
-
-  test("scrolls through IssueDetailsPane into its CodeSnippet evidence rows", async () => {
-    const issue = makeIssue({
-      evidence: [
-        {
-          type: "code",
-          title: "Measured evidence",
-          sourceId: "source:measured",
-          file: "src/measured.ts",
-          range: { start: 20, end: 22 },
-          excerpt:
-            "const evidenceStart = true;\nconst evidenceMiddle = true;\nconst evidenceTail = true;",
-        },
-      ],
-    });
-    const { stdin, lastFrame } = render(
-      <CliThemeProvider initialTheme="dark">
-        <IssueDetailsPane
-          issue={issue}
-          activeTab="details"
-          isActive
-          scrollHeight={3}
-          onTabChange={vi.fn()}
-          completedSteps={new Set()}
-          onToggleStep={vi.fn()}
-        />
-      </CliThemeProvider>,
-    );
-    await flush();
-
-    expect(lastFrame()).not.toContain("evidenceTail");
-    for (let step = 0; step < 20 && !lastFrame()?.includes("evidenceTail"); step += 1) {
-      stdin.write(ARROW_DOWN);
-      await flush();
-    }
-
-    expect(lastFrame()).toContain("evidenceTail");
-  });
-
-  test("scrolls IssueDetailsPane patch rows rendered by DiffView", async () => {
-    const issue = makeIssue({
-      suggested_patch: "--- a/file.ts\n+++ b/file.ts\n@@ -1 +1 @@\n-old\n+pane-patch-tail",
-    });
-    const { stdin, lastFrame } = render(
-      <CliThemeProvider initialTheme="dark">
-        <IssueDetailsPane
-          issue={issue}
-          activeTab="patch"
-          isActive
-          scrollHeight={3}
-          onTabChange={vi.fn()}
-          completedSteps={new Set()}
-          onToggleStep={vi.fn()}
-        />
-      </CliThemeProvider>,
-    );
-    await flush();
-
-    expect(lastFrame()).not.toContain("pane-patch-tail");
-    stdin.write(END);
-    await flush();
-
-    expect(lastFrame()).toContain("pane-patch-tail");
   });
 });

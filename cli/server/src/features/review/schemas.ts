@@ -13,7 +13,6 @@ export const ContextRefreshSchema = z.object({
   force: z.boolean().optional(),
 });
 
-const MAX_LENSES = 10;
 export const MAX_REVIEW_FILES = 200;
 export const MAX_REVIEW_PATH_LENGTH = 500;
 
@@ -32,8 +31,10 @@ export const ReviewListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
-// Shared with features/git/service.ts: reject absolute paths, drive letters,
-// `..` segments, and NUL before values reach `git diff -- <pathspecs>`.
+// The single user-pathspec boundary: `isRepoRelativePath` (shared/lib/paths.ts)
+// rejects absolute paths, drive letters, `..` segments, and NUL before values
+// reach `git diff -- <pathspecs>`. The git feature needs no equivalent guard
+// because GitDiffModeSchema excludes "files" mode, so it never takes pathspecs.
 // Non-ASCII is allowed because decoded git paths (F-090/F-013) are unicode.
 const RepoRelativePathSchema = z
   .string()
@@ -57,7 +58,6 @@ export const CreateReviewBodySchema = z
     lenses: z
       .array(LensIdSchema)
       .transform((arr) => [...new Set(arr)])
-      .pipe(z.array(LensIdSchema).max(MAX_LENSES))
       .transform((arr) => (arr.length === 0 ? undefined : arr))
       .optional(),
     files: z

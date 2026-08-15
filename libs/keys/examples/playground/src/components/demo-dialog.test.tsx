@@ -97,6 +97,11 @@ describe("DemoDialog", () => {
     expect(document.activeElement).toBe(screen.getByPlaceholderText("Type a command..."));
     expectBodyScrollLocked();
 
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Save File" }).className).toContain(
+      "demo-list-item--focused",
+    );
+
     await user.keyboard("{Escape}");
 
     expect(screen.queryByRole("dialog", { name: "Command Palette" })).toBeNull();
@@ -130,11 +135,14 @@ describe("DemoDialog", () => {
     await user.click(opener);
 
     expect(screen.getByRole("dialog", { name: "Confirm Action" })).toBeTruthy();
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cancel" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Confirm" }));
     expectBodyScrollLocked();
 
-    await user.keyboard("{Escape}");
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cancel" }));
 
+    await user.keyboard("{Enter}");
+    expect(screen.queryByText("Confirmed!")).toBeNull();
     expect(screen.queryByRole("dialog", { name: "Confirm Action" })).toBeNull();
     expect(document.activeElement).toBe(opener);
     expectBodyScrollRestored();

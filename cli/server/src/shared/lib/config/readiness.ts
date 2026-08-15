@@ -1,5 +1,5 @@
 import {
-  type ModelPolicy,
+  isModelIdAllowedForProduct,
   PRODUCT_REGISTRY,
   type RunnableProductDescriptor,
 } from "@diffgazer/core/providers";
@@ -12,29 +12,29 @@ import {
   ReadinessSchema,
   type ReadinessStatus,
 } from "@diffgazer/core/schemas/config";
-import {
-  type EvidenceKey,
-  EvidenceKeySchema,
-  type ExecutionLimits,
-} from "@diffgazer/core/schemas/review";
+import type { EvidenceKey, RuntimeIdentity } from "@diffgazer/core/schemas/review";
 import {
   type AdmissionEvidence,
+  buildExpectedEvidenceKey,
   canAuthorizeEvidence,
   evidenceMatchesKey,
 } from "./admission-evidence.js";
-import {
-  NonSecretTransportInputSchema,
-  type ProviderConfigurationRecord,
-  type SupportedProviderConfigurationRecord,
+import type {
+  ProviderConfigurationRecord,
+  SupportedProviderConfigurationRecord,
 } from "./provider-config.js";
-import { type SecretBinding, SecretBindingSchema } from "./secret-bindings.js";
+import {
+  bindingCredentialAvailable,
+  type SecretBinding,
+  SecretBindingSchema,
+} from "./secret-bindings.js";
 
 /**
  * A local probe is intentionally separate from admission evidence.  Evidence
  * records say whether a review conformance observation passed; this probe says
  * which local boundary failed before a review could be attempted.
  */
-export const LOCAL_READINESS_OBSERVATION_STATUSES = [
+const LOCAL_READINESS_OBSERVATION_STATUSES = [
   "passed",
   "endpoint-unreachable",
   "endpoint-forbidden",
@@ -46,30 +46,28 @@ export const LOCAL_READINESS_OBSERVATION_STATUSES = [
 ] as const;
 export type LocalReadinessObservationStatus = (typeof LOCAL_READINESS_OBSERVATION_STATUSES)[number];
 
-export interface LocalReadinessObservation {
-  readonly status: LocalReadinessObservationStatus;
-  readonly checkedAt: string;
-}
-
 /**
- * Values needed to recompute readiness are all server-owned.  In particular,
- * `evidenceKey` is the immutable tuple that was actually probed; it contains
- * digests for credential/workspace references, never their values.
+ * Values needed to recompute readiness are all server-owned.  Readiness derives
+ * the tuple it expects from the record itself, so `runtime` and
+ * `structuredOutputSchemaSha256` must be this server's own identity — reading
+ * them off the stored evidence would let evidence vouch for itself.
  */
 export interface ProviderReadinessInput {
   readonly configuration: ProviderConfigurationRecord | null | undefined;
   readonly binding?: SecretBinding | null;
   readonly evidence?: AdmissionEvidence | null;
-  readonly evidenceKey?: EvidenceKey | null;
+  /** Admission protocol revision this server speaks. */
+  readonly runtime?: RuntimeIdentity;
+  /** Digest of the structured review schema this server speaks. */
+  readonly structuredOutputSchemaSha256?: string;
   readonly now?: Date | string;
-  readonly localObservation?: LocalReadinessObservation | null;
   /** Digest of the currently bound credential reference, when applicable. */
   readonly credentialReferenceIdentity?: string | null;
   /** Digest of the currently bound workspace/account reference, when applicable. */
   readonly workspaceAccountReference?: string | null;
 }
 
-export interface SafeReadinessDetails {
+interface SafeReadinessDetails {
   readonly status: ReadinessStatus;
   readonly checkedAt: string | null;
   readonly evidenceStatus: ReadinessEvidenceStatus;
@@ -81,24 +79,13 @@ export interface ProviderReadinessResult {
   readonly details: SafeReadinessDetails;
 }
 
-const LOCAL_FAILURE_STATUS: Readonly<
-  Record<Exclude<LocalReadinessObservationStatus, "passed">, ReadinessStatus>
-> = {
-  "endpoint-unreachable": "local-endpoint-unreachable",
-  "endpoint-forbidden": "local-endpoint-forbidden",
-  "api-incompatible": "local-api-incompatible",
-  "no-review-capable-model": "local-no-review-capable-model",
-  "selected-model-missing": "local-selected-model-missing",
-  "conformance-failed": "local-conformance-failed",
-  "cancellation-failed": "local-cancellation-failed",
-};
-
 function acknowledgementFor(
   product: RunnableProductDescriptor<RunnableProductId>,
   record: SupportedProviderConfigurationRecord,
 ): ReadinessAcknowledgement {
   const acknowledgement = record.acknowledgement;
   if (
+    acknowledgement.noticeId === product.notice.id &&
     acknowledgement.noticeVersion === product.notice.noticeVersion &&
     acknowledgement.acceptedAt !== null
   ) {
@@ -120,7 +107,7 @@ function notApplicableAcknowledgement(): ReadinessAcknowledgement {
   return { status: "not-applicable" };
 }
 
-function buildReadiness(
+export function buildReadiness(
   status: ReadinessStatus,
   checkedAt: string | null,
   evidenceStatus: ReadinessEvidenceStatus,
@@ -175,131 +162,28 @@ function isActiveBindingFor(
   return parsed.data.kind === "none";
 }
 
-function isExactModelForProduct(
-  productId: SupportedProviderConfigurationRecord["productId"],
-  modelId: string,
-): boolean {
-  const policy = PRODUCT_REGISTRY[productId].modelPolicy as ModelPolicy;
-  switch (policy.kind) {
-    case "discovered-family":
-      return (
-        !policy.rejectedAliases.includes(modelId) &&
-        policy.familyPrefixes.some(
-          (prefix) => modelId === prefix || modelId.startsWith(`${prefix}-`),
-        )
-      );
-    case "discovered-exact":
-      // There is no client-safe opt-in field for these models.  Keep the
-      // server calculation fail-closed until admission records that proof.
-      return !policy.explicitOptInSuffixes?.some((suffix) => modelId.endsWith(suffix));
-    case "discovered-allowlist":
-      if (!policy.modelIds.includes(modelId)) return false;
-      // Higher-cost models require provider-specific output-limit evidence;
-      // generic conformance is not sufficient for readiness.
-      return !(
-        policy.higherCostModelEvidence !== undefined && policy.higherCostModelIds?.includes(modelId)
-      );
-    case "pinned-downstream-route":
-      return isPinnedDownstreamRouteModel(modelId);
-  }
-}
-
-const PINNED_ROUTE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
-const RESERVED_PINNED_ROUTE_SEGMENTS = new Set([
-  "auto",
-  "automatic",
-  "cheapest",
-  "default",
-  "exacto",
-  "extended",
-  "fallback",
-  "fastest",
-  "floor",
-  "free",
-  "nitro",
-  "online",
-  "openrouter",
-  "random",
-  "route",
-  "thinking",
-]);
-
-function isPinnedDownstreamRouteModel(modelId: string): boolean {
-  if (!PINNED_ROUTE_PATTERN.test(modelId)) return false;
-  const [provider = "", route = ""] = modelId.split("/");
-  return ![provider, route].some((segment) =>
-    RESERVED_PINNED_ROUTE_SEGMENTS.has(segment.toLowerCase()),
-  );
-}
-
-function expectedEndpoint(record: SupportedProviderConfigurationRecord): string | null {
-  if (record.input.transportFamily === "local-cli") return null;
-  return record.input.endpoint;
-}
-
-function expectedRegion(record: SupportedProviderConfigurationRecord): string | null {
-  if (record.input.transportFamily !== "hosted-api") return null;
-  return record.input.region ?? null;
-}
-
-function budgetsMatch(
+/**
+ * The tuple this server would prove today.  Returns null when the caller did
+ * not name its own runtime identity, or when the record cannot produce a key at
+ * all — either way nothing here can vouch for the stored evidence, and the
+ * configuration asks for a re-check rather than failing the whole read.
+ */
+function expectedEvidenceKeyFor(
   record: SupportedProviderConfigurationRecord,
-  limits: ExecutionLimits,
-): boolean {
-  const budget = record.budget;
-  return (
-    budget.inputTokens === limits.maxInputTokens &&
-    budget.outputTokens === limits.maxOutputTokens &&
-    budget.responseBytes === limits.maxResponseBytes &&
-    budget.wallTimeMs === limits.wallTimeMs &&
-    budget.retries === limits.maxRetries &&
-    budget.concurrency === limits.maxConcurrency &&
-    budget.perReview === limits.maxCostUsd
-  );
-}
-
-function evidenceMatchesConfiguration(
-  record: SupportedProviderConfigurationRecord,
-  evidenceKey: EvidenceKey,
   input: ProviderReadinessInput,
-): boolean {
-  if (
-    evidenceKey.productId !== record.productId ||
-    evidenceKey.transportFamily !== record.transportFamily ||
-    evidenceKey.normalizedEndpoint !== expectedEndpoint(record) ||
-    evidenceKey.region !== expectedRegion(record) ||
-    evidenceKey.modelId !== record.selectedModelId ||
-    evidenceKey.workspaceAccountReference !== (input.workspaceAccountReference ?? null) ||
-    evidenceKey.credentialReferenceIdentity !== (input.credentialReferenceIdentity ?? null) ||
-    !budgetsMatch(record, evidenceKey.limits)
-  ) {
-    return false;
+): EvidenceKey | null {
+  if (!input.runtime || !input.structuredOutputSchemaSha256) return null;
+  try {
+    return buildExpectedEvidenceKey({
+      record,
+      runtime: input.runtime,
+      structuredOutputSchemaSha256: input.structuredOutputSchemaSha256,
+      credentialReferenceIdentity: input.credentialReferenceIdentity ?? null,
+      workspaceAccountReference: input.workspaceAccountReference ?? null,
+    });
+  } catch {
+    return null;
   }
-
-  if (record.input.transportFamily === "local-http") {
-    return (
-      evidenceKey.authentication === record.input.authentication &&
-      evidenceKey.installationId === null
-    );
-  }
-  if (record.input.transportFamily === "local-cli") {
-    return (
-      evidenceKey.authentication === null &&
-      evidenceKey.installationId === record.input.installationId
-    );
-  }
-  return evidenceKey.authentication === null && evidenceKey.installationId === null;
-}
-
-function configurationTransportIsValid(record: SupportedProviderConfigurationRecord): boolean {
-  return NonSecretTransportInputSchema.safeParse(record.input).success;
-}
-
-function localObservationStatus(
-  observation: LocalReadinessObservation | null | undefined,
-): ReadinessStatus | null {
-  if (!observation || observation.status === "passed") return null;
-  return LOCAL_FAILURE_STATUS[observation.status];
 }
 
 /**
@@ -322,15 +206,6 @@ export function computeProviderReadinessResult(
     return { readiness, details: detailsFor(readiness, input.evidence) };
   }
 
-  if (configuration.status === "removed") {
-    const readiness = buildReadiness(
-      "removed",
-      null,
-      "not-checked",
-      notApplicableAcknowledgement(),
-    );
-    return { readiness, details: detailsFor(readiness, input.evidence) };
-  }
   if (configuration.status === "unknown") {
     const readiness = buildReadiness(
       "unsupported",
@@ -344,35 +219,11 @@ export function computeProviderReadinessResult(
   const record = configuration;
   const product = PRODUCT_REGISTRY[record.productId];
   const acknowledgement = acknowledgementFor(product, record);
-  const observation = input.localObservation;
-  const observedLocalFailure = localObservationStatus(observation);
-
-  if (!configurationTransportIsValid(record)) {
-    const status =
-      record.transportFamily === "local-http" ? "local-endpoint-forbidden" : "endpoint-invalid";
-    const readiness = buildReadiness(
-      status,
-      observation?.checkedAt ?? new Date().toISOString(),
-      "failed",
-      acknowledgement,
-    );
-    return { readiness, details: detailsFor(readiness, input.evidence) };
-  }
 
   if (!isActiveBindingFor(record, input.binding)) {
     const readiness = buildReadiness(
       "credential-invalid",
-      observation?.checkedAt ?? new Date().toISOString(),
-      "failed",
-      acknowledgement,
-    );
-    return { readiness, details: detailsFor(readiness, input.evidence) };
-  }
-
-  if (observedLocalFailure) {
-    const readiness = buildReadiness(
-      observedLocalFailure,
-      observation?.checkedAt ?? new Date().toISOString(),
+      new Date().toISOString(),
       "failed",
       acknowledgement,
     );
@@ -380,52 +231,44 @@ export function computeProviderReadinessResult(
   }
 
   const selectedModelId = record.selectedModelId;
-  if (selectedModelId === null || !isExactModelForProduct(record.productId, selectedModelId)) {
+  if (selectedModelId === null || !isModelIdAllowedForProduct(record.productId, selectedModelId)) {
     const readiness = buildReadiness(
       "model-missing",
-      observation?.checkedAt ?? new Date().toISOString(),
+      new Date().toISOString(),
       "failed",
       acknowledgement,
     );
     return { readiness, details: detailsFor(readiness, input.evidence) };
   }
 
-  const checkedAt = input.evidence?.checkedAt ?? observation?.checkedAt ?? new Date().toISOString();
-  const expectedEvidenceKey = input.evidenceKey
-    ? EvidenceKeySchema.safeParse(input.evidenceKey)
-    : { success: false as const };
+  const checkedAt = input.evidence?.checkedAt ?? new Date().toISOString();
 
-  if (
-    !input.evidence ||
-    input.evidence.status === "not-checked" ||
-    input.evidence.status === "skipped"
-  ) {
-    const status = input.evidence?.status === "skipped" ? "skipped" : "conformance-pending";
-    const readiness = buildReadiness(
-      status,
-      checkedAt,
-      status === "skipped" ? "skipped" : "pending",
-      acknowledgement,
-    );
-    return { readiness, details: detailsFor(readiness, input.evidence) };
-  }
-
-  if (input.evidence.status === "pending") {
+  if (!input.evidence) {
     const readiness = buildReadiness("conformance-pending", checkedAt, "pending", acknowledgement);
     return { readiness, details: detailsFor(readiness, input.evidence) };
   }
 
-  if (
-    input.evidence.status === "failed" ||
-    input.evidence.status === "expired" ||
-    !expectedEvidenceKey.success ||
-    !evidenceMatchesConfiguration(record, expectedEvidenceKey.data, input) ||
-    !evidenceMatchesKey(input.evidence, expectedEvidenceKey.data) ||
-    !canAuthorizeEvidence(input.evidence, expectedEvidenceKey.data, { now: input.now })
-  ) {
+  // An observation of a different tuple says nothing about this one — neither
+  // that it works nor that it failed. The cached verdict clears the moment the
+  // tuple changes, matching the admission path's unproven admit.
+  const expectedEvidenceKey = expectedEvidenceKeyFor(record, input);
+  if (expectedEvidenceKey === null || !evidenceMatchesKey(input.evidence, expectedEvidenceKey)) {
+    const readiness = buildReadiness("conformance-pending", checkedAt, "pending", acknowledgement);
+    return { readiness, details: detailsFor(readiness, input.evidence) };
+  }
+
+  if (input.evidence.status === "failed") {
     const status =
       record.transportFamily === "hosted-api" ? "conformance-failed" : "local-conformance-failed";
     const readiness = buildReadiness(status, checkedAt, "failed", acknowledgement);
+    return { readiness, details: detailsFor(readiness, input.evidence) };
+  }
+
+  // A passed observation that cannot authorize — a campaign-era record past its
+  // `expiresAt`, say — never failed the structured-output contract; ask for a
+  // re-check instead of reporting a contract failure that never happened.
+  if (!canAuthorizeEvidence(input.evidence, expectedEvidenceKey, { now: input.now })) {
+    const readiness = buildReadiness("conformance-pending", checkedAt, "pending", acknowledgement);
     return { readiness, details: detailsFor(readiness, input.evidence) };
   }
 
@@ -434,6 +277,16 @@ export function computeProviderReadinessResult(
       "acknowledgement-required",
       checkedAt,
       "passed",
+      acknowledgement,
+    );
+    return { readiness, details: detailsFor(readiness, input.evidence) };
+  }
+
+  if (!bindingCredentialAvailable(input.binding)) {
+    const readiness = buildReadiness(
+      "credential-invalid",
+      new Date().toISOString(),
+      "failed",
       acknowledgement,
     );
     return { readiness, details: detailsFor(readiness, input.evidence) };

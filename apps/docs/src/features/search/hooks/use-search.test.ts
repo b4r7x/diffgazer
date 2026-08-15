@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -92,8 +90,8 @@ describe("useSearch", () => {
       await Promise.resolve();
     });
 
-    expect(result.current.status).toBe("success");
-    expect(result.current.results[0]?.title).toBe("Callout");
+    expect(result.current.state.status).toBe("success");
+    expect(result.current.state.results[0]?.title).toBe("Callout");
   });
 
   it("surfaces search failures", async () => {
@@ -104,7 +102,43 @@ describe("useSearch", () => {
     act(() => result.current.search("button"));
     await flushSearchDebounce();
 
-    expect(result.current.status).toBe("error");
-    expect(result.current.error).toBe("Search failed. Try again.");
+    expect(result.current.state.status).toBe("error");
+    expect(result.current.state.error).toBe("Search failed. Try again.");
+  });
+
+  it("keeps the previous results visible while a follow-up query is loading", async () => {
+    let resolveSecond: (value: unknown) => void = () => {};
+    const second = new Promise((resolve) => {
+      resolveSecond = resolve;
+    });
+
+    const { result } = renderHook(() => useSearch());
+
+    act(() => result.current.search("button"));
+    await flushSearchDebounce();
+    expect(result.current.state.results[0]?.title).toBe("Button");
+
+    doSearchMock.mockImplementationOnce(() => second);
+    act(() => result.current.search("butt"));
+    expect(result.current.state.status).toBe("loading");
+    expect(result.current.state.results[0]?.title).toBe("Button");
+
+    await flushSearchDebounce();
+
+    await act(async () => {
+      resolveSecond([
+        {
+          id: "button-2",
+          url: "/docs/ui/components/button",
+          type: "page",
+          content: "Button 2",
+          breadcrumbs: [],
+        },
+      ]);
+      await second;
+    });
+
+    expect(result.current.state.status).toBe("success");
+    expect(result.current.state.results[0]?.title).toBe("Button 2");
   });
 });

@@ -1,3 +1,5 @@
+"use client";
+
 import { Popover } from "@/components/ui/popover";
 
 export default function PopoverPlacementExample() {

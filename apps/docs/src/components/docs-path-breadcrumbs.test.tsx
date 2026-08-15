@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -61,6 +59,15 @@ describe("DocsPathBreadcrumbs", () => {
     expect(hooksLink).toHaveAttribute("data-tanstack-link", "true");
     expect(hooksLink).toHaveAttribute("href", "/ui/hooks");
     expect(screen.queryByRole("link", { name: "composed-refs" })).not.toBeInTheDocument();
+  });
+
+  it("links the real url section when its sidebar separator name differs from the directory", () => {
+    routerBoundary.pathname = "/app/web/results";
+    render(<DocsPathBreadcrumbs tree={sectionTree("Web Mode", "/app/web/results")} />);
+
+    const nav = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(nav).toHaveTextContent("app/web/results");
+    expect(screen.getByRole("link", { name: "web" })).toHaveAttribute("href", "/app/web");
   });
 
   it("shows the sidebar taxonomy section, not the url, for flat pages", () => {

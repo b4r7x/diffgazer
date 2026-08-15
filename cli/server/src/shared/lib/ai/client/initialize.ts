@@ -1,36 +1,29 @@
 import { createError } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { ConfigurationId } from "@diffgazer/core/schemas/config";
-import type {
-  ExecutionLimits,
-  ExecutionResult,
-  RuntimeIdentity,
-  TerminalOutcome,
-} from "@diffgazer/core/schemas/review";
-import { sha256CanonicalJsonSync } from "@diffgazer/core/schemas/review";
+import type { ExecutionResult, TerminalOutcome } from "@diffgazer/core/schemas/review";
 import type { z } from "zod";
-import { loadConfigV2 } from "../../config/persistence/config.js";
-import { loadSecretsV2 } from "../../config/persistence/secrets.js";
-import type { SupportedProviderConfigurationRecord } from "../../config/provider-config.js";
+import { findSecretBinding } from "../../config/persistence/secrets.js";
 import type { SecretBinding } from "../../config/secret-bindings.js";
 import { resolveSecretBinding } from "../../config/secret-bindings.js";
-import { getStore } from "../../config/store.js";
-import { getConfigurationLeaseAuthority } from "../../session-registry.js";
+import { secretIO } from "../../config/secret-io.js";
 import {
-  type AdmissionFailure,
-  type AdmissionServiceDependencies,
-  type AdmissionSnapshot,
-  type AuthorizedReviewExecution,
-  authorizeReviewExecution,
-  executionLimitsFromBudget,
+  credentialReferenceIdentityFor,
+  workspaceAccountReferenceFor,
+} from "../../config/store/credential-lifecycle.js";
+import { getStore } from "../../config/store.js";
+import { V1_MIGRATION_FAILED_MESSAGE } from "../../config/types.js";
+import { getConfigurationLeaseAuthority } from "../../session-registry.js";
+import { RUNTIME_IDENTITY, STRUCTURED_OUTPUT_SCHEMA_SHA256 } from "../admission/protocol.js";
+import type {
+  AdmissionFailure,
+  AdmissionServiceDependencies,
+  AdmissionSnapshot,
+  AuthorizedReviewExecution,
 } from "../admission/service.js";
 import { createBudgetLedger } from "../budget/ledger.js";
-import {
-  buildReviewSchemaJson,
-  hashReviewSchemaJson,
-} from "../providers/cli-compatibility/probe.js";
-import type { AIClient, AIError, AIErrorCode } from "../types.js";
-import { createFromAdmittedPlan } from "./create.js";
+import type { BoundedDiagnostic } from "../diagnostics.js";
+import type { AIClient, AIError, AIErrorCode, AIErrorDiagnostic } from "../types.js";
 import { executeReviewGeneration } from "./generate.js";
 
 export interface InitializedAIClient extends AIClient {
@@ -41,109 +34,59 @@ export interface InitializedAIClient extends AIClient {
    * usage) from them instead of re-deriving one from an error code.
    */
   readonly terminalExecutions: readonly ExecutionResult[];
-}
-
-export const RUNTIME_IDENTITY: RuntimeIdentity = {
-  identity: "diffgazer-server",
-  version: "1.0.0",
-};
-export const STRUCTURED_OUTPUT_SCHEMA_SHA256 = hashReviewSchemaJson(buildReviewSchemaJson());
-
-/**
- * Fail-closed limits for a configuration whose record cannot be resolved.
- * Admission rejects such a configuration before it reserves, so this ledger
- * only ever denies.
- */
-const NO_ADMITTED_CAPACITY: ExecutionLimits = {
-  maxInputTokens: 0,
-  maxOutputTokens: 0,
-  maxResponseBytes: 0,
-  wallTimeMs: 0,
-  maxRetries: 0,
-  maxConcurrency: 0,
-  maxCostUsd: 0,
-};
-
-function credentialReferenceIdentityFor(binding: SecretBinding | null): string | null {
-  if (!binding) return null;
-  switch (binding.kind) {
-    case "none":
-      return null;
-    case "environment-reference":
-      return sha256CanonicalJsonSync({ kind: "environment-reference", varName: binding.varName });
-    case "keyring-reference":
-      return sha256CanonicalJsonSync({ kind: "keyring-reference", keyId: binding.keyId });
-    case "file-0600":
-      return sha256CanonicalJsonSync({ kind: "file-0600", filePath: binding.filePath });
-    case "optional-local-bearer":
-      return sha256CanonicalJsonSync({
-        kind: "optional-local-bearer",
-        storage: binding.storage,
-        reference: binding.reference,
-      });
-  }
-}
-
-function workspaceAccountReferenceFor(record: SupportedProviderConfigurationRecord): string | null {
-  if (record.input.transportFamily !== "hosted-api" || record.input.workspace === undefined) {
-    return null;
-  }
-  return sha256CanonicalJsonSync(record.input.workspace);
-}
-
-function bindingFor(configurationId: ConfigurationId, revision: number): SecretBinding | null {
-  for (const entry of loadSecretsV2().bindings) {
-    const binding = entry.binding;
-    if (binding && binding.configurationId === configurationId && binding.revision === revision) {
-      return binding;
-    }
-  }
-  return null;
+  /** Safe, redacted diagnostics for terminal execution failures in completion order. */
+  readonly terminalDiagnostics: readonly AIErrorDiagnostic[];
 }
 
 async function loadAdmissionSnapshot(
   configurationId: ConfigurationId,
-): Promise<AdmissionSnapshot | null> {
+): Promise<Result<AdmissionSnapshot | null, AdmissionFailure>> {
   const store = getStore();
-  await store.ready();
-
-  const config = loadConfigV2();
-  const record = config.configurations.find((candidate) =>
+  const current = await store.readCurrentState();
+  if (!current.ok) return err(readinessFailure(current.error.code));
+  const record = current.value.config.configurations.find((candidate) =>
     candidate.status === "unknown"
       ? candidate.configurationId === configurationId
       : candidate.record.configurationId === configurationId,
   );
-  if (!record) return null;
+  if (!record) return ok(null);
 
   if (record.status === "unknown") {
-    return {
+    return ok({
       configuration: { status: "unknown" },
       binding: null,
       evidence: null,
       credentialReferenceIdentity: null,
       workspaceAccountReference: null,
-    };
+    });
   }
 
-  if (record.status === "removed") {
-    const binding = bindingFor(record.record.configurationId, record.record.revision);
-    return {
-      configuration: { status: "removed", record: record.record },
-      binding,
-      evidence: store.getConfigurationAdmissionEvidence(configurationId),
-      credentialReferenceIdentity: binding ? credentialReferenceIdentityFor(binding) : null,
-      workspaceAccountReference: null,
-    };
-  }
-
-  const binding = bindingFor(record.record.configurationId, record.record.revision);
-  return {
+  const binding = findSecretBinding(
+    current.value.secrets,
+    record.record.configurationId,
+    record.record.revision,
+  );
+  return ok({
     configuration: { status: "supported", record: record.record },
     binding,
-    evidence: store.getConfigurationAdmissionEvidence(configurationId),
+    evidence: current.value.evidenceByConfiguration.get(configurationId) ?? null,
     credentialReferenceIdentity: binding ? credentialReferenceIdentityFor(binding) : null,
     workspaceAccountReference: workspaceAccountReferenceFor(record.record),
-  };
+  });
+}
+
+function readinessFailure(code: string): AdmissionFailure {
+  return code === "SECRETS_MIGRATION_FAILED"
+    ? {
+        code: "configuration-migration-required",
+        safeMessage: V1_MIGRATION_FAILED_MESSAGE,
+        retryable: false,
+      }
+    : {
+        code: "readiness-not-ready",
+        safeMessage: "Configuration storage is not ready",
+        retryable: true,
+      };
 }
 
 async function resolveCredentialForAdmission(input: {
@@ -152,21 +95,10 @@ async function resolveCredentialForAdmission(input: {
   binding: SecretBinding | null;
 }): Promise<string | null> {
   if (!input.binding) return null;
-  return resolveSecretBinding(input.binding, undefined, {
+  return resolveSecretBinding(input.binding, secretIO, {
     configurationId: input.configurationId,
     revision: input.configurationRevision,
   });
-}
-
-function admittedLimitsFor(configurationId: ConfigurationId | null): ExecutionLimits {
-  if (!configurationId) return NO_ADMITTED_CAPACITY;
-  const record = loadConfigV2().configurations.find(
-    (candidate) =>
-      candidate.status === "supported" && candidate.record.configurationId === configurationId,
-  );
-  return record?.status === "supported"
-    ? executionLimitsFromBudget(record.record.budget)
-    : NO_ADMITTED_CAPACITY;
 }
 
 /**
@@ -175,13 +107,12 @@ function admittedLimitsFor(configurationId: ConfigurationId | null): ExecutionLi
  * shared across configurations or across reviews.
  */
 export function createAdmissionServiceDependencies(
-  configurationId: ConfigurationId | null = resolveSelectedConfigurationId(),
   overrides: Partial<AdmissionServiceDependencies> = {},
 ): AdmissionServiceDependencies {
   return {
     loadSnapshot: loadAdmissionSnapshot,
     leaseRegistry: getConfigurationLeaseAuthority(),
-    budgetLedger: createBudgetLedger(admittedLimitsFor(configurationId)),
+    createBudgetLedger,
     structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
     runtimeIdentity: RUNTIME_IDENTITY,
     resolveCredential: resolveCredentialForAdmission,
@@ -189,32 +120,58 @@ export function createAdmissionServiceDependencies(
   };
 }
 
-export function resolveSelectedConfigurationId(): ConfigurationId | null {
-  return loadConfigV2().selectedConfigurationId;
+export async function resolveSelectedConfigurationId(): Promise<
+  Result<ConfigurationId | null, AdmissionFailure>
+> {
+  const current = await getStore().readCurrentState();
+  return current.ok
+    ? ok(current.value.config.selectedConfigurationId)
+    : err(readinessFailure(current.error.code));
 }
 
-function terminalOutcomeToAIError(outcome: TerminalOutcome): AIError {
-  return createError<AIErrorCode>("STREAM_ERROR", `Execution ended with outcome ${outcome}`);
+function toAIErrorDiagnostic(diagnostic: BoundedDiagnostic): AIErrorDiagnostic {
+  return {
+    code: diagnostic.code,
+    safeMessage: diagnostic.safeMessage,
+    retryable: diagnostic.retryable,
+    remediation: diagnostic.remediation,
+    correlationId: diagnostic.correlationId,
+  };
+}
+
+function terminalOutcomeToAIError(
+  outcome: TerminalOutcome,
+  diagnostic?: AIErrorDiagnostic,
+): AIError {
+  return diagnostic
+    ? {
+        ...createError<AIErrorCode>("STREAM_ERROR", diagnostic.safeMessage),
+        diagnostic,
+      }
+    : createError<AIErrorCode>("STREAM_ERROR", `Execution ended with outcome ${outcome}`);
 }
 
 function createGenerateBridge(
   authorization: AuthorizedReviewExecution,
-  recordExecution: (execution: ExecutionResult) => void,
+  recordExecution: (execution: ExecutionResult, diagnostic?: AIErrorDiagnostic) => void,
 ): AIClient["generate"] {
   return async <T extends z.ZodType>(
     prompt: string,
     schema: T,
-    options?: Readonly<{ signal?: AbortSignal }>,
+    options?: Readonly<{ signal?: AbortSignal; systemPrompt?: string }>,
   ): Promise<Result<z.infer<T>, AIError>> => {
-    const { execution } = await executeReviewGeneration({
+    const { execution, diagnostic } = await executeReviewGeneration({
       authorization,
       prompt,
+      ...(options?.systemPrompt ? { systemPrompt: options.systemPrompt } : {}),
       signal: options?.signal,
     });
-    recordExecution(execution);
+    const terminalDiagnostic =
+      execution.receipt.outcome === "completed" ? undefined : toAIErrorDiagnostic(diagnostic);
+    recordExecution(execution, terminalDiagnostic);
 
     if (execution.receipt.outcome !== "completed") {
-      return err(terminalOutcomeToAIError(execution.receipt.outcome));
+      return err(terminalOutcomeToAIError(execution.receipt.outcome, terminalDiagnostic));
     }
 
     const parsed = schema.safeParse(execution.result);
@@ -233,37 +190,17 @@ export function toInitializedAIClient(
 ): InitializedAIClient {
   const { plan } = authorization;
   const terminalExecutions: ExecutionResult[] = [];
+  const terminalDiagnostics: AIErrorDiagnostic[] = [];
   return {
     provider: plan.productId,
     authorization,
     terminalExecutions,
-    generate: createGenerateBridge(authorization, (execution) =>
-      terminalExecutions.push(execution),
-    ),
+    terminalDiagnostics,
+    generate: createGenerateBridge(authorization, (execution, diagnostic) => {
+      terminalExecutions.push(execution);
+      if (diagnostic) {
+        terminalDiagnostics.push(diagnostic);
+      }
+    }),
   };
-}
-
-export async function initializeAIClient(
-  configurationId: ConfigurationId,
-  dependencies: AdmissionServiceDependencies = createAdmissionServiceDependencies(configurationId),
-): Promise<Result<InitializedAIClient, AdmissionFailure>> {
-  const authorization = await authorizeReviewExecution(configurationId, dependencies);
-  if (!authorization.ok) {
-    return authorization;
-  }
-
-  const clientResult = createFromAdmittedPlan(authorization.value.plan, {
-    adapter: authorization.value.adapter,
-    resolveCredential: authorization.value.resolveCredential,
-    workspaceAccountId: authorization.value.workspaceAccountId,
-  });
-  if (!clientResult.ok) {
-    return err({
-      code: "adapter-unavailable",
-      safeMessage: clientResult.error.message,
-      retryable: false,
-    });
-  }
-
-  return ok(toInitializedAIClient(authorization.value));
 }

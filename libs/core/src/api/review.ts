@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { getErrorMessage } from "../errors.js";
 import type { Result } from "../result.js";
 import { err, ok } from "../result.js";
@@ -7,11 +8,19 @@ import {
   type StreamReviewError,
 } from "../review/stream.js";
 import {
+  MAX_CONTEXT_GRAPH_JSON_BYTES,
+  MAX_CONTEXT_MARKDOWN_BYTES,
+  MAX_CONTEXT_META_JSON_BYTES,
+  ReviewContextResponseSchema,
+} from "../schemas/context.js";
+import { ErrorCode } from "../schemas/errors.js";
+import {
   type ActiveReviewSessionResponse,
   ActiveReviewSessionResponseSchema,
   type CreateReviewResponse,
   CreateReviewResponseSchema,
   type LensId,
+  MAX_REVIEW_ISSUES,
   type ProfileId,
   type ReviewCursor,
   ReviewErrorCode,
@@ -23,14 +32,34 @@ import {
 } from "../schemas/review/index.js";
 import { type ApiClient, isApiError, type ReviewContextResponse } from "./types.js";
 
+/**
+ * `text` and `markdown` each carry the writer's markdown cap and can double under
+ * JSON string escaping; `graph` and `meta` ship inside their own serialized bounds.
+ */
+export const REVIEW_CONTEXT_RESPONSE_MAX_BYTES =
+  MAX_CONTEXT_MARKDOWN_BYTES * 4 + MAX_CONTEXT_GRAPH_JSON_BYTES + MAX_CONTEXT_META_JSON_BYTES;
+
+/** Every storable issue at the size of one carrying a patch and evidence, plus the review envelope. */
+const SAVED_REVIEW_RESPONSE_MAX_BYTES = MAX_REVIEW_ISSUES * 4 * 1_024 + 64 * 1_024;
+
+/** One page of metadata rows plus the salvage warnings a bootstrap scan reports for the whole store. */
+export const REVIEWS_LIST_RESPONSE_MAX_BYTES = 512 * 1_024;
+
 export type { StreamReviewError };
 
-export interface CreateReviewOptions {
-  mode?: ReviewMode;
+interface CreateReviewSelection {
   lenses?: LensId[];
   profile?: ProfileId;
-  files?: string[];
 }
+
+/**
+ * `mode: "files"` is the one mode the server rejects without a non-empty
+ * `files[]`, so the two states are modelled as separate arms rather than as
+ * independent optionals that can contradict each other.
+ */
+export type CreateReviewOptions =
+  | (CreateReviewSelection & { mode?: Exclude<ReviewMode, "files">; files?: string[] })
+  | (CreateReviewSelection & { mode: "files"; files: [string, ...string[]] });
 
 export type CancelReason = "cancelled" | "not-found" | "already-complete" | "already-committed";
 
@@ -39,7 +68,12 @@ export interface CancelReviewSessionResponse {
   reason: CancelReason;
 }
 
-export async function createReview(
+const CancelReviewSessionResponseSchema = z.object({
+  cancelled: z.literal(true),
+  reason: z.enum(["cancelled", "not-found", "already-complete", "already-committed"]),
+});
+
+export function createReview(
   client: ApiClient,
   options: CreateReviewOptions = {},
 ): Promise<CreateReviewResponse> {
@@ -82,6 +116,12 @@ export async function resumeReviewStream(
     if (status === 409) {
       return err({ code: ReviewErrorCode.SESSION_STALE, message: message || "Session is stale" });
     }
+    if (status === 403 && isApiError(error) && error.code === ErrorCode.TRUST_REQUIRED) {
+      return err({
+        code: ReviewErrorCode.TRUST_REQUIRED,
+        message: message || "Repository access not granted",
+      });
+    }
     return err({
       code: "STREAM_ERROR",
       message: message || "Failed to resume review stream",
@@ -104,6 +144,13 @@ export async function resumeReviewStream(
       code: "STREAM_ERROR",
       message: getErrorMessage(error) || "Review stream failed",
     });
+  } finally {
+    // This function acquired the reader, so it owns the teardown: a caller
+    // handler that throws must not leave the SSE connection open and the body
+    // locked until GC. Cancelling an already-closed stream is a no-op; an
+    // errored one rejects, which must not mask the result being returned.
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
 
   if (!streamResult.ok) {
@@ -116,30 +163,28 @@ export async function resumeReviewStream(
   });
 }
 
-export async function getReviews(
+export function getReviews(
   client: ApiClient,
-  projectPath?: string,
   cursor?: ReviewCursor,
-  limit?: number,
+  signal?: AbortSignal,
 ): Promise<ReviewsResponse> {
-  const params = {
-    ...(projectPath ? { projectPath } : {}),
-    ...(cursor ? { cursor } : {}),
-    ...(limit !== undefined ? { limit: String(limit) } : {}),
-  };
   return client.get<ReviewsResponse>("/api/review/reviews", {
-    params,
+    maxResponseBytes: REVIEWS_LIST_RESPONSE_MAX_BYTES,
+    params: cursor ? { cursor } : {},
+    signal,
     schema: (body) => ReviewsResponseSchema.parse(body),
   });
 }
 
-export async function getReview(client: ApiClient, id: string): Promise<ReviewResponse> {
+function getReview(client: ApiClient, id: string, signal?: AbortSignal): Promise<ReviewResponse> {
   return client.get<ReviewResponse>(`/api/review/reviews/${id}`, {
+    maxResponseBytes: SAVED_REVIEW_RESPONSE_MAX_BYTES,
+    signal,
     schema: (body) => ReviewResponseSchema.parse(body),
   });
 }
 
-export async function getActiveReviewSession(
+export function getActiveReviewSession(
   client: ApiClient,
   mode?: ReviewMode,
   signal?: AbortSignal,
@@ -151,33 +196,44 @@ export async function getActiveReviewSession(
   });
 }
 
-export async function getReviewContext(client: ApiClient): Promise<ReviewContextResponse> {
-  return client.get<ReviewContextResponse>("/api/review/context");
+export function getReviewContext(
+  client: ApiClient,
+  signal?: AbortSignal,
+): Promise<ReviewContextResponse> {
+  return client.get<ReviewContextResponse>("/api/review/context", {
+    maxResponseBytes: REVIEW_CONTEXT_RESPONSE_MAX_BYTES,
+    signal,
+    schema: (body) => ReviewContextResponseSchema.parse(body),
+  });
 }
 
-export async function refreshReviewContext(
+export function refreshReviewContext(
   client: ApiClient,
   options: { force?: boolean } = {},
 ): Promise<ReviewContextResponse> {
-  return client.post<ReviewContextResponse>("/api/review/context/refresh", options);
+  return client.post<ReviewContextResponse>("/api/review/context/refresh", options, {
+    maxResponseBytes: REVIEW_CONTEXT_RESPONSE_MAX_BYTES,
+    schema: (body) => ReviewContextResponseSchema.parse(body),
+  });
 }
 
-export async function cancelReviewSession(
+function cancelReviewSession(
   client: ApiClient,
   reviewId: string,
 ): Promise<CancelReviewSessionResponse> {
-  return client.delete<CancelReviewSessionResponse>(`/api/review/sessions/${reviewId}`);
+  return client.delete<CancelReviewSessionResponse>(`/api/review/sessions/${reviewId}`, {
+    schema: (body) => CancelReviewSessionResponseSchema.parse(body),
+  });
 }
 
 export const bindReview = (client: ApiClient) => ({
   createReview: (options?: CreateReviewOptions) => createReview(client, options),
   resumeReviewStream: (options: ResumeReviewOptions) => resumeReviewStream(client, options),
-  getReviews: (projectPath?: string, cursor?: ReviewCursor, limit?: number) =>
-    getReviews(client, projectPath, cursor, limit),
-  getReview: (id: string) => getReview(client, id),
+  getReviews: (cursor?: ReviewCursor, signal?: AbortSignal) => getReviews(client, cursor, signal),
+  getReview: (id: string, signal?: AbortSignal) => getReview(client, id, signal),
   getActiveReviewSession: (mode?: ReviewMode, signal?: AbortSignal) =>
     getActiveReviewSession(client, mode, signal),
-  getReviewContext: () => getReviewContext(client),
+  getReviewContext: (signal?: AbortSignal) => getReviewContext(client, signal),
   refreshReviewContext: (options?: { force?: boolean }) => refreshReviewContext(client, options),
   cancelReviewSession: (reviewId: string) => cancelReviewSession(client, reviewId),
 });

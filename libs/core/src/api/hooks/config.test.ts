@@ -2,6 +2,7 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { configurationFingerprint } from "../../providers/configuration-fingerprint.js";
 import { PRODUCT_REGISTRY } from "../../providers/product-registry.js";
 import type {
   ClientConfigurationAction,
@@ -12,16 +13,15 @@ import type {
 } from "../../schemas/config/index.js";
 import {
   ClientConfigurationActionResponseSchema,
+  deriveDiagnosticsSetupGaps,
   READINESS_PRESENTATION,
+  ReadinessSchema,
 } from "../../schemas/config/index.js";
-import { REMOVED_PRODUCT_ID } from "../../schemas/config/providers.js";
 import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
 import {
-  configurationFingerprint,
   useConfigurationAction,
   useConfigurationInit,
-  useConfigurationInspect,
   useConfigurations,
   useCreateConfiguration,
   useDeleteConfiguration,
@@ -63,6 +63,21 @@ const supportedConfiguration = {
   availableActions: ["inspect", "select", "test", "update", "delete"],
 } satisfies Extract<ClientConfigurationSummary, { status: "supported" }>;
 
+const qwenConfiguration = {
+  ...supportedConfiguration,
+  configurationId: "qwen-international",
+  productId: "qwen" as const,
+  endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+  selectedModelId: "qwen3-coder-flash",
+  notices: [
+    {
+      ...PRODUCT_REGISTRY.qwen.notice,
+      billing: [...PRODUCT_REGISTRY.qwen.notice.billing],
+      privacy: [...PRODUCT_REGISTRY.qwen.notice.privacy],
+    },
+  ],
+} satisfies Extract<ClientConfigurationSummary, { status: "supported" }>;
+
 const alternateConfiguration = {
   ...supportedConfiguration,
   configurationId: "groq-primary",
@@ -78,17 +93,6 @@ const alternateConfiguration = {
     },
   ],
 } satisfies Extract<ClientConfigurationSummary, { status: "supported" }>;
-
-const removedConfiguration = {
-  configurationId: "legacy-removed-zai-plan",
-  revision: 3,
-  status: "removed" as const,
-  transportFamily: "hosted-api" as const,
-  productId: REMOVED_PRODUCT_ID,
-  selectedModelId: null,
-  notices: [],
-  availableActions: ["inspect", "delete"],
-} satisfies Extract<ClientConfigurationSummary, { status: "removed" }>;
 
 const readiness = {
   status: "ready" as const,
@@ -117,6 +121,7 @@ const actions = [
 const configurationList: ConfigurationListResponse = {
   schemaVersion: 2,
   configurations: [],
+  unrecognizedConfigurations: [],
   selectedConfigurationId: null,
 };
 
@@ -137,15 +142,15 @@ function makeWrapper(api: Partial<BoundApi>) {
   return createTestQueryWrapper({ api }).Wrapper;
 }
 
-function succeededActionResponse(
-  action: ClientConfigurationAction,
-): ClientConfigurationActionResponse {
+function succeededActionResponse<Action extends ClientConfigurationAction>(
+  action: Action,
+): Extract<ClientConfigurationActionResponse, { action: Action["action"] }> {
   return ClientConfigurationActionResponseSchema.parse({
     action: action.action,
     status: "succeeded",
     ...(action.action !== "delete" ? { configuration: supportedConfiguration } : {}),
     ...(action.action === "test" ? { readiness } : {}),
-  });
+  }) as Extract<ClientConfigurationActionResponse, { action: Action["action"] }>;
 }
 
 function expectSummariesInvalidated(
@@ -186,43 +191,21 @@ describe("configuration queries", () => {
     );
   });
 
-  it("isolates inspect caches by configurationId", async () => {
-    const harness = createTestQueryWrapper({
-      api: {
-        inspectConfiguration: vi.fn(async (configurationId) =>
-          succeededActionResponse({ action: "inspect", configurationId }),
-        ),
-      } as Partial<BoundApi>,
-    });
-
-    const inspectA = renderHook(() => useConfigurationInspect("gemini-primary"), {
-      wrapper: harness.Wrapper,
-    });
-    const inspectB = renderHook(() => useConfigurationInspect("groq-primary"), {
-      wrapper: harness.Wrapper,
-    });
-
-    await waitFor(() => expect(inspectA.result.current.data?.configuration).toBeDefined());
-    await waitFor(() => expect(inspectB.result.current.data?.configuration).toBeDefined());
-
-    expect(configQueries.inspect(harness.api, "gemini-primary").queryKey).not.toEqual(
-      configQueries.inspect(harness.api, "groq-primary").queryKey,
-    );
-  });
-
   it("isolates catalog model caches by configurationId and fingerprint", async () => {
-    const getConfigurationModels = vi.fn(async (configurationId: string) => ({
-      status: "passed" as const,
-      configurationId,
-      productId: supportedConfiguration.productId,
-      transportFamily: supportedConfiguration.transportFamily,
-      models: [],
-      checkedAt: "2026-07-31T12:00:00.000Z",
-      source: "snapshot" as const,
-      cached: false,
-    }));
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockImplementation(async (configurationId) => ({
+        status: "passed" as const,
+        configurationId,
+        productId: supportedConfiguration.productId,
+        transportFamily: supportedConfiguration.transportFamily,
+        models: [],
+        checkedAt: "2026-07-31T12:00:00.000Z",
+        source: "snapshot" as const,
+        cached: false,
+      }));
     const harness = createTestQueryWrapper({
-      api: { getConfigurationModels } as Partial<BoundApi>,
+      api: { getConfigurationModels },
     });
     const revisedConfiguration = { ...supportedConfiguration, revision: 2 };
 
@@ -232,44 +215,76 @@ describe("configuration queries", () => {
       configurationId: "gemini-primary",
     });
 
-    expect(getConfigurationModels).toHaveBeenCalledWith("gemini-primary");
+    expect(getConfigurationModels).toHaveBeenCalledWith("gemini-primary", expect.any(AbortSignal));
     expect(query.queryKey).not.toEqual(
       configurationModelsQuery(harness.api, alternateConfiguration).queryKey,
     );
     expect(query.queryKey).not.toEqual(
       configurationModelsQuery(harness.api, revisedConfiguration).queryKey,
     );
-    expect(query.queryKey).not.toEqual(
-      configQueries.inspect(harness.api, supportedConfiguration.configurationId).queryKey,
-    );
     expect(configurationFingerprint(supportedConfiguration)).not.toEqual(
       configurationFingerprint(revisedConfiguration),
     );
+  });
+
+  it("rejects inadmissible model ids at the query boundary", async () => {
+    const model = (id: string) => ({
+      id,
+      name: id,
+      description: "128K context",
+      tier: "paid" as const,
+    });
+    const getConfigurationModels = vi.fn<BoundApi["getConfigurationModels"]>().mockResolvedValue({
+      status: "passed",
+      configurationId: qwenConfiguration.configurationId,
+      productId: qwenConfiguration.productId,
+      transportFamily: qwenConfiguration.transportFamily,
+      models: [
+        model("qwen3-coder-flash"),
+        model("qwen-max-latest"),
+        model("../qwen3-coder-flash"),
+        model("qwen3-coder-plus"),
+      ],
+      checkedAt: "2026-07-31T12:00:00.000Z",
+      source: "snapshot",
+      cached: false,
+    });
+    const harness = createTestQueryWrapper({ api: { getConfigurationModels } });
+
+    const response = await harness.queryClient.fetchQuery(
+      configurationModelsQuery(harness.api, qwenConfiguration),
+    );
+
+    expect(response.models.map(({ id }) => id)).toEqual(["qwen3-coder-flash"]);
   });
 });
 
 describe("V2 configuration mutations", () => {
   it("useCreateConfiguration dispatches create and invalidates summaries", async () => {
-    const createConfiguration = vi.fn(async () =>
-      succeededActionResponse({ action: "create", input: hostedInput }),
-    );
-    const harness = createTestQueryWrapper({ api: { createConfiguration } as Partial<BoundApi> });
+    const createConfiguration = vi
+      .fn<BoundApi["createConfiguration"]>()
+      .mockImplementation(async () =>
+        succeededActionResponse({ action: "create", input: hostedInput }),
+      );
+    const harness = createTestQueryWrapper({ api: { createConfiguration } });
     seedSummaries(harness);
 
     const { result } = renderHook(() => useCreateConfiguration(), { wrapper: harness.Wrapper });
     await act(async () => {
-      await result.current.mutateAsync(hostedInput);
+      await result.current.mutateAsync({ input: hostedInput, acknowledgement });
     });
 
-    expect(createConfiguration).toHaveBeenCalledWith(hostedInput);
+    expect(createConfiguration).toHaveBeenCalledWith({ input: hostedInput, acknowledgement });
     expectSummariesInvalidated(harness);
   });
 
   it("useInspectConfiguration dispatches inspect and invalidates the bound inspect and model caches", async () => {
-    const inspectConfiguration = vi.fn(async (configurationId: string) =>
-      succeededActionResponse({ action: "inspect", configurationId }),
-    );
-    const harness = createTestQueryWrapper({ api: { inspectConfiguration } as Partial<BoundApi> });
+    const inspectConfiguration = vi
+      .fn<BoundApi["inspectConfiguration"]>()
+      .mockImplementation(async (configurationId) =>
+        succeededActionResponse({ action: "inspect", configurationId }),
+      );
+    const harness = createTestQueryWrapper({ api: { inspectConfiguration } });
     seedSummaries(harness);
     seedPerConfigurationCaches(harness, supportedConfiguration);
 
@@ -284,10 +299,12 @@ describe("V2 configuration mutations", () => {
   });
 
   it("useSelectConfiguration dispatches select and invalidates the bound inspect and model caches", async () => {
-    const selectConfiguration = vi.fn(async (configurationId: string, modelId: string) =>
-      succeededActionResponse({ action: "select", configurationId, modelId }),
-    );
-    const harness = createTestQueryWrapper({ api: { selectConfiguration } as Partial<BoundApi> });
+    const selectConfiguration = vi
+      .fn<BoundApi["selectConfiguration"]>()
+      .mockImplementation(async (configurationId, modelId) =>
+        succeededActionResponse({ action: "select", configurationId, modelId }),
+      );
+    const harness = createTestQueryWrapper({ api: { selectConfiguration } });
     seedSummaries(harness);
     seedPerConfigurationCaches(harness, supportedConfiguration);
 
@@ -305,10 +322,12 @@ describe("V2 configuration mutations", () => {
   });
 
   it("useTestConfiguration dispatches test and invalidates the bound inspect and model caches", async () => {
-    const testConfiguration = vi.fn(async (configurationId: string) =>
-      succeededActionResponse({ action: "test", configurationId }),
-    );
-    const harness = createTestQueryWrapper({ api: { testConfiguration } as Partial<BoundApi> });
+    const testConfiguration = vi
+      .fn<BoundApi["testConfiguration"]>()
+      .mockImplementation(async (configurationId) =>
+        succeededActionResponse({ action: "test", configurationId }),
+      );
+    const harness = createTestQueryWrapper({ api: { testConfiguration } });
     seedSummaries(harness);
     seedPerConfigurationCaches(harness, supportedConfiguration);
 
@@ -323,16 +342,18 @@ describe("V2 configuration mutations", () => {
   });
 
   it("useUpdateConfiguration dispatches update and invalidates the bound inspect and model caches", async () => {
-    const updateConfiguration = vi.fn(async (configurationId: string, expectedRevision: number) =>
-      succeededActionResponse({
-        action: "update",
-        configurationId,
-        expectedRevision,
-        input: hostedInput,
-        acknowledgement,
-      }),
-    );
-    const harness = createTestQueryWrapper({ api: { updateConfiguration } as Partial<BoundApi> });
+    const updateConfiguration = vi
+      .fn<BoundApi["updateConfiguration"]>()
+      .mockImplementation(async (configurationId, expectedRevision, input, acknowledgement) =>
+        succeededActionResponse({
+          action: "update",
+          configurationId,
+          expectedRevision,
+          input,
+          acknowledgement,
+        }),
+      );
+    const harness = createTestQueryWrapper({ api: { updateConfiguration } });
     seedSummaries(harness);
     seedPerConfigurationCaches(harness, supportedConfiguration);
 
@@ -357,10 +378,12 @@ describe("V2 configuration mutations", () => {
   });
 
   it("useDeleteConfiguration dispatches delete and invalidates the bound inspect and model caches", async () => {
-    const deleteConfiguration = vi.fn(async (configurationId: string, expectedRevision: number) =>
-      succeededActionResponse({ action: "delete", configurationId, expectedRevision }),
-    );
-    const harness = createTestQueryWrapper({ api: { deleteConfiguration } as Partial<BoundApi> });
+    const deleteConfiguration = vi
+      .fn<BoundApi["deleteConfiguration"]>()
+      .mockImplementation(async (configurationId, expectedRevision) =>
+        succeededActionResponse({ action: "delete", configurationId, expectedRevision }),
+      );
+    const harness = createTestQueryWrapper({ api: { deleteConfiguration } });
     seedSummaries(harness);
     seedPerConfigurationCaches(harness, supportedConfiguration);
 
@@ -380,12 +403,11 @@ describe("V2 configuration mutations", () => {
 
 describe("useConfigurationAction", () => {
   it.each(actions)("dispatches and invalidates V2 state for $action", async (action) => {
-    const executeConfigurationAction = vi.fn(
-      async (input: ClientConfigurationAction): Promise<ClientConfigurationActionResponse> =>
-        succeededActionResponse(input),
-    );
+    const executeConfigurationAction = vi
+      .fn<BoundApi["executeConfigurationAction"]>()
+      .mockImplementation(async (input) => succeededActionResponse(input));
     const harness = createTestQueryWrapper({
-      api: { executeConfigurationAction } as Partial<BoundApi>,
+      api: { executeConfigurationAction },
     });
     seedSummaries(harness);
     if ("configurationId" in action) {
@@ -405,45 +427,6 @@ describe("useConfigurationAction", () => {
   });
 });
 
-describe("removed configuration state", () => {
-  it("keeps removed inspect responses separate from supported ones", async () => {
-    const harness = createTestQueryWrapper({
-      api: {
-        inspectConfiguration: vi.fn(async (configurationId: string) =>
-          configurationId === removedConfiguration.configurationId
-            ? ClientConfigurationActionResponseSchema.parse({
-                action: "inspect",
-                status: "succeeded",
-                configuration: removedConfiguration,
-              })
-            : succeededActionResponse({ action: "inspect", configurationId }),
-        ),
-      } as Partial<BoundApi>,
-    });
-
-    const removed = renderHook(() => useConfigurationInspect("legacy-removed-zai-plan"), {
-      wrapper: harness.Wrapper,
-    });
-    const supported = renderHook(() => useConfigurationInspect("gemini-primary"), {
-      wrapper: harness.Wrapper,
-    });
-
-    await waitFor(() => expect(removed.result.current.data?.configuration?.status).toBe("removed"));
-    await waitFor(() =>
-      expect(supported.result.current.data?.configuration?.status).toBe("supported"),
-    );
-
-    expect(
-      configQueries.inspect(harness.api, removedConfiguration.configurationId).queryKey,
-    ).not.toEqual(
-      configQueries.inspect(harness.api, supportedConfiguration.configurationId).queryKey,
-    );
-    expect(configurationFingerprint(removedConfiguration)).not.toEqual(
-      configurationFingerprint(supportedConfiguration),
-    );
-  });
-});
-
 describe("legacy provider mutation facade", () => {
   it("does not expose provider-keyed save/activate/delete hooks", async () => {
     const module = await import("./config.js");
@@ -453,6 +436,59 @@ describe("legacy provider mutation facade", () => {
     expect(module).not.toHaveProperty("useProviderStatus");
     expect(module).not.toHaveProperty("useOpenRouterModels");
     expect(module).not.toHaveProperty("useProviderModels");
+  });
+});
+
+describe("deriveDiagnosticsSetupGaps", () => {
+  const configuredInit: ConfigurationInitResponse = {
+    ...configurationInit,
+    configurations: [
+      {
+        configuration: supportedConfiguration,
+        readiness: ReadinessSchema.parse(readiness),
+      },
+    ],
+    selectedConfigurationId: supportedConfiguration.configurationId,
+  };
+
+  it("marks trust missing when read access was declined", () => {
+    const setup = deriveDiagnosticsSetupGaps({
+      ...configuredInit,
+      project: {
+        ...configuredInit.project,
+        trust: {
+          projectId: "proj-1",
+          repoRoot: "/repo",
+          trustedAt: "2026-07-31T12:00:00.000Z",
+          capabilities: { readFiles: false, runCommands: false },
+          trustMode: "persistent",
+        },
+      },
+    });
+
+    expect(setup.isConfigured).toBe(true);
+    expect(setup.isReady).toBe(false);
+    expect(setup.missing).toContain("trust");
+  });
+
+  it("marks trust missing when the saved repo root does not match the project path", () => {
+    const setup = deriveDiagnosticsSetupGaps({
+      ...configuredInit,
+      project: {
+        ...configuredInit.project,
+        trust: {
+          projectId: "proj-1",
+          repoRoot: "/other",
+          trustedAt: "2026-07-31T12:00:00.000Z",
+          capabilities: { readFiles: true, runCommands: false },
+          trustMode: "persistent",
+        },
+      },
+    });
+
+    expect(setup.isConfigured).toBe(true);
+    expect(setup.isReady).toBe(false);
+    expect(setup.missing).toContain("trust");
   });
 });
 
@@ -478,14 +514,6 @@ function seedPerConfigurationCaches(
 ) {
   seedQueryData(
     harness.queryClient,
-    configQueries.inspect(harness.api, configuration.configurationId).queryKey,
-    succeededActionResponse({
-      action: "inspect",
-      configurationId: configuration.configurationId,
-    }),
-  );
-  seedQueryData(
-    harness.queryClient,
     configurationModelsQuery(harness.api, configuration).queryKey,
     {
       status: "passed",
@@ -504,11 +532,6 @@ function expectPerConfigurationInvalidated(
   harness: ReturnType<typeof createTestQueryWrapper>,
   configuration: Extract<ClientConfigurationSummary, { status: "supported" }>,
 ) {
-  expect(
-    harness.queryClient.getQueryState(
-      configQueries.inspect(harness.api, configuration.configurationId).queryKey,
-    )?.isInvalidated,
-  ).toBe(true);
   expect(
     harness.queryClient.getQueryState(configurationModelsQuery(harness.api, configuration).queryKey)
       ?.isInvalidated,

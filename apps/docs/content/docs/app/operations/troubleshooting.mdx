@@ -23,19 +23,11 @@ Most failures fall into a handful of buckets: configuration is not ready, the re
 
 ## Wrong product, region, or workspace
 
-**Symptom.** Readiness is `endpoint-invalid`, or Qwen or Moonshot setup cannot proceed even though a key appears to work elsewhere.
+**Symptom.** Qwen or Moonshot setup cannot proceed even though a key appears to work elsewhere.
 
 **Cause.** The configured endpoint is not allowed for this product, or the selected region or workspace does not match the credential's admitted tuple.
 
 **Fix.** Choose an allowed endpoint for this product and transport. For Qwen International and Moonshot Open Platform, verify the region and workspace binding match the credential you configured. Diffgazer does not substitute consumer or coding-plan products.
-
-## Endpoint rejection
-
-**Symptom.** Readiness is `endpoint-invalid` with the explanation **The configured endpoint is not allowed for this product.**
-
-**Cause.** The saved endpoint does not match the product's allowed profile. Hosted endpoints must use the exact HTTPS profile. Local endpoints must resolve to loopback.
-
-**Fix.** Choose an allowed endpoint for this product and transport, then **test** the configuration again.
 
 ## Model missing
 
@@ -43,15 +35,19 @@ Most failures fall into a handful of buckets: configuration is not ready, the re
 
 **Cause.** The saved exact model ID is not present in the current admitted discovery result for the configured tuple.
 
-**Fix.** Select an available exact model. Open the model picker, choose a listed exact ID, and **test** again. Aliases and routing selectors are rejected.
+**Fix.** Select an available exact model. Pin that exact ID, then **test** again. Aliases and routing selectors are rejected.
+
+For hosted products, open the model picker in **Configure Provider** and choose a listed exact ID.
+
+For local HTTP and local CLI products, the picker shows the skipped catalog reason with **Retry** only — there is no list to choose from. Look up the exact ID from your local server or CLI tooling, `select` it through the [local API](/app/reference/api), then **test** again from **Configure Provider**.
 
 ## Schema failure
 
-**Symptom.** Readiness is `conformance-failed` with the explanation **The exact review path did not satisfy the structured output contract.**, or a review ends with **Schema Validation Failed** and the message **The provider response did not match Diffgazer's review schema.**
+**Symptom.** A review ends with **Schema Validation Failed** and the message **The provider response did not match Diffgazer's review schema.** Readiness turns `conformance-failed` with the explanation **The exact review path did not satisfy the structured output contract.** Starting another review with the same setup fails immediately and free, without contacting the provider.
 
-**Cause.** The configured review path did not pass structured-output conformance for the exact tuple.
+**Cause.** The configured review path did not produce schema-valid output for the exact tuple. The failure is recorded against that exact tuple, so the next review does not pay to rediscover it.
 
-**Fix.** Review the safe failure guidance, then test the exact model again. Remediation message: **Review the safe failure guidance, then test the exact model again.**
+**Fix.** Select a different model or change the configuration — any tuple change clears the recorded failure and the next review verifies inline again. Remediation message: **Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Test readiness can re-check it. Test readiness makes one small billed API call to the provider (typically under $0.02; free for local endpoints; codex and copilot use your CLI subscription quota).**
 
 ## Missing usage
 
@@ -71,7 +67,7 @@ Most failures fall into a handful of buckets: configuration is not ready, the re
 
 ## Local non-loopback rejection
 
-**Symptom.** Readiness is `local-endpoint-forbidden`. The UI explains: **The configured local endpoint is not an allowed loopback endpoint.**
+**Symptom.** Test readiness for an Ollama or Local OpenAI-compatible configuration fails with **Local endpoint is not allowed**.
 
 **Cause.** Ollama or Local OpenAI-compatible configurations must use a validated loopback first hop such as `127.0.0.1` or `[::1]`.
 
@@ -79,7 +75,7 @@ Most failures fall into a handful of buckets: configuration is not ready, the re
 
 ## Local incompatibility
 
-**Symptom.** Readiness is `local-api-incompatible`. The UI explains: **The local server does not expose a compatible review API.**
+**Symptom.** Test readiness for a local configuration fails with **Local API is incompatible**.
 
 **Cause.** The loopback server responded, but its API or structured-output behavior does not satisfy the product contract.
 
@@ -135,11 +131,11 @@ Most failures fall into a handful of buckets: configuration is not ready, the re
 
 ## Setup required
 
-**Symptom.** A review won't start. The request comes back with `503` / `SETUP_REQUIRED`.
+**Symptom.** A review won't start. The request comes back with `503` / `SETUP_REQUIRED`, or `403` / `SETUP_REQUIRED` after a recorded conformance failure.
 
-**Cause.** No ready configuration exists yet.
+**Cause.** The selected configuration has an open item a review cannot resolve for itself — no configuration, an invalid credential, a missing model, an unaccepted notice, or an unreachable endpoint. Unverified structured-output conformance is not one of them: reviews start and verify it inline. A `403` means the exact tuple already failed structured output.
 
-**Fix.** Finish onboarding or create and **test** a configuration until readiness is **ready**.
+**Fix.** For `503`, fix the named remediation and start the review again. For `403`, select a different model or change the configuration; any tuple change clears the recorded failure.
 
 ## Trust required
 

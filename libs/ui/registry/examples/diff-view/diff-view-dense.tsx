@@ -18,5 +18,5 @@ const patch = `--- a/src/utils/score.ts
 `;
 
 export default function DiffViewDense() {
-  return <DiffView patch={patch} variant="dense" mode="split" showLineNumbers />;
+  return <DiffView patch={patch} variant="dense" mode="split" />;
 }

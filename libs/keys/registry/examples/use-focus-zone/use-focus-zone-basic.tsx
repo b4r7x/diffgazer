@@ -56,7 +56,7 @@ function Pane({
   const containerRef = useRef<HTMLDivElement>(null);
   const headingId = useId();
 
-  const { isHighlighted } = useScopedNavigation({
+  const { highlighted, isHighlighted } = useScopedNavigation({
     containerRef,
     role: "option",
     wrap: true,
@@ -74,11 +74,22 @@ function Pane({
       }}
     >
       <h4 id={headingId}>{title}</h4>
-      <div ref={containerRef} role="listbox" aria-labelledby={headingId}>
+      <div
+        ref={containerRef}
+        role="listbox"
+        tabIndex={0}
+        aria-labelledby={headingId}
+        aria-activedescendant={
+          highlighted
+            ? `pane-${title.toLowerCase()}-${highlighted.toLowerCase().replace(/\s+/g, "-")}`
+            : undefined
+        }
+      >
         {items.map((item) => (
-          // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — options stay non-focusable; the listbox container holds focus and active state is tracked via aria-selected.
+          // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — options stay non-focusable; the listbox container holds focus and aria-activedescendant tracks the active option.
           <div
             key={item}
+            id={`pane-${title.toLowerCase()}-${item.toLowerCase().replace(/\s+/g, "-")}`}
             role="option"
             data-value={item}
             aria-selected={isHighlighted(item)}

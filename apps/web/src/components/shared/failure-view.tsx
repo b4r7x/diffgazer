@@ -16,8 +16,12 @@ interface FailureAction {
 export interface FailureViewProps {
   title: string;
   message: string;
+  /** Identity of the thing that failed — e.g. the configuration's provider and model. */
+  meta?: string;
   primary: FailureAction;
-  /** Omit when the dead end has one way forward; Esc then takes the primary action. */
+  /** Forward path that is not a retry — e.g. opening the providers screen. Never the Esc target. */
+  recovery?: FailureAction;
+  /** Omit when the dead end has no way back; Esc then takes the primary action. */
   secondary?: FailureAction;
   /** Error is the loud tone and announces itself; warning is a gate the user can pass. */
   tone?: "error" | "warning";
@@ -29,16 +33,19 @@ export interface FailureViewProps {
 }
 
 /**
- * The app's one dead-end screen: a resting panel, one sentence of cause, and one
- * or two ways forward. ←/→ move between the actions, Enter/Space activates, Esc
- * takes the secondary one — or the primary when it is the only action. The panel
- * stays at rest — a failure view is not a focus target, so it never wears the
- * focused corner brackets.
+ * The app's one dead-end screen: a resting panel, one sentence of cause, and up
+ * to three ways forward. ←/→ move between the actions, Enter/Space activates,
+ * Esc takes the secondary one — or the primary when there is no secondary; the
+ * recovery action is a forward path and never the Esc target. The panel stays
+ * at rest — a failure view is not a focus target, so it never wears the focused
+ * corner brackets.
  */
 export function FailureView({
   title,
   message,
+  meta,
   primary,
+  recovery,
   secondary,
   tone = "error",
   scope,
@@ -47,7 +54,9 @@ export function FailureView({
 }: FailureViewProps) {
   useScope(scope);
   const focusFallbackRef = useRef<HTMLDivElement>(null);
-  const actions = secondary ? [primary, secondary] : [primary];
+  const actions = [primary, recovery, secondary].filter(
+    (action): action is FailureAction => action !== undefined,
+  );
   const escapeAction = secondary ?? primary;
 
   const footer = useActionRowNavigation({
@@ -67,18 +76,23 @@ export function FailureView({
   usePageFooter({
     // A lone action has nowhere to move to, so the row hint stays off that screen.
     shortcuts: [
-      ...(secondary ? [{ key: "←/→", label: "Move Action" }] : []),
+      ...(actions.length > 1 ? [{ key: "←/→", label: "Move Action" }] : []),
       { key: "Enter/Space", label: focusedLabel, disabled: footer.isFocusedActionDisabled },
     ],
     rightShortcuts: footerRightShortcuts,
   });
 
   return (
-    <div className="flex flex-1 items-center justify-center p-4">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 md:p-6 lg:p-8">
+      {/* Spare height splits 1:2 around the panel — the optical band every
+          hub/child/home screen shares — and the spacers collapse once the panel
+          outgrows the viewport, so a short window scrolls from the top. */}
+      <div aria-hidden className="grow" />
       <Panel
         ref={focusFallbackRef}
         tabIndex={-1}
-        className="w-full max-w-md p-6 text-center focus:outline-none"
+        tone={isError ? "error" : "warning"}
+        className="mx-auto w-full max-w-lg shrink-0 p-6 text-center focus:outline-none"
       >
         {/* The alert wrapper, not the heading itself: role="alert" on a heading
             element replaces its heading role, and the failure screen wants both
@@ -96,34 +110,31 @@ export function FailureView({
             {title}
           </TitleTag>
         </div>
+        {meta ? (
+          // Data, not prose: the identity of the failed configuration keeps its
+          // real casing and reads at full foreground strength.
+          <p className="mb-3 break-words font-mono text-sm text-foreground">{meta}</p>
+        ) : null}
         <p className="mx-auto mb-6 max-w-[46ch] break-words font-mono text-sm text-muted-foreground">
           {message}
         </p>
         <div className="flex flex-wrap justify-center gap-4">
-          <Button
-            {...footer.getActionProps(0)}
-            variant="outline"
-            bracket
-            disabled={primary.disabled}
-            highlighted={footer.inActions && footer.focusedIndex === 0}
-            onClick={primary.onAction}
-          >
-            {primary.label}
-          </Button>
-          {secondary && (
+          {actions.map((action, index) => (
             <Button
-              {...footer.getActionProps(1)}
-              variant="secondary"
+              key={action.label}
+              {...footer.getActionProps(index)}
+              variant={action === primary ? "outline" : "secondary"}
               bracket
-              disabled={secondary.disabled}
-              highlighted={footer.inActions && footer.focusedIndex === 1}
-              onClick={secondary.onAction}
+              disabled={action.disabled}
+              highlighted={footer.inActions && footer.focusedIndex === index}
+              onClick={action.onAction}
             >
-              {secondary.label}
+              {action.label}
             </Button>
-          )}
+          ))}
         </div>
       </Panel>
+      <div aria-hidden className="grow-[2]" />
     </div>
   );
 }

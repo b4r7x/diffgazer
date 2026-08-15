@@ -1,36 +1,118 @@
+import { SEVERITY_LABELS, SEVERITY_ORDER } from "../../schemas/presentation/index.js";
 import {
-  SEVERITY_LABELS,
-  SEVERITY_ORDER,
+  type EvidenceRef,
+  type FixPlanStep,
+  isValidEvidenceRange,
+  type ReviewIssue,
   type SeverityCounts,
-} from "../../schemas/presentation/index.js";
-import type { FixPlanStep, ReviewIssue } from "../../schemas/review/index.js";
+} from "../../schemas/review/index.js";
 
-const SEVERITY_BREAKDOWN_WIDTH = 16;
+const EVIDENCE_PRESENTATION_LABELS = {
+  code: "Code evidence",
+  doc: "Unverified documentation reference",
+  trace: "Unverified trace reference",
+  external: "Unverified external reference",
+} as const satisfies Record<EvidenceRef["type"], string>;
+
+interface EvidencePresentationBase {
+  title: string;
+  sourceText: string;
+  excerpt: string;
+  ordinal: number;
+}
+
+export type EvidencePresentation =
+  | (EvidencePresentationBase & {
+      kind: "code";
+      type: "code";
+      label: (typeof EVIDENCE_PRESENTATION_LABELS)["code"];
+      file: string;
+      startLine?: number;
+      endLine?: number;
+    })
+  | (EvidencePresentationBase & {
+      kind: "reference";
+      type: "doc";
+      label: (typeof EVIDENCE_PRESENTATION_LABELS)["doc"];
+    })
+  | (EvidencePresentationBase & {
+      kind: "reference";
+      type: "trace";
+      label: (typeof EVIDENCE_PRESENTATION_LABELS)["trace"];
+    })
+  | (EvidencePresentationBase & {
+      kind: "reference";
+      type: "external";
+      label: (typeof EVIDENCE_PRESENTATION_LABELS)["external"];
+    });
+
+export function toEvidencePresentation(
+  evidence: EvidenceRef,
+  fallbackCodeFile: string,
+  ordinal: number,
+): EvidencePresentation {
+  const base = {
+    title: evidence.title,
+    sourceText: evidence.sourceId,
+    excerpt: evidence.excerpt,
+    ordinal,
+  };
+
+  switch (evidence.type) {
+    case "code": {
+      // Both bounds come from the same accepted range, so a surface never pairs
+      // a validated start with a raw provider end.
+      const range = isValidEvidenceRange(evidence.range) ? evidence.range : undefined;
+      return {
+        ...base,
+        kind: "code",
+        type: "code",
+        label: EVIDENCE_PRESENTATION_LABELS.code,
+        file: evidence.file ?? fallbackCodeFile,
+        startLine: range?.start,
+        endLine: range?.end,
+      };
+    }
+    case "doc":
+      return {
+        ...base,
+        kind: "reference",
+        type: "doc",
+        label: EVIDENCE_PRESENTATION_LABELS.doc,
+      };
+    case "trace":
+      return {
+        ...base,
+        kind: "reference",
+        type: "trace",
+        label: EVIDENCE_PRESENTATION_LABELS.trace,
+      };
+    case "external":
+      return {
+        ...base,
+        kind: "reference",
+        type: "external",
+        label: EVIDENCE_PRESENTATION_LABELS.external,
+      };
+  }
+}
 
 export interface SeverityBreakdownRow {
   severity: ReviewIssue["severity"];
   label: string;
   count: number;
   total: number;
-  filledCells: number;
-  emptyCells: number;
 }
 
 /** Builds every severity row, including zero-count rows, in canonical severity order. */
 export function buildSeverityBreakdownRows(counts: SeverityCounts): SeverityBreakdownRow[] {
   const total = SEVERITY_ORDER.reduce((sum, severity) => sum + counts[severity], 0);
-  return SEVERITY_ORDER.map((severity) => {
-    const count = counts[severity];
-    const filledCells = total > 0 ? Math.round((count / total) * SEVERITY_BREAKDOWN_WIDTH) : 0;
-    return {
-      severity,
-      label: SEVERITY_LABELS[severity],
-      count,
-      total,
-      filledCells,
-      emptyCells: SEVERITY_BREAKDOWN_WIDTH - filledCells,
-    };
-  });
+  return SEVERITY_ORDER.map((severity) => ({
+    severity,
+    label: SEVERITY_LABELS[severity],
+    count: counts[severity],
+    total,
+  }));
 }
 
 export interface IssueFixStepPresentation {
@@ -44,7 +126,6 @@ export interface IssueFixStepPresentation {
 export interface IssueDetailsPresentation {
   category: ReviewIssue["category"];
   confidence: string;
-  range: string;
   location: string;
   fixPlan: readonly IssueFixStepPresentation[];
   trace: readonly IssueTraceStepPresentation[];
@@ -70,7 +151,6 @@ export function toIssueDetailsPresentation(issue: ReviewIssue): IssueDetailsPres
   return {
     category: issue.category,
     confidence: `${Math.round(issue.confidence * 100)}%`,
-    range,
     location: `${issue.file}:${range}`,
     fixPlan: (issue.fixPlan ?? []).map((step, completionIndex) => ({
       completionIndex,

@@ -1,6 +1,6 @@
 import { info, newline } from "../terminal.js";
 
-export interface ListDisplayItem {
+interface ListDisplayItem {
   name: string;
   title?: string;
   description?: string;

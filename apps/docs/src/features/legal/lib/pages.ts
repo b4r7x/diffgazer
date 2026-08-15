@@ -3,24 +3,24 @@ import type { LegalPageLoaderData } from "@/features/legal/lib/load-page";
 import { buildPageSeo, DEFAULT_SITE_NAME } from "@/lib/seo";
 import type { LegalPageSlug } from "./slugs";
 
-export const LEGAL_PAGES = [
-  { slug: "privacy", path: "/privacy", panelLabel: "PRIVACY", label: "Privacy" },
-  { slug: "terms", path: "/terms", panelLabel: "TERMS", label: "Terms" },
-] as const satisfies readonly {
-  slug: LegalPageSlug;
-  path: string;
-  panelLabel: string;
-  label: string;
-}[];
+// Keyed by slug so `slugs.ts` and this table cannot drift: a slug added there
+// without a page here fails the mapped `satisfies`, and the key must equal the
+// entry's own slug. That makes the lookup total — no runtime "unknown page".
+const LEGAL_PAGE_BY_SLUG = {
+  privacy: { slug: "privacy", path: "/privacy", panelLabel: "PRIVACY", label: "Privacy" },
+  terms: { slug: "terms", path: "/terms", panelLabel: "TERMS", label: "Terms" },
+} as const satisfies {
+  [S in LegalPageSlug]: { slug: S; path: string; panelLabel: string; label: string };
+};
 
-export type LegalPageEntry = (typeof LEGAL_PAGES)[number];
+export type LegalPageEntry = (typeof LEGAL_PAGE_BY_SLUG)[LegalPageSlug];
+
+export const LEGAL_PAGES: readonly LegalPageEntry[] = Object.values(LEGAL_PAGE_BY_SLUG);
 
 export const LEGAL_LINKS = LEGAL_PAGES.map(({ slug, label, path }) => ({ slug, label, to: path }));
 
 export function getLegalPageEntry(slug: LegalPageSlug): LegalPageEntry {
-  const entry = LEGAL_PAGES.find((page) => page.slug === slug);
-  if (!entry) throw new Error(`Unknown legal page: ${slug}`);
-  return entry;
+  return LEGAL_PAGE_BY_SLUG[slug];
 }
 
 export function legalRouteOptions(

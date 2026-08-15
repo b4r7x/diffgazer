@@ -1,4 +1,4 @@
-import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { Text } from "ink";
 import type { ReactElement } from "react";
 import { useTheme } from "../../theme/provider";

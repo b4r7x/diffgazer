@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import {
   createConformingFixture,
+  FIXTURE_REPO_FILES,
   PACKAGE_FILES,
   resultByName,
   runFixture,
@@ -71,8 +72,20 @@ const failureCases = [
       ),
   },
   {
+    name: "Docker frozen installs copy workspace manifests",
+    options: { repoFiles: [...FIXTURE_REPO_FILES, "apps/docs/package.json"] },
+  },
+  {
     name: "workspace globs match target roots",
     mutate: (root) => writeText(root, "pnpm-workspace.yaml", "packages:\n  - apps/*\n"),
+  },
+  {
+    name: "generated artifact directories are not tracked",
+    options: {
+      commandOutputs: {
+        gitLsFilesStaged: trackedFileEntry("cli/add/src/generated/registry-bundle.json"),
+      },
+    },
   },
   {
     name: "no .gitmodules",
@@ -247,6 +260,29 @@ const failureCases = [
     },
   },
   {
+    name: "allowBuilds entries match governance doc",
+    mutate: (root) => {
+      writeText(
+        root,
+        "pnpm-workspace.yaml",
+        'packages:\n  - apps/*\nallowBuilds:\n  "leftpad@1.0.0": true\n',
+      );
+      writeText(
+        root,
+        "PACKAGE_GOVERNANCE.md",
+        "## Dependency Governance\n\nNo approvals documented here.\n\n## Licensing\n",
+      );
+    },
+  },
+  {
+    name: "Node declarations match supported runtime majors",
+    mutate: (root) =>
+      updatePackage(root, "apps/docs/package.json", (pkg) => ({
+        ...pkg,
+        devDependencies: { ...pkg.devDependencies, "@types/node": "^25.2.3" },
+      })),
+  },
+  {
     name: "licensed packages appear in governance split",
     mutate: (root) =>
       writeText(
@@ -275,18 +311,38 @@ const failureCases = [
   },
 ];
 
+let checksByResultName;
+
+// One conforming run pairs each check with the result name it emits, so a case
+// selects its check by name instead of by position in INVARIANT_CHECKS.
+function invariantChecksByResultName() {
+  checksByResultName ??= new Map(
+    runFixture(createConformingFixture()).map((result, index) => [
+      result.name,
+      INVARIANT_CHECKS[index],
+    ]),
+  );
+  return checksByResultName;
+}
+
 test("failure fixtures cover every exported invariant check", () => {
-  assert.equal(failureCases.length, INVARIANT_CHECKS.length);
+  assert.deepEqual(
+    failureCases.map((fixtureCase) => fixtureCase.name).toSorted(),
+    [...invariantChecksByResultName().keys()].toSorted(),
+  );
 });
 
-for (const [index, fixtureCase] of failureCases.entries()) {
+for (const fixtureCase of failureCases) {
   test(`${fixtureCase.name} fails on a minimal violating fixture`, () => {
+    const check = invariantChecksByResultName().get(fixtureCase.name);
+    assert.ok(check, `no invariant check emits the result "${fixtureCase.name}"`);
+
     const root = createConformingFixture();
     fixtureCase.mutate?.(root);
     fixtureCase.afterMutate?.(root);
 
     const result = resultByName(
-      runFixture(root, { ...fixtureCase.options, checks: [INVARIANT_CHECKS[index]] }),
+      runFixture(root, { ...fixtureCase.options, checks: [check] }),
       fixtureCase.name,
     );
 

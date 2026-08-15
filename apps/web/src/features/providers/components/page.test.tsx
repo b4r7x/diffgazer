@@ -1,22 +1,22 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { FooterProvider } from "@diffgazer/core/footer";
+import { UNRECOGNIZED_CONFIGURATION_COPY } from "@diffgazer/core/providers";
 import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
 import {
   ClientConfigurationActionResponseSchema,
   LEGACY_V1_HAS_API_KEY_PROPERTY,
 } from "@diffgazer/core/schemas/config";
 import {
-  CLI_UNSUPPORTED_CONFIGURATION,
+  CODEX_CLI_CONFIGURATION,
   configurationStatus,
+  GEMINI_CONFIGURATION,
   LOCAL_OPENAI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeConfigurationListResponse,
-  READY_GEMINI_CONFIGURATION,
-  REMOVED_ZAI_CODING_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
@@ -27,14 +27,14 @@ import { ProvidersPage } from "./page";
 vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({ pathname: "/providers-page-test" }),
   useNavigate: () => vi.fn(),
+  useSearch: () => ({}),
 }));
 
 function makeInitResponse(): ConfigurationInitResponse {
   return makeConfigurationInitResponse([
-    configurationStatus(READY_GEMINI_CONFIGURATION, "ready"),
-    configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
-    configurationStatus(CLI_UNSUPPORTED_CONFIGURATION, "unsupported"),
-    configurationStatus(REMOVED_ZAI_CODING_CONFIGURATION, "removed"),
+    configurationStatus(GEMINI_CONFIGURATION, "ready"),
+    configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
+    configurationStatus(CODEX_CLI_CONFIGURATION, "unsupported"),
   ]);
 }
 
@@ -69,9 +69,9 @@ function createMockApi() {
   } satisfies BoundApi;
 }
 
-// Both panes are unnamed regions, so the layout attribute the responsive-contracts
-// e2e already locates them by is the only handle; data-state="focused" is Panel's
-// documented bracket contract.
+// The layout attribute is the handle the responsive-contracts e2e already
+// locates the panes by; data-state="focused" is Panel's documented bracket
+// contract.
 function getPane(container: HTMLElement, pane: "provider-list" | "provider-details"): HTMLElement {
   const element = container.querySelector<HTMLElement>(`[data-layout-pane="${pane}"]`);
   if (!element) throw new Error(`Missing provider pane: ${pane}`);
@@ -101,6 +101,43 @@ describe("ProvidersPage", () => {
     vi.clearAllMocks();
   });
 
+  it("keeps the provider setup surface interactive behind an inline notice when init fails", async () => {
+    mockApi.loadConfigurationInit.mockRejectedValue(new Error("init unavailable"));
+
+    const { container } = renderProvidersPage();
+
+    const notice = await screen.findByRole("alert");
+    expect(notice).toHaveTextContent("Configuration Unavailable");
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    // The catalog does not depend on the broken configuration: the recovery
+    // screen keeps every product reachable so credentials can be re-entered.
+    expect(screen.getByRole("listbox", { name: "Providers" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Google Gemini/ })).toBeInTheDocument();
+    expect(screen.queryByText("Loading providers...")).not.toBeInTheDocument();
+    // The notice sits directly above the panes container in the same page flow,
+    // so on narrow viewports it scrolls away with the content instead of
+    // pinning above the page's scroller.
+    expect(notice.nextElementSibling).toContainElement(getPane(container, "provider-list"));
+  });
+
+  it("names the session mismatch in the inline notice when init is unauthorized", async () => {
+    mockApi.loadConfigurationInit.mockRejectedValue(
+      Object.assign(new Error("Unauthorized"), { status: 401, code: "UNAUTHORIZED" }),
+    );
+
+    renderProvidersPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Session Not Authorized");
+    expect(screen.getByRole("listbox", { name: "Providers" })).toBeInTheDocument();
+  });
+
+  it("shows no configuration notice when init succeeds", async () => {
+    renderProvidersPage();
+
+    await screen.findByRole("listbox", { name: "Providers" });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("completes local setup routing without exposing credential inputs", async () => {
     const user = userEvent.setup();
     renderProvidersPage();
@@ -119,15 +156,6 @@ describe("ProvidersPage", () => {
     renderProvidersPage();
 
     await waitFor(() => expect(screen.getByLabelText(/CLI unsupported/i)).toBeInTheDocument());
-  });
-
-  it("does not render removed records", async () => {
-    renderProvidersPage();
-
-    await waitFor(() =>
-      expect(screen.getByRole("option", { name: "Google Gemini" })).toBeInTheDocument(),
-    );
-    expect(screen.queryByText("Z.AI Coding Plan")).not.toBeInTheDocument();
   });
 
   it("preserves keyboard flow into enabled actions", async () => {
@@ -170,6 +198,41 @@ describe("ProvidersPage", () => {
     expect(listbox).not.toHaveFocus();
     expect(getPane(container, "provider-list")).not.toHaveAttribute("data-state");
     expect(getPane(container, "provider-details")).not.toHaveAttribute("data-state");
+  });
+
+  // Retiring a product turns its stored record into bytes this build cannot
+  // decode. The row exists so that record does not become permanent: it names
+  // itself honestly, offers removal and nothing else, and the delete asserts no
+  // revision because the list never showed one.
+  it("offers only removal for a stored record this build could not decode", async () => {
+    const user = userEvent.setup();
+    const init = makeConfigurationInitResponse(
+      [configurationStatus(GEMINI_CONFIGURATION, "ready")],
+      GEMINI_CONFIGURATION.configurationId,
+      [{ configurationId: "cfg-retired" }],
+    );
+    mockApi.loadConfigurationInit.mockResolvedValue(init);
+    mockApi.listConfigurations.mockResolvedValue(makeConfigurationListResponse(init));
+
+    renderProvidersPage();
+
+    await user.click(
+      await screen.findByRole("option", { name: UNRECOGNIZED_CONFIGURATION_COPY.label }),
+    );
+
+    // Both surfaces render the copy core owns, so neither can describe the same
+    // record differently.
+    expect(screen.getByText(UNRECOGNIZED_CONFIGURATION_COPY.description)).toBeInTheDocument();
+    const actions = screen.getByRole("group", { name: "Provider actions" });
+    const buttons = within(actions).getAllByRole("button");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toHaveAccessibleName("Delete configuration");
+
+    await user.click(within(actions).getByRole("button", { name: "Delete configuration" }));
+
+    await waitFor(() =>
+      expect(mockApi.deleteConfiguration).toHaveBeenCalledWith("cfg-retired", undefined),
+    );
   });
 
   it("renders no secret-bearing JSON in the page tree", async () => {

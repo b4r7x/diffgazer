@@ -1,7 +1,7 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "composed-refs",
-  "title": "useComposedRefs",
+  "title": "Composed Refs",
   "description": "Cached companion to composeRefs: returns a stable RefCallback so React does not detach/re-attach the composed refs every commit. Use at component call sites instead of calling composeRefs inline during render.",
   "registryDependencies": ["https://r.b4r7.dev/r/ui/compose-refs.json"],
   "files": [

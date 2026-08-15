@@ -5,9 +5,17 @@ import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { assertTempHome } from "../lib/testing/temp-home.js";
 
 let diffgazerHome: string;
 let projectRoot: string;
+
+// The guard itself calls `getStore()` on the first request, so the store singleton is
+// reached through the module rather than a handle any single test holds.
+async function drainConfigStore(): Promise<void> {
+  const { getStore } = await import("../lib/config/store.js");
+  await getStore().ready();
+}
 
 async function createApp(): Promise<Hono> {
   const { requireRepoAccess } = await import("./trust-guard.js");
@@ -45,23 +53,30 @@ describe("requireRepoAccess", () => {
 
   beforeEach(() => {
     diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-trust-home-"));
+    assertTempHome(diffgazerHome);
     projectRoot = realpathSync.native(mkdtempSync(join(tmpdir(), "diffgazer-trust-project-")));
     mkdirSync(join(projectRoot, ".git"));
     process.env.DIFFGAZER_HOME = diffgazerHome;
     process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT = "1";
-    // Suppress fire-and-forget persistence warnings emitted after teardown removes the temp dir.
-    // The config store dispatches persist*Async without awaiting, so a pending write can land
-    // after rmSync; production keeps this UX-friendly fire-and-forget pattern unchanged.
+    // The config store dispatches persist*Async without awaiting; production keeps that
+    // UX-friendly pattern, so the suite drains it below and silences what it still logs.
     warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.resetModules();
   });
 
-  afterEach(() => {
-    delete process.env.DIFFGAZER_HOME;
-    delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
-    rmSync(diffgazerHome, { recursive: true, force: true });
-    rmSync(projectRoot, { recursive: true, force: true });
-    warnSpy.mockRestore();
+  // Settle the store's queued persistence, then remove the temp dirs, and only then drop
+  // DIFFGAZER_HOME: `paths.ts` re-reads it per call, so restoring it while a persist*Async
+  // write is still pending re-points that write at the real ~/.diffgazer.
+  afterEach(async () => {
+    try {
+      await drainConfigStore();
+      rmSync(diffgazerHome, { recursive: true, force: true });
+      rmSync(projectRoot, { recursive: true, force: true });
+    } finally {
+      delete process.env.DIFFGAZER_HOME;
+      delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
+      warnSpy.mockRestore();
+    }
   });
 
   it("blocks requests when trust is missing", async () => {

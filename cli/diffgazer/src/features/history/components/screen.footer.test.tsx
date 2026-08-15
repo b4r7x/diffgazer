@@ -30,7 +30,6 @@ vi.mock("../../../hooks/use-terminal-dimensions", () => ({
 vi.mock("../../../components/layout/global", () => ({
   useContentZone: () => ({
     columns: terminalSize.columns,
-    rows: terminalSize.rows,
     contentColumns: terminalSize.columns,
     contentRows: terminalSize.rows - 4,
   }),

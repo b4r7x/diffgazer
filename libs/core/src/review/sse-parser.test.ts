@@ -18,20 +18,17 @@ function createMockReader(chunks: string[]): ReadableStreamDefaultReader<Uint8Ar
   };
 }
 
-const identity = (data: unknown) => data;
-
-async function parseChunks<T = unknown>(
-  chunks: string[],
-  parseEvent: (data: unknown) => T | undefined = identity as (data: unknown) => T,
-) {
+async function parseChunksWith<T>(chunks: string[], parseEvent: (data: unknown) => T | undefined) {
   const events: T[] = [];
   const reader = createMockReader(chunks);
-  const result = await parseSSEStream(reader, {
+  await parseSSEStream(reader, {
     parseEvent,
     onEvent: (event) => events.push(event),
   });
-  return { events, reader, result };
+  return { events, reader };
 }
+
+const parseChunks = (chunks: string[]) => parseChunksWith(chunks, (data: unknown) => data);
 
 describe("parseSSEStream", () => {
   it.each([
@@ -73,8 +70,8 @@ describe("parseSSEStream", () => {
   ])("parses $name", async ({ chunks, events }) => {
     const result = await parseChunks(chunks);
 
-    expect(result.result.completed).toBe(true);
     expect(result.events).toEqual(events);
+    expect(result.reader.cancel).not.toHaveBeenCalled();
   });
 
   it("ignores non-data lines, invalid JSON, and empty payloads", async () => {
@@ -92,72 +89,38 @@ describe("parseSSEStream", () => {
   });
 
   it("finishes cleanly for empty streams, whitespace, and truncated final JSON", async () => {
-    await expect(parseChunks([])).resolves.toMatchObject({
-      events: [],
-      result: { completed: true },
-    });
-    await expect(parseChunks(["   \n"])).resolves.toMatchObject({
-      events: [],
-      result: { completed: true },
-    });
-    await expect(parseChunks(['data: {"incomplete":'])).resolves.toMatchObject({
-      events: [],
-      result: { completed: true },
-    });
+    await expect(parseChunks([])).resolves.toMatchObject({ events: [] });
+    await expect(parseChunks(["   \n"])).resolves.toMatchObject({ events: [] });
+    await expect(parseChunks(['data: {"incomplete":'])).resolves.toMatchObject({ events: [] });
   });
 
-  it("cancels parsing when the buffered data exceeds the limit", async () => {
-    const onBufferOverflow = vi.fn();
+  it("cancels the reader when the buffered data exceeds the limit", async () => {
     const chunkSize = 6 * 1024 * 1024;
-    const reader = createMockReader([
+    const { events, reader } = await parseChunks([
       "a".repeat(chunkSize),
       "b".repeat(chunkSize),
       "c".repeat(chunkSize),
     ]);
-    const events: unknown[] = [];
 
-    const result = await parseSSEStream(reader, {
-      onEvent: (event) => events.push(event),
-      parseEvent: identity,
-      onBufferOverflow,
-    });
-
-    expect(result).toEqual({ completed: false });
     expect(events).toEqual([]);
-    expect(onBufferOverflow).toHaveBeenCalledOnce();
     expect(reader.cancel).toHaveBeenCalledOnce();
   });
 
-  it("does not require an overflow handler and leaves valid sub-limit data alone", async () => {
-    const overflowReader = createMockReader(["x".repeat(16 * 1024 * 1024 + 1)]);
-    const overflow = await parseSSEStream(overflowReader, {
-      onEvent: () => undefined,
-      parseEvent: identity,
-    });
+  it("leaves valid sub-limit data alone", async () => {
+    const { reader } = await parseChunks(["x".repeat(16 * 1024 * 1024 - 100)]);
 
-    expect(overflow).toEqual({ completed: false });
-    expect(overflowReader.cancel).toHaveBeenCalledOnce();
-
-    const underLimitReader = createMockReader(["x".repeat(16 * 1024 * 1024 - 100)]);
-    const underLimit = await parseSSEStream(underLimitReader, {
-      onEvent: () => undefined,
-      parseEvent: identity,
-      onBufferOverflow: vi.fn(),
-    });
-
-    expect(underLimit).toEqual({ completed: true });
-    expect(underLimitReader.cancel).not.toHaveBeenCalled();
+    expect(reader.cancel).not.toHaveBeenCalled();
   });
 
   it("uses parseEvent to transform or skip parsed payloads", async () => {
     const parseEvent = (data: unknown): string | undefined => {
       if (typeof data === "object" && data !== null && "message" in data) {
-        return String((data as { message: string }).message).toUpperCase();
+        return String(data.message).toUpperCase();
       }
       return undefined;
     };
 
-    const { events } = await parseChunks(
+    const { events } = await parseChunksWith(
       ['data: {"message":"hello"}\n', 'data: {"valid":false}\n', 'data: {"message":"bye"}\n'],
       parseEvent,
     );
@@ -170,7 +133,7 @@ describe("parseSSEStream", () => {
       throw new Error("Parse error");
     };
 
-    await expect(parseChunks(['data: {"message":"test"}\n'], parseEvent)).rejects.toThrow(
+    await expect(parseChunksWith(['data: {"message":"test"}\n'], parseEvent)).rejects.toThrow(
       "Parse error",
     );
   });
@@ -181,6 +144,20 @@ describe("parseSSEStream", () => {
 
     expect(events).toEqual([{ message: longMessage }]);
   });
+
+  it(
+    "processes a fragmented near-limit line without rescanning retained chunks",
+    { timeout: 2_000 },
+    async () => {
+      const fragment = "x".repeat(4 * 1024);
+      const chunks = ["data: ", ...Array<string>(15 * 256).fill(fragment)];
+
+      const { events, reader } = await parseChunks(chunks);
+
+      expect(events).toEqual([]);
+      expect(reader.cancel).not.toHaveBeenCalled();
+    },
+  );
 
   it("decodes a multi-byte character split across the final chunk boundary", async () => {
     // `é` (U+00E9) encodes to two bytes; split the SSE line so the second byte
@@ -206,12 +183,11 @@ describe("parseSSEStream", () => {
     };
 
     const events: unknown[] = [];
-    const result = await parseSSEStream(reader, {
-      parseEvent: identity,
+    await parseSSEStream(reader, {
+      parseEvent: (data: unknown) => data,
       onEvent: (event) => events.push(event),
     });
 
-    expect(result.completed).toBe(true);
     expect(events).toEqual([{ message: "é" }]);
   });
 });

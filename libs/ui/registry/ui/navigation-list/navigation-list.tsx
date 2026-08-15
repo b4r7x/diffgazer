@@ -103,17 +103,17 @@ export function NavigationList({
   const groupHeadersRef = useRef<Map<string, GroupHeaderRegistration>>(new Map());
   const [registrationsStarted, setRegistrationsStarted] = useState(false);
   const {
-    items: registeredItems,
+    items: visibleItems,
     registerItem,
     unregisterItem,
   } = useSelectableCollection(containerRef);
-  const registeredMetadata = useMemo<ListboxMetadataItem[]>(
+  const visibleMetadata = useMemo<ListboxMetadataItem[]>(
     () =>
-      registeredItems.map((item) => ({
+      visibleItems.map((item) => ({
         id: item.value,
         disabled: !isSelectableItemEligible(item),
       })),
-    [registeredItems],
+    [visibleItems],
   );
   const renderSeed = useMemo(
     () =>
@@ -123,7 +123,7 @@ export function NavigationList({
       }),
     [children],
   );
-  const items = registrationsStarted ? registeredMetadata : renderSeed;
+  const items = registrationsStarted ? visibleMetadata : renderSeed;
 
   const handleRegisterItem = useCallback(
     (registrationId: string, value: string, disabled: boolean, element: HTMLElement | null) => {

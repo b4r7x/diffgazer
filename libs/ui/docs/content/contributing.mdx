@@ -52,7 +52,9 @@ pnpm --filter @diffgazer/ui build
 
 ```bash
 pnpm --filter @diffgazer/ui type-check
+pnpm --filter @diffgazer/ui test
 pnpm --filter @diffgazer/ui build
+pnpm run prepare:artifacts && pnpm run validate:artifacts:check
 ```
 
 ## Code style
@@ -69,5 +71,5 @@ pnpm --filter @diffgazer/ui build
 
 - One component per PR (unless they're tightly coupled)
 - Include demo files with the component
-- Ensure TypeScript compiles cleanly
+- Ensure TypeScript compiles cleanly and the package tests pass
 - Test at 320px and 1440px widths

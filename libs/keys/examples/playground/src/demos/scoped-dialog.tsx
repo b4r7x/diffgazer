@@ -8,7 +8,7 @@ export function ScopedDialogDemo() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<number | null>(null);
   const [confirmed, showConfirmed] = useTransientValue(false, 1500);
-  const cancelRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
 
   useScope("dialog", { enabled: dialogOpen });
 
@@ -32,9 +32,6 @@ export function ScopedDialogDemo() {
   // Global scope: open dialog
   useKey("o", () => setDialogOpen(true), { allowInInput: false, scope: "global" });
 
-  // Dialog scope: confirm with Enter
-  useKey("Enter", confirmAction, { enabled: dialogOpen, scope: "dialog" });
-
   // Dialog scope: cancel with Escape
   useKey("Escape", () => setDialogOpen(false), { enabled: dialogOpen, scope: "dialog" });
 
@@ -46,7 +43,7 @@ export function ScopedDialogDemo() {
       hints={[
         { keys: "1", label: "Select item 1 (through 5)" },
         { keys: "O", label: "Open dialog" },
-        { keys: "Enter", label: "Confirm (in dialog)" },
+        { keys: "Enter", label: "Activate focused button" },
         { keys: "Escape", label: "Close dialog" },
       ]}
     >
@@ -84,7 +81,7 @@ export function ScopedDialogDemo() {
       {dialogOpen && (
         <DemoDialog
           title="Confirm Action"
-          initialFocus={cancelRef}
+          initialFocus={confirmRef}
           onClose={() => setDialogOpen(false)}
         >
           <p style={{ fontSize: 14, color: "var(--color-text-muted)", marginBottom: 20 }}>
@@ -93,14 +90,13 @@ export function ScopedDialogDemo() {
           </p>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button
-              ref={cancelRef}
               type="button"
               className="demo-button--secondary demo-button"
               onClick={() => setDialogOpen(false)}
             >
               Cancel
             </button>
-            <button type="button" className="demo-button" onClick={confirmAction}>
+            <button ref={confirmRef} type="button" className="demo-button" onClick={confirmAction}>
               Confirm
             </button>
           </div>

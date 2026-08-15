@@ -1,15 +1,12 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import { dirname, join } from "node:path";
+import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import type { Result } from "@diffgazer/core/result";
 import type { ClientConfigurationAction } from "@diffgazer/core/schemas/config";
-import { type EvidenceKey, sha256CanonicalJsonSync } from "@diffgazer/core/schemas/review";
-import { describe, expect, it } from "vitest";
-import { executionLimitsFromBudget } from "../ai/admission/service.js";
+import type { EvidenceKey } from "@diffgazer/core/schemas/review";
+import { describe, expect, it, vi } from "vitest";
 import { createAdmissionEvidence } from "./admission-evidence.js";
+import { executionLimitsFromBudget } from "./budget-ceiling.js";
 import { DEFAULT_CONFIGURATION_BUDGET } from "./store.js";
 import {
   configPath,
@@ -19,6 +16,10 @@ import {
   secretsPath,
   writeJson,
 } from "./store.test-support.js";
+
+const { mockLog } = vi.hoisted(() => ({ mockLog: vi.fn() }));
+
+vi.mock("../log.js", () => ({ log: mockLog }));
 
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
 const QWEN_ENDPOINT = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
@@ -56,27 +57,12 @@ const supportedRecord = (overrides: Record<string, unknown> = {}) => ({
   productId: "gemini",
   input: { transportFamily: "hosted-api", productId: "gemini", endpoint: GEMINI_ENDPOINT },
   selectedModelId: null,
-  acknowledgement: { noticeVersion: 1, acceptedAt: null },
+  acknowledgement: { noticeId: "gemini-hosted-api", noticeVersion: 1, acceptedAt: null },
   evidenceReference: null,
   budget: DEFAULT_BUDGET,
   createdAt: CREATED_AT,
   updatedAt: CREATED_AT,
   ...overrides,
-});
-
-const removedRecord = () => ({
-  schemaVersion: 2,
-  status: "removed",
-  configurationId: "cfg-removed",
-  revision: 1,
-  productId: REMOVED_PRODUCT_ID,
-  transportFamily: "hosted-api",
-  selectedModelId: null,
-  acknowledgement: null,
-  evidenceReference: null,
-  budget: null,
-  createdAt: CREATED_AT,
-  updatedAt: CREATED_AT,
 });
 
 const createGeminiAction = (
@@ -140,14 +126,94 @@ const recordFailure = <T, E>(target: unknown[], result: Result<T, E>): void => {
   if (!result.ok) target.push(result);
 };
 
+/**
+ * The gate a review start passes through: a configuration a failed delete left
+ * in place has to hand out leases again, or every later review is refused.
+ */
+async function admitReviewLease(configurationId: string) {
+  const { getConfigurationLeaseAuthority } = await import("../session-registry.js");
+  return getConfigurationLeaseAuthority().tryAcquire({
+    configurationId,
+    configurationRevision: 1,
+    executionFingerprint: "f".repeat(64),
+    limits: executionLimitsFromBudget(DEFAULT_CONFIGURATION_BUDGET),
+  });
+}
+
+function collectStrings(value: unknown, seen = new WeakSet<object>()): string[] {
+  if (typeof value === "string") return [value];
+  if (value === null || typeof value !== "object" || seen.has(value)) return [];
+
+  seen.add(value);
+  const strings: string[] = [];
+  if (value instanceof Error) {
+    strings.push(value.name, value.message);
+    if (value.stack) strings.push(value.stack);
+  }
+  for (const key of Reflect.ownKeys(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor && "value" in descriptor) {
+      strings.push(...collectStrings(descriptor.value, seen));
+    }
+  }
+  return strings;
+}
+
+function hiddenCyclicError(): Error {
+  const cause = new Error("hidden-cause-secret-sentinel");
+  const error = new Error("hidden-message-secret-sentinel", { cause });
+  Object.defineProperty(error, "stack", {
+    configurable: true,
+    value: "hidden-stack-secret-sentinel",
+  });
+  Object.defineProperty(error, Symbol("hidden-symbol-secret-sentinel"), {
+    value: { path: "/private/hidden-path-secret-sentinel", cycle: error },
+  });
+  Object.defineProperty(cause, "cause", { value: error });
+  return error;
+}
+
 describe("config store errors", () => {
-  it("fails stale revisions, removed records, and unknown records with exact error codes and byte-identical state", async () => {
+  it("sanitizes malformed secrets load errors for logs and callers", async () => {
+    const sentinel = "Q7X";
+    writeFileSync(secretsPath(), `{"schemaVersion":2,"bindings":[{"keyId":${sentinel}}]}\n`);
+
+    const store = await loadStore();
+    await expect(store.ready()).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "CONFIGURATION_UNSUPPORTED",
+        message: "Configuration file is not supported by this version",
+      },
+    });
+    await expect(
+      store.runConfigurationAction({ action: "inspect", configurationId: "cfg-missing" }),
+    ).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "CONFIGURATION_UNSUPPORTED",
+        message: "Configuration file is not supported by this version",
+      },
+    });
+
+    expect(mockLog).toHaveBeenCalledWith("warn", "config_v2_load_failed", {
+      code: "CONFIGURATION_UNSUPPORTED",
+      operation: "decode",
+    });
+    const logStrings = collectStrings(mockLog.mock.calls);
+    expect(logStrings.every((value) => !value.includes(sentinel))).toBe(true);
+    expect(logStrings.every((value) => !value.includes(secretsPath()))).toBe(true);
+    expect(logStrings.every((value) => !value.includes("Unexpected token"))).toBe(true);
+    expect(logStrings.every((value) => !value.includes("is not valid JSON"))).toBe(true);
+  });
+
+  it("fails stale revisions and unknown records with exact error codes and byte-identical state", async () => {
     const unknownRecord =
       '{"schemaVersion":99,"configurationId":"cfg-future","future":{"nested":true}}';
     mkdirSync(dirname(configPath()), { recursive: true });
     writeFileSync(
       configPath(),
-      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${JSON.stringify(supportedRecord())},${JSON.stringify(removedRecord())},${unknownRecord}]}\n`,
+      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${JSON.stringify(supportedRecord())},${unknownRecord}]}\n`,
     );
     writeJson(secretsPath(), v2Secrets([fileBinding("cfg-existing", 1)]));
     const store = await loadStore();
@@ -165,30 +231,20 @@ describe("config store errors", () => {
       }),
     ).resolves.toMatchObject({ ok: false, error: { code: "CONFIGURATION_CONFLICT" } });
     await expect(
-      store.runConfigurationAction(updateGeminiAction("cfg-removed", 1)),
-    ).resolves.toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-    await expect(
       store.runConfigurationAction({
         action: "select",
-        configurationId: "cfg-removed",
+        configurationId: "cfg-future",
         modelId: "gemini-2.5-flash",
       }),
     ).resolves.toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
     await expect(
-      store.runConfigurationAction({ action: "test", configurationId: "cfg-removed" }),
+      store.runConfigurationAction({ action: "test", configurationId: "cfg-future" }),
     ).resolves.toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
     await expect(
       store.runConfigurationAction({ action: "inspect", configurationId: "cfg-future" }),
     ).resolves.toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
     await expect(
       store.runConfigurationAction(updateGeminiAction("cfg-future", 1)),
-    ).resolves.toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-    await expect(
-      store.runConfigurationAction({
-        action: "delete",
-        configurationId: "cfg-future",
-        expectedRevision: 1,
-      }),
     ).resolves.toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
     await expect(
       store.runConfigurationAction({ action: "inspect", configurationId: "cfg-never-created" }),
@@ -281,6 +337,10 @@ describe("config store errors", () => {
     expect(readFileSync(configPath(), "utf8")).toBe(configBefore);
     expect(readFileSync(secretsPath(), "utf8")).toBe(secretsBefore);
 
+    const readmitted = await admitReviewLease(configurationId);
+    expect(readmitted.ok).toBe(true);
+    if (readmitted.ok) readmitted.value.release();
+
     fsHooks.removeFileSyncHook = null;
     const retried = await store.runConfigurationAction({
       action: "delete",
@@ -290,12 +350,48 @@ describe("config store errors", () => {
     expect(retried).toMatchObject({ ok: true, value: { action: "delete", status: "succeeded" } });
   });
 
+  it("scrubs hidden and cyclic native failure details while logging why the save failed", async () => {
+    const store = await loadStore();
+    fsHooks.atomicWriteFileHook = async (filePath) => {
+      if (filePath === configPath()) throw hiddenCyclicError();
+    };
+
+    const result = await store.runConfigurationAction(createGeminiAction({ kind: "environment" }));
+
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "PERSIST_FAILED", message: "Failed to persist configuration" },
+    });
+    const returned = collectStrings(result);
+    const logged = collectStrings(mockLog.mock.calls);
+    for (const sentinel of [
+      "hidden-message-secret-sentinel",
+      "hidden-cause-secret-sentinel",
+      "hidden-stack-secret-sentinel",
+      "hidden-symbol-secret-sentinel",
+      "hidden-path-secret-sentinel",
+    ]) {
+      expect(returned.every((value) => !value.includes(sentinel))).toBe(true);
+    }
+    // Only the failure message reaches this server's own log, so an operator can
+    // tell an ENOSPC from an EACCES; stacks, causes, and hidden own properties stay out.
+    expect(logged).toContain("hidden-message-secret-sentinel");
+    for (const sentinel of [
+      "hidden-cause-secret-sentinel",
+      "hidden-stack-secret-sentinel",
+      "hidden-symbol-secret-sentinel",
+      "hidden-path-secret-sentinel",
+    ]) {
+      expect(logged.every((value) => !value.includes(sentinel))).toBe(true);
+    }
+  });
+
   it("redacts secret values, environment names, paths, and evidence details from every action error", async () => {
     const unknownRecord = '{"schemaVersion":99,"configurationId":"cfg-future"}';
     mkdirSync(dirname(configPath()), { recursive: true });
     writeFileSync(
       configPath(),
-      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${JSON.stringify(supportedRecord())},${JSON.stringify(removedRecord())},${unknownRecord}]}\n`,
+      `{"schemaVersion":2,"settings":{},"selectedConfigurationId":null,"configurations":[${JSON.stringify(supportedRecord())},${unknownRecord}]}\n`,
     );
     writeJson(secretsPath(), v2Secrets([fileBinding("cfg-existing", 1)]));
     const store = await loadStore();
@@ -307,9 +403,9 @@ describe("config store errors", () => {
         action: "create",
         input: {
           transportFamily: "hosted-api",
-          productId: REMOVED_PRODUCT_ID,
+          productId: "future-product",
           endpoint: "https://api.example.invalid/v1",
-          credential: { kind: "literal", value: "sk-zai-coding-never-created" },
+          credential: { kind: "literal", value: "sk-proj-never-created" },
         },
       } as unknown as ClientConfigurationAction),
     );
@@ -329,25 +425,17 @@ describe("config store errors", () => {
       failures,
       await store.runConfigurationAction({
         action: "select",
-        configurationId: "cfg-removed",
+        configurationId: "cfg-future",
         modelId: "gemini-2.5-flash",
       }),
     );
     recordFailure(
       failures,
-      await store.runConfigurationAction({ action: "test", configurationId: "cfg-removed" }),
+      await store.runConfigurationAction({ action: "test", configurationId: "cfg-future" }),
     );
     recordFailure(
       failures,
       await store.runConfigurationAction({ action: "inspect", configurationId: "cfg-future" }),
-    );
-    recordFailure(
-      failures,
-      await store.runConfigurationAction({
-        action: "delete",
-        configurationId: "cfg-future",
-        expectedRevision: 1,
-      }),
     );
     recordFailure(
       failures,
@@ -395,7 +483,7 @@ describe("config store errors", () => {
       ),
     );
 
-    expect(failures.length).toBe(11);
+    expect(failures.length).toBe(10);
     const serialized = JSON.stringify(failures);
     expect(serialized).not.toContain("sk-proj-");
     expect(serialized).not.toContain("GOOGLE_API_KEY");
@@ -406,5 +494,95 @@ describe("config store errors", () => {
     expect(serialized).not.toContain("credentialReferenceIdentity");
     expect(serialized).not.toContain("structuredOutputSchemaSha256");
     expect(serialized).not.toContain("evidenceReference");
+  });
+
+  it("does not persist configuration deletion when lease cancellation fails", async () => {
+    writeJson(configPath(), v2Config([supportedRecord()]));
+    writeJson(secretsPath(), v2Secrets([fileBinding("cfg-existing", 1)]));
+    const secretPath = literalSecretPathFor("cfg-existing", 1);
+    mkdirSync(dirname(secretPath), { recursive: true });
+    writeFileSync(secretPath, "secret-value", { mode: 0o600 });
+
+    const { registerConfigSeams } = await import("./seams.js");
+    const { getConfigurationLeaseAuthority } = await import("../session-registry.js");
+    const events: string[] = [];
+    const store = await loadStore();
+    // Revocation runs against the real authority so the delete's effect on
+    // admission is observable; only cancellation is stubbed to fail.
+    const authority = getConfigurationLeaseAuthority();
+    registerConfigSeams({
+      leaseHooks: {
+        revoke: (configurationId) => {
+          events.push("revoke");
+          authority.revoke(configurationId);
+        },
+        cancel: () => {
+          events.push("cancel");
+          throw new Error("descendants still active");
+        },
+        drain: () => {
+          events.push("drain");
+        },
+        clearRevocation: (configurationId) => {
+          authority.clearRevocation(configurationId);
+        },
+      },
+    });
+
+    const configBefore = readFileSync(configPath(), "utf8");
+    const secretsBefore = readFileSync(secretsPath(), "utf8");
+
+    const result = await store.runConfigurationAction({
+      action: "delete",
+      configurationId: "cfg-existing",
+      expectedRevision: 1,
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: "CONFIGURATION_CONFLICT",
+        message: "A review is still running on this configuration",
+      },
+    });
+    expect(events).toEqual(["revoke", "cancel"]);
+    expect(readFileSync(configPath(), "utf8")).toBe(configBefore);
+    expect(readFileSync(secretsPath(), "utf8")).toBe(secretsBefore);
+    expect(readFileSync(secretPath, "utf8")).toBe("secret-value");
+
+    const readmitted = await admitReviewLease("cfg-existing");
+    expect(readmitted.ok).toBe(true);
+    if (readmitted.ok) readmitted.value.release();
+  });
+
+  it("reports a delete blocked by a running review as a conflict, not a persistence failure", async () => {
+    writeJson(configPath(), v2Config([supportedRecord()]));
+    writeJson(secretsPath(), v2Secrets([fileBinding("cfg-existing", 1)]));
+
+    const { registerConfigSeams } = await import("./seams.js");
+    const store = await loadStore();
+    registerConfigSeams({
+      leaseHooks: {
+        revoke: () => {},
+        cancel: () => {},
+        drain: () => {
+          throw new Error("Configuration cfg-existing still has active executions after drain");
+        },
+        clearRevocation: () => {},
+      },
+    });
+
+    const result = await store.runConfigurationAction({
+      action: "delete",
+      configurationId: "cfg-existing",
+      expectedRevision: 1,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: "CONFIGURATION_CONFLICT",
+        message: "A review is still running on this configuration",
+      },
+    });
   });
 });

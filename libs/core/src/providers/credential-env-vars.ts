@@ -25,3 +25,12 @@ export const CREDENTIAL_ENV_VARS: Readonly<Partial<Record<RunnableProductId, str
   mistral: "MISTRAL_API_KEY",
   "local-openai": "OPENAI_API_KEY",
 };
+
+/** The canonical environment variable a hosted product reads for `{ kind: "environment" }`. */
+export function resolveCredentialEnvironmentVariable(productId: RunnableProductId): string {
+  const envVar = CREDENTIAL_ENV_VARS[productId];
+  if (!envVar) {
+    throw new Error(`No credential environment variable mapped for ${productId}`);
+  }
+  return envVar;
+}

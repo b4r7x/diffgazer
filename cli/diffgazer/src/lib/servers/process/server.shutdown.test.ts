@@ -4,8 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { config } from "../../../config";
+import {
+  BASE_CONFIG,
+  createFakeChild,
+  type FakeChild,
+} from "../../../testing/server-process-fixtures";
 import { createProcessServer } from "./server";
-import { BASE_CONFIG, createFakeChild, type FakeChild } from "./test-support";
 
 const execaMock = vi.hoisted(() => vi.fn());
 // Boundary mock: subprocess launcher for managed child processes.

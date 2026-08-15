@@ -6,7 +6,7 @@ import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { useId, useState } from "react";
 
 interface AnalysisSelectorContentProps {
-  options: LensOption[];
+  options: readonly LensOption[];
   value: LensId[];
   onChange: (value: LensId[]) => void;
   disabled?: boolean;

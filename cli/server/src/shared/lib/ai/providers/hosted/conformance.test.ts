@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { CREDENTIAL_ENV_VARS } from "@diffgazer/core/providers";
+import { HOSTED_API_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   canProduceReadyEvidence,
   HOSTED_LIVE_PROBE_DESCRIPTORS,
@@ -12,6 +14,12 @@ import {
   runHostedLiveProbe,
   runHostedMockConformanceCase,
 } from "./fixtures.js";
+
+// Stubbed env is restored even when an expectation between the stubs fails, so a
+// leaked live-probe opt-in or fake credential cannot cascade into later suites.
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("REQ-084 hosted production-path conformance", () => {
   it.each(HOSTED_REQ_084_CASES)("$id exercises the production path", async (testCase) => {
@@ -51,15 +59,24 @@ describe("REQ-086 Mistral conformance depth", () => {
 });
 
 describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
+  it("uses the canonical credential environment variable for every hosted product", () => {
+    expect(
+      HOSTED_LIVE_PROBE_DESCRIPTORS.map(({ productId, credentialEnv }) => [
+        productId,
+        credentialEnv,
+      ]),
+    ).toEqual(
+      HOSTED_API_PRODUCT_IDS.map((productId) => [productId, CREDENTIAL_ENV_VARS[productId]]),
+    );
+  });
+
   it("reports skipped live probes without credential, opt-in, or entitlement", () => {
     const descriptor = HOSTED_LIVE_PROBE_DESCRIPTORS.find((entry) => entry.productId === "groq");
     expect(descriptor).toBeDefined();
     if (!descriptor) return;
 
-    const previousOptIn = process.env[HOSTED_LIVE_PROBE_OPT_IN_ENV];
-    const previousCredential = process.env[descriptor.credentialEnv];
-    delete process.env[HOSTED_LIVE_PROBE_OPT_IN_ENV];
-    delete process.env[descriptor.credentialEnv];
+    vi.stubEnv(HOSTED_LIVE_PROBE_OPT_IN_ENV, undefined);
+    vi.stubEnv(descriptor.credentialEnv, undefined);
 
     const skipReason = resolveHostedLiveSkipReason(descriptor);
     expect(skipReason).toBe("live-probes-disabled");
@@ -67,7 +84,7 @@ describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
     expect(observation.status).toBe("skipped");
     expect(canProduceReadyEvidence(observation)).toBe(false);
 
-    process.env[HOSTED_LIVE_PROBE_OPT_IN_ENV] = "1";
+    vi.stubEnv(HOSTED_LIVE_PROBE_OPT_IN_ENV, "1");
     expect(resolveHostedLiveSkipReason(descriptor)).toBe("credential-missing");
 
     const qwenDescriptor = HOSTED_LIVE_PROBE_DESCRIPTORS.find(
@@ -75,15 +92,10 @@ describe("REQ-089 and REQ-091 hosted live truthfulness", () => {
     );
     expect(qwenDescriptor).toBeDefined();
     if (!qwenDescriptor) return;
-    process.env[qwenDescriptor.credentialEnv] = "test-key";
+    vi.stubEnv(qwenDescriptor.credentialEnv, "test-key");
     expect(resolveHostedLiveSkipReason({ ...qwenDescriptor, workspaceAccountId: null })).toBe(
       "entitlement-missing",
     );
-
-    if (previousOptIn === undefined) delete process.env[HOSTED_LIVE_PROBE_OPT_IN_ENV];
-    else process.env[HOSTED_LIVE_PROBE_OPT_IN_ENV] = previousOptIn;
-    if (previousCredential === undefined) delete process.env[descriptor.credentialEnv];
-    else process.env[descriptor.credentialEnv] = previousCredential;
   });
 
   it("never counts skipped live probes as passed", async () => {

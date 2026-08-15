@@ -80,6 +80,17 @@ const HUNK_RE = /^@@\s+-(\d+)(?:,(\d+))?\s+\+(\d+)(?:,(\d+))?\s+@@(.*)$/;
 const SKIP_RE =
   /^(index |new file mode|deleted file mode|old mode|new mode|similarity index|rename from|rename to|Binary files|copy from|copy to)/;
 
+// The control-character escapes git's quote_c_style emits, beyond \\ and \".
+const C_QUOTE_CONTROL_BYTES: Record<string, number> = {
+  a: 0x07,
+  b: 0x08,
+  t: 0x09,
+  n: 0x0a,
+  v: 0x0b,
+  f: 0x0c,
+  r: 0x0d,
+};
+
 function decodeQuotedDiffPath(path: string): string {
   const bytes: number[] = [];
   const encoder = new TextEncoder();
@@ -101,10 +112,9 @@ function decodeQuotedDiffPath(path: string): string {
       index++;
       continue;
     }
-    if (escaped === "t" || escaped === "n" || escaped === "r") {
-      if (escaped === "t") bytes.push(0x09);
-      if (escaped === "n") bytes.push(0x0a);
-      if (escaped === "r") bytes.push(0x0d);
+    const controlByte = escaped === undefined ? undefined : C_QUOTE_CONTROL_BYTES[escaped];
+    if (controlByte !== undefined) {
+      bytes.push(controlByte);
       index++;
       continue;
     }
@@ -173,7 +183,10 @@ export function parseDiff(patch: string): ParsedDiff[] {
     hasHeaderPair = false;
   };
 
-  for (const line of lines) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex]!;
+    const nextLine = lines[lineIndex + 1];
+
     if (line.startsWith("diff --git ")) {
       finishCurrentFile();
       current = startFile();
@@ -185,27 +198,43 @@ export function parseDiff(patch: string): ParsedDiff[] {
     if (hunk && (remainingOldLines > 0 || remainingNewLines > 0)) {
       if (line.startsWith("\\")) continue;
 
-      if (line.startsWith("-") && remainingOldLines > 0) {
-        hunk.changes.push({ type: "remove", content: line.slice(1), oldLine, newLine: null });
-        oldLine++;
-        remainingOldLines--;
-        continue;
+      // A removed line whose content starts "-- " reaches here as "--- ", and an
+      // added "++ " as "+++ ", so payload can imitate a header pair. Only the
+      // classic shape — the pair immediately followed by the next hunk header —
+      // ends the hunk; anything else is content.
+      const isFileHeaderPair =
+        line.startsWith("--- ") &&
+        nextLine?.startsWith("+++ ") === true &&
+        HUNK_RE.test(lines[lineIndex + 2] ?? "");
+      const isHunkBoundary =
+        line.startsWith("diff --git ") || HUNK_RE.test(line) || isFileHeaderPair;
+
+      if (!isHunkBoundary) {
+        if (line.startsWith("-") && remainingOldLines > 0) {
+          hunk.changes.push({ type: "remove", content: line.slice(1), oldLine, newLine: null });
+          oldLine++;
+          remainingOldLines--;
+          continue;
+        }
+        if (line.startsWith("+") && remainingNewLines > 0) {
+          hunk.changes.push({ type: "add", content: line.slice(1), oldLine: null, newLine });
+          newLine++;
+          remainingNewLines--;
+          continue;
+        }
+        if (remainingOldLines > 0 && remainingNewLines > 0) {
+          const content = line.startsWith(" ") ? line.slice(1) : line;
+          hunk.changes.push({ type: "context", content, oldLine, newLine });
+          oldLine++;
+          newLine++;
+          remainingOldLines--;
+          remainingNewLines--;
+          continue;
+        }
       }
-      if (line.startsWith("+") && remainingNewLines > 0) {
-        hunk.changes.push({ type: "add", content: line.slice(1), oldLine: null, newLine });
-        newLine++;
-        remainingNewLines--;
-        continue;
-      }
-      if (remainingOldLines > 0 && remainingNewLines > 0) {
-        const content = line.startsWith(" ") ? line.slice(1) : line;
-        hunk.changes.push({ type: "context", content, oldLine, newLine });
-        oldLine++;
-        newLine++;
-        remainingOldLines--;
-        remainingNewLines--;
-      }
-      continue;
+
+      remainingOldLines = 0;
+      remainingNewLines = 0;
     }
 
     if (SKIP_RE.test(line)) continue;

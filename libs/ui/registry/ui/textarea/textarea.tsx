@@ -49,6 +49,8 @@ export interface TextareaProps
   resize?: TextareaResize;
   /** Visual form of each resize handle. */
   resizeHandle?: TextareaResizeHandles;
+  /** Accessible names for the resize handles, per axis. Defaults to `Resize textarea <axis>`. */
+  resizeLabels?: Partial<Record<TextareaResizeAxis, string>>;
 }
 
 /**
@@ -63,6 +65,7 @@ export function Textarea({
   readOnly,
   resize = "vertical",
   resizeHandle,
+  resizeLabels,
   style,
   ...props
 }: TextareaProps) {
@@ -122,6 +125,7 @@ export function Textarea({
           handle={resolveHandle(resizeHandle, "vertical")}
           active={isResizingVertically}
           invalid={isInvalid}
+          label={resizeLabels?.vertical}
           {...getAxisProps("vertical")}
         />
       ) : null}
@@ -131,6 +135,7 @@ export function Textarea({
           handle={resolveHandle(resizeHandle, "horizontal")}
           active={isResizingHorizontally}
           invalid={isInvalid}
+          label={resizeLabels?.horizontal}
           {...getAxisProps("horizontal")}
         />
       ) : null}

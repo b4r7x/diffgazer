@@ -31,7 +31,6 @@ vi.mock("../../../components/layout/global", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../components/layout/global")>()),
   useContentZone: () => ({
     columns: terminalSize.columns,
-    rows: terminalSize.rows,
     contentColumns: terminalSize.columns,
     contentRows: terminalSize.rows - 4,
   }),
@@ -117,6 +116,35 @@ describe("useHistoryScreen", () => {
       result.current.cycleFocusZone();
     });
     expect(result.current.focusZone).toBe("search");
+  });
+
+  it("keeps run controls active when a background refetch fails with retained data", () => {
+    const state = makeHistoryScreenState({
+      reviews: [{ id: "history-review-1" }],
+      mappedRuns: [
+        {
+          id: "history-review-1",
+          displayId: "#hist",
+          branch: "main",
+          timestamp: "now",
+          summary: "Retained run",
+        },
+      ],
+      selectedRunId: "history-review-1",
+      hasReviews: true,
+    });
+    useHistoryScreenStateMock.mockReturnValue({
+      ...state,
+      reviewsQuery: {
+        ...state.reviewsQuery,
+        error: new Error("refresh unavailable"),
+      },
+      retainedError: { kind: "refetch", message: "refresh unavailable" },
+    });
+
+    const { result } = renderHook(() => useHistoryScreen({ onOpenReview: vi.fn() }));
+
+    expect(result.current.interactionMode).toBe("runs");
   });
 
   it("clears a zero-match search and activates its first unfiltered run in one transition", () => {

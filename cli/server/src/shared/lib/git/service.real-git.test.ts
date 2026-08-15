@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DETACHED_HEAD_BRANCH } from "@diffgazer/core/schemas/git";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createGitService } from "./service.js";
 
@@ -11,8 +12,15 @@ describe("createGitService with real git porcelain output", () => {
   beforeEach(() => {
     repo = mkdtempSync(join(tmpdir(), "diffgazer-git-status-"));
     runGit("init", "--quiet", "--initial-branch=main");
+    // The service deletes GIT_CONFIG_GLOBAL/GIT_CONFIG_SYSTEM from the child env,
+    // so a contributor's ~/.gitconfig can only be neutralized in the local config:
+    // commit signing without a key, rename detection off, and repo hooks would
+    // each fail this suite for reasons unrelated to the parser under test.
     runGit("config", "user.name", "Diffgazer Test");
     runGit("config", "user.email", "diffgazer@example.invalid");
+    runGit("config", "commit.gpgsign", "false");
+    runGit("config", "status.renames", "true");
+    runGit("config", "core.hooksPath", join(repo, "absent-hooks"));
   });
 
   afterEach(() => {
@@ -127,6 +135,18 @@ describe("createGitService with real git porcelain output", () => {
     expect(await readConflictedPaths()).toContain("conflicted.txt");
     expect(runGit("status", "--porcelain=v1")).toContain("DD conflicted.txt");
   });
+
+  it("emits canonical a/b prefixes when diff.noprefix is enabled in repo config", async () => {
+    runGit("config", "diff.noprefix", "true");
+    commitFile("tracked.txt");
+    writeFileSync(join(repo, "tracked.txt"), "after\n");
+
+    const result = await createGitService({ cwd: repo }).getDiff("unstaged");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toContain("diff --git a/tracked.txt b/tracked.txt");
+  });
 });
 
 describe("structured git branch status", () => {
@@ -177,7 +197,7 @@ describe("structured git branch status", () => {
     expect(result.value.behind).toBe(0);
   });
 
-  it("represents a real detached HEAD without inventing a branch name", async () => {
+  it("marks a real detached HEAD with the out-of-band sentinel", async () => {
     const repository = createRepository("diffgazer-detached-branch-");
     runGitIn(repository, "init", "--quiet", "--initial-branch=main");
     configureAuthor(repository);
@@ -188,8 +208,22 @@ describe("structured git branch status", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.branch).toBeNull();
+    expect(result.value.branch).toBe(DETACHED_HEAD_BRANCH);
     expect(result.value.remoteBranch).toBeNull();
+  });
+
+  it("keeps a real branch named detached distinct from a detached HEAD", async () => {
+    const repository = createRepository("diffgazer-detached-named-branch-");
+    runGitIn(repository, "init", "--quiet", "--initial-branch=detached");
+    configureAuthor(repository);
+    commitFile(repository, "base\n", "base");
+
+    const result = await createGitService({ cwd: repository }).getStatus();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.branch).toBe("detached");
+    expect(result.value.branch).not.toBe(DETACHED_HEAD_BRANCH);
   });
 
   it("reads structured upstream ahead and behind counts", async () => {

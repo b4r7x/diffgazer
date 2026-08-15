@@ -1,8 +1,13 @@
-import { type Dispatch, type SetStateAction, useState } from "react";
+import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 import { useReview, useReviews } from "../api/hooks/review.js";
-import { formatDuration } from "../format.js";
-import type { SeverityCounts, TimelineItem } from "../schemas/presentation/index.js";
-import type { ReviewIssue, ReviewMetadata } from "../schemas/review/index.js";
+import { buildRunIdLookup, formatDuration, type RunIdLookup } from "../format.js";
+import type { TimelineItem } from "../schemas/presentation/index.js";
+import type {
+  ReviewIssue,
+  ReviewListWarning,
+  ReviewMetadata,
+  SeverityCounts,
+} from "../schemas/review/index.js";
 import { sortIssuesBySeverity } from "./history/issue-order.js";
 import {
   buildTimelineItems,
@@ -21,6 +26,13 @@ import {
 /** A `[value, setter]` pair, mirroring `useState`'s return shape. */
 type StatePair<T> = [T, Dispatch<SetStateAction<T>>];
 
+// Shared so a not-yet-loaded query keeps the same `reviews` identity across
+// renders and the derived run-label memos below survive unrelated re-renders.
+// Frozen because that identity is handed to every consumer: one `sort` or
+// `push` on it would reorder or fill the "empty" list for every other mount.
+const NO_REVIEWS = Object.freeze<ReviewMetadata[]>([]) as ReviewMetadata[];
+const NO_WARNINGS = Object.freeze<ReviewListWarning[]>([]) as ReviewListWarning[];
+
 export interface UseHistoryScreenStateOptions {
   /** Surface-owned selection state; defaults to internal `useState`. */
   selectedRunId?: StatePair<string | null>;
@@ -32,8 +44,11 @@ export interface HistoryScreenState {
   reviewsQuery: ReturnType<typeof useReviews>;
   reviewDetailQuery: ReturnType<typeof useReview>;
   reviews: ReviewMetadata[];
-  isLoading: boolean;
-  error: string | null;
+  runIdLookup: RunIdLookup;
+  retainedError:
+    | { kind: "pagination"; message: string }
+    | { kind: "refetch"; message: string }
+    | null;
 
   timelineItems: TimelineItem[];
   selectedDateId: string;
@@ -70,7 +85,8 @@ export function useHistoryScreenState(
   options: UseHistoryScreenStateOptions = {},
 ): HistoryScreenState {
   const reviewsQuery = useReviews();
-  const reviews = reviewsQuery.data?.reviews ?? [];
+  const reviews = reviewsQuery.data?.reviews ?? NO_REVIEWS;
+  const warnings = reviewsQuery.data?.warnings ?? NO_WARNINGS;
 
   const internalRunId = useState<string | null>(null);
   const internalDateId = useState<string>(HISTORY_SECTION_ALL_ID);
@@ -83,13 +99,25 @@ export function useHistoryScreenState(
   const timelineItems = buildTimelineItems(reviews);
   const selectedDateId = resolveSelectedDateId(rawSelectedDateId, timelineItems);
 
-  const filteredReviews = filterReviewsForHistory(reviews, selectedDateId, searchQuery);
-  const peerRunIds = reviews.map((review) => review.id);
-  const mappedRuns = filteredReviews.map((review) => buildHistoryRunSummary(review, peerRunIds));
+  const runIdLookup = useMemo(() => {
+    const ids = new Set(reviews.map((review) => review.id));
+    for (const warning of warnings) {
+      if ("reviewId" in warning) ids.add(warning.reviewId);
+    }
+    return buildRunIdLookup([...ids]);
+  }, [reviews, warnings]);
+  const filteredReviews = useMemo(
+    () => filterReviewsForHistory(reviews, selectedDateId, searchQuery, runIdLookup),
+    [reviews, selectedDateId, searchQuery, runIdLookup],
+  );
+  const mappedRuns = useMemo(
+    () => filteredReviews.map((review) => buildHistoryRunSummary(review, runIdLookup)),
+    [filteredReviews, runIdLookup],
+  );
   const selectedRunId = resolveSelectedId(rawSelectedRunId, mappedRuns);
   const selectedRun = reviews.find((review) => review.id === selectedRunId) ?? null;
 
-  const reviewDetailQuery = useReview(selectedRunId ?? "");
+  const reviewDetailQuery = useReview(selectedRunId);
   const reviewDetail = reviewDetailQuery.data?.review ?? null;
   const sortedIssues = sortIssuesBySeverity(reviewDetail?.result?.issues);
 
@@ -99,6 +127,15 @@ export function useHistoryScreenState(
   const hasReviews = reviews.length > 0;
   const hasSearchQuery = searchQuery.trim().length > 0;
   const emptyRunsMessage = getEmptyRunsMessage(hasReviews, hasSearchQuery, selectedDateId);
+  const hasLoadedReviews = reviewsQuery.data !== undefined;
+  const queryError = reviewsQuery.error?.message ?? null;
+  const retainedError: HistoryScreenState["retainedError"] =
+    hasLoadedReviews && queryError !== null
+      ? {
+          kind: reviewsQuery.isFetchNextPageError ? "pagination" : "refetch",
+          message: queryError,
+        }
+      : null;
   const loadMoreReviews = async () => {
     await reviewsQuery.fetchNextPage();
   };
@@ -121,8 +158,8 @@ export function useHistoryScreenState(
     reviewsQuery,
     reviewDetailQuery,
     reviews,
-    isLoading: reviewsQuery.isLoading,
-    error: reviewsQuery.error?.message ?? null,
+    runIdLookup,
+    retainedError,
     timelineItems,
     selectedDateId,
     setSelectedDateId,

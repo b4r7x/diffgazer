@@ -1,6 +1,7 @@
-import { PRODUCT_REGISTRY, useModelSource } from "@diffgazer/core/providers";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
-import type { ClientConfigurationSummary } from "@diffgazer/core/schemas/config";
+import { getModelTierBadge, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { useModelSource } from "@diffgazer/core/providers/hooks";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
+import type { ClientConfigurationSummary, ModelInfo } from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { Badge } from "../../../../components/ui/badge";
@@ -9,12 +10,13 @@ import { Spinner } from "../../../../components/ui/spinner";
 import { useTerminalDimensions } from "../../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../../theme/provider";
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 const MODEL_STEP_RESERVED_ROWS = 12;
+// A row costs a second line only when the catalog gives it a detail to print:
+// products that publish neither a distinct id nor a description render one line.
+const MODEL_ROW_LINES_WITH_DETAIL = 2;
 
 interface ModelStepProps {
-  configuration: SupportedConfigurationSummary | null;
+  configuration: ClientConfigurationSummary | null;
   isPreparing: boolean;
   onRetry: () => void;
   value?: string | null;
@@ -22,22 +24,29 @@ interface ModelStepProps {
   isActive?: boolean;
 }
 
-interface ModelOption {
-  id: string;
-  name: string;
-  badges: Array<{ label: string; variant: "info" | "success" | "warning" }>;
+/**
+ * The exact id leads the secondary line because it is the string this step saves
+ * and a review pins: the catalog publishes distinct routes under one display
+ * name (two OpenRouter entries are both "Nano Banana Pro"), so the name alone
+ * cannot identify the model. The context blurb trails it, and when upstream
+ * publishes no display name the two are equal and only the row title is shown.
+ */
+function getModelDetail(model: ModelInfo): string {
+  const parts = model.id === model.name ? [] : [model.id];
+  if (model.description) parts.push(model.description);
+  return parts.join(" · ");
 }
 
-function modelToOption(model: {
-  id: string;
-  name: string;
-  tier: string;
-  recommended?: boolean;
-}): ModelOption {
-  const badges: ModelOption["badges"] = [];
-  if (model.tier === "free") badges.push({ label: "free", variant: "success" });
-  if (model.recommended) badges.push({ label: "recommended", variant: "info" });
-  return { id: model.id, name: model.name, badges };
+function ModelRowLabel({ model }: { model: ModelInfo }): ReactElement {
+  const tierBadge = getModelTierBadge(model.tier);
+
+  return (
+    <Box gap={1}>
+      <Text>{sanitizeTerminalText(model.name)}</Text>
+      {model.recommended && <Badge variant="info">recommended</Badge>}
+      {tierBadge && <Badge variant={tierBadge.variant}>{tierBadge.label}</Badge>}
+    </Box>
+  );
 }
 
 function RetryHint(): ReactElement {
@@ -46,7 +55,7 @@ function RetryHint(): ReactElement {
 }
 
 interface DiscoveredModelsProps {
-  configuration: SupportedConfigurationSummary;
+  configuration: ClientConfigurationSummary;
   subtitle: string;
   value?: string | null;
   onChange: (modelId: string) => void;
@@ -108,9 +117,7 @@ function DiscoveredModels({
     );
   }
 
-  const models = source.models.map(modelToOption);
-
-  if (models.length === 0) {
+  if (source.models.length === 0) {
     return (
       <Box flexDirection="column" gap={1}>
         <Text color={tokens.muted}>{subtitle}</Text>
@@ -120,6 +127,14 @@ function DiscoveredModels({
     );
   }
 
+  const rowsWithDetail = source.models.map((model) => ({
+    model,
+    detail: getModelDetail(model),
+  }));
+  const rowLines = rowsWithDetail.some(({ detail }) => detail !== "")
+    ? MODEL_ROW_LINES_WITH_DETAIL
+    : 1;
+
   return (
     <Box flexDirection="column" gap={1}>
       <Text color={tokens.muted}>{subtitle}</Text>
@@ -127,22 +142,14 @@ function DiscoveredModels({
         value={value ?? undefined}
         onChange={onChange}
         isActive={isActive}
-        maxVisibleItems={Math.max(1, rows - MODEL_STEP_RESERVED_ROWS)}
+        maxVisibleItems={Math.max(1, Math.floor((rows - MODEL_STEP_RESERVED_ROWS) / rowLines))}
       >
-        {models.map((model) => (
+        {rowsWithDetail.map(({ model, detail }) => (
           <RadioGroup.Item
             key={model.id}
             value={model.id}
-            label={
-              <Box gap={1}>
-                <Text>{model.name}</Text>
-                {model.badges.map((badge) => (
-                  <Badge key={badge.label} variant={badge.variant}>
-                    {badge.label}
-                  </Badge>
-                ))}
-              </Box>
-            }
+            label={<ModelRowLabel model={model} />}
+            description={detail === "" ? undefined : sanitizeTerminalText(detail)}
           />
         ))}
       </RadioGroup>

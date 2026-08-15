@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const floatingPanelDoc: ComponentDoc = {
   description:
@@ -43,7 +43,12 @@ export const floatingPanelDoc: ComponentDoc = {
   usage: { example: "floating-panel-default" },
   examples: [
     { name: "floating-panel-default", title: "Anchored panel" },
-    { name: "floating-panel-custom-menu", title: "Custom menu" },
+    {
+      name: "floating-panel-custom-menu",
+      title: "Custom menu",
+      registryDependencies: ["outside-click", "use-focusable", "use-navigation"],
+      optionalIntegrations: ["keyboard-navigation"],
+    },
     { name: "floating-panel-collision", title: "Edge collision" },
   ],
   keyboard: null,
@@ -220,19 +225,21 @@ export const floatingPanelDoc: ComponentDoc = {
         required: true,
         defaultValue: null,
         description:
-          "True once the panel has measured against its trigger; false during the first paint and after the exit animation. Use to defer effects (focus, measurement) until after the first measure.",
+          "True once a viewport position has been resolved and the panel has measured against its trigger; false during the first paint and after the exit animation. Use to defer effects (focus, measurement) until after the first measure.",
       },
       side: {
         type: '"top" | "bottom" | "left" | "right" | null',
         required: true,
         defaultValue: null,
-        description: "Resolved side after collision handling. Null before the first measure.",
+        description:
+          "Preferred side relative to the trigger; resolved after collision handling. Null before the first measure.",
       },
       align: {
         type: '"start" | "center" | "end" | null',
         required: true,
         defaultValue: null,
-        description: "Resolved align after collision handling. Null before the first measure.",
+        description:
+          "Alignment along the chosen side; resolved align after collision handling. Null before the first measure.",
       },
     },
   },

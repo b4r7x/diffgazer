@@ -1,4 +1,4 @@
-import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
+import type { SeverityCounts } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

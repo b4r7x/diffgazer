@@ -3,7 +3,7 @@ title: Hotkey format
 description: Modifier syntax, key aliases, and matching rules for `@diffgazer/keys` hotkey strings.
 ---
 
-Hotkeys are strings like `"mod+k"`, `"shift+Enter"`, or `"ArrowDown"`. Parsed by `matchesHotkey()` internally and used with [useKey](/keys/hooks/use-key).
+Hotkeys are strings like `"mod+k"`, `"shift+Enter"`, or `"ArrowDown"`. Each string is parsed once when the handler registers, then matched against keyboard events at dispatch time, and used with [useKey](/keys/hooks/use-key).
 
 ## Modifiers
 

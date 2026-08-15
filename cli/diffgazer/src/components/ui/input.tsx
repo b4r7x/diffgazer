@@ -10,7 +10,6 @@ export interface InputProps {
   onChange?: (value: string) => void;
   placeholder?: string;
   size?: "sm" | "md" | "lg";
-  error?: boolean;
   disabled?: boolean;
   type?: "text" | "password";
   isActive?: boolean;
@@ -27,7 +26,6 @@ export function Input({
   onChange,
   placeholder,
   size = "md",
-  error = false,
   disabled = false,
   type = "text",
   isActive = false,
@@ -47,8 +45,7 @@ export function Input({
   );
 
   const width = Math.min(widthBySize[size], columns - 4);
-  const enabledBorderColor = error ? tokens.error : tokens.border;
-  const borderColor = disabled ? tokens.muted : enabledBorderColor;
+  const borderColor = disabled ? tokens.muted : tokens.border;
   const display = type === "password" ? "*".repeat(Array.from(value).length) : value;
   const showPlaceholder = value.length === 0 && placeholder != null;
 

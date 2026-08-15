@@ -151,49 +151,84 @@ function resolveDockerWorkdir(argumentsText, currentWorkdir) {
   return currentWorkdir === null ? null : posix.join(currentWorkdir, workdir);
 }
 
+function collectMissingCopiesBeforeFrozenInstalls(context, file, requiredPaths) {
+  const missing = [];
+  const copies = [];
+  let workdir = ".";
+  let stage = 0;
+
+  for (const instruction of parseDockerInstructions(readTextInRoot(context, file))) {
+    if (instruction.name === "FROM") {
+      copies.length = 0;
+      workdir = ".";
+      stage += 1;
+      continue;
+    }
+    if (instruction.name === "WORKDIR") {
+      workdir = resolveDockerWorkdir(instruction.arguments, workdir);
+      continue;
+    }
+    if (instruction.name === "COPY") {
+      const copy = parseDockerCopy(instruction.arguments);
+      if (copy) copies.push({ ...copy, workdir });
+    }
+    if (instruction.name !== "RUN" || !hasFrozenPnpmInstall(instruction.arguments)) continue;
+
+    for (const path of requiredPaths) {
+      if (!copies.some((copy) => dockerCopyCoversPath(copy, path, workdir))) {
+        missing.push(`${file}: stage ${stage}: ${path}`);
+      }
+    }
+  }
+
+  return missing;
+}
+
+function dockerfilePaths(context) {
+  return context.repoFiles.filter((path) => /(^|\/)(?:Dockerfile|[^/]+\.Dockerfile)$/.test(path));
+}
+
 export function checkDockerFrozenInstallsCopyPatches(context) {
   const workspace = parseYaml(readTextInRoot(context, "pnpm-workspace.yaml"));
   const patchPaths = Object.values(workspace?.patchedDependencies ?? {}).filter(
     (path) => typeof path === "string",
   );
-  const dockerfiles = context.repoFiles.filter((path) =>
-    /(^|\/)(?:Dockerfile|[^/]+\.Dockerfile)$/.test(path),
+  const missing = dockerfilePaths(context).flatMap((file) =>
+    collectMissingCopiesBeforeFrozenInstalls(context, file, patchPaths),
   );
-  const missing = [];
-
-  for (const file of dockerfiles) {
-    const copies = [];
-    let workdir = ".";
-    let stage = 0;
-
-    for (const instruction of parseDockerInstructions(readTextInRoot(context, file))) {
-      if (instruction.name === "FROM") {
-        copies.length = 0;
-        workdir = ".";
-        stage += 1;
-        continue;
-      }
-      if (instruction.name === "WORKDIR") {
-        workdir = resolveDockerWorkdir(instruction.arguments, workdir);
-        continue;
-      }
-      if (instruction.name === "COPY") {
-        const copy = parseDockerCopy(instruction.arguments);
-        if (copy) copies.push({ ...copy, workdir });
-      }
-      if (instruction.name !== "RUN" || !hasFrozenPnpmInstall(instruction.arguments)) continue;
-
-      for (const path of patchPaths) {
-        if (!copies.some((copy) => dockerCopyCoversPath(copy, path, workdir))) {
-          missing.push(`${file}: stage ${stage}: ${path}`);
-        }
-      }
-    }
-  }
 
   return invariantResult(
     "Docker frozen installs copy configured patches",
     missing.length === 0,
     missing.join(", "),
+  );
+}
+
+function workspaceGlobToManifestPattern(glob) {
+  const escaped = glob.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replaceAll("\\*", "[^/]+");
+  return new RegExp(`^${escaped}/package\\.json$`);
+}
+
+// `pnpm install --offline` resolves every workspace importer from the lockfile,
+// so an image that copies manifests one by one has to copy all of them: a new
+// workspace otherwise makes the frozen install abort on an importer count the
+// image never provided.
+export function checkDockerCopiesWorkspaceManifests(context) {
+  const workspace = parseYaml(readTextInRoot(context, "pnpm-workspace.yaml"));
+  const globs = (Array.isArray(workspace?.packages) ? workspace.packages : []).filter(
+    (glob) => typeof glob === "string",
+  );
+  const patterns = globs.map(workspaceGlobToManifestPattern);
+  const manifests = context.repoFiles
+    .filter((path) => patterns.some((pattern) => pattern.test(path)))
+    .sort();
+  const missing = dockerfilePaths(context).flatMap((file) =>
+    collectMissingCopiesBeforeFrozenInstalls(context, file, manifests),
+  );
+
+  return invariantResult(
+    "Docker frozen installs copy workspace manifests",
+    missing.length === 0,
+    missing.slice(0, 10).join(", "),
   );
 }

@@ -17,7 +17,6 @@ interface BundleContext {
   rootDir: string;
   itemLabel: string;
   detectImportOptions: DetectNpmImportsOptions;
-  transformPath: BundlerConfig["transformPath"];
   excludedDeps: Set<string> | undefined;
   clientDefault: boolean;
 }
@@ -90,7 +89,7 @@ function readAndBundleFiles(
   sourceItem: RegistrySourceItem,
   ctx: BundleContext,
 ): { files: BundleFile[]; detectedDeps: Set<string> } {
-  const { rootDir, itemLabel, detectImportOptions, transformPath } = ctx;
+  const { rootDir, itemLabel, detectImportOptions } = ctx;
   const files: BundleFile[] = [];
   const detectedDeps = new Set<string>(sourceItem.dependencies);
 
@@ -103,9 +102,8 @@ function readAndBundleFiles(
     }
 
     const content = readFileSync(filePath, "utf-8");
-    const bundlePath = transformPath ? transformPath(file.path) : file.path;
     files.push({
-      path: bundlePath,
+      path: file.path,
       content,
       type: file.type,
       target: file.target,
@@ -166,49 +164,46 @@ function reportBundleSummary(summary: BundleSummary, items: BundleItem[]): void 
   }
 }
 
-export function createBundler(config: BundlerConfig): () => BundleResult {
-  return (): BundleResult => {
-    const { rootDir, outputPath, extraContent, clientDefault = false, itemLabel = "item" } = config;
+export function bundleRegistry(config: BundlerConfig): BundleResult {
+  const { rootDir, outputPath, extraContent, clientDefault = false, itemLabel = "item" } = config;
 
-    info("Bundling registry...");
+  info("Bundling registry...");
 
-    const registryPath = resolve(rootDir, "registry/registry.json");
-    const sourceItems = loadAndValidateRegistry(registryPath, itemLabel);
+  const registryPath = resolve(rootDir, "registry/registry.json");
+  const sourceItems = loadAndValidateRegistry(registryPath, itemLabel);
 
-    const ctx: BundleContext = {
-      rootDir,
-      itemLabel,
-      detectImportOptions: { peerDeps: config.peerDeps, aliasPrefixes: config.aliasPrefixes },
-      transformPath: config.transformPath,
-      excludedDeps: config.excludedDeps,
-      clientDefault,
-    };
-    const items = sourceItems.map((item) => bundleItem(item, ctx));
-    const normalizedItems = items.map((item) => RegistryContentItemSchema.parse(item));
-
-    const extra = extraContent ? extraContent(rootDir) : {};
-    const integrity = computeIntegrity(JSON.stringify({ items: normalizedItems, ...extra }));
-    const bundleJson = JSON.stringify({
-      schemaVersion: 1,
-      items: normalizedItems,
-      ...extra,
-      integrity,
-    });
-
-    atomicWriteFile(outputPath, bundleJson);
-    const totalFiles = items.reduce((acc, i) => acc + i.files.length, 0);
-    reportBundleSummary(
-      {
-        itemCount: items.length,
-        fileCount: totalFiles,
-        bundleJson,
-        integrity,
-        outputPath,
-        itemLabel,
-      },
-      items,
-    );
-
-    return { items, integrity, extra };
+  const ctx: BundleContext = {
+    rootDir,
+    itemLabel,
+    detectImportOptions: { peerDeps: config.peerDeps },
+    excludedDeps: config.excludedDeps,
+    clientDefault,
   };
+  const items = sourceItems.map((item) => bundleItem(item, ctx));
+  const normalizedItems = items.map((item) => RegistryContentItemSchema.parse(item));
+
+  const extra = extraContent ? extraContent(rootDir) : {};
+  const integrity = computeIntegrity(JSON.stringify({ items: normalizedItems, ...extra }));
+  const bundleJson = JSON.stringify({
+    schemaVersion: 1,
+    items: normalizedItems,
+    ...extra,
+    integrity,
+  });
+
+  atomicWriteFile(outputPath, bundleJson);
+  const totalFiles = items.reduce((acc, i) => acc + i.files.length, 0);
+  reportBundleSummary(
+    {
+      itemCount: items.length,
+      fileCount: totalFiles,
+      bundleJson,
+      integrity,
+      outputPath,
+      itemLabel,
+    },
+    items,
+  );
+
+  return { items, integrity, extra };
 }

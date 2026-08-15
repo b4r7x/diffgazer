@@ -1,5 +1,10 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import {
+  ARTIFACT_FINGERPRINT_FILENAME,
+  ARTIFACT_MANIFEST_FILENAME,
+  DEFAULT_ARTIFACT_ROOT,
+} from "../constants.js";
 import { validateManifest } from "../manifest.js";
 import { resolveInside } from "../utils/fs.js";
 import { readJson } from "../utils/json.js";
@@ -37,8 +42,9 @@ export function collectMissingWorkspaceArtifactFiles(
       library.workspaceDir,
       `${library.id} workspace directory`,
     );
-    const artifactRoot = resolve(libraryRoot, "dist/artifacts");
-    const manifestRelPath = `${library.workspaceDir}/dist/artifacts/artifact-manifest.json`;
+    const artifactRoot = resolve(libraryRoot, DEFAULT_ARTIFACT_ROOT);
+    const artifactRootRelPath = `${library.workspaceDir}/${DEFAULT_ARTIFACT_ROOT}`;
+    const manifestRelPath = `${artifactRootRelPath}/${ARTIFACT_MANIFEST_FILENAME}`;
     const manifestPath = resolve(workspaceRoot, manifestRelPath);
     const missing: MissingArtifactFile[] = [];
 
@@ -50,7 +56,7 @@ export function collectMissingWorkspaceArtifactFiles(
     }
 
     addMissing(manifestRelPath);
-    addMissing(`${library.workspaceDir}/dist/artifacts/fingerprint.sha256`);
+    addMissing(`${artifactRootRelPath}/${ARTIFACT_FINGERPRINT_FILENAME}`);
 
     if (!existsSync(manifestPath)) return missing;
 
@@ -87,7 +93,7 @@ export function collectMissingWorkspaceArtifactFiles(
         missing.push({
           id: library.id,
           path: artifactPath,
-          relativePath: `${library.workspaceDir}/dist/artifacts/${relPath}`,
+          relativePath: `${artifactRootRelPath}/${relPath}`,
         });
       }
     }

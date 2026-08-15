@@ -1,75 +1,26 @@
 import { readFileSync } from "node:fs";
-import type { SettingsConfig } from "@diffgazer/core/schemas/config";
-import {
-  decodeProviderConfigurationRecord as decodeLegacyProviderConfigurationRecord,
-  SettingsConfigSchema,
-} from "@diffgazer/core/schemas/config";
-import type { z } from "zod";
+import { scanJsonRejectingDuplicateKeys } from "@diffgazer/core/json";
+import { decodeLegacyProviderConfigurationRecord } from "@diffgazer/core/schemas/config";
 import { getGlobalConfigPath } from "../../paths.js";
 import {
   type DecodedProviderConfigurationRecord,
   decodeProviderConfigurationRecord,
   ProviderConfigurationConflictError,
-  RemovedProviderConfigurationRecordSchema,
   SupportedProviderConfigurationRecordSchema,
 } from "../provider-config.js";
 import {
   CONFIG_SCHEMA_VERSION_V2,
   type ConfigDocumentV1,
   type ConfigDocumentV2,
-  type RunnableV1Record,
+  V1_MIGRATION_FAILED_MESSAGE,
   type V1ConfigurationRecord,
 } from "../types.js";
 
-const SettingsFieldSchemas = SettingsConfigSchema.shape;
-
-export const DEFAULT_SETTINGS: SettingsConfig = {
-  theme: "auto",
-  secretsStorage: null,
-  defaultLenses: ["correctness", "security", "performance", "simplicity", "tests"],
-  defaultProfile: null,
-  severityThreshold: "low",
-  agentExecution: "sequential",
-};
-
-let _configPath: string | undefined;
-
-const CONFIG_PATH = (): string => {
-  _configPath ??= getGlobalConfigPath();
-  return _configPath;
-};
-
-interface ParsedSettings {
-  readonly settings: SettingsConfig;
-  readonly unknown: Record<string, unknown>;
-}
-
-/**
- * Project the V2 document's opaque settings object onto the typed settings
- * contract. Fields this binary does not know are returned separately so the
- * V2 writer can round-trip them instead of destroying them.
- */
-export const parseSettingsRecord = (rawSettings: Record<string, unknown>): ParsedSettings => {
-  const settings = { ...DEFAULT_SETTINGS };
-  const unknown: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(rawSettings)) {
-    const fieldSchema = (SettingsFieldSchemas as Record<string, z.ZodType>)[key];
-    if (!fieldSchema) {
-      unknown[key] = value;
-      continue;
-    }
-    const parsed = fieldSchema.safeParse(value);
-    if (parsed.success) {
-      (settings as Record<string, unknown>)[key] = parsed.data;
-    }
-  }
-
-  return { settings, unknown };
-};
+export { parseSettingsRecord } from "@diffgazer/core/schemas/config";
 
 const MAX_V2_CONFIG_BYTES = 2 * 1024 * 1024;
 const MAX_V2_RECORD_BYTES = 256 * 1024;
+const MAX_CONFIG_JSON_DEPTH = 64;
 const V2_DOCUMENT_SNAPSHOT = Symbol("v2DocumentSnapshot");
 
 interface V2DocumentSnapshot {
@@ -163,12 +114,21 @@ const scanJsonValueEnd = (text: string, start: number): number => {
   throw new Error("Unterminated JSON value");
 };
 
-interface JsonPropertySlice {
+export interface JsonPropertySlice {
   readonly start: number;
   readonly end: number;
 }
 
-const scanJsonObjectProperties = (text: string): Map<string, JsonPropertySlice> => {
+interface JsonObjectScanObserver {
+  readonly continueAfterDuplicate?: boolean;
+  readonly onDuplicate: (key: string) => void;
+  readonly onProperty: (key: string, slice: JsonPropertySlice) => void;
+}
+
+const scanJsonObjectPropertiesWithObserver = (
+  text: string,
+  observer?: JsonObjectScanObserver,
+): Map<string, JsonPropertySlice> => {
   const properties = new Map<string, JsonPropertySlice>();
   let cursor = skipJsonWhitespace(text, 0);
   if (text[cursor] !== "{") throw new Error("Configuration root must be an object");
@@ -183,12 +143,19 @@ const scanJsonObjectProperties = (text: string): Map<string, JsonPropertySlice> 
   while (cursor < text.length) {
     const keyEnd = scanJsonStringEnd(text, cursor);
     const key = JSON.parse(text.slice(cursor, keyEnd)) as string;
-    if (properties.has(key)) throw new Error(`Duplicate configuration key: ${key}`);
+    if (properties.has(key)) {
+      observer?.onDuplicate(key);
+      if (!observer?.continueAfterDuplicate) {
+        throw new Error("Configuration file contains a duplicate key");
+      }
+    }
     cursor = skipJsonWhitespace(text, keyEnd);
     if (text[cursor] !== ":") throw new Error("Invalid configuration object");
     const valueStart = skipJsonWhitespace(text, cursor + 1);
     const valueEnd = scanJsonValueEnd(text, valueStart);
-    properties.set(key, { start: valueStart, end: valueEnd });
+    const slice = { start: valueStart, end: valueEnd } satisfies JsonPropertySlice;
+    properties.set(key, slice);
+    observer?.onProperty(key, slice);
     cursor = skipJsonWhitespace(text, valueEnd);
     if (text[cursor] === "}") {
       if (skipJsonWhitespace(text, cursor + 1) !== text.length) {
@@ -202,7 +169,10 @@ const scanJsonObjectProperties = (text: string): Map<string, JsonPropertySlice> 
   throw new Error("Unterminated configuration object");
 };
 
-const splitJsonArrayElements = (arrayText: string): Uint8Array[] => {
+export const scanJsonObjectProperties = (text: string): Map<string, JsonPropertySlice> =>
+  scanJsonObjectPropertiesWithObserver(text);
+
+export const splitJsonArrayElements = (arrayText: string): Uint8Array[] => {
   let cursor = skipJsonWhitespace(arrayText, 0);
   if (arrayText[cursor] !== "[") throw new Error("Configuration records must be an array");
   cursor = skipJsonWhitespace(arrayText, cursor + 1);
@@ -282,7 +252,6 @@ const assertV2Document = (document: ConfigDocumentV2): void => {
     }
     if (record.status === "supported")
       SupportedProviderConfigurationRecordSchema.parse(record.record);
-    if (record.status === "removed") RemovedProviderConfigurationRecordSchema.parse(record.record);
     if (record.rawBytes.byteLength > MAX_V2_RECORD_BYTES) {
       throw new Error("Configuration record exceeds the size limit");
     }
@@ -363,57 +332,106 @@ export const decodeConfigV2 = (inputBytes: Uint8Array): ConfigDocumentV2 => {
   );
 };
 
-const readSchemaVersion = (text: string): unknown => {
-  const properties = scanJsonObjectProperties(text);
-  const slice = properties.get("schemaVersion");
-  return slice ? JSON.parse(text.slice(slice.start, slice.end)) : undefined;
+const hasUniqueRootV2Version = (text: string): boolean => {
+  let hasDuplicateSchemaVersion = false;
+  let schemaVersion: unknown;
+  try {
+    scanJsonObjectPropertiesWithObserver(text, {
+      continueAfterDuplicate: true,
+      onDuplicate: (key) => {
+        if (key === "schemaVersion") hasDuplicateSchemaVersion = true;
+      },
+      onProperty: (key, slice) => {
+        if (key === "schemaVersion") {
+          schemaVersion = JSON.parse(text.slice(slice.start, slice.end)) as unknown;
+        }
+      },
+    });
+  } catch {
+    // A version parsed before later malformed content still identifies the document.
+  }
+  return !hasDuplicateSchemaVersion && schemaVersion === CONFIG_SCHEMA_VERSION_V2;
 };
 
 /** Decode the V1 provider array; hasApiKey exists only in this migration result. */
 export const decodeConfigV1 = (inputBytes: Uint8Array): ConfigDocumentV1 => {
-  const bytes = copyBytes(inputBytes);
-  if (bytes.byteLength > MAX_V2_CONFIG_BYTES) throw new Error("Configuration file is too large");
-  const text = decodeConfigText(bytes);
-  const properties = scanJsonObjectProperties(text);
-  const schemaVersion = readSchemaVersion(text);
-  if (schemaVersion !== undefined && schemaVersion !== 1) {
-    throw new Error("Configuration file is not a V1 document");
+  try {
+    const bytes = copyBytes(inputBytes);
+    if (bytes.byteLength > MAX_V2_CONFIG_BYTES) throw new Error();
+    const text = decodeConfigText(bytes);
+    scanJsonRejectingDuplicateKeys(text, {
+      maxBytes: MAX_V2_CONFIG_BYTES,
+      maxDepth: MAX_CONFIG_JSON_DEPTH,
+      onFail: () => {
+        throw new Error();
+      },
+    });
+    const properties = scanJsonObjectProperties(text);
+    const supportedProperties = new Set(["schemaVersion", "settings", "providers"]);
+    if ([...properties.keys()].some((key) => !supportedProperties.has(key))) throw new Error();
+    const schemaVersionSlice = properties.get("schemaVersion");
+    const schemaVersion = schemaVersionSlice
+      ? (JSON.parse(text.slice(schemaVersionSlice.start, schemaVersionSlice.end)) as unknown)
+      : undefined;
+    if (schemaVersion !== undefined && schemaVersion !== 1) throw new Error();
+    const providersSlice = properties.get("providers");
+    // A settings-only V1 file is valid: the provider array was optional.
+    const providerElements = providersSlice
+      ? splitJsonArrayElements(text.slice(providersSlice.start, providersSlice.end))
+      : [];
+    const providers = providerElements.map((recordBytes): V1ConfigurationRecord => {
+      const decoded = decodeLegacyProviderConfigurationRecord(recordBytes);
+      if (decoded.status === "migrate-v1") {
+        return {
+          status: "migrate-v1",
+          record: decoded.record,
+          rawBytes: copyBytes(recordBytes),
+        };
+      }
+      return { status: "unknown", rawBytes: copyBytes(recordBytes) };
+    });
+    if (providers.some((record) => record.status === "unknown")) throw new Error();
+    return {
+      schemaVersion: 1 as const,
+      settings: parseObjectValue(text, properties.get("settings")),
+      providers,
+      rawBytes: bytes,
+    } satisfies ConfigDocumentV1;
+  } catch {
+    throw new Error(V1_MIGRATION_FAILED_MESSAGE);
   }
-  const providersSlice = properties.get("providers");
-  // A settings-only V1 file is valid: the provider array was optional.
-  const providerElements = providersSlice
-    ? splitJsonArrayElements(text.slice(providersSlice.start, providersSlice.end))
-    : [];
-  const providers = providerElements.map((recordBytes): V1ConfigurationRecord => {
-    const decoded = decodeLegacyProviderConfigurationRecord(recordBytes);
-    if (decoded.status === "migrate-v1") {
-      return {
-        status: "migrate-v1",
-        record: decoded.record as RunnableV1Record,
-        rawBytes: copyBytes(recordBytes),
-      };
-    }
-    if (decoded.status === "removed") {
-      return { status: "removed", record: decoded.record, rawBytes: copyBytes(recordBytes) };
-    }
-    return { status: "unknown", rawBytes: copyBytes(recordBytes) };
-  });
-  const document = {
-    schemaVersion: 1 as const,
-    settings: parseObjectValue(text, properties.get("settings")),
-    providers,
-    rawBytes: bytes,
-  } satisfies ConfigDocumentV1;
-  return document;
 };
+
+export const isV1ConfigMigrationFailure = (cause: unknown): boolean =>
+  cause instanceof Error && cause.message === V1_MIGRATION_FAILED_MESSAGE;
 
 /** Decode either supported persistence version without silently migrating V1. */
 export const decodeConfigFile = (inputBytes: Uint8Array): ConfigDocumentV2 | ConfigDocumentV1 => {
-  if (inputBytes.byteLength > MAX_V2_CONFIG_BYTES) {
+  if (inputBytes.byteLength > MAX_V2_CONFIG_BYTES)
     throw new Error("Configuration file is too large");
-  }
   const text = decodeConfigText(inputBytes);
-  return readSchemaVersion(text) === CONFIG_SCHEMA_VERSION_V2
+  let parsed: unknown;
+  try {
+    scanJsonRejectingDuplicateKeys(text, {
+      maxBytes: MAX_V2_CONFIG_BYTES,
+      maxDepth: MAX_CONFIG_JSON_DEPTH,
+      onFail: () => {
+        throw new Error();
+      },
+    });
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error(
+      hasUniqueRootV2Version(text)
+        ? "Configuration file contains invalid JSON"
+        : V1_MIGRATION_FAILED_MESSAGE,
+    );
+  }
+  const schemaVersion =
+    parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>).schemaVersion
+      : undefined;
+  return schemaVersion === CONFIG_SCHEMA_VERSION_V2
     ? decodeConfigV2(inputBytes)
     : decodeConfigV1(inputBytes);
 };
@@ -445,7 +463,7 @@ export const serializeConfigV2 = (document: ConfigDocumentV2): Uint8Array => {
 export const loadConfigV2 = (): ConfigDocumentV2 => {
   let bytes: Uint8Array;
   try {
-    bytes = new Uint8Array(readFileSync(CONFIG_PATH()));
+    bytes = new Uint8Array(readFileSync(getGlobalConfigPath()));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return {
@@ -457,8 +475,7 @@ export const loadConfigV2 = (): ConfigDocumentV2 => {
     }
     throw error;
   }
-  const decoded = decodeConfigV2(bytes);
-  return decoded;
+  return decodeConfigV2(bytes);
 };
 
 /** Select a supported configuration without changing any record bytes or order. */

@@ -71,12 +71,11 @@ export function createApiServer(config: ApiServerConfig): ServerController {
     args: ["tsx", "src/serve.ts"],
     cwd: config.cwd,
     port: config.port,
+    // The child inherits the parent environment, so DIFFGAZER_SHUTDOWN_TOKEN
+    // (set process-wide before any server starts) reaches it without a copy.
     env: {
       PORT: String(config.port),
       DIFFGAZER_PROJECT_ROOT: config.projectRoot,
-      ...(process.env.DIFFGAZER_SHUTDOWN_TOKEN
-        ? { DIFFGAZER_SHUTDOWN_TOKEN: process.env.DIFFGAZER_SHUTDOWN_TOKEN }
-        : {}),
     },
     readyPattern: DEV_SERVER_READY_PATTERN,
     onReady: config.onReady,

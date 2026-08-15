@@ -16,7 +16,7 @@ interface DocumentChangeObserver {
 }
 
 const documentChangeObservers = new WeakMap<Document, DocumentChangeObserver>();
-export function subscribeToSelectableDocumentChanges(
+function subscribeToSelectableDocumentChanges(
   document: Document,
   subscriber: () => void,
 ): () => void {

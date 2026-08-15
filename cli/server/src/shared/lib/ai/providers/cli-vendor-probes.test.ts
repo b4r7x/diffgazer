@@ -52,6 +52,20 @@ describe.skipIf(process.platform === "win32")("vendor CLI auth evidence", () => 
     expect(result.value.authStoreEvidence).toBe("unavailable");
   });
 
+  it.each([
+    { label: "unauthenticated", script: 'echo "Status: unauthenticated"' },
+    { label: "not authenticated", script: 'echo "You are not authenticated"' },
+    { label: "signed out", script: 'echo "Signed out"' },
+  ])("reports unavailable for a zero-exit $label transcript", async ({ script }) => {
+    const { executable, cwd } = await fakeVendorCli(script);
+
+    const result = await probeCliAuthStore("copilot-cli", { executable, cwd, env: childEnv() });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.authStoreEvidence).toBe("unavailable");
+  });
+
   it("accepts a positive auth status from the vendor store", async () => {
     const { executable, cwd } = await fakeVendorCli('echo "Logged in as octocat"');
 

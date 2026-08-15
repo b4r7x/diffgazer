@@ -17,7 +17,6 @@ import { useCanGoBack, useLocation, useRouter } from "@tanstack/react-router";
 import { type KeyboardEvent, useRef, useState } from "react";
 import { RESET_FILTER_VALUE } from "@/features/review/components/severity-filter-group";
 import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
-import { getMainContent } from "@/lib/main-content";
 import { useReviewDetailsTabKeyboard } from "./use-details-tab-keyboard";
 import { useIssueDetailsTabs } from "./use-issue-details-tabs";
 import { useIssueSelection } from "./use-issue-selection";
@@ -115,10 +114,16 @@ export function useReviewResultsKeyboard({
   const router = useRouter();
   const canGoBack = useCanGoBack();
   const { pathname } = useLocation();
-  const [focusZone, setFocusZone] = useState<FocusZone>("list");
-  // Below md the panes swap one at a time; a deep link opens details first.
+  // The zone that owns focus at mount: a deep link opens on the details pane
+  // (the list pane is hidden below md) and a clean run has no list rows to
+  // focus, so both start in the details zone — its ScrollArea region always
+  // exists and is visible, so mount focus lands on a real target instead of
+  // being consumed by a hidden or empty list.
+  const initialZone: FocusZone = initialIssueId || issues.length === 0 ? "details" : "list";
+  const [focusZone, setFocusZone] = useState<FocusZone>(initialZone);
+  // Below md the panes swap one at a time; the visible pane follows the zone.
   const [mobilePane, setMobilePane] = useState<"list" | "details">(
-    initialIssueId ? "details" : "list",
+    initialZone === "details" ? "details" : "list",
   );
   const filterRef = useRef<HTMLDivElement>(null);
   const listBodyRef = useRef<HTMLDivElement>(null);
@@ -176,19 +181,16 @@ export function useReviewResultsKeyboard({
     });
 
   useFocusZone<FocusZone>({
-    initial: "list",
+    initial: initialZone,
     zones: ZONES,
     zone: focusZone,
     onZoneChange: changeFocusZone,
     scope: REVIEW_SCOPE,
     tabCycle: ["filters", "list", "details"],
-    tabCycleScope: "document",
-    tabCycleBoundary: getMainContent,
     focus: {
-      // A clean run has no rows to drive, so the empty list pane is left resting
-      // until the user focuses it instead of mounting with brackets around one
-      // line of empty-state text.
-      autoFocus: issues.length > 0,
+      // Mount focus always lands on the initial zone's target (see initialZone)
+      // so keyboard users never start stranded on document.body.
+      autoFocus: true,
       preventScroll: false,
       targets: {
         filters: {
@@ -317,6 +319,8 @@ export function useReviewResultsKeyboard({
     enabled: focusZone === "details",
     selectedIssue,
     activeTab,
+    availableTabs,
+    detailsScrollRef,
     moveTab,
     scrollDetails,
     setActiveTab,

@@ -14,12 +14,14 @@ describe("ProgressStep", () => {
         <ProgressStep stepId="s1" label="Parse" status="completed" />
         <ProgressStep stepId="s2" label="Analyze" status="active" />
         <ProgressStep stepId="s3" label="Build" status="pending" />
+        <ProgressStep stepId="s4" label="Verify" status="error" />
       </>,
     );
 
     expect(screen.getByRole("button", { name: /Parse/ })).toHaveTextContent("DONE");
     expect(screen.getByRole("button", { name: /Analyze/ })).toHaveTextContent("RUN");
     expect(screen.getByRole("button", { name: /Build/ })).toHaveTextContent("WAIT");
+    expect(screen.getByRole("button", { name: /Verify/ })).toHaveTextContent("FAIL");
   });
 
   it("renders steps as static lines that cannot expand", () => {

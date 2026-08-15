@@ -1,17 +1,13 @@
 import { createError } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
-import {
-  CANDIDATE_PRODUCT_IDS,
-  REMOVED_PRODUCT_IDS,
-  type RunnableProductId,
-} from "@diffgazer/core/schemas/config";
+import { CANDIDATE_PRODUCT_IDS, type RunnableProductId } from "@diffgazer/core/schemas/config";
 import type { ExecutionResult } from "@diffgazer/core/schemas/review";
 import {
   type AdmittedExecutionPlan,
   assertClientSafeAdmittedPlanSurface,
 } from "../admission/service.js";
 import { getAdapter, isForbiddenAdapterProductId } from "../providers/registry.js";
-import type { AIClient, AIClientConfig, AIError, AIErrorCode } from "../types.js";
+import type { AIError, AIErrorCode } from "../types.js";
 import {
   type Adapter,
   type AdapterExecuteRequest,
@@ -24,13 +20,15 @@ export type AdmittedPlanClient = Readonly<{
   transportFamily: AdmittedExecutionPlan["transportFamily"];
   configurationId: string;
   executionFingerprint: string;
-  execute(prompt: string, options?: Readonly<{ signal?: AbortSignal }>): Promise<ExecutionResult>;
+  execute(
+    prompt: string,
+    options?: Readonly<{ signal?: AbortSignal; systemPrompt?: string }>,
+  ): Promise<ExecutionResult>;
 }>;
 
 function isForbiddenPlanProductId(productId: string): boolean {
   return (
     isForbiddenAdapterProductId(productId) ||
-    (REMOVED_PRODUCT_IDS as readonly string[]).includes(productId) ||
     (CANDIDATE_PRODUCT_IDS as readonly string[]).includes(productId)
   );
 }
@@ -62,7 +60,7 @@ export type AdmittedExecutionChannel = Readonly<{
 function buildExecuteRequest(
   plan: AdmittedExecutionPlan,
   prompt: string,
-  signal?: AbortSignal,
+  options?: Readonly<{ signal?: AbortSignal; systemPrompt?: string }>,
   channel?: AdmittedExecutionChannel,
 ): AdapterExecuteRequest {
   return {
@@ -70,7 +68,8 @@ function buildExecuteRequest(
     configurationRevision: plan.configurationRevision,
     evidenceKey: plan.evidenceKey,
     prompt,
-    signal,
+    ...(options?.systemPrompt ? { systemPrompt: options.systemPrompt } : {}),
+    signal: options?.signal,
     resolveCredential: channel?.resolveCredential,
     workspaceAccountId: channel?.workspaceAccountId ?? null,
   };
@@ -128,22 +127,10 @@ export function createFromAdmittedPlan(
     configurationId: plan.configurationId,
     executionFingerprint: plan.executionFingerprint,
     execute: async (prompt, options) => {
-      const result = await adapter.execute(
-        buildExecuteRequest(plan, prompt, options?.signal, channel),
-      );
+      const result = await adapter.execute(buildExecuteRequest(plan, prompt, options, channel));
       return assertBoundedExecutionResult(result);
     },
   });
 
   return ok(client);
-}
-
-/** @deprecated Use {@link createFromAdmittedPlan} after authorizeReviewExecution. */
-export function createAIClient(_config: AIClientConfig): Result<AIClient, AIError> {
-  return err(
-    createError<AIErrorCode>(
-      "UNSUPPORTED_PROVIDER",
-      "Legacy createAIClient was removed; admit an execution plan and call createFromAdmittedPlan",
-    ),
-  );
 }

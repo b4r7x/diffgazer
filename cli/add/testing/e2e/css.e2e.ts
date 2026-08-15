@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { runDgadd, writeFixtureConfig } from "./test-helpers.js";
+import { manifestItem, readFixtureConfig, runDgadd, writeFixtureConfig } from "./test-helpers.js";
 
 // Installing ui/dialog appends several chunks (its own backdrop rules plus the
 // ones its transitive deps ship), so tests that target one chunk locate it by
@@ -87,10 +87,10 @@ describe("css ownership", () => {
   test("add records css chunk ownership in the manifest", () => {
     runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
 
-    const manifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    const chunkOwner = Object.values(
-      manifest.installedComponents as Record<string, { cssChunks?: string[] }>,
-    ).find((entry) => (entry.cssChunks ?? []).length > 0);
+    const manifest = readFixtureConfig(root);
+    const chunkOwner = Object.values(manifest.installedItems ?? {}).find(
+      (entry) => (entry.cssChunks ?? []).length > 0,
+    );
     expect(chunkOwner, "at least one item records cssChunks").toBeTruthy();
   });
 });
@@ -177,21 +177,20 @@ describe("css chunk ownership on remove", () => {
     runDgadd(["add", "ui/button", "--cwd", root, "--yes", "--skip-install"]);
     runDgadd(["add", "ui/dialog", "--cwd", root, "--yes", "--skip-install"]);
 
-    const manifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    const manifest = readFixtureConfig(root);
     // Collect every recorded chunk so the assertions do not bind to the items
     // that happen to own the shared CSS today.
     const ownerHashes = [
       ...new Set(
-        Object.values(
-          manifest.installedComponents as Record<string, { cssChunks?: string[] }>,
-        ).flatMap((record) => record.cssChunks ?? []),
+        Object.values(manifest.installedItems ?? {}).flatMap((record) => record.cssChunks ?? []),
       ),
     ];
     expect(ownerHashes.length, "expected at least one item to record cssChunks").toBeGreaterThan(0);
 
     // Give ui/button (explicit, preserved) the same hashes: two items emitting
     // identical CSS, so every chunk must survive removal of a co-owner.
-    manifest.installedComponents["ui/button"].cssChunks = [...ownerHashes];
+    const buttonItem = manifestItem(manifest, "ui/button");
+    buttonItem.cssChunks = ownerHashes;
     writeFileSync(join(root, "diffgazer.json"), JSON.stringify(manifest, null, 2));
 
     runDgadd(["remove", "ui/dialog", "--cwd", root, "--yes"]);
@@ -201,8 +200,8 @@ describe("css chunk ownership on remove", () => {
     const markerPattern = /\/\* dgadd:css [a-f0-9]{16}(?: \S+)? \*\//g;
     expect((cssAfter.match(markerPattern) ?? []).length).toBe(ownerHashes.length);
 
-    const finalManifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    expect(finalManifest.installedComponents?.["ui/button"]).toBeTruthy();
+    const finalManifest = readFixtureConfig(root);
+    expect(finalManifest.installedItems?.["ui/button"]).toBeTruthy();
   });
 
   test("unique chunks of a removed item are deleted from styles.css", () => {
@@ -227,10 +226,10 @@ describe("css chunk ownership on remove", () => {
     // not bind to its name.
     const stylesPath = join(root, "src/styles/styles.css");
     const backdropHash = chunkHashContaining(readFileSync(stylesPath, "utf-8"), "dialog::backdrop");
-    const beforeManifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    const chunkOwnerEntry = Object.entries(
-      beforeManifest.installedComponents as Record<string, { cssChunks?: string[] }>,
-    ).find(([, record]) => (record.cssChunks ?? []).includes(backdropHash));
+    const beforeManifest = readFixtureConfig(root);
+    const chunkOwnerEntry = Object.entries(beforeManifest.installedItems ?? {}).find(([, record]) =>
+      (record.cssChunks ?? []).includes(backdropHash),
+    );
     if (!chunkOwnerEntry) {
       throw new Error("Expected an item to own the dialog backdrop chunk.");
     }
@@ -252,9 +251,11 @@ describe("css chunk ownership on remove", () => {
 
     // Retained owner stays tracked (trimmed to chunk tracking) so the block is
     // re-targetable by a later force remove instead of orphaned.
-    const afterRemove = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    const retained = afterRemove.installedComponents?.[chunkOwner];
+    const afterRemove = readFixtureConfig(root);
+    const retained = afterRemove.installedItems?.[chunkOwner];
     expect(retained, `expected ${chunkOwner} to stay tracked for its preserved chunk`).toBeTruthy();
+    if (!retained)
+      throw new Error(`expected ${chunkOwner} to stay tracked for its preserved chunk`);
     expect(retained.cssChunks).toEqual(ownerHashes);
     expect(retained.files).toBeUndefined();
 
@@ -271,8 +272,8 @@ describe("css chunk ownership on remove", () => {
     const markerPattern = /\/\* dgadd:css [a-f0-9]{16}(?: \S+)? \*\//g;
     expect((cssFinal.match(markerPattern) ?? []).length).toBe(0);
 
-    const finalManifest = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    expect(finalManifest.installedComponents?.[chunkOwner]).toBeUndefined();
+    const finalManifest = readFixtureConfig(root);
+    expect(finalManifest.installedItems?.[chunkOwner]).toBeUndefined();
   });
 
   test("edited chunk is removed on remove with --force", () => {

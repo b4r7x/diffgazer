@@ -7,10 +7,13 @@ import { getErrorMessage } from "@diffgazer/core/errors";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import type { Context } from "hono";
+import { reportToTerminal } from "../report-to-terminal";
 import type { ServerController } from "./types";
 
 export interface EmbeddedServerConfig {
   port: number;
+  /** Override the packaged SPA root (defaults to `web/` beside the embedded server module). */
+  webRoot?: string;
   onReady?: (address: string) => void;
   onFailure?: (message: string) => void;
   projectRoot?: string;
@@ -18,9 +21,6 @@ export interface EmbeddedServerConfig {
 
 const moduleDir = dirname(fileURLToPath(import.meta.url));
 const webRoot = join(moduleDir, "web");
-const indexHtmlPath = join(webRoot, "index.html");
-
-type EmbeddedServerState = "idle" | "starting" | "running" | "stopped";
 
 /**
  * The SPA ships one parser-blocking inline script of its own (the pre-paint
@@ -89,10 +89,13 @@ export const isSpaNavigationRequest = (c: Context, pathname: string): boolean =>
 
 export function createEmbeddedServer(config: EmbeddedServerConfig): ServerController {
   let server: ReturnType<typeof serve> | null = null;
-  let state: EmbeddedServerState = "idle";
   let startPromise: Promise<void> | null = null;
   let resolveStart: (() => void) | null = null;
   let rejectStart: ((error: Error) => void) | null = null;
+  // Bumped by stop(). A startup suspended across an await compares the generation
+  // it began in, so a stop-then-start sequence retires it instead of letting it
+  // bind the port a second start() now owns.
+  let lifecycleVersion = 0;
 
   function rejectStartup(error: Error): void {
     rejectStart?.(error);
@@ -102,33 +105,45 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
   }
 
   function failStartup(message: string, cause?: unknown): void {
-    state = "idle";
-    console.error(message);
-    config.onFailure?.(message);
+    // One owner per diagnostic: the coordinator logs when it supplies `onFailure`.
+    if (config.onFailure) {
+      config.onFailure(message);
+    } else {
+      reportToTerminal(message);
+    }
     rejectStartup(new Error(message, cause === undefined ? undefined : { cause }));
   }
 
   function start(): Promise<void> {
     if (startPromise) return startPromise;
 
-    state = "starting";
+    const version = lifecycleVersion;
     const starting = new Promise<void>((resolve, reject) => {
       resolveStart = resolve;
       rejectStart = reject;
     });
     startPromise = starting;
     void starting.catch(() => undefined);
-    void startServer().catch((err: unknown) => {
+    void startServer(version).catch((err: unknown) => {
+      if (version !== lifecycleVersion) return;
       failStartup(getErrorMessage(err), err);
     });
     return starting;
   }
 
-  async function startServer(): Promise<void> {
-    if (!existsSync(webRoot)) {
-      failStartup(`Web assets not found at ${webRoot}`);
+  async function startServer(version: number): Promise<void> {
+    const isRetired = () => version !== lifecycleVersion;
+    const assetRoot = config.webRoot ?? webRoot;
+    const shellPath = join(assetRoot, "index.html");
+
+    if (!existsSync(assetRoot)) {
+      failStartup(`Web assets not found at ${assetRoot}`);
       return;
     }
+
+    // The shell ships inside the bundle beside this module and cannot change while
+    // the server runs, so it is read once instead of on every SPA navigation.
+    const rawHtml = readFileSync(shellPath, "utf-8");
 
     if (config.projectRoot) {
       process.env.DIFFGAZER_PROJECT_ROOT = config.projectRoot;
@@ -136,7 +151,7 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
     process.env.DIFFGAZER_PACKAGED = "1";
 
     const { createApp, startSessionMaintenance } = await import("@diffgazer/server");
-    if (state === "stopped") {
+    if (isRetired()) {
       return;
     }
 
@@ -155,20 +170,20 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
           "DIFFGAZER_SHUTDOWN_TOKEN is required to serve the embedded SPA. Call ensureShutdownToken() before starting the server.",
         );
       }
-      const rawHtml = readFileSync(indexHtmlPath, "utf-8");
       const { body, csp } = buildHtmlShell(rawHtml, token);
       c.header("Content-Security-Policy", csp);
+      // The shell inlines the per-run shutdown token; keep it out of the disk cache.
+      c.header("Cache-Control", "no-store");
       return c.html(body);
     });
-    app.use("/*", serveStatic({ root: webRoot }));
+    app.use("/*", serveStatic({ root: assetRoot }));
 
     try {
       server = serve({ fetch: app.fetch, port: config.port, hostname: "127.0.0.1" }, (info) => {
-        if (state === "stopped") {
+        if (isRetired()) {
           return;
         }
 
-        state = "running";
         const address = `http://localhost:${info.port}`;
         config.onReady?.(address);
         resolveStart?.();
@@ -177,6 +192,7 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
       });
 
       server.on("error", (err: NodeJS.ErrnoException) => {
+        if (isRetired()) return;
         failStartup(describeListenError(err, config.port), err);
       });
     } catch (err) {
@@ -187,7 +203,7 @@ export function createEmbeddedServer(config: EmbeddedServerConfig): ServerContro
   return {
     start,
     stop: async () => {
-      state = "stopped";
+      lifecycleVersion += 1;
       if (rejectStart) rejectStartup(new Error("Server stopped before readiness"));
       startPromise = null;
       // Abort in-flight reviews and clear SSE subscribers first so open streams

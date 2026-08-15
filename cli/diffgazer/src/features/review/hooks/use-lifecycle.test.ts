@@ -4,16 +4,22 @@
 import type { UseReviewLifecycleBaseOptions } from "@diffgazer/core/api/hooks";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
 import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
+import {
+  configurationStatus,
+  GEMINI_CONFIGURATION,
+  makeConfigurationInitResponse,
+  makeReadyInitResponse,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { makeReviewLifecycleBase } from "../../../testing/review-lifecycle-base";
+import { makeReviewLifecycleBase } from "../testing/review-lifecycle-base";
 
 const apiMocks = vi.hoisted(() => ({
   clearActiveSession: vi.fn(),
   createReview: vi.fn(),
   refetchInit: vi.fn(),
   useCreateReview: vi.fn(),
-  useInit: vi.fn(),
+  useConfigurationInit: vi.fn(),
   useReviewLifecycleBase: vi.fn(),
 }));
 
@@ -21,7 +27,7 @@ const CREATED_REVIEW_ID = "22222222-2222-4222-8222-222222222222";
 
 vi.mock("@diffgazer/core/api/hooks", () => ({
   useCreateReview: apiMocks.useCreateReview,
-  useInit: apiMocks.useInit,
+  useConfigurationInit: apiMocks.useConfigurationInit,
   useReviewLifecycleBase: apiMocks.useReviewLifecycleBase,
   useReviewSessionCache: () => ({
     clearActiveSession: apiMocks.clearActiveSession,
@@ -41,20 +47,8 @@ beforeEach(() => {
     makeCreateReviewResponse({ reviewId: CREATED_REVIEW_ID, session: { mode } }),
   );
   apiMocks.useCreateReview.mockReturnValue({ mutateAsync: apiMocks.createReview });
-  apiMocks.useInit.mockReturnValue({
-    data: {
-      config: { provider: "gemini", model: "gemini-2.5-flash" },
-      configured: true,
-      setup: {
-        hasSecretsStorage: true,
-        hasProvider: true,
-        hasModel: true,
-        hasTrust: true,
-        isConfigured: true,
-        isReady: true,
-        missing: [],
-      },
-    },
+  apiMocks.useConfigurationInit.mockReturnValue({
+    data: makeReadyInitResponse(),
     error: null,
     isFetching: false,
     isLoading: false,
@@ -214,7 +208,10 @@ describe("useReviewLifecycle active-session cache", () => {
   });
 
   test("clears the review-scoped active session after successful cancel", async () => {
-    const cancel = vi.fn(async () => null);
+    const cancel = vi.fn(async () => ({
+      status: "cancelled" as const,
+      reason: "cancelled" as const,
+    }));
     apiMocks.useReviewLifecycleBase.mockReturnValue(
       makeReviewLifecycleBase({ cancel, reviewId: "cancel-review" }),
     );
@@ -236,7 +233,7 @@ describe("useReviewLifecycle active-session cache", () => {
   });
 
   test("does not clear the active session when cancel fails", async () => {
-    const cancel = vi.fn(async () => "cancel failed");
+    const cancel = vi.fn(async () => ({ status: "error" as const, message: "cancel failed" }));
     apiMocks.useReviewLifecycleBase.mockReturnValue(
       makeReviewLifecycleBase({ cancel, reviewId: "cancel-review" }),
     );
@@ -293,7 +290,7 @@ describe("useReviewLifecycle resume and start routing", () => {
   });
 
   test("exposes failed init state and retries through the init query", async () => {
-    apiMocks.useInit.mockReturnValue({
+    apiMocks.useConfigurationInit.mockReturnValue({
       data: undefined,
       error: new Error("init unavailable"),
       isFetching: false,
@@ -309,6 +306,7 @@ describe("useReviewLifecycle resume and start routing", () => {
     expect(result.current.state.initState).toEqual({
       status: "error",
       message: "init unavailable",
+      error: new Error("init unavailable"),
     });
 
     await act(async () => {
@@ -339,19 +337,11 @@ describe("useReviewLifecycle resume and start routing", () => {
   });
 
   test("does not create a new review while provider setup is incomplete", async () => {
-    apiMocks.useInit.mockReturnValue({
+    apiMocks.useConfigurationInit.mockReturnValue({
       data: {
-        config: { provider: null, model: null },
-        configured: false,
-        setup: {
-          hasSecretsStorage: true,
-          hasProvider: false,
-          hasModel: false,
-          hasTrust: true,
-          isConfigured: false,
-          isReady: false,
-          missing: ["provider", "model"],
-        },
+        ...makeReadyInitResponse(),
+        configurations: [],
+        selectedConfigurationId: null,
       },
       error: null,
       isFetching: false,
@@ -372,26 +362,38 @@ describe("useReviewLifecycle resume and start routing", () => {
     expect(result.current.state.gate).toBe("unconfigured");
     expect(result.current.state.initState).toEqual({
       status: "ready",
-      missing: ["provider", "model"],
       readiness: expect.objectContaining({ status: "unconfigured", ready: false }),
     });
   });
 
-  test("uses setup readiness when the legacy init flag contradicts it", async () => {
-    apiMocks.useInit.mockReturnValue({
-      data: {
-        config: { provider: "gemini", model: null },
-        configured: true,
-        setup: {
-          hasSecretsStorage: true,
-          hasProvider: true,
-          hasModel: false,
-          hasTrust: true,
-          isConfigured: false,
-          isReady: false,
-          missing: ["model"],
-        },
-      },
+  test("starts a review in another mode while structured-output conformance is unproven", async () => {
+    apiMocks.useConfigurationInit.mockReturnValue({
+      data: makeConfigurationInitResponse([
+        configurationStatus(GEMINI_CONFIGURATION, "conformance-pending"),
+      ]),
+      error: null,
+      isFetching: false,
+      isLoading: false,
+      refetch: apiMocks.refetchInit,
+    });
+    apiMocks.useReviewLifecycleBase.mockImplementation((options: UseReviewLifecycleBaseOptions) =>
+      makeReviewLifecycleBase({ reviewId: options.reviewId ?? null }),
+    );
+
+    const { result } = renderHook(() => useReviewLifecycle({ mode: "staged" }));
+
+    await act(async () => {
+      expect(await result.current.start("unstaged")).toBe("started");
+    });
+
+    expect(apiMocks.createReview).toHaveBeenCalledWith({ mode: "unstaged" });
+  });
+
+  test("allows resume when readiness is incomplete but allowResumeWithoutSetup is set", async () => {
+    apiMocks.useConfigurationInit.mockReturnValue({
+      data: makeConfigurationInitResponse([
+        configurationStatus(GEMINI_CONFIGURATION, "model-missing"),
+      ]),
       error: null,
       isFetching: false,
       isLoading: false,
@@ -399,7 +401,8 @@ describe("useReviewLifecycle resume and start routing", () => {
     });
     apiMocks.useReviewLifecycleBase.mockImplementation((options: UseReviewLifecycleBaseOptions) =>
       makeReviewLifecycleBase({
-        gate: options.isConfigured || options.allowResumeWithoutSetup ? "running" : "unconfigured",
+        gate:
+          options.readiness?.ready || options.allowResumeWithoutSetup ? "running" : "unconfigured",
         reviewId: options.reviewId ?? null,
       }),
     );

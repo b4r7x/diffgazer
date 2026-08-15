@@ -6,11 +6,12 @@ import figlet from "figlet";
 const DOCS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUTPUT_PATH = resolve(DOCS_ROOT, "src/generated/logo-ascii.ts");
 
-// The docs hero wordmark. apps/web hardcodes an equivalent constant in
-// components/layout/header.tsx: docs cannot import from web, and a shared home
-// would mean promoting the art into libs/core for two call sites, so the two
-// copies are deliberate. Font, casing, and trailing-blank-row trim must be kept
-// in sync by hand if either side changes.
+// The docs hero wordmark. The same art is hardcoded in apps/web
+// (src/components/layout/wordmark.tsx) and in the landing hero and HUD: those
+// surfaces cannot import from each other, and a shared home would mean promoting
+// the art into libs/core, so the copies are deliberate. Font, casing, and
+// trailing-blank-row trim must be kept in sync by hand if any side changes;
+// scripts/monorepo/wordmark-parity.test.mjs is the gate that enforces it.
 const WORDMARK_TEXT = "diffgazer";
 const WORDMARK_FONT = "Big";
 

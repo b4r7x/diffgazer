@@ -1,8 +1,15 @@
 /**
+ * The canonical render order, and the authority for which contexts exist: a
+ * context absent from this list would be dropped by `groupShortcutsByContext`,
+ * so the union is derived from it rather than declared beside it.
+ */
+const SHORTCUT_CONTEXT_ORDER = ["global", "list", "home", "review", "history"] as const;
+
+/**
  * Where a shortcut applies. Only the help tables tag their entries; footers and
  * menu constants leave it undefined and ignore the field entirely.
  */
-export type ShortcutContext = "global" | "list" | "review" | "history";
+export type ShortcutContext = (typeof SHORTCUT_CONTEXT_ORDER)[number];
 
 export interface Shortcut {
   key: string;
@@ -11,16 +18,18 @@ export interface Shortcut {
   context?: ShortcutContext;
 }
 
-export const SHORTCUT_CONTEXT_ORDER = ["global", "list", "review", "history"] as const;
+/** A help-table row. Its context is what groups it, so it is never optional. */
+type ContextualShortcut = Shortcut & { context: ShortcutContext };
 
 export const SHORTCUT_CONTEXT_LABELS: Record<ShortcutContext, string> = {
   global: "Anywhere",
   list: "In lists",
+  home: "On the home screen",
   review: "In a review",
   history: "In history",
 };
 
-export interface ShortcutGroup {
+interface ShortcutGroup {
   context: ShortcutContext;
   shortcuts: Shortcut[];
 }
@@ -86,10 +95,12 @@ export const BACK_SHORTCUTS: Shortcut[] = [BACK_SHORTCUT];
 // Canonical help-screen shortcut table, consumed by both surfaces' Help screens.
 // Every entry has a live handler on at least one surface (web: q/s/h/shift+?,
 // list/menu navigation, `/` history search; TUI: q/s/?, `/` history search).
+// The home entries are the r/R/l menu bindings both surfaces resolve through
+// MENU_ITEMS.
 // Entries are tagged with the context they apply in and grouped at render time;
 // the shared footer constants are spread rather than mutated so `context` never
 // leaks into footer rendering.
-export const HELP_SHORTCUTS: Shortcut[] = [
+export const HELP_SHORTCUTS: ContextualShortcut[] = [
   { key: "Enter", label: "Select / Confirm", context: "global" },
   { key: "Esc", label: "Go Back", context: "global" },
   { key: "s", label: "Open Settings", context: "global" },
@@ -97,6 +108,9 @@ export const HELP_SHORTCUTS: Shortcut[] = [
   { key: "q", label: "Quit", context: "global" },
   { key: "↑/↓", label: "Move the highlight", context: "list" },
   { key: "j/k", label: "Move the highlight", context: "list" },
+  { key: "r", label: "Review Unstaged", context: "home" },
+  { key: "R", label: "Review Staged", context: "home" },
+  { key: "l", label: "Resume Last Review", context: "home" },
   { ...SWITCH_PANE_SHORTCUT, context: "review" },
   { key: "1-4", label: "Switch Tab", context: "review" },
   { key: "↑/↓", label: "Scroll the focused pane", context: "review" },
@@ -105,15 +119,10 @@ export const HELP_SHORTCUTS: Shortcut[] = [
   { key: "/", label: "Search Runs", context: "history" },
 ];
 
-// Both surfaces consume the permission entries; Tab and q are TUI-home shortcuts.
-export const TRUST_FOOTER_SHORTCUTS: Shortcut[] = [
+// Only the permission controls are shared. Each surface appends its own trailing
+// actions (TUI: Tab/Quit; web: Quit plus its right-hand jump keys) rather than
+// slicing a mixed array by position.
+export const TRUST_PERMISSION_SHORTCUTS: Shortcut[] = [
   { key: "↑/↓", label: "Navigate Permissions" },
   { key: "Enter/Space", label: "Toggle" },
-  { key: "Tab", label: "Focus Actions" },
-  { key: "q", label: "Quit" },
-];
-
-export const TRUST_FOOTER_RIGHT_SHORTCUTS: Shortcut[] = [
-  { key: "s", label: "Settings" },
-  { key: "?", label: "Help" },
 ];

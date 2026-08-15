@@ -1,13 +1,22 @@
 import { readFileSync } from "node:fs";
 import { computeIntegrity } from "@diffgazer/registry";
 import { createRemoveCommand, findOrphanedNpmDeps } from "@diffgazer/registry/cli";
-import { ctx, type ResolvedConfig } from "../../context.js";
-import { getKeysHookNames, resolveKeysCopyHookFiles } from "../../utils/keys-copy-bundle.js";
 import {
-  getNamespacedItem,
+  adoptLegacyManifestLedger,
+  ctx,
+  type DiffgazerAddConfig,
+  type ManifestItem,
+  type ResolvedConfig,
+  resolveConfig,
+} from "../../context.js";
+import { getKeysHookNames, resolveKeysCopyHookFiles } from "../../utils/keys-copy-bundle.js";
+import { withProjectMutationLock } from "../../utils/mutation-lock.js";
+import {
   isNamespacedInstalled,
   parseInstallName,
-  validateInstallableNames,
+  resolveNamespacedItem,
+  tryGetNamespacedItem,
+  validateInstalledOrRegistryNames,
 } from "../../utils/namespaces.js";
 import {
   normalizeManifestPath,
@@ -16,20 +25,74 @@ import {
 } from "../../utils/paths.js";
 import { getInstallBaseForFilePath, getInstallDirForBase } from "../../utils/registry.js";
 import {
+  applyRemovalManifestUpdate,
   planOwnedCssChunkRemoval,
   readPreRemovalChunks,
-  retainCssChunkTrackingOnly,
 } from "./css.js";
-import { expandRemoval, loadManifest, manifestItemsForResolve } from "./dependencies.js";
-import { createRemoveWorkflowContext } from "./workflow-context.js";
+import { expandRemoval, manifestItemsForResolve } from "./dependencies.js";
 
-function ownedFileHash(cwd: string, itemName: string, absolutePath: string): string | null {
+interface RemoveRemovalMetadata {
+  retainedChunkHashesByName: Map<string, string[]>;
+}
+
+interface RemoveCommandState {
+  capturedConfig: DiffgazerAddConfig;
+  configSnapshot: string;
+  resolvedConfig: ResolvedConfig;
+  manifest: Record<string, ManifestItem>;
+  uiChecker: ReturnType<typeof ctx.createChecker>;
+  preRemovalChunksByItem: Map<string, string[]>;
+}
+
+function compareSnapshotKeys(left: string, right: string): number {
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
+}
+
+function serializeConfigSnapshot(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(serializeConfigSnapshot).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value).sort(([left], [right]) =>
+      compareSnapshotKeys(left, right),
+    );
+    return `{${entries
+      .map(([key, entry]) => `${JSON.stringify(key)}:${serializeConfigSnapshot(entry)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+function createRemoveCommandState(cwd: string): RemoveCommandState {
+  const loaded = ctx.config.loadConfigWithRaw(cwd);
+  if (!loaded.ok) {
+    ctx.items.requireConfig(cwd);
+    throw new Error("Could not load diffgazer.json.");
+  }
+  const resolvedConfig = resolveConfig(loaded.config, cwd);
+  const manifest = loaded.config.installedItems ?? {};
+  return {
+    // Rewritten from the parsed file, not the validated config, so unknown nested
+    // config content survives the removal write untouched.
+    capturedConfig: adoptLegacyManifestLedger(loaded.raw) as DiffgazerAddConfig,
+    // The lock compares this against a re-read of the file, so it snapshots the
+    // file as it is on disk, before the ledger key is decoded.
+    configSnapshot: serializeConfigSnapshot(loaded.raw),
+    resolvedConfig,
+    manifest,
+    uiChecker: ctx.createChecker(cwd, resolvedConfig.componentsFsPath),
+    preRemovalChunksByItem: readPreRemovalChunks(manifest),
+  };
+}
+
+function ownedFileHash(
+  manifest: Record<string, ManifestItem>,
+  cwd: string,
+  itemName: string,
+  absolutePath: string,
+): string | null {
   const parsed = parseInstallName(itemName);
-
-  const config = ctx.config.loadConfig(cwd);
-  if (!config.ok) return null;
-
-  const manifest = config.config.installedComponents ?? {};
   const record = manifest[parsed.publicName];
   const files = record?.files ?? [];
   const filePath = normalizeManifestPath(cwd, absolutePath);
@@ -53,38 +116,41 @@ export function resolveRemoveTransactionFiles(cwd: string, config: ResolvedConfi
   return paths;
 }
 
-const removeWorkflow = createRemoveWorkflowContext();
-
-export const removeCommand = createRemoveCommand({
+export const removeCommand = createRemoveCommand<
+  ReturnType<typeof resolveNamespacedItem>,
+  RemoveCommandState,
+  RemoveRemovalMetadata
+>({
   itemPlural: "items",
-  requireConfig: (cwd) => {
-    removeWorkflow.beginInvocation(cwd);
-    return ctx.items.requireConfig(cwd);
-  },
-  validateNames: validateInstallableNames,
-  getAllItems: () =>
-    removeWorkflow.activeCwd ? manifestItemsForResolve(removeWorkflow.activeCwd) : [],
-  getItemOrThrow: getNamespacedItem,
+  withLock: withProjectMutationLock,
+  requireConfig: createRemoveCommandState,
+  validateNames: (names, { cwd, config }) =>
+    validateInstalledOrRegistryNames(cwd, names, config.manifest),
+  getAllItems: ({ cwd, config }) => manifestItemsForResolve(config.manifest, cwd),
+  getItemOrThrow: (name, { cwd, config }) => resolveNamespacedItem(name, cwd, config.manifest),
   getItemName: (item) => item.name,
-  isInstalled: ({ cwd, config, item }) => {
-    return isNamespacedInstalled(cwd, config, item.name);
-  },
+  isInstalled: ({ cwd, config, item }) =>
+    isNamespacedInstalled(cwd, config.resolvedConfig, item.name, config.manifest, config.uiChecker),
   resolveFilesForItem: ({ cwd, config, item }) => {
     const publicName = toPublicName(item.name);
-    const retiredFiles = (loadManifest(cwd)[publicName]?.files ?? [])
-      .filter((file) => file.retired)
-      .map((file) => ({ absolutePath: resolveProjectPath(cwd, file.path) }));
+    const manifestOwnedFiles = (config.manifest[publicName]?.files ?? []).map((file) => ({
+      absolutePath: resolveProjectPath(cwd, file.path),
+    }));
     const keyName = resolveKeyName(item.name);
-    if (keyName) {
+    if (keyName && tryGetNamespacedItem(item.name)) {
       const { files, missingHooks } = resolveKeysCopyHookFiles([keyName]);
       if (missingHooks.length > 0) {
         throw new Error(`Missing bundled keys hook(s): ${missingHooks.join(", ")}`);
       }
       return [
         ...files.map((file) => ({
-          absolutePath: resolveInstallPath(cwd, config.hooksFsPath, file.relativePath),
+          absolutePath: resolveInstallPath(
+            cwd,
+            config.resolvedConfig.hooksFsPath,
+            file.relativePath,
+          ),
         })),
-        ...retiredFiles,
+        ...manifestOwnedFiles,
       ];
     }
 
@@ -94,46 +160,58 @@ export const removeCommand = createRemoveCommand({
       .filter((file) => !file.path.endsWith(".css"))
       .map((file) => {
         const installBase = getInstallBaseForFilePath(file.path);
-        const installDir = getInstallDirForBase(installBase, config);
+        const installDir = getInstallDirForBase(installBase, config.resolvedConfig);
         return {
           absolutePath: resolveInstallPath(cwd, installDir, ctx.registry.relativePath(file)),
         };
       });
     const byPath = new Map(
-      [...currentFiles, ...retiredFiles].map((file) => [file.absolutePath, file]),
+      [...currentFiles, ...manifestOwnedFiles].map((file) => [file.absolutePath, file]),
     );
     return [...byPath.values()];
   },
-  checkFileRemoval: ({ cwd, item, file, force }) => {
+  checkFileRemoval: ({ cwd, config, item, file, force }) => {
     if (force) return "removable";
-    const expectedHash = ownedFileHash(cwd, item.name, file.absolutePath);
+    const expectedHash = ownedFileHash(config.manifest, cwd, item.name, file.absolutePath);
     if (!expectedHash) return "unowned";
     const matches = computeIntegrity(readFileSync(file.absolutePath, "utf-8")) === expectedHash;
     return matches ? "removable" : "modified";
   },
-  resolveAllowedBaseDirs: ({ cwd, config }) => [
-    resolveProjectPath(cwd, config.componentsFsPath),
-    resolveProjectPath(cwd, config.hooksFsPath),
-    resolveProjectPath(cwd, config.libFsPath),
-    resolveProjectPath(cwd, config.stylesFsPath),
+  resolveAllowedBaseDirs: ({ cwd, config: { resolvedConfig } }) => [
+    resolveProjectPath(cwd, resolvedConfig.componentsFsPath),
+    resolveProjectPath(cwd, resolvedConfig.hooksFsPath),
+    resolveProjectPath(cwd, resolvedConfig.libFsPath),
+    resolveProjectPath(cwd, resolvedConfig.stylesFsPath),
   ],
-  resolveTransactionFiles: ({ cwd, config }) => resolveRemoveTransactionFiles(cwd, config),
-  updateManifest: ({ cwd, removedNames }) => {
+  resolveTransactionFiles: ({ cwd, config }) =>
+    resolveRemoveTransactionFiles(cwd, config.resolvedConfig),
+  validateTransaction: ({ cwd, config }) => {
+    let currentSnapshot: string;
+    try {
+      currentSnapshot = serializeConfigSnapshot(
+        JSON.parse(readFileSync(resolveProjectPath(cwd, "diffgazer.json"), "utf-8")),
+      );
+    } catch {
+      throw new Error("Cannot remove items: diffgazer.json changed during confirmation.");
+    }
+    if (currentSnapshot !== config.configSnapshot) {
+      throw new Error("Cannot remove items: diffgazer.json changed during confirmation.");
+    }
+  },
+  updateManifest: ({ cwd, config, removedNames, metadata }) => {
     // Items whose drifted chunk was preserved stay tracked (trimmed to chunk
-    // tracking, see retainCssChunkTrackingOnly) so the block stays targetable.
+    // tracking) so the block stays targetable.
     const preservedByPublicName = new Map(
-      [...removeWorkflow.retainedChunkHashesByName].map(([name, hashes]) => [
+      [...(metadata?.retainedChunkHashesByName ?? new Map())].map(([name, hashes]) => [
         toPublicName(name),
         hashes,
       ]),
     );
     const retained = new Set(preservedByPublicName.keys());
     const names = removedNames.map(toPublicName).filter((name) => !retained.has(name));
-    ctx.config.updateManifest(cwd, undefined, names);
-    retainCssChunkTrackingOnly(cwd, preservedByPublicName);
+    applyRemovalManifestUpdate(cwd, config.capturedConfig, names, preservedByPublicName);
   },
-  findOrphanedDeps: ({ removedNames, cwd, config }) => {
-    const checker = ctx.createChecker(cwd, config.componentsFsPath);
+  findOrphanedDeps: ({ removedNames, config }) => {
     const removedUiNames = removedNames
       .map(parseInstallName)
       .filter((name) => name.namespace === "ui")
@@ -143,26 +221,23 @@ export const removeCommand = createRemoveCommand({
       getAllItems: ctx.registry.getAllItems,
       getItemName: (c) => c.name,
       getItemDeps: (c) => c.dependencies,
-      isInstalled: (c) => checker(c.name),
+      isInstalled: (c) => config.uiChecker(c.name),
     });
   },
-  expandRequestedNames: ({ cwd, names }) => {
-    removeWorkflow.snapshotPreRemovalChunks(readPreRemovalChunks(cwd));
-    return expandRemoval(cwd, names);
-  },
+  expandRequestedNames: ({ config, names }) => expandRemoval(config.manifest, names),
   onAfterRemove: ({ cwd, config, removedNames, force }) => {
     const plan = planOwnedCssChunkRemoval(
       cwd,
-      config,
+      config.resolvedConfig,
       removedNames,
-      removeWorkflow.preRemovalChunksByItem,
+      config.preRemovalChunksByItem,
       force,
     );
-    removeWorkflow.retainDriftedChunkHashes(plan.retainedChunkHashesByName);
     return {
       writes: plan.writes,
       preservedNotices: plan.preservedNotices,
-      retainedNames: plan.retainedNames,
+      retainedNames: [...plan.retainedChunkHashesByName.keys()],
+      metadata: { retainedChunkHashesByName: plan.retainedChunkHashesByName },
     };
   },
 });

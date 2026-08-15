@@ -1,6 +1,6 @@
 ---
 title: Utilities
-description: Helper functions for working with `@diffgazer/keys` — keys, navigation item utilities, DOM focus restore utilities, and keyboard context hooks.
+description: Helper functions for working with `@diffgazer/keys` — keys, navigation item utilities, composed-tree and reachability predicates, DOM focus restore utilities, and keyboard context hooks.
 ---
 
 ## Navigation item utilities
@@ -55,6 +55,7 @@ interface NavigationItemQuery {
   skipDisabled?: boolean;
   scopeToContainer?: boolean;
   ownerSelector?: string | null;
+  itemSelector?: string;
 }
 
 function getNavigationItemProps(
@@ -141,9 +142,11 @@ import { keys } from "@diffgazer/keys";
 ```ts
 function keys(
   hotkeys: readonly string[],
-  handler: (event: KeyboardEvent) => void,
-): Record<string, (event: KeyboardEvent) => void>;
+  handler: KeyHandler,
+): Record<string, KeyHandler>;
 ```
+
+Handlers created through `keys()` follow the same [KeyHandler](/keys/api/types) contract as any other handler: returning `false` declines the match and lets the next lower-priority handler in the active scope run.
 
 ### Example
 
@@ -219,6 +222,37 @@ function isEditableElement(target: EventTarget | null): boolean;
 
 - `isInputElement` returns `true` for `<input>`, `<textarea>`, `<select>`, and `contenteditable` elements.
 - `isEditableElement` is stricter: returns `true` only for elements that accept text editing keys (text-like inputs, textarea, contenteditable). Returns `false` for checkboxes, radios, selects, buttons, disabled, and readonly inputs.
+
+---
+
+## Composed-tree and reachability predicates
+
+DOM predicates shared by the focus trap, focus zones, and navigation discovery. Use them when your own code has to make the same "is this element reachable" or "is this target inside my container" decision across shadow boundaries.
+
+```ts
+import {
+  composedClosest,
+  composedContains,
+  isInsideDisabledFieldset,
+  isReachable,
+} from "@diffgazer/keys";
+```
+
+### Signature
+
+```ts
+function composedContains(container: Node, target: Node | null): boolean;
+function composedClosest(element: Element, selector: string): Element | null;
+function isReachable(element: HTMLElement): boolean;
+function isInsideDisabledFieldset(element: HTMLElement): boolean;
+```
+
+### Behavior
+
+- `composedContains` walks out through every open shadow root between `target` and `container`, so a target inside a nested shadow tree still reports as contained. Native `Node.contains` stops at the first shadow boundary.
+- `composedClosest` is `Element.closest` continued across shadow hosts: when no ancestor inside the current root matches, it hops to the host and keeps looking.
+- `isReachable` returns `false` when a hidden, `inert`, `aria-hidden="true"`, or closed-`<details>` self-or-ancestor removes the element from keyboard reach. Focus and navigation discovery skip the same elements.
+- `isInsideDisabledFieldset` returns `true` for controls disabled by an ancestor `<fieldset disabled>`, honoring the spec exemption for descendants of that fieldset's first `<legend>`.
 
 ---
 

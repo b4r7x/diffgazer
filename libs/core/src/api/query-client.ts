@@ -2,7 +2,7 @@ import { QueryClient, type QueryClientConfig } from "@tanstack/react-query";
 
 function isClientHttpError(error: unknown): boolean {
   if (!(error instanceof Error) || !("status" in error)) return false;
-  const status = (error as Error & { status: unknown }).status;
+  const { status } = error;
   return typeof status === "number" && status >= 400 && status < 500;
 }
 

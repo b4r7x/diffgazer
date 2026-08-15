@@ -221,7 +221,10 @@ export function assertInstalledRegistryTree(fixture) {
   ]);
   assertFileContains(fixture, "src/hooks/use-focus-restore.ts", ["useFocusRestore"]);
   assertFileContains(fixture, "src/hooks/utils/focusable.ts", ["isFocusable"]);
-  assertFileContains(fixture, "styles/dialog.css", ["dialog::backdrop"]);
+  if (existsSync(join(fixture, "styles/dialog.css"))) {
+    throw new Error("Shadcn dialog CSS should be aggregated into styles/styles.css");
+  }
+  assertFileContains(fixture, "styles/styles.css", ["dialog::backdrop"]);
 }
 
 export async function assertFixtureBuilds(fixture, label, componentNames, addonImports = []) {

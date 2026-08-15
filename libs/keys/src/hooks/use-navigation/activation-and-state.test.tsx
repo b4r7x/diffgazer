@@ -348,7 +348,7 @@ describe("useNavigation", () => {
         );
       }
 
-      it("does not preventDefault on Enter when no onEnter/onSelect is provided", async () => {
+      it("does not preventDefault on Enter when no onEnter/onSelect is provided", () => {
         render(<ListNoHandlers />);
         const listbox = screen.getByRole("listbox", { name: "Items" });
         listbox.focus();
@@ -358,23 +358,27 @@ describe("useNavigation", () => {
           bubbles: true,
           cancelable: true,
         });
-        listbox.dispatchEvent(event);
+        act(() => {
+          listbox.dispatchEvent(event);
+        });
 
         expect(event.defaultPrevented).toBe(false);
       });
 
-      it("does not preventDefault on Space when no onSelect is provided", async () => {
+      it("does not preventDefault on Space when no onSelect is provided", () => {
         render(<ListNoHandlers />);
         const listbox = screen.getByRole("listbox", { name: "Items" });
         listbox.focus();
 
         const event = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
-        listbox.dispatchEvent(event);
+        act(() => {
+          listbox.dispatchEvent(event);
+        });
 
         expect(event.defaultPrevented).toBe(false);
       });
 
-      it("does preventDefault on Enter when onEnter is provided", async () => {
+      it("does preventDefault on Enter when onEnter is provided", () => {
         const onEnter = vi.fn();
         function ListWithEnter() {
           const ref = useRef<HTMLDivElement>(null);
@@ -410,7 +414,9 @@ describe("useNavigation", () => {
           bubbles: true,
           cancelable: true,
         });
-        listbox.dispatchEvent(event);
+        act(() => {
+          listbox.dispatchEvent(event);
+        });
 
         expect(event.defaultPrevented).toBe(true);
         expect(onEnter).toHaveBeenCalledWith("a", expect.any(KeyboardEvent));

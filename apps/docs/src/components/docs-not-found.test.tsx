@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +6,6 @@ import { SearchProvider } from "@/hooks/search-context";
 import type { PageTree } from "@/lib/page-tree";
 import { stubMatchMedia } from "@/testing/match-media";
 import { DocsNotFoundBlock } from "./docs-not-found";
-import { GlobalNotFound } from "./global-not-found";
 
 const routerBoundary = vi.hoisted(() => ({
   navigate: vi.fn(),
@@ -94,13 +91,5 @@ describe("DocsNotFoundBlock", () => {
     }
 
     expectPanelAction("Documentation page not found", "OPEN_DOCS");
-  });
-
-  it("describes the global 404 action as GO_HOME", () => {
-    render(<GlobalNotFound />);
-
-    expect(screen.getByRole("link", { name: "Open docs" })).toHaveAttribute("href", "/ui");
-    expect(screen.getByRole("link", { name: "GO_HOME" })).toHaveAttribute("href", "/");
-    expectPanelAction("Page not found", "GO_HOME");
   });
 });

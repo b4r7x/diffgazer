@@ -7,11 +7,17 @@ import {
 import {
   aggregateThemeStylesInPublicRegistry,
   applyUiRegistryTargetsInPublicRegistry,
+  createUiThemeStyleStripPolicy,
+  removeDuplicateThemeStylesInPublicRegistry,
   transformUiPublicRegistryKeysImports,
 } from "./registry/rewrite-keys-imports.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const SOURCE_REGISTRY_PATH = "registry/registry.json";
+const themeStyleStripPolicy = createUiThemeStyleStripPolicy({
+  rootDir: ROOT,
+  sourceRegistryPath: SOURCE_REGISTRY_PATH,
+});
 
 buildShadcnRegistryWithOrigin({
   rootDir: ROOT,
@@ -26,5 +32,6 @@ buildShadcnRegistryWithOrigin({
         seedContent,
       }),
     );
+    removeDuplicateThemeStylesInPublicRegistry(outputDir, themeStyleStripPolicy);
   },
 });

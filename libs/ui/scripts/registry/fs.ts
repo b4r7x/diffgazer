@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { extractImportSpecifiers } from "@diffgazer/registry";
-import { KEYS_REGISTRY_DEPENDENCY_PREFIXES } from "@diffgazer/registry/schemas";
+import { parseKeysDependencyRef } from "@diffgazer/registry/schemas";
 
 export type { RegistryFile, RegistryItem } from "./types.js";
 
@@ -18,7 +18,7 @@ export function readSourceFile(root: string, relativePath: string): string {
   return readFileSync(resolve(root, relativePath), "utf-8");
 }
 
-export function existingRegistryPath(root: string, modulePath: string): string | null {
+function existingRegistryPath(root: string, modulePath: string): string | null {
   for (const extension of SOURCE_EXTENSIONS) {
     const path = `${modulePath}${extension}`;
     const resolved = resolve(root, path);
@@ -74,7 +74,5 @@ export function resolveImportToRegistryPath(
 }
 
 export function hasKeysRegistryDependency(item: RegistryItem): boolean {
-  return (item.registryDependencies ?? []).some((dep) =>
-    KEYS_REGISTRY_DEPENDENCY_PREFIXES.some((prefix) => dep.startsWith(prefix)),
-  );
+  return (item.registryDependencies ?? []).some((dep) => parseKeysDependencyRef(dep) !== null);
 }

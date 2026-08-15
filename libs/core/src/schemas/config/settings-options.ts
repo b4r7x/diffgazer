@@ -51,8 +51,12 @@ export const AGENT_EXECUTION_OPTIONS = [
   },
 ] as const satisfies ReadonlyArray<SettingsOption<AgentExecution>>;
 
-/** Header copy for the settings screens the web app and the TUI mirror; analysis says "lenses" per F-106. */
+/** Header copy the web app and the TUI mirror verbatim; analysis is described by its lenses, not its agents. */
 export const SETTINGS_SCREEN_COPY = {
+  theme: {
+    title: "Theme Settings",
+    subtitle: "Choose how Diffgazer appears.",
+  },
   storage: {
     title: "Secrets Storage",
     subtitle: "Choose where API keys and sensitive data should be stored.",

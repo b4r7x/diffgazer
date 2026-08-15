@@ -11,7 +11,7 @@ export interface ReviewPaneGeometryInput {
   columns: number;
   contentRows: number;
   isNarrow: boolean;
-  hasDuplicateNotice: boolean;
+  noticeRows: number;
 }
 
 export interface ReviewPaneGeometry {
@@ -53,16 +53,20 @@ export function computePaneGeometry({
   columns,
   contentRows,
   isNarrow,
-  hasDuplicateNotice,
+  noticeRows,
 }: ReviewPaneGeometryInput): ReviewPaneGeometry {
   // The list carries the severity chip row and issue titles, so its share of the
   // frame is the same at every tier instead of shrinking as the frame grows.
   const listWidth = Math.min(Math.max(Math.floor(columns * 0.4), 34), 56);
 
-  const paneHeight = Math.max(contentRows - RESULTS_CHROME_ROWS - (hasDuplicateNotice ? 1 : 0), 1);
+  const paneHeight = Math.max(contentRows - RESULTS_CHROME_ROWS - noticeRows, 1);
   const paneContentHeight = Math.max(paneHeight - RESULTS_PANE_BORDER_ROWS, 1);
+  const narrowListPaneHeight = Math.ceil(paneHeight / 2);
+  // Each stacked half pays for its own border, so the list budget comes from the
+  // box the renderer actually gives it — halving the single-border content
+  // height overshoots it by a row on an even split.
   const listPaneContentHeight = isNarrow
-    ? Math.max(Math.floor(paneContentHeight / 2), 1)
+    ? Math.max(narrowListPaneHeight - RESULTS_PANE_BORDER_ROWS, 1)
     : paneContentHeight;
 
   const narrowDetailsPaneHeight = Math.floor(paneHeight / 2);
@@ -73,7 +77,7 @@ export function computePaneGeometry({
   return {
     listWidth,
     listContentWidth: Math.max((isNarrow ? columns : listWidth) - 4, 1),
-    listPaneHeight: isNarrow ? Math.ceil(paneHeight / 2) : paneHeight,
+    listPaneHeight: isNarrow ? narrowListPaneHeight : paneHeight,
     detailsPaneHeight: isNarrow ? narrowDetailsPaneHeight : paneHeight,
     listScrollHeight: Math.max(listPaneContentHeight - ISSUE_LIST_CHROME_ROWS, 1),
     detailScrollHeight: getDetailScrollHeight({

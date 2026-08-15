@@ -1,3 +1,1 @@
-import { HistoryPage } from "@/features/history/components/page";
-
-export { HistoryPage };
+export { HistoryPage } from "@/features/history/components/page";

@@ -1,9 +1,9 @@
-import type { IssueDetailsPresentation } from "@diffgazer/core/review";
 import {
   type EvidencePresentation,
-  type ReviewIssue,
+  type IssueDetailsPresentation,
   toEvidencePresentation,
-} from "@diffgazer/core/schemas/review";
+} from "@diffgazer/core/review";
+import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { CodeBlock } from "@diffgazer/ui/components/code-block";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { PathValue } from "@/components/shared/path-value";
@@ -18,7 +18,7 @@ export function DetailsTabContent({
   presentation,
 }: {
   issue: ReviewIssue;
-  completedSteps: Set<number>;
+  completedSteps: ReadonlySet<number>;
   onToggleStep: (step: number) => void;
   focusedStepIndex?: number | null;
   onFocusedStepIndexChange?: (stepIndex: number) => void;
@@ -35,16 +35,14 @@ export function DetailsTabContent({
   return (
     <>
       <div className="mb-6">
-        <SectionHeader className="mb-2">SYMPTOM</SectionHeader>
+        <SectionHeader as="h2" className="mb-2">
+          SYMPTOM
+        </SectionHeader>
         <p className="text-sm leading-relaxed text-foreground/80">{issue.symptom}</p>
         {codeEvidence.length > 0 && (
           <section aria-label="Evidence" tabIndex={-1} className="mt-2 space-y-3">
             {codeEvidence.map((item) => (
-              <CodeEvidence
-                key={`${item.type}:${item.ordinal}`}
-                item={item}
-                endLine={issue.evidence[item.ordinal]?.range?.end}
-              />
+              <CodeEvidence key={`${item.type}:${item.ordinal}`} item={item} />
             ))}
           </section>
         )}
@@ -58,13 +56,17 @@ export function DetailsTabContent({
       </div>
 
       <div className="mb-6">
-        <SectionHeader className="mb-2">WHY IT MATTERS</SectionHeader>
+        <SectionHeader as="h2" className="mb-2">
+          WHY IT MATTERS
+        </SectionHeader>
         <p className="text-sm leading-relaxed text-foreground/80">{issue.whyItMatters}</p>
       </div>
 
       {presentation.fixPlan.length > 0 && (
         <div className="mb-6">
-          <SectionHeader className="mb-2">FIX PLAN</SectionHeader>
+          <SectionHeader as="h2" className="mb-2">
+            FIX PLAN
+          </SectionHeader>
           <FixPlanChecklist
             steps={presentation.fixPlan}
             completedSteps={completedSteps}
@@ -77,7 +79,9 @@ export function DetailsTabContent({
 
       {issue.betterOptions && issue.betterOptions.length > 0 && (
         <div className="mb-6">
-          <SectionHeader className="mb-2">BETTER OPTIONS</SectionHeader>
+          <SectionHeader as="h2" className="mb-2">
+            BETTER OPTIONS
+          </SectionHeader>
           <ul className="list-disc pl-4 space-y-1">
             {issue.betterOptions.map((opt, index) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: option text can repeat; backend order is the rendered identity.
@@ -91,7 +95,9 @@ export function DetailsTabContent({
 
       {issue.testsToAdd && issue.testsToAdd.length > 0 && (
         <div className="mb-6">
-          <SectionHeader className="mb-2">TESTS TO ADD</SectionHeader>
+          <SectionHeader as="h2" className="mb-2">
+            TESTS TO ADD
+          </SectionHeader>
           <ul className="list-disc pl-4 space-y-1">
             {issue.testsToAdd.map((test, index) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: test text can repeat; backend order is the rendered identity.
@@ -108,13 +114,7 @@ export function DetailsTabContent({
 
 const EMPTY_EVIDENCE_EXCERPT = "(empty excerpt)";
 
-function CodeEvidence({
-  item,
-  endLine,
-}: {
-  item: Extract<EvidencePresentation, { kind: "code" }>;
-  endLine?: number;
-}) {
+function CodeEvidence({ item }: { item: Extract<EvidencePresentation, { kind: "code" }> }) {
   const lines = item.excerpt.length > 0 ? item.excerpt.split(/\r?\n/) : [EMPTY_EVIDENCE_EXCERPT];
 
   return (
@@ -139,7 +139,7 @@ function CodeEvidence({
               key={`${item.ordinal}:${offset}`}
               number={
                 item.startLine === undefined ||
-                (endLine !== undefined && item.startLine + offset > endLine)
+                (item.endLine !== undefined && item.startLine + offset > item.endLine)
                   ? undefined
                   : item.startLine + offset
               }

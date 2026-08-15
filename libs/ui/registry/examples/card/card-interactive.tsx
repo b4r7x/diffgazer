@@ -21,13 +21,9 @@ const SURFACES = [
   { surface: "flat", delta: "border brightens" },
   { surface: "stacked", delta: "offset plate grows" },
   { surface: "inset", delta: "recessed fill deepens" },
-  { surface: "dotted", delta: "dashed border solidifies" },
+  { surface: "dotted", delta: "dashed border brightens" },
   { surface: "glow", delta: "outer edge strengthens" },
 ] as const;
-
-// The swatches are illustrations, not controls, so the interactive cursor is
-// dropped — only the surface treatment is on show.
-const SWATCH = "cursor-default";
 
 export default function CardInteractive() {
   return (
@@ -118,7 +114,7 @@ export default function CardInteractive() {
         >
           <CardHeader>
             <CardTitle>Dotted Interactive</CardTitle>
-            <CardDescription>Tab to focus, hover to see border solidify</CardDescription>
+            <CardDescription>Tab to focus, hover to see the dashed border brighten</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">The dashed border brightens on hover.</p>
@@ -131,12 +127,11 @@ export default function CardInteractive() {
           surface="glow"
           size="md"
           interactive
-          onClick={() => undefined}
           className="block w-full text-left"
         >
           <span className="block px-4 py-3 text-xl font-bold tracking-wide">Glow Interactive</span>
           <span className="block px-4 pb-4 text-sm text-muted-foreground">
-            Rendered as a button — Enter/Space activate it; the outer edge strengthens on hover.
+            Rendered as a button — it takes keyboard focus; the outer edge strengthens on hover.
           </span>
         </Card>
       </section>
@@ -154,7 +149,7 @@ function SwatchCard({
   force?: string;
 }) {
   return (
-    <Card surface={surface} interactive className={force ? `${SWATCH} ${force}` : SWATCH}>
+    <Card surface={surface} className={force}>
       <span className="block px-4 py-3 font-mono text-xs">
         <span className="block font-bold">{surface}</span>
         <span className="block text-muted-foreground">{label}</span>

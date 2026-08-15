@@ -12,7 +12,6 @@
       "registryDependencies": [
         "theme",
         "controllable-state",
-        "compose-refs",
         "icons",
         "@diffgazer-keys/navigation",
         "utils",
@@ -91,6 +90,10 @@
       "files": [
         {
           "path": "registry/ui/avatar/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/avatar/avatar-variants.ts",
           "type": "registry:ui"
         },
         {
@@ -383,7 +386,6 @@
         "controllable-state",
         "form-reset",
         "@diffgazer-keys/navigation",
-        "compose-refs",
         "fieldset-disabled",
         "selectable-collection",
         "selectable-variants",
@@ -450,7 +452,6 @@
         "aria",
         "controllable-state",
         "form-reset",
-        "compose-refs",
         "@diffgazer-keys/navigation",
         "fieldset-disabled",
         "selectable-collection",
@@ -938,7 +939,6 @@
       "description": "Native dialog element wrapper with presence animations and backdrop handling",
       "dependencies": [],
       "registryDependencies": [
-        "compose-refs",
         "presence",
         "@diffgazer-keys/focus-trap",
         "aria",
@@ -1018,7 +1018,6 @@
         "aria",
         "controllable-state",
         "@diffgazer-keys/navigation",
-        "compose-refs",
         "floating-indicator",
         "segmented-variants",
         "selectable-collection",
@@ -1224,6 +1223,7 @@
         "outside-click",
         "spinner",
         "utils",
+        "@diffgazer-keys/focus-restore",
         "@diffgazer-keys/navigation",
         "top-layer-stack"
       ],
@@ -1284,7 +1284,6 @@
         "badge",
         "controllable-state",
         "selectable-collection",
-        "compose-refs",
         "step-status",
         "stepper-variants",
         "utils",
@@ -1330,11 +1329,6 @@
         {
           "path": "registry/ui/stepper/stepper-substep.tsx",
           "type": "registry:ui"
-        },
-        {
-          "path": "registry/ui/shared/stepper.css",
-          "type": "registry:style",
-          "target": "~/styles/stepper.css"
         }
       ]
     },
@@ -1348,7 +1342,6 @@
         "theme",
         "controllable-state",
         "form-reset",
-        "compose-refs",
         "input-variants",
         "utils",
         "composed-refs"
@@ -1376,7 +1369,6 @@
         "theme",
         "@diffgazer-keys/navigation",
         "controllable-state",
-        "compose-refs",
         "form-reset",
         "floating-indicator",
         "selectable-collection",
@@ -1404,6 +1396,10 @@
         {
           "path": "registry/ui/toggle-group/toggle-group-item.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/toggle-group/create-toggle-group.tsx",
+          "type": "registry:ui"
         }
       ]
     },
@@ -1412,7 +1408,13 @@
       "type": "registry:ui",
       "title": "Code Block",
       "description": "Code display with three visual variants (hairline, bare, terminal), per-line diff/highlight states, and optional copy button. Add ui/code-block-highlight separately for lowlight syntax coloring.",
-      "registryDependencies": ["theme", "scroll-area", "utils", "copy-to-clipboard"],
+      "registryDependencies": [
+        "theme",
+        "scroll-area",
+        "accessible-text",
+        "utils",
+        "copy-to-clipboard"
+      ],
       "meta": {
         "client": true
       },
@@ -1510,6 +1512,7 @@
       "registryDependencies": [
         "theme",
         "step-status",
+        "stepper-variants",
         "horizontal-stepper-variants",
         "selectable-glyph",
         "utils"
@@ -1530,11 +1533,6 @@
         {
           "path": "registry/ui/horizontal-stepper/horizontal-stepper-step.tsx",
           "type": "registry:ui"
-        },
-        {
-          "path": "registry/ui/shared/stepper.css",
-          "type": "registry:style",
-          "target": "~/styles/stepper.css"
         }
       ]
     },
@@ -1549,7 +1547,6 @@
         "controllable-state",
         "@diffgazer-keys/focus-restore",
         "@diffgazer-keys/navigation",
-        "compose-refs",
         "dialog-shell",
         "portal",
         "search",
@@ -1644,7 +1641,6 @@
         "aria",
         "controllable-state",
         "@diffgazer-keys/navigation",
-        "compose-refs",
         "floating-panel",
         "form-reset",
         "icons",
@@ -1778,7 +1774,6 @@
         "icons",
         "controllable-state",
         "@diffgazer-keys/navigation",
-        "compose-refs",
         "dialog",
         "sidebar-variants",
         "sidebar-intent",
@@ -1993,7 +1988,7 @@
       "dependencies": ["class-variance-authority"],
       "registryDependencies": ["theme", "utils", "marker-rail"],
       "meta": {
-        "client": true
+        "client": false
       },
       "files": [
         {
@@ -2161,7 +2156,7 @@
     {
       "name": "presence",
       "type": "registry:hook",
-      "title": "usePresence",
+      "title": "Presence",
       "description": "Hook for animating mount/unmount transitions with CSS animations. Keeps element in DOM during exit animation, removes after completion.",
       "dependencies": [],
       "registryDependencies": [],
@@ -2251,7 +2246,7 @@
     {
       "name": "compose-refs",
       "type": "registry:lib",
-      "title": "composeRefs",
+      "title": "Compose Refs",
       "description": "Utility to compose multiple React refs into a single ref callback. Use when a component needs an internal ref and must also forward an external ref prop (React 19 ref-as-prop pattern).",
       "meta": {
         "client": false
@@ -2266,7 +2261,7 @@
     {
       "name": "composed-refs",
       "type": "registry:hook",
-      "title": "useComposedRefs",
+      "title": "Composed Refs",
       "description": "Cached companion to composeRefs: returns a stable RefCallback so React does not detach/re-attach the composed refs every commit. Use at component call sites instead of calling composeRefs inline during render.",
       "registryDependencies": ["compose-refs"],
       "meta": {
@@ -2282,7 +2277,7 @@
     {
       "name": "copy-to-clipboard",
       "type": "registry:hook",
-      "title": "useCopyToClipboard",
+      "title": "Copy to Clipboard",
       "description": "Copy-to-clipboard state machine: writes text to the clipboard and exposes an idle → copied | failed status that resets after a delay (default 2000ms), with timer cleanup on unmount.",
       "registryDependencies": [],
       "meta": {
@@ -2525,7 +2520,7 @@
       "description": "Base36 encoding for stable DOM id parts.",
       "registryDependencies": [],
       "meta": {
-        "client": true,
+        "client": false,
         "hidden": true
       },
       "files": [
@@ -2614,7 +2609,7 @@
       "name": "sidebar-variants",
       "type": "registry:ui",
       "title": "Sidebar Variants",
-      "description": "Shared CVA visual contracts for the Sidebar primitive (container + item, six active-marker variants).",
+      "description": "Shared CVA visual contracts for the Sidebar primitive (container + item, five active-marker variants).",
       "dependencies": ["class-variance-authority"],
       "registryDependencies": ["marker-rail"],
       "meta": {
@@ -2649,7 +2644,7 @@
     {
       "name": "is-mobile",
       "type": "registry:hook",
-      "title": "useIsMobile",
+      "title": "Is Mobile",
       "description": "matchMedia-backed hook that returns true when the viewport is narrower than a breakpoint (default 1024px).",
       "dependencies": [],
       "registryDependencies": [],
@@ -2678,6 +2673,25 @@
       "files": [
         {
           "path": "registry/hooks/use-navigation.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "use-focusable",
+      "type": "registry:hook",
+      "title": "Focusable Utilities",
+      "description": "Re-export of @diffgazer/keys focusable utilities for registry consumers.",
+      "dependencies": [],
+      "registryDependencies": ["@diffgazer-keys/focusable"],
+      "meta": {
+        "client": false,
+        "hidden": true,
+        "optionalIntegrations": ["keyboard-navigation"]
+      },
+      "files": [
+        {
+          "path": "registry/hooks/utils/focusable.ts",
           "type": "registry:hook"
         }
       ]
@@ -2783,7 +2797,7 @@
     {
       "name": "floating-panel",
       "type": "registry:ui",
-      "title": "FloatingPanel",
+      "title": "Floating Panel",
       "description": "Headless floating surface primitive. Composes Portal, presence, and floating-position to render an anchored, animated panel with data-state, data-side, data-align, and data-positioned attributes plus a transform-origin custom property. Used by Popover, Select, and other anchored surfaces.",
       "dependencies": [],
       "registryDependencies": [
@@ -2791,7 +2805,6 @@
         "portal",
         "presence",
         "floating-position",
-        "compose-refs",
         "utils",
         "composed-refs"
       ],
@@ -2812,13 +2825,12 @@
     {
       "name": "listbox",
       "type": "registry:hook",
-      "title": "useListbox",
+      "title": "Listbox",
       "description": "Shared listbox state and keyboard navigation hook. Manages selection, highlight, and container ARIA props for listbox-pattern components.",
       "dependencies": [],
       "registryDependencies": [
         "controllable-state",
         "@diffgazer-keys/navigation",
-        "compose-refs",
         "composed-refs",
         "typeahead",
         "typeahead-buffer"
@@ -2849,7 +2861,7 @@
     {
       "name": "typeahead-buffer",
       "type": "registry:hook",
-      "title": "useTypeaheadBuffer",
+      "title": "Typeahead Buffer",
       "description": "Small typeahead query buffer for composite widgets that reset typed search after a short idle window.",
       "dependencies": [],
       "registryDependencies": [],
@@ -2932,7 +2944,6 @@
         "aria",
         "controllable-state",
         "form-reset",
-        "compose-refs",
         "fieldset-disabled",
         "selectable-variants",
         "utils",
@@ -2960,7 +2971,7 @@
       "dependencies": ["class-variance-authority"],
       "registryDependencies": ["theme", "utils"],
       "meta": {
-        "client": true
+        "client": false
       },
       "files": [
         {
@@ -2982,7 +2993,7 @@
       "name": "skeleton",
       "type": "registry:ui",
       "title": "Skeleton",
-      "description": "Loading placeholder with pulse animation",
+      "description": "Loading placeholder drawn as a strip of character cells with a scan sweep",
       "dependencies": [],
       "registryDependencies": ["theme"],
       "meta": {

@@ -119,9 +119,21 @@ describe("HelpPage", () => {
     const groupHeadings = screen
       .getAllByRole("heading", { level: 3 })
       .map((heading) => heading.textContent);
-    expect(groupHeadings).toEqual(["Anywhere", "In lists", "In a review", "In history"]);
+    expect(groupHeadings).toEqual([
+      "Anywhere",
+      "In lists",
+      "On the home screen",
+      "In a review",
+      "In history",
+    ]);
 
-    for (const name of ["Anywhere", "In lists", "In a review", "In history"]) {
+    for (const name of [
+      "Anywhere",
+      "In lists",
+      "On the home screen",
+      "In a review",
+      "In history",
+    ]) {
       expect(screen.getByRole("list", { name })).toBeInTheDocument();
     }
   });
@@ -205,7 +217,10 @@ describe("HelpPage", () => {
     expect(region.scrollTop).toBe(80);
   });
 
-  it("lists touch gestures for touch devices", async () => {
+  // jsdom applies no CSS, so the `pointer-coarse` gate that decides whether this
+  // section reaches the accessibility tree is a browser contract, asserted in
+  // testing/e2e/responsive-contracts.e2e.ts. This covers only the markup.
+  it("renders the touch gesture rows and their labels", async () => {
     await renderPage();
 
     expect(screen.getByRole("heading", { name: /touch gestures/i })).toBeInTheDocument();

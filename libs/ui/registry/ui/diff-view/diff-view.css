@@ -180,6 +180,7 @@
      supported light theme re-anchor the +/− markers to GitHub-light values
      so the red/green signal stays ≥4.5:1 on #f7f8f5 (WCAG 1.4.3). Derived
      row/word tints re-resolve automatically from these cascaded anchors. */
+  [data-theme="light"][data-slot="diff-view"],
   [data-theme="light"] [data-slot="diff-view"] {
     --diff-color-add: #1a7f37;
     --diff-color-remove: #cf222e;
@@ -187,6 +188,7 @@
   }
 
   /* Light Okabe-Ito tier — colorblind-safe pair tuned for #f7f8f5. */
+  [data-theme="light"][data-slot="diff-view"][data-diff-palette="okabe-ito"],
   [data-theme="light"] [data-slot="diff-view"][data-diff-palette="okabe-ito"] {
     --diff-color-add: #00795a;
     --diff-color-remove: #b34700;

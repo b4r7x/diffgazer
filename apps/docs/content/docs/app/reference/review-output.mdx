@@ -77,6 +77,8 @@ Every evidence item keeps its title, source identifier, and excerpt in saved rev
 | `trace`    | A Trace evidence reference with its title, source identifier, and excerpt. This is separate from the issue's optional agent-step `trace`. |
 | `external` | An External reference with its title, source identifier, and excerpt. The source identifier is displayed as plain text, not treated as an executable link. |
 
+`code` evidence is always extracted from the diff the review ran on and listed first, so an excerpt shown as code is the reviewed source rather than text the model wrote. Provider-supplied references of the other three types are kept as given.
+
 ## Profiles
 
 A profile is a named preset that picks which lenses run and, optionally, a minimum severity to keep. Four ship built in:

@@ -1,19 +1,6 @@
 import { describe, expect, test } from "vitest";
-import type { TrustConfig } from "./settings.js";
+import { makeTrustConfig as makeTrust } from "../../testing/factories.js";
 import { buildSavePayload, getInitialDraft, resolveEditorView } from "./trust-editor.js";
-
-const TRUSTED_AT = "2026-05-13T12:00:00.000Z";
-
-function makeTrust(overrides: Partial<TrustConfig> = {}): TrustConfig {
-  return {
-    projectId: "proj-1",
-    repoRoot: "/work/proj",
-    trustedAt: TRUSTED_AT,
-    capabilities: { readFiles: true, runCommands: false },
-    trustMode: "persistent",
-    ...overrides,
-  };
-}
 
 describe("getInitialDraft", () => {
   test("normalizes capabilities from existing trust", () => {
@@ -126,17 +113,16 @@ describe("resolveEditorView", () => {
 });
 
 describe("buildSavePayload", () => {
-  test("returns a ready request carrying only client-controlled fields", () => {
+  test("echoes the existing trust mode in the save payload", () => {
     const result = buildSavePayload({
-      projectId: "proj-1",
       repoRoot: "/work/proj",
-      trust: makeTrust({ trustMode: "session" }),
+      trust: makeTrust({ trustMode: "persistent" }),
       capabilities: { readFiles: true, runCommands: false },
     });
     expect(result.kind).toBe("ready");
     if (result.kind !== "ready") return;
     expect(result.payload).toEqual({
-      trustMode: "session",
+      trustMode: "persistent",
       capabilities: { readFiles: true },
     });
     expect("runCommands" in result.payload.capabilities).toBe(false);
@@ -145,9 +131,8 @@ describe("buildSavePayload", () => {
     expect("trustedAt" in result.payload).toBe(false);
   });
 
-  test("defaults trustMode to persistent when no existing trust", () => {
+  test("allows a first grant with no existing trust and defaults trustMode to persistent", () => {
     const result = buildSavePayload({
-      projectId: "proj-1",
       repoRoot: "/work/proj",
       trust: null,
       capabilities: { readFiles: true, runCommands: false },
@@ -155,21 +140,15 @@ describe("buildSavePayload", () => {
     expect(result.kind).toBe("ready");
     if (result.kind !== "ready") return;
     expect(result.payload.trustMode).toBe("persistent");
+    expect(result.payload).toEqual({
+      trustMode: "persistent",
+      capabilities: { readFiles: true },
+    });
   });
 
-  test("blocks save when projectId or repoRoot is missing", () => {
+  test("blocks save when repoRoot is missing", () => {
     expect(
       buildSavePayload({
-        projectId: null,
-        repoRoot: "/work/proj",
-        trust: null,
-        capabilities: { readFiles: true, runCommands: false },
-      }),
-    ).toEqual({ kind: "blocked", reason: "project-missing" });
-
-    expect(
-      buildSavePayload({
-        projectId: "proj-1",
         repoRoot: null,
         trust: null,
         capabilities: { readFiles: true, runCommands: false },

@@ -16,7 +16,11 @@ Choose the path that matches whether your app should own copied source or consum
 
 ### Copy-first registry mode
 
-Use this when your app should own and customize component source:
+Use this when your app should own and customize component source.
+
+`dgadd` is publish-gated, so there is no `dgadd` bin at the workspace root. Before publication, pack the CLI and install the tarball into the target app, which is what puts `dgadd` on `pnpm exec`. See the root [Copy-first mode (`dgadd`)](https://github.com/b4r7x/diffgazer/blob/main/README.md#copy-first-mode-dgadd) section for the full build, pack, and install procedure.
+
+From the target app after installing the packed `@diffgazer/add` tarball:
 
 ```bash
 pnpm exec dgadd init
@@ -65,7 +69,7 @@ The hosted registry at `https://r.b4r7.dev` is not yet live. After publication (
 npx shadcn add https://r.b4r7.dev/r/ui/button.json
 ```
 
-Until then, run `dgadd` from a local checkout (`pnpm exec dgadd add ui/button`) or use the
+Until then, pack and install `@diffgazer/add` locally (see [Copy-first mode (`dgadd`)](https://github.com/b4r7x/diffgazer/blob/main/README.md#copy-first-mode-dgadd)) or use the
 [local runtime package procedure](https://github.com/b4r7x/diffgazer/blob/main/PACKAGE_GOVERNANCE.md#local-runtime-package-installation-before-publication).
 
 For a dependency-closed local archive, open the Button docs page, choose **Copy Full Source**,
@@ -147,6 +151,7 @@ field. Import the specific subpath you need (listed below); `exports`-aware tool
 - `@diffgazer/ui/lib/compose-refs`
 - `@diffgazer/ui/lib/selectable-collection`
 - `@diffgazer/ui/lib/utils`
+- `@diffgazer/ui/theme` — theme token metadata (primitives and semantic tokens with their dark/light values) for building token documentation
 - `@diffgazer/ui/theme-base.css`
 - `@diffgazer/ui/theme.css`
 - `@diffgazer/ui/sources.css`
@@ -161,8 +166,9 @@ field. Import the specific subpath you need (listed below); `exports`-aware tool
 - `lowlight >= 3.0.0` (optional — only `./components/code-block/highlight`)
 
 `pnpm validate:release-docs` checks that this README plus the package and public-docs changelog
-entries match the `@diffgazer/keys` peer floor in `package.json`. It also imports the public
-FloatingPanel subpath and checks the runtime symbols named in the 0.2.0 release note.
+entries match the `@diffgazer/keys` peer floor in `package.json`, and that every identifier the
+current release's `CHANGELOG.md` names under `Removals:`/`Changes:` also appears in the public
+docs changelog. It also imports the public FloatingPanel subpath and checks its runtime symbols.
 
 ## Versioning and Migration
 

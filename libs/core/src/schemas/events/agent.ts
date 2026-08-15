@@ -5,17 +5,30 @@ import { ReviewIssueSchema } from "../review/issues.js";
 import { type LensId, LensIdSchema } from "../review/lens.js";
 
 const AGENT_IDS = ["detective", "guardian", "optimizer", "simplifier", "tester"] as const;
+export type AgentId = (typeof AGENT_IDS)[number];
 
-const AgentIdSchema = z.enum(AGENT_IDS);
-export type AgentId = z.infer<typeof AgentIdSchema>;
+const AGENT_ID_SET = new Set<AgentId>(AGENT_IDS);
 
-export const LENS_TO_AGENT: Record<LensId, AgentId> = {
+const AgentIdSchema = z.custom<AgentId>(
+  (value): value is AgentId => typeof value === "string" && AGENT_ID_SET.has(value as AgentId),
+  { error: "Invalid agent id" },
+);
+
+export const LENS_TO_AGENT = {
   correctness: "detective",
   security: "guardian",
   performance: "optimizer",
   simplicity: "simplifier",
   tests: "tester",
-} as const;
+} as const satisfies Readonly<Record<LensId, AgentId>>;
+
+const CountSchema = z.int().nonnegative();
+const PositiveCountSchema = z.int().positive();
+const CostUsdSchema = z.number().nonnegative();
+
+function hasCanonicalAgentLensPair(id: AgentId, lens: LensId): boolean {
+  return LENS_TO_AGENT[lens] === id;
+}
 
 const AgentMetaSchema = z
   .object({
@@ -26,6 +39,14 @@ const AgentMetaSchema = z
     badgeVariant: BadgeVariantSchema.optional(),
     description: z.string(),
   })
+  .superRefine((data, context) => {
+    if (hasCanonicalAgentLensPair(data.id, data.lens)) return;
+    context.addIssue({
+      code: "custom",
+      message: "lens must match the canonical agent id",
+      path: ["lens"],
+    });
+  })
   .transform((data) => ({
     id: data.id,
     lens: data.lens,
@@ -34,7 +55,7 @@ const AgentMetaSchema = z
     badgeVariant: data.badgeVariant ?? "info",
     description: data.description,
   }));
-type AgentMeta = z.infer<typeof AgentMetaSchema>;
+export type AgentMeta = z.infer<typeof AgentMetaSchema>;
 
 export const AGENT_METADATA = {
   detective: {
@@ -77,44 +98,23 @@ export const AGENT_METADATA = {
     badgeVariant: "info",
     description: "Evaluates test coverage and quality",
   },
-} satisfies Record<AgentId, AgentMeta>;
+} as const satisfies { [Id in AgentId]: AgentMeta & { id: Id } };
 
-export const AGENT_STATUS = ["queued", "running", "complete", "error"] as const;
-const AgentStatusSchema = z.enum(AGENT_STATUS);
-export type AgentStatus = z.infer<typeof AgentStatusSchema>;
-
-const FileStartEventSchema = z.object({
-  type: z.literal("file_start"),
-  file: z.string(),
-  index: z.number(),
-  total: z.number(),
-  timestamp: z.string(),
-  agent: AgentIdSchema.optional(),
-  scope: z.enum(["orchestrator", "agent"]).optional(),
-});
-
-const FileCompleteEventSchema = z.object({
-  type: z.literal("file_complete"),
-  file: z.string(),
-  index: z.number(),
-  total: z.number(),
-  timestamp: z.string(),
-  agent: AgentIdSchema.optional(),
-  scope: z.enum(["orchestrator", "agent"]).optional(),
-});
+const AGENT_STATUSES = ["queued", "running", "complete", "error"] as const;
+export type AgentStatus = (typeof AGENT_STATUSES)[number];
 
 const OrchestratorStartEventSchema = z.object({
   type: z.literal("orchestrator_start"),
   agents: z.array(AgentMetaSchema),
-  concurrency: z.number(),
+  concurrency: PositiveCountSchema,
   timestamp: z.string(),
 });
 
 const AgentQueuedEventSchema = z.object({
   type: z.literal("agent_queued"),
   agent: AgentMetaSchema,
-  position: z.number(),
-  total: z.number(),
+  position: PositiveCountSchema,
+  total: PositiveCountSchema,
   timestamp: z.string(),
 });
 
@@ -153,8 +153,8 @@ const FileProgressEventSchema = z.object({
   type: z.literal("file_progress"),
   agent: AgentIdSchema,
   file: z.string(),
-  completed: z.number(),
-  total: z.number(),
+  completed: PositiveCountSchema,
+  total: PositiveCountSchema,
   timestamp: z.string(),
 });
 
@@ -168,18 +168,18 @@ const IssueFoundEventSchema = z.object({
 const AgentCompleteEventSchema = z.object({
   type: z.literal("agent_complete"),
   agent: AgentIdSchema,
-  issueCount: z.number(),
+  issueCount: CountSchema,
   timestamp: z.string(),
-  durationMs: z.number().optional(),
-  promptChars: z.number().optional(),
-  outputChars: z.number().optional(),
-  tokenEstimate: z.number().optional(),
-  costUsd: z.number().optional(),
+  durationMs: CountSchema.optional(),
+  promptChars: CountSchema.optional(),
+  outputChars: CountSchema.optional(),
+  tokenEstimate: CountSchema.optional(),
+  costUsd: CostUsdSchema.optional(),
 });
 
 export const LensStatSchema = z.object({
   lensId: LensIdSchema,
-  issueCount: z.number(),
+  issueCount: CountSchema,
   status: z.enum(["success", "failed"]),
   errorCode: z.string().optional(),
   errorMessage: z.string().optional(),
@@ -188,14 +188,14 @@ export type LensStat = z.infer<typeof LensStatSchema>;
 
 const OrchestratorCompleteEventSchema = z.strictObject({
   type: z.literal("orchestrator_complete"),
-  totalIssues: z.number(),
+  totalIssues: CountSchema,
   lensStats: z.array(LensStatSchema),
-  filesAnalyzed: z.number(),
+  filesAnalyzed: CountSchema,
   // Counts the dedup/filter passes removed from the streamed total so the UI can
   // explain why the live counter snaps down at `complete`.
-  droppedDuplicates: z.number().int().nonnegative().optional(),
-  droppedBelowThreshold: z.number().optional(),
-  droppedIncompleteProviderIssues: z.number().int().nonnegative().optional(),
+  droppedDuplicates: CountSchema.optional(),
+  droppedBelowThreshold: CountSchema.optional(),
+  droppedIncompleteProviderIssues: CountSchema.optional(),
   // The resolved severity floor the dropped issues fell below, so the hidden-count
   // notice can name the threshold the user can lower to surface them.
   minSeverity: ReviewSeveritySchema.optional(),
@@ -205,8 +205,6 @@ const OrchestratorCompleteEventSchema = z.strictObject({
 export const AgentStreamEventSchema = z.discriminatedUnion("type", [
   OrchestratorStartEventSchema,
   AgentQueuedEventSchema,
-  FileStartEventSchema,
-  FileCompleteEventSchema,
   AgentStartEventSchema,
   AgentThinkingEventSchema,
   AgentProgressEventSchema,
@@ -218,15 +216,19 @@ export const AgentStreamEventSchema = z.discriminatedUnion("type", [
 ]);
 export type AgentStreamEvent = z.infer<typeof AgentStreamEventSchema>;
 
-const AgentStateSchema = z.object({
-  id: AgentIdSchema,
-  meta: AgentMetaSchema,
-  status: AgentStatusSchema,
-  progress: z.number().min(0).max(100),
-  issueCount: z.number(),
-  currentAction: z.string().optional(),
-  error: z.string().optional(),
-  startedAt: z.string().optional(),
-  completedAt: z.string().optional(),
-});
-export type AgentState = z.infer<typeof AgentStateSchema>;
+/**
+ * Client review state, built by the reducer from already-parsed
+ * `AgentStreamEvent` values. It never crosses a serialization boundary of its
+ * own, so it is a plain type rather than a schema nothing parses.
+ */
+export interface AgentState {
+  id: AgentId;
+  meta: AgentMeta;
+  status: AgentStatus;
+  progress: number;
+  issueCount: number;
+  currentAction?: string;
+  error?: string;
+  startedAt?: string;
+  completedAt?: string;
+}

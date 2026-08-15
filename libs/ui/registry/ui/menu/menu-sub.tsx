@@ -10,6 +10,7 @@ import {
   type RefObject,
   useContext,
   useEffect,
+  useEffectEvent,
   useId,
   useLayoutEffect,
   useMemo,
@@ -282,8 +283,6 @@ export function MenuSubContent({
   const contentRef = useRef<HTMLDivElement>(null);
   const isStack = resolvedMode === "stack";
   const { pushSub, popSub, activeSub, stackContainer } = parentMenu;
-  const highlightRef = useRef(parentMenu.highlight);
-  highlightRef.current = parentMenu.highlight;
   const triggerId = triggerInfoRef.current?.id ?? null;
   const isPushed = isStack && triggerId !== null && activeSub?.id === triggerId;
   const firstStackItemId =
@@ -291,6 +290,15 @@ export function MenuSubContent({
       itemTypes: [MenuItem, MenuItemCheckbox, MenuItemRadio],
       containerTypes: [MenuGroup],
     }).find((item) => !item.disabled)?.id ?? null;
+
+  // The trigger row is hidden once we push, so the highlight has to follow the
+  // user into the submenu rather than point at an element that no longer
+  // exists. Effect Event, not a dependency: a first row that changes identity
+  // (async children, the current first row becoming disabled) must not pop and
+  // re-push the stack entry and yank the highlight back to the top.
+  const highlightStackEntry = useEffectEvent(() => {
+    if (firstStackItemId !== null) parentMenu.highlight(firstStackItemId);
+  });
 
   // The drill-down stack lives on the parent Menu, so publishing this submenu
   // into it is synchronisation with an external store, not derived state. The
@@ -300,13 +308,9 @@ export function MenuSubContent({
     const info = triggerInfoRef.current;
     if (info === null) return;
     pushSub(info);
-    // The trigger row is now hidden, so the highlight has to follow the user
-    // into the submenu rather than point at an element that no longer exists.
-    // Read through the ref: the highlight setter's identity changes with the
-    // highlight itself, and depending on it would re-push on every move.
-    if (firstStackItemId !== null) highlightRef.current(firstStackItemId);
+    highlightStackEntry();
     return () => popSub(info.id);
-  }, [isStack, open, pushSub, popSub, triggerInfoRef, firstStackItemId]);
+  }, [isStack, open, pushSub, popSub, triggerInfoRef]);
 
   // The parent pops for the back row, ArrowLeft, Escape and sibling pushes, so
   // losing the entry has to release this submenu's own open state too.
@@ -386,7 +390,9 @@ export function MenuSubContent({
         aria-label={ariaLabel}
         aria-labelledby={resolvedAriaLabelledBy}
         autoFocus={open}
-        onClose={dismissSubmenu}
+        // No onClose: handleSubmenuKeyDown owns Escape/Tab dismissal and also
+        // restores focus and the parent highlight. Wiring both would call the
+        // public onOpenChange twice for one keystroke.
         onSelect={parentMenu.notifySelect}
         onKeyDown={handleSubmenuKeyDown}
       >

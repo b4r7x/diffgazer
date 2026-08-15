@@ -14,29 +14,21 @@ import {
   LOCAL_OPENAI_CONFIGURATION,
   unconfiguredRow,
 } from "@diffgazer/core/testing/provider-fixtures";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { flush } from "../../../testing/flush";
+import { createTestQueryClient } from "../../../testing/query-client";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
 import { flushUntil } from "../testing/model-select-overlay";
 import { ApiKeyOverlay } from "./api-key-overlay";
 
-function makeQueryClient(): QueryClient {
-  return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, networkMode: "always" },
-      mutations: { retry: false, networkMode: "always" },
-    },
-  });
-}
-
 function Wrapper({ children, api }: { children: ReactNode; api: BoundApi }) {
   return (
-    <QueryClientProvider client={makeQueryClient()}>
+    <QueryClientProvider client={createTestQueryClient()}>
       <ApiProvider value={api}>
         <CliThemeProvider initialTheme="dark">
           <TerminalKeyboardProvider>
@@ -116,6 +108,32 @@ describe("ApiKeyOverlay hosted write-only flow", () => {
       expect.anything(),
     );
     expect(view.lastFrame()).not.toContain("sk-test-secret");
+  });
+
+  test("does not toggle notice acceptance while typing in the API key field", async () => {
+    const view = render(
+      <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
+        <ApiKeyOverlay
+          open
+          row={unconfiguredRow("gemini")}
+          onOpenChange={() => {}}
+          onCreate={async () => {}}
+          onUpdate={async () => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+    view.stdin.write("a");
+    await flush();
+    expect(view.lastFrame()).toContain("[x]");
+
+    view.stdin.write("\t");
+    await flush();
+    view.stdin.write("a");
+    await flush();
+    expect(view.lastFrame()).toContain("[x]");
+    expect(view.lastFrame()).toContain("Notice accepted");
   });
 
   test("submits environment credentials without exposing a typed secret in the frame", async () => {
@@ -296,6 +314,16 @@ describe("ApiKeyOverlay family-specific layout", () => {
     view.stdin.write("\r");
     await waitUntil(() => onCreate.mock.calls.length > 0);
     expect(onCreate).toHaveBeenCalledOnce();
+    expect(onCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transportFamily: "hosted-api",
+        productId: "gemini",
+        credential: { kind: "literal", value: "sk-hosted-secret" },
+      }),
+      expect.objectContaining({
+        acknowledgement: expect.objectContaining({ status: "accepted" }),
+      }),
+    );
   });
 });
 
@@ -365,19 +393,100 @@ describe("ApiKeyOverlay notice acknowledgement state", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => view.lastFrame()?.includes("Update Configuration") ?? false);
+    await flushUntil(() => view.lastFrame()?.includes("Accept notice") ?? false);
+
+    view.stdin.write("\r");
+    await flush();
+    expect(view.lastFrame()).toContain("Notice accepted");
+
+    view.stdin.write("\r");
+    await waitUntil(() => onUpdate.mock.calls.length > 0);
+    expect(onUpdate).toHaveBeenCalledOnce();
+  });
+
+  test("accepts the notice with Enter on the focused notice button", async () => {
+    const onCreate = vi.fn(
+      async (
+        _input: ClientConfigurationInput,
+        _opts: { acknowledgement: ReadinessAcknowledgement; openModelDialog?: boolean },
+      ) => {},
+    );
+    const view = render(
+      <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
+        <ApiKeyOverlay
+          open
+          row={unconfiguredRow("ollama")}
+          onOpenChange={() => {}}
+          onCreate={onCreate}
+          onUpdate={async () => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
     expect(view.lastFrame()).toContain("Accept notice");
 
     view.stdin.write("\r");
     await flush();
-    expect(onUpdate).not.toHaveBeenCalled();
+    expect(view.lastFrame()).toContain("Notice accepted");
 
+    view.stdin.write("\r");
+    await waitUntil(() => onCreate.mock.calls.length > 0);
+    expect(onCreate).toHaveBeenCalledOnce();
+  });
+
+  test("shows the canonical environment variable for hosted setup", async () => {
+    const view = render(
+      <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
+        <ApiKeyOverlay
+          open
+          row={unconfiguredRow("gemini")}
+          onOpenChange={() => {}}
+          onCreate={async () => {}}
+          onUpdate={async () => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+    view.stdin.write("\u001B[B");
+    await flush();
+
+    const frame = view.lastFrame() ?? "";
+    expect(frame).toContain("GOOGLE_API_KEY");
+    expect(frame).not.toContain("GEMINI_API_KEY");
+    expect(frame).toContain("Fixed for this provider");
+  });
+
+  test("surfaces rejected local saves inline instead of closing the overlay", async () => {
+    const onUpdate = vi.fn(
+      async (_payload: {
+        input: ClientConfigurationInput;
+        acknowledgement: ReadinessAcknowledgement;
+      }) => {
+        throw new Error("Local endpoint unreachable");
+      },
+    );
+    const onOpenChange = vi.fn();
+    const view = render(
+      <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
+        <ApiKeyOverlay
+          open
+          row={unacknowledgedLocalRow()}
+          onOpenChange={onOpenChange}
+          onCreate={async () => {}}
+          onUpdate={onUpdate}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => view.lastFrame()?.includes("Update Configuration") ?? false);
     view.stdin.write("a");
     await flush();
-    expect(view.lastFrame()).toContain("Notice accepted");
     view.stdin.write("\r");
-    // Arity is left unasserted: on non-hosted rows Enter reaches both the overlay handler
-    // and the focused Save button, so one keypress submits twice.
-    await waitUntil(() => onUpdate.mock.calls.length > 0);
+    await waitUntil(() => (view.lastFrame() ?? "").includes("Local endpoint unreachable"));
+
+    expect(onUpdate).toHaveBeenCalledOnce();
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 });

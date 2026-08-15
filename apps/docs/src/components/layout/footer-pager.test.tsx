@@ -1,6 +1,3 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
 import { KeyboardProvider } from "@diffgazer/keys";
 import {
   Select,

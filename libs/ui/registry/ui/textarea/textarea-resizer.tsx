@@ -55,7 +55,7 @@ function ResizeBox({
         // the chip therefore overhangs the hit band, so it must keep its own
         // pointer events for that half to stay grabbable.
         "absolute flex items-center justify-center gap-1 border bg-background transition-colors",
-        "font-mono text-[9px] leading-none tracking-wider uppercase",
+        "font-mono text-3xs leading-none tracking-wider uppercase",
         isVertical
           ? "top-0 left-1/2 -translate-x-1/2 -translate-y-1/2"
           : "top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 [writing-mode:vertical-rl]",
@@ -87,6 +87,8 @@ export interface TextareaResizerProps extends ComponentProps<"button"> {
   active: boolean;
   /** Whether the field is in its error state. */
   invalid: boolean;
+  /** Accessible name for the handle. Defaults to `Resize textarea <axis>`. */
+  label?: string;
 }
 
 /**
@@ -100,10 +102,11 @@ export function TextareaResizer({
   active,
   invalid,
   className,
+  label,
   ...props
 }: TextareaResizerProps) {
   const isVertical = axis === "vertical";
-  const accessibleLabel = `Resize textarea ${AXIS_LABEL[axis]}`;
+  const accessibleLabel = label ?? `Resize textarea ${AXIS_LABEL[axis]}`;
 
   return (
     <button

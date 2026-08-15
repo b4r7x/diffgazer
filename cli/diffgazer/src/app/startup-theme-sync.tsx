@@ -1,6 +1,7 @@
-import { useSettings } from "@diffgazer/core/api/hooks";
+import { useConfigurationInit } from "@diffgazer/core/api/hooks";
 import { toSelectableTheme } from "@diffgazer/core/schemas/config";
 import { useEffect, useRef } from "react";
+import type { TuiThemeName } from "../theme/palettes";
 import { useTheme } from "../theme/provider";
 
 /**
@@ -8,16 +9,16 @@ import { useTheme } from "../theme/provider";
  * wins outright, and a later theme change from the settings screen must not be
  * clobbered by a refetch, hence the one-shot ref.
  */
-export function StartupThemeSync({ explicitTheme }: { explicitTheme?: string }): null {
-  const settingsQuery = useSettings();
+export function StartupThemeSync({ explicitTheme }: { explicitTheme?: TuiThemeName }): null {
+  const initQuery = useConfigurationInit();
   const { setTheme } = useTheme();
   const hasApplied = useRef(false);
 
   useEffect(() => {
-    if (explicitTheme || hasApplied.current || !settingsQuery.data?.theme) return;
+    if (explicitTheme || hasApplied.current || !initQuery.data?.settings.theme) return;
     hasApplied.current = true;
-    setTheme(toSelectableTheme(settingsQuery.data.theme));
-  }, [explicitTheme, settingsQuery.data?.theme, setTheme]);
+    setTheme(toSelectableTheme(initQuery.data.settings.theme));
+  }, [explicitTheme, initQuery.data?.settings.theme, setTheme]);
 
   return null;
 }

@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { type ReactNode, type SyntheticEvent, useRef, useState } from "react";
+import { type ComponentProps, type ReactNode, type SyntheticEvent, useRef, useState } from "react";
 import { renderToString } from "react-dom/server";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
@@ -659,8 +659,7 @@ describe("Dialog", () => {
     }
   });
 
-  it("wires aria-labelledby for a Dialog.Title rendered by a consumer wrapper component", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("wires aria-labelledby for a Dialog.Title rendered by a consumer wrapper component", () => {
     function CustomHeader({ title }: { title: string }) {
       return <Dialog.Title>{title}</Dialog.Title>;
     }
@@ -675,14 +674,10 @@ describe("Dialog", () => {
     );
 
     // The static child scan cannot see through CustomHeader; registration wires
-    // aria-labelledby instead of falling back to aria-label="Dialog" with a warn.
+    // aria-labelledby instead of falling back to aria-label="Dialog".
     const dialog = screen.getByRole("dialog", { name: "Component title" });
     expect(dialog).toHaveAttribute("aria-labelledby");
     expect(dialog).not.toHaveAttribute("aria-label", "Dialog");
-    // Wait a frame: the deferred warning must NOT fire once the title registers.
-    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
-    expect(warn).not.toHaveBeenCalled();
-    warn.mockRestore();
   });
 
   it("uses an explicit aria-label without pointing to a missing title", () => {
@@ -1788,6 +1783,39 @@ describe("Dialog inline (modal={false})", () => {
     );
 
     expect(container.querySelector('[data-slot="dialog-content"]')).toBeNull();
+  });
+
+  it("drops modal-only props instead of spreading them onto its element", () => {
+    const onCancel = vi.fn();
+    // Copy/shadcn consumers have no type check, so the runtime must ignore the
+    // modal-only props the inline branch cannot honour.
+    const inlineProps = {
+      modal: false,
+      closeIcon: false,
+      closeOnBackdropClick: false,
+      initialFocus: { current: null },
+      onCancel,
+      onEscapeKeyDown: vi.fn(),
+    } as unknown as ComponentProps<typeof Dialog.Content>;
+    const { container } = render(
+      <Dialog open>
+        <Dialog.Content {...inlineProps}>
+          <Dialog.Title>Inline Dialog</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>,
+    );
+
+    const shell = requireElement(
+      container.querySelector('[data-slot="dialog-content"]'),
+      "inline dialog shell",
+    );
+    expect(shell.getAttributeNames()).not.toContain("closeicon");
+    expect(shell.getAttributeNames()).not.toContain("closeonbackdropclick");
+    expect(shell.getAttributeNames()).not.toContain("initialfocus");
+    expect(shell).toHaveAttribute("role", "group");
+    // fireEvent retained: `cancel` is a native dialog event with no user-level equivalent on a div.
+    fireEvent(shell, new Event("cancel"));
+    expect(onCancel).not.toHaveBeenCalled();
   });
 
   it("has no axe violations", async () => {

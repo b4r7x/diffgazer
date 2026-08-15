@@ -2,8 +2,8 @@ import { unquoteGitPath } from "../../../../shared/lib/git/quote.js";
 import { computeTotalStats } from "./total-stats.js";
 import type { DiffHunk, DiffOperation, FileDiff, ParsedDiff } from "./types.js";
 
-const DIFF_HEADER_PATTERN = /^diff --git a\/(.+) b\/(.+)$/;
-const DIFF_HEADER_QUOTED_PATTERN = /^diff --git "a\/(.+)" "b\/(.+)"$/;
+const DIFF_HEADER_PATTERN =
+  /^diff --git (?:"a\/((?:\\.|[^"])*)"|a\/(.+)) (?:"b\/((?:\\.|[^"])*)"|b\/(.+))$/;
 const HUNK_HEADER_PATTERN = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 const OLD_FILE_PATTERN = /^--- (?:a\/(.+)|\/dev\/null)$/;
 const OLD_FILE_QUOTED_PATTERN = /^--- "a\/(.+)"$/;
@@ -96,16 +96,13 @@ export function parseDiff(diffText: string): ParsedDiff {
   while (i < lines.length) {
     const line = lines[i];
 
-    const headerMatch = line?.match(DIFF_HEADER_PATTERN) ?? line?.match(DIFF_HEADER_QUOTED_PATTERN);
+    const headerMatch = line?.match(DIFF_HEADER_PATTERN);
     if (headerMatch) {
-      const isQuotedHeader = line?.startsWith('diff --git "');
       const fileStartIndex = i;
-      let oldPath: string | null = isQuotedHeader
-        ? unquoteGitPath(headerMatch[1] ?? "")
-        : (headerMatch[1] ?? null);
-      let newPath: string | null = isQuotedHeader
-        ? unquoteGitPath(headerMatch[2] ?? "")
-        : (headerMatch[2] ?? null);
+      let oldPath: string | null =
+        headerMatch[1] !== undefined ? unquoteGitPath(headerMatch[1]) : (headerMatch[2] ?? null);
+      let newPath: string | null =
+        headerMatch[3] !== undefined ? unquoteGitPath(headerMatch[3]) : (headerMatch[4] ?? null);
       let previousPath: string | null = null;
 
       i++;
@@ -154,7 +151,7 @@ export function parseDiff(diffText: string): ParsedDiff {
 
       files.push({
         filePath,
-        previousPath: previousPath ?? (operation === "rename" ? oldPath : null),
+        previousPath,
         operation,
         hunks,
         rawDiff,

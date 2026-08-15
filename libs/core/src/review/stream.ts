@@ -5,24 +5,11 @@ import type {
   StepEvent,
 } from "../schemas/events/index.js";
 import { FullReviewStreamEventSchema } from "../schemas/events/index.js";
-import type {
-  LensId,
-  ProfileId,
-  ReviewError,
-  ReviewMode,
-  ReviewResult,
-} from "../schemas/review/index.js";
+import type { ReviewError, ReviewResult } from "../schemas/review/index.js";
 import { parseSSEStream } from "./sse-parser.js";
 
-interface StreamReviewRequest {
-  mode?: ReviewMode;
-  files?: string[];
-  lenses?: LensId[];
-  profile?: ProfileId;
-  signal?: AbortSignal;
-}
-
-export interface StreamReviewOptions extends StreamReviewRequest {
+/** The handlers `processReviewStream` accepts; creation and abort live on the create/resume API options. */
+export interface StreamReviewOptions {
   onAgentEvent?: (event: AgentStreamEvent) => void;
   onStepEvent?: (event: StepEvent) => void;
   onChunk?: (content: string) => void;
@@ -31,18 +18,16 @@ export interface StreamReviewOptions extends StreamReviewRequest {
 interface StreamReviewResult {
   result: ReviewResult;
   reviewId: string;
-  agentEvents: AgentStreamEvent[];
 }
 
 export type StreamReviewError = ReviewError | { code: "STREAM_ERROR"; message: string };
 
 export async function processReviewStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
-  options: Omit<StreamReviewOptions, keyof StreamReviewRequest>,
+  options: StreamReviewOptions,
 ): Promise<Result<StreamReviewResult, StreamReviewError>> {
   const { onAgentEvent, onStepEvent, onChunk } = options;
 
-  const agentEvents: AgentStreamEvent[] = [];
   let reviewResult: ReviewResult | null = null;
   let reviewId: string | null = null;
   let reviewError: ReviewError | null = null;
@@ -73,10 +58,7 @@ export async function processReviewStream(
         case "agent_complete":
         case "orchestrator_start":
         case "orchestrator_complete":
-        case "file_start":
-        case "file_complete":
         case "file_progress":
-          agentEvents.push(event);
           onAgentEvent?.(event);
           break;
 
@@ -108,5 +90,5 @@ export async function processReviewStream(
     return err({ code: "STREAM_ERROR", message: "Stream ended without complete event" });
   }
 
-  return ok({ result: reviewResult, reviewId, agentEvents });
+  return ok({ result: reviewResult, reviewId });
 }

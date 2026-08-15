@@ -41,14 +41,12 @@ export function useListNavigation({
   const currentHighlightedId = controlledHighlightedId ?? uncontrolledHighlightedId;
 
   function moveBy(direction: 1 | -1) {
-    const currentIndex = selectableItems.findIndex((item) => item.id === currentHighlightedId);
-    const boundaryIndex = direction < 0 ? 0 : selectableItems.length - 1;
-    if (!wrap && currentIndex === boundaryIndex) {
+    const result = moveHighlight(items, currentHighlightedId, direction, wrap);
+    if (!result) return;
+    if (result.hitBoundary) {
       onNavigationBoundaryReached?.(direction);
       return;
     }
-    const result = moveHighlight(items, currentHighlightedId, direction, wrap);
-    if (!result) return;
     if (controlledHighlightedId == null) {
       setInternalHighlightedId(result.id);
     }

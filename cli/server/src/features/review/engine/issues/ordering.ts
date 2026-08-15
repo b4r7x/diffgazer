@@ -1,5 +1,9 @@
-import { severityRank } from "@diffgazer/core/schemas/presentation";
-import type { ReviewIssue, ReviewSeverity, SeverityFilter } from "@diffgazer/core/schemas/review";
+import {
+  type ReviewIssue,
+  type ReviewSeverity,
+  type SeverityFilter,
+  severityRank,
+} from "@diffgazer/core/schemas/review";
 
 export function severityMeetsMinimum(
   severity: ReviewSeverity,

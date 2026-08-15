@@ -7,7 +7,8 @@ function renderStepper(props: Partial<StepperProps> = {}) {
     <Stepper {...props}>
       <Stepper.Step stepId="s1" status="completed">
         <Stepper.Trigger>Step 1</Stepper.Trigger>
-        <Stepper.Content>Content 1</Stepper.Content>
+        {/* region: opt in on one step so the panel is reachable by role in assertions. */}
+        <Stepper.Content region>Content 1</Stepper.Content>
       </Stepper.Step>
       <Stepper.Step stepId="s2" status="active">
         <Stepper.Trigger>Step 2</Stepper.Trigger>

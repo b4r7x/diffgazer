@@ -17,14 +17,32 @@ import {
   buildScopeKey,
   cancelStaleSessionsForProjectMode,
   createSession,
-  deleteSession,
+  deleteSessionForTests,
   getActiveSessionForProject,
   getSession,
   markReady,
 } from "./stream/store.js";
 import { makeFileDiff, makeParsedDiff } from "./testing/factories.js";
+import { drainReviewWrites } from "./testing/storage-drain.js";
 
 type GitService = ReturnType<typeof createGitService>;
+
+// `storage/project-index.ts` freezes REVIEWS_DIR from DIFFGAZER_HOME the first time it is
+// imported, and this file pulls it in transitively at module scope. A beforeAll would run
+// far too late: the reviews these tests save would already be bound to — and land in — the
+// developer's real ~/.diffgazer. vi.hoisted runs before the static imports evaluate.
+const tempHome = await vi.hoisted(async () =>
+  (await import("../../shared/lib/testing/temp-home.js")).claimTempHome(
+    "diffgazer-review-diff-home-",
+  ),
+);
+
+// The migration writes are fire-and-forget, so they are settled before `release` removes
+// the temp home and restores DIFFGAZER_HOME.
+afterAll(async () => {
+  await drainReviewWrites(tempHome.path);
+  await tempHome.release();
+});
 
 const TWO_FILE_DIFF = [
   "diff --git a/src/index.ts b/src/index.ts",
@@ -55,8 +73,26 @@ const SINGLE_FILE_DIFF = [
   "",
 ].join("\n");
 
-function makeGitService(getDiff: GitService["getDiff"]): GitService {
-  return { getDiff } as GitService;
+function makeGitService(
+  getDiff: GitService["getDiff"],
+  getStatus?: GitService["getStatus"],
+): GitService {
+  return {
+    getDiff,
+    getStatus:
+      getStatus ??
+      (async () =>
+        ok({
+          isGitRepo: true,
+          branch: "main",
+          remoteBranch: null,
+          ahead: 0,
+          behind: 0,
+          files: { staged: [], unstaged: [], untracked: [] },
+          hasChanges: true,
+          conflicted: [],
+        })),
+  } as GitService;
 }
 
 function makeDiffTestFile(filePath: string, additions = 1, deletions = 0) {
@@ -124,7 +160,7 @@ describe("resolveGitDiff", () => {
 
   it("uses readable no-diff copy for files mode", async () => {
     const result = await resolveGitDiff({
-      gitService: makeGitService(async () => ok(SINGLE_FILE_DIFF)),
+      gitService: makeGitService(async () => ok("")),
       mode: "files",
       files: ["src/missing.ts"],
       emit: async () => undefined,
@@ -194,6 +230,102 @@ describe("resolveGitDiff", () => {
     expect(result.ok).toBe(false);
     expect(events).toMatchObject([{ type: "step_start", step: "diff" }]);
   });
+
+  const COMBINED_CONFLICT_DIFF = [
+    "diff --cc conflicted.ts",
+    "index 1111111,2222222..3333333 100644",
+    "--- a/conflicted.ts",
+    "+++ b/conflicted.ts",
+    "@@@ -1,3 -1,3 -1,6 @@@",
+    " line1",
+    "-ours",
+    "+theirs",
+    " line3",
+    "",
+  ].join("\n");
+
+  const MIXED_CONFLICT_AND_REGULAR_DIFF = [
+    COMBINED_CONFLICT_DIFF,
+    "diff --git a/src/index.ts b/src/index.ts",
+    "index 1111111..2222222 100644",
+    "--- a/src/index.ts",
+    "+++ b/src/index.ts",
+    "@@ -1 +1 @@",
+    "-old",
+    "+new",
+    "",
+  ].join("\n");
+
+  it("fails closed when combined diff blocks leave no reviewable files", async () => {
+    const result = await resolveGitDiff({
+      gitService: makeGitService(
+        async () => ok(COMBINED_CONFLICT_DIFF),
+        async () =>
+          ok({
+            isGitRepo: true,
+            branch: "main",
+            remoteBranch: null,
+            ahead: 0,
+            behind: 0,
+            files: { staged: [], unstaged: [], untracked: [] },
+            hasChanges: true,
+            conflicted: ["conflicted.ts"],
+          }),
+      ),
+      mode: "unstaged",
+      emit: async () => undefined,
+      reviewId: "review-conflicts-only",
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: ReviewErrorCode.GENERATION_FAILED,
+        step: "diff",
+        message: expect.stringContaining("conflicted.ts"),
+      },
+    });
+  });
+
+  it("surfaces a user-visible notice when conflicted files are excluded from a mixed diff", async () => {
+    const events: unknown[] = [];
+
+    const result = await resolveGitDiff({
+      gitService: makeGitService(
+        async () => ok(MIXED_CONFLICT_AND_REGULAR_DIFF),
+        async () =>
+          ok({
+            isGitRepo: true,
+            branch: "main",
+            remoteBranch: null,
+            ahead: 0,
+            behind: 0,
+            files: { staged: [], unstaged: [], untracked: [] },
+            hasChanges: true,
+            conflicted: ["conflicted.ts"],
+          }),
+      ),
+      mode: "unstaged",
+      emit: async (event) => {
+        events.push(event);
+      },
+      reviewId: "review-mixed-conflicts",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.files.map((file) => file.filePath)).toEqual(["src/index.ts"]);
+    }
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "chunk",
+          content: expect.stringContaining("conflicted.ts"),
+        }),
+        expect.objectContaining({ type: "review_started", filesTotal: 1 }),
+      ]),
+    );
+  });
 });
 
 describe("filterDiffByFiles", () => {
@@ -229,8 +361,6 @@ describe("filterDiffByFiles", () => {
 
 describe("createReviewSession canonical file-scoped identity", () => {
   let repository: string;
-  let originalDiffgazerHome: string | undefined;
-  let tempHome: string;
   const trackedSessionIds = new Set<string>();
   const sessionsWithRunners = new Set<string>();
 
@@ -243,29 +373,26 @@ describe("createReviewSession canonical file-scoped identity", () => {
     return {
       provider: "openrouter",
       terminalExecutions: [],
+      terminalDiagnostics: [],
       generate,
     };
   }
 
-  beforeAll(() => {
-    originalDiffgazerHome = process.env.DIFFGAZER_HOME;
-    tempHome = mkdtempSync(join(tmpdir(), "diffgazer-review-diff-home-"));
+  beforeAll(async () => {
+    // Proves the hoisted temp home won the race against the module-scope import above:
+    // a real-home REVIEWS_DIR means every review this suite saves escapes to ~/.diffgazer.
+    const { REVIEWS_DIR } = await import("./storage/project-index.js");
+    expect(REVIEWS_DIR).toBe(join(tempHome.path, "triage-reviews"));
+
     writeFileSync(
-      join(tempHome, "config.json"),
+      join(tempHome.path, "config.json"),
       JSON.stringify({
+        schemaVersion: 2,
         settings: { defaultLenses: ["correctness"], agentExecution: "sequential" },
+        selectedConfigurationId: null,
+        configurations: [],
       }),
     );
-    process.env.DIFFGAZER_HOME = tempHome;
-  });
-
-  afterAll(() => {
-    rmSync(tempHome, { recursive: true, force: true });
-    if (originalDiffgazerHome === undefined) {
-      delete process.env.DIFFGAZER_HOME;
-    } else {
-      process.env.DIFFGAZER_HOME = originalDiffgazerHome;
-    }
   });
 
   beforeEach(() => {
@@ -298,7 +425,7 @@ describe("createReviewSession canonical file-scoped identity", () => {
       { timeout: 8_000 },
     );
     for (const id of trackedSessionIds) {
-      deleteSession(id);
+      deleteSessionForTests(id);
     }
     trackedSessionIds.clear();
     sessionsWithRunners.clear();
@@ -344,6 +471,9 @@ describe("createReviewSession canonical file-scoped identity", () => {
     if (!canonicalFiles) return;
 
     const aiClient = makeAIClient();
+    const { getStore } = await import("../../shared/lib/config/store.js");
+    const settingsResult = await getStore().readSettings();
+    if (!settingsResult.ok) throw new Error(settingsResult.error.message);
     const gitService = createGitService({ cwd: repository });
     const [headCommitResult, statusHashResult] = await Promise.all([
       gitService.getHeadCommit(),
@@ -364,7 +494,7 @@ describe("createReviewSession canonical file-scoped identity", () => {
     if (!diff.ok) return;
     expect(diff.value.files.map((file) => file.filePath)).toEqual(["src/index.ts"]);
 
-    const reviewDefaults = resolveReviewDefaults({});
+    const reviewDefaults = resolveReviewDefaults({ settings: settingsResult.value });
     const reviewConfigKey = buildReviewConfigKey({
       lenses: reviewDefaults.activeLenses,
       profile: reviewDefaults.effectiveProfileId,
@@ -410,7 +540,7 @@ describe(".diffgazer rename destination identity", () => {
 
   afterEach(() => {
     for (const sessionId of sessionIds.splice(0)) {
-      deleteSession(sessionId);
+      deleteSessionForTests(sessionId);
     }
     for (const repository of repositories.splice(0)) {
       rmSync(repository, { recursive: true, force: true });

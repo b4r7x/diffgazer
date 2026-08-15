@@ -80,15 +80,57 @@ describe("HomeMenu — Resume Last Review gating", () => {
     }
   });
 
-  it("disables every menu item and shows a pending status while a review is starting", () => {
-    renderHomeMenu({ pending: true });
+  it("keeps the menu usable and announces the pending start while a review is starting", () => {
+    renderHomeMenu({ pendingAction: "review-unstaged", hasResumableSession: true });
     expect(screen.getByRole("status")).toHaveTextContent(/starting review/i);
     for (const { label } of MENU_ITEMS) {
-      expect(screen.getByRole("menuitem", { name: label })).toHaveAttribute(
-        "aria-disabled",
-        "true",
-      );
+      expect(screen.getByRole("menuitem", { name: label })).not.toHaveAttribute("aria-disabled");
     }
+  });
+
+  it("still blocks the intrinsically unavailable rows while a review is starting", () => {
+    renderHomeMenu({ pendingAction: "review-unstaged", hasResumableSession: false });
+    expect(screen.getByRole("menuitem", { name: "Resume Last Review" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+
+  it("lets the user leave home while a review is starting", async () => {
+    const user = userEvent.setup();
+    const { onSelect } = renderHomeMenu({ pendingAction: "review-unstaged" });
+    await user.click(screen.getByRole("menuitem", { name: "History" }));
+    expect(onSelect).toHaveBeenCalledWith("history");
+  });
+
+  it("marks only the started row as running and keeps its accessible name", () => {
+    renderHomeMenu({ pendingAction: "review-unstaged" });
+
+    // The started row swaps its accelerator for the run state; its name is
+    // unchanged, so the control the user activated is still the same control.
+    const started = screen.getByRole("menuitem", { name: "Review Unstaged" });
+    expect(started).toHaveTextContent(/starting/i);
+    expect(started).not.toHaveTextContent("[r]");
+    // Working, not merely blocked — the rest of the menu is only held.
+    expect(started).toHaveAttribute("aria-busy", "true");
+
+    // Every other row keeps advertising its key and carries no run state.
+    const untouched = screen.getByRole("menuitem", { name: "Review Staged" });
+    expect(untouched).toHaveTextContent("[R]");
+    expect(untouched).not.toHaveTextContent(/starting/i);
+    expect(untouched).not.toHaveAttribute("aria-busy");
+  });
+
+  it("leaves the menu unchanged when nothing is starting", () => {
+    renderHomeMenu();
+    // The region stays mounted and silent: one inserted in the same commit as
+    // its text is skipped by some screen reader/browser pairs, and it is the
+    // only channel that announces the start.
+    expect(screen.getByRole("status")).toHaveTextContent("");
+    expect(screen.getByRole("menuitem", { name: "Review Unstaged" })).toHaveTextContent("[r]");
+    expect(screen.getByRole("menuitem", { name: "Review Unstaged" })).not.toHaveAttribute(
+      "aria-busy",
+    );
   });
 
   it("disables all review actions when the directory is untrusted regardless of resumable session", () => {

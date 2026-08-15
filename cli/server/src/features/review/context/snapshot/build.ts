@@ -1,4 +1,4 @@
-import { mkdir, realpath } from "node:fs/promises";
+import { mkdir, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { ProjectContextSnapshot } from "@diffgazer/core/schemas/context";
 import { createGitService } from "../../../../shared/lib/git/service.js";
@@ -11,14 +11,14 @@ const lockSnapshot = createKeyedLock(snapshotLocks);
 
 export function buildProjectContextSnapshot(
   projectPath: string,
-  options: { force?: boolean } = {},
+  options: { force?: boolean; focusPaths?: readonly string[] } = {},
 ): Promise<ProjectContextSnapshot> {
   return lockSnapshot(projectPath, () => buildSnapshot(projectPath, options));
 }
 
 async function buildSnapshot(
   projectPath: string,
-  options: { force?: boolean },
+  options: { force?: boolean; focusPaths?: readonly string[] },
 ): Promise<ProjectContextSnapshot> {
   const normalizedRoot = await realpath(projectPath).catch(() => path.resolve(projectPath));
   const contextDir = path.join(projectPath, ".diffgazer");
@@ -26,6 +26,12 @@ async function buildSnapshot(
     throw new Error("Context cache directory resolves outside the project root");
   }
   await mkdir(contextDir, { recursive: true, mode: 0o700 });
+  const gitignorePath = path.join(contextDir, ".gitignore");
+  try {
+    await writeFile(gitignorePath, "*\n", { flag: "wx", mode: 0o600 });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
 
   const gitService = createGitService({ cwd: projectPath });
   const [statusHashResult, headCommitResult] = await Promise.all([
@@ -36,10 +42,9 @@ async function buildSnapshot(
   const currentHashKind = statusHashResult.kind;
   const currentHeadCommit = headCommitResult.ok ? headCommitResult.value : "";
 
-  const cached = await loadContextSnapshot(contextDir);
+  const cached = options.force ? null : await loadContextSnapshot(contextDir);
   if (
     cached &&
-    !options.force &&
     currentHashKind === "full" &&
     cached.meta.statusHashKind === "full" &&
     cached.meta.statusHash === currentHash &&
@@ -54,6 +59,9 @@ async function buildSnapshot(
     statusHash: currentHash,
     statusHashKind: currentHashKind,
     headCommit: currentHeadCommit,
+    ...(options.focusPaths && options.focusPaths.length > 0
+      ? { focusPaths: options.focusPaths }
+      : {}),
   });
   await publishContextSnapshot(contextDir, snapshot);
   return snapshot;

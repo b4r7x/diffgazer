@@ -212,11 +212,7 @@ describe("Breadcrumbs", () => {
     expect(ref.current).toBe(link);
   });
 
-  // Breadcrumb links are an inline run inside a wrapping <ol>: the padding grows the target, the
-  // vertical pull-back keeps the run's line box unchanged, and pointer-coarse trades that pull-back
-  // for a real 44px minimum. There is no horizontal pull-back, so a link never overlaps its
-  // separator. jsdom computes no layout, so the recipe is asserted through its class tokens.
-  it("applies the inline-run hit-area recipe to links", () => {
+  it("applies the documented coarse-pointer spacing tokens to rendered links", () => {
     render(
       <Breadcrumbs>
         <Breadcrumbs.Item>

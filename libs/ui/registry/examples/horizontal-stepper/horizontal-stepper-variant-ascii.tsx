@@ -1,10 +1,8 @@
 import { HorizontalStepper } from "@/components/ui/horizontal-stepper";
 
-const STEPS = ["clone", "install", "build", "publish"];
-
 function Pipeline({ value }: { value: string }) {
   return (
-    <HorizontalStepper steps={STEPS} value={value} variant="ascii" aria-label="Release pipeline">
+    <HorizontalStepper value={value} variant="ascii" aria-label="Release pipeline">
       <HorizontalStepper.Step value="clone">Clone</HorizontalStepper.Step>
       <HorizontalStepper.Step value="install">Install</HorizontalStepper.Step>
       <HorizontalStepper.Step value="build">Build</HorizontalStepper.Step>

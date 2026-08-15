@@ -9,13 +9,21 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { z } from "zod";
 import { getPreRenderPages, type PreRenderPage, resolveOrigin } from "../generate-sitemap.ts";
 import { DOCS_ROOT } from "./artifacts.ts";
 import { buildLlmsTxt, type PageMarkdown, pageMarkdownFromSource } from "./markdown.ts";
 
-export const LLMS_MANIFEST_FILE = ".llms-markdown-manifest.json";
+/**
+ * Ownership bookkeeping for the generated markdown, kept beside the output tree
+ * rather than inside it: the build generates into `public/`, so a manifest under
+ * `outDir` shipped (pre-compressed) as a fetchable file on the docs origin.
+ */
+export function llmsManifestPath(outDir: string): string {
+  const resolved = resolve(outDir);
+  return join(dirname(resolved), `.${basename(resolved)}-llms-manifest.json`);
+}
 
 const llmsManifestSchema = z
   .object({
@@ -52,7 +60,7 @@ function markdownOutputPath(outDir: string, path: string): string {
 }
 
 function readOwnedMarkdownPaths(outDir: string): string[] {
-  const manifestPath = join(outDir, LLMS_MANIFEST_FILE);
+  const manifestPath = llmsManifestPath(outDir);
   if (!existsSync(manifestPath)) return [];
   const parsed = llmsManifestSchema.parse(JSON.parse(readFileSync(manifestPath, "utf-8")));
   return [...new Set(parsed.markdown.map(validateOwnedMarkdownPath))].sort();
@@ -172,7 +180,7 @@ export function writeLlmsFiles(
   const staleOwnedPaths = previousOwnedPaths.filter((path) => !nextOwnedSet.has(path));
   const llmsTarget = join(outDir, "llms.txt");
   const llmsFullTarget = join(outDir, "llms-full.txt");
-  const manifestTarget = join(outDir, LLMS_MANIFEST_FILE);
+  const manifestTarget = llmsManifestPath(outDir);
   const llmsContent = buildLlmsTxt(pages, origin);
   const llmsFullContent = `${pages.map((page) => page.markdown.trim()).join("\n\n---\n\n")}\n`;
   const manifestContent = `${JSON.stringify(

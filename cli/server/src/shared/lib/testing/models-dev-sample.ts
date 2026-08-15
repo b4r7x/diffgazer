@@ -8,7 +8,7 @@ export const MODELS_DEV_SAMPLE: unknown = {
     name: "Google",
     env: ["GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "GEMINI_API_KEY"],
     models: {
-      // Priced sticker, but in the curated freeTier selector => ModelInfo.tier 'free'.
+      // Declares structured output and carries a price => picker row, tier 'paid'.
       "gemini-2.5-flash": {
         id: "gemini-2.5-flash",
         name: "Gemini 2.5 Flash",
@@ -21,7 +21,7 @@ export const MODELS_DEV_SAMPLE: unknown = {
         release_date: "2025-03-20",
         last_updated: "2025-06-05",
       },
-      // Priced and NOT in the freeTier selector => ModelInfo.tier 'paid'.
+      // Same shape, second picker row for the same product.
       "gemini-3-pro-preview": {
         id: "gemini-3-pro-preview",
         name: "Gemini 3 Pro Preview",
@@ -41,7 +41,7 @@ export const MODELS_DEV_SAMPLE: unknown = {
     name: "Groq",
     env: ["GROQ_API_KEY"],
     models: {
-      // Priced, but freeTier 'all' => ModelInfo.tier 'free'.
+      // Declares structured output and carries a price => picker row, tier 'paid'.
       "meta-llama/llama-4-scout-17b-16e-instruct": {
         id: "meta-llama/llama-4-scout-17b-16e-instruct",
         name: "Llama 4 Scout 17B",
@@ -61,7 +61,7 @@ export const MODELS_DEV_SAMPLE: unknown = {
     name: "Cerebras",
     env: ["CEREBRAS_API_KEY"],
     models: {
-      // Priced, but freeTier 'all' => ModelInfo.tier 'free'.
+      // No structured-output declaration upstream => withheld from the picker.
       "gpt-oss-120b": {
         id: "gpt-oss-120b",
         name: "GPT OSS 120B",
@@ -81,7 +81,22 @@ export const MODELS_DEV_SAMPLE: unknown = {
     api: "https://api.z.ai/api/paas/v4",
     env: ["ZHIPU_API_KEY"],
     models: {
-      // Zero list price, no curation needed => ModelInfo.tier 'free'.
+      // Zero list price, structured output, and an id the product's policy
+      // admits => picker row, tier 'free'.
+      "glm-5-turbo": {
+        id: "glm-5-turbo",
+        name: "GLM-5-Turbo",
+        family: "glm",
+        cost: { input: 0, output: 0, cache_read: 0, cache_write: 0 },
+        limit: { context: 200000, output: 131072 },
+        tool_call: true,
+        structured_output: true,
+        reasoning: true,
+        release_date: "2026-02-11",
+        last_updated: "2026-02-11",
+      },
+      // Capable and zero-priced, but '-flash' is an explicit opt-in suffix the
+      // zai model policy refuses => withheld from the picker despite capability.
       "glm-4.7-flash": {
         id: "glm-4.7-flash",
         name: "GLM-4.7-Flash",
@@ -89,11 +104,12 @@ export const MODELS_DEV_SAMPLE: unknown = {
         cost: { input: 0, output: 0, cache_read: 0, cache_write: 0 },
         limit: { context: 200000, output: 131072 },
         tool_call: true,
+        structured_output: true,
         reasoning: true,
         release_date: "2026-01-19",
         last_updated: "2026-01-19",
       },
-      // Priced, no provider selector => ModelInfo.tier 'paid'.
+      // Declares it cannot do structured output => withheld from the picker.
       "glm-4.7": {
         id: "glm-4.7",
         name: "GLM-4.7",
@@ -101,6 +117,7 @@ export const MODELS_DEV_SAMPLE: unknown = {
         cost: { input: 0.6, output: 2.2, cache_read: 0.11, cache_write: 0 },
         limit: { context: 204800, output: 131072 },
         tool_call: true,
+        structured_output: false,
         reasoning: true,
         release_date: "2025-12-22",
         last_updated: "2025-12-22",

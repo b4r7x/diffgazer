@@ -6,7 +6,7 @@ import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root
 import { HelpScreen } from "./screen";
 
 vi.mock("@diffgazer/core/api/hooks", () => ({
-  useInit: () => ({ data: undefined, isLoading: false }),
+  useConfigurationInit: () => ({ data: undefined, isLoading: false }),
 }));
 
 afterEach(() => {

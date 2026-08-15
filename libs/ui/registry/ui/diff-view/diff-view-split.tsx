@@ -55,7 +55,7 @@ export function DiffViewSplit({
       data-slot="diff-view-split"
       role="region"
       aria-label={regionLabel}
-      aria-keyshortcuts="j k Escape"
+      aria-keyshortcuts="j k Home End Escape"
       // biome-ignore lint/a11y/noNoninteractiveTabindex: the container must be focusable (tabIndex=0) to receive j/k/Escape shortcuts that move between diff rows.
       tabIndex={0}
       onKeyDown={onKeyDown}

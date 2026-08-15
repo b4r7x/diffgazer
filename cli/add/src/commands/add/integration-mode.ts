@@ -11,7 +11,7 @@ import { resolveProjectPath, toRelativePosixSegments } from "../../utils/paths.j
 import type { ResolvedIntegrationSelection } from "./integration.js";
 
 type IntegrationMode = ResolvedIntegrationSelection["mode"];
-type Manifest = NonNullable<DiffgazerAddConfig["installedComponents"]>;
+type Manifest = NonNullable<DiffgazerAddConfig["installedItems"]>;
 
 function isCopyMode(record: ManifestItem | undefined): boolean {
   return (
@@ -60,7 +60,7 @@ interface PlannedRemovedFile {
   expectedHash: string;
 }
 
-export interface IntegrationModeMigrationPlan {
+interface IntegrationModeMigrationPlan {
   changedNames: string[];
   removeManifestNames: string[];
   filesToRemove: PlannedRemovedFile[];
@@ -69,13 +69,18 @@ export interface IntegrationModeMigrationPlan {
   manifestSnapshot: string;
 }
 
-export interface AppliedIntegrationModeMigration {
+interface AppliedIntegrationModeMigration {
   removedFiles: Array<{ path: string; content: string }>;
 }
 
 function addHooksForItem(hookNames: Set<string>, itemName: string): void {
   const item = ctx.registry.getItem(itemName.replace(/^ui\//, ""));
-  if (!item) return;
+  if (!item) {
+    throw new Error(
+      `Cannot migrate integration mode: retained copy-mode item "${itemName}" is missing from the bundled registry. ` +
+        `Restore registry compatibility or re-install "${itemName}" before migrating other items.`,
+    );
+  }
   for (const hook of resolveKeysHooksFromRegistry([item])) hookNames.add(hook);
 }
 

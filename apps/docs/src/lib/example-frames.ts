@@ -15,34 +15,26 @@
  */
 export type PreviewFrame = "default" | "compact" | "inset" | "fill";
 
-const INSET_EXAMPLES = new Set<string>([
-  "sidebar-default",
-  "sidebar-variants",
-  "sidebar-collapsible",
-  "sidebar-variant-bar",
-  "sidebar-variant-caret",
-  "sidebar-variant-inverted",
-  "sidebar-variant-terminal",
-  "sidebar-variant-tree",
-  "sidebar-render-prop",
-  "sidebar-auto-tone",
-]);
-
-const FILL_EXAMPLES = new Set<string>(["sidebar-rail", "sidebar-mobile-sheet"]);
-
-const COMPACT_EXAMPLES = new Set<string>([
-  "breadcrumbs-default",
-  "breadcrumbs-custom-separator",
-  "breadcrumbs-custom-link",
-  "breadcrumbs-ellipsis",
-  "pager-default",
-  "pager-render-prop",
-  "pager-long-labels",
-]);
+/** Every example that opts out of `"default"`. Keys are example file names. */
+export const EXAMPLE_FRAME_OVERRIDES: Record<string, PreviewFrame> = {
+  "sidebar-default": "inset",
+  "sidebar-variants": "inset",
+  "sidebar-collapsible": "inset",
+  "sidebar-variant-terminal": "inset",
+  "sidebar-variant-tree": "inset",
+  "sidebar-render-prop": "inset",
+  "sidebar-auto-tone": "inset",
+  "sidebar-rail": "fill",
+  "sidebar-mobile-sheet": "fill",
+  "breadcrumbs-default": "compact",
+  "breadcrumbs-custom-separator": "compact",
+  "breadcrumbs-custom-link": "compact",
+  "breadcrumbs-ellipsis": "compact",
+  "pager-default": "compact",
+  "pager-render-prop": "compact",
+  "pager-long-labels": "compact",
+};
 
 export function resolvePreviewFrame(exampleName: string): PreviewFrame {
-  if (INSET_EXAMPLES.has(exampleName)) return "inset";
-  if (FILL_EXAMPLES.has(exampleName)) return "fill";
-  if (COMPACT_EXAMPLES.has(exampleName)) return "compact";
-  return "default";
+  return EXAMPLE_FRAME_OVERRIDES[exampleName] ?? "default";
 }

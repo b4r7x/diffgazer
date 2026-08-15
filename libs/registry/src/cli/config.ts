@@ -2,14 +2,50 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
 import { detectSourceDir } from "./detect.js";
+import { isEnoent } from "./fs/path-safety.js";
 import { atomicWriteFile } from "./fs/writes.js";
-import { toErrorMessage, warn } from "./terminal.js";
+import { toErrorMessage } from "./terminal.js";
 
-const ALIAS_PATTERN = /^(\.\.?\/|[@~#][\w-]*\/)/;
+const IMPORT_ALIAS_PREFIX = /^[@~#][\w-]*\//;
+const IMPORT_ALIAS_BODY = /^[\w./-]*$/;
+const UNSAFE_ALIAS_LITERALS = /["'`\\]/;
+const PATH_TRAVERSAL = /\.\./;
+
+function hasControlCharacters(value: string): boolean {
+  for (const char of value) {
+    const code = char.charCodeAt(0);
+    if (code < 32 || code === 127) return true;
+  }
+  return false;
+}
+
+/** Validate an import-alias prefix that is interpolated verbatim into module specifiers. */
+export function validateImportAlias(value: string): string | undefined {
+  const prefixMatch = value.match(IMPORT_ALIAS_PREFIX);
+  if (!prefixMatch) {
+    return 'Must start with an import alias such as "@/" or "~/". Relative paths belong in *FsPath fields.';
+  }
+  const suffix = value.slice(prefixMatch[0].length);
+  if (!IMPORT_ALIAS_BODY.test(suffix)) {
+    return "Alias must contain only letters, numbers, dots, slashes, and hyphens.";
+  }
+  if (UNSAFE_ALIAS_LITERALS.test(value) || /\s/.test(value) || hasControlCharacters(value)) {
+    return "Alias must not contain quotes, backslashes, whitespace, or control characters.";
+  }
+  if (PATH_TRAVERSAL.test(value)) {
+    return 'Alias must not contain ".." path segments.';
+  }
+  return undefined;
+}
 
 export const aliasPathSchema = z
   .string()
-  .regex(ALIAS_PATTERN, 'Must start with an import alias such as "@/" or "~/" or a relative path')
+  .superRefine((value, ctx) => {
+    const message = validateImportAlias(value);
+    if (message) {
+      ctx.addIssue({ code: "custom", message });
+    }
+  })
   .optional();
 
 function aliasToFsPath(alias: string, sourceDir?: string): string {
@@ -17,35 +53,59 @@ function aliasToFsPath(alias: string, sourceDir?: string): string {
   return sourceDir && sourceDir !== "." ? `${sourceDir}/${stripped}` : stripped;
 }
 
-export type ConfigLoadResult<T> =
-  | { ok: true; config: T }
-  | {
-      ok: false;
-      error: "not_found" | "parse_error" | "validation_error" | "unknown_error";
-      message?: string;
+type ConfigLoadFailure = {
+  ok: false;
+  error: "not_found" | "read_error" | "parse_error" | "validation_error" | "unknown_error";
+  message?: string;
+};
+
+export type ConfigLoadResult<T> = { ok: true; config: T } | ConfigLoadFailure;
+
+export type ConfigLoadWithRawResult<T> = { ok: true; config: T; raw: unknown } | ConfigLoadFailure;
+
+function readJsonConfig(
+  configFileName: string,
+  cwd: string,
+): { ok: true; parsed: unknown } | ConfigLoadFailure {
+  const configPath = resolve(cwd, configFileName);
+  let raw: string;
+  try {
+    raw = readFileSync(configPath, "utf-8");
+  } catch (e) {
+    if (isEnoent(e)) return { ok: false, error: "not_found" };
+    return {
+      ok: false,
+      error: "read_error",
+      message: `Could not read ${configPath}: ${toErrorMessage(e)}`,
     };
+  }
+
+  try {
+    return { ok: true, parsed: JSON.parse(raw) };
+  } catch (e) {
+    return { ok: false, error: "parse_error", message: toErrorMessage(e) };
+  }
+}
 
 export function loadJsonConfig<T>(
   configFileName: string,
   schema: z.ZodType<T>,
   cwd: string,
 ): ConfigLoadResult<T> {
-  const configPath = resolve(cwd, configFileName);
-  let raw: string;
-  try {
-    raw = readFileSync(configPath, "utf-8");
-  } catch {
-    return { ok: false, error: "not_found" };
-  }
+  const loaded = readJsonConfig(configFileName, cwd);
+  if (!loaded.ok) return loaded;
+  return validateParsed(configFileName, schema, loaded.parsed);
+}
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (e) {
-    return { ok: false, error: "parse_error", message: toErrorMessage(e) };
-  }
-
-  return validateParsed(configFileName, schema, parsed);
+function loadJsonConfigWithRaw<T>(
+  configFileName: string,
+  schema: z.ZodType<T>,
+  cwd: string,
+): ConfigLoadWithRawResult<T> {
+  const loaded = readJsonConfig(configFileName, cwd);
+  if (!loaded.ok) return loaded;
+  const validated = validateParsed(configFileName, schema, loaded.parsed);
+  return validated.ok ? { ...validated, raw: loaded.parsed } : validated;
 }
 
 function validateParsed<T>(
@@ -68,7 +128,7 @@ function validateParsed<T>(
   }
 }
 
-export function writeJsonConfig(configFileName: string, data: unknown, cwd: string): void {
+function writeJsonConfig(configFileName: string, data: unknown, cwd: string): void {
   const configPath = resolve(cwd, configFileName);
   try {
     atomicWriteFile(configPath, `${JSON.stringify(data, null, 2)}\n`);
@@ -89,48 +149,9 @@ export function resolveAliasedPaths<K extends string>(
   return Object.fromEntries(entries) as Record<K, string>;
 }
 
-function updateManifest<T extends Record<string, unknown>>(opts: {
-  configFileName: string;
-  schema: z.ZodType<T>;
-  manifestKey: string;
-  cwd: string;
-  add?: string[];
-  remove?: string[];
-  metadata?: Record<string, unknown>;
-}): void {
-  const result = loadJsonConfig(opts.configFileName, opts.schema, opts.cwd);
-  if (!result.ok) {
-    warn(`Could not update manifest: config not found or invalid.`);
-    return;
-  }
-
-  // Spread into a mutable record for manifest mutation — safe since T extends Record<string, unknown>
-  // and this is only used for JSON serialization, not returned as T.
-  const config: Record<string, unknown> = { ...result.config };
-  const existing = config[opts.manifestKey];
-  const manifest = mutateManifest(
-    {
-      ...(existing && typeof existing === "object" && !Array.isArray(existing)
-        ? (existing as Record<string, unknown>)
-        : {}),
-    },
-    opts.add,
-    opts.remove,
-    opts.metadata,
-  );
-
-  if (Object.keys(manifest).length > 0) {
-    config[opts.manifestKey] = manifest;
-  } else {
-    delete config[opts.manifestKey];
-  }
-  writeJsonConfig(opts.configFileName, config, opts.cwd);
-}
-
 export function createConfigModule<
   TRaw extends Record<string, unknown>,
   TResolved,
-  TMetadata extends Record<string, unknown> = Record<string, unknown>,
   TManifestItem = unknown,
 >(opts: {
   configFileName: string;
@@ -138,24 +159,24 @@ export function createConfigModule<
   resolveConfig: (raw: TRaw, cwd: string) => TResolved;
   manifestKey: string;
 }) {
-  const { configFileName, schema, resolveConfig: resolve, manifestKey } = opts;
+  const { configFileName, schema, resolveConfig, manifestKey } = opts;
 
   function load(cwd: string): ConfigLoadResult<TRaw> {
     return loadJsonConfig(configFileName, schema, cwd);
   }
 
+  function loadWithRaw(cwd: string): ConfigLoadWithRawResult<TRaw> {
+    return loadJsonConfigWithRaw(configFileName, schema, cwd);
+  }
+
   function loadResolved(cwd: string): ConfigLoadResult<TResolved> {
     const result = load(cwd);
     if (!result.ok) return result;
-    return { ok: true, config: resolve(result.config, cwd) };
+    return { ok: true, config: resolveConfig(result.config, cwd) };
   }
 
   function write(cwd: string, config: TRaw): void {
     writeJsonConfig(configFileName, config, cwd);
-  }
-
-  function update(cwd: string, add?: string[], remove?: string[], metadata?: TMetadata): void {
-    updateManifest({ configFileName, schema, manifestKey, cwd, add, remove, metadata });
   }
 
   // The schema has already validated `result.config`, so the manifest value (an
@@ -173,25 +194,9 @@ export function createConfigModule<
 
   return {
     loadConfig: load,
+    loadConfigWithRaw: loadWithRaw,
     loadResolvedConfig: loadResolved,
     writeConfig: write,
-    updateManifest: update,
     getManifestItems: getItems,
   };
-}
-
-function mutateManifest(
-  manifest: Record<string, unknown>,
-  add?: string[],
-  remove?: string[],
-  metadata?: Record<string, unknown>,
-): Record<string, unknown> {
-  if (add) {
-    const now = new Date().toISOString();
-    for (const name of add) manifest[name] = { installedAt: now, ...(metadata ?? {}) };
-  }
-  if (remove) {
-    for (const name of remove) delete manifest[name];
-  }
-  return manifest;
 }

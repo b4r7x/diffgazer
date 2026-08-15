@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const codeBlockDoc: ComponentDoc = {
   description:
@@ -89,7 +89,8 @@ export const codeBlockDoc: ComponentDoc = {
       },
       { keys: "Enter / Space", action: "Activates CodeBlock.CopyButton when focused." },
     ],
-    examples: [{ name: "code-block-default", title: "Default" }],
+    // code-block-default is the page hero; repeating it here rendered the same demo twice.
+    examples: [],
   },
   dataAttributes: [
     {
@@ -119,8 +120,9 @@ export const codeBlockDoc: ComponentDoc = {
     {
       attribute: "data-state",
       appliesTo: "CodeBlock.CopyButton",
-      values: '"idle" | "copied"',
-      description: "Copy feedback state used for the button label and styling.",
+      values: '"idle" | "copied" | "failed"',
+      description:
+        "Copy feedback state used for the button label, styling, and aria-live announcements.",
     },
   ],
   props: {
@@ -252,6 +254,12 @@ export const codeBlockDoc: ComponentDoc = {
         required: false,
         defaultValue: '"Copied"',
         description: "Status message announced via aria-live after a successful copy.",
+      },
+      copyFailedMessage: {
+        type: "string",
+        required: false,
+        defaultValue: '"Copy failed"',
+        description: "Status message announced via aria-live after a failed copy.",
       },
       onCopy: {
         type: "(source: string) => void",

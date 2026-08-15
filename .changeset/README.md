@@ -14,5 +14,7 @@ reviewed PR that adds only its name to that allowlist — see
 [PACKAGE_GOVERNANCE.md](../PACKAGE_GOVERNANCE.md#first-publish-gate). Until then a scoped bump lands
 in its CHANGELOG and its `package.json` without an npm release, which is intended.
 
-Private package manifests exclude those workspaces from releases. The `ignore` list records explicit
-release-plan exclusions; it is not the inventory of private workspaces.
+Private package manifests are excluded from versioning and tagging through
+`privatePackages.version: false` and `privatePackages.tag: false` in `.changeset/config.json`.
+The release policy therefore follows each workspace manifest's `private: true` flag rather than a
+manually maintained package list that could drift.

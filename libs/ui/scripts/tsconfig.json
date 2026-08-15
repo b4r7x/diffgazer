@@ -1,11 +1,4 @@
 {
-  "extends": "../../core/tsconfig/base.json",
-  "compilerOptions": {
-    "noEmit": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "types": ["node"]
-  },
-  "include": [".", "../tsup.config.ts"],
-  "exclude": ["**/*.test.ts"]
+  "extends": "../../core/tsconfig/node-nodenext-check.json",
+  "include": [".", "../tsup.config.ts"]
 }

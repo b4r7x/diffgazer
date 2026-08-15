@@ -13,7 +13,7 @@ import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
 
 const apiMocks = vi.hoisted(() => ({
-  useInit: vi.fn(),
+  useConfigurationInit: vi.fn(),
   useSettings: vi.fn(),
 }));
 
@@ -21,7 +21,7 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@diffgazer/core/api/hooks")>();
   return {
     ...actual,
-    useInit: apiMocks.useInit,
+    useConfigurationInit: apiMocks.useConfigurationInit,
     useSettings: apiMocks.useSettings,
   };
 });
@@ -88,7 +88,7 @@ function ConnectedFooter(): ReactElement {
 }
 
 function renderHub() {
-  apiMocks.useInit.mockReturnValue({
+  apiMocks.useConfigurationInit.mockReturnValue({
     data: makeInitResponse(),
     isLoading: false,
     error: null,

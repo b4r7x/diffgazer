@@ -33,6 +33,7 @@ function App() {
 - Handler priority: iterates entries from **last-registered to first**. The first handler that does not decline wins; a handler can return `false` to decline the match and continue to the next lower-priority handler.
 - `preventDefault` contract. When a handler with `preventDefault` enabled accepts the match (returns anything other than `false`), `event.preventDefault()` runs **after** that handler returns. A declining handler never prevents the default, so native behavior survives until a handler actually handles the key.
 - Errors in handlers are caught and logged: `[@diffgazer/keys] Handler error for "${hotkey}": ...`
+- Renders one extra DOM node: a `hidden` `<span>` before `{children}`, used to resolve the document the provider lives in so an iframe-mounted provider binds to that window. It is out of layout and out of the accessibility tree, but it does shift `:first-child` / `:nth-child()` selectors written against the provider's own children.
 
 ## Provider-Aware Hooks
 

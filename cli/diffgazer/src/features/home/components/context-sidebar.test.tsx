@@ -1,6 +1,7 @@
-import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
+import type { HomeContextInfo } from "@diffgazer/core/schemas/presentation";
 import { Box } from "ink";
 import { cleanup, render } from "ink-testing-library";
+import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test } from "vitest";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ContextSidebar } from "./context-sidebar";
@@ -11,7 +12,7 @@ afterEach(() => {
 
 describe("ContextSidebar (TUI)", () => {
   test("renders trusted, provider, and last-run context when data is present", () => {
-    const context: ContextInfo = {
+    const context: HomeContextInfo = {
       providerName: "openrouter",
       providerModel: "openrouter/test-model",
       trustedDir: "/repo",
@@ -31,6 +32,21 @@ describe("ContextSidebar (TUI)", () => {
     expect(frame).not.toContain("12345678-1234");
   });
 
+  test("renders the singular noun for a one-issue last run", () => {
+    const context: HomeContextInfo = {
+      trustedDir: "/repo",
+      lastRunId: "12345678-1234-4123-8123-123456789abc",
+      lastRunIssueCount: 1,
+    };
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <ContextSidebar context={context} isTrusted projectPath="/repo" />
+      </CliThemeProvider>,
+    );
+
+    expect(lastFrame() ?? "").toContain("Last Run: #12345678 (1 issue)");
+  });
+
   test("renders every context row with explicit values when data is absent", () => {
     const { lastFrame } = render(
       <CliThemeProvider initialTheme="dark">
@@ -45,7 +61,7 @@ describe("ContextSidebar (TUI)", () => {
   });
 
   test("keeps the model id's tail readable in the 100-column home sidebar", () => {
-    const context: ContextInfo = {
+    const context: HomeContextInfo = {
       providerName: "gemini",
       providerModel: "gemini-2.5-pro",
       trustedDir: "/repo",
@@ -70,7 +86,7 @@ describe("ContextSidebar (TUI)", () => {
   });
 
   test("keeps long repository and provider values inside a narrow sidebar", () => {
-    const context: ContextInfo = {
+    const context: HomeContextInfo = {
       providerName: "openrouter",
       providerModel: "vendor/extremely-long-model-name-that-must-not-wrap",
       trustedDir: "/workspace/a/very/long/repository/path/with/a-distinct-tail",
@@ -93,5 +109,25 @@ describe("ContextSidebar (TUI)", () => {
       frame,
     ).toHaveLength(1);
     expect(frame).not.toContain("must-not-wrap");
+  });
+
+  test("strips OSC control bytes from repository paths", () => {
+    const maliciousPath = "/repo/\u001b]0;evil-title\u0007tail";
+    const context: HomeContextInfo = {
+      providerName: "gemini",
+      providerModel: "gemini-2.5-pro",
+      trustedDir: maliciousPath,
+    };
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <ContextSidebar context={context} isTrusted projectPath={maliciousPath} />
+      </CliThemeProvider>,
+    );
+
+    const frame = stripAnsi(lastFrame() ?? "");
+    expect(frame).toContain("/repo/");
+    expect(frame).toContain("tail");
+    expect(frame).not.toContain("\u001b]0;");
+    expect(frame).not.toContain("evil-title");
   });
 });

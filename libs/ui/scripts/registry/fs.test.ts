@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aliasImportBase, extractLocalImports } from "./fs";
+import { aliasImportBase, extractLocalImports } from "./fs.js";
 
 describe("extractLocalImports", () => {
   it("collects @/ alias and relative specifiers, ignoring bare packages", () => {

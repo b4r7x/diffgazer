@@ -22,7 +22,7 @@ export default function CardDefault() {
           </div>
         </div>
       </CardContent>
-      <CardFooter className="px-4 py-3">
+      <CardFooter>
         <Button variant="ghost">Cancel</Button>
         <Button variant="primary">Save</Button>
       </CardFooter>

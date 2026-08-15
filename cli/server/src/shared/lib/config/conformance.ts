@@ -22,7 +22,18 @@ export interface ConfigurationConformanceSubject {
 
 export type ConfigurationConformanceObservation =
   | { readonly status: "passed"; readonly evidence: AdmissionEvidence }
-  | { readonly status: "failed" | "skipped"; readonly reason: string };
+  | {
+      readonly status: "failed";
+      readonly reason: string;
+      /**
+       * Carried only when the observation is a verdict on the tuple itself —
+       * the provider answered and the structured review contract rejected the
+       * answer. Transport, timeout, budget and cancellation failures say
+       * nothing about the tuple and carry nothing.
+       */
+      readonly evidence?: AdmissionEvidence;
+    }
+  | { readonly status: "skipped"; readonly reason: string };
 
 /**
  * The transport-side observation. The probe owns discovery and conformance for
@@ -47,7 +58,7 @@ export interface ConfigurationEvidenceRecorder {
  * ignores the abort signal still loses the race, so Test can never outlive the
  * budget the configuration was admitted with.
  */
-export async function observeConfigurationConformance(
+async function observeConfigurationConformance(
   subject: ConfigurationConformanceSubject,
 ): Promise<ConfigurationConformanceObservation> {
   const controller = new AbortController();
@@ -75,16 +86,31 @@ export async function observeConfigurationConformance(
 }
 
 /**
- * Observe the subject once and persist tuple-bound admission evidence only for
- * a passed observation. Failed, skipped, and timed-out observations leave the
- * configuration without evidence, so readiness stays fail-closed.
+ * Observe the subject once and persist the tuple-bound admission evidence the
+ * observation proved: that it can produce structured review output, or that it
+ * cannot. A skipped, transport, timeout, or budget failure proves neither and
+ * leaves the configuration's evidence untouched.
  */
 export async function runConfigurationConformance(
   subject: ConfigurationConformanceSubject,
   recorder: ConfigurationEvidenceRecorder,
 ): Promise<ConfigurationConformanceObservation> {
   const observation = await observeConfigurationConformance(subject);
-  if (observation.status !== "passed") return observation;
+  if (observation.status !== "passed") {
+    // The user already paid a live generation to learn this tuple cannot answer
+    // in schema. Caching it is what lets the next review fast-fail for free
+    // instead of paying a diff-sized call to rediscover the same failure.
+    if (observation.status === "failed" && observation.evidence) {
+      const recorded = await recorder.recordConfigurationEvidence(
+        subject.record.configurationId,
+        observation.evidence,
+      );
+      if (!recorded.ok) {
+        log("warn", "conformance_evidence_not_recorded", { error: recorded.error.message });
+      }
+    }
+    return observation;
+  }
   if (observation.evidence.status !== "passed") {
     return { status: "failed", reason: "Conformance observation carries unpassed evidence" };
   }

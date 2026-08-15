@@ -1,3 +1,4 @@
+import { canonicalJson } from "@diffgazer/core/json";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { AgentStreamEvent, StepEvent } from "@diffgazer/core/schemas/events";
 import type { Lens, ReviewIssue } from "@diffgazer/core/schemas/review";
@@ -66,7 +67,12 @@ function makeLensIssue(
 function makeMockAIClient(result: Awaited<ReturnType<AIClient["generate"]>>): AIClient {
   return {
     provider: "openrouter",
-    generate: vi.fn().mockResolvedValue(result),
+    // The production bridge parses every adapter response through the caller's
+    // schema, so the double must too — analysis never sees raw provider output.
+    async generate(_prompt, schema) {
+      if (!result.ok) return result;
+      return ok(schema.parse(result.value));
+    },
   };
 }
 
@@ -183,8 +189,8 @@ describe("runLensAnalysis", () => {
     const complete = makeLensIssue(" mixed ", " file-1 ", "medium");
     complete.title = " Visible issue ";
     complete.evidence = [
-      { type: "code", title: "   ", sourceId: " source:blank ", excerpt: "   " },
-      { type: "code", title: " Evidence ", sourceId: " source:valid ", excerpt: " code " },
+      { type: "doc", title: "   ", sourceId: " source:blank ", excerpt: "   " },
+      { type: "doc", title: " Evidence ", sourceId: " source:valid ", excerpt: " code " },
     ];
     const whitespaceOnly = makeLensIssue("blank", "file-1", "high");
     whitespaceOnly.symptom = "   ";
@@ -205,12 +211,36 @@ describe("runLensAnalysis", () => {
       id: "correctness:mixed",
       title: "Visible issue",
       file: "src/file-0.ts",
-      evidence: [{ type: "code", title: "Evidence", sourceId: "source:valid", excerpt: "code" }],
+      // Code evidence is always the server's own diff extraction; only complete
+      // non-code provider references survive beside it.
+      evidence: [
+        { type: "code", file: "src/file-0.ts", sourceId: "src/file-0.ts:1-5" },
+        { type: "doc", title: "Evidence", sourceId: "source:valid", excerpt: "code" },
+      ],
     });
     expect(events.filter((event) => event.type === "issue_found")).toHaveLength(1);
     expect(events.find((event) => event.type === "agent_complete")).toMatchObject({
       issueCount: 1,
     });
+  });
+
+  it("returns issues canonical JSON accepts when the provider omits optional fields", async () => {
+    const diff = makeAnalysisDiff(1);
+    const client = makeMockAIClient(ok({ issues: [makeLensIssue("plain", "file-1")] }));
+
+    const promise = runLensAnalysis(client, CORRECTNESS_LENS, diff, () => {});
+    await vi.advanceTimersByTimeAsync(100);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const issue = requireValue(result.value.issues[0], "normalized issue");
+    for (const field of ["betterOptions", "testsToAdd", "fixPlan", "trace"] as const) {
+      expect(issue).not.toHaveProperty(field);
+    }
+    // Saving a completed review compares the canonical JSON of these issues
+    // against the execution result, and canonical JSON rejects undefined values.
+    expect(() => canonicalJson(result.value.issues)).not.toThrow();
   });
 
   it("sanitizes terminal-escape sequences in issue free-text fields", async () => {
@@ -305,7 +335,7 @@ describe("runLensAnalysis", () => {
     expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(0);
   });
 
-  it("streams evidence excerpts without malformed provider ranges", async () => {
+  it("streams diff-extracted evidence instead of malformed provider ranges", async () => {
     const issue = makeLensIssue("malformed-evidence", "file-1");
     issue.evidence = [
       {
@@ -351,11 +381,15 @@ describe("runLensAnalysis", () => {
       (event): event is Extract<AgentStreamEvent, { type: "issue_found" }> =>
         event.type === "issue_found",
     );
-    expect(found?.issue.evidence.map(({ range, excerpt }) => ({ range, excerpt }))).toEqual([
-      { range: undefined, excerpt: "negative excerpt" },
-      { range: undefined, excerpt: "fractional excerpt" },
-      { range: undefined, excerpt: "zero excerpt" },
-      { range: undefined, excerpt: "inverted excerpt" },
+    expect(found?.issue.evidence).toEqual([
+      {
+        type: "code",
+        title: "Code at src/file-0.ts:1",
+        sourceId: "src/file-0.ts:1-5",
+        file: "src/file-0.ts",
+        range: { start: 1, end: 5 },
+        excerpt: "line1\nline2\nline3\nline4\nline5",
+      },
     ]);
   });
 
@@ -470,7 +504,9 @@ describe("runLensAnalysis", () => {
         ];
       },
     },
-  ])("rejects an unknown opaque $reference identity", async ({ addUnknownReference }) => {
+  ])("drops an unknown opaque $reference identity without failing the lens", async ({
+    addUnknownReference,
+  }) => {
     const diff = makeAnalysisDiff(1);
     const issue = makeLensIssue("1", "file-1");
     addUnknownReference(issue);
@@ -482,11 +518,13 @@ describe("runLensAnalysis", () => {
     await vi.advanceTimersByTimeAsync(100);
     const result = await promise;
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.code).toBe("PARSE_ERROR");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.issues).toHaveLength(0);
+    expect(result.value.droppedIncompleteProviderIssues).toBe(1);
     expect(events.filter((event) => event.type === "issue_found")).toHaveLength(0);
-    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(1);
-    expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "agent_error")).toHaveLength(0);
+    expect(events.filter((event) => event.type === "agent_complete")).toHaveLength(1);
   });
 
   it("stops emitting progress events after the generate call rejects", async () => {

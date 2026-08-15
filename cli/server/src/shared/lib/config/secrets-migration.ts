@@ -1,22 +1,22 @@
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
 import { createError } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import {
   ConfigurationIdSchema,
   ConfigurationRevisionSchema,
-  type SecretsStorage,
+  LEGACY_PROVIDER_IDS_V1,
 } from "@diffgazer/core/schemas/config";
-import { log } from "../log.js";
-import { deleteKeyringSecret, readKeyringSecret, writeKeyringSecret } from "./keyring.js";
+import { literalCredentialFilePath } from "./persistence/credential-file-path.js";
 import {
   createEnvironmentSecretBinding,
   createFileSecretBinding,
   createKeyringSecretBinding,
   createNoneSecretBinding,
-  markSecretBindingRemoved,
+  resolveSecretBinding,
   type SecretBinding,
+  SecretBindingError,
+  writeSecretBinding,
 } from "./secret-bindings.js";
+import { secretIO } from "./secret-io.js";
 import { getConfigurationSecretName } from "./secrets-store.js";
 import type {
   SecretEntry,
@@ -24,359 +24,193 @@ import type {
   SecretsStorageError,
   SecretsStorageErrorCode,
 } from "./types.js";
+import { V1_MIGRATION_FAILED_MESSAGE } from "./types.js";
 
-export const getApiKeyName = (provider: string): string => `api_key_${provider}`;
+const MIGRATABLE_V1_PROVIDERS: ReadonlySet<string> = new Set(LEGACY_PROVIDER_IDS_V1);
 
-/**
- * Deletes the superseded keyring entries a migration reported, by key name.
- * Must be invoked only AFTER the new binding document is durably persisted, so
- * an interrupted migration leaves the source secret readable and re-runnable.
- */
-export function finalizeKeyringDeletions(keyIds: readonly string[]): void {
-  for (const keyId of keyIds) {
-    const deleteResult = deleteKeyringSecret(keyId);
-    if (!deleteResult.ok) {
-      log("warn", "keyring_delete_failed", { keyId, error: deleteResult.error.message });
-    }
-  }
-}
+/** The provider-keyed keyring name a V1 install used while `secretsStorage` was `keyring`. */
+const legacyKeyringName = (provider: string): string => `api_key_${provider}`;
 
-// ---------------------------------------------------------------------------
-// V1 -> V2 configuration-bound secret migration
-// ---------------------------------------------------------------------------
+export type V1SecretsStorage = "file" | "keyring";
 
-/** The only V1 records that may become an executable V2 binding. */
-const MIGRATABLE_V1_PROVIDERS = new Set(["gemini", "zai", "openrouter", "groq", "cerebras"]);
-
-/**
- * The V1 provider record does not contain a configuration identity.  T-030
- * supplies this explicit mapping during migration; accepting no implicit
- * provider->configuration fallback is what keeps credentials isolated.
- */
 export interface LegacySecretConfiguration {
   readonly provider: string;
   readonly configurationId: string;
   readonly revision: number;
-  /** A removed V1 record is retained, never made executable. */
-  readonly status?: "supported" | "removed";
-  /** Existing provider-keyed keyring name, when the V1 setting used keyring. */
-  readonly legacyKeyringName?: string;
-  /** Existing file reference, when a caller has already split a V1 file. */
-  readonly legacyFilePath?: string;
+  readonly hasApiKey: boolean;
 }
 
-export interface V1SecretMigrationOptions {
-  readonly storage: Exclude<SecretsStorage, null>;
-  /** Destination file for a literal file-backed secret. */
-  readonly filePathFor?: (identity: {
-    readonly configurationId: string;
-    readonly revision: number;
-  }) => string;
-  /** Existing bindings from a partially committed migration. */
-  readonly existingBindings?: readonly SecretBinding[];
-}
+/** A V1 secret that must reach its V2 destination before the V2 documents commit. */
+export type V1CredentialTransfer =
+  | { readonly kind: "file"; readonly binding: SecretBinding; readonly value: string }
+  | { readonly kind: "keyring"; readonly binding: SecretBinding; readonly legacyKeyId: string };
 
-export interface V1SecretBindingMigration {
-  readonly configurationId: string;
-  readonly revision: number;
-  readonly provider: string;
-  readonly binding: SecretBinding;
-}
-
-export interface V1SecretMigrationResult {
-  /** New V2 bindings contain references only; never literal values. */
+interface V1SecretMigrationPreflight {
   readonly bindings: readonly SecretBinding[];
-  /** Removed/unknown legacy records remain named and untouched. */
-  readonly retainedLegacy: readonly V1SecretBindingMigration[];
-  /** Keyring deletions are deferred until the V2 file transaction commits. */
-  readonly keyringDeletions: readonly string[];
-  readonly migrated: readonly V1SecretBindingMigration[];
+  readonly transfers: readonly V1CredentialTransfer[];
 }
 
-const migrationFailure = (message: string): Result<never, SecretsStorageError> =>
-  err(createError<SecretsStorageErrorCode>("SECRETS_MIGRATION_FAILED", message));
-
-const providerSecretEntries = (
-  state: SecretsState | Readonly<Record<string, SecretEntry>>,
-): Readonly<Record<string, SecretEntry>> => {
-  if (
-    typeof state === "object" &&
-    state !== null &&
-    Object.hasOwn(state, "providers") &&
-    typeof (state as { readonly providers?: unknown }).providers === "object"
-  ) {
-    return (state as SecretsState).providers;
-  }
-  return state as Readonly<Record<string, SecretEntry>>;
-};
-
-const bindingForLegacyEntry = (
-  item: LegacySecretConfiguration,
-  entry: SecretEntry | undefined,
-  options: V1SecretMigrationOptions,
-  removed: boolean,
-): Result<SecretBinding, SecretsStorageError> => {
-  const { configurationId, revision } = item;
-  if (entry && typeof entry !== "string") {
-    const binding = createEnvironmentSecretBinding(
-      configurationId,
-      revision,
-      entry.varName,
-      removed ? "removed" : "active",
-    );
-    return ok(binding);
-  }
-
-  if (options.storage === "keyring") {
-    const keyId = item.legacyKeyringName ?? getApiKeyName(item.provider);
-    const binding = createKeyringSecretBinding(
-      configurationId,
-      revision,
-      keyId,
-      removed ? "removed" : "active",
-    );
-    return ok(binding);
-  }
-
-  const filePath = item.legacyFilePath ?? options.filePathFor?.({ configurationId, revision });
-  if (filePath) {
-    return ok(
-      createFileSecretBinding(configurationId, revision, filePath, removed ? "removed" : "active"),
-    );
-  }
-
-  // A missing V1 value is represented explicitly as `none`.  A removed
-  // record is still retained as removed so that it cannot become executable.
-  return ok(
-    removed
-      ? markSecretBindingRemoved(createNoneSecretBinding(configurationId, revision))
-      : createNoneSecretBinding(configurationId, revision),
+const migrationFailure = (): Result<never, SecretsStorageError> =>
+  err(
+    createError<SecretsStorageErrorCode>("SECRETS_MIGRATION_FAILED", V1_MIGRATION_FAILED_MESSAGE),
   );
-};
 
-const validateMigrationIdentity = (item: LegacySecretConfiguration): string | null => {
-  if (!ConfigurationIdSchema.safeParse(item.configurationId).success) {
-    return "Legacy secret migration requires a valid configuration id";
-  }
-  if (!ConfigurationRevisionSchema.safeParse(item.revision).success) {
-    return "Legacy secret migration requires a positive configuration revision";
-  }
-  return null;
-};
+const validIdentity = (item: LegacySecretConfiguration): boolean =>
+  ConfigurationIdSchema.safeParse(item.configurationId).success &&
+  ConfigurationRevisionSchema.safeParse(item.revision).success;
 
-interface KeyringMutation {
-  readonly key: string;
-  readonly previousValue: string | null;
+const isEnvironmentEntry = (
+  entry: SecretEntry | undefined,
+): entry is Extract<SecretEntry, { kind: "env" }> =>
+  typeof entry === "object" &&
+  entry !== null &&
+  entry.kind === "env" &&
+  typeof entry.varName === "string" &&
+  entry.varName.length > 0;
+
+/**
+ * Classifies every V1 record before any credential I/O happens.
+ *
+ * The V1 truth table has four runnable rows: an environment reference and an
+ * explicit no-secret record migrate as metadata, a `file` install keeps its
+ * literal in `secrets.json`, and a `keyring` install keeps it in the OS keyring
+ * under the provider-keyed legacy name. Every other combination is a source that
+ * contradicts `hasApiKey` or names two possible sources at once, so it fails
+ * closed per record and leaves the V1 bytes untouched.
+ */
+export function preflightV1SecretsMigration(
+  state: SecretsState,
+  configurations: readonly LegacySecretConfiguration[],
+  storage: V1SecretsStorage,
+): Result<V1SecretMigrationPreflight, SecretsStorageError> {
+  const entries = state.providers;
+  const seenIdentities = new Set<string>();
+  const seenProviders = new Set<string>();
+  const bindings: SecretBinding[] = [];
+  const transfers: V1CredentialTransfer[] = [];
+
+  for (const item of configurations) {
+    const identity = `${item.configurationId}\u0000${item.revision}`;
+    if (
+      !validIdentity(item) ||
+      typeof item.hasApiKey !== "boolean" ||
+      seenIdentities.has(identity) ||
+      seenProviders.has(item.provider) ||
+      !MIGRATABLE_V1_PROVIDERS.has(item.provider)
+    ) {
+      return migrationFailure();
+    }
+    seenIdentities.add(identity);
+    seenProviders.add(item.provider);
+
+    const hasEntry = Object.hasOwn(entries, item.provider);
+    const entry = entries[item.provider];
+    if (hasEntry && typeof entry !== "string" && !isEnvironmentEntry(entry)) {
+      return migrationFailure();
+    }
+    if (!item.hasApiKey) {
+      if (hasEntry) return migrationFailure();
+      bindings.push(createNoneSecretBinding(item.configurationId, item.revision));
+      continue;
+    }
+    if (isEnvironmentEntry(entry)) {
+      bindings.push(
+        createEnvironmentSecretBinding(item.configurationId, item.revision, entry.varName),
+      );
+      continue;
+    }
+    if (storage === "keyring") {
+      // A keyring install moved its literal out of `secrets.json`; a literal that
+      // is still there names a second possible source and cannot be resolved.
+      if (hasEntry) return migrationFailure();
+      const binding = createKeyringSecretBinding(
+        item.configurationId,
+        item.revision,
+        getConfigurationSecretName(item.configurationId, item.revision),
+      );
+      bindings.push(binding);
+      transfers.push({ kind: "keyring", binding, legacyKeyId: legacyKeyringName(item.provider) });
+      continue;
+    }
+    if (typeof entry !== "string") return migrationFailure();
+    const binding = createFileSecretBinding(
+      item.configurationId,
+      item.revision,
+      literalCredentialFilePath(item.configurationId, item.revision),
+    );
+    bindings.push(binding);
+    transfers.push({ kind: "file", binding, value: entry });
+  }
+
+  if (Object.keys(entries).some((provider) => !seenProviders.has(provider))) {
+    return migrationFailure();
+  }
+  return ok({ bindings, transfers });
 }
 
-const rollbackConfigurationKeyringWrites = (
-  writes: readonly KeyringMutation[],
-): Result<void, SecretsStorageError> => {
-  let failed = false;
-  for (const write of writes) {
-    const result =
-      write.previousValue === null
-        ? deleteKeyringSecret(write.key)
-        : writeKeyringSecret(write.key, write.previousValue);
-    if (!result.ok) {
-      failed = true;
-      log("warn", "configuration_secret_migration_rollback_failed", {
-        error: result.error.message,
-      });
-    }
+const readBindingSecret = async (
+  binding: SecretBinding,
+): Promise<Result<string | null, SecretsStorageError>> => {
+  try {
+    return ok(await resolveSecretBinding(binding, secretIO));
+  } catch (cause) {
+    if (cause instanceof SecretBindingError && cause.code === "FILE_NOT_FOUND") return ok(null);
+    return migrationFailure();
   }
-  return failed
-    ? migrationFailure("Failed to restore keyring state after a secret migration failure")
-    : ok(undefined);
-};
-
-const ensureKeyringCopy = (
-  sourceKey: string,
-  destinationKey: string,
-  value: string,
-  writes: KeyringMutation[],
-): Result<void, SecretsStorageError> => {
-  const destination = readKeyringSecret(destinationKey);
-  if (!destination.ok) return destination;
-  if (destination.value !== null && destination.value !== value) {
-    return migrationFailure("A configuration binding already contains a different secret");
-  }
-  if (destination.value === null) {
-    const previous = readKeyringSecret(destinationKey);
-    if (!previous.ok) return previous;
-    const write = writeKeyringSecret(destinationKey, value);
-    if (!write.ok) return write;
-    const verified = readKeyringSecret(destinationKey);
-    if (!verified.ok) return verified;
-    if (verified.value !== value) {
-      return migrationFailure("Configuration secret keyring verification failed");
-    }
-    writes.push({ key: destinationKey, previousValue: previous.value });
-  }
-
-  // A source and destination that are the same key are already idempotent and
-  // must not be deleted as part of migration.
-  if (sourceKey !== destinationKey) {
-    // Deletion is deliberately returned to the caller after persistence, never
-    // performed while constructing the V2 binding.
-    return ok(undefined);
-  }
-  return ok(undefined);
 };
 
 /**
- * Convert explicitly mapped V1 provider secrets to V2 configuration bindings.
- *
- * Literal values are used only for a one-way keyring/file copy and are never
- * present in the result.  No endpoint, model, conformance probe, or provider
- * adapter is invoked.  `zai-coding` is retained as a removed binding and is
- * intentionally excluded from all copy/delete operations.
+ * Copies one secret to its V2 destination without ever overwriting a value this
+ * migration did not put there: absent writes then verifies by read-back, an equal
+ * value is reused so a restarted migration converges, and a different value fails
+ * that record closed. The source is never deleted, so an interrupted run is
+ * repeatable until the V2 documents commit.
  */
-export function migrateV1SecretsToBindings(
-  state: SecretsState | Readonly<Record<string, SecretEntry>>,
-  configurations: readonly LegacySecretConfiguration[],
-  options: V1SecretMigrationOptions,
-): Result<V1SecretMigrationResult, SecretsStorageError> {
-  const entries = providerSecretEntries(state);
-  const seen = new Set<string>();
-  const bindings: SecretBinding[] = [];
-  const retainedLegacy: V1SecretBindingMigration[] = [];
-  const migrated: V1SecretBindingMigration[] = [];
-  const keyringDeletions: string[] = [];
-  const keyringWrites: KeyringMutation[] = [];
-
-  for (const item of configurations) {
-    const identityError = validateMigrationIdentity(item);
-    if (identityError) {
-      const rollback = rollbackConfigurationKeyringWrites(keyringWrites);
-      return rollback.ok ? migrationFailure(identityError) : rollback;
-    }
-    const identityKey = `${item.configurationId}\u0000${item.revision}`;
-    if (seen.has(identityKey)) {
-      const rollback = rollbackConfigurationKeyringWrites(keyringWrites);
-      return rollback.ok
-        ? migrationFailure("Duplicate configuration secret binding identity")
-        : rollback;
-    }
-    seen.add(identityKey);
-
-    const entry = entries[item.provider];
-    const removed = item.provider === "zai-coding" || item.status === "removed";
-    const bindingResult = bindingForLegacyEntry(item, entry, options, removed);
-    if (!bindingResult.ok) {
-      const rollback = rollbackConfigurationKeyringWrites(keyringWrites);
-      return rollback.ok ? bindingResult : rollback;
-    }
-    let binding = bindingResult.value;
-
-    // Removed records are an explicit retention boundary.  In particular, a
-    // zai-coding key is never read, copied, relabelled, tested, or deleted.
-    if (removed) {
-      const retained = {
-        configurationId: item.configurationId,
-        revision: item.revision,
-        provider: item.provider,
-        binding,
-      } satisfies V1SecretBindingMigration;
-      bindings.push(binding);
-      retainedLegacy.push(retained);
-      continue;
-    }
-
-    if (!MIGRATABLE_V1_PROVIDERS.has(item.provider)) {
-      // Unknown providers are preserved as non-executable opaque records by
-      // the V1 decoder; this function must not invent a product alias.
-      bindings.push(markSecretBindingRemoved(binding));
-      retainedLegacy.push({
-        configurationId: item.configurationId,
-        revision: item.revision,
-        provider: item.provider,
-        binding: markSecretBindingRemoved(binding),
-      });
-      continue;
-    }
-
-    if (typeof entry === "string") {
-      if (options.storage === "keyring") {
-        const sourceKey = item.legacyKeyringName ?? getApiKeyName(item.provider);
-        const destinationKey = getConfigurationSecretName(item.configurationId, item.revision);
-        let value = entry;
-        const source = readKeyringSecret(sourceKey);
-        if (source.ok && source.value !== null) value = source.value;
-        const copied = ensureKeyringCopy(sourceKey, destinationKey, value, keyringWrites);
-        if (!copied.ok) {
-          const rollback = rollbackConfigurationKeyringWrites(keyringWrites);
-          return rollback.ok ? copied : rollback;
-        }
-        binding = createKeyringSecretBinding(item.configurationId, item.revision, destinationKey);
-        if (sourceKey !== destinationKey) keyringDeletions.push(sourceKey);
-      } else {
-        const filePath =
-          item.legacyFilePath ??
-          options.filePathFor?.({
-            configurationId: item.configurationId,
-            revision: item.revision,
-          });
-        if (!filePath) {
-          const rollback = rollbackConfigurationKeyringWrites(keyringWrites);
-          return rollback.ok
-            ? migrationFailure("A file path is required for a literal V1 secret migration")
-            : rollback;
-        }
-        try {
-          // Existing identical bytes make recovery idempotent.  All new files
-          // are mode 0600 before they are exposed through the binding.
-          let existing: string | null = null;
-          try {
-            existing = readFileSync(filePath, "utf8");
-          } catch {}
-          if (existing !== entry) {
-            mkdirSync(dirname(filePath), { recursive: true });
-            writeFileSync(filePath, entry, { encoding: "utf8", mode: 0o600 });
-          }
-          chmodSync(filePath, 0o600);
-          if (readFileSync(filePath, "utf8") !== entry) {
-            throw new Error("file read-back mismatch");
-          }
-        } catch {
-          const rollback = rollbackConfigurationKeyringWrites(keyringWrites);
-          return rollback.ok
-            ? migrationFailure("Configuration secret file migration failed")
-            : rollback;
-        }
-        binding = createFileSecretBinding(item.configurationId, item.revision, filePath);
-      }
-    }
-
-    const migratedEntry = {
-      configurationId: item.configurationId,
-      revision: item.revision,
-      provider: item.provider,
-      binding,
-    } satisfies V1SecretBindingMigration;
-    bindings.push(binding);
-    migrated.push(migratedEntry);
+const materializeV1Credential = async (
+  binding: SecretBinding,
+  value: string,
+): Promise<Result<void, SecretsStorageError>> => {
+  const existing = await readBindingSecret(binding);
+  if (!existing.ok) return existing;
+  if (existing.value !== null) {
+    return existing.value === value ? ok(undefined) : migrationFailure();
   }
 
-  // Existing bindings are retained byte-for-byte by persistence.  Do not
-  // append duplicate identities during recovery, and do not issue another
-  // source-key deletion when the destination was already committed.
-  const existing = new Set(
-    (options.existingBindings ?? []).map(
-      (binding) => `${binding.configurationId}\u0000${binding.revision}`,
+  try {
+    await writeSecretBinding(binding, value, secretIO);
+  } catch {
+    return migrationFailure();
+  }
+  const verified = await readBindingSecret(binding);
+  if (!verified.ok) return verified;
+  return verified.value === value ? ok(undefined) : migrationFailure();
+};
+
+const transferV1Credential = async (
+  transfer: V1CredentialTransfer,
+): Promise<Result<void, SecretsStorageError>> => {
+  if (transfer.kind === "file") {
+    return materializeV1Credential(transfer.binding, transfer.value);
+  }
+  const source = await readBindingSecret(
+    createKeyringSecretBinding(
+      transfer.binding.configurationId,
+      transfer.binding.revision,
+      transfer.legacyKeyId,
     ),
   );
-  const uniqueBindings = bindings.filter((binding) => {
-    const key = `${binding.configurationId}\u0000${binding.revision}`;
-    if (existing.has(key)) return false;
-    existing.add(key);
-    return true;
-  });
+  if (!source.ok) return source;
+  if (source.value === null) return migrationFailure();
+  return materializeV1Credential(transfer.binding, source.value);
+};
 
-  return ok({
-    bindings: uniqueBindings,
-    retainedLegacy,
-    keyringDeletions: [...new Set(keyringDeletions)],
-    migrated,
-  });
+/** Runs after the whole document passes preflight, so an invalid record never reaches I/O. */
+export async function transferV1Credentials(
+  transfers: readonly V1CredentialTransfer[],
+): Promise<Result<void, SecretsStorageError>> {
+  for (const transfer of transfers) {
+    const transferred = await transferV1Credential(transfer);
+    if (!transferred.ok) return transferred;
+  }
+  return ok(undefined);
 }

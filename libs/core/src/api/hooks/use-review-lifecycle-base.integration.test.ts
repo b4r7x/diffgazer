@@ -4,9 +4,10 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { err, ok, type Result } from "../../result.js";
 import type { StreamReviewError } from "../../review/index.js";
-import type { SettingsConfig } from "../../schemas/config/index.js";
+import { type SettingsConfig, SettingsConfigSchema } from "../../schemas/config/index.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 import { createDeferred } from "../../testing/deferred.js";
+import { makeReadiness } from "../../testing/provider-fixtures.js";
 import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
 import type { ResumeReviewResult } from "../review.js";
@@ -14,16 +15,18 @@ import type { ReviewContextResponse } from "../types.js";
 import { reviewQueries } from "./queries/review.js";
 import { useReviewLifecycleBase } from "./use-review-lifecycle-base.js";
 
+// Parsed through the real schema so a fixture cannot claim a settings state the
+// `getSettings` boundary would reject (for example an empty default-lens list).
 function makeSettings(overrides: Partial<SettingsConfig> = {}): SettingsConfig {
-  return {
+  return SettingsConfigSchema.parse({
     theme: "terminal",
-    defaultLenses: [],
+    defaultLenses: ["correctness"],
     defaultProfile: null,
     severityThreshold: "low",
     secretsStorage: null,
     agentExecution: "parallel",
     ...overrides,
-  };
+  });
 }
 
 function makeContextResponse(label: string): ReviewContextResponse {
@@ -94,7 +97,7 @@ describe("useReviewLifecycleBase terminal resume states", () => {
       () =>
         useReviewLifecycleBase({
           configLoading: false,
-          isConfigured: true,
+          readiness: makeReadiness("ready"),
           reviewId: "review-b",
           onComplete: vi.fn(),
         }),
@@ -138,7 +141,7 @@ describe("useReviewLifecycleBase terminal resume states", () => {
       () =>
         useReviewLifecycleBase({
           configLoading: false,
-          isConfigured: true,
+          readiness: makeReadiness("ready"),
           reviewId: "completed-review",
           onComplete,
           onStreamComplete,
@@ -164,7 +167,7 @@ describe("useReviewLifecycleBase terminal resume states", () => {
     expect(result.current.completion.completedAt).toBe(completedAt);
   });
 
-  it("exposes a generic stream failure as terminal and not running", async () => {
+  it("exposes a recoverable stream failure on the running gate", async () => {
     const onComplete = vi.fn();
     const onStreamComplete = vi.fn();
     const harness = createTestQueryWrapper({
@@ -175,7 +178,7 @@ describe("useReviewLifecycleBase terminal resume states", () => {
       () =>
         useReviewLifecycleBase({
           configLoading: false,
-          isConfigured: true,
+          readiness: makeReadiness("ready"),
           reviewId: "error-review",
           onComplete,
           onStreamComplete,
@@ -187,8 +190,8 @@ describe("useReviewLifecycleBase terminal resume states", () => {
     await waitFor(() => expect(result.current.stream.state.error).toBe("network failed"));
 
     expect(result.current.stream.state.isStreaming).toBe(false);
-    expect(result.current.checks.isTerminalStreamError).toBe(true);
-    expect(result.current.gate).toBe("terminal-error");
+    expect(result.current.checks.isTerminalStreamError).toBe(false);
+    expect(result.current.gate).toBe("running");
     expect(onStreamComplete).not.toHaveBeenCalled();
     expect(onComplete).not.toHaveBeenCalled();
   });
@@ -206,7 +209,7 @@ describe("useReviewLifecycleBase terminal resume states", () => {
       () =>
         useReviewLifecycleBase({
           configLoading: false,
-          isConfigured: true,
+          readiness: makeReadiness("ready"),
           reviewId: "remote-cancel-review",
           onComplete,
           onStreamComplete,
@@ -242,7 +245,7 @@ describe("useReviewLifecycleBase terminal resume states", () => {
       () =>
         useReviewLifecycleBase({
           configLoading: false,
-          isConfigured: true,
+          readiness: makeReadiness("ready"),
           reviewId: "local-cancel-review",
           onComplete: vi.fn(),
         }),
@@ -265,8 +268,11 @@ describe("useReviewLifecycleBase terminal resume states", () => {
 
   it.each([
     [ReviewErrorCode.SESSION_STALE, "stale"],
+    [ReviewErrorCode.SESSION_EVICTED, "evicted"],
+    [ReviewErrorCode.SESSION_TIMEOUT, "timed out"],
+    [ReviewErrorCode.SERVER_SHUTDOWN, "shut down"],
     [ReviewErrorCode.SESSION_NOT_FOUND, "not found"],
-  ])("does not fire successful completion callbacks for %s resume failures", async (code, message) => {
+  ] as const)("does not fire successful completion callbacks for %s resume failures", async (code, message) => {
     const onComplete = vi.fn();
     const onStreamComplete = vi.fn();
     const onNotFoundInSession = vi.fn();
@@ -279,7 +285,7 @@ describe("useReviewLifecycleBase terminal resume states", () => {
       () =>
         useReviewLifecycleBase({
           configLoading: false,
-          isConfigured: true,
+          readiness: makeReadiness("ready"),
           reviewId: "terminal-review",
           onComplete,
           onStreamComplete,
@@ -292,12 +298,253 @@ describe("useReviewLifecycleBase terminal resume states", () => {
     await waitFor(() => expect(harness.api.resumeReviewStream).toHaveBeenCalled());
     if (code === ReviewErrorCode.SESSION_NOT_FOUND) {
       await waitFor(() => expect(onNotFoundInSession).toHaveBeenCalledWith("terminal-review"));
+      expect(onNotFoundInSession).toHaveBeenCalledTimes(1);
+      expect(onStaleSession).not.toHaveBeenCalled();
     } else {
       await waitFor(() => expect(onStaleSession).toHaveBeenCalledWith(code));
+      expect(onStaleSession).toHaveBeenCalledTimes(1);
+      expect(onNotFoundInSession).not.toHaveBeenCalled();
     }
 
     expect(result.current.completion.isCompleting).toBe(false);
     expect(onStreamComplete).not.toHaveBeenCalled();
     expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it("does not notify after an automatic resume settles after unmount", async () => {
+    const resumeDeferred = createDeferred<Result<ResumeReviewResult, StreamReviewError>>();
+    const onNotFoundInSession = vi.fn();
+    const onStaleSession = vi.fn();
+    const harness = createTestQueryWrapper({
+      api: {
+        getSettings: vi.fn(async () => makeSettings()),
+        resumeReviewStream: vi
+          .fn<BoundApi["resumeReviewStream"]>()
+          .mockReturnValue(resumeDeferred.promise),
+      },
+    });
+
+    const lifecycle = renderHook(
+      () =>
+        useReviewLifecycleBase({
+          configLoading: false,
+          readiness: makeReadiness("ready"),
+          reviewId: "deferred-review",
+          onComplete: vi.fn(),
+          onNotFoundInSession,
+          onStaleSession,
+        }),
+      { wrapper: harness.Wrapper },
+    );
+
+    await waitFor(() => expect(harness.api.resumeReviewStream).toHaveBeenCalledTimes(1));
+    lifecycle.unmount();
+
+    await act(async () => {
+      resumeDeferred.resolve(err({ code: ReviewErrorCode.SESSION_STALE, message: "stale" }));
+      await resumeDeferred.promise;
+    });
+
+    expect(onNotFoundInSession).not.toHaveBeenCalled();
+    expect(onStaleSession).not.toHaveBeenCalled();
+  });
+
+  it("exposes manual retry as an imperative resume", async () => {
+    const resumeReviewStream = vi
+      .fn<BoundApi["resumeReviewStream"]>()
+      .mockResolvedValueOnce(err({ code: "STREAM_ERROR", message: "network failed" }))
+      .mockResolvedValueOnce(
+        ok({
+          reviewId: "manual-review",
+          result: { issues: [] },
+        }),
+      );
+    const harness = createTestQueryWrapper({
+      api: {
+        getSettings: vi.fn(async () => makeSettings()),
+        resumeReviewStream,
+      },
+    });
+
+    const { result } = renderHook(
+      () =>
+        useReviewLifecycleBase({
+          configLoading: false,
+          readiness: makeReadiness("ready"),
+          reviewId: "manual-review",
+          onComplete: vi.fn(),
+        }),
+      { wrapper: harness.Wrapper },
+    );
+
+    await waitFor(() => expect(result.current.stream.state.errorCode).toBe("STREAM_ERROR"));
+
+    await act(async () => {
+      await result.current.resumeReview("manual-review");
+    });
+
+    expect(resumeReviewStream).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(result.current.stream.state.hasCompleted).toBe(true));
+  });
+});
+
+describe("useReviewLifecycleBase transport reconnect", () => {
+  function createReconnectHarness() {
+    const resumeReviewStream = vi
+      .fn<BoundApi["resumeReviewStream"]>()
+      .mockResolvedValueOnce(err({ code: "STREAM_ERROR", message: "network failed" }))
+      .mockResolvedValueOnce(
+        ok({
+          reviewId: "reconnect-review",
+          result: { issues: [] },
+        }),
+      );
+    const harness = createTestQueryWrapper({
+      api: {
+        getSettings: vi.fn(async () => makeSettings()),
+        resumeReviewStream,
+      },
+    });
+    return { harness, resumeReviewStream };
+  }
+
+  it("resumes after a transport error when the browser comes back online", async () => {
+    const { harness, resumeReviewStream } = createReconnectHarness();
+
+    const { result } = renderHook(
+      () =>
+        useReviewLifecycleBase({
+          configLoading: false,
+          readiness: makeReadiness("ready"),
+          reviewId: "reconnect-review",
+          onComplete: vi.fn(),
+        }),
+      { wrapper: harness.Wrapper },
+    );
+
+    await waitFor(() => expect(result.current.stream.state.errorCode).toBe("STREAM_ERROR"));
+    expect(resumeReviewStream).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+    });
+
+    await waitFor(() => expect(resumeReviewStream).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.stream.state.hasCompleted).toBe(true));
+  });
+
+  it("deduplicates online and visibility reconnects while the retry stream is pending", async () => {
+    const secondResume = createDeferred<Result<ResumeReviewResult, StreamReviewError>>();
+    const resumeReviewStream = vi
+      .fn<BoundApi["resumeReviewStream"]>()
+      .mockResolvedValueOnce(err({ code: "STREAM_ERROR", message: "network failed" }))
+      .mockReturnValueOnce(secondResume.promise);
+    const harness = createTestQueryWrapper({
+      api: {
+        getSettings: vi.fn(async () => makeSettings()),
+        resumeReviewStream,
+      },
+    });
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "visible",
+    });
+
+    const { result } = renderHook(
+      () =>
+        useReviewLifecycleBase({
+          configLoading: false,
+          readiness: makeReadiness("ready"),
+          reviewId: "reconnect-review",
+          onComplete: vi.fn(),
+        }),
+      { wrapper: harness.Wrapper },
+    );
+
+    await waitFor(() => expect(result.current.stream.state.errorCode).toBe("STREAM_ERROR"));
+    expect(resumeReviewStream).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    expect(resumeReviewStream).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      secondResume.resolve(
+        ok({
+          reviewId: "reconnect-review",
+          result: { issues: [] },
+        }),
+      );
+      await secondResume.promise;
+    });
+
+    await waitFor(() => expect(result.current.stream.state.hasCompleted).toBe(true));
+    expect(resumeReviewStream).toHaveBeenCalledTimes(2);
+  });
+
+  it("resumes after a transport error when the tab becomes visible", async () => {
+    const { harness, resumeReviewStream } = createReconnectHarness();
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "visible",
+    });
+
+    const { result } = renderHook(
+      () =>
+        useReviewLifecycleBase({
+          configLoading: false,
+          readiness: makeReadiness("ready"),
+          reviewId: "reconnect-review",
+          onComplete: vi.fn(),
+        }),
+      { wrapper: harness.Wrapper },
+    );
+
+    await waitFor(() => expect(result.current.stream.state.errorCode).toBe("STREAM_ERROR"));
+
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await waitFor(() => expect(resumeReviewStream).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(result.current.stream.state.hasCompleted).toBe(true));
+  });
+
+  it("does not resume while hidden until the tab becomes visible", async () => {
+    const { harness, resumeReviewStream } = createReconnectHarness();
+    let visibilityState: DocumentVisibilityState = "hidden";
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => visibilityState,
+    });
+
+    const { result } = renderHook(
+      () =>
+        useReviewLifecycleBase({
+          configLoading: false,
+          readiness: makeReadiness("ready"),
+          reviewId: "reconnect-review",
+          onComplete: vi.fn(),
+        }),
+      { wrapper: harness.Wrapper },
+    );
+
+    await waitFor(() => expect(result.current.stream.state.errorCode).toBe("STREAM_ERROR"));
+
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(resumeReviewStream).toHaveBeenCalledTimes(1);
+
+    visibilityState = "visible";
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await waitFor(() => expect(resumeReviewStream).toHaveBeenCalledTimes(2));
   });
 });

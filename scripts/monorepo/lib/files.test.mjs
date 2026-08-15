@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, test } from "node:test";
-import { listRepoFiles } from "./files.mjs";
+import { listFilesByExtension, listRepoFiles } from "./files.mjs";
 
 const tempRoots = [];
 
@@ -52,4 +52,38 @@ test("repo file listing omits tracked files deleted from the worktree", () => {
   rmSync(join(root, "removed.ts"));
 
   assert.deepEqual(listRepoFiles(root), ["kept.ts"]);
+});
+
+test("extension listing walks nested directories and keeps gitignored output", () => {
+  const root = makeTempRoot();
+
+  execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+  writeText(root, ".gitignore", "docs/generated/\n");
+  writeText(root, "docs/content/index.mdx", "content\n");
+  writeText(root, "docs/content/nested/deep.mdx", "deep\n");
+  writeText(root, "docs/content/notes.txt", "not mdx\n");
+  writeText(root, "docs/generated/bundle.mdx", "generated\n");
+
+  assert.deepEqual(
+    listFilesByExtension(join(root, "docs"), ".mdx")
+      .map((path) => path.slice(root.length + 1))
+      .sort(),
+    ["docs/content/index.mdx", "docs/content/nested/deep.mdx", "docs/generated/bundle.mdx"],
+  );
+});
+
+// Git C-quotes these pathnames in its newline-delimited display form, so a
+// listing built on that form drops them and every scanner reading it (secret
+// scan, provider transport guard, invariants, testing conventions) skips their
+// content.
+test("repo file listing keeps pathnames git C-quotes in its display form", () => {
+  const root = makeTempRoot();
+  const quotedNames = ["café.ts", 'quote".ts', "back\\slash.ts", "tab\tname.ts"];
+
+  execFileSync("git", ["init"], { cwd: root, stdio: "ignore" });
+  for (const name of quotedNames) {
+    writeText(root, name, "content\n");
+  }
+
+  assert.deepEqual(listRepoFiles(root).sort(), [...quotedNames].sort());
 });

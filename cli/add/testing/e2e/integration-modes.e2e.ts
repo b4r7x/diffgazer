@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { computeIntegrity } from "@diffgazer/registry";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { runDgadd, writeFixtureConfig } from "./test-helpers.js";
+import { getDefaultKeysVersionSpec } from "../../src/context.js";
+import { manifestItem, readFixtureConfig, runDgadd, writeFixtureConfig } from "./test-helpers.js";
 
 let root: string;
 
@@ -55,10 +56,10 @@ describe("integration modes", () => {
       "--skip-install",
     ]);
 
-    const beforeMigration = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    expect(beforeMigration.installedComponents["ui/select"].integrationMode).toBe("copy");
-    expect(beforeMigration.installedComponents["ui/accordion"].integrationMode).toBe("copy");
-    expect(beforeMigration.installedComponents["keys/navigation"]?.installedAs).toBe("transitive");
+    const beforeMigration = readFixtureConfig(root);
+    expect(beforeMigration.installedItems?.["ui/select"]?.integrationMode).toBe("copy");
+    expect(beforeMigration.installedItems?.["ui/accordion"]?.integrationMode).toBe("copy");
+    expect(beforeMigration.installedItems?.["keys/navigation"]?.installedAs).toBe("transitive");
 
     runDgadd([
       "add",
@@ -72,16 +73,16 @@ describe("integration modes", () => {
       "--skip-install",
     ]);
 
-    const afterMigration = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    const navigation = afterMigration.installedComponents["keys/navigation"];
+    const afterMigration = readFixtureConfig(root);
+    const navigation = afterMigration.installedItems?.["keys/navigation"];
     const navigationFiles = navigation?.files ?? [];
     const accordionSource = readFileSync(
       join(root, "src/components/ui/accordion/accordion.tsx"),
       "utf-8",
     );
 
-    expect(afterMigration.installedComponents["ui/select"].integrationMode).toBe("@diffgazer/keys");
-    expect(afterMigration.installedComponents["ui/accordion"].integrationMode).toBe("copy");
+    expect(afterMigration.installedItems?.["ui/select"]?.integrationMode).toBe("@diffgazer/keys");
+    expect(afterMigration.installedItems?.["ui/accordion"]?.integrationMode).toBe("copy");
     expect(accordionSource).toMatch(/@\/hooks\/utils\/navigation-items/);
     expect(navigation?.installedAs).toBe("transitive");
     expect(navigationFiles).toEqual(
@@ -127,11 +128,11 @@ describe("integration modes", () => {
       "--skip-install",
     ]);
 
-    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    const focusTrapFiles = config.installedComponents["keys/focus-trap"]?.files ?? [];
+    const config = readFixtureConfig(root);
+    const focusTrapFiles = config.installedItems?.["keys/focus-trap"]?.files ?? [];
 
-    expect(config.installedComponents["keys/navigation"]).toBeUndefined();
-    expect(config.installedComponents["keys/focus-trap"]?.installedAs).toBe("explicit");
+    expect(config.installedItems?.["keys/navigation"]).toBeUndefined();
+    expect(config.installedItems?.["keys/focus-trap"]?.installedAs).toBe("explicit");
     expect(focusTrapFiles).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ path: "src/hooks/utils/focusable.ts" }),
@@ -204,20 +205,16 @@ describe("integration modes", () => {
       join(root, "src/components/ui/select/use-content-navigation.ts"),
       "utf-8",
     );
-    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    const selectFiles = config.installedComponents["ui/select"].files;
+    const config = readFixtureConfig(root);
+    const selectFiles = manifestItem(config, "ui/select").files ?? [];
 
     expect(selectSource).toMatch(/from "@diffgazer\/keys"/);
     expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(false);
     expect(existsSync(join(root, "src/hooks/utils/navigation-dispatch.ts"))).toBe(false);
     expect(existsSync(join(root, "src/hooks/utils/navigation-items.ts"))).toBe(false);
-    expect(config.installedComponents["ui/select"].integrationMode).toBe("@diffgazer/keys");
-    expect(config.installedComponents["keys/navigation"]).toBeUndefined();
-    expect(
-      selectFiles.every(
-        (file: { integrationMode?: string }) => file.integrationMode === "@diffgazer/keys",
-      ),
-    ).toBe(true);
+    expect(manifestItem(config, "ui/select").integrationMode).toBe("@diffgazer/keys");
+    expect(config.installedItems?.["keys/navigation"]).toBeUndefined();
+    expect(selectFiles.every((file) => file.integrationMode === "@diffgazer/keys")).toBe(true);
   });
 
   test("copy to keys rejects a locally modified unshared hook before side effects", () => {
@@ -240,7 +237,7 @@ describe("integration modes", () => {
 
     const beforeSource = readFileSync(selectSourcePath, "utf-8");
     const beforeManifest = readFileSync(manifestPath, "utf-8");
-    const beforeOwnership = JSON.parse(beforeManifest).installedComponents["keys/navigation"];
+    const beforeOwnership = manifestItem(readFixtureConfig(root), "keys/navigation");
 
     expect(() =>
       runDgadd([
@@ -260,9 +257,7 @@ describe("integration modes", () => {
     expect(readFileSync(selectSourcePath, "utf-8")).toBe(beforeSource);
     expect(readFileSync(hookPath, "utf-8")).toBe(modifiedHook);
     expect(afterManifest).toBe(beforeManifest);
-    expect(JSON.parse(afterManifest).installedComponents["keys/navigation"]).toEqual(
-      beforeOwnership,
-    );
+    expect(manifestItem(readFixtureConfig(root), "keys/navigation")).toEqual(beforeOwnership);
   });
 
   test("copy to keys rejects hook paths that escape the configured hooks directory", () => {
@@ -282,8 +277,10 @@ describe("integration modes", () => {
     const manifestPath = join(root, "diffgazer.json");
     const packagePath = join(root, "package.json");
     const packageSource = readFileSync(packagePath, "utf-8");
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
-    const escapedFile = manifest.installedComponents["keys/navigation"].files[0];
+    const manifest = readFixtureConfig(root);
+    const navigationFiles = manifestItem(manifest, "keys/navigation").files ?? [];
+    const escapedFile = navigationFiles[0];
+    if (!escapedFile) throw new Error("expected keys/navigation owned file");
     escapedFile.path = "src/hooks/../package.json";
     escapedFile.hash = computeIntegrity(packageSource);
     writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
@@ -374,23 +371,18 @@ describe("integration modes", () => {
       join(root, "src/components/ui/select/select-content.tsx"),
       "utf-8",
     );
-    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    const selectFiles = config.installedComponents["ui/select"].files;
-    const navigation = config.installedComponents["keys/navigation"];
+    const config = readFixtureConfig(root);
+    const selectItem = manifestItem(config, "ui/select");
+    const selectFiles = selectItem.files ?? [];
+    const navigation = config.installedItems?.["keys/navigation"];
 
     expect(selectSource).not.toMatch(/from "@diffgazer\/keys"/);
     expect(selectSource).toMatch(/from "@\/hooks\//);
     expect(existsSync(join(root, "src/hooks/use-navigation.ts"))).toBe(true);
-    expect(config.installedComponents["ui/select"].integrationMode).toBe("copy");
-    expect(
-      selectFiles.every((file: { integrationMode?: string }) => file.integrationMode === "copy"),
-    ).toBe(true);
+    expect(selectItem.integrationMode).toBe("copy");
+    expect(selectFiles.every((file) => file.integrationMode === "copy")).toBe(true);
     expect(navigation?.installedAs).toBe("transitive");
-    expect(
-      navigation?.files?.every(
-        (file: { integrationMode?: string }) => file.integrationMode === "copy",
-      ),
-    ).toBe(true);
+    expect(navigation?.files?.every((file) => file.integrationMode === "copy")).toBe(true);
   });
 
   test("copy integration rewrites package-root keys imports to copied sources", () => {
@@ -516,9 +508,9 @@ describe("integration modes", () => {
       "--skip-install",
     ]);
 
-    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
+    const config = readFixtureConfig(root);
     expect(existsSync(join(root, "src/components/ui/button/button.tsx"))).toBe(true);
-    expect(config.installedComponents["ui/button"].integrationMode).toBe("none");
+    expect(manifestItem(config, "ui/button").integrationMode).toBe("none");
   });
 
   test("keys package integration diff is up to date immediately after add", () => {
@@ -538,6 +530,67 @@ describe("integration modes", () => {
 
     const output = runDgadd(["diff", "ui/select", "--cwd", root], { silent: false });
     expect(output).toMatch(/All Diffgazer items are up to date with registry\./);
+  });
+
+  test("--keys-version flows from the CLI into the dependency request and the manifest", () => {
+    const output = runDgadd(
+      [
+        "add",
+        "ui/select",
+        "--integration",
+        "keys",
+        "--keys-version",
+        "^9.9.9",
+        "--cwd",
+        root,
+        "--yes",
+        "--skip-install",
+      ],
+      { silent: false },
+    );
+
+    expect(output).toContain("@diffgazer/keys@^9.9.9");
+    expect(manifestItem(readFixtureConfig(root), "ui/select").keysVersion).toBe("^9.9.9");
+  });
+
+  test("without --keys-version the manifest records the bundled default range", () => {
+    runDgadd([
+      "add",
+      "ui/select",
+      "--integration",
+      "keys",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    expect(manifestItem(readFixtureConfig(root), "ui/select").keysVersion).toBe(
+      getDefaultKeysVersionSpec(),
+    );
+  });
+
+  test("explicit keys/* stay recorded as copies when ui/* resolves to package mode", () => {
+    runDgadd([
+      "add",
+      "keys/scroll-lock",
+      "ui/select",
+      "--integration",
+      "keys",
+      "--cwd",
+      root,
+      "--yes",
+      "--skip-install",
+    ]);
+
+    expect(existsSync(join(root, "src/hooks/use-scroll-lock.ts"))).toBe(true);
+
+    const config = readFixtureConfig(root);
+    const scrollLock = manifestItem(config, "keys/scroll-lock");
+    expect(scrollLock.integrationMode).toBe("copy");
+    expect(scrollLock.keysVersion).toBeUndefined();
+    expect(scrollLock.files?.every((file) => file.integrationMode === "copy")).toBe(true);
+    expect(manifestItem(config, "ui/select").integrationMode).toBe("@diffgazer/keys");
   });
 
   test("keys package integration diff reports modified installed files", () => {

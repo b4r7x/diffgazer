@@ -217,12 +217,40 @@ describe("Avatar", () => {
       </Card>,
     );
 
+    const card = screen.getByRole("article", { name: "Jane Doe" });
+    expect(card).toBeInTheDocument();
+    expect(card).toHaveAccessibleName("Jane Doe");
+
     // fireEvent retained: native img load has no userEvent equivalent and reveals the decorative alt state.
     fireEvent.load(getAvatarImage(container));
 
-    const card = screen.getByRole("article", { name: "Jane Doe" });
-    expect(card).toBeInTheDocument();
+    expect(screen.getByRole("article", { name: "Jane Doe" })).toBeInTheDocument();
     expect(getAvatarImage(container)).toHaveAttribute("alt", "");
+  });
+
+  it("keeps decorative fallback text out of the container name while loading", () => {
+    render(
+      <Card as="article" aria-label="Jane Doe">
+        <Avatar src="https://example.com/avatar.jpg" />
+        <span>Jane Doe</span>
+      </Card>,
+    );
+
+    expect(screen.getByRole("article", { name: "Jane Doe" })).toBeInTheDocument();
+  });
+
+  it("keeps decorative fallback text out of the container name after image error", () => {
+    const { container } = render(
+      <Card as="article" aria-label="Jane Doe">
+        <Avatar src="https://example.com/avatar.jpg" />
+        <span>Jane Doe</span>
+      </Card>,
+    );
+
+    // fireEvent retained: native <img> error event has no user-event equivalent
+    fireEvent.error(getAvatarImage(container));
+
+    expect(screen.getByRole("article", { name: "Jane Doe" })).toBeInTheDocument();
   });
 
   it("group with aria-label is accessible", () => {
@@ -236,16 +264,56 @@ describe("Avatar", () => {
     expect(screen.getByLabelText("Team members")).toBeInTheDocument();
   });
 
-  it("merges consumer rest props onto the AvatarGroup container", () => {
+  it.each([
+    ["without max", undefined],
+    ["with max", 2],
+  ])("merges consumer rest props onto the AvatarGroup container %s", (_label, max) => {
     render(
-      <Avatar.Group size="md" aria-label="Team" id="team-avatars">
+      <Avatar.Group
+        size="md"
+        max={max}
+        aria-label="Team"
+        id="team-avatars"
+        className="consumer-group"
+      >
         <Avatar fallback="A" alt="Alice" />
         <Avatar fallback="B" alt="Bob" />
       </Avatar.Group>,
     );
     const group = screen.getByLabelText("Team");
     expect(group).toHaveAttribute("id", "team-avatars");
+    expect(group).toHaveClass("consumer-group");
     expect(group).toHaveAccessibleName("Team");
+  });
+
+  it("leaves the auto-measured overflow a single accessible name", () => {
+    const { container } = render(
+      <Avatar.Group size="md" aria-label="Team">
+        <Avatar fallback="A" alt="Alice" />
+        <Avatar fallback="B" alt="Bob" />
+        <Avatar fallback="C" alt="Cara" />
+      </Avatar.Group>,
+    );
+
+    // Overflow wraps the indicator in its own labelled role="status" region, so the
+    // indicator itself stays out of the accessibility tree instead of naming the
+    // same control a second time with different wording.
+    const overflowNames = container.querySelectorAll('[aria-label$=" more"]');
+    expect(overflowNames).toHaveLength(1);
+    expect(overflowNames[0]).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryAllByRole("img", { name: /more/ })).toHaveLength(0);
+  });
+
+  it("keeps the max-branch overflow indicator in the accessibility tree", () => {
+    render(
+      <Avatar.Group size="md" max={2} aria-label="Team">
+        <Avatar fallback="A" alt="Alice" />
+        <Avatar fallback="B" alt="Bob" />
+        <Avatar fallback="C" alt="Cara" />
+      </Avatar.Group>,
+    );
+
+    expect(screen.getAllByRole("img", { name: "1 more" })).toHaveLength(1);
   });
 
   it("lets a consumer override the AvatarIndicator accessible name via getLabel", () => {

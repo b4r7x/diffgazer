@@ -9,3 +9,4 @@ const ToggleGroup = Object.assign(ToggleGroupRoot, {
 
 export { ToggleGroup, type ToggleGroupProps };
 export { ToggleGroupItem, type ToggleGroupItemProps };
+export { type CreateToggleGroupReturn, createToggleGroup } from "./create-toggle-group";

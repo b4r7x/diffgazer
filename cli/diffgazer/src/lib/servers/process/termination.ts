@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import type { ResultPromise } from "execa";
 
 const GROUP_EXIT_POLL_MS = 25;
@@ -39,13 +40,31 @@ async function waitForProcessGroupExit(pid: number): Promise<void> {
   }
 }
 
+/**
+ * Windows has no process groups, so killing the `npx`/`pnpm` wrapper leaves its
+ * Node grandchild holding the port. `taskkill /T` walks the real process tree;
+ * a direct kill remains the fallback when taskkill is unavailable or the tree
+ * is already gone.
+ */
+function forceKillWindowsTree(child: ResultPromise, pid: number): void {
+  execFile("taskkill", ["/PID", String(pid), "/T", "/F"], (error) => {
+    if (error) child.kill("SIGKILL");
+  });
+}
+
 export async function terminateProcess(
   child: ResultPromise,
   options: { forceKillMs: number },
 ): Promise<void> {
-  const groupPid = process.platform === "win32" ? undefined : child.pid;
+  const isWindows = process.platform === "win32";
+  const groupPid = isWindows ? undefined : child.pid;
   const isGroupManaged = signalChild(child, "SIGTERM");
   const forceKillTimer = setTimeout(() => {
+    const { pid } = child;
+    if (isWindows && pid !== undefined) {
+      forceKillWindowsTree(child, pid);
+      return;
+    }
     signalChild(child, "SIGKILL");
   }, options.forceKillMs);
 

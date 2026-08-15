@@ -16,7 +16,7 @@ const packageJson = JSON.parse(readFileSync(resolve(packageRoot, "package.json")
 export default defineConfig({
   entry: ["src/index.tsx"],
   format: ["esm"],
-  target: "node20",
+  target: "node22",
   outDir: "dist",
   clean: false,
   noExternal: ["@diffgazer/core", "@diffgazer/server", "@diffgazer/keys"],
@@ -29,10 +29,6 @@ export default defineConfig({
     cpSync(
       resolve(cliCompatibilityFixturesSource, "compatibility-records.json"),
       resolve(fixtureDest, "compatibility-records.json"),
-    );
-    cpSync(
-      resolve(cliCompatibilityFixturesSource, "unsupported-records.json"),
-      resolve(fixtureDest, "unsupported-records.json"),
     );
   },
 });

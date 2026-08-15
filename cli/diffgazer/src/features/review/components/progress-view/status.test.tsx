@@ -6,8 +6,33 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { cleanupRootFrames } from "../../../../testing/render-root-frame";
 import { CliThemeProvider } from "../../../../theme/provider";
-import { FooterProbe, flush, makeContextSnapshot, renderView } from "./test-support";
+import {
+  FooterProbe,
+  flush,
+  makeAgent,
+  makeContextSnapshot,
+  renderView,
+} from "../../testing/progress-view";
 import { ReviewProgressView } from "./view";
+
+// renderView does not mount GlobalLayout; derive the content zone from the
+// rendered terminal with the real row math. Hoisted here so it registers
+// before the render-root-frame import instantiates the app tree.
+vi.mock("../../../../components/layout/global", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../../components/layout/global")>();
+  const { useTerminalDimensions } = await import("../../../../hooks/use-terminal-dimensions");
+  return {
+    ...actual,
+    useContentZone: () => {
+      const { columns, rows } = useTerminalDimensions();
+      return {
+        columns,
+        contentRows: actual.getContentZoneRows(rows),
+        contentColumns: columns,
+      };
+    },
+  };
+});
 
 afterEach(() => {
   cleanup();
@@ -98,8 +123,6 @@ describe("ReviewProgressView (TUI) status", () => {
     const { lastFrame } = renderView({
       fileProgress: {
         total: 2,
-        current: 2,
-        currentFile: null,
         completed: ["src/a.ts", "src/b.ts"],
       },
     });
@@ -114,6 +137,7 @@ describe("ReviewProgressView (TUI) status", () => {
 
   test("cycles the activity log through per-agent source filters", async () => {
     const { lastFrame, stdin } = renderView({
+      agents: [makeAgent("detective"), makeAgent("guardian")],
       events: [
         {
           type: "agent_thinking",
@@ -146,7 +170,7 @@ describe("ReviewProgressView (TUI) status", () => {
             progressSteps={[]}
             agents={[]}
             events={[]}
-            fileProgress={{ total: 0, current: 0, currentFile: null, completed: [] }}
+            fileProgress={{ total: 0, completed: [] }}
             isStreaming={false}
             error={null}
             notices={[]}

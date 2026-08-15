@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { delimiter, dirname, join, relative } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { discoverWorkspacePackages } from "./discovery.js";
@@ -34,6 +34,31 @@ async function writePackage(relativePath: string, name: string): Promise<void> {
 async function writeExternalPackage(absoluteDir: string, name: string): Promise<void> {
   await mkdir(absoluteDir, { recursive: true });
   await writeFile(join(absoluteDir, "package.json"), JSON.stringify({ name, version: "1.0.0" }));
+}
+
+async function writeFakePnpm(
+  filePath: string,
+  markerPath: string,
+  listJson: string,
+): Promise<void> {
+  await writeFile(
+    filePath,
+    [
+      "#!/bin/sh",
+      `printf '{"argv0":"%s","shutdownToken":"%s","apiKey":"%s"}' "$0" "\${DIFFGAZER_SHUTDOWN_TOKEN-}" "\${OPENAI_API_KEY-}" > '${markerPath}'`,
+      `printf '%s' '${listJson}'`,
+      "",
+    ].join("\n"),
+    { mode: 0o755 },
+  );
+}
+
+function restoreEnv(key: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[key];
+    return;
+  }
+  process.env[key] = value;
 }
 
 async function listPnpmWorkspaceDirs(): Promise<string[]> {
@@ -86,6 +111,59 @@ describe("discoverWorkspacePackages", () => {
       "fixture-core",
       "fixture-tool",
     ]);
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "runs the pnpm resolved from PATH, never one planted in the reviewed repository, and withholds daemon secrets from it",
+    async () => {
+      const binDir = await mkdtemp(join(tmpdir(), "diffgazer-bin-"));
+      const markerPath = join(binDir, "spawn.json");
+      const originalPath = process.env.PATH;
+      const originalToken = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+      const originalApiKey = process.env.OPENAI_API_KEY;
+      try {
+        const physicalRoot = await realpath(projectRoot);
+        await writeProjectFile("package.json", JSON.stringify({ name: "fixture-root" }));
+        await writeProjectFile("pnpm-workspace.yaml", "packages:\n  - 'apps/*'\n");
+        await writeFakePnpm(
+          join(binDir, "pnpm"),
+          markerPath,
+          JSON.stringify([{ path: physicalRoot }]),
+        );
+        await writeFakePnpm(join(projectRoot, "pnpm"), markerPath, "[]");
+        process.env.PATH = `${binDir}${delimiter}${originalPath ?? ""}`;
+        process.env.DIFFGAZER_SHUTDOWN_TOKEN = "daemon-shutdown-secret";
+        process.env.OPENAI_API_KEY = "sk-daemon-provider-key";
+
+        const packages = await discoverWorkspacePackages(projectRoot);
+
+        expect(packages.map((pkg) => pkg.name)).toEqual(["fixture-root"]);
+        expect(JSON.parse(await readFile(markerPath, "utf8"))).toEqual({
+          argv0: join(binDir, "pnpm"),
+          shutdownToken: "",
+          apiKey: "",
+        });
+      } finally {
+        restoreEnv("PATH", originalPath);
+        restoreEnv("DIFFGAZER_SHUTDOWN_TOKEN", originalToken);
+        restoreEnv("OPENAI_API_KEY", originalApiKey);
+        await rm(binDir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it("fails when pnpm is not on PATH instead of falling back to a bare command name", async () => {
+    const originalPath = process.env.PATH;
+    try {
+      await writeProjectFile("pnpm-workspace.yaml", "packages:\n  - 'apps/*'\n");
+      process.env.PATH = "";
+
+      await expect(discoverWorkspacePackages(projectRoot)).rejects.toThrow(
+        /local pnpm CLI: pnpm was not found on PATH/,
+      );
+    } finally {
+      restoreEnv("PATH", originalPath);
+    }
   });
 
   it("fails explicitly when local pnpm is unavailable instead of using the partial fallback", async () => {
@@ -234,6 +312,25 @@ describe("discoverWorkspacePackages", () => {
     } finally {
       await rm(outsideRoot, { recursive: true, force: true });
     }
+  });
+
+  it("ignores a workspace manifest past the read ceiling instead of loading it whole", async () => {
+    await writeProjectFile("pnpm-workspace.yaml", ["packages:", '  - "packages/*"', ""].join("\n"));
+    await writeProjectFile(
+      "packages/huge/package.json",
+      JSON.stringify({ name: "@diffgazer/huge", description: "x".repeat(300_000) }),
+    );
+    await writePackage("packages/good", "@diffgazer/good");
+
+    const packages = await discoverWorkspacePackages(projectRoot, {
+      runPnpmList: async () =>
+        JSON.stringify([
+          { path: join(projectRoot, "packages/huge") },
+          { path: join(projectRoot, "packages/good") },
+        ]),
+    });
+
+    expect(packages.map((pkg) => pkg.name)).toEqual(["@diffgazer/good"]);
   });
 
   it("surfaces pnpm failure for a malformed workspace package manifest", async () => {

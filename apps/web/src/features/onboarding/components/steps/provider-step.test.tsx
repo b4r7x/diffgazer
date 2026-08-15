@@ -1,6 +1,6 @@
+import { SELECTABLE_PRODUCTS } from "@diffgazer/core/providers";
 import { escapeRegExp } from "@diffgazer/core/redaction";
 import type { RunnableProductId } from "@diffgazer/core/schemas/config";
-import { SELECTABLE_PRODUCTS } from "@diffgazer/core/schemas/config";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -34,24 +34,11 @@ describe("ProviderStep", () => {
     expect(onCommit).toHaveBeenCalledWith(selectedProduct.productId);
   });
 
-  it("shows exactly 13 selectable product rows and no removed radio option", () => {
-    render(
-      <ProviderStep
-        value={null}
-        onChange={vi.fn()}
-        removedRecord={{
-          name: "Z.AI Coding Plan",
-          description: "Removed legacy record",
-          replacementName: "Z.AI",
-        }}
-      />,
-    );
+  it("shows exactly 13 selectable product rows", () => {
+    render(<ProviderStep value={null} onChange={vi.fn()} />);
 
     expect(screen.getByRole("radiogroup", { name: "Select product" })).toBeInTheDocument();
     expect(screen.getAllByRole("radio")).toHaveLength(13);
-    expect(screen.queryByRole("radio", { name: /Z\.AI Coding Plan/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/Z\.AI Coding Plan/)).toBeInTheDocument();
-    expect(screen.getByText(/Create a Z\.AI configuration/i)).toBeInTheDocument();
   });
 
   it("uses identical shared product names and descriptions", () => {

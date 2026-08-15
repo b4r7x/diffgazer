@@ -1,20 +1,17 @@
-import type { ShutdownResult } from "@diffgazer/core/api";
+import { createApi } from "@diffgazer/core/api";
+import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
-import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
+import type { HomeContextInfo } from "@diffgazer/core/schemas/presentation";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { Toaster, toast } from "@diffgazer/ui/components/toast";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ShutdownResult } from "@/lib/shutdown";
 
-const mockRouterNavigate = vi.hoisted(() => vi.fn());
-
-// Boundary mock: TanStack Router is the external routing library; this presentation test asserts navigation requests.
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => mockRouterNavigate,
-}));
-
+import { FooterView } from "@/testing/footer-view";
 import { expectSingleReticle } from "@/testing/reticle";
 import { HomePagePresentation, type HomePagePresentationProps } from "./presentation";
 
@@ -38,7 +35,7 @@ function Wrapper({ children }: { children: ReactNode }) {
   );
 }
 
-const baseContext: ContextInfo = {
+const baseContext: HomeContextInfo = {
   providerName: "openrouter",
   providerModel: "openrouter/test-model",
   trustedDir: "/repo",
@@ -49,7 +46,6 @@ function buildProps(overrides: Partial<HomePagePresentationProps> = {}): HomePag
     context: baseContext,
     isTrusted: true,
     needsTrust: false,
-    projectId: "proj-1",
     repoRoot: "/repo",
     resumableSession: null,
     highlighted: null,
@@ -65,6 +61,37 @@ function buildProps(overrides: Partial<HomePagePresentationProps> = {}): HomePag
 
 function renderPresentation(props: HomePagePresentationProps) {
   return render(<HomePagePresentation {...props} />, { wrapper: Wrapper });
+}
+
+function renderPresentationWithApi(props: HomePagePresentationProps) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  const api = {
+    ...createApi({ baseUrl: "http://localhost" }),
+    saveTrust: vi.fn(async () => ({
+      trust: {
+        projectId: "proj-1",
+        repoRoot: "/some/repo",
+        capabilities: { readFiles: true, runCommands: false },
+        trustMode: "persistent" as const,
+        trustedAt: "2026-01-01T00:00:00.000Z",
+      },
+    })),
+  };
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ApiProvider value={api}>
+        <HomePagePresentation {...props} />
+        <FooterView />
+      </ApiProvider>
+    </QueryClientProvider>,
+    { wrapper: Wrapper },
+  );
 }
 
 // Toasts live in a module-scoped store that outlives `cleanup()`, so the
@@ -97,10 +124,47 @@ function renderPresentationStrict(props: HomePagePresentationProps) {
   return render(<HomePagePresentation {...props} />, { wrapper: StrictWrapper });
 }
 
+describe("HomePagePresentation — first-run trust prompt", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("shows the trust panel instead of the menu when trust is needed before a project id exists", async () => {
+    renderPresentationWithApi(
+      buildProps({
+        isTrusted: false,
+        needsTrust: true,
+        repoRoot: "/some/repo",
+      }),
+    );
+
+    expect(await screen.findByText("Trust This Repository?")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /main menu/i })).not.toBeInTheDocument();
+  });
+
+  it("keeps the app-wide jump keys in the footer while the menu rows are hidden", async () => {
+    renderPresentationWithApi(
+      buildProps({
+        isTrusted: false,
+        needsTrust: true,
+        repoRoot: "/some/repo",
+      }),
+    );
+
+    expect(await screen.findByText("Navigate Permissions")).toBeInTheDocument();
+    expect(screen.getByText("Toggle")).toBeInTheDocument();
+    expect(screen.getByText("Quit")).toBeInTheDocument();
+    // "?" is the live help binding; "h" opens history and is not a trust-panel key.
+    expect(screen.getByText("?")).toBeInTheDocument();
+    expect(screen.getByText("Help")).toBeInTheDocument();
+    expect(screen.getByText("Settings")).toBeInTheDocument();
+    expect(screen.queryByText("h")).not.toBeInTheDocument();
+  });
+});
+
 describe("HomePagePresentation — Resume Last Review gating", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRouterNavigate.mockReset();
   });
 
   it("brackets only the menu, the pane the keys drive", async () => {
@@ -151,6 +215,28 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
     expect(item).toHaveAttribute("aria-disabled", "true");
   });
 
+  it("keeps Resume Last Review reachable and says why when the session cannot be read", async () => {
+    const navigateMock = createNavigateMock();
+    const user = userEvent.setup();
+    renderPresentation(
+      buildProps({
+        resumableSession: null,
+        isResumeUnavailable: true,
+        navigate: navigateMock.navigate,
+      }),
+    );
+
+    const item = screen.getByRole("menuitem", { name: "Resume Last Review" });
+    expect(item).not.toHaveAttribute("aria-disabled");
+
+    await user.click(item);
+
+    // The user is told the state is unknown instead of being told there is
+    // nothing to resume, which would invite a second review over a live one.
+    expect(await screen.findByText("Active Review Unavailable")).toBeInTheDocument();
+    expect(navigateMock.mock).not.toHaveBeenCalled();
+  });
+
   it("enables and resumes the cached unstaged session", async () => {
     const navigateMock = createNavigateMock();
     const createReview = vi.fn();
@@ -199,7 +285,6 @@ describe("HomePagePresentation — Resume Last Review gating", () => {
 describe("HomePagePresentation — composition", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRouterNavigate.mockReset();
   });
 
   it("renders no wordmark of its own — the shell header owns the hero", () => {
@@ -237,7 +322,6 @@ describe("HomePagePresentation — startReview error surfacing", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRouterNavigate.mockReset();
   });
 
   it("surfaces API_KEY_MISSING with an actionable message in the toast", async () => {
@@ -259,12 +343,96 @@ describe("HomePagePresentation — startReview error surfacing", () => {
     ).toBeInTheDocument();
     expect(navigateMock.mock).not.toHaveBeenCalled();
   });
+
+  it("clears the starting state when the start fails, handing the menu back", async () => {
+    let rejectReview: ((error: Error) => void) | undefined;
+    const reviewPromise = new Promise<{ reviewId: string }>((_resolve, reject) => {
+      rejectReview = reject;
+    });
+    const createReview = vi.fn(() => reviewPromise);
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ createReview }));
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+    const liveRegion = await screen.findByRole("status");
+    expect(liveRegion).toHaveTextContent(/starting review/i);
+
+    // The lazy-validation start aborts cheaply on an unprovable configuration,
+    // so the rejection lands while the row still carries the run state.
+    await act(async () => {
+      rejectReview?.(makeApiError("Structured output is not supported", "CONFORMANCE_FAILED", 422));
+      await reviewPromise.catch(() => undefined);
+    });
+
+    expect(await screen.findByText("Failed to Start Review")).toBeInTheDocument();
+    // Without the resolve arm the failed start leaves the whole menu
+    // aria-disabled under a spinner that never stops — the original complaint,
+    // one abort later — so every row must be activatable again.
+    const startedRow = screen.getByRole("menuitem", { name: "Review Unstaged" });
+    expect(startedRow).not.toHaveAttribute("aria-disabled");
+    expect(startedRow).not.toHaveAttribute("aria-busy");
+    expect(startedRow).not.toHaveTextContent(/starting/i);
+    expect(screen.getByRole("menuitem", { name: "Review Staged" })).not.toHaveAttribute(
+      "aria-disabled",
+    );
+    expect(screen.getByRole("status")).toBe(liveRegion);
+    expect(liveRegion).toHaveTextContent("");
+  });
+
+  it("does not open a review that arrives after the user left home", async () => {
+    let resolveReview: ((result: { reviewId: string }) => void) | undefined;
+    const createReview = vi.fn(
+      () =>
+        new Promise<{ reviewId: string }>((resolve) => {
+          resolveReview = resolve;
+        }),
+    );
+    const navigateMock = createNavigateMock();
+    const user = userEvent.setup();
+    const { unmount } = renderPresentation(
+      buildProps({ createReview, navigate: navigateMock.navigate }),
+    );
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+    await waitFor(() => expect(createReview).toHaveBeenCalledTimes(1));
+
+    // App-wide keys can leave home mid-start; the late review must not pull the
+    // user back off whatever screen they moved to.
+    unmount();
+    await act(async () => {
+      resolveReview?.({ reviewId: "rev-new" });
+    });
+
+    expect(navigateMock.mock).not.toHaveBeenCalled();
+  });
+
+  it("starts a second review after a failed one, so the guard does not latch", async () => {
+    const createReview = vi
+      .fn<() => Promise<{ reviewId: string }>>()
+      .mockRejectedValueOnce(makeApiError("Model not selected", "MODEL_ERROR", 400))
+      .mockResolvedValueOnce({ reviewId: "rev-new" });
+    const navigateMock = createNavigateMock();
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ createReview, navigate: navigateMock.navigate }));
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+    expect(await screen.findByText("Model Not Selected")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+
+    await waitFor(() => expect(createReview).toHaveBeenCalledTimes(2));
+    expect(navigateMock.mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "/review/{-$reviewId}",
+        params: { reviewId: "rev-new" },
+      }),
+    );
+  });
 });
 
 describe("HomePagePresentation — menu parity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRouterNavigate.mockReset();
   });
 
   it("navigates to history via the home menu", async () => {
@@ -318,7 +486,6 @@ describe("HomePagePresentation — menu parity", () => {
 describe("HomePagePresentation — review-start pending state", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRouterNavigate.mockReset();
   });
 
   it("surfaces a pending status, then resolves to a single navigation and clears the status", async () => {
@@ -333,11 +500,23 @@ describe("HomePagePresentation — review-start pending state", () => {
 
     await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
 
-    // F-353(a): the in-flight start is now visible and blocks re-activation.
-    expect(await screen.findByRole("status")).toHaveTextContent(/starting review/i);
-    expect(screen.getByRole("menuitem", { name: "Review Unstaged" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
+    // F-353(a): the in-flight start is visible and a second press is refused.
+    const liveRegion = await screen.findByRole("status");
+    expect(liveRegion).toHaveTextContent(/starting review/i);
+    const startedRow = screen.getByRole("menuitem", { name: "Review Unstaged" });
+    // Working, not blocked: the row stays available, and pressing it again is
+    // refused by the start handler rather than by an unavailable control.
+    expect(startedRow).toHaveAttribute("aria-busy", "true");
+    expect(startedRow).not.toHaveAttribute("aria-disabled");
+    await user.click(startedRow);
+    expect(createReview).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("menuitem", { name: "Review Staged" })).not.toHaveAttribute(
+      "aria-busy",
+    );
+    // The row that was pressed is the one carrying the run state.
+    expect(startedRow).toHaveTextContent(/starting/i);
+    expect(screen.getByRole("menuitem", { name: "Review Staged" })).not.toHaveTextContent(
+      /starting/i,
     );
 
     await act(async () => {
@@ -353,14 +532,34 @@ describe("HomePagePresentation — review-start pending state", () => {
         search: { mode: "unstaged", live: true },
       }),
     );
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    // The region stays mounted so a later start is announced; only its text goes.
+    expect(screen.getByRole("status")).toBe(liveRegion);
+    expect(liveRegion).toHaveTextContent("");
+  });
+
+  it("puts the run state on the started row, not on the highlighted one", async () => {
+    const createReview = vi.fn(() => new Promise<{ reviewId: string }>(() => {}));
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ createReview, highlighted: "review-unstaged" }));
+
+    // Shift+R starts the staged review while the highlight sits on the unstaged
+    // row: the run state must follow what was activated.
+    await user.keyboard("{Shift>}R{/Shift}");
+
+    await waitFor(() =>
+      expect(screen.getByRole("menuitem", { name: "Review Staged" })).toHaveTextContent(
+        /starting/i,
+      ),
+    );
+    expect(screen.getByRole("menuitem", { name: "Review Unstaged" })).not.toHaveTextContent(
+      /starting/i,
+    );
   });
 });
 
 describe("HomePagePresentation — invalid review id toast", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRouterNavigate.mockReset();
   });
 
   it("reports an invalid review id exactly once under StrictMode and effect re-runs", async () => {
@@ -414,7 +613,6 @@ describe("HomePagePresentation — invalid review id toast", () => {
 describe("HomePagePresentation — quit result surfacing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRouterNavigate.mockReset();
   });
 
   it("shows neither notice when shutdown closes cleanly", async () => {
@@ -447,7 +645,6 @@ describe("HomePagePresentation — quit result surfacing", () => {
 describe("HomePagePresentation — menu jump keys", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRouterNavigate.mockReset();
   });
 
   it("starts an unstaged review from the advertised r key", async () => {

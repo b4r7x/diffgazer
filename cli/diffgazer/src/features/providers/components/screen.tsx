@@ -2,12 +2,13 @@ import { guardQueryState, useConfigurations } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import {
   findProviderById,
+  findProviderDialogRow,
   getProviderRowId,
   mapProviderList,
   type ProviderListRow,
 } from "@diffgazer/core/providers";
-import { resolveSelectedId, sanitizeTerminalText } from "@diffgazer/core/review";
-import type { ClientConfigurationSummary } from "@diffgazer/core/schemas/config";
+import { resolveSelectedId } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
@@ -41,8 +42,6 @@ function shouldCompactProviderList(contentWidth: number, providers: ProviderList
   );
 }
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
 function BrowseFooter(): null {
   usePageFooter({ shortcuts: BROWSE_SHORTCUTS });
   return null;
@@ -59,13 +58,6 @@ function getListWidth({
   return Math.min(Math.max(Math.floor(columns * 0.4), 28), 48);
 }
 
-function toSupportedConfiguration(
-  configuration: ClientConfigurationSummary | null | undefined,
-): SupportedConfigurationSummary | null {
-  if (!configuration || configuration.status !== "supported") return null;
-  return configuration;
-}
-
 export function ProvidersScreen(): ReactElement {
   const { columns, isNarrow } = useResponsive();
   const { contentRows } = useContentZone();
@@ -76,18 +68,23 @@ export function ProvidersScreen(): ReactElement {
   const providers = configurationsQuery.data
     ? mapProviderList(configurationsQuery.data.configurations)
     : [];
+  const unrecognized = configurationsQuery.data?.unrecognizedConfigurations ?? [];
   const selectedConfigurationId = configurationsQuery.data?.selectedConfigurationId ?? null;
 
   const management = useProviderManagement(providers);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [zone, setZone] = useState<"list" | "details">("list");
 
-  const effectiveSelectedId = resolveSelectedId(
-    selectedId ?? null,
-    providers.map((row) => ({ id: getProviderRowId(row) })),
-  );
+  // Unrecognized records trail the provider rows, in the order the list renders
+  // them, so the selection resolver walks one list.
+  const effectiveSelectedId = resolveSelectedId(selectedId ?? null, [
+    ...providers.map((row) => ({ id: getProviderRowId(row) })),
+    ...unrecognized.map(({ configurationId }) => ({ id: configurationId })),
+  ]);
   const selectedRow = findProviderById(providers, effectiveSelectedId);
-  const dialogRow = findProviderById(providers, management.dialogOwner?.rowId);
+  const selectedUnrecognized =
+    unrecognized.find(({ configurationId }) => configurationId === effectiveSelectedId) ?? null;
+  const dialogRow = findProviderDialogRow(providers, management.dialogOwner);
 
   const setupDialog =
     management.dialogOwner?.kind === "setup" && dialogRow
@@ -98,7 +95,7 @@ export function ProvidersScreen(): ReactElement {
       ? { owner: management.dialogOwner, row: dialogRow }
       : null;
 
-  const error = management.mutationError ?? configurationsQuery.error?.message ?? null;
+  const error = management.actionError ?? configurationsQuery.error?.message ?? null;
 
   const hasSelection = effectiveSelectedId !== null;
   const isOverlayOpen = setupDialog !== null || modelDialog !== null;
@@ -117,6 +114,11 @@ export function ProvidersScreen(): ReactElement {
       if (selectedRow) management.openModelDialog(getProviderRowId(selectedRow));
     },
     onDelete: () => {
+      // An unrecognized record never showed a revision, so its delete asserts none.
+      if (selectedUnrecognized) {
+        void management.handleDeleteConfiguration(selectedUnrecognized.configurationId);
+        return;
+      }
       const configurationId = selectedRow?.configuration?.configurationId;
       const revision = selectedRow?.configuration?.revision;
       if (configurationId != null && revision != null) {
@@ -124,7 +126,15 @@ export function ProvidersScreen(): ReactElement {
       }
     },
     onDispatchAction: () => {
-      if (selectedRow) void management.handleDispatchReadinessAction(selectedRow);
+      if (!selectedRow) return;
+      if (selectedRow.readiness.ready) {
+        void management.handleSelectConfiguration(
+          selectedRow,
+          selectedRow.configuration?.selectedModelId ?? undefined,
+        );
+        return;
+      }
+      void management.handleDispatchReadinessAction(selectedRow);
     },
   };
 
@@ -175,7 +185,7 @@ export function ProvidersScreen(): ReactElement {
         }}
         onUpdate={async (input, opts) => {
           const configuration = setupDialog.row.configuration;
-          if (!configuration || configuration.status !== "supported") return;
+          if (!configuration) return;
           await management.handleUpdateConfiguration(
             setupDialog.owner,
             {
@@ -190,9 +200,7 @@ export function ProvidersScreen(): ReactElement {
     );
   }
 
-  const modelConfiguration = modelDialog
-    ? toSupportedConfiguration(modelDialog.row.configuration ?? null)
-    : null;
+  const modelConfiguration = modelDialog?.row.configuration ?? null;
 
   if (modelDialog && modelConfiguration) {
     return (
@@ -227,6 +235,7 @@ export function ProvidersScreen(): ReactElement {
         >
           <ProviderList
             providers={providers}
+            unrecognized={unrecognized}
             selectedId={effectiveSelectedId ?? undefined}
             highlightedId={effectiveSelectedId ?? undefined}
             selectedConfigurationId={selectedConfigurationId}
@@ -246,6 +255,7 @@ export function ProvidersScreen(): ReactElement {
         >
           <ProviderDetails
             row={selectedRow}
+            unrecognized={selectedUnrecognized}
             actions={actions}
             isActive={isDetailsActive}
             isPending={management.isSubmitting}

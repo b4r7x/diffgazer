@@ -95,7 +95,7 @@ export type ResponseReadFailure = Readonly<{
  * moment the received bytes exceed the cap, so an oversized upstream body is
  * never fully buffered. `label` names the upstream in error messages.
  */
-export const declaredLengthOverLimit = (
+const declaredLengthOverLimit = (
   response: Response,
   maxBytes: number,
   label: string,
@@ -162,6 +162,7 @@ export const readTextResponseWithLimit = async (
 
     text += decoder.decode();
   } catch (error) {
+    cancelBodyBestEffort(() => reader.cancel(`${label} response read failed`));
     return err({
       code: "read-failed",
       message: getErrorMessage(error, `Failed to read ${label} response`),
@@ -169,6 +170,17 @@ export const readTextResponseWithLimit = async (
   }
 
   return ok(text);
+};
+
+/**
+ * Releases a response body the caller has decided not to read. Without it the
+ * wrapper stream from `createResponseLimitingFetch` — and the socket behind it —
+ * stay alive until garbage collection.
+ */
+export const cancelResponseBody = (response: Response): void => {
+  const body = response.body;
+  if (!body) return;
+  cancelBodyBestEffort(() => body.cancel("Response body abandoned"));
 };
 
 /**

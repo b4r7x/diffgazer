@@ -29,13 +29,13 @@ The UI reports progress as each step starts and completes. See [The review pipel
 
 ## Web mode vs terminal UI
 
-Web mode is the default. Pass `--tui` to start the Ink interface instead. Both modes run the same pipeline against the same local server and expose the same provider names, readiness states, and migration terminology.
+Web mode is the default. Pass `--tui` to start the Ink interface instead. Both modes run the same pipeline against the same local server and expose the same provider names, readiness states, and terminology.
 
 ## What runs locally
 
 Everything before a review runs on your machine: the CLI, embedded server, UI, git access, secrets, admission checks, and configuration storage. Two kinds of request can leave your computer: a **pre-review model-catalog lookup** during provider setup, and the review request sent to the admitted product you configured.
 
-Diffgazer does not fall back to another product when admission or transport fails. Catalog-backed hosted products may use the models.dev catalog; OpenRouter may refresh its account-scoped catalog with your OpenRouter API key. For exactly what each request carries, see [Privacy](/app/concepts/privacy).
+Diffgazer does not fall back to another product when admission or transport fails. Catalog-backed hosted products, including OpenRouter, may use the models.dev catalog. For exactly what each request carries, see [Privacy](/app/concepts/privacy).
 
 ## Related
 

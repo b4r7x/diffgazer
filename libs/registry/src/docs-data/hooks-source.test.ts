@@ -96,6 +96,22 @@ describe("generateHooksSource", () => {
     expect(result.alpha?.description).toBe("");
   });
 
+  it.each([
+    "../outside-root.ts",
+    "/etc/passwd",
+  ])("rejects a registry file path that escapes the library root: %s", (path) => {
+    const items: HookRegistryItem[] = [{ name: "escaping", files: [{ path }] }];
+
+    expect(() =>
+      generateHooksSource({
+        items,
+        rootDir: tempDir,
+        highlighter,
+        themeName: TEST_THEME_NAME,
+      }),
+    ).toThrow(/source path/);
+  });
+
   it("warns and skips when file is missing", () => {
     const items: HookRegistryItem[] = [
       { name: "absent", files: [{ path: "src/hooks/use-missing.ts" }] },
@@ -193,13 +209,14 @@ describe("generateEnrichedHookData", () => {
     );
     const outputDir = resolve(tempDir, "generated");
     const expectedPaths = [
-      "src/hooks/use-navigation.ts",
-      "src/hooks/utils/navigation-core.ts",
-      "src/hooks/utils/navigation-dispatch.ts",
-      "src/hooks/utils/navigation-items.ts",
-      "src/hooks/utils/navigation-directions.ts",
-      "src/hooks/utils/focusable.ts",
-      "src/hooks/utils/element-guards.ts",
+      "@hooks/use-navigation.ts",
+      "@hooks/utils/navigation-core.ts",
+      "@hooks/utils/navigation-dispatch.ts",
+      "@hooks/utils/hotkey.ts",
+      "@hooks/utils/navigation-items.ts",
+      "@hooks/utils/navigation-directions.ts",
+      "@hooks/utils/focusable.ts",
+      "@hooks/utils/element-guards.ts",
     ];
     const artifactHighlighter = await createDocsHighlighter({
       theme: { ...TEST_THEME, name: DOCS_CODE_THEME_NAME },

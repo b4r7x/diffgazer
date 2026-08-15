@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -63,5 +63,27 @@ describe("writeFilesWithRollback filesystem result", () => {
     expect(existsSync(targetDir)).toBe(false);
     expect(existsSync(resolve(tempDir, "src/components"))).toBe(false);
     expect(existsSync(resolve(tempDir, "src"))).toBe(false);
+  });
+
+  test("rollback restores a pre-existing file byte-for-byte when it is not valid UTF-8", () => {
+    const targetPath = resolve(tempDir, "legacy.tsx");
+    const original = Buffer.from([0x2f, 0x2f, 0x20, 0xe9, 0x74, 0xe9, 0x0a]);
+    writeFileSync(targetPath, original);
+
+    const result = writeFilesWithRollback(
+      [
+        {
+          targetPath,
+          content: "export const replaced = 1;\n",
+          relativePath: "legacy.tsx",
+          installDir: ".",
+        },
+      ],
+      true,
+    );
+
+    expect(readFileSync(targetPath)).not.toEqual(original);
+    rollbackFiles(result.newFiles, result.backups, result.createdDirs);
+    expect(readFileSync(targetPath)).toEqual(original);
   });
 });

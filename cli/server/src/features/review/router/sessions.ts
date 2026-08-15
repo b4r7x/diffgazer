@@ -15,8 +15,10 @@ import {
 import { createGitService } from "../../../shared/lib/git/service.js";
 import { getProjectRoot } from "../../../shared/lib/http/request.js";
 import {
+  type ErrorStatus,
   errorResponse,
   zodErrorHandler as handleZodError,
+  type WireErrorCode,
 } from "../../../shared/lib/http/response.js";
 import { getProjectSessionGeneration } from "../../../shared/lib/session-registry.js";
 import {
@@ -63,33 +65,38 @@ const reviewCreationLimit = createRateLimitMiddleware("review:create", {
   windowMs: 60_000,
 });
 
-function admissionFailureStatus(code: AdmissionFailureCode): number {
+function admissionFailureWire(code: AdmissionFailureCode): {
+  readonly code: WireErrorCode;
+  readonly status: ErrorStatus;
+} {
   switch (code) {
     case "configuration-not-found":
-      return 404;
+      return { code: ErrorCode.NOT_FOUND, status: 404 };
+    case "configuration-migration-required":
+      return { code: "SECRETS_MIGRATION_FAILED", status: 503 };
     case "budget-exhausted":
-      return 429;
-    case "configuration-removed":
+      return { code: ErrorCode.RATE_LIMITED, status: 429 };
+    case "adapter-unavailable":
+      return { code: ErrorCode.INTERNAL_ERROR, status: 500 };
+    // A review already holds the configuration's admitted capacity. That is a
+    // conflict with the running review, not a setup condition: `SETUP_REQUIRED`
+    // is a credential-setup code and would send the user to reconnect a provider
+    // that is working.
+    case "lease-denied":
+      return { code: ErrorCode.REVIEW_IN_PROGRESS, status: 409 };
     case "configuration-revoking":
     case "configuration-unsupported":
     case "readiness-not-ready":
     case "acknowledgement-required":
-    case "evidence-missing":
-    case "evidence-skipped":
-    case "evidence-stale":
-    case "evidence-hash-mismatch":
+    case "conformance-failed":
     case "tuple-changed":
-    case "adapter-unavailable":
-    case "lease-denied":
-      return 403;
-    default:
-      return 500;
+      return { code: ErrorCode.SETUP_REQUIRED, status: 403 };
   }
 }
 
 function admissionFailureResponse(c: Context, failure: AdmissionFailure): Response {
-  const status = admissionFailureStatus(failure.code) as 403 | 404 | 429 | 500;
-  return c.json({ error: { message: failure.safeMessage, code: failure.code } }, status);
+  const wire = admissionFailureWire(failure.code);
+  return errorResponse(c, failure.safeMessage, wire.code, wire.status);
 }
 
 function toActiveReviewSessionResponse(session: ActiveSession): ActiveReviewSession {
@@ -112,7 +119,9 @@ sessionsRouter.post(
   zValidator("json", CreateReviewBodySchema, handleZodError),
   async (c): Promise<Response> => {
     const body = c.req.valid("json");
-    const configurationId = resolveSelectedConfigurationId();
+    const selected = await resolveSelectedConfigurationId();
+    if (!selected.ok) return admissionFailureResponse(c, selected.error);
+    const configurationId = selected.value;
     if (!configurationId) {
       return errorResponse(
         c,
@@ -153,7 +162,9 @@ sessionsRouter.post(
       });
 
       if (!result.ok) {
-        const status = result.error.code === ErrorCode.TRUST_REQUIRED ? 403 : 500;
+        let status: ErrorStatus = 500;
+        if (result.error.code === ErrorCode.TRUST_REQUIRED) status = 403;
+        else if (result.error.code === "SECRETS_MIGRATION_FAILED") status = 503;
         return errorResponse(c, result.error.message, result.error.code, status);
       }
 

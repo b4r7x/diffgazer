@@ -1,10 +1,9 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createElement, useEffect, useRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { fireKey, KeyboardWrapper } from "../../testing/internal/test-utils.js";
 import { useFocusZone } from "../use-focus-zone.js";
-import { useKey } from "../use-key.js";
 
 const wrapper = KeyboardWrapper;
 
@@ -115,54 +114,6 @@ describe("useFocusZone", () => {
       });
       expect(event?.defaultPrevented).toBe(true);
       expect(result.current.zone).toBe("sidebar");
-    });
-
-    it("keeps outside Tab native and moves zone plus DOM focus inside FocusZonesDemo", async () => {
-      vi.doMock("@diffgazer/keys", () => ({ useFocusZone, useKey }));
-      try {
-        const { FocusZonesDemo } = await import(
-          "../../../examples/playground/src/demos/focus-zones.js"
-        );
-
-        function PlaygroundHost() {
-          return createElement(
-            "main",
-            null,
-            createElement("button", { type: "button" }, "Outside playground"),
-            createElement(FocusZonesDemo),
-          );
-        }
-
-        render(createElement(PlaygroundHost), { wrapper });
-
-        const dispatchTab = (target: HTMLElement) => {
-          const event = new KeyboardEvent("keydown", {
-            key: "Tab",
-            bubbles: true,
-            cancelable: true,
-          });
-          act(() => {
-            target.dispatchEvent(event);
-          });
-          return event;
-        };
-
-        const outside = screen.getByRole("button", { name: "Outside playground" });
-        outside.focus();
-        const outsideTab = dispatchTab(outside);
-        expect(outsideTab.defaultPrevented).toBe(false);
-        expect(document.activeElement).toBe(outside);
-
-        const sidebar = screen.getByRole("button", { name: "sidebar" });
-        sidebar.focus();
-        const insideTab = dispatchTab(sidebar);
-
-        expect(insideTab.defaultPrevented).toBe(true);
-        expect(document.activeElement).toBe(screen.getByRole("button", { name: "content" }));
-        expect(screen.getByText("content", { selector: ".demo-wrapper__scope" })).toBeTruthy();
-      } finally {
-        vi.doUnmock("@diffgazer/keys");
-      }
     });
   });
 

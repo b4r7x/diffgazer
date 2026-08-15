@@ -168,9 +168,9 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
           <SidebarSection key={section.key} collapsible defaultOpen>
             {section.title ? (
               <SidebarSectionTitle
-                className={cn(
-                  sectionHasActive ? "text-foreground" : "font-medium text-muted-foreground",
-                )}
+                className={
+                  sectionHasActive ? "text-foreground" : "font-medium text-muted-foreground"
+                }
               >
                 {formatSectionLabel(section.title)}
               </SidebarSectionTitle>
@@ -184,18 +184,22 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
 
                 const isPending = pendingPathname === url;
                 const isCurrentUrl = pathname === url;
-                const itemContent = isPending ? (
-                  <Spinner size="sm" className="ml-2" />
-                ) : (
-                  <span className={cn("text-xs font-mono", indented && "text-muted-foreground")}>
-                    {label}
-                  </span>
+                // The spinner sits beside the label, never in place of it: it is
+                // the row's only accessible name, and `aria-current` must stay on
+                // the one row the reader is actually on.
+                const itemContent = (
+                  <>
+                    <span className={cn("text-xs font-mono", indented && "text-muted-foreground")}>
+                      {label}
+                    </span>
+                    {isPending && <Spinner size="sm" className="ml-2" />}
+                  </>
                 );
 
                 return (
                   <SidebarItem
                     key={url}
-                    active={pathname === url || isPending}
+                    active={isCurrentUrl}
                     className={CHROME_SIDEBAR_ITEM_CLASS}
                     onClick={(event) => {
                       if (!isPrimaryNavigationClick(event)) return;

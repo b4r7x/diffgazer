@@ -11,7 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { LLMS_MANIFEST_FILE, writeLlmsFiles } from "./generate-llms/output.ts";
+import { llmsManifestPath, writeLlmsFiles } from "./generate-llms/output.ts";
 
 function writePageSource(path: string, title: string, body: string): void {
   writeFileSync(
@@ -89,7 +89,7 @@ describe("generate llms files", () => {
       expect(readFileSync(join(tempDir, "owned/unrelated.txt"), "utf-8")).toBe("keep me");
       expect(readFileSync(join(tempDir, "manual/page.md"), "utf-8")).toBe("manual markdown");
       expect(existsSync(join(tempDir, "prune"))).toBe(false);
-      expect(JSON.parse(readFileSync(join(tempDir, LLMS_MANIFEST_FILE), "utf-8"))).toEqual({
+      expect(JSON.parse(readFileSync(llmsManifestPath(tempDir), "utf-8"))).toEqual({
         version: 1,
         markdown: ["owned/retained.md"],
       });
@@ -109,10 +109,10 @@ describe("generate llms files", () => {
         pages: [{ path: "/app/stable", source: sourcePath }],
       });
       const prior = new Map(
-        ["app/stable.md", "llms.txt", "llms-full.txt", LLMS_MANIFEST_FILE].map((path) => [
-          path,
-          readFileSync(join(tempDir, path)),
-        ]),
+        ["app/stable.md", "llms.txt", "llms-full.txt"]
+          .map((path) => join(tempDir, path))
+          .concat(llmsManifestPath(tempDir))
+          .map((path) => [path, readFileSync(path)]),
       );
       writePageSource(sourcePath, "Changed page", "Changed body.");
 
@@ -127,7 +127,7 @@ describe("generate llms files", () => {
       ).toThrow();
 
       for (const [path, content] of prior) {
-        expect(readFileSync(join(tempDir, path))).toEqual(content);
+        expect(readFileSync(path)).toEqual(content);
       }
       expect(existsSync(join(tempDir, "app/failure.md"))).toBe(false);
     } finally {
@@ -146,10 +146,10 @@ describe("generate llms files", () => {
         pages: [{ path: "/app/stable", source: sourcePath }],
       });
       const prior = new Map(
-        ["app/stable.md", "llms.txt", "llms-full.txt", LLMS_MANIFEST_FILE].map((path) => [
-          path,
-          readFileSync(join(tempDir, path)),
-        ]),
+        ["app/stable.md", "llms.txt", "llms-full.txt"]
+          .map((path) => join(tempDir, path))
+          .concat(llmsManifestPath(tempDir))
+          .map((path) => [path, readFileSync(path)]),
       );
       writePageSource(sourcePath, "Changed page", "Changed body.");
       writeFileSync(join(tempDir, "blocked"), "not a directory", "utf-8");
@@ -165,7 +165,7 @@ describe("generate llms files", () => {
       ).toThrow();
 
       for (const [path, content] of prior) {
-        expect(readFileSync(join(tempDir, path))).toEqual(content);
+        expect(readFileSync(path)).toEqual(content);
       }
       expect(readFileSync(join(tempDir, "blocked"), "utf-8")).toBe("not a directory");
     } finally {
@@ -190,13 +190,10 @@ describe("generate llms files", () => {
       });
       writeFileSync(join(tempDir, "owned/locked/unrelated.txt"), "unrelated", "utf-8");
       const prior = new Map(
-        [
-          "owned/retained.md",
-          "owned/locked/stale.md",
-          "llms.txt",
-          "llms-full.txt",
-          LLMS_MANIFEST_FILE,
-        ].map((path) => [path, readFileSync(join(tempDir, path))]),
+        ["owned/retained.md", "owned/locked/stale.md", "llms.txt", "llms-full.txt"]
+          .map((path) => join(tempDir, path))
+          .concat(llmsManifestPath(tempDir))
+          .map((path) => [path, readFileSync(path)]),
       );
       rmSync(join(tempDir, "owned/locked/unrelated.txt"));
       chmodSync(join(tempDir, "owned"), 0o555);
@@ -213,7 +210,7 @@ describe("generate llms files", () => {
       }
 
       for (const [path, content] of prior) {
-        expect(readFileSync(join(tempDir, path))).toEqual(content);
+        expect(readFileSync(path)).toEqual(content);
       }
       expect(existsSync(join(tempDir, "owned/locked"))).toBe(true);
     } finally {
@@ -232,7 +229,7 @@ describe("generate llms files", () => {
     writeFileSync(join(outsideDir, "victim.md"), "outside", "utf-8");
     symlinkSync(outsideDir, join(outDir, "owned"), "dir");
     writeFileSync(
-      join(outDir, LLMS_MANIFEST_FILE),
+      llmsManifestPath(outDir),
       '{"version":1,"markdown":["owned/victim.md"]}\n',
       "utf-8",
     );
@@ -262,7 +259,7 @@ describe("generate llms files", () => {
         pages: [{ path: "/app/safe", source: sourcePath }],
       });
       const pageBefore = readFileSync(join(tempDir, "app/safe.md"));
-      const manifestPath = join(tempDir, LLMS_MANIFEST_FILE);
+      const manifestPath = llmsManifestPath(tempDir);
       const unsafeManifest = '{"version":1,"markdown":["../outside.md"]}\n';
       writeFileSync(manifestPath, unsafeManifest, "utf-8");
 

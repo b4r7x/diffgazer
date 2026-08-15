@@ -9,8 +9,8 @@ afterEach(() => {
   cleanup();
 });
 
-const ARROW_UP = "[A";
-const ARROW_DOWN = "[B";
+const ARROW_UP = "\u001b[A";
+const ARROW_DOWN = "\u001b[B";
 const RETURN = "\r";
 
 function renderList(props: Partial<Parameters<typeof NavigationList>[0]> = {}) {

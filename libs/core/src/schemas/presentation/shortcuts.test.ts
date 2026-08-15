@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MENU_ITEMS } from "./navigation.js";
 import {
   areShortcutsEqual,
   BACK_SHORTCUT,
@@ -8,8 +9,7 @@ import {
   MAIN_MENU_SHORTCUTS,
   NAVIGATE_SHORTCUT,
   SHORTCUT_CONTEXT_LABELS,
-  TRUST_FOOTER_RIGHT_SHORTCUTS,
-  TRUST_FOOTER_SHORTCUTS,
+  TRUST_PERMISSION_SHORTCUTS,
 } from "./shortcuts.js";
 
 describe("MAIN_MENU_SHORTCUTS", () => {
@@ -31,10 +31,14 @@ describe("footer shortcut constants", () => {
 });
 
 describe("HELP_SHORTCUTS", () => {
-  it("omits the nonexistent r/R review bindings", () => {
-    const keys = HELP_SHORTCUTS.map((shortcut) => shortcut.key);
-    expect(keys).not.toContain("r");
-    expect(keys).not.toContain("R");
+  it("documents every home review binding the shared menu advertises", () => {
+    expect(HELP_SHORTCUTS.filter((shortcut) => shortcut.context === "home")).toEqual(
+      MENU_ITEMS.filter((item) => item.group === "review").map((item) => ({
+        key: item.shortcut,
+        label: item.label,
+        context: "home",
+      })),
+    );
   });
 
   it("advertises the live Open Help binding", () => {
@@ -127,19 +131,11 @@ describe("areShortcutsEqual", () => {
   });
 });
 
-describe("trust footer shortcut constants", () => {
-  it("advertises the live Help binding, not the dead 'h'", () => {
-    const keys = TRUST_FOOTER_RIGHT_SHORTCUTS.map((shortcut) => shortcut.key);
-    expect(keys).toContain("?");
-    expect(keys).not.toContain("h");
-  });
-
-  it("declares the permission controls and action-focus transition", () => {
-    expect(TRUST_FOOTER_SHORTCUTS).toEqual([
+describe("TRUST_PERMISSION_SHORTCUTS", () => {
+  it("carries only the permission controls both surfaces share", () => {
+    expect(TRUST_PERMISSION_SHORTCUTS).toEqual([
       { key: "↑/↓", label: "Navigate Permissions" },
       { key: "Enter/Space", label: "Toggle" },
-      { key: "Tab", label: "Focus Actions" },
-      { key: "q", label: "Quit" },
     ]);
   });
 });

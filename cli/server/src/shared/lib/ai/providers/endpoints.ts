@@ -3,6 +3,7 @@ import { isIP } from "node:net";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import {
+  getHostedApiEndpointTuple,
   HOSTED_API_PRODUCT_IDS,
   HostedApiEndpointSchema,
   type HostedApiProductId,
@@ -12,7 +13,7 @@ import {
 
 export const DISABLE_REDIRECTS = "error" as const;
 
-export type EndpointFailureCode =
+type EndpointFailureCode =
   | "invalid-hosted-endpoint"
   | "http-hosted-forbidden"
   | "user-info-forbidden"
@@ -49,7 +50,7 @@ export type ResolvedLoopbackEndpoint = Readonly<{
   addresses: readonly string[];
 }>;
 
-export type DnsLookupAddress = Readonly<{
+type DnsLookupAddress = Readonly<{
   address: string;
   family: number;
 }>;
@@ -109,18 +110,6 @@ function classifyHostedEndpointFailure(endpoint: string): EndpointFailure {
   return endpointFailure("invalid-hosted-endpoint", "Hosted endpoint URL is invalid");
 }
 
-function findHostedTuple(
-  productId: HostedApiProductId,
-  endpoint: string,
-  region: string | undefined,
-) {
-  return PRODUCT_REGISTRY[productId].configuration.endpoints.find(
-    (candidate) =>
-      candidate.endpoint === endpoint &&
-      ("region" in candidate ? candidate.region : undefined) === region,
-  );
-}
-
 function isLookalikeHostedEndpoint(productId: HostedApiProductId, endpoint: string): boolean {
   const parsed = parseUrl(endpoint);
   if (!parsed) return false;
@@ -173,7 +162,7 @@ export function resolveHostedApiEndpoint(
     );
   }
 
-  const tuple = findHostedTuple(input.productId, endpoint, input.region);
+  const tuple = getHostedApiEndpointTuple(input.productId, endpoint, input.region);
   if (!tuple) {
     const regionMatch = PRODUCT_REGISTRY[input.productId].configuration.endpoints.find(
       (candidate) => candidate.endpoint === endpoint,
@@ -207,7 +196,7 @@ export function resolveHostedApiEndpoint(
 }
 
 export function boundedFetchInit(init: RequestInit = {}): RequestInit {
-  return { ...init, redirect: DISABLE_REDIRECTS as RequestInit["redirect"] };
+  return { ...init, redirect: DISABLE_REDIRECTS };
 }
 
 function normalizeLoopbackPathname(pathname: string): string {
@@ -227,8 +216,14 @@ export type ResolveLoopbackEndpointInput = Readonly<{
 
 export async function resolveLoopbackHttpEndpoint(
   input: ResolveLoopbackEndpointInput,
-  options: Readonly<{ lookup?: DnsLookupFn }> = {},
+  options: Readonly<{ lookup?: DnsLookupFn; signal?: AbortSignal }> = {},
 ): Promise<Result<ResolvedLoopbackEndpoint, EndpointFailure>> {
+  if (options.signal?.aborted) {
+    return err(
+      endpointFailure("dns-resolution-failed", "Local endpoint hostname could not be resolved"),
+    );
+  }
+
   const schemaResult = LoopbackHttpEndpointSchema.safeParse(input.endpoint);
   if (!schemaResult.success) {
     return err(
@@ -262,6 +257,12 @@ export async function resolveLoopbackHttpEndpoint(
   try {
     records = await lookup(parsed.hostname);
   } catch {
+    return err(
+      endpointFailure("dns-resolution-failed", "Local endpoint hostname could not be resolved"),
+    );
+  }
+
+  if (options.signal?.aborted) {
     return err(
       endpointFailure("dns-resolution-failed", "Local endpoint hostname could not be resolved"),
     );

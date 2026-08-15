@@ -54,4 +54,21 @@ describe("DiffView CSS contract", () => {
       expect(trigger.selector).toMatch(/\[data-wrap="on"\]|:not\(\[data-wrap="off"\]\)/);
     }
   });
+
+  it("re-anchors the light signal whether data-theme sits on an ancestor or the root itself", () => {
+    // DiffView spreads consumer props onto the [data-slot="diff-view"] figure, so
+    // <DiffView data-theme="light" /> is a supported shape: a descendant-only
+    // selector would leave the dark-tuned anchors on a light page.
+    const lightRules = eachRule(css).filter((rule) =>
+      rule.selector.includes('[data-theme="light"]'),
+    );
+    const defaultTier = lightRules.find((rule) => rule.declarations.includes("--diff-color-hunk:"));
+    const okabeTier = lightRules.find((rule) => rule.selector.includes("okabe-ito"));
+
+    expect(lightRules.length).toBeGreaterThan(0);
+    for (const rule of [defaultTier, okabeTier]) {
+      expect(rule?.selector).toContain('[data-theme="light"] [data-slot="diff-view"]');
+      expect(rule?.selector).toContain('[data-theme="light"][data-slot="diff-view"]');
+    }
+  });
 });

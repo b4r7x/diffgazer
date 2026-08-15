@@ -16,7 +16,6 @@ vi.mock("../../../components/layout/global", async (importOriginal) => {
     ...actual,
     useContentZone: () => ({
       columns: terminalDimensions.current.columns,
-      rows: terminalDimensions.current.rows,
       contentColumns: terminalDimensions.current.columns,
       contentRows: actual.getContentZoneRows(terminalDimensions.current.rows),
     }),

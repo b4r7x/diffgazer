@@ -7,7 +7,7 @@ export function createMutex(): { run<T>(fn: () => Promise<T>): Promise<T> } {
   let tail: Promise<unknown> = Promise.resolve();
 
   const run = <T>(fn: () => Promise<T>): Promise<T> => {
-    const result = tail.then(fn, fn);
+    const result = tail.then(fn);
     // Keep the chain alive even if a mutation rejects, without surfacing the
     // settled rejection to the next queued caller.
     tail = result.then(

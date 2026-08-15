@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { initCursor } from "./cursor";
 import { initHero } from "./hero";
 import { initHud } from "./hud";
+import { initTerminal } from "./terminal";
 
 const animatedFlags = { reduced: false, finePointer: true };
 
@@ -69,6 +70,37 @@ describe("effect lifecycle signals", () => {
     restart();
   });
 
+  it("flattens the terminal tilt when the visual scope tears down", () => {
+    document.body.innerHTML = `
+      <div id="term-wrap">
+        <div id="terminal"><span class="term-line" data-line="ok"></span></div>
+      </div>`;
+    const terminal = document.querySelector<HTMLElement>("#terminal");
+    const wrap = document.querySelector<HTMLElement>("#term-wrap");
+    if (!terminal || !wrap) throw new Error("terminal fixture missing");
+    vi.spyOn(wrap, "getBoundingClientRect").mockReturnValue({
+      bottom: 100,
+      height: 100,
+      left: 0,
+      right: 100,
+      toJSON: () => ({}),
+      top: 0,
+      width: 100,
+      x: 0,
+      y: 0,
+    });
+
+    const cleanup = initTerminal(document, animatedFlags);
+    wrap.dispatchEvent(new MouseEvent("pointermove", { clientX: 100, clientY: 100 }));
+
+    expect(terminal.style.getPropertyValue("--rx")).not.toBe("");
+
+    cleanup();
+
+    expect(terminal.style.getPropertyValue("--rx")).toBe("");
+    expect(terminal.style.getPropertyValue("--ry")).toBe("");
+  });
+
   it("does not enable the custom cursor for an already-aborted signal", () => {
     document.body.innerHTML = `
       <div id="reticle"></div>
@@ -76,12 +108,7 @@ describe("effect lifecycle signals", () => {
     const abort = new AbortController();
     abort.abort();
 
-    const cursor = initCursor(
-      document,
-      animatedFlags,
-      { x: 0, y: 0, nx: 0, ny: 0, lastMove: 0 },
-      abort.signal,
-    );
+    const cursor = initCursor(document, animatedFlags, { x: 0, y: 0, nx: 0, ny: 0 }, abort.signal);
 
     expect(document.documentElement.classList.contains("reticle-on")).toBe(false);
     expect(document.querySelector("#reticle")?.classList.contains("on")).toBe(false);

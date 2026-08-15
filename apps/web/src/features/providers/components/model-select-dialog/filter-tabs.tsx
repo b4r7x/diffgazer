@@ -1,6 +1,8 @@
 import { TIER_FILTERS, type TierFilter } from "@diffgazer/core/providers";
-import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
+import { createToggleGroup } from "@diffgazer/ui/components/toggle-group";
 import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from "react";
+
+const TierFilterGroup = createToggleGroup(TIER_FILTERS);
 
 interface ModelFilterTabsProps {
   value: TierFilter;
@@ -30,7 +32,7 @@ export function ModelFilterTabs({
   };
 
   return (
-    <ToggleGroup<TierFilter>
+    <TierFilterGroup
       value={value}
       onChange={handleFilterChange}
       highlighted={isFocused ? (TIER_FILTERS[focusedIndex] ?? null) : null}
@@ -43,7 +45,7 @@ export function ModelFilterTabs({
         const tabProps = getTabProps?.(idx);
 
         return (
-          <ToggleGroupItem
+          <TierFilterGroup.Item
             key={filter}
             value={filter}
             ref={tabProps?.ref}
@@ -51,9 +53,9 @@ export function ModelFilterTabs({
             className="h-6 min-h-0 px-2.5 text-2xs uppercase pointer-coarse:min-h-11 pointer-coarse:px-3"
           >
             {filter}
-          </ToggleGroupItem>
+          </TierFilterGroup.Item>
         );
       })}
-    </ToggleGroup>
+    </TierFilterGroup>
   );
 }

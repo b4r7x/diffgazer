@@ -6,21 +6,16 @@ export {
   type OnboardingDraft,
   resetWizardProduct,
 } from "./defaults.js";
-export type { WizardData } from "./draft-equality.js";
 export {
   buildConfigPayload,
   buildSettingsPayload,
   type SaveWizardCallbacks,
-  type SaveWizardResult,
   type SettingsPayload,
-  saveWizard,
 } from "./save-wizard.js";
 export {
   buildSetupPlan,
-  type RemovedSetupPlan,
   type RunnableSetupPlan,
   type RunnableSetupStep,
-  type SetupPlan,
   type SetupProductId,
   type SetupRemediation,
 } from "./setup-plan.js";
@@ -31,8 +26,6 @@ export type {
   OnboardingConformanceStatus,
   OnboardingState,
   OnboardingStep,
-  RemovedOnboardingState,
-  RunnableOnboardingState,
 } from "./types.js";
 export {
   ONBOARDING_CONFORMANCE_STATUSES,
@@ -44,5 +37,4 @@ export {
   type UseWizardStateOptions,
   type UseWizardStateResult,
   useWizardState,
-  type WizardSaveCallbacks,
 } from "./use-wizard-state.js";

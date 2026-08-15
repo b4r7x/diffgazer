@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   diffgazerHome,
   loadStore,
+  loadStoreFactory,
   readJson,
   trustConfig,
   trustPath,
@@ -11,7 +12,7 @@ import {
 
 describe("config store", () => {
   it("re-keys review history when a trusted project directory is moved", async () => {
-    const { createConfigStore } = await import("./store.js");
+    const createConfigStore = await loadStoreFactory();
     const { registerConfigSeams, resetConfigSeams } = await import("./seams.js");
     const rekeys: Array<[string, string]> = [];
     let shouldComplete = false;
@@ -38,7 +39,7 @@ describe("config store", () => {
 
     try {
       const store = createConfigStore();
-      const info = store.getProjectInfo(movedRoot);
+      const info = store.ensureProjectFile(movedRoot);
 
       expect(info.projectId).toBe("stable-id");
       await vi.waitFor(() => expect(rekeys).toHaveLength(1));
@@ -49,7 +50,7 @@ describe("config store", () => {
 
       shouldComplete = true;
       await vi.waitFor(() => {
-        store.getProjectInfo(movedRoot);
+        store.ensureProjectFile(movedRoot);
         expect(rekeys).toHaveLength(2);
         expect(
           JSON.parse(readFileSync(join(movedRoot, ".diffgazer", "project.json"), "utf-8")),
@@ -63,7 +64,7 @@ describe("config store", () => {
   it("keeps project.json on the old root when no re-key handler is registered", async () => {
     const logModule = await import("../log.js");
     const logSpy = vi.spyOn(logModule, "log").mockImplementation(() => {});
-    const { createConfigStore } = await import("./store.js");
+    const createConfigStore = await loadStoreFactory();
     const originalRoot = join(diffgazerHome, "unwired-original");
     const movedRoot = join(diffgazerHome, "unwired-moved");
     const projectFilePath = join(movedRoot, ".diffgazer", "project.json");
@@ -79,7 +80,7 @@ describe("config store", () => {
     );
 
     try {
-      createConfigStore().getProjectInfo(movedRoot);
+      createConfigStore().ensureProjectFile(movedRoot);
 
       await vi.waitFor(() =>
         expect(logSpy).toHaveBeenCalledWith("error", "review_rekey_handler_not_registered"),

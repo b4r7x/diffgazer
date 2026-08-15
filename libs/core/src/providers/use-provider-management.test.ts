@@ -1,13 +1,17 @@
 /** @vitest-environment jsdom */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { useReducer } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { ConfigurationStatus } from "../schemas/config/configuration-status.js";
 import type { ClientConfigurationInput } from "../schemas/config/provider-config.js";
 import { READINESS_PRESENTATION, ReadinessSchema } from "../schemas/config/readiness.js";
+import { createDeferred } from "../testing/deferred.js";
+import { makeClientNotice } from "../testing/provider-fixtures.js";
 import { getProviderRowId, mapProviderList, type ProviderListRow } from "./list.js";
 import { PRODUCT_REGISTRY } from "./product-registry.js";
 import {
+  type ProviderDialogOwner,
   type ProviderManagementFailure,
   type ProviderManagementMutations,
   useProviderManagement,
@@ -26,13 +30,7 @@ function readyStatus(): ConfigurationStatus {
       productId: "gemini",
       endpoint: "https://generativelanguage.googleapis.com/v1beta",
       selectedModelId: "gemini-2.5-flash",
-      notices: [
-        {
-          ...GEMINI_NOTICE,
-          billing: [...GEMINI_NOTICE.billing],
-          privacy: [...GEMINI_NOTICE.privacy],
-        },
-      ],
+      notices: [makeClientNotice("gemini")],
       availableActions: ["inspect", "select", "test", "update", "delete"],
     },
     readiness: ReadinessSchema.parse({
@@ -69,12 +67,19 @@ function pendingStatus(): ConfigurationStatus {
   };
 }
 
+const ACCEPTED_ACK = {
+  status: "accepted",
+  noticeId: GEMINI_NOTICE.id,
+  noticeVersion: GEMINI_NOTICE.noticeVersion,
+  acceptedAt: CHECKED_AT,
+} as const;
+
 const HOSTED_INPUT = {
   transportFamily: "hosted-api",
   productId: "gemini",
   endpoint: "https://generativelanguage.googleapis.com/v1beta",
   credential: { kind: "literal", value: "write-only-value" },
-} as unknown as ClientConfigurationInput;
+} satisfies ClientConfigurationInput;
 
 function makeMutations(
   overrides: Partial<ProviderManagementMutations> = {},
@@ -86,7 +91,10 @@ function makeMutations(
     updateConfiguration: vi.fn(async () => undefined),
     deleteConfiguration: vi.fn(async () => undefined),
     inspectConfiguration: vi.fn(async () => undefined),
-    testConfiguration: vi.fn(async () => undefined),
+    testConfiguration: vi.fn(async () => ({
+      status: "succeeded" as const,
+      readiness: { explanation: READINESS_PRESENTATION.ready.explanation },
+    })),
     selectConfiguration: vi.fn(async () => undefined),
     ...overrides,
   };
@@ -130,6 +138,7 @@ describe("useProviderManagement", () => {
     await act(async () => {
       await hook.result.current.handleCreateConfiguration(owner, HOSTED_INPUT, {
         continueToModelSelection: true,
+        acknowledgement: ACCEPTED_ACK,
       });
     });
 
@@ -151,6 +160,7 @@ describe("useProviderManagement", () => {
     await act(async () => {
       await hook.result.current.handleCreateConfiguration(owner, HOSTED_INPUT, {
         continueToModelSelection: true,
+        acknowledgement: ACCEPTED_ACK,
       });
     });
 
@@ -172,7 +182,9 @@ describe("useProviderManagement", () => {
     let outcome: Awaited<ReturnType<typeof hook.result.current.handleCreateConfiguration>> | null =
       null;
     await act(async () => {
-      outcome = await hook.result.current.handleCreateConfiguration(owner, HOSTED_INPUT);
+      outcome = await hook.result.current.handleCreateConfiguration(owner, HOSTED_INPUT, {
+        acknowledgement: ACCEPTED_ACK,
+      });
     });
 
     expect(outcome).toEqual({ status: "failed", message: "Endpoint refused the credential" });
@@ -181,6 +193,69 @@ describe("useProviderManagement", () => {
     ]);
     // A failed save must leave its dialog open so the surface can render the error.
     expect(hook.result.current.dialogOwner).toBe(owner);
+  });
+
+  it("keeps the model dialog open when selection fails", async () => {
+    const mutations = makeMutations({
+      selectConfiguration: vi.fn(async () => {
+        throw new Error("Model rejected");
+      }),
+    });
+    const { hook } = setup(mutations);
+
+    act(() => hook.result.current.openModelDialog("gemini-primary"));
+    const owner = hook.result.current.dialogOwner;
+    if (owner?.kind !== "model") throw new Error("Expected a model dialog owner");
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.handleSelectModel(owner, "gemini-2.5-flash");
+    });
+
+    expect(outcome).toEqual({ status: "failed", message: "Model rejected" });
+    expect(hook.result.current.dialogOwner).toBe(owner);
+  });
+
+  it("clears the model dialog only after the submit guard has released", async () => {
+    const release = createDeferred<void>();
+    const mutations = makeMutations({ selectConfiguration: vi.fn(() => release.promise) });
+    const providers = mapProviderList([readyStatus()]);
+    const hook = renderHook(() => {
+      const management = useProviderManagement({ providers, mutations });
+      const [, forceRender] = useReducer((renders: number) => renders + 1, 0);
+      return { ...management, forceRender };
+    });
+
+    act(() => hook.result.current.openModelDialog("gemini-primary"));
+    const owner = hook.result.current.dialogOwner;
+    if (owner?.kind !== "model") throw new Error("Expected a model dialog owner");
+
+    let pending: Promise<unknown> | undefined;
+    act(() => {
+      pending = hook.result.current.handleSelectModel(owner, "gemini-2.5-flash");
+    });
+    expect(hook.result.current.isSubmitting).toBe(true);
+
+    // The hook awaited this promise before the test did, so this reaction runs
+    // between the mutation settling and the submit guard releasing. Rendering
+    // there is what any unrelated surface update (a settling query, a toast)
+    // would do, and the commit shows what the surface would have painted.
+    let duringSave: { dialogOwner: ProviderDialogOwner | null; isSubmitting: boolean } | undefined;
+    release.promise.then(() => {
+      act(() => hook.result.current.forceRender());
+      duringSave = {
+        dialogOwner: hook.result.current.dialogOwner,
+        isSubmitting: hook.result.current.isSubmitting,
+      };
+    });
+    release.resolve();
+    await pending;
+
+    // Swapping the owner inside the guard unmounts the dialog while the trigger
+    // that opened it is still disabled, so focus restore lands on <body>.
+    expect(duringSave).toEqual({ dialogOwner: owner, isSubmitting: true });
+    await waitFor(() => expect(hook.result.current.dialogOwner).toBeNull());
+    expect(hook.result.current.isSubmitting).toBe(false);
   });
 
   it("does not let a stale model dialog close a newer dialog", async () => {
@@ -258,6 +333,33 @@ describe("useProviderManagement", () => {
     expect(outcome).toEqual({ status: "succeeded" });
     expect(mutations.testConfiguration).toHaveBeenCalledWith("gemini-primary");
     expect(succeeded).toEqual(["test"]);
+  });
+
+  it("reports a resolved test whose body says failed through the failure channel", async () => {
+    const explanation = READINESS_PRESENTATION["conformance-failed"].explanation;
+    const mutations = makeMutations({
+      testConfiguration: vi.fn(async () => ({
+        status: "failed" as const,
+        readiness: { explanation },
+      })),
+    });
+    const { hook, failures, succeeded, providers } = setup(
+      mutations,
+      mapProviderList([pendingStatus()]),
+    );
+    const row = providers.find(
+      ({ configuration }) => configuration?.configurationId === "gemini-primary",
+    );
+    if (!row) throw new Error("Expected the configured row");
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.handleDispatchReadinessAction(row);
+    });
+
+    expect(outcome).toEqual({ status: "failed", message: explanation });
+    expect(succeeded).toEqual([]);
+    expect(failures).toEqual([expect.objectContaining({ action: "test", message: explanation })]);
   });
 
   it("opens the model dialog instead of selecting a configuration without a model", async () => {

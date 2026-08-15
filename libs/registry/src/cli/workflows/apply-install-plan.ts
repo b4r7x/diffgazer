@@ -7,6 +7,11 @@ import {
   writeFilesWithRollback,
 } from "../file-write-rollback.js";
 import { installDeps } from "../install-deps.js";
+import {
+  exitAfterSignalCancellation,
+  installMutationCancellationHandlers,
+  throwIfMutationCancelled,
+} from "../mutation-cancellation.js";
 import { restorePackageManagerFiles, snapshotPackageManagerFiles } from "../package-manager.js";
 import { heading, info, newline, promptConfirm, success, warn } from "../terminal.js";
 
@@ -52,9 +57,12 @@ async function writeAndInstall(options: ApplyInstallPlanOptions): Promise<void> 
   const packageManagerSnapshot = snapshotPackageManagerFiles(cwd);
   heading(options.headingMessage);
   const writeResult = writeFilesWithRollback(fileOps, overwrite);
+  const cancellation = installMutationCancellationHandlers();
   try {
-    await installOrSkip(missingDeps, cwd, skipInstall);
+    await installOrSkip(missingDeps, cwd, skipInstall, cancellation.controller.signal);
+    throwIfMutationCancelled(cancellation);
     await options.onApplied?.(writeResult);
+    throwIfMutationCancelled(cancellation);
   } catch (error) {
     warn("Rolling back install-plan changes after failure...");
     let packageManagerRollbackFailed = false;
@@ -66,13 +74,19 @@ async function writeAndInstall(options: ApplyInstallPlanOptions): Promise<void> 
       packageManagerRollbackError = rollbackError;
     }
     rollbackFiles(writeResult.newFiles, writeResult.backups, writeResult.createdDirs);
+    cancellation.dispose();
     if (packageManagerRollbackFailed) {
       throw new AggregateError(
         [error, packageManagerRollbackError],
         "Install-plan failed and package-manager rollback was incomplete.",
       );
     }
+    if (cancellation.receivedSignal.current) {
+      exitAfterSignalCancellation(cancellation.receivedSignal.current);
+    }
     throw error;
+  } finally {
+    cancellation.dispose();
   }
 
   newline();
@@ -84,10 +98,11 @@ async function installOrSkip(
   missingDeps: string[],
   cwd: string,
   skipInstall: boolean,
+  abortSignal?: AbortSignal,
 ): Promise<void> {
   const skip = skipInstall || isTruthyFlag(process.env.CLI_SKIP_INSTALL);
   if (!skip) {
-    await installDeps(missingDeps, cwd);
+    await installDeps(missingDeps, cwd, abortSignal);
     return;
   }
   if (missingDeps.length > 0) {

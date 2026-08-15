@@ -11,29 +11,26 @@ import type {
   RunnableProductId,
 } from "@diffgazer/core/schemas/config";
 import {
+  GEMINI_CONFIGURATION,
   makeAllConfigurationsListResponse,
-  READY_GEMINI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
 import { vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
+import { createTestQueryClient } from "../../../testing/query-client";
 import { CliThemeProvider } from "../../../theme/provider";
 
 export const ARROW_DOWN = "\u001b[B";
 
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
-
-export const CHECKED_AT = "2026-07-31T12:00:00.000Z";
+const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 
 export function copyNotice(productId: RunnableProductId) {
   const notice = PRODUCT_REGISTRY[productId].notice;
   return { ...notice, billing: [...notice.billing], privacy: [...notice.privacy] };
 }
 
-export const GEMINI_CONFIGURATION = READY_GEMINI_CONFIGURATION;
-
-export const GEMINI_MODELS: ModelInfo[] = [
+const GEMINI_MODELS: ModelInfo[] = [
   {
     id: "gemini-2.5-flash",
     name: "gemini-2.5-flash",
@@ -43,7 +40,7 @@ export const GEMINI_MODELS: ModelInfo[] = [
 ];
 
 export function catalogModelsResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   models: ModelInfo[] = GEMINI_MODELS,
 ): ConfigurationModelsResponse {
   return {
@@ -59,7 +56,7 @@ export function catalogModelsResponse(
 }
 
 export function skippedCatalogModelsResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   reason: string,
 ): ConfigurationModelsResponse {
   return {
@@ -87,15 +84,6 @@ export async function flushUntil(predicate: () => boolean, attempts = 200): Prom
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
   throw new Error(`Timed out waiting for condition after ${attempts} attempts`);
-}
-
-export function makeQueryClient(): QueryClient {
-  return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, networkMode: "always" },
-      mutations: { retry: false, networkMode: "always" },
-    },
-  });
 }
 
 export function makeGeminiApi(): BoundApi {
@@ -139,7 +127,7 @@ export function Wrapper({
   api?: BoundApi;
   queryClient?: QueryClient;
 }) {
-  const [defaultQueryClient] = useState(makeQueryClient);
+  const [defaultQueryClient] = useState(createTestQueryClient);
   const [defaultApi] = useState(makeGeminiApi);
   return (
     <QueryClientProvider client={queryClient ?? defaultQueryClient}>

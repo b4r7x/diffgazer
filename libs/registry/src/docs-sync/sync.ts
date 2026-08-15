@@ -16,7 +16,6 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
     sourceOrigin,
     syncSchemaVersion = 3,
     afterSync,
-    outputPaths: outputPathOverrides,
   } = options;
   assertSafeLibraryId(primaryLibraryId, "Primary library id");
   const libraryIds = new Set<string>();
@@ -29,7 +28,7 @@ export function syncDocsFromArtifacts(options: SyncDocsOptions): SyncDocsResult 
   }
 
   const origin = normalizeOrigin(requestedOrigin);
-  const paths = resolveSyncOutputPaths(docsRoot, outputPathOverrides);
+  const paths = resolveSyncOutputPaths(docsRoot);
 
   console.log("[docs-sync] Loading workspace artifacts.");
 

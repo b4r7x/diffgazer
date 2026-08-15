@@ -11,7 +11,7 @@ import {
   CATALOG_EMPTY_MODELS_REASON,
   CATALOG_SKIPPED_REASON,
 } from "./catalog-discovery-reasons.js";
-import { type SupportedConfigurationSummary, useModelSource } from "./use-model-source.js";
+import { useModelSource } from "./use-model-source.js";
 
 const configurations = {
   hosted: {
@@ -57,7 +57,7 @@ function model(id: string): ModelInfo {
 }
 
 function passedResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   modelIds: readonly string[],
 ): ConfigurationModelsResponse {
   return {
@@ -73,7 +73,7 @@ function passedResponse(
 }
 
 function skippedResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   reason: string,
 ): ConfigurationModelsResponse {
   return {
@@ -119,7 +119,10 @@ describe("useModelSource", () => {
       error: null,
     });
     expect(result.current.models.map(({ id }) => id)).toEqual([modelId]);
-    expect(getConfigurationModels).toHaveBeenCalledWith(configuration.configurationId);
+    expect(getConfigurationModels).toHaveBeenCalledWith(
+      configuration.configurationId,
+      expect.any(AbortSignal),
+    );
   });
 
   it.each([
@@ -241,7 +244,10 @@ describe("useModelSource", () => {
     await waitFor(() => expect(result.current.status).toBe("passed"));
 
     expect(result.current.models.map(({ id }) => id)).toEqual(["qwen3-coder:30b"]);
-    expect(getConfigurationModels.mock.calls).toEqual([["ollama-loopback"], ["ollama-loopback"]]);
+    expect(getConfigurationModels.mock.calls.map(([configurationId]) => configurationId)).toEqual([
+      "ollama-loopback",
+      "ollama-loopback",
+    ]);
   });
 
   it("stays idle without fetching while the picker is closed", () => {

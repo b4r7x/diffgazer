@@ -11,7 +11,6 @@ import {
   DEFERRED_PRODUCT_IDS,
   EXPERIMENTAL_PRODUCT_IDS,
   REJECTED_PRODUCT_IDS,
-  REMOVED_PRODUCT_ID,
 } from "@diffgazer/core/schemas/config";
 import { describe, expect, it } from "vitest";
 
@@ -31,9 +30,6 @@ const MATRIX_COLUMNS = [
   "enablement-gate",
   "falsifier",
 ] as const;
-
-/** A matrix row whose ID cell is exactly the removed product (never `zai-coding-plan`). */
-const REMOVED_PRODUCT_MATRIX_ROW = new RegExp(`^\\|\\s*\`${REMOVED_PRODUCT_ID}\`\\s*\\|`, "m");
 
 const FORBIDDEN_EXAMPLE_PATTERN =
   /\b(?:sk-[A-Za-z0-9_-]{8,}|ghp_[A-Za-z0-9]+|Bearer\s+[A-Za-z0-9+/=]{8,})\b/;
@@ -84,7 +80,7 @@ function parseMatrixRows(
       .filter((cell) => cell.length > 0);
     if (cells.length !== MATRIX_COLUMNS.length) continue;
     const idCell = cells[0];
-    if (idCell === undefined || idCell === "ID") continue;
+    if (idCell === undefined) continue;
 
     const id = idCell.replaceAll("`", "");
     const row = Object.fromEntries(
@@ -99,7 +95,6 @@ function parseMatrixRows(
 function structuredOutputLabel(
   product: (typeof PRODUCT_REGISTRY)[keyof typeof PRODUCT_REGISTRY],
 ): string {
-  if (product.kind !== "runnable") return "";
   switch (product.admission.structuredOutput) {
     case "strict-json-schema":
       return "strict JSON schema";
@@ -143,16 +138,6 @@ describe("provider support matrix", () => {
       product: CANDIDATE_VERDICTS["github-models"].name,
     });
     expect(providersReference).not.toMatch(/GitHub Models.*(?:selectable|enabled|available)/i);
-
-    // Self-check first: a pattern that stops matching a synthetic offending row
-    // would make the corpus assertion below vacuously pass.
-    expect(`| \`${REMOVED_PRODUCT_ID}\` | Z.AI Coding | add-now |`).toMatch(
-      REMOVED_PRODUCT_MATRIX_ROW,
-    );
-    expect(`| \`${REMOVED_PRODUCT_ID}-plan\` | Z.AI GLM Coding Plan | rejected |`).not.toMatch(
-      REMOVED_PRODUCT_MATRIX_ROW,
-    );
-    expect(providersReference).not.toMatch(REMOVED_PRODUCT_MATRIX_ROW);
   });
 
   it("matches product registry names, status, and notices without volatile quota promises", () => {
@@ -202,17 +187,9 @@ describe("Web Ink canonical terminology matches", () => {
       expect(providersAndModels).toContain(name);
       expect(providersReference).toContain(name);
     }
-    expect(providersAndModels).not.toMatch(/picker lists[\s\S]*Z\.A\.I Coding Plan/i);
-    expect(providersReference).toContain("Z.AI GLM Coding Plan");
   });
 
-  it("keeps removed migration and experimental evidence language aligned with registry policy", () => {
-    const removed = PRODUCT_REGISTRY[REMOVED_PRODUCT_ID];
-    expect(providersReference).toContain(removed.presentation.name);
-    expect(providersReference).toContain("HTTP compatibility is not authorization");
-    expect(providersReference).toContain("Create a new general Z.AI PAYG configuration");
-    expect(providersReference).toContain("retained but never copied, tested, or sent");
-    expect(providersReference).toContain("explicitly delete the removed record");
+  it("keeps the frozen-verdict language aligned with registry policy", () => {
     expect(providersAndModels).toContain(
       "A compatible endpoint, free credit, or local binary cannot override the frozen verdict",
     );
@@ -225,7 +202,7 @@ describe("provider catalog privacy copy", () => {
 
     expect(overview).toContain("pre-review model-catalog lookup");
     expect(overview).toContain("models.dev catalog");
-    expect(overview).toContain("OpenRouter API key");
+    expect(overview).not.toContain("OpenRouter API key");
     expect(overview).toContain("[Privacy](/app/concepts/privacy)");
     expect(overview).not.toContain("nothing leaves it until you start a review");
     expect(overview).not.toContain("The only thing that leaves your computer");
@@ -236,14 +213,14 @@ describe("provider catalog privacy copy", () => {
     const catalogSection = extractSection(privacy, "Model-catalog requests, during setup");
 
     const sharedCatalogProducts = SELECTABLE_PRODUCT_IDS.filter(
-      (productId) => PROVIDER_OVERLAY[productId] !== undefined && productId !== "openrouter",
+      (productId) => PROVIDER_OVERLAY[productId] !== undefined,
     );
 
     for (const productId of sharedCatalogProducts) {
       expect(catalogSection).toContain(PRODUCT_REGISTRY[productId].presentation.name);
     }
     expect(catalogSection).toContain("https://models.dev/api.json");
-    expect(catalogSection).toContain("https://openrouter.ai/api/v1/models");
-    expect(catalogSection).toContain("with your OpenRouter API key");
+    expect(catalogSection).not.toContain("https://openrouter.ai/api/v1/models");
+    expect(catalogSection).not.toMatch(/with your OpenRouter API key/i);
   });
 });

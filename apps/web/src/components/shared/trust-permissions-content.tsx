@@ -14,7 +14,13 @@ import { Callout } from "@diffgazer/ui/components/callout";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { type FocusEvent as ReactFocusEvent, useRef, useState } from "react";
+import {
+  type FocusEvent as ReactFocusEvent,
+  type RefObject,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { PathValue } from "./path-value";
 import { useTrustFormKeyboard } from "./use-trust-form-keyboard";
 
@@ -34,12 +40,19 @@ interface TrustPermissionsContentActionProps extends TrustPermissionsContentBase
   onRevoke: () => void;
 }
 
+export interface TrustListFocusHandle {
+  /** Focuses the list's current capability row; false when nothing is focusable. */
+  focus: () => boolean;
+}
+
 interface TrustPermissionsContentPassiveProps extends TrustPermissionsContentBaseProps {
   showActions?: false;
   keyboardScope?: never;
   onSave?: never;
   onRevoke?: never;
   onListBoundaryNext?: () => void;
+  /** The upward counterpart of `onListBoundaryNext`, for a control below the list. */
+  listFocusRef?: RefObject<TrustListFocusHandle | null>;
 }
 
 export type TrustPermissionsContentProps =
@@ -60,12 +73,11 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
   const onSave = showActions ? props.onSave : undefined;
   const onRevoke = showActions ? props.onRevoke : undefined;
   const onListBoundaryNext = !showActions ? props.onListBoundaryNext : undefined;
+  const listFocusRef = !showActions ? props.listFocusRef : undefined;
   const contentRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const busyStatusRef = useRef<HTMLOutputElement>(null);
-  const [listFocused, setListFocused] = useState<string | null>(() =>
-    getInitialFocusedCapability(value),
-  );
+  const [listFocused, setListFocused] = useState<string | null>(null);
   const [passiveListHasFocus, setPassiveListHasFocus] = useState(false);
   const [keyboardFocusVisible, setKeyboardFocusVisible] = useState(autoFocusList);
 
@@ -86,6 +98,8 @@ export function TrustPermissionsContent(props: TrustPermissionsContentProps) {
       }) !== null
     );
   };
+
+  useImperativeHandle(listFocusRef, () => ({ focus: focusListItem }));
 
   const {
     actionRowRef,

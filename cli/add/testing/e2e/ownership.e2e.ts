@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { computeIntegrity } from "@diffgazer/registry";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { runDgadd, writeFixtureConfig } from "./test-helpers.js";
+import { manifestItem, readFixtureConfig, runDgadd, writeFixtureConfig } from "./test-helpers.js";
 
 let root: string;
 
@@ -28,11 +28,13 @@ describe("ownership boundaries", () => {
       "--skip-install",
     ]);
 
-    const before = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    expect(before.installedComponents?.["keys/focus-trap"]).toBeTruthy();
-    expect(before.installedComponents?.["keys/focus-restore"]).toBeTruthy();
+    const before = readFixtureConfig(root);
+    expect(before.installedItems?.["keys/focus-trap"]).toBeTruthy();
+    expect(before.installedItems?.["keys/focus-restore"]).toBeTruthy();
 
-    delete before.installedComponents["keys/focus-restore"];
+    const installed = before.installedItems;
+    if (!installed) throw new Error("expected installedItems");
+    delete installed["keys/focus-restore"];
     writeFileSync(join(root, "diffgazer.json"), JSON.stringify(before, null, 2));
 
     runDgadd(["remove", "keys/focus-trap", "--cwd", root, "--yes"]);
@@ -42,9 +44,9 @@ describe("ownership boundaries", () => {
     expect(existsSync(join(root, "src/hooks/utils/focus-restore.ts"))).toBe(false);
     expect(existsSync(join(root, "src/hooks/utils/focusable.ts"))).toBe(false);
 
-    const updated = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    expect(updated.installedComponents?.["keys/focus-trap"]).toBeUndefined();
-    expect(updated.installedComponents?.["keys/focus-restore"]).toBeUndefined();
+    const updated = readFixtureConfig(root);
+    expect(updated.installedItems?.["keys/focus-trap"]).toBeUndefined();
+    expect(updated.installedItems?.["keys/focus-restore"]).toBeUndefined();
   });
 
   test("add --overwrite replaces a locally-modified owned file and updates the ownership hash", () => {
@@ -53,11 +55,12 @@ describe("ownership boundaries", () => {
     const buttonIndex = join(root, "src/components/ui/button/index.ts");
     const originalContent = readFileSync(buttonIndex, "utf-8");
     const configPath = join(root, "diffgazer.json");
-    const initialConfig = JSON.parse(readFileSync(configPath, "utf-8"));
-    const ownedFile = initialConfig.installedComponents["ui/button"].files.find(
-      (file: { path: string }) => file.path === "src/components/ui/button/index.ts",
+    const initialConfig = readFixtureConfig(root);
+    const ownedFile = manifestItem(initialConfig, "ui/button").files?.find(
+      (file) => file.path === "src/components/ui/button/index.ts",
     );
     expect(ownedFile?.hash, "initial install should hash the index file").toBeTruthy();
+    if (!ownedFile) throw new Error("initial install should hash the index file");
 
     const sentinelHash = "sha256-sentinel-hash-not-a-real-digest";
     ownedFile.hash = sentinelHash;
@@ -72,9 +75,9 @@ describe("ownership boundaries", () => {
       originalContent,
     );
 
-    const updatedConfig = JSON.parse(readFileSync(configPath, "utf-8"));
-    const updatedHash = updatedConfig.installedComponents["ui/button"].files.find(
-      (file: { path: string }) => file.path === "src/components/ui/button/index.ts",
+    const updatedConfig = readFixtureConfig(root);
+    const updatedHash = manifestItem(updatedConfig, "ui/button").files?.find(
+      (file) => file.path === "src/components/ui/button/index.ts",
     )?.hash;
     expect(updatedHash, "reinstall must recompute the hash from the reinstalled content").toBe(
       computeIntegrity(reinstalledContent),
@@ -90,8 +93,8 @@ describe("ownership boundaries", () => {
     expect(existsSync(join(root, "src/components/ui/logo/figlet.ts"))).toBe(true);
     expect(existsSync(join(root, "src/components/ui/logo/figlet-text.ts"))).toBe(true);
 
-    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    expect(config.installedComponents?.["ui/logo-figlet"]).toBeTruthy();
+    const config = readFixtureConfig(root);
+    expect(config.installedItems?.["ui/logo-figlet"]).toBeTruthy();
   });
 
   test("hidden optional code-block-highlight install writes lowlight helper", () => {
@@ -101,7 +104,7 @@ describe("ownership boundaries", () => {
       true,
     );
 
-    const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8"));
-    expect(config.installedComponents?.["ui/code-block-highlight"]).toBeTruthy();
+    const config = readFixtureConfig(root);
+    expect(config.installedItems?.["ui/code-block-highlight"]).toBeTruthy();
   });
 });

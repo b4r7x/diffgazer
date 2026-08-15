@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const skeletonDoc: ComponentDoc = {
   description:
@@ -74,7 +74,7 @@ export const skeletonDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          "Width of the placeholder in character cells, so it reserves the width of the value it stands in for.",
+          "Width of the placeholder in character cells, so it reserves the width of the value it stands in for. Surfaces as data-chars plus the --skeleton-chars custom property; omit and set width via className instead.",
       },
       className: {
         type: "string",

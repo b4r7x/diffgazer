@@ -47,6 +47,7 @@ function makeInitResponse(
   return {
     schemaVersion: 2,
     configurations: [],
+    unrecognizedConfigurations: [],
     selectedConfigurationId: null,
     settings: SETTINGS_FIXTURE,
     project: { projectId: "proj-1", path: "/tmp/repo", trust: null },
@@ -86,6 +87,30 @@ function readyDraft(productId: "mistral" | "gemini" = "mistral"): OnboardingDraf
       credential: { kind: "environment" },
     },
     selectedModelId: productId === "gemini" ? "gemini-2.5-flash" : "mistral-small-2603",
+    conformanceStatus: "passed",
+    acknowledgement: {
+      status: "accepted",
+      noticeId: notice.id,
+      noticeVersion: notice.noticeVersion,
+      acceptedAt: "2026-07-31T12:00:00.000Z",
+    },
+  };
+}
+
+function readyLocalDraft(): OnboardingDraft {
+  const draft = getInitialWizardData("local-openai");
+  const notice = PRODUCT_REGISTRY["local-openai"].notice;
+  if (draft.configurationInput.transportFamily !== "local-http") {
+    throw new Error("Expected local HTTP draft");
+  }
+  return {
+    ...draft,
+    configurationInput: {
+      ...draft.configurationInput,
+      authentication: "optional-local-bearer",
+      bearerToken: { kind: "literal", value: "write-only-local-bearer" },
+    },
+    selectedModelId: "local-model",
     conformanceStatus: "passed",
     acknowledgement: {
       status: "accepted",
@@ -207,6 +232,21 @@ function discoveryReadiness(data: OnboardingDraft) {
   };
 }
 
+/**
+ * Applies a ready draft the way the wizard steps do. A new configuration input
+ * clears the model and the conformance result, so the model, its passing probe,
+ * and the notice acknowledgement can only be set after it.
+ */
+function applyDraft(
+  wizard: ReturnType<typeof useOnboarding>,
+  draft: Extract<OnboardingDraft, { kind: "runnable" }>,
+) {
+  wizard.updateData({ configurationInput: draft.configurationInput });
+  wizard.updateData({ selectedModelId: draft.selectedModelId });
+  wizard.updateData({ conformanceStatus: draft.conformanceStatus });
+  wizard.updateData({ acknowledgement: draft.acknowledgement });
+}
+
 function makeActionHandler(
   data: OnboardingDraft,
   overrides?: {
@@ -304,14 +344,7 @@ describe("useOnboarding", () => {
     const draft = readyDraft("gemini");
 
     act(() => {
-      onboardingHook.result.current.updateData({
-        configurationInput: draft.configurationInput,
-        selectedModelId: draft.selectedModelId,
-        conformanceStatus: draft.conformanceStatus,
-      });
-      onboardingHook.result.current.updateData({
-        acknowledgement: draft.acknowledgement,
-      });
+      applyDraft(onboardingHook.result.current, draft);
       for (let index = 0; index < draft.plan.steps.length - 1; index += 1) {
         onboardingHook.result.current.next();
       }
@@ -404,14 +437,7 @@ describe("useOnboarding", () => {
     const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
 
     act(() => {
-      onboardingHook.result.current.updateData({
-        configurationInput: literalDraft.configurationInput,
-        selectedModelId: literalDraft.selectedModelId,
-        conformanceStatus: literalDraft.conformanceStatus,
-      });
-      onboardingHook.result.current.updateData({
-        acknowledgement: literalDraft.acknowledgement,
-      });
+      applyDraft(onboardingHook.result.current, literalDraft);
       for (let index = 0; index < literalDraft.plan.steps.length - 1; index += 1) {
         onboardingHook.result.current.next();
       }
@@ -425,6 +451,79 @@ describe("useOnboarding", () => {
     expect(JSON.stringify(onboardingHook.result.current.wizardData)).not.toContain(secret);
   });
 
+  it("scrubs literal bearer tokens from client state after submit", async () => {
+    const secret = "literal-local-value-9a";
+    const localDraft = readyLocalDraft();
+    if (localDraft.configurationInput.transportFamily !== "local-http") {
+      throw new Error("Expected local HTTP draft");
+    }
+    const literalDraft: OnboardingDraft = {
+      ...localDraft,
+      configurationInput: {
+        ...localDraft.configurationInput,
+        bearerToken: { kind: "literal", value: secret },
+      },
+    };
+    mockExecuteConfigurationAction.mockImplementation(makeActionHandler(literalDraft));
+
+    const wrapper = createWrapper();
+    const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
+
+    act(() => {
+      onboardingHook.result.current.setProduct("local-openai");
+      applyDraft(onboardingHook.result.current, literalDraft);
+      for (let index = 0; index < literalDraft.plan.steps.length - 1; index += 1) {
+        onboardingHook.result.current.next();
+      }
+    });
+
+    await act(async () => {
+      expect(await onboardingHook.result.current.complete()).toBe(true);
+    });
+
+    expect(JSON.stringify(onboardingHook.result.current.wizardData)).not.toContain(secret);
+    expect(onboardingHook.result.current.error).toBeNull();
+  });
+
+  it("redacts literal bearer tokens from completion errors", async () => {
+    const secret = "literal-local-value-9a";
+    const localDraft = readyLocalDraft();
+    if (localDraft.configurationInput.transportFamily !== "local-http") {
+      throw new Error("Expected local HTTP draft");
+    }
+    const literalDraft: OnboardingDraft = {
+      ...localDraft,
+      configurationInput: {
+        ...localDraft.configurationInput,
+        bearerToken: { kind: "literal", value: secret },
+      },
+    };
+    mockExecuteConfigurationAction.mockImplementation(makeActionHandler(literalDraft));
+    mockSaveSettings.mockRejectedValue(
+      new Error(`Cannot persist ${secret} from /Users/voitz/.config/local-openai`),
+    );
+
+    const wrapper = createWrapper();
+    const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
+
+    act(() => {
+      onboardingHook.result.current.setProduct("local-openai");
+      applyDraft(onboardingHook.result.current, literalDraft);
+      for (let index = 0; index < literalDraft.plan.steps.length - 1; index += 1) {
+        onboardingHook.result.current.next();
+      }
+    });
+
+    await act(async () => {
+      expect(await onboardingHook.result.current.complete()).toBe(false);
+    });
+
+    const message = onboardingHook.result.current.error ?? "";
+    expect(message).toContain("[REDACTED]");
+    expect(message).not.toContain(secret);
+    expect(message).not.toContain("/Users/voitz");
+  });
+
   it("reports cleanup failures through a toast without rethrowing", async () => {
     const draft = readyDraft("gemini");
     mockExecuteConfigurationAction.mockImplementation(
@@ -435,14 +534,7 @@ describe("useOnboarding", () => {
     const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
 
     act(() => {
-      onboardingHook.result.current.updateData({
-        configurationInput: draft.configurationInput,
-        selectedModelId: draft.selectedModelId,
-        conformanceStatus: draft.conformanceStatus,
-      });
-      onboardingHook.result.current.updateData({
-        acknowledgement: draft.acknowledgement,
-      });
+      applyDraft(onboardingHook.result.current, draft);
       for (let index = 0; index < draft.plan.steps.length - 1; index += 1) {
         onboardingHook.result.current.next();
       }
@@ -459,5 +551,62 @@ describe("useOnboarding", () => {
         message: expect.stringContaining("Failed to remove the incomplete configuration"),
       }),
     );
+  });
+
+  it("registers a stable pagehide handler that revokes drafts with keepalive fetch", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ action: "delete", status: "succeeded" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const addListenerSpy = vi.spyOn(window, "addEventListener");
+    const draft = readyDraft("gemini");
+    mockExecuteConfigurationAction.mockImplementation(makeActionHandler(draft));
+
+    const wrapper = createWrapper();
+    const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
+
+    act(() => {
+      onboardingHook.result.current.updateData({
+        configurationInput: draft.configurationInput,
+        selectedModelId: draft.selectedModelId,
+        conformanceStatus: draft.conformanceStatus,
+      });
+    });
+
+    await act(async () => {
+      await onboardingHook.result.current.prepareDraftConfiguration();
+    });
+
+    expect(onboardingHook.result.current.draftConfiguration).not.toBeNull();
+    expect(addListenerSpy.mock.calls.filter(([event]) => event === "pagehide")).toHaveLength(1);
+
+    onboardingHook.rerender();
+    expect(addListenerSpy.mock.calls.filter(([event]) => event === "pagehide")).toHaveLength(1);
+
+    fetchMock.mockClear();
+
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent("pagehide"));
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/config/actions"),
+      expect.objectContaining({
+        method: "POST",
+        keepalive: true,
+        body: JSON.stringify({
+          action: "delete",
+          configurationId: "created-configuration",
+          expectedRevision: 3,
+        }),
+      }),
+    );
+
+    addListenerSpy.mockRestore();
+    vi.unstubAllGlobals();
   });
 });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { refineConfigurationReadinessConsistency } from "../schemas/config/configuration-readiness-consistency.js";
 import {
   type ClientConfigurationActionName,
   ClientConfigurationActionNameSchema,
@@ -6,57 +7,27 @@ import {
   ClientConfigurationNoticeSchema,
   type ClientConfigurationSummary,
   ClientConfigurationSummarySchema,
-  ExactModelIdSchema,
 } from "../schemas/config/provider-config.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import {
   type Readiness,
   type ReadinessAcknowledgement,
   ReadinessSchema,
 } from "../schemas/config/readiness.js";
 import {
-  matchesHostedApiTransportTuple,
-  matchesLocalHttpTransportTuple,
-  type RemovedProductId,
-  RemovedProductIdSchema,
   type RunnableProductId,
   RunnableProductIdSchema,
+  TransportFamilySchema,
 } from "../schemas/config/transports.js";
-import {
-  isModelIdAllowedForProduct,
-  type ModelPolicy,
-  PRODUCT_REGISTRY,
-  type ProductNotice,
-} from "./product-registry.js";
+import { BILLING_MODES, CONFIGURATION_FIELDS, type ModelPolicy } from "./model-policy.js";
+import { PRODUCT_REGISTRY, type ProductNotice } from "./product-registry.js";
 
-const ConfigurationFieldSchema = z.enum([
-  "credential",
-  "region",
-  "workspace",
-  "endpoint",
-  "local-authentication",
-  "installation",
-]);
-
-const BillingModeSchema = z.enum([
-  "free-tier",
-  "pay-as-you-go",
-  "evaluation",
-  "route-specific",
-  "local-resource",
-  "subscription-credit",
-]);
+// Derived from the product-registry vocabularies so a new canonical member
+// fails to compile here instead of throwing at projection.
+const ConfigurationFieldSchema = z.enum(CONFIGURATION_FIELDS);
+const BillingModeSchema = z.enum(BILLING_MODES);
 
 const UNCONFIGURED_ACTIONS = ["create"] as const;
 const CONFIGURED_ACTIONS = ["inspect", "select", "test", "update", "delete"] as const;
-const REMOVED_ACTIONS = ["inspect", "delete"] as const;
-const LOCAL_HTTP_ONLY_READINESS = new Set<Readiness["status"]>([
-  "local-endpoint-unreachable",
-  "local-endpoint-forbidden",
-  "local-api-incompatible",
-  "local-no-review-capable-model",
-  "local-selected-model-missing",
-]);
 
 const ClientEndpointProfileSchema = z.strictObject({
   id: z.string().min(1),
@@ -100,11 +71,11 @@ const ClientModelPolicySchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
-const ClientRunnableProductSchema = z.strictObject({
+export const ClientProductMetadataSchema = z.strictObject({
   productId: RunnableProductIdSchema,
   status: z.literal("supported"),
   selectable: z.literal(true),
-  transportFamily: z.enum(["hosted-api", "local-http", "local-cli"]),
+  transportFamily: TransportFamilySchema,
   name: z.string().min(1),
   description: z.string().min(1),
   setupLabel: z.string().min(1),
@@ -119,34 +90,6 @@ const ClientRunnableProductSchema = z.strictObject({
   notice: ClientConfigurationNoticeSchema,
 });
 
-const ClientRemovedProductSchema = z.strictObject({
-  productId: RemovedProductIdSchema,
-  status: z.literal("removed"),
-  selectable: z.literal(false),
-  transportFamily: z.literal("hosted-api"),
-  name: z.string().min(1),
-  description: z.string().min(1),
-  replacementProductId: z.literal("zai"),
-  migrationActions: z.tuple([
-    z.literal("create-new-zai-configuration"),
-    z.literal("delete-removed-record"),
-  ]),
-});
-
-const ClientProductMetadataShapeSchema = z.union([
-  ClientRunnableProductSchema,
-  ClientRemovedProductSchema,
-]);
-export const ClientProductMetadataSchema = ClientProductMetadataShapeSchema.superRefine(
-  (product, context) => {
-    if (JSON.stringify(product) !== JSON.stringify(buildClientProduct(product.productId))) {
-      context.addIssue({
-        code: "custom",
-        message: "Product metadata must match the product registry projection",
-      });
-    }
-  },
-);
 export type ClientProductMetadata = z.infer<typeof ClientProductMetadataSchema>;
 
 const ClientMetadataPayloadShapeSchema = z.strictObject({
@@ -158,73 +101,33 @@ const ClientMetadataPayloadShapeSchema = z.strictObject({
 });
 type ClientMetadataPayloadShape = z.infer<typeof ClientMetadataPayloadShapeSchema>;
 
-function matchesActions(
-  actual: readonly ClientConfigurationActionName[],
-  expected: readonly ClientConfigurationActionName[],
-): boolean {
+function matchesList(actual: readonly string[], expected: readonly string[]): boolean {
   return (
-    actual.length === expected.length && actual.every((action, index) => action === expected[index])
+    actual.length === expected.length && actual.every((value, index) => value === expected[index])
   );
 }
 
-function isLatestAlias(modelId: string): boolean {
-  return modelId.split(/[./:_-]/).some((segment) => segment.toLowerCase() === "latest");
+// The remaining notice fields are single-valued literals in
+// `ClientConfigurationNoticeSchema`, so identity plus copy is the whole notice.
+function matchesNotices(
+  actual: readonly ClientConfigurationNotice[],
+  expected: readonly ClientConfigurationNotice[],
+): boolean {
+  return (
+    actual.length === expected.length &&
+    actual.every((notice, index) => {
+      const other = expected[index];
+      return (
+        other !== undefined &&
+        notice.id === other.id &&
+        notice.noticeVersion === other.noticeVersion &&
+        matchesList(notice.billing, other.billing) &&
+        matchesList(notice.privacy, other.privacy)
+      );
+    })
+  );
 }
 
-function isEligibleReadyModelId(modelId: string, productId: RunnableProductId): boolean {
-  if (!ExactModelIdSchema.safeParse(modelId).success || isLatestAlias(modelId)) return false;
-  return isModelIdAllowedForProduct(productId, modelId);
-}
-
-function validateReadyClaims(
-  productId: RunnableProductId,
-  configuration: ClientConfigurationSummary,
-  readiness: Readiness,
-  context: z.RefinementCtx<ClientMetadataPayloadShape>,
-): void {
-  if (readiness.status !== "ready") return;
-
-  if (!readiness.ready || readiness.evidenceStatus !== "passed" || readiness.checkedAt === null) {
-    context.addIssue({
-      code: "custom",
-      message: "Ready metadata requires passed evidence with a checked timestamp",
-      path: ["readiness"],
-    });
-  }
-
-  const selectedModelId = configuration.selectedModelId;
-  if (selectedModelId === null || !isEligibleReadyModelId(selectedModelId, productId)) {
-    context.addIssue({
-      code: "custom",
-      message: "Ready metadata requires an eligible exact selected model",
-      path: ["configuration", "selectedModelId"],
-    });
-  }
-
-  const acknowledgement = readiness.acknowledgement;
-  const notice = PRODUCT_REGISTRY[productId].notice;
-  if (
-    acknowledgement.status !== "accepted" ||
-    acknowledgement.noticeId !== notice.id ||
-    acknowledgement.noticeVersion !== notice.noticeVersion
-  ) {
-    context.addIssue({
-      code: "custom",
-      message: "Ready metadata requires acknowledgement of the current product notice",
-      path: ["readiness", "acknowledgement"],
-    });
-  }
-}
-
-/**
- * A non-ready state may still carry an acknowledgement observed while the
- * configuration was tested (for example a failed or intentionally skipped
- * probe).  The acknowledgement is client-safe only when it refers to the
- * notice owned by the projected product.  `not-applicable` is retained for
- * states that cannot carry terms (unsupported/removed and early failures),
- * while every required or accepted acknowledgement is bound to the current
- * product notice.
- */
 function validateAcknowledgementClaims(
   productId: RunnableProductId,
   readiness: Readiness,
@@ -251,9 +154,8 @@ function validatePayloadConsistency(
   context: z.RefinementCtx<ClientMetadataPayloadShape>,
 ): void {
   const { actions, configuration, notices, product, readiness } = payload;
-  const expectedNotices = product.status === "removed" ? [] : [product.notice];
 
-  if (JSON.stringify(notices) !== JSON.stringify(expectedNotices)) {
+  if (!matchesNotices(notices, [product.notice])) {
     context.addIssue({
       code: "custom",
       message: "Payload notices must match the product registry projection",
@@ -276,75 +178,27 @@ function validatePayloadConsistency(
         path: ["configuration", "transportFamily"],
       });
     }
-    if (!matchesProductEndpoint(configuration)) {
-      context.addIssue({
-        code: "custom",
-        message: "Configuration endpoint must match the product registry projection",
-        path: ["configuration"],
-      });
-    }
-    if (!matchesActions(actions, configuration.availableActions)) {
+    if (!matchesList(actions, configuration.availableActions)) {
       context.addIssue({
         code: "custom",
         message: "Payload actions do not match the configuration",
         path: ["actions"],
       });
     }
-    if (JSON.stringify(notices) !== JSON.stringify(configuration.notices)) {
+    if (!matchesNotices(notices, configuration.notices)) {
       context.addIssue({
         code: "custom",
         message: "Payload notices do not match the configuration",
         path: ["notices"],
       });
     }
-  }
 
-  if (product.status === "removed") {
-    if (configuration?.status !== "removed" || readiness.status !== "removed") {
-      context.addIssue({
-        code: "custom",
-        message: "Removed product metadata requires a removed configuration and readiness",
-        path: ["product", "status"],
-      });
-    }
-    if (!matchesActions(actions, REMOVED_ACTIONS)) {
-      context.addIssue({
-        code: "custom",
-        message: "Removed records allow only inspection and deletion",
-        path: ["actions"],
-      });
-    }
-    return;
-  }
-
-  validateAcknowledgementClaims(product.productId, readiness, context);
-
-  if (configuration?.status === "removed" || readiness.status === "removed") {
-    context.addIssue({
-      code: "custom",
-      message: "Supported product metadata has removed state",
-      path: ["product", "status"],
-    });
-    return;
-  }
-
-  if (product.transportFamily === "hosted-api" && readiness.status.startsWith("local-")) {
-    context.addIssue({
-      code: "custom",
-      message: "Hosted products cannot report local readiness",
-      path: ["readiness", "status"],
-    });
-  }
-  if (product.transportFamily === "local-cli" && LOCAL_HTTP_ONLY_READINESS.has(readiness.status)) {
-    context.addIssue({
-      code: "custom",
-      message: "Local CLI products cannot report HTTP readiness",
-      path: ["readiness", "status"],
-    });
+    refineConfigurationReadinessConsistency({ configuration, readiness }, context);
   }
 
   if (!configuration) {
-    if (readiness.status !== "unconfigured" || !matchesActions(actions, UNCONFIGURED_ACTIONS)) {
+    validateAcknowledgementClaims(product.productId, readiness, context);
+    if (readiness.status !== "unconfigured" || !matchesList(actions, UNCONFIGURED_ACTIONS)) {
       context.addIssue({
         code: "custom",
         message: "An unconfigured product allows only creation",
@@ -354,14 +208,7 @@ function validatePayloadConsistency(
     return;
   }
 
-  if (readiness.status === "unconfigured") {
-    context.addIssue({
-      code: "custom",
-      message: "Configured products cannot be unconfigured",
-      path: ["readiness", "status"],
-    });
-  }
-  if (!matchesActions(actions, CONFIGURED_ACTIONS)) {
+  if (!matchesList(actions, CONFIGURED_ACTIONS)) {
     context.addIssue({
       code: "custom",
       message: "Supported configurations must expose the configured action contract",
@@ -375,10 +222,6 @@ function validatePayloadConsistency(
       path: ["readiness", "action"],
     });
   }
-
-  if (configuration.status === "supported") {
-    validateReadyClaims(product.productId, configuration, readiness, context);
-  }
 }
 
 export const ClientMetadataPayloadSchema = ClientMetadataPayloadShapeSchema.superRefine(
@@ -387,15 +230,17 @@ export const ClientMetadataPayloadSchema = ClientMetadataPayloadShapeSchema.supe
 export type ClientMetadataPayload = z.infer<typeof ClientMetadataPayloadSchema>;
 
 export interface ClientMetadataSource {
-  readonly productId: RunnableProductId | RemovedProductId;
+  readonly productId: RunnableProductId;
   readonly configuration: ClientConfigurationSummary | null;
   readonly readiness: Readiness;
   readonly notices: readonly (ProductNotice | ClientConfigurationNotice)[];
   readonly actions: readonly ClientConfigurationActionName[];
 }
 
-function toClientNotice(notice: ProductNotice | ClientConfigurationNotice) {
-  return ClientConfigurationNoticeSchema.parse({
+function toClientNotice(
+  notice: ProductNotice | ClientConfigurationNotice,
+): ClientConfigurationNotice {
+  return {
     id: notice.id,
     noticeVersion: notice.noticeVersion,
     acknowledgement: notice.acknowledgement,
@@ -403,59 +248,52 @@ function toClientNotice(notice: ProductNotice | ClientConfigurationNotice) {
     renewAcknowledgementOn: notice.renewAcknowledgementOn,
     billing: [...notice.billing],
     privacy: [...notice.privacy],
-  });
+  };
 }
 
-function toClientModelPolicy(modelPolicy: ModelPolicy) {
+function toClientModelPolicy(modelPolicy: ModelPolicy): ClientProductMetadata["modelPolicy"] {
   switch (modelPolicy.kind) {
     case "discovered-exact":
-      return ClientModelPolicySchema.parse({
+      return {
         kind: modelPolicy.kind,
         suggestedModelId: modelPolicy.suggestedModelId,
-        explicitOptInSuffixes: modelPolicy.explicitOptInSuffixes,
+        explicitOptInSuffixes: modelPolicy.explicitOptInSuffixes
+          ? [...modelPolicy.explicitOptInSuffixes]
+          : undefined,
         aliases: modelPolicy.aliases,
-      });
+      };
     case "discovered-allowlist":
-      return ClientModelPolicySchema.parse({
+      return {
         kind: modelPolicy.kind,
         modelIds: [...modelPolicy.modelIds],
         suggestedModelId: modelPolicy.suggestedModelId,
-        higherCostModelIds: modelPolicy.higherCostModelIds,
-        higherCostModelEvidence: modelPolicy.higherCostModelEvidence,
+        higherCostModelIds: modelPolicy.higherCostModelIds
+          ? [...modelPolicy.higherCostModelIds]
+          : undefined,
+        higherCostModelEvidence: modelPolicy.higherCostModelEvidence
+          ? { ...modelPolicy.higherCostModelEvidence }
+          : undefined,
         aliases: modelPolicy.aliases,
-      });
+      };
     case "discovered-family":
-      return ClientModelPolicySchema.parse({
+      return {
         kind: modelPolicy.kind,
         familyPrefixes: [...modelPolicy.familyPrefixes],
         rejectedAliases: [...modelPolicy.rejectedAliases],
         aliases: modelPolicy.aliases,
-      });
+      };
     case "pinned-downstream-route":
-      return ClientModelPolicySchema.parse({
+      return {
         kind: modelPolicy.kind,
         routePolicy: modelPolicy.routePolicy,
         automaticRouting: modelPolicy.automaticRouting,
         aliases: modelPolicy.aliases,
-      });
+      };
   }
 }
 
-function buildClientProduct(productId: RunnableProductId | RemovedProductId) {
+function buildClientProduct(productId: RunnableProductId): ClientProductMetadata {
   const product = PRODUCT_REGISTRY[productId];
-
-  if (product.kind === "removed") {
-    return {
-      productId: product.id,
-      status: product.kind,
-      selectable: product.selectable,
-      transportFamily: product.transportFamily,
-      name: product.presentation.name,
-      description: product.presentation.description,
-      replacementProductId: product.migration.targetProductId,
-      migrationActions: [...product.migration.actions],
-    };
-  }
 
   return {
     productId: product.id,
@@ -486,71 +324,61 @@ function buildClientProduct(productId: RunnableProductId | RemovedProductId) {
   };
 }
 
-export function projectClientProduct(
-  productId: RunnableProductId | RemovedProductId,
-): ClientProductMetadata {
+export function projectClientProduct(productId: RunnableProductId): ClientProductMetadata {
   return ClientProductMetadataSchema.parse(buildClientProduct(productId));
 }
 
-function toClientConfiguration(configuration: ClientConfigurationSummary | null) {
+function toClientConfiguration(
+  configuration: ClientConfigurationSummary | null,
+): ClientConfigurationSummary | null {
   if (!configuration) return null;
 
-  const base = {
+  if (configuration.transportFamily === "hosted-api") {
+    return {
+      configurationId: configuration.configurationId,
+      revision: configuration.revision,
+      status: configuration.status,
+      transportFamily: configuration.transportFamily,
+      productId: configuration.productId,
+      endpoint: configuration.endpoint,
+      region: configuration.region,
+      workspace: configuration.workspace,
+      selectedModelId: configuration.selectedModelId,
+      notices: configuration.notices.map(toClientNotice),
+      availableActions: [...configuration.availableActions],
+    };
+  }
+  if (configuration.transportFamily === "local-http") {
+    return {
+      configurationId: configuration.configurationId,
+      revision: configuration.revision,
+      status: configuration.status,
+      transportFamily: configuration.transportFamily,
+      productId: configuration.productId,
+      endpoint: configuration.endpoint,
+      authentication: configuration.authentication,
+      presetId: configuration.presetId,
+      selectedModelId: configuration.selectedModelId,
+      notices: configuration.notices.map(toClientNotice),
+      availableActions: [...configuration.availableActions],
+    };
+  }
+  return {
     configurationId: configuration.configurationId,
     revision: configuration.revision,
     status: configuration.status,
     transportFamily: configuration.transportFamily,
     productId: configuration.productId,
+    installationId: configuration.installationId,
     selectedModelId: configuration.selectedModelId,
     notices: configuration.notices.map(toClientNotice),
     availableActions: [...configuration.availableActions],
   };
-
-  if (configuration.status === "removed") {
-    return ClientConfigurationSummarySchema.parse(base);
-  }
-  if (configuration.transportFamily === "hosted-api") {
-    return ClientConfigurationSummarySchema.parse({
-      ...base,
-      endpoint: configuration.endpoint,
-      region: configuration.region,
-      workspace: configuration.workspace,
-    });
-  }
-  if (configuration.transportFamily === "local-http") {
-    return ClientConfigurationSummarySchema.parse({
-      ...base,
-      endpoint: configuration.endpoint,
-      authentication: configuration.authentication,
-      presetId: configuration.presetId,
-    });
-  }
-  return ClientConfigurationSummarySchema.parse({
-    ...base,
-    installationId: configuration.installationId,
-  });
 }
 
-function matchesProductEndpoint(configuration: ClientConfigurationSummary): boolean {
-  if (configuration.status === "removed") return configuration.productId === REMOVED_PRODUCT_ID;
-
-  const product = PRODUCT_REGISTRY[configuration.productId];
-  if (product.transportFamily !== configuration.transportFamily) {
-    return false;
-  }
-
-  if (configuration.transportFamily === "hosted-api") {
-    return matchesHostedApiTransportTuple(configuration);
-  }
-
-  if (configuration.transportFamily === "local-http") {
-    return matchesLocalHttpTransportTuple(configuration);
-  }
-
-  return true;
-}
-
-function toClientAcknowledgement(acknowledgement: ReadinessAcknowledgement) {
+function toClientAcknowledgement(
+  acknowledgement: ReadinessAcknowledgement,
+): ReadinessAcknowledgement {
   if (acknowledgement.status === "not-applicable") return { status: acknowledgement.status };
   if (acknowledgement.status === "required") {
     return {
@@ -567,8 +395,15 @@ function toClientAcknowledgement(acknowledgement: ReadinessAcknowledgement) {
   };
 }
 
-function toClientReadiness(readiness: Readiness) {
-  return ReadinessSchema.parse({
+/**
+ * Names every field the client may see, so a server-only one added to
+ * `Readiness` upstream is dropped here instead of reaching the wire. Assembling
+ * the fields one by one decorrelates them from the status, so the assertion puts
+ * `Readiness` back on the return rather than handing callers a bag of every
+ * branch's keys.
+ */
+function toClientReadiness(readiness: Readiness): Readiness {
+  return {
     status: readiness.status,
     ready: readiness.ready,
     evidenceStatus: readiness.evidenceStatus,
@@ -576,16 +411,15 @@ function toClientReadiness(readiness: Readiness) {
     acknowledgement: toClientAcknowledgement(readiness.acknowledgement),
     action: readiness.action,
     explanation: readiness.explanation,
-    remediation: {
-      code: readiness.remediation.code,
-      message: readiness.remediation.message,
-    },
-  });
+    // Copied as a pair: splitting code from message decorrelates the literals
+    // `ReadinessSchema` ties to the status.
+    remediation: readiness.remediation,
+  } as Readiness;
 }
 
 export function projectClientMetadata(source: ClientMetadataSource): ClientMetadataPayload {
   return ClientMetadataPayloadSchema.parse({
-    product: projectClientProduct(source.productId),
+    product: buildClientProduct(source.productId),
     configuration: toClientConfiguration(source.configuration),
     readiness: toClientReadiness(source.readiness),
     notices: source.notices.map(toClientNotice),

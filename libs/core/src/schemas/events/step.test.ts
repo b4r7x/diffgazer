@@ -16,7 +16,14 @@ describe("StepEventSchema", () => {
 
   it.each([
     { type: "agent_thinking", agent: "detective", thought: "Reviewing", timestamp: "now" },
-    { type: "file_start", file: "src/app.ts", index: 0, total: 1, timestamp: "now" },
+    {
+      type: "file_progress",
+      agent: "detective",
+      file: "src/app.ts",
+      completed: 1,
+      total: 1,
+      timestamp: "now",
+    },
   ])("rejects the complete non-step $type event", (event) => {
     expect(StepEventSchema.safeParse(event).success).toBe(false);
     expect(FullReviewStreamEventSchema.safeParse(event).success).toBe(true);
@@ -28,6 +35,8 @@ describe("StepEventSchema", () => {
     { type: "step_start" },
     { type: "step_error", step: "review", timestamp: "now" },
     { type: "step_complete", step: "unknown", timestamp: "now" },
+    { type: "review_started", reviewId: "review-1", filesTotal: -1, timestamp: "now" },
+    { type: "review_started", reviewId: "review-1", filesTotal: 1.5, timestamp: "now" },
   ])("rejects invalid unknown input at the stream schema boundary", (event) => {
     expect(FullReviewStreamEventSchema.safeParse(event).success).toBe(false);
   });

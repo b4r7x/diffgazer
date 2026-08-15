@@ -251,20 +251,34 @@ describe("file transaction lock", () => {
     expect(await readdir(lockPath)).toEqual([`${replacementOwnerId}.json`]);
   });
 
-  it("never treats an aged PID-reused generation as stale", async () => {
+  it("recovers an aged generation whose PID was reused by a live process", async () => {
+    await createLockGeneration(lockPath, {
+      ownerId: randomUUID(),
+      pid: process.pid,
+      createdAt: Date.now() - 120_000,
+    });
+
+    await withFileTransactionLock(targetPath, async () => undefined, {
+      timeoutMs: 100,
+      staleMs: 60_000,
+      retryMs: 2,
+    });
+
+    expect(existsSync(lockPath)).toBe(false);
+  });
+
+  it("does not steal a fresh generation owned by a live process", async () => {
     const ownerId = randomUUID();
     await createLockGeneration(lockPath, {
       ownerId,
       pid: process.pid,
-      createdAt: Date.now() - 120_000,
+      createdAt: Date.now(),
     });
-    const old = new Date(Date.now() - 120_000);
-    await utimes(lockPath, old, old);
 
     await expect(
       withFileTransactionLock(targetPath, async () => undefined, {
         timeoutMs: 20,
-        staleMs: 1,
+        staleMs: 60_000,
         retryMs: 2,
       }),
     ).rejects.toThrow("Timed out waiting for config transaction lock");
@@ -339,14 +353,14 @@ describe("file transaction lock", () => {
     expect(existsSync(lockPath)).toBe(false);
   });
 
-  it("never steals an aged lock while its owner process is alive", async () => {
+  it("never steals a lock held by a live owner inside the stale window", async () => {
     let firstInside = false;
     let overlap = false;
     let reportFirstEntry = () => {};
     const firstEntered = new Promise<void>((resolve) => {
       reportFirstEntry = resolve;
     });
-    const options = { timeoutMs: 500, staleMs: 20, retryMs: 2 };
+    const options = { timeoutMs: 500, staleMs: 60_000, retryMs: 2 };
 
     const first = withFileTransactionLock(
       targetPath,
@@ -460,8 +474,7 @@ describe("file transaction lock", () => {
       expect(results).toEqual(
         Array.from({ length: contenderCount }, () => ({ code: 0, stderr: "" })),
       );
-      const maxActive = existsSync(overlapPath) ? 2 : 1;
-      expect(maxActive).toBe(1);
+      expect(existsSync(overlapPath)).toBe(false);
       expect(existsSync(activePath)).toBe(false);
       expect(existsSync(roundLockPath)).toBe(false);
     }

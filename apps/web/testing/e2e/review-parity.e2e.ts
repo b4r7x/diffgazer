@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 const facts = reviewFacts(canonicalReviewFixture);
 
 test("the review summary exposes every aggregate review fact", async ({ page }) => {
-  await page.goto("/testing/fixtures/results-layout.html?view=summary");
+  await page.goto("/testing/fixtures/app-fixture.html?view=summary");
 
   await expect(page.getByRole("heading", { name: `Review Complete ${facts.runId}` })).toBeVisible();
 
@@ -38,7 +38,7 @@ test("the review summary exposes every aggregate review fact", async ({ page }) 
 });
 
 test("the results reader exposes every issue review fact", async ({ page }, testInfo) => {
-  await page.goto("/testing/fixtures/results-layout.html?view=results");
+  await page.goto("/testing/fixtures/app-fixture.html?view=results");
 
   await expect(page.getByText(`Review ${facts.runId}`, { exact: true })).toBeVisible();
   const issueList = page.getByRole("listbox", { name: "Issues" });
@@ -68,13 +68,10 @@ test("the results reader exposes every issue review fact", async ({ page }, test
 test("@parity the results layout matches the desktop and mobile baselines", async ({
   page,
 }, testInfo) => {
-  await page.goto("/testing/fixtures/results-layout.html?view=results");
+  await page.goto("/testing/fixtures/app-fixture.html?view=results");
 
   const results = page.locator("main");
   await expect(results).toBeVisible();
-  await expect(results).toHaveScreenshot("results-layout.png", {
-    mask: [page.getByText(`Review ${facts.runId}`, { exact: true })],
-  });
 
   const captureDir = process.env.DIFFGAZER_PARITY_CAPTURE_DIR;
   if (captureDir) {
@@ -84,4 +81,8 @@ test("@parity the results layout matches the desktop and mobile baselines", asyn
       path: join(captureDir, `web-${testInfo.project.name}.png`),
     });
   }
+
+  await expect(results).toHaveScreenshot("results-layout.png", {
+    mask: [page.getByText(`Review ${facts.runId}`, { exact: true })],
+  });
 });

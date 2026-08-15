@@ -1,3 +1,4 @@
+import { buildRunIdLookup } from "@diffgazer/core/format";
 import { canonicalReviewFixture } from "@diffgazer/core/testing/review-facts";
 import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -26,7 +27,7 @@ const mappedRuns = [
 
 vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@diffgazer/core/api/hooks")>()),
-  useInit: () => ({ data: undefined, isLoading: false }),
+  useConfigurationInit: () => ({ data: undefined, isLoading: false }),
 }));
 
 vi.mock("@diffgazer/core/review", async (importOriginal) => ({
@@ -39,6 +40,7 @@ vi.mock("@diffgazer/core/review", async (importOriginal) => ({
     },
     reviewDetailQuery: { isLoading: false, isError: false, error: null, refetch: vi.fn() },
     reviews: [f.metadata],
+    runIdLookup: buildRunIdLookup([f.metadata.id]),
     timelineItems: [
       { id: "all", label: "All", count: 2 },
       { id: "2026-07-18", label: "Jul 18", count: 1 },

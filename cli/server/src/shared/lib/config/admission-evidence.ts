@@ -1,27 +1,24 @@
+import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import {
   type EvidenceKey,
   EvidenceKeySchema,
-  hashEvidenceKey as hashCoreEvidenceKey,
+  type RuntimeIdentity,
   Sha256HexSchema,
-  sha256CanonicalJsonSync,
 } from "@diffgazer/core/schemas/review";
 import { z } from "zod";
+import { effectiveBudgetForRecord, executionLimitsFromBudget } from "./budget-ceiling.js";
+import type { SupportedProviderConfigurationRecord } from "./provider-config.js";
 
 /**
  * Evidence is an observation of one immutable provider tuple.  A missing
- * record is represented by the absence of `AdmissionEvidence`; the explicit
- * statuses below describe records that were observed or deliberately skipped.
+ * record is represented by the absence of `AdmissionEvidence`; the two statuses
+ * below are the only verdicts an observation can record — the tuple answered in
+ * schema, or it did not.
  */
-export const ADMISSION_EVIDENCE_STATUSES = [
-  "not-checked",
-  "pending",
-  "failed",
-  "skipped",
-  "passed",
-  "expired",
-] as const;
-export const AdmissionEvidenceStatusSchema = z.enum(ADMISSION_EVIDENCE_STATUSES);
-export type AdmissionEvidenceStatus = z.infer<typeof AdmissionEvidenceStatusSchema>;
+const ADMISSION_EVIDENCE_STATUSES = ["failed", "passed"] as const;
+const AdmissionEvidenceStatusSchema = z.enum(ADMISSION_EVIDENCE_STATUSES);
+type AdmissionEvidenceStatus = z.infer<typeof AdmissionEvidenceStatusSchema>;
 
 const CheckedAtSchema = z.iso.datetime().nullable();
 const ExpiresAtSchema = z.iso.datetime().nullable().optional();
@@ -41,15 +38,7 @@ export const AdmissionEvidenceSchema = z
     expiresAt: ExpiresAtSchema,
   })
   .superRefine((evidence, context) => {
-    if (evidence.status === "not-checked" && evidence.checkedAt !== null) {
-      context.addIssue({
-        code: "custom",
-        message: "Not-checked evidence cannot carry an observation time",
-        path: ["checkedAt"],
-      });
-    }
-
-    if (evidence.status !== "not-checked" && evidence.checkedAt === null) {
+    if (evidence.checkedAt === null) {
       context.addIssue({
         code: "custom",
         message: "Observed evidence requires an observation time",
@@ -82,25 +71,48 @@ export const AdmissionEvidenceSchema = z
 export type AdmissionEvidence = z.infer<typeof AdmissionEvidenceSchema>;
 
 /**
- * This is the only evidence shape allowed to cross the client boundary.  It
- * deliberately omits the complete key, expiry policy, runtime identity and
- * all server-only observations.
+ * The one place an evidence key is derived from a stored configuration record.
+ * Admission and readiness both compare against this projection, so it lives
+ * beside the evidence record rather than inside either caller.
  */
-export const SafeEvidenceReferenceSchema = z
-  .strictObject({
-    evidenceKeyHash: Sha256HexSchema,
-    checkedAt: CheckedAtSchema,
-    status: AdmissionEvidenceStatusSchema,
-  })
-  .readonly();
-export type SafeEvidenceReference = z.infer<typeof SafeEvidenceReferenceSchema>;
+export function buildExpectedEvidenceKey(input: {
+  readonly record: SupportedProviderConfigurationRecord;
+  readonly structuredOutputSchemaSha256: string;
+  readonly runtime: RuntimeIdentity;
+  readonly credentialReferenceIdentity: string | null;
+  readonly workspaceAccountReference: string | null;
+}): EvidenceKey {
+  const { record } = input;
+  const product = PRODUCT_REGISTRY[record.productId];
+  const expectedEndpoint =
+    record.input.transportFamily === "local-cli" ? null : record.input.endpoint;
+  const expectedRegion =
+    record.input.transportFamily === "hosted-api" ? (record.input.region ?? null) : null;
+
+  const authentication =
+    record.input.transportFamily === "local-http" ? record.input.authentication : null;
+  const installationId =
+    record.input.transportFamily === "local-cli" ? record.input.installationId : null;
+
+  return EvidenceKeySchema.parse({
+    authentication,
+    credentialReferenceIdentity: input.credentialReferenceIdentity,
+    installationId,
+    productId: record.productId,
+    transportFamily: record.transportFamily,
+    normalizedEndpoint: expectedEndpoint,
+    region: expectedRegion,
+    workspaceAccountReference: input.workspaceAccountReference,
+    modelId: record.selectedModelId,
+    runtime: input.runtime,
+    structuredOutputSchemaSha256: input.structuredOutputSchemaSha256,
+    noticeVersion: product.notice.noticeVersion,
+    limits: executionLimitsFromBudget(effectiveBudgetForRecord(record)),
+  });
+}
 
 export function hashAdmissionEvidenceKeySync(input: unknown): string {
   return sha256CanonicalJsonSync(EvidenceKeySchema.parse(input));
-}
-
-export function hashAdmissionEvidenceKey(input: unknown): Promise<string> {
-  return hashCoreEvidenceKey(EvidenceKeySchema.parse(input));
 }
 
 export type CreateAdmissionEvidenceInput = {
@@ -121,17 +133,6 @@ export function createAdmissionEvidence(input: CreateAdmissionEvidenceInput): Ad
   });
 }
 
-export function toSafeEvidenceReference(
-  evidence: AdmissionEvidence | z.input<typeof AdmissionEvidenceSchema>,
-): SafeEvidenceReference {
-  const parsed = AdmissionEvidenceSchema.parse(evidence);
-  return SafeEvidenceReferenceSchema.parse({
-    evidenceKeyHash: parsed.evidenceKeyHash,
-    checkedAt: parsed.checkedAt,
-    status: parsed.status,
-  });
-}
-
 function parseNow(now: Date | string): number | null {
   const timestamp = now instanceof Date ? now.getTime() : Date.parse(now);
   return Number.isFinite(timestamp) ? timestamp : null;
@@ -146,23 +147,23 @@ export function evidenceMatchesKey(
   return parsed.data.evidenceKeyHash === hashAdmissionEvidenceKeySync(expectedKey);
 }
 
-export type EvidenceFreshnessOptions = {
-  readonly now?: Date | string;
-  readonly maxAgeMs?: number;
-};
-
 /**
  * Admission is fail-closed: only a passed, hash-matching observation with a
- * valid timestamp and unexpired freshness window can authorize execution.
+ * valid timestamp can authorize execution. Evidence is invalidated by a tuple
+ * change alone; the `expiresAt` check only honours a deadline a campaign-era
+ * record already carries.
  */
 export function canAuthorizeEvidence(
   evidence: AdmissionEvidence | z.input<typeof AdmissionEvidenceSchema> | null | undefined,
   expectedKey: z.input<typeof EvidenceKeySchema>,
-  options: EvidenceFreshnessOptions = {},
+  options: { readonly now?: Date | string } = {},
 ): boolean {
   const parsed = AdmissionEvidenceSchema.safeParse(evidence);
   if (!parsed.success || parsed.data.status !== "passed") return false;
-  if (parsed.data.checkedAt === null || !evidenceMatchesKey(parsed.data, expectedKey)) return false;
+  // Compare hashes directly rather than re-entering `evidenceMatchesKey`, which
+  // would re-parse (and re-hash) the value this function has already validated.
+  if (parsed.data.checkedAt === null) return false;
+  if (parsed.data.evidenceKeyHash !== hashAdmissionEvidenceKeySync(expectedKey)) return false;
 
   const now = parseNow(options.now ?? new Date());
   const checkedAt = Date.parse(parsed.data.checkedAt);
@@ -173,36 +174,7 @@ export function canAuthorizeEvidence(
     if (!Number.isFinite(expiresAt) || now >= expiresAt) return false;
   }
 
-  if (options.maxAgeMs !== undefined) {
-    if (!Number.isFinite(options.maxAgeMs) || options.maxAgeMs < 0) return false;
-    if (now - checkedAt >= options.maxAgeMs) return false;
-  }
-
   return true;
-}
-
-export function isEvidenceExpired(
-  evidence: AdmissionEvidence | z.input<typeof AdmissionEvidenceSchema>,
-  options: Pick<EvidenceFreshnessOptions, "now" | "maxAgeMs"> = {},
-): boolean {
-  const parsed = AdmissionEvidenceSchema.safeParse(evidence);
-  if (!parsed.success || parsed.data.status === "expired") return true;
-  if (parsed.data.checkedAt === null) return parsed.data.status !== "passed";
-
-  const now = parseNow(options.now ?? new Date());
-  const checkedAt = Date.parse(parsed.data.checkedAt);
-  if (now === null || !Number.isFinite(checkedAt)) return true;
-
-  if (parsed.data.expiresAt !== undefined && parsed.data.expiresAt !== null) {
-    const expiresAt = Date.parse(parsed.data.expiresAt);
-    if (!Number.isFinite(expiresAt) || now >= expiresAt) return true;
-  }
-
-  return options.maxAgeMs !== undefined
-    ? !Number.isFinite(options.maxAgeMs) ||
-        options.maxAgeMs < 0 ||
-        now - checkedAt >= options.maxAgeMs
-    : false;
 }
 
 export type { EvidenceKey };

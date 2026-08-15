@@ -26,7 +26,6 @@ export function MenuStackBack({ label }: MenuStackBackProps) {
     highlighted,
     highlight,
     idPrefix,
-    itemRole,
     registerItem,
     unregisterItem,
     registerActivator,
@@ -59,7 +58,7 @@ export function MenuStackBack({ label }: MenuStackBackProps) {
       id={getEncodedListboxItemId(idPrefix, MENU_STACK_BACK_ID)}
       // APG: the back row is a command inside the same menu, never a radio, so
       // the role is pinned rather than inherited from the menu-wide itemRole.
-      role={itemRole === "menuitemradio" ? "menuitem" : itemRole}
+      role="menuitem"
       tabIndex={-1}
       data-slot="menu-stack-back"
       data-diffgazer-navigation-item="true"

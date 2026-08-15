@@ -23,7 +23,7 @@ export interface WordDiffBudget {
 }
 
 /** Default total word-diff LCS cell budget. */
-export const DEFAULT_WORD_DIFF_CELL_BUDGET = 50_000;
+const DEFAULT_WORD_DIFF_CELL_BUDGET = 50_000;
 
 /** Creates a shared budget for word-diff segment computation. */
 export function createWordDiffBudget(maxCells = DEFAULT_WORD_DIFF_CELL_BUDGET): WordDiffBudget {

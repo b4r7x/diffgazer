@@ -10,6 +10,15 @@ export interface TypeaheadSearchOptions<Item> {
   getLabel: (item: Item) => string;
 }
 
+/**
+ * Folds a query or label to one comparable form: NFC so composed and decomposed
+ * spellings of the same characters match, then locale-aware lowercase, then NFC
+ * again because case mapping can denormalize.
+ */
+function foldTypeaheadValue(value: string): string {
+  return value.normalize("NFC").toLocaleLowerCase().normalize("NFC");
+}
+
 /** Finds the next item whose label starts with the typeahead query. */
 export function typeaheadSearch<Item>({
   items,
@@ -19,17 +28,19 @@ export function typeaheadSearch<Item>({
 }: TypeaheadSearchOptions<Item>): Item | null {
   if (items.length === 0 || query.length === 0) return null;
 
-  const firstChar = query.charAt(0);
-  const isCyclingChar = query.length > 1 && query.split("").every((char) => char === firstChar);
-  const search = isCyclingChar ? firstChar : query;
-  const startIndex = isCyclingChar || query.length === 1 ? currentIndex + 1 : 0;
+  const foldedQuery = foldTypeaheadValue(query);
+  // Code points, not code units, so an astral first character is one character here.
+  const queryChars = [...foldedQuery];
+  const firstChar = queryChars[0] ?? "";
+  const isCyclingChar = queryChars.length > 1 && queryChars.every((char) => char === firstChar);
+  const search = isCyclingChar ? firstChar : foldedQuery;
+  const startIndex = isCyclingChar || queryChars.length === 1 ? currentIndex + 1 : 0;
 
   for (let offset = 0; offset < items.length; offset++) {
     const index = (startIndex + offset) % items.length;
     const item = items[index];
     if (item === undefined) continue;
-    const label = getLabel(item).toLocaleLowerCase();
-    if (label.startsWith(search)) return item;
+    if (foldTypeaheadValue(getLabel(item)).startsWith(search)) return item;
   }
 
   return null;

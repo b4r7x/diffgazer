@@ -1,4 +1,3 @@
-import type { CatalogErrorCode } from "@diffgazer/core/schemas/config";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { ReviewErrorCode } from "@diffgazer/core/schemas/review";
 import type { Context } from "hono";
@@ -21,7 +20,6 @@ import type { ConfigServiceErrorCode, StoreErrorCode } from "./error-codes.js";
 export type WireErrorCode =
   | ErrorCode
   | (typeof ReviewErrorCode)[keyof typeof ReviewErrorCode]
-  | CatalogErrorCode
   | AIErrorCode
   | SecretsStorageErrorCode
   | ConfigurationActionErrorCode

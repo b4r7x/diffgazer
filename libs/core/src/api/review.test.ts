@@ -1,10 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { createApiClient } from "./client.js";
 import {
+  bindReview,
   type CreateReviewOptions,
   createReview,
   getActiveReviewSession,
+  getReviewContext,
   getReviews,
+  REVIEW_CONTEXT_RESPONSE_MAX_BYTES,
+  REVIEWS_LIST_RESPONSE_MAX_BYTES,
   refreshReviewContext,
   resumeReviewStream,
 } from "./review.js";
@@ -18,9 +22,17 @@ const _validReviewOptions: CreateReviewOptions = { lenses: ["security"], profile
 const _invalidLenses: CreateReviewOptions = { lenses: ["not-a-lens"] };
 // @ts-expect-error -- "not-a-profile" is not a ProfileId
 const _invalidProfile: CreateReviewOptions = { profile: "not-a-profile" };
+// @ts-expect-error -- mode "files" requires a non-empty files[]
+const _filesModeWithoutFiles: CreateReviewOptions = { mode: "files" };
+// @ts-expect-error -- mode "files" rejects an empty files[]
+const _filesModeWithEmptyFiles: CreateReviewOptions = { mode: "files", files: [] };
+const _filesMode: CreateReviewOptions = { mode: "files", files: ["src/index.ts"] };
 void _validReviewOptions;
 void _invalidLenses;
 void _invalidProfile;
+void _filesModeWithoutFiles;
+void _filesModeWithEmptyFiles;
+void _filesMode;
 
 function streamResponse(events: unknown[]): Response {
   const encoder = new TextEncoder();
@@ -48,14 +60,30 @@ describe("resumeReviewStream", () => {
     [500, "STREAM_ERROR"],
   ])("maps HTTP %s failures to %s", async (status, code) => {
     const client = createClient();
-    const error = new Error("Request failed") as Error & { status: number };
-    error.status = status;
+    const error = Object.assign(new Error("Request failed"), { status });
     vi.mocked(client.request).mockRejectedValue(error);
 
     const result = await resumeReviewStream(client, { reviewId: "r1" });
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe(code);
+  });
+
+  it("maps HTTP 403 TRUST_REQUIRED to TRUST_REQUIRED instead of STREAM_ERROR", async () => {
+    const client = createClient();
+    const error = Object.assign(new Error("Repository access not granted"), {
+      status: 403,
+      code: "TRUST_REQUIRED",
+    });
+    vi.mocked(client.request).mockRejectedValue(error);
+
+    const result = await resumeReviewStream(client, { reviewId: "r1" });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("TRUST_REQUIRED");
+      expect(result.error.message).toBe("Repository access not granted");
+    }
   });
 
   it("returns a stream error when the response has no body or the thrown value is not an Error", async () => {
@@ -130,6 +158,43 @@ describe("resumeReviewStream", () => {
     );
     expect(onAgentEvent).toHaveBeenCalledWith(expect.objectContaining({ type: "agent_start" }));
     expect(onChunk).toHaveBeenCalledWith("partial");
+  });
+
+  it("releases the body and cancels the source when a chunk handler throws", async () => {
+    const client = createClient();
+    let cancelCount = 0;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: {"type":"chunk","content":"x"}\n\n'));
+      },
+      cancel() {
+        cancelCount += 1;
+      },
+    });
+    const response = new Response(body, { status: 200 });
+    vi.mocked(client.request).mockResolvedValue(response);
+
+    const result = await resumeReviewStream(client, {
+      reviewId: "r1",
+      onChunk: () => {
+        throw new Error("handler exploded");
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(response.body?.locked).toBe(false);
+    expect(cancelCount).toBe(1);
+  });
+
+  it("releases the body lock after a stream completes normally", async () => {
+    const client = createClient();
+    const response = streamResponse([{ type: "complete", reviewId: "r1", result: reviewResult }]);
+    vi.mocked(client.request).mockResolvedValue(response);
+
+    const result = await resumeReviewStream(client, { reviewId: "r1" });
+
+    expect(result.ok).toBe(true);
+    expect(response.body?.locked).toBe(false);
   });
 
   it("resolves to err(STREAM_ERROR) when the reader fails mid-stream instead of rejecting", async () => {
@@ -218,17 +283,100 @@ describe("createReview", () => {
 });
 
 describe("getReviews", () => {
-  it("forwards the project, cursor, and page size to the validated list endpoint", async () => {
+  it("forwards the cursor to the validated list endpoint", async () => {
     const client = createClient();
     vi.mocked(client.get).mockResolvedValue({ reviews: [], nextCursor: null });
     const cursor = "dg1_eyJvcGFxdWUiOiJjdXJzb3IifQ";
 
-    await getReviews(client, "/repo", cursor, 25);
+    await getReviews(client, cursor);
 
     expect(client.get).toHaveBeenCalledWith("/api/review/reviews", {
-      params: { projectPath: "/repo", cursor, limit: "25" },
+      maxResponseBytes: REVIEWS_LIST_RESPONSE_MAX_BYTES,
+      params: { cursor },
       schema: expect.any(Function),
     });
+  });
+
+  it("omits the cursor param on the first page", async () => {
+    const client = createClient();
+    vi.mocked(client.get).mockResolvedValue({ reviews: [], nextCursor: null });
+
+    await getReviews(client);
+
+    expect(client.get).toHaveBeenCalledWith("/api/review/reviews", {
+      maxResponseBytes: REVIEWS_LIST_RESPONSE_MAX_BYTES,
+      params: {},
+      schema: expect.any(Function),
+    });
+  });
+});
+
+describe("getReview", () => {
+  const reviewId = "11111111-1111-4111-8111-111111111111";
+
+  function savedReviewBody(issueCount: number): string {
+    const issues = Array.from({ length: issueCount }, (_, index) => ({
+      id: `issue-${index}`,
+      severity: "high",
+      category: "correctness",
+      title: `Finding ${index}`,
+      file: "src/index.ts",
+      line_start: 1,
+      line_end: 2,
+      rationale: "r".repeat(400),
+      recommendation: "c".repeat(400),
+      suggested_patch: "p".repeat(800),
+      confidence: 0.9,
+      symptom: "s".repeat(200),
+      whyItMatters: "w".repeat(200),
+      evidence: [],
+    }));
+
+    return JSON.stringify({
+      review: {
+        metadata: {
+          id: reviewId,
+          projectPath: "/repo",
+          createdAt: "2025-01-01T00:00:00.000Z",
+          mode: "staged",
+          branch: "main",
+          profile: "quick",
+          lenses: ["security"],
+          issueCount,
+          fileCount: 1,
+        },
+        result: { issues },
+        gitContext: {
+          branch: "main",
+          commit: "abc123",
+          fileCount: 1,
+          additions: 10,
+          deletions: 2,
+        },
+      },
+    });
+  }
+
+  it("reads a stored review whose findings exceed the default capture bound", async () => {
+    const body = savedReviewBody(60);
+    expect(new TextEncoder().encode(body).byteLength).toBeGreaterThan(64 * 1024);
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(body, {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    const api = bindReview(createApiClient({ baseUrl: "http://localhost:3000" }));
+    try {
+      const response = await api.getReview(reviewId);
+      expect(response.review.result.issues).toHaveLength(60);
+    } finally {
+      vi.stubGlobal("fetch", originalFetch);
+    }
   });
 });
 
@@ -293,6 +441,59 @@ describe("getActiveReviewSession", () => {
   });
 });
 
+describe("getReviewContext", () => {
+  it("requests a raised capture bound for large context envelopes", async () => {
+    const client = createClient();
+    const response = {
+      text: "x".repeat(40_000),
+      markdown: "m".repeat(40_000),
+      graph: {
+        generatedAt: "2025-01-01T00:00:00Z",
+        root: "/repo",
+        packages: [],
+        edges: [],
+        fileTree: [],
+        changedFiles: [],
+      },
+      meta: {
+        generatedAt: "2025-01-01T00:00:00Z",
+        root: "/repo",
+        statusHash: "hash",
+        statusHashKind: "full" as const,
+        charCount: 40_000,
+      },
+    };
+    vi.mocked(client.get).mockResolvedValue(response);
+
+    await expect(getReviewContext(client)).resolves.toEqual(response);
+    expect(client.get).toHaveBeenCalledWith("/api/review/context", {
+      maxResponseBytes: REVIEW_CONTEXT_RESPONSE_MAX_BYTES,
+      schema: expect.any(Function),
+    });
+  });
+
+  it("normalizes malformed context payloads into ApiError", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({}));
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createApiClient({ baseUrl: "http://localhost:3000" });
+    let error: unknown;
+    try {
+      await getReviewContext(client);
+    } catch (caught) {
+      error = caught;
+    } finally {
+      vi.stubGlobal("fetch", originalFetch);
+    }
+
+    expect(isApiError(error)).toBe(true);
+    if (!isApiError(error)) throw new Error("Expected ApiError");
+    expect(error.status).toBe(422);
+    expect(error.code).toBe("INVALID_RESPONSE");
+  });
+});
+
 describe("refreshReviewContext", () => {
   it("posts the force flag to the context refresh endpoint", async () => {
     const client = createClient();
@@ -320,6 +521,34 @@ describe("refreshReviewContext", () => {
     const result = await refreshReviewContext(client, { force: true });
 
     expect(result).toEqual(response);
-    expect(client.post).toHaveBeenCalledWith("/api/review/context/refresh", { force: true });
+    expect(client.post).toHaveBeenCalledWith(
+      "/api/review/context/refresh",
+      { force: true },
+      {
+        maxResponseBytes: REVIEW_CONTEXT_RESPONSE_MAX_BYTES,
+        schema: expect.any(Function),
+      },
+    );
+  });
+
+  it("normalizes malformed refresh payloads into ApiError", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ text: "only-text" }));
+    const originalFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = createApiClient({ baseUrl: "http://localhost:3000" });
+    let error: unknown;
+    try {
+      await refreshReviewContext(client, { force: true });
+    } catch (caught) {
+      error = caught;
+    } finally {
+      vi.stubGlobal("fetch", originalFetch);
+    }
+
+    expect(isApiError(error)).toBe(true);
+    if (!isApiError(error)) throw new Error("Expected ApiError");
+    expect(error.status).toBe(422);
+    expect(error.code).toBe("INVALID_RESPONSE");
   });
 });

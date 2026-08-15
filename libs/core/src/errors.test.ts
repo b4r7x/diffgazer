@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getErrorMessage, getErrorStack, toError } from "./errors.js";
+import { getErrorMessage, getErrorStack } from "./errors.js";
 
 describe("getErrorMessage", () => {
   it.each([
@@ -21,16 +21,5 @@ describe("getErrorStack", () => {
     expect(getErrorStack(error)).toBe(error.stack);
     expect(getErrorStack("plain string")).toBeUndefined();
     expect(getErrorStack({ stack: "fake" })).toBeUndefined();
-  });
-});
-
-describe("toError", () => {
-  it("returns Error values unchanged and wraps non-Error values", () => {
-    const original = new Error("original");
-    const wrapped = toError("string value");
-
-    expect(toError(original)).toBe(original);
-    expect(wrapped).toBeInstanceOf(Error);
-    expect(wrapped.message).toBe("string value");
   });
 });

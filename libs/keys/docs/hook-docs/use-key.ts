@@ -87,7 +87,7 @@ export const useKeyDoc: HookDoc = {
     {
       title: "Declining a match",
       content:
-        "Return exactly false from a handler to let the next lower-priority matching handler in the active scope run. Other return values are ignored. If preventDefault is enabled for that handler, the event is still prevented before the handler returns.",
+        "Return exactly false from a handler to let the next lower-priority matching handler in the active scope run. Other return values are ignored. When a handler with preventDefault enabled accepts the match (returns anything other than false), event.preventDefault() runs after that handler returns. A declining handler never prevents the default.",
     },
   ],
   examples: [

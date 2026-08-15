@@ -48,6 +48,19 @@ describe("consumption metadata API", () => {
     expect(meta.paths.package.available).toBe(false);
     expect(meta.paths.package.note).toContain("not yet published to npm");
   });
+
+  it("closes the copy and dgadd paths for package-only keys hooks by classification, not the gate", () => {
+    const meta = getConsumptionMetadata("keys", "use-key", "hook");
+
+    // `keys/key` exists in no registry, so both paths stay shut and say why in
+    // package-only terms — the publish-gate notes would go stale on release.
+    expect(meta.dgaddName).toBe("keys/key");
+    expect(meta.paths.copy.available).toBe(false);
+    expect(meta.paths.copy.note).toContain("Requires KeyboardProvider");
+    expect(meta.paths.dgadd.available).toBe(false);
+    expect(meta.paths.dgadd.note).toContain("Requires KeyboardProvider");
+    expect(meta.paths.dgadd.command).toBeUndefined();
+  });
 });
 
 describe("consumption metadata publish gate", () => {

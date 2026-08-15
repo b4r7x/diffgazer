@@ -1,4 +1,5 @@
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import type { LensStat } from "@diffgazer/core/schemas/events";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { Text } from "ink";
@@ -39,7 +40,6 @@ vi.mock("../../../hooks/use-terminal-dimensions", () => ({
 vi.mock("../../../components/layout/global", () => ({
   useContentZone: () => ({
     columns: terminalDimensions.columns,
-    rows: terminalDimensions.rows,
     contentColumns: terminalDimensions.columns,
     contentRows: terminalDimensions.rows - 4,
   }),
@@ -139,6 +139,55 @@ describe("ReviewResultsView (TUI)", () => {
 
     expect(frame).toContain("1 duplicate issue collapsed across lenses (2 → 1 issue)");
     expect(frame.split("\n")).toHaveLength((withoutNotice ?? "").split("\n").length);
+  });
+
+  test("does not grow the 80x24 results layout for a partial-run disclosure", () => {
+    terminalDimensions.columns = 80;
+    const partialLensStats: LensStat[] = [
+      { lensId: "correctness", issueCount: 2, status: "success" },
+      { lensId: "security", issueCount: 0, status: "failed" },
+      { lensId: "performance", issueCount: 0, status: "failed" },
+    ];
+    const withoutNotice = render(
+      <FooterProvider initialShortcuts={[]}>
+        <CliThemeProvider initialTheme="dark">
+          <ReviewResultsView reviewId="review-1" issues={[makeIssue({ id: "partial-survivor" })]} />
+        </CliThemeProvider>
+      </FooterProvider>,
+    ).lastFrame();
+    cleanup();
+    const { lastFrame } = render(
+      <FooterProvider initialShortcuts={[]}>
+        <CliThemeProvider initialTheme="dark">
+          <ReviewResultsView
+            reviewId="review-1"
+            issues={[makeIssue({ id: "partial-survivor" })]}
+            lensStats={partialLensStats}
+          />
+        </CliThemeProvider>
+      </FooterProvider>,
+    );
+    const frame = lastFrame() ?? "";
+
+    expect(frame).toContain("Partial run — 2 of 3 lenses failed");
+    expect(frame).toContain("Guardian and Optimizer");
+    expect(frame.split("\n")).toHaveLength((withoutNotice ?? "").split("\n").length);
+  });
+
+  test("stays quiet when every lens reported", () => {
+    const { lastFrame } = render(
+      <FooterProvider initialShortcuts={[]}>
+        <CliThemeProvider initialTheme="dark">
+          <ReviewResultsView
+            reviewId="review-1"
+            issues={[makeIssue({ id: "complete-run" })]}
+            lensStats={[{ lensId: "correctness", issueCount: 2, status: "success" }]}
+          />
+        </CliThemeProvider>
+      </FooterProvider>,
+    );
+
+    expect(lastFrame() ?? "").not.toContain("Partial run");
   });
 
   test("hides tab shortcuts and ignores numbers until an issue becomes visible", async () => {

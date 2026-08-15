@@ -1,7 +1,7 @@
 import { ok } from "@diffgazer/core/result";
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
 import { ExecutionResultSchema } from "@diffgazer/core/schemas/review";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AdapterExecuteRequest } from "../../types.js";
 import {
   CLI_CREDENTIAL_ENV_KEYS,
@@ -14,10 +14,37 @@ import {
   buildCopilotCliCompatibilityTuple,
   buildCopilotCliExecArgv,
   COPILOT_CLI_ACCEPTED_FLAGS,
-  copilotCliAdapter,
   executeCopilotCliReview,
   parseCopilotJsonlTerminal,
 } from "./cli.js";
+
+const downstreamCompatibilityRecords = vi.hoisted(() => new WeakSet<object>());
+
+vi.mock("../cli-compatibility/compat.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../cli-compatibility/compat.js")>();
+  return {
+    ...actual,
+    matchCliCompatibilityTuple: (
+      record: Parameters<typeof actual.matchCliCompatibilityTuple>[0],
+      tuple: Parameters<typeof actual.matchCliCompatibilityTuple>[1],
+    ) => {
+      if (!record || !downstreamCompatibilityRecords.has(record)) {
+        return actual.matchCliCompatibilityTuple(record, tuple);
+      }
+      return actual.matchCliCompatibilityTuple(
+        {
+          ...record,
+          profile: {
+            ...record.profile,
+            argv: ["--model", record.model.requested],
+            acceptedFlags: ["--model"],
+          },
+        },
+        tuple,
+      );
+    },
+  };
+});
 
 const SHA = "a".repeat(64);
 const SHA_B = "b".repeat(64);
@@ -131,7 +158,7 @@ function createCopilotRecord(
   };
 }
 
-function evidenceKey(patch: Partial<EvidenceKey> = {}): EvidenceKey {
+function evidenceKey(): EvidenceKey {
   return {
     authentication: null,
     credentialReferenceIdentity: null,
@@ -146,15 +173,14 @@ function evidenceKey(patch: Partial<EvidenceKey> = {}): EvidenceKey {
     structuredOutputSchemaSha256: SHA_G,
     noticeVersion: 1,
     limits,
-    ...patch,
   };
 }
 
-function executeRequest(patch: Partial<EvidenceKey> = {}): AdapterExecuteRequest {
+function executeRequest(): AdapterExecuteRequest {
   return {
     configurationId: "configuration-1",
     configurationRevision: 3,
-    evidenceKey: evidenceKey(patch),
+    evidenceKey: evidenceKey(),
     prompt: "Return a minimal valid review JSON object with an empty issues array.",
   };
 }
@@ -201,7 +227,7 @@ async function createRuntimeMatchedRecord(
   });
 }
 
-function successDependencies(record: CliCompatibilityRecord) {
+function dependencies(record: CliCompatibilityRecord) {
   return {
     resolveExecutable: async () => ok(EXECUTABLE),
     acquireVersion: async () => ok(VERSION),
@@ -222,12 +248,15 @@ function successDependencies(record: CliCompatibilityRecord) {
   };
 }
 
+function successDependencies(record: CliCompatibilityRecord) {
+  downstreamCompatibilityRecords.add(record);
+  return dependencies(record);
+}
+
 describe("buildCopilotCliExecArgv", () => {
   it("uses only verified Copilot flags and view/glob/grep tools", () => {
-    const argv = buildCopilotCliExecArgv({ modelId: MODEL_ID, prompt: "review" });
+    const argv = buildCopilotCliExecArgv({ modelId: MODEL_ID });
     expect(argv).toEqual([
-      "-p",
-      "review",
       "--output-format=json",
       "--stream=off",
       "--model",
@@ -298,7 +327,31 @@ describe("parseCopilotJsonlTerminal", () => {
 });
 
 describe("executeCopilotCliReview contract", () => {
-  it("completes with a matching in-memory compatibility record", async () => {
+  it("fails closed before spawning for a read-capable compatibility profile", async () => {
+    const record = await createRuntimeMatchedRecord();
+    let processStarted = false;
+    const result = await executeCopilotCliReview(executeRequest(), {
+      ...dependencies(record),
+      runProcess: async () => {
+        processStarted = true;
+        return {
+          exitCode: 0,
+          signal: null,
+          stdout: '{"type":"result","issues":[]}\n',
+          stderr: "",
+          cancelledLocally: false,
+          descendantsTerminatedLocally: false,
+          outputTruncated: false,
+          timedOut: false,
+        };
+      },
+    });
+
+    expect(result.receipt.outcome).toBe("transport-failed");
+    expect(processStarted).toBe(false);
+  });
+
+  it("preserves downstream execution behind the test-local admission seam", async () => {
     const record = await createRuntimeMatchedRecord();
     const result = await executeCopilotCliReview(executeRequest(), successDependencies(record));
 
@@ -336,10 +389,7 @@ describe("executeCopilotCliReview contract", () => {
     });
 
     expect(() =>
-      assertCopilotArgvFlagsAllowlisted(
-        record,
-        buildCopilotCliExecArgv({ modelId: MODEL_ID, prompt: "review" }),
-      ),
+      assertCopilotArgvFlagsAllowlisted(record, buildCopilotCliExecArgv({ modelId: MODEL_ID })),
     ).toThrow(/Unrecorded Copilot argv flag/);
   });
 
@@ -473,7 +523,7 @@ describe("Copilot cancellation and bounded transcripts", () => {
     expect(result.receipt.outcome).toBe("cancelled");
   });
 
-  it("fails the attempt when the child exceeded the wall-time bound", async () => {
+  it("times out the attempt when the child exceeded the wall-time bound", async () => {
     const record = await createRuntimeMatchedRecord();
     const result = await executeCopilotCliReview(executeRequest(), {
       ...successDependencies(record),
@@ -489,7 +539,7 @@ describe("Copilot cancellation and bounded transcripts", () => {
       }),
     });
 
-    expect(result.receipt.outcome).toBe("transport-failed");
+    expect(result.receipt.outcome).toBe("timed-out");
   });
 
   it("fails the attempt when the transcript was truncated at the output bound", async () => {
@@ -531,9 +581,42 @@ describe("Copilot cancellation and bounded transcripts", () => {
   });
 });
 
-describe("copilotCliAdapter export", () => {
-  it("exposes a local-cli adapter for registry assembly", () => {
-    expect(copilotCliAdapter.productId).toBe("copilot-cli");
-    expect(copilotCliAdapter.transportFamily).toBe("local-cli");
+describe("Copilot prompt privacy and admitted wall time", () => {
+  it("keeps a near-limit prompt out of argv and hands it to the child on stdin", async () => {
+    const record = await createRuntimeMatchedRecord();
+    const request = {
+      ...executeRequest(),
+      prompt: `secret-diff-${"x".repeat(512 * 1024)}`,
+      systemPrompt: "invariant reviewer instructions",
+    };
+    let observed: { argv: readonly string[]; stdin: string; timeoutMs?: number } | null = null;
+
+    const result = await executeCopilotCliReview(request, {
+      ...successDependencies(record),
+      runProcess: async (input) => {
+        observed = { argv: input.argv, stdin: input.stdin, timeoutMs: input.timeoutMs };
+        return {
+          exitCode: 0,
+          signal: null,
+          stdout: '{"type":"result","issues":[]}\n',
+          stderr: "",
+          cancelledLocally: false,
+          descendantsTerminatedLocally: false,
+          outputTruncated: false,
+          timedOut: false,
+        };
+      },
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    const run = observed as unknown as { argv: string[]; stdin: string; timeoutMs?: number };
+    expect(run.argv.some((token) => token.includes("secret-diff-"))).toBe(false);
+    // Copilot ignores piped input whenever a -p/--prompt argument is present.
+    expect(run.argv).not.toContain("-p");
+    expect(run.stdin).toBe(`invariant reviewer instructions\n\n${request.prompt}`);
+    expect(run.timeoutMs).toBeGreaterThan(0);
+    expect(run.timeoutMs ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+      request.evidenceKey.limits.wallTimeMs,
+    );
   });
 });

@@ -134,8 +134,6 @@ export function KeyboardProvider({
 
   const getScopeForOrder = useCallback((order: string) => {
     const stack = scopeStackRef.current;
-    const activeEntry = stack[stack.length - 1];
-    if (activeEntry?.order.startsWith(IMPERATIVE_SCOPE_ORDER_PREFIX)) return activeEntry.name;
 
     const handlerEntry: ScopeStackEntry = {
       name: "",
@@ -181,12 +179,17 @@ export function KeyboardProvider({
 
     for (const canonicalKey of canonicalKeys) {
       const explicitEntries = scopeHandlers?.get(canonicalKey) ?? [];
-      const activeImplicitEntries = (implicitHandlers.current.get(canonicalKey) ?? []).filter(
+      const implicitEntries = implicitHandlers.current.get(canonicalKey) ?? [];
+      // Both maps key on the canonical hotkey, so every entry here shares one
+      // parsed form. Match before resolving implicit scopes: that walk parses
+      // React ids per entry and is wasted work for a key nobody pressed.
+      const parsed = explicitEntries[0]?.parsed ?? implicitEntries[0]?.parsed;
+      if (!parsed || !eventMatchesParsedHotkey(event, parsed)) continue;
+
+      const activeImplicitEntries = implicitEntries.filter(
         (entry) => getScopeForOrder(entry.order) === activeRegistrationScope,
       );
       const entries = [...explicitEntries, ...activeImplicitEntries].sort((a, b) => b.id - a.id);
-      const firstEntry = entries[0];
-      if (!firstEntry || !eventMatchesParsedHotkey(event, firstEntry.parsed)) continue;
 
       for (const entry of entries) {
         if (isEditable && !entry.options?.allowInInput) continue;
@@ -309,7 +312,7 @@ export function KeyboardProvider({
   return (
     <KeyboardRegistryContext value={registryValue}>
       <KeyboardScopeContext value={scopeValue}>
-        <span ref={sentinelRef} aria-hidden="true" hidden />
+        <span ref={sentinelRef} hidden />
         {children}
       </KeyboardScopeContext>
     </KeyboardRegistryContext>

@@ -1,8 +1,26 @@
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { ok } from "@diffgazer/core/result";
+import {
+  MAX_CONTEXT_GRAPH_JSON_BYTES,
+  MAX_CONTEXT_MANIFEST_JSON_BYTES,
+  MAX_CONTEXT_MARKDOWN_BYTES,
+  MAX_CONTEXT_TREE_DEPTH,
+  MAX_CONTEXT_TREE_NODES,
+  ProjectContextSnapshotManifestSchema,
+} from "@diffgazer/core/schemas/context";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -29,7 +47,7 @@ vi.mock("../../../shared/lib/fs.js", async () => {
 });
 
 import { createGitService } from "../../../shared/lib/git/service.js";
-import { loadContextSnapshot } from "./snapshot/artifacts.js";
+import { loadContextSnapshot, publishContextSnapshot } from "./snapshot/artifacts.js";
 import { buildProjectContextSnapshot } from "./snapshot/build.js";
 import { buildWorkspaceEdges } from "./snapshot/content.js";
 
@@ -94,6 +112,16 @@ function snapshotArtifactNames(generation: string) {
     graph: `context.${generation}.json`,
     meta: `context.${generation}.meta.json`,
   } as const;
+}
+
+function listSnapshotGenerations(entries: readonly string[]): Set<string> {
+  const generations = new Set<string>();
+  for (const entry of entries) {
+    if (entry === "context.manifest.json") continue;
+    const match = /^context\.([A-Za-z0-9_-]{1,128})\.(?:md|json|meta\.json)$/.exec(entry);
+    if (match?.[1]) generations.add(match[1]);
+  }
+  return generations;
 }
 
 function sha256(content: string): string {
@@ -329,6 +357,156 @@ describe("loadContextSnapshot", () => {
 
     await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
   });
+
+  it("rejects oversized markdown artifacts before hashing", async () => {
+    const contextDir = join(projectRoot, ".diffgazer");
+    const generation = "oversized-markdown";
+    const names = snapshotArtifactNames(generation);
+    const oversizedMarkdown = "x".repeat(MAX_CONTEXT_MARKDOWN_BYTES + 1);
+    const graph = {
+      generatedAt: "2025-01-01",
+      root: projectRoot,
+      packages: [],
+      edges: [],
+      fileTree: [],
+      changedFiles: [],
+    };
+    const meta = {
+      generatedAt: "2025-01-01",
+      root: projectRoot,
+      statusHash: "hash-1",
+      statusHashKind: "full",
+      charCount: oversizedMarkdown.length,
+    };
+    const graphContent = JSON.stringify(graph, null, 2);
+    const metaContent = JSON.stringify(meta, null, 2);
+    await mkdir(contextDir, { recursive: true });
+    await writeFile(join(contextDir, names.markdown), oversizedMarkdown, "utf-8");
+    await writeFile(join(contextDir, names.graph), graphContent, "utf-8");
+    await writeFile(join(contextDir, names.meta), metaContent, "utf-8");
+    await writeJson(join(contextDir, "context.manifest.json"), {
+      version: 1,
+      generation,
+      artifacts: {
+        markdown: { file: names.markdown, sha256: sha256(oversizedMarkdown) },
+        graph: { file: names.graph, sha256: sha256(graphContent) },
+        meta: { file: names.meta, sha256: sha256(metaContent) },
+      },
+    });
+
+    await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
+  });
+
+  it("rejects a flat file tree above the node cap", async () => {
+    const contextDir = join(projectRoot, ".diffgazer");
+    const oversizedTree = Array.from({ length: MAX_CONTEXT_TREE_NODES + 1 }, (_, index) => ({
+      name: `file-${index}.ts`,
+      path: `src/file-${index}.ts`,
+      type: "file" as const,
+    }));
+    await writeSnapshotFixture(contextDir, {
+      markdown: "# cached",
+      graph: {
+        generatedAt: "2025-01-01",
+        root: projectRoot,
+        packages: [],
+        edges: [],
+        fileTree: oversizedTree,
+        changedFiles: [],
+      },
+      meta: {
+        generatedAt: "2025-01-01",
+        root: projectRoot,
+        statusHash: "hash-1",
+        statusHashKind: "full",
+        charCount: 8,
+      },
+    });
+
+    await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
+  });
+
+  it("rejects a deeply nested file tree above the depth cap", async () => {
+    const contextDir = join(projectRoot, ".diffgazer");
+    let node: {
+      name: string;
+      path: string;
+      type: "dir";
+      children: unknown[];
+    } = {
+      name: "leaf",
+      path: "leaf",
+      type: "dir",
+      children: [],
+    };
+    for (let depth = MAX_CONTEXT_TREE_DEPTH; depth > 0; depth -= 1) {
+      node = {
+        name: `dir-${depth}`,
+        path: `dir-${depth}`,
+        type: "dir",
+        children: [node],
+      };
+    }
+    await writeSnapshotFixture(contextDir, {
+      markdown: "# cached",
+      graph: {
+        generatedAt: "2025-01-01",
+        root: projectRoot,
+        packages: [],
+        edges: [],
+        fileTree: [node],
+        changedFiles: [],
+      },
+      meta: {
+        generatedAt: "2025-01-01",
+        root: projectRoot,
+        statusHash: "hash-1",
+        statusHashKind: "full",
+        charCount: 8,
+      },
+    });
+
+    await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
+  });
+
+  it("rejects oversized graph JSON before parsing", async () => {
+    const contextDir = join(projectRoot, ".diffgazer");
+    const generation = "oversized-graph";
+    const names = snapshotArtifactNames(generation);
+    const markdown = "# cached";
+    const graphRaw = JSON.stringify({
+      generatedAt: "2025-01-01",
+      root: projectRoot,
+      packages: [],
+      edges: [],
+      fileTree: [],
+      changedFiles: [],
+      padding: "a".repeat(MAX_CONTEXT_GRAPH_JSON_BYTES),
+    });
+    const meta = {
+      generatedAt: "2025-01-01",
+      root: projectRoot,
+      statusHash: "hash-1",
+      statusHashKind: "full",
+      charCount: markdown.length,
+    };
+    const metaContent = JSON.stringify(meta, null, 2);
+    await mkdir(contextDir, { recursive: true });
+    await writeFile(join(contextDir, names.markdown), markdown, "utf-8");
+    await writeFile(join(contextDir, names.graph), graphRaw, "utf-8");
+    await writeFile(join(contextDir, names.meta), metaContent, "utf-8");
+    await writeJson(join(contextDir, "context.manifest.json"), {
+      version: 1,
+      generation,
+      artifacts: {
+        markdown: { file: names.markdown, sha256: sha256(markdown) },
+        graph: { file: names.graph, sha256: sha256(graphRaw) },
+        meta: { file: names.meta, sha256: sha256(metaContent) },
+      },
+    });
+
+    await expect(loadContextSnapshot(contextDir)).resolves.toBeNull();
+  });
 });
 
 describe("buildProjectContextSnapshot", () => {
@@ -526,7 +704,6 @@ describe("buildProjectContextSnapshot", () => {
     const result = await buildProjectContextSnapshot(projectRoot, { force: true });
 
     expect(result.markdown).toContain("File tree truncated at 1000 nodes");
-    expect(result.meta.treeTruncated).toBe(true);
   });
 
   it("truncates context markdown when byte size exceeds cap", async () => {
@@ -780,5 +957,230 @@ describe("buildProjectContextSnapshot", () => {
       newSnapshot,
     );
     expect(newSnapshot.markdown).toContain("- Name: new");
+  });
+
+  it("retains the current and previous generations across overlapping publishers", async () => {
+    await writeProjectFile("package.json", JSON.stringify({ name: "retention", version: "1.0.0" }));
+    const contextDir = join(projectRoot, ".diffgazer");
+
+    const seededSnapshot = await buildProjectContextSnapshot(projectRoot, { force: true });
+    const seededManifest = await readJson<{ generation: string }>(
+      join(contextDir, "context.manifest.json"),
+    );
+    const firstMarkdown = `${seededSnapshot.markdown}\nfirst publisher`;
+    const firstSnapshot = {
+      ...seededSnapshot,
+      markdown: firstMarkdown,
+      meta: { ...seededSnapshot.meta, charCount: firstMarkdown.length },
+    };
+    const secondMarkdown = `${seededSnapshot.markdown}\nsecond publisher`;
+    const secondSnapshot = {
+      ...seededSnapshot,
+      markdown: secondMarkdown,
+      meta: { ...seededSnapshot.meta, charCount: secondMarkdown.length },
+    };
+    const firstManifestWriteStarted = createDeferred<string>();
+    const releaseFirstManifestWrite = createDeferred<void>();
+    beforeAtomicWrite = async (filePath, content) => {
+      if (basename(filePath) !== "context.manifest.json") return;
+      firstManifestWriteStarted.resolve(
+        ProjectContextSnapshotManifestSchema.parse(JSON.parse(content)).generation,
+      );
+      await releaseFirstManifestWrite.promise;
+    };
+
+    const firstPublisher = publishContextSnapshot(contextDir, firstSnapshot);
+    const firstGeneration = await firstManifestWriteStarted.promise;
+    const secondPublisher = publishContextSnapshot(contextDir, secondSnapshot);
+    await vi.waitFor(async () => {
+      const entries = await readdir(contextDir);
+      expect(
+        entries.some(
+          (entry) => entry.startsWith("context.manifest.json.lock.") && entry.endsWith(".pending"),
+        ),
+      ).toBe(true);
+    });
+
+    releaseFirstManifestWrite.resolve();
+    await Promise.all([firstPublisher, secondPublisher]);
+    beforeAtomicWrite = undefined;
+
+    const finalManifest = await readJson<{ generation: string }>(
+      join(contextDir, "context.manifest.json"),
+    );
+    await expect(loadContextSnapshot(contextDir)).resolves.toEqual(secondSnapshot);
+
+    const entries = new Set(await readdir(contextDir));
+    for (const fileName of Object.values(snapshotArtifactNames(seededManifest.generation))) {
+      expect(entries.has(fileName)).toBe(false);
+    }
+    for (const generation of [firstGeneration, finalManifest.generation]) {
+      for (const fileName of Object.values(snapshotArtifactNames(generation))) {
+        expect(entries.has(fileName)).toBe(true);
+      }
+    }
+  });
+
+  it("repeated forced rebuilds leave a bounded generation count", async () => {
+    await writeProjectFile("package.json", JSON.stringify({ name: "bounded", version: "1.0.0" }));
+
+    for (let rebuild = 0; rebuild < 5; rebuild += 1) {
+      statusHashResult = { kind: "full", hash: `hash-${rebuild}` };
+      await buildProjectContextSnapshot(projectRoot, { force: true });
+    }
+
+    const contextDir = join(projectRoot, ".diffgazer");
+    const manifest = await readJson<{ generation: string }>(
+      join(contextDir, "context.manifest.json"),
+    );
+    const generations = listSnapshotGenerations(await readdir(contextDir));
+
+    expect(generations.size).toBeLessThanOrEqual(2);
+    expect(generations.has(manifest.generation)).toBe(true);
+  });
+
+  it("skips loading a poisoned cache when force is true", async () => {
+    await writeProjectFile("package.json", JSON.stringify({ name: "fresh", version: "1.0.0" }));
+    const contextDir = join(projectRoot, ".diffgazer");
+    const oversizedTree = Array.from({ length: MAX_CONTEXT_TREE_NODES + 1 }, (_, index) => ({
+      name: `file-${index}.ts`,
+      path: `src/file-${index}.ts`,
+      type: "file" as const,
+    }));
+    await writeSnapshotFixture(contextDir, {
+      markdown: "# poisoned",
+      graph: {
+        generatedAt: "2025-01-01",
+        root: projectRoot,
+        packages: [],
+        edges: [],
+        fileTree: oversizedTree,
+        changedFiles: [],
+      },
+      meta: {
+        generatedAt: "2025-01-01",
+        root: projectRoot,
+        statusHash: "hash-1",
+        statusHashKind: "full",
+        headCommit: "HEAD",
+        charCount: 10,
+      },
+    });
+
+    const rebuilt = await buildProjectContextSnapshot(projectRoot, { force: true });
+
+    expect(rebuilt.markdown).toContain("- Name: fresh");
+    expect(rebuilt.markdown).not.toBe("# poisoned");
+  });
+});
+
+describe("publishContextSnapshot", () => {
+  const baseGraph = () => ({
+    generatedAt: "2025-01-01",
+    root: projectRoot,
+    packages: [],
+    edges: [],
+    fileTree: [],
+    changedFiles: [],
+  });
+
+  const baseMeta = () => ({
+    generatedAt: "2025-01-01",
+    root: projectRoot,
+    statusHash: "hash-1",
+    statusHashKind: "full" as const,
+    charCount: 10,
+  });
+
+  it("cleanup unlinks only regular files matching the generation naming contract", async () => {
+    const contextDir = join(projectRoot, ".diffgazer");
+    const previousGeneration = "prev-gen";
+    const graph = baseGraph();
+    const meta = baseMeta();
+    await writeSnapshotFixture(
+      contextDir,
+      { markdown: "# previous", graph, meta },
+      previousGeneration,
+    );
+
+    const previousNames = snapshotArtifactNames(previousGeneration);
+    await rm(join(contextDir, previousNames.markdown));
+    await mkdir(join(contextDir, previousNames.markdown));
+
+    const junkGeneration = "junk-gen";
+    const junkNames = snapshotArtifactNames(junkGeneration);
+    const symlinkTarget = join(projectRoot, "symlink-target.json");
+    await writeFile(symlinkTarget, "{}", "utf-8");
+    await symlink(symlinkTarget, join(contextDir, junkNames.graph));
+
+    const orphanGeneration = "orphan-gen";
+    const orphanNames = snapshotArtifactNames(orphanGeneration);
+    await writeFile(join(contextDir, orphanNames.meta), "{}", "utf-8");
+
+    const markdown = "# published";
+    await publishContextSnapshot(contextDir, {
+      markdown,
+      graph,
+      meta: { ...meta, charCount: markdown.length },
+    });
+
+    const entries = new Set(await readdir(contextDir));
+    // Non-regular retained previous markdown dir is skipped.
+    expect(entries.has(previousNames.markdown)).toBe(true);
+    expect((await stat(join(contextDir, previousNames.markdown))).isDirectory()).toBe(true);
+    // Non-regular orphan symlink is skipped.
+    expect(entries.has(junkNames.graph)).toBe(true);
+    expect((await lstat(join(contextDir, junkNames.graph))).isSymbolicLink()).toBe(true);
+    // Previous generation is retained (active + previous), so its regular files remain.
+    expect(entries.has(previousNames.graph)).toBe(true);
+    expect(entries.has(previousNames.meta)).toBe(true);
+    // Non-retained orphan regular file is unlinked.
+    expect(entries.has(orphanNames.meta)).toBe(false);
+
+    const manifest = await readJson<{ generation: string }>(
+      join(contextDir, "context.manifest.json"),
+    );
+    for (const fileName of Object.values(snapshotArtifactNames(manifest.generation))) {
+      expect(entries.has(fileName)).toBe(true);
+      expect((await stat(join(contextDir, fileName))).isFile()).toBe(true);
+    }
+  });
+
+  it("does not retain a previous generation from an oversized manifest", async () => {
+    const contextDir = join(projectRoot, ".diffgazer");
+    const previousGeneration = "prev-gen";
+    const graph = baseGraph();
+    const meta = baseMeta();
+    await writeSnapshotFixture(
+      contextDir,
+      { markdown: "# previous", graph, meta },
+      previousGeneration,
+    );
+
+    const padding = "x".repeat(MAX_CONTEXT_MANIFEST_JSON_BYTES);
+    await writeFile(
+      join(contextDir, "context.manifest.json"),
+      `{"generation":"${previousGeneration}","padding":"${padding}"}`,
+      "utf-8",
+    );
+
+    const markdown = "# published";
+    await publishContextSnapshot(contextDir, {
+      markdown,
+      graph,
+      meta: { ...meta, charCount: markdown.length },
+    });
+
+    const manifest = await readJson<{ generation: string }>(
+      join(contextDir, "context.manifest.json"),
+    );
+    const generations = listSnapshotGenerations(await readdir(contextDir));
+    expect(generations.size).toBe(1);
+    expect(generations.has(manifest.generation)).toBe(true);
+    expect(generations.has(previousGeneration)).toBe(false);
+    const entries = new Set(await readdir(contextDir));
+    for (const fileName of Object.values(snapshotArtifactNames(previousGeneration))) {
+      expect(entries.has(fileName)).toBe(false);
+    }
   });
 });

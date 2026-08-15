@@ -1,5 +1,15 @@
-import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "../providers/product-registry.js";
+import {
+  isModelIdAllowedForProduct,
+  PRODUCT_REGISTRY,
+  SELECTABLE_PRODUCT_IDS,
+} from "../providers/product-registry.js";
 import type { RunnableProductId, TransportFamily } from "../schemas/config/transports.js";
+import {
+  getModelBilling,
+  getModelReviewCapability,
+  type ModelBilling,
+  type ModelReviewCapability,
+} from "./model-capability.js";
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";
 import {
   CatalogModelNameSchema,
@@ -23,8 +33,11 @@ export interface CatalogObservationInput {
 
 export interface CatalogModelObservation {
   readonly modelId: CatalogSelectableModelId;
+  /** models.dev display name, falling back to the model id when upstream has none. */
   readonly modelName: string;
   readonly sourceProviderId: string;
+  readonly reviewCapability: ModelReviewCapability;
+  readonly billing: ModelBilling;
   readonly contextTokens?: number;
   readonly outputTokens?: number;
 }
@@ -57,9 +70,36 @@ function toModelObservation(
     modelId,
     modelName: modelName.data,
     sourceProviderId,
+    reviewCapability: getModelReviewCapability(model),
+    billing: getModelBilling(model),
     ...(contextTokens === undefined ? {} : { contextTokens }),
     ...(outputTokens === undefined ? {} : { outputTokens }),
   };
+}
+
+/**
+ * Half of the picker contract: the catalog states this model can run the
+ * structured review. Unknown capability is excluded on purpose — an unproven
+ * model belongs in nobody's list of what works.
+ */
+export function isReviewCapableObservation(observation: CatalogModelObservation): boolean {
+  return observation.reviewCapability === "supported";
+}
+
+/**
+ * The whole picker contract: capable AND admitted by the product's model policy.
+ * Every table that claims to describe the offered set must apply both halves.
+ * Capability alone describes a list no user ever sees — OpenRouter's capable
+ * `openrouter/free` router is a routing selector its policy refuses to pin.
+ */
+export function isOfferableObservation(
+  productId: RunnableProductId,
+  observation: CatalogModelObservation,
+): boolean {
+  return (
+    isReviewCapableObservation(observation) &&
+    isModelIdAllowedForProduct(productId, observation.modelId)
+  );
 }
 
 function collectModelObservations(

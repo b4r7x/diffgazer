@@ -6,12 +6,16 @@ import { useRef } from "react";
 const left = ["Inbox", "Drafts", "Sent", "Archive"];
 const right = ["Today", "This week", "Later"];
 
+function getOptionId(item: string) {
+  return `option-${item.toLowerCase().replace(/\s+/g, "-")}`;
+}
+
 function List({ label, items }: { label: string; items: string[] }) {
   const listRef = useRef<HTMLDivElement>(null);
 
   // focusWithinOnly: arrow keys only drive the list whose focus is active, so
   // both lists coexist under one provider without an explicit scope each.
-  const { isHighlighted } = useScopedNavigation({
+  const { highlighted, isHighlighted } = useScopedNavigation({
     containerRef: listRef,
     role: "option",
     wrap: true,
@@ -26,12 +30,14 @@ function List({ label, items }: { label: string; items: string[] }) {
         role="listbox"
         aria-label={label}
         tabIndex={0}
+        aria-activedescendant={highlighted ? getOptionId(highlighted) : undefined}
         style={{ padding: 4, border: "1px solid currentColor" }}
       >
         {items.map((item) => (
-          // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — options stay non-focusable; the listbox container holds focus and active state is tracked via aria-selected.
+          // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — options stay non-focusable; the listbox container holds focus and aria-activedescendant tracks the active option.
           <div
             key={item}
+            id={getOptionId(item)}
             role="option"
             data-value={item}
             aria-selected={isHighlighted(item)}

@@ -8,9 +8,9 @@ const resolveThreshold = (): number => {
   // Stay silent under test so the structured logger does not pollute output or
   // collide with console spies; honor an explicit override otherwise.
   if (process.env.VITEST) return Number.POSITIVE_INFINITY;
-  const configured = process.env.DIFFGAZER_LOG_LEVEL as LogLevel | undefined;
-  if (configured && LEVEL_ORDER[configured] !== undefined) {
-    return LEVEL_ORDER[configured];
+  const configured = process.env.DIFFGAZER_LOG_LEVEL;
+  if (configured && Object.hasOwn(LEVEL_ORDER, configured)) {
+    return LEVEL_ORDER[configured as LogLevel];
   }
   // The packaged CLI runs this server in the user-facing `diffgazer` process, so
   // default it to `warn` to keep per-request info logs out of the terminal.

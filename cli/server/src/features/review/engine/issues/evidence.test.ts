@@ -5,31 +5,71 @@ import type { DiffHunk } from "../diff/types.js";
 import { createIssueEvidenceResolver, MAX_SYNTHESIZED_EVIDENCE_JSON_BYTES } from "./evidence.js";
 
 describe("createIssueEvidenceResolver", () => {
-  it("returns issue unchanged when evidence already exists", () => {
+  it("replaces provider-authored code evidence with canonical diff evidence", () => {
     const issue = makeIssue({
+      file: "test.ts",
+      line_start: 3,
+      line_end: 4,
       evidence: [
-        { type: "code", title: "existing", sourceId: "s1", file: "test.ts", excerpt: "code" },
+        {
+          type: "code",
+          title: "Provider evidence",
+          sourceId: "provider",
+          file: "test.ts",
+          excerpt: "hallucinated snippet",
+        },
       ],
     });
-    const diff = makeParsedDiff([]);
+    const diff = makeParsedDiff([
+      makeFileDiff({
+        filePath: "test.ts",
+        hunks: [
+          {
+            oldStart: 1,
+            oldCount: 5,
+            newStart: 1,
+            newCount: 6,
+            content: "@@ -1,5 +1,6 @@\n line1\n line2\n line3\n line4\n line5\n+added",
+          },
+        ],
+      }),
+    ]);
 
     const result = createIssueEvidenceResolver(diff)(issue);
 
-    expect(result).toBe(issue);
+    expect(result).not.toBe(issue);
+    expect(result.evidence).toEqual([
+      {
+        type: "code",
+        title: "Code at test.ts:3",
+        sourceId: "test.ts:3-4",
+        file: "test.ts",
+        range: { start: 3, end: 4 },
+        excerpt: "line3\nline4",
+      },
+    ]);
   });
 
-  it("keeps only complete references from mixed provider evidence", () => {
+  it("keeps only complete non-code provider references beside synthesized code evidence", () => {
     const issue = makeIssue({
       evidence: [
         { type: "code", title: "   ", sourceId: "blank", excerpt: "   " },
-        { type: "code", title: "Valid", sourceId: "source", excerpt: "code" },
+        { type: "doc", title: "   ", sourceId: "docs:blank", excerpt: "   " },
+        { type: "doc", title: "Valid", sourceId: "docs:valid", excerpt: "doc excerpt" },
       ],
     });
 
     const result = createIssueEvidenceResolver(makeParsedDiff([]))(issue);
 
     expect(result.evidence).toEqual([
-      { type: "code", title: "Valid", sourceId: "source", excerpt: "code" },
+      {
+        type: "code",
+        title: `Issue in ${issue.file}`,
+        sourceId: issue.file,
+        file: issue.file,
+        excerpt: issue.rationale,
+      },
+      { type: "doc", title: "Valid", sourceId: "docs:valid", excerpt: "doc excerpt" },
     ]);
   });
 

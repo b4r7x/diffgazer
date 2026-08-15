@@ -1,3 +1,5 @@
+"use client";
+
 import { createElement, type ReactNode, useMemo } from "react";
 import { CodeBlockContent, type CodeBlockContentProps } from "./code-block-content";
 import { CodeBlockLine, type CodeBlockLineState } from "./code-block-line";
@@ -22,6 +24,7 @@ interface HastRoot {
 }
 
 export type LowlightInstance = {
+  registered(language: string): boolean;
   highlight(language: string, value: string): HastRoot;
   highlightAuto(value: string): HastRoot;
 };
@@ -99,24 +102,31 @@ function renderLineNodes(nodes: HastNode[] | undefined, fallback: string): React
   return nodes.map((child, i) => renderNode(child, i));
 }
 
+function highlightTree(
+  code: string,
+  language: string | undefined,
+  lowlight: LowlightInstance,
+): HastRoot | null {
+  if (!language) return lowlight.highlightAuto(code);
+  // `registered` is the lowlight contract for this expected fallback. Keeping
+  // the call outside a catch makes failures from a registered grammar visible
+  // to the caller's error boundary instead of silently rendering plain text.
+  if (!lowlight.registered(language)) return null;
+  return lowlight.highlight(language, code);
+}
+
 function highlightCode(
   code: string,
   language: string | undefined,
   lowlight: LowlightInstance,
 ): ReactNode[] {
   const sourceLines = code.split("\n");
+  const tree = highlightTree(code, language, lowlight);
 
-  try {
-    const tree: HastRoot = language
-      ? lowlight.highlight(language, code)
-      : lowlight.highlightAuto(code);
-    const highlightedLines = splitNodesByLine(tree.children);
-    return sourceLines.map((line, i) => renderLineNodes(highlightedLines[i], line));
-  } catch {
-    // lowlight throws when the language is unregistered; render plain text so
-    // a typo'd language name never crashes the page.
-    return sourceLines.map((line) => (line.length > 0 ? line : null));
-  }
+  if (!tree) return sourceLines.map((line) => (line.length > 0 ? line : null));
+
+  const highlightedLines = splitNodesByLine(tree.children);
+  return sourceLines.map((line, i) => renderLineNodes(highlightedLines[i], line));
 }
 
 /** Runtime-highlighted content using a caller-owned lowlight instance. */

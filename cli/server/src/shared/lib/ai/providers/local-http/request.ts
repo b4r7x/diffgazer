@@ -1,12 +1,18 @@
+import http from "node:http";
+import { isIP } from "node:net";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { LocalHttpAuthenticationMode } from "@diffgazer/core/schemas/config";
-import { readTextResponseWithLimit } from "../../http-json.js";
-import type { AdapterExecuteRequest } from "../../types.js";
-import { boundedFetchInit, type DnsLookupFn, resolveLoopbackHttpEndpoint } from "../endpoints.js";
+import { cancelResponseBody, readTextResponseWithLimit } from "../../http-json.js";
+import {
+  boundedFetchInit,
+  type DnsLookupFn,
+  type ResolvedLoopbackEndpoint,
+  resolveLoopbackHttpEndpoint,
+} from "../endpoints.js";
 
 /** Paths that must never be called for local HTTP transports (REQ-032). */
-export const LOCAL_HTTP_FORBIDDEN_PATH_PREFIXES = [
+const LOCAL_HTTP_FORBIDDEN_PATH_PREFIXES = [
   "/api/pull",
   "/api/push",
   "/api/create",
@@ -38,8 +44,8 @@ export type LocalHttpFetch = typeof fetch;
 export type LocalHttpDependencies = Readonly<{
   fetch?: LocalHttpFetch;
   lookup?: DnsLookupFn;
+  signal?: AbortSignal;
   now?: () => Date;
-  resolveBearerToken?: (request: AdapterExecuteRequest) => Promise<string | null>;
 }>;
 
 function defaultNow(): Date {
@@ -48,10 +54,9 @@ function defaultNow(): Date {
 
 export function resolveLocalHttpDependencies(
   dependencies: LocalHttpDependencies = {},
-): Required<Pick<LocalHttpDependencies, "fetch" | "now">> & LocalHttpDependencies {
+): Required<Pick<LocalHttpDependencies, "now">> & LocalHttpDependencies {
   return {
-    fetch: dependencies.fetch ?? globalThis.fetch,
-    lookup: dependencies.lookup,
+    ...dependencies,
     now: dependencies.now ?? defaultNow,
   };
 }
@@ -66,7 +71,7 @@ export function localHttpRequiresCredential(auth: LocalHttpAuth): boolean {
 }
 
 function buildAuthHeaders(auth: LocalHttpAuth): Record<string, string> {
-  if (auth.authentication === "optional-local-bearer" && auth.bearerToken) {
+  if (localHttpRequiresCredential(auth) && auth.bearerToken) {
     return { Authorization: `Bearer ${auth.bearerToken}` };
   }
   return {};
@@ -77,16 +82,159 @@ function joinEndpointPath(endpoint: string, path: string): string {
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-/** Loopback-validated endpoint; the only endpoint a local transport may call. */
+export type ResolvedLocalHttpEndpoint = ResolvedLoopbackEndpoint;
+
+function normalizePeerAddress(address: string): string {
+  return address.startsWith("::ffff:") ? address.slice(7) : address;
+}
+
+function isLoopbackPeerAddress(address: string): boolean {
+  const normalized = normalizePeerAddress(address);
+  const version = isIP(normalized);
+  if (version === 4) return normalized.startsWith("127.");
+  if (version === 6) return normalized === "::1";
+  return false;
+}
+
+function selectConnectAddress(addresses: readonly string[], hostname: string): string {
+  const normalizedHostname = hostname === "[::1]" ? "::1" : hostname;
+  if (isIP(normalizedHostname)) {
+    const exact = addresses.find((address) => normalizePeerAddress(address) === normalizedHostname);
+    if (exact) return exact;
+  }
+  const ipv4 = addresses.find((address) => isIP(normalizePeerAddress(address)) === 4);
+  if (ipv4) return ipv4;
+  const ipv6 = addresses.find((address) => isIP(normalizePeerAddress(address)) === 6);
+  if (ipv6) return ipv6;
+  throw new Error("Validated local HTTP endpoint has no connectable addresses");
+}
+
+function fetchInputUrl(input: Parameters<LocalHttpFetch>[0]): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.toString();
+  return input.url;
+}
+
+function headersFromInit(init?: RequestInit): Record<string, string> {
+  return Object.fromEntries(new Headers(init?.headers).entries());
+}
+
+function writeRequestBody(req: http.ClientRequest, body: RequestInit["body"]): void {
+  if (body === undefined || body === null) {
+    req.end();
+    return;
+  }
+  if (typeof body === "string") {
+    req.end(body);
+    return;
+  }
+  req.end(String(body));
+}
+
+/**
+ * Connects only to the validated loopback address, bypassing env/global HTTP
+ * proxies and refusing a non-loopback peer after the socket is established.
+ */
+function createLoopbackBoundFetch(resolved: ResolvedLocalHttpEndpoint): LocalHttpFetch {
+  const connectHost = selectConnectAddress(resolved.addresses, resolved.hostname);
+  if (!isLoopbackPeerAddress(connectHost)) {
+    throw new Error("Validated local HTTP address is not loopback");
+  }
+
+  return async (input, init) => {
+    const requestUrl = new URL(fetchInputUrl(input));
+    const method = init?.method ?? "GET";
+    const headers = headersFromInit(init);
+    if (!headers.host) {
+      headers.host = `${resolved.hostname}:${resolved.port}`;
+    }
+
+    return await new Promise<Response>((resolve, reject) => {
+      const req = http.request(
+        {
+          host: connectHost,
+          port: resolved.port,
+          method,
+          path: `${requestUrl.pathname}${requestUrl.search}`,
+          headers,
+          signal: init?.signal ?? undefined,
+        },
+        (res) => {
+          const body = new ReadableStream<Uint8Array>({
+            start(controller) {
+              res.on("data", (chunk: Buffer) => {
+                controller.enqueue(new Uint8Array(chunk));
+              });
+              res.on("end", () => controller.close());
+              res.on("error", (error) => controller.error(error));
+            },
+            cancel() {
+              res.destroy();
+            },
+          });
+
+          const responseHeaders = new Headers();
+          for (const [name, value] of Object.entries(res.headers)) {
+            if (value === undefined) continue;
+            if (Array.isArray(value)) {
+              for (const entry of value) responseHeaders.append(name, entry);
+              continue;
+            }
+            responseHeaders.append(name, value);
+          }
+
+          resolve(
+            new Response(body, {
+              status: res.statusCode ?? 500,
+              statusText: res.statusMessage,
+              headers: responseHeaders,
+            }),
+          );
+        },
+      );
+
+      req.on("socket", (socket) => {
+        socket.once("connect", () => {
+          const peer = socket.remoteAddress;
+          if (!peer || !isLoopbackPeerAddress(peer)) {
+            req.destroy(new Error("Local HTTP peer is not loopback"));
+          }
+        });
+      });
+
+      req.on("error", reject);
+      writeRequestBody(req, init?.body ?? null);
+    });
+  };
+}
+
 export async function resolveLocalHttpEndpoint(
   endpoint: string,
   dependencies: LocalHttpDependencies = {},
-): Promise<Result<{ endpoint: string }, { code: "endpoint-forbidden"; safeMessage: string }>> {
-  const resolved = await resolveLoopbackHttpEndpoint({ endpoint }, { lookup: dependencies.lookup });
+): Promise<Result<ResolvedLocalHttpEndpoint, { code: "endpoint-forbidden"; safeMessage: string }>> {
+  const resolved = await resolveLoopbackHttpEndpoint(
+    { endpoint },
+    { lookup: dependencies.lookup, signal: dependencies.signal },
+  );
   if (!resolved.ok) {
     return err({ code: "endpoint-forbidden", safeMessage: resolved.error.safeMessage });
   }
-  return ok({ endpoint: resolved.value.endpoint });
+  return ok(resolved.value);
+}
+
+export async function resolveLocalHttpTransport(
+  endpoint: string,
+  dependencies: LocalHttpDependencies = {},
+): Promise<
+  Result<
+    { endpoint: string; fetcher: LocalHttpFetch; resolved: ResolvedLocalHttpEndpoint },
+    { code: "endpoint-forbidden"; safeMessage: string }
+  >
+> {
+  const resolved = await resolveLocalHttpEndpoint(endpoint, dependencies);
+  if (!resolved.ok) return resolved;
+  const fetcher = dependencies.fetch ?? createLoopbackBoundFetch(resolved.value);
+  return ok({ endpoint: resolved.value.endpoint, fetcher, resolved: resolved.value });
 }
 
 export type LocalHttpRequestFailure = Readonly<{
@@ -95,7 +243,8 @@ export type LocalHttpRequestFailure = Readonly<{
     | "api-incompatible"
     | "oversize-response"
     | "redirect"
-    | "cancelled";
+    | "cancelled"
+    | "timed-out";
   safeMessage: string;
 }>;
 
@@ -119,7 +268,7 @@ export type LocalHttpRequestInput = Readonly<{
  */
 export async function localHttpRequest(
   input: LocalHttpRequestInput,
-): Promise<Result<string, LocalHttpRequestFailure | { code: "timed-out"; safeMessage: string }>> {
+): Promise<Result<string, LocalHttpRequestFailure>> {
   assertReadOnlyLocalHttpPath(input.pathname);
   const url = joinEndpointPath(input.endpoint, input.pathname);
 
@@ -142,7 +291,7 @@ export async function localHttpRequest(
         }, input.deadlineMs);
   deadline?.unref?.();
 
-  const abortFailure = (): LocalHttpRequestFailure | { code: "timed-out"; safeMessage: string } =>
+  const abortFailure = (): LocalHttpRequestFailure =>
     deadlineReached
       ? { code: "timed-out", safeMessage: "Local HTTP request exceeded the admitted wall time" }
       : { code: "cancelled", safeMessage: "Local HTTP request was cancelled" };
@@ -163,6 +312,7 @@ export async function localHttpRequest(
     );
 
     if (response.type === "opaqueredirect" || response.redirected) {
+      cancelResponseBody(response);
       return err({
         code: "redirect",
         safeMessage: "Local HTTP redirects are forbidden",
@@ -170,6 +320,9 @@ export async function localHttpRequest(
     }
 
     if (!response.ok) {
+      // A hostile loopback service can hold a rejected-status body open forever;
+      // releasing it here is what closes the socket, not the cleared deadline.
+      cancelResponseBody(response);
       return err({
         code: response.status === 404 ? "endpoint-unreachable" : "api-incompatible",
         safeMessage:

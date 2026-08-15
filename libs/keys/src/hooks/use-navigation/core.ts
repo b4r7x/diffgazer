@@ -1,9 +1,13 @@
 "use client";
 
-import { type RefObject, useState } from "react";
+import { useState } from "react";
 import { containsActiveElement } from "../../dom/focusable.js";
-import { getFocusedNavigationValue, getNavigationItems } from "../../dom/navigation-items.js";
-import type { NavigationRole, UseNavigationOptions } from "../use-navigation.js";
+import {
+  getFocusedNavigationValue,
+  getNavigationItems,
+  type NavigationItemQuery,
+} from "../../dom/navigation-items.js";
+import type { UseNavigationOptions } from "../use-navigation.js";
 
 export type UseNavigationCoreOptions<TValue extends string = string> = Omit<
   UseNavigationOptions<TValue>,
@@ -14,26 +18,21 @@ export interface UseNavigationCoreReturn<TValue extends string = string> {
   highlighted: TValue | null;
   isHighlighted: (value: TValue) => boolean;
   highlight: (value: TValue | null) => void;
-  move: (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => void;
-  focusIndex: (index: number) => boolean;
+  /**
+   * A caller that already discovered the items for this event passes them as
+   * `knownElements`, so one key event queries the DOM once. Omit them and the
+   * move discovers the list itself, which is what a later event must do.
+   */
+  move: (
+    delta: 1 | -1,
+    event?: globalThis.KeyboardEvent,
+    key?: string,
+    knownElements?: HTMLElement[],
+  ) => void;
+  focusIndex: (index: number, knownElements?: HTMLElement[]) => boolean;
   handleSelect: (event: globalThis.KeyboardEvent) => void;
   handleEnter: (event: globalThis.KeyboardEvent) => void;
   getElements: () => HTMLElement[];
-}
-
-function queryNavigationElements(
-  containerRef: RefObject<HTMLElement | null>,
-  role: NavigationRole,
-  skipDisabled: boolean,
-  scopeToContainer: boolean,
-  ownerSelector: string | null | undefined,
-): HTMLElement[] {
-  return getNavigationItems(containerRef.current, {
-    type: role,
-    skipDisabled,
-    scopeToContainer,
-    ownerSelector,
-  });
 }
 
 function wrapIndex(index: number, length: number, wrap: boolean): number | null {
@@ -60,21 +59,28 @@ export function useNavigationCore<TValue extends string = string>({
   moveFocus = false,
   scopeToContainer = true,
   ownerSelector,
+  itemSelector,
 }: UseNavigationCoreOptions<TValue>): UseNavigationCoreReturn<TValue> {
   const [internalHighlighted, setInternalHighlighted] = useState<TValue | null>(defaultHighlighted);
   const isControlled = controlledHighlighted !== undefined;
   const highlighted = isControlled ? (controlledHighlighted ?? null) : internalHighlighted;
+  const itemQuery: NavigationItemQuery = {
+    type: role,
+    skipDisabled,
+    scopeToContainer,
+    ownerSelector,
+    itemSelector,
+  };
 
   const setFocusedValue = (nextValue: TValue | null) => {
     if (!isControlled) setInternalHighlighted(nextValue);
     onHighlightChange?.(nextValue);
   };
 
-  const getElements = () =>
-    queryNavigationElements(containerRef, role, skipDisabled, scopeToContainer, ownerSelector);
+  const getElements = () => getNavigationItems(containerRef.current, itemQuery);
 
-  const getFocusedIndex = (): number => {
-    const elements = getElements();
+  const getFocusedIndex = (knownElements?: HTMLElement[]): number => {
+    const elements = knownElements ?? getElements();
     if (elements.length === 0) return -1;
 
     const focusedIndex = elements.findIndex(containsActiveElement);
@@ -89,12 +95,7 @@ export function useNavigationCore<TValue extends string = string>({
   };
 
   const getCurrentValue = (): TValue | null => {
-    const focusedValue = getFocusedNavigationValue(containerRef.current, {
-      type: role,
-      skipDisabled,
-      scopeToContainer,
-      ownerSelector,
-    });
+    const focusedValue = getFocusedNavigationValue(containerRef.current, itemQuery);
     // DOM boundary: data-value is opaque to TS; consumers parameterize TValue.
     if (focusedValue !== null) return focusedValue as TValue;
 
@@ -125,11 +126,16 @@ export function useNavigationCore<TValue extends string = string>({
     return true;
   };
 
-  const move = (delta: 1 | -1, event?: globalThis.KeyboardEvent, key?: string) => {
-    const elements = getElements();
+  const move = (
+    delta: 1 | -1,
+    event?: globalThis.KeyboardEvent,
+    key?: string,
+    knownElements?: HTMLElement[],
+  ) => {
+    const elements = knownElements ?? getElements();
     if (elements.length === 0) return;
 
-    const current = getFocusedIndex();
+    const current = getFocusedIndex(elements);
     let rawNext = current + delta;
     // Bounded by item count so an all-disabled wrap list can't loop forever.
     for (let attempts = 0; attempts < elements.length; attempts += 1) {

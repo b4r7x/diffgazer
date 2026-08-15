@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const radioDoc: ComponentDoc = {
   description: "Terminal-styled radio button and radio group for single-selection.",
@@ -300,7 +300,7 @@ export const radioDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          "ID reference for an external label. Composed with the visible label unless aria-label is supplied.",
+          "ID of an external element that labels this component. Composed with the visible label unless aria-label is supplied.",
       },
     },
     RadioGroupItem: {

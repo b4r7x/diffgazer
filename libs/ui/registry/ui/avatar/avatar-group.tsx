@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { Children, type ComponentProps, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Overflow } from "../overflow/overflow";
+import type { AvatarSize } from "./avatar";
 import { AvatarGroupContext } from "./avatar-context";
 import { AvatarIndicator } from "./avatar-indicator";
 
@@ -31,7 +32,7 @@ export interface AvatarGroupProps extends Omit<ComponentProps<"div">, "role"> {
   /** Overlap stacks avatars; gap spaces them apart. */
   spacing?: NonNullable<VariantProps<typeof avatarGroupSpacingVariants>["spacing"]>;
   /** Default size applied to descendant Avatars that do not set their own size. */
-  size?: "sm" | "md" | "lg" | null;
+  size?: AvatarSize | null;
 }
 
 /** Overlapping stack of avatars with max overflow (+N indicator). */
@@ -75,11 +76,17 @@ export function AvatarGroup({
   return (
     <AvatarGroupContext value={groupContextValue}>
       {/* biome-ignore lint/a11y/useSemanticElements: role="group" labels the related set of avatars; <fieldset> is for form controls and is not appropriate here. */}
-      <div {...props} role="group" aria-label={ariaLabel}>
+      <div
+        {...props}
+        role="group"
+        aria-label={ariaLabel}
+        className={cn("flex w-fit items-center", className)}
+      >
         <Overflow
           mode="items"
-          className={cn(avatarGroupSpacingVariants({ spacing }), className)}
-          indicator={({ count }) => <AvatarIndicator count={count} />}
+          className={avatarGroupSpacingVariants({ spacing })}
+          getOverflowLabel={(count) => `${count} more`}
+          indicator={({ count }) => <AvatarIndicator count={count} aria-hidden="true" />}
         >
           {allItems}
         </Overflow>

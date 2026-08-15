@@ -25,27 +25,27 @@ export interface DialogProps {
   children: ReactNode;
 }
 
-export interface DialogContentProps {
+interface DialogContentProps {
   children: ReactNode;
 }
 
-export interface DialogHeaderProps {
+interface DialogHeaderProps {
   children: ReactNode;
 }
 
-export interface DialogTitleProps {
+interface DialogTitleProps {
   children: string;
 }
 
-export interface DialogSubtitleProps {
+interface DialogSubtitleProps {
   children: string;
 }
 
-export interface DialogBodyProps {
+interface DialogBodyProps {
   children: ReactNode;
 }
 
-export interface DialogFooterProps {
+interface DialogFooterProps {
   children: ReactNode;
 }
 

@@ -2,6 +2,7 @@ import { CatalogSelectableModelIdSchema } from "../catalog/schema.js";
 import { isModelIdAllowedForProduct, PRODUCT_REGISTRY } from "../providers/product-registry.js";
 import {
   HostedApiConfigurationInputSchema,
+  HostedApiTransportInputSchema,
   LocalCliConfigurationInputSchema,
   LocalHttpConfigurationInputSchema,
   WriteOnlySecretInputSchema,
@@ -25,18 +26,23 @@ function hasEndpointBinding(data: OnboardingDraft): boolean {
   if (configurationInput.transportFamily === "local-http") {
     return LocalHttpConfigurationInputSchema.safeParse(configurationInput).success;
   }
-  if (!HostedApiConfigurationInputSchema.safeParse(configurationInput).success) return false;
+  if (configurationInput.transportFamily === "hosted-api") {
+    const { credential: _credential, ...endpointInput } = configurationInput;
+    if (!HostedApiTransportInputSchema.safeParse(endpointInput).success) return false;
 
-  const endpoint = PRODUCT_REGISTRY[configurationInput.productId].configuration.endpoints.find(
-    (candidate) => candidate.endpoint === configurationInput.endpoint,
-  );
-  if (!endpoint) return false;
-  if (("region" in endpoint ? endpoint.region : undefined) !== configurationInput.region) {
-    return false;
+    const endpoint = PRODUCT_REGISTRY[configurationInput.productId].configuration.endpoints.find(
+      (candidate) => candidate.endpoint === configurationInput.endpoint,
+    );
+    if (!endpoint) return false;
+    if (("region" in endpoint ? endpoint.region : undefined) !== configurationInput.region) {
+      return false;
+    }
+    return "workspaceBound" in endpoint && endpoint.workspaceBound
+      ? configurationInput.workspace !== undefined
+      : configurationInput.workspace === undefined;
   }
-  return "workspaceBound" in endpoint && endpoint.workspaceBound
-    ? configurationInput.workspace !== undefined
-    : configurationInput.workspace === undefined;
+
+  return false;
 }
 
 function hasAuthentication(data: OnboardingDraft): boolean {

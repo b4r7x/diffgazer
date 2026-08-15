@@ -1,9 +1,19 @@
-import { formatRunId, getDateKey, getDateLabel } from "../../format.js";
+import { buildRunIdLookup, getDateKey, getDateLabel, type RunIdLookup } from "../../format.js";
 import type { TimelineItem } from "../../schemas/presentation/index.js";
 import type { ReviewMetadata } from "../../schemas/review/index.js";
+import { getRunBranchLabel, resolveRunDisplayId } from "./run-presentation.js";
 
 export const HISTORY_SECTION_ALL_ID = "all";
 const HISTORY_SECTION_ALL_LABEL = "All";
+
+function timelineDateLabel(dateKey: string, now: Date): string {
+  const currentYear = now.getFullYear().toString();
+  const year = /^(\d{4})-/.exec(dateKey)?.[1];
+  return getDateLabel(
+    dateKey,
+    year !== undefined && year !== currentYear ? { showYear: true } : undefined,
+  );
+}
 
 export type HistoryDetailState =
   | { status: "loading" }
@@ -35,15 +45,13 @@ export function deriveHistoryDetailState({
 export function matchesHistoryQuery(
   metadata: ReviewMetadata,
   query: string,
-  peerIds: readonly string[] = [],
+  runIdLookup?: RunIdLookup,
 ): boolean {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return true;
   if (metadata.id.toLowerCase().includes(normalized)) return true;
-  if (formatRunId(metadata.id, peerIds).toLowerCase().includes(normalized)) return true;
-  const branchText =
-    metadata.mode === "staged" ? "staged" : (metadata.branch?.toLowerCase() ?? "main");
-  if (branchText.includes(normalized)) return true;
+  if (resolveRunDisplayId(metadata, runIdLookup).toLowerCase().includes(normalized)) return true;
+  if (getRunBranchLabel(metadata).toLowerCase().includes(normalized)) return true;
   if (metadata.projectPath.toLowerCase().includes(normalized)) return true;
   return false;
 }
@@ -52,6 +60,7 @@ export function filterReviewsForHistory(
   reviews: ReviewMetadata[],
   selectedDateId: string,
   searchQuery: string,
+  runIdLookup?: RunIdLookup,
 ): ReviewMetadata[] {
   const bySection =
     selectedDateId === HISTORY_SECTION_ALL_ID
@@ -60,8 +69,8 @@ export function filterReviewsForHistory(
 
   const query = searchQuery.trim().toLowerCase();
   if (!query) return bySection;
-  const peerIds = reviews.map((review) => review.id);
-  return bySection.filter((review) => matchesHistoryQuery(review, query, peerIds));
+  const lookup = runIdLookup ?? buildRunIdLookup(reviews.map((review) => review.id));
+  return bySection.filter((review) => matchesHistoryQuery(review, query, lookup));
 }
 
 export function buildTimelineItems(reviews: ReviewMetadata[]): TimelineItem[] {
@@ -74,6 +83,7 @@ export function buildTimelineItems(reviews: ReviewMetadata[]): TimelineItem[] {
   if (reviews.length === 0) return [allItem];
 
   const groups = new Map<string, { label: string; count: number }>();
+  const now = new Date();
 
   for (const review of reviews) {
     const key = getDateKey(review.createdAt);
@@ -81,7 +91,7 @@ export function buildTimelineItems(reviews: ReviewMetadata[]): TimelineItem[] {
     if (existing) {
       existing.count++;
     } else {
-      groups.set(key, { label: getDateLabel(key), count: 1 });
+      groups.set(key, { label: timelineDateLabel(key, now), count: 1 });
     }
   }
 

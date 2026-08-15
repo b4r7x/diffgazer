@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const toastDoc: ComponentDoc = {
   description:
@@ -27,7 +27,7 @@ export const toastDoc: ComponentDoc = {
     {
       title: "Error Toasts Persist",
       content:
-        "Toasts with tone='error' persist when duration is omitted and must be closed manually. An explicit positive duration schedules auto-dismissal.",
+        "Toasts with tone='error' persist when duration is omitted and must be closed manually. An explicit positive duration schedules auto-dismissal. The `hud` variant omits the close button and auto-dismisses even for error and loading tones; pass a non-finite duration (Infinity) to opt out.",
     },
     {
       title: "Actions",
@@ -84,6 +84,12 @@ export const toastDoc: ComponentDoc = {
         description:
           "Key (matched against KeyboardEvent.key) that moves focus into the toast region so action and close buttons stay reachable. Ignored while an editable element has focus.",
       },
+      label: {
+        type: "string",
+        required: false,
+        defaultValue: '"Notifications"',
+        description: "Accessible name for the toast region landmark.",
+      },
     },
     "toast (function)": {
       title: {
@@ -97,28 +103,28 @@ export const toastDoc: ComponentDoc = {
         required: false,
         defaultValue: '"info"',
         description:
-          "Severity tone. Drives icon, color, and auto-dismiss behavior. Error and loading tones persist when duration is omitted.",
+          "Severity tone. Drives icon, color, and auto-dismiss behavior. Error and loading tones persist when duration is omitted, except in the `hud` variant which auto-dismisses on the default timer.",
       },
       variant: {
         type: '"card" | "hud" | "viewfinder" | "countdown"',
         required: false,
         defaultValue: '"card"',
         description:
-          "Layout shell. `card` is the default two-row layout; `hud` is a single-line pill (no body/action); `viewfinder` has corner brackets; `countdown` adds an auto-dismiss progress bar.",
+          "Visual style variant / layout shell. `card` is the default two-row layout; `hud` is a single-line pill with no body, action, or close button; `viewfinder` has corner brackets; `countdown` adds an auto-dismiss progress bar.",
       },
       message: {
         type: "string",
         required: false,
         defaultValue: null,
         description:
-          "Secondary detail text below the title (rendered inline as muted text in `hud`).",
+          "Message content: secondary detail text below the title (rendered inline as muted text in `hud`).",
       },
       duration: {
         type: "number",
         required: false,
         defaultValue: "5000",
         description:
-          "Auto-dismiss delay in ms. Error/loading tones and toasts with a rendered action persist when duration is omitted. The `hud` variant does not render actions, so passing an action does not make a HUD toast persistent. An explicit positive duration schedules dismissal; a non-finite duration (Infinity) opts out of auto-dismissal entirely.",
+          "Auto-dismiss delay in ms. Error/loading tones and toasts with a rendered action persist when duration is omitted. The `hud` variant does not render actions or a close button, so it auto-dismisses on the default timer even for error and loading tones. An explicit positive duration schedules dismissal; a non-finite duration (Infinity) opts out of auto-dismissal entirely.",
       },
       action: {
         type: "ReactNode",
@@ -131,20 +137,22 @@ export const toastDoc: ComponentDoc = {
         type: "string",
         required: false,
         defaultValue: '"Dismiss: " + title',
-        description: "Accessible name for the dismiss button.",
+        description:
+          "Accessible name for the dismiss button. The `hud` variant does not render a close button, so this prop has no effect there.",
       },
       toneLabel: {
         type: "string",
         required: false,
         defaultValue: "the tone value",
-        description: "Screen-reader tone text announced before the toast title.",
+        description:
+          "Accessible tone label: screen-reader tone text announced before the toast title.",
       },
       id: {
         type: "string",
         required: false,
         defaultValue: "auto-generated",
         description:
-          "Stable id for updating an existing toast (used by toast.promise to swap loading -> success/error).",
+          "ID applied to the rendered element; stable id for updating an existing toast (used by toast.promise to swap loading -> success/error).",
       },
     },
   },

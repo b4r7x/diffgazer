@@ -1,23 +1,39 @@
 import type {
   AgentState,
   AgentStreamEvent,
+  LensStat,
   StepEvent,
   StepId,
   StepState,
 } from "../schemas/events/index.js";
 import { createInitialSteps } from "../schemas/events/index.js";
-import { ReviewErrorCode, type ReviewIssue } from "../schemas/review/index.js";
+import { ReviewErrorCode, type ReviewIssue, type ReviewSeverity } from "../schemas/review/index.js";
 import { appendEvent, createEventHistory } from "./event-sequence.js";
+import { isFatalStepFailure } from "./lifecycle.js";
+import type { StreamReviewError } from "./stream.js";
 
 export interface FileProgress {
   total: number;
-  current: number;
-  currentFile: string | null;
   /** File paths covered by file_progress events; review analysis uses this for prompt inclusion. */
   completed: string[];
 }
 
 export type ReviewEvent = AgentStreamEvent | StepEvent;
+
+/**
+ * Every code that can reach review state comes from the schema-validated stream
+ * failure contract, so the state keeps that closed vocabulary instead of `string`
+ * — the reconnect and cancellation branches compare against exact members.
+ */
+export type ReviewStateErrorCode = StreamReviewError["code"];
+
+/** Deduplication and per-lens totals reported by the terminal orchestrator event. */
+export interface OrchestratorStats {
+  lensStats?: LensStat[];
+  droppedDuplicates?: number;
+  droppedBelowThreshold?: number;
+  minSeverity?: ReviewSeverity;
+}
 
 // Unified review state for web and CLI
 export interface ReviewState {
@@ -28,8 +44,9 @@ export interface ReviewState {
   fileProgress: FileProgress;
   isStreaming: boolean;
   error: string | null;
-  errorCode: string | null;
+  errorCode: ReviewStateErrorCode | null;
   startedAt: Date | null;
+  orchestratorStats: OrchestratorStats;
 }
 
 export type ReviewAction =
@@ -37,7 +54,8 @@ export type ReviewAction =
   | { type: "EVENT"; event: ReviewEvent }
   | { type: "COMPLETE_WITH_RESULT"; issues: ReviewIssue[] }
   | { type: "CANCELLED" }
-  | { type: "ERROR"; error: string; errorCode?: string | null }
+  | { type: "SETTLE" }
+  | { type: "ERROR"; error: string; errorCode?: ReviewStateErrorCode | null }
   | { type: "RESET" };
 
 export function createInitialReviewState(): ReviewState {
@@ -46,11 +64,12 @@ export function createInitialReviewState(): ReviewState {
     agents: [],
     issues: [],
     events: createEventHistory(),
-    fileProgress: { total: 0, current: 0, currentFile: null, completed: [] },
+    fileProgress: { total: 0, completed: [] },
     isStreaming: false,
     error: null,
     errorCode: null,
     startedAt: null,
+    orchestratorStats: {},
   };
 }
 
@@ -173,9 +192,7 @@ function handleStepEvent(state: ReviewState, event: StepEvent): ReviewState {
       };
 
     case "step_error": {
-      // Context step errors are non-fatal warnings; the review continues
-      // without project context. Only stop streaming for critical step failures.
-      const isFatal = event.step !== "context";
+      const isFatal = isFatalStepFailure(event.step);
       return {
         ...state,
         steps: updateStepStatus(state.steps, event.step, "error"),
@@ -184,40 +201,6 @@ function handleStepEvent(state: ReviewState, event: StepEvent): ReviewState {
       };
     }
   }
-}
-
-function handleFileEvent(
-  state: ReviewState,
-  event: Extract<AgentStreamEvent, { type: "file_start" | "file_complete" }>,
-): ReviewState {
-  if (event.scope === "agent") {
-    return { ...state, events: appendEvent(state.events, event) };
-  }
-
-  if (event.type === "file_start") {
-    return {
-      ...state,
-      fileProgress: {
-        ...state.fileProgress,
-        current: event.index,
-        currentFile: event.file,
-      },
-      events: appendEvent(state.events, event),
-    };
-  }
-
-  const newCompleted = state.fileProgress.completed.includes(event.file)
-    ? state.fileProgress.completed
-    : [...state.fileProgress.completed, event.file];
-  return {
-    ...state,
-    fileProgress: {
-      ...state.fileProgress,
-      completed: newCompleted,
-      currentFile: null,
-    },
-    events: appendEvent(state.events, event),
-  };
 }
 
 function handleFileProgressEvent(
@@ -233,8 +216,6 @@ function handleFileProgressEvent(
       ...state.fileProgress,
       total: Math.max(state.fileProgress.total, event.total),
       completed: newCompleted,
-      current: event.completed,
-      currentFile: event.completed < event.total ? event.file : null,
     },
     events: appendEvent(state.events, event),
   };
@@ -251,28 +232,32 @@ function isStepReviewEvent(event: ReviewEvent): event is StepEvent {
   return event.type in STEP_EVENT_TYPES;
 }
 
-// Routes a review event to the handler that owns its sub-type. Step, file, and
-// file-progress events have dedicated handlers; the orchestrator-complete total
-// and all remaining agent/issue events fall through to the agent path.
+// Routes a review event to the handler that owns its sub-type. Step, file-progress
+// and orchestrator-complete events have dedicated handlers; all remaining
+// agent/issue events fall through to the agent path.
 function dispatchEvent(state: ReviewState, event: ReviewEvent): ReviewState {
   if (isStepReviewEvent(event)) {
     return handleStepEvent(state, event);
-  }
-
-  if (event.type === "file_start" || event.type === "file_complete") {
-    return handleFileEvent(state, event);
   }
 
   if (event.type === "file_progress") {
     return handleFileProgressEvent(state, event);
   }
 
-  // A degenerate complete event reporting zero files must not wipe the total
-  // already established by the stream.
-  if (event.type === "orchestrator_complete" && event.filesAnalyzed) {
+  if (event.type === "orchestrator_complete") {
     return {
       ...state,
-      fileProgress: { ...state.fileProgress, total: event.filesAnalyzed },
+      // A degenerate complete event reporting zero files must not wipe the
+      // total already established by the stream.
+      fileProgress: event.filesAnalyzed
+        ? { ...state.fileProgress, total: event.filesAnalyzed }
+        : state.fileProgress,
+      orchestratorStats: {
+        lensStats: event.lensStats,
+        droppedDuplicates: event.droppedDuplicates,
+        droppedBelowThreshold: event.droppedBelowThreshold,
+        minSeverity: event.minSeverity,
+      },
       events: appendEvent(state.events, event),
     };
   }
@@ -302,6 +287,12 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
         isStreaming: false,
         error: null,
         errorCode: ReviewErrorCode.CANCELLED,
+      };
+
+    case "SETTLE":
+      return {
+        ...state,
+        isStreaming: false,
       };
 
     case "ERROR":

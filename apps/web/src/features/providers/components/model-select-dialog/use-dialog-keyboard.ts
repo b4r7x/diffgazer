@@ -44,7 +44,6 @@ interface ModelDialogKeyboardReturn {
   focusedModelId: string | null;
   checkedModelId: string | undefined;
   filterIndex: number;
-  setFilterIndex: (index: number | ((prev: number) => number)) => void;
   footerButtonIndex: number;
   getFooterButtonProps: (index: number) => {
     ref: RefCallback<HTMLButtonElement>;
@@ -58,7 +57,6 @@ interface ModelDialogKeyboardReturn {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
   };
-  setFocusZone: (zone: FocusZone) => void;
   handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
   handleConfirm: (modelId?: string) => void;
   handleSearchFocus: () => void;
@@ -285,7 +283,9 @@ export function useModelDialogKeyboard({
   };
 
   const filters = useModelFilters({
-    open,
+    // Keys stay quiet during the save window: discoveryStatus is forced to
+    // "passed" while saving, so f would otherwise still cycle the tier filter.
+    open: open && !isSaving,
     inFilters: isZone("filters"),
     inSearch: isZone("search"),
     hasFilteredModels: listInteractive,
@@ -311,7 +311,9 @@ export function useModelDialogKeyboard({
   };
 
   const search = useModelSearchFocus({
-    open,
+    // Quiet during the save window: / would flip the zone to search while the
+    // disabled input cannot take focus, stranding the post-save repair.
+    open: open && !isSaving,
     inSearch: isZone("search"),
     searchQuery,
     setSearchQuery,
@@ -350,8 +352,12 @@ export function useModelDialogKeyboard({
       focusedModelId,
       currentModel,
     });
-    const listHasFocus = listContainerRef.current
-      ? containsActiveElement(listContainerRef.current)
+    const container = listContainerRef.current;
+    // Focus parked on the container itself (the saving window) is not settled
+    // list focus; only a focused row suppresses the repair, so a failed save
+    // hands focus back to the model row.
+    const listHasFocus = container
+      ? containsActiveElement(container) && container.ownerDocument.activeElement !== container
       : false;
     if (targetId === focusedModelId && listHasFocus) {
       hasHandledInitialFocusRef.current = true;
@@ -364,8 +370,18 @@ export function useModelDialogKeyboard({
   });
 
   const moveEmptyListFocusToCancel = useEffectEvent(() => {
-    if (isSaving) return;
     enterFooter(0);
+  });
+
+  // The save window unmounts the model rows and disables every other control,
+  // so nothing in the open dialog can hold focus. Park it on the list
+  // container (tabIndex -1 while saving) beside the Saving status; when the
+  // dialog closes instead, the unmount focus restore takes over.
+  const parkSavingFocus = useEffectEvent(() => {
+    const container = listContainerRef.current;
+    if (!container || containsActiveElement(container)) return;
+    setFocusZone("list");
+    container.focus();
   });
 
   useEffect(() => {
@@ -378,10 +394,14 @@ export function useModelDialogKeyboard({
 
   const filteredIdsKey = filteredModels.map((m) => m.id).join("\0");
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filteredIdsKey is the serialized form of filteredModels (ids joined); depending on the array identity would re-run this effect on every commit while the dialog is open, so the filteredModels read inside repairListFocus is covered by filteredIdsKey. isSaving and discoveryStatus retry empty-list recovery when saving completes or discovery becomes ready.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filteredIdsKey is the serialized form of filteredModels (ids joined); depending on the array identity would re-run this effect on every commit while the dialog is open, so the filteredModels read inside repairListFocus is covered by filteredIdsKey. isSaving parks focus when the save window opens and retries recovery with discoveryStatus when saving completes or discovery becomes ready.
   useEffect(() => {
     if (!open) return;
     if (!listInteractive) {
+      if (isSaving) {
+        parkSavingFocus();
+        return;
+      }
       if (!hasHandledInitialFocusRef.current) {
         // Keep the initial-focus window open while discovery can still deliver
         // models; once it settles without a focusable list, land on Cancel
@@ -427,12 +447,10 @@ export function useModelDialogKeyboard({
     focusedModelId,
     checkedModelId,
     filterIndex,
-    setFilterIndex,
     footerButtonIndex: footerActionRow.focusedIndex,
     getCloseButtonProps,
     getFooterButtonProps,
     getFilterButtonProps: filters.getFilterButtonProps,
-    setFocusZone,
     handleFilterKeyDown: filters.handleFilterKeyDown,
     handleConfirm,
     handleSearchFocus,

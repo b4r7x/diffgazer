@@ -6,7 +6,7 @@ import type {
   ConfigurationModelsResponse,
   ModelInfo,
 } from "@diffgazer/core/schemas/config";
-import { READY_GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
+import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -14,8 +14,6 @@ import userEvent from "@testing-library/user-event";
 import { type ReactNode, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ModelSelectDialog } from "./dialog";
-
-type SupportedConfigurationSummary = Extract<ClientConfigurationSummary, { status: "supported" }>;
 
 const CHECKED_AT = "2026-08-02T12:00:00.000Z";
 const CATALOG_SKIPPED_REASON =
@@ -26,7 +24,7 @@ function catalogModel(id: string, tier: ModelInfo["tier"] = "paid"): ModelInfo {
 }
 
 function catalogModelsResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   models: ModelInfo[],
 ): ConfigurationModelsResponse {
   return {
@@ -42,7 +40,7 @@ function catalogModelsResponse(
 }
 
 function skippedModelsResponse(
-  configuration: SupportedConfigurationSummary,
+  configuration: ClientConfigurationSummary,
   reason: string = CATALOG_SKIPPED_REASON,
 ): ConfigurationModelsResponse {
   return {
@@ -56,13 +54,14 @@ function skippedModelsResponse(
   };
 }
 
-const GEMINI_CONFIGURATION = READY_GEMINI_CONFIGURATION as SupportedConfigurationSummary;
 const GEMINI_CATALOG_MODELS = [catalogModel("gemini-2.5-flash"), catalogModel("gemini-2.5-pro")];
 
 interface RenderOptions {
-  configuration?: SupportedConfigurationSummary;
+  configuration?: ClientConfigurationSummary;
   currentModel?: string | null;
   isSaving?: boolean;
+  /** Flip isSaving to true when a selection is confirmed, like the page container does. */
+  saveOnSelect?: boolean;
   onSelect?: (modelId: string) => void;
   onOpenChange?: (open: boolean) => void;
   getConfigurationModels?: BoundApi["getConfigurationModels"];
@@ -94,12 +93,21 @@ function renderDialog(options: RenderOptions = {}) {
   const currentModel =
     options.currentModel === null ? undefined : (options.currentModel ?? "gemini-2.5-flash");
 
+  let setSaving: ((saving: boolean) => void) | undefined;
+
   function DialogHarness() {
     const [open, setOpen] = useState(true);
+    const [isSaving, setIsSaving] = useState(options.isSaving ?? false);
+    setSaving = setIsSaving;
 
     const handleOpenChange = (nextOpen: boolean) => {
       setOpen(nextOpen);
       onOpenChange(nextOpen);
+    };
+
+    const handleSelect = (modelId: string) => {
+      onSelect(modelId);
+      if (options.saveOnSelect) setIsSaving(true);
     };
 
     return (
@@ -108,14 +116,14 @@ function renderDialog(options: RenderOptions = {}) {
         onOpenChange={handleOpenChange}
         configuration={configuration}
         currentModel={currentModel}
-        isSaving={options.isSaving}
-        onSelect={onSelect}
+        isSaving={isSaving}
+        onSelect={handleSelect}
       />
     );
   }
 
   render(<DialogHarness />, { wrapper });
-  return { getConfigurationModels, onSelect, onOpenChange };
+  return { getConfigurationModels, onSelect, onOpenChange, finishSave: () => setSaving?.(false) };
 }
 
 describe("ModelSelectDialog configuration-bound discovery", () => {
@@ -229,6 +237,65 @@ describe("ModelSelectDialog configuration-bound discovery", () => {
 
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(dialog).toBeInTheDocument();
+  });
+
+  it("keeps DOM focus inside the open dialog for the whole saving window", async () => {
+    const user = userEvent.setup();
+    renderDialog({ currentModel: "gemini-2.5-flash", saveOnSelect: true });
+
+    const dialog = await screen.findByRole("dialog");
+    const currentRow = await within(dialog).findByRole("radio", { name: /gemini-2\.5-flash/ });
+    await waitFor(() => expect(currentRow).toHaveFocus());
+
+    await user.keyboard("{Enter}");
+
+    // The focused radio unmounts the moment saving starts and every footer
+    // control is disabled; focus must not fall to document.body.
+    await waitFor(() => expect(within(dialog).getByRole("status")).toHaveTextContent("Saving..."));
+    expect(
+      within(dialog).queryByRole("radio", { name: /gemini-2\.5-flash/ }),
+    ).not.toBeInTheDocument();
+    // Not the dialog root either: that is only jsdom's focus-trap recapture
+    // fallback (real browsers fire no focus events when the focused row is
+    // removed and drop to body), so the save window must park focus on a
+    // stable element inside the dialog.
+    await waitFor(() => {
+      const active = document.activeElement;
+      expect(dialog.contains(active)).toBe(true);
+      expect(active).not.toBe(dialog);
+      expect(active).not.toBe(document.body);
+    });
+  });
+
+  it("keeps keys quiet while saving and returns focus to the model row when saving fails", async () => {
+    const user = userEvent.setup();
+    const { finishSave } = renderDialog({ currentModel: "gemini-2.5-flash", saveOnSelect: true });
+
+    const dialog = await screen.findByRole("dialog");
+    const currentRow = await within(dialog).findByRole("radio", { name: /gemini-2\.5-flash/ });
+    await waitFor(() => expect(currentRow).toHaveFocus());
+
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(within(dialog).getByRole("status")).toHaveTextContent("Saving..."));
+
+    // f must not cycle the tier filter and / must not move the zone into the
+    // disabled search box while the save window is open.
+    await user.keyboard("f");
+    await user.keyboard("/");
+
+    act(() => finishSave());
+
+    const filterTabs = screen.getByRole("radiogroup", { name: /model tier filter/i });
+    expect(within(filterTabs).getByRole("radio", { name: /^all$/i })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    const restoredRow = await within(dialog).findByRole("radio", { name: /gemini-2\.5-flash/ });
+    await waitFor(() => expect(restoredRow).toHaveFocus());
+
+    // The list zone is live again after the failed save: j moves down a row.
+    await user.keyboard("j");
+    expect(within(dialog).getByRole("radio", { name: /gemini-2\.5-pro/ })).toHaveFocus();
   });
 });
 
@@ -354,11 +421,26 @@ describe("ModelSelectDialog discovery states", () => {
     expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash");
     expect(onSelect).not.toHaveBeenCalledWith("stale-model-id");
   });
+
+  // A configuration saved before the capability filter existed keeps working;
+  // the dialog says so instead of leaving the missing row unexplained.
+  it("explains a saved model the review-capable list no longer offers", async () => {
+    renderDialog({ currentModel: "retired-model-id" });
+
+    expect(await screen.findByText(/retired-model-id stays configured/)).toBeInTheDocument();
+  });
+
+  it("says nothing about the saved model while it is still offered", async () => {
+    renderDialog({ currentModel: "gemini-2.5-flash" });
+
+    await screen.findByRole("radio", { name: /gemini-2\.5-flash/ });
+    expect(screen.queryByText(/stays configured/)).not.toBeInTheDocument();
+  });
 });
 
 describe("ModelSelectDialog transport model policies", () => {
   it("shows the honest catalog-unavailable reason for local transports", async () => {
-    const localConfiguration: SupportedConfigurationSummary = {
+    const localConfiguration: ClientConfigurationSummary = {
       configurationId: "ollama-loopback",
       revision: 2,
       status: "supported",
@@ -383,6 +465,6 @@ describe("ModelSelectDialog transport model policies", () => {
     expect(screen.getByText(/ollama/i)).toBeInTheDocument();
     expect(screen.getByText("No models available")).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: /qwen2\.5-coder/ })).not.toBeInTheDocument();
-    expect(getConfigurationModels).toHaveBeenCalledWith("ollama-loopback");
+    expect(getConfigurationModels).toHaveBeenCalledWith("ollama-loopback", expect.any(AbortSignal));
   });
 });

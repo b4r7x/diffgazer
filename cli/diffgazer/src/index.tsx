@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { getErrorMessage } from "@diffgazer/core/errors";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { HELP_TEXT, resolveCliAction } from "./cli-options";
 import { ensureShutdownToken } from "./lib/shutdown-token";
 import { startWeb } from "./web-launcher";
@@ -36,6 +37,8 @@ async function main(): Promise<void> {
 }
 
 void main().catch((error: unknown) => {
-  console.error(getErrorMessage(error));
+  // The last display sink in the binary: operands and cwd-derived paths reach it
+  // verbatim, so it routes through the same sanitizer as every other TUI sink.
+  console.error(sanitizeTerminalText(getErrorMessage(error)));
   process.exitCode = 1;
 });

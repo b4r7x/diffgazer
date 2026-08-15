@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -57,9 +57,11 @@ vi.mock("node:fs", async (importOriginal) => {
   };
 });
 
-import { DiffgazerAddConfigSchema } from "../context.js";
+import { ctx, DiffgazerAddConfigSchema } from "../context.js";
 import { addCommand } from "./add/command.js";
 import { removeCommand } from "./remove/command.js";
+import { expectCommandExit } from "./testing/expect-command-exit.js";
+import { writeProjectFixture } from "./testing/project-fixture.js";
 
 type Snapshot = Map<string, Buffer | null>;
 
@@ -95,35 +97,10 @@ function resetFaults(): void {
 }
 
 function writeFixtureConfig(): void {
-  writeFileSync(
-    join(root, "package.json"),
-    JSON.stringify({ type: "module", devDependencies: { tailwindcss: "^4.0.0" } }),
-  );
-  writeFileSync(
-    join(root, "tsconfig.json"),
-    JSON.stringify({ compilerOptions: { baseUrl: ".", paths: { "@/*": ["./src/*"] } } }),
-  );
-  mkdirSync(join(root, "src/styles"), { recursive: true });
-  writeFileSync(join(root, "src/styles/styles.css"), '@import "./theme.css";\n');
-  writeFileSync(
-    join(root, "diffgazer.json"),
-    JSON.stringify(
-      {
-        aliases: {
-          components: "@/components/ui",
-          utils: "@/lib/utils",
-          lib: "@/lib",
-          hooks: "@/hooks",
-        },
-        componentsFsPath: "src/components/ui",
-        libFsPath: "src/lib",
-        hooksFsPath: "src/hooks",
-        tailwind: { css: "src/styles/styles.css" },
-      },
-      null,
-      2,
-    ),
-  );
+  writeProjectFixture(root, {
+    packageJson: { type: "module", devDependencies: { tailwindcss: "^4.0.0" } },
+    stylesCss: '@import "./theme.css";\n',
+  });
 }
 
 async function addDialog(): Promise<void> {
@@ -150,7 +127,7 @@ function readConfig() {
 
 function ownedSourcePaths(): string[] {
   const paths = new Set<string>();
-  for (const record of Object.values(readConfig().installedComponents ?? {})) {
+  for (const record of Object.values(readConfig().installedItems ?? {})) {
     for (const file of record.files ?? []) paths.add(join(root, file.path));
   }
   return [...paths];
@@ -166,18 +143,6 @@ function expectSnapshot(snapshot: Snapshot): void {
   for (const [path, content] of snapshot) {
     if (content === null) expect(existsSync(path), path).toBe(false);
     else expect(readFileSync(path), path).toEqual(content);
-  }
-}
-
-async function expectCommandFailure(action: () => Promise<void>): Promise<void> {
-  const exit = vi.spyOn(process, "exit").mockImplementation(() => {
-    throw new Error("injected process exit");
-  });
-  try {
-    await expect(action()).rejects.toThrow("injected process exit");
-    expect(exit).toHaveBeenCalledWith(1);
-  } finally {
-    exit.mockRestore();
   }
 }
 
@@ -206,7 +171,7 @@ describe("removeCommand transaction", () => {
     faults.trackRemovals = true;
     faults.removeFailureAt = 2;
 
-    await expectCommandFailure(removeDialog);
+    await expectCommandExit(removeDialog);
     faults.trackRemovals = false;
 
     expect(faults.successfulSourceRemovals).toBeGreaterThan(0);
@@ -217,7 +182,7 @@ describe("removeCommand transaction", () => {
 
     expect(sourcePaths.every((path) => !existsSync(path))).toBe(true);
     expect(existsSync(stylesPath)).toBe(false);
-    expect(readConfig().installedComponents?.["ui/dialog"]).toBeUndefined();
+    expect(readConfig().installedItems?.["ui/dialog"]).toBeUndefined();
   });
 
   test("restores source, CSS, and manifest bytes when the real CSS plan write fails, then retries", async () => {
@@ -229,7 +194,7 @@ describe("removeCommand transaction", () => {
     faults.writeFailureAt = 1;
     faults.deleteBeforeWriteFailure = true;
 
-    await expectCommandFailure(removeDialog);
+    await expectCommandExit(removeDialog);
 
     expect(faults.matchingWrites).toBeGreaterThanOrEqual(2);
     expectSnapshot(before);
@@ -239,17 +204,17 @@ describe("removeCommand transaction", () => {
 
     expect(sourcePaths.every((path) => !existsSync(path))).toBe(true);
     expect(readFileSync(stylesPath, "utf-8")).not.toContain("dialog::backdrop");
-    expect(readConfig().installedComponents?.["ui/dialog"]).toBeUndefined();
+    expect(readConfig().installedItems?.["ui/dialog"]).toBeUndefined();
   });
 
-  test("rolls back the second real manifest write for a retained CSS chunk, then retries", async () => {
+  test("rolls back the manifest write for a retained CSS chunk, then retries", async () => {
     const sourcePaths = ownedSourcePaths();
     const stylesPath = join(root, "src/styles/styles.css");
     const manifestPath = join(root, "diffgazer.json");
     const config = readConfig();
     const originalCss = readFileSync(stylesPath, "utf-8");
     const backdropChunk = findCssChunk(originalCss, "dialog::backdrop");
-    const chunkOwner = Object.entries(config.installedComponents ?? {}).find(([, record]) =>
+    const chunkOwner = Object.entries(config.installedItems ?? {}).find(([, record]) =>
       record.cssChunks?.includes(backdropChunk.hash),
     );
     if (!chunkOwner) throw new Error("Expected an owner for the dialog backdrop CSS chunk");
@@ -258,12 +223,12 @@ describe("removeCommand transaction", () => {
     writeFileSync(stylesPath, editedCss);
     const before = capture([...sourcePaths, stylesPath, manifestPath]);
     faults.renameTarget = manifestPath;
-    faults.renameFailureAt = 2;
+    faults.renameFailureAt = 1;
     faults.deleteBeforeRenameFailure = true;
 
-    await expectCommandFailure(removeDialog);
+    await expectCommandExit(removeDialog);
 
-    expect(faults.matchingRenames).toBe(2);
+    expect(faults.matchingRenames).toBe(1);
     expectSnapshot(before);
 
     resetFaults();
@@ -274,7 +239,47 @@ describe("removeCommand transaction", () => {
     const cssAfter = readFileSync(stylesPath, "utf-8");
     expect(cssAfter).toContain(findCssChunk(editedCss, "user tuned").block);
     expect([...cssAfter.matchAll(CSS_CHUNK_PATTERN)]).toHaveLength(1);
-    const retained = readConfig().installedComponents?.[chunkOwnerName];
+    const retained = readConfig().installedItems?.[chunkOwnerName];
+    expect(retained?.cssChunks).toEqual(chunkOwnerRecord.cssChunks);
+    expect(retained?.files).toBeUndefined();
+  });
+
+  test("rolls back when manifest persistence fails for a retained CSS chunk, then retries", async () => {
+    const sourcePaths = ownedSourcePaths();
+    const stylesPath = join(root, "src/styles/styles.css");
+    const manifestPath = join(root, "diffgazer.json");
+    const config = readConfig();
+    const originalCss = readFileSync(stylesPath, "utf-8");
+    const backdropChunk = findCssChunk(originalCss, "dialog::backdrop");
+    const chunkOwner = Object.entries(config.installedItems ?? {}).find(([, record]) =>
+      record.cssChunks?.includes(backdropChunk.hash),
+    );
+    if (!chunkOwner) throw new Error("Expected an owner for the dialog backdrop CSS chunk");
+    const [chunkOwnerName, chunkOwnerRecord] = chunkOwner;
+    const editedCss = originalCss.replace(/(dialog::backdrop)/, "/* user tuned */\n$1");
+    writeFileSync(stylesPath, editedCss);
+    const before = capture([...sourcePaths, stylesPath, manifestPath]);
+    const writeConfigImpl = ctx.config.writeConfig;
+    const writeConfigSpy = vi.spyOn(ctx.config, "writeConfig").mockImplementation((cwd, config) => {
+      writeConfigImpl(cwd, config);
+      throw new Error("manifest persistence failed");
+    });
+
+    try {
+      await expectCommandExit(removeDialog);
+      expectSnapshot(before);
+    } finally {
+      writeConfigSpy.mockRestore();
+    }
+
+    resetFaults();
+    await removeDialog();
+
+    expect(sourcePaths.every((path) => !existsSync(path))).toBe(true);
+    const cssAfter = readFileSync(stylesPath, "utf-8");
+    expect(cssAfter).toContain(findCssChunk(editedCss, "user tuned").block);
+    expect([...cssAfter.matchAll(CSS_CHUNK_PATTERN)]).toHaveLength(1);
+    const retained = readConfig().installedItems?.[chunkOwnerName];
     expect(retained?.cssChunks).toEqual(chunkOwnerRecord.cssChunks);
     expect(retained?.files).toBeUndefined();
   });

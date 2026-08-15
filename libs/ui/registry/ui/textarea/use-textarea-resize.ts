@@ -9,7 +9,7 @@ import type {
 import { useRef, useState } from "react";
 
 /** Pixels added or removed by a single arrow-key press. */
-export const RESIZE_STEP = 8;
+const RESIZE_STEP = 8;
 
 export type TextareaResizeAxis = "vertical" | "horizontal";
 

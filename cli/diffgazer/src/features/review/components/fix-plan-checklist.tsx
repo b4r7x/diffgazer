@@ -1,4 +1,5 @@
-import { type IssueFixStepPresentation, sanitizeTerminalText } from "@diffgazer/core/review";
+import type { IssueFixStepPresentation } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { clampIndex } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
@@ -9,7 +10,7 @@ import { useTheme } from "../../../theme/provider";
 
 export interface FixPlanChecklistProps {
   steps: readonly IssueFixStepPresentation[];
-  completedSteps: Set<number>;
+  completedSteps: ReadonlySet<number>;
   onToggle: (step: number) => void;
   isActive?: boolean;
 }

@@ -1,6 +1,6 @@
 import { getErrorMessage } from "../errors.js";
-import { redactSecrets, truncateUtf8, utf8ByteLength } from "../redaction.js";
-import { sanitizeTerminalText } from "../review/sanitize-terminal.js";
+import { redactSecrets, truncateUtf8 } from "../redaction.js";
+import { sanitizeTerminalText } from "../sanitize-terminal.js";
 import { ApiErrorEnvelopeSchema, ErrorCode } from "../schemas/errors.js";
 import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "./protocol.js";
 import type {
@@ -13,20 +13,10 @@ import type {
   ResponseValidator,
 } from "./types.js";
 
-const RESPONSE_CAPTURE_MAX_BYTES = 64 * 1024;
+const ERROR_RESPONSE_CAPTURE_MAX_BYTES = 64 * 1024;
 const SAFE_MESSAGE_MAX_BYTES = 512;
 const CODE_MAX_BYTES = 128;
-const GENERIC_REMEDIATION = "Review the error and try again.";
 const INVALID_JSON = Symbol("invalid-json");
-
-type ApiErrorMetadata = {
-  /** A static client-owned hint; never copy wire remediation text. */
-  remediation?: string;
-  retryable?: boolean;
-  safeMessage?: string;
-};
-
-type SafeApiError = ApiError & ApiErrorMetadata;
 
 const SENSITIVE_HEADER_PATTERN =
   /\b(?:x[-_](?:api[-_]?key|auth(?:orization)?|access[-_]?token|credential|secret)|api[-_]?key|access[-_]?token)\s*[:=]/i;
@@ -53,6 +43,14 @@ const BODY_SECRET_KEYS = new Set([
   "secretkey",
   "token",
 ]);
+/**
+ * Shown whenever a response fails its schema: the app and the server disagree
+ * about the payload shape, which in practice means they are running different
+ * builds. Restarting reloads both sides, so that is the action offered.
+ */
+const RESPONSE_VALIDATION_MESSAGE =
+  "The server returned data this build does not understand. Restart Diffgazer so the app and server run the same build.";
+
 const BODY_SECRET_SCAN_MAX_DEPTH = 16;
 const BODY_SECRET_SCAN_MAX_NODES = 512;
 const BODY_SECRET_VALUE_MAX_COUNT = 64;
@@ -72,6 +70,16 @@ function sanitizeText(
     .trim();
   if (sanitized.length === 0) return undefined;
   return truncateUtf8(sanitized, maxBytes);
+}
+
+/**
+ * A schema validator rejects with an issue list whose `message` is the serialized
+ * issues themselves. That text is machine output, never user copy, so it is
+ * recognised by shape rather than by class: the validator instance that threw may
+ * come from a different copy of the schema library than the one linked here.
+ */
+function isSchemaValidationFailure(cause: unknown): boolean {
+  return isRecord(cause) && Array.isArray((cause as { issues?: unknown }).issues);
 }
 
 function isUntrustedDiagnostic(value: string): boolean {
@@ -152,17 +160,8 @@ function collectBodySecretValues(body: unknown): string[] {
   return values;
 }
 
-function createApiError(
-  message: string,
-  status: number,
-  code?: string,
-  metadata?: ApiErrorMetadata,
-): SafeApiError {
-  const error = new Error(message) as SafeApiError;
-  error.status = status;
-  error.code = code;
-  Object.assign(error, metadata);
-  return error;
+function createApiError(message: string, status: number, code?: string): ApiError {
+  return Object.assign(new Error(message), { status, code });
 }
 
 function resolveToken(
@@ -234,54 +233,23 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     projectHeaders[PROJECT_ROOT_HEADER] = encodeURIComponent(projectRoot);
   }
 
-  async function readJsonFallback(response: Response): Promise<unknown | typeof INVALID_JSON> {
-    // A body-less Response is not produced by fetch, but is common in tests and
-    // small fetch shims. There is no bounded read primitive on Response.text()
-    // or Response.json(): both may materialize an arbitrarily large value before
-    // returning. Only use this compatibility path when the shim declares a
-    // trustworthy, bounded content length; unknown-length fallbacks fail closed.
-    const contentLength = responseContentLength(response);
-    if (contentLength === undefined || contentLength > RESPONSE_CAPTURE_MAX_BYTES) {
-      return INVALID_JSON;
-    }
-
-    try {
-      const rawText = await response.text();
-      if (typeof rawText !== "string" || utf8ByteLength(rawText) > RESPONSE_CAPTURE_MAX_BYTES) {
-        return INVALID_JSON;
-      }
-      return JSON.parse(rawText.replace(/^\uFEFF/, "")) as unknown;
-    } catch {
-      try {
-        const body = await response.json();
-        const serialized = JSON.stringify(body);
-        if (
-          typeof serialized !== "string" ||
-          utf8ByteLength(serialized) > RESPONSE_CAPTURE_MAX_BYTES
-        ) {
-          return INVALID_JSON;
-        }
-        return body;
-      } catch {
-        return INVALID_JSON;
-      }
-    }
-  }
-
-  async function readJson(response: Response): Promise<unknown | typeof INVALID_JSON> {
+  async function readJson(
+    response: Response,
+    maxCaptureBytes: number,
+  ): Promise<unknown | typeof INVALID_JSON> {
     const contentLength = responseContentLength(response);
     const body = response.body as
       | (ReadableStream<Uint8Array> & {
           cancel?: (reason?: unknown) => Promise<unknown> | unknown;
         })
       | null;
-    if (contentLength !== undefined && contentLength > RESPONSE_CAPTURE_MAX_BYTES) {
-      cancelBestEffort(body, new Error("Response body exceeds the 64 KiB capture limit"));
+    if (contentLength !== undefined && contentLength > maxCaptureBytes) {
+      cancelBestEffort(body, new Error("Response body exceeds the capture limit"));
       return INVALID_JSON;
     }
 
     const reader = getResponseBodyReader(response);
-    if (!reader) return readJsonFallback(response);
+    if (!reader) return INVALID_JSON;
 
     const decoder = new TextDecoder();
     let capturedBytes = 0;
@@ -297,8 +265,8 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
           return INVALID_JSON;
         }
 
-        if (chunk.byteLength > RESPONSE_CAPTURE_MAX_BYTES - capturedBytes) {
-          cancelBestEffort(reader, new Error("Response body exceeds the 64 KiB capture limit"));
+        if (chunk.byteLength > maxCaptureBytes - capturedBytes) {
+          cancelBestEffort(reader, new Error("Response body exceeds the capture limit"));
           return INVALID_JSON;
         }
         capturedBytes += chunk.byteLength;
@@ -319,10 +287,11 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
   async function parse<T>(
     response: Response,
-    validate?: ResponseValidator<T>,
-    sensitiveValues: readonly string[] = [],
+    validate: ResponseValidator<T> | undefined,
+    sensitiveValues: readonly string[],
+    maxCaptureBytes: number,
   ): Promise<T> {
-    const body = await readJson(response);
+    const body = await readJson(response, maxCaptureBytes);
     if (body === INVALID_JSON || body === null) {
       throw createApiError("Invalid JSON response", response.status);
     }
@@ -330,16 +299,15 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       try {
         return validate(body);
       } catch (cause) {
-        const rawMessage = getErrorMessage(cause, "Response validation failed");
-        const safeMessage =
+        const rawMessage = getErrorMessage(cause, RESPONSE_VALIDATION_MESSAGE);
+        const sanitizedMessage =
           sanitizeText(rawMessage, sensitiveValues, SAFE_MESSAGE_MAX_BYTES) ??
-          "Response validation failed";
-        const message = isUntrustedDiagnostic(rawMessage)
-          ? "Response validation failed"
-          : safeMessage;
-        throw createApiError(message, 422, ErrorCode.INVALID_RESPONSE, {
-          safeMessage: message,
-        });
+          RESPONSE_VALIDATION_MESSAGE;
+        const message =
+          isSchemaValidationFailure(cause) || isUntrustedDiagnostic(rawMessage)
+            ? RESPONSE_VALIDATION_MESSAGE
+            : sanitizedMessage;
+        throw createApiError(message, 422, ErrorCode.INVALID_RESPONSE);
       }
     }
     return body as T;
@@ -372,50 +340,38 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
         headers,
         body: options?.body !== undefined ? JSON.stringify(options.body) : undefined,
         signal: options?.signal,
+        keepalive: options?.keepalive,
       });
     } catch (cause) {
       const rawMessage = getErrorMessage(cause, "Network request failed");
-      const safeMessage = sanitizeText(rawMessage, sensitiveValues, SAFE_MESSAGE_MAX_BYTES);
+      const sanitizedMessage = sanitizeText(rawMessage, sensitiveValues, SAFE_MESSAGE_MAX_BYTES);
       throw new Error(
-        safeMessage && !isUntrustedDiagnostic(rawMessage) ? safeMessage : "Network request failed",
+        sanitizedMessage && !isUntrustedDiagnostic(rawMessage)
+          ? sanitizedMessage
+          : "Network request failed",
       );
     }
 
     if (!response.ok) {
-      const rawBody = await readJson(response);
+      const rawBody = await readJson(response, ERROR_RESPONSE_CAPTURE_MAX_BYTES);
       if (rawBody === INVALID_JSON || rawBody === null) {
         throw createApiError(`HTTP ${response.status}`, response.status);
       }
       const envelope = ApiErrorEnvelopeSchema.safeParse(rawBody);
       const error = envelope.success ? envelope.data.error : undefined;
-      const errorPayload = isRecord(rawBody) && isRecord(rawBody.error) ? rawBody.error : undefined;
-      // `safeMessage` is still provider/server-controlled wire data. It is
-      // metadata for server-side producers, not an authority for this client;
-      // only the validated envelope message participates in normalization.
+      // The rest of the wire envelope is server/provider-controlled diagnostic
+      // data with no client consumer. It never reaches the thrown error: only
+      // the validated envelope message, status and code do.
       const rawMessage = error?.message ?? `HTTP ${response.status}`;
-      const safeMessage =
+      const sanitizedMessage =
         sanitizeText(rawMessage, sensitiveValues, SAFE_MESSAGE_MAX_BYTES) ??
         `HTTP ${response.status}`;
-      const message = isUntrustedDiagnostic(rawMessage) ? `HTTP ${response.status}` : safeMessage;
-
-      const metadata: ApiErrorMetadata = { safeMessage: message };
-      if (typeof errorPayload?.retryable === "boolean") {
-        metadata.retryable = errorPayload.retryable;
-      }
-
-      // The legacy envelope can contain arbitrary diagnostic keys. Those
-      // values are server/provider-controlled and therefore are not a
-      // client-safe contract, even after pattern redaction: an opaque value
-      // can be a secret without matching a recognizable token shape. Keep
-      // status/code/retryable and expose only a static, client-owned hint when
-      // the server indicates that remediation exists. Never persist or return
-      // details, truncatedDetails, correlationId, or wire remediation text.
-      if (typeof errorPayload?.remediation === "string") {
-        metadata.remediation = GENERIC_REMEDIATION;
-      }
+      const message = isUntrustedDiagnostic(rawMessage)
+        ? `HTTP ${response.status}`
+        : sanitizedMessage;
 
       const code = sanitizeText(error?.code, sensitiveValues, CODE_MAX_BYTES);
-      throw createApiError(message, response.status, code, metadata);
+      throw createApiError(message, response.status, code);
     }
 
     return response;
@@ -426,27 +382,35 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     path: string,
     options?: QueryRequestOptions<T>,
   ): Promise<T> {
-    const { schema, ...request } = options ?? {};
+    const { schema, maxResponseBytes, ...request } = options ?? {};
     const response = await send(method, path, request);
-    return parse<T>(response, schema, getConfiguredSensitiveValues(config, request.headers));
+    return parse<T>(
+      response,
+      schema,
+      getConfiguredSensitiveValues(config, request.headers),
+      maxResponseBytes ?? ERROR_RESPONSE_CAPTURE_MAX_BYTES,
+    );
   }
 
-  async function withBody<T>(
-    method: "POST" | "PUT",
+  async function withPostBody<T>(
     path: string,
     body?: unknown,
     options?: BodyRequestOptions<T>,
   ): Promise<T> {
-    const { schema, ...request } = options ?? {};
-    const response = await send(method, path, { body, ...request });
-    return parse<T>(response, schema, getConfiguredSensitiveValues(config, request.headers, body));
+    const { schema, maxResponseBytes, ...request } = options ?? {};
+    const response = await send("POST", path, { body, ...request });
+    return parse<T>(
+      response,
+      schema,
+      getConfiguredSensitiveValues(config, request.headers, body),
+      maxResponseBytes ?? ERROR_RESPONSE_CAPTURE_MAX_BYTES,
+    );
   }
 
   return {
     get: (path, options) => query("GET", path, options),
     delete: (path, options) => query("DELETE", path, options),
-    post: (path, body, options) => withBody("POST", path, body, options),
-    put: (path, body, options) => withBody("PUT", path, body, options),
+    post: (path, body, options) => withPostBody(path, body, options),
     request: send,
   };
 }

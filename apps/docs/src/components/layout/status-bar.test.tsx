@@ -1,6 +1,5 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -104,12 +103,12 @@ describe("StatusBar", () => {
     expect(screen.getByRole("button", { name: /^theme:/i })).toBeInTheDocument();
   });
 
-  it("exposes focusable links inside the Primary navigation landmark", async () => {
+  it("exposes focusable links inside the Site navigation landmark", async () => {
     const user = userEvent.setup();
     routerBoundary.pathname = "/";
     renderStatusBar();
 
-    screen.getByRole("navigation", { name: "Primary" });
+    screen.getByRole("navigation", { name: "Site" });
 
     const tabOrder = [
       screen.getByRole("link", { name: "diffgazer" }),
@@ -139,5 +138,14 @@ describe("generated wordmark grid", () => {
     for (const row of rows) {
       expect(row).toHaveLength(WORDMARK_COLS);
     }
+  });
+
+  // WORDMARK_ROWS and WORDMARK_ASCII come from the same figlet render, so the
+  // shape test above is true at any height. The boot animation's hardcoded step
+  // count is the value that actually desyncs, so pin it to the constant.
+  it("reveals the boot animation in one step per generated row", async () => {
+    const css = await readFile(resolve(import.meta.dirname, "../../index.css"), "utf8");
+
+    expect(css).toContain(`steps(${WORDMARK_ROWS}, end)`);
   });
 });

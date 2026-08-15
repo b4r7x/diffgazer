@@ -7,14 +7,11 @@ import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeCreateReviewResponse } from "@diffgazer/core/testing/factories";
 import {
-  CLI_UNSUPPORTED_CONFIGURATION,
+  CODEX_CLI_CONFIGURATION,
   configurationStatus,
   LOCAL_OPENAI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeReadyInitResponse,
-  READY_GEMINI_CONFIGURATION,
-  REMOVED_ZAI_CODING_CONFIGURATION,
-  selectedIdentityFrom,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -63,6 +60,10 @@ vi.mock("@diffgazer/core/api/hooks", async () => {
 });
 
 import { useReviewLifecycle } from "./use-lifecycle";
+
+type CancelReviewOutcome =
+  | { status: "cancelled"; reason: "cancelled" }
+  | { status: "error"; message: string };
 
 describe("review progress control documentation", () => {
   it("matches the cancel and resumable-leave controls used by the progress screen", () => {
@@ -115,14 +116,19 @@ function makeBaseReturn() {
   return {
     stream: {
       abort: vi.fn(),
-      cancel: vi.fn(async (): Promise<string | null> => null),
+      cancel: vi.fn(
+        async (): Promise<CancelReviewOutcome | null> => ({
+          status: "cancelled",
+          reason: "cancelled",
+        }),
+      ),
       resume: vi.fn(),
       state: {
         steps: [],
         agents: [],
         issues: [],
         events: [],
-        fileProgress: { total: 0, current: 0, currentFile: null, completed: [] },
+        fileProgress: { total: 0, completed: [] },
         isStreaming: false,
         error: "No unstaged changes found" as string | null,
         errorCode: ReviewErrorCode.NO_DIFF as string | null,
@@ -134,23 +140,21 @@ function makeBaseReturn() {
       loadingMessage: null,
       isNoDiffError: true,
       isTerminalStreamError: false,
-      isCheckingForChanges: false,
     },
     completion: {
       isCompleting: false,
       completedAt: null,
       skipDelay: vi.fn(),
-      resetCompletion: vi.fn(),
     },
     start: {
       hasStarted: true,
-      hasStreamed: true,
       canStart: true,
-      identity: selectedIdentityFrom(READY_GEMINI_CONFIGURATION),
-      readinessGate: "ready" as const,
     },
     gate: "no-diff" as const,
     contextSnapshot: null,
+    contextRefreshError: null,
+    retryContextRefresh: vi.fn(),
+    resumeReview: vi.fn(),
     reset: vi.fn(),
   };
 }
@@ -205,7 +209,12 @@ describe("useReviewLifecycle no-diff alternate start", () => {
 
   it("reports the code-specific start failure when the alternate review cannot be created", async () => {
     const base = makeBaseReturn();
-    base.stream.cancel = vi.fn(async () => null);
+    base.stream.cancel = vi.fn(
+      async (): Promise<CancelReviewOutcome | null> => ({
+        status: "cancelled",
+        reason: "cancelled",
+      }),
+    );
     mockUseReviewLifecycleBase.mockReturnValue(base);
     mockCreateReview.mockRejectedValue(
       Object.assign(new Error("API key not found"), { code: "API_KEY_MISSING", status: 400 }),
@@ -237,7 +246,7 @@ describe("useReviewLifecycle no-diff alternate start", () => {
   });
 
   it("makes Back authoritative while alternate cancellation is pending", async () => {
-    const cancel = createDeferred<string | null>();
+    const cancel = createDeferred<CancelReviewOutcome | null>();
     const base = makeBaseReturn();
     base.stream.cancel = vi.fn(() => cancel.promise);
     mockUseReviewLifecycleBase.mockReturnValue(base);
@@ -250,7 +259,7 @@ describe("useReviewLifecycle no-diff alternate start", () => {
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
     expect(result.current.isTransitionPending).toBe(false);
 
-    cancel.resolve(null);
+    cancel.resolve({ status: "cancelled", reason: "cancelled" });
     await act(async () => cancel.promise);
     expect(mockCreateReview).not.toHaveBeenCalled();
   });
@@ -262,7 +271,12 @@ describe("useReviewLifecycle no-diff alternate start", () => {
       session: { mode: "staged" },
     });
     const base = makeBaseReturn();
-    base.stream.cancel = vi.fn(async () => null);
+    base.stream.cancel = vi.fn(
+      async (): Promise<CancelReviewOutcome | null> => ({
+        status: "cancelled",
+        reason: "cancelled",
+      }),
+    );
     mockUseReviewLifecycleBase.mockReturnValue(base);
     mockCreateReview.mockReturnValue(created.promise);
     const { result } = renderReviewLifecycle("unstaged");
@@ -297,7 +311,12 @@ describe("useReviewLifecycle no-diff alternate start", () => {
   it("exposes the pending transition until alternate creation settles", async () => {
     const created = createDeferred<ReturnType<typeof makeCreateReviewResponse>>();
     const base = makeBaseReturn();
-    base.stream.cancel = vi.fn(async () => null);
+    base.stream.cancel = vi.fn(
+      async (): Promise<CancelReviewOutcome | null> => ({
+        status: "cancelled",
+        reason: "cancelled",
+      }),
+    );
     mockUseReviewLifecycleBase.mockReturnValue(base);
     mockCreateReview.mockReturnValue(created.promise);
     const { result } = renderReviewLifecycle("unstaged");
@@ -320,7 +339,12 @@ describe("useReviewLifecycle no-diff alternate start", () => {
   it("invalidates alternate navigation when the owner unmounts", async () => {
     const created = createDeferred<ReturnType<typeof makeCreateReviewResponse>>();
     const base = makeBaseReturn();
-    base.stream.cancel = vi.fn(async () => null);
+    base.stream.cancel = vi.fn(
+      async (): Promise<CancelReviewOutcome | null> => ({
+        status: "cancelled",
+        reason: "cancelled",
+      }),
+    );
     mockUseReviewLifecycleBase.mockReturnValue(base);
     mockCreateReview.mockReturnValue(created.promise);
     const view = renderReviewLifecycle("unstaged");
@@ -352,10 +376,15 @@ describe("useReviewLifecycle Back from terminal screens", () => {
   });
 
   it("navigates home on Back from the error/no-changes screen without a Cancel failed toast", async () => {
-    // The terminal session now answers cancel success-shaped, so cancelOnServer
-    // resolves null and Back must navigate home, never toast "Cancel failed".
+    // Terminal no-diff: cancel returns a success-shaped outcome; Back navigates home
+    // without showing "Cancel failed".
     const base = makeBaseReturn();
-    base.stream.cancel = vi.fn(async () => null);
+    base.stream.cancel = vi.fn(
+      async (): Promise<CancelReviewOutcome | null> => ({
+        status: "cancelled",
+        reason: "cancelled",
+      }),
+    );
     mockUseReviewLifecycleBase.mockReturnValue(base);
 
     const { result } = renderReviewLifecycle("unstaged");
@@ -390,6 +419,81 @@ describe("useReviewLifecycle Back from terminal screens", () => {
     });
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(result.current.isTransitionPending).toBe(false);
+  });
+
+  it("reports a structured cancel error instead of leaving the user on a dead button", async () => {
+    const base = makeRunningBaseReturn();
+    base.stream.cancel = vi.fn(
+      async (): Promise<CancelReviewOutcome | null> => ({
+        status: "error",
+        message: "cancel endpoint down",
+      }),
+    );
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+
+    const { result } = renderReviewLifecycle("unstaged");
+
+    act(() => result.current.handleCancel());
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith("Cancel failed", {
+        message: "cancel endpoint down",
+      });
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockClearActiveSession).not.toHaveBeenCalled();
+    expect(result.current.isTransitionPending).toBe(false);
+  });
+
+  it("sanitizes untrusted cancel failures before reporting them", async () => {
+    const base = makeRunningBaseReturn();
+    const unsafe = "Bearer sk-live-secret /Users/voitz/.config/codex correlationId=abc";
+    base.stream.cancel = vi.fn(
+      async (): Promise<CancelReviewOutcome | null> => ({
+        status: "error",
+        message: unsafe,
+      }),
+    );
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+
+    const { result } = renderReviewLifecycle("unstaged");
+
+    act(() => result.current.handleCancel());
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith("Cancel failed", {
+        message:
+          "Diffgazer could not present this failure safely. Return home and retry the review.",
+      });
+    });
+    expect(mockToastError.mock.calls[0]?.[1]?.message).not.toContain("Bearer");
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("reports a cancel failure the user abandoned by leaving mid-cancel", async () => {
+    // The review keeps running and keeps billing, so the failure must reach the
+    // user even though a Back press already invalidated this transition.
+    const deferred = createDeferred<CancelReviewOutcome | null>();
+    const base = makeRunningBaseReturn();
+    base.stream.cancel = vi.fn(() => deferred.promise);
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+
+    const { result } = renderReviewLifecycle("unstaged");
+
+    act(() => result.current.handleCancel());
+    act(() => result.current.handleBack());
+    mockNavigate.mockClear();
+
+    await act(async () => {
+      deferred.resolve({ status: "error", message: "cancel endpoint down" });
+      await deferred.promise;
+    });
+
+    await waitFor(() => {
+      expect(mockToastError).toHaveBeenCalledWith("Cancel failed", {
+        message: "cancel endpoint down",
+      });
+    });
   });
 
   it("reports a rejected cancel from the provider-setup path", async () => {
@@ -466,7 +570,7 @@ describe("useReviewLifecycle stream retry", () => {
 
     result.current.handleRetry("active-review");
 
-    expect(base.stream.resume).toHaveBeenCalledWith("active-review");
+    expect(base.resumeReview).toHaveBeenCalledWith("active-review");
   });
 });
 
@@ -602,7 +706,9 @@ describe("useReviewLifecycle completion cache cleanup", () => {
     result.current.handleSetupProvider();
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings/providers" });
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "/settings/providers" }),
+      );
     });
     expect(base.stream.cancel).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111", {
       preserveState: true,
@@ -611,6 +717,23 @@ describe("useReviewLifecycle completion cache cleanup", () => {
       "staged",
       "11111111-1111-4111-8111-111111111111",
     );
+  });
+
+  it("deep-links provider setup to the selected configuration's product", async () => {
+    const base = makeRunningBaseReturn();
+    mockUseReviewLifecycleBase.mockReturnValue(base);
+
+    const { result } = renderReviewLifecycle("staged");
+    await waitFor(() => expect(result.current.selectedConfiguration).not.toBeNull());
+
+    result.current.handleSetupProvider();
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/settings/providers",
+        search: { product: "gemini" },
+      });
+    });
   });
 });
 
@@ -665,7 +788,6 @@ describe("useReviewLifecycle readiness gate", () => {
         start: {
           ...makeRunningBaseReturn().start,
           canStart: true,
-          readinessGate: "ready",
         },
         gate: "running",
       };
@@ -675,15 +797,12 @@ describe("useReviewLifecycle readiness gate", () => {
 
     await waitFor(() => {
       expect(capturedOptions?.readiness?.ready).toBe(true);
-      expect(capturedOptions?.configuration).toEqual(
-        selectedIdentityFrom(READY_GEMINI_CONFIGURATION),
-      );
     });
   });
 
   it("routes local unreachable readiness to the test action without API-key copy", async () => {
     const init = makeConfigurationInitResponse([
-      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
+      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
     ]);
     mockApi = createMockApi(init);
     let capturedOptions: Parameters<typeof mockUseReviewLifecycleBase>[0] | undefined;
@@ -694,7 +813,6 @@ describe("useReviewLifecycle readiness gate", () => {
         start: {
           ...makeRunningBaseReturn().start,
           canStart: false,
-          readinessGate: "unreachable",
         },
         gate: "unconfigured",
       };
@@ -703,16 +821,16 @@ describe("useReviewLifecycle readiness gate", () => {
     const { result } = renderReviewLifecycle("unstaged");
 
     await waitFor(() => {
-      expect(capturedOptions?.readiness?.status).toBe("local-endpoint-unreachable");
+      expect(capturedOptions?.readiness?.status).toBe("local-conformance-failed");
       expect(capturedOptions?.readiness?.action).toBe("test");
     });
     expect(result.current.readiness?.remediation.message).not.toMatch(/api key/i);
-    expect(result.current.readinessGate).toBe("unreachable");
+    expect(result.current.readiness?.status).toBe("local-conformance-failed");
   });
 
   it("routes CLI unsupported readiness to the inspect action", async () => {
     const init = makeConfigurationInitResponse([
-      configurationStatus(CLI_UNSUPPORTED_CONFIGURATION, "unsupported"),
+      configurationStatus(CODEX_CLI_CONFIGURATION, "unsupported"),
     ]);
     mockApi = createMockApi(init);
     mockUseReviewLifecycleBase.mockReturnValue({
@@ -720,7 +838,6 @@ describe("useReviewLifecycle readiness gate", () => {
       start: {
         ...makeRunningBaseReturn().start,
         canStart: false,
-        readinessGate: "unsupported",
       },
       gate: "unconfigured",
     });
@@ -733,32 +850,9 @@ describe("useReviewLifecycle readiness gate", () => {
     });
   });
 
-  it("routes removed readiness to the delete action", async () => {
-    const init = makeConfigurationInitResponse([
-      configurationStatus(REMOVED_ZAI_CODING_CONFIGURATION, "removed"),
-    ]);
-    mockApi = createMockApi(init);
-    mockUseReviewLifecycleBase.mockReturnValue({
-      ...makeRunningBaseReturn(),
-      start: {
-        ...makeRunningBaseReturn().start,
-        canStart: false,
-        readinessGate: "removed",
-      },
-      gate: "unconfigured",
-    });
-
-    const { result } = renderReviewLifecycle("staged");
-
-    await waitFor(() => {
-      expect(result.current.readiness?.status).toBe("removed");
-      expect(result.current.readiness?.action).toBe("delete");
-    });
-  });
-
   it("allows a saved completed review to resume without readiness", async () => {
     const init = makeConfigurationInitResponse([
-      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
+      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
     ]);
     mockApi = createMockApi(init);
     let capturedOptions: Parameters<typeof mockUseReviewLifecycleBase>[0] | undefined;
@@ -769,7 +863,6 @@ describe("useReviewLifecycle readiness gate", () => {
         start: {
           ...makeRunningBaseReturn().start,
           canStart: true,
-          readinessGate: "unreachable",
         },
         gate: "running",
       };

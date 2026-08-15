@@ -84,12 +84,16 @@ function TestOverflowItems({
   indicatorWidth,
   show = true,
   containerKey = "container",
+  // columnGap, not the gap shorthand: jsdom does not expand shorthands into
+  // longhands the way a real browser's computed style does.
+  containerStyle = { columnGap: "10px" },
 }: {
   widths: number[];
   containerWidth: number;
   indicatorWidth: number;
   show?: boolean;
   containerKey?: string;
+  containerStyle?: React.CSSProperties;
 }) {
   const { ref, visibleCount, overflowCount } = useOverflowItems({ itemCount: widths.length });
 
@@ -99,7 +103,13 @@ function TestOverflowItems({
     show
       ? React.createElement(
           "div",
-          { key: containerKey, ref, role: "list", "aria-label": "items", style: { gap: "10px" } },
+          {
+            key: containerKey,
+            ref,
+            role: "list",
+            "aria-label": "items",
+            style: containerStyle,
+          },
           widths.map((width, index) =>
             React.createElement(
               "span",
@@ -133,7 +143,7 @@ function TestOverflowItemsWithListener({ listener }: { listener: (count: number)
     null,
     React.createElement(
       "div",
-      { ref, role: "list", "aria-label": "items", style: { gap: "10px" } },
+      { ref, role: "list", "aria-label": "items", style: { columnGap: "10px" } },
       React.createElement("span", { role: "listitem", "data-width": 50 }, "Item 0"),
       React.createElement("span", { role: "listitem", "data-width": 50 }, "Item 1"),
       React.createElement("span", { role: "listitem", "data-width": 50 }, "Item 2"),
@@ -223,6 +233,26 @@ describe("useOverflowItems", () => {
 
     expect(result.current.visibleCount).toBe(2);
     expect(result.current.overflowCount).toBe(0);
+  });
+
+  it("reserves the column gap, not the row gap, when the two axes differ", () => {
+    render(
+      React.createElement(TestOverflowItems, {
+        widths: [50, 50, 50],
+        containerWidth: 150,
+        indicatorWidth: 30,
+        containerStyle: { rowGap: "4px", columnGap: "12px" },
+      }),
+    );
+    setRenderedWidths(150);
+
+    act(() => {
+      for (const cb of resizeCallbacks) cb();
+      flushScheduledChecks();
+    });
+
+    // Charging the 4px row gap would leave 2 items visible; the 12px column gap fits 1.
+    expect(screen.getByLabelText("counts")).toHaveTextContent("1/2/150");
   });
 
   it("updates when the overflow indicator width changes", () => {
@@ -450,7 +480,7 @@ describe("useOverflowItems", () => {
         const style = realGetComputedStyle(el, pseudoElt);
         return new Proxy(style, {
           get(target, prop) {
-            if (prop === "gap") return "10px";
+            if (prop === "columnGap") return "10px";
             const value = Reflect.get(target, prop, target);
             return typeof value === "function" ? value.bind(target) : value;
           },

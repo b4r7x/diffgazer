@@ -15,6 +15,7 @@ export type ConfigServiceErrorCode =
 
 export type StoreErrorCode =
   | "NOT_FOUND"
+  | "READ_ERROR"
   | "PARSE_ERROR"
   | "VALIDATION_ERROR"
   | "WRITE_ERROR"

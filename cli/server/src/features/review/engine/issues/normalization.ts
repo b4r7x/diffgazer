@@ -51,25 +51,12 @@ export function normalizeIssueLineFields(issue: ReviewIssue): ReviewIssue {
   return { ...issue, line_start: lineStart, line_end: lineEnd, evidence };
 }
 
-export function normalizeIssueTextFields(issue: ReviewIssue): ReviewIssue {
-  return {
-    ...issue,
-    id: issue.id.trim(),
-    title: issue.title.trim(),
-    file: issue.file.trim(),
-    rationale: issue.rationale.trim(),
-    recommendation: issue.recommendation.trim(),
-    symptom: issue.symptom.trim(),
-    whyItMatters: issue.whyItMatters.trim(),
-    evidence: issue.evidence.map((reference) => ({
-      ...reference,
-      title: reference.title.trim(),
-      sourceId: reference.sourceId.trim(),
-      excerpt: reference.excerpt.trim(),
-      ...(reference.file === undefined ? {} : { file: reference.file.trim() }),
-      ...(reference.sha === undefined ? {} : { sha: reference.sha.trim() }),
-    })),
-  };
+export function dropProviderTrace(issue: ReviewIssue): ReviewIssue {
+  if (issue.trace === undefined) {
+    return issue;
+  }
+  const { trace: _trace, ...withoutTrace } = issue;
+  return withoutTrace;
 }
 
 export function validateIssueCompleteness(issue: ReviewIssue): boolean {

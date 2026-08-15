@@ -363,6 +363,66 @@ describe("SettingsThemePage keyboard behavior", () => {
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings" });
   });
 
+  it("keeps focus out of the radio list while a save started from Save is in flight", async () => {
+    const save = createDeferred<Awaited<ReturnType<BoundApi["saveSettings"]>>>();
+    mockSaveSettings.mockReturnValueOnce(save.promise);
+    const user = userEvent.setup();
+    renderPage();
+    await waitForThemeReady();
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: /auto/i })).toHaveFocus());
+
+    // Select Dark, walk down into the footer actions, and start the save from Save.
+    await user.keyboard("{ArrowDown} ");
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowRight}");
+    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    expect(saveButton).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(mockSaveSettings).toHaveBeenCalledTimes(1));
+
+    // Both footer actions disable while saving; focus parks on the pane content
+    // instead of falling to body or being pulled back into the theme radios.
+    const themePane = screen.getByRole("region", { name: /theme settings/i });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /saving/i })).toBeDisabled();
+      expect(themePane.contains(document.activeElement)).toBe(true);
+    });
+    expect(document.body).not.toHaveFocus();
+    for (const radio of screen.getAllByRole("radio")) {
+      expect(radio).not.toHaveFocus();
+    }
+
+    await act(async () => {
+      save.reject(new Error("Network unreachable"));
+    });
+
+    // The failed save re-enables the pane; focus stays inside it for the
+    // keyboard user instead of dying on body.
+    expect(await screen.findByRole("alert")).toHaveTextContent("Network unreachable");
+    await waitFor(() => expect(themePane.contains(document.activeElement)).toBe(true));
+    expect(document.body).not.toHaveFocus();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("does not pull the user back to settings when the page left during the save", async () => {
+    const save = createDeferred<Awaited<ReturnType<BoundApi["saveSettings"]>>>();
+    mockSaveSettings.mockReturnValueOnce(save.promise);
+    const user = userEvent.setup();
+    const { unmount } = renderPage();
+    await waitForThemeReady();
+
+    await user.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(mockSaveSettings).toHaveBeenCalledTimes(1));
+
+    unmount();
+    await act(async () => {
+      save.resolve(undefined);
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
   it("ignores an overlapping theme save while one is still pending", async () => {
     let resolveSave: (() => void) | undefined;
     mockSaveSettings.mockImplementation(

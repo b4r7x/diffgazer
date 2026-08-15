@@ -151,6 +151,15 @@ test("release readiness runs the changeset coverage gate in its verify job", () 
   );
 });
 
+// On push-to-main the merge base against `origin/main` is HEAD itself, so the gate
+// examines nothing and always passes. Keep it scoped to the event where it can fail.
+test("the changeset coverage gate is scoped to pull requests", () => {
+  const workflow = parse(readFileSync(RELEASE_READINESS_WORKFLOW_PATH, "utf8"));
+  const step = workflow.jobs.verify.steps.find((candidate) => candidate?.run === COVERAGE_COMMAND);
+
+  assert.equal(step.if, "${{ github.event_name == 'pull_request' }}");
+});
+
 test("the coverage script runs this checker", () => {
   const rootPackageJson = JSON.parse(
     readFileSync(fileURLToPath(new URL("../../package.json", import.meta.url)), "utf8"),

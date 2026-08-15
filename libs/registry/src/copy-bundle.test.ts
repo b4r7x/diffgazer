@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -120,6 +121,34 @@ describe("buildCopyBundle", () => {
     expect(output.items[0]?.description).toBe("Focus hook");
     expect(output.items[0]?.files[0]?.path).toBe("hooks/use-focus.ts");
     expect(output.items[0]?.files[0]?.content).toContain("useFocus");
+  });
+
+  it("records an integrity digest the verifier can recompute from the written bytes", () => {
+    const root = createTempRoot();
+    writeHookFile(root, "use-focus.ts", "export const useFocus = () => {}\n");
+    writeRegistry(root, [
+      {
+        name: "focus",
+        type: "registry:hook",
+        title: "Focus",
+        description: "Focus hook",
+        meta: { client: true },
+        files: [{ path: "src/hooks/use-focus.ts" }],
+      },
+    ]);
+    const outputPath = join(root, "bundle.json");
+
+    const result = buildCopyBundle({ sourceRoot: root, outputPath, itemType: "registry:hook" });
+
+    const written = JSON.parse(readFileSync(outputPath, "utf-8")) as {
+      items: unknown[];
+      integrity: string;
+    };
+    const recomputed = `sha256-${createHash("sha256")
+      .update(JSON.stringify({ items: written.items }))
+      .digest("hex")}`;
+    expect(written.integrity).toBe(recomputed);
+    expect(result.integrity).toBe(recomputed);
   });
 
   it("can include hidden items for installer-only bundles", () => {

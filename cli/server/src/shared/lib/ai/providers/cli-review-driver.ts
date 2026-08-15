@@ -1,10 +1,12 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import type { LocalCliProductId } from "@diffgazer/core/schemas/config";
 import type { ExecutionResult, ReviewResult } from "@diffgazer/core/schemas/review";
-import { type BudgetLedger, createBudgetLedger } from "../budget/ledger.js";
+import { readTextFileWithLimit } from "../bounded-file.js";
+import { type AttemptActual, type BudgetLedger, createBudgetLedger } from "../budget/ledger.js";
+import { composeExecutionDeadline } from "../deadline.js";
 import type { Adapter, AdapterExecuteRequest } from "../types.js";
 import {
   buildCliChildEnvironment,
@@ -29,15 +31,17 @@ import {
   createCompletedExecutionResult,
   createFailedExecutionResult,
   type FailedTerminalOutcome,
-  ZERO_ATTEMPT_ACTUAL,
 } from "./execution-receipt.js";
 
-export type CliReviewProcessInput = Readonly<{
+type CliReviewProcessInput = Readonly<{
   executable: string;
   argv: readonly string[];
   cwd: string;
   env: Readonly<Record<string, string>>;
+  /** The private prompt channel: argv carries only flags and identifiers. */
+  stdin: string;
   signal?: AbortSignal;
+  timeoutMs?: number;
 }>;
 
 export type CliReviewDependencies = Readonly<{
@@ -51,7 +55,10 @@ export type CliReviewDependencies = Readonly<{
     input: CliProbeInput & Readonly<{ modelId: string }>,
   ) => Promise<Result<CliModelPolicyProbe, string>>;
   runProcess?: (input: CliReviewProcessInput) => Promise<CliProcessRunResult>;
-  readResultFile?: (resultPath: string) => Promise<string>;
+  readResultFile?: (
+    resultPath: string,
+    maxBytes: number,
+  ) => Promise<Result<string, { code: "oversize-response" | "read-failed" }>>;
   now?: () => Date;
 }>;
 
@@ -73,9 +80,7 @@ export type CliReviewProduct = Readonly<{
   resultFileName?: string;
   /** Writes product inputs (schemas, configs) into the fixture root before argv is built. */
   prepareFixture?: (fixtureRoot: string) => Promise<void>;
-  buildArgv: (
-    input: Readonly<{ fixtureRoot: string; modelId: string; prompt: string }>,
-  ) => readonly string[];
+  buildArgv: (input: Readonly<{ fixtureRoot: string; modelId: string }>) => readonly string[];
   assertArgvAllowed: (record: CliCompatibilityRecord, argv: readonly string[]) => void;
   parseTerminalOutput: (
     output: CliTerminalOutput,
@@ -124,6 +129,9 @@ export async function executeCliReview(
 ): Promise<ExecutionResult> {
   const now = dependencies.now ?? (() => new Date());
   const startedAt = now().toISOString();
+  const limits = request.evidenceKey.limits;
+  let responseBytesConsumed = 0;
+
   const failed = (outcome: FailedTerminalOutcome, finishedAt: string): ExecutionResult =>
     createFailedExecutionResult(request, outcome, { startedAt, finishedAt, attemptCount: 1 });
 
@@ -141,18 +149,37 @@ export async function executeCliReview(
   }
   const env = envResult.value;
 
-  const ledger: BudgetLedger = createBudgetLedger(request.evidenceKey.limits);
-  const reservation = ledger.reserveAttempt(
-    conservativeAttemptEstimate(request.evidenceKey.limits),
-  );
+  const ledger: BudgetLedger = createBudgetLedger(limits);
+  const reservation = ledger.reserveAttempt(conservativeAttemptEstimate(limits));
   if (!reservation.ok) {
     return failed(reservation.error.outcome, now().toISOString());
   }
 
-  const failWith = (outcome: FailedTerminalOutcome): ExecutionResult => {
-    ledger.releaseReservation(reservation.value);
-    return failed(outcome, now().toISOString());
+  const attemptActual = (finishedAt: string): AttemptActual => {
+    const elapsedMs = Math.max(0, Date.parse(finishedAt) - Date.parse(startedAt));
+    return {
+      inputTokens: 0,
+      outputTokens: 0,
+      responseBytes: Math.min(responseBytesConsumed, limits.maxResponseBytes),
+      wallTimeMs: Math.min(elapsedMs, limits.wallTimeMs),
+      costUsd: 0,
+    };
   };
+
+  const settleMeasured = (finishedAt: string): FailedTerminalOutcome | null => {
+    const settle = ledger.settleAttempt(reservation.value, attemptActual(finishedAt));
+    return settle.ok ? null : "budget-exhausted";
+  };
+
+  const failWith = (outcome: FailedTerminalOutcome): ExecutionResult => {
+    const finishedAt = now().toISOString();
+    const exhausted = settleMeasured(finishedAt);
+    return failed(exhausted ?? outcome, finishedAt);
+  };
+
+  // One absolute deadline spans version, auth, and model probes plus the review
+  // process, so the admitted wall time is end-to-end rather than per phase.
+  const deadline = composeExecutionDeadline(limits.wallTimeMs, request.signal);
 
   let fixtureRoot: string | undefined;
   try {
@@ -165,14 +192,22 @@ export async function executeCliReview(
     }
     const executable = executableResult.value;
 
-    fixtureRoot = await mkdtemp(path.join(tmpdir(), product.tmpPrefix));
+    const fixtureDir = await mkdtemp(path.join(tmpdir(), product.tmpPrefix));
+    fixtureRoot = fixtureDir;
     const acquireVersion =
       dependencies.acquireVersion ??
       (async (input: CliProbeInput) => {
         const acquired = await acquireCliVersion(product.productId, input);
         return acquired.ok ? ok(acquired.value.value) : err(acquired.error);
       });
-    const versionResult = await acquireVersion({ executable, cwd: fixtureRoot, env });
+    const probeInput = () => ({
+      executable,
+      cwd: fixtureDir,
+      env,
+      signal: deadline.signal,
+      timeoutMs: deadline.remainingMs(),
+    });
+    const versionResult = await acquireVersion(probeInput());
     if (!versionResult.ok) {
       return failWith("transport-failed");
     }
@@ -199,7 +234,7 @@ export async function executeCliReview(
     const probeAuth =
       dependencies.probeAuth ??
       ((input: CliProbeInput) => probeCliAuthStore(product.productId, input));
-    const authResult = await probeAuth({ executable, cwd: fixtureRoot, env });
+    const authResult = await probeAuth(probeInput());
     if (
       !authResult.ok ||
       product.rejectedAuthEvidence.includes(authResult.value.authStoreEvidence)
@@ -212,20 +247,17 @@ export async function executeCliReview(
       ((input: CliProbeInput & { modelId: string }) =>
         probeCliModelPolicy(product.productId, input));
     const modelPolicyResult = await probeModelPolicy({
-      executable,
+      ...probeInput(),
       modelId: request.evidenceKey.modelId,
-      cwd: fixtureRoot,
-      env,
     });
     if (!modelPolicyResult.ok || !modelPolicyResult.value.accepted) {
       return failWith("transport-failed");
     }
 
-    await product.prepareFixture?.(fixtureRoot);
+    await product.prepareFixture?.(fixtureDir);
     const argv = product.buildArgv({
-      fixtureRoot,
+      fixtureRoot: fixtureDir,
       modelId: request.evidenceKey.modelId,
-      prompt: request.prompt,
     });
 
     try {
@@ -235,31 +267,51 @@ export async function executeCliReview(
     }
 
     const runProcess = dependencies.runProcess ?? runCliArgvProcess;
+    // Neither vendor CLI exposes a system channel, so the invariant instructions
+    // lead the single stdin payload the child reads its prompt from.
+    const stdinPrompt = request.systemPrompt
+      ? `${request.systemPrompt}\n\n${request.prompt}`
+      : request.prompt;
     const processResult = await runProcess({
       executable,
       argv,
-      cwd: fixtureRoot,
+      cwd: fixtureDir,
       env,
-      signal: request.signal,
+      stdin: stdinPrompt,
+      signal: deadline.signal,
+      timeoutMs: deadline.remainingMs(),
     });
 
-    if (processResult.cancelledLocally || request.signal?.aborted) {
+    if (deadline.expired() || processResult.timedOut) {
+      return failWith("timed-out");
+    }
+
+    if (processResult.cancelledLocally || deadline.signal.aborted) {
       return failWith("cancelled");
     }
 
-    if (processResult.exitCode !== 0 || processResult.timedOut || processResult.outputTruncated) {
+    if (processResult.exitCode !== 0 || processResult.outputTruncated) {
       return failWith("transport-failed");
     }
 
     let resultFile = "";
     if (product.resultFileName !== undefined) {
+      const resultPath = path.join(fixtureDir, product.resultFileName);
       const readResultFile =
-        dependencies.readResultFile ?? ((filePath: string) => readFile(filePath, "utf8"));
-      try {
-        resultFile = await readResultFile(path.join(fixtureRoot, product.resultFileName));
-      } catch {
-        return failWith("schema-failed");
+        dependencies.readResultFile ??
+        ((filePath: string, maxBytes: number) => readTextFileWithLimit(filePath, maxBytes));
+      const readResult = await readResultFile(resultPath, limits.maxResponseBytes);
+      if (!readResult.ok) {
+        return failWith(
+          readResult.error.code === "oversize-response" ? "transport-failed" : "schema-failed",
+        );
       }
+      const fileBytes = new TextEncoder().encode(readResult.value).byteLength;
+      if (fileBytes > limits.maxResponseBytes) {
+        return failWith("transport-failed");
+      }
+      resultFile = readResult.value;
+      responseBytesConsumed = fileBytes;
     }
 
     const parsed = product.parseTerminalOutput(
@@ -270,19 +322,21 @@ export async function executeCliReview(
       return failWith("schema-failed");
     }
 
-    const settle = ledger.settleAttempt(reservation.value, ZERO_ATTEMPT_ACTUAL);
-    if (!settle.ok) {
-      return failed("budget-exhausted", now().toISOString());
+    const finishedAt = now().toISOString();
+    const exhausted = settleMeasured(finishedAt);
+    if (exhausted) {
+      return failed(exhausted, finishedAt);
     }
 
     return createCompletedExecutionResult(request, parsed.value, {
       startedAt,
-      finishedAt: now().toISOString(),
+      finishedAt,
       attemptCount: 1,
     });
   } catch {
     return failWith("transport-failed");
   } finally {
+    deadline.dispose();
     if (fixtureRoot) {
       await rm(fixtureRoot, { recursive: true, force: true });
     }

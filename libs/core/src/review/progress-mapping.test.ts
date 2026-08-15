@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AgentState, StepState } from "../schemas/events/index.js";
+import { AGENT_METADATA, type AgentState, type StepState } from "../schemas/events/index.js";
 import { mapStepsToProgressData, mapStepsToProgressDataWithAgents } from "./progress-mapping.js";
 
 function makeStep(
@@ -11,9 +11,8 @@ function makeStep(
 }
 
 function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
+  const id = overrides.id ?? "detective";
   return {
-    id: "agent-1",
-    meta: { id: "agent-1", name: "Security", badgeLabel: "SEC", lensId: "security" },
     status: "queued",
     progress: 0,
     issueCount: 0,
@@ -21,7 +20,9 @@ function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
     startedAt: undefined,
     completedAt: undefined,
     ...overrides,
-  } as AgentState;
+    id,
+    meta: overrides.meta ?? AGENT_METADATA[id],
+  } satisfies AgentState;
 }
 
 describe("mapStepsToProgressData", () => {
@@ -47,30 +48,30 @@ describe("mapStepsToProgressData", () => {
     });
     expect(result[1]?.substeps?.[0]).toMatchObject({
       id: "detective",
-      tag: "SEC",
-      label: "Security",
+      tag: "DET",
+      label: "Detective",
     });
     expect(result[1]?.substeps).toEqual([
-      { id: "detective", tag: "SEC", label: "Security", status: "pending", detail: "queued" },
+      { id: "detective", tag: "DET", label: "Detective", status: "pending", detail: "queued" },
       {
         id: "guardian",
         tag: "SEC",
-        label: "Security",
+        label: "Guardian",
         status: "active",
         detail: "75% · Reading file",
       },
       {
         id: "optimizer",
-        tag: "SEC",
-        label: "Security",
+        tag: "PERF",
+        label: "Optimizer",
         status: "completed",
         detail: "1 issue",
       },
-      { id: "simplifier", tag: "SEC", label: "Security", status: "error", detail: "error" },
+      { id: "simplifier", tag: "SIM", label: "Simplifier", status: "error", detail: "error" },
     ]);
   });
 
-  it("keeps non-review steps free of agent substeps and hides top-level errors from the progress UI", () => {
+  it("keeps non-review steps free of agent substeps and surfaces failed step status", () => {
     const steps = [
       makeStep("context", "Project context", "error"),
       makeStep("report", "Save results", "active"),
@@ -79,7 +80,7 @@ describe("mapStepsToProgressData", () => {
     const result = mapStepsToProgressDataWithAgents(steps, [makeAgent()]);
 
     expect(result).toEqual([
-      { id: "context", label: "Project context", status: "pending", substeps: undefined },
+      { id: "context", label: "Project context", status: "error", substeps: undefined },
       { id: "report", label: "Save results", status: "active", substeps: undefined },
     ]);
   });

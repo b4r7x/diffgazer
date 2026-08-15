@@ -14,20 +14,16 @@
       "type": "object",
       "properties": {
         "components": {
-          "type": "string",
-          "pattern": "^(\\.\\.?\\/|[@~#][\\w-]*\\/)"
+          "type": "string"
         },
         "utils": {
-          "type": "string",
-          "pattern": "^(\\.\\.?\\/|[@~#][\\w-]*\\/)"
+          "type": "string"
         },
         "lib": {
-          "type": "string",
-          "pattern": "^(\\.\\.?\\/|[@~#][\\w-]*\\/)"
+          "type": "string"
         },
         "hooks": {
-          "type": "string",
-          "pattern": "^(\\.\\.?\\/|[@~#][\\w-]*\\/)"
+          "type": "string"
         }
       }
     },
@@ -52,7 +48,7 @@
       },
       "required": ["css"]
     },
-    "installedComponents": {
+    "installedItems": {
       "type": "object",
       "propertyNames": {
         "type": "string"
@@ -73,6 +69,12 @@
           "installedAs": {
             "type": "string",
             "enum": ["explicit", "transitive"]
+          },
+          "requires": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cssChunks": {
             "type": "array",
@@ -117,5 +119,6 @@
         "required": ["installedAt"]
       }
     }
-  }
+  },
+  "additionalProperties": {}
 }

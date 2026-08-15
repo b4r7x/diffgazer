@@ -19,7 +19,7 @@ function buildHarness(overrides: Partial<HomeMenuActionOptions> = {}): Harness {
 
   const dispatch = createHomeMenuAction({
     navigate: (r) => routes.push(r),
-    hasActiveSession: false,
+    activeSession: null,
     isTrusted: true,
     shutdown: {
       mutate: ((_input: unknown, options?: { onSettled?: (...args: unknown[]) => void }) => {
@@ -74,12 +74,11 @@ describe("createHomeMenuAction", () => {
   });
 
   test("resume-review navigates only when an active session exists", () => {
-    const noSession = buildHarness({ hasActiveSession: false });
+    const noSession = buildHarness({ activeSession: null });
     noSession.dispatch("resume-review");
     expect(noSession.routes).toEqual([]);
 
     const withSession = buildHarness({
-      hasActiveSession: true,
       activeSession: { reviewId: "active-review", mode: "staged" },
     });
     withSession.dispatch("resume-review");

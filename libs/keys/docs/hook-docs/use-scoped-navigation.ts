@@ -150,6 +150,13 @@ export const useScopedNavigationDoc: HookDoc = {
       description: "Only handle navigation keys when focus is within the container element.",
       defaultValue: "false",
     },
+    {
+      name: "allowInInput",
+      type: "boolean",
+      required: false,
+      description: "Allow navigation keys while a text-editable element has focus.",
+      defaultValue: "false",
+    },
   ],
   returns: {
     type: "UseScopedNavigationReturn",

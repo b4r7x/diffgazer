@@ -9,7 +9,6 @@ export function createApi(config: ApiClientConfig) {
   const client = createApiClient(config);
 
   return {
-    client,
     request: client.request,
     ...bindConfig(client),
     ...bindSettings(client),

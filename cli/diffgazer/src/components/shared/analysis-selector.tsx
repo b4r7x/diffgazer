@@ -1,11 +1,9 @@
-import { buildLensOptions } from "@diffgazer/core/schemas/events";
+import { LENS_OPTIONS } from "@diffgazer/core/schemas/events";
 import type { LensId } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { Badge } from "../ui/badge";
 import { CheckboxGroup } from "../ui/checkbox";
-
-const lensOptions = buildLensOptions();
 
 interface AnalysisSelectorProps {
   selectedLenses: LensId[];
@@ -35,7 +33,7 @@ export function AnalysisSelector({
         if (direction === 1) onDownBoundary?.();
       }}
     >
-      {lensOptions.map((lens) => (
+      {LENS_OPTIONS.map((lens) => (
         <CheckboxGroup.Item
           key={lens.id}
           value={lens.id}

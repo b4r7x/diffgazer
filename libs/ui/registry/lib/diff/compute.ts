@@ -4,7 +4,14 @@ import type { DiffChange, DiffHunk, ParsedDiff } from "./parse";
 const CONTEXT = 3;
 export const NO_NEWLINE_MARKER = "\\ No newline at end of file";
 
-/** Computes a single-file parsed diff from before/after text. */
+/**
+ * Computes a single-file parsed diff from before/after text.
+ *
+ * The LCS table is capped at 250,000 cells (`(before lines + 1) * (after lines + 1)`), which is
+ * roughly 499 lines per side for equal-length inputs. Past that cap the comparison degrades to a
+ * whole-file rewrite — every old line removed, every new line added, no shared context — rather
+ * than a line-accurate diff. Parse a real unified diff with `parseDiff` for inputs that large.
+ */
 export function computeDiff(before: string, after: string): ParsedDiff {
   if (before === after) return { oldPath: null, newPath: null, hunks: [] };
 

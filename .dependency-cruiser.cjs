@@ -1,11 +1,13 @@
 // dependency-cruiser config: encodes the AGENTS.md layer boundaries plus no-circular/no-orphans across
 // the workspace. Run from repo root via `pnpm run depcruise` against `apps cli libs`.
 //
-// Cross-feature matching uses two strategies: `@/`-alias surfaces (apps/web, apps/docs) match by import
-// SPECIFIER because a single root crawl cannot resolve the same `@` alias per app; relative-import
-// surfaces (cli/server, cli/diffgazer) match by RESOLVED path. Workspace `@diffgazer/*` deps resolve into
-// excluded build output, so the cross-package rules match specifiers too. Circular detection runs on
-// runtime deps only (tsPreCompilationDeps:false); type-only cycles are erased at compile time.
+// Cross-feature matching needs two strategies, because a single root crawl cannot resolve the same `@`
+// alias per app: `@/`-alias imports match by import SPECIFIER, relative imports match by RESOLVED path.
+// cli/server and cli/diffgazer only reach siblings relatively, so they carry the resolved-path rule alone;
+// apps/web and apps/docs write both forms, so they carry one rule of each. Workspace `@diffgazer/*` deps
+// resolve into build output, so the output is not followed while its import edge remains visible to the
+// cross-package rules. Circular detection runs on runtime deps only (tsPreCompilationDeps:false); type-only
+// cycles are erased at compile time.
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -20,29 +22,29 @@ module.exports = {
     },
     {
       name: "no-orphans",
-      severity: "warn",
+      severity: "error",
       comment:
         "Orphan modules (imported by nothing) are usually dead code; entrypoints and generated files are exempt.",
       from: {
         orphan: true,
+        // Re-derive this list by emptying it and running `pnpm run depcruise`: every entry below
+        // exempts a module that run reports, or a role (entrypoint, route, fixture, script, test)
+        // whose consumer is outside the crawl. An entry matching nothing suppresses nothing.
         pathNot: [
           "\\.d\\.ts$",
-          "(^|/)dist/",
-          "(^|/)public/r/",
-          "(^|/)generated/",
           "(^|/)\\.source/",
-          "catalog-snapshot\\.ts$",
           // Type-only modules are consumed via `import type`, which the runtime
           // crawl (tsPreCompilationDeps:false) does not follow.
           "(^|/)types\\.ts$",
           "(^|/)types/",
           "^cli/server/src/shared/lib/http/error-codes\\.ts$",
-          "^libs/core/src/schemas/presentation/(analysis|category-stats|timeline)\\.ts$",
-          // Public package subpath exports and documentation data are consumed
-          // through package.json exports or artifact/doc loaders, not the
-          // runtime application graph crawled here.
-          "^libs/core/src/testing/dom-polyfills\\.ts$",
-          "^libs/core/src/schemas/(git|context)\\.ts$",
+          "^libs/core/src/schemas/presentation/(category-stats|timeline)\\.ts$",
+          // Public package subpath exports and documentation data are consumed through
+          // package.json exports or artifact/doc loaders, not the runtime application graph
+          // crawled here. The catalog bundle-evidence helper is package-exported verification
+          // support: its server bundle test and models-dev smoke import the explicit
+          // `@diffgazer/core/testing/catalog-bundle-evidence` subpath.
+          "^libs/core/src/testing/catalog-bundle-evidence\\.ts$",
           "^libs/keys/docs/hook-docs/[^/]+\\.ts$",
           // Package/app entrypoints and tooling configs are intentionally orphaned.
           "(^|/)src/index\\.tsx?$",
@@ -50,33 +52,33 @@ module.exports = {
           "(^|/)src/serve\\.ts$",
           "(^|/)src/client\\.tsx?$",
           "(^|/)src/server\\.ts$",
-          "(^|/)bin/",
           // Browser fixtures are Vite entrypoints referenced from HTML rather
           // than imported by another TypeScript module.
           "(^|/)testing/fixtures/",
           // Tooling scripts are invoked by package scripts rather than imports.
-          "^scripts/monorepo/[^/]+\\.mjs$",
           "(^|/)scripts/[^/]+\\.[cm]?[jt]s$",
-          // Test helpers are imported only from test modules, which are not roots
-          // in the runtime dependency crawl.
-          "(^|/)(src|registry)/testing/(assertions|navigation-behavior)\\.tsx?$",
+          // Test helpers reached only through an app `@/` alias or a Playwright fixture page.
           "^libs/ui/testing/",
-          "^apps/web/src/testing/(configuration-fixtures|escape-regexp|render|reticle)\\.tsx?$",
-          "^apps/docs/src/testing/(match-media|router-mock)\\.tsx?$",
+          "^apps/web/src/testing/reticle\\.tsx?$",
+          "^apps/docs/src/testing/router-mock\\.tsx?$",
           "(^|/)test-setup\\.ts$",
+          "^libs/core/testing/setup\\.ts$",
           "\\.(test|spec|e2e|stories)\\.[jt]sx?$",
           "\\.config\\.[jt]s$",
           "(^|/)src/routes/",
           // Package registry source is consumed by artifact builders and copy
           // consumers, not the runtime app import graph.
-          "^libs/(ui|keys)/(registry|public/r)/",
+          "^libs/(ui|keys)/registry/",
           // App-local @/* aliases are validated by specifier-based boundary rules.
           // A single root crawl cannot resolve the same @ alias per app, so keep
           // no-orphans precise for alias-reached web modules instead of disabling it.
-          "^apps/web/src/hooks/(use-theme|use-config)\\.tsx$",
           "^apps/web/src/lib/main-content\\.ts$",
-          "^apps/web/src/(features/(providers/components/list|history/hooks/use-keyboard|help/components/page|review/components/run-details-panel)|components/layout/card-layout)\\.tsx?$",
-          "^apps/docs/src/(components/(content-spinner|demo-node|inset-preview-pane|not-found-state|shared/(chrome-label|dot-grid|error-boundary|focus-ring|sidebar-item)|layout/(tui-fault-panel|tui-bracket-link)|docs-mdx/(markdown-renderers|blocks/steps))|features/theme/components/(diffgazer-preview|variable-diagram)|hooks/(docs-tree-context|theme-context|use-demos)|lib/(consumption-metadata|docs-chrome|example-frames|generated-doc-data|resolve-examples))\\.tsx?$",
+          "^apps/web/src/theme-bootstrap\\.tsx?$",
+          "^apps/web/src/lib/selected-option-row\\.tsx?$",
+          "^apps/web/src/hooks/use-focus-within\\.tsx?$",
+          "^apps/web/src/lib/review-error-copy\\.tsx?$",
+          "^apps/docs/src/(components/(shared/(dot-grid|error-boundary|focus-ring|sidebar-item)|mdx-preload-marker)|hooks/(docs-tree-context|use-is-scrollable)|lib/(example-frames|generated-doc-data))\\.tsx?$",
+          "^libs/core/src/schemas/events/statuses\\.tsx?$",
         ],
       },
       to: {},
@@ -93,6 +95,14 @@ module.exports = {
       },
     },
     {
+      name: "app-source-not-cli",
+      severity: "error",
+      comment:
+        "App source must not reach into cli/* source by relative escape: the edge is invisible to the workspace manifests and reverses the cli->app direction the CLI packages declare. Assert CLI behaviour from the CLI workspace, which declares the dependencies. Only the app testing/ tier may launch a CLI binary artifact.",
+      from: { path: "^apps/[^/]+/src/" },
+      to: { path: ["^cli/", "^@diffgazer/(add|server)", "^diffgazer($|/)"] },
+    },
+    {
       name: "no-cross-feature",
       severity: "error",
       comment:
@@ -102,6 +112,18 @@ module.exports = {
         path: "^@/features/",
         // Same-feature imports are allowed ($1 is the source feature name).
         pathNot: ["^@/features/$1/"],
+      },
+    },
+    {
+      name: "no-cross-feature-apps",
+      severity: "error",
+      comment:
+        "apps/web and apps/docs features are vertical slices; a feature must not import a sibling feature. Matched by resolved path, which covers the relative ../ form that no-cross-feature's @/ specifier cannot see.",
+      from: { path: "^apps/(web|docs)/src/features/([^/]+)/" },
+      to: {
+        path: "^apps/$1/src/features/",
+        // Same-feature imports are allowed ($2 is the source feature name).
+        pathNot: ["^apps/$1/src/features/$2/"],
       },
     },
     {
@@ -117,6 +139,19 @@ module.exports = {
         path: "^cli/server/src/features/",
         // Same-feature imports are allowed ($1 is the source feature name).
         pathNot: ["^cli/server/src/features/$1/"],
+      },
+    },
+    {
+      name: "no-cli-compatibility-barrel",
+      severity: "error",
+      comment:
+        "compat.ts and probe.ts are the cli-compatibility facade for consumers outside the directory. A sibling inside it must import its owning module (record, child-environment, process-supervisor, probe-runner, ...) directly, or the split that produced those modules leaves the whole subtree connected through one hub. Tests are exempt, like no-orphans treats tests.",
+      from: {
+        path: "^cli/server/src/shared/lib/ai/providers/cli-compatibility/",
+        pathNot: "\\.(test|spec)\\.[jt]sx?$",
+      },
+      to: {
+        path: "^cli/server/src/shared/lib/ai/providers/cli-compatibility/(compat|probe)\\.ts$",
       },
     },
     {
@@ -138,31 +173,30 @@ module.exports = {
       name: "components-not-features",
       severity: "error",
       comment:
-        "The app-shared components/ tier must not import from features/* (shared->feature is the wrong direction).",
+        "The app-shared components/ tier must not import from features/* (shared->feature is the wrong direction). The @/ specifier and the resolved app paths are both listed so a relative ../features/ import is caught too.",
       from: { path: "/src/components/" },
       to: {
-        path: "^@/features/",
+        path: ["^@/features/", "^apps/(web|docs)/src/features/", "^cli/diffgazer/src/features/"],
       },
     },
     {
       name: "landing-only-ui",
       severity: "error",
       comment:
-        "apps/landing is marketing-only and may depend on @diffgazer/ui exclusively, never on other workspace packages.",
+        "apps/landing is marketing-only and may depend on @diffgazer/ui exclusively, never on other workspace packages. Workspace package imports resolve through pnpm links into libs/* or cli/*, so both resolved paths and raw specifiers are covered.",
       from: { path: "^apps/landing/" },
       to: {
-        path: "^@diffgazer/(?!ui(/|$))",
+        path: ["^@diffgazer/(?!ui(/|$))", "^libs/(?!ui(?:/|$))", "^cli/"],
       },
     },
   ],
   options: {
     doNotFollow: {
-      path: ["node_modules"],
+      path: ["node_modules", "(^|/)dist/"],
     },
     exclude: {
       path: [
         "node_modules",
-        "(^|/)dist/",
         "(^|/)\\.output/",
         "(^|/)\\.turbo/",
         "(^|/)\\.vinxi/",

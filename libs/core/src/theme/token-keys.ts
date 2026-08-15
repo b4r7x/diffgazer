@@ -47,8 +47,5 @@ export const THEME_TOKEN_KEYS = [
 ] as const;
 
 export type PrimitiveTokenKey = (typeof PRIMITIVE_TOKEN_KEYS)[number];
-export type SemanticTokenKey = (typeof SEMANTIC_TOKEN_KEYS)[number];
-export type SeverityTokenKey = (typeof SEVERITY_TOKEN_KEYS)[number];
-export type StatusTokenKey = (typeof STATUS_TOKEN_KEYS)[number];
 
 export type ThemeTokenKey = (typeof THEME_TOKEN_KEYS)[number];

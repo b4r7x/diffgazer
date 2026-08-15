@@ -23,6 +23,31 @@ describe("Tooltip", () => {
     expect(screen.getByText("Tip text")).toBeInTheDocument();
   });
 
+  it.each([
+    false,
+    "",
+  ] as const)("renders no tooltip and no description for falsy shorthand content (%p)", (content) => {
+    render(
+      <Tooltip content={content} defaultOpen>
+        <button type="button">Hover me</button>
+      </Tooltip>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Hover me" });
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    expect(trigger).not.toHaveAttribute("aria-describedby");
+  });
+
+  it("keeps 0 as renderable shorthand content", () => {
+    render(
+      <Tooltip content={0} defaultOpen>
+        <button type="button">Hover me</button>
+      </Tooltip>,
+    );
+
+    expect(screen.getByRole("tooltip")).toHaveTextContent("0");
+  });
+
   it("does not open when enabled is false", async () => {
     const user = userEvent.setup();
     render(

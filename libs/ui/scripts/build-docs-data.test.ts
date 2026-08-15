@@ -7,28 +7,19 @@ import {
   extractImportSpecifiers,
 } from "@diffgazer/registry";
 import { describe, expect, it, vi } from "vitest";
+import { floatingPanelDoc } from "../registry/component-docs/floating-panel.js";
 import {
   buildComponentCopyArchive,
   buildComponentSourceData,
   type ComponentCopyArchive,
-} from "./build-docs-data";
-
-interface PublicRegistryFile {
-  type: string;
-  target?: string;
-  content?: string;
-}
+} from "./build-docs-data.js";
 
 describe("buildComponentSourceData", () => {
-  it("builds registry style source with CSS grammar without changing copy bytes", () => {
-    const panel = JSON.parse(
-      readFileSync(resolve(import.meta.dirname, "../public/r/panel.json"), "utf8"),
-    ) as { files?: PublicRegistryFile[] };
-    const cssFile = panel.files?.find(
-      (file) => file.type === "registry:style" && file.target === "~/styles/panel.css",
+  it("builds authored registry style source with CSS grammar without changing copy bytes", () => {
+    const authoredCss = readFileSync(
+      resolve(import.meta.dirname, "../registry/ui/panel/panel.css"),
+      "utf8",
     );
-    if (typeof cssFile?.content !== "string") throw new Error("panel CSS source is missing");
-
     const codeToTokensBase = vi.fn((code: string) => [[{ content: code }]]);
     const highlighter = { codeToTokensBase } as unknown as DocsHighlighter;
     const { copyArchive, source } = buildComponentSourceData("panel", highlighter);
@@ -37,14 +28,27 @@ describe("buildComponentSourceData", () => {
     );
     if (!archivedCssFile) throw new Error("panel CSS copy archive entry is missing");
     expect(archivedCssFile.type).toBe("registry:style");
-    expect(archivedCssFile.content).toBe(cssFile.content);
+    expect(archivedCssFile.content).toBe(authoredCss);
     const cssSource = source[archivedCssFile.target];
 
-    expect(cssSource?.raw).toBe(cssFile.content);
-    expect(codeToTokensBase).toHaveBeenCalledWith(cssFile.content, {
+    expect(cssSource?.raw).toBe(authoredCss);
+    expect(codeToTokensBase).toHaveBeenCalledWith(authoredCss, {
       lang: "css",
       theme: DOCS_CODE_THEME_NAME,
     });
+  });
+
+  it("restores authored CSS in copy archives when shadcn strips duplicate payloads", () => {
+    const archive = buildComponentCopyArchive("dialog");
+    const archivedCssFile = archive.files.find(
+      (file) => file.path === "registry/ui/shared/dialog.css",
+    );
+    if (!archivedCssFile) throw new Error("dialog CSS copy archive entry is missing");
+
+    expect(archivedCssFile.type).toBe("registry:style");
+    expect(archivedCssFile.content).toBe(
+      readFileSync(resolve(import.meta.dirname, "../registry/ui/shared/dialog.css"), "utf8"),
+    );
   });
 });
 
@@ -127,6 +131,33 @@ describe("buildComponentCopyArchive", () => {
     } finally {
       rmSync(fixture, { recursive: true, force: true });
     }
+  });
+
+  it("keeps custom-menu integrations on the example instead of the base archive", () => {
+    const archive = buildComponentCopyArchive("floating-panel");
+    const source = archive.files
+      .filter((file) => /\.[cm]?[jt]sx?$/.test(file.path))
+      .map((file) => file.content)
+      .join("\n");
+    expect(source).not.toContain("use-outside-click");
+    expect(source).not.toContain("use-navigation");
+    expect(archive.files.map((file) => file.path)).not.toEqual(
+      expect.arrayContaining([
+        "registry/hooks/use-outside-click.ts",
+        "registry/hooks/use-navigation.ts",
+        "registry/hooks/utils/focusable.ts",
+      ]),
+    );
+
+    const customMenu = floatingPanelDoc.examples?.find(
+      (example) => example.name === "floating-panel-custom-menu",
+    );
+    expect(customMenu?.registryDependencies).toEqual([
+      "outside-click",
+      "use-focusable",
+      "use-navigation",
+    ]);
+    expect(customMenu?.optionalIntegrations).toEqual(["keyboard-navigation"]);
   });
 
   it("keeps an explicit style target instead of deriving from the registry/ui/ path", () => {

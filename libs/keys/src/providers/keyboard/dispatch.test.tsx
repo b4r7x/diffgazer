@@ -7,6 +7,7 @@ import { type ReactNode, useEffect } from "react";
 // is not a devDependency of this workspace; renderToString is used untyped below.
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { useKeyDoc } from "../../../docs/hook-docs/use-key.js";
 import UseKeyMap from "../../../registry/examples/use-key/use-key-map.js";
 import UseScopeBasic from "../../../registry/examples/use-scope/use-scope-basic.js";
 import { DECLINE } from "../../core/normalize-key-input.js";
@@ -159,6 +160,21 @@ describe("KeyboardProvider", () => {
 
     expect(providerContract).toBeDefined();
     expect(typesPage).toContain(providerContract);
+  });
+
+  it("keeps the useKey hook-doc prevention contract aligned with the KeyboardProvider reference", () => {
+    const providerPage = readFileSync(
+      resolve(process.cwd(), "docs/content/api/keyboard-provider.mdx"),
+      "utf8",
+    );
+    const providerContract = providerPage.match(/^- `preventDefault` contract\. (.+)$/m)?.[1];
+    const declineNote = useKeyDoc.notes?.find(
+      (note) => note.title === "Declining a match",
+    )?.content;
+
+    expect(providerContract).toBeDefined();
+    expect(declineNote).toContain("after that handler returns");
+    expect(declineNote).toContain("A declining handler never prevents the default");
   });
 
   it("does not fire when a local keydown listener has already handled the event", async () => {
@@ -546,8 +562,6 @@ describe("KeyboardProvider", () => {
     act(() => pressKey("a"));
     // count 2 proves a thrown handler didn't wedge the dispatcher
     expect(errorHandler).toHaveBeenCalledTimes(2);
-
-    vi.restoreAllMocks();
   });
 
   it("treats identically-named scopes from separate components as independent", () => {
@@ -683,6 +697,49 @@ describe("KeyboardProvider", () => {
     act(() => pressKey("a"));
     // count 2 proves popping manual restored routing to the panel scope
     expect(panelHandler).toHaveBeenCalledTimes(2);
+  });
+
+  it("suppresses unscoped useKey handlers outside an imperative pushScope layer", () => {
+    const pageHandler = vi.fn();
+    const paletteHandler = vi.fn();
+    const pushPaletteRef = { current: () => () => {} };
+
+    function Page() {
+      useKey("a", pageHandler);
+      const { register, pushScope } = useKeyboardContext();
+
+      useEffect(() => {
+        register("palette", "b", paletteHandler);
+        pushPaletteRef.current = () => pushScope("palette");
+      }, [register, pushScope]);
+
+      return null;
+    }
+
+    render(
+      <KeyboardWrapper>
+        <Page />
+      </KeyboardWrapper>,
+    );
+
+    act(() => pressKey("a"));
+    expect(pageHandler).toHaveBeenCalledOnce();
+
+    let popPalette = () => {};
+    act(() => {
+      popPalette = pushPaletteRef.current();
+    });
+
+    act(() => pressKey("a"));
+    expect(pageHandler).toHaveBeenCalledOnce();
+
+    act(() => pressKey("b"));
+    expect(paletteHandler).toHaveBeenCalledOnce();
+
+    act(() => popPalette());
+
+    act(() => pressKey("a"));
+    expect(pageHandler).toHaveBeenCalledTimes(2);
   });
 
   it("activates the later-mounted scope across sibling branches under client useId encoding", () => {

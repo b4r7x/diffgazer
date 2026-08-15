@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -96,6 +94,7 @@ describe("DocsContentLayout mobile sidebar", () => {
     );
 
     expect(screen.getByRole("main")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("main")).toHaveAttribute("data-scroll-restoration-id", "main-content");
     expect(
       screen.getByText("Loading documentation page", { selector: "output" }),
     ).toBeInTheDocument();

@@ -22,19 +22,85 @@ async function collectJsonFiles(directory, relativeDirectory = "") {
   return files.flat();
 }
 
-async function buildRegistryFreshnessTargets() {
-  const dockerfile = await readFile(registryDockerfilePath, "utf8");
-  const copyPattern = /^COPY\s+(\S+)\s+\/usr\/share\/nginx\/html\/(\S+)\s*$/gm;
-  const copiedTrees = [...dockerfile.matchAll(copyPattern)].map((match) => ({
-    source: match[1],
-    destination: match[2],
-  }));
-  if (copiedTrees.length === 0) {
-    throw new Error(`No public JSON trees found in ${registryDockerfilePath}`);
+const NGINX_HTML_ROOT = "/usr/share/nginx/html";
+const COPY_OPTION = /^--[a-z][a-z0-9-]*(?:=\S+)?(?:\s+|$)/i;
+
+function readCopyArguments(dockerfile) {
+  const copies = [];
+  let logicalLine = "";
+
+  for (const rawLine of dockerfile.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    // Docker strips comment lines even inside a continuation; folding one into
+    // the operands would silently move the destination off the served root.
+    if (line.startsWith("#")) continue;
+    if (logicalLine === "" && line === "") continue;
+
+    const continued = line.endsWith("\\");
+    const fragment = continued ? line.slice(0, -1).trim() : line;
+    logicalLine = logicalLine === "" ? fragment : `${logicalLine} ${fragment}`;
+    if (continued) continue;
+
+    const copy = /^COPY\s+(.+)$/i.exec(logicalLine);
+    if (copy) copies.push(copy[1]);
+    logicalLine = "";
   }
 
+  return copies;
+}
+
+// Shell form only: `COPY [--flag[=value]…] <src>… <dest>`. The JSON exec form
+// carries no shell words, so it is reported as unparsable rather than guessed
+// at — a COPY this cannot read must fail the check, never drop a served tree.
+function parseCopyOperands(argumentsText) {
+  let text = argumentsText.trim();
+  while (text.startsWith("--")) {
+    const option = COPY_OPTION.exec(text);
+    if (!option) return null;
+    text = text.slice(option[0].length).trimStart();
+  }
+  if (text.startsWith("[")) return null;
+
+  const operands = text.split(/\s+/).filter(Boolean);
+  return operands.length < 2
+    ? null
+    : { sources: operands.slice(0, -1), destination: operands.at(-1) };
+}
+
+// Every tree nginx serves must become a live endpoint, so an unreadable COPY is
+// a failure: the destination is exactly what an unparsed line hides, and a
+// silently skipped tree is deployed without any freshness verification.
+export function parseServedCopyTrees(dockerfile) {
+  const trees = [];
+
+  for (const argumentsText of readCopyArguments(dockerfile)) {
+    const copy = parseCopyOperands(argumentsText);
+    if (!copy) {
+      throw new Error(
+        `Unreadable COPY instruction in ${registryDockerfilePath}: COPY ${argumentsText}`,
+      );
+    }
+
+    const { sources, destination } = copy;
+    if (destination !== NGINX_HTML_ROOT && !destination.startsWith(`${NGINX_HTML_ROOT}/`)) continue;
+
+    const servedPath = destination.slice(NGINX_HTML_ROOT.length + 1);
+    for (const source of sources) {
+      trees.push({ source, destination: servedPath });
+    }
+  }
+
+  return trees;
+}
+
+const servedCopyTrees = parseServedCopyTrees(await readFile(registryDockerfilePath, "utf8"));
+if (servedCopyTrees.length === 0) {
+  throw new Error(`No public JSON trees found in ${registryDockerfilePath}`);
+}
+
+async function buildRegistryFreshnessTargets() {
   const targets = await Promise.all(
-    copiedTrees.map(async ({ source, destination }) => {
+    servedCopyTrees.map(async ({ source, destination }) => {
       const sourceRoot = resolve(root, source);
       const files = await collectJsonFiles(sourceRoot);
       return files.map(({ absolutePath, relativePath }) => ({
@@ -51,6 +117,40 @@ async function buildRegistryFreshnessTargets() {
 export const registryFreshnessTargets = await buildRegistryFreshnessTargets();
 
 export const requiredEndpoints = registryFreshnessTargets.map((target) => target.url);
+
+// One long-lived endpoint per served tree. Pre-merge readiness probes only these:
+// sweeping every locally derived endpoint would 404 on exactly the files a
+// registry-adding change set introduces, and those cannot be live until the
+// deploy that the same readiness run gates — the deadlock the post-deploy caller
+// owns instead. A renamed or dropped sentinel fails here rather than degrading
+// the readiness probe to DNS only.
+const SENTINEL_FILE_BY_SERVED_TREE = new Map([
+  ["r/ui/", "registry.json"],
+  ["r/keys/", "registry.json"],
+  ["schema/", "diffgazer.json"],
+]);
+
+export function buildAvailabilitySentinels(servedTrees) {
+  const servedDestinations = [...new Set(servedTrees.map((tree) => tree.destination))];
+
+  return servedDestinations.map((destination) => {
+    const sentinelFile = SENTINEL_FILE_BY_SERVED_TREE.get(destination);
+    if (!sentinelFile) {
+      throw new Error(
+        `No availability sentinel declared for served tree ${destination}; ` +
+          "add one in check-live-registry.mjs so readiness still probes that tree.",
+      );
+    }
+
+    const url = `${registryOrigin}/${posix.join(destination, sentinelFile)}`;
+    if (!requiredEndpoints.includes(url)) {
+      throw new Error(`Availability sentinel ${url} is not a committed registry endpoint`);
+    }
+    return url;
+  });
+}
+
+export const availabilitySentinels = buildAvailabilitySentinels(servedCopyTrees);
 
 export function sha256Hex(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
@@ -117,6 +217,14 @@ export async function runLiveRegistryCheck({
   }
 
   await lookupImpl("r.b4r7.dev");
+  if (!required) {
+    for (const endpoint of availabilitySentinels) {
+      await assertHeadOk(endpoint, fetchImpl);
+    }
+    log("OK: hosted registry DNS and sentinel endpoints are reachable");
+    return;
+  }
+
   for (const endpoint of requiredEndpoints) {
     await assertHeadOk(endpoint, fetchImpl);
   }

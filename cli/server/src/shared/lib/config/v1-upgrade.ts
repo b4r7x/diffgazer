@@ -1,46 +1,44 @@
+import { createError } from "@diffgazer/core/errors";
 import { isModelIdAllowedForProduct, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import { ok, type Result } from "@diffgazer/core/result";
+import { err, ok, type Result } from "@diffgazer/core/result";
 import {
   ExactModelIdSchema,
-  REMOVED_PRODUCT_IDS,
+  type LegacyProviderConfigV1,
   type RunnableProductId,
-  type SecretsStorage,
 } from "@diffgazer/core/schemas/config";
-import { log } from "../log.js";
 import type { DecodedSecretBinding, SecretsDocumentV2 } from "./persistence/secrets.js";
 import { SECRETS_SCHEMA_VERSION_V2 } from "./persistence/secrets.js";
 import {
   type ConfigurationBudgetLimits,
   type DecodedProviderConfigurationRecord,
   NonSecretTransportInputSchema,
-  type RemovedProviderConfigurationRecord,
   type SupportedProviderConfigurationRecord,
 } from "./provider-config.js";
 import type { SecretBinding } from "./secret-bindings.js";
-import { type LegacySecretConfiguration, migrateV1SecretsToBindings } from "./secrets-migration.js";
+import {
+  type LegacySecretConfiguration,
+  preflightV1SecretsMigration,
+  transferV1Credentials,
+  type V1CredentialTransfer,
+  type V1SecretsStorage,
+} from "./secrets-migration.js";
 import {
   CONFIG_SCHEMA_VERSION_V2,
   type ConfigDocumentV1,
   type ConfigDocumentV2,
-  type RunnableV1Record,
   type SecretsState,
   type SecretsStorageError,
+  V1_MIGRATION_FAILED_MESSAGE,
 } from "./types.js";
 
 export interface V1UpgradeOptions {
   /** Budget applied to every upgraded record; V1 documents carry no limits. */
   readonly budget: ConfigurationBudgetLimits;
-  readonly filePathFor: (identity: {
-    readonly configurationId: string;
-    readonly revision: number;
-  }) => string;
 }
 
 export interface V1UpgradeResult {
   readonly configDocument: ConfigDocumentV2;
   readonly secretsDocument: SecretsDocumentV2;
-  /** Provider-keyed keyring entries superseded by configuration-keyed ones. */
-  readonly keyringDeletions: readonly string[];
 }
 
 const textEncoder = new TextEncoder();
@@ -51,7 +49,7 @@ const upgradableProductId = (provider: string): RunnableProductId | null => {
   const product = PRODUCT_REGISTRY[provider as RunnableProductId] as
     | (typeof PRODUCT_REGISTRY)[RunnableProductId]
     | undefined;
-  if (!product || product.kind !== "runnable" || product.transportFamily !== "hosted-api") {
+  if (!product || product.transportFamily !== "hosted-api") {
     return null;
   }
   return product.id;
@@ -67,7 +65,7 @@ const upgradedConfigurationId = (provider: string): string => `cfg-v1-${provider
  * conformance-pending until the user runs a test.
  */
 const upgradeRunnableRecord = (
-  record: RunnableV1Record,
+  record: LegacyProviderConfigV1,
   productId: RunnableProductId,
   now: string,
   options: V1UpgradeOptions,
@@ -76,12 +74,17 @@ const upgradeRunnableRecord = (
   const endpoint = product.configuration.endpoints?.[0]?.endpoint;
   if (!endpoint) return null;
   const model = record.model;
-  const selectedModelId =
-    model !== undefined &&
-    ExactModelIdSchema.safeParse(model).success &&
-    isModelIdAllowedForProduct(productId, model)
-      ? model
-      : null;
+  let selectedModelId: string | null = null;
+  if (model !== undefined) {
+    // A stored model current policy no longer accepts — a `-latest` alias, a
+    // retired id — is dropped rather than failing the upgrade: the record lands
+    // in the "pick a model" state instead of stranding the whole configuration
+    // and its credential in V1.
+    const parsedModel = ExactModelIdSchema.safeParse(model);
+    if (parsedModel.success && isModelIdAllowedForProduct(productId, parsedModel.data)) {
+      selectedModelId = parsedModel.data;
+    }
+  }
 
   return {
     schemaVersion: 2,
@@ -96,32 +99,17 @@ const upgradeRunnableRecord = (
       endpoint,
     }),
     selectedModelId,
-    acknowledgement: { noticeVersion: product.notice.noticeVersion, acceptedAt: null },
+    acknowledgement: {
+      noticeId: product.notice.id,
+      noticeVersion: product.notice.noticeVersion,
+      acceptedAt: null,
+    },
     evidenceReference: null,
     budget: options.budget,
     createdAt: now,
     updatedAt: now,
   };
 };
-
-const upgradeRemovedRecord = (
-  provider: string,
-  now: string,
-  options: V1UpgradeOptions,
-): RemovedProviderConfigurationRecord => ({
-  schemaVersion: 2,
-  status: "removed",
-  configurationId: upgradedConfigurationId(provider),
-  revision: 1,
-  productId: REMOVED_PRODUCT_IDS[0],
-  transportFamily: "hosted-api",
-  selectedModelId: null,
-  acknowledgement: null,
-  evidenceReference: null,
-  budget: options.budget,
-  createdAt: now,
-  updatedAt: now,
-});
 
 const bindingsDocument = (bindings: readonly SecretBinding[]): SecretsDocumentV2 => ({
   schemaVersion: SECRETS_SCHEMA_VERSION_V2,
@@ -134,81 +122,111 @@ const bindingsDocument = (bindings: readonly SecretBinding[]): SecretsDocumentV2
   ),
 });
 
-/**
- * One-way upgrade of the provider-keyed V1 pair to the configuration-keyed V2
- * documents. Credentials are copied to their configuration-keyed destination
- * before the caller commits; provider-keyed keyring entries are only deleted
- * after that commit, so an interrupted upgrade is re-runnable.
- *
- * V1 entries this binary cannot interpret carry no resolvable credential and no
- * product identity, so they are dropped rather than invented into a V2 record.
- */
-export function upgradeV1Documents(
+interface V1UpgradePlan {
+  readonly bindings: readonly SecretBinding[];
+  readonly transfers: readonly V1CredentialTransfer[];
+  readonly records: readonly DecodedProviderConfigurationRecord[];
+  readonly selectedConfigurationId: string | null;
+}
+
+const migrationFailure = (): Result<never, SecretsStorageError> =>
+  err(createError("SECRETS_MIGRATION_FAILED", V1_MIGRATION_FAILED_MESSAGE));
+
+/** An unset V1 storage setting kept literals in `secrets.json`, the same as `file`. */
+const resolveV1SecretsStorage = (
+  settings: Readonly<Record<string, unknown>>,
+): Result<V1SecretsStorage, SecretsStorageError> => {
+  const stored = settings.secretsStorage;
+  if (stored === "keyring") return ok("keyring");
+  if (stored === undefined || stored === null || stored === "file") return ok("file");
+  return migrationFailure();
+};
+
+const buildV1UpgradePlan = (
   configV1: ConfigDocumentV1,
   secretsV1: SecretsState,
+  now: string,
   options: V1UpgradeOptions,
-): Result<V1UpgradeResult, SecretsStorageError> {
-  const storage: Exclude<SecretsStorage, null> =
-    configV1.settings.secretsStorage === "keyring" ? "keyring" : "file";
-  const now = new Date().toISOString();
-
+): Result<V1UpgradePlan, SecretsStorageError> => {
+  const storage = resolveV1SecretsStorage(configV1.settings);
+  if (!storage.ok) return storage;
   const records: DecodedProviderConfigurationRecord[] = [];
   const legacyConfigurations: LegacySecretConfiguration[] = [];
-  let selectedConfigurationId: string | null = null;
-  let droppedEntries = 0;
+  const activeConfigurationIds: string[] = [];
 
   for (const entry of configV1.providers) {
-    if (entry.status === "unknown") {
-      droppedEntries += 1;
-      continue;
-    }
-    if (entry.status === "removed") {
-      const record = upgradeRemovedRecord(entry.record.provider, now, options);
-      records.push({ status: "removed", record, rawBytes: encodeJsonBytes(record) });
-      legacyConfigurations.push({
-        provider: entry.record.provider,
-        configurationId: record.configurationId,
-        revision: 1,
-        status: "removed",
-      });
-      continue;
-    }
-
+    if (entry.status === "unknown") return migrationFailure();
     const productId = upgradableProductId(entry.record.provider);
     const record = productId ? upgradeRunnableRecord(entry.record, productId, now, options) : null;
-    if (!record) {
-      droppedEntries += 1;
-      continue;
-    }
+    if (!record) return migrationFailure();
     records.push({ status: "supported", record, rawBytes: encodeJsonBytes(record) });
     legacyConfigurations.push({
       provider: entry.record.provider,
       configurationId: record.configurationId,
       revision: 1,
-      status: "supported",
+      hasApiKey: entry.record.hasApiKey,
     });
-    if (entry.record.isActive) selectedConfigurationId ??= record.configurationId;
+    if (entry.record.isActive) activeConfigurationIds.push(record.configurationId);
   }
 
-  if (droppedEntries > 0) {
-    log("warn", "config_v1_entries_dropped", { count: droppedEntries });
+  if (activeConfigurationIds.length > 1) return migrationFailure();
+  const configuredProviders = new Set(legacyConfigurations.map((entry) => entry.provider));
+  if (Object.keys(secretsV1.providers).some((provider) => !configuredProviders.has(provider))) {
+    return migrationFailure();
   }
+  const secretPreflight = preflightV1SecretsMigration(
+    secretsV1,
+    legacyConfigurations,
+    storage.value,
+  );
+  if (!secretPreflight.ok) return secretPreflight;
 
-  const migrated = migrateV1SecretsToBindings(secretsV1, legacyConfigurations, {
-    storage,
-    filePathFor: options.filePathFor,
+  return ok({
+    bindings: secretPreflight.value.bindings,
+    transfers: secretPreflight.value.transfers,
+    records,
+    selectedConfigurationId: activeConfigurationIds[0] ?? null,
   });
-  if (!migrated.ok) return migrated;
+};
+
+export function preflightV1Documents(
+  configV1: ConfigDocumentV1,
+  secretsV1: SecretsState,
+  options: V1UpgradeOptions,
+): Result<void, SecretsStorageError> {
+  const plan = buildV1UpgradePlan(configV1, secretsV1, "1970-01-01T00:00:00.000Z", options);
+  return plan.ok ? ok(undefined) : plan;
+}
+
+/**
+ * One-way upgrade of representable provider-keyed V1 data to configuration-keyed
+ * V2 documents. Environment references and explicit no-secret records migrate as
+ * metadata; a literal secret is copied to its V2 destination only after the whole
+ * document passes preflight, and the V1 source stays readable until the caller
+ * commits the returned documents.
+ *
+ * Inputs that cannot be represented losslessly remain V1 and require manual
+ * intervention.
+ */
+export async function upgradeV1Documents(
+  configV1: ConfigDocumentV1,
+  secretsV1: SecretsState,
+  options: V1UpgradeOptions,
+): Promise<Result<V1UpgradeResult, SecretsStorageError>> {
+  const now = new Date().toISOString();
+  const plan = buildV1UpgradePlan(configV1, secretsV1, now, options);
+  if (!plan.ok) return plan;
+  const transferred = await transferV1Credentials(plan.value.transfers);
+  if (!transferred.ok) return transferred;
 
   const configDocument: ConfigDocumentV2 = {
     schemaVersion: CONFIG_SCHEMA_VERSION_V2,
     settings: configV1.settings,
-    selectedConfigurationId,
-    configurations: records,
+    selectedConfigurationId: plan.value.selectedConfigurationId,
+    configurations: plan.value.records,
   };
   return ok({
     configDocument,
-    secretsDocument: bindingsDocument(migrated.value.bindings),
-    keyringDeletions: migrated.value.keyringDeletions,
+    secretsDocument: bindingsDocument(plan.value.bindings),
   });
 }

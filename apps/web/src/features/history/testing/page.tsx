@@ -1,6 +1,6 @@
 import type { BoundApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import { FooterProvider } from "@diffgazer/core/footer";
 import type { ReviewIssue, ReviewMetadata, ReviewResponse } from "@diffgazer/core/schemas/review";
 import { makeReviewMetadata } from "@diffgazer/core/testing/factories";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
@@ -9,7 +9,6 @@ import type { QueryClient } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { expect, type Mock, vi } from "vitest";
-import { Footer } from "@/components/layout/footer";
 import { ConfigProvider } from "@/hooks/use-config";
 import {
   makeShellApiOverrides,
@@ -125,11 +124,6 @@ export function renderHistoryPage(
 
   const renderResult = render(ui, { wrapper: Wrapper });
   return { ...renderResult, queryClient };
-}
-
-export function FooterView() {
-  const { shortcuts, rightShortcuts } = useFooterData();
-  return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
 }
 
 export async function focusRunsList() {

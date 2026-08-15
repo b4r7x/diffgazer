@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { SetupStatus } from "../config/index.js";
+import type { DiagnosticsSetupGaps } from "../config/index.js";
+import { READINESS_PRESENTATION } from "../config/readiness.js";
 import {
   deriveDiagnosticsActions,
   getContextActionLabel,
@@ -8,15 +9,12 @@ import {
   getSetupPresentation,
 } from "./diagnostics.js";
 
-function makeSetup(overrides: Partial<SetupStatus> = {}): SetupStatus {
+function makeSetup(overrides: Partial<DiagnosticsSetupGaps> = {}): DiagnosticsSetupGaps {
   return {
-    hasSecretsStorage: true,
-    hasProvider: true,
-    hasModel: true,
-    hasTrust: true,
     isConfigured: true,
     isReady: true,
     missing: [],
+    readiness: null,
     ...overrides,
   };
 }
@@ -63,6 +61,30 @@ describe("getSetupPresentation", () => {
     ).toEqual({ label: "Incomplete (provider)", variant: "warning" });
     expect(getSetupPresentation({ isLoading: false, error: null, setupStatus: null })).toEqual({
       label: "Unavailable",
+      variant: "warning",
+    });
+  });
+
+  it("renders readiness explanations instead of Incomplete (unknown)", () => {
+    expect(
+      getSetupPresentation({
+        isLoading: false,
+        error: null,
+        setupStatus: makeSetup({
+          isReady: false,
+          missing: [],
+          readiness: {
+            status: "credential-invalid",
+            ready: false,
+            evidenceStatus: "failed",
+            checkedAt: "2026-07-31T10:00:00.000Z",
+            acknowledgement: { status: "not-applicable" },
+            ...READINESS_PRESENTATION["credential-invalid"],
+          },
+        }),
+      }),
+    ).toEqual({
+      label: READINESS_PRESENTATION["credential-invalid"].explanation,
       variant: "warning",
     });
   });

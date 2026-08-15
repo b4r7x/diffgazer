@@ -155,8 +155,8 @@ describe("useControllableState", () => {
     const onChange = vi.fn();
     const { result } = renderHook(() =>
       useControllableState<string | undefined>({
-        value: undefined,
         controlled: true,
+        value: undefined,
         defaultValue: "default",
         onChange,
       }),

@@ -210,20 +210,38 @@ export function useSelectableCollection(containerRef: RefObject<HTMLElement | nu
   const [collectionState, setCollectionState] = useState(EMPTY_COLLECTION_STATE);
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const collectionStateRef = useRef(EMPTY_COLLECTION_STATE);
+  const registeredItemsRef = useRef(new Map<string, SelectableCollectionItem>());
+  const commitScheduledRef = useRef(false);
 
   // createCollectionState reads the DOM (getComputedStyle, compareDocumentPosition),
   // so it runs here before setState; setState updaters must stay pure under StrictMode replay.
-  const commitCollectionState = useCallback(
-    (items: SelectableCollectionItem[]) => {
-      const next = createCollectionState(items, container, collectionStateRef.current);
-      collectionStateRef.current = next;
-      setCollectionState(next);
-    },
-    [container],
-  );
+  // The container comes from the ref, not the state mirror below: a commit deferred to a
+  // microtask must see the container mounted since it was scheduled, not the one captured
+  // with it, or the first registration pass commits an empty collection after mount.
+  const commitCollectionState = useCallback(() => {
+    const items = [...registeredItemsRef.current.values()];
+    const next = createCollectionState(items, containerRef.current, collectionStateRef.current);
+    collectionStateRef.current = next;
+    setCollectionState(next);
+  }, [containerRef]);
+
+  const scheduleCommit = useCallback(() => {
+    if (commitScheduledRef.current) return;
+    commitScheduledRef.current = true;
+    const View = containerRef.current?.ownerDocument.defaultView ?? globalThis;
+    View.queueMicrotask(() => {
+      if (!commitScheduledRef.current) return;
+      commitScheduledRef.current = false;
+      commitCollectionState();
+    });
+  }, [commitCollectionState, containerRef]);
 
   const syncCollection = useCallback(() => {
-    commitCollectionState(collectionStateRef.current.registeredItems);
+    // Observer-driven changes stay synchronous. When they arrive before a pending
+    // registration microtask, this commit includes those registrations and cancels
+    // the redundant deferred reconciliation.
+    commitScheduledRef.current = false;
+    commitCollectionState();
   }, [commitCollectionState]);
 
   // Ref-to-state promotion with equality bail; must observe every render.
@@ -252,25 +270,40 @@ export function useSelectableCollection(containerRef: RefObject<HTMLElement | nu
     return () => observer.disconnect();
   }, [collectionState.items, container, syncCollection]);
 
+  // Registrations that land in a commit this collection also rendered reconcile
+  // here, inside the commit phase, so roving tabIndex and active-descendant are
+  // never one paint behind. The scheduled microtask covers the rest: a
+  // registration from an observer callback schedules no render to drain it.
+  useLayoutEffect(() => {
+    if (!container || !commitScheduledRef.current) return;
+    commitScheduledRef.current = false;
+    commitCollectionState();
+  });
+
   const registerItem = useCallback(
     (itemId: string, value: string, disabled: boolean, element: HTMLElement | null) => {
-      const registeredItems = collectionStateRef.current.registeredItems;
-      const existingIndex = registeredItems.findIndex((item) => item.id === itemId);
+      const existing = registeredItemsRef.current.get(itemId);
       const nextItem = { id: itemId, value, disabled, element };
-      const next = existingIndex === -1 ? [...registeredItems, nextItem] : [...registeredItems];
-      if (existingIndex !== -1) next[existingIndex] = nextItem;
+      if (
+        existing?.value === value &&
+        existing.disabled === disabled &&
+        existing.element === element
+      ) {
+        return;
+      }
 
-      commitCollectionState(next);
+      registeredItemsRef.current.set(itemId, nextItem);
+      scheduleCommit();
     },
-    [commitCollectionState],
+    [scheduleCommit],
   );
 
   const unregisterItem = useCallback(
     (itemId: string) => {
-      const next = collectionStateRef.current.registeredItems.filter((item) => item.id !== itemId);
-      commitCollectionState(next);
+      if (!registeredItemsRef.current.delete(itemId)) return;
+      scheduleCommit();
     },
-    [commitCollectionState],
+    [scheduleCommit],
   );
 
   return {

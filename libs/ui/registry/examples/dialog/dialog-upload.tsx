@@ -38,9 +38,7 @@ export default function DialogUpload() {
           </div>
         </DialogBody>
         <DialogFooter hints={[{ key: "Esc", label: "Close" }]}>
-          <DialogClose bracket variant="ghost">
-            Cancel
-          </DialogClose>
+          <DialogClose bracket>Cancel</DialogClose>
           <DialogAction>Background</DialogAction>
         </DialogFooter>
       </DialogContent>

@@ -1,60 +1,53 @@
 // Dead-file / dead-export / unused-dependency sweep that neither Biome nor
 // dependency-cruiser performs.
 //
-// Generated registries, docs fixtures, package artifact mirrors, and package
-// entry contracts are intentionally configured here so `pnpm run knip` reports
-// actionable drift instead of public handoff surfaces.
+// Generated registries, docs fixtures, and package entry contracts are
+// intentionally configured here so `pnpm run knip` reports actionable drift
+// instead of public handoff surfaces.
 {
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
-  "ignoreExportsUsedInFile": true,
-  "ignoreBinaries": ["depcruise", "biome", "turbo", "playwright", "lhci", "dev", "taskkill"],
+  "treatConfigHintsAsErrors": true,
   "ignoreDependencies": [
     "@arethetypeswrong/cli",
-    "@diffgazer/.+",
-    "@clack/prompts",
     "@types/diff",
     "@types/figlet",
     "@types/hast",
-    "@chialab/vitest-axe",
     "@tailwindcss/postcss",
     "commander",
     "diff",
     "figlet",
     "next",
-    "picocolors",
     "postcss",
     "publint",
-    "shadcn",
-    "tsup",
-    "vitest"
+    "shadcn"
   ],
   "ignoreIssues": {
-    "libs/registry/src/manifest.ts": ["types"],
-    "libs/ui/theme/docs-tokens.ts": ["exports", "types"]
+    "libs/ui/theme/docs-tokens.ts": ["exports", "types"],
+    // Dynamic test doubles import this layout helper through a module namespace,
+    // which Knip cannot connect to the declaration statically.
+    "cli/diffgazer/src/components/layout/global.tsx": ["exports"]
   },
-  // Only build output and generated data belong here. Anything owned by one
-  // workspace is ignored in that workspace's own block below, so a path stays
-  // next to the package that has to justify it.
-  "ignore": [
-    "**/dist/**",
-    "**/.output/**",
-    "**/.turbo/**",
-    "**/.source/**",
-    "**/coverage/**",
-    "**/generated/**",
-    "**/*.gen.ts"
-  ],
   "workspaces": {
     ".": {
-      "entry": ["scripts/monorepo/**/*.mjs", "scripts/monorepo/**/*.test.mjs"]
+      "entry": ["scripts/monorepo/**/*.mjs"],
+      // Root scripts dispatch to package scripts by name; `dev` is not an
+      // executable dependency.
+      "ignoreBinaries": ["dev"]
     },
     "apps/web": {
-      "entry": ["src/main.tsx", "src/app/routes/**/*.tsx", "testing/fixtures/results-layout.tsx"],
+      "entry": [
+        "src/app/routes/**/*.tsx",
+        "testing/fixtures/app-fixture.tsx",
+        "testing/e2e/start-embedded-production-server.ts",
+        "testing/fixtures/theme-contract.tsx",
+        "vite.embedded.config.ts"
+      ],
       // Ambient matcher declarations: consumed by tsconfig.test.json, never imported.
       "ignore": ["src/vitest.d.ts"]
     },
     "apps/landing": {
-      "entry": ["src/main.ts", "index.html"]
+      "entry": ["index.html", "src/styles/index.css"],
+      "ignoreDependencies": ["@diffgazer/ui"]
     },
     "apps/docs": {
       // The scroll-bootstrap tests pin router internals by resolving
@@ -71,45 +64,43 @@
       ]
     },
     "cli/add": {
-      "entry": ["src/index.ts", "scripts/**/*.ts", "tsup.config.ts", "vitest.config.ts"]
+      "entry": ["scripts/**/*.ts"],
+      "ignoreDependencies": ["@diffgazer/keys", "@diffgazer/ui"]
     },
     "cli/server": {
-      "entry": ["src/index.ts", "src/serve.ts", "vitest.config.ts"]
+      // Directory facades: every consumer outside `cli-compatibility/` and
+      // `hosted/` imports through these files, and their re-export surface is
+      // kept whole rather than pruned to today's callers. Declaring them as
+      // entry points keeps Knip from reading an individually-unimported
+      // re-export as dead code.
+      "entry": [
+        "src/shared/lib/ai/providers/cli-compatibility/compat.ts",
+        "src/shared/lib/ai/providers/cli-compatibility/probe.ts",
+        "src/shared/lib/ai/providers/hosted/transport.ts"
+      ]
     },
     "cli/diffgazer": {
       // capture-review-frames is invoked by scripts/parity-capture.mjs via a
       // string path, invisible to import analysis.
-      "entry": [
-        "src/index.tsx",
-        "bin/diffgazer.js",
-        "tsup.config.ts",
-        "vitest.config.ts",
-        "src/testing/capture-review-frames.tsx"
-      ]
+      "entry": ["src/testing/capture-review-frames.tsx"],
+      "ignoreDependencies": ["@diffgazer/web"],
+      "ignoreBinaries": ["taskkill", "vite"]
     },
     "libs/core": {
-      "entry": ["src/**/index.ts", "src/*.ts", "scripts/**/*.ts", "vitest.config.ts"],
-      // Offline catalog data, regenerated from models.dev.
-      "ignore": ["src/catalog/catalog-snapshot.ts"]
+      "entry": ["src/**/index.ts", "src/*.ts", "scripts/**/*.ts"]
     },
     "libs/keys": {
-      "entry": ["src/index.ts", "scripts/**/*.ts", "registry/**/*.{ts,tsx}", "vitest.config.ts"],
-      // Committed public registry: the reviewable handoff contract, not imports.
-      "ignore": ["public/r/**"],
-      "ignoreFiles": ["docs/hook-docs/**", "examples/playground/**"]
+      "entry": ["scripts/**/*.ts", "registry/**/*.{ts,tsx}"],
+      "ignoreFiles": ["docs/hook-docs/**"]
     },
     "libs/ui": {
-      // Committed public registry: the reviewable handoff contract, not imports.
-      "ignore": ["public/r/**"],
       // Registry CSS entries are discovered through registry.json file metadata,
       // not TS imports; the artifact validator owns their presence.
       // Listed one by one on purpose: a new stylesheet has to be justified here
       // rather than silently absorbed by a glob.
       "ignoreFiles": [
-        "registry/ui/callout/callout.css",
         "registry/ui/code-block/code-block.css",
         "registry/ui/command-palette/command-palette.css",
-        "registry/ui/diff-view/diff-view.css",
         "registry/ui/panel/panel.css",
         "registry/ui/progress/progress.css",
         "registry/ui/shared/dialog.css",
@@ -117,29 +108,19 @@
         "registry/ui/shared/stepper.css",
         "registry/ui/sidebar/sidebar.css",
         "registry/ui/skeleton/skeleton.css",
-        "registry/ui/spinner/spinner.css",
-        "styles/sources.css",
-        "styles/styles.css",
-        "styles/theme-base.css",
-        "styles/theme.css"
+        "registry/ui/spinner/spinner.css"
       ],
       "entry": [
         // Every registry file is a copy-consumer entry point, so knip does no
         // unused-file or unused-export analysis inside registry/ on purpose.
         "registry/**/*.{ts,tsx}",
         "scripts/**/*.ts",
-        "tsup.config.ts",
         "testing/fixtures/*.tsx",
-        "vite.e2e.config.ts",
-        "vitest.config.ts"
+        "vite.e2e.config.ts"
       ]
     },
     "libs/registry": {
-      "entry": ["src/index.ts", "src/schemas.ts", "src/cli/index.ts", "vitest.config.ts"]
-    },
-    "libs/keys/artifacts": {
-      "entry": ["scripts/**/*.mjs"],
-      "ignoreFiles": ["artifacts/source/registry/examples/**"]
+      "entry": []
     }
   }
 }

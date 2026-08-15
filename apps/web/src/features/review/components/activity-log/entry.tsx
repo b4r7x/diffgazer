@@ -33,7 +33,7 @@ export function LogEntry({
     <div className={cn("min-w-0 font-mono text-sm leading-relaxed", className)} {...props}>
       <span className="text-muted-foreground">[{formatTimestamp(timestamp)}]</span>{" "}
       <Badge
-        variant={TAG_BADGE_VARIANTS[resolvedTagType] ?? "neutral"}
+        variant={TAG_BADGE_VARIANTS[resolvedTagType]}
         size="sm"
         className={cn("mx-1 min-w-[48px] justify-center", TAG_CLASS_NAMES[resolvedTagType])}
       >

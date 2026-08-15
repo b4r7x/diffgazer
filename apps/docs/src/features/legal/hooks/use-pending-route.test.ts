@@ -1,9 +1,7 @@
-// @vitest-environment jsdom
-
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { LEGAL_PAGES } from "@/features/legal/lib/pages";
-import { usePendingLegalRoute } from "./use-pending-route";
+import { getLegalPageEntry, LEGAL_PAGES } from "@/features/legal/lib/pages";
+import { useIsLegalRoutePending } from "./use-pending-route";
 
 const routerState = vi.hoisted(() => ({
   isLoading: false,
@@ -28,20 +26,20 @@ beforeEach(() => {
   routerState.pathname = "/";
 });
 
-describe("usePendingLegalRoute", () => {
+describe("useIsLegalRoutePending", () => {
   it.each(LEGAL_PAGES)("reports $path during an active route load", ({ path }) => {
     routerState.isLoading = true;
     routerState.pathname = path;
 
-    expect(renderHook(() => usePendingLegalRoute()).result.current).toBe(path);
+    expect(renderHook(() => useIsLegalRoutePending()).result.current).toBe(true);
   });
 
   it("ignores settled and non-legal routes", () => {
-    routerState.pathname = LEGAL_PAGES[0].path;
-    expect(renderHook(() => usePendingLegalRoute()).result.current).toBeNull();
+    routerState.pathname = getLegalPageEntry("privacy").path;
+    expect(renderHook(() => useIsLegalRoutePending()).result.current).toBe(false);
 
     routerState.isLoading = true;
     routerState.pathname = "/ui/components/select";
-    expect(renderHook(() => usePendingLegalRoute()).result.current).toBeNull();
+    expect(renderHook(() => useIsLegalRoutePending()).result.current).toBe(false);
   });
 });

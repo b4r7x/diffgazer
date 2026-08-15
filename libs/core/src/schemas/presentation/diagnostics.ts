@@ -1,4 +1,4 @@
-import type { SetupStatus } from "../config/index.js";
+import type { DiagnosticsSetupGaps } from "../config/index.js";
 import type { BadgeVariant } from "./log.js";
 
 export type ContextStatus = "loading" | "ready" | "missing" | "error";
@@ -8,7 +8,7 @@ export type ServerState =
   | { status: "connected" }
   | { status: "error"; message: string };
 
-export interface DiagnosticsPresentation {
+interface DiagnosticsPresentation {
   label: string;
   variant: Extract<BadgeVariant, "success" | "warning" | "error" | "info">;
 }
@@ -19,10 +19,10 @@ export function getServerStatusPresentation(serverState: ServerState): Diagnosti
   return { label: `Error: ${serverState.message}`, variant: "error" };
 }
 
-export interface SetupPresentationInput {
+interface SetupPresentationInput {
   isLoading: boolean;
   error: string | null;
-  setupStatus: SetupStatus | null;
+  setupStatus: DiagnosticsSetupGaps | null;
 }
 
 export function getSetupPresentation({
@@ -34,31 +34,36 @@ export function getSetupPresentation({
   if (error) return { label: `Error: ${error}`, variant: "error" };
   if (!setupStatus) return { label: "Unavailable", variant: "warning" };
   if (setupStatus.isReady) return { label: "Ready", variant: "success" };
-  return {
-    label: `Incomplete (${setupStatus.missing.join(", ") || "unknown"})`,
-    variant: "warning",
-  };
+  if (setupStatus.missing.length > 0) {
+    return {
+      label: `Incomplete (${setupStatus.missing.join(", ")})`,
+      variant: "warning",
+    };
+  }
+  if (setupStatus.readiness) {
+    return { label: setupStatus.readiness.explanation, variant: "warning" };
+  }
+  return { label: "Incomplete", variant: "warning" };
 }
-
-const CONTEXT_VARIANT_BY_STATUS = {
-  ready: "success",
-  missing: "warning",
-  loading: "info",
-  error: "error",
-} as const satisfies Record<ContextStatus, DiagnosticsPresentation["variant"]>;
 
 export function getContextPresentation(
   status: ContextStatus,
   errorMessage: string | null,
 ): DiagnosticsPresentation {
-  if (status === "loading") {
-    return { label: "Loading...", variant: CONTEXT_VARIANT_BY_STATUS.loading };
+  switch (status) {
+    case "loading":
+      return { label: "Loading...", variant: "info" };
+    case "ready":
+      return { label: "Ready", variant: "success" };
+    case "missing":
+      return { label: "Missing", variant: "warning" };
+    case "error":
+      return { label: `Error: ${errorMessage ?? "unknown"}`, variant: "error" };
+    default: {
+      const _exhaustive: never = status;
+      return _exhaustive;
+    }
   }
-  if (status === "ready") return { label: "Ready", variant: CONTEXT_VARIANT_BY_STATUS.ready };
-  if (status === "missing") {
-    return { label: "Missing", variant: CONTEXT_VARIANT_BY_STATUS.missing };
-  }
-  return { label: `Error: ${errorMessage ?? "unknown"}`, variant: CONTEXT_VARIANT_BY_STATUS.error };
 }
 
 export function getContextActionLabel(isRefreshing: boolean, status: ContextStatus): string {
@@ -67,13 +72,13 @@ export function getContextActionLabel(isRefreshing: boolean, status: ContextStat
   return "Generate Context";
 }
 
-export interface DiagnosticsActionsInput {
+interface DiagnosticsActionsInput {
   canRegenerate: boolean;
   isRefreshing: boolean;
   isRefreshingAll: boolean;
 }
 
-export interface DiagnosticsActions {
+interface DiagnosticsActions {
   refreshAllDisabled: boolean;
   contextActionDisabled: boolean;
 }

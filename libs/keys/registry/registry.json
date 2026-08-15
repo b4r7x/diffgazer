@@ -30,6 +30,11 @@
           "target": "src/hooks/utils/navigation-dispatch.ts"
         },
         {
+          "path": "src/dom/hotkey.ts",
+          "type": "registry:hook",
+          "target": "src/hooks/utils/hotkey.ts"
+        },
+        {
           "path": "src/dom/navigation-items.ts",
           "type": "registry:hook",
           "target": "src/hooks/utils/navigation-items.ts"
@@ -87,7 +92,7 @@
       "dependencies": [],
       "registryDependencies": [],
       "meta": {
-        "client": true,
+        "client": false,
         "hidden": true
       },
       "files": [

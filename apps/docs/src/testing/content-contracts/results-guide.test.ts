@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import { TERMINAL_OUTCOME_PRESENTATION } from "@diffgazer/core/review";
+import { CONFIGURE_PROVIDER_LABEL, TERMINAL_OUTCOME_PRESENTATION } from "@diffgazer/core/review";
 import {
   LEGACY_V1_HAS_API_KEY_PROPERTY,
   READINESS_PRESENTATION,
+  READINESS_STATUSES,
 } from "@diffgazer/core/schemas/config";
 import { TERMINAL_OUTCOMES } from "@diffgazer/core/schemas/review";
 import { describe, expect, it } from "vitest";
@@ -24,12 +25,6 @@ const REQ_101_SYMPTOMS = [
   {
     id: "wrong-product-region-workspace",
     heading: "Wrong product, region, or workspace",
-    readiness: "endpoint-invalid" as const,
-  },
-  {
-    id: "endpoint-rejection",
-    heading: "Endpoint rejection",
-    readiness: "endpoint-invalid" as const,
   },
   {
     id: "model-missing",
@@ -51,15 +46,18 @@ const REQ_101_SYMPTOMS = [
     heading: "Budget exhaustion",
     outcome: "budget-exhausted" as const,
   },
+  // The local probe reports these two through its own failure-reason
+  // vocabulary, not through a readiness status, so the doc is pinned to the
+  // reason text the user actually sees.
   {
     id: "local-non-loopback-rejection",
     heading: "Local non-loopback rejection",
-    readiness: "local-endpoint-forbidden" as const,
+    phrase: "Local endpoint is not allowed",
   },
   {
     id: "local-incompatibility",
     heading: "Local incompatibility",
-    readiness: "local-api-incompatible" as const,
+    phrase: "Local API is incompatible",
   },
   {
     id: "cli-version-account-policy-failure",
@@ -156,6 +154,17 @@ describe("troubleshooting and API vocabulary", () => {
     }
   });
 
+  it("names only readiness statuses the product can actually report", () => {
+    const named = [...troubleshooting.matchAll(/Readiness (?:is|turns) `([a-z-]+)`/g)].map(
+      ([, status]) => status,
+    );
+
+    expect(named.length).toBeGreaterThan(0);
+    for (const status of named) {
+      expect(READINESS_STATUSES, status).toContain(status);
+    }
+  });
+
   it("documents all six terminal outcomes and structured skipped probe language", () => {
     for (const outcome of TERMINAL_OUTCOMES) {
       const copy = TERMINAL_OUTCOME_PRESENTATION[outcome];
@@ -177,13 +186,11 @@ describe("troubleshooting and API vocabulary", () => {
     expectNoForbiddenGuidance(apiReference, "api.mdx");
 
     expect(troubleshooting).toContain("Configuration Not Ready");
-    expect(troubleshooting).toContain("Configure Provider");
-    expect(apiReference).toContain("create");
-    expect(apiReference).toContain("inspect");
-    expect(apiReference).toContain("select");
-    expect(apiReference).toContain("test");
-    expect(apiReference).toContain("update");
-    expect(apiReference).toContain("delete");
+    expect(troubleshooting).toContain(CONFIGURE_PROVIDER_LABEL);
+    // Anchored to the published action-table row so a removed action fails here.
+    for (const action of ["create", "inspect", "select", "test", "update", "delete"]) {
+      expect(apiReference, action).toContain(`| \`${action}\` |`);
+    }
 
     for (const productId of ["gemini", "ollama", "codex-cli"] as const) {
       expect(troubleshooting).toContain(PRODUCT_REGISTRY[productId].presentation.name);

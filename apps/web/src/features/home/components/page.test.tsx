@@ -15,12 +15,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
-import {
-  makeShellApiOverrides,
-  makeShellInitResponse,
-  selectedModelLabel,
-  selectedProductLabel,
-} from "@/testing/shell-fixtures";
+import { makeShellApiOverrides, makeShellInitResponse } from "@/testing/shell-fixtures";
 
 type ActiveSessionState = ActiveReviewSession | null;
 
@@ -162,7 +157,8 @@ describe("HomePage composition", () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Configuration unavailable.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Configuration Unavailable");
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
     expect(screen.queryByText("Trust This Repository?")).not.toBeInTheDocument();
   });
 
@@ -203,11 +199,12 @@ describe("HomePage composition", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   }, 20_000);
 
+  // The chrome names the model the way the catalog publishes it, so the home
+  // context line reads the same words as the header and the review meta.
   it("renders selected configuration identity without legacy provider flags", async () => {
     const { container } = renderHomePage();
     await screen.findByRole("menuitem", { name: "Review Unstaged" });
-    expect(container.innerHTML).toContain(selectedProductLabel(shellInit));
-    expect(container.innerHTML).toContain(selectedModelLabel(shellInit));
+    expect(screen.getByText("Google Gemini (Gemini 2.5 Flash)")).toBeInTheDocument();
     expect(container.innerHTML).toBeClientSafeDom();
   });
 });

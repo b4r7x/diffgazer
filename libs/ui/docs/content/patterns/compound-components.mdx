@@ -104,9 +104,9 @@ This ensures you get a clear error message if you accidentally use a sub-compone
 ```tsx
 function Dialog({ children, open, onOpenChange }: DialogProps) {
   return (
-    <DialogContext.Provider value={{ open, onOpenChange, titleId, descriptionId }}>
+    <DialogContext value={{ open, onOpenChange, titleId, descriptionId }}>
       {children}
-    </DialogContext.Provider>
+    </DialogContext>
   )
 }
 ```

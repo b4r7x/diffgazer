@@ -6,6 +6,7 @@ import {
   getOverallStatus,
   makeContextResponse,
   mockGetReviewContext,
+  mockLoadInit,
   mockRefreshReviewContext,
   mockRequest,
   renderPage,
@@ -32,6 +33,7 @@ describe("SettingsDiagnosticsPage diagnostics refresh", () => {
     // Capture initial call counts; the next refetches are the ones the test holds.
     const initialHealthCalls = mockRequest.mock.calls.length;
     const initialContextCalls = mockGetReviewContext.mock.calls.length;
+    const initialInitCalls = mockLoadInit.mock.calls.length;
 
     // Stub the next refetches to block until we resolve.
     mockRequest.mockImplementationOnce(
@@ -62,6 +64,7 @@ describe("SettingsDiagnosticsPage diagnostics refresh", () => {
     // No additional refetches issued while refresh-all is in-flight.
     expect(mockRequest.mock.calls.length).toBe(initialHealthCalls + 1);
     expect(mockGetReviewContext.mock.calls.length).toBe(initialContextCalls + 1);
+    expect(mockLoadInit.mock.calls.length).toBe(initialInitCalls + 1);
 
     resolveHealth?.(new Response(null));
     resolveContext?.(makeContextResponse());
@@ -181,23 +184,24 @@ describe("SettingsDiagnosticsPage diagnostics refresh", () => {
 
   it("does not resurrect a recovered refresh error when another source later fails", async () => {
     const user = userEvent.setup();
-    const missingContext = Object.assign(new Error("context missing"), { status: 404 });
+    // A real context failure, not the 404 that only means "no snapshot yet": that
+    // state is reported as Missing in a warning tone and raises no error callout.
+    const contextUnavailable = new Error("context unavailable");
     mockGetReviewContext
       .mockReset()
-      .mockRejectedValueOnce(missingContext)
-      .mockRejectedValueOnce(missingContext)
+      .mockRejectedValueOnce(contextUnavailable)
+      .mockRejectedValueOnce(contextUnavailable)
       .mockResolvedValue(makeContextResponse());
     renderPage();
     await waitForReady();
 
     await user.click(screen.getByRole("button", { name: "Refresh Diagnostics" }));
-    expect(await screen.findByText("context missing")).toBeVisible();
+    expect(await screen.findByText("context unavailable")).toBeVisible();
 
-    await user.click(screen.getByRole("button", { name: "Generate Context" }));
-    await waitFor(() => expect(mockRefreshReviewContext).toHaveBeenCalledWith({ force: true }));
+    await user.click(screen.getByRole("button", { name: "Refresh Diagnostics" }));
 
     await waitFor(() => {
-      expect(screen.queryByText("context missing")).not.toBeInTheDocument();
+      expect(screen.queryByText("context unavailable")).not.toBeInTheDocument();
     });
     expect(getOverallStatus()).toHaveTextContent("Ready");
 
@@ -205,7 +209,7 @@ describe("SettingsDiagnosticsPage diagnostics refresh", () => {
     await user.click(screen.getByRole("button", { name: "Refresh Diagnostics" }));
 
     expect(await screen.findByText("later server failure")).toBeVisible();
-    expect(screen.queryByText("context missing")).not.toBeInTheDocument();
+    expect(screen.queryByText("context unavailable")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Refresh failed for some diagnostics sources."),
     ).not.toBeInTheDocument();

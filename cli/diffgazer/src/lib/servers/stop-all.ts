@@ -18,7 +18,7 @@ export function registerServerSet(servers: readonly ServerController[]): () => P
   return () => stopRegistration(registration);
 }
 
-export function stopServerSet(servers: readonly ServerController[]): Promise<void> {
+function stopServerSet(servers: readonly ServerController[]): Promise<void> {
   const registration = currentServerSetRegistrations.get(servers);
   return registration ? stopRegistration(registration) : Promise.resolve();
 }

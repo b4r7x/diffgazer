@@ -1,20 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import {
+  type ConfigurationModelsResponse,
   ConfigurationModelsResponseSchema,
   ModelTierSchema,
-  OpenRouterModelCacheSchema,
-  OpenRouterModelSchema,
-  OpenRouterModelsResponseSchema,
+  type ProviderModelsResponse,
   ProviderModelsResponseSchema,
 } from "./models.js";
-
-const validOpenRouterModel = {
-  id: "openai/gpt-4o",
-  name: "GPT-4o",
-  contextLength: 128000,
-  pricing: { prompt: "0", completion: "0" },
-  isFree: false,
-};
 
 describe("schemas/config/models", () => {
   it.each([
@@ -66,73 +57,6 @@ describe("schemas/config/models", () => {
     ).toBe(false);
   });
 
-  it("keeps the OpenRouter schemas for the live OpenRouter path", () => {
-    const model = OpenRouterModelSchema.safeParse({
-      ...validOpenRouterModel,
-      maxCompletionTokens: 16384,
-    });
-    expect(model.success).toBe(true);
-    if (model.success) expect(model.data.maxCompletionTokens).toBe(16384);
-    expect(
-      OpenRouterModelCacheSchema.safeParse({ models: [], fetchedAt: new Date().toISOString() })
-        .success,
-    ).toBe(true);
-  });
-
-  it.each([
-    { name: "missing id", input: { ...validOpenRouterModel, id: undefined } },
-    {
-      name: "non-numeric contextLength",
-      input: { ...validOpenRouterModel, contextLength: "128000" },
-    },
-    { name: "non-boolean isFree", input: { ...validOpenRouterModel, isFree: "false" } },
-    { name: "missing pricing", input: { ...validOpenRouterModel, pricing: undefined } },
-    {
-      name: "non-positive maxCompletionTokens",
-      input: { ...validOpenRouterModel, maxCompletionTokens: 0 },
-    },
-  ])("rejects a malformed OpenRouter model field: $name", ({ input }) => {
-    expect(OpenRouterModelSchema.safeParse(input).success).toBe(false);
-  });
-
-  it.each([
-    { name: "invalid fetchedAt", input: { models: [], fetchedAt: "not-a-date" } },
-    {
-      name: "invalid model member",
-      input: {
-        models: [{ ...validOpenRouterModel, id: undefined }],
-        fetchedAt: new Date().toISOString(),
-      },
-    },
-  ])("rejects an invalid OpenRouter model cache: $name", ({ input }) => {
-    expect(OpenRouterModelCacheSchema.safeParse(input).success).toBe(false);
-  });
-
-  it.each([
-    {
-      name: "invalid model member",
-      input: {
-        models: [{ ...validOpenRouterModel, id: undefined }],
-        fetchedAt: new Date().toISOString(),
-        cached: false,
-      },
-    },
-    {
-      name: "non-boolean cached",
-      input: {
-        models: [validOpenRouterModel],
-        fetchedAt: new Date().toISOString(),
-        cached: "false",
-      },
-    },
-    {
-      name: "invalid fetchedAt",
-      input: { models: [validOpenRouterModel], fetchedAt: "not-a-date", cached: false },
-    },
-  ])("rejects an invalid OpenRouter models response member: $name", ({ input }) => {
-    expect(OpenRouterModelsResponseSchema.safeParse(input).success).toBe(false);
-  });
-
   it.each([
     {
       name: "invalid provenance",
@@ -154,6 +78,17 @@ describe("schemas/config/models", () => {
     },
   ])("rejects invalid provider provenance/model tiers: $name", ({ input }) => {
     expect(ProviderModelsResponseSchema.safeParse(input).success).toBe(false);
+  });
+
+  it("makes a contradictory source/cached pair unrepresentable in the exported type", () => {
+    type CachedFor<Source extends ProviderModelsResponse["source"]> = Extract<
+      ProviderModelsResponse,
+      { source: Source }
+    >["cached"];
+
+    expectTypeOf<CachedFor<"live">>().toEqualTypeOf<false>();
+    expectTypeOf<CachedFor<"cache">>().toEqualTypeOf<true>();
+    expectTypeOf<CachedFor<"snapshot">>().toEqualTypeOf<false>();
   });
 });
 
@@ -221,5 +156,14 @@ describe("ConfigurationModelsResponseSchema", () => {
     { name: "passed without provenance", input: { ...passed, source: undefined } },
   ])("rejects $name", ({ input }) => {
     expect(ConfigurationModelsResponseSchema.safeParse(input).success).toBe(false);
+  });
+
+  it("types skipped results as carrying no models and passed results as provenance-bound", () => {
+    expectTypeOf<
+      Extract<ConfigurationModelsResponse, { status: "skipped" }>["models"]
+    >().toEqualTypeOf<[]>();
+    expectTypeOf<
+      Extract<ConfigurationModelsResponse, { source: "cache" }>["cached"]
+    >().toEqualTypeOf<true>();
   });
 });

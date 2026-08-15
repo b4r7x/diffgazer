@@ -1,18 +1,21 @@
 import { describe, expect, it } from "vitest";
 import type { ConfigurationStatus } from "../schemas/config/configuration-status.js";
-import type {
-  ClientConfigurationNotice,
-  ClientConfigurationSummary,
-} from "../schemas/config/provider-config.js";
-import { SELECTABLE_PRODUCTS } from "../schemas/config/provider-registry.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
+import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "../schemas/config/legacy-provider-config.js";
+import type { ClientConfigurationSummary } from "../schemas/config/provider-config.js";
 import {
   READINESS_PRESENTATION,
   type Readiness,
   ReadinessSchema,
 } from "../schemas/config/readiness.js";
-import { mapProviderList } from "./list.js";
+import { configurationStatus, makeClientNotice } from "../testing/provider-fixtures.js";
+import {
+  findProviderById,
+  findProviderDialogRow,
+  getProviderRowId,
+  mapProviderList,
+} from "./list.js";
 import { PRODUCT_REGISTRY } from "./product-registry.js";
+import { SELECTABLE_PRODUCTS } from "./selectable-products.js";
 
 const CHECKED_AT = "2026-07-31T10:00:00.000Z";
 const HOSTED_ENDPOINTS = {
@@ -21,7 +24,7 @@ const HOSTED_ENDPOINTS = {
   groq: "https://api.groq.com/openai/v1",
 } as const;
 
-type TestedReadinessStatus = "ready" | "unreachable" | "unsupported" | "removed";
+type TestedReadinessStatus = "ready" | "conformance-failed" | "unsupported";
 
 function readiness(status: TestedReadinessStatus): Readiness {
   const presentation = READINESS_PRESENTATION[status];
@@ -42,7 +45,7 @@ function readiness(status: TestedReadinessStatus): Readiness {
     });
   }
 
-  if (status === "unreachable") {
+  if (status === "conformance-failed") {
     return ReadinessSchema.parse({
       status,
       ready: false,
@@ -63,11 +66,6 @@ function readiness(status: TestedReadinessStatus): Readiness {
   });
 }
 
-function copyNotice(productId: "gemini" | "zai" | "groq"): ClientConfigurationNotice {
-  const notice = PRODUCT_REGISTRY[productId].notice;
-  return { ...notice, billing: [...notice.billing], privacy: [...notice.privacy] };
-}
-
 function hostedConfiguration(
   configurationId: string,
   productId: "gemini" | "zai" | "groq",
@@ -80,7 +78,7 @@ function hostedConfiguration(
     productId,
     endpoint: HOSTED_ENDPOINTS[productId],
     selectedModelId: productId === "gemini" ? "gemini-2.5-flash" : null,
-    notices: [copyNotice(productId)],
+    notices: [makeClientNotice(productId)],
     availableActions: ["inspect", "select", "test", "update", "delete"],
   };
 }
@@ -124,7 +122,7 @@ describe("mapProviderList", () => {
   });
 
   it.each([
-    "unreachable",
+    "conformance-failed",
     "unsupported",
   ] as const)("preserves the %s readiness and remediation", (readinessStatus) => {
     const rows = mapProviderList([
@@ -138,31 +136,6 @@ describe("mapProviderList", () => {
     expect(row?.actions).toEqual(["inspect", "select", "test", "update", "delete"]);
   });
 
-  it("appends removed records without making them selectable", () => {
-    const removedConfiguration: ClientConfigurationSummary = {
-      configurationId: "legacy-removed-zai-plan",
-      revision: 4,
-      status: "removed",
-      transportFamily: "hosted-api",
-      productId: REMOVED_PRODUCT_ID,
-      selectedModelId: null,
-      notices: [],
-      availableActions: ["inspect", "delete"],
-    };
-    const rows = mapProviderList([status(removedConfiguration, readiness("removed"))]);
-    const row = rows.find(
-      ({ configuration }) => configuration?.configurationId === "legacy-removed-zai-plan",
-    );
-
-    expect(row).toMatchObject({
-      product: { productId: REMOVED_PRODUCT_ID, status: "removed", selectable: false },
-      readiness: { status: "removed", ready: false, action: "delete" },
-      notices: [],
-      actions: ["inspect", "delete"],
-    });
-    expect(rows).toHaveLength(14);
-  });
-
   it("derives exactly the 13 selectable products from the product registry", () => {
     const selectableRows = mapProviderList([]).filter(({ product }) => product.selectable);
 
@@ -173,11 +146,54 @@ describe("mapProviderList", () => {
   });
 
   it("does not serialize the legacy key-presence field", () => {
-    const legacyField = ["has", "Api", "Key"].join("");
     const rows = mapProviderList([
-      status(hostedConfiguration("zai-unreachable", "zai"), readiness("unreachable")),
+      status(hostedConfiguration("zai-conformance-failed", "zai"), readiness("conformance-failed")),
     ]);
 
-    expect(JSON.stringify(rows)).not.toContain(legacyField);
+    expect(JSON.stringify(rows)).not.toContain(LEGACY_V1_HAS_API_KEY_PROPERTY);
+  });
+});
+
+describe("findProviderDialogRow", () => {
+  const openRouterConfiguration = {
+    configurationId: "openrouter-primary",
+    revision: 1,
+    status: "supported" as const,
+    transportFamily: "hosted-api" as const,
+    productId: "openrouter" as const,
+    endpoint: "https://openrouter.ai/api/v1",
+    selectedModelId: null,
+    notices: [makeClientNotice("openrouter")],
+    availableActions: ["inspect", "select", "test", "update", "delete"],
+  } satisfies ClientConfigurationSummary;
+
+  it("resolves a model dialog by configuration id after the row id flips", () => {
+    const rows = mapProviderList([configurationStatus(openRouterConfiguration, "model-missing")]);
+    const owner = {
+      kind: "model" as const,
+      rowId: "openrouter",
+      configurationId: "openrouter-primary",
+    };
+
+    const openRouterRow = rows.find((row) => row.product.productId === "openrouter");
+    if (!openRouterRow) throw new Error("Expected OpenRouter row");
+
+    expect(getProviderRowId(openRouterRow)).toBe("openrouter-primary");
+    expect(findProviderById(rows, owner.rowId)).toBeNull();
+    expect(findProviderDialogRow(rows, owner)?.configuration?.configurationId).toBe(
+      "openrouter-primary",
+    );
+  });
+
+  it("falls back to the pre-create row id when the configuration id is not listed yet", () => {
+    const rows = mapProviderList([]);
+    const owner = {
+      kind: "model" as const,
+      rowId: "openrouter",
+      configurationId: "openrouter-primary",
+    };
+
+    expect(findProviderDialogRow(rows, owner)?.product.productId).toBe("openrouter");
+    expect(findProviderDialogRow(rows, owner)?.configuration).toBeNull();
   });
 });

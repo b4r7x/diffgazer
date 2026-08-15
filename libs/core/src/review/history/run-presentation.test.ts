@@ -1,76 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { DETACHED_HEAD_BRANCH } from "../../schemas/git.js";
 import { makeReviewMetadata } from "../../testing/factories.js";
-import { HISTORY_SEARCH_PLACEHOLDER } from "./navigation.js";
 import {
   buildHistoryRunSummary,
   getRunBranchLabel,
   getRunSummaryParts,
   getRunSummaryText,
   metadataToSeverityCounts,
+  resolveRunDisplayId,
 } from "./run-presentation.js";
-import { buildHistoryWarningMessages, summarizeHistoryWarnings } from "./warnings.js";
-
-describe("summarizeHistoryWarnings", () => {
-  it("separates unreadable records, salvage loss, and index maintenance failures", () => {
-    expect(
-      summarizeHistoryWarnings([
-        {
-          kind: "unreadable_review",
-          reviewId: "11111111-1111-4111-8111-111111111111",
-        },
-        {
-          kind: "invalid_issues_dropped",
-          reviewId: "22222222-2222-4222-8222-222222222222",
-          count: 2,
-        },
-        {
-          kind: "invalid_issues_dropped",
-          reviewId: "33333333-3333-4333-8333-333333333333",
-          count: 1,
-        },
-        { kind: "index_build_failed" },
-        { kind: "index_rewrite_failed" },
-      ]),
-    ).toEqual({
-      unreadableReviewCount: 1,
-      droppedIssueCount: 3,
-      indexBuildFailed: true,
-      indexRewriteFailed: true,
-    });
-  });
-
-  it("builds all warning messages with singular grammar", () => {
-    expect(
-      buildHistoryWarningMessages({
-        unreadableReviewCount: 1,
-        droppedIssueCount: 1,
-        indexBuildFailed: true,
-        indexRewriteFailed: true,
-      }),
-    ).toEqual([
-      "1 saved review could not be read.",
-      "1 invalid saved issue was omitted. Re-run the affected reviews for complete results.",
-      "The history index could not be rebuilt. Readable reviews are still shown; reopen History to retry.",
-      "The history index could not be cleaned up. Readable reviews are still shown; reopen History to retry.",
-    ]);
-  });
-
-  it("builds all warning messages with plural grammar", () => {
-    expect(
-      buildHistoryWarningMessages({
-        unreadableReviewCount: 2,
-        droppedIssueCount: 3,
-        indexBuildFailed: true,
-        indexRewriteFailed: true,
-      }),
-    ).toEqual([
-      "2 saved reviews could not be read.",
-      "3 invalid saved issues were omitted. Re-run the affected reviews for complete results.",
-      "The history index could not be rebuilt. Readable reviews are still shown; reopen History to retry.",
-      "The history index could not be cleaned up. Readable reviews are still shown; reopen History to retry.",
-    ]);
-  });
-});
 
 describe("getRunSummaryParts", () => {
   it("flags a passing review when issueCount is zero", () => {
@@ -85,6 +23,15 @@ describe("getRunSummaryParts", () => {
     expect(summary.passed).toBe(false);
     expect(summary.partial).toBe(true);
     expect(summary.failedLensCount).toBe(1);
+  });
+
+  it("does not mark a non-completed terminal outcome as passed", () => {
+    const summary = getRunSummaryParts(
+      makeReviewMetadata({ issueCount: 0, terminalOutcome: "timed-out" }),
+    );
+
+    expect(summary.passed).toBe(false);
+    expect(summary.partial).toBe(false);
   });
 
   it("collects only non-zero severities in canonical order", () => {
@@ -118,6 +65,18 @@ describe("getRunSummaryText", () => {
     );
   });
 
+  it("reports the findings a partial analysis did produce", () => {
+    expect(getRunSummaryText(makeReviewMetadata({ issueCount: 3, failedLensCount: 1 }))).toBe(
+      "Partial analysis: 1 lens failed; 3 issues found.",
+    );
+  });
+
+  it("reports a non-completed terminal outcome instead of a pass", () => {
+    expect(
+      getRunSummaryText(makeReviewMetadata({ issueCount: 0, terminalOutcome: "cancelled" })),
+    ).toBe("Review ended with outcome cancelled.");
+  });
+
   it("joins severity parts with commas", () => {
     const text = getRunSummaryText(
       makeReviewMetadata({ issueCount: 3, blockerCount: 1, highCount: 2 }),
@@ -136,9 +95,21 @@ describe("getRunBranchLabel", () => {
     expect(getRunBranchLabel(makeReviewMetadata({ mode: "staged" }))).toBe("Staged");
   });
 
-  it("returns Main when the branch is missing", () => {
-    expect(getRunBranchLabel(makeReviewMetadata({ mode: "unstaged", branch: undefined }))).toBe(
-      "Main",
+  it("returns Unknown branch when the branch is missing", () => {
+    expect(getRunBranchLabel(makeReviewMetadata({ mode: "unstaged", branch: null }))).toBe(
+      "Unknown branch",
+    );
+  });
+
+  it("returns Detached HEAD for the detached sentinel branch", () => {
+    expect(
+      getRunBranchLabel(makeReviewMetadata({ mode: "unstaged", branch: DETACHED_HEAD_BRANCH })),
+    ).toBe("Detached HEAD");
+  });
+
+  it("shows a branch literally named detached under its own name", () => {
+    expect(getRunBranchLabel(makeReviewMetadata({ mode: "unstaged", branch: "detached" }))).toBe(
+      "detached",
     );
   });
 });
@@ -159,6 +130,15 @@ describe("buildHistoryRunSummary", () => {
     expect(summary.summary).toBe("2 high");
     expect(typeof summary.timestamp).toBe("string");
   });
+
+  it("prefers the caller's lookup label over the standalone short id", () => {
+    const id = "abcdef00-0000-4000-8000-000000000000";
+
+    expect(resolveRunDisplayId(makeReviewMetadata({ id }), new Map([[id, "#abcdef00-0"]]))).toBe(
+      "#abcdef00-0",
+    );
+    expect(resolveRunDisplayId(makeReviewMetadata({ id }))).toBe("#abcdef00");
+  });
 });
 
 describe("metadataToSeverityCounts", () => {
@@ -177,11 +157,5 @@ describe("metadataToSeverityCounts", () => {
       }),
     );
     expect(counts).toEqual({ blocker: 1, high: 2, medium: 3, low: 4, nit: 5 });
-  });
-});
-
-describe("HISTORY_SEARCH_PLACEHOLDER", () => {
-  it("names every searchable run field in compact copy", () => {
-    expect(HISTORY_SEARCH_PLACEHOLDER).toBe("Search ID, branch, path, staged...");
   });
 });

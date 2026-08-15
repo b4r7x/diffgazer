@@ -16,17 +16,14 @@ export interface FooterProviderProps {
    * footer is never empty before any screen mounts. Pass `[]` to start blank.
    */
   initialShortcuts?: Shortcut[];
-  /** Initial right shortcuts. Defaults to empty. */
-  initialRightShortcuts?: Shortcut[];
 }
 
 export function FooterProvider({
   children,
   initialShortcuts = DEFAULT_SHORTCUTS,
-  initialRightShortcuts = EMPTY_SHORTCUTS,
 }: FooterProviderProps) {
   const [shortcuts, setShortcutsState] = useState<Shortcut[]>(initialShortcuts);
-  const [rightShortcuts, setRightShortcutsState] = useState<Shortcut[]>(initialRightShortcuts);
+  const [rightShortcuts, setRightShortcutsState] = useState<Shortcut[]>(EMPTY_SHORTCUTS);
 
   const dataValue = useMemo<FooterData>(
     () => ({ shortcuts, rightShortcuts }),

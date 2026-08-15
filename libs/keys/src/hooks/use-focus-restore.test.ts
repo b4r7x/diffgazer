@@ -1,4 +1,5 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, render, renderHook } from "@testing-library/react";
+import { createElement, StrictMode, useLayoutEffect, useRef } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { requireFrameDocument } from "../testing/internal/assertions.js";
 import { useFocusRestore } from "./use-focus-restore.js";
@@ -73,6 +74,41 @@ describe("useFocusRestore", () => {
     expect(document.activeElement).toBe(outsideTrigger);
   });
 
+  it("preserves inherited fallback targets when capture runs again on the same entry", () => {
+    const outsideTrigger = button("Outside");
+    const parentControl = button("Parent control");
+    const childControl = button("Child control");
+    const parentRestore = renderHook(() => useFocusRestore({ restoreOnUnmount: false }));
+    const childRestore = renderHook(() => useFocusRestore({ restoreOnUnmount: false }));
+
+    outsideTrigger.focus();
+    act(() => {
+      parentRestore.result.current.capture();
+    });
+
+    parentControl.focus();
+    act(() => {
+      childRestore.result.current.capture();
+    });
+
+    childControl.focus();
+    act(() => {
+      expect(parentRestore.result.current.restore()).toBe(false);
+    });
+
+    childControl.focus();
+    act(() => {
+      childRestore.result.current.capture();
+    });
+
+    childControl.remove();
+
+    act(() => {
+      expect(childRestore.result.current.restore()).toBe(true);
+    });
+    expect(document.activeElement).toBe(outsideTrigger);
+  });
+
   it("restores the nearest surviving target from a three-level fallback chain", () => {
     const outsideTrigger = button("Outside");
     const outerControl = button("Outer control");
@@ -120,6 +156,34 @@ describe("useFocusRestore", () => {
 
     inside.focus();
     focusRestore.unmount();
+
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("still restores on unmount after a StrictMode effect cycle consumed the entry", () => {
+    const trigger = button("Trigger");
+    const inside = button("Inside");
+
+    // Mirrors the dialog shell: capture happens once in a layout effect (the
+    // showModal guard blocks a second capture), so the StrictMode passive
+    // cleanup→setup replay must re-register the entry or close has nothing
+    // to restore.
+    function CaptureOnceHarness() {
+      const { capture } = useFocusRestore();
+      const captured = useRef(false);
+      useLayoutEffect(() => {
+        if (captured.current) return;
+        captured.current = true;
+        capture();
+      }, [capture]);
+      return null;
+    }
+
+    trigger.focus();
+    const view = render(createElement(CaptureOnceHarness), { wrapper: StrictMode });
+
+    inside.focus();
+    view.unmount();
 
     expect(document.activeElement).toBe(trigger);
   });

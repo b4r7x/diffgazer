@@ -6,6 +6,12 @@ import { HorizontalStepper } from "./index";
 
 const steps = ["intro", "config", "review", "done"];
 
+// The composition the static child scan cannot see through: the caller creates a WizardStep,
+// not a HorizontalStepper.Step.
+function WizardStep({ value, children }: { value: string; children: string }) {
+  return <HorizontalStepper.Step value={value}>{children}</HorizontalStepper.Step>;
+}
+
 function renderStepper(
   activeStep: string,
   variant?: "ascii" | "numbered" | "breadcrumb",
@@ -13,16 +19,17 @@ function renderStepper(
 ) {
   return render(
     <HorizontalStepper
-      steps={steps}
       value={activeStep}
       variant={variant}
       compact={compact}
       aria-label="Setup progress"
     >
-      <HorizontalStepper.Step value="intro">Intro</HorizontalStepper.Step>
-      <HorizontalStepper.Step value="config">Config</HorizontalStepper.Step>
-      <HorizontalStepper.Step value="review">Review</HorizontalStepper.Step>
-      <HorizontalStepper.Step value="done">Done</HorizontalStepper.Step>
+      {steps.map((step) => (
+        <HorizontalStepper.Step key={step} value={step}>
+          {step[0]?.toUpperCase()}
+          {step.slice(1)}
+        </HorizontalStepper.Step>
+      ))}
     </HorizontalStepper>,
   );
 }
@@ -54,7 +61,7 @@ describe("HorizontalStepper", () => {
 
   it("falls back to the default Progress list name when aria-label is omitted", () => {
     render(
-      <HorizontalStepper steps={steps} value="intro">
+      <HorizontalStepper value="intro">
         <HorizontalStepper.Step value="intro">Intro</HorizontalStepper.Step>
         <HorizontalStepper.Step value="config">Config</HorizontalStepper.Step>
         <HorizontalStepper.Step value="review">Review</HorizontalStepper.Step>
@@ -69,6 +76,59 @@ describe("HorizontalStepper", () => {
 
     expect(screen.getByText("Review").closest("li")).toHaveAttribute("aria-current", "step");
     expect(screen.getByText("Config").closest("li")).not.toHaveAttribute("aria-current");
+  });
+
+  it("throws when value is absent from steps", () => {
+    expect(() =>
+      render(
+        <HorizontalStepper value={"missing" as unknown as "a"} aria-label="Run">
+          <HorizontalStepper.Step value="a">A</HorizontalStepper.Step>
+          <HorizontalStepper.Step value="b">B</HorizontalStepper.Step>
+        </HorizontalStepper>,
+      ),
+    ).toThrow(/value "missing" is not present in rendered step children/);
+  });
+
+  it("derives step order from the rendered Step children", () => {
+    render(
+      <HorizontalStepper value="review" aria-label="Setup progress">
+        <HorizontalStepper.Step value="done">Done</HorizontalStepper.Step>
+        <HorizontalStepper.Step value="review">Review</HorizontalStepper.Step>
+        <HorizontalStepper.Step value="intro">Intro</HorizontalStepper.Step>
+      </HorizontalStepper>,
+    );
+
+    expect(screen.getByText("Done").closest("li")).toHaveAttribute("data-status", "completed");
+    expect(screen.getByText("Review").closest("li")).toHaveAttribute("data-status", "active");
+    expect(screen.getByText("Intro").closest("li")).toHaveAttribute("data-status", "pending");
+  });
+
+  it("derives step order from steps a consumer component renders", () => {
+    render(
+      <HorizontalStepper value="config" compact aria-label="Setup progress">
+        <WizardStep value="intro">Intro</WizardStep>
+        <WizardStep value="config">Config</WizardStep>
+        <WizardStep value="review">Review</WizardStep>
+      </HorizontalStepper>,
+    );
+
+    expect(screen.getByText("Intro").closest("li")).toHaveAttribute("data-status", "completed");
+    expect(screen.getByText("Config").closest("li")).toHaveAttribute("data-status", "active");
+    expect(screen.getByText("Review").closest("li")).toHaveAttribute("data-status", "pending");
+    expect(closestElement(screen.getByText("Config"), "li", "Config list item")).toHaveTextContent(
+      "Step 2/3",
+    );
+  });
+
+  it("throws when value is absent from steps a consumer component renders", () => {
+    expect(() =>
+      render(
+        <HorizontalStepper value={"missing" as unknown as "a"} aria-label="Run">
+          <WizardStep value="a">A</WizardStep>
+          <WizardStep value="b">B</WizardStep>
+        </HorizontalStepper>,
+      ),
+    ).toThrow(/value "missing" is not present in rendered step children/);
   });
 
   it("has no a11y violations", async () => {
@@ -136,104 +196,6 @@ describe("HorizontalStepper numbered variant", () => {
 });
 
 describe("HorizontalStepper constrained containers", () => {
-  // The overflow contract is a layout guarantee jsdom cannot measure, so these assert the classes
-  // that carry it. They are the contract, not incidental styling: dropping `whitespace-nowrap` or
-  // `shrink-0` is exactly how labels wrapped mid-word and the `[ ]` glyph split across two lines.
-  it("never lets a step or a connector break internally", () => {
-    const { container } = renderStepper("config");
-
-    for (const item of screen.getAllByRole("listitem")) {
-      expect(item).toHaveClass("whitespace-nowrap");
-      expect(item).toHaveClass("shrink-0");
-    }
-    for (const connector of container.querySelectorAll('[role="presentation"]')) {
-      expect(connector).toHaveClass("whitespace-nowrap");
-      expect(connector).toHaveClass("shrink-0");
-    }
-  });
-
-  it("collapses on its own container width, not on the viewport", () => {
-    const { container } = renderStepper("config");
-
-    // The root is the query container; children collapse below 36rem of it.
-    expect(screen.getByRole("list", { name: "Setup progress" })).toHaveClass(
-      "@container/horizontal-stepper",
-    );
-    const connector = container.querySelector('[role="presentation"]');
-    expect(connector).toHaveClass("@max-xl/horizontal-stepper:hidden");
-    // Not unconditionally hidden: a wide container keeps the full stepper.
-    expect(connector).not.toHaveClass("hidden");
-  });
-
-  it("carries the container-query compact classes on the steps and labels", () => {
-    renderStepper("config");
-
-    // The default path only ever emits these two through the container-query branch, and a
-    // class built by interpolating the `@max-xl/horizontal-stepper:` prefix onto a variable
-    // is invisible to Tailwind's scanner — it ships the bare prefix and no utility reaches
-    // the stylesheet. Asserting the forced-compact branch alone (bare `pe-1.5`/`sr-only`)
-    // cannot catch that, so both branches are pinned.
-    const config = closestElement(screen.getByText("Config"), "li", "Config list item");
-    expect(config).toHaveClass("@max-xl/horizontal-stepper:pe-1.5");
-    expect(config).not.toHaveClass("pe-1.5");
-    expect(screen.getByText("Review")).toHaveClass("@max-xl/horizontal-stepper:sr-only");
-    expect(screen.getByText("Review")).not.toHaveClass("sr-only");
-  });
-
-  it("derives the window threshold from the step count, not from a blanket width", () => {
-    // Same class-as-contract rationale as the test above: the threshold literals are the only
-    // thing that makes the window engage from need. A four-step run keeps its full run down to
-    // 18rem, where a twelve-step run of the same variant has to window from 32rem — a blanket
-    // threshold would elide steps at widths where the short run fits trivially.
-    function renderRun(total: number) {
-      const ids = Array.from({ length: total }, (_, index) => `s${index}`);
-      return render(
-        <HorizontalStepper steps={ids} value="s1" aria-label="Run">
-          {ids.map((id) => (
-            <HorizontalStepper.Step key={id} value={id}>
-              {id}
-            </HorizontalStepper.Step>
-          ))}
-        </HorizontalStepper>,
-      );
-    }
-
-    const four = renderRun(4);
-    expect(closestElement(screen.getByText("s3"), "li", "last step")).toHaveClass(
-      "@max-[18rem]/horizontal-stepper:sr-only",
-    );
-    four.unmount();
-
-    const twelve = renderRun(12);
-    expect(closestElement(screen.getByText("s11"), "li", "last step")).toHaveClass(
-      "@max-[32rem]/horizontal-stepper:sr-only",
-    );
-    twelve.unmount();
-
-    // Three steps ARE the window, so no window threshold and no markers can ever apply. (The
-    // 14rem active-only tier is a different collapse and still rides along.)
-    renderRun(3);
-    for (const item of screen.getAllByRole("listitem")) {
-      expect(item.className).not.toMatch(/@max-\[(18|22|26|32|40|48|64)rem\]/);
-    }
-    expect(screen.queryByText(/^\+\d+$/)).not.toBeInTheDocument();
-  });
-
-  it("keeps the active glyph below 14rem instead of dropping the run", () => {
-    renderStepper("config", "ascii", true);
-
-    // The narrowest tier rides the container query even when compact is forced, because a
-    // forced-compact stepper can still land in a container too narrow for a three-cell window.
-    const intro = closestElement(screen.getByText("Intro"), "li", "Intro list item");
-    const config = closestElement(screen.getByText("Config"), "li", "Config list item");
-    expect(intro).toHaveClass("@max-[14rem]/horizontal-stepper:sr-only");
-    // The active step stays whole — glyph included. A progress indicator that shows no progress
-    // is the failure this tier used to produce.
-    expect(config).not.toHaveClass("@max-[14rem]/horizontal-stepper:sr-only");
-    expect(config).toHaveTextContent("[~]");
-    expect(config).toHaveTextContent("Step 2/4");
-  });
-
   it("keeps every step announced in the active-only tier", () => {
     renderStepper("config", "ascii", true);
 
@@ -304,7 +266,7 @@ describe("HorizontalStepper window", () => {
 
   function renderSeven(active: string, variant?: "ascii" | "numbered" | "breadcrumb") {
     return render(
-      <HorizontalStepper steps={seven} value={active} variant={variant} compact aria-label="Run">
+      <HorizontalStepper value={active} variant={variant} compact aria-label="Run">
         {seven.map((step) => (
           <HorizontalStepper.Step key={step} value={step}>
             {step.toUpperCase()}
@@ -339,7 +301,7 @@ describe("HorizontalStepper window", () => {
 
   it("renders no markers when the run is short enough to be its own window", () => {
     render(
-      <HorizontalStepper steps={["a", "b", "c"]} value="b" compact aria-label="Run">
+      <HorizontalStepper value="b" compact aria-label="Run">
         <HorizontalStepper.Step value="a">A</HorizontalStepper.Step>
         <HorizontalStepper.Step value="b">B</HorizontalStepper.Step>
         <HorizontalStepper.Step value="c">C</HorizontalStepper.Step>

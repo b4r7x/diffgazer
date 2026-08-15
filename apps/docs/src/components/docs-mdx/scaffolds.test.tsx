@@ -1,6 +1,3 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +11,7 @@ vi.mock("@tanstack/react-router", async () => {
 });
 
 const demoBoundary = vi.hoisted(() => ({
-  result: { demos: {}, isLoading: false },
+  result: { demos: {}, isLoading: false, loadError: null, retry: () => {} },
 }));
 
 vi.mock("@/hooks/use-demos", () => ({ useDemos: () => demoBoundary.result }));
@@ -92,12 +89,12 @@ function Providers({ children }: { children: ReactNode }) {
 }
 
 beforeEach(() => {
-  demoBoundary.result = { demos: {}, isLoading: false };
+  demoBoundary.result = { demos: {}, isLoading: false, loadError: null, retry: () => {} };
 });
 
 describe("documentation scaffolds", () => {
   it("renders loading previews instead of temporary code-only examples while demos load", () => {
-    demoBoundary.result = { demos: {}, isLoading: true };
+    demoBoundary.result = { demos: {}, isLoading: true, loadError: null, retry: () => {} };
 
     render(
       <Providers>
@@ -198,6 +195,27 @@ describe("documentation scaffolds", () => {
 
     expect(screen.getByText("Variants")).toBeInTheDocument();
     expect(screen.getByText("Secondary")).toBeInTheDocument();
+  });
+
+  it("omits the accessibility heading when the keyboard section carries no content", () => {
+    const emptyKeyboard = {
+      ...populatedComponent,
+      docs: {
+        ...populatedComponent.docs,
+        keyboard: { description: "", examples: [] },
+        notes: [],
+      },
+    } satisfies ComponentPageData;
+
+    render(
+      <Providers>
+        <DocDataProvider value={{ type: "component", data: emptyKeyboard }}>
+          <ComponentDocScaffold hero="example-default" />
+        </DocDataProvider>
+      </Providers>,
+    );
+
+    expect(screen.queryByRole("heading", { name: "Accessibility" })).not.toBeInTheDocument();
   });
 
   it("omits every data-dependent section when its structured data is absent", () => {

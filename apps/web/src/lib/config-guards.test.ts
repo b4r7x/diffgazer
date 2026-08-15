@@ -60,6 +60,21 @@ describe("config guards", () => {
     await expectRedirectTo(requireConfigured(), "/onboarding");
   });
 
+  it("keeps onboarding reachable when the selected id has no listed configuration", async () => {
+    // The server drops records it cannot project but still echoes the stored
+    // selection, so a dangling id must not read as "configured".
+    mockLoadConfigurationInit.mockResolvedValue(
+      makeShellInitResponse({
+        configurations: [],
+        selectedConfigurationId: "dropped-configuration",
+        project: SHELL_TRUSTED_PROJECT,
+      }),
+    );
+
+    await expectRedirectTo(requireConfigured(), "/onboarding");
+    await expect(requireNotConfigured()).resolves.toBeUndefined();
+  });
+
   it("redirects completed users away from onboarding on direct URL access", async () => {
     mockLoadConfigurationInit.mockResolvedValue(makeReadyInitResponse());
 

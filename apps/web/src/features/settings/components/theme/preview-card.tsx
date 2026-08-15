@@ -1,11 +1,11 @@
+import type { ResolvedSelectableTheme } from "@diffgazer/core/schemas/config";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Menu, MenuItem } from "@diffgazer/ui/components/menu";
 import { Panel } from "@diffgazer/ui/components/panel";
-import type { ResolvedTheme } from "@/types/theme";
 
 interface ThemePreviewCardProps {
   /** Already resolved: the card paints a concrete theme, never "auto". */
-  previewTheme: ResolvedTheme;
+  previewTheme: ResolvedSelectableTheme;
 }
 
 export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {

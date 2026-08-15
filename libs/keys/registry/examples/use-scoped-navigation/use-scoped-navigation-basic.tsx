@@ -5,13 +5,17 @@ import { useId, useRef, useState } from "react";
 
 const commands = ["New File", "Open File", "Save", "Save As", "Close"];
 
+function getOptionId(command: string) {
+  return `command-${command.toLowerCase().replace(/\s+/g, "-")}`;
+}
+
 function CommandPalette({ onClose }: { onClose: () => void }) {
   const listRef = useRef<HTMLDivElement>(null);
   const headingId = useId();
 
   useScope("command-palette");
 
-  const { isHighlighted } = useScopedNavigation({
+  const { highlighted, isHighlighted } = useScopedNavigation({
     containerRef: listRef,
     role: "option",
     wrap: true,
@@ -25,11 +29,18 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
     <div style={{ marginTop: 8, padding: 8, border: "1px solid currentColor" }}>
       <h3 id={headingId}>Command Palette</h3>
       <p>ArrowUp/ArrowDown navigate; Enter executes.</p>
-      <div ref={listRef} role="listbox" tabIndex={0} aria-labelledby={headingId}>
+      <div
+        ref={listRef}
+        role="listbox"
+        tabIndex={0}
+        aria-labelledby={headingId}
+        aria-activedescendant={highlighted ? getOptionId(highlighted) : undefined}
+      >
         {commands.map((cmd) => (
-          // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — options stay non-focusable; the listbox container holds focus and active state is tracked via aria-selected.
+          // biome-ignore lint/a11y/useFocusableInteractive: WAI-ARIA listbox pattern — options stay non-focusable; the listbox container holds focus and aria-activedescendant tracks the active option.
           <div
             key={cmd}
+            id={getOptionId(cmd)}
             role="option"
             data-value={cmd}
             aria-selected={isHighlighted(cmd)}

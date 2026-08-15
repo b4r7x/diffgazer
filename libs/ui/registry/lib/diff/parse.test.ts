@@ -97,6 +97,58 @@ describe("parseDiff", () => {
     });
   });
 
+  it("treats consecutive '--'- and '++'-prefixed body lines as hunk changes", () => {
+    const patch = [
+      "diff --git a/notes.txt b/notes.txt",
+      "--- a/notes.txt",
+      "+++ b/notes.txt",
+      "@@ -1,5 +1,5 @@",
+      " keep",
+      "-- first flag",
+      "-- second flag",
+      "+++ added flag",
+      "++ another flag",
+      " end",
+    ].join("\n");
+
+    const [file] = parseDiff(patch);
+    if (!file) throw new Error("expected file");
+    const [hunk] = file.hunks;
+    if (!hunk) throw new Error("expected hunk");
+
+    expect(hunk.changes).toMatchObject([
+      { type: "context", content: "keep" },
+      { type: "remove", content: "- first flag" },
+      { type: "remove", content: "- second flag" },
+      { type: "add", content: "++ added flag" },
+      { type: "add", content: "+ another flag" },
+      { type: "context", content: "end" },
+    ]);
+  });
+
+  it("keeps an adjacent '-- '/'++ ' body pair inside the hunk instead of truncating it", () => {
+    const patch = [
+      "diff --git a/notes.txt b/notes.txt",
+      "--- a/notes.txt",
+      "+++ b/notes.txt",
+      "@@ -1,3 +1,3 @@",
+      " keep",
+      "--- removed flag",
+      "+++ added flag",
+      " end",
+    ].join("\n");
+
+    const files = parseDiff(patch);
+
+    expect(files).toHaveLength(1);
+    expect(files[0]?.hunks[0]?.changes).toMatchObject([
+      { type: "context", content: "keep" },
+      { type: "remove", content: "-- removed flag" },
+      { type: "add", content: "++ added flag" },
+      { type: "context", content: "end" },
+    ]);
+  });
+
   it("treats '++'-prefixed added lines inside a hunk as additions, not file headers", () => {
     const patch = [
       "diff --git a/notes.txt b/notes.txt",
@@ -209,6 +261,21 @@ describe("parseDiff", () => {
     });
   });
 
+  it("decodes every control-character escape git's C-quoting emits", () => {
+    const patch = [
+      '--- "a/bell\\a-back\\b-vert\\v-form\\f-nl\\n-cr\\r.ts"',
+      '+++ "b/bell\\a-back\\b-vert\\v-form\\f-nl\\n-cr\\r.ts"',
+      "@@ -1 +1 @@",
+      "-before",
+      "+after",
+    ].join("\n");
+
+    expect(parseDiff(patch)[0]).toMatchObject({
+      oldPath: "bell\x07-back\b-vert\v-form\f-nl\n-cr\r.ts",
+      newPath: "bell\x07-back\b-vert\v-form\f-nl\n-cr\r.ts",
+    });
+  });
+
   it("decodes Git's octal-escaped UTF-8 form of a non-ASCII path for both old and new headers", () => {
     // git quotes `żółć.ts` as octal bytes under default core.quotepath.
     const quoted = "\\305\\274\\303\\263\\305\\202\\304\\207.ts";
@@ -280,5 +347,34 @@ describe("parseDiff", () => {
   it("returns empty array for malformed input", () => {
     const result = parseDiff("not a diff\nrandom text\n@@ bad @@");
     expect(result).toEqual([]);
+  });
+
+  it("does not collapse a multi-file patch when a hunk overstates its line count", () => {
+    const patch = [
+      "--- a/one.ts",
+      "+++ b/one.ts",
+      "@@ -1,5 +1,5 @@",
+      "-one before",
+      "+one after",
+      "--- a/two.ts",
+      "+++ b/two.ts",
+      "@@ -1 +1 @@",
+      "-two before",
+      "+two after",
+    ].join("\n");
+
+    const files = parseDiff(patch);
+
+    expect(files).toHaveLength(2);
+    expect(files[0]).toMatchObject({
+      oldPath: "one.ts",
+      newPath: "one.ts",
+      hunks: [{ changes: [{ content: "one before" }, { content: "one after" }] }],
+    });
+    expect(files[1]).toMatchObject({
+      oldPath: "two.ts",
+      newPath: "two.ts",
+      hunks: [{ changes: [{ content: "two before" }, { content: "two after" }] }],
+    });
   });
 });

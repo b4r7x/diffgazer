@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const badgeDoc: ComponentDoc = {
   description: "Inline status label with semantic color variants.",

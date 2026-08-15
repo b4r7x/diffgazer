@@ -1,15 +1,20 @@
 import {
   useActiveReviewSession,
-  useInit,
+  useConfigurationInit,
   useReviews,
   useShutdown,
 } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { deriveTrustStatus, selectResumableSession } from "@diffgazer/core/navigation";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
-import type { ContextInfo, Shortcut } from "@diffgazer/core/schemas/presentation";
-import { buildHomeContextInfo, MAIN_MENU_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
+import { getCatalogModelName, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
+import { resolveSelectedConfiguration } from "@diffgazer/core/schemas/config";
+import type { HomeContextInfo, Shortcut } from "@diffgazer/core/schemas/presentation";
+import {
+  buildHomeContextInfo,
+  MAIN_MENU_SHORTCUTS,
+  resolveLastRunRequest,
+} from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { Spinner } from "../../../components/ui/spinner";
@@ -25,12 +30,12 @@ import { TrustPanel } from "./trust-panel";
 
 const RETRY_SHORTCUTS: Shortcut[] = [{ key: "r", label: "Retry" }];
 
-type InitData = NonNullable<ReturnType<typeof useInit>["data"]>;
+type InitData = NonNullable<ReturnType<typeof useConfigurationInit>["data"]>;
 
 export function HomeScreen(): ReactElement {
   useBackHandler();
 
-  const { data, error, isLoading, refetch } = useInit();
+  const { data, error, isLoading, refetch } = useConfigurationInit();
   if (isLoading) return <HomeLoading />;
   if (error || !data) {
     return (
@@ -72,12 +77,12 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
   const { columns, isNarrow } = useResponsive();
   const { navigate } = useNavigation();
   const { handleExit } = useExit();
-  const { data: reviewsData } = useReviews();
+  const reviewsQuery = useReviews();
   const { data: unstagedSessionData } = useActiveReviewSession("unstaged");
   const { data: stagedSessionData } = useActiveReviewSession("staged");
   const shutdown = useShutdown();
 
-  const mostRecent = reviewsData?.reviews[0];
+  const mostRecent = reviewsQuery.data?.reviews[0];
   const activeSession = selectResumableSession(
     unstagedSessionData?.session,
     stagedSessionData?.session,
@@ -94,19 +99,15 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
     repoRoot,
   });
 
-  const selected = initData.configurations?.find(
-    ({ configuration }) => configuration.configurationId === initData.selectedConfigurationId,
-  );
-  const provider =
-    selected?.configuration.status === "supported"
-      ? PRODUCT_REGISTRY[selected.configuration.productId].presentation.name
-      : undefined;
-  const model =
-    selected?.configuration.status === "supported"
-      ? (selected.configuration.selectedModelId ?? undefined)
-      : undefined;
+  const selected = resolveSelectedConfiguration(initData);
+  const provider = selected
+    ? PRODUCT_REGISTRY[selected.configuration.productId].presentation.name
+    : undefined;
+  const model = selected?.configuration.selectedModelId
+    ? getCatalogModelName(selected.configuration.productId, selected.configuration.selectedModelId)
+    : undefined;
 
-  const context: ContextInfo = buildHomeContextInfo(
+  const context: HomeContextInfo = buildHomeContextInfo(
     {
       provider,
       model,
@@ -114,6 +115,7 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
     },
     mostRecent,
     isTrusted,
+    resolveLastRunRequest(reviewsQuery),
   );
 
   function handleTrustAccept() {
@@ -122,7 +124,6 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
 
   const onAction = createHomeMenuAction({
     navigate,
-    hasActiveSession,
     activeSession,
     isTrusted,
     shutdown,

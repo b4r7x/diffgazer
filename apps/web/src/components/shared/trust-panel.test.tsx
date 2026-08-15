@@ -1,20 +1,16 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { useActiveReviewSession, useReviews } from "@diffgazer/core/api/hooks";
-import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import { FooterProvider } from "@diffgazer/core/footer";
+import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { Toaster } from "@diffgazer/ui/components/toast";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Footer } from "@/components/layout/footer";
 import { TrustPanel } from "@/components/shared/trust-panel";
-
-function FooterView() {
-  const { shortcuts, rightShortcuts } = useFooterData();
-  return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
-}
+import { FooterView } from "@/testing/footer-view";
 
 function ReviewQueryProbe() {
   useReviews();
@@ -101,6 +97,69 @@ describe("TrustPanel", () => {
       expect(getReviews).toHaveBeenCalledTimes(2);
       expect(getActiveReviewSession).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("keeps focus on the busy trust button while the save is in flight", async () => {
+    const user = userEvent.setup();
+    const pendingSave = createDeferred<Awaited<ReturnType<BoundApi["saveTrust"]>>>();
+    saveTrust = vi.fn<BoundApi["saveTrust"]>().mockReturnValue(pendingSave.promise);
+    const api = { ...createApi({ baseUrl: "http://localhost" }), saveTrust } satisfies BoundApi;
+
+    renderTrustPanel(api);
+
+    const repoAccess = screen.getByRole("checkbox", { name: /repository access/i });
+    await waitFor(() => expect(repoAccess).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+    const trustButton = screen.getByRole("button", { name: /trust & continue/i });
+    expect(trustButton).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(saveTrust).toHaveBeenCalledTimes(1));
+
+    // The transient busy state must not blur the keyboard user: the button stays
+    // focusable (aria-disabled) instead of turning natively disabled.
+    expect(trustButton).toHaveFocus();
+    expect(trustButton).not.toBeDisabled();
+    expect(trustButton).toHaveAttribute("aria-disabled", "true");
+    expect(trustButton).toHaveAttribute("aria-busy", "true");
+    // The spinner is the only busy affordance: a "Saving..." label would rename
+    // the button under the focus the assertions above just protected.
+    expect(trustButton).toHaveAccessibleName("Trust & Continue");
+
+    // Activating again while busy must not start a second save.
+    await user.keyboard("{Enter}");
+    expect(saveTrust).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      pendingSave.resolve({
+        trust: {
+          projectId: "proj-1",
+          repoRoot: "/repo",
+          capabilities: { readFiles: true, runCommands: false },
+          trustMode: "persistent",
+          trustedAt: new Date().toISOString(),
+        },
+      });
+    });
+
+    await waitFor(() => expect(trustButton).not.toHaveAttribute("aria-disabled"));
+  });
+
+  it("returns focus from the trust button to the permission list on ArrowUp", async () => {
+    const user = userEvent.setup();
+    const api = { ...createApi({ baseUrl: "http://localhost" }), saveTrust } satisfies BoundApi;
+
+    renderTrustPanel(api);
+
+    const repoAccess = screen.getByRole("checkbox", { name: /repository access/i });
+    await waitFor(() => expect(repoAccess).toHaveFocus());
+
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: /trust & continue/i })).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(repoAccess).toHaveFocus();
   });
 
   it("registers its own permission footer so trust-gated branches drop stale page hints", async () => {

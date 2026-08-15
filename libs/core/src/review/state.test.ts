@@ -221,36 +221,6 @@ describe("review-state", () => {
   it("tracks file progress from file_progress events, deduplication, and issues", () => {
     const state = reduce(
       [
-        {
-          type: "EVENT",
-          event: {
-            type: "file_start",
-            file: "src/app.ts",
-            index: 2,
-            total: 5,
-            scope: "orchestrator",
-            timestamp: ts,
-          },
-        },
-        {
-          type: "EVENT",
-          event: {
-            type: "file_start",
-            file: "src/agent.ts",
-            index: 3,
-            total: 5,
-            scope: "agent",
-            timestamp: ts,
-          },
-        },
-        {
-          type: "EVENT",
-          event: { type: "file_complete", file: "src/app.ts", index: 2, total: 5, timestamp: ts },
-        },
-        {
-          type: "EVENT",
-          event: { type: "file_complete", file: "src/app.ts", index: 2, total: 5, timestamp: ts },
-        },
         { type: "EVENT", event: { type: "agent_start", agent: detective, timestamp: ts } },
         {
           type: "EVENT",
@@ -292,9 +262,7 @@ describe("review-state", () => {
 
     expect(state.fileProgress).toMatchObject({
       total: 12,
-      current: 2,
-      currentFile: "src/app.ts",
-      completed: ["src/app.ts", "src/index.ts"],
+      completed: ["src/index.ts", "src/app.ts"],
     });
     expect(state.issues.map((issue) => issue.title)).toEqual(["Bug A", "Bug B"]);
 
@@ -311,7 +279,7 @@ describe("review-state", () => {
     expect(unchangedTotal.fileProgress.total).toBe(12);
   });
 
-  it("records prompt coverage without leaving a completed file marked current", () => {
+  it("records prompt coverage for every file_progress event", () => {
     const state = reviewReducer(startedState(), {
       type: "EVENT",
       event: {
@@ -326,26 +294,8 @@ describe("review-state", () => {
 
     expect(state.fileProgress).toMatchObject({
       total: 5,
-      current: 5,
-      currentFile: null,
       completed: ["src/app.ts"],
     });
-  });
-
-  it("ignores agent-scoped file completions for global file progress", () => {
-    const state = reviewReducer(startedState(), {
-      type: "EVENT",
-      event: {
-        type: "file_complete",
-        file: "src/agent.ts",
-        index: 0,
-        total: 5,
-        scope: "agent",
-        timestamp: ts,
-      },
-    });
-
-    expect(state.fileProgress.completed).toEqual([]);
   });
 
   it("updates steps and stops streaming on a fatal step error", () => {
@@ -541,22 +491,6 @@ describe("review-state", () => {
           timestamp: ts,
         },
         { type: "agent_queued", agent: detective, position: 1, total: 1, timestamp: ts },
-        {
-          type: "file_start",
-          file: "src/app.ts",
-          index: 0,
-          total: 1,
-          scope: "orchestrator",
-          timestamp: ts,
-        },
-        {
-          type: "file_complete",
-          file: "src/app.ts",
-          index: 0,
-          total: 1,
-          scope: "orchestrator",
-          timestamp: ts,
-        },
         { type: "agent_start", agent: detective, timestamp: ts },
         {
           type: "agent_thinking",
@@ -594,7 +528,10 @@ describe("review-state", () => {
         ...option.shape.type.values,
       ]);
 
-      expect(events.map((event) => event.type)).toEqual(schemaTypes);
+      // Completeness, not declaration order: routing reads `type`, so reordering
+      // the union alternatives must not fail this suite.
+      expect(new Set(events.map((event) => event.type))).toEqual(new Set(schemaTypes));
+      expect(events).toHaveLength(schemaTypes.length);
       for (const event of events) {
         const initial = startedState();
         const state = reviewReducer(initial, { type: "EVENT", event });
@@ -602,23 +539,6 @@ describe("review-state", () => {
         expect(state.steps).toEqual(initial.steps);
         expect(state.events.at(-1)).toEqual(event);
       }
-    });
-
-    it("routes orchestrator-scoped file events to file progress", () => {
-      const state = reviewReducer(startedState(), {
-        type: "EVENT",
-        event: {
-          type: "file_start",
-          file: "src/app.ts",
-          index: 2,
-          total: 5,
-          scope: "orchestrator",
-          timestamp: ts,
-        },
-      });
-
-      expect(state.fileProgress.currentFile).toBe("src/app.ts");
-      expect(state.agents).toEqual([]);
     });
 
     it("routes orchestrator_complete with a file count to the total", () => {
@@ -629,6 +549,67 @@ describe("review-state", () => {
           totalIssues: 0,
           lensStats: [],
           filesAnalyzed: 9,
+          timestamp: ts,
+        },
+      });
+
+      expect(state.fileProgress.total).toBe(9);
+    });
+
+    it("keeps the latest orchestrator_complete stats on state", () => {
+      const afterFirst = reviewReducer(startedState(), {
+        type: "EVENT",
+        event: {
+          type: "orchestrator_complete",
+          totalIssues: 1,
+          filesAnalyzed: 2,
+          lensStats: [
+            { lensId: "security", issueCount: 0, status: "failed", errorCode: "MODEL_ERROR" },
+          ],
+          droppedDuplicates: 1,
+          timestamp: ts,
+        },
+      });
+      const state = reviewReducer(afterFirst, {
+        type: "EVENT",
+        event: {
+          type: "orchestrator_complete",
+          totalIssues: 2,
+          filesAnalyzed: 3,
+          lensStats: [
+            { lensId: "security", issueCount: 0, status: "failed", errorCode: "RATE_LIMITED" },
+          ],
+          droppedDuplicates: 2,
+          minSeverity: "medium",
+          timestamp: ts,
+        },
+      });
+
+      expect(state.orchestratorStats).toMatchObject({
+        droppedDuplicates: 2,
+        minSeverity: "medium",
+      });
+      expect(state.orchestratorStats.lensStats?.[0]?.errorCode).toBe("RATE_LIMITED");
+    });
+
+    it("keeps the established file total when orchestrator_complete reports no files", () => {
+      const started = reviewReducer(startedState(), {
+        type: "EVENT",
+        event: {
+          type: "orchestrator_complete",
+          totalIssues: 0,
+          lensStats: [],
+          filesAnalyzed: 9,
+          timestamp: ts,
+        },
+      });
+      const state = reviewReducer(started, {
+        type: "EVENT",
+        event: {
+          type: "orchestrator_complete",
+          totalIssues: 0,
+          lensStats: [],
+          filesAnalyzed: 0,
           timestamp: ts,
         },
       });

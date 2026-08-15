@@ -1,13 +1,16 @@
-import { guardQueryState, useInit, useSettings } from "@diffgazer/core/api/hooks";
+import { guardQueryState, useConfigurationInit, useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
-import { buildHubValues, hasRepositoryReadAccess } from "@diffgazer/core/schemas/config";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
+import {
+  buildHubValues,
+  hasRepositoryReadAccess,
+  resolveSelectedConfiguration,
+} from "@diffgazer/core/schemas/config";
 import {
   SETTINGS_MENU_ITEMS,
   SETTINGS_SHORTCUTS,
   type SettingsAction,
 } from "@diffgazer/core/schemas/presentation";
-import type { UseQueryResult } from "@tanstack/react-query";
 import { Box, Text } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { Menu } from "../../../components/ui/menu";
@@ -81,14 +84,14 @@ export function SettingsHubScreen(): ReactElement {
   const { navigate } = useNavigation();
   const { columns } = useTerminalDimensions();
   const { tokens } = useTheme();
-  const initQuery = useInit();
+  const initQuery = useConfigurationInit();
   const settingsQuery = useSettings();
 
   const onSelect = (id: SettingsAction) => {
     navigate(SETTINGS_ROUTE_MAP[id]);
   };
 
-  const guard = guardQueryState(initQuery as UseQueryResult<NonNullable<typeof initQuery.data>>, {
+  const guard = guardQueryState(initQuery, {
     loading: () => (
       <HubFrame columns={columns}>
         <Spinner label="Loading settings..." />
@@ -102,7 +105,7 @@ export function SettingsHubScreen(): ReactElement {
   });
   if (guard) return guard;
 
-  if (settingsQuery.isLoading) {
+  if (settingsQuery.isLoading || settingsQuery.data == null) {
     return (
       <HubFrame columns={columns}>
         <Spinner label="Loading settings..." />
@@ -110,24 +113,22 @@ export function SettingsHubScreen(): ReactElement {
     );
   }
 
+  const settings = settingsQuery.data;
+  const initData = initQuery.data;
+  const selected = resolveSelectedConfiguration(initData);
   const setup = {
-    isTrusted: hasRepositoryReadAccess(initQuery.data?.project.trust, initQuery.data?.project.path),
-    isConfigured: initQuery.data?.setup?.isConfigured ?? false,
-    hasStorage: Boolean(settingsQuery.data?.secretsStorage),
+    isTrusted: hasRepositoryReadAccess(initData?.project.trust, initData?.project.path),
+    isConfigured: selected !== null,
+    hasStorage: Boolean(settings.secretsStorage),
   };
-  const selected = initQuery.data?.configurations?.find(
-    ({ configuration }) =>
-      configuration.configurationId === initQuery.data?.selectedConfigurationId,
-  );
-  const selectedProductId =
-    selected?.configuration.status === "supported" ? selected.configuration.productId : null;
+  const selectedProductId = selected?.configuration.productId ?? null;
   const values = buildHubValues({
     selectedProductId,
     isTrusted: setup.isTrusted,
-    theme: settingsQuery.data?.theme,
-    secretsStorage: settingsQuery.data?.secretsStorage,
-    agentExecution: settingsQuery.data?.agentExecution,
-    selectedLensCount: settingsQuery.data?.defaultLenses?.length,
+    theme: settings.theme,
+    secretsStorage: settings.secretsStorage,
+    agentExecution: settings.agentExecution,
+    selectedLensCount: settings.defaultLenses.length,
   });
   const valueColors = getHubValueColors(setup, tokens);
   const settingsError = settingsQuery.error?.message ?? null;

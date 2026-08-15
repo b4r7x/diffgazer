@@ -1,10 +1,12 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  assertProjectDiffgazerDirContained,
   getGlobalDiffgazerDir,
   getGlobalModelsDevCatalogPath,
+  isProjectDiffgazerDirContained,
   isRepoRelativePath,
   resolveProjectRoot,
 } from "./paths.js";
@@ -143,4 +145,44 @@ describe("isRepoRelativePath", () => {
   ])("rejects unsafe path %s", (relativePath) => {
     expect(isRepoRelativePath(relativePath)).toBe(false);
   });
+});
+
+describe("project .diffgazer containment", () => {
+  it("allows a missing state directory", async () => {
+    const projectRoot = await mkdtemp(path.join(tmpdir(), "diffgazer-project-root-"));
+    try {
+      expect(isProjectDiffgazerDirContained(projectRoot)).toBe(true);
+      expect(() => assertProjectDiffgazerDirContained(projectRoot)).not.toThrow();
+    } finally {
+      await rm(projectRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("allows a real directory inside the project root", async () => {
+    const projectRoot = await mkdtemp(path.join(tmpdir(), "diffgazer-project-root-"));
+    await mkdir(path.join(projectRoot, ".diffgazer"), { recursive: true });
+    try {
+      expect(isProjectDiffgazerDirContained(projectRoot)).toBe(true);
+    } finally {
+      await rm(projectRoot, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "rejects a symlinked .diffgazer directory that escapes the project root",
+    async () => {
+      const projectRoot = await mkdtemp(path.join(tmpdir(), "diffgazer-project-root-"));
+      const outsideRoot = await mkdtemp(path.join(tmpdir(), "diffgazer-outside-root-"));
+      try {
+        await writeFile(path.join(outsideRoot, "project.json"), "{}\n");
+        await symlink(outsideRoot, path.join(projectRoot, ".diffgazer"));
+
+        expect(isProjectDiffgazerDirContained(projectRoot)).toBe(false);
+        expect(() => assertProjectDiffgazerDirContained(projectRoot)).toThrow(/symlink/);
+      } finally {
+        await rm(projectRoot, { recursive: true, force: true });
+        await rm(outsideRoot, { recursive: true, force: true });
+      }
+    },
+  );
 });

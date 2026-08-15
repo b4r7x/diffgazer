@@ -7,11 +7,13 @@ import { type Flags, getFlags } from "../viewport";
 const RP_TIMES = ["212ms", "1.2s", "8.4s", "0.9s"];
 // Each step runs across [start, end) of the pinned-scroll progress; findings
 // stream in while the review step (index 2) is active.
+const RP_START = 0.02;
+const RP_END = 0.9;
 const RP_SPANS: [number, number][] = [
-  [0.02, 0.2],
+  [RP_START, 0.2],
   [0.2, 0.38],
   [0.38, 0.74],
-  [0.74, 0.9],
+  [0.74, RP_END],
 ];
 const RP_FIND_AT = [0.46, 0.56, 0.66];
 
@@ -29,9 +31,11 @@ const PHASE_FOOT: Record<Phase, string> = {
   complete: "review complete",
 };
 
+// The header completes exactly when the last step does, so the summary never
+// contradicts four checked-off steps.
 function phaseOf(progress: number): Phase {
-  if (progress >= 0.92) return "complete";
-  if (progress >= 0.02) return "running";
+  if (progress >= RP_END) return "complete";
+  if (progress >= RP_START) return "running";
   return "queued";
 }
 

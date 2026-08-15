@@ -15,6 +15,7 @@ function makeInitResponse(): ConfigurationInitResponse {
   return {
     schemaVersion: 2,
     configurations: [],
+    unrecognizedConfigurations: [],
     selectedConfigurationId: null,
     settings: {
       theme: "dark",

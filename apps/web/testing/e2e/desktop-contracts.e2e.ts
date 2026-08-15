@@ -230,7 +230,7 @@ test("headers compose back, wordmark, and status on one row at every tier", asyn
 const TITLE_TAG_GUTTER = 12;
 
 test("issue rows keep their title clear of the severity tag", async ({ page }) => {
-  await page.goto("/testing/fixtures/results-layout.html?view=results");
+  await page.goto("/testing/fixtures/app-fixture.html?view=results");
 
   const issues = canonicalReviewFixture.result.issues;
   const rows = page.getByRole("listbox", { name: "Issues" }).getByRole("option");
@@ -261,7 +261,7 @@ test("the summary category panel takes the whole row only when there is nothing 
   const breakdown = page.getByRole("region", { name: "Severity breakdown" });
   const categories = page.getByRole("region", { name: "Issues by category" });
 
-  await page.goto("/testing/fixtures/results-layout.html?view=summary");
+  await page.goto("/testing/fixtures/app-fixture.html?view=summary");
   await expect(categories).toBeVisible();
   const pairedBreakdown = await boxOf(breakdown, "severity breakdown");
   const pairedCategories = await boxOf(categories, "category panel");
@@ -273,7 +273,7 @@ test("the summary category panel takes the whole row only when there is nothing 
   );
   expect(Math.abs(pairedCategories.width - pairedBreakdown.width)).toBeLessThanOrEqual(1);
 
-  await page.goto("/testing/fixtures/results-layout.html?view=summary&issues=none");
+  await page.goto("/testing/fixtures/app-fixture.html?view=summary&issues=none");
   await expect(categories).toBeVisible();
   const cleanBreakdown = await boxOf(breakdown, "clean severity breakdown");
   const cleanCategories = await boxOf(categories, "clean category panel");
@@ -291,7 +291,7 @@ test("the summary category panel takes the whole row only when there is nothing 
 });
 
 test("severity filter chips keep their compact fine-pointer height", async ({ page }) => {
-  await page.goto("/testing/fixtures/results-layout.html?view=results");
+  await page.goto("/testing/fixtures/app-fixture.html?view=results");
 
   const chips = page.getByRole("group", { name: "Severity filter" }).getByRole("button");
   await expect(chips.first()).toBeVisible();

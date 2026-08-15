@@ -1,19 +1,14 @@
-import type { ProviderListRow } from "@diffgazer/core/providers";
-import type { ClientConfigurationActionName } from "@diffgazer/core/schemas/config";
+import {
+  PROVIDER_ACTION_LABELS,
+  type ProviderActionTask,
+  type ProviderListRow,
+} from "@diffgazer/core/providers";
 
 /** Identifies which handler a rendered provider action runs. */
-export type ProviderActionId = "dispatch" | "setup" | "selectModel" | "delete";
-
-/**
- * The task an action performs. Two actions carrying the same task are the same
- * button, whatever their copy says, so this — never the label — drives de-duplication.
- * "select-configuration" is the only task with no configuration action behind it:
- * it picks an already-ready configuration for the review.
- */
-export type ProviderActionTask = ClientConfigurationActionName | "select-configuration";
+type ProviderActionId = "dispatch" | "selectConfiguration" | "setup" | "selectModel" | "delete";
 
 /** Visual weight of a provider action, mapped 1:1 onto Button variants. */
-export type ProviderActionIntent = "primary" | "outline" | "link" | "destructive";
+type ProviderActionIntent = "primary" | "outline" | "link" | "destructive";
 
 export interface ProviderAction {
   readonly id: ProviderActionId;
@@ -24,25 +19,33 @@ export interface ProviderAction {
   readonly disabledReason?: string;
 }
 
-const ACTION_LABELS = {
-  create: "Create configuration",
-  inspect: "Inspect configuration",
-  select: "Select model",
-  test: "Test readiness",
-  update: "Update configuration",
-  delete: "Delete configuration",
-  "select-configuration": "Select configuration",
-} as const satisfies Record<ProviderActionTask, string>;
+/**
+ * The whole action row for a record this build could not decode. It is a constant
+ * because there is nothing decoded to derive anything else from: the record can be
+ * removed, and nothing else.
+ */
+export const UNRECOGNIZED_CONFIGURATION_ACTIONS: readonly ProviderAction[] = [
+  { id: "delete", task: "delete", label: PROVIDER_ACTION_LABELS.delete, intent: "destructive" },
+];
+
+/**
+ * The one disabled rule for a rendered provider action, shared by the renderer, the keyboard
+ * row's focus custody, and the activation guard. They must agree: the row only repairs the
+ * browser's disable-blur when it sees the focused index as disabled the way the DOM does.
+ */
+export function isProviderActionDisabled(action: ProviderAction, isPending: boolean): boolean {
+  return isPending || Boolean(action.disabledReason);
+}
 
 function getDispatchAction(row: ProviderListRow): ProviderAction {
   if (!row.readiness.ready) {
     const task = row.readiness.action;
-    return { id: "dispatch", task, label: ACTION_LABELS[task], intent: "primary" };
+    return { id: "dispatch", task, label: PROVIDER_ACTION_LABELS[task], intent: "primary" };
   }
   const selectConfiguration: ProviderAction = {
-    id: "dispatch",
+    id: "selectConfiguration",
     task: "select-configuration",
-    label: ACTION_LABELS["select-configuration"],
+    label: PROVIDER_ACTION_LABELS["select-configuration"],
     intent: "primary",
   };
   if (!row.actions.includes("select")) {
@@ -76,7 +79,7 @@ export function getProviderActions(row: ProviderListRow | null): ProviderAction[
     actions.push({
       id: "setup",
       task: setupTask,
-      label: ACTION_LABELS[setupTask],
+      label: PROVIDER_ACTION_LABELS[setupTask],
       intent: "outline",
     });
   }
@@ -85,7 +88,7 @@ export function getProviderActions(row: ProviderListRow | null): ProviderAction[
     actions.push({
       id: "selectModel",
       task: "select",
-      label: ACTION_LABELS.select,
+      label: PROVIDER_ACTION_LABELS.select,
       intent: "link",
     });
   }
@@ -94,7 +97,7 @@ export function getProviderActions(row: ProviderListRow | null): ProviderAction[
     actions.push({
       id: "delete",
       task: "delete",
-      label: ACTION_LABELS.delete,
+      label: PROVIDER_ACTION_LABELS.delete,
       intent: "destructive",
     });
   }

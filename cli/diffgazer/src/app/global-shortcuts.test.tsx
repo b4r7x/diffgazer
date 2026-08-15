@@ -34,14 +34,19 @@ function KeyboardHarness({
   onExit = () => {},
   isStreaming = false,
   onCancel = () => {},
+  initialRoute,
 }: {
   onExit?: () => void;
   isStreaming?: boolean;
   onCancel?: () => void;
+  initialRoute?: Parameters<typeof NavigationProvider>[0]["initialRoute"];
 }) {
+  const route =
+    initialRoute ?? (isStreaming ? { screen: "review" as const, live: true } : undefined);
+
   return (
     <TerminalKeyboardProvider>
-      <NavigationProvider initialRoute={isStreaming ? { screen: "review", live: true } : undefined}>
+      <NavigationProvider initialRoute={route}>
         <GlobalShortcuts onExit={onExit} />
         <KeyboardProbe />
         {isStreaming ? <StreamingReviewProbe onCancel={onCancel} /> : null}
@@ -55,7 +60,7 @@ describe("GlobalShortcuts terminal input", () => {
     { input: "s", route: "settings", exits: false },
     { input: "?", route: "help", exits: false },
     { input: "q", route: "home", exits: true },
-  ])("handles bare '$input'", async ({ input, route, exits }) => {
+  ])("handles bare '$input' from home", async ({ input, route, exits }) => {
     const onExit = vi.fn();
     const { lastFrame, stdin } = render(<KeyboardHarness onExit={onExit} />);
     await flush();
@@ -66,6 +71,36 @@ describe("GlobalShortcuts terminal input", () => {
       expect(lastFrame()).toContain(`route:${route}`);
       expect(onExit).toHaveBeenCalledTimes(exits ? 1 : 0);
     });
+  });
+
+  it.each([
+    { input: "s" },
+    { input: "?" },
+  ])("ignores bare '$input' while onboarding is active", async ({ input }) => {
+    const onExit = vi.fn();
+    const { lastFrame, stdin } = render(
+      <KeyboardHarness onExit={onExit} initialRoute={{ screen: "onboarding" }} />,
+    );
+    await flush();
+
+    stdin.write(input);
+    await flush();
+
+    expect(lastFrame()).toContain("route:onboarding");
+    expect(onExit).not.toHaveBeenCalled();
+  });
+
+  it("still exits from onboarding when q is pressed", async () => {
+    const onExit = vi.fn();
+    const { stdin } = render(
+      <KeyboardHarness onExit={onExit} initialRoute={{ screen: "onboarding" }} />,
+    );
+    await flush();
+
+    stdin.write("q");
+    await flush();
+
+    expect(onExit).toHaveBeenCalledOnce();
   });
 
   it("keeps a streaming review on screen when q is pressed", async () => {

@@ -64,6 +64,7 @@ export type {
   UseFocusZoneFocusOptions,
   UseFocusZoneOptions,
   UseFocusZoneReturn,
+  ZoneTransition,
 } from "./hooks/use-focus-zone.js";
 export { useFocusZone } from "./hooks/use-focus-zone.js";
 export type { UseKeyOptions } from "./hooks/use-key.js";

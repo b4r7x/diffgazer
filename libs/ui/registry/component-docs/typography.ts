@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const typographyDoc: ComponentDoc = {
   description:
@@ -18,6 +18,11 @@ export const typographyDoc: ComponentDoc = {
       title: "Heading Defaults",
       content:
         "Each heading level has a default size (h1 = 3xl, h2 = 2xl, h3 = xl, h4 = lg, h5 = base, h6 = sm) and auto-defaults to bold weight. Pass explicit 'size' or 'weight' props to override.",
+    },
+    {
+      title: "Heading Semantics",
+      content:
+        "Only 'as' decides the document outline: 'size' is purely visual and never changes the rendered element. Pick the heading level that follows the surrounding outline, then set 'size' to match the visual hierarchy — never pick 'as' to obtain a size.",
     },
   ],
   usage: { example: "typography-default" },

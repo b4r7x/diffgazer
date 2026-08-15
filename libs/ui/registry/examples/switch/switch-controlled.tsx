@@ -7,11 +7,11 @@ export default function SwitchControlled() {
   const [enabled, setEnabled] = useState(true);
 
   return (
-    <div className="flex items-center gap-3">
-      <Switch checked={enabled} onChange={setEnabled} aria-label="Enable review notifications" />
-      <span className="text-sm text-muted-foreground">
-        Review notifications {enabled ? "enabled" : "disabled"}
-      </span>
-    </div>
+    <Switch
+      checked={enabled}
+      onChange={setEnabled}
+      label="Review notifications"
+      description={enabled ? "Delivered when a review finishes." : "No notifications are sent."}
+    />
   );
 }

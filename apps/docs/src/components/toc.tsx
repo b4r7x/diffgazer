@@ -36,9 +36,10 @@ function parseHeadingId(url: string): string | null {
   }
 }
 
-// Entries from the compile-time fumadocs TOC (markdown `##`/`###` only). Used
-// as the SSR/first-paint seed so hydration matches and markdown pages keep
-// their existing TOC without a flash.
+// Entries from the compile-time fumadocs TOC (markdown `##`/`###` only). These
+// prime the change-detection baseline in `useTocEntries`, so a DOM scan that
+// finds the same headings does not trigger a redundant state update. They are
+// never rendered: both TOC panels stay skeletons until `isReady` flips.
 function entriesFromToc(toc: TableOfContents): TocEntry[] {
   return toc.flatMap((item) => {
     const id = parseHeadingId(item.url);

@@ -24,80 +24,83 @@
  *     items — handled in JSX via `inert` + `aria-hidden`.
  */
 
-[data-slot="sidebar-section-content"] {
-  display: grid;
-  grid-template-rows: 1fr;
-  transition:
-    grid-template-rows var(--ui-content-enter-duration, 60ms) linear,
-    opacity var(--ui-content-enter-duration, 60ms) linear;
-}
-
-[data-slot="sidebar-section-content"][data-state="closed"] {
-  grid-template-rows: 0fr;
-  opacity: 0;
-  transition:
-    grid-template-rows var(--ui-content-exit-duration, 40ms) linear,
-    opacity var(--ui-content-exit-duration, 40ms) linear;
-}
-
-[data-slot="sidebar-section-content"] > [data-slot="sidebar-section-content-inner"] {
-  min-height: 0;
-  overflow: hidden;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-slot="sidebar-section-content"],
-  [data-slot="sidebar-section-content"][data-state="closed"] {
-    transition: none;
+@layer components {
+  [data-slot="sidebar-section-content"] {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition:
+      grid-template-rows var(--ui-content-enter-duration, 60ms) linear,
+      opacity var(--ui-content-enter-duration, 60ms) linear;
   }
-}
 
-/*
- * Tree-variant connectors: trunk (per-item vertical segment), tick
- * (horizontal branch at row middle), corner (the last item's trunk stops at
- * its tick, forming a └).
- *
- * The trunk needs contiguous rows (the tree item variant uses padding, not
- * gap) and CSS :last-child for the corner — tree items must be direct
- * siblings; a non-item element after the last item mislabels the corner.
- *
- * Geometry: the trunk and tick are drawn from the row's own left edge, and the
- * tree item variant offsets that edge by --sidebar-tree-rail so it lands under
- * a collapsible section title's fold chevron. Reading the row edge rather than
- * a hardcoded inset is what keeps the connectors welded to the selected row's
- * background band, whatever gutter the surrounding shell uses. The 6px tick
- * ends 4px before the item text, which lines up with the title text.
- */
-[data-slot="sidebar"][data-variant="tree"] [data-diffgazer-navigation-item]::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  border-left: 1px solid color-mix(in oklab, var(--border) 75%, transparent);
-}
+  [data-slot="sidebar-section-content"][data-state="closed"] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition:
+      grid-template-rows var(--ui-content-exit-duration, 40ms) linear,
+      opacity var(--ui-content-exit-duration, 40ms) linear;
+  }
 
-[data-slot="sidebar"][data-variant="tree"] [data-diffgazer-navigation-item]:last-child::before {
-  bottom: 50%;
-}
+  [data-slot="sidebar-section-content"] > [data-slot="sidebar-section-content-inner"] {
+    min-height: 0;
+    overflow: hidden;
+  }
 
-[data-slot="sidebar"][data-variant="tree"] [data-diffgazer-navigation-item]::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 6px;
-  border-top: 1px solid color-mix(in oklab, var(--border) 75%, transparent);
-}
+  @media (prefers-reduced-motion: reduce) {
+    [data-slot="sidebar-section-content"],
+    [data-slot="sidebar-section-content"][data-state="closed"] {
+      transition: none;
+    }
+  }
 
-[data-slot="sidebar"][data-variant="tree"] [data-diffgazer-navigation-item][data-selected]::after {
-  border-top-color: var(--foreground);
-}
+  /*
+   * Tree-variant connectors: trunk (per-item vertical segment), tick
+   * (horizontal branch at row middle), corner (the last item's trunk stops at
+   * its tick, forming a └).
+   *
+   * The trunk needs contiguous rows (the tree item variant uses padding, not
+   * gap) and CSS :last-child for the corner — tree items must be direct
+   * siblings; a non-item element after the last item mislabels the corner.
+   *
+   * Geometry: the trunk and tick are drawn from the row's own left edge, and the
+   * tree item variant offsets that edge by --sidebar-tree-rail so it lands under
+   * a collapsible section title's fold chevron. Reading the row edge rather than
+   * a hardcoded inset is what keeps the connectors welded to the selected row's
+   * background band, whatever gutter the surrounding shell uses. The 6px tick
+   * ends 4px before the item text, which lines up with the title text.
+   */
+  [data-slot="sidebar"][data-variant="tree"] [data-diffgazer-navigation-item]::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    border-left: 1px solid color-mix(in oklab, var(--border) 75%, transparent);
+  }
 
-/* Rail mode hides labels, so connectors go too. */
-[data-slot="sidebar"][data-state="rail"][data-variant="tree"]
-  [data-diffgazer-navigation-item]::before,
-[data-slot="sidebar"][data-state="rail"][data-variant="tree"]
-  [data-diffgazer-navigation-item]::after {
-  content: none;
+  [data-slot="sidebar"][data-variant="tree"] [data-diffgazer-navigation-item]:last-child::before {
+    bottom: 50%;
+  }
+
+  [data-slot="sidebar"][data-variant="tree"] [data-diffgazer-navigation-item]::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 6px;
+    border-top: 1px solid color-mix(in oklab, var(--border) 75%, transparent);
+  }
+
+  [data-slot="sidebar"][data-variant="tree"]
+    [data-diffgazer-navigation-item][data-selected]::after {
+    border-top-color: var(--foreground);
+  }
+
+  /* Rail mode hides labels, so connectors go too. */
+  [data-slot="sidebar"][data-state="rail"][data-variant="tree"]
+    [data-diffgazer-navigation-item]::before,
+  [data-slot="sidebar"][data-state="rail"][data-variant="tree"]
+    [data-diffgazer-navigation-item]::after {
+    content: none;
+  }
 }

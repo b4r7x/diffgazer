@@ -1,3 +1,5 @@
+"use client";
+
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 
 // Simulated framework link component (replace with Next.js Link, React Router NavLink, etc.).

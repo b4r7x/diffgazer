@@ -1,3 +1,1 @@
-import { SettingsHubPage } from "@/features/settings/components/hub/page";
-
-export { SettingsHubPage };
+export { SettingsHubPage } from "@/features/settings/components/hub/page";

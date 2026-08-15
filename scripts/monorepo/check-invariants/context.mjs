@@ -1,7 +1,7 @@
 import { execFileSync, execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { listRepoFiles as listTrackedRepoFiles } from "../lib/files.mjs";
+import { isPackageManifestPath, listRepoFiles as listTrackedRepoFiles } from "../lib/files.mjs";
 import { readJson } from "../lib/json.mjs";
 
 export function invariantResult(name, ok, details = "") {
@@ -58,8 +58,11 @@ function readSubmoduleConfig(rootDir) {
       cwd: rootDir,
       encoding: "utf8",
     }).trim();
-  } catch {
-    return "";
+  } catch (error) {
+    // Exit 1 is "no key matched" — the expected clean case. Anything else (a
+    // broken repository, an unreadable config) must not be reported as PASS.
+    if (error?.status === 1) return "";
+    throw error;
   }
 }
 
@@ -78,12 +81,6 @@ function runFind(rootDir, command) {
       throw error;
     }
   });
-}
-
-export function listPackageJsonFiles(rootDir = process.cwd()) {
-  return listTrackedRepoFiles(rootDir).filter(
-    (path) => path.endsWith("package.json") && !path.includes("node_modules/"),
-  );
 }
 
 function commandOutputsFor(rootDir, overrides = {}) {
@@ -114,8 +111,8 @@ function commandOutputsFor(rootDir, overrides = {}) {
 
 export function createInvariantContext(options = {}) {
   const rootDir = resolve(options.rootDir ?? process.cwd());
-  const packageFiles = options.packageFiles ?? listPackageJsonFiles(rootDir);
   const repoFiles = options.repoFiles ?? listTrackedRepoFiles(rootDir);
+  const packageFiles = options.packageFiles ?? repoFiles.filter(isPackageManifestPath);
   const parsedPackages = new Map();
 
   for (const file of packageFiles) {

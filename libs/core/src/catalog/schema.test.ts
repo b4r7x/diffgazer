@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { requireValue } from "../testing/assertions.js";
 import { RAW_CATALOG, RAW_CATALOG_WITH_BAD_MODEL } from "./fixtures.js";
 import {
   CatalogModelNameSchema,
   CatalogObservationSchema,
   CatalogSelectableModelIdSchema,
-  ModelsDevModelSchema,
   parseModelsDevCatalog,
 } from "./schema.js";
 
@@ -23,8 +21,6 @@ describe("parseModelsDevCatalog", () => {
       "openrouter",
       "mistral",
     ]);
-    expect(catalog).not.toHaveProperty(REMOVED_PRODUCT_ID);
-    expect(catalog).not.toHaveProperty("zai-coding-plan");
     for (const provider of Object.values(catalog)) {
       expect(provider).not.toHaveProperty("enabled");
       expect(provider).not.toHaveProperty("selectable");
@@ -34,14 +30,11 @@ describe("parseModelsDevCatalog", () => {
     );
   });
 
-  it("preserves model fields the catalog reads (cost, limit, capability flags, dates)", () => {
+  it("preserves model fields the catalog reads (cost, limit)", () => {
     const catalog = parseModelsDevCatalog(RAW_CATALOG);
     const flash = requireValue(catalog.google?.models["gemini-2.5-flash"], "Gemini Flash model");
     expect(flash.cost).toEqual({ input: 0.3, output: 2.5, cache_read: 0.03 });
     expect(flash.limit?.context).toBe(1048576);
-    expect(flash.tool_call).toBe(true);
-    expect(flash.structured_output).toBe(true);
-    expect(flash.last_updated).toBe("2025-06-05");
   });
 
   it("keeps a model with absent cost (cost stays undefined, not zeroed)", () => {
@@ -51,6 +44,27 @@ describe("parseModelsDevCatalog", () => {
       "Gemini embedding model",
     );
     expect(embedding.cost).toBeUndefined();
+  });
+
+  // Upstream spells "we do not state this" as both an absent key and an
+  // explicit null. Rejecting the null would drop the whole model at parse
+  // instead of reading its capability as unknown.
+  it("keeps a model whose structured_output upstream publishes as null", () => {
+    const catalog = parseModelsDevCatalog({
+      google: {
+        id: "google",
+        models: {
+          "gemini-2.5-flash": {
+            id: "gemini-2.5-flash",
+            name: "Gemini 2.5 Flash",
+            structured_output: null,
+          },
+        },
+      },
+    });
+    const model = requireValue(catalog.google?.models["gemini-2.5-flash"], "Gemini flash model");
+
+    expect(model.structured_output).toBeNull();
   });
 
   it("skips one malformed model but keeps its siblings (per-model safeParse)", () => {
@@ -82,9 +96,29 @@ describe("parseModelsDevCatalog", () => {
     expect(catalog.broken).toBeUndefined();
   });
 
-  it("accepts structured_output: null (nullable badge hint, never a parse failure)", () => {
-    const parsed = ModelsDevModelSchema.safeParse({ id: "x", structured_output: null });
-    expect(parsed.success).toBe(true);
+  it("skips a provider when the map key does not match provider.id", () => {
+    const raw = {
+      google: { id: "google", models: { "gemini-2.5-flash": { id: "gemini-2.5-flash" } } },
+      mismatch: { id: "google", models: {} },
+    };
+    const catalog = parseModelsDevCatalog(raw);
+    expect(catalog.google).toBeDefined();
+    expect(catalog.mismatch).toBeUndefined();
+  });
+
+  it("skips a model when the map key does not match model.id", () => {
+    const catalog = parseModelsDevCatalog({
+      google: {
+        id: "google",
+        models: {
+          "gemini-2.5-flash": { id: "gemini-2.5-flash" },
+          mismatch: { id: "actual-model" },
+        },
+      },
+    });
+    const models = requireValue(catalog.google?.models, "Google provider models");
+    expect(models["gemini-2.5-flash"]).toBeDefined();
+    expect(models.mismatch).toBeUndefined();
   });
 
   it("accepts bounded display names and rejects secret, path, and control payloads", () => {
@@ -97,6 +131,8 @@ describe("parseModelsDevCatalog", () => {
       "Bearer abcdefghijklmnop",
       "\u001b[31mhostile\u001b[0m",
       "model\u0000name",
+      "spoof\u202E.ts",
+      "model\u2066name",
       "Executable path: /usr/local/bin/diffgazer",
       "Auth file: C:\\Program Files\\Diffgazer\\auth.json",
       "\\\\build-host\\Program Files\\Diffgazer\\auth.json",
@@ -115,6 +151,7 @@ describe("parseModelsDevCatalog", () => {
           safe: { id: "safe", name: "Safe model" },
           secret: { id: "secret", name: "apiKey: sk-live-adversarial-secret" },
           control: { id: "control", name: "Model\u001b[31m" },
+          bidi: { id: "bidi", name: "Model\u202Espoof" },
           path: { id: "path", name: "/usr/local/bin/diffgazer" },
         },
       },

@@ -6,18 +6,13 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   MAIN_SCROLL_BOOTSTRAP_CONFIG,
   MAIN_SCROLL_INIT_SCRIPT,
-  MAIN_SCROLL_RESTORATION_ID,
   mainScrollBootstrap,
 } from "./main-scroll-bootstrap";
+import { MAIN_SCROLL_RESTORATION_ID } from "./main-scroll-restoration";
 
 const HISTORY_KEY = "history-entry-1";
 const SELECTOR = `[data-scroll-restoration-id="${MAIN_SCROLL_RESTORATION_ID}"]`;
 
-/**
- * The router's own scroll cache key, read from the `@tanstack/router-core` copy that
- * `@tanstack/react-router` resolves. The app cannot import that package (a second
- * router instance breaks SSR dehydration), so the mirrored constant is pinned here.
- */
 function routerScrollStorageKey(): string {
   const require = createRequire(import.meta.url);
   const routerCore = require(
@@ -87,8 +82,6 @@ describe("mainScrollBootstrap", () => {
     history.replaceState({ __TSR_key: HISTORY_KEY }, "");
     cacheScroll(HISTORY_KEY, { [SELECTOR]: { scrollX: 0, scrollY: 900 } });
 
-    // The inline script is what actually ships; evaluating it proves the
-    // serialized body stays self-contained (no imports, no module constants).
     new Function(MAIN_SCROLL_INIT_SCRIPT)();
 
     expect(main.scrollTop).toBe(900);

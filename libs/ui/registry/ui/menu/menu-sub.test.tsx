@@ -251,6 +251,31 @@ describe("MenuSub", () => {
     expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-edit"));
   });
 
+  it.each([
+    "{Escape}",
+    "{Tab}",
+    "{ArrowLeft}",
+  ])("calls a controlled onOpenChange exactly once when %s dismisses the submenu", async (key) => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    render(
+      <Menu aria-label="Test menu" defaultHighlighted="edit">
+        <Menu.Sub open onOpenChange={onOpenChange}>
+          <Menu.SubTrigger id="edit">Edit</Menu.SubTrigger>
+          <Menu.SubContent>
+            <Menu.Item id="undo">Undo</Menu.Item>
+          </Menu.SubContent>
+        </Menu.Sub>
+      </Menu>,
+    );
+
+    const submenu = await screen.findByRole("menu", { name: "Edit" });
+    submenu.focus();
+    await user.keyboard(key);
+
+    expect(onOpenChange.mock.calls).toEqual([[false]]);
+  });
+
   it("submenu items have keyboard navigation (ArrowUp/Down)", async () => {
     const user = userEvent.setup();
     renderSubmenu();

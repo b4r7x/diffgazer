@@ -12,6 +12,10 @@ export const listCommand = createListCommand({
   getAllItems: () => allListNames().map(getNamespacedItem),
   getPublicItems: () => publicAvailableNames().map(getNamespacedItem),
   requireConfig: ctx.items.requireConfig,
-  createInstallChecker: (cwd, config) => (name) => isNamespacedInstalled(cwd, config, name),
+  createInstallChecker: (cwd, config) => {
+    const manifest = ctx.config.getManifestItems(cwd) ?? {};
+    const uiChecker = ctx.createChecker(cwd, config.componentsFsPath);
+    return (name) => isNamespacedInstalled(cwd, config, name, manifest, uiChecker);
+  },
   getRelativePath: ctx.registry.relativePath,
 });

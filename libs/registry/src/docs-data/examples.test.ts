@@ -58,4 +58,18 @@ describe("generateDemoIndex", () => {
       }),
     ).toThrow(/test\/spec example "dialog-form\.test"/);
   });
+
+  it("throws when two items expose the same example key", () => {
+    expect(() =>
+      generateDemoIndex({
+        items: [{ name: "stepper" }, { name: "horizontal-stepper" }],
+        examplesDir: "/examples",
+        importPathPrefix: "@/examples",
+        findExamplesFn: (_examplesDir, itemName) =>
+          itemName === "stepper" || itemName === "horizontal-stepper" ? ["stepper-basic"] : [],
+      }),
+    ).toThrow(
+      /Demo index key collision: "stepper-basic" from "horizontal-stepper" conflicts with "stepper"/,
+    );
+  });
 });

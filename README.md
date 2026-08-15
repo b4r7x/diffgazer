@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="docs/assets/diffgazer-wordmark-figlet.svg" alt="Diffgazer" width="820" />
-</p>
+<h1 align="center">Diffgazer</h1>
 
 <p align="center">
   <img src="docs/assets/logo.png" alt="Diffgazer logo" width="112" />
@@ -36,7 +34,7 @@ cd your-project
 diffgazer
 ```
 
-First run walks you through product selection, endpoint binding, authentication, exact model selection, conformance, the product notice, and repo trust. The removed Z.AI Coding Plan record is not selectable; create a new Z.AI configuration instead. HTTP compatibility is not authorization, and the old secret is retained but never copied, tested, or sent until you explicitly delete the removed record.
+First run walks you through product selection, endpoint binding, authentication, exact model selection, conformance, the product notice, and repo trust.
 
 Diffgazer is also a pnpm monorepo for the CLI, docs app, shared registry tooling, keyboard hooks, and UI packages.
 
@@ -63,8 +61,10 @@ pnpm run build
 ```
 
 The root build prepares shared registry and documentation artifacts once before Turbo starts the
-parallel package builds. A direct `pnpm --filter @diffgazer/add build` remains self-contained and
-generates its own bundled registry sources.
+parallel package builds. Focused package builds are not self-contained: a direct
+`pnpm --filter @diffgazer/add build` skips workspace dependencies, and the bundle scripts it runs
+import the compiled `@diffgazer/registry`, which no clean checkout carries. Run the root build, or at
+least `pnpm --filter @diffgazer/registry build`, before any focused `@diffgazer/add` build or pack.
 
 ## Development
 
@@ -81,7 +81,7 @@ This repository is one workspace with a single root install and lockfile.
 
 ## Consumption Paths
 
-`@diffgazer/ui` and `@diffgazer/keys` support three consumption paths. All npm package names are publish-gated: public npm commands are valid only after `npm view` returns versions. Local tarballs are the package-mode validation path before publication.
+`@diffgazer/ui`, `@diffgazer/keys`, and `@diffgazer/add` are publish-gated: public npm commands for these packages are valid only after `npm view` returns versions. Publish status is per package; see [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md) for the current matrix. Local tarballs are the package-mode validation path before publication.
 
 | Path | @diffgazer/ui | @diffgazer/keys |
 |------|---------------|-----------------|
@@ -96,6 +96,7 @@ This repository is one workspace with a single root install and lockfile.
 From this repository:
 
 ```bash
+pnpm --filter @diffgazer/registry build
 pnpm --filter @diffgazer/add build
 pnpm --filter @diffgazer/add pack --pack-destination /tmp/diffgazer-packs
 ```
@@ -108,7 +109,7 @@ pnpm exec dgadd init
 pnpm exec dgadd add ui/button keys/navigation
 ```
 
-Copy mode installs source files the consuming app owns. UI components require Tailwind CSS v4 and the copied `src/styles/styles.css`. Keys standalone hooks require no CSS setup. After `@diffgazer/add` is published, use `npx @diffgazer/add` instead of the local tarball. See [cli/add/README.md](./cli/add/README.md#before-publication) for the full command reference.
+Copy mode installs source files the consuming app owns. UI components require Tailwind CSS v4 and the copied `src/styles/styles.css`. Keys standalone hooks require no CSS setup. After `@diffgazer/add` is published, use `npx @diffgazer/add` instead of the local tarball. `dgadd init` also supports the recovery-only `--reset-manifest` option, and `-s, --silent` is available globally to suppress non-error output. See [cli/add/README.md](./cli/add/README.md#before-publication) for the full command reference.
 
 ### Runtime package mode
 

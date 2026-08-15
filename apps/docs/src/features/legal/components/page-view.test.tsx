@@ -1,6 +1,3 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -65,17 +62,17 @@ vi.mock("../../../../.source/browser", async () => {
 
 // Boundary mock: only the external router is replaced.
 vi.mock("@tanstack/react-router", async () => {
-  const { RouterLinkMock, useLocationMock } = await import("@/testing/router-mock");
+  const { RouterLinkMock, ScriptOnceMock, useLocationMock, useRouterStateMock } = await import(
+    "@/testing/router-mock"
+  );
   return {
     Link: RouterLinkMock,
+    ScriptOnce: ScriptOnceMock,
     ...useLocationMock({ pathname: "/terms" }),
+    ...useRouterStateMock({ pathname: "/terms", isLoading: false }),
     useRouter: () => ({ invalidate: routerInvalidate }),
   };
 });
-
-vi.mock("@/features/legal/hooks/use-pending-route", () => ({
-  usePendingLegalRoute: () => null,
-}));
 
 beforeEach(() => {
   stubMatchMedia({ isDesktop: true });

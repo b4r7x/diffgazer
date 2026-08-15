@@ -101,6 +101,9 @@ export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusR
   const resolvedOptions = resolveOptions(options);
   const optionsRef = useRef(resolvedOptions);
   const entryRef = useRef<FocusRestoreEntry | null>(null);
+  // Survives teardown so the unmount effect's StrictMode cleanup→setup cycle
+  // can re-register the entry instead of silently consuming the capture.
+  const capturedRef = useRef<{ target: HTMLElement | null; ownerDocument: Document } | null>(null);
   const [target, setTarget] = useState<HTMLElement | null>(null);
 
   const teardown = useEffectEvent(
@@ -113,6 +116,20 @@ export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusR
       setTarget(null);
     },
   );
+
+  const reregisterCapturedEntry = useEffectEvent(() => {
+    const captured = capturedRef.current;
+    if (!captured || entryRef.current) return;
+
+    const entry: FocusRestoreEntry = {
+      target: captured.target,
+      fallbackTargets: [],
+      ownerDocument: captured.ownerDocument,
+    };
+    entryRef.current = entry;
+    getFocusRestoreStack(captured.ownerDocument).push(entry);
+    setTarget(captured.target);
+  });
 
   // Latest-ref sync: stable focus callbacks read optionsRef, so it must update every render by design.
   useLayoutEffect(() => {
@@ -128,6 +145,7 @@ export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusR
         entryRef.current = null;
         removeEntry(entry);
       }
+      capturedRef.current = null;
       setTarget(null);
       return null;
     }
@@ -137,9 +155,9 @@ export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusR
 
     removeEntry(entry);
     entry.target = nextTarget;
-    entry.fallbackTargets = [];
     entry.ownerDocument = doc;
     entryRef.current = entry;
+    capturedRef.current = { target: nextTarget, ownerDocument: doc };
     getFocusRestoreStack(doc).push(entry);
     setTarget(nextTarget);
 
@@ -149,6 +167,7 @@ export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusR
   const restore = useCallback(() => {
     const resolvedOptions = optionsRef.current;
     const entry = entryRef.current;
+    capturedRef.current = null;
 
     if (!entry) {
       return resolvedOptions.enabled
@@ -165,10 +184,12 @@ export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusR
   useEffect(() => {
     if (resolvedOptions.enabled) return;
 
+    capturedRef.current = null;
     teardown(false, optionsRef.current);
   }, [resolvedOptions.enabled]);
 
   useEffect(() => {
+    reregisterCapturedEntry();
     return () => {
       teardown(optionsRef.current.restoreOnUnmount, optionsRef.current);
     };

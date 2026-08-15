@@ -1,9 +1,8 @@
-const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
+const isMac = /Mac|iPhone|iPad/.test(navigator.userAgent);
 
 const keyMap: Record<string, [mac: string, other: string]> = {
   mod: ["\u2318", "Ctrl"],
   shift: ["\u21e7", "Shift"],
-  alt: ["\u2325", "Alt"],
   arrowup: ["\u2191", "\u2191"],
   arrowdown: ["\u2193", "\u2193"],
   arrowleft: ["\u2190", "\u2190"],
@@ -11,7 +10,6 @@ const keyMap: Record<string, [mac: string, other: string]> = {
   escape: ["Esc", "Esc"],
   enter: ["\u21b5", "Enter"],
   space: ["Space", "Space"],
-  backspace: ["\u232b", "Backspace"],
 };
 
 interface KbdProps {

@@ -1,15 +1,12 @@
+import { sha256CanonicalJsonSync as hashCanonicalJsonSync } from "@diffgazer/core/json";
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
-import { sha256CanonicalJsonSync as hashCanonicalJsonSync } from "@diffgazer/core/schemas/review";
 import { describe, expect, it } from "vitest";
 import {
   AdmissionEvidenceSchema,
   canAuthorizeEvidence,
   createAdmissionEvidence,
   evidenceMatchesKey,
-  hashAdmissionEvidenceKey,
   hashAdmissionEvidenceKeySync,
-  isEvidenceExpired,
-  toSafeEvidenceReference,
 } from "./admission-evidence.js";
 
 const limits = {
@@ -42,13 +39,11 @@ const checkedAt = "2026-07-31T12:00:00.000Z";
 const now = "2026-07-31T12:05:00.000Z";
 
 describe("admission evidence", () => {
-  it("matches the T-002 canonical SHA-256 algorithm", async () => {
+  it("matches the T-002 canonical SHA-256 algorithm", () => {
     expect(hashCanonicalJsonSync({ z: 1, a: 2 })).toBe(
       "c2985c5ba6f7d2a55e768f92490ca09388e95bc4cccb9fdf11b15f4d42f93e73",
     );
-    expect(await hashAdmissionEvidenceKey(evidenceKey)).toBe(
-      hashAdmissionEvidenceKeySync(evidenceKey),
-    );
+    expect(hashAdmissionEvidenceKeySync(evidenceKey)).toBe(hashCanonicalJsonSync(evidenceKey));
   });
 
   it.each([
@@ -89,10 +84,10 @@ describe("admission evidence", () => {
     ["schema", { structuredOutputSchemaSha256: "2".repeat(64) }],
     ["notice", { noticeVersion: 2 }],
     ["limits", { limits: { ...limits, maxOutputTokens: 4_001 } }],
-  ] as const)("invalidates the tuple when %s changes", async (_label, patch) => {
+  ] as const)("invalidates the tuple when %s changes", (_label, patch) => {
     const changed = { ...evidenceKey, ...patch } as EvidenceKey;
-    expect(await hashAdmissionEvidenceKey(changed)).not.toBe(
-      await hashAdmissionEvidenceKey(evidenceKey),
+    expect(hashAdmissionEvidenceKeySync(changed)).not.toBe(
+      hashAdmissionEvidenceKeySync(evidenceKey),
     );
   });
 
@@ -109,55 +104,45 @@ describe("admission evidence", () => {
     expect(canAuthorizeEvidence(evidence, { ...evidenceKey, noticeVersion: 2 }, { now })).toBe(
       false,
     );
-    expect(canAuthorizeEvidence(evidence, evidenceKey, { now, maxAgeMs: 60_000 })).toBe(false);
   });
 
-  it.each([
-    "not-checked",
-    "pending",
-    "failed",
-    "skipped",
-    "expired",
-  ] as const)("does not authorize %s evidence", (status) => {
-    const evidence = createAdmissionEvidence({
+  it("passed evidence with a null expiry authorizes indefinitely absent tuple change", () => {
+    const farFuture = "2027-12-01T00:00:00.000Z";
+    const durable = createAdmissionEvidence({
       evidenceKey,
-      checkedAt: status === "not-checked" ? null : checkedAt,
-      status,
+      checkedAt,
+      status: "passed",
+      expiresAt: null,
     });
+    expect(canAuthorizeEvidence(durable, evidenceKey, { now: farFuture })).toBe(true);
+
+    // Pre-campaign evidence files carry no `expiresAt` key at all.
+    const withoutExpiry = createAdmissionEvidence({ evidenceKey, checkedAt, status: "passed" });
+    expect(canAuthorizeEvidence(withoutExpiry, evidenceKey, { now: farFuture })).toBe(true);
+  });
+
+  it("does not authorize failed evidence", () => {
+    const evidence = createAdmissionEvidence({ evidenceKey, checkedAt, status: "failed" });
     expect(canAuthorizeEvidence(evidence, evidenceKey, { now })).toBe(false);
   });
 
-  it("expires evidence by explicit deadline or age", () => {
+  it("does not authorize evidence past a deadline it already carries", () => {
     const evidence = createAdmissionEvidence({
       evidenceKey,
       checkedAt,
       status: "passed",
       expiresAt: "2026-07-31T12:01:00.000Z",
     });
-    expect(isEvidenceExpired(evidence, { now })).toBe(true);
-    expect(isEvidenceExpired(evidence, { now: checkedAt, maxAgeMs: 0 })).toBe(true);
-  });
-
-  it("projects only a bounded, secret-free reference", () => {
-    const evidence = createAdmissionEvidence({ evidenceKey, checkedAt, status: "passed" });
-    const reference = toSafeEvidenceReference(evidence);
-    expect(reference).toEqual({
-      evidenceKeyHash: evidence.evidenceKeyHash,
-      checkedAt,
-      status: "passed",
-    });
-    expect(JSON.stringify(reference)).not.toContain("credentialReferenceIdentity");
-    expect(JSON.stringify(reference)).not.toContain("openrouter.ai");
-    expect(JSON.stringify(reference)).not.toContain("3".repeat(64));
-    expect(
-      AdmissionEvidenceSchema.safeParse({ ...evidence, apiKey: "literal-secret" }).success,
-    ).toBe(false);
+    expect(canAuthorizeEvidence(evidence, evidenceKey, { now })).toBe(false);
   });
 
   it("rejects a forged hash and literal secret reference", () => {
     const evidence = createAdmissionEvidence({ evidenceKey, checkedAt, status: "passed" });
     expect(
       AdmissionEvidenceSchema.safeParse({ ...evidence, evidenceKeyHash: "f".repeat(64) }).success,
+    ).toBe(false);
+    expect(
+      AdmissionEvidenceSchema.safeParse({ ...evidence, apiKey: "literal-secret" }).success,
     ).toBe(false);
     expect(
       AdmissionEvidenceSchema.safeParse({

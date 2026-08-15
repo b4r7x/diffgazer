@@ -181,13 +181,17 @@ function getTopEscapeKeyEntry(
   target: Node | null,
 ): EscapeKeyEntry | undefined {
   const routedEntries = escapeKeyEntries.filter(
-    (entry) => entry.ownerDocument === ownerDocument && entry.containsRef.current?.(target),
+    (entry) =>
+      entry.ownerDocument === ownerDocument && entry.containsRef.current?.(target) === true,
   );
-  const entries = routedEntries.length > 0 ? routedEntries : escapeKeyEntries;
-  return getTopEntry(entries, getEscapeEntryElements, (entry) => {
-    if (entry.ownerDocument !== ownerDocument) return false;
-    return routedEntries.length === 0 || entry.containsRef.current?.(target) === true;
-  });
+  if (routedEntries.length > 0) {
+    return getTopEntry(routedEntries, getEscapeEntryElements, () => true);
+  }
+  return getTopEntry(
+    escapeKeyEntries,
+    getEscapeEntryElements,
+    (entry) => entry.ownerDocument === ownerDocument,
+  );
 }
 
 let lastTouchTarget: EventTarget | null = null;
@@ -235,7 +239,11 @@ function getGestureCleanupTypes(pressType: string) {
   };
 }
 
-function swallowNextClick(ownerDocument: Document, View: Window, pressType: string): void {
+function swallowNextClick(
+  ownerDocument: Document,
+  View: Window & typeof globalThis,
+  pressType: string,
+): void {
   const { nextPressTypes, releaseTypes } = getGestureCleanupTypes(pressType);
   let removed = false;
   let timer: number | undefined;
@@ -253,6 +261,10 @@ function swallowNextClick(ownerDocument: Document, View: Window, pressType: stri
   };
   const onClickCapture = (clickEvent: Event) => {
     cleanup();
+    // Keyboard activation (Enter/Space on a focused control) dispatches a click with
+    // detail === 0. The swallow exists for the pointer gesture that dismissed the
+    // overlay, so let those through instead of eating an unrelated key press.
+    if (clickEvent instanceof View.MouseEvent && clickEvent.detail === 0) return;
     clickEvent.preventDefault();
     clickEvent.stopImmediatePropagation();
   };

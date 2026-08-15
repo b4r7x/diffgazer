@@ -1,6 +1,11 @@
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { z } from "zod";
-import { atomicWriteFile, readJsonFileSyncSafe, removeFileSync } from "../../fs.js";
+import {
+  atomicWriteFile,
+  readJsonFileSyncSafe,
+  removeFileSyncDurable,
+  syncParentDirectorySync,
+} from "../../fs.js";
 import { log } from "../../log.js";
 import { getGlobalConfigPath, getGlobalSecretsPath } from "../../paths.js";
 import type { SecretsStorageError, SecretsStorageErrorCode } from "../types.js";
@@ -34,7 +39,7 @@ export type DocumentRecoveryRecord = z.infer<typeof DocumentRecoveryRecordSchema
 
 export const getSecretsRecoveryPath = (): string => `${getGlobalSecretsPath()}.recovery`;
 
-export const rollbackFailure = (cause: unknown): SecretsStorageError => {
+const rollbackFailure = (cause: unknown): SecretsStorageError => {
   log("error", "secrets_rollback_failed", { error: getErrorMessage(cause) });
   return createError<SecretsStorageErrorCode>(
     "ROLLBACK_FAILED",
@@ -56,8 +61,18 @@ export const writeDocumentRecovery = async (previous: {
     previousConfig: snapshotOf(previous.config),
     previousSecrets: snapshotOf(previous.secrets),
   };
-  await atomicWriteFile(getSecretsRecoveryPath(), `${JSON.stringify(record, null, 2)}\n`, 0o600);
+  await rewriteDocumentRecovery(record);
   return record;
+};
+
+/**
+ * Re-establish a durable WAL record after an ambiguous clear. The caller must
+ * hold the config and secrets transaction locks and must do this before
+ * attempting any compensating restore, because a partial restore still needs
+ * a journal for the next initialized store to finish safely.
+ */
+export const rewriteDocumentRecovery = async (record: DocumentRecoveryRecord): Promise<void> => {
+  await atomicWriteFile(getSecretsRecoveryPath(), `${JSON.stringify(record, null, 2)}\n`, 0o600);
 };
 
 export type DocumentRecoveryRead =
@@ -69,17 +84,11 @@ export const readDocumentRecovery = (): DocumentRecoveryRead => {
   const readResult = readJsonFileSyncSafe<unknown>(getSecretsRecoveryPath());
   if (readResult.status === "missing") return { kind: "missing" };
   if (readResult.status === "corrupt") {
-    return {
-      kind: "invalid",
-      error: rollbackFailure(new Error("Secrets recovery record is not valid JSON")),
-    };
+    return { kind: "invalid", error: rollbackFailure(new Error(readResult.error)) };
   }
   const parsed = DocumentRecoveryRecordSchema.safeParse(readResult.data);
   if (!parsed.success) {
-    return {
-      kind: "invalid",
-      error: rollbackFailure(new Error("Secrets recovery record failed validation")),
-    };
+    return { kind: "invalid", error: rollbackFailure(parsed.error) };
   }
   return { kind: "valid", record: parsed.data };
 };
@@ -89,14 +98,21 @@ const restoreSnapshot = async (
   snapshot: z.infer<typeof FileSnapshotSchema>,
 ): Promise<void> => {
   if (snapshot.base64 === null) {
-    removeFileSync(filePath);
+    removeFileSyncDurable(filePath);
     return;
   }
-  await atomicWriteFile(filePath, Buffer.from(snapshot.base64, "base64").toString("utf8"), 0o600);
+  // Bytes, never a UTF-8 string round trip: decoding here would replace every
+  // ill-formed sequence with U+FFFD and break the byte-for-byte restore contract.
+  await atomicWriteFile(filePath, Buffer.from(snapshot.base64, "base64"), 0o600);
 };
 
-export const clearDocumentRecovery = (): void => {
-  removeFileSync(getSecretsRecoveryPath());
+export const clearDocumentRecovery = (options?: {
+  readonly syncParentWhenMissing?: boolean;
+}): void => {
+  const recoveryPath = getSecretsRecoveryPath();
+  if (!removeFileSyncDurable(recoveryPath) && options?.syncParentWhenMissing) {
+    syncParentDirectorySync(recoveryPath);
+  }
 };
 
 /**
@@ -110,16 +126,9 @@ export const restoreDocumentRecovery = async (
   try {
     await restoreSnapshot(getGlobalConfigPath(), record.previousConfig);
     await restoreSnapshot(getGlobalSecretsPath(), record.previousSecrets);
-    clearDocumentRecovery();
+    clearDocumentRecovery({ syncParentWhenMissing: true });
     return null;
   } catch (cause) {
     return rollbackFailure(cause);
   }
-};
-
-export const reconcileDocumentRecoveryAtStartup = async (): Promise<SecretsStorageError | null> => {
-  const recovery = readDocumentRecovery();
-  if (recovery.kind === "missing") return null;
-  if (recovery.kind === "invalid") return recovery.error;
-  return restoreDocumentRecovery(recovery.record);
 };

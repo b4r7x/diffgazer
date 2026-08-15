@@ -1,9 +1,12 @@
 import {
   findProviderById,
+  getBillingTier,
   getProviderRowId,
   mapProviderList,
+  offersFreeModels,
   PRODUCT_REGISTRY,
   type ProviderListRow,
+  SELECTABLE_PRODUCTS,
 } from "@diffgazer/core/providers";
 import type {
   ClientConfigurationSummary,
@@ -13,12 +16,15 @@ import type {
 import {
   LEGACY_V1_HAS_API_KEY_PROPERTY,
   READINESS_PRESENTATION,
-  REMOVED_PRODUCT_ID,
   ReadinessSchema,
-  SELECTABLE_PRODUCTS,
 } from "@diffgazer/core/schemas/config";
 import { describe, expect, it } from "vitest";
-import { filterProviders, PROVIDER_FILTERS } from "./filter";
+import {
+  filterProviders,
+  filterUnrecognizedConfigurations,
+  PROVIDER_FILTER_LABELS,
+  PROVIDER_FILTERS,
+} from "./filter";
 
 function copyNotice(productId: RunnableProductId) {
   const notice = PRODUCT_REGISTRY[productId].notice;
@@ -28,8 +34,7 @@ function copyNotice(productId: RunnableProductId) {
 const NON_READY_EVIDENCE = {
   "conformance-pending": { evidenceStatus: "pending", checkedAt: "2026-07-31T12:00:00.000Z" },
   unsupported: { evidenceStatus: "not-checked", checkedAt: null },
-  "local-endpoint-unreachable": { evidenceStatus: "failed", checkedAt: "2026-07-31T12:00:00.000Z" },
-  removed: { evidenceStatus: "not-checked", checkedAt: null },
+  "local-conformance-failed": { evidenceStatus: "failed", checkedAt: "2026-07-31T12:00:00.000Z" },
 } as const;
 
 function configurationStatus(
@@ -109,7 +114,7 @@ const LOCAL_UNREACHABLE = configurationStatus(
     notices: [copyNotice("local-openai")],
     availableActions: ["inspect", "select", "test", "update", "delete"],
   },
-  "local-endpoint-unreachable",
+  "local-conformance-failed",
 );
 
 const CLI_UNSUPPORTED = configurationStatus(
@@ -127,41 +132,22 @@ const CLI_UNSUPPORTED = configurationStatus(
   "unsupported",
 );
 
-const REMOVED_ZAI_CODING = configurationStatus(
-  {
-    configurationId: "legacy-removed-zai-plan",
-    revision: 4,
-    status: "removed",
-    transportFamily: "hosted-api",
-    productId: REMOVED_PRODUCT_ID,
-    selectedModelId: null,
-    notices: [],
-    availableActions: ["inspect", "delete"],
-  },
-  "removed",
-);
-
 const ALL_ROWS = mapProviderList([
   READY_GEMINI,
   PENDING_DEEPSEEK,
   LOCAL_UNREACHABLE,
   CLI_UNSUPPORTED,
-  REMOVED_ZAI_CODING,
 ]);
 
 const rowIds = (rows: ProviderListRow[]) => rows.map(getProviderRowId);
 
 describe("filterProviders", () => {
-  it("returns all selectable products plus removed records", () => {
+  it("returns all selectable products", () => {
     expect(ALL_ROWS.filter(({ product }) => product.selectable)).toHaveLength(13);
-    expect(ALL_ROWS.some(({ product }) => product.productId === REMOVED_PRODUCT_ID)).toBe(true);
   });
 
-  it("returns every provider except removed records when filter is 'all'", () => {
-    const ids = rowIds(filterProviders(ALL_ROWS, "all"));
-
-    expect(ids).toEqual(rowIds(ALL_ROWS.filter(({ product }) => product.status !== "removed")));
-    expect(ids).not.toContain("legacy-removed-zai-plan");
+  it("returns every provider when filter is 'all'", () => {
+    expect(rowIds(filterProviders(ALL_ROWS, "all"))).toEqual(rowIds(ALL_ROWS));
   });
 
   it("keeps every stored configuration under 'configured' in list order", () => {
@@ -195,7 +181,6 @@ describe("filterProviders", () => {
     expect(ids).not.toContain("deepseek-pending");
     expect(ids).not.toContain("local-openai-1");
     expect(ids).not.toContain("codex-cli-1");
-    expect(ids).not.toContain("legacy-removed-zai-plan");
   });
 
   it("partitions 'all' into 'configured' and 'needs-key'", () => {
@@ -207,25 +192,37 @@ describe("filterProviders", () => {
     );
   });
 
-  it("partitions free vs paid by product billing modes", () => {
+  // Gemini's models are all priced, so it stays on the paid side, but Google
+  // publishes a free tier to run them on — the Free tab is where a user looking
+  // for a no-cost start goes, and hiding Gemini from it hides the answer.
+  it("lists a declared free tier under both filters and a PAYG-only product under paid alone", () => {
     const freeIds = rowIds(filterProviders(ALL_ROWS, "free"));
-    expect(freeIds).toContain("gemini-primary");
-    expect(freeIds).not.toContain("legacy-removed-zai-plan");
-
     const paidIds = rowIds(filterProviders(ALL_ROWS, "paid"));
+
+    expect(getBillingTier("gemini")).toBe("free-tier");
+    expect(freeIds).toContain("gemini-primary");
+    expect(paidIds).toContain("gemini-primary");
+
+    expect(getBillingTier("deepseek")).toBe("paid");
+    expect(freeIds).not.toContain("deepseek-pending");
     expect(paidIds).toContain("deepseek-pending");
-    expect(paidIds).not.toContain("gemini-primary");
-    expect(paidIds).not.toContain("legacy-removed-zai-plan");
+  });
+
+  // OpenRouter's zero-priced `:free` entries are pinned catalog identities its
+  // picker really offers, so both tabs must list it.
+  it("lists a product selling both free and priced models under both filters", () => {
+    expect(getBillingTier("openrouter")).toBe("mixed");
+    expect(rowIds(filterProviders(ALL_ROWS, "free"))).toContain("openrouter");
+    expect(rowIds(filterProviders(ALL_ROWS, "paid"))).toContain("openrouter");
+
+    expect(offersFreeModels("mixed")).toBe(true);
+    expect(offersFreeModels("free")).toBe(true);
+    expect(offersFreeModels("paid")).toBe(false);
   });
 
   it("matches search query against product name and id", () => {
     expect(rowIds(filterProviders(ALL_ROWS, "all", "google"))).toEqual(["gemini-primary"]);
     expect(rowIds(filterProviders(ALL_ROWS, "all", "zai"))).toEqual(["zai"]);
-  });
-
-  it("does not treat removed REMOVED_PRODUCT_ID as a normal search match", () => {
-    expect(rowIds(filterProviders(ALL_ROWS, "all", "coding"))).toEqual([]);
-    expect(rowIds(filterProviders(ALL_ROWS, "all", REMOVED_PRODUCT_ID))).toEqual([]);
   });
 
   it("combines filter and search", () => {
@@ -240,17 +237,19 @@ describe("filterProviders", () => {
     expect(PROVIDER_FILTERS).toEqual(["all", "configured", "needs-key", "free", "paid"]);
   });
 
-  it("preserves removed records with inspect and delete actions only", () => {
-    const removed = findProviderById(ALL_ROWS, "legacy-removed-zai-plan");
-    expect(removed?.actions).toEqual(["inspect", "delete"]);
-    expect(removed?.product.selectable).toBe(false);
+  it("orders the rendered filter chips like the keyboard index tuple", () => {
+    // The keyboard layer stores a filter as its PROVIDER_FILTERS index and the list
+    // resolves that index through PROVIDER_FILTER_LABELS; a divergence would focus
+    // the wrong chip.
+    expect(PROVIDER_FILTER_LABELS.map(({ value }) => value)).toEqual([...PROVIDER_FILTERS]);
+    expect(PROVIDER_FILTER_LABELS.every(({ label }) => label.length > 0)).toBe(true);
   });
 
-  it("distinguishes local unreachable and CLI unsupported readiness", () => {
+  it("distinguishes local conformance failure and CLI unsupported readiness", () => {
     const local = findProviderById(ALL_ROWS, "local-openai-1");
     const cli = findProviderById(ALL_ROWS, "codex-cli-1");
 
-    expect(local?.readiness.status).toBe("local-endpoint-unreachable");
+    expect(local?.readiness.status).toBe("local-conformance-failed");
     expect(cli?.readiness.status).toBe("unsupported");
     expect(local?.product.transportFamily).toBe("local-http");
     expect(cli?.product.transportFamily).toBe("local-cli");
@@ -266,5 +265,28 @@ describe("filterProviders", () => {
 
   it("does not serialize the legacy V1 has-api-key field", () => {
     expect(JSON.stringify(ALL_ROWS)).not.toContain(LEGACY_V1_HAS_API_KEY_PROPERTY);
+  });
+
+  // The record is a stored configuration, so it stays reachable under the two
+  // filters that ask about storage, and is not claimed by the product filters
+  // that ask about a product it has none of.
+  it("offers an undecodable record under the storage filters only", () => {
+    const unrecognized = [{ configurationId: "cfg-retired" }];
+
+    expect(filterUnrecognizedConfigurations(unrecognized, "all")).toEqual(unrecognized);
+    expect(filterUnrecognizedConfigurations(unrecognized, "configured")).toEqual(unrecognized);
+    expect(filterUnrecognizedConfigurations(unrecognized, "needs-key")).toEqual([]);
+    expect(filterUnrecognizedConfigurations(unrecognized, "free")).toEqual([]);
+    expect(filterUnrecognizedConfigurations(unrecognized, "paid")).toEqual([]);
+  });
+
+  it("finds an undecodable record by its id or by the name the list gives it", () => {
+    const unrecognized = [{ configurationId: "cfg-retired" }];
+
+    expect(filterUnrecognizedConfigurations(unrecognized, "all", "retired")).toEqual(unrecognized);
+    expect(filterUnrecognizedConfigurations(unrecognized, "all", "unrecognized")).toEqual(
+      unrecognized,
+    );
+    expect(filterUnrecognizedConfigurations(unrecognized, "all", "gemini")).toEqual([]);
   });
 });

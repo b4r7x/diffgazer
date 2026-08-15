@@ -139,6 +139,8 @@ export function initGaze(
   scan.classList.remove("visible");
   for (const row of rows) row.classList.remove("lit", "locked");
   for (const callout of callouts) callout?.classList.remove("on");
+  panel.style.removeProperty("--gx");
+  panel.style.removeProperty("--gy");
 
   if (flags.reduced) {
     spin.textContent = "●";

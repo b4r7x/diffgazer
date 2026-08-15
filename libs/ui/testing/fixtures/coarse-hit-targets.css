@@ -1,0 +1,4 @@
+@import "tailwindcss";
+@import "../../styles/sources.css";
+@import "../../styles/styles.css";
+@import "../../registry/ui/callout/callout.css";

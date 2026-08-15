@@ -1,14 +1,14 @@
 import { EventEmitter } from "node:events";
 import { createServer } from "node:net";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createProcessServer } from "./server";
 import {
   BASE_CONFIG,
   createFakeChild,
   createResolvableFakeChild,
   createSettlingFakeChild,
   type FakeChild,
-} from "./test-support";
+} from "../../../testing/server-process-fixtures";
+import { createProcessServer } from "./server";
 
 const execaMock = vi.hoisted(() => vi.fn());
 // Boundary mock: subprocess launcher for managed child processes.
@@ -201,6 +201,104 @@ describe("createProcessServer readiness", () => {
     expect(onFailure).toHaveBeenNthCalledWith(1, "first child failed");
     expect(onFailure).toHaveBeenNthCalledWith(2, "second child failed");
     expect(execaMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports onFailure when a ready child crashes after startup", async () => {
+    let rejectChild: ((error: Error) => void) | undefined;
+    const child = new Promise<unknown>((_resolve, reject) => {
+      rejectChild = reject;
+    }) as FakeChild;
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.kill = vi.fn();
+    child.pid = 4321;
+    execaMock.mockReturnValue(child);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const onFailure = vi.fn();
+    const onReady = vi.fn();
+
+    const server = createProcessServer({ ...BASE_CONFIG, onReady, onFailure });
+    const starting = server.start();
+    child.stdout.emit("data", Buffer.from("ready\n"));
+    await expect(starting).resolves.toBeUndefined();
+    expect(onReady).toHaveBeenCalledExactlyOnceWith("http://localhost:5000");
+
+    child.stderr.emit("data", Buffer.from("fatal: boom\n"));
+    rejectChild?.(Object.assign(new Error("Process exited"), { exitCode: 1, killed: false }));
+
+    await vi.waitFor(() => expect(onFailure).toHaveBeenCalledOnce());
+    expect(onFailure.mock.calls[0]?.[0]).toContain("fatal: boom");
+  });
+
+  it("reports onFailure when a ready child exits cleanly", async () => {
+    const { child, resolve } = createResolvableFakeChild();
+    execaMock.mockReturnValue(child);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const onFailure = vi.fn();
+    const onReady = vi.fn();
+
+    const server = createProcessServer({ ...BASE_CONFIG, onReady, onFailure });
+    const starting = server.start();
+    child.stdout.emit("data", Buffer.from("ready\n"));
+    await expect(starting).resolves.toBeUndefined();
+    expect(onReady).toHaveBeenCalledExactlyOnceWith("http://localhost:5000");
+
+    child.stderr.emit("data", Buffer.from("shutting down: config reloaded\n"));
+    resolve();
+
+    await vi.waitFor(() => expect(onFailure).toHaveBeenCalledOnce());
+    const message = onFailure.mock.calls[0]?.[0];
+    expect(message).toContain("Server exited unexpectedly");
+    expect(message).toContain("shutting down: config reloaded");
+  });
+
+  it("reports a clean exit by its reason when the child left only its ready banner", async () => {
+    const { child, resolve } = createResolvableFakeChild();
+    execaMock.mockReturnValue(child);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const onFailure = vi.fn();
+
+    const server = createProcessServer({ ...BASE_CONFIG, onFailure });
+    const starting = server.start();
+    child.stdout.emit("data", Buffer.from("ready\n"));
+    await expect(starting).resolves.toBeUndefined();
+
+    resolve();
+
+    await vi.waitFor(() => expect(onFailure).toHaveBeenCalledOnce());
+    expect(onFailure.mock.calls[0]?.[0]).toMatch(/^Server exited unexpectedly/);
+  });
+
+  it("reports a child that exits before readiness through onFailure", async () => {
+    const { child, resolve } = createResolvableFakeChild();
+    execaMock.mockReturnValue(child);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const onFailure = vi.fn();
+
+    const server = createProcessServer({ ...BASE_CONFIG, onFailure });
+    const starting = server.start();
+    child.stderr.emit("data", Buffer.from("missing config\n"));
+    resolve();
+
+    await expect(starting).rejects.toThrow("Server exited before readiness");
+    expect(onFailure).toHaveBeenCalledOnce();
+    expect(onFailure.mock.calls[0]?.[0]).toContain("Server exited before readiness");
+    expect(onFailure.mock.calls[0]?.[0]).toContain("missing config");
+  });
+
+  it("emits one diagnostic per failure when a coordinator owns onFailure", async () => {
+    const { child, resolve } = createResolvableFakeChild();
+    execaMock.mockReturnValue(child);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const onFailure = vi.fn();
+
+    const server = createProcessServer({ ...BASE_CONFIG, onFailure });
+    const starting = server.start();
+    resolve();
+
+    await expect(starting).rejects.toThrow("Server exited before readiness");
+    expect(onFailure).toHaveBeenCalledOnce();
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it("reports a real occupied-port child failure", async () => {

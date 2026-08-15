@@ -6,7 +6,7 @@ import { axe } from "../../../testing/axe";
 import { Callout } from "./index";
 
 function getGrid(container: HTMLElement): HTMLElement {
-  const grid = container.querySelector("[data-frame] > [data-has-icon]") as HTMLElement;
+  const grid = container.querySelector('[data-slot="callout-grid"]') as HTMLElement;
   expect(grid).not.toBeNull();
   return grid;
 }
@@ -53,7 +53,7 @@ describe("Callout structure", () => {
       </Callout>,
     );
     const grid = getGrid(container);
-    expect(grid).toHaveAttribute("data-has-icon", "false");
+    expect(grid.querySelector('[data-slot="callout-icon"]')).toBeNull();
   });
 
   it("reserves the icon column when Callout.Icon child is present", () => {
@@ -64,7 +64,22 @@ describe("Callout structure", () => {
       </Callout>,
     );
     const grid = getGrid(container);
-    expect(grid).toHaveAttribute("data-has-icon", "true");
+    expect(grid.querySelector('[data-slot="callout-icon"]')).not.toBeNull();
+  });
+
+  it("detects a wrapped icon component via CSS :has()", () => {
+    function ToneIcon() {
+      return <Callout.Icon />;
+    }
+
+    const { container } = render(
+      <Callout>
+        <ToneIcon />
+        <Callout.Title>Wrapped</Callout.Title>
+      </Callout>,
+    );
+
+    expect(getGrid(container).querySelector('[data-slot="callout-icon"]')).not.toBeNull();
   });
 
   it("detects a conditionally rendered icon inside a Fragment", () => {
@@ -80,10 +95,10 @@ describe("Callout structure", () => {
     }
 
     const { container, rerender } = render(<ConditionalCallout showIcon={false} />);
-    expect(getGrid(container)).toHaveAttribute("data-has-icon", "false");
+    expect(getGrid(container).querySelector('[data-slot="callout-icon"]')).toBeNull();
 
     rerender(<ConditionalCallout showIcon />);
-    expect(getGrid(container)).toHaveAttribute("data-has-icon", "true");
+    expect(getGrid(container).querySelector('[data-slot="callout-icon"]')).not.toBeNull();
   });
 
   it("assigns each part its grid cell via data-slot (layout driven by callout.css)", () => {
@@ -160,14 +175,13 @@ describe("Callout dismiss", () => {
     expect(screen.queryByText("Alert")).not.toBeInTheDocument();
   });
 
-  it("dismiss extends the coarse-pointer hit area to 44px", () => {
+  it("applies the documented coarse-pointer dismiss recipe classes", () => {
     render(
       <Callout>
         <Callout.Title>Alert</Callout.Title>
         <Callout.Dismiss />
       </Callout>,
     );
-    // touch-target contract (mobile campaign): pointer-coarse hit-area is the public contract; jsdom cannot measure layout.
     const dismiss = screen.getByRole("button", { name: "Dismiss" });
     expect(dismiss).toHaveClass("relative");
     expect(dismiss).toHaveClass("pointer-coarse:before:-inset-2.5");

@@ -18,14 +18,19 @@ describe("landing HUD corners on narrow viewports", () => {
     expect(hidden).toContain("visibility: hidden");
   });
 
-  it("keeps a corner that holds focus visible, so scrolling cannot hide it", () => {
-    const focused = ruleFor(narrow, ".hud-tr:focus-within");
+  // The wordmark is an anchor to #s1 and the first tab stop in the document, so
+  // it is exposed to the same hide-under-focus hazard as the docs/github links.
+  it.each([
+    ".hud-tl",
+    ".hud-tr",
+  ])("keeps %s visible while it holds focus, so scrolling cannot hide it", (corner) => {
+    const focused = ruleFor(narrow, `${corner}:focus-within`);
 
     expect(focused).toContain("opacity: 1");
     expect(focused).toContain("visibility: visible");
     // Equal specificity to the hide rule, so source order is what makes it win.
-    expect(narrow.indexOf(".hud-tr:focus-within")).toBeGreaterThan(
-      narrow.indexOf('html[data-hud-band="occupied"] .hud-tr'),
+    expect(narrow.indexOf(`${corner}:focus-within`)).toBeGreaterThan(
+      narrow.indexOf(`html[data-hud-band="occupied"] ${corner}`),
     );
   });
 

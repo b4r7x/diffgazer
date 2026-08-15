@@ -1,6 +1,5 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import {
   READINESS_PRESENTATION,
   READINESS_STATUSES,
@@ -8,15 +7,17 @@ import {
   ReadinessSchema,
   type ReadinessStatus,
 } from "@diffgazer/core/schemas/config";
-import { type EvidenceKey, sha256CanonicalJsonSync } from "@diffgazer/core/schemas/review";
-import { describe, expect, it } from "vitest";
-import { executionLimitsFromBudget } from "../ai/admission/service.js";
-import { createAdmissionEvidence } from "./admission-evidence.js";
-import { DEFAULT_CONFIGURATION_BUDGET } from "./store.js";
+import type { EvidenceKey } from "@diffgazer/core/schemas/review";
+import { describe, expect, it, vi } from "vitest";
+import { RUNTIME_IDENTITY, STRUCTURED_OUTPUT_SCHEMA_SHA256 } from "../ai/admission/protocol.js";
+import { buildExpectedEvidenceKey, createAdmissionEvidence } from "./admission-evidence.js";
+import { executionLimitsFromBudget } from "./budget-ceiling.js";
+import type { SupportedProviderConfigurationRecord } from "./provider-config.js";
 import {
   configPath,
   diffgazerHome,
   loadStore,
+  readJson,
   secretsPath,
   writeJson,
 } from "./store.test-support.js";
@@ -68,7 +69,7 @@ const supportedRecord = (overrides: Record<string, unknown> = {}) => ({
   productId: "gemini",
   input: { transportFamily: "hosted-api", productId: "gemini", endpoint: GEMINI_ENDPOINT },
   selectedModelId: "gemini-2.5-flash",
-  acknowledgement: { noticeVersion: 1, acceptedAt: OBSERVED_AT },
+  acknowledgement: { noticeId: "gemini-hosted-api", noticeVersion: 1, acceptedAt: OBSERVED_AT },
   evidenceReference: null,
   budget: DEFAULT_BUDGET,
   createdAt: CREATED_AT,
@@ -103,11 +104,15 @@ const updateGeminiAction = (configurationId: string, expectedRevision: number) =
     },
   }) as const;
 
-const evidenceKeyFor = (configurationId: string): EvidenceKey => ({
+const evidenceKeyFor = (
+  configurationId: string,
+  revision = 1,
+  budget: typeof DEFAULT_BUDGET = DEFAULT_BUDGET,
+): EvidenceKey => ({
   authentication: null,
   credentialReferenceIdentity: sha256CanonicalJsonSync({
     kind: "file-0600",
-    filePath: literalSecretPathFor(configurationId, 1),
+    filePath: literalSecretPathFor(configurationId, revision),
   }),
   installationId: null,
   productId: "gemini",
@@ -116,11 +121,44 @@ const evidenceKeyFor = (configurationId: string): EvidenceKey => ({
   region: null,
   workspaceAccountReference: null,
   modelId: "gemini-2.5-flash",
-  runtime: { identity: "diffgazer-server", version: "1.0.0" },
-  structuredOutputSchemaSha256: "1".repeat(64),
+  runtime: RUNTIME_IDENTITY,
+  structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
   noticeVersion: 1,
-  limits: executionLimitsFromBudget(DEFAULT_CONFIGURATION_BUDGET),
+  limits: executionLimitsFromBudget(budget),
 });
+
+const evidenceKeyForPersisted = (configurationId: string): EvidenceKey => {
+  const config = readJson<{
+    configurations: Array<SupportedProviderConfigurationRecord>;
+  }>(configPath());
+  const record = config.configurations.find((entry) => entry.configurationId === configurationId);
+  if (!record) throw new Error("configuration not found in persisted config");
+  const secrets = readJson<{
+    bindings: Array<{
+      configurationId: string;
+      revision: number;
+      kind: string;
+      filePath?: string;
+      status: string;
+    }>;
+  }>(secretsPath());
+  const binding = secrets.bindings.find(
+    (entry) =>
+      entry.configurationId === configurationId &&
+      entry.status === "active" &&
+      entry.revision === record.revision,
+  );
+  return buildExpectedEvidenceKey({
+    record,
+    runtime: RUNTIME_IDENTITY,
+    structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
+    credentialReferenceIdentity:
+      binding?.kind === "file-0600" && binding.filePath
+        ? sha256CanonicalJsonSync({ kind: "file-0600", filePath: binding.filePath })
+        : null,
+    workspaceAccountReference: null,
+  });
+};
 
 async function createReadyConfiguration(): Promise<string> {
   const store = await loadStore();
@@ -139,7 +177,7 @@ async function createReadyConfiguration(): Promise<string> {
   await store.recordConfigurationEvidence(
     configurationId,
     createAdmissionEvidence({
-      evidenceKey: evidenceKeyFor(configurationId),
+      evidenceKey: evidenceKeyForPersisted(configurationId),
       checkedAt: OBSERVED_AT,
       status: "passed",
     }),
@@ -155,22 +193,13 @@ async function seedSelectedConfiguration(): Promise<void> {
 const EVIDENCE_STATUS_FOR: Record<ReadinessStatus, Readiness["evidenceStatus"]> = {
   unconfigured: "not-checked",
   "credential-invalid": "failed",
-  "endpoint-invalid": "failed",
-  unreachable: "failed",
   "model-missing": "failed",
   "conformance-pending": "pending",
   "conformance-failed": "failed",
   "acknowledgement-required": "passed",
   unsupported: "not-checked",
-  removed: "not-checked",
   skipped: "skipped",
-  "local-endpoint-unreachable": "failed",
-  "local-endpoint-forbidden": "failed",
-  "local-api-incompatible": "failed",
-  "local-no-review-capable-model": "failed",
-  "local-selected-model-missing": "failed",
   "local-conformance-failed": "failed",
-  "local-cancellation-failed": "failed",
   ready: "passed",
 };
 
@@ -190,7 +219,7 @@ function acknowledgementFor(status: ReadinessStatus): Readiness["acknowledgement
 }
 
 function readinessVariantFor(status: ReadinessStatus): Readiness {
-  const observed = status !== "unconfigured" && status !== "unsupported" && status !== "removed";
+  const observed = status !== "unconfigured" && status !== "unsupported";
   return ReadinessSchema.parse({
     status,
     ready: status === "ready",
@@ -317,35 +346,7 @@ describe("getSetupVerdict", () => {
       ready: false,
       remediation: {
         code: "run-conformance",
-        message: "Run Test readiness to verify structured review support.",
-      },
-    });
-  });
-
-  it("reports skipped when the live check was explicitly skipped", async () => {
-    await seedSelectedConfiguration();
-    const store = await loadStore();
-    await store.recordConfigurationEvidence(
-      "cfg-existing",
-      createAdmissionEvidence({
-        evidenceKey: evidenceKeyFor("cfg-existing"),
-        checkedAt: OBSERVED_AT,
-        status: "skipped",
-      }),
-    );
-    const { getSetupVerdict } = await import("./setup-status.js");
-
-    const result = await getSetupVerdict();
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error(result.error.message);
-    expect(result.value).toMatchObject({
-      configurationId: "cfg-existing",
-      status: "skipped",
-      ready: false,
-      remediation: {
-        code: "enable-live-probe",
-        message: "Satisfy the live-check prerequisites, then test the configuration again.",
+        message: READINESS_PRESENTATION["conformance-pending"].remediation.message,
       },
     });
   });
@@ -373,23 +374,20 @@ describe("getSetupVerdict", () => {
       ready: false,
       remediation: {
         code: "rerun-conformance",
-        message: "Review the safe failure guidance, then test the exact model again.",
+        message: READINESS_PRESENTATION["conformance-failed"].remediation.message,
       },
     });
   });
 
   it("exposes no secret value, reference, or path in any status output", async () => {
     await createReadyConfiguration();
-    const { getSetupStatus, getSetupVerdict } = await import("./setup-status.js");
+    const { getSetupVerdict } = await import("./setup-status.js");
 
     const verdictResult = await getSetupVerdict();
     expect(verdictResult.ok).toBe(true);
     if (!verdictResult.ok) throw new Error(verdictResult.error.message);
-    const statusResult = getSetupStatus();
-    expect(statusResult.ok).toBe(true);
-    if (!statusResult.ok) throw new Error(statusResult.error.message);
 
-    const serialized = JSON.stringify(verdictResult.value) + JSON.stringify(statusResult.value);
+    const serialized = JSON.stringify(verdictResult.value);
     expect(serialized).not.toContain("sk-test-secret-12345");
     expect(serialized).not.toContain("GOOGLE_API_KEY");
     expect(serialized).not.toContain("credentials");
@@ -397,54 +395,63 @@ describe("getSetupVerdict", () => {
   });
 
   it("fails closed with a path-free message when the configuration cannot be read", async () => {
-    writeJson(configPath(), { schemaVersion: 1, providers: [] });
+    writeJson(configPath(), {
+      schemaVersion: 1,
+      settings: { secretsStorage: "file" },
+      providers: [
+        {
+          provider: "gemini",
+          hasApiKey: true,
+          isActive: true,
+          model: "gemini-2.5-flash",
+        },
+      ],
+    });
     const { getSetupVerdict } = await import("./setup-status.js");
 
     const result = await getSetupVerdict();
 
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error("expected a failed verdict");
-    expect(result.error.code).toBe("PERSIST_FAILED");
+    expect(result.error.code).toBe("SECRETS_MIGRATION_FAILED");
     expect(result.error.message).not.toContain(diffgazerHome);
   });
-});
 
-describe("getSetupStatus", () => {
-  it("projects setup state from the selected V2 configuration and stays fail-closed on readiness", async () => {
-    const projectRoot = mkdtempSync(join(tmpdir(), "diffgazer-setup-project-"));
-    mkdirSync(join(projectRoot, ".git"));
-    try {
-      const { getSetupStatus } = await import("./setup-status.js");
+  it("waits for the serialized current snapshot before computing setup", async () => {
+    const readCurrentState = vi.fn();
+    let releaseSnapshot:
+      | ((result: {
+          ok: false;
+          error: { code: "SECRETS_MIGRATION_FAILED"; message: string };
+        }) => void)
+      | undefined;
+    vi.resetModules();
+    vi.doMock("./store.js", () => ({
+      getStore: () => ({
+        readCurrentState: () =>
+          new Promise((resolve) => {
+            readCurrentState();
+            releaseSnapshot = resolve;
+          }),
+      }),
+    }));
+    const { getSetupVerdict } = await import("./setup-status.js");
 
-      const initial = getSetupStatus(projectRoot);
-      expect(initial.ok).toBe(true);
-      if (!initial.ok) throw new Error(initial.error.message);
-      expect(initial.value).toMatchObject({
-        hasSecretsStorage: false,
-        hasProvider: false,
-        hasModel: false,
-        hasTrust: false,
-        isConfigured: false,
-        isReady: false,
-      });
-      expect(initial.value.missing).toEqual(["provider", "model", "trust", "secrets storage"]);
+    const verdict = getSetupVerdict();
+    await Promise.resolve();
+    expect(readCurrentState).toHaveBeenCalledOnce();
+    releaseSnapshot?.({
+      ok: false,
+      error: {
+        code: "SECRETS_MIGRATION_FAILED",
+        message: "Legacy configuration requires manual migration",
+      },
+    });
 
-      await seedSelectedConfiguration();
-
-      const configured = getSetupStatus(projectRoot);
-      expect(configured.ok).toBe(true);
-      if (!configured.ok) throw new Error(configured.error.message);
-      expect(configured.value).toMatchObject({
-        hasSecretsStorage: false,
-        hasProvider: true,
-        hasModel: true,
-        hasTrust: false,
-        isConfigured: true,
-        isReady: false,
-      });
-      expect(configured.value.missing).toEqual(["trust", "secrets storage"]);
-    } finally {
-      rmSync(projectRoot, { recursive: true, force: true });
-    }
+    await expect(verdict).resolves.toMatchObject({
+      ok: false,
+      error: { code: "SECRETS_MIGRATION_FAILED" },
+    });
+    vi.doUnmock("./store.js");
   });
 });

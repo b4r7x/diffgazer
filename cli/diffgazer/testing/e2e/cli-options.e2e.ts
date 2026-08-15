@@ -36,4 +36,17 @@ describe("diffgazer CLI options", () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toMatch(/--theme requires --tui\./);
   });
+
+  test("neutralizes terminal escapes carried by a rejected operand", async () => {
+    const ESC = String.fromCharCode(0x1b);
+    const hostileTheme = `${ESC}]0;pwned${String.fromCharCode(0x07)}${ESC}]52;c;cGF5bG9hZA==${ESC}\\${ESC}]8;;https://evil.example${ESC}\\click`;
+    const result = await runDiffgazer(["--tui", "--theme", hostileTheme]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/Invalid --theme/);
+    expect(result.stderr).not.toContain(ESC);
+    expect(result.stderr).not.toContain("pwned");
+    expect(result.stderr).not.toContain("cGF5bG9hZA==");
+    expect(result.stderr).not.toContain("evil.example");
+  });
 });

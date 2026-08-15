@@ -2,9 +2,9 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   CATALOG_SNAPSHOT,
   type CatalogObservationSource,
+  isOfferableObservation,
   type ModelsDevCatalog,
   ModelsDevCatalogSchema,
-  type ModelsDevModel,
   PROVIDER_OVERLAY,
   parseModelsDevCatalog,
   transformCatalogObservation,
@@ -19,7 +19,7 @@ import type {
   RunnableProductId,
 } from "@diffgazer/core/schemas/config";
 import { z } from "zod";
-import { quarantineCorruptFile, readJsonFileSyncSafe } from "../fs.js";
+import { getFileMtimeMs, quarantineCorruptFile, readJsonFileSyncSafe } from "../fs.js";
 import { log } from "../log.js";
 import { getGlobalModelsDevCatalogPath } from "../paths.js";
 import { type DiskCacheState, isEntryFresh, persistDiskCache } from "./disk-cache.js";
@@ -64,6 +64,7 @@ export type ConfigurationCatalogDiscovery =
 interface ParsedCacheMemo {
   path: string;
   identity: string;
+  mtimeMs: number | null;
   entry: ModelsDevCatalogCache;
 }
 
@@ -88,62 +89,6 @@ let parsedCacheMemo: ParsedCacheMemo | null = null;
 
 const CacheGenerationSchema = z.object({ generationId: z.uuid() });
 
-/** Curated free-quota coverage for overlay-populated products — not admission. */
-type CatalogFreeTierCoverage =
-  | "all"
-  | "zero-priced-only"
-  | { ids?: readonly string[]; families?: readonly string[] };
-
-const CATALOG_FREE_TIER_COVERAGE: Partial<
-  Record<CatalogObservableProductId, CatalogFreeTierCoverage>
-> = {
-  gemini: {
-    ids: ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"],
-  },
-  zai: "zero-priced-only",
-  openrouter: "zero-priced-only",
-  groq: "all",
-  cerebras: "all",
-  mistral: "zero-priced-only",
-};
-
-const pricingTierOf = (model: ModelsDevModel): "free" | "paid" | "unknown" => {
-  if (!model.cost) return "unknown";
-  return model.cost.input === 0 && model.cost.output === 0 ? "free" : "paid";
-};
-
-const matchesFreeTierCoverage = (
-  model: ModelsDevModel,
-  coverage: Exclude<CatalogFreeTierCoverage, "all" | "zero-priced-only">,
-): boolean => {
-  if (coverage.ids?.includes(model.id)) return true;
-  if (model.family && coverage.families?.includes(model.family)) return true;
-  return false;
-};
-
-const isCatalogModelFreeTier = (
-  model: ModelsDevModel,
-  productId: CatalogObservableProductId,
-): boolean => {
-  if (pricingTierOf(model) === "free") return true;
-
-  const coverage = CATALOG_FREE_TIER_COVERAGE[productId];
-  if (!coverage || coverage === "zero-priced-only") return false;
-  if (coverage === "all") return true;
-  return matchesFreeTierCoverage(model, coverage);
-};
-
-const lookupCatalogModel = (
-  catalog: ModelsDevCatalog,
-  sourceProviderId: string,
-  modelId: string,
-): ModelsDevModel | undefined => {
-  const provider = catalog[sourceProviderId];
-  if (!provider) return undefined;
-  const model = provider.models[modelId];
-  return model?.id === modelId ? model : undefined;
-};
-
 const getCacheIdentity = (raw: unknown): string => {
   const generation = CacheGenerationSchema.safeParse(raw);
   if (generation.success) return `generation:${generation.data.generationId}`;
@@ -151,18 +96,27 @@ const getCacheIdentity = (raw: unknown): string => {
 };
 
 const loadCacheStateMemoized = (path: string): LoadedCacheState => {
+  const mtimeMs = getFileMtimeMs(path);
+  // Freshness gate before the multi-megabyte read: an unchanged file serves the
+  // memoized entry without re-reading, JSON.parse-ing, or re-hashing it.
+  const memo = parsedCacheMemo;
+  if (memo?.path === path && mtimeMs !== null && memo.mtimeMs === mtimeMs) {
+    return { state: { status: "ok", entry: memo.entry }, identity: memo.identity };
+  }
+
   const read = readJsonFileSyncSafe<unknown>(path);
   if (read.status === "missing") return { state: { status: "missing" }, identity: "none" };
   if (read.status === "corrupt") return { state: { status: "corrupt" }, identity: "none" };
 
   const identity = getCacheIdentity(read.data);
-  if (parsedCacheMemo?.path === path && parsedCacheMemo.identity === identity) {
-    return { state: { status: "ok", entry: parsedCacheMemo.entry }, identity };
+  if (memo?.path === path && memo.identity === identity) {
+    parsedCacheMemo = { ...memo, mtimeMs };
+    return { state: { status: "ok", entry: memo.entry }, identity };
   }
 
   const parsed = ModelsDevCatalogCacheSchema.safeParse(read.data);
   if (!parsed.success) return { state: { status: "corrupt" }, identity: "none" };
-  parsedCacheMemo = { path, identity, entry: parsed.data };
+  parsedCacheMemo = { path, identity, mtimeMs, entry: parsed.data };
   return { state: { status: "ok", entry: parsed.data }, identity };
 };
 
@@ -224,7 +178,15 @@ const describeObservation = (contextTokens?: number): string => {
   return `${thousands}K context`;
 };
 
-/** Map bounded product observations to picker rows without conferring admission or billing. */
+/**
+ * Map bounded product observations to picker rows without conferring admission
+ * or billing. Only models the catalog states can run the structured review
+ * contract AND the product's model policy admits are offered, and the tier
+ * repeats the catalog's own per-model price rather than a curated free-quota
+ * guess. Applying the policy here — not only at the API boundary — is what lets
+ * a product whose whole offering is filtered away report an honest empty
+ * discovery instead of a silently blank picker.
+ */
 export const modelInfoFromBoundedObservation = (
   catalog: ModelsDevCatalog,
   productId: CatalogObservableProductId,
@@ -241,21 +203,14 @@ export const modelInfoFromBoundedObservation = (
   );
   if (!productObservation) return [];
 
-  return productObservation.models.map((model) => {
-    const catalogModel = lookupCatalogModel(catalog, model.sourceProviderId, model.modelId);
-    const tier =
-      catalogModel && isCatalogModelFreeTier(catalogModel, productId)
-        ? ("free" as const)
-        : ("paid" as const);
-    return {
+  return productObservation.models
+    .filter((model) => isOfferableObservation(productId, model))
+    .map((model) => ({
       id: model.modelId,
       name: model.modelName,
       description: describeObservation(model.contextTokens),
-      tier,
-      ...(model.contextTokens === undefined ? {} : { contextLength: model.contextTokens }),
-      ...(model.outputTokens === undefined ? {} : { maxOutputTokens: model.outputTokens }),
-    };
-  });
+      tier: model.billing,
+    }));
 };
 
 const isOffline = (): boolean => {
@@ -326,7 +281,10 @@ const resultIfNonEmpty = (
     observationSourceForResult(source),
     fetchedAt,
   );
-  return models.length > 0 ? { models, fetchedAt, source, cached: source === "cache" } : null;
+  if (models.length === 0) return null;
+  return source === "cache"
+    ? { models, fetchedAt, source, cached: true }
+    : { models, fetchedAt, source, cached: false };
 };
 
 const snapshotResult = (productId: CatalogObservableProductId): ProviderModelsResponse => {
@@ -535,6 +493,7 @@ const persistIfNotDroppingProviders = (
     parsedCacheMemo = {
       path,
       identity: `generation:${entry.generationId}`,
+      mtimeMs: getFileMtimeMs(path),
       entry,
     };
   } catch (error) {

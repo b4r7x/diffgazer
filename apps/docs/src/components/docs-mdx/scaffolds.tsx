@@ -1,10 +1,9 @@
-import { prepareComponentScaffoldData, prepareHookScaffoldData } from "@/lib/scaffold-data";
 import { AccessibilityNotes } from "./blocks/accessibility-notes";
 import { APIReference } from "./blocks/api-reference";
 import { ConsumptionBlock } from "./blocks/consumption";
 import { Example } from "./blocks/example";
 import { Examples } from "./blocks/examples";
-import { KeyboardNav } from "./blocks/keyboard-nav";
+import { hasKeyboardNavContent, KeyboardNav } from "./blocks/keyboard-nav";
 import { Notes } from "./blocks/notes";
 import { ParameterTableBlock } from "./blocks/parameter-table-block";
 import { ReturnsTable } from "./blocks/returns-table";
@@ -19,12 +18,8 @@ export function ComponentDocScaffold({ hero }: { hero: string }) {
   const library = useCurrentLibrary();
   if (!data || (library !== "ui" && library !== "keys")) return null;
 
-  const scaffold = prepareComponentScaffoldData(library, data);
-  const hasApiReference =
-    Object.keys(scaffold.props).length > 0 ||
-    scaffold.dataAttributes.length > 0 ||
-    scaffold.cssVariables.length > 0;
-  const hasAccessibility = scaffold.keyboard !== null || scaffold.accessibilityNotes.length > 0;
+  const hasAccessibility =
+    hasKeyboardNavContent(data.docs?.keyboard) || (data.docs?.notes?.length ?? 0) > 0;
 
   return (
     <>
@@ -33,7 +28,7 @@ export function ComponentDocScaffold({ hero }: { hero: string }) {
       <SectionHeading id="installation">Installation</SectionHeading>
       <ConsumptionBlock />
 
-      {scaffold.usage && (
+      {data.usageSnippetHighlighted.length > 0 && (
         <>
           <SectionHeading id="usage">Usage</SectionHeading>
           <UsageSnippet />
@@ -42,7 +37,7 @@ export function ComponentDocScaffold({ hero }: { hero: string }) {
 
       <Examples hero={hero} showHeading />
 
-      {hasApiReference && <APIReference />}
+      <APIReference />
 
       {hasAccessibility && (
         <>
@@ -52,7 +47,7 @@ export function ComponentDocScaffold({ hero }: { hero: string }) {
         </>
       )}
 
-      {scaffold.sourceFiles.length > 0 && <SourceViewerBlock />}
+      {data.files.length > 0 && <SourceViewerBlock />}
     </>
   );
 }
@@ -62,39 +57,37 @@ export function HookDocScaffold() {
   const library = useCurrentLibrary();
   if (!data || (library !== "ui" && library !== "keys")) return null;
 
-  const scaffold = prepareHookScaffoldData(library, data);
-
   return (
     <>
-      {scaffold.usage && <UsageSnippet />}
+      <UsageSnippet />
 
       <SectionHeading id="installation">Installation</SectionHeading>
       <ConsumptionBlock />
 
-      {scaffold.parameters.length > 0 && (
+      {(data.docs?.parameters?.length ?? 0) > 0 && (
         <>
           <SectionHeading id="parameters">Parameters</SectionHeading>
           <ParameterTableBlock />
         </>
       )}
 
-      {scaffold.returns && (
+      {data.docs?.returns && (
         <>
           <SectionHeading id="returns">Returns</SectionHeading>
           <ReturnsTable />
         </>
       )}
 
-      {scaffold.examples.length > 0 && <Examples showHeading />}
+      <Examples showHeading />
 
-      {scaffold.notes.length > 0 && (
+      {(data.docs?.notes?.length ?? 0) > 0 && (
         <>
           <SectionHeading id="notes">Notes</SectionHeading>
           <Notes />
         </>
       )}
 
-      {scaffold.sourceFiles.length > 0 && <SourceViewerBlock />}
+      {(data.files?.length ?? 0) > 0 && <SourceViewerBlock />}
     </>
   );
 }

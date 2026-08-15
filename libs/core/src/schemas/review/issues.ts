@@ -1,12 +1,6 @@
 import { z } from "zod";
-import { createDomainErrorSchema } from "../errors.js";
-import {
-  LENS_IDS,
-  type LensId,
-  type ReviewProfile,
-  ReviewSeveritySchema,
-  type SeverityFilter,
-} from "./enums.js";
+import { createDomainErrorCodes, createDomainErrorSchema } from "../errors.js";
+import { LENS_IDS, ReviewSeveritySchema } from "./enums.js";
 
 export { REVIEW_SEVERITY, type ReviewSeverity, ReviewSeveritySchema } from "./enums.js";
 
@@ -20,7 +14,6 @@ export const REVIEW_CATEGORY = [
   "style",
 ] as const;
 export const ReviewCategorySchema = z.enum(REVIEW_CATEGORY);
-export type ReviewCategory = z.infer<typeof ReviewCategorySchema>;
 
 const EVIDENCE_TYPE = ["code", "doc", "trace", "external"] as const;
 const EvidenceTypeSchema = z.enum(EVIDENCE_TYPE);
@@ -59,90 +52,6 @@ export function isValidEvidenceRange(
   );
 }
 
-const EVIDENCE_PRESENTATION_LABELS = {
-  code: "Code evidence",
-  doc: "Documentation",
-  trace: "Trace evidence",
-  external: "External reference",
-} as const satisfies Record<EvidenceRef["type"], string>;
-
-interface EvidencePresentationBase {
-  title: string;
-  sourceText: string;
-  excerpt: string;
-  ordinal: number;
-}
-
-export type EvidencePresentation =
-  | (EvidencePresentationBase & {
-      kind: "code";
-      type: "code";
-      label: (typeof EVIDENCE_PRESENTATION_LABELS)["code"];
-      file: string;
-      startLine?: number;
-    })
-  | (EvidencePresentationBase & {
-      kind: "reference";
-      type: "doc";
-      label: (typeof EVIDENCE_PRESENTATION_LABELS)["doc"];
-    })
-  | (EvidencePresentationBase & {
-      kind: "reference";
-      type: "trace";
-      label: (typeof EVIDENCE_PRESENTATION_LABELS)["trace"];
-    })
-  | (EvidencePresentationBase & {
-      kind: "reference";
-      type: "external";
-      label: (typeof EVIDENCE_PRESENTATION_LABELS)["external"];
-    });
-
-export function toEvidencePresentation(
-  evidence: EvidenceRef,
-  fallbackCodeFile: string,
-  ordinal: number,
-): EvidencePresentation {
-  const base = {
-    title: evidence.title,
-    sourceText: evidence.sourceId,
-    excerpt: evidence.excerpt,
-    ordinal,
-  };
-
-  switch (evidence.type) {
-    case "code":
-      return {
-        ...base,
-        kind: "code",
-        type: "code",
-        label: EVIDENCE_PRESENTATION_LABELS.code,
-        file: evidence.file ?? fallbackCodeFile,
-        startLine: isValidEvidenceRange(evidence.range) ? evidence.range.start : undefined,
-      };
-    case "doc":
-      return {
-        ...base,
-        kind: "reference",
-        type: "doc",
-        label: EVIDENCE_PRESENTATION_LABELS.doc,
-      };
-    case "trace":
-      return {
-        ...base,
-        kind: "reference",
-        type: "trace",
-        label: EVIDENCE_PRESENTATION_LABELS.trace,
-      };
-    case "external":
-      return {
-        ...base,
-        kind: "reference",
-        type: "external",
-        label: EVIDENCE_PRESENTATION_LABELS.external,
-      };
-  }
-}
-
 export const TraceRefSchema = z.object({
   step: z.number(),
   tool: z.string(),
@@ -151,7 +60,6 @@ export const TraceRefSchema = z.object({
   timestamp: z.string(),
   artifacts: z.array(z.string()).optional(),
 });
-export type TraceRef = z.infer<typeof TraceRefSchema>;
 
 const FixPlanStepSchema = z.object({
   step: z.number(),
@@ -188,6 +96,15 @@ export const ReviewIssueSchema = z.object({
   trace: z.array(TraceRefSchema).optional(),
 });
 export type ReviewIssue = z.infer<typeof ReviewIssueSchema>;
+
+/**
+ * A unified diff's leading and trailing whitespace is meaningful, so a patch is
+ * stored byte-for-byte. A payload with no non-whitespace character at all is not
+ * a patch, though, and must not open an empty Patch tab on either surface.
+ */
+export function hasSuggestedPatch(issue: Pick<ReviewIssue, "suggested_patch">): boolean {
+  return issue.suggested_patch !== null && issue.suggested_patch.trim().length > 0;
+}
 
 // Provider responses need to reach the ingestion completeness gate one issue at
 // a time. Keep the same shape and trim semantics as ReviewIssueSchema, but do
@@ -230,9 +147,8 @@ export const ReviewErrorCode = {
   SESSION_EVICTED: "SESSION_EVICTED",
   SESSION_TIMEOUT: "SESSION_TIMEOUT",
   SERVER_SHUTDOWN: "SERVER_SHUTDOWN",
+  TRUST_REQUIRED: "TRUST_REQUIRED",
 } as const;
-
-export type ReviewErrorCode = (typeof ReviewErrorCode)[keyof typeof ReviewErrorCode];
 
 const REVIEW_SPECIFIC_CODES = [
   ReviewErrorCode.NO_DIFF,
@@ -246,7 +162,17 @@ const REVIEW_SPECIFIC_CODES = [
   ReviewErrorCode.SESSION_EVICTED,
   ReviewErrorCode.SESSION_TIMEOUT,
   ReviewErrorCode.SERVER_SHUTDOWN,
+  ReviewErrorCode.TRUST_REQUIRED,
 ] as const;
+
+const REVIEW_ERROR_CODES = createDomainErrorCodes(REVIEW_SPECIFIC_CODES);
+
+/**
+ * Every code `ReviewErrorSchema` accepts, so the named type and the wire
+ * vocabulary cannot drift: the shared codes the domain helper prepends belong to
+ * a review error too, even though the constant above only names review-owned ones.
+ */
+export type ReviewErrorCode = (typeof REVIEW_ERROR_CODES)[number];
 
 export const ReviewErrorSchema = createDomainErrorSchema(REVIEW_SPECIFIC_CODES);
 /** @see cli/server/src/features/review/engine/types.ts ReviewError (lightweight server-internal variant) */
@@ -256,20 +182,16 @@ export const ReviewStreamEventSchema = z.discriminatedUnion("type", [
   // `chunk` carries the server's event-cap warning to the client; it is the only
   // free-text member with a no-op effect on UI step/agent state.
   z.object({ type: z.literal("chunk"), content: z.string() }),
+  // No duration on the wire: the client measures the elapsed time the user
+  // actually saw, and the server's own measurement is persisted on
+  // `ReviewMetadata.durationMs` for the history screen to read back.
   z.object({
     type: z.literal("complete"),
     result: ReviewResultSchema,
     reviewId: z.string(),
-    durationMs: z.number().optional(),
   }),
   z.object({ type: z.literal("error"), error: ReviewErrorSchema }),
 ]);
 export type ReviewStreamEvent = z.infer<typeof ReviewStreamEventSchema>;
 
-export { type SeverityFilter, SeverityFilterSchema } from "./enums.js";
-
-export interface ReviewOptions {
-  profile?: ReviewProfile;
-  lenses?: LensId[];
-  filter?: SeverityFilter;
-}
+export type { SeverityFilter } from "./enums.js";

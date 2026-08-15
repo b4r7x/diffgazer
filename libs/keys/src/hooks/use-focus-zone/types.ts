@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
 import type { UseKeyOptions } from "../use-key.js";
 
+/** Arrow-key transition callback: returns the target zone, or null to block the move. */
 export type ZoneTransition<T extends string> = (params: {
   zone: T;
   key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown";

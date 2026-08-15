@@ -8,13 +8,11 @@ describe("empty-state-live example", () => {
     const user = userEvent.setup();
     render(<EmptyStateLive />);
 
-    // Present (and empty of message) while results exist.
     const liveRegion = screen.getByRole("status");
     expect(liveRegion).toHaveTextContent("");
 
     await user.type(screen.getByRole("searchbox", { name: /filter hooks/i }), "zzz");
 
-    // Same persistent region now carries the announcement.
     expect(screen.getByRole("status")).toBe(liveRegion);
     expect(liveRegion).toHaveTextContent(/no hooks match/i);
   });

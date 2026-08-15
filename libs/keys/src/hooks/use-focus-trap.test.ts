@@ -342,6 +342,22 @@ describe("useFocusTrap", () => {
       expect(document.activeElement).toBe(container.querySelector("#c"));
     });
 
+    it("Tab lands on the Tab-eligible radio when the checked group member has negative tabindex", () => {
+      container = createContainer(
+        '<button id="lead">Lead</button>',
+        '<input id="excluded" type="radio" name="choice" checked tabindex="-1" />',
+        '<input id="eligible" type="radio" name="choice" />',
+      );
+      renderTrap(container);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(container.querySelector("#lead"));
+
+      const event = fireTab();
+      expect(event.defaultPrevented).toBe(true);
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      expect(document.activeElement).toBe(container.querySelector("#eligible"));
+    });
+
     it("moves from a programmatic initial target to the first tabbable element on Tab", () => {
       container = createContainer(
         '<div id="a" tabindex="-1">A</div>',
@@ -761,6 +777,40 @@ describe("useFocusTrap", () => {
 
       // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
       expect(document.activeElement).toBe(container.querySelector("#b"));
+    });
+
+    it("repairs focus to the current initialFocus after the ref object is swapped", async () => {
+      container = createContainer(
+        '<button id="a">A</button>',
+        '<button id="b">B</button>',
+        '<button id="c">C</button>',
+      );
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const firstStep: RefObject<HTMLElement | null> = {
+        current: queryTestElement(container, "a"),
+      };
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const secondStep: RefObject<HTMLElement | null> = {
+        current: queryTestElement(container, "b"),
+      };
+
+      const { rerender } = renderHook(
+        ({ initialFocus }) => {
+          const ref = useRef<HTMLElement>(container);
+          useFocusTrap(ref, { initialFocus });
+        },
+        { initialProps: { initialFocus: firstStep } },
+      );
+      expect(document.activeElement).toBe(firstStep.current);
+
+      rerender({ initialFocus: secondStep });
+
+      // querySelector by id: testing focus movement to non-accessible-name target (keys library convention per AGENTS.md)
+      const transient = queryTestElement(container, "c");
+      transient.focus();
+      transient.remove();
+
+      await waitFor(() => expect(document.activeElement).toBe(secondStep.current));
     });
   });
 

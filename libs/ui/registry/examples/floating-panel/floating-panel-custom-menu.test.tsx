@@ -27,10 +27,20 @@ describe("floating-panel custom menu example", () => {
     await user.click(trigger);
 
     const items = screen.getAllByRole("menuitem");
+    const last = items.length - 1;
     await waitFor(() => expect(items[0]).toHaveFocus());
     await user.keyboard("{ArrowDown}");
     expect(items[1]).toHaveFocus();
     await user.keyboard("{ArrowUp}");
+    expect(items[0]).toHaveFocus();
+
+    await user.keyboard("{End}");
+    expect(items[last]).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(items[0]).toHaveFocus();
+    await user.keyboard("{ArrowUp}");
+    expect(items[last]).toHaveFocus();
+    await user.keyboard("{Home}");
     expect(items[0]).toHaveFocus();
 
     await user.keyboard("{Escape}");
@@ -42,5 +52,50 @@ describe("floating-panel custom menu example", () => {
     await user.click(screen.getByRole("menuitem", { name: "Duplicate" }));
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
+  });
+
+  it("removes menu items from the Tab order and closes toward the next or previous control", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <button type="button">before</button>
+        <FloatingPanelCustomMenuExample />
+        <button type="button">after</button>
+      </>,
+    );
+
+    const trigger = screen.getByRole("button", { name: "actions" });
+    await user.click(trigger);
+    const items = screen.getAllByRole("menuitem");
+    await waitFor(() => expect(items[0]).toHaveFocus());
+    expect(items.every((item) => item.tabIndex === -1)).toBe(true);
+
+    await user.tab();
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "after" })).toHaveFocus();
+
+    await user.click(trigger);
+    await waitFor(() => expect(screen.getAllByRole("menuitem")[0]).toHaveFocus());
+    await user.tab({ shift: true });
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "before" })).toHaveFocus();
+  });
+
+  it("closes on an outside pointer press without stealing focus", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <FloatingPanelCustomMenuExample />
+        <button type="button">outside</button>
+      </>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "actions" }));
+    await waitFor(() => expect(screen.getAllByRole("menuitem")[0]).toHaveFocus());
+
+    const outside = screen.getByRole("button", { name: "outside" });
+    await user.click(outside);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(outside).toHaveFocus();
   });
 });

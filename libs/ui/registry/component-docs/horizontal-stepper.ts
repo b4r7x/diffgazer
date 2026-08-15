@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const horizontalStepperDoc: ComponentDoc = {
   description:
@@ -7,19 +7,19 @@ export const horizontalStepperDoc: ComponentDoc = {
     {
       name: "HorizontalStepper",
       indent: 0,
-      note: "Root ordered list. Owns steps, active value, variant, and accessible name.",
+      note: "Root ordered list. Owns the active value, variant, and accessible name.",
     },
     {
       name: "HorizontalStepper.Step",
       indent: 1,
-      note: "List item that derives status from the parent steps/value pair.",
+      note: "List item whose value and render order derive status from the parent value.",
     },
   ],
   notes: [
     {
       title: "Status Derivation",
       content:
-        "The parent steps array defines order. Steps before value are completed, the matching step is active, and following steps are pending.",
+        "Rendered HorizontalStepper.Step children define order. Steps before value are completed, the matching step is active, and following steps are pending.",
     },
     {
       title: "Variants",
@@ -84,13 +84,6 @@ export const horizontalStepperDoc: ComponentDoc = {
   ],
   props: {
     HorizontalStepper: {
-      steps: {
-        type: "string[]",
-        required: true,
-        defaultValue: null,
-        description:
-          "Ordered step ids used to compute completed/active/pending status relative to value.",
-      },
       value: {
         type: "string",
         required: true,
@@ -120,7 +113,8 @@ export const horizontalStepperDoc: ComponentDoc = {
         type: "ReactNode",
         required: true,
         defaultValue: null,
-        description: "HorizontalStepper.Step children, one per id in steps.",
+        description:
+          "HorizontalStepper.Step children in render order. Their value props define the step ids.",
       },
       className: {
         type: "string",
@@ -134,7 +128,7 @@ export const horizontalStepperDoc: ComponentDoc = {
         type: "string",
         required: true,
         defaultValue: null,
-        description: "Step id matched against the parent value to derive status.",
+        description: "Step id matched against the parent value to derive status and order.",
       },
       children: {
         type: "ReactNode",

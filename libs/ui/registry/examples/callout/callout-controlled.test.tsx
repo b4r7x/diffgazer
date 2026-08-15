@@ -16,6 +16,13 @@ describe("callout-controlled example", () => {
     await user.keyboard("{Enter}");
 
     expect(screen.queryByText("Controlled Callout")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "[ show callout ]" })).toHaveFocus();
+
+    const restore = screen.getByRole("button", { name: "[ show callout ]" });
+    expect(restore).toHaveFocus();
+
+    await user.click(restore);
+
+    expect(screen.getByText("Controlled Callout")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
   });
 });

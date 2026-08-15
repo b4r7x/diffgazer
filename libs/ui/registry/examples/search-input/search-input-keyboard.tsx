@@ -1,20 +1,18 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { SearchInput } from "@/components/ui/search-input";
 // @hidden-imports-ok — demo imports the useNavigation re-export from the hidden use-navigation hook registry item
 import { useNavigation } from "@/hooks/use-navigation";
 
 const items = ["Components", "Hooks", "Utilities", "Themes", "Plugins"];
-const listboxId = "search-results";
-
-function getOptionId(item: string) {
-  return `${listboxId}-${item.toLowerCase()}`;
-}
 
 export default function SearchInputKeyboard() {
+  const listboxId = useId();
   const [query, setQuery] = useState("");
   const listRef = useRef<HTMLUListElement>(null);
+
+  const getOptionId = (item: string) => `${listboxId}-${item.toLowerCase()}`;
 
   const filtered = items.filter((item) => item.toLowerCase().includes(query.toLowerCase()));
 
@@ -24,7 +22,7 @@ export default function SearchInputKeyboard() {
     wrap: true,
     // Starts highlighted so the keyboard treatment is visible without pressing a key.
     defaultHighlighted: "Hooks",
-    onSelect: (value) => setQuery(value),
+    onEnter: (value) => setQuery(value),
   });
 
   return (
@@ -44,13 +42,7 @@ export default function SearchInputKeyboard() {
         aria-activedescendant={highlighted ? getOptionId(highlighted) : undefined}
         aria-expanded={filtered.length > 0}
         aria-autocomplete="list"
-        onEscape={() => {
-          setQuery("");
-          highlight(null);
-        }}
-        onEnter={() => {
-          if (highlighted) setQuery(highlighted);
-        }}
+        onEscape={() => highlight(null)}
         onKeyDown={onKeyDown}
       />
       {/* biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: WAI-ARIA combobox pattern — role="listbox" on a <ul> is the standard popup list paired with the combobox input. */}

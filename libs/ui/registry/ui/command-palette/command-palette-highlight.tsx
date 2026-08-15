@@ -1,6 +1,7 @@
 "use client";
 
 import { Children, type ReactNode } from "react";
+import { foldSearchValue } from "@/lib/search";
 import { useCommandPaletteContext } from "./command-palette-context";
 import {
   CommandPaletteItem,
@@ -24,41 +25,80 @@ export function categorize(value: string): CommandPaletteItemTone {
   return "neutral";
 }
 
+// Grapheme clusters, not code points: a <mark> boundary must never split a
+// surrogate pair or detach a combining mark from its base letter. Array.from
+// is the code-point fallback where Intl.Segmenter is unavailable.
+const graphemeSegmenter =
+  typeof Intl.Segmenter === "function"
+    ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+    : null;
+
+function splitGraphemes(value: string): string[] {
+  if (!graphemeSegmenter) return Array.from(value);
+  return Array.from(graphemeSegmenter.segment(value), (segment) => segment.segment);
+}
+
+function buildFoldIndexMap(graphemes: readonly string[]): { folded: string; indexMap: number[] } {
+  const indexMap: number[] = [];
+  let folded = "";
+  for (let i = 0; i < graphemes.length; i++) {
+    const foldedGrapheme = foldSearchValue(graphemes[i] ?? "");
+    for (let j = 0; j < foldedGrapheme.length; j++) {
+      indexMap.push(i);
+    }
+    folded += foldedGrapheme;
+  }
+  return { folded, indexMap };
+}
+
 export function matchPositions(value: string, search: string): number[] {
   if (!search) return [];
-  const lowerValue = value.toLowerCase();
-  const lowerSearch = search.toLowerCase();
-  const contiguous = lowerValue.indexOf(lowerSearch);
+  const graphemes = splitGraphemes(value);
+  const { folded: foldedValue, indexMap } = buildFoldIndexMap(graphemes);
+  const foldedSearch = foldSearchValue(search);
+  const contiguous = foldedValue.indexOf(foldedSearch);
   if (contiguous !== -1) {
-    return Array.from({ length: lowerSearch.length }, (_, i) => contiguous + i);
+    const positions = new Set<number>();
+    for (let i = contiguous; i < contiguous + foldedSearch.length; i++) {
+      positions.add(indexMap[i] ?? 0);
+    }
+    return [...positions].sort((a, b) => a - b);
   }
   const positions: number[] = [];
   let cursor = 0;
-  for (const char of lowerSearch) {
-    const index = lowerValue.indexOf(char, cursor);
+  for (const char of foldedSearch) {
+    const index = foldedValue.indexOf(char, cursor);
     if (index === -1) return [];
-    positions.push(index);
+    positions.push(indexMap[index] ?? 0);
     cursor = index + 1;
   }
   return positions;
 }
 
 function renderWithMatches(value: string, search: string): ReactNode {
+  const graphemes = splitGraphemes(value);
   const positions = matchPositions(value, search);
   if (positions.length === 0) return value;
   const set = new Set(positions);
   const nodes: ReactNode[] = [];
-  for (let i = 0; i < value.length; i++) {
-    const char = value[i] ?? "";
-    if (set.has(i)) {
+  let index = 0;
+  // Emit one node per run, not per grapheme: labels re-render on every keystroke,
+  // and adjacent single-character marks are announced once each by screen readers.
+  while (index < graphemes.length) {
+    const isMatch = set.has(index);
+    let end = index;
+    while (end < graphemes.length && set.has(end) === isMatch) end++;
+    const run = graphemes.slice(index, end).join("");
+    if (isMatch) {
       nodes.push(
-        <mark key={i} data-slot="command-palette-item-match">
-          {char}
+        <mark key={index} data-slot="command-palette-item-match">
+          {run}
         </mark>,
       );
     } else {
-      nodes.push(char);
+      nodes.push(run);
     }
+    index = end;
   }
   return nodes;
 }

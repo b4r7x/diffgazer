@@ -19,7 +19,7 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@diffgazer/core/api/hooks")>();
   return {
     ...actual,
-    useInit: () => ({
+    useConfigurationInit: () => ({
       data: {
         configured: true,
         config: { provider: "openrouter", model: "test-model" },

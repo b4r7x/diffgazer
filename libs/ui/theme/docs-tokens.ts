@@ -16,13 +16,13 @@ export interface ThemeDocsPrimitive<N extends `--${string}` = `--${string}`> {
   semanticTokens: ThemeDocsPrimitiveSemanticTokens;
 }
 
-const EMPTY_SEMANTIC_TOKENS: ThemeDocsPrimitiveSemanticTokens = { dark: [], light: [] };
-
+// Required, not defaulted: theme-parity.test.ts checks every primitive's edges against
+// theme.css, so a primitive that omitted them would fail that test rather than fall back.
 function primitive<const N extends `--${string}`>(
   name: N,
   darkValue: string,
   lightValue: string,
-  semanticTokens: ThemeDocsPrimitiveSemanticTokens = EMPTY_SEMANTIC_TOKENS,
+  semanticTokens: ThemeDocsPrimitiveSemanticTokens,
 ): ThemeDocsPrimitive<N> {
   return { name, darkValue, lightValue, semanticTokens };
 }

@@ -31,11 +31,10 @@
   },
   "type": "module",
   "bin": {
-    "diffgazer": "bin/diffgazer.js"
+    "diffgazer": "./dist/index.js"
   },
   "files": [
     "dist",
-    "bin/diffgazer.js",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
@@ -49,19 +48,19 @@
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "pnpm run build:deps && pnpm run clean && pnpm build:web && pnpm build:bundle && pnpm build:notices",
-    "build:deps": "pnpm --dir=../.. turbo run build --filter=@diffgazer/core --filter=@diffgazer/server --filter=@diffgazer/keys --filter=@diffgazer/ui --filter=@diffgazer/web",
-    "build:web": "pnpm --filter @diffgazer/web exec tsc -b && pnpm --filter @diffgazer/web exec vite build --outDir ../../cli/diffgazer/dist/web",
+    "build:deps": "pnpm --dir=../.. turbo run build --filter=@diffgazer/core --filter=@diffgazer/server --filter=@diffgazer/keys --filter=@diffgazer/ui",
+    "build:web": "node scripts/build-embedded-web.mjs",
     "build:bundle": "tsup --metafile",
     "build:notices": "node --import tsx scripts/generate-third-party-notices.ts",
     "prepack": "pnpm run build",
+    "prepublishOnly": "pnpm run type-check && pnpm run test",
     "dev": "tsx --tsconfig tsconfig.json src/index.tsx --dev",
     "type-check": "tsc --noEmit && tsc --noEmit -p scripts/tsconfig.json && tsc --noEmit -p tsconfig.config.json",
     "check": "biome check .",
     "test": "vitest run",
     "test:types": "tsc --noEmit -p tsconfig.test.json",
     "test:watch": "vitest",
-    "start": "node bin/diffgazer.js",
-    "prepublishOnly": "pnpm run build && pnpm run type-check && pnpm run test"
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "@hono/node-server": "^2.0.12",
@@ -83,10 +82,12 @@
     "@diffgazer/keys": "workspace:*",
     "@diffgazer/server": "workspace:*",
     "@diffgazer/web": "workspace:*",
+    "@testing-library/react": "^16.3.2",
     "@types/figlet": "^1.7.0",
-    "@types/node": "^25.2.3",
+    "@types/node": "^22.10.0",
     "@types/react": "^19.2.13",
     "ink-testing-library": "^4.0.0",
+    "strip-ansi": "^7.2.0",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",

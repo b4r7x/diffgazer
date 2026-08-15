@@ -115,7 +115,12 @@ export function NavigationListGroup({
 
   if (variant === "section") {
     return (
-      <div className={cn("border-t border-border first:border-t-0", className)}>
+      // biome-ignore lint/a11y/useSemanticElements: role="group" labels a related set of navigation options; <fieldset> is for form controls and is not appropriate here.
+      <div
+        role="group"
+        aria-label={groupLabel}
+        className={cn("border-t border-border first:border-t-0", className)}
+      >
         <NavigationListGroupHeader
           variant="section"
           headerId={headerId}

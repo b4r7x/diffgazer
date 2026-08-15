@@ -1,7 +1,7 @@
 import { refreshAllDiagnostics, useDiagnosticsData } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { formatTimestampOrNA } from "@diffgazer/core/format";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { formatLocaleDateTimeOrFallback } from "@diffgazer/core/format";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import {
   BACK_SHORTCUT,
   deriveDiagnosticsActions,
@@ -41,15 +41,27 @@ export function DiagnosticsScreen(): ReactElement {
     handleRefreshContext: handleRegenerateContext,
     isRefreshingContext: isRefreshing,
     refetchContext,
+    refetchInit,
   } = useDiagnosticsData();
 
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
+
+  const { refreshAllDisabled, contextActionDisabled } = deriveDiagnosticsActions({
+    canRegenerate,
+    isRefreshing,
+    isRefreshingAll,
+  });
 
   const { isButtonActive } = useSettingsZone({
     buttonCount: 2,
     disabled: isRefreshing,
     initialZone: "buttons",
     hasList: false,
+    // A disabled action must not take focus: Button renders no focus fill when
+    // it is disabled, so arrow navigation would land on an invisible cursor.
+    disabledButtons: [refreshAllDisabled, contextActionDisabled].flatMap((isDisabled, index) =>
+      isDisabled ? [index] : [],
+    ),
   });
 
   usePageFooter({
@@ -60,16 +72,10 @@ export function DiagnosticsScreen(): ReactElement {
     rightShortcuts: [BACK_SHORTCUT],
   });
 
-  const { refreshAllDisabled, contextActionDisabled } = deriveDiagnosticsActions({
-    canRegenerate,
-    isRefreshing,
-    isRefreshingAll,
-  });
-
   const handleRefreshAll = () => {
     if (refreshAllDisabled) return;
     setIsRefreshingAll(true);
-    void refreshAllDiagnostics({ retryServer, refetchContext }).finally(() => {
+    void refreshAllDiagnostics({ retryServer, refetchContext, refetchInit }).finally(() => {
       setIsRefreshingAll(false);
     });
   };
@@ -118,7 +124,7 @@ export function DiagnosticsScreen(): ReactElement {
               {contextStatus === "ready" && contextGeneratedAt && (
                 <KeyValue
                   label="Generated at"
-                  value={formatTimestampOrNA(contextGeneratedAt)}
+                  value={formatLocaleDateTimeOrFallback(contextGeneratedAt)}
                   labelWidth={14}
                 />
               )}

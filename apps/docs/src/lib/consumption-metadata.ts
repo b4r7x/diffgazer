@@ -13,8 +13,6 @@ const KEYS_PACKAGE_ONLY = new Set([
   "use-focus-zone",
   "use-action-row-navigation",
   "keyboard-provider",
-  "use-keyboard-context",
-  "use-optional-keyboard-context",
 ]);
 
 /**
@@ -24,13 +22,15 @@ const KEYS_PACKAGE_ONLY = new Set([
  *
  * SOURCE-TEXT CONSUMER: scripts/monorepo/check-live-registry.mjs regex-matches
  * the literal `PUBLISH_GATED = true|false` assignment in THIS file to decide
- * whether CI skips the live host check. Do not rename, move, or reformat this
- * assignment without updating that script (it now fails loudly if the literal
- * disappears).
+ * whether CI skips the live host check. When ungated, readiness checks DNS and
+ * HEAD reachability only; byte-for-byte comparison runs only when
+ * DIFFGAZER_LIVE_REGISTRY_REQUIRED=1 (post-deploy verification). Do not rename,
+ * move, or reformat this assignment without updating that script (it now fails
+ * loudly if the literal disappears).
  */
 export const PUBLISH_GATED = true;
 
-export const PUBLISH_GATE_NOTE =
+const PUBLISH_GATE_NOTE =
   "Diffgazer packages are not yet published to npm. Until the first release, install from a local checkout of the repository.";
 
 export const HOSTED_REGISTRY_GATE_NOTE =
@@ -85,21 +85,18 @@ export function getConsumptionMetadata(
       dgaddName,
       publishGated: PUBLISH_GATED,
       paths: {
+        // Package-only hooks have no registry item at all, so neither the copy
+        // nor the dgadd path can ever work for them. Their unavailability is the
+        // classification, not the publish gate: releasing must not turn these
+        // instructions on.
         copy: isKeysPackageOnly
-          ? {
-              available: !PUBLISH_GATED,
-              note: PUBLISH_GATED ? KEYS_PACKAGE_GATE_NOTE : undefined,
-            }
+          ? { available: false, note: KEYS_PACKAGE_GATE_NOTE }
           : {
               available: !PUBLISH_GATED,
               note: PUBLISH_GATED ? HOSTED_REGISTRY_GATE_NOTE : undefined,
             },
         dgadd: isKeysPackageOnly
-          ? {
-              available: !PUBLISH_GATED,
-              command: getInstallCommand(library, dgaddName) ?? undefined,
-              note: PUBLISH_GATED ? KEYS_PACKAGE_GATE_NOTE : undefined,
-            }
+          ? { available: false, note: KEYS_PACKAGE_GATE_NOTE }
           : {
               available: true,
               command: getInstallCommand(library, dgaddName) ?? undefined,

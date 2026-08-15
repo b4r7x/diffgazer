@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const menuDoc: ComponentDoc = {
   description:
@@ -48,7 +48,7 @@ export const menuDoc: ComponentDoc = {
   ],
   usage: { example: "menu-default" },
   examples: [
-    { name: "menu-nested", title: "Detail Variant" },
+    { name: "menu-detail", title: "Detail Variant" },
     { name: "menu-grouped", title: "Grouped with Labels" },
     { name: "menu-checkbox-radio", title: "Checkbox and Radio Items" },
     { name: "menu-icons", title: "Custom Icons" },
@@ -257,7 +257,7 @@ export const menuDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          "Leading icon rendered in the indicator slot. Replaces the default ▐/> indicator when provided.",
+          "Leading icon rendered in the indicator slot. Replaces the default ▌/> indicator when provided.",
       },
       children: {
         type: "ReactNode",

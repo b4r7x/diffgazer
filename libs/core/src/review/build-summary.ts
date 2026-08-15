@@ -1,10 +1,11 @@
 import type { LensStat } from "../schemas/events/index.js";
+import type { CategoryStats } from "../schemas/presentation/index.js";
 import {
-  type CategoryStats,
   calculateSeverityCounts,
+  type ReviewIssue,
+  type ReviewSeverity,
   type SeverityCounts,
-} from "../schemas/presentation/index.js";
-import type { ReviewIssue, ReviewSeverity } from "../schemas/review/index.js";
+} from "../schemas/review/index.js";
 import { capitalize, pluralize } from "../strings.js";
 
 export interface ReviewSummary {
@@ -58,7 +59,6 @@ export interface LensSummaryRow {
   errorCode?: string;
 }
 
-/** Maps persisted per-lens stats into display rows (label + status + error code). */
 export function buildLensSummaryRows(lensStats: LensStat[] | undefined): LensSummaryRow[] {
   if (!lensStats) return [];
   return lensStats.map((stat) => ({

@@ -145,6 +145,78 @@ describe("orchestrateReview", () => {
     if (!failed.ok) expect(failed.error.code).toBe("NETWORK_ERROR");
   });
 
+  it("stops dispatching the remaining lenses at the first structured-output failure", async () => {
+    const generate = vi.fn(async (_prompt: string, schema: z.ZodType) => {
+      void schema;
+      return err({ code: "PARSE_ERROR", message: "Adapter response failed schema validation" });
+    });
+    const client = { provider: "openrouter", generate } as unknown as AIClient;
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts"]),
+      { lenses: ["correctness", "security", "performance"] },
+      () => {},
+      { concurrency: 1 },
+    );
+
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("PARSE_ERROR");
+  });
+
+  it("keeps the findings of a lens that decoded while another lens failed structured output", async () => {
+    const client = makeClient([
+      err({
+        code: "STREAM_ERROR",
+        message: "Adapter response failed schema validation",
+        diagnostic: {
+          code: "schema-failed",
+          safeMessage: "Adapter response failed schema validation",
+          retryable: false,
+          remediation: "Select a different model.",
+          correlationId: "correlation-1",
+        },
+      }),
+      ok({ issues: [makeIssue({ id: "issue-1", file: "file-1" })] }),
+    ]);
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts"]),
+      { lenses: ["correctness", "security"] },
+      () => {},
+      { concurrency: 2 },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.issues.map((issue) => issue.id)).toEqual(["security:issue-1"]);
+      expect(result.value.lensStats).toMatchObject([
+        { lensId: "correctness", status: "failed", errorCode: "STREAM_ERROR" },
+        { lensId: "security", issueCount: 1, status: "success" },
+      ]);
+    }
+  });
+
+  it("treats a structured-output failure after a successful lens as a flake", async () => {
+    const client = makeClient([
+      ok({ issues: [makeIssue({ id: "issue-1", file: "file-1" })] }),
+      err({ code: "PARSE_ERROR", message: "Adapter response failed schema validation" }),
+    ]);
+
+    const result = await orchestrateReview(
+      client,
+      createDiffForFiles(["src/a.ts"]),
+      { lenses: ["correctness", "security"] },
+      () => {},
+      { concurrency: 1 },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.issues).toHaveLength(1);
+  });
+
   it("honors the severity filter from review options", async () => {
     const client = makeClient([
       ok({

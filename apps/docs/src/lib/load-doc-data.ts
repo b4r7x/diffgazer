@@ -1,10 +1,6 @@
 import { z } from "zod";
-import {
-  type HookPageData,
-  type HookSourceData,
-  sourceFileSchema,
-  sourceFileWithPathSchema,
-} from "@/lib/generated-doc-data";
+import { sourceFileSchema, sourceFileWithPathSchema } from "@/lib/doc-data-schemas";
+import type { HookPageData, HookSourceData } from "@/lib/generated-doc-data";
 import { isDocsLibraryId } from "@/lib/library";
 import type { ComponentPageData, ComponentSourceData } from "@/types/data";
 
@@ -34,24 +30,18 @@ function isDocSourceType(value: string): value is DocSourceType {
   return value === "components" || value === "hooks";
 }
 
-const componentSourceDataSchema = z
-  .object({
-    source: z
-      .record(z.string(), sourceFileSchema)
-      .refine((source) => Object.keys(source).length > 0),
-    mergedSource: z.string(),
-    crossDeps: z
-      .array(z.object({ library: z.string(), type: z.string(), items: z.array(z.string()) }))
-      .optional(),
-  })
-  .passthrough();
+const componentSourceDataSchema = z.looseObject({
+  source: z.record(z.string(), sourceFileSchema).refine((source) => Object.keys(source).length > 0),
+  mergedSource: z.string(),
+  crossDeps: z
+    .array(z.object({ library: z.string(), type: z.string(), items: z.array(z.string()) }))
+    .optional(),
+});
 
-const hookSourceDataSchema = z
-  .object({
-    source: sourceFileSchema,
-    files: z.array(sourceFileWithPathSchema).optional(),
-  })
-  .passthrough();
+const hookSourceDataSchema = z.looseObject({
+  source: sourceFileSchema,
+  files: z.array(sourceFileWithPathSchema).optional(),
+});
 
 function isDocSourceData<T extends DocSourceType>(
   type: T,

@@ -8,7 +8,7 @@ import { useApiKeyEntry } from "./use-api-key-entry.js";
 describe("useApiKeyEntry", () => {
   it("submits the typed key in paste mode and clears the value", async () => {
     const onSubmit = vi.fn(async () => true);
-    const { result } = renderHook(() => useApiKeyEntry({ envVarName: "OPENAI_API_KEY", onSubmit }));
+    const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
 
     expect(result.current.canSubmit).toBe(false);
     await act(async () => {
@@ -29,24 +29,11 @@ describe("useApiKeyEntry", () => {
     expect(result.current.value).toBe("");
   });
 
-  it("submits the fixed env var name in env mode", async () => {
-    const onSubmit = vi.fn(async () => true);
-    const { result } = renderHook(() => useApiKeyEntry({ envVarName: "OPENAI_API_KEY", onSubmit }));
-
-    act(() => result.current.setMethod("env"));
-    expect(result.current.canSubmit).toBe(true);
-
-    await act(async () => {
-      await result.current.submit();
-    });
-
-    expect(onSubmit).toHaveBeenCalledWith("env", "OPENAI_API_KEY");
-  });
-
   it("uses an explicit submit method instead of the current render snapshot", async () => {
     const onSubmit = vi.fn(async () => true);
-    const { result } = renderHook(() => useApiKeyEntry({ envVarName: "OPENAI_API_KEY", onSubmit }));
+    const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
 
+    act(() => result.current.setValue("OPENAI_API_KEY"));
     await act(async () => {
       await result.current.submit("env");
     });
@@ -56,7 +43,7 @@ describe("useApiKeyEntry", () => {
 
   it("captures a failed submit and clears it on the next input change", async () => {
     const onSubmit = vi.fn().mockRejectedValueOnce(new Error("save boom"));
-    const { result } = renderHook(() => useApiKeyEntry({ envVarName: "OPENAI_API_KEY", onSubmit }));
+    const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
 
     act(() => result.current.setValue("sk-test"));
     await act(async () => {
@@ -117,7 +104,7 @@ describe("useApiKeyEntry", () => {
     expect(result.current.value).toBe("");
   });
 
-  it("treats the typed value as the env var when no fixed name is provided", async () => {
+  it("submits the typed value as the env var name in env mode", async () => {
     const onSubmit = vi.fn(async () => true);
     const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
 
@@ -134,7 +121,7 @@ describe("useApiKeyEntry", () => {
 
   it("reset restores the initial entry state after a failed submit", async () => {
     const onSubmit = vi.fn().mockRejectedValueOnce(new Error("save boom"));
-    const { result } = renderHook(() => useApiKeyEntry({ envVarName: "X", onSubmit }));
+    const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
 
     act(() => {
       result.current.setMethod("env");
@@ -150,5 +137,46 @@ describe("useApiKeyEntry", () => {
     expect(result.current.method).toBe("paste");
     expect(result.current.value).toBe("");
     expect(result.current.error).toBeNull();
+  });
+
+  it("routes credentialless saves through the same guard and error channel", async () => {
+    const onSubmit = vi.fn().mockRejectedValueOnce(new Error("local save failed"));
+    const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
+
+    await act(async () => {
+      await result.current.submitCredentialless();
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith("env", "");
+    expect(result.current.error).toBe("local save failed");
+    expect(result.current.isSubmitting).toBe(false);
+  });
+
+  it("declines a credentialless duplicate while the first save is pending", async () => {
+    let resolveSubmit!: (committed: boolean) => void;
+    const onSubmit = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveSubmit = resolve;
+        }),
+    );
+    const { result } = renderHook(() => useApiKeyEntry({ onSubmit }));
+
+    let submitPromise!: Promise<boolean>;
+    let duplicatePromise!: Promise<boolean>;
+    act(() => {
+      submitPromise = result.current.submitCredentialless();
+      duplicatePromise = result.current.submitCredentialless();
+    });
+
+    expect(result.current.isSubmitting).toBe(true);
+    expect(onSubmit).toHaveBeenCalledOnce();
+    await expect(duplicatePromise).resolves.toBe(false);
+
+    await act(async () => {
+      resolveSubmit(true);
+      await expect(submitPromise).resolves.toBe(true);
+    });
+    expect(result.current.isSubmitting).toBe(false);
   });
 });

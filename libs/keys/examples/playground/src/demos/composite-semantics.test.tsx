@@ -1,47 +1,33 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { KeyboardWrapper } from "../testing/keyboard-wrapper";
 import { CommandPaletteDemo } from "./command-palette";
+import { ListNavigationDemo } from "./list-navigation";
 import { TabBarDemo } from "./tab-bar";
 
 function expectSelectedTabOwnsPanel(tablistName: string) {
   const tablist = screen.getByRole("tablist", { name: tablistName });
-  const selectedTab = tablist.querySelector('[role="tab"][aria-selected="true"]');
-  if (!(selectedTab instanceof HTMLElement)) throw new Error("expected a selected tab");
+  const selectedTab = within(tablist).getByRole("tab", { selected: true });
+  const tabName = selectedTab.textContent ?? "";
 
-  const panelId = selectedTab.getAttribute("aria-controls");
-  if (!panelId) throw new Error("expected the selected tab to control a panel");
-  const panel = document.getElementById(panelId);
-  if (!(panel instanceof HTMLElement)) throw new Error("expected the controlled panel to exist");
-
-  expect(panel.getAttribute("role")).toBe("tabpanel");
+  // The id relationship itself is the contract, so it is cross-checked by hand.
+  const panel = screen.getByRole("tabpanel", { name: tabName });
+  expect(selectedTab.getAttribute("aria-controls")).toBe(panel.id);
   expect(panel.getAttribute("aria-labelledby")).toBe(selectedTab.id);
-  expect(panel.hidden).toBe(false);
 }
 
 function expectTabControlsVisiblePanel(tabName: string, expectedContent: string) {
-  const tab = screen.getByRole("tab", { name: tabName });
-  expect(tab.getAttribute("aria-selected")).toBe("true");
+  const tab = screen.getByRole("tab", { name: tabName, selected: true });
+  const panel = screen.getByRole("tabpanel", { name: tabName });
 
-  const panelId = tab.getAttribute("aria-controls");
-  if (!panelId) throw new Error(`expected the "${tabName}" tab to control a panel`);
-  const panel = document.getElementById(panelId);
-  if (!(panel instanceof HTMLElement))
-    throw new Error(`expected the "${tabName}" tab's panel to exist`);
-
-  expect(panel.hidden).toBe(false);
+  expect(tab.getAttribute("aria-controls")).toBe(panel.id);
   expect(panel.textContent).toBe(expectedContent);
 }
 
 function expectTabDeselectedAndHidden(tabName: string) {
-  const tab = screen.getByRole("tab", { name: tabName });
-  expect(tab.getAttribute("aria-selected")).toBe("false");
-
-  const panelId = tab.getAttribute("aria-controls");
-  if (!panelId) throw new Error(`expected the "${tabName}" tab to control a panel`);
-  const panel = document.getElementById(panelId);
-  expect(panel instanceof HTMLElement && panel.hidden).toBe(true);
+  expect(screen.getByRole("tab", { name: tabName, selected: false })).toBeTruthy();
+  expect(screen.queryByRole("tabpanel", { name: tabName })).toBeNull();
 }
 
 describe("playground composite semantics", () => {
@@ -52,10 +38,30 @@ describe("playground composite semantics", () => {
     await user.keyboard("{Control>}k{/Control}");
 
     const dialog = screen.getByRole("dialog", { name: "Command Palette" });
-    expect(dialog.querySelectorAll('[role="option"]')).toHaveLength(0);
+    expect(within(dialog).queryAllByRole("option")).toHaveLength(0);
     for (const name of ["Save File", "Open File", "Open Settings", "Toggle Theme"]) {
       expect(screen.getByRole("button", { name })).toBeTruthy();
     }
+  });
+
+  it("keeps playground sidebar buttons activatable while list navigation is open", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <nav aria-label="Playground demos">
+          <button type="button">Tab Bar</button>
+        </nav>
+        <ListNavigationDemo />
+      </>,
+      { wrapper: KeyboardWrapper },
+    );
+
+    const sidebarButton = screen.getByRole("button", { name: "Tab Bar" });
+    await user.click(sidebarButton);
+    expect(document.activeElement).toBe(sidebarButton);
+
+    await user.keyboard("{Enter}");
+    expect(document.activeElement).toBe(sidebarButton);
   });
 
   it("links selected horizontal and vertical tabs to their labelled panels", async () => {

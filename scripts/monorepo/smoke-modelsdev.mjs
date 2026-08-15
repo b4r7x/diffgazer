@@ -6,12 +6,13 @@ import { ENV } from "./lib/env.mjs";
 import { errorMessage } from "./lib/error-message.mjs";
 import {
   assertCatalogProviders,
+  buildHostedProbeTuples,
   collectReachableBundleFiles,
   emitProviderProbeResults,
   enabledSnapshotProviders,
   finalizeStrictProbeResults,
   findSnapshotInBundle,
-  HOSTED_PROBE_CREDENTIAL_ENVS,
+  LIVE_PROBE_OPT_IN_ENV,
 } from "./lib/smoke-modelsdev.mjs";
 import { fetchJsonWithLimit, networkAllowed } from "./smoke-shared/network.mjs";
 
@@ -20,24 +21,6 @@ const LABEL = "live models.dev catalog";
 const DIFFGAZER_DIST = resolve(root, "cli/diffgazer/dist");
 const DIFFGAZER_ENTRY = resolve(DIFFGAZER_DIST, "index.js");
 const MAX_LIVE_CATALOG_BYTES = 4 * 1024 * 1024;
-
-function buildHostedProbeTuples(productRegistry) {
-  return Object.values(productRegistry)
-    .filter((product) => product.kind === "runnable" && product.transportFamily === "hosted-api")
-    .map((product) => {
-      const modelPolicy = product.modelPolicy;
-      const modelId =
-        "suggestedModelId" in modelPolicy && modelPolicy.suggestedModelId
-          ? modelPolicy.suggestedModelId
-          : null;
-      return {
-        providerId: product.id,
-        modelId,
-        requiresEntitlement: product.id === "qwen",
-        entitlementEnv: "QWEN_WORKSPACE_ID",
-      };
-    });
-}
 
 async function loadHostedLiveProbeRunner() {
   try {
@@ -83,15 +66,18 @@ function assertSnapshotInlinedInBundle(evidence, assertEvidence) {
 
 async function run() {
   const {
-    assertCatalogSnapshotBundleEvidence,
     CATALOG_SNAPSHOT,
-    getCatalogSnapshotBundleEvidence,
     parseModelsDevCatalog,
     PROVIDER_DERIVED,
     PROVIDER_OVERLAY,
     transformCatalogObservation,
   } = await import(resolve(root, "libs/core/dist/catalog/index.js"));
-  const { PRODUCT_REGISTRY } = await import(resolve(root, "libs/core/dist/providers/index.js"));
+  const { assertCatalogSnapshotBundleEvidence, getCatalogSnapshotBundleEvidence } = await import(
+    resolve(root, "libs/core/dist/testing/catalog-bundle-evidence.js")
+  );
+  const { CREDENTIAL_ENV_VARS, PRODUCT_REGISTRY } = await import(
+    resolve(root, "libs/core/dist/providers/index.js")
+  );
 
   const catalogToModelInfo = (catalog, productId) => {
     const observation = transformCatalogObservation({
@@ -103,10 +89,10 @@ async function run() {
   };
 
   const enabledProviders = enabledSnapshotProviders(PROVIDER_OVERLAY);
-  const probeTuples = buildHostedProbeTuples(PRODUCT_REGISTRY);
+  const probeTuples = buildHostedProbeTuples(PRODUCT_REGISTRY, CREDENTIAL_ENV_VARS);
   const strictSkips = process.env[ENV.smokeStrictSkips] === "1";
   const runHostedLiveProbe =
-    networkAllowed() && process.env.DIFFGAZER_LIVE_PROBES === "1"
+    networkAllowed() && process.env[LIVE_PROBE_OPT_IN_ENV] === "1"
       ? await loadHostedLiveProbeRunner()
       : null;
 
@@ -139,7 +125,7 @@ async function run() {
       }
       const descriptor = {
         productId: tuple.providerId,
-        credentialEnv: HOSTED_PROBE_CREDENTIAL_ENVS[tuple.providerId],
+        credentialEnv: tuple.credentialEnv,
         modelId: tuple.modelId,
         requiresEntitlement: tuple.requiresEntitlement,
         workspaceAccountId: process.env.QWEN_WORKSPACE_ID ?? null,

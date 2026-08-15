@@ -2,18 +2,18 @@ import "../testing/terminal-mock";
 import type { BoundApi } from "@diffgazer/core/api";
 import { escapeRegExp } from "@diffgazer/core/redaction";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
+import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { createTestQueryClient } from "../../../testing/query-client";
 import {
   ARROW_DOWN,
   catalogModelsResponse,
   countPrefixes,
   flush,
   flushUntil,
-  GEMINI_CONFIGURATION,
   geminiName,
   makeGeminiApi,
-  makeQueryClient,
   Wrapper,
 } from "../testing/model-select-overlay";
 import { ModelSelectOverlay } from "./model-select-overlay";
@@ -191,7 +191,7 @@ describe("ModelSelectOverlay stale discovery", () => {
   });
 
   test("clears discovery errors when the configuration changes while open", async () => {
-    const queryClient = makeQueryClient();
+    const queryClient = createTestQueryClient();
     const getConfigurationModels = vi
       .fn<BoundApi["getConfigurationModels"]>()
       .mockRejectedValueOnce(new Error("Model discovery failed. Test the configuration again."))

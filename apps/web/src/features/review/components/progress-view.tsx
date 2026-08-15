@@ -6,6 +6,7 @@ import {
   type LogStreamState,
   type ReviewEvent,
   type ReviewStreamErrorGuidance,
+  sanitizePresentationText,
 } from "@diffgazer/core/review";
 import type { TransportFamily } from "@diffgazer/core/schemas/config";
 import type { AgentState, LensStat } from "@diffgazer/core/schemas/events";
@@ -55,6 +56,8 @@ export interface ReviewProgressViewProps {
   /** Transport of the executing configuration; recovery guidance fails neutral without it. */
   transportFamily?: TransportFamily;
   reviewId?: string | null;
+  contextRefreshError?: string | null;
+  onRetryContextRefresh?: () => void;
   onRetry?: (reviewId: string) => void;
   onViewResults?: () => void;
   onCancel?: () => void;
@@ -129,7 +132,9 @@ function ErrorDisplay({
     <div className="shrink-0 px-4 pb-3">
       <Panel tone="error" role="alert" aria-live="assertive" className="p-4 text-left max-w-prose">
         <div className="text-error-text mb-2 text-lg font-bold">{guidance.title}</div>
-        <div className="text-muted-foreground font-mono text-sm mb-2">{error}</div>
+        <div className="text-muted-foreground font-mono text-sm mb-2">
+          {sanitizePresentationText(error)}
+        </div>
         <div className="text-muted-foreground mb-4 text-sm">{guidance.guidance}</div>
         <div className="flex flex-wrap gap-3">
           {onBack && (
@@ -163,6 +168,20 @@ const PANEL_TONE_BY_LIVENESS = {
   quiet: "warning",
   stalled: "error",
 } as const satisfies Record<LogStreamState, "warning" | "error" | undefined>;
+
+function ContextRefreshErrorNotice({ error, onRetry }: { error: string; onRetry?: () => void }) {
+  return (
+    <Callout tone="warning" live className="mb-8">
+      <Callout.Title>Context snapshot unavailable</Callout.Title>
+      <Callout.Content>{sanitizePresentationText(error)}</Callout.Content>
+      {onRetry ? (
+        <Button variant="outline" size="sm" bracket className="mt-3" onClick={onRetry}>
+          Retry
+        </Button>
+      ) : null}
+    </Callout>
+  );
+}
 
 /**
  * The run naming its own silence. Nothing animates and nothing moves: the panel
@@ -209,6 +228,8 @@ export function ReviewProgressView({
   errorCode,
   transportFamily,
   reviewId,
+  contextRefreshError,
+  onRetryContextRefresh,
   onRetry,
   onViewResults,
   onCancel,
@@ -280,7 +301,16 @@ export function ReviewProgressView({
               className={isRunning && liveness.state === "stalled" ? "opacity-40" : undefined}
             />
 
-            {contextSnapshot && !isRunning && <ContextSnapshotPreview snapshot={contextSnapshot} />}
+            {contextRefreshError ? (
+              <ContextRefreshErrorNotice
+                error={contextRefreshError}
+                onRetry={onRetryContextRefresh}
+              />
+            ) : null}
+
+            {contextSnapshot && !isRunning ? (
+              <ContextSnapshotPreview snapshot={contextSnapshot} />
+            ) : null}
           </ScrollArea>
 
           <div className="shrink-0 px-4">

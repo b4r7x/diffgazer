@@ -1,15 +1,15 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { REMOVED_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
-
-const REMOVED_PRODUCT_ID = REMOVED_PRODUCT_IDS[0];
-
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
-import { sha256CanonicalJsonSync } from "@diffgazer/core/schemas/review";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { executionLimitsFromBudget } from "../../shared/lib/ai/admission/service.js";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  RUNTIME_IDENTITY,
+  STRUCTURED_OUTPUT_SCHEMA_SHA256,
+} from "../../shared/lib/ai/admission/protocol.js";
 import { createAdmissionEvidence } from "../../shared/lib/config/admission-evidence.js";
+import { executionLimitsFromBudget } from "../../shared/lib/config/budget-ceiling.js";
 import { DEFAULT_CONFIGURATION_BUDGET } from "../../shared/lib/config/store.js";
 import {
   catalog,
@@ -55,7 +55,7 @@ const supportedRecord = (overrides: Record<string, unknown> = {}) => ({
   productId: "gemini",
   input: { transportFamily: "hosted-api", productId: "gemini", endpoint: GEMINI_ENDPOINT },
   selectedModelId: null,
-  acknowledgement: { noticeVersion: 1, acceptedAt: null },
+  acknowledgement: { noticeId: "gemini-hosted-api", noticeVersion: 1, acceptedAt: null },
   evidenceReference: null,
   budget: DEFAULT_BUDGET,
   createdAt: CREATED_AT,
@@ -63,20 +63,7 @@ const supportedRecord = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const removedRecord = () => ({
-  schemaVersion: 2,
-  status: "removed",
-  configurationId: "cfg-removed",
-  revision: 1,
-  productId: REMOVED_PRODUCT_ID,
-  transportFamily: "hosted-api",
-  selectedModelId: null,
-  acknowledgement: null,
-  evidenceReference: null,
-  budget: null,
-  createdAt: CREATED_AT,
-  updatedAt: CREATED_AT,
-});
+const unknownRecord = () => ({ schemaVersion: 99, configurationId: "cfg-future" });
 
 const createGeminiAction = (
   credential: { kind: "literal"; value: string } | { kind: "environment" },
@@ -121,8 +108,8 @@ const evidenceKeyFor = (configurationId: string): EvidenceKey => ({
   region: null,
   workspaceAccountReference: null,
   modelId: "gemini-2.5-flash",
-  runtime: { identity: "diffgazer-server", version: "1.0.0" },
-  structuredOutputSchemaSha256: "1".repeat(64),
+  runtime: RUNTIME_IDENTITY,
+  structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
   noticeVersion: 1,
   limits: executionLimitsFromBudget(DEFAULT_CONFIGURATION_BUDGET),
 });
@@ -154,6 +141,9 @@ async function recordLeaseHookCalls(): Promise<string[]> {
       },
       drain: (configurationId) => {
         events.push(`drain:${configurationId}`);
+      },
+      clearRevocation: (configurationId) => {
+        events.push(`clearRevocation:${configurationId}`);
       },
     },
   });
@@ -203,7 +193,9 @@ describe("configuration service actions", () => {
     expect(selected).toMatchObject({ ok: true, value: { action: "select", status: "succeeded" } });
 
     const tested = await runConfigurationAction({ action: "test", configurationId });
-    expect(tested).toMatchObject({ ok: true, value: { action: "test", status: "succeeded" } });
+    // The seam-default probe observes nothing and records no evidence, so the
+    // action executes (ok) but must not report a succeeded test.
+    expect(tested).toMatchObject({ ok: true, value: { action: "test", status: "failed" } });
 
     const updated = await runConfigurationAction(updateGeminiAction(configurationId, 1));
     expect(updated).toMatchObject({ ok: true, value: { action: "update", status: "succeeded" } });
@@ -250,48 +242,6 @@ describe("configuration service actions", () => {
       modelId: "gemini/latest",
     });
     expect(selected).toMatchObject({ ok: false, error: { code: "INVALID_ACTION" } });
-  });
-
-  it("rejects removed configurations and surfaces the migrate-or-delete notice", async () => {
-    writeJson(configPath(), v2Config([removedRecord()]));
-    writeJson(
-      secretsPath(),
-      v2Secrets([
-        {
-          configurationId: "cfg-removed",
-          revision: 1,
-          kind: "file-0600",
-          filePath: literalSecretPathFor("cfg-removed", 1),
-          status: "removed",
-        },
-      ]),
-    );
-    mkdirSync(dirname(literalSecretPathFor("cfg-removed", 1)), { recursive: true });
-    writeFileSync(literalSecretPathFor("cfg-removed", 1), "sk-zai-coding-secret", { mode: 0o600 });
-    const { runConfigurationAction, listConfigurations } = await loadService();
-
-    const inspected = await runConfigurationAction({
-      action: "inspect",
-      configurationId: "cfg-removed",
-    });
-    expect(inspected.ok).toBe(true);
-    if (!inspected.ok) return;
-    expect(inspected.value.readiness).toMatchObject({
-      status: "removed",
-      remediation: {
-        code: "migrate-or-delete",
-        message: "Create a supported replacement or explicitly delete this record.",
-      },
-    });
-
-    const update = await runConfigurationAction(updateGeminiAction("cfg-removed", 1));
-    expect(update).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
-
-    const listed = await listConfigurations();
-    expect(listed.ok).toBe(true);
-    if (!listed.ok) return;
-    expect(listed.value.configurations).toHaveLength(1);
-    expect(listed.value.configurations[0]?.readiness.remediation.code).toBe("migrate-or-delete");
   });
 
   it("serializes no secret material in action responses", async () => {
@@ -575,7 +525,7 @@ describe("configuration catalog model discovery", () => {
       async (tuple: { configurationId: string; productId: string }) => ({
         ...tuple,
         status: "passed",
-        models: [{ ...catalogModel("glm-4.7"), contextLength: 0 }],
+        models: [{ ...catalogModel("glm-4.7"), tier: "premium" }],
         fetchedAt: discoveredAt,
         source: "snapshot",
         cached: false,
@@ -599,26 +549,12 @@ describe("configuration catalog model discovery", () => {
     expect(catalog.discoverConfigurationCatalog).not.toHaveBeenCalled();
   });
 
-  it("rejects removed configurations without touching the catalog", async () => {
-    writeJson(configPath(), v2Config([removedRecord()]));
-    writeJson(
-      secretsPath(),
-      v2Secrets([
-        {
-          configurationId: "cfg-removed",
-          revision: 1,
-          kind: "file-0600",
-          filePath: literalSecretPathFor("cfg-removed", 1),
-          status: "removed",
-        },
-      ]),
-    );
-    mkdirSync(dirname(literalSecretPathFor("cfg-removed", 1)), { recursive: true });
-    writeFileSync(literalSecretPathFor("cfg-removed", 1), "sk-zai-coding-secret", { mode: 0o600 });
+  it("rejects unknown configurations without touching the catalog", async () => {
+    writeJson(configPath(), v2Config([unknownRecord()]));
     const service = await loadService();
     await loadStore();
 
-    const result = await service.discoverConfigurationModels("cfg-removed");
+    const result = await service.discoverConfigurationModels("cfg-future");
 
     expect(result).toMatchObject({ ok: false, error: { code: "CONFIGURATION_UNSUPPORTED" } });
     expect(catalog.discoverConfigurationCatalog).not.toHaveBeenCalled();
@@ -729,7 +665,7 @@ describe("configuration service bootstrap reads", () => {
     ).toEqual(["cfg-first", "cfg-last"]);
   });
 
-  it("keeps the readable rows when the middle record throws on inspect", async () => {
+  it("returns supported rows in persisted order", async () => {
     const configurationIds = ["cfg-first", "cfg-middle", "cfg-last"];
     writeJson(
       configPath(),
@@ -748,14 +684,6 @@ describe("configuration service bootstrap reads", () => {
       ),
     );
     const { listConfigurations } = await loadService();
-    const store = await loadStore();
-    const runAction = store.runConfigurationAction.bind(store);
-    vi.spyOn(store, "runConfigurationAction").mockImplementation(async (action) => {
-      if (action.action === "inspect" && action.configurationId === "cfg-middle") {
-        throw new Error("inspect exploded");
-      }
-      return runAction(action);
-    });
 
     const result = await listConfigurations();
 
@@ -763,7 +691,7 @@ describe("configuration service bootstrap reads", () => {
     if (!result.ok) return;
     expect(
       result.value.configurations.map(({ configuration }) => configuration.configurationId),
-    ).toEqual(["cfg-first", "cfg-last"]);
+    ).toEqual(configurationIds);
   });
 
   it("lists supported configurations with safe summaries and readiness", async () => {
@@ -821,9 +749,9 @@ describe("configuration service bootstrap reads", () => {
       }),
     );
 
-    const tested = await runConfigurationAction({ action: "test", configurationId });
-    expect(tested.ok).toBe(true);
-    if (!tested.ok) return;
-    expect(tested.value.readiness).toMatchObject({ status: "ready", ready: true });
+    const inspected = await runConfigurationAction({ action: "inspect", configurationId });
+    expect(inspected.ok).toBe(true);
+    if (!inspected.ok) return;
+    expect(inspected.value.readiness).toMatchObject({ status: "ready", ready: true });
   });
 });

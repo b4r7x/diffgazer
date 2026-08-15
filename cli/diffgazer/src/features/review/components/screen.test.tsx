@@ -1,17 +1,19 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import { makeIssue } from "@diffgazer/core/testing/factories";
+import { makeReadyInitResponse } from "@diffgazer/core/testing/provider-fixtures";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { NavigationProvider } from "../../../app/providers/navigation";
 import type { Route } from "../../../lib/routes";
-import { makeReviewLifecycleBase } from "../../../testing/review-lifecycle-base";
+import { flush } from "../../../testing/flush";
+import { makeReviewLifecycleBase } from "../testing/review-lifecycle-base";
 
 const apiMocks = vi.hoisted(() => ({
   clearActiveSession: vi.fn(),
   createReview: vi.fn(),
   useCreateReview: vi.fn(),
-  useInit: vi.fn(),
+  useConfigurationInit: vi.fn(),
   useReview: vi.fn(),
   useReviewLifecycleBase: vi.fn(),
 }));
@@ -19,7 +21,7 @@ const apiMocks = vi.hoisted(() => ({
 // Boundary mock: network - core api hooks wrap fetch-backed API calls.
 vi.mock("@diffgazer/core/api/hooks", () => ({
   useCreateReview: apiMocks.useCreateReview,
-  useInit: apiMocks.useInit,
+  useConfigurationInit: apiMocks.useConfigurationInit,
   useReview: apiMocks.useReview,
   useReviewLifecycleBase: apiMocks.useReviewLifecycleBase,
   useReviewSessionCache: () => ({
@@ -29,7 +31,7 @@ vi.mock("@diffgazer/core/api/hooks", () => ({
 
 vi.mock("../../../components/layout/global", () => ({
   getContentZoneRows: (rows: number) => Math.max(rows - 4, 0),
-  useContentZone: () => ({ columns: 100, rows: 30, contentColumns: 100, contentRows: 26 }),
+  useContentZone: () => ({ columns: 100, contentColumns: 100, contentRows: 26 }),
 }));
 
 import { CliThemeProvider } from "../../../theme/provider";
@@ -44,20 +46,8 @@ describe("ReviewScreen", () => {
     apiMocks.clearActiveSession.mockReset();
     apiMocks.createReview.mockReset();
     apiMocks.useCreateReview.mockReturnValue({ mutateAsync: apiMocks.createReview });
-    apiMocks.useInit.mockReturnValue({
-      data: {
-        config: { provider: "gemini", model: "gemini-2.5-flash" },
-        configured: true,
-        setup: {
-          hasSecretsStorage: true,
-          hasProvider: true,
-          hasModel: true,
-          hasTrust: true,
-          isConfigured: true,
-          isReady: true,
-          missing: [],
-        },
-      },
+    apiMocks.useConfigurationInit.mockReturnValue({
+      data: makeReadyInitResponse(),
       isLoading: false,
     });
     apiMocks.useReview.mockReset();
@@ -66,10 +56,8 @@ describe("ReviewScreen", () => {
 
   test("renders live review progress when no saved review is loaded", () => {
     apiMocks.useReview.mockReturnValue({
-      isSuccess: true,
-      isError: false,
+      status: "success",
       data: undefined,
-      error: null,
     });
 
     const { lastFrame } = renderReviewScreen();
@@ -84,10 +72,8 @@ describe("ReviewScreen", () => {
 
   test("renders the saved review summary when saved review data is available", () => {
     apiMocks.useReview.mockReturnValue({
-      isSuccess: true,
-      isError: false,
+      status: "success",
       data: { review: { metadata: { id: "review-123", durationMs: 10 }, result: { issues: [] } } },
-      error: null,
     });
 
     const { lastFrame } = renderReviewScreen();
@@ -97,11 +83,33 @@ describe("ReviewScreen", () => {
     expect(frame).toContain("Found 0 issues across 0 files with issues.");
   });
 
+  test("renders the terminal receipt for a saved review that never completed", () => {
+    apiMocks.useReview.mockReturnValue({
+      status: "success",
+      data: {
+        review: {
+          metadata: { id: "review-cancelled", durationMs: 10 },
+          result: { issues: [] },
+          execution: {
+            receipt: { outcome: "budget-exhausted", usageAvailability: "unavailable" },
+          },
+        },
+      },
+    });
+
+    const { lastFrame } = renderReviewScreen();
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toMatch(/budget exhausted/i);
+    expect(frame).toMatch(/usage unavailable/i);
+    expect(frame).not.toMatch(/review complete/i);
+    expect(frame).not.toMatch(/progress overview/i);
+  });
+
   test("renders the persisted duplicate-collapse notice in a reopened summary", () => {
     const issue = makeIssue({ id: "issue-1", title: "Saved issue" });
     apiMocks.useReview.mockReturnValue({
-      isSuccess: true,
-      isError: false,
+      status: "success",
       data: {
         review: {
           metadata: { id: "review-123", durationMs: 10 },
@@ -109,7 +117,6 @@ describe("ReviewScreen", () => {
           droppedDuplicates: 1,
         },
       },
-      error: null,
     });
 
     const { lastFrame } = renderReviewScreen();
@@ -125,8 +132,7 @@ describe("ReviewScreen", () => {
       symptom: "Selected issue symptom",
     });
     apiMocks.useReview.mockReturnValue({
-      isSuccess: true,
-      isError: false,
+      status: "success",
       data: {
         review: {
           metadata: { id: "review-123", durationMs: 10 },
@@ -134,7 +140,6 @@ describe("ReviewScreen", () => {
           droppedDuplicates: 1,
         },
       },
-      error: null,
     });
 
     const { lastFrame } = renderReviewScreen({
@@ -153,15 +158,13 @@ describe("ReviewScreen", () => {
   test("falls back to the saved review summary for an unknown route issue", () => {
     const issue = makeIssue({ id: "issue-1", symptom: "Issue detail symptom" });
     apiMocks.useReview.mockReturnValue({
-      isSuccess: true,
-      isError: false,
+      status: "success",
       data: {
         review: {
           metadata: { id: "review-123", durationMs: 10 },
           result: { issues: [issue] },
         },
       },
-      error: null,
     });
 
     const { lastFrame } = renderReviewScreen({
@@ -177,9 +180,7 @@ describe("ReviewScreen", () => {
 
   test("surfaces an error view on a non-404 saved-read failure instead of resuming the stream", () => {
     apiMocks.useReview.mockReturnValue({
-      isSuccess: false,
-      isError: true,
-      data: undefined,
+      status: "error",
       error: new Error("legacy review rejected"),
     });
 
@@ -192,10 +193,7 @@ describe("ReviewScreen", () => {
 
   test("live active-session resume ignores pending saved-review reads", () => {
     apiMocks.useReview.mockReturnValue({
-      isSuccess: false,
-      isError: false,
-      data: undefined,
-      error: null,
+      status: "pending",
     });
 
     const { lastFrame } = renderReviewScreen({
@@ -206,15 +204,13 @@ describe("ReviewScreen", () => {
     });
 
     expect(lastFrame()).toMatch(/progress overview/i);
-    expect(apiMocks.useReview).toHaveBeenCalledWith("");
+    // null, not a sentinel id: the saved-review query must stay unrunnable.
+    expect(apiMocks.useReview).toHaveBeenCalledWith(null);
   });
 
   test("shows the loading state for a pending saved-review read on the default non-live route", () => {
     apiMocks.useReview.mockReturnValue({
-      isSuccess: false,
-      isError: false,
-      data: undefined,
-      error: null,
+      status: "pending",
     });
 
     const { lastFrame } = renderReviewScreen();
@@ -226,9 +222,7 @@ describe("ReviewScreen", () => {
 
   test("live active-session resume ignores saved-review read errors", () => {
     apiMocks.useReview.mockReturnValue({
-      isSuccess: false,
-      isError: true,
-      data: undefined,
+      status: "error",
       error: new Error("history lookup failed"),
     });
 
@@ -244,33 +238,19 @@ describe("ReviewScreen", () => {
   });
 
   test("active-session resume bypasses setup while new review start remains setup-gated", () => {
-    apiMocks.useInit.mockReturnValue({
-      data: {
-        config: { provider: null, model: null },
-        configured: false,
-        setup: {
-          hasSecretsStorage: true,
-          hasProvider: false,
-          hasModel: false,
-          hasTrust: true,
-          isConfigured: false,
-          isReady: false,
-          missing: ["provider", "model"],
-        },
-      },
+    apiMocks.useConfigurationInit.mockReturnValue({
+      data: { ...makeReadyInitResponse(), configurations: [], selectedConfigurationId: null },
       isLoading: false,
     });
     apiMocks.useReviewLifecycleBase.mockImplementation((options) =>
       makeReviewLifecycleBase({
-        gate: options.isConfigured || options.allowResumeWithoutSetup ? "running" : "unconfigured",
+        gate:
+          options.readiness?.ready || options.allowResumeWithoutSetup ? "running" : "unconfigured",
         isStreaming: true,
       }),
     );
     apiMocks.useReview.mockReturnValue({
-      isSuccess: false,
-      isError: false,
-      data: undefined,
-      error: null,
+      status: "pending",
     });
 
     const live = renderReviewScreen({
@@ -289,6 +269,105 @@ describe("ReviewScreen", () => {
 
     expect(fresh.lastFrame()).toMatch(/configuration not ready/i);
     expect(apiMocks.createReview).not.toHaveBeenCalled();
+  });
+});
+
+describe("ReviewScreen saved-review fallback", () => {
+  let onNotFoundInSession: ((reviewId: string) => void) | undefined;
+
+  beforeEach(() => {
+    onNotFoundInSession = undefined;
+    apiMocks.useReviewLifecycleBase.mockImplementation((options) => {
+      onNotFoundInSession = options.onNotFoundInSession;
+      return makeReviewLifecycleBase({ isStreaming: true });
+    });
+  });
+
+  test("falls back to a saved review after a live stream returns 404", async () => {
+    const reviewId = "review-123";
+    const issue = makeIssue({ id: "saved-1", title: "Saved fallback issue" });
+    apiMocks.useReview.mockImplementation((id: string) => {
+      if (!id) {
+        return { status: "pending" as const };
+      }
+      return {
+        status: "success" as const,
+        data: {
+          review: { metadata: { id: reviewId, durationMs: 10 }, result: { issues: [issue] } },
+        },
+      };
+    });
+
+    const { lastFrame } = renderReviewScreen({
+      screen: "review",
+      reviewId,
+      mode: "staged",
+      live: true,
+    });
+
+    expect(lastFrame()).toMatch(/progress overview/i);
+    expect(onNotFoundInSession).toBeTypeOf("function");
+
+    onNotFoundInSession?.(reviewId);
+    await flush();
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toMatch(/review complete/i);
+    expect(frame).toContain("Saved fallback issue");
+    expect(frame).not.toMatch(/progress overview/i);
+  });
+
+  test("reports not-found when both the live stream and saved review return 404", async () => {
+    const reviewId = "review-123";
+    const notFoundError = Object.assign(new Error("HTTP 404"), { status: 404 });
+    apiMocks.useReview.mockImplementation((id: string) => {
+      if (!id) {
+        return { status: "pending" as const };
+      }
+      return { status: "error" as const, error: notFoundError };
+    });
+
+    const { lastFrame } = renderReviewScreen({
+      screen: "review",
+      reviewId,
+      mode: "staged",
+      live: true,
+    });
+
+    onNotFoundInSession?.(reviewId);
+    await flush();
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toMatch(/review not found/i);
+    expect(frame).toContain("no saved results are available");
+    expect(frame).not.toMatch(/progress overview/i);
+  });
+
+  test("resumes the stream when a saved review returns 404 while setup is incomplete", () => {
+    apiMocks.useConfigurationInit.mockReturnValue({
+      data: { ...makeReadyInitResponse(), configurations: [], selectedConfigurationId: null },
+      isLoading: false,
+    });
+    apiMocks.useReviewLifecycleBase.mockImplementation((options) =>
+      makeReviewLifecycleBase({
+        gate:
+          options.readiness?.ready || options.allowResumeWithoutSetup ? "running" : "unconfigured",
+        isStreaming: true,
+      }),
+    );
+    apiMocks.useReview.mockReturnValue({
+      status: "error",
+      error: Object.assign(new Error("HTTP 404"), { status: 404 }),
+    });
+
+    const { lastFrame } = renderReviewScreen({
+      screen: "review",
+      reviewId: "missing-review",
+      mode: "staged",
+    });
+
+    expect(lastFrame()).toMatch(/progress overview/i);
+    expect(lastFrame()).not.toMatch(/configuration not ready/i);
   });
 });
 

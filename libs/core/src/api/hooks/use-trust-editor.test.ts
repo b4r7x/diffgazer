@@ -3,22 +3,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { TrustConfig } from "../../schemas/config/index.js";
+import { makeTrustConfig as makeTrust } from "../../testing/factories.js";
 import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
 import { TRUST_EDITOR_MESSAGES, useTrustEditor } from "./use-trust-editor.js";
-
-const TRUSTED_AT = "2026-05-13T12:00:00.000Z";
-
-function makeTrust(overrides: Partial<TrustConfig> = {}): TrustConfig {
-  return {
-    projectId: "proj-1",
-    repoRoot: "/work/proj",
-    trustedAt: TRUSTED_AT,
-    capabilities: { readFiles: true, runCommands: false },
-    trustMode: "persistent",
-    ...overrides,
-  };
-}
 
 function makeWrapper(api: Partial<BoundApi>) {
   return createTestQueryWrapper({ api }).Wrapper;
@@ -124,6 +112,33 @@ describe("useTrustEditor", () => {
     await waitFor(() => expect(result.current.capabilities.readFiles).toBe(false));
   });
 
+  it("tells the user there is nothing to revoke before any trust is recorded", () => {
+    const callbacks = makeCallbacks();
+    const { result } = renderHook(
+      () => useTrustEditor({ projectId: null, repoRoot: "/work/proj", trust: null }, callbacks),
+      { wrapper: makeWrapper(api) },
+    );
+    act(() => result.current.handleRevoke());
+    expect(callbacks.onError).toHaveBeenCalledWith(TRUST_EDITOR_MESSAGES.nothingToRevoke);
+    expect(deleteTrust).not.toHaveBeenCalled();
+    expect(callbacks.onRevoked).not.toHaveBeenCalled();
+  });
+
+  it("grants first-run trust when the repo root is known but no identity is recorded", async () => {
+    const callbacks = makeCallbacks();
+    const { result } = renderHook(
+      () => useTrustEditor({ projectId: null, repoRoot: "/work/proj", trust: null }, callbacks),
+      { wrapper: makeWrapper(api) },
+    );
+    act(() => result.current.handleCapabilitiesChange({ readFiles: true, runCommands: false }));
+    act(() => result.current.handleSave());
+    await waitFor(() => expect(callbacks.onSaved).toHaveBeenCalledTimes(1));
+    expect(saveTrust).toHaveBeenCalledWith({
+      capabilities: { readFiles: true },
+      trustMode: "persistent",
+    });
+  });
+
   it("surfaces the save failure message", async () => {
     saveTrust.mockRejectedValueOnce(new Error("boom"));
     const callbacks = makeCallbacks();
@@ -146,6 +161,7 @@ describe("useTrustEditor", () => {
       saveFailed: "Failed to save trust settings",
       revoked: "Trust has been revoked for this repository",
       revokeFailed: "Failed to revoke trust",
+      nothingToRevoke: "No trust has been recorded for this repository",
     });
   });
 });

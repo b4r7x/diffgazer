@@ -2,32 +2,34 @@
 
 import { useState } from "react";
 import { Stepper, type StepperVariant } from "@/components/ui/stepper";
-import { ToggleGroup } from "@/components/ui/toggle-group";
+import { createToggleGroup } from "@/components/ui/toggle-group";
 
-const VARIANTS: { value: StepperVariant; label: string }[] = [
-  { value: "ascii", label: "ascii" },
-  { value: "numbered", label: "numbered" },
-  { value: "bullet", label: "bullet" },
-  { value: "tag", label: "tag" },
-  { value: "progress", label: "progress" },
-];
+const VARIANTS = [
+  "ascii",
+  "numbered",
+  "bullet",
+  "tag",
+  "progress",
+] as const satisfies readonly StepperVariant[];
+
+const StepperVariantGroup = createToggleGroup(VARIANTS);
 
 export default function StepperVariants() {
   const [variant, setVariant] = useState<StepperVariant>("ascii");
 
   return (
     <div className="flex flex-col gap-4">
-      <ToggleGroup<StepperVariant>
+      <StepperVariantGroup
         value={variant}
         onChange={(v) => v && setVariant(v)}
         label="Stepper variant"
       >
-        {VARIANTS.map(({ value, label }) => (
-          <ToggleGroup.Item key={value} value={value}>
-            {label}
-          </ToggleGroup.Item>
+        {VARIANTS.map((value) => (
+          <StepperVariantGroup.Item key={value} value={value}>
+            {value}
+          </StepperVariantGroup.Item>
         ))}
-      </ToggleGroup>
+      </StepperVariantGroup>
 
       <Stepper variant={variant}>
         <Stepper.Step stepId="init" status="completed">

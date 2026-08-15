@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const kbdDoc: ComponentDoc = {
   description: "Keyboard key indicator rendered as an inline kbd element with terminal styling.",

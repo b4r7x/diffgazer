@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const checkboxDoc: ComponentDoc = {
   description:
@@ -275,7 +275,7 @@ export const checkboxDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          "ID reference for an external label. Composed with the visible label unless aria-label is supplied.",
+          "ID reference for an external label. Use when another element already names the group. Composed with the visible label unless aria-label is supplied.",
       },
     },
     CheckboxItem: {

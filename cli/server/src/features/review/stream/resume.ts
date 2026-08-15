@@ -2,12 +2,7 @@ import { getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
-import {
-  type ExecutionResult,
-  ReviewErrorCode,
-  TERMINAL_OUTCOMES,
-  type TerminalOutcome,
-} from "@diffgazer/core/schemas/review";
+import { ReviewErrorCode, type TerminalOutcome } from "@diffgazer/core/schemas/review";
 import type { Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import { createGitService } from "../../../shared/lib/git/service.js";
@@ -16,6 +11,8 @@ import { errorResponse } from "../../../shared/lib/http/response.js";
 import { log } from "../../../shared/lib/log.js";
 import { getProjectSessionGeneration } from "../../../shared/lib/session-registry.js";
 import { hasRepoReadAccess } from "../../../shared/middlewares/trust-guard.js";
+import { resolveGitDiff } from "../diff.js";
+import { buildReviewInputHash } from "../service.js";
 import { isTerminalEvent } from "./events.js";
 import { streamActiveSessionToSSE } from "./replay.js";
 import { writeSSEError } from "./sse.js";
@@ -25,25 +22,6 @@ interface FreshnessFailure {
   code: typeof ReviewErrorCode.SESSION_STALE;
   message: string;
   status: 409;
-}
-
-const FAILED_TERMINAL_OUTCOMES = TERMINAL_OUTCOMES.filter(
-  (outcome): outcome is Exclude<TerminalOutcome, "completed"> => outcome !== "completed",
-);
-
-const sessionExecutions = new Map<string, ExecutionResult>();
-
-/** Binds the immutable admitted execution snapshot for stream resume validation. */
-export function bindSessionExecution(reviewId: string, execution: ExecutionResult): void {
-  sessionExecutions.set(reviewId, execution);
-}
-
-export function clearSessionExecution(reviewId: string): void {
-  sessionExecutions.delete(reviewId);
-}
-
-export function getBoundSessionExecution(reviewId: string): ExecutionResult | undefined {
-  return sessionExecutions.get(reviewId);
 }
 
 function findTerminalEvent(
@@ -56,12 +34,7 @@ function findTerminalEvent(
   return undefined;
 }
 
-export function deriveSessionTerminalOutcome(
-  session: ActiveSession,
-): TerminalOutcome | "incomplete" {
-  const bound = sessionExecutions.get(session.reviewId);
-  if (bound) return bound.receipt.outcome;
-
+function deriveSessionTerminalOutcome(session: ActiveSession): TerminalOutcome | "incomplete" {
   const terminal = findTerminalEvent(session.events);
   if (!terminal) return "incomplete";
   if (terminal.type === "complete") return "completed";
@@ -92,14 +65,12 @@ function executionFingerprintMismatch(
   session: ActiveSession,
   requestedFingerprint: string | undefined,
 ): boolean {
-  const bound = sessionExecutions.get(session.reviewId);
-  const sessionFingerprint =
-    bound?.receipt.executionFingerprint ?? session.admittedExecutionFingerprint ?? undefined;
+  const sessionFingerprint = session.admittedExecutionFingerprint ?? undefined;
   if (!requestedFingerprint || !sessionFingerprint) return false;
   return requestedFingerprint !== sessionFingerprint;
 }
 
-function resumableSessionForReplay(session: ActiveSession): ActiveSession | FreshnessFailure {
+function resumableSessionForReplay(session: ActiveSession): ActiveSession {
   const outcome = deriveSessionTerminalOutcome(session);
   if (session.isComplete && outcome !== "completed" && outcome !== "incomplete") {
     return {
@@ -107,16 +78,22 @@ function resumableSessionForReplay(session: ActiveSession): ActiveSession | Fres
       events: sanitizeReplayEvents(session.events, outcome),
     };
   }
-  if (session.isComplete && outcome === "completed") {
-    const bound = sessionExecutions.get(session.reviewId);
-    if (bound && bound.receipt.outcome !== "completed") {
-      return {
-        ...session,
-        events: sanitizeReplayEvents(session.events, bound.receipt.outcome),
-      };
+  return session;
+}
+
+function scopeFilesFromKey(scopeKey: string): string[] | undefined {
+  for (const part of scopeKey.split("|")) {
+    if (!part.startsWith("f:")) continue;
+    try {
+      const parsed: unknown = JSON.parse(part.slice(2));
+      if (Array.isArray(parsed) && parsed.every((entry) => typeof entry === "string")) {
+        return parsed;
+      }
+    } catch {
+      return undefined;
     }
   }
-  return session;
+  return undefined;
 }
 
 async function assertSessionFresh(
@@ -124,15 +101,54 @@ async function assertSessionFresh(
   projectPath: string,
 ): Promise<Result<void, FreshnessFailure>> {
   const gitService = createGitService({ cwd: projectPath });
+
+  if (session.reviewInputHash) {
+    const headCommitResult = await gitService.getHeadCommit();
+    if (!headCommitResult.ok) {
+      return ok(undefined);
+    }
+
+    const currentHeadCommit = headCommitResult.value;
+    if (currentHeadCommit !== session.headCommit) {
+      return err({
+        code: ReviewErrorCode.SESSION_STALE,
+        message: "Session is stale: repository state changed. Start a new review.",
+        status: 409,
+      });
+    }
+
+    const parsedResult = await resolveGitDiff({
+      gitService,
+      mode: session.mode,
+      files: scopeFilesFromKey(session.scopeKey),
+      emit: async () => undefined,
+      reviewId: session.reviewId,
+    });
+    if (!parsedResult.ok) {
+      return ok(undefined);
+    }
+
+    const currentHash = buildReviewInputHash({
+      headCommit: currentHeadCommit,
+      reviewConfigKey: session.reviewConfigKey,
+      parsed: parsedResult.value,
+    });
+    if (currentHash !== session.reviewInputHash) {
+      return err({
+        code: ReviewErrorCode.SESSION_STALE,
+        message: "Session is stale: repository state changed. Start a new review.",
+        status: 409,
+      });
+    }
+
+    return ok(undefined);
+  }
+
   const [headCommitResult, statusHashResult] = await Promise.all([
     gitService.getHeadCommit(),
     gitService.getStatusHash(),
   ]);
 
-  // A repository-inspection failure (head-commit or status) means we cannot
-  // verify freshness — not that the repo changed. Keep streaming without a 409
-  // or a destructive cancel, so a transient git slowdown during reconnect never
-  // aborts a healthy in-flight review.
   if (!headCommitResult.ok || statusHashResult.kind === "unavailable") {
     return ok(undefined);
   }
@@ -211,9 +227,6 @@ export async function resumeStreamById(c: Context): Promise<Response> {
   }
 
   const replaySession = resumableSessionForReplay(session);
-  if ("status" in replaySession) {
-    return errorResponse(c, replaySession.message, replaySession.code, replaySession.status);
-  }
 
   return streamSSE(c, async (stream) => {
     try {
@@ -227,5 +240,3 @@ export async function resumeStreamById(c: Context): Promise<Response> {
     }
   });
 }
-
-export { FAILED_TERMINAL_OUTCOMES };

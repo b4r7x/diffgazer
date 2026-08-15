@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import {
   assertBuiltCss,
   joinLines,
@@ -8,6 +8,70 @@ import {
 } from "./smoke-shared/fixtures.mjs";
 
 const UI_FIGLET_EXPORT = "@diffgazer/ui/components/logo/figlet";
+const UI_NEXT_COPIED_EXAMPLES = [
+  {
+    component: "button",
+    name: "button-render-prop",
+    source: "libs/ui/registry/examples/button/button-render-prop.tsx",
+  },
+  {
+    component: "breadcrumbs",
+    name: "breadcrumbs-custom-link",
+    source: "libs/ui/registry/examples/breadcrumbs/breadcrumbs-custom-link.tsx",
+  },
+  {
+    component: "card",
+    name: "card-interactive",
+    source: "libs/ui/registry/examples/card/card-interactive.tsx",
+  },
+  {
+    component: "dialog",
+    name: "dialog-custom-trigger",
+    source: "libs/ui/registry/examples/dialog/dialog-custom-trigger.tsx",
+  },
+  {
+    component: "overflow",
+    name: "overflow-avatars",
+    source: "libs/ui/registry/examples/overflow/overflow-avatars.tsx",
+  },
+  {
+    component: "overflow",
+    name: "overflow-items",
+    source: "libs/ui/registry/examples/overflow/overflow-items.tsx",
+  },
+  {
+    component: "pager",
+    name: "pager-render-prop",
+    source: "libs/ui/registry/examples/pager/pager-render-prop.tsx",
+  },
+  {
+    component: "popover",
+    name: "popover-basic",
+    source: "libs/ui/registry/examples/popover/popover-basic.tsx",
+  },
+  {
+    component: "popover",
+    name: "popover-placement",
+    source: "libs/ui/registry/examples/popover/popover-placement.tsx",
+  },
+];
+
+const UI_COMPONENT_IMPORT_RE = /from\s+['"]@\/components\/ui\/([^'"]+)['"]/g;
+
+/** Collects every `@/components/ui/*` import subpath from copied example source. */
+export function collectUiComponentImports(source) {
+  const imports = new Set();
+  for (const match of source.matchAll(UI_COMPONENT_IMPORT_RE)) {
+    imports.add(match[1]);
+  }
+  return [...imports].sort();
+}
+
+function writeUiComponentStub(projectDir, subpath) {
+  const stubPath = resolve(projectDir, `src/components/ui/${subpath}.ts`);
+  mkdirSync(dirname(stubPath), { recursive: true });
+  writeFileSync(stubPath, `export * from '@diffgazer/ui/components/${subpath}';\n`);
+}
 
 function getPackageExports(root, packageDir, packageName) {
   const pkg = JSON.parse(readFileSync(resolve(root, packageDir, "package.json"), "utf-8"));
@@ -304,8 +368,38 @@ export function writeUiVitePackageSmoke(projectDir) {
   );
 }
 
-export function writeUiNextPackageSmoke(_root, projectDir) {
-  writeNextFixture(projectDir, { name: "diffgazer-ui-next-smoke" });
+export function writeUiNextPackageSmoke(root, projectDir) {
+  writeNextFixture(projectDir, {
+    name: "diffgazer-ui-next-smoke",
+    paths: true,
+    withSrc: true,
+  });
+  mkdirSync(resolve(projectDir, "src/components/ui"), { recursive: true });
+  mkdirSync(resolve(projectDir, "src/examples"), { recursive: true });
+  const stubbedImports = new Set();
+  for (const example of UI_NEXT_COPIED_EXAMPLES) {
+    const source = readFileSync(resolve(root, example.source), "utf8");
+    writeFileSync(resolve(projectDir, `src/examples/${example.name}.tsx`), source);
+    for (const subpath of collectUiComponentImports(source)) {
+      stubbedImports.add(subpath);
+    }
+    const routeDir = resolve(projectDir, `app/copied-examples/${example.name}`);
+    mkdirSync(routeDir, { recursive: true });
+    writeFileSync(
+      resolve(routeDir, "page.tsx"),
+      joinLines(
+        `import Example from '@/examples/${example.name}';`,
+        "",
+        "export default function Page() {",
+        "  return <Example />;",
+        "}",
+        "",
+      ),
+    );
+  }
+  for (const subpath of [...stubbedImports].sort()) {
+    writeUiComponentStub(projectDir, subpath);
+  }
   writeFileSync(
     resolve(projectDir, "app/globals.css"),
     joinLines(
@@ -340,6 +434,7 @@ export function writeUiNextPackageSmoke(_root, projectDir) {
       "import type { CommandPaletteHighlightItemProps } from '@diffgazer/ui/components/command-palette/highlight';",
       "",
       "const lowlight = {",
+      "  registered: () => true,",
       '  highlight: () => ({ type: "root", children: [] }),',
       '  highlightAuto: () => ({ type: "root", children: [] }),',
       '} satisfies CodeBlockHighlightProps["lowlight"];',

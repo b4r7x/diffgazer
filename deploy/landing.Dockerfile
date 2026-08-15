@@ -5,14 +5,30 @@ RUN corepack enable && corepack prepare pnpm@11.13.0 --activate
 
 WORKDIR /app
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json biome.json .gitignore ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY patches/ patches/
+COPY apps/docs/package.json apps/docs/package.json
+COPY apps/landing/package.json apps/landing/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY cli/add/package.json cli/add/package.json
+COPY cli/diffgazer/package.json cli/diffgazer/package.json
+COPY cli/server/package.json cli/server/package.json
+COPY libs/core/package.json libs/core/package.json
+COPY libs/keys/artifacts/package.json libs/keys/artifacts/package.json
+COPY libs/keys/examples/playground/package.json libs/keys/examples/playground/package.json
+COPY libs/keys/package.json libs/keys/package.json
+COPY libs/registry/package.json libs/registry/package.json
+COPY libs/ui/package.json libs/ui/package.json
+
+RUN pnpm fetch --frozen-lockfile
+
+RUN pnpm install --frozen-lockfile --offline
+
+COPY turbo.json biome.json .gitignore ./
 COPY apps/ apps/
 COPY cli/ cli/
 COPY libs/ libs/
 COPY scripts/ scripts/
-
-RUN pnpm install --frozen-lockfile
 
 # Vite inlines VITE_-prefixed values at build time, so the docs origin override
 # must be present before the landing build runs.
@@ -28,13 +44,16 @@ RUN pnpm --filter @diffgazer/registry build \
  && pnpm --filter @diffgazer/landing build
 
 # Stage 2: Serve static SPA
-FROM nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runtime
+FROM nginx:1.30.4-alpine@sha256:97d490c12ba55b4946b01546d1c3ed324e8d41ab1c9fcb2a616aa470620e5b46 AS runtime
 
 COPY --from=builder /app/apps/landing/dist /usr/share/nginx/html
 COPY deploy/nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY deploy/landing-nginx.conf /etc/nginx/conf.d/default.conf
 
-RUN chown -R nginx:nginx /usr/share/nginx/html \
+RUN nginx -t
+
+RUN rm -f /usr/share/nginx/html/50x.html \
+ && chown -R nginx:nginx /usr/share/nginx/html \
  && chown -R nginx:nginx /var/cache/nginx /var/log/nginx \
  && touch /var/run/nginx.pid && chown nginx:nginx /var/run/nginx.pid
 

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { validateOrphanFiles } from "./orphans";
+import { validateOrphanFiles } from "./orphans.js";
 
 let root: string | null = null;
 

@@ -2,18 +2,15 @@ import { z } from "zod";
 import {
   AgentExecutionSchema,
   ClientConfigurationInputSchema,
-  ConfigurationIdSchema,
-  ConfigurationRevisionSchema,
   ExactModelIdSchema,
 } from "../schemas/config/index.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { LensIdSchema } from "../schemas/review/index.js";
-import { buildSetupPlan, type RemovedSetupPlan, type RunnableSetupPlan } from "./setup-plan.js";
+import { buildSetupPlan, type RunnableSetupPlan } from "./setup-plan.js";
 
 /**
- * @deprecated Internal compatibility type for the legacy API-key entry hook.
- * V2 onboarding carries family-specific credential input in configurationInput
- * and does not expose this type from the onboarding package entrypoint.
+ * How a user supplies an API key: pasted literally, or named as an environment
+ * variable. Shared by `useApiKeyEntry` and the Web/TUI method selectors through
+ * the `@diffgazer/core/onboarding` entry.
  */
 export type InputMethod = "paste" | "env";
 
@@ -45,7 +42,9 @@ const OnboardingPreferencesShape = {
   agentExecution: AgentExecutionSchema,
 } as const;
 
-const RunnableOnboardingStateInputSchema = z
+// `ClientConfigurationInputSchema` admits only runnable product IDs, so the
+// plan is built once here and every later rule reads it off the parsed state.
+export const OnboardingStateSchema = z
   .strictObject({
     kind: z.literal("runnable"),
     configurationInput: ClientConfigurationInputSchema,
@@ -54,15 +53,13 @@ const RunnableOnboardingStateInputSchema = z
     acknowledgement: OnboardingAcknowledgementSchema,
     ...OnboardingPreferencesShape,
   })
+  .transform((state) => ({
+    ...state,
+    plan: buildSetupPlan(state.configurationInput.productId) satisfies RunnableSetupPlan,
+  }))
   .superRefine((state, context) => {
-    const plan = buildSetupPlan(state.configurationInput.productId);
-    if (!plan || plan.kind !== "runnable") {
-      context.addIssue({ code: "custom", message: "Runnable product requires a setup plan" });
-      return;
-    }
-
     if (state.acknowledgement.status !== "accepted") return;
-    const notice = plan.steps.find((step) => step.id === "acknowledgement")?.notice;
+    const notice = state.plan.steps.find((step) => step.id === "acknowledgement")?.notice;
     if (
       state.acknowledgement.noticeId !== notice?.id ||
       state.acknowledgement.noticeVersion !== notice?.noticeVersion
@@ -75,37 +72,6 @@ const RunnableOnboardingStateInputSchema = z
     }
   });
 
-const RemovedOnboardingStateInputSchema = z.strictObject({
-  kind: z.literal("removed"),
-  productId: z.literal(REMOVED_PRODUCT_ID),
-  configurationId: ConfigurationIdSchema,
-  expectedRevision: ConfigurationRevisionSchema,
-});
-
-export const OnboardingStateSchema = z
-  .union([RunnableOnboardingStateInputSchema, RemovedOnboardingStateInputSchema])
-  .transform((state) => {
-    if (state.kind === "runnable") {
-      const plan = buildSetupPlan(state.configurationInput.productId);
-      if (!plan || plan.kind !== "runnable") {
-        throw new Error(`Missing runnable setup plan for ${state.configurationInput.productId}`);
-      }
-      return { ...state, plan } satisfies z.infer<typeof RunnableOnboardingStateInputSchema> & {
-        readonly plan: RunnableSetupPlan;
-      };
-    }
-
-    const plan = buildSetupPlan(state.productId);
-    if (!plan || plan.kind !== "removed") {
-      throw new Error(`Missing removed setup plan for ${state.productId}`);
-    }
-    return { ...state, plan } satisfies z.infer<typeof RemovedOnboardingStateInputSchema> & {
-      readonly plan: RemovedSetupPlan;
-    };
-  });
-
 export type OnboardingState = z.infer<typeof OnboardingStateSchema>;
-export type RunnableOnboardingState = Extract<OnboardingState, { kind: "runnable" }>;
-export type RemovedOnboardingState = Extract<OnboardingState, { kind: "removed" }>;
 
 export type OnboardingStep = OnboardingState["plan"]["steps"][number]["id"];

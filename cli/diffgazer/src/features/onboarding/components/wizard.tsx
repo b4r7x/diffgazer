@@ -1,7 +1,9 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import type { LocalOpenAIPresetId } from "@diffgazer/core/schemas/config";
-import { REMOVED_PRODUCT_ID } from "@diffgazer/core/schemas/config";
+import { STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
+import {
+  CONFORMANCE_TEST_COST_DISCLOSURE,
+  LocalOpenAIPresetIdSchema,
+} from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { Button } from "../../../components/ui/button";
@@ -14,7 +16,7 @@ import { useActionRow } from "../../../hooks/use-action-row";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../theme/provider";
 import { useOnboardingWizard } from "../hooks/use-wizard";
-import { getStepLabelList, getStepShortcuts, STEP_TITLES } from "../lib/step-shortcuts";
+import { getStepShortcuts } from "../lib/step-shortcuts";
 import { getFullProgressWidth } from "../lib/wizard-progress";
 import { ApiKeyStep } from "./steps/api-key-step";
 import { ModelStep } from "./steps/model-step";
@@ -27,7 +29,6 @@ interface WizardStepBodyProps {
 
 function EndpointBindingStep({ wizard }: WizardStepBodyProps): ReactElement | null {
   const { tokens } = useTheme();
-  if (wizard.wizardData.kind !== "runnable") return null;
   const draft = wizard.wizardData;
   const step = draft.plan.steps.find((candidate) => candidate.id === "endpoint-binding");
   if (!step || step.id !== "endpoint-binding") return null;
@@ -95,14 +96,18 @@ function EndpointBindingStep({ wizard }: WizardStepBodyProps): ReactElement | nu
           value={input.endpoint}
           onChange={(endpoint) => {
             const profile = step.endpoints.find((candidate) => candidate.endpoint === endpoint);
+            const nextInput = { ...input, endpoint };
+            if (input.productId !== "local-openai" || !profile) {
+              wizard.updateData({ configurationInput: nextInput });
+              return;
+            }
+            // The schema that owns this id is the only thing allowed to widen it,
+            // so a future third preset skips the selection instead of throwing out
+            // of the key handler, which has no boundary to land in.
+            const presetId = LocalOpenAIPresetIdSchema.safeParse(profile.id);
+            if (!presetId.success) return;
             wizard.updateData({
-              configurationInput: {
-                ...input,
-                endpoint,
-                ...(profile && "id" in profile
-                  ? { presetId: profile.id as LocalOpenAIPresetId }
-                  : {}),
-              },
+              configurationInput: { ...nextInput, presetId: presetId.data },
             });
           }}
           isActive={isActive}
@@ -111,7 +116,8 @@ function EndpointBindingStep({ wizard }: WizardStepBodyProps): ReactElement | nu
             <RadioGroup.Item
               key={endpoint.endpoint}
               value={endpoint.endpoint}
-              label={endpoint.endpoint}
+              label={endpoint.label}
+              description={endpoint.endpoint}
             />
           ))}
         </RadioGroup>
@@ -124,27 +130,26 @@ function EndpointBindingStep({ wizard }: WizardStepBodyProps): ReactElement | nu
 
 function ConformanceStep({ wizard }: WizardStepBodyProps): ReactElement | null {
   const { tokens } = useTheme();
-  if (wizard.wizardData.kind !== "runnable") return null;
   const step = wizard.wizardData.plan.steps.find((candidate) => candidate.id === "conformance");
   if (!step || step.id !== "conformance") return null;
 
   return (
     <Box flexDirection="column" gap={1}>
       <Text color={tokens.muted}>
-        Structured review conformance is required before this configuration can run reviews.
+        Your first review verifies structured review support automatically; Test readiness in
+        Providers can check it sooner.
       </Text>
       <Text color={tokens.muted}>
         Usage reporting: {step.usage}. Structured output: {step.structuredOutput}.
       </Text>
+      <Text color={tokens.muted}>{CONFORMANCE_TEST_COST_DISCLOSURE}</Text>
       <Button
         variant="secondary"
         onPress={wizard.handleConformanceConfirm}
         isActive={wizard.focusArea === "step"}
         disabled={wizard.wizardData.conformanceStatus === "passed"}
       >
-        {wizard.wizardData.conformanceStatus === "passed"
-          ? "Conformance confirmed"
-          : "Confirm conformance requirements"}
+        {wizard.wizardData.conformanceStatus === "passed" ? "Understood" : "I understand"}
       </Button>
     </Box>
   );
@@ -152,7 +157,6 @@ function ConformanceStep({ wizard }: WizardStepBodyProps): ReactElement | null {
 
 function AcknowledgementStep({ wizard }: WizardStepBodyProps): ReactElement | null {
   const { tokens } = useTheme();
-  if (wizard.wizardData.kind !== "runnable") return null;
   const step = wizard.wizardData.plan.steps.find((candidate) => candidate.id === "acknowledgement");
   if (!step || step.id !== "acknowledgement") return null;
   const notice = step.notice;
@@ -182,44 +186,10 @@ function AcknowledgementStep({ wizard }: WizardStepBodyProps): ReactElement | nu
   );
 }
 
-function MigrationStep({ wizard }: WizardStepBodyProps): ReactElement | null {
-  const { tokens } = useTheme();
-  if (wizard.wizardData.kind !== "removed") return null;
-  const step = wizard.wizardData.plan.steps.find((candidate) => candidate.id === "migration");
-  if (!step || step.id !== "migration") return null;
-
-  return (
-    <Box flexDirection="column" gap={1}>
-      <Text color={tokens.warning}>
-        Create a new general Z.AI PAYG configuration. The removed {REMOVED_PRODUCT_ID} record is
-        retained until you explicitly delete it. Old secrets are never copied, tested, or sent.
-      </Text>
-      <Text color={tokens.muted}>
-        Target product: {PRODUCT_REGISTRY[step.targetProductId].presentation.name}
-      </Text>
-    </Box>
-  );
-}
-
-function DeleteRemovedStep({ wizard }: WizardStepBodyProps): ReactElement | null {
-  const { tokens } = useTheme();
-  if (wizard.wizardData.kind !== "removed") return null;
-
-  return (
-    <Box flexDirection="column" gap={1}>
-      <Text color={tokens.warning}>
-        Delete the removed {REMOVED_PRODUCT_ID} record after you create a supported replacement
-        configuration.
-      </Text>
-    </Box>
-  );
-}
-
 function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
   const isStepFocused = wizard.focusArea === "step";
   switch (wizard.currentStep) {
     case "product":
-      if (wizard.wizardData.kind !== "runnable") return null;
       return (
         <ProviderStep
           value={wizard.wizardData.configurationInput.productId}
@@ -230,7 +200,6 @@ function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
     case "endpoint-binding":
       return <EndpointBindingStep wizard={wizard} />;
     case "authentication":
-      if (wizard.wizardData.kind !== "runnable") return null;
       return (
         <ApiKeyStep
           productId={wizard.wizardData.configurationInput.productId}
@@ -245,7 +214,6 @@ function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
         />
       );
     case "model":
-      if (wizard.wizardData.kind !== "runnable") return null;
       return (
         <ModelStep
           configuration={wizard.draftConfiguration}
@@ -260,26 +228,17 @@ function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
       return <ConformanceStep wizard={wizard} />;
     case "acknowledgement":
       return <AcknowledgementStep wizard={wizard} />;
-    case "migration":
-      return <MigrationStep wizard={wizard} />;
-    case "delete":
-      return <DeleteRemovedStep wizard={wizard} />;
   }
 }
 
 export function OnboardingWizard(): ReactElement {
   const { columns } = useTerminalDimensions();
   const wizard = useOnboardingWizard();
-  const stepLabels = getStepLabelList(wizard.steps);
-  const fullProgressWidth = getFullProgressWidth(
-    stepLabels.map((label) => label.charAt(0).toUpperCase() + label.slice(1)),
-  );
+  const stepLabels = wizard.steps.map((step) => STEP_LABELS[step]);
+  const fullProgressWidth = getFullProgressWidth(stepLabels);
   const compactProgress = columns < fullProgressWidth;
   const nextActionIndex = wizard.isFirstStep ? 0 : 1;
-  const transportFamily =
-    wizard.wizardData.kind === "runnable"
-      ? wizard.wizardData.configurationInput.transportFamily
-      : undefined;
+  const transportFamily = wizard.wizardData.configurationInput.transportFamily;
 
   const actions = useActionRow({
     actionCount: wizard.isFirstStep ? 1 : 2,
@@ -312,12 +271,7 @@ export function OnboardingWizard(): ReactElement {
     if (key.tab) wizard.cycleFocusZone();
   });
 
-  let primaryLabel = "Next";
-  if (wizard.wizardData.kind === "removed" && wizard.currentStep === "delete") {
-    primaryLabel = "Delete Record";
-  } else if (wizard.isLastStep) {
-    primaryLabel = "Complete Setup";
-  }
+  const primaryLabel = wizard.isLastStep ? "Complete Setup" : "Next";
 
   if (wizard.isSaving) {
     return (

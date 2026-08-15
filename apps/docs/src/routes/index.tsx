@@ -14,7 +14,7 @@ const homeLoader = createServerFn({ method: "GET" }).handler(
     const libraries = getEnabledDocsLibraries().map((config) => {
       const library = parseDocsLibrary(config.id);
       const sections = collectLandingSections(mapPageTreeForLibrary(root, library));
-      return buildHomeLibrary(config, library, sections);
+      return buildHomeLibrary(config.displayName, library, sections);
     });
 
     return { libraries };
@@ -23,6 +23,8 @@ const homeLoader = createServerFn({ method: "GET" }).handler(
 
 export const Route = createFileRoute("/")({
   component: HomePage,
+  // Derived entirely from the build-time MDX source, like the /$lib shell.
+  staleTime: Infinity,
   loader: () => homeLoader(),
   head: () => {
     const seo = buildPageSeo({

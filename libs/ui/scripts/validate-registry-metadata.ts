@@ -1,8 +1,9 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { extractImportSpecifiers } from "@diffgazer/registry";
+import { extractImportSpecifiers, listPublicRegistryEntries } from "@diffgazer/registry";
+import { hasUseClientDirective } from "@diffgazer/registry/build-checks";
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
-import { validatePublicComponentProps, validatePublicExportShape } from "./registry/exports.js";
+import { validatePublicExportShape } from "./registry/exports.js";
 import {
   extractLocalImports,
   hasKeysRegistryDependency,
@@ -37,6 +38,10 @@ const SHIPPED_REGISTRY_DIRS = [
   "registry/examples",
 ] as const;
 const BUILD_ENV_TOKENS = ["process.env", "import.meta.env", "NODE_ENV"] as const;
+// A JSX children brace opening an arrow function — `{(props) => …}`. The `=` lookbehind
+// keeps attribute values (`onClick={() => …}`) out, so they are reported as handlers.
+const JSX_RENDER_FUNCTION_CHILD = /(?<!=)\{\s*\([^()]*\)\s*=>/;
+const JSX_EVENT_HANDLER = /\son[A-Z]\w*=\{/;
 
 function readJson(relativePath: string): unknown {
   return JSON.parse(readFileSync(resolve(ROOT, relativePath), "utf-8"));
@@ -68,29 +73,27 @@ function publicItemExportPath(item: RegistryItem): string | null {
 }
 
 function hasClientDirective(item: RegistryItem): boolean {
-  return (item.files ?? []).some((file) => {
+  return item.files.some((file) => {
     const path = resolve(ROOT, file.path);
     if (!existsSync(path)) return false;
-    const source = readFileSync(path, "utf-8").trimStart();
-    return source.startsWith('"use client"') || source.startsWith("'use client'");
+    return hasUseClientDirective(readFileSync(path, "utf-8"));
   });
 }
 
 function clientEntryBarrelHasDirective(item: RegistryItem): boolean {
-  const entry = (item.files ?? []).find((file) => file.path.endsWith("/index.ts"));
+  const entry = item.files.find((file) => file.path.endsWith("/index.ts"));
   if (!entry) return true;
 
   const path = resolve(ROOT, entry.path);
   if (!existsSync(path)) return false;
 
-  const source = readFileSync(path, "utf-8").trimStart();
-  return source.startsWith('"use client"') || source.startsWith("'use client'");
+  return hasUseClientDirective(readFileSync(path, "utf-8"));
 }
 
 function itemPackageImports(item: RegistryItem): Set<string> {
   const packages = new Set<string>();
 
-  for (const file of item.files ?? []) {
+  for (const file of item.files) {
     const path = resolve(ROOT, file.path);
     if (!existsSync(path) || file.path.endsWith(".css")) continue;
 
@@ -208,13 +211,69 @@ function validateNoBuildEnvReads(): string[] {
   return errors;
 }
 
+// Comments and quoted-literal bodies are dropped so component source shipped as text
+// (code-block examples embed a JSX sample string) never reads as real JSX below.
+function stripLiteralsAndComments(source: string): string {
+  let code = "";
+  let index = 0;
+
+  while (index < source.length) {
+    const char = source[index];
+    const pair = source.slice(index, index + 2);
+
+    if (pair === "//") {
+      const end = source.indexOf("\n", index);
+      index = end === -1 ? source.length : end;
+    } else if (pair === "/*") {
+      const end = source.indexOf("*/", index + 2);
+      index = end === -1 ? source.length : end + 2;
+    } else if (char === '"' || char === "'" || char === "`") {
+      index += 1;
+      while (index < source.length && source[index] !== char) {
+        index += source[index] === "\\" ? 2 : 1;
+      }
+      index += 1;
+    } else {
+      code += char;
+      index += 1;
+    }
+  }
+
+  return code;
+}
+
+// Examples are pasted into consumer apps, including RSC frameworks where a module is a
+// server module until it says otherwise. Handing a function to a component — a render-prop
+// child or a JSX event handler — is exactly what a server module may not do, so an example
+// that does it has to declare the directive or it fails on first paste.
+function validateExamplesDeclareClientBoundary(): string[] {
+  const errors: string[] = [];
+
+  for (const exampleFile of shippedSourceFiles("registry/examples")) {
+    const source = readFileSync(exampleFile, "utf-8");
+    if (hasUseClientDirective(source)) continue;
+
+    const code = stripLiteralsAndComments(source);
+    const crossings: string[] = [];
+    if (JSX_RENDER_FUNCTION_CHILD.test(code)) crossings.push("a render-function child");
+    if (JSX_EVENT_HANDLER.test(code)) crossings.push("a JSX event handler");
+    if (crossings.length === 0) continue;
+
+    errors.push(
+      `${normalizeRegistryPath(relative(ROOT, exampleFile))} passes ${crossings.join(" and ")} but omits "use client"; RSC consumers cannot paste it as a server module`,
+    );
+  }
+
+  return errors;
+}
+
 function validateExamplesAvoidHiddenPaths(items: RegistryItem[]): string[] {
   const errors: string[] = [];
   const hiddenFiles = new Set<string>();
 
   for (const item of items) {
     if (!item.meta?.hidden) continue;
-    for (const file of item.files ?? []) {
+    for (const file of item.files) {
       hiddenFiles.add(normalizeRegistryPath(file.path));
     }
   }
@@ -246,13 +305,10 @@ function validateNoPublicKeysImports(): string[] {
   const registryDir = resolve(ROOT, "public/r");
   if (!existsSync(registryDir)) return errors;
 
-  for (const entry of readdirSync(registryDir)) {
-    if (!entry.endsWith(".json") || entry === "registry.json") continue;
-
-    const filePath = resolve(registryDir, entry);
+  for (const { entry, itemPath } of listPublicRegistryEntries(registryDir)) {
     let data: { files?: { content?: string; path?: string }[] };
     try {
-      data = JSON.parse(readFileSync(filePath, "utf-8"));
+      data = JSON.parse(readFileSync(itemPath, "utf-8"));
     } catch {
       continue;
     }
@@ -334,7 +390,7 @@ function validate(): string[] {
   }
 
   for (const item of items) {
-    for (const file of item.files ?? []) {
+    for (const file of item.files) {
       if (!existsSync(resolve(ROOT, file.path))) {
         errors.push(
           `File declared in registry but missing from disk: ${file.path} (item: ${item.name})`,
@@ -370,6 +426,10 @@ function validate(): string[] {
       errors.push(`${item.name} contains a client file but omits meta.client`);
     }
 
+    if (item.meta?.client === true && !hasClientDirective(item)) {
+      errors.push(`${item.name} declares meta.client but no source file starts with "use client"`);
+    }
+
     if (item.meta?.client === true && !clientEntryBarrelHasDirective(item)) {
       errors.push(`${item.name} is client metadata but its source entry barrel omits "use client"`);
     }
@@ -398,8 +458,8 @@ function validate(): string[] {
   errors.push(...validateOrphanFiles(ROOT, items));
   errors.push(...validateExamplesAvoidHiddenPaths(items));
   errors.push(...validateExamplesAvoidKeysPackage());
+  errors.push(...validateExamplesDeclareClientBoundary());
   errors.push(...validateNoBuildEnvReads());
-  errors.push(...validatePublicComponentProps(ROOT, items));
   errors.push(...validateNoPublicKeysImports());
 
   if (!Object.hasOwn(exportsMap, "./lib/utils")) {

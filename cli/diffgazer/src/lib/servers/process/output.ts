@@ -66,14 +66,15 @@ function formatProcessError(error: unknown): string {
   return String(error);
 }
 
+/** Last output the child produced, preferring stderr; empty when it printed nothing. */
+export function formatDiagnosticOutput(stderrTail: Buffer, stdoutTail: Buffer): string {
+  return stderrTail.toString().trim() || stdoutTail.toString().trim();
+}
+
 export function formatProcessFailure(
   error: unknown,
   stderrTail: Buffer,
   stdoutTail: Buffer,
 ): string {
-  const stderr = stderrTail.toString().trim();
-  if (stderr) return stderr;
-
-  const stdout = stdoutTail.toString().trim();
-  return stdout || formatProcessError(error);
+  return formatDiagnosticOutput(stderrTail, stdoutTail) || formatProcessError(error);
 }

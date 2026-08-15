@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const tabsDoc: ComponentDoc = {
   description: "Terminal-styled tabbed interface with horizontal and vertical orientation support.",
@@ -127,6 +127,13 @@ export const tabsDoc: ComponentDoc = {
         required: false,
         defaultValue: '"underline"',
         description: "Visual style applied to triggers and the list.",
+      },
+      size: {
+        type: '"sm" | "md"',
+        required: false,
+        defaultValue: '"sm"',
+        description:
+          'Size variant / trigger density token. "sm" is 36px, rising to a 44px target on coarse pointers; "md" is always a 44px target.',
       },
       activationMode: {
         type: '"automatic" | "manual"',

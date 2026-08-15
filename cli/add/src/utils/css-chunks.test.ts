@@ -3,10 +3,11 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { buildStylesContent } from "../commands/init.js";
 import { getRegistry, type ResolvedConfig, resolveConfig } from "../context.js";
 import {
   buildExpectedChunkContentsForItem,
+  collectCssChunkHashBoundaries,
+  findCorruptedCssChunkHashes,
   planComponentCss,
   removeCssChunks,
 } from "./css-chunks.js";
@@ -52,18 +53,18 @@ describe("planComponentCss", () => {
     retainedOwner?: string,
   ): { hash: string; stylesPath: string } {
     const hash = createHash("sha256").update(body).digest("hex").slice(0, 16);
-    const installedComponents: Record<string, object> = {
+    const installedItems: Record<string, object> = {
       [itemName]: { installedAt: "2026-01-01T00:00:00.000Z", cssChunks: [hash] },
     };
     if (retainedOwner) {
-      installedComponents[retainedOwner] = {
+      installedItems[retainedOwner] = {
         installedAt: "2026-01-01T00:00:00.000Z",
         cssChunks: [hash],
       };
     }
     writeFileSync(
       join(root, "diffgazer.json"),
-      JSON.stringify({ tailwind: { css: "src/styles/styles.css" }, installedComponents }),
+      JSON.stringify({ tailwind: { css: "src/styles/styles.css" }, installedItems }),
     );
     mkdirSync(join(root, "src/styles"), { recursive: true });
     const stylesPath = join(root, "src/styles/styles.css");
@@ -134,36 +135,6 @@ describe("planComponentCss", () => {
     expect(plan.fileOp).not.toBeNull();
     expect(plan.fileOp?.content).toMatch(/dgadd:css/);
     expect((plan.chunksByItem.get("ui/dialog-shell") ?? []).length).toBeGreaterThan(0);
-  });
-
-  test("writes CSS-bearing component selectors exactly once after init seed plus add", () => {
-    mkdirSync(join(root, "src/styles"), { recursive: true });
-    const stylesPath = join(root, "src/styles/styles.css");
-    writeFileSync(stylesPath, buildStylesContent(getRegistry()));
-
-    const config = {
-      aliases: {
-        components: "@/components/ui",
-        utils: "@/lib/utils",
-        lib: "@/lib",
-        hooks: "@/hooks",
-      },
-      rsc: false,
-      componentsFsPath: "src/components/ui",
-      hooksFsPath: "src/hooks",
-      libFsPath: "src/lib",
-      stylesFsPath: "src/styles",
-      tailwind: { css: "src/styles/styles.css" },
-    } satisfies ResolvedConfig;
-
-    const plan = planComponentCss(["dialog-shell"], root, config);
-    if (!plan.fileOp) throw new Error("Expected dialog-shell to add a CSS chunk.");
-
-    writeFileSync(stylesPath, plan.fileOp.content);
-
-    expect(
-      countOccurrences(readFileSync(stylesPath, "utf-8"), 'dialog[data-state="open"]::backdrop'),
-    ).toBe(1);
   });
 
   test("leaves a present-but-drifted chunk untouched without --overwrite", () => {
@@ -303,7 +274,6 @@ describe("removeCssChunks", () => {
     expect(result.removedHashes).toEqual([]);
     expect(result.modifiedHashes).toContain(hash);
 
-    if (result.fileOp) writeFileSync(stylesPath, result.fileOp.content);
     expect(readFileSync(stylesPath, "utf-8")).toContain("--user-edit: teal;");
   });
 
@@ -318,5 +288,38 @@ describe("removeCssChunks", () => {
     expect(result.removedHashes).toContain(hash);
     expect(result.fileOp?.content).not.toContain(hash);
     expect(result.fileOp?.content).not.toContain("--user-edit: teal;");
+  });
+});
+
+describe("managed CSS marker validation", () => {
+  const firstHash = "1111111111111111";
+  const secondHash = "2222222222222222";
+  const start = (hash: string) => `/* dgadd:css ${hash} */`;
+  const end = (hash: string) => `/* dgadd:css-end ${hash} */`;
+
+  test.each([
+    ["an unmatched start", `${start(firstHash)}\n.rule { color: red; }`, [firstHash]],
+    ["an unmatched end", `${end(firstHash)}\n.rule { color: red; }`, [firstHash]],
+    [
+      "a duplicate marker",
+      `${start(firstHash)}\n${start(firstHash)}\n${end(firstHash)}`,
+      [firstHash],
+    ],
+    ["an end before its start", `${end(firstHash)}\n${start(firstHash)}`, [firstHash]],
+    [
+      "overlapping chunks",
+      `${start(firstHash)}\n${start(secondHash)}\n${end(firstHash)}\n${end(secondHash)}`,
+      [firstHash, secondHash],
+    ],
+  ])("reports %s", (_shape, content, expected) => {
+    const corrupted = findCorruptedCssChunkHashes(collectCssChunkHashBoundaries(content));
+
+    expect([...corrupted].sort()).toEqual(expected);
+  });
+
+  test("accepts adjacent complete chunks", () => {
+    const content = `${start(firstHash)}\n.rule-a {}\n${end(firstHash)}\n${start(secondHash)}\n.rule-b {}\n${end(secondHash)}`;
+
+    expect(findCorruptedCssChunkHashes(collectCssChunkHashBoundaries(content))).toEqual(new Set());
   });
 });

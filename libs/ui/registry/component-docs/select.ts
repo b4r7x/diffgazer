@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const selectDoc: ComponentDoc = {
   description:
@@ -204,7 +204,7 @@ export const selectDoc: ComponentDoc = {
         description: "Initial selected value for uncontrolled usage.",
       },
       onChange: {
-        type: "(value: string) => void | (value: string[]) => void",
+        type: "((value: string) => void) | ((value: string[]) => void)",
         required: false,
         defaultValue: null,
         description: "Called when the selection changes.",
@@ -266,6 +266,13 @@ export const selectDoc: ComponentDoc = {
         defaultValue: "false",
         description: "Mark the select as required for native form validation.",
       },
+      id: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description:
+          "ID applied to the Select trigger button, not the wrapper element. Field uses it to point its label at the focusable control.",
+      },
       highlighted: {
         type: "string | null",
         required: false,
@@ -311,7 +318,7 @@ export const selectDoc: ComponentDoc = {
       getResultsLabel: {
         type: "(count: number) => string",
         required: false,
-        defaultValue: 'count => count + " results"',
+        defaultValue: 'count => count + (count === 1 ? " result" : " results")',
         description:
           "Localizes the searchable results count announced by the live region when a query is present.",
       },
@@ -419,7 +426,8 @@ export const selectDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: '"> no results."',
-        description: "Custom content shown when a nonempty search query matches no items.",
+        description:
+          "Custom empty-state content shown when a nonempty search query matches no items.",
       },
     },
   },

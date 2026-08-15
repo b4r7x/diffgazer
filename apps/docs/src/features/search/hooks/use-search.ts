@@ -18,11 +18,9 @@ export interface SearchResult {
   library: string;
 }
 
-export type SearchStatus = "idle" | "loading" | "success" | "empty" | "error";
-
-type SearchState =
+export type SearchState =
   | { status: "idle"; results: []; error: null }
-  | { status: "loading"; results: []; error: null }
+  | { status: "loading"; results: SearchResult[]; error: null }
   | { status: "success"; results: SearchResult[]; error: null }
   | { status: "empty"; results: []; error: null }
   | { status: "error"; results: []; error: string };
@@ -89,11 +87,15 @@ const SEARCH_IDLE_STATE: SearchState = {
   results: [],
   error: null,
 };
-const SEARCH_LOADING_STATE: SearchState = {
-  status: "loading",
-  results: [],
-  error: null,
-};
+
+function toLoadingSearchState(previous: SearchState): SearchState {
+  return {
+    status: "loading",
+    results: previous.status === "success" || previous.status === "loading" ? previous.results : [],
+    error: null,
+  };
+}
+
 const SEARCH_ERROR_MESSAGE = "Search failed. Try again.";
 
 function toSearchResults(items: ServerSearchResult[]): SearchResult[] {
@@ -121,7 +123,7 @@ export function useSearch() {
       return;
     }
 
-    setSearchState(SEARCH_LOADING_STATE);
+    setSearchState((previous) => toLoadingSearchState(previous));
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
@@ -148,5 +150,5 @@ export function useSearch() {
     };
   }, [query]);
 
-  return { query, ...searchState, search: setQuery };
+  return { query, state: searchState, search: setQuery };
 }

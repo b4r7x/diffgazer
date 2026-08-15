@@ -5,11 +5,6 @@ const MAX_BUFFER_SIZE = 16 * 1024 * 1024;
 export interface SSEParserOptions<T> {
   onEvent: (data: T) => void;
   parseEvent: (jsonData: unknown) => T | undefined;
-  onBufferOverflow?: () => void;
-}
-
-export interface SSEParseResult {
-  completed: boolean;
 }
 
 function parseSSELine(line: string): unknown | undefined {
@@ -35,44 +30,55 @@ function emitParsedEvent<T>(
 export async function parseSSEStream<T>(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   options: SSEParserOptions<T>,
-): Promise<SSEParseResult> {
-  const { onEvent, parseEvent, onBufferOverflow } = options;
+): Promise<void> {
+  const { onEvent, parseEvent } = options;
   const decoder = new TextDecoder();
-  let buffer = "";
+  const lineChunks: string[] = [];
+  let bufferedLength = 0;
+
   while (true) {
     const { done, value } = await reader.read();
-    if (done) break;
+    const chunk = done ? decoder.decode() : decoder.decode(value, { stream: true });
 
-    const chunk = decoder.decode(value, { stream: true });
-    buffer += chunk;
+    bufferedLength += chunk.length;
 
-    if (buffer.length > MAX_BUFFER_SIZE) {
+    // Cancelling the reader ends the outer stream without a complete event, which
+    // is how the caller learns the stream failed.
+    if (!done && bufferedLength > MAX_BUFFER_SIZE) {
       await reader.cancel();
-      onBufferOverflow?.();
-      return { completed: false };
+      return;
     }
 
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
+    let lineStart = 0;
+    let newlineIndex = chunk.indexOf("\n");
+    while (newlineIndex !== -1) {
+      lineChunks.push(chunk.slice(lineStart, newlineIndex));
+      const parsed = parseSSELine(lineChunks.join(""));
+      lineChunks.length = 0;
 
-    for (const line of lines) {
-      const parsed = parseSSELine(line);
       if (parsed !== undefined) {
         emitParsedEvent(parsed, onEvent, parseEvent);
       }
+
+      lineStart = newlineIndex + 1;
+      newlineIndex = chunk.indexOf("\n", lineStart);
     }
+
+    if (lineStart < chunk.length) {
+      lineChunks.push(chunk.slice(lineStart));
+    }
+    if (lineStart > 0) {
+      bufferedLength = chunk.length - lineStart;
+    }
+
+    if (done) break;
   }
 
-  // Flush any bytes the streaming decoder held back (a multi-byte character can
-  // straddle the final chunk boundary) so the trailing line decodes intact.
-  buffer += decoder.decode();
-
-  if (buffer.trim()) {
-    const parsed = parseSSELine(buffer);
+  const trailingLine = lineChunks.join("");
+  if (trailingLine.trim()) {
+    const parsed = parseSSELine(trailingLine);
     if (parsed !== undefined) {
       emitParsedEvent(parsed, onEvent, parseEvent);
     }
   }
-
-  return { completed: true };
 }

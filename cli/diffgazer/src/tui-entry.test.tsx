@@ -86,4 +86,18 @@ describe("startTui", () => {
     });
     await vi.waitFor(() => expect(dispose).toHaveBeenCalledOnce());
   });
+
+  test("propagates Ink waitUntilExit rejections after disposing terminal input", async () => {
+    const dispose = vi.fn();
+    const inkError = new Error("render tree failed");
+    createTerminalInputBoundaryMock.mockReturnValue({
+      stdin: process.stdin,
+      queue: { consume: vi.fn() },
+      dispose,
+    });
+    renderMock.mockReturnValue({ waitUntilExit: () => Promise.reject(inkError) });
+
+    await expect(startTui({ mode: "prod" })).rejects.toThrow("render tree failed");
+    expect(dispose).toHaveBeenCalledOnce();
+  });
 });

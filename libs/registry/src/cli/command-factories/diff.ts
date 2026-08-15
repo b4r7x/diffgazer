@@ -5,18 +5,22 @@ import { resolveCwd, type SharedCommandOptions } from "./command-options.js";
 
 // itemPlural names the command surface (description, argument), not the diff
 // summary, which counts files.
-export type DiffCommandConfig<TConfig> = Omit<
-  RunDiffWorkflowOptions<TConfig>,
+export type DiffCommandConfig<TConfig, TScanContext = undefined> = Omit<
+  RunDiffWorkflowOptions<TConfig, TScanContext>,
   "cwd" | "requestedNames"
 > & { itemPlural: string };
 
-function buildDiffAction<TConfig>(config: DiffCommandConfig<TConfig>) {
+function buildDiffAction<TConfig, TScanContext = undefined>(
+  config: DiffCommandConfig<TConfig, TScanContext>,
+) {
   return withErrorHandler(async (names: string[], opts: SharedCommandOptions) => {
     runDiffWorkflow({ ...config, cwd: resolveCwd(opts), requestedNames: names });
   });
 }
 
-export function createDiffCommand<TConfig>(config: DiffCommandConfig<TConfig>): Command {
+export function createDiffCommand<TConfig, TScanContext = undefined>(
+  config: DiffCommandConfig<TConfig, TScanContext>,
+): Command {
   return new Command("diff")
     .description(`Compare local ${config.itemPlural} with registry versions`)
     .argument(`[${config.itemPlural}...]`, `${config.itemPlural} to diff`)

@@ -1,6 +1,3 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { toast } from "@diffgazer/ui/components/toast";
 import { act, render, screen, waitFor } from "@testing-library/react";
@@ -151,6 +148,44 @@ describe("SidebarChrome library switching", () => {
     resolveSwitch({ library: "keys", slugs: ["getting-started"] });
     await waitFor(() => expect(routerBoundary.navigate).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(trigger).not.toHaveAttribute("aria-disabled"));
+  });
+
+  it("keeps the busy state when a stale switch settles after a newer switch starts", async () => {
+    stubMatchMedia({ isDesktop: true });
+    Element.prototype.scrollIntoView = () => {};
+    const first = createDeferred<{ library: string; slugs: string[] }>();
+    const second = createDeferred<{ library: string; slugs: string[] }>();
+    routerBoundary.resolveSwitchPath
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const user = userEvent.setup();
+    const { rerenderSidebarChrome } = renderSidebarChrome();
+
+    await selectKeysLibrary(user);
+    const trigger = screen.getByRole("combobox", { name: /select documentation library/i });
+    await waitFor(() => expect(trigger).toHaveAttribute("aria-disabled", "true"));
+
+    routerBoundary.pathname = "/ui/components/card";
+    rerenderSidebarChrome();
+
+    await user.click(screen.getByRole("combobox", { name: /select documentation library/i }));
+    await user.click(await screen.findByRole("option", { name: "diffgazer" }));
+    await waitFor(() => expect(trigger).toHaveAttribute("aria-disabled", "true"));
+
+    await act(async () => {
+      first.resolve({ library: "keys", slugs: ["getting-started"] });
+      await first.promise;
+    });
+
+    expect(trigger).toHaveAttribute("aria-disabled", "true");
+    expect(routerBoundary.resolveSwitchPath).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      second.resolve({ library: "app", slugs: ["getting-started"] });
+      await second.promise;
+    });
+
+    await waitFor(() => expect(routerBoundary.navigate).toHaveBeenCalledTimes(1));
   });
 
   it("ignores a late library response after the pathname changes", async () => {

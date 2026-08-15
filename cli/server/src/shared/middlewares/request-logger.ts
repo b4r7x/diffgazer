@@ -7,7 +7,6 @@ const REQUEST_ID_HEADER = "X-Request-Id";
 export type RequestLoggerEnv = {
   Variables: {
     requestId: string;
-    startTime: number;
   };
 };
 
@@ -26,7 +25,6 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(async (c, next) 
   const requestId = randomUUID();
   const startTime = performance.now();
   c.set("requestId", requestId);
-  c.set("startTime", startTime);
 
   await next();
 

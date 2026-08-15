@@ -6,7 +6,6 @@ import {
 import { getErrorMessage } from "@diffgazer/core/errors";
 import {
   describeReviewStartError,
-  extractOrchestratorStats,
   getAlternateReviewMode,
   sanitizePresentationText,
   sessionTerminationCopy,
@@ -17,6 +16,7 @@ import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useConfigData } from "@/hooks/use-config";
+import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 
 export interface ReviewCompleteData {
   issues: ReviewIssue[];
@@ -43,14 +43,7 @@ export function useReviewLifecycle({
 }: UseReviewLifecycleOptions) {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
-  const {
-    loadState,
-    isConfigured,
-    isReady,
-    selectedReadiness,
-    selectedIdentity,
-    selectedConfiguration,
-  } = useConfigData();
+  const { loadState, isReady, selectedReadiness, selectedConfiguration } = useConfigData();
   const createReview = useCreateReview();
   const reviewSessionCache = useReviewSessionCache();
   const transitionRef = useRef<symbol | null>(null);
@@ -94,9 +87,7 @@ export function useReviewLifecycle({
 
   const base = useReviewLifecycleBase({
     configLoading: loadState.status === "loading",
-    isConfigured,
     readiness: selectedReadiness,
-    configuration: selectedIdentity,
     allowResumeWithoutSetup,
     reviewId: params.reviewId,
     onStreamComplete: () => clearActiveSession(base.stream.state.reviewId ?? params.reviewId),
@@ -121,7 +112,7 @@ export function useReviewLifecycle({
       reviewId: s.reviewId ?? null,
       durationMs:
         s.startedAt && completedAt ? completedAt.getTime() - s.startedAt.getTime() : undefined,
-      ...extractOrchestratorStats(s),
+      ...s.orchestratorStats,
     });
   }
 
@@ -141,7 +132,7 @@ export function useReviewLifecycle({
     navigate({ to: "/" });
   }
 
-  const cancelOnServer = (preserveState = false): Promise<string | null> =>
+  const cancelOnServer = (preserveState = false) =>
     base.stream.cancel(base.stream.state.reviewId ?? params.reviewId ?? null, { preserveState });
 
   // Every review failure message is server- or transport-authored, so it passes
@@ -150,8 +141,9 @@ export function useReviewLifecycle({
     toast.error(title, { message: sanitizePresentationText(message) });
   };
 
-  const reportCancelFailure = (error: unknown, token: symbol) => {
-    if (!isCurrentTransition(token)) return;
+  // Reported even when a later transition invalidated this cancel: the review is
+  // still running and still billing, and the toast channel outlives navigation.
+  const reportCancelFailure = (error: unknown) => {
     reportFailure("Cancel failed", getErrorMessage(error, "Unknown error"));
   };
 
@@ -164,12 +156,15 @@ export function useReviewLifecycle({
     if (!token) return;
     void (async () => {
       try {
-        const error = await cancelOnServer(preserveState);
-        if (!isCurrentTransition(token)) return;
-        if (error) {
-          reportFailure("Cancel failed", error);
+        const outcome = await cancelOnServer(preserveState);
+        // The failure is reported before the currency check: a cancel that did not
+        // reach the server leaves the review running, and the user must hear that
+        // even if they already navigated away. Only the continuation is skipped.
+        if (outcome?.status === "error") {
+          reportFailure("Cancel failed", outcome.message);
           return;
         }
+        if (!isCurrentTransition(token)) return;
         clearActiveSession(activeReviewId);
         await onCancelled(token);
       } catch (error) {
@@ -204,12 +199,19 @@ export function useReviewLifecycle({
   };
 
   const handleRetry = (reviewId: string) => {
-    void base.stream.resume(reviewId);
+    void base.resumeReview(reviewId);
   };
 
+  // Deep-links the providers screen to the affected configuration so key entry
+  // lands on the right product; the stale remembered selection is cleared so
+  // the link wins over it.
   const handleSetupProvider = () => {
     runCancelTransition(true, () => {
-      navigate({ to: "/settings/providers" });
+      const product = selectedConfiguration?.productId;
+      if (product) {
+        clearScopedRouteState("/settings/providers", "providerId");
+      }
+      navigate({ to: "/settings/providers", search: product ? { product } : {} });
     });
   };
 
@@ -239,11 +241,11 @@ export function useReviewLifecycle({
     state: base.stream.state,
     gate: base.gate,
     contextSnapshot: base.contextSnapshot,
+    contextRefreshError: base.contextRefreshError,
+    retryContextRefresh: base.retryContextRefresh,
     loadingMessage: base.checks.loadingMessage,
     readiness: selectedReadiness,
     selectedConfiguration,
-    startIdentity: base.start.identity,
-    readinessGate: base.start.readinessGate,
     canStart: base.start.canStart,
     isCompleting: base.completion.isCompleting,
     isReady,

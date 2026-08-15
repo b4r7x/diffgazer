@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { PRODUCT_REGISTRY } from "../providers/product-registry.js";
-import { REMOVED_PRODUCT_ID } from "../schemas/config/providers.js";
 import { CANDIDATE_PRODUCT_IDS } from "../schemas/config/transports.js";
 import * as onboardingTypes from "./types.js";
 
@@ -21,12 +20,6 @@ function runnableState(configurationInput: Record<string, unknown>) {
 }
 
 describe("onboarding state", () => {
-  it("exposes dynamic V2 state contracts without fixed API-key wizard exports", () => {
-    expect("INPUT_METHODS" in onboardingTypes).toBe(false);
-    expect("isInputMethod" in onboardingTypes).toBe(false);
-    expect("WIZARD_STEPS" in onboardingTypes).toBe(false);
-  });
-
   it.each([
     {
       family: "hosted-api",
@@ -61,41 +54,9 @@ describe("onboarding state", () => {
     const state = onboardingTypes.OnboardingStateSchema.parse(runnableState(input));
 
     expect(state.kind).toBe("runnable");
-    if (state.kind !== "runnable") throw new Error("Expected runnable state");
     expect(state.configurationInput.transportFamily).toBe(family);
     expect(state.plan.transportFamily).toBe(family);
     expect(state.plan.productId).toBe(input.productId);
-  });
-
-  it("parses removed data as migration and explicit deletion only", () => {
-    const state = onboardingTypes.OnboardingStateSchema.parse({
-      kind: "removed",
-      productId: REMOVED_PRODUCT_ID,
-      configurationId: "legacy-removed-zai-plan",
-      expectedRevision: 2,
-    });
-
-    expect(state).toMatchObject({
-      kind: "removed",
-      plan: {
-        kind: "removed",
-        steps: [{ id: "migration" }, { id: "delete" }],
-      },
-    });
-    expect(state.plan.steps.map((step) => step.id)).toEqual(["migration", "delete"]);
-    expect(
-      onboardingTypes.OnboardingStateSchema.safeParse({
-        kind: "removed",
-        productId: REMOVED_PRODUCT_ID,
-        configurationId: "legacy-removed-zai-plan",
-        expectedRevision: 2,
-        configurationInput: {
-          transportFamily: "hosted-api",
-          productId: "zai",
-          endpoint: "https://api.z.ai/api/paas/v4",
-        },
-      }).success,
-    ).toBe(false);
   });
 
   it("requires explicit acknowledgement of the exact selected product notice", () => {
