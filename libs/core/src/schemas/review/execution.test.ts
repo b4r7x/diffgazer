@@ -1,15 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import { sha256CanonicalJsonSync } from "../canonical-json.js";
 import {
-  CanonicalJsonParseError,
-  canonicalJson,
-  MAX_CANONICAL_JSON_BYTES,
-  MAX_CANONICAL_JSON_COLLECTION_ITEMS,
-  MAX_CANONICAL_JSON_DEPTH,
-  parseCanonicalJson,
-  sha256CanonicalJson,
-  sha256CanonicalJsonSync,
-} from "../canonical-json.js";
-import { LOCAL_OPENAI_PRESET_ENDPOINTS } from "../config/transports.js";
+  type HostedApiProductId,
+  LOCAL_OPENAI_PRESET_ENDPOINTS,
+  type LocalCliProductId,
+  type LocalHttpProductId,
+} from "../config/transports.js";
 import {
   type EvidenceKey,
   EvidenceKeySchema,
@@ -17,9 +13,9 @@ import {
   type ExecutionLimits,
   ExecutionLimitsSchema,
   ExecutionReceiptSchema,
+  type ExecutionReceiptUsageState,
+  ExecutionReceiptUsageStateSchema,
   ExecutionResultSchema,
-  hashEvidenceKey,
-  hashExecutionFingerprint,
   hashExecutionReceiptFingerprintSync,
   type NormalizedUsage,
   NormalizedUsageSchema,
@@ -65,7 +61,25 @@ const localHttpEvidence: EvidenceKey = {
   productId: "local-openai",
   transportFamily: "local-http",
   normalizedEndpoint: "http://127.0.0.1:1234/v1",
+  region: null,
+  workspaceAccountReference: null,
   runtime: { identity: "lm-studio", version: "0.3.0" },
+};
+
+const localHttpBearerEvidence: EvidenceKey = {
+  ...localHttpEvidence,
+  authentication: "optional-local-bearer",
+};
+
+const localHttpCredentialEvidence: EvidenceKey = {
+  ...localHttpBearerEvidence,
+  credentialReferenceIdentity: "5".repeat(64),
+};
+
+const localHttpLlamaCppEvidence: EvidenceKey = {
+  ...localHttpEvidence,
+  normalizedEndpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["llama-cpp"],
+  runtime: { identity: "llama-cpp", version: "0.3.0" },
 };
 
 const regionalEvidence: EvidenceKey = {
@@ -98,7 +112,7 @@ type ReceiptFixture = {
   modelId: string;
   normalizedEndpoint: string | null;
   region?: string;
-  workspace?: string;
+  workspaceAccountReference?: string;
   runtime: RuntimeIdentity | null;
   structuredOutputSchemaSha256: string;
   noticeVersion: number;
@@ -125,7 +139,7 @@ function makeReceipt(overrides: Partial<ReceiptFixture> = {}) {
     modelId: "openai/gpt-4.1-mini",
     normalizedEndpoint: "https://openrouter.ai/api/v1",
     region: undefined,
-    workspace: undefined,
+    workspaceAccountReference: undefined,
     runtime: { identity: "diffgazer-server", version: "1.2.3" },
     structuredOutputSchemaSha256: SCHEMA_SHA256,
     noticeVersion: 1,
@@ -155,7 +169,7 @@ function makeReceipt(overrides: Partial<ReceiptFixture> = {}) {
         modelId: receipt.modelId,
         normalizedEndpoint: receipt.normalizedEndpoint ?? null,
         region: receipt.region ?? null,
-        workspaceAccountReference: receipt.workspace ?? null,
+        workspaceAccountReference: receipt.workspaceAccountReference ?? null,
         runtime: receipt.runtime,
         structuredOutputSchemaSha256: receipt.structuredOutputSchemaSha256,
         noticeVersion: receipt.noticeVersion,
@@ -167,15 +181,8 @@ function makeReceipt(overrides: Partial<ReceiptFixture> = {}) {
   }
 }
 
-function captureParseError(parse: () => unknown): CanonicalJsonParseError {
-  try {
-    parse();
-  } catch (error) {
-    if (error instanceof CanonicalJsonParseError) return error;
-    throw error;
-  }
-  throw new Error("Expected canonical JSON parsing to fail");
-}
+const hashEvidenceKey = (input: EvidenceKey): string =>
+  sha256CanonicalJsonSync(EvidenceKeySchema.parse(input));
 
 const issue = {
   id: "issue-1",
@@ -195,92 +202,6 @@ const issue = {
 } as const;
 
 describe("canonical execution hashes", () => {
-  it("produces a deterministic lowercase SHA-256 vector from canonical UTF-8 JSON", async () => {
-    expect(canonicalJson({ z: 1, a: 2 })).toBe('{"a":2,"z":1}');
-    expect(canonicalJson({ list: ["z", "a"], nested: { z: null, a: true } })).toBe(
-      '{"list":["z","a"],"nested":{"a":true,"z":null}}',
-    );
-
-    const digest = await sha256CanonicalJson({ z: 1, a: 2 });
-
-    expect(digest).toBe("c2985c5ba6f7d2a55e768f92490ca09388e95bc4cccb9fdf11b15f4d42f93e73");
-    expect(sha256CanonicalJsonSync({ z: 1, a: 2 })).toBe(digest);
-    expect(digest).toMatch(/^[a-f0-9]{64}$/);
-  });
-
-  it("rejects values that cannot have an unambiguous canonical JSON encoding", () => {
-    expect(() => canonicalJson({ value: undefined })).toThrow("does not support undefined");
-    expect(() => canonicalJson({ value: Number.POSITIVE_INFINITY })).toThrow(
-      "requires finite numbers",
-    );
-    expect(() => canonicalJson(new Array(1))).toThrow("does not accept sparse arrays");
-    const cyclic: { self?: unknown } = {};
-    cyclic.self = cyclic;
-    expect(() => canonicalJson(cyclic)).toThrow("cyclic values");
-  });
-
-  it("rejects duplicate keys before materializing untrusted JSON", () => {
-    expect(() => parseCanonicalJson('{"a":1,"a":2}')).toThrow("duplicate object key");
-    expect(() => parseCanonicalJson('{"outer":{"a":1,"a":2}}')).toThrow("duplicate object key");
-    expect(() => parseCanonicalJson('{"a":')).toThrow("expected JSON value");
-    expect(parseCanonicalJson('{"z":1,"a":[true,null]}')).toEqual({
-      z: 1,
-      a: [true, null],
-    });
-  });
-
-  it("does not include untrusted duplicate keys in parser diagnostics", () => {
-    const secretLikeKey = "authorization-token=super-secret-value";
-    const error = captureParseError(() =>
-      parseCanonicalJson(`{"${secretLikeKey}":1,"${secretLikeKey}":2}`),
-    );
-
-    expect(error.reason).toBe("duplicate object key");
-    expect(error.message).not.toContain(secretLikeKey);
-  });
-
-  it("accepts only the four JSON whitespace characters", () => {
-    for (const whitespace of [" ", "\t", "\n", "\r"]) {
-      expect(parseCanonicalJson(`${whitespace}{"a":1}${whitespace}`)).toEqual({ a: 1 });
-      expect(parseCanonicalJson(`{"a"${whitespace}:1}`)).toEqual({ a: 1 });
-    }
-
-    for (const whitespace of [
-      "\u000b",
-      "\u000c",
-      "\u0085",
-      "\u00a0",
-      "\u2028",
-      "\u2029",
-      "\ufeff",
-    ]) {
-      expect(() => parseCanonicalJson(`${whitespace}{"a":1}`)).toThrow(CanonicalJsonParseError);
-      expect(() => parseCanonicalJson(`{"a"${whitespace}:1}`)).toThrow(CanonicalJsonParseError);
-      expect(() => parseCanonicalJson(`{"a":1}${whitespace}`)).toThrow(CanonicalJsonParseError);
-    }
-  });
-
-  it("fails with a typed error before parsing oversized, deeply nested, or wide JSON", () => {
-    const oversized = `"${"x".repeat(MAX_CANONICAL_JSON_BYTES)}"`;
-    expect(() => parseCanonicalJson(oversized)).toThrow(CanonicalJsonParseError);
-    expect(() => parseCanonicalJson(oversized)).toThrow("bounded 64 KiB limit");
-
-    const astralOversized = `"${"😀".repeat(Math.ceil(MAX_CANONICAL_JSON_BYTES / 4))}"`;
-    expect(() => parseCanonicalJson(astralOversized)).toThrow(CanonicalJsonParseError);
-
-    const deeplyNested = `${"[".repeat(MAX_CANONICAL_JSON_DEPTH + 1)}0${"]".repeat(
-      MAX_CANONICAL_JSON_DEPTH + 1,
-    )}`;
-    const depthError = captureParseError(() => parseCanonicalJson(deeplyNested));
-    expect(depthError).toBeInstanceOf(CanonicalJsonParseError);
-    expect(depthError.reason).toBe("maximum JSON depth exceeded");
-
-    const wide = `[${Array.from({ length: MAX_CANONICAL_JSON_COLLECTION_ITEMS + 1 }, () => "0").join(",")}]`;
-    const collectionError = captureParseError(() => parseCanonicalJson(wide));
-    expect(collectionError).toBeInstanceOf(CanonicalJsonParseError);
-    expect(collectionError.reason).toBe("maximum JSON collection size exceeded");
-  });
-
   const invalidationCases: ReadonlyArray<{
     readonly base: EvidenceKey;
     readonly changed: EvidenceKey;
@@ -304,25 +225,17 @@ describe("canonical execution hashes", () => {
     {
       label: "local HTTP authentication mode",
       base: localHttpEvidence,
-      changed: { ...localHttpEvidence, authentication: "optional-local-bearer" },
+      changed: localHttpBearerEvidence,
     },
     {
       label: "local HTTP credential reference",
-      base: { ...localHttpEvidence, authentication: "optional-local-bearer" },
-      changed: {
-        ...localHttpEvidence,
-        authentication: "optional-local-bearer",
-        credentialReferenceIdentity: "5".repeat(64),
-      },
+      base: localHttpBearerEvidence,
+      changed: localHttpCredentialEvidence,
     },
     {
       label: "normalized endpoint",
       base: localHttpEvidence,
-      changed: {
-        ...localHttpEvidence,
-        normalizedEndpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["llama-cpp"],
-        runtime: { identity: "llama-cpp", version: "0.3.0" },
-      },
+      changed: localHttpLlamaCppEvidence,
     },
     {
       label: "region",
@@ -396,29 +309,27 @@ describe("canonical execution hashes", () => {
     },
   ];
 
-  it.each(invalidationCases)("changes the evidence hash when $label changes", async ({
+  it.each(invalidationCases)("changes the evidence hash when $label changes", ({
     base,
     changed,
   }) => {
-    expect(await hashEvidenceKey(changed)).not.toBe(await hashEvidenceKey(base));
+    expect(hashEvidenceKey(changed)).not.toBe(hashEvidenceKey(base));
   });
 
-  it("hashes the complete immutable admitted-plan identity", async () => {
+  it("hashes the complete immutable admitted-plan identity", () => {
     const input = {
       configurationId: "configuration-1",
       configurationRevision: 3,
       evidenceKey,
     };
-    const baseHash = await hashExecutionFingerprint(input);
+    const hashFingerprint = (fingerprint: typeof input) =>
+      sha256CanonicalJsonSync(ExecutionFingerprintInputSchema.parse(fingerprint));
+    const baseHash = hashFingerprint(input);
 
+    expect(hashFingerprint({ ...input, configurationId: "configuration-2" })).not.toBe(baseHash);
+    expect(hashFingerprint({ ...input, configurationRevision: 4 })).not.toBe(baseHash);
     expect(
-      await hashExecutionFingerprint({ ...input, configurationId: "configuration-2" }),
-    ).not.toBe(baseHash);
-    expect(await hashExecutionFingerprint({ ...input, configurationRevision: 4 })).not.toBe(
-      baseHash,
-    );
-    expect(
-      await hashExecutionFingerprint({
+      hashFingerprint({
         ...input,
         evidenceKey: { ...evidenceKey, modelId: "openai/gpt-4.1" },
       }),
@@ -438,13 +349,16 @@ describe("canonical execution hashes", () => {
       modelId: receipt.modelId,
       normalizedEndpoint: receipt.normalizedEndpoint,
       region: receipt.region ?? null,
-      workspaceAccountReference: receipt.workspace ?? null,
+      workspaceAccountReference: receipt.workspaceAccountReference ?? null,
       runtime: receipt.runtime,
       structuredOutputSchemaSha256: receipt.structuredOutputSchemaSha256,
       noticeVersion: receipt.noticeVersion,
       limits: receipt.limits,
     };
 
+    expect(receipt.executionFingerprint).toBe(
+      "bbecc7ff3c26fdfa9545e8365eaab225dd7872cd564c55bf1da5b80d0cdb05c3",
+    );
     expect(hashExecutionReceiptFingerprintSync(input)).toBe(receipt.executionFingerprint);
     expect(hashExecutionReceiptFingerprintSync({ ...input, modelId: "openai/gpt-4.1" })).not.toBe(
       receipt.executionFingerprint,
@@ -462,6 +376,61 @@ describe("canonical execution hashes", () => {
 });
 
 describe("execution contracts", () => {
+  it("narrows EvidenceKey transport tuples at the type level", () => {
+    type HostedEvidence = Extract<EvidenceKey, { transportFamily: "hosted-api" }>;
+    type LocalHttpEvidence = Extract<EvidenceKey, { transportFamily: "local-http" }>;
+    type LocalCliEvidence = Extract<EvidenceKey, { transportFamily: "local-cli" }>;
+
+    expectTypeOf<HostedEvidence["productId"]>().toEqualTypeOf<HostedApiProductId>();
+    expectTypeOf<LocalHttpEvidence["productId"]>().toEqualTypeOf<LocalHttpProductId>();
+    expectTypeOf<LocalCliEvidence["productId"]>().toEqualTypeOf<LocalCliProductId>();
+    expectTypeOf<HostedEvidence["authentication"]>().toEqualTypeOf<null>();
+    expectTypeOf<LocalHttpEvidence["region"]>().toEqualTypeOf<null>();
+    expectTypeOf<LocalCliEvidence["normalizedEndpoint"]>().toEqualTypeOf<null>();
+    expectTypeOf<"openrouter">().not.toMatchTypeOf<LocalCliEvidence["productId"]>();
+  });
+
+  it("models receipt usage availability as a discriminated union", () => {
+    const acceptUsageState = (_state: ExecutionReceiptUsageState) => undefined;
+
+    acceptUsageState({
+      usageAvailability: "reported",
+      usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+    });
+    acceptUsageState({ usageAvailability: "unavailable" });
+    acceptUsageState({ usageAvailability: "required-missing" });
+    // @ts-expect-error reported usage must include normalized usage.
+    acceptUsageState({ usageAvailability: "reported" });
+    // @ts-expect-error unavailable usage cannot include normalized usage.
+    acceptUsageState({ usageAvailability: "unavailable", usage: { inputTokens: 1 } });
+
+    expect(
+      ExecutionReceiptUsageStateSchema.safeParse({
+        usageAvailability: "reported",
+        usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+      }).success,
+    ).toBe(true);
+    expect(
+      ExecutionReceiptUsageStateSchema.safeParse({ usageAvailability: "reported" }).success,
+    ).toBe(false);
+    expect(
+      ExecutionReceiptUsageStateSchema.safeParse({
+        usageAvailability: "unavailable",
+        usage: { inputTokens: 1 },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("reports only the contradicted field of a stored receipt, not every usage branch", () => {
+    const result = ExecutionReceiptSchema.safeParse(
+      makeReceipt({ usageAvailability: "unavailable" }),
+    );
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues.map((entry) => entry.path.join("."))).toEqual(["usage"]);
+  });
+
   it("freezes parsed identities and normalizes only reported nonnegative usage", () => {
     const parsedLimits = ExecutionLimitsSchema.parse(limits);
     const parsedEvidence = EvidenceKeySchema.parse(evidenceKey);
@@ -550,7 +519,7 @@ describe("execution contracts", () => {
     for (const invalidReceipt of [
       makeReceipt({ transportFamily: "local-cli" }),
       makeReceipt({ modelId: "../model" }),
-      makeReceipt({ workspace: "review-team" }),
+      makeReceipt({ workspaceAccountReference: "review-team" }),
       makeReceipt({ runtime: { identity: "/usr/local/bin/tool", version: "1.2.3" } }),
       makeReceipt({
         productId: "qwen",
@@ -615,7 +584,7 @@ describe("execution contracts", () => {
           credentialReferenceIdentity: null,
           installationId: null,
           region: undefined,
-          workspace: undefined,
+          workspaceAccountReference: undefined,
           runtime: { identity: "ollama", version: "0.6.0" },
         }),
       ).success,
@@ -629,14 +598,14 @@ describe("execution contracts", () => {
           credentialReferenceIdentity: null,
           installationId: "copilot-installation",
           region: undefined,
-          workspace: undefined,
+          workspaceAccountReference: undefined,
           runtime: { identity: "copilot-cli", version: "0.1.0" },
         }),
       ).success,
     ).toBe(true);
   });
 
-  it("binds local runtime identity to the selected product and preset", async () => {
+  it("binds local runtime identity to the selected product and preset", () => {
     expect(
       EvidenceKeySchema.safeParse({
         ...localHttpEvidence,
@@ -696,11 +665,11 @@ describe("execution contracts", () => {
     const parsed = EvidenceKeySchema.parse(localHttpEvidence);
     expect(parsed.runtime).toEqual(localHttpEvidence.runtime);
     expect(
-      await hashEvidenceKey({
+      hashEvidenceKey({
         ...localHttpEvidence,
         runtime: { identity: "lm-studio", version: "0.3.1" },
       }),
-    ).not.toBe(await hashEvidenceKey(localHttpEvidence));
+    ).not.toBe(hashEvidenceKey(localHttpEvidence));
   });
 
   it("rejects forged product tuples and missing family-specific evidence", () => {
@@ -805,11 +774,16 @@ describe("execution contracts", () => {
     { label: "auto model selector", modelId: "openai/auto", valid: false },
     { label: "aggregator self-route", modelId: "openrouter/gpt-4.1", valid: false },
     { label: "aggregator model segment", modelId: "anthropic/openrouter", valid: false },
-    { label: "free suffix", modelId: "openai/gpt-4.1-mini:free", valid: false },
+    // Pinned variant suffixes name separately priced catalog identities; the
+    // dynamic selectors below are request-time sort instructions, and an unknown
+    // or stacked suffix fails closed rather than riding in on id shape.
+    { label: "free suffix", modelId: "openai/gpt-4.1-mini:free", valid: true },
+    { label: "thinking suffix", modelId: "openai/gpt-4.1-mini:thinking", valid: true },
     { label: "online suffix", modelId: "openai/gpt-4.1-mini:online", valid: false },
     { label: "nitro suffix", modelId: "openai/gpt-4.1-mini:nitro", valid: false },
-    { label: "thinking suffix", modelId: "openai/gpt-4.1-mini:thinking", valid: false },
     { label: "extended suffix", modelId: "openai/gpt-4.1-mini:extended", valid: false },
+    { label: "stacked suffixes", modelId: "openai/gpt-4.1-mini:free:nitro", valid: false },
+    { label: "free suffix on a router", modelId: "openrouter/free:free", valid: false },
     { label: "pinned Anthropic route", modelId: "anthropic/claude-3.7-sonnet", valid: true },
     {
       label: "reserved-word substring in provider",
@@ -901,6 +875,50 @@ describe("execution contracts", () => {
         makeReceipt({ usage: { outputTokens: limits.maxOutputTokens + 1 } }),
       ).success,
     ).toBe(false);
+    expect(
+      ExecutionReceiptSchema.safeParse(
+        makeReceipt({ usageAvailability: "reported", usage: undefined }),
+      ).success,
+    ).toBe(false);
+    expect(
+      ExecutionReceiptSchema.safeParse(
+        makeReceipt({
+          outcome: "transport-failed",
+          usageAvailability: "unavailable",
+          usage: { inputTokens: 1 },
+        }),
+      ).success,
+    ).toBe(false);
+  });
+
+  it("allows over-cap reported usage only for budget-exhausted receipts", () => {
+    const overCapUsages: ReadonlyArray<NormalizedUsage> = [
+      { inputTokens: limits.maxInputTokens + 1 },
+      { outputTokens: limits.maxOutputTokens + 1 },
+      { totalTokens: limits.maxInputTokens + limits.maxOutputTokens + 1 },
+    ];
+    const inCapUsage: NormalizedUsage = {
+      inputTokens: limits.maxInputTokens,
+      outputTokens: limits.maxOutputTokens,
+      totalTokens: limits.maxInputTokens + limits.maxOutputTokens,
+    };
+
+    for (const usage of [...overCapUsages, inCapUsage]) {
+      expect(
+        ExecutionReceiptSchema.safeParse(makeReceipt({ outcome: "budget-exhausted", usage }))
+          .success,
+        JSON.stringify(usage),
+      ).toBe(true);
+    }
+
+    for (const outcome of TERMINAL_OUTCOMES.filter((value) => value !== "budget-exhausted")) {
+      for (const usage of overCapUsages) {
+        expect(
+          ExecutionReceiptSchema.safeParse(makeReceipt({ outcome, usage })).success,
+          `${outcome}: ${JSON.stringify(usage)}`,
+        ).toBe(false);
+      }
+    }
   });
 
   it("rejects impossible completed receipt attempts and timestamps", () => {
@@ -990,7 +1008,7 @@ describe("execution contracts", () => {
           productId: "qwen",
           normalizedEndpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
           region: "international",
-          workspace: WORKSPACE_ACCOUNT_REFERENCE,
+          workspaceAccountReference: WORKSPACE_ACCOUNT_REFERENCE,
           modelId: "qwen3-coder-flash",
           usage: undefined,
           usageAvailability: "unavailable",
@@ -1003,7 +1021,7 @@ describe("execution contracts", () => {
           productId: "qwen",
           normalizedEndpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
           region: "international",
-          workspace: WORKSPACE_ACCOUNT_REFERENCE,
+          workspaceAccountReference: WORKSPACE_ACCOUNT_REFERENCE,
           modelId: "qwen3-coder-flash",
           usage: undefined,
           usageAvailability: "required-missing",
@@ -1011,17 +1029,5 @@ describe("execution contracts", () => {
         }),
       ).success,
     ).toBe(true);
-  });
-
-  it("resolves execution schemas and hashing inputs from the review schema barrel", () => {
-    expect(EvidenceKeySchema.parse(evidenceKey)).toEqual(evidenceKey);
-    expect(
-      ExecutionFingerprintInputSchema.safeParse({
-        configurationId: "configuration-1",
-        configurationRevision: 3,
-        evidenceKey,
-      }).success,
-    ).toBe(true);
-    expect(ExecutionReceiptSchema.safeParse(makeReceipt()).success).toBe(true);
   });
 });

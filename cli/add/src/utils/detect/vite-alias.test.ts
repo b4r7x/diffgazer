@@ -8,7 +8,6 @@ let root: string;
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "dgadd-vite-alias-"));
-  writeFileSync(join(root, "package.json"), JSON.stringify({ type: "module" }));
 });
 
 afterEach(() => {
@@ -164,6 +163,16 @@ describe("detectViteAlias", () => {
     });
   }
 
+  test("prefers the exported root resolve.alias over a plugin-local alias", () => {
+    writeViteConfig([
+      "export default {",
+      "  plugins: [{ resolve: { alias: { '@': './src' } } }],",
+      "  resolve: { alias: { '~': './app' } },",
+      "};",
+    ]);
+    assertDetectedAlias({ importAliasPrefix: "~", sourceDir: "app" });
+  });
+
   test.each([
     {
       name: "a local alias-shaped object",
@@ -174,27 +183,27 @@ describe("detectViteAlias", () => {
     },
     {
       name: "a plugin-local resolve.alias object",
-      config: [
-        "const plugin = { resolve: { alias: { '@': './src' } } };",
-        "export default { plugins: [plugin] };",
-      ],
+      config: ["export default {", "  plugins: [{ resolve: { alias: { '@': './src' } } }],", "};"],
     },
     {
       name: "an alias array nested under a plugin",
       config: [
         "export default {",
-        "  plugins: [{ alias: [{ find: '@', replacement: './src' }] }],",
+        "  plugins: [{ resolve: { alias: [{ find: '@', replacement: './src' }] } }],",
         "};",
       ],
     },
     {
       name: "resolve-like text in comments, strings, templates, and regex literals",
       config: [
-        "// resolve: { alias: { '@': './src' } }",
-        "const text = \"resolve: { alias: { '@': './src' } }\";",
-        "const template = `resolve: { alias: { '@': './src' } }`;",
-        "const pattern = /resolve: \\{ alias: \\{ '@': '\\.\\/src' \\} \\}/;",
-        "export default { plugins: [{ text, template, pattern }] };",
+        "export default {",
+        "  // resolve: { alias: { '@': './src' } }",
+        "  plugins: [{",
+        "    text: \"resolve: { alias: { '@': './src' } }\",",
+        "    template: `resolve: { alias: { '@': './src' } }`,",
+        "    pattern: /resolve: \\{ alias: \\{ '@': '\\.\\/src' \\} \\}/,",
+        "  }],",
+        "};",
       ],
     },
   ])("ignores $name outside the exported resolve.alias value", ({ config }) => {
@@ -323,5 +332,27 @@ describe("detectViteAlias", () => {
   ])("ignores $name", ({ config }) => {
     writeViteConfig(config);
     assertNoDetectedAlias();
+  });
+
+  test.each([
+    {
+      name: "vite.config.cjs",
+      fileName: "vite.config.cjs",
+      config: ["module.exports = {", "  resolve: { alias: { '~': './src' } },", "};"],
+      expected: { importAliasPrefix: "~", sourceDir: "src" },
+    },
+    {
+      name: "vite.config.cts",
+      fileName: "vite.config.cts",
+      config: ["export default {", "  resolve: { alias: { '@': './app' } },", "};"],
+      expected: { importAliasPrefix: "@", sourceDir: "app" },
+    },
+  ])("detects aliases from $name", ({ fileName, config, expected }) => {
+    writeFileSync(join(root, fileName), [...config, ""].join("\n"));
+    const alias = detectViteAlias(root);
+
+    expect(alias).not.toBeNull();
+    expect(alias?.importPrefix).toBe(expected.importAliasPrefix);
+    expect(alias?.sourceDir).toBe(expected.sourceDir);
   });
 });

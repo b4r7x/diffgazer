@@ -1,9 +1,9 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { render, renderHook, screen, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { Shortcut } from "../schemas/presentation/index.js";
 import { FooterProvider, useFooterData } from "./provider.js";
 import { usePageFooter } from "./use-page-footer.js";
@@ -30,8 +30,6 @@ function FooterStateView() {
 }
 
 describe("usePageFooter", () => {
-  afterEach(cleanup);
-
   it("publishes left and right shortcuts to footer data", () => {
     const shortcuts: Shortcut[] = [{ key: "Enter", label: "Confirm" }];
     const rightShortcuts: Shortcut[] = [{ key: "Esc", label: "Back" }];

@@ -15,9 +15,9 @@ describe("composeRefs documentation recipes", () => {
     );
 
     expect(tsxFences).not.toHaveLength(0);
-    expect(tsxFences.join("\n")).not.toContain("const composedRef = composeRefs(");
-    expect(tsxFences.some((fence) => fence.includes("const composedRef = useComposedRefs("))).toBe(
-      true,
-    );
+    expect(tsxFences.some((fence) => fence.includes("useComposedRefs("))).toBe(true);
+    // Strip the hook first so only a bare composeRefs( call is left to catch,
+    // whatever the recipe names the variable it assigns.
+    expect(tsxFences.join("\n").replaceAll("useComposedRefs(", "")).not.toContain("composeRefs(");
   });
 });

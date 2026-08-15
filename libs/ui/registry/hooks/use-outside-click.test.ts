@@ -419,6 +419,36 @@ describe("useOutsideClick", () => {
     opener.remove();
   });
 
+  it.each([
+    { gesture: "pointer", detail: 1, reaches: false },
+    { gesture: "keyboard", detail: 0, reaches: true },
+  ])("swallows the $gesture click after a dismissing press that ended without one", ({
+    detail,
+    reaches,
+  }) => {
+    const inside = document.createElement("div");
+    const outside = document.createElement("button");
+    document.body.append(inside, outside);
+    const ref: RefObject<HTMLElement | null> = { current: inside };
+    const handler = vi.fn();
+    const activate = vi.fn();
+    outside.addEventListener("click", activate);
+
+    renderHook(() => useOutsideClick(ref, handler));
+
+    outside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    expect(handler).toHaveBeenCalledOnce();
+    // The gesture releases without producing a click (drag or text selection),
+    // so the swallow stays armed for its timeout window.
+    outside.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+
+    outside.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, detail }));
+
+    expect(activate).toHaveBeenCalledTimes(reaches ? 1 : 0);
+    inside.remove();
+    outside.remove();
+  });
+
   it("routes Escape to the topmost enabled layer", async () => {
     const user = userEvent.setup();
     const lowerHandler = vi.fn();
@@ -492,6 +522,29 @@ describe("useOutsideClick", () => {
     expect(handler).toHaveBeenCalledOnce();
     inside.remove();
     outside.remove();
+  });
+
+  it("releases its Escape layer on StrictMode unmount so the layer below resumes", async () => {
+    const user = userEvent.setup();
+    const lowerHandler = vi.fn();
+    const upperHandler = vi.fn();
+
+    const lower = renderHook(() => useEscapeKey(lowerHandler, true), { wrapper: StrictMode });
+    const upper = renderHook(() => useEscapeKey(upperHandler, true), { wrapper: StrictMode });
+
+    await user.keyboard("{Escape}");
+    expect(upperHandler).toHaveBeenCalledOnce();
+    expect(lowerHandler).not.toHaveBeenCalled();
+
+    upper.unmount();
+    await user.keyboard("{Escape}");
+    expect(lowerHandler).toHaveBeenCalledOnce();
+    expect(upperHandler).toHaveBeenCalledOnce();
+
+    lower.unmount();
+    await user.keyboard("{Escape}");
+    expect(lowerHandler).toHaveBeenCalledOnce();
+    expect(upperHandler).toHaveBeenCalledOnce();
   });
 
   it("uses the latest Escape handler after rerender", async () => {

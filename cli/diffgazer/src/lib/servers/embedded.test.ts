@@ -137,6 +137,79 @@ describe("createEmbeddedServer startup failures", () => {
   });
 });
 
+describe("createEmbeddedServer SPA shell responses", () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.restoreAllMocks();
+    vi.doUnmock("node:fs");
+    vi.doUnmock("@hono/node-server");
+    vi.doUnmock("@hono/node-server/serve-static");
+    vi.doUnmock("@diffgazer/server");
+  });
+
+  it("keeps the token-bearing shell out of the browser cache and re-nonces every navigation", async () => {
+    vi.resetModules();
+    const originalToken = process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+    process.env.DIFFGAZER_SHUTDOWN_TOKEN = "shell-token";
+
+    let handleRequest: ((request: Request) => Promise<Response>) | null = null;
+    const serve = vi.fn(
+      (
+        options: { fetch: (request: Request) => Promise<Response> },
+        callback?: (info: { port: number }) => void,
+      ) => {
+        handleRequest = options.fetch;
+        callback?.({ port: 3000 });
+        return { on: () => undefined, close: (cb?: () => void) => cb?.() };
+      },
+    );
+
+    vi.doMock("node:fs", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("node:fs")>();
+      return { ...actual, existsSync: () => true, readFileSync: () => MINIMAL_HTML };
+    });
+    vi.doMock("@hono/node-server", () => ({ serve }));
+    vi.doMock("@hono/node-server/serve-static", () => ({ serveStatic: () => () => undefined }));
+    vi.doMock("@diffgazer/server", async () => {
+      const { Hono } = await import("hono");
+      return {
+        createApp: () => new Hono(),
+        shutdownSessions: () => undefined,
+        startSessionMaintenance: () => undefined,
+      };
+    });
+
+    const { createEmbeddedServer: createServer } = await import("./embedded");
+    const server = createServer({ port: 3000 });
+
+    try {
+      await server.start();
+      if (handleRequest === null) throw new Error("Expected the embedded server to serve requests");
+      const navigate = handleRequest as (request: Request) => Promise<Response>;
+      const request = () =>
+        navigate(new Request("http://localhost:3000/", { headers: { accept: "text/html" } }));
+
+      const first = await request();
+      expect(first.headers.get("cache-control")).toBe("no-store");
+      const firstBody = await first.text();
+      expect(firstBody).toContain('"shell-token"');
+
+      // The shell file is read once now, so the per-response nonce must still
+      // differ or every navigation would share one CSP nonce.
+      const second = await request();
+      const nonceOf = (csp: string | null) => csp?.match(/'nonce-([^']+)'/)?.[1];
+      expect(nonceOf(first.headers.get("content-security-policy"))).toBeDefined();
+      expect(nonceOf(second.headers.get("content-security-policy"))).not.toBe(
+        nonceOf(first.headers.get("content-security-policy")),
+      );
+    } finally {
+      await server.stop();
+      if (originalToken === undefined) delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+      else process.env.DIFFGAZER_SHUTDOWN_TOKEN = originalToken;
+    }
+  });
+});
+
 describe("createEmbeddedServer restart after a failed listen", () => {
   afterEach(() => {
     vi.resetModules();
@@ -219,6 +292,70 @@ describe("createEmbeddedServer restart after a failed listen", () => {
     captured.readyCallback?.({ port: 3000 });
     await expect(thirdStart).resolves.toBeUndefined();
     expect(startSessionMaintenance).toHaveBeenCalledTimes(3);
+  });
+
+  it("retires a startup that stop() interrupted, so a later start() owns the port alone", async () => {
+    vi.resetModules();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const captured: { readyCallback: ((info: { port: number }) => void) | null } = {
+      readyCallback: null,
+    };
+    const serve = vi.fn((_options: unknown, callback?: (info: { port: number }) => void) => {
+      captured.readyCallback = callback ?? null;
+      return {
+        on: () => undefined,
+        close: (cb?: () => void) => cb?.(),
+      };
+    });
+    // Only the SPA shell read is overridden: a blanket readFileSync stub would
+    // break unrelated bundled-data reads.
+    vi.doMock("node:fs", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("node:fs")>();
+      return {
+        ...actual,
+        existsSync: () => true,
+        readFileSync: (path: Parameters<typeof actual.readFileSync>[0], ...rest: unknown[]) =>
+          String(path).endsWith("index.html")
+            ? MINIMAL_HTML
+            : (actual.readFileSync as (...args: unknown[]) => unknown)(path, ...rest),
+      };
+    });
+    vi.doMock("@hono/node-server", () => ({ serve }));
+    vi.doMock("@hono/node-server/serve-static", () => ({ serveStatic: () => () => undefined }));
+    vi.doMock("@diffgazer/server", () => ({
+      createApp: () => ({ get: () => undefined, use: () => undefined, fetch: () => undefined }),
+      shutdownSessions: () => undefined,
+      startSessionMaintenance: () => undefined,
+    }));
+
+    const { createEmbeddedServer: createServer } = await import("./embedded");
+    const server = createServer({ port: 3000 });
+
+    // One completed cycle first, so the server module is loaded and every
+    // `await import(...)` below is only a microtask suspension.
+    const initialStart = server.start();
+    await vi.waitFor(() => expect(serve).toHaveBeenCalledTimes(1));
+    captured.readyCallback?.({ port: 3000 });
+    await initialStart;
+    await server.stop();
+
+    // stop() and the next start() now land while this startup is still suspended
+    // at its `await import("@diffgazer/server")`.
+    const interrupted = server.start();
+    void interrupted.catch(() => undefined);
+    const stopped = server.stop();
+    const restarted = server.start();
+
+    await expect(interrupted).rejects.toThrow("Server stopped before readiness");
+    await stopped;
+
+    await vi.waitFor(() => expect(serve).toHaveBeenCalledTimes(2));
+    captured.readyCallback?.({ port: 3000 });
+    await expect(restarted).resolves.toBeUndefined();
+
+    // The retired startup never bound the port a third time.
+    expect(serve).toHaveBeenCalledTimes(2);
   });
 });
 

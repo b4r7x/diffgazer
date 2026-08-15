@@ -25,7 +25,7 @@ const TRAIL_VARS = [
 const IDLE_VAR = "--spinner-trail-idle";
 
 /** Class variants for snake grid dot. */
-export const snakeGridDotVariants = cva("rounded-sm bg-current", {
+const snakeGridDotVariants = cva("rounded-sm bg-current", {
   variants: {
     size: {
       sm: "h-1 w-1",
@@ -37,7 +37,7 @@ export const snakeGridDotVariants = cva("rounded-sm bg-current", {
 });
 
 /** Class variants for snake grid container. */
-export const snakeGridContainerVariants = cva("grid grid-cols-3", {
+const snakeGridContainerVariants = cva("grid grid-cols-3", {
   variants: {
     size: {
       sm: "gap-[3px]",

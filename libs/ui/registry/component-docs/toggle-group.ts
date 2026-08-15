@@ -1,5 +1,5 @@
 import { SEGMENTED_VARIANTS } from "../lib/segmented-variants";
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 const toggleGroupVariantType = SEGMENTED_VARIANTS.map((variant) => `"${variant}"`).join(" | ");
 
@@ -121,7 +121,7 @@ export const toggleGroupDoc: ComponentDoc = {
         description: "Initial selected value(s) for uncontrolled mode.",
       },
       onChange: {
-        type: "(value: string | null) => void | (value: readonly string[]) => void",
+        type: "((value: string | null) => void) | ((value: readonly string[]) => void)",
         required: false,
         defaultValue: null,
         description: "Fired when the selected value(s) change.",

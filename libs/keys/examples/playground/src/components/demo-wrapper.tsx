@@ -29,17 +29,15 @@ export function DemoWrapper({
       </div>
       <p className="demo-wrapper__description">{description}</p>
       <div className="demo-wrapper__content">{children}</div>
-      {hints.length > 0 && (
-        <div className="demo-wrapper__hints">
-          <div className="demo-wrapper__hints-title">What to try</div>
-          {hints.map((hint) => (
-            <div key={`${hint.keys}:${hint.label}`} className="demo-wrapper__hint">
-              <Kbd keys={hint.keys} />
-              <span>{hint.label}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="demo-wrapper__hints">
+        <div className="demo-wrapper__hints-title">What to try</div>
+        {hints.map((hint) => (
+          <div key={`${hint.keys}:${hint.label}`} className="demo-wrapper__hint">
+            <Kbd keys={hint.keys} />
+            <span>{hint.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

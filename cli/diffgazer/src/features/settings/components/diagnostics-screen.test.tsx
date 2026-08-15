@@ -41,13 +41,10 @@ function makeDiagnosticsData(overrides: Partial<DiagnosticsData> = {}): Diagnost
     serverState: { status: "connected" },
     retryServer: vi.fn().mockResolvedValue(undefined),
     setupStatus: {
-      hasSecretsStorage: true,
-      hasProvider: true,
-      hasModel: true,
-      hasTrust: true,
       isConfigured: true,
       isReady: true,
       missing: [],
+      readiness: null,
     },
     initLoading: false,
     initError: null,
@@ -58,6 +55,7 @@ function makeDiagnosticsData(overrides: Partial<DiagnosticsData> = {}): Diagnost
     handleRefreshContext: vi.fn(),
     isRefreshingContext: false,
     refetchContext: vi.fn().mockResolvedValue(undefined),
+    refetchInit: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -90,12 +88,44 @@ describe("DiagnosticsScreen", () => {
     expect(refetchContext).not.toHaveBeenCalled();
   });
 
-  test("refreshes both diagnostics collaborators once, stays busy while pending, and can run again after settling", async () => {
+  test("skips the disabled context action so focus never lands on an unlit button", async () => {
+    const handleRefreshContext = vi.fn();
+    const retryServer = vi.fn().mockResolvedValue(undefined);
+    diagnosticsDataMock.mockReturnValue(
+      makeDiagnosticsData({
+        contextStatus: "error",
+        canRegenerate: false,
+        handleRefreshContext,
+        retryServer,
+      }),
+    );
+
+    const view = render(
+      <CliThemeProvider initialTheme="dark">
+        <DiagnosticsScreen />
+      </CliThemeProvider>,
+    );
+
+    await flush();
+    view.stdin.write(ARROW_RIGHT);
+    await flush();
+    view.stdin.write("\r");
+    await flush();
+
+    expect(handleRefreshContext).not.toHaveBeenCalled();
+    expect(retryServer).toHaveBeenCalledTimes(1);
+  });
+
+  test("refreshes all diagnostics collaborators once, stays busy while pending, and can run again after settling", async () => {
     const retry = createDeferred<unknown>();
     const refetch = createDeferred<unknown>();
+    const init = createDeferred<unknown>();
     const retryServer = vi.fn(() => retry.promise);
     const refetchContext = vi.fn(() => refetch.promise);
-    diagnosticsDataMock.mockReturnValue(makeDiagnosticsData({ retryServer, refetchContext }));
+    const refetchInit = vi.fn(() => init.promise);
+    diagnosticsDataMock.mockReturnValue(
+      makeDiagnosticsData({ retryServer, refetchContext, refetchInit }),
+    );
 
     const view = render(
       <CliThemeProvider initialTheme="dark">
@@ -109,6 +139,7 @@ describe("DiagnosticsScreen", () => {
 
     expect(retryServer).toHaveBeenCalledTimes(1);
     expect(refetchContext).toHaveBeenCalledTimes(1);
+    expect(refetchInit).toHaveBeenCalledTimes(1);
     expect(view.lastFrame()).toContain("Refreshing...");
 
     view.stdin.write("\r");
@@ -116,9 +147,11 @@ describe("DiagnosticsScreen", () => {
 
     expect(retryServer).toHaveBeenCalledTimes(1);
     expect(refetchContext).toHaveBeenCalledTimes(1);
+    expect(refetchInit).toHaveBeenCalledTimes(1);
 
     retry.resolve(undefined);
     refetch.reject(new Error("boom"));
+    init.resolve(undefined);
     await flush();
 
     expect(view.lastFrame()).not.toContain("Refreshing...");
@@ -129,5 +162,6 @@ describe("DiagnosticsScreen", () => {
 
     expect(retryServer).toHaveBeenCalledTimes(2);
     expect(refetchContext).toHaveBeenCalledTimes(2);
+    expect(refetchInit).toHaveBeenCalledTimes(2);
   });
 });

@@ -15,13 +15,31 @@ Experimental, deferred, and rejected candidates in the matrix are documentation-
 
 ## How models are listed
 
-You do not type model names by hand. Diffgazer discovers exact model IDs through the configured product tuple and rejects aliases, routing selectors, and marketing names.
+You do not type model names by hand in the setup wizard. Diffgazer rejects aliases, routing selectors, and marketing names. Each product's model policy decides whether discovery populates the picker, whether a pinned allowlist or family is shown instead, and how an exact ID is validated at save time.
 
-For catalog-backed hosted products, Diffgazer first uses a non-empty models.dev cache that is less than a day old when available. Otherwise, unless `DIFFGAZER_OFFLINE` is set, it requests the live shared catalog. When a live request is skipped, fails, or does not contain the selected provider, Diffgazer falls back to a non-empty cached list for that provider even if it is stale, then to the bundled offline snapshot. The picker identifies cached and snapshot results, offers Retry, and shows when cached data was fetched.
+### Catalog-backed hosted products
 
-OpenRouter does not use the shared snapshot. Its picker first reuses a non-empty cache that is less than a day old and belongs to the same API key. When that cache is missing or stale, it requests OpenRouter's live, account-scoped model route; if the refresh fails, it can fall back only to a stale cache for that same key. OpenRouter requires a **pinned downstream route** — routing selectors are rejected.
+For Google Gemini, Z.AI, Groq, Cerebras, and Mistral, the wizard lists models from the shared models.dev catalog. Diffgazer first uses a non-empty cache that is less than a day old when available. Otherwise, unless `DIFFGAZER_OFFLINE` is set, it requests the live shared catalog. When a live request is skipped, fails, or does not contain the selected provider, Diffgazer falls back to a non-empty cached list for that provider even if it is stale, then to the bundled offline snapshot. The picker identifies cached and snapshot results, offers **Retry**, and shows when cached data was fetched.
 
-For every selectable product, the model you select must pass that product's exact-model policy and appear in the admitted discovery result for your configuration. Arbitrary model IDs are rejected at save time.
+These products use a **discovered-exact** policy: the model you select must appear in the admitted discovery result for your configuration.
+
+### OpenRouter
+
+OpenRouter uses the shared models.dev catalog filtered to OpenRouter provider rows. The wizard lists models from the same discovery cache as the other catalog-backed hosted products above. OpenRouter's **pinned downstream route** policy requires an exact `provider/model` pair, optionally carrying a pinned variant suffix — `:free` and `:thinking` name separately priced catalog entries with their own display name, limits, and price, so they are identities rather than instructions. Dynamic routing selectors are rejected: `openrouter/auto`, `openrouter/free`, and the request-time sort suffixes `:nitro`, `:floor`, `:online`, and `:exacto`.
+
+### Products without catalog discovery
+
+DeepSeek, Qwen International, and Moonshot Open Platform have no models.dev overlay, so catalog discovery is skipped for them and their pickers stay empty. Pin an exact model ID through the [local API](/app/reference/api) instead. Their model policies still bound what may be pinned: **discovered-allowlist** products such as DeepSeek and Qwen International admit only their pinned IDs, and **discovered-family** products such as Moonshot Open Platform admit exact IDs matching their admitted family prefixes.
+
+### Local HTTP and local CLI products
+
+Ollama, Local OpenAI-compatible, OpenAI Codex CLI, and GitHub Copilot CLI do not expose picker-side model discovery in the setup wizard or **Configure Provider** today. Their **Model** step and model dialog show **Catalog observations are unavailable for this configuration product.** with **Retry** only, and **Next** stays disabled in the wizard because the UI does not read back an external `select`. Look up the exact model ID from your local server tooling (for example `ollama list`, or the LM Studio / llama.cpp UI) or from the installed CLI / vendor docs, then `select` that exact ID through the [local API](/app/reference/api) and finish conformance, notice acceptance, and readiness from the [local-product API sequences](/app/reference/configuration) or **Configure Provider**. Conformance and readiness probes validate the tuple afterward.
+
+These products use a **discovered-exact** policy: the ID you pin must be exact, but admission is proven by the configured tuple's live checks rather than a picker observation.
+
+### Save-time gates
+
+Regardless of transport, arbitrary model IDs are rejected at save time when they violate the product's model policy — allowlist membership, family prefixes, pinned route shape, or explicit opt-in suffixes. Higher-cost allowlist models such as Qwen Coder Plus require live evidence before they can be selected.
 
 ## Choosing a model
 

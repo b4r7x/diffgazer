@@ -1,20 +1,10 @@
 "use client";
 
 import { getFocusableElements, getRestorableFocusTarget } from "@diffgazer/keys";
-import {
-  Children,
-  type ComponentProps,
-  Fragment,
-  isValidElement,
-  type ReactNode,
-  useCallback,
-  useMemo,
-  useRef,
-} from "react";
+import { type ComponentProps, type ReactNode, useCallback, useMemo, useRef } from "react";
 import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { CalloutContext, type CalloutTone } from "./callout-context";
-import { CalloutIcon } from "./callout-icon";
 
 /** Allowed callout frame values. */
 export type CalloutFrame = "inline" | "rail" | "bar";
@@ -57,20 +47,6 @@ function moveFocusOutsideCallout(root: HTMLElement): void {
     const activeElement = getRestorableFocusTarget(root.ownerDocument);
     if (activeElement && !root.contains(activeElement)) return;
   }
-}
-
-function hasCalloutIcon(children: ReactNode): boolean {
-  let found = false;
-  Children.forEach(children, (child) => {
-    if (found) return;
-    if (!isValidElement<{ children?: ReactNode }>(child)) return;
-    if (child.type === CalloutIcon) {
-      found = true;
-      return;
-    }
-    if (child.type === Fragment) found = hasCalloutIcon(child.props.children);
-  });
-  return found;
 }
 
 /** Props for callout. */
@@ -132,7 +108,6 @@ export function Callout({
 
   if (!open) return null;
 
-  const hasIcon = hasCalloutIcon(children);
   const role = live ? TONE_ROLE_LIVE[tone] : undefined;
 
   return (
@@ -146,7 +121,7 @@ export function Callout({
         className={className}
         {...props}
       >
-        <div data-slot="callout-grid" data-has-icon={String(hasIcon)}>
+        <div data-slot="callout-grid">
           {frame === "bar" && (
             <span
               aria-hidden="true"

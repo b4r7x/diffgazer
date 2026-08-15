@@ -12,13 +12,13 @@ export function GlobalNotFound() {
       <NotFoundState
         title="Page not found"
         description="The requested route does not exist."
-        actionLabel="GO_HOME"
+        actionLabel="OPEN_DOCS"
         primaryAction={
           <TuiBracketLink variant="primary" to="/$lib" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
             Open docs
           </TuiBracketLink>
         }
-        secondaryAction={<TuiBracketLink to="/">GO_HOME</TuiBracketLink>}
+        secondaryAction={<TuiBracketLink to="/">Go home</TuiBracketLink>}
       />
     </main>
   );

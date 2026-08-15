@@ -12,7 +12,11 @@ import {
   dialogContentVariants,
 } from "./dialog-content";
 import { DialogDescription, type DialogDescriptionProps } from "./dialog-description";
-import { DialogFooter, type DialogFooterProps } from "./dialog-footer";
+import {
+  DialogFooter,
+  type DialogFooterActionsProps,
+  type DialogFooterProps,
+} from "./dialog-footer";
 import { DialogHeader, type DialogHeaderProps } from "./dialog-header";
 import {
   DialogKeyboardHints,
@@ -47,7 +51,7 @@ export { DialogHeader, type DialogHeaderProps };
 export { DialogTitle, type DialogTitleProps };
 export { DialogDescription, type DialogDescriptionProps };
 export { DialogBody, type DialogBodyProps };
-export { DialogFooter, type DialogFooterProps };
+export { DialogFooter, type DialogFooterActionsProps, type DialogFooterProps };
 export { DialogClose, type DialogCloseProps };
 export { DialogCloseIcon, type DialogCloseIconProps };
 export { DialogAction, type DialogActionProps };

@@ -1,5 +1,9 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import type { LocalOpenAIPresetId } from "@diffgazer/core/schemas/config";
+import { STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
+import {
+  CONFORMANCE_TEST_COST_DISCLOSURE,
+  LocalOpenAIPresetIdSchema,
+} from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { Button } from "../../../components/ui/button";
@@ -12,7 +16,7 @@ import { useActionRow } from "../../../hooks/use-action-row";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions";
 import { useTheme } from "../../../theme/provider";
 import { useOnboardingWizard } from "../hooks/use-wizard";
-import { getStepLabelList, getStepShortcuts, STEP_TITLES } from "../lib/step-shortcuts";
+import { getStepShortcuts } from "../lib/step-shortcuts";
 import { getFullProgressWidth } from "../lib/wizard-progress";
 import { ApiKeyStep } from "./steps/api-key-step";
 import { ModelStep } from "./steps/model-step";
@@ -92,14 +96,18 @@ function EndpointBindingStep({ wizard }: WizardStepBodyProps): ReactElement | nu
           value={input.endpoint}
           onChange={(endpoint) => {
             const profile = step.endpoints.find((candidate) => candidate.endpoint === endpoint);
+            const nextInput = { ...input, endpoint };
+            if (input.productId !== "local-openai" || !profile) {
+              wizard.updateData({ configurationInput: nextInput });
+              return;
+            }
+            // The schema that owns this id is the only thing allowed to widen it,
+            // so a future third preset skips the selection instead of throwing out
+            // of the key handler, which has no boundary to land in.
+            const presetId = LocalOpenAIPresetIdSchema.safeParse(profile.id);
+            if (!presetId.success) return;
             wizard.updateData({
-              configurationInput: {
-                ...input,
-                endpoint,
-                ...(profile && "id" in profile
-                  ? { presetId: profile.id as LocalOpenAIPresetId }
-                  : {}),
-              },
+              configurationInput: { ...nextInput, presetId: presetId.data },
             });
           }}
           isActive={isActive}
@@ -108,7 +116,8 @@ function EndpointBindingStep({ wizard }: WizardStepBodyProps): ReactElement | nu
             <RadioGroup.Item
               key={endpoint.endpoint}
               value={endpoint.endpoint}
-              label={endpoint.endpoint}
+              label={endpoint.label}
+              description={endpoint.endpoint}
             />
           ))}
         </RadioGroup>
@@ -127,20 +136,20 @@ function ConformanceStep({ wizard }: WizardStepBodyProps): ReactElement | null {
   return (
     <Box flexDirection="column" gap={1}>
       <Text color={tokens.muted}>
-        Structured review conformance is required before this configuration can run reviews.
+        Your first review verifies structured review support automatically; Test readiness in
+        Providers can check it sooner.
       </Text>
       <Text color={tokens.muted}>
         Usage reporting: {step.usage}. Structured output: {step.structuredOutput}.
       </Text>
+      <Text color={tokens.muted}>{CONFORMANCE_TEST_COST_DISCLOSURE}</Text>
       <Button
         variant="secondary"
         onPress={wizard.handleConformanceConfirm}
         isActive={wizard.focusArea === "step"}
         disabled={wizard.wizardData.conformanceStatus === "passed"}
       >
-        {wizard.wizardData.conformanceStatus === "passed"
-          ? "Conformance confirmed"
-          : "Confirm conformance requirements"}
+        {wizard.wizardData.conformanceStatus === "passed" ? "Understood" : "I understand"}
       </Button>
     </Box>
   );
@@ -225,10 +234,8 @@ function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
 export function OnboardingWizard(): ReactElement {
   const { columns } = useTerminalDimensions();
   const wizard = useOnboardingWizard();
-  const stepLabels = getStepLabelList(wizard.steps);
-  const fullProgressWidth = getFullProgressWidth(
-    stepLabels.map((label) => label.charAt(0).toUpperCase() + label.slice(1)),
-  );
+  const stepLabels = wizard.steps.map((step) => STEP_LABELS[step]);
+  const fullProgressWidth = getFullProgressWidth(stepLabels);
   const compactProgress = columns < fullProgressWidth;
   const nextActionIndex = wizard.isFirstStep ? 0 : 1;
   const transportFamily = wizard.wizardData.configurationInput.transportFamily;

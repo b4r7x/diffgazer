@@ -1,5 +1,4 @@
 import type { ApiError } from "@diffgazer/core/api";
-import { SHUTDOWN_FAILED_MESSAGE } from "@diffgazer/core/api";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 function stubWindowClose(closedAfter: boolean) {
@@ -30,7 +29,7 @@ vi.mock("@diffgazer/ui/components/toast", () => ({
   },
 }));
 
-const { shutdown, reportShutdownResult } = await import("./shutdown");
+const { shutdown, reportShutdownResult, SHUTDOWN_FAILED_MESSAGE } = await import("./shutdown");
 
 function apiError(message: string, status: number): ApiError {
   const error = new Error(message) as ApiError;

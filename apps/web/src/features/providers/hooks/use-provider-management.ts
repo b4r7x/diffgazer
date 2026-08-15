@@ -1,42 +1,43 @@
+import { mapProviderList } from "@diffgazer/core/providers";
 import {
-  mapProviderList,
   type ProviderManagementEvent,
   type ProviderManagementFailure,
   type ProviderManagementMutations,
   useProviderManagement as useProviderManagementMachine,
-} from "@diffgazer/core/providers";
+} from "@diffgazer/core/providers/hooks";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useConfigActions, useConfigData } from "@/hooks/use-config";
 
 export type {
   ModelDialogOwner,
-  ProviderManagementOutcome,
   SetupDialogOwner,
-} from "@diffgazer/core/providers";
+} from "@diffgazer/core/providers/hooks";
 
-const SUCCESS_COPY: Record<
-  ProviderManagementEvent["action"],
-  ((event: ProviderManagementEvent) => { title: string; message: string }) | null
-> = {
-  create: () => ({ title: "Configuration Created", message: "Provider configured" }),
-  update: () => ({ title: "Configuration Updated", message: "Provider configured" }),
-  delete: () => ({
-    title: "Configuration Deleted",
-    message: "Provider configuration deleted",
-  }),
-  // Inspection results are rendered in the provider details pane, so a toast
-  // would duplicate what the user is already looking at.
-  inspect: null,
-  test: () => ({ title: "Readiness Tested", message: "Configuration readiness updated" }),
-  select: (event) => ({
-    title: "Configuration Selected",
-    message: `${event.row?.product.name ?? "Provider"} is now active`,
-  }),
-  "select-model": (event) => ({
-    title: "Model Selected",
-    message: `Selected ${event.modelId ?? "model"}`,
-  }),
-};
+function describeSuccess(
+  event: ProviderManagementEvent,
+): { title: string; message: string } | null {
+  switch (event.action) {
+    case "create":
+      return { title: "Configuration Created", message: "Provider configured" };
+    case "update":
+      return { title: "Configuration Updated", message: "Provider configured" };
+    case "delete":
+      return { title: "Configuration Deleted", message: "Provider configuration deleted" };
+    // Inspection results are rendered in the provider details pane, so a toast
+    // would duplicate what the user is already looking at.
+    case "inspect":
+      return null;
+    case "test":
+      return { title: "Readiness Tested", message: "Configuration readiness updated" };
+    case "select":
+      return {
+        title: "Configuration Selected",
+        message: `${event.row.product.name} is now active`,
+      };
+    case "select-model":
+      return { title: "Model Selected", message: `Selected ${event.modelId}` };
+  }
+}
 
 const FAILURE_TITLES: Record<ProviderManagementEvent["action"], string | null> = {
   // The setup dialog stays open and renders create/update failures inline, so a
@@ -51,7 +52,7 @@ const FAILURE_TITLES: Record<ProviderManagementEvent["action"], string | null> =
 };
 
 function reportSucceeded(event: ProviderManagementEvent) {
-  const copy = SUCCESS_COPY[event.action]?.(event);
+  const copy = describeSuccess(event);
   if (copy) toast.success(copy.title, { message: copy.message });
 }
 
@@ -69,7 +70,6 @@ export function useProviderManagement() {
     testConfiguration,
     updateConfiguration,
     deleteConfiguration,
-    dispatchConfigurationAction,
   } = useConfigActions();
 
   const providers = mapProviderList(configurations);
@@ -88,5 +88,5 @@ export function useProviderManagement() {
     notifier: { onSucceeded: reportSucceeded, onFailed: reportFailed },
   });
 
-  return { ...management, providers, isLoading, dispatchConfigurationAction };
+  return { ...management, providers, isLoading };
 }

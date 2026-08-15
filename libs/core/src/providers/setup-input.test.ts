@@ -1,38 +1,34 @@
 import { describe, expect, it } from "vitest";
 import type { ConfigurationStatus } from "../schemas/config/configuration-status.js";
 import type { ClientConfigurationSummary } from "../schemas/config/provider-config.js";
+import { HostedApiConfigurationInputSchema } from "../schemas/config/provider-config.js";
 import {
   READINESS_PRESENTATION,
   type Readiness,
   ReadinessSchema,
 } from "../schemas/config/readiness.js";
 import { LOCAL_OPENAI_PRESET_ENDPOINTS } from "../schemas/config/transports.js";
+import { makeClientNotice } from "../testing/provider-fixtures.js";
 import { mapProviderList, type ProviderListRow } from "./list.js";
 import { PRODUCT_REGISTRY } from "./product-registry.js";
 import {
   buildSetupAcknowledgement,
   buildSetupInput,
   getSetupLayoutCopy,
-  resolveSetupTransportFamily,
   toSetupCredential,
 } from "./setup-input.js";
 
 const CONFIGURED_ACTIONS = ["inspect", "select", "test", "update", "delete"] as const;
 
-function readiness(status: "unconfigured" | "unreachable"): Readiness {
+function readiness(status: "unconfigured" | "credential-invalid"): Readiness {
   return ReadinessSchema.parse({
     status,
     ready: false,
-    evidenceStatus: status === "unreachable" ? "failed" : "not-checked",
-    checkedAt: status === "unreachable" ? "2026-07-31T10:00:00.000Z" : null,
+    evidenceStatus: status === "credential-invalid" ? "failed" : "not-checked",
+    checkedAt: status === "credential-invalid" ? "2026-07-31T10:00:00.000Z" : null,
     acknowledgement: { status: "not-applicable" },
     ...READINESS_PRESENTATION[status],
   });
-}
-
-function copyNotice(productId: "local-openai") {
-  const notice = PRODUCT_REGISTRY[productId].notice;
-  return { ...notice, billing: [...notice.billing], privacy: [...notice.privacy] };
 }
 
 function unconfiguredRow(productId: string): ProviderListRow {
@@ -60,28 +56,17 @@ const PRESET_CONFIGURATION: ClientConfigurationSummary = {
   authentication: "none",
   presetId: "lm-studio",
   selectedModelId: null,
-  notices: [copyNotice("local-openai")],
+  notices: [makeClientNotice("local-openai")],
   availableActions: [...CONFIGURED_ACTIONS],
 };
 
-describe("resolveSetupTransportFamily", () => {
-  it("reads the transport from the product until a configuration owns one", () => {
-    expect(resolveSetupTransportFamily(unconfiguredRow("gemini"))).toBe("hosted-api");
-    expect(resolveSetupTransportFamily(unconfiguredRow("ollama"))).toBe("local-http");
-    expect(resolveSetupTransportFamily(unconfiguredRow("codex-cli"))).toBe("local-cli");
-    expect(
-      resolveSetupTransportFamily(
-        configuredRow({ configuration: PRESET_CONFIGURATION, readiness: readiness("unreachable") }),
-      ),
-    ).toBe("local-http");
-  });
-});
+/** Hosted and local HTTP products must carry a real endpoint tuple. */
+const ENDPOINT_BEARING_PRODUCTS = ["gemini", "ollama"] as const;
 
 describe("buildSetupInput", () => {
   it("saves a hosted product with its registry endpoint and the entered credential", () => {
     const input = buildSetupInput(
       unconfiguredRow("gemini"),
-      "hosted-api",
       toSetupCredential("paste", "secret-key"),
     );
 
@@ -94,15 +79,12 @@ describe("buildSetupInput", () => {
   });
 
   it("omits the credential when the surface passes none", () => {
-    expect(buildSetupInput(unconfiguredRow("gemini"), "hosted-api")).not.toHaveProperty(
-      "credential",
-    );
+    expect(buildSetupInput(unconfiguredRow("gemini"))).not.toHaveProperty("credential");
   });
 
   it("saves a local HTTP product without a hosted credential or a preset it has none of", () => {
     const input = buildSetupInput(
       unconfiguredRow("ollama"),
-      "local-http",
       toSetupCredential("paste", "secret-key"),
     );
 
@@ -117,10 +99,10 @@ describe("buildSetupInput", () => {
   it("keeps the stored endpoint and preset of an already configured local HTTP product", () => {
     const row = configuredRow({
       configuration: PRESET_CONFIGURATION,
-      readiness: readiness("unreachable"),
+      readiness: readiness("credential-invalid"),
     });
 
-    expect(buildSetupInput(row, "local-http")).toEqual({
+    expect(buildSetupInput(row)).toEqual({
       transportFamily: "local-http",
       productId: "local-openai",
       endpoint: LOCAL_OPENAI_PRESET_ENDPOINTS["lm-studio"],
@@ -129,18 +111,81 @@ describe("buildSetupInput", () => {
     });
   });
 
+  it.each(ENDPOINT_BEARING_PRODUCTS)("refuses to invent a %s endpoint", (productId) => {
+    const row = unconfiguredRow(productId);
+    const withoutEndpoints = { ...row, product: { ...row.product, endpoints: [] } };
+
+    expect(() => buildSetupInput(withoutEndpoints)).toThrow(/No endpoint profile/);
+  });
+
   it("names a local CLI installation after the product when none is stored", () => {
-    expect(buildSetupInput(unconfiguredRow("codex-cli"), "local-cli")).toEqual({
+    expect(buildSetupInput(unconfiguredRow("codex-cli"))).toEqual({
       transportFamily: "local-cli",
       productId: "codex-cli",
       installationId: "codex-cli-installation",
     });
   });
 
-  it("refuses to build an input for a transport the product does not speak", () => {
-    expect(() => buildSetupInput(unconfiguredRow("gemini"), "local-http")).toThrow(
-      /requires a local-http product/,
+  it.each([
+    ["moonshot", "mainland"],
+    ["mistral", "global"],
+  ] as const)("includes the default region for unconfigured %s create payloads", (productId, region) => {
+    const input = buildSetupInput(
+      unconfiguredRow(productId),
+      toSetupCredential("paste", "secret-key"),
     );
+
+    expect(input).toMatchObject({
+      transportFamily: "hosted-api",
+      productId,
+      region,
+    });
+    expect(() => HostedApiConfigurationInputSchema.parse(input)).not.toThrow();
+  });
+
+  it("includes the default region for unconfigured qwen even before workspace is collected", () => {
+    const input = buildSetupInput(
+      unconfiguredRow("qwen"),
+      toSetupCredential("paste", "secret-key"),
+    );
+
+    expect(input).toMatchObject({
+      transportFamily: "hosted-api",
+      productId: "qwen",
+      region: "international",
+    });
+    expect(input).not.toHaveProperty("workspace");
+  });
+
+  it("preserves region and workspace when updating a configured hosted product", () => {
+    const row = configuredRow({
+      configuration: {
+        configurationId: "qwen-1",
+        revision: 2,
+        status: "supported",
+        transportFamily: "hosted-api",
+        productId: "qwen",
+        endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        region: "international",
+        workspace: "workspace-alpha",
+        selectedModelId: "qwen3-coder-flash",
+        notices: [makeClientNotice("qwen")],
+        availableActions: [...CONFIGURED_ACTIONS],
+      },
+      readiness: readiness("credential-invalid"),
+    });
+
+    const input = buildSetupInput(row, toSetupCredential("env", "ignored"));
+
+    expect(input).toEqual({
+      transportFamily: "hosted-api",
+      productId: "qwen",
+      endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+      region: "international",
+      workspace: "workspace-alpha",
+      credential: { kind: "environment" },
+    });
+    expect(() => HostedApiConfigurationInputSchema.parse(input)).not.toThrow();
   });
 });
 
@@ -169,7 +214,7 @@ describe("toSetupCredential", () => {
 
 describe("getSetupLayoutCopy", () => {
   it("asks for credentials by product name only where credentials are stored", () => {
-    expect(getSetupLayoutCopy(unconfiguredRow("gemini"), "hosted-api")).toContain(
+    expect(getSetupLayoutCopy(unconfiguredRow("gemini"))).toContain(
       PRODUCT_REGISTRY.gemini.presentation.name,
     );
   });
@@ -177,23 +222,14 @@ describe("getSetupLayoutCopy", () => {
   it("names the local endpoint a local HTTP setup will use", () => {
     const endpoint = PRODUCT_REGISTRY.ollama.configuration.endpoints[0]?.endpoint ?? "";
 
-    expect(getSetupLayoutCopy(unconfiguredRow("ollama"), "local-http")).toBe(
+    expect(getSetupLayoutCopy(unconfiguredRow("ollama"))).toBe(
       `Configure the local endpoint at ${endpoint} without storing hosted credentials.`,
     );
   });
 
   it("explains that a local CLI stores no hosted credentials", () => {
-    expect(getSetupLayoutCopy(unconfiguredRow("codex-cli"), "local-cli")).toBe(
+    expect(getSetupLayoutCopy(unconfiguredRow("codex-cli"))).toBe(
       "Configure the local CLI installation without storing hosted credentials.",
-    );
-  });
-
-  it("never borrows a hosted endpoint for local copy", () => {
-    expect(getSetupLayoutCopy(unconfiguredRow("gemini"), "local-http")).toBe(
-      "Local HTTP setup does not use API credentials.",
-    );
-    expect(getSetupLayoutCopy(unconfiguredRow("gemini"), "local-cli")).toBe(
-      "Local CLI setup does not use API credentials.",
     );
   });
 });

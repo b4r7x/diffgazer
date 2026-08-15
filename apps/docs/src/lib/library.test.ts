@@ -1,12 +1,21 @@
-// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { getConsumptionMetadata } from "@/lib/consumption-metadata";
 import {
-  getDocsLibraryConfig,
+  type DocsLibraryId,
   getInstallCommand,
   routeSlugsFromSourcePath,
   sourceSlugsForLibrary,
 } from "@/lib/library";
+
+describe("docs-library id typing", () => {
+  it("rejects unknown library ids at compile time", () => {
+    const valid: DocsLibraryId = "ui";
+    // @ts-expect-error DocsLibraryId is a literal union, not plain string
+    const invalid: DocsLibraryId = "totally-not-a-library";
+    expect(valid).toBe("ui");
+    expect(invalid).toBe("totally-not-a-library");
+  });
+});
 
 describe("docs-library source path mapping", () => {
   it("prefixes source slugs by library id", () => {
@@ -47,22 +56,9 @@ describe("docs-library source path mapping", () => {
     expect(getInstallCommand("app", "installation")).toBeNull();
   });
 
-  it("keeps consumption metadata dgadd commands on the configured installer path", () => {
-    const config = getDocsLibraryConfig("ui");
-    const originalInstaller = config.installer;
-    config.installer = {
-      command: "pnpm dlx @diffgazer/add add",
-      itemPrefix: "ui/",
-    };
+  it("keeps consumption metadata dgadd commands on the install-command path", () => {
+    const meta = getConsumptionMetadata("ui", "button", "component");
 
-    try {
-      const expected = getInstallCommand("ui", "ui/button");
-      const meta = getConsumptionMetadata("ui", "button", "component");
-
-      expect(expected).toBe("pnpm dlx @diffgazer/add add ui/button");
-      expect(meta.paths.dgadd.command).toBe(expected);
-    } finally {
-      config.installer = originalInstaller;
-    }
+    expect(meta.paths.dgadd.command).toBe(getInstallCommand("ui", "ui/button"));
   });
 });

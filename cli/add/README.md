@@ -9,13 +9,13 @@ Installer CLI for adding Diffgazer UI components and keys hooks to your React pr
 | `@diffgazer/ui` | `ui/*` | Components, hooks, libs, theme CSS |
 | `@diffgazer/keys` | `keys/*` | Standalone keyboard hooks (no CSS needed) |
 
-`dgadd` is one of three planned consumption paths. The other two are direct shadcn/manual copy from the hosted registry, and npm package install. The hosted registry and all npm package names (`@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`) are publish-gated until the live registry returns 200 responses and `npm view` returns versions. Local tarballs are the validation path before publication.
+`dgadd` is one of three planned consumption paths. The other two are direct shadcn/manual copy from the hosted registry, and npm package install.
+
+> **Availability:** the hosted registry and every npm package name (`@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`) are publish-gated until the live registry returns 200 responses and `npm view` returns versions. Until then, a local tarball is the only working install path, and every command below is run from a target app that already has that tarball installed.
 
 ## Before Publication
 
-`@diffgazer/add` is publish-gated until `npm view @diffgazer/add version` succeeds. Public `npx` and global install commands are valid only after that check passes.
-
-Before publication, pack the CLI from this workspace and install the tarball into the target app:
+Pack the CLI from this workspace and install the tarball into the target app:
 
 From this repository:
 
@@ -24,22 +24,60 @@ pnpm --filter @diffgazer/add build
 pnpm --filter @diffgazer/add pack --pack-destination /tmp/diffgazer-packs
 ```
 
-From the target app:
+From the target app, install the tarball with the package manager your project already uses:
 
 ```bash
+# npm
+npm install --save-dev /tmp/diffgazer-packs/diffgazer-add-*.tgz
+
+# pnpm
 pnpm add -D /tmp/diffgazer-packs/diffgazer-add-*.tgz
+
+# yarn
+yarn add -D /tmp/diffgazer-packs/diffgazer-add-*.tgz
+
+# bun
+bun add -D /tmp/diffgazer-packs/diffgazer-add-*.tgz
+```
+
+Then initialize and add your first item with that same package manager:
+
+```bash
+# npm
+npx dgadd init
+npx dgadd add ui/button
+
+# pnpm
 pnpm exec dgadd init
 pnpm exec dgadd add ui/button
+
+# yarn
+yarn dgadd init
+yarn dgadd add ui/button
+
+# bun
+bunx dgadd init
+bunx dgadd add ui/button
 ```
 
 This detects your project setup and creates a `diffgazer.json` config file. Configure a TypeScript or Vite source alias, for example `@/*` or `~/*`, before running `init`.
 
 ## Quick Start
 
-Use these commands after installing the local tarball into the target app:
-
 ```bash
 pnpm exec dgadd init
+```
+
+`init` writes the theme entry but never edits your CSS entrypoint, so import it yourself. In the app's main CSS file (adjust the relative path to wherever `init` reported the styles directory):
+
+```css
+@import "tailwindcss";
+@import "./styles/styles.css";
+```
+
+Then add items:
+
+```bash
 pnpm exec dgadd add ui/button
 pnpm exec dgadd add ui/input keys/navigation
 pnpm exec dgadd list
@@ -47,7 +85,7 @@ pnpm exec dgadd list
 
 ## After Publication
 
-Public hosted registry and npm deployment remain future work. Once `npm view @diffgazer/add version` succeeds, these public commands are valid:
+Not usable yet — these public commands work only once `npm view @diffgazer/add version` succeeds:
 
 ```bash
 npx @diffgazer/add init
@@ -62,8 +100,6 @@ npx @diffgazer/add list
 - `keys/*` installs standalone hooks from `@diffgazer/keys`.
 - All install names must use a namespace prefix. Bare names like `button` are rejected; use `ui/button` instead.
 
-The command examples below assume the local tarball is already installed in the target app. They are not public package-manager entry points yet.
-
 ## Commands
 
 ### `init`
@@ -77,16 +113,19 @@ pnpm exec dgadd init [options]
 | Option | Description | Default |
 |---|---|---|
 | `--cwd <path>` | Working directory | `.` |
-| `--components-dir <path>` | Component install directory | `src/components/ui` |
+| `--components-dir <path>` | Component install directory. Passed verbatim; must sit inside the detected source directory | `<source dir>/components/ui` |
 | `--allow-missing-alias` | Continue when the app has no source alias configured | `false` |
+| `--import-alias-prefix <prefix>` | Alias prefix when detection fails (`@`, `~`, etc.) | — |
+| `--source-dir <path>` | Source directory when detection fails (`src`, `client`, etc.) | — |
 | `-y, --yes` | Skip confirmation prompts | `false` |
 | `--force` | Overwrite existing configuration | `false` |
 | `--dry-run` | Preview initialization without writing files | `false` |
 | `--skip-install` | Write files without installing npm dependencies | `false` |
+| `--reset-manifest` | Recovery only: discard the installed-item ownership ledger. Previously installed files stay on disk but are no longer tracked by `diff` or `remove` | `false` |
 
 `dgadd init` requires Tailwind CSS v4 to be declared in `dependencies` or `devDependencies`. If it is missing or still on v3, install it first (for example, `pnpm add -D tailwindcss@^4`) and rerun init. The check runs before any files or configuration are written; `--skip-install` skips Diffgazer's companion dependencies, not this prerequisite. The command never installs or upgrades Tailwind silently.
 
-`dgadd init` does not mutate `tsconfig`, Vite, Next, or your CSS entrypoint. Configure a TypeScript or Vite alias to your source directory first, or use `--allow-missing-alias` only when your tooling already resolves source aliases.
+`dgadd init` does not mutate `tsconfig`, Vite, Next, or your CSS entrypoint. Configure a TypeScript or Vite alias to your source directory first. When detection cannot find one, pass `--allow-missing-alias` together with `--import-alias-prefix` and `--source-dir` so generated imports and install paths match your project layout.
 
 ### `add`
 
@@ -156,30 +195,60 @@ pnpm exec dgadd remove ui/button keys/navigation [options]
 | `--dry-run` | Preview changes without removing files | `false` |
 | `--force` | Remove files even when ownership metadata is missing or content changed | `false` |
 
+## Global options
+
+Every command also accepts:
+
+| Option | Description |
+|---|---|
+| `-s, --silent` | Suppress all output except errors |
+
+## Environment variables
+
+| Variable | Description |
+|---|---|
+| `CLI_SKIP_INSTALL` | Set to `1`, `true`, `yes`, or `on` to skip npm dependency installation, exactly like `--skip-install`. The packages you still need are listed instead |
+| `DEBUG` | Set to any value to print the package manager's full install output and the raw error on failure, instead of the first three lines |
+
+## Concurrent runs
+
+`init`, `add`, and `remove` hold a project lock at `.diffgazer/mutation.lock` for the whole run, so a second `dgadd` in the same project waits instead of interleaving writes. A run that has been waiting for 120 seconds gives up and names the pid holding the lock; re-run it once the first command finishes. A lock left behind by a process that is no longer running is reclaimed automatically.
+
 ## Configuration
 
-Running `dgadd init` creates a `diffgazer.json` file in your project root:
+Running `dgadd init` creates a `diffgazer.json` file in your project root. For a Vite + TypeScript app with an `@/*` alias pointing at `src/`, init writes:
 
 ```json
 {
+  "$schema": "https://r.b4r7.dev/schema/diffgazer.json",
+  "version": "0.1.1",
   "aliases": {
     "components": "@/components/ui",
     "utils": "@/lib/utils",
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "rsc": true,
+  "componentsFsPath": "src/components/ui",
+  "libFsPath": "src/lib",
+  "hooksFsPath": "src/hooks",
+  "rsc": false,
   "tailwind": {
     "css": "src/styles/styles.css"
   }
 }
 ```
 
+`version` is the `dgadd` version that wrote the file. The alias prefix and every `*FsPath` follow your detected source directory and `--components-dir`. `rsc` is detected, not configured: it is `true` only for a Next.js App Router project and `false` everywhere else. `dgadd add` later appends an `installedItems` ledger recording which items it owns; edit it only through the CLI.
+
 ## Requirements
 
 - Node.js >= 22
 - React `>=19.2.0`
 - Tailwind CSS v4
+
+## Platform support
+
+`dgadd init` installs companion npm dependencies through your detected package manager (`npm`, `pnpm`, `yarn`, or `bun`). On Windows, those shims are launched through `cmd.exe` so Node 22+ can spawn them safely (CVE-2024-27980). Release CI currently runs on Linux only; Windows install behavior is covered by unit tests in `@diffgazer/registry`, not a Windows CI job.
 
 ## License
 

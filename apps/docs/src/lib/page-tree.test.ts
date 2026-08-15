@@ -16,7 +16,6 @@ const SOURCE_TREE: PageTree = {
     {
       type: "folder",
       name: "ui",
-      url: "/docs/ui",
       children: [
         {
           type: "separator",
@@ -32,7 +31,6 @@ const SOURCE_TREE: PageTree = {
     {
       type: "folder",
       name: "keys",
-      url: "/docs/keys",
       children: [
         {
           type: "separator",

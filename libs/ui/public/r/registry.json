@@ -12,7 +12,6 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/icons.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
         "https://r.b4r7.dev/r/ui/utils.json",
@@ -111,6 +110,11 @@
           "path": "registry/ui/avatar/index.ts",
           "type": "registry:ui",
           "target": "@ui/avatar/index.ts"
+        },
+        {
+          "path": "registry/ui/avatar/avatar-variants.ts",
+          "type": "registry:ui",
+          "target": "@ui/avatar/avatar-variants.ts"
         },
         {
           "path": "registry/ui/avatar/avatar-context.tsx",
@@ -353,11 +357,6 @@
           "path": "registry/ui/callout/callout-dismiss.tsx",
           "type": "registry:ui",
           "target": "@ui/callout/callout-dismiss.tsx"
-        },
-        {
-          "path": "registry/ui/callout/callout.css",
-          "type": "registry:style",
-          "target": "~/styles/callout.css"
         }
       ]
     },
@@ -373,7 +372,6 @@
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/fieldset-disabled.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
         "https://r.b4r7.dev/r/ui/selectable-variants.json",
@@ -450,7 +448,6 @@
         "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/form-reset.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
         "https://r.b4r7.dev/r/ui/fieldset-disabled.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
@@ -565,11 +562,6 @@
           "path": "registry/ui/panel/panel-label.tsx",
           "type": "registry:ui",
           "target": "@ui/panel/panel-label.tsx"
-        },
-        {
-          "path": "registry/ui/panel/panel.css",
-          "type": "registry:style",
-          "target": "~/styles/panel.css"
         }
       ]
     },
@@ -1101,7 +1093,6 @@
         "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/floating-indicator.json",
         "https://r.b4r7.dev/r/ui/segmented-variants.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
@@ -1410,7 +1401,6 @@
         "https://r.b4r7.dev/r/ui/badge.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/step-status.json",
         "https://r.b4r7.dev/r/ui/stepper-variants.json",
         "https://r.b4r7.dev/r/ui/utils.json",
@@ -1466,11 +1456,6 @@
           "path": "registry/ui/stepper/stepper-substep.tsx",
           "type": "registry:ui",
           "target": "@ui/stepper/stepper-substep.tsx"
-        },
-        {
-          "path": "registry/ui/shared/stepper.css",
-          "type": "registry:style",
-          "target": "~/styles/stepper.css"
         }
       ]
     },
@@ -1484,7 +1469,6 @@
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/form-reset.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/input-variants.json",
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json"
@@ -1514,7 +1498,6 @@
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/ui/floating-indicator.json",
         "https://r.b4r7.dev/r/ui/selectable-collection.json",
@@ -1546,6 +1529,11 @@
           "path": "registry/ui/toggle-group/toggle-group-item.tsx",
           "type": "registry:ui",
           "target": "@ui/toggle-group/toggle-group-item.tsx"
+        },
+        {
+          "path": "registry/ui/toggle-group/create-toggle-group.tsx",
+          "type": "registry:ui",
+          "target": "@ui/toggle-group/create-toggle-group.tsx"
         }
       ]
     },
@@ -1557,6 +1545,7 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/scroll-area.json",
+        "https://r.b4r7.dev/r/ui/accessible-text.json",
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/copy-to-clipboard.json"
       ],
@@ -1608,11 +1597,6 @@
           "path": "registry/ui/code-block/inline-code.tsx",
           "type": "registry:ui",
           "target": "@ui/code-block/inline-code.tsx"
-        },
-        {
-          "path": "registry/ui/code-block/code-block.css",
-          "type": "registry:style",
-          "target": "~/styles/code-block.css"
         }
       ]
     },
@@ -1656,11 +1640,6 @@
           "path": "registry/ui/diff-view/diff-view-split.tsx",
           "type": "registry:ui",
           "target": "@ui/diff-view/diff-view-split.tsx"
-        },
-        {
-          "path": "registry/ui/diff-view/diff-view.css",
-          "type": "registry:style",
-          "target": "~/styles/diff-view.css"
         }
       ]
     },
@@ -1675,6 +1654,7 @@
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/theme.json",
         "https://r.b4r7.dev/r/ui/step-status.json",
+        "https://r.b4r7.dev/r/ui/stepper-variants.json",
         "https://r.b4r7.dev/r/ui/horizontal-stepper-variants.json",
         "https://r.b4r7.dev/r/ui/selectable-glyph.json",
         "https://r.b4r7.dev/r/ui/utils.json"
@@ -1699,11 +1679,6 @@
           "path": "registry/ui/horizontal-stepper/horizontal-stepper-step.tsx",
           "type": "registry:ui",
           "target": "@ui/horizontal-stepper/horizontal-stepper-step.tsx"
-        },
-        {
-          "path": "registry/ui/shared/stepper.css",
-          "type": "registry:style",
-          "target": "~/styles/stepper.css"
         }
       ]
     },
@@ -1718,7 +1693,6 @@
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/keys/focus-restore.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/dialog-shell.json",
         "https://r.b4r7.dev/r/ui/portal.json",
         "https://r.b4r7.dev/r/ui/search.json",
@@ -1809,11 +1783,6 @@
           "path": "registry/ui/command-palette/use-item-registry.ts",
           "type": "registry:ui",
           "target": "@ui/command-palette/use-item-registry.ts"
-        },
-        {
-          "path": "registry/ui/command-palette/command-palette.css",
-          "type": "registry:style",
-          "target": "~/styles/command-palette.css"
         }
       ]
     },
@@ -1828,7 +1797,6 @@
         "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/floating-panel.json",
         "https://r.b4r7.dev/r/ui/form-reset.json",
         "https://r.b4r7.dev/r/ui/icons.json",
@@ -1967,11 +1935,6 @@
           "path": "registry/ui/spinner/spinner-snake-grid.tsx",
           "type": "registry:ui",
           "target": "@ui/spinner/spinner-snake-grid.tsx"
-        },
-        {
-          "path": "registry/ui/spinner/spinner.css",
-          "type": "registry:style",
-          "target": "~/styles/spinner.css"
         }
       ]
     },
@@ -1986,7 +1949,6 @@
         "https://r.b4r7.dev/r/ui/icons.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/dialog.json",
         "https://r.b4r7.dev/r/ui/sidebar-variants.json",
         "https://r.b4r7.dev/r/ui/sidebar-intent.json",
@@ -2073,11 +2035,6 @@
           "path": "registry/ui/sidebar/sidebar-footer.tsx",
           "type": "registry:ui",
           "target": "@ui/sidebar/sidebar-footer.tsx"
-        },
-        {
-          "path": "registry/ui/sidebar/sidebar.css",
-          "type": "registry:style",
-          "target": "~/styles/sidebar.css"
         }
       ]
     },
@@ -2196,7 +2153,7 @@
         "https://r.b4r7.dev/r/ui/marker-rail.json"
       ],
       "meta": {
-        "client": true
+        "client": false
       },
       "files": [
         {
@@ -2373,7 +2330,7 @@
     {
       "name": "presence",
       "type": "registry:hook",
-      "title": "usePresence",
+      "title": "Presence",
       "description": "Hook for animating mount/unmount transitions with CSS animations. Keeps element in DOM during exit animation, removes after completion.",
       "dependencies": [],
       "registryDependencies": [],
@@ -2415,7 +2372,7 @@
     {
       "name": "compose-refs",
       "type": "registry:lib",
-      "title": "composeRefs",
+      "title": "Compose Refs",
       "description": "Utility to compose multiple React refs into a single ref callback. Use when a component needs an internal ref and must also forward an external ref prop (React 19 ref-as-prop pattern).",
       "meta": {
         "client": false
@@ -2430,7 +2387,7 @@
     {
       "name": "composed-refs",
       "type": "registry:hook",
-      "title": "useComposedRefs",
+      "title": "Composed Refs",
       "description": "Cached companion to composeRefs: returns a stable RefCallback so React does not detach/re-attach the composed refs every commit. Use at component call sites instead of calling composeRefs inline during render.",
       "registryDependencies": ["https://r.b4r7.dev/r/ui/compose-refs.json"],
       "meta": {
@@ -2446,7 +2403,7 @@
     {
       "name": "copy-to-clipboard",
       "type": "registry:hook",
-      "title": "useCopyToClipboard",
+      "title": "Copy to Clipboard",
       "description": "Copy-to-clipboard state machine: writes text to the clipboard and exposes an idle → copied | failed status that resets after a delay (default 2000ms), with timer cleanup on unmount.",
       "registryDependencies": [],
       "meta": {
@@ -2504,7 +2461,7 @@
     {
       "name": "is-mobile",
       "type": "registry:hook",
-      "title": "useIsMobile",
+      "title": "Is Mobile",
       "description": "matchMedia-backed hook that returns true when the viewport is narrower than a breakpoint (default 1024px).",
       "dependencies": [],
       "registryDependencies": [],
@@ -2546,7 +2503,7 @@
     {
       "name": "floating-panel",
       "type": "registry:ui",
-      "title": "FloatingPanel",
+      "title": "Floating Panel",
       "description": "Headless floating surface primitive. Composes Portal, presence, and floating-position to render an anchored, animated panel with data-state, data-side, data-align, and data-positioned attributes plus a transform-origin custom property. Used by Popover, Select, and other anchored surfaces.",
       "dependencies": [],
       "registryDependencies": [
@@ -2554,7 +2511,6 @@
         "https://r.b4r7.dev/r/ui/portal.json",
         "https://r.b4r7.dev/r/ui/presence.json",
         "https://r.b4r7.dev/r/ui/floating-position.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/utils.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json"
       ],
@@ -2577,13 +2533,12 @@
     {
       "name": "listbox",
       "type": "registry:hook",
-      "title": "useListbox",
+      "title": "Listbox",
       "description": "Shared listbox state and keyboard navigation hook. Manages selection, highlight, and container ARIA props for listbox-pattern components.",
       "dependencies": [],
       "registryDependencies": [
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/keys/navigation.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/composed-refs.json",
         "https://r.b4r7.dev/r/ui/typeahead.json",
         "https://r.b4r7.dev/r/ui/typeahead-buffer.json"
@@ -2687,7 +2642,6 @@
         "https://r.b4r7.dev/r/ui/aria.json",
         "https://r.b4r7.dev/r/ui/controllable-state.json",
         "https://r.b4r7.dev/r/ui/form-reset.json",
-        "https://r.b4r7.dev/r/ui/compose-refs.json",
         "https://r.b4r7.dev/r/ui/fieldset-disabled.json",
         "https://r.b4r7.dev/r/ui/selectable-variants.json",
         "https://r.b4r7.dev/r/ui/utils.json",
@@ -2720,7 +2674,7 @@
         "https://r.b4r7.dev/r/ui/utils.json"
       ],
       "meta": {
-        "client": true
+        "client": false
       },
       "files": [
         {
@@ -2732,11 +2686,6 @@
           "path": "registry/ui/progress/progress.tsx",
           "type": "registry:ui",
           "target": "@ui/progress/progress.tsx"
-        },
-        {
-          "path": "registry/ui/progress/progress.css",
-          "type": "registry:style",
-          "target": "~/styles/progress.css"
         }
       ]
     },
@@ -2744,7 +2693,7 @@
       "name": "skeleton",
       "type": "registry:ui",
       "title": "Skeleton",
-      "description": "Loading placeholder with pulse animation",
+      "description": "Loading placeholder drawn as a strip of character cells with a scan sweep",
       "dependencies": [],
       "registryDependencies": ["https://r.b4r7.dev/r/ui/theme.json"],
       "meta": {
@@ -2760,11 +2709,6 @@
           "path": "registry/ui/skeleton/skeleton.tsx",
           "type": "registry:ui",
           "target": "@ui/skeleton/skeleton.tsx"
-        },
-        {
-          "path": "registry/ui/skeleton/skeleton.css",
-          "type": "registry:style",
-          "target": "~/styles/skeleton.css"
         }
       ]
     }

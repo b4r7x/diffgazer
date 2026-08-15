@@ -5,15 +5,6 @@ import { fileURLToPath } from "node:url";
 import { listRepoFiles } from "./lib/files.mjs";
 import { runValidationChecks } from "./lib/run-checks.mjs";
 
-const SKIPPED_PREFIXES = [
-  ".git/",
-  ".nuke/",
-  ".audit-runs/",
-  ".worktrees/",
-  "node_modules/",
-  "cli/add/src/generated/",
-];
-
 const SECRET_PATTERNS = [
   {
     name: "private-key",
@@ -57,15 +48,15 @@ const SECRET_PATTERNS = [
   },
   {
     name: "generic-secret-assignment",
+    // Leading indentation is `[ \t]`, never `\s`: under the `m` flag `\s*` lets
+    // the match start on an earlier blank line, which files the redaction span
+    // (and the reported line number) on that blank line and leaves the real
+    // secret unredacted in the preview.
     regex:
-      /^\s*(?:export\s+)?[A-Z0-9_]*(?:API_KEY|SECRET|TOKEN|PASSWORD)[A-Z0-9_]*\s*=\s*["']?([^"'\s#]{32,})["']?/gm,
+      /^[ \t]*(?:export[ \t]+)?[A-Z0-9_]*(?:API_KEY|SECRET|TOKEN|PASSWORD)[A-Z0-9_]*[ \t]*=[ \t]*["']?([^"'\s#]{32,})["']?/gm,
     valueGroup: 1,
   },
 ];
-
-function shouldSkipFile(path) {
-  return SKIPPED_PREFIXES.some((prefix) => path === prefix.slice(0, -1) || path.startsWith(prefix));
-}
 
 function isPlaceholder(value) {
   const normalized = value.toLowerCase();
@@ -166,11 +157,15 @@ function collectFileFindings(path, source) {
   }));
 }
 
+// The scan boundary is the file list, not an exclusion table here: production
+// passes `listRepoFiles()`, which asks git for tracked plus untracked-but-not-
+// ignored paths, so gitignored trees (.nuke, .worktrees, node_modules, generated
+// bundles) never reach this loop.
 export function collectSecretFindings(files) {
   const findings = [];
 
   for (const path of files) {
-    if (shouldSkipFile(path) || !existsSync(path)) continue;
+    if (!existsSync(path)) continue;
     const stats = statSync(path);
     if (!stats.isFile()) continue;
 

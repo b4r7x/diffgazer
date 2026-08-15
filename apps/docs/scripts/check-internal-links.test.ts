@@ -1,14 +1,17 @@
-import { execFileSync } from "node:child_process";
-import { rmSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  collectHeadingIds,
+  collectMdxFiles,
   extractInternalLinks,
+  findBrokenAnchors,
   findBrokenInternalLinks,
   findRouteContractViolations,
   findStaleRetiredProviderSupportLinks,
   type MdxFile,
-  PHASE_5_CONTENT_ROUTES,
+  REQUIRED_APP_DOC_ROUTES,
   resolveInternalHref,
 } from "./check-internal-links.ts";
 import { getPreRenderPages } from "./generate-sitemap.ts";
@@ -64,11 +67,11 @@ describe("internal link checker", () => {
     ]);
   });
 
-  it("requires every Phase 5 content route exactly once in the prerender set", () => {
+  it("requires every canonical app doc route exactly once in the prerender set", () => {
     const pages = getPreRenderPages();
     const violations = findRouteContractViolations({ pages });
     expect(violations).toEqual([]);
-    for (const route of PHASE_5_CONTENT_ROUTES) {
+    for (const route of REQUIRED_APP_DOC_ROUTES) {
       expect(pages.filter((page) => page.path === route)).toHaveLength(1);
     }
   });
@@ -94,6 +97,62 @@ describe("internal link checker", () => {
       {
         kind: "duplicate-route",
         detail: "/app/reference/providers appears 2 times",
+      },
+    ]);
+  });
+
+  it("derives heading ids the way the renderer does", () => {
+    const ids = collectHeadingIds(
+      [
+        "## Wrong product, region, or workspace",
+        "```bash",
+        "# not a heading",
+        "```",
+        "### Custom slug [#pinned-id]",
+        "## Repeat",
+        "## Repeat",
+      ].join("\n"),
+    );
+
+    expect([...ids]).toEqual([
+      "wrong-product-region-or-workspace",
+      "pinned-id",
+      "repeat",
+      "repeat-1",
+    ]);
+  });
+
+  it("reports link fragments that no heading on the target page provides", () => {
+    const files: MdxFile[] = [
+      {
+        filePath: "pipeline.mdx",
+        routePath: "/app/concepts/review-pipeline",
+        content: [
+          "[Good](/app/operations/troubleshooting#transport-failed)",
+          "[Bad](/app/operations/troubleshooting#provider-or-key-errors)",
+          "[Same page](#sequential-vs-parallel)",
+        ].join("\n"),
+      },
+      {
+        filePath: "troubleshooting.mdx",
+        routePath: "/app/operations/troubleshooting",
+        content: "## Transport failed",
+      },
+    ];
+
+    expect(findBrokenAnchors(files)).toEqual([
+      {
+        kind: "broken-anchor",
+        detail:
+          "/app/operations/troubleshooting#provider-or-key-errors -> /app/operations/troubleshooting#provider-or-key-errors",
+        filePath: "pipeline.mdx",
+        line: 2,
+      },
+      {
+        kind: "broken-anchor",
+        detail: "#sequential-vs-parallel -> /app/concepts/review-pipeline#sequential-vs-parallel",
+        filePath: "pipeline.mdx",
+        line: 3,
       },
     ]);
   });
@@ -199,22 +258,9 @@ describe("internal link checker", () => {
     expect(findStaleRetiredProviderSupportLinks(files)).toEqual([]);
   });
 
-  it("exits non-zero when the shipped corpus re-advertises a retired product", () => {
-    const docsRoot = resolve(import.meta.dirname, "..");
-    const fixturePath = resolve(docsRoot, "content/docs/app/retired-regression-fixture.mdx");
-    const run = (): number => {
-      try {
-        execFileSync("node", ["--import", "tsx", "./scripts/check-internal-links.ts"], {
-          cwd: docsRoot,
-          stdio: "pipe",
-        });
-        return 0;
-      } catch (error) {
-        return (error as { status?: number }).status ?? -1;
-      }
-    };
-
-    expect(run()).toBe(0);
+  it("detects retired-product prose in isolated fixture roots", () => {
+    const fixtureRoot = mkdtempSync(join(tmpdir(), "diffgazer-docs-link-check-"));
+    const fixturePath = join(fixtureRoot, "retired-regression-fixture.mdx");
 
     try {
       writeFileSync(
@@ -222,11 +268,17 @@ describe("internal link checker", () => {
         "---\ntitle: Fixture\n---\n\n`alibaba-coding-plan` is available for setup again.\n",
         "utf8",
       );
-      expect(run()).not.toBe(0);
-    } finally {
-      rmSync(fixturePath, { force: true });
-    }
 
-    expect(run()).toBe(0);
+      const files = collectMdxFiles([fixtureRoot]);
+      expect(findStaleRetiredProviderSupportLinks(files)).toEqual([
+        expect.objectContaining({
+          kind: "stale-retired-provider-link",
+          detail: "alibaba-coding-plan availability claim",
+          filePath: fixturePath,
+        }),
+      ]);
+    } finally {
+      rmSync(fixtureRoot, { recursive: true, force: true });
+    }
   });
 });

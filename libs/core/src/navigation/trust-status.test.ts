@@ -1,20 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { TrustConfig } from "../schemas/config/settings.js";
+import { makeTrustConfig } from "../testing/factories.js";
 import { deriveTrustStatus } from "./trust-status.js";
 
-function makeTrust(overrides: Partial<TrustConfig> = {}): TrustConfig {
-  return {
-    projectId: "proj_1",
-    repoRoot: "/repo",
-    trustedAt: "2025-01-01T00:00:00.000Z",
-    trustMode: "persistent",
-    capabilities: { readFiles: true, runCommands: false },
-    ...overrides,
-  };
-}
+const makeTrust = (overrides: Partial<TrustConfig> = {}) =>
+  makeTrustConfig({ projectId: "proj_1", repoRoot: "/repo", ...overrides });
 
 describe("deriveTrustStatus", () => {
-  it("flags needsTrust when project is identified but trust has not been resolved", () => {
+  it("flags needsTrust when trust has not been resolved for a known repository", () => {
     const result = deriveTrustStatus({
       trust: null,
       projectId: "proj_1",
@@ -51,9 +44,9 @@ describe("deriveTrustStatus", () => {
     expect(result).toEqual({ needsTrust: false, isTrusted: false });
   });
 
-  it("does not flag needsTrust when project is not identified", () => {
+  it("flags needsTrust on first run when project file is absent (projectId null)", () => {
     const result = deriveTrustStatus({ trust: null, projectId: null, repoRoot: "/repo" });
-    expect(result).toEqual({ needsTrust: false, isTrusted: false });
+    expect(result).toEqual({ needsTrust: true, isTrusted: false });
   });
 
   it("does not flag needsTrust when repoRoot is missing", () => {

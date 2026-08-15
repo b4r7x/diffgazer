@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   aggregateThemeStyles,
@@ -8,7 +9,9 @@ import {
 import {
   aggregateThemeStylesInPublicRegistry,
   applyUiRegistryTargetsInPublicRegistry,
+  createUiThemeStyleStripPolicy,
   isHiddenKeysShim,
+  removeDuplicateThemeStylesInPublicRegistry,
   transformUiPublicRegistryKeysImportContent,
   transformUiPublicRegistryKeysImports,
   transformUiPublicRegistrySourceItem,
@@ -17,16 +20,12 @@ import {
 const ROOT = resolve(import.meta.dirname, "..");
 const SOURCE_REGISTRY_PATH = "registry/registry.json";
 const THEME_STYLES_PATH = "styles/styles.css";
+const themeStyleStripPolicy = createUiThemeStyleStripPolicy({
+  rootDir: ROOT,
+  sourceRegistryPath: SOURCE_REGISTRY_PATH,
+});
 
-const INPUTS = [
-  "docs/content",
-  "docs/generated",
-  "registry",
-  "styles",
-  "public/r",
-  "internal-docs-manifest.json",
-  "package.json",
-];
+const INPUTS = ["docs/content", "docs/generated", "registry", "styles", "public/r", "package.json"];
 
 function main(): void {
   const manifest = createArtifactManifest({
@@ -74,8 +73,13 @@ function main(): void {
             seedContent,
           }),
         );
+        removeDuplicateThemeStylesInPublicRegistry(outputDir, themeStyleStripPolicy);
       },
-      transformSourceItem: ({ item }) => transformUiPublicRegistrySourceItem(item),
+      transformSourceItem: ({ item }) =>
+        transformUiPublicRegistrySourceItem(item, {
+          stylePolicy: themeStyleStripPolicy,
+          readSourceFile: (path) => readFileSync(resolve(ROOT, path), "utf-8"),
+        }),
       shouldSkipSourceItem: ({ item }) => isHiddenKeysShim(item),
       // The theme's styles.css ships aggregated (seed + every component CSS) so the
       // shadcn install path carries component CSS; validation must compare the

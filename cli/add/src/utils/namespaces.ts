@@ -1,19 +1,19 @@
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
-import { ctx, type RegistryItem, type ResolvedConfig } from "../context.js";
+import { ctx, type ManifestItem, type RegistryItem, type ResolvedConfig } from "../context.js";
 import {
   getKeysHookNames,
   getPublicKeysHookNames,
   resolveKeysCopyHookFiles,
 } from "./keys-copy-bundle.js";
 
-export type InstallNamespace = "ui" | "keys";
+type InstallNamespace = "ui" | "keys";
 const CLI_INSTALLABLE_TYPES = new Set<string>([
   REGISTRY_ITEM_TYPE.ui,
   REGISTRY_ITEM_TYPE.hook,
   REGISTRY_ITEM_TYPE.lib,
 ]);
 
-export interface InstallName {
+interface InstallName {
   namespace: InstallNamespace;
   name: string;
   publicName: string;
@@ -83,6 +83,83 @@ export function validateInstallableNames(names: string[]): void {
   );
 }
 
+export function validateInstalledOrRegistryNames(
+  cwd: string,
+  names: string[],
+  manifest?: Record<string, ManifestItem>,
+): void {
+  const items = manifest ?? ctx.config.getManifestItems(cwd) ?? {};
+  for (const raw of names) {
+    const parsed = parseInstallName(raw);
+    const inRegistry =
+      parsed.namespace === "ui"
+        ? installableUiNames(ctx.registry.getAllItems()).has(parsed.name)
+        : getKeysHookNames().has(parsed.name);
+    if (!inRegistry && !items[parsed.publicName]) {
+      throw new Error(
+        `Item "${raw}" not found. Run \`dgadd list\` to see available ui/* and keys/* items.`,
+      );
+    }
+  }
+}
+
+function manifestBackedRegistryItem(parsed: InstallName, record: ManifestItem): RegistryItem {
+  return {
+    name: parsed.publicName,
+    type: parsed.namespace === "ui" ? REGISTRY_ITEM_TYPE.ui : REGISTRY_ITEM_TYPE.hook,
+    title: parsed.name,
+    description: `Installed item: ${parsed.publicName}`,
+    dependencies: [],
+    registryDependencies: [],
+    files: [],
+    meta: record.integrationMode ? { integrationMode: record.integrationMode } : {},
+  };
+}
+
+export function tryGetNamespacedItem(name: string): RegistryItem | null {
+  const parsed = parseInstallName(name);
+  if (parsed.namespace === "ui") {
+    const item = ctx.registry.getItem(parsed.name);
+    if (!item) return null;
+    return { ...item, name: parsed.publicName };
+  }
+
+  const { files, missingHooks } = resolveKeysCopyHookFiles([parsed.name]);
+  if (missingHooks.length > 0) return null;
+
+  return {
+    name: parsed.publicName,
+    type: REGISTRY_ITEM_TYPE.hook,
+    title: parsed.name,
+    description: `Diffgazer keys hook: ${parsed.name}`,
+    dependencies: [],
+    registryDependencies: [],
+    files: files.map((file) => ({
+      path: `registry/hooks/${file.relativePath}`,
+      content: file.content,
+    })),
+    meta: {},
+  };
+}
+
+export function resolveNamespacedItem(
+  name: string,
+  cwd: string,
+  manifest?: Record<string, ManifestItem>,
+): RegistryItem {
+  const existing = tryGetNamespacedItem(name);
+  if (existing) return existing;
+
+  const parsed = parseInstallName(name);
+  const record = (manifest ?? ctx.config.getManifestItems(cwd))?.[parsed.publicName];
+  if (!record) {
+    throw new Error(
+      `Item "${name}" not found. Run \`dgadd list\` to see available ui/* and keys/* items.`,
+    );
+  }
+  return manifestBackedRegistryItem(parsed, record);
+}
+
 export function splitInstallNames(names: string[]): {
   ui: string[];
   keys: string[];
@@ -126,13 +203,20 @@ export function getNamespacedItem(name: string): RegistryItem {
   };
 }
 
-export function isNamespacedInstalled(cwd: string, config: ResolvedConfig, name: string): boolean {
+export function isNamespacedInstalled(
+  cwd: string,
+  config: ResolvedConfig,
+  name: string,
+  manifest?: Record<string, ManifestItem>,
+  uiChecker?: (name: string) => boolean,
+): boolean {
   const parsed = parseInstallName(name);
-  const manifest = ctx.config.getManifestItems(cwd);
-  if (manifest?.[parsed.publicName]) return true;
+  const items = manifest ?? ctx.config.getManifestItems(cwd);
+  if (items?.[parsed.publicName]) return true;
 
   if (parsed.namespace === "ui") {
-    return ctx.createChecker(cwd, config.componentsFsPath)(parsed.name);
+    const checker = uiChecker ?? ctx.createChecker(cwd, config.componentsFsPath);
+    return checker(parsed.name);
   }
 
   return false;

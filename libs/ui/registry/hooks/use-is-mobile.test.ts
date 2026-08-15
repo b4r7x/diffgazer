@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { act, renderHook } from "@testing-library/react";
 import { createElement, createRef } from "react";
 import { renderToString } from "react-dom/server";

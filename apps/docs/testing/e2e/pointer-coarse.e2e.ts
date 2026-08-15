@@ -17,7 +17,10 @@ const MOBILE_PROJECT = "mobile-chromium";
  * its own container query produces. A range covering the whole clamp would be
  * satisfied by every value the clamp can emit and would prove nothing.
  */
-const EXPECTED_WORDMARK_FONT_SIZE = { chromium: 11.97, [MOBILE_PROJECT]: 8.27 } as const;
+const EXPECTED_WORDMARK_FONT_SIZE: Record<string, number | undefined> = {
+  chromium: 11.97,
+  [MOBILE_PROJECT]: 8.27,
+};
 const WORDMARK_FONT_SIZE_TOLERANCE = 0.5;
 
 test.describe("Docs coarse-pointer chrome", () => {
@@ -64,9 +67,10 @@ test.describe("Docs coarse-pointer chrome", () => {
     const wordmark = page.getByRole("main").getByRole("img", { name: "diffgazer" });
     await expect(wordmark).toBeVisible();
 
-    const projectName = testInfo.project.name as keyof typeof EXPECTED_WORDMARK_FONT_SIZE;
-    const expectedFontSize = EXPECTED_WORDMARK_FONT_SIZE[projectName];
-    expect(expectedFontSize, `no expected wordmark size for project ${projectName}`).toBeDefined();
+    const expectedFontSize = EXPECTED_WORDMARK_FONT_SIZE[testInfo.project.name];
+    if (expectedFontSize === undefined) {
+      throw new Error(`no expected wordmark size for project ${testInfo.project.name}`);
+    }
 
     const fontSize = await wordmark.evaluate((el) =>
       Number.parseFloat(window.getComputedStyle(el).fontSize),

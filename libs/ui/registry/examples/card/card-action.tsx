@@ -16,7 +16,7 @@ export default function CardActionExample() {
         <CardTitle>Deploy Preview</CardTitle>
         <CardDescription>Production build from main branch</CardDescription>
         <CardAction>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" aria-label="More actions">
             ···
           </Button>
         </CardAction>

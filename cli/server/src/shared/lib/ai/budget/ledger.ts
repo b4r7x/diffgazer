@@ -40,7 +40,7 @@ export type BudgetExhaustedOutcome = {
 };
 
 /** Ledger cancellation surfaced when reserve is attempted after cancel(). */
-export type BudgetCancelledOutcome = {
+type BudgetCancelledOutcome = {
   outcome: "cancelled";
   result: typeof ZERO_FINDINGS;
 };
@@ -122,6 +122,19 @@ function addUsage(target: UsageTotals, delta: AttemptEstimate) {
   target.responseBytes += delta.responseBytes;
   target.wallTimeMs += delta.wallTimeMs;
   target.costUsd += delta.costUsd;
+}
+
+const COST_TOLERANCE_USD = 1e-9;
+
+/** The part of an open reservation that settled usage actually consumes. */
+function drawDown(remaining: AttemptEstimate, settled: AttemptEstimate): AttemptEstimate {
+  return {
+    inputTokens: Math.min(remaining.inputTokens, settled.inputTokens),
+    outputTokens: Math.min(remaining.outputTokens, settled.outputTokens),
+    responseBytes: Math.min(remaining.responseBytes, settled.responseBytes),
+    wallTimeMs: Math.min(remaining.wallTimeMs, settled.wallTimeMs),
+    costUsd: Math.min(remaining.costUsd, settled.costUsd),
+  };
 }
 
 function subtractUsage(target: UsageTotals, delta: AttemptEstimate) {
@@ -244,6 +257,39 @@ export class BudgetLedger {
   }
 
   /**
+   * Commits provider-reported usage for one review dispatch and draws it down
+   * from the still-open per-review reservation. The reservation stays open so
+   * every later lens spends the same admitted envelope: once a dimension's
+   * remaining envelope is gone, the next dispatch exhausts the review.
+   */
+  commitAttemptUsage(
+    reservation: BudgetReservation,
+    actual: AttemptActual,
+  ): Result<void, BudgetExhaustedOutcome> {
+    const settled = settledUsage(actual);
+    validateEstimate(settled);
+
+    const record = this.reservations.get(reservation.id);
+    if (!record) {
+      return ok(undefined);
+    }
+
+    const consumed = drawDown(record.estimate, settled);
+    subtractUsage(this.reserved, consumed);
+    subtractUsage(record.estimate, consumed);
+
+    const usageExhaustion = this.checkUsageBudget(settled);
+    addUsage(this.committed, settled);
+    this.settledAttempts += 1;
+    if (usageExhaustion) {
+      this.exhaustedLimit = usageExhaustion;
+      return err(createExhausted(usageExhaustion));
+    }
+
+    return ok(undefined);
+  }
+
+  /**
    * Commits provider-reported usage for a completed attempt and releases the
    * conservative reservation.
    */
@@ -263,13 +309,13 @@ export class BudgetLedger {
     this.reservations.delete(reservation.id);
 
     const usageExhaustion = this.checkUsageBudget(settled);
+    addUsage(this.committed, settled);
+    this.settledAttempts += 1;
     if (usageExhaustion) {
       this.exhaustedLimit = usageExhaustion;
       return err(createExhausted(usageExhaustion));
     }
 
-    addUsage(this.committed, settled);
-    this.settledAttempts += 1;
     return ok(undefined);
   }
 
@@ -317,7 +363,10 @@ export class BudgetLedger {
     if (projected.wallTimeMs > this.limits.wallTimeMs) {
       return "wallTimeMs";
     }
-    if (projected.costUsd > this.limits.maxCostUsd) {
+    // Dollars are the only fractional dimension, so drawing a settled cost out
+    // of a reserved envelope leaves float residue. The tolerance is nine orders
+    // of magnitude below any meaningful spend cap and far above that residue.
+    if (projected.costUsd > this.limits.maxCostUsd + COST_TOLERANCE_USD) {
       return "maxCostUsd";
     }
     return null;

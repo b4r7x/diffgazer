@@ -1,8 +1,11 @@
+"use client";
+
 import { Overflow } from "@/components/ui/overflow";
 
 const tags = ["React", "TypeScript", "Tailwind", "Node.js", "Vitest", "Zod", "Prisma"];
 
-// Chips stay inline (not a child component) so Overflow measures each one.
+// Each chip is passed as its own React child so Overflow measures them individually;
+// a child may be any element or component, as long as one child means one measured item.
 const CHIP_CLASS =
   "inline-flex items-center rounded-sm border border-foreground/30 px-2 py-0.5 font-mono text-xs text-foreground";
 

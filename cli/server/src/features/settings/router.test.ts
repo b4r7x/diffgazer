@@ -1,9 +1,12 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api/protocol";
+import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ConfigStore } from "../../shared/lib/config/store.js";
+import { assertTempHome } from "../../shared/lib/testing/temp-home.js";
 import type { ActiveSession } from "../review/stream/store.js";
 
 const TEST_TOKEN = "test-settings-token";
@@ -13,15 +16,20 @@ let diffgazerHome: string;
 let projectRootA: string;
 let projectRootB: string;
 let projectAliasA: string;
+const loadedStores = new Set<ConfigStore>();
 
 async function loadApp() {
   const { createApp } = await import("../../app.js");
-  return createApp();
+  const app = createApp();
+  await (await loadStore()).ready();
+  return app;
 }
 
 async function loadStore() {
   const { getStore } = await import("../../shared/lib/config/store.js");
-  return getStore();
+  const store = getStore();
+  loadedStores.add(store);
+  return store;
 }
 
 function trustForProject(projectId: string, repoRoot: string) {
@@ -56,12 +64,56 @@ function expectTerminalTrustRevocation(session: ActiveSession): void {
   }
 }
 
+function writeBlockedV1Settings(recovery: "valid" | "corrupt"): void {
+  const configPath = join(diffgazerHome, "config.json");
+  const secretsPath = join(diffgazerHome, "secrets.json");
+  const priorConfig = Buffer.from(
+    `${JSON.stringify({
+      schemaVersion: 2,
+      settings: { theme: "auto" },
+      selectedConfigurationId: null,
+      configurations: [],
+    })}\n`,
+  );
+  writeFileSync(
+    configPath,
+    `${JSON.stringify({
+      settings: { secretsStorage: "file" },
+      providers: [
+        {
+          provider: "gemini",
+          [LEGACY_V1_HAS_API_KEY_PROPERTY]: false,
+          isActive: true,
+          model: "gemini-2.5-flash",
+        },
+      ],
+    })}\n`,
+    { mode: 0o600 },
+  );
+  writeFileSync(secretsPath, '{"providers":{"gemini":"settings-secret-sentinel"}}\n', {
+    mode: 0o600,
+  });
+  writeFileSync(
+    `${secretsPath}.recovery`,
+    recovery === "valid"
+      ? `${JSON.stringify({
+          version: 2,
+          previousConfig: { existed: true, base64: priorConfig.toString("base64") },
+          previousSecrets: { existed: false, base64: null },
+        })}\n`
+      : "corrupt-settings-recovery-sentinel",
+    { mode: 0o600 },
+  );
+}
+
 describe("settings trust routes — server-scoped project", () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
   let originalToken: string | undefined;
 
   beforeEach(() => {
+    loadedStores.clear();
     diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-settings-home-"));
+    assertTempHome(diffgazerHome);
     projectRootA = mkdtempSync(join(tmpdir(), "diffgazer-settings-projA-"));
     projectRootB = mkdtempSync(join(tmpdir(), "diffgazer-settings-projB-"));
     mkdirSync(join(projectRootA, ".git"));
@@ -76,19 +128,24 @@ describe("settings trust routes — server-scoped project", () => {
     vi.resetModules();
   });
 
-  afterEach(() => {
-    delete process.env.DIFFGAZER_HOME;
-    delete process.env.DIFFGAZER_PROJECT_ROOT;
-    delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
-    if (originalToken === undefined) {
-      delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
-    } else {
-      process.env.DIFFGAZER_SHUTDOWN_TOKEN = originalToken;
+  afterEach(async () => {
+    try {
+      for (const store of loadedStores) await store.ready();
+      rmSync(diffgazerHome, { recursive: true, force: true });
+      rmSync(projectRootA, { recursive: true, force: true });
+      rmSync(projectRootB, { recursive: true, force: true });
+    } finally {
+      loadedStores.clear();
+      delete process.env.DIFFGAZER_HOME;
+      delete process.env.DIFFGAZER_PROJECT_ROOT;
+      delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
+      if (originalToken === undefined) {
+        delete process.env.DIFFGAZER_SHUTDOWN_TOKEN;
+      } else {
+        process.env.DIFFGAZER_SHUTDOWN_TOKEN = originalToken;
+      }
+      warnSpy.mockRestore();
     }
-    rmSync(diffgazerHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
-    rmSync(projectRootA, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
-    rmSync(projectRootB, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
-    warnSpy.mockRestore();
   });
 
   it(
@@ -136,6 +193,38 @@ describe("settings trust routes — server-scoped project", () => {
     });
 
     expect(res.status).toBe(404);
+  });
+
+  it("GET /trust reports a never-visited project as 404, not a server error", async () => {
+    const app = await loadApp();
+
+    const res = await app.request("/api/settings/trust", {
+      headers: {
+        Host: "localhost:3000",
+        [SHUTDOWN_TOKEN_HEADER]: TEST_TOKEN,
+        [PROJECT_ROOT_HEADER]: projectRootA,
+      },
+    });
+
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("DELETE /trust reports nothing removed for a never-visited project", async () => {
+    const app = await loadApp();
+
+    const res = await app.request("/api/settings/trust", {
+      method: "DELETE",
+      headers: {
+        Host: "localhost:3000",
+        [SHUTDOWN_TOKEN_HEADER]: TEST_TOKEN,
+        [PROJECT_ROOT_HEADER]: projectRootA,
+      },
+    });
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ removed: false });
   });
 
   it("requires the shutdown token for trust reads even in standalone dev", async () => {
@@ -221,6 +310,44 @@ describe("settings trust routes — server-scoped project", () => {
     expect(res.status).toBe(400);
   });
 
+  it.each([
+    "valid",
+    "corrupt",
+  ] as const)("returns the fixed migration envelope for settings read and write with %s recovery", async (recovery) => {
+    const store = await loadStore();
+    await expect(store.updateSettings({ theme: "auto" })).resolves.toMatchObject({ ok: true });
+    const app = await loadApp();
+    writeBlockedV1Settings(recovery);
+
+    const responses = await Promise.all([
+      app.request("/api/settings", {
+        headers: {
+          Host: "localhost:3000",
+          [SHUTDOWN_TOKEN_HEADER]: TEST_TOKEN,
+        },
+      }),
+      app.request("/api/settings", {
+        method: "POST",
+        headers: {
+          Host: "localhost:3000",
+          "Content-Type": "application/json",
+          [SHUTDOWN_TOKEN_HEADER]: TEST_TOKEN,
+        },
+        body: JSON.stringify({ theme: "dark" }),
+      }),
+    ]);
+
+    for (const response of responses) {
+      expect(response.status).toBe(503);
+      await expect(response.json()).resolves.toEqual({
+        error: {
+          code: "SECRETS_MIGRATION_FAILED",
+          message: "Legacy configuration requires manual migration",
+        },
+      });
+    }
+  });
+
   it("rejects clearing configured secrets storage", async () => {
     const store = await loadStore();
     await expect(store.updateSettings({ secretsStorage: "file" })).resolves.toMatchObject({
@@ -239,7 +366,15 @@ describe("settings trust routes — server-scoped project", () => {
     });
 
     expect(response.status).toBe(400);
-    expect(store.getSettings().secretsStorage).toBe("file");
+    // The store owns this rule, so its crafted remediation must reach the wire
+    // instead of a generic schema rejection.
+    const body = (await response.json()) as { error: { code: string; message: string } };
+    expect(body.error.code).toBe("STORAGE_NOT_CONFIGURED");
+    expect(body.error.message).toContain("cannot be cleared after configuration");
+    await expect(store.readSettings()).resolves.toMatchObject({
+      ok: true,
+      value: { secretsStorage: "file" },
+    });
   });
 
   it("returns 500 when settings persistence fails", async () => {
@@ -302,18 +437,18 @@ describe("settings trust routes — server-scoped project", () => {
   });
 
   it.each([
-    { sessionAccess: true, persistentAccess: false },
-    { sessionAccess: false, persistentAccess: true },
+    { previousAccess: true, updatedAccess: false },
+    { previousAccess: false, updatedAccess: true },
   ])(
-    "POST /trust replaces session readFiles=$sessionAccess with persistent readFiles=$persistentAccess everywhere",
-    async ({ sessionAccess, persistentAccess }) => {
+    "POST /trust replaces persistent readFiles=$previousAccess with persistent readFiles=$updatedAccess everywhere",
+    async ({ previousAccess, updatedAccess }) => {
       const store = await loadStore();
       const project = store.ensureProjectFile(projectRootA);
       const projectId = requireValue(project.projectId, "project A id");
       await store.saveTrust({
         ...trustForProject(projectId, projectRootA),
-        capabilities: { readFiles: sessionAccess, runCommands: false },
-        trustMode: "session",
+        capabilities: { readFiles: previousAccess, runCommands: false },
+        trustMode: "persistent",
       });
       const app = await loadApp();
 
@@ -326,7 +461,7 @@ describe("settings trust routes — server-scoped project", () => {
           [PROJECT_ROOT_HEADER]: projectRootA,
         },
         body: JSON.stringify({
-          capabilities: { readFiles: persistentAccess },
+          capabilities: { readFiles: updatedAccess },
           trustMode: "persistent",
         }),
       });
@@ -335,21 +470,21 @@ describe("settings trust routes — server-scoped project", () => {
       await expect(response.json()).resolves.toMatchObject({
         trust: {
           trustMode: "persistent",
-          capabilities: { readFiles: persistentAccess },
+          capabilities: { readFiles: updatedAccess },
         },
       });
-      expect(store.getTrust(projectId)?.capabilities.readFiles).toBe(persistentAccess);
+      expect(store.getTrust(projectId)?.capabilities.readFiles).toBe(updatedAccess);
       const canonicalProjectRoot = realpathSync.native(projectRootA);
       expect(store.getProjectInfo(canonicalProjectRoot).trust).toMatchObject({
-        capabilities: { readFiles: persistentAccess },
+        capabilities: { readFiles: updatedAccess },
         repoRoot: canonicalProjectRoot,
       });
       const { hasRepoReadAccess } = await import("../../shared/middlewares/trust-guard.js");
-      expect(hasRepoReadAccess(canonicalProjectRoot)).toBe(persistentAccess);
+      expect(hasRepoReadAccess(canonicalProjectRoot)).toBe(updatedAccess);
       const { createConfigStore } = await import("../../shared/lib/config/store.js");
-      expect(createConfigStore().getTrust(projectId)?.capabilities.readFiles).toBe(
-        persistentAccess,
-      );
+      const restarted = createConfigStore();
+      loadedStores.add(restarted);
+      expect(restarted.getTrust(projectId)?.capabilities.readFiles).toBe(updatedAccess);
     },
     ROUTE_BOUNDARY_TIMEOUT_MS,
   );
@@ -393,8 +528,8 @@ describe("settings trust routes — server-scoped project", () => {
     expectTerminalTrustRevocation(session);
     expect(unrelatedSession.isComplete).toBe(false);
     expect(unrelatedSession.controller.signal.aborted).toBe(false);
-    sessions.deleteSession(session.reviewId);
-    sessions.deleteSession(unrelatedSession.reviewId);
+    sessions.deleteSessionForTests(session.reviewId);
+    sessions.deleteSessionForTests(unrelatedSession.reviewId);
   });
 
   it("POST /trust through a symlink alias aborts only physical-project sessions on downgrade", async () => {
@@ -439,8 +574,8 @@ describe("settings trust routes — server-scoped project", () => {
     expect(res.status).toBe(200);
     expectTerminalTrustRevocation(projectSession);
     expect(unrelatedSession.controller.signal.aborted).toBe(false);
-    sessions.deleteSession(projectSession.reviewId);
-    sessions.deleteSession(unrelatedSession.reviewId);
+    sessions.deleteSessionForTests(projectSession.reviewId);
+    sessions.deleteSessionForTests(unrelatedSession.reviewId);
   });
 
   it("DELETE /trust derives project from server, cannot delete another project's trust", async () => {

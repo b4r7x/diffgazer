@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ENV } from "./lib/env.mjs";
+import { runComponentsJsonMatrixSmoke } from "./smoke-shadcn-install/components-json-matrix.mjs";
 import {
   assertFixtureBuilds,
   assertInstalledRegistryTree,
@@ -34,7 +35,7 @@ import {
   assertRegistryItemsExist,
   directlyInstallableUiNames,
   keysInstallItems,
-  keysItems,
+  publicRegistryFileNames,
   standaloneKeysHookImports,
   uiComponentNames,
   uiItems,
@@ -42,7 +43,12 @@ import {
 import { startRegistryServer } from "./smoke-shadcn-install/server.mjs";
 import { runArgv } from "./smoke-shared/command.mjs";
 import { installViteFixtureDeps, resolveLocalDependency } from "./smoke-shared/dependencies.mjs";
-import { assertBuiltCss, joinLines, writeViteFixture } from "./smoke-shared/fixtures.mjs";
+import {
+  assertBuiltCss,
+  DEFAULT_FIXTURE_ALIASES,
+  joinLines,
+  writeViteFixture,
+} from "./smoke-shared/fixtures.mjs";
 
 const root = process.cwd();
 const rootPackageManager = JSON.parse(
@@ -98,7 +104,7 @@ async function writeSidebarAliasFixture(fixture) {
     withLibUtils: true,
     indexCss: ['@import "tailwindcss";', '@import "../styles/styles.css";', '@source ".";', ""],
     componentsJson: true,
-    uiAlias: SIDEBAR_ALIAS_UI_TARGET,
+    aliases: { ...DEFAULT_FIXTURE_ALIASES, ui: SIDEBAR_ALIAS_UI_TARGET },
   });
   await installViteFixtureDeps(root, fixture);
 }
@@ -175,19 +181,23 @@ async function runSmoke() {
     throw new Error("Keys public registry not found. Run build:shadcn first.");
   }
 
-  assertRegistryItemsExist(keysRegistryDir, keysItems, "Keys");
+  assertRegistryItemsExist(keysRegistryDir, keysInstallItems, "Keys");
   assertRegistryItemsExist(uiRegistryDir, uiItems, "UI");
   console.log("OK: all representative registry items exist");
 
   const allUiNames = allRegistryIndexNames(uiRegistryDir);
   const allKeysNames = allRegistryIndexNames(keysRegistryDir);
+  // The browsable index omits transitive-only internals (focusable), which four
+  // public UI components depend on, so per-item contract checks run over every
+  // shipped item JSON rather than the index.
+  const shippedKeysNames = publicRegistryFileNames(keysRegistryDir);
   const installableUiNames = directlyInstallableUiNames(uiRegistryDir);
 
-  assertKeysTargets(keysRegistryDir, allKeysNames);
+  assertKeysTargets(keysRegistryDir, shippedKeysNames);
   console.log("OK: keys items have target fields on all files");
 
-  assertNoJsImportSpecifiers(keysRegistryDir, allKeysNames);
-  console.log("OK: keys public registry has no .js import specifiers");
+  assertNoJsImportSpecifiers(keysRegistryDir, shippedKeysNames);
+  console.log("OK: keys public registry has no relative .js import specifiers");
 
   assertDirectRegistryDependencies(uiRegistryDir, allUiNames, "UI");
   console.log("OK: UI public registry dependencies are direct URL ready");
@@ -322,6 +332,13 @@ async function runSmoke() {
     console.log(
       `OK: the sidebar tree preserves its subdirectories under the ${SIDEBAR_ALIAS_UI_TARGET} alias`,
     );
+
+    await runComponentsJsonMatrixSmoke({
+      root,
+      baseUrl: registryServer.baseUrl,
+      rootPackageManager,
+      addItems: runShadcnAdd,
+    });
   } finally {
     await registryServer.close();
     rmSync(directFixture, { recursive: true, force: true });

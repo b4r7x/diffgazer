@@ -5,9 +5,14 @@ import { resetDir } from "../utils/fs.js";
 
 function run(command: string, args: string[], cwd: string): void {
   const result = spawnSync(command, args, { cwd, stdio: "inherit" });
-  if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(" ")} failed with exit code ${result.status}`);
-  }
+  if (result.status === 0) return;
+
+  // A spawn failure (missing or non-executable binary, signal kill) leaves
+  // status null and puts the real reason in error/signal.
+  const reason = result.error
+    ? result.error.message
+    : `exit code ${result.status}${result.signal ? `, signal ${result.signal}` : ""}`;
+  throw new Error(`${command} ${args.join(" ")} failed (${reason})`, { cause: result.error });
 }
 
 export function resolveLocalShadcnBin(rootDir: string): string | undefined {

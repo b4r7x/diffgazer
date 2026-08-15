@@ -1,17 +1,23 @@
 import {
+  getCatalogModelName,
   getProviderDisplayStatus,
   getProviderRowId,
   type ProviderListRow,
+  UNRECOGNIZED_CONFIGURATION_COPY,
 } from "@diffgazer/core/providers";
-import type { ConfigurationId } from "@diffgazer/core/schemas/config";
+import type { ConfigurationId, UnrecognizedConfiguration } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { NavigationList } from "../../../components/ui/navigation-list";
+import { terminalCellWidth } from "../../../lib/terminal-width";
 import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
+import { formatModelLabel } from "../lib/model-label";
 
 interface ProviderListProps {
   providers: ProviderListRow[];
+  /** Stored records this build could not decode; they trail the provider rows. */
+  unrecognized: readonly UnrecognizedConfiguration[];
   selectedId?: string;
   highlightedId?: string;
   selectedConfigurationId?: ConfigurationId | null;
@@ -24,6 +30,12 @@ interface ProviderListProps {
 
 const PROVIDER_LIST_ROW_CHROME = 4;
 
+function fitsListRow(name: string, subtitle: string, contentWidth: number): boolean {
+  return (
+    terminalCellWidth(name) + terminalCellWidth(subtitle) + PROVIDER_LIST_ROW_CHROME <= contentWidth
+  );
+}
+
 function canShowListSubtitle(
   name: string,
   subtitle: string | undefined,
@@ -32,11 +44,22 @@ function canShowListSubtitle(
 ): subtitle is string {
   if (!subtitle) return false;
   if (!compact) return true;
-  return name.length + subtitle.length + PROVIDER_LIST_ROW_CHROME <= contentWidth;
+  return fitsListRow(name, subtitle, contentWidth);
 }
 
-function getModelSubtitle(row: ProviderListRow): string | undefined {
-  if (row.configuration?.selectedModelId) return row.configuration.selectedModelId;
+/**
+ * The catalog display name leads and the exact id trails it, as in the web
+ * provider row. This pane is capped near 44 columns, so the id rides along only
+ * when the whole row fits: truncating the pair would eat the name, which is the
+ * half a reader can act on. The details pane always carries both.
+ */
+function getModelSubtitle(row: ProviderListRow, contentWidth: number): string | undefined {
+  const modelId = row.configuration?.selectedModelId;
+  if (modelId) {
+    const label = formatModelLabel(row.product.productId, modelId);
+    if (fitsListRow(row.product.name, label, contentWidth)) return label;
+    return getCatalogModelName(row.product.productId, modelId);
+  }
   if (row.readiness.status === "unsupported" && row.product.transportFamily === "local-cli") {
     return "CLI unsupported";
   }
@@ -71,6 +94,7 @@ function getStatusColor(
 
 export function ProviderList({
   providers,
+  unrecognized,
   selectedId,
   highlightedId,
   selectedConfigurationId,
@@ -92,7 +116,7 @@ export function ProviderList({
     >
       {providers.map((row) => {
         const rowId = getProviderRowId(row);
-        const subtitle = getModelSubtitle(row);
+        const subtitle = getModelSubtitle(row, contentWidth);
         const showSubtitle = canShowListSubtitle(row.product.name, subtitle, contentWidth, compact);
 
         return (
@@ -117,7 +141,9 @@ export function ProviderList({
                 </Box>
                 {showSubtitle ? (
                   <Box flexShrink={1} overflow="hidden">
-                    <Text color={tone.secondary} wrap="truncate-start">
+                    {/* Truncates from the end because the subtitle now leads with
+                        the display name; cutting the head would hide it. */}
+                    <Text color={tone.secondary} wrap="truncate-end">
                       {subtitle}
                     </Text>
                   </Box>
@@ -127,6 +153,36 @@ export function ProviderList({
           </NavigationList.Item>
         );
       })}
+      {/* No product, model, or readiness to show — the id is what ties the row to
+          the record on disk, and the details pane explains it. */}
+      {unrecognized.map(({ configurationId }) => (
+        <NavigationList.Item key={configurationId} id={configurationId}>
+          {({ tone }) => (
+            <Box gap={1} width={contentWidth} flexWrap="nowrap" overflow="hidden">
+              <Box flexShrink={0}>
+                <Text color={tone.background ? tone.primary : tokens.warning}>!</Text>
+              </Box>
+              <Box flexShrink={0} overflow="hidden">
+                <Text color={tone.primary} bold wrap="truncate-end">
+                  {UNRECOGNIZED_CONFIGURATION_COPY.label}
+                </Text>
+              </Box>
+              {canShowListSubtitle(
+                UNRECOGNIZED_CONFIGURATION_COPY.label,
+                configurationId,
+                contentWidth,
+                compact,
+              ) ? (
+                <Box flexShrink={1} overflow="hidden">
+                  <Text color={tone.secondary} wrap="truncate-end">
+                    {configurationId}
+                  </Text>
+                </Box>
+              ) : null}
+            </Box>
+          )}
+        </NavigationList.Item>
+      ))}
     </NavigationList>
   );
 }

@@ -1,6 +1,6 @@
-import { getErrorMessage } from "@diffgazer/core/errors";
 import {
   ExecutionReceiptSchema,
+  type ExecutionReceiptUsageState,
   type ExecutionResult,
   ExecutionResultSchema,
   hashExecutionReceiptFingerprintSync,
@@ -9,8 +9,13 @@ import {
   type TerminalOutcome,
   type UsageAvailability,
 } from "@diffgazer/core/schemas/review";
-import type { AdmittedExecutionPlan, AuthorizedReviewExecution } from "../admission/service.js";
-import type { AttemptActual, AttemptEstimate, BudgetLimitKey } from "../budget/ledger.js";
+import {
+  type AdmittedExecutionPlan,
+  type AuthorizedReviewExecution,
+  STRUCTURED_OUTPUT_FAILURE_GUIDANCE,
+} from "../admission/service.js";
+import { estimateUsageCostUsd, resolveModelPricing } from "../budget/cost.js";
+import type { AttemptActual, BudgetLimitKey } from "../budget/ledger.js";
 import {
   type BoundedDiagnostic,
   type DiagnosticCapture,
@@ -19,29 +24,14 @@ import {
   serializeFailureDiagnostic,
   serializeSuccessDiagnostic,
 } from "../diagnostics.js";
+import { estimateReviewInputTokens } from "../providers/execution-receipt.js";
 import { assertBoundedExecutionResult } from "../types.js";
 import { createFromAdmittedPlan } from "./create.js";
-
-export function estimatePromptTokens(prompt: string): number {
-  return Math.ceil(prompt.length / 4);
-}
-
-export function conservativeAttemptEstimate(
-  prompt: string,
-  limits: AdmittedExecutionPlan["limits"],
-): AttemptEstimate {
-  return {
-    inputTokens: Math.min(estimatePromptTokens(prompt), limits.maxInputTokens),
-    outputTokens: limits.maxOutputTokens,
-    responseBytes: limits.maxResponseBytes,
-    wallTimeMs: limits.wallTimeMs,
-    costUsd: limits.maxCostUsd,
-  };
-}
 
 export type ExecuteReviewGenerationInput = Readonly<{
   authorization: AuthorizedReviewExecution;
   prompt: string;
+  systemPrompt?: string;
   signal?: AbortSignal;
 }>;
 
@@ -49,6 +39,27 @@ export type ExecuteReviewGenerationResult = Readonly<{
   execution: ExecutionResult;
   diagnostic: BoundedDiagnostic;
 }>;
+
+type BuildExecutionUsageInput =
+  | { usage: NormalizedUsage; usageAvailability?: "reported" }
+  | { usage?: undefined; usageAvailability?: "unavailable" }
+  | Extract<ExecutionReceiptUsageState, { usageAvailability: "required-missing" }>;
+
+export function normalizeBuildExecutionUsageInput(input: {
+  usageAvailability?: UsageAvailability;
+  usage?: NormalizedUsage;
+}): ExecutionReceiptUsageState {
+  if (input.usage !== undefined) {
+    return {
+      usageAvailability: "reported",
+      usage: NormalizedUsageSchema.parse(input.usage),
+    };
+  }
+  if (input.usageAvailability === "reported" || input.usageAvailability === "required-missing") {
+    return { usageAvailability: "required-missing" };
+  }
+  return { usageAvailability: input.usageAvailability ?? "unavailable" };
+}
 
 function sensitiveContextFromPlan(plan: AdmittedExecutionPlan): DiagnosticSensitiveContext {
   const literals: string[] = [];
@@ -67,30 +78,35 @@ function sensitiveContextFromPlan(plan: AdmittedExecutionPlan): DiagnosticSensit
 }
 
 /**
- * Settles measured wall time and provider-reported tokens only. Response bytes
- * and cost are transport-measured or provider-billed facts; a receipt that does
- * not carry them leaves those dimensions unsettled rather than estimated.
+ * Settles measured wall time, provider-reported tokens, and the dollars those
+ * tokens cost at the admitted model's pinned catalog price. Response bytes are a
+ * transport-measured fact a receipt that omits them leaves unsettled, and a
+ * model the catalog does not price settles no cost rather than an invented one.
  */
 function actualFromReceipt(receipt: ExecutionResult["receipt"]): AttemptActual {
   const wallTimeMs = Math.max(0, Date.parse(receipt.finishedAt) - Date.parse(receipt.startedAt));
   const usage = receipt.usageAvailability === "reported" ? receipt.usage : undefined;
+  const inputTokens = usage?.inputTokens ?? 0;
+  const outputTokens = usage?.outputTokens ?? 0;
+  const pricing = resolveModelPricing(receipt.productId, receipt.modelId);
   return {
-    inputTokens: usage?.inputTokens ?? 0,
-    outputTokens: usage?.outputTokens ?? 0,
+    inputTokens,
+    outputTokens,
     wallTimeMs,
+    ...(pricing ? { costUsd: estimateUsageCostUsd(pricing, { inputTokens, outputTokens }) } : {}),
   };
 }
 
 function buildPlanReceipt(
   plan: AdmittedExecutionPlan,
-  input: Readonly<{
-    outcome: TerminalOutcome;
-    attemptCount: number;
-    startedAt: string;
-    finishedAt: string;
-    usageAvailability: UsageAvailability;
-    usage?: NormalizedUsage;
-  }>,
+  input: Readonly<
+    {
+      outcome: TerminalOutcome;
+      attemptCount: number;
+      startedAt: string;
+      finishedAt: string;
+    } & ExecutionReceiptUsageState
+  >,
 ) {
   const { evidenceKey } = plan;
   const executionFingerprint = hashExecutionReceiptFingerprintSync({
@@ -123,8 +139,10 @@ function buildPlanReceipt(
     transportFamily: evidenceKey.transportFamily,
     modelId: evidenceKey.modelId,
     normalizedEndpoint: evidenceKey.normalizedEndpoint,
-    region: evidenceKey.region ?? undefined,
-    workspace: evidenceKey.workspaceAccountReference ?? undefined,
+    ...(evidenceKey.region === null ? {} : { region: evidenceKey.region }),
+    ...(evidenceKey.workspaceAccountReference === null
+      ? {}
+      : { workspaceAccountReference: evidenceKey.workspaceAccountReference }),
     runtime: evidenceKey.runtime,
     structuredOutputSchemaSha256: evidenceKey.structuredOutputSchemaSha256,
     noticeVersion: evidenceKey.noticeVersion,
@@ -132,7 +150,9 @@ function buildPlanReceipt(
     attemptCount: input.attemptCount,
     startedAt: input.startedAt,
     finishedAt: input.finishedAt,
-    usage: usageAvailability === "reported" ? input.usage : undefined,
+    ...(usageAvailability === "reported" && input.usage !== undefined
+      ? { usage: input.usage }
+      : {}),
     usageAvailability,
     outcome: input.outcome,
   });
@@ -146,27 +166,25 @@ function buildPlanReceipt(
 export function buildExecutionResult(
   plan: AdmittedExecutionPlan,
   outcome: TerminalOutcome,
-  input: Readonly<{
-    attemptCount?: number;
-    startedAt?: string;
-    finishedAt?: string;
-    usageAvailability?: UsageAvailability;
-    usage?: NormalizedUsage;
-    issues?: ExecutionResult["result"]["issues"];
-  }> = {},
+  input: Readonly<
+    {
+      attemptCount?: number;
+      startedAt?: string;
+      finishedAt?: string;
+      issues?: ExecutionResult["result"]["issues"];
+    } & BuildExecutionUsageInput
+  > = {},
 ): ExecutionResult {
   const startedAt = input.startedAt ?? new Date().toISOString();
   const finishedAt = input.finishedAt ?? startedAt;
-  const usageAvailability = input.usageAvailability ?? (input.usage ? "reported" : "unavailable");
+  const usageState: ExecutionReceiptUsageState = normalizeBuildExecutionUsageInput(input);
   return ExecutionResultSchema.parse({
     receipt: buildPlanReceipt(plan, {
       outcome,
       attemptCount: input.attemptCount ?? 1,
       startedAt,
       finishedAt,
-      usageAvailability,
-      usage:
-        usageAvailability === "reported" ? NormalizedUsageSchema.parse(input.usage) : undefined,
+      ...usageState,
     }),
     result: { issues: outcome === "completed" ? (input.issues ?? []) : [] },
   });
@@ -206,6 +224,7 @@ function diagnosticForOutcome(
   return serializeFailureDiagnostic({
     code: outcome,
     message: input.message ?? `Execution ended with outcome ${outcome}.`,
+    ...(outcome === "schema-failed" ? { remediation: STRUCTURED_OUTPUT_FAILURE_GUIDANCE } : {}),
     sensitive,
     capture: input.capture,
   });
@@ -234,10 +253,12 @@ function terminalOutcomeMessage(outcome: TerminalOutcome): string | undefined {
   }
 }
 
+const ADAPTER_THROW_DIAGNOSTIC_MESSAGE = "Adapter execution failed.";
+
 export async function executeReviewGeneration(
   input: ExecuteReviewGenerationInput,
 ): Promise<ExecuteReviewGenerationResult> {
-  const { authorization, prompt, signal } = input;
+  const { authorization, prompt, systemPrompt, signal } = input;
   const { plan, budgetLedger, budgetReservation } = authorization;
   const startedAt = new Date().toISOString();
 
@@ -250,12 +271,12 @@ export async function executeReviewGeneration(
     };
   }
 
-  if (estimatePromptTokens(prompt) > plan.limits.maxInputTokens) {
+  if (estimateReviewInputTokens({ prompt, systemPrompt }) > plan.limits.maxInputTokens) {
     return {
       execution: buildExecutionResult(plan, "budget-exhausted", { attemptCount: 0, startedAt }),
       diagnostic: diagnosticForOutcome(plan, "budget-exhausted", {
         limit: "maxInputTokens",
-        message: `Prompt exceeds admitted maxInputTokens (${plan.limits.maxInputTokens}).`,
+        message: `Review input exceeds admitted maxInputTokens (${plan.limits.maxInputTokens}).`,
       }),
     };
   }
@@ -280,25 +301,42 @@ export async function executeReviewGeneration(
 
   let execution: ExecutionResult;
   try {
-    execution = zeroFindingsUnlessCompleted(await clientResult.value.execute(prompt, { signal }));
-  } catch (error) {
+    execution = zeroFindingsUnlessCompleted(
+      await clientResult.value.execute(prompt, { signal, systemPrompt }),
+    );
+  } catch {
     // An adapter that throws — including one whose result breaks the bounded
     // execution contract — settles as a transport failure with no findings.
-    budgetLedger.releaseReservation(budgetReservation);
+    // Only the measured wall time is committed; the per-review reservation
+    // stays open so every later lens dispatch keeps drawing down the same
+    // admitted envelope instead of no-op settling against a deleted record.
+    const finishedAt = new Date().toISOString();
+    const settleFailure = budgetLedger.commitAttemptUsage(budgetReservation, {
+      inputTokens: 0,
+      outputTokens: 0,
+      wallTimeMs: Math.max(0, Date.parse(finishedAt) - Date.parse(startedAt)),
+    });
+    if (!settleFailure.ok) {
+      return {
+        execution: buildExecutionResult(plan, "budget-exhausted", { startedAt, finishedAt }),
+        diagnostic: diagnosticForOutcome(plan, "budget-exhausted", {
+          limit: settleFailure.error.limit,
+        }),
+      };
+    }
     return {
       execution: buildExecutionResult(plan, "transport-failed", {
         startedAt,
-        finishedAt: new Date().toISOString(),
+        finishedAt,
       }),
       diagnostic: serializeFailureDiagnostic({
         code: "transport-failed",
-        message: getErrorMessage(error),
-        sensitive: sensitiveContextFromPlan(plan),
+        message: ADAPTER_THROW_DIAGNOSTIC_MESSAGE,
       }),
     };
   }
 
-  const settle = budgetLedger.settleAttempt(
+  const settle = budgetLedger.commitAttemptUsage(
     budgetReservation,
     actualFromReceipt(execution.receipt),
   );
@@ -307,8 +345,10 @@ export async function executeReviewGeneration(
       attemptCount: execution.receipt.attemptCount,
       startedAt: execution.receipt.startedAt,
       finishedAt: execution.receipt.finishedAt,
-      usageAvailability: execution.receipt.usageAvailability,
-      usage: execution.receipt.usage,
+      ...normalizeBuildExecutionUsageInput({
+        usageAvailability: execution.receipt.usageAvailability,
+        usage: execution.receipt.usage,
+      }),
     });
     return {
       execution,

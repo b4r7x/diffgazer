@@ -15,7 +15,7 @@ const SUPPORT_FLOOR = { columns: 80, rows: 24 } as const;
 
 vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@diffgazer/core/api/hooks")>()),
-  useInit: () => ({ data: undefined, isLoading: false }),
+  useConfigurationInit: () => ({ data: undefined, isLoading: false }),
 }));
 
 vi.mock("@diffgazer/core/review", async (importOriginal) => {
@@ -41,7 +41,6 @@ vi.mock("../../../components/layout/global", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../components/layout/global")>()),
   useContentZone: () => ({
     columns: terminalSize.columns,
-    rows: terminalSize.rows,
     contentColumns: terminalSize.columns,
     contentRows: terminalSize.rows - 4,
   }),
@@ -122,6 +121,84 @@ describe("HistoryScreen pagination", () => {
     releasePage.resolve();
     await vi.waitFor(() => expect(view.lastFrame()).toContain("Review from a later page"));
     expect(view.lastFrame()).not.toContain("Load older runs");
+  });
+
+  it("keeps loaded runs visible and retries a failed older page", async () => {
+    const loadMoreReviews = vi.fn(async () => {});
+    const state = makeHistoryScreenState({
+      reviews: [{ id: "loaded-review" }],
+      mappedRuns: [
+        {
+          id: "loaded-review",
+          displayId: "#loaded",
+          branch: "main",
+          timestamp: "now",
+          summary: "Already loaded review",
+        },
+      ],
+      selectedRunId: "loaded-review",
+      hasReviews: true,
+      hasMoreReviews: true,
+      loadMoreReviews,
+    });
+    useHistoryScreenStateMock.mockReturnValue({
+      ...state,
+      reviewsQuery: {
+        ...state.reviewsQuery,
+        error: new Error("request timed out"),
+      },
+      retainedError: { kind: "pagination", message: "request timed out" },
+    });
+
+    const view = renderHistoryScreen();
+
+    expect(view.lastFrame()).toContain("Already loaded review");
+    expect(view.lastFrame()).toContain("Could not load older runs. request timed out");
+    expect(view.lastFrame()).not.toContain("Error: request timed out");
+
+    view.stdin.write("l");
+    await vi.waitFor(() => expect(loadMoreReviews).toHaveBeenCalledOnce());
+  });
+
+  it("keeps retained runs interactive and retries a sanitized background refetch error", async () => {
+    const refetch = vi.fn(async () => {});
+    const state = makeHistoryScreenState({
+      reviews: [{ id: "loaded-review" }],
+      mappedRuns: [
+        {
+          id: "loaded-review",
+          displayId: "#loaded",
+          branch: "main",
+          timestamp: "now",
+          summary: "Retained review",
+        },
+      ],
+      selectedRunId: "loaded-review",
+      hasReviews: true,
+    });
+    const unsafeMessage =
+      "refresh failed \u001b]8;;https://example.test\u0007click\u001b]8;;\u0007";
+    useHistoryScreenStateMock.mockReturnValue({
+      ...state,
+      reviewsQuery: {
+        ...state.reviewsQuery,
+        error: new Error(unsafeMessage),
+        refetch,
+      },
+      retainedError: { kind: "refetch", message: unsafeMessage },
+    });
+
+    const view = renderHistoryScreen();
+    const frame = view.lastFrame() ?? "";
+
+    expect(frame).toContain("Retained review");
+    expect(frame).toContain("Could not refresh the review list. refresh failed click");
+    expect(frame).toContain("Press R to retry");
+    expect(frame).not.toContain("\u001b");
+    expect(frame).not.toContain("https://example.test");
+
+    view.stdin.write("R");
+    await vi.waitFor(() => expect(refetch).toHaveBeenCalledOnce());
   });
 
   it("keeps the pagination affordance and long run content inside an 80x24 frame", async () => {

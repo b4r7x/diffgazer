@@ -2,6 +2,7 @@ import { useKey, useScope, useScopedNavigation } from "@diffgazer/keys";
 import { useRef, useState } from "react";
 import { DemoDialog } from "../components/demo-dialog";
 import { DemoWrapper } from "../components/demo-wrapper";
+import { Kbd } from "../components/kbd";
 import { useTransientValue } from "./use-transient-value";
 
 const ALL_COMMANDS = [
@@ -64,6 +65,7 @@ export function CommandPaletteDemo() {
     onEnter: (value) => selectCommand(value),
     enabled: open,
     wrap: true,
+    allowInInput: true,
   });
 
   return (
@@ -87,14 +89,7 @@ export function CommandPaletteDemo() {
           fontSize: 14,
         }}
       >
-        Press{" "}
-        <kbd className="kbd" style={{ margin: "0 4px" }}>
-          Cmd
-        </kbd>
-        <kbd className="kbd" style={{ margin: "0 4px" }}>
-          K
-        </kbd>{" "}
-        to open command palette
+        Press <Kbd keys="mod+K" /> to open command palette
       </div>
 
       {toastMessage && (

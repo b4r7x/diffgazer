@@ -12,15 +12,17 @@ import {
   SidebarSectionTitle,
   type SidebarVariant,
 } from "@/components/ui/sidebar";
-import { ToggleGroup } from "@/components/ui/toggle-group";
+import { createToggleGroup } from "@/components/ui/toggle-group";
 
-const VARIANTS: { value: SidebarVariant; label: string }[] = [
-  { value: "caret", label: "caret" },
-  { value: "inverted", label: "inverted" },
-  { value: "bar", label: "bar" },
-  { value: "terminal", label: "terminal" },
-  { value: "tree", label: "tree" },
-];
+const VARIANTS = [
+  "caret",
+  "inverted",
+  "bar",
+  "terminal",
+  "tree",
+] as const satisfies readonly SidebarVariant[];
+
+const SidebarVariantGroup = createToggleGroup(VARIANTS);
 
 export default function SidebarVariants() {
   const [variant, setVariant] = useState<SidebarVariant>("caret");
@@ -36,19 +38,19 @@ export default function SidebarVariants() {
         </span>
       </div>
       <div className="border-b border-border px-2 py-2">
-        <ToggleGroup<SidebarVariant>
+        <SidebarVariantGroup
           value={variant}
           onChange={(v) => v && setVariant(v)}
           label="Sidebar variant"
           variant="bracket"
           wrap
         >
-          {VARIANTS.map(({ value, label }) => (
-            <ToggleGroup.Item key={value} value={value} className="min-h-7 px-1">
-              {label}
-            </ToggleGroup.Item>
+          {VARIANTS.map((value) => (
+            <SidebarVariantGroup.Item key={value} value={value} className="min-h-7 px-1">
+              {value}
+            </SidebarVariantGroup.Item>
           ))}
-        </ToggleGroup>
+        </SidebarVariantGroup>
       </div>
 
       <Sidebar embedded variant={variant} className="flex-1">

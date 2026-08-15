@@ -1,10 +1,8 @@
-// @vitest-environment jsdom
-
 import { KeyboardProvider } from "@diffgazer/keys";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, useEffect } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type RecentDocsPage,
   SearchProvider,
@@ -101,6 +99,10 @@ describe("SearchDialog integration", () => {
     mocks.doSearch.mockReset();
     mocks.doSearch.mockResolvedValue([]);
     mocks.navigate.mockReset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("runs server search, renders results, and activates the highlighted result", async () => {
@@ -263,5 +265,16 @@ describe("SearchDialog integration", () => {
 
     const reopened = await screen.findByRole("combobox", { name: /command search/i });
     expect(reopened).toHaveValue("");
+  });
+
+  it.each([
+    ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)", "⌘K"],
+    ["Mozilla/5.0 (Windows NT 10.0; Win64; x64)", "Ctrl+K"],
+  ])("states the trigger `mod+k` actually binds on %s", async (userAgent, expected) => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(userAgent);
+
+    await renderOpenDialog();
+
+    expect(screen.getByText(/Triggered by/)).toHaveTextContent(expected);
   });
 });

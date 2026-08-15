@@ -21,6 +21,7 @@ const STEP_ICON = {
   completed: "*",
   pending: "\u00b7",
   active: ">",
+  error: "!",
 } satisfies Record<ProgressStatus, string>;
 
 const SUBSTEP_BADGE_VARIANT = {
@@ -33,12 +34,14 @@ const SUBSTEP_BADGE_VARIANT = {
 function getStepColor(status: ProgressStatus, tokens: CliColorTokens): string {
   if (status === "active") return tokens.statusRunning;
   if (status === "completed") return tokens.statusComplete;
+  if (status === "error") return tokens.error;
   return tokens.fg;
 }
 
 function getStepIconColor(status: ProgressStatus, tokens: CliColorTokens): string {
   if (status === "completed") return tokens.statusComplete;
   if (status === "active") return tokens.statusRunning;
+  if (status === "error") return tokens.error;
   return tokens.statusPending;
 }
 
@@ -70,9 +73,7 @@ export function ProgressStep({ name, status, substeps }: ProgressStepProps) {
         <Box flexDirection="column" marginLeft={3}>
           {substeps.map((sub) => (
             <Box key={sub.id} gap={1}>
-              <Badge variant={SUBSTEP_BADGE_VARIANT[sub.status]} size="sm">
-                {sub.tag}
-              </Badge>
+              <Badge variant={SUBSTEP_BADGE_VARIANT[sub.status]}>{sub.tag}</Badge>
               <Text color={getSubstepColor(sub.status, tokens)}>{sub.label}</Text>
               {sub.detail ? <Text color={tokens.muted}>{sub.detail}</Text> : null}
             </Box>

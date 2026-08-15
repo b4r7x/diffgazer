@@ -35,7 +35,7 @@ Descendants of the rendered panel can read positioning state via `useFloatingPan
 const { positioned, side, align } = useFloatingPanelContext()
 ```
 
-`positioned` is `false` during the first paint and after the exit animation. Use it to defer effects (focus, measurement) until after the first measure — this is how `PopoverContent` defers `autoFocus`.
+`positioned` is `false` until the first measure resolves. Use it to defer effects (focus, measurement) until after that first measure — this is how `PopoverContent` defers `autoFocus`.
 
 <AccessibilityNotes />
 

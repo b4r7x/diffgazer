@@ -44,7 +44,6 @@ export function SelectFormMirror({ name, required, disabled = false }: SelectFor
           data-slot="select-form-mirror"
           multiple
           value={submittedValue}
-          required={required}
           disabled={disabled}
           tabIndex={-1}
           aria-hidden={true}
@@ -84,30 +83,50 @@ export function SelectFormMirror({ name, required, disabled = false }: SelectFor
     );
   }
 
+  const hasSubmittedSingleValue = submittedValue !== null && submittedValue !== "";
+
   return (
-    <select
-      name={name}
-      data-slot="select-form-mirror"
-      value={submittedValue ?? ""}
-      required={required}
-      disabled={disabled || selectedSingleValueIsDisabled}
-      tabIndex={-1}
-      aria-hidden={true}
-      className="sr-only"
-      // Value is driven by the custom select; the no-op keeps this
-      // hidden form mirror controlled without React's warning.
-      onChange={() => {}}
-      onInvalid={(event) => {
-        event.preventDefault();
-        onNativeInvalid();
-      }}
-    >
-      <option value="" />
-      {logicalSingleValue !== null && (
-        <option value={logicalSingleValue} disabled={options.get(logicalSingleValue)?.disabled}>
-          {logicalSingleValue}
-        </option>
+    <>
+      <select
+        name={name}
+        data-slot="select-form-mirror"
+        value={submittedValue ?? ""}
+        disabled={disabled || selectedSingleValueIsDisabled}
+        tabIndex={-1}
+        aria-hidden={true}
+        className="sr-only"
+        // Value is driven by the custom select; the no-op keeps this
+        // hidden form mirror controlled without React's warning.
+        onChange={() => {}}
+        onInvalid={(event) => {
+          event.preventDefault();
+          onNativeInvalid();
+        }}
+      >
+        <option value="" />
+        {logicalSingleValue !== null && (
+          <option value={logicalSingleValue} disabled={options.get(logicalSingleValue)?.disabled}>
+            {logicalSingleValue}
+          </option>
+        )}
+      </select>
+      {required && (
+        <input
+          type="checkbox"
+          data-slot="select-required-validation"
+          required
+          checked={hasSubmittedSingleValue}
+          disabled={disabled}
+          tabIndex={-1}
+          aria-hidden={true}
+          className="sr-only"
+          onChange={() => {}}
+          onInvalid={(event) => {
+            event.preventDefault();
+            onNativeInvalid();
+          }}
+        />
       )}
-    </select>
+    </>
   );
 }

@@ -22,7 +22,7 @@ function renderFailure(overrides: Partial<FailureViewProps> = {}) {
     ...overrides,
   };
 
-  render(
+  const view = render(
     <FooterProvider>
       <KeyboardProvider>
         <FailureView {...props} />
@@ -31,7 +31,7 @@ function renderFailure(overrides: Partial<FailureViewProps> = {}) {
     </FooterProvider>,
   );
 
-  return props;
+  return { ...view, props };
 }
 
 describe("FailureView", () => {
@@ -96,6 +96,60 @@ describe("FailureView", () => {
     await user.keyboard("{ArrowRight}");
 
     expect(screen.getByRole("status")).toHaveTextContent("Enter/Space:Back to Home");
+  });
+
+  it("walks primary, recovery, and secondary with the arrow keys", async () => {
+    const user = userEvent.setup();
+    renderFailure({ recovery: { label: "Configure Provider", onAction: vi.fn() } });
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus());
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "Configure Provider" })).toHaveFocus();
+
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: "Back to Home" })).toHaveFocus();
+  });
+
+  it("activates only the recovery action and keeps it off the Escape path", async () => {
+    const user = userEvent.setup();
+    const onRecovery = vi.fn();
+    const { props } = renderFailure({
+      recovery: { label: "Configure Provider", onAction: onRecovery },
+    });
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus());
+    await user.keyboard("{ArrowRight}");
+    await user.keyboard("{Enter}");
+
+    expect(onRecovery).toHaveBeenCalledOnce();
+    expect(props.primary.onAction).not.toHaveBeenCalled();
+
+    await user.keyboard("{Escape}");
+
+    expect(props.secondary?.onAction).toHaveBeenCalledOnce();
+    expect(onRecovery).toHaveBeenCalledOnce();
+  });
+
+  it("seats the resting panel in the optical band with its tone tint", () => {
+    const { container } = renderFailure();
+
+    // Panel data attributes are the documented contract: the failure tone tints
+    // the hairline and the panel stays a resting frame, never the viewfinder.
+    const panel = container.querySelector('[data-slot="panel"]');
+    expect(panel).toHaveAttribute("data-tone", "error");
+    expect(panel).not.toHaveAttribute("data-frame", "viewfinder");
+
+    // The collapsing spacers around the panel are the centering contract — the
+    // panel sits in the shared 1:2 optical band, not dead-center in the leftover
+    // space below the header.
+    expect(panel?.previousElementSibling).toHaveAttribute("aria-hidden");
+    expect(panel?.nextElementSibling).toHaveAttribute("aria-hidden");
+  });
+
+  it("tints a warning gate with the warning tone", () => {
+    const { container } = renderFailure({ tone: "warning" });
+
+    expect(container.querySelector('[data-slot="panel"]')).toHaveAttribute("data-tone", "warning");
   });
 
   it("keeps a warning-tone gate out of the alert channel", () => {

@@ -130,6 +130,29 @@ describe("useActionRowNavigation", () => {
     expect(usage.code).toContain("<div ref={containerRef}>");
   });
 
+  it("documents every public option", () => {
+    // Typed as a total record so adding an option without a docs entry fails to compile.
+    const optionNames: Record<keyof UseActionRowNavigationOptions, true> = {
+      enabled: true,
+      actionCount: true,
+      onAction: true,
+      disabledActions: true,
+      disabledFocusFallbackRef: true,
+      containerRef: true,
+      scope: true,
+      allowInInput: true,
+      wrap: true,
+      defaultZone: true,
+      defaultIndex: true,
+      canExitActions: true,
+      onNavigate: true,
+      onNavigationBoundaryReached: true,
+    };
+    const documented = useActionRowNavigationDoc.parameters?.map((parameter) => parameter.name);
+
+    expect(documented).toEqual(expect.arrayContaining(Object.keys(optionNames)));
+  });
+
   describe("arrow navigation within the actions zone", () => {
     testNavigationBehavior({
       setup: () => {

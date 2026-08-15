@@ -1,24 +1,20 @@
 import type { TrustConfig } from "../schemas/config/index.js";
-import type { ProjectContextGraph, ProjectContextMeta } from "../schemas/context.js";
+import type { ReviewContextResponse } from "../schemas/context.js";
+import { ReviewContextResponseSchema } from "../schemas/context.js";
 import type { ErrorCode } from "../schemas/errors.js";
 
 export interface ApiError extends Error {
   status: number;
-  // Known shared wire codes (incl. the four formerly-untyped ones) autocomplete
-  // and are exhaustively switchable, while server-only domain codes the client
-  // does not model still flow through untyped rather than being dropped.
+  // Modelled wire codes autocomplete and switch exhaustively; server-only domain
+  // codes the client does not model still flow through untyped rather than
+  // being dropped.
   code?: ErrorCode | (string & {});
 }
 
 export function isApiError(error: unknown): error is ApiError {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    typeof (error as Record<string, unknown>).status === "number" &&
-    "message" in error &&
-    typeof (error as Record<string, unknown>).message === "string"
-  );
+  if (!(error instanceof Error) || !("status" in error)) return false;
+  if ("code" in error && error.code !== undefined && typeof error.code !== "string") return false;
+  return typeof error.status === "number";
 }
 
 export interface RequestOptions {
@@ -26,6 +22,8 @@ export interface RequestOptions {
   params?: Record<string, string>;
   signal?: AbortSignal;
   headers?: Record<string, string>;
+  /** When true, the browser may complete the request after the page unloads. */
+  keepalive?: boolean;
 }
 
 export interface ApiClientConfig {
@@ -45,17 +43,18 @@ export type ResponseValidator<T> = (body: unknown) => T;
 /** Tail options for the query verbs (`get`, `delete`). */
 export interface QueryRequestOptions<T> extends Omit<RequestOptions, "body"> {
   schema?: ResponseValidator<T>;
+  maxResponseBytes?: number;
 }
 
-/** Tail options for the body verbs (`post`, `put`). */
+/** Tail options for the body verb (`post`). */
 export interface BodyRequestOptions<T> extends Omit<RequestOptions, "body" | "params"> {
   schema?: ResponseValidator<T>;
+  maxResponseBytes?: number;
 }
 
 export interface ApiClient {
   get: <T>(path: string, options?: QueryRequestOptions<T>) => Promise<T>;
   post: <T>(path: string, body?: unknown, options?: BodyRequestOptions<T>) => Promise<T>;
-  put: <T>(path: string, body?: unknown, options?: BodyRequestOptions<T>) => Promise<T>;
   delete: <T>(path: string, options?: QueryRequestOptions<T>) => Promise<T>;
   /**
    * Issue a raw HTTP request and return the unparsed `Response`. Used for
@@ -69,12 +68,8 @@ export interface TrustResponse {
   trust: TrustConfig;
 }
 
-export interface ReviewContextResponse {
-  text: string;
-  markdown: string;
-  graph: ProjectContextGraph;
-  meta: ProjectContextMeta;
-}
+export type { ReviewContextResponse };
+export { ReviewContextResponseSchema };
 
 export interface ShutdownResponse {
   ok: true;

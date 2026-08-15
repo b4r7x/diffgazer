@@ -8,9 +8,11 @@ import { RunnableProductIdSchema, TransportFamilySchema } from "./transports.js"
  * `free` and `paid` are only used when the applicable provider has established
  * that billing classification. Local runtimes and ambient vendor-managed CLI
  * auth deliberately use neutral values: neither value makes a cost or quota
- * promise.
+ * promise. `unknown` covers a catalog model the upstream source publishes no
+ * price for — guessing `paid` would be as much of an invented claim as `free`.
  */
-export const ModelTierSchema = z.enum(["free", "paid", "local", "ambient"]);
+export const ModelTierSchema = z.enum(["free", "paid", "unknown", "local", "ambient"]);
+export type ModelTier = z.infer<typeof ModelTierSchema>;
 
 const ModelInfoSchema = z.object({
   id: z.string(),
@@ -18,95 +20,66 @@ const ModelInfoSchema = z.object({
   description: z.string(),
   tier: ModelTierSchema,
   recommended: z.boolean().optional(),
-  contextLength: z.number().int().positive().optional(),
-  maxOutputTokens: z.number().int().positive().optional(),
 });
 export type ModelInfo = z.infer<typeof ModelInfoSchema>;
 
-export const OpenRouterModelSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string().optional(),
-  contextLength: z.number(),
-  maxCompletionTokens: z.number().int().positive().optional(),
-  supportedParameters: z.array(z.string()).optional(),
-  pricing: z.object({
-    prompt: z.string(),
-    completion: z.string(),
-  }),
-  isFree: z.boolean(),
-});
-
-export type OpenRouterModel = z.infer<typeof OpenRouterModelSchema>;
-
-export const OpenRouterModelCacheSchema = z.object({
-  models: z.array(OpenRouterModelSchema),
+const ProviderModelsBaseSchema = z.object({
+  models: z.array(ModelInfoSchema),
   fetchedAt: z.iso.datetime(),
-  keyHash: z.string().optional(),
 });
-
-export type OpenRouterModelCache = z.infer<typeof OpenRouterModelCacheSchema>;
-
-export const OpenRouterModelsResponseSchema = z.object({
-  models: z.array(OpenRouterModelSchema),
-  fetchedAt: z.iso.datetime(),
-  cached: z.boolean(),
-});
-
-export type OpenRouterModelsResponse = z.infer<typeof OpenRouterModelsResponseSchema>;
 
 /**
- * `cached` is the freshness flag both discovery wire contracts expose (the
- * OpenRouter response has no `source`).  It is not independent state: it is
- * exactly `source === "cache"`, so a contradictory pair must fail to parse
- * rather than reach a consumer that trusts one field over the other.
+ * `cached` is the freshness flag discovery wire contracts expose. It is not
+ * independent state: it is exactly `source === "cache"`. Discriminating on
+ * `source` with a literal `cached` makes a contradictory pair unrepresentable
+ * in the inferred type instead of merely rejected at parse time.
  */
-export const ProviderModelsResponseSchema = z
-  .object({
-    models: z.array(ModelInfoSchema),
-    fetchedAt: z.iso.datetime(),
-    source: z.enum(["live", "cache", "snapshot"]),
-    cached: z.boolean(),
-  })
-  .refine((response) => response.cached === (response.source === "cache"), {
-    path: ["cached"],
-    message: "cached must be true only when source is cache",
-  });
+export const ProviderModelsResponseSchema = z.discriminatedUnion("source", [
+  ProviderModelsBaseSchema.extend({ source: z.literal("live"), cached: z.literal(false) }),
+  ProviderModelsBaseSchema.extend({ source: z.literal("cache"), cached: z.literal(true) }),
+  ProviderModelsBaseSchema.extend({ source: z.literal("snapshot"), cached: z.literal(false) }),
+]);
 
 export type ProviderModelsResponse = z.infer<typeof ProviderModelsResponseSchema>;
 
+const ConfigurationModelsBaseSchema = z.strictObject({
+  configurationId: ConfigurationIdSchema,
+  productId: RunnableProductIdSchema,
+  transportFamily: TransportFamilySchema,
+  checkedAt: z.iso.datetime(),
+});
+
+const PassedConfigurationModelsBaseSchema = ConfigurationModelsBaseSchema.extend({
+  status: z.literal("passed"),
+  models: z.array(ModelInfoSchema),
+});
+
 /**
  * Per-configuration catalog discovery wire contract for the model picker.
- * `passed` carries bounded catalog observations (never admission evidence);
- * `skipped` carries a registry-owned reason for products without catalog
- * observations. The `cached`/`source` pair keeps the ProviderModelsResponse
- * invariant: contradictory provenance must fail to parse.
+ * `passed` carries bounded catalog observations (never admission evidence) and
+ * repeats the ProviderModelsResponse provenance discrimination; `skipped`
+ * carries a registry-owned reason and no models at all.
  */
-export const ConfigurationModelsResponseSchema = z
-  .discriminatedUnion("status", [
-    z.strictObject({
-      status: z.literal("passed"),
-      configurationId: ConfigurationIdSchema,
-      productId: RunnableProductIdSchema,
-      transportFamily: TransportFamilySchema,
-      models: z.array(ModelInfoSchema),
-      checkedAt: z.iso.datetime(),
-      source: z.enum(["live", "cache", "snapshot"]),
-      cached: z.boolean(),
+export const ConfigurationModelsResponseSchema = z.discriminatedUnion("status", [
+  z.discriminatedUnion("source", [
+    PassedConfigurationModelsBaseSchema.extend({
+      source: z.literal("live"),
+      cached: z.literal(false),
     }),
-    z.strictObject({
-      status: z.literal("skipped"),
-      configurationId: ConfigurationIdSchema,
-      productId: RunnableProductIdSchema,
-      transportFamily: TransportFamilySchema,
-      models: z.array(ModelInfoSchema).max(0),
-      checkedAt: z.iso.datetime(),
-      reason: z.string().min(1).max(512),
+    PassedConfigurationModelsBaseSchema.extend({
+      source: z.literal("cache"),
+      cached: z.literal(true),
     }),
-  ])
-  .refine(
-    (response) => response.status !== "passed" || response.cached === (response.source === "cache"),
-    { path: ["cached"], message: "cached must be true only when source is cache" },
-  );
+    PassedConfigurationModelsBaseSchema.extend({
+      source: z.literal("snapshot"),
+      cached: z.literal(false),
+    }),
+  ]),
+  ConfigurationModelsBaseSchema.extend({
+    status: z.literal("skipped"),
+    models: z.tuple([]),
+    reason: z.string().min(1).max(512),
+  }),
+]);
 
 export type ConfigurationModelsResponse = z.infer<typeof ConfigurationModelsResponseSchema>;

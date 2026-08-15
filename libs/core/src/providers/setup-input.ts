@@ -12,58 +12,67 @@ import type { ProviderListRow } from "./list.js";
 
 type AcceptedAcknowledgement = Extract<ReadinessAcknowledgement, { status: "accepted" }>;
 
-/** The transport families a setup surface can configure. */
-export type SetupTransportFamily = "hosted-api" | "local-http" | "local-cli";
+function resolveHostedTupleFields(row: ProviderListRow): {
+  endpoint: string;
+  region?: string;
+  workspace?: string;
+} {
+  const product = row.product;
+  const configured = row.configuration?.transportFamily === "hosted-api" ? row.configuration : null;
 
-/**
- * What the surface is setting up: the stored configuration's transport when one
- * exists, otherwise the product's own.
- */
-export function resolveSetupTransportFamily(row: ProviderListRow): SetupTransportFamily {
-  if (row.configuration) {
-    return row.configuration.transportFamily;
+  if (configured) {
+    return {
+      endpoint: configured.endpoint,
+      ...(configured.region !== undefined ? { region: configured.region } : {}),
+      ...(configured.workspace !== undefined ? { workspace: configured.workspace } : {}),
+    };
   }
-  return row.product.transportFamily;
-}
 
-function requireTransportFamily(
-  row: ProviderListRow,
-  transportFamily: SetupTransportFamily,
-): ProviderListRow["product"] {
-  if (row.product.transportFamily !== transportFamily) {
-    throw new Error(`Setup requires a ${transportFamily} product`);
+  const defaultProfile = product.endpoints[0];
+  if (!defaultProfile) {
+    throw new Error(`No endpoint profile for ${product.productId}`);
   }
-  return row.product;
+
+  return {
+    endpoint: defaultProfile.endpoint,
+    ...(defaultProfile.region !== undefined ? { region: defaultProfile.region } : {}),
+  };
 }
 
 function buildHostedInput(
   row: ProviderListRow,
   credential?: WriteOnlySecretInput,
 ): ClientConfigurationInput {
-  const product = requireTransportFamily(row, "hosted-api");
-  const configured = row.configuration?.transportFamily === "hosted-api" ? row.configuration : null;
+  const product = row.product;
+  const tupleFields = resolveHostedTupleFields(row);
   return {
     transportFamily: "hosted-api",
     productId: product.productId as HostedApiProductId,
-    endpoint: configured?.endpoint ?? product.endpoints[0]?.endpoint ?? "",
+    endpoint: tupleFields.endpoint,
+    ...(tupleFields.region !== undefined ? { region: tupleFields.region } : {}),
+    ...(tupleFields.workspace !== undefined ? { workspace: tupleFields.workspace } : {}),
     ...(credential ? { credential } : {}),
   };
 }
 
 function buildLocalHttpInput(row: ProviderListRow): ClientConfigurationInput {
-  const product = requireTransportFamily(row, "local-http");
+  const product = row.product;
   const configured = row.configuration?.transportFamily === "local-http" ? row.configuration : null;
+  const endpoint = configured?.endpoint ?? product.endpoints[0]?.endpoint;
+  if (!endpoint) {
+    throw new Error(`No endpoint profile for ${product.productId}`);
+  }
   return {
     transportFamily: "local-http",
     productId: product.productId as LocalHttpProductId,
-    endpoint: configured?.endpoint ?? product.endpoints[0]?.endpoint ?? "",
+    endpoint,
     authentication: "none",
     ...(configured?.presetId ? { presetId: configured.presetId } : {}),
   };
 }
 
 function buildLocalCliInput(row: ProviderListRow): ClientConfigurationInput {
-  const product = requireTransportFamily(row, "local-cli");
+  const product = row.product;
   const configured = row.configuration?.transportFamily === "local-cli" ? row.configuration : null;
   return {
     transportFamily: "local-cli",
@@ -78,12 +87,20 @@ function buildLocalCliInput(row: ProviderListRow): ClientConfigurationInput {
  */
 export function buildSetupInput(
   row: ProviderListRow,
-  transportFamily: SetupTransportFamily,
   credential?: WriteOnlySecretInput,
 ): ClientConfigurationInput {
-  if (transportFamily === "hosted-api") return buildHostedInput(row, credential);
-  if (transportFamily === "local-http") return buildLocalHttpInput(row);
-  return buildLocalCliInput(row);
+  switch (row.product.transportFamily) {
+    case "hosted-api":
+      return buildHostedInput(row, credential);
+    case "local-http":
+      return buildLocalHttpInput(row);
+    case "local-cli":
+      return buildLocalCliInput(row);
+    default: {
+      const _exhaustive: never = row.product.transportFamily;
+      return _exhaustive;
+    }
+  }
 }
 
 /** The notice a save accepts is always the bound product's own notice. */
@@ -103,36 +120,25 @@ export function toSetupCredential(method: "paste" | "env", value: string): Write
 }
 
 function getLocalHttpCopy(row: ProviderListRow): string {
-  if (resolveSetupTransportFamily(row) !== "local-http") {
-    return "Local HTTP setup does not use API credentials.";
-  }
-  let endpoint: string | undefined;
-  if (row.configuration?.transportFamily === "local-http") {
-    endpoint = row.configuration.endpoint;
-  } else if (row.product.transportFamily === "local-http") {
-    endpoint = row.product.endpoints[0]?.endpoint;
-  }
+  const endpoint =
+    row.configuration?.transportFamily === "local-http"
+      ? row.configuration.endpoint
+      : row.product.endpoints[0]?.endpoint;
   return `Configure the local endpoint at ${endpoint ?? "the selected loopback URL"} without storing hosted credentials.`;
 }
 
-function getLocalCliCopy(row: ProviderListRow): string {
-  const productIsLocalCli = row.product.transportFamily === "local-cli";
-  if (resolveSetupTransportFamily(row) !== "local-cli" && !productIsLocalCli) {
-    return "Local CLI setup does not use API credentials.";
-  }
-  return "Configure the local CLI installation without storing hosted credentials.";
-}
-
 /** The line a setup surface leads with, in the vocabulary of its transport. */
-export function getSetupLayoutCopy(
-  row: ProviderListRow,
-  transportFamily: SetupTransportFamily,
-): string {
-  if (transportFamily === "hosted-api") {
-    return `Choose how to provide credentials for ${row.product.name}:`;
+export function getSetupLayoutCopy(row: ProviderListRow): string {
+  switch (row.product.transportFamily) {
+    case "hosted-api":
+      return `Choose how to provide credentials for ${row.product.name}:`;
+    case "local-http":
+      return getLocalHttpCopy(row);
+    case "local-cli":
+      return "Configure the local CLI installation without storing hosted credentials.";
+    default: {
+      const _exhaustive: never = row.product.transportFamily;
+      return _exhaustive;
+    }
   }
-  if (transportFamily === "local-http") {
-    return getLocalHttpCopy(row);
-  }
-  return getLocalCliCopy(row);
 }

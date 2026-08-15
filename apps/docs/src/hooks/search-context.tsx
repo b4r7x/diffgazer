@@ -1,4 +1,11 @@
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  useState,
+} from "react";
 
 /** A docs page the reader opened during this browser session. */
 export interface RecentDocsPage {
@@ -64,18 +71,17 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [scope, setScope] = useState<DocsSearchScope | null>(null);
 
   // sessionStorage is a client-only external store, so the server renders no
-  // recents and the client adopts them after hydration.
-  useEffect(() => {
+  // recents. Hydrate in the layout phase so descendant mount effects that
+  // record the current page see the stored list instead of wiping it.
+  useLayoutEffect(() => {
     const stored = readRecent();
     if (stored.length > 0) setRecent(stored);
   }, []);
 
   const recordVisit = useCallback((page: RecentDocsPage) => {
     setRecent((current) => {
-      const next = [page, ...current.filter((entry) => entry.url !== page.url)].slice(
-        0,
-        RECENT_LIMIT,
-      );
+      const base = current.length > 0 ? current : readRecent();
+      const next = [page, ...base.filter((entry) => entry.url !== page.url)].slice(0, RECENT_LIMIT);
       writeRecent(next);
       return next;
     });

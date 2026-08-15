@@ -36,7 +36,17 @@ function sourceArchiveForSidecar(path) {
   return null;
 }
 
-function artifactWithoutLegacySourceParity(artifact, primaryLibraryId) {
+// This validator observes the docs tree AFTER apps/docs/scripts/sync-artifacts.mjs
+// has run removeGeneratedSourceData, which moves every *.source.json out of
+// apps/docs/src/generated into apps/docs/public/source-data. The artifact's own
+// generated tree still holds both halves, so the shared primary/secondary
+// generated-parity checks would compare pre-staging inputs against post-staging
+// outputs and report every moved archive as missing. Blanking `generatedDir`
+// suppresses exactly that comparison; collectGeneratedOutputErrors and
+// collectPublicSourceDataErrors below re-assert the post-staging contract.
+// Not removable: deleting this makes validate:artifacts:check fail with parity
+// errors that no rebuild can clear.
+function artifactViewAfterSourceDataStaging(artifact, primaryLibraryId) {
   const demoIndex = artifact.manifest.generated?.demoIndex;
 
   if (artifact.id !== primaryLibraryId) {
@@ -210,12 +220,12 @@ function collectPublicSourceDataErrors({ docsRoot, artifacts = [] }) {
 
 export function collectDocsArtifactSyncValidationErrors(params) {
   const artifacts = params.artifacts ?? [];
-  const legacyArtifacts = artifacts.map((artifact) =>
-    artifactWithoutLegacySourceParity(artifact, params.primaryLibraryId),
+  const stagedArtifacts = artifacts.map((artifact) =>
+    artifactViewAfterSourceDataStaging(artifact, params.primaryLibraryId),
   );
 
   return [
-    ...collectArtifactSyncValidationErrors({ ...params, artifacts: legacyArtifacts }),
+    ...collectArtifactSyncValidationErrors({ ...params, artifacts: stagedArtifacts }),
     ...collectGeneratedOutputErrors({ ...params, artifacts }),
     ...collectPublicSourceDataErrors({ ...params, artifacts }),
   ];

@@ -106,18 +106,37 @@ export function readPackageVersion(importMetaUrl: string, relativePath: string):
   return (req(relativePath) as { version: string }).version;
 }
 
+const IMPORT_ALIAS_PATHS_KEY = /^[@~#][\w-]*\/\*$/;
+// Same preference dgadd's own alias detection applies: `@`, then `~`, then the
+// first declared alias — a project may map any prefix to its source root.
+const PREFERRED_ALIAS_KEYS = ["@/*", "~/*"];
+
+function aliasKeyRank(key: string): number {
+  const index = PREFERRED_ALIAS_KEYS.indexOf(key);
+  return index === -1 ? PREFERRED_ALIAS_KEYS.length : index;
+}
+
+function sourceDirFromTargets(targets: string[]): string | null {
+  for (const entry of targets) {
+    const normalized = entry.replace(/\\/g, "/").replace(/^\.\//, "");
+    if (normalized === "*") return ".";
+    const match = normalized.match(/^([^*]+)\*/);
+    if (match?.[1]) return match[1].replace(/\/$/, "");
+  }
+  return null;
+}
+
 export function detectSourceDir(cwd: string): string {
-  const paths = readTsConfigPaths(cwd);
-  const mapping = paths?.["@/*"];
-  if (Array.isArray(mapping)) {
-    for (const entry of mapping) {
-      const normalized = entry.replace(/\\/g, "/").replace(/^\.\//, "");
-      if (normalized === "*") return ".";
-      const match = normalized.match(/^([^*]+)\*/);
-      if (match?.[1]) {
-        return match[1].replace(/\/$/, "");
-      }
-    }
+  const paths = readTsConfigPaths(cwd) ?? {};
+  const aliasKeys = Object.keys(paths)
+    .filter((key) => IMPORT_ALIAS_PATHS_KEY.test(key))
+    .sort((a, b) => aliasKeyRank(a) - aliasKeyRank(b));
+
+  for (const key of aliasKeys) {
+    const targets = paths[key];
+    if (!Array.isArray(targets)) continue;
+    const sourceDir = sourceDirFromTargets(targets);
+    if (sourceDir !== null) return sourceDir;
   }
 
   return existsSync(resolve(cwd, "src")) ? "src" : ".";

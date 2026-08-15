@@ -3,7 +3,9 @@ import { mkdir, readFile, stat, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { UuidSchema } from "@diffgazer/core/schemas/fields";
 import type { ReviewMetadata } from "@diffgazer/core/schemas/review";
-import { atomicWriteFile, isNodeError } from "../../../shared/lib/fs.js";
+import { ReviewMetadataSchema } from "@diffgazer/core/schemas/review";
+import { withFileTransactionLock } from "../../../shared/lib/config/transaction/file-lock.js";
+import { atomicWriteFile, isNodeError, restrictDirectoryMode } from "../../../shared/lib/fs.js";
 import { log } from "../../../shared/lib/log.js";
 import { getGlobalDiffgazerDir } from "../../../shared/lib/paths.js";
 import { compareReviewOrder, type ReviewCursorBoundary } from "./cursor.js";
@@ -36,7 +38,14 @@ function projectCursorIndexMarkerPath(projectPath: string): string {
   return join(PROJECT_INDEX_DIR, `${projectHash(projectPath)}.cursor-v1`);
 }
 
-export type ProjectIndexEntry = ReviewCursorBoundary;
+export type ProjectIndexEntry = ReviewCursorBoundary & {
+  /** Metadata snapshot so a metadata-only page never opens the review payload. */
+  metadata?: ReviewMetadata;
+  /** Issues the durable record lost to salvage, so an indexed page warns like a scan. */
+  droppedIssueCount?: number;
+  /** Set when salvage could not recover the record's terminal execution. */
+  droppedExecution?: true;
+};
 
 export interface ProjectIndexData {
   entries: ProjectIndexEntry[] | null;
@@ -72,12 +81,22 @@ function isProjectIndexEntry(value: unknown): value is ProjectIndexEntry {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<ProjectIndexEntry>;
   const timestamp = typeof candidate.createdAt === "string" ? Date.parse(candidate.createdAt) : NaN;
+  const hasValidMetadata =
+    candidate.metadata === undefined || ReviewMetadataSchema.safeParse(candidate.metadata).success;
+  const hasValidDropCount =
+    candidate.droppedIssueCount === undefined ||
+    (Number.isInteger(candidate.droppedIssueCount) && candidate.droppedIssueCount > 0);
+  const hasValidDroppedExecution =
+    candidate.droppedExecution === undefined || candidate.droppedExecution === true;
   return (
     typeof candidate.createdAt === "string" &&
     Number.isFinite(timestamp) &&
     new Date(timestamp).toISOString() === candidate.createdAt &&
     typeof candidate.id === "string" &&
-    isValidUuid(candidate.id)
+    isValidUuid(candidate.id) &&
+    hasValidMetadata &&
+    hasValidDropCount &&
+    hasValidDroppedExecution
   );
 }
 
@@ -185,6 +204,7 @@ export async function readProjectIndexData(projectPath: string): Promise<Project
 
 async function writeProjectIndex(projectPath: string, entries: ProjectIndexEntry[]): Promise<void> {
   await mkdir(PROJECT_INDEX_DIR, { recursive: true, mode: 0o700 });
+  await restrictDirectoryMode(PROJECT_INDEX_DIR, 0o700);
   const indexPath = projectIndexPath(projectPath);
   await atomicWriteFile(indexPath, JSON.stringify(entries));
   try {
@@ -204,7 +224,8 @@ const projectIndexLocks = new Map<string, Promise<unknown>>();
 const lockProjectIndex = createKeyedLock(projectIndexLocks);
 
 export function withProjectIndexLock<T>(projectPath: string, fn: () => Promise<T>): Promise<T> {
-  return lockProjectIndex(projectIndexPath(projectPath), fn);
+  const indexPath = projectIndexPath(projectPath);
+  return withFileTransactionLock(indexPath, () => lockProjectIndex(indexPath, fn));
 }
 
 export async function writeCursorProjectIndexLocked(
@@ -214,6 +235,10 @@ export async function writeCursorProjectIndexLocked(
   options: {
     completeSnapshot?: boolean;
     excludedIds?: ReadonlySet<string>;
+    /** Salvage losses observed while reading each record, keyed by review id. */
+    droppedIssueCounts?: ReadonlyMap<string, number>;
+    /** Review ids whose terminal execution the salvage read could not recover. */
+    droppedExecutionIds?: ReadonlySet<string>;
   } = {},
 ): Promise<ProjectIndexEntry[]> {
   const excludedIds = options.excludedIds ?? new Set<string>();
@@ -243,9 +268,13 @@ export async function writeCursorProjectIndexLocked(
   );
   for (const item of sortedItems) {
     if (!excludedIds.has(item.id)) {
+      const droppedIssueCount = options.droppedIssueCounts?.get(item.id);
       entriesById.set(item.id, {
         id: item.id,
         createdAt: new Date(item.createdAt).toISOString(),
+        metadata: item,
+        ...(droppedIssueCount ? { droppedIssueCount } : {}),
+        ...(options.droppedExecutionIds?.has(item.id) ? { droppedExecution: true as const } : {}),
       });
     }
   }
@@ -317,6 +346,7 @@ export async function invalidateProjectIndex(projectPath: string): Promise<void>
 
 export async function markProjectReconcile(projectPath: string): Promise<void> {
   await mkdir(PROJECT_INDEX_DIR, { recursive: true, mode: 0o700 });
+  await restrictDirectoryMode(PROJECT_INDEX_DIR, 0o700);
   await atomicWriteFile(projectReconcileMarkerPath(projectPath), "");
 }
 

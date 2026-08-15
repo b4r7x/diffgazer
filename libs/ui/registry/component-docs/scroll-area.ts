@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const scrollAreaDoc: ComponentDoc = {
   description: "Thin-scrollbar wrapper with vertical, horizontal, or both overflow directions.",
@@ -28,7 +28,7 @@ export const scrollAreaDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      'When keyboardScrollable is true and the region has aria-label or aria-labelledby, ScrollArea exposes role="region", becomes focusable, and scrolls itself from keyboard events.',
+      'ScrollArea exposes role="region" whenever it has an accessible name (aria-label or aria-labelledby). When keyboardScrollable is also true, the named region becomes focusable and scrolls itself from keyboard events.',
     keys: [
       {
         keys: "ArrowUp / ArrowDown",
@@ -66,7 +66,7 @@ export const scrollAreaDoc: ComponentDoc = {
         required: false,
         defaultValue: "true",
         description:
-          'When true and the region has an accessible name (aria-label or aria-labelledby), wires Arrow/PageUp/PageDown/Home/End to scroll the container and applies role="region" with tabIndex={0}.',
+          'When true and the region has an accessible name (aria-label or aria-labelledby), wires Arrow/PageUp/PageDown/Home/End to scroll the container and gives it tabIndex={0}. role="region" follows the accessible name alone, so a named region keeps its role when this is false — hand key handling to a parent composite only when that parent also owns the tab stop.',
       },
       children: {
         type: "ReactNode",

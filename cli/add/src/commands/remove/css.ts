@@ -1,16 +1,69 @@
-import { ctx, type ManifestItem, type ResolvedConfig } from "../../context.js";
-import { readInstalledCssChunkHashes, removeCssChunks } from "../../utils/css-chunks.js";
-import { loadManifest } from "./dependencies.js";
+import {
+  ctx,
+  type DiffgazerAddConfig,
+  type ManifestItem,
+  type ResolvedConfig,
+} from "../../context.js";
+import {
+  findCorruptedCssChunkHashes,
+  readCssChunkHashBoundaries,
+  readInstalledCssChunkHashes,
+  removeCssChunks,
+} from "../../utils/css-chunks.js";
 
 interface OwnedCssRemovalPlan {
   writes: Array<{ targetPath: string; content: string }>;
   preservedNotices: string[];
-  // Removed items whose drifted chunk was preserved; kept in the manifest so the
-  // leftover block stays targetable by a later `remove <item> --force`.
-  retainedNames: string[];
-  // Per retained item, the chunk hashes actually preserved on disk, used to trim
-  // `cssChunks` so a deleted pristine sibling chunk is dropped, not reported as drift.
+  // Per removed item whose drifted chunk was preserved, the chunk hashes actually
+  // kept on disk. Keys are the retained items: they stay in the manifest so the
+  // leftover block is still targetable by a later `remove <item> --force`, and the
+  // hashes trim `cssChunks` so a deleted pristine sibling chunk is dropped rather
+  // than reported as drift.
   retainedChunkHashesByName: Map<string, string[]>;
+}
+
+function cssCorruptionNotice(hash: string, stylesPath: string, force: boolean): string {
+  const repair = `Restore exactly one /* dgadd:css ${hash} */ and one /* dgadd:css-end ${hash} */ marker in the correct order in ${stylesPath}.`;
+  if (force) {
+    return `Cannot force-remove CSS chunk ${hash}: managed block markers are malformed. ${repair}`;
+  }
+  return (
+    `Skipping CSS chunk ${hash}: managed block markers are malformed in ${stylesPath}. ` +
+    `Ownership is preserved so the block stays targetable after repair. ${repair}`
+  );
+}
+
+function planCorruptedCssChunkRetention(
+  removedNames: string[],
+  preRemovalChunksByItem: Map<string, string[]>,
+  corruptedHashes: Set<string>,
+  stylesPath: string,
+  force: boolean,
+): OwnedCssRemovalPlan | null {
+  const retainedChunkHashesByName = new Map<string, string[]>();
+  const preservedNotices: string[] = [];
+
+  for (const name of removedNames) {
+    const preserved = (preRemovalChunksByItem.get(name) ?? []).filter((hash) =>
+      corruptedHashes.has(hash),
+    );
+    if (preserved.length === 0) continue;
+    retainedChunkHashesByName.set(name, preserved);
+    for (const hash of preserved) {
+      preservedNotices.push(cssCorruptionNotice(hash, stylesPath, force));
+    }
+  }
+
+  if (retainedChunkHashesByName.size === 0) return null;
+  if (force) {
+    throw new Error(preservedNotices.join("\n"));
+  }
+
+  return {
+    writes: [],
+    preservedNotices,
+    retainedChunkHashesByName,
+  };
 }
 
 // Surfaces a preserved (drifted) CSS chunk with the same "use --force to
@@ -23,7 +76,7 @@ function cssDriftNotice(
   const owners = [...preRemovalChunksByItem]
     .filter(([, hashes]) => hashes.includes(hash))
     .map(([name]) => name);
-  const label = owners.length > 0 ? owners.join(", ") : "CSS chunk";
+  const label = owners.join(", ");
   return `Skipping ${label}: ${stylesPath} chunk has been modified (use --force to override). Keeping ${label} tracked so the edited chunk is not orphaned; re-run remove with --force to delete it.`;
 }
 
@@ -40,17 +93,12 @@ export function planOwnedCssChunkRemoval(
   const empty: OwnedCssRemovalPlan = {
     writes: [],
     preservedNotices: [],
-    retainedNames: [],
     retainedChunkHashesByName: new Map(),
   };
   if (removedNames.length === 0) return empty;
   const stylesPath = config.tailwind?.css;
   if (!stylesPath) return empty;
-  const installedHashes = readInstalledCssChunkHashes(cwd, config);
-  if (installedHashes.size === 0) return empty;
 
-  // onAfterRemove fires before updateManifest, so the live manifest still lists
-  // the removed items; derive kept vs removed chunks from the pre-removal snapshot.
   const removedSet = new Set(removedNames);
   const keptChunkHashes = new Set<string>();
   const chunksOfRemovedItems = new Set<string>();
@@ -59,36 +107,55 @@ export function planOwnedCssChunkRemoval(
     for (const hash of hashes) target.add(hash);
   }
 
+  const corruptedHashes = findCorruptedCssChunkHashes(readCssChunkHashBoundaries(cwd, config));
+  const corruptedRetention = planCorruptedCssChunkRetention(
+    removedNames,
+    preRemovalChunksByItem,
+    corruptedHashes,
+    stylesPath,
+    force,
+  );
+
+  const installedHashes = readInstalledCssChunkHashes(cwd, config);
+  if (installedHashes.size === 0) return corruptedRetention ?? empty;
+
+  // onAfterRemove fires before updateManifest, so the live manifest still lists
+  // the removed items; derive kept vs removed chunks from the pre-removal snapshot.
+
   const candidates = new Set<string>();
   for (const hash of installedHashes) {
     if (chunksOfRemovedItems.has(hash) && !keptChunkHashes.has(hash)) {
       candidates.add(hash);
     }
   }
-  if (candidates.size === 0) return empty;
+  if (candidates.size === 0) return corruptedRetention ?? empty;
 
   const result = removeCssChunks(candidates, cwd, config, force);
-  const preservedNotices = result.modifiedHashes.map((hash) =>
-    cssDriftNotice(hash, preRemovalChunksByItem, stylesPath),
-  );
+  const preservedNotices = [
+    ...(corruptedRetention?.preservedNotices ?? []),
+    ...result.modifiedHashes.map((hash) =>
+      cssDriftNotice(hash, preRemovalChunksByItem, stylesPath),
+    ),
+  ];
   const modifiedHashes = new Set(result.modifiedHashes);
-  const retainedChunkHashesByName = new Map<string, string[]>();
-  const retainedNames = removedNames.filter((name) => {
+  const retainedChunkHashesByName = new Map(corruptedRetention?.retainedChunkHashesByName ?? []);
+  for (const name of removedNames) {
     const preserved = (preRemovalChunksByItem.get(name) ?? []).filter((hash) =>
       modifiedHashes.has(hash),
     );
-    if (preserved.length === 0) return false;
-    retainedChunkHashesByName.set(name, preserved);
-    return true;
-  });
+    const corrupted = retainedChunkHashesByName.get(name) ?? [];
+    const retained = [...new Set([...corrupted, ...preserved])];
+    if (retained.length > 0) retainedChunkHashesByName.set(name, retained);
+  }
   const writes = result.fileOp
     ? [{ targetPath: result.fileOp.targetPath, content: result.fileOp.content }]
     : [];
-  return { writes, preservedNotices, retainedNames, retainedChunkHashesByName };
+  return { writes, preservedNotices, retainedChunkHashesByName };
 }
 
-export function readPreRemovalChunks(cwd: string): Map<string, string[]> {
-  const manifest = loadManifest(cwd);
+export function readPreRemovalChunks(
+  manifest: Readonly<Record<string, ManifestItem>>,
+): Map<string, string[]> {
   const snapshot = new Map<string, string[]>();
   for (const [name, record] of Object.entries(manifest)) {
     const hashes = record.cssChunks ?? [];
@@ -97,29 +164,51 @@ export function readPreRemovalChunks(cwd: string): Map<string, string[]> {
   return snapshot;
 }
 
-// Trims records kept only for a drifted CSS chunk down to chunk tracking plus
-// provenance. Their source files were deleted, so keeping `files` would make
-// `dgadd diff` report spurious drift; `cssChunks` is narrowed to the hashes
-// actually preserved on disk so a deleted pristine sibling chunk is dropped too.
-export function retainCssChunkTrackingOnly(
+function trimRetainedManifestRecord(record: ManifestItem, preservedHashes: string[]): ManifestItem {
+  // The manifest is deliberately extensible. Keep every field from the raw
+  // record while removing only source-file ownership and narrowing the CSS
+  // chunks to the blocks that remain on disk.
+  const trimmed: ManifestItem = { ...record };
+  delete trimmed.files;
+  const preserved = new Set(preservedHashes);
+  const retainedChunks = (record.cssChunks ?? []).filter((hash) => preserved.has(hash));
+  if (retainedChunks.length > 0) trimmed.cssChunks = retainedChunks;
+  else delete trimmed.cssChunks;
+  return trimmed;
+}
+
+// One write cycle for entry removal plus retained-chunk trimming. Throws on
+// missing/invalid config or a retained name with no manifest record so the remove
+// workflow can roll back its file snapshots.
+export function applyRemovalManifestUpdate(
   cwd: string,
+  capturedConfig: DiffgazerAddConfig,
+  namesToRemove: string[],
   preservedChunksByName: Map<string, string[]>,
 ): void {
-  if (preservedChunksByName.size === 0) return;
-  const result = ctx.config.loadConfig(cwd);
-  if (!result.ok) return;
-  const manifest = result.config.installedComponents;
-  if (!manifest) return;
+  if (namesToRemove.length === 0 && preservedChunksByName.size === 0) return;
+
+  const config = { ...capturedConfig };
+  const manifest = { ...(capturedConfig.installedItems ?? {}) };
+
+  for (const name of namesToRemove) {
+    delete manifest[name];
+  }
+
   for (const [name, preservedHashes] of preservedChunksByName) {
     const record = manifest[name];
-    if (!record) continue;
-    const trimmed: ManifestItem = { installedAt: record.installedAt };
-    if (record.installedAs) trimmed.installedAs = record.installedAs;
-    if (record.integrationMode) trimmed.integrationMode = record.integrationMode;
-    const preserved = new Set(preservedHashes);
-    const retainedChunks = (record.cssChunks ?? []).filter((hash) => preserved.has(hash));
-    if (retainedChunks.length > 0) trimmed.cssChunks = retainedChunks;
-    manifest[name] = trimmed;
+    if (!record) {
+      throw new Error(
+        `Could not trim manifest for retained CSS chunks: missing record for ${name}.`,
+      );
+    }
+    manifest[name] = trimRetainedManifestRecord(record, preservedHashes);
   }
-  ctx.config.writeConfig(cwd, result.config);
+
+  if (Object.keys(manifest).length > 0) {
+    config.installedItems = manifest;
+  } else {
+    delete config.installedItems;
+  }
+  ctx.config.writeConfig(cwd, config);
 }

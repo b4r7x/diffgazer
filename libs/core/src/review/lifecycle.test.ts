@@ -9,8 +9,8 @@ import {
   sessionTerminationCopy,
 } from "./lifecycle.js";
 
-function makeStep(id: string, status: StepState["status"]): StepState {
-  return { id, label: id, status } as StepState;
+function makeStep(id: StepState["id"], status: StepState["status"]): StepState {
+  return { id, label: id, status };
 }
 
 describe("isNoDiffError", () => {
@@ -93,7 +93,7 @@ describe("sessionTerminationCopy", () => {
     [
       ReviewErrorCode.SESSION_TIMEOUT,
       "Session Timed Out",
-      "The review ran longer than the session limit. Start a new review to retry.",
+      "The review session timed out after a long period without activity. Start a new review to retry.",
     ],
     [
       ReviewErrorCode.SERVER_SHUTDOWN,

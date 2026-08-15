@@ -1,15 +1,15 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
+const landingRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+
 describe("landing deployment 404 contract", () => {
-  const nginxConfig = readFileSync(
-    resolve(process.cwd(), "../../deploy/landing-nginx.conf"),
-    "utf8",
-  );
-  const notFoundHtml = readFileSync(resolve(process.cwd(), "404.html"), "utf8");
-  const indexHtml = readFileSync(resolve(process.cwd(), "index.html"), "utf8");
-  const styles = readFileSync(resolve(process.cwd(), "src/styles/index.css"), "utf8");
+  const nginxConfig = readFileSync(join(landingRoot, "../../deploy/landing-nginx.conf"), "utf8");
+  const notFoundHtml = readFileSync(join(landingRoot, "404.html"), "utf8");
+  const indexHtml = readFileSync(join(landingRoot, "index.html"), "utf8");
+  const styles = readFileSync(join(landingRoot, "src/styles/index.css"), "utf8");
 
   it("serves unknown paths as real 404 responses instead of the landing page", () => {
     const rootLocation = nginxConfig.match(/location \/ \{([\s\S]*?)\n {4}\}/)?.[1];

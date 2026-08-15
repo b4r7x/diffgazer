@@ -4,10 +4,12 @@ import { fileURLToPath } from "node:url";
 import { type Registry, RegistrySchema } from "@diffgazer/registry/schemas";
 import {
   validateContentFreshness,
+  validateMetaFreshness,
   validateNoJsImportsInPublicContent,
   validatePublicTargetClosure,
 } from "./validate-registry-closure/public-registry.js";
 import {
+  validateClientMetadata,
   validateImportClosure,
   validateNoBuildEnvReads,
   validateRegistryStructure,
@@ -27,6 +29,7 @@ export function validateRegistryClosure(registryPath: string): boolean {
 
   const errors = [
     ...validateRegistryStructure(registry),
+    ...validateClientMetadata(registry, registryRoot),
     ...validateImportClosure(registry, registryRoot),
     ...validateNoBuildEnvReads(registry, registryRoot),
   ];
@@ -36,6 +39,7 @@ export function validateRegistryClosure(registryPath: string): boolean {
     errors.push(...validatePublicTargetClosure(publicDir));
     errors.push(...validateNoJsImportsInPublicContent(publicDir));
     errors.push(...validateContentFreshness(publicDir, registryRoot));
+    errors.push(...validateMetaFreshness(publicDir, registry));
   }
 
   if (errors.length === 0) {

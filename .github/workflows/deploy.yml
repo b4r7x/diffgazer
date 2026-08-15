@@ -19,8 +19,9 @@ on:
       image_sha:
         description: >-
           Optional rollback: full 40-char commit SHA of a previously built and
-          deployed image. When set, that SHA's existing GHCR images are
-          re-promoted to :prod instead of building from main HEAD.
+          deployed image. When set, the digests that SHA's deploy run scanned are
+          re-promoted to :prod instead of building from main HEAD, so the rollback
+          needs that run's digest records to be unexpired.
         required: false
         type: string
 
@@ -82,6 +83,35 @@ jobs:
             echo "rollback=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Checkout registry validation helper
+        if: ${{ inputs.target == 'docs-registry' || inputs.target == 'all' }}
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Require registry Traefik peer configuration
+        if: ${{ inputs.target == 'docs-registry' || inputs.target == 'all' }}
+        env:
+          REGISTRY_TRAEFIK_PROXY_CIDR: ${{ vars.REGISTRY_TRAEFIK_PROXY_CIDR }}
+          ROLLBACK: ${{ steps.resolve.outputs.rollback }}
+        run: |
+          set -euo pipefail
+          # The peer is baked into the registry image at build time, so a rollback
+          # ships the value its build used, not the one set now. Gating an incident
+          # rollback on today's variable would prove nothing and could block it, so
+          # the rollback path reports the mismatch risk instead.
+          if [ "${ROLLBACK}" = "true" ]; then
+            echo "::warning::This rollback re-promotes the registry image as it was built; it trusts the REGISTRY_TRAEFIK_PROXY_CIDR of that build. If the Traefik peer has changed since, deploy a fresh registry build instead."
+            exit 0
+          fi
+          if [ -z "${REGISTRY_TRAEFIK_PROXY_CIDR}" ]; then
+            echo "::error::Set the REGISTRY_TRAEFIK_PROXY_CIDR repository variable to the exact Traefik peer before deploying the registry."
+            exit 1
+          fi
+          node scripts/monorepo/validate-registry-proxy-cidr.mjs \
+            "${REGISTRY_TRAEFIK_PROXY_CIDR}"
+
       - name: Require Release Readiness success for target SHA
         env:
           GH_TOKEN: ${{ github.token }}
@@ -107,7 +137,7 @@ jobs:
             "repos/${{ github.repository }}/actions/runs/${run_id}/jobs?per_page=100" \
             --jq '.jobs[] | [.name, .conclusion] | @tsv')"
           expected_jobs=(
-            "Full History Secret Scan"
+            "Gitleaks Event-Range Scan"
             "Build, Verify, and Pack"
             "Browser E2E (Playwright + axe + visual)"
           )
@@ -143,18 +173,21 @@ jobs:
             image: diffgazer-docs
             port: "3000"
             targets: docs-registry,all
+            build_args: ""
           - name: registry
             dockerfile: deploy/registry.Dockerfile
             image: diffgazer-registry
             port: "8080"
             targets: docs-registry,all
+            build_args: REGISTRY_TRAEFIK_PROXY_CIDR=${{ vars.REGISTRY_TRAEFIK_PROXY_CIDR }}
           - name: landing
             dockerfile: deploy/landing.Dockerfile
             image: diffgazer-landing
             port: "8080"
             targets: landing,all
+            build_args: ""
     env:
-      IMAGE_REF: ghcr.io/b4r7x/${{ matrix.service.image }}:${{ github.sha }}
+      IMAGE_REPOSITORY: ghcr.io/b4r7x/${{ matrix.service.image }}
     steps:
       - name: Checkout
         if: ${{ contains(matrix.service.targets, inputs.target) }}
@@ -192,13 +225,18 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push SHA image
+        id: build
         if: ${{ contains(matrix.service.targets, inputs.target) }}
         uses: docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1 # v6.16.0
         with:
           context: .
           file: ${{ matrix.service.dockerfile }}
           push: true
-          tags: ${{ env.IMAGE_REF }}
+          tags: ${{ env.IMAGE_REPOSITORY }}:${{ github.sha }}
+          # Only the registry Dockerfile declares a build ARG; passing it to every
+          # leg records inputs in the docs and landing provenance that never
+          # reached those builds.
+          build-args: ${{ matrix.service.build_args }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -208,14 +246,41 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Scan pushed SHA image
+      # Scan the manifest the build just pushed, addressed by its immutable digest.
+      # Scanning the SHA tag would let anything that moves the tag between the scan
+      # and the promotion put unscanned bytes into production.
+      - name: Scan pushed image digest
         if: ${{ contains(matrix.service.targets, inputs.target) }}
         uses: aquasecurity/trivy-action@915b19bbe73b92a6cf82a1bc12b087c9a19a5fe2 # v0.28.0
         with:
-          image-ref: ${{ env.IMAGE_REF }}
+          image-ref: ${{ env.IMAGE_REPOSITORY }}@${{ steps.build.outputs.digest }}
           format: table
           exit-code: 1
           severity: CRITICAL,HIGH
+
+      - name: Record scanned image digest
+        if: ${{ contains(matrix.service.targets, inputs.target) }}
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE_NAME: ${{ matrix.service.image }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "${IMAGE_DIGEST}" | grep -Eq '^sha256:[0-9a-f]{64}$'; then
+            echo "::error::The build did not report a manifest digest for ${IMAGE_NAME}."
+            exit 1
+          fi
+          mkdir -p image-digests
+          printf '%s\n' "${IMAGE_DIGEST}" > "image-digests/${IMAGE_NAME}"
+
+      # A later rollback promotes this digest, so the record must outlive the images
+      # an operator can still roll back to.
+      - name: Upload scanned image digest
+        if: ${{ contains(matrix.service.targets, inputs.target) }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: image-digest-${{ matrix.service.name }}
+          path: image-digests/${{ matrix.service.image }}
+          retention-days: 90
 
   promote-deploy:
     name: Promote and Deploy
@@ -227,22 +292,18 @@ jobs:
         && needs.validate-request.result == 'success'
         && (needs.build-scan.result == 'success' || needs.build-scan.result == 'skipped') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Promotion happens inside an armed rollback trap, and the two public
+    # verifications after it can each spend five minutes. The budget must outlast
+    # both with room for the rollback itself: a cancelled runner leaves :prod on
+    # unverified images with the trap only half run.
+    timeout-minutes: 25
     environment: production
     permissions:
+      # actions: read lets a rollback read the digest records of the run that built
+      # and scanned the requested SHA.
+      actions: read
       contents: read
       packages: write
-    env:
-      IMAGE_OWNER: ghcr.io/b4r7x
-      DEPLOY_TARGET: ${{ inputs.target }}
-      SOURCE_TAG: ${{ needs.validate-request.outputs.target_sha }}
-      ROLLBACK: ${{ needs.validate-request.outputs.rollback }}
-      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GHCR_USERNAME: ${{ github.actor }}
-      COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-      COOLIFY_WEBHOOK_DOCS: ${{ secrets.COOLIFY_WEBHOOK_DOCS }}
-      COOLIFY_WEBHOOK_REGISTRY: ${{ secrets.COOLIFY_WEBHOOK_REGISTRY }}
-      COOLIFY_WEBHOOK_LANDING: ${{ secrets.COOLIFY_WEBHOOK_LANDING }}
     steps:
       - name: Checkout deployed SHA
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -255,7 +316,69 @@ jobs:
         with:
           node-version: 22
 
+      - name: Download scanned image digests
+        if: ${{ needs.validate-request.outputs.rollback != 'true' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: image-digest-*
+          path: image-digests
+          merge-multiple: true
+
+      # A rollback promotes bytes an earlier run built and scanned, so it reuses that
+      # run's digest records. Re-resolving the requested SHA tag here would let anyone
+      # who can move a GHCR tag route unscanned bytes into production through an
+      # operator rollback.
+      - name: Restore recorded image digests for rollback
+        if: ${{ needs.validate-request.outputs.rollback == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          TARGET_SHA: ${{ needs.validate-request.outputs.target_sha }}
+          IMAGE_DIGEST_DIR: image-digests
+        run: |
+          set -euo pipefail
+          mkdir -p "${IMAGE_DIGEST_DIR}"
+
+          # Oldest run first: one SHA can be deployed by several runs, one per target,
+          # and a later run's record for the same surface must win.
+          run_ids="$(gh api \
+            "repos/${GH_REPOSITORY}/actions/workflows/deploy.yml/runs?head_sha=${TARGET_SHA}&per_page=100" \
+            --jq '.workflow_runs[] | [(.run_started_at // .created_at), (.id | tostring)] | @tsv' \
+            | sort | cut -f2)"
+
+          restored=0
+          for run_id in ${run_ids}; do
+            record_names="$(gh api \
+              "repos/${GH_REPOSITORY}/actions/runs/${run_id}/artifacts?per_page=100" \
+              --jq '.artifacts[] | select(.expired == false and (.name | startswith("image-digest-"))) | .name')"
+            for record_name in ${record_names}; do
+              gh run download "${run_id}" --repo "${GH_REPOSITORY}" \
+                --name "${record_name}" --dir "${IMAGE_DIGEST_DIR}"
+              restored=$((restored + 1))
+            done
+          done
+
+          if [ "${restored}" -eq 0 ]; then
+            echo "::error::No unexpired scanned-digest record exists for ${TARGET_SHA}; deploy a fresh build instead of rolling back."
+            exit 1
+          fi
+
+      # Registry-write and Coolify credentials live on this step alone. At job scope
+      # every action and every process started from the deployed checkout inherits
+      # them, and none of checkout, Node setup, or the public verification scripts
+      # needs them.
       - name: Promote scanned images and trigger Coolify
+        env:
+          IMAGE_OWNER: ghcr.io/b4r7x
+          IMAGE_DIGEST_DIR: image-digests
+          DEPLOY_TARGET: ${{ inputs.target }}
+          SOURCE_TAG: ${{ needs.validate-request.outputs.target_sha }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USERNAME: ${{ github.actor }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_WEBHOOK_DOCS: ${{ secrets.COOLIFY_WEBHOOK_DOCS }}
+          COOLIFY_WEBHOOK_REGISTRY: ${{ secrets.COOLIFY_WEBHOOK_REGISTRY }}
+          COOLIFY_WEBHOOK_LANDING: ${{ secrets.COOLIFY_WEBHOOK_LANDING }}
         run: |
           set -Eeuo pipefail
 
@@ -291,19 +414,57 @@ jobs:
             esac
           }
 
+          # :prod always moves to the immutable digest Trivy scanned, never to a
+          # mutable tag. Fresh deploys read the record this run's build uploaded and
+          # rollbacks read the record restored from the run that built the SHA.
           promote() {
             image="$1"
-            # On rollback the source image was built by an earlier run; fail with a
-            # clear message if its manifest is missing for the requested SHA.
-            if [ "${ROLLBACK}" = "true" ]; then
-              if ! docker buildx imagetools inspect "${IMAGE_OWNER}/${image}:${SOURCE_TAG}" > /dev/null 2>&1; then
-                echo "::error::No GHCR image ${IMAGE_OWNER}/${image}:${SOURCE_TAG} to roll back to."
-                return 1
-              fi
+            if ! source_digest="$(cat "${IMAGE_DIGEST_DIR}/${image}" 2> /dev/null)"; then
+              echo "::error::No scanned image digest was recorded for ${image}."
+              return 1
+            fi
+            if [[ ! "${source_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "::error::Refusing to promote ${image} from an invalid digest."
+              return 1
             fi
             docker buildx imagetools create \
               --tag "${IMAGE_OWNER}/${image}:prod" \
-              "${IMAGE_OWNER}/${image}:${SOURCE_TAG}"
+              "${IMAGE_OWNER}/${image}@${source_digest}"
+          }
+
+          # These scripts read public endpoints from the deployed checkout. They have
+          # no need for registry-write or Coolify credentials, so they do not get
+          # them; the parent shell keeps them for the bounded rollback path.
+          run_public_check() {
+            env -u GHCR_TOKEN -u COOLIFY_TOKEN -u COOLIFY_WEBHOOK_DOCS \
+              -u COOLIFY_WEBHOOK_REGISTRY -u COOLIFY_WEBHOOK_LANDING "$@"
+          }
+
+          # Docs and landing are polled for up to five minutes by
+          # verify-deployed-source-tags. The registry serves no source-tag, so it gets
+          # an equivalent budget here: asserting once would fail a container that is
+          # still rolling over and roll back an otherwise healthy deploy.
+          #
+          # The budget is wall clock, not attempts. Each attempt sweeps every committed
+          # registry endpoint, so an attempt cap alone bounds only the sleeping: a slow
+          # origin would outlast the job timeout and cancel the runner mid-rollback.
+          verify_registry() {
+            budget_seconds=300
+            deadline=$((SECONDS + budget_seconds))
+            attempt=1
+            while true; do
+              if run_public_check DIFFGAZER_LIVE_REGISTRY_REQUIRED=1 \
+                node scripts/monorepo/check-live-registry.mjs; then
+                return 0
+              fi
+              if [ "${SECONDS}" -ge "${deadline}" ] || [ "${attempt}" -ge 20 ]; then
+                echo "::error::Hosted registry did not serve the deployed bytes within ${budget_seconds}s (${attempt} attempts)."
+                return 1
+              fi
+              echo "::notice::Hosted registry is not serving the deployed bytes yet (attempt ${attempt}); retrying in 15s."
+              attempt=$((attempt + 1))
+              sleep 15
+            done
           }
 
           trigger() {
@@ -361,17 +522,23 @@ jobs:
           for index in "${!selected_services[@]}"; do
             service="${selected_services[index]}"
             image="${selected_images[index]}"
-            webhook="${selected_webhooks[index]}"
-            digest="$(docker buildx imagetools inspect \
+            images_by_service["${service}"]="${image}"
+            webhooks_by_service["${service}"]="${selected_webhooks[index]}"
+            # A surface with no :prod manifest is deploying for the first time. There
+            # is nothing to restore, so record an empty digest and skip it during
+            # rollback rather than aborting the whole promotion under `set -e`.
+            if ! digest="$(docker buildx imagetools inspect \
               --format '{{.Manifest.Digest}}' \
-              "${IMAGE_OWNER}/${image}:prod")"
+              "${IMAGE_OWNER}/${image}:prod" 2> /dev/null)"; then
+              echo "::notice::${IMAGE_OWNER}/${image}:prod does not exist yet; ${service} is a first deploy."
+              previous_digests["${service}"]=""
+              continue
+            fi
             if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
               echo "::error::Could not capture current production digest for ${service}."
               exit 1
             fi
             previous_digests["${service}"]="${digest}"
-            images_by_service["${service}"]="${image}"
-            webhooks_by_service["${service}"]="${webhook}"
           done
 
           rollback_deployment() {
@@ -386,6 +553,10 @@ jobs:
               digest="${previous_digests[${service}]}"
               webhook="${webhooks_by_service[${service}]}"
 
+              if [ -z "${digest}" ]; then
+                echo "::error::${service} had no production image before this run; :prod now points at the failed first deploy."
+                continue
+              fi
               if ! docker buildx imagetools create \
                 --tag "${IMAGE_OWNER}/${image}:prod" \
                 "${IMAGE_OWNER}/${image}@${digest}"; then
@@ -414,18 +585,16 @@ jobs:
             trigger "${selected_services[index]}" "${selected_webhooks[index]}"
           done
 
-          sleep 30
-
-          node scripts/monorepo/verify-deployed-source-tags.mjs
+          run_public_check node scripts/monorepo/verify-deployed-source-tags.mjs
 
           case "${DEPLOY_TARGET}" in
             docs-registry)
-              DIFFGAZER_LIVE_REGISTRY_REQUIRED=1 node scripts/monorepo/check-live-registry.mjs
+              verify_registry
               ;;
             landing)
               ;;
             all)
-              DIFFGAZER_LIVE_REGISTRY_REQUIRED=1 node scripts/monorepo/check-live-registry.mjs
+              verify_registry
               ;;
             *)
               echo "::error::Unknown deploy target: ${DEPLOY_TARGET}"

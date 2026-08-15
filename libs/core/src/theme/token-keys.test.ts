@@ -15,12 +15,12 @@ describe("THEME_TOKEN_KEYS", () => {
       ...SEVERITY_TOKEN_KEYS,
       ...STATUS_TOKEN_KEYS,
     ];
-    expect([...THEME_TOKEN_KEYS]).toEqual(union);
+    expect(THEME_TOKEN_KEYS).toEqual(union);
     expect(new Set(THEME_TOKEN_KEYS).size).toBe(THEME_TOKEN_KEYS.length);
   });
 
   it("exposes the agreed cross-app token vocabulary", () => {
-    expect([...THEME_TOKEN_KEYS]).toEqual([
+    expect(THEME_TOKEN_KEYS).toEqual([
       "bg",
       "fg",
       "blue",

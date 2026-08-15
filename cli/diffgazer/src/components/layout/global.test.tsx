@@ -1,14 +1,24 @@
+import {
+  configurationStatus,
+  GEMINI_CONFIGURATION,
+  makeConfigurationInitResponse,
+} from "@diffgazer/core/testing/provider-fixtures";
 import { Text } from "ink";
+import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanupRootFrames, renderRootFrame } from "../../testing/render-root-frame";
 import { useContentZone } from "./global";
 
+const initState = vi.hoisted(() => ({ data: undefined as unknown, isLoading: false }));
+
 vi.mock("@diffgazer/core/api/hooks", () => ({
-  useInit: () => ({ data: undefined, isLoading: false }),
+  useConfigurationInit: () => ({ data: initState.data, isLoading: initState.isLoading }),
 }));
 
 afterEach(() => {
   cleanupRootFrames();
+  initState.data = undefined;
+  initState.isLoading = false;
 });
 
 function ContentZoneProbe() {
@@ -34,5 +44,45 @@ describe("GlobalLayout", () => {
     const { lastFrame } = renderRootFrame(80, 24, <ContentZoneProbe />);
 
     await vi.waitFor(() => expect(lastFrame()).toContain("content rows: 20"));
+  });
+
+  test("names the selected product and model the way the catalog publishes them", async () => {
+    initState.data = makeConfigurationInitResponse([
+      configurationStatus(GEMINI_CONFIGURATION, "ready"),
+    ]);
+
+    const { lastFrame } = renderRootFrame(120, 24, <Text>content</Text>);
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("Google Gemini"));
+    expect(lastFrame()).toContain("Gemini 2.5 Flash");
+  });
+
+  test("joins distinct header chip segments with a separator", async () => {
+    initState.data = makeConfigurationInitResponse([
+      configurationStatus(GEMINI_CONFIGURATION, "ready"),
+    ]);
+
+    const { lastFrame } = renderRootFrame(120, 24, <Text>content</Text>);
+
+    await vi.waitFor(() => expect(stripAnsi(lastFrame() ?? "")).toContain("· Ready"));
+  });
+
+  test("says the configuration is loading rather than calling it not configured", async () => {
+    initState.isLoading = true;
+
+    const { lastFrame } = renderRootFrame(120, 24, <Text>content</Text>);
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("Loading configuration"));
+    const frame = stripAnsi(lastFrame() ?? "");
+    expect(frame).not.toContain("Not configured");
+    expect(frame).not.toContain("· Loading");
+  });
+
+  test("renders a redundant chip once, never 'Not configured · Not configured'", async () => {
+    const { lastFrame } = renderRootFrame(120, 24, <Text>content</Text>);
+
+    await vi.waitFor(() => expect(lastFrame()).toContain("Not configured"));
+    const frame = stripAnsi(lastFrame() ?? "");
+    expect(frame.match(/Not configured/g)).toHaveLength(1);
   });
 });

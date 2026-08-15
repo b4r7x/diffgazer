@@ -22,7 +22,7 @@ function makeAgent(
     status,
     progress: 0,
     issueCount: 0,
-  } as AgentState;
+  };
 }
 
 describe("review agent-status presentation", () => {

@@ -1,27 +1,23 @@
 "use client";
 
-import { cva, type VariantProps } from "class-variance-authority";
-import { type ComponentProps, type ReactNode, useEffectEvent, useMemo, useState } from "react";
+import type { VariantProps } from "class-variance-authority";
+import {
+  type ComponentProps,
+  type ReactNode,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { cn } from "@/lib/utils";
 import { AvatarContext, type AvatarStatus, useAvatarGroupContext } from "./avatar-context";
 import { AvatarFallback } from "./avatar-fallback";
 import { AvatarImage } from "./avatar-image";
+import { type AvatarSize, avatarVariants } from "./avatar-variants";
 
 export type { AvatarStatus };
-
-export const avatarVariants = cva(
-  "relative inline-flex items-center justify-center border border-foreground/40 font-mono font-medium text-foreground bg-background overflow-hidden shrink-0",
-  {
-    variants: {
-      size: {
-        sm: "size-6 text-2xs",
-        md: "size-8 text-xs",
-        lg: "size-10 text-sm",
-      },
-    },
-    defaultVariants: { size: "md" },
-  },
-);
+export { avatarVariants };
+export type { AvatarSize };
 
 export interface AvatarProps extends ComponentProps<"span">, VariantProps<typeof avatarVariants> {
   /** Image URL. Ignored when children are provided. */
@@ -34,7 +30,7 @@ export interface AvatarProps extends ComponentProps<"span">, VariantProps<typeof
   /** Shown when the image is loading, missing, or fails. */
   fallback?: ReactNode;
   /** Fired when the image load status changes. Fires for the active image only. */
-  onStatusChange?: (status: AvatarStatus) => void;
+  onStatusChange?: (status: Exclude<AvatarStatus, "idle">) => void;
   /** Custom inner content. Replaces the default AvatarImage + AvatarFallback composition. */
   children?: ReactNode;
 }
@@ -54,8 +50,11 @@ function AvatarRoot({
   const groupCtx = useAvatarGroupContext();
   const resolvedSize = size ?? groupCtx?.size;
   const [imageStatus, setStatus] = useState<AvatarStatus>("idle");
-  const notifyStatusChange = useEffectEvent((status: AvatarStatus) => {
-    onStatusChange?.(status);
+  // Latest-ref sync: setImageStatus is published on context and called from child
+  // DOM event handlers, where useEffectEvent is forbidden; runs every render by design.
+  const latestOnStatusChange = useRef(onStatusChange);
+  useLayoutEffect(() => {
+    latestOnStatusChange.current = onStatusChange;
   });
 
   const contextValue = useMemo(
@@ -63,7 +62,7 @@ function AvatarRoot({
       imageStatus,
       setImageStatus: (status: AvatarStatus) => {
         setStatus(status);
-        if (status !== "idle") notifyStatusChange(status);
+        if (status !== "idle") latestOnStatusChange.current?.(status);
       },
     }),
     [imageStatus],
@@ -85,7 +84,7 @@ function AvatarRoot({
         {children ?? (
           <>
             {src && <AvatarImage src={src} />}
-            <AvatarFallback>{fallback ?? "?"}</AvatarFallback>
+            <AvatarFallback decorative={!label}>{fallback ?? "?"}</AvatarFallback>
           </>
         )}
       </span>

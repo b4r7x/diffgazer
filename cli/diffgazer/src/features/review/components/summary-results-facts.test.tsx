@@ -6,7 +6,7 @@ import { ReviewResultsView } from "./results-view";
 import { ReviewSummaryView } from "./summary-view";
 
 vi.mock("@diffgazer/core/api/hooks", () => ({
-  useInit: () => ({ data: undefined, isLoading: false }),
+  useConfigurationInit: () => ({ data: undefined, isLoading: false }),
 }));
 
 const RESULTS_DETAILS_COLUMN = 34;

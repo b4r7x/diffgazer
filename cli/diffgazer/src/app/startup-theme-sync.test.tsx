@@ -1,48 +1,62 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { makeAllConfigurationsListResponse } from "@diffgazer/core/testing/provider-fixtures";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { flush } from "../testing/flush";
+import { createTestQueryClient } from "../testing/query-client";
+import type { TuiThemeName } from "../theme/palettes";
 import { CliThemeProvider, useTheme } from "../theme/provider";
 import { StartupThemeSync } from "./startup-theme-sync";
 
-type SettingsResponse = Awaited<ReturnType<BoundApi["getSettings"]>>;
-type SettingsTheme = SettingsResponse["theme"];
+type InitResponse = Awaited<ReturnType<BoundApi["loadConfigurationInit"]>>;
+type SettingsTheme = InitResponse["settings"]["theme"];
 
-function makeSettings(theme: SettingsTheme) {
+function makeInitResponse(theme: SettingsTheme): InitResponse {
+  const shell = makeAllConfigurationsListResponse();
   return {
-    theme,
-    defaultLenses: [],
-    defaultProfile: null,
-    severityThreshold: "low",
-    secretsStorage: "file",
-    agentExecution: "sequential",
-  } satisfies SettingsResponse;
-}
-
-function makeDeferredSettingsApi(theme: SettingsTheme) {
-  let resolveSettings: (settings: SettingsResponse) => void = () => {};
-  const settingsPromise = new Promise<SettingsResponse>((resolve) => {
-    resolveSettings = resolve;
-  });
-  const getSettings = vi.fn<BoundApi["getSettings"]>().mockReturnValue(settingsPromise);
-
-  return {
-    api: { ...createApi({ baseUrl: "http://localhost" }), getSettings } satisfies BoundApi,
-    resolveSettings: () => resolveSettings(makeSettings(theme)),
+    schemaVersion: 2,
+    configurations: shell.configurations,
+    unrecognizedConfigurations: shell.unrecognizedConfigurations,
+    selectedConfigurationId: shell.selectedConfigurationId,
+    settings: {
+      theme,
+      defaultLenses: [],
+      defaultProfile: null,
+      severityThreshold: "low",
+      secretsStorage: "file",
+      agentExecution: "sequential",
+    },
+    project: {
+      projectId: "project-1",
+      path: "/tmp/repo",
+      trust: null,
+    },
   };
 }
 
-function makeQueryClient(): QueryClient {
-  return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, networkMode: "always" },
-      mutations: { retry: false, networkMode: "always" },
-    },
+function makeDeferredInitApi(theme: SettingsTheme) {
+  let resolveInit: (init: InitResponse) => void = () => {};
+  const initPromise = new Promise<InitResponse>((resolve) => {
+    resolveInit = resolve;
   });
+  const loadConfigurationInit = vi
+    .fn<BoundApi["loadConfigurationInit"]>()
+    .mockReturnValue(initPromise);
+  const getSettings = vi.fn<BoundApi["getSettings"]>();
+
+  return {
+    api: {
+      ...createApi({ baseUrl: "http://localhost" }),
+      loadConfigurationInit,
+      getSettings,
+    } satisfies BoundApi,
+    resolveInit: () => resolveInit(makeInitResponse(theme)),
+    getSettings,
+  };
 }
 
 function ThemeProbe() {
@@ -57,10 +71,10 @@ function StartupThemeSyncHarness({
 }: {
   children: ReactNode;
   api: BoundApi;
-  initialTheme: string;
+  initialTheme: TuiThemeName;
 }) {
   return (
-    <QueryClientProvider client={makeQueryClient()}>
+    <QueryClientProvider client={createTestQueryClient()}>
       <ApiProvider value={api}>
         <CliThemeProvider initialTheme={initialTheme}>{children}</CliThemeProvider>
       </ApiProvider>
@@ -74,35 +88,37 @@ afterEach(() => {
 });
 
 describe("StartupThemeSync", () => {
-  it("applies the persisted settings theme after settings resolve", async () => {
-    const settings = makeDeferredSettingsApi("light");
+  it("applies the persisted init settings theme after configuration init resolves", async () => {
+    const init = makeDeferredInitApi("light");
     const { lastFrame } = render(
-      <StartupThemeSyncHarness api={settings.api} initialTheme="dark">
+      <StartupThemeSyncHarness api={init.api} initialTheme="dark">
         <StartupThemeSync />
         <ThemeProbe />
       </StartupThemeSyncHarness>,
     );
 
     expect(lastFrame()).toContain("theme:dark");
-    settings.resolveSettings();
+    init.resolveInit();
 
     await vi.waitFor(() => {
       expect(lastFrame()).toContain("theme:light");
     });
+    expect(init.getSettings).not.toHaveBeenCalled();
   });
 
-  it("keeps the explicit CLI theme after settings resolve", async () => {
-    const settings = makeDeferredSettingsApi("light");
+  it("keeps the explicit CLI theme after init settings resolve", async () => {
+    const init = makeDeferredInitApi("light");
     const { lastFrame } = render(
-      <StartupThemeSyncHarness api={settings.api} initialTheme="dark">
+      <StartupThemeSyncHarness api={init.api} initialTheme="dark">
         <StartupThemeSync explicitTheme="dark" />
         <ThemeProbe />
       </StartupThemeSyncHarness>,
     );
 
     expect(lastFrame()).toContain("theme:dark");
-    settings.resolveSettings();
+    init.resolveInit();
     await flush();
     expect(lastFrame()).toContain("theme:dark");
+    expect(init.getSettings).not.toHaveBeenCalled();
   });
 });

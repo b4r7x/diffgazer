@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
  * values stay neutral — the pre-mobile composition this panel is judged
  * against, and the same colour vocabulary the TUI sidebar speaks.
  */
-export type InfoFieldTone = "default" | "info" | "warning" | "accent" | "success";
+type InfoFieldTone = "default" | "info" | "warning" | "accent" | "success";
 
 export interface InfoFieldProps {
   label: string;

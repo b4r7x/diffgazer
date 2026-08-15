@@ -3,34 +3,20 @@ import { FooterProvider } from "@diffgazer/core/footer";
 import { Button } from "@diffgazer/ui/components/button";
 import { Toaster } from "@diffgazer/ui/components/toast";
 import { Typography } from "@diffgazer/ui/components/typography";
-import { HeadContent, useRouter } from "@tanstack/react-router";
+import { HeadContent } from "@tanstack/react-router";
 import { GlobalLayout } from "@/components/layout/global";
 import { RouteLoadingFallback } from "@/components/layout/route-loading-fallback";
 import { RouteOutletBoundary } from "../route-error-boundary";
 
-export function ConnectedRootLayout({
-  reloadDocument = () => window.location.reload(),
-}: {
-  reloadDocument?: () => void;
-} = {}) {
+export function ConnectedRootLayout() {
   return (
     <FooterProvider>
       <HeadContent />
       <GlobalLayout>
-        <ConnectedRouteOutlet reloadDocument={reloadDocument} />
+        <RouteOutletBoundary />
       </GlobalLayout>
       <Toaster position="bottom-right" />
     </FooterProvider>
-  );
-}
-
-export function ConnectedRouteOutlet({ reloadDocument }: { reloadDocument: () => void }) {
-  const router = useRouter();
-  return (
-    <RouteOutletBoundary
-      onReset={() => void router.invalidate().catch(() => {})}
-      onReload={reloadDocument}
-    />
   );
 }
 

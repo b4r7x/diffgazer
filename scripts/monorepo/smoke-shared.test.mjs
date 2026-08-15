@@ -1,11 +1,24 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { declareTailwindV4Dependency } from "./smoke-shared/dependencies.mjs";
-import { writeViteFixture } from "./smoke-shared/fixtures.mjs";
+import { DEFAULT_FIXTURE_ALIASES, writeViteFixture } from "./smoke-shared/fixtures.mjs";
 import { fetchJsonWithLimit } from "./smoke-shared/network.mjs";
+
+function withFixture(run) {
+  const fixture = mkdtempSync(join(tmpdir(), "dg-smoke-shared-"));
+  try {
+    run(fixture);
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+}
+
+function readJson(fixture, relativePath) {
+  return JSON.parse(readFileSync(join(fixture, relativePath), "utf-8"));
+}
 
 test("Vite smoke fixtures keep a semantic Tailwind v4 declaration after local link wiring", () => {
   const fixture = mkdtempSync(join(tmpdir(), "dg-smoke-shared-"));
@@ -28,6 +41,50 @@ test("Vite smoke fixtures keep a semantic Tailwind v4 declaration after local li
   } finally {
     rmSync(fixture, { recursive: true, force: true });
   }
+});
+
+// shadcn resolves install targets from the alias set and the project layout, so
+// the fixture writer must reproduce whatever cell a smoke asks for instead of
+// always emitting the default src/ project with the default five aliases.
+test("a fixture writes the alias set it is given, including omitted optional keys", () => {
+  withFixture((fixture) => {
+    const aliases = { components: "@/components", utils: "@/lib/utils" };
+    writeViteFixture(fixture, { componentsJson: true, aliases });
+
+    assert.deepEqual(readJson(fixture, "components.json").aliases, aliases);
+  });
+});
+
+test("a root-layout fixture resolves @/ to the project root", () => {
+  withFixture((fixture) => {
+    writeViteFixture(fixture, {
+      componentsJson: true,
+      withLibUtils: true,
+      indexCss: ['@import "tailwindcss";'],
+      isSrcDir: false,
+    });
+
+    assert.deepEqual(readJson(fixture, "tsconfig.json").compilerOptions.paths, { "@/*": ["./*"] });
+    assert.deepEqual(readJson(fixture, "tsconfig.json").include, ["."]);
+    assert.equal(readJson(fixture, "components.json").tailwind.css, "index.css");
+    assert.match(readFileSync(join(fixture, "index.html"), "utf-8"), /src="\/main\.tsx"/);
+    assert.match(readFileSync(join(fixture, "vite.config.mjs"), "utf-8"), /new URL\('\.'/);
+    assert.match(readFileSync(join(fixture, "lib/utils.ts"), "utf-8"), /export function cn/);
+    assert.equal(existsSync(join(fixture, "src")), false);
+  });
+});
+
+test("a src-layout fixture keeps the default alias set under src/", () => {
+  withFixture((fixture) => {
+    writeViteFixture(fixture, { componentsJson: true, withLibUtils: true, indexCss: ["/* x */"] });
+
+    assert.deepEqual(readJson(fixture, "components.json").aliases, DEFAULT_FIXTURE_ALIASES);
+    assert.equal(readJson(fixture, "components.json").tailwind.css, "src/index.css");
+    assert.deepEqual(readJson(fixture, "tsconfig.json").compilerOptions.paths, {
+      "@/*": ["./src/*"],
+    });
+    assert.equal(existsSync(join(fixture, "src/lib/utils.ts")), true);
+  });
 });
 
 test("bounded JSON fetch parses a response at the byte limit", async () => {

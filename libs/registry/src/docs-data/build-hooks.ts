@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { REGISTRY_ITEM_TYPE, type Registry, type RegistryItem } from "../registry-types.js";
+import { compareCodeUnits } from "../utils/compare-code-units.js";
+import { resolveInside } from "../utils/fs.js";
 import { writeJson } from "../utils/json.js";
 import { DOCS_CODE_THEME_NAME } from "./code-theme.js";
 import type { DocsHighlighter } from "./highlight.js";
@@ -49,7 +51,7 @@ export async function buildHooksData(params: {
   const registryHooks: HookRegistryItem[] = registry.items.filter(hookFilter).map(mapItem);
 
   const allHooks = [...registryHooks, ...(hooksConfig.extraItems ?? [])].sort((a, b) =>
-    a.name.localeCompare(b.name),
+    compareCodeUnits(a.name, b.name),
   );
 
   if (allHooks.length === 0) {
@@ -84,12 +86,12 @@ export async function buildHooksData(params: {
     try {
       const { source, files, ...pageData } = data;
 
-      writeJson(resolve(hooksDir, `${name}.json`), {
+      writeJson(resolveInside(hooksDir, `${name}.json`, `Hook "${name}" output path`), {
         ...pageData,
         files: files.map((file) => file.path),
       });
       writeFileSync(
-        resolve(hooksDir, `${name}.source.json`),
+        resolveInside(hooksDir, `${name}.source.json`, `Hook "${name}" source output path`),
         `${JSON.stringify({ source, files })}\n`,
       );
     } catch (err) {
@@ -101,14 +103,14 @@ export async function buildHooksData(params: {
 
   const hookList = Object.values(enrichedData)
     .map((h) => ({ name: h.name, title: h.title }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => compareCodeUnits(a.name, b.name));
   writeJson(resolve(outputDir, "hook-list.json"), hookList);
   console.log(`Wrote hook-list.json (${hookList.length} entries)`);
 
   mkdirSync(hooksConfig.contentDir, { recursive: true });
 
   const hookPages = Object.values(enrichedData)
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => compareCodeUnits(a.name, b.name))
     .map((h) => h.name);
   const hasIndexPage = existsSync(resolve(hooksConfig.contentDir, "index.mdx"));
   const metaPages = hasIndexPage ? ["index", ...hookPages] : hookPages;

@@ -1,0 +1,173 @@
+/**
+ * OpenRouter accepts routing selectors in the same model-id-shaped slot as a
+ * downstream provider/model pair.  Those selectors are not immutable execution
+ * identities and must be rejected at every model-policy boundary.
+ *
+ * A pinned variant suffix is the opposite case and is admitted: `:free` and
+ * `:thinking` name separately priced catalog entries carrying their own display
+ * name, limits, and price, so the suffix is part of an identity rather than an
+ * instruction.  Dynamic selectors — `openrouter/auto`, `:nitro`, `:floor`,
+ * `:online`, `:exacto` — are request-time sort or route directives and stay
+ * rejected.
+ *
+ * Keep this policy authority shared so admission, client projection, onboarding,
+ * and discovery cannot drift apart.
+ */
+const PINNED_DOWNSTREAM_ROUTE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+/**
+ * Suffixes that name a distinct catalog identity rather than a routing
+ * instruction.  Unknown suffixes fail closed, so admitting a new variant stays a
+ * deliberate decision instead of an accident of pattern shape.
+ */
+const PINNED_DOWNSTREAM_ROUTE_VARIANTS = new Set(["free", "thinking"]);
+const PINNED_DOWNSTREAM_ROUTE_RESERVED_SEGMENTS = new Set([
+  "auto",
+  "automatic",
+  "cheapest",
+  "default",
+  "exacto",
+  "extended",
+  "fallback",
+  "fastest",
+  "floor",
+  "free",
+  "nitro",
+  "online",
+  "openrouter",
+  "random",
+  "route",
+  "thinking",
+]);
+
+/**
+ * Returns true only for one exact downstream provider/model pair, optionally
+ * carrying a single pinned variant suffix.  Reserved selectors are compared by
+ * segment, so legitimate names that merely contain a selector (for example,
+ * `automaticity/model`) remain valid.
+ */
+export function isPinnedDownstreamRouteModelId(modelId: string): boolean {
+  const [base = "", variant, ...extraVariants] = modelId.split(":");
+  if (extraVariants.length > 0) return false;
+  if (variant !== undefined && !PINNED_DOWNSTREAM_ROUTE_VARIANTS.has(variant.toLowerCase())) {
+    return false;
+  }
+  if (!PINNED_DOWNSTREAM_ROUTE_PATTERN.test(base)) return false;
+
+  const [downstreamProvider = "", downstreamModel = ""] = base.split("/");
+  return ![downstreamProvider, downstreamModel].some((segment) =>
+    PINNED_DOWNSTREAM_ROUTE_RESERVED_SEGMENTS.has(segment.toLowerCase()),
+  );
+}
+
+export const BILLING_MODES = [
+  "free-tier",
+  "pay-as-you-go",
+  "evaluation",
+  "route-specific",
+  "local-resource",
+  "subscription-credit",
+] as const;
+export type BillingMode = (typeof BILLING_MODES)[number];
+
+export type AdmissionCheck =
+  | "credential"
+  | "endpoint"
+  | "region"
+  | "workspace"
+  | "model-discovery"
+  | "downstream-route"
+  | "structured-output"
+  | "usage"
+  | "loopback"
+  | "server-version"
+  | "installation"
+  | "runtime-version"
+  | "account-plan"
+  | "negative-capabilities"
+  | "cancellation"
+  | "acknowledgement";
+
+export const CONFIGURATION_FIELDS = [
+  "credential",
+  "region",
+  "workspace",
+  "endpoint",
+  "local-authentication",
+  "installation",
+] as const;
+export type ConfigurationField = (typeof CONFIGURATION_FIELDS)[number];
+
+export type ModelPolicy =
+  | {
+      readonly kind: "discovered-exact";
+      readonly suggestedModelId?: string;
+      readonly explicitOptInSuffixes?: readonly string[];
+      readonly aliases: "forbidden";
+    }
+  | {
+      readonly kind: "discovered-allowlist";
+      readonly modelIds: readonly string[];
+      readonly suggestedModelId?: string;
+      readonly higherCostModelIds?: readonly string[];
+      /**
+       * Higher-cost choices may be presented only after the named live evidence
+       * has been collected for the exact configured tuple.  This is a policy
+       * marker for server admission; it deliberately carries no provider limit
+       * value and is not client evidence.
+       */
+      readonly higherCostModelEvidence?: {
+        readonly outputLimit: "required";
+        readonly reviewConformance: "required";
+      };
+      readonly aliases: "forbidden";
+    }
+  | {
+      readonly kind: "discovered-family";
+      readonly familyPrefixes: readonly string[];
+      readonly rejectedAliases: readonly string[];
+      readonly aliases: "forbidden";
+    }
+  | {
+      readonly kind: "pinned-downstream-route";
+      readonly routePolicy: "pinned";
+      readonly automaticRouting: "forbidden";
+      readonly aliases: "forbidden";
+    };
+
+/**
+ * The single model-policy predicate.  Every boundary that decides whether a
+ * model id is admissible for a product — onboarding, client projection,
+ * client-safe summaries, discovery mapping, and the execution tuple — must call
+ * this so the interpretations cannot drift apart.
+ *
+ * It deliberately fails closed for the two policy shapes whose extra evidence
+ * has no client-safe representation: an `explicitOptInSuffixes` model needs an
+ * opt-in the V2 contracts do not carry, and a `higherCostModelIds` model needs
+ * the named live output-limit and review-conformance observations, which are
+ * server-only.  Neither may be inferred from discovery, conformance, or notice
+ * acknowledgement.
+ *
+ * Model-id shape validation is deliberately left to the caller, because the
+ * applicable shape schema differs per boundary.
+ */
+export function matchesModelPolicy(modelId: string, policy: ModelPolicy): boolean {
+  switch (policy.kind) {
+    case "discovered-exact":
+      return !policy.explicitOptInSuffixes?.some((suffix) => modelId.endsWith(suffix));
+    case "discovered-allowlist":
+      if (!policy.modelIds.includes(modelId)) return false;
+      return !(
+        policy.higherCostModelEvidence !== undefined && policy.higherCostModelIds?.includes(modelId)
+      );
+    case "discovered-family":
+      return (
+        !policy.rejectedAliases.includes(modelId) &&
+        policy.familyPrefixes.some(
+          (prefix) => modelId === prefix || modelId.startsWith(`${prefix}-`),
+        )
+      );
+    case "pinned-downstream-route":
+      return isPinnedDownstreamRouteModelId(modelId);
+  }
+}

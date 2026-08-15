@@ -1,3 +1,5 @@
+"use client";
+
 import { Popover } from "@/components/ui/popover";
 
 export default function PopoverBasicExample() {
@@ -14,7 +16,7 @@ export default function PopoverBasicExample() {
           </button>
         )}
       </Popover.Trigger>
-      <Popover.Content className="p-4 font-mono text-sm">
+      <Popover.Content role="dialog" aria-label="Popover actions" className="p-4 font-mono text-sm">
         <p className="text-foreground">Popover content with interactive elements.</p>
         <button
           type="button"

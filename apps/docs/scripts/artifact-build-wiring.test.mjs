@@ -96,8 +96,6 @@ function runFilteredPackage() {
 
 function runTurboBuild() {
   const turbo = JSON.parse(readFileSync(join(workspace, "turbo.json"), "utf-8"));
-  const addBuild = turbo.tasks["@diffgazer/add#build"];
-  if (addBuild.dependsOn.includes("generate:bundles")) generateBundles();
 
   const taskEnv = { ...process.env };
   delete taskEnv.DIFFGAZER_SKIP_ARTIFACT_PREPARE;
@@ -162,17 +160,18 @@ function createBuildRecorderFixture(sourceWorkspaceRoot) {
     chmodSync(path, 0o755);
   }
 
-  return {
-    root,
-    addRoot: join(root, "cli/add"),
-    statePath,
-    env: {
-      ...process.env,
-      BUILD_RECORDER_STATE: statePath,
-      BUILD_RECORDER_WORKSPACE: root,
-      PATH: `${binRoot}${delimiter}${process.env.PATH ?? ""}`,
-    },
+  const env = {
+    ...process.env,
+    BUILD_RECORDER_STATE: statePath,
+    BUILD_RECORDER_WORKSPACE: root,
+    PATH: `${binRoot}${delimiter}${process.env.PATH ?? ""}`,
   };
+  // Whole-repo runs export DIFFGAZER_SKIP_ARTIFACT_PREPARE=1, which would silently turn the
+  // fixture's baseline into the skipped build. The baseline is the prepared build; the skip
+  // case opts in explicitly.
+  delete env.DIFFGAZER_SKIP_ARTIFACT_PREPARE;
+
+  return { root, addRoot: join(root, "cli/add"), statePath, env };
 }
 
 function readBuildEvents(statePath) {
@@ -205,6 +204,16 @@ describe("artifact build wiring", () => {
     for (const path of bundlePaths) expect(existsSync(path)).toBe(true);
 
     const preparedHashes = hashFiles(bundlePaths);
+
+    const skipBuildEnv = { ...fixture.env, DIFFGAZER_SKIP_ARTIFACT_PREPARE: "1" };
+    execFileSync("sh", ["-c", rootPackage.scripts.build], {
+      cwd: fixture.root,
+      env: skipBuildEnv,
+    });
+    const skippedBuildEvents = readBuildEvents(fixture.statePath);
+    expect(skippedBuildEvents.filter((event) => event === "generate:bundles")).toHaveLength(1);
+    expect(skippedBuildEvents).not.toContain("nested:prepare-library-artifacts");
+
     execFileSync("sh", ["-c", rootPackage.scripts["validate:artifacts:check"]], {
       cwd: fixture.root,
       env: fixture.env,
@@ -213,11 +222,9 @@ describe("artifact build wiring", () => {
     expect(readBuildEvents(fixture.statePath)).toContain("validate:artifacts");
 
     for (const path of bundlePaths) rmSync(path);
-    const directBuildEnv = { ...fixture.env };
-    delete directBuildEnv.DIFFGAZER_SKIP_ARTIFACT_PREPARE;
     execFileSync("sh", ["-c", addPackage.scripts.build], {
       cwd: fixture.addRoot,
-      env: directBuildEnv,
+      env: fixture.env,
     });
 
     const finalEvents = readBuildEvents(fixture.statePath);
@@ -227,18 +234,25 @@ describe("artifact build wiring", () => {
 
   it("keeps the removed package-sync mode absent from public and build contracts", () => {
     const workspaceRoot = join(import.meta.dirname, "../../..");
-    const contractFiles = [
-      "turbo.json",
-      "PACKAGE_GOVERNANCE.md",
-      "apps/docs/README.md",
-      "apps/docs/scripts/prepare-generated.mjs",
-      "apps/docs/scripts/sync-artifacts.mjs",
-    ];
+    const selfPath = "apps/docs/scripts/artifact-build-wiring.test.mjs";
 
-    for (const file of contractFiles) {
-      expect(readFileSync(join(workspaceRoot, file), "utf-8")).not.toContain(
-        "DIFFGAZER_ARTIFACT_SYNC_MODE",
-      );
+    // Tree-wide rather than a hand-listed set: the build contract is spread across
+    // root/package scripts, turbo config, docs and the registry tooling, so any of
+    // them reintroducing the env var has to fail this guard.
+    let matches = [];
+    try {
+      matches = execFileSync(
+        "git",
+        ["grep", "-l", "--untracked", "-F", "DIFFGAZER_ARTIFACT_SYNC_MODE"],
+        { cwd: workspaceRoot, encoding: "utf-8" },
+      )
+        .split("\n")
+        .filter(Boolean);
+    } catch (error) {
+      // git grep exits 1 with no output when nothing matches.
+      if (error.status !== 1) throw error;
     }
+
+    expect(matches.filter((file) => file !== selfPath)).toEqual([]);
   });
 });

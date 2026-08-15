@@ -12,7 +12,7 @@
     }
   ],
   "meta": {
-    "client": true,
+    "client": false,
     "hidden": true
   },
   "type": "registry:lib"

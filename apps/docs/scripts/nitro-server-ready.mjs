@@ -6,7 +6,10 @@ export function describeExit({ code, signal }) {
 
 export function createNitroReadyWatcher(label) {
   function parseListeningOrigin(output) {
-    const match = output.match(/Listening on:\s*http:\/\/127\.0\.0\.1:(\d+)\/?/);
+    // The trailing slash is mandatory: `output` is a growing accumulator, and an
+    // optional terminator would let a chunk boundary inside the port digits
+    // resolve a truncated port and probe a foreign local service.
+    const match = output.match(/Listening on:\s*http:\/\/127\.0\.0\.1:(\d+)\//);
     if (!match) return undefined;
 
     const port = Number(match[1]);

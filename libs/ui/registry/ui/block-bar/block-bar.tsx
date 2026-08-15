@@ -102,7 +102,7 @@ function getSegmentChildValue(child: ReactNode): number | null {
 
 function deriveValueFromSegmentChildren(children: ReactNode): number | null {
   const childArray = Children.toArray(children);
-  if (childArray.length === 0) return null;
+  if (childArray.length === 0) return 0;
 
   let total = 0;
   for (const child of childArray) {

@@ -4,7 +4,6 @@ import {
   SidebarSectionContent,
   SidebarSectionTitle,
 } from "@diffgazer/ui/components/sidebar";
-import { cn } from "@diffgazer/ui/lib/utils";
 import { Link, useLocation } from "@tanstack/react-router";
 import { TreeSidebarShell } from "@/components/layout/tree-sidebar-shell";
 import { isPrimaryNavigationClick } from "@/components/shared/navigation-click";
@@ -24,20 +23,13 @@ export function HomeSidebar({
     <TreeSidebarShell>
       {libraries.map((library) => {
         const libraryHasActive =
-          pathname === `/${library.id}` ||
-          pathname.startsWith(`/${library.id}/`) ||
-          library.sections.some((section) => {
-            const href = `/${library.id}/${section.splat}`;
-            return pathname === href || pathname.startsWith(`${href}/`);
-          });
+          pathname === `/${library.id}` || pathname.startsWith(`/${library.id}/`);
 
         return (
           <SidebarSection key={library.id} collapsible defaultOpen>
             <SidebarSectionTitle
               headingLevel="h2"
-              className={cn(
-                libraryHasActive ? "text-foreground" : "font-medium text-muted-foreground",
-              )}
+              className={libraryHasActive ? "text-foreground" : "font-medium text-muted-foreground"}
             >
               {library.displayName}
             </SidebarSectionTitle>

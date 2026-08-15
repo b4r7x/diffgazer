@@ -16,16 +16,20 @@ export interface UseReviewStartOptions {
   onStaleSession?: (code: SessionTerminationCode) => void;
 }
 
+/**
+ * `idle` — no resume attempted yet. `streaming` — a resume ran, so the stream
+ * history belongs to this mount. `terminated` — the resume hit a stale or
+ * missing session, so there is no usable history to complete from.
+ */
+type ReviewStartStatus = "idle" | "streaming" | "terminated";
+
 export interface UseReviewStartResult {
-  hasStarted: boolean;
-  hasStreamed: boolean;
-  setHasStarted: (value: boolean) => void;
-  setHasStreamed: (value: boolean) => void;
+  status: ReviewStartStatus;
+  reset: () => void;
 }
 
 export function useReviewStart(options: UseReviewStartOptions): UseReviewStartResult {
-  const [hasStarted, setHasStarted] = useState(false);
-  const [hasStreamed, setHasStreamed] = useState(false);
+  const [status, setStatus] = useState<ReviewStartStatus>("idle");
 
   const getCurrentReviewId = useEffectEvent(() => options.currentReviewId);
   const resumeReview = useEffectEvent((reviewId: string) => options.resume(reviewId));
@@ -48,8 +52,7 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
 
     let ignore = false;
 
-    setHasStarted(true);
-    setHasStreamed(true);
+    setStatus("streaming");
 
     void resumeReview(reviewId).then((result) => {
       if (ignore) return;
@@ -59,7 +62,7 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
         isSessionTerminationCode(result.error.code) ||
         result.error.code === ReviewErrorCode.SESSION_NOT_FOUND
       ) {
-        setHasStreamed(false);
+        setStatus("terminated");
       }
       handleResumeError(reviewId, result.error);
     });
@@ -75,5 +78,5 @@ export function useReviewStart(options: UseReviewStartOptions): UseReviewStartRe
     options.reviewId,
   ]);
 
-  return { hasStarted, hasStreamed, setHasStarted, setHasStreamed };
+  return { status, reset: () => setStatus("idle") };
 }

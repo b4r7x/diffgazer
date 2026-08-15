@@ -155,7 +155,6 @@ export function useFocusRestore(options: UseFocusRestoreOptions = {}): UseFocusR
 
     removeEntry(entry);
     entry.target = nextTarget;
-    entry.fallbackTargets = [];
     entry.ownerDocument = doc;
     entryRef.current = entry;
     capturedRef.current = { target: nextTarget, ownerDocument: doc };

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { registerServerSet, stopAllServers, stopServerSet } from "./stop-all";
+import { registerServerSet, stopAllServers } from "./stop-all";
 
 describe("registerServerSet", () => {
   afterEach(async () => {
@@ -66,20 +66,22 @@ describe("registerServerSet", () => {
     const firstServers = [firstServer];
     const secondServers = [secondServer];
 
-    const firstShutdown = registerServerSet(firstServers)();
-    await registerServerSet(secondServers)();
+    const stopFirstSet = registerServerSet(firstServers);
+    const stopSecondSet = registerServerSet(secondServers);
+    const firstShutdown = stopFirstSet();
+    await stopSecondSet();
 
     expect(firstServer.stop).toHaveBeenCalledOnce();
     expect(secondServer.stop).toHaveBeenCalledOnce();
 
-    await expect(stopServerSet(secondServers)).resolves.toBeUndefined();
+    await expect(stopSecondSet()).resolves.toBeUndefined();
     expect(secondServer.stop).toHaveBeenCalledOnce();
     expect(firstServer.stop).toHaveBeenCalledOnce();
 
     resolveFirstStop();
     await firstShutdown;
 
-    await stopServerSet(firstServers);
+    await stopFirstSet();
     expect(firstServer.stop).toHaveBeenCalledOnce();
   });
 

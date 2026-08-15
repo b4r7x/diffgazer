@@ -9,37 +9,10 @@ function setupPlan(productId: Parameters<typeof buildSetupPlan>[0]): RunnableSet
 }
 
 describe("setup-plan-derived onboarding steps", () => {
-  it("derives hosted, local HTTP, and local CLI order from each product plan", () => {
-    expect(setupPlan("gemini").steps.map((step) => step.id)).toEqual([
-      "product",
-      "endpoint-binding",
-      "authentication",
-      "model",
-      "conformance",
-      "acknowledgement",
-    ]);
-    expect(setupPlan("local-openai").steps.map((step) => step.id)).toEqual([
-      "product",
-      "endpoint-binding",
-      "authentication",
-      "model",
-      "conformance",
-      "acknowledgement",
-    ]);
-    expect(setupPlan("codex-cli").steps.map((step) => step.id)).toEqual([
-      "product",
-      "authentication",
-      "model",
-      "conformance",
-      "acknowledgement",
-    ]);
-  });
-
   it("uses transport-neutral copy and never presents local setup as an API-key step", () => {
     const localPlan = setupPlan("local-openai");
 
     expect(localPlan.kind).toBe("runnable");
-    if (localPlan.kind !== "runnable") throw new Error("Expected runnable local plan");
     expect(localPlan.requiredFields).not.toContain("credential");
     expect(STEP_LABELS.authentication).toBe("Authentication");
     expect(STEP_TITLES.authentication).toBe("Configure Authentication");

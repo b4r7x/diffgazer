@@ -8,11 +8,11 @@ export interface CalloutProps {
   children: ReactNode;
 }
 
-export interface CalloutTitleProps {
+interface CalloutTitleProps {
   children: string;
 }
 
-export interface CalloutContentProps {
+interface CalloutContentProps {
   children: string;
 }
 

@@ -12,7 +12,7 @@ export const FIX_PLAN_CHECKLIST_SELECTOR = '[data-checklist="fix-plan"]';
 
 export interface FixPlanChecklistProps {
   steps: readonly IssueFixStepPresentation[];
-  completedSteps: Set<number>;
+  completedSteps: ReadonlySet<number>;
   onToggle: (stepIndex: number) => void;
   focusedStepIndex?: number | null;
   onFocusedIndexChange?: (stepIndex: number) => void;
@@ -38,7 +38,6 @@ export function FixPlanChecklist({
             checked={isComplete}
             onChange={() => onToggle(step.completionIndex)}
             onFocus={() => onFocusedIndexChange?.(step.completionIndex)}
-            onClick={() => onFocusedIndexChange?.(step.completionIndex)}
             label={`${String(step.number)}. ${step.action}`}
             description={
               step.risk || step.files.length > 0 ? (

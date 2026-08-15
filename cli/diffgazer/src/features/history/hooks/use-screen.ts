@@ -1,12 +1,12 @@
 import type { useReviews } from "@diffgazer/core/api/hooks";
+import type { RunIdLookup } from "@diffgazer/core/format";
 import {
   filterReviewsForHistory,
   type HistoryRunSummary,
   type HistoryScreenState,
   useHistoryScreenState,
 } from "@diffgazer/core/review";
-import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
-import type { ReviewIssue, ReviewMetadata } from "@diffgazer/core/schemas/review";
+import type { ReviewIssue, ReviewMetadata, SeverityCounts } from "@diffgazer/core/schemas/review";
 import { useState } from "react";
 import { getAvailableHistoryZones, nextHistoryZone } from "../lib/focus-zones";
 import type { HistoryFocusZone, HistoryInteractionMode } from "../types";
@@ -15,6 +15,8 @@ export interface UseHistoryScreenResult {
   reviewsQuery: ReturnType<typeof useReviews>;
   reviewDetailQuery: HistoryScreenState["reviewDetailQuery"];
   reviews: ReviewMetadata[];
+  runIdLookup: RunIdLookup;
+  retainedError: HistoryScreenState["retainedError"];
 
   focusZone: HistoryFocusZone;
   interactionMode: HistoryInteractionMode;
@@ -65,7 +67,6 @@ export function useHistoryScreen({
   const activeFocusZone = availableZones.includes(focusZone) ? focusZone : fallbackFocusZone;
   const rendersHistoryControls =
     !history.reviewsQuery.isLoading &&
-    !history.reviewsQuery.error &&
     history.reviewsQuery.data !== undefined &&
     (history.hasReviews || history.hasMoreReviews);
   const interactionMode: HistoryInteractionMode = rendersHistoryControls
@@ -96,6 +97,8 @@ export function useHistoryScreen({
     reviewsQuery: history.reviewsQuery,
     reviewDetailQuery: history.reviewDetailQuery,
     reviews: history.reviews,
+    runIdLookup: history.runIdLookup,
+    retainedError: history.retainedError,
     focusZone: activeFocusZone,
     interactionMode,
     setFocusZone,

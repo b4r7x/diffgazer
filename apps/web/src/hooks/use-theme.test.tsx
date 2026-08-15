@@ -45,6 +45,32 @@ const storageMock: Storage = {
 };
 Object.defineProperty(globalThis, "localStorage", { value: storageMock, writable: true });
 
+function mockSettingsTheme(theme: string | null) {
+  mockUseSettings.mockReturnValue({
+    data: theme === null ? null : { theme },
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  });
+}
+
+/**
+ * The real mutation awaits its settings invalidation, so the settings cache
+ * already carries the saved theme by the time `mutateAsync` resolves.
+ */
+function mockSaveSettingsRefetching() {
+  const mutateAsync = vi.fn().mockImplementation(async ({ theme }: { theme: string }) => {
+    mockSettingsTheme(theme);
+  });
+  mockUseSaveSettings.mockReturnValue({
+    mutate: mockMutate,
+    mutateAsync,
+    isPending: false,
+    error: null,
+  });
+  return mutateAsync;
+}
+
 function mockMatchMedia(matches: boolean) {
   return stubMatchMedia((query) => (query === "(prefers-color-scheme: dark)" ? matches : false));
 }
@@ -403,19 +429,8 @@ describe("ThemeProvider", () => {
   });
 
   it("resolves a persisted auto config through the system and round-trips Auto/Dark/Light", async () => {
-    const mockMutateAsync = vi.fn().mockResolvedValue(undefined);
-    mockUseSaveSettings.mockReturnValue({
-      mutate: mockMutate,
-      mutateAsync: mockMutateAsync,
-      isPending: false,
-      error: null,
-    });
-    mockUseSettings.mockReturnValue({
-      data: { theme: "auto" },
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
+    const mockMutateAsync = mockSaveSettingsRefetching();
+    mockSettingsTheme("auto");
 
     let context: ThemeContextValue | undefined;
     render(
@@ -453,5 +468,35 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
     expect(localStorage.getItem("diffgazer-theme")).toBe("auto");
     expect(mockMutateAsync).toHaveBeenLastCalledWith({ theme: "auto" });
+  });
+
+  it("adopts a theme another surface saved after this tab's own pick settled", async () => {
+    mockSaveSettingsRefetching();
+    mockSettingsTheme("auto");
+
+    let context: ThemeContextValue | undefined;
+    const consumer = () => (
+      <ThemeProvider>
+        <ThemeConsumer
+          onRender={(ctx) => {
+            context = ctx;
+          }}
+        />
+      </ThemeProvider>
+    );
+    const { rerender } = render(consumer());
+
+    await act(async () => {
+      await context?.setTheme("dark");
+    });
+    expect(context?.theme).toBe("dark");
+
+    // A second tab or the TUI writes "light"; the refetched settings must reach
+    // this tab instead of staying shadowed by its own pick.
+    mockSettingsTheme("light");
+    rerender(consumer());
+
+    expect(context?.theme).toBe("light");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 });

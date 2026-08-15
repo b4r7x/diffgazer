@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import pc from "picocolors";
 import { cleanEmptyDirs } from "./fs/directories.js";
@@ -20,7 +20,7 @@ export interface WriteFilesResult {
   skipped: number;
   overwritten: number;
   newFiles: string[];
-  backups: Array<{ path: string; content: string }>;
+  backups: Array<{ path: string; content: Buffer }>;
   createdDirs: string[];
   results: Array<{ op: FileOp; result: WriteResult }>;
 }
@@ -37,13 +37,11 @@ function tryQuietly(fn: () => void, label: string): boolean {
 
 export function rollbackFiles(
   newFiles: string[],
-  backups: Array<{ path: string; content: string }>,
+  backups: Array<{ path: string; content: Buffer }>,
   createdDirs: string[],
 ): void {
   const results = [
-    ...backups.map((b) =>
-      tryQuietly(() => writeFileSafe(b.path, b.content, true), `restore ${b.path}`),
-    ),
+    ...backups.map((b) => tryQuietly(() => writeFileSync(b.path, b.content), `restore ${b.path}`)),
     ...newFiles.map((f) => tryQuietly(() => rmSync(f), `rollback ${f}`)),
   ];
   // Remove created dirs deepest-first: a parent only becomes empty once all its
@@ -80,10 +78,10 @@ function trackNewDir(dir: string, createdDirs: string[], createdDirSet: Set<stri
 function backupIfOverwriting(
   targetPath: string,
   overwrite: boolean,
-  backups: Array<{ path: string; content: string }>,
+  backups: Array<{ path: string; content: Buffer }>,
 ): void {
   if (!existsSync(targetPath) || !overwrite) return;
-  backups.push({ path: targetPath, content: readFileSync(targetPath, "utf-8") });
+  backups.push({ path: targetPath, content: readFileSync(targetPath) });
 }
 
 function logWriteResult(result: WriteResult, op: FileOp, newFiles: string[]): void {
@@ -116,7 +114,7 @@ function countResults(results: WriteResult[]): {
 
 export function writeFilesWithRollback(fileOps: FileOp[], overwrite: boolean): WriteFilesResult {
   const newFiles: string[] = [];
-  const backups: Array<{ path: string; content: string }> = [];
+  const backups: Array<{ path: string; content: Buffer }> = [];
   const createdDirs: string[] = [];
   const createdDirSet = new Set<string>();
   const results: WriteResult[] = [];

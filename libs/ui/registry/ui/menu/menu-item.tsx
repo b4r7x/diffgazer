@@ -44,7 +44,7 @@ export interface MenuItemProps<TId extends string = string>
   /** Decorative hotkey label rendered as [n]. Does not bind a key listener. */
   hotkey?: number | string;
   /**
-   * Leading icon rendered in the indicator slot. Replaces the default ▐/> indicator when
+   * Leading icon rendered in the indicator slot. Replaces the default ▌/> indicator when
    * provided.
    */
   icon?: ReactNode;
@@ -143,7 +143,7 @@ export function MenuItem<TId extends string = string>({
           isFocused={isFocused}
           isSelected={isSelected}
           value={value}
-          valueClassName={menuItemValue({ valueVariant, focused: isActive, active: isActive })}
+          valueClassName={menuItemValue({ valueVariant, active: isActive })}
           valueGlyph={MENU_VALUE_GLYPHS[valueVariant]}
           icon={icon}
         >

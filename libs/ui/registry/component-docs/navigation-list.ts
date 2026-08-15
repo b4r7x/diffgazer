@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const navigationListDoc: ComponentDoc = {
   description:
@@ -296,13 +296,14 @@ export const navigationListDoc: ComponentDoc = {
         type: '"success" | "warning" | "error" | "info" | "neutral"',
         required: false,
         defaultValue: '"neutral"',
-        description: "Badge color token. See Badge for full prop reference.",
+        description:
+          "Semantic color token. Picks foreground, background, border, and dot color together for the Badge. See Badge for full prop reference.",
       },
       size: {
         type: '"sm" | "md" | "lg"',
         required: false,
         defaultValue: '"sm"',
-        description: "Badge size token.",
+        description: "Padding and font-size / Badge size token.",
       },
       children: {
         type: "ReactNode",
@@ -349,6 +350,26 @@ export const navigationListDoc: ComponentDoc = {
         description:
           'Visual treatment. "section" shows uppercase headers with counts, "tree" shows indented hierarchy with ASCII connectors.',
       },
+      headerId: {
+        type: "string",
+        required: false,
+        defaultValue: null,
+        description: "Stable header identity. Defaults to a per-instance generated value.",
+      },
+      expandLabel: {
+        type: "string",
+        required: false,
+        defaultValue: '"expand"',
+        description:
+          "Accessible action word appended to the header name while collapsed. Override it to localize the disclosure verb.",
+      },
+      collapseLabel: {
+        type: "string",
+        required: false,
+        defaultValue: '"collapse"',
+        description:
+          "Accessible action word appended to the header name while expanded. Override it to localize the disclosure verb.",
+      },
       children: {
         type: "ReactNode",
         required: true,
@@ -361,7 +382,8 @@ export const navigationListDoc: ComponentDoc = {
         type: "number",
         required: true,
         defaultValue: null,
-        description: "Progress percentage (0-100).",
+        description:
+          "Progress percentage (0-100). Values are clamped to that range; non-finite values become zero.",
       },
       variant: {
         type: '"block" | "bar"',
@@ -374,7 +396,7 @@ export const navigationListDoc: ComponentDoc = {
         required: false,
         defaultValue: "10",
         description:
-          "Number of characters for the progress bar. Values are rounded down; negative and non-finite values become zero.",
+          "Number of characters for the progress bar. Values are rounded down and capped at 200; negative and non-finite values become zero.",
       },
       color: {
         type: '"auto" | "success" | "warning" | "error" | "muted"',

@@ -9,7 +9,7 @@ Every review you run gets saved, and the history screen is where you go back to 
 
 The screen is split into three panes. On the left, **Sections** groups your runs, with an "All" entry plus one entry per day that has reviews. The middle pane, **Reviews**, lists the runs in the selected section, newest first, each showing its short ID, when it ran, the branch, and a one-line summary of what it found. The right pane, **Insights**, reflects whichever run is selected: a severity breakdown, the list of issues in that run, and how long the run took.
 
-Pick a day in Sections to narrow the middle list to that day, or stay on "All" to see everything. The search box above the panes filters the run list by ID, so if you remember part of a run's identifier you can type it to jump straight to it. The runs themselves come from `GET /api/review/reviews`, which returns the saved reviews for the current project.
+Pick a day in Sections to narrow the middle list to that day, or stay on "All" to see everything. The search box above the panes filters the run list by run ID, branch (or the literal `staged` for a staged run), and project path, so part of an identifier, a branch name, or a path fragment all narrow the list. The runs themselves come from `GET /api/review/reviews`, which returns the saved reviews for the current project.
 
 ## Open a review
 

@@ -1,4 +1,4 @@
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { PRODUCT_REGISTRY, resolveCredentialEnvironmentVariable } from "@diffgazer/core/providers";
 import { HOSTED_API_PRODUCT_IDS, type HostedApiProductId } from "@diffgazer/core/schemas/config";
 import type { EvidenceKey, TerminalOutcome } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
@@ -10,7 +10,7 @@ import {
 
 export const HOSTED_LIVE_PROBE_OPT_IN_ENV = "DIFFGAZER_LIVE_PROBES" as const;
 
-export type HostedConformanceRequirement = "REQ-084" | "REQ-085" | "REQ-086";
+type HostedConformanceRequirement = "REQ-084" | "REQ-085" | "REQ-086";
 
 export type HostedConformanceSkipReason =
   | "live-probes-disabled"
@@ -37,7 +37,7 @@ export type HostedMockConformanceCase = Readonly<{
   id: string;
   requirement: HostedConformanceRequirement;
   productId: HostedApiProductId;
-  evidencePatch?: Partial<EvidenceKey>;
+  evidencePatch?: Partial<Extract<EvidenceKey, { transportFamily: "hosted-api" }>>;
   prompt?: string;
   workspaceAccountId?: string | null;
   aborted?: boolean;
@@ -45,6 +45,8 @@ export type HostedMockConformanceCase = Readonly<{
   fetch: typeof fetch;
   expectedOutcome: TerminalOutcome;
   expectedAttemptCount?: number;
+  /** Findings the completed case must return; a non-completed outcome must return none. */
+  expectedFindingsCount?: number;
   expectedUsageAvailability?: string;
   /** Endpoint the case requires the adapter to call; asserts regional routing. */
   expectedEndpoint?: string;
@@ -108,9 +110,9 @@ function defaultEndpoint(productId: HostedApiProductId, region?: string | null):
   return endpoints[0]?.endpoint ?? "https://example.invalid/v1";
 }
 
-export function evidenceKeyFor(
+function evidenceKeyFor(
   productId: HostedApiProductId,
-  patch: Partial<EvidenceKey> = {},
+  patch: Partial<Extract<EvidenceKey, { transportFamily: "hosted-api" }>> = {},
 ): EvidenceKey {
   const product = PRODUCT_REGISTRY[productId];
   const endpoint = product.configuration.endpoints[0];
@@ -263,11 +265,16 @@ export async function runHostedMockConformanceCase(
     }),
   });
 
+  const findingsCount = result.result.issues.length;
+  const findingsAsExpected =
+    testCase.expectedOutcome === "completed"
+      ? testCase.expectedFindingsCount === undefined ||
+        findingsCount === testCase.expectedFindingsCount
+      : findingsCount === 0;
+
   const passed =
     result.receipt.outcome === testCase.expectedOutcome &&
-    result.result.issues.length ===
-      (testCase.expectedOutcome === "completed" ? result.result.issues.length : 0) &&
-    (testCase.expectedOutcome !== "completed" ? result.result.issues.length === 0 : true) &&
+    findingsAsExpected &&
     (testCase.expectedAttemptCount === undefined ||
       result.receipt.attemptCount === testCase.expectedAttemptCount) &&
     (testCase.expectedUsageAvailability === undefined ||
@@ -283,7 +290,7 @@ export async function runHostedMockConformanceCase(
     outcome: result.receipt.outcome,
     attemptCount: result.receipt.attemptCount,
     usageAvailability: result.receipt.usageAvailability,
-    findingsCount: result.result.issues.length,
+    findingsCount,
     requestedEndpoint,
     source: "mock",
   };
@@ -407,6 +414,7 @@ export const HOSTED_REQ_085_CASES: readonly HostedMockConformanceCase[] = [
     productId: "zai",
     fetch: successFetch("zai", { issues: [makeIssue()] }),
     expectedOutcome: "completed",
+    expectedFindingsCount: 1,
   },
   {
     id: "REQ-085:zai-malformed-output-retry-limit",
@@ -443,6 +451,7 @@ export const HOSTED_REQ_085_CASES: readonly HostedMockConformanceCase[] = [
     workspaceAccountId: "ws-conformance-123",
     fetch: successFetch("qwen", { issues: [] }),
     expectedOutcome: "completed",
+    expectedFindingsCount: 0,
   },
 ];
 
@@ -453,6 +462,7 @@ type MistralBehaviour = Readonly<{
   fetch: () => typeof fetch;
   expectedOutcome: HostedMockConformanceCase["expectedOutcome"];
   expectedAttemptCount: number;
+  expectedFindingsCount?: number;
   prompt?: string;
 }>;
 
@@ -462,6 +472,7 @@ const MISTRAL_BEHAVIOURS: readonly MistralBehaviour[] = [
     fetch: () => successFetch("mistral", { issues: [] }),
     expectedOutcome: "completed",
     expectedAttemptCount: 1,
+    expectedFindingsCount: 0,
     prompt: LONG_DIFF_PROMPT,
   },
   {
@@ -469,6 +480,7 @@ const MISTRAL_BEHAVIOURS: readonly MistralBehaviour[] = [
     fetch: () => successFetch("mistral", mistralNullableReview),
     expectedOutcome: "completed",
     expectedAttemptCount: 1,
+    expectedFindingsCount: mistralNullableReview.issues.length,
   },
   {
     behaviour: "refusal",
@@ -521,31 +533,22 @@ export const HOSTED_REQ_086_CASES: readonly HostedMockConformanceCase[] = MISTRA
       fetch: behaviour.fetch(),
       expectedOutcome: behaviour.expectedOutcome,
       expectedAttemptCount: behaviour.expectedAttemptCount,
+      ...(behaviour.expectedFindingsCount === undefined
+        ? {}
+        : { expectedFindingsCount: behaviour.expectedFindingsCount }),
       expectedEndpoint: defaultEndpoint("mistral", region),
     })),
 );
 
 export const HOSTED_LIVE_PROBE_DESCRIPTORS: readonly HostedLiveProbeDescriptor[] =
   HOSTED_API_PRODUCT_IDS.map((productId) => {
-    const credentialEnvByProduct: Record<HostedApiProductId, string> = {
-      gemini: "GOOGLE_API_KEY",
-      zai: "ZAI_API_KEY",
-      openrouter: "OPENROUTER_API_KEY",
-      groq: "GROQ_API_KEY",
-      cerebras: "CEREBRAS_API_KEY",
-      deepseek: "DEEPSEEK_API_KEY",
-      qwen: "QWEN_API_KEY",
-      moonshot: "MOONSHOT_API_KEY",
-      mistral: "MISTRAL_API_KEY",
-    };
-
     let region: string | null = null;
     if (productId === "mistral") region = "global";
     if (productId === "qwen") region = "international";
 
     return {
       productId,
-      credentialEnv: credentialEnvByProduct[productId],
+      credentialEnv: resolveCredentialEnvironmentVariable(productId),
       modelId: suggestedModelId(productId),
       region,
       normalizedEndpoint:

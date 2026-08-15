@@ -22,6 +22,8 @@
   --base-danger: #f85149;
   --base-warning: #d29922;
   --base-border: #30363d;
+  /* Resting form-control edge: ≥3:1 against canvas and input-well (#777777). */
+  --control-border: #777777;
   --base-muted: #8b949e;
   --base-input-bg: #010409;
   --base-selection: #1f2428;
@@ -49,6 +51,7 @@
   --border-strong: #484f58;
   --surface-1: #161b22;
   --surface-2: #1c2128;
+  --corner-label-foreground: var(--muted-foreground);
 
   /* The lib mixes the hard shadow from --base-fg, which is a near-white in
      GitHub-dark and paints a pale slab next to dialogs. Deriving it from the
@@ -82,6 +85,8 @@
   --base-danger: #cf222e;
   --base-warning: #9a6700;
   --base-border: #d0d7de;
+  /* Resting form-control edge: ≥3:1 against canvas and input-well (#6e6e6e). */
+  --control-border: #6e6e6e;
   --base-muted: #656d76;
 
   /* Semantic remaps that diverge from the lib light block, mirroring the dark
@@ -106,6 +111,8 @@
   --border-strong: #8c959f;
   --surface-1: #f6f8fa;
   --surface-2: #eaedf1;
+  /* Bordered corner labels: ≥4.5:1 on --surface-2 (#525960 on #eaedf1). */
+  --corner-label-foreground: #525960;
 
   /* Domain-specific tokens (diffgazer-only) */
   --severity-blocker: var(--base-danger);
@@ -144,17 +151,26 @@
   --color-status-pending: var(--status-pending);
 
   --color-input-well: var(--input-well);
+  --color-control-border: var(--control-border);
+  --color-corner-label-foreground: var(--corner-label-foreground);
 }
 
 @media (prefers-contrast: more) {
   [data-theme="dark"] {
     --base-border: #777777;
+    --base-dim: #b3b3b3;
     --base-muted: #999999;
     --base-accent: #b3b3b3;
+    --control-border: #999999;
+    --border-strong: #999999;
   }
 
   [data-theme="light"] {
     --base-border: #6e6e6e;
+    --base-dim: #4a4a4a;
     --base-muted: #555555;
+    --control-border: #555555;
+    --border-strong: #555555;
+    --corner-label-foreground: #4a4a4a;
   }
 }

@@ -1,5 +1,3 @@
-"use client";
-
 import { type TocProps, Toc as TocRoot } from "./toc";
 import { TocItem, type TocItemProps, type TocItemRenderProps, tocItemVariants } from "./toc-item";
 import { TocList, type TocListProps } from "./toc-list";

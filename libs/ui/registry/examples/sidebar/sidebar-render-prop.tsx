@@ -1,4 +1,5 @@
-import type { Ref } from "react";
+"use client";
+
 import {
   Sidebar,
   SidebarContent,
@@ -22,7 +23,7 @@ export default function SidebarRenderProp() {
           <SidebarSectionTitle>Pages</SidebarSectionTitle>
           <SidebarItem active>
             {({ itemPrefix, ref, ...itemProps }) => (
-              <a {...itemProps} ref={ref as Ref<HTMLAnchorElement>} href="/dashboard">
+              <a {...itemProps} ref={ref} href="/dashboard">
                 {itemPrefix}
                 <SidebarItemLabel>Dashboard</SidebarItemLabel>
                 <SidebarItemBadge>
@@ -33,7 +34,7 @@ export default function SidebarRenderProp() {
           </SidebarItem>
           <SidebarItem>
             {({ itemPrefix, ref, ...itemProps }) => (
-              <a {...itemProps} ref={ref as Ref<HTMLAnchorElement>} href="/settings">
+              <a {...itemProps} ref={ref} href="/settings">
                 {itemPrefix}
                 <SidebarItemLabel>Settings</SidebarItemLabel>
               </a>
@@ -41,7 +42,7 @@ export default function SidebarRenderProp() {
           </SidebarItem>
           <SidebarItem disabled>
             {({ itemPrefix, ref, disabled, ...itemProps }) => (
-              <a {...itemProps} ref={ref as Ref<HTMLAnchorElement>} aria-disabled={disabled}>
+              <a {...itemProps} ref={ref} aria-disabled={disabled}>
                 {itemPrefix}
                 <SidebarItemLabel>Admin</SidebarItemLabel>
               </a>

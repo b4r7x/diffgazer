@@ -7,7 +7,7 @@ import {
   buildReviewSummary,
 } from "@diffgazer/core/review";
 import type { LensStat } from "@diffgazer/core/schemas/events";
-import { BACK_SHORTCUT, type IssuePreview } from "@diffgazer/core/schemas/presentation";
+import { BACK_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue, ReviewSeverity } from "@diffgazer/core/schemas/review";
 import { DECLINE, useKey, useScope } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";
@@ -47,7 +47,7 @@ export function ReviewSummaryView({
   ].filter((notice): notice is string => notice !== null);
   const lensRows = buildLensSummaryRows(lensStats);
 
-  const topIssues: IssuePreview[] = issues.slice(0, 3).map((issue) => ({
+  const topIssues = issues.slice(0, 3).map((issue) => ({
     id: issue.id,
     title: issue.title,
     file: issue.file,

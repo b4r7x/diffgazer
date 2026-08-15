@@ -1,7 +1,7 @@
 "use client";
 
 import { useFocusRestore } from "@diffgazer/keys";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function UseFocusRestoreFallback() {
   const [open, setOpen] = useState(false);
@@ -13,10 +13,13 @@ export default function UseFocusRestoreFallback() {
   // nothing was focused at open time so focus never lands on <body>.
   const focusRestore = useFocusRestore({ fallback: anchor });
 
+  useEffect(() => {
+    if (open) paletteRef.current?.focus();
+  }, [open]);
+
   const openPalette = () => {
     focusRestore.capture();
     setOpen(true);
-    queueMicrotask(() => paletteRef.current?.focus());
   };
 
   const closePalette = () => {

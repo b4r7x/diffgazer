@@ -55,6 +55,17 @@ describe("log default level", () => {
     expect(logSpy).toHaveBeenCalledTimes(1);
   });
 
+  it("ignores an inherited Object.prototype key as a log level", () => {
+    process.env.DIFFGAZER_PACKAGED = "1";
+    process.env.DIFFGAZER_LOG_LEVEL = "toString";
+
+    log("info", "request", { path: "/api/health" });
+    expect(logSpy).not.toHaveBeenCalled();
+
+    log("warn", "slow_request", { path: "/api/review" });
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+  });
+
   it("serializes Error field values with message and stack", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const error = new Error("disk unavailable");

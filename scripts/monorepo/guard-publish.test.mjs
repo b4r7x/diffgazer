@@ -47,6 +47,12 @@ function runPublisherChild({
 }) {
   const directory = mkdtempSync(path.join(tmpdir(), "diffgazer-publish-guard-"));
   temporaryDirectories.push(directory);
+  writeFileSync(path.join(directory, "README.md"), "fixture\n");
+  runGit(directory, ["init", "--quiet"]);
+  runGit(directory, ["config", "user.email", "fixture@example.test"]);
+  runGit(directory, ["config", "user.name", "Fixture"]);
+  runGit(directory, ["add", "."]);
+  runGit(directory, ["commit", "--quiet", "-m", "init"]);
   const binDirectory = path.join(directory, "bin");
   const logFile = path.join(directory, "publish.log");
   const fakePnpm = path.join(binDirectory, "pnpm");
@@ -86,7 +92,7 @@ publishPendingPackages({
 });`,
     ],
     {
-      cwd: path.resolve("."),
+      cwd: directory,
       encoding: "utf8",
       env: {
         ...process.env,
@@ -103,7 +109,14 @@ publishPendingPackages({
         .filter(Boolean)
         .map((line) => JSON.parse(line))
     : [];
-  return { child, invocations };
+  const tags = spawnSync("git", ["tag", "-l"], { cwd: directory, encoding: "utf8" });
+  assert.equal(tags.status, 0, tags.stderr);
+  return {
+    child,
+    directory,
+    invocations,
+    tags: tags.stdout.trim().split("\n").filter(Boolean),
+  };
 }
 
 function writeExecutable(file, source) {
@@ -148,6 +161,9 @@ function createMainFixture({ versions, registryVersions = publishedVersionsByNam
   for (const [file, name, previousVersion] of manifests) {
     writePackage(directory, file, name, versions[name] ?? previousVersion);
   }
+  // Always change a non-manifest file so a fixture can model a commit that
+  // versions nothing — the ordinary changeset-free push to main.
+  writeFileSync(path.join(directory, "README.md"), "commit\n");
   runGit(directory, ["add", "."]);
   runGit(directory, ["commit", "--quiet", "-m", "version packages"]);
 
@@ -361,7 +377,7 @@ test("default pending set rejects a gated target without starting pnpm", () => {
 });
 
 test("reports successfully published versions in the changesets action tag format", () => {
-  const { child } = runPublisherChild({
+  const { child, directory, tags } = runPublisherChild({
     allowlist: ["diffgazer", "@diffgazer/add"],
     pendingNames: ["diffgazer", "@diffgazer/add"],
   });
@@ -371,6 +387,33 @@ test("reports successfully published versions in the changesets action tag forma
     "New tag: diffgazer@0.1.4",
     "New tag: @diffgazer/add@0.1.1",
   ]);
+  assert.deepEqual(tags.sort(), ["@diffgazer/add@0.1.1", "diffgazer@0.1.4"].sort());
+
+  const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: directory, encoding: "utf8" });
+  assert.equal(head.status, 0, head.stderr);
+  for (const tag of tags) {
+    const taggedCommit = spawnSync("git", ["rev-parse", `${tag}^{commit}`], {
+      cwd: directory,
+      encoding: "utf8",
+    });
+    assert.equal(taggedCommit.status, 0, taggedCommit.stderr);
+    assert.equal(taggedCommit.stdout.trim(), head.stdout.trim());
+  }
+});
+
+test("creates release tags for recovered packages without republishing", () => {
+  const { child, invocations, tags } = runPublisherChild({
+    allowlist: ["diffgazer", "@diffgazer/add"],
+    pendingNames: ["diffgazer", "@diffgazer/add"],
+    registryVersions: {
+      ...publishedVersionsByName,
+      diffgazer: ["0.1.3", "0.1.4"],
+    },
+  });
+
+  assert.equal(child.status, 0, child.stderr);
+  assert.deepEqual(invocations, [["--filter", "@diffgazer/add", "publish", "--no-git-checks"]]);
+  assert.deepEqual(tags.sort(), ["@diffgazer/add@0.1.1", "diffgazer@0.1.4"].sort());
 });
 
 test("recovers a partial publication without republishing the completed package", () => {
@@ -404,6 +447,34 @@ test("recovers a partial publication without republishing the completed package"
     "New tag: diffgazer@0.1.4",
     "New tag: @diffgazer/add@0.1.1",
   ]);
+});
+
+// changesets/action turns every `New tag:` line into a pushed tag and a
+// GitHub Release. The release workflow names `diffgazer` explicitly, so it runs
+// this guard on every changeset-free push to main too; announcing the live
+// version there asks GitHub for a release that already exists.
+test("a commit that versions nothing announces no tag for an already published version", () => {
+  const { child, invocations } = runDirectScriptChild({
+    requestedNames: ["diffgazer"],
+    versions: {},
+    registryVersions: { ...publishedVersionsByName, diffgazer: ["0.1.3"] },
+  });
+
+  assert.equal(child.status, 0, child.stderr);
+  assert.deepEqual(invocations, []);
+  assert.doesNotMatch(child.stdout, /^New tag:/m);
+});
+
+test("a retry at the version commit re-announces the recovered version", () => {
+  const { child, invocations } = runDirectScriptChild({
+    requestedNames: ["diffgazer"],
+    versions: { diffgazer: "0.1.4" },
+    registryVersions: { ...publishedVersionsByName, diffgazer: ["0.1.3", "0.1.4"] },
+  });
+
+  assert.equal(child.status, 0, child.stderr);
+  assert.deepEqual(invocations, []);
+  assert.deepEqual(child.stdout.match(/^New tag: .+$/gm), ["New tag: diffgazer@0.1.4"]);
 });
 
 test("does not report a tag when an unpublished package fails", () => {

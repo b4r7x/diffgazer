@@ -17,7 +17,6 @@ import { useCanGoBack, useLocation, useRouter } from "@tanstack/react-router";
 import { type KeyboardEvent, useRef, useState } from "react";
 import { RESET_FILTER_VALUE } from "@/features/review/components/severity-filter-group";
 import { performBackAction, resolveBackAction } from "@/lib/back-navigation";
-import { getMainContent } from "@/lib/main-content";
 import { useReviewDetailsTabKeyboard } from "./use-details-tab-keyboard";
 import { useIssueDetailsTabs } from "./use-issue-details-tabs";
 import { useIssueSelection } from "./use-issue-selection";
@@ -188,8 +187,6 @@ export function useReviewResultsKeyboard({
     onZoneChange: changeFocusZone,
     scope: REVIEW_SCOPE,
     tabCycle: ["filters", "list", "details"],
-    tabCycleScope: "document",
-    tabCycleBoundary: getMainContent,
     focus: {
       // Mount focus always lands on the initial zone's target (see initialZone)
       // so keyboard users never start stranded on document.body.
@@ -322,6 +319,7 @@ export function useReviewResultsKeyboard({
     enabled: focusZone === "details",
     selectedIssue,
     activeTab,
+    availableTabs,
     detailsScrollRef,
     moveTab,
     scrollDetails,

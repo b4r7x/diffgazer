@@ -129,19 +129,13 @@ describe("client configuration actions", () => {
     ).toBe(false);
   });
 
-  it("requires a positive expected revision only on update and delete", () => {
+  it("requires a positive expected revision on update, and on delete only when one is asserted", () => {
     expect(
       ClientConfigurationActionSchema.safeParse({
         action: "update",
         configurationId: "configuration-1",
         input: hostedInput,
         acknowledgement,
-      }).success,
-    ).toBe(false);
-    expect(
-      ClientConfigurationActionSchema.safeParse({
-        action: "delete",
-        configurationId: "configuration-1",
       }).success,
     ).toBe(false);
     expect(
@@ -160,7 +154,18 @@ describe("client configuration actions", () => {
     ).toBe(false);
   });
 
-  it("keeps create provisional and binds acknowledgement only through update", () => {
+  // A record the build could not decode never showed a revision, so its delete
+  // asserts none. The server still refuses one it can describe on that request.
+  it("accepts a delete that asserts no revision", () => {
+    expect(
+      ClientConfigurationActionSchema.safeParse({
+        action: "delete",
+        configurationId: "configuration-1",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("allows optional acknowledgement on create and requires it on update", () => {
     expect(
       ClientConfigurationActionSchema.safeParse({ action: "create", input: hostedInput }).success,
     ).toBe(true);
@@ -170,7 +175,7 @@ describe("client configuration actions", () => {
         input: hostedInput,
         acknowledgement,
       }).success,
-    ).toBe(false);
+    ).toBe(true);
     expect(
       ClientConfigurationActionSchema.safeParse({
         action: "update",
@@ -459,20 +464,14 @@ describe("client configuration responses", () => {
     ).toBe(false);
   });
 
-  it("requires every client-safe response detail to bind to a configuration", () => {
-    for (const detail of [
-      { notices: [notice] },
-      { availableActions: ["inspect"] },
-      { readiness: acknowledgementRequiredReadiness },
-    ]) {
-      expect(
-        ClientConfigurationActionResponseSchema.safeParse({
-          action: "inspect",
-          status: "failed",
-          ...detail,
-        }).success,
-      ).toBe(false);
-    }
+  it("requires readiness to bind to a configuration", () => {
+    expect(
+      ClientConfigurationActionResponseSchema.safeParse({
+        action: "inspect",
+        status: "failed",
+        readiness: acknowledgementRequiredReadiness,
+      }).success,
+    ).toBe(false);
 
     expect(
       ClientConfigurationActionResponseSchema.safeParse({
@@ -672,7 +671,10 @@ describe("client configuration responses", () => {
       ClientConfigurationActionResponseSchema.safeParse({
         action: "inspect",
         status: "succeeded",
-        notices: [{ ...notice, billing: ["apiKey: secret-value"] }],
+        configuration: {
+          ...hostedSummary,
+          notices: [{ ...notice, billing: ["apiKey: secret-value"] }],
+        },
       }).success,
     ).toBe(false);
   });
@@ -684,16 +686,16 @@ describe("client configuration responses", () => {
     ["secret identifier", "secret id secret-123"],
     ["account secret identifier", "account-secret-id account-123"],
     ["workspace secret identifier", "workspace secret id workspace-123"],
-    ["control character", "safe\u0000notice"],
   ])("rejects %s in client-safe billing and privacy text", (_name, line) => {
     for (const field of ["billing", "privacy"] as const) {
-      expect(
-        ClientConfigurationActionResponseSchema.safeParse({
-          action: "inspect",
-          status: "succeeded",
-          notices: [{ ...notice, [field]: [line] }],
-        }).success,
-      ).toBe(false);
+      const result = ClientConfigurationNoticeSchema.safeParse({
+        ...notice,
+        [field]: [line],
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path[0] === field)).toBe(true);
+      }
     }
   });
 
@@ -703,12 +705,10 @@ describe("client configuration responses", () => {
     "DIFFGAZER_API_KEY",
     "api-key-secret",
   ])("rejects secret-bearing notice id %s", (id) => {
-    expect(
-      ClientConfigurationActionResponseSchema.safeParse({
-        action: "inspect",
-        status: "succeeded",
-        notices: [{ ...notice, id }],
-      }).success,
-    ).toBe(false);
+    const result = ClientConfigurationNoticeSchema.safeParse({ ...notice, id });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path[0] === "id")).toBe(true);
+    }
   });
 });

@@ -1,4 +1,6 @@
 import type { MDXComponents } from "mdx/types";
+import { lazy } from "react";
+import { DiffgazerPreview } from "@/components/diffgazer-preview";
 import { AccessibilityNotes } from "@/components/docs-mdx/blocks/accessibility-notes";
 import { APIReference } from "@/components/docs-mdx/blocks/api-reference";
 import { ConsumptionBlock } from "@/components/docs-mdx/blocks/consumption";
@@ -14,11 +16,13 @@ import { Step, Steps } from "@/components/docs-mdx/blocks/steps";
 import { UsageSnippet } from "@/components/docs-mdx/blocks/usage-snippet";
 import { markdownMdxComponents } from "@/components/docs-mdx/markdown-renderers";
 import { ComponentDocScaffold, HookDocScaffold } from "@/components/docs-mdx/scaffolds";
-import { HookSource, LibraryHookSource } from "@/components/hook-source";
 import { ColorGrid } from "@/features/theme/components/color-grid";
-import { DiffgazerPreview } from "@/features/theme/components/diffgazer-preview";
 import { ThemePlayground } from "@/features/theme/components/playground";
 import { VariableDiagram } from "@/features/theme/components/variable-diagram";
+
+const LibraryHookSource = lazy(() =>
+  import("@/components/hook-source").then((module) => ({ default: module.LibraryHookSource })),
+);
 
 const mdxComponents: MDXComponents = {
   ...markdownMdxComponents,
@@ -26,7 +30,6 @@ const mdxComponents: MDXComponents = {
   VariableDiagram,
   ColorGrid,
   DiffgazerPreview,
-  HookSource,
   LibraryHookSource,
   Example,
   Examples,

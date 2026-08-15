@@ -20,13 +20,6 @@ function resolveDescribedByText(field: HTMLElement): string | null {
   return parts.length === 0 ? null : parts.join(" ");
 }
 
-function matchesMessage(actual: string | null, expected: string | RegExp): boolean {
-  if (actual === null) {
-    return false;
-  }
-  return typeof expected === "string" ? actual.includes(expected) : expected.test(actual);
-}
-
 /**
  * Assert the field is in invalid state with the matching message visible via aria-describedby chain.
  * Reads aria-invalid, then resolves any aria-describedby ID -> element -> textContent.
@@ -38,13 +31,8 @@ export function expectFieldInvalid(field: HTMLElement, expectedMessage?: string 
     return;
   }
 
-  const describedByText = resolveDescribedByText(field);
-  if (matchesMessage(describedByText, expectedMessage)) {
-    return;
-  }
-
   expect(
-    describedByText ?? "",
+    resolveDescribedByText(field) ?? "",
     `field should expose error message ${String(expectedMessage)} via aria-describedby`,
   ).toMatch(expectedMessage);
 }
@@ -108,14 +96,9 @@ export async function fillField(
 }
 
 /**
- * Submit the form by clicking the explicitly-passed button, or the button whose
- * accessible name matches /submit|save|create|confirm|continue/i.
+ * Submit the form by clicking the button whose accessible name matches
+ * /submit|save|create|confirm|continue/i.
  */
-export async function submitForm(user: UserEvent, submitButton?: HTMLElement): Promise<void> {
-  if (submitButton) {
-    await user.click(submitButton);
-    return;
-  }
-
+export async function submitForm(user: UserEvent): Promise<void> {
   await user.click(screen.getByRole("button", { name: SUBMIT_LABEL_PATTERN }));
 }

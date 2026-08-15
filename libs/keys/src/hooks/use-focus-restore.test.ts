@@ -74,6 +74,41 @@ describe("useFocusRestore", () => {
     expect(document.activeElement).toBe(outsideTrigger);
   });
 
+  it("preserves inherited fallback targets when capture runs again on the same entry", () => {
+    const outsideTrigger = button("Outside");
+    const parentControl = button("Parent control");
+    const childControl = button("Child control");
+    const parentRestore = renderHook(() => useFocusRestore({ restoreOnUnmount: false }));
+    const childRestore = renderHook(() => useFocusRestore({ restoreOnUnmount: false }));
+
+    outsideTrigger.focus();
+    act(() => {
+      parentRestore.result.current.capture();
+    });
+
+    parentControl.focus();
+    act(() => {
+      childRestore.result.current.capture();
+    });
+
+    childControl.focus();
+    act(() => {
+      expect(parentRestore.result.current.restore()).toBe(false);
+    });
+
+    childControl.focus();
+    act(() => {
+      childRestore.result.current.capture();
+    });
+
+    childControl.remove();
+
+    act(() => {
+      expect(childRestore.result.current.restore()).toBe(true);
+    });
+    expect(document.activeElement).toBe(outsideTrigger);
+  });
+
   it("restores the nearest surviving target from a three-level fallback chain", () => {
     const outsideTrigger = button("Outside");
     const outerControl = button("Outer control");

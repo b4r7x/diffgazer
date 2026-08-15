@@ -10,9 +10,7 @@ export {
   buildConfigPayload,
   buildSettingsPayload,
   type SaveWizardCallbacks,
-  type SaveWizardResult,
   type SettingsPayload,
-  saveWizard,
 } from "./save-wizard.js";
 export {
   buildSetupPlan,
@@ -39,5 +37,4 @@ export {
   type UseWizardStateOptions,
   type UseWizardStateResult,
   useWizardState,
-  type WizardSaveCallbacks,
 } from "./use-wizard-state.js";

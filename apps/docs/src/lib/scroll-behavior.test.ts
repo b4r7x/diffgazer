@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
 import { afterEach, describe, expect, it } from "vitest";
 import { scrollBehaviorFor } from "./scroll-behavior";

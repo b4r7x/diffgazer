@@ -1,14 +1,14 @@
 import { execFile } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import * as clack from "@clack/prompts";
 import type { PackageManager } from "./detect.js";
 import { readPackageJson } from "./detect.js";
 import { PACKAGE_MANAGER_LOCKFILES } from "./lockfiles.js";
+import { sanitizeTerminalText } from "./sanitize-terminal.js";
 import { error, isSilentMode } from "./terminal.js";
 
 const VALID_PKG_NAME = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/i;
-const VERSION_SPEC_PATTERN = /^[a-zA-Z0-9._\-~/^*@:+]+$/;
 const REGISTRY_VERSION_SOURCE_PATTERN = /^[a-zA-Z0-9._~^*+<>=| -]+$/;
 
 const REJECTED_PROTOCOLS = [
@@ -81,18 +81,25 @@ export function normalizeVersionSpec(raw: unknown, packageName = "package"): str
   if (spec.startsWith("-")) {
     throw new Error(`Invalid ${packageName} version "${spec}".`);
   }
-  if (!VERSION_SPEC_PATTERN.test(spec)) {
+  const lower = spec.toLowerCase();
+  if (spec.startsWith("workspace:")) {
     throw new Error(
-      `Invalid ${packageName} version "${spec}". Use a semver, range, or dist tag (for example: latest, 0.1.1, ^0.1.0).`,
+      `Invalid ${packageName} version "${spec}". Workspace protocol sources are not allowed for dependency installation.`,
     );
   }
-  const lower = spec.toLowerCase();
   for (const protocol of REJECTED_PROTOCOLS) {
     if (lower.startsWith(protocol)) {
       throw new Error(
         `Invalid ${packageName} version "${spec}". Protocol or alias sources are not allowed.`,
       );
     }
+  }
+  // Same allowlist `validateDependencyProtocol` enforces on the composed
+  // dependency string, so an accepted spec cannot fail later during install.
+  if (!REGISTRY_VERSION_SOURCE_PATTERN.test(spec)) {
+    throw new Error(
+      `Invalid ${packageName} version "${spec}". Use a semver, range, or dist tag (for example: latest, 0.1.1, ^0.1.0).`,
+    );
   }
   return spec;
 }
@@ -138,16 +145,111 @@ function validatePackageNames(deps: string[]): void {
   }
 }
 
-async function installDeps(pm: PackageManager, deps: string[], cwd: string): Promise<void> {
+const WINDOWS_PACKAGE_MANAGER_SHIM: Record<PackageManager, string> = {
+  npm: "npm.cmd",
+  pnpm: "pnpm.cmd",
+  yarn: "yarn.cmd",
+  bun: "bun.exe",
+};
+
+export interface PackageManagerLaunch {
+  executable: string;
+  args: string[];
+  /** Pass quoted `/c` payloads through CreateProcess without libuv re-quoting. */
+  windowsVerbatimArguments?: boolean;
+}
+
+/** Quote one argv token for a `cmd.exe /s /c` payload so metacharacters stay literal. */
+function quoteCmdMetaArg(arg: string): string {
+  return `"${arg.replace(/"/g, '""')}"`;
+}
+
+/**
+ * Build a single `/c` command string for `cmd.exe /d /s /c`.
+ * Outer quotes are stripped by `/s`, leaving quoted shim + argv tokens intact.
+ */
+function buildWindowsCmdPayload(shim: string, commandArgs: string[]): string {
+  const quoted = [shim, ...commandArgs].map(quoteCmdMetaArg).join(" ");
+  return `"${quoted}"`;
+}
+
+/**
+ * Find a Windows package-manager shim on PATH.
+ * Both `cmd.exe` and libuv resolve a bare command name against the working
+ * directory first, so a `pnpm.cmd` shipped in the target project would win over
+ * the real package manager; only PATH entries are searched here. Empty and
+ * relative entries (a stray `;;` or `.`) are skipped because `resolve` would
+ * anchor them to that same working directory.
+ */
+function resolveWindowsShimPath(shim: string): string {
+  for (const entry of (process.env.PATH ?? "").split(";")) {
+    const dir = entry.trim().replace(/^"(.*)"$/, "$1");
+    if (!isAbsolute(dir)) continue;
+    const candidate = resolve(dir, shim);
+    if (existsSync(candidate)) return candidate;
+  }
+  throw new Error(`Could not find ${shim} on PATH.`);
+}
+
+/**
+ * Resolve the child-process launch target for a package manager.
+ * On Windows, npm/pnpm/yarn `.cmd` shims are invoked through `cmd.exe` so Node
+ * does not spawn batch files directly (CVE-2024-27980 / EINVAL on Node >=22).
+ * argv is passed as one quoted `/c` payload with `windowsVerbatimArguments` so
+ * cmd metacharacters (`^`, `|`, `<`, `>`) in version specs are not reinterpreted.
+ */
+export function resolvePackageManagerLaunch(
+  pm: PackageManager,
+  commandArgs: string[],
+): PackageManagerLaunch {
+  if (process.platform !== "win32") {
+    return { executable: pm, args: commandArgs };
+  }
+
+  const shim = resolveWindowsShimPath(WINDOWS_PACKAGE_MANAGER_SHIM[pm]);
+  if (pm === "bun") {
+    return { executable: shim, args: commandArgs };
+  }
+
+  return {
+    executable: process.env.ComSpec ?? "cmd.exe",
+    args: ["/d", "/s", "/c", buildWindowsCmdPayload(shim, commandArgs)],
+    windowsVerbatimArguments: true,
+  };
+}
+
+async function installDeps(
+  pm: PackageManager,
+  deps: string[],
+  cwd: string,
+  abortSignal?: AbortSignal,
+): Promise<void> {
   if (deps.length === 0) return;
+  if (abortSignal?.aborted) {
+    throw abortSignal.reason ?? new Error("Dependency installation aborted.");
+  }
   validatePackageNames(deps);
 
-  const args = pm === "npm" ? ["install", ...deps] : ["add", ...deps];
+  const commandArgs = pm === "npm" ? ["install", ...deps] : ["add", ...deps];
+  const { executable, args, windowsVerbatimArguments } = resolvePackageManagerLaunch(
+    pm,
+    commandArgs,
+  );
+  const execOptions = {
+    cwd,
+    timeout: 120_000,
+    signal: abortSignal,
+    ...(windowsVerbatimArguments ? { windowsVerbatimArguments: true as const } : {}),
+  };
   return new Promise((res, reject) => {
-    execFile(pm, args, { cwd, timeout: 120_000 }, (err, _stdout, stderr) => {
+    execFile(executable, args, execOptions, (err, _stdout, stderr) => {
+      if (abortSignal?.aborted) {
+        reject(abortSignal.reason ?? new Error("Dependency installation aborted."));
+        return;
+      }
       if (err) {
         const msg = stderr?.trim();
-        if (msg) reject(new Error(`${pm} install failed:\n${msg}`));
+        if (msg) reject(new Error(`${pm} install failed:\n${sanitizeTerminalText(msg)}`));
         else reject(err);
         return;
       }
@@ -176,12 +278,15 @@ export async function installDepsWithSpinner(
   pm: PackageManager,
   deps: string[],
   cwd: string,
+  abortSignal?: AbortSignal,
 ): Promise<boolean> {
   if (isSilentMode()) {
     try {
-      await installDeps(pm, deps, cwd);
+      await installDeps(pm, deps, cwd, abortSignal);
       return true;
-    } catch {
+    } catch (e) {
+      if (abortSignal?.aborted) throw e;
+      logInstallError(e, pm, deps);
       return false;
     }
   }
@@ -189,11 +294,12 @@ export async function installDepsWithSpinner(
   const s = clack.spinner();
   s.start("Installing dependencies...");
   try {
-    await installDeps(pm, deps, cwd);
+    await installDeps(pm, deps, cwd, abortSignal);
     s.stop(`Installed ${deps.length} package(s)`);
     return true;
   } catch (e) {
     s.stop("Failed to install dependencies");
+    if (abortSignal?.aborted) throw e;
     logInstallError(e, pm, deps);
     return false;
   }

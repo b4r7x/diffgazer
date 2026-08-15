@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+import { hasUseClientDirective } from "@diffgazer/registry/build-checks";
 import type { Registry } from "@diffgazer/registry/schemas";
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import { extractRelativeImports, type ValidationError, validationError } from "./types.js";
@@ -31,8 +32,6 @@ export function validateNoBuildEnvReads(
   const errors: ValidationError[] = [];
 
   for (const item of registry.items) {
-    if (item.type !== REGISTRY_ITEM_TYPE.hook) continue;
-
     for (const file of item.files) {
       const filePath = resolve(registryRoot, file.path);
       // A missing file is already reported by validateImportClosure.
@@ -55,12 +54,44 @@ export function validateNoBuildEnvReads(
   return errors;
 }
 
+/**
+ * The registry metadata is the source of truth for the RSC boundary exposed by
+ * copy consumers. A client item must carry the directive in the source it
+ * publishes; otherwise the metadata promises a boundary that a pasted module
+ * does not actually provide.
+ */
+export function validateClientMetadata(
+  registry: Registry,
+  registryRoot: string,
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  for (const item of registry.items) {
+    if (item.meta?.client !== true) continue;
+
+    const hasClientDirective = item.files.some((file) => {
+      const filePath = resolve(registryRoot, file.path);
+      return isExistingFile(filePath) && hasUseClientDirective(readFileSync(filePath, "utf-8"));
+    });
+
+    if (!hasClientDirective) {
+      errors.push(
+        validationError(
+          "REGISTRY_CLIENT_METADATA",
+          item.name,
+          'Item declares meta.client but no source file starts with "use client"',
+        ),
+      );
+    }
+  }
+
+  return errors;
+}
+
 export function validateImportClosure(registry: Registry, registryRoot: string): ValidationError[] {
   const errors: ValidationError[] = [];
 
   for (const item of registry.items) {
-    if (item.type !== REGISTRY_ITEM_TYPE.hook) continue;
-
     const includedFiles = new Set(item.files.map((f) => f.path));
 
     for (const file of item.files) {
@@ -142,10 +173,23 @@ export function validateRegistryStructure(registry: Registry): ValidationError[]
   const errors: ValidationError[] = [];
 
   for (const item of registry.items) {
-    if (item.type !== REGISTRY_ITEM_TYPE.hook) continue;
+    // libs/keys ships hooks only. The other validators run over every item, so an
+    // unexpected type is rejected here instead of silently skipping its checks.
+    if (item.type !== REGISTRY_ITEM_TYPE.hook) {
+      errors.push(
+        validationError(
+          "REGISTRY_ITEM_TYPE",
+          item.name,
+          `libs/keys ships ${REGISTRY_ITEM_TYPE.hook} items only; found "${item.type}"`,
+        ),
+      );
+      continue;
+    }
 
-    if (!item.files || !Array.isArray(item.files) || item.files.length === 0) {
-      errors.push(validationError("REGISTRY_HOOK_FILES", item.name, `Hook missing files array`));
+    if (item.files.length === 0) {
+      errors.push(
+        validationError("REGISTRY_HOOK_FILES", item.name, `Hook has an empty files list`),
+      );
       continue;
     }
 

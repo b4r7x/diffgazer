@@ -1,3 +1,4 @@
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
 import {
   fromSelectedCapabilityIds,
@@ -44,7 +45,7 @@ export function TrustPermissionsContent({
         <Text color={tokens.muted}>{compact ? "TARGET" : "TARGET REPOSITORY"}</Text>
         <Box justifyContent="space-between" gap={1} flexGrow={1} overflow="hidden">
           <Text color={tokens.info} bold wrap="truncate-end">
-            {directory}
+            {sanitizeTerminalText(directory)}
           </Text>
           {isTrusted && <Badge variant="success">TRUSTED</Badge>}
         </Box>

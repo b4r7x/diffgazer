@@ -1,10 +1,12 @@
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
 import type { FileProgress } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import type { AgentState } from "@diffgazer/core/schemas/events";
 import type { ProgressStepWithSubstepsData } from "@diffgazer/core/schemas/presentation";
 import { pluralize } from "@diffgazer/core/strings";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
+import { Callout } from "../../../../components/ui/callout";
 import { SectionHeader } from "../../../../components/ui/section-header";
 import { useTheme } from "../../../../theme/provider";
 import { AgentBoard } from "../agent-board";
@@ -48,6 +50,7 @@ export interface ReviewProgressOverviewProps {
   isStreaming: boolean;
   reviewId?: string | null;
   contextSnapshot?: ReviewContextResponse | null;
+  contextRefreshError?: string | null;
 }
 
 export function ReviewProgressOverview({
@@ -61,9 +64,11 @@ export function ReviewProgressOverview({
   isStreaming,
   reviewId,
   contextSnapshot,
+  contextRefreshError,
 }: ReviewProgressOverviewProps): ReactElement {
   const { tokens } = useTheme();
   const hasCompletedSnapshot = Boolean(contextSnapshot && !isStreaming);
+  const hasContextRefreshError = Boolean(contextRefreshError);
   const progressRows = progressSteps.reduce(
     (total, step) => total + 1 + (step.substeps?.length ?? 0),
     0,
@@ -75,7 +80,8 @@ export function ReviewProgressOverview({
   const metricsRows = isCompactMetrics ? REVIEW_METRICS_COMPACT_ROWS : REVIEW_METRICS_FOOTER_ROWS;
   // The step list is told its budget instead of being clipped: a clipped list
   // can lose the active step, and that is the row the run is watched through.
-  const agentRowsFloor = agents.length > 0 && !hasCompletedSnapshot ? 1 : 0;
+  const agentRowsFloor =
+    agents.length > 0 && !hasCompletedSnapshot && !hasContextRefreshError ? 1 : 0;
   const listRows = Math.max(height - getOverviewChromeRows(metricsRows) - agentRowsFloor, 1);
   const visibleProgressRows = Math.min(progressRows, listRows);
   // The board keeps its pad while the pane can afford it, and drops it when
@@ -86,7 +92,8 @@ export function ReviewProgressOverview({
     ? COMPACT_AGENT_BOARD_CHROME_ROWS
     : AGENT_BOARD_CHROME_ROWS;
   const agentRows = freeRows - boardChromeRows;
-  const showAgentBoard = agents.length > 0 && !hasCompletedSnapshot && agentRows >= 1;
+  const showAgentBoard =
+    agents.length > 0 && !hasCompletedSnapshot && !hasContextRefreshError && agentRows >= 1;
 
   return (
     <Box flexDirection="column" width={width} height={height} overflow="hidden">
@@ -105,11 +112,21 @@ export function ReviewProgressOverview({
         </Box>
       ) : null}
 
-      {agents.length > 0 && !showAgentBoard && !hasCompletedSnapshot ? (
+      {agents.length > 0 && !showAgentBoard && !hasCompletedSnapshot && !hasContextRefreshError ? (
         <Box height={1} flexShrink={0} overflow="hidden">
           <Text color={tokens.muted} wrap="truncate-end">
             {`${pluralize(agents.length, "agent")} running — press Tab for the log`}
           </Text>
+        </Box>
+      ) : null}
+
+      {contextRefreshError ? (
+        <Box marginTop={1}>
+          <Callout variant="warning">
+            <Callout.Title>Context snapshot unavailable</Callout.Title>
+            <Callout.Content>{sanitizeTerminalText(contextRefreshError)}</Callout.Content>
+            <Callout.Content>Press r to retry.</Callout.Content>
+          </Callout>
         </Box>
       ) : null}
 

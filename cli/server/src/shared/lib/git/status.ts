@@ -1,4 +1,5 @@
 import {
+  DETACHED_HEAD_BRANCH,
   GIT_FILE_STATUS_CODES,
   type GitFileEntry,
   type GitFileStatusCode,
@@ -12,27 +13,6 @@ const INTERNAL_DIFFGAZER_DIR = ".diffgazer";
 
 function emptyBranchInfo(): BranchInfo {
   return { branch: null, remoteBranch: null, ahead: 0, behind: 0 };
-}
-
-function parseV1BranchLine(line: string): BranchInfo {
-  const result = emptyBranchInfo();
-
-  if (!line.includes("...")) {
-    result.branch = line || null;
-    return result;
-  }
-
-  const [local, rest] = line.split("...");
-  result.branch = local || null;
-
-  if (!rest) return result;
-
-  const remoteMatch = rest.match(/^(\S+)/);
-  result.remoteBranch = remoteMatch?.[1] ?? null;
-  result.ahead = Number(rest.match(/ahead (\d+)/)?.[1] ?? 0);
-  result.behind = Number(rest.match(/behind (\d+)/)?.[1] ?? 0);
-
-  return result;
 }
 
 function toStatusCode(char: string): GitFileStatusCode {
@@ -67,22 +47,18 @@ function categorizeGitFile(
   };
 }
 
-function parseV1GitStatusRecords(output: string): {
-  branch: BranchInfo;
-  files: CategorizedFile[];
-} {
-  let branch = emptyBranchInfo();
+/**
+ * Porcelain v1 file records. `getStatusHash` is the only producer and it runs
+ * `--porcelain=v1 -z` without `--branch`, so no `## ` header record is emitted
+ * and this parser owns no branch handling.
+ */
+function parseV1StatusFiles(output: string): CategorizedFile[] {
   const files: CategorizedFile[] = [];
   const records = output.split("\0");
 
   for (let index = 0; index < records.length; index += 1) {
     const record = records[index];
     if (!record) continue;
-
-    if (record.startsWith("## ")) {
-      branch = parseV1BranchLine(record.slice(3));
-      continue;
-    }
 
     const indexStatus = record[0] ?? " ";
     const workTreeStatus = record[1] ?? " ";
@@ -98,7 +74,7 @@ function parseV1GitStatusRecords(output: string): {
     if (categorized) files.push(categorized);
   }
 
-  return { branch, files };
+  return files;
 }
 
 function pathAfterFields(record: string, fieldCount: number): string | null {
@@ -113,7 +89,7 @@ function pathAfterFields(record: string, fieldCount: number): string | null {
 function parseBranchRecord(record: string, branch: BranchInfo): void {
   if (record.startsWith("# branch.head ")) {
     const head = record.slice("# branch.head ".length);
-    branch.branch = head === "(detached)" ? null : head || null;
+    branch.branch = head === "(detached)" ? DETACHED_HEAD_BRANCH : head || null;
     return;
   }
   if (record.startsWith("# branch.upstream ")) {
@@ -180,6 +156,7 @@ function isExternalStatusFile(file: CategorizedFile): boolean {
   return !isInternalDiffgazerPath(file.entry.path);
 }
 
+/** Parses the `--porcelain=v2 --branch -z` output `getStatus` always requests. */
 export function parseGitStatusOutput(output: string): {
   branch: string | null;
   remoteBranch: string | null;
@@ -188,9 +165,7 @@ export function parseGitStatusOutput(output: string): {
   files: GitStatusFiles;
   conflicted: string[];
 } {
-  const parsed = output.includes("# branch.")
-    ? parseV2GitStatusRecords(output)
-    : parseV1GitStatusRecords(output);
+  const parsed = parseV2GitStatusRecords(output);
   const staged: GitFileEntry[] = [];
   const unstaged: GitFileEntry[] = [];
   const untracked: GitFileEntry[] = [];
@@ -219,7 +194,7 @@ export function parseGitStatusOutput(output: string): {
 }
 
 export function parseHashableStatusFiles(output: string): CategorizedFile[] {
-  return parseV1GitStatusRecords(output).files.filter(
+  return parseV1StatusFiles(output).filter(
     (file) => isExternalStatusFile(file) && !file.isUntracked,
   );
 }

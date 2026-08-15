@@ -34,7 +34,7 @@ The hotkey string uses the [hotkey format](/keys/api/hotkey-format): a key name 
 
 | Concern | Behavior |
 |---------|----------|
-| Editable targets | Ignored by default. A shortcut does not fire while an `input`, `textarea`, or `contenteditable` element is focused unless `allowInInput` is set. |
+| Editable targets | Ignored by default. A shortcut does not fire while a text-like `input`, a `textarea`, or an editable content element is focused unless `allowInInput` is set. Non-text controls such as `select`, checkbox, radio, range, and button inputs are allowed by default. |
 | Focus scoping | With `containerRef` + `focusWithinOnly`, the handler only runs while focus is inside the container. |
 | Scope resolution | When several bindings match the same combo, the handler in the deepest active scope runs first. |
 | Declining | Return exactly `false` from a handler to fall through to the next lower-priority handler for that combo. Any other return value consumes the event. |

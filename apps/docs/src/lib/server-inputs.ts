@@ -1,14 +1,12 @@
 import { z } from "zod";
-import { type DocsLibraryId, isDocsLibraryId } from "@/lib/library";
+import { DOCS_LIBRARY_ID_VALUES } from "@/lib/libraries-config";
+import type { DocsLibraryId } from "@/lib/library";
 
 export const MAX_SEARCH_QUERY_LENGTH = 256;
 export const MAX_ROUTE_SLUGS = 16;
 export const MAX_ROUTE_SLUG_LENGTH = 96;
 
-const docsLibrarySchema = z
-  .string()
-  .refine(isDocsLibraryId, { error: "Unknown docs library" })
-  .transform((library) => library as DocsLibraryId);
+const docsLibrarySchema = z.enum(DOCS_LIBRARY_ID_VALUES);
 
 const routeSlugSchema = z
   .string()

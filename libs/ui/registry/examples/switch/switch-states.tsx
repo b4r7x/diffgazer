@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Switch, type SwitchSize } from "@/components/ui/switch";
 
 const states = [
@@ -7,21 +10,34 @@ const states = [
   { label: "disabled checked", checked: true, disabled: true },
 ];
 
+function SwitchCell({ size, state }: { size: SwitchSize; state: (typeof states)[number] }) {
+  const [checked, setChecked] = useState(state.checked);
+  // Enabled rows can be toggled, so their caption and accessible name follow the
+  // live value; disabled rows never move and keep their sample caption.
+  const liveCaption = checked ? "checked" : "unchecked";
+  const caption = state.disabled ? state.label : liveCaption;
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <Switch
+        size={size}
+        checked={checked}
+        onChange={setChecked}
+        disabled={state.disabled}
+        aria-label={`${size} ${caption}`}
+      />
+      <span className="text-2xs font-mono text-muted-foreground">{caption}</span>
+    </div>
+  );
+}
+
 function SwitchRow({ size }: { size: SwitchSize }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="text-xs text-muted-foreground uppercase font-bold">size="{size}"</div>
       <div className="flex flex-wrap items-start gap-6">
         {states.map((state) => (
-          <div key={state.label} className="flex flex-col items-center gap-1.5">
-            <Switch
-              size={size}
-              defaultChecked={state.checked}
-              disabled={state.disabled}
-              aria-label={`${size} ${state.label}`}
-            />
-            <span className="text-2xs font-mono text-muted-foreground">{state.label}</span>
-          </div>
+          <SwitchCell key={state.label} size={size} state={state} />
         ))}
       </div>
     </div>

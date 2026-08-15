@@ -1,7 +1,7 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "presence",
-  "title": "usePresence",
+  "title": "Presence",
   "description": "Hook for animating mount/unmount transitions with CSS animations. Keeps element in DOM during exit animation, removes after completion.",
   "dependencies": [],
   "registryDependencies": [],

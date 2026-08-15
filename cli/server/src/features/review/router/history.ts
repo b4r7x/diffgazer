@@ -12,7 +12,7 @@ import {
 import { handleStoreError } from "../../../shared/lib/http/store-error.js";
 import { requireRepoAccess } from "../../../shared/middlewares/trust-guard.js";
 import { ReviewIdParamSchema, ReviewListQuerySchema } from "../schemas.js";
-import { getReview as getStoredReview, listReviewPage } from "../storage/reviews.js";
+import { getReviewDetail as getStoredReviewDetail, listReviewPage } from "../storage/reviews.js";
 import { isValidProjectPath, resolvesToSameProject } from "../validation.js";
 
 const historyRouter = new Hono();
@@ -45,15 +45,18 @@ historyRouter.get(
     const { id } = c.req.valid("param");
     const result = await getReviewForProject(id, getProjectRoot(c));
     if (!result.ok) return handleStoreError(c, result.error);
-    const { diff: _diff, ...review } = result.value;
-    return c.json({ review });
+    const { diff: _diff, ...review } = result.value.review;
+    return c.json({
+      review,
+      ...(result.value.warnings.length > 0 ? { warnings: result.value.warnings } : {}),
+    });
   },
 );
 
 async function getReviewForProject(id: string, projectPath: string) {
-  const result = await getStoredReview(id);
+  const result = await getStoredReviewDetail(id);
   if (!result.ok) return result;
-  if (result.value.metadata.projectPath !== projectPath) {
+  if (result.value.review.metadata.projectPath !== projectPath) {
     return err(createError("NOT_FOUND", "Review not found"));
   }
   return result;

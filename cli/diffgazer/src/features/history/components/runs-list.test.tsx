@@ -1,3 +1,4 @@
+import { buildRunIdLookup } from "@diffgazer/core/format";
 import { buildHistoryRunSummary } from "@diffgazer/core/review";
 import { makeReviewMetadata } from "@diffgazer/core/testing/factories";
 import { cleanup, render } from "ink-testing-library";
@@ -17,10 +18,10 @@ describe("RunsList", () => {
       makeReviewMetadata({ id: "abcdef00-0000-4000-8000-000000000000" }),
       makeReviewMetadata({ id: "abcdef00-1000-4000-8000-000000000000" }),
     ];
-    const peerIds = metadata.map((run) => run.id);
+    const peerLookup = buildRunIdLookup(metadata.map((run) => run.id));
     const displayIds = ["#abcdef00-0", "#abcdef00-1"];
     const runs = metadata.map((run, index) => ({
-      ...buildHistoryRunSummary(run, peerIds),
+      ...buildHistoryRunSummary(run, peerLookup),
       displayId: displayIds[index] ?? "#unexpected",
     }));
     const { lastFrame } = render(
@@ -251,5 +252,90 @@ describe("RunsList", () => {
     expect(lines[0]).toContain(run.displayId);
     expect(lines[0]).not.toContain("Load older runs");
     expect(lines[0]?.length).toBeLessThanOrEqual(25);
+  });
+
+  test("keeps canonical collision labels and salvage markers visible in a tight pane", () => {
+    const sharedPrefix = "123456789012345678901234567890";
+    const metadata = [
+      makeReviewMetadata({ id: `${sharedPrefix}0-4000-8000-000000000000` }),
+      makeReviewMetadata({ id: `${sharedPrefix}1-4000-8000-000000000000` }),
+    ];
+    const peerLookup = buildRunIdLookup(metadata.map((review) => review.id));
+    const runs = metadata.map((review) => buildHistoryRunSummary(review, peerLookup));
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <RunsList
+          runs={runs}
+          selectedId={runs[0]?.id ?? null}
+          onSelect={vi.fn()}
+          emptyMessage="No runs"
+          height={5}
+          width={38}
+          salvagedRunIds={new Set([runs[0]?.id ?? ""])}
+        />
+      </CliThemeProvider>,
+    );
+
+    const lines = (lastFrame() ?? "").split("\n").filter(Boolean);
+    expect(lines).toHaveLength(4);
+    expect(lines.every((line) => line.length <= 38)).toBe(true);
+    expect(lines.join("\n")).toContain("[Salvaged]");
+    expect(lines.join("\n")).toContain(runs[0]?.displayId ?? "");
+    expect(lines.join("\n")).toContain(runs[1]?.displayId ?? "");
+    expect(lines.join("\n")).not.toContain("…");
+    const runLines = lines.filter((line) => line.includes("#123456789012345678901234567890"));
+    expect(runLines).toHaveLength(2);
+    expect(runLines[0]).not.toBe(runLines[1]);
+  });
+
+  test("keeps a single salvaged canonical id searchable beside a warning-only collider", () => {
+    const visibleId = "12345678-1234-4123-8123-123456789000";
+    const warningOnlyId = "12345678-1234-4123-8123-123456789001";
+    const run = buildHistoryRunSummary(
+      makeReviewMetadata({ id: visibleId }),
+      buildRunIdLookup([visibleId, warningOnlyId]),
+    );
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <RunsList
+          runs={[run]}
+          selectedId={run.id}
+          onSelect={vi.fn()}
+          emptyMessage="No runs"
+          height={3}
+          width={38}
+          salvagedRunIds={new Set([visibleId])}
+        />
+      </CliThemeProvider>,
+    );
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain(run.displayId);
+    expect(frame).toContain("[Salvaged]");
+    expect(frame).not.toContain("…");
+  });
+
+  test("escapes bidi formatting controls in branch labels", () => {
+    const run = {
+      ...buildHistoryRunSummary(makeReviewMetadata({ id: "bidi-run", branch: "main\u202Eevil" })),
+      displayId: "#bidi",
+      timestamp: "12:00",
+      summary: "Summary",
+    };
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <RunsList
+          runs={[run]}
+          selectedId={run.id}
+          onSelect={vi.fn()}
+          emptyMessage="No runs"
+          height={4}
+          width={40}
+        />
+      </CliThemeProvider>,
+    );
+
+    expect(lastFrame() ?? "").toContain("[main\\u202eevil]");
+    expect(lastFrame() ?? "").not.toContain("\u202E");
   });
 });

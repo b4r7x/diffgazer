@@ -4,8 +4,8 @@ import { READINESS_PRESENTATION, type Readiness } from "../schemas/config/readin
 import { CANDIDATE_PRODUCT_IDS, type RunnableProductId } from "../schemas/config/transports.js";
 import { buildSetupPlan } from "./setup-plan.js";
 
-const LOCAL_API_INCOMPATIBLE_READINESS = {
-  status: "local-api-incompatible",
+const LOCAL_CONFORMANCE_FAILED_READINESS = {
+  status: "local-conformance-failed",
   ready: false,
   evidenceStatus: "failed",
   checkedAt: "2026-07-31T12:00:00.000Z",
@@ -14,13 +14,13 @@ const LOCAL_API_INCOMPATIBLE_READINESS = {
     noticeId: PRODUCT_REGISTRY["local-openai"].notice.id,
     noticeVersion: PRODUCT_REGISTRY["local-openai"].notice.noticeVersion,
   },
-  ...READINESS_PRESENTATION["local-api-incompatible"],
+  ...READINESS_PRESENTATION["local-conformance-failed"],
 } satisfies Readiness;
 
 function runnablePlan(productId: RunnableProductId) {
   const plan = buildSetupPlan(productId);
   expect(plan?.kind).toBe("runnable");
-  if (!plan || plan.kind !== "runnable") throw new Error(`Missing setup plan for ${productId}`);
+  if (!plan) throw new Error(`Missing setup plan for ${productId}`);
   return plan;
 }
 
@@ -41,6 +41,20 @@ describe("setup plan", () => {
       { id: "model" },
       { id: "conformance" },
       { id: "acknowledgement" },
+    ]);
+  });
+
+  it("keeps the hosted step order for a product without regional or workspace fields", () => {
+    const plan = runnablePlan("gemini");
+
+    expect(plan.transportFamily).toBe("hosted-api");
+    expect(plan.steps.map((step) => step.id)).toEqual([
+      "product",
+      "endpoint-binding",
+      "authentication",
+      "model",
+      "conformance",
+      "acknowledgement",
     ]);
   });
 
@@ -105,15 +119,16 @@ describe("setup plan", () => {
   });
 
   it("projects the current safe readiness remediation into a runnable plan", () => {
-    const plan = buildSetupPlan("local-openai", LOCAL_API_INCOMPATIBLE_READINESS);
+    const plan = buildSetupPlan("local-openai", LOCAL_CONFORMANCE_FAILED_READINESS);
 
     expect(plan).toMatchObject({
       kind: "runnable",
       remediation: {
-        status: "local-api-incompatible",
-        action: "update",
-        code: "use-compatible-api",
-        message: "Use a supported local server and API configuration.",
+        status: "local-conformance-failed",
+        action: "test",
+        code: "rerun-conformance",
+        message:
+          "Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Test readiness can re-check it.",
       },
     });
   });

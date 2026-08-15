@@ -38,6 +38,7 @@ function GuardHarness({ guarded = true }: { guarded?: boolean }) {
         <label htmlFor="notes">Notes</label>
         <input id="notes" type="text" />
         <p>dead space</p>
+        <div>scroll pane</div>
       </main>
     </>
   );
@@ -135,6 +136,31 @@ describe("usePointerFocusGuard", () => {
     await user.click(screen.getByText("dead space"));
 
     expect(screen.getByRole("listbox", { name: "Runs" })).not.toHaveFocus();
+  });
+
+  // jsdom does no layout, so the scroll box and the pointer position are the
+  // only way to exercise the gutter branch; offsetX/Y are read-only accessors.
+  it("leaves the whole scrollbar gutter of a bordered pane draggable", () => {
+    render(<GuardHarness />);
+    const pane = screen.getByText("scroll pane");
+    for (const [metric, value] of Object.entries({
+      clientLeft: 2,
+      clientTop: 2,
+      clientWidth: 100,
+      clientHeight: 100,
+      scrollWidth: 100,
+      scrollHeight: 400,
+    })) {
+      Object.defineProperty(pane, metric, { value, configurable: true });
+    }
+
+    const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    // The gutter's first pixel: padding-box x === clientWidth, border excluded.
+    Object.defineProperty(press, "offsetX", { value: 100 });
+    Object.defineProperty(press, "offsetY", { value: 40 });
+    pane.dispatchEvent(press);
+
+    expect(press.defaultPrevented).toBe(false);
   });
 
   it("stops guarding once the hook owner unmounts", async () => {

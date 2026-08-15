@@ -31,15 +31,13 @@ export async function streamActiveSessionToSSE(
   }
 
   // Subscribe BEFORE reading the snapshot to close the race window where
-  // events arrive between snapshot read and subscribe. Buffer live events
-  // during replay; drain afterward, deduplicating by reference identity.
+  // events arrive between snapshot read and subscribe. Buffering ends when the
+  // early subscriber is removed below; the queue is then drained, deduplicating
+  // by reference identity.
   const liveQueue: FullReviewStreamEvent[] = [];
-  let draining = false;
 
   const earlyUnsub = subscribe(session.reviewId, (event) => {
-    if (!draining) {
-      liveQueue.push(event);
-    }
+    liveQueue.push(event);
   });
 
   if (!earlyUnsub) {
@@ -144,7 +142,6 @@ export async function streamActiveSessionToSSE(
     clientSignal?.addEventListener("abort", onClientAbort, { once: true });
 
     // Drain buffered live events first, then subscribe for new ones.
-    draining = true;
     const processEvent = (event: FullReviewStreamEvent): void => {
       if (!isAuthorized()) {
         finish(resolve);

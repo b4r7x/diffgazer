@@ -87,12 +87,8 @@ export const menuItemValue = cva("font-mono text-xs", {
       "success-badge": "border px-2 py-0.5 rounded",
       muted: "",
     },
-    focused: {
-      true: "uppercase tracking-wide",
-      false: "",
-    },
     active: {
-      true: "",
+      true: "uppercase tracking-wide",
       false: "",
     },
   },
@@ -114,5 +110,5 @@ export const menuItemValue = cva("font-mono text-xs", {
       class: "border-success bg-success text-success-foreground",
     },
   ],
-  defaultVariants: { valueVariant: "default", focused: false, active: false },
+  defaultVariants: { valueVariant: "default", active: false },
 });

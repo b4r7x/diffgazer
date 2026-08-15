@@ -266,8 +266,10 @@
 
   /* A list with nothing to show must take no space. Without this the padding
      alone renders as an empty sliver whenever every item is filtered out or the
-     consumer keeps its empty/status copy outside the listbox. */
-  [data-slot="command-palette-list"]:empty {
+     consumer keeps its empty/status copy outside the listbox. Matching on the
+     absence of options rather than :empty also covers grouped lists, where the
+     groups stay mounted and hide themselves. */
+  [data-slot="command-palette-list"]:not(:has([role="option"])) {
     padding: 0;
   }
 

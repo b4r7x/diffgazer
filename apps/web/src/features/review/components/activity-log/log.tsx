@@ -3,9 +3,6 @@ import type { AgentState } from "@diffgazer/core/schemas/events";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ActivityLogAnnouncement } from "./announcement";
-import { LogEntry } from "./entry";
-import { buildTailStatus, LiveTailRow } from "./live-tail-row";
 import {
   convertEventRowWindow,
   deriveEventRowIndex,
@@ -14,7 +11,10 @@ import {
   getEventRowBounds,
   getEventRowTail,
   LOG_WINDOW_SIZE,
-} from "./row-index";
+} from "../../lib/row-index";
+import { ActivityLogAnnouncement } from "./announcement";
+import { LogEntry } from "./entry";
+import { buildTailStatus, LiveTailRow } from "./live-tail-row";
 
 export interface ActivityLogProps extends React.HTMLAttributes<HTMLDivElement> {
   events: readonly ReviewEvent[];
@@ -35,7 +35,7 @@ interface LogWindowState {
   cacheRevision: number;
   endRow: number;
   isNearBottom: boolean;
-  sourceFilter: string | null;
+  sourceFilter: string | undefined;
 }
 
 type ScrollAlignment = "end" | "start";
@@ -52,7 +52,7 @@ export function ActivityLog({
   streamState = null,
   agents = [],
   startTime,
-  lastEventAt = Date.now(),
+  lastEventAt,
   className,
   onKeyDown,
   onScroll,
@@ -62,7 +62,7 @@ export function ActivityLog({
   const pendingScrollAlignmentRef = useRef<ScrollAlignment | null>(null);
   const pendingWindowAnchorRef = useRef<ScrollWindowAnchor | null>(null);
   const committedRowIndexRef = useRef<EventRowIndex | null>(null);
-  const normalizedSourceFilter = sourceFilter || null;
+  const normalizedSourceFilter = sourceFilter || undefined;
   const rowIndex = deriveEventRowIndex(
     committedRowIndexRef.current,
     events,

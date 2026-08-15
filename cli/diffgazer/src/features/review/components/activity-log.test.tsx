@@ -64,7 +64,9 @@ describe("ActivityLog (TUI)", () => {
 
   test("converts only the visible range of a 5,000-event log and keeps Up/End navigation", async () => {
     type ThinkingEvent = Extract<ReviewEvent, { type: "agent_thinking" }>;
-    let propertyReads = 0;
+    // Counting `thought` reads counts conversions: only entry conversion reads a
+    // message body, while classification and filtering read `type`/`agent` alone.
+    let convertedReads = 0;
     const events: ReviewEvent[] = Array.from({ length: 5_000 }, (_, index) => {
       const event: ThinkingEvent = {
         type: "agent_thinking",
@@ -74,7 +76,7 @@ describe("ActivityLog (TUI)", () => {
       };
       return new Proxy(event, {
         get(target, property, receiver) {
-          propertyReads += 1;
+          if (property === "thought") convertedReads += 1;
           return Reflect.get(target, property, receiver);
         },
       });
@@ -88,7 +90,7 @@ describe("ActivityLog (TUI)", () => {
     await flush();
 
     expect(lastFrame() ?? "").toContain("event-4999");
-    expect(propertyReads).toBeLessThan(300);
+    expect(convertedReads).toBeLessThan(300);
 
     stdin.write(ARROW_UP);
     await flush();
@@ -98,7 +100,7 @@ describe("ActivityLog (TUI)", () => {
     stdin.write(END);
     await flush();
     expect(lastFrame() ?? "").toContain("event-4999");
-    expect(propertyReads).toBeLessThan(600);
+    expect(convertedReads).toBeLessThan(600);
   });
 
   test("follows the new review tail after the event history resets through empty", async () => {
@@ -205,5 +207,67 @@ describe("ActivityLog (TUI)", () => {
     expect(new Set(columns).size).toBe(1);
     // The agent is named once, by its tag badge; the duplicate name column is gone.
     expect(frame).not.toContain("[Guardian]");
+  });
+  test("never renders per-agent heartbeats, so real transitions stay in the viewport", async () => {
+    const heartbeats: ReviewEvent[] = Array.from({ length: 20 }, (_, index) => ({
+      type: "agent_progress",
+      agent: "detective",
+      progress: 50,
+      message: "Waiting for model response",
+      timestamp: `2024-01-01T00:00:${String(index).padStart(2, "0")}Z`,
+    }));
+    const events: ReviewEvent[] = [
+      {
+        type: "agent_thinking",
+        agent: "detective",
+        timestamp: "2024-01-01T00:00:00Z",
+        thought: "REAL-transition",
+      },
+      ...heartbeats,
+    ];
+
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <Box width={80}>
+          <ActivityLog events={events} height={3} />
+        </Box>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    const frame = stripAnsi(lastFrame() ?? "");
+    expect(frame).toContain("REAL-transition");
+    expect(frame).not.toContain("Waiting for model response");
+  });
+
+  test("keeps heartbeats out of the log under an active agent filter", async () => {
+    const events: ReviewEvent[] = [
+      {
+        type: "agent_thinking",
+        agent: "detective",
+        timestamp: "2024-01-01T00:00:00Z",
+        thought: "REAL-transition",
+      },
+      {
+        type: "agent_progress",
+        agent: "detective",
+        progress: 50,
+        message: "Waiting for model response",
+        timestamp: "2024-01-01T00:00:01Z",
+      },
+    ];
+
+    const { lastFrame } = render(
+      <CliThemeProvider initialTheme="dark">
+        <Box width={80}>
+          <ActivityLog events={events} height={3} sourceFilter="Detective" />
+        </Box>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    const frame = stripAnsi(lastFrame() ?? "");
+    expect(frame).toContain("REAL-transition");
+    expect(frame).not.toContain("Waiting for model response");
   });
 });

@@ -58,7 +58,7 @@ function parseBoundConfigurationActionResponse<Action extends ClientConfiguratio
   return response as ConfigurationActionResponse<Action["action"]>;
 }
 
-export function executeConfigurationAction<Action extends ClientConfigurationAction>(
+function executeConfigurationAction<Action extends ClientConfigurationAction>(
   client: ApiClient,
   action: Action,
 ): Promise<ConfigurationActionResponse<Action["action"]>> {
@@ -67,8 +67,18 @@ export function executeConfigurationAction<Action extends ClientConfigurationAct
   });
 }
 
-export function createConfiguration(client: ApiClient, input: ClientConfigurationInput) {
-  return executeConfigurationAction(client, { action: "create", input });
+export function createConfiguration(
+  client: ApiClient,
+  request: {
+    input: ClientConfigurationInput;
+    acknowledgement?: AcceptedAcknowledgement;
+  },
+) {
+  const { input, acknowledgement } = request;
+  return executeConfigurationAction(
+    client,
+    acknowledgement ? { action: "create", input, acknowledgement } : { action: "create", input },
+  );
 }
 
 export function inspectConfiguration(client: ApiClient, configurationId: ConfigurationId) {
@@ -103,25 +113,52 @@ export function updateConfiguration(
   });
 }
 
+/**
+ * `expectedRevision` is omitted only for a record this build could not decode:
+ * it never showed the caller a revision to assert.
+ */
 export function deleteConfiguration(
   client: ApiClient,
   configurationId: ConfigurationId,
-  expectedRevision: ConfigurationRevision,
+  expectedRevision?: ConfigurationRevision,
 ) {
   return executeConfigurationAction(client, {
     action: "delete",
     configurationId,
-    expectedRevision,
+    ...(expectedRevision === undefined ? {} : { expectedRevision }),
   });
+}
+
+/**
+ * Best-effort delete for tab-close cleanup. Uses a keepalive request so the
+ * browser can finish revoking a wizard draft after `pagehide`.
+ */
+export function revokeConfigurationOnPageHide(
+  client: ApiClient,
+  configurationId: ConfigurationId,
+  expectedRevision: ConfigurationRevision,
+): void {
+  void client
+    .request("POST", "/api/config/actions", {
+      body: {
+        action: "delete",
+        configurationId,
+        expectedRevision,
+      },
+      keepalive: true,
+    })
+    .catch(() => undefined);
 }
 
 export function getConfigurationModels(
   client: ApiClient,
   configurationId: ConfigurationId,
+  signal?: AbortSignal,
 ): Promise<ConfigurationModelsResponse> {
   return client.get<ConfigurationModelsResponse>(
     `/api/config/providers/${encodeURIComponent(configurationId)}/models`,
     {
+      signal,
       schema: (body) => {
         const response = ConfigurationModelsResponseSchema.parse(body);
         if (response.configurationId !== configurationId) {
@@ -133,14 +170,22 @@ export function getConfigurationModels(
   );
 }
 
-export function loadConfigurationInit(client: ApiClient): Promise<ConfigurationInitResponse> {
+export function loadConfigurationInit(
+  client: ApiClient,
+  signal?: AbortSignal,
+): Promise<ConfigurationInitResponse> {
   return client.get<ConfigurationInitResponse>("/api/config/init", {
+    signal,
     schema: (body) => ConfigurationInitResponseSchema.parse(body),
   });
 }
 
-export function listConfigurations(client: ApiClient): Promise<ConfigurationListResponse> {
+export function listConfigurations(
+  client: ApiClient,
+  signal?: AbortSignal,
+): Promise<ConfigurationListResponse> {
   return client.get<ConfigurationListResponse>("/api/config/providers", {
+    signal,
     schema: (body) => ConfigurationListResponseSchema.parse(body),
   });
 }
@@ -148,7 +193,10 @@ export function listConfigurations(client: ApiClient): Promise<ConfigurationList
 export const bindConfig = (client: ApiClient) => ({
   executeConfigurationAction: (action: ClientConfigurationAction) =>
     executeConfigurationAction(client, action),
-  createConfiguration: (input: ClientConfigurationInput) => createConfiguration(client, input),
+  createConfiguration: (request: {
+    input: ClientConfigurationInput;
+    acknowledgement?: AcceptedAcknowledgement;
+  }) => createConfiguration(client, request),
   inspectConfiguration: (configurationId: ConfigurationId) =>
     inspectConfiguration(client, configurationId),
   selectConfiguration: (configurationId: ConfigurationId, modelId: ExactModelId) =>
@@ -163,10 +211,14 @@ export const bindConfig = (client: ApiClient) => ({
   ) => updateConfiguration(client, configurationId, expectedRevision, input, acknowledgement),
   deleteConfiguration: (
     configurationId: ConfigurationId,
-    expectedRevision: ConfigurationRevision,
+    expectedRevision?: ConfigurationRevision,
   ) => deleteConfiguration(client, configurationId, expectedRevision),
-  getConfigurationModels: (configurationId: ConfigurationId) =>
-    getConfigurationModels(client, configurationId),
-  loadConfigurationInit: () => loadConfigurationInit(client),
-  listConfigurations: () => listConfigurations(client),
+  revokeConfigurationOnPageHide: (
+    configurationId: ConfigurationId,
+    expectedRevision: ConfigurationRevision,
+  ) => revokeConfigurationOnPageHide(client, configurationId, expectedRevision),
+  getConfigurationModels: (configurationId: ConfigurationId, signal?: AbortSignal) =>
+    getConfigurationModels(client, configurationId, signal),
+  loadConfigurationInit: (signal?: AbortSignal) => loadConfigurationInit(client, signal),
+  listConfigurations: (signal?: AbortSignal) => listConfigurations(client, signal),
 });

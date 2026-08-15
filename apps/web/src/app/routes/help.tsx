@@ -1,3 +1,1 @@
-import { HelpPage } from "@/features/help/components/page";
-
-export { HelpPage };
+export { HelpPage } from "@/features/help/components/page";

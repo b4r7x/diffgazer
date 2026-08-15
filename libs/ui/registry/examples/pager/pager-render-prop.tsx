@@ -1,3 +1,5 @@
+"use client";
+
 import { Pager, PagerLink } from "@/components/ui/pager";
 
 // Simulated framework link component (replace with TanStack Link, Next.js Link, etc.).

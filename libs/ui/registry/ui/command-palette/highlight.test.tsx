@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { matchesSearch } from "@/lib/search";
 import { axe } from "../../../testing/axe";
 import { CommandPaletteHighlightItem, categorize, matchPositions } from "./highlight";
 import { CommandPalette } from "./index";
@@ -28,6 +29,27 @@ describe("CommandPaletteHighlightItem", () => {
     expect(matchPositions("Hello World", "hwl")).toEqual([0, 6, 9]);
   });
 
+  it("matchPositions aligns grapheme indices for astral characters", () => {
+    expect(matchPositions("Deploy 🚀", "🚀")).toEqual([7]);
+  });
+
+  it("matchPositions uses the same fold as palette search for case expansion", () => {
+    expect(matchPositions("İstanbul deploy", "deploy")).toEqual([9, 10, 11, 12, 13, 14]);
+  });
+
+  it("matchPositions keeps a multi-code-point emoji in one grapheme index", () => {
+    expect(matchPositions("Team 🇺🇸 sync", "🇺🇸")).toEqual([5]);
+  });
+
+  it("matchPositions agrees with the palette filter on NFD combining marks", () => {
+    const decomposed = "Cafe\u0301";
+    const composed = "\u00e9";
+    expect(matchesSearch(decomposed, composed)).toBe(true);
+    expect(matchPositions(decomposed, composed)).toEqual([3]);
+    expect(matchesSearch(decomposed, "e")).toBe(false);
+    expect(matchPositions(decomposed, "e")).toEqual([]);
+  });
+
   it("infers tone and wraps matched characters in <mark>", async () => {
     const { container } = render(
       <CommandPalette open search="del">
@@ -44,13 +66,32 @@ describe("CommandPaletteHighlightItem", () => {
     expect(item).not.toHaveAttribute("aria-label");
     expect(item).toHaveAttribute("data-tone", "destructive");
     const marks = item.querySelectorAll('mark[data-slot="command-palette-item-match"]');
-    expect(marks.length).toBe(3);
+    expect(marks.length).toBe(1);
     expect(
       Array.from(marks)
         .map((m) => m.textContent)
         .join(""),
     ).toBe("Del");
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("wraps a whole grapheme cluster in one <mark> for decomposed labels", async () => {
+    render(
+      <CommandPalette open search={"\u00e9"}>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPaletteHighlightItem id="cafe">{"Cafe\u0301"}</CommandPaletteHighlightItem>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    );
+
+    const item = await screen.findByRole("option");
+    const marks = item.querySelectorAll('mark[data-slot="command-palette-item-match"]');
+    expect(marks.length).toBe(1);
+    expect(marks[0]?.textContent).toBe("e\u0301");
+    expect(item.textContent).toBe("Cafe\u0301");
   });
 
   it("explicit tone overrides inferred destructive tone", () => {

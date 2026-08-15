@@ -3,6 +3,13 @@
 import { dispatchNavigationKey, resolveDirectionKeys } from "../core/navigation-dispatch.js";
 import type { KeyHandler } from "../core/normalize-key-input.js";
 import { DECLINE } from "../core/normalize-key-input.js";
+import {
+  composedContains,
+  getComposedEventTarget,
+  isEditableElement,
+  isHTMLElement,
+} from "../dom/element-guards.js";
+import { isFocusable } from "../dom/focusable.js";
 import { useKeyboardRegistryContext } from "../providers/keyboard-context.js";
 import { useKey } from "./use-key.js";
 import { useNavigationCore } from "./use-navigation/core.js";
@@ -15,6 +22,8 @@ export interface UseScopedNavigationOptions<TValue extends string = string>
   focusWithinOnly?: boolean;
   /** Keyboard scope name to register navigation handlers under; null skips registration. */
   scope?: string | null;
+  /** Allow navigation keys while a text-editable element has focus. */
+  allowInInput?: boolean;
 }
 
 /** Return value from `useScopedNavigation`. */
@@ -48,6 +57,7 @@ export function useScopedNavigation<TValue extends string = string>(
     downKeys,
     containerRef,
     scope,
+    allowInInput,
     onEnter,
     onSelect,
   } = options;
@@ -70,8 +80,22 @@ export function useScopedNavigation<TValue extends string = string>(
 
   // Editable-target filtering is handled by the keyboard provider via `allowInInput`.
   const dispatch = (key: string, nativeEvent: globalThis.KeyboardEvent) => {
-    const total = getElements().length;
-    if (total === 0) return DECLINE;
+    const elements = getElements();
+    const target = getComposedEventTarget(nativeEvent);
+    const isActivationOrEdgeKey = key === "Enter" || key === " " || key === "Home" || key === "End";
+    const isAllowedEditableTarget = allowInInput === true && isEditableElement(target);
+    const isNonItemControl =
+      isActivationOrEdgeKey &&
+      !isAllowedEditableTarget &&
+      isHTMLElement(target) &&
+      containerRef.current !== null &&
+      composedContains(containerRef.current, target) &&
+      target !== containerRef.current &&
+      isFocusable(target) &&
+      !elements.some((element) => composedContains(element, target));
+    if (isNonItemControl) return DECLINE;
+
+    if (elements.length === 0) return DECLINE;
 
     return dispatchNavigationKey(key, {
       resolvedUpKeys,
@@ -80,7 +104,7 @@ export function useScopedNavigation<TValue extends string = string>(
       focusIndex,
       handleSelect: handlesSpace ? (e) => handleSelect(e) : undefined,
       handleEnter: handlesEnter ? (e) => handleEnter(e) : undefined,
-      total,
+      elements,
       nativeEvent,
     });
   };
@@ -112,6 +136,7 @@ export function useScopedNavigation<TValue extends string = string>(
     containerRef,
     focusWithinOnly: resolvedFocusWithinOnly,
     scope,
+    allowInInput,
   });
 
   return { highlighted, isHighlighted, highlight };

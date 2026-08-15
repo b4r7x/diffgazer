@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { usePresence } from "@/hooks/use-presence";
 
 export default function UsePresenceBasicExample() {
   const [open, setOpen] = useState(false);
-  const { present, onAnimationEnd } = usePresence({ open });
+  const contentRef = useRef<HTMLDivElement>(null);
+  const { present } = usePresence({ open, ref: contentRef });
 
   return (
     <div className="flex flex-col gap-4">
@@ -19,8 +20,8 @@ export default function UsePresenceBasicExample() {
 
       {present && (
         <div
+          ref={contentRef}
           data-state={open ? "open" : "closed"}
-          onAnimationEnd={onAnimationEnd}
           className="w-48 border border-border bg-muted p-4 font-mono text-sm motion-safe:data-[state=open]:animate-[fade-in_0.15s_ease-out] motion-safe:data-[state=closed]:animate-[fade-out_0.15s_ease-in_forwards]"
         >
           Animated content

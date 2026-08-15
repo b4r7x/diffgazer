@@ -405,6 +405,24 @@ describe("SettingsThemePage keyboard behavior", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
+  it("does not pull the user back to settings when the page left during the save", async () => {
+    const save = createDeferred<Awaited<ReturnType<BoundApi["saveSettings"]>>>();
+    mockSaveSettings.mockReturnValueOnce(save.promise);
+    const user = userEvent.setup();
+    const { unmount } = renderPage();
+    await waitForThemeReady();
+
+    await user.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(mockSaveSettings).toHaveBeenCalledTimes(1));
+
+    unmount();
+    await act(async () => {
+      save.resolve(undefined);
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
   it("ignores an overlapping theme save while one is still pending", async () => {
     let resolveSave: (() => void) | undefined;
     mockSaveSettings.mockImplementation(

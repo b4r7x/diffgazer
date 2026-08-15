@@ -83,6 +83,86 @@ describe("useScopedNavigation", () => {
     expect(onEnter).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
   });
 
+  it("does not suppress activation or edge keys on a non-navigation control", () => {
+    const onSelect = vi.fn();
+
+    function ListWithClearButton() {
+      const ref = useRef<HTMLDivElement>(null);
+      useScopedNavigation({
+        containerRef: ref,
+        role: "option",
+        defaultHighlighted: "a",
+        focusWithinOnly: true,
+        allowInInput: true,
+        onSelect,
+      });
+
+      return (
+        <div ref={ref} role="listbox" aria-label="Items" tabIndex={0}>
+          <div role="option" data-value="a">
+            A
+          </div>
+          <button type="button">Clear</button>
+        </div>
+      );
+    }
+
+    render(<ListWithClearButton />, { wrapper: KeyboardWrapper });
+    const clearButton = screen.getByRole("button", { name: "Clear" });
+    clearButton.focus();
+
+    for (const key of ["Enter", " ", "Home", "End"]) {
+      const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+      act(() => {
+        clearButton.dispatchEvent(event);
+      });
+      expect(event.defaultPrevented).toBe(false);
+    }
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it("activates the highlighted item from an opted-in editable target", () => {
+    const onEnter = vi.fn();
+
+    function ListWithSearchInput() {
+      const ref = useRef<HTMLDivElement>(null);
+      useScopedNavigation({
+        containerRef: ref,
+        role: "option",
+        defaultHighlighted: "a",
+        allowInInput: true,
+        onEnter,
+      });
+
+      return (
+        <>
+          <input aria-label="Search" />
+          <div ref={ref} role="listbox" aria-label="Items">
+            <div role="option" data-value="a">
+              A
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    render(<ListWithSearchInput />, { wrapper: KeyboardWrapper });
+    const searchInput = screen.getByRole("textbox", { name: "Search" });
+    searchInput.focus();
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Enter",
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      searchInput.dispatchEvent(event);
+    });
+
+    expect(onEnter).toHaveBeenCalledWith("a", event);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
   it("navigates with the documented 'up'/'down' hotkey aliases", async () => {
     const user = userEvent.setup();
     render(<TestList defaultHighlighted="b" upKeys={["up"]} downKeys={["down"]} />, {
@@ -110,7 +190,7 @@ describe("useScopedNavigation", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     expect(() => render(<TestList />)).toThrow(
-      "useKeyboardContext must be used within KeyboardProvider",
+      "@diffgazer/keys hooks must be used within KeyboardProvider",
     );
 
     consoleError.mockRestore();

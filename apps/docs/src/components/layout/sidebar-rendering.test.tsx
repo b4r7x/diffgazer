@@ -1,6 +1,3 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PageTree, PageTreeNode } from "@/lib/page-tree";
@@ -9,6 +6,7 @@ import { DocsSidebar } from "./sidebar";
 
 const routerBoundary = vi.hoisted(() => ({
   pathname: "/ui/unlisted",
+  pendingPathname: null as string | null,
 }));
 
 // Boundary mock: @tanstack/react-router is the external route context boundary.
@@ -26,7 +24,10 @@ vi.mock("@tanstack/react-router", async () => {
     }),
     ...useRouterStateMock({
       get pathname() {
-        return routerBoundary.pathname;
+        return routerBoundary.pendingPathname ?? routerBoundary.pathname;
+      },
+      get isLoading() {
+        return routerBoundary.pendingPathname !== null;
       },
     }),
   };
@@ -46,6 +47,7 @@ beforeEach(() => {
   stubMatchMedia({ isDesktop: true });
   Element.prototype.scrollIntoView = () => {};
   routerBoundary.pathname = "/ui/unlisted";
+  routerBoundary.pendingPathname = null;
   window.history.replaceState(null, "", routerBoundary.pathname);
 });
 
@@ -190,6 +192,29 @@ describe("DocsSidebar rendering", () => {
       expect(screen.getByRole("link", { name: "Button" })).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Card" })).toBeInTheDocument();
       expect(screen.queryByRole("link", { name: "Overview" })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("pending route", () => {
+    it("keeps the loading row named and leaves aria-current on the page the reader is on", () => {
+      routerBoundary.pendingPathname = "/ui/components/card";
+      renderDocsSidebar(
+        pageTree([
+          { type: "separator", name: "Components" },
+          { type: "page", name: "Button", url: "/ui/components/button" },
+          { type: "page", name: "Card", url: "/ui/components/card" },
+        ]),
+        "/ui/components/button",
+      );
+
+      expect(screen.getByText("Card")).toBeInTheDocument();
+      expect(screen.getByRole("status", { name: "Loading" })).toBeInTheDocument();
+
+      const current = screen
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("aria-current") === "page");
+      expect(current).toHaveLength(1);
+      expect(current[0]).toHaveAttribute("data-value", "/ui/components/button");
     });
   });
 });

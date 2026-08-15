@@ -16,12 +16,13 @@ function Page() {
       <button type="button" onClick={() => setDrawerOpen((open) => !open)}>
         {drawerOpen ? "Close drawer" : "Open drawer"}
       </button>
-      {drawerOpen && <Drawer log={log} setLog={setLog} />}
+      {drawerOpen && <Drawer setLog={setLog} />}
+      <p>Last handler: {log}</p>
     </div>
   );
 }
 
-function Drawer({ log, setLog }: { log: string; setLog: (v: string) => void }) {
+function Drawer({ setLog }: { setLog: (v: string) => void }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const scope = useScope("drawer");
 
@@ -34,7 +35,6 @@ function Drawer({ log, setLog }: { log: string; setLog: (v: string) => void }) {
         Open dialog
       </button>
       {dialogOpen && <Dialog onClose={() => setDialogOpen(false)} setLog={setLog} />}
-      <p>Last handler: {log}</p>
     </div>
   );
 }

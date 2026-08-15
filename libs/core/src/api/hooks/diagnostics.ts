@@ -1,7 +1,10 @@
-import type { SetupStatus } from "../../schemas/config/index.js";
+import type { FetchStatus } from "@tanstack/react-query";
+import type { DiagnosticsSetupGaps } from "../../schemas/config/configuration-status.js";
+import { deriveDiagnosticsSetupGaps } from "../../schemas/config/index.js";
 import type { ContextStatus, ServerState } from "../../schemas/presentation/diagnostics.js";
 import { isApiError } from "../types.js";
-import { useInit } from "./config.js";
+import { useConfigurationInit } from "./config.js";
+import { isQueryUnresolved } from "./match-query-state.js";
 import { useRefreshReviewContext, useReviewContext } from "./review.js";
 import { useServerStatus } from "./server.js";
 
@@ -9,7 +12,7 @@ export interface DiagnosticsData {
   serverState: ServerState;
   retryServer: () => Promise<unknown>;
 
-  setupStatus: SetupStatus | null;
+  setupStatus: DiagnosticsSetupGaps | null;
   initLoading: boolean;
   initError: string | null;
 
@@ -21,18 +24,19 @@ export interface DiagnosticsData {
   handleRefreshContext: () => void;
   isRefreshingContext: boolean;
 
-  // Raw refetch for platform-specific needs (e.g., "refresh all")
   refetchContext: () => Promise<unknown>;
+  refetchInit: () => Promise<unknown>;
 }
 
 interface QueryLike {
   isLoading: boolean;
   error: Error | null;
   data: unknown;
+  fetchStatus: FetchStatus;
 }
 
 function deriveContextStatus(query: QueryLike): ContextStatus {
-  if (query.isLoading) return "loading";
+  if (isQueryUnresolved(query)) return "loading";
   if (query.error) {
     const status = isApiError(query.error) ? query.error.status : undefined;
     return status === 404 ? "missing" : "error";
@@ -44,12 +48,21 @@ function deriveContextStatus(query: QueryLike): ContextStatus {
 function deriveContextError(queryError: Error | null, refreshError: Error | null): string | null {
   if (refreshError) return refreshError.message;
   if (!queryError) return null;
+  // A 404 is the state before the first review, which deriveContextStatus already
+  // reports as "missing" in a warning tone. Reporting it as an error too would
+  // contradict the card's own status on the state every user starts from.
+  if (isApiError(queryError) && queryError.status === 404) return null;
   return queryError.message;
 }
 
 export function useDiagnosticsData(): DiagnosticsData {
   const { latestState: serverState, retry: retryServer } = useServerStatus();
-  const { data: initData, isLoading: initLoading, error: initErrorObj } = useInit();
+  const {
+    data: initData,
+    isLoading: initLoading,
+    error: initErrorObj,
+    refetch: refetchInit,
+  } = useConfigurationInit();
   const contextQuery = useReviewContext();
   const refreshContext = useRefreshReviewContext();
 
@@ -64,7 +77,7 @@ export function useDiagnosticsData(): DiagnosticsData {
   return {
     serverState,
     retryServer,
-    setupStatus: initData?.setup ?? null,
+    setupStatus: initData ? deriveDiagnosticsSetupGaps(initData) : null,
     initLoading,
     initError: initErrorObj?.message ?? null,
     contextStatus,
@@ -74,11 +87,12 @@ export function useDiagnosticsData(): DiagnosticsData {
     handleRefreshContext: () => refreshContext.mutate({ force: true }),
     isRefreshingContext: refreshContext.isPending,
     refetchContext,
+    refetchInit: () => refetchInit({ throwOnError: true }),
   };
 }
 
 export function refreshAllDiagnostics(
-  data: Pick<DiagnosticsData, "retryServer" | "refetchContext">,
+  data: Pick<DiagnosticsData, "retryServer" | "refetchContext" | "refetchInit">,
 ): Promise<PromiseSettledResult<unknown>[]> {
-  return Promise.allSettled([data.retryServer(), data.refetchContext()]);
+  return Promise.allSettled([data.retryServer(), data.refetchContext(), data.refetchInit()]);
 }

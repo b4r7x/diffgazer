@@ -5,15 +5,14 @@ import type { Route } from "../../../lib/routes";
 
 type RouteReviewMode = Extract<Route, { screen: "review" }>["mode"];
 
-export interface ActiveSessionInfo {
+interface ActiveSessionInfo {
   reviewId: string;
   mode: NonNullable<RouteReviewMode>;
 }
 
 export interface HomeMenuActionOptions {
   navigate: (route: Route) => void;
-  hasActiveSession: boolean;
-  activeSession?: ActiveSessionInfo | null;
+  activeSession: ActiveSessionInfo | null;
   isTrusted?: boolean;
   shutdown: Pick<UseMutationResult<unknown, unknown, void, unknown>, "mutate">;
   onExit: () => void;
@@ -21,7 +20,6 @@ export interface HomeMenuActionOptions {
 
 export function createHomeMenuAction({
   navigate,
-  hasActiveSession,
   activeSession,
   isTrusted = false,
   shutdown,
@@ -30,7 +28,7 @@ export function createHomeMenuAction({
   return (action: MenuAction) => {
     const decision = resolveHomeMenuActivation(action, {
       isTrusted,
-      hasResumableSession: hasActiveSession,
+      hasResumableSession: activeSession != null,
     });
 
     switch (decision.kind) {
@@ -38,16 +36,13 @@ export function createHomeMenuAction({
         navigate({ screen: "review", mode: decision.mode });
         return;
       case "resume":
-        if (activeSession) {
-          navigate({
-            screen: "review",
-            reviewId: activeSession.reviewId,
-            mode: activeSession.mode,
-            live: true,
-          });
-        } else {
-          navigate({ screen: "review" });
-        }
+        if (!activeSession) return;
+        navigate({
+          screen: "review",
+          reviewId: activeSession.reviewId,
+          mode: activeSession.mode,
+          live: true,
+        });
         return;
       case "navigate":
         navigate({ screen: decision.target });

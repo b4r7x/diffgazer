@@ -102,6 +102,9 @@ export function createConfigurationLeaseHooks(): ConfigurationLeaseHooks {
         `Configuration ${configurationId} still has active executions after drain timeout`,
       );
     },
+    clearRevocation: (configurationId) => {
+      leaseAuthority.clearRevocation(configurationId);
+    },
   };
 }
 

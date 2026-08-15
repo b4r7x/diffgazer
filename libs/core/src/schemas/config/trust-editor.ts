@@ -52,7 +52,6 @@ export function resolveEditorView(draft: TrustDraft, input: TrustEditorInput): T
 }
 
 export interface SavePayloadInput {
-  projectId: string | null;
   repoRoot: string | null;
   trust: TrustConfig | null;
   capabilities: TrustCapabilities;
@@ -63,14 +62,11 @@ export type SavePayloadResult =
   | { kind: "blocked"; reason: "project-missing" };
 
 export function buildSavePayload({
-  projectId,
   repoRoot,
   trust,
   capabilities,
 }: SavePayloadInput): SavePayloadResult {
-  // The UI guard still requires resolved project identity before a save; the
-  // server derives projectId/repoRoot/trustedAt from the request itself.
-  if (!projectId || !repoRoot) return { kind: "blocked", reason: "project-missing" };
+  if (!repoRoot) return { kind: "blocked", reason: "project-missing" };
   return {
     kind: "ready",
     payload: {

@@ -21,16 +21,18 @@ function NavBody() {
       <SidebarContent>
         <SidebarSection>
           <SidebarSectionTitle>primitives</SidebarSectionTitle>
-          <SidebarItem>dialog</SidebarItem>
-          <SidebarItem>toggle-group</SidebarItem>
-          <SidebarItem active>stepper</SidebarItem>
-          <SidebarItem>sidebar</SidebarItem>
+          <SidebarItem href="#dialog">dialog</SidebarItem>
+          <SidebarItem href="#toggle-group">toggle-group</SidebarItem>
+          <SidebarItem active href="#stepper">
+            stepper
+          </SidebarItem>
+          <SidebarItem href="#sidebar">sidebar</SidebarItem>
         </SidebarSection>
         <SidebarSection>
           <SidebarSectionTitle>cli</SidebarSectionTitle>
-          <SidebarItem>add</SidebarItem>
-          <SidebarItem>remove</SidebarItem>
-          <SidebarItem>diff</SidebarItem>
+          <SidebarItem href="#add">add</SidebarItem>
+          <SidebarItem href="#remove">remove</SidebarItem>
+          <SidebarItem href="#diff">diff</SidebarItem>
         </SidebarSection>
       </SidebarContent>
     </>

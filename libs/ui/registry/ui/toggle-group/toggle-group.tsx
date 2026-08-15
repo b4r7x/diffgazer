@@ -32,38 +32,42 @@ import { cn } from "@/lib/utils";
 import { ToggleGroupContext, type ToggleGroupSelectionMode } from "./toggle-group-context";
 import { ToggleGroupItem } from "./toggle-group-item";
 
+// The inactive selection mode still feeds its useControllableState every render. A fresh []
+// there would change identity each time and invalidate the context memo every item reads.
+const EMPTY_VALUES: readonly string[] = [];
+
 /** Props for toggle group in single-selection mode. */
-interface ToggleGroupSingleProps<TValue extends string = string> {
+interface ToggleGroupSingleProps {
   /**
    * Switches between radio-style single selection and pressed-button-style multiple selection.
    * Switches value/onChange/defaultValue from string|null to readonly string[].
    */
   selectionMode?: "single" | undefined;
   /** Controlled selected value(s). string|null for single mode, readonly string[] for multiple. */
-  value?: TValue | null;
+  value?: string | null;
   /** Initial selected value(s) for uncontrolled mode. */
-  defaultValue?: TValue | null;
+  defaultValue?: string | null;
   /** Fired when the selected value(s) change. */
-  onChange?: (value: TValue | null) => void;
+  onChange?: (value: string | null) => void;
 }
 
 /** Props for toggle group in multiple-selection mode. */
-interface ToggleGroupMultipleProps<TValue extends string = string> {
+interface ToggleGroupMultipleProps {
   /**
    * Switches between radio-style single selection and pressed-button-style multiple selection.
    * Switches value/onChange/defaultValue from string|null to readonly string[].
    */
   selectionMode: "multiple";
   /** Controlled selected value(s). string|null for single mode, readonly string[] for multiple. */
-  value?: readonly TValue[];
+  value?: readonly string[];
   /** Initial selected value(s) for uncontrolled mode. */
-  defaultValue?: readonly TValue[];
+  defaultValue?: readonly string[];
   /** Fired when the selected value(s) change. */
-  onChange?: (value: readonly TValue[]) => void;
+  onChange?: (value: readonly string[]) => void;
 }
 
 /** Props for toggle group base. */
-interface ToggleGroupBaseProps<TValue extends string = string> {
+interface ToggleGroupBaseProps {
   /** Single mode only. When true, clicking the active item deselects it (allowing a null value). */
   allowDeselect?: boolean;
   /** Disables the entire group. */
@@ -77,9 +81,9 @@ interface ToggleGroupBaseProps<TValue extends string = string> {
   /** When true, arrow navigation wraps and horizontal items flex-wrap. */
   wrap?: boolean;
   /** Controlled highlighted (focused) value for cross-component navigation. */
-  highlighted?: TValue | null;
+  highlighted?: string | null;
   /** Fired when the highlighted value changes. */
-  onHighlightChange?: (value: TValue | null) => void;
+  onHighlightChange?: (value: string | null) => void;
   /** Fired when arrow navigation reaches the first/last item with wrap disabled. */
   onNavigationBoundaryReached?: (
     direction: "previous" | "next",
@@ -103,8 +107,8 @@ interface ToggleGroupBaseProps<TValue extends string = string> {
 }
 
 /** Props for toggle group. */
-export type ToggleGroupProps<TValue extends string = string> = ToggleGroupBaseProps<TValue> &
-  (ToggleGroupSingleProps<TValue> | ToggleGroupMultipleProps<TValue>);
+export type ToggleGroupProps = ToggleGroupBaseProps &
+  (ToggleGroupSingleProps | ToggleGroupMultipleProps);
 
 interface ToggleGroupSeedElementProps {
   children?: ReactNode;
@@ -135,7 +139,7 @@ function collectEnabledToggleValues(children: ReactNode, skippedAncestor = false
 }
 
 /** Compound toggle button group with keyboard navigation for single or multiple selection. */
-export function ToggleGroup<TValue extends string = string>(props: ToggleGroupProps<TValue>) {
+export function ToggleGroup(props: ToggleGroupProps) {
   const {
     allowDeselect = false,
     disabled = false,
@@ -169,18 +173,23 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
     [registerItem],
   );
 
-  // Public props narrow on TValue; internal state stays string-typed because the
-  // selectable-collection layer keys items by data-value strings.
   const singleProps = selectionMode === "single" ? (props as ToggleGroupSingleProps) : null;
   const multipleProps = selectionMode === "multiple" ? (props as ToggleGroupMultipleProps) : null;
 
   const isValueControlled = "value" in props;
-  const [singleValue, setSingleValue, , resetSingleValue] = useControllableState<string | null>({
-    value: isValueControlled ? (singleProps?.value ?? null) : undefined,
-    controlled: isValueControlled,
-    defaultValue: singleProps?.defaultValue ?? null,
-    onChange: singleProps?.onChange as ((value: string | null) => void) | undefined,
-  });
+  const [singleValue, setSingleValue, , resetSingleValue] = useControllableState<string | null>(
+    isValueControlled
+      ? {
+          controlled: true,
+          value: singleProps?.value ?? null,
+          defaultValue: singleProps?.defaultValue ?? null,
+          onChange: singleProps?.onChange,
+        }
+      : {
+          defaultValue: singleProps?.defaultValue ?? null,
+          onChange: singleProps?.onChange,
+        },
+  );
   const invalidatePendingSingleReset = useFormReset(
     containerRef,
     singleProps?.defaultValue ?? null,
@@ -190,25 +199,39 @@ export function ToggleGroup<TValue extends string = string>(props: ToggleGroupPr
 
   const [multipleValue, setMultipleValue, , resetMultipleValue] = useControllableState<
     readonly string[]
-  >({
-    value: isValueControlled ? (multipleProps?.value ?? []) : undefined,
-    controlled: isValueControlled,
-    defaultValue: multipleProps?.defaultValue ?? [],
-    onChange: multipleProps?.onChange as ((value: readonly string[]) => void) | undefined,
-  });
+  >(
+    isValueControlled
+      ? {
+          controlled: true,
+          value: multipleProps?.value ?? EMPTY_VALUES,
+          defaultValue: multipleProps?.defaultValue ?? EMPTY_VALUES,
+          onChange: multipleProps?.onChange,
+        }
+      : {
+          defaultValue: multipleProps?.defaultValue ?? EMPTY_VALUES,
+          onChange: multipleProps?.onChange,
+        },
+  );
   const invalidatePendingMultipleReset = useFormReset(
     containerRef,
-    multipleProps?.defaultValue ?? [],
+    multipleProps?.defaultValue ?? EMPTY_VALUES,
     resetMultipleValue,
     !isValueControlled && selectionMode === "multiple",
   );
 
-  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
-    value: controlledHighlighted,
-    controlled: "highlighted" in props,
-    defaultValue: null,
-    onChange: onHighlightChange as ((value: string | null) => void) | undefined,
-  });
+  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>(
+    "highlighted" in props
+      ? {
+          controlled: true,
+          value: controlledHighlighted ?? null,
+          defaultValue: null,
+          onChange: onHighlightChange,
+        }
+      : {
+          defaultValue: null,
+          onChange: onHighlightChange,
+        },
+  );
 
   const usesButtonSemantics = selectionMode === "multiple" || allowDeselect;
 

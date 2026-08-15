@@ -20,12 +20,6 @@ function runnableState(configurationInput: Record<string, unknown>) {
 }
 
 describe("onboarding state", () => {
-  it("exposes dynamic V2 state contracts without fixed API-key wizard exports", () => {
-    expect("INPUT_METHODS" in onboardingTypes).toBe(false);
-    expect("isInputMethod" in onboardingTypes).toBe(false);
-    expect("WIZARD_STEPS" in onboardingTypes).toBe(false);
-  });
-
   it.each([
     {
       family: "hosted-api",
@@ -60,7 +54,6 @@ describe("onboarding state", () => {
     const state = onboardingTypes.OnboardingStateSchema.parse(runnableState(input));
 
     expect(state.kind).toBe("runnable");
-    if (state.kind !== "runnable") throw new Error("Expected runnable state");
     expect(state.configurationInput.transportFamily).toBe(family);
     expect(state.plan.transportFamily).toBe(family);
     expect(state.plan.productId).toBe(input.productId);

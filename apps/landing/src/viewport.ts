@@ -16,7 +16,6 @@ export interface Mouse {
   y: number;
   nx: number;
   ny: number;
-  lastMove: number;
 }
 
 export const createMouse = (): Mouse => ({
@@ -24,7 +23,6 @@ export const createMouse = (): Mouse => ({
   y: innerHeight / 2,
   nx: 0,
   ny: 0,
-  lastMove: 0,
 });
 
 export const isLight = (doc: Document = document): boolean =>

@@ -8,11 +8,12 @@ export const ErrorCode = {
   UNAUTHORIZED: "UNAUTHORIZED",
   SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
   AI_ERROR: "AI_ERROR",
-  AI_CLIENT_ERROR: "AI_CLIENT_ERROR",
   API_KEY_MISSING: "API_KEY_MISSING",
   RATE_LIMITED: "RATE_LIMITED",
+  // A review already holds the configuration's admitted concurrency. A conflict
+  // the user resolves by waiting or cancelling, never a credential setup fault.
+  REVIEW_IN_PROGRESS: "REVIEW_IN_PROGRESS",
   STREAM_ERROR: "STREAM_ERROR",
-  CONFIG_NOT_FOUND: "CONFIG_NOT_FOUND",
   GIT_NOT_FOUND: "GIT_NOT_FOUND",
   NOT_GIT_REPO: "NOT_GIT_REPO",
   COMMAND_FAILED: "COMMAND_FAILED",
@@ -24,6 +25,12 @@ export const ErrorCode = {
   PAYLOAD_TOO_LARGE: "PAYLOAD_TOO_LARGE",
   PROVIDER_NOT_FOUND: "PROVIDER_NOT_FOUND",
   INVALID_RESPONSE: "INVALID_RESPONSE",
+  // Secrets-storage failures the server emits and the surfaces present as a
+  // credential setup condition, not a retryable fault.
+  SECRET_BINDING_FAILED: "SECRET_BINDING_FAILED",
+  STORAGE_NOT_CONFIGURED: "STORAGE_NOT_CONFIGURED",
+  KEYRING_UNAVAILABLE: "KEYRING_UNAVAILABLE",
+  KEYRING_READ_FAILED: "KEYRING_READ_FAILED",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

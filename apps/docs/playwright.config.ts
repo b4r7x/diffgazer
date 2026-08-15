@@ -66,6 +66,9 @@ export default defineConfig({
         // The home fold is a phone contract: the hero has to leave the session
         // panel visible above the footer at 375x667.
         "**/home-fold.e2e.ts",
+        // Auto submenus use a coarse pointer to choose the in-place stack instead
+        // of the desktop flyout, including its keyboard return-focus contract.
+        "**/menu.e2e.ts",
       ],
       use: { ...devices["Pixel 7"] },
     },

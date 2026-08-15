@@ -219,7 +219,9 @@ function MatchCount({
   return (
     // biome-ignore lint/a11y/useSemanticElements: role="status" is the sr-only results-count live region; <output> carries form-association semantics that do not fit here.
     <div role="status" aria-live="polite" className="sr-only">
-      {searchQuery ? (getResultsLabel?.(count) ?? `${count} results`) : ""}
+      {searchQuery
+        ? (getResultsLabel?.(count) ?? `${count} ${count === 1 ? "result" : "results"}`)
+        : ""}
     </div>
   );
 }

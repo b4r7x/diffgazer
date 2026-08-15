@@ -19,7 +19,7 @@ The hub is a single menu. Each row names a settings area and shows its current s
 | Analysis | Which agents run during a review |
 | Diagnostics | System health checks for this directory |
 
-Pick a row to open that area. Configuration editors have Cancel and Save actions: they do not write changes before Save, and Cancel or `Esc` returns to the hub without applying them. The hub footer shows the config file path, `~/.diffgazer/config.json`, which is where those choices are persisted. For the full shape of that file and every field it holds, see [configuration](/app/reference/configuration).
+Pick a row to open that area. Configuration editors have Cancel and Save actions: they do not write changes before Save, and Cancel or `Esc` returns to the hub without applying them. The hub footer shows the project path this session is reviewing, plus a `local settings` caption. Your choices are persisted to `~/.diffgazer/config.json`, which the footer does not print. For the full shape of that file and every field it holds, see [configuration](/app/reference/configuration).
 
 Diagnostics is not a configuration editor. It offers **Refresh Diagnostics** plus **Generate Context** or **Regenerate Context**, and each action runs immediately without a separate Save confirmation. Generating or regenerating context writes the local project snapshot under the project's `.diffgazer` directory. Press `Esc` to return to the settings hub.
 

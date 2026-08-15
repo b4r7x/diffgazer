@@ -11,8 +11,9 @@ import {
   assertParserFieldPathAllowlisted,
   type CliCompatibilityRecord,
   type CliCompatibilityTuple,
+  CODEX_STDIN_PROMPT_SENTINEL,
 } from "./cli-compatibility/compat.js";
-import { buildReviewSchemaJson } from "./cli-compatibility/probe.js";
+import { buildReviewSchemaJson } from "./cli-compatibility/review-schema.js";
 import {
   buildCliCompatibilityTuple,
   type CliReviewDependencies,
@@ -41,7 +42,6 @@ export function buildCodexCliExecArgv(input: {
   reviewSchemaPath: string;
   resultPath: string;
   modelId: string;
-  prompt: string;
 }): string[] {
   return [
     "exec",
@@ -57,7 +57,7 @@ export function buildCodexCliExecArgv(input: {
     input.resultPath,
     "--model",
     input.modelId,
-    input.prompt,
+    CODEX_STDIN_PROMPT_SENTINEL,
   ];
 }
 
@@ -119,8 +119,10 @@ export function parseCodexOutputLastMessage(
 }
 
 /**
- * Codex writes its review to the last-message file; a transcript that carries
- * only lifecycle events is not evidence that the file was produced by this run.
+ * Narrow rejection of one observed shape: a transcript whose every line is a typed
+ * lifecycle event with no result payload, which Codex emits when the run ended
+ * without producing a review. It is not a general provenance check — an empty
+ * transcript, or any transcript with a single non-JSON line, is accepted.
  */
 function isEventOnlyStdout(stdout: string): boolean {
   const lines = stdout
@@ -174,12 +176,11 @@ const CODEX_CLI_PRODUCT: CliReviewProduct = {
       "utf8",
     );
   },
-  buildArgv: ({ fixtureRoot, modelId, prompt }) =>
+  buildArgv: ({ fixtureRoot, modelId }) =>
     buildCodexCliExecArgv({
       reviewSchemaPath: path.join(fixtureRoot, REVIEW_SCHEMA_FILE),
       resultPath: path.join(fixtureRoot, RESULT_FILE),
       modelId,
-      prompt,
     }),
   assertArgvAllowed: assertCodexArgvFlagsAllowlisted,
   parseTerminalOutput: parseCodexTerminalOutput,
@@ -195,5 +196,3 @@ export function executeCodexCliReview(
 export function createCodexCliAdapter(dependencies?: CliReviewDependencies): Adapter {
   return createCliReviewAdapter(CODEX_CLI_PRODUCT, dependencies);
 }
-
-export const codexCliAdapter = createCodexCliAdapter();

@@ -6,14 +6,30 @@ RUN apk add --no-cache git
 
 WORKDIR /app
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json biome.json .gitignore ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY patches/ patches/
+COPY apps/docs/package.json apps/docs/package.json
+COPY apps/landing/package.json apps/landing/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY cli/add/package.json cli/add/package.json
+COPY cli/diffgazer/package.json cli/diffgazer/package.json
+COPY cli/server/package.json cli/server/package.json
+COPY libs/core/package.json libs/core/package.json
+COPY libs/keys/artifacts/package.json libs/keys/artifacts/package.json
+COPY libs/keys/examples/playground/package.json libs/keys/examples/playground/package.json
+COPY libs/keys/package.json libs/keys/package.json
+COPY libs/registry/package.json libs/registry/package.json
+COPY libs/ui/package.json libs/ui/package.json
+
+RUN pnpm fetch --frozen-lockfile
+
+RUN pnpm install --frozen-lockfile --offline
+
+COPY turbo.json biome.json .gitignore ./
 COPY apps/ apps/
 COPY cli/ cli/
 COPY libs/ libs/
 COPY scripts/ scripts/
-
-RUN pnpm install --frozen-lockfile
 
 ARG REGISTRY_ORIGIN=https://r.b4r7.dev
 ENV REGISTRY_ORIGIN=${REGISTRY_ORIGIN}
@@ -51,6 +67,6 @@ ENV PORT=3000
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3000/ || exit 1
+  CMD wget -qO- http://127.0.0.1:${PORT:-3000}/ || exit 1
 
 CMD ["node", ".output/server/index.mjs"]

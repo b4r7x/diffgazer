@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import {
   Children,
   type ComponentPropsWithRef,
+  type ElementType,
   type FocusEvent,
   isValidElement,
   type MouseEvent,
@@ -26,6 +27,7 @@ import {
 import { NavigationListItemContext } from "./navigation-list-item-context";
 import { NavigationListMeta } from "./navigation-list-meta";
 import { NavigationListSubtitle } from "./navigation-list-subtitle";
+import { NavigationListTitle } from "./navigation-list-title";
 
 const itemVariants = cva("flex cursor-pointer group", {
   variants: {
@@ -97,14 +99,20 @@ const contentVariants = cva("flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap
 /** Allowed density values. */
 type Density = NonNullable<VariantProps<typeof contentVariants>["density"]>;
 
-function hasDescriptionChild(
-  children: ReactNode,
-  childType: typeof NavigationListMeta | typeof NavigationListSubtitle,
-): boolean {
+function hasChildOfType(children: ReactNode, childType: ElementType): boolean {
   return Children.toArray(children).some((child) => {
     if (!isValidElement<{ children?: ReactNode }>(child)) return false;
     if (child.type === childType) return true;
-    return hasDescriptionChild(child.props.children, childType);
+    return hasChildOfType(child.props.children, childType);
+  });
+}
+
+function hasStandaloneSubtitle(children: ReactNode): boolean {
+  return Children.toArray(children).some((child) => {
+    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    if (child.type === NavigationListSubtitle) return true;
+    if (child.type === NavigationListMeta) return false;
+    return hasStandaloneSubtitle(child.props.children);
   });
 }
 
@@ -168,9 +176,13 @@ export function NavigationListItem({
   const itemId = getEncodedListboxItemId(idPrefix, id);
   const labelId = `${itemId}-label`;
   const descIdPrefix = `${itemId}-desc`;
+  // Reference the label only when a Title actually renders it, the same rule the
+  // description ids follow: a dangling IDREF is an ARIA violation, and the row's
+  // text content is a better fallback name than a pointer to nothing.
+  const labelledBy = hasChildOfType(children, NavigationListTitle) ? labelId : undefined;
   const describedBy = mergeIds(
-    hasDescriptionChild(children, NavigationListMeta) ? `${descIdPrefix}-meta` : undefined,
-    hasDescriptionChild(children, NavigationListSubtitle) ? `${descIdPrefix}-sub` : undefined,
+    hasChildOfType(children, NavigationListMeta) ? `${descIdPrefix}-meta` : undefined,
+    hasStandaloneSubtitle(children) ? `${descIdPrefix}-sub` : undefined,
   );
 
   // Selected rows keep a muted marker while the active visual is elsewhere
@@ -224,7 +236,7 @@ export function NavigationListItem({
         ref={composedRef}
         id={itemId}
         role="option"
-        aria-labelledby={labelId}
+        aria-labelledby={labelledBy}
         aria-describedby={describedBy}
         data-value={id}
         data-highlighted={isActive ? "" : undefined}

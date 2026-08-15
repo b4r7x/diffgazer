@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const sidebarDoc: ComponentDoc = {
   description:
@@ -141,10 +141,9 @@ export const sidebarDoc: ComponentDoc = {
         action: "Toggles the desktop hidden state, or opens/closes the mobile sheet.",
       },
     ],
-    examples: [
-      { name: "sidebar-default", title: "Default" },
-      { name: "sidebar-collapsible", title: "Collapsible sections" },
-    ],
+    // Both demos already render above (hero + Examples list); repeating them here
+    // mounted a second Sidebar tree under an identical heading.
+    examples: [],
   },
   dataAttributes: [
     {
@@ -239,7 +238,7 @@ export const sidebarDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          'Controlled desktop visibility state. "open" = full width, "rail" = collapsed glyph rail, "hidden" = off-canvas. Below the breakpoint the sheet has its own open state, so this value only describes the next desktop layout.',
+          'Documented exception to the `value`/`onChange` control convention: the sidebar exposes a tri-state value (`"open" | "rail" | "hidden"`), so the boolean `collapsed`/`onCollapsedChange` shape cannot represent it. `state` and `onStateChange` are the semantic names for this tri-state control.',
       },
       defaultState: {
         type: '"open" | "rail" | "hidden"',
@@ -406,11 +405,11 @@ export const sidebarDoc: ComponentDoc = {
         description: "Disables the item. Adds aria-disabled and removes from tab order.",
       },
       children: {
-        type: "ReactNode | (props: SidebarItemRenderProps) => ReactNode",
+        type: "ReactNode | (props: SidebarItemRenderProps<HTMLAnchorElement>) => ReactNode",
         required: true,
         defaultValue: null,
         description:
-          "Item content or a render function (for framework Link components) that receives ref, className, disabled, aria-current, aria-disabled, data-selected, data-intent, data-value, onClick, tabIndex, and itemPrefix. itemPrefix is a ReactNode (intent dot, variant glyph) that must be rendered as the element's leading content, never spread onto the element.",
+          "Sidebar subparts/item content or a render function (for framework Link components) that receives ref, className, disabled, aria-current, aria-disabled, data-selected, data-intent, data-value, onClick, tabIndex, and itemPrefix. itemPrefix is a ReactNode (intent dot, variant glyph) that must be rendered as the element's leading content, never spread onto the element.",
       },
     },
     "Sidebar.ItemLabel": {

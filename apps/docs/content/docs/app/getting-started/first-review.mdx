@@ -94,7 +94,7 @@ On first launch Diffgazer has no saved configuration, so the browser opens into 
 2. Bind the allowed endpoint and, when required, region and workspace.
 3. Choose how the credential is supplied: **Enter credential now** for a write-only literal, or **Use environment reference** to bind the product's environment variable. The variable name is fixed per product — there is nothing to type.
 4. Select an exact discovered model ID.
-5. Confirm conformance for the configured tuple and model.
+5. Confirm conformance for the configured tuple and model. Saving runs no billed probe — your first review verifies structured review support.
 6. Review and accept the product's billing and privacy notice.
 
 Example environment-reference flow without embedding a secret:
@@ -108,22 +108,35 @@ In the wizard, choose **Use environment reference**. Diffgazer records the refer
 
 ### Local HTTP setup (Ollama, Local OpenAI-compatible)
 
-1. Pick Ollama or Local OpenAI-compatible.
-2. Bind the validated loopback endpoint and start your local server there (`http://127.0.0.1:11434` for Ollama, `http://127.0.0.1:1234/v1` for LM Studio, or `http://127.0.0.1:8080/v1` for llama.cpp).
-3. Leave authentication as-is unless the server expects a bearer token; tick **This server requires a bearer token** and supply it if it does.
-4. Select an exact model listed by the local server.
-5. Confirm conformance, then run **Test** until readiness is **ready** or remediation tells you to start the server, use a loopback endpoint, or install a review-capable model.
-6. Review and accept the local billing and privacy notice.
+Local HTTP products cannot be finished end-to-end in the setup wizard today. The wizard **Model** step shows **Catalog observations are unavailable for this configuration product.** with **Retry** only, offers no model list, and **Next** stays disabled because the UI does not accept an external `select`. Finish the configuration outside the wizard instead.
+
+Follow the [local HTTP sequence in Configuration](/app/reference/configuration#local-http-products-ollama-local-openai-compatible):
+
+1. `create` the configuration and bind the validated loopback endpoint (`http://127.0.0.1:11434` for Ollama, `http://127.0.0.1:1234/v1` for LM Studio, or `http://127.0.0.1:8080/v1` for llama.cpp). Start your local server there.
+2. Add an optional bearer token with `update` when your server requires one.
+3. Look up the exact model ID from your server tooling (for example `ollama list`, or the LM Studio / llama.cpp UI).
+4. `select` that exact ID through the [local API](/app/reference/api).
+5. `test` until readiness is **ready** or remediation tells you to start the server, use a loopback endpoint, or install a review-capable model.
+6. `update` again to accept the product notice.
+
+You can also drive the same actions from **Configure Provider** in Settings after `select` makes the configuration globally selected. Reloading the app after `select` lands on Home rather than reopening the wizard.
 
 There is no API key step: local HTTP products never store hosted credentials.
 
 ### Local CLI setup (OpenAI Codex CLI, GitHub Copilot CLI)
 
-1. Pick the CLI product. Local CLI products have no endpoint step.
-2. Install and sign in with the vendor CLI using its own tooling, then point the authentication step at that installation. Diffgazer uses **vendor-managed local auth** and does not ask for CLI tokens or auth file paths.
-3. Select an exact model.
-4. Confirm conformance, then run **Inspect** and **Test** until readiness is **ready** or **unsupported** with explicit remediation if the installed CLI version, account, or policy does not satisfy the pinned review profile.
-5. Review and accept the account notice.
+Local CLI products cannot be finished end-to-end in the setup wizard today for the same reason: the **Model** step has no picker and **Next** stays disabled after an external `select`. Finish outside the wizard.
+
+Follow the [local CLI sequence in Configuration](/app/reference/configuration#local-cli-products-openai-codex-cli-github-copilot-cli):
+
+1. `create` the configuration.
+2. Install and sign in with the vendor CLI using its own tooling. Diffgazer uses **vendor-managed local auth** and does not ask for CLI tokens or auth file paths.
+3. Look up the exact model ID from the installed CLI or vendor docs.
+4. `select` that exact ID through the [local API](/app/reference/api).
+5. `inspect` and `test` until readiness is **ready** or **unsupported** with explicit remediation if the installed CLI version, account, or policy does not satisfy the pinned review profile.
+6. `update` to accept the account notice.
+
+As with local HTTP, **Configure Provider** in Settings can run the remaining readiness actions after `select`.
 
 ## Trust the directory
 

@@ -69,5 +69,5 @@ const patch = `--- a/src/server/review-pipeline.ts
 `;
 
 export default function DiffViewMaxHeight() {
-  return <DiffView patch={patch} maxHeight="240px" showLineNumbers />;
+  return <DiffView patch={patch} maxHeight="240px" />;
 }

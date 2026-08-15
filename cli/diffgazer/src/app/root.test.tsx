@@ -11,12 +11,19 @@ type FakeServerState =
 
 const serverStatusState = vi.hoisted(() => ({
   current: { status: "error", message: "fetch failed" } as FakeServerState,
+  latest: { status: "error", message: "fetch failed" } as FakeServerState,
 }));
-const configCheckState = vi.hoisted(() => ({
-  current: { data: undefined, error: null, isLoading: true },
+const initQueryState = vi.hoisted(() => ({
+  current: {
+    data: undefined as
+      | ReturnType<typeof import("@diffgazer/core/testing/provider-fixtures").makeReadyInitResponse>
+      | undefined,
+    error: null as Error | null,
+    isLoading: true,
+  },
 }));
 const retryMock = vi.hoisted(() => vi.fn<() => Promise<unknown>>(() => Promise.resolve(undefined)));
-const refetchConfigMock = vi.hoisted(() => vi.fn(() => Promise.resolve(undefined)));
+const refetchInitMock = vi.hoisted(() => vi.fn(() => Promise.resolve(undefined)));
 const startMock = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const stopMock = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const factory = vi.hoisted(() => ({
@@ -29,8 +36,12 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@diffgazer/core/api/hooks")>();
   return {
     ...actual,
-    useConfigCheck: () => ({ ...configCheckState.current, refetch: refetchConfigMock }),
-    useServerStatus: () => ({ state: serverStatusState.current, retry: retryMock }),
+    useConfigurationInit: () => ({ ...initQueryState.current, refetch: refetchInitMock }),
+    useServerStatus: () => ({
+      state: serverStatusState.current,
+      latestState: serverStatusState.latest,
+      retry: retryMock,
+    }),
   };
 });
 
@@ -43,12 +54,18 @@ vi.mock("../lib/servers/factories", () => ({
   },
 }));
 
+vi.mock("../hooks/use-terminal-dimensions", () => ({
+  useResponsive: () => ({ columns: 100, rows: 30, isNarrow: false, isWide: true }),
+  useTerminalDimensions: () => ({ columns: 100, rows: 30 }),
+}));
+
 import { App } from "./root";
 
 afterEach(() => {
   cleanup();
   serverStatusState.current = { status: "error", message: "fetch failed" };
-  configCheckState.current = { data: undefined, error: null, isLoading: true };
+  serverStatusState.latest = { status: "error", message: "fetch failed" };
+  initQueryState.current = { data: undefined, error: null, isLoading: true };
   factory.options = undefined;
   factory.onStartupFailure = undefined;
   vi.clearAllMocks();
@@ -73,7 +90,7 @@ describe("HealthGate startup-failure recovery", () => {
 
     await vi.waitFor(() => {
       expect(startMock).toHaveBeenCalledOnce();
-      expect(lastFrame()).toContain("Press r to retry");
+      expect(lastFrame()).toContain("[r] Retry");
     });
 
     const startsBefore = startMock.mock.calls.length;
@@ -99,6 +116,7 @@ describe("HealthGate startup-failure recovery", () => {
     resolveReadiness();
     await vi.waitFor(() => expect(retryMock).toHaveBeenCalledOnce());
     serverStatusState.current = { status: "connected" };
+    serverStatusState.latest = { status: "connected" };
     expect(lastFrame()).toContain("Connecting to server");
 
     resolveHealth();
@@ -127,12 +145,85 @@ describe("HealthGate startup-failure recovery", () => {
 
   it("transitions past the health gate once the server reports connected", async () => {
     serverStatusState.current = { status: "connected" };
+    serverStatusState.latest = { status: "connected" };
 
     const { lastFrame } = render(<App mode="prod" />);
 
     await vi.waitFor(() => {
       expect(lastFrame()).toContain("Checking configuration");
     });
-    expect(lastFrame()).not.toContain("Press r to retry");
+    expect(lastFrame()).not.toContain("[r] Retry");
+  });
+
+  it("keeps the app mounted while a healthy server health refetch is in flight", async () => {
+    serverStatusState.current = { status: "connected" };
+    serverStatusState.latest = { status: "connected" };
+    initQueryState.current = {
+      data: {
+        schemaVersion: 2,
+        configurations: [],
+        unrecognizedConfigurations: [],
+        selectedConfigurationId: "gemini-primary",
+        settings: {
+          theme: "auto",
+          defaultLenses: [],
+          defaultProfile: null,
+          severityThreshold: "low",
+          secretsStorage: null,
+          agentExecution: "sequential",
+        },
+        project: { path: "/repo", projectId: null, trust: null },
+      },
+      error: null,
+      isLoading: false,
+    };
+
+    const { lastFrame, rerender } = render(<App mode="prod" />);
+
+    await vi.waitFor(() => {
+      expect(lastFrame()).not.toContain("Connecting to server");
+    });
+
+    serverStatusState.latest = { status: "checking" };
+    rerender(<App mode="prod" />);
+
+    await vi.waitFor(() => {
+      expect(lastFrame()).not.toContain("Connecting to server");
+      expect(lastFrame()).not.toContain("Server Disconnected");
+    });
+  });
+
+  it("surfaces a latched disconnect when the latest health poll fails", async () => {
+    serverStatusState.current = { status: "connected" };
+    serverStatusState.latest = { status: "error", message: "fetch failed" };
+
+    const { lastFrame } = render(<App mode="prod" />);
+
+    await vi.waitFor(() => {
+      expect(lastFrame()).toContain("Server Disconnected");
+      expect(lastFrame()).toContain("[r] Retry");
+    });
+    expect(lastFrame()).not.toContain("Checking configuration");
+  });
+
+  it("clears recovery and keeps retry available when restart fails after r", async () => {
+    startMock.mockRejectedValueOnce(new Error("readiness failed"));
+    const { stdin, lastFrame } = render(<App mode="prod" />);
+
+    await vi.waitFor(() => {
+      expect(lastFrame()).toContain("[r] Retry");
+    });
+
+    startMock.mockRejectedValueOnce(new Error("bind failed again"));
+    factory.onStartupFailure?.("Port 3000 is already in use.");
+
+    stdin.write("r");
+
+    await vi.waitFor(() => {
+      expect(lastFrame()).not.toContain("Connecting to server");
+      expect(lastFrame()).toContain("Server Disconnected");
+      expect(lastFrame()).toContain("[r] Retry");
+    });
+    expect(retryMock).not.toHaveBeenCalled();
   });
 });

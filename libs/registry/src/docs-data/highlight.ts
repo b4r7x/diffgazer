@@ -30,22 +30,22 @@ function tokensToCodeBlockLines(lines: ThemedToken[][]): CodeBlockLine[] {
   }));
 }
 
-const DEFAULT_LANGS = [
-  import("shiki/langs/tsx.mjs"),
-  import("shiki/langs/typescript.mjs"),
-  import("shiki/langs/css.mjs"),
-  import("shiki/langs/bash.mjs"),
-  import("shiki/langs/json.mjs"),
-  import("shiki/langs/html.mjs"),
-];
-
 export async function createDocsHighlighter(
   options: CreateHighlighterOptions,
 ): Promise<DocsHighlighter> {
+  const defaultLangs = [
+    import("shiki/langs/tsx.mjs"),
+    import("shiki/langs/typescript.mjs"),
+    import("shiki/langs/css.mjs"),
+    import("shiki/langs/bash.mjs"),
+    import("shiki/langs/json.mjs"),
+    import("shiki/langs/html.mjs"),
+  ];
+
   return createHighlighterCore({
     engine: createJavaScriptRegexEngine(),
     themes: [options.theme],
-    langs: options.langs ?? DEFAULT_LANGS,
+    langs: options.langs ?? defaultLangs,
   });
 }
 

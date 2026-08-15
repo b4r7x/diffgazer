@@ -27,9 +27,39 @@ interface DemoPreviewProps {
   title?: string;
   demo: LazyExoticComponent<ComponentType> | null;
   loading?: boolean;
+  /** Set when the library demo index failed to load. */
+  loadError?: Error | null;
+  /** Retries the demo-index import after a load failure. */
+  onRetryLoad?: () => void;
   code: CodeBlockLineProps[];
   rawCode: string;
   frame?: PreviewFrame;
+}
+
+export function PreviewUnavailable({
+  loadError,
+  onRetryLoad,
+}: {
+  loadError?: Error | null;
+  onRetryLoad?: () => void;
+}) {
+  return (
+    <output
+      className="flex min-h-[120px] flex-col items-center justify-center gap-2 px-4 text-center text-sm"
+      data-demo-load-error={loadError?.message ?? "demo-index-unavailable"}
+    >
+      <span>Preview unavailable.</span>
+      {onRetryLoad ? (
+        <button
+          type="button"
+          className="font-mono text-xs uppercase tracking-wider text-muted-foreground underline-offset-2 hover:underline"
+          onClick={onRetryLoad}
+        >
+          Retry preview
+        </button>
+      ) : null}
+    </output>
+  );
 }
 
 function DefaultPreviewPane({
@@ -38,12 +68,16 @@ function DefaultPreviewPane({
   theme,
   compact = false,
   loading = false,
+  loadError = null,
+  onRetryLoad,
 }: {
   demo: LazyExoticComponent<ComponentType> | null;
   rawCode: string;
   theme: string;
   compact?: boolean;
   loading?: boolean;
+  loadError?: Error | null;
+  onRetryLoad?: () => void;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const isScrollable = useIsScrollable(stageRef);
@@ -75,7 +109,11 @@ function DefaultPreviewPane({
               compact ? "py-6" : "py-12",
             )}
           >
-            <DemoNode demo={demo} loading={loading} />
+            {loadError ? (
+              <PreviewUnavailable loadError={loadError} onRetryLoad={onRetryLoad} />
+            ) : (
+              <DemoNode demo={demo} loading={loading} />
+            )}
           </div>
         </ScrollArea>
         {rawCode.length > 0 && (
@@ -92,10 +130,14 @@ function FillPreviewPane({
   demo,
   theme,
   loading = false,
+  loadError = null,
+  onRetryLoad,
 }: {
   demo: LazyExoticComponent<ComponentType> | null;
   theme: string;
   loading?: boolean;
+  loadError?: Error | null;
+  onRetryLoad?: () => void;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const isScrollable = useIsScrollable(stageRef);
@@ -111,7 +153,11 @@ function FillPreviewPane({
       className="border border-border bg-background"
     >
       <div className="w-full [&>*]:w-full">
-        <DemoNode demo={demo} loading={loading} />
+        {loadError ? (
+          <PreviewUnavailable loadError={loadError} onRetryLoad={onRetryLoad} />
+        ) : (
+          <DemoNode demo={demo} loading={loading} />
+        )}
       </div>
     </ScrollArea>
   );
@@ -122,21 +168,39 @@ function PreviewPane({
   frame,
   rawCode,
   loading = false,
+  loadError = null,
+  onRetryLoad,
 }: {
   demo: LazyExoticComponent<ComponentType> | null;
   frame: PreviewFrame;
   rawCode: string;
   loading?: boolean;
+  loadError?: Error | null;
+  onRetryLoad?: () => void;
 }) {
   const { theme } = useTheme();
   if (frame === "inset") {
     return (
       <div data-demo-preview data-theme={theme}>
-        <InsetPreviewPane demo={demo} loading={loading} />
+        <InsetPreviewPane
+          demo={demo}
+          loading={loading}
+          loadError={loadError}
+          onRetryLoad={onRetryLoad}
+        />
       </div>
     );
   }
-  if (frame === "fill") return <FillPreviewPane demo={demo} theme={theme} loading={loading} />;
+  if (frame === "fill")
+    return (
+      <FillPreviewPane
+        demo={demo}
+        theme={theme}
+        loading={loading}
+        loadError={loadError}
+        onRetryLoad={onRetryLoad}
+      />
+    );
   if (frame === "default" || frame === "compact")
     return (
       <DefaultPreviewPane
@@ -145,6 +209,8 @@ function PreviewPane({
         theme={theme}
         compact={frame === "compact"}
         loading={loading}
+        loadError={loadError}
+        onRetryLoad={onRetryLoad}
       />
     );
   frame satisfies never;
@@ -171,6 +237,8 @@ export function DemoPreview({
   title,
   demo,
   loading = false,
+  loadError = null,
+  onRetryLoad,
   code,
   rawCode,
   frame = "default",
@@ -208,14 +276,15 @@ export function DemoPreview({
           </TabsTrigger>
         </TabsList>
         <TabsContent value="preview">
-          <ErrorBoundary
-            fallback={
-              <output className="flex min-h-[120px] items-center justify-center text-sm">
-                Preview unavailable.
-              </output>
-            }
-          >
-            <PreviewPane demo={demo} frame={frame} rawCode={rawCode} loading={loading} />
+          <ErrorBoundary fallback={<PreviewUnavailable />}>
+            <PreviewPane
+              demo={demo}
+              frame={frame}
+              rawCode={rawCode}
+              loading={loading}
+              loadError={loadError}
+              onRetryLoad={onRetryLoad}
+            />
           </ErrorBoundary>
         </TabsContent>
         <TabsContent value="code">

@@ -111,3 +111,21 @@ type KeyHandler = (event: KeyboardEvent) => unknown;
 ```
 
 Only the exact return value `false` has special meaning: it declines the matched key and lets the next lower-priority matching handler in the active scope run. Other return values are ignored. When a handler with `preventDefault` enabled accepts the match (returns anything other than `false`), `event.preventDefault()` runs **after** that handler returns. A declining handler never prevents the default, so native behavior survives until a handler actually handles the key.
+
+## DECLINE and Decline
+
+The named sentinel for that decline value, exported so handlers can spell the intent instead of a bare `false`. The library's own hooks use it.
+
+```ts
+const DECLINE = false as const;
+type Decline = typeof DECLINE;
+```
+
+```tsx
+import { DECLINE, useKey } from "@diffgazer/keys";
+
+useKey("Escape", (event) => {
+  if (!isMine(event.target)) return DECLINE;
+  close();
+});
+```

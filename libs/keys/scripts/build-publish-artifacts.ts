@@ -7,8 +7,11 @@ import {
   REGISTRY_ORIGIN,
 } from "@diffgazer/registry";
 import {
+  applyKeysRegistryTargetsInPublicRegistry,
+  assertNoRelativeJsImports,
   createKeysSourceContentTransform,
   transformKeysPublicRegistryImports,
+  transformKeysPublicRegistrySourceItem,
 } from "./transform-public-registry-imports.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
@@ -23,7 +26,6 @@ const INPUTS = [
   "docs/hook-docs",
   "registry",
   "public/r",
-  "internal-docs-manifest.json",
   "package.json",
 ];
 
@@ -58,9 +60,8 @@ function main(): void {
     { from: "docs/content", to: "docs" },
     { from: "public/r", to: "registry" },
     { from: "registry", to: "source/registry" },
+    { from: "docs/generated", to: "generated" },
   ];
-
-  copyDirs.push({ from: "docs/generated", to: "generated" });
 
   const result = buildRegistryArtifacts({
     rootDir: ROOT,
@@ -69,7 +70,12 @@ function main(): void {
     ensurePublicRegistry: {
       fixCommand: "pnpm --dir libs/keys build:shadcn",
       label: "keys public registry index",
-      afterBuild: ({ outputDir }) => transformKeysPublicRegistryImports(outputDir),
+      afterBuild: ({ outputDir }) => {
+        transformKeysPublicRegistryImports(outputDir);
+        applyKeysRegistryTargetsInPublicRegistry(outputDir);
+        assertNoRelativeJsImports(outputDir);
+      },
+      transformSourceItem: ({ item }) => transformKeysPublicRegistrySourceItem(item),
       transformSourceContent: createKeysSourceContentTransform(ROOT),
     },
     requiredPaths: [

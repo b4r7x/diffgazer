@@ -26,6 +26,12 @@ describe("useTypeaheadBuffer", () => {
     expect(result.current("c")).toBe("abc");
   });
 
+  it("accepts a character outside the Basic Multilingual Plane", () => {
+    const { result } = renderHook(() => useTypeaheadBuffer());
+    expect(result.current("🍎")).toBe("🍎");
+    expect(result.current("a")).toBe("🍎a");
+  });
+
   it("accepts Space into a non-empty buffer to disambiguate multi-word labels", () => {
     const { result } = renderHook(() => useTypeaheadBuffer());
     expect(result.current("n")).toBe("n");

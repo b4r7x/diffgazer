@@ -2,7 +2,7 @@
 
 import { type CodeBlockProps, CodeBlock as CodeBlockRoot } from "./code-block";
 import { CodeBlockContent, type CodeBlockContentProps } from "./code-block-content";
-import type { CodeBlockVariant } from "./code-block-context";
+import type { CodeBlockChrome, CodeBlockVariant } from "./code-block-context";
 import { CodeBlockCopyButton, type CodeBlockCopyButtonProps } from "./code-block-copy-button";
 import { CodeBlockHeader, type CodeBlockHeaderProps } from "./code-block-header";
 import { CodeBlockLabel, type CodeBlockLabelProps } from "./code-block-label";
@@ -40,4 +40,5 @@ export {
   type CodeBlockToken,
   type CodeBlockLineState,
   type CodeBlockVariant,
+  type CodeBlockChrome,
 };

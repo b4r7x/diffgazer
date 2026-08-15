@@ -6,6 +6,7 @@ import { ok } from "@diffgazer/core/result";
 import { mapStepsToProgressData } from "@diffgazer/core/review";
 import type { SettingsConfig } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
+import { makeReadiness } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -77,7 +78,7 @@ function createWrapper(api: BoundApi, queryClient: QueryClient) {
 function LifecycleProgressHarness() {
   const lifecycle = useReviewLifecycleBase({
     configLoading: false,
-    isConfigured: true,
+    readiness: makeReadiness("ready"),
     reviewId: "review-b",
     onComplete: vi.fn(),
   });

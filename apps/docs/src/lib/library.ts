@@ -1,20 +1,18 @@
-import rawConfig from "../../config/docs-libraries.json";
 import type { HookSourceData } from "./generated-doc-data";
 import {
   type ArtifactSourceConfig,
+  DOCS_LIBRARY_ID_VALUES,
   type DocsLibraryConfigData,
+  type DocsLibraryId,
   docsLibrariesConfig,
 } from "./libraries-config";
 
-export type DocsLibraryId = (typeof rawConfig.libraries)[number]["id"];
+export type { DocsLibraryId };
 
-// DocsLibrariesConfigSchema validates rawConfig at module load and refines
-// primaryLibraryId ∈ libraries[].id, so these JSON-derived id literals are the
-// validated boundary type — no cast or defensive re-check is needed downstream.
-export const DOCS_LIBRARY_IDS: readonly DocsLibraryId[] = rawConfig.libraries.map(
-  (library) => library.id,
-);
-export const PRIMARY_DOCS_LIBRARY_ID: DocsLibraryId = rawConfig.primaryLibraryId;
+// DocsLibrariesConfigSchema validates rawConfig at module load against the
+// literal id tuple, so these ids are the validated boundary type.
+export const DOCS_LIBRARY_IDS: readonly DocsLibraryId[] = [...DOCS_LIBRARY_ID_VALUES];
+export const PRIMARY_DOCS_LIBRARY_ID: DocsLibraryId = docsLibrariesConfig.primaryLibraryId;
 
 const LIBRARY_CONFIG = Object.fromEntries(
   docsLibrariesConfig.libraries.map((library) => [library.id, library]),
@@ -46,7 +44,7 @@ export function getEnabledDocsLibraries(): DocsLibraryConfigData[] {
   return docsLibrariesConfig.libraries.filter((config) => config.enabled);
 }
 
-export function hookFileName(name: string): string {
+function hookFileName(name: string): string {
   const hookName = name.startsWith("use-") ? name : `use-${name}`;
   return `${hookName}.ts`;
 }
@@ -58,29 +56,14 @@ export function hookSourceFiles(name: string, hook: HookSourceData) {
     : [{ path: hookFileName(name), raw: hook.source.raw, highlighted: hook.source.highlighted }];
 }
 
-function prefixInstallItem(itemName: string, itemPrefix?: string): string {
-  const normalized = itemName.trim();
-  if (!itemPrefix || normalized.includes("/")) {
-    return normalized;
-  }
-  return `${itemPrefix}${normalized}`;
-}
-
-function getLocalInstallCommand(library: DocsLibraryId, itemName: string): string | null {
+export function getInstallCommand(library: DocsLibraryId, itemName: string): string | null {
   if (library !== "ui" && library !== "keys") {
     return null;
   }
 
-  const item = prefixInstallItem(itemName, `${library}/`);
+  const normalized = itemName.trim();
+  const item = normalized.includes("/") ? normalized : `${library}/${normalized}`;
   return `pnpm exec dgadd add ${item}`;
-}
-
-export function getInstallCommand(library: DocsLibraryId, itemName: string): string | null {
-  const installer = getDocsLibraryConfig(library).installer;
-  if (!installer) return getLocalInstallCommand(library, itemName);
-
-  const item = prefixInstallItem(itemName, installer.itemPrefix);
-  return `${installer.command} ${item}`;
 }
 
 export function getLibrariesWithArtifacts(): (DocsLibraryConfigData & {

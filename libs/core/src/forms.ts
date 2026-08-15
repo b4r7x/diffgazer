@@ -25,12 +25,6 @@ export function deriveSaveState<T>({
   return { effective, isDirty, canSave };
 }
 
-export function isArrayDirty<T>(persisted: T[], choice: T[] | null): boolean {
-  if (choice === null) return false;
-  if (persisted.length !== choice.length) return true;
-  return persisted.some((item) => !choice.includes(item));
-}
-
 export interface UseSubmitGuardResult {
   isSubmitting: boolean;
   withGuard: (fn: () => Promise<void>) => Promise<boolean>;

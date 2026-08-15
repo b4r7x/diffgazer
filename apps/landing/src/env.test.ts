@@ -35,17 +35,17 @@ describe("resolveLinks", () => {
   });
 });
 
-describe("static fallback links", () => {
-  const STATIC_FALLBACK_HREFS: Record<string, string> = {
-    docs: "https://docs.b4r7.dev",
-    github: "https://github.com/b4r7x/diffgazer",
-    license: "https://github.com/b4r7x/diffgazer/blob/main/LICENSE",
+describe("static link tokens", () => {
+  const STATIC_HREF_TOKENS: Record<string, string> = {
+    docs: "%VITE_DOCS_ORIGIN%",
+    github: "%VITE_GITHUB_URL%",
+    license: "%VITE_GITHUB_URL%/blob/main/LICENSE",
   };
 
-  it("ships usable data-link hrefs before JavaScript runs", () => {
+  it("leaves every data-link href for the build-time token substitution", () => {
     mountLanding();
 
-    for (const [name, expected] of Object.entries(STATIC_FALLBACK_HREFS)) {
+    for (const [name, expected] of Object.entries(STATIC_HREF_TOKENS)) {
       const anchors = [...document.querySelectorAll<HTMLAnchorElement>(`a[data-link="${name}"]`)];
       expect(anchors.length).toBeGreaterThan(0);
       for (const anchor of anchors) {

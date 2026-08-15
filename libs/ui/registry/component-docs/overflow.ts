@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const overflowDoc: ComponentDoc = {
   description:
@@ -51,13 +51,14 @@ export const overflowDoc: ComponentDoc = {
         required: false,
         defaultValue: '"text"',
         description:
-          "Text clamps string content with optional auto-tooltip; items measures children and renders an overflow indicator for those that do not fit.",
+          "Selects fitting-items mode when set to items; text clamps string content with optional auto-tooltip, while items measures children and renders an overflow indicator for those that do not fit.",
       },
       children: {
         type: "string (text mode) | ReactNode (items mode)",
         required: true,
         defaultValue: null,
-        description: "String to clamp (text mode) or items to measure (items mode).",
+        description:
+          "Items to fit into the available width; string to clamp (text mode) or items to measure (items mode).",
       },
       lines: {
         type: "number",
@@ -76,7 +77,15 @@ export const overflowDoc: ComponentDoc = {
         type: "ReactNode | ((props: { count: number }) => ReactNode)",
         required: false,
         defaultValue: "dashed ellipsis badge",
-        description: "Items mode only. Render function or static node shown when items overflow.",
+        description:
+          "Custom indicator shown for items that do not fit. Items mode only; render function or static node shown when items overflow.",
+      },
+      getOverflowLabel: {
+        type: "(count: number) => string",
+        required: false,
+        defaultValue: 'count => count + " more items"',
+        description:
+          "Items mode only. Localizes the accessible name announced for the overflow indicator.",
       },
       className: {
         type: "string",

@@ -48,11 +48,11 @@ function createTestApi(init = makeInitResponse(null)): BoundApi {
   } satisfies BoundApi;
 }
 
-function renderPage(init = makeInitResponse(null)) {
+function renderPage(init = makeInitResponse(null), api?: BoundApi) {
   queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  testApi = createTestApi(init);
+  testApi = api ?? createTestApi(init);
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -257,6 +257,17 @@ describe("SettingsTrustPermissionsPage", () => {
       "true",
     );
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("shows the init error instead of an editor over a permanent Loading directory", async () => {
+    const failingApi = createTestApi();
+    vi.mocked(failingApi.loadConfigurationInit).mockRejectedValue(new Error("init unavailable"));
+    renderPage(makeInitResponse(null), failingApi);
+
+    expect(await screen.findByRole("heading", { name: "Configuration Unavailable" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /repository access/i })).not.toBeInTheDocument();
   });
 
   it("renders no legacy provider status fields in the trust editor tree", async () => {

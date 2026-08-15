@@ -1,7 +1,11 @@
 version: 2
 updates:
   - package-ecosystem: "github-actions"
-    directory: "/"
+    # "/" covers .github/workflows plus a root action.yml only. Composite actions
+    # in nested directories need their own entry or their pins are never updated.
+    directories:
+      - "/"
+      - "/.github/actions/setup-repo"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5

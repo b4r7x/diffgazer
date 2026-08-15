@@ -53,6 +53,11 @@ export function TerminalKeyboardProvider({
     };
   }, []);
 
+  const hasGlobalHandler = useCallback((hotkey: string): boolean => {
+    const handlers = globalHandlersRef.current.get(hotkey);
+    return handlers !== undefined && handlers.size > 0;
+  }, []);
+
   useInput((input, key) => {
     // The queue holds one classification per Ink input event, so consume() must run
     // exactly once here — an early return above this line would desynchronise it.
@@ -79,11 +84,12 @@ export function TerminalKeyboardProvider({
   const value = useMemo<KeyboardContextValue>(
     () => ({
       registerGlobalHandler,
+      hasGlobalHandler,
       setInputActive,
       setModalActive,
       setReviewStreaming,
     }),
-    [registerGlobalHandler, setInputActive, setModalActive, setReviewStreaming],
+    [registerGlobalHandler, hasGlobalHandler, setInputActive, setModalActive, setReviewStreaming],
   );
 
   return <KeyboardContext value={value}>{children}</KeyboardContext>;

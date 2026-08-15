@@ -1,3 +1,1 @@
-import { ReviewPage } from "@/features/review/components/page";
-
-export { ReviewPage };
+export { ReviewPage } from "@/features/review/components/page";

@@ -61,7 +61,7 @@ const APP_SECTIONS: LandingSection[] = [
 
 describe("buildHomeLibrary", () => {
   it("surfaces every app section in sidebar order", () => {
-    const result = buildHomeLibrary(APP_CONFIG, "app", APP_SECTIONS);
+    const result = buildHomeLibrary(APP_CONFIG.displayName, "app", APP_SECTIONS);
     expect(result.sections.map((section) => section.name)).toEqual([
       "Getting Started",
       "Product",
@@ -71,7 +71,7 @@ describe("buildHomeLibrary", () => {
   });
 
   it("derives section deep links as /$lib/$ splats from the first page", () => {
-    const result = buildHomeLibrary(UI_CONFIG, "ui", SECTIONS);
+    const result = buildHomeLibrary(UI_CONFIG.displayName, "ui", SECTIONS);
     expect(result.sections).toEqual([
       {
         name: "Getting Started",
@@ -93,7 +93,7 @@ describe("buildHomeLibrary", () => {
       "Patterns",
       "Guides",
     ].map((name) => ({ name, items: [{ name: "Page", url: `/ui/${name}/page` }] }));
-    const result = buildHomeLibrary(UI_CONFIG, "ui", sections);
+    const result = buildHomeLibrary(UI_CONFIG.displayName, "ui", sections);
     expect(result.sections.map((section) => section.name)).toEqual([
       "Getting Started",
       "Components",

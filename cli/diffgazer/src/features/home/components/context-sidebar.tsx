@@ -1,11 +1,12 @@
-import { buildHomeContextRows, type ContextInfo } from "@diffgazer/core/schemas/presentation";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
+import { buildHomeContextRows, type HomeContextInfo } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import { KeyValue } from "../../../components/ui/key-value";
 import { Panel } from "../../../components/ui/panel";
 import { useTheme } from "../../../theme/provider";
 
 export interface ContextSidebarProps {
-  context: ContextInfo;
+  context: HomeContextInfo;
   isTrusted: boolean;
   projectPath?: string;
 }
@@ -13,6 +14,7 @@ export interface ContextSidebarProps {
 export function ContextSidebar({ context, isTrusted, projectPath }: ContextSidebarProps) {
   const { tokens } = useTheme();
   const rows = buildHomeContextRows({ context, isTrusted, projectPath });
+  const trustedDirectory = sanitizeTerminalText(rows.trust.value);
 
   return (
     <Panel grow>
@@ -29,7 +31,7 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
               value={
                 <Box flexGrow={1} minWidth={1} overflow="hidden">
                   <Text color={tokens.fg} wrap="truncate-middle">
-                    {rows.trust.value}
+                    {trustedDirectory}
                   </Text>
                 </Box>
               }
@@ -41,7 +43,7 @@ export function ContextSidebar({ context, isTrusted, projectPath }: ContextSideb
               value={
                 <Box flexDirection="column" flexGrow={1} minWidth={1} overflow="hidden">
                   <Text color={tokens.fg} wrap="truncate-middle">
-                    {rows.trust.value}
+                    {trustedDirectory}
                   </Text>
                   <Text color={tokens.muted} wrap="truncate-end">
                     Open Settings → Trust & Permissions to grant

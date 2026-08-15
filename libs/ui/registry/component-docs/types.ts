@@ -7,6 +7,14 @@ import type { ComponentDoc as RegistryComponentDoc } from "@diffgazer/registry";
  * props (pure-visual primitives). `validate-registry-metadata.ts` requires every
  * public `registry:ui` item to either populate `props` or set `noProps: true`.
  */
-export type ComponentDoc = RegistryComponentDoc & {
+type ExampleRef = NonNullable<RegistryComponentDoc["examples"]>[number] & {
+  /** Registry items used only by this example, not by the owning primitive. */
+  registryDependencies?: string[];
+  /** Optional integration modes needed only when this example is copied. */
+  optionalIntegrations?: string[];
+};
+
+export type ComponentDoc = Omit<RegistryComponentDoc, "examples"> & {
+  examples?: ExampleRef[];
   noProps?: boolean;
 };

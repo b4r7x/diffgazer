@@ -1,17 +1,20 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { findRelativeJsSpecifiers } from "@diffgazer/registry";
+import {
+  findRelativeJsSpecifiers,
+  listPublicRegistryEntries,
+  readRegistryItem,
+} from "@diffgazer/registry";
 import type { RegistryItem } from "@diffgazer/registry/schemas";
-import { RegistrySchema } from "@diffgazer/registry/schemas";
 import { afterEach, describe, expect, it } from "vitest";
 import { requireValue } from "../src/testing/internal/assertions.js";
 import {
   assertNoRelativeJsImports,
-  rewriteImportsForTargetLayout,
-  transformKeysPublicRegistryImportContent,
+  deriveKeysRegistryTarget,
   transformKeysPublicRegistryImports,
+  transformKeysPublicRegistrySourceItem,
 } from "./transform-public-registry-imports.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -19,20 +22,54 @@ const KEYS_ROOT = resolve(__dirname, "..");
 const PUBLIC_DIR = resolve(KEYS_ROOT, "public", "r");
 
 function loadPublicItem(name: string): RegistryItem {
-  const itemPath = join(PUBLIC_DIR, `${name}.json`);
-  return parseRegistryEntry(JSON.parse(readFileSync(itemPath, "utf-8")));
+  return readRegistryItem(join(PUBLIC_DIR, `${name}.json`));
 }
 
-function parseRegistryEntry(raw: unknown): RegistryItem {
-  const [item] = RegistrySchema.parse({ items: [raw] }).items;
-  if (!item) throw new Error("Missing registry item");
-  return item;
-}
+describe("deriveKeysRegistryTarget", () => {
+  it("maps src/hooks targets to @hooks/ for shadcn alias resolution", () => {
+    expect(
+      deriveKeysRegistryTarget({
+        path: "src/dom/focusable.ts",
+        target: "src/hooks/utils/focusable.ts",
+      }),
+    ).toBe("@hooks/utils/focusable.ts");
+    expect(
+      deriveKeysRegistryTarget({
+        path: "src/hooks/use-navigation.ts",
+        target: "src/hooks/use-navigation.ts",
+      }),
+    ).toBe("@hooks/use-navigation.ts");
+  });
+
+  it("stamps @hooks targets onto public items during source transform", () => {
+    const item = transformKeysPublicRegistrySourceItem({
+      name: "navigation",
+      type: "registry:hook",
+      dependencies: [],
+      registryDependencies: [],
+      files: [
+        {
+          path: "src/hooks/use-navigation.ts",
+          target: "src/hooks/use-navigation.ts",
+          type: "registry:hook",
+        },
+        {
+          path: "src/hooks/use-navigation/core.ts",
+          target: "src/hooks/utils/navigation-core.ts",
+          type: "registry:hook",
+        },
+      ],
+    });
+
+    expect(item.files[0]?.target).toBe("@hooks/use-navigation.ts");
+    expect(item.files[1]?.target).toBe("@hooks/utils/navigation-core.ts");
+  });
+});
 
 describe("public registry import rewriting", () => {
-  const publicItems = readdirSync(PUBLIC_DIR)
-    .filter((entry) => entry.endsWith(".json") && entry !== "registry.json")
-    .map((entry) => entry.replace(/\.json$/, ""));
+  const publicItems = listPublicRegistryEntries(PUBLIC_DIR).map(({ entry }) =>
+    entry.replace(/\.json$/, ""),
+  );
 
   for (const itemName of publicItems) {
     describe(itemName, () => {
@@ -73,37 +110,78 @@ describe("public registry import rewriting", () => {
 });
 
 describe("target-layout import rewriting", () => {
-  it("rewrites side-effect imports for the installed target layout", () => {
-    const pathMap = new Map([
-      ["src/hooks/use-demo.ts", "src/hooks/use-demo.ts"],
-      ["src/hooks/setup.ts", "src/hooks/utils/setup.ts"],
-      ["src/hooks/lazy.ts", "src/hooks/lazy.ts"],
-      ["src/hooks/required.ts", "src/hooks/utils/required.ts"],
-      ["src/hooks/value.ts", "src/hooks/value.ts"],
-    ]);
-    const input = [
-      'import { value } from "./value.js";',
-      'import "./setup.js";',
-      'const lazy = import("./lazy.js");',
-      'const required = require("./required.js");',
-    ].join("\n");
-    const stripped = transformKeysPublicRegistryImportContent(input);
+  let dir: string | null = null;
 
-    expect(
-      rewriteImportsForTargetLayout(
-        stripped,
-        "src/hooks/use-demo.ts",
-        "src/hooks/use-demo.ts",
-        pathMap,
-      ),
-    ).toBe(
+  afterEach(() => {
+    if (dir) rmSync(dir, { recursive: true, force: true });
+    dir = null;
+  });
+
+  function writeRegistry(files: Array<{ path: string; target: string; content: string }>): string {
+    dir = mkdtempSync(join(tmpdir(), "keys-target-layout-"));
+    writeFileSync(join(dir, "registry.json"), JSON.stringify({ name: "keys", items: [] }));
+    writeFileSync(
+      join(dir, "use-demo.json"),
+      JSON.stringify({
+        name: "use-demo",
+        type: "registry:hook",
+        files: files.map((file) => ({ ...file, type: "registry:hook" })),
+      }),
+    );
+    return dir;
+  }
+
+  function readContent(outputDir: string, index: number): string {
+    const item = readRegistryItem(join(outputDir, "use-demo.json"));
+    return requireValue(item.files[index]?.content, `content of file ${index}`);
+  }
+
+  it("re-expresses every executable import form against the installed layout", () => {
+    const outputDir = writeRegistry([
+      {
+        path: "src/hooks/use-demo.ts",
+        target: "src/hooks/use-demo.ts",
+        content: [
+          'import { value } from "./value.js";',
+          'import "./setup.js";',
+          'const lazy = import("./lazy.js");',
+          'const required = require("./required.js");',
+          "",
+        ].join("\n"),
+      },
+      { path: "src/hooks/value.ts", target: "src/hooks/value.ts", content: "" },
+      { path: "src/hooks/setup.ts", target: "src/hooks/utils/setup.ts", content: "" },
+      { path: "src/hooks/lazy.ts", target: "src/hooks/lazy.ts", content: "" },
+      { path: "src/hooks/required.ts", target: "src/hooks/utils/required.ts", content: "" },
+    ]);
+
+    transformKeysPublicRegistryImports(outputDir);
+
+    expect(readContent(outputDir, 0)).toBe(
       [
         'import { value } from "./value";',
         'import "./utils/setup";',
         'const lazy = import("./lazy");',
         'const required = require("./utils/required");',
+        "",
       ].join("\n"),
     );
+  });
+
+  // The public build maps one item at a time, so a specifier outside the item has
+  // no target here and must survive verbatim rather than fail the build.
+  it("keeps a specifier that resolves to no file in the item", () => {
+    const outputDir = writeRegistry([
+      {
+        path: "src/hooks/use-demo.ts",
+        target: "src/hooks/use-demo.ts",
+        content: 'import { other } from "./other-item";\n',
+      },
+    ]);
+
+    transformKeysPublicRegistryImports(outputDir);
+
+    expect(readContent(outputDir, 0)).toBe('import { other } from "./other-item";\n');
   });
 });
 

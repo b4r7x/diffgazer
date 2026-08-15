@@ -1,6 +1,6 @@
 import { LensStatSchema } from "@diffgazer/core/schemas/events";
-import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
 import {
+  calculateSeverityCounts,
   type ExecutionResult,
   ExecutionResultSchema,
   LensIdSchema,
@@ -26,13 +26,15 @@ interface SalvagedItems<T> {
 
 export interface ReviewSalvageDiagnostics {
   droppedIssueCount: number;
+  /** The record carried a terminal execution the salvage could not recover. */
+  droppedExecution: boolean;
 }
 
 // Older records may carry lens/profile ids the current closed enums reject.
 // Coerce them to valid vocabulary (drop unknown lenses, null an unknown profile)
 // so the strict metadata schema parses. New writes still go through the strict
 // schema unchanged.
-export function coerceMetadataVocab(raw: unknown): unknown {
+function coerceMetadataVocab(raw: unknown): unknown {
   if (typeof raw !== "object" || raw === null) return raw;
   const metadata = raw as Record<string, unknown>;
   const lenses = Array.isArray(metadata.lenses)
@@ -167,8 +169,15 @@ export function lenientReadSavedReview(
     ...(execution ? { execution } : {}),
   });
 
+  // A stored record keeps its terminal execution in `executionSnapshot`; neither
+  // half survives here unless it parses, so the outcome and trace are gone from
+  // the salvaged read and the caller has to say so.
+  const droppedExecution =
+    execution === undefined &&
+    (record.execution !== undefined || record.executionSnapshot !== undefined);
+
   return {
     item: prohibitResumablePartialFindings(salvagedReview),
-    diagnostics: { droppedIssueCount: salvagedIssues.droppedItemCount },
+    diagnostics: { droppedIssueCount: salvagedIssues.droppedItemCount, droppedExecution },
   };
 }

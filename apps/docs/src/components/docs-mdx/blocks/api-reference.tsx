@@ -1,6 +1,6 @@
+import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { Typography } from "@diffgazer/ui/components/typography";
 import { CHROME_LABEL_CLASS } from "@/components/shared/chrome-label";
-import { FOCUS_RING_CLASS } from "@/components/shared/focus-ring";
 import { useComponentData } from "../doc-data-context";
 import { SectionHeading } from "../section-heading";
 import { PropsTableBlock } from "./props-table-block";
@@ -56,7 +56,7 @@ function ReferenceTable({
   columns: string[];
   rows: string[][];
 }) {
-  const headingId = title.toLowerCase().replace(/\s+/g, "-");
+  const headingId = `api-${title.toLowerCase().replace(/\s+/g, "-")}`;
 
   return (
     <div className="mt-8">
@@ -68,12 +68,7 @@ function ReferenceTable({
       >
         {title}
       </Typography>
-      <section
-        className={`overflow-x-auto ${FOCUS_RING_CLASS}`}
-        aria-labelledby={headingId}
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: horizontal overflow must be keyboard reachable.
-        tabIndex={0}
-      >
+      <ScrollArea orientation="horizontal" aria-labelledby={headingId}>
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border/60">
@@ -106,7 +101,7 @@ function ReferenceTable({
             ))}
           </tbody>
         </table>
-      </section>
+      </ScrollArea>
     </div>
   );
 }

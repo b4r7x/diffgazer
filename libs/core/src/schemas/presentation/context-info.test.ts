@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildHomeContextInfo, buildHomeContextRows } from "./context-info.js";
+import {
+  buildHomeContextInfo,
+  buildHomeContextRows,
+  resolveLastRunRequest,
+} from "./context-info.js";
 
 describe("buildHomeContextInfo", () => {
   it("maps provider, model, and the most recent review summary", () => {
@@ -62,6 +66,7 @@ describe("buildHomeContextInfo", () => {
       provider: { label: "Provider", value: "openrouter (openrouter/test)" },
       lastRun: {
         label: "Last Run",
+        status: "ready",
         value: "#12345678",
         issueCount: "(3 issues)",
         meta: "3 issues · 2m 14s",
@@ -76,12 +81,35 @@ describe("buildHomeContextInfo", () => {
       provider: { label: "Provider", value: "Not configured" },
       lastRun: {
         label: "Last Run",
+        status: "none",
         value: "None",
         issueCount: undefined,
         meta: undefined,
         hasIssues: false,
       },
     });
+  });
+
+  it("says why there is no run instead of claiming an empty history", () => {
+    const loading = buildHomeContextRows({
+      context: { lastRunRequest: "loading" },
+      isTrusted: true,
+    });
+    expect(loading.lastRun.status).toBe("loading");
+    expect(loading.lastRun.value).toBe("Loading...");
+
+    const failed = buildHomeContextRows({
+      context: { lastRunRequest: "unavailable" },
+      isTrusted: true,
+    });
+    expect(failed.lastRun.status).toBe("unavailable");
+    expect(failed.lastRun.value).toBe("Unavailable");
+  });
+
+  it("reports a settled reviews request as an empty history", () => {
+    expect(resolveLastRunRequest({ isPending: false, isError: false })).toBeUndefined();
+    expect(resolveLastRunRequest({ isPending: true, isError: false })).toBe("loading");
+    expect(resolveLastRunRequest({ isPending: false, isError: true })).toBe("unavailable");
   });
 
   it("says a clean run found no issues and keeps the counts without a duration", () => {
@@ -97,5 +125,14 @@ describe("buildHomeContextInfo", () => {
       isTrusted: true,
     });
     expect(noDuration.lastRun.meta).toBe("4 issues");
+  });
+
+  it("uses the singular noun for a one-issue run in both the compact count and the meta line", () => {
+    const single = buildHomeContextRows({
+      context: { lastRunId: "rev-1", lastRunIssueCount: 1, lastRunDurationMs: 3800 },
+      isTrusted: true,
+    });
+    expect(single.lastRun.issueCount).toBe("(1 issue)");
+    expect(single.lastRun.meta).toBe("1 issue · 3.8s");
   });
 });

@@ -22,6 +22,7 @@ function getNavigableTriggers(container: HTMLElement | null): HTMLElement[] {
     skipDisabled: false,
     ownerSelector: `[${ACCORDION_ROOT_ATTRIBUTE}]`,
   }).filter((trigger) => {
+    if (trigger.dataset.slot !== "accordion-trigger") return false;
     const View = trigger.ownerDocument.defaultView;
     if (trigger.dataset.disabled !== undefined) return false;
     if (View && trigger instanceof View.HTMLButtonElement && trigger.disabled) return false;

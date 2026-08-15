@@ -15,7 +15,7 @@ Shared, dependency-light utilities the components build on. Each is copyable thr
 
 ## Installing
 
-`composeRefs` and `selectable-collection` install like any other item; the file lands at `lib/<util>.ts`.
+`composeRefs` and `selectable-collection` install like any other item, into `lib/`. `composeRefs` is a single `lib/compose-refs.ts`; `selectable-collection` writes three files — `lib/selectable-collection.ts`, `lib/selectable-collection-observer.ts`, and `lib/selectable-group.ts` — and additionally resolves the `@diffgazer-keys/focusable` registry item.
 
 ```bash
 pnpm exec dgadd add ui/compose-refs
@@ -41,4 +41,5 @@ The registry ships more `registry:lib` helpers without standalone pages here. Th
 
 - `utils` — `cn()` class-name merge (`clsx` + `tailwind-merge`), imported by every component.
 - `aria`, `typeahead`, `search` — ARIA and keyboard-interaction helpers shared across form and listbox composites.
-- `selectable-variants`, `segmented-variants`, `input-variants`, `stepper-variants`, `sidebar-variants` — CVA variant definitions co-located with their components.
+- `selectable-variants`, `segmented-variants`, `input-variants`, `stepper-variants` — CVA variant definitions that live in the shared `registry/lib/` directory. See [Variants](/ui/patterns/variants) for which components consume each.
+- `sidebar-variants` — a `registry:ui` item, not `registry:lib`: its CVA definitions are colocated in `registry/ui/sidebar/` because only `Sidebar` uses them.

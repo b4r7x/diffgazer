@@ -1,6 +1,3 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { render, screen } from "@testing-library/react";
@@ -100,7 +97,7 @@ describe("SourceViewerBlock", () => {
     expect(screen.getByText("[Copy Full Source]")).toBeInTheDocument();
   });
 
-  it("renders and copies all seven public use-navigation files", async () => {
+  it("renders and copies all eight public use-navigation files", async () => {
     routerBoundary.pathname = "/keys/hooks/use-navigation";
     const user = userEvent.setup();
     const pageData = await loadDocPageData("keys", "hooks", "use-navigation", {
@@ -109,13 +106,14 @@ describe("SourceViewerBlock", () => {
     if (!pageData) throw new Error("use-navigation docs data is missing");
 
     const expectedPaths = [
-      "src/hooks/use-navigation.ts",
-      "src/hooks/utils/navigation-core.ts",
-      "src/hooks/utils/navigation-dispatch.ts",
-      "src/hooks/utils/navigation-items.ts",
-      "src/hooks/utils/navigation-directions.ts",
-      "src/hooks/utils/focusable.ts",
-      "src/hooks/utils/element-guards.ts",
+      "@hooks/use-navigation.ts",
+      "@hooks/utils/navigation-core.ts",
+      "@hooks/utils/navigation-dispatch.ts",
+      "@hooks/utils/hotkey.ts",
+      "@hooks/utils/navigation-items.ts",
+      "@hooks/utils/navigation-directions.ts",
+      "@hooks/utils/focusable.ts",
+      "@hooks/utils/element-guards.ts",
     ];
     const archive = JSON.parse(
       readFileSync(
@@ -142,7 +140,7 @@ describe("SourceViewerBlock", () => {
       </DocDataProvider>,
     );
 
-    await user.click(screen.getByRole("button", { name: "View hook source (7 files)" }));
+    await user.click(screen.getByRole("button", { name: "View hook source (8 files)" }));
 
     expect(fetchMock).toHaveBeenCalledWith("/source-data/keys/hooks/use-navigation.source.json");
     for (const path of paths) {

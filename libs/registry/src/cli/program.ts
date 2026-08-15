@@ -14,8 +14,8 @@ export interface CliOptions {
 
 function enforceNodeVersion(name: string): void {
   const major = parseInt(process.versions.node, 10);
-  if (major < 18) {
-    console.error(`${name} requires Node.js >= 18. Current: ${process.version}`);
+  if (major < 22) {
+    console.error(`${name} requires Node.js >= 22. Current: ${process.version}`);
     process.exit(1);
   }
 }
@@ -30,9 +30,13 @@ function isHelpOrVersion(): boolean {
 }
 
 function createPreActionHook(displayName: string) {
+  // The interactive menu re-enters Commander to dispatch the chosen subcommand,
+  // which fires this inherited hook a second time; the banner is per-process.
+  let bannerShown = false;
   return (thisCommand: Command) => {
     if (thisCommand.opts().silent) setSilent(true);
-    if (!process.stdout.isTTY || isHelpOrVersion()) return;
+    if (bannerShown || !process.stdout.isTTY || isHelpOrVersion()) return;
+    bannerShown = true;
     showBanner(displayName);
   };
 }
@@ -43,7 +47,6 @@ function attachInteractiveMenu(program: Command, options: CliOptions): void {
 
   const commandMap = new Map(options.commands.map((cmd) => [cmd.name(), cmd]));
   program.action(async () => {
-    showBanner(options.displayName);
     const value = await promptSelect("What would you like to do?", menuItems);
     if (commandMap.has(value)) {
       await program.parseAsync([process.argv[0] ?? "node", process.argv[1] ?? options.name, value]);

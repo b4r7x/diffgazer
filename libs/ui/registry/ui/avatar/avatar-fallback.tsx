@@ -13,14 +13,16 @@ export interface AvatarFallbackProps {
   children?: ReactNode;
   /** Additional class names merged onto the rendered element. */
   className?: string;
+  /** Hide fallback text from assistive tech when the avatar is presentational. */
+  decorative?: boolean;
 }
 
-export function AvatarFallback({ src, children, className }: AvatarFallbackProps) {
+export function AvatarFallback({ src, children, className, decorative }: AvatarFallbackProps) {
   const { imageStatus } = useAvatarContext();
   const fallbackImage = useImageStatus(src);
 
   if (imageStatus === "loaded") return null;
-  if (src && fallbackImage.showImage) {
+  if (fallbackImage.showImage) {
     return (
       <img
         src={src}
@@ -32,5 +34,9 @@ export function AvatarFallback({ src, children, className }: AvatarFallbackProps
     );
   }
 
-  return <span className={className}>{children}</span>;
+  return (
+    <span className={className} aria-hidden={decorative ? true : undefined}>
+      {children}
+    </span>
+  );
 }

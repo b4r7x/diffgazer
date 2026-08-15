@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   orderThemeDocsPrimitives,
   THEME_DOCS_COLOR_GRID_ORDER,
+  THEME_DOCS_MAPPED_PRIMITIVES,
   THEME_DOCS_PLAYGROUND_ORDER,
 } from "./token-presentation";
 
@@ -84,5 +85,16 @@ describe("T-057 display orders", () => {
     const names = THEME_DOCS_PRIMITIVES.map((primitive) => primitive.name).sort();
     expect([...THEME_DOCS_COLOR_GRID_ORDER].sort()).toEqual(names);
     expect([...THEME_DOCS_PLAYGROUND_ORDER].sort()).toEqual(names);
+  });
+
+  it("diagrams every primitive that has a semantic edge, and only those", () => {
+    const mapped = THEME_DOCS_PRIMITIVES.filter(
+      (primitive) =>
+        primitive.semanticTokens.dark.length > 0 || primitive.semanticTokens.light.length > 0,
+    ).map((primitive) => primitive.name);
+
+    expect(THEME_DOCS_MAPPED_PRIMITIVES.map((primitive) => primitive.name).sort()).toEqual(
+      [...mapped].sort(),
+    );
   });
 });

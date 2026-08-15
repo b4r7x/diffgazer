@@ -104,7 +104,12 @@ export function SidebarChrome({ library, tree }: { library: DocsLibraryId; tree:
         activeRoute.pendingPathname === pendingDocsPathname
       );
     };
-    setPendingSwitch({ library, pathname, pendingPathname: pendingDocsPathname });
+    const transitionContext: RouteContext = {
+      library,
+      pathname,
+      pendingPathname: pendingDocsPathname,
+    };
+    setPendingSwitch(transitionContext);
     try {
       const currentSlugs = getRouteSlugsFromPathname(pathname, library);
       const { library: targetLib, slugs } = await resolveLibrarySwitchPath({
@@ -123,7 +128,14 @@ export function SidebarChrome({ library, tree }: { library: DocsLibraryId; tree:
       if (!ownsTransition()) return;
       toast.error("Couldn't switch library");
     } finally {
-      setPendingSwitch(null);
+      setPendingSwitch((current) =>
+        current !== null &&
+        current.library === transitionContext.library &&
+        current.pathname === transitionContext.pathname &&
+        current.pendingPathname === transitionContext.pendingPathname
+          ? null
+          : current,
+      );
     }
   };
 

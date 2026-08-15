@@ -20,7 +20,9 @@ export default function MenuKeyboard() {
         onSelect={setSelectedId}
         onKeyDown={(event) => {
           const id = hotkeys[event.key];
-          if (id) setSelectedId(id);
+          if (!id) return;
+          event.preventDefault();
+          setSelectedId(id);
         }}
         aria-label="File actions"
       >

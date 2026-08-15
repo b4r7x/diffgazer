@@ -1,4 +1,4 @@
-import type { ProviderDisplayStatus } from "@diffgazer/core/providers";
+import { isRedundantStatusSegment, type ProviderDisplayStatus } from "@diffgazer/core/providers";
 import { Button } from "@diffgazer/ui/components/button";
 import {
   StatusIndicator,
@@ -67,6 +67,7 @@ export function Header({
 }: HeaderProps) {
   const server = SERVER_STATE[serverState];
   const statusWord = server.word ?? providerStatus.shortLabel;
+  const showStatusWord = !isRedundantStatusSegment(providerName, statusWord);
   const dotStatus = server.dot ?? DOT_STATUS[providerStatus.variant];
   const isPending = serverState === "live" && providerStatus.variant === "info";
 
@@ -137,10 +138,14 @@ export function Header({
           <span className="min-w-0 truncate">{providerName}</span>
           {/* Below sm the dot alone carries the state so the model name keeps the row;
               the row's aria-label carries the word at every width. */}
-          <span className="shrink-0 sr-only sm:not-sr-only sm:whitespace-nowrap">
-            <span aria-hidden="true">· </span>
-            <span className={cn(serverState === "offline" && "text-error-text")}>{statusWord}</span>
-          </span>
+          {showStatusWord ? (
+            <span className="shrink-0 sr-only sm:not-sr-only sm:whitespace-nowrap">
+              <span aria-hidden="true">· </span>
+              <span className={cn(serverState === "offline" && "text-error-text")}>
+                {statusWord}
+              </span>
+            </span>
+          ) : null}
         </StatusIndicator>
       </div>
     </header>

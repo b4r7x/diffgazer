@@ -29,7 +29,7 @@ export function PropsTable({ componentName, props }: PropsTableProps) {
       >
         {componentName}
       </Typography>
-      <ParameterTable params={params} />
+      <ParameterTable params={params} label={`${componentName} parameters`} />
     </div>
   );
 }

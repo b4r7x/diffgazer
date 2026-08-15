@@ -4,15 +4,16 @@
 
 ### Patch Changes
 
-- 6416350: Document publish-gated install flows, local package validation, shadcn namespace
-  setup, keyboard integration contracts, release-readiness governance, and runtime
-  package surface validation for public handoff.
+- 6416350: Documentation and release-tooling release. Installing, launching, and reviewing
+  behave exactly as in 0.1.3; the install and first-review guides were expanded and the
+  published package surface is now validated before every release.
 
 ## 0.1.3
 
 Reconstructed retroactively; this version predates the changeset-based flow.
 
 - Fix embedded server issues affecting CLI startup.
+- Fix onboarding settings refresh after configuration changes.
 - Update README, logo, and demo assets.
 
 ## 0.1.2
@@ -22,7 +23,6 @@ published to npm but never tagged in git; its changes are attributed from the
 `v0.1.1..v0.1.3` range.
 
 - Fix keyring credential handling.
-- Fix onboarding settings refresh after configuration changes.
 
 ## 0.1.1
 

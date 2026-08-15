@@ -1,11 +1,21 @@
 import { SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api/protocol";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "./app.js";
 import { resetShutdownStateForTests } from "./features/shutdown/service.js";
 import { log } from "./shared/lib/log.js";
 
 // Boundary mock: logging writes process-visible diagnostics; app tests keep output quiet.
 vi.mock("./shared/lib/log.js", () => ({ log: vi.fn() }));
+
+// The routes exercised below reach the config store, which resolves its documents from
+// DIFFGAZER_HOME on every call. Without a scratch home they lock and read the developer's
+// real ~/.diffgazer; the home has to exist before `./app.js` is imported above, so it is
+// claimed from vi.hoisted rather than a beforeAll.
+const tempHome = await vi.hoisted(async () =>
+  (await import("./shared/lib/testing/temp-home.js")).claimTempHome("diffgazer-app-shutdown-"),
+);
+
+afterAll(() => tempHome.release());
 
 describe("shutdown route", () => {
   let originalCliPid: string | undefined;

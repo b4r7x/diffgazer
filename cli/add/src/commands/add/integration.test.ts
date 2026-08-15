@@ -1,4 +1,7 @@
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { ctx } from "../../context.js";
 import { applyIntegrationDeps, resolveIntegrations } from "./integration.js";
 
 // Force a non-interactive terminal so canPrompt() is false regardless of how
@@ -26,10 +29,44 @@ describe("resolveIntegrations non-interactive selection", () => {
   });
 
   test("resolves without prompting when the mode is given explicitly", async () => {
-    await expect(resolveIntegrations(["select"], "copy", false)).resolves.toEqual({
-      mode: "copy",
-      hasKeyboardIntegration: true,
+    await expect(resolveIntegrations(["select"], "copy", false)).resolves.toEqual({ mode: "copy" });
+  });
+
+  test("accepts the base floating panel without its custom-menu integrations", async () => {
+    const sourceRegistry = JSON.parse(
+      readFileSync(
+        resolve(import.meta.dirname, "../../../../../libs/ui/registry/registry.json"),
+        "utf8",
+      ),
+    ) as {
+      items: Array<{
+        name: string;
+        registryDependencies?: string[];
+        meta?: Record<string, unknown>;
+        files: Array<Record<string, unknown>>;
+      }>;
+    };
+    const floatingPanel = sourceRegistry.items.find((item) => item.name === "floating-panel");
+    expect(floatingPanel).toBeDefined();
+    expect(floatingPanel?.registryDependencies).not.toEqual(
+      expect.arrayContaining(["outside-click", "@diffgazer-keys/focusable"]),
+    );
+    expect(floatingPanel?.meta?.optionalIntegrations).toBeUndefined();
+
+    const originalGetItem = ctx.registry.getItem.bind(ctx.registry);
+    const getItem = vi.spyOn(ctx.registry, "getItem").mockImplementation((name) => {
+      if (name === "floating-panel" && floatingPanel) {
+        return floatingPanel as ReturnType<typeof ctx.registry.getItem>;
+      }
+      return originalGetItem(name);
     });
+    try {
+      await expect(resolveIntegrations(["floating-panel"], "none", false)).resolves.toEqual({
+        mode: "none",
+      });
+    } finally {
+      getItem.mockRestore();
+    }
   });
 });
 
@@ -38,7 +75,7 @@ describe("applyIntegrationDeps", () => {
     expect(
       applyIntegrationDeps(
         ["@diffgazer/keys", "@diffgazer/keys@^0.2.0", "clsx"],
-        { mode: "copy", hasKeyboardIntegration: true },
+        { mode: "copy" },
         "^0.3.0",
       ),
     ).toEqual(["clsx"]);
@@ -48,7 +85,7 @@ describe("applyIntegrationDeps", () => {
     expect(
       applyIntegrationDeps(
         ["@diffgazer/keys", "@diffgazer/keys@^0.2.0", "clsx"],
-        { mode: "@diffgazer/keys", hasKeyboardIntegration: true },
+        { mode: "@diffgazer/keys" },
         "^0.3.0",
       ),
     ).toEqual(["clsx", "@diffgazer/keys@^0.3.0"]);

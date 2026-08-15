@@ -11,6 +11,9 @@ import { FixPlanChecklist } from "../components/fix-plan-checklist";
 import { useReviewDetailsTabKeyboard } from "./use-details-tab-keyboard";
 
 const DETAILS_KEYBOARD_SCOPE = "issue-details-keyboard-test";
+// What core reports for these fixtures: they carry a fix plan but no trace and
+// no patch.
+const FIXTURE_AVAILABLE_TABS: IssueTab[] = ["details", "explain"];
 
 function DetailsKeyboardHarness({
   enabled,
@@ -23,13 +26,13 @@ function DetailsKeyboardHarness({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   useScope(DETAILS_KEYBOARD_SCOPE);
+  const issue = makeIssue({ fixPlan: [{ step: 1, action: "Apply the fix" }] });
   useReviewDetailsTabKeyboard({
     scope: DETAILS_KEYBOARD_SCOPE,
     enabled,
-    selectedIssue: makeIssue({
-      fixPlan: [{ step: 1, action: "Apply the fix" }],
-    }),
+    selectedIssue: issue,
     activeTab: "details",
+    availableTabs: FIXTURE_AVAILABLE_TABS,
     detailsScrollRef: scrollRef,
     moveTab: () => "no-change",
     scrollDetails: onScroll,
@@ -105,6 +108,7 @@ function FixPlanFocusHarness({
     enabled: zone === "details",
     selectedIssue: issue,
     activeTab,
+    availableTabs: FIXTURE_AVAILABLE_TABS,
     detailsScrollRef: scrollRef,
     moveTab: () => "no-change",
     scrollDetails: () => undefined,

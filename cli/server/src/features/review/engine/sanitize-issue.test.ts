@@ -1,3 +1,4 @@
+import { canonicalJson } from "@diffgazer/core/json";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { describe, expect, it } from "vitest";
 import { sanitizeIssue } from "./sanitize-issue.js";
@@ -85,6 +86,17 @@ describe("sanitizeIssue", () => {
     expect(a.id).toBe(rawA);
     expect(b.id).toBe(rawB);
     expect(a.id).not.toBe(b.id);
+  });
+
+  it("keeps optional fields the provider omitted absent instead of undefined-valued", () => {
+    const result = sanitizeIssue(makeIssue({ id: "issue" }));
+
+    for (const field of ["betterOptions", "testsToAdd", "fixPlan", "trace"] as const) {
+      expect(result).not.toHaveProperty(field);
+    }
+    // A saved review is validated by comparing the canonical JSON of its issues
+    // against its execution result, and canonical JSON rejects undefined values.
+    expect(() => canonicalJson(result)).not.toThrow();
   });
 
   it("preserves text after 7-bit and C1 OSC sequences terminated by C1 ST", () => {

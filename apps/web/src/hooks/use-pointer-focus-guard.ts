@@ -68,15 +68,14 @@ export function usePointerFocusGuard(sinkRef: RefObject<HTMLElement | null>): vo
     };
 
     // A press in the scrollbar gutter targets the scroll container itself;
-    // offsetX/Y land past its client box. Preventing it would break dragging
-    // the scrollbar.
+    // offsetX/Y are measured from the padding-box origin, so the gutter starts
+    // at clientWidth/clientHeight regardless of border width. Preventing it
+    // would break dragging the scrollbar.
     const isScrollbarPress = (event: MouseEvent, target: Element): boolean => {
       const canScroll =
         target.scrollHeight > target.clientHeight || target.scrollWidth > target.clientWidth;
       return (
-        canScroll &&
-        (event.offsetX >= target.clientLeft + target.clientWidth ||
-          event.offsetY >= target.clientTop + target.clientHeight)
+        canScroll && (event.offsetX >= target.clientWidth || event.offsetY >= target.clientHeight)
       );
     };
 

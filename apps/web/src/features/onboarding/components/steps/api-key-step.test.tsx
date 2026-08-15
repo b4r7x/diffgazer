@@ -1,4 +1,8 @@
-import { getInitialWizardData } from "@diffgazer/core/onboarding";
+import {
+  canProceed,
+  getInitialWizardData,
+  type OnboardingConfigurationDraft,
+} from "@diffgazer/core/onboarding";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -30,6 +34,8 @@ describe("ApiKeyStep", () => {
     expect(input).toHaveValue("sk-live-secret");
     expect(input).toHaveFocus();
     expect(screen.queryByText(/GOOGLE_API_KEY/i)).not.toBeInTheDocument();
+    // The typed key must not become a browser-stored, cloud-synced credential.
+    expect(input).toHaveAttribute("autocomplete", "off");
   });
 
   it("does not render hosted credential controls for local HTTP setup", () => {
@@ -147,6 +153,35 @@ describe("ApiKeyStep", () => {
     expect(credential).toHaveFocus();
   });
 
+  it("passes the environment option on the way down out of the credential input", async () => {
+    const user = userEvent.setup();
+    const onBoundaryReached = vi.fn();
+    const hosted = getInitialWizardData("gemini");
+    if (hosted.configurationInput.transportFamily !== "hosted-api") {
+      throw new Error("Expected hosted configuration");
+    }
+
+    render(
+      <KeyboardProvider>
+        <ApiKeyStep
+          configurationInput={hosted.configurationInput}
+          onChange={vi.fn()}
+          onBoundaryReached={onBoundaryReached}
+        />
+      </KeyboardProvider>,
+    );
+
+    screen.getByLabelText("Google Gemini credential").focus();
+    await user.keyboard("{ArrowDown}");
+
+    expect(screen.getByRole("radio", { name: "Use environment reference" })).toHaveFocus();
+    expect(onBoundaryReached).not.toHaveBeenCalled();
+
+    await user.keyboard("{ArrowDown}");
+
+    expect(onBoundaryReached).toHaveBeenCalledWith("down");
+  });
+
   it("reports the down boundary from the last credential option instead of trapping focus", async () => {
     const user = userEvent.setup();
     const onBoundaryReached = vi.fn();
@@ -166,6 +201,36 @@ describe("ApiKeyStep", () => {
     );
 
     screen.getByRole("radio", { name: "Use environment reference" }).focus();
+    await user.keyboard("{ArrowDown}");
+
+    expect(onBoundaryReached).toHaveBeenCalledWith("down");
+  });
+
+  it("reports the down boundary from the local bearer token field", async () => {
+    const user = userEvent.setup();
+    const onBoundaryReached = vi.fn();
+    const local = getInitialWizardData("local-openai");
+    if (local.configurationInput.transportFamily !== "local-http") {
+      throw new Error("Expected local HTTP configuration");
+    }
+
+    function ControlledStep() {
+      const [configurationInput, setConfigurationInput] = useState(local.configurationInput);
+      return (
+        <KeyboardProvider>
+          <ApiKeyStep
+            configurationInput={configurationInput}
+            onChange={setConfigurationInput}
+            onBoundaryReached={onBoundaryReached}
+          />
+        </KeyboardProvider>
+      );
+    }
+
+    render(<ControlledStep />);
+    await user.click(screen.getByRole("checkbox", { name: /bearer token/i }));
+    const token = await screen.findByLabelText("Local bearer token");
+    token.focus();
     await user.keyboard("{ArrowDown}");
 
     expect(onBoundaryReached).toHaveBeenCalledWith("down");
@@ -196,5 +261,85 @@ describe("ApiKeyStep", () => {
     const token = screen.getByLabelText("Local bearer token");
     await user.type(token, "local-secret");
     expect(token).toHaveValue("local-secret");
+    expect(token).toHaveAttribute("autocomplete", "off");
+  });
+
+  it("blocks authentication until a bearer token is entered when optional bearer is enabled", async () => {
+    const user = userEvent.setup();
+    const local = getInitialWizardData("local-openai");
+    if (local.configurationInput.transportFamily !== "local-http") {
+      throw new Error("Expected local HTTP configuration");
+    }
+
+    function ControlledStep() {
+      const [configurationInput, setConfigurationInput] = useState(local.configurationInput);
+      return (
+        <KeyboardProvider>
+          <ApiKeyStep configurationInput={configurationInput} onChange={setConfigurationInput} />
+        </KeyboardProvider>
+      );
+    }
+
+    render(<ControlledStep />);
+    await user.click(screen.getByRole("checkbox", { name: /bearer token/i }));
+
+    const withoutToken = {
+      ...local,
+      configurationInput: {
+        ...local.configurationInput,
+        authentication: "optional-local-bearer" as const,
+      },
+    };
+    expect(canProceed("authentication", withoutToken)).toBe(false);
+
+    await user.type(screen.getByLabelText("Local bearer token"), "write-only-bearer");
+    const withToken = {
+      ...withoutToken,
+      configurationInput: {
+        ...withoutToken.configurationInput,
+        bearerToken: { kind: "literal" as const, value: "write-only-bearer" },
+      },
+    };
+    expect(canProceed("authentication", withToken)).toBe(true);
+  });
+
+  it("drops bearer input when optional bearer is unchecked", async () => {
+    const user = userEvent.setup();
+    const local = getInitialWizardData("local-openai");
+    if (local.configurationInput.transportFamily !== "local-http") {
+      throw new Error("Expected local HTTP configuration");
+    }
+
+    const initialInput = local.configurationInput;
+    if (initialInput.transportFamily !== "local-http") {
+      throw new Error("Expected local HTTP configuration");
+    }
+
+    function ControlledStep() {
+      const [configurationInput, setConfigurationInput] = useState<OnboardingConfigurationDraft>({
+        ...initialInput,
+        authentication: "optional-local-bearer",
+        bearerToken: { kind: "literal", value: "write-only-bearer" },
+      });
+      return (
+        <KeyboardProvider>
+          <ApiKeyStep configurationInput={configurationInput} onChange={setConfigurationInput} />
+        </KeyboardProvider>
+      );
+    }
+
+    render(<ControlledStep />);
+    await user.click(screen.getByRole("checkbox", { name: /bearer token/i }));
+
+    expect(screen.queryByLabelText("Local bearer token")).not.toBeInTheDocument();
+    expect(
+      canProceed("authentication", {
+        ...local,
+        configurationInput: {
+          ...local.configurationInput,
+          authentication: "none",
+        },
+      }),
+    ).toBe(true);
   });
 });

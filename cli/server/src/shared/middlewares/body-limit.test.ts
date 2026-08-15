@@ -5,12 +5,20 @@ import { PROJECT_ROOT_HEADER } from "@diffgazer/core/api/protocol";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { assertTempHome } from "../lib/testing/temp-home.js";
 import { DEFAULT_BODY_LIMIT_KB } from "./body-limit.js";
 
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta";
 
 let diffgazerHome: string;
 let projectRoot: string;
+
+// The routers call `getStore()` while serving, so the store singleton is reached through
+// the module rather than a handle any single test holds.
+async function drainConfigStore(): Promise<void> {
+  const { getStore } = await import("../lib/config/store.js");
+  await getStore().ready();
+}
 
 async function createReviewApp(): Promise<Hono> {
   const { configRouter } = await import("../../features/config/router.js");
@@ -45,6 +53,7 @@ describe("body limit route wiring", () => {
 
   beforeEach(() => {
     diffgazerHome = mkdtempSync(join(tmpdir(), "dg-body-limit-"));
+    assertTempHome(diffgazerHome);
     projectRoot = realpathSync.native(mkdtempSync(join(tmpdir(), "dg-body-limit-project-")));
     mkdirSync(join(projectRoot, ".git"));
     process.env.DIFFGAZER_HOME = diffgazerHome;
@@ -53,12 +62,19 @@ describe("body limit route wiring", () => {
     vi.resetModules();
   });
 
-  afterEach(() => {
-    delete process.env.DIFFGAZER_HOME;
-    delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
-    rmSync(diffgazerHome, { recursive: true, force: true });
-    rmSync(projectRoot, { recursive: true, force: true });
-    warnSpy.mockRestore();
+  // Settle the store's queued persistence, then remove the temp dirs, and only then drop
+  // DIFFGAZER_HOME: `paths.ts` re-reads it per call, so restoring it while a persist*Async
+  // write is still pending re-points that write at the real ~/.diffgazer.
+  afterEach(async () => {
+    try {
+      await drainConfigStore();
+      rmSync(diffgazerHome, { recursive: true, force: true });
+      rmSync(projectRoot, { recursive: true, force: true });
+    } finally {
+      delete process.env.DIFFGAZER_HOME;
+      delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
+      warnSpy.mockRestore();
+    }
   });
 
   it("uses the review-specific cap without changing the default JSON route cap", async () => {

@@ -1,3 +1,4 @@
+import { DETACHED_HEAD_BRANCH } from "@diffgazer/core/schemas/git";
 import { describe, expect, it } from "vitest";
 import { parseGitStatusOutput, parseHashableStatusFiles } from "./status.js";
 
@@ -5,9 +6,46 @@ function porcelainOutput(...records: string[]): string {
   return records.length > 0 ? `${records.join("\0")}\0` : "";
 }
 
+/** `# branch.*` header records, as emitted by `--porcelain=v2 --branch`. */
+function branchHeader(
+  head: string,
+  options: { upstream?: string; ahead?: number; behind?: number } = {},
+): string[] {
+  const records = [
+    "# branch.oid 1111111111111111111111111111111111111111",
+    `# branch.head ${head}`,
+  ];
+  if (options.upstream !== undefined) {
+    records.push(`# branch.upstream ${options.upstream}`);
+    records.push(`# branch.ab +${options.ahead ?? 0} -${options.behind ?? 0}`);
+  }
+  return records;
+}
+
+/** `1 <XY> <sub> <mH> <mI> <mW> <hH> <hI> <path>` */
+function changed(xy: string, path: string): string {
+  return `1 ${xy} N... 100644 100644 100644 1111111 2222222 ${path}`;
+}
+
+/** `2 <XY> <sub> <mH> <mI> <mW> <hH> <hI> <score> <path>` followed by the origin path record. */
+function renamed(xy: string, path: string): string {
+  return `2 ${xy} N... 100644 100644 100644 1111111 2222222 R100 ${path}`;
+}
+
+/** `u <XY> <sub> <m1> <m2> <m3> <mW> <h1> <h2> <h3> <path>` */
+function unmerged(xy: string, path: string): string {
+  return `u ${xy} N... 100644 100644 100644 100644 1111111 2222222 3333333 ${path}`;
+}
+
+function untracked(path: string): string {
+  return `? ${path}`;
+}
+
 describe("parseGitStatusOutput", () => {
   it("reports a clean repo with branch and remote tracking", () => {
-    const parsed = parseGitStatusOutput(porcelainOutput("## main...origin/main"));
+    const parsed = parseGitStatusOutput(
+      porcelainOutput(...branchHeader("main", { upstream: "origin/main" })),
+    );
 
     expect(parsed.branch).toBe("main");
     expect(parsed.remoteBranch).toBe("origin/main");
@@ -21,7 +59,7 @@ describe("parseGitStatusOutput", () => {
   it.each([
     {
       scenario: "ahead and behind counts",
-      output: ["## feature...origin/feature [ahead 3, behind 2]"],
+      output: branchHeader("feature", { upstream: "origin/feature", ahead: 3, behind: 2 }),
       branch: "feature",
       remoteBranch: "origin/feature",
       ahead: 3,
@@ -29,7 +67,7 @@ describe("parseGitStatusOutput", () => {
     },
     {
       scenario: "only ahead count",
-      output: ["## main...origin/main [ahead 5]"],
+      output: branchHeader("main", { upstream: "origin/main", ahead: 5 }),
       branch: "main",
       remoteBranch: "origin/main",
       ahead: 5,
@@ -37,8 +75,24 @@ describe("parseGitStatusOutput", () => {
     },
     {
       scenario: "no remote tracking",
-      output: ["## feature-branch"],
+      output: branchHeader("feature-branch"),
       branch: "feature-branch",
+      remoteBranch: null,
+      ahead: 0,
+      behind: 0,
+    },
+    {
+      scenario: "a detached HEAD",
+      output: branchHeader("(detached)"),
+      branch: DETACHED_HEAD_BRANCH,
+      remoteBranch: null,
+      ahead: 0,
+      behind: 0,
+    },
+    {
+      scenario: "a branch literally named detached",
+      output: branchHeader("detached"),
+      branch: "detached",
       remoteBranch: null,
       ahead: 0,
       behind: 0,
@@ -53,26 +107,13 @@ describe("parseGitStatusOutput", () => {
   });
 
   it.each([
-    {
-      kind: "staged modified",
-      output: ["## main", "M  src/file.ts"],
-      path: "src/file.ts",
-      indexStatus: "M",
-    },
-    {
-      kind: "staged added",
-      output: ["## main", "A  new-file.ts"],
-      path: "new-file.ts",
-      indexStatus: "A",
-    },
-    {
-      kind: "staged deleted",
-      output: ["## main", "D  old-file.ts"],
-      path: "old-file.ts",
-      indexStatus: "D",
-    },
-  ])("places $kind file in the staged bucket", ({ output, path, indexStatus }) => {
-    const parsed = parseGitStatusOutput(porcelainOutput(...output));
+    { kind: "staged modified", xy: "M.", path: "src/file.ts", indexStatus: "M" },
+    { kind: "staged added", xy: "A.", path: "new-file.ts", indexStatus: "A" },
+    { kind: "staged deleted", xy: "D.", path: "old-file.ts", indexStatus: "D" },
+  ])("places $kind file in the staged bucket", ({ xy, path, indexStatus }) => {
+    const parsed = parseGitStatusOutput(
+      porcelainOutput(...branchHeader("main"), changed(xy, path)),
+    );
 
     expect(parsed.files.staged).toHaveLength(1);
     expect(parsed.files.staged[0]?.path).toBe(path);
@@ -80,15 +121,19 @@ describe("parseGitStatusOutput", () => {
   });
 
   it("places worktree-only changes in the unstaged bucket", () => {
-    const parsed = parseGitStatusOutput(porcelainOutput("## main", " M src/file.ts"));
+    const parsed = parseGitStatusOutput(
+      porcelainOutput(...branchHeader("main"), changed(".M", "src/file.ts")),
+    );
 
     expect(parsed.files.unstaged).toHaveLength(1);
     expect(parsed.files.unstaged[0]?.path).toBe("src/file.ts");
     expect(parsed.files.unstaged[0]?.workTreeStatus).toBe("M");
   });
 
-  it("places ?? files in the untracked bucket", () => {
-    const parsed = parseGitStatusOutput(porcelainOutput("## main", "?? new-file.ts"));
+  it("places untracked records in the untracked bucket", () => {
+    const parsed = parseGitStatusOutput(
+      porcelainOutput(...branchHeader("main"), untracked("new-file.ts")),
+    );
 
     expect(parsed.files.untracked).toHaveLength(1);
     expect(parsed.files.untracked[0]?.path).toBe("new-file.ts");
@@ -102,8 +147,10 @@ describe("parseGitStatusOutput", () => {
     ["DU", "deleted by us"],
     ["AA", "both added"],
     ["UU", "both modified"],
-  ])("reports %s (%s) entries as conflicted files", (status) => {
-    const parsed = parseGitStatusOutput(porcelainOutput("## main", `${status} conflicted.ts`));
+  ])("reports %s (%s) entries as conflicted files", (xy) => {
+    const parsed = parseGitStatusOutput(
+      porcelainOutput(...branchHeader("main"), unmerged(xy, "conflicted.ts")),
+    );
 
     expect(parsed.conflicted).toEqual(["conflicted.ts"]);
   });
@@ -112,21 +159,26 @@ describe("parseGitStatusOutput", () => {
     // .diffgazer is a server-managed cache dir, so its merge-conflict entries are
     // filtered out of conflicted alongside every other internal-path bucket.
     const parsed = parseGitStatusOutput(
-      porcelainOutput("## main", "UU .diffgazer/state.json", "UU src/app.ts"),
+      porcelainOutput(
+        ...branchHeader("main"),
+        unmerged("UU", ".diffgazer/state.json"),
+        unmerged("UU", "src/app.ts"),
+      ),
     );
 
     expect(parsed.conflicted).toEqual(["src/app.ts"]);
   });
 
   it("splits mixed-status entries into the correct buckets", () => {
-    const output = [
-      "## main...origin/main",
-      "M  staged.ts",
-      " M unstaged.ts",
-      "?? untracked.ts",
-      "A  added.ts",
-    ];
-    const parsed = parseGitStatusOutput(porcelainOutput(...output));
+    const parsed = parseGitStatusOutput(
+      porcelainOutput(
+        ...branchHeader("main", { upstream: "origin/main" }),
+        changed("M.", "staged.ts"),
+        changed(".M", "unstaged.ts"),
+        untracked("untracked.ts"),
+        changed("A.", "added.ts"),
+      ),
+    );
 
     expect(parsed.files.staged).toHaveLength(2);
     expect(parsed.files.unstaged).toHaveLength(1);
@@ -142,21 +194,27 @@ describe("parseGitStatusOutput", () => {
     expect(parsed.branch).toBeNull();
   });
 
-  it("ignores porcelain records shorter than the status prefix", () => {
-    const parsed = parseGitStatusOutput(porcelainOutput("## main", "XY"));
+  it("ignores an ordinary record truncated before its path field", () => {
+    const parsed = parseGitStatusOutput(
+      porcelainOutput(...branchHeader("main"), "1 M. N... 100644 100644"),
+    );
 
     expect(parsed.files.staged).toEqual([]);
     expect(parsed.files.unstaged).toEqual([]);
   });
 
   it("preserves a non-ASCII porcelain path", () => {
-    const parsed = parseGitStatusOutput(porcelainOutput("## main", " M żółć/plik.ts"));
+    const parsed = parseGitStatusOutput(
+      porcelainOutput(...branchHeader("main"), changed(".M", "żółć/plik.ts")),
+    );
 
     expect(parsed.files.unstaged[0]?.path).toBe("żółć/plik.ts");
   });
 
   it("parses a staged rename into path and previousPath", () => {
-    const parsed = parseGitStatusOutput(porcelainOutput("## main", "R  new.txt", "old.txt"));
+    const parsed = parseGitStatusOutput(
+      porcelainOutput(...branchHeader("main"), renamed("R.", "new.txt"), "old.txt"),
+    );
 
     expect(parsed.files.staged[0]).toMatchObject({
       path: "new.txt",
@@ -167,20 +225,26 @@ describe("parseGitStatusOutput", () => {
   });
 
   it("parses a rename with spaces", () => {
-    const parsed = parseGitStatusOutput(porcelainOutput("## main", "R  c d.txt", "a b.txt"));
+    const parsed = parseGitStatusOutput(
+      porcelainOutput(...branchHeader("main"), renamed("R.", "c d.txt"), "a b.txt"),
+    );
 
     expect(parsed.files.staged[0]?.path).toBe("c d.txt");
     expect(parsed.files.staged[0]?.previousPath).toBe("a b.txt");
   });
 
   it("preserves a leading/trailing space in a filename", () => {
-    const parsed = parseGitStatusOutput(porcelainOutput("## main", " M  report .md "));
+    const parsed = parseGitStatusOutput(
+      porcelainOutput(...branchHeader("main"), changed(".M", " report .md ")),
+    );
 
     expect(parsed.files.unstaged[0]?.path).toBe(" report .md ");
   });
 
   it("preserves a leading/trailing space in a rename's paths", () => {
-    const parsed = parseGitStatusOutput(porcelainOutput("## main", "R  new.txt ", " old.txt"));
+    const parsed = parseGitStatusOutput(
+      porcelainOutput(...branchHeader("main"), renamed("R.", "new.txt "), " old.txt"),
+    );
 
     expect(parsed.files.staged[0]?.path).toBe("new.txt ");
     expect(parsed.files.staged[0]?.previousPath).toBe(" old.txt");
@@ -188,7 +252,11 @@ describe("parseGitStatusOutput", () => {
 
   it("excludes a .diffgazer non-ASCII path from status results", () => {
     const parsed = parseGitStatusOutput(
-      porcelainOutput("## main", " M .diffgazer/ż.json", " M src/app.ts"),
+      porcelainOutput(
+        ...branchHeader("main"),
+        changed(".M", ".diffgazer/ż.json"),
+        changed(".M", "src/app.ts"),
+      ),
     );
 
     expect(parsed.files.unstaged).toHaveLength(1);
@@ -197,7 +265,11 @@ describe("parseGitStatusOutput", () => {
 
   it("excludes .diffgazer/ files from status results", () => {
     const parsed = parseGitStatusOutput(
-      porcelainOutput("## main", "?? .diffgazer/project.json", " M src/app.ts"),
+      porcelainOutput(
+        ...branchHeader("main"),
+        untracked(".diffgazer/project.json"),
+        changed(".M", "src/app.ts"),
+      ),
     );
 
     expect(parsed.files.untracked).toHaveLength(0);
@@ -207,7 +279,11 @@ describe("parseGitStatusOutput", () => {
 
   it("omits .diffgazer-only changes from all buckets", () => {
     const parsed = parseGitStatusOutput(
-      porcelainOutput("## main", "?? .diffgazer/context.md", "A  .diffgazer/project.json"),
+      porcelainOutput(
+        ...branchHeader("main"),
+        untracked(".diffgazer/context.md"),
+        changed("A.", ".diffgazer/project.json"),
+      ),
     );
 
     expect(parsed.files.staged).toHaveLength(0);
@@ -216,13 +292,15 @@ describe("parseGitStatusOutput", () => {
 
   it("keeps non-.diffgazer files with similar names", () => {
     const parsed = parseGitStatusOutput(
-      porcelainOutput("## main", "?? .diffgazer-backup/config.json"),
+      porcelainOutput(...branchHeader("main"), untracked(".diffgazer-backup/config.json")),
     );
 
     expect(parsed.files.untracked).toHaveLength(1);
   });
 });
 
+// getStatusHash runs `--porcelain=v1 -z` (no --branch), so these records are the
+// v1 file shapes and never carry a `## ` header.
 describe("parseHashableStatusFiles", () => {
   it("excludes untracked and internal .diffgazer paths", () => {
     const files = parseHashableStatusFiles(
@@ -245,5 +323,12 @@ describe("parseHashableStatusFiles", () => {
 
     expect(files).toHaveLength(1);
     expect(files[0]?.entry.path).toBe("src/.diffgazer/config.json");
+  });
+
+  it("keeps a v1 rename's destination and origin paths in order", () => {
+    const files = parseHashableStatusFiles(porcelainOutput("R  new.txt", "old.txt"));
+
+    expect(files).toHaveLength(1);
+    expect(files[0]?.entry).toMatchObject({ path: "new.txt", previousPath: "old.txt" });
   });
 });

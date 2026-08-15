@@ -1,10 +1,10 @@
 import { getTabbableElements } from "@diffgazer/keys";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { Ref } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { requireElement } from "../../testing/assertions";
+import { Accordion } from "../accordion";
 import { Sidebar } from "./index";
 
 type SidebarState = "open" | "rail" | "hidden";
@@ -70,9 +70,9 @@ describe("Sidebar", () => {
   });
 
   it.each([
-    ["rail", "rail"],
-    ["hidden", "hidden"],
-  ] as const)("keeps %s on the sidebar DOM while exposing collapsed on the trigger", (state, providerState) => {
+    "rail",
+    "hidden",
+  ] as const)("keeps %s on the sidebar DOM while exposing collapsed on the trigger", (state) => {
     render(
       <Sidebar.Provider defaultState={state}>
         <Sidebar data-testid="sidebar-root">
@@ -82,8 +82,8 @@ describe("Sidebar", () => {
       </Sidebar.Provider>,
     );
 
-    expect(screen.getByTestId("sidebar-root")).toHaveAttribute("data-state", providerState);
-    expect(screen.getByTestId("sidebar-content")).toHaveAttribute("data-state", providerState);
+    expect(screen.getByTestId("sidebar-root")).toHaveAttribute("data-state", state);
+    expect(screen.getByTestId("sidebar-content")).toHaveAttribute("data-state", state);
     expect(screen.getByTestId("sidebar-trigger")).toHaveAttribute("data-state", "collapsed");
   });
 
@@ -279,6 +279,80 @@ describe("Sidebar", () => {
     expect(second).toHaveFocus();
   });
 
+  it("keeps sidebar arrow navigation on sidebar items when an item contains nested accordion triggers", async () => {
+    const user = userEvent.setup();
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item as="button" value="one">
+              One
+            </Sidebar.Item>
+            <Accordion defaultValue="nested">
+              <Accordion.Item value="nested">
+                <Accordion.Header>
+                  <Accordion.Trigger>Nested trigger</Accordion.Trigger>
+                </Accordion.Header>
+                <Accordion.Content>Nested content</Accordion.Content>
+              </Accordion.Item>
+            </Accordion>
+            <Sidebar.Item as="button" value="two">
+              Two
+            </Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+
+    const first = screen.getByRole("button", { name: "One" });
+    const second = screen.getByRole("button", { name: "Two" });
+    const nestedTrigger = screen.getByRole("button", { name: "Nested trigger" });
+
+    first.focus();
+    await user.keyboard("{ArrowDown}");
+
+    expect(second).toHaveFocus();
+    expect(nestedTrigger).not.toHaveFocus();
+  });
+
+  it("enters the item list from a collapsible section title inside the content", async () => {
+    const user = userEvent.setup();
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Section collapsible>
+              <Sidebar.SectionTitle>Section</Sidebar.SectionTitle>
+              <Sidebar.SectionContent>
+                <Sidebar.Item as="button" value="one">
+                  One
+                </Sidebar.Item>
+                <Sidebar.Item as="button" value="two">
+                  Two
+                </Sidebar.Item>
+              </Sidebar.SectionContent>
+            </Sidebar.Section>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    );
+    const sectionTitle = screen.getByRole("button", { name: "Section" });
+    const first = screen.getByRole("button", { name: "One" });
+    const second = screen.getByRole("button", { name: "Two" });
+
+    sectionTitle.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(first).toHaveFocus();
+
+    sectionTitle.focus();
+    await user.keyboard("{Home}");
+    expect(first).toHaveFocus();
+
+    sectionTitle.focus();
+    await user.keyboard("{End}");
+    expect(second).toHaveFocus();
+  });
+
   it("keeps disabled render-prop items inert and out of tab order", async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
@@ -288,7 +362,7 @@ describe("Sidebar", () => {
           <Sidebar.Content>
             <Sidebar.Item disabled onClick={onClick}>
               {({ itemPrefix, ref, ...itemProps }) => (
-                <a href="/settings" ref={ref as Ref<HTMLAnchorElement> | undefined} {...itemProps}>
+                <a href="/settings" ref={ref} {...itemProps}>
                   {itemPrefix}
                   Settings
                 </a>
@@ -315,7 +389,7 @@ describe("Sidebar", () => {
           <Sidebar.Content>
             <Sidebar.Item active>
               {({ itemPrefix, ref, ...itemProps }) => (
-                <a href="/dashboard" ref={ref as Ref<HTMLAnchorElement> | undefined} {...itemProps}>
+                <a href="/dashboard" ref={ref} {...itemProps}>
                   {itemPrefix}
                   Dashboard
                 </a>

@@ -395,9 +395,24 @@ describe("Select keyboard navigation", () => {
     );
   });
 
+  it("extends a typeahead query started on the closed trigger with the next character", async () => {
+    const user = userEvent.setup();
+    renderSelect({ items: ["Apple", "Banana", "Blueberry"] });
+    getSelectTrigger().focus();
+
+    await user.keyboard("bl");
+
+    expect(screen.getByRole("listbox")).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: /blueberry/i }).id,
+    );
+  });
+
   it("starts a fresh typeahead query after close and reopen", async () => {
     const user = userEvent.setup();
-    renderSelect();
+    // Dropdown variant: only a dropdown closes on Escape, so the card variant would
+    // reopen nothing and leave the session boundary unexercised.
+    renderSelect({ variant: "default" });
     getSelectTrigger().focus();
 
     await user.keyboard("a");

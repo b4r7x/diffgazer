@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  loadPreparedScaffoldData,
   parseScaffoldPageArtifact,
   parseScaffoldSourceArtifact,
 } from "./generate-llms/artifacts.ts";
@@ -230,5 +231,37 @@ describe("generate llms rendering", () => {
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+
+  it("keeps code-block llms markdown structurally valid", () => {
+    const repoRoot = resolve(import.meta.dirname, "../../..");
+    const markdown = sourceToMarkdown(
+      readFileSync(resolve(repoRoot, "libs/ui/docs/content/components/code-block.mdx"), "utf-8"),
+      "Code Block",
+      loadPreparedScaffoldData("/ui/components/code-block"),
+    );
+
+    const fenceCount = (markdown.match(/^```/gm) ?? []).length;
+    expect(fenceCount % 2).toBe(0);
+    expect(markdown).toContain("## Syntax highlighting");
+    expect(markdown).toContain("Pre-tokenized lines");
+    expect(markdown).toContain("CodeBlockHighlight");
+    expect(markdown).not.toMatch(/^```tsx\s*```/m);
+    expect(markdown).toContain("This is the pattern used by `<UsageSnippet />` above");
+  });
+
+  it("renders keys integration hook source without MDX residue", () => {
+    const repoRoot = resolve(import.meta.dirname, "../../..");
+    const markdown = sourceToMarkdown(
+      readFileSync(resolve(repoRoot, "libs/ui/docs/content/integrations/keys.mdx"), "utf-8"),
+      "Keys",
+      null,
+    );
+
+    expect(markdown).toContain("## Standalone Hook Source Code");
+    expect(markdown).toContain("## Utility hooks");
+    expect(markdown).not.toContain("</>} />");
+    expect(markdown).not.toContain("className=");
+    expect(markdown).toMatch(/export function useNavigation/);
   });
 });

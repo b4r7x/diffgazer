@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  CANDIDATE_VERDICTS,
-  PRODUCT_REGISTRY,
-  SELECTABLE_PRODUCT_IDS,
-} from "../providers/product-registry.js";
-import { PROVIDER_OVERLAY, projectCatalogAvailabilityObservations } from "./provider-overlay.js";
-
-const CHECKED_AT = "2026-07-31T12:00:00.000Z";
+import { CANDIDATE_VERDICTS } from "../providers/candidate-verdicts.js";
+import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "../providers/product-registry.js";
+import { PROVIDER_OVERLAY } from "./provider-overlay.js";
 
 describe("catalog provider observations", () => {
   it("leaves exact 13-product eligibility with the product registry", () => {
@@ -40,34 +35,25 @@ describe("catalog provider observations", () => {
     ]);
   });
 
-  it("keeps offline catalog data observational and unable to enable products or models", () => {
-    const observations = projectCatalogAvailabilityObservations("models.dev-snapshot", CHECKED_AT);
-
-    expect(observations).toHaveLength(6);
-    for (const observation of observations) {
-      expect(observation).toEqual({
-        productId: observation.productId,
-        modelsDevIds: observation.modelsDevIds,
-        source: "models.dev-snapshot",
-        checkedAt: CHECKED_AT,
-      });
-      expect(observation).not.toHaveProperty("enabled");
-      expect(observation).not.toHaveProperty("selectable");
-      expect(observation).not.toHaveProperty("models");
+  it("keeps the overlay observational and unable to enable products or models", () => {
+    for (const overlay of Object.values(PROVIDER_OVERLAY)) {
+      expect(overlay).toEqual({ modelsDevIds: overlay?.modelsDevIds });
+      expect(overlay).not.toHaveProperty("enabled");
+      expect(overlay).not.toHaveProperty("selectable");
+      expect(overlay).not.toHaveProperty("models");
     }
   });
 
-  it("excludes candidate IDs from availability projections", () => {
-    const observations = projectCatalogAvailabilityObservations("models.dev-live", CHECKED_AT);
-    const projectedIds = new Set([
-      ...observations.map((observation) => observation.productId),
-      ...observations.flatMap((observation) => observation.modelsDevIds),
+  it("excludes candidate IDs from the overlay", () => {
+    const overlaidIds = new Set([
+      ...Object.keys(PROVIDER_OVERLAY),
+      ...Object.values(PROVIDER_OVERLAY).flatMap((overlay) => [...(overlay?.modelsDevIds ?? [])]),
     ]);
 
-    expect(projectedIds.has("github-models")).toBe(false);
-    expect(projectedIds.has("huggingface")).toBe(false);
+    expect(overlaidIds.has("github-models")).toBe(false);
+    expect(overlaidIds.has("huggingface")).toBe(false);
     for (const candidateId of Object.keys(CANDIDATE_VERDICTS)) {
-      expect(projectedIds.has(candidateId), candidateId).toBe(false);
+      expect(overlaidIds.has(candidateId), candidateId).toBe(false);
     }
   });
 });

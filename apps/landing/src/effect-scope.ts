@@ -3,7 +3,7 @@ export type Cleanup = () => void;
 export interface EffectScope {
   signal: AbortSignal;
   active(): boolean;
-  addCleanup(cleanup: Cleanup | undefined): void;
+  addCleanup(cleanup: Cleanup): void;
   cleanup(): void;
 }
 
@@ -27,7 +27,6 @@ export function createEffectScope(externalSignal?: AbortSignal): EffectScope {
     signal: controller.signal,
     active: () => !disposed,
     addCleanup: (dispose) => {
-      if (!dispose) return;
       if (disposed) dispose();
       else cleanups.push(dispose);
     },

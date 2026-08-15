@@ -9,6 +9,10 @@ import { collectSecretFindings, formatSecretFindings } from "./secret-scan.mjs";
 
 const LARGE_FILE_BYTES = 2 * 1024 * 1024;
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function scanSource(source) {
   const dir = mkdtempSync(join(tmpdir(), "dg-secret-scan-"));
   const path = join(dir, "fixture.txt");
@@ -59,22 +63,16 @@ test("secret scan skips a small binary file even when it embeds a recognized tok
   }
 });
 
-test("secret scan retains oversized binary and ignored-path exclusions", () => {
+test("secret scan skips an oversized binary file even when it embeds a recognized token", () => {
   const dir = mkdtempSync(join(tmpdir(), "dg-secret-exclusions-"));
   const binaryPath = join(dir, "fixture.bin");
-  const ignoredPath = join(dir, ".nuke", "fixture.txt");
   const fakeToken = `ghp_${"Q".repeat(36)}`;
-  const cwd = process.cwd();
 
   try {
     writeFileSync(binaryPath, `${"a".repeat(LARGE_FILE_BYTES)}\0${fakeToken}`);
-    mkdirSync(dirname(ignoredPath), { recursive: true });
-    writeFileSync(ignoredPath, fakeToken);
-    process.chdir(dir);
 
-    assert.deepEqual(collectSecretFindings([binaryPath, ".nuke/fixture.txt"]), []);
+    assert.deepEqual(collectSecretFindings([binaryPath]), []);
   } finally {
-    process.chdir(cwd);
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -126,6 +124,27 @@ test("secret scan detects generic high-entropy secret assignments", () => {
   assert.equal(findings[0].pattern, "generic-secret-assignment");
 });
 
+test("secret scan reports a blank-line-preceded assignment on its own line", () => {
+  const value = "abc123ABC._-+=".repeat(4);
+  const findings = scanSource(`# header\n\n\nCOOLIFY_SECRET=${value}\nTRAILER=ok\n`);
+
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].pattern, "generic-secret-assignment");
+  assert.equal(findings[0].line, 4);
+  assert.doesNotMatch(formatSecretFindings(findings)[0], new RegExp(escapeRegExp(value)));
+});
+
+test("secret scan redacts a generic assignment sharing a line with another secret", () => {
+  const value = "aZ9-kQ2_wX7mB4nR6tY1uI8oP3sD5fG0hJcV";
+  const githubToken = `ghp_${"A".repeat(36)}`;
+  const findings = scanSource(`# header\n\nAPI_KEY=${value} ${githubToken}\n`);
+  const formatted = formatSecretFindings(findings).join("\n");
+
+  assert.equal(findings.length, 2);
+  assert.doesNotMatch(formatted, new RegExp(escapeRegExp(value)));
+  assert.doesNotMatch(formatted, new RegExp(githubToken));
+});
+
 test("secret scan includes committed public registry contracts", () => {
   const dir = mkdtempSync(join(tmpdir(), "dg-secret-public-r-"));
   const relPath = "libs/ui/public/r/planted.json";
@@ -152,11 +171,17 @@ test("secret scan includes committed public registry contracts", () => {
 test("secret scan CLI entry fails closed on a tracked secret without printing the raw token", () => {
   const root = mkdtempSync(join(tmpdir(), "dg-secret-scan-worktree-"));
   const fakeToken = `ghp_${"W".repeat(36)}`;
+  const ignoredToken = `ghp_${"I".repeat(36)}`;
 
   try {
     execFileSync("git", ["init", "--quiet"], { cwd: root });
     writeFileSync(join(root, "fixture.txt"), `GITHUB_TOKEN="${fakeToken}"\n`);
     execFileSync("git", ["add", "fixture.txt"], { cwd: root });
+    // Gitignored trees are out of scope because git never lists them, not
+    // because the scanner carries its own exclusion table.
+    writeFileSync(join(root, ".gitignore"), "vendor/\n");
+    mkdirSync(join(root, "vendor"), { recursive: true });
+    writeFileSync(join(root, "vendor", "creds.txt"), `GITHUB_TOKEN="${ignoredToken}"\n`);
 
     const child = spawnSync(
       process.execPath,
@@ -166,7 +191,9 @@ test("secret scan CLI entry fails closed on a tracked secret without printing th
 
     assert.equal(child.status, 1);
     assert.match(child.stderr, /Secret scan failed\./);
+    assert.match(child.stderr, /fixture\.txt:1 github-token/);
     assert.match(child.stderr, /<redacted:/);
+    assert.doesNotMatch(child.stderr, /vendor\/creds\.txt/);
     assert.doesNotMatch(`${child.stdout}${child.stderr}`, new RegExp(fakeToken));
   } finally {
     rmSync(root, { recursive: true, force: true });

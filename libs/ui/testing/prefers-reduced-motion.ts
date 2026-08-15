@@ -36,7 +36,7 @@ function extractReducedMotionRootRule(): string {
  * out of the @media wrapper. Returns a cleanup function that removes the
  * injected `<style>` element.
  */
-export function injectReducedMotionTheme(): () => void {
+function injectReducedMotionTheme(): () => void {
   const rootRule = extractReducedMotionRootRule();
   const style = document.createElement("style");
   style.dataset.testSource = "theme-base.css#reduced-motion";

@@ -82,9 +82,9 @@ Extract to `registry/lib/` when two or more components share the same variant ax
 
 | Module | Used by |
 |---|---|
-| `selectable-variants.ts` | Checkbox, Radio |
+| `selectable-variants.ts` | Checkbox, Radio, Switch |
 | `segmented-variants.ts` | Tabs, ToggleGroup |
-| `input-variants.ts` | Input, InputGroup, Textarea |
+| `input-variants.ts` | Input, InputGroup, Textarea, SearchInput |
 | `corner-label-variants.ts` | Panel, Card |
 | `stepper-variants.ts` | Stepper — the one single-consumer module still in `lib/` |
 
@@ -117,6 +117,9 @@ CSS files handle things Tailwind utilities cannot express. Put **only** these in
 | `command-palette.css` | Density CSS custom properties, multi-attribute frame/density/tone selectors, forced-colors |
 | `callout.css` | Tone cascade via CSS custom properties, frame chrome via data-attributes, forced-colors |
 | `panel.css` | Frame chrome (hairline/rail/viewfinder/surface) via multi-attribute selectors, forced-colors |
+| `progress.css` | Cell-grid mask on the progress track/fill (`data-variant="cells"`) — no Tailwind equivalent for a shared mask on both layers |
+| `skeleton.css` | Character-cell strip mask and shimmer keyframes on `[data-slot="skeleton"]` — same cell language as Spinner/BlockBar |
+| `overlay-hints.css` | Coarse-pointer collapse/hide rules for the keyed legend row (`:has`, `aria-hidden`, `data-touch`) — layout here is the contract: one flex row with a fixed wrap gap so hint bars never scroll horizontally at 390px |
 | `spinner.css` | Theme-conditional trail alphas — the shipped theme defaults to dark on a bare `:root`, so the `dark` variant cannot express a light-only override |
 
 **What does NOT belong in CSS files:**
@@ -139,7 +142,7 @@ WCAG 2.5.5 asks for a 44x44 CSS px target on touch. Our fine-pointer densities a
 pointer-coarse:min-h-11        /* or a plain width/height in CSS */
 ```
 
-The control simply becomes 44px on coarse pointers. This is the default recipe and by far the most used one: `CodeBlock`'s copy button (via `code-block.css`, which also grows the header row so the taller control is not clipped), `Toast`'s close button, `SearchInput`'s clear button, `Sidebar.Trigger`, sidebar rows and section titles, the `Checkbox`/`Radio` row (`selectable-variants.ts`), and `Tabs`/`ToggleGroup` at `sm` (`segmented-variants.ts`). Grep `pointer-coarse:min-h-11` for the live list.
+The control simply becomes 44px on coarse pointers. This is the default recipe and by far the most used one: `CodeBlock`'s copy button (via `code-block.css`, which also grows the header row so the taller control is not clipped), `Toast`'s close button, `SearchInput`'s clear button (as `pointer-coarse:size-11`, since it grows in both axes), `Sidebar.Trigger`, sidebar rows and section titles, the `Checkbox`/`Radio` row (`selectable-variants.ts`), and `Tabs`/`ToggleGroup` at `sm` (`segmented-variants.ts`). Grep `pointer-coarse:(min-h-11|size-11)` for the live list.
 
 **Preconditions:** the control's row is allowed to grow. Fails inside a fixed-height chrome — a toolbar, a status bar, a header with a pinned height — where the extra pixels either overflow or get clipped.
 
@@ -194,7 +197,7 @@ const checkboxIndicators: Record<string, string> = {
 
 // OK: maps heading tag to default prop value
 const HEADING_DEFAULT_SIZE: Record<HeadingTag, TypographySize> = {
-  h1: "2xl", h2: "xl", h3: "lg", h4: "md", h5: "sm", h6: "xs",
+  h1: "3xl", h2: "2xl", h3: "xl", h4: "lg", h5: "base", h6: "sm",
 };
 ```
 

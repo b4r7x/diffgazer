@@ -51,7 +51,7 @@ function NavLink({ label, params }: NavLinkProps) {
 export function StatusBar() {
   return (
     <nav
-      aria-label="Primary"
+      aria-label="Site"
       className={cn(
         // Mobile stacks the nav row under the brand/actions row. From md the bar
         // is a single flex row: one 1rem rhythm from the brand through the last

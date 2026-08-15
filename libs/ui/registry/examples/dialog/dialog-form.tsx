@@ -26,14 +26,10 @@ export default function DialogForm() {
   const [name, setName] = useState("");
   const [submitting, startCreate] = useTransition();
 
-  const resetForm = () => {
-    setName("");
-  };
-
   const handleOpenChange = (nextOpen: boolean) => {
     if (submitting && !nextOpen) return;
     setOpen(nextOpen);
-    if (!nextOpen) resetForm();
+    if (!nextOpen) setName("");
   };
 
   const submit = () => {
@@ -55,7 +51,6 @@ export default function DialogForm() {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger>New Project</DialogTrigger>
       <DialogContent
-        size="md"
         closeOnBackdropClick={!submitting}
         onEscapeKeyDown={(e) => {
           if (submitting) e.preventDefault();
@@ -66,16 +61,14 @@ export default function DialogForm() {
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <DialogBody>
-            <div className="space-y-4">
-              <Label label="Project Name">
-                <Input
-                  autoFocus
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="my-project"
-                />
-              </Label>
-            </div>
+            <Label label="Project Name">
+              <Input
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="my-project"
+              />
+            </Label>
           </DialogBody>
           <DialogFooter
             hints={[
@@ -83,7 +76,7 @@ export default function DialogForm() {
               { key: "Enter", label: "Submit" },
             ]}
           >
-            <DialogClose bracket variant="ghost" disabled={submitting}>
+            <DialogClose bracket disabled={submitting}>
               Cancel
             </DialogClose>
             <DialogAction

@@ -2,7 +2,7 @@ import { DiffView } from "@/components/ui/diff-view";
 
 const patch = `--- a/src/utils/score.ts
 +++ b/src/utils/score.ts
-@@ -1,7 +1,10 @@
+@@ -1,5 +1,8 @@
  import type { Review } from "../types"
 
 -export function calculateScore(review: Review): number {

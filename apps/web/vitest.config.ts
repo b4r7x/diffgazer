@@ -14,6 +14,10 @@ export default defineConfig({
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "*.test.ts"],
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],
-    testTimeout: 10_000,
+    // Same budget as the other interaction-heavy workspaces (apps/docs, cli/add): the
+    // userEvent flows here (wizard steps, dialog consent gating) run 1-2s alone but
+    // stretch by an order of magnitude when `turbo run test` fans every workspace out at
+    // once, and this is the largest jsdom suite in the repo.
+    testTimeout: 30_000,
   },
 });

@@ -2,18 +2,25 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  assertCatalogSnapshotBundleEvidence,
   CATALOG_SNAPSHOT,
   CatalogObservationSchema,
-  getCatalogSnapshotBundleEvidence,
+  isOfferableObservation,
   PROVIDER_DERIVED,
   PROVIDER_OVERLAY,
-  projectCatalogAvailabilityObservations,
   transformCatalogObservation,
 } from "@diffgazer/core/catalog";
-import { CANDIDATE_VERDICTS, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import {
+  CANDIDATE_VERDICTS,
+  CATALOG_EMPTY_MODELS_REASON,
+  PRODUCT_REGISTRY,
+} from "@diffgazer/core/providers";
 import { CANDIDATE_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
+import {
+  assertCatalogSnapshotBundleEvidence,
+  getCatalogSnapshotBundleEvidence,
+} from "@diffgazer/core/testing/catalog-bundle-evidence";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { assertTempHome } from "../testing/temp-home.js";
 import {
   discoverConfigurationCatalog,
   getProviderModels,
@@ -21,8 +28,6 @@ import {
 } from "./models-dev-catalog.js";
 
 const CHECKED_AT = "2026-07-31T12:00:00.000Z";
-const CATALOG_EMPTY_MODELS_REASON =
-  "No catalog models are available for this configuration product.";
 const otherBundledCatalogInputs = {
   PROVIDER_OVERLAY,
   PROVIDER_DERIVED,
@@ -66,14 +71,17 @@ describe("bundled catalog observations", () => {
     // An empty temp home keeps the real ~/.diffgazer models-dev.json cache out
     // of the snapshot-tier assertions below.
     diffgazerHome = mkdtempSync(join(tmpdir(), "dg-catalog-bundle-"));
+    assertTempHome(diffgazerHome);
     process.env.DIFFGAZER_HOME = diffgazerHome;
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
   });
 
+  // The catalog awaits every cache write and starts no background writer, so the temp home
+  // only has to fall before DIFFGAZER_HOME is dropped, which `paths.ts` re-reads per call.
   afterEach(() => {
-    delete process.env.DIFFGAZER_OFFLINE;
-    delete process.env.DIFFGAZER_HOME;
     rmSync(diffgazerHome, { recursive: true, force: true });
+    delete process.env.DIFFGAZER_HOME;
+    delete process.env.DIFFGAZER_OFFLINE;
     vi.restoreAllMocks();
   });
 
@@ -85,28 +93,6 @@ describe("bundled catalog observations", () => {
         catalog: CATALOG_SNAPSHOT,
       }).success,
     ).toBe(true);
-    expect(
-      CatalogObservationSchema.safeParse({ checkedAt: CHECKED_AT, catalog: CATALOG_SNAPSHOT })
-        .success,
-    ).toBe(false);
-    expect(
-      CatalogObservationSchema.safeParse({
-        source: "models.dev-snapshot",
-        catalog: CATALOG_SNAPSHOT,
-      }).success,
-    ).toBe(false);
-
-    const availability = projectCatalogAvailabilityObservations("models.dev-snapshot", CHECKED_AT);
-    for (const observation of availability) {
-      expect(observation).toEqual({
-        productId: observation.productId,
-        modelsDevIds: observation.modelsDevIds,
-        source: "models.dev-snapshot",
-        checkedAt: CHECKED_AT,
-      });
-      expect(observation).not.toHaveProperty("enabled");
-      expect(observation).not.toHaveProperty("selectable");
-    }
 
     const observations = snapshotObservations();
     expect(observations.length).toBeGreaterThan(0);
@@ -138,8 +124,15 @@ describe("bundled catalog observations", () => {
       expect(observation.checkedAt).toBe(CHECKED_AT);
 
       const configurationId = `cfg-${observation.productId}-bundle`;
+      // Picker rows are the OFFERED subset — review-capable and admitted by the
+      // product's model policy — so parity is measured against that subset
+      // rather than every observed model, or every merely capable one.
+      const offeredModelIds = observation.models
+        .filter((model) => isOfferableObservation(observation.productId, model))
+        .map((model) => String(model.modelId))
+        .sort();
 
-      if (observation.models.length === 0) {
+      if (offeredModelIds.length === 0) {
         const serverModels = await getProviderModels(observation.productId);
         expect(serverModels.source).toBe("snapshot");
         expect(serverModels.cached).toBe(false);
@@ -171,9 +164,7 @@ describe("bundled catalog observations", () => {
       const serverModels = await getProviderModels(observation.productId);
       expect(serverModels.source).toBe("snapshot");
       expect(serverModels.cached).toBe(false);
-      expect(serverModels.models.map((model) => model.id).sort()).toEqual(
-        observation.models.map((model) => model.modelId).sort(),
-      );
+      expect(serverModels.models.map((model) => model.id).sort()).toEqual(offeredModelIds);
 
       const bounded = modelInfoFromBoundedObservation(
         CATALOG_SNAPSHOT,
@@ -181,9 +172,7 @@ describe("bundled catalog observations", () => {
         "models.dev-snapshot",
         CHECKED_AT,
       );
-      expect(bounded.map((model) => model.id).sort()).toEqual(
-        observation.models.map((model) => model.modelId).sort(),
-      );
+      expect(bounded.map((model) => model.id).sort()).toEqual(offeredModelIds);
       expect(JSON.stringify(bounded)).not.toMatch(/"enabled"|"selectable"/);
 
       const discovery = await discoverConfigurationCatalog({
@@ -197,9 +186,38 @@ describe("bundled catalog observations", () => {
       expect(discovery.observationSource).toBe("models.dev-snapshot");
       expect(discovery.observationSource).not.toBe("models.dev-live");
       expect(discovery.checkedAt).toBe(discovery.fetchedAt);
-      expect(discovery.models.map((model) => model.id).sort()).toEqual(
-        observation.models.map((model) => model.modelId).sort(),
-      );
+      expect(discovery.models.map((model) => model.id).sort()).toEqual(offeredModelIds);
     }
+  });
+
+  // Owner evidence: the picker's Free tab reads `tier === "free"`, so it can only
+  // be filled by a route the model policy admits. Pinned `:free` variants are
+  // separately priced catalog identities and belong there; `openrouter/free` is
+  // a router that names no downstream model and does not.
+  it("fills the OpenRouter picker's free tab with pinned variants and no routers", async () => {
+    const { models } = await getProviderModels("openrouter");
+    const modelIds = models.map(({ id }) => id);
+
+    expect(models.filter(({ tier }) => tier === "free").map(({ id }) => id)).toEqual([
+      "google/gemma-4-26b-a4b-it:free",
+      "liquid/lfm-2.5-2.6b:free",
+      "nvidia/nemotron-3-super-120b-a12b:free",
+      "nvidia/nemotron-nano-9b-v2:free",
+      "openai/gpt-oss-20b:free",
+    ]);
+    expect(modelIds).toContain("qwen/qwen-plus-2025-07-28:thinking");
+    expect(modelIds).not.toContain("openrouter/auto");
+    expect(modelIds).not.toContain("openrouter/free");
+  });
+
+  // The retired allowlist pinned `mistral-small-2603`, which publishes no
+  // `structured_output`, so the capability filter withheld it and left the
+  // picker empty while the one capable Mistral model sat off-list.
+  it("fills the Mistral picker with the capable model its allowlist withheld", async () => {
+    const { models } = await getProviderModels("mistral");
+
+    expect(models.map(({ id, tier }) => ({ id, tier }))).toEqual([
+      { id: "mistral-medium-2604", tier: "paid" },
+    ]);
   });
 });

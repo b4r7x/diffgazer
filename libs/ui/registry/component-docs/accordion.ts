@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const accordionDoc: ComponentDoc = {
   description:
@@ -78,7 +78,7 @@ export const accordionDoc: ComponentDoc = {
     },
     {
       attribute: "data-value",
-      appliesTo: "Accordion.Item / Accordion.Trigger",
+      appliesTo: "Accordion.Trigger",
       values: "item value",
       description: "Stable item value used by navigation and open-state lookup.",
     },

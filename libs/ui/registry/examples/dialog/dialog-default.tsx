@@ -27,9 +27,7 @@ export default function DialogDefault() {
           </p>
         </DialogBody>
         <DialogFooter hints={[{ key: "Esc", label: "Close" }]}>
-          <DialogClose bracket variant="ghost">
-            Cancel
-          </DialogClose>
+          <DialogClose bracket>Cancel</DialogClose>
           <DialogAction>Apply</DialogAction>
         </DialogFooter>
       </DialogContent>

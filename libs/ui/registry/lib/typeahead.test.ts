@@ -67,6 +67,18 @@ describe("typeaheadSearch", () => {
     expect(match?.id).toBe(expectedId);
   });
 
+  it("cycles labels that start with the same astral character", () => {
+    const items = [
+      { id: "apple", label: "🍎 Apple" },
+      { id: "banana", label: "🍌 Banana" },
+      { id: "apricot", label: "🍎 Apricot" },
+    ];
+    const cycled = typeaheadSearch({ items, query: "🍎", currentIndex: 0, getLabel });
+    expect(cycled?.id).toBe("apricot");
+    const repeated = typeaheadSearch({ items, query: "🍎🍎", currentIndex: 2, getLabel });
+    expect(repeated?.id).toBe("apple");
+  });
+
   it("uses provided getLabel for label source", () => {
     const tuples: Array<[string, { label: string }]> = [
       ["a", { label: "Alpha" }],
@@ -113,6 +125,17 @@ describe("typeaheadSearch", () => {
       const match = typeaheadSearch({
         items,
         query: "café".toLocaleLowerCase(),
+        currentIndex: -1,
+        getLabel: (item) => item.label,
+      });
+      expect(match?.id).toBe("cafe");
+    });
+
+    it("matches a decomposed (NFD) label from a composed query", () => {
+      const items = [{ id: "cafe", label: "Café".normalize("NFD") }];
+      const match = typeaheadSearch({
+        items,
+        query: "café".normalize("NFC").toLocaleLowerCase(),
         currentIndex: -1,
         getLabel: (item) => item.label,
       });

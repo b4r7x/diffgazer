@@ -9,6 +9,10 @@ export interface SidebarSectionContentProps extends ComponentProps<"div"> {}
 /**
  * Panel slot for collapsible sections. Wraps items so the title's aria-controls targets a
  * single id.
+ *
+ * No role="region" and no opt-in for one: a sidebar holds many short navigation sections, the
+ * case AccordionContent's and StepperContent's `region` docs call out as landmark noise. The
+ * sidebar is already inside a nav landmark.
  */
 export function SidebarSectionContent({
   ref,

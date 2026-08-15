@@ -19,6 +19,7 @@ export const TRUST_EDITOR_MESSAGES = {
   saveFailed: "Failed to save trust settings",
   revoked: "Trust has been revoked for this repository",
   revokeFailed: "Failed to revoke trust",
+  nothingToRevoke: "No trust has been recorded for this repository",
 } as const;
 
 export interface UseTrustEditorCallbacks {
@@ -76,7 +77,13 @@ export function useTrustEditor(
   }
 
   function handleRevoke() {
-    if (isLoading || !editorInput.projectId) return;
+    if (isLoading) return;
+    // Without a recorded project identity the server holds no trust for this
+    // repository, so say so instead of leaving the button silently inert.
+    if (!editorInput.projectId) {
+      onError(TRUST_EDITOR_MESSAGES.nothingToRevoke);
+      return;
+    }
     deleteTrust.mutate(undefined, {
       onSuccess: () => {
         setDraft({ editorKey: view.editorKey, capabilities: NO_TRUST_CAPABILITIES });

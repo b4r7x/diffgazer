@@ -11,22 +11,29 @@ const rootPackageJson = JSON.parse(
 const rootTurboJson = JSON.parse(
   readFileSync(fileURLToPath(new URL("../../turbo.json", import.meta.url)), "utf-8"),
 );
+const knipConfigSource = readFileSync(
+  fileURLToPath(new URL("../../knip.jsonc", import.meta.url)),
+  "utf-8",
+);
 
 // The benchmark only gates latency/throughput SLOs under strict mode, so the
 // CI/release chains must run `pnpm run bench` with the strict env var or
-// breaches silently pass.
-test("test-ci runs an active strict pnpm run bench segment", () => {
-  assert.ok(
-    scriptSegments(rootPackageJson.scripts["test-ci"]).includes(
-      "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench",
-    ),
-  );
-});
+// breaches silently pass. `release-check` pins the same segment through
+// RELEASE_CHECK_NON_OPTIONAL_SEGMENTS below.
+const STRICT_BENCH_COMMAND = "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench";
 
-test("release-check runs the benchmark under strict skip mode", () => {
-  assert.match(
-    rootPackageJson.scripts["release-check"],
-    /DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench/,
+// Turbo's default (`--continue=never`) cancels every remaining task on the first
+// failure, so one red package tears down the others mid-run and the log carries no
+// verdict for them at all — anyone sizing a fix wave from that run under-counts.
+// `dependencies-successful` lets every package whose dependencies built report its
+// own result while still skipping tasks whose dependencies failed; Turbo still
+// exits with the highest exit code, so the gate stays red.
+const TURBO_TEST_COMMAND = "turbo run test --continue=dependencies-successful";
+
+test("test-ci delegates verify under strict skip mode", () => {
+  assert.equal(
+    rootPackageJson.scripts["test-ci"],
+    "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run verify",
   );
 });
 
@@ -41,6 +48,7 @@ const RELEASE_CHECK_MIRRORED_GATES = [
   "pnpm run build",
   "pnpm run check:packages",
   "pnpm run registry:live-check",
+  "pnpm run check:changesets",
 ];
 
 const RELEASE_CHECK_PACK_COMMANDS = [
@@ -66,11 +74,13 @@ const RELEASE_CHECK_NON_OPTIONAL_SEGMENTS = [
   "pnpm run check",
   "pnpm run test:scripts",
   "turbo run type-check",
-  "turbo run test",
+  TURBO_TEST_COMMAND,
   "turbo run test:types",
   "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke",
   T105_PROVIDER_PLAYWRIGHT_COMMAND,
   DOCS_BUILD_COMMAND,
+  STRICT_BENCH_COMMAND,
+  "pnpm run check:changesets",
   "pnpm run verify:monorepo",
   LEGACY_ALLOWLIST_COMMAND,
   "git diff --check",
@@ -105,7 +115,8 @@ function scriptSegments(script) {
 // no-publish readiness sequence (release-readiness.yml). Pin the gates the CI verify
 // job runs that were previously absent locally so a local pass cannot be a false
 // readiness signal (finding F-052). Intentionally CI-only, so NOT mirrored here:
-// the full-history gitleaks scan (separate job needing full git history), the CI
+// the event-range Gitleaks scan (separate action job; fetch-depth does not make it
+// a full-history scan), the CI
 // dirty-tree `git status --short` guards (a local worktree is expected to be dirty;
 // release-check keeps `git diff --check` for whitespace), the PR-only `changeset
 // status --since=origin/main`, and the Docs E2E Playwright/Lighthouse job.
@@ -179,11 +190,48 @@ test("an echo-only release-check segment does not satisfy the exact gate match",
 
 // `verify` is the local dev command and runs `bench`/`smoke` non-strict, so the
 // per-PR gate gets its bench/smoke strictness only from the workflow env prefix.
-// Pin that prefix on the real per-PR gate so a workflow refactor can't silently
-// drop SLO gating.
+// Pin that prefix on the active `run` of the real per-PR gate step so a workflow
+// refactor can't silently drop SLO gating: raw workflow text keeps matching when
+// the strictness moves into a comment or into another job.
+function verifyJobStepRun(workflowSource, stepName) {
+  const workflow = parseYaml(workflowSource);
+  const steps = workflow?.jobs?.verify?.steps ?? [];
+  return steps.find((step) => step?.name === stepName)?.run;
+}
+
+const STRICT_VERIFY_RUN = /(?:^|\s)DIFFGAZER_SMOKE_STRICT_SKIPS=1\s[^\n]*pnpm run verify$/;
+
 test("the release-readiness Verify step runs verify under strict skip mode", () => {
-  const workflow = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
-  assert.match(workflow, /DIFFGAZER_SMOKE_STRICT_SKIPS=1[^\n]*pnpm run verify/);
+  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
+  const verifyRun = verifyJobStepRun(workflowSource, "Verify");
+
+  assert.equal(typeof verifyRun, "string", "jobs.verify has no active Verify step");
+  assert.match(verifyRun, STRICT_VERIFY_RUN);
+});
+
+test("a strictness prefix left in a comment does not satisfy the Verify gate", () => {
+  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
+  const activeRun = verifyJobStepRun(workflowSource, "Verify");
+  const mutated = workflowSource.replace(
+    `run: ${activeRun}`,
+    `run: pnpm run verify\n        # run: ${activeRun}`,
+  );
+
+  assert.equal(verifyJobStepRun(mutated, "Verify"), "pnpm run verify");
+  assert.doesNotMatch(verifyJobStepRun(mutated, "Verify"), STRICT_VERIFY_RUN);
+  // The demoted command still carries the strict text as raw workflow bytes.
+  assert.match(mutated, /DIFFGAZER_SMOKE_STRICT_SKIPS=1[^\n]*pnpm run verify/);
+});
+
+test("a strict verify step relocated out of jobs.verify is not the active gate", () => {
+  const workflow = parseYaml(readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8"));
+  const verifyStepIndex = workflow.jobs.verify.steps.findIndex((step) => step.name === "Verify");
+  const [verifyStep] = workflow.jobs.verify.steps.splice(verifyStepIndex, 1);
+  workflow.jobs.e2e.steps.push(verifyStep);
+  const mutated = stringifyYaml(workflow);
+
+  assert.equal(verifyJobStepRun(mutated, "Verify"), undefined);
+  assert.equal(activeE2eStepRunCommands(mutated).includes(verifyStep.run), true);
 });
 
 test("release-readiness workflow runs legacy allowlist and git whitespace gates", () => {
@@ -221,6 +269,23 @@ test("the benchmark review opt-in env var is not part of the script env contract
   }
 });
 
+test("every root chain runs the workspace test task so one red package cannot silence the rest", () => {
+  const chains = Object.entries(rootPackageJson.scripts).filter(([, script]) =>
+    /turbo run test(?![:\w-])/.test(script),
+  );
+  assert.deepEqual(
+    chains.map(([name]) => name),
+    ["test", "verify", "release-check"],
+    "a new chain running the workspace test task must adopt the same continue behaviour",
+  );
+  for (const [name, script] of chains) {
+    assert.ok(
+      script.includes(TURBO_TEST_COMMAND),
+      `${name} runs the workspace test task without ${TURBO_TEST_COMMAND}`,
+    );
+  }
+});
+
 const CHECK_BIOME_TARGETS = [
   "scripts/monorepo",
   "package.json",
@@ -241,6 +306,27 @@ test("root check's first segment is the exact biome command over its current tar
   assert.doesNotMatch(checkScript, /biome lint scripts\/monorepo &&/);
 });
 
+test("Knip treats configuration hints as errors in both direct and root-script runs", () => {
+  assert.equal(rootPackageJson.scripts.knip, "knip --treat-config-hints-as-errors");
+  assert.match(knipConfigSource, /["']treatConfigHintsAsErrors["']\s*:\s*true/);
+});
+
+const VERSION_PACKAGES_TRACKED_BUILD_OUTPUTS = ["pnpm --filter diffgazer build:notices"];
+
+test("version-packages regenerates tracked diffgazer build outputs", () => {
+  const segments = scriptSegments(rootPackageJson.scripts["version-packages"]);
+  for (const segment of VERSION_PACKAGES_TRACKED_BUILD_OUTPUTS) {
+    assert.ok(
+      segments.includes(segment),
+      `version-packages missing tracked build-output segment: ${segment}`,
+    );
+  }
+  assert.ok(
+    segments.includes("pnpm --filter diffgazer build:bundle"),
+    "version-packages must bundle diffgazer before regenerating THIRD_PARTY_NOTICES",
+  );
+});
+
 test("central artifact preparation runs an active schema-generation segment and prepare:artifacts nests an active prepare:library-artifacts segment", () => {
   assert.ok(
     scriptSegments(rootPackageJson.scripts["prepare:library-artifacts"]).includes(
@@ -252,6 +338,129 @@ test("central artifact preparation runs an active schema-generation segment and 
       "pnpm run prepare:library-artifacts",
     ),
   );
+});
+
+// F-030: preparation used to run `pnpm --filter <pkg> build` directly, which
+// leaves no Turbo task record, so the root build's `turbo run build` re-entered
+// the same Registry/Keys/UI pipelines from scratch on every cold CI run. Running
+// preparation through Turbo produces the same task hashes the root graph asks
+// for, making the second pass a cache hit instead of a second full build.
+const PREPARED_LIBRARY_BUILD_SEGMENT =
+  "turbo run build --filter=@diffgazer/registry --filter=@diffgazer/keys --filter=@diffgazer/ui";
+
+test("library artifact preparation builds packages through Turbo, never outside it", () => {
+  const segments = scriptSegments(rootPackageJson.scripts["prepare:library-artifacts"]);
+  assert.ok(
+    segments.includes(PREPARED_LIBRARY_BUILD_SEGMENT),
+    "prepare:library-artifacts must build library packages through Turbo",
+  );
+  assert.deepEqual(
+    segments.filter((segment) => /^pnpm --filter \S+ build$/.test(segment)),
+    [],
+    "a direct package build seeds no Turbo record and is rebuilt by the root build graph",
+  );
+  assert.ok(
+    !segments.some((segment) => segment.includes("@diffgazer/keys-artifacts")),
+    "the parent Keys build owns the mirror output; the private mirror has no duplicate task",
+  );
+  assert.equal(
+    rootTurboJson.tasks["@diffgazer/keys-artifacts#build"],
+    undefined,
+    "keys-artifacts must not grow a second writer task",
+  );
+  assert.ok(
+    rootTurboJson.tasks["@diffgazer/keys#build"].outputs.includes("artifacts/artifacts/**"),
+    "the parent Keys task must declare the mirror output it writes",
+  );
+});
+
+test("no root chain re-builds a package its own preparation step already built", () => {
+  for (const [name, script] of Object.entries(rootPackageJson.scripts)) {
+    const segments = scriptSegments(script);
+    if (!segments.includes("pnpm run prepare:library-artifacts")) continue;
+    assert.deepEqual(
+      segments.filter((segment) => /^pnpm --filter \S+ build$/.test(segment)),
+      [],
+      `${name} re-builds a package outside Turbo after preparation already built it`,
+    );
+  }
+});
+
+test("the root build hands the prepared packages to a single Turbo build graph", () => {
+  const segments = scriptSegments(rootPackageJson.scripts.build);
+  assert.match(
+    segments[0],
+    /^if \[ "\$DIFFGAZER_SKIP_ARTIFACT_PREPARE" != "1" \]; then pnpm run prepare:artifacts; fi$/,
+  );
+  assert.equal(segments[1], "DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run build");
+});
+
+// F-178: `prepublishOnly` ran the full multi-workspace build and `prepack` then
+// ran it again, so publishing built twice. `prepack` fires on every pack, not
+// only on publish — smoke's tarball install, `attw --pack`, and the release-check
+// dry-runs all reach it — so it owns the build alone and the package gates live
+// on the publish-only hook. Both diffgazer gates run from source (`tsc --noEmit`,
+// vitest against `src/`), so they do not need the packed `dist`.
+const diffgazerPackageJson = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL("../../cli/diffgazer/package.json", import.meta.url)),
+    "utf-8",
+  ),
+);
+const addPackageJson = JSON.parse(
+  readFileSync(fileURLToPath(new URL("../../cli/add/package.json", import.meta.url)), "utf-8"),
+);
+
+const PUBLISH_LIFECYCLE_HOOKS = ["prepublishOnly", "prepack", "prepare"];
+
+test("diffgazer runs its package build once across the publish lifecycle hooks", () => {
+  const segments = PUBLISH_LIFECYCLE_HOOKS.map((hook) => diffgazerPackageJson.scripts[hook])
+    .filter((script) => typeof script === "string")
+    .flatMap(scriptSegments);
+  assert.deepEqual(
+    segments.filter((segment) => segment === "pnpm run build"),
+    ["pnpm run build"],
+  );
+});
+
+test("packing diffgazer builds the dist without re-running its package gates", () => {
+  const prepack = scriptSegments(diffgazerPackageJson.scripts.prepack);
+  assert.ok(prepack.includes("pnpm run build"), "prepack must build the packed dist");
+  assert.deepEqual(
+    prepack.filter((segment) => segment === "pnpm run type-check" || segment === "pnpm run test"),
+    [],
+    "prepack runs on every pack, so a gate here re-runs the suite for smoke, attw, and dry-runs",
+  );
+});
+
+test("publishing diffgazer runs its package gates", () => {
+  assert.deepEqual(scriptSegments(diffgazerPackageJson.scripts.prepublishOnly), [
+    "pnpm run type-check",
+    "pnpm run test",
+  ]);
+});
+
+test("Add builds once in prepack and keeps prepublishOnly validation-only", () => {
+  const segments = [addPackageJson.scripts.prepublishOnly, addPackageJson.scripts.prepack].flatMap(
+    scriptSegments,
+  );
+  assert.deepEqual(
+    segments.filter((segment) => segment === "pnpm run build"),
+    ["pnpm run build"],
+  );
+  assert.equal(
+    scriptSegments(addPackageJson.scripts.prepublishOnly).includes("pnpm run build"),
+    false,
+  );
+  // The artifact gate leads because it also prepares what the other two read:
+  // `type-check` resolves the workspace packages through their built dist and
+  // `test` loads the gitignored src/generated/. prepack, the only hook that
+  // builds, does not run until prepublishOnly has already passed.
+  assert.deepEqual(scriptSegments(addPackageJson.scripts.prepublishOnly), [
+    "pnpm run validate:artifacts",
+    "pnpm run type-check",
+    "pnpm run test",
+  ]);
 });
 
 test("the add test cache includes the published installer schema", () => {
@@ -269,6 +478,26 @@ test("UI tests wait for their public registry build", () => {
   assert.deepEqual(rootTurboJson.tasks["@diffgazer/ui#test"].dependsOn, ["build", "^build"]);
 });
 
+test("UI browser tests wait for the package entry they server-render", () => {
+  // testing/e2e/listbox-active-descendant.e2e.ts imports @diffgazer/ui through the
+  // package self-reference, which resolves to the gitignored dist. Without this
+  // edge the suite asserts against whatever build happens to be on disk.
+  assert.deepEqual(rootTurboJson.tasks["@diffgazer/ui#test:e2e"].dependsOn, ["build"]);
+  assert.equal(rootTurboJson.tasks["@diffgazer/ui#test:e2e"].cache, false);
+});
+
+test("the CI e2e job builds UI before running its browser suite", () => {
+  // The CI step runs Playwright directly, so the task-graph edge above never
+  // applies there: the ordering in the job is what keeps the suite honest.
+  const workflowSource = readFileSync(RELEASE_READINESS_WORKFLOW_URL, "utf-8");
+  const e2eRunCommands = activeE2eStepRunCommands(workflowSource);
+  const buildIndex = e2eRunCommands.indexOf("pnpm --filter @diffgazer/ui build");
+  const suiteIndex = e2eRunCommands.indexOf("pnpm --filter @diffgazer/ui test:e2e");
+
+  assert.ok(buildIndex >= 0, "CI e2e job missing UI build step");
+  assert.ok(suiteIndex > buildIndex, "UI Playwright suite must run after the UI build");
+});
+
 test("smoke runs an active diffgazer build segment before product CLI validation", () => {
   assert.equal(scriptSegments(rootPackageJson.scripts.smoke)[0], "pnpm --filter diffgazer build");
 });
@@ -277,7 +506,7 @@ const NON_RELEASE_ECHO_DECOY_CASES = [
   {
     name: "test-ci",
     script: rootPackageJson.scripts["test-ci"],
-    requiredSegment: "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run bench",
+    requiredSegment: "DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run verify",
   },
   {
     name: "check",
@@ -293,6 +522,11 @@ const NON_RELEASE_ECHO_DECOY_CASES = [
     name: "prepare:artifacts",
     script: rootPackageJson.scripts["prepare:artifacts"],
     requiredSegment: "pnpm run prepare:library-artifacts",
+  },
+  {
+    name: "version-packages",
+    script: rootPackageJson.scripts["version-packages"],
+    requiredSegment: "pnpm --filter diffgazer build:notices",
   },
   {
     name: "smoke",

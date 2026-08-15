@@ -5,22 +5,49 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CodeBlock } from "./index";
 
 describe("copy button", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
   let writeText: ReturnType<typeof vi.fn>;
+
+  // Define the one missing Navigator member instead of replacing the global:
+  // jsdom exposes Navigator attributes as prototype accessors, so spreading
+  // `navigator` into a stub object silently drops every other member.
+  function stubClipboard() {
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+  }
 
   beforeEach(() => {
     writeText = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal("navigator", { ...globalThis.navigator, clipboard: { writeText } });
+    stubClipboard();
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(globalThis.navigator, "clipboard");
   });
 
   function setupClipboardUser(options?: Parameters<typeof userEvent.setup>[0]) {
     const user = userEvent.setup(options);
-    vi.stubGlobal("navigator", { ...globalThis.navigator, clipboard: { writeText } });
+    // userEvent.setup installs its own clipboard stub; put the spy back.
+    stubClipboard();
     return user;
   }
+
+  it("keeps an explicit aria-label when provided", () => {
+    render(
+      <CodeBlock>
+        <CodeBlock.Header>
+          <CodeBlock.CopyButton source="hello world" aria-label="Copy snippet" />
+        </CodeBlock.Header>
+        <CodeBlock.Content>{"hello world"}</CodeBlock.Content>
+      </CodeBlock>,
+    );
+
+    expect(screen.getByRole("button", { name: "Copy snippet" })).toHaveAttribute(
+      "aria-label",
+      "Copy snippet",
+    );
+  });
 
   it("writes the source to the clipboard on click and calls onCopy", async () => {
     const user = setupClipboardUser();
@@ -64,7 +91,7 @@ describe("copy button", () => {
     expect(live?.textContent).toBe("Copied");
   });
 
-  it("calls onCopyError with idle data-state and an empty live region when the clipboard write rejects", async () => {
+  it("calls onCopyError with failed data-state and an announced failure when the clipboard write rejects", async () => {
     const user = setupClipboardUser();
     writeText.mockRejectedValueOnce(new Error("denied"));
     const onCopyError = vi.fn();
@@ -82,9 +109,29 @@ describe("copy button", () => {
 
     await waitFor(() => expect(onCopyError).toHaveBeenCalledTimes(1));
     expect(onCopyError.mock.calls[0]?.[0]).toBeInstanceOf(Error);
-    expect(button).toHaveAttribute("data-state", "idle");
+    expect(button).toHaveAttribute("data-state", "failed");
     const live = container.querySelector('[aria-live="polite"]');
-    expect(live?.textContent).toBe("");
+    expect(live?.textContent).toBe("Copy failed");
+  });
+
+  it("announces copy failure without an onCopyError callback", async () => {
+    const user = setupClipboardUser();
+    writeText.mockRejectedValueOnce(new Error("denied"));
+    const { container } = render(
+      <CodeBlock>
+        <CodeBlock.Header>
+          <CodeBlock.CopyButton source="hi" />
+        </CodeBlock.Header>
+        <CodeBlock.Content>{"hi"}</CodeBlock.Content>
+      </CodeBlock>,
+    );
+
+    const button = screen.getByRole("button", { name: "Copy code to clipboard" });
+    await user.click(button);
+
+    await waitFor(() => expect(button).toHaveAttribute("data-state", "failed"));
+    const live = container.querySelector('[aria-live="polite"]');
+    expect(live?.textContent).toBe("Copy failed");
   });
 
   it("short-circuits when a consumer onClick calls preventDefault", async () => {
@@ -147,7 +194,7 @@ describe("copy button", () => {
     }
   });
 
-  it("invokes children as a render prop with { copied }", async () => {
+  it("invokes children as a render prop with the copy state and names the button from its text", async () => {
     const user = setupClipboardUser();
     render(
       <CodeBlock>
@@ -160,7 +207,7 @@ describe("copy button", () => {
       </CodeBlock>,
     );
 
-    const button = screen.getByRole("button", { name: "Copy code to clipboard" });
+    const button = screen.getByRole("button", { name: "Go" });
     expect(button).toHaveTextContent("Go");
 
     await user.click(button);

@@ -1,4 +1,4 @@
-import type { ProviderDisplayStatus } from "@diffgazer/core/providers";
+import { isRedundantStatusSegment, type ProviderDisplayStatus } from "@diffgazer/core/providers";
 import { Box, Text } from "ink";
 import { useResponsive } from "../../hooks/use-terminal-dimensions";
 import { terminalCellWidth } from "../../lib/terminal-width";
@@ -10,7 +10,9 @@ export interface HeaderProps {
   showBack: boolean;
 }
 
-const WORDMARK = "diffgazer";
+export const WORDMARK = "diffgazer";
+/** The ornament row under the wordmark, shared with the pre-app gate screens. */
+export const WORDMARK_RULE = "- * - + -";
 const PROVIDER_MODEL_SEPARATOR = " / ";
 /** Blank columns held between the centred wordmark and the status slot. */
 const WORDMARK_GAP = 2;
@@ -36,7 +38,10 @@ export function Header({ providerName, providerStatus, showBack }: HeaderProps) 
 
   const statusColor = providerStatus.variant === "success" ? tokens.success : tokens.muted;
   const sideWidth = Math.max(Math.floor((columns - 2 - terminalCellWidth(WORDMARK)) / 2), 10);
-  const statusSuffix = isNarrow ? "" : ` · ${providerStatus.label}`;
+  const statusSuffix =
+    isNarrow || isRedundantStatusSegment(providerName, providerStatus.label)
+      ? ""
+      : ` · ${providerStatus.label}`;
   const statusColumns = sideWidth - WORDMARK_GAP;
   const label = fitProviderLabel(
     providerName,
@@ -75,7 +80,7 @@ export function Header({ providerName, providerStatus, showBack }: HeaderProps) 
         </Box>
       </Box>
       <Box justifyContent="center">
-        <Text color={tokens.muted}>- * - + -</Text>
+        <Text color={tokens.muted}>{WORDMARK_RULE}</Text>
       </Box>
     </Box>
   );

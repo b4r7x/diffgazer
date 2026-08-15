@@ -69,7 +69,7 @@ export const KeyboardRegistryContext = createContext<KeyboardRegistryContextValu
 /** React context carrying the currently active scope. */
 export const KeyboardScopeContext = createContext<KeyboardScopeContextValue | undefined>(undefined);
 
-const KEYBOARD_PROVIDER_ERROR = "useKeyboardContext must be used within KeyboardProvider";
+const KEYBOARD_PROVIDER_ERROR = "@diffgazer/keys hooks must be used within KeyboardProvider";
 
 /** Returns the keyboard registry context or throws when no provider is mounted. */
 export function useKeyboardRegistryContext(): KeyboardRegistryContextValue {
@@ -98,7 +98,7 @@ function toPublicContext(
   return {
     activeScope,
     getActiveScope: registry.getActiveScope,
-    pushScope: registry.pushScope,
+    pushScope: (scope) => registry.pushScope(scope),
     register: registry.register,
   };
 }

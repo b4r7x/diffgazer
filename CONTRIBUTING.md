@@ -14,10 +14,10 @@ User-facing changes to published packages require a [changeset](https://github.c
   - Full gate: `DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run test`.
 - [ ] Changeset added when shipping a user-visible change to a published package.
   - `pnpm changeset` — required for `diffgazer`, `@diffgazer/add`, `@diffgazer/ui`, `@diffgazer/keys`. See [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md#versioning).
-  - The PR-side "Changeset status" CI check is intended to be a required branch-protection check on `main` (a maintainer enables it in repository settings); the `changeset-release/main` Version PR is exempt.
+  - Require the `Release Readiness / Build, Verify, and Pack` check for contributor PRs in `main` branch protection. The Version PR is opened with `GITHUB_TOKEN`, so GitHub gives it zero pull-request readiness checks; its merged-main push is verified post-merge, with exact-SHA manual recovery available if needed.
 - [ ] Public registry, docs, and example consumers updated together with any public API change.
   - Regenerate and validate: `pnpm run prepare:artifacts` then `pnpm run validate:artifacts:check`.
 - [ ] No commented-out code, dead files, or unrelated drive-by edits.
   - Enforced by review; `git diff --check` catches whitespace errors.
 
-CI runs these gates (build, verify, smoke, `changeset status`, pack dry-runs) in [`.github/workflows/release-readiness.yml`](./.github/workflows/release-readiness.yml). `pnpm run release-check` runs the same no-publish readiness sequence locally.
+CI runs these gates (build, verify, smoke, `changeset status`, pack dry-runs) in [`.github/workflows/release-readiness.yml`](./.github/workflows/release-readiness.yml). `pnpm run release-check` runs a no-publish subset of that sequence locally: it omits the event-range Gitleaks action scan and runs only targeted Web Playwright specs, not the full browser E2E job or the Lighthouse budgets.

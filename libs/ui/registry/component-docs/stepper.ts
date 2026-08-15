@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const stepperDoc: ComponentDoc = {
   description:
@@ -214,7 +214,14 @@ export const stepperDoc: ComponentDoc = {
         required: true,
         defaultValue: null,
         description:
-          "Expandable content (e.g. nested StepperSubstep rows). Hidden, aria-hidden, and inert when collapsed.",
+          "Expandable content (e.g. nested StepperSubstep rows). aria-hidden and inert when collapsed.",
+      },
+      region: {
+        type: "boolean",
+        required: false,
+        defaultValue: "false",
+        description:
+          'Opt in to role="region" with aria-labelledby pointing at the trigger while the step is expanded. Off by default, matching AccordionContent and the APG disclosure pattern: a Stepper can hold any number of simultaneously expanded steps, and one landmark per step is rotor noise. Enable it for a small number of substantive panels.',
       },
     },
     StepperSubstep: {
@@ -228,14 +235,14 @@ export const stepperDoc: ComponentDoc = {
         type: "string",
         required: true,
         defaultValue: null,
-        description: "Substep description.",
+        description: "Accessible label text for the substep.",
       },
       status: {
         type: '"pending" | "active" | "completed" | "error"',
         required: true,
         defaultValue: null,
         description:
-          "Substep status. Substeps keep the original four-state lifecycle (skipped/disabled apply only to top-level steps).",
+          "Current substep status. Substeps keep the original four-state lifecycle (skipped/disabled apply only to top-level steps).",
       },
       detail: {
         type: "string",

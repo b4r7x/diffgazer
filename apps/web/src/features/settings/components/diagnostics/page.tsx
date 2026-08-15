@@ -1,5 +1,5 @@
 import { type DiagnosticsData, useDiagnosticsData } from "@diffgazer/core/api/hooks";
-import { formatTimestampOrNA } from "@diffgazer/core/format";
+import { formatLocaleDateTimeOrFallback } from "@diffgazer/core/format";
 import {
   deriveDiagnosticsActions,
   getContextActionLabel,
@@ -110,7 +110,7 @@ export function SettingsDiagnosticsPage() {
     initError,
   });
 
-  const contextTimestamp = formatTimestampOrNA(contextGeneratedAt, "Unavailable");
+  const contextTimestamp = formatLocaleDateTimeOrFallback(contextGeneratedAt, "Unavailable");
 
   return (
     // Same wrapper padding, width, frame, and corner-label title as CardLayout,
@@ -195,7 +195,7 @@ export function SettingsDiagnosticsPage() {
               label="Refreshed"
               value={
                 <span className="break-all">
-                  {formatTimestampOrNA(lastRefreshedAt, "Unavailable")}
+                  {formatLocaleDateTimeOrFallback(lastRefreshedAt, "Unavailable")}
                 </span>
               }
               valueClassName="font-normal text-muted-foreground max-sm:text-left"

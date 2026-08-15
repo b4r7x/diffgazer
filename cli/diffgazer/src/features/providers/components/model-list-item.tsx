@@ -1,3 +1,5 @@
+import { getModelTierBadge } from "@diffgazer/core/providers";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import { Badge } from "../../../components/ui/badge";
@@ -18,21 +20,37 @@ function getPrefix(isSelected: boolean, isHighlighted: boolean): string {
   return "  ";
 }
 
+/**
+ * The exact model id leads the secondary column because it is the string a
+ * review pins; the context blurb trails it and is the first thing truncation
+ * takes. When upstream publishes no display name the two are equal and only
+ * the row title is shown.
+ */
+function getDetail(model: ModelInfo): string {
+  const parts = model.id === model.name ? [] : [model.id];
+  if (model.description) parts.push(model.description);
+  return parts.join(" · ");
+}
+
 export function ModelListItem({ model, isHighlighted, isSelected, maxWidth }: ModelListItemProps) {
   const { tokens } = useTheme();
 
   const prefix = getPrefix(isSelected, isHighlighted);
   const check = isSelected ? "[*]" : "[ ]";
-  const badgeWidth = terminalCellWidth(model.tier) + 2;
-  const textWidth = Math.max(1, maxWidth - 6 - badgeWidth - 1);
-  const hasDescription = Boolean(model.description) && textWidth >= 4;
-  const descriptionWidth = hasDescription
-    ? Math.min(Math.max(1, Math.floor(textWidth / 3)), textWidth - 2)
+  const tierBadge = getModelTierBadge(model.tier);
+  const badgeWidth = tierBadge ? terminalCellWidth(tierBadge.label) + 3 : 0;
+  const textWidth = Math.max(1, maxWidth - 6 - badgeWidth);
+  const detail = getDetail(model);
+  const hasDetail = detail.length > 0 && textWidth >= 4;
+  const detailWidth = hasDetail
+    ? Math.min(Math.max(1, Math.floor(textWidth / 2)), textWidth - 2)
     : 0;
-  const nameWidth = hasDescription ? textWidth - descriptionWidth - 1 : textWidth;
+  const nameWidth = hasDetail ? textWidth - detailWidth - 1 : textWidth;
 
   const tone = rowTone(tokens, { isHighlighted });
   const markerColor = isSelected && !isHighlighted ? selectionHue(tokens) : tone.primary;
+  const safeName = sanitizeTerminalText(model.name);
+  const safeDetail = sanitizeTerminalText(detail);
 
   return (
     <Box width={maxWidth} backgroundColor={tone.background}>
@@ -45,19 +63,23 @@ export function ModelListItem({ model, isHighlighted, isSelected, maxWidth }: Mo
       <Box gap={1} flexShrink={0}>
         <Box width={nameWidth} flexShrink={0}>
           <Text color={tone.primary} bold wrap="truncate-end">
-            {model.name}
+            {safeName}
           </Text>
         </Box>
-        <Badge
-          variant={model.tier === "free" ? "info" : "neutral"}
-          color={tone.background ? tone.primary : undefined}
-        >
-          {model.tier}
-        </Badge>
-        {hasDescription && (
-          <Box width={descriptionWidth} flexShrink={0}>
+        {tierBadge && (
+          // The terminal palette reserves the success hue for readiness, so a
+          // free model reads in the info hue here rather than the web's green.
+          <Badge
+            variant={tierBadge.variant === "success" ? "info" : tierBadge.variant}
+            color={tone.background ? tone.primary : undefined}
+          >
+            {tierBadge.label}
+          </Badge>
+        )}
+        {hasDetail && (
+          <Box width={detailWidth} flexShrink={0}>
             <Text color={tone.secondary} wrap="truncate-end">
-              {model.description}
+              {safeDetail}
             </Text>
           </Box>
         )}

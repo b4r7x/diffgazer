@@ -9,6 +9,7 @@ import type { RunnableProductId, WriteOnlySecretInput } from "@diffgazer/core/sc
 import { useState } from "react";
 import { useRegisterExitPreparation } from "../../../hooks/use-exit";
 import { useNavigation } from "../../../hooks/use-navigation";
+import { warnToTerminal } from "../../../lib/report-to-terminal";
 
 type FocusArea = "step" | "nav";
 type WizardFocusZone = "step" | "nav" | "api-key-method" | "api-key-input";
@@ -20,7 +21,7 @@ function getStepFocusZone(step: OnboardingStep, hasCredentialControls: boolean):
 }
 
 function reportCleanupError(message: string): void {
-  console.error(`Warning: ${message}`);
+  warnToTerminal(`Warning: ${message}`);
 }
 
 function inputMethodFromCredential(credential: WriteOnlySecretInput | undefined): InputMethod {
@@ -37,7 +38,6 @@ export function useOnboardingWizard() {
   const runConfigurationAction = useConfigurationAction();
   const [focusZone, setFocusZone] = useState<WizardFocusZone>("step");
   const [navIndex, setNavIndex] = useState(0);
-  const [_inputMethod, setInputMethod] = useState<InputMethod>("paste");
   const [apiKeyDraft, setApiKeyDraft] = useState("");
 
   const wizard = useWizardState({
@@ -77,14 +77,12 @@ export function useOnboardingWizard() {
 
   function handleProductChange(productId: RunnableProductId) {
     wizard.setProduct(productId);
-    setInputMethod("paste");
     setApiKeyDraft("");
     setFocusZone("step");
     setNavIndex(0);
   }
 
   function handleInputMethodChange(method: InputMethod) {
-    setInputMethod(method);
     syncCredentialDraft(method, effectiveApiKey);
   }
 

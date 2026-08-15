@@ -1,6 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 4174);
+const embeddedE2e = process.env.DIFFGAZER_EMBEDDED_E2E === "1";
+const PORT = Number(process.env.PLAYWRIGHT_PORT ?? (embeddedE2e ? 4173 : 4174));
+// A parity capture is compared against TUI frames rendered from this checkout, so it must
+// never adopt a server another checkout left on the fixed port.
+const REUSE_EXISTING_SERVER = !process.env.CI && !process.env.DIFFGAZER_PARITY_CAPTURE_DIR;
 
 export default defineConfig({
   testDir: "./testing/e2e",
@@ -34,10 +38,21 @@ export default defineConfig({
       use: { ...devices["Pixel 7"] },
     },
   ],
-  webServer: {
-    command: `pnpm exec vite --host 127.0.0.1 --port ${PORT}`,
-    url: `http://127.0.0.1:${PORT}/testing/fixtures/results-layout.html`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: embeddedE2e
+    ? {
+        command: "pnpm exec tsx testing/e2e/start-embedded-production-server.ts",
+        url: `http://127.0.0.1:${PORT}/api/health`,
+        reuseExistingServer: REUSE_EXISTING_SERVER,
+        timeout: 120_000,
+        env: {
+          ...process.env,
+          PLAYWRIGHT_PORT: String(PORT),
+        },
+      }
+    : {
+        command: `pnpm exec vite --host 127.0.0.1 --port ${PORT}`,
+        url: `http://127.0.0.1:${PORT}/testing/fixtures/app-fixture.html`,
+        reuseExistingServer: REUSE_EXISTING_SERVER,
+        timeout: 120_000,
+      },
 });

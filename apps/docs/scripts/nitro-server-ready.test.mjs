@@ -23,6 +23,15 @@ describe("createNitroReadyWatcher", () => {
     );
   });
 
+  it("waits for the whole port instead of resolving a chunk-truncated prefix", async () => {
+    const stdout = new PassThrough();
+    const origin = waitForListeningOrigin(stdout, new Promise(() => {}), 500);
+    stdout.write("➜ Listening on: http://127.0.0.1:5432");
+    stdout.write("1/\n");
+
+    await expect(origin).resolves.toBe("http://127.0.0.1:54321");
+  });
+
   it("rejects an invalid port streamed through the readiness promise", async () => {
     const stdout = new PassThrough();
     const origin = waitForListeningOrigin(stdout, new Promise(() => {}), 100);

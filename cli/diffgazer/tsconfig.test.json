@@ -3,7 +3,6 @@
   "extends": "../../libs/core/tsconfig/cli-test.json",
   "compilerOptions": {
     "rootDir": ".",
-    "jsx": "react-jsx",
     "types": ["node", "react"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "testing/**/*.ts", "testing/**/*.tsx"],

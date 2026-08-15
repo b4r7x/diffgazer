@@ -4,7 +4,7 @@ CLI tool that starts the Diffgazer web environment.
 
 Source: https://github.com/b4r7x/diffgazer/tree/main/cli/diffgazer
 
-Requires Node.js >= 22.
+Requires Node.js >= 22 and a `git` binary on your PATH.
 
 ## What it does
 
@@ -18,12 +18,12 @@ Requires Node.js >= 22.
 pnpm --filter diffgazer dev
 ```
 
-Set `PORT` to move the development API server. The launcher passes the matching API URL to the Vite child automatically. An explicit `VITE_API_URL` overrides that derived target.
+Set `PORT` to move the API server. In development that is the API child, and the launcher passes the matching API URL to the Vite child automatically; an explicit `VITE_API_URL` overrides that derived target. The packaged binary honors `PORT` too, so a `PORT` exported in your shell for other tooling also moves — or, when that port is taken, fails — the embedded server.
 
 The terminal UI is opt-in while it is in beta:
 
 ```bash
-pnpm --filter diffgazer dev -- --tui
+pnpm --filter diffgazer dev --tui
 ```
 
 ## Production Build
@@ -39,8 +39,11 @@ pnpm --filter diffgazer start
 
 ```bash
 npm install -g diffgazer
-diffgazer        # Run from anywhere
+cd /path/to/your/repo
+diffgazer
 ```
+
+Run `diffgazer` from inside the git repository you want to review. The repository should contain changes to review. For the full installation and first-review guide, see https://docs.diffgazer.dev/docs/app/getting-started/first-review.
 
 You can also run it without a global install:
 
@@ -52,28 +55,8 @@ npx diffgazer
 
 Default web mode exits with `Ctrl+C`.
 
-The beta TUI exits with `q` or `Ctrl+C`.
+The beta TUI always exits with `Ctrl+C`. `q` exits only when no text input, overlay, or streaming review owns the key — during a running review `q` cancels the review instead, and a second `q` exits.
 
 ## Architecture
 
-```
-src/
-  index.tsx                 # CLI entry point
-  cli-options.ts            # Argument parsing and help text
-  web-launcher.ts           # Default web mode process lifecycle
-  tui-entry.tsx             # Opt-in beta TUI renderer
-  banner.ts                 # ASCII banner output
-  config.ts                 # Ports and workspace paths
-  app/
-    root.tsx                # TUI provider shell
-    providers/              # TUI runtime providers
-    router.tsx              # TUI screen routing
-  components/               # Ink layout and UI components
-  features/                 # TUI feature modules and screens
-  hooks/                    # TUI hooks
-  lib/
-    api.ts                  # API client binding
-    query-client.ts         # Query client setup
-    servers/                # API, web, embedded, and factory launch helpers
-  theme/                    # TUI color palettes and theme context
-```
+The CLI's place in the workspace is documented at https://docs.diffgazer.dev/docs/app/architecture; its source layout lives in the repository linked above.

@@ -103,6 +103,7 @@ describe("detectPackageManager", () => {
     ["yarn.lock", "yarn"],
     ["bun.lockb", "bun"],
     ["bun.lock", "bun"],
+    ["npm-shrinkwrap.json", "npm"],
     ["package-lock.json", "npm"],
   ] as const)("detects %s over one-off executor user agent", (lockfile, expected) => {
     writeFileSync(join(root, "package.json"), "{}");
@@ -119,6 +120,14 @@ describe("detectPackageManager", () => {
     const now = Date.now() / 1000;
     utimesSync(join(root, "pnpm-lock.yaml"), now, now);
     utimesSync(join(root, "package-lock.json"), now + 60, now + 60);
+
+    expect(detectPackageManager(root)).toBe("npm");
+  });
+
+  it("detects npm from npm-shrinkwrap.json when it is the only lockfile", () => {
+    writeFileSync(join(root, "package.json"), "{}");
+    writeFileSync(join(root, "npm-shrinkwrap.json"), "{}");
+    process.env.npm_config_user_agent = "pnpm/10.0.0 node/v22";
 
     expect(detectPackageManager(root)).toBe("npm");
   });
@@ -157,6 +166,22 @@ describe("detectSourceDir", () => {
         "tsconfig.json": { extends: "./tsconfig.base.json" },
       },
       expected: "app",
+    },
+    {
+      label: "a Remix-shaped project whose only alias is `~/*`",
+      files: {
+        "tsconfig.json": { compilerOptions: { paths: { "~/*": ["./app/*"] } } },
+      },
+      expected: "app",
+    },
+    {
+      label: "the `@/*` alias ahead of other declared alias prefixes",
+      files: {
+        "tsconfig.json": {
+          compilerOptions: { paths: { "~/*": ["./app/*"], "@/*": ["./src/*"] } },
+        },
+      },
+      expected: "src",
     },
     {
       label: "aliases through a package-name base",

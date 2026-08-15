@@ -106,10 +106,14 @@ export function buildCopyBundle(options: BuildCopyBundleOptions): BuildCopyBundl
     }))
     .sort((a, b) => compareCodeUnits(a.name, b.name));
 
-  const contentForIntegrity = JSON.stringify({ items });
-  const integrity = computeIntegrity(contentForIntegrity);
+  // Hash the parsed items, not the pre-parse literals: Zod rebuilds objects in
+  // schema-key order, and the verifier recomputes the digest from the written
+  // bytes. Hashing before the parse makes agreement depend on the construction
+  // order here matching the schema's key order.
+  const parsedItems = CopyBundleSchema.parse({ items }).items;
+  const integrity = computeIntegrity(JSON.stringify({ items: parsedItems }));
 
-  const bundle = CopyBundleSchema.parse({ items, integrity });
+  const bundle = { items: parsedItems, integrity };
   writeFileSync(outputPath, `${JSON.stringify(bundle, null, 2)}\n`);
 
   return {

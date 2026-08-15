@@ -168,13 +168,13 @@ describe("IssueDetailsPane (TUI) evidence presentation", () => {
     expect(frame).toContain("src/parser.ts");
     expect(frame).toMatch(/7.const value = JSON\.parse/);
     expect(frame).toContain("const value = JSON.parse(input);");
-    expect(frame).toContain("Documentation: Parser contract");
+    expect(frame).toContain("Unverified documentation reference: Parser contract");
     expect(frame).toContain("docs/reference/parser");
     expect(frame).toContain("Invalid input must return a typed failure.");
-    expect(frame).toContain("Trace evidence: Failure reproduction");
+    expect(frame).toContain("Unverified trace reference: Failure reproduction");
     expect(frame).toContain("trace:parse-invalid-input");
     expect(frame).toContain("Malformed JSON throws before the error boundary runs.");
-    expect(frame).toContain("External reference: JSON parsing guidance");
+    expect(frame).toContain("Unverified external reference: JSON parsing guidance");
     expect(frame).toContain("javascript:alert('not-a-link')");
     expect(frame).toContain("Treat parser failures as expected input errors.");
     expect(frame).not.toContain(ESC);
@@ -288,7 +288,7 @@ describe("IssueDetailsPane (TUI) trace tab gating", () => {
 
     expect(frame).toContain("Trace");
     // SectionHeader renders its label uppercased.
-    expect(frame).toContain("AGENT TRACE");
+    expect(frame).toContain("REPORTED TRACE");
     expect(frame).toContain("inspectScope");
     expect(frame).toContain("in: scanned scope");
     expect(frame).toContain("out: found symbol");

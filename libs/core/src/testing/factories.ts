@@ -1,9 +1,25 @@
+import type { TrustConfig } from "../schemas/config/index.js";
 import type {
   ActiveReviewSession,
   CreateReviewResponse,
   ReviewIssue,
   ReviewMetadata,
 } from "../schemas/review/index.js";
+
+type DefinedOverrides<T> = {
+  [Key in keyof T]: undefined extends T[Key] ? never : T[Key];
+};
+
+export function makeTrustConfig(overrides: Partial<TrustConfig> = {}): TrustConfig {
+  return {
+    projectId: "proj-1",
+    repoRoot: "/work/proj",
+    trustedAt: "2026-05-13T12:00:00.000Z",
+    capabilities: { readFiles: true, runCommands: false },
+    trustMode: "persistent",
+    ...overrides,
+  };
+}
 
 export function makeIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
   return {
@@ -25,9 +41,15 @@ export function makeIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
   };
 }
 
-export function makeReviewMetadata(overrides: Partial<ReviewMetadata> = {}): ReviewMetadata {
+export function makeReviewMetadata<T extends Partial<ReviewMetadata>>(
+  overrides: T & DefinedOverrides<T> = {} as T & DefinedOverrides<T>,
+): ReviewMetadata {
+  const definedOverrides = Object.fromEntries(
+    Object.entries(overrides).filter(([, value]) => value !== undefined),
+  ) as Partial<ReviewMetadata>;
+
   return {
-    id: "review-1",
+    id: "22222222-2222-4222-8222-222222222222",
     projectPath: "/repo",
     createdAt: "2026-02-09T12:00:00.000Z",
     mode: "unstaged",
@@ -42,7 +64,7 @@ export function makeReviewMetadata(overrides: Partial<ReviewMetadata> = {}): Rev
     nitCount: 0,
     fileCount: 1,
     durationMs: 1200,
-    ...overrides,
+    ...definedOverrides,
   };
 }
 

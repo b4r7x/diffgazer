@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   assertCatalogProviders,
+  buildHostedProbeTuples,
   collectReachableBundleFiles,
   emitProviderProbeResults,
   enabledSnapshotProviders,
@@ -44,7 +45,7 @@ test("formatProviderProbeLine keeps the frozen key order and reason vocabulary",
 });
 
 test("resolveLiveProbeDisposition types every prerequisite as not-requested or unavailable", () => {
-  const tuple = { providerId: "groq", modelId: "gpt-oss-120b" };
+  const tuple = { providerId: "groq", credentialEnv: "GROQ_API_KEY", modelId: "gpt-oss-120b" };
   assert.deepEqual(resolveLiveProbeDisposition(tuple, {}, false), {
     kind: "not-requested",
     reason: "network-disabled",
@@ -61,6 +62,7 @@ test("resolveLiveProbeDisposition types every prerequisite as not-requested or u
     resolveLiveProbeDisposition(
       {
         providerId: "qwen",
+        credentialEnv: "QWEN_API_KEY",
         modelId: "qwen3-coder-flash",
         requiresEntitlement: true,
         entitlementEnv: "QWEN_WORKSPACE_ID",
@@ -83,12 +85,57 @@ test("resolveLiveProbeDisposition types every prerequisite as not-requested or u
   assert.equal(probeDispositionKind("network-disabled"), "not-requested");
 });
 
+test("buildHostedProbeTuples derives hosted credentials from the canonical map and fails if one is missing", () => {
+  const productRegistry = {
+    gemini: {
+      id: "gemini",
+      transportFamily: "hosted-api",
+      modelPolicy: { suggestedModelId: "gemini-2.5-flash" },
+    },
+    qwen: {
+      id: "qwen",
+      transportFamily: "hosted-api",
+      modelPolicy: { suggestedModelId: "qwen3-coder-flash" },
+    },
+    ollama: {
+      id: "ollama",
+      transportFamily: "local-http",
+      modelPolicy: {},
+    },
+  };
+
+  assert.deepEqual(
+    buildHostedProbeTuples(productRegistry, {
+      gemini: "GOOGLE_API_KEY",
+      qwen: "QWEN_API_KEY",
+    }),
+    [
+      {
+        providerId: "gemini",
+        credentialEnv: "GOOGLE_API_KEY",
+        modelId: "gemini-2.5-flash",
+      },
+      {
+        providerId: "qwen",
+        credentialEnv: "QWEN_API_KEY",
+        modelId: "qwen3-coder-flash",
+        requiresEntitlement: true,
+        entitlementEnv: "QWEN_WORKSPACE_ID",
+      },
+    ],
+  );
+  assert.throws(
+    () => buildHostedProbeTuples(productRegistry, {}),
+    /No credential environment variable mapped for hosted product 'gemini'/,
+  );
+});
+
 test("emitProviderProbeResults emits one line per tuple and never upgrades skipped probes to passed", async () => {
   const emitted = [];
   const { lines, results } = await emitProviderProbeResults(
     [
-      { providerId: "groq", modelId: "gpt-oss-120b" },
-      { providerId: "gemini", modelId: "gemini-2.5-flash" },
+      { providerId: "groq", credentialEnv: "GROQ_API_KEY", modelId: "gpt-oss-120b" },
+      { providerId: "gemini", credentialEnv: "GOOGLE_API_KEY", modelId: "gemini-2.5-flash" },
     ],
     {
       env: {},
@@ -111,7 +158,7 @@ test("emitProviderProbeResults emits one line per tuple and never upgrades skipp
 
 test("emitProviderProbeResults reports probe-failed instead of passed when a live probe does not succeed", async () => {
   const { lines } = await emitProviderProbeResults(
-    [{ providerId: "groq", modelId: "gpt-oss-120b" }],
+    [{ providerId: "groq", credentialEnv: "GROQ_API_KEY", modelId: "gpt-oss-120b" }],
     {
       env: { DIFFGAZER_LIVE_PROBES: "1", GROQ_API_KEY: "present" },
       networkEnabled: true,
@@ -133,7 +180,7 @@ test("emitProviderProbeResults reports probe-failed instead of passed when a liv
 
 test("emitProviderProbeResults records an unavailable runner as skipped, never failed", async () => {
   const { lines, results } = await emitProviderProbeResults(
-    [{ providerId: "groq", modelId: "gpt-oss-120b" }],
+    [{ providerId: "groq", credentialEnv: "GROQ_API_KEY", modelId: "gpt-oss-120b" }],
     {
       env: { DIFFGAZER_LIVE_PROBES: "1", GROQ_API_KEY: "present" },
       networkEnabled: true,

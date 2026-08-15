@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import { homedir } from "node:os";
 import * as path from "node:path";
+import { isNodeError } from "./node-error.js";
 
 export const isPackaged = (): boolean => process.env.DIFFGAZER_PACKAGED === "1";
 
@@ -72,14 +73,59 @@ export const getGlobalSecretsPath = (): string =>
 
 export const getGlobalTrustPath = (): string => path.join(getGlobalDiffgazerDir(), "trust.json");
 
-export const getGlobalOpenRouterModelsPath = (): string =>
-  path.join(getGlobalDiffgazerDir(), "openrouter-models.json");
-
 export const getGlobalModelsDevCatalogPath = (): string =>
   path.join(getGlobalDiffgazerDir(), "models-dev.json");
 
 export const getProjectDiffgazerDir = (projectRoot: string): string =>
   path.join(projectRoot, ".diffgazer");
+
+const isContainedInRoot = (targetRealPath: string, rootRealPath: string): boolean =>
+  targetRealPath === rootRealPath || targetRealPath.startsWith(rootRealPath + path.sep);
+
+const canonicalProjectRoot = (projectRoot: string): string => {
+  try {
+    return fs.realpathSync.native(projectRoot);
+  } catch {
+    return path.resolve(projectRoot);
+  }
+};
+
+/**
+ * Rejects symlinked or escaping `.diffgazer` directories before project-state I/O.
+ * A missing state directory is allowed and will be created inside the project root.
+ */
+export const assertProjectDiffgazerDirContained = (projectRoot: string): void => {
+  const diffgazerDir = path.join(path.resolve(projectRoot), ".diffgazer");
+  let stats: fs.Stats;
+  try {
+    stats = fs.lstatSync(diffgazerDir);
+  } catch (error) {
+    if (isNodeError(error, "ENOENT")) return;
+    throw error;
+  }
+
+  if (stats.isSymbolicLink()) {
+    throw new Error("Project state directory (.diffgazer) must not be a symlink");
+  }
+  if (!stats.isDirectory()) {
+    throw new Error("Project state directory (.diffgazer) must be a directory");
+  }
+
+  const normalizedRoot = canonicalProjectRoot(projectRoot);
+  const realDiffgazerDir = fs.realpathSync.native(diffgazerDir);
+  if (!isContainedInRoot(realDiffgazerDir, normalizedRoot)) {
+    throw new Error("Project state directory (.diffgazer) resolves outside the project root");
+  }
+};
+
+export const isProjectDiffgazerDirContained = (projectRoot: string): boolean => {
+  try {
+    assertProjectDiffgazerDirContained(projectRoot);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 export const getProjectInfoPath = (projectRoot: string): string =>
   path.join(getProjectDiffgazerDir(projectRoot), "project.json");

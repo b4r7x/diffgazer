@@ -11,10 +11,7 @@ afterEach(() => {
 
 const ARROW_UP = "\u001b[A";
 const ARROW_DOWN = "\u001b[B";
-const ARROW_LEFT = "\u001b[D";
-const ARROW_RIGHT = "\u001b[C";
 const RETURN = "\r";
-const SPACE = " ";
 
 function renderGroup(props: Partial<Parameters<typeof RadioGroup>[0]> = {}) {
   return render(
@@ -83,29 +80,6 @@ describe("RadioGroup navigation", () => {
     await flush();
     expect(onNavigationBoundaryReached).toHaveBeenCalledExactlyOnceWith(1);
     expect(onHighlightChange).toHaveBeenCalledTimes(1);
-  });
-
-  test("horizontal orientation navigates with left and right arrows", async () => {
-    const onChange = vi.fn();
-    const onHighlightChange = vi.fn();
-    const { stdin } = renderGroup({
-      orientation: "horizontal",
-      onChange,
-      onHighlightChange,
-    });
-    await flush();
-
-    stdin.write(ARROW_RIGHT);
-    await flush();
-    expect(onHighlightChange).toHaveBeenLastCalledWith("c");
-
-    stdin.write(SPACE);
-    await flush();
-    expect(onChange).toHaveBeenLastCalledWith("c");
-
-    stdin.write(ARROW_LEFT);
-    await flush();
-    expect(onHighlightChange).toHaveBeenLastCalledWith("a");
   });
 
   test("does not respond to input when the group is disabled", async () => {

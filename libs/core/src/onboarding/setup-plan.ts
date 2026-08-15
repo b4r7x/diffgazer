@@ -141,6 +141,14 @@ function buildRunnablePlan(
 }
 
 export function buildSetupPlan(
+  productId: RunnableProductId,
+  readiness?: Readiness,
+): RunnableSetupPlan;
+export function buildSetupPlan(
+  productId: SetupProductId,
+  readiness?: Readiness,
+): RunnableSetupPlan | null;
+export function buildSetupPlan(
   productId: SetupProductId,
   readiness?: Readiness,
 ): RunnableSetupPlan | null {

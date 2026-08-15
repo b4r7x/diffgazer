@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const searchInputDoc: ComponentDoc = {
   description:
@@ -92,6 +92,12 @@ export const searchInputDoc: ComponentDoc = {
         required: false,
         defaultValue: '"/"',
         description: "Prefix content before the input. Pass null to hide it.",
+      },
+      clearLabel: {
+        type: "string",
+        required: false,
+        defaultValue: '"Clear search"',
+        description: "Accessible name for the clear button shown while the input has a value.",
       },
       placeholder: {
         type: "string",

@@ -21,7 +21,7 @@ import {
   useSearchOpen,
 } from "@/hooks/search-context";
 import { getEnabledDocsLibraries } from "@/lib/library";
-import { type SearchStatus, useSearch } from "../hooks/use-search";
+import { type SearchState, useSearch } from "../hooks/use-search";
 
 const LIBRARY_LABELS: Record<string, string> = Object.fromEntries(
   getEnabledDocsLibraries().map((lib) => [lib.id, lib.displayName]),
@@ -99,33 +99,42 @@ function LauncherItem({
   );
 }
 
-function getSearchStatusView(
-  hasQuery: boolean,
-  status: SearchStatus,
-  error: string | null,
-): SearchStatusView | null {
+function getSearchStatusView(hasQuery: boolean, state: SearchState): SearchStatusView | null {
   if (!hasQuery) {
     return null;
   }
-  if (status === "error") {
-    return { message: error ?? "Search failed. Try again.", severity: "error" };
+  if (state.status === "error") {
+    return { message: state.error, severity: "error" };
   }
-  if (status === "empty") {
+  if (state.status === "empty") {
     return { message: "No results found." };
   }
   return null;
+}
+
+/**
+ * The palette binds `mod+k`, which libs/keys resolves to Meta on Apple hardware
+ * and Control everywhere else. Read at render (never at module scope) so the
+ * client-only footer never ships a server-computed platform guess.
+ */
+function modKeyLabel(): string {
+  const isApple = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent);
+  return isApple ? "⌘K" : "Ctrl+K";
 }
 
 export function SearchDialog() {
   const { open, setOpen } = useSearchOpen();
   const { recent } = useDocsHistory();
   const { scope } = useDocsSearchScope();
-  const { query, results, status, error, search } = useSearch();
+  const { query, state, search } = useSearch();
   const navigate = useNavigate();
+  const results = state.results;
   const hasQuery = query.trim().length > 0;
-  const statusView = getSearchStatusView(hasQuery, status, error);
-  const showsResults = hasQuery && status === "success";
-  const showsLauncher = !hasQuery && status !== "loading";
+  const statusView = getSearchStatusView(hasQuery, state);
+  const hasStaleResults = results.length > 0;
+  const showsResults =
+    hasQuery && (state.status === "success" || (state.status === "loading" && hasStaleResults));
+  const showsLauncher = !hasQuery && state.status !== "loading";
   const jumpEntries = buildJumpEntries(scope);
 
   const closeSearch = () => {
@@ -144,7 +153,7 @@ export function SearchDialog() {
   useScope("search", { enabled: open });
 
   let statusContent = null;
-  if (status === "loading") {
+  if (state.status === "loading" && !hasStaleResults) {
     statusContent = (
       <div className="flex items-center justify-center min-h-[240px] text-muted-foreground text-xs font-mono">
         <Spinner variant="braille" size="sm">
@@ -269,7 +278,7 @@ export function SearchDialog() {
           <span className="hidden pointer-coarse:inline">tap a result to open</span>
           <div className="flex gap-2 pointer-coarse:hidden">
             <span className="flex items-center gap-1">
-              Triggered by <Kbd size="sm">⌘K</Kbd>
+              Triggered by <Kbd size="sm">{modKeyLabel()}</Kbd>
             </span>
           </div>
         </CommandPaletteFooter>

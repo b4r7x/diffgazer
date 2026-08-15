@@ -218,13 +218,7 @@ function mapNodeForLibrary(node: PageTreeNode, library: DocsLibraryId): PageTree
     return null;
   }
 
-  const routeSlugs = node.url ? routeSlugsFromSourcePath(library, node.url) : null;
-
-  return {
-    ...node,
-    url: routeSlugs ? docsPath(library, routeSlugs) : undefined,
-    children: mappedChildren,
-  };
+  return { ...node, children: mappedChildren };
 }
 
 export function mapPageTreeForLibrary(inputTree: PageTree, library: DocsLibraryId): PageTree {

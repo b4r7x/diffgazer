@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const avatarDoc: ComponentDoc = {
   description:
@@ -77,7 +77,7 @@ export const avatarDoc: ComponentDoc = {
         description: "Square size token. Inherits from an AvatarGroup parent when unset.",
       },
       onStatusChange: {
-        type: '(status: "idle" | "loading" | "loaded" | "error") => void',
+        type: '(status: "loading" | "loaded" | "error") => void',
         required: false,
         defaultValue: null,
         description: "Fired when the image load status changes. Fires for the active image only.",
@@ -102,7 +102,7 @@ export const avatarDoc: ComponentDoc = {
         required: false,
         defaultValue: '""',
         description:
-          "Alt text. Defaults to empty when omitted since the parent Avatar already exposes a name.",
+          'Accessible name for the image. Defaults to `""`, treating the avatar as decorative so it is skipped by assistive tech and the surrounding control supplies the accessible name. Pass an explicit `alt` when the avatar is the sole label for its container.',
       },
     },
     AvatarFallback: {

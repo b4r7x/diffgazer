@@ -9,6 +9,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
+import type { BoundApi } from "@diffgazer/core/api";
 import { formatRunId } from "@diffgazer/core/format";
 import { HISTORY_SEARCH_PLACEHOLDER } from "@diffgazer/core/review";
 import type { ReviewResponse } from "@diffgazer/core/schemas/review";
@@ -16,10 +17,10 @@ import { createDeferred } from "@diffgazer/core/testing/deferred";
 import { makeIssue, makeReviewMetadata } from "@diffgazer/core/testing/factories";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { FooterView } from "@/testing/footer-view";
 import { expectSingleReticle } from "@/testing/reticle";
 import {
   defaultReviewsResponse,
-  FooterView,
   makeReviewResponse,
   mockGetReview,
   mockGetReviews,
@@ -45,7 +46,7 @@ describe("HistoryPage loading and error status", () => {
   });
 
   it("focuses the runs list after deferred reviews replace the loading state", async () => {
-    const reviews = createDeferred<ReturnType<typeof defaultReviewsResponse>>();
+    const reviews = createDeferred<Awaited<ReturnType<BoundApi["getReviews"]>>>();
     mockGetReviews.mockReturnValue(reviews.promise);
 
     renderHistoryPage(<HistoryPage />);
@@ -57,6 +58,31 @@ describe("HistoryPage loading and error status", () => {
 
     const runsList = await screen.findByRole("listbox", { name: /review runs/i });
     await waitFor(() => expect(runsList).toHaveFocus());
+  });
+
+  it("keeps the warning live region mounted from loading through deferred warnings", async () => {
+    const reviews = createDeferred<Awaited<ReturnType<BoundApi["getReviews"]>>>();
+    mockGetReviews.mockReturnValue(reviews.promise);
+
+    const { container } = renderHistoryPage(<HistoryPage />);
+    await screen.findByText("Loading runs...");
+    const liveRegion = container.querySelector('[aria-live="polite"]');
+
+    expect(liveRegion).not.toBeNull();
+    expect(liveRegion).toHaveTextContent("");
+
+    reviews.resolve({
+      ...defaultReviewsResponse(),
+      warnings: [
+        {
+          kind: "unreadable_review",
+          reviewId: "33333333-3333-4333-8333-333333333333",
+        },
+      ],
+    });
+
+    expect(await screen.findByText(/#33333333.*could not be read/i)).toBeInTheDocument();
+    expect(container.querySelector('[aria-live="polite"]')).toBe(liveRegion);
   });
 
   it("brackets exactly one pane on the loaded screen", async () => {
@@ -110,7 +136,8 @@ describe("HistoryPage loading and error status", () => {
 
     renderHistoryPage(<HistoryPage />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Configuration unavailable.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Configuration Unavailable");
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
     expect(screen.queryByText("Trust This Repository?")).not.toBeInTheDocument();
   });
 });
@@ -191,7 +218,57 @@ describe("HistoryPage review-list warnings", () => {
 
     renderHistoryPage(<HistoryPage />);
 
-    expect(await screen.findByText(/2 saved reviews could not be read/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText("2 saved reviews (#22222222, #33333333) could not be read."),
+    ).toBeInTheDocument();
+  });
+
+  it("bounds high-cardinality warning copy in a named keyboard-scroll region", async () => {
+    const warningIds = Array.from(
+      { length: 50 },
+      (_, index) => `${index.toString(16).padStart(8, "0")}-1111-4111-8111-111111111111`,
+    );
+    mockGetReviews.mockResolvedValue({
+      reviews: [makeReviewMetadata({ id: "readable-review" })],
+      warnings: warningIds.map((reviewId) => ({ kind: "unreadable_review" as const, reviewId })),
+    });
+
+    const user = userEvent.setup();
+    renderHistoryPage(<HistoryPage />);
+
+    const warningRegion = await screen.findByRole("region", { name: "History warnings" });
+    expect(warningRegion).toHaveAttribute("tabindex", "0");
+    expect(warningRegion).toHaveAttribute("aria-describedby", "history-warning-scroll-hint");
+    expect(screen.getByText(/Focus this region to scroll warnings/i)).toBeInTheDocument();
+    expect(screen.getByText(/… \+47 more/)).toBeInTheDocument();
+    expect(warningRegion).toHaveTextContent("#00000003");
+    expect(warningRegion).toHaveTextContent("00000031-1111-4111-8111-111111111111");
+
+    Object.defineProperties(warningRegion, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 1000 },
+    });
+    warningRegion.focus();
+    await user.keyboard("{ArrowDown}");
+
+    expect(warningRegion).toHaveFocus();
+    expect(warningRegion.scrollTop).toBe(40);
+    expect(screen.getByRole("listbox", { name: /review runs/i })).toBeInTheDocument();
+  });
+
+  it("keeps warning copy out of output and exposes the full target list", async () => {
+    const warningId = "33333333-3333-4333-8333-333333333333";
+    mockGetReviews.mockResolvedValue({
+      reviews: defaultReviewsResponse().reviews,
+      warnings: [{ kind: "unreadable_review", reviewId: warningId }],
+    });
+
+    const { container } = renderHistoryPage(<HistoryPage />);
+
+    const warningRegion = await screen.findByRole("region", { name: "History warnings" });
+    expect(container.querySelector('output > p, output > [data-slot="scroll-area"]')).toBeNull();
+    expect(warningRegion).toHaveTextContent(`#${warningId.slice(0, 8)}`);
+    expect(warningRegion).toHaveTextContent(warningId);
   });
 
   it("renders index maintenance separately without inflating the unreadable count", async () => {
@@ -225,6 +302,41 @@ describe("HistoryPage review-list warnings", () => {
     expect(screen.queryByText(/saved reviews? could not be read/i)).not.toBeInTheDocument();
   });
 
+  it("shares warning-only id collisions across labels, search, and salvage annotations", async () => {
+    const unreadableId = "abcdef00-0000-4000-8000-000000000000";
+    const affectedId = "abcdef00-1000-4000-8000-000000000000";
+    const unaffectedId = "fedcba99-2000-4000-8000-000000000000";
+    const user = userEvent.setup();
+    mockGetReviews.mockResolvedValue({
+      reviews: [makeReviewMetadata({ id: affectedId }), makeReviewMetadata({ id: unaffectedId })],
+      warnings: [
+        { kind: "unreadable_review", reviewId: unreadableId },
+        { kind: "invalid_issues_dropped", reviewId: affectedId, count: 1 },
+      ],
+    });
+
+    renderHistoryPage(<HistoryPage />);
+
+    expect(
+      await screen.findByText("1 saved review (#abcdef00-0) could not be read."),
+    ).toBeInTheDocument();
+    expect(await screen.findByText(/omitted from #abcdef00-1/i)).toBeInTheDocument();
+
+    const runsList = await screen.findByRole("listbox", { name: /review runs/i });
+    const options = within(runsList).getAllByRole("option");
+    const affectedRun = options.find((option) => option.textContent?.includes("#abcdef00-1"));
+    const unaffectedRun = options.find((option) => option.textContent?.includes("#fedcba99"));
+
+    if (!affectedRun || !unaffectedRun) throw new Error("Expected both history runs");
+    expect(affectedRun).toHaveTextContent("Salvaged");
+    expect(unaffectedRun).not.toHaveTextContent("Salvaged");
+
+    const searchInput = screen.getByRole("searchbox", { name: /search/i });
+    await user.type(searchInput, "#abcdef00-1");
+    await waitFor(() => expect(within(runsList).getAllByRole("option")).toHaveLength(1));
+    expect(within(runsList).getByRole("option")).toHaveTextContent("#abcdef00-1");
+  });
+
   it("renders nothing when the warnings array is empty or absent", async () => {
     mockGetReviews.mockResolvedValue(defaultReviewsResponse());
 
@@ -240,11 +352,32 @@ describe("HistoryPage review pagination", () => {
     setupApiMocks(trustedProject());
   });
 
+  it("keeps the loaded history visible when loading older runs fails", async () => {
+    const nextCursor =
+      "dg1_WyIyMDI2LTAyLTA4VDA5OjAwOjAwLjAwMFoiLCIyMjIyMjIyMi0yMjIyLTQyMjItODIyMi0yMjIyMjIyMjIyMjIiXQ";
+    mockGetReviews
+      .mockResolvedValueOnce({
+        reviews: defaultReviewsResponse().reviews,
+        nextCursor,
+      })
+      .mockRejectedValueOnce(new Error("page two unreadable"));
+
+    const user = userEvent.setup();
+    renderHistoryPage(<HistoryPage />);
+
+    await screen.findByRole("listbox", { name: /review runs/i });
+    await user.click(await screen.findByRole("button", { name: "Load older runs" }));
+
+    expect(await screen.findByText(/Could not load older runs/i)).toBeInTheDocument();
+    expect(screen.getByRole("listbox", { name: /review runs/i })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("loads older runs on demand and removes the control after the final page", async () => {
     const olderId = "33333333-3333-4333-8333-333333333333";
     const nextCursor =
       "dg1_WyIyMDI2LTAyLTA4VDA5OjAwOjAwLjAwMFoiLCIyMjIyMjIyMi0yMjIyLTQyMjItODIyMi0yMjIyMjIyMjIyMjIiXQ";
-    mockGetReviews.mockImplementation(async (_projectPath, cursor) =>
+    mockGetReviews.mockImplementation(async (cursor) =>
       cursor
         ? {
             reviews: [makeReviewMetadata({ id: olderId })],
@@ -271,7 +404,7 @@ describe("HistoryPage review pagination", () => {
 
     expect(await screen.findByText(formatRunId(olderId))).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Load older runs" })).not.toBeInTheDocument();
-    expect(mockGetReviews).toHaveBeenLastCalledWith(undefined, nextCursor);
+    expect(mockGetReviews).toHaveBeenLastCalledWith(nextCursor, expect.any(AbortSignal));
   });
 });
 

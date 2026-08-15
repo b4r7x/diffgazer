@@ -1,6 +1,6 @@
 import { useSettings } from "@diffgazer/core/api/hooks";
 import { SETTINGS_SCREEN_COPY } from "@diffgazer/core/schemas/config";
-import { buildLensOptions } from "@diffgazer/core/schemas/events";
+import { LENS_OPTIONS } from "@diffgazer/core/schemas/events";
 import { NAVIGATE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import { deriveLensSelectionState, type LensId } from "@diffgazer/core/schemas/review";
 import { useScope } from "@diffgazer/keys";
@@ -10,8 +10,6 @@ import { useSettingsFormActions } from "../../hooks/use-form-actions";
 import { SettingsFormPage } from "../form-page";
 import { AnalysisSelectorContent } from "./selector-content";
 
-const lensOptions = buildLensOptions();
-
 export function SettingsAnalysisPage() {
   const lensSelectionMessageId = useId();
   const focusFallbackRef = useRef<HTMLDivElement>(null);
@@ -19,7 +17,7 @@ export function SettingsAnalysisPage() {
   const settings = settingsQuery.data;
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
 
-  const fallbackLenses = lensOptions.map((lens) => lens.id);
+  const fallbackLenses = LENS_OPTIONS.map((lens) => lens.id);
   const {
     effective: effectiveLenses,
     isDirty,
@@ -49,7 +47,7 @@ export function SettingsAnalysisPage() {
     >
       <div ref={focusFallbackRef} tabIndex={-1} className="space-y-3 focus:outline-none">
         <AnalysisSelectorContent
-          options={lensOptions}
+          options={LENS_OPTIONS}
           value={effectiveLenses}
           onChange={setSelectedLenses}
           enabled={!footer.inActions}

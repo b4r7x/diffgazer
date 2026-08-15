@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";

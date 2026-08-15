@@ -36,7 +36,7 @@ Use `it.each` to collapse parameterizable cases (different keys → same action)
 ### 4. Boundary mocks only
 
 `vi.mock(...)` is allowed at **system boundaries**:
-- Network / `fetch` (e.g. `@diffgazer/core/api/hooks` which wraps `createApi` over `fetch`, `@/lib/api` web singleton, AI SDK clients like `ai`, `@ai-sdk/google`, `@openrouter/ai-sdk-provider`, `zhipu-ai-provider`)
+- Network / `fetch` (e.g. `@diffgazer/core/api/hooks` which wraps `createApi` over `fetch`, the `@/lib/api` web singleton, and hosted/local HTTP provider adapters). AI SDK packages such as `ai` and `@ai-sdk/*` are not boundary mocks in this workspace. `cli/server/src/shared/lib/ai/client/create.test.ts` covers admitted-plan adapter selection and output handling; it does not mock SDK packages.
 - Filesystem (`node:fs`, `node:fs/promises`)
 - Subprocess (`node:child_process`, thin wrappers like `cli/server/src/shared/lib/git/service.ts` which `promisify(execFile)`)
 - OS keychain (`@napi-rs/keyring`, thin wrappers like `cli/server/src/shared/lib/config/keyring.ts` which dynamically loads the native addon)
@@ -89,7 +89,7 @@ Exception: when a ref or field IS public API (e.g. `useFocusRestore`'s `target`)
 
 ### 9. CLI tests run on Vitest
 
-Both `cli/add` and `cli/diffgazer` run on Vitest 4 with `environment: "node"`. Subprocess tests use `pool: "forks"` + `fileParallelism: false`. Ink-based `.tsx` tests use `esbuild.jsx: "automatic"` (no jsdom — Ink renders to terminal streams).
+Both `cli/add` and `cli/diffgazer` run on Vitest 4 with `environment: "node"`. Subprocess tests use `pool: "forks"`; `cli/add` runs its temp-root-isolated E2E files in parallel with a capped `maxWorkers: 4`, while `cli/diffgazer` keeps `fileParallelism: false`. Ink-based `.tsx` tests use `esbuild.jsx: "automatic"` (no jsdom — Ink renders to terminal streams).
 
 ### 10. Type-check enforcement
 
@@ -138,19 +138,21 @@ CI-safe gate (`test-ci`):
 ```
 pnpm run test-ci
 ```
-Runs artifact validation, secret scan, Biome check (incl. `depcruise`), type-check, tests, `test:types`, strict smoke, bench, and `verify:monorepo`.
+Sets `DIFFGAZER_SMOKE_STRICT_SKIPS=1` and delegates to `verify`; it adds no step of its own. The `test:scripts` step of that chain picks up `provider-transport-legacy-allowlist.test.mjs` through its `scripts/monorepo/**/*.test.mjs` glob.
 
 Full local readiness (`verify`):
 ```
 pnpm run verify
 ```
-Runs `verify:monorepo`, artifact validation, secret scan, check, `test:scripts`, type-check, tests, `test:types`, smoke, and bench.
+Runs `verify:monorepo`, artifact validation, secret scan, `check` (Biome, deploy-runbook, per-package Turbo checks, `depcruise`, and `knip`), `test:scripts`, type-check, tests, `test:types`, smoke, and bench.
 
 Final release gate:
 ```
 pnpm run release-check
 ```
-Runs the `test-ci` chain plus pack dry-runs for all four public packages, `verify:monorepo`, and `git diff --check`.
+`release-check` is an independent chain. It repeats the `test-ci` gate families rather than invoking `test-ci`, then adds the production audit, build, package checks, provider and embedded-production web E2E suites, docs build, live registry check, changeset check, four public-package pack dry-runs, and `git diff --check`. Its `test:scripts` step already runs the provider-transport legacy-allowlist test; a later direct invocation repeats that exact test before the whitespace check.
+
+The GitHub Release Readiness workflow adds checks that `release-check` does not run: a separate event-range Gitleaks job (the action scans the commits selected by the current push or pull-request event; `fetch-depth: 0` only makes repository objects available), `DIFFGAZER_SMOKE_ALLOW_NETWORK=1` on the strict `verify` step, three `git status --short` dirty-tree guards after build, verify/smoke, and pack, plus the remaining docs, web, UI, and landing browser suites and Lighthouse budgets. Publish recovery therefore requires the Release Readiness run for the exact merged-main SHA to have all three of its jobs green before it repeats `release-check`; the procedure lives in `PACKAGE_GOVERNANCE.md` under "Recovery from publish failure".
 
 `turbo run test:types` is wired in `verify`, `test-ci`, and `release-check` as a required step for packages that define the script; the remaining packages cover test files through `type-check`.
 
@@ -167,8 +169,10 @@ snapshot regenerate is caught even with no network. This makes
 
 Adding `DIFFGAZER_SMOKE_ALLOW_NETWORK=1` additionally fetches the live
 `https://models.dev/api.json`, parses it with the shipped `parseModelsDevCatalog`,
-and runs the same assertions against the live data. CI pairs both flags, so the
-release gate validates both the offline snapshot and the live fetch.
+and runs the same assertions against the live data. The Release Readiness
+workflow's `Verify` step pairs both flags, so that workflow validates the offline
+snapshot and the live fetch. `test-ci` and `release-check` set only the strict-skip
+flag unless the caller supplies the network flag separately.
 
 ## Anti-pattern reference
 

@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { withErrorHandler } from "../with-error-handler.js";
-import { runAddWorkflow } from "../workflows/add.js";
+import { type AddWorkflowPlan, runAddWorkflow } from "../workflows/add.js";
 import {
   addExtraOptions,
   type ExtraOption,
@@ -23,9 +23,7 @@ export interface AddCommandConfig<TConfig> {
     names: string[];
     all: boolean;
     opts: SharedCommandOptions;
-  }) =>
-    | Promise<import("../workflows/add.js").AddWorkflowPlan>
-    | import("../workflows/add.js").AddWorkflowPlan;
+  }) => Promise<AddWorkflowPlan> | AddWorkflowPlan;
   withLock?: <T>(cwd: string, operation: () => Promise<T>) => Promise<T>;
   extraOptions?: ExtraOption[];
 }

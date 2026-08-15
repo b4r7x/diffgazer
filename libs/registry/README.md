@@ -53,6 +53,7 @@ buildRegistryArtifacts({
     { from: "public/r", to: "registry" },
   ],
   rewriteDirs: ["registry"],
+  defaultOrigin: "https://example.com",
 });
 ```
 
@@ -69,6 +70,7 @@ syncDocsFromArtifacts({
   ],
   primaryLibraryId: "my-lib",
   origin: normalizeOrigin(process.env.REGISTRY_ORIGIN, { defaultOrigin: "https://example.com" }),
+  sourceOrigin: "https://example.com",
 });
 ```
 

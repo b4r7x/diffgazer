@@ -1,3 +1,4 @@
+import type { ComponentDoc } from "@diffgazer/registry";
 import { Typography } from "@diffgazer/ui/components/typography";
 import { DemoPreview } from "@/components/demo-preview";
 import { useDemos } from "@/hooks/use-demos";
@@ -5,18 +6,32 @@ import { resolvePreviewFrame } from "@/lib/example-frames";
 import { useComponentData } from "../doc-data-context";
 import { useCurrentLibrary } from "./use-current-library";
 
+type KeyboardSection = NonNullable<ComponentDoc["keyboard"]>;
+
+/** Single source of truth for whether the keyboard section renders anything. */
+export function hasKeyboardNavContent(
+  keyboard: ComponentDoc["keyboard"],
+): keyboard is KeyboardSection {
+  if (!keyboard) return false;
+  return (
+    keyboard.description.trim().length > 0 ||
+    (keyboard.keys?.length ?? 0) > 0 ||
+    keyboard.examples.length > 0
+  );
+}
+
 export function KeyboardNav() {
   const data = useComponentData();
   const library = useCurrentLibrary();
-  const { demos, isLoading } = useDemos(library);
+  const { demos, isLoading, loadError, retry } = useDemos(library);
 
-  if (!data?.docs?.keyboard) return null;
-  const { description, examples, keys } = data.docs.keyboard;
+  const keyboard = data?.docs?.keyboard;
+  if (!data || !hasKeyboardNavContent(keyboard)) return null;
+
+  const { description, examples, keys } = keyboard;
   const hasDescription = description.trim().length > 0;
   const hasKeys = keys !== undefined && keys.length > 0;
   const hasExamples = examples.length > 0;
-
-  if (!hasDescription && !hasKeys && !hasExamples) return null;
 
   return (
     <div>
@@ -52,17 +67,25 @@ export function KeyboardNav() {
       )}
       {hasExamples && (
         <div className="space-y-6">
-          {examples.map((ex) => (
-            <DemoPreview
-              key={ex.name}
-              title={ex.title}
-              demo={demos[ex.name] ?? null}
-              loading={isLoading}
-              code={data.exampleSource[ex.name]?.highlighted ?? []}
-              rawCode={data.exampleSource[ex.name]?.raw ?? ""}
-              frame={resolvePreviewFrame(ex.name)}
-            />
-          ))}
+          {examples.map((ex) => {
+            const source = data.exampleSource[ex.name];
+            if (!source) {
+              throw new Error(`Missing ${library} docs example source: ${ex.name}`);
+            }
+            return (
+              <DemoPreview
+                key={ex.name}
+                title={ex.title}
+                demo={demos[ex.name] ?? null}
+                loading={isLoading}
+                loadError={loadError}
+                onRetryLoad={retry}
+                code={source.highlighted}
+                rawCode={source.raw}
+                frame={resolvePreviewFrame(ex.name)}
+              />
+            );
+          })}
         </div>
       )}
     </div>

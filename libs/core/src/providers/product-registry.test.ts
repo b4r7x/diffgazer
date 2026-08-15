@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ClientConfigurationInputSchema } from "../schemas/config/provider-config.js";
 import {
   CANDIDATE_PRODUCT_IDS,
   DEFERRED_PRODUCT_IDS,
@@ -6,13 +7,12 @@ import {
   HostedApiProductIdSchema,
   LOCAL_OPENAI_PRESET_ENDPOINTS,
   REJECTED_PRODUCT_IDS,
-  TransportInputSchema,
 } from "../schemas/config/transports.js";
+import { CANDIDATE_VERDICTS } from "./candidate-verdicts.js";
+import { isPinnedDownstreamRouteModelId } from "./model-policy.js";
+import { PRODUCT_ENDPOINT_TUPLES } from "./product-endpoints.js";
 import {
-  CANDIDATE_VERDICTS,
   isModelIdAllowedForProduct,
-  isPinnedDownstreamRouteModelId,
-  PRODUCT_ENDPOINT_TUPLES,
   PRODUCT_REGISTRY,
   SELECTABLE_PRODUCT_IDS,
 } from "./product-registry.js";
@@ -95,6 +95,10 @@ function hasForbiddenSerializedData(descriptor: unknown): boolean {
 }
 
 describe("product registry authority", () => {
+  it("references the shared endpoint tuple instead of copying it", () => {
+    expect(PRODUCT_REGISTRY.gemini.configuration.endpoints).toBe(PRODUCT_ENDPOINT_TUPLES.gemini);
+  });
+
   it("enumerates exactly the 13 selectable products with add-now notices and gates", () => {
     expect(SELECTABLE_PRODUCT_IDS).toEqual([
       "gemini",
@@ -150,7 +154,7 @@ describe("product registry authority", () => {
           ...("workspaceBound" in endpoint ? { workspace: "workspace-reference" } : {}),
         };
 
-        expect(TransportInputSchema.parse(input)).toEqual(input);
+        expect(ClientConfigurationInputSchema.parse(input)).toEqual(input);
       }
     }
 
@@ -210,7 +214,7 @@ describe("product registry authority", () => {
         ],
         modelPolicy: {
           kind: "discovered-exact",
-          suggestedModelId: "glm-4.7",
+          suggestedModelId: "glm-5-turbo",
           explicitOptInSuffixes: ["-flash"],
           aliases: "forbidden",
         },
@@ -397,9 +401,8 @@ describe("product registry authority", () => {
           },
         ],
         modelPolicy: {
-          kind: "discovered-allowlist",
-          modelIds: ["mistral-small-2603"],
-          suggestedModelId: "mistral-small-2603",
+          kind: "discovered-exact",
+          suggestedModelId: "mistral-medium-2604",
           aliases: "forbidden",
         },
         checks: [...HOSTED_CHECKS, "region"],
@@ -538,20 +541,32 @@ describe("product registry authority", () => {
     expect(JSON.stringify(policy)).not.toMatch(/\b\d{3,}\b/);
   });
 
+  // A pinned variant suffix names a separately priced catalog identity, so it is
+  // admitted; a dynamic selector is a request-time sort or route instruction and
+  // is not, and an unknown suffix fails closed rather than riding in on shape.
   it("rejects routing selectors by segment while preserving substring-bearing routes", () => {
     const rejected = [
       "auto/model",
       "provider/automatic",
       "provider/openrouter",
       "provider/fallback",
-      "provider/model:free",
       "provider/model/online",
+      "openrouter/auto",
+      "openrouter/free",
+      "provider/model:nitro",
+      "provider/model:floor",
+      "provider/model:online",
+      "provider/model:exacto",
+      "provider/model:extended",
+      "provider/model:free:nitro",
     ];
     const accepted = [
       "automaticity/model",
       "provider/openrouterish",
       "provider/fallback-v2",
       "provider/online-model",
+      "provider/model:free",
+      "provider/model:thinking",
     ];
 
     for (const modelId of rejected) {

@@ -67,10 +67,7 @@ export const dialogContentVariants = cva(
 
 const FALLBACK_DIALOG_LABEL = "Dialog";
 
-/** Props for dialog content. */
-export interface DialogContentProps
-  extends VariantProps<typeof dialogContentVariants>,
-    Omit<ComponentProps<"dialog">, "children" | "className" | "open"> {
+interface DialogContentCommonProps extends VariantProps<typeof dialogContentVariants> {
   /** Content rendered inside the component. */
   children: ReactNode;
   /** Additional class names merged onto the rendered element. */
@@ -83,12 +80,11 @@ export interface DialogContentProps
    * bracketed-frame look.
    */
   corners?: DialogCorners | null;
-  /**
-   * Set role="alertdialog" for destructive confirmations. Per WAI-ARIA APG, alert dialogs
-   * should not close on outside interaction. Modal mode only — an inline dialog is a labelled
-   * region, not a dialog (see `modal`).
-   */
-  role?: "dialog" | "alertdialog";
+}
+
+interface DialogContentModalProps
+  extends DialogContentCommonProps,
+    Omit<ComponentProps<"dialog">, "children" | "className" | "open"> {
   /**
    * Renders the dialog as a native modal in the browser top layer (default). Pass false to
    * render the same frame, corners, and chrome in the document flow instead — no backdrop,
@@ -97,7 +93,13 @@ export interface DialogContentProps
    * reviewable on a static documentation page. Inline dialogs still honour `open`, so they
    * unmount when the consumer closes them.
    */
-  modal?: boolean;
+  modal?: true;
+  /**
+   * Set role="alertdialog" for destructive confirmations. Per WAI-ARIA APG, alert dialogs
+   * should not close on outside interaction. Modal mode only — an inline dialog is a labelled
+   * region, not a dialog (see `modal`).
+   */
+  role?: "dialog" | "alertdialog";
   /**
    * Renders the top-right [x] close control on a modal dialog (default). Pass false to opt out
    * when the dialog owns its own dismissal affordance. Inline dialogs never render it — nothing
@@ -117,6 +119,21 @@ export interface DialogContentProps
    */
   onEscapeKeyDown?: (e: SyntheticEvent<HTMLDialogElement>) => void;
 }
+
+interface DialogContentInlineProps
+  extends DialogContentCommonProps,
+    Omit<ComponentProps<"div">, "children" | "className" | "open" | "role"> {
+  modal: false;
+  role?: never;
+  closeIcon?: never;
+  closeOnBackdropClick?: never;
+  initialFocus?: never;
+  onCancel?: never;
+  onEscapeKeyDown?: never;
+}
+
+/** Props for dialog content. */
+export type DialogContentProps = DialogContentModalProps | DialogContentInlineProps;
 
 function hasNonEmptyText(value: string | undefined): boolean {
   return value !== undefined && value.trim().length > 0;
@@ -164,25 +181,19 @@ function resolveAccessibleName({
  * If none are present the dialog falls back to the accessible label "Dialog" so it still
  * opens with a usable name rather than an unnamed one.
  */
-export function DialogContent({
-  children,
-  className,
-  size,
-  frame,
-  corners,
-  closeIcon = true,
-  closeOnBackdropClick = true,
-  initialFocus,
-  modal = true,
-  onEscapeKeyDown,
-  onCancel,
-  onAnimationEnd,
-  "aria-label": ariaLabel,
-  "aria-labelledby": ariaLabelledBy,
-  "aria-description": ariaDescription,
-  "aria-describedby": ariaDescribedBy,
-  ...rest
-}: DialogContentProps) {
+export function DialogContent(props: DialogContentProps) {
+  const {
+    children,
+    className,
+    size,
+    frame,
+    corners,
+    "aria-label": ariaLabel,
+    "aria-labelledby": ariaLabelledBy,
+    "aria-description": ariaDescription,
+    "aria-describedby": ariaDescribedBy,
+  } = props;
+  const modal = props.modal ?? true;
   const {
     open,
     onOpenChange,
@@ -233,25 +244,44 @@ export function DialogContent({
     setContainer(node);
   }, []);
 
+  const showCloseIcon = props.modal !== false && (props.closeIcon ?? true);
+
   const inner = (
     <PortalContainerProvider container={container}>
       {resolvedCorners !== "none" ? <span aria-hidden="true" className="dlg-corners" /> : null}
       {children}
       {/* Last in DOM so the [x] is the final tab stop, not an interception before the content. */}
-      {modal && closeIcon ? <DialogCloseIcon /> : null}
+      {showCloseIcon ? <DialogCloseIcon /> : null}
     </PortalContainerProvider>
   );
 
-  if (!modal) {
+  if (props.modal === false) {
     if (!open) return null;
+    const {
+      modal: _modal,
+      children: _children,
+      className: _className,
+      size: _size,
+      frame: _frame,
+      corners: _corners,
+      role: _role,
+      closeIcon: _closeIcon,
+      closeOnBackdropClick: _closeOnBackdropClick,
+      initialFocus: _initialFocus,
+      onCancel: _onCancel,
+      onEscapeKeyDown: _onEscapeKeyDown,
+      onAnimationEnd: inlineOnAnimationEnd,
+      "aria-label": _ariaLabel,
+      "aria-labelledby": _ariaLabelledBy,
+      "aria-description": _ariaDescription,
+      "aria-describedby": _ariaDescribedBy,
+      ...divRest
+    } = props;
     return (
       // biome-ignore lint/a11y/useSemanticElements: an inline dialog is not modal, so role="dialog" would misannounce it; this is a labelled region wrapping the same chrome.
       <div
-        // The rest props are typed against <dialog> because the modal path renders
-        // one. Attribute names and payloads are identical here — only the event
-        // target element type differs, which the cast re-points to the inline div.
-        {...(rest as ComponentProps<"div">)}
-        onAnimationEnd={onAnimationEnd as ComponentProps<"div">["onAnimationEnd"]}
+        {...divRest}
+        onAnimationEnd={inlineOnAnimationEnd}
         // Inline mode has no dialog element; the shell itself is the portal container.
         ref={setContainer}
         id={contentId}
@@ -271,9 +301,29 @@ export function DialogContent({
     );
   }
 
+  const {
+    modal: _modal,
+    children: _children,
+    className: _className,
+    size: _size,
+    frame: _frame,
+    corners: _corners,
+    closeIcon = true,
+    closeOnBackdropClick = true,
+    initialFocus,
+    onEscapeKeyDown,
+    onCancel,
+    onAnimationEnd: modalOnAnimationEnd,
+    "aria-label": _ariaLabel,
+    "aria-labelledby": _ariaLabelledBy,
+    "aria-description": _ariaDescription,
+    "aria-describedby": _ariaDescribedBy,
+    ...dialogRest
+  } = props;
+
   return (
     <DialogShell
-      {...rest}
+      {...dialogRest}
       open={open}
       id={contentId}
       dialogRef={setShellRef}
@@ -287,7 +337,7 @@ export function DialogContent({
       }}
       onBeforeShowModal={focusRestore.capture}
       onExitComplete={handleClose}
-      onAnimationEnd={onAnimationEnd}
+      onAnimationEnd={modalOnAnimationEnd}
       className={cn(dialogContentVariants({ size, frame }), className)}
       data-slot="dialog-content"
       data-frame={resolvedFrame}

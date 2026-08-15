@@ -13,6 +13,7 @@
     "src/test-setup.ts",
     "src/testing/internal",
     "**/*.test.ts",
-    "**/*.test.tsx"
+    "**/*.test.tsx",
+    "src/hooks/use-navigation/test-list.tsx"
   ]
 }

@@ -1,9 +1,5 @@
-import {
-  getPartialFailureWarning,
-  getReviewEventLogSource,
-  type ReviewEvent,
-  sanitizeTerminalText,
-} from "@diffgazer/core/review";
+import { getPartialFailureWarning, type ReviewEvent } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import type { AgentState, LensStat } from "@diffgazer/core/schemas/events";
 import { Box, Text, useInput } from "ink";
 import { type ReactElement, useState } from "react";
@@ -34,11 +30,10 @@ export function ReviewProgressActivity({
   const { tokens } = useTheme();
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
 
-  const sourceOptions = Array.from(
-    new Set(
-      events.map(getReviewEventLogSource).filter((source): source is string => Boolean(source)),
-    ),
-  );
+  // A log source is always an agent name, and every agent that can emit one is
+  // already on the board, so the agent list is the option set — no rescan of the
+  // retained event history on each streaming render.
+  const sourceOptions = agents.map((agent) => agent.meta.name);
   const activeSourceFilter =
     sourceFilter && sourceOptions.includes(sourceFilter) ? sourceFilter : null;
 
@@ -86,8 +81,9 @@ export function ReviewProgressActivity({
 
       {notices.length > 0 ? (
         <Box flexDirection="column" paddingTop={1}>
-          {notices.map((notice) => (
-            <Text key={notice} color={tokens.warning}>
+          {notices.map((notice, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: notice text can repeat; stream order is the rendered identity.
+            <Text key={index} color={tokens.warning}>
               {sanitizeTerminalText(notice)}
             </Text>
           ))}

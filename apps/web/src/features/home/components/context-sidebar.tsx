@@ -1,12 +1,14 @@
-import { buildHomeContextRows, type ContextInfo } from "@diffgazer/core/schemas/presentation";
+import { buildHomeContextRows, type HomeContextInfo } from "@diffgazer/core/schemas/presentation";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { cn } from "@diffgazer/ui/lib/utils";
-import { useNavigate } from "@tanstack/react-router";
+import type { useNavigate } from "@tanstack/react-router";
 import { PathValue } from "@/components/shared/path-value";
 import { InfoField } from "./info-field";
 
 interface ContextSidebarProps {
-  context: ContextInfo;
+  context: HomeContextInfo;
+  /** Injected like the menu's, so the panel's two settings routes are observable. */
+  navigate: ReturnType<typeof useNavigate>;
   isTrusted: boolean;
   projectPath?: string;
   pending?: boolean;
@@ -18,12 +20,12 @@ const CONTEXT_TITLE_ID = "home-context-title";
 
 export function ContextSidebar({
   context,
+  navigate,
   isTrusted,
   projectPath,
   pending = false,
   onOpenLastRun,
 }: ContextSidebarProps) {
-  const navigate = useNavigate();
   const rows = buildHomeContextRows({ context, isTrusted, projectPath });
 
   const navigateUnlessPending = (to: "/settings/providers" | "/settings/trust-permissions") => {
@@ -65,7 +67,7 @@ export function ContextSidebar({
         </InfoField>
         <InfoField
           label={rows.lastRun.label}
-          tone="success"
+          tone={rows.lastRun.status === "unavailable" ? "warning" : "success"}
           onClick={pending ? undefined : onOpenLastRun}
           ariaLabel={
             rows.lastRun.meta === undefined

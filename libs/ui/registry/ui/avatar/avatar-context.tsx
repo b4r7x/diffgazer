@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import type { AvatarSize } from "./avatar-variants";
 
 /** Allowed avatar status values. */
 export type AvatarStatus = "idle" | "loading" | "loaded" | "error";
@@ -8,7 +9,7 @@ export type AvatarStatus = "idle" | "loading" | "loaded" | "error";
 /** Context value shared by avatar group. */
 export interface AvatarGroupContextValue {
   /** Default size applied to descendant Avatars that do not set their own size. */
-  size?: "sm" | "md" | "lg" | null;
+  size?: AvatarSize | null;
 }
 
 export const AvatarGroupContext = createContext<AvatarGroupContextValue | undefined>(undefined);

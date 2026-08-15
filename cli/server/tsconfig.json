@@ -7,8 +7,11 @@
   "include": ["src"],
   "exclude": [
     "**/*.test.ts",
+    "**/*.test-support.ts",
     "src/features/review/testing",
     "src/shared/lib/testing",
+    "src/shared/lib/ai/providers/hosted/fixtures.ts",
+    "src/shared/lib/ai/providers/local-http/fixtures.ts",
     "node_modules",
     "dist"
   ]

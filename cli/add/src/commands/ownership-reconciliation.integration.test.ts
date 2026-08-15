@@ -16,6 +16,8 @@ import { ctx } from "../context.js";
 import { addCommand } from "./add/command.js";
 import { diffCommand } from "./diff.js";
 import { removeCommand } from "./remove/command.js";
+import { expectCommandExit } from "./testing/expect-command-exit.js";
+import { writeProjectFixture } from "./testing/project-fixture.js";
 
 let root: string;
 
@@ -29,35 +31,10 @@ afterEach(() => {
 
 describe("dgadd overwrite ownership reconciliation", () => {
   test("reconciles v1 ownership through rollback, diff, remove, and reinstall", async () => {
-    writeFileSync(
-      join(root, "package.json"),
-      `${JSON.stringify({ name: "fixture", type: "module" }, null, 2)}\n`,
-    );
-    writeFileSync(
-      join(root, "tsconfig.json"),
-      JSON.stringify({ compilerOptions: { paths: { "@/*": ["./src/*"] } } }),
-    );
-    writeFileSync(
-      join(root, "diffgazer.json"),
-      `${JSON.stringify(
-        {
-          aliases: {
-            components: "@/components/ui",
-            utils: "@/lib/utils",
-            lib: "@/lib",
-            hooks: "@/hooks",
-          },
-          componentsFsPath: "src/components/ui",
-          libFsPath: "src/lib",
-          hooksFsPath: "src/hooks",
-          tailwind: { css: "src/styles/styles.css" },
-        },
-        null,
-        2,
-      )}\n`,
-    );
-    mkdirSync(join(root, "src/styles"), { recursive: true });
-    writeFileSync(join(root, "src/styles/styles.css"), "");
+    writeProjectFixture(root, {
+      packageJson: { name: "fixture", type: "module" },
+      stylesCss: "",
+    });
 
     const program = createCli({
       name: "dgadd-reconciliation-test",
@@ -89,7 +66,7 @@ describe("dgadd overwrite ownership reconciliation", () => {
     writeFileSync(sharedPath, "export const sharedV1 = true;\n");
 
     const config = JSON.parse(readFileSync(join(root, "diffgazer.json"), "utf-8")) as {
-      installedComponents: Record<
+      installedItems: Record<
         string,
         {
           installedAt: string;
@@ -98,7 +75,7 @@ describe("dgadd overwrite ownership reconciliation", () => {
         }
       >;
     };
-    const accordion = config.installedComponents["ui/accordion"];
+    const accordion = config.installedItems["ui/accordion"];
     if (!accordion) throw new Error("Expected the initial real add to install ui/accordion");
     const renamedSource = accordion.files?.find(
       (file) => file.path.endsWith("/accordion.tsx") && existsSync(join(root, file.path)),
@@ -128,7 +105,7 @@ describe("dgadd overwrite ownership reconciliation", () => {
         item: "ui/accordion",
       },
     ];
-    config.installedComponents["ui/toast"] = {
+    config.installedItems["ui/toast"] = {
       installedAt: "2026-01-01T00:00:00.000Z",
       installedAs: "explicit",
       files: [
@@ -149,11 +126,8 @@ describe("dgadd overwrite ownership reconciliation", () => {
         writeConfigImpl(cwd, next);
         throw new Error("forced overwrite finalization failure");
       });
-      const exit = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+      await expectCommandExit(() => program.parseAsync(addArgs, { from: "user" }));
 
-      await program.parseAsync(addArgs, { from: "user" });
-
-      expect(exit).toHaveBeenCalledWith(1);
       expect(readFileSync(join(root, "diffgazer.json"))).toEqual(manifestBeforeFailure);
       expect(existsSync(cleanPath)).toBe(true);
       expect(existsSync(renamedPath)).toBe(true);
@@ -161,7 +135,6 @@ describe("dgadd overwrite ownership reconciliation", () => {
       expect(existsSync(modifiedPath)).toBe(true);
       expect(existsSync(sharedPath)).toBe(true);
       writeConfig.mockRestore();
-      exit.mockRestore();
 
       await program.parseAsync(addArgs, { from: "user" });
 
@@ -198,9 +171,11 @@ describe("dgadd overwrite ownership reconciliation", () => {
       expect(diffOutput).toContain("1 changed");
 
       log.mockClear();
-      await program.parseAsync(["remove", "ui/accordion", "--cwd", root, "--yes"], {
-        from: "user",
-      });
+      await expectCommandExit(() =>
+        program.parseAsync(["remove", "ui/accordion", "--cwd", root, "--yes"], {
+          from: "user",
+        }),
+      );
       expect(existsSync(modifiedPath)).toBe(true);
       expect(ctx.config.getManifestItems(root)?.["ui/accordion"]).toBeDefined();
       expect(log.mock.calls.flat().join("\n")).toContain("has been modified");

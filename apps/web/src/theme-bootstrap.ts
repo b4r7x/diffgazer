@@ -1,4 +1,4 @@
-import type { ResolvedTheme } from "@/types/theme";
+import type { ResolvedSelectableTheme } from "@diffgazer/core/schemas/config";
 
 /**
  * The reader's stored theme choice. `index.html` runs a parser-blocking inline
@@ -9,13 +9,13 @@ import type { ResolvedTheme } from "@/types/theme";
 export const THEME_STORAGE_KEY = "diffgazer-theme";
 
 /** The browser-chrome color per resolved theme, mirrored by that inline script. */
-export const THEME_COLORS: Record<ResolvedTheme, string> = {
+export const THEME_COLORS: Record<ResolvedSelectableTheme, string> = {
   dark: "#0d1117",
   light: "#ffffff",
 };
 
 /** Stamps the resolved theme onto the document the inline script already themed. */
-export function applyResolvedTheme(theme: ResolvedTheme): void {
+export function applyResolvedTheme(theme: ResolvedSelectableTheme): void {
   const root = document.documentElement;
   root.setAttribute("data-theme", theme);
   root.style.colorScheme = theme;

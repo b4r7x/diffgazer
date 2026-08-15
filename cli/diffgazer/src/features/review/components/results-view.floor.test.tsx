@@ -5,7 +5,7 @@ import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root
 import { ReviewResultsView } from "./results-view";
 
 vi.mock("@diffgazer/core/api/hooks", () => ({
-  useInit: () => ({ data: undefined, isLoading: false }),
+  useConfigurationInit: () => ({ data: undefined, isLoading: false }),
 }));
 
 afterEach(() => {

@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { RegistryFileSchema, RegistryItemSchema } from "../registry.js";
 
-export const RegistrySourceFileSchema = RegistryFileSchema.pick({
+const RegistrySourceFileSchema = RegistryFileSchema.pick({
   path: true,
   type: true,
   target: true,
 });
 
-export const RegistrySourceItemSchema = RegistryItemSchema.extend({
+const RegistrySourceItemSchema = RegistryItemSchema.extend({
   files: z.array(RegistrySourceFileSchema),
 });
 

@@ -57,7 +57,7 @@ Prerequisites:
 
 ## Visible vs. hidden registry items
 
-`registry.json` is the visible catalog of directly installable items. Items marked `"hidden": true` in their `meta` are internal dependencies (e.g. `portal`, shared primitives). They are not listed in the public registry index but install transitively when a visible item declares them in `registryDependencies`. The public `registry.json` served to consumers contains only visible items; hidden items keep per-item JSON files on disk so transitive resolution works, but they do not appear in `dgadd list` or `npx shadcn add` catalogs.
+`registry.json` is the visible catalog of directly installable items. Items marked `"hidden": true` in their `meta` are internal dependencies (e.g. `portal`, shared primitives). They are not listed in the public registry index but install transitively when a visible item declares them in `registryDependencies`. The public `registry.json` served to consumers contains only visible items; hidden items keep per-item JSON files on disk so transitive resolution works, but they do not appear in `dgadd list` or `npx shadcn add` catalogs. The one exception is the hidden `use-*` keys shims (`use-navigation`, `use-focus-restore`, `use-focus-trap`, `use-scroll-lock`): the public-registry build inlines them into the consumers that need them and removes their per-item JSON, so they are not transitively resolvable and no item may declare them as a `registryDependency`.
 
 ## Keyboard integration
 

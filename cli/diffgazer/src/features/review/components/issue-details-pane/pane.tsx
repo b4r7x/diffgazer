@@ -2,11 +2,11 @@ import {
   type DetailsEmptyKind,
   getDetailsEmptyCopy,
   type IssueDetailsPresentation,
-  sanitizeTerminalText,
   toIssueDetailsPresentation,
 } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { type IssueTab, isIssueTab } from "@diffgazer/core/schemas/presentation";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { hasSuggestedPatch, type ReviewIssue } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import { EmptyState } from "../../../../components/ui/empty-state";
 import { ScrollArea } from "../../../../components/ui/scroll-area";
@@ -24,7 +24,7 @@ export interface IssueDetailsPaneProps {
   emptyKind?: DetailsEmptyKind;
   activeTab: IssueTab;
   onTabChange: (tab: IssueTab) => void;
-  completedSteps: Set<number>;
+  completedSteps: ReadonlySet<number>;
   onToggleStep: (step: number) => void;
   subZone?: IssueDetailsSubZone;
   truncateHeader?: boolean;
@@ -152,7 +152,7 @@ export function IssueDetailsPane({
             <Tabs.Trigger value="details">Details</Tabs.Trigger>
             <Tabs.Trigger value="explain">Explain</Tabs.Trigger>
             {issue.trace?.length ? <Tabs.Trigger value="trace">Trace</Tabs.Trigger> : null}
-            {issue.suggested_patch ? <Tabs.Trigger value="patch">Patch</Tabs.Trigger> : null}
+            {hasSuggestedPatch(issue) ? <Tabs.Trigger value="patch">Patch</Tabs.Trigger> : null}
           </Tabs.List>
         ) : null}
         <Tabs.Content value="details">

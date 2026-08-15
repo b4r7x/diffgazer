@@ -223,27 +223,30 @@ function fallbackIssueEvidence(issue: ReviewIssue): EvidenceRef[] {
   ];
 }
 
+/**
+ * Resolves one issue's evidence. Code evidence is always re-derived from the
+ * diff under review and ordered first: an excerpt the results view renders as
+ * code must be the reviewed source, never provider-authored text dressed as it.
+ * Complete provider references of every other type are retained after it.
+ */
 export function createIssueEvidenceResolver(diff: ParsedDiff): (issue: ReviewIssue) => ReviewIssue {
   let files: Map<string, IndexedFileDiff> | undefined;
 
   return (issue) => {
-    const completeEvidence = issue.evidence.filter(isCompleteEvidenceReference);
-    if (completeEvidence.length > 0) {
-      return completeEvidence.length === issue.evidence.length
-        ? issue
-        : { ...issue, evidence: completeEvidence };
-    }
-
     const normalizedIssue = normalizeIssueLineFields(issue);
+    const retainedReferences = normalizedIssue.evidence.filter(
+      (reference) => reference.type !== "code" && isCompleteEvidenceReference(reference),
+    );
     files ??= indexDiffFiles(diff);
     const file = files.get(normalizedIssue.file);
     const extractedEvidence = file
       ? extractEvidenceFromDiff(file, normalizedIssue.line_start, normalizedIssue.line_end)
       : [];
+    const codeEvidence =
+      extractedEvidence.length > 0 ? extractedEvidence : fallbackIssueEvidence(normalizedIssue);
     return {
       ...normalizedIssue,
-      evidence:
-        extractedEvidence.length > 0 ? extractedEvidence : fallbackIssueEvidence(normalizedIssue),
+      evidence: [...codeEvidence, ...retainedReferences],
     };
   };
 }

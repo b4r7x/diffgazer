@@ -1,6 +1,10 @@
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { describe, expect, it } from "vitest";
-import { normalizeIssueLineFields, validateIssueCompleteness } from "./normalization.js";
+import {
+  dropProviderTrace,
+  normalizeIssueLineFields,
+  validateIssueCompleteness,
+} from "./normalization.js";
 
 describe("validateIssueCompleteness", () => {
   it("returns true for a complete issue", () => {
@@ -100,5 +104,33 @@ describe("normalizeIssueLineFields", () => {
   it("returns the same reference when nothing needs normalizing", () => {
     const issue = makeIssue({ line_start: 3, line_end: 7 });
     expect(normalizeIssueLineFields(issue)).toBe(issue);
+  });
+});
+
+describe("dropProviderTrace", () => {
+  it("removes provider-authored trace steps before persistence", () => {
+    const issue = makeIssue({
+      trace: [
+        {
+          step: 1,
+          tool: "generateAnalysis",
+          inputSummary: "inspect diff",
+          outputSummary: "found issue",
+          timestamp: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    });
+
+    const result = dropProviderTrace(issue);
+    expect(result).not.toHaveProperty("trace");
+    expect(result).toMatchObject({
+      id: issue.id,
+      title: issue.title,
+    });
+  });
+
+  it("returns the same issue when no provider trace is present", () => {
+    const issue = makeIssue();
+    expect(dropProviderTrace(issue)).toBe(issue);
   });
 });

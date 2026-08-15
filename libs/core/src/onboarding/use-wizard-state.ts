@@ -12,11 +12,8 @@ import {
   type OnboardingDraft,
   resetWizardProduct,
 } from "./defaults.js";
-import {
-  areConfigurationInputsEqual,
-  areDraftsEqual,
-  scrubLiteralSecret,
-} from "./draft-equality.js";
+import { areConfigurationInputsEqual, areDraftsEqual } from "./draft-equality.js";
+import { scrubLiteralSecret } from "./draft-secrets.js";
 import { getClientSafeError } from "./redact-client-error.js";
 import { buildConfigPayload, type SaveWizardCallbacks, saveWizard } from "./save-wizard.js";
 import { getStepAt } from "./steps.js";
@@ -26,11 +23,9 @@ const CLEANUP_ERROR_PREFIX = "Failed to remove the incomplete configuration";
 const DRAFT_CONFIGURATION_ERROR_PREFIX = "Could not prepare this configuration for model discovery";
 const SAVE_COMPLETION_ERROR_PREFIX = "Configuration saved, but completion failed";
 
-export type WizardSaveCallbacks = SaveWizardCallbacks;
-
 export interface UseWizardStateOptions {
   initial?: OnboardingDraft;
-  callbacks?: WizardSaveCallbacks;
+  callbacks?: SaveWizardCallbacks;
   onComplete?: () => Promise<void> | void;
   onCleanupError?: (message: string) => void;
 }
@@ -60,9 +55,18 @@ export interface UseWizardStateResult {
   setProduct: (productId: RunnableProductId) => void;
   complete: () => Promise<boolean>;
   cleanupCreatedConfiguration: () => Promise<void>;
+  /** Best-effort revoke for tab-close cleanup via {@link SaveWizardCallbacks.revokeConfigurationOnPageHide}. */
+  revokeCreatedConfigurationOnPageHide: () => void;
 }
 
 type CreatedConfiguration = Pick<ClientConfigurationSummary, "configurationId" | "revision">;
+/**
+ * A patch for the current draft. `configurationInput` may only refine the
+ * product the draft already targets: the product/transport tuple is owned by
+ * the stored plan, and {@link UseWizardStateResult.setProduct} is the only
+ * product transition. Cross-product input is rejected by
+ * {@link keepsProductTuple}.
+ */
 type OnboardingDraftUpdate = Partial<Omit<OnboardingDraft, "kind" | "plan">>;
 
 /** A committed draft record together with the transport tuple it addresses. */
@@ -104,11 +108,15 @@ function updateRunnableDraft(
   current: OnboardingDraft,
   partial: OnboardingDraftUpdate,
 ): OnboardingDraft {
+  const configurationChanged =
+    partial.configurationInput !== undefined &&
+    !areConfigurationInputsEqual(partial.configurationInput, current.configurationInput);
   const next = { ...current, ...partial };
   if (!invalidatesAcknowledgement(current, partial)) return next;
 
   return {
     ...next,
+    ...(configurationChanged ? { selectedModelId: null } : {}),
     ...(partial.configurationInput || partial.selectedModelId !== undefined
       ? { conformanceStatus: "not-tested" as const }
       : {}),
@@ -116,11 +124,23 @@ function updateRunnableDraft(
   };
 }
 
-function canCurrentStepProceed(data: OnboardingDraft, stepIndex: number): boolean {
-  const step = data.plan.steps[stepIndex];
-  if (!step) throw new RangeError(`No onboarding step at index ${stepIndex}`);
-  return canProceed(step.id, data);
+/**
+ * The product/transport tuple belongs to the stored plan, so a draft patch may
+ * only refine the product the draft already targets. `setProduct` stays the
+ * exclusive product transition, and a draft can never pair one product's
+ * configuration with another product's plan.
+ */
+function keepsProductTuple(current: OnboardingDraft, partial: OnboardingDraftUpdate): boolean {
+  const input = partial.configurationInput;
+  if (!input) return true;
+  return (
+    input.productId === current.plan.productId &&
+    input.transportFamily === current.plan.transportFamily
+  );
 }
+
+const CROSS_PRODUCT_UPDATE_ERROR =
+  "Onboarding draft updates cannot change the product; select the product first.";
 
 export function useWizardState(options: UseWizardStateOptions = {}): UseWizardStateResult {
   const { initial = getInitialWizardData(), callbacks, onComplete, onCleanupError } = options;
@@ -154,7 +174,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
   const currentStep = getStepAt(wizardData.plan, stepIndex);
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === steps.length - 1;
-  const canProceedNow = canCurrentStepProceed(wizardData, stepIndex);
+  const canProceedNow = canProceed(currentStep, wizardData);
   // A persisted draft is only addressable while it still describes the edited
   // transport tuple. Model selection alone must not invalidate it.
   const activeDraftConfiguration =
@@ -192,9 +212,10 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     generationDataRef.current = data;
     generationRef.current += 1;
     hasCommittedRef.current = false;
+    pendingDraftRef.current = null;
   }, []);
 
-  const finishCommittedOperation = async (errorPrefix: string, generation: number) => {
+  const finishCommittedOperation = async (generation: number) => {
     if (generation !== generationRef.current) return false;
     setWizardState((current) => ({ ...current, error: null }));
     try {
@@ -203,7 +224,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
       if (generation !== generationRef.current) return false;
       setWizardState((current) => ({
         ...current,
-        error: `${errorPrefix}: ${getClientSafeError(cause, "Retry completion.", wizardData)}`,
+        error: `${SAVE_COMPLETION_ERROR_PREFIX}: ${getClientSafeError(cause, "Retry completion.", wizardData)}`,
       }));
       return true;
     }
@@ -248,6 +269,15 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
       const pendingSave = pendingSaveRef.current;
       if (pendingSave) await pendingSave.catch(() => false);
 
+      const pendingDraft = pendingDraftRef.current;
+      if (pendingDraft) {
+        try {
+          await pendingDraft;
+        } catch {
+          // A rejected draft create never committed a configuration.
+        }
+      }
+
       try {
         await removeCreatedConfiguration();
         return { success: true };
@@ -280,6 +310,12 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
         )}`,
       );
     }
+  };
+
+  const revokeCreatedConfigurationOnPageHide = () => {
+    const created = createdConfigurationRef.current;
+    if (!created) return;
+    callbacks?.revokeConfigurationOnPageHide?.(created.configurationId, created.revision);
   };
 
   // Configuration-bound discovery may only address a record the server has
@@ -342,6 +378,9 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
 
   const next = (partial?: OnboardingDraftUpdate) => {
     setWizardState((current) => {
+      if (partial && !keepsProductTuple(current.data, partial)) {
+        return { ...current, error: CROSS_PRODUCT_UPDATE_ERROR };
+      }
       const step = current.data.plan.steps[current.stepIndex];
       if (!step) throw new RangeError(`No onboarding step at index ${current.stepIndex}`);
       const projectedData = partial ? updateRunnableDraft(current.data, partial) : current.data;
@@ -366,6 +405,9 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
 
   const updateData = (partial: OnboardingDraftUpdate) => {
     setWizardState((current) => {
+      if (!keepsProductTuple(current.data, partial)) {
+        return { ...current, error: CROSS_PRODUCT_UPDATE_ERROR };
+      }
       const data = updateRunnableDraft(current.data, partial);
       if (areDraftsEqual(current.data, data)) return current;
       ensureGenerationFor(data);
@@ -435,7 +477,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     if (!callbacks || pendingSaveRef.current || pendingCleanupRef.current) return false;
     const generation = generationRef.current;
     if (hasCommittedRef.current) {
-      return finishCommittedOperation(SAVE_COMPLETION_ERROR_PREFIX, generation);
+      return finishCommittedOperation(generation);
     }
     setIsSubmitting(true);
     setWizardState((current) => ({ ...current, error: null }));
@@ -469,7 +511,7 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
         generationDataRef.current = data;
         return { ...current, data };
       });
-      return finishCommittedOperation(SAVE_COMPLETION_ERROR_PREFIX, generation);
+      return finishCommittedOperation(generation);
     })();
     pendingSaveRef.current = save;
 
@@ -553,5 +595,6 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
     setProduct,
     complete,
     cleanupCreatedConfiguration,
+    revokeCreatedConfigurationOnPageHide,
   };
 }

@@ -17,6 +17,7 @@ export type {
   UseFocusZoneFocusOptions,
   UseFocusZoneOptions,
   UseFocusZoneReturn,
+  ZoneTransition,
 } from "./use-focus-zone/types.js";
 
 /**
@@ -29,15 +30,7 @@ export function useFocusZone<T extends string>(
   const { scope, containerRef, focusWithinOnly, allowInInput, preventDefault, focus } = options;
 
   const state = useFocusZoneState(options);
-  const {
-    safeZone,
-    setZoneValue,
-    validatedTabCycle,
-    canCycleTabs,
-    zones,
-    enabled,
-    lastFocusedZoneRef,
-  } = state;
+  const { safeZone, setZoneValue, validatedTabCycle, canCycleTabs, zones, enabled } = state;
 
   useFocusZoneKeyboard(options, {
     safeZone,
@@ -48,14 +41,7 @@ export function useFocusZone<T extends string>(
     enabled,
   });
 
-  useFocusZoneFocusSync({
-    zones,
-    safeZone,
-    setZoneValue,
-    enabled,
-    focus,
-    lastFocusedZoneRef,
-  });
+  useFocusZoneFocusSync({ zones, safeZone, setZoneValue, enabled, focus });
 
   const isZone = (...matchZones: T[]) => matchZones.includes(safeZone);
   const getKeyOptions = (zone: T, extra?: UseKeyOptions): UseKeyOptions => ({

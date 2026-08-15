@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
 import {
   composedContains,
   getComposedEventTarget,
@@ -34,7 +34,7 @@ export function resolveFocusTarget(entry: FocusZoneTarget | undefined): {
   return { container: target, target };
 }
 
-export function resolveFocusableTarget(target: HTMLElement): HTMLElement | null {
+function resolveFocusableTarget(target: HTMLElement): HTMLElement | null {
   if (isFocusable(target)) return target;
   return getFirstFocusableElement(target);
 }
@@ -45,9 +45,10 @@ export function useFocusZoneFocusSync<T extends string>(params: {
   setZoneValue: (next: T) => void;
   enabled: boolean;
   focus: UseFocusZoneFocusOptions<T> | undefined;
-  lastFocusedZoneRef: RefObject<T | null>;
 }) {
-  const { zones, safeZone, setZoneValue, enabled, focus, lastFocusedZoneRef } = params;
+  const { zones, safeZone, setZoneValue, enabled, focus } = params;
+
+  const lastFocusedZoneRef = useRef<T | null>(null);
 
   const hasFocusTargets = focus != null;
 
@@ -138,5 +139,5 @@ export function useFocusZoneFocusSync<T extends string>(params: {
 
     repairZoneFocus(safeZone);
     lastFocusedZoneRef.current = safeZone;
-  }, [enabled, hasFocusTargets, safeZone, lastFocusedZoneRef]);
+  }, [enabled, hasFocusTargets, safeZone]);
 }

@@ -1,10 +1,6 @@
 import { formatSeverityFilterLabel } from "@diffgazer/core/review";
-import {
-  calculateSeverityCounts,
-  SEVERITY_ORDER,
-  type UISeverityFilter,
-} from "@diffgazer/core/schemas/presentation";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { SEVERITY_ORDER, type UISeverityFilter } from "@diffgazer/core/schemas/presentation";
+import { calculateSeverityCounts, type ReviewIssue } from "@diffgazer/core/schemas/review";
 import { clampIndex } from "@diffgazer/keys";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
@@ -61,7 +57,7 @@ export function IssueListPane({
   useInput(
     (input, key) => {
       if (effectiveSubZone === "filter") {
-        if (key.downArrow && issues.length > 0) {
+        if ((key.downArrow || input === "j") && issues.length > 0) {
           setSubZone("issues");
         }
         // Left/right/enter/space handled by SeverityFilterGroup.

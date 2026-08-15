@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createQueryClientBase, createQueryRetry } from "./query-client.js";
 
-type RetryFn = (failureCount: number, error: unknown) => boolean;
-
 function httpError(status: number): Error {
   return Object.assign(new Error(`HTTP ${status}`), { status });
 }
@@ -12,7 +10,8 @@ describe("createQueryClientBase", () => {
     const queries = createQueryClientBase().getDefaultOptions().queries;
     expect(queries?.staleTime).toBe(60_000);
 
-    const retry = queries?.retry as RetryFn;
+    const { retry } = queries ?? {};
+    if (typeof retry !== "function") throw new Error("expected a retry predicate default");
     expect(retry(0, httpError(404))).toBe(false);
     expect(retry(0, httpError(500))).toBe(true);
     expect(retry(2, httpError(500))).toBe(false);

@@ -7,13 +7,13 @@ import type {
 } from "@diffgazer/core/schemas/config";
 import { READINESS_PRESENTATION } from "@diffgazer/core/schemas/config";
 import {
-  CLI_UNSUPPORTED_CONFIGURATION,
+  CODEX_CLI_CONFIGURATION,
   configurationStatus,
+  GEMINI_CONFIGURATION,
   LOCAL_OPENAI_CONFIGURATION,
   makeConfigurationInitResponse,
   makeConfigurationListResponse,
   makeReadiness,
-  READY_GEMINI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -25,9 +25,12 @@ import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { createConfigurationActionMocks } from "@/testing/configuration-action-mocks";
 import { useProvidersPageState } from "./use-page-state";
 
+const routeSearch = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
+
 vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({ pathname: "/providers-page-test" }),
   useNavigate: () => vi.fn(),
+  useSearch: () => routeSearch.current,
 }));
 
 function openRouterNotice() {
@@ -35,14 +38,16 @@ function openRouterNotice() {
   return { ...notice, billing: [...notice.billing], privacy: [...notice.privacy] };
 }
 
+const OPENROUTER_CONFIGURATION_ID = "cfg-00000000-0000-4000-8000-0000000000a1";
+
 function makeInitResponse(
   overrides: Partial<ConfigurationInitResponse> = {},
 ): ConfigurationInitResponse {
   return {
     ...makeConfigurationInitResponse([
-      configurationStatus(READY_GEMINI_CONFIGURATION, "ready"),
-      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
-      configurationStatus(CLI_UNSUPPORTED_CONFIGURATION, "unsupported"),
+      configurationStatus(GEMINI_CONFIGURATION, "ready"),
+      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
+      configurationStatus(CODEX_CLI_CONFIGURATION, "unsupported"),
     ]),
     ...overrides,
   };
@@ -68,6 +73,7 @@ describe("useProvidersPageState", () => {
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
     mockApi = createMockApi();
+    routeSearch.current = {};
     clearScopedRouteState("/providers-page-test", "providerId");
     vi.clearAllMocks();
   });
@@ -75,6 +81,32 @@ describe("useProvidersPageState", () => {
   afterEach(() => {
     queryClient.clear();
     clearScopedRouteState("/providers-page-test", "providerId");
+  });
+
+  it("selects a ready configuration through the primary action instead of inspecting it", async () => {
+    const { result } = renderPageHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const readyRow = result.current.filteredProviders.find(
+      (row) => getProviderRowId(row) === "gemini-primary",
+    );
+    expect(readyRow?.readiness.ready).toBe(true);
+
+    act(() => result.current.selection.setSelectedId("gemini-primary"));
+    const selectAction = result.current.providerActions[0];
+    expect(selectAction).toMatchObject({ id: "selectConfiguration", task: "select-configuration" });
+
+    await act(async () => {
+      if (selectAction) result.current.runProviderAction(selectAction);
+    });
+
+    await waitFor(() => {
+      expect(mockApi.selectConfiguration).toHaveBeenCalledWith(
+        "gemini-primary",
+        "gemini-2.5-flash",
+      );
+    });
+    expect(mockApi.inspectConfiguration).not.toHaveBeenCalled();
   });
 
   it("dispatches the selected readiness action instead of key/model branches", async () => {
@@ -107,7 +139,7 @@ describe("useProvidersPageState", () => {
       makeInitResponse({
         configurations: [
           {
-            configuration: { ...READY_GEMINI_CONFIGURATION, revision: 2 },
+            configuration: { ...GEMINI_CONFIGURATION, revision: 2 },
             readiness: makeReadiness("ready", "gemini"),
           },
         ],
@@ -127,7 +159,7 @@ describe("useProvidersPageState", () => {
 
   it("keeps the model dialog on the created configuration after the row id changes", async () => {
     const createdOpenRouter: ClientConfigurationSummary = {
-      configurationId: "openrouter-primary",
+      configurationId: OPENROUTER_CONFIGURATION_ID,
       revision: 1,
       status: "supported",
       transportFamily: "hosted-api",
@@ -147,9 +179,18 @@ describe("useProvidersPageState", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     act(() => result.current.selection.setSelectedId("openrouter"));
-    act(() => result.current.actions.onSetup());
+    const createAction = result.current.providerActions.find((action) => action.id === "dispatch");
+    if (!createAction) throw new Error("Expected the create action");
+    act(() => result.current.runProviderAction(createAction));
     const dialog = result.current.dialogs.current;
     if (dialog?.kind !== "setup") throw new Error("Expected the OpenRouter setup dialog");
+
+    const openrouterAck = {
+      status: "accepted" as const,
+      noticeId: PRODUCT_REGISTRY.openrouter.notice.id,
+      noticeVersion: PRODUCT_REGISTRY.openrouter.notice.noticeVersion,
+      acceptedAt: "2026-01-01T00:00:00.000Z",
+    };
 
     await act(async () => {
       await result.current.handlers.createConfiguration(
@@ -159,7 +200,7 @@ describe("useProvidersPageState", () => {
           productId: "openrouter",
           endpoint: "https://openrouter.ai/api/v1",
         },
-        { continueToModelSelection: true },
+        { continueToModelSelection: true, acknowledgement: openrouterAck },
       );
     });
 
@@ -178,15 +219,67 @@ describe("useProvidersPageState", () => {
     await waitFor(() => {
       expect(
         result.current.filteredProviders.some(
-          (row) => getProviderRowId(row) === "openrouter-primary",
+          (row) => getProviderRowId(row) === OPENROUTER_CONFIGURATION_ID,
         ),
       ).toBe(true);
     });
 
     expect(result.current.dialogs.current?.kind).toBe("model");
     expect(result.current.dialogs.current?.row.configuration?.configurationId).toBe(
-      "openrouter-primary",
+      OPENROUTER_CONFIGURATION_ID,
     );
+    expect(result.current.selection.effectiveSelectedId).toBe(OPENROUTER_CONFIGURATION_ID);
+    expect(result.current.selectedRow?.product.productId).toBe("openrouter");
+  });
+
+  it("keeps selection on the same product after configuration delete", async () => {
+    const createdOpenRouter: ClientConfigurationSummary = {
+      configurationId: OPENROUTER_CONFIGURATION_ID,
+      revision: 1,
+      status: "supported",
+      transportFamily: "hosted-api",
+      productId: "openrouter",
+      endpoint: "https://openrouter.ai/api/v1",
+      selectedModelId: null,
+      notices: [openRouterNotice()],
+      availableActions: ["inspect", "select", "test", "update", "delete"],
+    };
+    vi.mocked(mockApi.deleteConfiguration).mockResolvedValue({
+      action: "delete",
+      status: "succeeded",
+    });
+
+    const initWithOpenRouter = makeInitResponse({
+      configurations: [configurationStatus(createdOpenRouter, "model-missing")],
+    });
+    mockApi.loadConfigurationInit.mockResolvedValue(initWithOpenRouter);
+    mockApi.listConfigurations.mockResolvedValue(makeConfigurationListResponse(initWithOpenRouter));
+
+    const { result, rerender } = renderPageHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.selection.setSelectedId(OPENROUTER_CONFIGURATION_ID));
+    expect(result.current.selectedRow?.product.productId).toBe("openrouter");
+    expect(result.current.selection.effectiveSelectedId).toBe(OPENROUTER_CONFIGURATION_ID);
+
+    const deleteAction = result.current.providerActions.find((action) => action.id === "delete");
+    if (!deleteAction) throw new Error("Expected the delete action");
+    await act(async () => {
+      result.current.runProviderAction(deleteAction);
+    });
+
+    const refreshed = makeInitResponse({ configurations: [] });
+    mockApi.loadConfigurationInit.mockResolvedValue(refreshed);
+    mockApi.listConfigurations.mockResolvedValue(makeConfigurationListResponse(refreshed));
+    await act(async () => {
+      await queryClient.invalidateQueries();
+    });
+    rerender();
+
+    await waitFor(() => {
+      expect(result.current.selection.effectiveSelectedId).toBe("openrouter");
+      expect(result.current.selectedRow?.product.productId).toBe("openrouter");
+    });
   });
 
   it("opens a setup dialog for update readiness without API-key branching", async () => {
@@ -271,6 +364,19 @@ describe("useProvidersPageState", () => {
     act(() => result.current.runProviderAction(create));
 
     expect(result.current.dialogs.current?.kind).toBe("setup");
+  });
+
+  it("seeds the selection from the reconnect deep-link's product param", async () => {
+    routeSearch.current = { product: "local-openai" };
+
+    const { result } = renderPageHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.selectedRow?.product.productId).toBe("local-openai");
+
+    // The link seeds, the user decides: a later selection wins over the param.
+    act(() => result.current.selection.setSelectedId("gemini"));
+    expect(result.current.selectedRow?.product.productId).toBe("gemini");
   });
 });
 

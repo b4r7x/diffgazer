@@ -3,7 +3,6 @@ import { BACK_SHORTCUT, SWITCH_PANE_SHORTCUT } from "@diffgazer/core/schemas/pre
 import { useFocusZone, useKey } from "@diffgazer/keys";
 import { useRef } from "react";
 import { isInteractiveTarget } from "@/features/review/lib/interactive-target";
-import { getMainContent } from "@/lib/main-content";
 
 interface UseReviewProgressKeyboardOptions {
   onViewResults?: () => void;
@@ -35,8 +34,6 @@ export function useReviewProgressKeyboard({
     zones: ["progress", "log", "filters"] as const,
     scope: "review-progress",
     tabCycle: hasError ? undefined : ["progress", "log"],
-    tabCycleScope: "document",
-    tabCycleBoundary: getMainContent,
     focus: {
       autoFocus: true,
       targets: {
@@ -65,7 +62,7 @@ export function useReviewProgressKeyboard({
   );
   // Esc leaves the screen without cancelling the run: the review keeps
   // streaming server-side and home's Resume Last Review picks it back up.
-  // Cancel stays keyboard-reachable via "c" because document-scope Tab no
+  // Cancel stays keyboard-reachable via "c" because pane Tab cycling no
   // longer visits the [Cancel] button.
   useKey(REVIEW_PROGRESS_CONTROLS.leave.key, () => onBack?.(), { enabled: !!onBack });
   useKey(

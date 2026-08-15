@@ -1,18 +1,21 @@
-import { SELECTABLE_THEME_OPTIONS } from "@diffgazer/core/schemas/config";
+import {
+  isSelectableTheme,
+  SELECTABLE_THEME_OPTIONS,
+  type SelectableTheme,
+} from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useId } from "react";
 import { SELECTED_OPTION_ROW } from "@/lib/selected-option-row";
-import { isWebTheme, type WebTheme } from "@/types/theme";
 
 export interface ThemeSelectorContentProps {
-  value: WebTheme;
-  onChange: (value: WebTheme) => void;
+  value: SelectableTheme;
+  onChange: (value: SelectableTheme) => void;
   /** Controlled highlight: the row the keyboard sits on and the row the preview follows. */
-  highlighted: WebTheme;
-  onHighlightChange: (value: WebTheme) => void;
-  onPreviewValueChange?: (value: WebTheme | null) => void;
-  onEnter?: (value: WebTheme) => void;
+  highlighted: SelectableTheme;
+  onHighlightChange: (value: SelectableTheme) => void;
+  onPreviewValueChange?: (value: SelectableTheme | null) => void;
+  onEnter?: (value: SelectableTheme) => void;
   onBoundaryReached?: (direction: "up" | "down") => void;
   enabled?: boolean;
 }
@@ -30,15 +33,15 @@ export function ThemeSelectorContent({
   const labelId = useId();
 
   const handleHighlightChange = (nextValue: string | null) => {
-    if (isWebTheme(nextValue)) onHighlightChange(nextValue);
+    if (isSelectableTheme(nextValue)) onHighlightChange(nextValue);
   };
 
   const handleChange = (nextValue: string) => {
-    if (isWebTheme(nextValue)) onChange(nextValue);
+    if (isSelectableTheme(nextValue)) onChange(nextValue);
   };
 
   const handleEnter = (nextValue: string) => {
-    if (isWebTheme(nextValue)) onEnter?.(nextValue);
+    if (isSelectableTheme(nextValue)) onEnter?.(nextValue);
   };
 
   return (

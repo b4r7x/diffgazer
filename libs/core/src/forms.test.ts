@@ -3,7 +3,8 @@
  */
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { deriveSaveState, isArrayDirty, useSubmitGuard } from "./forms.js";
+import { deriveSaveState, useSubmitGuard } from "./forms.js";
+import { createDeferred } from "./testing/deferred.js";
 
 describe("deriveSaveState", () => {
   it("falls back when nothing is persisted or chosen", () => {
@@ -54,24 +55,6 @@ describe("deriveSaveState", () => {
   });
 });
 
-describe("isArrayDirty", () => {
-  it("is not dirty when there is no choice", () => {
-    expect(isArrayDirty(["a", "b"], null)).toBe(false);
-  });
-
-  it("is dirty when lengths differ", () => {
-    expect(isArrayDirty(["a"], ["a", "b"])).toBe(true);
-  });
-
-  it("is dirty when a persisted item is missing from the choice", () => {
-    expect(isArrayDirty(["a", "b"], ["a", "c"])).toBe(true);
-  });
-
-  it("is not dirty when both contain the same items", () => {
-    expect(isArrayDirty(["a", "b"], ["a", "b"])).toBe(false);
-  });
-});
-
 describe("useSubmitGuard", () => {
   it("starts in non-submitting state", () => {
     const { result } = renderHook(() => useSubmitGuard());
@@ -81,20 +64,17 @@ describe("useSubmitGuard", () => {
   it("flips isSubmitting to true while the guarded fn is pending and back to false after it settles", async () => {
     const { result } = renderHook(() => useSubmitGuard());
 
-    let resolveFn: () => void = () => undefined;
-    const pending = new Promise<void>((resolve) => {
-      resolveFn = resolve;
-    });
+    const pending = createDeferred<void>();
 
     let outcome: Promise<boolean>;
     act(() => {
-      outcome = result.current.withGuard(() => pending);
+      outcome = result.current.withGuard(() => pending.promise);
     });
 
     expect(result.current.isSubmitting).toBe(true);
 
     await act(async () => {
-      resolveFn();
+      pending.resolve();
       await outcome;
     });
 

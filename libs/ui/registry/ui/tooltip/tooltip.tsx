@@ -10,9 +10,10 @@ export interface TooltipProps {
   /** Trigger element (shorthand mode) or full Tooltip.Trigger/Tooltip.Content composition. */
   children: ReactNode;
   /**
-   * Shorthand: when set, Tooltip renders children inside Tooltip.Trigger and content inside
-   * Tooltip.Content automatically. When omitted, compose Tooltip.Trigger and Tooltip.Content
-   * explicitly via children.
+   * Shorthand: when set to renderable content, Tooltip renders children inside Tooltip.Trigger
+   * and content inside Tooltip.Content automatically. When omitted — or falsy, as in the
+   * conditional `content={isTruncated && label}` idiom — compose Tooltip.Trigger and
+   * Tooltip.Content explicitly via children.
    */
   content?: ReactNode;
   /** Disables hover/focus triggering when false (use to suppress tooltips conditionally). */
@@ -27,6 +28,16 @@ export interface TooltipProps {
   defaultOpen?: boolean;
   /** Fired when the open state changes. */
   onOpenChange?: (open: boolean) => void;
+}
+
+/**
+ * Shorthand mode needs content that actually renders something. `content={cond && label}`
+ * is the common conditional idiom, and taking the shorthand branch for it would open an empty
+ * `role="tooltip"` box that the trigger still points at through aria-describedby. `0` is
+ * renderable and stays shorthand.
+ */
+function isRenderableContent(content: ReactNode): boolean {
+  return content != null && content !== false && content !== true && content !== "";
 }
 
 /** Root - manages hover state, delay, and enabled toggle. */
@@ -50,7 +61,7 @@ export function TooltipRoot({
       defaultOpen={defaultOpen}
       onOpenChange={onOpenChange}
     >
-      {content != null ? (
+      {isRenderableContent(content) ? (
         <>
           <PopoverTrigger>{children}</PopoverTrigger>
           <TooltipContent>{content}</TooltipContent>

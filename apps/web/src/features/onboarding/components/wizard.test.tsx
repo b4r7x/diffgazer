@@ -1,6 +1,6 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { getInitialWizardData, type OnboardingDraft } from "@diffgazer/core/onboarding";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { PRODUCT_REGISTRY, SELECTABLE_PRODUCTS } from "@diffgazer/core/providers";
 import { escapeRegExp } from "@diffgazer/core/redaction";
 import type {
   ClientConfigurationAction,
@@ -9,8 +9,8 @@ import type {
 } from "@diffgazer/core/schemas/config";
 import {
   ClientConfigurationActionResponseSchema,
+  CONFORMANCE_TEST_COST_DISCLOSURE,
   READINESS_PRESENTATION,
-  SELECTABLE_PRODUCTS,
 } from "@diffgazer/core/schemas/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -190,6 +190,7 @@ function makeInitResponse(
   return {
     schemaVersion: 2,
     configurations: [],
+    unrecognizedConfigurations: [],
     selectedConfigurationId: null,
     settings: {
       theme: "terminal",
@@ -317,9 +318,23 @@ describe("OnboardingWizard", () => {
     // record, never a client-side guess derived from the product policy.
     await user.click(await screen.findByRole("radio", { name: /gemini-2\.5-pro/i }));
     expect(screen.queryByRole("radio", { name: /gemini-2\.5-flash/i })).not.toBeInTheDocument();
-    expect(mockGetConfigurationModels).toHaveBeenCalledWith("created-configuration");
+    expect(mockGetConfigurationModels).toHaveBeenCalledWith(
+      "created-configuration",
+      expect.any(AbortSignal),
+    );
     await clickNext(user);
     await expectStep(/verify conformance/i);
+    // The first review verifies structured output; Test readiness stays an
+    // optional diagnostic, so its cost is still disclosed here.
+    expect(screen.getByText(/your first review verifies structured review support/i)).toBeVisible();
+    expect(screen.getByText(CONFORMANCE_TEST_COST_DISCLOSURE)).toBeVisible();
+    // The step records an acknowledgement, so its consent copy must not claim a
+    // verification the wizard gives the user no means to perform.
+    expect(
+      screen.getByRole("checkbox", {
+        name: /i understand structured review support is verified on my first review/i,
+      }),
+    ).toBeVisible();
     await user.click(screen.getByRole("checkbox"));
     await clickNext(user);
     await expectStep(/accept product notice/i);
@@ -332,6 +347,10 @@ describe("OnboardingWizard", () => {
       expect(
         mockExecuteConfigurationAction.mock.calls.some(([action]) => action.action === "create"),
       ).toBe(true);
+      // Saving never spends a billed conformance probe.
+      expect(
+        mockExecuteConfigurationAction.mock.calls.some(([action]) => action.action === "test"),
+      ).toBe(false);
       expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
     });
     // Model discovery persists a draft record. Completing setup revokes exactly

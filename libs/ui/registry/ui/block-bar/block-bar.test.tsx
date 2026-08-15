@@ -154,6 +154,17 @@ describe("BlockBar", () => {
     ).toThrow("BlockBar requires `value`");
   });
 
+  it("renders an empty segment child list as zero without throwing", () => {
+    render(
+      <BlockBar label="Empty" max={10} barWidth={5}>
+        {[]}
+      </BlockBar>,
+    );
+
+    const meter = screen.getByRole("meter", { name: "Empty" });
+    expect(meter).toHaveAttribute("aria-valuenow", "0");
+  });
+
   it("clips drawn segments to the configured character width", () => {
     render(
       <BlockBar label="Clipped" max={10} value={25} barWidth={5} filledChar="x" emptyChar="_" />,

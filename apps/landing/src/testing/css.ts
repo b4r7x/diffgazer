@@ -2,12 +2,19 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const css = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), "..", "styles", "index.css"),
-  "utf8",
+/**
+ * Comments carry braces and selector names, so brace scanning and selector
+ * matching would otherwise resolve against prose instead of CSS.
+ */
+function stripComments(source: string): string {
+  return source.replaceAll(/\/\*[\s\S]*?\*\//g, "");
+}
+
+const css = stripComments(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "styles", "index.css"), "utf8"),
 );
 
-/** The shipped stylesheet source. */
+/** The shipped stylesheet source, minus comments. */
 export function styleSheet(): string {
   return css;
 }
@@ -36,7 +43,8 @@ export function mediaBlocks(query: string): string {
  * regex of the whole rule keeps these assertions about the contract instead of
  * about how the declarations happen to be formatted.
  */
-export function ruleFor(block: string, ...selectors: string[]): string {
+export function ruleFor(source: string, ...selectors: string[]): string {
+  const block = stripComments(source);
   let depth = 0;
   let start = 0;
   let open = -1;

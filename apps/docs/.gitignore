@@ -19,6 +19,7 @@ public/sitemap.xml
 public/robots.txt
 public/llms.txt
 public/llms-full.txt
-public/.llms-markdown-manifest.json
+.public-llms-manifest.json
 public/privacy.md
 public/terms.md
+docs-local-*/

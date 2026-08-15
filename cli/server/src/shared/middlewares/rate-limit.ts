@@ -1,3 +1,4 @@
+import { ErrorCode } from "@diffgazer/core/schemas/errors";
 import type { Context, Next } from "hono";
 import { errorResponse } from "../lib/http/response.js";
 
@@ -39,7 +40,7 @@ export const createRateLimitMiddleware =
       );
       const retryAfter = Math.max(1, Math.ceil(remainingMs / 1000));
       c.header("Retry-After", String(retryAfter));
-      return errorResponse(c, "Too many requests", "RATE_LIMITED", 429);
+      return errorResponse(c, "Too many requests", ErrorCode.RATE_LIMITED, 429);
     }
 
     await next();

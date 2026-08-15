@@ -1,7 +1,13 @@
 import { isApiError } from "../api/types.js";
 import type { LensStat } from "../schemas/events/index.js";
-import type { ReviewIssue, ReviewResponse, ReviewSeverity } from "../schemas/review/index.js";
-import type { ReviewEvent } from "./state.js";
+import type {
+  ExecutionReceipt,
+  ReviewIssue,
+  ReviewResponse,
+  ReviewSeverity,
+  TerminalOutcome,
+  UsageAvailability,
+} from "../schemas/review/index.js";
 
 /**
  * The phase vocabulary for a live review screen: streaming progress, then the
@@ -20,83 +26,79 @@ export interface SavedReviewData {
   minSeverity?: ReviewSeverity;
 }
 
-/**
- * Pure query-state input for {@link resolveSavedReviewOutcome}, mapped from each
- * surface's saved-review query (TanStack on both) so this resolver stays
- * decoupled from the query library. `notFound` is the caller's pre-computed
- * "the error is a 404" check.
- */
-export interface SavedReviewQueryState {
-  status: "pending" | "success" | "error";
-  review:
-    | {
-        metadata: { id: string; durationMs?: number | null };
-        result?: { issues: ReviewIssue[] } | null;
-        lensStats?: LensStat[];
-        droppedDuplicates?: number;
-        droppedBelowThreshold?: number;
-        minSeverity?: ReviewSeverity;
-      }
-    | null
-    | undefined;
-  error: unknown;
-  notFound: boolean;
-}
-
-export interface SavedReviewQuery {
-  isSuccess: boolean;
-  isError: boolean;
-  data: ReviewResponse | undefined;
-  error: unknown;
-}
-
-export interface OrchestratorStats {
+export interface SavedReviewRecord {
+  metadata: { id: string; durationMs?: number | null };
+  result?: { issues: ReviewIssue[] } | null;
+  executionSnapshot?: {
+    receipt: ExecutionReceipt;
+  };
+  execution?: {
+    receipt: ExecutionReceipt;
+  };
   lensStats?: LensStat[];
   droppedDuplicates?: number;
   droppedBelowThreshold?: number;
   minSeverity?: ReviewSeverity;
 }
 
-export function extractOrchestratorStats(
-  state: { events: readonly ReviewEvent[] } | null,
-): OrchestratorStats {
-  const events = state?.events ?? [];
-  for (let index = events.length - 1; index >= 0; index -= 1) {
-    const event = events[index];
-    if (event?.type === "orchestrator_complete") {
-      return {
-        lensStats: event.lensStats,
-        droppedDuplicates: event.droppedDuplicates,
-        droppedBelowThreshold: event.droppedBelowThreshold,
-        minSeverity: event.minSeverity,
-      };
-    }
-  }
-  return {};
-}
+/**
+ * Pure query-state input for {@link resolveSavedReviewOutcome}, mapped from each
+ * surface's saved-review query (TanStack on both) so this resolver stays
+ * decoupled from the query library. Keeping the status as the discriminant means
+ * an error can never arrive dressed as a result-less success. `notFound` is the
+ * caller's pre-computed "the error is a 404" check.
+ */
+export type SavedReviewQueryState =
+  | { status: "pending" }
+  | { status: "success"; review: SavedReviewRecord | null }
+  | { status: "error"; error: unknown; notFound: boolean };
+
+/** The subset of a TanStack query result this adapter reads, discriminant intact. */
+export type SavedReviewQuery =
+  | { status: "pending" }
+  | { status: "success"; data: ReviewResponse | undefined }
+  | { status: "error"; error: unknown };
 
 export function toSavedReviewQueryState(query: SavedReviewQuery): SavedReviewQueryState {
-  let status: SavedReviewQueryState["status"] = "pending";
-  if (query.isSuccess) {
-    status = "success";
-  } else if (query.isError) {
-    status = "error";
+  if (query.status === "success") {
+    return { status: "success", review: query.data?.review ?? null };
   }
+  if (query.status === "error") {
+    return {
+      status: "error",
+      error: query.error,
+      notFound: isApiError(query.error) && query.error.status === 404,
+    };
+  }
+  return { status: "pending" };
+}
 
-  return {
-    status,
-    review: query.data?.review ?? null,
-    error: query.error,
-    notFound: isApiError(query.error) && query.error.status === 404,
-  };
+export interface SavedReviewTerminalData {
+  reviewId: string;
+  durationMs: number | undefined;
+  outcome: Exclude<TerminalOutcome, "completed">;
+  usageAvailability: UsageAvailability;
 }
 
 export type SavedReviewOutcome =
   | { kind: "results"; data: SavedReviewData }
+  | { kind: "terminal"; data: SavedReviewTerminalData }
   | { kind: "fallback-to-stream" }
   | { kind: "report-error"; error: unknown }
   | { kind: "loading" }
   | { kind: "not-found" };
+
+function resolveTerminalExecution(review: SavedReviewRecord): SavedReviewTerminalData | null {
+  const receipt = review.executionSnapshot?.receipt ?? review.execution?.receipt;
+  if (!receipt || receipt.outcome === "completed") return null;
+
+  return {
+    reviewId: review.metadata.id,
+    durationMs: review.metadata.durationMs ?? undefined,
+    outcome: receipt.outcome,
+    usageAvailability: receipt.usageAvailability,
+  };
+}
 
 /**
  * Resolves how to present a reviewId-addressed saved review. Canonical behavior
@@ -110,6 +112,10 @@ export function resolveSavedReviewOutcome(
 ): SavedReviewOutcome {
   if (queryState.status === "success") {
     const review = queryState.review;
+    const terminal = review ? resolveTerminalExecution(review) : null;
+    if (terminal) {
+      return { kind: "terminal", data: terminal };
+    }
     if (review?.result) {
       return {
         kind: "results",

@@ -1,17 +1,15 @@
 import type { LocalHttpProductId } from "@diffgazer/core/schemas/config";
 import type { ExecutionResult } from "@diffgazer/core/schemas/review";
 import { ReviewResultSchema } from "@diffgazer/core/schemas/review";
-import { type BudgetLedger, createBudgetLedger } from "../../budget/ledger.js";
+import { composeExecutionDeadline } from "../../deadline.js";
 import type { Adapter, AdapterExecuteRequest } from "../../types.js";
 import {
-  conservativeAttemptEstimate,
   createCompletedExecutionResult,
   createFailedExecutionResult,
   type FailedTerminalOutcome,
-  ZERO_ATTEMPT_ACTUAL,
 } from "../execution-receipt.js";
 import {
-  discoverLocalHttpModels,
+  discoverAtResolvedEndpoint,
   generateLocalHttpObject,
   reviewResultJsonSchema,
 } from "./discovery.js";
@@ -19,18 +17,19 @@ import {
   type LocalHttpAuth,
   type LocalHttpDependencies,
   resolveLocalHttpDependencies,
+  resolveLocalHttpTransport,
 } from "./request.js";
+import { createAdmittedResponseByteBudget } from "./response-byte-budget.js";
 
 async function resolveLocalHttpAuthForExecute(
   request: AdapterExecuteRequest,
-  resolveBearerToken: LocalHttpDependencies["resolveBearerToken"],
 ): Promise<LocalHttpAuth> {
   const authentication = request.evidenceKey.authentication ?? "none";
-  if (authentication !== "optional-local-bearer" || !resolveBearerToken) {
+  if (authentication !== "optional-local-bearer") {
     return { authentication, bearerToken: null };
   }
 
-  return { authentication, bearerToken: await resolveBearerToken(request) };
+  return { authentication, bearerToken: (await request.resolveCredential?.()) ?? null };
 }
 
 function createFailedResult(
@@ -52,7 +51,7 @@ export function createLocalHttpAdapter(
     transportFamily: "local-http",
     async execute(request) {
       const resolved = resolveLocalHttpDependencies(dependencies);
-      const { fetch: fetcher, now } = resolved;
+      const { now } = resolved;
       const startedAt = now().toISOString();
 
       if (request.evidenceKey.productId !== productId) {
@@ -63,90 +62,88 @@ export function createLocalHttpAdapter(
         return createFailedResult(request, "cancelled", startedAt, startedAt, 1);
       }
 
+      // The per-review usage budget is owned by the execution spine (see
+      // `ai/types.ts`); a second ledger here would double-reserve the same attempt.
       const limits = request.evidenceKey.limits;
-      const ledger: BudgetLedger = createBudgetLedger(limits);
-      const reservation = ledger.reserveAttempt(conservativeAttemptEstimate(limits));
-      if (!reservation.ok) {
-        return createFailedResult(
-          request,
-          reservation.error.outcome,
-          startedAt,
-          now().toISOString(),
-          1,
-        );
-      }
+      const responseByteBudget = createAdmittedResponseByteBudget(limits.maxResponseBytes);
 
-      const releaseReservation = () => {
-        ledger.releaseReservation(reservation.value);
+      const finishWithFailure = (outcome: FailedTerminalOutcome): ExecutionResult =>
+        createFailedResult(request, outcome, startedAt, now().toISOString(), 1);
+
+      // Discovery, DNS resolution, model verification, and generation all spend
+      // the same admitted wall time and response-byte envelope.
+      const deadline = composeExecutionDeadline(limits.wallTimeMs, request.signal);
+      const outcomeFor = (fallback: FailedTerminalOutcome): FailedTerminalOutcome => {
+        if (deadline.expired()) return "timed-out";
+        return deadline.signal.aborted ? "cancelled" : fallback;
       };
 
       try {
         const endpoint = request.evidenceKey.normalizedEndpoint;
         if (!endpoint) {
-          releaseReservation();
-          return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
+          return finishWithFailure("transport-failed");
         }
 
-        const auth = await resolveLocalHttpAuthForExecute(request, dependencies.resolveBearerToken);
+        const auth = await resolveLocalHttpAuthForExecute(request);
 
-        const discovery = await discoverLocalHttpModels(
-          { productId, endpoint, auth, signal: request.signal },
-          resolved,
+        const transport = await resolveLocalHttpTransport(endpoint, {
+          ...resolved,
+          signal: deadline.signal,
+        });
+        if (!transport.ok) {
+          return finishWithFailure("transport-failed");
+        }
+        const boundEndpoint = transport.value.endpoint;
+        const fetcher = transport.value.fetcher;
+
+        const discovery = await discoverAtResolvedEndpoint(
+          {
+            productId,
+            endpoint: boundEndpoint,
+            auth,
+            signal: deadline.signal,
+            deadlineMs: deadline.remainingMs(),
+            responseByteBudget,
+          },
+          fetcher,
         );
         if (!discovery.ok) {
-          releaseReservation();
-          const outcome =
-            request.signal?.aborted && discovery.error.code === "endpoint-unreachable"
-              ? "cancelled"
-              : "transport-failed";
-          return createFailedResult(request, outcome, startedAt, now().toISOString(), 1);
+          return finishWithFailure(outcomeFor("transport-failed"));
         }
 
         if (discovery.value.runtime.version !== request.evidenceKey.runtime?.version) {
-          releaseReservation();
-          return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
+          return finishWithFailure("transport-failed");
         }
 
         if (
           !discovery.value.models.some((model) => model.modelId === request.evidenceKey.modelId)
         ) {
-          releaseReservation();
-          return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
+          return finishWithFailure("transport-failed");
         }
 
         const generation = await generateLocalHttpObject({
           productId,
-          endpoint,
+          endpoint: boundEndpoint,
           modelId: request.evidenceKey.modelId,
           prompt: request.prompt,
+          ...(request.systemPrompt ? { systemPrompt: request.systemPrompt } : {}),
           auth,
           fetcher,
-          maxResponseBytes: limits.maxResponseBytes,
-          deadlineMs: limits.wallTimeMs,
+          maxResponseBytes: responseByteBudget.requestLimit(),
+          maxOutputTokens: limits.maxOutputTokens,
+          responseByteBudget,
+          deadlineMs: deadline.remainingMs(),
           schema: reviewResultJsonSchema(),
-          signal: request.signal,
+          signal: deadline.signal,
         });
 
         if (!generation.ok) {
-          releaseReservation();
-          return createFailedResult(
-            request,
-            generation.error.code,
-            startedAt,
-            now().toISOString(),
-            1,
-          );
+          return finishWithFailure(outcomeFor(generation.error.code));
         }
 
         const parsed = ReviewResultSchema.safeParse(generation.value);
         if (!parsed.success) {
-          releaseReservation();
-          return createFailedResult(request, "schema-failed", startedAt, now().toISOString(), 1);
-        }
-
-        const settle = ledger.settleAttempt(reservation.value, ZERO_ATTEMPT_ACTUAL);
-        if (!settle.ok) {
-          return createFailedResult(request, "budget-exhausted", startedAt, now().toISOString(), 1);
+          return finishWithFailure("schema-failed");
         }
 
         return createCompletedExecutionResult(request, parsed.data, {
@@ -155,8 +152,9 @@ export function createLocalHttpAdapter(
           attemptCount: 1,
         });
       } catch {
-        releaseReservation();
-        return createFailedResult(request, "transport-failed", startedAt, now().toISOString(), 1);
+        return finishWithFailure("transport-failed");
+      } finally {
+        deadline.dispose();
       }
     },
   };

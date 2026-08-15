@@ -29,8 +29,6 @@ export interface BundlerConfig {
   peerDeps?: Set<string>;
   /** Deps to strip from auto-detected dependencies (e.g. cva, clsx that ship with the project). */
   excludedDeps?: Set<string>;
-  aliasPrefixes?: string[];
-  transformPath?: (path: string) => string;
   /** Return extra top-level fields to merge into the bundle JSON (e.g. theme, styles). */
   extraContent?: (rootDir: string) => Record<string, unknown>;
   clientDefault?: boolean;

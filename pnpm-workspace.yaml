@@ -8,14 +8,13 @@ packages:
 allowBuilds:
   "esbuild@0.27.3": true
   msw: false
-  node-pty: true
+  "node-pty@1.1.0": true
   "sharp@0.35.3": true
 
-minimumReleaseAgeExclude:
-  - hono@4.12.34
+minimumReleaseAge: 1440
 
 overrides:
-  "@types/node": "^25.2.3"
+  "@types/node": "^22.10.0"
   "@types/react": "^19.2.13"
   "@types/react-dom": "^19.2.3"
   vitest: "^4.1.0"

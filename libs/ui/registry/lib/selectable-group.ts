@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import {
-  getEnabledSelectableCollectionItems,
   resolveSelectableCollectionItem,
   type SelectableCollectionItem,
 } from "./selectable-collection";
@@ -46,13 +45,10 @@ export function useSelectableGroupAutoFocus({
     }
     if (hasAutoFocusedRef.current) return;
 
-    const activeItems = getEnabledSelectableCollectionItems(items, disabled);
     const preferredValues = Array.isArray(selectedValue) ? selectedValue : [selectedValue];
-    const target = resolveSelectableCollectionItem(
-      activeItems,
-      highlightedValue,
-      ...preferredValues,
-    );
+    // resolveSelectableCollectionItem already sorts and filters to eligible items;
+    // the effect returned above when disabled, so no pre-filter is needed here.
+    const target = resolveSelectableCollectionItem(items, highlightedValue, ...preferredValues);
     if (!target?.element) return;
 
     target.element.focus();

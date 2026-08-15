@@ -5,7 +5,7 @@ import { safeParseJson } from "@diffgazer/core/json";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import { UuidSchema } from "@diffgazer/core/schemas/fields";
 import { type SavedReview, SavedReviewSchema } from "@diffgazer/core/schemas/review";
-import { atomicWriteFile, isNodeError } from "../../../shared/lib/fs.js";
+import { atomicWriteFile, isNodeError, restrictDirectoryMode } from "../../../shared/lib/fs.js";
 import { log } from "../../../shared/lib/log.js";
 import {
   lenientReadSavedReview,
@@ -21,21 +21,12 @@ export type DetailedReviewRead =
 
 const createStoreError = createError<StoreErrorCode>;
 
+// `execution` is the runtime view SavedReviewSchema derives from
+// `executionSnapshot` on read, so it never lands on disk: persisting it would
+// duplicate the whole receipt and issue list into every review file.
 function serializeReview(review: SavedReview): string {
-  if (!review.execution) {
-    return `${JSON.stringify(review, null, 2)}\n`;
-  }
-
-  const normalized = SavedReviewSchema.parse({
-    ...review,
-    result: review.execution.receipt.outcome === "completed" ? review.result : { issues: [] },
-    execution: {
-      receipt: review.execution.receipt,
-      result:
-        review.execution.receipt.outcome === "completed" ? review.execution.result : { issues: [] },
-    },
-  });
-  return `${JSON.stringify(normalized, null, 2)}\n`;
+  const { execution: _execution, ...persisted } = review;
+  return `${JSON.stringify(persisted, null, 2)}\n`;
 }
 
 // Return a path-free client message; log the raw cause (which carries the absolute
@@ -69,16 +60,17 @@ async function safeReadFile(path: string): Promise<Result<string, StoreError>> {
     if (isNodeError(error, "ENOENT")) {
       return err(createStoreError("NOT_FOUND", "review not found"));
     }
-    if (isNodeError(error, "EACCES")) {
+    if (isNodeError(error, "EACCES") || isNodeError(error, "EPERM")) {
       return err(storeIoError("PERMISSION_ERROR", "Permission denied reading review", path, error));
     }
-    return err(storeIoError("PARSE_ERROR", "Failed to read review", path, error));
+    return err(storeIoError("READ_ERROR", "Failed to read review", path, error));
   }
 }
 
 async function ensureReviewsDir(): Promise<Result<void, StoreError>> {
   try {
     await mkdir(REVIEWS_DIR, { recursive: true, mode: 0o700 });
+    await restrictDirectoryMode(REVIEWS_DIR, 0o700);
     return ok(undefined);
   } catch (error) {
     if (isNodeError(error, "EACCES")) {

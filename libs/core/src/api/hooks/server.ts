@@ -1,18 +1,23 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { type FetchStatus, useMutation, useQuery } from "@tanstack/react-query";
 import type { ServerState } from "../../schemas/presentation/diagnostics.js";
 import { useApi } from "./context.js";
+import { isQueryUnresolved } from "./match-query-state.js";
 import { serverQueries } from "./queries/server.js";
 
 function deriveServerState(
-  isLoading: boolean,
-  error: Error | null,
+  query: {
+    isLoading: boolean;
+    error: Error | null;
+    data: boolean | undefined;
+    fetchStatus: FetchStatus;
+  },
   hasHealthData: boolean,
 ): ServerState {
-  if (isLoading) return { status: "checking" };
+  if (isQueryUnresolved(query)) return { status: "checking" };
   // A failed poll after a prior success must not tear down the gated tree:
   // keep "connected" while cached health data exists, only surface "error"
   // when there is no successful health result to fall back on.
-  if (error && !hasHealthData) return { status: "error", message: error.message };
+  if (query.error && !hasHealthData) return { status: "error", message: query.error.message };
   return { status: "connected" };
 }
 
@@ -41,7 +46,7 @@ export function useServerStatus(): ServerStatusResult {
   const hasSuccessfulHealth = query.data === true;
 
   return {
-    state: deriveServerState(query.isLoading, query.error, hasSuccessfulHealth),
+    state: deriveServerState(query, hasSuccessfulHealth),
     latestState: deriveLatestServerState(query.isFetching, query.error, query.isSuccess),
     retry: () => query.refetch({ throwOnError: true }),
   };

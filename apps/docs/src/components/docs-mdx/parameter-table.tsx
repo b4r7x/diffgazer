@@ -13,9 +13,9 @@ const badgeClass =
   "px-1.5 py-0.5 border border-border text-2xs text-muted-foreground rounded bg-background font-mono";
 const headerClass = `${CHROME_LABEL_CLASS} px-3 pb-2 text-left align-bottom font-normal`;
 
-export function ParameterTable({ params }: { params: Parameter[] }) {
+export function ParameterTable({ params, label }: { params: Parameter[]; label: string }) {
   return (
-    <ScrollArea orientation="horizontal" aria-label="Component parameters">
+    <ScrollArea orientation="horizontal" aria-label={label}>
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-border/60">

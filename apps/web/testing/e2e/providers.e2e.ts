@@ -72,7 +72,7 @@ test("provider readiness remediation is keyboard reachable", async ({ page }) =>
   await expect(
     page
       .getByRole("main")
-      .getByLabel(/Local endpoint unreachable/i)
+      .getByLabel(/Local conformance failed/i)
       .first(),
   ).toBeVisible();
 });

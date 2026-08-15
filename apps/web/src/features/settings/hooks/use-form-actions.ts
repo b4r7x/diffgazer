@@ -5,6 +5,7 @@ import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentati
 import { useKey } from "@diffgazer/keys";
 import { useNavigate } from "@tanstack/react-router";
 import { type RefObject, useState } from "react";
+import { useIsMountedRef } from "@/hooks/use-is-mounted";
 import { useSettingsFormFooter } from "./use-form-footer";
 
 interface UseSettingsFormActionsOptions {
@@ -25,6 +26,7 @@ export function useSettingsFormActions({
   const [error, setError] = useState<string | null>(null);
   const isSaving = saveSettings.isPending;
   const canSave = saveAvailable && !isSaving;
+  const isMountedRef = useIsMountedRef();
 
   const onCancel = () => navigate({ to: "/settings" });
   const onSave = async (): Promise<void> => {
@@ -33,7 +35,7 @@ export function useSettingsFormActions({
     setError(null);
     try {
       await saveSettings.mutateAsync(getSettingsPayload());
-      navigate({ to: "/settings" });
+      if (isMountedRef.current) navigate({ to: "/settings" });
     } catch (saveError) {
       setError(getErrorMessage(saveError, "Failed to save settings"));
     }

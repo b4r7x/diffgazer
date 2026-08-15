@@ -36,8 +36,7 @@ describe("useReviewStart", () => {
     // call-count IS the contract: resume must fire exactly once under StrictMode (effect dedups; double-fire would re-resume the same session and break the once-per-mount guarantee)
     await waitFor(() => {
       expect(options.resume).toHaveBeenCalledTimes(1);
-      expect(result.current.hasStarted).toBe(true);
-      expect(result.current.hasStreamed).toBe(true);
+      expect(result.current.status).toBe("streaming");
     });
     expect(options.resume).toHaveBeenCalledWith("review-123");
   });
@@ -55,7 +54,7 @@ describe("useReviewStart", () => {
     );
 
     rerender({ ...initialProps, configLoading: false });
-    expect(result.current.hasStarted).toBe(false);
+    expect(result.current.status).toBe("idle");
     expect(initialProps.resume).not.toHaveBeenCalled();
 
     rerender({ ...initialProps, configLoading: false, settingsLoading: false });
@@ -64,41 +63,27 @@ describe("useReviewStart", () => {
     expect(initialProps.resume).toHaveBeenCalledWith("review-123");
   });
 
-  it.each([
-    {
-      label: "reviewId=undefined",
-      overrides: {} as Partial<UseReviewStartOptions>,
-    },
+  const skippedResumeCases = [
+    { label: "reviewId=undefined", overrides: {} },
     {
       label: "reviewId='live-review' matches currentReviewId='live-review'",
-      overrides: {
-        reviewId: "live-review",
-        currentReviewId: "live-review",
-      } as Partial<UseReviewStartOptions>,
+      overrides: { reviewId: "live-review", currentReviewId: "live-review" },
     },
-    {
-      label: "configLoading=true",
-      overrides: { reviewId: "review-123", configLoading: true } as Partial<UseReviewStartOptions>,
-    },
-    {
-      label: "settingsLoading=true",
-      overrides: {
-        reviewId: "review-123",
-        settingsLoading: true,
-      } as Partial<UseReviewStartOptions>,
-    },
-    {
-      label: "isConfigured=false",
-      overrides: { reviewId: "review-123", isConfigured: false } as Partial<UseReviewStartOptions>,
-    },
-  ])("does not resume and stays not-started when $label", async ({ overrides }) => {
+    { label: "configLoading=true", overrides: { reviewId: "review-123", configLoading: true } },
+    { label: "settingsLoading=true", overrides: { reviewId: "review-123", settingsLoading: true } },
+    { label: "isConfigured=false", overrides: { reviewId: "review-123", isConfigured: false } },
+  ] satisfies { label: string; overrides: Partial<UseReviewStartOptions> }[];
+
+  it.each(skippedResumeCases)("does not resume and stays not-started when $label", async ({
+    overrides,
+  }) => {
     const options = createOptions(overrides);
 
     const { result } = renderHook(() => useReviewStart(options), {
       wrapper: StrictModeWrapper,
     });
 
-    await waitFor(() => expect(result.current.hasStarted).toBe(false));
+    await waitFor(() => expect(result.current.status).toBe("idle"));
 
     expect(options.resume).not.toHaveBeenCalled();
   });
@@ -113,12 +98,14 @@ describe("useReviewStart", () => {
       onStaleSession: onStale,
     });
 
-    renderHook(() => useReviewStart(options), {
+    const { result } = renderHook(() => useReviewStart(options), {
       wrapper: StrictModeWrapper,
     });
 
     // call-count IS the contract: stale-session callback must fire exactly once under StrictMode (no double-notification on the consumer)
     await waitFor(() => expect(onStale).toHaveBeenCalledTimes(1));
+    // Started but holding no usable stream history: completion must not fire from it.
+    expect(result.current.status).toBe("terminated");
   });
 
   it("invokes onNotFoundInSession with the missing review id (SESSION_NOT_FOUND)", async () => {

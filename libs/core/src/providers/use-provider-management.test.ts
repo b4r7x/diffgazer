@@ -7,6 +7,7 @@ import type { ConfigurationStatus } from "../schemas/config/configuration-status
 import type { ClientConfigurationInput } from "../schemas/config/provider-config.js";
 import { READINESS_PRESENTATION, ReadinessSchema } from "../schemas/config/readiness.js";
 import { createDeferred } from "../testing/deferred.js";
+import { makeClientNotice } from "../testing/provider-fixtures.js";
 import { getProviderRowId, mapProviderList, type ProviderListRow } from "./list.js";
 import { PRODUCT_REGISTRY } from "./product-registry.js";
 import {
@@ -29,13 +30,7 @@ function readyStatus(): ConfigurationStatus {
       productId: "gemini",
       endpoint: "https://generativelanguage.googleapis.com/v1beta",
       selectedModelId: "gemini-2.5-flash",
-      notices: [
-        {
-          ...GEMINI_NOTICE,
-          billing: [...GEMINI_NOTICE.billing],
-          privacy: [...GEMINI_NOTICE.privacy],
-        },
-      ],
+      notices: [makeClientNotice("gemini")],
       availableActions: ["inspect", "select", "test", "update", "delete"],
     },
     readiness: ReadinessSchema.parse({
@@ -72,12 +67,19 @@ function pendingStatus(): ConfigurationStatus {
   };
 }
 
+const ACCEPTED_ACK = {
+  status: "accepted",
+  noticeId: GEMINI_NOTICE.id,
+  noticeVersion: GEMINI_NOTICE.noticeVersion,
+  acceptedAt: CHECKED_AT,
+} as const;
+
 const HOSTED_INPUT = {
   transportFamily: "hosted-api",
   productId: "gemini",
   endpoint: "https://generativelanguage.googleapis.com/v1beta",
   credential: { kind: "literal", value: "write-only-value" },
-} as unknown as ClientConfigurationInput;
+} satisfies ClientConfigurationInput;
 
 function makeMutations(
   overrides: Partial<ProviderManagementMutations> = {},
@@ -89,7 +91,10 @@ function makeMutations(
     updateConfiguration: vi.fn(async () => undefined),
     deleteConfiguration: vi.fn(async () => undefined),
     inspectConfiguration: vi.fn(async () => undefined),
-    testConfiguration: vi.fn(async () => undefined),
+    testConfiguration: vi.fn(async () => ({
+      status: "succeeded" as const,
+      readiness: { explanation: READINESS_PRESENTATION.ready.explanation },
+    })),
     selectConfiguration: vi.fn(async () => undefined),
     ...overrides,
   };
@@ -133,6 +138,7 @@ describe("useProviderManagement", () => {
     await act(async () => {
       await hook.result.current.handleCreateConfiguration(owner, HOSTED_INPUT, {
         continueToModelSelection: true,
+        acknowledgement: ACCEPTED_ACK,
       });
     });
 
@@ -154,6 +160,7 @@ describe("useProviderManagement", () => {
     await act(async () => {
       await hook.result.current.handleCreateConfiguration(owner, HOSTED_INPUT, {
         continueToModelSelection: true,
+        acknowledgement: ACCEPTED_ACK,
       });
     });
 
@@ -175,7 +182,9 @@ describe("useProviderManagement", () => {
     let outcome: Awaited<ReturnType<typeof hook.result.current.handleCreateConfiguration>> | null =
       null;
     await act(async () => {
-      outcome = await hook.result.current.handleCreateConfiguration(owner, HOSTED_INPUT);
+      outcome = await hook.result.current.handleCreateConfiguration(owner, HOSTED_INPUT, {
+        acknowledgement: ACCEPTED_ACK,
+      });
     });
 
     expect(outcome).toEqual({ status: "failed", message: "Endpoint refused the credential" });
@@ -324,6 +333,33 @@ describe("useProviderManagement", () => {
     expect(outcome).toEqual({ status: "succeeded" });
     expect(mutations.testConfiguration).toHaveBeenCalledWith("gemini-primary");
     expect(succeeded).toEqual(["test"]);
+  });
+
+  it("reports a resolved test whose body says failed through the failure channel", async () => {
+    const explanation = READINESS_PRESENTATION["conformance-failed"].explanation;
+    const mutations = makeMutations({
+      testConfiguration: vi.fn(async () => ({
+        status: "failed" as const,
+        readiness: { explanation },
+      })),
+    });
+    const { hook, failures, succeeded, providers } = setup(
+      mutations,
+      mapProviderList([pendingStatus()]),
+    );
+    const row = providers.find(
+      ({ configuration }) => configuration?.configurationId === "gemini-primary",
+    );
+    if (!row) throw new Error("Expected the configured row");
+
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await hook.result.current.handleDispatchReadinessAction(row);
+    });
+
+    expect(outcome).toEqual({ status: "failed", message: explanation });
+    expect(succeeded).toEqual([]);
+    expect(failures).toEqual([expect.objectContaining({ action: "test", message: explanation })]);
   });
 
   it("opens the model dialog instead of selecting a configuration without a model", async () => {

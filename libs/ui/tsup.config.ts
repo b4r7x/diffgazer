@@ -17,13 +17,15 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  getUiPublicClientOutputMap,
+  getPublicClientOutputMap,
+  hasUseClientDirective,
   registryItemToDistKey,
   resolveKeysHookFiles,
 } from "@diffgazer/registry/build-checks";
 import { REGISTRY_ITEM_TYPE } from "@diffgazer/registry/schemas";
 import type { Plugin } from "esbuild";
 import { defineConfig } from "tsup";
+import { NON_REGISTRY_CLIENT_OUTPUTS } from "./scripts/registry/client-entrypoints.js";
 import { UiRegistrySchema } from "./scripts/registry/types.js";
 
 const registryRoot = resolve(import.meta.dirname, "registry");
@@ -179,14 +181,17 @@ export default defineConfig({
     // esbuild strips directives during code splitting, so restore the exhaustive
     // public client map shared with the emitted/package verifier.
     let injected = 0;
-    for (const output of getUiPublicClientOutputMap(registry.items).values()) {
+    for (const output of getPublicClientOutputMap(
+      registry.items,
+      NON_REGISTRY_CLIENT_OUTPUTS,
+    ).values()) {
       const filePath = resolve(dist, `${output}.js`);
       if (!existsSync(filePath)) {
         throw new Error(`Public client entry did not emit: ${output}.js`);
       }
 
       const content = readFileSync(filePath, "utf-8");
-      if (!content.startsWith('"use client"')) {
+      if (!hasUseClientDirective(content)) {
         writeFileSync(filePath, `"use client";\n${content}`);
         injected++;
       }

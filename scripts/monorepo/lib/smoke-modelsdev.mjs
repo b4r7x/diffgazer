@@ -25,7 +25,6 @@ export function enabledSnapshotProviders(overlay) {
   return Object.keys(overlay).filter((id) => id !== "openrouter");
 }
 
-export const PROVIDER_PROBE_STATUSES = ["passed", "failed", "skipped"];
 export const PROVIDER_PROBE_REASONS = [
   "none",
   "network-disabled",
@@ -51,17 +50,35 @@ const NOT_REQUESTED_REASONS = new Set(["network-disabled", "live-opt-in-missing"
 
 export const LIVE_PROBE_OPT_IN_ENV = "DIFFGAZER_LIVE_PROBES";
 
-export const HOSTED_PROBE_CREDENTIAL_ENVS = {
-  gemini: "GOOGLE_API_KEY",
-  zai: "ZAI_API_KEY",
-  openrouter: "OPENROUTER_API_KEY",
-  groq: "GROQ_API_KEY",
-  cerebras: "CEREBRAS_API_KEY",
-  deepseek: "DEEPSEEK_API_KEY",
-  qwen: "QWEN_API_KEY",
-  moonshot: "MOONSHOT_API_KEY",
-  mistral: "MISTRAL_API_KEY",
-};
+function requireCredentialEnvironmentVariable(productId, credentialEnvVars) {
+  const credentialEnv = credentialEnvVars[productId];
+  if (!credentialEnv) {
+    throw new Error(`No credential environment variable mapped for hosted product '${productId}'`);
+  }
+  return credentialEnv;
+}
+
+export function buildHostedProbeTuples(productRegistry, credentialEnvVars) {
+  return Object.values(productRegistry)
+    .filter((product) => product.transportFamily === "hosted-api")
+    .map((product) => {
+      const modelPolicy = product.modelPolicy;
+      const modelId =
+        "suggestedModelId" in modelPolicy && modelPolicy.suggestedModelId
+          ? modelPolicy.suggestedModelId
+          : null;
+      return {
+        providerId: product.id,
+        credentialEnv: requireCredentialEnvironmentVariable(product.id, credentialEnvVars),
+        modelId,
+        // Only qwen gates its probe behind a workspace entitlement, so only qwen
+        // carries the env name; a tuple without these fields needs no entitlement.
+        ...(product.id === "qwen"
+          ? { requiresEntitlement: true, entitlementEnv: "QWEN_WORKSPACE_ID" }
+          : {}),
+      };
+    });
+}
 
 export function formatProviderProbeLine({ providerId, modelId, status, reason, checkedAt }) {
   return (
@@ -84,8 +101,7 @@ export function resolveLiveProbeDisposition(tuple, env, networkEnabled) {
   if (env[LIVE_PROBE_OPT_IN_ENV] !== "1") {
     return { kind: "not-requested", reason: "live-opt-in-missing" };
   }
-  const credentialEnv = HOSTED_PROBE_CREDENTIAL_ENVS[tuple.providerId];
-  if (credentialEnv && !env[credentialEnv]) {
+  if (!env[tuple.credentialEnv]) {
     return { kind: "unavailable", reason: "credential-missing" };
   }
   if (tuple.requiresEntitlement && !env[tuple.entitlementEnv]) {

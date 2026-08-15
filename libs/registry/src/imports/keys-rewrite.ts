@@ -1,4 +1,5 @@
 import { KEYS_PACKAGE_IMPORT_TARGETS } from "./keys-targets.js";
+import { isToken, tokenizeSource } from "./specifier-lexer.js";
 import { extractImportSpecifiers, extractStaticNamedImports } from "./specifiers.js";
 
 function specifierName(specifier: string): string {
@@ -13,7 +14,29 @@ function specifierName(specifier: string): string {
 export interface RewriteKeysImportOptions {
   /** When set, skip rewriting to this hook basename to avoid shim self-imports. */
   shimHookBasename?: string;
-  renderImport: (specifiers: string[], target: string, quote: string, indent: string) => string;
+  renderImport: (specifiers: string[], target: string, quote: string) => string;
+}
+
+/**
+ * Splits a named-import brace body on its top-level commas through the same
+ * lexer that produced the range, so a comment inside the braces is dropped
+ * instead of becoming an unknown specifier.
+ */
+function splitSpecifiers(specifiersBlock: string): string[] {
+  const specifiers: string[] = [];
+  let current: string[] = [];
+
+  for (const token of tokenizeSource(specifiersBlock)) {
+    if (isToken(token, "punctuator", ",")) {
+      if (current.length > 0) specifiers.push(current.join(" "));
+      current = [];
+      continue;
+    }
+    current.push(specifiersBlock.slice(token.start, token.end));
+  }
+  if (current.length > 0) specifiers.push(current.join(" "));
+
+  return specifiers;
 }
 
 function groupSpecifiers(
@@ -23,10 +46,7 @@ function groupSpecifiers(
   const grouped = new Map<string, string[]>();
   const unknown: string[] = [];
 
-  for (const rawSpecifier of specifiersBlock.split(",")) {
-    const specifier = rawSpecifier.trim();
-    if (!specifier) continue;
-
+  for (const specifier of splitSpecifiers(specifiersBlock)) {
     const target = KEYS_PACKAGE_IMPORT_TARGETS.get(specifierName(specifier));
     if (!target) {
       unknown.push(`${typePrefix}${specifier}`.trim());
@@ -112,9 +132,7 @@ export function rewriteKeysPackageImportsInContent(
 
     const replacementParts = [...grouped.entries()]
       .filter(([target]) => !options.shimHookBasename || target !== options.shimHookBasename)
-      .map(([target, specifiers]) =>
-        options.renderImport(specifiers, target, declaration.quote, ""),
-      );
+      .map(([target, specifiers]) => options.renderImport(specifiers, target, declaration.quote));
     if (shimSpecifiers) {
       replacementParts.unshift(renderShimImport(shimSpecifiers, declaration.quote));
     }

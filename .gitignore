@@ -12,7 +12,6 @@ node_modules/
 /docs/*
 !/docs/assets/
 /docs/assets/*
-!/docs/assets/diffgazer-wordmark-figlet.svg
 !/docs/assets/logo.png
 /specs/
 .worktrees/

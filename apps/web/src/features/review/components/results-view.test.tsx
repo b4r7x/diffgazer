@@ -1,4 +1,4 @@
-import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import { FooterProvider } from "@diffgazer/core/footer";
 import type { LensStat } from "@diffgazer/core/schemas/events";
 import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
@@ -7,8 +7,8 @@ import { KeyboardProvider } from "@diffgazer/keys";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { Footer } from "@/components/layout/footer";
 import { MAIN_CONTENT_ID } from "@/lib/main-content";
+import { FooterView } from "@/testing/footer-view";
 
 // Boundary mock: Router is the routing library; tests provide a stub Router context so navigation assertions can be made without a real route tree.
 const { backMock, navigateMock } = vi.hoisted(() => ({
@@ -71,11 +71,6 @@ function createReviewIssue(id: string, title: string, options: IssueOptions = {}
       },
     ],
   });
-}
-
-function FooterView() {
-  const { shortcuts, rightShortcuts } = useFooterData();
-  return <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />;
 }
 
 /** jsdom has no scroll layout; emulate scroll APIs on the details region via scrollTop. */
@@ -510,12 +505,12 @@ describe("ReviewResultsView keyboard regression", () => {
     skipLink.focus();
     expect(skipLink).toHaveFocus();
 
-    // fireEvent retained: low-level Tab dispatch asserts the main boundary declines Tab on the skip link.
+    // fireEvent retained: low-level Tab dispatch asserts the pane cycle declines Tab on the skip link.
     const prevented = !fireEvent.keyDown(window, { key: "Tab", code: "Tab" });
     expect(prevented).toBe(false);
 
     screen.getByRole("listbox").focus();
-    // fireEvent retained: low-level Tab dispatch asserts the document-scope cycle claims Tab inside main.
+    // fireEvent retained: low-level Tab dispatch asserts the pane cycle claims Tab inside a pane.
     const preventedInside = !fireEvent.keyDown(window, { key: "Tab", code: "Tab" });
     expect(preventedInside).toBe(true);
 

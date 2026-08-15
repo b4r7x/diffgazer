@@ -1,11 +1,7 @@
 import { useServerStatus } from "@diffgazer/core/api/hooks";
 import { useFooterData } from "@diffgazer/core/footer";
-import {
-  getProviderDisplay,
-  getProviderDisplayStatus,
-  getUnconfiguredDisplayStatus,
-  PRODUCT_REGISTRY,
-} from "@diffgazer/core/providers";
+import { resolveShellProviderIdentity, type ShellProviderState } from "@diffgazer/core/providers";
+import type { ClientConfigurationSummary, Readiness } from "@diffgazer/core/schemas/config";
 import { useKey, useKeyboardContext } from "@diffgazer/keys";
 import { useCanGoBack, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { type ReactNode, useRef, useState } from "react";
@@ -57,34 +53,34 @@ function useTransportState(): { state: HeaderServerState; retry: () => void } {
   };
 }
 
+function toShellProviderState(config: {
+  loadState: { status: "loading" | "error" | "ready" };
+  selectedConfiguration: ClientConfigurationSummary | null;
+  selectedReadiness: Readiness | null;
+}): ShellProviderState {
+  const { loadState, selectedConfiguration, selectedReadiness } = config;
+  if (loadState.status === "loading") return { status: "loading" };
+  if (loadState.status === "error") return { status: "error" };
+  if (!selectedConfiguration || !selectedReadiness) return { status: "unconfigured" };
+
+  return {
+    status: "configured",
+    readiness: selectedReadiness,
+    transportFamily: selectedConfiguration.transportFamily,
+    productId: selectedConfiguration.productId,
+    modelId: selectedConfiguration.selectedModelId,
+  };
+}
+
 function ConnectedHeader({ serverState }: { serverState: HeaderServerState }) {
   const router = useRouter();
   const canGoBack = useCanGoBack();
   const { pathname } = useLocation();
-  const { loadState, selectedConfiguration, selectedReadiness } = useConfigData();
+  const config = useConfigData();
 
-  let providerStatus = getUnconfiguredDisplayStatus();
-  let providerName = "Not configured";
-
-  if (loadState.status === "loading") {
-    providerName = "Loading configuration";
-    providerStatus = getUnconfiguredDisplayStatus({ label: "Loading", shortLabel: "loading" });
-  } else if (loadState.status === "error") {
-    providerName = "Configuration unavailable";
-    providerStatus = getUnconfiguredDisplayStatus({
-      label: "Unavailable",
-      shortLabel: "unavailable",
-    });
-  } else if (selectedConfiguration && selectedReadiness) {
-    providerStatus = getProviderDisplayStatus(
-      selectedReadiness,
-      selectedConfiguration.transportFamily,
-    );
-    providerName = getProviderDisplay(
-      PRODUCT_REGISTRY[selectedConfiguration.productId].presentation.name,
-      selectedConfiguration.selectedModelId ?? undefined,
-    );
-  }
+  const { providerName, providerStatus } = resolveShellProviderIdentity(
+    toShellProviderState(config),
+  );
   const backAction = resolveBackAction(pathname, canGoBack);
 
   const onBack = () => {
@@ -111,29 +107,21 @@ function isDialogScope(scope: string | null): boolean {
   return scope === "dialog" || scope?.endsWith("-dialog") === true;
 }
 
-/**
- * Not every dialog registers a keys scope (the model-select dialog does not), so
- * the open `<dialog>` in the DOM is the second, authoritative check alongside
- * `isDialogScope`.
- */
-function hasOpenDialog(): boolean {
-  return document.querySelector("dialog[open]") !== null;
-}
-
 export function GlobalShortcuts() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { activeScope } = useKeyboardContext();
+  // Every dialog in the app pushes a `-dialog` scope while it is open, and a
+  // null scope registers no keys at all, so this is the single suppression rule.
   const enabled = pathname !== "/onboarding" && !isDialogScope(activeScope);
   const shortcutScope = enabled ? activeScope : null;
 
   const navigateUnlessCurrent = (to: "/settings" | "/history" | "/help") => {
-    if (hasOpenDialog() || pathname === to) return;
+    if (pathname === to) return;
     void navigate({ to });
   };
 
   const handleQuit = () => {
-    if (hasOpenDialog()) return;
     void shutdown().then(reportShutdownResult);
   };
 

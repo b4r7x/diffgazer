@@ -1,5 +1,14 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { gunzipSync } from "node:zlib";
@@ -10,20 +19,7 @@ const NOTICE_PATH = resolve(PACKAGE_ROOT, "THIRD_PARTY_NOTICES");
 const TSUP_BIN = resolve(PACKAGE_ROOT, "node_modules/.bin/tsup");
 const REQUIRED_PACKAGES = ["@tanstack/react-store", "@tanstack/store", "clsx", "tailwind-merge"];
 
-interface BundlePackage {
-  licenseText: string | null;
-  name: string;
-  packageDir: string;
-}
-
-interface NoticeGenerator {
-  collectBundlePackages: (modulePaths: readonly string[]) => BundlePackage[];
-  collectTsupBundleModuleIds: (metafilePath: string) => string[];
-  collectViteBundleModuleIds: () => Promise<string[]>;
-  generateThirdPartyNotices: (...args: unknown[]) => Promise<unknown>;
-  renderNotices: (packages: readonly BundlePackage[]) => string;
-  resolveModulePackageDir: (modulePath: string) => string | null;
-}
+type NoticeGenerator = typeof import("./generate-third-party-notices.js");
 
 function getPackedTarballName(stdout: string): string {
   const value: unknown = JSON.parse(stdout);
@@ -75,26 +71,11 @@ function readTarGzipEntry(tarballPath: string, entryPath: string): string {
   throw new Error(`Missing tar entry: ${entryPath}`);
 }
 
-function isNoticeGenerator(value: unknown): value is NoticeGenerator {
-  if (typeof value !== "object" || value === null) return false;
-  return (
-    "collectBundlePackages" in value &&
-    typeof value.collectBundlePackages === "function" &&
-    "collectTsupBundleModuleIds" in value &&
-    typeof value.collectTsupBundleModuleIds === "function" &&
-    "collectViteBundleModuleIds" in value &&
-    typeof value.collectViteBundleModuleIds === "function" &&
-    "generateThirdPartyNotices" in value &&
-    typeof value.generateThirdPartyNotices === "function" &&
-    "renderNotices" in value &&
-    typeof value.renderNotices === "function" &&
-    "resolveModulePackageDir" in value &&
-    typeof value.resolveModulePackageDir === "function"
-  );
-}
-
 let generator: NoticeGenerator;
 let tempDir: string;
+let tsupMetafilePath: string;
+let tsupModuleIds: string[];
+let viteBundleGraph: { assetFileNames: string[]; moduleIds: string[] };
 let viteModuleIds: string[];
 let noticeTextBeforeImport: string;
 let noticeMtimeBeforeImport: number;
@@ -104,16 +85,22 @@ let noticeMtimeAfterImport: number;
 beforeAll(async () => {
   noticeTextBeforeImport = readFileSync(NOTICE_PATH, "utf-8");
   noticeMtimeBeforeImport = statSync(NOTICE_PATH).mtimeMs;
-  const moduleUrl = new URL("./generate-third-party-notices.ts", import.meta.url).href;
-  const imported: unknown = await import(moduleUrl);
-  if (!isNoticeGenerator(imported)) throw new Error("Invalid notice generator module");
-  generator = imported;
+  generator = await import("./generate-third-party-notices.js");
   noticeTextAfterImport = readFileSync(NOTICE_PATH, "utf-8");
   noticeMtimeAfterImport = statSync(NOTICE_PATH).mtimeMs;
 
   tempDir = mkdtempSync(resolve(tmpdir(), "diffgazer-notices-"));
-  viteModuleIds = await generator.collectViteBundleModuleIds();
-});
+  viteBundleGraph = await generator.collectViteBundleGraph();
+  viteModuleIds = viteBundleGraph.moduleIds;
+
+  const outDir = resolve(tempDir, "dist");
+  execFileSync(TSUP_BIN, ["--metafile", "--out-dir", outDir], {
+    cwd: PACKAGE_ROOT,
+    stdio: "pipe",
+  });
+  tsupMetafilePath = resolve(outDir, "metafile-esm.json");
+  tsupModuleIds = generator.collectTsupBundleModuleIds(tsupMetafilePath);
+}, 60_000);
 
 afterAll(() => {
   if (tempDir) rmSync(tempDir, { recursive: true, force: true });
@@ -125,19 +112,55 @@ describe("third-party notice bundle provenance", () => {
     expect(noticeMtimeAfterImport).toBe(noticeMtimeBeforeImport);
   });
 
-  it("maps every real Vite bundle module to package provenance and retains frozen notices", () => {
-    const nodeModuleIds = viteModuleIds.filter((moduleId) => moduleId.includes("/node_modules/"));
+  it("maps every Vite bundle module to package provenance and retains frozen notices", () => {
+    expect(() => generator.collectBundlePackages(viteModuleIds)).not.toThrow();
+
     const packages = generator.collectBundlePackages(viteModuleIds);
-
-    for (const moduleId of nodeModuleIds) {
-      expect(
-        generator.resolveModulePackageDir(moduleId),
-        `missing package provenance for ${moduleId}`,
-      ).not.toBeNull();
-    }
-
     const names = new Set(packages.map((bundlePackage) => bundlePackage.name));
     for (const packageName of REQUIRED_PACKAGES) expect(names).toContain(packageName);
+    expect(names).toContain("vite");
+  });
+
+  it("omits packages whose every module was tree-shaken out of the emitted chunks", () => {
+    const graph = generator.collectRollupArtifacts({
+      output: [
+        {
+          type: "chunk",
+          modules: {
+            "/repo/node_modules/kept/index.js": { renderedLength: 128 },
+            "/repo/node_modules/tree-shaken/index.js": { renderedLength: 0 },
+          },
+        },
+      ],
+    });
+
+    expect(graph.moduleIds).toEqual(["/repo/node_modules/kept/index.js"]);
+  });
+
+  it("includes embedded font provenance for emitted web assets", () => {
+    const embeddedProvenance = generator.collectEmbeddedProvenance(viteBundleGraph.assetFileNames);
+    expect(viteBundleGraph.assetFileNames.some((asset) => asset.includes("jetbrains-mono"))).toBe(
+      true,
+    );
+    expect(
+      embeddedProvenance.some((entry) =>
+        entry.labels.some((label) => label.includes("JetBrains Mono")),
+      ),
+    ).toBe(true);
+  });
+
+  it("fails closed instead of attributing an orphan dependency to its enclosing project", () => {
+    const projectRoot = resolve(tempDir, "orphan-project");
+    const orphanRoot = resolve(projectRoot, "node_modules/orphan-package");
+    mkdirSync(orphanRoot, { recursive: true });
+    writeFileSync(resolve(projectRoot, "package.json"), JSON.stringify({ name: "enclosing" }));
+    writeFileSync(resolve(orphanRoot, "index.js"), "export {};\n");
+
+    const orphanModule = resolve(orphanRoot, "index.js");
+    expect(generator.resolveModulePackageDir(orphanModule)).toBeNull();
+    expect(() => generator.collectBundlePackages([orphanModule])).toThrow(
+      /Could not resolve package provenance/,
+    );
   });
 
   it.each([
@@ -150,17 +173,36 @@ describe("third-party notice bundle provenance", () => {
     );
   });
 
-  it("covers the real tsup input graph and ships the complete notice corpus in a packed tarball", () => {
-    const outDir = resolve(tempDir, "dist");
-    execFileSync(TSUP_BIN, ["--metafile", "--out-dir", outDir], {
-      cwd: PACKAGE_ROOT,
-      stdio: "pipe",
+  it("writes the rendered corpus and clears the tsup metafile only when asked", async () => {
+    const outputPath = resolve(tempDir, "THIRD_PARTY_NOTICES.probe");
+    const metafileProbe = resolve(tempDir, "metafile-probe.json");
+    copyFileSync(tsupMetafilePath, metafileProbe);
+
+    const kept = await generator.generateThirdPartyNotices({
+      outputPath,
+      removeTsupMetafile: false,
+      tsupMetafilePath: metafileProbe,
     });
-    const tsupModuleIds = generator.collectTsupBundleModuleIds(
-      resolve(outDir, "metafile-esm.json"),
-    );
+
+    expect(readFileSync(outputPath, "utf-8")).toBe(kept.text);
+    expect(kept.text).toBe(readFileSync(NOTICE_PATH, "utf-8"));
+    expect(kept.packageCount).toBeGreaterThan(0);
+    expect(existsSync(metafileProbe)).toBe(true);
+
+    const cleaned = await generator.generateThirdPartyNotices({
+      outputPath,
+      removeTsupMetafile: true,
+      tsupMetafilePath: metafileProbe,
+    });
+
+    expect(cleaned.text).toBe(kept.text);
+    expect(existsSync(metafileProbe)).toBe(false);
+  }, 60_000);
+
+  it("covers the real tsup input graph and ships the complete notice corpus in a packed tarball", () => {
     const packages = generator.collectBundlePackages([...viteModuleIds, ...tsupModuleIds]);
-    const notices = generator.renderNotices(packages);
+    const embeddedProvenance = generator.collectEmbeddedProvenance(viteBundleGraph.assetFileNames);
+    const notices = generator.renderNotices(packages, embeddedProvenance);
     const trackedNotices = readFileSync(NOTICE_PATH, "utf-8");
 
     for (const moduleId of tsupModuleIds) {
@@ -179,12 +221,17 @@ describe("third-party notice bundle provenance", () => {
     );
     const tarballPath = resolve(tempDir, getPackedTarballName(packOutput));
     const packedLicense = readTarGzipEntry(tarballPath, "package/LICENSE");
+    const sourceLicense = readFileSync(resolve(PACKAGE_ROOT, "LICENSE"), "utf-8");
     const packedNotices = readTarGzipEntry(tarballPath, "package/THIRD_PARTY_NOTICES");
     const distributionCorpus = [packedLicense, packedNotices].join("\n");
+
+    expect(packedLicense).toBe(sourceLicense);
 
     expect(trackedNotices).toBe(notices);
     expect(packedNotices).toBe(trackedNotices);
     expect(packages.some((bundlePackage) => bundlePackage.name === "@diffgazer/server")).toBe(true);
+    expect(packedNotices).toContain("JetBrains Mono");
+    expect(packedNotices).toContain("vite@");
     for (const packageName of REQUIRED_PACKAGES) {
       const bundlePackage = packages.find((candidate) => candidate.name === packageName);
       if (!bundlePackage?.licenseText) throw new Error(`Missing ${packageName} license text`);

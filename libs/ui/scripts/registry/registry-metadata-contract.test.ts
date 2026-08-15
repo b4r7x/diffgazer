@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ROOT, readSourceRegistry } from "./registry-test-helpers";
+import { ROOT, readSourceRegistry } from "./registry-test-helpers.js";
 
 describe("CSS-heavy components declare CSS in registry metadata", () => {
   const CSS_HEAVY_COMPONENTS = ["dialog", "command-palette"];
@@ -72,13 +72,25 @@ describe("public surface items are intentional", () => {
 describe("stepper CSS declared in source registry", () => {
   const STEPPER_COMPONENTS = ["stepper", "horizontal-stepper"];
 
-  it.each(STEPPER_COMPONENTS)("%s declares stepper.css in its files array", (componentName) => {
+  it.each(STEPPER_COMPONENTS)("%s depends on stepper-variants for shared CSS", (componentName) => {
     const registry = readSourceRegistry();
     const item = registry.items?.find((i) => i.name === componentName);
     expect(item, `${componentName} must exist in registry`).toBeDefined();
 
+    const deps = item?.registryDependencies ?? [];
+    expect(deps).toContain("stepper-variants");
+
     const cssFile = item?.files?.find((f) => f.path.endsWith("stepper.css"));
-    expect(cssFile, `${componentName} must include stepper.css`).toBeDefined();
+    expect(cssFile, `${componentName} must not duplicate stepper.css in files`).toBeUndefined();
+  });
+
+  it("stepper-variants owns stepper.css in its files array", () => {
+    const registry = readSourceRegistry();
+    const item = registry.items?.find((i) => i.name === "stepper-variants");
+    expect(item, "stepper-variants must exist in registry").toBeDefined();
+
+    const cssFile = item?.files?.find((f) => f.path.endsWith("stepper.css"));
+    expect(cssFile, "stepper-variants must include stepper.css").toBeDefined();
     expect(cssFile?.type).toBe("registry:style");
     expect(cssFile?.target).toBe("~/styles/stepper.css");
   });

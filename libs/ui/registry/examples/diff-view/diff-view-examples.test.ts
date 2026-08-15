@@ -7,6 +7,7 @@ import lineNumbersSource from "./diff-view-line-numbers.tsx?raw";
 import maxHeightSource from "./diff-view-max-height.tsx?raw";
 import paletteSource from "./diff-view-palette-okabe-ito.tsx?raw";
 import splitSource from "./diff-view-split.tsx?raw";
+import statSource from "./diff-view-stat.tsx?raw";
 import statusbarSource from "./diff-view-statusbar.tsx?raw";
 import viewfinderSource from "./diff-view-viewfinder.tsx?raw";
 import withHeaderSource from "./diff-view-with-header.tsx?raw";
@@ -19,6 +20,7 @@ const HEADED_EXAMPLES = [
   ["diff-view-max-height", maxHeightSource],
   ["diff-view-palette-okabe-ito", paletteSource],
   ["diff-view-split", splitSource],
+  ["diff-view-stat", statSource],
   ["diff-view-statusbar", statusbarSource],
   ["diff-view-viewfinder", viewfinderSource],
   ["diff-view-with-header", withHeaderSource],

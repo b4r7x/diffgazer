@@ -51,6 +51,9 @@ export function useFocusTrap(
 ): void {
   const { initialFocus, restoreFocus = true, enabled = true } = options;
   const activeTrapRef = useRef<ActiveTrap | null>(null);
+  // The controller outlives a single render, so it resolves initial focus through
+  // this ref: a swapped `initialFocus` ref object still wins on later repairs.
+  const initialFocusRef = useRef(initialFocus);
   // Detach listeners BEFORE focus moves out in release(), or the document-level
   // focusin recapture re-traps the restored target. restoreOnUnmount:false keeps
   // this stack hook from moving focus during its own unmount cleanup.
@@ -62,6 +65,7 @@ export function useFocusTrap(
   // No dependency array on purpose: React does not re-fire effects when
   // containerRef.current mutates while the ref object stays stable.
   useEffect(() => {
+    initialFocusRef.current = initialFocus;
     const nextContainer = enabled ? containerRef.current : null;
     const active = activeTrapRef.current;
     if (active && active.container === nextContainer) {
@@ -91,7 +95,7 @@ export function useFocusTrap(
 
     const controller = createFocusTrapController({
       container,
-      resolveInitialFocus: () => pickInitialTarget(container, initialFocus),
+      resolveInitialFocus: () => pickInitialTarget(container, initialFocusRef.current),
       MutationObserverCtor,
     });
     // Push BEFORE arming/focusing: pushTrap suspends the previous top so its

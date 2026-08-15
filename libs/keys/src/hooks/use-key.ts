@@ -21,6 +21,18 @@ export interface UseKeyOptions extends HandlerOptions {
 }
 
 /**
+ * Compile-time validation for the map overload: a key whose modifier segment is
+ * outside the closed {@link ValidateHotkey} vocabulary resolves to an
+ * unassignable message type, mirroring the single/array overloads. Maps typed as
+ * plain `Record<string, KeyHandler>` pass through so dynamic maps keep compiling.
+ */
+type ValidateHotkeyMap<Handlers> = {
+  [K in keyof Handlers & string]: ValidateHotkey<K> extends never
+    ? `Unknown hotkey modifier in "${K}"`
+    : KeyHandler;
+};
+
+/**
  * Registers a single hotkey with the nearest `KeyboardProvider`.
  * Without a provider this hook is a no-op.
  */
@@ -41,7 +53,10 @@ export function useKey<const Hotkeys extends readonly string[]>(
 ): void;
 
 /** Registers a map of hotkeys to handlers through the nearest `KeyboardProvider`. */
-export function useKey(handlers: Record<string, KeyHandler>, options?: UseKeyOptions): void;
+export function useKey<Handlers extends Record<string, KeyHandler>>(
+  handlers: Handlers & ValidateHotkeyMap<Handlers>,
+  options?: UseKeyOptions,
+): void;
 
 /** Implementation for the `useKey` overloads. */
 export function useKey(

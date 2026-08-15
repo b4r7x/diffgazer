@@ -115,12 +115,13 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
     [isFocused, titleId, descriptionId, unregisterTitle, unregisterDescription],
   );
 
-  const resolvedTitleId = registeredTitleId ?? findPanelChildId(children, PanelTitle, titleId);
-  const resolvedDescriptionId =
-    registeredDescriptionId ?? findPanelChildId(children, PanelDescription, descriptionId);
-  const hasRenderableTitle = resolvedTitleId !== null;
+  const staticTitleId = findPanelChildId(children, PanelTitle, titleId);
+  const staticDescriptionId = findPanelChildId(children, PanelDescription, descriptionId);
+  const resolvedTitleId = registeredTitleId ?? staticTitleId;
+  const resolvedDescriptionId = registeredDescriptionId ?? staticDescriptionId;
+  const hasStaticTitle = staticTitleId !== null;
   const hasAriaName = isNonEmptyString(ariaLabel) || isNonEmptyString(ariaLabelledBy);
-  const isNamedRegion = hasRenderableTitle || hasAriaName;
+  const isNamedRegion = hasStaticTitle || hasAriaName;
 
   const Tag = (as ?? (isNamedRegion ? "section" : "div")) as ElementType;
 
@@ -128,7 +129,7 @@ export function Panel<T extends PanelElement = "div">(props: PanelProps<T>) {
     ariaLabel,
     ariaLabelledBy,
     titleId: resolvedTitleId ?? titleId,
-    hasRenderableTitle,
+    hasRenderableTitle: resolvedTitleId !== null,
   });
   const resolvedAriaDescribedBy = mergeAriaIds(ariaDescribedBy, resolvedDescriptionId);
 

@@ -1,4 +1,3 @@
-import { useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { buildHubValues, hasRepositoryReadAccess } from "@diffgazer/core/schemas/config";
 import {
@@ -29,14 +28,6 @@ const SETTINGS_ROUTES: Record<SettingsAction, string> = {
   analysis: "/settings/analysis",
   diagnostics: "/settings/diagnostics",
 };
-
-const SETTINGS_MENU_ITEM_IDS = new Set<string>(SETTINGS_MENU_ITEMS.map((item) => item.id));
-
-function getSettingsMenuHighlighted(value: string | null): string | null {
-  if (!value) return value;
-  if (SETTINGS_MENU_ITEM_IDS.has(value)) return value;
-  return SETTINGS_MENU_ITEMS[0]?.id ?? null;
-}
 
 /**
  * One value vocabulary for the whole column: trusted is loud enough to be a
@@ -79,15 +70,12 @@ function HubValue({ tone, children }: { tone: HubValueTone; children: string }) 
 export function SettingsHubPage() {
   const navigate = useNavigate();
   const titleId = useId();
-  const { loadState, selectedProductId, isConfigured, repoRoot, trust } = useConfigData();
+  const { loadState, selectedProductId, isConfigured, repoRoot, trust, settings } = useConfigData();
   const { theme } = useTheme();
   const [highlighted, setHighlighted] = useScopedRouteState<string | null>(
     SETTINGS_HIGHLIGHTED_KEY,
     SETTINGS_MENU_ITEMS[0]?.id ?? null,
   );
-  const effectiveHighlighted = getSettingsMenuHighlighted(highlighted);
-  const { data: settings, error: settingsQueryError } = useSettings();
-  const settingsError = settingsQueryError?.message ?? null;
   const panelFocus = useFocusWithin<HTMLDivElement>();
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
@@ -97,6 +85,9 @@ export function SettingsHubPage() {
 
   if (loadState.status !== "ready") {
     return <ConfigurationStatus status={loadState.status} />;
+  }
+  if (settings == null) {
+    return <ConfigurationStatus status="loading" />;
   }
 
   const handleActivate = (id: string) => {
@@ -111,10 +102,13 @@ export function SettingsHubPage() {
     selectedProductId,
     isTrusted,
     theme,
-    secretsStorage: settings?.secretsStorage,
-    agentExecution: settings?.agentExecution,
-    selectedLensCount: settings?.defaultLenses?.length,
+    secretsStorage: settings.secretsStorage,
+    agentExecution: settings.agentExecution,
+    selectedLensCount: settings.defaultLenses.length,
   });
+
+  const persistedValueTone = (hasValue: boolean): HubValueTone =>
+    hasValue ? "affirmative" : "muted";
 
   const menuValues: Record<SettingsAction, { value: string; tone: HubValueTone }> = {
     trust: {
@@ -122,7 +116,7 @@ export function SettingsHubPage() {
       tone: isTrusted ? "trusted" : "muted",
     },
     theme: {
-      value: values.theme,
+      value: values.theme ?? theme ?? "auto",
       tone: "default",
     },
     provider: {
@@ -131,7 +125,7 @@ export function SettingsHubPage() {
     },
     storage: {
       value: values.storage,
-      tone: settings?.secretsStorage ? "affirmative" : "muted",
+      tone: persistedValueTone(settings.secretsStorage != null),
     },
     "agent-execution": {
       value: values["agent-execution"],
@@ -139,7 +133,7 @@ export function SettingsHubPage() {
     },
     analysis: {
       value: values.analysis,
-      tone: settings?.defaultLenses?.length ? "affirmative" : "muted",
+      tone: persistedValueTone(settings.defaultLenses.length > 0),
     },
     diagnostics: {
       value: values.diagnostics,
@@ -176,7 +170,7 @@ export function SettingsHubPage() {
               TUI-parity keyboard navigation, and the app runs as a local single-window
               product where new-tab/middle-click link semantics do not apply. */}
           <Menu
-            highlighted={effectiveHighlighted}
+            highlighted={highlighted}
             onHighlightChange={setHighlighted}
             onSelect={handleActivate}
             variant="detail"
@@ -210,7 +204,7 @@ export function SettingsHubPage() {
               <span className="shrink-0">project path:&nbsp;</span>
               <PathValue value={repoRoot ?? "unknown"} />
             </span>
-            <span className="shrink-0">{settingsError ?? "local settings"}</span>
+            <span className="shrink-0">local settings</span>
           </Panel.Footer>
         </Panel>
       </div>

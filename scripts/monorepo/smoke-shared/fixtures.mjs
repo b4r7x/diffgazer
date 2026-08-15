@@ -1,9 +1,31 @@
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { TAILWIND_V4_SPEC } from "./dependencies.mjs";
 
 export function joinLines(...lines) {
   return lines.join("\n");
+}
+
+// shadcn resolves every install target from these five aliases and from whether
+// the project has a `src/` directory, so both are fixture inputs: a registry
+// that installs cleanly under the defaults can still break under another cell.
+export const DEFAULT_FIXTURE_ALIASES = {
+  components: "@/components",
+  utils: "@/lib/utils",
+  ui: "@/components/ui",
+  lib: "@/lib",
+  hooks: "@/hooks",
+};
+
+// `@/x` resolves to `src/x` in a src-layout project and to `x` in a root-layout
+// one, matching the tsconfig paths and Vite alias written below.
+export function fixtureAliasPath(alias, isSrcDir = true) {
+  const relative = alias.replace(/^@\//, "");
+  return isSrcDir ? `src/${relative}` : relative;
+}
+
+export function fixtureEntryPath(isSrcDir = true) {
+  return isSrcDir ? "src/main.tsx" : "main.tsx";
 }
 
 export function writeViteFixture(fixture, options = {}) {
@@ -14,11 +36,15 @@ export function writeViteFixture(fixture, options = {}) {
     indexCss,
     componentsJson = false,
     componentRegistries,
-    uiAlias = "@/components/ui",
+    aliases = DEFAULT_FIXTURE_ALIASES,
+    isSrcDir = true,
   } = options;
-  mkdirSync(resolve(fixture, "src"), { recursive: true });
+  const sourceDir = isSrcDir ? "src" : ".";
+  const indexCssPath = isSrcDir ? "src/index.css" : "index.css";
+  const utilsPath = `${fixtureAliasPath(aliases.utils, isSrcDir)}.ts`;
+  mkdirSync(resolve(fixture, sourceDir), { recursive: true });
   if (withLibUtils) {
-    mkdirSync(resolve(fixture, "src/lib"), { recursive: true });
+    mkdirSync(dirname(resolve(fixture, utilsPath)), { recursive: true });
   }
 
   const packageJson = {
@@ -48,9 +74,9 @@ export function writeViteFixture(fixture, options = {}) {
           noEmit: true,
           skipLibCheck: false,
           baseUrl: ".",
-          paths: { "@/*": ["./src/*"] },
+          paths: { "@/*": [isSrcDir ? "./src/*" : "./*"] },
         },
-        include: ["src"],
+        include: [sourceDir],
       },
       null,
       2,
@@ -65,19 +91,19 @@ export function writeViteFixture(fixture, options = {}) {
       "",
       "export default defineConfig({",
       "  plugins: [react(), tailwindcss()],",
-      "  resolve: { alias: { '@': new URL('./src', import.meta.url).pathname } },",
+      `  resolve: { alias: { '@': new URL('${isSrcDir ? "./src" : "."}', import.meta.url).pathname } },`,
       "});",
       "",
     ),
   );
   writeFileSync(
     resolve(fixture, "index.html"),
-    `<div id="root"></div><script type="module" src="/src/main.tsx"></script>\n`,
+    `<div id="root"></div><script type="module" src="/${fixtureEntryPath(isSrcDir)}"></script>\n`,
   );
 
   if (withLibUtils) {
     writeFileSync(
-      resolve(fixture, "src/lib/utils.ts"),
+      resolve(fixture, utilsPath),
       joinLines(
         'import { type ClassValue, clsx } from "clsx";',
         'import { twMerge } from "tailwind-merge";',
@@ -92,7 +118,7 @@ export function writeViteFixture(fixture, options = {}) {
 
   if (indexCss) {
     writeFileSync(
-      resolve(fixture, "src/index.css"),
+      resolve(fixture, indexCssPath),
       Array.isArray(indexCss) ? indexCss.join("\n") : indexCss,
     );
   }
@@ -109,19 +135,13 @@ export function writeViteFixture(fixture, options = {}) {
           tsx: true,
           tailwind: {
             config: "",
-            css: "src/index.css",
+            css: indexCssPath,
             baseColor: "neutral",
             cssVariables: true,
             prefix: "",
           },
           iconLibrary: "lucide",
-          aliases: {
-            components: "@/components",
-            utils: "@/lib/utils",
-            ui: uiAlias,
-            lib: "@/lib",
-            hooks: "@/hooks",
-          },
+          aliases,
         },
         null,
         2,

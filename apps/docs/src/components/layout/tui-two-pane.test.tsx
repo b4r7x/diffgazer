@@ -1,6 +1,3 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -97,6 +94,28 @@ describe("TuiTwoPane", () => {
 
     act(() => viewport.setDesktop(false));
     expect(menuButton).not.toHaveFocus();
+  });
+
+  it("leaves focus alone when the viewport reaches desktop and the reader is elsewhere", async () => {
+    const viewport = stubControllableMatchMedia({ isDesktop: false });
+    const user = userEvent.setup();
+    renderTwoPane();
+
+    const menuButton = screen.getByRole("button", { name: "Open menu" });
+    await user.click(menuButton);
+    await waitFor(() => expect(sidebar()).toHaveFocus());
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(menuButton).toHaveFocus());
+
+    const elsewhere = document.createElement("button");
+    document.body.append(elsewhere);
+    elsewhere.focus();
+
+    act(() => viewport.setDesktop(true));
+
+    expect(elsewhere).toHaveFocus();
+    elsewhere.remove();
   });
 
   it("closes the drawer when the pane unmounts so a sidebar-less surface never inherits it", async () => {

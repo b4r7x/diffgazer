@@ -140,7 +140,7 @@ export function useListbox<TId extends string = string>({
   itemRole = "option",
   typeahead = false,
   items,
-  getItemId = getEncodedListboxItemId as (idPrefix: string, id: TId) => string,
+  getItemId = getEncodedListboxItemId,
   ref,
 }: UseListboxOptions<TId>): UseListboxReturn<TId> {
   const containerRef = useRef<HTMLDivElement>(null);

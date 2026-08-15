@@ -23,13 +23,14 @@ const PROMPT_CONTROL_BYTES = /[\x00-\x1f\x7f-\x9f]/g;
 const sanitizePromptPath = (value: string): string =>
   escapeXml(value.replace(PROMPT_CONTROL_BYTES, ""));
 
-export interface PromptFileIdentity {
+interface PromptFileIdentity {
   id: string;
   file: FileDiff;
 }
 
 export interface ReviewPrompt {
-  text: string;
+  system: string;
+  user: string;
   files: PromptFileIdentity[];
 }
 
@@ -200,15 +201,11 @@ export function buildReviewPrompt(
     .join("\n\n");
 
   const normalizedContext = projectContext?.trim();
-  const contextBlock =
-    normalizedContext && normalizedContext !== "No workspace packages detected."
-      ? `<project-context data-untrusted="true">\n${escapeXml(normalizedContext)}\n</project-context>\n\n`
-      : "";
+  const contextBlock = normalizedContext
+    ? `<project-context data-untrusted="true">\n${escapeXml(normalizedContext)}\n</project-context>\n\n`
+    : "";
 
-  const text = `${lens.systemPrompt}
-
-${contextBlock}
-<severity-rubric>
+  const user = `${contextBlock}<severity-rubric>
 - blocker: ${lens.severityRubric.blocker}
 - high: ${lens.severityRubric.high}
 - medium: ${lens.severityRubric.medium}
@@ -253,5 +250,9 @@ For each issue found, provide:
 
 Respond with JSON: { "issues": [...] }`;
 
-  return { text, files: fileIdentities };
+  // The lens system prompt already carries SECURITY_HARDENING_PROMPT; it travels
+  // on the provider's system channel so repository data cannot restate it.
+  const system = lens.systemPrompt;
+
+  return { system, user, files: fileIdentities };
 }

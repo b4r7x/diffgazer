@@ -8,6 +8,7 @@ const commandInputProps = [
   "placeholder",
   "prefix",
   "suffix",
+  "closeLabel",
 ] as const satisfies readonly (keyof ComponentProps<typeof CommandPaletteInput>)[];
 
 describe("commandPaletteDoc", () => {

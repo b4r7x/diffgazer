@@ -2,8 +2,6 @@ import { readdir } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { homePath, readJson, tempHome, writeJson } from "./persistence.test-support.js";
 
-import "./persistence.test-support.js";
-
 describe("trust persistence", () => {
   it("loads default trust when no file exists", async () => {
     const { loadTrust } = await import("./trust.js");
@@ -36,6 +34,51 @@ describe("trust persistence", () => {
     expect(Object.keys(persisted.projects).sort()).toEqual(["proj-external", "proj-mine"]);
   });
 
+  it("keeps fields it does not know on the rewritten record and on untouched records", async () => {
+    const { persistTrustRecordAsync } = await import("./trust.js");
+    await writeJson("trust.json", {
+      projects: {
+        "proj-external": {
+          projectId: "proj-external",
+          repoRoot: "/projects/external",
+          trustedAt: "2024-01-01T00:00:00.000Z",
+          capabilities: { readFiles: true, runCommands: false, writeFiles: true },
+          trustMode: "persistent",
+          trustedBy: "future-binary",
+        },
+        "proj-mine": {
+          projectId: "proj-mine",
+          repoRoot: "/projects/mine",
+          trustedAt: "2024-01-01T00:00:00.000Z",
+          capabilities: { readFiles: false, runCommands: false, writeFiles: true },
+          trustMode: "persistent",
+          trustedBy: "future-binary",
+        },
+      },
+    });
+
+    await persistTrustRecordAsync({
+      projectId: "proj-mine",
+      repoRoot: "/projects/mine",
+      trustedAt: "2024-01-02T00:00:00.000Z",
+      capabilities: { readFiles: true, runCommands: false },
+      trustMode: "persistent",
+    });
+
+    const persisted = await readJson<{ projects: Record<string, Record<string, unknown>> }>(
+      homePath("trust.json"),
+    );
+    expect(persisted.projects["proj-external"]).toMatchObject({
+      trustedBy: "future-binary",
+      capabilities: { writeFiles: true },
+    });
+    expect(persisted.projects["proj-mine"]).toMatchObject({
+      trustedAt: "2024-01-02T00:00:00.000Z",
+      trustedBy: "future-binary",
+      capabilities: { readFiles: true, runCommands: false, writeFiles: true },
+    });
+  });
+
   it("validates trust records and drops invalid entries while preserving valid ones", async () => {
     await writeJson("trust.json", {
       projects: {
@@ -60,6 +103,31 @@ describe("trust persistence", () => {
     expect(trust.projects["proj-2"]).toMatchObject({
       capabilities: { readFiles: true, runCommands: false },
     });
+  });
+
+  it("keeps a record it cannot read when another project's trust is granted", async () => {
+    const unreadable = {
+      projectId: "proj-future",
+      repoRoot: "/projects/future",
+      trustedAt: "2024-01-01T00:00:00.000Z",
+      capabilities: { readFiles: true, runCommands: false },
+      trustMode: "device-bound",
+    };
+    await writeJson("trust.json", { projects: { "proj-future": unreadable } });
+    const { loadTrust, persistTrustRecordAsync } = await import("./trust.js");
+
+    await persistTrustRecordAsync({
+      projectId: "proj-mine",
+      repoRoot: "/projects/mine",
+      trustedAt: "2024-01-02T00:00:00.000Z",
+      capabilities: { readFiles: true, runCommands: false },
+      trustMode: "persistent",
+    });
+
+    const persisted = await readJson<{ projects: Record<string, unknown> }>(homePath("trust.json"));
+    expect(persisted.projects["proj-future"]).toEqual(unreadable);
+    // Unreadable is still untrusted: the user is re-prompted, never silently trusted.
+    expect(loadTrust().projects["proj-future"]).toBeUndefined();
   });
 
   it("quarantines malformed trust top-level data", async () => {

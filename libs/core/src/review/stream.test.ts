@@ -32,7 +32,7 @@ const agentStarted = {
 };
 
 describe("processReviewStream", () => {
-  it("returns the complete review result and collected agent events", async () => {
+  it("returns the complete review result", async () => {
     const result = await processReviewStream(
       createSSEReader([agentStarted, { type: "complete", reviewId: "r1", result: reviewResult }]),
       {},
@@ -40,11 +40,7 @@ describe("processReviewStream", () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value).toEqual({
-        reviewId: "r1",
-        result: reviewResult,
-        agentEvents: [expect.objectContaining({ type: "agent_start" })],
-      });
+      expect(result.value).toEqual({ reviewId: "r1", result: reviewResult });
     }
   });
 

@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { render, screen, within } from "@testing-library/react";
 import { JSDOM } from "jsdom";
-import { createRef } from "react";
+import { createRef, useEffect } from "react";
 import { renderToString } from "react-dom/server";
 import { assertType, describe, expect, it } from "vitest";
 import { axe } from "../../../testing/axe";
@@ -36,6 +36,14 @@ function OpaquePanelHeading() {
       <Panel.Description id="opaque-panel-description">SSR description</Panel.Description>
     </Panel.Header>
   );
+}
+
+/** Counts mounts so a host-element swap (which tears the subtree down) is observable. */
+function MountProbe({ mounts }: { mounts: { current: number } }) {
+  useEffect(() => {
+    mounts.current += 1;
+  }, [mounts]);
+  return <input aria-label="Draft note" defaultValue="typed" />;
 }
 
 describe("Panel", () => {
@@ -611,6 +619,26 @@ describe("Panel", () => {
     expect(html).toContain('aria-describedby="opaque-panel-description"');
     expect(html).toContain('id="opaque-panel-title"');
     expect(html).toContain('id="opaque-panel-description"');
+  });
+
+  it("keeps the host element and subtree intact when an opaque wrapper registers the title", () => {
+    const mounts = { current: 0 };
+
+    const { container } = render(
+      <Panel>
+        <OpaquePanelHeading />
+        <Panel.Content>
+          <MountProbe mounts={mounts} />
+        </Panel.Content>
+      </Panel>,
+    );
+
+    expect(mounts.current).toBe(1);
+
+    const root = getRoot(container);
+    expect(root.tagName).toBe("DIV");
+    expect(root).toHaveAttribute("aria-labelledby", "opaque-panel-title");
+    expect(root).toHaveAttribute("aria-describedby", "opaque-panel-description");
   });
 });
 

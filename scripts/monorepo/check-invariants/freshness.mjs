@@ -27,6 +27,7 @@ export function createDistFreshnessCheck({
   distDir,
   excludedFiles = [],
   excludedPrefixes = [],
+  excludedDistPrefixes = [],
   rebuildCommand,
 }) {
   const excluded = new Set(excludedFiles);
@@ -35,6 +36,11 @@ export function createDistFreshnessCheck({
     if (!/\.tsx?$/.test(relPath) || /\.test\.tsx?$/.test(relPath)) return false;
     if (excluded.has(relPath)) return false;
     return !excludedPrefixes.some((prefix) => relPath.startsWith(prefix));
+  }
+
+  function isCompiledOutput(relPath) {
+    if (!relPath.endsWith(".js")) return false;
+    return !excludedDistPrefixes.some((prefix) => relPath.startsWith(prefix));
   }
 
   return function checkDistFreshness(context) {
@@ -54,8 +60,8 @@ export function createDistFreshnessCheck({
       }
     }
 
-    for (const relPath of listRelativeFiles(distRoot)) {
-      if (relPath.endsWith(".js") && !hasSource(srcRoot, relPath)) {
+    for (const relPath of listRelativeFiles(distRoot).filter(isCompiledOutput)) {
+      if (!hasSource(srcRoot, relPath)) {
         problems.push(`${relPath}: compiled output has no source`);
       }
     }
@@ -74,12 +80,16 @@ export function createDistFreshnessCheck({
 
 // Mirrors the emit exclusions in libs/keys/tsconfig.json. A new exclusion there
 // surfaces here as a loud "no compiled output" failure, never a silent skip.
+// `dist/artifacts` is the docs handoff payload copied from libs/keys/{docs,
+// registry,public/r} (see AGENTS.md), not tsc output, so the reverse scan skips
+// it — a .js entering those trees has no libs/keys/src counterpart by design.
 export const checkKeysDistFreshness = createDistFreshnessCheck({
   name: "libs/keys dist is not stale",
   srcDir: "libs/keys/src",
   distDir: "libs/keys/dist",
-  excludedFiles: ["test-setup.ts"],
+  excludedFiles: ["test-setup.ts", "hooks/use-navigation/test-list.tsx"],
   excludedPrefixes: ["testing/internal/"],
+  excludedDistPrefixes: ["artifacts/"],
   rebuildCommand: "pnpm --filter @diffgazer/keys exec tsc",
 });
 

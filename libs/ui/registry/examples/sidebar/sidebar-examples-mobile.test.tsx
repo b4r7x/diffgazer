@@ -35,6 +35,7 @@ describe("sidebar examples on mobile", () => {
       writable: true,
       value: originalMatchMedia,
     });
+    window.history.replaceState(null, "", window.location.pathname);
   });
 
   // A non-embedded Sidebar takes the sheet branch on mobile and mounts closed,
@@ -62,5 +63,26 @@ describe("sidebar examples on mobile", () => {
     const dialog = screen.getByRole("dialog");
     expect(dialog).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Primary navigation" })).toBeInTheDocument();
+  });
+
+  const activatableExamples = [
+    ["sidebar-mobile-sheet", SidebarMobileSheet, "dialog", "#dialog"],
+    ["sidebar-rail", SidebarRail, /install/, "#install"],
+  ] as const;
+
+  it.each(
+    activatableExamples,
+  )("%s keeps navigation rows in the Tab sequence and activates them", async (_name, Example, linkName, expectedHash) => {
+    const user = userEvent.setup();
+    stubMatchMedia(true);
+
+    render(<Example />);
+
+    await user.tab();
+    const link = screen.getByRole("link", { name: linkName });
+    expect(link).toHaveFocus();
+
+    await user.keyboard("{Enter}");
+    expect(window.location.hash).toBe(expectedHash);
   });
 });

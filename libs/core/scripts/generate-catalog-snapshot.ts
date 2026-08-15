@@ -1,68 +1,45 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { ProviderCapabilities } from "../src/catalog/capabilities.js";
-import { PROVIDER_OVERLAY } from "../src/catalog/provider-overlay.js";
 import {
-  type ModelsDevCatalog,
-  type ModelsDevModel,
-  parseModelsDevCatalog,
-} from "../src/catalog/schema.js";
+  type CatalogBillingRange,
+  type DerivedCatalogModel,
+  getCatalogBillingRange,
+} from "../src/catalog/model-capability.js";
+import { PROVIDER_OVERLAY } from "../src/catalog/provider-overlay.js";
+import { ModelsDevCatalogSchema, parseModelsDevCatalog } from "../src/catalog/schema.js";
+import { findCatalogSnapshotDefect } from "../src/catalog/snapshot-guard.js";
+import { trimCatalogSnapshot } from "../src/catalog/snapshot-trim.js";
+import {
+  type CatalogModelObservation,
+  isOfferableObservation,
+  transformCatalogObservation,
+} from "../src/catalog/transform.js";
 import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "../src/providers/product-registry.js";
 import type { RunnableProductId } from "../src/schemas/config/transports.js";
 
 const SOURCE = process.env.MODELSDEV_SOURCE;
-const OUT = resolve(import.meta.dirname, "..", "src", "catalog", "catalog-snapshot.ts");
-const DERIVED_OUT = resolve(import.meta.dirname, "..", "src", "catalog", "provider-derived.ts");
+// The overwrite guard is exercised by spawning this generator for real, so the
+// destination is redirectable: a guard regression must not be able to rewrite
+// committed source from a test run.
+const OUT_DIR = resolve(
+  process.env.CATALOG_SNAPSHOT_OUT_DIR ?? resolve(import.meta.dirname, "..", "src", "catalog"),
+);
+const OUT = resolve(OUT_DIR, "catalog-snapshot.ts");
+const DERIVED_OUT = resolve(OUT_DIR, "provider-derived.ts");
+const MODEL_DERIVED_OUT = resolve(OUT_DIR, "model-derived.ts");
 
-const wantedSourceIds = new Set<string>([
-  ...SELECTABLE_PRODUCT_IDS.flatMap((productId) => PROVIDER_OVERLAY[productId]?.modelsDevIds ?? []),
-]);
-
-const dropUndefined = <T extends object>(obj: T): T =>
-  Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
-
-// True unless the model declares an output modality that lacks "text" — audio
-// (TTS), image, or video-only models that can never emit a review object.
-// trimModel drops `modalities`, so this pre-trim filter is the only place the
-// offline snapshot can shed them.
-function producesTextOutput(model: ModelsDevModel): boolean {
-  const output = model.modalities?.output;
-  return !output || output.includes("text");
-}
-
-// Keep only the fields the transform layer reads. modalities, knowledge, and
-// the cache_read/cache_write prices have no production consumers, so they stay
-// out of the bundled snapshot.
-function trimModel(model: ModelsDevModel): ModelsDevModel {
-  return dropUndefined({
-    id: model.id,
-    name: model.name,
-    family: model.family,
-    cost: model.cost && dropUndefined({ input: model.cost.input, output: model.cost.output }),
-    limit:
-      model.limit && dropUndefined({ context: model.limit.context, output: model.limit.output }),
-    tool_call: model.tool_call,
-    structured_output: model.structured_output,
-    reasoning: model.reasoning,
-    release_date: model.release_date,
-    last_updated: model.last_updated,
-  });
-}
-
-const sortKeys = <T>(record: Record<string, T>): [string, T][] =>
-  Object.entries(record).sort(([a], [b]) => {
-    if (a < b) return -1;
-    if (a > b) return 1;
-    return 0;
-  });
+const wantedSourceIds = new Set<string>(
+  SELECTABLE_PRODUCT_IDS.flatMap((productId) => PROVIDER_OVERLAY[productId]?.modelsDevIds ?? []),
+);
 
 // Emit biome-clean output: provider-derived's keys are valid identifiers, so the
 // raw JSON.stringify form (quoted keys, single-line Record type) is biome-dirty.
-// Format each emitted file in place so a regenerate leaves a `biome check`-clean
-// worktree; it's a byte-identical no-op for catalog-snapshot.ts.
-function formatEmitted(path: string): void {
-  execFileSync("pnpm", ["exec", "biome", "format", "--write", path], { stdio: "ignore" });
+// Format the emitted files in place so a regenerate leaves a `biome check`-clean
+// worktree; it's a byte-identical no-op for catalog-snapshot.ts. One process
+// handles every path — Biome startup dominates the cost of this step.
+function formatEmitted(...paths: string[]): void {
+  execFileSync("pnpm", ["exec", "biome", "format", "--write", ...paths], { stdio: "ignore" });
 }
 
 // Offline-deterministic by default: with no MODELSDEV_SOURCE, re-derive from the
@@ -72,25 +49,25 @@ function formatEmitted(path: string): void {
 async function loadSource(): Promise<unknown> {
   if (SOURCE) {
     if (!existsSync(SOURCE)) throw new Error(`MODELSDEV_SOURCE not found: ${SOURCE}`);
-    return JSON.parse(readFileSync(SOURCE, "utf-8")) as unknown;
+    const raw = JSON.parse(readFileSync(SOURCE, "utf-8")) as unknown;
+    const parsed = ModelsDevCatalogSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new Error(`MODELSDEV_SOURCE failed catalog schema validation: ${parsed.error.message}`);
+    }
+    return parsed.data;
   }
   const { CATALOG_SNAPSHOT } = await import("../src/catalog/catalog-snapshot.js");
   return CATALOG_SNAPSHOT;
 }
 
-const parsed = parseModelsDevCatalog(await loadSource());
+const source = await loadSource();
+const trimmed = trimCatalogSnapshot(parseModelsDevCatalog(source), wantedSourceIds);
 
-// Sorted provider ids + sorted per-model ids keep the committed artifact byte
-// stable, so a regenerate diff reflects real data changes, not key reordering.
-const trimmed: ModelsDevCatalog = {};
-for (const [id, provider] of sortKeys(parsed)) {
-  if (!wantedSourceIds.has(id)) continue;
-  const models: Record<string, ModelsDevModel> = {};
-  for (const [modelId, model] of sortKeys(provider.models)) {
-    if (!producesTextOutput(model)) continue;
-    models[modelId] = trimModel(model);
-  }
-  trimmed[id] = { ...provider, models };
+// Both artifacts stay unwritten until the refresh is proven usable: a thinned
+// payload must fail the command, not silently replace the committed fallback.
+const defect = findCatalogSnapshotDefect(source, trimmed, wantedSourceIds);
+if (defect) {
+  throw new Error(`[catalog-snapshot] refusing to overwrite the committed snapshot: ${defect}`);
 }
 
 const header = [
@@ -104,40 +81,83 @@ const header = [
 ].join("\n");
 
 writeFileSync(OUT, header, "utf-8");
-formatEmitted(OUT);
-console.info(`[catalog-snapshot] wrote ${Object.keys(trimmed).length} providers to ${OUT}`);
+
+// Both derived tables describe what a picker OFFERS, so they are built from the
+// offerable set — review-capable AND admitted by the product's model policy.
+// Deriving from capability alone would price and index models no user can ever
+// select: OpenRouter's zero-priced `openrouter/free` router is capable and
+// unroutable, and crediting it would put a price on a row nobody can pick.
+const offerableModelsByProduct = new Map<RunnableProductId, readonly CatalogModelObservation[]>(
+  transformCatalogObservation({
+    source: "models.dev-snapshot",
+    checkedAt: new Date(0).toISOString(),
+    catalog: trimmed,
+  }).map(({ productId, models }) => [
+    productId,
+    models.filter((model) => isOfferableObservation(productId, model)),
+  ]),
+);
+
+function catalogBilling(productId: RunnableProductId): CatalogBillingRange {
+  const models = offerableModelsByProduct.get(productId) ?? [];
+  return getCatalogBillingRange(models.map(({ billing }) => billing));
+}
 
 // Emit the small derived product table so client bundles can use registry-owned
-// display names without depending on the full snapshot. Capability observations
-// remain empty until a checked live/snapshot observation is supplied at runtime.
+// display names and catalog-derived billing without depending on the full snapshot.
 const derived = Object.fromEntries(
   SELECTABLE_PRODUCT_IDS.map((id: RunnableProductId) => {
     return [
       id,
-      {
-        displayName: PRODUCT_REGISTRY[id].presentation.name,
-        // The bundled snapshot has no live check timestamp.  Do not turn
-        // static catalog metadata into capability evidence; only checked
-        // observations may populate this field at runtime.
-        capabilities: [] as ProviderCapabilities,
-      },
+      { displayName: PRODUCT_REGISTRY[id].presentation.name, billing: catalogBilling(id) },
     ];
   }),
 );
 
 const derivedHeader = [
   "// GENERATED by libs/core/scripts/generate-catalog-snapshot.ts — DO NOT EDIT BY HAND.",
-  "// Client-safe product display names; capabilities contain checked observations only.",
+  "// Client-safe product display names and catalog-derived billing ranges.",
   "// Regenerate: pnpm --filter @diffgazer/core generate:catalog-snapshot",
   'import type { RunnableProductId } from "../schemas/config/transports.js";',
-  'import type { ProviderCapabilities } from "./capabilities.js";',
+  'import type { CatalogBillingRange } from "./model-capability.js";',
   "",
-  `export const PROVIDER_DERIVED: Record<RunnableProductId, { displayName: string; capabilities: ProviderCapabilities }> = ${JSON.stringify(derived, null, 2)};`,
+  `export const PROVIDER_DERIVED: Record<RunnableProductId, { displayName: string; billing: CatalogBillingRange }> = ${JSON.stringify(derived, null, 2)};`,
   "",
 ].join("\n");
 
 writeFileSync(DERIVED_OUT, derivedHeader, "utf-8");
-formatEmitted(DERIVED_OUT);
+
+// Per-model display name and pricing for the bounded catalog. The provider
+// panes read a persisted selection here without a network round trip, and a
+// selection this table does not know stays honestly unlabelled.
+const modelDerived: Partial<Record<RunnableProductId, Record<string, DerivedCatalogModel>>> = {};
+let modelDerivedCount = 0;
+for (const [productId, models] of offerableModelsByProduct) {
+  if (models.length === 0) continue;
+  modelDerived[productId] = Object.fromEntries(
+    models.map((model) => [model.modelId, { name: model.modelName, billing: model.billing }]),
+  );
+  modelDerivedCount += models.length;
+}
+
+const modelDerivedHeader = [
+  "// GENERATED by libs/core/scripts/generate-catalog-snapshot.ts — DO NOT EDIT BY HAND.",
+  "// Client-safe facts for every model the bounded catalog lets a picker offer.",
+  "// Regenerate: pnpm --filter @diffgazer/core generate:catalog-snapshot",
+  'import type { RunnableProductId } from "../schemas/config/transports.js";',
+  'import type { DerivedCatalogModel } from "./model-capability.js";',
+  "",
+  `export const CATALOG_MODEL_DERIVED: Partial<Record<RunnableProductId, Record<string, DerivedCatalogModel>>> = ${JSON.stringify(modelDerived, null, 2)};`,
+  "",
+].join("\n");
+
+writeFileSync(MODEL_DERIVED_OUT, modelDerivedHeader, "utf-8");
+
+formatEmitted(OUT, DERIVED_OUT, MODEL_DERIVED_OUT);
+console.info(`[catalog-snapshot] wrote ${Object.keys(trimmed).length} providers to ${OUT}`);
 console.info(
   `[catalog-snapshot] wrote ${Object.keys(derived).length} derived providers to ${DERIVED_OUT}`,
+);
+console.info(
+  `[catalog-snapshot] wrote ${modelDerivedCount} offerable models to ${MODEL_DERIVED_OUT}`,
 );

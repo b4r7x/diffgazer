@@ -3,7 +3,7 @@ import { err, ok, type Result } from "@diffgazer/core/result";
 import type { AgentStreamEvent, LensStat, StepEvent } from "@diffgazer/core/schemas/events";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
-import type { AIClient } from "../../../shared/lib/ai/types.js";
+import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
 import { runLensAnalysis } from "./analysis.js";
 import type { ParsedDiff } from "./diff/types.js";
 import {
@@ -18,6 +18,17 @@ import type {
   OrchestrationOutcome,
   ReviewError,
 } from "./types.js";
+
+/**
+ * The failure class that says the admitted tuple cannot produce structured
+ * review output at all: the schema bridge rejecting the parsed response, or an
+ * adapter dispatch whose own receipt reported `schema-failed`. Every other
+ * failure (transport, timeout, budget, cancellation) is about this attempt.
+ */
+function isStructuredOutputFailure(error: AIError): boolean {
+  if (error.code === "PARSE_ERROR") return true;
+  return error.code === "STREAM_ERROR" && error.diagnostic?.code === "schema-failed";
+}
 
 function isAbortRejection(reason: unknown, signal?: AbortSignal): boolean {
   if (signal?.aborted) return true;
@@ -123,20 +134,38 @@ export async function orchestrateReview(
     return { lens, agentId };
   });
 
+  // The first structured-output failure, before any lens has produced findings,
+  // proves the tuple itself cannot run reviews. Stop launching the remaining
+  // lenses and cancel the ones in flight instead of paying for every dispatch.
+  const structuredOutputAbort = new AbortController();
+  const signals = [orchestrationOptions.signal, structuredOutputAbort.signal].filter(
+    (candidate): candidate is AbortSignal => candidate !== undefined,
+  );
+  const signal = AbortSignal.any(signals);
+  let anyLensSucceeded = false;
+  let structuredOutputError: ReviewError | null = null;
+
   const settledResults = await runWithConcurrency(
     tasks,
     concurrency,
     async (task) => {
       try {
-        return await runLensAnalysis(
+        const result = await runLensAnalysis(
           client,
           task.lens,
           diff,
           onEvent,
           orchestrationOptions.projectContext,
-          orchestrationOptions.signal,
+          signal,
           filter,
         );
+        if (result.ok) {
+          anyLensSucceeded = true;
+        } else if (!anyLensSucceeded && isStructuredOutputFailure(result.error)) {
+          structuredOutputError ??= { code: result.error.code, message: result.error.message };
+          structuredOutputAbort.abort();
+        }
+        return result;
       } catch (error) {
         onEvent({
           type: "agent_error",
@@ -147,7 +176,7 @@ export async function orchestrateReview(
         throw error;
       }
     },
-    orchestrationOptions.signal,
+    signal,
   );
 
   const allIssues: ReviewIssue[] = [];
@@ -165,9 +194,7 @@ export async function orchestrateReview(
       // A rejected task is either an abort (synthetic "Aborted" fill or a signal
       // abort) or an unexpected internal throw — never a classified network
       // failure, which travels the `result.ok === false` branch below.
-      const errorCode = isAbortRejection(settled.reason, orchestrationOptions.signal)
-        ? "CANCELLED"
-        : "INTERNAL_ERROR";
+      const errorCode = isAbortRejection(settled.reason, signal) ? "CANCELLED" : "INTERNAL_ERROR";
       lastError = { code: errorCode, message: errorMsg };
       lensStats.push({
         lensId: lens.id,
@@ -222,6 +249,14 @@ export async function orchestrateReview(
     minSeverity: filter?.minSeverity,
     timestamp: new Date().toISOString(),
   });
+
+  // A structured-output failure is decisive only while nothing has decoded. A
+  // lens that came back with findings — even one already in flight when the
+  // abort fired — disproves the tuple's incapacity, so the review reports its
+  // findings and the aborted lenses as per-lens failures instead.
+  if (structuredOutputError !== null && !anyLensSucceeded) {
+    return err(structuredOutputError);
+  }
 
   const allLensesFailed = failedLensCount === lenses.length && lenses.length > 0;
 

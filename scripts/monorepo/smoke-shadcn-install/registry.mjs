@@ -1,13 +1,19 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { normalizeOrigin, REGISTRY_ORIGIN, resolveRegistryRoute } from "@diffgazer/registry";
+import {
+  findRelativeJsSpecifiers,
+  listPublicRegistryEntries,
+  normalizeOrigin,
+  REGISTRY_ORIGIN,
+  resolveRegistryRoute,
+} from "@diffgazer/registry";
 import { collectMissingClosure } from "../registry-closure.mjs";
+import { DEFAULT_FIXTURE_ALIASES, fixtureAliasPath } from "../smoke-shared/fixtures.mjs";
 
 const registryOrigin = normalizeOrigin(process.env.REGISTRY_ORIGIN, {
   defaultOrigin: REGISTRY_ORIGIN,
 });
 
-export const keysItems = ["navigation", "focus-restore", "focus-trap", "focusable"];
 export const keysInstallItems = ["navigation", "focus-trap"];
 export const uiItems = [
   "theme",
@@ -43,10 +49,24 @@ export function allRegistryIndexNames(registryDir) {
   return (index.items ?? []).map((item) => item.name);
 }
 
-function publicRegistryFileNames(registryDir) {
-  return readdirSync(registryDir)
-    .filter((entry) => entry.endsWith(".json") && entry !== "registry.json")
-    .map((entry) => entry.slice(0, -".json".length));
+// Every item JSON the registry ships, including transitive-only internals the
+// browsable index deliberately omits (keys/focusable).
+export function publicRegistryFileNames(registryDir) {
+  return listPublicRegistryEntries(registryDir).map(({ entry }) => entry.slice(0, -".json".length));
+}
+
+// A cross-namespace dependency (r/keys/navigation.json) names a keys item, not a
+// UI one. Stripping the namespace would seed the UI exclusion set with keys names
+// and silently drop a same-named hidden UI add-on from the direct-install roots.
+function uiDependencyName(dep) {
+  const route = registryRouteFromUrl(dep);
+  if (route) {
+    const [, namespace, fileName] = route.split("/");
+    return namespace === "ui" ? fileName.replace(/\.json$/, "") : null;
+  }
+  if (dep.startsWith("http://") || dep.startsWith("https://")) return null;
+  const bareName = dep.split("/").pop();
+  return bareName ? bareName.replace(/\.json$/, "") : null;
 }
 
 // The browsable index plus hidden leaf add-ons nothing depends on (code-block-highlight, logo-figlet).
@@ -61,10 +81,7 @@ export function directlyInstallableUiNames(registryDir) {
   for (const name of fileNames) {
     const item = loadRegistryItem(registryDir, name);
     for (const dep of item?.registryDependencies ?? []) {
-      const target = dep
-        .split("/")
-        .pop()
-        ?.replace(/\.json$/, "");
+      const target = uiDependencyName(dep);
       if (target) dependedUpon.add(target);
     }
   }
@@ -78,23 +95,35 @@ export function directlyInstallableUiNames(registryDir) {
   return [...indexNames, ...hiddenAddons];
 }
 
-// Fixture-relative path a registry file lands at after `shadcn add` resolves the components.json
-// aliases (ui → @/components/ui, hooks → @/hooks, lib → @/lib) and explicit `target` fields
-// (@ui/ → src/components/ui; ~/ → project root; bare src/ verbatim).
+// Where the fixture's components.json aliases put each alias root. shadcn resolves an `@<alias>/`
+// target under one of exactly these four roots, so deriving them from the fixture's own alias set
+// keeps the expected install paths tied to the fixture instead of restating its layout.
+const FIXTURE_ALIAS_DIRS = {
+  components: fixtureAliasPath(DEFAULT_FIXTURE_ALIASES.components),
+  ui: fixtureAliasPath(DEFAULT_FIXTURE_ALIASES.ui),
+  lib: fixtureAliasPath(DEFAULT_FIXTURE_ALIASES.lib),
+  hooks: fixtureAliasPath(DEFAULT_FIXTURE_ALIASES.hooks),
+};
+
+// Fixture-relative path a registry file lands at after `shadcn add` resolves its `target` field
+// (`~/` → project root, `@<alias>/` → that alias root, anything else verbatim) or, with no target,
+// its registry path under the type's alias. A target naming an alias shadcn does not resolve maps
+// nowhere, so it reports as unmapped instead of pointing at a path the fixture never writes.
 export function installedFilePathForFile(file) {
   if (file.target) {
-    if (file.target.startsWith("@ui/")) {
-      return `src/components/ui/${file.target.slice("@ui/".length)}`;
-    }
     if (file.target.startsWith("~/")) return file.target.slice(2);
-    return file.target;
+    const alias = /^@([^/]+)\/(.+)$/.exec(file.target);
+    if (!alias) return file.target;
+    const [, aliasName, aliasRelativePath] = alias;
+    const aliasDir = FIXTURE_ALIAS_DIRS[aliasName];
+    return aliasDir ? `${aliasDir}/${aliasRelativePath}` : null;
   }
-  const aliasPrefixes = [
-    ["registry/ui/", "src/components/ui/"],
-    ["registry/hooks/", "src/hooks/"],
-    ["registry/lib/", "src/lib/"],
+  const pathPrefixes = [
+    ["registry/ui/", `${FIXTURE_ALIAS_DIRS.ui}/`],
+    ["registry/hooks/", `${FIXTURE_ALIAS_DIRS.hooks}/`],
+    ["registry/lib/", `${FIXTURE_ALIAS_DIRS.lib}/`],
   ];
-  for (const [from, to] of aliasPrefixes) {
+  for (const [from, to] of pathPrefixes) {
     if (file.path.startsWith(from)) return `${to}${file.path.slice(from.length)}`;
   }
   return null;
@@ -221,14 +250,18 @@ export function assertKeysTargets(registryDir, names) {
   }
 }
 
+// Shares the lexer behind libs/keys' own validate:registry gate, so this covers
+// all four specifier forms (static, side-effect, dynamic, require) rather than
+// the `from "..."` form alone.
 export function assertNoJsImportSpecifiers(registryDir, names) {
   for (const name of names) {
     const item = loadRegistryItem(registryDir, name);
     for (const file of item.files ?? []) {
       if (!file.content) continue;
-      if (/from\s+["'][^"']*\.js["']/.test(file.content)) {
+      const specifiers = findRelativeJsSpecifiers(file.content);
+      if (specifiers.length > 0) {
         throw new Error(
-          `Keys item "${name}" file "${file.path}" contains .js import specifier in public registry`,
+          `Keys item "${name}" file "${file.path}" contains relative .js import specifiers in public registry: ${specifiers.join(", ")}`,
         );
       }
     }

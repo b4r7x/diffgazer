@@ -52,12 +52,14 @@ function Subject({
   onSelectedId = vi.fn(),
   listReady = true,
   isPending = false,
+  hasNotice = false,
   runAction = vi.fn(),
 }: {
   filteredProviders?: ProviderListRow[];
   onSelectedId?: (id: string | null) => void;
   listReady?: boolean;
   isPending?: boolean;
+  hasNotice?: boolean;
   runAction?: (action: ProviderAction) => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -66,14 +68,15 @@ function Subject({
   const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
+  const noticeActionRef = useRef<HTMLButtonElement>(null);
   const selectedRow =
     filteredProviders.find((row) => getProviderRowId(row) === selectedId) ??
     (GEMINI_ROW as ProviderListRow);
   const actions = getProviderActions(selectedRow);
   const keyboard = useProvidersKeyboard({
     actions,
-    selectedRow,
-    filteredProviders: filteredProviders as ProviderListRow[],
+    hasSelection: selectedRow !== null,
+    listRowIds: (filteredProviders as ProviderListRow[]).map(getProviderRowId),
     listReady,
     filter: "all",
     setSelectedId: (id) => {
@@ -82,13 +85,20 @@ function Subject({
     },
     dialogOpen: false,
     isPending,
+    hasNotice,
     inputRef,
     listContainerRef,
+    noticeActionRef,
     runAction,
   });
 
   return (
     <>
+      {hasNotice ? (
+        <button type="button" ref={noticeActionRef} onFocus={keyboard.handleNoticeFocus}>
+          Retry
+        </button>
+      ) : null}
       <input
         ref={inputRef}
         aria-label="Search providers"
@@ -139,20 +149,23 @@ function ProviderListSubject({
   const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
+  const noticeActionRef = useRef<HTMLButtonElement>(null);
   const selectedRow =
     rows.find((row) => getProviderRowId(row) === selectedId) ?? (GEMINI_ROW as ProviderListRow);
   const actions = getProviderActions(selectedRow);
   const keyboard = useProvidersKeyboard({
     actions,
-    selectedRow,
-    filteredProviders: rows,
+    hasSelection: selectedRow !== null,
+    listRowIds: rows.map(getProviderRowId),
     listReady: true,
     filter,
     setSelectedId: setSelectedId,
     dialogOpen: false,
     isPending: false,
+    hasNotice: false,
     inputRef,
     listContainerRef,
+    noticeActionRef,
     runAction,
   });
 
@@ -161,6 +174,7 @@ function ProviderListSubject({
       <ProviderList
         ref={listContainerRef}
         providers={rows}
+        unrecognized={[]}
         selectedId={selectedId}
         highlighted={selectedId}
         onSelect={setSelectedId}
@@ -226,9 +240,9 @@ describe("useProvidersKeyboard", () => {
     expect(providerList).toHaveFocus();
   });
 
-  it("announces disabled reasons for unavailable actions", () => {
+  it("disables an action the row cannot run", () => {
     // The metadata schema pins supported configurations to the full action contract, so a ready
-    // row missing "select" is built directly to exercise the disabled-reason announcement.
+    // row missing "select" is built directly to exercise the reason-disabled path.
     const readyRow = ROWS.find((row) => row.configuration?.configurationId === "zai-primary");
     if (!readyRow) throw new Error("Missing zai fixture");
     const noSelectRow: ProviderListRow = {
@@ -245,7 +259,6 @@ describe("useProvidersKeyboard", () => {
 
     const select = screen.getByRole("button", { name: "Select configuration" });
     expect(select).toBeDisabled();
-    expect(select).toHaveAttribute("title", "Selection is not available");
     expect(screen.getByRole("button", { name: "Update configuration" })).not.toBeDisabled();
   });
 
@@ -299,7 +312,70 @@ describe("useProvidersKeyboard", () => {
     await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("button", { name: /Select configuration/i })).toHaveFocus();
     await user.keyboard("{Enter}");
-    expect(runAction).toHaveBeenCalledWith(expect.objectContaining({ id: "dispatch" }));
+    expect(runAction).toHaveBeenCalledWith(expect.objectContaining({ id: "selectConfiguration" }));
+  });
+
+  it("cycles real focus between the notice action and the search input", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <Subject hasNotice />
+      </KeyboardProvider>,
+    );
+
+    const searchInput = screen.getByRole("textbox", { name: "Search providers" });
+    await user.click(searchInput);
+    expect(searchInput).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus();
+
+    await user.keyboard("{ArrowDown}");
+    expect(searchInput).toHaveFocus();
+  });
+
+  it("ignores ArrowUp from search when no notice renders", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <Subject />
+      </KeyboardProvider>,
+    );
+
+    const searchInput = screen.getByRole("textbox", { name: "Search providers" });
+    await user.click(searchInput);
+
+    await user.keyboard("{ArrowUp}");
+    expect(searchInput).toHaveFocus();
+  });
+
+  it("falls back to the list zone when the notice disappears while focused", async () => {
+    const user = userEvent.setup();
+
+    const { rerender } = render(
+      <KeyboardProvider>
+        <Subject hasNotice />
+      </KeyboardProvider>,
+    );
+
+    await user.click(screen.getByRole("textbox", { name: "Search providers" }));
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByRole("button", { name: "Retry" })).toHaveFocus();
+
+    rerender(
+      <KeyboardProvider>
+        <Subject hasNotice={false} />
+      </KeyboardProvider>,
+    );
+
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    // The zone anchor left the page: list navigation must answer again.
+    const listbox = screen.getByRole("listbox", { name: "Providers" });
+    listbox.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("button", { name: /Select configuration/i })).toHaveFocus();
   });
 
   it("parks focus off body while an activated action is pending, then reclaims it", async () => {

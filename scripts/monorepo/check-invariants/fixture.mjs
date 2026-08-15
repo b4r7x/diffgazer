@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach } from "node:test";
 import { runInvariantChecks } from "../check-invariants.mjs";
+import { CANONICAL_MIT_LICENSE } from "./packages.mjs";
 
 export const PACKAGE_FILES = [
   "apps/docs/package.json",
@@ -80,7 +81,7 @@ function createWorkspacePackage(root, relPath, pkg) {
   writeJson(root, relPath, pkg);
 }
 
-function writePackagePolicyFiles(root, packageDir, licenseText = "MIT License\n") {
+function writePackagePolicyFiles(root, packageDir, licenseText = CANONICAL_MIT_LICENSE) {
   for (const file of ["README.md", "SECURITY.md", "SUPPORT.md"]) {
     writeText(root, `${packageDir}/${file}`, `${file}\n`);
   }
@@ -119,6 +120,8 @@ export function createConformingFixture() {
       "  - libs/*",
       "  - libs/keys/artifacts",
       "  - libs/keys/examples/*",
+      "overrides:",
+      '  "@types/node": ^22.10.0',
       "patchedDependencies:",
       "  nitro@3.0.260429-beta: patches/nitro@3.0.260429-beta.patch",
       "",
@@ -154,6 +157,7 @@ export function createConformingFixture() {
   createWorkspacePackage(root, "libs/registry/package.json", {
     name: "@diffgazer/registry",
     private: true,
+    engines: { node: ">=22.0.0" },
   });
 
   createWorkspacePackage(root, "libs/ui/package.json", {
@@ -207,17 +211,29 @@ export function createConformingFixture() {
     name: "diffgazer",
     author: "diffgazer",
     license: "Apache-2.0",
-    bin: { diffgazer: "bin/diffgazer.js" },
+    bin: { diffgazer: "./dist/index.js" },
     repository: {
       url: "git+https://github.com/b4r7x/diffgazer.git",
       directory: "cli/diffgazer",
     },
     homepage: "https://github.com/b4r7x/diffgazer/tree/main/cli/diffgazer",
-    files: ["dist", "bin/diffgazer.js", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
+    files: ["dist", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
     publishConfig: { access: "public", provenance: true },
     engines: { node: ">=22.0.0" },
   });
-  writePackagePolicyFiles(root, "cli/diffgazer", "Apache License\n");
+  writePackagePolicyFiles(
+    root,
+    "cli/diffgazer",
+    [
+      "Apache License",
+      "(an example is provided in the Appendix below)",
+      "link (or bind by name)",
+      "(except as stated in this section) patent license",
+      "cross-claim or counterclaim in a lawsuit",
+      "(and each Contributor provides its Contributions)",
+      "",
+    ].join("\n"),
+  );
 
   createWorkspacePackage(root, "cli/add/package.json", {
     name: "@diffgazer/add",
@@ -234,6 +250,56 @@ export function createConformingFixture() {
     engines: { node: ">=22.0.0" },
   });
   writePackagePolicyFiles(root, "cli/add");
+
+  for (const packageFile of PACKAGE_FILES) {
+    updatePackage(root, packageFile, (pkg) => ({
+      ...pkg,
+      devDependencies: { ...pkg.devDependencies, "@types/node": "^22.10.0" },
+    }));
+  }
+  writeText(
+    root,
+    ".github/actions/setup-repo/action.yml",
+    "runs:\n  using: composite\n  steps:\n    - uses: actions/setup-node@fixture\n      with:\n        node-version: 22\n",
+  );
+  writeText(
+    root,
+    "PACKAGE_GOVERNANCE.md",
+    [
+      "## Dependency Governance",
+      "",
+      "- `@types/node` pinned to `^22.10.0`.",
+      "",
+      "## Licensing",
+      "",
+      "- **MIT** covers `cli/add`, `libs/keys`, and `libs/ui`.",
+      "- **Apache-2.0** covers `cli/diffgazer`.",
+      "",
+    ].join("\n"),
+  );
+  const nodeTypeImporters = PACKAGE_FILES.flatMap((packageFile) => {
+    const importer = packageFile.replace(/\/package\.json$/, "");
+    const lines = [
+      `  ${importer}:`,
+      "    devDependencies:",
+      "      '@types/node':",
+      "        specifier: ^22.10.0",
+      "        version: 22.19.0",
+    ];
+    return lines;
+  });
+  writeText(
+    root,
+    "pnpm-lock.yaml",
+    [
+      "lockfileVersion: '9.0'",
+      "importers:",
+      ...nodeTypeImporters,
+      "packages:",
+      "  '@types/node@22.19.0': {}",
+      "",
+    ].join("\n"),
+  );
 
   writeText(root, ".env.example", ["CANONICAL_KEY=1", "VITE_SURFACE=1", ""].join("\n"));
   writeText(root, "apps/landing/.env.example", "VITE_SURFACE=1\n");

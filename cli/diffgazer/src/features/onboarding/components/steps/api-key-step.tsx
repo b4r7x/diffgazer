@@ -1,5 +1,5 @@
 import type { InputMethod } from "@diffgazer/core/onboarding";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { CREDENTIAL_ENV_VARS, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { RunnableProductId } from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
@@ -16,31 +16,6 @@ interface ApiKeyStepProps {
   isActive?: boolean;
   inputFocused?: boolean;
   onInputFocusedChange?: (focused: boolean) => void;
-}
-
-function getHostedEnvVar(productId: RunnableProductId): string {
-  switch (productId) {
-    case "gemini":
-      return "GEMINI_API_KEY";
-    case "openrouter":
-      return "OPENROUTER_API_KEY";
-    case "groq":
-      return "GROQ_API_KEY";
-    case "cerebras":
-      return "CEREBRAS_API_KEY";
-    case "deepseek":
-      return "DEEPSEEK_API_KEY";
-    case "qwen":
-      return "DASHSCOPE_API_KEY";
-    case "moonshot":
-      return "MOONSHOT_API_KEY";
-    case "mistral":
-      return "MISTRAL_API_KEY";
-    case "zai":
-      return "ZAI_API_KEY";
-    default:
-      return "API_KEY";
-  }
 }
 
 export function ApiKeyStep({
@@ -88,7 +63,7 @@ export function ApiKeyStep({
         onMethodChange={onMethodChange}
         apiKey={apiKey}
         onApiKeyChange={onApiKeyChange}
-        envVar={getHostedEnvVar(productId)}
+        envVar={CREDENTIAL_ENV_VARS[productId] ?? ""}
         envVarReadOnly
         isActive={isActive}
         inputFocused={inputFocused}

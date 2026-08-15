@@ -1,5 +1,4 @@
 /// <reference lib="dom" />
-import { vi } from "vitest";
 import { stubMatchMedia } from "./match-media.js";
 
 // Shared jsdom polyfills for app/library vitest suites that render UI
@@ -10,13 +9,21 @@ import { stubMatchMedia } from "./match-media.js";
 // jest-dom matchers stay in each package's own setup file so this stays free of
 // @testing-library deps and consumable from any vitest package.
 
-class TestResizeObserver {
-  observe() {}
-  unobserve() {}
+class TestResizeObserver implements ResizeObserver {
+  observe(_target: Element, _options?: ResizeObserverOptions) {}
+
+  unobserve(_target: Element) {}
+
   disconnect() {}
 }
 
-vi.stubGlobal("ResizeObserver", TestResizeObserver);
+const ResizeObserverBaseline: typeof ResizeObserver = TestResizeObserver;
+
+Object.defineProperty(globalThis, "ResizeObserver", {
+  configurable: true,
+  writable: true,
+  value: ResizeObserverBaseline,
+});
 
 stubMatchMedia(false);
 

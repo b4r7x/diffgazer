@@ -530,48 +530,23 @@
   }
 }
 
-/* Windows High Contrast Mode */
-@media (forced-colors: active) {
-  :root {
-    --border: CanvasText;
-    --ring: Highlight;
-    --foreground: CanvasText;
-    --background: Canvas;
-    --muted-foreground: CanvasText;
-  }
-}
-
-/* Increased contrast preference */
-@media (prefers-contrast: more) {
-  :root,
-  [data-theme="dark"] {
-    --base-dim: #b3b3b3;
-    --base-border: #777777;
-    --base-muted: #999999;
-    --base-accent: #b3b3b3;
-  }
-  [data-theme="light"] {
-    --base-dim: #4a4a4a;
-    --base-border: #6e6e6e;
-    --base-muted: #555555;
-  }
-}
-
-/* Shiki dual-theme variable resolution */
+/*
+ * Shiki dual-theme variable resolution. The unscoped rule paints the DARK set
+ * because a bare `:root` is the dark palette (see theme.css); the light set
+ * here would put a white code block on a near-black page. `[data-theme="light"]`
+ * is then the only themed branch, so it outranks the unscoped rule on
+ * specificity wherever a light subtree opens — however deeply nested. A
+ * `[data-theme="dark"]` copy would add nothing at :root and, at equal
+ * specificity, would defeat the light branch it follows.
+ */
 .shiki,
 .shiki span {
-  color: var(--shiki-light);
-  background-color: var(--shiki-light-bg);
+  color: var(--shiki-dark);
+  background-color: var(--shiki-dark-bg);
 }
 
 [data-theme="light"] .shiki,
 [data-theme="light"] .shiki span {
   color: var(--shiki-light);
   background-color: var(--shiki-light-bg);
-}
-
-[data-theme="dark"] .shiki,
-[data-theme="dark"] .shiki span {
-  color: var(--shiki-dark);
-  background-color: var(--shiki-dark-bg);
 }

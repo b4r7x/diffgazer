@@ -1,9 +1,12 @@
 import {
   findProviderById,
+  getBillingTier,
   getProviderRowId,
   mapProviderList,
+  offersFreeModels,
   PRODUCT_REGISTRY,
   type ProviderListRow,
+  SELECTABLE_PRODUCTS,
 } from "@diffgazer/core/providers";
 import type {
   ClientConfigurationSummary,
@@ -14,10 +17,14 @@ import {
   LEGACY_V1_HAS_API_KEY_PROPERTY,
   READINESS_PRESENTATION,
   ReadinessSchema,
-  SELECTABLE_PRODUCTS,
 } from "@diffgazer/core/schemas/config";
 import { describe, expect, it } from "vitest";
-import { filterProviders, PROVIDER_FILTERS } from "./filter";
+import {
+  filterProviders,
+  filterUnrecognizedConfigurations,
+  PROVIDER_FILTER_LABELS,
+  PROVIDER_FILTERS,
+} from "./filter";
 
 function copyNotice(productId: RunnableProductId) {
   const notice = PRODUCT_REGISTRY[productId].notice;
@@ -27,7 +34,7 @@ function copyNotice(productId: RunnableProductId) {
 const NON_READY_EVIDENCE = {
   "conformance-pending": { evidenceStatus: "pending", checkedAt: "2026-07-31T12:00:00.000Z" },
   unsupported: { evidenceStatus: "not-checked", checkedAt: null },
-  "local-endpoint-unreachable": { evidenceStatus: "failed", checkedAt: "2026-07-31T12:00:00.000Z" },
+  "local-conformance-failed": { evidenceStatus: "failed", checkedAt: "2026-07-31T12:00:00.000Z" },
 } as const;
 
 function configurationStatus(
@@ -107,7 +114,7 @@ const LOCAL_UNREACHABLE = configurationStatus(
     notices: [copyNotice("local-openai")],
     availableActions: ["inspect", "select", "test", "update", "delete"],
   },
-  "local-endpoint-unreachable",
+  "local-conformance-failed",
 );
 
 const CLI_UNSUPPORTED = configurationStatus(
@@ -185,13 +192,32 @@ describe("filterProviders", () => {
     );
   });
 
-  it("partitions free vs paid by product billing modes", () => {
+  // Gemini's models are all priced, so it stays on the paid side, but Google
+  // publishes a free tier to run them on — the Free tab is where a user looking
+  // for a no-cost start goes, and hiding Gemini from it hides the answer.
+  it("lists a declared free tier under both filters and a PAYG-only product under paid alone", () => {
     const freeIds = rowIds(filterProviders(ALL_ROWS, "free"));
-    expect(freeIds).toContain("gemini-primary");
-
     const paidIds = rowIds(filterProviders(ALL_ROWS, "paid"));
+
+    expect(getBillingTier("gemini")).toBe("free-tier");
+    expect(freeIds).toContain("gemini-primary");
+    expect(paidIds).toContain("gemini-primary");
+
+    expect(getBillingTier("deepseek")).toBe("paid");
+    expect(freeIds).not.toContain("deepseek-pending");
     expect(paidIds).toContain("deepseek-pending");
-    expect(paidIds).not.toContain("gemini-primary");
+  });
+
+  // OpenRouter's zero-priced `:free` entries are pinned catalog identities its
+  // picker really offers, so both tabs must list it.
+  it("lists a product selling both free and priced models under both filters", () => {
+    expect(getBillingTier("openrouter")).toBe("mixed");
+    expect(rowIds(filterProviders(ALL_ROWS, "free"))).toContain("openrouter");
+    expect(rowIds(filterProviders(ALL_ROWS, "paid"))).toContain("openrouter");
+
+    expect(offersFreeModels("mixed")).toBe(true);
+    expect(offersFreeModels("free")).toBe(true);
+    expect(offersFreeModels("paid")).toBe(false);
   });
 
   it("matches search query against product name and id", () => {
@@ -211,11 +237,19 @@ describe("filterProviders", () => {
     expect(PROVIDER_FILTERS).toEqual(["all", "configured", "needs-key", "free", "paid"]);
   });
 
-  it("distinguishes local unreachable and CLI unsupported readiness", () => {
+  it("orders the rendered filter chips like the keyboard index tuple", () => {
+    // The keyboard layer stores a filter as its PROVIDER_FILTERS index and the list
+    // resolves that index through PROVIDER_FILTER_LABELS; a divergence would focus
+    // the wrong chip.
+    expect(PROVIDER_FILTER_LABELS.map(({ value }) => value)).toEqual([...PROVIDER_FILTERS]);
+    expect(PROVIDER_FILTER_LABELS.every(({ label }) => label.length > 0)).toBe(true);
+  });
+
+  it("distinguishes local conformance failure and CLI unsupported readiness", () => {
     const local = findProviderById(ALL_ROWS, "local-openai-1");
     const cli = findProviderById(ALL_ROWS, "codex-cli-1");
 
-    expect(local?.readiness.status).toBe("local-endpoint-unreachable");
+    expect(local?.readiness.status).toBe("local-conformance-failed");
     expect(cli?.readiness.status).toBe("unsupported");
     expect(local?.product.transportFamily).toBe("local-http");
     expect(cli?.product.transportFamily).toBe("local-cli");
@@ -231,5 +265,28 @@ describe("filterProviders", () => {
 
   it("does not serialize the legacy V1 has-api-key field", () => {
     expect(JSON.stringify(ALL_ROWS)).not.toContain(LEGACY_V1_HAS_API_KEY_PROPERTY);
+  });
+
+  // The record is a stored configuration, so it stays reachable under the two
+  // filters that ask about storage, and is not claimed by the product filters
+  // that ask about a product it has none of.
+  it("offers an undecodable record under the storage filters only", () => {
+    const unrecognized = [{ configurationId: "cfg-retired" }];
+
+    expect(filterUnrecognizedConfigurations(unrecognized, "all")).toEqual(unrecognized);
+    expect(filterUnrecognizedConfigurations(unrecognized, "configured")).toEqual(unrecognized);
+    expect(filterUnrecognizedConfigurations(unrecognized, "needs-key")).toEqual([]);
+    expect(filterUnrecognizedConfigurations(unrecognized, "free")).toEqual([]);
+    expect(filterUnrecognizedConfigurations(unrecognized, "paid")).toEqual([]);
+  });
+
+  it("finds an undecodable record by its id or by the name the list gives it", () => {
+    const unrecognized = [{ configurationId: "cfg-retired" }];
+
+    expect(filterUnrecognizedConfigurations(unrecognized, "all", "retired")).toEqual(unrecognized);
+    expect(filterUnrecognizedConfigurations(unrecognized, "all", "unrecognized")).toEqual(
+      unrecognized,
+    );
+    expect(filterUnrecognizedConfigurations(unrecognized, "all", "gemini")).toEqual([]);
   });
 });

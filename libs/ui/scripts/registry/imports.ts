@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { KEYS_REGISTRY_DEPENDENCY_PREFIXES } from "@diffgazer/registry/schemas";
+import { parseKeysDependencyRef } from "@diffgazer/registry/schemas";
 import {
   extractLocalImports,
   normalizeRegistryPath,
@@ -13,7 +13,7 @@ function itemNamesByFile(items: RegistryItem[]): Map<string, string> {
   const namesByFile = new Map<string, string>();
 
   for (const item of items) {
-    for (const file of item.files ?? []) {
+    for (const file of item.files) {
       namesByFile.set(normalizeRegistryPath(file.path), item.name);
     }
   }
@@ -52,7 +52,7 @@ export function validateRegistryImportClosure(root: string, items: RegistryItem[
   for (const item of items) {
     const closure = resolveRegistryDependencyClosure(item, itemsByName);
 
-    for (const file of item.files ?? []) {
+    for (const file of item.files) {
       const filePath = resolve(root, file.path);
       if (!existsSync(filePath) || file.path.endsWith(".css")) continue;
 
@@ -74,8 +74,8 @@ export function validateRegistryImportClosure(root: string, items: RegistryItem[
           // A UI hook shim (e.g. use-focus-trap) that re-exports from @diffgazer/keys
           // is satisfied when the importer already depends on the matching @diffgazer-keys/* item.
           const importedItem = itemsByName.get(importedItemName);
-          const shimKeysDeps = (importedItem?.registryDependencies ?? []).filter((dep) =>
-            KEYS_REGISTRY_DEPENDENCY_PREFIXES.some((prefix) => dep.startsWith(prefix)),
+          const shimKeysDeps = (importedItem?.registryDependencies ?? []).filter(
+            (dep) => parseKeysDependencyRef(dep) !== null,
           );
           const satisfiedByKeys =
             shimKeysDeps.length > 0 && shimKeysDeps.every((dep) => closure.has(dep));

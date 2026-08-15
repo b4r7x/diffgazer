@@ -30,8 +30,19 @@ export function RegistryDirectory({ libraries }: { libraries: HomeLibrary[] }) {
     containerRef: listRef,
     role: "button",
     wrap: false,
+    focusWithinOnly: true,
+    // The rows are links, so DOM focus is the anchor j/k step from. Without moving focus
+    // along, the marker and the focused row drift apart and Enter opens the focused
+    // package instead of the marked one.
+    moveFocus: true,
     upKeys: ["ArrowUp", "k"],
     downKeys: ["ArrowDown", "j"],
+    onSelect: (libraryId) => {
+      const link = listRef.current?.querySelector<HTMLAnchorElement>(
+        `[data-diffgazer-navigation-item][data-value="${libraryId}"]`,
+      );
+      link?.click();
+    },
   });
 
   return (

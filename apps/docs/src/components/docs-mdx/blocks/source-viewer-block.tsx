@@ -67,8 +67,7 @@ function ComponentSourceViewer({
   library: DocsLibraryId;
 }) {
   const installCommand = getInstallCommand(library, data.name) ?? undefined;
-  const externalDeps = data.crossDeps?.filter((d) => d.library !== library);
-  const firstExternalDep = externalDeps?.[0];
+  const firstExternalDep = data.crossDeps?.find((d) => d.library !== library);
   const integrationNote = firstExternalDep ? (
     <>
       Keyboard hooks are included as standalone copies. For the full experience, use{" "}

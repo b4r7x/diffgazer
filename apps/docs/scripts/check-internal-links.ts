@@ -28,6 +28,17 @@ export interface BrokenInternalLink {
   resolvedPath: string;
 }
 
+export interface InternalAnchor {
+  path: string;
+  id: string;
+}
+
+const HEADING_PATTERN = /^#{1,6}\s+(.+)$/;
+const CUSTOM_HEADING_ID_PATTERN = /\s*\[#([^\]]+)\]\s*$/;
+const CODE_FENCE_PATTERN = /^\s*(?:```|~~~)/;
+/** Everything github-slugger drops: keep letters, numbers, marks, hyphens and spaces. */
+const HEADING_SLUG_STRIP_PATTERN = /[^\p{L}\p{N}\p{M}\- ]/gu;
+
 function normalizePath(path: string): string {
   if (path === "") return "/";
   const withoutTrailingSlash = path.length > 1 ? path.replace(/\/+$/, "") : path;
@@ -46,6 +57,56 @@ export function resolveInternalHref(href: string, routePath: string): string | n
   if (url.origin !== ORIGIN) return null;
 
   return normalizePath(url.pathname);
+}
+
+/** Same-page (`#foo`) links resolve against their own route, so they are checked too. */
+export function resolveInternalAnchor(href: string, routePath: string): InternalAnchor | null {
+  const trimmed = href.trim();
+  if (trimmed === "" || isExternalHref(trimmed)) return null;
+
+  const url = new URL(trimmed, `${ORIGIN}${routePath}`);
+  if (url.origin !== ORIGIN || url.hash === "") return null;
+
+  return { path: normalizePath(url.pathname), id: decodeURIComponent(url.hash.slice(1)) };
+}
+
+/**
+ * The id fumadocs' `remarkHeading` gives a heading: an explicit `[#id]` suffix,
+ * otherwise github-slugger over the heading text (punctuation dropped, spaces
+ * hyphenated) with `-1`, `-2`… suffixes for repeats within the same page.
+ */
+export function collectHeadingIds(content: string): Set<string> {
+  const ids = new Set<string>();
+  const slugCounts = new Map<string, number>();
+  let insideFence = false;
+
+  for (const line of content.split(/\r?\n/)) {
+    if (CODE_FENCE_PATTERN.test(line)) {
+      insideFence = !insideFence;
+      continue;
+    }
+    if (insideFence) continue;
+
+    const text = HEADING_PATTERN.exec(line.trimEnd())?.[1];
+    if (text === undefined) continue;
+
+    const customId = CUSTOM_HEADING_ID_PATTERN.exec(text)?.[1];
+    if (customId !== undefined) {
+      ids.add(customId);
+      continue;
+    }
+
+    const slug = text
+      .toLowerCase()
+      .replace(HEADING_SLUG_STRIP_PATTERN, "")
+      .trim()
+      .replace(/ +/g, "-");
+    const seen = slugCounts.get(slug) ?? 0;
+    slugCounts.set(slug, seen + 1);
+    ids.add(seen === 0 ? slug : `${slug}-${seen}`);
+  }
+
+  return ids;
 }
 
 export function extractInternalLinks(content: string): MdxLink[] {
@@ -121,7 +182,11 @@ export function collectMdxFiles(
   );
 }
 
-export const PHASE_5_CONTENT_ROUTES = [
+/**
+ * The canonical entry points of the app documentation: every other page and the
+ * README link into them, so they must always resolve in the prerender set.
+ */
+export const REQUIRED_APP_DOC_ROUTES = [
   "/app/concepts/how-it-works",
   "/app/concepts/privacy",
   "/app/concepts/providers-and-models",
@@ -133,10 +198,10 @@ export const PHASE_5_CONTENT_ROUTES = [
   "/app/reference/providers",
 ] as const;
 
-export type Phase5ContentRoute = (typeof PHASE_5_CONTENT_ROUTES)[number];
+export type RequiredAppDocRoute = (typeof REQUIRED_APP_DOC_ROUTES)[number];
 
 export interface RouteContractViolation {
-  kind: "missing-route" | "duplicate-route" | "stale-retired-provider-link";
+  kind: "missing-route" | "duplicate-route" | "stale-retired-provider-link" | "broken-anchor";
   detail: string;
   filePath?: string;
   line?: number;
@@ -268,6 +333,34 @@ export function findStaleRetiredProviderSupportLinks(files: MdxFile[]): RouteCon
   return violations;
 }
 
+export function findBrokenAnchors(files: MdxFile[]): RouteContractViolation[] {
+  const idsByRoute = new Map<string, Set<string>>();
+  for (const file of files) {
+    const ids = idsByRoute.get(file.routePath) ?? new Set<string>();
+    for (const id of collectHeadingIds(file.content)) ids.add(id);
+    idsByRoute.set(file.routePath, ids);
+  }
+
+  const violations: RouteContractViolation[] = [];
+  for (const file of files) {
+    for (const link of extractInternalLinks(file.content)) {
+      const anchor = resolveInternalAnchor(link.href, file.routePath);
+      // A route with no collected source has no known id set; its path is already
+      // covered by the broken-link pass, so guessing anchors there would be noise.
+      const ids = anchor && idsByRoute.get(anchor.path);
+      if (!anchor || !ids || ids.has(anchor.id)) continue;
+      violations.push({
+        kind: "broken-anchor",
+        detail: `${link.href} -> ${anchor.path}#${anchor.id}`,
+        filePath: file.filePath,
+        line: link.line,
+      });
+    }
+  }
+
+  return violations;
+}
+
 export function findRouteContractViolations(
   params: { files?: MdxFile[]; pages?: PreRenderPage[] } = {},
 ): RouteContractViolation[] {
@@ -290,13 +383,14 @@ export function findRouteContractViolations(
   }
 
   const validPaths = new Set(pages.map((page) => normalizePath(page.path)));
-  for (const route of PHASE_5_CONTENT_ROUTES) {
+  for (const route of REQUIRED_APP_DOC_ROUTES) {
     if (!validPaths.has(route)) {
       violations.push({ kind: "missing-route", detail: route });
     }
   }
 
   violations.push(...findStaleRetiredProviderSupportLinks(files));
+  violations.push(...findBrokenAnchors(files));
   return violations;
 }
 

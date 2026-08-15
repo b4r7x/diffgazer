@@ -76,10 +76,11 @@ export function SelectTrigger({
     highlighted,
     searchQuery,
     setHighlighted,
+    readTypeaheadQuery,
   } = useSelectContext("SelectTrigger");
   const composedRef = useComposedRefs(triggerRef, ref);
   const handleTypeahead = useSelectTypeahead({
-    open,
+    readTypeaheadQuery,
     options,
     searchQuery,
     highlighted,

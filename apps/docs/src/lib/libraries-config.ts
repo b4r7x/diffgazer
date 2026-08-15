@@ -1,29 +1,26 @@
 import { z } from "zod";
 import rawConfig from "../../config/docs-libraries.json";
 
+export const DOCS_LIBRARY_ID_VALUES = ["app", "ui", "keys"] as const;
+export type DocsLibraryId = (typeof DOCS_LIBRARY_ID_VALUES)[number];
+
 const ArtifactSourceSchema = z.object({
   workspaceDir: z.string().min(1),
 });
 
-const InstallerSchema = z.object({
-  command: z.string().min(1),
-  itemPrefix: z.string().optional(),
-});
-
 const DocsLibraryConfigSchema = z.object({
-  id: z.string().min(1),
+  id: z.enum(DOCS_LIBRARY_ID_VALUES),
   displayName: z.string().min(1),
   logoText: z.string().min(1),
   githubUrl: z.url(),
   enabled: z.boolean(),
   defaultRouteSlugs: z.array(z.string()),
-  installer: InstallerSchema.optional(),
   artifactSource: ArtifactSourceSchema.optional(),
 });
 
 export const DocsLibrariesConfigSchema = z
   .object({
-    primaryLibraryId: z.string().min(1),
+    primaryLibraryId: z.enum(DOCS_LIBRARY_ID_VALUES),
     libraries: z.array(DocsLibraryConfigSchema).min(1),
   })
   .refine((config) => config.libraries.some((library) => library.id === config.primaryLibraryId), {

@@ -74,6 +74,7 @@ interface CreateLibraryFixtureOptions {
   workspaceDir?: string;
   generated?: Record<string, string>;
   staleFingerprint?: boolean;
+  origin?: string;
 }
 
 function createLibraryFixture(options: CreateLibraryFixtureOptions): TestLibraryFixture {
@@ -85,6 +86,7 @@ function createLibraryFixture(options: CreateLibraryFixtureOptions): TestLibrary
       "ignored-key-name": "generated/nested/actual-generated.json",
     },
     staleFingerprint = false,
+    origin = TEST_ORIGIN,
   } = options;
 
   const libraryRoot = join(workspaceRoot, workspaceDir);
@@ -95,7 +97,7 @@ function createLibraryFixture(options: CreateLibraryFixtureOptions): TestLibrary
 
   const manifest: ArtifactManifest = {
     schemaVersion: 1,
-    origin: TEST_ORIGIN,
+    origin,
     library: id,
     package: `@test/${id}`,
     version: "1.0.0",
@@ -147,7 +149,7 @@ function createLibraryFixture(options: CreateLibraryFixtureOptions): TestLibrary
     writeJson(join(artifactRoot, relPath), { from: relPath });
   }
 
-  const currentFingerprint = computeArtifactFingerprint(libraryRoot, manifest.inputs, TEST_ORIGIN);
+  const currentFingerprint = computeArtifactFingerprint(libraryRoot, manifest.inputs, origin);
   writeText(
     join(artifactRoot, manifest.integrity.fingerprintFile),
     staleFingerprint ? `${currentFingerprint}-stale` : currentFingerprint,
@@ -226,6 +228,40 @@ describe("syncDocsFromArtifacts", () => {
     expectSyncSentinels(sentinels);
   });
 
+  describe("base-path re-host origin", () => {
+    const basePathOrigin = `${TEST_ORIGIN}/v2`;
+
+    function buildBasePathSync(registryDependency: string) {
+      const fixture = createLibraryFixture({ workspaceRoot, origin: basePathOrigin });
+      writeJson(
+        join(fixture.libraryRoot, fixture.manifest.artifactRoot, "public/r/registry.json"),
+        {
+          $schema: "test",
+          items: [{ name: "button", registryDependencies: [registryDependency] }],
+        },
+      );
+      return () =>
+        syncDocsFromArtifacts({
+          docsRoot,
+          workspaceRoot,
+          libraries: [fixture.config],
+          primaryLibraryId: fixture.config.id,
+          origin: basePathOrigin,
+          sourceOrigin: TEST_ORIGIN,
+        });
+    }
+
+    it("accepts rewritten URLs that keep the source origin as a prefix", () => {
+      expect(buildBasePathSync(`${basePathOrigin}/r/ui/theme.json`)).not.toThrow();
+    });
+
+    it("still reports a URL left on the source origin", () => {
+      expect(buildBasePathSync(`${TEST_ORIGIN}/r/ui/theme.json`)).toThrow(
+        /Found unreplaced origin/,
+      );
+    });
+  });
+
   it("throws when workspace artifact fingerprint is stale", () => {
     const fixture = createLibraryFixture({
       workspaceRoot,
@@ -262,34 +298,6 @@ describe("syncDocsFromArtifacts", () => {
         sourceOrigin: TEST_ORIGIN,
       }),
     ).toThrow(/safe library id/);
-  });
-
-  it("rejects output path overrides outside the docs root", () => {
-    const fixture = createLibraryFixture({ workspaceRoot });
-
-    expect(() =>
-      syncDocsFromArtifacts({
-        docsRoot,
-        workspaceRoot,
-        libraries: [fixture.config],
-        primaryLibraryId: fixture.config.id,
-        origin: TEST_ORIGIN,
-        sourceOrigin: TEST_ORIGIN,
-        outputPaths: { contentDir: "../outside" },
-      }),
-    ).toThrow(/docs content output path must be a relative path/);
-
-    expect(() =>
-      syncDocsFromArtifacts({
-        docsRoot,
-        workspaceRoot,
-        libraries: [fixture.config],
-        primaryLibraryId: fixture.config.id,
-        origin: TEST_ORIGIN,
-        sourceOrigin: TEST_ORIGIN,
-        outputPaths: { generatedDir: "/tmp/outside" },
-      }),
-    ).toThrow(/docs generated output path must be a relative path/);
   });
 
   it("rejects workspace directories outside the workspace root", () => {

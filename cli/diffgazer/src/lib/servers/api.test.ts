@@ -4,8 +4,8 @@ const execaMock = vi.hoisted(() => vi.fn());
 // Boundary mock: subprocess launcher for the API child process.
 vi.mock("execa", () => ({ execa: execaMock }));
 
+import { createFakeChild } from "../../testing/server-process-fixtures";
 import { createApiServer, waitForHealthy } from "./api";
-import { createFakeChild } from "./process/test-support";
 
 const ADDRESS = "http://localhost:3000";
 

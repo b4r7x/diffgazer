@@ -2,8 +2,8 @@ import { configQueries } from "@diffgazer/core/api/hooks";
 import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
 import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
 import {
+  GEMINI_CONFIGURATION,
   makeReadyInitResponse,
-  READY_GEMINI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { KeyboardProvider } from "@diffgazer/keys";
@@ -27,10 +27,10 @@ import { queryClient as appQueryClient } from "@/lib/query-client";
 import { assertClientSafePayload } from "@/testing/client-safe-assertions";
 import { requireConfigured } from "../lib/config-guards";
 import { NotFoundPage } from "./not-found";
-import { RouteRecoveryPage } from "./route-error-boundary";
+import { RouteOutletBoundary, RouteRecoveryPage } from "./route-error-boundary";
 import { lazyRoute } from "./route-import";
 import { router } from "./router";
-import { ConnectedRootLayout, ConnectedRouteOutlet } from "./routes/__root";
+import { ConnectedRootLayout } from "./routes/__root";
 
 vi.mock("../lib/config-guards", () => ({
   requireConfigured: vi.fn(),
@@ -189,7 +189,9 @@ describe("route recovery", () => {
     const rootRoute = createRootRoute({
       component: () => (
         <FooterProvider initialShortcuts={[]}>
-          <ConnectedRouteOutlet reloadDocument={reloadDocument} />
+          <KeyboardProvider>
+            <RouteOutletBoundary />
+          </KeyboardProvider>
         </FooterProvider>
       ),
     });
@@ -228,6 +230,36 @@ describe("route recovery", () => {
     expect(reloadDocument).toHaveBeenCalledOnce();
     expect(invalidate).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
+
+  it("recovers a root-layout failure with the app's own screen, outside FooterProvider", async () => {
+    // The root error slot replaces RootLayout, so it renders without the
+    // FooterProvider/KeyboardProvider that ConnectedRootLayout mounts. A footer-
+    // clearing recovery screen would throw here and fall through to TanStack's
+    // built-in debug widget.
+    const rootRoute = createRootRoute({
+      component: () => {
+        throw new Error("root layout failed");
+      },
+      errorComponent: router.routesById.__root__.options.errorComponent,
+    });
+    const testRouter = createRouter({
+      routeTree: rootRoute.addChildren([
+        createRoute({
+          getParentRoute: () => rootRoute,
+          path: "/",
+          component: () => <div>home ready</div>,
+        }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+    });
+
+    render(<RouterProvider router={testRouter} />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent("Something went wrong"),
+    );
+    expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
   it("invalidates a rejected route loader without reloading", async () => {
@@ -302,6 +334,7 @@ function createConnectedTitleRouter(initialEntries: string[]) {
       listConfigurations: vi.fn().mockResolvedValue({
         schemaVersion: 2,
         configurations: initResponse.configurations,
+        unrecognizedConfigurations: initResponse.unrecognizedConfigurations,
         selectedConfigurationId: initResponse.selectedConfigurationId,
       }),
     },
@@ -313,7 +346,7 @@ function createConnectedTitleRouter(initialEntries: string[]) {
       <QueryWrapper>
         <ConfigProvider>
           <KeyboardProvider>
-            <ConnectedRootLayout reloadDocument={vi.fn()} />
+            <ConnectedRootLayout />
           </KeyboardProvider>
         </ConfigProvider>
       </QueryWrapper>
@@ -498,6 +531,24 @@ describe("review route id validation", () => {
     expect(testRouter.state.location.pathname).toBe("/");
     expect(testRouter.state.location.search).toEqual({ error: "invalid-review-id" });
   });
+
+  it("degrades malformed review search values to their defaults", async () => {
+    const testRouter = await loadReviewPath(
+      "/review/6ba7b810-9dad-11d1-80b4-00c04fd430c8?mode=Staged&live=1",
+    );
+    const match = testRouter.state.matches.at(-1);
+
+    expect(match?.status).not.toBe("error");
+    expect(match?.search).toEqual({ mode: "unstaged" });
+  });
+
+  it("degrades a malformed home error param instead of failing the match", async () => {
+    const testRouter = await loadReviewPath("/?error=1");
+    const match = testRouter.state.matches.at(-1);
+
+    expect(match?.status).not.toBe("error");
+    expect(match?.search).toEqual({});
+  });
 });
 
 describe("protected review route readiness", () => {
@@ -528,7 +579,7 @@ describe("protected review route readiness", () => {
 
   it("admits the selected ready configuration to the production /review route", async () => {
     const init = makeReadyInitResponse();
-    expect(init.selectedConfigurationId).toBe(READY_GEMINI_CONFIGURATION.configurationId);
+    expect(init.selectedConfigurationId).toBe(GEMINI_CONFIGURATION.configurationId);
 
     const testRouter = await loadProductionReviewRoute(init);
 

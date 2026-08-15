@@ -6,7 +6,6 @@ node_modules
 **/node_modules
 tmp
 .nuke
-.nuke/
 **/dist
 **/.output
 **/.cache
@@ -28,21 +27,14 @@ yarn-error.log*
 **/.env
 **/.env.*
 
-# Workspace and audit artifacts
+# Workspace-only state and governance documents
 .diffgazer/
 .worktrees/
 .audit-runs/
 tmp/
 specs/
-agent-specs/
-agent-skills/
-HANDOFF_*
 DEPLOYMENT_*
-SOTA-AUDIT*
 PACKAGE_GOVERNANCE*
-AUDIT_*
-OPUS_AUDIT_*
-FIX_SPEC_*
 
 # Host-synced docs state must never leak into images
 apps/docs/content/docs/ui

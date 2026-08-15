@@ -76,6 +76,7 @@ Before handoff, run the narrow checks for the changed surface. For cross-package
 ```bash
 DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run type-check
 DIFFGAZER_SKIP_ARTIFACT_PREPARE=1 pnpm exec turbo run test
+pnpm run test:scripts
 DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke
 pnpm run verify:monorepo
 git diff --check

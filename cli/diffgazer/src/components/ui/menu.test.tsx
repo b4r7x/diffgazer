@@ -1,6 +1,9 @@
 import { Box } from "ink";
 import { cleanup, render } from "ink-testing-library";
+import { useContext, useEffect } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { TerminalKeyboardProvider } from "../../app/providers/keyboard";
+import { KeyboardContext } from "../../hooks/keyboard-context";
 import { flush } from "../../testing/flush";
 import { CliThemeProvider } from "../../theme/provider";
 import { Menu } from "./menu";
@@ -8,6 +11,12 @@ import { Menu } from "./menu";
 afterEach(() => {
   cleanup();
 });
+
+function GlobalHandler({ hotkey, handler }: { hotkey: string; handler: () => void }): null {
+  const keyboard = useContext(KeyboardContext);
+  useEffect(() => keyboard?.registerGlobalHandler(hotkey, handler), [keyboard, hotkey, handler]);
+  return null;
+}
 
 const ARROW_DOWN = "\u001b[B";
 const ARROW_UP = "\u001b[A";
@@ -126,6 +135,31 @@ describe("Menu navigation", () => {
     stdin.write("3");
     await flush();
     expect(onSelect).toHaveBeenCalledWith("c");
+  });
+
+  test("a hotkey the app already owns globally runs only the global handler", async () => {
+    const onSelect = vi.fn();
+    const onGlobalQuit = vi.fn();
+    const { stdin } = render(
+      <CliThemeProvider initialTheme="dark">
+        <TerminalKeyboardProvider>
+          <GlobalHandler hotkey="q" handler={onGlobalQuit} />
+          <Menu isActive onSelect={onSelect}>
+            <Menu.Item id="a">Alpha</Menu.Item>
+            <Menu.Item id="quit" hotkey="q">
+              Quit
+            </Menu.Item>
+          </Menu>
+        </TerminalKeyboardProvider>
+      </CliThemeProvider>,
+    );
+    await flush();
+
+    stdin.write("q");
+    await flush();
+
+    expect(onGlobalQuit).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   test("does not respond to input when inactive", async () => {

@@ -1,186 +1,19 @@
+import {
+  type HostedApiProductId,
+  type LocalCliProductId,
+  type LocalHttpProductId,
+  RUNNABLE_PRODUCT_IDS,
+  type RunnableProductId,
+} from "../schemas/config/product-ids.js";
 import type {
-  CandidateProductId,
-  HostedApiProductId,
-  LocalCliProductId,
-  LocalHttpProductId,
-  RunnableProductId,
-  TransportFamily,
-} from "../schemas/config/transports.js";
-
-/**
- * OpenRouter accepts routing selectors in the same model-id-shaped slot as a
- * downstream provider/model pair.  Those selectors are not immutable
- * execution identities and must be rejected at every model-policy boundary.
- * Keep the policy in the product registry so admission, client projection,
- * onboarding, and discovery cannot drift apart.
- */
-const PINNED_DOWNSTREAM_ROUTE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._-]*$/;
-const PINNED_DOWNSTREAM_ROUTE_RESERVED_SEGMENTS = new Set([
-  "auto",
-  "automatic",
-  "cheapest",
-  "default",
-  "exacto",
-  "extended",
-  "fallback",
-  "fastest",
-  "floor",
-  "free",
-  "nitro",
-  "online",
-  "openrouter",
-  "random",
-  "route",
-  "thinking",
-]);
-
-/**
- * Returns true only for one exact downstream provider/model pair.  Reserved
- * selectors are compared by segment, so legitimate names that merely contain
- * a selector (for example, `automaticity/model`) remain valid.
- */
-export function isPinnedDownstreamRouteModelId(modelId: string): boolean {
-  if (!PINNED_DOWNSTREAM_ROUTE_PATTERN.test(modelId)) return false;
-
-  const [downstreamProvider = "", downstreamModel = ""] = modelId.split("/");
-  return ![downstreamProvider, downstreamModel].some((segment) =>
-    PINNED_DOWNSTREAM_ROUTE_RESERVED_SEGMENTS.has(segment.toLowerCase()),
-  );
-}
-
-export type BillingMode =
-  | "free-tier"
-  | "pay-as-you-go"
-  | "evaluation"
-  | "route-specific"
-  | "local-resource"
-  | "subscription-credit";
-
-export type AdmissionCheck =
-  | "credential"
-  | "endpoint"
-  | "region"
-  | "workspace"
-  | "model-discovery"
-  | "downstream-route"
-  | "structured-output"
-  | "usage"
-  | "loopback"
-  | "server-version"
-  | "installation"
-  | "runtime-version"
-  | "account-plan"
-  | "negative-capabilities"
-  | "cancellation"
-  | "acknowledgement";
-
-export type ConfigurationField =
-  | "credential"
-  | "region"
-  | "workspace"
-  | "endpoint"
-  | "local-authentication"
-  | "installation";
-
-export interface EndpointProfile {
-  readonly id: string;
-  readonly label: string;
-  readonly endpoint: string;
-  readonly region?: string;
-  readonly workspaceBound?: true;
-}
-
-type ProductEndpointTupleRegistry = {
-  readonly [ProductId in RunnableProductId]: readonly EndpointProfile[];
-};
-
-export type ModelPolicy =
-  | {
-      readonly kind: "discovered-exact";
-      readonly suggestedModelId?: string;
-      readonly explicitOptInSuffixes?: readonly string[];
-      readonly aliases: "forbidden";
-    }
-  | {
-      readonly kind: "discovered-allowlist";
-      readonly modelIds: readonly string[];
-      readonly suggestedModelId?: string;
-      readonly higherCostModelIds?: readonly string[];
-      /**
-       * Higher-cost choices may be presented only after the named live evidence
-       * has been collected for the exact configured tuple.  This is a policy
-       * marker for server admission; it deliberately carries no provider limit
-       * value and is not client evidence.
-       */
-      readonly higherCostModelEvidence?: {
-        readonly outputLimit: "required";
-        readonly reviewConformance: "required";
-      };
-      readonly aliases: "forbidden";
-    }
-  | {
-      readonly kind: "discovered-family";
-      readonly familyPrefixes: readonly string[];
-      readonly rejectedAliases: readonly string[];
-      readonly aliases: "forbidden";
-    }
-  | {
-      readonly kind: "pinned-downstream-route";
-      readonly routePolicy: "pinned";
-      readonly automaticRouting: "forbidden";
-      readonly aliases: "forbidden";
-    };
-
-/**
- * The single model-policy predicate.  Every boundary that decides whether a
- * model id is admissible for a product — onboarding, client projection,
- * client-safe summaries, discovery mapping, and the execution tuple — must call
- * this so the interpretations cannot drift apart.
- *
- * It deliberately fails closed for the two policy shapes whose extra evidence
- * has no client-safe representation: an `explicitOptInSuffixes` model needs an
- * opt-in the V2 contracts do not carry, and a `higherCostModelIds` model needs
- * the named live output-limit and review-conformance observations, which are
- * server-only.  Neither may be inferred from discovery, conformance, or notice
- * acknowledgement.
- *
- * Model-id shape validation is deliberately left to the caller, because the
- * applicable shape schema differs per boundary.
- */
-export function matchesModelPolicy(modelId: string, policy: ModelPolicy): boolean {
-  switch (policy.kind) {
-    case "discovered-exact":
-      return !policy.explicitOptInSuffixes?.some((suffix) => modelId.endsWith(suffix));
-    case "discovered-allowlist":
-      if (!policy.modelIds.includes(modelId)) return false;
-      return !(
-        policy.higherCostModelEvidence !== undefined && policy.higherCostModelIds?.includes(modelId)
-      );
-    case "discovered-family":
-      return (
-        !policy.rejectedAliases.includes(modelId) &&
-        policy.familyPrefixes.some(
-          (prefix) => modelId === prefix || modelId.startsWith(`${prefix}-`),
-        )
-      );
-    case "pinned-downstream-route":
-      return isPinnedDownstreamRouteModelId(modelId);
-  }
-}
-
-/** Applies {@link matchesModelPolicy} to the product's registered policy. */
-export function isModelIdAllowedForProduct(productId: RunnableProductId, modelId: string): boolean {
-  return matchesModelPolicy(modelId, PRODUCT_REGISTRY[productId].modelPolicy);
-}
-
-/**
- * A pinned-downstream-route product has no meaningful default: the exact route
- * is the identity, so presentation must ask for an explicit selection instead of
- * naming a fallback model.
- */
-export function requiresExplicitModelSelection(productId: RunnableProductId): boolean {
-  return PRODUCT_REGISTRY[productId].modelPolicy.kind === "pinned-downstream-route";
-}
+  AdmissionCheck,
+  BillingMode,
+  ConfigurationField,
+  ModelPolicy,
+} from "./model-policy.js";
+import { matchesModelPolicy } from "./model-policy.js";
+import type { EndpointProfile } from "./product-endpoints.js";
+import { PRODUCT_ENDPOINT_TUPLES } from "./product-endpoints.js";
 
 export interface ProductNotice {
   readonly id: string;
@@ -273,94 +106,13 @@ const LOCAL_CLI_CHECKS = [
   "acknowledgement",
 ] as const satisfies readonly AdmissionCheck[];
 
-export const PRODUCT_ENDPOINT_TUPLES = {
-  gemini: [
-    {
-      id: "global",
-      label: "Global",
-      endpoint: "https://generativelanguage.googleapis.com/v1beta",
-    },
-  ],
-  zai: [
-    {
-      id: "general-payg",
-      label: "General Open Platform PAYG",
-      endpoint: "https://api.z.ai/api/paas/v4",
-    },
-  ],
-  openrouter: [{ id: "api", label: "OpenRouter API", endpoint: "https://openrouter.ai/api/v1" }],
-  groq: [{ id: "global", label: "Global", endpoint: "https://api.groq.com/openai/v1" }],
-  cerebras: [{ id: "global", label: "Global", endpoint: "https://api.cerebras.ai/v1" }],
-  deepseek: [{ id: "payg", label: "Open Platform PAYG", endpoint: "https://api.deepseek.com/v1" }],
-  qwen: [
-    {
-      id: "international",
-      label: "International",
-      endpoint: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-      region: "international",
-      workspaceBound: true,
-    },
-  ],
-  moonshot: [
-    {
-      id: "mainland",
-      label: "Mainland China",
-      endpoint: "https://api.moonshot.cn/v1",
-      region: "mainland",
-    },
-    {
-      id: "international",
-      label: "International",
-      endpoint: "https://api.moonshot.ai/v1",
-      region: "international",
-    },
-  ],
-  mistral: [
-    {
-      id: "global",
-      label: "Global",
-      endpoint: "https://api.mistral.ai/v1",
-      region: "global",
-    },
-    {
-      id: "eu",
-      label: "European Union",
-      endpoint: "https://api.eu.mistral.ai/v1",
-      region: "eu",
-    },
-  ],
-  ollama: [{ id: "default", label: "Default loopback", endpoint: "http://127.0.0.1:11434" }],
-  "local-openai": [
-    {
-      id: "lm-studio",
-      label: "LM Studio",
-      endpoint: "http://127.0.0.1:1234/v1",
-    },
-    {
-      id: "llama-cpp",
-      label: "llama.cpp",
-      endpoint: "http://127.0.0.1:8080/v1",
-    },
-  ],
-  "codex-cli": [],
-  "copilot-cli": [],
-} as const satisfies ProductEndpointTupleRegistry;
-
-export const SELECTABLE_PRODUCT_IDS = [
-  "gemini",
-  "zai",
-  "openrouter",
-  "groq",
-  "cerebras",
-  "deepseek",
-  "qwen",
-  "moonshot",
-  "mistral",
-  "ollama",
-  "local-openai",
-  "codex-cli",
-  "copilot-cli",
-] as const satisfies readonly RunnableProductId[];
+/**
+ * Every runnable product is selectable: `ProductRegistry` maps over the whole
+ * `RunnableProductId` union and every descriptor is `selectable: true`. Deriving
+ * the picker order from the runnable tuple keeps one identity authority instead
+ * of a second hand-maintained id list.
+ */
+export const SELECTABLE_PRODUCT_IDS = RUNNABLE_PRODUCT_IDS;
 
 export const PRODUCT_REGISTRY = {
   gemini: {
@@ -421,7 +173,9 @@ export const PRODUCT_REGISTRY = {
     },
     modelPolicy: {
       kind: "discovered-exact",
-      suggestedModelId: "glm-4.7",
+      // glm-4.7 publishes no `structured_output`, so the catalog cannot confirm it and
+      // withholds it from the picker; suggesting it pointed at a model no surface would offer.
+      suggestedModelId: "glm-5-turbo",
       explicitOptInSuffixes: ["-flash"],
       aliases: "forbidden",
     },
@@ -729,9 +483,12 @@ export const PRODUCT_REGISTRY = {
       endpoints: PRODUCT_ENDPOINT_TUPLES.mistral,
     },
     modelPolicy: {
-      kind: "discovered-allowlist",
-      modelIds: ["mistral-small-2603"],
-      suggestedModelId: "mistral-small-2603",
+      // No allowlist: it carried no cost or evidence semantics the capability
+      // filter does not already enforce, and it went stale against it — pinning
+      // `mistral-small-2603`, which publishes no `structured_output`, left the
+      // picker empty while the one capable Mistral model sat off-list.
+      kind: "discovered-exact",
+      suggestedModelId: "mistral-medium-2604",
       aliases: "forbidden",
     },
     admission: {
@@ -926,295 +683,15 @@ export const PRODUCT_REGISTRY = {
     },
   },
 } as const satisfies ProductRegistry;
-
-export type CandidateVerdict = "experimental" | "deferred" | "rejected";
-
-export interface CandidateProductVerdict<ProductId extends CandidateProductId> {
-  readonly id: ProductId;
-  readonly name: string;
-  readonly verdict: CandidateVerdict;
-  readonly runnable: false;
-  readonly visibleInSetup: false;
-  readonly transportFamily: TransportFamily | null;
-  readonly reason: string;
-  readonly reconsiderWhen: string;
+export function isModelIdAllowedForProduct(productId: RunnableProductId, modelId: string): boolean {
+  return matchesModelPolicy(modelId, PRODUCT_REGISTRY[productId].modelPolicy);
 }
 
-type CandidateVerdictRegistry = {
-  readonly [ProductId in CandidateProductId]: CandidateProductVerdict<ProductId>;
-};
-
-export const CANDIDATE_VERDICTS = {
-  "xiaomi-mimo": {
-    id: "xiaomi-mimo",
-    name: "Xiaomi MiMo PAYG",
-    verdict: "experimental",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "Ordinary international account access, funding, and review reliability are unproven.",
-    reconsiderWhen:
-      "A funded eligible account passes exact schema, usage, latency, and moderation proof.",
-  },
-  "byteplus-modelark": {
-    id: "byteplus-modelark",
-    name: "BytePlus ModelArk",
-    verdict: "experimental",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason:
-      "Tenant-specific model activation, regional availability, and strict output remain unproven.",
-    reconsiderWhen:
-      "An eligible tenant passes exact regional model, schema, price, and limit proof.",
-  },
-  "cloudflare-workers-ai": {
-    id: "cloudflare-workers-ai",
-    name: "Cloudflare Workers AI",
-    verdict: "experimental",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "Account-scoped setup and reliable JSON Schema conformance need separate proof.",
-    reconsiderWhen:
-      "A narrow model allowlist passes repeated schema and account-bound privacy proof.",
-  },
-  vllm: {
-    id: "vllm",
-    name: "vLLM",
-    verdict: "experimental",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "local-http",
-    reason:
-      "Structured output depends on runtime configuration and remote deployments exceed local scope.",
-    reconsiderWhen:
-      "A separately scoped loopback profile passes version-bound schema and abort proof.",
-  },
-  "minimax-token-plan": {
-    id: "minimax-token-plan",
-    name: "MiniMax Token Plan",
-    verdict: "experimental",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "The individual plan is throttled and lacks an established review schema contract.",
-    reconsiderWhen:
-      "A user-triggered plan scope proves authorization, privacy, schema output, and bounds.",
-  },
-  "kimi-code-cli": {
-    id: "kimi-code-cli",
-    name: "Kimi Code CLI",
-    verdict: "experimental",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "local-cli",
-    reason: "Prompt mode may approve tool calls and lacks a proven side-effect-free profile.",
-    reconsiderWhen:
-      "A pinned release passes deny, isolation, schema, account, and cancellation proof.",
-  },
-  "kiro-cli": {
-    id: "kiro-cli",
-    name: "Kiro CLI",
-    verdict: "experimental",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "local-cli",
-    reason: "Authorization and a pinned no-tools, no-MCP review profile remain unproven.",
-    reconsiderWhen:
-      "AWS confirms this integration and a pinned profile passes all negative proofs.",
-  },
-  "cursor-agent-cli": {
-    id: "cursor-agent-cli",
-    name: "Cursor Agent CLI",
-    verdict: "experimental",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "local-cli",
-    reason: "The beta agent-first CLI lacks a proven side-effect-free review profile.",
-    reconsiderWhen:
-      "A pinned release passes auth, deny, isolation, privacy, schema, and cancellation proof.",
-  },
-  "minimax-payg": {
-    id: "minimax-payg",
-    name: "MiniMax PAYG",
-    verdict: "deferred",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "Current review-oriented models lack a documented structured-output contract.",
-    reconsiderWhen:
-      "An exact model documents and passes structured output plus terminal usage proof.",
-  },
-  "tencent-hunyuan-tokenhub": {
-    id: "tencent-hunyuan-tokenhub",
-    name: "Tencent Hunyuan / TokenHub",
-    verdict: "deferred",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "The migration leaves model, price, region, output, and data terms unstable.",
-    reconsiderWhen: "TokenHub publishes a stable purchasable contract and passes end-to-end proof.",
-  },
-  "opencode-cli": {
-    id: "opencode-cli",
-    name: "OpenCode CLI",
-    verdict: "deferred",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "local-cli",
-    reason:
-      "Permissive defaults, event volatility, and subscription authorization remain unresolved.",
-    reconsiderWhen:
-      "A pinned authorized profile passes deny, isolation, schema, and cancellation proof.",
-  },
-  "hugging-face-inference-providers": {
-    id: "hugging-face-inference-providers",
-    name: "Hugging Face Inference Providers",
-    verdict: "deferred",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason:
-      "Downstream route, privacy, region, license, and schema properties are provider-specific.",
-    reconsiderWhen:
-      "One pinned downstream route can be persisted, disclosed, and conformance-proven.",
-  },
-  "together-ai": {
-    id: "together-ai",
-    name: "Together AI",
-    verdict: "deferred",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "No distinct cost, capability, or privacy benefit over the selected tranche is proven.",
-    reconsiderWhen:
-      "A distinct exact product advantage and full conformance proof are established.",
-  },
-  "fireworks-ai": {
-    id: "fireworks-ai",
-    name: "Fireworks AI",
-    verdict: "deferred",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "No distinct model, availability, cost, or privacy advantage is proven.",
-    reconsiderWhen:
-      "A distinct exact product advantage and full conformance proof are established.",
-  },
-  "remote-custom-url": {
-    id: "remote-custom-url",
-    name: "Arbitrary remote custom URL",
-    verdict: "deferred",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "A general remote connector would create an unbounded proxy and SSRF surface.",
-    reconsiderWhen: "A separately scoped trust and endpoint policy is approved and proven.",
-  },
-  "compatible-api-vendor-sdk": {
-    id: "compatible-api-vendor-sdk",
-    name: "Per-vendor compatible API SDK",
-    verdict: "deferred",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "Ordinary compatible APIs do not justify additional vendor runtime dependencies.",
-    reconsiderWhen: "A safely typed protocol incompatibility is demonstrated.",
-  },
-  "kimi-code-http": {
-    id: "kimi-code-http",
-    name: "Kimi Code direct HTTP",
-    verdict: "rejected",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "Plan benefits are limited to supported tools and do not authorize this client.",
-    reconsiderWhen: "Written authorization covers this exact direct integration.",
-  },
-  "alibaba-coding-plan": {
-    id: "alibaba-coding-plan",
-    name: "Alibaba Coding / Token Plan",
-    verdict: "rejected",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "Plan endpoints are restricted to supported coding tools, not backend services.",
-    reconsiderWhen: "Written authorization covers this exact backend integration.",
-  },
-  "byteplus-coding-plan": {
-    id: "byteplus-coding-plan",
-    name: "BytePlus Coding / Token Plan",
-    verdict: "rejected",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason:
-      "Plan endpoints are restricted to supported coding tools and unauthorized use risks suspension.",
-    reconsiderWhen: "Written authorization covers this exact backend integration.",
-  },
-  "volcengine-ark": {
-    id: "volcengine-ark",
-    name: "Volcengine Ark",
-    verdict: "rejected",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason:
-      "No official global account, billing, regional-processing, and availability contract exists.",
-    reconsiderWhen: "A suitable official non-China product contract is published and proven.",
-  },
-  "gemini-cli": {
-    id: "gemini-cli",
-    name: "Gemini CLI OAuth / subscription",
-    verdict: "rejected",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "local-cli",
-    reason:
-      "Google prohibits third-party use of Gemini CLI OAuth and the individual service ended.",
-    reconsiderWhen: "A separately approved BYOK API product is evaluated.",
-  },
-  "claude-code": {
-    id: "claude-code",
-    name: "Claude Code subscription",
-    verdict: "rejected",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "local-cli",
-    reason:
-      "Anthropic forbids unapproved third parties from offering Claude subscription login or limits.",
-    reconsiderWhen: "Anthropic provides written authorization for this exact integration.",
-  },
-  "github-models": {
-    id: "github-models",
-    name: "GitHub Models",
-    verdict: "rejected",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "The inference API and related service are retired and return HTTP 410.",
-    reconsiderWhen: "A new official service receives a separate product decision.",
-  },
-  "nvidia-api-catalog": {
-    id: "nvidia-api-catalog",
-    name: "NVIDIA hosted API Catalog/build API",
-    verdict: "rejected",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: "hosted-api",
-    reason: "Evaluation terms do not permit the repository-input and product use required here.",
-    reconsiderWhen: "A suitable commercial contract and exact provider proof are established.",
-  },
-  "sdk-product-registry": {
-    id: "sdk-product-registry",
-    name: "AI SDK registry as product authority",
-    verdict: "rejected",
-    runnable: false,
-    visibleInSetup: false,
-    transportFamily: null,
-    reason:
-      "An SDK registry does not own Diffgazer product, readiness, notice, or persistence policy.",
-    reconsiderWhen: "Never; SDK compatibility remains observation data, not product eligibility.",
-  },
-} as const satisfies CandidateVerdictRegistry;
+/**
+ * A pinned-downstream-route product has no meaningful default: the exact route
+ * is the identity, so presentation must ask for an explicit selection instead of
+ * naming a fallback model.
+ */
+export function requiresExplicitModelSelection(productId: RunnableProductId): boolean {
+  return PRODUCT_REGISTRY[productId].modelPolicy.kind === "pinned-downstream-route";
+}

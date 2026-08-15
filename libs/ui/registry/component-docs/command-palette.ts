@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const commandPaletteDoc: ComponentDoc = {
   description:
@@ -331,7 +331,15 @@ export const commandPaletteDoc: ComponentDoc = {
         type: "ReactNode",
         required: false,
         defaultValue: null,
-        description: 'Optional trailing content. Defaults to a Kbd "Esc" hint.',
+        description:
+          "Optional trailing content. Defaults to the CommandPaletteCount readout plus an Esc close button; supplying your own suffix replaces both.",
+      },
+      closeLabel: {
+        type: "string",
+        required: false,
+        defaultValue: '"Close"',
+        description:
+          "Accessible name for the default Esc close control — the palette's only touch-reachable close affordance. Set it to localize that name.",
       },
     },
   },

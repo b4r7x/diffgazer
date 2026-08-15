@@ -16,35 +16,190 @@ interface AssertRscClientDirectivesOptions {
   rootDir: string;
   registryPath: string;
   packagePath?: string;
+  /** Public client subpaths the consuming package ships outside its registry. */
+  extraClientOutputs?: Record<string, string>;
 }
 
-const UI_PUBLIC_CLIENT_OUTPUT_OVERRIDES = {
-  "./components/code-block/highlight": "components/code-block/highlight",
-  "./components/command-palette/highlight": "components/command-palette/highlight",
-} as const;
+function isWhitespace(char: string | undefined): boolean {
+  return char !== undefined && /\s/u.test(char);
+}
 
-// Skips a leading directive prologue's surrounding noise (BOM, whitespace, and
-// line/block comments) so a license header above the directive does not hide it.
-function startsWithUseClient(content: string): boolean {
-  let rest = content.replace(/^﻿/, "").trimStart();
-  for (;;) {
-    if (rest.startsWith("//")) {
-      const end = rest.indexOf("\n");
-      rest = (end === -1 ? "" : rest.slice(end + 1)).trimStart();
+function isLineTerminator(char: string | undefined): boolean {
+  return char === "\n" || char === "\r" || char === "\u2028" || char === "\u2029";
+}
+
+interface TriviaResult {
+  index: number;
+  hasLineTerminator: boolean;
+}
+
+interface StringLiteralResult {
+  end: number;
+  raw: string;
+}
+
+const IDENTIFIER_PART = /[\p{ID_Continue}\u200c\u200d]/u;
+
+function skipTrivia(content: string, start: number): TriviaResult {
+  let index = start;
+  let hasLineTerminator = false;
+
+  while (index < content.length) {
+    if (isWhitespace(content[index])) {
+      hasLineTerminator ||= isLineTerminator(content[index]);
+      index += 1;
       continue;
     }
-    if (rest.startsWith("/*")) {
-      const end = rest.indexOf("*/");
-      rest = (end === -1 ? "" : rest.slice(end + 2)).trimStart();
+
+    if (content.startsWith("//", index)) {
+      const lineEnd = /[\r\n\u2028\u2029]/u.exec(content.slice(index + 2));
+      if (!lineEnd) return { index: content.length, hasLineTerminator };
+      hasLineTerminator = true;
+      index = index + 2 + lineEnd.index + 1;
       continue;
     }
+
+    if (content.startsWith("/*", index)) {
+      const end = content.indexOf("*/", index + 2);
+      if (end === -1) return { index: -1, hasLineTerminator };
+      hasLineTerminator ||= /[\r\n\u2028\u2029]/u.test(content.slice(index, end + 2));
+      index = end + 2;
+      continue;
+    }
+
     break;
   }
-  return rest.startsWith('"use client"') || rest.startsWith("'use client'");
+
+  return { index, hasLineTerminator };
 }
 
-export function getUiPublicClientOutputMap(
+/**
+ * A hashbang is only legal as the very first token of a source, after an optional
+ * BOM. Consuming it here instead of inside the trivia scan keeps that position
+ * requirement: a `#!` reached after whitespace or a comment is not a hashbang.
+ */
+function skipHashbang(content: string): number {
+  const start = content.startsWith("\ufeff") ? 1 : 0;
+  if (!content.startsWith("#!", start)) return start;
+
+  const lineEnd = /[\r\n\u2028\u2029]/u.exec(content.slice(start + 2));
+  return lineEnd ? start + 2 + lineEnd.index + 1 : content.length;
+}
+
+function parseStringLiteral(content: string, start: number): StringLiteralResult | null {
+  const quote = content[start];
+  if (quote !== '"' && quote !== "'") return null;
+
+  let index = start + 1;
+  while (index < content.length) {
+    const char = content[index];
+    if (char === quote) {
+      return { end: index + 1, raw: content.slice(start + 1, index) };
+    }
+    if (char === "\\") {
+      const escaped = content[index + 1];
+      if (escaped === "\r") {
+        // A CRLF line continuation is one escaped line terminator. Consuming
+        // only the CR would expose the LF as an illegal raw line break.
+        index += content[index + 2] === "\n" ? 3 : 2;
+        continue;
+      }
+      if (escaped === "\n") {
+        index += 2;
+        continue;
+      }
+      index += 2;
+      continue;
+    }
+    // ECMAScript permits raw U+2028/U+2029 in string literals. Raw CR/LF
+    // remain illegal; escaped forms were consumed above as continuations.
+    if (char === "\r" || char === "\n") return null;
+    index += 1;
+  }
+
+  return null;
+}
+
+function parseUnicodeEscape(content: string, index: number): number | null {
+  if (content[index] !== "\\" || content[index + 1] !== "u") return null;
+
+  if (content[index + 2] === "{") {
+    const close = content.indexOf("}", index + 3);
+    if (close === -1) return null;
+    const digits = content.slice(index + 3, close);
+    if (!/^[\da-f]{1,6}$/iu.test(digits)) return null;
+    const codePoint = Number.parseInt(digits, 16);
+    return codePoint <= 0x10ffff ? codePoint : null;
+  }
+
+  const digits = content.slice(index + 2, index + 6);
+  if (!/^[\da-f]{4}$/iu.test(digits)) return null;
+  return Number.parseInt(digits, 16);
+}
+
+function isIdentifierPartAt(content: string, index: number): boolean {
+  const char = content[index];
+  if (char === undefined) return false;
+  if (char === "\\") {
+    const codePoint = parseUnicodeEscape(content, index);
+    return codePoint !== null && isIdentifierPartAt(String.fromCodePoint(codePoint), 0);
+  }
+
+  const codePoint = content.codePointAt(index);
+  if (codePoint === undefined) return false;
+  const value = String.fromCodePoint(codePoint);
+  return value === "$" || value === "_" || IDENTIFIER_PART.test(value);
+}
+
+function startsKeyword(content: string, index: number, keyword: string): boolean {
+  return content.startsWith(keyword, index) && !isIdentifierPartAt(content, index + keyword.length);
+}
+
+function continuesStringExpression(content: string, index: number): boolean {
+  const char = content[index];
+  if (char === "+" || char === "-") return content[index + 1] !== char;
+  // `!` continues the expression only as `!=`/`!==`; on its own it opens a new
+  // unary statement, so ASI terminates the directive before it.
+  if (char === "!") return content[index + 1] === "=";
+  if (char !== undefined && ".[(`*/%&|^<>=?:,".includes(char)) return true;
+
+  return startsKeyword(content, index, "in") || startsKeyword(content, index, "instanceof");
+}
+
+function statementBoundary(content: string, end: number): number | null {
+  const trailing = skipTrivia(content, end);
+  if (trailing.index < 0) return null;
+  if (trailing.index === content.length) return trailing.index;
+  if (content[trailing.index] === ";") return trailing.index + 1;
+  if (!trailing.hasLineTerminator || continuesStringExpression(content, trailing.index)) {
+    return null;
+  }
+  return trailing.index;
+}
+
+/** Returns true only for a real leading string-literal directive prologue entry. */
+export function hasUseClientDirective(content: string): boolean {
+  let index = skipTrivia(content, skipHashbang(content)).index;
+  if (index < 0) return false;
+
+  while (index < content.length) {
+    const literal = parseStringLiteral(content, index);
+    if (!literal) return false;
+
+    const next = statementBoundary(content, literal.end);
+    if (next === null) return false;
+    if (literal.raw === "use client") return true;
+
+    index = skipTrivia(content, next).index;
+    if (index < 0) return false;
+  }
+
+  return false;
+}
+
+export function getPublicClientOutputMap(
   items: readonly RscRegistryItem[],
+  extraClientOutputs: Record<string, string> = {},
 ): ReadonlyMap<string, string> {
   const outputs = new Map<string, string>();
   for (const item of items) {
@@ -52,7 +207,7 @@ export function getUiPublicClientOutputMap(
     const output = registryItemToDistKey(item);
     outputs.set(`./${output}`, output);
   }
-  for (const [publicSubpath, output] of Object.entries(UI_PUBLIC_CLIENT_OUTPUT_OVERRIDES)) {
+  for (const [publicSubpath, output] of Object.entries(extraClientOutputs)) {
     outputs.set(publicSubpath, output);
   }
   return outputs;
@@ -62,6 +217,7 @@ export function assertRscClientDirectives({
   rootDir,
   registryPath,
   packagePath = resolve(rootDir, "package.json"),
+  extraClientOutputs,
 }: AssertRscClientDirectivesOptions): void {
   const registry = JSON.parse(readFileSync(registryPath, "utf-8")) as RscRegistry;
   const packageJson = JSON.parse(readFileSync(packagePath, "utf-8")) as {
@@ -70,7 +226,10 @@ export function assertRscClientDirectives({
 
   const missing: string[] = [];
 
-  for (const [publicSubpath, output] of getUiPublicClientOutputMap(registry.items)) {
+  for (const [publicSubpath, output] of getPublicClientOutputMap(
+    registry.items,
+    extraClientOutputs,
+  )) {
     const relativePath = `dist/${output}.js`;
     const exportValue = packageJson.exports?.[publicSubpath];
     const importTarget = typeof exportValue === "string" ? exportValue : exportValue?.import;
@@ -81,7 +240,7 @@ export function assertRscClientDirectives({
       missing.push(`${relativePath} (missing public client output)`);
       continue;
     }
-    if (!startsWithUseClient(readFileSync(resolve(rootDir, relativePath), "utf-8"))) {
+    if (!hasUseClientDirective(readFileSync(resolve(rootDir, relativePath), "utf-8"))) {
       missing.push(relativePath);
     }
   }
@@ -137,14 +296,14 @@ export function assertSourceRscClientDirectives({
   let guarded = 0;
 
   for (const sourceFile of collectSourceFiles(srcDir, skip)) {
-    if (!startsWithUseClient(readFileSync(sourceFile, "utf-8"))) continue;
+    if (!hasUseClientDirective(readFileSync(sourceFile, "utf-8"))) continue;
 
     const distPath = resolve(distDir, relative(srcDir, sourceFile).replace(/\.tsx?$/, ".js"));
     if (!existsSync(distPath)) {
       missing.push(`${distPath} (missing dist output)`);
       continue;
     }
-    if (!startsWithUseClient(readFileSync(distPath, "utf-8"))) {
+    if (!hasUseClientDirective(readFileSync(distPath, "utf-8"))) {
       missing.push(distPath);
       continue;
     }

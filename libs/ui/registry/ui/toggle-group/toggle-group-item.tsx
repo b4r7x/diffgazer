@@ -17,10 +17,10 @@ import { cn } from "@/lib/utils";
 import { useToggleGroupContext } from "./toggle-group-context";
 
 /** Props for toggle group item. */
-export interface ToggleGroupItemProps<TValue extends string = string>
+export interface ToggleGroupItemProps
   extends Omit<ComponentPropsWithRef<"button">, "children" | "disabled" | "value"> {
   /** Stable identifier matched against the group value. */
-  value: TValue;
+  value: string;
   /** Optional trailing count rendered as [label count]. */
   count?: number;
   /** Disables this item only; removed from arrow navigation and focus. */
@@ -29,7 +29,7 @@ export interface ToggleGroupItemProps<TValue extends string = string>
   children: ReactNode;
 }
 
-export function ToggleGroupItem<TValue extends string = string>({
+export function ToggleGroupItem({
   value,
   count,
   disabled,
@@ -41,7 +41,7 @@ export function ToggleGroupItem<TValue extends string = string>({
   onMouseEnter,
   onFocus,
   ...props
-}: ToggleGroupItemProps<TValue>) {
+}: ToggleGroupItemProps) {
   const context = useToggleGroupContext();
   const itemId = useId();
   const rootRef = useRef<HTMLButtonElement>(null);

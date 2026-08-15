@@ -1,5 +1,4 @@
 import {
-  configurationFingerprint,
   invalidateConfigurationCaches,
   useApi,
   useConfigurationAction,
@@ -11,7 +10,7 @@ import {
   useTestConfiguration,
   useUpdateConfiguration,
 } from "@diffgazer/core/api/hooks";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { getCatalogModelName, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import {
   type ClientConfigurationAction,
   type ClientConfigurationActionResponse,
@@ -28,6 +27,7 @@ import {
   resolveSelectedConfiguration,
   type SecretsStorage,
   type SettingsConfig,
+  type UnrecognizedConfiguration,
 } from "@diffgazer/core/schemas/config";
 import { useQueryClient } from "@tanstack/react-query";
 import { createContext, type ReactNode, useCallback, useContext, useMemo } from "react";
@@ -39,19 +39,14 @@ type ConfigLoadState =
   | { status: "error"; error: Error }
   | { status: "ready"; init: ConfigurationInitResponse };
 
-export interface SelectedConfigurationIdentity {
-  configurationId: ConfigurationId;
-  revision: ConfigurationRevision;
-  fingerprint: string;
-}
-
 interface ConfigDataContextValue {
   loadState: ConfigLoadState;
   isLoading: boolean;
   configurations: ConfigurationStatus[];
+  /** Stored records this build could not decode; removal is all they support. */
+  unrecognizedConfigurations: UnrecognizedConfiguration[];
   selectedConfiguration: ClientConfigurationSummary | null;
   selectedReadiness: Readiness | null;
-  selectedIdentity: SelectedConfigurationIdentity | null;
   isReady: boolean;
   isConfigured: boolean;
   provider: string | undefined;
@@ -66,12 +61,15 @@ interface ConfigDataContextValue {
 
 interface ConfigActionsContextValue {
   refresh: () => Promise<void>;
-  createConfiguration: (
-    input: ClientConfigurationInput,
-  ) => Promise<ClientConfigurationActionResponse>;
+  createConfiguration: (request: {
+    input: ClientConfigurationInput;
+    acknowledgement?: AcceptedAcknowledgement;
+  }) => Promise<ClientConfigurationActionResponse>;
   inspectConfiguration: (configurationId: ConfigurationId) => Promise<void>;
   selectConfiguration: (configurationId: ConfigurationId, modelId: ExactModelId) => Promise<void>;
-  testConfiguration: (configurationId: ConfigurationId) => Promise<void>;
+  testConfiguration: (
+    configurationId: ConfigurationId,
+  ) => Promise<Extract<ClientConfigurationActionResponse, { action: "test" }>>;
   updateConfiguration: (input: {
     configurationId: ConfigurationId;
     expectedRevision: ConfigurationRevision;
@@ -80,7 +78,7 @@ interface ConfigActionsContextValue {
   }) => Promise<void>;
   deleteConfiguration: (input: {
     configurationId: ConfigurationId;
-    expectedRevision: ConfigurationRevision;
+    expectedRevision?: ConfigurationRevision;
   }) => Promise<void>;
   dispatchConfigurationAction: (action: ClientConfigurationAction) => Promise<void>;
 }
@@ -127,23 +125,21 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       loadState: toLoadState(initData, isLoading, initError),
       isLoading,
       configurations: initData?.configurations ?? [],
+      unrecognizedConfigurations: initData?.unrecognizedConfigurations ?? [],
       selectedConfiguration,
       selectedReadiness,
-      selectedIdentity:
-        selectedConfiguration == null
-          ? null
-          : {
-              configurationId: selectedConfiguration.configurationId,
-              revision: selectedConfiguration.revision,
-              fingerprint: configurationFingerprint(selectedConfiguration),
-            },
       isReady: selectedReadiness?.ready ?? false,
       isConfigured: selectedConfiguration != null,
       provider:
         selectedProductId === undefined
           ? undefined
           : PRODUCT_REGISTRY[selectedProductId].presentation.name,
-      model: selectedConfiguration?.selectedModelId ?? undefined,
+      model: selectedConfiguration?.selectedModelId
+        ? getCatalogModelName(
+            selectedConfiguration.productId,
+            selectedConfiguration.selectedModelId,
+          )
+        : undefined,
       selectedProductId,
       projectId: initData?.project.projectId ?? null,
       repoRoot: initData?.project.path ?? null,
@@ -160,16 +156,14 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const actionsValue = useMemo<ConfigActionsContextValue>(
     () => ({
       refresh,
-      createConfiguration: async (input) => createConfigurationMutate(input),
+      createConfiguration: async (request) => createConfigurationMutate(request),
       inspectConfiguration: async (configurationId) => {
         await inspectConfigurationMutate(configurationId);
       },
       selectConfiguration: async (configurationId, modelId) => {
         await selectConfigurationMutate({ configurationId, modelId });
       },
-      testConfiguration: async (configurationId) => {
-        await testConfigurationMutate(configurationId);
-      },
+      testConfiguration: async (configurationId) => testConfigurationMutate(configurationId),
       updateConfiguration: async (input) => {
         await updateConfigurationMutate(input);
       },

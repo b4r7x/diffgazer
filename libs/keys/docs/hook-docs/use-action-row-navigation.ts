@@ -49,7 +49,7 @@ export const useActionRowNavigationDoc: HookDoc = {
       type: "RefObject<HTMLElement | null>",
       required: false,
       description:
-        "Receives focus when entering the actions zone but no action is enabled. Falls back to blurring the focused action when omitted.",
+        "Content focus target used both when entering the actions zone with no action enabled and when ArrowUp exits the actions zone. Omitting it means exiting only blurs the focused action, so focus lands on document.body.",
     },
     {
       name: "containerRef",
@@ -57,6 +57,13 @@ export const useActionRowNavigationDoc: HookDoc = {
       required: false,
       description:
         "When supplied, limits zone handling to one row subtree so sibling rows do not respond to the same key press. Omit it only when the active row should keep global keyboard ownership within its scope.",
+    },
+    {
+      name: "scope",
+      type: "string | null",
+      required: false,
+      description:
+        "Keyboard scope name to register the row shortcuts under. Omit to use implicit scope ordering; pass null to skip registration.",
     },
     {
       name: "allowInInput",
@@ -143,7 +150,8 @@ export const useActionRowNavigationDoc: HookDoc = {
         name: "exitActions",
         type: "() => void",
         required: true,
-        description: "Returns to the content zone when canExitActions is true.",
+        description:
+          "Returns to the content zone when canExitActions is true, resets the focused action index to 0, and moves focus to disabledFocusFallbackRef (or blurs the action when that ref is omitted).",
       },
       {
         name: "reset",

@@ -11,9 +11,9 @@ import {
 } from "@diffgazer/core/schemas/config";
 import {
   configurationStatus,
+  GEMINI_CONFIGURATION,
   LOCAL_OPENAI_CONFIGURATION,
   makeConfigurationInitResponse,
-  READY_GEMINI_CONFIGURATION,
 } from "@diffgazer/core/testing/provider-fixtures";
 import type { Page, Route } from "@playwright/test";
 import {
@@ -35,6 +35,7 @@ const SETTINGS_FIXTURE: ConfigurationInitResponse["settings"] = {
 export const ONBOARDING_E2E_INIT: ConfigurationInitResponse = {
   schemaVersion: 2,
   configurations: [],
+  unrecognizedConfigurations: [],
   selectedConfigurationId: null,
   settings: {
     theme: "terminal",
@@ -53,8 +54,8 @@ function makeProviderE2eInitResponse(): ConfigurationInitResponse {
   return {
     ...makeConfigurationInitResponse(
       [
-        configurationStatus(READY_GEMINI_CONFIGURATION, "ready"),
-        configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
+        configurationStatus(GEMINI_CONFIGURATION, "ready"),
+        configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
       ],
       "gemini-primary",
     ),
@@ -62,9 +63,10 @@ function makeProviderE2eInitResponse(): ConfigurationInitResponse {
   };
 }
 
-export const PROVIDER_E2E_LIST: ConfigurationListResponse = {
+const PROVIDER_E2E_LIST: ConfigurationListResponse = {
   schemaVersion: 2,
   configurations: PROVIDER_E2E_INIT.configurations,
+  unrecognizedConfigurations: PROVIDER_E2E_INIT.unrecognizedConfigurations,
   selectedConfigurationId: PROVIDER_E2E_INIT.selectedConfigurationId,
 };
 
@@ -79,12 +81,12 @@ function succeededAction(
     ...(action === "test"
       ? {
           readiness: {
-            status: "local-endpoint-unreachable",
+            status: "local-conformance-failed",
             ready: false,
             evidenceStatus: "failed",
             checkedAt: "2026-07-31T12:00:00.000Z",
             acknowledgement: { status: "not-applicable" },
-            ...READINESS_PRESENTATION["local-endpoint-unreachable"],
+            ...READINESS_PRESENTATION["local-conformance-failed"],
           },
         }
       : {}),
@@ -117,7 +119,7 @@ export async function mockProtectedProviderApi(page: Page): Promise<void> {
 
   await page.route("**/api/config/actions", async (route: Route) => {
     const action = route.request().postDataJSON() as { action?: string } | null;
-    let response = succeededAction("inspect", READY_GEMINI_CONFIGURATION);
+    let response = succeededAction("inspect", GEMINI_CONFIGURATION);
     if (action?.action === "test") {
       response = succeededAction("test");
     } else if (action?.action === "update") {

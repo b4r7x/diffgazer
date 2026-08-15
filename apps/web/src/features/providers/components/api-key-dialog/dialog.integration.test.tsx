@@ -1,5 +1,6 @@
 import { FooterProvider } from "@diffgazer/core/footer";
-import type { ProviderListRow, ProviderManagementOutcome } from "@diffgazer/core/providers";
+import type { ProviderListRow } from "@diffgazer/core/providers";
+import type { ProviderManagementOutcome } from "@diffgazer/core/providers/hooks";
 import type { ClientConfigurationSummary } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import {
@@ -12,7 +13,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { ApiKeyDialog } from "./dialog";
+import { ApiKeyDialog, type ApiKeyDialogProps } from "./dialog";
 
 beforeAll(() => {
   if (typeof HTMLDialogElement === "undefined") return;
@@ -36,11 +37,23 @@ function localHttpRow(): ProviderListRow {
   return requireProviderRow((row) => row.configuration?.configurationId === "local-openai-1");
 }
 
+function localHttpBearerRow(): ProviderListRow {
+  const row = localHttpRow();
+  if (row.configuration?.transportFamily !== "local-http") {
+    throw new Error("Expected a local-http configuration row");
+  }
+  return {
+    ...row,
+    configuration: {
+      ...row.configuration,
+      authentication: "optional-local-bearer",
+    },
+  };
+}
+
 function localCliRow(): ProviderListRow {
   return requireProviderRow((row) => row.product.productId === "codex-cli");
 }
-
-import type { ApiKeyDialogProps } from "./dialog";
 
 const SUCCEEDED = { status: "succeeded" } as const;
 
@@ -131,7 +144,9 @@ describe("ApiKeyDialog acknowledgement and write-only secrets", () => {
         productId: "gemini",
         credential: { kind: "literal", value: "sk-hosted-secret" },
       }),
-      expect.anything(),
+      expect.objectContaining({
+        acknowledgement: expect.objectContaining({ status: "accepted" }),
+      }),
     );
   });
 
@@ -456,5 +471,18 @@ describe("ApiKeyDialog accessible submit, cancel, and focus", () => {
       expect.anything(),
     );
     expect(dialog.textContent).not.toContain("sk-");
+  });
+
+  it("blocks update for local-http configurations with persisted bearer authentication", async () => {
+    const user = userEvent.setup();
+    const { onUpdate } = renderSetupDialog(localHttpBearerRow());
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/uses local bearer authentication/i)).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(onUpdate).not.toHaveBeenCalled();
   });
 });

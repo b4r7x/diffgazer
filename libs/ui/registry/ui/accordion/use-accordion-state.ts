@@ -75,22 +75,29 @@ export type AccordionProps = AccordionSingleProps | AccordionMultipleProps;
 function normalizeStateOptions(props: AccordionProps): UseControllableStateOptions<string[]> {
   if (props.type === "multiple") {
     const controlled = "value" in props;
-    return {
-      value: controlled ? (props.value ?? []) : undefined,
-      controlled,
-      defaultValue: props.defaultValue ?? [],
-      onChange: props.onChange,
-    };
+    return controlled
+      ? {
+          controlled: true,
+          value: props.value ?? [],
+          defaultValue: props.defaultValue ?? [],
+          onChange: props.onChange,
+        }
+      : {
+          defaultValue: props.defaultValue ?? [],
+          onChange: props.onChange,
+        };
   }
   const controlled = "value" in props;
-  let value: string[] | undefined;
   if (controlled) {
-    value = props.value === undefined ? [] : [props.value];
+    return {
+      controlled: true,
+      value: props.value === undefined ? [] : [props.value],
+      defaultValue: props.defaultValue !== undefined ? [props.defaultValue] : [],
+      onChange: props.onChange ? (v: string[]) => props.onChange?.(v[0]) : undefined,
+    };
   }
 
   return {
-    value,
-    controlled,
     defaultValue: props.defaultValue !== undefined ? [props.defaultValue] : [],
     onChange: props.onChange ? (v: string[]) => props.onChange?.(v[0]) : undefined,
   };

@@ -8,12 +8,13 @@ import { useReviewClock } from "../../hooks/use-clock";
 export interface TailStatusInput {
   state: LogStreamState;
   agents: readonly AgentState[];
-  sourceFilter: string | null;
+  sourceFilter: string | undefined;
 }
 
 export interface LiveTailRowProps extends TailStatusInput {
   startTime?: Date;
-  lastEventAt: number;
+  /** Epoch ms of the last event; falls back to the run start when unknown. */
+  lastEventAt?: number;
 }
 
 /**
@@ -33,7 +34,11 @@ export function buildTailStatus({ state, agents, sourceFilter }: TailStatusInput
   if (sourceFilter) {
     return focused ? `${focused.meta.name} · waiting for model response` : `${sourceFilter} · idle`;
   }
-  if (running.length === 0) return "waiting for the next agent";
+  // Before the roster exists the run is still being set up, and "the next
+  // agent" would claim a previous one.
+  if (running.length === 0) {
+    return agents.length === 0 ? "waiting for the first agent" : "waiting for the next agent";
+  }
   if (running.length === 1 && running[0]) {
     return `${running[0].meta.name} · waiting for model response`;
   }
@@ -49,8 +54,11 @@ export function LiveTailRow({
 }: LiveTailRowProps) {
   const now = useReviewClock();
   const isStalled = state === "stalled";
+  // A stall clock anchored on "now" would read 0.0s forever and describe a dead
+  // stream as a live one, so an unknown last event falls back to the run start.
+  const silentSince = lastEventAt ?? startTime?.getTime();
   const clock = isStalled
-    ? `last event ${formatDuration(Math.max(0, now - lastEventAt))} ago`
+    ? `last event ${formatDuration(silentSince ? Math.max(0, now - silentSince) : 0)} ago`
     : formatDuration(startTime ? Math.max(0, now - startTime.getTime()) : 0);
 
   return (

@@ -1,5 +1,5 @@
-import { calculateSeverityCounts, SEVERITY_LABELS } from "@diffgazer/core/schemas/presentation";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { SEVERITY_LABELS } from "@diffgazer/core/schemas/presentation";
+import { calculateSeverityCounts, type ReviewIssue } from "@diffgazer/core/schemas/review";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { NavigationList } from "@diffgazer/ui/components/navigation-list";
 import { Panel } from "@diffgazer/ui/components/panel";
@@ -17,7 +17,7 @@ import { SeverityFilterGroup, type SeverityFilterGroupProps } from "./severity-f
  * added to SeverityFilterGroup alone, not to every layer that forwards it. The
  * pane derives `counts` from `allIssues` and owns the row's layout.
  */
-export type IssueListFilter = Omit<SeverityFilterGroupProps, "counts" | "className">;
+type IssueListFilter = Omit<SeverityFilterGroupProps, "counts" | "className">;
 
 export interface IssueListPaneProps {
   issues: ReviewIssue[];

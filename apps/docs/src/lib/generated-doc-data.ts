@@ -1,74 +1,10 @@
 import type { CodeBlockLineProps } from "@diffgazer/ui/components/code-block";
-import { z } from "zod";
-import { hooksData as rawHooksData } from "@/generated/library-data";
-
-const codeBlockTokenSchema = z
-  .object({
-    text: z.string(),
-    color: z.string().optional(),
-    className: z.string().optional(),
-  })
-  .passthrough();
-
-const codeBlockLineSchema = z
-  .object({
-    number: z.number().optional(),
-    content: z.union([z.string(), z.array(codeBlockTokenSchema)]).optional(),
-    state: z.enum(["highlight", "added", "removed"]).optional(),
-  })
-  .passthrough();
-
-// CodeBlockLineProps extends span props, so it cannot be expressed as a zod object
-// type directly; validate the generated fields and keep the component's prop type.
-export const highlightedLinesSchema = z.custom<CodeBlockLineProps[]>(
-  (value) => z.array(codeBlockLineSchema).safeParse(value).success,
-  { error: "Expected highlighted code lines" },
-);
-
-export const sourceFileSchema = z.object({
-  raw: z.string(),
-  highlighted: highlightedLinesSchema,
-});
-
-export const sourceFileWithPathSchema = sourceFileSchema.extend({
-  path: z.string(),
-});
-
-const hookDocParameterSchema = z
-  .object({
-    name: z.string(),
-    type: z.string(),
-    required: z.boolean(),
-    description: z.string(),
-    defaultValue: z.string().optional(),
-  })
-  .passthrough();
-
-const hookDocsSchema = z
-  .object({
-    description: z.string().optional(),
-    usage: z
-      .object({
-        code: z.string().optional(),
-        example: z.string().optional(),
-        lang: z.string().optional(),
-      })
-      .passthrough()
-      .optional(),
-    parameters: z.array(hookDocParameterSchema).optional(),
-    returns: z
-      .object({
-        type: z.string(),
-        description: z.string(),
-        properties: z.array(hookDocParameterSchema).optional(),
-      })
-      .passthrough()
-      .optional(),
-    notes: z.array(z.object({ title: z.string(), content: z.string() }).passthrough()).optional(),
-    examples: z.array(z.object({ name: z.string(), title: z.string() }).passthrough()).optional(),
-    tags: z.array(z.string()).optional(),
-  })
-  .passthrough();
+import type { z } from "zod";
+import type {
+  hookDocsSchema,
+  sourceFileSchema,
+  sourceFileWithPathSchema,
+} from "@/lib/doc-data-schemas";
 
 type SourceFile = z.infer<typeof sourceFileSchema>;
 type SourceFileWithPath = z.infer<typeof sourceFileWithPathSchema>;
@@ -94,27 +30,3 @@ export type HookPageData = Omit<HookData, "files" | "source"> & {
 export type HookSourceData = Pick<HookData, "files" | "source">;
 
 export type HookDataMap = Record<string, HookData>;
-
-const hookDataSchema: z.ZodType<HookData> = z
-  .object({
-    name: z.string(),
-    title: z.string(),
-    description: z.string(),
-    source: sourceFileSchema,
-    files: z.array(sourceFileWithPathSchema).optional(),
-    docs: hookDocsSchema.nullable().default(null),
-    usageSnippet: z.string().optional(),
-    usageSnippetHighlighted: highlightedLinesSchema.optional(),
-    examples: z.array(z.string()).default([]),
-    exampleSource: z.record(z.string(), sourceFileSchema).default({}),
-  })
-  .passthrough();
-
-const hooksDataSchema = z.record(z.string(), z.record(z.string(), hookDataSchema));
-
-const parsedHooksData = hooksDataSchema.safeParse(rawHooksData);
-if (!parsedHooksData.success) {
-  throw new Error(`Invalid generated docs data: hooksData: ${parsedHooksData.error.message}`);
-}
-
-export const hooksData = parsedHooksData.data;

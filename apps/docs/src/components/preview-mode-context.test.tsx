@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useRef } from "react";
 import { describe, expect, it } from "vitest";
 import { PreviewModeProvider, usePreviewMode } from "@/components/preview-mode-context";
-import { MAIN_SCROLL_RESTORATION_ID } from "@/lib/main-scroll-bootstrap";
+import { MAIN_SCROLL_RESTORATION_ID } from "@/lib/main-scroll-restoration";
 
 /** Mirrors DemoPreview: the clicked strip hands the provider its own root as the anchor. */
 function ExampleStrip() {

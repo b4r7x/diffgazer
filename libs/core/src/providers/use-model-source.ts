@@ -1,3 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
+import { useApi } from "../api/hooks/context.js";
+import { configurationModelsQuery } from "../api/hooks/queries/config.js";
 import type { ModelInfo } from "../schemas/config/models.js";
 import type { ClientConfigurationSummary } from "../schemas/config/provider-config.js";
 import {
@@ -5,7 +8,6 @@ import {
   MODEL_DISCOVERY_SKIPPED_FALLBACK,
   toClientSafeMessage,
 } from "./model-discovery-messages.js";
-import { useProviderModelsMapped } from "./use-provider-models-mapped.js";
 
 interface ModelSourceIdentity {
   configurationId: ClientConfigurationSummary["configurationId"];
@@ -47,15 +49,21 @@ export type ModelSourceState =
       error: string;
     });
 
+function identity(configuration: ClientConfigurationSummary): ModelSourceIdentity {
+  return {
+    configurationId: configuration.configurationId,
+    productId: configuration.productId,
+    transportFamily: configuration.transportFamily,
+  };
+}
+
 function emptyState(
   configuration: ClientConfigurationSummary,
   status: "idle" | "loading",
   retry: () => void,
 ): ModelSourceState {
   return {
-    configurationId: configuration.configurationId,
-    productId: configuration.productId,
-    transportFamily: configuration.transportFamily,
+    ...identity(configuration),
     status,
     models: [],
     checkedAt: null,
@@ -65,55 +73,76 @@ function emptyState(
   };
 }
 
-function identityMatches(
-  source: ModelSourceIdentity,
-  configuration: ClientConfigurationSummary,
-): boolean {
-  return (
-    source.configurationId === configuration.configurationId &&
-    source.productId === configuration.productId &&
-    source.transportFamily === configuration.transportFamily
-  );
-}
-
 export function useModelSource(
   open: boolean,
   configuration: ClientConfigurationSummary,
 ): ModelSourceState {
-  const source: ModelSourceState = useProviderModelsMapped(open, configuration);
+  const api = useApi();
+  const query = useQuery({
+    ...configurationModelsQuery(api, configuration),
+    enabled: open,
+  });
+  const retry = () => {
+    if (open) void query.refetch();
+  };
 
-  if (!open) return emptyState(configuration, "idle", source.retry);
-  if (!identityMatches(source, configuration)) {
+  if (!open) return emptyState(configuration, "idle", retry);
+  if (query.error) {
     return {
-      configurationId: configuration.configurationId,
-      productId: configuration.productId,
-      transportFamily: configuration.transportFamily,
+      ...identity(configuration),
       status: "error",
       models: [],
       checkedAt: null,
       reason: null,
-      error: "Model discovery returned a different configuration identity.",
-      retry: source.retry,
+      error: toClientSafeMessage(
+        query.error instanceof Error ? query.error.message : undefined,
+        MODEL_DISCOVERY_ERROR_FALLBACK,
+      ),
+      retry,
     };
   }
-  switch (source.status) {
-    case "passed":
-      return source;
-    case "loading":
-      return emptyState(configuration, "loading", source.retry);
-    case "idle":
-      return emptyState(configuration, "idle", source.retry);
-    case "skipped":
-      return {
-        ...source,
-        models: [],
-        reason: toClientSafeMessage(source.reason, MODEL_DISCOVERY_SKIPPED_FALLBACK),
-      };
-    case "error":
-      return {
-        ...source,
-        models: [],
-        error: toClientSafeMessage(source.error, MODEL_DISCOVERY_ERROR_FALLBACK),
-      };
+  if (query.isLoading) return emptyState(configuration, "loading", retry);
+  if (!query.data) return emptyState(configuration, "idle", retry);
+
+  const response = query.data;
+  if (
+    response.configurationId !== configuration.configurationId ||
+    response.productId !== configuration.productId ||
+    response.transportFamily !== configuration.transportFamily
+  ) {
+    return {
+      ...identity(configuration),
+      status: "error",
+      models: [],
+      checkedAt: response.checkedAt,
+      reason: null,
+      error: toClientSafeMessage(
+        "Model discovery returned a different configuration tuple.",
+        MODEL_DISCOVERY_ERROR_FALLBACK,
+      ),
+      retry,
+    };
   }
+
+  if (response.status === "skipped") {
+    return {
+      ...identity(configuration),
+      status: "skipped",
+      models: [],
+      checkedAt: response.checkedAt,
+      reason: toClientSafeMessage(response.reason, MODEL_DISCOVERY_SKIPPED_FALLBACK),
+      error: null,
+      retry,
+    };
+  }
+
+  return {
+    ...identity(configuration),
+    status: "passed",
+    models: response.models,
+    checkedAt: response.checkedAt,
+    reason: null,
+    error: null,
+    retry,
+  };
 }

@@ -14,10 +14,8 @@ Manage keyboard navigation across multiple UI zones (e.g., sidebar + content + p
 ```tsx
 import { useFocusZone, useKey } from "@diffgazer/keys"
 
-type Zone = "sidebar" | "content" | "preview"
-
 function Layout() {
-  const { zone, isZone, getKeyOptions, getZoneProps, setZone } = useFocusZone({
+  const { isZone, getKeyOptions, getZoneProps } = useFocusZone({
     initial: "sidebar",
     zones: ["sidebar", "content", "preview"] as const,
     tabCycle: ["sidebar", "content", "preview"] as const,
@@ -47,6 +45,12 @@ function Layout() {
       >
         Content
       </main>
+      <section
+        {...getZoneProps("preview")}
+        className={isZone("preview") ? "ring-1 ring-white" : ""}
+      >
+        Preview
+      </section>
     </div>
   )
 }

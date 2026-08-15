@@ -1,5 +1,5 @@
 import { buildSeverityBreakdownRows, formatSeverityFilterLabel } from "@diffgazer/core/review";
-import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
+import type { SeverityCounts } from "@diffgazer/core/schemas/review";
 import { Box, Text } from "ink";
 import { useTheme } from "../../../../theme/provider";
 import { severityColor } from "../../../../theme/severity";

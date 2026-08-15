@@ -194,6 +194,17 @@ describe("configuration lease authority", () => {
     await expect(authority.drain(CONFIGURATION_ID, { timeoutMs: 10 })).resolves.toBe("timed-out");
   });
 
+  it("settles a waiting drain when the registry is reset out from under it", async () => {
+    acquire();
+    const drainPromise = authority.drain(CONFIGURATION_ID);
+
+    resetConfigurationLeaseRegistryForTests();
+
+    // The reset dropped every lease, so the drain is complete; leaving it to
+    // its timeout would report "timed-out" for a registry holding nothing.
+    await expect(drainPromise).resolves.toBe("drained");
+  });
+
   it("skips sessions registered under a different project key", () => {
     const cancelOther = vi.fn();
     registerSession("session-a", { projectKey: "/other", cancel: cancelOther });

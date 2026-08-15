@@ -42,6 +42,13 @@ describe("SearchInput", () => {
     expect(screen.queryByRole("button", { name: "Clear search" })).not.toBeInTheDocument();
   });
 
+  it("names the clear button with a localized clearLabel", () => {
+    renderSearchInput({ defaultValue: "query", clearLabel: "Recherche effacer" });
+
+    expect(screen.getByRole("button", { name: "Recherche effacer" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Clear search" })).not.toBeInTheDocument();
+  });
+
   it("requests a controlled clear without changing the rendered value", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

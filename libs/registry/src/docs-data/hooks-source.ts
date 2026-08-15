@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type RegistryFile, RegistryItemSchema } from "../registry-types.js";
+import { resolveInside } from "../utils/fs.js";
 import { findExamples } from "./examples.js";
 import { type DocsHighlighter, type HighlightLanguage, highlightCode } from "./highlight.js";
 import type {
@@ -83,7 +84,7 @@ function readSourceFile(options: {
     console.warn(`Hook "${item.name}": no file path, skipping`);
     return null;
   }
-  const hookPath = resolve(rootDir, file.path);
+  const hookPath = resolveInside(rootDir, file.path, `Hook "${item.name}" source path`);
   if (!existsSync(hookPath)) {
     console.warn(`Hook "${item.name}": file not found at ${hookPath}, skipping`);
     return null;

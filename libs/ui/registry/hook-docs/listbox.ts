@@ -188,9 +188,9 @@ return (
       },
       {
         name: "handleItemHighlight",
-        type: "(id: string) => void",
+        type: "(id: string | null) => void",
         required: true,
-        description: "Call on item hover/focus to highlight it.",
+        description: "Call on item hover/focus to highlight it. Pass null to clear the highlight.",
       },
       {
         name: "getContainerProps",

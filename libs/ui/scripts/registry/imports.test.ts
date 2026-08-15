@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { validateRegistryImportClosure } from "./imports";
+import { validateRegistryImportClosure } from "./imports.js";
 
 let root: string | null = null;
 

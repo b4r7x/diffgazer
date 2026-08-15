@@ -1,4 +1,4 @@
-import { act, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
@@ -137,6 +137,24 @@ describe("Toast", () => {
       toast("Hello world");
     });
     expect(screen.getByText("Hello world")).toBeInTheDocument();
+  });
+
+  it("hands the toasts to a scoped Toaster mounted after the app-wide one", () => {
+    render(
+      <>
+        <Toaster label="App notifications" />
+        <div>
+          <Toaster label="Demo notifications" position="top-left" />
+        </div>
+      </>,
+    );
+    act(() => {
+      toast("Scoped corner");
+    });
+
+    const scoped = screen.getByRole("region", { name: "Demo notifications" });
+    expect(within(scoped).getByText("Scoped corner")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "App notifications" })).not.toBeInTheDocument();
   });
 
   it("creates distinct, independently controllable fallback ids when randomUUID is unavailable", () => {
@@ -617,6 +635,18 @@ describe("Toast", () => {
     expect(announcer?.textContent).toBe("");
   });
 
+  it("announces an error hud toast politely because it renders no role=alert", () => {
+    const { container } = render(<Toaster />);
+    const announcer = container.querySelector('[data-slot="toast-announcer"]');
+
+    act(() => {
+      toast("Failed to copy", { tone: "error", variant: "hud" });
+    });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(announcer?.textContent).toBe("Failed to copy");
+  });
+
   it("focuses the toast region on the hotkey and ignores it inside editable elements", () => {
     render(
       <div>
@@ -1022,6 +1052,45 @@ describe("Toast", () => {
     expect(screen.queryByText("Focusable toast")).not.toBeInTheDocument();
   });
 
+  it("re-derives the focus pause after removing a focused toast from a stack", () => {
+    render(<Toaster />);
+    act(() => {
+      toast("Focused first", {
+        id: "focus-freeze-1",
+        duration: 3000,
+        action: <button type="button">Undo focus freeze</button>,
+      });
+      toast("Timed second", { id: "focus-freeze-2", duration: 3000 });
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    const actionButton = screen.getByRole("button", { name: "Undo focus freeze" });
+    act(() => {
+      actionButton.focus();
+    });
+    expect(actionButton).toHaveFocus();
+
+    act(() => {
+      toast.dismiss("focus-freeze-1");
+    });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.queryByText("Focused first")).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(document.body);
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.queryByText("Timed second")).not.toBeInTheDocument();
+  });
+
   it("resumes auto-dismiss after the last toast is removed (no sticky-paused state)", () => {
     render(<Toaster />);
     act(() => {
@@ -1251,6 +1320,13 @@ describe("Toast", () => {
     }
   });
 
+  it("names the toast region with a localized label", () => {
+    render(<Toaster label="Benachrichtigungen" />);
+
+    expect(screen.getByRole("region", { name: "Benachrichtigungen" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Notifications" })).not.toBeInTheDocument();
+  });
+
   describe("variant layouts", () => {
     function findToast(text: string) {
       return screen.getByText(text).closest('[data-slot="toast"]');
@@ -1336,6 +1412,22 @@ describe("Toast", () => {
       // role="status" implies aria-live="polite" — we intentionally do not set
       // it explicitly to avoid the WAI-ARIA "both role and aria-live" footgun.
       expect(root).not.toHaveAttribute("aria-live");
+    });
+
+    it('variant="hud" auto-dismisses error tone on the default duration', () => {
+      render(<Toaster />);
+      act(() => {
+        toast("Failed to copy", { tone: "error", variant: "hud" });
+      });
+      expect(screen.getByText("Failed to copy")).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(screen.queryByText("Failed to copy")).not.toBeInTheDocument();
     });
 
     it('variant="countdown" renders an aria-hidden countdown slot', () => {

@@ -1,5 +1,10 @@
 import type { ProviderListRow } from "@diffgazer/core/providers";
-import { getProviderDisplayStatus, PROVIDER_DETAIL_EMPTY_LABEL } from "@diffgazer/core/providers";
+import {
+  getProviderDisplayStatus,
+  PROVIDER_DETAIL_EMPTY_LABEL,
+  UNRECOGNIZED_CONFIGURATION_COPY,
+} from "@diffgazer/core/providers";
+import type { UnrecognizedConfiguration } from "@diffgazer/core/schemas/config";
 import { buildProviderSettingsRows } from "@diffgazer/core/schemas/config";
 import type { BadgeVariant } from "@diffgazer/core/schemas/presentation";
 import { Button } from "@diffgazer/ui/components/button";
@@ -7,12 +12,18 @@ import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { cn } from "@diffgazer/ui/lib/utils";
-import type { RefCallback, RefObject } from "react";
+import type { ReactNode, RefCallback, RefObject } from "react";
 import { isProviderActionDisabled, type ProviderAction } from "../lib/actions";
 import { PROVIDER_STATUS_TONE } from "../lib/status-tone";
 
 export interface ProviderDetailsProps {
   row: ProviderListRow | null;
+  /**
+   * Set instead of `row` when the highlighted list row is a stored record this
+   * build could not decode; it takes precedence, because such a record never
+   * produces a provider row.
+   */
+  unrecognized?: UnrecognizedConfiguration | null;
   /** Derived once per selection so the renderer and the keyboard row cannot diverge. */
   actions: readonly ProviderAction[];
   onAction: (action: ProviderAction) => void;
@@ -24,8 +35,6 @@ export interface ProviderDetailsProps {
   getButtonProps?: (index: number) => {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
-    "aria-disabled"?: boolean;
-    title?: string;
   };
 }
 
@@ -38,8 +47,65 @@ const STATUS_RAIL: Record<BadgeVariant, string> = {
   neutral: "border-border",
 };
 
+/** One scroll/layout contract for the pane, shared by the empty and populated states. */
+function ProviderDetailsPane({ children }: { children: ReactNode }) {
+  return (
+    <ScrollArea
+      keyboardScrollable={false}
+      className="@container flex min-h-0 flex-1 flex-col max-md:overflow-x-visible max-md:overflow-y-visible"
+    >
+      {children}
+    </ScrollArea>
+  );
+}
+
+type ProviderActionRowProps = Pick<
+  ProviderDetailsProps,
+  "actions" | "onAction" | "isPending" | "focusedButtonIndex" | "isFocused" | "getButtonProps"
+>;
+
+/** The one rendering of the action row, shared by every kind of selected record. */
+function ProviderActionRow({
+  actions,
+  onAction,
+  isPending = false,
+  focusedButtonIndex,
+  isFocused = false,
+  getButtonProps,
+}: ProviderActionRowProps) {
+  if (actions.length === 0) return null;
+
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: <fieldset> groups form controls and expects a <legend>; this is a labelled action row, and the group role is what makes "exactly one action row" observable.
+    <div
+      role="group"
+      aria-label="Provider actions"
+      className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
+    >
+      {actions.map((action, index) => (
+        <Button
+          key={action.id}
+          {...getButtonProps?.(index)}
+          variant={action.intent}
+          bracket
+          className={action.intent === "destructive" ? "sm:ml-auto" : undefined}
+          onClick={() => onAction(action)}
+          disabled={isProviderActionDisabled(action, isPending)}
+          highlighted={isFocused && focusedButtonIndex === index && !action.disabledReason}
+          aria-label={
+            action.disabledReason ? `${action.label}. ${action.disabledReason}` : action.label
+          }
+        >
+          {action.label}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 export function ProviderDetails({
   row,
+  unrecognized = null,
   actions,
   onAction,
   isPending = false,
@@ -48,14 +114,45 @@ export function ProviderDetails({
   isFocused = false,
   getButtonProps,
 }: ProviderDetailsProps) {
+  const actionRow = (
+    <ProviderActionRow
+      actions={actions}
+      onAction={onAction}
+      isPending={isPending}
+      focusedButtonIndex={focusedButtonIndex}
+      isFocused={isFocused}
+      getButtonProps={getButtonProps}
+    />
+  );
+
+  if (unrecognized) {
+    return (
+      <ProviderDetailsPane>
+        {/* No status readout above this pane, so the padding is even all round. */}
+        <div
+          ref={focusFallbackRef}
+          tabIndex={-1}
+          className="flex flex-col gap-6 p-6 focus:outline-none"
+        >
+          {actionRow}
+          <div className="border-l-2 border-border pl-3">
+            <p className="text-xs leading-relaxed text-foreground">
+              {UNRECOGNIZED_CONFIGURATION_COPY.description}
+            </p>
+            <p className="mt-1 font-mono text-2xs leading-relaxed text-muted-foreground">
+              {unrecognized.configurationId}
+            </p>
+          </div>
+        </div>
+      </ProviderDetailsPane>
+    );
+  }
+
   if (!row) {
     return (
-      <ScrollArea
-        keyboardScrollable={false}
-        className="@container flex min-h-0 flex-1 flex-col max-md:overflow-x-visible max-md:overflow-y-visible"
-      >
+      <ProviderDetailsPane>
         <EmptyState className="flex-1">{PROVIDER_DETAIL_EMPTY_LABEL}</EmptyState>
-      </ScrollArea>
+      </ProviderDetailsPane>
     );
   }
 
@@ -68,10 +165,7 @@ export function ProviderDetails({
   const proseRows = settingsRows.filter(({ kind }) => kind === "prose");
 
   return (
-    <ScrollArea
-      keyboardScrollable={false}
-      className="@container flex min-h-0 flex-1 flex-col max-md:overflow-x-visible max-md:overflow-y-visible"
-    >
+    <ProviderDetailsPane>
       {/* Readiness readout seated under the pane chip, data-styled like the
           history RUNS ordering readout rather than a bracketed control. */}
       <div className="flex justify-end px-6 pt-3">
@@ -91,32 +185,7 @@ export function ProviderDetails({
         tabIndex={-1}
         className="flex flex-col gap-6 p-6 pt-3 focus:outline-none"
       >
-        {actions.length > 0 ? (
-          // biome-ignore lint/a11y/useSemanticElements: <fieldset> groups form controls and expects a <legend>; this is a labelled action row, and the group role is what makes "exactly one action row" observable.
-          <div
-            role="group"
-            aria-label="Provider actions"
-            className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
-          >
-            {actions.map((action, index) => (
-              <Button
-                key={action.id}
-                {...getButtonProps?.(index)}
-                variant={action.intent}
-                bracket
-                className={action.intent === "destructive" ? "sm:ml-auto" : undefined}
-                onClick={() => onAction(action)}
-                disabled={isProviderActionDisabled(action, isPending)}
-                highlighted={isFocused && focusedButtonIndex === index && !action.disabledReason}
-                aria-label={
-                  action.disabledReason ? `${action.label}. ${action.disabledReason}` : action.label
-                }
-              >
-                {action.label}
-              </Button>
-            ))}
-          </div>
-        ) : null}
+        {actionRow}
 
         <div className={cn("border-l-2 pl-3", STATUS_RAIL[displayStatus.variant])}>
           <p className="text-xs leading-relaxed text-foreground">{displayStatus.explanation}</p>
@@ -168,6 +237,6 @@ export function ProviderDetails({
           </section>
         ))}
       </div>
-    </ScrollArea>
+    </ProviderDetailsPane>
   );
 }

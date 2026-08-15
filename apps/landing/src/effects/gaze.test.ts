@@ -40,6 +40,23 @@ describe("initGaze", () => {
     controller.cleanup();
   });
 
+  it("flattens the pointer tilt when a motion-preference flip re-runs init", () => {
+    mountGaze();
+    const panel = document.querySelector<HTMLElement>("#gaze3d");
+
+    const animated = initGaze(document, { reduced: false, finePointer: true });
+    animated.tilt(0, { x: 0, y: 0, nx: 0.5, ny: 0.5 });
+    expect(panel?.style.getPropertyValue("--gx")).not.toBe("");
+    animated.cleanup();
+
+    const reduced = initGaze(document, { reduced: true, finePointer: true });
+
+    expect(panel?.style.getPropertyValue("--gx")).toBe("");
+    expect(panel?.style.getPropertyValue("--gy")).toBe("");
+
+    reduced.cleanup();
+  });
+
   it("stops the async scan loop when its abort signal fires", async () => {
     vi.useFakeTimers();
     mountGaze();

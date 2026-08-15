@@ -29,6 +29,16 @@ describe("getHistoryFooter", () => {
     expect(footer.rightShortcuts).toEqual([{ key: "Esc", label: "Back" }]);
   });
 
+  test("warning detail owns scrolling and exposes both close keys", () => {
+    const footer = getHistoryFooter("warning-detail");
+
+    expect(footer.shortcuts).toEqual([
+      { key: "↑/↓", label: "Scroll IDs" },
+      { key: "w", label: "Hide IDs" },
+    ]);
+    expect(footer.rightShortcuts).toEqual([{ key: "Esc", label: "Close IDs" }]);
+  });
+
   test("insights detail errors expose retry without replacing the pane shortcuts", () => {
     const footer = getHistoryFooter("insights", "error");
 

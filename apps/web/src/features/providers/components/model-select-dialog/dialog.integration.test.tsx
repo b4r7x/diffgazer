@@ -6,7 +6,7 @@ import type {
   ConfigurationModelsResponse,
   ModelInfo,
 } from "@diffgazer/core/schemas/config";
-import { READY_GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
+import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -54,7 +54,6 @@ function skippedModelsResponse(
   };
 }
 
-const GEMINI_CONFIGURATION = READY_GEMINI_CONFIGURATION as ClientConfigurationSummary;
 const GEMINI_CATALOG_MODELS = [catalogModel("gemini-2.5-flash"), catalogModel("gemini-2.5-pro")];
 
 interface RenderOptions {
@@ -422,6 +421,21 @@ describe("ModelSelectDialog discovery states", () => {
     expect(onSelect).toHaveBeenCalledWith("gemini-2.5-flash");
     expect(onSelect).not.toHaveBeenCalledWith("stale-model-id");
   });
+
+  // A configuration saved before the capability filter existed keeps working;
+  // the dialog says so instead of leaving the missing row unexplained.
+  it("explains a saved model the review-capable list no longer offers", async () => {
+    renderDialog({ currentModel: "retired-model-id" });
+
+    expect(await screen.findByText(/retired-model-id stays configured/)).toBeInTheDocument();
+  });
+
+  it("says nothing about the saved model while it is still offered", async () => {
+    renderDialog({ currentModel: "gemini-2.5-flash" });
+
+    await screen.findByRole("radio", { name: /gemini-2\.5-flash/ });
+    expect(screen.queryByText(/stays configured/)).not.toBeInTheDocument();
+  });
 });
 
 describe("ModelSelectDialog transport model policies", () => {
@@ -451,6 +465,6 @@ describe("ModelSelectDialog transport model policies", () => {
     expect(screen.getByText(/ollama/i)).toBeInTheDocument();
     expect(screen.getByText("No models available")).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: /qwen2\.5-coder/ })).not.toBeInTheDocument();
-    expect(getConfigurationModels).toHaveBeenCalledWith("ollama-loopback");
+    expect(getConfigurationModels).toHaveBeenCalledWith("ollama-loopback", expect.any(AbortSignal));
   });
 });

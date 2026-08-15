@@ -1,6 +1,5 @@
 {
   "extends": "../tsconfig.json",
-  "references": [{ "path": "../tsconfig.test.json" }],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
@@ -18,6 +17,5 @@
     "examples/**/*.tsx",
     "hooks/**/*.ts",
     "hooks/**/*.tsx"
-  ],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx"]
+  ]
 }

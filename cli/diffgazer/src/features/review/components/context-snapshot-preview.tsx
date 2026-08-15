@@ -1,7 +1,8 @@
-import { writeFile } from "node:fs/promises";
+import { unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { ReviewContextResponse } from "@diffgazer/core/api/types";
-import { buildContextSnapshotView, sanitizeTerminalText } from "@diffgazer/core/review";
+import { buildContextSnapshotView } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { pluralize } from "@diffgazer/core/strings";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
@@ -21,7 +22,7 @@ const SNAPSHOT_FILES = {
   graph: "context.json",
 } as const;
 
-export async function saveContextSnapshot(
+async function saveContextSnapshot(
   snapshot: ReviewContextResponse,
   outputDirectory: string,
 ): Promise<string[]> {
@@ -31,11 +32,23 @@ export async function saveContextSnapshot(
     graph: join(outputDirectory, SNAPSHOT_FILES.graph),
   };
 
-  await Promise.all([
-    writeFile(paths.text, snapshot.text, "utf8"),
-    writeFile(paths.markdown, snapshot.markdown, "utf8"),
-    writeFile(paths.graph, `${JSON.stringify(snapshot.graph, null, 2)}\n`, "utf8"),
-  ]);
+  const writeOptions = { encoding: "utf8", flag: "wx" } as const;
+  const writes = [
+    { path: paths.text, content: snapshot.text },
+    { path: paths.markdown, content: snapshot.markdown },
+    { path: paths.graph, content: `${JSON.stringify(snapshot.graph, null, 2)}\n` },
+  ];
+  const created: string[] = [];
+
+  try {
+    for (const { path, content } of writes) {
+      await writeFile(path, content, writeOptions);
+      created.push(path);
+    }
+  } catch (error) {
+    await Promise.all(created.map((path) => unlink(path).catch(() => undefined)));
+    throw error;
+  }
 
   return [paths.text, paths.markdown, paths.graph];
 }

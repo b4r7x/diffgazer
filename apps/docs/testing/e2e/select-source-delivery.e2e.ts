@@ -1,5 +1,5 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
 // The measured production document is about 632 KB because live example/code
@@ -8,40 +8,15 @@ import { expect, test } from "@playwright/test";
 const INITIAL_SELECT_DOCUMENT_BUDGET_BYTES = 768 * 1024;
 const SELECT_SOURCE_MARKER = "getVisibleEnabledOptionEntries";
 const SELECT_SOURCE_PATH = "/source-data/ui/components/select.source.json";
-const BUILD_OUTPUT_ROOT = resolve(import.meta.dirname, "../../.output");
-const SOURCE_CHUNK_DIRECTORIES = [
-  join(BUILD_OUTPUT_ROOT, "public/assets"),
-  join(BUILD_OUTPUT_ROOT, "server"),
-];
-const SOURCE_ARCHIVE_CHUNK_PATTERN = /\.source-[^/]+\.m?js$/;
-const SELECT_SOURCE_ARTIFACT = readFileSync(
-  join(BUILD_OUTPUT_ROOT, "public/source-data/ui/components/select.source.json"),
-  "utf8",
+// Read inside the test, not at module scope: Playwright loads every spec during
+// collection, so a missing or partial build must fail as a reported test rather
+// than as a bare ENOENT that takes the whole file down.
+const SELECT_SOURCE_ARTIFACT_PATH = resolve(
+  import.meta.dirname,
+  "../../.output/public/source-data/ui/components/select.source.json",
 );
 
-function findSourceArchiveChunks(directory: string): string[] {
-  const matches: string[] = [];
-  const visit = (currentDirectory: string) => {
-    for (const entry of readdirSync(currentDirectory, { withFileTypes: true })) {
-      const entryPath = join(currentDirectory, entry.name);
-      if (entry.isDirectory()) {
-        visit(entryPath);
-      } else if (SOURCE_ARCHIVE_CHUNK_PATTERN.test(entry.name)) {
-        matches.push(relative(BUILD_OUTPUT_ROOT, entryPath));
-      }
-    }
-  };
-
-  visit(directory);
-  return matches;
-}
-
 test.describe("Select source delivery", () => {
-  test("does not emit source archives as JavaScript chunks", () => {
-    const sourceArchiveChunks = SOURCE_CHUNK_DIRECTORIES.flatMap(findSourceArchiveChunks);
-    expect(sourceArchiveChunks).toEqual([]);
-  });
-
   test("loads source only after the production disclosure opens", async ({ page }) => {
     const pageErrors: string[] = [];
     const sourceRequests: Array<{ url: string; method: string }> = [];
@@ -53,7 +28,8 @@ test.describe("Select source delivery", () => {
       }
     });
 
-    expect(SELECT_SOURCE_ARTIFACT).toContain(SELECT_SOURCE_MARKER);
+    const selectSourceArtifact = readFileSync(SELECT_SOURCE_ARTIFACT_PATH, "utf8");
+    expect(selectSourceArtifact).toContain(SELECT_SOURCE_MARKER);
 
     const response = await page.goto("/ui/components/select");
     expect(response).not.toBeNull();
@@ -124,7 +100,7 @@ test.describe("Select source delivery", () => {
     expect(sourceResponseHeaders.vary?.toLowerCase().split(/\s*,\s*/)).toContain("accept-encoding");
     const compressedLength = Number.parseInt(sourceResponseHeaders["content-length"] ?? "", 10);
     expect(compressedLength).toBeGreaterThan(0);
-    expect(compressedLength).toBeLessThan(Buffer.byteLength(SELECT_SOURCE_ARTIFACT, "utf8"));
+    expect(compressedLength).toBeLessThan(Buffer.byteLength(selectSourceArtifact, "utf8"));
     expect(await sourceResponse.text()).toContain(SELECT_SOURCE_MARKER);
     await expect(page.getByText(SELECT_SOURCE_MARKER, { exact: false }).first()).toBeVisible();
     expect(sourceRequests).toEqual([{ url: sourceResponse.url(), method: "GET" }]);

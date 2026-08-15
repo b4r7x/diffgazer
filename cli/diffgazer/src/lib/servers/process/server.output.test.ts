@@ -3,15 +3,15 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resolveViteReadyAddress } from "../web";
-import { createProcessServer } from "./server";
 import {
   BASE_CONFIG,
   createFakeChild,
   type FakeChild,
   VITE_READY_LINE,
   VITE_SPLIT_BOUNDARIES,
-} from "./test-support";
+} from "../../../testing/server-process-fixtures";
+import { resolveViteReadyAddress } from "../web";
+import { createProcessServer } from "./server";
 
 const execaMock = vi.hoisted(() => vi.fn());
 // Boundary mock: subprocess launcher for managed child processes.

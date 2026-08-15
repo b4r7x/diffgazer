@@ -3,10 +3,7 @@ import { log } from "../log.js";
 import type { ConfigurationConformanceProbe } from "./conformance.js";
 
 /** Re-keys review history on a project move. */
-export type ReviewRekeyHandler = (
-  oldProjectPath: string,
-  newProjectPath: string,
-) => Promise<boolean>;
+type ReviewRekeyHandler = (oldProjectPath: string, newProjectPath: string) => Promise<boolean>;
 
 /**
  * Lease lifecycle hooks for the delete action, so deletion rejects new leases,
@@ -17,6 +14,8 @@ export interface ConfigurationLeaseHooks {
   revoke: (configurationId: ConfigurationId) => void | Promise<void>;
   cancel: (configurationId: ConfigurationId) => void | Promise<void>;
   drain: (configurationId: ConfigurationId) => void | Promise<void>;
+  /** Restores admission for a configuration a failed delete left in place. */
+  clearRevocation: (configurationId: ConfigurationId) => void | Promise<void>;
 }
 
 /**

@@ -39,8 +39,9 @@ export function DialogClose({
   ...buttonProps
 }: DialogCloseProps) {
   const handleClick = useDialogDismiss(onClick);
+  // Only used when nothing else names the control; an explicit aria-label wins below.
   const fallbackLabel =
-    ariaLabel || ariaLabelledBy || hasAccessibleTextContent(children) ? undefined : "Close dialog";
+    ariaLabelledBy || hasAccessibleTextContent(children) ? undefined : "Close dialog";
 
   return (
     <Button

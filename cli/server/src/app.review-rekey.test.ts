@@ -3,7 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { makeIssue } from "@diffgazer/core/testing/factories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { drainReviewWrites } from "./features/review/testing/storage-drain.js";
 import { resetConfigSeams } from "./shared/lib/config/seams.js";
+import type { ConfigStore } from "./shared/lib/config/store.js";
+import { assertTempHome } from "./shared/lib/testing/temp-home.js";
 
 // Boundary mock: keyring is the OS keychain wrapper; report it unavailable so the re-key test avoids the native binding.
 vi.mock("./shared/lib/config/keyring.js", () => ({
@@ -19,21 +22,43 @@ describe("review re-key wiring", () => {
 
   const reviewId = "550e8400-e29b-41d4-a716-446655440000";
 
+  // Retained so teardown can settle each store's queued work; the store re-derives its
+  // document paths from DIFFGAZER_HOME on every call.
+  const loadedStores = new Set<ConfigStore>();
+
+  async function loadConfigStore(): Promise<ConfigStore> {
+    const { createConfigStore } = await import("./shared/lib/config/store.js");
+    const store = createConfigStore();
+    loadedStores.add(store);
+    return store;
+  }
+
   beforeEach(() => {
+    loadedStores.clear();
     originalHome = process.env.DIFFGAZER_HOME;
     diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-app-rekey-"));
+    assertTempHome(diffgazerHome);
     process.env.DIFFGAZER_HOME = diffgazerHome;
     vi.resetModules();
   });
 
-  afterEach(() => {
+  // Settle the stores and the fire-and-forget review writes, then remove the temp home,
+  // and only then restore DIFFGAZER_HOME: `paths.ts` re-reads the variable per call, so
+  // restoring it first re-points still-pending work at the real ~/.diffgazer.
+  afterEach(async () => {
     resetConfigSeams();
-    if (originalHome === undefined) {
-      delete process.env.DIFFGAZER_HOME;
-    } else {
-      process.env.DIFFGAZER_HOME = originalHome;
+    try {
+      for (const store of loadedStores) await store.ready();
+      await drainReviewWrites(diffgazerHome);
+      rmSync(diffgazerHome, { recursive: true, force: true });
+    } finally {
+      loadedStores.clear();
+      if (originalHome === undefined) {
+        delete process.env.DIFFGAZER_HOME;
+      } else {
+        process.env.DIFFGAZER_HOME = originalHome;
+      }
     }
-    rmSync(diffgazerHome, { recursive: true, force: true });
   });
 
   it("re-keys a moved project's review listing through the createApp-registered handler", async () => {
@@ -41,7 +66,6 @@ describe("review re-key wiring", () => {
     // storage share one module instance (the rekey handler is module-level state).
     const { createApp: freshCreateApp } = await import("./app.js");
     const { saveReview, listReviewPage } = await import("./features/review/storage/reviews.js");
-    const { createConfigStore } = await import("./shared/lib/config/store.js");
 
     const originalRoot = join(diffgazerHome, "original");
     const movedRoot = join(diffgazerHome, "moved");
@@ -79,9 +103,9 @@ describe("review re-key wiring", () => {
     // createApp wires the production rekey handler.
     freshCreateApp();
 
-    // Resolving the moved project triggers the move path, which fires the handler.
-    const store = createConfigStore();
-    const info = store.getProjectInfo(movedRoot);
+    // Resolving the moved project through ensureProjectFile triggers the move path.
+    const store = await loadConfigStore();
+    const info = store.ensureProjectFile(movedRoot);
     expect(info.projectId).toBe("stable-id");
 
     // The handler is fire-and-forget; wait for the listing to move to the new path.
@@ -104,7 +128,6 @@ describe("review re-key wiring", () => {
   it("keeps the old root after a review-write failure and commits it after the next retry", async () => {
     const { createApp: freshCreateApp } = await import("./app.js");
     const { saveReview, listReviewPage } = await import("./features/review/storage/reviews.js");
-    const { createConfigStore } = await import("./shared/lib/config/store.js");
     const atomicWrite = await import("./shared/lib/fs.js");
     const originalRoot = join(diffgazerHome, "retry-original");
     const movedRoot = join(diffgazerHome, "retry-moved");
@@ -150,7 +173,7 @@ describe("review re-key wiring", () => {
 
     try {
       freshCreateApp();
-      createConfigStore().getProjectInfo(movedRoot);
+      (await loadConfigStore()).ensureProjectFile(movedRoot);
       await vi.waitFor(() => expect(failReviewWrite).toBe(false));
       await new Promise((resolve) => setImmediate(resolve));
       expect(JSON.parse(readFileSync(projectFilePath, "utf-8"))).toMatchObject({
@@ -158,9 +181,9 @@ describe("review re-key wiring", () => {
       });
 
       freshCreateApp();
-      const retryStore = createConfigStore();
+      const retryStore = await loadConfigStore();
       await vi.waitFor(() => {
-        retryStore.getProjectInfo(movedRoot);
+        retryStore.ensureProjectFile(movedRoot);
         expect(JSON.parse(readFileSync(projectFilePath, "utf-8"))).toMatchObject({
           repoRoot: movedRoot,
         });

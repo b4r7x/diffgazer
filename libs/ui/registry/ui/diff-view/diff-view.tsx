@@ -77,13 +77,6 @@ interface DiffViewBaseProps extends Omit<ComponentProps<"figure">, "children"> {
   /** Screen-reader prefix for a removed line. Defaults to "Removed: ". */
   removedLineLabel?: string;
   /**
-   * Visual variant. "hairline" (default) is the dashboard-safe bordered look. "bare" removes
-   * chrome and renders a 2px left rule; the figcaption is suppressed. "dense" tightens
-   * typography and adds visible number-column dividers. "viewfinder" renders four bracketed
-   * corners. "statusbar" reveals the bottom statusBar slot.
-   */
-  variant?: DiffViewVariant;
-  /**
    * Vertical density. Surfaces as data-density on the figure. Orthogonal to variant;
    * variant="dense" defaults this to "compact" unless overridden.
    */
@@ -99,26 +92,44 @@ interface DiffViewBaseProps extends Omit<ComponentProps<"figure">, "children"> {
    * a fixed max-height and a y-axis scrollbar via the --diff-view-max-h CSS variable.
    */
   maxHeight?: string;
-  /**
-   * Headless bottom slot rendered when variant="statusbar". Fill with whatever your app needs
-   * (diff stats, Kbd hints, actions). Omit to suppress the slot entirely.
-   */
-  statusBar?: ReactNode;
 }
+
+type DiffViewStatusbarVariantProps = {
+  /**
+   * Visual variant with a bottom statusBar slot. Fill statusBar with whatever your app needs
+   * (diff stats, Kbd hints, actions). Omit statusBar to suppress the slot entirely.
+   */
+  variant: "statusbar";
+  /** Optional content rendered in the bottom status bar slot. */
+  statusBar?: ReactNode;
+};
+
+type DiffViewNonStatusbarVariantProps = {
+  /**
+   * Visual variant. "hairline" (default) is the dashboard-safe bordered look. "bare" removes
+   * chrome and renders a 2px left rule; the figcaption is suppressed. "dense" tightens
+   * typography and adds visible number-column dividers. "viewfinder" renders four bracketed
+   * corners.
+   */
+  variant?: Exclude<DiffViewVariant, "statusbar">;
+  statusBar?: never;
+};
 
 /** Props for diff view. */
 export type DiffViewProps = (DiffInputPatch | DiffInputCompare | DiffInputParsed) &
-  DiffViewBaseProps;
+  DiffViewBaseProps &
+  (DiffViewStatusbarVariantProps | DiffViewNonStatusbarVariantProps);
 
 // The public union keeps diff inputs mutually exclusive; this flattened shape
 // lets the body destructure every key (including the diff discriminants) so the
 // remaining `...rest` carries only genuine <figure> attributes to spread.
-type DiffViewResolvedProps = DiffViewBaseProps & {
-  patch?: string;
-  before?: string;
-  after?: string;
-  diff?: ParsedDiff;
-};
+type DiffViewResolvedProps = DiffViewBaseProps &
+  (DiffViewStatusbarVariantProps | DiffViewNonStatusbarVariantProps) & {
+    patch?: string;
+    before?: string;
+    after?: string;
+    diff?: ParsedDiff;
+  };
 
 interface ActiveHunkState {
   parsedIdentity: string;

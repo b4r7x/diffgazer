@@ -1,13 +1,12 @@
 import {
   guardQueryState,
   TRUST_EDITOR_MESSAGES,
-  useInit,
+  useConfigurationInit,
   useTrustEditor,
 } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { NAVIGATE_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
-import type { UseQueryResult } from "@tanstack/react-query";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
@@ -28,7 +27,7 @@ export function TrustPermissionsScreen(): ReactElement {
   const { columns, rows } = useTerminalDimensions();
   useBackHandler();
 
-  const initQuery = useInit();
+  const initQuery = useConfigurationInit();
   const project = initQuery.data?.project ?? null;
   const trust = project?.trust ?? null;
   const editorInput = {
@@ -38,10 +37,7 @@ export function TrustPermissionsScreen(): ReactElement {
   };
 
   const queryGuardPanels = useQueryGuardPanels("Loading trust permissions...");
-  const guard = guardQueryState(
-    initQuery as UseQueryResult<NonNullable<typeof initQuery.data>>,
-    queryGuardPanels,
-  );
+  const guard = guardQueryState(initQuery, queryGuardPanels);
   if (guard) return guard;
 
   return <LoadedTrustPermissionsScreen columns={columns} rows={rows} editorInput={editorInput} />;

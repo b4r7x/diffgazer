@@ -15,10 +15,15 @@ function tryRemoveIfEmpty(dir: string): void {
   }
 }
 
-export function copyGeneratedDir(pkgRoot: string, srcRelative: string, distRelative: string): void {
+export function copyGeneratedDir(
+  pkgRoot: string,
+  srcRelative: string,
+  distRelative: string,
+  regenerateCommand: string,
+): void {
   const src = resolve(pkgRoot, srcRelative);
   if (!existsSync(src)) {
-    throw new Error(`${srcRelative}/ not found. Run prebuild first.`);
+    throw new Error(`${srcRelative}/ not found. Run \`${regenerateCommand}\` first.`);
   }
   cpSync(src, resolve(pkgRoot, distRelative), { recursive: true, force: true });
 }

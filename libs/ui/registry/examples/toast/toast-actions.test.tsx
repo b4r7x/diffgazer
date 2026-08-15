@@ -1,7 +1,16 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { toast } from "@/components/ui/toast";
+import { Toaster, toast } from "@/components/ui/toast";
 import ToastActions from "./toast-actions";
+
+function renderToastActionsExample() {
+  return render(
+    <>
+      <ToastActions />
+      <Toaster />
+    </>,
+  );
+}
 
 describe("ToastActions", () => {
   beforeEach(() => {
@@ -17,14 +26,20 @@ describe("ToastActions", () => {
   });
 
   it("dismisses the action toast when its action is activated", () => {
-    render(<ToastActions />);
+    renderToastActionsExample();
 
     // fireEvent retained: fake timers drive toast removal; userEvent waits on the same timer queue.
     fireEvent.click(screen.getByRole("button", { name: "Show with Action" }));
     expect(screen.getByText("Review Submitted")).toBeInTheDocument();
 
+    act(() => vi.advanceTimersByTime(5000));
+    expect(screen.getByText("Review Submitted")).toBeInTheDocument();
+    const dismiss = screen.getByRole("button", { name: "Dismiss" });
+    dismiss.focus();
+    expect(dismiss).toHaveFocus();
+
     // fireEvent retained: fake timers drive toast removal; userEvent waits on the same timer queue.
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    fireEvent.click(dismiss);
     act(() => vi.advanceTimersByTime(250));
 
     expect(screen.queryByText("Review Submitted")).not.toBeInTheDocument();
@@ -32,7 +47,7 @@ describe("ToastActions", () => {
   });
 
   it("keeps the custom-duration toast past the five-second default and dismisses it at eight seconds", () => {
-    render(<ToastActions />);
+    renderToastActionsExample();
 
     // fireEvent retained: fake timers drive toast removal; userEvent waits on the same timer queue.
     fireEvent.click(screen.getByRole("button", { name: "Show with Custom Duration (8s)" }));

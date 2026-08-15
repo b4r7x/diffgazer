@@ -78,6 +78,40 @@ export function findJsxExpressionEnd(source: string, start: number): number {
   return source.length;
 }
 
+function hasClosingJsxTag(source: string, name: string, from: number): boolean {
+  if (name === "") return source.indexOf("</>", from) !== -1;
+
+  const open = `</${name}`;
+  let index = source.indexOf(open, from);
+  while (index !== -1) {
+    const afterName = index + open.length;
+    const next = source[afterName];
+    if (
+      next === ">" ||
+      next === " " ||
+      next === "\t" ||
+      next === "\n" ||
+      next === "\r" ||
+      next === "/"
+    ) {
+      return true;
+    }
+    index = source.indexOf(open, index + 1);
+  }
+  return false;
+}
+
+function isTypeArgumentOpening(source: string, tagEnd: number): boolean {
+  let index = tagEnd;
+  while (index < source.length && /\s/.test(source[index] ?? "")) index += 1;
+  const next = source[index];
+  return next === "(" || next === "[" || next === "." || next === ";";
+}
+
+function maskSourceBuffer(source: string): string[] {
+  return Array.from({ length: source.length }, (_, index) => source[index] ?? " ");
+}
+
 function maskJsxElement(source: string, output: string[], opening: JsxTag): number {
   const tagStack = [opening.name];
   let index = opening.end;
@@ -116,7 +150,7 @@ function maskJsxElement(source: string, output: string[], opening: JsxTag): numb
 }
 
 export function maskJsxRawText(source: string): string {
-  const output = [...source];
+  const output = maskSourceBuffer(source);
   let index = 0;
 
   while (index < source.length) {
@@ -143,8 +177,11 @@ export function maskJsxRawText(source: string): string {
           index = tag.end;
           continue;
         }
-        const closingTag = tag.name === "" ? "</>" : `</${tag.name}`;
-        if (source.indexOf(closingTag, tag.end) !== -1) {
+        if (tag.name && isTypeArgumentOpening(source, tag.end)) {
+          index = tag.end;
+          continue;
+        }
+        if (hasClosingJsxTag(source, tag.name, tag.end)) {
           index = maskJsxElement(source, output, tag);
           continue;
         }

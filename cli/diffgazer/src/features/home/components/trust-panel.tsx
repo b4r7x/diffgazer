@@ -1,14 +1,13 @@
-import { guardQueryState, useInit, useSaveTrust } from "@diffgazer/core/api/hooks";
+import { guardQueryState, useConfigurationInit, useSaveTrust } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
 import {
   DEFAULT_TRUST_PROMPT_CAPABILITIES,
   getTrustButtonLabel,
 } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
-import { TRUST_FOOTER_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
-import type { UseQueryResult } from "@tanstack/react-query";
+import { TRUST_PERMISSION_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { useState } from "react";
@@ -28,7 +27,7 @@ interface TrustPanelProps {
 export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
   const { tokens } = useTheme();
   const { rows } = useTerminalDimensions();
-  const initQuery = useInit();
+  const initQuery = useConfigurationInit();
   const saveTrust = useSaveTrust();
   const [capabilities, setCapabilities] = useState<TrustCapabilities>(
     DEFAULT_TRUST_PROMPT_CAPABILITIES,
@@ -47,8 +46,14 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
     { key: "q", label: "Quit" },
   ];
 
+  const permissionShortcuts: Shortcut[] = [
+    ...TRUST_PERMISSION_SHORTCUTS,
+    { key: "Tab", label: "Focus Actions" },
+    { key: "q", label: "Quit" },
+  ];
+
   usePageFooter({
-    shortcuts: buttonActive ? actionShortcuts : TRUST_FOOTER_SHORTCUTS,
+    shortcuts: buttonActive ? actionShortcuts : permissionShortcuts,
   });
 
   useInput(
@@ -66,10 +71,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
   }
 
   const queryGuardPanels = useQueryGuardPanels("Loading project info...");
-  const guard = guardQueryState(
-    initQuery as UseQueryResult<NonNullable<typeof initQuery.data>>,
-    queryGuardPanels,
-  );
+  const guard = guardQueryState(initQuery, queryGuardPanels);
   if (guard) return guard;
 
   return (

@@ -431,13 +431,14 @@ describe("ActivityLog heartbeats and live tail row", () => {
     };
   }
 
+  const detectiveMeta = AGENT_METADATA.detective;
   const runningDetective: AgentState[] = [
     {
       id: "detective",
       status: "running",
       progress: 65,
       issueCount: 0,
-      meta: AGENT_METADATA.detective,
+      meta: detectiveMeta,
     },
   ];
 
@@ -474,6 +475,30 @@ describe("ActivityLog heartbeats and live tail row", () => {
     );
 
     expect(screen.getByText("Detective · waiting for model response · 46.0s")).toBeVisible();
+  });
+
+  // A run that has not queued anyone yet is still starting, so the tail row
+  // must not claim a previous agent.
+  it("names the wait as the first agent before the roster exists", () => {
+    const { container } = render(<ActivityLog events={[]} streamState="flowing" agents={[]} />);
+
+    expect(container.querySelector("[data-log-tail]")).toHaveTextContent(
+      /waiting for the first agent/,
+    );
+  });
+
+  it("names the wait as the next agent once the roster exists", () => {
+    const finishedDetective: AgentState[] = [
+      { id: "detective", status: "complete", progress: 100, issueCount: 0, meta: detectiveMeta },
+    ];
+
+    const { container } = render(
+      <ActivityLog events={[]} streamState="flowing" agents={finishedDetective} />,
+    );
+
+    expect(container.querySelector("[data-log-tail]")).toHaveTextContent(
+      /waiting for the next agent/,
+    );
   });
 
   it("keeps counting the elapsed time while the run stays silent", () => {
@@ -551,6 +576,27 @@ describe("ActivityLog heartbeats and live tail row", () => {
     rerender(tail(undefined));
 
     expect(screen.getByRole("status")).toHaveTextContent("");
+  });
+
+  it("empties the live region of the last streamed line once the run is over", () => {
+    vi.useFakeTimers();
+    try {
+      let state = createTaggedState([makeEvent(0)]);
+      const { rerender } = render(<ActivityLog events={state.events} streamState="flowing" />);
+      const status = screen.getByRole("status");
+
+      state = appendEvent(state, makeEvent(1));
+      rerender(<ActivityLog events={state.events} streamState="flowing" />);
+      act(() => vi.advanceTimersByTime(750));
+      expect(status).toHaveTextContent("event-1");
+
+      // The region is aria-atomic: leaving the mid-run line behind makes the tail
+      // row's removal re-announce it after the run has already finished.
+      rerender(<ActivityLog events={state.events} />);
+      expect(status).toHaveTextContent("");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("leaves no dangling cursor once the run is over", () => {

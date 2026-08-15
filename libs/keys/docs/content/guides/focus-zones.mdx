@@ -157,7 +157,7 @@ const { getKeyOptions, isZone } = useFocusZone<Zone>({
 });
 ```
 
-In controlled mode, `setInternalZone` is never called. The hook fires `onZoneChange` and expects you to update the value yourself. If you don't update `zone` in response to `onZoneChange`, the zone won't actually change.
+In controlled mode the hook never changes the zone itself. It fires `onZoneChange` and expects you to update the value yourself. If you don't update `zone` in response to `onZoneChange`, the zone won't actually change.
 
 The `setZone` function from the return value also works in controlled mode -- it goes through the same lifecycle callbacks (leave/enter/change) before calling `onZoneChange`.
 

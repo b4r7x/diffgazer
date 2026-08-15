@@ -91,8 +91,6 @@ const UI_TEST_AXE_EXEMPTIONS = new Map([
     "stepper.test.tsx owns the axe audit; this file isolates reduced-motion behavior.",
   ],
 ]);
-const UI_COMPONENT_TEST_EXEMPTIONS = new Map();
-
 function findAxeImportSymbols(sourceFile, checker) {
   const symbols = new Set();
 
@@ -551,23 +549,12 @@ test("UI component tests run axe or document why axe is skipped", () => {
 
   for (const folder of componentFolders) {
     if (foldersWithDirectTests.has(folder)) continue;
-
-    const rationale = UI_COMPONENT_TEST_EXEMPTIONS.get(folder)?.trim();
-    if (!rationale) {
-      violations.push(`libs/ui/registry/ui/${folder}/`);
-    }
+    violations.push(`libs/ui/registry/ui/${folder}/`);
   }
 
   for (const [file, rationale] of UI_TEST_AXE_EXEMPTIONS) {
     if (!rationale.trim()) violations.push(`${file}: empty axe exemption`);
     if (!uiTestFiles.includes(file)) violations.push(`${file}: stale axe exemption`);
-  }
-
-  for (const [folder, rationale] of UI_COMPONENT_TEST_EXEMPTIONS) {
-    if (!rationale.trim()) violations.push(`libs/ui/registry/ui/${folder}/: empty axe exemption`);
-    if (!componentFolders.includes(folder)) {
-      violations.push(`libs/ui/registry/ui/${folder}/: stale axe exemption`);
-    }
   }
 
   assert.deepEqual(violations, []);

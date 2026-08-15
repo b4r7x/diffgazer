@@ -86,14 +86,9 @@ export interface SettingsHubInput {
   selectedProductId: RunnableProductId | null | undefined;
   isTrusted: boolean;
   theme: Theme | null | undefined;
-  secretsStorage: SecretsStorage | null | undefined;
-  agentExecution: AgentExecution | null | undefined;
-  selectedLensCount: number | null | undefined;
-}
-
-function getAgentExecutionLabel(mode: AgentExecution | null | undefined): string {
-  if (mode === "parallel") return "Parallel";
-  return "Sequential";
+  secretsStorage: SecretsStorage | null;
+  agentExecution: AgentExecution;
+  selectedLensCount: number;
 }
 
 /**
@@ -116,16 +111,14 @@ export function buildHubValues({
   const themeLabel = theme ?? "auto";
   const storageLabel = secretsStorage ?? "Not set";
   const analysisLabel =
-    selectedLensCount && selectedLensCount > 0
-      ? pluralize(selectedLensCount, "lens", "lenses")
-      : "Default";
+    selectedLensCount > 0 ? pluralize(selectedLensCount, "lens", "lenses") : "Default";
 
   return {
     trust: isTrusted ? "Trusted" : "Not trusted",
     theme: themeLabel,
     provider: providerLabel,
     storage: storageLabel,
-    "agent-execution": getAgentExecutionLabel(agentExecution),
+    "agent-execution": agentExecution === "parallel" ? "Parallel" : "Sequential",
     analysis: analysisLabel,
     diagnostics: "Local",
   };

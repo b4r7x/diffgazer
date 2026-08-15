@@ -15,7 +15,7 @@ import { isTerminalEvent } from "./events.js";
  * without a verifiable hash, so dedupe/stale-cancel comparisons skip it.
  */
 export type StatusHashKind = "full" | "status-only" | "unavailable";
-export type ReviewPersistenceState = "pending" | "committing" | "committed";
+type ReviewPersistenceState = "pending" | "committing" | "committed";
 
 export interface ActiveSession {
   reviewId: string;
@@ -245,13 +245,22 @@ function canEvictSession(session: ActiveSession): boolean {
 }
 
 function evictOldestSession(): boolean {
-  let oldest: { id: string; startedAt: Date } | null = null;
+  // Evict in cost order: a completed session is only a replay cache entry whose
+  // result is already on disk, so discard those (oldest first) before aborting a
+  // live review that is still spending tokens.
+  let oldestCompleted: { id: string; startedAt: Date } | null = null;
+  let oldestLive: { id: string; startedAt: Date } | null = null;
   for (const [id, session] of activeSessions) {
     if (!canEvictSession(session)) continue;
-    if (!oldest || session.startedAt < oldest.startedAt) {
-      oldest = { id, startedAt: session.startedAt };
+    const candidate = session.isComplete ? oldestCompleted : oldestLive;
+    if (candidate && candidate.startedAt <= session.startedAt) continue;
+    if (session.isComplete) {
+      oldestCompleted = { id, startedAt: session.startedAt };
+    } else {
+      oldestLive = { id, startedAt: session.startedAt };
     }
   }
+  const oldest = oldestCompleted ?? oldestLive;
   if (!oldest) return false;
 
   const session = activeSessions.get(oldest.id);
@@ -509,33 +518,6 @@ function cancelSessionWithError(
   ).unref();
 }
 
-export function cancelSessionsForConfiguration(
-  configurationId: string,
-  options?: {
-    configurationRevision?: number;
-    admittedExecutionFingerprint?: string;
-    message?: string;
-    reason?: string;
-  },
-): void {
-  for (const [reviewId, session] of activeSessions) {
-    if (session.isComplete) continue;
-    if (
-      !matchesConfigurationCancellation(session, {
-        configurationId,
-        configurationRevision: options?.configurationRevision,
-        admittedExecutionFingerprint: options?.admittedExecutionFingerprint,
-      })
-    ) {
-      continue;
-    }
-    cancelSession(reviewId, {
-      message: options?.message,
-      reason: options?.reason,
-    });
-  }
-}
-
 export function cancelStaleSessionsForProjectMode(
   projectPath: string,
   mode: ReviewMode,
@@ -686,7 +668,7 @@ export function getSession(reviewId: string): ActiveSession | undefined {
   return activeSessions.get(reviewId);
 }
 
-export function deleteSession(reviewId: string): void {
+export function deleteSessionForTests(reviewId: string): void {
   activeSessions.delete(reviewId);
   unregisterSession(reviewId);
 }

@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -44,13 +42,6 @@ vi.mock("@tanstack/react-start", () => ({
 
 function installBrowserMocks() {
   stubMatchMedia({ isDesktop: false });
-
-  HTMLDialogElement.prototype.showModal = vi.fn(function showModal(this: HTMLDialogElement) {
-    this.open = true;
-  });
-  HTMLDialogElement.prototype.close = vi.fn(function close(this: HTMLDialogElement) {
-    this.open = false;
-  });
 }
 
 function renderRoute(path: string) {
@@ -106,7 +97,7 @@ describe("docs route not-found handling", () => {
 
     expect(await screen.findByRole("heading", { name: "Page not found" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Skip to content" })).toHaveLength(1);
-    expect(screen.getAllByRole("navigation", { name: "Primary" })).toHaveLength(1);
+    expect(screen.getAllByRole("navigation", { name: "Site" })).toHaveLength(1);
   });
 
   it("labels the render-error action as TRY_AGAIN and recovers through its retry control", async () => {

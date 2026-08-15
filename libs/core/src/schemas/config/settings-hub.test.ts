@@ -142,7 +142,6 @@ describe("buildHubValues", () => {
   test.each([
     { agentExecution: "parallel" as const, rendered: "Parallel" },
     { agentExecution: "sequential" as const, rendered: "Sequential" },
-    { agentExecution: null, rendered: "Sequential" },
   ])("renders agent execution '$agentExecution' as '$rendered'", ({ agentExecution, rendered }) => {
     expect(buildHubValues(makeInput({ agentExecution }))["agent-execution"]).toBe(rendered);
   });

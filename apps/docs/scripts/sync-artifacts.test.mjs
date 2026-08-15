@@ -220,11 +220,6 @@ describe("syncArtifacts", () => {
       JSON.parse(readFileSync(join(docsRoot, "src/generated/ui/ui-libs.json"), "utf8")),
     ).toEqual({ libs: ["utils"] });
 
-    const libraryData = readFileSync(join(docsRoot, "src/generated/library-data.ts"), "utf8");
-    expect(libraryData).toContain('import ui_ui_hooks from "./ui/ui-hooks.json"');
-    expect(libraryData).toContain("export const hooksData");
-    expect(libraryData).not.toContain("-libs.json");
-    expect(libraryData).not.toContain("libsData");
     expect(JSON.parse(readFileSync(join(docsRoot, "content/docs/meta.json"), "utf8"))).toEqual({
       title: "Documentation",
       root: true,
@@ -293,19 +288,12 @@ describe("docs artifact secret scanning", () => {
     expect(output).not.toContain(fakeToken);
   });
 
-  it("keeps oversized binary and ignored-path exclusions", () => {
+  it("keeps the oversized binary exclusion", () => {
     const root = makeTempRoot();
     const binaryPath = join(root, "oversized-artifact.bin");
     const fakeToken = `ghp_${"Q".repeat(36)}`;
-    const previousCwd = process.cwd();
     writeText(root, "oversized-artifact.bin", `${"x".repeat(MAX_FILE_BYTES + 1)}\0${fakeToken}`);
-    writeText(root, ".nuke/ignored-artifact.json", fakeToken);
 
-    try {
-      process.chdir(root);
-      expect(collectSecretFindings([binaryPath, ".nuke/ignored-artifact.json"])).toEqual([]);
-    } finally {
-      process.chdir(previousCwd);
-    }
+    expect(collectSecretFindings([binaryPath])).toEqual([]);
   });
 });

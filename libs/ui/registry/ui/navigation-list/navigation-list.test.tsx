@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { renderToString } from "react-dom/server";
@@ -264,16 +264,39 @@ describe("NavigationList", () => {
     expect(screen.getByRole("option", { name: "One" })).toHaveAttribute("aria-selected", "false");
   });
 
-  it("lets item focus handlers prevent highlight changes", async () => {
+  it("highlights an item when focus enters one of its children", () => {
     render(
       <NavigationList aria-label="Test nav">
-        <NavigationList.Item id="one" onFocus={(event) => event.preventDefault()}>
+        <NavigationList.Item id="one">
           <NavigationList.Title>One</NavigationList.Title>
+          <button type="button">Pin One</button>
         </NavigationList.Item>
       </NavigationList>,
     );
 
-    screen.getByRole("option", { name: "One" }).focus();
+    act(() => {
+      screen.getByRole("button", { name: "Pin One" }).focus();
+    });
+
+    expect(screen.getByRole("listbox")).toHaveAttribute(
+      "aria-activedescendant",
+      screen.getByRole("option", { name: "One" }).id,
+    );
+  });
+
+  it("lets item focus handlers prevent highlight changes", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one" onFocus={(event) => event.preventDefault()}>
+          <NavigationList.Title>One</NavigationList.Title>
+          <button type="button">Pin One</button>
+        </NavigationList.Item>
+      </NavigationList>,
+    );
+
+    act(() => {
+      screen.getByRole("button", { name: "Pin One" }).focus();
+    });
 
     expect(screen.getByRole("listbox")).not.toHaveAttribute(
       "aria-activedescendant",
@@ -609,11 +632,18 @@ describe("NavigationList", () => {
     );
   });
 
-  it("only references mounted description elements", () => {
+  it("references each description subtree once in the accessible description", () => {
     render(
       <NavigationList aria-label="Test nav">
         <NavigationList.Item id="one">
           <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="nested">
+          <NavigationList.Title>Nested meta</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Badge variant="info">NEW</NavigationList.Badge>
+            <NavigationList.Subtitle>3 files changed</NavigationList.Subtitle>
+          </NavigationList.Meta>
         </NavigationList.Item>
         <NavigationList.Item id="two">
           <NavigationList.Title>Two</NavigationList.Title>
@@ -624,10 +654,58 @@ describe("NavigationList", () => {
     );
 
     expect(screen.getByRole("option", { name: "One" })).not.toHaveAttribute("aria-describedby");
-    const describedOption = screen.getByRole("option", { name: /Two/ });
-    const describedBy = describedOption.getAttribute("aria-describedby");
-    expect(describedBy).toContain("-two-desc-meta");
-    expect(describedBy).toContain("-two-desc-sub");
+
+    const nestedOption = screen.getByRole("option", { name: /Nested meta/ });
+    expect(nestedOption).toHaveAccessibleDescription("NEW3 files changed");
+    expect(nestedOption.getAttribute("aria-describedby")).toBe(`${nestedOption.id}-desc-meta`);
+    expect(nestedOption.getAttribute("aria-describedby")).not.toContain("-desc-sub");
+
+    const siblingOption = screen.getByRole("option", { name: /Two/ });
+    expect(siblingOption).toHaveAccessibleDescription("Meta Subtitle");
+    const siblingDescribedBy = siblingOption.getAttribute("aria-describedby");
+    expect(siblingDescribedBy).toContain("-two-desc-meta");
+    expect(siblingDescribedBy).toContain("-two-desc-sub");
+  });
+
+  it("only references aria-labelledby when a Title actually renders the label element", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="titled">
+          <NavigationList.Title>Titled</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="bare">
+          <NavigationList.Badge variant="info">3</NavigationList.Badge>
+        </NavigationList.Item>
+      </NavigationList>,
+    );
+
+    const titled = screen.getByRole("option", { name: "Titled" });
+    expect(titled.getAttribute("aria-labelledby")).toBe(`${titled.id}-label`);
+
+    const bare = screen.getByRole("option", { name: "3" });
+    expect(bare).not.toHaveAttribute("aria-labelledby");
+  });
+
+  it("exposes a named group for both the section and tree variants", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Group label="Sections" count={1} defaultExpanded>
+          <NavigationList.Item id="one">
+            <NavigationList.Title>One</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+        <NavigationList.Group label="Trees" variant="tree" defaultExpanded>
+          <NavigationList.Item id="two">
+            <NavigationList.Title>Two</NavigationList.Title>
+          </NavigationList.Item>
+        </NavigationList.Group>
+      </NavigationList>,
+    );
+
+    // variant is documented as a visual treatment, so it must not change which
+    // grouping semantics the listbox exposes.
+    expect(screen.getByRole("group", { name: "Sections (1)" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Trees" })).toBeInTheDocument();
   });
 
   it("keeps the subtitle a truncating block, not a flex container", () => {

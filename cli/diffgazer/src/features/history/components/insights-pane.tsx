@@ -1,6 +1,7 @@
-import { type HistoryDetailState, sanitizeTerminalText } from "@diffgazer/core/review";
-import { SEVERITY_ORDER, type SeverityCounts } from "@diffgazer/core/schemas/presentation";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import type { HistoryDetailState } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
+import { SEVERITY_ORDER } from "@diffgazer/core/schemas/presentation";
+import type { ReviewIssue, SeverityCounts } from "@diffgazer/core/schemas/review";
 import { capitalize } from "@diffgazer/core/strings";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";

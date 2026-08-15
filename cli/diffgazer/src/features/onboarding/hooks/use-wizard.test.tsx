@@ -2,14 +2,13 @@
  * @vitest-environment jsdom
  */
 import { type BoundApi, createApi } from "@diffgazer/core/api";
-import { FooterProvider, useFooterData } from "@diffgazer/core/footer";
+import { FooterProvider } from "@diffgazer/core/footer";
 import { getInitialWizardData } from "@diffgazer/core/onboarding";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { act, renderHook } from "@testing-library/react";
-import { Text } from "ink";
 import { render as renderInk } from "ink-testing-library";
 import { createElement, type ReactNode } from "react";
-import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { NavigationProvider } from "../../../app/providers/navigation";
 import { CliThemeProvider } from "../../../theme/provider";
 import { OnboardingWizard } from "../components/wizard";
@@ -49,17 +48,6 @@ async function flushInk(times = 4): Promise<void> {
   }
 }
 
-function _FooterProbe() {
-  const { shortcuts } = useFooterData();
-  return (
-    <Text>
-      {shortcuts
-        .map(({ key, label, disabled }) => `${key}:${label}:${disabled ? "disabled" : "enabled"}`)
-        .join("|")}
-    </Text>
-  );
-}
-
 describe("useOnboardingWizard", () => {
   beforeEach(() => {
     terminalDimensions.current = { columns: 80, rows: 24 };
@@ -67,6 +55,10 @@ describe("useOnboardingWizard", () => {
     mockRunConfigurationAction = vi
       .fn<BoundApi["executeConfigurationAction"]>()
       .mockResolvedValue({ action: "delete", status: "succeeded" });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("keeps progress labels readable in 40-column and wide frames", async () => {
@@ -222,6 +214,60 @@ describe("useOnboardingWizard", () => {
       expect(action).not.toHaveProperty("configurationId");
     }
     expect(hook.result.current.draftConfiguration?.configurationId).toBe("codex-cli-draft");
+  });
+
+  it("strips terminal escapes from a rejected cleanup before warning about it", async () => {
+    const created = {
+      action: "create",
+      status: "succeeded",
+      configuration: {
+        configurationId: "codex-cli-draft",
+        revision: 1,
+        status: "supported",
+        transportFamily: "local-cli",
+        productId: "codex-cli",
+        installationId: "codex-installation",
+        selectedModelId: null,
+        notices: [],
+        availableActions: ["inspect", "select", "test", "update", "delete"],
+      },
+    } as Awaited<ReturnType<BoundApi["executeConfigurationAction"]>>;
+    // An OSC-52 clipboard write hidden in the server's rejection: the escape
+    // takes effect the instant the bytes reach the terminal.
+    const clipboardWrite = "\u001b]52;c;cm0gLXJmIH4=\u0007";
+    mockRunConfigurationAction.mockImplementation((action) => {
+      if (action.action === "create") return Promise.resolve(created);
+      return Promise.reject(new Error(`${clipboardWrite}Draft removal was rejected`));
+    });
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const wrapper = createWrapper();
+    const hook = renderHook(() => useOnboardingWizard(), { wrapper });
+
+    act(() => hook.result.current.handleProductChange("codex-cli"));
+    act(() => hook.result.current.handleNext());
+    act(() =>
+      hook.result.current.updateData({
+        configurationInput: {
+          transportFamily: "local-cli",
+          productId: "codex-cli",
+          installationId: "codex-installation",
+        },
+      }),
+    );
+    await act(async () => {
+      hook.result.current.handleNext();
+    });
+    expect(hook.result.current.draftConfiguration?.configurationId).toBe("codex-cli-draft");
+
+    // Quitting mid-setup revokes the draft the wizard created.
+    hook.unmount();
+
+    await vi.waitFor(() => expect(warnSpy).toHaveBeenCalled());
+    const warned = warnSpy.mock.calls.map(([value]) => String(value)).join("\n");
+    expect(warned).toContain("Draft removal was rejected");
+    expect(warned).not.toContain("\u001b");
+    expect(warned).not.toContain("]52;c;");
   });
 
   it("keeps Back and Next nav focus exclusive via navIndex", () => {

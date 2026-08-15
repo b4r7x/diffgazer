@@ -37,7 +37,7 @@ For a plain list with no per-row action strip, use [`useNavigation`](/keys/hooks
 | `ArrowDown` | content | Enters the actions zone and focuses the first enabled action. |
 | `ArrowLeft` | actions | Moves to the previous enabled action. At the left edge it wraps (when `wrap`) or reports the `"previous"` boundary. |
 | `ArrowRight` | actions | Moves to the next enabled action. At the right edge it wraps (when `wrap`) or reports the `"next"` boundary. |
-| `ArrowUp` | actions | Exits the actions zone back to content when `canExitActions` is `true`. |
+| `ArrowUp` | actions | Exits the actions zone back to content when `canExitActions` is `true`, moving focus to `disabledFocusFallbackRef`. Without that ref it only blurs the action, so focus lands on `document.body`. |
 | `Enter` / `Space` | actions | Calls `onAction(focusedIndex)` for the focused, enabled action. |
 
 When `containerRef` is supplied, the row only handles these keys while focus is inside that container. Omitting `containerRef` intentionally leaves the active row's handlers global within the current keyboard scope. Bindings register through `KeyboardProvider`, so they participate in the scope stack.

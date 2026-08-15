@@ -1,6 +1,7 @@
 import { Kbd } from "@diffgazer/ui/components/kbd";
 import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
 import { DemoNode } from "@/components/demo-node";
+import { PreviewUnavailable } from "@/components/demo-preview";
 
 /**
  * Docs-shell inset for the layout-shaped examples listed in
@@ -88,10 +89,20 @@ function FauxDocsBody({ children }: { children: ReactNode }) {
 export function InsetPreviewPane({
   demo,
   loading = false,
+  loadError = null,
+  onRetryLoad,
 }: {
   demo: LazyExoticComponent<ComponentType> | null;
   loading?: boolean;
+  loadError?: Error | null;
+  onRetryLoad?: () => void;
 }) {
+  const preview = loadError ? (
+    <PreviewUnavailable loadError={loadError} onRetryLoad={onRetryLoad} />
+  ) : (
+    <DemoNode demo={demo} loading={loading} />
+  );
+
   return (
     <div className="border border-border bg-background overflow-hidden">
       <InsetToolbar />
@@ -99,7 +110,7 @@ export function InsetPreviewPane({
           the rail border and a wider demo can never crush the faux page. */}
       <div className="grid grid-cols-[16rem_1fr] h-[440px]">
         <div className="flex flex-col items-stretch bg-background overflow-y-auto overflow-x-hidden scrollbar-thin [&>*]:min-w-0">
-          <DemoNode demo={demo} loading={loading} />
+          {preview}
         </div>
         <div className="@container/pane flex flex-col min-w-0 bg-background relative border-l border-border">
           <FauxDocsTopbar />

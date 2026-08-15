@@ -1,28 +1,31 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalPassThroughEnv": ["DIFFGAZER_SKIP_ARTIFACT_PREPARE"],
+  "globalDependencies": ["biome.json"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "diffgazer#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "THIRD_PARTY_NOTICES"]
+    },
     "@diffgazer/docs#build": {
       "dependsOn": ["^build"],
       "env": ["REGISTRY_ORIGIN", "VITE_PUBLIC_ORIGIN", "DOCS_PRERENDER", "DIFFGAZER_DEV"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": ["dist/**", ".output/**"]
     },
     "@diffgazer/landing#build": {
       "dependsOn": ["^build"],
       "env": ["VITE_DOCS_ORIGIN", "VITE_GITHUB_URL"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": ["dist/**"]
     },
     "@diffgazer/web#build": {
       "dependsOn": ["^build"],
       "env": ["VITE_API_URL", "VITE_DIFFGAZER_SHUTDOWN_TOKEN"],
-      "outputs": ["dist/**"]
-    },
-    "@diffgazer/add#build": {
-      "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
     "@diffgazer/ui#build": {
@@ -66,6 +69,14 @@
       "cache": false
     },
     "@diffgazer/docs#test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@diffgazer/landing#test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@diffgazer/ui#test:e2e": {
       "dependsOn": ["build"],
       "cache": false
     },

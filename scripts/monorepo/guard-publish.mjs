@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { errorMessage } from "./lib/error-message.mjs";
-import { listRepoFiles } from "./lib/files.mjs";
+import { isPackageManifestPath, listRepoFiles } from "./lib/files.mjs";
 import { readJson } from "./lib/json.mjs";
 
 // First-publish allowlist. `diffgazer` is already live on npm; the scoped
@@ -13,19 +13,13 @@ import { readJson } from "./lib/json.mjs";
 // that adds it here.
 const FIRST_PUBLISH_ALLOWLIST = ["diffgazer"];
 
-function listPackageJsonFiles() {
-  return listRepoFiles().filter(
-    (path) => path.endsWith("package.json") && !path.includes("node_modules/"),
-  );
-}
-
 export function isPublicPackage(parsed) {
   return Boolean(parsed.name) && parsed.private !== true;
 }
 
 function listPublicPackages() {
   const packages = [];
-  for (const file of listPackageJsonFiles()) {
+  for (const file of listRepoFiles().filter(isPackageManifestPath)) {
     const parsed = readJson(file);
     if (!isPublicPackage(parsed)) continue;
     if (typeof parsed.version !== "string" || parsed.version.length === 0) {
@@ -70,17 +64,15 @@ export function findVersionChangedPackageNames({ packages, previousVersionsByFil
 }
 
 function getPublishedVersions(name) {
+  let parsed;
+  // Only the subprocess and the parse belong in the try: a shape error thrown
+  // inside it would be re-wrapped as "npm view failed" even though npm exited 0.
   try {
     const output = execFileSync("npm", ["view", name, "versions", "--json"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     });
-    const parsed = JSON.parse(output);
-    if (typeof parsed === "string") return [parsed];
-    if (Array.isArray(parsed) && parsed.every((version) => typeof version === "string")) {
-      return parsed;
-    }
-    throw new Error(`npm view ${name} returned an invalid versions payload`);
+    parsed = JSON.parse(output);
   } catch (error) {
     const stderr = String(error.stderr ?? "");
     if (stderr.includes("E404") || stderr.includes("404 Not Found")) {
@@ -91,10 +83,29 @@ function getPublishedVersions(name) {
     }
     throw new Error(`npm view ${name} failed (not an E404):\n${stderr || error.message}`);
   }
+
+  if (typeof parsed === "string") return [parsed];
+  if (Array.isArray(parsed) && parsed.every((version) => typeof version === "string")) {
+    return parsed;
+  }
+  throw new Error(`npm view ${name} returned an invalid versions payload`);
 }
 
 function versionsFor(publishedVersionsByName, name) {
   return publishedVersionsByName.get(name) ?? [];
+}
+
+function ensureReleaseTag(name, version) {
+  const tag = `${name}@${version}`;
+  try {
+    execFileSync("git", ["rev-parse", "--verify", `refs/tags/${tag}`], {
+      stdio: ["ignore", "ignore", "ignore"],
+    });
+    return;
+  } catch {
+    // Annotated tag at checkout HEAD; changesets/action pushes it via git after publish.
+  }
+  execFileSync("git", ["tag", "-a", tag, "-m", tag], { stdio: "inherit" });
 }
 
 export function createPublishPlan({ packages, publishedVersionsByName, allowlist, pendingNames }) {
@@ -136,6 +147,7 @@ export function publishPendingPackages({
   publishedVersionsByName,
   allowlist = FIRST_PUBLISH_ALLOWLIST,
   pendingNames,
+  versionedNames = pendingNames,
 }) {
   const plan = createPublishPlan({
     packages,
@@ -156,10 +168,19 @@ export function publishPendingPackages({
     });
   }
 
-  for (const pkg of plan) {
+  // `New tag:` is what changesets/action turns into a pushed Git tag and a
+  // GitHub Release, so a version already live on npm may only be announced when
+  // the checked-out commit versioned it — the retry of a failed publish run for
+  // the same Version-PR commit. The release workflow names `diffgazer`
+  // explicitly on every changeset-free push to main; re-announcing its live
+  // version there would ask GitHub to create a release that already exists.
+  const versioned = new Set(versionedNames);
+  const released = plan.filter((pkg) => pkg.publication === "publish" || versioned.has(pkg.name));
+  for (const pkg of released) {
+    ensureReleaseTag(pkg.name, pkg.version);
     console.log(`New tag: ${pkg.name}@${pkg.version}`);
   }
-  return plan.map((pkg) => pkg.name);
+  return released.map((pkg) => pkg.name);
 }
 
 export function main({
@@ -167,13 +188,11 @@ export function main({
   requestedNames = process.argv.slice(2),
 } = {}) {
   const packages = listPublicPackages();
-  const pendingNames =
-    requestedNames.length > 0
-      ? requestedNames
-      : findVersionChangedPackageNames({
-          packages,
-          previousVersionsByFile: getPreviousVersionsByFile(packages),
-        });
+  const versionedNames = findVersionChangedPackageNames({
+    packages,
+    previousVersionsByFile: getPreviousVersionsByFile(packages),
+  });
+  const pendingNames = requestedNames.length > 0 ? requestedNames : versionedNames;
   const pending = new Set(pendingNames);
   const publishedVersionsByName = new Map(
     packages
@@ -186,6 +205,7 @@ export function main({
     publishedVersionsByName,
     allowlist,
     pendingNames,
+    versionedNames,
   });
 }
 

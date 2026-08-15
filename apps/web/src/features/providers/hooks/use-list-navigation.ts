@@ -1,4 +1,3 @@
-import { getProviderRowId, type ProviderListRow } from "@diffgazer/core/providers";
 import { useKey } from "@diffgazer/keys";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -8,12 +7,13 @@ import {
   useState,
 } from "react";
 import { PROVIDER_FILTERS, type ProviderFilter } from "../lib/filter";
-
-type FocusZone = "input" | "filters" | "list" | "buttons";
+import type { ProvidersFocusZone as FocusZone } from "./use-keyboard";
 
 interface UseProvidersListNavigationOptions {
-  selectedRow: ProviderListRow | null;
-  filteredProviders: ProviderListRow[];
+  /** True while a list row is highlighted; the action zone needs one to enter. */
+  hasSelection: boolean;
+  /** Every list row id in rendered order, provider rows first. */
+  listRowIds: string[];
   filter: ProviderFilter;
   dialogOpen: boolean;
   zone: FocusZone;
@@ -44,8 +44,8 @@ interface UseProvidersListNavigationResult {
  * off to the action buttons.
  */
 export function useProvidersListNavigation({
-  selectedRow,
-  filteredProviders,
+  hasSelection,
+  listRowIds,
   filter,
   dialogOpen,
   zone,
@@ -58,11 +58,9 @@ export function useProvidersListNavigation({
   const [filterIndex, setFilterIndex] = useState(0);
   const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
 
-  const focusFirstProvider = () => {
-    const firstProviderId = filteredProviders[0]
-      ? getProviderRowId(filteredProviders[0])
-      : undefined;
-    if (firstProviderId) setSelectedId(firstProviderId);
+  const focusFirstRow = () => {
+    const [firstRowId] = listRowIds;
+    if (firstRowId) setSelectedId(firstRowId);
   };
 
   // The single channel for "the filter row now owns index N": the list mirrors
@@ -106,26 +104,25 @@ export function useProvidersListNavigation({
   };
 
   const moveToList = () => {
-    if (filteredProviders.length === 0) return;
+    if (listRowIds.length === 0) return;
     setZone("list");
-    focusFirstProvider();
+    focusFirstRow();
     focusProviderList();
   };
 
-  const handleSearchEscape = () => {
+  // Every way into the filter row lands on the chip for the active filter and
+  // releases the search box, so the three entry points cannot drift.
+  const moveToFilters = () => {
     focusFilterButton(PROVIDER_FILTERS.indexOf(filter));
     inputRef.current?.blur();
   };
 
-  useKey(
-    "ArrowDown",
-    () => {
-      focusFilterButton(PROVIDER_FILTERS.indexOf(filter));
-      inputRef.current?.blur();
-    },
-    { enabled: !dialogOpen && zone === "input", allowInInput: true, preventDefault: true },
-  );
-  useKey("Escape", handleSearchEscape, {
+  useKey("ArrowDown", moveToFilters, {
+    enabled: !dialogOpen && zone === "input",
+    allowInInput: true,
+    preventDefault: true,
+  });
+  useKey("Escape", moveToFilters, {
     enabled: !dialogOpen && zone === "input",
     allowInInput: true,
   });
@@ -144,7 +141,7 @@ export function useProvidersListNavigation({
     () => {
       enterButtons(0);
     },
-    { enabled: !dialogOpen && zone === "list" && selectedRow !== null },
+    { enabled: !dialogOpen && zone === "list" && hasSelection },
   );
 
   useKey(
@@ -157,9 +154,7 @@ export function useProvidersListNavigation({
   );
 
   const handleListBoundary = (direction: "up" | "down") => {
-    if (direction === "up") {
-      focusFilterButton(PROVIDER_FILTERS.indexOf(filter));
-    }
+    if (direction === "up") moveToFilters();
   };
 
   const handleFilterKeyDown = (event: ReactKeyboardEvent) => {
@@ -189,7 +184,7 @@ export function useProvidersListNavigation({
     handleListKeyDown,
     handleSearchFocus,
     handleListFocus,
-    handleSearchEscape,
+    handleSearchEscape: moveToFilters,
     handleListBoundary,
   };
 }

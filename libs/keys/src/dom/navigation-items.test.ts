@@ -269,6 +269,27 @@ describe("navigation item utilities", () => {
     ]);
   });
 
+  it("narrows matched items to itemSelector when the role query is broader", () => {
+    const container = mountContainer("group");
+    appendElement(container, {
+      tag: "button",
+      value: "row",
+      attributes: { "data-slot": "sidebar-item" },
+    });
+    appendElement(container, {
+      tag: "button",
+      value: "nested",
+      attributes: { "data-slot": "accordion-trigger" },
+    });
+
+    const items = getNavigationItems(container, {
+      type: "button",
+      itemSelector: '[data-slot="sidebar-item"]',
+    });
+
+    expect(values(items)).toEqual(["row"]);
+  });
+
   it("supports empty string values and public item props", () => {
     const container = mountContainer("listbox");
     const props = getNavigationItemProps("option", "");

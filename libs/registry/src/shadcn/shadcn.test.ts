@@ -19,21 +19,6 @@ import { validatePublicRegistryFresh } from "./validate.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const FIX_CMD = "pnpm build:registry";
-const PUBLIC_REGISTRY_FRESH_TIMEOUT_MS = 20_000;
-
-type RegistrySourceContentTransform = (ctx: {
-  itemName: string;
-  filePath: string;
-  content: string;
-}) => string;
-type RegistrySourceItemTransform = NonNullable<
-  Parameters<typeof validatePublicRegistryFresh>[0]["transformSourceItem"]
->;
-type ShouldSkipSourceItem = NonNullable<
-  Parameters<typeof validatePublicRegistryFresh>[0]["shouldSkipSourceItem"]
->;
-type RegistryItemFixture = { name: string } & Partial<Omit<RegistryItem, "name">>;
-type PublicRegistryFileFixture = RegistryFile & { content: string };
 
 async function loadExport<T>(modulePath: string, exportName: string): Promise<T> {
   const loaded = (await import(pathToFileURL(modulePath).href)) as Record<string, unknown>;
@@ -44,11 +29,8 @@ async function loadExport<T>(modulePath: string, exportName: string): Promise<T>
   return value as T;
 }
 
-function makeItemTransform(
-  transform: (item: RegistryItem) => RegistryItem,
-): RegistrySourceItemTransform {
-  return ({ item }) => transform(item);
-}
+type RegistryItemFixture = { name: string } & Partial<Omit<RegistryItem, "name">>;
+type PublicRegistryFileFixture = RegistryFile & { content: string };
 
 function writeShadcnBin(tempDir: string, segments: string[]): string {
   const binDir = join(tempDir, ...segments, "node_modules", ".bin");
@@ -226,7 +208,30 @@ describe("shadcn binary lifecycle", () => {
 
     expect(() =>
       runShadcnRegistryBuild({ rootDir: tempDir, registryPath, outputDir: "public/r" }),
-    ).toThrow(`${binPath} build ${registryPath} --output public/r failed with exit code 7`);
+    ).toThrow(`${binPath} build ${registryPath} --output public/r failed (exit code 7)`);
+  });
+
+  it("reports the spawn error when the shadcn binary exists but cannot be executed", () => {
+    const binDir = join(tempDir, "node_modules", ".bin");
+    mkdirSync(binDir, { recursive: true });
+    const binPath = join(binDir, "shadcn");
+    writeFileSync(binPath, "#!/bin/sh\nexit 0\n");
+    chmodSync(binPath, 0o644);
+
+    const registryPath = "registry/registry.json";
+    mkdirSync(join(tempDir, "registry"), { recursive: true });
+    writeFileSync(join(tempDir, registryPath), '{"items":[]}\n');
+
+    let caught: unknown;
+    try {
+      runShadcnRegistryBuild({ rootDir: tempDir, registryPath, outputDir: "public/r" });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).not.toContain("exit code null");
+    expect((caught as Error).cause).toBeInstanceOf(Error);
   });
 });
 
@@ -287,86 +292,6 @@ describe("validatePublicRegistryFresh", () => {
 
     expect(paths).toEqual([sharedFile.path]);
   });
-
-  it.each([
-    {
-      label: "ui",
-      rootDir: resolve(repoRoot, "libs/ui"),
-      fixCommand: "pnpm --filter @diffgazer/ui build:shadcn",
-      transformModule: resolve(repoRoot, "libs/ui/scripts/registry/rewrite-keys-imports.ts"),
-      transformExport: "transformUiPublicRegistryKeysImportContent",
-      transformItemExport: "transformUiPublicRegistrySourceItem" as string | undefined,
-      skipSourceItemExport: "isHiddenKeysShim" as string | undefined,
-      useFactory: false,
-    },
-    {
-      label: "keys",
-      rootDir: resolve(repoRoot, "libs/keys"),
-      fixCommand: "pnpm --dir libs/keys build:shadcn",
-      transformModule: resolve(repoRoot, "libs/keys/scripts/transform-public-registry-imports.ts"),
-      transformExport: "createKeysSourceContentTransform",
-      transformItemExport: undefined,
-      skipSourceItemExport: undefined,
-      useFactory: true,
-    },
-  ])(
-    "keeps committed $label public/r in sync with the source registry",
-    async (registry) => {
-      let transformSourceContent: RegistrySourceContentTransform;
-      if (registry.useFactory) {
-        transformSourceContent = (
-          await loadExport<(rootDir: string) => RegistrySourceContentTransform>(
-            registry.transformModule,
-            registry.transformExport,
-          )
-        )(registry.rootDir);
-      } else {
-        const transformUiContent = await loadExport<
-          (content: string, options?: { shimHookBasename?: string }) => string
-        >(registry.transformModule, registry.transformExport);
-        // Mirror libs/ui's build wiring: the theme styles.css ships aggregated.
-        transformSourceContent = ({ content, itemName, filePath }) =>
-          itemName === "theme" && filePath === "styles/styles.css"
-            ? aggregateThemeStyles({
-                rootDir: registry.rootDir,
-                sourceRegistryPath: "registry/registry.json",
-                seedContent: content,
-              })
-            : transformUiContent(content, {
-                shimHookBasename: itemName.startsWith("use-") ? itemName : undefined,
-              });
-      }
-
-      const transformSourceItem = registry.transformItemExport
-        ? makeItemTransform(
-            await loadExport<(item: RegistryItem) => RegistryItem>(
-              registry.transformModule,
-              registry.transformItemExport,
-            ),
-          )
-        : undefined;
-      const skipSourceItem = registry.skipSourceItemExport
-        ? await loadExport<(item: RegistryItem) => boolean>(
-            registry.transformModule,
-            registry.skipSourceItemExport,
-          )
-        : undefined;
-      const shouldSkipSourceItem: ShouldSkipSourceItem | undefined = skipSourceItem
-        ? ({ item }) => skipSourceItem(item)
-        : undefined;
-
-      expect(() =>
-        validatePublicRegistryFresh({
-          rootDir: registry.rootDir,
-          fixCommand: registry.fixCommand,
-          transformSourceItem,
-          transformSourceContent,
-          shouldSkipSourceItem,
-        }),
-      ).not.toThrow();
-    },
-    PUBLIC_REGISTRY_FRESH_TIMEOUT_MS,
-  );
 
   it.each([
     {

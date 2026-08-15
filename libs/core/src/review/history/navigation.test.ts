@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
+import { buildRunIdLookup } from "../../format.js";
+import { DETACHED_HEAD_BRANCH } from "../../schemas/git.js";
 import { makeReviewMetadata } from "../../testing/factories.js";
 import {
   buildTimelineItems,
   deriveHistoryDetailState,
   filterReviewsForHistory,
   getEmptyRunsMessage,
+  HISTORY_SEARCH_PLACEHOLDER,
   HISTORY_SECTION_ALL_ID,
   matchesHistoryQuery,
   resolveSelectedDateId,
@@ -120,8 +123,10 @@ describe("matchesHistoryQuery", () => {
     const [firstReview, secondReview] = reviews;
     if (!firstReview || !secondReview) throw new Error("Expected collision fixtures");
 
-    expect(matchesHistoryQuery(firstReview, "#abcdef00-0", peerIds)).toBe(true);
-    expect(matchesHistoryQuery(secondReview, "#abcdef00-0", peerIds)).toBe(false);
+    const peerLookup = buildRunIdLookup(peerIds);
+
+    expect(matchesHistoryQuery(firstReview, "#abcdef00-0", peerLookup)).toBe(true);
+    expect(matchesHistoryQuery(secondReview, "#abcdef00-0", peerLookup)).toBe(false);
     expect(
       filterReviewsForHistory(reviews, HISTORY_SECTION_ALL_ID, secondReview.id).map(
         (review) => review.id,
@@ -129,9 +134,29 @@ describe("matchesHistoryQuery", () => {
     ).toEqual([secondReview.id]);
   });
 
+  it("keeps the exact canonical label searchable with a warning-only collider", () => {
+    const visibleId = "12345678-1234-4123-8123-123456789000";
+    const warningOnlyId = "12345678-1234-4123-8123-123456789001";
+    const visibleReview = makeReviewMetadata({ id: visibleId });
+    const lookup = buildRunIdLookup([visibleId, warningOnlyId]);
+    const displayId = lookup.get(visibleId);
+
+    expect(displayId).toBeDefined();
+    expect(matchesHistoryQuery(visibleReview, displayId ?? "", lookup)).toBe(true);
+  });
+
   it("uses staged label when mode is staged", () => {
     const r = makeReviewMetadata({ mode: "staged" });
     expect(matchesHistoryQuery(r, "staged")).toBe(true);
+  });
+
+  it("matches the same branch labels the run rows display", () => {
+    const detached = makeReviewMetadata({ mode: "unstaged", branch: DETACHED_HEAD_BRANCH });
+    const unknown = makeReviewMetadata({ mode: "unstaged", branch: null });
+
+    expect(matchesHistoryQuery(detached, "detached head")).toBe(true);
+    expect(matchesHistoryQuery(unknown, "unknown branch")).toBe(true);
+    expect(matchesHistoryQuery(unknown, "detached")).toBe(false);
   });
 });
 
@@ -202,6 +227,23 @@ describe("History local calendar sections", () => {
     });
   });
 
+  it("labels prior-year sections with the year in the timeline label", () => {
+    inNewYork(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-07-04T16:00:00.000Z"));
+
+      try {
+        const items = buildTimelineItems([
+          makeReviewMetadata({ id: "prior-year", createdAt: "2025-07-04T12:00:00.000Z" }),
+        ]);
+
+        expect(items[1]).toMatchObject({ id: "2025-07-04", label: "Jul 4, 2025", count: 1 });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   it("uses local DST date keys while preserving the reviews' UTC sort order", () => {
     inNewYork(() => {
       vi.useFakeTimers();
@@ -254,5 +296,11 @@ describe("getEmptyRunsMessage", () => {
     );
     expect(getEmptyRunsMessage(true, false, HISTORY_SECTION_ALL_ID)).toBe("No runs available");
     expect(getEmptyRunsMessage(true, false, "2026-02-09")).toBe("No runs for this date");
+  });
+});
+
+describe("HISTORY_SEARCH_PLACEHOLDER", () => {
+  it("names every searchable run field in compact copy", () => {
+    expect(HISTORY_SEARCH_PLACEHOLDER).toBe("Search ID, branch, path, staged...");
   });
 });

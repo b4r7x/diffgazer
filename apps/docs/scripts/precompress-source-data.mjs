@@ -16,6 +16,11 @@ import { brotliCompress, constants, gzip } from "node:zlib";
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const DOCS_ROOT = resolve(dirname(SCRIPT_PATH), "..");
 const CACHE_VERSION = 1;
+// Deliberately below brotli's default 11. This script runs before `vite build`,
+// and Nitro's `compressPublicAssets` skips any file that already has the sidecar
+// it would write, so this quality is what ships for public/source-data. Quality 11
+// over ~100 multi-megabyte archives costs far more build time than the extra bytes
+// are worth; raise it here (not in vite.config.ts) if that trade-off changes.
 const BROTLI_QUALITY = 6;
 const SOURCE_ARCHIVE_PATH = /^[a-z0-9-]+\/(?:components|hooks)\/[a-z0-9-]+\.source\.json$/;
 const gzipAsync = promisify(gzip);
@@ -135,10 +140,12 @@ export async function precompressSourceData(options = {}) {
     }
     if (gzipCurrent && brotliCurrent) cachedFiles += 1;
 
+    // A current sidecar was just proven to hash to the recorded metadata, so
+    // re-reading it here would only repeat a full read and sha256 of the archive.
     nextCacheEntries.set(archiveName, {
       sourceSha256,
-      gzip: sidecarMetadata(gzipPath),
-      brotli: sidecarMetadata(brotliPath),
+      gzip: gzipCurrent ? previous.gzip : sidecarMetadata(gzipPath),
+      brotli: brotliCurrent ? previous.brotli : sidecarMetadata(brotliPath),
     });
   });
 

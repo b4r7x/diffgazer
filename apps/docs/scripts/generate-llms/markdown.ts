@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { PreparedScaffoldData } from "../../src/lib/scaffold-data.ts";
 import type { PreRenderPage } from "../generate-sitemap.ts";
-import { loadPreparedScaffoldData } from "./artifacts.ts";
+import { DOCS_ROOT, loadPreparedScaffoldData } from "./artifacts.ts";
 import { codeBlock } from "./markdown-primitives.ts";
 import {
   renderAccessibility,
@@ -58,65 +59,259 @@ function parseFrontmatter(source: string): { frontmatter: Frontmatter; body: str
   };
 }
 
-const attributePatterns = new Map<string, RegExp>();
+const HERO_ATTRIBUTE = /\bhero=(['"])(.*?)\1/;
+const NAME_ATTRIBUTE = /\bname=(['"])(.*?)\1/;
+const LIBRARY_ATTRIBUTE = /\blibrary=(['"])(.*?)\1/;
+const SECTION_TITLE_ATTRIBUTE = /\bsectionTitle=(['"])(.*?)\1/;
 
-function quotedAttribute(attributes: string, name: string): string | undefined {
-  let pattern = attributePatterns.get(name);
-  if (!pattern) {
-    pattern = new RegExp(`\\b${name}=(['"])(.*?)\\1`);
-    attributePatterns.set(name, pattern);
-  }
+function quotedAttribute(attributes: string, pattern: RegExp): string | undefined {
   return pattern.exec(attributes)?.[2];
 }
 
-function renderPreparedMdx(source: string, data: PreparedScaffoldData | null): string {
-  if (!data) return source;
+function jsxFragmentText(attributes: string, name: string): string | undefined {
+  const match = new RegExp(`\\b${name}=\\{<>((?:[^<]|</>)*)</>\\}`).exec(attributes);
+  return match?.[1]?.trim();
+}
 
+function mapOutsideFencedBlocks(
+  source: string,
+  mapLine: (line: string, inFence: boolean) => string,
+): string {
+  const lines = source.split(/\r?\n/);
+  let inFence = false;
+
+  return lines
+    .map((line) => {
+      if (line.trim().startsWith("```")) {
+        inFence = !inFence;
+        return line;
+      }
+      return mapLine(line, inFence);
+    })
+    .join("\n");
+}
+
+function replaceOutsideInlineCode(
+  line: string,
+  pattern: RegExp,
+  replacer: (match: string) => string,
+): string {
+  let result = "";
+  let index = 0;
+
+  while (index < line.length) {
+    const tick = line.indexOf("`", index);
+    if (tick === -1) {
+      result += line.slice(index).replace(pattern, replacer);
+      break;
+    }
+
+    result += line.slice(index, tick).replace(pattern, replacer);
+    const close = line.indexOf("`", tick + 1);
+    if (close === -1) {
+      result += line.slice(tick);
+      break;
+    }
+
+    result += line.slice(tick, close + 1);
+    index = close + 1;
+  }
+
+  return result;
+}
+
+function findSelfClosingJsxEnd(source: string, start: number): number | null {
+  if (source[start] !== "<" || !/[A-Z]/.test(source[start + 1] ?? "")) return null;
+
+  let index = start + 1;
+  let braceDepth = 0;
+  let inString: '"' | "'" | null = null;
+
+  while (index < source.length - 1) {
+    const char = source[index];
+    const next = source[index + 1];
+
+    if (inString) {
+      if (char === inString && source[index - 1] !== "\\") inString = null;
+      index += 1;
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      inString = char;
+      index += 1;
+      continue;
+    }
+
+    if (char === "{") braceDepth += 1;
+    else if (char === "}") braceDepth -= 1;
+    else if (char === "/" && next === ">" && braceDepth === 0) return index + 2;
+
+    index += 1;
+  }
+
+  return null;
+}
+
+function replaceSelfClosingComponents(source: string, replace: (match: string) => string): string {
+  return mapOutsideFencedBlocks(source, (line, inFence) => {
+    if (inFence) return line;
+
+    let result = "";
+    let index = 0;
+
+    while (index < line.length) {
+      const tick = line.indexOf("`", index);
+      const tag = line.indexOf("<", index);
+      if (tag === -1) {
+        result += line.slice(index);
+        break;
+      }
+
+      if (tick !== -1 && tick < tag) {
+        const close = line.indexOf("`", tick + 1);
+        if (close === -1) {
+          result += line.slice(index);
+          break;
+        }
+        result += line.slice(index, close + 1);
+        index = close + 1;
+        continue;
+      }
+
+      result += line.slice(index, tag);
+      const end = findSelfClosingJsxEnd(line, tag);
+      if (end === null) {
+        result += line[tag];
+        index = tag + 1;
+        continue;
+      }
+
+      const match = line.slice(tag, end);
+      result += /^<[A-Z]/.test(match) ? replace(match) : match;
+      index = end;
+    }
+
+    return result;
+  });
+}
+
+interface LibraryHookEntry {
+  title: string;
+  description: string;
+  files?: Array<{ path: string; raw: string }>;
+}
+
+function loadLibraryHooksMap(library: string): Record<string, LibraryHookEntry> | null {
+  const path = resolve(DOCS_ROOT, `src/generated/${library}/${library}-hooks.json`);
+  if (!existsSync(path)) return null;
+
+  return JSON.parse(readFileSync(path, "utf8")) as Record<string, LibraryHookEntry>;
+}
+
+function renderLibraryHookSource(attributes: string): string {
+  const library = quotedAttribute(attributes, LIBRARY_ATTRIBUTE);
+  const sectionTitle = quotedAttribute(attributes, SECTION_TITLE_ATTRIBUTE);
+  const hint = jsxFragmentText(attributes, "hint");
+  if (!library || !sectionTitle) return "";
+
+  const hooks = loadLibraryHooksMap(library);
+  const sections = [sectionTitle ? `## ${sectionTitle}` : "", hint ?? ""];
+  if (hooks) {
+    for (const hook of Object.values(hooks)) {
+      const files = hook.files?.filter((file) => file.raw) ?? [];
+      sections.push(
+        files.length > 0
+          ? `### ${hook.title}\n\n${hook.description}\n\n${renderSource(files)}`
+          : `### ${hook.title}\n\n${hook.description}`,
+      );
+    }
+  }
+
+  return sections.filter(Boolean).join("\n\n");
+}
+
+function renderPreparedMdx(source: string, data: PreparedScaffoldData | null): string {
   let rendered = source;
+
+  rendered = replaceSelfClosingComponents(rendered, (match) => {
+    if (match.startsWith("<LibraryHookSource")) {
+      return renderLibraryHookSource(match);
+    }
+    return match;
+  });
+
+  if (!data) return rendered;
+
   if (data.type === "component") {
-    rendered = rendered.replace(
-      /<ComponentDocScaffold\b([^>]*)\/>/g,
-      (_match, attributes: string) =>
-        renderComponentScaffold(data, quotedAttribute(attributes, "hero")),
-    );
-    rendered = rendered.replace(/<Example\b([^>]*)\/>/g, (_match, attributes: string) => {
-      const name = quotedAttribute(attributes, "name");
+    rendered = replaceSelfClosingComponents(rendered, (match) => {
+      if (!match.startsWith("<ComponentDocScaffold")) return match;
+      const attributes = match.slice("<ComponentDocScaffold".length, -2);
+      return renderComponentScaffold(data, quotedAttribute(attributes, HERO_ATTRIBUTE));
+    });
+    rendered = replaceSelfClosingComponents(rendered, (match) => {
+      if (!match.startsWith("<Example")) return match;
+      const attributes = match.slice("<Example".length, -2);
+      const name = quotedAttribute(attributes, NAME_ATTRIBUTE);
       const example = name ? resolveExampleByName(data, name) : undefined;
       return example ? renderExample(example) : "";
     });
-    rendered = rendered.replace(/<APIReference\s*\/>/g, () => {
+    rendered = replaceSelfClosingComponents(rendered, (match) => {
+      if (match !== "<APIReference />") return match;
       const api = renderComponentApi(data);
       return api ? `## API Reference\n\n${api}` : "";
     });
-    rendered = rendered.replace(/<KeyboardNav\s*\/>/g, () => {
+    rendered = replaceSelfClosingComponents(rendered, (match) => {
+      if (match !== "<KeyboardNav />") return match;
       if (!data.keyboard) return "";
       return renderAccessibility({ ...data, accessibilityNotes: [] });
     });
-    rendered = rendered.replace(/<AccessibilityNotes\s*\/>/g, () => {
+    rendered = replaceSelfClosingComponents(rendered, (match) => {
+      if (match !== "<AccessibilityNotes />") return match;
       if (data.accessibilityNotes.length === 0) return "";
       return renderAccessibility({ ...data, keyboard: null });
     });
   } else {
-    rendered = rendered.replace(/<HookDocScaffold\s*\/>/g, () => renderHookScaffold(data));
-    rendered = rendered.replace(/<ParameterTable\s*\/>/g, () => renderParameters(data));
-    rendered = rendered.replace(/<ReturnsTable\s*\/>/g, () => renderReturns(data));
-    rendered = rendered.replace(/<Notes\s*\/>/g, () => renderNotes(data));
+    rendered = replaceSelfClosingComponents(rendered, (match) => {
+      if (match !== "<HookDocScaffold />") return match;
+      return renderHookScaffold(data);
+    });
+    rendered = replaceSelfClosingComponents(rendered, (match) => {
+      if (match !== "<ParameterTable />") return match;
+      return renderParameters(data);
+    });
+    rendered = replaceSelfClosingComponents(rendered, (match) => {
+      if (match !== "<ReturnsTable />") return match;
+      return renderReturns(data);
+    });
+    rendered = replaceSelfClosingComponents(rendered, (match) => {
+      if (match !== "<Notes />") return match;
+      return renderNotes(data);
+    });
   }
 
-  rendered = rendered.replace(/<UsageSnippet\s*\/>/g, () =>
-    data.usage ? codeBlock(data.usage.code, data.usage.lang) : "",
-  );
-  rendered = rendered.replace(/<ConsumptionBlock\s*\/>/g, () =>
-    renderInstallation(data.installation),
-  );
-  rendered = rendered.replace(/<Examples\b([^>]*)\/>/g, (_match, attributes: string) => {
-    const body = renderExamples(withoutHero(data.examples, quotedAttribute(attributes, "hero")));
+  rendered = replaceSelfClosingComponents(rendered, (match) => {
+    if (match !== "<UsageSnippet />") return match;
+    return data.usage ? codeBlock(data.usage.code, data.usage.lang) : "";
+  });
+  rendered = replaceSelfClosingComponents(rendered, (match) => {
+    if (match !== "<ConsumptionBlock />") return match;
+    return renderInstallation(data.installation);
+  });
+  rendered = replaceSelfClosingComponents(rendered, (match) => {
+    if (!match.startsWith("<Examples")) return match;
+    const attributes = match.slice("<Examples".length, -2);
+    const body = renderExamples(
+      withoutHero(data.examples, quotedAttribute(attributes, HERO_ATTRIBUTE)),
+    );
     if (!body) return "";
     return /\bshowHeading\b/.test(attributes) ? `## Examples\n\n${body}` : body;
   });
-  rendered = rendered.replace(/<SourceViewer\s*\/>/g, () =>
-    data.sourceFiles.length > 0 ? `## Source\n\n${renderSource(data.sourceFiles)}` : "",
-  );
+  rendered = replaceSelfClosingComponents(rendered, (match) => {
+    if (match !== "<SourceViewer />") return match;
+    return data.sourceFiles.length > 0 ? `## Source\n\n${renderSource(data.sourceFiles)}` : "";
+  });
+
   return rendered;
 }
 
@@ -158,6 +353,30 @@ function renderSteps(source: string): string {
   return rendered.join("\n");
 }
 
+function isBalancedJsxExpression(value: string): boolean {
+  let depth = 0;
+  for (const char of value) {
+    if (char === "{") depth += 1;
+    else if (char === "}") depth -= 1;
+    if (depth < 0) return false;
+  }
+  return depth === 0;
+}
+
+function isSelfClosingJsxLine(line: string): boolean {
+  const trimmed = line.trim();
+  return (
+    trimmed.startsWith("<") &&
+    trimmed.endsWith("/>") &&
+    /^<[A-Z]/.test(trimmed) &&
+    isBalancedJsxExpression(trimmed)
+  );
+}
+
+function stripInlineJsxTags(line: string): string {
+  return replaceOutsideInlineCode(line, /<\/?[A-Z][A-Za-z0-9.]*\b[^>]*>/g, () => "");
+}
+
 function stripMdxSyntax(source: string): string {
   const lines = source.split(/\r?\n/);
   const result: string[] = [];
@@ -182,11 +401,15 @@ function stripMdxSyntax(source: string): string {
         continue;
       }
 
+      if (isSelfClosingJsxLine(line)) {
+        continue;
+      }
+
       if (/^\s*<\/?[A-Z][A-Za-z0-9.]*\b[^>]*>\s*$/.test(line)) {
         continue;
       }
 
-      result.push(line.replace(/<\/?[A-Z][A-Za-z0-9.]*\b[^>]*>/g, ""));
+      result.push(stripInlineJsxTags(line));
       continue;
     }
 

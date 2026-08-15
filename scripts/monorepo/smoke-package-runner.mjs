@@ -212,7 +212,6 @@ function makeTempPackageProject() {
 export async function withTempPackageProject(root, workspacePackage, smoke) {
   const projectDir = makeTempPackageProject();
   const tgzPaths = [];
-  await runArgv("npm", ["-v"], { cwd: root });
 
   try {
     await runArgv("npm", ["init", "-y"], { cwd: projectDir });

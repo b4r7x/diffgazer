@@ -188,6 +188,37 @@ describe("Stepper focus management", () => {
     expect(s3).toHaveFocus();
   });
 
+  it("restores the tab stop when a disabled fieldset ancestor is re-enabled", async () => {
+    function SubmittingWizard({ submitting }: { submitting: boolean }) {
+      return (
+        <fieldset disabled={submitting}>
+          <Stepper>
+            <Stepper.Step stepId="s1" status="completed">
+              <Stepper.Trigger>Step 1</Stepper.Trigger>
+            </Stepper.Step>
+            <Stepper.Step stepId="s2" status="active">
+              <Stepper.Trigger>Step 2</Stepper.Trigger>
+            </Stepper.Step>
+          </Stepper>
+        </fieldset>
+      );
+    }
+
+    const { container, rerender } = render(<SubmittingWizard submitting />);
+
+    await waitFor(() => {
+      expect(requireStepTrigger(container, "s2")).toHaveAttribute("tabIndex", "-1");
+    });
+    expect(requireStepTrigger(container, "s1")).toHaveAttribute("tabIndex", "-1");
+
+    rerender(<SubmittingWizard submitting={false} />);
+
+    await waitFor(() => {
+      expect(requireStepTrigger(container, "s2")).toHaveAttribute("tabIndex", "0");
+    });
+    expect(requireStepTrigger(container, "s1")).toHaveAttribute("tabIndex", "-1");
+  });
+
   it("marks disabled steps with aria-disabled and excludes them from tab order", () => {
     render(
       <Stepper>
@@ -291,6 +322,43 @@ describe("Stepper focus management", () => {
     expect(requireStepTrigger(container, "s1")).toHaveAttribute("tabIndex", "-1");
     expect(requireStepTrigger(container, "s2")).toHaveAttribute("tabIndex", "0");
     expect(requireStepTrigger(container, "s3")).toHaveAttribute("tabIndex", "-1");
+  });
+});
+
+describe("Stepper consumer ref composition", () => {
+  it("keeps Arrow/Home/End navigation while forwarding the list ref", async () => {
+    const user = userEvent.setup();
+    const consumerRef = { current: null as HTMLOListElement | null };
+
+    render(
+      <Stepper ref={consumerRef}>
+        <Stepper.Step stepId="s1" status="completed">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="active">
+          <Stepper.Trigger>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+        <Stepper.Step stepId="s3" status="pending">
+          <Stepper.Trigger>Step 3</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    const list = screen.getByRole("list", { name: "Progress steps" });
+    expect(consumerRef.current).toBe(list);
+
+    const s1 = screen.getByRole("button", { name: /Step 1/ });
+    const s3 = screen.getByRole("button", { name: /Step 3/ });
+
+    s1.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: /Step 2/ })).toHaveFocus();
+
+    await user.keyboard("{End}");
+    expect(s3).toHaveFocus();
+
+    await user.keyboard("{Home}");
+    expect(s1).toHaveFocus();
   });
 });
 

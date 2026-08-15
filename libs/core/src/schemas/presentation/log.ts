@@ -18,7 +18,7 @@ const BADGE_VARIANTS = ["success", "warning", "error", "info", "neutral"] as con
 export const BadgeVariantSchema = z.enum(BADGE_VARIANTS);
 export type BadgeVariant = z.infer<typeof BadgeVariantSchema>;
 
-export const TAG_BADGE_VARIANTS: Record<string, BadgeVariant> = {
+export const TAG_BADGE_VARIANTS = {
   system: "neutral",
   agent: "info",
   tool: "info",
@@ -26,4 +26,4 @@ export const TAG_BADGE_VARIANTS: Record<string, BadgeVariant> = {
   warning: "warning",
   error: "error",
   thinking: "neutral",
-};
+} as const satisfies Record<LogTagType, BadgeVariant>;

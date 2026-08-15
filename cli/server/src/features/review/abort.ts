@@ -2,7 +2,7 @@ import { StepIdSchema } from "@diffgazer/core/schemas/events";
 import { ReviewErrorSchema } from "@diffgazer/core/schemas/review";
 import { z } from "zod";
 
-export const ReviewAbortSchema = ReviewErrorSchema.extend({
+const ReviewAbortSchema = ReviewErrorSchema.extend({
   kind: z.literal("review_abort"),
   step: StepIdSchema.optional(),
 });

@@ -9,6 +9,7 @@ import type {
   SeverityFilter,
 } from "@diffgazer/core/schemas/review";
 import type { AuthorizedReviewExecution } from "../../shared/lib/ai/admission/service.js";
+import type { AIErrorDiagnostic } from "../../shared/lib/ai/types.js";
 import type { getProfile } from "./engine/profiles.js";
 
 export type EmitFn = (event: FullReviewStreamEvent) => Promise<void>;
@@ -64,4 +65,5 @@ export interface ReviewOutcome {
   droppedBelowThreshold?: number;
   minSeverity?: ReviewSeverity;
   execution?: ExecutionResult;
+  terminalDiagnostic?: AIErrorDiagnostic;
 }

@@ -2,6 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { getNavigationItems } from "../../dom/navigation-items.js";
 import { testNavigationBehavior } from "../../testing/navigation-behavior.js";
 import { useNavigation } from "../use-navigation.js";
 import { expectActiveOptionText, focusListbox, itemId, TestList } from "./test-list.js";
@@ -34,7 +35,7 @@ describe("useNavigation", () => {
       expectActiveOptionText("c");
     });
 
-    it("ignores Ctrl/Meta/Alt-modified navigation keys without preventing browser defaults", () => {
+    it("ignores Ctrl/Meta/Alt/Shift-modified navigation keys without preventing browser defaults", () => {
       const onHighlightChange = vi.fn();
       render(<TestList defaultHighlighted="a" onHighlightChange={onHighlightChange} />);
 
@@ -45,6 +46,7 @@ describe("useNavigation", () => {
         { key: "ArrowDown", altKey: true },
         { key: "ArrowUp", metaKey: true },
         { key: "Home", ctrlKey: true },
+        { key: "ArrowDown", shiftKey: true },
       ] satisfies KeyboardEventInit[]) {
         const event = new KeyboardEvent("keydown", {
           ...eventInit,
@@ -69,6 +71,53 @@ describe("useNavigation", () => {
       });
       expect(arrowDown.defaultPrevented).toBe(true);
       expect(listbox.getAttribute("aria-activedescendant")).toBe("item-b");
+    });
+
+    it("does not re-discover items within a single move key", async () => {
+      render(<TestList defaultHighlighted="a" />);
+      const listbox = screen.getByRole("listbox", { name: "Items" });
+      const user = await focusListbox();
+      const querySelectorAll = vi.spyOn(listbox, "querySelectorAll");
+
+      // The cost of one discovery, measured instead of hardcoded so the ceiling
+      // survives a change to the selector set.
+      getNavigationItems(listbox, { type: "option", skipDisabled: true, scopeToContainer: true });
+      const perDiscovery = querySelectorAll.mock.calls.length;
+      expect(perDiscovery).toBeGreaterThan(0);
+
+      querySelectorAll.mockClear();
+      await user.keyboard("{ArrowDown}");
+      expect(querySelectorAll.mock.calls.length).toBeLessThanOrEqual(perDiscovery);
+      expectActiveOptionText("b");
+
+      querySelectorAll.mockClear();
+      await user.keyboard("{ArrowDown}");
+      expect(querySelectorAll.mock.calls.length).toBeLessThanOrEqual(perDiscovery);
+      expectActiveOptionText("c");
+
+      querySelectorAll.mockRestore();
+    });
+
+    it("matches upKeys and downKeys hotkey aliases like the scoped hook", async () => {
+      render(<TestList defaultHighlighted="b" upKeys={["up"]} downKeys={["down"]} />);
+      const user = await focusListbox();
+
+      await user.keyboard("{ArrowUp}");
+      expectActiveOptionText("a");
+
+      await user.keyboard("{ArrowDown}{ArrowDown}");
+      expectActiveOptionText("c");
+    });
+
+    it("moves on configured hotkeys that carry a modifier", async () => {
+      render(<TestList defaultHighlighted="b" upKeys={["ctrl+p"]} downKeys={["ctrl+n"]} />);
+      const user = await focusListbox();
+
+      await user.keyboard("{Control>}n{/Control}");
+      expectActiveOptionText("c");
+
+      await user.keyboard("{Control>}p{/Control}");
+      expectActiveOptionText("b");
     });
 
     it("moves the active descendant without preventing the default when preventDefault is false", () => {

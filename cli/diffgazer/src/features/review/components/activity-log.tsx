@@ -1,18 +1,14 @@
 import { formatTimestamp } from "@diffgazer/core/format";
-import {
-  convertAgentEventsToLogEntries,
-  getReviewEventLogSource,
-  getReviewEventSequence,
-  type ReviewEvent,
-  sanitizeTerminalText,
-} from "@diffgazer/core/review";
+import { convertReviewEventsToLogEntries, type ReviewEvent } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { type LogEntryData, TAG_BADGE_VARIANTS } from "@diffgazer/core/schemas/presentation";
 import { Box, type DOMElement, Text, useBoxMetrics } from "ink";
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { Badge } from "../../../components/ui/badge";
 import { ScrollArea } from "../../../components/ui/scroll-area";
 import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
+import { deriveVisibleEvents, type VisibleEvents } from "../lib/visible-events";
 
 // `[QUEUE]` is the widest tag the stream emits; the column is clamped to at
 // least that so the message column starts at one x position down the whole log,
@@ -45,11 +41,16 @@ export function ActivityLog({
   const containerRef = useRef<DOMElement>(null);
   const { width, hasMeasured } = useBoxMetrics(containerRef);
   const contentWidth = hasMeasured ? Math.max(width, 1) : undefined;
-  const visibleEvents = sourceFilter
-    ? events.filter((event) => getReviewEventLogSource(event) === sourceFilter)
-    : events;
-  const eventSequence = getReviewEventSequence(events);
-  const contentIdentity = sourceFilter ?? eventSequence?.stream;
+  const committedVisibleEventsRef = useRef<VisibleEvents | null>(null);
+  const visibleEvents = deriveVisibleEvents(
+    committedVisibleEventsRef.current,
+    events,
+    sourceFilter,
+  );
+  useLayoutEffect(() => {
+    committedVisibleEventsRef.current = visibleEvents;
+  }, [visibleEvents]);
+  const contentIdentity = sourceFilter ?? visibleEvents.sequence?.stream;
 
   return (
     <Box ref={containerRef} flexDirection="column">
@@ -58,10 +59,10 @@ export function ActivityLog({
         isActive={isActive}
         autoTail
         contentIdentity={contentIdentity}
-        totalRows={visibleEvents.length}
+        totalRows={visibleEvents.visible.length}
       >
         {(range) => {
-          const entries = convertAgentEventsToLogEntries(visibleEvents, range);
+          const entries = convertReviewEventsToLogEntries(visibleEvents.visible, range);
           const tagColumnWidth = Math.max(
             MIN_TAG_COLUMN_WIDTH,
             ...entries.map((entry) => (entry.tag ? entry.tag.length + 2 : 0)),
@@ -80,9 +81,7 @@ export function ActivityLog({
               </Box>
               <Box flexShrink={0} width={tagColumnWidth}>
                 {entry.tag ? (
-                  <Badge variant={TAG_BADGE_VARIANTS[entry.tagType ?? "system"] ?? "neutral"}>
-                    {entry.tag}
-                  </Badge>
+                  <Badge variant={TAG_BADGE_VARIANTS[entry.tagType ?? "system"]}>{entry.tag}</Badge>
                 ) : null}
               </Box>
               <Box flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden">

@@ -14,7 +14,19 @@ const tooltipSource = readFileSync(join(import.meta.dirname, "../tooltip/tooltip
 
 let restorePointerEventSupport = () => {};
 
+// Dismissing an overlay arms a document-level click swallower that a real browser retires
+// on the next press or on the release that ends the gesture. Tests finish while that 750ms
+// retire timer is still pending, so the swallower leaks into the following test and eats its
+// first click. Each pending swallower retires on the first press of its own type, so this
+// drains any number of them; nothing is mounted between tests, so no new one can arm.
+function retireArmedClickSwallowers() {
+  for (const type of ["pointerdown", "mousedown"]) {
+    document.body.dispatchEvent(new Event(type, { bubbles: true }));
+  }
+}
+
 beforeEach(() => {
+  retireArmedClickSwallowers();
   restorePointerEventSupport = setPointerEventSupport(false);
 });
 
@@ -329,11 +341,6 @@ describe("Popover hover-mode trigger click toggle", () => {
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     expect(trigger).not.toHaveAttribute("aria-haspopup");
 
-    // fireEvent retained: consumes pending outside-pointer click swallowers from earlier tests.
-    fireEvent.click(document.body);
-    fireEvent.click(document.body);
-    // fireEvent retained: same pending swallower drain as above.
-    fireEvent.click(document.body);
     // fireEvent retained: this isolates the hover trigger's click-toggle contract from jsdom focus sequencing.
     fireEvent.click(trigger);
     const tooltip = await screen.findByRole("tooltip");

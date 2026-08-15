@@ -4,7 +4,26 @@ import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { cleanupRootFrames } from "../../../../testing/render-root-frame";
-import { flush, renderView } from "./test-support";
+import { flush, renderView } from "../../testing/progress-view";
+
+// renderView does not mount GlobalLayout; derive the content zone from the
+// rendered terminal with the real row math. Hoisted here so it registers
+// before the render-root-frame import instantiates the app tree.
+vi.mock("../../../../components/layout/global", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../../components/layout/global")>();
+  const { useTerminalDimensions } = await import("../../../../hooks/use-terminal-dimensions");
+  return {
+    ...actual,
+    useContentZone: () => {
+      const { columns, rows } = useTerminalDimensions();
+      return {
+        columns,
+        contentRows: actual.getContentZoneRows(rows),
+        contentColumns: columns,
+      };
+    },
+  };
+});
 
 afterEach(() => {
   cleanup();

@@ -44,7 +44,6 @@ interface ModelDialogKeyboardReturn {
   focusedModelId: string | null;
   checkedModelId: string | undefined;
   filterIndex: number;
-  setFilterIndex: (index: number | ((prev: number) => number)) => void;
   footerButtonIndex: number;
   getFooterButtonProps: (index: number) => {
     ref: RefCallback<HTMLButtonElement>;
@@ -58,7 +57,6 @@ interface ModelDialogKeyboardReturn {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
   };
-  setFocusZone: (zone: FocusZone) => void;
   handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
   handleConfirm: (modelId?: string) => void;
   handleSearchFocus: () => void;
@@ -449,12 +447,10 @@ export function useModelDialogKeyboard({
     focusedModelId,
     checkedModelId,
     filterIndex,
-    setFilterIndex,
     footerButtonIndex: footerActionRow.focusedIndex,
     getCloseButtonProps,
     getFooterButtonProps,
     getFilterButtonProps: filters.getFilterButtonProps,
-    setFocusZone,
     handleFilterKeyDown: filters.handleFilterKeyDown,
     handleConfirm,
     handleSearchFocus,

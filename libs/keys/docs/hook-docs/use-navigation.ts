@@ -138,6 +138,13 @@ export const useNavigationDoc: HookDoc = {
       description:
         "Advanced owner selector override for scoping roles that do not have a standard composite owner.",
     },
+    {
+      name: "itemSelector",
+      type: "string",
+      required: false,
+      description:
+        "Narrow the navigable items to those matching this selector, for containers whose role query is broader than their own item set.",
+    },
   ],
   returns: {
     type: "UseNavigationReturn",

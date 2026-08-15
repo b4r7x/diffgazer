@@ -9,15 +9,11 @@ import {
   type RunnableProductId,
 } from "@diffgazer/core/schemas/config";
 import type { TerminalOutcome } from "@diffgazer/core/schemas/review";
-import type {
-  Adapter,
-  AdapterRegistry,
-  SafeAdapterIdentity,
-  SafeAdapterProductNotice,
-} from "../types.js";
-import { getSafeAdapterIdentity, getSafeAdapterProductNotice } from "../types.js";
+import type { Adapter, AdapterRegistry } from "../types.js";
 import {
+  CLI_COMPATIBILITY_GENERATOR_MARKER,
   type CliCompatibilityRecord,
+  CliCompatibilityRecordBundleSchema,
   type CliCompatibilityTuple,
   matchCliCompatibilityTuple,
   parseCliCompatibilityRecord,
@@ -42,9 +38,18 @@ function loadBundledCliCompatibilityRecords(): readonly CliCompatibilityRecord[]
     path.dirname(fileURLToPath(import.meta.url)),
     "fixtures/cli-compatibility/compatibility-records.json",
   );
-  const bundle = JSON.parse(readFileSync(fixturePath, "utf8")) as { records?: unknown[] };
+  const bundle = CliCompatibilityRecordBundleSchema.safeParse(
+    JSON.parse(readFileSync(fixturePath, "utf8")),
+  );
+  if (!bundle.success) {
+    throw new Error(
+      `Bundled CLI compatibility records are not a ${CLI_COMPATIBILITY_GENERATOR_MARKER} bundle: ${bundle.error.issues
+        .map((issue) => issue.message)
+        .join("; ")}`,
+    );
+  }
   const records: CliCompatibilityRecord[] = [];
-  for (const entry of bundle.records ?? []) {
+  for (const entry of bundle.data.records) {
     const parsed = parseCliCompatibilityRecord(entry);
     if (parsed.ok) {
       records.push(parsed.value);
@@ -75,46 +80,19 @@ export const CLI_ADAPTERS = {
   }),
 } as const satisfies Record<"codex-cli" | "copilot-cli", Adapter>;
 
-let resolvedAdapterRegistry: AdapterRegistry | undefined;
-
-function resolveAdapterRegistry(): AdapterRegistry {
-  if (resolvedAdapterRegistry === undefined) {
-    resolvedAdapterRegistry = {
-      ...HOSTED_ADAPTERS,
-      ...LOCAL_HTTP_ADAPTERS,
-      ...CLI_ADAPTERS,
-    };
-    validateAdapterRegistry(resolvedAdapterRegistry);
-  }
-  return resolvedAdapterRegistry;
+function buildAdapterRegistry(): AdapterRegistry {
+  const registry = {
+    ...HOSTED_ADAPTERS,
+    ...LOCAL_HTTP_ADAPTERS,
+    ...CLI_ADAPTERS,
+  };
+  validateAdapterRegistry(registry);
+  return registry;
 }
 
-export const ADAPTER_REGISTRY = new Proxy({} as AdapterRegistry, {
-  get(_target, property) {
-    if (typeof property !== "string") {
-      return undefined;
-    }
-    return resolveAdapterRegistry()[property as RunnableProductId];
-  },
-  has(_target, property) {
-    return (RUNNABLE_PRODUCT_IDS as readonly string[]).includes(String(property));
-  },
-  ownKeys() {
-    return [...RUNNABLE_PRODUCT_IDS];
-  },
-  getOwnPropertyDescriptor(_target, property) {
-    if (!(RUNNABLE_PRODUCT_IDS as readonly string[]).includes(String(property))) {
-      return undefined;
-    }
-    return {
-      configurable: true,
-      enumerable: true,
-      value: resolveAdapterRegistry()[property as RunnableProductId],
-    };
-  },
-});
+export const ADAPTER_REGISTRY: AdapterRegistry = Object.freeze(buildAdapterRegistry());
 
-export function isRunnableAdapterProductId(productId: string): productId is RunnableProductId {
+function isRunnableAdapterProductId(productId: string): productId is RunnableProductId {
   return (RUNNABLE_PRODUCT_IDS as readonly string[]).includes(productId);
 }
 
@@ -144,10 +122,7 @@ export function validateAdapterRegistry(
     throw new Error(`Adapter registry must contain exactly ${RUNNABLE_PRODUCT_IDS.length} entries`);
   }
 
-  for (const key of keys) {
-    if (!isRunnableAdapterProductId(key)) {
-      continue;
-    }
+  for (const key of keys as RunnableProductId[]) {
     const adapter = registry[key];
     if (adapter === undefined) {
       throw new Error(`Missing adapter for runnable product: ${key}`);
@@ -174,16 +149,7 @@ export function getAdapter(productId: string): Adapter {
   if (!isRunnableAdapterProductId(productId)) {
     throw new Error(`Adapter unavailable for unknown product: ${productId}`);
   }
-  return resolveAdapterRegistry()[productId];
-}
-
-export function listRunnableAdapterIdentities(): SafeAdapterIdentity[] {
-  const registry = resolveAdapterRegistry();
-  return RUNNABLE_PRODUCT_IDS.map((productId) => getSafeAdapterIdentity(registry[productId]));
-}
-
-export function listRunnableAdapterNotices(): SafeAdapterProductNotice[] {
-  return RUNNABLE_PRODUCT_IDS.map((productId) => getSafeAdapterProductNotice(productId));
+  return ADAPTER_REGISTRY[productId];
 }
 
 export function bundledCliCompatibilityRecordCount(): number {

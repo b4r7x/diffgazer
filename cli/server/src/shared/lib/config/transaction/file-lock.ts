@@ -13,6 +13,7 @@ import {
 } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { log } from "../../log.js";
 
 const LOCK_TIMEOUT_MS = 5_000;
 const LOCK_STALE_MS = 60_000;
@@ -159,7 +160,13 @@ const isProcessAlive = (pid: number): boolean => {
 const isStaleLock = (lock: ObservedLock, staleMs: number): boolean => {
   if (lock.kind === "unsupported") return false;
   if (lock.entries.length === 0) return true;
-  if (lock.metadata) return !isProcessAlive(lock.metadata.pid);
+  if (lock.metadata) {
+    // Age is the only escape from a reused pid: `process.kill(pid, 0)` cannot tell
+    // the crashed owner apart from whatever process later inherited its id, and a
+    // transaction here is a short file write, never a staleMs-long hold.
+    if (Date.now() - lock.metadata.createdAt >= staleMs) return true;
+    return !isProcessAlive(lock.metadata.pid);
+  }
   return Date.now() - lock.mtimeMs >= staleMs;
 };
 
@@ -340,6 +347,14 @@ export async function withFileTransactionLock<T>(
   try {
     return await operation();
   } finally {
-    await releaseFileLock(lockPath, owner);
+    try {
+      await releaseFileLock(lockPath, owner);
+    } catch (cause) {
+      log("warn", "config_lock_release_failed", {
+        lockPath,
+        markerName: owner.markerName,
+        error: cause instanceof Error ? cause.message : String(cause),
+      });
+    }
   }
 }

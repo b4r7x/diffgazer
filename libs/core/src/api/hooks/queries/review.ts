@@ -1,23 +1,33 @@
-import { infiniteQueryOptions, type QueryClient, queryOptions } from "@tanstack/react-query";
+import {
+  infiniteQueryOptions,
+  type QueryClient,
+  queryOptions,
+  skipToken,
+} from "@tanstack/react-query";
 import type { ReviewCursor, ReviewMode } from "../../../schemas/review/index.js";
 import type { BoundApi } from "../../bound.js";
 
 export const reviewQueries = {
   all: () => ["review"] as const,
 
-  list: (api: BoundApi, projectPath?: string) =>
+  // A refetch of an infinite query replays every retained cursor page, so the
+  // work grows with how far the user has paged. Entering history (mount) and the
+  // explicit refresh actions still refetch; regaining window focus does not,
+  // because nobody asked for it and the replay is linear in retained pages.
+  list: (api: BoundApi) =>
     infiniteQueryOptions({
-      queryKey: [...reviewQueries.all(), "list", projectPath] as const,
-      queryFn: ({ pageParam }) => api.getReviews(projectPath, pageParam),
+      queryKey: [...reviewQueries.all(), "list"] as const,
+      queryFn: ({ pageParam, signal }) => api.getReviews(pageParam, signal),
       initialPageParam: undefined as ReviewCursor | undefined,
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
       staleTime: 0,
+      refetchOnWindowFocus: false,
     }),
 
-  detail: (api: BoundApi, id: string) =>
+  detail: (api: BoundApi, id: string | null) =>
     queryOptions({
       queryKey: [...reviewQueries.all(), "detail", id] as const,
-      queryFn: () => api.getReview(id),
+      queryFn: id === null ? skipToken : ({ signal }) => api.getReview(id, signal),
       staleTime: 60_000,
     }),
 
@@ -33,7 +43,7 @@ export const reviewQueries = {
   context: (api: BoundApi) =>
     queryOptions({
       queryKey: [...reviewQueries.all(), "context"] as const,
-      queryFn: () => api.getReviewContext(),
+      queryFn: ({ signal }) => api.getReviewContext(signal),
       staleTime: 60_000,
     }),
 };

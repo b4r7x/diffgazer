@@ -54,7 +54,10 @@ interface SelectBaseProps<TValue extends string = string>
   required?: boolean;
   /** ARIA invalid state forwarded to the rendered control. */
   "aria-invalid"?: AriaAttributes["aria-invalid"];
-  /** ID applied to the rendered element. */
+  /**
+   * ID applied to the Select trigger button, not the wrapper element. Field uses it to point
+   * its label at the focusable control.
+   */
   id?: string;
   /** ID of the element that describes this component. */
   "aria-describedby"?: string;

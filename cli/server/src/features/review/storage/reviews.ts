@@ -3,12 +3,15 @@ import type { Dirent } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { err, ok, type Result } from "@diffgazer/core/result";
-import { calculateSeverityCounts } from "@diffgazer/core/schemas/presentation";
 import type {
   ReviewGitContext,
   ReviewListWarning,
   ReviewMetadata,
   SavedReview,
+} from "@diffgazer/core/schemas/review";
+import {
+  calculateSeverityCounts,
+  toSavedReviewExecutionSnapshot,
 } from "@diffgazer/core/schemas/review";
 import { isNodeError } from "../../../shared/lib/fs.js";
 import { log } from "../../../shared/lib/log.js";
@@ -38,19 +41,18 @@ import {
   writeCursorProjectIndexLocked,
 } from "./project-index.js";
 import { reviewStore } from "./store.js";
-import type { DateFieldsOf, SaveReviewOptions, StoreError, StoreErrorCode } from "./types.js";
+import type { SaveReviewOptions, StoreError, StoreErrorCode } from "./types.js";
 
-function filterByProjectAndSort<T extends { id: string; projectPath: string }>(
+function filterByProjectAndSort<T extends { id: string; projectPath: string; createdAt: string }>(
   items: T[],
   projectPath: string,
-  dateField: DateFieldsOf<T>,
 ): T[] {
   return items
     .filter((item) => item.projectPath === projectPath)
     .sort((a, b) =>
       compareReviewOrder(
-        { id: a.id, createdAt: a[dateField] as string },
-        { id: b.id, createdAt: b[dateField] as string },
+        { id: a.id, createdAt: a.createdAt },
+        { id: b.id, createdAt: b.createdAt },
       ),
     );
 }
@@ -130,18 +132,22 @@ function readReviewMetadata(ids: readonly string[]) {
   });
 }
 
-function salvageWarning(reviewId: string, droppedIssueCount: number): ReviewListWarning | null {
-  if (droppedIssueCount === 0) return null;
-  return { kind: "invalid_issues_dropped", reviewId, count: droppedIssueCount };
-}
-
-function appendSalvageWarning(
+function appendSalvageWarnings(
   warnings: ReviewListWarning[],
   metadata: ReviewMetadata,
   diagnostics: ReviewSalvageDiagnostics | null,
 ): void {
-  const warning = diagnostics ? salvageWarning(metadata.id, diagnostics.droppedIssueCount) : null;
-  if (warning) warnings.push(warning);
+  if (!diagnostics) return;
+  if (diagnostics.droppedIssueCount > 0) {
+    warnings.push({
+      kind: "invalid_issues_dropped",
+      reviewId: metadata.id,
+      count: diagnostics.droppedIssueCount,
+    });
+  }
+  if (diagnostics.droppedExecution) {
+    warnings.push({ kind: "invalid_execution_dropped", reviewId: metadata.id });
+  }
 }
 
 function countFailedLenses(lensStats: SavedReview["lensStats"]): number {
@@ -168,8 +174,10 @@ function migrateReview(review: SavedReview): SavedReview | null {
     metadata.nitCount;
   const needsFailedLensCount = metadata.failedLensCount === undefined;
   const needsSeverityCounts = issues.length > 0 && metadata.issueCount > 0 && totalCounted === 0;
+  const needsExecutionSnapshot =
+    review.execution !== undefined && review.executionSnapshot === undefined;
 
-  if (!needsFailedLensCount && !needsSeverityCounts) return null;
+  if (!needsFailedLensCount && !needsSeverityCounts && !needsExecutionSnapshot) return null;
 
   const counts = needsSeverityCounts ? calculateSeverityCounts(issues) : null;
   return {
@@ -187,6 +195,9 @@ function migrateReview(review: SavedReview): SavedReview | null {
           }
         : {}),
     },
+    ...(needsExecutionSnapshot && review.execution
+      ? { executionSnapshot: toSavedReviewExecutionSnapshot(review.execution) }
+      : {}),
   };
 }
 
@@ -235,7 +246,8 @@ export async function saveReview(
     lowCount: severityCounts.low,
     nitCount: severityCounts.nit,
     fileCount: options.diff.totalStats.filesChanged,
-    durationMs: options.durationMs,
+    ...(options.durationMs === undefined ? {} : { durationMs: options.durationMs }),
+    ...(options.execution ? { terminalOutcome: options.execution.receipt.outcome } : {}),
   };
 
   const savedReview: SavedReview = {
@@ -251,7 +263,12 @@ export async function saveReview(
       ? { droppedBelowThreshold: options.droppedBelowThreshold }
       : {}),
     ...(options.minSeverity !== undefined ? { minSeverity: options.minSeverity } : {}),
-    ...(options.execution ? { execution: options.execution } : {}),
+    ...(options.execution
+      ? {
+          execution: options.execution,
+          executionSnapshot: toSavedReviewExecutionSnapshot(options.execution),
+        }
+      : {}),
   };
 
   const writeResult = await reviewStore.write(savedReview);
@@ -306,11 +323,15 @@ async function migrateMetadataList(items: ReviewMetadata[]): Promise<ReviewMetad
   });
 }
 
-async function scanReviews(
-  projectPath: string,
-): Promise<
+async function scanReviews(projectPath: string): Promise<
   Result<
-    { items: ReviewMetadata[]; warnings: ReviewListWarning[]; isComplete: boolean },
+    {
+      items: ReviewMetadata[];
+      warnings: ReviewListWarning[];
+      isComplete: boolean;
+      droppedIssueCounts: Map<string, number>;
+      droppedExecutionIds: Set<string>;
+    },
     StoreError
   >
 > {
@@ -320,6 +341,8 @@ async function scanReviews(
   const results = await readReviewMetadata(idsResult.value);
   const items: ReviewMetadata[] = [];
   const warnings: ReviewListWarning[] = [];
+  const droppedIssueCounts = new Map<string, number>();
+  const droppedExecutionIds = new Set<string>();
   let isComplete = true;
   for (const { id, result } of results) {
     if (!result.ok) {
@@ -328,13 +351,23 @@ async function scanReviews(
       continue;
     }
     const { diagnostics, metadata } = result.value;
-    appendSalvageWarning(warnings, metadata, diagnostics);
+    appendSalvageWarnings(warnings, metadata, diagnostics);
+    if (diagnostics && diagnostics.droppedIssueCount > 0) {
+      droppedIssueCounts.set(metadata.id, diagnostics.droppedIssueCount);
+    }
+    if (diagnostics?.droppedExecution) droppedExecutionIds.add(metadata.id);
     items.push(metadata);
   }
 
-  const sortedItems = filterByProjectAndSort(items, projectPath, "createdAt");
+  const sortedItems = filterByProjectAndSort(items, projectPath);
   const migratedItems = await migrateMetadataList(sortedItems);
-  return ok({ items: migratedItems, warnings, isComplete });
+  return ok({
+    items: migratedItems,
+    warnings,
+    isComplete,
+    droppedIssueCounts,
+    droppedExecutionIds,
+  });
 }
 
 export async function scanReviewsForCertification(projectPath: string): Promise<ReviewMetadata[]> {
@@ -360,7 +393,10 @@ export async function scanReviewsForCertification(projectPath: string): Promise<
     }
     if (result.value.metadata.projectPath === projectPath) items.push(result.value.metadata);
   }
-  return migrateMetadataList(filterByProjectAndSort(items, projectPath, "createdAt"));
+  // Certification consumers keep only id/createdAt, so migrating here would
+  // re-read and re-validate every legacy record for fields nobody reads. The
+  // listing and detail paths migrate on their own.
+  return filterByProjectAndSort(items, projectPath);
 }
 
 async function listReviewsFromFullScan(
@@ -375,7 +411,11 @@ async function listReviewsFromFullScan(
         projectPath,
         result.value.items,
         scanReviewsForCertification,
-        { completeSnapshot: result.value.isComplete },
+        {
+          completeSnapshot: result.value.isComplete,
+          droppedIssueCounts: result.value.droppedIssueCounts,
+          droppedExecutionIds: result.value.droppedExecutionIds,
+        },
       );
     } catch (error) {
       log("warn", "reviews_index_build_failed", { error });
@@ -447,14 +487,33 @@ async function listIndexedReviewPage(
   const collected: Array<{ entry: ProjectIndexEntry; metadata: ReviewMetadata }> = [];
   const invalidIds = new Set<string>();
   const warnings: ReviewListWarning[] = [];
-  const metadataResults = await readReviewMetadata(slice.map((entry) => entry.id));
-  const results = metadataResults.map(({ result }, index) => ({
-    entry: slice[index],
-    result,
-  }));
+  const idsNeedingRead: string[] = [];
 
-  for (const { entry, result } of results) {
-    if (!entry) continue;
+  for (const entry of slice) {
+    if (!entry.metadata) {
+      idsNeedingRead.push(entry.id);
+    }
+  }
+
+  const metadataResults = idsNeedingRead.length > 0 ? await readReviewMetadata(idsNeedingRead) : [];
+  const resultsById = new Map(metadataResults.map(({ id, result }) => [id, result] as const));
+
+  for (const entry of slice) {
+    if (entry.metadata) {
+      if (entry.metadata.projectPath !== projectPath) {
+        invalidIds.add(entry.id);
+        continue;
+      }
+      appendSalvageWarnings(warnings, entry.metadata, {
+        droppedIssueCount: entry.droppedIssueCount ?? 0,
+        droppedExecution: entry.droppedExecution === true,
+      });
+      collected.push({ entry, metadata: entry.metadata });
+      continue;
+    }
+
+    const result = resultsById.get(entry.id);
+    if (!result) continue;
     if (!result.ok) {
       if (result.error.code === "NOT_FOUND") invalidIds.add(entry.id);
       else warnings.push({ kind: "unreadable_review", reviewId: entry.id });
@@ -465,7 +524,7 @@ async function listIndexedReviewPage(
       invalidIds.add(entry.id);
       continue;
     }
-    appendSalvageWarning(warnings, metadata, diagnostics);
+    appendSalvageWarnings(warnings, metadata, diagnostics);
     collected.push({ entry, metadata });
   }
 
@@ -523,19 +582,36 @@ export async function listReviewPage(
   return listIndexedReviewPage(projectPath, entries, options);
 }
 
-export async function getReview(reviewId: string): Promise<Result<SavedReview, StoreError>> {
+export interface ReviewDetail {
+  review: SavedReview;
+  warnings: ReviewListWarning[];
+}
+
+/**
+ * Reads one review together with the recoverable-corruption warnings the listing
+ * path also reports, so the detail surface never presents a silently reduced
+ * issue set as a clean record.
+ */
+export async function getReviewDetail(reviewId: string): Promise<Result<ReviewDetail, StoreError>> {
   const result = await reviewStore.readDetailed(reviewId);
   if (!result.ok) return result;
 
   const stored = result.value.item;
+  const warnings: ReviewListWarning[] = [];
   if (result.value.diagnostics?.droppedIssueCount) {
     log("warn", "review_issues_salvaged", {
       reviewId,
       droppedIssueCount: result.value.diagnostics.droppedIssueCount,
     });
   }
+  appendSalvageWarnings(warnings, stored.metadata, result.value.diagnostics);
   if (!result.value.salvaged && migrateReview(stored)) {
     void persistMigrationLocked(stored.metadata.id);
   }
-  return ok(presentDurableReviewRead(stored));
+  return ok({ review: presentDurableReviewRead(stored), warnings });
+}
+
+export async function getReview(reviewId: string): Promise<Result<SavedReview, StoreError>> {
+  const detail = await getReviewDetail(reviewId);
+  return detail.ok ? ok(detail.value.review) : detail;
 }

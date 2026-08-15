@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
+
+function clearTimer(timeoutRef: RefObject<number | null>) {
+  if (timeoutRef.current === null) return;
+  window.clearTimeout(timeoutRef.current);
+  timeoutRef.current = null;
+}
 
 export function useTransientValue<T>(initialValue: T, timeoutMs: number) {
   const [value, setValue] = useState(initialValue);
   const timeoutRef = useRef<number | null>(null);
 
-  const clearTimer = () => {
-    if (timeoutRef.current === null) return;
-    window.clearTimeout(timeoutRef.current);
-    timeoutRef.current = null;
-  };
-
   const show = (nextValue: T) => {
-    clearTimer();
+    clearTimer(timeoutRef);
     setValue(nextValue);
     timeoutRef.current = window.setTimeout(() => {
       setValue(initialValue);
@@ -20,9 +20,7 @@ export function useTransientValue<T>(initialValue: T, timeoutMs: number) {
   };
 
   useEffect(() => {
-    return () => {
-      if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
-    };
+    return () => clearTimer(timeoutRef);
   }, []);
 
   return [value, show] as const;

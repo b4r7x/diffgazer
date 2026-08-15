@@ -13,7 +13,9 @@ export function ReturnsTable() {
         <span className="break-words font-mono text-info">{type}</span>
         {description && <span className="text-muted-foreground">{description}</span>}
       </div>
-      {properties && properties.length > 0 && <ParameterTable params={properties} />}
+      {properties && properties.length > 0 && (
+        <ParameterTable params={properties} label="Return properties" />
+      )}
     </div>
   );
 }

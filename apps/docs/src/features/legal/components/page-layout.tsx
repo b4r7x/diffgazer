@@ -1,4 +1,5 @@
 import { Button } from "@diffgazer/ui/components/button";
+import { ScriptOnce } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { ArticleSkeleton } from "@/components/article-skeleton";
 import { SidebarNavHeader } from "@/components/layout/sidebar-nav-header";
@@ -9,7 +10,9 @@ import {
 import { TuiFaultPanel } from "@/components/layout/tui-fault-panel";
 import { TuiTwoPane } from "@/components/layout/tui-two-pane";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
-import { usePendingLegalRoute } from "@/features/legal/hooks/use-pending-route";
+import { useIsLegalRoutePending } from "@/features/legal/hooks/use-pending-route";
+import { MAIN_SCROLL_INIT_SCRIPT } from "@/lib/main-scroll-bootstrap";
+import { MAIN_SCROLL_RESTORATION_ID } from "@/lib/main-scroll-restoration";
 import { LegalSidebar } from "./sidebar";
 
 export interface LegalPageLayoutProps {
@@ -18,8 +21,7 @@ export interface LegalPageLayoutProps {
 }
 
 export function LegalPageLayout({ panelLabel, children }: LegalPageLayoutProps) {
-  const pendingLegalPath = usePendingLegalRoute();
-  const isPending = pendingLegalPath !== null;
+  const isPending = useIsLegalRoutePending();
 
   return (
     <TuiTwoPane
@@ -35,6 +37,7 @@ export function LegalPageLayout({ panelLabel, children }: LegalPageLayoutProps) 
       </div>
       <main
         id="main-content"
+        data-scroll-restoration-id={MAIN_SCROLL_RESTORATION_ID}
         tabIndex={-1}
         aria-busy={isPending}
         className="flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar-thin px-6 py-10 outline-hidden"
@@ -57,6 +60,7 @@ export function LegalPageLayout({ panelLabel, children }: LegalPageLayoutProps) 
         >
           {isPending ? <LegalPageLoadingFrame /> : children}
         </ErrorBoundary>
+        <ScriptOnce>{MAIN_SCROLL_INIT_SCRIPT}</ScriptOnce>
       </main>
     </TuiTwoPane>
   );

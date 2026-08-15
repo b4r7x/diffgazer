@@ -1,5 +1,3 @@
-type TimerFormat = "short" | "long";
-
 const DATE_LABEL_MONTHS = [
   "Jan",
   "Feb",
@@ -26,16 +24,10 @@ function getLocalDateKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function formatTime(ms: number, format: TimerFormat = "short"): string {
+export function formatTime(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor(totalSeconds / 60);
-  const clockMinutes = minutes % 60;
   const seconds = totalSeconds % 60;
-
-  if (format === "long") {
-    return `${hours.toString().padStart(2, "0")}:${clockMinutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-  }
 
   return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
@@ -83,12 +75,17 @@ export function getDateLabel(dateStr: string, options?: { showYear?: boolean }):
   return formatDateKeyLabel(dateKey, options);
 }
 
+// History maps this over every loaded run on each render. `toLocaleTimeString`
+// rebuilds locale machinery per call and dominated that pass; a module-level
+// Intl.DateTimeFormat cannot replace it because it pins the timezone at
+// construction. The output is fixed en-US 12-hour local time, so derive it from
+// the same local getters `formatTimestamp` above uses.
 export function getTimestamp(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "Invalid Date";
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  return `${hours % 12 === 0 ? 12 : hours % 12}:${minutes} ${hours < 12 ? "AM" : "PM"}`;
 }
 
 export function formatDuration(durationMs: number | null | undefined): string {
@@ -100,26 +97,90 @@ export function formatDuration(durationMs: number | null | undefined): string {
   return `${minutes}m ${seconds % 60}s`;
 }
 
-function getRunIdPrefixLength(id: string, peerIds: readonly string[]): number {
-  const normalizedId = id.toLowerCase();
-  const normalizedPeers = peerIds
-    .map((peerId) => peerId.toLowerCase())
-    .filter((peerId) => peerId !== normalizedId);
-  let length = Math.min(MIN_RUN_ID_PREFIX_LENGTH, id.length);
-
-  while (
-    length < id.length &&
-    normalizedPeers.some((peerId) => peerId.startsWith(normalizedId.slice(0, length)))
-  ) {
-    length += 1;
+function longestCommonPrefix(left: string, right: string): number {
+  const limit = Math.min(left.length, right.length);
+  let index = 0;
+  while (index < limit && left[index] === right[index]) {
+    index += 1;
   }
-  return length;
+  return index;
 }
 
-export function formatRunId(id: string, peerIds: readonly string[] = []): string {
-  return `#${id.slice(0, getRunIdPrefixLength(id, peerIds))}`;
+export type RunIdLookup = ReadonlyMap<string, string>;
+
+export function buildRunIdLookup(peerIds: readonly string[]): RunIdLookup {
+  if (peerIds.length === 0) {
+    return new Map();
+  }
+
+  const normalized = peerIds.map((peerId) => peerId.toLowerCase());
+  const sortedIndices = peerIds
+    .map((_, index) => index)
+    .sort((left, right) => {
+      const leftNormalized = normalized[left];
+      const rightNormalized = normalized[right];
+      if (leftNormalized === undefined || rightNormalized === undefined) {
+        return left - right;
+      }
+      // Code-unit order, not ICU collation: the neighbour scan below assumes an
+      // id's longest-common-prefix partner is adjacent once sorted, which holds
+      // lexicographically but not under a collation that reweights characters.
+      if (leftNormalized === rightNormalized) return left - right;
+      return leftNormalized < rightNormalized ? -1 : 1;
+    });
+
+  const sortedPosition = new Map<number, number>();
+  for (let position = 0; position < sortedIndices.length; position += 1) {
+    const indexAtPosition = sortedIndices[position];
+    if (indexAtPosition === undefined) {
+      continue;
+    }
+    sortedPosition.set(indexAtPosition, position);
+  }
+
+  const lookup = new Map<string, string>();
+  for (let index = 0; index < peerIds.length; index += 1) {
+    const id = peerIds[index];
+    const normalizedId = normalized[index];
+    if (id === undefined || normalizedId === undefined) {
+      continue;
+    }
+    const position = sortedPosition.get(index) ?? 0;
+
+    let maxLcp = 0;
+    for (const offset of [-1, 1]) {
+      const neighborPosition = position + offset;
+      if (neighborPosition < 0 || neighborPosition >= sortedIndices.length) {
+        continue;
+      }
+      const neighborIndex = sortedIndices[neighborPosition];
+      if (neighborIndex === undefined || neighborIndex === index) {
+        continue;
+      }
+      const neighborNormalized = normalized[neighborIndex];
+      if (neighborNormalized === undefined) {
+        continue;
+      }
+      maxLcp = Math.max(maxLcp, longestCommonPrefix(normalizedId, neighborNormalized));
+    }
+
+    const minLength = Math.min(MIN_RUN_ID_PREFIX_LENGTH, id.length);
+    const length = Math.min(Math.max(minLength, maxLcp + 1), id.length);
+    lookup.set(id, `#${id.slice(0, length)}`);
+  }
+
+  return lookup;
 }
 
-export function formatTimestampOrNA(value: string | null | undefined, fallback = "N/A"): string {
+// Standalone label for a run shown on its own. Lists disambiguate against their
+// own batch through `buildRunIdLookup`, the single prefix-length authority.
+export function formatRunId(id: string): string {
+  return `#${id.slice(0, Math.min(MIN_RUN_ID_PREFIX_LENGTH, id.length))}`;
+}
+
+export function formatLocaleDateTimeOrFallback(
+  value: string | null | undefined,
+  fallback = "N/A",
+): string {
   return value ? new Date(value).toLocaleString() : fallback;
 }

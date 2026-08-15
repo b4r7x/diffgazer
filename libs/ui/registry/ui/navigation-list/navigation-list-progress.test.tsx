@@ -72,6 +72,9 @@ describe("NavigationList.Progress", () => {
     { width: Number.NaN, renderedBar: "[]" },
     { width: Number.POSITIVE_INFINITY, renderedBar: "[]" },
     { width: Number.NEGATIVE_INFINITY, renderedBar: "[]" },
+    // Capped: an uncapped width turns one hostile finite number into a
+    // RangeError from String.repeat during render.
+    { width: Number.MAX_SAFE_INTEGER, renderedBar: `[${"=".repeat(100)}${"-".repeat(100)}]` },
   ])("normalizes width=$width before rendering", ({ width, renderedBar }) => {
     render(
       <NavigationList aria-label="Test nav">
@@ -85,6 +88,27 @@ describe("NavigationList.Progress", () => {
     );
 
     expect(screen.getByRole("progressbar")).toHaveTextContent(renderedBar);
+  });
+
+  it.each([
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+  ])("normalizes a non-finite value=%s before it reaches aria-valuenow", (value) => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Meta>
+            <NavigationList.Progress value={value} variant="bar" width={4} />
+          </NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>,
+    );
+
+    const bar = screen.getByRole("progressbar");
+    expect(bar).toHaveAttribute("aria-valuenow", "0");
+    expect(bar).toHaveAccessibleName("0% complete");
   });
 
   it("shows percentage label by default", () => {

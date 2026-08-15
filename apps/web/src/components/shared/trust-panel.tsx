@@ -6,45 +6,36 @@ import {
   DEFAULT_TRUST_PROMPT_CAPABILITIES,
   getTrustButtonLabel,
 } from "@diffgazer/core/schemas/config";
-import { TRUST_FOOTER_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
-import { focusNavigationItem } from "@diffgazer/keys";
+import { TRUST_PERMISSION_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
 import { Button } from "@diffgazer/ui/components/button";
 import { toast } from "@diffgazer/ui/components/toast";
 import { type KeyboardEvent, useRef, useState } from "react";
 import { CardLayout } from "@/components/layout/card";
-import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
+import {
+  type TrustListFocusHandle,
+  TrustPermissionsContent,
+} from "@/components/shared/trust-permissions-content";
 
 interface TrustPanelProps {
   directory: string;
 }
 
-export const TRUST_PANEL_FOOTER_SHORTCUTS = TRUST_FOOTER_SHORTCUTS.slice(0, 2);
-
 export function TrustPanel({ directory }: TrustPanelProps) {
-  usePageFooter({ shortcuts: TRUST_PANEL_FOOTER_SHORTCUTS });
+  usePageFooter({ shortcuts: TRUST_PERMISSION_SHORTCUTS });
   const saveTrust = useSaveTrust();
   const isLoading = saveTrust.isPending;
   const [capabilities, setCapabilities] = useState<TrustCapabilities>(
     DEFAULT_TRUST_PROMPT_CAPABILITIES,
   );
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const listContainerRef = useRef<HTMLDivElement>(null);
+  const listFocusRef = useRef<TrustListFocusHandle>(null);
   const handleListBoundaryNext = () => buttonRef.current?.focus();
   const hasRepoAccess = capabilities.readFiles;
 
   const handleButtonKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (e.key !== "ArrowUp" || e.metaKey || e.ctrlKey || e.altKey) return;
     e.preventDefault();
-    const group = listContainerRef.current?.querySelector<HTMLElement>(
-      '[data-diffgazer-selectable-owner="checkbox"]',
-    );
-    if (!group) return;
-    focusNavigationItem(group, {
-      type: "checkbox",
-      value: "readFiles",
-      fallback: "last",
-      preventScroll: true,
-    });
+    listFocusRef.current?.focus();
   };
 
   async function handleTrust(): Promise<void> {
@@ -81,17 +72,16 @@ export function TrustPanel({ directory }: TrustPanelProps) {
         </Button>
       }
     >
-      <div ref={listContainerRef}>
-        <TrustPermissionsContent
-          directory={directory}
-          value={capabilities}
-          onChange={setCapabilities}
-          isLoading={isLoading}
-          showActions={false}
-          onListBoundaryNext={handleListBoundaryNext}
-          autoFocusList
-        />
-      </div>
+      <TrustPermissionsContent
+        directory={directory}
+        value={capabilities}
+        onChange={setCapabilities}
+        isLoading={isLoading}
+        showActions={false}
+        onListBoundaryNext={handleListBoundaryNext}
+        listFocusRef={listFocusRef}
+        autoFocusList
+      />
     </CardLayout>
   );
 }

@@ -10,11 +10,9 @@ const SETUP_STEPS = [
   { value: "execution", label: "Execution" },
 ];
 
-const stepIds = SETUP_STEPS.map((step) => step.value);
-
 function SetupStepper({ compact }: { compact?: boolean }) {
   return (
-    <HorizontalStepper steps={stepIds} value="apikey" compact={compact} aria-label="Setup progress">
+    <HorizontalStepper value="apikey" compact={compact} aria-label="Setup progress">
       {SETUP_STEPS.map(({ value, label }) => (
         <HorizontalStepper.Step key={value} value={value}>
           {label}

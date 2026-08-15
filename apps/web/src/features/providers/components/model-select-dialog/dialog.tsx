@@ -1,5 +1,6 @@
 import { getDateLabel } from "@diffgazer/core/format";
-import { useModelFilter, useModelSource } from "@diffgazer/core/providers";
+import { getRetainedModelNotice } from "@diffgazer/core/providers";
+import { useModelFilter, useModelSource } from "@diffgazer/core/providers/hooks";
 import type { ClientConfigurationSummary, ExactModelId } from "@diffgazer/core/schemas/config";
 import { pluralize } from "@diffgazer/core/strings";
 import { Button } from "@diffgazer/ui/components/button";
@@ -110,6 +111,7 @@ export function ModelSelectDialog({
   });
 
   const checkedAtLabel = source.checkedAt ? getDateLabel(source.checkedAt) : null;
+  const retainedModelNotice = isSaving ? null : getRetainedModelNotice(currentModel, source.models);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -152,7 +154,7 @@ export function ModelSelectDialog({
             isFocused={focusZone === "filters"}
             onKeyDown={handleFilterKeyDown}
             getTabProps={getFilterButtonProps}
-            disabled={isSaving || loading || source.status !== "passed"}
+            disabled={isSaving || source.status !== "passed"}
           />
 
           {discoveryMessage && !isSaving ? (
@@ -175,6 +177,14 @@ export function ModelSelectDialog({
                 Retry
               </Button>
             </div>
+          ) : null}
+
+          {retainedModelNotice ? (
+            // The saved selection is not in the review-capable list. It keeps
+            // working, so this states the gap rather than dropping the row.
+            <p className="mx-5 mb-2 border border-border/60 px-3 py-2 text-2xs leading-relaxed text-muted-foreground">
+              {retainedModelNotice}
+            </p>
           ) : null}
 
           <ModelList

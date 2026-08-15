@@ -203,8 +203,7 @@ describe("synthesized issue evidence envelope", () => {
     );
   });
 
-  it("leaves provider-supplied evidence unchanged", () => {
-    const excerpt = Array.from({ length: 8 }, (_, index) => `provider-${index + 1}`).join("\n");
+  it("keeps unverified references while replacing provider-authored code snippets", () => {
     const issue = makeIssue({
       evidence: [
         {
@@ -212,15 +211,32 @@ describe("synthesized issue evidence envelope", () => {
           title: "Provider evidence",
           sourceId: "provider",
           file: "src/provider.ts",
-          excerpt,
+          excerpt: Array.from({ length: 8 }, (_, index) => `provider-${index + 1}`).join("\n"),
+        },
+        {
+          type: "external",
+          title: "Provider citation",
+          sourceId: "https://example.com/reference",
+          excerpt: "Provider-authored citation",
         },
       ],
     });
 
     const result = createIssueEvidenceResolver(makeParsedDiff([]))(issue);
 
-    expect(result).toBe(issue);
-    expect(result.evidence[0]?.excerpt).toBe(excerpt);
-    expect(result.evidence[0]?.excerpt.split("\n")).toHaveLength(8);
+    expect(result).not.toBe(issue);
+    expect(result.evidence[0]).toMatchObject({
+      type: "code",
+      title: `Issue in ${issue.file}`,
+      sourceId: issue.file,
+      file: issue.file,
+      excerpt: issue.rationale,
+    });
+    expect(result.evidence[1]).toEqual({
+      type: "external",
+      title: "Provider citation",
+      sourceId: "https://example.com/reference",
+      excerpt: "Provider-authored citation",
+    });
   });
 });

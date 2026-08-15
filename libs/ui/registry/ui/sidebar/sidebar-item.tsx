@@ -16,9 +16,11 @@ import { resolveSidebarIntent, type SidebarIntent } from "./sidebar-intent";
 import { type SidebarVariant, sidebarItemVariants } from "./sidebar-variants";
 
 /** Props for sidebar item render. */
-export interface SidebarItemRenderProps {
+export interface SidebarItemRenderProps<TElement extends HTMLElement = HTMLAnchorElement> {
   /** Ref forwarded to the underlying element. */
-  ref?: Ref<HTMLElement>;
+  ref?: Ref<TElement>;
+  /** Slot marker used by sidebar-owned keyboard navigation. */
+  "data-slot"?: "sidebar-item";
   /** Additional class names merged onto the rendered element. */
   className: string;
   /** Disables the item. Adds aria-disabled and removes from tab order. */
@@ -52,8 +54,6 @@ interface SidebarItemSharedProps {
   /** Controlled value. */
   value?: string;
   intent?: SidebarIntent;
-  /** Sidebar subparts (Header, Content, Footer, Trigger). */
-  children: ReactNode | ((props: SidebarItemRenderProps) => ReactNode);
   /** Additional class names merged onto the rendered element. */
   className?: string;
   /** Disables interaction. */
@@ -64,6 +64,8 @@ interface SidebarItemSharedProps {
 export interface SidebarItemAsAnchorProps
   extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "children" | "value">,
     SidebarItemSharedProps {
+  /** Sidebar subparts (Header, Content, Footer, Trigger). */
+  children: ReactNode | ((props: SidebarItemRenderProps<HTMLAnchorElement>) => ReactNode);
   /**
    * Rendered element. Items are navigation links by default; pass as="button" for
    * non-navigation actions.
@@ -82,6 +84,8 @@ export interface SidebarItemAsButtonProps
    * non-navigation actions.
    */
   as: "button";
+  /** Sidebar subparts (Header, Content, Footer, Trigger). */
+  children: ReactNode | ((props: SidebarItemRenderProps<HTMLButtonElement>) => ReactNode);
   /** Ref forwarded to the underlying element. */
   ref?: Ref<HTMLButtonElement>;
 }
@@ -172,6 +176,7 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
     };
 
   const sharedProps = {
+    "data-slot": "sidebar-item" as const,
     className: cn(sidebarItemVariants({ variant }), props.className),
     "aria-current": active ? ("page" as const) : undefined,
     "aria-disabled": disabled || undefined,
@@ -201,13 +206,18 @@ export function SidebarItem(props: SidebarItemProps): ReactNode {
   );
 
   if (typeof props.children === "function") {
-    return props.children({
-      ref: props.ref as Ref<HTMLElement>,
+    const renderProps = {
       disabled: disabled || undefined,
       onClick: guardedClick(props.onClick as MouseEventHandler<HTMLElement> | undefined),
       itemPrefix,
       ...sharedProps,
-    });
+    };
+    if (props.as === "button") {
+      const { children, ref } = props;
+      return children({ ...renderProps, ref });
+    }
+    const { children, ref } = props;
+    return children({ ...renderProps, ref });
   }
 
   if (props.as === "button") {

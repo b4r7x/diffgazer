@@ -2,7 +2,7 @@ import { ok } from "@diffgazer/core/result";
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
 import { ExecutionResultSchema } from "@diffgazer/core/schemas/review";
 import { makeIssue } from "@diffgazer/core/testing/factories";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AdapterExecuteRequest } from "../types.js";
 import {
   CLI_CREDENTIAL_ENV_KEYS,
@@ -14,10 +14,37 @@ import {
   buildCodexCliCompatibilityTuple,
   buildCodexCliExecArgv,
   CODEX_CLI_ACCEPTED_FLAGS,
-  codexCliAdapter,
   executeCodexCliReview,
   parseCodexOutputLastMessage,
 } from "./codex-cli.js";
+
+const downstreamCompatibilityRecords = vi.hoisted(() => new WeakSet<object>());
+
+vi.mock("./cli-compatibility/compat.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./cli-compatibility/compat.js")>();
+  return {
+    ...actual,
+    matchCliCompatibilityTuple: (
+      record: Parameters<typeof actual.matchCliCompatibilityTuple>[0],
+      tuple: Parameters<typeof actual.matchCliCompatibilityTuple>[1],
+    ) => {
+      if (!record || !downstreamCompatibilityRecords.has(record)) {
+        return actual.matchCliCompatibilityTuple(record, tuple);
+      }
+      return actual.matchCliCompatibilityTuple(
+        {
+          ...record,
+          profile: {
+            ...record.profile,
+            argv: ["--model", record.model.requested],
+            acceptedFlags: ["--model"],
+          },
+        },
+        tuple,
+      );
+    },
+  };
+});
 
 const SHA = "a".repeat(64);
 const SHA_B = "b".repeat(64);
@@ -133,7 +160,7 @@ function createCodexRecord(
   };
 }
 
-function evidenceKey(patch: Partial<EvidenceKey> = {}): EvidenceKey {
+function evidenceKey(): EvidenceKey {
   return {
     authentication: null,
     credentialReferenceIdentity: null,
@@ -148,15 +175,14 @@ function evidenceKey(patch: Partial<EvidenceKey> = {}): EvidenceKey {
     structuredOutputSchemaSha256: SHA_G,
     noticeVersion: 1,
     limits,
-    ...patch,
   };
 }
 
-function executeRequest(patch: Partial<EvidenceKey> = {}): AdapterExecuteRequest {
+function executeRequest(): AdapterExecuteRequest {
   return {
     configurationId: "configuration-1",
     configurationRevision: 3,
-    evidenceKey: evidenceKey(patch),
+    evidenceKey: evidenceKey(),
     prompt: "Return a minimal valid review JSON object with an empty issues array.",
   };
 }
@@ -203,7 +229,7 @@ async function createRuntimeMatchedRecord(
   });
 }
 
-function successDependencies(record: CliCompatibilityRecord) {
+function dependencies(record: CliCompatibilityRecord) {
   return {
     resolveExecutable: async () => ok(EXECUTABLE),
     acquireVersion: async () => ok(VERSION),
@@ -220,9 +246,14 @@ function successDependencies(record: CliCompatibilityRecord) {
       outputTruncated: false,
       timedOut: false,
     }),
-    readResultFile: async () => JSON.stringify({ issues: [] }),
+    readResultFile: async () => ok(JSON.stringify({ issues: [] })),
     now: () => new Date("2026-01-01T00:00:00.000Z"),
   };
+}
+
+function successDependencies(record: CliCompatibilityRecord) {
+  downstreamCompatibilityRecords.add(record);
+  return dependencies(record);
 }
 
 describe("buildCodexCliExecArgv", () => {
@@ -231,7 +262,6 @@ describe("buildCodexCliExecArgv", () => {
       reviewSchemaPath: "/tmp/review-schema.json",
       resultPath: "/tmp/result.json",
       modelId: MODEL_ID,
-      prompt: "review",
     });
     expect(argv).toEqual([
       "exec",
@@ -247,7 +277,7 @@ describe("buildCodexCliExecArgv", () => {
       "/tmp/result.json",
       "--model",
       MODEL_ID,
-      "review",
+      "-",
     ]);
   });
 });
@@ -287,13 +317,48 @@ describe("parseCodexOutputLastMessage", () => {
 });
 
 describe("executeCodexCliReview contract", () => {
-  it("completes with a matching in-memory compatibility record", async () => {
+  it("fails closed before spawning for a read-capable compatibility profile", async () => {
+    const record = await createRuntimeMatchedRecord();
+    let processStarted = false;
+    const result = await executeCodexCliReview(executeRequest(), {
+      ...dependencies(record),
+      runProcess: async () => {
+        processStarted = true;
+        return {
+          exitCode: 0,
+          signal: null,
+          stdout: "",
+          stderr: "",
+          cancelledLocally: false,
+          descendantsTerminatedLocally: false,
+          outputTruncated: false,
+          timedOut: false,
+        };
+      },
+    });
+
+    expect(result.receipt.outcome).toBe("transport-failed");
+    expect(processStarted).toBe(false);
+  });
+
+  it("preserves downstream execution behind the test-local admission seam", async () => {
     const record = await createRuntimeMatchedRecord();
     const result = await executeCodexCliReview(executeRequest(), successDependencies(record));
 
     expect(result.receipt.outcome).toBe("completed");
     expect(result.result.issues).toEqual([]);
     expect(ExecutionResultSchema.safeParse(result).success).toBe(true);
+  });
+
+  it("rejects an oversized result.json before parsing and settles measured bytes", async () => {
+    const record = await createRuntimeMatchedRecord();
+    const oversized = "x".repeat(limits.maxResponseBytes + 1);
+    const result = await executeCodexCliReview(executeRequest(), {
+      ...successDependencies(record),
+      readResultFile: async () => ok(oversized),
+    });
+
+    expect(result.receipt.outcome).toBe("transport-failed");
   });
 
   it("rejects absent compatibility record", async () => {
@@ -352,7 +417,6 @@ describe("executeCodexCliReview contract", () => {
           reviewSchemaPath: "/tmp/review-schema.json",
           resultPath: "/tmp/result.json",
           modelId: MODEL_ID,
-          prompt: "review",
         }),
       ),
     ).toThrow(/Unrecorded Codex argv flag/);
@@ -430,7 +494,7 @@ describe("executeCodexCliReview contract", () => {
             timedOut: false,
           };
         },
-        readResultFile: async () => JSON.stringify({ issues: [] }),
+        readResultFile: async () => ok(JSON.stringify({ issues: [] })),
       });
       expect(childEnv[key]).toBeUndefined();
     } finally {
@@ -443,9 +507,41 @@ describe("executeCodexCliReview contract", () => {
   });
 });
 
-describe("codexCliAdapter export", () => {
-  it("exposes a local-cli adapter for registry assembly", () => {
-    expect(codexCliAdapter.productId).toBe("codex-cli");
-    expect(codexCliAdapter.transportFamily).toBe("local-cli");
+describe("Codex prompt privacy and admitted wall time", () => {
+  it("keeps a near-limit prompt out of argv and hands it to the child on stdin", async () => {
+    const record = await createRuntimeMatchedRecord();
+    const request = {
+      ...executeRequest(),
+      prompt: `secret-diff-${"x".repeat(512 * 1024)}`,
+      systemPrompt: "invariant reviewer instructions",
+    };
+    let observed: { argv: readonly string[]; stdin: string; timeoutMs?: number } | null = null;
+
+    const result = await executeCodexCliReview(request, {
+      ...successDependencies(record),
+      runProcess: async (input) => {
+        observed = { argv: input.argv, stdin: input.stdin, timeoutMs: input.timeoutMs };
+        return {
+          exitCode: 0,
+          signal: null,
+          stdout: "",
+          stderr: "",
+          cancelledLocally: false,
+          descendantsTerminatedLocally: false,
+          outputTruncated: false,
+          timedOut: false,
+        };
+      },
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    const run = observed as unknown as { argv: string[]; stdin: string; timeoutMs?: number };
+    expect(run.argv.some((token) => token.includes("secret-diff-"))).toBe(false);
+    expect(run.argv.at(-1)).toBe("-");
+    expect(run.stdin).toBe(`invariant reviewer instructions\n\n${request.prompt}`);
+    expect(run.timeoutMs).toBeGreaterThan(0);
+    expect(run.timeoutMs ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+      request.evidenceKey.limits.wallTimeMs,
+    );
   });
 });

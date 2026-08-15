@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dialogDoc } from "../../registry/component-docs/dialog";
+import { dialogDoc } from "../../registry/component-docs/dialog.js";
 
 describe("Dialog metadata JSDoc sync", () => {
   it("documents DialogClose accessible-name precedence and fallback", () => {
@@ -15,7 +15,7 @@ describe("Dialog metadata JSDoc sync", () => {
       required: false,
       defaultValue: null,
       description:
-        'ID reference for an external label. It takes precedence over aria-label and suppresses the automatic "Close dialog" fallback.',
+        'ID of the element that labels the close button. It takes precedence over aria-label and suppresses the automatic "Close dialog" fallback.',
     });
   });
 });

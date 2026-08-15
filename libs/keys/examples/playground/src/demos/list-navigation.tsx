@@ -32,6 +32,7 @@ export function ListNavigationDemo() {
     onSelect: (value) => toggleSelection(value),
     onEnter: (value) => activateItem(value),
     wrap: true,
+    focusWithinOnly: true,
     defaultHighlighted: "apple",
   });
 

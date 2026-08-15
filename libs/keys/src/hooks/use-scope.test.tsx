@@ -140,7 +140,7 @@ describe("useScope", () => {
   it("throws when used outside KeyboardProvider", () => {
     expect(() => {
       renderHook(() => useScope("modal"));
-    }).toThrow("useKeyboardContext must be used within KeyboardProvider");
+    }).toThrow("@diffgazer/keys hooks must be used within KeyboardProvider");
   });
 
   it("returns the resolved scope name when enabled and null when disabled", () => {

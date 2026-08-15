@@ -4,7 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
+import { ApiKeyMethodSelector } from "./method-selector";
 import { useApiKeyDialogKeyboard } from "./use-keyboard";
 
 function Subject({

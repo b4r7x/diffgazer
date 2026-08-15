@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useState } from "react";
-import type { CliColorTokens, PaletteName } from "./palettes";
-import { darkPalette, isPaletteName, lightPalette, palettes } from "./palettes";
+import type { CliColorTokens, PaletteName, TuiThemeName } from "./palettes";
+import { darkPalette, lightPalette, palettes } from "./palettes";
 
 interface CliThemeContextValue {
   tokens: CliColorTokens;
   themeName: PaletteName;
-  setTheme: (name: string) => void;
+  setTheme: (name: TuiThemeName) => void;
 }
 
 const CliThemeContext = createContext<CliThemeContextValue | null>(null);
@@ -37,25 +37,22 @@ export function detectDefaultPalette(): { name: PaletteName; tokens: CliColorTok
   return { name, tokens: name === "light" ? lightPalette : darkPalette };
 }
 
-function resolvePalette(name: string): { name: PaletteName; tokens: CliColorTokens } {
+function resolvePalette(name: TuiThemeName): { name: PaletteName; tokens: CliColorTokens } {
   if (name === "auto") {
     return detectDefaultPalette();
   }
-  if (isPaletteName(name)) {
-    return { name, tokens: palettes[name] };
-  }
-  return { name: "dark", tokens: darkPalette };
+  return { name, tokens: palettes[name] };
 }
 
 interface CliThemeProviderProps {
-  initialTheme?: string;
+  initialTheme?: TuiThemeName;
   children: ReactNode;
 }
 
 export function CliThemeProvider({ initialTheme, children }: CliThemeProviderProps) {
   const [theme, setThemeState] = useState(() => resolvePalette(initialTheme ?? "auto"));
 
-  const setTheme = (name: string) => {
+  const setTheme = (name: TuiThemeName) => {
     setThemeState(resolvePalette(name));
   };
 

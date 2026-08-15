@@ -52,7 +52,11 @@ describe("Select results live region", () => {
     expect(status).toHaveTextContent("");
 
     await user.type(getSearchInput(), "ban");
-    expect(status).toHaveTextContent("1 results");
+    expect(status).toHaveTextContent(/^1 result$/);
+
+    await user.clear(getSearchInput());
+    await user.type(getSearchInput(), "a");
+    expect(status).toHaveTextContent(/^2 results$/);
 
     await user.clear(getSearchInput());
     expect(status).toHaveTextContent("");
@@ -328,7 +332,7 @@ describe("Select unified label derivation (JSX children)", () => {
     const bananaOption = screen.getByRole("option", { name: /banana/i });
     expect(screen.getAllByRole("option")).toEqual([bananaOption]);
     expect(searchInput).toHaveAttribute("aria-activedescendant", bananaOption.id);
-    expect(screen.getByRole("status")).toHaveTextContent("1 results");
+    expect(screen.getByRole("status")).toHaveTextContent(/^1 result$/);
 
     await user.keyboard("{Enter}");
     expect(onChange).toHaveBeenCalledWith("fruit-b");

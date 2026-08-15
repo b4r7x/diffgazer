@@ -8,8 +8,7 @@ import { type ErrorStatus, errorResponse } from "./response.js";
 export type StoreHttpErrorCode =
   | StoreErrorCode
   | ConfigurationActionErrorCode
-  | ConfigServiceErrorCode
-  | typeof ErrorCode.CONFIG_NOT_FOUND;
+  | ConfigServiceErrorCode;
 
 export function storeErrorStatus(code: StoreHttpErrorCode): ErrorStatus {
   switch (code) {
@@ -25,22 +24,21 @@ export function storeErrorStatus(code: StoreHttpErrorCode): ErrorStatus {
     case "PERMISSION_ERROR":
       return 403;
     case ErrorCode.NOT_FOUND:
-    case ErrorCode.CONFIG_NOT_FOUND:
     case ErrorCode.PROVIDER_NOT_FOUND:
-    case "SECRET_NOT_FOUND":
     case "CONFIGURATION_NOT_FOUND":
       return 404;
-    case "CONCURRENCY_CONFLICT":
     case "CONFIGURATION_CONFLICT":
       return 409;
+    case "SECRETS_MIGRATION_FAILED":
+      return 503;
     case ErrorCode.INTERNAL_ERROR:
+    case "READ_ERROR":
     case "PARSE_ERROR":
     case "WRITE_ERROR":
     case "KEYRING_UNAVAILABLE":
     case "KEYRING_READ_FAILED":
     case "KEYRING_WRITE_FAILED":
     case "KEYRING_DELETE_FAILED":
-    case "SECRETS_MIGRATION_FAILED":
     case "SECRET_BINDING_FAILED":
     case "PERSIST_FAILED":
     case "ROLLBACK_FAILED":

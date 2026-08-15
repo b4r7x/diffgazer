@@ -2,6 +2,7 @@ import * as clack from "@clack/prompts";
 import figlet from "figlet";
 import bigFont from "figlet/importable-fonts/Big.js";
 import pc from "picocolors";
+import { sanitizeTerminalText } from "./sanitize-terminal.js";
 
 export class CancelError extends Error {
   constructor() {
@@ -30,36 +31,81 @@ export function showBanner(name: string): void {
 
 export function info(msg: string): void {
   if (isSilent) return;
-  console.log(`  ${msg}`);
+  console.log(`  ${sanitizeTerminalText(msg)}`);
 }
 
 export function success(msg: string): void {
   if (isSilent) return;
-  console.log(`  ${pc.green(msg)}`);
+  console.log(`  ${pc.green(sanitizeTerminalText(msg))}`);
 }
 
 export function warn(msg: string): void {
   if (isSilent) return;
-  console.warn(`  ${pc.yellow(msg)}`);
+  console.warn(`  ${pc.yellow(sanitizeTerminalText(msg))}`);
 }
 
 export function error(msg: string): void {
-  console.error(`  ${pc.red(msg)}`);
+  console.error(`  ${pc.red(sanitizeTerminalText(msg))}`);
+}
+
+function formatNestedError(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+const MAX_CAUSE_DEPTH = 8;
+
+// The last-resort printer must not fail while reporting a failure, so a cause
+// chain that loops back on itself or runs very deep is truncated instead.
+function formatCause(cause: unknown, indent = 1, seen = new WeakSet<Error>()): string {
+  const prefix = "  ".repeat(indent);
+  if (cause instanceof Error) {
+    if (indent > MAX_CAUSE_DEPTH || seen.has(cause)) return `${prefix}... (causes truncated)`;
+    seen.add(cause);
+  }
+  if (cause instanceof AggregateError) {
+    const lines = cause.message ? [`${prefix}${cause.message}`] : [];
+    for (const inner of cause.errors) {
+      lines.push(`${prefix}  - ${formatNestedError(inner)}`);
+    }
+    if (cause.cause !== undefined) {
+      lines.push(formatCause(cause.cause, indent + 1, seen));
+    }
+    return lines.join("\n");
+  }
+  if (cause instanceof Error) {
+    const lines = [`${prefix}${cause.message}`];
+    if (cause.cause !== undefined) {
+      lines.push(formatCause(cause.cause, indent + 1, seen));
+    }
+    return lines.join("\n");
+  }
+  return `${prefix}${String(cause)}`;
 }
 
 export function toErrorMessage(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
+  if (!(e instanceof Error)) return sanitizeTerminalText(String(e));
+
+  const lines = [e.message];
+  if (e instanceof AggregateError) {
+    for (const inner of e.errors) {
+      lines.push(`  - ${formatNestedError(inner)}`);
+    }
+  }
+  if (e.cause !== undefined) {
+    lines.push(formatCause(e.cause));
+  }
+  return sanitizeTerminalText(lines.join("\n"));
 }
 
 export function fileAction(action: string, filePath: string): void {
   if (isSilent) return;
-  console.log(`  ${action} ${filePath}`);
+  console.log(`  ${action} ${sanitizeTerminalText(filePath)}`);
 }
 
 export function heading(msg: string): void {
   if (isSilent) return;
   console.log();
-  console.log(`  ${pc.bold(msg)}`);
+  console.log(`  ${pc.bold(sanitizeTerminalText(msg))}`);
 }
 
 function canPrompt(): boolean {

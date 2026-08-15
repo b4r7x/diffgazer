@@ -32,24 +32,35 @@ describe("filterModels", () => {
     ]);
   });
 
-  it("filters to free tier only", () => {
+  it("filters to free tier only, excluding neutral local and ambient models", () => {
     expect(ids(filterModels(MODELS, "free", ""))).toEqual(["gpt-35", "gemini"]);
   });
 
-  it("filters to paid tier only", () => {
+  it("filters to paid tier only, excluding neutral local and ambient models", () => {
     expect(ids(filterModels(MODELS, "paid", ""))).toEqual(["gpt-4", "claude"]);
   });
 
-  it("does not classify neutral local or ambient models as free or paid", () => {
-    expect(ids(filterModels(MODELS, "free", ""))).not.toContain("ollama-local");
-    expect(ids(filterModels(MODELS, "free", ""))).not.toContain("codex-ambient");
-    expect(ids(filterModels(MODELS, "paid", ""))).not.toContain("ollama-local");
-    expect(ids(filterModels(MODELS, "paid", ""))).not.toContain("codex-ambient");
-  });
-
-  it("filters by search query against name and description", () => {
+  it("filters by search query against id, name, and description", () => {
     expect(ids(filterModels(MODELS, "all", "gpt"))).toEqual(["gpt-4", "gpt-35"]);
     expect(ids(filterModels(MODELS, "all", "anthropic"))).toEqual(["claude"]);
+    expect(
+      ids(
+        filterModels(
+          [makeModel("anthropic/claude-sonnet-4", "Claude Sonnet 4", "free", "200K context")],
+          "all",
+          "anthropic/claude-sonnet-4",
+        ),
+      ),
+    ).toEqual(["anthropic/claude-sonnet-4"]);
+    expect(
+      ids(
+        filterModels(
+          [makeModel("openai/gpt-oss-120b", "GPT OSS 120B", "free", "128K context window")],
+          "all",
+          "openai/gpt-oss-120b",
+        ),
+      ),
+    ).toEqual(["openai/gpt-oss-120b"]);
   });
 
   it("combines tier filter with search", () => {

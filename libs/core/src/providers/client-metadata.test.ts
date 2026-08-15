@@ -21,9 +21,7 @@ type TestReadinessStatus =
   | "acknowledgement-required"
   | "unsupported"
   | "skipped"
-  | "local-api-incompatible"
-  | "local-selected-model-missing"
-  | "local-cancellation-failed";
+  | "local-conformance-failed";
 
 function readiness(status: TestReadinessStatus, productId: RunnableProductId) {
   const isObservedFailure =
@@ -441,22 +439,22 @@ describe("client metadata projection", () => {
   it("preserves Qwen higher-cost gating as a safe client policy marker", () => {
     const qwen = projectClientProduct("qwen");
 
-    if (qwen.status !== "supported" || qwen.modelPolicy.kind !== "discovered-allowlist") {
+    if (qwen.modelPolicy.kind !== "discovered-allowlist") {
       throw new Error("Expected Qwen to expose an allowlist client policy");
+    }
+
+    const registryPolicy = PRODUCT_REGISTRY.qwen.modelPolicy;
+    if (registryPolicy.kind !== "discovered-allowlist") {
+      throw new Error("Expected Qwen to declare an allowlist registry policy");
     }
 
     expect(qwen.modelPolicy.higherCostModelEvidence).toEqual({
       outputLimit: "required",
       reviewConformance: "required",
     });
-
-    const { higherCostModelEvidence: _missingMarker, ...withoutMarker } = qwen.modelPolicy;
-    expect(
-      ClientProductMetadataSchema.safeParse({
-        ...qwen,
-        modelPolicy: withoutMarker,
-      }).success,
-    ).toBe(false);
+    expect(qwen.modelPolicy.higherCostModelEvidence).toEqual(
+      registryPolicy.higherCostModelEvidence,
+    );
 
     expect(
       ClientProductMetadataSchema.safeParse({
@@ -571,7 +569,6 @@ describe("client metadata projection", () => {
       "openrouter/gpt-4.1",
       "openrouter/anthropic/claude-3.7-sonnet",
       "provider/automatic",
-      "openai/gpt-4.1-mini:free",
       "openai/gpt-4.1-mini:online",
       "openai/gpt-4.1-mini/thinking",
     ]) {
@@ -584,15 +581,21 @@ describe("client metadata projection", () => {
       ).toBe(false);
     }
 
-    expect(
-      ClientMetadataPayloadSchema.safeParse({
-        ...openrouter,
-        configuration: {
-          ...openrouter.configuration,
-          selectedModelId: "anthropic/claude-3.7-sonnet",
-        },
-      }).success,
-    ).toBe(true);
+    // A pinned variant suffix is part of a downstream identity, not a routing
+    // instruction, so the client boundary carries it like any other exact pair.
+    for (const selectedModelId of [
+      "anthropic/claude-3.7-sonnet",
+      "openai/gpt-4.1-mini:free",
+      "openai/gpt-4.1-mini:thinking",
+    ]) {
+      expect(
+        ClientMetadataPayloadSchema.safeParse({
+          ...openrouter,
+          configuration: { ...openrouter.configuration, selectedModelId },
+        }).success,
+        selectedModelId,
+      ).toBe(true);
+    }
   });
 
   it.each([
@@ -748,34 +751,27 @@ describe("client metadata projection", () => {
     const hostedPayload = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[0]));
     const cliPayload = projectClientMetadata(sourceForConfiguration(CONFIGURATIONS[2]));
 
-    for (const status of [
-      "local-api-incompatible",
-      "local-selected-model-missing",
-      "local-cancellation-failed",
-    ] as const) {
-      expect(
-        ClientMetadataPayloadSchema.safeParse({
-          ...hostedPayload,
-          readiness: readiness(status, "qwen"),
-        }).success,
-      ).toBe(false);
-    }
-
     expect(
       ClientMetadataPayloadSchema.safeParse({
-        ...cliPayload,
-        readiness: readiness("local-api-incompatible", "codex-cli"),
+        ...hostedPayload,
+        readiness: readiness("local-conformance-failed", "qwen"),
       }).success,
     ).toBe(false);
     expect(
       ClientMetadataPayloadSchema.safeParse({
+        ...hostedPayload,
+        readiness: readiness("conformance-failed", "qwen"),
+      }).success,
+    ).toBe(true);
+    expect(
+      ClientMetadataPayloadSchema.safeParse({
         ...cliPayload,
-        readiness: readiness("local-cancellation-failed", "codex-cli"),
+        readiness: readiness("local-conformance-failed", "codex-cli"),
       }).success,
     ).toBe(true);
   });
 
-  it("keeps Web and Ink projection copy identical for all 13 products", () => {
+  it("projects every runnable product with its registry presentation copy", () => {
     const sources: ClientMetadataSource[] = RUNNABLE_PRODUCT_IDS.map((productId) => ({
       productId,
       configuration: null,
@@ -784,13 +780,40 @@ describe("client metadata projection", () => {
       actions: ["create"],
     }));
 
-    const webPayloads = sources.map(projectClientMetadata);
-    const inkPayloads = sources.map(projectClientMetadata);
+    const payloads = sources.map(projectClientMetadata);
 
-    expect(webPayloads).toEqual(inkPayloads);
-    expect(webPayloads.map(({ product }) => product.productId)).toEqual(RUNNABLE_PRODUCT_IDS);
-    expect(webPayloads.map(({ product }) => product.name)).toEqual(
-      inkPayloads.map(({ product }) => product.name),
+    expect(
+      payloads.map(({ product }) => ({
+        productId: product.productId,
+        transportFamily: product.transportFamily,
+        name: product.name,
+        description: product.description,
+        setupLabel: product.setupLabel,
+        setupFields: product.setupFields,
+        modelPolicyKind: product.modelPolicy.kind,
+        billing: product.billing,
+        noticeId: product.notice.id,
+        noticeVersion: product.notice.noticeVersion,
+      })),
+    ).toEqual(
+      RUNNABLE_PRODUCT_IDS.map((productId) => {
+        const registered = PRODUCT_REGISTRY[productId];
+        return {
+          productId,
+          transportFamily: registered.transportFamily,
+          name: registered.presentation.name,
+          description: registered.presentation.description,
+          setupLabel: registered.presentation.setupLabel,
+          setupFields: [...registered.configuration.fields],
+          modelPolicyKind: registered.modelPolicy.kind,
+          billing: {
+            modes: [...registered.billing.modes],
+            posture: registered.billing.posture,
+          },
+          noticeId: registered.notice.id,
+          noticeVersion: registered.notice.noticeVersion,
+        };
+      }),
     );
   });
 });

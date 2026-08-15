@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, useLayoutEffect, useRef } from "react";
 import { renderSelectableGlyph } from "@/lib/selectable-glyph";
 import { cn } from "@/lib/utils";
 import {
@@ -44,8 +44,16 @@ export interface HorizontalStepperStepProps {
 
 /** Single horizontal step (derives status from parent value) */
 export function HorizontalStepperStep({ value, children, className }: HorizontalStepperStepProps) {
-  const { variant, compact } = useHorizontalStepperContext();
+  const { variant, compact, registerStep } = useHorizontalStepperContext();
   const { status, index, total, activeIndex } = useStepInfo(value);
+  const itemRef = useRef<HTMLLIElement>(null);
+
+  useLayoutEffect(() => {
+    const item = itemRef.current;
+    if (!item) return;
+    return registerStep(value, item);
+  }, [registerStep, value]);
+
   const showConnectorBefore = index > 0;
   const isActive = status === "active";
   const distance = index - activeIndex;
@@ -73,6 +81,7 @@ export function HorizontalStepperStep({ value, children, className }: Horizontal
         </li>
       )}
       <li
+        ref={itemRef}
         aria-current={isActive ? "step" : undefined}
         data-status={status}
         className={cn(

@@ -82,6 +82,39 @@ describe("normalizeReviewStreamError", () => {
   });
 });
 
+describe("stream error redaction", () => {
+  it.each([
+    { name: "a bearer token", raw: "upstream rejected Bearer sk-live-abcdefgh1234" },
+    { name: "an API-key literal", raw: "auth failed for sk-proj-abcdefgh12345678" },
+    { name: "a home path", raw: "ENOENT: /Users/someone/.diffgazer/config.json" },
+    { name: "a correlation id", raw: "dispatch failed correlationId=8f2c1a" },
+  ])("replaces $name before it reaches the stream", ({ raw }) => {
+    const normalized = normalizeReviewStreamError(new Error(raw));
+
+    expect(normalized.message).not.toContain("Bearer");
+    expect(normalized.message).not.toContain("sk-");
+    expect(normalized.message).not.toContain("/Users/");
+    expect(normalized.message).not.toContain("correlationId");
+    expect(normalized.message).toContain("could not present this failure safely");
+  });
+
+  it("keeps an ordinary diagnostic message intact", () => {
+    expect(normalizeReviewStreamError(new Error("model returned no candidates")).message).toBe(
+      "model returned no candidates",
+    );
+  });
+
+  it("redacts an abort message carrying a raw diagnostic", () => {
+    const abort = reviewAbort(
+      "context build failed at /Users/someone/repo",
+      ReviewErrorCode.GENERATION_FAILED,
+      "context",
+    );
+
+    expect(normalizeReviewStreamError(abort).message).not.toContain("/Users/");
+  });
+});
+
 describe("reviewStreamError", () => {
   it("returns a typed error event with the provided code", () => {
     expect(reviewStreamError("msg", ReviewErrorCode.SESSION_STALE)).toEqual({
@@ -104,7 +137,6 @@ describe("isTerminalEvent", () => {
         type: "complete",
         result: { issues: [] },
         reviewId: "rid",
-        durationMs: 0,
       }),
     ).toBe(true);
     expect(

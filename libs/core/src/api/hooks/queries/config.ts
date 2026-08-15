@@ -1,58 +1,12 @@
 import { queryOptions } from "@tanstack/react-query";
 import { CatalogSelectableModelIdSchema } from "../../../catalog/schema.js";
+import { configurationFingerprint } from "../../../providers/configuration-fingerprint.js";
 import { isModelIdAllowedForProduct } from "../../../providers/product-registry.js";
 import type {
   ClientConfigurationSummary,
-  ConfigurationId,
   ConfigurationModelsResponse,
 } from "../../../schemas/config/index.js";
 import type { BoundApi } from "../../bound.js";
-
-function noticeFingerprint(notices: ClientConfigurationSummary["notices"]) {
-  return notices.map((notice) => [notice.id, notice.noticeVersion]);
-}
-
-function configurationFingerprintInput(configuration: ClientConfigurationSummary) {
-  const base = {
-    configurationId: configuration.configurationId,
-    revision: configuration.revision,
-    status: configuration.status,
-    productId: configuration.productId,
-    transportFamily: configuration.transportFamily,
-    selectedModelId: configuration.selectedModelId,
-    notices: noticeFingerprint(configuration.notices),
-    availableActions: configuration.availableActions,
-  };
-
-  if (configuration.transportFamily === "hosted-api") {
-    return {
-      ...base,
-      endpoint: configuration.endpoint,
-      region: configuration.region ?? null,
-      workspace: configuration.workspace ?? null,
-    };
-  }
-
-  if (configuration.transportFamily === "local-http") {
-    return {
-      ...base,
-      endpoint: configuration.endpoint,
-      authentication: configuration.authentication,
-      presetId: configuration.presetId ?? null,
-    };
-  }
-
-  return {
-    ...base,
-    installationId: configuration.installationId,
-  };
-}
-
-export function configurationFingerprint(configuration: ClientConfigurationSummary): string {
-  return JSON.stringify(configurationFingerprintInput(configuration));
-}
-
-export type ConfigurationFingerprint = string;
 
 export const configQueries = {
   all: () => ["config"] as const,
@@ -60,28 +14,21 @@ export const configQueries = {
   settings: (api: BoundApi) =>
     queryOptions({
       queryKey: [...configQueries.all(), "settings"] as const,
-      queryFn: () => api.getSettings(),
+      queryFn: ({ signal }) => api.getSettings(signal),
       staleTime: 30_000,
     }),
 
   init: (api: BoundApi) =>
     queryOptions({
       queryKey: [...configQueries.all(), "init"] as const,
-      queryFn: () => api.loadConfigurationInit(),
+      queryFn: ({ signal }) => api.loadConfigurationInit(signal),
       staleTime: 5 * 60_000,
     }),
 
   configurations: (api: BoundApi) =>
     queryOptions({
       queryKey: [...configQueries.all(), "configurations"] as const,
-      queryFn: () => api.listConfigurations(),
-      staleTime: 30_000,
-    }),
-
-  inspect: (api: BoundApi, configurationId: ConfigurationId) =>
-    queryOptions({
-      queryKey: [...configQueries.all(), "inspect", configurationId] as const,
-      queryFn: () => api.inspectConfiguration(configurationId),
+      queryFn: ({ signal }) => api.listConfigurations(signal),
       staleTime: 30_000,
     }),
 };
@@ -102,20 +49,16 @@ function isSelectableModelForProduct(
   );
 }
 
-export function configurationModelsQuery(
-  api: BoundApi,
-  configuration: ClientConfigurationSummary,
-  fingerprint: ConfigurationFingerprint = configurationFingerprint(configuration),
-) {
+export function configurationModelsQuery(api: BoundApi, configuration: ClientConfigurationSummary) {
   return queryOptions({
     queryKey: [
       ...configQueries.all(),
       "models",
       configuration.configurationId,
-      fingerprint,
+      configurationFingerprint(configuration),
     ] as const,
-    queryFn: async (): Promise<ConfigurationModelsResponse> => {
-      const response = await api.getConfigurationModels(configuration.configurationId);
+    queryFn: async ({ signal }): Promise<ConfigurationModelsResponse> => {
+      const response = await api.getConfigurationModels(configuration.configurationId, signal);
       if (response.status !== "passed") return response;
       return {
         ...response,

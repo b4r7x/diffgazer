@@ -1,15 +1,10 @@
 "use client";
 
-import type { Ref } from "react";
+import type { ComponentPropsWithRef } from "react";
 import { useCommandPaletteContext } from "./command-palette-context";
 
-/** Props for command palette count. */
-export interface CommandPaletteCountProps {
-  /** Additional class names merged onto the rendered element. */
-  className?: string;
-  /** Ref forwarded to the underlying element. */
-  ref?: Ref<HTMLSpanElement>;
-}
+/** Props for command palette count. The readout owns its own content. */
+export type CommandPaletteCountProps = Omit<ComponentPropsWithRef<"span">, "children">;
 
 /**
  * Bracketed position readout for the filtered list — `[3/24]` when a row is
@@ -20,13 +15,14 @@ export interface CommandPaletteCountProps {
  * without scrolling. It is `aria-hidden` on purpose: the polite live region owns
  * the announcement, so screen-reader users hear it once, not twice.
  */
-export function CommandPaletteCount({ className, ref }: CommandPaletteCountProps) {
+export function CommandPaletteCount({ className, ref, ...props }: CommandPaletteCountProps) {
   const { itemCount, highlightedPosition } = useCommandPaletteContext();
   const isEmpty = itemCount === 0;
   const position = !isEmpty && highlightedPosition !== null ? `${highlightedPosition}/` : "";
 
   return (
     <span
+      {...props}
       ref={ref}
       data-slot="command-palette-count"
       data-empty={isEmpty ? "" : undefined}

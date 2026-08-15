@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentType, LazyExoticComponent } from "react";
@@ -168,6 +166,25 @@ describe("DemoPreview stage overflow", () => {
 describe("DemoPreview import failures", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("shows retry when the demo index failed to load", async () => {
+    const onRetryLoad = vi.fn();
+    render(
+      <ThemeProvider>
+        <DemoPreview
+          demo={null}
+          loadError={new Error("demo index failed")}
+          onRetryLoad={onRetryLoad}
+          code={[{ number: 1, content: "const example = true" }]}
+          rawCode="const example = true"
+        />
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText("Preview unavailable.")).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", { name: /retry preview/i }));
+    expect(onRetryLoad).toHaveBeenCalledTimes(1);
   });
 
   it.each<PreviewFrame>([

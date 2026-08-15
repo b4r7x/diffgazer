@@ -5,7 +5,8 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts", "testing/e2e/**/*.e2e.ts"],
     pool: "forks",
-    fileParallelism: false,
+    fileParallelism: true,
+    maxWorkers: 4,
     testTimeout: 30_000,
   },
 });

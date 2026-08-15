@@ -16,9 +16,18 @@ describe("published editor schema parity", () => {
     ).toEqual(buildConfigJsonSchema());
   });
 
-  test("schema does not reject unknown keys (zod strips, it must not assert false)", () => {
+  test("schema does not reject unknown keys", () => {
     const schema = buildConfigJsonSchema();
-    expect([undefined, true]).toContain(schema.additionalProperties);
+    expect(schema.additionalProperties).not.toBe(false);
+  });
+
+  test("parsing preserves unknown keys instead of deleting them on rewrite", () => {
+    const parsed = DiffgazerAddConfigSchema.parse({
+      rsc: false,
+      customExtension: { keep: "me" },
+    });
+
+    expect(parsed.customExtension).toEqual({ keep: "me" });
   });
 });
 
@@ -30,7 +39,7 @@ describe("dgadd config CSS chunk hashes", () => {
     "abcdef01234567890",
   ])("rejects non-canonical hash %s", (hash) => {
     const result = DiffgazerAddConfigSchema.safeParse({
-      installedComponents: {
+      installedItems: {
         "ui/dialog": { installedAt: "2026-07-15T00:00:00.000Z", cssChunks: [hash] },
       },
     });
@@ -40,7 +49,7 @@ describe("dgadd config CSS chunk hashes", () => {
 
   test("accepts exactly sixteen lowercase hexadecimal characters", () => {
     const result = DiffgazerAddConfigSchema.safeParse({
-      installedComponents: {
+      installedItems: {
         "ui/dialog": {
           installedAt: "2026-07-15T00:00:00.000Z",
           cssChunks: ["abcdef0123456789"],

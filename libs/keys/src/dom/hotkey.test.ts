@@ -1,15 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { canonicalizeHotkey, matchesHotkey, parseHotkey } from "./hotkey.js";
+import { canonicalizeHotkey, eventMatchesParsedHotkey, parseHotkey } from "./hotkey.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
-
-// Unknown-modifier hotkeys are rejected by the compile-time ValidateHotkey type,
-// so the runtime reject path is exercised through a string-typed variable
-// (the documented dynamic escape hatch).
-const dynamicHotkey = (hotkey: string): string => hotkey;
 
 function makeKeyEvent(
   key: string,
@@ -24,7 +19,9 @@ function makeKeyEvent(
   });
 }
 
-describe("matchesHotkey", () => {
+// The provider parses once at registration and matches the pre-parsed form at
+// dispatch time (providers/keyboard.tsx), so the table below drives that pair.
+describe("parseHotkey + eventMatchesParsedHotkey", () => {
   it.each([
     {
       description: "matches a bare key by name",
@@ -69,7 +66,7 @@ describe("matchesHotkey", () => {
       expected: false,
     },
   ])("$description (event vs hotkey '$hotkey') -> $expected", ({ event, hotkey, expected }) => {
-    expect(matchesHotkey(event, hotkey)).toBe(expected);
+    expect(eventMatchesParsedHotkey(event, parseHotkey(hotkey))).toBe(expected);
   });
 
   it.each([
@@ -82,7 +79,7 @@ describe("matchesHotkey", () => {
     { event: makeKeyEvent("!", { shift: true }), hotkey: "shift+exclamation" },
     { event: makeKeyEvent("+"), hotkey: "+" },
   ])("resolves alias '$hotkey' to its canonical key", ({ event, hotkey }) => {
-    expect(matchesHotkey(event, hotkey)).toBe(true);
+    expect(eventMatchesParsedHotkey(event, parseHotkey(hotkey))).toBe(true);
   });
 
   it("resolves 'mod' to meta on Mac (lazy isMac)", async () => {
@@ -91,52 +88,62 @@ describe("matchesHotkey", () => {
 
     // Re-import to get a fresh module with reset _isMac cache
     vi.resetModules();
-    const { matchesHotkey: freshMatchesHotkey } = await import("./hotkey.js");
+    const freshHotkey = await import("./hotkey.js");
+    const parsed = freshHotkey.parseHotkey("mod+k");
 
-    expect(freshMatchesHotkey(makeKeyEvent("k", { meta: true }), "mod+k")).toBe(true);
-    expect(freshMatchesHotkey(makeKeyEvent("k", { ctrl: true }), "mod+k")).toBe(false);
+    expect(freshHotkey.eventMatchesParsedHotkey(makeKeyEvent("k", { meta: true }), parsed)).toBe(
+      true,
+    );
+    expect(freshHotkey.eventMatchesParsedHotkey(makeKeyEvent("k", { ctrl: true }), parsed)).toBe(
+      false,
+    );
   });
 
   it("resolves 'mod' to ctrl on non-Mac and ignores meta", () => {
     // In jsdom, navigator.userAgent does not contain "Mac"
     // so mod should resolve to ctrl
-    expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), "mod+k")).toBe(true);
-    expect(matchesHotkey(makeKeyEvent("k", { meta: true }), "mod+k")).toBe(false);
+    const parsed = parseHotkey("mod+k");
+    expect(eventMatchesParsedHotkey(makeKeyEvent("k", { ctrl: true }), parsed)).toBe(true);
+    expect(eventMatchesParsedHotkey(makeKeyEvent("k", { meta: true }), parsed)).toBe(false);
   });
 
   it("does not match a 'mod' hotkey when no modifier is held", () => {
-    expect(matchesHotkey(makeKeyEvent("k"), "mod+k")).toBe(false);
+    expect(eventMatchesParsedHotkey(makeKeyEvent("k"), parseHotkey("mod+k"))).toBe(false);
   });
 
   describe("unknown modifier validation", () => {
     it("returns false for an unknown modifier", () => {
-      expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), dynamicHotkey("Hyper+k"))).toBe(
-        false,
-      );
+      expect(
+        eventMatchesParsedHotkey(makeKeyEvent("k", { ctrl: true }), parseHotkey("Hyper+k")),
+      ).toBe(false);
     });
 
     it("returns false for partially valid modifiers when one is unknown", () => {
-      expect(matchesHotkey(makeKeyEvent("k", { ctrl: true }), dynamicHotkey("Ctrl+Hyper+k"))).toBe(
-        false,
-      );
+      expect(
+        eventMatchesParsedHotkey(makeKeyEvent("k", { ctrl: true }), parseHotkey("Ctrl+Hyper+k")),
+      ).toBe(false);
     });
   });
 
   describe("uppercase letter shift matching", () => {
     it("matches uppercase G when shift is held", () => {
-      expect(matchesHotkey(makeKeyEvent("G", { shift: true }), "G")).toBe(true);
+      expect(eventMatchesParsedHotkey(makeKeyEvent("G", { shift: true }), parseHotkey("G"))).toBe(
+        true,
+      );
     });
 
     it("matches explicit shift+g when shift is held", () => {
-      expect(matchesHotkey(makeKeyEvent("G", { shift: true }), "shift+g")).toBe(true);
+      expect(
+        eventMatchesParsedHotkey(makeKeyEvent("G", { shift: true }), parseHotkey("shift+g")),
+      ).toBe(true);
     });
 
     it("does not match uppercase G hotkey without shift", () => {
-      expect(matchesHotkey(makeKeyEvent("g"), "G")).toBe(false);
+      expect(eventMatchesParsedHotkey(makeKeyEvent("g"), parseHotkey("G"))).toBe(false);
     });
 
     it("matches lowercase g without shift", () => {
-      expect(matchesHotkey(makeKeyEvent("g"), "g")).toBe(true);
+      expect(eventMatchesParsedHotkey(makeKeyEvent("g"), parseHotkey("g"))).toBe(true);
     });
   });
 });
@@ -198,10 +205,13 @@ describe("parseHotkey", () => {
     expect(parsed.meta).toBe(false);
   });
 
-  it("produces a parse that matchesHotkey and the canonical serialization agree on", () => {
+  it("produces a parse that dispatch matching and the canonical serialization agree on", () => {
     expect(canonicalizeHotkey("Ctrl+Shift+z")).toBe("ctrl+shift+z");
-    expect(matchesHotkey(makeKeyEvent("z", { ctrl: true, shift: true }), "Ctrl+Shift+z")).toBe(
-      true,
-    );
+    expect(
+      eventMatchesParsedHotkey(
+        makeKeyEvent("z", { ctrl: true, shift: true }),
+        parseHotkey("Ctrl+Shift+z"),
+      ),
+    ).toBe(true);
   });
 });

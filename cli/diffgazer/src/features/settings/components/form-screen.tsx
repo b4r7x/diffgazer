@@ -1,6 +1,6 @@
 import { guardQueryState, useSettings } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { sanitizeTerminalText } from "@diffgazer/core/review";
+import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import type { ReactElement, ReactNode } from "react";
@@ -15,7 +15,7 @@ import { isCompactHeight } from "../../../lib/breakpoints";
 import { useTheme } from "../../../theme/provider";
 import { getSettingsFooter, useSettingsZone } from "../hooks/use-settings-zone";
 
-export interface SettingsFormBody {
+interface SettingsFormBody {
   isListActive: boolean;
   enterButtons: () => void;
   isCompact: boolean;
@@ -53,7 +53,7 @@ export function SettingsFormScreen({
   const { columns, rows } = useTerminalDimensions();
   const { tokens } = useTheme();
   const { goBack } = useNavigation();
-  useBackHandler();
+  useBackHandler({ isActive: !saving });
 
   const settingsQuery = useSettings();
   const { isListActive, isButtonActive, zone, enterButtons } = useSettingsZone({

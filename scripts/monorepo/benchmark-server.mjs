@@ -32,7 +32,7 @@ import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:f
 import { request as httpRequest } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { performance } from "node:perf_hooks";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { checkSlo, summarizeStatuses } from "./lib/benchmark-slo.mjs";
@@ -227,6 +227,19 @@ async function runBenchmark({ shutdownToken }) {
   return [...functionalFailures, ...(strict ? latencyBreaches : [])];
 }
 
+// The benchmark boots the server in-process, so `process.env.DIFFGAZER_HOME` is the only
+// thing standing between 1000+ authenticated config-store requests and the developer's real
+// `~/.diffgazer`. Fail loudly before the boot if the fixture ever resolves outside the OS
+// temp directory. Mirrors `assertTempHome` in cli/server's test support, inlined because
+// scripts/ must not import across that package boundary.
+function assertTempHome(home) {
+  const tempRoot = realpathSync.native(tmpdir());
+  const resolved = realpathSync.native(home);
+  if (resolved !== tempRoot && !resolved.startsWith(tempRoot + sep)) {
+    throw new Error(`Benchmark DIFFGAZER_HOME must resolve under ${tempRoot}, got ${resolved}`);
+  }
+}
+
 export async function main(benchmarkRunner = runBenchmark) {
   const fixtureHome = mkdtempSync(join(tmpdir(), "diffgazer-bench-home-"));
   const fixtureProject = realpathSync(mkdtempSync(join(tmpdir(), "diffgazer-bench-project-")));
@@ -234,6 +247,7 @@ export async function main(benchmarkRunner = runBenchmark) {
 
   mkdirSync(join(fixtureProject, ".git"), { recursive: true });
 
+  assertTempHome(fixtureHome);
   process.env.DIFFGAZER_HOME = fixtureHome;
   process.env.DIFFGAZER_PROJECT_ROOT = fixtureProject;
   process.env.DIFFGAZER_SHUTDOWN_TOKEN = shutdownToken;
@@ -248,6 +262,10 @@ export async function main(benchmarkRunner = runBenchmark) {
     }
     console.log("OK: server benchmark functional checks passed");
   } finally {
+    // `runBenchmark` closes and awaits the in-process server in its own `finally`, so no
+    // request work survives this point. The fixture env vars are deliberately left in place:
+    // `paths.ts` re-reads DIFFGAZER_HOME per call, so clearing it here would re-point any
+    // still-draining store write at the real `~/.diffgazer`.
     rmSync(fixtureHome, { recursive: true, force: true });
     rmSync(fixtureProject, { recursive: true, force: true });
   }

@@ -1,6 +1,9 @@
-import { BILLING_TIER_BADGES, getBillingTier } from "@diffgazer/core/providers";
+import {
+  BILLING_TIER_BADGES,
+  getBillingTier,
+  SELECTABLE_PRODUCTS,
+} from "@diffgazer/core/providers";
 import type { RunnableProductId } from "@diffgazer/core/schemas/config";
-import { SELECTABLE_PRODUCTS } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";

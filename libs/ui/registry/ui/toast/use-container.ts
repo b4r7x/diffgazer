@@ -36,16 +36,15 @@ export function useToastContainer(
     dismiss();
   };
 
-  const hasToasts = toasts.length > 0;
+  const toastCount = toasts.length;
+  const hasToasts = toastCount > 0;
   useEscapeKey(handleEscape, enabled && hasToasts, { priority: 0, ref: containerRef });
 
-  // Re-derives the pause causes from live conditions every time the list goes
-  // from empty to non-empty. The store resets its pause state once the last
-  // toast is removed, and the region stays mounted, so hover/focus/hidden-tab
-  // conditions that outlive the empty gap would otherwise never re-pause and
-  // the next toast would auto-dismiss under them (WCAG 2.2.1).
+  // Re-derive the pause causes whenever the visible stack changes. Removing a
+  // focused toast drops activeElement to body without a blur event, so a
+  // stale "focus" pause must be cleared even when siblings remain visible.
   useEffect(() => {
-    if (!enabled || !hasToasts) return;
+    if (!enabled || toastCount === 0) return;
     const node = containerRef.current;
     if (!node) return;
     const doc = node.ownerDocument;
@@ -66,5 +65,5 @@ export function useToastContainer(
       resume("focus");
       resume("hover");
     };
-  }, [containerRef, enabled, hasToasts]);
+  }, [containerRef, enabled, toastCount]);
 }

@@ -1,6 +1,8 @@
 import { requireValue } from "@diffgazer/core/testing/assertions";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { requireElement } from "../../testing/assertions";
@@ -11,7 +13,8 @@ function renderStepper(props: Partial<StepperProps> = {}) {
     <Stepper {...props}>
       <Stepper.Step stepId="s1" status="completed">
         <Stepper.Trigger>Step 1</Stepper.Trigger>
-        <Stepper.Content>Content 1</Stepper.Content>
+        {/* region: opt in on one step so the panel is reachable by role in assertions. */}
+        <Stepper.Content region>Content 1</Stepper.Content>
       </Stepper.Step>
       <Stepper.Step stepId="s2" status="active">
         <Stepper.Trigger>Step 2</Stepper.Trigger>
@@ -213,6 +216,32 @@ describe("Stepper", () => {
   });
 });
 
+describe("Stepper indicator glyphs", () => {
+  it("keeps a decorative glyph out of the trigger accessible name", () => {
+    render(
+      <Stepper variant="bullet">
+        <Stepper.Step stepId="s1" status="pending">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    expect(screen.getByRole("button")).toHaveAccessibleName("Upcoming:Step 1");
+  });
+
+  it("keeps the tag variant glyph in the accessible name", () => {
+    render(
+      <Stepper variant="tag">
+        <Stepper.Step stepId="s1" status="pending">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    );
+
+    expect(screen.getByRole("button")).toHaveAccessibleName("Upcoming:WAITStep 1");
+  });
+});
+
 describe("Stepper trigger touch target", () => {
   // Public styling contract exception (fix-spec-b1 NA-02, Strategy T2+T3): jsdom cannot
   // compute layout, so the hit-area recipe tokens are asserted on the class attribute.
@@ -227,5 +256,35 @@ describe("Stepper trigger touch target", () => {
       "pointer-coarse:min-h-11",
     );
     expect(trigger).not.toHaveClass("p-0");
+  });
+});
+
+describe("Stepper server-rendered seed", () => {
+  it("seeds a tab stop through a consumer wrapper before effects register steps", () => {
+    function StepGroup({ children }: { children: ReactNode }) {
+      return <>{children}</>;
+    }
+
+    const markup = renderToString(
+      <Stepper>
+        <StepGroup>
+          <Stepper.Step stepId="s1" status="completed">
+            <Stepper.Trigger>Step 1</Stepper.Trigger>
+          </Stepper.Step>
+          <Stepper.Step stepId="s2" status="active">
+            <Stepper.Trigger>Step 2</Stepper.Trigger>
+          </Stepper.Step>
+        </StepGroup>
+      </Stepper>,
+    );
+
+    const container = document.createElement("div");
+    container.innerHTML = markup;
+    const triggers = within(container).getAllByRole("button", { hidden: true });
+    const tabbable = triggers.filter((trigger) => trigger.getAttribute("tabindex") === "0");
+
+    expect(triggers).toHaveLength(2);
+    expect(tabbable).toHaveLength(1);
+    expect(tabbable[0]).toHaveTextContent("Step 2");
   });
 });

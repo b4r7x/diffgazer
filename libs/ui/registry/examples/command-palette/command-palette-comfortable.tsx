@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { CommandPalette } from "@/components/ui/command-palette";
 
 function SearchIcon() {
@@ -23,33 +25,42 @@ function SearchIcon() {
 }
 
 export default function CommandPaletteComfortable() {
+  const [open, setOpen] = useState(true);
+
   return (
-    <CommandPalette open>
-      <CommandPalette.Content
-        modal={false}
-        label="Comfortable palette"
-        frame="card"
-        density="comfortable"
-      >
-        <CommandPalette.Input
-          placeholder="Search commands, files, settings…"
-          prefix={<SearchIcon />}
-        />
-        <CommandPalette.List>
-          <CommandPalette.Empty>No matching commands.</CommandPalette.Empty>
-          <CommandPalette.Group heading="Workspace">
-            <CommandPalette.Item id="search" value="Search files">
-              Search files
-            </CommandPalette.Item>
-            <CommandPalette.Item id="branch" value="Switch branch" shortcut="⌘B">
-              Switch branch
-            </CommandPalette.Item>
-            <CommandPalette.Item id="commits" value="View commits">
-              View commits
-            </CommandPalette.Item>
-          </CommandPalette.Group>
-        </CommandPalette.List>
-      </CommandPalette.Content>
-    </CommandPalette>
+    <>
+      {!open ? (
+        <Button type="button" onClick={() => setOpen(true)}>
+          Show palette
+        </Button>
+      ) : null}
+      <CommandPalette open={open} onOpenChange={setOpen}>
+        <CommandPalette.Content
+          modal={false}
+          label="Comfortable palette"
+          frame="card"
+          density="comfortable"
+        >
+          <CommandPalette.Input
+            placeholder="Search commands, files, settings…"
+            prefix={<SearchIcon />}
+          />
+          <CommandPalette.List>
+            <CommandPalette.Empty>No matching commands.</CommandPalette.Empty>
+            <CommandPalette.Group heading="Workspace">
+              <CommandPalette.Item id="search" value="Search files">
+                Search files
+              </CommandPalette.Item>
+              <CommandPalette.Item id="branch" value="Switch branch" shortcut="⌘B">
+                Switch branch
+              </CommandPalette.Item>
+              <CommandPalette.Item id="commits" value="View commits">
+                View commits
+              </CommandPalette.Item>
+            </CommandPalette.Group>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>
+    </>
   );
 }

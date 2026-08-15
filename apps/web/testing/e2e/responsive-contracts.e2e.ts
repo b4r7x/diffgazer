@@ -26,6 +26,7 @@ async function mockOnboardingApi(page: Page) {
       json: {
         schemaVersion: 2,
         configurations: ONBOARDING_E2E_INIT.configurations,
+        unrecognizedConfigurations: ONBOARDING_E2E_INIT.unrecognizedConfigurations,
         selectedConfigurationId: ONBOARDING_E2E_INIT.selectedConfigurationId,
       },
     }),
@@ -190,7 +191,7 @@ test("provider panes and controls adapt to the rendered viewport", async ({ page
 test("the rendered app shell consumes nonzero safe-area insets", async ({ page }, testInfo) => {
   await emulateSafeArea(page);
   await mockProviderApi(page);
-  await page.goto("/testing/fixtures/results-layout.html?view=shell");
+  await page.goto("/testing/fixtures/app-fixture.html?view=shell");
 
   const shell = page.locator('[data-layout="app-shell"]');
   await expect(shell).toBeVisible();
@@ -241,7 +242,7 @@ test("toast edges and coarse-pointer relocation use compiled positioning styles"
 }, testInfo) => {
   await emulateSafeArea(page);
   const position = testInfo.project.name === "mobile-chromium" ? "bottom-right" : "top-left";
-  await page.goto(`/testing/fixtures/results-layout.html?view=toast&position=${position}`);
+  await page.goto(`/testing/fixtures/app-fixture.html?view=toast&position=${position}`);
   await page.getByRole("button", { name: "Show notification" }).click();
 
   const region = page.getByRole("region", { name: "Notifications" });
@@ -272,7 +273,7 @@ test("toast edges and coarse-pointer relocation use compiled positioning styles"
     expect(bounds?.y).toBe(40);
     expect(styles.flexDirection).toBe("column");
 
-    await page.goto("/testing/fixtures/results-layout.html?view=toast&position=bottom-right");
+    await page.goto("/testing/fixtures/app-fixture.html?view=toast&position=bottom-right");
     await page.getByRole("button", { name: "Show notification" }).click();
     const bottomRegion = page.getByRole("region", { name: "Notifications" });
     await expect(bottomRegion.getByRole("status")).toBeVisible();
@@ -288,7 +289,7 @@ test("toast edges and coarse-pointer relocation use compiled positioning styles"
 });
 
 test("typing in the providers search keeps the layout stable", async ({ page }) => {
-  await page.goto("/testing/fixtures/results-layout.html?view=providers");
+  await page.goto("/testing/fixtures/app-fixture.html?view=providers");
   const search = page.locator('[data-slot="search-input"]').first();
   await expect(search).toBeVisible();
   const filters = page.getByRole("radiogroup").or(page.getByRole("group")).first();
@@ -320,7 +321,7 @@ for (const size of sweepViewports) {
     }) => {
       await mockProviderApi(page);
       await page.setViewportSize(size);
-      await page.goto(`/testing/fixtures/results-layout.html?view=${view}`);
+      await page.goto(`/testing/fixtures/app-fixture.html?view=${view}`);
       await page.waitForFunction(() => {
         const root = document.getElementById("root");
         if (!root) return false;
@@ -345,7 +346,7 @@ for (const size of sweepViewports) {
 
 test("the live providers empty-state stays contained by its scroll parent", async ({ page }) => {
   await mockProviderApi(page);
-  await page.goto("/testing/fixtures/results-layout.html?view=providers");
+  await page.goto("/testing/fixtures/app-fixture.html?view=providers");
   await expect(page.getByRole("option", { name: /Google Gemini/ })).toBeVisible();
 
   const liveEmptyState = page.locator('[data-slot="empty-state"][role="status"]');
@@ -366,7 +367,7 @@ test("the footer never leaves a contentless strip inside the mobile viewport", a
 }, testInfo) => {
   await mockProviderApi(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/testing/fixtures/results-layout.html?view=shell");
+  await page.goto("/testing/fixtures/app-fixture.html?view=shell");
   await expect(page.locator('[data-layout="app-shell"]')).toBeVisible();
 
   const footer = page.locator("footer");
@@ -391,7 +392,7 @@ test("the fine-pointer footer legend stays one scrollable row at narrow widths",
   );
   await mockProviderApi(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/testing/fixtures/results-layout.html?view=shell&legend=long");
+  await page.goto("/testing/fixtures/app-fixture.html?view=shell&legend=long");
 
   const footer = page.locator("footer");
   await expect(footer).toBeVisible();
@@ -421,10 +422,45 @@ test("the fine-pointer footer legend stays one scrollable row at narrow widths",
   expect(measure.lastText.length).toBeGreaterThan(0);
 });
 
+test("help leads with touch gestures on coarse pointers and hides them on fine ones", async ({
+  page,
+}, testInfo) => {
+  await mockProviderApi(page);
+  await page.goto("/help");
+
+  const gestures = page.getByRole("heading", { name: /touch gestures/i });
+  const shortcuts = page.getByRole("heading", { name: /keyboard shortcuts/i });
+  await expect(shortcuts).toBeVisible();
+
+  if (testInfo.project.name === "mobile-chromium") {
+    // Coarse pointer: the gesture list leads, in DOM order, so the reading
+    // sequence matches the visual one (WCAG 1.3.2).
+    await expect(gestures).toBeVisible();
+    const gesturesBeforeShortcuts = await page.evaluate(() => {
+      const headings = Array.from(document.querySelectorAll("h2"));
+      const gesturesHeading = headings.find((h) => /touch gestures/i.test(h.textContent ?? ""));
+      const shortcutsHeading = headings.find((h) =>
+        /keyboard shortcuts/i.test(h.textContent ?? ""),
+      );
+      if (!gesturesHeading || !shortcutsHeading) return null;
+      return Boolean(
+        gesturesHeading.compareDocumentPosition(shortcutsHeading) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    });
+    expect(gesturesBeforeShortcuts).toBe(true);
+  } else {
+    // Fine pointer: display:none drops the section from the accessibility tree,
+    // leaving the shortcut table first in both the reading and visual orders.
+    await expect(gestures).toBeHidden();
+    await expect(page.getByRole("list", { name: /touch gestures/i })).toBeHidden();
+  }
+});
+
 test("the ascii wordmark scales to fit narrow viewports", async ({ page }) => {
   await mockProviderApi(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/testing/fixtures/results-layout.html?view=shell");
+  await page.goto("/testing/fixtures/app-fixture.html?view=shell");
 
   const logo = page.getByRole("img", { name: "diffgazer" });
   await expect(logo).toBeVisible();
@@ -472,7 +508,7 @@ test("touch handlers do not hijack or reset the results list scroll position", a
     "coarse-pointer scroll symmetry is the touch-device contract",
   );
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/testing/fixtures/results-layout.html?view=results");
+  await page.goto("/testing/fixtures/app-fixture.html?view=results");
 
   const scroller = page.locator("[data-list-body]");
   await expect(scroller).toBeVisible();
@@ -526,7 +562,7 @@ test("the stacked providers view owns exactly one scroller and reaches the detai
   );
   await mockProviderApi(page);
   await page.setViewportSize({ width: 390, height: 560 });
-  await page.goto("/testing/fixtures/results-layout.html?view=providers");
+  await page.goto("/testing/fixtures/app-fixture.html?view=providers");
 
   const listPane = page.locator('[data-layout-pane="provider-list"]');
   await expect(listPane).toBeVisible();
@@ -572,7 +608,7 @@ test("the stacked providers view owns exactly one scroller and reaches the detai
 
 test("the review progress screen stacks into the page scroller on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/testing/fixtures/results-layout.html?view=progress");
+  await page.goto("/testing/fixtures/app-fixture.html?view=progress");
 
   const logPanel = page.locator('[data-pane="log"]');
   await expect(logPanel).toBeVisible();

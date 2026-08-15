@@ -42,7 +42,7 @@ export const highContrastPalette: Palette = {
   statusPending: "#b3b3b3",
 };
 
-export const PALETTE_NAMES = ["dark", "light", "high-contrast"] as const;
+const PALETTE_NAMES = ["dark", "light", "high-contrast"] as const;
 export type PaletteName = (typeof PALETTE_NAMES)[number];
 
 export const TUI_THEME_NAMES = ["auto", ...PALETTE_NAMES] as const;
@@ -54,7 +54,7 @@ export const palettes = {
   "high-contrast": highContrastPalette,
 } satisfies Record<PaletteName, Palette>;
 
-export function isPaletteName(name: string): name is PaletteName {
+function isPaletteName(name: string): name is PaletteName {
   return Object.hasOwn(palettes, name);
 }
 

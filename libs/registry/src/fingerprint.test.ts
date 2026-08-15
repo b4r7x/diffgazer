@@ -22,10 +22,12 @@ function writeText(root: string, relPath: string, content: string): void {
 function expectedInputsFingerprint(entries: Array<[relPath: string, content: string]>): string {
   const hash = createHash("sha256");
   for (const [relPath, content] of entries) {
-    hash.update(relPath);
-    hash.update("\n");
-    hash.update(content);
-    hash.update("\n");
+    const path = Buffer.from(relPath, "utf-8");
+    const body = Buffer.from(content, "utf-8");
+    hash.update(`${path.byteLength}:`);
+    hash.update(path);
+    hash.update(`${body.byteLength}:`);
+    hash.update(body);
   }
   return hash.digest("hex");
 }
@@ -43,6 +45,18 @@ describe("computeInputsFingerprint", () => {
 
     expect(computeInputsFingerprint(root, ["input"])).toBe(
       expectedInputsFingerprint([["input/nested/file.txt", "hello"]]),
+    );
+  });
+
+  it("distinguishes a tree whose file content spells out another record", () => {
+    const impersonating = createTempRoot();
+    writeText(impersonating, "input/a.txt", "\ninput/b.txt\nhello");
+    const genuine = createTempRoot();
+    writeText(genuine, "input/a.txt", "");
+    writeText(genuine, "input/b.txt", "hello");
+
+    expect(computeInputsFingerprint(impersonating, ["input"])).not.toBe(
+      computeInputsFingerprint(genuine, ["input"]),
     );
   });
 

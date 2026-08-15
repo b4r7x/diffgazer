@@ -39,7 +39,7 @@ export default function UseNavigationTabs() {
         role="tablist"
         aria-label="Settings"
         onKeyDown={onKeyDown}
-        className="flex border-b border-border focus:outline-none"
+        style={{ display: "flex", borderBottom: "1px solid currentColor" }}
       >
         {tabs.map((tab) => (
           <button
@@ -51,11 +51,14 @@ export default function UseNavigationTabs() {
             aria-selected={isHighlighted(tab.id)}
             aria-controls={`panel-${tab.id}`}
             tabIndex={isHighlighted(tab.id) ? 0 : -1}
-            className={`px-4 py-2 text-sm cursor-pointer ${
-              isHighlighted(tab.id)
-                ? "border-b-2 border-foreground text-foreground font-bold"
-                : "text-muted-foreground"
-            }`}
+            style={{
+              padding: "8px 16px",
+              cursor: "pointer",
+              fontWeight: isHighlighted(tab.id) ? 700 : 400,
+              borderBottom: isHighlighted(tab.id)
+                ? "2px solid currentColor"
+                : "2px solid transparent",
+            }}
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}
@@ -66,7 +69,7 @@ export default function UseNavigationTabs() {
         id={`panel-${activeTab}`}
         role="tabpanel"
         aria-labelledby={`tab-${activeTab}`}
-        className="p-4 text-sm text-muted-foreground"
+        style={{ padding: 16 }}
       >
         {activeContent?.content}
       </div>

@@ -6,7 +6,7 @@ export interface ReviewEmptyCopy {
   description?: string;
 }
 
-export const DETAILS_EMPTY_COPY = {
+const DETAILS_EMPTY_COPY = {
   "no-issues": {
     title: "No issues in this review",
     description: "This analysis passed without issues.",
@@ -46,7 +46,7 @@ export const NO_CHANGES_COPY = {
   },
 } as const satisfies Record<ReviewMode, ReviewNoChangesCopy>;
 
-export function getAlternateReviewMode(mode: ReviewMode): ReviewMode {
+export function getAlternateReviewMode(mode: ReviewMode): Exclude<ReviewMode, "files"> {
   return mode === "unstaged" ? "staged" : "unstaged";
 }
 

@@ -1,8 +1,4 @@
-import {
-  isSecretsStorage,
-  SECRETS_STORAGE_OPTIONS,
-  type SecretsStorage,
-} from "@diffgazer/core/schemas/config";
+import { SECRETS_STORAGE_OPTIONS, type SecretsStorage } from "@diffgazer/core/schemas/config";
 import type { ReactElement } from "react";
 import { RadioGroup } from "../ui/radio";
 
@@ -22,9 +18,7 @@ export function StorageSelector({
   return (
     <RadioGroup
       value={value ?? undefined}
-      onChange={(nextValue) => {
-        if (isSecretsStorage(nextValue)) onChange?.(nextValue);
-      }}
+      onChange={(nextValue) => onChange?.(nextValue)}
       isActive={isActive}
       wrap={!onDownBoundary}
       onNavigationBoundaryReached={(direction) => {

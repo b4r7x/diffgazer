@@ -5,7 +5,7 @@ import {
   type ReviewEvent,
   reviewReducer,
 } from "@diffgazer/core/review";
-import type { ContextInfo } from "@diffgazer/core/schemas/presentation";
+import type { HomeContextInfo } from "@diffgazer/core/schemas/presentation";
 import {
   groupShortcutsByContext,
   HELP_SHORTCUTS,
@@ -65,6 +65,7 @@ type ShortcutRow = { key: string; label: string };
 const WEB_SHORTCUTS: Shortcut[] = [
   ...HELP_SHORTCUTS,
   { key: "h", label: "Open History", context: "global" },
+  { key: "o", label: "Open Last Run", context: "home" },
 ];
 
 // The screen renders the canonical table grouped by context, so the expected
@@ -171,6 +172,8 @@ function ReviewContract({
       ],
     }),
     activeTab,
+    // What core reports for this fixture: a fix plan, but no trace and no patch.
+    availableTabs: ["details", "explain"],
     detailsScrollRef,
     moveTab: () => "moved",
     scrollDetails: onScroll,
@@ -185,7 +188,7 @@ function ReviewContract({
   return <output>{`${activeTab}:${String(keyboard.focusedStepIndex)}`}</output>;
 }
 
-const HOME_CONTEXT: ContextInfo = {
+const HOME_CONTEXT: HomeContextInfo = {
   providerName: "openrouter",
   providerModel: "openrouter/test-model",
   trustedDir: "/repo",
@@ -198,7 +201,6 @@ function buildHomeProps(
     context: HOME_CONTEXT,
     isTrusted: true,
     needsTrust: false,
-    projectId: "project-1",
     repoRoot: "/repo",
     resumableSession: null,
     highlighted: null,
@@ -242,17 +244,17 @@ function rowId(row: ShortcutRow): string {
   return `${row.key} → ${row.label}`;
 }
 
-function renderGlobalHome() {
+function renderGlobalHome(overrides: Partial<HomePagePresentationProps> = {}) {
+  const props = buildHomeProps({ navigate: mockNavigate, shutdown: mockShutdown, ...overrides });
   render(
     <FooterProvider>
       <KeyboardProvider>
         <GlobalShortcuts />
-        <HomePagePresentation
-          {...buildHomeProps({ navigate: mockNavigate, shutdown: mockShutdown })}
-        />
+        <HomePagePresentation {...props} />
       </KeyboardProvider>
     </FooterProvider>,
   );
+  return props;
 }
 
 function renderActivityLog() {
@@ -408,6 +410,42 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
     renderGlobalHome();
     await user.keyboard("h");
     expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/history" }));
+  },
+
+  "r → Review Unstaged": async () => {
+    const user = userEvent.setup();
+    const { createReview } = renderGlobalHome();
+    await user.keyboard("r");
+    await waitFor(() => expect(createReview).toHaveBeenCalledWith({ mode: "unstaged" }));
+  },
+
+  "R → Review Staged": async () => {
+    const user = userEvent.setup();
+    const { createReview } = renderGlobalHome();
+    await user.keyboard("{Shift>}R{/Shift}");
+    await waitFor(() => expect(createReview).toHaveBeenCalledWith({ mode: "staged" }));
+  },
+
+  "l → Resume Last Review": async () => {
+    const user = userEvent.setup();
+    renderGlobalHome({ resumableSession: { reviewId: "review-9", mode: "unstaged" } });
+    await user.keyboard("l");
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({ params: { reviewId: "review-9" } }),
+      ),
+    );
+  },
+
+  "o → Open Last Run": async () => {
+    const user = userEvent.setup();
+    renderGlobalHome({ context: { ...HOME_CONTEXT, lastRunId: "review-7" } });
+    await user.keyboard("o");
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({ params: { reviewId: "review-7" } }),
+      ),
+    );
   },
 
   "/ → Search Runs": async () => {

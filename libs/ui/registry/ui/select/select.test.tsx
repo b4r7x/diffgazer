@@ -357,6 +357,60 @@ describe("Select controlled state", () => {
     expect(bananaOption).not.toHaveAttribute("data-highlighted");
   });
 
+  it("clears the controlled highlight whether the select or the parent closes it", async () => {
+    const user = userEvent.setup();
+    const onHighlightChange = vi.fn();
+
+    function ControlledSelect() {
+      const [open, setOpen] = useState(false);
+      const [highlighted, setHighlighted] = useState<string | null>(null);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(false)}>
+            Close from parent
+          </button>
+          <Select
+            variant="card"
+            open={open}
+            onOpenChange={setOpen}
+            highlighted={highlighted}
+            onHighlightChange={(next) => {
+              onHighlightChange(next);
+              setHighlighted(next);
+            }}
+          >
+            <Select.Trigger>
+              <Select.Value placeholder={PICK_FRUIT} />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="apple">Apple</Select.Item>
+              <Select.Item value="banana">Banana</Select.Item>
+            </Select.Content>
+          </Select>
+        </>
+      );
+    }
+
+    render(<ControlledSelect />);
+
+    await user.click(getSelectTrigger());
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() =>
+      expect(screen.getByRole("option", { name: /banana/i })).toHaveAttribute("data-highlighted"),
+    );
+    onHighlightChange.mockClear();
+
+    await user.click(screen.getByRole("button", { name: "Close from parent" }));
+
+    expect(onHighlightChange).toHaveBeenCalledWith(null);
+
+    await user.click(getSelectTrigger());
+    await waitFor(() =>
+      expect(screen.getByRole("option", { name: /apple/i })).toHaveAttribute("data-highlighted"),
+    );
+    expect(screen.getByRole("option", { name: /banana/i })).not.toHaveAttribute("data-highlighted");
+  });
+
   it("assigns a div element to the forwarded ref", () => {
     const ref = createRef<HTMLDivElement>();
     render(

@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const pagerDoc: ComponentDoc = {
   description: "Previous/next page navigation bar with arrow indicators.",

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -9,7 +9,6 @@ let root: string;
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), "dgadd-paths-"));
-  writeFileSync(join(root, "package.json"), JSON.stringify({ type: "module" }));
 });
 
 afterEach(() => {

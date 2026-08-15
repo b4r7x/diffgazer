@@ -2,19 +2,19 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { z } from "zod";
 import {
+  CLI_COMPATIBILITY_BUNDLE_SCHEMA_VERSION,
+  CLI_COMPATIBILITY_GENERATOR_MARKER,
   CLI_COMPATIBILITY_PROVIDERS,
   type CliCompatibilityRecord,
+  CliCompatibilityRecordBundleSchema,
   type CliCompatibilityTuple,
+  CliUnsupportedCompatibilityRecordBundleSchema,
   HOSTILE_ATTEMPT_IDS,
   matchCliCompatibilityTuple,
   parseCliCompatibilityRecord,
   validateCliCompatibilityEvidence,
 } from "../../cli-compatibility/compat.js";
-
-const CLI_COMPATIBILITY_GENERATOR_MARKER = "cli-compatibility-probe" as const;
-const CLI_COMPATIBILITY_BUNDLE_SCHEMA_VERSION = 1 as const;
 
 const CLI_PROBE_MODELS = {
   "codex-cli": "gpt-4.1",
@@ -72,37 +72,6 @@ const COPILOT_VERIFIED_FLAGS = [
   "--no-remote-export",
 ] as const;
 
-const CliCompatibilityRecordBundleSchema = z
-  .strictObject({
-    generator: z.literal(CLI_COMPATIBILITY_GENERATOR_MARKER),
-    schemaVersion: z.literal(CLI_COMPATIBILITY_BUNDLE_SCHEMA_VERSION),
-    records: z.array(z.unknown()),
-  })
-  .readonly();
-
-const CliUnsupportedRecordSchema = z
-  .strictObject({
-    provider: z.enum(CLI_COMPATIBILITY_PROVIDERS),
-    modelId: z.string().min(1),
-    platform: z
-      .strictObject({
-        nodePlatform: z.string().min(1),
-        architecture: z.string().min(1),
-      })
-      .readonly(),
-    status: z.enum(["skipped", "unsupported"]),
-    reason: z.string().min(1),
-  })
-  .readonly();
-
-const CliUnsupportedRecordBundleSchema = z
-  .strictObject({
-    generator: z.literal(CLI_COMPATIBILITY_GENERATOR_MARKER),
-    schemaVersion: z.literal(CLI_COMPATIBILITY_BUNDLE_SCHEMA_VERSION),
-    records: z.array(CliUnsupportedRecordSchema),
-  })
-  .readonly();
-
 const FIXTURE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function loadJsonFixture(fileName: string): unknown {
@@ -139,7 +108,7 @@ function loadCompatibilityRecordBundle() {
 }
 
 function loadUnsupportedRecordBundle() {
-  const parsed = CliUnsupportedRecordBundleSchema.safeParse(
+  const parsed = CliUnsupportedCompatibilityRecordBundleSchema.safeParse(
     loadJsonFixture("unsupported-records.json"),
   );
   if (!parsed.success) {
@@ -293,7 +262,14 @@ describe("T-057 cli compatibility fixture bundles", () => {
     expect(supportedKeys.size + unsupportedKeys.size).toBe(
       CLI_INTENDED_COMPATIBILITY_TUPLES.length,
     );
-    expect(unsupportedBundle.records).toHaveLength(CLI_INTENDED_COMPATIBILITY_TUPLES.length);
+    // The unsupported bundle covers exactly the tuples the supported bundle does
+    // not — pinning it to the full tuple count would make the first genuine
+    // supported record unsatisfiable against the per-tuple XOR above.
+    expect(unsupportedKeys.size).toBe(
+      CLI_INTENDED_COMPATIBILITY_TUPLES.length - supportedKeys.size,
+    );
+    expect(unsupportedBundle.records).toHaveLength(unsupportedKeys.size);
+    expect(supportedBundle.records).toHaveLength(supportedKeys.size);
   });
 
   it.each(

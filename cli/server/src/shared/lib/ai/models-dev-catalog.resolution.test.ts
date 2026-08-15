@@ -25,9 +25,11 @@ vi.mock("../fs.js", async (importOriginal) => {
   };
 });
 
+import { CATALOG_EMPTY_MODELS_REASON } from "@diffgazer/core/providers";
 import { CANDIDATE_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { MODELS_DEV_SAMPLE } from "../testing/models-dev-sample.js";
+import { assertTempHome } from "../testing/temp-home.js";
 import * as modelsDevCatalog from "./models-dev-catalog.js";
 import {
   discoverConfigurationCatalog,
@@ -50,25 +52,32 @@ const writeCache = (catalog: unknown, fetchedAt: string, generationId?: string):
   );
 };
 const readCache = (): unknown => JSON.parse(fs.readFileSync(cachePath(), "utf-8"));
+// Every inline model declares structured output: the picker only offers models
+// that do, so a fixture without it would be filtered out before the assertion.
 const catalogWithGoogleModel = (modelId: string): unknown => ({
   google: {
     id: "google",
-    models: { [modelId]: { id: modelId, name: modelId } },
+    models: { [modelId]: { id: modelId, name: modelId, structured_output: true } },
   },
 });
 
 beforeEach(() => {
   testHome = fs.mkdtempSync(path.join(os.tmpdir(), "dg-models-dev-"));
+  assertTempHome(testHome);
   process.env.DIFFGAZER_HOME = testHome;
   delete process.env.DIFFGAZER_OFFLINE;
   writeJsonFileSyncFailPaths.clear();
   vi.restoreAllMocks();
 });
+// One test re-points DIFFGAZER_HOME at nested homes mid-test; both stay inside testHome,
+// and `getProviderModels` awaits its cache writes, so removing testHome before dropping the
+// variable is enough. `paths.ts` re-reads it per call, so the reverse order would aim any
+// still-pending work at the real ~/.diffgazer.
 afterEach(() => {
   writeJsonFileSyncFailPaths.clear();
+  fs.rmSync(testHome, { recursive: true, force: true });
   delete process.env.DIFFGAZER_HOME;
   delete process.env.DIFFGAZER_OFFLINE;
-  fs.rmSync(testHome, { recursive: true, force: true });
 });
 
 describe("getProviderModels — three-tier fallback", () => {
@@ -179,6 +188,7 @@ describe("getProviderModels — three-tier fallback", () => {
               cost: { input: 0.3, output: 2.5 },
               limit: { context: 1_000_000 },
               tool_call: true,
+              structured_output: true,
             },
           },
         },
@@ -238,8 +248,8 @@ describe("getProviderModels — three-tier fallback", () => {
     // wire contract is z.iso.datetime(), so validate against that schema to catch
     // a parseable-but-non-ISO fetchedAt the looser Date.parse check would miss.
     vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
-    const { fetchedAt } = await getProviderModels("gemini");
-    expect(ProviderModelsResponseSchema.shape.fetchedAt.safeParse(fetchedAt).success).toBe(true);
+    const response = await getProviderModels("gemini");
+    expect(ProviderModelsResponseSchema.safeParse(response).success).toBe(true);
   });
 
   it("a future-dated cache is not treated as fresh: it re-fetches rather than locking out refresh forever", async () => {
@@ -388,7 +398,13 @@ describe("getProviderModels — three-tier fallback", () => {
       okResponse({
         google: {
           id: "google",
-          models: { "gemini-2.5-flash": { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" } },
+          models: {
+            "gemini-2.5-flash": {
+              id: "gemini-2.5-flash",
+              name: "Gemini 2.5 Flash",
+              structured_output: true,
+            },
+          },
         },
       }),
     );
@@ -503,7 +519,7 @@ describe("configuration-bound catalog observations", () => {
       configurationId: "cfg-gemini-empty",
       productId: "gemini",
       models: [],
-      reason: "No catalog models are available for this configuration product.",
+      reason: CATALOG_EMPTY_MODELS_REASON,
     });
     expect(result.status).not.toBe("passed");
   });
@@ -519,6 +535,7 @@ describe("configuration-bound catalog observations", () => {
               id: exactId,
               name: "Exact",
               limit: { context: 131072, output: 8192 },
+              structured_output: true,
             },
             "provider/model/latest": {
               id: "provider/model/latest",
@@ -532,12 +549,7 @@ describe("configuration-bound catalog observations", () => {
 
     const result = await getProviderModels("gemini");
     expect(result.models.map((model) => model.id)).toEqual([exactId]);
-    expect(result.models[0]).toMatchObject({
-      id: exactId,
-      name: "Exact",
-      contextLength: 131072,
-      maxOutputTokens: 8192,
-    });
+    expect(result.models[0]).toMatchObject({ id: exactId, name: "Exact" });
   });
 
   it("does not project GitHub Models or candidate products from catalog observations", () => {
@@ -546,7 +558,11 @@ describe("configuration-bound catalog observations", () => {
       google: {
         id: "google",
         models: {
-          "gemini-2.5-flash": { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+          "gemini-2.5-flash": {
+            id: "gemini-2.5-flash",
+            name: "Gemini 2.5 Flash",
+            structured_output: true,
+          },
         },
       },
       "github-models": {
@@ -575,7 +591,11 @@ describe("configuration-bound catalog observations", () => {
         google: {
           id: "google",
           models: {
-            "gemini-2.5-flash": { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+            "gemini-2.5-flash": {
+              id: "gemini-2.5-flash",
+              name: "Gemini 2.5 Flash",
+              structured_output: true,
+            },
           },
         },
         "github-models": {

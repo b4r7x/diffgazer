@@ -5,7 +5,8 @@ import { DocsTreeProvider } from "@/hooks/docs-tree-context";
 import { useDocsHistory, useDocsSearchScope } from "@/hooks/search-context";
 import { usePendingDocsRoute } from "@/hooks/use-pending-docs-route";
 import type { DocsLibraryId } from "@/lib/library";
-import { MAIN_SCROLL_INIT_SCRIPT, MAIN_SCROLL_RESTORATION_ID } from "@/lib/main-scroll-bootstrap";
+import { MAIN_SCROLL_INIT_SCRIPT } from "@/lib/main-scroll-bootstrap";
+import { MAIN_SCROLL_RESTORATION_ID } from "@/lib/main-scroll-restoration";
 import {
   collectLandingSections,
   findPageByUrl,
@@ -88,9 +89,6 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
             {isDocsRoutePending ? <DocsPageLoadingFrame /> : children}
           </DocsTreeProvider>
         </div>
-
-        {/* Last inside the scroller so the parser has laid out the whole article
-            before the restore runs. */}
         <ScriptOnce>{MAIN_SCROLL_INIT_SCRIPT}</ScriptOnce>
       </main>
     </TuiTwoPane>

@@ -1,4 +1,4 @@
-export type FindingSeverity = "blocker" | "high" | "medium" | "low" | "nit";
+type FindingSeverity = "blocker" | "high" | "medium" | "low" | "nit";
 
 export interface DemoFinding {
   severity: FindingSeverity;

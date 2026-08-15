@@ -9,6 +9,22 @@ const WEB_ROOT = resolve(WORKSPACE_ROOT, "apps/web");
 const OUTPUT_PATH = resolve(PACKAGE_ROOT, "THIRD_PARTY_NOTICES");
 const TSUP_METAFILE_PATH = resolve(PACKAGE_ROOT, "dist/metafile-esm.json");
 
+const WEB_FONT_LICENSE_PATH = resolve(WEB_ROOT, "src/assets/fonts/LICENSE");
+
+const VITE_VIRTUAL_MODULE_OWNERS: Record<string, string> = {
+  "commonjsHelpers.js": "vite",
+  "vite/modulepreload-polyfill.js": "vite",
+  "vite/preload-helper.js": "vite",
+};
+
+const EMBEDDED_ASSET_PROVENANCE = [
+  {
+    assetPattern: /jetbrains-mono.*\.woff2$/,
+    labels: ["JetBrains Mono (apps/web/src/assets/fonts/jetbrains-mono.woff2)"],
+    licensePath: WEB_FONT_LICENSE_PATH,
+  },
+] as const;
+
 const LICENSE_FILENAMES = [
   "LICENSE",
   "LICENSE.md",
@@ -33,6 +49,16 @@ export interface BundlePackage {
   name: string;
   packageDir: string;
   version: string | null;
+}
+
+export interface EmbeddedProvenance {
+  labels: string[];
+  licenseText: string;
+}
+
+export interface ViteBundleGraph {
+  assetFileNames: string[];
+  moduleIds: string[];
 }
 
 export interface GenerateNoticesResult {
@@ -95,20 +121,46 @@ function readLicenseText(packageDir: string, packageJson: PackageJson): string |
     if (!honoServerRoot) throw new Error("Could not resolve the Hono MIT license fallback");
     return normalizeLicenseText(readFileSync(resolve(honoServerRoot, "LICENSE"), "utf-8"));
   }
-  if (packageJson.license === "Apache-2.0") {
-    return normalizeLicenseText(readFileSync(resolve(PACKAGE_ROOT, "LICENSE"), "utf-8"));
-  }
+  // No blanket per-license fallback: diffgazer's own LICENSE carries its own copyright
+  // line, so substituting it would misattribute a third party. A dependency shipping no
+  // license text must get an explicit, justified fallback like the one above.
   return null;
 }
 
+function stripModuleQuery(modulePath: string): string {
+  return modulePath.replace(/^\0+/, "").replace(/\?.*$/s, "");
+}
+
+function toPosixPath(path: string): string {
+  return path.replaceAll("\\", "/");
+}
+
+/**
+ * The installed package directory that owns a `node_modules` module, so provenance
+ * resolution can fail closed instead of climbing into an enclosing workspace manifest.
+ */
+function nodeModulesPackageRoot(cleanPath: string): string | null {
+  const normalizedPath = toPosixPath(cleanPath);
+  const marker = normalizedPath.lastIndexOf("/node_modules/");
+  if (marker === -1) return null;
+
+  const prefix = normalizedPath.slice(0, marker + "/node_modules/".length);
+  const [scopeOrName, scopedName] = normalizedPath.slice(prefix.length).split("/");
+  if (!scopeOrName) return null;
+  if (!scopeOrName.startsWith("@")) return `${prefix}${scopeOrName}`;
+  return scopedName ? `${prefix}${scopeOrName}/${scopedName}` : null;
+}
+
 export function resolveModulePackageDir(modulePath: string): string | null {
-  const cleanPath = modulePath.replace(/^\0+/, "").split("?", 1)[0];
+  const cleanPath = stripModuleQuery(modulePath);
   if (!cleanPath || !existsSync(cleanPath)) return null;
 
+  const packageRoot = nodeModulesPackageRoot(cleanPath);
   let directory = dirname(cleanPath);
   while (true) {
     const packageJsonPath = resolve(directory, "package.json");
     if (existsSync(packageJsonPath) && readPackageJson(packageJsonPath).name) return directory;
+    if (packageRoot !== null && toPosixPath(directory) === packageRoot) return null;
     const parent = dirname(directory);
     if (parent === directory) return null;
     directory = parent;
@@ -116,25 +168,52 @@ export function resolveModulePackageDir(modulePath: string): string | null {
 }
 
 function isNodeModulesPath(modulePath: string): boolean {
-  const normalizedPath = modulePath.replace(/^\0+/, "").split("?", 1)[0]?.replaceAll("\\", "/");
+  const normalizedPath = toPosixPath(stripModuleQuery(modulePath));
   return (
     normalizedPath === "node_modules" ||
-    normalizedPath?.startsWith("node_modules/") === true ||
-    normalizedPath?.includes("/node_modules/") === true
+    normalizedPath.startsWith("node_modules/") ||
+    normalizedPath.includes("/node_modules/")
   );
+}
+
+function resolveVirtualModulePackageDir(modulePath: string): string | null {
+  const ownerPackage = VITE_VIRTUAL_MODULE_OWNERS[stripModuleQuery(modulePath)];
+  if (!ownerPackage) return null;
+
+  const requireFromWeb = createRequire(resolve(WEB_ROOT, "package.json"));
+  return resolveModulePackageDir(requireFromWeb.resolve(ownerPackage));
+}
+
+export function collectEmbeddedProvenance(assetFileNames: readonly string[]): EmbeddedProvenance[] {
+  const provenance: EmbeddedProvenance[] = [];
+
+  for (const owner of EMBEDDED_ASSET_PROVENANCE) {
+    const matchedAssets = assetFileNames.filter((assetFileName) =>
+      owner.assetPattern.test(assetFileName),
+    );
+    if (matchedAssets.length === 0) continue;
+    if (!existsSync(owner.licensePath)) {
+      throw new Error(`Missing embedded asset license at ${owner.licensePath}`);
+    }
+    provenance.push({
+      labels: [...owner.labels],
+      licenseText: normalizeLicenseText(readFileSync(owner.licensePath, "utf-8")),
+    });
+  }
+
+  return provenance;
 }
 
 export function collectBundlePackages(modulePaths: readonly string[]): BundlePackage[] {
   const packageDirs = new Set<string>();
   for (const modulePath of modulePaths) {
-    const packageDir = resolveModulePackageDir(modulePath);
+    const packageDir =
+      resolveModulePackageDir(modulePath) ?? resolveVirtualModulePackageDir(modulePath);
     if (packageDir) {
       packageDirs.add(packageDir);
       continue;
     }
-    if (isNodeModulesPath(modulePath)) {
-      throw new Error(`Could not resolve package provenance for bundled module ${modulePath}`);
-    }
+    throw new Error(`Could not resolve package provenance for bundled module ${modulePath}`);
   }
 
   const packages: BundlePackage[] = [];
@@ -176,7 +255,10 @@ function packageLabel(bundlePackage: BundlePackage): string {
     : bundlePackage.name;
 }
 
-export function renderNotices(bundlePackages: readonly BundlePackage[]): string {
+export function renderNotices(
+  bundlePackages: readonly BundlePackage[],
+  embeddedProvenance: readonly EmbeddedProvenance[] = [],
+): string {
   const groups = new Map<string, Set<string>>();
   for (const bundlePackage of bundlePackages) {
     if (!requiresNotice(bundlePackage)) continue;
@@ -188,6 +270,11 @@ export function renderNotices(bundlePackages: readonly BundlePackage[]): string 
     const labels = groups.get(bundlePackage.licenseText) ?? new Set<string>();
     labels.add(packageLabel(bundlePackage));
     groups.set(bundlePackage.licenseText, labels);
+  }
+  for (const embedded of embeddedProvenance) {
+    const labels = groups.get(embedded.licenseText) ?? new Set<string>();
+    for (const label of embedded.labels) labels.add(label);
+    groups.set(embedded.licenseText, labels);
   }
 
   const header = [
@@ -215,23 +302,38 @@ export function renderNotices(bundlePackages: readonly BundlePackage[]): string 
   return `${[header, ...sections].join("\n\n")}\n`;
 }
 
-function collectRollupModuleIds(result: unknown): string[] {
+export function collectRollupArtifacts(result: unknown): ViteBundleGraph {
   const outputs = Array.isArray(result) ? result : [result];
   const moduleIds = new Set<string>();
+  const assetFileNames = new Set<string>();
 
   for (const output of outputs) {
     if (!isRecord(output) || !Array.isArray(output.output)) continue;
     for (const item of output.output) {
-      if (!isRecord(item) || item.type !== "chunk" || !isRecord(item.modules)) continue;
-      for (const moduleId of Object.keys(item.modules)) moduleIds.add(moduleId);
+      if (!isRecord(item)) continue;
+      if (item.type === "chunk" && isRecord(item.modules)) {
+        // A fully tree-shaken module contributes no bytes to the emitted chunk, so its
+        // package is not bundled and must not claim a notice under the header's promise.
+        for (const [moduleId, renderedModule] of Object.entries(item.modules)) {
+          if (isRecord(renderedModule) && renderedModule.renderedLength === 0) continue;
+          moduleIds.add(moduleId);
+        }
+        continue;
+      }
+      if (item.type === "asset" && typeof item.fileName === "string") {
+        assetFileNames.add(item.fileName);
+      }
     }
   }
 
   if (moduleIds.size === 0) throw new Error("Vite returned no Rollup chunk modules");
-  return [...moduleIds].sort();
+  return {
+    assetFileNames: [...assetFileNames].sort(),
+    moduleIds: [...moduleIds].sort(),
+  };
 }
 
-export async function collectViteBundleModuleIds(): Promise<string[]> {
+export async function collectViteBundleGraph(): Promise<ViteBundleGraph> {
   const requireFromWeb = createRequire(resolve(WEB_ROOT, "package.json"));
   const viteUrl = pathToFileURL(requireFromWeb.resolve("vite")).href;
   const viteModule: unknown = await import(viteUrl);
@@ -243,7 +345,11 @@ export async function collectViteBundleModuleIds(): Promise<string[]> {
     build: { write: false },
     logLevel: "silent",
   });
-  return collectRollupModuleIds(result);
+  return collectRollupArtifacts(result);
+}
+
+export async function collectViteBundleModuleIds(): Promise<string[]> {
+  return (await collectViteBundleGraph()).moduleIds;
 }
 
 export function collectTsupBundleModuleIds(metafilePath = TSUP_METAFILE_PATH): string[] {
@@ -262,10 +368,11 @@ export async function generateThirdPartyNotices({
   removeTsupMetafile = false,
   tsupMetafilePath = TSUP_METAFILE_PATH,
 }: GenerateNoticesOptions = {}): Promise<GenerateNoticesResult> {
-  const viteModuleIds = await collectViteBundleModuleIds();
+  const viteBundleGraph = await collectViteBundleGraph();
   const tsupModuleIds = collectTsupBundleModuleIds(tsupMetafilePath);
-  const bundlePackages = collectBundlePackages([...viteModuleIds, ...tsupModuleIds]);
-  const text = renderNotices(bundlePackages);
+  const bundlePackages = collectBundlePackages([...viteBundleGraph.moduleIds, ...tsupModuleIds]);
+  const embeddedProvenance = collectEmbeddedProvenance(viteBundleGraph.assetFileNames);
+  const text = renderNotices(bundlePackages, embeddedProvenance);
   writeFileSync(outputPath, text);
   if (removeTsupMetafile) rmSync(tsupMetafilePath, { force: true });
   return { packageCount: bundlePackages.filter(requiresNotice).length, text };

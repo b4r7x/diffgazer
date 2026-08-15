@@ -1,6 +1,6 @@
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
-import { describe, expect, it } from "vitest";
-import { createAdmissionEvidence } from "./admission-evidence.js";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { buildExpectedEvidenceKey, createAdmissionEvidence } from "./admission-evidence.js";
 import type { SupportedProviderConfigurationRecord } from "./provider-config.js";
 import {
   computeProviderReadiness,
@@ -11,6 +11,7 @@ import { createEnvironmentSecretBinding, createNoneSecretBinding } from "./secre
 
 const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 const NOW = "2026-07-31T12:05:00.000Z";
+const ORIGINAL_GEMINI_KEY = process.env.GEMINI_KEY;
 const LIMITS = {
   maxInputTokens: 32_000,
   maxOutputTokens: 8_000,
@@ -47,6 +48,7 @@ function hostedRecord(
     },
     selectedModelId: "gemini-2.5-flash",
     acknowledgement: {
+      noticeId: "gemini-hosted-api",
       noticeVersion: 1,
       acceptedAt: CHECKED_AT,
     },
@@ -76,6 +78,7 @@ function localRecord(
     },
     selectedModelId: "llama3.2",
     acknowledgement: {
+      noticeId: "ollama-loopback",
       noticeVersion: 1,
       acceptedAt: CHECKED_AT,
     },
@@ -87,23 +90,25 @@ function localRecord(
   };
 }
 
+const RUNTIME = { identity: "diffgazer-server", version: "1.2.3" } as const;
+const SCHEMA_SHA256 = "1".repeat(64);
+const CREDENTIAL_REFERENCE = "3".repeat(64);
+
+/** What the server recomputes for a record whose credential is still bound. */
+const SERVER_OWNED_INPUTS = {
+  runtime: RUNTIME,
+  structuredOutputSchemaSha256: SCHEMA_SHA256,
+  credentialReferenceIdentity: CREDENTIAL_REFERENCE,
+} as const;
+
 function hostedEvidenceKey(record = hostedRecord()): EvidenceKey {
-  return {
-    authentication: null,
-    credentialReferenceIdentity: "3".repeat(64),
-    installationId: null,
-    productId: "gemini",
-    transportFamily: "hosted-api",
-    normalizedEndpoint:
-      record.input.transportFamily === "hosted-api" ? record.input.endpoint : null,
-    region: null,
+  return buildExpectedEvidenceKey({
+    record,
+    runtime: RUNTIME,
+    structuredOutputSchemaSha256: SCHEMA_SHA256,
+    credentialReferenceIdentity: CREDENTIAL_REFERENCE,
     workspaceAccountReference: null,
-    modelId: record.selectedModelId ?? "gemini-2.5-flash",
-    runtime: { identity: "diffgazer-server", version: "1.2.3" },
-    structuredOutputSchemaSha256: "1".repeat(64),
-    noticeVersion: 1,
-    limits: LIMITS,
-  };
+  });
 }
 
 function passedEvidence(evidenceKey: EvidenceKey) {
@@ -116,6 +121,18 @@ function passedEvidence(evidenceKey: EvidenceKey) {
 }
 
 describe("server V2 readiness calculation", () => {
+  beforeEach(() => {
+    process.env.GEMINI_KEY = "test-api-key";
+  });
+
+  afterEach(() => {
+    if (ORIGINAL_GEMINI_KEY === undefined) {
+      delete process.env.GEMINI_KEY;
+    } else {
+      process.env.GEMINI_KEY = ORIGINAL_GEMINI_KEY;
+    }
+  });
+
   it("returns every core state with its exact actionable remediation", () => {
     const record = hostedRecord();
     const key = hostedEvidenceKey(record);
@@ -128,8 +145,7 @@ describe("server V2 readiness calculation", () => {
       configuration: record,
       binding,
       evidence: passedEvidence(key),
-      evidenceKey: key,
-      credentialReferenceIdentity: "3".repeat(64),
+      ...SERVER_OWNED_INPUTS,
       now: NOW,
     });
     expect(ready.status).toBe("ready");
@@ -150,8 +166,7 @@ describe("server V2 readiness calculation", () => {
         configuration: record,
         binding,
         evidence: null,
-        evidenceKey: key,
-        credentialReferenceIdentity: "3".repeat(64),
+        ...SERVER_OWNED_INPUTS,
       }).status,
     ).toBe("conformance-pending");
     expect(
@@ -161,24 +176,9 @@ describe("server V2 readiness calculation", () => {
         evidence: createAdmissionEvidence({
           evidenceKey: key,
           checkedAt: CHECKED_AT,
-          status: "skipped",
-        }),
-        evidenceKey: key,
-        credentialReferenceIdentity: "3".repeat(64),
-        now: NOW,
-      }).status,
-    ).toBe("skipped");
-    expect(
-      computeProviderReadiness({
-        configuration: record,
-        binding,
-        evidence: createAdmissionEvidence({
-          evidenceKey: key,
-          checkedAt: CHECKED_AT,
           status: "failed",
         }),
-        evidenceKey: key,
-        credentialReferenceIdentity: "3".repeat(64),
+        ...SERVER_OWNED_INPUTS,
         now: NOW,
       }).status,
     ).toBe("conformance-failed");
@@ -191,41 +191,46 @@ describe("server V2 readiness calculation", () => {
     ).toBe("model-missing");
     expect(
       computeProviderReadiness({
-        configuration: hostedRecord({ acknowledgement: { noticeVersion: 0, acceptedAt: null } }),
+        configuration: hostedRecord({
+          acknowledgement: { noticeId: "gemini-hosted-api", noticeVersion: 0, acceptedAt: null },
+        }),
         binding,
         evidence: passedEvidence(key),
-        evidenceKey: key,
-        credentialReferenceIdentity: "3".repeat(64),
+        ...SERVER_OWNED_INPUTS,
         now: NOW,
       }).status,
     ).toBe("acknowledgement-required");
   });
 
-  it("retains each local failure as a distinct readiness state", () => {
+  it("names a recorded conformance failure by the transport that produced it", () => {
     const record = localRecord();
+    const runtime = { identity: "ollama", version: "0.5.0" } as const;
     const binding = createNoneSecretBinding(record.configurationId, record.revision);
-    const statuses = {
-      "endpoint-unreachable": "local-endpoint-unreachable",
-      "endpoint-forbidden": "local-endpoint-forbidden",
-      "api-incompatible": "local-api-incompatible",
-      "no-review-capable-model": "local-no-review-capable-model",
-      "selected-model-missing": "local-selected-model-missing",
-      "conformance-failed": "local-conformance-failed",
-      "cancellation-failed": "local-cancellation-failed",
-    } as const;
+    const evidenceKey = buildExpectedEvidenceKey({
+      record,
+      runtime,
+      structuredOutputSchemaSha256: SCHEMA_SHA256,
+      credentialReferenceIdentity: null,
+      workspaceAccountReference: null,
+    });
 
-    for (const [localStatus, readinessStatus] of Object.entries(statuses)) {
-      expect(
-        computeProviderReadiness({
-          configuration: record,
-          binding,
-          localObservation: { status: localStatus as keyof typeof statuses, checkedAt: CHECKED_AT },
-        }).status,
-      ).toBe(readinessStatus);
-    }
+    expect(
+      computeProviderReadiness({
+        configuration: record,
+        binding,
+        evidence: createAdmissionEvidence({
+          evidenceKey,
+          checkedAt: CHECKED_AT,
+          status: "failed",
+        }),
+        runtime,
+        structuredOutputSchemaSha256: SCHEMA_SHA256,
+        now: NOW,
+      }).status,
+    ).toBe("local-conformance-failed");
   });
 
-  it("invalidates material tuple, model, runtime, notice, and budget changes", () => {
+  it("invalidates material tuple, model, runtime, schema, notice, and budget changes", () => {
     const record = hostedRecord();
     const key = hostedEvidenceKey(record);
     const binding = createEnvironmentSecretBinding(
@@ -237,32 +242,124 @@ describe("server V2 readiness calculation", () => {
       configuration: record,
       binding,
       evidence: passedEvidence(key),
-      evidenceKey: key,
-      credentialReferenceIdentity: "3".repeat(64),
+      ...SERVER_OWNED_INPUTS,
       now: NOW,
     };
     expect(computeProviderReadiness(base).status).toBe("ready");
-    expect(
-      computeProviderReadiness({ ...base, evidenceKey: { ...key, modelId: "gemini-2.5-pro" } })
-        .status,
-    ).toBe("conformance-failed");
+    // A tuple change still blocks reviews; only the presentation softened from
+    // "the contract failed" to "this configuration needs a re-check".
+    const staleTuple = { status: "conformance-pending", ready: false };
     expect(
       computeProviderReadiness({
         ...base,
-        evidenceKey: { ...key, limits: { ...LIMITS, maxOutputTokens: 8_001 } },
-      }).status,
-    ).toBe("conformance-failed");
+        configuration: hostedRecord({ selectedModelId: "gemini-2.5-pro" }),
+      }),
+    ).toMatchObject(staleTuple);
+    // An upgraded server speaks a newer admission protocol and a newer review
+    // schema; evidence proved under the previous ones is not proof of this one.
     expect(
-      computeProviderReadiness({ ...base, credentialReferenceIdentity: "4".repeat(64) }).status,
-    ).toBe("conformance-failed");
+      computeProviderReadiness({
+        ...base,
+        runtime: { identity: "diffgazer-server", version: "1.2.4" },
+      }),
+    ).toMatchObject(staleTuple);
+    expect(
+      computeProviderReadiness({ ...base, structuredOutputSchemaSha256: "2".repeat(64) }),
+    ).toMatchObject(staleTuple);
+    expect(
+      computeProviderReadiness({
+        ...base,
+        configuration: hostedRecord({ budget: { ...BUDGET, outputTokens: 8_001 } }),
+      }),
+    ).toMatchObject(staleTuple);
+    expect(
+      computeProviderReadiness({ ...base, credentialReferenceIdentity: "4".repeat(64) }),
+    ).toMatchObject(staleTuple);
     expect(
       computeProviderReadiness({
         ...base,
         configuration: hostedRecord({
-          acknowledgement: { noticeVersion: 2, acceptedAt: CHECKED_AT },
+          acknowledgement: {
+            noticeId: "gemini-hosted-api",
+            noticeVersion: 2,
+            acceptedAt: CHECKED_AT,
+          },
         }),
       }).status,
     ).toBe("acknowledgement-required");
+  });
+
+  it("clears a cached conformance failure that belongs to a previous tuple", () => {
+    const record = hostedRecord();
+    const key = hostedEvidenceKey(record);
+    const readiness = computeProviderReadiness({
+      configuration: record,
+      binding: createEnvironmentSecretBinding(
+        record.configurationId,
+        record.revision,
+        "GEMINI_KEY",
+      ),
+      evidence: createAdmissionEvidence({
+        evidenceKey: { ...key, modelId: "gemini-2.5-pro" },
+        checkedAt: CHECKED_AT,
+        status: "failed",
+        expiresAt: null,
+      }),
+      ...SERVER_OWNED_INPUTS,
+      now: NOW,
+    });
+
+    expect(readiness.status).toBe("conformance-pending");
+    expect(readiness.ready).toBe(false);
+  });
+
+  it("asks for a re-check instead of a failure when campaign-era evidence carries a past expiry", () => {
+    const record = hostedRecord();
+    const key = hostedEvidenceKey(record);
+    const readiness = computeProviderReadiness({
+      configuration: record,
+      binding: createEnvironmentSecretBinding(
+        record.configurationId,
+        record.revision,
+        "GEMINI_KEY",
+      ),
+      evidence: createAdmissionEvidence({
+        evidenceKey: key,
+        checkedAt: CHECKED_AT,
+        status: "passed",
+        expiresAt: "2026-07-31T12:01:00.000Z",
+      }),
+      ...SERVER_OWNED_INPUTS,
+      now: NOW,
+    });
+
+    expect(readiness.status).toBe("conformance-pending");
+    expect(readiness.remediation.code).toBe("run-conformance");
+    expect(readiness.ready).toBe(false);
+  });
+
+  it("keeps unexpiring passed evidence ready long after it was observed", () => {
+    const record = hostedRecord();
+    const key = hostedEvidenceKey(record);
+    const readiness = computeProviderReadiness({
+      configuration: record,
+      binding: createEnvironmentSecretBinding(
+        record.configurationId,
+        record.revision,
+        "GEMINI_KEY",
+      ),
+      evidence: createAdmissionEvidence({
+        evidenceKey: key,
+        checkedAt: CHECKED_AT,
+        status: "passed",
+        expiresAt: null,
+      }),
+      ...SERVER_OWNED_INPUTS,
+      now: "2027-12-01T00:00:00.000Z",
+    });
+
+    expect(readiness.status).toBe("ready");
+    expect(readiness.ready).toBe(true);
   });
 
   it("returns bounded secret-free details and observed checkedAt", () => {
@@ -273,11 +370,10 @@ describe("server V2 readiness calculation", () => {
       binding: createEnvironmentSecretBinding(
         record.configurationId,
         record.revision,
-        "GEMINI_API_KEY",
+        "GEMINI_KEY",
       ),
       evidence: passedEvidence(key),
-      evidenceKey: key,
-      credentialReferenceIdentity: "3".repeat(64),
+      ...SERVER_OWNED_INPUTS,
       now: NOW,
     });
     expect(result.readiness.checkedAt).toBe(CHECKED_AT);
@@ -287,7 +383,7 @@ describe("server V2 readiness calculation", () => {
       evidenceStatus: "passed",
       evidenceKeyHash: result.details.evidenceKeyHash,
     });
-    expect(JSON.stringify(result)).not.toContain("GEMINI_API_KEY");
+    expect(JSON.stringify(result)).not.toContain("GEMINI_KEY");
     expect(JSON.stringify(result)).not.toContain("3".repeat(64));
     expect(JSON.stringify(result)).not.toContain("generativelanguage.googleapis.com");
   });

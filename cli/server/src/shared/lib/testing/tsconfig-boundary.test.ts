@@ -8,6 +8,12 @@ const TEST_ONLY_FIXTURES = [
   "src/features/review/testing/factories.ts",
   "src/shared/lib/testing/models-dev-sample.ts",
   "src/shared/lib/testing/http.ts",
+  // vitest-importing helpers and conformance fixtures: neither may reach the
+  // production program, whose emitted dist is what `start` runs.
+  "src/shared/lib/config/store.test-support.ts",
+  "src/shared/lib/config/persistence/persistence.test-support.ts",
+  "src/shared/lib/ai/providers/hosted/fixtures.ts",
+  "src/shared/lib/ai/providers/local-http/fixtures.ts",
 ] as const;
 
 function parseTsConfig(configName: string): ts.ParsedCommandLine {

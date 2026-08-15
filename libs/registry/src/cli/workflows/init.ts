@@ -1,7 +1,21 @@
-import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  rmdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, relative, resolve } from "node:path";
 import pc from "picocolors";
 import type { ConfigLoadResult } from "../config.js";
+import { showDryRunDeps } from "../dry-run-preview.js";
+import {
+  exitAfterSignalCancellation,
+  installMutationCancellationHandlers,
+  throwIfMutationCancelled,
+} from "../mutation-cancellation.js";
 import { fileAction, heading, info, newline, promptConfirm, success, warn } from "../terminal.js";
 
 export interface InitWorkflowOptions<TConfig> {
@@ -26,7 +40,7 @@ export interface InitWorkflowOptions<TConfig> {
    */
   plannedPaths: (cwd: string) => string[];
   createFiles: (cwd: string) => Array<{ action: "created" | "skipped"; path: string }>;
-  afterFiles?: (cwd: string) => Promise<void>;
+  afterFiles?: (cwd: string, abortSignal?: AbortSignal) => Promise<void>;
   writeConfig: (cwd: string) => void | Promise<void>;
   nextSteps: string[];
 }
@@ -57,7 +71,7 @@ function checkExistingConfig<TConfig>(
   ) {
     throw new Error(
       `${configFileName} is malformed: ${existing.message}\n` +
-        `Fix the syntax error, delete ${configFileName}, or use --force to re-initialize.`,
+        `Fix the error or delete ${configFileName} before re-initializing.`,
     );
   }
 
@@ -99,6 +113,27 @@ function normalizePlannedPaths(cwd: string, paths: string[]): PlannedTarget[] {
   return targets;
 }
 
+function showDryRunPlan(
+  cwd: string,
+  configFileName: string,
+  targets: PlannedTarget[],
+  dependencies: string[],
+): void {
+  const configPath = resolve(cwd, configFileName);
+  const previewed: PlannedTarget[] = [...targets];
+  if (!targets.some((target) => target.absolutePath === configPath)) {
+    previewed.push({ absolutePath: configPath, isDirectory: false });
+  }
+
+  heading("Paths initialization would create or modify:");
+  for (const target of previewed) {
+    const exists = existsSync(target.absolutePath);
+    const displayPath = relative(cwd, target.absolutePath) || ".";
+    fileAction(pc.green(exists ? "~" : "+"), target.isDirectory ? `${displayPath}/` : displayPath);
+  }
+  showDryRunDeps(dependencies);
+}
+
 interface PreExistingState {
   files: Map<string, Buffer>;
   dirs: Set<string>;
@@ -109,6 +144,12 @@ interface PreExistingState {
    * effects like a freshly-created lockfile.
    */
   plannedFilePaths: Set<string>;
+  /**
+   * Absolute paths of planned-path DIRECTORY targets. Rolled back independently
+   * of the createFiles result array, because a throw partway through createFiles
+   * never returns the "created" entries for directories it already made.
+   */
+  plannedDirPaths: Set<string>;
 }
 
 function snapshotPlannedTargets(
@@ -119,6 +160,7 @@ function snapshotPlannedTargets(
   const files = new Map<string, Buffer>();
   const dirs = new Set<string>();
   const plannedFilePaths = new Set<string>();
+  const plannedDirPaths = new Set<string>();
   const cwdResolved = resolve(cwd);
   const configPath = resolve(cwdResolved, configFileName);
 
@@ -126,7 +168,9 @@ function snapshotPlannedTargets(
   for (const target of targets) {
     candidatePaths.add(target.absolutePath);
     collectAncestorDirs(target.absolutePath, cwdResolved, candidatePaths);
-    if (!target.isDirectory && target.absolutePath !== configPath) {
+    if (target.isDirectory) {
+      plannedDirPaths.add(target.absolutePath);
+    } else if (target.absolutePath !== configPath) {
       plannedFilePaths.add(target.absolutePath);
     }
   }
@@ -143,7 +187,7 @@ function snapshotPlannedTargets(
     }
   }
 
-  return { files, dirs, plannedFilePaths };
+  return { files, dirs, plannedFilePaths, plannedDirPaths };
 }
 
 function collectAncestorDirs(path: string, cwd: string, sink: Set<string>): void {
@@ -185,6 +229,38 @@ function removeUnplannedlyCreatedFiles(
   }
 }
 
+// A throw inside createFiles never returns the directories it already created,
+// so rollback derives them from the plan. Only empty directories are removed:
+// anything still holding content was either pre-existing or failed its own
+// cleanup, and must not be deleted recursively.
+function removeCreatedPlannedDirs(
+  cwd: string,
+  snapshot: PreExistingState,
+  failures: Error[],
+): void {
+  const cwdResolved = resolve(cwd);
+  const candidates = [...snapshot.plannedDirPaths]
+    .filter((path) => !snapshot.dirs.has(path))
+    .sort((a, b) => b.length - a.length);
+
+  for (const candidate of candidates) {
+    let current = candidate;
+    while (
+      current !== cwdResolved &&
+      !snapshot.dirs.has(current) &&
+      existsSync(current) &&
+      readdirSync(current).length === 0
+    ) {
+      const failureCount = failures.length;
+      recordRollbackFailure(failures, `remove directory ${current}`, () => {
+        rmdirSync(current);
+      });
+      if (failures.length > failureCount) break;
+      current = dirname(current);
+    }
+  }
+}
+
 function removeCreatedResults(
   cwd: string,
   results: Array<{ action: "created" | "skipped"; path: string }>,
@@ -208,7 +284,7 @@ function removeCreatedResults(
     while (current !== resolve(cwd) && !existingDirs.has(current) && existsSync(current)) {
       const failureCount = failures.length;
       recordRollbackFailure(failures, `remove directory ${current}`, () => {
-        rmSync(current, { recursive: false });
+        rmdirSync(current);
       });
       if (failures.length > failureCount) break;
       current = dirname(current);
@@ -216,13 +292,22 @@ function removeCreatedResults(
   }
 }
 
+const ROLLBACK_INCOMPLETE = "Initialization rollback was incomplete";
+
 function attachRollbackCause(primary: unknown, failures: Error[]): unknown {
   if (failures.length === 0) return primary;
-  const cause = new AggregateError(failures, "Initialization rollback was incomplete");
   if (!(primary instanceof Error)) {
-    return new Error(String(primary), { cause });
+    return new Error(String(primary), {
+      cause: new AggregateError(failures, ROLLBACK_INCOMPLETE),
+    });
   }
-  Object.defineProperty(primary, "cause", { value: cause, configurable: true });
+  // Keep the primary error's own cause: it carries the underlying I/O identity
+  // that triggered the rollback, which the report would otherwise replace.
+  const chained = primary.cause === undefined ? failures : [primary.cause, ...failures];
+  Object.defineProperty(primary, "cause", {
+    value: new AggregateError(chained, ROLLBACK_INCOMPLETE),
+    configurable: true,
+  });
   return primary;
 }
 
@@ -263,6 +348,18 @@ export async function runInitWorkflow<TConfig>(
 
   showDetected(detectProject(cwd).display);
 
+  if (dryRun) {
+    showDryRunPlan(
+      cwd,
+      configFileName,
+      normalizePlannedPaths(cwd, plannedPaths(cwd)),
+      skipInstall ? [] : dependencies,
+    );
+    newline();
+    info("(dry run - no changes made)");
+    return;
+  }
+
   if (!yes) {
     const proceed = await promptConfirm("Continue with initialization?");
     if (!proceed) {
@@ -271,29 +368,43 @@ export async function runInitWorkflow<TConfig>(
     }
   }
 
-  if (dryRun) {
-    info("(dry run - no changes made)");
-    return;
-  }
-
   const targets = normalizePlannedPaths(cwd, plannedPaths(cwd));
   const snapshot = snapshotPlannedTargets(cwd, configFileName, targets);
   const configExisted = snapshot.files.has(resolve(cwd, configFileName));
   let fileResults: Array<{ action: "created" | "skipped"; path: string }> = [];
+  const cancellation = installMutationCancellationHandlers();
   try {
     fileResults = createFiles(cwd);
     logFileResults(fileResults);
     if (!skipInstall && afterFiles) {
-      await afterFiles(cwd);
+      await afterFiles(cwd, cancellation.controller.signal);
+      throwIfMutationCancelled(cancellation);
     }
 
     await writeConfig(cwd);
+    throwIfMutationCancelled(cancellation);
     fileAction(pc.green("+"), configFileName);
     if (skipInstall && dependencies.length > 0) onSkipInstall?.(dependencies);
   } catch (error) {
+    cancellation.dispose();
+    if (cancellation.receivedSignal.current) {
+      const rollbackFailures: Error[] = [];
+      removeCreatedResults(cwd, fileResults, snapshot.dirs, rollbackFailures);
+      removeUnplannedlyCreatedFiles(snapshot.plannedFilePaths, snapshot.files, rollbackFailures);
+      removeCreatedPlannedDirs(cwd, snapshot, rollbackFailures);
+      restoreSnapshottedFiles(snapshot.files, rollbackFailures);
+      if (!configExisted) {
+        const configPath = resolve(cwd, configFileName);
+        recordRollbackFailure(rollbackFailures, `remove ${configPath}`, () => {
+          rmSync(configPath, { force: true });
+        });
+      }
+      exitAfterSignalCancellation(cancellation.receivedSignal.current);
+    }
     const rollbackFailures: Error[] = [];
     removeCreatedResults(cwd, fileResults, snapshot.dirs, rollbackFailures);
     removeUnplannedlyCreatedFiles(snapshot.plannedFilePaths, snapshot.files, rollbackFailures);
+    removeCreatedPlannedDirs(cwd, snapshot, rollbackFailures);
     restoreSnapshottedFiles(snapshot.files, rollbackFailures);
     if (!configExisted) {
       const configPath = resolve(cwd, configFileName);
@@ -302,6 +413,8 @@ export async function runInitWorkflow<TConfig>(
       });
     }
     throw attachRollbackCause(error, rollbackFailures);
+  } finally {
+    cancellation.dispose();
   }
 
   showNextSteps(nextSteps);

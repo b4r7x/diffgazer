@@ -68,15 +68,14 @@ describe("public listbox examples", () => {
 
     await user.click(screen.getByRole("button", { name: "Open Command Palette" }));
 
-    expect(screen.getByRole("listbox", { name: "Command Palette" })).toBeTruthy();
+    const listbox = screen.getByRole("listbox", { name: "Command Palette" });
+    expect(listbox).toBeTruthy();
     expect(screen.getByRole("option", { name: "New File" }).getAttribute("aria-selected")).toBe(
       "false",
     );
 
     await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("option", { name: "New File" }).getAttribute("aria-selected")).toBe(
-      "true",
-    );
+    expect(listbox.getAttribute("aria-activedescendant")).toBe("command-new-file");
 
     await user.keyboard("{Enter}");
     expect(alertSpy).toHaveBeenCalledWith("Executed: New File");

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Toaster, toast } from "@/components/ui/toast";
+import { toast } from "@/components/ui/toast";
 
 export default function ToastStatic() {
   // Publishes one standing toast to the store on mount so this page shows a
@@ -16,11 +16,8 @@ export default function ToastStatic() {
   }, []);
 
   return (
-    <>
-      <p className="font-mono text-xs text-muted-foreground">
-        Toasts render in a fixed-position region — look at the bottom-right corner of the page.
-      </p>
-      <Toaster />
-    </>
+    <p className="font-mono text-xs text-muted-foreground">
+      Toasts render in a fixed-position region — look at the bottom-right corner of the page.
+    </p>
   );
 }

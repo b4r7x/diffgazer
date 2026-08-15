@@ -23,6 +23,9 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],
     testTimeout: 10_000,
+    // Spies are restored between tests even when a test fails mid-body, so a
+    // stubbed console.error cannot silence the rest of the file.
+    restoreMocks: true,
     // Typecheck runs only when `test:types` passes `--typecheck`, not on plain
     // `test`; the tsconfig/include below configure that pass.
     typecheck: {

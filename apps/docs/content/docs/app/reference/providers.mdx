@@ -88,6 +88,8 @@ Each saved provider setup is a versioned **configuration** identified by `config
 
 Client-safe responses never include literal secrets, environment values, auth paths, or raw diagnostics. See [Configuration](/app/reference/configuration) and [Local API reference](/app/reference/api).
 
+A record this build cannot decode — one whose product has since been retired, or one a newer build wrote — is kept on disk byte for byte and listed separately as an **unrecognized configuration**. Both the web app and the TUI show it in the provider list under its `configurationId` and offer `delete` and nothing else, so retiring a product never leaves a configuration you can only remove by hand-editing `config.json`.
+
 ## Credentials
 
 Hosted add-now products accept either a stored literal credential or an environment reference. Local HTTP products accept an optional loopback bearer token only when the selected server requires one. Local CLI products use **vendor-managed local auth** already on your machine; Diffgazer does not import, proxy, or store CLI OAuth tokens.

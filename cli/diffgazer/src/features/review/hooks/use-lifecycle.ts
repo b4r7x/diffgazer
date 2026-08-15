@@ -1,32 +1,26 @@
 import type { ReviewGate, UseReviewLifecycleBaseResult } from "@diffgazer/core/api/hooks";
 import {
-  configurationFingerprint,
+  useConfigurationInit,
   useCreateReview,
-  useInit,
   useReviewLifecycleBase,
   useReviewSessionCache,
 } from "@diffgazer/core/api/hooks";
 import { getErrorMessage } from "@diffgazer/core/errors";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { getProviderDisplay, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type {
   FileProgress,
   OrchestratorStats,
   ReviewEvent,
   ReviewScreenPhase,
 } from "@diffgazer/core/review";
+import { describeReviewStartError, sessionTerminationCopy } from "@diffgazer/core/review";
+import type { Readiness, TransportFamily } from "@diffgazer/core/schemas/config";
 import {
-  describeReviewStartError,
-  extractOrchestratorStats,
-  sessionTerminationCopy,
-} from "@diffgazer/core/review";
-import type {
-  ConfigurationInitResponse,
-  ConfigurationStatus,
-  Readiness,
-  SetupStatus,
-  TransportFamily,
+  canAttemptReview,
+  READINESS_PRESENTATION,
+  ReadinessSchema,
+  resolveSelectedConfiguration,
 } from "@diffgazer/core/schemas/config";
-import { READINESS_PRESENTATION, ReadinessSchema } from "@diffgazer/core/schemas/config";
 import type { AgentState, StepState } from "@diffgazer/core/schemas/events";
 import type { ReviewIssue, ReviewMode } from "@diffgazer/core/schemas/review";
 import { useEffect, useState } from "react";
@@ -34,8 +28,8 @@ import { useEffect, useState } from "react";
 type LifecyclePhase = ReviewScreenPhase | "completing" | "loading";
 type ReviewInitState =
   | { status: "loading" }
-  | { status: "error"; message: string }
-  | { status: "ready"; missing: SetupStatus["missing"]; readiness: Readiness };
+  | { status: "error"; message: string; error: unknown }
+  | { status: "ready"; readiness: Readiness };
 
 type ReviewStartResult = "started" | "setup-required" | "failed";
 
@@ -62,19 +56,12 @@ function unconfiguredReadiness(): Readiness {
   });
 }
 
-function resolveSelectedStatus(init: ConfigurationInitResponse): ConfigurationStatus | null {
-  if (!init.selectedConfigurationId) return null;
-  return (
-    init.configurations?.find(
-      ({ configuration }) => configuration.configurationId === init.selectedConfigurationId,
-    ) ?? null
-  );
-}
-
 export interface ReviewLifecycleState {
   phase: LifecyclePhase;
   gate: ReviewGate;
   contextSnapshot: UseReviewLifecycleBaseResult["contextSnapshot"];
+  contextRefreshError: UseReviewLifecycleBaseResult["contextRefreshError"];
+  retryContextRefresh: UseReviewLifecycleBaseResult["retryContextRefresh"];
   mode: ReviewMode;
   reviewId: string | null;
   startedAt: Date | null;
@@ -91,28 +78,33 @@ export interface ReviewLifecycleState {
   isStreaming: boolean;
   provider: string | null;
   productLabel: string | null;
+  /** "Provider / model" identity of the selected configuration, for gate metadata. */
+  configurationDisplay: string | null;
   transportFamily: TransportFamily | null;
   readiness: Readiness;
   initState: ReviewInitState;
   loadingMessage: string | null;
+  /** The run is admitted, so the progress screen may carry its start itself. */
+  canStart: boolean;
 }
 
 interface UseReviewLifecycleOptions {
   mode?: ReviewMode;
   reviewId?: string;
   allowResumeWithoutSetup?: boolean;
+  onStreamNotFound?: (reviewId: string) => void;
 }
 
 export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   state: ReviewLifecycleState;
-  start: (mode: ReviewMode) => Promise<ReviewStartResult>;
+  start: (mode: Exclude<ReviewMode, "files">) => Promise<ReviewStartResult>;
   cancel: () => Promise<string | null>;
   goToSummary: () => void;
   goToResults: () => void;
   retryConfig: () => Promise<void>;
   reset: (options?: { clearActiveSession?: boolean }) => void;
 } {
-  const initQuery = useInit();
+  const initQuery = useConfigurationInit();
   const initData = initQuery.data;
   const createReview = useCreateReview();
   const { clearActiveSession: clearCachedActiveSession } = useReviewSessionCache();
@@ -122,34 +114,30 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   const [startError, setStartError] = useState<string | null>(null);
   const requestedReviewId = startedReviewId ?? options.reviewId;
 
-  const selectedStatus = initData ? resolveSelectedStatus(initData) : null;
+  const selectedStatus = resolveSelectedConfiguration(initData);
   const readiness = selectedStatus?.readiness ?? unconfiguredReadiness();
   const productLabel = selectedStatus
     ? PRODUCT_REGISTRY[selectedStatus.configuration.productId].presentation.name
     : null;
-  const transportFamily = selectedStatus?.configuration.transportFamily ?? null;
-  const configurationIdentity = selectedStatus
-    ? {
-        configurationId: selectedStatus.configuration.configurationId,
-        fingerprint: configurationFingerprint(selectedStatus.configuration),
-      }
+  const configurationDisplay = selectedStatus
+    ? getProviderDisplay(
+        selectedStatus.configuration.productId,
+        selectedStatus.configuration.selectedModelId ?? undefined,
+      )
     : null;
-  const legacyConfigured = initData?.setup.isConfigured ?? false;
+  const transportFamily = selectedStatus?.configuration.transportFamily ?? null;
   const provider = selectedStatus?.configuration.productId ?? null;
 
   let initState: ReviewInitState;
   if (initData) {
-    initState = {
-      status: "ready",
-      missing: initData.setup.missing,
-      readiness,
-    };
+    initState = { status: "ready", readiness };
   } else if (initQuery.isLoading || initQuery.isFetching) {
     initState = { status: "loading" };
   } else {
     initState = {
       status: "error",
       message: getErrorMessage(initQuery.error, "Unable to load configuration."),
+      error: initQuery.error,
     };
   }
 
@@ -161,9 +149,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
 
   const lifecycle = useReviewLifecycleBase({
     configLoading: initState.status === "loading",
-    isConfigured: legacyConfigured,
     readiness,
-    configuration: configurationIdentity,
     allowResumeWithoutSetup: options.allowResumeWithoutSetup,
     reviewId: requestedReviewId,
     onStreamComplete: () => {
@@ -175,7 +161,11 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     },
     onNotFoundInSession: (reviewId) => {
       clearActiveSessionForReview(reviewId);
-      setStartError("Review session not found.");
+      if (options.onStreamNotFound) {
+        options.onStreamNotFound(reviewId);
+      } else {
+        setStartError("Review session not found.");
+      }
     },
     onStaleSession: (code) => {
       clearActiveSessionForReview(requestedReviewId);
@@ -184,7 +174,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   });
 
   const terminalReviewId = lifecycle.stream.state.reviewId ?? requestedReviewId ?? null;
-  const completion = extractOrchestratorStats(lifecycle.stream.state);
+  const completion = lifecycle.stream.state.orchestratorStats;
 
   useEffect(() => {
     if (lifecycle.checks.isNoDiffError && terminalReviewId) {
@@ -200,16 +190,14 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     phase,
   });
 
-  const setupReady = selectedStatus !== null ? readiness.ready : legacyConfigured;
-
-  async function start(selectedMode: ReviewMode): Promise<ReviewStartResult> {
+  async function start(selectedMode: Exclude<ReviewMode, "files">): Promise<ReviewStartResult> {
     if (lifecycle.gate === "unconfigured" && !options.allowResumeWithoutSetup) {
       return "setup-required";
     }
-    if (selectedMode !== mode && !setupReady) {
+    if (selectedMode !== mode && !canAttemptReview(readiness.status)) {
       return "setup-required";
     }
-    if (options.reviewId && options.allowResumeWithoutSetup) {
+    if (options.reviewId && options.allowResumeWithoutSetup && selectedMode === mode) {
       setMode(selectedMode);
       setStartError(null);
       setStartedReviewId(undefined);
@@ -238,11 +226,12 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
 
   async function cancel(): Promise<string | null> {
     const reviewId = lifecycle.stream.state.reviewId ?? requestedReviewId ?? null;
-    const error = await lifecycle.stream.cancel(reviewId);
-    if (!error) {
+    const outcome = await lifecycle.stream.cancel(reviewId);
+    if (!outcome || outcome.status === "cancelled") {
       clearActiveSessionForReview(reviewId);
+      return null;
     }
-    return error;
+    return outcome.message;
   }
 
   function goToSummary() {
@@ -274,6 +263,8 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     phase: displayPhase,
     gate: lifecycle.gate,
     contextSnapshot: lifecycle.contextSnapshot,
+    contextRefreshError: lifecycle.contextRefreshError,
+    retryContextRefresh: lifecycle.retryContextRefresh,
     mode,
     reviewId: lifecycle.stream.state.reviewId ?? requestedReviewId ?? null,
     startedAt: lifecycle.stream.state.startedAt,
@@ -290,10 +281,12 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     isStreaming: lifecycle.stream.state.isStreaming,
     provider,
     productLabel,
+    configurationDisplay,
     transportFamily,
     readiness,
     initState,
     loadingMessage: lifecycle.checks.loadingMessage,
+    canStart: lifecycle.start.canStart,
   };
 
   return { state, start, cancel, goToSummary, goToResults, retryConfig, reset };

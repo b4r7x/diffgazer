@@ -1,5 +1,3 @@
-// @vitest-environment jsdom
-
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -109,13 +107,6 @@ vi.mock("@/lib/library", async (importOriginal) => {
 function installBrowserMocks() {
   stubMatchMedia({ isDesktop: false });
   Element.prototype.scrollIntoView = () => {};
-
-  HTMLDialogElement.prototype.showModal = vi.fn(function showModal(this: HTMLDialogElement) {
-    this.open = true;
-  });
-  HTMLDialogElement.prototype.close = vi.fn(function close(this: HTMLDialogElement) {
-    this.open = false;
-  });
 }
 
 function renderRoute(path: string) {

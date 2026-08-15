@@ -5,7 +5,7 @@ const WIDE = {
   columns: 120,
   contentRows: 26,
   isNarrow: false,
-  hasDuplicateNotice: false,
+  noticeRows: 0,
 };
 
 describe("computePaneGeometry", () => {
@@ -32,9 +32,12 @@ describe("computePaneGeometry", () => {
     expect(widths).toEqual([...widths].sort((a, b) => a - b));
   });
 
-  test("reserves a row for the duplicate notice", () => {
-    const withNotice = computePaneGeometry({ ...WIDE, hasDuplicateNotice: true });
+  test("reserves a row for each results notice", () => {
+    const withNotice = computePaneGeometry({ ...WIDE, noticeRows: 1 });
     expect(withNotice.listPaneHeight).toBe(WIDE.contentRows - 3);
+
+    const withBothNotices = computePaneGeometry({ ...WIDE, noticeRows: 2 });
+    expect(withBothNotices.listPaneHeight).toBe(WIDE.contentRows - 4);
   });
 
   test("splits a narrow frame between the panes without losing a row to rounding", () => {
@@ -44,6 +47,18 @@ describe("computePaneGeometry", () => {
     expect(geometry.listPaneHeight).toBe(12);
     expect(geometry.detailsPaneHeight).toBe(11);
     expect(geometry.listContentWidth).toBe(WIDE.columns - 4);
+  });
+
+  test("budgets the narrow list scroll rows from its own bordered half on odd and even splits", () => {
+    // Both frames hand the list a 12-row box: 10 inner rows, of which the
+    // header, chip row and scroll indicators take 5.
+    const oddSplit = computePaneGeometry({ ...WIDE, isNarrow: true, contentRows: 25 });
+    expect(oddSplit.listPaneHeight).toBe(12);
+    expect(oddSplit.listScrollHeight).toBe(5);
+
+    const evenSplit = computePaneGeometry({ ...WIDE, isNarrow: true, contentRows: 26 });
+    expect(evenSplit.listPaneHeight).toBe(12);
+    expect(evenSplit.listScrollHeight).toBe(5);
   });
 
   test("drops the narrow details tab row once the half-pane cannot spare a body row", () => {
@@ -60,7 +75,7 @@ describe("computePaneGeometry", () => {
       ...WIDE,
       contentRows: 1,
       isNarrow: true,
-      hasDuplicateNotice: true,
+      noticeRows: 1,
     });
 
     expect(collapsed.listPaneHeight).toBeGreaterThanOrEqual(1);

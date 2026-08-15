@@ -1,4 +1,5 @@
 import {
+  type InfiniteData,
   type QueryClient,
   useInfiniteQuery,
   useMutation,
@@ -9,8 +10,10 @@ import { useCallback, useMemo } from "react";
 import type {
   ActiveReviewSession,
   ActiveReviewSessionResponse,
+  ReviewCursor,
   ReviewListWarning,
   ReviewMode,
+  ReviewsResponse,
 } from "../../schemas/review/index.js";
 import type { BoundApi } from "../bound.js";
 import { useApi } from "./context.js";
@@ -21,6 +24,7 @@ function reviewWarningKey(warning: ReviewListWarning): string {
     case "unreadable_review":
       return `${warning.kind}:${warning.reviewId}`;
     case "invalid_issues_dropped":
+    case "invalid_execution_dropped":
       return `${warning.kind}:${warning.reviewId}`;
     case "index_build_failed":
     case "index_rewrite_failed":
@@ -46,27 +50,33 @@ function dedupeReviewWarnings(warnings: readonly ReviewListWarning[]): ReviewLis
   return [...warningsByKey.values()];
 }
 
-export function useReviews(projectPath?: string) {
+// Module-scoped so its identity is stable across renders: react-query only
+// reuses a cached select result while the select function itself is unchanged,
+// and history derives per-render memos (run-id lookup, row summaries) from the
+// returned `reviews` array.
+function selectReviewPages(data: InfiniteData<ReviewsResponse, ReviewCursor | undefined>) {
+  const reviewsById = new Map(
+    data.pages.flatMap((page) => page.reviews).map((review) => [review.id, review]),
+  );
+  const warnings = dedupeReviewWarnings(data.pages.flatMap((page) => page.warnings ?? []));
+  return {
+    reviews: [...reviewsById.values()],
+    ...(warnings.length > 0 ? { warnings } : {}),
+  };
+}
+
+export function useReviews() {
   const api = useApi();
   return useInfiniteQuery({
-    ...reviewQueries.list(api, projectPath),
-    select: (data) => {
-      const reviewsById = new Map(
-        data.pages.flatMap((page) => page.reviews).map((review) => [review.id, review]),
-      );
-      const warnings = dedupeReviewWarnings(data.pages.flatMap((page) => page.warnings ?? []));
-      return {
-        reviews: [...reviewsById.values()],
-        nextCursor: data.pages.at(-1)?.nextCursor ?? null,
-        ...(warnings.length > 0 ? { warnings } : {}),
-      };
-    },
+    ...reviewQueries.list(api),
+    select: selectReviewPages,
   });
 }
 
-export function useReview(id: string) {
+/** Pass `null` while no review is selected; the query then never runs, not even on `refetch`. */
+export function useReview(id: string | null) {
   const api = useApi();
-  return useQuery({ ...reviewQueries.detail(api, id), enabled: !!id });
+  return useQuery(reviewQueries.detail(api, id));
 }
 
 export function useActiveReviewSession(mode?: ReviewMode) {

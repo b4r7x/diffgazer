@@ -13,6 +13,7 @@ import {
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useFormReset } from "@/hooks/use-form-reset";
 import { useOutsideClick } from "@/hooks/use-outside-click";
+import { useTypeaheadBuffer } from "@/hooks/use-typeahead-buffer";
 import { matchesSearch } from "@/lib/search";
 import type { SelectContextValue, SelectOptionMetadata } from "./select-context";
 
@@ -167,39 +168,64 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
   const isValueControlled = valueControlled ?? controlledValue !== undefined;
   const isHighlightedControlled = highlightedControlled ?? controlledHighlighted !== undefined;
 
-  const [isOpen, setIsOpen] = useControllableState<boolean>({
-    value: isOpenControlled ? (controlledOpen ?? false) : controlledOpen,
-    controlled: isOpenControlled,
-    defaultValue: defaultOpen,
-    onChange: onOpenChange,
-  });
-  const [value, setValue, , resetUncontrolledValue] = useControllableState<SelectValue>({
-    value: isValueControlled ? (controlledValue ?? resetValue) : controlledValue,
-    controlled: isValueControlled,
-    defaultValue: resetValue,
-    onChange: valueChangeHandler,
-  });
+  const [isOpen, setIsOpen] = useControllableState<boolean>(
+    isOpenControlled
+      ? {
+          controlled: true,
+          value: controlledOpen ?? false,
+          defaultValue: defaultOpen,
+          onChange: onOpenChange,
+        }
+      : { defaultValue: defaultOpen, onChange: onOpenChange },
+  );
+  const [value, setValue, , resetUncontrolledValue] = useControllableState<SelectValue>(
+    isValueControlled
+      ? {
+          controlled: true,
+          value: controlledValue ?? resetValue,
+          defaultValue: resetValue,
+          onChange: valueChangeHandler,
+        }
+      : { defaultValue: resetValue, onChange: valueChangeHandler },
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [nativeInvalid, setNativeInvalid] = useState(false);
-  const [highlighted, setHighlighted, , resetUncontrolledHighlighted] = useControllableState<
-    string | null
-  >({
-    value: isHighlightedControlled ? (controlledHighlighted ?? null) : controlledHighlighted,
-    controlled: isHighlightedControlled,
-    defaultValue: null,
-    onChange: onHighlightChange,
-  });
+  const [highlighted, setHighlighted] = useControllableState<string | null>(
+    isHighlightedControlled
+      ? {
+          controlled: true,
+          value: controlledHighlighted ?? null,
+          defaultValue: null,
+          onChange: onHighlightChange,
+        }
+      : { defaultValue: null, onChange: onHighlightChange },
+  );
   const [previousIsOpen, setPreviousIsOpen] = useState(isOpen);
   const [isInitialOpen, setIsInitialOpen] = useState(isOpen);
+  const [typeaheadSession, setTypeaheadSession] = useState(0);
+  const wasOpenRef = useRef(isOpen);
 
   if (previousIsOpen !== isOpen) {
     setPreviousIsOpen(isOpen);
     if (!isOpen) {
       setIsInitialOpen(false);
       setSearchQuery("");
-      resetUncontrolledHighlighted(null);
+      setTypeaheadSession((session) => session + 1);
     }
   }
+
+  // One buffer serves both the closed trigger and the open listbox, because the first
+  // character of a query is what opens a closed Select and the query has to survive that
+  // transition. Only a close ends the session.
+  const readTypeaheadQuery = useTypeaheadBuffer(undefined, typeaheadSession);
+
+  // Every close path clears the highlight here, so a controlled consumer gets the
+  // same onHighlightChange(null) whether the close came from the select or from a
+  // parent flipping `open`. A render-phase reset cannot call the public setter.
+  useEffect(() => {
+    if (wasOpenRef.current && !isOpen) setHighlighted(null);
+    wasOpenRef.current = isOpen;
+  }, [isOpen, setHighlighted]);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -211,8 +237,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
   const closeSelect = useCallback(() => {
     setIsOpen(false);
     setSearchQuery("");
-    setHighlighted(null);
-  }, [setIsOpen, setHighlighted]);
+  }, [setIsOpen]);
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
@@ -347,6 +372,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
       multiple,
       searchQuery,
       onSearchChange,
+      readTypeaheadQuery,
       highlighted,
       setHighlighted,
       selectItem,
@@ -375,6 +401,7 @@ export function useSelectState(options: UseSelectStateOptions): UseSelectStateRe
       multiple,
       searchQuery,
       onSearchChange,
+      readTypeaheadQuery,
       highlighted,
       setHighlighted,
       selectItem,

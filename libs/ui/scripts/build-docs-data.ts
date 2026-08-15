@@ -19,6 +19,7 @@ import {
   REGISTRY_ITEM_TYPE,
   type Registry,
   type RegistryItem,
+  RegistryItemSchema,
   RegistrySchema,
 } from "@diffgazer/registry/schemas";
 
@@ -144,17 +145,14 @@ export interface ComponentCopyArchive {
   files: ComponentCopyArchiveFile[];
 }
 
-export interface UiDocsDataBuildResult {
+interface UiDocsDataBuildResult {
   hooksCount: number;
   componentsCount: number;
   libsCount: number;
 }
 
 function parseBuiltRegistryItem(path: string): RegistryItem {
-  const parsed = RegistrySchema.parse({ items: [JSON.parse(readFileSync(path, "utf8"))] });
-  const item = parsed.items[0];
-  if (!item) throw new Error(`Built registry item is empty: ${path}`);
-  return item;
+  return RegistryItemSchema.parse(JSON.parse(readFileSync(path, "utf8")));
 }
 
 function resolveCopyDependencyClosure(item: RegistryItem): {
@@ -208,6 +206,7 @@ function copyArchiveTarget(file: RegistryItem["files"][number]): string {
   // source path: a split file like src/hooks/use-navigation/core.ts targets
   // src/hooks/utils/navigation-core.ts, and deriving from the path would break the
   // sibling imports that reference the target.
+  if (file.target?.startsWith("@hooks/")) return file.target;
   if (file.target?.startsWith("src/hooks/")) {
     return `@hooks/${file.target.slice("src/hooks/".length)}`;
   }
@@ -237,6 +236,23 @@ function appendArchiveFiles(
   }
 }
 
+function restoreAuthoredStyleFiles(itemName: string, builtItem: RegistryItem): RegistryItem {
+  const sourceItem = registryItemsByName.get(itemName);
+  if (!sourceItem) throw new Error(`Unknown UI registry item: ${itemName}`);
+
+  const builtPaths = new Set(builtItem.files.map((file) => file.path));
+  const authoredStyles = sourceItem.files
+    .filter((file) => file.type === "registry:style" && !builtPaths.has(file.path))
+    .map((file) => ({
+      ...file,
+      content: readFileSync(resolve(ROOT, file.path), "utf-8"),
+    }));
+
+  return authoredStyles.length > 0
+    ? { ...builtItem, files: [...builtItem.files, ...authoredStyles] }
+    : builtItem;
+}
+
 export function buildComponentCopyArchive(itemName: string): ComponentCopyArchive {
   const item = registryItemsByName.get(itemName);
   if (!item) throw new Error(`Unknown UI registry item: ${itemName}`);
@@ -251,7 +267,10 @@ export function buildComponentCopyArchive(itemName: string): ComponentCopyArchiv
     for (const dependency of sourceItem.dependencies ?? []) dependencies.add(dependency);
     appendArchiveFiles(
       filesByTarget,
-      parseBuiltRegistryItem(resolve(PUBLIC_REGISTRY_DIR, `${name}.json`)),
+      restoreAuthoredStyleFiles(
+        name,
+        parseBuiltRegistryItem(resolve(PUBLIC_REGISTRY_DIR, `${name}.json`)),
+      ),
     );
   }
 
@@ -358,7 +377,7 @@ async function processComponent(
   };
 }
 
-export function buildUiDocsData(): Promise<UiDocsDataBuildResult> {
+function buildUiDocsData(): Promise<UiDocsDataBuildResult> {
   return buildDocsData({
     libraryId: "ui",
     rootDir: ROOT,

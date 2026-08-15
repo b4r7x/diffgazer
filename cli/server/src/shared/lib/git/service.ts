@@ -11,6 +11,10 @@ import { parseGitStatusOutput, parseHashableStatusFiles } from "./status.js";
 const execFileAsync = promisify(execFile);
 
 const GIT_DIFF_MAX_BUFFER = 5 * 1024 * 1024;
+// Porcelain status is one short line per changed path, so an explicit bound of
+// the same size covers a repo with hundreds of thousands of changed paths
+// instead of leaving the two status reads at execFile's implicit 1 MiB.
+const GIT_STATUS_MAX_BUFFER = 5 * 1024 * 1024;
 type GitDiffMode = Exclude<ReviewMode, "files">;
 type GitDiffResult = Promise<Result<string, { message: string }>>;
 
@@ -39,6 +43,10 @@ const SANITIZED_GIT_ENV_KEYS = [
   "GIT_PROXY_COMMAND",
   "GIT_HOOKS_PATH",
   "GIT_TEMPLATE_DIR",
+  "GIT_LITERAL_PATHSPECS",
+  "GIT_GLOB_PATHSPECS",
+  "GIT_NOGLOB_PATHSPECS",
+  "GIT_ICASE_PATHSPECS",
 ] as const;
 
 // Hardening flags applied to every index-touching git invocation: disable
@@ -47,7 +55,27 @@ const SANITIZED_GIT_ENV_KEYS = [
 // so the override must be uniform across the service. The lone exemption is the
 // `git --version` probe in isGitInstalled, which neither reads the repository
 // nor refreshes the index, so fsmonitor never runs for it.
-const HARDENED_BASE_ARGS = ["-c", "core.fsmonitor=false", "--no-optional-locks"] as const;
+// `--literal-pathspecs` makes every operand after `--` a literal path: a real
+// file named `app/[slug]/page.tsx` selects itself instead of globbing, and a
+// name starting with `:` is a path rather than pathspec magic.
+const HARDENED_BASE_ARGS = [
+  "-c",
+  "core.fsmonitor=false",
+  "--no-optional-locks",
+  "--literal-pathspecs",
+] as const;
+
+/** Canonical a/b path prefixes regardless of user or repo diff.noprefix / mnemonicPrefix. */
+const HARDENED_DIFF_PREFIX_ARGS = [
+  "-c",
+  "diff.noprefix=false",
+  "-c",
+  "diff.mnemonicPrefix=false",
+  "-c",
+  "diff.srcPrefix=a/",
+  "-c",
+  "diff.dstPrefix=b/",
+] as const;
 
 /**
  * Outcome of {@link createGitService.getStatusHash}, distinguishing three states
@@ -69,6 +97,9 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     for (const key of SANITIZED_GIT_ENV_KEYS) {
       delete env[key];
     }
+    delete env.LC_MESSAGES;
+    env.LC_ALL = "C";
+    env.LANGUAGE = "";
     return env;
   }
 
@@ -87,7 +118,7 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       const { stdout } = await execFileAsync(
         "git",
         [...HARDENED_BASE_ARGS, "status", "--porcelain=v2", "--branch", "-z"],
-        { cwd, timeout, env: safeEnv() },
+        { cwd, timeout, maxBuffer: GIT_STATUS_MAX_BUFFER, env: safeEnv() },
       );
       const parsed = parseGitStatusOutput(stdout);
       const hasChanges = parsed.files.staged.length > 0 || parsed.files.unstaged.length > 0;
@@ -130,13 +161,21 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       mode === "staged"
         ? [
             ...HARDENED_BASE_ARGS,
+            ...HARDENED_DIFF_PREFIX_ARGS,
             "diff",
             "--cached",
             "--no-ext-diff",
             "--no-textconv",
             "--no-color",
           ]
-        : [...HARDENED_BASE_ARGS, "diff", "--no-ext-diff", "--no-textconv", "--no-color"];
+        : [
+            ...HARDENED_BASE_ARGS,
+            ...HARDENED_DIFF_PREFIX_ARGS,
+            "diff",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--no-color",
+          ];
     if (pathspecs && pathspecs.length > 0) {
       args.push("--", ...pathspecs);
     }
@@ -185,7 +224,7 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       ({ stdout } = await execFileAsync(
         "git",
         [...HARDENED_BASE_ARGS, "status", "--porcelain=v1", "-z"],
-        { cwd, timeout, env: safeEnv() },
+        { cwd, timeout, maxBuffer: GIT_STATUS_MAX_BUFFER, env: safeEnv() },
       ));
     } catch (error) {
       log("warn", "git_status_hash_failed", { error: getErrorMessage(error) });
@@ -216,6 +255,7 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
           "git",
           [
             ...HARDENED_BASE_ARGS,
+            ...HARDENED_DIFF_PREFIX_ARGS,
             "diff",
             "--no-ext-diff",
             "--no-textconv",
@@ -234,6 +274,7 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
           "git",
           [
             ...HARDENED_BASE_ARGS,
+            ...HARDENED_DIFF_PREFIX_ARGS,
             "diff",
             "--cached",
             "--no-ext-diff",

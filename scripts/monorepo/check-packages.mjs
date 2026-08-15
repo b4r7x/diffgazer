@@ -13,8 +13,10 @@
 
 import { execFileSync } from "node:child_process";
 
-const PUBLINT = "node_modules/publint/src/cli.js";
-const ATTW = "node_modules/@arethetypeswrong/cli/dist/index.js";
+// Declared bins, not paths into the packages' internals: a dependency that
+// relocates its entry file must not turn this gate into an opaque failure.
+const PUBLINT = "publint";
+const ATTW = "attw";
 
 const PACKAGES = [
   { name: "@diffgazer/ui", dir: "libs/ui", cssEntrypoints: true },
@@ -25,12 +27,15 @@ const PACKAGES = [
 
 const UI_CSS_ENTRYPOINTS = ["./theme-base.css", "./theme.css", "./sources.css", "./styles.css"];
 
-function run(label, file, args) {
+function run(label, bin, args) {
   console.log(`\n=== ${label} ===`);
   try {
-    execFileSync("node", [file, ...args], { stdio: "inherit" });
+    execFileSync("pnpm", ["exec", bin, ...args], { stdio: "inherit" });
     return true;
-  } catch {
+  } catch (error) {
+    // A numeric status means the tool ran and reported problems. Anything else
+    // (pnpm missing, spawn failure) is a harness break, not a package defect.
+    if (typeof error?.status !== "number") throw error;
     return false;
   }
 }

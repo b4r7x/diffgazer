@@ -53,7 +53,7 @@ export async function prepareGenerated(options = {}) {
   const configPath = options.configPath ?? DOCS_LIBRARIES_CONFIG_PATH;
   const warn = options.warn ?? console.warn;
 
-  if (shouldPrepareLibraryArtifacts({ env, docsRoot, workspaceRoot, configPath, warn })) {
+  if (shouldPrepareLibraryArtifacts({ env, workspaceRoot, configPath, warn })) {
     (options.runPrepareLibraryArtifacts ?? runPrepareLibraryArtifacts)(workspaceRoot);
   }
 

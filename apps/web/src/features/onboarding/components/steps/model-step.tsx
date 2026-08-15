@@ -1,4 +1,5 @@
-import { PRODUCT_REGISTRY, useModelSource } from "@diffgazer/core/providers";
+import { getModelTierBadge, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { useModelSource } from "@diffgazer/core/providers/hooks";
 import type { ClientConfigurationSummary, ModelInfo } from "@diffgazer/core/schemas/config";
 import { toVerticalBoundaryDirection } from "@diffgazer/keys";
 import { Badge } from "@diffgazer/ui/components/badge";
@@ -67,30 +68,37 @@ function ModelInfoList({
         wrap={false}
         className="space-y-1"
       >
-        {models.map((model) => (
-          <RadioGroupItem
-            key={model.id}
-            value={model.id}
-            label={
-              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                {model.name}
-                {model.recommended ? (
-                  <Badge variant="success" size="sm" className="text-3xs">
-                    RECOMMENDED
-                  </Badge>
-                ) : null}
-                <Badge
-                  variant={model.tier === "free" ? "success" : "neutral"}
-                  size="sm"
-                  className="text-3xs"
-                >
-                  {model.tier.toUpperCase()}
-                </Badge>
-              </span>
-            }
-            description={model.description || undefined}
-          />
-        ))}
+        {models.map((model) => {
+          const tierBadge = getModelTierBadge(model.tier);
+
+          return (
+            <RadioGroupItem
+              key={model.id}
+              value={model.id}
+              label={
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  {model.name}
+                  {model.id !== model.name ? (
+                    <span className="min-w-0 font-mono text-xs text-muted-foreground">
+                      {model.id}
+                    </span>
+                  ) : null}
+                  {model.recommended ? (
+                    <Badge variant="success" size="sm" className="text-3xs">
+                      RECOMMENDED
+                    </Badge>
+                  ) : null}
+                  {tierBadge ? (
+                    <Badge variant={tierBadge.variant} size="sm" className="text-3xs">
+                      {tierBadge.label}
+                    </Badge>
+                  ) : null}
+                </span>
+              }
+              description={model.description || undefined}
+            />
+          );
+        })}
       </RadioGroup>
     </div>
   );

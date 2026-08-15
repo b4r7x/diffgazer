@@ -231,9 +231,14 @@ test("installedFilePathForFile maps every declared public file to a fixture path
     for (const name of allRegistryIndexNames(registryDir)) {
       const item = loadItem(registryDir, name);
       for (const file of item.files ?? []) {
+        const installed = installedFilePathForFile(file);
+        assert.ok(installed, `${name} file ${file.path} must map to a known install target`);
+        // A path the fixture can be probed at, not a target string echoed back: an alias-form
+        // target passed through verbatim exists at no fixture path, so the exhaustive install
+        // assertion would fail on a file shadcn actually wrote.
         assert.ok(
-          installedFilePathForFile(file),
-          `${name} file ${file.path} must map to a known install target`,
+          !installed.startsWith("@"),
+          `${name} file ${file.path} must resolve its alias target, got ${installed}`,
         );
       }
     }
@@ -269,9 +274,9 @@ test("installedFilePathForFile resolves alias, project-root, and verbatim target
     }),
     "src/hooks/use-scroll-lock.ts",
   );
-  // `@ui/` targets resolve under the fixture's `ui` alias (@/components/ui), not
-  // verbatim — otherwise an @ui/ helper entering the exhaustive install set would
-  // be looked up at a nonexistent `@ui/...` fixture path.
+  // `@<alias>/` targets resolve under that components.json alias root, not verbatim —
+  // otherwise a file entering the exhaustive install set would be looked up at a
+  // nonexistent `@ui/...` / `@hooks/...` fixture path.
   assert.equal(
     installedFilePathForFile({
       path: "registry/ui/sidebar/sidebar-variants.ts",
@@ -279,6 +284,48 @@ test("installedFilePathForFile resolves alias, project-root, and verbatim target
       type: "registry:lib",
     }),
     "src/components/ui/sidebar/sidebar-variants.ts",
+  );
+  assert.equal(
+    installedFilePathForFile({
+      path: "src/hooks/use-navigation.ts",
+      target: "@hooks/use-navigation.ts",
+      type: "registry:hook",
+    }),
+    "src/hooks/use-navigation.ts",
+  );
+  assert.equal(
+    installedFilePathForFile({
+      path: "src/hooks/utils/focusable.ts",
+      target: "@hooks/utils/focusable.ts",
+      type: "registry:hook",
+    }),
+    "src/hooks/utils/focusable.ts",
+  );
+  assert.equal(
+    installedFilePathForFile({
+      path: "registry/lib/aria.ts",
+      target: "@lib/aria.ts",
+      type: "registry:lib",
+    }),
+    "src/lib/aria.ts",
+  );
+  assert.equal(
+    installedFilePathForFile({
+      path: "registry/ui/card/card.tsx",
+      target: "@components/card/card.tsx",
+      type: "registry:component",
+    }),
+    "src/components/card/card.tsx",
+  );
+  // shadcn only resolves the components/ui/lib/hooks alias roots; anything else is
+  // unmapped rather than a fixture path the smoke can probe.
+  assert.equal(
+    installedFilePathForFile({
+      path: "registry/ui/x.ts",
+      target: "@styles/x.ts",
+      type: "registry:lib",
+    }),
+    null,
   );
 });
 

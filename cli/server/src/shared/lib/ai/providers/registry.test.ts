@@ -14,12 +14,7 @@ import {
   type ReviewIssue,
 } from "@diffgazer/core/schemas/review";
 import { describe, expect, it } from "vitest";
-import {
-  type AdapterExecuteRequest,
-  assertBoundedExecutionResult,
-  getSafeAdapterIdentity,
-  getSafeAdapterProductNotice,
-} from "../types.js";
+import { type AdapterExecuteRequest, assertBoundedExecutionResult } from "../types.js";
 import { HOSTED_ADAPTERS } from "./hosted/transport.js";
 import { localOpenaiAdapter, ollamaAdapter } from "./local-http/transport.js";
 import {
@@ -29,8 +24,6 @@ import {
   FAIL_CLOSED_ADAPTER_OUTCOME,
   getAdapter,
   LOCAL_HTTP_ADAPTERS,
-  listRunnableAdapterIdentities,
-  listRunnableAdapterNotices,
   validateAdapterRegistry,
 } from "./registry.js";
 
@@ -85,29 +78,11 @@ function evidenceKeyFor(productId: RunnableProductId): EvidenceKey {
   const modelId = suggestedModelId(productId);
   const noticeVersion = product.notice.noticeVersion;
 
-  switch (product.transportFamily) {
-    case "hosted-api": {
-      const region = endpoint && "region" in endpoint ? (endpoint.region ?? null) : null;
-      return {
-        authentication: null,
-        credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
-        installationId: null,
-        productId,
-        transportFamily: "hosted-api",
-        normalizedEndpoint: endpoint?.endpoint ?? "https://example.invalid/v1",
-        region,
-        workspaceAccountReference:
-          endpoint && "workspaceBound" in endpoint && endpoint.workspaceBound
-            ? WORKSPACE_ACCOUNT_REFERENCE
-            : null,
-        modelId,
-        runtime: { identity: "diffgazer-server", version: "1.2.3" },
-        structuredOutputSchemaSha256: SCHEMA_SHA256,
-        noticeVersion,
-        limits,
-      };
-    }
-    case "local-http":
+  // Switching on the product id (not the registry transport family) is what
+  // narrows `productId` to the member of the EvidenceKey union being built.
+  switch (productId) {
+    case "ollama":
+    case "local-openai":
       return {
         authentication: "none",
         credentialReferenceIdentity: null,
@@ -129,7 +104,8 @@ function evidenceKeyFor(productId: RunnableProductId): EvidenceKey {
         noticeVersion,
         limits,
       };
-    case "local-cli":
+    case "codex-cli":
+    case "copilot-cli":
       return {
         authentication: null,
         credentialReferenceIdentity: null,
@@ -145,6 +121,27 @@ function evidenceKeyFor(productId: RunnableProductId): EvidenceKey {
         noticeVersion,
         limits,
       };
+    default: {
+      const region = endpoint && "region" in endpoint ? (endpoint.region ?? null) : null;
+      return {
+        authentication: null,
+        credentialReferenceIdentity: CREDENTIAL_REFERENCE_IDENTITY,
+        installationId: null,
+        productId,
+        transportFamily: "hosted-api",
+        normalizedEndpoint: endpoint?.endpoint ?? "https://example.invalid/v1",
+        region,
+        workspaceAccountReference:
+          endpoint && "workspaceBound" in endpoint && endpoint.workspaceBound
+            ? WORKSPACE_ACCOUNT_REFERENCE
+            : null,
+        modelId,
+        runtime: { identity: "diffgazer-server", version: "1.2.3" },
+        structuredOutputSchemaSha256: SCHEMA_SHA256,
+        noticeVersion,
+        limits,
+      };
+    }
   }
 }
 
@@ -181,34 +178,6 @@ describe("adapter registry", () => {
     }
 
     expect(() => validateAdapterRegistry(ADAPTER_REGISTRY)).not.toThrow();
-  });
-
-  it("exposes safe adapter identity and product notices for every runnable product", () => {
-    expect(listRunnableAdapterIdentities()).toHaveLength(13);
-    expect(listRunnableAdapterNotices()).toHaveLength(13);
-
-    for (const productId of RUNNABLE_PRODUCT_IDS) {
-      const identity = getSafeAdapterIdentity(ADAPTER_REGISTRY[productId]);
-      expect(identity).toEqual({
-        productId,
-        transportFamily: PRODUCT_REGISTRY[productId].transportFamily,
-      });
-      expect(Object.keys(identity).sort()).toEqual(["productId", "transportFamily"]);
-
-      const notice = getSafeAdapterProductNotice(productId);
-      expect(notice.productId).toBe(productId);
-      expect(notice.noticeId).toBe(PRODUCT_REGISTRY[productId].notice.id);
-      expect(notice.noticeVersion).toBe(PRODUCT_REGISTRY[productId].notice.noticeVersion);
-      expect(notice.privacy.length).toBeGreaterThan(0);
-      expect(Object.keys(notice).sort()).toEqual([
-        "billing",
-        "noticeId",
-        "noticeVersion",
-        "privacy",
-        "productId",
-      ]);
-      expect(JSON.stringify(notice)).not.toMatch(/"apiKey"|"credential"|"password"|"secret"/i);
-    }
   });
 
   it.each([

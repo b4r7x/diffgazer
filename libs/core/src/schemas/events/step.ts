@@ -1,13 +1,10 @@
 import { z } from "zod";
-import { LIFECYCLE_STATUSES } from "./statuses.js";
+import type { LIFECYCLE_STATUSES } from "./statuses.js";
 
 // Step IDs match the workflow phases
-export const STEP_IDS = ["diff", "context", "review", "report"] as const;
+const STEP_IDS = ["diff", "context", "review", "report"] as const;
 export const StepIdSchema = z.enum(STEP_IDS);
 export type StepId = z.infer<typeof StepIdSchema>;
-
-const StepStatusSchema = z.enum(LIFECYCLE_STATUSES);
-type StepStatus = z.infer<typeof StepStatusSchema>;
 
 export const STEP_METADATA: Record<StepId, { label: string; description: string }> = {
   diff: { label: "Collect diff", description: "Gathering code changes" },
@@ -39,7 +36,7 @@ const StepErrorEventSchema = z.object({
 const ReviewStartedEventSchema = z.object({
   type: z.literal("review_started"),
   reviewId: z.string(),
-  filesTotal: z.number(),
+  filesTotal: z.int().nonnegative(),
   timestamp: z.string(),
 });
 export type ReviewStartedEvent = z.infer<typeof ReviewStartedEventSchema>;
@@ -52,18 +49,18 @@ export const StepEventSchema = z.discriminatedUnion("type", [
 ]);
 export type StepEvent = z.infer<typeof StepEventSchema>;
 
-// Step state for UI consumption
-const StepStateSchema = z.object({
-  id: StepIdSchema,
-  label: z.string(),
-  status: StepStatusSchema,
-});
-export type StepState = z.infer<typeof StepStateSchema>;
+// Step state for UI consumption. It is created here and never parsed from an
+// untrusted boundary, so it is a plain type rather than a runtime schema.
+export interface StepState {
+  id: StepId;
+  label: string;
+  status: (typeof LIFECYCLE_STATUSES)[number];
+}
 
 export function createInitialSteps(): StepState[] {
   return STEP_IDS.map((id) => ({
     id,
     label: STEP_METADATA[id].label,
-    status: "pending" as StepStatus,
+    status: "pending",
   }));
 }

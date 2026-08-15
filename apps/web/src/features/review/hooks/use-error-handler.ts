@@ -2,6 +2,7 @@ import { isApiError } from "@diffgazer/core/api/types";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
+import { INVALID_REVIEW_ID_COPY } from "@/lib/review-error-copy";
 
 function describeReviewLoadError(
   status: number | undefined,
@@ -9,7 +10,7 @@ function describeReviewLoadError(
 ): { title: string; message: string } {
   switch (status) {
     case 400:
-      return { title: "Invalid Review ID", message: "The review ID format is invalid." };
+      return INVALID_REVIEW_ID_COPY;
     case 404:
       return {
         title: "Review Not Found",

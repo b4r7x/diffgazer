@@ -13,7 +13,7 @@ import {
 } from "./discovery.js";
 import { type LocalHttpFetch, resolveLocalHttpEndpoint } from "./request.js";
 
-export const LOCAL_HTTP_LIVE_PROBE_OPT_IN_ENV = "DIFFGAZER_LIVE_PROBES" as const;
+const LOCAL_HTTP_LIVE_PROBE_OPT_IN_ENV = "DIFFGAZER_LIVE_PROBES" as const;
 
 export const LOCAL_HTTP_GATE_IDS = [
   "allowed-endpoint",
@@ -25,9 +25,9 @@ export const LOCAL_HTTP_GATE_IDS = [
   "oversize-fail-closed",
 ] as const;
 
-export type LocalHttpGateId = (typeof LOCAL_HTTP_GATE_IDS)[number];
+type LocalHttpGateId = (typeof LOCAL_HTTP_GATE_IDS)[number];
 
-export type LocalHttpGateStatus = "passed" | "failed" | "skipped" | "unsupported";
+type LocalHttpGateStatus = "passed" | "failed" | "skipped" | "unsupported";
 
 export type LocalHttpGateObservation = Readonly<{
   gate: LocalHttpGateId;
@@ -35,7 +35,7 @@ export type LocalHttpGateObservation = Readonly<{
   detail?: string;
 }>;
 
-export type LocalHttpRuntimeFixtureId = "ollama" | "lm-studio" | "llama-cpp";
+type LocalHttpRuntimeFixtureId = "ollama" | "lm-studio" | "llama-cpp";
 
 export type LocalHttpRuntimeFixture = Readonly<{
   id: LocalHttpRuntimeFixtureId;
@@ -56,7 +56,7 @@ export type LocalHttpConformanceSuiteResult = Readonly<{
   probeStatus?: LocalReadinessObservationStatus;
 }>;
 
-export type LocalHttpMockRoute = Readonly<{
+type LocalHttpMockRoute = Readonly<{
   method?: string;
   match: (url: string) => boolean;
   handler: (request: Request) => Response | Promise<Response>;
@@ -141,7 +141,7 @@ function fetchInputUrl(input: Parameters<LocalHttpFetch>[0]): string {
   return input.url;
 }
 
-export function createMockLocalHttpFetch(routes: readonly LocalHttpMockRoute[]): LocalHttpFetch {
+function createMockLocalHttpFetch(routes: readonly LocalHttpMockRoute[]): LocalHttpFetch {
   return (async (input, init) => {
     const url = fetchInputUrl(input);
     const method = init?.method ?? "GET";
@@ -197,7 +197,7 @@ function ollamaRoutes(
         if (options.schemaInvalid) {
           return jsonResponse({ message: { content: '{"status":"nope"}' } });
         }
-        return jsonResponse({ message: { content: '{"status":"ok"}' } });
+        return jsonResponse({ message: { content: '{"issues":[]}' } });
       },
     },
   ];
@@ -249,7 +249,7 @@ function openAiRoutes(
         if (options.schemaInvalid) {
           return jsonResponse({ choices: [{ message: { content: '{"status":"nope"}' } }] });
         }
-        return jsonResponse({ choices: [{ message: { content: '{"status":"ok"}' } }] });
+        return jsonResponse({ choices: [{ message: { content: '{"issues":[]}' } }] });
       },
     },
   ];
@@ -463,7 +463,7 @@ export async function runLocalHttpMockGateSuite(
       : null;
 
   const identityHash = identity ? hashLocalConformanceIdentity(identity) : null;
-  const expectedIdentityHash = identity ? hashLocalConformanceIdentity(identity) : null;
+  const expectedIdentityHash = hashLocalConformanceIdentity(buildLocalConformanceIdentity(fixture));
   const ready = isLocalConformanceReady(gates, identityHash, expectedIdentityHash);
 
   return {
@@ -577,7 +577,7 @@ export async function runLocalHttpLiveGateSuite(
     runtimeIdentity: discovery.value.runtime.identity,
   });
   const identityHash = hashLocalConformanceIdentity(identity);
-  const expectedIdentityHash = identityHash;
+  const expectedIdentityHash = hashLocalConformanceIdentity(buildLocalConformanceIdentity(fixture));
   const ready = isLocalConformanceReady(gates, identityHash, expectedIdentityHash);
 
   const probe = await probeLocalHttpConformance(

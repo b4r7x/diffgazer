@@ -20,6 +20,7 @@ import { useNavigation } from "@diffgazer/keys"
 
 function FileList() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const getOptionId = (value: string) => `file-${value}`
 
   const { highlighted, isHighlighted, onKeyDown } = useNavigation({
     containerRef,
@@ -30,11 +31,27 @@ function FileList() {
   })
 
   return (
-    <div ref={containerRef} role="listbox" onKeyDown={onKeyDown}>
-      <div role="option" data-value="readme" data-focused={isHighlighted("readme")}>
+    <div
+      ref={containerRef}
+      role="listbox"
+      aria-activedescendant={highlighted ? getOptionId(highlighted) : undefined}
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+    >
+      <div
+        id={getOptionId("readme")}
+        role="option"
+        data-value="readme"
+        data-highlighted={isHighlighted("readme") ? "" : undefined}
+      >
         README.md
       </div>
-      <div role="option" data-value="package" data-focused={isHighlighted("package")}>
+      <div
+        id={getOptionId("package")}
+        role="option"
+        data-value="package"
+        data-highlighted={isHighlighted("package") ? "" : undefined}
+      >
         package.json
       </div>
     </div>

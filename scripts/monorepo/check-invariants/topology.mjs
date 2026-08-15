@@ -22,6 +22,16 @@ const EXPECTED_WORKSPACE_GLOBS = [
 const E2E_BASELINE_DIR_RE = /^[^/]+\/[^/]+\/testing\/e2e\/baselines\//;
 const PLAYWRIGHT_SCREENSHOT_RE = /\.e2e\.ts-snapshots\/[^/]+\.png$/;
 
+// AGENTS.md forbids committing these deterministic generated trees. .gitignore only
+// blocks fresh adds — an already-indexed file stays tracked and leaves `git status`
+// clean, so the index itself is the thing to check.
+const GENERATED_ARTIFACT_DIRS = [
+  "libs/ui/docs/generated/",
+  "libs/keys/docs/generated/",
+  "libs/keys/artifacts/artifacts/",
+  "cli/add/src/generated/",
+];
+
 export function checkRootWorkspaceFile(context) {
   return invariantResult(
     "root workspace file exists",
@@ -129,6 +139,18 @@ export function checkE2eScreenshotsUseBaselineDirectory(context) {
     "e2e screenshots use configured baseline directory",
     misplaced.length === 0,
     misplaced.slice(0, 5).join(", "),
+  );
+}
+
+export function checkNoTrackedGeneratedArtifacts(context) {
+  const tracked = parseGitIndexPaths(context.commandOutputs.gitLsFilesStaged).filter((path) =>
+    GENERATED_ARTIFACT_DIRS.some((dir) => path.startsWith(dir)),
+  );
+
+  return invariantResult(
+    "generated artifact directories are not tracked",
+    tracked.length === 0,
+    tracked.slice(0, 5).join(", "),
   );
 }
 

@@ -1,4 +1,4 @@
-function foldSearchValue(value: string): string {
+export function foldSearchValue(value: string): string {
   return value.normalize("NFC").toUpperCase().normalize("NFC");
 }
 

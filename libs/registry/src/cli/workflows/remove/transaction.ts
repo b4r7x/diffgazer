@@ -52,8 +52,10 @@ export function restoreFileSnapshots(snapshot: RemovalSnapshot, primaryFailure: 
   for (const [path, content] of [...snapshot].reverse()) {
     try {
       if (content === null) {
-        rmSync(path, { force: true });
-      } else {
+        if (existsSync(path)) {
+          rmSync(path, { force: true });
+        }
+      } else if (!existsSync(path) || !readFileSync(path).equals(content)) {
         mkdirSync(dirname(path), { recursive: true });
         writeFileSync(path, content);
       }
@@ -69,8 +71,8 @@ export function restoreFileSnapshots(snapshot: RemovalSnapshot, primaryFailure: 
   }
 }
 
-export function beginRemovalTransaction<TItem, TConfig>(
-  options: RunRemoveWorkflowOptions<TItem, TConfig>,
+export function beginRemovalTransaction<TItem, TConfig, TMetadata>(
+  options: RunRemoveWorkflowOptions<TItem, TConfig, TMetadata>,
   config: TConfig,
   ownedFiles: Set<string>,
 ): RemovalSnapshot {
@@ -91,19 +93,24 @@ export function beginRemovalTransaction<TItem, TConfig>(
 // Previews (dry-run) or applies the derived-artifact mutations. Writes are
 // validated against the allowed base dirs so a callback can never rewrite a
 // file outside the owned directories.
-export function runDerivedRemoval<TItem, TConfig>(
-  options: RunRemoveWorkflowOptions<TItem, TConfig>,
+interface DerivedRemovalResult<TMetadata> {
+  retainedNames: string[];
+  metadata?: TMetadata;
+}
+
+export function runDerivedRemoval<TItem, TConfig, TMetadata>(
+  options: RunRemoveWorkflowOptions<TItem, TConfig, TMetadata>,
   config: TConfig,
   removedNames: string[],
   snapshot?: RemovalSnapshot,
-): string[] {
+): DerivedRemovalResult<TMetadata> {
   const plan = options.onAfterRemove?.({
     cwd: options.cwd,
     config,
     removedNames,
     force: options.force,
   });
-  if (!plan) return [];
+  if (!plan) return { retainedNames: [] };
 
   for (const notice of plan.preservedNotices) info(notice);
 
@@ -111,7 +118,7 @@ export function runDerivedRemoval<TItem, TConfig>(
     for (const write of plan.writes) {
       info(`Would update ${relative(options.cwd, write.targetPath)}`);
     }
-    return plan.retainedNames ?? [];
+    return { retainedNames: plan.retainedNames ?? [], metadata: plan.metadata };
   }
 
   const allowedBaseDirs = options.resolveAllowedBaseDirs({ cwd: options.cwd, config });
@@ -120,7 +127,7 @@ export function runDerivedRemoval<TItem, TConfig>(
     if (snapshot) addFileSnapshots(snapshot, [write.targetPath], allowedBaseDirs);
     writeFileSync(write.targetPath, write.content);
   }
-  return plan.retainedNames ?? [];
+  return { retainedNames: plan.retainedNames ?? [], metadata: plan.metadata };
 }
 
 export function announcedRemovedNames(removedNames: string[], retainedNames: string[]): string[] {
@@ -132,7 +139,7 @@ export function joinAnnounced(names: string[]): string {
   return names.length > 0 ? ` (${names.join(", ")})` : "";
 }
 
-export function reportOrphanedDeps<TConfig>(opts: {
+function reportOrphanedDeps<TConfig>(opts: {
   cwd: string;
   names: string[];
   config: TConfig;
@@ -145,18 +152,29 @@ export function reportOrphanedDeps<TConfig>(opts: {
   }
 }
 
-export function finalizeRemoval<TItem, TConfig>(
-  options: RunRemoveWorkflowOptions<TItem, TConfig>,
+function commitRemovalManifest<TItem, TConfig, TMetadata>(
+  options: RunRemoveWorkflowOptions<TItem, TConfig, TMetadata>,
   config: TConfig,
-  removed: number,
+  removedNames: string[],
+  retainedNames: string[],
+  metadata: TMetadata | undefined,
+): void {
+  const update = { cwd: options.cwd, config, removedNames, retainedNames };
+  options.updateManifest(metadata === undefined ? update : { ...update, metadata });
+}
+
+export function finalizeRemoval<TItem, TConfig, TMetadata>(
+  options: RunRemoveWorkflowOptions<TItem, TConfig, TMetadata>,
+  config: TConfig,
   dirs: Set<string>,
   removedNames: string[],
   snapshot: RemovalSnapshot,
-): void {
-  let retainedNames: string[];
+  formatSuccess: (announced: string[]) => string,
+): string[] {
+  let derived: DerivedRemovalResult<TMetadata>;
   try {
-    retainedNames = runDerivedRemoval(options, config, removedNames, snapshot);
-    options.updateManifest({ cwd: options.cwd, removedNames });
+    derived = runDerivedRemoval(options, config, removedNames, snapshot);
+    commitRemovalManifest(options, config, removedNames, derived.retainedNames, derived.metadata);
     cleanEmptyDirs([...dirs]);
   } catch (failure) {
     restoreFileSnapshots(snapshot, failure);
@@ -170,13 +188,14 @@ export function finalizeRemoval<TItem, TConfig>(
   });
 
   newline();
-  const announced = announcedRemovedNames(removedNames, retainedNames);
-  success(`Removed ${removed} file(s)${joinAnnounced(announced)}.`);
+  const announced = announcedRemovedNames(removedNames, derived.retainedNames);
+  success(formatSuccess(announced));
   newline();
+  return announced;
 }
 
-export function deleteRemovalFiles<TItem, TConfig>(
-  options: RunRemoveWorkflowOptions<TItem, TConfig>,
+export function deleteRemovalFiles<TItem, TConfig, TMetadata>(
+  options: RunRemoveWorkflowOptions<TItem, TConfig, TMetadata>,
   config: TConfig,
   files: Set<string>,
 ): DeleteResult {

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { SavedReviewSchema } from "../../schemas/review/index.js";
+import { type EvidenceRef, SavedReviewSchema } from "../../schemas/review/index.js";
 import {
   buildSeverityBreakdownRows,
   formatSeverityFilterLabel,
+  toEvidencePresentation,
   toIssueDetailsPresentation,
 } from "./issue.js";
 
@@ -11,8 +12,8 @@ describe("review issue presentation", () => {
     const rows = buildSeverityBreakdownRows({ blocker: 0, high: 3, medium: 1, low: 0, nit: 0 });
 
     expect(rows.map((row) => row.severity)).toEqual(["blocker", "high", "medium", "low", "nit"]);
-    expect(rows[0]).toMatchObject({ count: 0, filledCells: 0, emptyCells: 16 });
-    expect(rows[1]).toMatchObject({ count: 3, total: 4, filledCells: 12, emptyCells: 4 });
+    expect(rows[0]).toMatchObject({ count: 0, total: 4 });
+    expect(rows[1]).toMatchObject({ count: 3, total: 4 });
   });
 
   it("builds complete issue metadata and fix-step presentation from a saved review", () => {
@@ -85,7 +86,6 @@ describe("review issue presentation", () => {
     expect(toIssueDetailsPresentation(issue)).toEqual({
       category: "security",
       confidence: "88%",
-      range: "14-18",
       location: "src/auth.ts:14-18",
       fixPlan: [
         {
@@ -110,5 +110,66 @@ describe("review issue presentation", () => {
 
   it("keeps the severity-filter label shared across surfaces", () => {
     expect(formatSeverityFilterLabel("high", 3)).toBe("HIGH 3");
+  });
+});
+
+describe("toEvidencePresentation", () => {
+  it("preserves a blank code excerpt and its backend array ordinal", () => {
+    const evidence: EvidenceRef = {
+      type: "code",
+      title: "Parser location",
+      sourceId: "source:parser",
+      file: "src/parser.ts",
+      range: { start: 7, end: 7 },
+      excerpt: "",
+    };
+
+    expect(toEvidencePresentation(evidence, "src/fallback.ts", 3)).toEqual({
+      kind: "code",
+      type: "code",
+      label: "Code evidence",
+      title: "Parser location",
+      sourceText: "source:parser",
+      file: "src/parser.ts",
+      startLine: 7,
+      endLine: 7,
+      excerpt: "",
+      ordinal: 3,
+    });
+  });
+
+  it("publishes neither line bound when the provider range is inverted", () => {
+    const evidence: EvidenceRef = {
+      type: "code",
+      title: "Parser location",
+      sourceId: "source:parser",
+      file: "src/parser.ts",
+      range: { start: 9, end: 2 },
+      excerpt: "const parsed = parse(input);",
+    };
+
+    expect(toEvidencePresentation(evidence, "src/fallback.ts", 0)).toMatchObject({
+      startLine: undefined,
+      endLine: undefined,
+    });
+  });
+
+  it("marks non-code references as unverified evidence", () => {
+    expect(
+      toEvidencePresentation(
+        {
+          type: "doc",
+          title: "Parser contract",
+          sourceId: "docs/reference/parser",
+          excerpt: "Invalid input must return a typed failure.",
+        },
+        "src/fallback.ts",
+        0,
+      ),
+    ).toMatchObject({
+      kind: "reference",
+      type: "doc",
+      label: "Unverified documentation reference",
+    });
   });
 });

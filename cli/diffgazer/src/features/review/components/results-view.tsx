@@ -2,10 +2,12 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import { formatRunId } from "@diffgazer/core/format";
 import {
   buildDuplicateCollapseNotice,
+  buildLensFailureNotice,
   filterIssuesBySeverity,
   selectDetailsEmptyKind,
   useIssueDetailsState,
 } from "@diffgazer/core/review";
+import type { LensStat } from "@diffgazer/core/schemas/events";
 import type { Shortcut, UISeverityFilter } from "@diffgazer/core/schemas/presentation";
 import { BACK_SHORTCUT, SWITCH_PANE_SHORTCUT } from "@diffgazer/core/schemas/presentation";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
@@ -25,6 +27,7 @@ export interface ReviewResultsViewProps {
   reviewId?: string | null;
   initialIssueId?: string;
   droppedDuplicates?: number;
+  lensStats?: LensStat[];
   onBack?: () => void;
 }
 
@@ -41,6 +44,7 @@ export function ReviewResultsView({
   reviewId,
   initialIssueId,
   droppedDuplicates,
+  lensStats,
   onBack,
 }: ReviewResultsViewProps): ReactElement {
   const { tokens } = useTheme();
@@ -103,6 +107,8 @@ export function ReviewResultsView({
 
   const detailsEmptyKind = selectDetailsEmptyKind(issues.length, filteredIssues.length);
   const duplicateNotice = buildDuplicateCollapseNotice(droppedDuplicates, issues.length);
+  const completenessNotice = buildLensFailureNotice(lensStats);
+  const noticeRows = (duplicateNotice ? 1 : 0) + (completenessNotice ? 1 : 0);
   const {
     listWidth,
     listContentWidth,
@@ -115,7 +121,7 @@ export function ReviewResultsView({
     columns,
     contentRows,
     isNarrow,
-    hasDuplicateNotice: Boolean(duplicateNotice),
+    noticeRows,
   });
   const reviewIdLabel = reviewId ? formatRunId(reviewId) : "#unknown";
 
@@ -126,6 +132,11 @@ export function ReviewResultsView({
           {`Review ${reviewIdLabel}`}
         </Text>
       </Box>
+      {completenessNotice ? (
+        <Box paddingX={1}>
+          <Text color={tokens.warning}>{completenessNotice}</Text>
+        </Box>
+      ) : null}
       {duplicateNotice ? (
         <Box paddingX={1}>
           <Text color={tokens.muted}>{duplicateNotice}</Text>

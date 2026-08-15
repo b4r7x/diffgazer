@@ -34,14 +34,16 @@ export const COPILOT_CLI_ACCEPTED_FLAGS = [
   "--no-remote-export",
 ] as const;
 
-export const COPILOT_CLI_ALLOWED_TOOLS = ["view", "glob", "grep"] as const;
+const COPILOT_CLI_ALLOWED_TOOLS = ["view", "glob", "grep"] as const;
 
-export const COPILOT_FABRICATED_ENVELOPE_PATHS = ["result", "status", "data.review"] as const;
+const COPILOT_FABRICATED_ENVELOPE_PATHS = ["result", "status", "data.review"] as const;
 
-export function buildCopilotCliExecArgv(input: { modelId: string; prompt: string }): string[] {
+/**
+ * The prompt travels on stdin, so `-p` is deliberately absent: Copilot ignores
+ * piped input whenever a `-p`/`--prompt` argument is present.
+ */
+export function buildCopilotCliExecArgv(input: { modelId: string }): string[] {
   return [
-    "-p",
-    input.prompt,
     "--output-format=json",
     "--stream=off",
     "--model",
@@ -152,7 +154,7 @@ const COPILOT_CLI_PRODUCT: CliReviewProduct = {
   productId: "copilot-cli",
   tmpPrefix: "copilot-cli-fixture-",
   rejectedAuthEvidence: ["unavailable", "plaintext-fallback"],
-  buildArgv: ({ modelId, prompt }) => buildCopilotCliExecArgv({ modelId, prompt }),
+  buildArgv: ({ modelId }) => buildCopilotCliExecArgv({ modelId }),
   assertArgvAllowed: (record, argv) => {
     assertCopilotArgvFlagsAllowlisted(record, argv);
     assertCopilotToolsAllowlisted(argv);
@@ -171,5 +173,3 @@ export function executeCopilotCliReview(
 export function createCopilotCliAdapter(dependencies?: CliReviewDependencies): Adapter {
   return createCliReviewAdapter(COPILOT_CLI_PRODUCT, dependencies);
 }
-
-export const copilotCliAdapter = createCopilotCliAdapter();

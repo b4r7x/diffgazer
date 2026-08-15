@@ -7,6 +7,7 @@ import type { GitStatus } from "@diffgazer/core/schemas/git";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { assertTempHome } from "../../shared/lib/testing/temp-home.js";
 
 const { mockCreateGitService, mockGitService } = vi.hoisted(() => {
   const service = {
@@ -44,6 +45,7 @@ let projectRealpath: string;
 
 beforeEach(async () => {
   tempHome = await mkdtemp(join(tmpdir(), "diffgazer-git-router-home-"));
+  assertTempHome(tempHome);
   project = await realpath(await mkdtemp(join(tmpdir(), "diffgazer-git-router-proj-")));
   await mkdir(join(project, ".git"));
   projectRealpath = project;
@@ -59,16 +61,30 @@ beforeEach(async () => {
   mockGitService.getStatusHash.mockResolvedValue({ kind: "full", hash: "status" });
 });
 
+// Settle the store's queued persistence, then remove the temp dirs, and only then drop
+// DIFFGAZER_HOME: `paths.ts` re-reads it per call, so restoring it while a persist*Async
+// write is still pending re-points that write at the real ~/.diffgazer.
 afterEach(async () => {
-  delete process.env.DIFFGAZER_HOME;
-  delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
-  await rm(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
-  await rm(project, { recursive: true, force: true, maxRetries: 3, retryDelay: 20 });
+  try {
+    await drainConfigStore();
+    await rm(tempHome, { recursive: true, force: true });
+    await rm(project, { recursive: true, force: true });
+  } finally {
+    delete process.env.DIFFGAZER_HOME;
+    delete process.env.DIFFGAZER_DEV_UNSAFE_PROJECT_ROOT;
+  }
 });
 
 async function createGitApp(): Promise<Hono> {
   const { gitRouter } = await import("./router.js");
   return new Hono().route("/api/git", gitRouter);
+}
+
+// The router calls `getStore()` while serving, so the store singleton is reached through
+// the module rather than a handle any single test holds.
+async function drainConfigStore(): Promise<void> {
+  const { getStore } = await import("../../shared/lib/config/store.js");
+  await getStore().ready();
 }
 
 async function trustProject(projectRoot: string): Promise<void> {

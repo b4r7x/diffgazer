@@ -987,31 +987,19 @@ describe("ToggleGroup multiple mode", () => {
 });
 
 describe("ToggleGroup types", () => {
-  it("narrows single-mode value/onChange to the supplied union", () => {
-    type Single = Extract<ToggleGroupProps<"a" | "b">, { selectionMode?: "single" | undefined }>;
-
-    expectTypeOf<Single["value"]>().toEqualTypeOf<"a" | "b" | null | undefined>();
-    expectTypeOf<Single["defaultValue"]>().toEqualTypeOf<"a" | "b" | null | undefined>();
-    expectTypeOf<NonNullable<Single["onChange"]>>().parameter(0).toEqualTypeOf<"a" | "b" | null>();
-  });
-
-  it("narrows multiple-mode value/onChange to the supplied union", () => {
-    type Multi = Extract<ToggleGroupProps<"a" | "b">, { selectionMode: "multiple" }>;
-
-    expectTypeOf<Multi["value"]>().toEqualTypeOf<readonly ("a" | "b")[] | undefined>();
-    expectTypeOf<NonNullable<Multi["onChange"]>>()
-      .parameter(0)
-      .toEqualTypeOf<readonly ("a" | "b")[]>();
-  });
-
-  it("rejects ToggleGroupItem values outside the literal union", () => {
-    expectTypeOf<"c">().not.toMatchTypeOf<ToggleGroupItemProps<"a" | "b">["value"]>();
-    expectTypeOf<"a">().toMatchTypeOf<ToggleGroupItemProps<"a" | "b">["value"]>();
-  });
-
-  it("keeps the loose default contract when no generic is supplied", () => {
+  it("exposes honest string callbacks on the root API", () => {
     type Single = Extract<ToggleGroupProps, { selectionMode?: "single" | undefined }>;
+
     expectTypeOf<Single["value"]>().toEqualTypeOf<string | null | undefined>();
+    expectTypeOf<Single["defaultValue"]>().toEqualTypeOf<string | null | undefined>();
+    expectTypeOf<NonNullable<Single["onChange"]>>().parameter(0).toEqualTypeOf<string | null>();
     expectTypeOf<ToggleGroupItemProps["value"]>().toEqualTypeOf<string>();
+  });
+
+  it("exposes honest string-array callbacks in multiple mode", () => {
+    type Multi = Extract<ToggleGroupProps, { selectionMode: "multiple" }>;
+
+    expectTypeOf<Multi["value"]>().toEqualTypeOf<readonly string[] | undefined>();
+    expectTypeOf<NonNullable<Multi["onChange"]>>().parameter(0).toEqualTypeOf<readonly string[]>();
   });
 });

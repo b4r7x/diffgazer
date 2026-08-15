@@ -1,4 +1,5 @@
 import { FooterProvider } from "@diffgazer/core/footer";
+import { getNoChangesCopy } from "@diffgazer/core/review";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -125,10 +126,15 @@ describe("NoChangesView", () => {
     ["staged", { title: "No Staged Changes", switchLabel: "Review Unstaged" }],
     ["unstaged", { title: "No Unstaged Changes", switchLabel: "Review Staged" }],
     ["files", { title: "No Changes in Selected Files", switchLabel: "Review Unstaged" }],
-  ])("renders %s mode title and switch label", (mode, { title, switchLabel }) => {
+  ])("renders %s mode title, remediation body, and switch label", (mode, {
+    title,
+    switchLabel,
+  }) => {
     renderView({ mode, onSwitchMode: vi.fn() });
+    const { message } = getNoChangesCopy(mode);
 
     expect(screen.getByText(title)).toBeInTheDocument();
+    expect(screen.getByText(message)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: switchLabel })).toBeInTheDocument();
   });
 });

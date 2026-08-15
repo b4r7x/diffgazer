@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { selectDoc } from "../../registry/component-docs/select";
-import { getInterfaceMember, jsDocDescription, readSource } from "./support";
+import { selectDoc } from "../../registry/component-docs/select.js";
+import { getInterfaceMember, jsDocDescription, readSource } from "./support.js";
 
 type PropMetadata = {
   type?: string;
@@ -31,7 +31,7 @@ const requiredSelectMetadataCases: RequiredSelectMetadataCase[] = [
     members: {
       getResultsLabel: {
         type: "(count: number) => string",
-        defaultValue: 'count => count + " results"',
+        defaultValue: 'count => count + (count === 1 ? " result" : " results")',
         description: /results count.*live region/i,
       },
     },

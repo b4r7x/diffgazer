@@ -38,15 +38,28 @@ export const PROVIDER_MANAGEMENT_ACTIONS = [
 ] as const;
 export type ProviderManagementAction = (typeof PROVIDER_MANAGEMENT_ACTIONS)[number];
 
-export interface ProviderManagementEvent {
-  readonly action: ProviderManagementAction;
-  readonly row: ProviderListRow | null;
-  readonly modelId: ExactModelId | null;
-}
+/**
+ * The action/payload pairings the handlers below can actually emit: only the
+ * two model actions carry a model, and only `select` starts from a row the
+ * caller already holds. Encoding that here keeps surfaces from masking an
+ * impossible combination with a fallback.
+ */
+export type ProviderManagementEvent =
+  | {
+      readonly action: Exclude<ProviderManagementAction, "select" | "select-model">;
+      readonly row: ProviderListRow | null;
+      readonly modelId: null;
+    }
+  | { readonly action: "select"; readonly row: ProviderListRow; readonly modelId: ExactModelId }
+  | {
+      readonly action: "select-model";
+      readonly row: ProviderListRow | null;
+      readonly modelId: ExactModelId;
+    };
 
-export interface ProviderManagementFailure extends ProviderManagementEvent {
+export type ProviderManagementFailure = ProviderManagementEvent & {
   readonly message: string;
-}
+};
 
 /**
  * How a surface reports outcomes. Web raises toasts, the TUI writes a footer
@@ -70,17 +83,31 @@ export interface CreatedConfigurationResponse {
   readonly configuration?: { readonly configurationId: ConfigurationId } | undefined;
 }
 
+/**
+ * The minimum a test response must expose. A resolved test call is not a
+ * passed test: the server answers HTTP 200 with `status: "failed"` whenever the
+ * conformance probe did not pass, and the readiness explanation carries the
+ * reason the surface should report.
+ */
+export interface TestedConfigurationResponse {
+  readonly status: "succeeded" | "failed";
+  readonly readiness: { readonly explanation: string };
+}
+
 export interface ProviderManagementMutations {
-  readonly createConfiguration: (
-    input: ClientConfigurationInput,
-  ) => Promise<CreatedConfigurationResponse>;
+  readonly createConfiguration: (request: {
+    input: ClientConfigurationInput;
+    acknowledgement: AcceptedAcknowledgement;
+  }) => Promise<CreatedConfigurationResponse>;
   readonly updateConfiguration: (request: UpdateConfigurationRequest) => Promise<unknown>;
   readonly deleteConfiguration: (request: {
     configurationId: ConfigurationId;
-    expectedRevision: ConfigurationRevision;
+    expectedRevision?: ConfigurationRevision;
   }) => Promise<unknown>;
   readonly inspectConfiguration: (configurationId: ConfigurationId) => Promise<unknown>;
-  readonly testConfiguration: (configurationId: ConfigurationId) => Promise<unknown>;
+  readonly testConfiguration: (
+    configurationId: ConfigurationId,
+  ) => Promise<TestedConfigurationResponse>;
   readonly selectConfiguration: (
     configurationId: ConfigurationId,
     modelId: ExactModelId,
@@ -164,14 +191,23 @@ export function useProviderManagement({
   const handleCreateConfiguration = async (
     owner: SetupDialogOwner,
     input: ClientConfigurationInput,
-    options?: { continueToModelSelection?: boolean },
+    options?: {
+      continueToModelSelection?: boolean;
+      acknowledgement: AcceptedAcknowledgement;
+    },
   ) => {
     const row = findProviderById(providers, owner.rowId);
     // The created configuration is the only reliable identity here: the row
     // list has not refreshed yet, so it cannot supply the new id.
     let configurationId: ConfigurationId | undefined;
     const outcome = await run({ action: "create", row, modelId: null }, async () => {
-      const response = await mutations.createConfiguration(input);
+      if (!options?.acknowledgement) {
+        throw new Error("Create configuration requires notice acknowledgement");
+      }
+      const response = await mutations.createConfiguration({
+        input,
+        acknowledgement: options.acknowledgement,
+      });
       configurationId = response.configuration?.configurationId;
     });
     // Owner swaps happen after the submit guard has cleared: closing inside it
@@ -208,9 +244,11 @@ export function useProviderManagement({
     return outcome;
   };
 
+  // A record this build could not decode has no row and no revision: the id is
+  // all the surfaces have, and removal is all they offer for it.
   const handleDeleteConfiguration = (
     configurationId: ConfigurationId,
-    expectedRevision: ConfigurationRevision,
+    expectedRevision?: ConfigurationRevision,
   ) => {
     const row = findProviderById(providers, configurationId);
     return run({ action: "delete", row, modelId: null }, async () => {
@@ -228,7 +266,10 @@ export function useProviderManagement({
   const handleTestConfiguration = (configurationId: ConfigurationId) => {
     const row = findProviderById(providers, configurationId);
     return run({ action: "test", row, modelId: null }, async () => {
-      await mutations.testConfiguration(configurationId);
+      const response = await mutations.testConfiguration(configurationId);
+      if (response.status !== "succeeded") {
+        throw new Error(response.readiness.explanation);
+      }
     });
   };
 
@@ -293,12 +334,8 @@ export function useProviderManagement({
     handleCreateConfiguration,
     handleUpdateConfiguration,
     handleDeleteConfiguration,
-    handleInspectConfiguration,
-    handleTestConfiguration,
     handleSelectConfiguration,
     handleSelectModel,
     handleDispatchReadinessAction,
   };
 }
-
-export type UseProviderManagementResult = ReturnType<typeof useProviderManagement>;

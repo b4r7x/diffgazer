@@ -1,18 +1,16 @@
-import type { OnboardingConfigurationDraft, OnboardingStep } from "@diffgazer/core/onboarding";
+import type { OnboardingStep } from "@diffgazer/core/onboarding";
 import { STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { CONFORMANCE_TEST_COST_DISCLOSURE } from "@diffgazer/core/schemas/config";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Checkbox } from "@diffgazer/ui/components/checkbox";
-import { Field } from "@diffgazer/ui/components/field";
 import { HorizontalStepper } from "@diffgazer/ui/components/horizontal-stepper";
-import { InputGroup } from "@diffgazer/ui/components/input";
-import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { useEffect, useRef } from "react";
 import { CardLayout } from "@/components/layout/card";
 import { useOnboardingKeyboard } from "../hooks/use-keyboard";
 import { useOnboarding } from "../hooks/use-onboarding";
 import { ApiKeyStep } from "./steps/api-key-step";
+import { EndpointStep } from "./steps/endpoint-step";
 import { ModelStep } from "./steps/model-step";
 import { ProviderStep } from "./steps/provider-step";
 
@@ -65,12 +63,12 @@ export function OnboardingWizard() {
     currentStep,
     wizardData,
     stepIndex,
-    planSteps: wizardData.plan.steps,
     isFirstStep,
     isLastStep,
     canProceed,
     isSubmitting,
     isReconciling,
+    isPreparingDraftConfiguration,
     next: (partial) => {
       next(partial);
       enterStep(steps[stepIndex + 1]);
@@ -108,134 +106,17 @@ export function OnboardingWizard() {
             onBoundaryReached={handleStepBoundary}
           />
         );
-      case "endpoint-binding": {
-        const product = PRODUCT_REGISTRY[plan.productId];
-        if (configurationInput.transportFamily === "hosted-api") {
-          const workspaceRequired = product.configuration.endpoints.some(
-            (endpoint) => "workspaceBound" in endpoint && endpoint.workspaceBound,
-          );
-          return (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground font-mono">
-                Choose the endpoint tuple for {product.presentation.name}.
-              </p>
-              <RadioGroup
-                aria-label="Endpoint profile"
-                value={configurationInput.endpoint}
-                onChange={(endpoint) => {
-                  const profile = product.configuration.endpoints.find(
-                    (candidate) => candidate.endpoint === endpoint,
-                  );
-                  if (!profile) return;
-                  updateData({
-                    configurationInput: {
-                      ...configurationInput,
-                      endpoint,
-                      ...("region" in profile ? { region: profile.region } : {}),
-                      workspace:
-                        "workspaceBound" in profile && profile.workspaceBound
-                          ? (configurationInput.workspace ?? "")
-                          : undefined,
-                    },
-                  });
-                }}
-                onEnter={() => handleStepCommit()}
-                autoFocus={!footer.inActions}
-                keyboardNavigation={!footer.inActions}
-                onNavigationBoundaryReached={() => handleStepBoundary("down")}
-                className="space-y-1"
-              >
-                {product.configuration.endpoints.map((endpoint) => (
-                  <RadioGroupItem
-                    key={endpoint.id}
-                    value={endpoint.endpoint}
-                    label={endpoint.label}
-                    description={endpoint.endpoint}
-                  />
-                ))}
-              </RadioGroup>
-              {workspaceRequired ? (
-                <Field>
-                  <Field.Label>Workspace reference</Field.Label>
-                  <Field.Control>
-                    <InputGroup
-                      value={configurationInput.workspace ?? ""}
-                      onChange={(event) =>
-                        updateData({
-                          configurationInput: {
-                            ...configurationInput,
-                            workspace: event.target.value,
-                          },
-                        })
-                      }
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          handleStepCommit();
-                        }
-                      }}
-                      aria-label="Workspace reference"
-                    />
-                  </Field.Control>
-                </Field>
-              ) : null}
-            </div>
-          );
-        }
-
-        if (configurationInput.transportFamily === "local-http") {
-          return (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground font-mono">
-                Configure the loopback endpoint for {product.presentation.name}.
-              </p>
-              <RadioGroup
-                aria-label="Loopback endpoint"
-                value={configurationInput.presetId ?? configurationInput.endpoint}
-                onChange={(presetId) => {
-                  const profile = product.configuration.endpoints.find(
-                    (candidate) => candidate.id === presetId,
-                  );
-                  if (!profile || !("endpoint" in profile)) return;
-                  const nextInput: OnboardingConfigurationDraft = {
-                    ...configurationInput,
-                    endpoint: profile.endpoint,
-                  };
-                  if (plan.productId === "local-openai") {
-                    updateData({
-                      configurationInput: {
-                        ...nextInput,
-                        presetId: profile.id as "lm-studio" | "llama-cpp",
-                      },
-                    });
-                    return;
-                  }
-                  updateData({ configurationInput: nextInput });
-                }}
-                onEnter={() => handleStepCommit()}
-                autoFocus={!footer.inActions}
-                keyboardNavigation={!footer.inActions}
-                className="space-y-1"
-              >
-                {product.configuration.endpoints.map((endpoint) => (
-                  <RadioGroupItem
-                    key={endpoint.id}
-                    value={endpoint.id}
-                    label={endpoint.label}
-                    description={endpoint.endpoint}
-                  />
-                ))}
-              </RadioGroup>
-            </div>
-          );
-        }
-
+      case "endpoint-binding":
         return (
-          <p className="text-sm text-muted-foreground font-mono">
-            {product.presentation.setupLabel} does not require endpoint binding.
-          </p>
+          <EndpointStep
+            productId={plan.productId}
+            value={configurationInput}
+            onChange={(next) => updateData({ configurationInput: next })}
+            onCommit={() => handleStepCommit()}
+            enabled={!footer.inActions}
+            onBoundaryReached={handleStepBoundary}
+          />
         );
-      }
       case "authentication":
         return (
           <ApiKeyStep
@@ -263,8 +144,11 @@ export function OnboardingWizard() {
         return (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground font-mono">
-              Confirm the configured transport tuple and exact model are ready for conformance
-              verification.
+              Your first review verifies structured review support automatically; Test readiness in
+              Providers can check it sooner.
+            </p>
+            <p className="text-sm text-muted-foreground font-mono">
+              {CONFORMANCE_TEST_COST_DISCLOSURE}
             </p>
             <Checkbox
               ref={stepCheckboxRef}
@@ -272,7 +156,7 @@ export function OnboardingWizard() {
               onChange={(checked) =>
                 updateData({ conformanceStatus: checked ? "passed" : "not-tested" })
               }
-              label="I verified the configuration tuple and exact model selection."
+              label="I understand structured review support is verified on my first review."
             />
           </div>
         );
@@ -356,7 +240,7 @@ export function OnboardingWizard() {
       }
     >
       <div ref={focusFallbackRef} tabIndex={-1} className="space-y-4 focus:outline-none">
-        <HorizontalStepper compact steps={steps} value={currentStep} aria-label="Setup progress">
+        <HorizontalStepper compact value={currentStep} aria-label="Setup progress">
           {steps.map((step) => (
             <HorizontalStepper.Step key={step} value={step}>
               {STEP_LABELS[step]}

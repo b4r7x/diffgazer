@@ -55,12 +55,19 @@ export {
   stripRelativeJsExtensions,
 } from "./imports/relative-js.js";
 export {
+  extractImportSpecifierRanges,
   extractImportSpecifiers,
   extractStaticNamedImports,
   type ImportSpecifier,
   type ImportSpecifierKind,
+  type ImportSpecifierRange,
   type StaticNamedImport,
 } from "./imports/specifiers.js";
+export {
+  type RewriteRelativeImportsForTargetLayoutOptions,
+  rewriteRelativeImportsForTargetLayout,
+  type UnresolvedSpecifierPolicy,
+} from "./imports/target-layout.js";
 export {
   type ArtifactManifest,
   createArtifactManifest,
@@ -69,3 +76,8 @@ export {
 } from "./manifest.js";
 export { normalizeOrigin, resolveRegistryRoute } from "./origin.js";
 export { aggregateThemeStyles, buildShadcnRegistryWithOrigin } from "./shadcn/build.js";
+export {
+  listPublicRegistryEntries,
+  type PublicRegistryEntry,
+  readRegistryItem,
+} from "./shadcn/public-registry-entries.js";

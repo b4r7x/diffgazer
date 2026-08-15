@@ -11,6 +11,26 @@ const servers = [];
 const CSP = "default-src 'self'; script-src 'self' 'nonce-test'";
 const HTML = '<!doctype html><title>Fixture</title><script nonce="test">0</script>';
 
+/** Mirrors the shipped server: a fresh CSP nonce, and matching inline script, per request. */
+function perRequestNonceChild() {
+  return `
+      import { randomBytes } from "node:crypto";
+      import { createServer } from "node:http";
+      const server = createServer((_request, response) => {
+        const nonce = randomBytes(8).toString("hex");
+        response.writeHead(200, {
+          "content-security-policy": \`default-src 'self'; script-src 'self' 'nonce-\${nonce}'\`,
+        });
+        response.end(\`<!doctype html><title>Fixture</title><script nonce="\${nonce}">0</script>\`);
+      });
+      server.listen(0, "127.0.0.1", () => {
+        const address = server.address();
+        console.log(\`➜ Listening on: http://127.0.0.1:\${address.port}/\`);
+      });
+      process.on("SIGTERM", () => server.close(() => process.exit(0)));
+    `;
+}
+
 function writeChild(source) {
   const directory = mkdtempSync(join(tmpdir(), "diffgazer-csp-"));
   tempDirs.push(directory);
@@ -37,18 +57,7 @@ afterEach(async () => {
 
 describe("verify-csp", () => {
   it("verifies pages at the dynamic origin emitted by its child", async () => {
-    const entry = writeChild(`
-      import { createServer } from "node:http";
-      const server = createServer((_request, response) => {
-        response.writeHead(200, { "content-security-policy": ${JSON.stringify(CSP)} });
-        response.end(${JSON.stringify(HTML)});
-      });
-      server.listen(0, "127.0.0.1", () => {
-        const address = server.address();
-        console.log(\`➜ Listening on: http://127.0.0.1:\${address.port}/\`);
-      });
-      process.on("SIGTERM", () => server.close(() => process.exit(0)));
-    `);
+    const entry = writeChild(perRequestNonceChild());
 
     const result = await runCspVerification({
       serverEntry: entry,
@@ -62,6 +71,32 @@ describe("verify-csp", () => {
     expect(new URL(result.origin).hostname).toBe("127.0.0.1");
     expect(Number(new URL(result.origin).port)).toBeGreaterThan(0);
     expect(result.pageCount).toBe(2);
+  });
+
+  it("rejects a nonce frozen across responses, which would defeat the nonce policy", async () => {
+    const entry = writeChild(`
+      import { createServer } from "node:http";
+      const server = createServer((_request, response) => {
+        response.writeHead(200, { "content-security-policy": ${JSON.stringify(CSP)} });
+        response.end(${JSON.stringify(HTML)});
+      });
+      server.listen(0, "127.0.0.1", () => {
+        const address = server.address();
+        console.log(\`➜ Listening on: http://127.0.0.1:\${address.port}/\`);
+      });
+      process.on("SIGTERM", () => server.close(() => process.exit(0)));
+    `);
+
+    await expect(
+      runCspVerification({
+        serverEntry: entry,
+        paths: ["/", "/app/architecture"],
+        readyTimeoutMs: 2_000,
+        requestTimeoutMs: 1_000,
+        stdout: new PassThrough(),
+        stderr: new PassThrough(),
+      }),
+    ).rejects.toThrow("the nonce is not per-request");
   });
 
   it("rejects a nonempty inline script whose nonce does not match the CSP nonce", async () => {

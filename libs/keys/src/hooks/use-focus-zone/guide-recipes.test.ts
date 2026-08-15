@@ -17,7 +17,7 @@ import { useKey } from "../use-key.js";
 import { useScope } from "../use-scope.js";
 import { useScrollLock } from "../use-scroll-lock.js";
 
-const providerError = "useKeyboardContext must be used within KeyboardProvider";
+const providerError = "@diffgazer/keys hooks must be used within KeyboardProvider";
 const guideDirectory = resolve(process.cwd(), "docs/content/guides");
 
 const recipeDependencies = {
@@ -127,8 +127,8 @@ function createGuidePanel(label: string) {
   };
 }
 
-describe("useFocusZone", () => {
-  describe("published guide recipes", () => {
+describe("published guide recipes", () => {
+  describe("useFocusZone", () => {
     it("runs the published focus-zone recipe only at its documented provider boundary", async () => {
       const user = userEvent.setup();
       const openFile = vi.fn();
@@ -166,7 +166,9 @@ describe("useFocusZone", () => {
       await user.keyboard("{ArrowRight}");
       expect(screen.getByLabelText("Content guide zone").textContent).toBe("active");
     });
+  });
 
+  describe("useFocusTrap + useScrollLock", () => {
     it("runs the published modal recipe only at its documented provider boundary", async () => {
       const user = userEvent.setup();
       const recipe = compileGuideRecipe({
@@ -204,7 +206,9 @@ describe("useFocusZone", () => {
       expect(isFocusable(openButton)).toBe(true);
       expect(document.activeElement).toBe(openButton);
     });
+  });
 
+  describe("useFocusRestore", () => {
     it("restores focus to the published focus-restore panel's original trigger", async () => {
       const user = userEvent.setup();
       const recipe = compileGuideRecipe({

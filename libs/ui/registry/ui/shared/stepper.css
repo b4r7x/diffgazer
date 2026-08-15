@@ -25,136 +25,125 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@layer components {
   /*
-   * Keep the cursor visible but stop animating it. The .motion-safe: utility
-   * on the consumer prevents the animation property from being set in the
-   * first place, but this guard catches any direct usage of the keyframes
-   * elsewhere.
+   * Numbered indicator: render `counter(step)` for pending and active cells.
+   * Completed/error/skipped/disabled render an explicit glyph in JSX and the
+   * counter span is absent from the tree.
+   *
+   * The CSS counter is established on the <ol data-variant="numbered"> via the
+   * `[counter-reset:step]` Tailwind utility and incremented on each <li> via
+   * `[counter-increment:step]`. This rule paints the digit on the indicator
+   * span whose JSX renders an empty `[data-counter]` placeholder.
    */
-  [data-variant="ascii"] [data-stepper-cursor] {
-    /* biome-ignore lint/complexity/noImportantStyles: prefers-reduced-motion override must defeat the cursor keyframes regardless of specificity. */
-    animation: none !important;
+  [data-variant="numbered"] [data-counter]::before {
+    content: counter(step);
   }
-}
 
-/*
- * Numbered indicator: render `counter(step)` for pending and active cells.
- * Completed/error/skipped/disabled render an explicit glyph in JSX and the
- * counter span is absent from the tree.
- *
- * The CSS counter is established on the <ol data-variant="numbered"> via the
- * `[counter-reset:step]` Tailwind utility and incremented on each <li> via
- * `[counter-increment:step]`. This rule paints the digit on the indicator
- * span whose JSX renders an empty `[data-counter]` placeholder.
- */
-[data-variant="numbered"] [data-counter]::before {
-  content: counter(step);
-}
+  /*
+   * Vertical connector — shared geometry for ASCII, numbered, and bullet
+   * variants. `tag` and `progress` opt out (no rule). The `<li>` itself is
+   * positioned `relative` via the Tailwind base. Scoped to
+   * `[data-orientation="vertical"]` so the horizontal stepper's numbered
+   * variant (which has its own behind-the-square horizontal bar) is untouched.
+   *
+   * `top: 36px` clears the indicator glyph (sits at row top with `py-4`, so
+   * the glyph bottom edge lands at ~34px and the connector starts ~2px below).
+   * `bottom: -8px` overshoots the `<li>` boundary modestly so the line visually
+   * bridges into the next step's connector without dominating the row height —
+   * the row breathes around a short connector segment rather than a long line.
+   * The last step suppresses the connector.
+   */
+  [data-orientation="vertical"][data-variant="ascii"] > li:not(:last-child)::before,
+  [data-orientation="vertical"][data-variant="numbered"] > li:not(:last-child)::before,
+  [data-orientation="vertical"][data-variant="bullet"] > li:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    top: 36px;
+    bottom: -8px;
+    width: 1px;
+    background: var(--border);
+  }
 
-/*
- * Vertical connector — shared geometry for ASCII, numbered, and bullet
- * variants. `tag` and `progress` opt out (no rule). The `<li>` itself is
- * positioned `relative` via the Tailwind base. Scoped to
- * `[data-orientation="vertical"]` so the horizontal stepper's numbered
- * variant (which has its own behind-the-square horizontal bar) is untouched.
- *
- * `top: 36px` clears the indicator glyph (sits at row top with `py-4`, so
- * the glyph bottom edge lands at ~34px and the connector starts ~2px below).
- * `bottom: -8px` overshoots the `<li>` boundary modestly so the line visually
- * bridges into the next step's connector without dominating the row height —
- * the row breathes around a short connector segment rather than a long line.
- * The last step suppresses the connector.
- */
-[data-orientation="vertical"][data-variant="ascii"] > li:not(:last-child)::before,
-[data-orientation="vertical"][data-variant="numbered"] > li:not(:last-child)::before,
-[data-orientation="vertical"][data-variant="bullet"] > li:not(:last-child)::before {
-  content: "";
-  position: absolute;
-  top: 36px;
-  bottom: -8px;
-  width: 1px;
-  background: var(--border);
-}
+  /*
+   * Per-variant horizontal alignment of the connector. Each value centres the
+   * 1px line on the visual middle of the indicator column.
+   */
+  [data-orientation="vertical"][data-variant="ascii"] > li:not(:last-child)::before {
+    /* `[x]` is 3 mono chars wide; centre on the `x` (1.5ch from the left edge). */
+    left: calc(1.5ch + 0.5px);
+  }
 
-/*
- * Per-variant horizontal alignment of the connector. Each value centres the
- * 1px line on the visual middle of the indicator column.
- */
-[data-orientation="vertical"][data-variant="ascii"] > li:not(:last-child)::before {
-  /* `[x]` is 3 mono chars wide; centre on the `x` (1.5ch from the left edge). */
-  left: calc(1.5ch + 0.5px);
-}
+  [data-orientation="vertical"][data-variant="numbered"] > li:not(:last-child)::before {
+    /* 20px square indicator → centre at 10px (½px nudge keeps the 1px line crisp). */
+    left: 9.5px;
+    /* Square bottom sits at ~36px (16px paddingTop + 20px square). Push the
+     * connector start 2px below the square so it doesn't paint over the border. */
+    top: 38px;
+  }
 
-[data-orientation="vertical"][data-variant="numbered"] > li:not(:last-child)::before {
-  /* 20px square indicator → centre at 10px (½px nudge keeps the 1px line crisp). */
-  left: 9.5px;
-  /* Square bottom sits at ~36px (16px paddingTop + 20px square). Push the
-   * connector start 2px below the square so it doesn't paint over the border. */
-  top: 38px;
-}
+  [data-orientation="vertical"][data-variant="bullet"] > li:not(:last-child)::before {
+    /* 1ch indicator → centre at ½ch. Dashed style differentiates the low-chrome variant. */
+    left: calc(0.5ch + 0.5px);
+    background: transparent;
+    border-left: 1px dashed var(--border);
+    width: 0;
+  }
 
-[data-orientation="vertical"][data-variant="bullet"] > li:not(:last-child)::before {
-  /* 1ch indicator → centre at ½ch. Dashed style differentiates the low-chrome variant. */
-  left: calc(0.5ch + 0.5px);
-  background: transparent;
-  border-left: 1px dashed var(--border);
-  width: 0;
-}
+  /*
+   * Completed steps recolour the connector so a finished segment reads as a
+   * filled timeline. `--primary` (not `--success`): progress is a neutral control
+   * state and stays monochrome in both palettes; the status palette is reserved
+   * for meaning. Bullet uses `border-left-color` because the connector is a
+   * border, not a background.
+   */
+  [data-orientation="vertical"][data-variant="ascii"]
+    > li[data-status="completed"]:not(:last-child)::before,
+  [data-orientation="vertical"][data-variant="numbered"]
+    > li[data-status="completed"]:not(:last-child)::before {
+    background: var(--primary);
+  }
 
-/*
- * Completed steps recolour the connector so a finished segment reads as a
- * filled timeline. `--primary` (not `--success`): progress is a neutral control
- * state and stays monochrome in both palettes; the status palette is reserved
- * for meaning. Bullet uses `border-left-color` because the connector is a
- * border, not a background.
- */
-[data-orientation="vertical"][data-variant="ascii"]
-  > li[data-status="completed"]:not(:last-child)::before,
-[data-orientation="vertical"][data-variant="numbered"]
-  > li[data-status="completed"]:not(:last-child)::before {
-  background: var(--primary);
-}
+  [data-orientation="vertical"][data-variant="bullet"]
+    > li[data-status="completed"]:not(:last-child)::before {
+    border-left-color: var(--primary);
+  }
 
-[data-orientation="vertical"][data-variant="bullet"]
-  > li[data-status="completed"]:not(:last-child)::before {
-  border-left-color: var(--primary);
-}
+  /*
+   * Substep branch rail. Substeps render below their parent trigger, indented by
+   * StepperContent. Without a connector they read as a detached second block, so
+   * each row draws the terminal `├─` branch (and `└─` on the last row) from the
+   * parent's indent line: a 1px vertical rail plus a short tee into the row.
+   * Pure CSS because the geometry is `::before`/`::after` positioning with a
+   * `:last-child` stub, not a variant axis.
+   */
+  [data-slot="stepper-substep"] {
+    position: relative;
+    padding-left: 14px;
+  }
 
-/*
- * Substep branch rail. Substeps render below their parent trigger, indented by
- * StepperContent. Without a connector they read as a detached second block, so
- * each row draws the terminal `├─` branch (and `└─` on the last row) from the
- * parent's indent line: a 1px vertical rail plus a short tee into the row.
- * Pure CSS because the geometry is `::before`/`::after` positioning with a
- * `:last-child` stub, not a variant axis.
- */
-[data-slot="stepper-substep"] {
-  position: relative;
-  padding-left: 14px;
-}
+  [data-slot="stepper-substep"]::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
 
-[data-slot="stepper-substep"]::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--border);
-}
+  /* Last row: the rail stops at the tee, closing the branch as `└`. */
+  [data-slot="stepper-substep"]:last-child::before {
+    bottom: 50%;
+  }
 
-/* Last row: the rail stops at the tee, closing the branch as `└`. */
-[data-slot="stepper-substep"]:last-child::before {
-  bottom: 50%;
-}
-
-[data-slot="stepper-substep"]::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 8px;
-  height: 1px;
-  background: var(--border);
+  [data-slot="stepper-substep"]::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 8px;
+    height: 1px;
+    background: var(--border);
+  }
 }

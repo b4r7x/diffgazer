@@ -1,47 +1,52 @@
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import { err, ok, type Result } from "@diffgazer/core/result";
-import type { RunnableProductId, TransportFamily } from "@diffgazer/core/schemas/config";
+import {
+  canAttemptReview,
+  type RunnableProductId,
+  type TransportFamily,
+} from "@diffgazer/core/schemas/config";
 import {
   type EvidenceKey,
-  EvidenceKeySchema,
   ExecutionFingerprintInputSchema,
   type ExecutionLimits,
   type RuntimeIdentity,
-  sha256CanonicalJsonSync,
 } from "@diffgazer/core/schemas/review";
 import {
   type AdmissionEvidence,
-  canAuthorizeEvidence,
-  evidenceMatchesKey,
+  buildExpectedEvidenceKey,
 } from "../../config/admission-evidence.js";
-import type {
-  ConfigurationBudgetLimits,
-  SupportedProviderConfigurationRecord,
-} from "../../config/provider-config.js";
+import type { SupportedProviderConfigurationRecord } from "../../config/provider-config.js";
 import { computeProviderReadiness } from "../../config/readiness.js";
-import type { SecretBinding } from "../../config/secret-bindings.js";
 import {
-  type AttemptEstimate,
-  type BudgetLedger,
-  type BudgetReservation,
-  ZERO_FINDINGS,
-} from "../budget/ledger.js";
+  bindingCredentialAvailable,
+  resolveSecretBinding,
+  type SecretBinding,
+} from "../../config/secret-bindings.js";
+import { secretIO } from "../../config/secret-io.js";
+import { estimateWorstCaseCostUsd } from "../budget/cost.js";
+import type { AttemptEstimate, BudgetLedger, BudgetReservation } from "../budget/ledger.js";
 import { type Adapter, getAdapter } from "../providers/registry.js";
 
 export type AdmissionFailureCode =
   | "configuration-not-found"
+  | "configuration-migration-required"
   | "configuration-unsupported"
   | "configuration-revoking"
   | "readiness-not-ready"
-  | "evidence-missing"
-  | "evidence-skipped"
-  | "evidence-stale"
-  | "evidence-hash-mismatch"
+  | "conformance-failed"
   | "acknowledgement-required"
   | "tuple-changed"
   | "budget-exhausted"
   | "adapter-unavailable"
   | "lease-denied";
+
+/**
+ * The one sentence every surface uses when the admitted tuple cannot produce
+ * structured review output: the free fast-fail at admission and the terminal
+ * message a schema-failed review reports.
+ */
+export const STRUCTURED_OUTPUT_FAILURE_GUIDANCE =
+  "This model could not produce Diffgazer's structured review output. Select a different model or update the configuration — reviews with this exact setup fail immediately until it changes. Test readiness can re-check it.";
 
 export type AdmissionFailure = Readonly<{
   code: AdmissionFailureCode;
@@ -80,6 +85,12 @@ export type ExecutionLease = Readonly<{
 export type AuthorizedReviewExecution = Readonly<{
   plan: AdmittedExecutionPlan;
   adapter: Adapter;
+  /**
+   * Whether stored evidence already proved this exact tuple can produce
+   * structured review output. An `unproven` execution is the inline check, so
+   * a completed review persists the proof the admission path did without.
+   */
+  evidenceState: "proven" | "unproven";
   /** The ledger this authorization reserved on; execution settles on the same one. */
   budgetLedger: BudgetLedger;
   budgetReservation: BudgetReservation;
@@ -96,9 +107,11 @@ export type AuthorizedReviewExecution = Readonly<{
 
 export type AdmissionServiceDependencies = Readonly<{
   now?: () => Date;
-  loadSnapshot: (configurationId: string) => Promise<AdmissionSnapshot | null>;
+  loadSnapshot: (
+    configurationId: string,
+  ) => Promise<Result<AdmissionSnapshot | null, AdmissionFailure>>;
   leaseRegistry: ExecutionLeaseRegistry;
-  budgetLedger: BudgetLedger;
+  createBudgetLedger: (limits: ExecutionLimits) => BudgetLedger;
   structuredOutputSchemaSha256: string;
   runtimeIdentity: RuntimeIdentity;
   resolveCredential: (input: {
@@ -122,54 +135,6 @@ const CLIENT_FORBIDDEN_PLAN_KEYS = [
   "reference",
 ] as const;
 
-export function executionLimitsFromBudget(budget: ConfigurationBudgetLimits): ExecutionLimits {
-  return Object.freeze({
-    maxInputTokens: budget.inputTokens,
-    maxOutputTokens: budget.outputTokens,
-    maxResponseBytes: budget.responseBytes,
-    wallTimeMs: budget.wallTimeMs,
-    maxRetries: budget.retries,
-    maxConcurrency: budget.concurrency,
-    maxCostUsd: budget.perReview,
-  });
-}
-
-export function buildExpectedEvidenceKey(input: {
-  readonly record: SupportedProviderConfigurationRecord;
-  readonly structuredOutputSchemaSha256: string;
-  readonly runtime: RuntimeIdentity;
-  readonly credentialReferenceIdentity: string | null;
-  readonly workspaceAccountReference: string | null;
-}): EvidenceKey {
-  const { record } = input;
-  const product = PRODUCT_REGISTRY[record.productId];
-  const expectedEndpoint =
-    record.input.transportFamily === "local-cli" ? null : record.input.endpoint;
-  const expectedRegion =
-    record.input.transportFamily === "hosted-api" ? (record.input.region ?? null) : null;
-
-  const authentication =
-    record.input.transportFamily === "local-http" ? record.input.authentication : null;
-  const installationId =
-    record.input.transportFamily === "local-cli" ? record.input.installationId : null;
-
-  return EvidenceKeySchema.parse({
-    authentication,
-    credentialReferenceIdentity: input.credentialReferenceIdentity,
-    installationId,
-    productId: record.productId,
-    transportFamily: record.transportFamily,
-    normalizedEndpoint: expectedEndpoint,
-    region: expectedRegion,
-    workspaceAccountReference: input.workspaceAccountReference,
-    modelId: record.selectedModelId,
-    runtime: input.runtime,
-    structuredOutputSchemaSha256: input.structuredOutputSchemaSha256,
-    noticeVersion: product.notice.noticeVersion,
-    limits: executionLimitsFromBudget(record.budget),
-  });
-}
-
 function hashExecutionFingerprintSync(input: {
   configurationId: string;
   configurationRevision: number;
@@ -178,13 +143,25 @@ function hashExecutionFingerprintSync(input: {
   return sha256CanonicalJsonSync(ExecutionFingerprintInputSchema.parse(input));
 }
 
-function conservativeAttemptEstimate(limits: ExecutionLimits): AttemptEstimate {
+/**
+ * Reserves the whole admitted envelope, including the worst case the admitted
+ * model can bill for it. The worst case is reserved unclamped so a spend cap
+ * below it denies admission instead of admitting a request it cannot cover.
+ * Transports with no established price (local CLI and local HTTP, and any model
+ * the bundled catalog does not price) bill nothing through this ledger and
+ * reserve nothing; the token and byte caps remain their bound.
+ */
+function conservativeAttemptEstimate(
+  limits: ExecutionLimits,
+  productId: RunnableProductId,
+  modelId: string,
+): AttemptEstimate {
   return {
     inputTokens: limits.maxInputTokens,
     outputTokens: limits.maxOutputTokens,
     responseBytes: limits.maxResponseBytes,
     wallTimeMs: limits.wallTimeMs,
-    costUsd: limits.maxCostUsd,
+    costUsd: estimateWorstCaseCostUsd(productId, modelId, limits) ?? 0,
   };
 }
 
@@ -417,7 +394,14 @@ export class ExecutionLeaseRegistry {
   reset(): void {
     this.revoked.clear();
     this.active.clear();
+    // Clearing the waiters without calling them orphans every in-flight
+    // `drain()`: `release()` can no longer reach them, so they hang to their
+    // timeout and then report "timed-out" for a registry that holds nothing.
+    const waiterSets = [...this.drainWaiters.values()];
     this.drainWaiters.clear();
+    for (const waiters of waiterSets) {
+      for (const waiter of waiters) waiter();
+    }
   }
 
   private release(configurationId: string, leaseId: string): void {
@@ -436,7 +420,9 @@ export async function authorizeReviewExecution(
   configurationId: string,
   dependencies: AdmissionServiceDependencies,
 ): Promise<Result<AuthorizedReviewExecution, AdmissionFailure>> {
-  const snapshot = await dependencies.loadSnapshot(configurationId);
+  const loaded = await dependencies.loadSnapshot(configurationId);
+  if (!loaded.ok) return loaded;
+  const snapshot = loaded.value;
   if (!snapshot) {
     return err(admissionFailure("configuration-not-found", "Configuration was not found", false));
   }
@@ -457,22 +443,48 @@ export async function authorizeReviewExecution(
   }
 
   const record = snapshot.configuration.record;
-  const expectedEvidenceKey = buildExpectedEvidenceKey({
-    record,
-    structuredOutputSchemaSha256: dependencies.structuredOutputSchemaSha256,
-    runtime: dependencies.runtimeIdentity,
-    credentialReferenceIdentity: snapshot.credentialReferenceIdentity,
-    workspaceAccountReference: snapshot.workspaceAccountReference,
-  });
+  // An evidence key names the exact admitted model, so a configuration with no
+  // selected model can never be admitted. Fail closed here instead of letting
+  // the evidence-key parse throw out of a Result-returning boundary.
+  const selectedModelId = record.selectedModelId;
+  if (selectedModelId === null) {
+    return err(
+      admissionFailure("readiness-not-ready", "Configuration has no selected model", false),
+    );
+  }
 
+  // The evidence key is parsed against the closed tuple contract, so a record
+  // whose runtime identity does not belong to its product throws instead of
+  // returning. Catch it here so this boundary keeps answering with a Result.
+  let expectedEvidenceKey: EvidenceKey;
+  try {
+    expectedEvidenceKey = buildExpectedEvidenceKey({
+      record,
+      structuredOutputSchemaSha256: dependencies.structuredOutputSchemaSha256,
+      runtime: dependencies.runtimeIdentity,
+      credentialReferenceIdentity: snapshot.credentialReferenceIdentity,
+      workspaceAccountReference: snapshot.workspaceAccountReference,
+    });
+  } catch {
+    return err(
+      admissionFailure(
+        "readiness-not-ready",
+        "Configuration does not describe an admissible execution",
+        false,
+      ),
+    );
+  }
+
+  const now = dependencies.now?.() ?? new Date();
   const readiness = computeProviderReadiness({
     configuration: record,
     binding: snapshot.binding,
     evidence: snapshot.evidence,
-    evidenceKey: expectedEvidenceKey,
+    runtime: dependencies.runtimeIdentity,
+    structuredOutputSchemaSha256: dependencies.structuredOutputSchemaSha256,
     credentialReferenceIdentity: snapshot.credentialReferenceIdentity,
     workspaceAccountReference: snapshot.workspaceAccountReference,
-    now: dependencies.now?.() ?? new Date(),
+    now,
   });
 
   if (readiness.status === "acknowledgement-required") {
@@ -484,41 +496,64 @@ export async function authorizeReviewExecution(
     );
   }
 
-  if (!snapshot.evidence) {
-    return err(admissionFailure("evidence-missing", "Admission evidence is missing", false));
-  }
-
-  if (snapshot.evidence.status === "skipped") {
-    return err(admissionFailure("evidence-skipped", "Admission evidence was skipped", false));
-  }
-
-  if (!evidenceMatchesKey(snapshot.evidence, expectedEvidenceKey)) {
-    const storedKeyHash = sha256CanonicalJsonSync(snapshot.evidence.evidenceKey);
-    const expectedKeyHash = sha256CanonicalJsonSync(expectedEvidenceKey);
-    return err(
-      admissionFailure(
-        storedKeyHash !== expectedKeyHash ? "tuple-changed" : "evidence-hash-mismatch",
-        storedKeyHash !== expectedKeyHash
-          ? "Configuration tuple changed since admission evidence was recorded"
-          : "Admission evidence does not match the current configuration tuple",
-        false,
-      ),
-    );
-  }
-
-  if (
-    snapshot.evidence.status !== "passed" ||
-    !canAuthorizeEvidence(snapshot.evidence, expectedEvidenceKey, {
-      now: dependencies.now?.() ?? new Date(),
-    })
-  ) {
-    return err(admissionFailure("evidence-stale", "Admission evidence is stale or expired", false));
-  }
-
-  if (readiness.status !== "ready") {
+  if (!canAttemptReview(readiness.status)) {
     return err(
       admissionFailure("readiness-not-ready", "Configuration is not ready for execution", false),
     );
+  }
+
+  // Evidence caches what a review already observed about this exact tuple; it
+  // is never a prerequisite. A matching failure is the only thing it can veto,
+  // and it does so before any network call, reservation, or lease. Readiness
+  // answered both questions one statement ago from the same record, evidence,
+  // key and clock; re-deriving them here would only invite the two to diverge.
+  if (
+    readiness.status === "conformance-failed" ||
+    readiness.status === "local-conformance-failed"
+  ) {
+    return err(admissionFailure("conformance-failed", STRUCTURED_OUTPUT_FAILURE_GUIDANCE, false));
+  }
+  const evidenceState = readiness.status === "ready" ? "proven" : "unproven";
+
+  const reloaded = await dependencies.loadSnapshot(configurationId);
+  if (!reloaded.ok) return reloaded;
+  if (!reloaded.value) {
+    return err(admissionFailure("configuration-not-found", "Configuration was not found", false));
+  }
+  // The store bumps the revision on every configuration mutation, credential
+  // rebinds included, so the revision is the tuple's identity here.
+  const reloadedConfiguration = reloaded.value.configuration;
+  if (
+    reloadedConfiguration.status !== "supported" ||
+    reloadedConfiguration.record.revision !== record.revision
+  ) {
+    return err(
+      admissionFailure("tuple-changed", "Configuration tuple changed during admission", false),
+    );
+  }
+
+  // Every transport whose request carries a credential: a local endpoint that
+  // wants a bearer token fails with a bare 401 if the token is gone, which the
+  // user only ever sees as an undiagnosed transport failure.
+  const carriesCredential =
+    record.input.transportFamily === "hosted-api" ||
+    (record.input.transportFamily === "local-http" &&
+      record.input.authentication === "optional-local-bearer");
+  if (carriesCredential && snapshot.binding && snapshot.binding.kind !== "none") {
+    if (!bindingCredentialAvailable(snapshot.binding)) {
+      return err(
+        admissionFailure("readiness-not-ready", "Configuration credential is unavailable", false),
+      );
+    }
+    const resolvedCredential = await resolveSecretBinding(snapshot.binding, secretIO, {
+      configurationId: record.configurationId,
+      revision: record.revision,
+    });
+    if (!resolvedCredential) {
+      return err(
+        admissionFailure("readiness-not-ready", "Configuration credential is unavailable", false),
+      );
+    }
   }
 
   const resolveAdapter = dependencies.getAdapter ?? getAdapter;
@@ -543,8 +578,9 @@ export async function authorizeReviewExecution(
     evidenceKey: expectedEvidenceKey,
   });
 
-  const budgetReservation = dependencies.budgetLedger.reserveAttempt(
-    conservativeAttemptEstimate(expectedEvidenceKey.limits),
+  const budgetLedger = dependencies.createBudgetLedger(expectedEvidenceKey.limits);
+  const budgetReservation = budgetLedger.reserveAttempt(
+    conservativeAttemptEstimate(expectedEvidenceKey.limits, record.productId, selectedModelId),
   );
   if (!budgetReservation.ok) {
     return err(admissionFailure("budget-exhausted", "Review budget is exhausted", false));
@@ -557,7 +593,7 @@ export async function authorizeReviewExecution(
     limits: expectedEvidenceKey.limits,
   });
   if (!leaseResult.ok) {
-    dependencies.budgetLedger.releaseReservation(budgetReservation.value);
+    budgetLedger.releaseReservation(budgetReservation.value);
     return err(leaseResult.error);
   }
 
@@ -578,7 +614,7 @@ export async function authorizeReviewExecution(
   const release = () => {
     if (released) return;
     released = true;
-    dependencies.budgetLedger.releaseReservation(budgetReservation.value);
+    budgetLedger.releaseReservation(budgetReservation.value);
     leaseResult.value.release();
   };
 
@@ -586,7 +622,8 @@ export async function authorizeReviewExecution(
     Object.freeze({
       plan,
       adapter,
-      budgetLedger: dependencies.budgetLedger,
+      evidenceState,
+      budgetLedger,
       budgetReservation: budgetReservation.value,
       lease: leaseResult.value,
       resolveCredential: () =>
@@ -601,5 +638,3 @@ export async function authorizeReviewExecution(
     }),
   );
 }
-
-export const ADMISSION_ZERO_FINDINGS = ZERO_FINDINGS;

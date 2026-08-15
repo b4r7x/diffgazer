@@ -1,4 +1,4 @@
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import { err, ok, type Result } from "@diffgazer/core/result";
 import {
   ExactModelIdSchema,
@@ -6,41 +6,35 @@ import {
   type LocalHttpProductId,
 } from "@diffgazer/core/schemas/config";
 import {
+  buildProviderLensReviewResultJsonSchema,
+  LensReviewResultSchema,
   type RuntimeIdentity,
-  sha256CanonicalJsonSync,
   type TerminalOutcome,
 } from "@diffgazer/core/schemas/review";
 import type { LocalReadinessObservationStatus } from "../../../config/readiness.js";
-import { buildReviewSchemaJson } from "../cli-compatibility/probe.js";
 import {
   type LocalHttpAuth,
   type LocalHttpDependencies,
   type LocalHttpFetch,
+  type LocalHttpRequestFailure,
   localHttpRequest,
-  resolveLocalHttpDependencies,
-  resolveLocalHttpEndpoint,
+  resolveLocalHttpTransport,
 } from "./request.js";
+import type { AdmittedResponseByteBudget } from "./response-byte-budget.js";
 
 /** Byte ceiling for discovery/conformance traffic, which carries no review payload. */
-export const LOCAL_HTTP_DISCOVERY_MAX_RESPONSE_BYTES = 1_048_576;
+const LOCAL_HTTP_DISCOVERY_MAX_RESPONSE_BYTES = 1_048_576;
 
 /** Wall-time ceiling for one discovery/conformance round trip. */
-export const LOCAL_HTTP_DISCOVERY_DEADLINE_MS = 30_000;
+const LOCAL_HTTP_DISCOVERY_DEADLINE_MS = 30_000;
 
-/** Minimal object contract used only to observe runtime conformance, never to review. */
-const PROBE_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    status: { type: "string", enum: ["ok"] },
-  },
-  required: ["status"],
-} as const;
+/** The wording the hosted conformance probe sends, so both attest the same ask. */
+const PROBE_PROMPT = 'Return {"issues":[]} as JSON.';
+/** A conforming answer is `{"issues":[]}`; anything longer is not conformance. */
+const PROBE_MAX_OUTPUT_TOKENS = 256;
 
-const PROBE_PROMPT = 'Return exactly {"status":"ok"} as JSON with no surrounding text.';
-
-/** The admitted review-result JSON schema every local generation must request. */
-const REVIEW_RESULT_JSON_SCHEMA = buildReviewSchemaJson() as Record<string, unknown>;
+/** OpenAI-strict wire schema for local generation (`strict: true` on local-openai). */
+const REVIEW_RESULT_JSON_SCHEMA = buildProviderLensReviewResultJsonSchema("openai-compatible");
 
 export type DiscoveredLocalModel = Readonly<{
   modelId: string;
@@ -51,6 +45,15 @@ export type LocalHttpDiscoveryInput = Readonly<{
   endpoint: string;
   auth: LocalHttpAuth;
   signal?: AbortSignal;
+  /**
+   * Remaining share of an admitted execution's wall time. Review dispatch passes
+   * it so listing round trips are spent from the same budget generation uses;
+   * standalone probes fall back to the fixed discovery deadline.
+   */
+  deadlineMs?: number;
+  /** Remaining admitted response bytes for execution-time discovery traffic. */
+  maxResponseBytes?: number;
+  responseByteBudget?: AdmittedResponseByteBudget;
 }>;
 
 export type LocalHttpDiscoverySuccess = Readonly<{
@@ -58,7 +61,7 @@ export type LocalHttpDiscoverySuccess = Readonly<{
   runtime: RuntimeIdentity;
 }>;
 
-export type LocalHttpDiscoveryFailureCode =
+type LocalHttpDiscoveryFailureCode =
   | "endpoint-forbidden"
   | "endpoint-unreachable"
   | "api-incompatible"
@@ -96,16 +99,12 @@ export function isOllamaCloudModel(model: Readonly<Record<string, unknown>>): bo
   return name.endsWith(":cloud") || name.includes("/cloud");
 }
 
-export function isSafeDiscoveredModelId(modelId: string): boolean {
+function isSafeDiscoveredModelId(modelId: string): boolean {
   return ExactModelIdSchema.safeParse(modelId).success;
 }
 
 export function hashLocalConformanceIdentity(identity: LocalHttpConformanceIdentity): string {
   return sha256CanonicalJsonSync(identity);
-}
-
-export function getLocalHttpPrivacyNotice(productId: LocalHttpProductId): readonly string[] {
-  return PRODUCT_REGISTRY[productId].notice.privacy;
 }
 
 function parseRuntimeIdentity(
@@ -165,13 +164,23 @@ function mapOpenAIModels(payload: unknown): readonly DiscoveredLocalModel[] {
   return discovered;
 }
 
-function discoveryFailureFrom(
-  failure: Readonly<{ code: string; safeMessage: string }>,
-): LocalHttpDiscoveryFailure {
-  if (failure.code === "endpoint-unreachable" || failure.code === "cancelled") {
-    return { code: "endpoint-unreachable", safeMessage: failure.safeMessage };
+/**
+ * Projects the transport's failure union onto the four discovery codes. Typed on
+ * the union rather than `string` so a new transport failure code fails the build
+ * here instead of silently landing in `api-incompatible`.
+ */
+function discoveryFailureFrom(failure: LocalHttpRequestFailure): LocalHttpDiscoveryFailure {
+  switch (failure.code) {
+    case "endpoint-unreachable":
+    case "cancelled":
+    case "timed-out":
+      return { code: "endpoint-unreachable", safeMessage: failure.safeMessage };
+    case "redirect":
+      return { code: "endpoint-forbidden", safeMessage: failure.safeMessage };
+    case "oversize-response":
+    case "api-incompatible":
+      return { code: "api-incompatible", safeMessage: failure.safeMessage };
   }
-  return { code: "api-incompatible", safeMessage: failure.safeMessage };
 }
 
 async function requestJson(
@@ -181,20 +190,36 @@ async function requestJson(
     auth: LocalHttpAuth;
     fetcher: LocalHttpFetch;
     signal?: AbortSignal;
+    deadlineMs?: number;
+    maxResponseBytes?: number;
+    responseByteBudget?: AdmittedResponseByteBudget;
   }>,
 ): Promise<Result<unknown, LocalHttpDiscoveryFailure>> {
+  const maxResponseBytes =
+    input.responseByteBudget?.requestLimit() ??
+    input.maxResponseBytes ??
+    LOCAL_HTTP_DISCOVERY_MAX_RESPONSE_BYTES;
   const response = await localHttpRequest({
     endpoint: input.endpoint,
     pathname: input.pathname,
     method: "GET",
     auth: input.auth,
     fetcher: input.fetcher,
-    maxResponseBytes: LOCAL_HTTP_DISCOVERY_MAX_RESPONSE_BYTES,
-    deadlineMs: LOCAL_HTTP_DISCOVERY_DEADLINE_MS,
+    maxResponseBytes,
+    deadlineMs: input.deadlineMs ?? LOCAL_HTTP_DISCOVERY_DEADLINE_MS,
     signal: input.signal,
   });
   if (!response.ok) {
     return err(discoveryFailureFrom(response.error));
+  }
+  if (input.responseByteBudget) {
+    const recorded = input.responseByteBudget.recordText(response.value);
+    if (!recorded.ok) {
+      return err({
+        code: "api-incompatible",
+        safeMessage: "Local HTTP response exceeded the admitted byte limit",
+      });
+    }
   }
   try {
     return ok(JSON.parse(response.value) as unknown);
@@ -206,17 +231,24 @@ async function requestJson(
   }
 }
 
-async function discoverAtResolvedEndpoint(
+export async function discoverAtResolvedEndpoint(
   input: LocalHttpDiscoveryInput,
   fetcher: LocalHttpFetch,
 ): Promise<Result<LocalHttpDiscoverySuccess, LocalHttpDiscoveryFailure>> {
+  const requestBudget = {
+    signal: input.signal,
+    deadlineMs: input.deadlineMs,
+    maxResponseBytes: input.maxResponseBytes,
+    responseByteBudget: input.responseByteBudget,
+  } as const;
+
   if (input.productId === "ollama") {
     const version = await requestJson({
       endpoint: input.endpoint,
       pathname: "/api/version",
       auth: input.auth,
       fetcher,
-      signal: input.signal,
+      ...requestBudget,
     });
     if (!version.ok) return version;
 
@@ -230,7 +262,7 @@ async function discoverAtResolvedEndpoint(
       pathname: "/api/tags",
       auth: input.auth,
       fetcher,
-      signal: input.signal,
+      ...requestBudget,
     });
     if (!tags.ok) return tags;
 
@@ -253,7 +285,7 @@ async function discoverAtResolvedEndpoint(
     pathname: "/models",
     auth: input.auth,
     fetcher,
-    signal: input.signal,
+    ...requestBudget,
   });
   if (!listing.ok) return listing;
 
@@ -291,15 +323,14 @@ export async function discoverLocalHttpModels(
   input: LocalHttpDiscoveryInput,
   dependencies: LocalHttpDependencies = {},
 ): Promise<Result<LocalHttpDiscoverySuccess, LocalHttpDiscoveryFailure>> {
-  const resolvedDeps = resolveLocalHttpDependencies(dependencies);
-  const resolved = await resolveLocalHttpEndpoint(input.endpoint, resolvedDeps);
-  if (!resolved.ok) {
-    return err({ code: "endpoint-forbidden", safeMessage: resolved.error.safeMessage });
+  const transport = await resolveLocalHttpTransport(input.endpoint, dependencies);
+  if (!transport.ok) {
+    return err({ code: "endpoint-forbidden", safeMessage: transport.error.safeMessage });
   }
 
   return discoverAtResolvedEndpoint(
-    { ...input, endpoint: resolved.value.endpoint },
-    resolvedDeps.fetch,
+    { ...input, endpoint: transport.value.endpoint },
+    transport.value.fetcher,
   );
 }
 
@@ -333,19 +364,33 @@ export type LocalGenerationInput = Readonly<{
   endpoint: string;
   modelId: string;
   prompt: string;
+  /** Trusted review instructions, sent on the runtime's own system message. */
+  systemPrompt?: string;
   auth: LocalHttpAuth;
   fetcher: LocalHttpFetch;
   maxResponseBytes: number;
+  /** Admitted output-token ceiling, sent as the runtime's own hard stop. */
+  maxOutputTokens: number;
   deadlineMs?: number;
   /** Structured-output contract sent to the runtime; the probe contract is conformance-only. */
   schema: Record<string, unknown>;
   signal?: AbortSignal;
+  responseByteBudget?: AdmittedResponseByteBudget;
 }>;
 
 export type LocalGenerationFailure = Readonly<{
   code: Exclude<TerminalOutcome, "completed">;
   safeMessage: string;
 }>;
+
+function generationMessages(input: LocalGenerationInput): Array<Record<string, string>> {
+  return input.systemPrompt
+    ? [
+        { role: "system", content: input.systemPrompt },
+        { role: "user", content: input.prompt },
+      ]
+    : [{ role: "user", content: input.prompt }];
+}
 
 function generationBody(input: LocalGenerationInput): Readonly<{
   pathname: string;
@@ -357,8 +402,11 @@ function generationBody(input: LocalGenerationInput): Readonly<{
       body: {
         model: input.modelId,
         stream: false,
-        messages: [{ role: "user", content: input.prompt }],
+        messages: generationMessages(input),
         format: input.schema,
+        // Ollama's hard output stop. Without it the runtime uses its own default,
+        // so the admitted maxOutputTokens would be advisory only.
+        options: { num_predict: input.maxOutputTokens },
       },
     };
   }
@@ -367,7 +415,8 @@ function generationBody(input: LocalGenerationInput): Readonly<{
     body: {
       model: input.modelId,
       stream: false,
-      messages: [{ role: "user", content: input.prompt }],
+      messages: generationMessages(input),
+      max_tokens: input.maxOutputTokens,
       response_format: {
         type: "json_schema",
         json_schema: {
@@ -415,7 +464,23 @@ export async function generateLocalHttpObject(
     if (response.error.code === "timed-out") {
       return err({ code: "timed-out", safeMessage: response.error.safeMessage });
     }
+    if (response.error.code === "oversize-response") {
+      return err({
+        code: "transport-failed",
+        safeMessage: "Local HTTP response exceeded the admitted byte limit",
+      });
+    }
     return err({ code: "transport-failed", safeMessage: response.error.safeMessage });
+  }
+
+  if (input.responseByteBudget) {
+    const recorded = input.responseByteBudget.recordText(response.value);
+    if (!recorded.ok) {
+      return err({
+        code: "transport-failed",
+        safeMessage: "Local HTTP response exceeded the admitted byte limit",
+      });
+    }
   }
 
   let payload: unknown;
@@ -441,14 +506,13 @@ export async function probeLocalHttpConformance(
   input: LocalHttpConformanceInput,
   dependencies: LocalHttpDependencies = {},
 ): Promise<Result<LocalReadinessObservationStatus, LocalHttpDiscoveryFailure>> {
-  const resolvedDeps = resolveLocalHttpDependencies(dependencies);
-  const resolved = await resolveLocalHttpEndpoint(input.endpoint, resolvedDeps);
-  if (!resolved.ok) {
-    return err({ code: "endpoint-forbidden", safeMessage: resolved.error.safeMessage });
+  const transport = await resolveLocalHttpTransport(input.endpoint, dependencies);
+  if (!transport.ok) {
+    return err({ code: "endpoint-forbidden", safeMessage: transport.error.safeMessage });
   }
 
-  const endpoint = resolved.value.endpoint;
-  const fetcher = resolvedDeps.fetch;
+  const endpoint = transport.value.endpoint;
+  const fetcher = transport.value.fetcher;
   const discovery = await discoverAtResolvedEndpoint(
     {
       productId: input.productId,
@@ -460,8 +524,9 @@ export async function probeLocalHttpConformance(
   );
   if (!discovery.ok) return discovery;
 
-  if (!discovery.value.models.some((model) => model.modelId === input.modelId)) {
-    return ok("selected-model-missing");
+  const selectedModel = mapSelectedModelMissing(input.modelId, discovery.value.models);
+  if (selectedModel !== "passed") {
+    return ok(selectedModel);
   }
 
   const probeRequest = {
@@ -472,8 +537,9 @@ export async function probeLocalHttpConformance(
     auth: input.auth,
     fetcher,
     maxResponseBytes: LOCAL_HTTP_DISCOVERY_MAX_RESPONSE_BYTES,
+    maxOutputTokens: PROBE_MAX_OUTPUT_TOKENS,
     deadlineMs: LOCAL_HTTP_DISCOVERY_DEADLINE_MS,
-    schema: PROBE_SCHEMA as unknown as Record<string, unknown>,
+    schema: REVIEW_RESULT_JSON_SCHEMA,
   } as const;
 
   const generation = await generateLocalHttpObject({ ...probeRequest, signal: input.signal });
@@ -487,11 +553,7 @@ export async function probeLocalHttpConformance(
     return ok("endpoint-unreachable");
   }
 
-  if (
-    typeof generation.value !== "object" ||
-    generation.value === null ||
-    (generation.value as { status?: unknown }).status !== "ok"
-  ) {
+  if (!LensReviewResultSchema.safeParse(generation.value).success) {
     return ok("conformance-failed");
   }
 

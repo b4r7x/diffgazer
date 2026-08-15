@@ -110,10 +110,10 @@ export function Menu<TId extends string = string>({
   const selectionEnabled = controlledSelectedId !== undefined || defaultSelectedId !== null;
   const itemRole = selectionEnabled ? "menuitemradio" : "menuitem";
 
-  const { items: registeredItems, registerItem, unregisterItem } = useSelectableCollection(menuRef);
-  const registeredMetadata = useMemo<ListboxMetadataItem<TId>[]>(
-    () => registeredItems.map((item) => ({ id: item.value as TId, disabled: item.disabled })),
-    [registeredItems],
+  const { items: visibleItems, registerItem, unregisterItem } = useSelectableCollection(menuRef);
+  const visibleMetadata = useMemo<ListboxMetadataItem<TId>[]>(
+    () => visibleItems.map((item) => ({ id: item.value as TId, disabled: item.disabled })),
+    [visibleItems],
   );
   const renderSeed = useMemo(
     () =>
@@ -123,7 +123,7 @@ export function Menu<TId extends string = string>({
       }),
     [children],
   );
-  const items = registrationsStarted ? registeredMetadata : renderSeed;
+  const items = registrationsStarted ? visibleMetadata : renderSeed;
 
   const handleRegisterItem = useCallback(
     (registrationId: string, value: string, disabled: boolean, element: HTMLElement | null) => {

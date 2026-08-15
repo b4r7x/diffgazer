@@ -1,6 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { IssuePreviewItem } from "./issue-preview-item";
 
 const BASE_PROPS = {
@@ -12,22 +11,11 @@ const BASE_PROPS = {
 };
 
 describe("IssuePreviewItem", () => {
-  it("does not render as interactive when onClick is omitted", () => {
+  it("renders the preview as static content, never as a control", () => {
     render(<IssuePreviewItem {...BASE_PROPS} />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(screen.getByText("SQL Injection Risk")).toBeInTheDocument();
-  });
-
-  it("calls onClick when the button is clicked", async () => {
-    const onClick = vi.fn();
-    const user = userEvent.setup();
-    render(<IssuePreviewItem {...BASE_PROPS} onClick={onClick} />);
-    const issueButton = screen.getByRole("button", {
-      name: new RegExp(BASE_PROPS.title),
-    });
-    await user.click(issueButton);
-    expect(onClick).toHaveBeenCalledOnce();
   });
 
   it("displays severity label and category", () => {

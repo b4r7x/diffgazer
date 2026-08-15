@@ -225,13 +225,13 @@ export function useApiKeyDialogKeyboard({
         inputRef.current?.focus();
       } else if (effectiveFocused === "paste") {
         focusMethodOption("env");
-      } else if (effectiveFocused === "env" || effectiveFocused === "input") {
+      } else if (effectiveFocused === "env") {
         focusAcknowledgement();
       } else if (effectiveFocused === "acknowledgement") {
-        enterFooter(canSubmit ? 1 : 0);
+        enterFooter();
       }
     },
-    { enabled: open && (isZone("radios") || isZone("input") || isZone("acknowledgement")) },
+    { enabled: open && (isZone("radios") || isZone("acknowledgement")) },
   );
 
   useKey(

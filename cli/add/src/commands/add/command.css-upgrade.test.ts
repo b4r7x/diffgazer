@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { ctx } from "../../context.js";
 import { buildExpectedChunkContentsForItem } from "../../utils/css-chunks.js";
 import { diffCommand } from "../diff.js";
+import { expectCommandExit } from "../testing/expect-command-exit.js";
 import { addCommand } from "./command.js";
 
 let root: string;
@@ -16,6 +17,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   rmSync(root, { recursive: true, force: true });
 });
 
@@ -46,7 +48,7 @@ describe("dgadd CSS chunk upgrade reconciliation", () => {
           libFsPath: "src/lib",
           hooksFsPath: "src/hooks",
           tailwind: { css: "src/styles/styles.css" },
-          installedComponents: {
+          installedItems: {
             "ui/dialog-shell": {
               installedAt: "2026-01-01T00:00:00.000Z",
               installedAs: "transitive",
@@ -133,5 +135,79 @@ describe("dgadd CSS chunk upgrade reconciliation", () => {
     const diffOutput = log.mock.calls.flat().join("\n");
     expect(diffOutput).toContain(`styles.css~chunk-${oldChunkHash}`);
     expect(diffOutput).toContain("changed");
+  });
+
+  test("reports a deleted preserved obsolete chunk as not installed instead of up to date", async () => {
+    const stylesPath = seedCssUpgradeProject(`${oldChunkBody}\n/* local edit */`);
+    const program = createCssUpgradeCli();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await program.parseAsync([...addArgs, "--cwd", root], { from: "user" });
+
+    const stylesWithoutObsolete = readFileSync(stylesPath, "utf-8").replace(
+      new RegExp(
+        `/\\* dgadd:css ${oldChunkHash} \\*/[\\s\\S]*?/\\* dgadd:css-end ${oldChunkHash} \\*/\\n?`,
+      ),
+      "",
+    );
+    writeFileSync(stylesPath, stylesWithoutObsolete);
+
+    log.mockClear();
+    await program.parseAsync(["diff", "--cwd", root], { from: "user" });
+    const diffOutput = log.mock.calls.flat().join("\n");
+
+    expect(diffOutput).toContain(`styles.css~chunk-${oldChunkHash}`);
+    expect(diffOutput).toContain("not installed");
+    expect(diffOutput).not.toContain("up to date");
+  });
+
+  test.each<[string, (content: string) => string]>([
+    ["unmatched", (content: string) => content.replace(`/* dgadd:css-end ${oldChunkHash} */`, "")],
+    [
+      "reversed",
+      (content: string) =>
+        content
+          .replace(`/* dgadd:css ${oldChunkHash} */`, "/* marker-placeholder */")
+          .replace(`/* dgadd:css-end ${oldChunkHash} */`, `/* dgadd:css ${oldChunkHash} */`)
+          .replace("/* marker-placeholder */", `/* dgadd:css-end ${oldChunkHash} */`),
+    ],
+    [
+      "duplicate",
+      (content: string) =>
+        content.replace(
+          `/* dgadd:css ${oldChunkHash} */`,
+          `/* dgadd:css ${oldChunkHash} */\n/* dgadd:css ${oldChunkHash} */`,
+        ),
+    ],
+    [
+      "overlapping",
+      (content: string) =>
+        content
+          .replace(
+            `/* dgadd:css ${oldChunkHash} */`,
+            `/* dgadd:css ${oldChunkHash} */\n/* dgadd:css 0123456789abcdef */`,
+          )
+          .replace(
+            `/* dgadd:css-end ${oldChunkHash} */`,
+            `/* dgadd:css-end ${oldChunkHash} */\n/* dgadd:css-end 0123456789abcdef */`,
+          ),
+    ],
+  ])("aborts add when managed CSS markers are %s", async (_shape, corrupt) => {
+    const stylesPath = seedCssUpgradeProject();
+    const corruptedStyles = corrupt(readFileSync(stylesPath, "utf-8"));
+    writeFileSync(stylesPath, corruptedStyles);
+    const program = createCssUpgradeCli();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expectCommandExit(() =>
+      program.parseAsync([...addArgs, "--cwd", root], { from: "user" }),
+    );
+
+    expect(error.mock.calls.flat().join("\n")).toContain("malformed managed CSS markers");
+    expect(readFileSync(stylesPath, "utf-8")).toBe(corruptedStyles);
+    expect(ctx.config.getManifestItems(root)?.["ui/dialog-shell"]?.cssChunks).toEqual([
+      oldChunkHash,
+    ]);
   });
 });

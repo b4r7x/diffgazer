@@ -1,5 +1,5 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
-import { StrictMode } from "react";
+import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { createElement, Fragment, StrictMode, useId, useLayoutEffect, useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getEnabledSelectableCollectionItems,
@@ -8,11 +8,111 @@ import {
 
 type SkippedAttribute = "hidden" | "inert" | "aria-hidden";
 
+type SelectableCollectionRegistration = Pick<
+  ReturnType<typeof useSelectableCollection>,
+  "registerItem" | "unregisterItem"
+>;
+
+function RegistrationItem({
+  index,
+  registerItem,
+  unregisterItem,
+}: SelectableCollectionRegistration & { index: number }) {
+  const id = useId();
+  const itemRef = useRef<HTMLButtonElement>(null);
+
+  useLayoutEffect(() => {
+    registerItem(id, `item-${index}`, false, itemRef.current);
+    return () => unregisterItem(id);
+  }, [id, index, registerItem, unregisterItem]);
+
+  return createElement("button", {
+    ref: itemRef,
+    "data-registration-reconciliation-probe": "",
+    type: "button",
+  });
+}
+
+function RegistrationHarness({ count }: { count: number }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
+
+  return createElement(
+    Fragment,
+    null,
+    createElement("output", { "aria-label": "registered item count" }, items.length),
+    createElement(
+      "div",
+      { ref: containerRef },
+      Array.from({ length: count }, (_, index) =>
+        createElement(RegistrationItem, {
+          index,
+          key: index,
+          registerItem,
+          unregisterItem,
+        }),
+      ),
+    ),
+  );
+}
+
 afterEach(() => {
   document.body.innerHTML = "";
 });
 
 describe("useSelectableCollection", () => {
+  it("coalesces one mount commit's item registrations into one reconciliation", async () => {
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    let itemStyleReads = 0;
+    const getComputedStyle = vi
+      .spyOn(window, "getComputedStyle")
+      .mockImplementation((element, pseudoElement) => {
+        if (
+          element instanceof HTMLElement &&
+          element.hasAttribute("data-registration-reconciliation-probe")
+        ) {
+          itemStyleReads += 1;
+        }
+        return originalGetComputedStyle(element, pseudoElement);
+      });
+
+    const mountAndCountStyleReads = async (count: number) => {
+      itemStyleReads = 0;
+      const view = render(createElement(RegistrationHarness, { count }));
+      await waitFor(() =>
+        expect(screen.getByLabelText("registered item count")).toHaveTextContent(String(count)),
+      );
+      view.unmount();
+      return itemStyleReads;
+    };
+
+    const reads = await mountAndCountStyleReads(6);
+    const doubledReads = await mountAndCountStyleReads(12);
+
+    // Reconciling once per mount reads each item a fixed number of times, so
+    // doubling the collection doubles the reads. Reconciling once per child
+    // registration is quadratic, which nearly quadruples them.
+    expect(reads).toBeGreaterThan(0);
+    expect(doubledReads).toBeLessThan(reads * 3);
+
+    getComputedStyle.mockRestore();
+  });
+
+  it("commits a post-mount registration in the layout pass that rendered it", () => {
+    const view = render(createElement(RegistrationHarness, { count: 1 }));
+    expect(screen.getByLabelText("registered item count")).toHaveTextContent("1");
+
+    act(() => {
+      view.rerender(createElement(RegistrationHarness, { count: 2 }));
+    });
+
+    // Read before any microtask runs: the item this commit registered is already
+    // in the collection, so roving tabIndex and aria-activedescendant cannot be
+    // a paint behind what the user sees.
+    expect(screen.getByLabelText("registered item count")).toHaveTextContent("2");
+    view.unmount();
+  });
+
   it("shares one scheduled document notification and unsubscribes after the last subscriber", async () => {
     const queueMicrotask = vi.spyOn(window, "queueMicrotask");
     const firstContainer = document.createElement("div");

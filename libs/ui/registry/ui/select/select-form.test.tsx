@@ -144,6 +144,34 @@ describe("Select form submission", () => {
     expect(getSelectTrigger()).toHaveTextContent("Banana");
   });
 
+  it("keeps a required single select invalid when its selected option becomes disabled", async () => {
+    function RequiredSingleSelect({ optionDisabled }: { optionDisabled: boolean }) {
+      return (
+        <form aria-label="Required fruit form">
+          <Select name="fruit" required value="banana">
+            <Select.Trigger aria-label="Fruit">
+              <Select.Value placeholder="Pick" />
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="banana" disabled={optionDisabled}>
+                Banana
+              </Select.Item>
+            </Select.Content>
+          </Select>
+        </form>
+      );
+    }
+
+    const { rerender } = render(<RequiredSingleSelect optionDisabled={false} />);
+    const form = getTestForm("Required fruit form");
+    expect(form.checkValidity()).toBe(true);
+
+    rerender(<RequiredSingleSelect optionDisabled />);
+
+    await waitFor(() => expect(new FormData(form).has("fruit")).toBe(false));
+    expect(form.checkValidity()).toBe(false);
+  });
+
   it("submits only enabled retained values when multiple options become disabled", async () => {
     function MultipleSelect({ disabledValues }: { disabledValues: ReadonlySet<string> }) {
       return (
@@ -188,6 +216,9 @@ describe("Select form submission", () => {
     expect(getSelectTrigger()).toHaveFocus();
     expect(getSelectTrigger()).toHaveAttribute("aria-required", "true");
     expect(screen.getAllByRole("combobox")).toHaveLength(1);
+    // The select models one required control, so the browser has exactly one
+    // constraint to report and fire invalid on.
+    expect(form.querySelectorAll(":invalid")).toHaveLength(1);
     expect(await axe(container)).toHaveNoViolations();
 
     await user.click(getSelectTrigger());
@@ -202,6 +233,7 @@ describe("Select form submission", () => {
       items: ["Apple", "Banana"],
     });
     expect(getTestForm().checkValidity()).toBe(false);
+    expect(getTestForm().querySelectorAll(":invalid")).toHaveLength(1);
     await user.click(getSelectTrigger());
     await user.click(screen.getByRole("option", { name: /apple/i }));
     expect(getTestForm().checkValidity()).toBe(true);

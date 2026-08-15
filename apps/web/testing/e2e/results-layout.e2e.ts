@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("the results panes swap without horizontal overflow at 320px", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
-  await page.goto("/testing/fixtures/results-layout.html?view=results");
+  await page.goto("/testing/fixtures/app-fixture.html?view=results");
 
   const viewport = page.getByRole("region", { name: "Review result panes" });
   const details = page.getByRole("complementary", { name: "Issue details" });
@@ -71,7 +71,7 @@ test("mobile shows one review pane at a time", async ({ page }, testInfo) => {
     testInfo.project.name !== "mobile-chromium",
     "pane-swap is the coarse-pointer layout; desktop stays side-by-side",
   );
-  await page.goto("/testing/fixtures/results-layout.html?view=results");
+  await page.goto("/testing/fixtures/app-fixture.html?view=results");
 
   const issueList = page.getByRole("listbox", { name: "Issues" });
   const details = page.getByRole("complementary", { name: "Issue details" });

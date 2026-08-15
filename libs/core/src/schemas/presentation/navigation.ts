@@ -24,7 +24,7 @@ export interface NavItem {
   group: "review" | "navigation" | "system";
 }
 
-export interface SettingsMenuItem {
+interface SettingsMenuItem {
   id: SettingsAction;
   label: string;
   description: string;

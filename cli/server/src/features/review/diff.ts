@@ -3,6 +3,7 @@ import type { ReviewStartedEvent } from "@diffgazer/core/schemas/events";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/core/schemas/review";
 import { createGitDiffError, type GitDiffError } from "../../shared/lib/git/errors.js";
 import type { createGitService } from "../../shared/lib/git/service.js";
+import { log } from "../../shared/lib/log.js";
 import { type ReviewAbort, reviewAbort } from "./abort.js";
 import { parseDiff } from "./engine/diff/parser.js";
 import { computeTotalStats } from "./engine/diff/total-stats.js";
@@ -36,6 +37,21 @@ function getModeNoDiffMessage(mode: ReviewMode): string {
 function isDiffgazerPath(filePath: string): boolean {
   const normalized = filePath.replace(/^\.\//, "");
   return normalized === ".diffgazer" || normalized.startsWith(DIFFGAZER_DIR_PREFIX);
+}
+
+function hasCombinedDiffBlocks(diff: string): boolean {
+  return /^diff --cc /m.test(diff) || /^@@@ /m.test(diff);
+}
+
+function mergeConflictMessage(conflicted: readonly string[]): string {
+  if (conflicted.length === 1) {
+    return `Review excludes 1 conflicted file with unresolved merge conflicts (${conflicted[0]}). Resolve conflicts first.`;
+  }
+  return `Review excludes ${conflicted.length} conflicted files with unresolved merge conflicts (${conflicted.join(", ")}). Resolve conflicts first.`;
+}
+
+function mergeConflictNotice(conflicted: readonly string[]): string {
+  return `[diffgazer] ${mergeConflictMessage(conflicted)}`;
 }
 
 export function filterDiffByFiles(parsed: ParsedDiff, files: string[]): ParsedDiff {
@@ -90,10 +106,26 @@ export async function resolveGitDiff(params: {
   const diff = diffResult.value;
 
   if (!diff.trim()) {
-    return err(reviewAbort(getModeNoDiffMessage(mode), ReviewErrorCode.NO_DIFF, "diff"));
+    const message =
+      files && files.length > 0 ? getFilesModeNoDiffMessage(mode) : getModeNoDiffMessage(mode);
+    return err(reviewAbort(message, ReviewErrorCode.NO_DIFF, "diff"));
   }
 
   let parsed = parseDiff(diff);
+
+  if (hasCombinedDiffBlocks(diff)) {
+    const statusResult = await gitService.getStatus();
+    const conflicted =
+      statusResult.ok && statusResult.value.isGitRepo ? statusResult.value.conflicted : [];
+    if (conflicted.length > 0) {
+      const message = mergeConflictMessage(conflicted);
+      if (parsed.files.length === 0) {
+        return err(reviewAbort(message, ReviewErrorCode.GENERATION_FAILED, "diff"));
+      }
+      log("warn", "review_diff_merge_conflicts_excluded", { files: conflicted });
+      await emit({ type: "chunk", content: mergeConflictNotice(conflicted) });
+    }
+  }
 
   const externalFiles = parsed.files.filter((f) => !isDiffgazerPath(f.filePath));
   if (externalFiles.length !== parsed.files.length) {
@@ -105,9 +137,16 @@ export async function resolveGitDiff(params: {
   }
 
   if (parsed.files.length === 0) {
-    const message =
+    const hasUnresolvedConflicts = Boolean(diff.trim()) && hasCombinedDiffBlocks(diff);
+    const noDiffMessage =
       files && files.length > 0 ? getFilesModeNoDiffMessage(mode) : getModeNoDiffMessage(mode);
-    return err(reviewAbort(message, ReviewErrorCode.NO_DIFF, "diff"));
+    const message = hasUnresolvedConflicts
+      ? "Unresolved merge or rebase conflicts cannot be reviewed. Resolve conflicts first, then review your changes."
+      : noDiffMessage;
+    const errorCode = hasUnresolvedConflicts
+      ? ReviewErrorCode.GENERATION_FAILED
+      : ReviewErrorCode.NO_DIFF;
+    return err(reviewAbort(message, errorCode, "diff"));
   }
 
   if (parsed.totalStats.totalSizeBytes > MAX_DIFF_SIZE_BYTES) {

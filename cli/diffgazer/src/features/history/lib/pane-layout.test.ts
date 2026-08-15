@@ -1,9 +1,20 @@
 import { describe, expect, test } from "vitest";
-import { computePaneLayout, getVisibleHistoryPanes } from "./pane-layout";
+import {
+  computePaneLayout,
+  getHistoryCalloutRows,
+  getHistoryWarningBlockRows,
+  getHistoryWarningBudget,
+  getVisibleHistoryPanes,
+} from "./pane-layout";
 
 const WIDE = { columns: 120, isNarrow: false, contentRows: 30, warningCount: 0 };
 
 describe("computePaneLayout", () => {
+  test("keeps the callout box height separate from its following gap", () => {
+    const calloutRows = getHistoryCalloutRows(["warning"], 80);
+    expect(getHistoryWarningBlockRows(["warning"], 80)).toBe(calloutRows + 1);
+  });
+
   test("splits a wide frame into three side-by-side panes that fit the content width", () => {
     const layout = computePaneLayout(WIDE);
 
@@ -71,6 +82,50 @@ describe("computePaneLayout", () => {
     expect(squeezed.paneHeight).toBe(1);
     expect(squeezed.listHeight).toBe(1);
     expect(squeezed.insightScrollHeight).toBe(1);
+  });
+
+  test.each([
+    [20, "20 saved reviews (#00000000, #00000001, #00000002, … +17 more) could not be read."],
+    [50, "50 saved reviews (#00000000, #00000001, #00000002, … +47 more) could not be read."],
+  ])("reserves every wrapped row for bounded unreadable warnings (%d)", (_count, message) => {
+    const warningRows = getHistoryWarningBlockRows([message], 80);
+    const layout = computePaneLayout({
+      ...WIDE,
+      warningCount: 1,
+      warningRows,
+    });
+
+    expect(warningRows).toBeGreaterThan(5);
+    expect(layout.paneHeight).toBe(30 - 7 - warningRows);
+  });
+
+  test("sums wrapped rows for mixed warning messages and bounded details", () => {
+    const messages = [
+      "20 saved reviews (#00000000, #00000001, #00000002, … +17 more) could not be read.",
+      "20 invalid saved issues were omitted from #00000000, #00000001, #00000002, … +17 more. Re-run the affected reviews for complete results.",
+    ];
+    const warningRows = getHistoryWarningBlockRows(messages, 80);
+    const layout = computePaneLayout({
+      ...WIDE,
+      warningCount: messages.length,
+      warningRows,
+    });
+
+    expect(warningRows).toBeGreaterThan(messages.length + 4);
+    expect(layout.paneHeight).toBe(30 - 7 - warningRows);
+  });
+
+  test("budgets two compact salvaged-run rows when warning copy squeezes the panes", () => {
+    const warningBudget = getHistoryWarningBudget(20, 2);
+    const layout = computePaneLayout({
+      ...WIDE,
+      contentRows: 20,
+      warningCount: 3,
+      warningRows: warningBudget,
+    });
+
+    expect(layout.paneHeight).toBe(6);
+    expect(layout.listHeight).toBe(2);
   });
 });
 

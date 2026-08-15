@@ -1,15 +1,11 @@
 import "../testing/terminal-mock";
 import { useFooterData } from "@diffgazer/core/footer";
+import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
 import { Text } from "ink";
 import { cleanup, render } from "ink-testing-library";
 import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test } from "vitest";
-import {
-  flushUntil,
-  GEMINI_CONFIGURATION,
-  geminiName,
-  Wrapper,
-} from "../testing/model-select-overlay";
+import { flushUntil, geminiName, Wrapper } from "../testing/model-select-overlay";
 import { setTestTerminalDimensions } from "../testing/terminal-mock";
 import { ModelSelectOverlay } from "./model-select-overlay";
 

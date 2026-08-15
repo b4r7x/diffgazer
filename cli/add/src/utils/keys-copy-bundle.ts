@@ -21,7 +21,7 @@ const StrictKeysCopyBundleSchema = CopyBundleSchema.extend({
 
 type StrictKeysCopyBundle = z.infer<typeof StrictKeysCopyBundleSchema>;
 
-export interface KeysCopyHookFile {
+interface KeysCopyHookFile {
   hook: string;
   relativePath: string;
   content: string;
@@ -35,17 +35,13 @@ export function createKeysCopyBundleLoader(bundlePath: string): () => StrictKeys
 
 const loadCopyBundle = createKeysCopyBundleLoader(KEYS_COPY_BUNDLE_PATH);
 
-function toHookRelativePath(path: string): string {
-  if (path.startsWith("src/hooks/")) {
-    return path.slice("src/hooks/".length);
-  }
-  if (path.startsWith("hooks/")) {
-    return path.slice("hooks/".length);
-  }
-  if (path.startsWith("src/")) {
-    return path.slice("src/".length);
-  }
-  return path;
+// The generator maps every keys install target (all under src/hooks/) through a
+// `src/` -> "" rewrite, so a bundled path is always `hooks/<file>`. Anything else
+// means the generator contract broke and must fail loudly, not install elsewhere.
+const HOOK_PATH_PREFIX = "hooks/";
+
+function toHookRelativePath(path: string): string | null {
+  return path.startsWith(HOOK_PATH_PREFIX) ? path.slice(HOOK_PATH_PREFIX.length) : null;
 }
 
 function toFileStem(path: string): string {
@@ -55,7 +51,7 @@ function toFileStem(path: string): string {
 }
 
 function isHookFilePath(path: string): boolean {
-  return path.startsWith("hooks/") || path.startsWith("src/hooks/");
+  return path.startsWith(HOOK_PATH_PREFIX);
 }
 
 function validateAndCollectFiles(
@@ -67,7 +63,10 @@ function validateAndCollectFiles(
   for (const file of hookFiles) {
     const relativePath = toHookRelativePath(file.path);
     if (!relativePath || relativePath.includes("..")) {
-      throw new Error(`Invalid bundled keys hook file path "${file.path}" for hook "${hookName}".`);
+      throw new Error(
+        `Invalid bundled keys hook file path "${file.path}" for hook "${hookName}". ` +
+          `Expected a "${HOOK_PATH_PREFIX}"-prefixed path.`,
+      );
     }
     if (seenPaths.has(relativePath)) continue;
     seenPaths.add(relativePath);

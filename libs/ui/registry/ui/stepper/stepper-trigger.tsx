@@ -110,7 +110,12 @@ export function StepperTrigger({
     >
       <span className={cn(stepperIndicatorVariants({ variant, status }), indicatorClassName)}>
         <span className="sr-only">{screenReaderLabel} </span>
-        <Glyph variant={variant} status={status} tagLabel={tagLabel} />
+        {/* Every glyph but the tag's is decoration (`░░░`, `———`, `[x]`); without this the
+            box-drawing characters land in the button's accessible name right next to the
+            sr-only status word that exists to replace them. */}
+        <span className="contents" aria-hidden={variant === "tag" ? undefined : true}>
+          <Glyph variant={variant} status={status} tagLabel={tagLabel} />
+        </span>
       </span>
       <span ref={labelRef} className={cn(stepperLabelVariants({ status }), labelClassName)}>
         {children}

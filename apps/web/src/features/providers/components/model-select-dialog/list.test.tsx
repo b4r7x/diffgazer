@@ -7,10 +7,12 @@ import { ModelList } from "./list";
 const DISCOVERED_MODELS: ModelInfo[] = [
   {
     id: "gemini-2.5-flash",
-    name: "gemini-2.5-flash",
+    name: "Gemini 2.5 Flash",
     description: "Exact credentialed production-path evidence passed.",
     tier: "paid",
   },
+  // Upstream publishes no display name for this one, so the transform falls the
+  // name back to the id and the row must not print it twice.
   {
     id: "gemini-2.5-pro",
     name: "gemini-2.5-pro",
@@ -19,26 +21,40 @@ const DISCOVERED_MODELS: ModelInfo[] = [
   },
 ];
 
+const LIST_PROPS = {
+  focusedModelId: "gemini-2.5-flash",
+  currentModelId: "gemini-2.5-flash",
+  isFocused: false,
+  onSelect: vi.fn(),
+  onConfirm: vi.fn(),
+  onHighlightChange: vi.fn(),
+  onBoundaryReached: vi.fn(),
+};
+
 describe("ModelList configuration-bound discovery", () => {
-  it("labels each admitted model with its exact ID and access tier", () => {
+  it("labels each admitted model with its display name, exact ID, and access tier", () => {
+    render(<ModelList models={DISCOVERED_MODELS} {...LIST_PROPS} />);
+
+    expect(screen.getByText("Gemini 2.5 Flash")).toBeInTheDocument();
+    expect(screen.getByText("gemini-2.5-flash")).toBeInTheDocument();
+    expect(screen.getAllByText("gemini-2.5-pro")).toHaveLength(1);
+    expect(screen.getByText("FREE")).toBeInTheDocument();
+    expect(screen.getByText("PAID")).toBeInTheDocument();
+    expect(screen.queryByText(/latest/i)).not.toBeInTheDocument();
+  });
+
+  it("shows no tier badge for a model the catalog does not price", () => {
     render(
       <ModelList
-        models={DISCOVERED_MODELS}
-        focusedModelId="gemini-2.5-flash"
-        currentModelId="gemini-2.5-flash"
-        isFocused={false}
-        onSelect={vi.fn()}
-        onConfirm={vi.fn()}
-        onHighlightChange={vi.fn()}
-        onBoundaryReached={vi.fn()}
+        models={[
+          { id: "gemma-4-31b-it", name: "Gemma 4 31B IT", description: "", tier: "unknown" },
+        ]}
+        {...LIST_PROPS}
       />,
     );
 
-    expect(screen.getByText("gemini-2.5-flash")).toBeInTheDocument();
-    expect(screen.getByText("gemini-2.5-pro")).toBeInTheDocument();
-    expect(screen.getByText("free")).toBeInTheDocument();
-    expect(screen.getByText("paid")).toBeInTheDocument();
-    expect(screen.queryByText(/latest/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Gemma 4 31B IT")).toBeInTheDocument();
+    expect(screen.queryByText(/^(FREE|PAID|UNKNOWN)$/)).not.toBeInTheDocument();
   });
 
   it("confirms the double-clicked exact model ID directly", async () => {

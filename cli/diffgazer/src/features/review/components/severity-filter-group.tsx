@@ -1,9 +1,6 @@
 import { formatSeverityFilterLabel, toggleSeverity } from "@diffgazer/core/review";
-import {
-  SEVERITY_ORDER,
-  type SeverityCounts,
-  type UISeverityFilter,
-} from "@diffgazer/core/schemas/presentation";
+import { SEVERITY_ORDER, type UISeverityFilter } from "@diffgazer/core/schemas/presentation";
+import type { SeverityCounts } from "@diffgazer/core/schemas/review";
 import { Box, Text, useInput } from "ink";
 import { useState } from "react";
 import { SEVERITY_INITIALS } from "../../../lib/severity-initials";

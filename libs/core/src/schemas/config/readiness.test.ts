@@ -1,10 +1,28 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   READINESS_PRESENTATION,
+  READINESS_STATUSES,
+  type Readiness,
   ReadinessAcknowledgementSchema,
   ReadinessSchema,
   type ReadinessStatus,
 } from "./readiness.js";
+
+const READINESS_ACTION_CONTRACT = {
+  unconfigured: { action: "create", remediationCode: "configure" },
+  "credential-invalid": { action: "update", remediationCode: "replace-credential" },
+  "model-missing": { action: "select", remediationCode: "select-model" },
+  "conformance-pending": { action: "test", remediationCode: "run-conformance" },
+  "conformance-failed": { action: "test", remediationCode: "rerun-conformance" },
+  "acknowledgement-required": { action: "update", remediationCode: "accept-notice" },
+  unsupported: { action: "inspect", remediationCode: "review-support" },
+  skipped: { action: "test", remediationCode: "enable-live-probe" },
+  "local-conformance-failed": { action: "test", remediationCode: "rerun-conformance" },
+  ready: { action: "inspect", remediationCode: "none" },
+} as const satisfies Record<
+  ReadinessStatus,
+  { action: (typeof READINESS_PRESENTATION)[ReadinessStatus]["action"]; remediationCode: string }
+>;
 
 const CHECKED_AT = "2026-07-31T12:00:00.000Z";
 const REQUIRED_ACKNOWLEDGEMENT = {
@@ -22,8 +40,6 @@ const ACCEPTED_ACKNOWLEDGEMENT = {
 const STATUS_CONTRACT = {
   unconfigured: { ready: false, evidenceStatus: "not-checked", checkedAt: null },
   "credential-invalid": { ready: false, evidenceStatus: "failed", checkedAt: CHECKED_AT },
-  "endpoint-invalid": { ready: false, evidenceStatus: "failed", checkedAt: CHECKED_AT },
-  unreachable: { ready: false, evidenceStatus: "failed", checkedAt: CHECKED_AT },
   "model-missing": { ready: false, evidenceStatus: "failed", checkedAt: CHECKED_AT },
   "conformance-pending": { ready: false, evidenceStatus: "pending", checkedAt: CHECKED_AT },
   "conformance-failed": { ready: false, evidenceStatus: "failed", checkedAt: CHECKED_AT },
@@ -34,33 +50,7 @@ const STATUS_CONTRACT = {
   },
   unsupported: { ready: false, evidenceStatus: "not-checked", checkedAt: null },
   skipped: { ready: false, evidenceStatus: "skipped", checkedAt: CHECKED_AT },
-  "local-endpoint-unreachable": {
-    ready: false,
-    evidenceStatus: "failed",
-    checkedAt: CHECKED_AT,
-  },
-  "local-endpoint-forbidden": {
-    ready: false,
-    evidenceStatus: "failed",
-    checkedAt: CHECKED_AT,
-  },
-  "local-api-incompatible": { ready: false, evidenceStatus: "failed", checkedAt: CHECKED_AT },
-  "local-no-review-capable-model": {
-    ready: false,
-    evidenceStatus: "failed",
-    checkedAt: CHECKED_AT,
-  },
-  "local-selected-model-missing": {
-    ready: false,
-    evidenceStatus: "failed",
-    checkedAt: CHECKED_AT,
-  },
   "local-conformance-failed": {
-    ready: false,
-    evidenceStatus: "failed",
-    checkedAt: CHECKED_AT,
-  },
-  "local-cancellation-failed": {
     ready: false,
     evidenceStatus: "failed",
     checkedAt: CHECKED_AT,
@@ -86,12 +76,25 @@ function readinessInput(status: ReadinessStatus) {
 }
 
 describe("readiness contract", () => {
-  it("distinguishes every REQ-051 readiness state with actionable guidance", () => {
+  it("pins every readiness status to its action and remediation code", () => {
+    expect(READINESS_STATUSES).toHaveLength(10);
+
+    for (const status of READINESS_STATUSES) {
+      const expected = READINESS_ACTION_CONTRACT[status];
+      const result = ReadinessSchema.parse(readinessInput(status));
+
+      expect(result.status).toBe(status);
+      expect(result.action).toBe(expected.action);
+      expect(result.remediation.code).toBe(expected.remediationCode);
+      expect(result.explanation.length).toBeGreaterThan(0);
+      expect(result.remediation.message.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("gives every hosted readiness state distinct, actionable guidance", () => {
     const statuses = [
       "unconfigured",
       "credential-invalid",
-      "endpoint-invalid",
-      "unreachable",
       "model-missing",
       "conformance-pending",
       "conformance-failed",
@@ -109,24 +112,13 @@ describe("readiness contract", () => {
     expect(new Set(statuses)).toHaveLength(statuses.length);
   });
 
-  it("distinguishes every local-specific readiness failure", () => {
-    const statuses = [
-      "local-endpoint-unreachable",
-      "local-endpoint-forbidden",
-      "local-api-incompatible",
-      "local-no-review-capable-model",
-      "local-selected-model-missing",
-      "local-conformance-failed",
-      "local-cancellation-failed",
-    ] as const;
+  it("separates a local conformance failure from the hosted one", () => {
+    const local = ReadinessSchema.parse(readinessInput("local-conformance-failed"));
+    const hosted = ReadinessSchema.parse(readinessInput("conformance-failed"));
 
-    for (const status of statuses) {
-      const result = ReadinessSchema.parse(readinessInput(status));
-      expect(result.status).toBe(status);
-      expect(result.ready).toBe(false);
-      expect(result.evidenceStatus).toBe("failed");
-    }
-    expect(new Set(statuses)).toHaveLength(7);
+    expect(local.ready).toBe(false);
+    expect(local.evidenceStatus).toBe("failed");
+    expect(local.explanation).not.toBe(hosted.explanation);
   });
 
   it("never treats a skipped check as ready or passed", () => {
@@ -208,6 +200,35 @@ describe("readiness contract", () => {
         ...ready,
         remediation: { ...ready.remediation, details: "/home/person/.config/tool" },
       }).success,
+    ).toBe(false);
+  });
+
+  it("ties action, explanation, and remediation copy to the status at the type level", () => {
+    type ReadyReadiness = Extract<Readiness, { status: "ready" }>;
+    type UnconfiguredReadiness = Extract<Readiness, { status: "unconfigured" }>;
+
+    expectTypeOf<ReadyReadiness["action"]>().toEqualTypeOf<"inspect">();
+    expectTypeOf<ReadyReadiness["remediation"]["code"]>().toEqualTypeOf<"none">();
+    expectTypeOf<UnconfiguredReadiness["action"]>().toEqualTypeOf<"create">();
+    expectTypeOf<UnconfiguredReadiness["remediation"]["code"]>().toEqualTypeOf<"configure">();
+
+    const acceptReadiness = (_readiness: Readiness) => undefined;
+    const readyState = {
+      status: "ready",
+      ready: true,
+      evidenceStatus: "passed",
+      checkedAt: CHECKED_AT,
+      acknowledgement: ACCEPTED_ACKNOWLEDGEMENT,
+    } as const;
+
+    acceptReadiness({ ...readyState, ...READINESS_PRESENTATION.ready });
+    // @ts-expect-error a ready readiness cannot carry another status's presentation copy.
+    acceptReadiness({ ...readyState, ...READINESS_PRESENTATION.unconfigured });
+    // @ts-expect-error a ready readiness cannot carry another status's action alone.
+    acceptReadiness({ ...readyState, ...READINESS_PRESENTATION.ready, action: "create" });
+
+    expect(
+      ReadinessSchema.safeParse({ ...readyState, ...READINESS_PRESENTATION.unconfigured }).success,
     ).toBe(false);
   });
 });

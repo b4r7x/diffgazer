@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Registry, RegistryItem } from "../registry-types.js";
+import { compareCodeUnits } from "../utils/compare-code-units.js";
 import { cleanDir } from "../utils/fs.js";
 import { writeJson } from "../utils/json.js";
 import type { DocsHighlighter } from "./highlight.js";
@@ -32,7 +33,7 @@ export async function buildComponentsData(params: {
   const errors: string[] = [];
 
   const componentItems = registry.items.filter(componentsConfig.filter);
-  const sortedItems = [...componentItems].sort((a, b) => a.name.localeCompare(b.name));
+  const sortedItems = [...componentItems].sort((a, b) => compareCodeUnits(a.name, b.name));
 
   const componentsDir = resolve(outputDir, "components");
   mkdirSync(componentsDir, { recursive: true });

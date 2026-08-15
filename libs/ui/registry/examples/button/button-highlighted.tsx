@@ -19,7 +19,7 @@ export default function ButtonHighlighted() {
           key={label}
           variant="outline"
           highlighted={position === index}
-          onClick={() => setIndex(position)}
+          onFocus={() => setIndex(position)}
         >
           {label}
         </Button>

@@ -1,7 +1,7 @@
 {
   "name": "@diffgazer/keys-artifacts",
   "version": "0.1.0",
-  "description": "Docs and registry artifacts for @diffgazer/keys (consumed by docs host)",
+  "description": "Private parity mirror of libs/keys/dist/artifacts, populated by the @diffgazer/keys build and checked by scripts/monorepo/validate-artifacts.mjs",
   "homepage": "https://github.com/b4r7x/diffgazer/tree/main/libs/keys/artifacts",
   "repository": {
     "type": "git",
@@ -13,15 +13,8 @@
   "files": [
     "artifacts"
   ],
-  "scripts": {
-    "build": "node scripts/copy-artifacts.mjs"
-  },
-  "devDependencies": {
-    "@diffgazer/registry": "workspace:*",
-    "@diffgazer/keys": "workspace:*"
-  },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "license": "MIT"
 }

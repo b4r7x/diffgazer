@@ -51,7 +51,7 @@ export function validateOrphanFiles(root: string, items: RegistryItem[]): string
   const declaredFiles = new Set<string>();
 
   for (const item of items) {
-    for (const file of item.files ?? []) {
+    for (const file of item.files) {
       const normalized = normalizeRegistryPath(file.path);
       declaredFiles.add(normalized);
     }

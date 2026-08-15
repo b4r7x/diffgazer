@@ -9,7 +9,6 @@ import {
   persistTrustRecordAsync,
   persistTrustRemovalAsync,
 } from "./persistence/trust.js";
-import { runConfigTransaction } from "./transaction/mutation.js";
 import { createMutex } from "./transaction/mutex.js";
 import type { SecretsStorageError, SecretsStorageErrorCode, TrustState } from "./types.js";
 
@@ -20,13 +19,8 @@ export interface TrustStore {
   removeTrust(projectId: string): Promise<Result<boolean, SecretsStorageError>>;
 }
 
-// Owns persistent (file-backed) and per-session trust. A session grant shadows a
-// persistent record for the same project and does not survive restarts, so downgrading
-// to session trust also clears the persistent record — a restart cannot resurrect the
-// older persistent grant.
 export function createTrustStore(): TrustStore {
   let trustState: TrustState = loadTrust();
-  const sessionTrust: Record<string, TrustConfig> = {};
   let trustMtimeMs: number | null = getFileMtimeMs(getGlobalTrustPath());
 
   const mutex = createMutex();
@@ -62,90 +56,61 @@ export function createTrustStore(): TrustStore {
     }
   };
 
-  const transactionDeps = {
-    refresh: refreshTrustState,
-    snapshot: () => cloneTrustState(trustState),
-    restore: (backup: TrustState) => {
+  /**
+   * One trust mutation under transactional discipline: snapshot for rollback →
+   * mutate in memory → persist → on persist failure restore the snapshot and
+   * surface the error. Callers run it inside the mutex so two concurrent
+   * mutators never interleave.
+   */
+  const mutateAndPersist = async <T>(
+    mutate: () => T,
+    write: () => Promise<void>,
+  ): Promise<Result<T, SecretsStorageError>> => {
+    const backup = cloneTrustState(trustState);
+    const value = mutate();
+    const persisted = await persistTrustWith(write);
+    if (!persisted.ok) {
       trustState = backup;
-    },
+      return persisted;
+    }
+    return ok(value);
   };
 
   const getTrust = (projectId: string): TrustConfig | null => {
     refreshTrustState();
-    return sessionTrust[projectId] ?? trustState.projects[projectId] ?? null;
+    return trustState.projects[projectId] ?? null;
   };
 
   const listTrustedProjects = (): TrustConfig[] => {
     refreshTrustState();
-    return Object.values({ ...trustState.projects, ...sessionTrust });
+    return Object.values(trustState.projects);
   };
 
-  const saveTrust = (config: TrustConfig): Promise<Result<TrustConfig, SecretsStorageError>> => {
-    if (config.trustMode === "session") {
-      // Drop the persistent record, then record the session grant. Apply the
-      // session grant only after the removal persists: on failure the transaction
-      // restores the persistent record and returns err, so getTrust must not report a
-      // session grant that was never persisted.
-      return mutex.run(async () => {
-        refreshTrustState();
-        if (!(config.projectId in trustState.projects)) {
-          sessionTrust[config.projectId] = config;
-          return ok(config);
-        }
-        const result = await runConfigTransaction(
-          {
-            ...transactionDeps,
-            refresh: () => {},
-            persist: () => persistTrustWith(() => persistTrustRemovalAsync(config.projectId)),
-          },
-          () => {
-            delete trustState.projects[config.projectId];
-            return ok(config);
-          },
-        );
-        if (result.ok) {
-          sessionTrust[config.projectId] = config;
-        }
-        return result;
-      });
-    }
-    return mutex.run(async () => {
-      const result = await runConfigTransaction(
-        {
-          ...transactionDeps,
-          persist: () => persistTrustWith(() => persistTrustRecordAsync(config)),
-        },
+  const saveTrust = (config: TrustConfig): Promise<Result<TrustConfig, SecretsStorageError>> =>
+    mutex.run(() => {
+      refreshTrustState();
+      return mutateAndPersist(
         () => {
           trustState.projects[config.projectId] = config;
-          return ok(config);
+          return config;
         },
+        () => persistTrustRecordAsync(config),
       );
-      if (result.ok) delete sessionTrust[config.projectId];
-      return result;
     });
-  };
 
   const removeTrust = (projectId: string): Promise<Result<boolean, SecretsStorageError>> =>
     mutex.run(async () => {
-      const removedSession = projectId in sessionTrust;
       refreshTrustState();
       if (!(projectId in trustState.projects)) {
-        if (removedSession) delete sessionTrust[projectId];
-        return ok(removedSession);
+        return ok(false);
       }
-      const result = await runConfigTransaction(
-        {
-          ...transactionDeps,
-          refresh: () => {},
-          persist: () => persistTrustWith(() => persistTrustRemovalAsync(projectId)),
-        },
+      return mutateAndPersist(
         () => {
           delete trustState.projects[projectId];
-          return ok(true);
+          return true;
         },
+        () => persistTrustRemovalAsync(projectId),
       );
-      if (result.ok && removedSession) delete sessionTrust[projectId];
-      return result;
     });
 
   return { getTrust, listTrustedProjects, saveTrust, removeTrust };

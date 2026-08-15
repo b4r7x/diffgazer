@@ -3,20 +3,14 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DOCS_ROOT } from "./generate-llms/artifacts.ts";
 import { writeLlmsFiles } from "./generate-llms/output.ts";
-import {
-  type PreRenderPage,
-  resolveGeneratorOutputDir,
-  resolveOrigin,
-  writeSitemap,
-} from "./generate-sitemap.ts";
+import { resolveGeneratorOutputDir, resolveOrigin, writeSitemap } from "./generate-sitemap.ts";
 
-export function writeDocsMetadata(
+function writeDocsMetadata(
   outDir = resolve(DOCS_ROOT, ".output/public"),
-  options: { origin?: string; pages?: PreRenderPage[] } = {},
+  origin = resolveOrigin(),
 ) {
-  const origin = options.origin ?? resolveOrigin();
   const sitemap = writeSitemap(outDir, origin);
-  const llms = writeLlmsFiles(outDir, { ...options, origin });
+  const llms = writeLlmsFiles(outDir, { origin });
   return { sitemap, llms };
 }
 
@@ -29,7 +23,7 @@ if (invokedDirectly) {
   const outDir = resolveGeneratorOutputDir(args.filter((arg) => arg !== "--all"));
   const origin = resolveOrigin();
   const generated = writeAll
-    ? writeDocsMetadata(outDir, { origin })
+    ? writeDocsMetadata(outDir, origin)
     : { sitemap: null, llms: writeLlmsFiles(outDir, { origin }) };
   const { sitemap } = generated;
   const { count, llmsTarget, llmsFullTarget } = generated.llms;

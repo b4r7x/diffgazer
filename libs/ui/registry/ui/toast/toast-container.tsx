@@ -53,10 +53,16 @@ export interface ToasterProps {
    * while an editable element has focus. Defaults to F8, the Radix viewport hotkey.
    */
   hotkey?: string;
+  /** Accessible name for the toast region landmark. */
+  label?: string;
 }
 
 /** Fixed-position container, subscribes to toast store. */
-export function Toaster({ position = "bottom-right", hotkey = "F8" }: ToasterProps) {
+export function Toaster({
+  position = "bottom-right",
+  hotkey = "F8",
+  label = "Notifications",
+}: ToasterProps) {
   const { toasts, dismissingIds } = useToastStore();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isTopToaster = useTopLayerPosition(toasterStack, containerRef, true);
@@ -117,7 +123,8 @@ export function Toaster({ position = "bottom-right", hotkey = "F8" }: ToasterPro
 
     const nextAnnouncements: ToastAnnouncement[] = [];
     for (const toast of toasts) {
-      if (toast.tone === "error" || announcedIds.current.has(toast.id)) continue;
+      const rendersAlert = toast.tone === "error" && toast.variant !== "hud";
+      if (rendersAlert || announcedIds.current.has(toast.id)) continue;
       const key = `${toast.id}:${announcementSequence.current}`;
       announcementSequence.current += 1;
       nextAnnouncements.push({ key, text: announcementText(toast) });
@@ -224,14 +231,14 @@ export function Toaster({ position = "bottom-right", hotkey = "F8" }: ToasterPro
 
   if (!isTopToaster)
     // biome-ignore lint/a11y/useSemanticElements: matches the active toast container element while preserving the hidden placeholder for stack registration.
-    return <div ref={containerRef} role="region" aria-label="Notifications" hidden />;
+    return <div ref={containerRef} role="region" aria-label={label} hidden />;
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: role="region" with aria-label is the standard toast live-region container; swapping to <section> would change the styling element and add a page landmark.
     <div
       ref={containerRef}
       role="region"
-      aria-label="Notifications"
+      aria-label={label}
       tabIndex={-1}
       onMouseEnter={() => pause("hover")}
       onMouseLeave={() => resume("hover")}

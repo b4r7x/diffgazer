@@ -1,6 +1,5 @@
 import type { HistoryDetailState } from "@diffgazer/core/review";
-import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import type { ReviewIssue, SeverityCounts } from "@diffgazer/core/schemas/review";
 import { capitalize } from "@diffgazer/core/strings";
 import { isListNavigationKey } from "@diffgazer/keys";
 import { Button } from "@diffgazer/ui/components/button";

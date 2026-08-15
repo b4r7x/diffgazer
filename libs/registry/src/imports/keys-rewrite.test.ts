@@ -13,12 +13,27 @@ describe("rewriteKeysPackageImportsInContent", () => {
     ].join("\n");
 
     const output = rewriteKeysPackageImportsInContent(input, {
-      renderImport: (specifiers, target, quote, indent) =>
-        `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+      renderImport: (specifiers, target, quote) =>
+        `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
     });
 
     expect(output).toContain("@/hooks/use-focus-restore");
     expect(output).not.toContain("@diffgazer/keys");
+  });
+
+  it.each([
+    [
+      "a trailing line comment",
+      ["import {", "  useFocusRestore, // restores focus", '} from "@diffgazer/keys";'].join("\n"),
+    ],
+    ["an inline block comment", 'import { /* keys */ useFocusRestore } from "@diffgazer/keys";'],
+  ])("ignores %s inside the import braces", (_label, input) => {
+    const output = rewriteKeysPackageImportsInContent(input, {
+      renderImport: (specifiers, target, quote) =>
+        `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+    });
+
+    expect(output).toBe('import { useFocusRestore } from "@/hooks/use-focus-restore";');
   });
 
   it("rewrites navigation item values and their public type to the same copy utility", () => {
@@ -31,8 +46,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
     ].join("\n");
 
     const output = rewriteKeysPackageImportsInContent(input, {
-      renderImport: (specifiers, target, quote, indent) =>
-        `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+      renderImport: (specifiers, target, quote) =>
+        `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
     });
 
     expect(output).toBe(
@@ -44,8 +59,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
     const input = 'import { findNavigationItemByValue, isReachable } from "@diffgazer/keys";';
 
     const output = rewriteKeysPackageImportsInContent(input, {
-      renderImport: (specifiers, target, quote, indent) =>
-        `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+      renderImport: (specifiers, target, quote) =>
+        `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
     });
 
     expect(output).toBe(
@@ -60,8 +75,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
     const input = 'import { containsActiveElement, getNavigationItems } from "@diffgazer/keys";';
 
     const output = rewriteKeysPackageImportsInContent(input, {
-      renderImport: (specifiers, target, quote, indent) =>
-        `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+      renderImport: (specifiers, target, quote) =>
+        `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
     });
 
     expect(output).toBe(
@@ -77,8 +92,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
       'import { composedClosest, composedContains, isEditableElement, useNavigation } from "@diffgazer/keys";';
 
     const output = rewriteKeysPackageImportsInContent(input, {
-      renderImport: (specifiers, target, quote, indent) =>
-        `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+      renderImport: (specifiers, target, quote) =>
+        `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
     });
 
     expect(output).toBe(
@@ -94,8 +109,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
 
     const output = rewriteKeysPackageImportsInContent(input, {
       shimHookBasename: "use-scroll-lock",
-      renderImport: (specifiers, target, quote, indent) =>
-        `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+      renderImport: (specifiers, target, quote) =>
+        `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
     });
 
     expect(output).toBe(input);
@@ -107,8 +122,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
 
     const output = rewriteKeysPackageImportsInContent(input, {
       shimHookBasename: "use-scroll-lock",
-      renderImport: (specifiers, target, quote, indent) =>
-        `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+      renderImport: (specifiers, target, quote) =>
+        `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
     });
 
     expect(output).toBe(
@@ -123,8 +138,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
     const input = 'import type { UseFocusRestoreOptions } from "@diffgazer/keys";';
 
     const output = rewriteKeysPackageImportsInContent(input, {
-      renderImport: (specifiers, target, quote, indent) =>
-        `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+      renderImport: (specifiers, target, quote) =>
+        `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
     });
 
     expect(output).toBe('import { type UseFocusRestoreOptions } from "@/hooks/use-focus-restore";');
@@ -141,8 +156,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
   ])("rejects residual %s root imports", (_form, input) => {
     expect(() =>
       rewriteKeysPackageImportsInContent(input, {
-        renderImport: (specifiers, target, quote, indent) =>
-          `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+        renderImport: (specifiers, target, quote) =>
+          `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
       }),
     ).toThrow(/Unsupported @diffgazer\/keys root import/);
   });
@@ -151,8 +166,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
     expect(() =>
       rewriteKeysPackageImportsInContent('const keys = import("@diffgazer/keys");', {
         shimHookBasename: "use-scroll-lock",
-        renderImport: (specifiers, target, quote, indent) =>
-          `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+        renderImport: (specifiers, target, quote) =>
+          `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
       }),
     ).toThrow(/Unsupported @diffgazer\/keys root import/);
   });
@@ -163,8 +178,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
   ])("rejects a template-literal %s", (_form, input) => {
     expect(() =>
       rewriteKeysPackageImportsInContent(input, {
-        renderImport: (specifiers, target, quote, indent) =>
-          `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+        renderImport: (specifiers, target, quote) =>
+          `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
       }),
     ).toThrow(/Unsupported @diffgazer\/keys root import/);
   });
@@ -174,8 +189,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
 
     expect(() =>
       rewriteKeysPackageImportsInContent(input, {
-        renderImport: (specifiers, target, quote, indent) =>
-          `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+        renderImport: (specifiers, target, quote) =>
+          `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
       }),
     ).toThrow(/Unsupported @diffgazer\/keys root import/);
   });
@@ -185,8 +200,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
 
     expect(
       rewriteKeysPackageImportsInContent(input, {
-        renderImport: (specifiers, target, quote, indent) =>
-          `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+        renderImport: (specifiers, target, quote) =>
+          `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
       }),
     ).toBe(input);
   });
@@ -197,8 +212,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
   ])("ignores %s named imports inside ordinary quoted strings", (_kind, input) => {
     expect(
       rewriteKeysPackageImportsInContent(input, {
-        renderImport: (specifiers, target, quote, indent) =>
-          `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+        renderImport: (specifiers, target, quote) =>
+          `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
       }),
     ).toBe(input);
   });
@@ -208,8 +223,8 @@ describe("rewriteKeysPackageImportsInContent", () => {
       rewriteKeysPackageImportsInContent(
         'import { isReachable, unknownExport } from "@diffgazer/keys";',
         {
-          renderImport: (specifiers, target, quote, indent) =>
-            `${indent}import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
+          renderImport: (specifiers, target, quote) =>
+            `import { ${specifiers.join(", ")} } from ${quote}@/hooks/${target}${quote};`,
         },
       ),
     ).toThrow(/Unknown @diffgazer\/keys import specifiers: unknownExport/);

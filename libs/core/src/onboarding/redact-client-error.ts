@@ -1,5 +1,5 @@
 import { REDACTED, redactSecrets, truncateUtf8 } from "../redaction.js";
-import { sanitizeTerminalText } from "../review/sanitize-terminal.js";
+import { sanitizeTerminalText } from "../sanitize-terminal.js";
 import type { OnboardingDraft } from "./defaults.js";
 
 const CLIENT_ERROR_MAX_BYTES = 512;
@@ -47,9 +47,7 @@ function redactClientError(value: string, sensitiveValues: readonly string[]): s
     .trim();
 }
 
-function getWizardSensitiveValues(data: OnboardingDraft | undefined): readonly string[] {
-  if (!data) return [];
-
+function getWizardSensitiveValues(data: OnboardingDraft): readonly string[] {
   const values: string[] = [];
   const input = data.configurationInput;
   if (input.transportFamily === "hosted-api") {
@@ -65,7 +63,7 @@ function getWizardSensitiveValues(data: OnboardingDraft | undefined): readonly s
 export function getClientSafeError(
   cause: unknown,
   fallback: string,
-  data?: OnboardingDraft,
+  data: OnboardingDraft,
 ): string {
   if (!(cause instanceof Error) || cause.message.trim().length === 0) return fallback;
 

@@ -1,5 +1,3 @@
-"use client";
-
 import type { ComponentPropsWithRef } from "react";
 
 /** Props for toc. */
@@ -10,7 +8,7 @@ export interface TocProps extends Omit<ComponentPropsWithRef<"nav">, "title"> {
   as?: "h2" | "h3" | "h4";
 }
 
-/** Root aside wrapper and optional heading label. */
+/** Root nav landmark and optional heading label. */
 export function Toc({
   title = "On this page",
   as: Heading = "h2",

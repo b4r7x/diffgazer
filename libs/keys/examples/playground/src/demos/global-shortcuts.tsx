@@ -1,6 +1,7 @@
 import { useKey } from "@diffgazer/keys";
 import { useEffect, useRef, useState } from "react";
 import { DemoWrapper } from "../components/demo-wrapper";
+import { Kbd } from "../components/kbd";
 
 export function GlobalShortcutsDemo() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -54,7 +55,10 @@ export function GlobalShortcutsDemo() {
       description="Demonstrates useKey with all three overloads: single key binding, array of keys, and a key map. Toggle the search bar, focus it, and close it — all from the keyboard."
       hints={[
         { keys: "mod+K", label: "Toggle search" },
-        { keys: "/", label: "Focus search" },
+        {
+          keys: "/",
+          label: "Focus search — ignored while the input has focus (allowInInput: false)",
+        },
         { keys: "Escape", label: "Close search" },
       ]}
     >
@@ -66,7 +70,7 @@ export function GlobalShortcutsDemo() {
 
       {!searchOpen && (
         <p className="demo-status">
-          Press <strong>Cmd+K</strong> to open the search bar.
+          Press <Kbd keys="mod+K" /> to open the search bar.
         </p>
       )}
 

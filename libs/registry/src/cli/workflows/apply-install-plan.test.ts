@@ -205,6 +205,182 @@ describe("applyInstallPlan", () => {
     expect(existsSync(targetPath)).toBe(false);
   });
 
+  it("reports an incomplete package-manager rollback even when the run was cancelled", async () => {
+    seedPackageManagerFiles(tempDir);
+    vi.mocked(installDepsWithSpinner).mockImplementation((_pm, _deps, cwd, abortSignal) => {
+      mutatePackageManagerFiles(cwd);
+      return new Promise((_resolve, reject) => {
+        abortSignal?.addEventListener(
+          "abort",
+          () => {
+            reject(abortSignal.reason ?? new Error("aborted"));
+          },
+          { once: true },
+        );
+      });
+    });
+    const restoreFailure = new Error("disk full");
+    vi.mocked(restorePackageManagerFiles).mockImplementationOnce(() => {
+      throw restoreFailure;
+    });
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+      throw new Error(`process.exit:${code}`);
+    }) as typeof process.exit);
+
+    const plan = applyInstallPlan({
+      cwd: tempDir,
+      yes: true,
+      dryRun: false,
+      overwrite: false,
+      confirmMessage: "proceed?",
+      headingMessage: "Applying...",
+      fileOps: [
+        {
+          targetPath: join(tempDir, "component.tsx"),
+          content: "export {};\n",
+          relativePath: "component.tsx",
+          installDir: ".",
+        },
+      ],
+      missingDeps: ["added@1.0.0"],
+    });
+
+    await vi.waitFor(() => expect(installDepsWithSpinner).toHaveBeenCalled());
+    process.emit("SIGINT");
+
+    await expect(plan).rejects.toMatchObject({
+      message: "Install-plan failed and package-manager rollback was incomplete.",
+      errors: [expect.anything(), restoreFailure],
+    });
+    expect(exitSpy).not.toHaveBeenCalled();
+    exitSpy.mockRestore();
+  });
+
+  it("rolls back written files and exits when installation is cancelled via SIGINT", async () => {
+    const targetPath = join(tempDir, "component.tsx");
+    vi.mocked(installDepsWithSpinner).mockImplementation((_pm, _deps, _cwd, abortSignal) => {
+      return new Promise((_resolve, reject) => {
+        abortSignal?.addEventListener(
+          "abort",
+          () => {
+            reject(abortSignal.reason ?? new Error("aborted"));
+          },
+          { once: true },
+        );
+      });
+    });
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+      throw new Error(`process.exit:${code}`);
+    }) as typeof process.exit);
+
+    const plan = applyInstallPlan({
+      cwd: tempDir,
+      yes: true,
+      dryRun: false,
+      overwrite: false,
+      confirmMessage: "proceed?",
+      headingMessage: "Applying...",
+      fileOps: [
+        {
+          targetPath,
+          content: "export {};\n",
+          relativePath: "component.tsx",
+          installDir: ".",
+        },
+      ],
+      missingDeps: ["added@1.0.0"],
+    });
+
+    await vi.waitFor(() => expect(installDepsWithSpinner).toHaveBeenCalled());
+    process.emit("SIGINT");
+
+    await expect(plan).rejects.toThrow("process.exit:130");
+    expect(existsSync(targetPath)).toBe(false);
+    exitSpy.mockRestore();
+  });
+
+  it("rolls back written files and exits when installation is cancelled via SIGTERM", async () => {
+    const targetPath = join(tempDir, "component.tsx");
+    vi.mocked(installDepsWithSpinner).mockImplementation((_pm, _deps, _cwd, abortSignal) => {
+      return new Promise((_resolve, reject) => {
+        abortSignal?.addEventListener(
+          "abort",
+          () => {
+            reject(abortSignal.reason ?? new Error("aborted"));
+          },
+          { once: true },
+        );
+      });
+    });
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+      throw new Error(`process.exit:${code}`);
+    }) as typeof process.exit);
+
+    const plan = applyInstallPlan({
+      cwd: tempDir,
+      yes: true,
+      dryRun: false,
+      overwrite: false,
+      confirmMessage: "proceed?",
+      headingMessage: "Applying...",
+      fileOps: [
+        {
+          targetPath,
+          content: "export {};\n",
+          relativePath: "component.tsx",
+          installDir: ".",
+        },
+      ],
+      missingDeps: ["added@1.0.0"],
+    });
+
+    await vi.waitFor(() => expect(installDepsWithSpinner).toHaveBeenCalled());
+    process.emit("SIGTERM");
+
+    await expect(plan).rejects.toThrow("process.exit:143");
+    expect(existsSync(targetPath)).toBe(false);
+    exitSpy.mockRestore();
+  });
+
+  it("rolls back written files and exits when cancelled via SIGINT during onApplied", async () => {
+    const targetPath = join(tempDir, "component.tsx");
+    vi.mocked(installDepsWithSpinner).mockResolvedValue(true);
+    let releaseOnApplied: (() => void) | undefined;
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+      throw new Error(`process.exit:${code}`);
+    }) as typeof process.exit);
+
+    const plan = applyInstallPlan({
+      cwd: tempDir,
+      yes: true,
+      dryRun: false,
+      overwrite: false,
+      confirmMessage: "proceed?",
+      headingMessage: "Applying...",
+      fileOps: [
+        {
+          targetPath,
+          content: "export {};\n",
+          relativePath: "component.tsx",
+          installDir: ".",
+        },
+      ],
+      missingDeps: ["added@1.0.0"],
+      onApplied: () =>
+        new Promise<void>((resolve) => {
+          releaseOnApplied = resolve;
+        }),
+    });
+
+    await vi.waitFor(() => expect(releaseOnApplied).toBeDefined());
+    process.emit("SIGINT");
+    releaseOnApplied?.();
+
+    await expect(plan).rejects.toThrow("process.exit:130");
+    expect(existsSync(targetPath)).toBe(false);
+    exitSpy.mockRestore();
+  });
+
   it("keeps written files and installer mutations when manifest finalization succeeds", async () => {
     seedPackageManagerFiles(tempDir);
     vi.mocked(installDepsWithSpinner).mockImplementation(async (_pm, _deps, cwd) => {

@@ -5,6 +5,52 @@ export const LICENSE_MARKERS = {
   "Apache-2.0": "Apache License",
 };
 
+export const MIT_CANONICAL_MARKERS = [
+  "Permission is hereby granted, free of charge",
+  "copies or substantial portions of the Software",
+  'THE SOFTWARE IS PROVIDED "AS IS"',
+  "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE",
+];
+
+export const CANONICAL_MIT_LICENSE = `MIT License
+
+Copyright (c) 2026 diffgazer
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+`;
+
+export const APACHE_CANONICAL_MARKERS = [
+  "(an example is provided in the Appendix below)",
+  "link (or bind by name)",
+  "(except as stated in this section) patent license",
+  "cross-claim or counterclaim in a lawsuit",
+  "(and each Contributor provides its Contributions)",
+];
+
+function collapseLicenseWhitespace(text) {
+  return text.replace(/\s+/g, " ");
+}
+
+function licenseContainsMarker(licenseText, marker) {
+  return collapseLicenseWhitespace(licenseText).includes(collapseLicenseWhitespace(marker));
+}
+
 export const PUBLISHABLE_PACKAGE_FILES = [
   "cli/add/package.json",
   "cli/diffgazer/package.json",
@@ -76,7 +122,7 @@ function checkPackageMetadata(
   if (pkg.name !== expectedName) {
     missing.push(`name: ${pkg.name}`);
   }
-  if (pkg.homepage && !pkg.homepage.includes(expectedHomePageSuffix)) {
+  if (!pkg.homepage?.includes(expectedHomePageSuffix)) {
     missing.push(`homepage: ${pkg.homepage}`);
   }
   const repoDir = pkg.repository?.directory;
@@ -128,10 +174,10 @@ function checkCliPackageMetadata(
   if (repoDir !== expectedRepoDir) {
     missing.push(`repository.directory: ${repoDir}`);
   }
-  if (pkg.repository?.url && !pkg.repository.url.includes("github.com/b4r7x/diffgazer")) {
-    missing.push(`repository.url: ${pkg.repository.url}`);
+  if (!pkg.repository?.url?.includes("github.com/b4r7x/diffgazer")) {
+    missing.push(`repository.url: ${pkg.repository?.url}`);
   }
-  if (pkg.homepage && !pkg.homepage.includes(expectedRepoDir)) {
+  if (!pkg.homepage?.includes(expectedRepoDir)) {
     missing.push(`homepage: ${pkg.homepage}`);
   }
 
@@ -234,8 +280,32 @@ export function checkLicenseFilesMatch(context) {
       continue;
     }
 
-    if (!readTextInRoot(context, licensePath).includes(marker)) {
+    const licenseText = readTextInRoot(context, licensePath);
+    if (!licenseText.includes(marker)) {
       mismatches.push(`${file}: license "${licenseField}" does not match ${licensePath}`);
+      continue;
+    }
+
+    if (licenseField === "MIT") {
+      const missingMarkers = MIT_CANONICAL_MARKERS.filter(
+        (canonicalMarker) => !licenseContainsMarker(licenseText, canonicalMarker),
+      );
+      if (missingMarkers.length > 0) {
+        mismatches.push(
+          `${file}: ${licensePath} is not canonical MIT (missing ${missingMarkers.join(", ")})`,
+        );
+      }
+    }
+
+    if (licenseField === "Apache-2.0") {
+      const missingMarkers = APACHE_CANONICAL_MARKERS.filter(
+        (canonicalMarker) => !licenseContainsMarker(licenseText, canonicalMarker),
+      );
+      if (missingMarkers.length > 0) {
+        mismatches.push(
+          `${file}: ${licensePath} is not canonical Apache-2.0 (missing ${missingMarkers.join(", ")})`,
+        );
+      }
     }
   }
 
@@ -334,14 +404,7 @@ export function checkDiffgazerCliPackageMetadata(context) {
     expectedName: "diffgazer",
     expectedBinName: "diffgazer",
     expectedRepoDir: "cli/diffgazer",
-    expectedFiles: [
-      "dist",
-      "bin/diffgazer.js",
-      "README.md",
-      "LICENSE",
-      "SECURITY.md",
-      "SUPPORT.md",
-    ],
+    expectedFiles: ["dist", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
   });
 }
 

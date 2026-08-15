@@ -1,18 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { relative } from "node:path";
 import { test } from "node:test";
 import { listRepoFiles } from "./lib/files.mjs";
 
 const SCAN_EXCLUDE_PREFIXES = [".git/", "node_modules/", ".nuke/"];
 
-/**
- * The legacy V1 credential flag is reachable two ways: the raw property name and
- * the `LEGACY_V1_HAS_API_KEY_PROPERTY` constant every non-literal call site uses,
- * including computed access such as `[LEGACY_V1_HAS_API_KEY_PROPERTY]: true`.
- * Scanning the literal alone let the constant carry the flag into any file
- * undetected, so both spellings count as a reference.
- */
 const LEGACY_V1_HAS_API_KEY_REFERENCE_RE = /\bhasApiKey\b|\bLEGACY_V1_HAS_API_KEY_PROPERTY\b/;
 
 const PROVIDERS_REFERENCE_PATH = "apps/docs/content/docs/app/reference/providers.mdx";
@@ -40,6 +32,7 @@ const LEGACY_V1_HAS_API_KEY_GUARD_PATHS = new Set([
   "cli/diffgazer/src/features/providers/components/screen.test.tsx",
   "cli/diffgazer/src/features/settings/components/hub-screen.test.tsx",
   "cli/diffgazer/src/testing/legibility-invariant.test.tsx",
+  "libs/core/src/providers/list.test.ts",
 ]);
 
 /**
@@ -50,13 +43,20 @@ const LEGACY_V1_HAS_API_KEY_GUARD_PATHS = new Set([
  */
 const LEGACY_V1_HAS_API_KEY_SURFACE_PATHS = new Set([
   "libs/core/src/schemas/config/index.ts",
-  "libs/core/src/schemas/config/providers.ts",
-  "libs/core/src/schemas/config/providers.test.ts",
+  "libs/core/src/schemas/config/legacy-provider-config.ts",
+  "libs/core/src/schemas/config/legacy-provider-config.test.ts",
   "cli/server/src/shared/lib/config/persistence/config.ts",
   "cli/server/src/shared/lib/config/persistence/config.test.ts",
-  "cli/server/src/shared/lib/config/persistence/secrets.test.ts",
+  "cli/server/src/shared/lib/config/secrets-migration.ts",
+  "cli/server/src/shared/lib/config/secrets-migration.test.ts",
+  "cli/server/src/features/config/router.test.ts",
+  "cli/server/src/features/review/router.test.ts",
+  "cli/server/src/features/review/service.test.ts",
+  "cli/server/src/features/settings/router.test.ts",
+  "cli/server/src/shared/lib/config/setup-status.test.ts",
   "cli/server/src/shared/lib/config/store-migration.test.ts",
-  "cli/server/src/shared/lib/ai/client/initialize.test.ts",
+  "cli/server/src/shared/lib/config/v1-upgrade.ts",
+  "cli/server/src/shared/lib/config/v1-upgrade.test.ts",
 ]);
 
 /**
@@ -185,17 +185,12 @@ function isTextFile(repoPath) {
   );
 }
 
-function lineMatches(pattern, line) {
-  return pattern.test(line);
-}
-
 function collectLegacyHasApiKeyLineViolations(repoPath, lines) {
-  const violations = [];
-  for (const [index, line] of lines.entries()) {
-    if (!LEGACY_V1_HAS_API_KEY_REFERENCE_RE.test(line)) continue;
-    violations.push(`${repoPath}:${index + 1}: non-allowlisted legacy V1 hasApiKey reference`);
-  }
-  return violations;
+  return lines.flatMap((line, index) =>
+    LEGACY_V1_HAS_API_KEY_REFERENCE_RE.test(line)
+      ? [`${repoPath}:${index + 1}: non-allowlisted legacy V1 hasApiKey reference`]
+      : [],
+  );
 }
 
 function collectLegacyHasApiKeyViolations(repoPaths) {
@@ -209,13 +204,24 @@ function collectLegacyHasApiKeyViolations(repoPaths) {
   return violations;
 }
 
+function collectLegacyHasApiKeyReferencePaths(repoPaths) {
+  const references = [];
+  for (const repoPath of repoPaths) {
+    if (!isScannableRepoPath(repoPath) || !isTextFile(repoPath)) continue;
+    if (LEGACY_V1_HAS_API_KEY_REFERENCE_RE.test(readFileSync(repoPath, "utf8"))) {
+      references.push(repoPath);
+    }
+  }
+  return references.sort();
+}
+
 function collectDocSupportClaimLineViolations(repoPath, lines) {
   const violations = [];
   for (const [index, line] of lines.entries()) {
     const status = matrixRowStatus(line);
     if (status !== null && NON_AVAILABLE_MATRIX_STATUSES.has(status)) continue;
     for (const { pattern, label } of DOC_SUPPORT_CLAIM_PATTERNS) {
-      if (lineMatches(pattern, line)) {
+      if (pattern.test(line)) {
         violations.push(`${repoPath}:${index + 1}: ${label}`);
       }
     }
@@ -279,16 +285,20 @@ test("doc support-claim scan exempts a row whose own status cell declares the re
   );
 });
 
-test("legacy flag scan catches the constant indirection, not only the literal", () => {
-  const offendingLines = [
+test("legacy flag scan catches direct and constant references", () => {
+  const offendingSources = [
     'import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";',
     "  [LEGACY_V1_HAS_API_KEY_PROPERTY]: true,",
     "  const present = update[LEGACY_V1_HAS_API_KEY_PROPERTY];",
     "  hasApiKey: z.boolean(),",
   ];
 
-  for (const line of offendingLines) {
-    assert.notDeepEqual(collectLegacyHasApiKeyLineViolations("src/unowned.ts", [line]), [], line);
+  for (const source of offendingSources) {
+    assert.notDeepEqual(
+      collectLegacyHasApiKeyLineViolations("src/unowned.ts", source.split("\n")),
+      [],
+      source,
+    );
   }
   assert.deepEqual(
     collectLegacyHasApiKeyLineViolations("src/unowned.ts", ["  hasApiKeyRotationSchedule: 1,"]),
@@ -296,14 +306,11 @@ test("legacy flag scan catches the constant indirection, not only the literal", 
   );
 });
 
-test("legacy flag leak guards still name the flag they forbid", () => {
-  for (const repoPath of LEGACY_V1_HAS_API_KEY_GUARD_PATHS) {
-    const content = readFileSync(repoPath, "utf8");
-    assert.ok(
-      LEGACY_V1_HAS_API_KEY_REFERENCE_RE.test(content),
-      `${repoPath} no longer references the legacy V1 flag; drop it from the allowlist`,
-    );
-  }
+test("legacy flag allowlist exactly matches every current reference path", () => {
+  assert.deepEqual(
+    collectLegacyHasApiKeyReferencePaths(listRepoFiles()),
+    [...HAS_API_KEY_PATH_ALLOWLIST].sort(),
+  );
 });
 
 test("derived allowlists stay a union of the declared subsets", () => {
@@ -328,8 +335,7 @@ function formatViolationReport(title, violations) {
 }
 
 test("repository-wide legacy transport allowlist closes hasApiKey drift", () => {
-  const repoRoot = relative(process.cwd(), process.cwd()) === "" ? process.cwd() : process.cwd();
-  const repoPaths = listRepoFiles(repoRoot);
+  const repoPaths = listRepoFiles();
 
   const violations = [
     ...collectLegacyHasApiKeyViolations(repoPaths),

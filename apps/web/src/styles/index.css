@@ -15,6 +15,15 @@
   --panel-border: var(--border);
 }
 
+/* Resting form shells use the control-edge token, not the decorative hairline. */
+[data-slot="input-group"] {
+  border-color: var(--control-border);
+}
+
+[data-slot="panel-label"] {
+  color: var(--corner-label-foreground, var(--muted-foreground));
+}
+
 @layer base {
   html,
   body,

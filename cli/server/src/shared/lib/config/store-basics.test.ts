@@ -1,12 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { sha256CanonicalJsonSync } from "@diffgazer/core/json";
 import type { Result } from "@diffgazer/core/result";
 import type { EvidenceKey } from "@diffgazer/core/schemas/review";
-import { sha256CanonicalJsonSync } from "@diffgazer/core/schemas/review";
 import { describe, expect, it } from "vitest";
-import { executionLimitsFromBudget } from "../ai/admission/service.js";
-import { createAdmissionEvidence } from "./admission-evidence.js";
-import { DEFAULT_CONFIGURATION_BUDGET } from "./store.js";
+import { RUNTIME_IDENTITY, STRUCTURED_OUTPUT_SCHEMA_SHA256 } from "../ai/admission/protocol.js";
+import { buildExpectedEvidenceKey, createAdmissionEvidence } from "./admission-evidence.js";
+import { executionLimitsFromBudget } from "./budget-ceiling.js";
+import type { SupportedProviderConfigurationRecord } from "./provider-config.js";
 import {
   configPath,
   diffgazerHome,
@@ -68,7 +69,7 @@ const supportedRecord = (overrides: Record<string, unknown> = {}) => ({
   productId: "gemini",
   input: { transportFamily: "hosted-api", productId: "gemini", endpoint: GEMINI_ENDPOINT },
   selectedModelId: null,
-  acknowledgement: { noticeVersion: 1, acceptedAt: null },
+  acknowledgement: { noticeId: "gemini-hosted-api", noticeVersion: 1, acceptedAt: null },
   evidenceReference: null,
   budget: DEFAULT_BUDGET,
   createdAt: CREATED_AT,
@@ -76,8 +77,16 @@ const supportedRecord = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const GEMINI_ACKNOWLEDGEMENT = {
+  status: "accepted",
+  noticeId: "gemini-hosted-api",
+  noticeVersion: 1,
+  acceptedAt: "2026-01-02T00:00:00.000Z",
+} as const;
+
 const createGeminiAction = (
   credential: { kind: "literal"; value: string } | { kind: "environment" },
+  options?: { acknowledgement: typeof GEMINI_ACKNOWLEDGEMENT },
 ) =>
   ({
     action: "create",
@@ -87,6 +96,7 @@ const createGeminiAction = (
       endpoint: GEMINI_ENDPOINT,
       credential,
     },
+    ...(options?.acknowledgement ? { acknowledgement: options.acknowledgement } : {}),
   }) as const;
 
 const updateGeminiAction = (configurationId: string, expectedRevision: number) =>
@@ -106,11 +116,15 @@ const updateGeminiAction = (configurationId: string, expectedRevision: number) =
 const literalSecretPathFor = (configurationId: string, revision: number): string =>
   join(diffgazerHome, "credentials", `${configurationId}-${revision}.key`);
 
-const evidenceKeyFor = (configurationId: string): EvidenceKey => ({
+const evidenceKeyFor = (
+  configurationId: string,
+  revision = 1,
+  budget: typeof DEFAULT_BUDGET = DEFAULT_BUDGET,
+): EvidenceKey => ({
   authentication: null,
   credentialReferenceIdentity: sha256CanonicalJsonSync({
     kind: "file-0600",
-    filePath: literalSecretPathFor(configurationId, 1),
+    filePath: literalSecretPathFor(configurationId, revision),
   }),
   installationId: null,
   productId: "gemini",
@@ -119,11 +133,44 @@ const evidenceKeyFor = (configurationId: string): EvidenceKey => ({
   region: null,
   workspaceAccountReference: null,
   modelId: "gemini-2.5-flash",
-  runtime: { identity: "diffgazer-server", version: "1.0.0" },
-  structuredOutputSchemaSha256: "1".repeat(64),
+  runtime: RUNTIME_IDENTITY,
+  structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
   noticeVersion: 1,
-  limits: executionLimitsFromBudget(DEFAULT_CONFIGURATION_BUDGET),
+  limits: executionLimitsFromBudget(budget),
 });
+
+const evidenceKeyForPersisted = (configurationId: string): EvidenceKey => {
+  const config = readJson<{
+    configurations: Array<SupportedProviderConfigurationRecord>;
+  }>(configPath());
+  const record = config.configurations.find((entry) => entry.configurationId === configurationId);
+  if (!record) throw new Error("configuration not found in persisted config");
+  const secrets = readJson<{
+    bindings: Array<{
+      configurationId: string;
+      revision: number;
+      kind: string;
+      filePath?: string;
+      status: string;
+    }>;
+  }>(secretsPath());
+  const binding = secrets.bindings.find(
+    (entry) =>
+      entry.configurationId === configurationId &&
+      entry.status === "active" &&
+      entry.revision === record.revision,
+  );
+  return buildExpectedEvidenceKey({
+    record,
+    runtime: RUNTIME_IDENTITY,
+    structuredOutputSchemaSha256: STRUCTURED_OUTPUT_SCHEMA_SHA256,
+    credentialReferenceIdentity:
+      binding?.kind === "file-0600" && binding.filePath
+        ? sha256CanonicalJsonSync({ kind: "file-0600", filePath: binding.filePath })
+        : null,
+    workspaceAccountReference: null,
+  });
+};
 
 const succeed = <T>(result: Result<T, unknown>): T => {
   if (!result.ok) throw new Error("expected a succeeded configuration action");
@@ -188,6 +235,42 @@ describe("config store actions", () => {
     expect(existsSync(literalSecretPathFor(configuration.configurationId, 1))).toBe(false);
   });
 
+  it("creates a configuration when the existing config predates acknowledgement notice ids", async () => {
+    writeJson(
+      configPath(),
+      v2Config(
+        [
+          supportedRecord({
+            configurationId: "cfg-v1-groq",
+            productId: "groq",
+            input: {
+              transportFamily: "hosted-api",
+              productId: "groq",
+              endpoint: "https://api.groq.com/openai/v1",
+            },
+            acknowledgement: { noticeVersion: 1, acceptedAt: null },
+          }),
+        ],
+        "cfg-v1-groq",
+      ),
+    );
+    writeJson(secretsPath(), v2Secrets());
+    const store = await loadStore();
+
+    const created = await store.runConfigurationAction(
+      createGeminiAction({ kind: "literal", value: "sk-proj-test-secret-12345" }),
+    );
+    expect(created.ok).toBe(true);
+
+    const snapshot = await store.readConfigurationSnapshot();
+    expect(snapshot.ok).toBe(true);
+    if (!snapshot.ok) return;
+    expect(snapshot.value.selectedConfigurationId).toBe("cfg-v1-groq");
+    expect(
+      snapshot.value.configurations.map((entry) => entry.configuration.configurationId),
+    ).toContain("cfg-v1-groq");
+  });
+
   it("inspects a supported configuration and reports a missing one as not found", async () => {
     writeJson(configPath(), v2Config([supportedRecord()]));
     const store = await loadStore();
@@ -234,7 +317,7 @@ describe("config store actions", () => {
     expect(persisted.selectedConfigurationId).toBe("cfg-existing");
   });
 
-  it("tests without registered evidence report skipped, never passed", async () => {
+  it("tests without registered evidence report a failed test with skipped readiness, never passed", async () => {
     writeJson(configPath(), v2Config([supportedRecord({ selectedModelId: "gemini-2.5-flash" })]));
     writeJson(secretsPath(), seedSupportedBinding());
     const store = await loadStore();
@@ -248,7 +331,7 @@ describe("config store actions", () => {
     if (!result.ok) return;
     expect(result.value).toMatchObject({
       action: "test",
-      status: "succeeded",
+      status: "failed",
       readiness: { status: "skipped", evidenceStatus: "skipped", ready: false },
     });
   });
@@ -533,6 +616,44 @@ describe("config store actions", () => {
     expect(secretsAfter).toBe(secretsBefore);
   });
 
+  it("persists create acknowledgement so probe readiness is not acknowledgement-required", async () => {
+    const store = await loadStore();
+    const created = await store.runConfigurationAction(
+      createGeminiAction(
+        { kind: "literal", value: "sk-proj-create-ack" },
+        { acknowledgement: GEMINI_ACKNOWLEDGEMENT },
+      ),
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const configurationId = created.value.configuration?.configurationId;
+    if (!configurationId) throw new Error("create response requires a configuration");
+    const persisted = readJson<{
+      configurations: Array<{ acknowledgement: { acceptedAt: string | null } }>;
+    }>(configPath());
+    expect(persisted.configurations[0]?.acknowledgement.acceptedAt).not.toBeNull();
+
+    await store.runConfigurationAction({
+      action: "select",
+      configurationId,
+      modelId: "gemini-2.5-flash",
+    });
+    await store.recordConfigurationEvidence(
+      configurationId,
+      createAdmissionEvidence({
+        evidenceKey: evidenceKeyForPersisted(configurationId),
+        checkedAt: "2026-01-02T00:00:00.000Z",
+        status: "passed",
+      }),
+    );
+
+    const inspected = await store.runConfigurationAction({ action: "inspect", configurationId });
+    expect(inspected.ok).toBe(true);
+    if (!inspected.ok) return;
+    expect(inspected.value.readiness).toMatchObject({ status: "ready", ready: true });
+    expect(inspected.value.readiness?.status).not.toBe("acknowledgement-required");
+  });
+
   it("reports ready only after exact-tuple evidence is registered", async () => {
     const store = await loadStore();
     const created = await store.runConfigurationAction(
@@ -552,17 +673,17 @@ describe("config store actions", () => {
     const recorded = await store.recordConfigurationEvidence(
       configurationId,
       createAdmissionEvidence({
-        evidenceKey: evidenceKeyFor(configurationId),
+        evidenceKey: evidenceKeyForPersisted(configurationId),
         checkedAt: "2026-01-02T00:00:00.000Z",
         status: "passed",
       }),
     );
     expect(recorded).toEqual({ ok: true, value: true });
 
-    const tested = await store.runConfigurationAction({ action: "test", configurationId });
-    expect(tested.ok).toBe(true);
-    if (!tested.ok) return;
-    expect(tested.value.readiness).toMatchObject({ status: "ready", ready: true });
+    const inspected = await store.runConfigurationAction({ action: "inspect", configurationId });
+    expect(inspected.ok).toBe(true);
+    if (!inspected.ok) return;
+    expect(inspected.value.readiness).toMatchObject({ status: "ready", ready: true });
   });
 
   it("invalidates registered evidence when the selected model changes", async () => {
@@ -582,7 +703,7 @@ describe("config store actions", () => {
     await store.recordConfigurationEvidence(
       configurationId,
       createAdmissionEvidence({
-        evidenceKey: evidenceKeyFor(configurationId),
+        evidenceKey: evidenceKeyForPersisted(configurationId),
         checkedAt: "2026-01-02T00:00:00.000Z",
         status: "passed",
       }),
@@ -606,19 +727,14 @@ describe("config store actions", () => {
   });
 
   it("rejects evidence that does not match the exact configuration tuple", async () => {
+    writeJson(configPath(), v2Config([supportedRecord()]));
+    writeJson(secretsPath(), seedSupportedBinding());
     const store = await loadStore();
-    const created = await store.runConfigurationAction(
-      createGeminiAction({ kind: "literal", value: "sk-proj-evidence-key" }),
-    );
-    expect(created.ok).toBe(true);
-    if (!created.ok) return;
-    const configurationId = created.value.configuration?.configurationId;
-    if (!configurationId) throw new Error("create response requires a configuration");
 
     const result = await store.recordConfigurationEvidence(
-      configurationId,
+      "cfg-existing",
       createAdmissionEvidence({
-        evidenceKey: { ...evidenceKeyFor(configurationId), modelId: "gemini-2.5-pro" },
+        evidenceKey: { ...evidenceKeyFor("cfg-existing"), modelId: "gemini-2.5-pro" },
         checkedAt: "2026-01-02T00:00:00.000Z",
         status: "passed",
       }),

@@ -1,6 +1,3 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -57,6 +54,8 @@ describe("APIReference", () => {
     const dataAttributesRegion = screen.getByRole("region", { name: "Data attributes" });
     const cssVariablesRegion = screen.getByRole("region", { name: "CSS variables" });
 
+    expect(dataAttributesHeading.id).toBe("api-data-attributes");
+    expect(cssVariablesHeading.id).toBe("api-css-variables");
     expect(dataAttributesRegion).toHaveAttribute("aria-labelledby", dataAttributesHeading.id);
     expect(cssVariablesRegion).toHaveAttribute("aria-labelledby", cssVariablesHeading.id);
     expect(within(dataAttributesRegion).getByRole("table")).toBeInTheDocument();

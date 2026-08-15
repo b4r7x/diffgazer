@@ -1,12 +1,9 @@
+import type { WriteOnlySecretInput } from "../schemas/config/provider-config.js";
 import type { OnboardingConfigurationDraft, OnboardingDraft } from "./defaults.js";
 
-type WriteOnlySecret =
-  | { readonly kind: "literal"; readonly value: string }
-  | { readonly kind: "environment" };
-
 function areSecretsEqual(
-  left: WriteOnlySecret | undefined,
-  right: WriteOnlySecret | undefined,
+  left: WriteOnlySecretInput | undefined,
+  right: WriteOnlySecretInput | undefined,
 ): boolean {
   if (left?.kind !== right?.kind) return false;
   if (left?.kind !== "literal" || right?.kind !== "literal") return true;
@@ -21,29 +18,30 @@ export function areConfigurationInputsEqual(
     return false;
   }
 
-  if (left.transportFamily === "hosted-api" && right.transportFamily === "hosted-api") {
-    return (
-      left.endpoint === right.endpoint &&
-      left.region === right.region &&
-      left.workspace === right.workspace &&
-      areSecretsEqual(left.credential, right.credential)
-    );
+  switch (left.transportFamily) {
+    case "hosted-api":
+      return (
+        right.transportFamily === "hosted-api" &&
+        left.endpoint === right.endpoint &&
+        left.region === right.region &&
+        left.workspace === right.workspace &&
+        areSecretsEqual(left.credential, right.credential)
+      );
+    case "local-http":
+      return (
+        right.transportFamily === "local-http" &&
+        left.endpoint === right.endpoint &&
+        left.authentication === right.authentication &&
+        left.presetId === right.presetId &&
+        areSecretsEqual(left.bearerToken, right.bearerToken)
+      );
+    case "local-cli":
+      return right.transportFamily === "local-cli" && left.installationId === right.installationId;
+    default: {
+      const _exhaustive: never = left;
+      return _exhaustive;
+    }
   }
-
-  if (left.transportFamily === "local-http" && right.transportFamily === "local-http") {
-    return (
-      left.endpoint === right.endpoint &&
-      left.authentication === right.authentication &&
-      left.presetId === right.presetId &&
-      areSecretsEqual(left.bearerToken, right.bearerToken)
-    );
-  }
-
-  if (left.transportFamily === "local-cli" && right.transportFamily === "local-cli") {
-    return left.installationId === right.installationId;
-  }
-
-  return false;
 }
 
 function isSameConfigurationGeneration(left: OnboardingDraft, right: OnboardingDraft): boolean {
@@ -58,15 +56,21 @@ function areAcknowledgementsEqual(
   left: OnboardingDraft["acknowledgement"],
   right: OnboardingDraft["acknowledgement"],
 ): boolean {
-  if (left.status !== right.status) return false;
-  if (left.status === "required" && right.status === "required") return true;
-  return (
-    left.status === "accepted" &&
-    right.status === "accepted" &&
-    left.noticeId === right.noticeId &&
-    left.noticeVersion === right.noticeVersion &&
-    left.acceptedAt === right.acceptedAt
-  );
+  switch (left.status) {
+    case "required":
+      return right.status === "required";
+    case "accepted":
+      return (
+        right.status === "accepted" &&
+        left.noticeId === right.noticeId &&
+        left.noticeVersion === right.noticeVersion &&
+        left.acceptedAt === right.acceptedAt
+      );
+    default: {
+      const _exhaustive: never = left;
+      return _exhaustive;
+    }
+  }
 }
 
 export function areDraftsEqual(left: OnboardingDraft, right: OnboardingDraft): boolean {
@@ -78,21 +82,4 @@ export function areDraftsEqual(left: OnboardingDraft, right: OnboardingDraft): b
     left.defaultLenses.length === right.defaultLenses.length &&
     left.defaultLenses.every((lens, index) => lens === right.defaultLenses[index])
   );
-}
-
-export function scrubLiteralSecret(data: OnboardingDraft): OnboardingDraft {
-  const configurationInput = { ...data.configurationInput };
-  if (
-    configurationInput.transportFamily === "hosted-api" &&
-    configurationInput.credential?.kind === "literal"
-  ) {
-    delete configurationInput.credential;
-  }
-  if (
-    configurationInput.transportFamily === "local-http" &&
-    configurationInput.bearerToken?.kind === "literal"
-  ) {
-    delete configurationInput.bearerToken;
-  }
-  return { ...data, configurationInput };
 }

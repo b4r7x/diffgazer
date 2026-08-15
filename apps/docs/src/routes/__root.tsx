@@ -42,13 +42,14 @@ export const Route = createRootRoute({
 
   shellComponent: RootDocument,
   component: RootLayout,
-  notFoundComponent: RootNotFound,
+  notFoundComponent: GlobalNotFound,
   errorComponent: RootErrorBoundary,
 });
 
-// Resolve the reader's theme (stored preference, else the OS scheme) and synchronize
-// the SSR toggle as its markup is parsed, before either can paint with the stale dark
-// fallback this shell has to serve.
+// Resolve the reader's theme (stored preference, else the dark default — docs are
+// dark-first and deliberately ignore the OS scheme) and synchronize the SSR toggle as
+// its markup is parsed, before either can paint with the stale dark fallback this
+// shell has to serve.
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
     // suppressHydrationWarning: the bootstrap below stamps data-theme and colorScheme
@@ -81,13 +82,15 @@ function RootLayout() {
     <TanstackProvider>
       <ThemeProvider>
         <KeyboardProvider>
+          {/* Registers before the route subtree so a demo that mounts its own Toaster (the
+              toast positions example) takes the top of the toaster stack and receives the toasts. */}
+          <Toaster />
           <SearchProvider>
             <TuiShell>
               <Outlet />
             </TuiShell>
             <SearchDialog />
           </SearchProvider>
-          <Toaster />
         </KeyboardProvider>
       </ThemeProvider>
     </TanstackProvider>
@@ -128,8 +131,4 @@ function RootErrorBoundary({ error }: ErrorComponentProps) {
       </main>
     </div>
   );
-}
-
-function RootNotFound() {
-  return <GlobalNotFound />;
 }

@@ -1,3 +1,1 @@
-import { HomePage } from "@/features/home/components/page";
-
-export { HomePage };
+export { HomePage } from "@/features/home/components/page";

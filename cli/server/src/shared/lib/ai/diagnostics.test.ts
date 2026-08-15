@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AGGREGATE_DETAILS_MAX_BYTES,
-  boundCaptureText,
+  boundDiagnosticText,
   CAPTURE_MAX_BYTES,
   CODE_MAX_BYTES,
   createCorrelationId,
@@ -10,7 +10,6 @@ import {
   REMEDIATION_MAX_BYTES,
   SAFE_MESSAGE_MAX_BYTES,
   serializeCancelDiagnostic,
-  serializeDebugDiagnostic,
   serializeFailureDiagnostic,
   serializeSuccessDiagnostic,
   truncateUtf8,
@@ -98,7 +97,7 @@ describe("byte-bound: truncatedDetails aggregates at exactly 4096 UTF-8 bytes", 
 describe("byte-bound: capture truncates at exactly 64 KiB UTF-8 bytes before parsing", () => {
   it("caps stdout/stderr/response capture at exactly 64 KiB", () => {
     const capture = repeatToBytes("x", CAPTURE_MAX_BYTES + 128);
-    expect(utf8ByteLength(boundCaptureText(capture))).toBe(CAPTURE_MAX_BYTES);
+    expect(utf8ByteLength(boundDiagnosticText(capture, CAPTURE_MAX_BYTES))).toBe(CAPTURE_MAX_BYTES);
   });
 });
 
@@ -147,17 +146,6 @@ describe("serializeCancelDiagnostic", () => {
     expect(diagnostic.code).toBe("cancelled");
     expect(diagnostic.retryable).toBe(false);
     expect(diagnostic.truncatedDetails).toContain("stderr:");
-  });
-});
-
-describe("serializeDebugDiagnostic", () => {
-  it("includes truncatedDetails for server-only inspection", () => {
-    const diagnostic = serializeDebugDiagnostic({
-      code: "debug",
-      message: "adapter trace",
-      details: [{ label: "attempt", text: "retry scheduled" }],
-    });
-    expect(diagnostic.truncatedDetails).toContain("attempt:");
   });
 });
 

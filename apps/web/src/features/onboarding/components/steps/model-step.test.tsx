@@ -1,11 +1,9 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
-import type {
-  ClientConfigurationSummary,
-  ConfigurationModelsResponse,
-} from "@diffgazer/core/schemas/config";
-import { READY_GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
+import { CATALOG_EMPTY_MODELS_REASON } from "@diffgazer/core/providers";
+import type { ConfigurationModelsResponse } from "@diffgazer/core/schemas/config";
+import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -13,8 +11,6 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ModelStep } from "./model-step";
-
-const GEMINI_CONFIGURATION = READY_GEMINI_CONFIGURATION as ClientConfigurationSummary;
 
 function geminiModelsResponse(): ConfigurationModelsResponse {
   return {
@@ -209,7 +205,7 @@ describe("ModelStep", () => {
         transportFamily: GEMINI_CONFIGURATION.transportFamily,
         models: [],
         checkedAt: "2026-08-02T12:00:00.000Z",
-        reason: "No catalog models are available for this configuration product.",
+        reason: CATALOG_EMPTY_MODELS_REASON,
       }),
     );
 
@@ -225,9 +221,7 @@ describe("ModelStep", () => {
       { wrapper: makeWrapper(api) },
     );
 
-    expect(
-      await screen.findByText("No catalog models are available for this configuration product."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(CATALOG_EMPTY_MODELS_REASON)).toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
   });
 });

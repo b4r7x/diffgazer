@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
 } from "react";
+import { useComposedRefs } from "@/hooks/use-composed-refs";
 import { type StepperVariant, stepperRootVariants } from "@/lib/stepper-variants";
 import { cn } from "@/lib/utils";
 import { handleStepListNavigationKey } from "./step-navigation";
@@ -37,6 +38,7 @@ export function Stepper({
   className,
   children,
   onKeyDown,
+  ref,
   ...props
 }: StepperProps) {
   const { expandedIds: expanded, toggle } = useStepperState({
@@ -46,6 +48,7 @@ export function Stepper({
   });
 
   const listRef = useRef<HTMLOListElement>(null);
+  const composedRef = useComposedRefs(listRef, ref);
   const { steps, tabTargetId, registerStep, unregisterStep } = useStepCollection(children, listRef);
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLOListElement>) => {
@@ -73,7 +76,7 @@ export function Stepper({
     <StepperContext value={ctx}>
       {/* biome-ignore lint/a11y/useSemanticElements: this already is an <ol>; the explicit role="list" below restores list semantics that Tailwind preflight strips, and Biome should not suggest swapping the element. */}
       <ol
-        ref={listRef}
+        ref={composedRef}
         // biome-ignore lint/a11y/noRedundantRoles: Tailwind preflight sets list-style:none on <ol>, which drops list semantics in Safari/VoiceOver; role="list" restores them.
         role="list"
         aria-label="Progress steps"

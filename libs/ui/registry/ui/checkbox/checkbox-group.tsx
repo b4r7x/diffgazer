@@ -28,11 +28,18 @@ import { cn } from "@/lib/utils";
 import type { CheckboxSize } from "./checkbox";
 import { CheckboxGroupContext } from "./checkbox-group-context";
 
+// Stable identity so the controlled-undefined path and the default do not
+// invalidate the context memo on every render. Frozen because one array is
+// shared by every group in the process and reaches consumers through onChange.
+const EMPTY_VALUES = Object.freeze<string[]>([]) as string[];
+
 /** Props for checkbox group root. */
 type CheckboxGroupRootProps = Omit<
   ComponentPropsWithRef<"div">,
   | "children"
   | "role"
+  | "value"
+  | "defaultValue"
   | "onChange"
   | "onKeyDown"
   | "className"
@@ -43,18 +50,13 @@ type CheckboxGroupRootProps = Omit<
   | "aria-invalid"
 >;
 
-/**
- * @typeParam T - Convenience assertion for the value union surfaced through
- * `value`/`onChange`. Values originate from the rendered items' `data-value`
- * strings and are asserted to `T`, not validated.
- */
-export type CheckboxGroupProps<T extends string = string> = CheckboxGroupRootProps & {
+export type CheckboxGroupProps = CheckboxGroupRootProps & {
   /** Controlled selected item values. */
-  value?: T[];
+  value?: string[];
   /** Initial selected values for uncontrolled usage. */
-  defaultValue?: T[];
+  defaultValue?: string[];
   /** Called when the selected values change. */
-  onChange?: (value: T[]) => void;
+  onChange?: (value: string[]) => void;
   /** Called when keyboard navigation highlights a new item or clears highlight. */
   onHighlightChange?: (value: string | null) => void;
   /** Called before the built-in group key handling; call event.preventDefault() to suppress it. */
@@ -102,10 +104,10 @@ export type CheckboxGroupProps<T extends string = string> = CheckboxGroupRootPro
 };
 
 /** Multi-select group with context and keyboard navigation. */
-export function CheckboxGroup<T extends string = string>(props: CheckboxGroupProps<T>) {
+export function CheckboxGroup(props: CheckboxGroupProps) {
   const {
     value: controlledValue,
-    defaultValue = [] as T[],
+    defaultValue = EMPTY_VALUES,
     onChange,
     onHighlightChange,
     onKeyDown,
@@ -137,12 +139,11 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
   const isDisabled = disabled || fieldsetDisabled;
   const { items, registerItem, unregisterItem } = useSelectableCollection(containerRef);
 
-  const [value, setValue, , resetValue] = useControllableState<T[]>({
-    value: "value" in props ? (controlledValue ?? []) : undefined,
-    controlled: "value" in props,
-    defaultValue,
-    onChange,
-  });
+  const [value, setValue, , resetValue] = useControllableState<string[]>(
+    "value" in props
+      ? { controlled: true, value: controlledValue ?? EMPTY_VALUES, defaultValue, onChange }
+      : { defaultValue, onChange },
+  );
   const [nativeInvalid, setNativeInvalid] = useState(false);
   const enabledItemValues = new Set(
     getEnabledSelectableCollectionItems(items, isDisabled).map((item) => item.value),
@@ -187,12 +188,16 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
     nativeInvalid && required && !hasValidSelectedValue,
   );
 
-  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
-    value: controlledHighlighted,
-    controlled: "highlighted" in props,
-    defaultValue: null,
-    onChange: onHighlightChange,
-  });
+  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>(
+    "highlighted" in props
+      ? {
+          controlled: true,
+          value: controlledHighlighted ?? null,
+          defaultValue: null,
+          onChange: onHighlightChange,
+        }
+      : { defaultValue: null, onChange: onHighlightChange },
+  );
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
@@ -224,9 +229,8 @@ export function CheckboxGroup<T extends string = string>(props: CheckboxGroupPro
       invalidatePendingReset();
       setNativeInvalid(false);
       setValue((cur) => {
-        const nextValue = itemValue as T;
-        const selected = cur.includes(nextValue);
-        return selected ? cur.filter((v) => v !== itemValue) : [...cur, nextValue];
+        const selected = cur.includes(itemValue);
+        return selected ? cur.filter((value) => value !== itemValue) : [...cur, itemValue];
       });
     },
     [invalidatePendingReset, isDisabled, setValue],

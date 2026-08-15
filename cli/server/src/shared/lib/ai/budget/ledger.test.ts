@@ -1,6 +1,7 @@
 import type { ExecutionLimits } from "@diffgazer/core/schemas/review";
 import { describe, expect, it } from "vitest";
 import {
+  type AttemptActual,
   type AttemptEstimate,
   createBudgetLedger,
   effectiveExecutionLimits,
@@ -30,6 +31,78 @@ function estimate(overrides: Partial<AttemptEstimate> = {}): AttemptEstimate {
     ...overrides,
   };
 }
+
+type MeasuredOverrunCase = Readonly<{
+  label: string;
+  limit: "maxInputTokens" | "maxResponseBytes" | "maxCostUsd";
+  limits: Partial<ExecutionLimits>;
+  reservation: AttemptEstimate;
+  actual: AttemptActual;
+  committed: AttemptEstimate;
+}>;
+
+const measuredOverrunCases = [
+  {
+    label: "input tokens",
+    limit: "maxInputTokens",
+    limits: { maxInputTokens: 5 },
+    reservation: estimate({
+      inputTokens: 4,
+      outputTokens: 0,
+      responseBytes: 0,
+      wallTimeMs: 0,
+      costUsd: 0,
+    }),
+    actual: { inputTokens: 6, outputTokens: 0, wallTimeMs: 0 },
+    committed: estimate({
+      inputTokens: 6,
+      outputTokens: 0,
+      responseBytes: 0,
+      wallTimeMs: 0,
+      costUsd: 0,
+    }),
+  },
+  {
+    label: "response bytes",
+    limit: "maxResponseBytes",
+    limits: { maxResponseBytes: 5 },
+    reservation: estimate({
+      inputTokens: 0,
+      outputTokens: 0,
+      responseBytes: 4,
+      wallTimeMs: 0,
+      costUsd: 0,
+    }),
+    actual: { inputTokens: 0, outputTokens: 0, responseBytes: 6, wallTimeMs: 0 },
+    committed: estimate({
+      inputTokens: 0,
+      outputTokens: 0,
+      responseBytes: 6,
+      wallTimeMs: 0,
+      costUsd: 0,
+    }),
+  },
+  {
+    label: "cost",
+    limit: "maxCostUsd",
+    limits: { maxCostUsd: 0.05 },
+    reservation: estimate({
+      inputTokens: 0,
+      outputTokens: 0,
+      responseBytes: 0,
+      wallTimeMs: 0,
+      costUsd: 0.03,
+    }),
+    actual: { inputTokens: 0, outputTokens: 0, wallTimeMs: 0, costUsd: 0.06 },
+    committed: estimate({
+      inputTokens: 0,
+      outputTokens: 0,
+      responseBytes: 0,
+      wallTimeMs: 0,
+      costUsd: 0.06,
+    }),
+  },
+] satisfies readonly MeasuredOverrunCase[];
 
 describe("effectiveExecutionLimits", () => {
   it("provider limits cannot widen local limits", () => {
@@ -285,6 +358,43 @@ describe("BudgetLedger settlement", () => {
     expect(settled.ok).toBe(false);
     if (settled.ok) return;
     expect(settled.error.limit).toBe("maxResponseBytes");
+  });
+
+  it.each(
+    measuredOverrunCases,
+  )("records exact measured $label overrun and releases its reservation once", ({
+    limit,
+    limits,
+    reservation,
+    actual,
+    committed,
+  }) => {
+    const ledger = createBudgetLedger(sampleLimits(limits));
+    const reserved = ledger.reserveAttempt(reservation);
+    expect(reserved.ok).toBe(true);
+    if (!reserved.ok) return;
+
+    const settled = ledger.settleAttempt(reserved.value, actual);
+    expect(settled).toEqual({
+      ok: false,
+      error: {
+        outcome: "budget-exhausted",
+        limit,
+        result: ZERO_FINDINGS,
+      },
+    });
+
+    expect(ledger.snapshot()).toMatchObject({
+      committed,
+      reserved: emptyUsage(),
+      inFlightAttempts: 0,
+      settledAttempts: 1,
+      exhaustedLimit: limit,
+    });
+
+    const afterFirstSettlement = ledger.snapshot();
+    expect(ledger.settleAttempt(reserved.value, actual)).toMatchObject({ ok: true });
+    expect(ledger.snapshot()).toEqual(afterFirstSettlement);
   });
 });
 

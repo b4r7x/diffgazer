@@ -85,4 +85,30 @@ describe("buildReviewContextResponse", () => {
       meta: snapshot.meta,
     });
   });
+
+  it("preserves snake_case file names in generated file-tree plain text", () => {
+    const snapshot = makeSnapshot();
+    snapshot.markdown = ["## File Tree", "  - use_review_stream.ts"].join("\n");
+
+    expect(buildReviewContextResponse(snapshot).text).toContain("use_review_stream.ts");
+  });
+
+  it("preserves intraword underscores, inline code, escapes, and strips valid emphasis", () => {
+    const snapshot = makeSnapshot();
+    snapshot.markdown = [
+      "Changed src/use_api_key.ts and foo_bar_baz.",
+      "inline `use_api_key` identifier",
+      "escaped \\*not bold\\* marker",
+      "Name: **diffgazer**",
+    ].join("\n");
+
+    expect(buildReviewContextResponse(snapshot).text).toBe(
+      [
+        "Changed src/use_api_key.ts and foo_bar_baz.",
+        "inline use_api_key identifier",
+        "escaped \\*not bold\\* marker",
+        "Name: diffgazer",
+      ].join("\n"),
+    );
+  });
 });

@@ -73,6 +73,7 @@ const trackVariants = cva(
     "border border-border rounded-sm",
     "transition-colors duration-150 motion-reduce:transition-none",
     "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
+    "aria-invalid:border-error aria-invalid:ring-1 aria-invalid:ring-error aria-invalid:focus:ring-error",
   ],
   {
     variants: {

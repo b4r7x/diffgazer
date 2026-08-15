@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const dialogDoc: ComponentDoc = {
   description:
@@ -31,7 +31,7 @@ export const dialogDoc: ComponentDoc = {
     {
       title: "Compound Architecture",
       content:
-        "Dialog is composed of 10 parts: Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter (with DialogFooter.Hints and DialogFooter.Actions sub-components), DialogClose, and DialogAction.",
+        "Dialog is composed of Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter (with DialogFooter.Hints and DialogFooter.Actions sub-components), DialogClose, DialogAction, and DialogCloseIcon.",
     },
     {
       title: "Header strip",
@@ -86,7 +86,7 @@ export const dialogDoc: ComponentDoc = {
     {
       title: "Inline (non-modal)",
       content:
-        'Pass modal={false} to DialogContent to render the same frame, corners, header strip, and footer in the document flow — no backdrop, focus trap, scroll lock, or focus restoration. Because nothing is modal about it, the inline shell exposes role="group" (still named by DialogTitle) rather than a dialog role, and the role prop is ignored. Use it to embed dialog chrome in a page, or to make the open state visible on a static page — see the Open State example. Inline content still honours open, so it unmounts when the consumer closes it.',
+        'Pass modal={false} to DialogContent to render the same frame, corners, header strip, and footer in the document flow — no backdrop, focus trap, scroll lock, or focus restoration. Because nothing is modal about it, the inline shell exposes role="group" (still named by DialogTitle) rather than a dialog role, and the role prop is ignored. Use it to embed dialog chrome in a page, or to make the open state visible on a static page — see the Open State example. Inline content still honours open, so it unmounts when the consumer closes it. DialogContentProps is a discriminated union on modal, so each arm types it as a literal (modal?: true or modal: false) and a boolean variable satisfies neither: branch on the variable and render the arm you mean.',
     },
     {
       title: "Surface and backdrop",
@@ -306,7 +306,7 @@ export const dialogDoc: ComponentDoc = {
         required: false,
         defaultValue: null,
         description:
-          'ID reference for an external label. It takes precedence over aria-label and suppresses the automatic "Close dialog" fallback.',
+          'ID of the element that labels the close button. It takes precedence over aria-label and suppresses the automatic "Close dialog" fallback.',
       },
     },
     DialogCloseIcon: {

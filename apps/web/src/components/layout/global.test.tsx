@@ -8,12 +8,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
-import {
-  makeShellApiOverrides,
-  makeShellInitResponse,
-  selectedModelLabel,
-  selectedProductLabel,
-} from "@/testing/shell-fixtures";
+import { makeShellApiOverrides, makeShellInitResponse } from "@/testing/shell-fixtures";
 
 // Boundary mock: Router is the routing library; the shell reads location/back state.
 const { navigateSpy, backSpy, routerState } = vi.hoisted(() => ({
@@ -34,10 +29,6 @@ import { GlobalLayout, getWordmarkTier } from "./global";
 let queryClient: QueryClient;
 let mockApi: BoundApi;
 const shellInit = makeShellInitResponse();
-
-function providerStatusLabel(): string {
-  return "Ready";
-}
 
 beforeEach(() => {
   queryClient = new QueryClient({
@@ -81,12 +72,6 @@ function createMockApi(): BoundApi {
     request: vi.fn().mockResolvedValue(new Response(null, { status: 200 })),
     ...makeShellApiOverrides(shellInit),
   };
-}
-
-function expectedProviderLabel(): string {
-  const product = selectedProductLabel(shellInit);
-  const model = selectedModelLabel(shellInit);
-  return model ? `${product} / ${model}` : product;
 }
 
 describe("GlobalLayout", () => {
@@ -215,9 +200,9 @@ describe("GlobalLayout", () => {
     renderShell();
 
     const status = await screen.findByLabelText(
-      `Provider: ${expectedProviderLabel()}, ${providerStatusLabel()}; server live`,
+      "Provider: Google Gemini / Gemini 2.5 Flash, Ready; server live",
     );
-    expect(status).toHaveTextContent(expectedProviderLabel());
+    expect(status).toHaveTextContent("Google Gemini / Gemini 2.5 Flash");
   });
 
   it("keeps the shell mounted and names the cause when the server stops answering", async () => {

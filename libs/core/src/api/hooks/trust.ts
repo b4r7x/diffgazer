@@ -9,12 +9,11 @@ export function useSaveTrust() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (trust: SaveTrustRequest) => api.saveTrust(trust),
-    onSuccess: async () => {
-      await Promise.all([
+    onSuccess: () =>
+      Promise.all([
         qc.invalidateQueries({ queryKey: configQueries.init(api).queryKey }),
         qc.invalidateQueries({ queryKey: reviewQueries.all() }),
-      ]);
-    },
+      ]),
   });
 }
 
@@ -23,11 +22,10 @@ export function useDeleteTrust() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.deleteTrust(),
-    onSuccess: async () => {
-      await Promise.all([
+    onSuccess: () =>
+      Promise.all([
         qc.invalidateQueries({ queryKey: configQueries.init(api).queryKey }),
         qc.invalidateQueries({ queryKey: reviewQueries.all() }),
-      ]);
-    },
+      ]),
   });
 }

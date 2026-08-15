@@ -9,7 +9,11 @@ export async function waitUntil(
 ): Promise<void> {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     if (predicate()) return;
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    // Sleep between checks only: waiting after the last one delays the timeout
+    // diagnostic without giving the predicate another chance to pass.
+    if (attempt < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
   }
 
   throw new Error(`Timed out waiting for condition after ${attempts} attempts`);

@@ -8,9 +8,9 @@ import { LensIdSchema } from "../schemas/review/index.js";
 import { buildSetupPlan, type RunnableSetupPlan } from "./setup-plan.js";
 
 /**
- * @deprecated Internal compatibility type for the legacy API-key entry hook.
- * V2 onboarding carries family-specific credential input in configurationInput
- * and does not expose this type from the onboarding package entrypoint.
+ * How a user supplies an API key: pasted literally, or named as an environment
+ * variable. Shared by `useApiKeyEntry` and the Web/TUI method selectors through
+ * the `@diffgazer/core/onboarding` entry.
  */
 export type InputMethod = "paste" | "env";
 
@@ -42,7 +42,9 @@ const OnboardingPreferencesShape = {
   agentExecution: AgentExecutionSchema,
 } as const;
 
-const RunnableOnboardingStateInputSchema = z
+// `ClientConfigurationInputSchema` admits only runnable product IDs, so the
+// plan is built once here and every later rule reads it off the parsed state.
+export const OnboardingStateSchema = z
   .strictObject({
     kind: z.literal("runnable"),
     configurationInput: ClientConfigurationInputSchema,
@@ -51,15 +53,13 @@ const RunnableOnboardingStateInputSchema = z
     acknowledgement: OnboardingAcknowledgementSchema,
     ...OnboardingPreferencesShape,
   })
+  .transform((state) => ({
+    ...state,
+    plan: buildSetupPlan(state.configurationInput.productId) satisfies RunnableSetupPlan,
+  }))
   .superRefine((state, context) => {
-    const plan = buildSetupPlan(state.configurationInput.productId);
-    if (!plan) {
-      context.addIssue({ code: "custom", message: "Runnable product requires a setup plan" });
-      return;
-    }
-
     if (state.acknowledgement.status !== "accepted") return;
-    const notice = plan.steps.find((step) => step.id === "acknowledgement")?.notice;
+    const notice = state.plan.steps.find((step) => step.id === "acknowledgement")?.notice;
     if (
       state.acknowledgement.noticeId !== notice?.id ||
       state.acknowledgement.noticeVersion !== notice?.noticeVersion
@@ -71,16 +71,6 @@ const RunnableOnboardingStateInputSchema = z
       });
     }
   });
-
-export const OnboardingStateSchema = RunnableOnboardingStateInputSchema.transform((state) => {
-  const plan = buildSetupPlan(state.configurationInput.productId);
-  if (!plan) {
-    throw new Error(`Missing runnable setup plan for ${state.configurationInput.productId}`);
-  }
-  return { ...state, plan } satisfies z.infer<typeof RunnableOnboardingStateInputSchema> & {
-    readonly plan: RunnableSetupPlan;
-  };
-});
 
 export type OnboardingState = z.infer<typeof OnboardingStateSchema>;
 

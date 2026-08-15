@@ -1,3 +1,5 @@
+import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
+import { makeReadyInitResponse } from "@diffgazer/core/testing/provider-fixtures";
 import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
@@ -7,20 +9,20 @@ import { HomeScreen } from "./screen";
 const trustVar = vi.hoisted(() => ({ trust: null as unknown }));
 
 function initData() {
+  const init = makeReadyInitResponse();
   return {
-    configPath: "/tmp/diffgazer/config.json",
-    config: { provider: "gemini", model: "gemini-2.5-flash" },
-    providers: [],
+    ...init,
     settings: {
-      theme: "dark",
-      defaultLenses: [],
-      defaultProfile: null,
-      severityThreshold: "low",
-      secretsStorage: "file",
-      agentExecution: "sequential",
+      ...init.settings,
+      theme: "dark" as const,
+      secretsStorage: "file" as const,
+      agentExecution: "sequential" as const,
     },
-    configured: true,
-    project: { projectId: "project-1", path: "/tmp/repo", trust: trustVar.trust },
+    project: {
+      projectId: "project-1",
+      path: "/tmp/repo",
+      trust: trustVar.trust as ConfigurationInitResponse["project"]["trust"],
+    },
     setup: {
       hasSecretsStorage: true,
       hasProvider: true,
@@ -35,7 +37,12 @@ function initData() {
 
 vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@diffgazer/core/api/hooks")>()),
-  useInit: () => ({ data: initData(), error: null, isLoading: false, refetch: vi.fn() }),
+  useConfigurationInit: () => ({
+    data: initData(),
+    error: null,
+    isLoading: false,
+    refetch: vi.fn(),
+  }),
   useReviews: () => ({
     data: {
       reviews: [

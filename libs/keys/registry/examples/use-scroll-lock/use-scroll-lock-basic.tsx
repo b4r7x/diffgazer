@@ -1,15 +1,21 @@
 "use client";
 
 import { useScrollLock } from "@diffgazer/keys";
-import { useState } from "react";
+import { type RefObject, useRef, useState } from "react";
 
-function Overlay({ onClose }: { onClose: () => void }) {
-  useScrollLock();
+function Overlay({
+  onClose,
+  panelRef,
+}: {
+  onClose: () => void;
+  panelRef: RefObject<HTMLDivElement | null>;
+}) {
+  useScrollLock({ target: panelRef });
 
   return (
     <div
       style={{
-        position: "fixed",
+        position: "absolute",
         inset: 0,
         display: "flex",
         alignItems: "center",
@@ -32,7 +38,7 @@ function Overlay({ onClose }: { onClose: () => void }) {
       />
       <div style={{ position: "relative", padding: 16, background: "white", color: "black" }}>
         <h3>Overlay</h3>
-        <p>Background scroll is locked while this overlay is visible.</p>
+        <p>Panel scroll is locked while this overlay is visible.</p>
         <button type="button" onClick={onClose}>
           Close
         </button>
@@ -42,16 +48,30 @@ function Overlay({ onClose }: { onClose: () => void }) {
 }
 
 export default function UseScrollLockBasic() {
+  const panelRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
 
   return (
-    <div style={{ height: 500 }}>
+    <div
+      ref={panelRef}
+      style={{
+        height: 200,
+        overflow: "auto",
+        border: "1px solid currentColor",
+        padding: 8,
+      }}
+    >
       <p>Scroll status: {open ? "locked" : "unlocked"}</p>
       <button type="button" onClick={() => setOpen(true)}>
         Show Overlay
       </button>
-      <p>Scroll down to see content. Opening the overlay locks scroll.</p>
-      {open && <Overlay onClose={() => setOpen(false)} />}
+      <p>Scroll inside this panel, then open the overlay to lock it.</p>
+      {Array.from({ length: 12 }, (_, index) => `Scrollable row ${index + 1}`).map((row) => (
+        <p key={row} style={{ margin: "4px 0" }}>
+          {row}
+        </p>
+      ))}
+      {open && <Overlay onClose={() => setOpen(false)} panelRef={panelRef} />}
     </div>
   );
 }

@@ -403,12 +403,16 @@ describe("hotkey literal validation (types)", () => {
     useKey("ctl+s", handler);
     // @ts-expect-error "cmd" is not a known modifier
     useKey("cmd+k", handler);
+    // @ts-expect-error "ctl" is not a known modifier in a handler map
+    useKey({ "ctl+s": handler });
 
     useKey("mod+k", handler);
     useKey("shift+Tab", handler);
     useKey("ctrl+alt+ArrowUp", handler);
     useKey(["mod+k", "Escape"], handler);
     useKey(dynamicHotkey, handler);
+    useKey({ "mod+k": handler, Escape: handler });
+    useKey({ [dynamicHotkey]: handler });
     return null;
   }
 

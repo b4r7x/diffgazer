@@ -28,6 +28,12 @@ export interface SelectContextValue {
   searchQuery: string;
   /** Called when search change occurs. */
   onSearchChange: (query: string) => void;
+  /**
+   * Reads the typeahead query buffer shared by the closed trigger and the open listbox, so a
+   * query survives the open transition its own first character caused. Returns null when the
+   * key was not buffered.
+   */
+  readTypeaheadQuery: (key: string, options?: { extendOnly?: boolean }) => string | null;
   /** Controlled highlighted item id. Pair with onHighlightChange. */
   highlighted: string | null;
   /** Updates highlighted. */

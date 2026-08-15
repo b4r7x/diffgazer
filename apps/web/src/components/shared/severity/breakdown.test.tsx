@@ -1,4 +1,4 @@
-import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
+import type { SeverityCounts } from "@diffgazer/core/schemas/review";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, test } from "vitest";
 import { SeverityBreakdown } from "./breakdown";

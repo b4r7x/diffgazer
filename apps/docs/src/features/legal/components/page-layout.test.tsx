@@ -1,6 +1,3 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -10,23 +7,36 @@ import { MobileNavProvider } from "@/hooks/mobile-nav-context";
 import { stubMatchMedia } from "@/testing/match-media";
 import { LegalPageLayout } from "./page-layout";
 
-const legalRouteBoundary = vi.hoisted(() => ({ pendingPath: null as string | null }));
+const routerBoundary = vi.hoisted(() => ({ pathname: "/privacy", isLoading: false }));
 
-vi.mock("@/features/legal/hooks/use-pending-route", () => ({
-  usePendingLegalRoute: () => legalRouteBoundary.pendingPath,
-}));
-
-// Boundary mock: TanStack Router is the external routing library; legal links/current path are controlled here.
+// Boundary mock: TanStack Router is the external routing library; legal links, the
+// current path, and the pending-navigation flag the layout reads are controlled here.
 vi.mock("@tanstack/react-router", async () => {
-  const { RouterLinkMock, useLocationMock } = await import("@/testing/router-mock");
+  const { RouterLinkMock, ScriptOnceMock, useLocationMock, useRouterStateMock } = await import(
+    "@/testing/router-mock"
+  );
   return {
     Link: RouterLinkMock,
-    ...useLocationMock({ pathname: "/privacy" }),
+    ScriptOnce: ScriptOnceMock,
+    ...useLocationMock({
+      get pathname() {
+        return routerBoundary.pathname;
+      },
+    }),
+    ...useRouterStateMock({
+      get pathname() {
+        return routerBoundary.pathname;
+      },
+      get isLoading() {
+        return routerBoundary.isLoading;
+      },
+    }),
   };
 });
 
 beforeEach(() => {
-  legalRouteBoundary.pendingPath = null;
+  routerBoundary.pathname = "/privacy";
+  routerBoundary.isLoading = false;
   stubMatchMedia({ isDesktop: true });
   Element.prototype.scrollIntoView = () => {};
 });
@@ -59,6 +69,7 @@ describe("LegalPageLayout", () => {
     expect(screen.getByText("[ LEGAL / PRIVACY ]")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Privacy policy" })).toBeInTheDocument();
     expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
+    expect(screen.getByRole("main")).toHaveAttribute("data-scroll-restoration-id", "main-content");
   });
 
   it("makes the main content region programmatically focusable", () => {
@@ -74,7 +85,8 @@ describe("LegalPageLayout", () => {
   });
 
   it("replaces stale legal content with a loading frame during navigation", () => {
-    legalRouteBoundary.pendingPath = "/terms";
+    routerBoundary.pathname = "/terms";
+    routerBoundary.isLoading = true;
 
     renderLegalLayout(
       <LegalPageLayout panelLabel="PRIVACY">

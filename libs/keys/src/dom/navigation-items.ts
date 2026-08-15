@@ -28,6 +28,11 @@ export interface NavigationItemQuery {
   scopeToContainer?: boolean;
   /** Override the composite owner selector used for scoping, or null to disable owner scoping. */
   ownerSelector?: string | null;
+  /**
+   * Narrow the matched items to those matching this selector, for containers whose
+   * role query is broader than their own item set.
+   */
+  itemSelector?: string;
 }
 
 function disabledSelector(skipDisabled: boolean): string {
@@ -151,6 +156,7 @@ export function getNavigationItems(
     buildNavigationSelectors(query.type, skipDisabled),
     (element) =>
       matchesNavigationDataContract(element, query.type) &&
+      (!query.itemSelector || element.matches(query.itemSelector)) &&
       isOwnedByContainer(element, container, query) &&
       isReachable(element) &&
       (!skipDisabled || !hasDisabledAncestor(element)),

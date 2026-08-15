@@ -40,8 +40,8 @@ vi.mock("../../terminal.js", async (importOriginal) => {
 });
 
 import { createRemoveCommand } from "../../command-factories/remove.js";
-import { info, success } from "../../terminal.js";
-import type { DerivedRemovalPlan, FileRemovalVerdict } from "./types.js";
+import { error, info, success } from "../../terminal.js";
+import type { DerivedRemovalPlan, FileRemovalVerdict, RemoveInvocation } from "./types.js";
 import { runRemoveWorkflow } from "./workflow.js";
 
 interface TestItem {
@@ -53,7 +53,12 @@ function buildOptions(
   tempDir: string,
   item: TestItem,
   overrides: {
-    updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;
+    updateManifest: (ctx: {
+      cwd: string;
+      config: null;
+      removedNames: string[];
+      retainedNames: string[];
+    }) => void;
     onAfterRemove: (ctx: {
       cwd: string;
       removedNames: string[];
@@ -78,6 +83,7 @@ function buildOptions(
     resolveFilesForItem: ({ item: i }: { item: TestItem }) => i.files,
     resolveAllowedBaseDirs: () => [tempDir],
     resolveTransactionFiles: overrides.resolveTransactionFiles,
+    validateTransaction: undefined,
     updateManifest: overrides.updateManifest,
     onAfterRemove: overrides.onAfterRemove,
   };
@@ -95,6 +101,24 @@ describe("runRemoveWorkflow", () => {
   afterEach(() => {
     rmSyncFailPaths.clear();
     realRmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("rejects a graph-less expansion before handling an empty plan", async () => {
+    const options = buildOptions(
+      tempDir,
+      { name: "test-component", files: [] },
+      {
+        updateManifest: vi.fn(),
+        onAfterRemove: vi.fn(),
+      },
+    );
+    Object.defineProperty(options, "expandRequestedNames", {
+      value: () => ({ toRemove: [], blocked: [] }),
+    });
+
+    await expect(runRemoveWorkflow(options)).rejects.toThrow(
+      "Removal expansion must provide a dependency graph.",
+    );
   });
 
   it("restores every owned source after a partial deletion failure and allows a normal retry", async () => {
@@ -201,9 +225,78 @@ describe("runRemoveWorkflow", () => {
 
     expect(updateManifest).toHaveBeenCalledWith({
       cwd: tempDir,
+      config: null,
       removedNames: ["test-component"],
+      retainedNames: [],
     });
     expect(onAfterRemove).toHaveBeenCalled();
+  });
+
+  it("carries the invocation context and derived metadata through removal", async () => {
+    const filePath = join(tempDir, "component.tsx");
+    writeFileSync(filePath, "export {};");
+
+    const config = { project: tempDir };
+    const item: TestItem = {
+      name: "test-component",
+      files: [{ absolutePath: filePath }],
+    };
+    const getAllItems = vi.fn((invocation: RemoveInvocation<typeof config>) => {
+      expect(invocation).toEqual({ cwd: tempDir, config });
+      return [item];
+    });
+    const getItemOrThrow = vi.fn((_name: string, invocation: RemoveInvocation<typeof config>) => {
+      expect(invocation).toEqual({ cwd: tempDir, config });
+      return item;
+    });
+    const validateNames = vi.fn((_names: string[], invocation: RemoveInvocation<typeof config>) => {
+      expect(invocation).toEqual({ cwd: tempDir, config });
+    });
+    const updateManifest = vi.fn();
+    const metadata = { retainedHash: "abc123" };
+    const onAfterRemove = vi.fn(
+      (): DerivedRemovalPlan<typeof metadata> => ({
+        writes: [],
+        preservedNotices: [],
+        metadata,
+      }),
+    );
+
+    await runRemoveWorkflow<TestItem, typeof config, typeof metadata>({
+      cwd: tempDir,
+      names: [item.name],
+      yes: true,
+      dryRun: false,
+      force: false,
+      itemPlural: "items",
+      requireConfig: (cwd) => {
+        expect(cwd).toBe(tempDir);
+        return config;
+      },
+      validateNames,
+      getAllItems,
+      getItemOrThrow,
+      getItemName: (candidate) => candidate.name,
+      isInstalled: () => true,
+      resolveFilesForItem: ({ item: candidate }) => candidate.files,
+      resolveAllowedBaseDirs: () => [tempDir],
+      updateManifest,
+      onAfterRemove,
+    });
+
+    expect(onAfterRemove).toHaveBeenCalledWith({
+      cwd: tempDir,
+      config,
+      removedNames: [item.name],
+      force: false,
+    });
+    expect(updateManifest).toHaveBeenCalledWith({
+      cwd: tempDir,
+      config,
+      removedNames: [item.name],
+      retainedNames: [],
+      metadata,
+    });
   });
 
   it("restores source, stylesheet, manifest, and absent targets when manifest persistence fails", async () => {
@@ -312,6 +405,28 @@ describe("runRemoveWorkflow", () => {
     expect(infoMessages).toContain("kept a drifted chunk (use --force to override)");
   });
 
+  it("cleans stale manifest entries when owned files are already missing without --force", async () => {
+    const item: TestItem = {
+      name: "test-component",
+      files: [{ absolutePath: join(tempDir, "component.tsx") }],
+    };
+    const updateManifest = vi.fn();
+    const onAfterRemove = vi.fn((): DerivedRemovalPlan => ({ writes: [], preservedNotices: [] }));
+
+    await runRemoveWorkflow<TestItem, null>({
+      ...buildOptions(tempDir, item, { updateManifest, onAfterRemove }),
+      force: false,
+    });
+
+    expect(updateManifest).toHaveBeenCalledWith({
+      cwd: tempDir,
+      config: null,
+      removedNames: ["test-component"],
+      retainedNames: [],
+    });
+    expect(onAfterRemove).toHaveBeenCalled();
+  });
+
   it("passes force to onAfterRemove when source files are already gone", async () => {
     const item: TestItem = {
       name: "test-component",
@@ -343,16 +458,22 @@ describe("runRemoveWorkflow", () => {
       onAfterRemove: vi.fn(),
     });
 
-    await runRemoveWorkflow<TestItem, null>({ ...options, checkFileRemoval: () => "unowned" });
-    await runRemoveWorkflow<TestItem, null>({ ...options, checkFileRemoval: () => "modified" });
+    await expect(
+      runRemoveWorkflow<TestItem, null>({ ...options, checkFileRemoval: () => "unowned" }),
+    ).rejects.toThrow(/Failed to remove/);
+    await expect(
+      runRemoveWorkflow<TestItem, null>({ ...options, checkFileRemoval: () => "modified" }),
+    ).rejects.toThrow(/Failed to remove/);
 
     const infoMessages = vi.mocked(info).mock.calls.map(([msg]) => msg);
+    const errorMessages = vi.mocked(error).mock.calls.map(([msg]) => msg);
     expect(infoMessages).toContain(
       "Skipping test-component: component.tsx is not tracked in the ownership manifest (the manifest is missing or was reset)",
     );
     expect(infoMessages).toContain(
       "Skipping test-component: component.tsx has been modified (use --force to override)",
     );
+    expect(errorMessages.some((msg) => msg.includes("Not removed: test-component"))).toBe(true);
     expect(existsSync(filePath)).toBe(true);
   });
 
@@ -375,28 +496,30 @@ describe("runRemoveWorkflow", () => {
       }),
     );
 
-    await runRemoveWorkflow<TestItem, null>({
-      cwd: tempDir,
-      names: items.map((i) => i.name),
-      yes: true,
-      dryRun: false,
-      force: false,
-      itemPlural: "items",
-      requireConfig: () => null,
-      validateNames: () => {},
-      getAllItems: () => items,
-      getItemOrThrow: (name: string) => {
-        const found = items.find((i) => i.name === name);
-        if (!found) throw new Error(`unknown item ${name}`);
-        return found;
-      },
-      getItemName: (i: TestItem) => i.name,
-      isInstalled: () => true,
-      resolveFilesForItem: ({ item }: { item: TestItem }) => item.files,
-      resolveAllowedBaseDirs: () => [tempDir],
-      updateManifest: vi.fn(),
-      onAfterRemove,
-    });
+    await expect(
+      runRemoveWorkflow<TestItem, null>({
+        cwd: tempDir,
+        names: items.map((i) => i.name),
+        yes: true,
+        dryRun: false,
+        force: false,
+        itemPlural: "items",
+        requireConfig: () => null,
+        validateNames: () => {},
+        getAllItems: () => items,
+        getItemOrThrow: (name: string) => {
+          const found = items.find((i) => i.name === name);
+          if (!found) throw new Error(`unknown item ${name}`);
+          return found;
+        },
+        getItemName: (i: TestItem) => i.name,
+        isInstalled: () => true,
+        resolveFilesForItem: ({ item }: { item: TestItem }) => item.files,
+        resolveAllowedBaseDirs: () => [tempDir],
+        updateManifest: vi.fn(),
+        onAfterRemove,
+      }),
+    ).rejects.toThrow(/Failed to remove 1 requested item: item-retained/);
 
     const infoMessages = vi.mocked(info).mock.calls.map(([msg]) => msg);
     expect(infoMessages).toContain(notice);
@@ -408,6 +531,29 @@ describe("runRemoveWorkflow", () => {
     expect(summary).toMatch(/Removed 2 file\(s\)/);
     expect(summary).toContain("item-removed");
     expect(summary).not.toContain("item-retained");
+    expect(vi.mocked(error).mock.calls.map(([msg]) => msg)).toContain(
+      "Not removed: item-retained (its files are gone, but it stays tracked for a preserved artifact)",
+    );
+  });
+
+  it("holds SIGINT while files are deleted and the manifest is committed", async () => {
+    const filePath = join(tempDir, "component.tsx");
+    writeFileSync(filePath, "export {};\n");
+    const item: TestItem = { name: "test-component", files: [{ absolutePath: filePath }] };
+    const listenersBeforeRemoval = process.listenerCount("SIGINT");
+    let listenersDuringCommit = 0;
+    const updateManifest = vi.fn(() => {
+      listenersDuringCommit = process.listenerCount("SIGINT");
+    });
+
+    await runRemoveWorkflow<TestItem, null>(
+      buildOptions(tempDir, item, { updateManifest, onAfterRemove: vi.fn() }),
+    );
+
+    expect(listenersDuringCommit).toBe(listenersBeforeRemoval + 1);
+    expect(process.listenerCount("SIGINT")).toBe(listenersBeforeRemoval);
+    expect(updateManifest).toHaveBeenCalledOnce();
+    expect(existsSync(filePath)).toBe(false);
   });
 
   it("refuses to apply a derived write outside the allowed base dirs", async () => {
@@ -432,6 +578,59 @@ describe("runRemoveWorkflow", () => {
 
     expect(existsSync(outside)).toBe(false);
     expect(readFileSync(filePath, "utf-8")).toBe("export {};\n");
+  });
+
+  it("restores transaction files when stale manifest cleanup cannot persist", async () => {
+    const cssPath = join(tempDir, "styles.css");
+    const css = "/* original */\n";
+    writeFileSync(cssPath, css);
+    const manifestPath = join(tempDir, "manifest.json");
+    const manifest = '{ "items": ["test-component"] }\n';
+    writeFileSync(manifestPath, manifest);
+
+    const item: TestItem = {
+      name: "test-component",
+      files: [{ absolutePath: join(tempDir, "component.tsx") }],
+    };
+    let failManifest = true;
+    const updateManifest = vi.fn(() => {
+      writeFileSync(manifestPath, '{ "items": [] }\n');
+      if (failManifest) throw new Error("stale manifest write failed");
+    });
+    const onAfterRemove = vi.fn(
+      (): DerivedRemovalPlan => ({
+        writes: [{ targetPath: cssPath, content: "/* rewritten */\n" }],
+        preservedNotices: [],
+      }),
+    );
+
+    await expect(
+      runRemoveWorkflow<TestItem, null>({
+        ...buildOptions(tempDir, item, {
+          updateManifest,
+          onAfterRemove,
+          resolveTransactionFiles: () => [cssPath, manifestPath],
+        }),
+        force: false,
+      }),
+    ).rejects.toThrow("stale manifest write failed");
+
+    expect(readFileSync(cssPath, "utf-8")).toBe(css);
+    expect(readFileSync(manifestPath, "utf-8")).toBe(manifest);
+    expect(vi.mocked(success)).not.toHaveBeenCalled();
+
+    failManifest = false;
+    await runRemoveWorkflow<TestItem, null>({
+      ...buildOptions(tempDir, item, {
+        updateManifest,
+        onAfterRemove,
+        resolveTransactionFiles: () => [cssPath, manifestPath],
+      }),
+      force: false,
+    });
+
+    expect(readFileSync(cssPath, "utf-8")).toBe("/* rewritten */\n");
+    expect(readFileSync(manifestPath, "utf-8")).toBe('{ "items": [] }\n');
   });
 
   it("carries transaction files and derived plans through the remove command factory", async () => {

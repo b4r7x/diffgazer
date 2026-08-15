@@ -10,6 +10,7 @@ import {
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { shutdown } from "@/lib/shutdown";
 import { GlobalShortcuts } from "./global";
 
 vi.mock("@/lib/shutdown", () => ({
@@ -46,14 +47,24 @@ function createShortcutRouter(initialPath: string) {
     path: "/onboarding",
     component: () => <p>Onboarding page</p>,
   });
-  const dialogRoute = createRoute({
+  const scopedDialogRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/dialog",
     component: ScopedDialogPage,
   });
-
+  const unscopedDialogRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/unscoped-dialog",
+    component: () => <dialog open>Unscoped dialog page</dialog>,
+  });
   return createRouter({
-    routeTree: rootRoute.addChildren([helpRoute, settingsRoute, onboardingRoute, dialogRoute]),
+    routeTree: rootRoute.addChildren([
+      helpRoute,
+      settingsRoute,
+      onboardingRoute,
+      scopedDialogRoute,
+      unscopedDialogRoute,
+    ]),
     history: createMemoryHistory({ initialEntries: [initialPath] }),
   });
 }
@@ -87,7 +98,10 @@ describe("GlobalShortcuts", () => {
     expect(router.state.location.pathname).toBe("/help");
   });
 
-  it.each(["/onboarding", "/dialog"])("suppresses shortcuts on %s", async (path) => {
+  it.each([
+    "/onboarding",
+    "/dialog",
+  ])("suppresses shortcuts on scoped dialog routes %s", async (path) => {
     const user = userEvent.setup();
     const router = createShortcutRouter(path);
     render(<RouterProvider router={router} />);
@@ -95,5 +109,29 @@ describe("GlobalShortcuts", () => {
     await user.keyboard("s");
 
     expect(router.state.location.pathname).toBe(path);
+  });
+
+  // Suppression is driven by the active keyboard scope, not by an open <dialog>
+  // element: every dialog in the app pushes a `-dialog` scope while it is open,
+  // and one that does not stays reachable by the global shortcuts.
+  it("keeps shortcuts live for a dialog that pushes no scope", async () => {
+    const user = userEvent.setup();
+    const router = createShortcutRouter("/unscoped-dialog");
+    render(<RouterProvider router={router} />);
+
+    await user.keyboard("s");
+
+    await waitFor(() => expect(router.state.location.pathname).toBe("/settings"));
+  });
+
+  it("suppresses shutdown while a dialog scope is active", async () => {
+    const user = userEvent.setup();
+    const router = createShortcutRouter("/dialog");
+    render(<RouterProvider router={router} />);
+
+    await user.keyboard("q");
+
+    expect(shutdown).not.toHaveBeenCalled();
+    expect(router.state.location.pathname).toBe("/dialog");
   });
 });

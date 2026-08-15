@@ -1,25 +1,59 @@
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
-import { type HookData, type HookDataMap, hooksData } from "@/lib/generated-doc-data";
+import { type ReactNode, useEffect, useState } from "react";
+import type { HookData, HookDataMap } from "@/lib/generated-doc-data";
 import { hookSourceFiles } from "@/lib/library";
+import { loadLibraryHooksData } from "@/lib/load-hooks-data";
 import { CopyButton } from "./copy-button";
 import { SourceViewer } from "./docs-mdx/source-viewer";
 
-interface HookSourceProps {
-  library: string;
-  hook: string;
+type LibraryHooksState =
+  | { library: string; status: "loading" }
+  | { library: string; status: "ready"; data: HookDataMap }
+  | { library: string; status: "error" };
+
+interface LibraryHooksResult {
+  state: LibraryHooksState;
+  retry: () => void;
 }
 
-export function HookSource({ library, hook }: HookSourceProps) {
-  const data: HookDataMap = hooksData[library] ?? {};
-  const entry = data[hook];
+function useLibraryHooksData(library: string): LibraryHooksResult {
+  const [retryCount, setRetryCount] = useState(0);
+  const [state, setState] = useState<LibraryHooksState>({
+    library,
+    status: "loading",
+  });
 
-  if (!entry) return null;
+  const retry = () => {
+    setRetryCount((count) => count + 1);
+    setState({ library, status: "loading" });
+  };
 
-  return (
-    <div className="space-y-6">
-      <HookSourceBlock hook={entry} />
-    </div>
-  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retryCount is the explicit reload signal.
+  useEffect(() => {
+    let active = true;
+
+    setState({ library, status: "loading" });
+    void loadLibraryHooksData(library)
+      .then((data) => {
+        if (active) setState({ library, status: "ready", data });
+      })
+      .catch(() => {
+        if (active) setState({ library, status: "error" });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [library, retryCount]);
+
+  if (state.library !== library) {
+    return {
+      state: { library, status: "loading" },
+      retry,
+    };
+  }
+
+  return { state, retry };
 }
 
 function HookSourceBlock({ hook }: { hook: HookData }) {
@@ -48,12 +82,34 @@ function HookSourceBlock({ hook }: { hook: HookData }) {
 interface LibraryHookSourceProps {
   library: string;
   sectionTitle: string;
-  hint: React.ReactNode;
+  hint: ReactNode;
 }
 
 export function LibraryHookSource({ library, sectionTitle, hint }: LibraryHookSourceProps) {
-  const entries = Object.values(hooksData[library] ?? {});
+  const { state, retry } = useLibraryHooksData(library);
 
+  if (state.status === "loading") {
+    return (
+      <output aria-live="polite" className="text-sm text-muted-foreground">
+        Loading hook source...
+      </output>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <div className="space-y-2">
+        <p role="alert" className="text-sm text-error-text">
+          Hook source could not be loaded.
+        </p>
+        <button type="button" className="text-xs font-mono underline" onClick={retry}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const entries = Object.values(state.data);
   if (entries.length === 0) return null;
 
   return (

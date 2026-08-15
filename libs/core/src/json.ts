@@ -2,9 +2,11 @@ import type { Result } from "./result.js";
 import { err, ok } from "./result.js";
 
 export {
+  canonicalJson,
   type JsonScanFailure,
   type JsonScanLimits,
   scanJsonRejectingDuplicateKeys,
+  sha256CanonicalJsonSync,
 } from "./schemas/canonical-json.js";
 
 function stripMarkdownCodeBlock(content: string): string {

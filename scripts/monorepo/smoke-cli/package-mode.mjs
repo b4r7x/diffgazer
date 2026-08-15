@@ -109,7 +109,7 @@ async function runKeysPackageIntegrationSmoke(root, dgaddBin) {
     ]);
 
     const keysDepConfig = JSON.parse(readFileSync(join(fixture, "diffgazer.json"), "utf-8"));
-    if (keysDepConfig.installedComponents?.["ui/button"]?.integrationMode === "@diffgazer/keys") {
+    if (keysDepConfig.installedItems?.["ui/button"]?.integrationMode === "@diffgazer/keys") {
       throw new Error(
         "button has no keyboard integration but was installed with @diffgazer/keys mode",
       );
@@ -159,7 +159,7 @@ async function runKeysPackageIntegrationSmoke(root, dgaddBin) {
     };
     writeFileSync(packageJsonPath, `${JSON.stringify(installedKeysPkg, null, 2)}\n`);
     const keysSelectConfig = JSON.parse(readFileSync(join(fixture, "diffgazer.json"), "utf-8"));
-    const selectRecord = keysSelectConfig.installedComponents?.["ui/select"];
+    const selectRecord = keysSelectConfig.installedItems?.["ui/select"];
     if (selectRecord?.integrationMode !== "@diffgazer/keys") {
       throw new Error(
         `Expected select integrationMode to be "@diffgazer/keys", got "${selectRecord?.integrationMode}"`,

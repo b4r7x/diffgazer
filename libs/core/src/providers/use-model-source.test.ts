@@ -119,7 +119,10 @@ describe("useModelSource", () => {
       error: null,
     });
     expect(result.current.models.map(({ id }) => id)).toEqual([modelId]);
-    expect(getConfigurationModels).toHaveBeenCalledWith(configuration.configurationId);
+    expect(getConfigurationModels).toHaveBeenCalledWith(
+      configuration.configurationId,
+      expect.any(AbortSignal),
+    );
   });
 
   it.each([
@@ -241,7 +244,10 @@ describe("useModelSource", () => {
     await waitFor(() => expect(result.current.status).toBe("passed"));
 
     expect(result.current.models.map(({ id }) => id)).toEqual(["qwen3-coder:30b"]);
-    expect(getConfigurationModels.mock.calls).toEqual([["ollama-loopback"], ["ollama-loopback"]]);
+    expect(getConfigurationModels.mock.calls.map(([configurationId]) => configurationId)).toEqual([
+      "ollama-loopback",
+      "ollama-loopback",
+    ]);
   });
 
   it("stays idle without fetching while the picker is closed", () => {

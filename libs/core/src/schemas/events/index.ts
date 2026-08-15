@@ -1,6 +1,5 @@
 export {
   AGENT_METADATA,
-  AGENT_STATUS,
   type AgentId,
   type AgentState,
   type AgentStatus,
@@ -10,14 +9,12 @@ export {
   type LensStat,
   LensStatSchema,
 } from "./agent.js";
-export { buildLensOptions, type LensOption } from "./lens-options.js";
+export { LENS_OPTIONS, type LensOption } from "./lens-options.js";
 export {
   createInitialSteps,
   type ReviewStartedEvent,
-  STEP_IDS,
   STEP_METADATA,
   type StepEvent,
-  StepEventSchema,
   type StepId,
   StepIdSchema,
   type StepState,

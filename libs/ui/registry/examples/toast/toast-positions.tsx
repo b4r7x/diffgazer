@@ -2,22 +2,33 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { ToastPosition } from "@/components/ui/toast";
 import { Toaster, toast } from "@/components/ui/toast";
-import { ToggleGroup } from "@/components/ui/toggle-group";
+import { createToggleGroup } from "@/components/ui/toggle-group";
+
+const ToastPositionGroup = createToggleGroup([
+  "top-left",
+  "top-center",
+  "top-right",
+  "bottom-left",
+  "bottom-center",
+  "bottom-right",
+] as const);
+
+type ToastPositionValue = (typeof ToastPositionGroup.values)[number];
 
 export default function ToastPositions() {
-  const [position, setPosition] = useState<ToastPosition | null>("bottom-right");
+  const [position, setPosition] = useState<ToastPositionValue | null>("bottom-right");
+
   return (
     <div className="flex flex-col gap-4">
-      <ToggleGroup label="Toast position" value={position} onChange={setPosition}>
-        <ToggleGroup.Item value="top-left">Top Left</ToggleGroup.Item>
-        <ToggleGroup.Item value="top-center">Top Center</ToggleGroup.Item>
-        <ToggleGroup.Item value="top-right">Top Right</ToggleGroup.Item>
-        <ToggleGroup.Item value="bottom-left">Bottom Left</ToggleGroup.Item>
-        <ToggleGroup.Item value="bottom-center">Bottom Center</ToggleGroup.Item>
-        <ToggleGroup.Item value="bottom-right">Bottom Right</ToggleGroup.Item>
-      </ToggleGroup>
+      <ToastPositionGroup label="Toast position" value={position} onChange={setPosition}>
+        <ToastPositionGroup.Item value="top-left">Top Left</ToastPositionGroup.Item>
+        <ToastPositionGroup.Item value="top-center">Top Center</ToastPositionGroup.Item>
+        <ToastPositionGroup.Item value="top-right">Top Right</ToastPositionGroup.Item>
+        <ToastPositionGroup.Item value="bottom-left">Bottom Left</ToastPositionGroup.Item>
+        <ToastPositionGroup.Item value="bottom-center">Bottom Center</ToastPositionGroup.Item>
+        <ToastPositionGroup.Item value="bottom-right">Bottom Right</ToastPositionGroup.Item>
+      </ToastPositionGroup>
       <Button
         variant="primary"
         size="sm"

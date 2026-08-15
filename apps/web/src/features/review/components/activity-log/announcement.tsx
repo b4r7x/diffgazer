@@ -12,7 +12,7 @@ interface LogAnnouncement {
 export interface ActivityLogAnnouncementProps {
   tailEvent: ReviewEvent | undefined;
   latestEntry: Pick<LogEntryData, "id" | "message"> | undefined;
-  sourceFilter: string | null;
+  sourceFilter: string | undefined;
   /**
    * The pinned tail row's sentence without its ticking clock, so it is announced
    * when the run changes state and never once a second.
@@ -33,6 +33,19 @@ export function ActivityLogAnnouncement({
   const [announcement, setAnnouncement] = useState<LogAnnouncement | null>(null);
   const announcedTailRef = useRef(tailEvent);
   const announcedSourceFilterRef = useRef(sourceFilter);
+
+  // The region is aria-atomic, so the tail row unmounting at the end of a run
+  // re-reads whatever is left in it. Empty it with the run instead of announcing
+  // a mid-run line again once the work is over.
+  useEffect(() => {
+    if (enabled) return;
+    pendingAnnouncementRef.current = null;
+    if (announcementTimerRef.current) {
+      clearTimeout(announcementTimerRef.current);
+      announcementTimerRef.current = null;
+    }
+    setAnnouncement(null);
+  }, [enabled]);
 
   useEffect(() => {
     if (announcedSourceFilterRef.current !== sourceFilter) {

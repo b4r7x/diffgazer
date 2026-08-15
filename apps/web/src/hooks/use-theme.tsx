@@ -1,5 +1,11 @@
 import { useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
-import { resolveSelectableTheme, toSelectableTheme } from "@diffgazer/core/schemas/config";
+import {
+  isSelectableTheme,
+  type ResolvedSelectableTheme,
+  resolveSelectableTheme,
+  type SelectableTheme,
+  toSelectableTheme,
+} from "@diffgazer/core/schemas/config";
 import {
   createContext,
   type ReactNode,
@@ -12,12 +18,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { applyResolvedTheme, THEME_STORAGE_KEY } from "@/theme-bootstrap";
-import {
-  isWebTheme,
-  type ResolvedTheme,
-  type ThemeContextValue,
-  type WebTheme,
-} from "@/types/theme";
+import type { ThemeContextValue } from "@/types/theme";
 
 function subscribeToSystemTheme(callback: () => void): () => void {
   const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -25,15 +26,15 @@ function subscribeToSystemTheme(callback: () => void): () => void {
   return () => media.removeEventListener("change", callback);
 }
 
-function getSystemTheme(): ResolvedTheme {
+function getSystemTheme(): ResolvedSelectableTheme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-export const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
-/** The single narrowing point between stored theme strings and the web app. */
-function toWebTheme(value: string | null): WebTheme {
-  return isWebTheme(value) ? value : "auto";
+/** The single narrowing point between stored theme strings and the app. */
+function fromStoredTheme(value: string | null): SelectableTheme {
+  return isSelectableTheme(value) ? value : "auto";
 }
 
 function accessThemeStorage<T>(operation: (storage: Storage) => T, fallback: T): T {
@@ -57,17 +58,24 @@ function writeStoredTheme(theme: string | null): void {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [localOverride, setLocalOverride] = useState<WebTheme | null>(null);
-  const [fallbackTheme] = useState<WebTheme>(() => toWebTheme(readStoredTheme()));
+  const [localOverride, setLocalOverride] = useState<SelectableTheme | null>(null);
+  const [fallbackTheme, setFallbackTheme] = useState<SelectableTheme>(() =>
+    fromStoredTheme(readStoredTheme()),
+  );
 
   const { data: settings } = useSettings();
   const { mutateAsync: saveSettingsAsync } = useSaveSettings();
 
-  const system: ResolvedTheme = useSyncExternalStore(subscribeToSystemTheme, getSystemTheme);
+  const system: ResolvedSelectableTheme = useSyncExternalStore(
+    subscribeToSystemTheme,
+    getSystemTheme,
+  );
   const latestSaveRef = useRef(0);
 
+  // "terminal" is a legacy persisted value with no producer left on either
+  // surface; web and TUI both normalize it to "auto" on read.
   const settingsTheme = settings?.theme ? toSelectableTheme(settings.theme) : null;
-  const effectiveTheme: WebTheme = localOverride ?? settingsTheme ?? fallbackTheme;
+  const effectiveTheme: SelectableTheme = localOverride ?? settingsTheme ?? fallbackTheme;
   const resolved = resolveSelectableTheme(effectiveTheme, system);
 
   // The pre-paint bootstrap in index.html already themed the document; this
@@ -77,7 +85,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [resolved]);
 
   const setTheme = useCallback(
-    async (newTheme: WebTheme): Promise<void> => {
+    async (newTheme: SelectableTheme): Promise<void> => {
       const save = ++latestSaveRef.current;
       const previousOverride = localOverride;
       const previousStored = readStoredTheme();
@@ -85,6 +93,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       writeStoredTheme(newTheme);
       try {
         await saveSettingsAsync({ theme: newTheme });
+        // The override only covers the save window: the settings cache already
+        // refetched by now, so dropping it lets a theme saved by another tab or
+        // the TUI reach this one instead of staying shadowed for the session.
+        // The fallback carries the pick in case that refetch returned nothing.
+        if (latestSaveRef.current === save) {
+          setFallbackTheme(newTheme);
+          setLocalOverride(null);
+        }
       } catch (error) {
         // A later pick already replaced this one; rolling back now would undo the
         // theme the user is looking at.

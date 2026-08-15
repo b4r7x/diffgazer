@@ -9,6 +9,8 @@ interface UseReviewDetailsTabKeyboardOptions {
   enabled: boolean;
   selectedIssue: ReviewIssue | null;
   activeTab: IssueTab;
+  /** Core's availability answer: the digit bindings must not re-derive it. */
+  availableTabs: readonly IssueTab[];
   /** The details scroll body: it owns the checklist and parks focus across tab switches. */
   detailsScrollRef: RefObject<HTMLDivElement | null>;
   moveTab: (delta: -1 | 1) => "no-change" | "boundary-left" | "boundary-right" | "moved";
@@ -38,6 +40,7 @@ export function useReviewDetailsTabKeyboard({
   enabled,
   selectedIssue,
   activeTab,
+  availableTabs,
   detailsScrollRef,
   moveTab,
   scrollDetails,
@@ -140,11 +143,11 @@ export function useReviewDetailsTabKeyboard({
   useKey("2", () => switchTab("explain"), { scope, enabled: enabled && hasIssue });
   useKey("3", () => switchTab("trace"), {
     scope,
-    enabled: enabled && hasIssue && Boolean(selectedIssue.trace?.length),
+    enabled: enabled && hasIssue && availableTabs.includes("trace"),
   });
   useKey("4", () => switchTab("patch"), {
     scope,
-    enabled: enabled && hasIssue && !!selectedIssue.suggested_patch,
+    enabled: enabled && hasIssue && availableTabs.includes("patch"),
   });
 
   return {

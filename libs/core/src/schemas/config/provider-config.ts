@@ -4,6 +4,7 @@ import {
   PRODUCT_REGISTRY,
   type ProductNotice,
 } from "../../providers/product-registry.js";
+import { containsStructuralControlCharacter } from "../../sanitize-terminal.js";
 import { AcceptedAcknowledgementSchema, ReadinessSchema } from "./readiness.js";
 import {
   getHostedApiEndpointTuple,
@@ -44,19 +45,6 @@ export const ConfigurationRevisionSchema = z.number().int().positive();
 export type ConfigurationRevision = z.infer<typeof ConfigurationRevisionSchema>;
 
 const LATEST_MODEL_ALIAS_PATTERN = /(?:^|[/:._-])latest(?:$|[/:._-])/i;
-
-function containsOpaqueReferenceControlCharacter(value: string): boolean {
-  return [...value].some((character) => {
-    const codePoint = character.codePointAt(0) ?? 0;
-    return (
-      codePoint <= 0x1f ||
-      (codePoint >= 0x80 && codePoint <= 0x9f) ||
-      codePoint === 0x7f ||
-      codePoint === 0x2028 ||
-      codePoint === 0x2029
-    );
-  });
-}
 
 // Keep path starts separate from the text that follows them.  We only need to
 // prove that a client-safe string contains a path; consuming the complete
@@ -138,9 +126,12 @@ export const ClientConfigurationInputSchema = z.discriminatedUnion("transportFam
 ]);
 export type ClientConfigurationInput = z.infer<typeof ClientConfigurationInputSchema>;
 
+// acknowledgement is optional so onboarding can create a draft before the notice step;
+// provider setup surfaces send it on create so acceptance is not re-demanded after probe.
 const CreateConfigurationActionSchema = z.strictObject({
   action: z.literal("create"),
   input: ClientConfigurationInputSchema,
+  acknowledgement: AcceptedAcknowledgementSchema.optional(),
 });
 
 const InspectConfigurationActionSchema = z.strictObject({
@@ -167,10 +158,13 @@ const UpdateConfigurationActionSchema = z.strictObject({
   acknowledgement: AcceptedAcknowledgementSchema,
 });
 
+// expectedRevision is the revision the client saw. A record this build could not
+// decode never showed one, so its delete carries none; the server keeps demanding
+// a match for every record it can describe.
 const DeleteConfigurationActionSchema = z.strictObject({
   action: z.literal("delete"),
   configurationId: ConfigurationIdSchema,
-  expectedRevision: ConfigurationRevisionSchema,
+  expectedRevision: ConfigurationRevisionSchema.optional(),
 });
 
 export const ClientConfigurationActionSchema = z.discriminatedUnion("action", [
@@ -189,7 +183,7 @@ const SafeNoticeIdSchema = z
   .max(128)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/)
   .refine(
-    (value) => !containsOpaqueReferenceControlCharacter(value),
+    (value) => !containsStructuralControlCharacter(value),
     "Notice id must not contain control characters",
   )
   .refine(
@@ -208,7 +202,7 @@ const SafeNoticeLineSchema = z
   .min(1)
   .max(512)
   .refine((value) => {
-    if (containsOpaqueReferenceControlCharacter(value)) return false;
+    if (containsStructuralControlCharacter(value)) return false;
 
     if (
       /\b(?:api(?:[ _-]?key)|authorization|bearer|cookie|password|credential|secret|env(?:ironment)?|home|path|argv|executable|control)\b/i.test(
@@ -284,7 +278,7 @@ const ConfigurationReferenceSchema = z
   .min(1)
   .max(256)
   .refine(
-    (value) => !containsOpaqueReferenceControlCharacter(value),
+    (value) => !containsStructuralControlCharacter(value),
     "Reference must not contain control characters",
   )
   .refine((value) => value === value.trim(), "Reference must not have surrounding whitespace");
@@ -296,16 +290,6 @@ const SafeConfigurationReferenceSchema = ConfigurationReferenceSchema.refine(
     ) && !containsFilesystemPath(value),
   "Configuration reference must not contain secret or private-path material",
 );
-
-const SafeClientConfigurationNoticeSchema = z.strictObject({
-  id: SafeNoticeIdSchema,
-  noticeVersion: z.number().int().positive(),
-  acknowledgement: z.literal("required"),
-  acknowledgeBefore: z.literal("first-context-send"),
-  renewAcknowledgementOn: z.literal("material-notice-change"),
-  billing: z.array(SafeNoticeLineSchema).max(16),
-  privacy: z.array(SafeNoticeLineSchema).max(16),
-});
 
 function matchesNotice(notice: ClientConfigurationNotice, expected: ProductNotice): boolean {
   return (
@@ -372,7 +356,7 @@ const ConfigurationSummaryBaseShape = {
   configurationId: ConfigurationIdSchema,
   revision: ConfigurationRevisionSchema,
   selectedModelId: ExactModelIdSchema.nullable(),
-  notices: z.array(SafeClientConfigurationNoticeSchema).max(16),
+  notices: z.array(ClientConfigurationNoticeSchema).max(16),
 } as const;
 
 const HostedApiConfigurationSummarySchema = z
@@ -464,7 +448,7 @@ export const ClientConfigurationSummarySchema = z.union([
 ]);
 export type ClientConfigurationSummary = z.infer<typeof ClientConfigurationSummarySchema>;
 
-export const CONFIGURATION_OPERATION_STATUSES = ["succeeded", "failed", "conflict"] as const;
+export const CONFIGURATION_OPERATION_STATUSES = ["succeeded", "failed"] as const;
 export const ConfigurationOperationStatusSchema = z.enum(CONFIGURATION_OPERATION_STATUSES);
 export type ConfigurationOperationStatus = z.infer<typeof ConfigurationOperationStatusSchema>;
 
@@ -472,40 +456,7 @@ const ConfigurationActionResponseShape = {
   status: ConfigurationOperationStatusSchema,
   configuration: ClientConfigurationSummarySchema.optional(),
   readiness: ReadinessSchema.optional(),
-  notices: z.array(SafeClientConfigurationNoticeSchema).max(16).optional(),
-  availableActions: z.array(ClientConfigurationActionNameSchema).max(6).optional(),
 } as const;
-
-function matchesSupportedConfigurationTuple(configuration: ClientConfigurationSummary): boolean {
-  if (configuration.transportFamily === "hosted-api") {
-    return (
-      getHostedApiEndpointTuple(
-        configuration.productId,
-        configuration.endpoint,
-        configuration.region,
-      ) !== undefined &&
-      matchesHostedApiTransportTuple({
-        productId: configuration.productId,
-        endpoint: configuration.endpoint,
-        region: configuration.region,
-        workspace: configuration.workspace,
-      })
-    );
-  }
-
-  if (configuration.transportFamily === "local-http") {
-    return matchesLocalHttpTransportTuple(configuration);
-  }
-
-  return configuration.installationId.length > 0;
-}
-
-function hasSafeExactModel(configuration: ClientConfigurationSummary): boolean {
-  const modelId = configuration.selectedModelId;
-  if (modelId === null) return false;
-
-  return !modelId.split(/[./:_-]/).some((segment) => segment.toLowerCase() === "latest");
-}
 
 /**
  * A succeeded action must carry the summary its own outcome implies: delete
@@ -545,8 +496,6 @@ function validateActionResponseBinding(
     readonly status: ConfigurationOperationStatus;
     readonly configuration?: ClientConfigurationSummary;
     readonly readiness?: z.infer<typeof ReadinessSchema>;
-    readonly notices?: readonly ClientConfigurationNotice[];
-    readonly availableActions?: readonly ClientConfigurationActionName[];
   },
   context: Pick<z.RefinementCtx<unknown>, "addIssue">,
 ): void {
@@ -554,30 +503,6 @@ function validateActionResponseBinding(
 
   if (response.status === "succeeded") {
     validateSucceededActionConfiguration(action, configuration, context);
-  }
-
-  if (response.notices !== undefined) {
-    if (!configuration) {
-      context.addIssue({
-        code: "custom",
-        message: "Response notices require a bound configuration",
-        path: ["notices"],
-      });
-    } else if (!hasCanonicalProductNotice(configuration.productId, response.notices)) {
-      context.addIssue({
-        code: "custom",
-        message: "Response notices must match the bound product notice",
-        path: ["notices"],
-      });
-    }
-  }
-
-  if (response.availableActions !== undefined && !configuration) {
-    context.addIssue({
-      code: "custom",
-      message: "Response actions require a bound configuration summary",
-      path: ["availableActions"],
-    });
   }
 
   if (response.readiness !== undefined) {
@@ -618,7 +543,6 @@ function validateReadyActionResponse(
     readonly status: ConfigurationOperationStatus;
     readonly configuration?: ClientConfigurationSummary;
     readonly readiness?: z.infer<typeof ReadinessSchema>;
-    readonly notices?: readonly ClientConfigurationNotice[];
   },
   context: Pick<z.RefinementCtx<unknown>, "addIssue">,
 ): void {
@@ -627,7 +551,7 @@ function validateReadyActionResponse(
   if (response.status !== "succeeded") {
     context.addIssue({
       code: "custom",
-      message: "A failed or conflicting action cannot report ready",
+      message: "A failed action cannot report ready",
       path: ["readiness"],
     });
     return;
@@ -643,15 +567,11 @@ function validateReadyActionResponse(
     return;
   }
 
-  if (!matchesSupportedConfigurationTuple(configuration)) {
-    context.addIssue({
-      code: "custom",
-      message: "Ready readiness requires the exact configuration transport tuple",
-      path: ["configuration"],
-    });
-  }
-
-  if (!hasSafeExactModel(configuration)) {
+  // The summary schemas already validate the transport tuple, the exact-model
+  // pattern and the product model policy; the readiness schema and
+  // `validateActionResponseBinding` already bind the acknowledgement to the
+  // current product notice. Only the ready-only constraints belong here.
+  if (configuration.selectedModelId === null) {
     context.addIssue({
       code: "custom",
       message: "Ready readiness requires an exact selected model",
@@ -659,51 +579,11 @@ function validateReadyActionResponse(
     });
   }
 
-  if (!hasAllowedSelectedModel(configuration.productId, configuration.selectedModelId)) {
-    context.addIssue({
-      code: "custom",
-      message: "Ready readiness requires a model allowed by the bound product policy",
-      path: ["configuration", "selectedModelId"],
-    });
-  }
-
-  const expectedNotice = PRODUCT_REGISTRY[configuration.productId].notice;
   if (!hasCurrentNotice(configuration)) {
     context.addIssue({
       code: "custom",
       message: "Ready readiness requires the current product notice",
       path: ["configuration", "notices"],
-    });
-  }
-
-  const acknowledgement = response.readiness.acknowledgement;
-  if (
-    acknowledgement.status !== "accepted" ||
-    acknowledgement.noticeId !== expectedNotice.id ||
-    acknowledgement.noticeVersion !== expectedNotice.noticeVersion ||
-    !configuration.notices.some(
-      (notice) =>
-        notice.id === acknowledgement.noticeId &&
-        notice.noticeVersion === acknowledgement.noticeVersion,
-    )
-  ) {
-    context.addIssue({
-      code: "custom",
-      message: "Ready readiness requires acknowledgement of the current product notice",
-      path: ["readiness", "acknowledgement"],
-    });
-  }
-
-  if (
-    response.notices !== undefined &&
-    (response.notices.length !== 1 ||
-      response.notices[0] === undefined ||
-      !matchesNotice(response.notices[0], expectedNotice))
-  ) {
-    context.addIssue({
-      code: "custom",
-      message: "Response notices must match the current product notice",
-      path: ["notices"],
     });
   }
 }

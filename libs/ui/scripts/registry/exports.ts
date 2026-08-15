@@ -20,7 +20,7 @@ export function validatePublicExportShape(
     ];
   }
 
-  if (isRecord(exportValue.import)) {
+  if (isRecord(exportValue.import) && "types" in exportValue.import) {
     errors.push(
       `package export ${exportPath} nests "types" under "import"; TypeScript bundler resolution requires top-level "types"`,
     );
@@ -30,8 +30,12 @@ export function validatePublicExportShape(
     errors.push(`package export ${exportPath} is missing top-level "types" condition`);
   }
 
-  if (typeof exportValue.import !== "string") {
+  if (exportValue.import === undefined) {
     errors.push(`package export ${exportPath} is missing top-level "import" condition`);
+  } else if (typeof exportValue.import !== "string") {
+    errors.push(
+      `package export ${exportPath} must declare "import" as a string path, not a nested condition object`,
+    );
   }
 
   return errors;
@@ -46,15 +50,26 @@ function countProps(propsTable: Record<string, Record<string, unknown>>): number
   return Object.values(propsTable).reduce((sum, group) => sum + Object.keys(group).length, 0);
 }
 
-export function validatePublicComponentProps(root: string, items: RegistryItem[]): string[] {
+export function validatePublicComponentProps(
+  root: string,
+  items: RegistryItem[],
+  options?: { requireGeneratedDocs?: boolean },
+): string[] {
   const errors: string[] = [];
+  const requireGeneratedDocs = options?.requireGeneratedDocs === true;
 
   for (const item of items) {
     if (item.type !== REGISTRY_ITEM_TYPE.ui || item.meta?.hidden) continue;
 
     const dataPath = resolve(root, "docs/generated/components", `${item.name}.json`);
-    // Skip when generated docs JSON is absent (clean checkouts before prepare:artifacts).
-    if (!existsSync(dataPath)) continue;
+    if (!existsSync(dataPath)) {
+      if (requireGeneratedDocs) {
+        errors.push(
+          `${item.name}: missing generated docs at docs/generated/components/${item.name}.json. Run pnpm build:docs-data before validate:registry:docs.`,
+        );
+      }
+      continue;
+    }
 
     let data: GeneratedComponentDocsData;
     try {

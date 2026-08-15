@@ -19,12 +19,14 @@ export function useHistoryPage() {
   });
 
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const warningsRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLElement>(null);
   const runsListRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLButtonElement>(null);
   const insightsListRef = useRef<HTMLDivElement>(null);
   const retryRef = useRef<HTMLButtonElement>(null);
   const zoneRefs: Record<HistoryFocusZone, RefObject<HTMLElement | null>> = {
+    warnings: warningsRef,
     search: searchInputRef,
     timeline: timelineRef,
     runs: runsListRef,
@@ -56,12 +58,14 @@ export function useHistoryPage() {
     ? highlightedIssueId
     : firstIssueId;
 
+  // The chip rendering needs the metadata the run was built from; when a run
+  // outlives its entry, the run keeps the core's plain-text sentence.
   const reviewsById = new Map(history.reviews.map((review) => [review.id, review]));
   const mappedRuns: Run[] = history.mappedRuns.map((run) => {
     const metadata = reviewsById.get(run.id);
     return {
       ...run,
-      summary: metadata ? getRunSummary(metadata) : null,
+      summary: metadata ? getRunSummary(metadata) : run.summary,
     };
   });
 
@@ -122,9 +126,11 @@ export function useHistoryPage() {
   return {
     reviewsQuery: history.reviewsQuery,
     reviewDetailQuery: history.reviewDetailQuery,
+    runIdLookup: history.runIdLookup,
     focusZone,
     searchQuery: history.searchQuery,
     searchInputRef,
+    warningsRef,
     timelineRef,
     runsListRef,
     loadMoreRef,

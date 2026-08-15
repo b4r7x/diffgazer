@@ -11,6 +11,10 @@ import type { ArtifactLibrary } from "./docs-libraries-config.js";
 import { assertSafeLibraryId } from "./library-id-validation.js";
 import { collectPathParityErrors, collectTreeParityErrors } from "./path-parity.js";
 
+// Generated files are copied by basename during docs sync, so the demo index is
+// identified by filename everywhere — its `generated` manifest key is free-form.
+const DEMO_INDEX_FILENAME = "demo-index.ts";
+
 type ArtifactSyncManifest = {
   docs?: Partial<ArtifactManifest["docs"]>;
   registry?: Partial<ArtifactManifest["registry"]>;
@@ -125,7 +129,7 @@ function collectPrimaryGeneratedErrors(docsRoot: string, artifact: LoadedArtifac
     `${artifact.id} generated artifact path`,
   );
   const outputGeneratedDir = resolve(docsRoot, "src/generated", artifact.id);
-  const isNotDemoIndex = (filePath: string) => basename(filePath) !== "demo-index.ts";
+  const isNotDemoIndex = (filePath: string) => basename(filePath) !== DEMO_INDEX_FILENAME;
 
   const errors = [
     ...collectTreeParityErrors(
@@ -139,12 +143,15 @@ function collectPrimaryGeneratedErrors(docsRoot: string, artifact: LoadedArtifac
     ),
   ];
 
-  if (artifact.manifest.generated?.demoIndex) {
+  const declaresDemoIndex = Object.values(artifact.manifest.generated ?? {}).some(
+    (generatedFile) => basename(generatedFile) === DEMO_INDEX_FILENAME,
+  );
+  if (declaresDemoIndex) {
     errors.push(
       ...collectGeneratedDemoIndexErrors(
-        resolve(artifactGeneratedDir, "demo-index.ts"),
-        resolve(outputGeneratedDir, "demo-index.ts"),
-        `${artifact.id} generated sync demo-index.ts`,
+        resolve(artifactGeneratedDir, DEMO_INDEX_FILENAME),
+        resolve(outputGeneratedDir, DEMO_INDEX_FILENAME),
+        `${artifact.id} generated sync ${DEMO_INDEX_FILENAME}`,
         (content) => rewriteDemoIndexForViteGlob(content),
       ),
     );
@@ -166,7 +173,7 @@ function collectSecondaryGeneratedFileErrors(
   const outputPath = resolve(docsRoot, "src/generated", artifact.id, basename(generatedFile));
   const label = `${artifact.id} generated sync ${generatedFile}`;
 
-  if (basename(generatedFile) !== "demo-index.ts") {
+  if (basename(generatedFile) !== DEMO_INDEX_FILENAME) {
     return collectPathParityErrors(artifactPath, outputPath, label);
   }
 

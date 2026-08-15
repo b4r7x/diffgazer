@@ -2,6 +2,7 @@ import type { AgentId, AgentStreamEvent, StepEvent } from "../schemas/events/ind
 import { AGENT_METADATA, STEP_METADATA } from "../schemas/events/index.js";
 import type { LogEntryData } from "../schemas/presentation/index.js";
 import { pluralize, truncate } from "../strings.js";
+import { isFatalStepFailure } from "./lifecycle.js";
 
 function getAgent(agentId: AgentId): { label: string; name: string } {
   const meta = AGENT_METADATA[agentId];
@@ -26,7 +27,7 @@ export function getReviewEventLogSource(event: AgentStreamEvent | StepEvent): st
 export function convertReviewEventToLogEntry(
   event: AgentStreamEvent | StepEvent,
   index: number,
-): LogEntryData | null {
+): LogEntryData {
   const id = `${event.type}-${index}`;
   const { timestamp } = event;
 
@@ -55,13 +56,14 @@ export function convertReviewEventToLogEntry(
 
     case "step_error": {
       const meta = STEP_METADATA[event.step];
+      const fatal = isFatalStepFailure(event.step);
       return {
         id,
         timestamp,
         tag: "FAIL",
         tagType: "error",
         message: `${meta.label} failed: ${event.error}`,
-        isWarning: true,
+        ...(fatal ? { isError: true } : { isWarning: true }),
       };
     }
 
@@ -90,24 +92,6 @@ export function convertReviewEventToLogEntry(
         tag: "QUEUE",
         tagType: "agent",
         message: `${event.agent.name} queued (${event.position}/${event.total})`,
-      };
-
-    case "file_start":
-      return {
-        id,
-        timestamp,
-        tag: "FILE",
-        tagType: "system",
-        message: `Analyzing ${event.file} (${event.index + 1}/${event.total})`,
-      };
-
-    case "file_complete":
-      return {
-        id,
-        timestamp,
-        tag: "DONE",
-        tagType: "system",
-        message: `${event.file} complete`,
       };
 
     case "file_progress":
@@ -202,12 +186,12 @@ export function convertReviewEventToLogEntry(
 
     default: {
       const _exhaustive: never = event;
-      return null;
+      return _exhaustive;
     }
   }
 }
 
-export function convertAgentEventsToLogEntries(
+export function convertReviewEventsToLogEntries(
   events: readonly (AgentStreamEvent | StepEvent)[],
   range: { start: number; end: number } = { start: 0, end: events.length },
 ): LogEntryData[] {
@@ -218,8 +202,7 @@ export function convertAgentEventsToLogEntries(
   for (let index = start; index < end; index += 1) {
     const event = events[index];
     if (!event) continue;
-    const entry = convertReviewEventToLogEntry(event, index);
-    if (entry) entries.push(entry);
+    entries.push(convertReviewEventToLogEntry(event, index));
   }
 
   return entries;

@@ -31,6 +31,37 @@ describe("useCopyToClipboard", () => {
     expect(result.current.failed).toBe(false);
   });
 
+  it("propagates onCopy errors after a successful write without marking the copy as failed", async () => {
+    const write = vi.fn().mockResolvedValue(undefined);
+    const onError = vi.fn();
+    const callbackError = new Error("consumer callback failed");
+    const { result } = renderHook(() =>
+      useCopyToClipboard({
+        write,
+        onCopy: () => {
+          throw callbackError;
+        },
+        onError,
+      }),
+    );
+
+    let thrown: unknown;
+    await act(async () => {
+      try {
+        await result.current.copy("css-var");
+      } catch (error) {
+        thrown = error;
+      }
+    });
+
+    expect(thrown).toBe(callbackError);
+    expect(write).toHaveBeenCalledWith("css-var");
+    expect(onError).not.toHaveBeenCalled();
+    expect(result.current.status).toBe("copied");
+    expect(result.current.copied).toBe(true);
+    expect(result.current.failed).toBe(false);
+  });
+
   it("reports failed and forwards the error when the write rejects", async () => {
     const error = new Error("denied");
     const write = vi.fn().mockRejectedValue(error);

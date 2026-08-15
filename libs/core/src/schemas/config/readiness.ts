@@ -3,29 +3,19 @@ import { z } from "zod";
 export const READINESS_STATUSES = [
   "unconfigured",
   "credential-invalid",
-  "endpoint-invalid",
-  "unreachable",
   "model-missing",
   "conformance-pending",
   "conformance-failed",
   "acknowledgement-required",
   "unsupported",
   "skipped",
-  "local-endpoint-unreachable",
-  "local-endpoint-forbidden",
-  "local-api-incompatible",
-  "local-no-review-capable-model",
-  "local-selected-model-missing",
   "local-conformance-failed",
-  "local-cancellation-failed",
   "ready",
 ] as const;
-export const ReadinessStatusSchema = z.enum(READINESS_STATUSES);
-export type ReadinessStatus = z.infer<typeof ReadinessStatusSchema>;
+export type ReadinessStatus = (typeof READINESS_STATUSES)[number];
 
 export const READINESS_ACTIONS = ["create", "inspect", "select", "test", "update"] as const;
-export const ReadinessActionSchema = z.enum(READINESS_ACTIONS);
-export type ReadinessAction = z.infer<typeof ReadinessActionSchema>;
+export type ReadinessAction = (typeof READINESS_ACTIONS)[number];
 
 export const READINESS_EVIDENCE_STATUSES = [
   "not-checked",
@@ -34,30 +24,20 @@ export const READINESS_EVIDENCE_STATUSES = [
   "skipped",
   "passed",
 ] as const;
-export const ReadinessEvidenceStatusSchema = z.enum(READINESS_EVIDENCE_STATUSES);
-export type ReadinessEvidenceStatus = z.infer<typeof ReadinessEvidenceStatusSchema>;
+export type ReadinessEvidenceStatus = (typeof READINESS_EVIDENCE_STATUSES)[number];
 
 export const READINESS_REMEDIATION_CODES = [
   "configure",
   "replace-credential",
-  "correct-endpoint",
-  "retry-connection",
   "select-model",
   "run-conformance",
   "rerun-conformance",
   "accept-notice",
   "review-support",
   "enable-live-probe",
-  "start-local-server",
-  "use-loopback-endpoint",
-  "use-compatible-api",
-  "install-review-capable-model",
-  "select-listed-model",
-  "repair-cancellation",
   "none",
 ] as const;
-export const ReadinessRemediationCodeSchema = z.enum(READINESS_REMEDIATION_CODES);
-export type ReadinessRemediationCode = z.infer<typeof ReadinessRemediationCodeSchema>;
+export type ReadinessRemediationCode = (typeof READINESS_REMEDIATION_CODES)[number];
 
 interface ReadinessPresentation {
   readonly action: ReadinessAction;
@@ -66,6 +46,33 @@ interface ReadinessPresentation {
     readonly code: ReadinessRemediationCode;
     readonly message: string;
   };
+}
+
+/**
+ * Every surface that offers Test readiness must say what it costs before the
+ * user triggers it. Both wizards render this directly; the two conformance
+ * remediation messages below carry it into the provider and review surfaces.
+ */
+export const CONFORMANCE_TEST_COST_DISCLOSURE =
+  "Test readiness makes one small billed API call to the provider (typically under $0.02; free for local endpoints; codex and copilot use your CLI subscription quota).";
+
+/**
+ * The statuses a review may still be attempted under. Structured-output
+ * conformance is the only thing a review can prove for itself, so an unproven
+ * or cached-failed conformance never blocks the attempt: the review validates
+ * inline and the admission path turns a cached failure into a free fast-fail.
+ * Every other not-ready status is a free local check that must pass first.
+ */
+export const REVIEW_ATTEMPTABLE_STATUSES = [
+  "ready",
+  "conformance-pending",
+  "skipped",
+  "conformance-failed",
+  "local-conformance-failed",
+] as const satisfies readonly ReadinessStatus[];
+
+export function canAttemptReview(status: ReadinessStatus): boolean {
+  return (REVIEW_ATTEMPTABLE_STATUSES as readonly ReadinessStatus[]).includes(status);
 }
 
 export const READINESS_PRESENTATION = {
@@ -82,22 +89,6 @@ export const READINESS_PRESENTATION = {
       message: "Update the configuration with a valid credential reference.",
     },
   },
-  "endpoint-invalid": {
-    action: "update",
-    explanation: "The configured endpoint is not allowed for this product.",
-    remediation: {
-      code: "correct-endpoint",
-      message: "Choose an allowed endpoint for this product and transport.",
-    },
-  },
-  unreachable: {
-    action: "test",
-    explanation: "The configured service could not be reached.",
-    remediation: {
-      code: "retry-connection",
-      message: "Check service availability, then test the configuration again.",
-    },
-  },
   "model-missing": {
     action: "select",
     explanation: "The selected model is not available for this configuration.",
@@ -108,7 +99,7 @@ export const READINESS_PRESENTATION = {
     explanation: "Structured review conformance has not been checked yet.",
     remediation: {
       code: "run-conformance",
-      message: "Run Test readiness to verify structured review support.",
+      message: `Structured review support is verified automatically on your first review. To check now, run Test readiness. ${CONFORMANCE_TEST_COST_DISCLOSURE}`,
     },
   },
   "conformance-failed": {
@@ -116,7 +107,7 @@ export const READINESS_PRESENTATION = {
     explanation: "The exact review path did not satisfy the structured output contract.",
     remediation: {
       code: "rerun-conformance",
-      message: "Review the safe failure guidance, then test the exact model again.",
+      message: `Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Test readiness can re-check it. ${CONFORMANCE_TEST_COST_DISCLOSURE}`,
     },
   },
   "acknowledgement-required": {
@@ -143,60 +134,13 @@ export const READINESS_PRESENTATION = {
       message: "Satisfy the live-check prerequisites, then test the configuration again.",
     },
   },
-  "local-endpoint-unreachable": {
-    action: "test",
-    explanation: "The configured local server could not be reached.",
-    remediation: {
-      code: "start-local-server",
-      message: "Start the selected local server, then test the configuration again.",
-    },
-  },
-  "local-endpoint-forbidden": {
-    action: "update",
-    explanation: "The configured local endpoint is not an allowed loopback endpoint.",
-    remediation: {
-      code: "use-loopback-endpoint",
-      message: "Choose a validated loopback endpoint on this machine.",
-    },
-  },
-  "local-api-incompatible": {
-    action: "update",
-    explanation: "The local server does not expose a compatible review API.",
-    remediation: {
-      code: "use-compatible-api",
-      message: "Use a supported local server and API configuration.",
-    },
-  },
-  "local-no-review-capable-model": {
-    action: "test",
-    explanation: "The local server listed no review-capable model.",
-    remediation: {
-      code: "install-review-capable-model",
-      message: "Make a review-capable model available in the local server.",
-    },
-  },
-  "local-selected-model-missing": {
-    action: "select",
-    explanation: "The exact selected model is no longer listed by the local server.",
-    remediation: {
-      code: "select-listed-model",
-      message: "Select an exact model currently listed by the local server.",
-    },
-  },
   "local-conformance-failed": {
     action: "test",
     explanation: "The local model failed the structured review conformance check.",
     remediation: {
       code: "rerun-conformance",
-      message: "Review the safe failure guidance, then test the local model again.",
-    },
-  },
-  "local-cancellation-failed": {
-    action: "test",
-    explanation: "The local runtime did not satisfy the cancellation contract.",
-    remediation: {
-      code: "repair-cancellation",
-      message: "Resolve the local runtime cancellation failure before retrying.",
+      message:
+        "Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Test readiness can re-check it.",
     },
   },
   ready: {
@@ -236,6 +180,19 @@ export type ReadinessAcknowledgement = z.infer<typeof ReadinessAcknowledgementSc
 const CheckedAtSchema = z.iso.datetime();
 const NotCheckedAtSchema = z.null();
 
+/**
+ * Reads one presentation field while keeping its literal type tied to `Status`.
+ * A direct `presentation.action` on a status-generic table lookup widens to
+ * every status's action, which would let `Readiness` admit another status's
+ * copy; an indexed read stays correlated.
+ */
+function presentationField<Source, const Field extends keyof Source>(
+  source: Source,
+  field: Field,
+): Source[Field] {
+  return source[field];
+}
+
 function readinessVariant<
   const Status extends ReadinessStatus,
   const Ready extends boolean,
@@ -250,17 +207,18 @@ function readinessVariant<
   acknowledgement: Acknowledgement,
 ) {
   const presentation = READINESS_PRESENTATION[status];
+  const remediation = presentationField(presentation, "remediation");
   return z.strictObject({
     status: z.literal(status),
     ready: z.literal(ready),
     evidenceStatus: z.literal(evidenceStatus),
     checkedAt,
     acknowledgement,
-    action: z.literal(presentation.action),
-    explanation: z.literal(presentation.explanation),
+    action: z.literal(presentationField(presentation, "action")),
+    explanation: z.literal(presentationField(presentation, "explanation")),
     remediation: z.strictObject({
-      code: z.literal(presentation.remediation.code),
-      message: z.literal(presentation.remediation.message),
+      code: z.literal(presentationField(remediation, "code")),
+      message: z.literal(presentationField(remediation, "message")),
     }),
   });
 }
@@ -277,8 +235,6 @@ export const ReadinessSchema = z.discriminatedUnion("status", [
     ReadinessAcknowledgementSchema,
   ),
   observedFailure("credential-invalid"),
-  observedFailure("endpoint-invalid"),
-  observedFailure("unreachable"),
   observedFailure("model-missing"),
   readinessVariant(
     "conformance-pending",
@@ -303,13 +259,7 @@ export const ReadinessSchema = z.discriminatedUnion("status", [
     NotApplicableAcknowledgementSchema,
   ),
   readinessVariant("skipped", false, "skipped", CheckedAtSchema, ReadinessAcknowledgementSchema),
-  observedFailure("local-endpoint-unreachable"),
-  observedFailure("local-endpoint-forbidden"),
-  observedFailure("local-api-incompatible"),
-  observedFailure("local-no-review-capable-model"),
-  observedFailure("local-selected-model-missing"),
   observedFailure("local-conformance-failed"),
-  observedFailure("local-cancellation-failed"),
   readinessVariant("ready", true, "passed", CheckedAtSchema, AcceptedAcknowledgementSchema),
 ]);
 export type Readiness = z.infer<typeof ReadinessSchema>;

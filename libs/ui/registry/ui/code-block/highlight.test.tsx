@@ -1,10 +1,10 @@
 import { render } from "@testing-library/react";
 import { common, createLowlight } from "lowlight";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import CodeBlockHighlighted from "../../examples/code-block/code-block-highlighted";
 import { requireElement } from "../../testing/assertions";
 import * as highlightEntry from "./highlight";
-import { CodeBlockHighlight } from "./highlight";
+import { CodeBlockHighlight, type LowlightInstance } from "./highlight";
 import { CodeBlock } from "./index";
 
 const lowlight = createLowlight(common);
@@ -71,6 +71,46 @@ describe("highlight", () => {
     expect(lines[1]?.querySelector('[data-slot="code-block-line-sign"]')?.textContent).toBe("−");
     expect(codeTokenCount(requireElement(lines[0], "added diff line"))).toBeGreaterThan(0);
     expect(codeTokenCount(requireElement(lines[1], "removed diff line"))).toBeGreaterThan(0);
+  });
+
+  it("falls back to plain text when the requested language is not registered", () => {
+    const { container } = render(
+      <CodeBlock language="ts">
+        <CodeBlockHighlight
+          code={"const x = 1\nconst y = 2"}
+          language="not-a-registered-language"
+          lowlight={lowlight}
+        />
+      </CodeBlock>,
+    );
+
+    const lines = container.querySelectorAll('[data-slot="code-block-line"]');
+    expect(lines).toHaveLength(2);
+    expect(codeTokenCount(requireElement(lines[0], "unhighlighted code line"))).toBe(0);
+    expect(lines[0]?.querySelector("code")).toHaveTextContent("const x = 1");
+  });
+
+  it("surfaces highlighter failures instead of degrading them to plain text", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const brokenLowlight: LowlightInstance = {
+      registered: () => true,
+      highlight: () => {
+        throw new Error("registered grammar exploded");
+      },
+      highlightAuto: () => {
+        throw new Error("auto-detection exploded");
+      },
+    };
+
+    expect(() =>
+      render(
+        <CodeBlock language="ts">
+          <CodeBlockHighlight code="const x = 1" language="typescript" lowlight={brokenLowlight} />
+        </CodeBlock>,
+      ),
+    ).toThrow("registered grammar exploded");
+
+    consoleError.mockRestore();
   });
 
   it("requires lowlight through the actual public highlighted example", () => {

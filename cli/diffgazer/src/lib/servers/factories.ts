@@ -13,6 +13,13 @@ interface ModeServerFactoryOptions {
   openBrowser?: boolean;
   /** Dev web mode starts Vite; dev TUI only needs the API child. Defaults to true. */
   includeWebServer?: boolean;
+  /**
+   * Print the server URL (and open the browser when asked) once the server is
+   * ready. The TUI opts out: Ink owns the screen, and a console write there
+   * clears and repaints the frame around a URL the TUI never surfaces.
+   * Defaults to true.
+   */
+  announceReady?: boolean;
   onStartupFailure?: (message: string) => void;
 }
 
@@ -41,7 +48,7 @@ export function createServerFactories(
 
   if (options.mode === "dev") {
     const apiPort = parsePortEnv(process.env.PORT, config.ports.api);
-    const apiUrl = process.env.VITE_API_URL ?? buildLocalhostOrigin(apiPort);
+    const apiUrl = process.env.VITE_API_URL?.trim() || buildLocalhostOrigin(apiPort);
     const factories: Array<() => ServerController> = [
       () =>
         makeApiServer({
@@ -73,7 +80,8 @@ export function createServerFactories(
       makeEmbeddedServer({
         port: parsePortEnv(process.env.PORT, config.ports.api),
         projectRoot,
-        onReady: makeReadyHandler(options.openBrowser),
+        onReady:
+          options.announceReady === false ? undefined : makeReadyHandler(options.openBrowser),
         onFailure: options.onStartupFailure,
       }),
   ];

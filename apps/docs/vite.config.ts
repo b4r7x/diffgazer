@@ -5,8 +5,13 @@ import viteReact from "@vitejs/plugin-react";
 import mdx from "fumadocs-mdx/vite";
 import { nitro } from "nitro/vite";
 import type { PluginOption } from "vite";
-import { defineConfig } from "vite";
 import viteTsConfigPaths from "vite-tsconfig-paths";
+// vitest/config, not vite: it carries the `declare module "vite"` augmentation that
+// types the `test` block below, so a misspelled option fails type-check instead of
+// silently reverting to a Vitest default.
+import { defineConfig, type ViteUserConfig } from "vitest/config";
+// Shared with scripts/generate-route-tree.mjs so both route-tree generators agree.
+import routeTreeConfig from "./config/route-tree.json";
 import { getPreRenderPages as enumeratePreRenderPages } from "./scripts/generate-sitemap.ts";
 import * as MdxConfig from "./source.config";
 import { DOCS_BASE_SECURITY_HEADERS } from "./src/security-headers";
@@ -20,7 +25,10 @@ function uiRegistryPath(subpath: string): string {
   return resolve(import.meta.dirname, "../../libs/ui/registry", subpath);
 }
 
-const config = defineConfig(() => {
+// The explicit return type is what makes the `test` block below type-checked:
+// without it TypeScript infers the literal freely and every option name is
+// accepted, so a typo would silently fall back to a Vitest default.
+const config = defineConfig((): ViteUserConfig => {
   const isVitest = Boolean(process.env.VITEST);
   const prerenderEnabled = !isVitest && process.env.DOCS_PRERENDER !== "0";
 
@@ -34,7 +42,7 @@ const config = defineConfig(() => {
     !isVitest
       ? tanstackStart({
           router: {
-            routeFileIgnorePattern: "\\.test\\.tsx$",
+            routeFileIgnorePattern: routeTreeConfig.routeFileIgnorePattern,
           },
           prerender: {
             enabled: prerenderEnabled,
@@ -48,6 +56,8 @@ const config = defineConfig(() => {
           // The shipped Nitro server content-negotiates pre-compressed siblings
           // but has no dynamic compressor; precompress so the multi-megabyte per-page
           // payload is served gzip/brotli (Traefik only does TLS/routing).
+          // public/source-data already has sidecars from precompress-source-data.mjs,
+          // which Nitro skips rather than recompresses — that script owns their quality.
           compressPublicAssets: { gzip: true, brotli: true },
           routeRules: {
             "/**": {

@@ -4,7 +4,7 @@ import {
   toIssueDetailsPresentation,
 } from "@diffgazer/core/review";
 import { isIssueTab, type IssueTab as TabId } from "@diffgazer/core/schemas/presentation";
-import type { ReviewIssue } from "@diffgazer/core/schemas/review";
+import { hasSuggestedPatch, type ReviewIssue } from "@diffgazer/core/schemas/review";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
@@ -18,14 +18,12 @@ import { DetailsTabContent } from "./details";
 import { PatchTabContent } from "./patch";
 import { TraceTabContent } from "./trace";
 
-export type { DetailsEmptyKind };
-
 export interface IssueDetailsPaneProps {
   issue: ReviewIssue | null;
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   onTabsBoundaryReached?: (direction: "previous" | "next") => void;
-  completedSteps: Set<number>;
+  completedSteps: ReadonlySet<number>;
   onToggleStep: (step: number) => void;
   focusedStepIndex?: number | null;
   onFocusedStepIndexChange?: (stepIndex: number) => void;
@@ -51,7 +49,7 @@ export function IssueDetailsPane({
   onBackToList,
   className,
 }: IssueDetailsPaneProps) {
-  const hasPatch = !!issue?.suggested_patch;
+  const hasPatch = issue !== null && issue !== undefined && hasSuggestedPatch(issue);
   const hasTrace = !!issue?.trace?.length;
   const empty = getDetailsEmptyCopy(emptyKind ?? "no-selection");
   const handleTabChange = (value: string) => {

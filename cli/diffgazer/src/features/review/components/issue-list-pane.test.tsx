@@ -117,6 +117,19 @@ describe("IssueListPane cursor", () => {
     expect(highlightedTitles(lastFrame())).toEqual([]);
   });
 
+  test("j returns from the filter zone to the issue list, like the down arrow", async () => {
+    const { stdin, lastFrame } = render(<Harness initialSelectedId="issue-1" />);
+    await flush();
+
+    stdin.write("k");
+    await flush();
+    expect(highlightedTitles(lastFrame())).toEqual([]);
+
+    stdin.write("j");
+    await flush();
+    expect(highlightedTitles(lastFrame())).toEqual(["First issue"]);
+  });
+
   test("arrows move the highlight like j/k and hold it on the last issue", async () => {
     const { stdin, lastFrame } = render(<Harness initialSelectedId="issue-2" />);
     await flush();

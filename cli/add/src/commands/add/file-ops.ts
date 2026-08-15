@@ -1,4 +1,3 @@
-import { stripRelativeJsExtensions } from "@diffgazer/registry";
 import type { FileOp } from "@diffgazer/registry/cli";
 import type { RegistryItem, ResolvedConfig } from "../../context.js";
 import { ctx } from "../../context.js";
@@ -8,14 +7,9 @@ import {
   getInstallBaseForFilePath,
   getInstallDirForBase,
   prepareFileContentForIntegration,
+  prepareKeysHookFileContent,
 } from "../../utils/registry.js";
 import type { ResolvedIntegrationSelection } from "./integration.js";
-
-export type OwnedFileOp = FileOp & { sourceNames?: string[] };
-
-export function isOwnedFileOp(op: FileOp): op is OwnedFileOp {
-  return "sourceNames" in op;
-}
 
 function buildFileOp(
   file: { path: string; content: string },
@@ -50,49 +44,6 @@ export function buildComponentFileOps(
   });
 }
 
-// Multiple keys hooks can resolve to the same installed file (shared helpers
-// under hooks/utils/*). Merge those into one owned file op: identical content
-// collapses while every requesting hook is recorded as a co-owner, and
-// divergent content for the same target is a generator bug worth surfacing.
-function mergeKeysHookFileOps(
-  resolvedFiles: Array<{ hook: string; relativePath: string; content: string }>,
-  cwd: string,
-  hooksFsPath: string,
-): OwnedFileOp[] {
-  const byTargetPath = new Map<string, OwnedFileOp>();
-  for (const file of resolvedFiles) {
-    const sourceName = `keys/${file.hook}`;
-    const targetPath = resolveInstallPath(cwd, hooksFsPath, file.relativePath);
-    const content = stripRelativeJsExtensions(file.content);
-    const existing = byTargetPath.get(targetPath);
-
-    if (existing) {
-      if (existing.content !== content) {
-        throw new Error(`Conflicting bundled keys hook content for "${file.relativePath}".`);
-      }
-      existing.sourceNames = [
-        ...new Set(
-          [existing.sourceName, ...(existing.sourceNames ?? []), sourceName].filter(
-            (name): name is string => name !== undefined,
-          ),
-        ),
-      ];
-      continue;
-    }
-
-    byTargetPath.set(targetPath, {
-      targetPath,
-      content,
-      relativePath: file.relativePath,
-      installDir: hooksFsPath,
-      sourceName,
-      sourceNames: [sourceName],
-    });
-  }
-
-  return [...byTargetPath.values()];
-}
-
 export function buildKeysFileOps(
   neededKeysHooks: string[],
   cwd: string,
@@ -109,6 +60,13 @@ export function buildKeysFileOps(
     );
   }
 
-  const resolvedFiles = resolvedHooks.flatMap((resolved) => resolved.files);
-  return mergeKeysHookFileOps(resolvedFiles, cwd, config.hooksFsPath);
+  return resolvedHooks.flatMap((resolved) =>
+    resolved.files.map((file) => ({
+      targetPath: resolveInstallPath(cwd, config.hooksFsPath, file.relativePath),
+      content: prepareKeysHookFileContent(file.content, config),
+      relativePath: file.relativePath,
+      installDir: config.hooksFsPath,
+      sourceName: `keys/${file.hook}`,
+    })),
+  );
 }

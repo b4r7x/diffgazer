@@ -1,5 +1,4 @@
 import type { AppError } from "@diffgazer/core/errors";
-import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { Result } from "@diffgazer/core/result";
 import type { RunnableProductId, TransportFamily } from "@diffgazer/core/schemas/config";
 import type { SharedErrorCode } from "@diffgazer/core/schemas/errors";
@@ -7,6 +6,7 @@ import type { EvidenceKey, ExecutionResult } from "@diffgazer/core/schemas/revie
 import { ExecutionResultSchema } from "@diffgazer/core/schemas/review";
 import type { z } from "zod";
 import type { SecretsStorageErrorCode } from "../config/types.js";
+import type { BoundedDiagnostic } from "./diagnostics.js";
 
 export type AIErrorCode =
   | SharedErrorCode
@@ -18,28 +18,19 @@ export type AIErrorCode =
   | "STREAM_ERROR"
   | "UNSUPPORTED_PROVIDER";
 
-export type AIError = AppError<AIErrorCode>;
+export type AIErrorDiagnostic = Pick<
+  BoundedDiagnostic,
+  "code" | "safeMessage" | "retryable" | "remediation" | "correlationId"
+>;
 
-export interface AIClientConfig {
-  apiKey: string;
-  provider: RunnableProductId;
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
-  maxRetries?: number;
-  timeoutMs?: number;
-  /** The selected model's documented output-token limit, when known from the catalog. */
-  outputLimit?: number;
-  /** The selected model's documented context-window limit, when known from the catalog. */
-  contextLimit?: number;
-}
+export type AIError = AppError<AIErrorCode> & { diagnostic?: AIErrorDiagnostic };
 
 export interface AIClient {
   readonly provider: RunnableProductId;
   generate<T extends z.ZodType>(
     prompt: string,
     schema: T,
-    options?: { signal?: AbortSignal },
+    options?: Readonly<{ signal?: AbortSignal; systemPrompt?: string }>,
   ): Promise<Result<z.infer<T>, AIError>>;
 }
 
@@ -52,6 +43,8 @@ export interface AIClient {
  * - The **usage** budget (tokens, bytes, wall time, cost) is per review. The
  *   admitted `BudgetLedger` owned by the execution spine reserves at
  *   authorization and settles each dispatch against provider-reported usage.
+ *   An adapter that retries therefore reports usage summed over every attempt it
+ *   made: a discarded malformed response was still billed by the provider.
  *
  * The ledger is therefore not carried on this request. A review dispatches once
  * per lens while the spine holds the authorization's reservation for the whole
@@ -63,6 +56,7 @@ export interface AdapterExecuteRequest {
   readonly configurationRevision: number;
   readonly evidenceKey: EvidenceKey;
   readonly prompt: string;
+  readonly systemPrompt?: string;
   readonly signal?: AbortSignal;
   /**
    * Server-only credential channel supplied by the authorized execution. It is
@@ -84,39 +78,6 @@ export interface Adapter {
 }
 
 export type AdapterRegistry = Record<RunnableProductId, Adapter>;
-
-export type SafeAdapterIdentity = Readonly<{
-  productId: RunnableProductId;
-  transportFamily: TransportFamily;
-}>;
-
-export type SafeAdapterProductNotice = Readonly<{
-  productId: RunnableProductId;
-  noticeId: string;
-  noticeVersion: number;
-  privacy: readonly string[];
-  billing: readonly string[];
-}>;
-
-export function getSafeAdapterIdentity(adapter: Adapter): SafeAdapterIdentity {
-  return {
-    productId: adapter.productId,
-    transportFamily: adapter.transportFamily,
-  };
-}
-
-export function getSafeAdapterProductNotice(
-  productId: RunnableProductId,
-): SafeAdapterProductNotice {
-  const product = PRODUCT_REGISTRY[productId];
-  return {
-    productId,
-    noticeId: product.notice.id,
-    noticeVersion: product.notice.noticeVersion,
-    privacy: product.notice.privacy,
-    billing: product.notice.billing,
-  };
-}
 
 export function assertBoundedExecutionResult(result: ExecutionResult): ExecutionResult {
   if (result.receipt.outcome !== "completed" && result.result.issues.length > 0) {

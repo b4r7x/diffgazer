@@ -9,7 +9,7 @@ The wizard does not run a fixed list of screens. It runs the **setup plan of the
 
 ## Select a product
 
-The first step lists the thirteen selectable products, each with its description and a billing-tier badge derived from how the product bills you: FREE or PAID for hosted APIs, LOCAL for products you run yourself over loopback HTTP, and AMBIENT for vendor CLIs that ride a subscription you already pay for. Diffgazer does not ship a model of its own, so you bring a product you already have access to: a hosted API, a local HTTP server on loopback, or a vendor CLI you already signed in to. Selecting a product builds the rest of the plan around it and resets any draft you had started for a different product. For the full list and what each one implies, see [providers and models](/app/concepts/providers-and-models) and the [providers reference](/app/reference/providers).
+The first step lists the thirteen selectable products, each with its description and a billing-tier badge derived from how the product bills you. Hosted APIs read FREE when every model the catalog lets them offer is zero-priced, FREE/PAID when they sell both, FREE TIER when every offerable model carries a list price but the product publishes a no-cost quota to run it on, and PAID otherwise. LOCAL marks products you run yourself over loopback HTTP, and AMBIENT marks vendor CLIs that ride a subscription you already pay for. FREE is only ever a claim about a published price; FREE TIER is a claim about an account's quota, so it comes with the limits the product's own notice describes. Diffgazer does not ship a model of its own, so you bring a product you already have access to: a hosted API, a local HTTP server on loopback, or a vendor CLI you already signed in to. Selecting a product builds the rest of the plan around it and resets any draft you had started for a different product. For the full list and what each one implies, see [providers and models](/app/concepts/providers-and-models) and the [providers reference](/app/reference/providers).
 
 ## Configure the endpoint
 
@@ -29,13 +29,15 @@ What this step asks for depends on the transport:
 
 ## Select a model
 
-Models are discovered for the configuration tuple you just built, and the selection is exact — aliases are rejected. To discover models against a real record, the wizard first persists the draft configuration server-side, then reads the model list back through it. That draft is revoked again when you change the tuple or leave the wizard, so an abandoned setup does not leave a configuration behind.
+For hosted products, the wizard discovers models for the configuration tuple you just built and the selection is exact — aliases are rejected. To discover models against a real record, the wizard first persists the draft configuration server-side, then reads the model list back through `GET /api/config/providers/:configurationId/models`. That draft is revoked again when you change the tuple or leave the wizard, so an abandoned setup does not leave a configuration behind.
 
-If discovery fails, is skipped, or returns nothing, the step says so and offers **Retry**. Products whose model policy already pins the acceptable IDs show that list directly instead.
+Local HTTP and local CLI products are different: the **Model** step shows **Catalog observations are unavailable for this configuration product.** with **Retry** only. There is no model list, **Next** stays disabled, and an external `select` through the [local API](/app/reference/api) does not update the wizard draft. You cannot complete setup for these products inside the wizard today. Finish model selection, conformance, and notice acceptance through the [local-product API sequences](/app/reference/configuration) or **Configure Provider** in Settings instead. See [providers and models](/app/concepts/providers-and-models#local-http-and-local-cli-products).
+
+If discovery fails or returns nothing for a hosted product, the step says so and offers **Retry**. Products whose model policy already pins the acceptable IDs show that list directly instead.
 
 ## Verify conformance
 
-The conformance step is where you confirm that the configured tuple and the exact model you picked are ready to be verified against the product's required checks. Tick the confirmation to continue.
+The conformance step is where you confirm that the configured tuple and the exact model you picked are ready to be verified against the product's required checks, and where the cost of the optional **Test readiness** probe is disclosed. Saving does not run that probe: your first review verifies structured review support and records the result. Tick the confirmation to continue.
 
 Changing anything upstream invalidates this: editing the configuration or picking a different model resets conformance to not-tested and takes the notice acceptance back to required, so you re-confirm what actually changed.
 

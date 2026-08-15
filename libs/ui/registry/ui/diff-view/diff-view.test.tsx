@@ -160,13 +160,13 @@ describe("DiffView", () => {
   it("exposes each navigation container as a named region so its aria-label is valid", () => {
     const { unmount } = render(<DiffView diff={ONE_HUNK} />);
     const unified = screen.getByRole("region", { name: /unified diff/i });
-    expect(unified).toHaveAttribute("aria-keyshortcuts", "j k Escape");
+    expect(unified).toHaveAttribute("aria-keyshortcuts", "j k Home End Escape");
     unmount();
 
     render(<DiffView diff={ONE_HUNK} mode="split" />);
     expect(screen.getByRole("region", { name: /split diff/i })).toHaveAttribute(
       "aria-keyshortcuts",
-      "j k Escape",
+      "j k Home End Escape",
     );
   });
 
@@ -402,6 +402,22 @@ describe("DiffView", () => {
 
     await user.keyboard("j");
     expect(getLiveRegion()).toHaveTextContent("Hunk 3 of 3");
+  });
+
+  it("jumps to the last and first hunk with End and Home", async () => {
+    const user = userEvent.setup();
+    render(<DiffView diff={THREE_HUNKS} />);
+
+    const container = screen.getByLabelText("Unified diff");
+    await user.click(container);
+
+    // Home/End are bound to hunk navigation, not native container scrolling —
+    // aria-keyshortcuts and the component docs advertise them for that reason.
+    await user.keyboard("{End}");
+    expect(getLiveRegion()).toHaveTextContent("Hunk 3 of 3");
+
+    await user.keyboard("{Home}");
+    expect(getLiveRegion()).toHaveTextContent("Hunk 1 of 3: hunk one");
   });
 
   it("has no a11y violations in unified mode", async () => {
@@ -836,13 +852,11 @@ describe("diff signal contrast (parsed from CSS)", () => {
   );
 
   function block(source: string, selector: string): string {
-    const start = source.indexOf(`${selector} {`);
-    if (start === -1) {
+    const body = ruleBody(source, selector);
+    if (body === null) {
       throw new Error(`Selector not found in CSS: ${selector}`);
     }
-    const open = source.indexOf("{", start);
-    const end = source.indexOf("}", open);
-    return source.slice(open, end);
+    return body;
   }
 
   function readVar(blockText: string, name: string): string | undefined {
@@ -874,7 +888,7 @@ describe("diff signal contrast (parsed from CSS)", () => {
     return (hi + 0.05) / (lo + 0.05);
   }
 
-  const darkBg = readVar(block(THEME_CSS, ':root,\n[data-theme="dark"]'), "--base-bg");
+  const darkBg = readVar(block(THEME_CSS, ':root, [data-theme="dark"]'), "--base-bg");
   const lightBg = readVar(block(THEME_CSS, '[data-theme="light"]'), "--base-bg");
 
   const darkDefault = block(DIFF_CSS, '[data-slot="diff-view"]');

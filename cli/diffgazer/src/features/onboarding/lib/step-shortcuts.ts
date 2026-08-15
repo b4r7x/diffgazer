@@ -1,5 +1,4 @@
 import type { InputMethod, OnboardingStep } from "@diffgazer/core/onboarding";
-import { STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
 import type { Shortcut } from "@diffgazer/core/schemas/presentation";
 
 interface StepShortcutState {
@@ -83,9 +82,3 @@ export function getStepShortcuts({
       ];
   }
 }
-
-export function getStepLabelList(steps: readonly OnboardingStep[]): string[] {
-  return steps.map((step) => STEP_LABELS[step]);
-}
-
-export { STEP_TITLES };

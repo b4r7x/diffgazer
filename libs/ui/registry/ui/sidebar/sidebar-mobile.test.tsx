@@ -1,10 +1,34 @@
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { stubMatchMedia } from "@diffgazer/core/testing/match-media";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "../../../testing/axe";
 import { Sidebar } from "./index";
+
+/**
+ * The sheet is a modal <dialog>, so anything rendered outside it is unreachable
+ * behind the top layer in a real browser. Touch dismissal is a press on the
+ * backdrop: a pointerdown/click pair whose coordinates fall outside the dialog rect.
+ */
+function pressSheetBackdrop(sheet: HTMLElement) {
+  vi.spyOn(sheet, "getBoundingClientRect").mockReturnValue({
+    x: 100,
+    y: 0,
+    width: 320,
+    height: 800,
+    top: 0,
+    right: 420,
+    bottom: 800,
+    left: 100,
+    toJSON() {},
+  });
+
+  // fireEvent retained: pointerdown/click coordinate pair asserts backdrop hit-testing outside the dialog rect.
+  fireEvent.pointerDown(sheet, { clientX: 10, clientY: 10 });
+  // fireEvent retained: pointerdown/click coordinate pair asserts backdrop hit-testing outside the dialog rect.
+  fireEvent.click(sheet, { clientX: 10, clientY: 10 });
+}
 
 describe("Sidebar mobile sheet", () => {
   const originalMatchMedia = window.matchMedia;
@@ -34,7 +58,7 @@ describe("Sidebar mobile sheet", () => {
     expect(onStateChange).not.toHaveBeenCalled();
   });
 
-  it("opens the sheet from the trigger and closes it again", async () => {
+  it("opens the sheet from the trigger and closes it on a backdrop press", async () => {
     const user = userEvent.setup();
     stubMatchMedia(true);
     render(
@@ -63,8 +87,9 @@ describe("Sidebar mobile sheet", () => {
       "true",
     );
 
-    await user.click(screen.getByRole("button", { name: "Close navigation" }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    pressSheetBackdrop(screen.getByRole("dialog"));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(screen.getByRole("button", { name: "Open navigation" })).toHaveAttribute(
       "aria-expanded",
       "false",
@@ -201,9 +226,14 @@ describe("Sidebar mobile sheet", () => {
     // `state` controls the desktop presentation only; a parent pinning "rail"
     // and ignoring every callback must not be able to make the sheet
     // unopenable while the trigger claims it is expanded.
+    // The in-sheet trigger is the only one a modal <dialog> leaves clickable
+    // while the sheet is open, so it owns the toggle-close assertion here.
     render(
       <Sidebar.Provider state="rail" onStateChange={onStateChange}>
         <Sidebar>
+          <Sidebar.Header>
+            <Sidebar.Trigger>Toggle</Sidebar.Trigger>
+          </Sidebar.Header>
           <Sidebar.Content>
             <Sidebar.Item as="button">Item</Sidebar.Item>
           </Sidebar.Content>
@@ -218,14 +248,12 @@ describe("Sidebar mobile sheet", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Open navigation" }));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Close navigation" })).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
+    const sheet = screen.getByRole("dialog");
+    const sheetTrigger = within(sheet).getByRole("button", { name: "Close navigation" });
+    expect(sheetTrigger).toHaveAttribute("aria-expanded", "true");
 
-    await user.click(screen.getByRole("button", { name: "Close navigation" }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(sheetTrigger);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(onStateChange).not.toHaveBeenCalled();
   });
 

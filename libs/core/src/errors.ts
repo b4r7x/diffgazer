@@ -22,9 +22,6 @@ export function getErrorMessage(error: unknown, fallback?: string): string {
   return String(error);
 }
 
-export const toError = (error: unknown): Error =>
-  error instanceof Error ? error : new Error(String(error));
-
 export function getErrorStack(error: unknown): string | undefined {
   return error instanceof Error ? error.stack : undefined;
 }

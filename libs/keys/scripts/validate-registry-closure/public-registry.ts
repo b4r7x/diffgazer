@@ -1,33 +1,25 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join, posix, resolve } from "node:path";
-import { findRelativeJsSpecifiers } from "@diffgazer/registry";
-import type { RegistryItem } from "@diffgazer/registry/schemas";
-import { REGISTRY_ITEM_TYPE, RegistrySchema } from "@diffgazer/registry/schemas";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, posix, resolve } from "node:path";
+import {
+  findRelativeJsSpecifiers,
+  listPublicRegistryEntries,
+  readRegistryItem,
+} from "@diffgazer/registry";
+import type { Registry, RegistryItem } from "@diffgazer/registry/schemas";
 import { createKeysSourceContentTransform } from "../transform-public-registry-imports.js";
 import { extractRelativeImports, type ValidationError, validationError } from "./types.js";
-
-function parseRegistryEntry(raw: unknown): RegistryItem {
-  const [item] = RegistrySchema.parse({ items: [raw] }).items;
-  if (!item) throw new Error("Missing registry item");
-  return item;
-}
 
 export function validatePublicTargetClosure(publicDir: string): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  for (const entry of readdirSync(publicDir)) {
-    if (!entry.endsWith(".json") || entry === "registry.json") continue;
-
-    const itemPath = join(publicDir, entry);
+  for (const { entry, itemPath } of listPublicRegistryEntries(publicDir)) {
     let item: RegistryItem;
     try {
-      item = parseRegistryEntry(JSON.parse(readFileSync(itemPath, "utf-8")));
+      item = readRegistryItem(itemPath);
     } catch {
       errors.push(validationError("PUBLIC_TARGET_CLOSURE", entry, `Failed to parse ${entry}`));
       continue;
     }
-
-    if (item.type !== REGISTRY_ITEM_TYPE.hook) continue;
 
     const targetPaths = new Set<string>();
     const targetPathsWithExt = new Set<string>();
@@ -74,14 +66,12 @@ export function validatePublicTargetClosure(publicDir: string): ValidationError[
 export function validateNoJsImportsInPublicContent(publicDir: string): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  for (const entry of readdirSync(publicDir)) {
-    if (!entry.endsWith(".json") || entry === "registry.json") continue;
-
-    const itemPath = join(publicDir, entry);
+  for (const { entry, itemPath } of listPublicRegistryEntries(publicDir)) {
     let item: RegistryItem;
     try {
-      item = parseRegistryEntry(JSON.parse(readFileSync(itemPath, "utf-8")));
+      item = readRegistryItem(itemPath);
     } catch {
+      errors.push(validationError("PUBLIC_JS_IMPORT", entry, `Failed to parse ${entry}`));
       continue;
     }
 
@@ -104,6 +94,50 @@ export function validateNoJsImportsInPublicContent(publicDir: string): Validatio
   return errors;
 }
 
+const canonicalMeta = (meta: RegistryItem["meta"]): string =>
+  JSON.stringify(
+    Object.fromEntries(
+      Object.entries(meta ?? {}).sort(([left], [right]) => (left < right ? -1 : 1)),
+    ),
+  );
+
+/**
+ * Freshness compares embedded file content only, so a meta-only drift ships
+ * silently — a public payload can promise an RSC boundary (`meta.client`) or a
+ * catalog listing (`meta.hidden`) that the source registry no longer declares.
+ */
+export function validateMetaFreshness(publicDir: string, registry: Registry): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const sourceItems = new Map(registry.items.map((item) => [item.name, item]));
+
+  for (const { entry, itemPath } of listPublicRegistryEntries(publicDir)) {
+    let item: RegistryItem;
+    try {
+      item = readRegistryItem(itemPath);
+    } catch {
+      errors.push(validationError("REGISTRY_STALE_META", entry, `Failed to parse ${entry}`));
+      continue;
+    }
+
+    const source = sourceItems.get(item.name);
+    if (!source) continue;
+
+    const published = canonicalMeta(item.meta);
+    const declared = canonicalMeta(source.meta);
+    if (published === declared) continue;
+
+    errors.push(
+      validationError(
+        "REGISTRY_STALE_META",
+        item.name,
+        `Published meta ${published} does not match source meta ${declared}; run "pnpm --filter @diffgazer/keys build:shadcn" to regenerate`,
+      ),
+    );
+  }
+
+  return errors;
+}
+
 export function validateContentFreshness(
   publicDir: string,
   registryRoot: string,
@@ -111,13 +145,10 @@ export function validateContentFreshness(
   const errors: ValidationError[] = [];
   const transform = createKeysSourceContentTransform(registryRoot);
 
-  for (const entry of readdirSync(publicDir)) {
-    if (!entry.endsWith(".json") || entry === "registry.json") continue;
-
-    const itemPath = join(publicDir, entry);
+  for (const { entry, itemPath } of listPublicRegistryEntries(publicDir)) {
     let item: RegistryItem;
     try {
-      item = parseRegistryEntry(JSON.parse(readFileSync(itemPath, "utf-8")));
+      item = readRegistryItem(itemPath);
     } catch {
       errors.push(validationError("REGISTRY_STALE_CONTENT", entry, `Failed to parse ${entry}`));
       continue;

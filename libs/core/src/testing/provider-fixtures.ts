@@ -1,4 +1,4 @@
-import { configurationFingerprint } from "../api/hooks/index.js";
+import { projectClientProduct } from "../providers/client-metadata.js";
 import {
   mapProviderList,
   PRODUCT_REGISTRY,
@@ -6,6 +6,7 @@ import {
   projectClientMetadata,
 } from "../providers/index.js";
 import type {
+  ClientConfigurationNotice,
   ClientConfigurationSummary,
   ConfigurationInitResponse,
   ConfigurationListResponse,
@@ -15,14 +16,22 @@ import type {
   ReadinessEvidenceStatus,
   ReadinessStatus,
   RunnableProductId,
+  UnrecognizedConfiguration,
 } from "../schemas/config/index.js";
-import { READINESS_PRESENTATION, ReadinessSchema } from "../schemas/config/index.js";
+import {
+  ConfigurationInitResponseSchema,
+  READINESS_PRESENTATION,
+  ReadinessSchema,
+} from "../schemas/config/index.js";
 
 const FIXTURE_TIMESTAMP = "2026-07-31T12:00:00.000Z";
 
-function copyNotice(productId: RunnableProductId) {
-  const notice = PRODUCT_REGISTRY[productId].notice;
-  return { ...notice, billing: [...notice.billing], privacy: [...notice.privacy] };
+/**
+ * The client notice a configuration carries, built by the same projection
+ * production uses so fixtures cannot drift from the shipped conversion.
+ */
+export function makeClientNotice(productId: RunnableProductId): ClientConfigurationNotice {
+  return projectClientProduct(productId).notice;
 }
 
 /**
@@ -74,7 +83,7 @@ export function makeReadiness(
   });
 }
 
-export const READY_GEMINI_CONFIGURATION = {
+export const GEMINI_CONFIGURATION = {
   configurationId: "gemini-primary",
   revision: 1,
   status: "supported",
@@ -82,11 +91,11 @@ export const READY_GEMINI_CONFIGURATION = {
   productId: "gemini",
   endpoint: "https://generativelanguage.googleapis.com/v1beta",
   selectedModelId: "gemini-2.5-flash",
-  notices: [copyNotice("gemini")],
+  notices: [makeClientNotice("gemini")],
   availableActions: ["inspect", "select", "test", "update", "delete"],
 } satisfies ClientConfigurationSummary;
 
-export const READY_ZAI_CONFIGURATION = {
+export const ZAI_CONFIGURATION = {
   configurationId: "zai-primary",
   revision: 1,
   status: "supported",
@@ -94,7 +103,7 @@ export const READY_ZAI_CONFIGURATION = {
   productId: "zai",
   endpoint: "https://api.z.ai/api/paas/v4",
   selectedModelId: "glm-4.7",
-  notices: [copyNotice("zai")],
+  notices: [makeClientNotice("zai")],
   availableActions: ["inspect", "select", "test", "update", "delete"],
 } satisfies ClientConfigurationSummary;
 
@@ -108,11 +117,11 @@ export const LOCAL_OPENAI_CONFIGURATION = {
   authentication: "none",
   presetId: "lm-studio",
   selectedModelId: null,
-  notices: [copyNotice("local-openai")],
+  notices: [makeClientNotice("local-openai")],
   availableActions: ["inspect", "select", "test", "update", "delete"],
 } satisfies ClientConfigurationSummary;
 
-export const CLI_UNSUPPORTED_CONFIGURATION = {
+export const CODEX_CLI_CONFIGURATION = {
   configurationId: "codex-cli-1",
   revision: 1,
   status: "supported",
@@ -120,7 +129,7 @@ export const CLI_UNSUPPORTED_CONFIGURATION = {
   productId: "codex-cli",
   installationId: "codex-installation",
   selectedModelId: null,
-  notices: [copyNotice("codex-cli")],
+  notices: [makeClientNotice("codex-cli")],
   availableActions: ["inspect", "select", "test", "update", "delete"],
 } satisfies ClientConfigurationSummary;
 
@@ -134,48 +143,40 @@ export function configurationStatus(
   };
 }
 
-/** One configuration per supported transport family. */
-function allConfigurationStatuses(): ConfigurationStatus[] {
+/** Two hosted-api configurations plus one local-http and one local-cli. */
+function representativeConfigurationStatuses(): ConfigurationStatus[] {
   return [
-    configurationStatus(READY_GEMINI_CONFIGURATION, "ready"),
-    configurationStatus(READY_ZAI_CONFIGURATION, "ready"),
-    configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
-    configurationStatus(CLI_UNSUPPORTED_CONFIGURATION, "unsupported"),
+    configurationStatus(GEMINI_CONFIGURATION, "ready"),
+    configurationStatus(ZAI_CONFIGURATION, "ready"),
+    configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
+    configurationStatus(CODEX_CLI_CONFIGURATION, "unsupported"),
   ];
 }
 
 export function makeConfigurationInitResponse(
   statuses: ConfigurationStatus[],
   selectedConfigurationId: string | null = statuses[0]?.configuration.configurationId ?? null,
+  unrecognizedConfigurations: UnrecognizedConfiguration[] = [],
 ): ConfigurationInitResponse {
-  return {
+  return ConfigurationInitResponseSchema.parse({
     schemaVersion: 2,
     configurations: statuses,
+    unrecognizedConfigurations,
     selectedConfigurationId,
     settings: {
       theme: "terminal",
-      defaultLenses: [],
+      defaultLenses: ["correctness"],
       defaultProfile: null,
       severityThreshold: "low",
       secretsStorage: null,
       agentExecution: "parallel",
     },
     project: { projectId: "proj-1", path: "/repo", trust: null },
-  };
+  });
 }
 
 export function makeReadyInitResponse(): ConfigurationInitResponse {
-  return makeConfigurationInitResponse([configurationStatus(READY_GEMINI_CONFIGURATION, "ready")]);
-}
-
-export function makeNonReadyInitResponse(): ConfigurationInitResponse {
-  return makeConfigurationInitResponse(
-    [
-      configurationStatus(READY_GEMINI_CONFIGURATION, "ready"),
-      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-endpoint-unreachable"),
-    ],
-    "local-openai-1",
-  );
+  return makeConfigurationInitResponse([configurationStatus(GEMINI_CONFIGURATION, "ready")]);
 }
 
 export function makeConfigurationListResponse(
@@ -184,24 +185,19 @@ export function makeConfigurationListResponse(
   return {
     schemaVersion: 2,
     configurations: init.configurations,
+    unrecognizedConfigurations: init.unrecognizedConfigurations,
     selectedConfigurationId: init.selectedConfigurationId,
   };
 }
 
 export function makeAllConfigurationsListResponse(): ConfigurationListResponse {
-  return makeConfigurationListResponse(makeConfigurationInitResponse(allConfigurationStatuses()));
-}
-
-export function selectedIdentityFrom(configuration: ClientConfigurationSummary) {
-  return {
-    configurationId: configuration.configurationId,
-    revision: configuration.revision,
-    fingerprint: configurationFingerprint(configuration),
-  };
+  return makeConfigurationListResponse(
+    makeConfigurationInitResponse(representativeConfigurationStatuses()),
+  );
 }
 
 export function buildProviderRows(
-  statuses: ConfigurationStatus[] = allConfigurationStatuses(),
+  statuses: ConfigurationStatus[] = representativeConfigurationStatuses(),
 ): ProviderListRow[] {
   return mapProviderList(statuses);
 }
@@ -211,7 +207,7 @@ export function unconfiguredRow(productId: RunnableProductId): ProviderListRow {
     productId,
     configuration: null,
     readiness: makeReadiness("unconfigured", productId),
-    notices: [copyNotice(productId)],
+    notices: [makeClientNotice(productId)],
     actions: ["create"],
   });
 }

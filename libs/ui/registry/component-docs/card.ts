@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const cardDoc: ComponentDoc = {
   description:
@@ -34,7 +34,7 @@ export const cardDoc: ComponentDoc = {
     {
       title: "Interactive",
       content:
-        "Add the interactive prop to enable hover and focus-visible states. Each surface has a unique hover treatment: flat brightens the border, stacked grows the offset plate, inset deepens the recessed fill, dotted solidifies the border, and glow strengthens the outer edge. The interactive prop only styles the surface — it does not make a div focusable. Render an interactive card on a focusable host (as='a' with href, or as='button' with onClick) or wrap its content in a link/button so keyboard users can reach it and the focus-visible treatment is reachable. See the Interactive example.",
+        "Add the interactive prop to enable hover and focus-visible states. Each surface has a unique hover treatment: flat brightens the border, stacked grows the offset plate, inset deepens the recessed fill, dotted brightens the dashed border, and glow strengthens the outer edge. The interactive prop only styles the surface — it does not make a div focusable. Render an interactive card on a focusable host (as='a' with href, or as='button' with onClick) or wrap its content in a link/button so keyboard users can reach it and the focus-visible treatment is reachable. See the Interactive example.",
     },
     {
       title: "Floating Border Labels",

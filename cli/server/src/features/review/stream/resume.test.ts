@@ -12,6 +12,9 @@ import type { StatusHashResult } from "../../../shared/lib/git/service.js";
 const gitService = {
   getHeadCommit: vi.fn(),
   getStatusHash: vi.fn(),
+  getDiff: vi.fn(),
+  getStatus: vi.fn(),
+  isGitInstalled: vi.fn(),
 };
 const repoAccess = vi.hoisted(() => ({ has: vi.fn(() => true) }));
 // Boundary mock: git service wraps subprocess/git state reads; tests drive reconnect freshness without a real working tree.
@@ -32,20 +35,14 @@ vi.mock("../../../shared/middlewares/trust-guard.js", () => ({
 vi.mock("../../../shared/lib/log.js", () => ({ log: vi.fn() }));
 
 import { authorizeReviewExecution } from "../../../shared/lib/ai/admission/service.js";
-import { buildExecutionResult } from "../../../shared/lib/ai/client/generate.js";
 import { revokeProjectSessions } from "../../../shared/lib/session-registry.js";
-import {
-  bindSessionExecution,
-  clearSessionExecution,
-  deriveSessionTerminalOutcome,
-  FAILED_TERMINAL_OUTCOMES,
-  getBoundSessionExecution,
-  resumeStreamById,
-} from "./resume.js";
+import { resolveGitDiff } from "../diff.js";
+import { buildReviewInputHash } from "../service.js";
+import { resumeStreamById } from "./resume.js";
 import {
   addEvent,
   createSession,
-  deleteSession,
+  deleteSessionForTests,
   getSession,
   markComplete,
   markReady,
@@ -58,6 +55,16 @@ vi.mock("../../../shared/lib/ai/admission/service.js", async (importOriginal) =>
 
 const PROJECT_PATH = "/project";
 const REVIEW_ID = "550e8400-e29b-41d4-a716-446655440000";
+const REVIEW_DIFF = [
+  "diff --git a/a.ts b/a.ts",
+  "index 1234567..89abcde 100644",
+  "--- a/a.ts",
+  "+++ b/a.ts",
+  "@@ -1 +1 @@",
+  "-old",
+  "+const a = 1;",
+].join("\n");
+const REVIEW_CONFIG_KEY = "l:correctness";
 
 function setStatusHash(result: StatusHashResult): void {
   gitService.getStatusHash.mockResolvedValue(result);
@@ -68,7 +75,6 @@ function completeEvent(): FullReviewStreamEvent {
     type: "complete",
     result: { issues: [] },
     reviewId: REVIEW_ID,
-    durationMs: 1,
   };
 }
 
@@ -83,12 +89,12 @@ async function resume(): Promise<Response> {
 beforeEach(() => {
   repoAccess.has.mockReturnValue(true);
   gitService.getHeadCommit.mockResolvedValue(ok("abc123"));
+  gitService.getDiff.mockResolvedValue(ok(REVIEW_DIFF));
   setStatusHash({ kind: "full", hash: "stored-hash" });
 });
 
 afterEach(() => {
-  deleteSession(REVIEW_ID);
-  clearSessionExecution(REVIEW_ID);
+  deleteSessionForTests(REVIEW_ID);
   vi.clearAllMocks();
 });
 
@@ -301,159 +307,108 @@ describe("resumeStreamById freshness gating", () => {
     expect(body.error.code).toBe("SESSION_STALE");
     expect(getSession(REVIEW_ID)?.isComplete).toBe(true);
   });
+
+  it("keeps streaming when only out-of-scope worktree files changed", async () => {
+    const parsedResult = await resolveGitDiff({
+      gitService,
+      mode: "unstaged",
+      emit: async () => undefined,
+      reviewId: REVIEW_ID,
+    });
+    expect(parsedResult.ok).toBe(true);
+    if (!parsedResult.ok) return;
+    const reviewInputHash = buildReviewInputHash({
+      headCommit: "abc123",
+      reviewConfigKey: REVIEW_CONFIG_KEY,
+      parsed: parsedResult.value,
+    });
+    const session = createSession(REVIEW_ID, {
+      projectPath: PROJECT_PATH,
+      headCommit: "abc123",
+      statusHash: "stored-hash",
+      statusHashKind: "full",
+      mode: "unstaged",
+      reviewConfigKey: REVIEW_CONFIG_KEY,
+      reviewInputHash,
+    });
+    markReady(REVIEW_ID);
+    setStatusHash({ kind: "full", hash: "changed-hash" });
+
+    const response = await resume();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(getSession(REVIEW_ID)?.isComplete).toBe(false);
+    expect(session.controller.signal.aborted).toBe(false);
+  });
+
+  it("409s when the scoped review input hash changed", async () => {
+    const parsedResult = await resolveGitDiff({
+      gitService,
+      mode: "unstaged",
+      emit: async () => undefined,
+      reviewId: REVIEW_ID,
+    });
+    expect(parsedResult.ok).toBe(true);
+    if (!parsedResult.ok) return;
+    const reviewInputHash = buildReviewInputHash({
+      headCommit: "abc123",
+      reviewConfigKey: REVIEW_CONFIG_KEY,
+      parsed: parsedResult.value,
+    });
+    createSession(REVIEW_ID, {
+      projectPath: PROJECT_PATH,
+      headCommit: "abc123",
+      statusHash: "stored-hash",
+      statusHashKind: "full",
+      mode: "unstaged",
+      reviewConfigKey: REVIEW_CONFIG_KEY,
+      reviewInputHash,
+    });
+    markReady(REVIEW_ID);
+    gitService.getDiff.mockResolvedValue(
+      ok(
+        [
+          "diff --git a/a.ts b/a.ts",
+          "index 1234567..89abcde 100644",
+          "--- a/a.ts",
+          "+++ b/a.ts",
+          "@@ -1 +1 @@",
+          "-old",
+          "+const a = 2;",
+        ].join("\n"),
+      ),
+    );
+
+    const response = await resume();
+    const body = (await response.json()) as { error: { code: string } };
+
+    expect(response.status).toBe(409);
+    expect(body.error.code).toBe("SESSION_STALE");
+    expect(getSession(REVIEW_ID)?.isComplete).toBe(true);
+  });
 });
 
-describe("resumeStreamById immutable completed execution replay", () => {
-  const PLAN_LIMITS = {
-    maxInputTokens: 20_000,
-    maxOutputTokens: 4_000,
-    maxResponseBytes: 1_048_576,
-    wallTimeMs: 120_000,
-    maxRetries: 2,
-    maxConcurrency: 1,
-    maxCostUsd: 0.5,
-  } as const;
-
-  function admittedPlan(executionFingerprint = "admitted-fingerprint-abc123") {
-    return Object.freeze({
-      configurationId: "gemini-primary",
-      configurationRevision: 3,
-      executionFingerprint,
-      evidenceKey: Object.freeze({
-        authentication: null,
-        credentialReferenceIdentity: "c".repeat(64),
-        installationId: null,
-        productId: "gemini" as const,
-        transportFamily: "hosted-api" as const,
-        normalizedEndpoint: "https://generativelanguage.googleapis.com/v1beta",
-        region: null,
-        workspaceAccountReference: null,
-        modelId: "gemini-test-model",
-        runtime: { identity: "diffgazer-server", version: "1.0.0" },
-        structuredOutputSchemaSha256: "a".repeat(64),
-        noticeVersion: 1,
-        limits: PLAN_LIMITS,
-      }),
-      productId: "gemini" as const,
-      transportFamily: "hosted-api" as const,
-      limits: PLAN_LIMITS,
-    });
-  }
-
-  function bindCompletedExecution() {
-    const execution = buildExecutionResult(admittedPlan(), "completed", {
-      startedAt: "2026-07-31T10:00:00.000Z",
-      finishedAt: "2026-07-31T10:00:05.000Z",
-      usage: { inputTokens: 100, outputTokens: 40, totalTokens: 140 },
-      issues: [],
-    });
-    bindSessionExecution(REVIEW_ID, execution);
-    return execution;
-  }
-
+describe("resumeStreamById completed execution replay", () => {
   async function resumeWithFingerprint(fingerprint: string): Promise<Response> {
     return createApp().request(`/reviews/${REVIEW_ID}/stream?executionFingerprint=${fingerprint}`);
   }
 
-  it("preserves the exact bound receipt and usage for a completed session replay", async () => {
-    const execution = bindCompletedExecution();
-    createSession(REVIEW_ID, {
-      projectPath: PROJECT_PATH,
-      headCommit: "abc123",
-      statusHash: "stored-hash",
-      statusHashKind: "full",
-      mode: "unstaged",
-      admittedExecutionFingerprint: execution.receipt.executionFingerprint,
-    });
-    markReady(REVIEW_ID);
-    addEvent(REVIEW_ID, completeEvent());
-    markComplete(REVIEW_ID);
-
-    const response = await resumeWithFingerprint(execution.receipt.executionFingerprint);
-    const body = await response.text();
-
-    expect(response.status).toBe(200);
-    expect(body).toContain("event: complete");
-    const session = getSession(REVIEW_ID);
-    expect(session).toBeDefined();
-    if (!session) return;
-    expect(deriveSessionTerminalOutcome(session)).toBe("completed");
-    expect(getBoundSessionExecution(REVIEW_ID)?.receipt).toEqual(execution.receipt);
-    expect(getBoundSessionExecution(REVIEW_ID)?.receipt.usage).toEqual({
-      inputTokens: 100,
-      outputTokens: 40,
-      totalTokens: 140,
-    });
-  });
-
-  it.each(
-    FAILED_TERMINAL_OUTCOMES,
-  )("rejects replaying %s terminal outcomes as completed findings", async (outcome) => {
-    const execution = buildExecutionResult(admittedPlan(), outcome, {
-      startedAt: "2026-07-31T10:00:00.000Z",
-      finishedAt: "2026-07-31T10:00:05.000Z",
-    });
-    bindSessionExecution(REVIEW_ID, execution);
-    createSession(REVIEW_ID, {
-      projectPath: PROJECT_PATH,
-      headCommit: "abc123",
-      statusHash: "stored-hash",
-      statusHashKind: "full",
-      mode: "unstaged",
-      admittedExecutionFingerprint: execution.receipt.executionFingerprint,
-    });
-    markReady(REVIEW_ID);
-    addEvent(REVIEW_ID, {
-      type: "complete",
-      result: {
-        issues: [
-          {
-            id: "partial-1",
-            severity: "high",
-            category: "correctness",
-            title: "Should not replay",
-            file: "src/a.ts",
-            line_start: 1,
-            line_end: 1,
-            rationale: "partial",
-            recommendation: "fix",
-            suggested_patch: null,
-            confidence: 0.9,
-            symptom: "partial",
-            whyItMatters: "partial",
-            evidence: [],
-          },
-        ],
-      },
-      reviewId: REVIEW_ID,
-      durationMs: 1,
-    });
-    markComplete(REVIEW_ID);
-
-    const response = await resumeWithFingerprint(execution.receipt.executionFingerprint);
-    const body = await response.text();
-
-    expect(response.status).toBe(200);
-    expect(body).toContain("event: complete");
-    expect(body).not.toContain("Should not replay");
-    expect(body).toContain('"issues":[]');
-  });
-
   it("never reauthorizes execution through cached credentials during resume", async () => {
-    const execution = bindCompletedExecution();
+    const admittedFingerprint = "admitted-fingerprint-abc123";
     createSession(REVIEW_ID, {
       projectPath: PROJECT_PATH,
       headCommit: "abc123",
       statusHash: "stored-hash",
       statusHashKind: "full",
       mode: "unstaged",
-      admittedExecutionFingerprint: execution.receipt.executionFingerprint,
+      admittedExecutionFingerprint: admittedFingerprint,
     });
     markReady(REVIEW_ID);
     addEvent(REVIEW_ID, completeEvent());
     markComplete(REVIEW_ID);
 
-    await resumeWithFingerprint(execution.receipt.executionFingerprint);
+    await resumeWithFingerprint(admittedFingerprint);
 
     expect(authorizeReviewExecution).not.toHaveBeenCalled();
   });

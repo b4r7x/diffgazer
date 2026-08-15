@@ -67,6 +67,7 @@ export function useSelectContentNavigation({
     contentRef: selectContentRef,
     options,
     searchQuery,
+    readTypeaheadQuery,
   } = useSelectContext("useSelectContentNavigation");
 
   const { onKeyDown: navKeyDown } = useNavigation({
@@ -103,7 +104,7 @@ export function useSelectContentNavigation({
   );
 
   const handleTypeahead = useSelectTypeahead({
-    open,
+    readTypeaheadQuery,
     options,
     searchQuery,
     highlighted,

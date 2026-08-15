@@ -1,13 +1,14 @@
-import type { ProviderListRow, ProviderManagementOutcome } from "@diffgazer/core/providers";
+import type { ProviderListRow } from "@diffgazer/core/providers";
 import {
   buildSetupAcknowledgement,
   buildSetupInput,
   CREDENTIAL_ENV_VARS,
   getSetupLayoutCopy,
-  resolveSetupTransportFamily,
+  requiresExplicitModelSelection,
   toSetupCredential,
-  useApiKeyEntry,
 } from "@diffgazer/core/providers";
+import type { ProviderManagementOutcome } from "@diffgazer/core/providers/hooks";
+import { useApiKeyEntry } from "@diffgazer/core/providers/hooks";
 import type {
   ClientConfigurationInput,
   ReadinessAcknowledgement,
@@ -24,8 +25,8 @@ import {
   DialogTitle,
 } from "@diffgazer/ui/components/dialog";
 import { useEffect, useEffectEvent, useId, useRef, useState } from "react";
-import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
 import { ApiKeyFooter } from "./footer";
+import { ApiKeyMethodSelector } from "./method-selector";
 import { useApiKeyDialogKeyboard } from "./use-keyboard";
 
 type AcceptedAcknowledgement = Extract<ReadinessAcknowledgement, { status: "accepted" }>;
@@ -37,7 +38,10 @@ export interface ApiKeyDialogProps {
   secretsStorage?: SecretsStorage | null;
   onCreate: (
     input: ClientConfigurationInput,
-    options?: { continueToModelSelection?: boolean },
+    options: {
+      acknowledgement: AcceptedAcknowledgement;
+      continueToModelSelection?: boolean;
+    },
   ) => Promise<ProviderManagementOutcome>;
   onUpdate: (
     input: {
@@ -59,14 +63,16 @@ export function ApiKeyDialog({
   const inputRef = useRef<HTMLInputElement>(null);
   const acknowledgementRef = useRef<HTMLElement>(null);
   const errorId = useId();
-  const transportFamily = resolveSetupTransportFamily(row);
-  const isHosted = transportFamily === "hosted-api";
+  const isHosted = row.product.transportFamily === "hosted-api";
   // The server never sends the variable name it will read, so the preview comes from
   // core's client-safe mirror. A product that binds no variable has no entry and the
   // selector falls back to its generic copy.
   const envVarName = CREDENTIAL_ENV_VARS[row.product.productId];
   const isUpdating = row.configuration != null;
-  const continueToModelSelection = row.product.productId === "openrouter";
+  const hasPersistedLocalBearer =
+    row.configuration?.transportFamily === "local-http" &&
+    row.configuration.authentication === "optional-local-bearer";
+  const continueToModelSelection = requiresExplicitModelSelection(row.product.productId);
   const [noticeAccepted, setNoticeAccepted] = useState(
     () => row.readiness.acknowledgement.status === "accepted",
   );
@@ -82,7 +88,12 @@ export function ApiKeyDialog({
   const entry = useApiKeyEntry({
     onSubmit: async (method, value) => {
       if (!noticeAccepted) return false;
-      const input = buildSetupInput(row, transportFamily, toSetupCredential(method, value));
+      if (hasPersistedLocalBearer) {
+        throw new Error(
+          "This configuration uses local bearer authentication. Recreate it from onboarding to replace the bearer token.",
+        );
+      }
+      const input = buildSetupInput(row, toSetupCredential(method, value));
 
       const outcome =
         row.configuration != null
@@ -90,7 +101,10 @@ export function ApiKeyDialog({
               { input, acknowledgement: buildSetupAcknowledgement(row) },
               { continueToModelSelection },
             )
-          : await onCreate(input, { continueToModelSelection });
+          : await onCreate(input, {
+              acknowledgement: buildSetupAcknowledgement(row),
+              continueToModelSelection,
+            });
 
       // The management machine catches every rejection and reports it as an
       // outcome; rethrowing hands the message to the entry error channel, which
@@ -111,12 +125,11 @@ export function ApiKeyDialog({
     // that does not require an entry value.
     const saved = await entry.submit(isHosted ? method : "env");
     if (saved) handleOpenChange(false);
-    return saved;
   };
 
   const canConfirm = isHosted
     ? (entry.method === "env" || entry.value.length > 0) && noticeAccepted && !entry.isSubmitting
-    : noticeAccepted && !entry.isSubmitting;
+    : noticeAccepted && !entry.isSubmitting && !hasPersistedLocalBearer;
 
   const {
     focused,
@@ -156,7 +169,8 @@ export function ApiKeyDialog({
   }, [open]);
 
   const title = isUpdating ? "Update Configuration" : "Create Configuration";
-  const layoutCopy = getSetupLayoutCopy(row, transportFamily);
+  const layoutCopy = getSetupLayoutCopy(row);
+  const acknowledgementProps = getAcknowledgementProps();
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -200,10 +214,10 @@ export function ApiKeyDialog({
           ) : null}
 
           <Checkbox
-            ref={getAcknowledgementProps().ref}
+            ref={acknowledgementProps.ref}
             checked={noticeAccepted}
             onChange={setNoticeAccepted}
-            onFocus={getAcknowledgementProps().onFocus}
+            onFocus={acknowledgementProps.onFocus}
             disabled={entry.isSubmitting}
             highlighted={acknowledgementHighlighted}
             value="accept-notice"
@@ -218,6 +232,15 @@ export function ApiKeyDialog({
               <Callout.Content>{entry.error}</Callout.Content>
             </Callout>
           )}
+
+          {hasPersistedLocalBearer ? (
+            <Callout tone="warning">
+              <Callout.Content>
+                This configuration uses local bearer authentication. Recreate it from onboarding to
+                replace the bearer token.
+              </Callout.Content>
+            </Callout>
+          ) : null}
 
           {isHosted ? (
             <div className="text-xs text-muted-foreground border-t border-border/40 pt-3 leading-relaxed">

@@ -19,20 +19,6 @@ interface ApiKeyStepProps {
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
-function getLocalHttpCopy(configurationInput: OnboardingConfigurationDraft): string {
-  if (configurationInput.transportFamily !== "local-http") {
-    return "Local HTTP setup does not use hosted credentials.";
-  }
-  return `Configure the local endpoint at ${configurationInput.endpoint} without storing hosted credentials.`;
-}
-
-function getLocalCliCopy(configurationInput: OnboardingConfigurationDraft): string {
-  if (configurationInput.transportFamily !== "local-cli") {
-    return "Local CLI setup does not use hosted credentials.";
-  }
-  return "Configure the local CLI installation without storing hosted credentials.";
-}
-
 function resolveCredentialMethod(credential: WriteOnlySecretInput | undefined): CredentialMethod {
   return credential?.kind === "environment" ? "environment" : "literal";
 }
@@ -139,12 +125,20 @@ export function ApiKeyStep({
     focusMethod(event.key === "ArrowDown" ? "environment" : "literal");
   };
 
+  const handleFieldBoundaryKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      onBoundaryReached?.("down");
+    }
+  };
+
   if (configurationInput.transportFamily === "local-http") {
     const bearerEnabled = configurationInput.authentication === "optional-local-bearer";
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground font-mono">
-          {getLocalHttpCopy(configurationInput)}
+          Configure the local endpoint at {configurationInput.endpoint} without storing hosted
+          credentials.
         </p>
         {offersLocalBearer(configurationInput.productId) ? (
           <Checkbox
@@ -161,6 +155,7 @@ export function ApiKeyStep({
             <Field.Control>
               <InputGroup
                 type="password"
+                autoComplete="off"
                 value={
                   configurationInput.bearerToken?.kind === "literal"
                     ? configurationInput.bearerToken.value
@@ -176,7 +171,9 @@ export function ApiKeyStep({
                   if (event.key === "Enter") {
                     event.preventDefault();
                     onCommit?.();
+                    return;
                   }
+                  handleFieldBoundaryKeyDown(event);
                 }}
                 prefix="TOKEN:"
                 aria-label="Local bearer token"
@@ -193,7 +190,7 @@ export function ApiKeyStep({
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground font-mono">
-          {getLocalCliCopy(configurationInput)}
+          Configure the local CLI installation without storing hosted credentials.
         </p>
         <Field>
           <Field.Label>{product.presentation.name} installation</Field.Label>
@@ -211,7 +208,9 @@ export function ApiKeyStep({
                 if (event.key === "Enter") {
                   event.preventDefault();
                   onCommit?.();
+                  return;
                 }
+                handleFieldBoundaryKeyDown(event);
               }}
               prefix="ID:"
               aria-label={`${product.presentation.name} installation ID`}
@@ -263,6 +262,7 @@ export function ApiKeyStep({
               <InputGroup
                 ref={inputRef}
                 type="password"
+                autoComplete="off"
                 value={secretValue}
                 onChange={(event) => setCredential({ kind: "literal", value: event.target.value })}
                 onFocus={() => setFocused("input")}

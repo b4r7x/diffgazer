@@ -1,6 +1,11 @@
 "use client";
 
-import { type CheckboxProps, Checkbox as CheckboxRoot, type CheckboxVariant } from "./checkbox";
+import {
+  type CheckboxProps,
+  Checkbox as CheckboxRoot,
+  type CheckboxSize,
+  type CheckboxVariant,
+} from "./checkbox";
 import { CheckboxGroup, type CheckboxGroupProps } from "./checkbox-group";
 import { CheckboxItem, type CheckboxItemProps } from "./checkbox-item";
 
@@ -10,6 +15,6 @@ const Checkbox = Object.assign(CheckboxRoot, {
   Item: CheckboxItem,
 });
 
-export { Checkbox, type CheckboxProps, type CheckboxVariant };
+export { Checkbox, type CheckboxProps, type CheckboxSize, type CheckboxVariant };
 export { CheckboxGroup, type CheckboxGroupProps };
 export { CheckboxItem, type CheckboxItemProps };

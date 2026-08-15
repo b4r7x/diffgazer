@@ -1,7 +1,7 @@
-import type { ProviderListRow } from "@diffgazer/core/providers";
 import { DECLINE, useActionRowNavigation, useKey } from "@diffgazer/keys";
 import { type RefCallback, type RefObject, useRef } from "react";
 import { isProviderActionDisabled, type ProviderAction } from "../lib/actions";
+import type { ProvidersFocusZone } from "./use-keyboard";
 
 interface UseProvidersActionButtonsOptions {
   /**
@@ -9,12 +9,13 @@ interface UseProvidersActionButtonsOptions {
    * and the rendered buttons address the same actions by the same indexes.
    */
   actions: readonly ProviderAction[];
-  selectedRow: ProviderListRow | null;
+  /** True while a list row is highlighted; without one there is nothing to act on. */
+  hasSelection: boolean;
   dialogOpen: boolean;
   /** True while a provider mutation is in flight; the rendered buttons disable on it. */
   isPending: boolean;
   inButtons: boolean;
-  setZone: (zone: "input" | "filters" | "list" | "buttons") => void;
+  setZone: (zone: ProvidersFocusZone) => void;
   focusProviderList: () => void;
   /** The page layer's single action dispatcher, shared with the rendered action row. */
   runAction: (action: ProviderAction) => void;
@@ -28,14 +29,12 @@ interface UseProvidersActionButtonsResult {
   getActionButtonProps: (index: number) => {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
-    "aria-disabled"?: boolean;
-    title?: string;
   };
 }
 
 export function useProvidersActionButtons({
   actions,
-  selectedRow,
+  hasSelection,
   dialogOpen,
   isPending,
   inButtons,
@@ -49,7 +48,7 @@ export function useProvidersActionButtons({
 
   const handleButtonAction = (index: number) => {
     const action = actions[index];
-    if (!selectedRow || !action || isProviderActionDisabled(action, isPending)) return;
+    if (!hasSelection || !action || isProviderActionDisabled(action, isPending)) return;
     runAction(action);
   };
 
@@ -75,21 +74,22 @@ export function useProvidersActionButtons({
   const focusedIndex = Math.min(actionRow.focusedIndex, actions.length - 1);
 
   const enterButtons = (index: number = 0) => {
-    if (!selectedRow || actions.length === 0) return;
+    if (!hasSelection || actions.length === 0) return;
     setZone("buttons");
     actionRow.enterActions(index);
   };
 
+  // A reason-disabled action is natively disabled by the renderer, so it neither
+  // takes focus nor shows a title tooltip. The reason is announced through the
+  // button's accessible name instead.
   const getActionButtonProps = (index: number) => {
     const actionProps = actionRow.getActionProps(index);
-    const disabledReason = actions[index]?.disabledReason;
     return {
       ref: actionProps.ref,
       onFocus: () => {
         setZone("buttons");
         actionProps.onFocus();
       },
-      ...(disabledReason ? { "aria-disabled": true as const, title: disabledReason } : {}),
     };
   };
 

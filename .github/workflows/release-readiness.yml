@@ -8,27 +8,35 @@ on:
       - main
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Pull request runs are superseded by newer commits on the same branch. Pushes
+  # to main get a per-commit group and are never cancelled or superseded while
+  # pending: a main readiness run is the only trigger edge into the Release
+  # workflow, which admits `conclusion == 'success'` only, so cancelling one
+  # would silently drop the publication of the versions merged at that commit.
+  group: ci-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 permissions:
   contents: read
 
 jobs:
   history-secret-scan:
-    name: Full History Secret Scan
+    name: Gitleaks Event-Range Scan
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      - name: Checkout full history
+      - name: Checkout repository history
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Gitleaks full-history scan
+      # The action scans the commits selected by the current push or pull-request
+      # event. fetch-depth: 0 makes repository objects available but does not turn
+      # that event-scoped scan into a full-history scan.
+      - name: Gitleaks event-range scan
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -60,20 +68,26 @@ jobs:
       - name: Check published packages (publint + attw)
         run: pnpm run check:packages
 
-      - name: Public registry is up to date
+      - name: Dirty-tree guard (post-build)
         run: |
           status="$(git status --short)"
           if [ -n "$status" ]; then
+            echo "::error::Tree is dirty after build; the committed public registry is the usual cause"
             echo "$status"
             exit 1
           fi
 
+      # `verify` already runs the whole smoke suite, including `smoke:packages`,
+      # under these strict/network settings. Do not add a separate package-smoke
+      # step: it repeats the full pack/install/consumer-build matrix unchanged.
       - name: Verify
         run: DIFFGAZER_SMOKE_ALLOW_NETWORK=1 DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run verify
 
-      - name: Package smoke
-        run: DIFFGAZER_SMOKE_ALLOW_NETWORK=1 DIFFGAZER_SMOKE_STRICT_SKIPS=1 pnpm run smoke:packages
-
+      # Availability only: DNS plus the per-tree sentinel endpoints. Asserting that
+      # every committed registry file is already served would fail any change set
+      # that adds one, since that endpoint exists only after the deploy this run
+      # gates. deploy.yml re-runs the same script with
+      # DIFFGAZER_LIVE_REGISTRY_REQUIRED=1 for the exhaustive post-deploy proof.
       - name: Hosted registry live smoke
         run: pnpm run registry:live-check
 
@@ -96,20 +110,23 @@ jobs:
         # Meaningful only on PRs: on push-to-main `--since=origin/main` diffs HEAD
         # against itself (vacuous), and a `--since <tag>` variant would go red on
         # the Version-PR merge commit that release.yml's workflow_run gate needs
-        # green. Only the repository-owned Version PR created by the trusted
-        # Changesets bot is exempt because it has consumed its changesets.
-        if: >-
-          ${{ github.event_name == 'pull_request'
-          && (github.head_ref != 'changeset-release/main'
-          || github.event.pull_request.head.repo.full_name != github.repository
-          || github.event.pull_request.user.login != 'github-actions[bot]') }}
+        # green. There is no bot-identity exemption here: the Version PR opened
+        # with GITHUB_TOKEN cannot trigger pull_request workflows and receives no
+        # readiness run; its merged-main push is the verification edge instead.
+        if: ${{ github.event_name == 'pull_request' }}
         run: pnpm changeset status --since=origin/main
 
       # `changeset status` is package-granular, so a pending changeset already on
       # main keeps it green for every further change to that package. This step
       # asks the narrower question: does the public handoff contract this change
       # set rewrites carry a changeset added in the same change set?
+      #
+      # PR-only for the same reason as the step above: on push-to-main the merge
+      # base against `origin/main` is HEAD itself, so nothing is examined and the
+      # gate reports success vacuously. No Version-PR exemption is needed here —
+      # `changeset version` never touches the guarded public registry trees.
       - name: Changeset coverage for public registry changes
+        if: ${{ github.event_name == 'pull_request' }}
         run: pnpm run check:changesets
 
       - name: Pack @diffgazer/add
@@ -169,10 +186,26 @@ jobs:
           CI: "true"
         run: pnpm --filter @diffgazer/web test:e2e
 
+      # The UI suite server-renders @diffgazer/ui through its package entry, which
+      # resolves to the gitignored dist, so that dist has to be built here rather
+      # than inherited from the docs build's transitive library-artifact rebuild.
+      - name: Build UI
+        run: pnpm --filter @diffgazer/ui build
+
       - name: Run UI Playwright tests
         env:
           CI: "true"
         run: pnpm --filter @diffgazer/ui test:e2e
+
+      # Landing's Playwright config serves the built tree with `vite preview`,
+      # so the build has to happen before the suite runs.
+      - name: Build landing
+        run: pnpm --filter @diffgazer/landing build
+
+      - name: Run Landing Playwright tests
+        env:
+          CI: "true"
+        run: pnpm --filter @diffgazer/landing test:e2e
 
       - name: Run Lighthouse budgets
         run: pnpm --filter @diffgazer/docs lighthouse
@@ -184,6 +217,7 @@ jobs:
           name: playwright-reports
           path: |
             apps/docs/playwright-report
+            apps/landing/playwright-report
             apps/web/playwright-report
             libs/ui/playwright-report
           retention-days: 14
@@ -195,6 +229,7 @@ jobs:
           name: playwright-test-results
           path: |
             apps/docs/test-results
+            apps/landing/test-results
             apps/web/test-results
             libs/ui/test-results
           retention-days: 14

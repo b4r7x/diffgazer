@@ -45,7 +45,6 @@ function assertContentSecurityPolicy(path: string, value: string | null): void {
   const scriptElementSource = directives.find(
     (directive) => directive.split(/\s+/, 1)[0] === "script-src-elem",
   );
-  const effectiveScriptSource = scriptElementSource ?? scriptSource;
 
   const isSafeNonceScriptSource = (directive: string | undefined): boolean => {
     const sources = directive?.split(/\s+/).slice(1) ?? [];
@@ -61,7 +60,7 @@ function assertContentSecurityPolicy(path: string, value: string | null): void {
   if (
     !directives.includes("default-src 'self'") ||
     !isSafeNonceScriptSource(scriptSource) ||
-    !isSafeNonceScriptSource(effectiveScriptSource)
+    (scriptElementSource !== undefined && !isSafeNonceScriptSource(scriptElementSource))
   ) {
     throw new Error(`[lighthouse] ${path} did not return the expected nonce CSP`);
   }

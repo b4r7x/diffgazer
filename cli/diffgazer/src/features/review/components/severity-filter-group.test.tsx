@@ -14,7 +14,7 @@ import { SeverityFilterGroup } from "./severity-filter-group";
 const ARROW_RIGHT = "[C";
 
 vi.mock("@diffgazer/core/api/hooks", () => ({
-  useInit: () => ({ data: undefined, isLoading: false }),
+  useConfigurationInit: () => ({ data: undefined, isLoading: false }),
 }));
 
 const ZERO_COUNTS = SEVERITY_ORDER.reduce(

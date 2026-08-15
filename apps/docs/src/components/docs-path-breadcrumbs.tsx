@@ -22,10 +22,11 @@ type DocsPathBreadcrumbsProps = {
 const PATH_CHAR_BUDGET = 36;
 
 /*
- * Middle segments come from the sidebar taxonomy (separator/folder names in
- * the page tree), not from the URL: /ui/changelog belongs to "Project" in the
- * sidebar, so PATH shows ui/project/changelog. A segment links only when its
- * slug chain is also a real indexed URL section (e.g. ui/components).
+ * Middle segments are the page's own URL directories, so the row always shows a
+ * path that exists (e.g. app/web/results, whose sidebar separator reads "Web
+ * Mode"). Flat pages have no URL directory, so they fall back to the sidebar
+ * taxonomy: /ui/changelog belongs to "Project" and shows ui/project/changelog.
+ * A segment links only when its slug chain is also a real indexed URL section.
  */
 function sectionSlug(name: string): string {
   return name.toLowerCase().replace(/\s+/g, "-");
@@ -43,7 +44,11 @@ export function DocsPathBreadcrumbs({ tree, className, onNavigate }: DocsPathBre
   if (pathParts.length === 0) return null;
 
   const page = pathParts[pathParts.length - 1];
-  const middleSlugs = findTreeSectionPath(tree, pathname).map(sectionSlug);
+  const urlSectionSlugs = pathParts.slice(0, -1);
+  const middleSlugs =
+    urlSectionSlugs.length > 0
+      ? urlSectionSlugs
+      : findTreeSectionPath(tree, pathname).map(sectionSlug);
   const fullPath = [library, ...middleSlugs, page].join("/");
   const collapseMiddle = middleSlugs.length > 0 && fullPath.length > PATH_CHAR_BUDGET;
 

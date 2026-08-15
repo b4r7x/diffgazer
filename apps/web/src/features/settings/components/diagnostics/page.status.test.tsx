@@ -43,7 +43,7 @@ describe("SettingsDiagnosticsPage diagnostics status", () => {
       expect(within(diagnosticsPanel).getByText(label)).toBeVisible();
     }
     expect(
-      await within(diagnosticsPanel).findByText("Google Gemini (gemini-2.5-flash)"),
+      await within(diagnosticsPanel).findByText("Google Gemini (Gemini 2.5 Flash)"),
     ).toBeVisible();
   });
 
@@ -111,5 +111,8 @@ describe("SettingsDiagnosticsPage diagnostics status", () => {
     renderPage();
 
     await waitFor(() => expect(getOverallStatus()).toHaveTextContent("Setup needed"));
+    // The pre-first-review state is a warning, not a failure: a red alert here
+    // would contradict the "Setup needed" status on the same card.
+    expect(screen.queryByText(/context missing/)).not.toBeInTheDocument();
   });
 });

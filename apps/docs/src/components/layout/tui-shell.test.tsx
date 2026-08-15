@@ -1,6 +1,3 @@
-// @vitest-environment jsdom
-
-import "@testing-library/jest-dom/vitest";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -32,15 +29,17 @@ vi.mock("@tanstack/react-router", async () => {
   };
 });
 
-function chromeWrappers() {
-  const statusBar = screen.getByRole("navigation", { name: "Primary" }).parentElement;
-  const footerBar = screen.getByRole("contentinfo").parentElement;
-  const searchButton = screen.getByRole("button", { name: /^search docs/i });
-  const commandRow = searchButton.parentElement?.parentElement ?? null;
-  if (statusBar === null || commandRow === null || footerBar === null) {
-    throw new Error("Expected shell chrome wrappers to render");
-  }
-  return { statusBar, commandRow, footerBar };
+/**
+ * One user-visible control per chrome row. The `inert` flag lives on an
+ * anonymous wrapper, so the contract is asserted from the control outwards
+ * (`closest("[inert]")`) rather than by counting markup depth.
+ */
+function chromeControls() {
+  return {
+    statusBar: screen.getByRole("navigation", { name: "Site" }),
+    commandRow: screen.getByRole("button", { name: /^search docs/i }),
+    footerBar: screen.getByRole("contentinfo"),
+  };
 }
 
 describe("TuiShell", () => {
@@ -70,16 +69,16 @@ describe("TuiShell", () => {
     );
 
     const menuButton = screen.getByRole("button", { name: /open navigation menu/i });
-    const { statusBar, commandRow, footerBar } = chromeWrappers();
-    expect(statusBar).not.toHaveAttribute("inert");
-    expect(commandRow).not.toHaveAttribute("inert");
-    expect(footerBar).not.toHaveAttribute("inert");
+    const { statusBar, commandRow, footerBar } = chromeControls();
+    expect(statusBar.closest("[inert]")).toBeNull();
+    expect(commandRow.closest("[inert]")).toBeNull();
+    expect(footerBar.closest("[inert]")).toBeNull();
 
     await user.click(menuButton);
 
-    expect(statusBar).toHaveAttribute("inert");
-    expect(commandRow).toHaveAttribute("inert");
-    expect(footerBar).toHaveAttribute("inert");
+    expect(statusBar.closest("[inert]")).not.toBeNull();
+    expect(commandRow.closest("[inert]")).not.toBeNull();
+    expect(footerBar.closest("[inert]")).not.toBeNull();
 
     const skipLink = screen.getByRole("link", { name: "Skip to content" });
     const firstSidebarLink = screen.getByRole("link", { name: "First sidebar item" });
@@ -104,9 +103,9 @@ describe("TuiShell", () => {
 
     await user.keyboard("{Escape}");
 
-    expect(statusBar).not.toHaveAttribute("inert");
-    expect(commandRow).not.toHaveAttribute("inert");
-    expect(footerBar).not.toHaveAttribute("inert");
+    expect(statusBar.closest("[inert]")).toBeNull();
+    expect(commandRow.closest("[inert]")).toBeNull();
+    expect(footerBar.closest("[inert]")).toBeNull();
     expect(skipLink.closest("[inert]")).toBeNull();
     await waitFor(() => expect(menuButton).toHaveFocus());
   });

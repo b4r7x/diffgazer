@@ -1,4 +1,4 @@
-import type { ComponentDoc } from "./types";
+import type { ComponentDoc } from "./types.js";
 
 export const textareaDoc: ComponentDoc = {
   description:
@@ -48,7 +48,7 @@ export const textareaDoc: ComponentDoc = {
         required: false,
         defaultValue: '"vertical"',
         description:
-          "Edges that expose a resize handle. Read-only and disabled textareas suppress every handle.",
+          "Axes/edges that expose a resize handle. Read-only and disabled textareas suppress every handle.",
       },
       resizeHandle: {
         type: "TextareaResizeHandle | { vertical?: TextareaResizeHandle; horizontal?: TextareaResizeHandle }",
@@ -56,6 +56,12 @@ export const textareaDoc: ComponentDoc = {
         defaultValue: '"line"',
         description:
           'How each resize handle is drawn: "line" for a 30px mark held off the field border, "box" for an arrow-only chip centered on the border, or "box-label" for that chip with a RESIZE label. A single value styles both edges; an object styles each edge independently.',
+      },
+      resizeLabels: {
+        type: "{ vertical?: string; horizontal?: string }",
+        required: false,
+        defaultValue: '"Resize textarea vertically" / "Resize textarea horizontally"',
+        description: "Accessible names for the resize handles, per axis.",
       },
       "aria-invalid": {
         type: 'boolean | "true" | "false" | "grammar" | "spelling"',

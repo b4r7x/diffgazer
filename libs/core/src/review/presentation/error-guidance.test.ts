@@ -2,20 +2,20 @@ import { describe, expect, it } from "vitest";
 import { PRODUCT_REGISTRY } from "../../providers/product-registry.js";
 import { READINESS_PRESENTATION, ReadinessSchema } from "../../schemas/config/index.js";
 import type { ReadinessStatus } from "../../schemas/config/readiness.js";
-import { TERMINAL_OUTCOMES } from "../../schemas/review/execution.js";
+import { TERMINAL_OUTCOMES, type TerminalOutcome } from "../../schemas/review/execution.js";
 import {
   CONFIGURATION_ERROR_COPY,
   CONFIGURE_PROVIDER_LABEL,
+  CREDENTIAL_ERROR_COPY,
   classifyReviewStreamError,
-  describeReviewCancellation,
   describeReviewStartError,
   describeTerminalOutcome,
   describeUsageAvailability,
-  getApiKeyMissingCopy,
+  ENTER_API_KEY_LABEL,
   getConfigurationNotReadyCopy,
-  readinessUsesTransportNeutralCopy,
+  isCredentialReconnectReadiness,
+  isCredentialSetupError,
   sanitizePresentationText,
-  TERMINAL_OUTCOME_PRESENTATION,
   USAGE_AVAILABILITY_PRESENTATION,
 } from "./error-guidance.js";
 
@@ -73,15 +73,11 @@ function makeReadiness(status: ReadinessStatus) {
 
 describe("review error-guidance presentation", () => {
   it("derives setup copy from safe readiness guidance", () => {
-    const readiness = makeReadiness("local-endpoint-unreachable");
+    const readiness = makeReadiness("local-conformance-failed");
 
     expect(getConfigurationNotReadyCopy({ productLabel: "ollama", readiness })).toEqual({
       title: "Configuration Not Ready (ollama)",
-      body: "The configured local server could not be reached. Start the selected local server, then test the configuration again.",
-    });
-    expect(getApiKeyMissingCopy({ productLabel: "ollama", readiness })).toEqual({
-      title: "Configuration Not Ready (ollama)",
-      body: "The configured local server could not be reached. Start the selected local server, then test the configuration again.",
+      body: "The local model failed the structured review conformance check. Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Test readiness can re-check it.",
     });
     expect(CONFIGURATION_ERROR_COPY).toEqual({
       title: "Configuration Unavailable",
@@ -91,24 +87,103 @@ describe("review error-guidance presentation", () => {
   });
 
   it.each([
-    "local-endpoint-unreachable",
+    "local-conformance-failed",
     "unsupported",
     "skipped",
   ] as const)("never says API key for %s readiness", (status) => {
-    const readiness = makeReadiness(status);
-    const copy = getConfigurationNotReadyCopy({ readiness });
-    expect(readinessUsesTransportNeutralCopy(readiness)).toBe(true);
+    const copy = getConfigurationNotReadyCopy({ readiness: makeReadiness(status) });
     expect(copy.title.toLowerCase()).not.toContain("api key");
     expect(copy.body.toLowerCase()).not.toContain("api key");
   });
 
-  it.each(TERMINAL_OUTCOMES)("distinguishes terminal outcome %s with shared copy", (outcome) => {
-    expect(describeTerminalOutcome(outcome)).toEqual(TERMINAL_OUTCOME_PRESENTATION[outcome]);
-    expect(describeTerminalOutcome(outcome).title.length).toBeGreaterThan(0);
-    expect(describeTerminalOutcome(outcome).message.length).toBeGreaterThan(0);
+  // Literal expectations so a copy regression fails here, not in a UI snapshot.
+  it("turns a rejected credential into the reconnect state instead of a generic failure", () => {
+    const readiness = makeReadiness("credential-invalid");
+
+    expect(isCredentialReconnectReadiness(readiness)).toBe(true);
+    // The views show the configuration's identity beside the copy, so the
+    // reconnect title stays clean of the product label.
+    expect(getConfigurationNotReadyCopy({ productLabel: "Google Gemini", readiness })).toEqual({
+      title: "Reconnect Provider",
+      body: "The saved credential for this configuration is missing or was rejected. Enter the API key again to reconnect.",
+    });
+    expect(ENTER_API_KEY_LABEL).toBe("Enter API Key");
   });
 
-  it("describes usage, budget, and cancellation guidance without raw diagnostics", () => {
+  it("keeps every other not-ready status out of the reconnect state", () => {
+    for (const status of [
+      "unconfigured",
+      "model-missing",
+      "conformance-failed",
+      "ready",
+    ] as const) {
+      expect(isCredentialReconnectReadiness(makeReadiness(status))).toBe(false);
+    }
+  });
+
+  it("classifies credential and secrets-storage load failures as setup conditions", () => {
+    const apiError = (code: string) => Object.assign(new Error(code), { status: 500, code });
+
+    for (const code of [
+      "CREDENTIAL_INVALID",
+      "API_KEY_MISSING",
+      "SETUP_REQUIRED",
+      "SECRET_BINDING_FAILED",
+      "STORAGE_NOT_CONFIGURED",
+      "KEYRING_UNAVAILABLE",
+      "KEYRING_READ_FAILED",
+    ]) {
+      expect(isCredentialSetupError(apiError(code))).toBe(true);
+    }
+
+    // A 401 is a session-token mismatch and a plain network failure carries no
+    // code: both stay on their own gates rather than the reconnect state.
+    expect(isCredentialSetupError(apiError("UNAUTHORIZED"))).toBe(false);
+    expect(isCredentialSetupError(apiError("INTERNAL_ERROR"))).toBe(false);
+    // A second concurrent review is a conflict, never a credential to re-enter.
+    expect(isCredentialSetupError(apiError("REVIEW_IN_PROGRESS"))).toBe(false);
+    expect(isCredentialSetupError(new Error("fetch failed"))).toBe(false);
+
+    expect(CREDENTIAL_ERROR_COPY).toEqual({
+      title: "Reconnect Provider",
+      body: "The saved provider credential could not be read. Re-enter the API key in provider settings, or retry.",
+    });
+  });
+
+  // Literal expectations, not the production map: a swapped timeout/schema entry
+  // must fail here rather than move the oracle with the defect.
+  const TERMINAL_OUTCOME_COPY: Record<TerminalOutcome, { title: string; message: string }> = {
+    completed: {
+      title: "Review Completed",
+      message: "The review finished with schema-valid findings.",
+    },
+    cancelled: {
+      title: "Review Cancelled",
+      message: "The review was cancelled before it completed.",
+    },
+    "timed-out": {
+      title: "Review Timed Out",
+      message: "The review exceeded the configured wall-time limit.",
+    },
+    "transport-failed": {
+      title: "Transport Failed",
+      message: "The configured transport could not complete the review.",
+    },
+    "schema-failed": {
+      title: "Schema Validation Failed",
+      message: "The provider response did not match Diffgazer's review schema.",
+    },
+    "budget-exhausted": {
+      title: "Budget Exhausted",
+      message: "The review stopped because a configured budget limit was reached.",
+    },
+  };
+
+  it.each(TERMINAL_OUTCOMES)("names the cause of terminal outcome %s", (outcome) => {
+    expect(describeTerminalOutcome(outcome)).toEqual(TERMINAL_OUTCOME_COPY[outcome]);
+  });
+
+  it("describes usage and budget guidance without raw diagnostics", () => {
     expect(describeUsageAvailability("reported")).toEqual(USAGE_AVAILABILITY_PRESENTATION.reported);
     expect(describeUsageAvailability("required-missing")).toEqual(
       USAGE_AVAILABILITY_PRESENTATION["required-missing"],
@@ -116,7 +191,6 @@ describe("review error-guidance presentation", () => {
     expect(describeUsageAvailability("unavailable")).toEqual(
       USAGE_AVAILABILITY_PRESENTATION.unavailable,
     );
-    expect(describeReviewCancellation()).toEqual(TERMINAL_OUTCOME_PRESENTATION.cancelled);
     expect(describeTerminalOutcome("budget-exhausted").title).toBe("Budget Exhausted");
   });
 
@@ -140,6 +214,12 @@ describe("review error-guidance presentation", () => {
       code: "KEYRING_READ_FAILED",
       title: "Credential Storage Unavailable",
       message: "API key not found. Check Settings → Storage.",
+    },
+    {
+      code: "REVIEW_IN_PROGRESS",
+      title: "Review Already Running",
+      message:
+        "A review is already running for this configuration. Wait for it to finish or cancel it, then start a new one.",
     },
   ])("describes $code review start failures", ({ code, title, message }) => {
     const error = Object.assign(new Error("API key not found"), { code, status: 400 });
@@ -180,11 +260,32 @@ describe("review error-guidance presentation", () => {
     expect(classifyReviewStreamError("credentials rejected", "API_KEY_MISSING").kind).toBe("other");
   });
 
-  it("exposes no raw diagnostics in presentation text", () => {
+  const SAFE_PRESENTATION_FALLBACK =
+    "Diffgazer could not present this failure safely. Return home and retry the review.";
+
+  it.each([
+    { label: "/Users/ path", input: "failed at /Users/voitz/.config/codex" },
+    { label: "/home/ path", input: "failed at /home/voitz/.config/codex" },
+    { label: "Bearer token", input: "Authorization failed Bearer abcdefghijklmnop" },
+    { label: "sk- token", input: "invalid sk-abcdefghijklmnopqrst" },
+    { label: "ghp_ token", input: "auth failed ghp_abcdefghijklmnopqrst" },
+    { label: "correlationId", input: "upstream correlationId=abc-def-123" },
+    {
+      label: "benign diagnostic",
+      input: "The provider dropped the connection.",
+      expected: "The provider dropped the connection.",
+    },
+  ])("sanitizePresentationText handles $label", ({ input, expected }) => {
+    expect(sanitizePresentationText(input)).toBe(expected ?? SAFE_PRESENTATION_FALLBACK);
+  });
+
+  it("keeps transport guidance generic when stream errors include raw diagnostics", () => {
     const unsafe = "Bearer sk-live-secret /Users/voitz/.config/codex correlationId=abc";
-    expect(sanitizePresentationText(unsafe)).toBe(
-      "Diffgazer could not present this failure safely. Return home and retry the review.",
-    );
-    expect(classifyReviewStreamError(unsafe, "STREAM_ERROR").guidance).not.toContain("Bearer");
+    expect(classifyReviewStreamError(unsafe, "STREAM_ERROR")).toEqual({
+      kind: "transport",
+      title: "Connection Lost",
+      guidance: "The review stream was interrupted. Retry to reconnect to the active review.",
+      ctaLabel: "Retry",
+    });
   });
 });

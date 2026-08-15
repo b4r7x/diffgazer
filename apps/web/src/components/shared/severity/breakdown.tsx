@@ -1,5 +1,5 @@
 import { buildSeverityBreakdownRows } from "@diffgazer/core/review";
-import type { SeverityCounts } from "@diffgazer/core/schemas/presentation";
+import type { SeverityCounts } from "@diffgazer/core/schemas/review";
 import { cn } from "@diffgazer/ui/lib/utils";
 import { SeverityBar } from "./bar";
 

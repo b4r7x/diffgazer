@@ -1,10 +1,14 @@
 /** @vitest-environment jsdom */
 
+import { type NetworkMode, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { createElement } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import type { ServerState } from "../../schemas/presentation/diagnostics.js";
 import { createTestQueryWrapper } from "../../testing/query-wrapper.js";
 import type { BoundApi } from "../bound.js";
+import { createApi } from "../bound.js";
+import { ApiProvider } from "./context.js";
 import { useServerStatus } from "./server.js";
 
 describe("useServerStatus", () => {
@@ -67,5 +71,25 @@ describe("useServerStatus", () => {
       status: "connected",
     });
     expect(result.current.state.status).toBe("connected");
+  });
+
+  it("reports checking when the first health poll is paused offline", () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, networkMode: "offline" as NetworkMode },
+      },
+    });
+    const boundApi = createApi({ baseUrl: "http://localhost" });
+    const Wrapper = ({ children }: { children: React.ReactNode }) =>
+      createElement(
+        QueryClientProvider,
+        { client: queryClient },
+        createElement(ApiProvider, { value: boundApi }, children),
+      );
+
+    const { result } = renderHook(() => useServerStatus(), { wrapper: Wrapper });
+
+    expect(result.current.state.status).toBe("checking");
+    expect(result.current.latestState.status).toBe("checking");
   });
 });

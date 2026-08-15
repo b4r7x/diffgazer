@@ -62,10 +62,8 @@ Local CLI products: Diffgazer uses existing vendor-managed local auth and does n
 
 Before any review, opening the model picker for a catalog-backed hosted product can make Diffgazer fetch a current model list:
 
-- For Google Gemini, Z.AI, Groq, Cerebras, and Mistral, Diffgazer may read the public models.dev catalog at `https://models.dev/api.json`. That request carries no key and no code. `DIFFGAZER_OFFLINE` skips the live fetch.
-- For OpenRouter, Diffgazer may call `https://openrouter.ai/api/v1/models` with your OpenRouter API key when a fresh per-key cache is unavailable. This is the one catalog request that carries a credential.
-
-DeepSeek, Qwen International, and Moonshot Open Platform discover models through their configured hosted tuple rather than the shared models.dev snapshot. Local HTTP and local CLI products discover models from the loopback server or installed CLI.
+- For Google Gemini, Z.AI, Groq, Cerebras, Mistral, and OpenRouter, Diffgazer may read the public models.dev catalog at `https://models.dev/api.json`. That request carries no key and no code. `DIFFGAZER_OFFLINE` skips the live fetch.
+- DeepSeek, Qwen International, and Moonshot Open Platform discover models through their configured hosted tuple rather than the shared models.dev snapshot. Local HTTP and local CLI products do not expose picker-side model discovery in the setup wizard today — their **Model** step shows **Catalog observations are unavailable for this configuration product.** with **Retry** only, and exact model IDs must be selected through the local API.
 
 > Note: A provider may use what you send according to its own terms. Diffgazer keeps your code local up to the moment you send a review, but it cannot control provider-side handling. Choose a product whose notice you accept explicitly during setup.
 

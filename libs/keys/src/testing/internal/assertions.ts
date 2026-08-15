@@ -1,3 +1,5 @@
+// Required: scripts/transform-public-registry-imports.test.ts pulls this module
+// into scripts/tsconfig.json, whose node preset ships no DOM lib.
 /// <reference lib="dom" />
 
 /** Returns a non-null value or throws with the provided label. */

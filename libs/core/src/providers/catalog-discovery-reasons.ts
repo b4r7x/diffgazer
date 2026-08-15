@@ -6,5 +6,12 @@
 export const CATALOG_SKIPPED_REASON =
   "Catalog observations are unavailable for this configuration product.";
 
+/**
+ * Deliberately says "is not confirmed" rather than "cannot": the product this
+ * reason exists for (Mistral, whose allowlist pins a model upstream publishes no
+ * `structured_output` for) is withheld by silence, not by a published refusal.
+ * Reporting that silence as a confirmed refusal is the same guess the catalog's
+ * third `unknown` state exists to keep out of the UI.
+ */
 export const CATALOG_EMPTY_MODELS_REASON =
-  "No catalog models are available for this configuration product.";
+  "No model this product allows is confirmed to return structured review output. Configure a different provider to run reviews.";

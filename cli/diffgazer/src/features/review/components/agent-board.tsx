@@ -49,18 +49,14 @@ export function AgentBoard({ agents, maxRows = agents.length, compact = false }:
           return (
             <Box key={agent.id} gap={1} height={1} overflow="hidden" flexWrap="nowrap">
               <Box flexShrink={0}>
-                <Badge variant={agent.meta.badgeVariant ?? "info"} size="sm">
-                  {agent.meta.badgeLabel}
-                </Badge>
+                <Badge variant={agent.meta.badgeVariant ?? "info"}>{agent.meta.badgeLabel}</Badge>
               </Box>
               <Box flexShrink={0}>
                 <Text bold>{agent.meta.name}</Text>
               </Box>
               {agent.status === "running" ? <Spinner size="sm" /> : null}
               <Box flexShrink={0}>
-                <Badge variant={status.variant} size="sm">
-                  {status.label}
-                </Badge>
+                <Badge variant={status.variant}>{status.label}</Badge>
               </Box>
               <Box flexShrink={1} minWidth={0} overflow="hidden">
                 <Text color={tokens.muted} wrap="truncate-end">

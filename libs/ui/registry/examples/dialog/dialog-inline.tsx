@@ -20,7 +20,7 @@ export default function DialogInlineExample() {
   return (
     <div className="flex flex-col gap-10">
       <Dialog open>
-        <DialogContent modal={false} size="sm" frame="border" corners="standard">
+        <DialogContent modal={false} size="sm" corners="standard">
           <DialogHeader>
             <DialogTitle meta="CONFIRM">Apply Patch</DialogTitle>
           </DialogHeader>
@@ -31,9 +31,7 @@ export default function DialogInlineExample() {
             </p>
           </DialogBody>
           <DialogFooter hints={[{ key: "Esc", label: "Close" }]}>
-            <DialogClose bracket variant="ghost">
-              Cancel
-            </DialogClose>
+            <DialogClose bracket>Cancel</DialogClose>
             <DialogAction>Apply</DialogAction>
           </DialogFooter>
           <DialogCloseIcon />
@@ -41,7 +39,7 @@ export default function DialogInlineExample() {
       </Dialog>
 
       <Dialog open>
-        <DialogContent modal={false} size="sm" frame="border" corners="bold">
+        <DialogContent modal={false} size="sm" corners="bold">
           <DialogHeader>
             <DialogTitle meta="DESTRUCTIVE">Delete Repository</DialogTitle>
             <DialogDescription>This action is permanent and cannot be undone.</DialogDescription>
@@ -53,12 +51,8 @@ export default function DialogInlineExample() {
             </p>
           </DialogBody>
           <DialogFooter hints={[{ key: "Esc", label: "Close" }]}>
-            <DialogClose bracket variant="ghost">
-              Cancel
-            </DialogClose>
-            <DialogAction variant="destructive" bracket>
-              Delete
-            </DialogAction>
+            <DialogClose bracket>Cancel</DialogClose>
+            <DialogAction variant="destructive">Delete</DialogAction>
           </DialogFooter>
         </DialogContent>
       </Dialog>

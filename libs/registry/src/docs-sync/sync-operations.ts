@@ -33,6 +33,18 @@ export function assertArtifactOrigins(
   }
 }
 
+function hasUnrewrittenOrigin(raw: string, targetOrigin: string, sourceOrigin: string): boolean {
+  if (!targetOrigin.startsWith(sourceOrigin)) return raw.includes(sourceOrigin);
+
+  // The target extends the source (a base-path re-host such as .../v2), so every
+  // correctly rewritten URL still contains the source as a prefix. Only an
+  // occurrence that does not continue into the target origin is unrewritten.
+  for (let at = raw.indexOf(sourceOrigin); at !== -1; at = raw.indexOf(sourceOrigin, at + 1)) {
+    if (!raw.startsWith(targetOrigin, at)) return true;
+  }
+  return false;
+}
+
 function assertNoUnrewrittenOrigin(dir: string, targetOrigin: string, sourceOrigin: string): void {
   if (targetOrigin === sourceOrigin) return;
 
@@ -49,7 +61,7 @@ function assertNoUnrewrittenOrigin(dir: string, targetOrigin: string, sourceOrig
         cause: error,
       });
     }
-    if (raw.includes(sourceOrigin)) {
+    if (hasUnrewrittenOrigin(raw, targetOrigin, sourceOrigin)) {
       offenders.push(jsonFile);
     }
   }

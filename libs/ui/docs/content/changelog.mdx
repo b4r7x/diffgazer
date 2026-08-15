@@ -3,6 +3,19 @@ title: Changelog
 description: Release notes for `@diffgazer/ui`.
 ---
 
+## Unreleased
+
+### Removals
+
+- `HorizontalStepperProps.steps` — the run is now derived from the rendered `HorizontalStepper.Step` children, which register themselves in document order. Drop the prop; the steps you render are the run.
+- `CommandPaletteItemMetadata` — folded into `CommandPaletteItemRegistration`, which carries the same fields directly.
+
+### Changes
+
+- `ToggleGroupProps` and `CheckboxGroupProps` are no longer generic. For a value-typed toggle group, build one with `createToggleGroup(values)`; `CheckboxGroup` values are `string[]`.
+- `DialogContentProps` is a discriminated union on `modal`: a modal dialog takes `modal?: true` with `role`, `closeIcon`, `closeOnBackdropClick`, `initialFocus`, `onCancel`, and `onEscapeKeyDown`, and an inline dialog takes `modal: false` and accepts none of them.
+- `DiffViewProps.statusBar` is accepted only with `variant="statusbar"`; on every other variant it is now typed `never` instead of being silently ignored.
+
 ## 0.2.0
 
 ### Minor changes
@@ -11,6 +24,16 @@ description: Release notes for `@diffgazer/ui`.
 - Raised the `@diffgazer/keys` peer floor to `>=0.2.0`.
 - Renamed the decorated input wrapper to `InputGroup` and added `Field` for label/control/description/error wiring.
 - Normalized public form-like controls on `value`, `defaultValue`, and `onChange(value)` while native wrappers keep native React event handlers.
+
+### Removals
+
+- `PopoverContent.externalOnAnimationEnd` — was a leaked internal prop. Native `onAnimationEnd` continues to flow through via spread props.
+- `.animate-slide-in` / `.animate-slide-out` className-driven animation on `PopoverContent` and `SelectContent`. The `.ui-floating-panel` cascade replaces them and is overridable per side without className escalation.
+
+### Changes
+
+- `Select` `sideOffset` default changes from `0` to `4` so the menu reads as a distinct surface anchored to the trigger.
+- Reduced-motion behavior is now token-driven: under `prefers-reduced-motion: reduce`, all eight `--ui-content-{enter-from,exit-to}-*` tokens collapse to the fade-only keyframes. Per-instance overrides win.
 
 ### Patch changes
 
@@ -23,7 +46,7 @@ Initial publish candidate. Public npm and hosted registry endpoints were gated u
 
 ### Components
 
-Accordion, Avatar, Badge, Block Bar, Breadcrumbs, Button, Callout, Card, Checkbox, Code Block, Command Palette, Dialog, Diff View, Divider, Empty State, Field, Floating Panel, Horizontal Stepper, Icons, Input, Kbd, Key Value, Label, Logo, Menu, Navigation List, Overflow, Pager, Panel, Popover, Progress, Radio, Scroll Area, Search Input, Section Header, Select, Sidebar, Skeleton, Spinner, Status Indicator, Stepper, Switch, Tabs, Textarea, Toast, TOC, Toggle Group, Tooltip, Typography.
+Accordion, Avatar, Badge, Block Bar, Breadcrumbs, Button, Callout, Card, Checkbox, Code Block, Command Palette, Dialog, Diff View, Divider, Empty State, Horizontal Stepper, Icons, Input, Kbd, Key Value, Label, Logo, Menu, Navigation List, Overflow, Pager, Panel, Popover, Progress, Radio, Scroll Area, Search Input, Section Header, Select, Sidebar, Skeleton, Spinner, Status Indicator, Stepper, Switch, Tabs, Textarea, Toast, TOC, Toggle Group, Tooltip, Typography.
 
 ### Features
 

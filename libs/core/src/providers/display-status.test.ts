@@ -11,6 +11,8 @@ import {
   getProviderDisplay,
   getProviderDisplayStatus,
   getUnconfiguredDisplayStatus,
+  isRedundantStatusSegment,
+  resolveShellProviderIdentity,
 } from "./display-status.js";
 
 const CHECKED_AT = "2026-07-31T10:00:00.000Z";
@@ -91,7 +93,7 @@ function display(status: ReadinessStatus, family: TransportFamily) {
 
 describe("getProviderDisplayStatus", () => {
   it.each([
-    ["local-endpoint-unreachable", "local-http", "Local endpoint unreachable", "test"],
+    ["local-conformance-failed", "local-http", "Local conformance failed", "test"],
     ["unsupported", "local-cli", "CLI unsupported", "inspect"],
     ["acknowledgement-required", "hosted-api", "Acknowledgement required", "update"],
     ["ready", "hosted-api", "Ready", "inspect"],
@@ -108,7 +110,7 @@ describe("getProviderDisplayStatus", () => {
 
   it("does not reduce distinct machine states to color or credential-only copy", () => {
     const results = [
-      display("local-endpoint-unreachable", "local-http"),
+      display("local-conformance-failed", "local-http"),
       display("unsupported", "local-cli"),
       display("acknowledgement-required", "hosted-api"),
       display("ready", "hosted-api"),
@@ -177,14 +179,87 @@ describe("getUnconfiguredDisplayStatus", () => {
   });
 });
 
+describe("isRedundantStatusSegment", () => {
+  it("reports a status segment the name already says, in either direction", () => {
+    expect(isRedundantStatusSegment("Not configured", "Not configured")).toBe(true);
+    expect(isRedundantStatusSegment("Configuration unavailable", "unavailable")).toBe(true);
+    expect(isRedundantStatusSegment("Loading configuration", "Loading")).toBe(true);
+    expect(isRedundantStatusSegment("Ready", "Model is ready to review")).toBe(true);
+  });
+
+  it("keeps a status segment that tells the row something new", () => {
+    expect(isRedundantStatusSegment("Google Gemini / Gemini 2.5 Flash", "Ready")).toBe(false);
+    expect(isRedundantStatusSegment("Google Gemini", "setup")).toBe(false);
+  });
+});
+
+describe("resolveShellProviderIdentity", () => {
+  it("says the shell is still loading rather than calling it unconfigured", () => {
+    expect(resolveShellProviderIdentity({ status: "loading" })).toMatchObject({
+      providerName: "Loading configuration",
+      providerStatus: { label: "Loading", shortLabel: "loading" },
+    });
+  });
+
+  it("says the configuration could not be read rather than calling it unconfigured", () => {
+    expect(resolveShellProviderIdentity({ status: "error" })).toMatchObject({
+      providerName: "Configuration unavailable",
+      providerStatus: { label: "Unavailable", shortLabel: "unavailable" },
+    });
+  });
+
+  it("falls back to the shared unconfigured identity when nothing is selected", () => {
+    expect(resolveShellProviderIdentity({ status: "unconfigured" })).toEqual({
+      providerName: "Not configured",
+      providerStatus: getUnconfiguredDisplayStatus(),
+    });
+  });
+
+  it("names the selected product, model, and readiness once one is configured", () => {
+    const identity = resolveShellProviderIdentity({
+      status: "configured",
+      readiness: readiness("ready"),
+      transportFamily: "hosted-api",
+      productId: "gemini",
+      modelId: "gemini-2.5-flash",
+    });
+
+    expect(identity.providerName).toBe("Google Gemini / Gemini 2.5 Flash");
+    expect(identity.providerStatus).toMatchObject({ status: "ready", label: "Ready" });
+  });
+
+  it("names the product alone while the configuration still has no model", () => {
+    const identity = resolveShellProviderIdentity({
+      status: "configured",
+      readiness: readiness("model-missing"),
+      transportFamily: "hosted-api",
+      productId: "gemini",
+      modelId: null,
+    });
+
+    expect(identity.providerName).toBe("Google Gemini");
+    expect(identity.providerStatus).toMatchObject({ status: "model-missing" });
+  });
+});
+
 describe("getProviderDisplay", () => {
   it("returns the not-configured placeholder when the product is missing", () => {
     expect(getProviderDisplay()).toBe("Not configured");
     expect(getProviderDisplay(undefined, "model-id")).toBe("Not configured");
   });
 
-  it("presents the exact product and model identities", () => {
-    expect(getProviderDisplay("Gemini", "gemini-2.5-flash")).toBe("Gemini / gemini-2.5-flash");
-    expect(getProviderDisplay("Gemini")).toBe("Gemini");
+  it("names the product and the model the way the catalog publishes them", () => {
+    expect(getProviderDisplay("gemini", "gemini-2.5-flash")).toBe(
+      "Google Gemini / Gemini 2.5 Flash",
+    );
+    expect(getProviderDisplay("gemini")).toBe("Google Gemini");
+  });
+
+  // A model the bounded catalog does not carry keeps its one real identity
+  // rather than borrowing a prettier name nothing published.
+  it("falls back to the model id when the catalog does not carry the model", () => {
+    expect(getProviderDisplay("gemini", "gemini-not-in-catalog")).toBe(
+      "Google Gemini / gemini-not-in-catalog",
+    );
   });
 });

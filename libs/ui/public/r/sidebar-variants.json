@@ -2,7 +2,7 @@
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "sidebar-variants",
   "title": "Sidebar Variants",
-  "description": "Shared CVA visual contracts for the Sidebar primitive (container + item, six active-marker variants).",
+  "description": "Shared CVA visual contracts for the Sidebar primitive (container + item, five active-marker variants).",
   "dependencies": ["class-variance-authority"],
   "registryDependencies": ["https://r.b4r7.dev/r/ui/marker-rail.json"],
   "files": [

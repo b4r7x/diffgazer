@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
+import type { ReviewStateErrorCode } from "../../review/state.js";
 import type { StepState } from "../../schemas/events/index.js";
 import { ReviewErrorCode } from "../../schemas/review/index.js";
 
@@ -12,7 +13,7 @@ export interface UseReviewCompletionOptions {
   isStreaming: boolean;
   isComplete: boolean;
   error: string | null;
-  errorCode: string | null;
+  errorCode: ReviewStateErrorCode | null;
   hasStreamed: boolean;
   steps: StepState[];
   onComplete: () => void;
@@ -26,7 +27,13 @@ export interface UseReviewCompletionResult {
   reset: () => void;
 }
 
-type CompletionState = { status: "idle" } | { status: "delaying" | "completed"; completedAt: Date };
+// `handled` is a completion the caller has already taken delivery of (reset). It is distinct from
+// `idle` because the stream is still sitting on its completion signal, and re-arming from those
+// same props would restart the delay the caller just dismissed.
+type CompletionState =
+  | { status: "idle" }
+  | { status: "handled" }
+  | { status: "delaying" | "completed"; completedAt: Date };
 
 type TimerRef = { current: ReturnType<typeof setTimeout> | null };
 
@@ -49,7 +56,6 @@ export function useReviewCompletion({
 }: UseReviewCompletionOptions): UseReviewCompletionResult {
   const [completion, setCompletion] = useState<CompletionState>({ status: "idle" });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handledCompletionRef = useRef(false);
   const getCompletionDelay = useEffectEvent(() => {
     const reportStep = steps.find((s) => s.id === "report");
     return reportStep?.status === "completed"
@@ -73,8 +79,7 @@ export function useReviewCompletion({
       !error &&
       errorCode !== ReviewErrorCode.CANCELLED;
 
-    if (canComplete && !handledCompletionRef.current) {
-      handledCompletionRef.current = true;
+    if (canComplete && completion.status === "idle") {
       setCompletion({ status: "delaying", completedAt: new Date() });
       emitStreamComplete();
       const delayMs = getCompletionDelay();
@@ -90,12 +95,10 @@ export function useReviewCompletion({
       return;
     }
 
-    if (!isComplete || !hasStreamed) {
-      handledCompletionRef.current = false;
-    }
-
+    // Also runs once the delay has elapsed, so a run that restarts without `reset` cannot keep
+    // reporting the previous run's completedAt.
     if (
-      timerRef.current &&
+      completion.status !== "idle" &&
       (isStreaming ||
         !isComplete ||
         error ||
@@ -105,7 +108,7 @@ export function useReviewCompletion({
       clearTimer(timerRef);
       setCompletion({ status: "idle" });
     }
-  }, [isStreaming, isComplete, error, errorCode, hasStreamed]);
+  }, [isStreaming, isComplete, error, errorCode, hasStreamed, completion.status]);
 
   function skipDelay() {
     // Only a running completion delay can be skipped. Before the stream ends
@@ -119,13 +122,15 @@ export function useReviewCompletion({
 
   function reset() {
     clearTimer(timerRef);
-    handledCompletionRef.current = false;
-    setCompletion({ status: "idle" });
+    setCompletion({ status: "handled" });
   }
 
   return {
     isCompleting: completion.status === "delaying",
-    completedAt: completion.status === "idle" ? null : completion.completedAt,
+    completedAt:
+      completion.status === "idle" || completion.status === "handled"
+        ? null
+        : completion.completedAt,
     skipDelay,
     reset,
   };

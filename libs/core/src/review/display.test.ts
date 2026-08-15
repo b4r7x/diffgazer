@@ -1,24 +1,17 @@
 import { describe, expect, it } from "vitest";
-import type { AgentState, StepState } from "../schemas/events/index.js";
+import { AGENT_METADATA, type AgentState, type StepState } from "../schemas/events/index.js";
 import { getAgentDetail, mapStepStatus } from "./display.js";
 
 function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
   return {
-    id: "a",
-    meta: {
-      id: "a",
-      lensId: "security",
-      name: "Agent",
-      badgeLabel: "AG",
-      badgeVariant: "info",
-      description: "",
-    },
+    id: "detective",
+    meta: AGENT_METADATA.detective,
     status: "queued",
     progress: 0,
     issueCount: 0,
     currentAction: undefined,
     ...overrides,
-  } as AgentState;
+  };
 }
 
 describe("mapStepStatus", () => {

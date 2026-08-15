@@ -13,7 +13,7 @@ describe("TUI API client", () => {
       .mockResolvedValue(new Response("{}", { headers: { "Content-Type": "application/json" } }));
     const { api } = await import("./api");
 
-    await api.client.get("/api/test");
+    await api.request("GET", "/api/test");
 
     const request = fetchMock.mock.calls[0]?.[1];
     const headers = new Headers(request?.headers);

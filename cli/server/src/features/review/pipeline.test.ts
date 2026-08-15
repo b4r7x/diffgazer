@@ -1,6 +1,6 @@
 import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { err, ok } from "@diffgazer/core/result";
-import type { RunnableProductId, SettingsConfig } from "@diffgazer/core/schemas/config";
+import type { HostedApiProductId, SettingsConfig } from "@diffgazer/core/schemas/config";
 import type { FullReviewStreamEvent } from "@diffgazer/core/schemas/events";
 import {
   type EvidenceKey,
@@ -15,16 +15,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AdmittedExecutionPlan } from "../../shared/lib/ai/admission/service.js";
 import {
   ExecutionLeaseRegistry,
+  STRUCTURED_OUTPUT_FAILURE_GUIDANCE,
   toClientSafeAdmittedPlanJson,
 } from "../../shared/lib/ai/admission/service.js";
 import { createBudgetLedger } from "../../shared/lib/ai/budget/ledger.js";
-import {
-  buildExecutionResult,
-  conservativeAttemptEstimate,
-} from "../../shared/lib/ai/client/generate.js";
+import { buildExecutionResult } from "../../shared/lib/ai/client/generate.js";
+import { promptAttemptEstimate } from "../../shared/lib/ai/providers/execution-receipt.js";
 import type { Adapter } from "../../shared/lib/ai/types.js";
 import { makeFileDiff, makeParsedDiff } from "./testing/factories.js";
-import { createReviewExecutionContext } from "./types.js";
+import { createReviewExecutionContext, type ReviewOutcome } from "./types.js";
 
 const saveReview = vi.fn();
 const orchestrateReview = vi.fn();
@@ -40,7 +39,6 @@ import {
   executeReview,
   finalizeReview,
   prohibitPartialFindings,
-  releaseReviewExecutionResources,
   resolveReviewDefaults,
 } from "./pipeline.js";
 import {
@@ -48,7 +46,7 @@ import {
   cancelSessionForUser,
   cleanupStaleSessions,
   createSession,
-  deleteSession,
+  deleteSessionForTests,
   getSession,
 } from "./stream/store.js";
 
@@ -203,7 +201,7 @@ const PIPELINE_LIMITS: ExecutionLimits = Object.freeze({
   maxCostUsd: 5,
 });
 
-function pipelineEvidenceKey(productId: RunnableProductId = "gemini"): EvidenceKey {
+function pipelineEvidenceKey(productId: HostedApiProductId = "gemini"): EvidenceKey {
   const product = PRODUCT_REGISTRY[productId];
   const endpoint = product.configuration.endpoints[0];
   return {
@@ -223,7 +221,7 @@ function pipelineEvidenceKey(productId: RunnableProductId = "gemini"): EvidenceK
   };
 }
 
-function pipelineAdmittedPlan(productId: RunnableProductId = "gemini"): AdmittedExecutionPlan {
+function pipelineAdmittedPlan(productId: HostedApiProductId = "gemini"): AdmittedExecutionPlan {
   const evidenceKey = pipelineEvidenceKey(productId);
   return Object.freeze({
     configurationId: "gemini-primary",
@@ -238,7 +236,10 @@ function pipelineAdmittedPlan(productId: RunnableProductId = "gemini"): Admitted
 
 function authorizePipelineExecution(plan: AdmittedExecutionPlan, adapter: Adapter) {
   const ledger = createBudgetLedger(plan.limits);
-  const estimate = conservativeAttemptEstimate("review prompt", plan.limits);
+  const estimate = promptAttemptEstimate(
+    { prompt: "review prompt", systemPrompt: "review system prompt" },
+    plan.limits,
+  );
   const budgetReservation = ledger.reserveAttempt(estimate);
   if (!budgetReservation.ok) {
     throw new Error("budget reservation failed in test setup");
@@ -261,6 +262,7 @@ function authorizePipelineExecution(plan: AdmittedExecutionPlan, adapter: Adapte
     authorization: Object.freeze({
       plan,
       adapter,
+      evidenceState: "proven" as const,
       budgetLedger: ledger,
       budgetReservation: budgetReservation.value,
       lease: lease.value,
@@ -389,6 +391,239 @@ describe("admitted execution lifecycle", () => {
     expect(result.value.issues).toEqual([]);
   });
 
+  it("aggregates usage across all failed dispatches while keeping the decisive receipt", async () => {
+    const plan = pipelineAdmittedPlan();
+    const schemaFailed = buildExecutionResult(plan, "schema-failed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:01.000Z",
+      attemptCount: 2,
+      usageAvailability: "reported",
+      usage: { inputTokens: 7, outputTokens: 3, totalTokens: 10 },
+    });
+    const transportFailed = buildExecutionResult(plan, "transport-failed", {
+      startedAt: "2026-07-31T10:00:02.000Z",
+      finishedAt: "2026-07-31T10:00:03.000Z",
+      attemptCount: 1,
+      usageAvailability: "reported",
+      usage: { inputTokens: 5, outputTokens: 2, totalTokens: 7 },
+    });
+    const schemaDiagnostic = {
+      code: "schema-failed",
+      safeMessage: "Schema diagnostic",
+      retryable: false,
+      remediation: "Retry with a compatible schema.",
+      correlationId: "schema-failed-correlation",
+    };
+    const transportDiagnostic = {
+      code: "transport-failed",
+      safeMessage: "Transport diagnostic",
+      retryable: true,
+      remediation: "Retry after checking provider status.",
+      correlationId: "transport-failed-correlation",
+    };
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrateReview.mockResolvedValue(err({ code: "PARSE_ERROR", message: "schema mismatch" }));
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [schemaFailed, transportFailed],
+        terminalDiagnostics: [schemaDiagnostic, transportDiagnostic],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.outcome).toBe("schema-failed");
+    expect(result.value.terminalDiagnostic).toEqual(schemaDiagnostic);
+    expect(result.value.execution?.receipt.startedAt).toBe(schemaFailed.receipt.startedAt);
+    expect(result.value.execution?.receipt.finishedAt).toBe(schemaFailed.receipt.finishedAt);
+    expect(result.value.execution?.receipt.attemptCount).toBe(2);
+    expect(result.value.execution?.receipt.usage).toEqual({
+      inputTokens: 12,
+      outputTokens: 5,
+      totalTokens: 17,
+    });
+  });
+
+  it("reports the schema failure that decided the review, not the dispatch that failed first", async () => {
+    const plan = pipelineAdmittedPlan();
+    const transportFailed = buildExecutionResult(plan, "transport-failed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:01.000Z",
+      attemptCount: 1,
+      usageAvailability: "unavailable",
+    });
+    const schemaFailed = buildExecutionResult(plan, "schema-failed", {
+      startedAt: "2026-07-31T10:00:02.000Z",
+      finishedAt: "2026-07-31T10:00:03.000Z",
+      attemptCount: 2,
+      usageAvailability: "unavailable",
+    });
+    const transportDiagnostic = {
+      code: "transport-failed",
+      safeMessage: "Transport diagnostic",
+      retryable: true,
+      remediation: "Retry after checking provider status.",
+      correlationId: "transport-failed-correlation",
+    };
+    const schemaDiagnostic = {
+      code: "schema-failed",
+      safeMessage: "Schema diagnostic",
+      retryable: false,
+      remediation: "Retry with a compatible schema.",
+      correlationId: "schema-failed-correlation",
+    };
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrateReview.mockResolvedValue(err({ code: "PARSE_ERROR", message: "schema mismatch" }));
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [transportFailed, schemaFailed],
+        terminalDiagnostics: [transportDiagnostic, schemaDiagnostic],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.outcome).toBe("schema-failed");
+    expect(result.value.terminalDiagnostic).toEqual(schemaDiagnostic);
+    expect(result.value.execution?.receipt.startedAt).toBe(schemaFailed.receipt.startedAt);
+    expect(result.value.execution?.receipt.attemptCount).toBe(2);
+  });
+
+  it("reports a bridge schema rejection as schema-failed when no dispatch receipt carries it", async () => {
+    const plan = pipelineAdmittedPlan();
+    const transportFailed = buildExecutionResult(plan, "transport-failed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:01.000Z",
+      attemptCount: 1,
+      usageAvailability: "unavailable",
+    });
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrateReview.mockResolvedValue(err({ code: "PARSE_ERROR", message: "schema mismatch" }));
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [transportFailed],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.outcome).toBe("schema-failed");
+  });
+
+  it("marks all-failed total-only usage as unavailable", async () => {
+    const plan = pipelineAdmittedPlan();
+    const schemaFailed = buildExecutionResult(plan, "schema-failed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:01.000Z",
+      usageAvailability: "reported",
+      usage: { totalTokens: 10 },
+    });
+    const transportFailed = buildExecutionResult(plan, "transport-failed", {
+      startedAt: "2026-07-31T10:00:02.000Z",
+      finishedAt: "2026-07-31T10:00:03.000Z",
+      usageAvailability: "reported",
+      usage: { totalTokens: 7 },
+    });
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrateReview.mockResolvedValue(err({ code: "PARSE_ERROR", message: "schema mismatch" }));
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [schemaFailed, transportFailed],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.outcome).toBe("schema-failed");
+    expect(result.value.execution?.receipt.usageAvailability).toBe("unavailable");
+    expect(result.value.execution?.receipt.usage).toBeUndefined();
+  });
+
+  it("threads the last safe terminal diagnostic through admitted execution failures", async () => {
+    const plan = pipelineAdmittedPlan();
+    const failureExecution = buildExecutionResult(plan, "transport-failed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:02.000Z",
+      attemptCount: 1,
+      usageAvailability: "unavailable",
+    });
+    const terminalDiagnostic = {
+      code: "transport-failed",
+      safeMessage: "Hosted adapter timed out after handshake",
+      retryable: true,
+      remediation: "Retry after checking provider status.",
+      correlationId: "diag-review-123",
+    };
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrateReview.mockResolvedValue(err({ code: "STREAM_ERROR", message: "unused" }));
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [failureExecution],
+        terminalDiagnostics: [terminalDiagnostic],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.outcome).toBe("transport-failed");
+    expect(result.value.terminalDiagnostic).toEqual(terminalDiagnostic);
+  });
+
   it.each([
     "timed-out",
     "budget-exhausted",
@@ -415,8 +650,8 @@ describe("admitted execution lifecycle", () => {
     });
     const context = createReviewExecutionContext(authorization);
 
-    releaseReviewExecutionResources(context);
-    releaseReviewExecutionResources(context);
+    context.releaseOnce();
+    context.releaseOnce();
 
     expect(release).toHaveBeenCalledTimes(1);
     expect(leaseRegistry.activeLeaseCount(plan.configurationId)).toBe(0);
@@ -465,6 +700,436 @@ describe("admitted execution lifecycle", () => {
     }
   });
 
+  it("uses per-dispatch receipt timing instead of the orchestration wall clock", async () => {
+    const plan = pipelineAdmittedPlan();
+    const dispatchStarted = "2026-07-31T10:00:00.000Z";
+    const dispatchFinished = "2026-07-31T10:00:04.000Z";
+    const dispatchExecution = buildExecutionResult(plan, "completed", {
+      startedAt: dispatchStarted,
+      finishedAt: dispatchFinished,
+      usageAvailability: "reported",
+      usage: { inputTokens: 12, outputTokens: 4, totalTokens: 16 },
+      issues: [makePipelineIssue("1", "a.ts", "high")],
+    });
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrationSuccess([makePipelineIssue("1", "a.ts", "high")]);
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [dispatchExecution],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.startedAt).toBe(dispatchStarted);
+    expect(result.value.execution?.receipt.finishedAt).toBe(dispatchFinished);
+    expect(result.value.execution?.receipt.outcome).toBe("completed");
+  });
+
+  it("keeps retry counts per dispatch across the five default lenses", async () => {
+    const plan = pipelineAdmittedPlan();
+    const dispatches = LENS_IDS.map((_, index) =>
+      buildExecutionResult(plan, "completed", {
+        startedAt: `2026-07-31T10:00:0${index}.000Z`,
+        finishedAt: `2026-07-31T10:00:0${index + 1}.000Z`,
+        attemptCount: 2,
+        usageAvailability: "unavailable",
+      }),
+    );
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrationSuccess();
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: dispatches,
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: { ...pipelineConfig(), activeLenses: [...LENS_IDS], concurrency: LENS_IDS.length },
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.attemptCount).toBe(2);
+    expect(result.value.execution?.receipt.startedAt).toBe("2026-07-31T10:00:04.000Z");
+    expect(result.value.execution?.receipt.finishedAt).toBe("2026-07-31T10:00:05.000Z");
+  });
+
+  it("makes a budget-exhausted dispatch terminal and retains known usage from every dispatch", async () => {
+    const plan = pipelineAdmittedPlan();
+    const completed = buildExecutionResult(plan, "completed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:01.000Z",
+      attemptCount: 2,
+      usageAvailability: "reported",
+      usage: {
+        inputTokens: 12,
+        outputTokens: 4,
+        totalTokens: 16,
+        cachedTokens: 2,
+        reasoningTokens: 1,
+      },
+    });
+    const budgetExhausted = buildExecutionResult(plan, "budget-exhausted", {
+      startedAt: "2026-07-31T10:00:02.000Z",
+      finishedAt: "2026-07-31T10:00:03.000Z",
+      attemptCount: 1,
+      usageAvailability: "reported",
+      usage: {
+        inputTokens: 3,
+        outputTokens: 2,
+        totalTokens: 5,
+        cachedTokens: 1,
+        reasoningTokens: 1,
+      },
+    });
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrationSuccess();
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [completed, budgetExhausted],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.outcome).toBe("budget-exhausted");
+    expect(result.value.issues).toEqual([]);
+    expect(result.value.execution?.result.issues).toEqual([]);
+    expect(result.value.execution?.receipt.usage).toEqual({
+      inputTokens: 15,
+      outputTokens: 6,
+      totalTokens: 21,
+      cachedTokens: 3,
+      reasoningTokens: 2,
+    });
+  });
+
+  it("keeps a partial input-only usage report input-only", async () => {
+    const plan = pipelineAdmittedPlan();
+    const dispatch = buildExecutionResult(plan, "completed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:01.000Z",
+      usageAvailability: "reported",
+      usage: { inputTokens: 12 },
+    });
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrationSuccess();
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [dispatch],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.usageAvailability).toBe("reported");
+    expect(result.value.execution?.receipt.usage).toEqual({ inputTokens: 12 });
+  });
+
+  it("does not report a total-only usage aggregate", async () => {
+    const plan = pipelineAdmittedPlan();
+    const dispatch = buildExecutionResult(plan, "completed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:01.000Z",
+      usageAvailability: "reported",
+      usage: { totalTokens: 12 },
+    });
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrationSuccess();
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [dispatch],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.usageAvailability).toBe("unavailable");
+    expect(result.value.execution?.receipt.usage).toBeUndefined();
+  });
+
+  it("sums cached and reasoning usage components independently", async () => {
+    const plan = pipelineAdmittedPlan();
+    const firstDispatch = buildExecutionResult(plan, "completed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:01.000Z",
+      usageAvailability: "reported",
+      usage: {
+        inputTokens: 8,
+        outputTokens: 6,
+        totalTokens: 14,
+        cachedTokens: 3,
+        reasoningTokens: 2,
+      },
+    });
+    const secondDispatch = buildExecutionResult(plan, "completed", {
+      startedAt: "2026-07-31T10:00:02.000Z",
+      finishedAt: "2026-07-31T10:00:03.000Z",
+      usageAvailability: "reported",
+      usage: {
+        inputTokens: 4,
+        outputTokens: 5,
+        totalTokens: 9,
+        cachedTokens: 1,
+        reasoningTokens: 1,
+      },
+    });
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrationSuccess();
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [firstDispatch, secondDispatch],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.usage).toEqual({
+      inputTokens: 12,
+      outputTokens: 11,
+      totalTokens: 23,
+      cachedTokens: 4,
+      reasoningTokens: 3,
+    });
+  });
+
+  it("preserves earlier reported usage when a later dispatch is unavailable", async () => {
+    const plan = pipelineAdmittedPlan();
+    const firstDispatch = buildExecutionResult(plan, "completed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:01.000Z",
+      usageAvailability: "reported",
+      usage: { inputTokens: 12, outputTokens: 4, totalTokens: 16 },
+    });
+    const unavailableDispatch = buildExecutionResult(plan, "completed", {
+      startedAt: "2026-07-31T10:00:02.000Z",
+      finishedAt: "2026-07-31T10:00:03.000Z",
+      attemptCount: 2,
+      usageAvailability: "unavailable",
+    });
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrationSuccess();
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [firstDispatch, unavailableDispatch],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.attemptCount).toBe(2);
+    expect(result.value.execution?.receipt.usageAvailability).toBe("reported");
+    expect(result.value.execution?.receipt.usage).toEqual({
+      inputTokens: 12,
+      outputTokens: 4,
+      totalTokens: 16,
+    });
+  });
+
+  it("aggregates reported usage from failed and completed dispatches", async () => {
+    const plan = pipelineAdmittedPlan();
+    const schemaFailed = buildExecutionResult(plan, "schema-failed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:01.000Z",
+      usageAvailability: "reported",
+      usage: { inputTokens: 7, outputTokens: 3, totalTokens: 10 },
+    });
+    const completed = buildExecutionResult(plan, "completed", {
+      startedAt: "2026-07-31T10:00:02.000Z",
+      finishedAt: "2026-07-31T10:00:03.000Z",
+      usageAvailability: "reported",
+      usage: { inputTokens: 5, outputTokens: 2, totalTokens: 7 },
+    });
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrationSuccess();
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [schemaFailed, completed],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.outcome).toBe("completed");
+    expect(result.value.execution?.receipt.startedAt).toBe(completed.receipt.startedAt);
+    expect(result.value.execution?.receipt.finishedAt).toBe(completed.receipt.finishedAt);
+    expect(result.value.execution?.receipt.attemptCount).toBe(completed.receipt.attemptCount);
+    expect(result.value.execution?.receipt.usage).toEqual({
+      inputTokens: 12,
+      outputTokens: 5,
+      totalTokens: 17,
+    });
+  });
+
+  it("clamps orchestration wall clock to the admitted limit and keeps completed findings", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-31T10:00:00.000Z"));
+    const plan = pipelineAdmittedPlan();
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrateReview.mockImplementation(async () => {
+      vi.setSystemTime(new Date("2026-07-31T10:10:00.000Z"));
+      return ok({
+        issues: [makePipelineIssue("1", "a.ts", "high")],
+        lensStats: [],
+        droppedDuplicates: 0,
+        droppedBelowThreshold: 0,
+      });
+    });
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+    vi.useRealTimers();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.outcome).toBe("completed");
+    expect(result.value.execution?.receipt.startedAt).toBe("2026-07-31T10:00:00.000Z");
+    expect(result.value.execution?.receipt.finishedAt).toBe("2026-07-31T10:05:00.000Z");
+    expect(result.value.issues).toHaveLength(1);
+  });
+
+  it("uses the last completed dispatch timing when usage is unavailable", async () => {
+    const plan = pipelineAdmittedPlan();
+    const dispatchStarted = "2026-07-31T10:00:00.000Z";
+    const dispatchFinished = "2026-07-31T10:00:03.000Z";
+    const firstDispatch = buildExecutionResult(plan, "completed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:01.000Z",
+      usageAvailability: "unavailable",
+      issues: [],
+    });
+    const lastDispatch = buildExecutionResult(plan, "completed", {
+      startedAt: dispatchStarted,
+      finishedAt: dispatchFinished,
+      usageAvailability: "unavailable",
+      issues: [],
+    });
+    const { authorization } = authorizePipelineExecution(plan, {
+      productId: "gemini",
+      transportFamily: "hosted-api",
+      execute: vi.fn(),
+    });
+    orchestrationSuccess([makePipelineIssue("1", "a.ts", "high")]);
+    const result = await executeReview({
+      aiClient: {
+        provider: "gemini",
+        generate: async () => err({ code: "MODEL_ERROR", message: "unused" }),
+        authorization,
+        terminalExecutions: [firstDispatch, lastDispatch],
+      },
+      parsed: makeParsedDiff([makePipelineFile("a.ts")]),
+      config: pipelineConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.execution?.receipt.startedAt).toBe(dispatchStarted);
+    expect(result.value.execution?.receipt.finishedAt).toBe(dispatchFinished);
+    expect(result.value.execution?.receipt.outcome).toBe("completed");
+    expect(result.value.execution?.receipt.usageAvailability).toBe("unavailable");
+    expect(result.value.issues).toHaveLength(1);
+  });
+
   it("exposes no secret values on the client-safe admitted plan surface", () => {
     const plan = pipelineAdmittedPlan();
     const { authorization } = authorizePipelineExecution(plan, {
@@ -485,8 +1150,8 @@ describe("finalizeReview", () => {
 
   afterEach(() => {
     saveReview.mockReset();
-    deleteSession("review-1");
-    for (const reviewId of auxiliarySessionIds) deleteSession(reviewId);
+    deleteSessionForTests("review-1");
+    for (const reviewId of auxiliarySessionIds) deleteSessionForTests(reviewId);
     auxiliarySessionIds.clear();
   });
 
@@ -494,6 +1159,7 @@ describe("finalizeReview", () => {
     events: FullReviewStreamEvent[],
     onEmit?: (event: FullReviewStreamEvent) => void,
     monotonicNow?: () => number,
+    outcome: ReviewOutcome = { issues: [makePipelineIssue("1", "a.ts", "high")] },
   ) {
     const session = createSession("review-1", {
       projectPath: "/project",
@@ -504,7 +1170,7 @@ describe("finalizeReview", () => {
       ...(monotonicNow ? { monotonicNow } : {}),
     });
     return finalizeReview({
-      outcome: { issues: [makePipelineIssue("1", "a.ts", "high")] },
+      outcome,
       emit: async (event) => {
         events.push(event);
         addEvent("review-1", event);
@@ -544,6 +1210,60 @@ describe("finalizeReview", () => {
     // client's View Results gate (and the absence of a terminal complete) holds.
     expect(stepNames(events, "step_start")).toContain("report");
     expect(stepNames(events, "step_complete")).not.toContain("report");
+  });
+
+  it("returns the safe terminal diagnostic after persisting a failed execution", async () => {
+    saveReview.mockResolvedValue(ok({ id: "review-1" }));
+    const plan = pipelineAdmittedPlan();
+    const terminalDiagnostic = {
+      code: "transport-failed",
+      safeMessage: "Hosted adapter timed out after handshake",
+      retryable: true,
+      remediation: "Retry after checking provider status.",
+      correlationId: "diag-review-123",
+    };
+    const execution = buildExecutionResult(plan, "transport-failed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:02.000Z",
+      attemptCount: 1,
+      usageAvailability: "unavailable",
+    });
+    const events: FullReviewStreamEvent[] = [];
+
+    const result = await runFinalize(events, undefined, undefined, {
+      issues: [],
+      execution,
+      terminalDiagnostic,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatchObject({
+      kind: "review_abort",
+      code: "AI_ERROR",
+      message: "Hosted adapter timed out after handshake",
+    });
+    expect(saveReview).toHaveBeenCalledWith(expect.objectContaining({ execution }));
+  });
+
+  it("reports the structured-output guidance when a schema failure carries no diagnostic", async () => {
+    saveReview.mockResolvedValue(ok({ id: "review-1" }));
+    const execution = buildExecutionResult(pipelineAdmittedPlan(), "schema-failed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:02.000Z",
+      attemptCount: 1,
+      usageAvailability: "unavailable",
+    });
+
+    const result = await runFinalize([], undefined, undefined, { issues: [], execution });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatchObject({
+      kind: "review_abort",
+      code: "AI_ERROR",
+      message: STRUCTURED_OUTPUT_FAILURE_GUIDANCE,
+    });
   });
 
   it("completes the report step only after a successful save", async () => {

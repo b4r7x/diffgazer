@@ -1,5 +1,5 @@
 import type { Result } from "@diffgazer/core/result";
-import { err, ok } from "@diffgazer/core/result";
+import { ok } from "@diffgazer/core/result";
 import type { AgentStreamEvent, StepEvent } from "@diffgazer/core/schemas/events";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/core/schemas/events";
 import type {
@@ -14,19 +14,14 @@ import type { AIClient, AIError } from "../../../shared/lib/ai/types.js";
 import type { ParsedDiff } from "./diff/types.js";
 import { createIssueEvidenceResolver } from "./issues/evidence.js";
 import {
+  dropProviderTrace,
   normalizeIssueLineFields,
-  normalizeIssueTextFields,
   validateIssueCompleteness,
 } from "./issues/normalization.js";
 import { severityMeetsMinimum } from "./issues/ordering.js";
 import { buildReviewPrompt } from "./prompts.js";
 import { sanitizeIssue } from "./sanitize-issue.js";
 import type { LensResult } from "./types.js";
-
-function estimateTokens(text: string): number {
-  if (!text) return 0;
-  return Math.ceil(text.length / 4);
-}
 
 function getThinkingMessage(lens: Lens): string {
   switch (lens.id) {
@@ -104,7 +99,12 @@ function resolvePromptFileIdentities(
     }
   }
 
-  return { ...issue, file: filePath, evidence, fixPlan };
+  return {
+    ...issue,
+    file: filePath,
+    evidence,
+    ...(fixPlan === undefined ? {} : { fixPlan }),
+  };
 }
 
 export async function runLensAnalysis(
@@ -118,7 +118,6 @@ export async function runLensAnalysis(
 ): Promise<Result<LensResult, AIError>> {
   const agentId = LENS_TO_AGENT[lens.id];
   const agentMeta = AGENT_METADATA[agentId];
-  const startedAt = Date.now();
 
   onEvent({
     type: "agent_start",
@@ -141,7 +140,11 @@ export async function runLensAnalysis(
     timestamp: new Date().toISOString(),
   });
 
-  const { text: prompt, files: promptFiles } = buildReviewPrompt(lens, diff, projectContext);
+  const {
+    user: prompt,
+    system,
+    files: promptFiles,
+  } = buildReviewPrompt(lens, diff, projectContext);
 
   for (const [index, { file }] of promptFiles.entries()) {
     onEvent({
@@ -189,7 +192,10 @@ export async function runLensAnalysis(
 
   let result: Result<LensReviewResult, AIError>;
   try {
-    result = await client.generate(prompt, LensReviewResultSchema, { signal });
+    result = await client.generate(prompt, LensReviewResultSchema, {
+      signal,
+      systemPrompt: system,
+    });
   } finally {
     if (progressTimer) clearInterval(progressTimer);
   }
@@ -210,23 +216,12 @@ export async function runLensAnalysis(
   const filePathsById = new Map(promptFiles.map(({ id, file }) => [id, file.filePath]));
   const ensureEvidence = createIssueEvidenceResolver(diff);
   const resolvedIssues: ReviewIssue[] = [];
+  let droppedUnknownFileIdentities = 0;
   for (const issue of result.value.issues) {
-    const resolvedIssue = resolvePromptFileIdentities(
-      normalizeIssueTextFields(issue),
-      filePathsById,
-    );
+    const resolvedIssue = resolvePromptFileIdentities(issue, filePathsById);
     if (resolvedIssue === null) {
-      const error: AIError = {
-        code: "PARSE_ERROR",
-        message: "Model response referenced an unknown file identity.",
-      };
-      onEvent({
-        type: "agent_error",
-        agent: agentId,
-        error: `${error.code}: ${error.message}`,
-        timestamp: new Date().toISOString(),
-      });
-      return err(error);
+      droppedUnknownFileIdentities += 1;
+      continue;
     }
     resolvedIssues.push(resolvedIssue);
   }
@@ -234,9 +229,11 @@ export async function runLensAnalysis(
   const normalizedIssues = resolvedIssues
     .map((issue: ReviewIssue) => normalizeIssueLineFields(issue))
     .map((issue: ReviewIssue) => ensureEvidence(issue))
+    .map((issue: ReviewIssue) => dropProviderTrace(issue))
     .map((issue: ReviewIssue) => sanitizeIssue(issue));
   const completeIssues = normalizedIssues.filter(validateIssueCompleteness);
-  const droppedIncompleteProviderIssues = normalizedIssues.length - completeIssues.length;
+  const droppedIncompleteProviderIssues =
+    normalizedIssues.length - completeIssues.length + droppedUnknownFileIdentities;
   const processedIssues = ensureUniqueIssueIds(completeIssues, lens.id);
 
   // Stream only issues meeting the threshold; the full set is still returned.
@@ -268,10 +265,6 @@ export async function runLensAnalysis(
     agent: agentId,
     issueCount: streamedIssues.length,
     timestamp: new Date().toISOString(),
-    durationMs: Date.now() - startedAt,
-    promptChars: prompt.length,
-    outputChars: JSON.stringify(result.value).length,
-    tokenEstimate: estimateTokens(prompt),
   });
 
   return ok({

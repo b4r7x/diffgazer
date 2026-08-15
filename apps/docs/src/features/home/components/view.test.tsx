@@ -1,18 +1,14 @@
-// @vitest-environment jsdom
-
 import { KeyboardProvider } from "@diffgazer/keys";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }));
-
 // Boundary mock: TanStack Router is the external routing library; home links need deterministic hrefs/current path.
 vi.mock("@tanstack/react-router", async () => {
-  const { RouterLinkMock, useLocationMock } = await import("@/testing/router-mock");
+  const { RouterLinkMock, ScriptOnceMock, useLocationMock } = await import("@/testing/router-mock");
   return {
     Link: RouterLinkMock,
-    useNavigate: () => navigate,
+    ScriptOnce: ScriptOnceMock,
     ...useLocationMock({ pathname: "/" }),
   };
 });
@@ -90,7 +86,6 @@ function indicator(link: HTMLElement): string {
 beforeEach(() => {
   stubMatchMedia({ isDesktop: true });
   Element.prototype.scrollIntoView = () => {};
-  navigate.mockClear();
 });
 
 describe("HomeView", () => {
@@ -151,7 +146,7 @@ describe("HomeView", () => {
   it("renders a tree sidebar with library sections", () => {
     renderHome();
 
-    const sidebar = screen.getByRole("navigation", { name: "Primary" });
+    const sidebar = screen.getByRole("navigation", { name: "Documentation tree" });
     expect(within(sidebar).getByRole("heading", { name: "@diffgazer/ui" })).toBeInTheDocument();
     expect(within(sidebar).getByRole("link", { name: /Components \(47\)/i })).toHaveAttribute(
       "href",
@@ -183,6 +178,7 @@ describe("HomeView", () => {
 
     const main = screen.getByRole("main");
     expect(main).toHaveAttribute("id", "main-content");
+    expect(main).toHaveAttribute("data-scroll-restoration-id", "main-content");
     main.focus();
     expect(main).toHaveFocus();
   });
@@ -193,18 +189,39 @@ describe("HomeView", () => {
 
     const app = packageLink(/^diffgazer\b/i);
     const ui = packageLink(/^@diffgazer\/ui\b/i);
+    const keys = packageLink(/^@diffgazer\/keys\b/i);
     expect(indicator(app)).toBe("›");
 
-    await user.keyboard("j");
-    expect(indicator(app)).toBe("▸");
-
+    app.focus();
     await user.keyboard("j");
     expect(indicator(ui)).toBe("▸");
     expect(indicator(app)).toBe("›");
+    expect(ui).toHaveFocus();
+
+    await user.keyboard("j");
+    expect(indicator(keys)).toBe("▸");
+    expect(indicator(ui)).toBe("›");
 
     await user.keyboard("k");
-    expect(indicator(app)).toBe("▸");
-    expect(indicator(ui)).toBe("›");
+    expect(indicator(ui)).toBe("▸");
+    expect(indicator(keys)).toBe("›");
+    expect(ui).toHaveFocus();
+  });
+
+  it("activates the highlighted package link when Enter is pressed after j/k navigation", async () => {
+    const user = userEvent.setup();
+    renderHome();
+    const app = packageLink(/^diffgazer\b/i);
+    const ui = packageLink(/^@diffgazer\/ui\b/i);
+    const onActivate = vi.fn((event: Event) => event.preventDefault());
+    ui.addEventListener("click", onActivate);
+
+    app.focus();
+    await user.keyboard("j");
+    await user.keyboard("{Enter}");
+
+    expect(onActivate).toHaveBeenCalledOnce();
+    expect(ui).toHaveAttribute("href", "/ui/getting-started/installation");
   });
 
   it("activates the focused package link with native Enter behavior", async () => {
@@ -219,15 +236,44 @@ describe("HomeView", () => {
 
     expect(onActivate).toHaveBeenCalledOnce();
     expect(app).toHaveAttribute("href", "/app/getting-started/installation");
-    expect(navigate).not.toHaveBeenCalled();
   });
 
-  it("does not navigate on Enter when no package is highlighted", async () => {
+  it("activates no package link on Enter when no package is highlighted", async () => {
     const user = userEvent.setup();
     renderHome();
 
+    const onActivate = vi.fn((event: Event) => event.preventDefault());
+    for (const link of screen.getAllByRole("link")) link.addEventListener("click", onActivate);
+
     await user.keyboard("{Enter}");
-    expect(navigate).not.toHaveBeenCalled();
+    expect(onActivate).not.toHaveBeenCalled();
+  });
+
+  it("keeps Enter on an unrelated control native after a package is highlighted", async () => {
+    const user = userEvent.setup();
+    const onControlActivate = vi.fn();
+    render(
+      <KeyboardProvider>
+        <button type="button" onClick={onControlActivate}>
+          Unrelated control
+        </button>
+        <MobileNavProvider>
+          <HomeView libraries={LIBRARIES} />
+        </MobileNavProvider>
+      </KeyboardProvider>,
+    );
+
+    const app = packageLink(/^diffgazer\b/i);
+    const onPackageActivate = vi.fn((event: Event) => event.preventDefault());
+    app.addEventListener("click", onPackageActivate);
+    await user.hover(app);
+
+    await user.click(screen.getByRole("button", { name: "Unrelated control" }));
+    onControlActivate.mockClear();
+    await user.keyboard("{Enter}");
+
+    expect(onControlActivate).toHaveBeenCalledOnce();
+    expect(onPackageActivate).not.toHaveBeenCalled();
   });
 
   it("highlights a package row on hover", async () => {

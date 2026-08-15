@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  DETAILS_EMPTY_COPY,
   getAlternateReviewMode,
   getDetailsEmptyCopy,
   getNoChangesCopy,
@@ -20,23 +19,17 @@ describe("review empty-state presentation", () => {
     expect(getDetailsEmptyCopy("no-selection")).toEqual({
       title: "Select an issue to view details",
     });
-    expect(Object.keys(DETAILS_EMPTY_COPY)).toEqual(["no-issues", "filter-empty", "no-selection"]);
   });
 
-  it("keeps the shared no-diff copy", () => {
-    expect(getNoChangesCopy("staged")).toMatchObject({
-      title: "No Staged Changes",
-      switchLabel: "Review Unstaged",
-    });
-    expect(getNoChangesCopy("unstaged")).toMatchObject({
-      title: "No Unstaged Changes",
-      switchLabel: "Review Staged",
-    });
-    expect(getNoChangesCopy("files")).toMatchObject({
-      title: "No Changes in Selected Files",
-      switchLabel: "Review Unstaged",
-    });
-    expect(Object.keys(NO_CHANGES_COPY)).toEqual(["staged", "unstaged", "files"]);
+  it.each([
+    ["staged", NO_CHANGES_COPY.staged],
+    ["unstaged", NO_CHANGES_COPY.unstaged],
+    ["files", NO_CHANGES_COPY.files],
+  ] as const)("keeps the shared no-diff copy for %s mode", (mode, expected) => {
+    expect(getNoChangesCopy(mode)).toEqual(expected);
+  });
+
+  it("keeps alternate review modes for every no-diff mode", () => {
     expect(getAlternateReviewMode("staged")).toBe("unstaged");
     expect(getAlternateReviewMode("unstaged")).toBe("staged");
     expect(getAlternateReviewMode("files")).toBe("unstaged");

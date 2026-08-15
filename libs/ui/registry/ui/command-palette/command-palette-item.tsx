@@ -84,22 +84,12 @@ export function CommandPaletteItem({
     registerItem({
       registrationId,
       id,
-      value: searchValue,
       disabled: disabled || !isVisible,
       onSelect: disabled ? undefined : onSelect,
       element: isVisible ? rootRef.current : null,
     });
     return () => unregisterItem(registrationId);
-  }, [
-    disabled,
-    id,
-    isVisible,
-    onSelect,
-    registerItem,
-    registrationId,
-    searchValue,
-    unregisterItem,
-  ]);
+  }, [disabled, id, isVisible, onSelect, registerItem, registrationId, unregisterItem]);
 
   if (!isVisible) return null;
 

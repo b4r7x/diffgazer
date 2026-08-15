@@ -23,7 +23,7 @@ export interface PreparedExample {
   raw?: string;
 }
 
-export interface PreparedInstallationPath {
+interface PreparedInstallationPath {
   label: string;
   available: boolean;
   command?: string;
@@ -89,16 +89,18 @@ function prepareInstallation(
   itemKind: ConsumptionItemKind,
 ): PreparedInstallation {
   const metadata = getConsumptionMetadata(library, itemId, itemKind);
-  const localDestination = metadata.paths.copy.available ? metadata.copyPath : undefined;
+  // Mirrors ConsumptionBlock: each destination is gated on its own path, so the
+  // dgadd caption does not disappear behind the shadcn/hosted-registry gate.
+  const copyDestination = metadata.paths.copy.available ? metadata.copyPath : undefined;
 
   return {
     paths: [
       preparePath("dgadd", metadata.paths.dgadd, [
-        { label: "Installs to", value: localDestination },
+        { label: "Installs to", value: metadata.copyPath },
         { label: "Item", value: metadata.dgaddName },
       ]),
       preparePath("shadcn CLI", metadata.paths.copy, [
-        { label: "Copies to", value: localDestination },
+        { label: "Copies to", value: copyDestination },
       ]),
       preparePath("npm package", metadata.paths.package, [
         { label: "Import", value: metadata.packageImport },

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   checkDockerArtifactFormatterInputs,
+  checkDockerCopiesWorkspaceManifests,
   checkDockerFrozenInstallsCopyPatches,
   checkPnpmPinsMatchRootPackageManager,
 } from "./docker.mjs";
@@ -219,6 +220,70 @@ test("Docker patch validation discovers additional frozen-install Dockerfiles", 
 
   assert.equal(result.ok, false);
   assert.match(result.details, /deploy\/preview\.Dockerfile: stage 1/);
+});
+
+const MANIFEST_DOCKERFILE_LINES = [
+  "FROM node:22-alpine",
+  "WORKDIR /app",
+  "COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./",
+  "COPY apps/docs/package.json apps/docs/package.json",
+  "COPY libs/keys/examples/playground/package.json libs/keys/examples/playground/package.json",
+  "RUN pnpm fetch --frozen-lockfile",
+  "RUN pnpm install --frozen-lockfile --offline",
+  "",
+];
+
+const MANIFEST_REPO_FILES = [
+  ...FIXTURE_REPO_FILES,
+  "apps/docs/package.json",
+  "libs/keys/examples/playground/package.json",
+];
+
+test("Docker offline installs accept a Dockerfile that copies every workspace manifest", () => {
+  const root = createConformingFixture();
+  for (const file of FIXTURE_REPO_FILES) {
+    writeText(root, file, MANIFEST_DOCKERFILE_LINES.join("\n"));
+  }
+
+  const [result] = runFixture(root, {
+    repoFiles: MANIFEST_REPO_FILES,
+    checks: [checkDockerCopiesWorkspaceManifests],
+  });
+
+  assert.equal(result.ok, true);
+});
+
+test("Docker offline installs reject a workspace manifest added after the image was written", () => {
+  const root = createConformingFixture();
+  for (const file of FIXTURE_REPO_FILES) {
+    writeText(root, file, MANIFEST_DOCKERFILE_LINES.join("\n"));
+  }
+
+  const [result] = runFixture(root, {
+    repoFiles: [...MANIFEST_REPO_FILES, "libs/newthing/package.json"],
+    checks: [checkDockerCopiesWorkspaceManifests],
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.details, /Dockerfile: stage 1: libs\/newthing\/package\.json/);
+  assert.match(
+    result.details,
+    /deploy\/landing\.Dockerfile: stage 1: libs\/newthing\/package\.json/,
+  );
+});
+
+test("Docker manifest validation only requires manifests the workspace globs claim", () => {
+  const root = createConformingFixture();
+  for (const file of FIXTURE_REPO_FILES) {
+    writeText(root, file, MANIFEST_DOCKERFILE_LINES.join("\n"));
+  }
+
+  const [result] = runFixture(root, {
+    repoFiles: [...MANIFEST_REPO_FILES, "scripts/fixtures/sample/package.json"],
+    checks: [checkDockerCopiesWorkspaceManifests],
+  });
+
+  assert.equal(result.ok, true);
 });
 
 test("Docker patch validation resets copied inputs for every build stage", () => {

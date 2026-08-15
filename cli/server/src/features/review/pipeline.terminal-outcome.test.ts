@@ -18,6 +18,7 @@ import { ExecutionLeaseRegistry } from "../../shared/lib/ai/admission/service.js
 import { createBudgetLedger } from "../../shared/lib/ai/budget/ledger.js";
 import { toInitializedAIClient } from "../../shared/lib/ai/client/initialize.js";
 import type { Adapter } from "../../shared/lib/ai/types.js";
+import { assertTempHome } from "../../shared/lib/testing/temp-home.js";
 import { makeFileDiff, makeParsedDiff } from "./testing/factories.js";
 import { createReviewExecutionContext } from "./types.js";
 
@@ -28,7 +29,7 @@ vi.mock("./storage/reviews.js", () => ({
 }));
 
 import { executeReview, finalizeReview } from "./pipeline.js";
-import { createSession, deleteSession } from "./stream/store.js";
+import { createSession, deleteSessionForTests } from "./stream/store.js";
 
 const LIMITS: ExecutionLimits = Object.freeze({
   maxInputTokens: 40_000,
@@ -151,6 +152,7 @@ function authorizedClient(plan: AdmittedExecutionPlan, outcome: TerminalOutcome)
   const authorization = Object.freeze({
     plan,
     adapter,
+    evidenceState: "proven" as const,
     budgetLedger,
     budgetReservation: budgetReservation.value,
     lease: lease.value,
@@ -176,15 +178,19 @@ let diffgazerHome: string;
 
 beforeEach(() => {
   diffgazerHome = mkdtempSync(join(tmpdir(), "diffgazer-terminal-outcome-"));
+  assertTempHome(diffgazerHome);
   process.env.DIFFGAZER_HOME = diffgazerHome;
   saveReview.mockReset();
   saveReview.mockResolvedValue(ok({ id: "review-terminal" }));
 });
 
+// Nothing here reaches the config store or the review store — `saveReview` is mocked and
+// `toInitializedAIClient` is pure — so the temp home only has to fall before
+// DIFFGAZER_HOME is dropped, which `paths.ts` re-reads on every call.
 afterEach(() => {
-  delete process.env.DIFFGAZER_HOME;
   rmSync(diffgazerHome, { recursive: true, force: true });
-  deleteSession("review-terminal");
+  delete process.env.DIFFGAZER_HOME;
+  deleteSessionForTests("review-terminal");
 });
 
 describe("terminal adapter outcomes reach the review receipt", () => {
@@ -257,5 +263,55 @@ describe("terminal adapter outcomes reach the review receipt", () => {
     expect(finalized.ok).toBe(false);
     if (finalized.ok) return;
     expect(finalized.error).toMatchObject({ code: "AI_ERROR" });
+  });
+
+  it("round-trips a cancelled terminal outcome through the real review store", async () => {
+    const reviews =
+      await vi.importActual<typeof import("./storage/reviews.js")>("./storage/reviews.js");
+    saveReview.mockImplementationOnce(reviews.saveReview);
+
+    const plan = admittedPlan();
+    const { client, authorization } = authorizedClient(plan, "cancelled");
+    const executed = await executeReview({
+      aiClient: client,
+      parsed: makeParsedDiff([makeFileDiff({ filePath: "a.ts", rawDiff: "+const a = 1;" })]),
+      config: reviewConfig(),
+      emit: async () => undefined,
+      executionContext: createReviewExecutionContext(authorization),
+    });
+    expect(executed.ok).toBe(true);
+    if (!executed.ok) return;
+
+    const reviewId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+    const session = createSession(reviewId, {
+      projectPath: "/project",
+      headCommit: "head",
+      statusHash: "status",
+      statusHashKind: "full",
+      mode: "unstaged",
+    });
+
+    const finalized = await finalizeReview({
+      outcome: executed.value,
+      emit: async () => undefined,
+      reviewId,
+      projectPath: "/project",
+      mode: "unstaged",
+      parsed: makeParsedDiff([makeFileDiff({ filePath: "a.ts", rawDiff: "+const a = 1;" })]),
+      activeLenses: ["correctness"],
+      durationMs: 10,
+      branch: null,
+      headCommit: "head",
+      signal: session.controller.signal,
+    });
+
+    expect(finalized.ok).toBe(false);
+    const persisted = await reviews.getReview(reviewId);
+    expect(persisted.ok).toBe(true);
+    if (!persisted.ok) return;
+    expect(persisted.value.execution?.receipt.outcome).toBe("cancelled");
+    expect(persisted.value.execution?.receipt.usageAvailability).toBe("reported");
+    expect(persisted.value.metadata.durationMs).toBe(10);
+    deleteSessionForTests(reviewId);
   });
 });

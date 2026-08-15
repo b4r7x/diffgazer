@@ -3,12 +3,14 @@ import { ApiProvider } from "@diffgazer/core/api/hooks";
 import type {
   ClientConfigurationSummary,
   ConfigurationModelsResponse,
+  ModelInfo,
 } from "@diffgazer/core/schemas/config";
-import { READY_GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "ink-testing-library";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { createTestQueryClient } from "../../../../testing/query-client";
 import { CliThemeProvider } from "../../../../theme/provider";
 import { ModelStep } from "./model-step";
 
@@ -19,24 +21,28 @@ vi.mock("../../../../hooks/use-terminal-dimensions", () => ({
 }));
 
 const DRAFT_CONFIGURATION: ClientConfigurationSummary = {
-  ...READY_GEMINI_CONFIGURATION,
+  ...GEMINI_CONFIGURATION,
   selectedModelId: null,
 };
 
 function catalogModelsResponse(
   configuration: ClientConfigurationSummary,
-  modelId: string,
+  models: ModelInfo[],
 ): ConfigurationModelsResponse {
   return {
     status: "passed",
     configurationId: configuration.configurationId,
     productId: configuration.productId,
     transportFamily: configuration.transportFamily,
-    models: [{ id: modelId, name: modelId, description: "1M context", tier: "paid" }],
+    models,
     checkedAt: "2026-07-31T12:00:00.000Z",
     source: "snapshot",
     cached: false,
   };
+}
+
+function catalogModel(modelId: string, overrides: Partial<ModelInfo> = {}): ModelInfo {
+  return { id: modelId, name: modelId, description: "1M context", tier: "paid", ...overrides };
 }
 
 async function flushUntil(predicate: () => boolean, attempts = 200): Promise<void> {
@@ -46,17 +52,8 @@ async function flushUntil(predicate: () => boolean, attempts = 200): Promise<voi
   }
 }
 
-function makeQueryClient(): QueryClient {
-  return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, networkMode: "always" },
-      mutations: { retry: false, networkMode: "always" },
-    },
-  });
-}
-
 function Wrapper({ children, api }: { children: ReactNode; api: BoundApi }) {
-  const queryClient = makeQueryClient();
+  const queryClient = createTestQueryClient();
   return (
     <QueryClientProvider client={queryClient}>
       <ApiProvider value={api}>
@@ -82,7 +79,9 @@ describe("ModelStep (TUI catalog)", () => {
   test("discovers models against the persisted draft configuration id", async () => {
     const getConfigurationModels = vi
       .fn<BoundApi["getConfigurationModels"]>()
-      .mockResolvedValue(catalogModelsResponse(DRAFT_CONFIGURATION, "gemini-2.5-flash"));
+      .mockResolvedValue(
+        catalogModelsResponse(DRAFT_CONFIGURATION, [catalogModel("gemini-2.5-flash")]),
+      );
 
     const { lastFrame } = render(
       <Wrapper api={makeApi(getConfigurationModels)}>
@@ -98,13 +97,18 @@ describe("ModelStep (TUI catalog)", () => {
 
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
     expect(lastFrame() ?? "").toContain("gemini-2.5-flash");
-    expect(getConfigurationModels).toHaveBeenCalledWith(DRAFT_CONFIGURATION.configurationId);
+    expect(getConfigurationModels).toHaveBeenCalledWith(
+      DRAFT_CONFIGURATION.configurationId,
+      expect.any(AbortSignal),
+    );
   });
 
   test("keeps discovering while the step is not focused", async () => {
     const getConfigurationModels = vi
       .fn<BoundApi["getConfigurationModels"]>()
-      .mockResolvedValue(catalogModelsResponse(DRAFT_CONFIGURATION, "gemini-2.5-flash"));
+      .mockResolvedValue(
+        catalogModelsResponse(DRAFT_CONFIGURATION, [catalogModel("gemini-2.5-flash")]),
+      );
 
     const { lastFrame } = render(
       <Wrapper api={makeApi(getConfigurationModels)}>
@@ -154,7 +158,9 @@ describe("ModelStep (TUI catalog)", () => {
     const getConfigurationModels = vi
       .fn<BoundApi["getConfigurationModels"]>()
       .mockRejectedValueOnce(new Error("catalog unavailable"))
-      .mockResolvedValueOnce(catalogModelsResponse(DRAFT_CONFIGURATION, "gemini-2.5-flash"));
+      .mockResolvedValueOnce(
+        catalogModelsResponse(DRAFT_CONFIGURATION, [catalogModel("gemini-2.5-flash")]),
+      );
 
     const { lastFrame, stdin } = render(
       <Wrapper api={makeApi(getConfigurationModels)}>
@@ -198,5 +204,90 @@ describe("ModelStep (TUI catalog)", () => {
 
     await flushUntil(() => lastFrame()?.includes("Catalog observations are unavailable") ?? false);
     expect(lastFrame()).not.toMatch(/api key/i);
+  });
+
+  // The catalog publishes several routes under one display name, so a picker
+  // that shows names alone cannot say which id the wizard is about to save.
+  test("keeps both exact ids visible when two models share a display name", async () => {
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(
+        catalogModelsResponse(DRAFT_CONFIGURATION, [
+          catalogModel("google/gemini-3-pro-image", { name: "Nano Banana Pro" }),
+          catalogModel("google/gemini-3-pro-image-preview", { name: "Nano Banana Pro" }),
+        ]),
+      );
+
+    const { lastFrame } = render(
+      <Wrapper api={makeApi(getConfigurationModels)}>
+        <ModelStep
+          configuration={DRAFT_CONFIGURATION}
+          isPreparing={false}
+          onRetry={() => {}}
+          onChange={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Nano Banana Pro") ?? false);
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("google/gemini-3-pro-image · 1M context");
+    expect(frame).toContain("google/gemini-3-pro-image-preview · 1M context");
+  });
+
+  // Products that publish neither a distinct id nor a description render one
+  // line per row, so the picker must offer every row the terminal has space for.
+  test("fills the viewport when the catalog publishes no per-row detail", async () => {
+    terminalDimensions.current = { columns: 80, rows: 30 };
+    const models = Array.from({ length: 18 }, (_, index) =>
+      catalogModel(`bare-model-${index}`, { description: "" }),
+    );
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(catalogModelsResponse(DRAFT_CONFIGURATION, models));
+
+    const { lastFrame } = render(
+      <Wrapper api={makeApi(getConfigurationModels)}>
+        <ModelStep
+          configuration={DRAFT_CONFIGURATION}
+          isPreparing={false}
+          onRetry={() => {}}
+          onChange={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("bare-model-0") ?? false);
+    expect(lastFrame() ?? "").toContain("bare-model-17");
+  });
+
+  test("badges each row from that model's own catalog price", async () => {
+    const getConfigurationModels = vi
+      .fn<BoundApi["getConfigurationModels"]>()
+      .mockResolvedValue(
+        catalogModelsResponse(DRAFT_CONFIGURATION, [
+          catalogModel("priced-model", { tier: "paid" }),
+          catalogModel("zero-priced-model", { tier: "free" }),
+          catalogModel("unpriced-model", { tier: "unknown" }),
+        ]),
+      );
+
+    const { lastFrame } = render(
+      <Wrapper api={makeApi(getConfigurationModels)}>
+        <ModelStep
+          configuration={DRAFT_CONFIGURATION}
+          isPreparing={false}
+          onRetry={() => {}}
+          onChange={() => {}}
+        />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("unpriced-model") ?? false);
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("[PAID]");
+    expect(frame).toContain("[FREE]");
+    // The unpriced row wears no badge at all rather than guessing either one.
+    expect(frame.match(/\[(PAID|FREE)]/g)).toHaveLength(2);
   });
 });
