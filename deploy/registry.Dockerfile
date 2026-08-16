@@ -1,6 +1,6 @@
 # Render the committed nginx config with the deployment's exact Traefik peer
 # before assembling the runtime image.
-FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS config
+FROM node:26-alpine@sha256:aadf416b2cdce311a8811ba3f0608a61b77dbf997500e2eafe781b51f6a0b019 AS config
 
 ARG REGISTRY_TRAEFIK_PROXY_CIDR=127.0.0.1/32
 COPY deploy/registry-nginx.conf /tmp/registry-nginx.conf
@@ -19,7 +19,7 @@ RUN mkdir -p /etc/nginx/conf.d \
 # "Dirty-tree guard (post-build)" step when the committed bytes differ.
 # Rebuilding them here would only reproduce the identical bytes, so we COPY the
 # committed trees directly — no build stage.
-FROM nginx:1.30.4-alpine@sha256:97d490c12ba55b4946b01546d1c3ed324e8d41ab1c9fcb2a616aa470620e5b46 AS runtime
+FROM nginx:1.31.3-alpine@sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752 AS runtime
 
 COPY libs/ui/public/r/ /usr/share/nginx/html/r/ui/
 COPY libs/keys/public/r/ /usr/share/nginx/html/r/keys/
