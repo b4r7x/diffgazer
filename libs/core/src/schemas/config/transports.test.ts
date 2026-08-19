@@ -31,7 +31,7 @@ describe("transport family contract", () => {
     expect(TransportFamilySchema.safeParse("sdk").success).toBe(false);
   });
 
-  it("partitions exactly 13 runnable product identities", () => {
+  it("partitions exactly 14 runnable product identities", () => {
     expect(RUNNABLE_PRODUCT_IDS).toEqual([
       "gemini",
       "zai",
@@ -42,6 +42,7 @@ describe("transport family contract", () => {
       "qwen",
       "moonshot",
       "mistral",
+      "ollama-cloud",
       "ollama",
       "local-openai",
       "codex-cli",

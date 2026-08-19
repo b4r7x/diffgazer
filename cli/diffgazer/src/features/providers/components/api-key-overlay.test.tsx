@@ -11,6 +11,7 @@ import { requireValue } from "@diffgazer/core/testing/assertions";
 import {
   buildProviderRows,
   configurationStatus,
+  GEMINI_CONFIGURATION,
   LOCAL_OPENAI_CONFIGURATION,
   unconfiguredRow,
 } from "@diffgazer/core/testing/provider-fixtures";
@@ -65,6 +66,17 @@ function unacknowledgedLocalRow(): ProviderListRow {
   );
 }
 
+/** A hosted configuration whose current notice has not been accepted yet. */
+function unacknowledgedHostedRow(): ProviderListRow {
+  const rows = buildProviderRows([
+    configurationStatus(GEMINI_CONFIGURATION, "acknowledgement-required"),
+  ]);
+  return requireValue(
+    rows.find((row) => row.configuration?.configurationId === "gemini-primary"),
+    "gemini-primary row",
+  );
+}
+
 describe("ApiKeyOverlay hosted write-only flow", () => {
   afterEach(() => {
     cleanup();
@@ -88,8 +100,6 @@ describe("ApiKeyOverlay hosted write-only flow", () => {
     );
 
     await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
-    view.stdin.write("a");
-    await flush();
     view.stdin.write("\t");
     await flush();
     view.stdin.write("sk-test-secret");
@@ -115,7 +125,7 @@ describe("ApiKeyOverlay hosted write-only flow", () => {
       <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
         <ApiKeyOverlay
           open
-          row={unconfiguredRow("gemini")}
+          row={unacknowledgedHostedRow()}
           onOpenChange={() => {}}
           onCreate={async () => {}}
           onUpdate={async () => {}}
@@ -123,7 +133,7 @@ describe("ApiKeyOverlay hosted write-only flow", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+    await flushUntil(() => view.lastFrame()?.includes("Update Configuration") ?? false);
     view.stdin.write("a");
     await flush();
     expect(view.lastFrame()).toContain("[x]");
@@ -133,7 +143,7 @@ describe("ApiKeyOverlay hosted write-only flow", () => {
     view.stdin.write("a");
     await flush();
     expect(view.lastFrame()).toContain("[x]");
-    expect(view.lastFrame()).toContain("Notice accepted");
+    expect(view.lastFrame()).toContain("Accepted");
   });
 
   test("submits environment credentials without exposing a typed secret in the frame", async () => {
@@ -153,8 +163,6 @@ describe("ApiKeyOverlay hosted write-only flow", () => {
     );
 
     await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
-    view.stdin.write("a");
-    await flush();
     view.stdin.write("\t");
     await flush();
     view.stdin.write("sk-never-an-env-name");
@@ -283,22 +291,26 @@ describe("ApiKeyOverlay family-specific layout", () => {
     expect(frame).not.toContain("Use environment variable");
   });
 
-  test("requires explicit notice acknowledgement before hosted save", async () => {
-    const onCreate = vi.fn(async (_input: ClientConfigurationInput) => {});
-    const row = unconfiguredRow("gemini");
+  test("requires explicit notice acknowledgement before a hosted save when the notice needs accepting again", async () => {
+    const onUpdate = vi.fn(
+      async (_payload: {
+        input: ClientConfigurationInput;
+        acknowledgement: ReadinessAcknowledgement;
+      }) => {},
+    );
     const view = render(
       <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
         <ApiKeyOverlay
           open
-          row={row}
+          row={unacknowledgedHostedRow()}
           onOpenChange={() => {}}
-          onCreate={onCreate}
-          onUpdate={async () => {}}
+          onCreate={async () => {}}
+          onUpdate={onUpdate}
         />
       </Wrapper>,
     );
 
-    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
+    await flushUntil(() => view.lastFrame()?.includes("Update Configuration") ?? false);
     view.stdin.write("\t");
     await flush();
     view.stdin.write("sk-hosted-secret");
@@ -307,32 +319,30 @@ describe("ApiKeyOverlay family-specific layout", () => {
     await flush();
     view.stdin.write("\r");
     await flush();
-    expect(onCreate).not.toHaveBeenCalled();
+    expect(onUpdate).not.toHaveBeenCalled();
 
     view.stdin.write("a");
     await flush();
     view.stdin.write("\r");
-    await waitUntil(() => onCreate.mock.calls.length > 0);
-    expect(onCreate).toHaveBeenCalledOnce();
-    expect(onCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
+    await waitUntil(() => onUpdate.mock.calls.length > 0);
+    expect(onUpdate).toHaveBeenCalledOnce();
+    expect(onUpdate.mock.calls[0]?.[0]).toMatchObject({
+      input: {
         transportFamily: "hosted-api",
         productId: "gemini",
         credential: { kind: "literal", value: "sk-hosted-secret" },
-      }),
-      expect.objectContaining({
-        acknowledgement: expect.objectContaining({ status: "accepted" }),
-      }),
-    );
+      },
+      acknowledgement: { status: "accepted" },
+    });
   });
 });
 
-describe("ApiKeyOverlay notice acknowledgement state", () => {
+describe("ApiKeyOverlay notice acknowledgement", () => {
   afterEach(() => {
     cleanup();
   });
 
-  test("saves an update on a stored acceptance without re-accepting the notice", async () => {
+  test("sends the product acknowledgement without an accept control while the notice is accepted", async () => {
     const onUpdate = vi.fn(
       async (_payload: {
         input: ClientConfigurationInput;
@@ -352,7 +362,10 @@ describe("ApiKeyOverlay notice acknowledgement state", () => {
     );
 
     await flushUntil(() => view.lastFrame()?.includes("Update Configuration") ?? false);
-    expect(view.lastFrame()).toContain("Notice accepted");
+    const frame = view.lastFrame() ?? "";
+    expect(frame).not.toContain("I accept");
+    // The product's own notice still reads informationally.
+    expect(frame).toContain("Data handling follows the configured Google API product");
 
     view.stdin.write("\t");
     await flush();
@@ -374,7 +387,7 @@ describe("ApiKeyOverlay notice acknowledgement state", () => {
     });
   });
 
-  test("requires acceptance when the row carries no stored acknowledgement", async () => {
+  test("asks for an explicit acceptance when the row's notice needs accepting again", async () => {
     const onUpdate = vi.fn(
       async (_payload: {
         input: ClientConfigurationInput;
@@ -393,46 +406,47 @@ describe("ApiKeyOverlay notice acknowledgement state", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => view.lastFrame()?.includes("Accept notice") ?? false);
+    await flushUntil(() => view.lastFrame()?.includes("needs your acceptance") ?? false);
+    expect(view.lastFrame()).not.toContain("Diffgazer sends repository content");
 
     view.stdin.write("\r");
     await flush();
-    expect(view.lastFrame()).toContain("Notice accepted");
+    expect(view.lastFrame()).toContain("Accepted");
 
     view.stdin.write("\r");
     await waitUntil(() => onUpdate.mock.calls.length > 0);
     expect(onUpdate).toHaveBeenCalledOnce();
   });
 
-  test("accepts the notice with Enter on the focused notice button", async () => {
-    const onCreate = vi.fn(
-      async (
-        _input: ClientConfigurationInput,
-        _opts: { acknowledgement: ReadinessAcknowledgement; openModelDialog?: boolean },
-      ) => {},
+  test("accepts the notice with Enter on the focused accept button", async () => {
+    const onUpdate = vi.fn(
+      async (_payload: {
+        input: ClientConfigurationInput;
+        acknowledgement: ReadinessAcknowledgement;
+      }) => {},
     );
     const view = render(
       <Wrapper api={createApi({ baseUrl: "http://localhost" })}>
         <ApiKeyOverlay
           open
-          row={unconfiguredRow("ollama")}
+          row={unacknowledgedLocalRow()}
           onOpenChange={() => {}}
-          onCreate={onCreate}
-          onUpdate={async () => {}}
+          onCreate={async () => {}}
+          onUpdate={onUpdate}
         />
       </Wrapper>,
     );
 
-    await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
-    expect(view.lastFrame()).toContain("Accept notice");
+    await flushUntil(() => view.lastFrame()?.includes("Update Configuration") ?? false);
+    expect(view.lastFrame()).toContain("[ ] I accept");
 
     view.stdin.write("\r");
     await flush();
-    expect(view.lastFrame()).toContain("Notice accepted");
+    expect(view.lastFrame()).toContain("[x] I accept");
 
     view.stdin.write("\r");
-    await waitUntil(() => onCreate.mock.calls.length > 0);
-    expect(onCreate).toHaveBeenCalledOnce();
+    await waitUntil(() => onUpdate.mock.calls.length > 0);
+    expect(onUpdate).toHaveBeenCalledOnce();
   });
 
   test("shows the canonical environment variable for hosted setup", async () => {
@@ -450,7 +464,7 @@ describe("ApiKeyOverlay notice acknowledgement state", () => {
 
     await flushUntil(() => view.lastFrame()?.includes("Create Configuration") ?? false);
     view.stdin.write("\u001B[B");
-    await flush();
+    await flushUntil(() => view.lastFrame()?.includes("GOOGLE_API_KEY") ?? false);
 
     const frame = view.lastFrame() ?? "";
     expect(frame).toContain("GOOGLE_API_KEY");

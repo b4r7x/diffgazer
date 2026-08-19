@@ -20,6 +20,7 @@ import userEvent from "@testing-library/user-event";
 import { type ReactNode, StrictMode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
 
 type ReviewQueryState =
   | { status: "pending" }
@@ -171,10 +172,12 @@ function renderPage({
         <ApiProvider value={api}>
           <ConfigProvider>
             <KeyboardProvider>
-              <FooterProvider>
-                {children}
-                <Toaster />
-              </FooterProvider>
+              <ProviderConsentProvider>
+                <FooterProvider>
+                  {children}
+                  <Toaster />
+                </FooterProvider>
+              </ProviderConsentProvider>
             </KeyboardProvider>
           </ConfigProvider>
         </ApiProvider>

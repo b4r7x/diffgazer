@@ -4,12 +4,7 @@ import {
   SELECTABLE_PRODUCT_IDS,
 } from "../providers/product-registry.js";
 import type { RunnableProductId, TransportFamily } from "../schemas/config/transports.js";
-import {
-  getModelBilling,
-  getModelReviewCapability,
-  type ModelBilling,
-  type ModelReviewCapability,
-} from "./model-capability.js";
+import { getModelBilling, type ModelBilling, producesTextOutput } from "./model-capability.js";
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";
 import {
   CatalogModelNameSchema,
@@ -36,7 +31,8 @@ export interface CatalogModelObservation {
   /** models.dev display name, falling back to the model id when upstream has none. */
   readonly modelName: string;
   readonly sourceProviderId: string;
-  readonly reviewCapability: ModelReviewCapability;
+  /** models.dev `structured_output`; absent when upstream states nothing. */
+  readonly structuredOutput?: boolean;
   readonly billing: ModelBilling;
   readonly contextTokens?: number;
   readonly outputTokens?: number;
@@ -56,21 +52,27 @@ function usableTokenLimit(value: number | undefined): number | undefined {
   return value !== undefined && Number.isInteger(value) && value > 0 ? value : undefined;
 }
 
+/**
+ * Audio/image/video-only models can never emit a review object, so they are not
+ * observations at all — the same cut the snapshot trim makes offline.
+ */
 function toModelObservation(
   sourceProviderId: string,
   modelId: CatalogSelectableModelId,
   model: ModelsDevModel,
 ): CatalogModelObservation | null {
+  if (!producesTextOutput(model)) return null;
   const modelName = CatalogModelNameSchema.safeParse(model.name ?? model.id);
   if (!modelName.success) return null;
 
+  const structuredOutput = model.structured_output ?? undefined;
   const contextTokens = usableTokenLimit(model.limit?.context);
   const outputTokens = usableTokenLimit(model.limit?.output);
   return {
     modelId,
     modelName: modelName.data,
     sourceProviderId,
-    reviewCapability: getModelReviewCapability(model),
+    ...(structuredOutput === undefined ? {} : { structuredOutput }),
     billing: getModelBilling(model),
     ...(contextTokens === undefined ? {} : { contextTokens }),
     ...(outputTokens === undefined ? {} : { outputTokens }),
@@ -78,28 +80,25 @@ function toModelObservation(
 }
 
 /**
- * Half of the picker contract: the catalog states this model can run the
- * structured review. Unknown capability is excluded on purpose — an unproven
- * model belongs in nobody's list of what works.
- */
-export function isReviewCapableObservation(observation: CatalogModelObservation): boolean {
-  return observation.reviewCapability === "supported";
-}
-
-/**
- * The whole picker contract: capable AND admitted by the product's model policy.
- * Every table that claims to describe the offered set must apply both halves.
- * Capability alone describes a list no user ever sees — OpenRouter's capable
+ * The picker contract: admitted by the product's model policy, and not
+ * published as unable to run the product's structured-output mode. Only a
+ * strict-json-schema product hides a model whose catalog row says
+ * `structured_output: false`; json-object products validate locally, and a
+ * catalog that states nothing hides nothing. Every table that claims to
+ * describe the offered set must apply this one predicate — OpenRouter's
  * `openrouter/free` router is a routing selector its policy refuses to pin.
  */
 export function isOfferableObservation(
   productId: RunnableProductId,
   observation: CatalogModelObservation,
 ): boolean {
-  return (
-    isReviewCapableObservation(observation) &&
-    isModelIdAllowedForProduct(productId, observation.modelId)
-  );
+  if (
+    observation.structuredOutput === false &&
+    PRODUCT_REGISTRY[productId].admission.structuredOutput === "strict-json-schema"
+  ) {
+    return false;
+  }
+  return isModelIdAllowedForProduct(productId, observation.modelId);
 }
 
 function collectModelObservations(

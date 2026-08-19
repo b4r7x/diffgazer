@@ -21,28 +21,32 @@ describe("getBillingTier", () => {
     expect(PRODUCT_REGISTRY.gemini.billing.modes).toContain("free-tier");
     expect(PROVIDER_DERIVED.gemini.billing).toBe("paid");
     expect(getBillingTier("gemini")).toBe("free-tier");
-
-    expect(getBillingTier("groq")).toBe("free-tier");
-    expect(getBillingTier("cerebras")).toBe("free-tier");
   });
 
-  // Mistral declares `evaluation` rather than `free-tier`, and its own notice
-  // calls that free use evaluation/prototyping — the same quota claim under a
-  // different word, so it earns the same badge.
-  it("treats a declared evaluation quota as a free tier", () => {
-    expect(PRODUCT_REGISTRY.mistral.billing.modes).toContain("evaluation");
-    expect(getBillingTier("mistral")).toBe("free-tier");
+  // Cerebras closed its free tier (2026-08-17); with no zero-priced catalog
+  // model and no declared free quota the badge must not promise one, while
+  // Ollama Cloud's unpriced quota-billed catalog can say no more than FREE TIER.
+  it("does not invent a free tier and names a declared one for an unpriced catalog", () => {
+    expect(PRODUCT_REGISTRY.cerebras.billing.modes).toEqual(["pay-as-you-go"]);
+    expect(getBillingTier("cerebras")).toBe("paid");
+    expect(PROVIDER_DERIVED["ollama-cloud"].billing).toBe("unknown");
+    expect(getBillingTier("ollama-cloud")).toBe("free-tier");
   });
 
-  it("reports OpenRouter as mixed because it offers both priced and zero-priced models", () => {
-    expect(PROVIDER_DERIVED.openrouter.billing).toBe("mixed");
-    expect(getBillingTier("openrouter")).toBe("mixed");
-    expect(offersFreeModels(getBillingTier("openrouter"))).toBe(true);
+  // A zero-priced catalog model outranks the declared account tier: Groq and
+  // Mistral publish free models beside priced ones, so the badge names the mix
+  // rather than the quota, and Z.AI earns it with no declared free quota at all.
+  it("reports a product offering both priced and zero-priced models as mixed", () => {
+    for (const productId of ["openrouter", "groq", "mistral", "zai"] as const) {
+      expect(PROVIDER_DERIVED[productId].billing, productId).toBe("mixed");
+      expect(getBillingTier(productId), productId).toBe("mixed");
+      expect(offersFreeModels(getBillingTier(productId)), productId).toBe(true);
+    }
+    expect(PRODUCT_REGISTRY.zai.billing.modes).toEqual(["pay-as-you-go"]);
   });
 
   it("stays paid for a pay-as-you-go product that declares no free quota", () => {
-    expect(PRODUCT_REGISTRY.zai.billing.modes).toEqual(["pay-as-you-go"]);
-    expect(getBillingTier("zai")).toBe("paid");
+    expect(PRODUCT_REGISTRY.deepseek.billing.modes).toEqual(["pay-as-you-go"]);
     expect(getBillingTier("deepseek")).toBe("paid");
     expect(offersFreeModels(getBillingTier("deepseek"))).toBe(false);
   });

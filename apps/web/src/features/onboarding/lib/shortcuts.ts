@@ -20,15 +20,10 @@ const STEP_ACTION_LABELS: Record<OnboardingStep, StepActionLabels> = {
     enter: "Select & Next",
   },
   model: { navigate: "Navigate Models", select: "Select Model", enter: "Select & Next" },
-  conformance: {
-    navigate: NAVIGATE_SHORTCUT.label,
-    select: "Confirm Verification",
-    enter: "Confirm & Next",
-  },
   acknowledgement: {
     navigate: NAVIGATE_SHORTCUT.label,
-    select: "Accept Notice",
-    enter: "Accept & Next",
+    select: "Accept Consent",
+    enter: "Accept & Continue",
   },
 };
 

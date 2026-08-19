@@ -5,15 +5,19 @@ import { PRODUCT_REGISTRY, UNRECOGNIZED_CONFIGURATION_COPY } from "@diffgazer/co
 import type {
   ClientConfigurationSummary,
   ConfigurationModelsResponse,
+  SettingsConfig,
 } from "@diffgazer/core/schemas/config";
 import {
+  DEFAULT_SETTINGS,
   LEGACY_V1_HAS_API_KEY_PROPERTY,
+  PROVIDER_CONSENT_TEXT,
   READINESS_PRESENTATION,
 } from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import {
   configurationStatus,
   GEMINI_CONFIGURATION,
+  LOCAL_OPENAI_CONFIGURATION,
   makeAllConfigurationsListResponse,
   makeConfigurationInitResponse,
   makeConfigurationListResponse,
@@ -54,6 +58,7 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
         severityThreshold: "low" as const,
         secretsStorage: null,
         agentExecution: "parallel" as const,
+        providerConsent: null,
       },
       project: { projectId: "proj-1", path: "/repo", trust: null },
       setup: {
@@ -88,8 +93,10 @@ vi.mock("../../../components/layout/global", async (importOriginal) => {
 
 const TAB = "\t";
 const ENTER = "\r";
+const ESCAPE = "\u001b";
 const ARROW_RIGHT = "\u001b[C";
 const ARROW_LEFT = "\u001b[D";
+const ARROW_DOWN = "\u001b[B";
 
 afterEach(() => {
   cleanup();
@@ -141,9 +148,16 @@ function geminiCatalogModelsResponse(): ConfigurationModelsResponse {
   };
 }
 
+const RECORDED_CONSENT_SETTINGS = {
+  ...DEFAULT_SETTINGS,
+  providerConsent: { version: 1 as const, acceptedAt: "2026-08-01T09:00:00.000Z" },
+};
+
 function makeApi(): BoundApi {
   return {
     ...createApi({ baseUrl: "http://localhost" }),
+    // Consent is on record in the steady state; the first-run test overrides it.
+    getSettings: vi.fn<BoundApi["getSettings"]>().mockResolvedValue(RECORDED_CONSENT_SETTINGS),
     listConfigurations: vi
       .fn<BoundApi["listConfigurations"]>()
       .mockResolvedValue(makeAllConfigurationsListResponse()),
@@ -223,6 +237,194 @@ describe("ProvidersScreen V2 products and readiness", () => {
     expect(frame).toContain("Ready");
     expect(frame).not.toContain(LEGACY_V1_HAS_API_KEY_PROPERTY);
     expect(frame).not.toContain("API Key Status");
+    // Consent is on record, so nothing asks for it.
+    expect(frame).not.toContain("Consent required");
+  });
+
+  test("gates Verify behind the provider consent: Not now cancels, Enter accepts and continues", async () => {
+    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>().mockResolvedValue({
+      action: "test",
+      status: "succeeded",
+      configuration: GEMINI_CONFIGURATION,
+      readiness: makeReadiness("ready"),
+    });
+    const settings: SettingsConfig = { ...DEFAULT_SETTINGS, providerConsent: null };
+    const getSettings = vi.fn<BoundApi["getSettings"]>().mockImplementation(async () => settings);
+    const saveSettings = vi.fn<BoundApi["saveSettings"]>().mockImplementation(async (patch) => {
+      Object.assign(settings, patch);
+    });
+    const api = { ...makeApi(), getSettings, saveSettings, testConfiguration } satisfies BoundApi;
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <FooterProbe />
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    // The details pane says how to get back to the notice, in the footer too.
+    expect(lastFrame()).toContain("Consent required to run reviews · [c] Review");
+    expect(lastFrame()).toContain("[c] Review");
+
+    stdin.write("v");
+    await flushUntil(() => lastFrame()?.includes("Provider data notice") ?? false);
+    // The notice wraps to the card width, so its opening words stand for the text.
+    expect(lastFrame()).toContain(PROVIDER_CONSENT_TEXT.slice(0, 32));
+    expect(lastFrame()).toContain("[ Accept and continue ]");
+    expect(lastFrame()).toContain("FOOTER [←/→] Switch Action [Enter] Accept | [Esc] Not now");
+    expect(testConfiguration).not.toHaveBeenCalled();
+
+    // Not now: nothing saved, nothing sent, the panes are back.
+    stdin.write(ESCAPE);
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    expect(saveSettings).not.toHaveBeenCalled();
+    expect(testConfiguration).not.toHaveBeenCalled();
+
+    // Enter accepts: the consent is recorded once, then Verify runs.
+    stdin.write("v");
+    await flushUntil(() => lastFrame()?.includes("Provider data notice") ?? false);
+    stdin.write(ENTER);
+    await flushUntil(() => testConfiguration.mock.calls.length === 1);
+    expect(saveSettings).toHaveBeenCalledWith({
+      providerConsent: { version: 1, acceptedAt: expect.any(String) },
+    });
+
+    // Recorded: the next gated action runs at once, and the reminder is gone.
+    await flushUntil(() => !(lastFrame()?.includes("Consent required") ?? true));
+    stdin.write("v");
+    await flushUntil(() => testConfiguration.mock.calls.length === 2);
+    expect(lastFrame()).not.toContain("Provider data notice");
+    expect(saveSettings).toHaveBeenCalledOnce();
+  });
+
+  test("gates setup and selection too, and c reopens the notice from the details pane", async () => {
+    const selectConfiguration = vi.fn<BoundApi["selectConfiguration"]>().mockResolvedValue({
+      action: "select",
+      status: "succeeded",
+      configuration: GEMINI_CONFIGURATION,
+      readiness: makeReadiness("ready"),
+    });
+    const settings: SettingsConfig = { ...DEFAULT_SETTINGS, providerConsent: null };
+    const getSettings = vi.fn<BoundApi["getSettings"]>().mockImplementation(async () => settings);
+    const saveSettings = vi.fn<BoundApi["saveSettings"]>().mockImplementation(async (patch) => {
+      Object.assign(settings, patch);
+    });
+    // Another configuration is active, so Gemini keeps Select configuration as its primary.
+    const listConfigurations = vi.fn<BoundApi["listConfigurations"]>().mockResolvedValue({
+      ...makeAllConfigurationsListResponse(),
+      selectedConfigurationId: "zai-primary",
+    });
+    const api = {
+      ...makeApi(),
+      getSettings,
+      saveSettings,
+      selectConfiguration,
+      listConfigurations,
+    } satisfies BoundApi;
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <FooterProbe />
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+
+    // Enter in the list runs the highlighted row's primary, Select configuration,
+    // and the footer says so; the notice stands between the key and the send.
+    expect(lastFrame()).toContain(
+      "FOOTER [Esc] Back [Enter] Select configuration [m] Model [e] Edit [v] Verify [d] Delete [c] Review |",
+    );
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("Provider data notice") ?? false);
+    expect(selectConfiguration).not.toHaveBeenCalled();
+    stdin.write(ESCAPE);
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+
+    // Tab into the details pane: Enter there runs the same primary.
+    stdin.write(TAB);
+    await flush();
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("Provider data notice") ?? false);
+    expect(selectConfiguration).not.toHaveBeenCalled();
+    stdin.write(ESCAPE);
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+
+    // e opens setup: the credentials overlay waits behind the notice.
+    stdin.write("e");
+    await flushUntil(() => lastFrame()?.includes("Provider data notice") ?? false);
+    expect(lastFrame()).not.toContain("Update Configuration");
+    stdin.write(ESCAPE);
+    await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    expect(lastFrame()).not.toContain("Update Configuration");
+
+    // c opens the notice on its own: nothing waits behind it, so it just accepts.
+    stdin.write("c");
+    await flushUntil(() => lastFrame()?.includes("Provider data notice") ?? false);
+    expect(lastFrame()).toContain("[ Accept ]");
+    expect(lastFrame()).not.toContain("[ Accept and continue ]");
+    stdin.write(ENTER);
+    await flushUntil(() => saveSettings.mock.calls.length === 1);
+    expect(selectConfiguration).not.toHaveBeenCalled();
+
+    // Recorded: Enter back in the list selects the configuration at once.
+    await flushUntil(() => !(lastFrame()?.includes("[c] Review") ?? true));
+    stdin.write(TAB);
+    await flush();
+    stdin.write(ENTER);
+    await flushUntil(() => selectConfiguration.mock.calls.length === 1);
+    expect(lastFrame()).not.toContain("Provider data notice");
+  });
+
+  test("opens the model picker from a model-missing primary without asking for consent", async () => {
+    const getSettings = vi
+      .fn<BoundApi["getSettings"]>()
+      .mockResolvedValue({ ...DEFAULT_SETTINGS, providerConsent: null });
+    const listConfigurations = vi
+      .fn<BoundApi["listConfigurations"]>()
+      .mockResolvedValue(
+        makeConfigurationListResponse(
+          makeConfigurationInitResponse([
+            configurationStatus(LOCAL_OPENAI_CONFIGURATION, "model-missing"),
+          ]),
+        ),
+      );
+    const api = { ...makeApi(), getSettings, listConfigurations } satisfies BoundApi;
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <FooterProbe />
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Local OpenAI") ?? false);
+    // Walk the highlight down to the local record; the details pane follows it.
+    await flushUntil(() => {
+      if (lastFrame()?.includes("[Enter] Select model")) return true;
+      stdin.write(ARROW_DOWN);
+      return false;
+    });
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("Select Model") ?? false);
+
+    expect(lastFrame()).not.toContain("Provider data notice");
+  });
+
+  test("keeps loading until settings resolve, so the setup overlay never reads consent as missing", async () => {
+    const listConfigurations = vi
+      .fn<BoundApi["listConfigurations"]>()
+      .mockResolvedValue(makeAllConfigurationsListResponse());
+    const getSettings = vi.fn<BoundApi["getSettings"]>().mockReturnValue(new Promise(() => {}));
+    const { lastFrame } = render(
+      <Wrapper api={{ ...makeApi(), listConfigurations, getSettings }}>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => listConfigurations.mock.calls.length === 1);
+    await flush();
+    expect(lastFrame()).toContain("Loading providers...");
+    expect(lastFrame()).not.toContain("Google Gemini");
   });
 
   test("lists selectable products from the V2 roster", async () => {
@@ -275,9 +477,25 @@ describe("ProvidersScreen V2 products and readiness", () => {
 
     const frame = lastFrame() ?? "";
     expect(frame).toContain("cfg-retired");
-    expect(frame).toContain("Delete configuration");
+    expect(frame).toContain("[ More ]");
     expect(frame).not.toContain("Select model");
     expect(frame).not.toContain("Update configuration");
+
+    // Removal is the one live entry in More; d asks for it directly, naming the record.
+    stdin.write(TAB);
+    await flush();
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("d. Delete configuration") ?? false);
+    expect(lastFrame()?.match(/Only removal is available/g)).toHaveLength(3);
+    stdin.write("d");
+    await flushUntil(() => lastFrame()?.includes("Delete configuration?") ?? false);
+    expect(lastFrame()).toContain(`Removes ${UNRECOGNIZED_CONFIGURATION_COPY.label}`);
+    expect(api.deleteConfiguration).not.toHaveBeenCalled();
+    stdin.write(ARROW_LEFT);
+    await flush();
+    stdin.write(ENTER);
+    await flushUntil(() => vi.mocked(api.deleteConfiguration).mock.calls.length === 1);
+    expect(api.deleteConfiguration).toHaveBeenCalledWith("cfg-retired", undefined);
   });
 });
 
@@ -305,11 +523,53 @@ describe("ProvidersScreen keyboard zones", () => {
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
+    // Gemini is the active configuration: its row is Change model, then More.
+    expect(lastFrame()).toContain("[● Active]");
     stdin.write(TAB);
     await flush();
+    stdin.write(ARROW_RIGHT);
+    await flush();
     stdin.write(ENTER);
-    await flushUntil(() => lastFrame()?.includes("Update configuration") ?? false);
-    expect(lastFrame()).toContain("Update configuration");
+    await flushUntil(() => lastFrame()?.includes("More actions — Google Gemini") ?? false);
+
+    const frame = lastFrame() ?? "";
+    expect(frame).toContain("e. Update configuration");
+    expect(frame).toContain("v. Verify");
+    expect(frame).toContain("d. Delete configuration");
+  });
+
+  test("keeps every menu entry in place and explains the ones the state cannot run", async () => {
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    stdin.write(ARROW_DOWN);
+    await flush();
+    stdin.write(ARROW_DOWN);
+    await flushUntil(
+      () => lastFrame()?.includes(PRODUCT_REGISTRY.openrouter.presentation.name) ?? false,
+    );
+    expect(lastFrame()).toContain("[ Configure ]");
+    stdin.write(TAB);
+    await flush();
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("More actions — OpenRouter") ?? false);
+
+    const frame = lastFrame() ?? "";
+    for (const label of [
+      "Update configuration",
+      "Verify",
+      "Select model",
+      "Delete configuration",
+    ]) {
+      expect(frame).toContain(label);
+    }
+    expect(frame.match(/Configure this provider first/g)).toHaveLength(4);
   });
 
   test("renders a rejected configuration deletion exactly once", async () => {
@@ -327,17 +587,64 @@ describe("ProvidersScreen keyboard zones", () => {
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
-    stdin.write(TAB);
+    // d asks first; the key repeated on the confirmation deletes nothing, and
+    // the confirmation opens on Cancel, so only a move to Delete then Enter does.
+    stdin.write("d");
+    await flushUntil(() => lastFrame()?.includes("Delete configuration?") ?? false);
+    expect(lastFrame()).toContain("Removes Google Gemini and its stored credentials");
+    expect(lastFrame()).toContain("[ Delete ]");
+    expect(lastFrame()).toContain("[ Cancel ]");
+    stdin.write("dd");
     await flush();
-    for (let index = 0; index < 2; index += 1) {
-      stdin.write(ARROW_RIGHT);
-      await flush();
-    }
+    expect(deleteConfiguration).not.toHaveBeenCalled();
+    stdin.write(ARROW_LEFT);
+    await flush();
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes(message) ?? false);
 
-    expect(deleteConfiguration).toHaveBeenCalled();
+    expect(deleteConfiguration).toHaveBeenCalledWith("gemini-primary", 1);
     expect(lastFrame()?.split(message)).toHaveLength(2);
+    expect(lastFrame()).not.toContain("Delete configuration?");
+  });
+
+  test("keeps the configuration when the delete confirmation is declined", async () => {
+    const deleteConfiguration = vi.fn<BoundApi["deleteConfiguration"]>();
+    const api = { ...makeApi(), deleteConfiguration } satisfies BoundApi;
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <FooterProbe />
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    stdin.write("d");
+    await flushUntil(() => lastFrame()?.includes("Delete configuration?") ?? false);
+    // It opens on Cancel: Enter as it stands keeps the configuration.
+    expect(lastFrame()).toContain("FOOTER [←/→] Switch Action [Enter] Cancel | [Esc] Cancel");
+    stdin.write(ARROW_LEFT);
+    await flush();
+    expect(lastFrame()).toContain("FOOTER [←/→] Switch Action [Enter] Delete | [Esc] Cancel");
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write(ENTER);
+    await flushUntil(() => !(lastFrame()?.includes("Delete configuration?") ?? true));
+    expect(deleteConfiguration).not.toHaveBeenCalled();
+    expect(lastFrame()).toContain("Google Gemini");
+
+    // Escape declines too, from the More menu's own d.
+    stdin.write(TAB);
+    await flush();
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("More actions — Google Gemini") ?? false);
+    stdin.write("d");
+    await flushUntil(() => lastFrame()?.includes("Delete configuration?") ?? false);
+    stdin.write("\u001b");
+    await flushUntil(() => !(lastFrame()?.includes("Delete configuration?") ?? true));
+    expect(deleteConfiguration).not.toHaveBeenCalled();
+    expect(lastFrame()).not.toContain("More actions");
   });
 
   test("reports a readiness test that the server answers as failed", async () => {
@@ -364,10 +671,9 @@ describe("ProvidersScreen keyboard zones", () => {
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Test readiness") ?? false);
-    stdin.write(TAB);
-    await flush();
-    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("Not verified") ?? false);
+    // Verify lives behind More; its accelerator runs it from the list.
+    stdin.write("v");
     await flushUntil(() => testConfiguration.mock.calls.length === 1);
     await flushUntil(() => lastFrame()?.includes(explanation) ?? false);
 
@@ -389,7 +695,17 @@ describe("ProvidersScreen keyboard zones", () => {
       configuration: readyStatus.configuration,
       readiness: readyStatus.readiness,
     });
-    const api = { ...makeApi(), deleteConfiguration, selectConfiguration } satisfies BoundApi;
+    // Another configuration is active, so Gemini keeps Select configuration as its primary.
+    const listConfigurations = vi.fn<BoundApi["listConfigurations"]>().mockResolvedValue({
+      ...makeAllConfigurationsListResponse(),
+      selectedConfigurationId: "zai-primary",
+    });
+    const api = {
+      ...makeApi(),
+      deleteConfiguration,
+      selectConfiguration,
+      listConfigurations,
+    } satisfies BoundApi;
     const { stdin, lastFrame } = render(
       <Wrapper api={api}>
         <ProvidersScreen />
@@ -397,19 +713,15 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
-    stdin.write(TAB);
+    stdin.write("d");
+    await flushUntil(() => lastFrame()?.includes("Delete configuration?") ?? false);
+    stdin.write(ARROW_LEFT);
     await flush();
-    for (let index = 0; index < 2; index += 1) {
-      stdin.write(ARROW_RIGHT);
-      await flush();
-    }
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes(message) ?? false);
 
-    for (let index = 0; index < 2; index += 1) {
-      stdin.write(ARROW_LEFT);
-      await flush();
-    }
+    stdin.write(TAB);
+    await flush();
     stdin.write(ENTER);
     await flushUntil(() => selectConfiguration.mock.calls.length === 1);
     await flushUntil(() => !(lastFrame()?.includes(message) ?? true));
@@ -445,14 +757,19 @@ describe("ProvidersScreen keyboard zones", () => {
       configuration: readyStatus.configuration,
       readiness: readyStatus.readiness,
     });
-    const api = { ...makeApi(), selectConfiguration } satisfies BoundApi;
+    // Another configuration is active, so Gemini keeps Select configuration as its primary.
+    const listConfigurations = vi.fn<BoundApi["listConfigurations"]>().mockResolvedValue({
+      ...makeAllConfigurationsListResponse(),
+      selectedConfigurationId: "zai-primary",
+    });
+    const api = { ...makeApi(), selectConfiguration, listConfigurations } satisfies BoundApi;
     const { stdin, lastFrame } = render(
       <Wrapper api={api}>
         <ProvidersScreen />
       </Wrapper>,
     );
 
-    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    await flushUntil(() => lastFrame()?.includes("[ Select configuration ]") ?? false);
     stdin.write(TAB);
     await flush();
     stdin.write(ENTER);
@@ -473,12 +790,11 @@ describe("ProvidersScreen keyboard zones", () => {
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
     stdin.write(ENTER);
-    await flushUntil(() => lastFrame()?.includes("Update configuration") ?? false);
+    await flushUntil(() => lastFrame()?.includes("[ Change model ]") ?? false);
 
     const frame = lastFrame() ?? "";
-    expect(frame).toContain("Update configuration");
-    expect(frame).toContain("Select model");
-    expect(frame).toContain("Delete configuration");
+    expect(frame).toContain("[ Change model ]");
+    expect(frame).toContain("[ More ]");
     expect(frame).not.toMatch(/\[●\s+needs\s*\n/i);
   });
 
@@ -496,43 +812,51 @@ describe("ProvidersScreen keyboard zones", () => {
     expect(lines.length - 1 - bottomBorder).toBeLessThanOrEqual(1);
   });
 
+  // Gemini is the active configuration: its row is Change model, then More, and
+  // the More menu opens on Update configuration.
   test.each([
-    { title: "Update Configuration", moveToAction: 1 },
-    { title: "Select Model", moveToAction: 3 },
+    { title: "Select Model", keys: [TAB, ENTER] },
+    { title: "More actions — Google Gemini", keys: [TAB, ARROW_RIGHT, ENTER] },
+    { title: "Update Configuration", keys: [TAB, ARROW_RIGHT, ENTER, ENTER] },
   ])("swaps provider panes for the $title dialog inside an 80 by 24 root frame", async ({
     title,
-    moveToAction,
+    keys,
   }) => {
     const view = renderRootFrame(80, 24, <ProvidersApiBoundary api={makeApi()} />);
 
     await flushUntilRoot(view, () => view.lastFrame()?.includes("Google Gemini") ?? false);
     await pressRoot(view, ENTER);
     await flushUntilRoot(view, () => view.lastFrame()?.includes("gemini-2.5-flash") ?? false);
-    await pressRoot(view, TAB);
-    for (let index = 0; index < moveToAction; index += 1) {
-      await pressRoot(view, ARROW_RIGHT);
+    for (const key of keys) {
+      await pressRoot(view, key);
     }
-    await pressRoot(view, ENTER);
     await flushUntilRoot(view, () => view.lastFrame()?.includes(title) ?? false);
-    expect(view.lastFrame()).toContain(title);
+    const frame = stripAnsi(view.lastFrame() ?? "");
+    expect(frame).toContain(title);
+    expect(frame.split("\n")).toHaveLength(24);
   });
 
   test.each([
     {
       title: "Select Model",
-      moveToAction: 3,
+      keys: [TAB, ENTER],
       expectedFooter:
         "FOOTER [Tab] Switch Zone [/] Search [f] Filter Tier [Enter] Select | [Esc] Close",
     },
     {
+      title: "More actions — Google Gemini",
+      keys: [TAB, ARROW_RIGHT, ENTER],
+      expectedFooter: "FOOTER [↑/↓] Navigate [Enter] Run | [Esc] Close",
+    },
+    {
       title: "Update Configuration",
-      moveToAction: 1,
+      keys: [TAB, ARROW_RIGHT, ENTER, ENTER],
       expectedFooter:
         "FOOTER [Tab] Focus Key Field [←/→] Switch Action [Enter] Confirm | [Esc] Close",
     },
   ])("hands the shortcut bar to the $title overlay while it is open", async ({
     title,
-    moveToAction,
+    keys,
     expectedFooter,
   }) => {
     const { stdin, lastFrame } = render(
@@ -543,21 +867,42 @@ describe("ProvidersScreen keyboard zones", () => {
     );
 
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
-    await flushUntil(() => lastFrame()?.includes("[Enter] Select") ?? false);
-    expect(lastFrame()).toContain("FOOTER [Esc] Back [Enter] Select |");
+    // The keybar teaches only the accelerators the highlighted row can run.
+    await flushUntil(() => lastFrame()?.includes("[d] Delete") ?? false);
+    expect(lastFrame()).toContain("FOOTER [Esc] Back [m] Model [e] Edit [v] Verify [d] Delete |");
 
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
-    stdin.write(TAB);
-    await flush();
-    for (let index = 0; index < moveToAction; index += 1) {
-      stdin.write(ARROW_RIGHT);
+    for (const key of keys) {
+      stdin.write(key);
       await flush();
     }
-    stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes(title) ?? false);
     await flushUntil(() => lastFrame()?.includes(expectedFooter) ?? false);
     expect(lastFrame()).toContain(expectedFooter);
+  });
+
+  test("advertises only the accelerators an unconfigured product can run", async () => {
+    const { stdin, lastFrame } = render(
+      <Wrapper>
+        <FooterProbe />
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    stdin.write(ARROW_DOWN);
+    await flush();
+    stdin.write(ARROW_DOWN);
+    await flushUntil(() => lastFrame()?.includes("[ Configure ]") ?? false);
+    await flushUntil(
+      () => lastFrame()?.includes("FOOTER [Esc] Back [Enter] Configure [e] Edit |") ?? false,
+    );
+
+    // e reaches Configure: setup is the same key whether it creates or updates.
+    stdin.write("e");
+    await flushUntil(() => lastFrame()?.includes("Create Configuration") ?? false);
+    expect(lastFrame()).toContain("Create Configuration");
   });
 
   test("keeps the OpenRouter model overlay open after create and configuration refetch", async () => {
@@ -645,13 +990,11 @@ describe("ProvidersScreen keyboard zones", () => {
     await flushUntil(
       () => lastFrame()?.includes(PRODUCT_REGISTRY.openrouter.presentation.name) ?? false,
     );
-    stdin.write(ENTER);
-    stdin.write(TAB);
-    await flush();
+    // Enter in the list runs the row's primary, Configure.
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("Create Configuration") ?? false);
-    stdin.write("a");
-    await flushUntil(() => lastFrame()?.includes("Notice accepted") ?? false);
+    // Consent is on record, so no acceptance stands between the key and the save.
+    expect(lastFrame()).not.toContain("I accept");
     stdin.write("\t");
     await flush();
     stdin.write("sk-openrouter-test");
@@ -678,18 +1021,35 @@ describe("ProvidersScreen keyboard zones", () => {
     await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
     stdin.write(ENTER);
     await flushUntil(() => lastFrame()?.includes("gemini-2.5-flash") ?? false);
-    stdin.write(TAB);
-    await flush();
-    for (let index = 0; index < 3; index += 1) {
-      stdin.write(ARROW_RIGHT);
-      await flush();
-    }
-    stdin.write(ENTER);
+    stdin.write("m");
     await flushUntil(() => lastFrame()?.includes("Select Model") ?? false);
     stdin.write("?");
     await flush();
 
     expect(lastFrame()).toContain("Select Model");
     expect(lastFrame()).toContain("route:settings/providers");
+  });
+
+  test("keeps the accelerators quiet while the More menu owns the keys, and closes it on Escape", async () => {
+    const testConfiguration = vi.fn<BoundApi["testConfiguration"]>();
+    const api = { ...makeApi(), testConfiguration } satisfies BoundApi;
+    const { stdin, lastFrame } = render(
+      <Wrapper api={api}>
+        <ProvidersScreen />
+      </Wrapper>,
+    );
+
+    await flushUntil(() => lastFrame()?.includes("Google Gemini") ?? false);
+    stdin.write(TAB);
+    await flush();
+    stdin.write(ARROW_RIGHT);
+    await flush();
+    stdin.write(ENTER);
+    await flushUntil(() => lastFrame()?.includes("More actions — Google Gemini") ?? false);
+    stdin.write("\u001b");
+    await flushUntil(() => !(lastFrame()?.includes("More actions") ?? true));
+
+    expect(testConfiguration).not.toHaveBeenCalled();
+    expect(lastFrame()).toContain("[ Change model ]");
   });
 });

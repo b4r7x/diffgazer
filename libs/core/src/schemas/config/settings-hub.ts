@@ -1,3 +1,4 @@
+import { formatLocaleDateTimeOrFallback } from "../../format.js";
 import type {
   ClientMetadataPayload,
   ClientProductMetadata,
@@ -5,12 +6,25 @@ import type {
 import { getProviderDisplayStatus } from "../../providers/display-status.js";
 import { pluralize } from "../../strings.js";
 import type { SettingsAction } from "../presentation/navigation.js";
-import type { AgentExecution, SecretsStorage, Theme } from "./settings.js";
+import type { Readiness } from "./readiness.js";
+import {
+  type AgentExecution,
+  describeAcceptedProviderConsent,
+  type ProviderConsent,
+  type SecretsStorage,
+  type Theme,
+} from "./settings.js";
 import type { RunnableProductId } from "./transports.js";
 
 type BillingMode = ClientProductMetadata["billing"]["modes"][number];
 
-export type ProviderSettingsRowId = "product" | "transport" | "billing" | "privacy" | "readiness";
+export type ProviderSettingsRowId =
+  | "product"
+  | "transport"
+  | "billing"
+  | "privacy"
+  | "readiness"
+  | "verification";
 
 export interface ProviderSettingsRow {
   readonly id: ProviderSettingsRowId;
@@ -39,6 +53,33 @@ const BILLING_MODE_LABELS = {
   "local-resource": "Local execution costs",
   "subscription-credit": "Subscription credit/rate limits",
 } as const satisfies Record<BillingMode, string>;
+
+/** The last recorded verification of the exact tuple: a Verify probe or a review. */
+function describeVerification(readiness: Readiness): string {
+  const checkedAt = formatLocaleDateTimeOrFallback(readiness.checkedAt);
+  switch (readiness.status) {
+    case "ready":
+      return `Verified ${checkedAt}`;
+    case "conformance-failed":
+    case "local-conformance-failed":
+      return `Failed ${checkedAt}`;
+    // The outstanding notice hides the tuple's verdict behind it; the evidence
+    // status still says what the last check found.
+    case "acknowledgement-required":
+      if (readiness.evidenceStatus === "passed") return `Verified ${checkedAt}`;
+      if (readiness.evidenceStatus === "failed") return `Failed ${checkedAt}`;
+      return "Not verified";
+    case "skipped":
+      return `Skipped ${checkedAt}`;
+    case "unconfigured":
+    case "unsupported":
+      return "Not checked";
+    case "conformance-pending":
+    case "credential-invalid":
+    case "model-missing":
+      return "Not verified";
+  }
+}
 
 export function buildProviderSettingsRows(
   metadata: ClientMetadataPayload,
@@ -79,6 +120,12 @@ export function buildProviderSettingsRows(
       value: getProviderDisplayStatus(readiness, product.transportFamily).label,
       description: `${readiness.explanation} ${readiness.remediation.message}`,
     },
+    {
+      id: "verification",
+      kind: "fact",
+      label: "Verification",
+      value: describeVerification(readiness),
+    },
   ];
 }
 
@@ -89,6 +136,7 @@ export interface SettingsHubInput {
   secretsStorage: SecretsStorage | null;
   agentExecution: AgentExecution;
   selectedLensCount: number;
+  providerConsent: ProviderConsent | null;
 }
 
 /**
@@ -106,6 +154,7 @@ export function buildHubValues({
   secretsStorage,
   agentExecution,
   selectedLensCount,
+  providerConsent,
 }: SettingsHubInput): Record<SettingsAction, string> {
   const providerLabel = selectedProductId ?? "Not configured";
   const themeLabel = theme ?? "auto";
@@ -117,6 +166,9 @@ export function buildHubValues({
     trust: isTrusted ? "Trusted" : "Not trusted",
     theme: themeLabel,
     provider: providerLabel,
+    "provider-consent": providerConsent
+      ? describeAcceptedProviderConsent(providerConsent)
+      : "Not accepted",
     storage: storageLabel,
     "agent-execution": agentExecution === "parallel" ? "Parallel" : "Sequential",
     analysis: analysisLabel,

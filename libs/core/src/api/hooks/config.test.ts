@@ -134,6 +134,7 @@ const configurationInit: ConfigurationInitResponse = {
     severityThreshold: "low",
     secretsStorage: null,
     agentExecution: "parallel",
+    providerConsent: null,
   },
   project: { path: "/repo", projectId: null, trust: null },
 };

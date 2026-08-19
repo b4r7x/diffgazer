@@ -10,6 +10,7 @@ import {
 } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode } from "@diffgazer/core/schemas/review";
 import { useKey, useScope } from "@diffgazer/keys";
+import { Button } from "@diffgazer/ui/components/button";
 import { toast } from "@diffgazer/ui/components/toast";
 import type { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -68,6 +69,8 @@ export interface HomePagePresentationProps {
   onHighlightChange: (id: MenuAction | null) => void;
   navigate: Navigate;
   createReview: CreateReview;
+  /** Runs the start once the provider consent is on record, asking for it first when it is not. */
+  requireProviderConsent: (action: () => void) => void;
   clearScopedRouteState: (scope: string, key: string) => void;
   shutdown: () => Promise<ShutdownResult>;
 }
@@ -84,6 +87,7 @@ export function HomePagePresentation({
   onHighlightChange,
   navigate,
   createReview,
+  requireProviderConsent,
   clearScopedRouteState,
   shutdown,
 }: HomePagePresentationProps) {
@@ -134,8 +138,25 @@ export function HomePagePresentation({
       if (isMountedRef.current) navigateToReview(reviewId, mode);
     } catch (error) {
       if (!isMountedRef.current) return;
-      const { title, message } = describeReviewStartError(error);
-      toast.error(title, { message });
+      const { title, message, recovery } = describeReviewStartError(error);
+      // Error toasts persist until dismissed, so a start the providers screen
+      // can fix carries the jump instead of leaving the user to find it.
+      const toastId = toast.error(title, {
+        message,
+        action:
+          recovery === "configure-provider" ? (
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => {
+                toast.dismiss(toastId);
+                navigate({ to: "/settings/providers" });
+              }}
+            >
+              Open Providers
+            </Button>
+          ) : undefined,
+      });
     } finally {
       isStartingRef.current = false;
       setStartingAction(null);
@@ -169,7 +190,7 @@ export function HomePagePresentation({
 
     switch (decision.kind) {
       case "start-review":
-        void startReview(decision.mode, id);
+        requireProviderConsent(() => void startReview(decision.mode, id));
         return;
       case "resume":
         resumeReview();

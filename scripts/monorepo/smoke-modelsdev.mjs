@@ -9,7 +9,6 @@ import {
   buildHostedProbeTuples,
   collectReachableBundleFiles,
   emitProviderProbeResults,
-  enabledSnapshotProviders,
   finalizeStrictProbeResults,
   findSnapshotInBundle,
   LIVE_PROBE_OPT_IN_ENV,
@@ -88,7 +87,9 @@ async function run() {
     return observation?.models ?? [];
   };
 
-  const enabledProviders = enabledSnapshotProviders(PROVIDER_OVERLAY);
+  // Every overlay product's offline picker is served from the bundled snapshot;
+  // deriving the roster from PROVIDER_OVERLAY keeps the smoke from drifting.
+  const enabledProviders = Object.keys(PROVIDER_OVERLAY);
   const probeTuples = buildHostedProbeTuples(PRODUCT_REGISTRY, CREDENTIAL_ENV_VARS);
   const strictSkips = process.env[ENV.smokeStrictSkips] === "1";
   const runHostedLiveProbe =

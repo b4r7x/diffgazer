@@ -34,6 +34,18 @@ export const MODELS_DEV_SAMPLE: unknown = {
         release_date: "2025-11-18",
         last_updated: "2025-11-18",
       },
+      // Declares it cannot do structured output, and Gemini runs strict JSON
+      // schema => withheld from the picker.
+      "gemini-2.5-flash-tts": {
+        id: "gemini-2.5-flash-tts",
+        name: "Gemini 2.5 Flash TTS",
+        family: "gemini-flash",
+        cost: { input: 0.5, output: 10 },
+        limit: { context: 8000, output: 16000 },
+        structured_output: false,
+        release_date: "2025-05-20",
+        last_updated: "2025-05-20",
+      },
     },
   },
   groq: {
@@ -61,7 +73,7 @@ export const MODELS_DEV_SAMPLE: unknown = {
     name: "Cerebras",
     env: ["CEREBRAS_API_KEY"],
     models: {
-      // No structured-output declaration upstream => withheld from the picker.
+      // No structured-output declaration upstream => still a picker row.
       "gpt-oss-120b": {
         id: "gpt-oss-120b",
         name: "GPT OSS 120B",
@@ -95,8 +107,7 @@ export const MODELS_DEV_SAMPLE: unknown = {
         release_date: "2026-02-11",
         last_updated: "2026-02-11",
       },
-      // Capable and zero-priced, but '-flash' is an explicit opt-in suffix the
-      // zai model policy refuses => withheld from the picker despite capability.
+      // Zero-priced free tier => picker row, tier 'free'.
       "glm-4.7-flash": {
         id: "glm-4.7-flash",
         name: "GLM-4.7-Flash",
@@ -109,7 +120,8 @@ export const MODELS_DEV_SAMPLE: unknown = {
         release_date: "2026-01-19",
         last_updated: "2026-01-19",
       },
-      // Declares it cannot do structured output => withheld from the picker.
+      // Declares it cannot do structured output, but Z.AI runs JSON mode with
+      // local validation => still a picker row.
       "glm-4.7": {
         id: "glm-4.7",
         name: "GLM-4.7",

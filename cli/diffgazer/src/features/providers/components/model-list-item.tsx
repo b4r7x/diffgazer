@@ -23,8 +23,8 @@ function getPrefix(isSelected: boolean, isHighlighted: boolean): string {
 /**
  * The exact model id leads the secondary column because it is the string a
  * review pins; the context blurb trails it and is the first thing truncation
- * takes. When upstream publishes no display name the two are equal and only
- * the row title is shown.
+ * takes. When upstream publishes no display name the two are equal and the
+ * id is not repeated.
  */
 function getDetail(model: ModelInfo): string {
   const parts = model.id === model.name ? [] : [model.id];

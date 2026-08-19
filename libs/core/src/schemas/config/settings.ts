@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getDateKey } from "../../format.js";
 import { ReviewSeveritySchema } from "../review/issues.js";
 import { LensIdSchema, ProfileIdSchema } from "../review/lens.js";
 
@@ -46,6 +47,44 @@ export const AGENT_EXECUTION_MODES = ["parallel", "sequential"] as const;
 export const AgentExecutionSchema = z.enum(AGENT_EXECUTION_MODES);
 export type AgentExecution = z.infer<typeof AgentExecutionSchema>;
 
+export const PROVIDER_CONSENT_VERSION = 1;
+
+/**
+ * The one consent every provider send rests on. Recorded once in settings; the
+ * per-configuration notice acknowledgement is derived from it by the UIs and
+ * only asked for again when a product's notice materially changes.
+ */
+export const PROVIDER_CONSENT_TEXT =
+  "Diffgazer sends repository content (diffs, files you include) to the provider you configure, using your own credentials, and stores nothing remotely. Billing, rate limits, retention and training terms are that provider's — see each provider's notice.";
+
+/** Where the consent points for the full account of what leaves the machine. */
+export const PROVIDER_CONSENT_PRIVACY_URL = "https://docs.b4r7.dev/app/concepts/privacy";
+
+export const ProviderConsentSchema = z.strictObject({
+  version: z.literal(PROVIDER_CONSENT_VERSION),
+  acceptedAt: z.iso.datetime(),
+});
+export type ProviderConsent = z.infer<typeof ProviderConsentSchema>;
+
+export function acceptProviderConsent(acceptedAt = new Date().toISOString()): ProviderConsent {
+  return { version: PROVIDER_CONSENT_VERSION, acceptedAt };
+}
+
+/** The notice's chrome, so the web dialog and the TUI overlay cannot read differently. */
+export const PROVIDER_CONSENT_NOTICE = {
+  title: "Provider data notice",
+  askedOnce: "Asked once, before anything is sent to a provider",
+  accept: "Accept",
+  acceptAndContinue: "Accept and continue",
+  notNow: "Not now",
+  close: "Close",
+} as const;
+
+/** How an accepted consent reads back: in the notice, and on the settings hub row. */
+export function describeAcceptedProviderConsent(consent: ProviderConsent): string {
+  return `Accepted ${getDateKey(consent.acceptedAt)}`;
+}
+
 export const SettingsConfigSchema = z.object({
   theme: ThemeSchema,
   defaultLenses: z
@@ -56,6 +95,7 @@ export const SettingsConfigSchema = z.object({
   severityThreshold: ReviewSeveritySchema,
   secretsStorage: SecretsStorageSchema.nullable(),
   agentExecution: AgentExecutionSchema,
+  providerConsent: ProviderConsentSchema.nullable(),
 });
 export type SettingsConfig = z.infer<typeof SettingsConfigSchema>;
 
@@ -66,6 +106,7 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
   defaultProfile: null,
   severityThreshold: "low",
   agentExecution: "sequential",
+  providerConsent: null,
 };
 
 const SettingsFieldSchemas = SettingsConfigSchema.shape;

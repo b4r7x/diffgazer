@@ -1,11 +1,13 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import type { ProviderListRow } from "@diffgazer/core/providers";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import type { ProviderManagementOutcome } from "@diffgazer/core/providers/hooks";
 import type { ClientConfigurationSummary } from "@diffgazer/core/schemas/config";
 import { createDeferred } from "@diffgazer/core/testing/deferred";
 import {
   buildProviderRows,
   LOCAL_OPENAI_CONFIGURATION,
+  makeReadiness,
   unconfiguredRow,
 } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider } from "@diffgazer/keys";
@@ -123,18 +125,18 @@ describe("ApiKeyDialog family-specific setup controls", () => {
 });
 
 describe("ApiKeyDialog acknowledgement and write-only secrets", () => {
-  it("requires explicit notice acknowledgement before hosted save", async () => {
+  // The provider consent is gated before this dialog opens, so a fresh product
+  // saves with its notice acknowledged for the user: no checkbox, no consent text.
+  it("sends the product acknowledgement without a checkbox and shows the notice for information", async () => {
     const user = userEvent.setup();
     const { onCreate } = renderSetupDialog(unconfiguredRow("gemini"));
 
     const dialog = screen.getByRole("dialog");
-    const keyInput = within(dialog).getByLabelText(/Google Gemini API Key/i);
-    await user.type(keyInput, "sk-hosted-secret");
-    await user.click(within(dialog).getByRole("button", { name: "Save" }));
-
-    expect(onCreate).not.toHaveBeenCalled();
-
-    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
+    expect(within(dialog).queryByRole("checkbox")).not.toBeInTheDocument();
+    for (const line of PRODUCT_REGISTRY.gemini.notice.privacy) {
+      expect(within(dialog).getByText(line)).toBeInTheDocument();
+    }
+    await user.type(within(dialog).getByLabelText(/Google Gemini API Key/i), "sk-hosted-secret");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
@@ -145,9 +147,33 @@ describe("ApiKeyDialog acknowledgement and write-only secrets", () => {
         credential: { kind: "literal", value: "sk-hosted-secret" },
       }),
       expect.objectContaining({
-        acknowledgement: expect.objectContaining({ status: "accepted" }),
+        acknowledgement: expect.objectContaining({
+          status: "accepted",
+          noticeId: "gemini-hosted-api",
+        }),
       }),
     );
+  });
+
+  it("asks for an explicit acceptance when the row's notice needs accepting again", async () => {
+    const user = userEvent.setup();
+    const row = requireProviderRow(
+      (candidate) => candidate.configuration?.configurationId === "local-openai-1",
+    );
+    const { onUpdate } = renderSetupDialog({
+      ...row,
+      readiness: makeReadiness("acknowledgement-required", "local-openai"),
+    });
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/needs your acceptance/i)).toBeInTheDocument();
+    const save = within(dialog).getByRole("button", { name: "Save" });
+    expect(save).toBeDisabled();
+    await user.click(within(dialog).getByRole("checkbox", { name: /i accept/i }));
+    expect(save).toBeEnabled();
+    await user.click(save);
+
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce());
   });
 
   it("submits environment credentials without keeping the typed secret in the DOM", async () => {
@@ -155,8 +181,8 @@ describe("ApiKeyDialog acknowledgement and write-only secrets", () => {
     const { onCreate } = renderSetupDialog(unconfiguredRow("gemini"));
 
     const dialog = screen.getByRole("dialog");
-    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
-    await user.keyboard("{ArrowUp}{Enter}");
+    // Down from Paste lands in the key field, Down again reaches Import from Env.
+    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
 
     await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
     expect(onCreate).toHaveBeenCalledWith(
@@ -189,7 +215,6 @@ describe("ApiKeyDialog acknowledgement and write-only secrets", () => {
     );
 
     const dialog = screen.getByRole("dialog");
-    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
     const keyInput = within(dialog).getByLabelText(/Google Gemini API Key/i);
     await user.type(keyInput, "sk-test-key");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
@@ -204,7 +229,7 @@ describe("ApiKeyDialog acknowledgement and write-only secrets", () => {
   });
 });
 
-describe("ApiKeyDialog chrome, consent gating, and environment binding", () => {
+describe("ApiKeyDialog chrome and environment binding", () => {
   it("renders the header strip title and the default [x] close control", async () => {
     const user = userEvent.setup();
     const { onOpenChange } = renderSetupDialog(unconfiguredRow("gemini"));
@@ -228,18 +253,16 @@ describe("ApiKeyDialog chrome, consent gating, and environment binding", () => {
     ).toHaveValue("GOOGLE_API_KEY");
   });
 
-  it("keeps the confirm action visible while consent is outstanding, then enables it", async () => {
+  it("keeps the confirm action visible while the key is empty, then enables it", async () => {
     const user = userEvent.setup();
     renderSetupDialog(unconfiguredRow("gemini"));
 
     const dialog = screen.getByRole("dialog");
     const save = within(dialog).getByRole("button", { name: "Save" });
-    await user.type(within(dialog).getByLabelText(/Google Gemini API Key/i), "sk-hosted-secret");
-
     expect(save).toBeVisible();
     expect(save).toBeDisabled();
 
-    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
+    await user.type(within(dialog).getByLabelText(/Google Gemini API Key/i), "sk-hosted-secret");
 
     expect(save).toBeEnabled();
   });
@@ -284,8 +307,8 @@ describe("ApiKeyDialog accessible submit, cancel, and focus", () => {
     );
 
     const dialog = screen.getByRole("dialog");
-    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
-    await user.keyboard("{ArrowUp}{Enter}");
+    // Down from Paste lands in the key field, Down again reaches Import from Env.
+    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
 
     await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
     expect(onCreate).toHaveBeenCalledWith(
@@ -326,7 +349,6 @@ describe("ApiKeyDialog accessible submit, cancel, and focus", () => {
     );
 
     const dialog = screen.getByRole("dialog");
-    await user.click(within(dialog).getByRole("checkbox", { name: /accept billing/i }));
     const keyInput = within(dialog).getByLabelText(/Google Gemini API Key/i);
     await user.type(keyInput, "sk-deferred");
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
@@ -387,9 +409,9 @@ describe("ApiKeyDialog accessible submit, cancel, and focus", () => {
     );
 
     const dialog = screen.getByRole("dialog");
-    // A configured row already accepted the current notice, so the dialog opens
-    // with the acknowledgement checked and the save only needs the button.
-    expect(within(dialog).getByRole("checkbox", { name: /accept billing/i })).toBeChecked();
+    // The row's notice is accepted, so there is no checkbox to tick: the save
+    // only needs the button.
+    expect(within(dialog).queryByRole("checkbox")).not.toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce());
@@ -448,7 +470,7 @@ describe("ApiKeyDialog accessible submit, cancel, and focus", () => {
     const { onUpdate } = renderSetupDialog(localHttpRow());
 
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByRole("checkbox", { name: /accept billing/i })).toBeChecked();
+    expect(within(dialog).queryByRole("checkbox")).not.toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(onUpdate).toHaveBeenCalledOnce());

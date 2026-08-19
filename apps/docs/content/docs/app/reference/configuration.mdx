@@ -42,11 +42,11 @@ The local API exposes six generic actions on `POST /api/config/actions`:
 | `create` | Start a new configuration for a selectable product. |
 | `inspect` | Read the current safe summary and readiness state. |
 | `select` | Choose an exact admitted model. |
-| `test` | Run the readiness and conformance probe for the configured tuple. |
+| `test` | Run the optional readiness and conformance probe for the configured tuple (**Verify** in the UI). |
 | `update` | Change endpoint, region, workspace, credential reference, or notice acknowledgement. |
 | `delete` | Remove the configuration after active review leases drain. |
 
-Every action returns a client-safe summary. A configuration becomes **ready** only after its product-specific admission checks pass, including structured-output conformance, required usage when applicable, and explicit notice acknowledgement. Reviews do not wait for **ready**: a configuration whose only open item is structured-output conformance can start a review, and the review itself verifies it.
+Every action returns a client-safe summary. A configuration becomes **ready** only after its product-specific admission checks pass, including structured-output conformance, required usage when applicable, and an accepted product notice. Reviews do not wait for **ready**: a configuration whose only open item is structured-output conformance can start a review, and the review itself verifies it. An unaccepted notice is different: readiness reports `acknowledgement-required` and the review is refused until the notice is accepted, whether or not conformance was ever checked.
 
 ## Setup and readiness by product family
 
@@ -54,13 +54,13 @@ Setup always ends in an observable **ready**, **unsupported**, or **skipped** st
 
 ### Hosted API products
 
-For Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Qwen International, Moonshot Open Platform, and Mistral:
+For Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Qwen International, Moonshot Open Platform, Mistral, and Ollama Cloud:
 
 1. `create` a configuration for the product.
 2. `update` it with either a stored literal credential or an environment reference. The reference carries no name: the server binds the canonical variable for that product, for example `GOOGLE_API_KEY` for Google Gemini.
 3. Bind the allowed endpoint and, when required, region and workspace.
 4. `select` an exact discovered model ID.
-5. Optionally `test` the configuration to verify structured-output conformance up front. Skipping it leaves readiness at `conformance-pending`, which still starts reviews; the first review verifies conformance and records the result.
+5. Optionally `test` (**Verify** in the UI) to check structured-output conformance up front. Skipping it leaves readiness at `conformance-pending`, which still selects and starts reviews; the first review verifies conformance and records the result, and the UI shows the last verification beside the configuration.
 
 Hosted examples never embed literal secrets. Use an environment reference or the setup UI's write-only credential field instead.
 
@@ -69,7 +69,7 @@ Hosted examples never embed literal secrets. Use an environment reference or the
 1. `create` the configuration and choose the loopback endpoint preset (Ollama default, LM Studio, or llama.cpp).
 2. Start the local server on the validated loopback address.
 3. Look up the exact model ID from your local server (for example `ollama list`, or the LM Studio / llama.cpp UI). The setup wizard **Model** step does not list local-server models yet — it shows **Catalog observations are unavailable for this configuration product.** with **Retry** only, and **Next** stays disabled because the wizard does not read back an external `select`.
-4. `select` that exact model ID through the [local API](/app/reference/api). `test` verifies structured-output conformance up front; the first review verifies it otherwise.
+4. `select` that exact model ID through the [local API](/app/reference/api). `test` (**Verify** in the UI) checks structured-output conformance up front; the first review verifies it otherwise.
 5. `update` to accept the product notice.
 
 Optional bearer tokens are supported only when your local server requires them. Diffgazer does not accept remote URLs, tunnels, or LAN addresses.
@@ -79,14 +79,17 @@ Optional bearer tokens are supported only when your local server requires them. 
 1. `create` the configuration.
 2. Install and authenticate the CLI with the vendor's own tooling. Diffgazer uses **vendor-managed local auth** and does not import CLI tokens or auth files.
 3. Look up the exact model ID from the installed CLI or vendor docs. The setup wizard **Model** step does not list CLI models yet — it shows **Catalog observations are unavailable for this configuration product.** with **Retry** only, and **Next** stays disabled because the wizard does not read back an external `select`.
-4. `select` that exact model ID through the [local API](/app/reference/api), then `inspect` and `test` until the pinned CLI profile passes negative-capability, schema, and cancellation checks, or readiness reports **unsupported** with remediation to review support requirements.
+4. `select` that exact model ID through the [local API](/app/reference/api). `inspect` and the optional `test` (**Verify** in the UI) report whether the pinned CLI profile passes negative-capability, schema, and cancellation checks, or readiness reports **unsupported** with remediation to review support requirements.
 5. `update` to accept the account notice.
 
-## Exact-model, conformance, and acknowledgement gates
+## Exact-model, conformance, and consent gates
 
 - **Exact model only.** Aliases, `latest`, and routing selectors are rejected.
-- **Conformance.** Readiness reports **ready** only once schema-valid review output has been observed for the exact configured tuple. `test` is the optional way to observe it early; otherwise the first review observes it. A recorded conformance failure fast-fails later reviews on that exact tuple until the tuple changes.
-- **Acknowledgement.** Each product's current billing and privacy notice must be explicitly accepted before the first context send.
+- **Conformance.** Readiness reports **ready** only once schema-valid review output has been observed for the exact configured tuple. `test` (**Verify**) is the optional way to observe it early; otherwise the first review observes it. Until then readiness is `conformance-pending`, shown as **Not verified**, and the configuration can still be selected and reviewed. A recorded conformance failure fast-fails later reviews on that exact tuple until the tuple changes.
+- **Consent.** Diffgazer asks once, globally, for the provider consent below and records it as `settings.providerConsent`. It is asked in the setup wizard, or — when the wizard was skipped — just in time, as a **Provider data notice** dialog the first time you take an action that would send repository content or store the credentials to do so: **Configure** or **Update configuration** (the notice opens before the credentials dialog), **Select configuration**, **Verify**, or starting a review. **Accept and continue** records the consent and runs the action; **Not now** (or `Esc`) cancels only that action, and Provider Details keeps a **Consent required to run reviews · Review** line that reopens the notice. Once accepted it is never asked again; the settings hub shows a read-only **Provider data notice** row with the acceptance date. Each configuration record still carries the acknowledgement of its product's current notice (`noticeId`, `noticeVersion`, `acceptedAt`): once the global consent is on record the Web and Ink UIs send that acknowledgement automatically when they create or update a configuration, and only ask again when readiness reports `acknowledgement-required` — a product whose notice materially changed (a new notice version), or a record upgraded without an acceptance. API callers send the acknowledgement themselves on `create` or `update`. An unacknowledged record reports `acknowledgement-required` before any conformance verdict and reviews on it are refused with `503 SETUP_REQUIRED`.
+
+  > Diffgazer sends repository content (diffs, files you include) to the provider you configure, using your own credentials, and stores nothing remotely. Billing, rate limits, retention and training terms are that provider's — see each provider's notice.
+
 - **Skipped live probes.** When a live check is intentionally skipped, readiness stays non-ready with remediation code `enable-live-probe`. A skipped probe never enables a product.
 
 ## Settings
@@ -101,6 +104,7 @@ These are the fields in the settings config. Anything you do not set falls back 
 | `severityThreshold` | `blocker` \| `high` \| `medium` \| `low` \| `nit` | `low` | The lowest severity an issue can have and still be shown. |
 | `secretsStorage` | `file` \| `keyring` \| `null` | `null` | Where literal credentials are stored when you choose stored secrets. |
 | `agentExecution` | `parallel` \| `sequential` | `sequential` | Whether review agents run one after another or at the same time. |
+| `providerConsent` | `{ version: 1, acceptedAt }` or `null` | `null` | The one global provider consent, recorded when you accept it in the setup wizard or in the **Provider data notice** dialog that gates the first data-sending action. `null` until then; a future consent version asks again. |
 
 ## Secrets storage
 

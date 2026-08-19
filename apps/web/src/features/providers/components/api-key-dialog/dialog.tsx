@@ -73,9 +73,13 @@ export function ApiKeyDialog({
     row.configuration?.transportFamily === "local-http" &&
     row.configuration.authentication === "optional-local-bearer";
   const continueToModelSelection = requiresExplicitModelSelection(row.product.productId);
-  const [noticeAccepted, setNoticeAccepted] = useState(
-    () => row.readiness.acknowledgement.status === "accepted",
-  );
+  // The provider consent is gated before this dialog opens and covers every
+  // product notice; an explicit tick is asked for only when this product's
+  // notice needs accepting again (a notice bump, or a record upgraded without
+  // an acceptance).
+  const needsAcceptance = row.readiness.acknowledgement.status === "required";
+  const [accepted, setAccepted] = useState(false);
+  const acknowledged = !needsAcceptance || accepted;
 
   const storageNote =
     secretsStorage === "keyring"
@@ -87,7 +91,7 @@ export function ApiKeyDialog({
   // escaping the click handler as an unhandled rejection.
   const entry = useApiKeyEntry({
     onSubmit: async (method, value) => {
-      if (!noticeAccepted) return false;
+      if (!acknowledged) return false;
       if (hasPersistedLocalBearer) {
         throw new Error(
           "This configuration uses local bearer authentication. Recreate it from onboarding to replace the bearer token.",
@@ -128,8 +132,8 @@ export function ApiKeyDialog({
   };
 
   const canConfirm = isHosted
-    ? (entry.method === "env" || entry.value.length > 0) && noticeAccepted && !entry.isSubmitting
-    : noticeAccepted && !entry.isSubmitting && !hasPersistedLocalBearer;
+    ? (entry.method === "env" || entry.value.length > 0) && acknowledged && !entry.isSubmitting
+    : acknowledged && !entry.isSubmitting && !hasPersistedLocalBearer;
 
   const {
     focused,
@@ -146,6 +150,7 @@ export function ApiKeyDialog({
   } = useApiKeyDialogKeyboard({
     open,
     isHosted,
+    hasAcknowledgement: needsAcceptance,
     method: entry.method,
     setMethod: entry.setMethod,
     canSubmit: canConfirm,
@@ -160,7 +165,7 @@ export function ApiKeyDialog({
 
   const resetDialogState = useEffectEvent(() => {
     entry.reset();
-    setNoticeAccepted(row.readiness.acknowledgement.status === "accepted");
+    setAccepted(false);
   });
 
   useEffect(() => {
@@ -213,19 +218,35 @@ export function ApiKeyDialog({
             />
           ) : null}
 
-          <Checkbox
-            ref={acknowledgementProps.ref}
-            checked={noticeAccepted}
-            onChange={setNoticeAccepted}
-            onFocus={acknowledgementProps.onFocus}
-            disabled={entry.isSubmitting}
-            highlighted={acknowledgementHighlighted}
-            value="accept-notice"
-            label="Accept billing and privacy notice before saving"
-            // Flush with the dialog body's content edge: the selectable row's own
-            // horizontal padding pushed the consent line off the grid the prose sits on.
-            className="px-0"
-          />
+          <div className="space-y-1 text-xs text-muted-foreground leading-relaxed">
+            {row.product.notice.billing.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+            {row.product.notice.privacy.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+
+          {needsAcceptance ? (
+            <>
+              <p className="text-sm leading-relaxed">
+                This product's notice needs your acceptance before saving.
+              </p>
+              <Checkbox
+                ref={acknowledgementProps.ref}
+                checked={accepted}
+                onChange={setAccepted}
+                onFocus={acknowledgementProps.onFocus}
+                disabled={entry.isSubmitting}
+                highlighted={acknowledgementHighlighted}
+                value="accept-notice"
+                label="I accept"
+                // Flush with the dialog body's content edge: the selectable row's own
+                // horizontal padding pushed the consent line off the grid the prose sits on.
+                className="px-0"
+              />
+            </>
+          ) : null}
 
           {entry.error && (
             <Callout id={errorId} tone="error" live>

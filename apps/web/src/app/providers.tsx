@@ -3,6 +3,7 @@ import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { ConfigProvider } from "@/hooks/use-config";
+import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { api } from "../lib/api";
 import { queryClient } from "../lib/query-client";
@@ -17,7 +18,9 @@ export function AppProviders({ children }: AppProvidersProps) {
       <ApiProvider value={api}>
         <ThemeProvider>
           <ConfigProvider>
-            <KeyboardProvider>{children}</KeyboardProvider>
+            <KeyboardProvider>
+              <ProviderConsentProvider>{children}</ProviderConsentProvider>
+            </KeyboardProvider>
           </ConfigProvider>
         </ThemeProvider>
       </ApiProvider>

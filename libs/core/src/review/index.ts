@@ -83,6 +83,7 @@ export {
   getConfigurationNotReadyCopy,
   isCredentialReconnectReadiness,
   isCredentialSetupError,
+  isProviderRecoveryError,
   type ReviewStartErrorDescription,
   type ReviewStreamErrorGuidance,
   type ReviewStreamErrorKind,

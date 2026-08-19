@@ -1,7 +1,7 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { FooterProvider } from "@diffgazer/core/footer";
-import type { SettingsConfig } from "@diffgazer/core/schemas/config";
+import { PROVIDER_CONSENT_TEXT, type SettingsConfig } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -9,6 +9,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { expectSingleReticle } from "@/testing/reticle";
 import {
@@ -33,6 +34,7 @@ const SETTINGS_FIXTURE: SettingsConfig = {
   severityThreshold: "low",
   secretsStorage: null,
   agentExecution: "parallel",
+  providerConsent: null,
 };
 
 const shellInit = makeShellInitResponse({
@@ -78,7 +80,9 @@ function renderWithProviders(api: BoundApi) {
           <ConfigProvider>
             <ThemeProvider>
               <FooterProvider>
-                <KeyboardProvider>{children}</KeyboardProvider>
+                <KeyboardProvider>
+                  <ProviderConsentProvider>{children}</ProviderConsentProvider>
+                </KeyboardProvider>
               </FooterProvider>
             </ThemeProvider>
           </ConfigProvider>
@@ -231,9 +235,57 @@ describe("SettingsHubPage", () => {
       expect(trustRow).toHaveTextContent("Trusted");
       expect(trustRow).not.toHaveTextContent("Not trusted");
     });
-    expect(screen.getByRole("menuitem", { name: /provider/i })).toHaveTextContent(
+    expect(screen.getByRole("menuitem", { name: /^provider\b(?! data)/i })).toHaveTextContent(
       selectedProductId(trustedShellInit) ?? "Not configured",
     );
+  });
+
+  it("reads the provider data notice back from the hub without asking again once accepted", async () => {
+    const user = userEvent.setup();
+    renderPage(
+      makeShellInitResponse({
+        settings: {
+          ...SETTINGS_FIXTURE,
+          providerConsent: { version: 1, acceptedAt: "2026-08-18T10:00:00.000Z" },
+        },
+        project: { projectId: "proj-1", path: "/tmp/repo", trust: null },
+      }),
+    );
+
+    const row = await screen.findByRole("menuitem", { name: /provider data notice/i });
+    expect(row).toHaveTextContent(/Accepted 2026-08-1[89]/);
+    await user.click(row);
+
+    const dialog = await screen.findByRole("alertdialog", { name: "Provider data notice" });
+    expect(within(dialog).getByText(PROVIDER_CONSENT_TEXT)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Accepted 2026-08-1[89]/)).toBeInTheDocument();
+    // Read-only once accepted: nothing to accept, only Close, and Close holds
+    // the focus so the Enter that opened the row closes it again rather than
+    // following the privacy link.
+    expect(within(dialog).queryByRole("button", { name: /Accept/ })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(within(dialog).getByRole("button", { name: "Close" })).toHaveFocus(),
+    );
+    // The notice owns the keys while it is up: the hub's Escape (back to home)
+    // must not fire underneath it.
+    await user.keyboard("{Escape}");
+    expect(mockNavigate).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("offers the acceptance from the hub row while no consent is on record", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const row = await screen.findByRole("menuitem", { name: /provider data notice/i });
+    expect(row).toHaveTextContent("Not accepted");
+    await user.click(row);
+
+    const dialog = await screen.findByRole("alertdialog", { name: "Provider data notice" });
+    expect(within(dialog).getByRole("button", { name: "Accept" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Not now" })).toBeInTheDocument();
   });
 
   it("shows an init error instead of false settings defaults", async () => {

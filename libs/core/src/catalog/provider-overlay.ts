@@ -2,13 +2,23 @@ import type { RunnableProductId } from "../schemas/config/transports.js";
 
 export type ProviderOverlay = {
   readonly modelsDevIds: readonly string[];
+  /**
+   * Same-vendor models.dev sources whose identical model key may lend ONLY a
+   * display name to a live-only row. Never cost, tier, or limits: those differ
+   * per plan, and these sources neither enable products nor withhold rows.
+   */
+  readonly nameSourceIds?: readonly string[];
 };
 
 export const PROVIDER_OVERLAY: Partial<Record<RunnableProductId, ProviderOverlay>> = {
   gemini: { modelsDevIds: ["google"] },
-  zai: { modelsDevIds: ["zai"] },
+  zai: { modelsDevIds: ["zai"], nameSourceIds: ["zai-coding-plan", "zhipuai-coding-plan"] },
   openrouter: { modelsDevIds: ["openrouter"] },
   groq: { modelsDevIds: ["groq"] },
   cerebras: { modelsDevIds: ["cerebras"] },
   mistral: { modelsDevIds: ["mistral"] },
+  deepseek: { modelsDevIds: ["deepseek"] },
+  qwen: { modelsDevIds: ["alibaba"] },
+  moonshot: { modelsDevIds: ["moonshotai"] },
+  "ollama-cloud": { modelsDevIds: ["ollama-cloud"] },
 };

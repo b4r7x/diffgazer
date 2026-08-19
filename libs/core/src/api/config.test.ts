@@ -333,6 +333,7 @@ describe("config API functions", () => {
         severityThreshold: "info",
         secretsStorage: null,
         agentExecution: "sequential",
+        providerConsent: null,
       },
       project: { path: "/repo", projectId: null, trust: null },
     } as const;

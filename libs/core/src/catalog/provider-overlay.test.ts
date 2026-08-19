@@ -4,7 +4,7 @@ import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "../providers/product-r
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";
 
 describe("catalog provider observations", () => {
-  it("leaves exact 13-product eligibility with the product registry", () => {
+  it("leaves exact 14-product eligibility with the product registry", () => {
     expect(SELECTABLE_PRODUCT_IDS).toEqual([
       "gemini",
       "zai",
@@ -15,6 +15,7 @@ describe("catalog provider observations", () => {
       "qwen",
       "moonshot",
       "mistral",
+      "ollama-cloud",
       "ollama",
       "local-openai",
       "codex-cli",
@@ -32,15 +33,33 @@ describe("catalog provider observations", () => {
       "groq",
       "cerebras",
       "mistral",
+      "deepseek",
+      "qwen",
+      "moonshot",
+      "ollama-cloud",
     ]);
   });
 
   it("keeps the overlay observational and unable to enable products or models", () => {
     for (const overlay of Object.values(PROVIDER_OVERLAY)) {
-      expect(overlay).toEqual({ modelsDevIds: overlay?.modelsDevIds });
+      for (const key of Object.keys(overlay ?? {})) {
+        expect(["modelsDevIds", "nameSourceIds"]).toContain(key);
+      }
       expect(overlay).not.toHaveProperty("enabled");
       expect(overlay).not.toHaveProperty("selectable");
       expect(overlay).not.toHaveProperty("models");
+    }
+  });
+
+  it("keeps name-lending sources disjoint from the observation sources", () => {
+    const observationSourceIds = new Set(
+      Object.values(PROVIDER_OVERLAY).flatMap((overlay) => [...(overlay?.modelsDevIds ?? [])]),
+    );
+    expect(PROVIDER_OVERLAY.zai?.nameSourceIds).toEqual(["zai-coding-plan", "zhipuai-coding-plan"]);
+    for (const overlay of Object.values(PROVIDER_OVERLAY)) {
+      for (const sourceId of overlay?.nameSourceIds ?? []) {
+        expect(observationSourceIds.has(sourceId), sourceId).toBe(false);
+      }
     }
   });
 

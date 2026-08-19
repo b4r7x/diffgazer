@@ -9,7 +9,7 @@ Most failures fall into a handful of buckets: configuration is not ready, the re
 
 **Symptom.** Review actions stay disabled or show **Configuration Not Ready** with remediation text from the current readiness state.
 
-**Cause.** A review starts only from a configuration whose product tuple passed admission. Until then, Diffgazer exposes the next safe action (`create`, `inspect`, `select`, `test`, `update`, or `delete`) instead of starting a review.
+**Cause.** A review starts only from a configuration whose product tuple passed admission. Until then, Diffgazer exposes the next safe action (`create`, `inspect`, `select`, `test`, `update`, or `delete`) instead of starting a review. An unverified configuration (**Not verified**, readiness `conformance-pending`) is not blocked: it can be selected and reviewed, and **Verify** stays optional.
 
 **Fix.** Open **Configure Provider** in settings and follow the remediation for the reported readiness state below. Product-specific examples include Google Gemini, Ollama, and OpenAI Codex CLI.
 
@@ -35,19 +35,19 @@ Most failures fall into a handful of buckets: configuration is not ready, the re
 
 **Cause.** The saved exact model ID is not present in the current admitted discovery result for the configured tuple.
 
-**Fix.** Select an available exact model. Pin that exact ID, then **test** again. Aliases and routing selectors are rejected.
+**Fix.** Select an available exact model. Pin that exact ID, then start a review or **Verify**. Aliases and routing selectors are rejected.
 
 For hosted products, open the model picker in **Configure Provider** and choose a listed exact ID.
 
-For local HTTP and local CLI products, the picker shows the skipped catalog reason with **Retry** only — there is no list to choose from. Look up the exact ID from your local server or CLI tooling, `select` it through the [local API](/app/reference/api), then **test** again from **Configure Provider**.
+For local HTTP and local CLI products, the picker shows the skipped catalog reason with **Retry** only — there is no list to choose from. Look up the exact ID from your local server or CLI tooling, `select` it through the [local API](/app/reference/api), then start a review or **Verify** from **Configure Provider**.
 
 ## Schema failure
 
-**Symptom.** A review ends with **Schema Validation Failed** and the message **The provider response did not match Diffgazer's review schema.** Readiness turns `conformance-failed` with the explanation **The exact review path did not satisfy the structured output contract.** Starting another review with the same setup fails immediately and free, without contacting the provider.
+**Symptom.** A review ends with **Schema Validation Failed** and the message **The provider response did not match Diffgazer's review schema.** The review screen shows **Model Incompatible** with a **Change model** action that opens the providers page. Readiness turns `conformance-failed` with the explanation **The exact review path did not satisfy the structured output contract.** Starting another review with the same setup fails immediately and free, without contacting the provider: the start error reads **Configuration Needs Attention** and offers **Open Providers**.
 
 **Cause.** The configured review path did not produce schema-valid output for the exact tuple. The failure is recorded against that exact tuple, so the next review does not pay to rediscover it.
 
-**Fix.** Select a different model or change the configuration — any tuple change clears the recorded failure and the next review verifies inline again. Remediation message: **Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Test readiness can re-check it. Test readiness makes one small billed API call to the provider (typically under $0.02; free for local endpoints; codex and copilot use your CLI subscription quota).**
+**Fix.** Select a different model or change the configuration — any tuple change clears the recorded failure and the next review verifies inline again. Remediation message: **Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Verify can re-check it. Verify makes one small billed API call to the provider (typically under $0.02; free for local endpoints; codex and copilot use your CLI subscription quota).**
 
 ## Missing usage
 
@@ -55,7 +55,7 @@ For local HTTP and local CLI products, the picker shows the skipped catalog reas
 
 **Cause.** The configured hosted product requires terminal usage reporting and the provider did not return it.
 
-**Fix.** Verify the configured product and exact model support usage reporting for your account, then **test** the configuration again. Diffgazer does not infer usage from marketing pages or partial responses.
+**Fix.** Check that the configured product and exact model support usage reporting for your account, then **Verify** the configuration or start a new review. Diffgazer does not infer usage from marketing pages or partial responses.
 
 ## Budget exhaustion
 
@@ -67,19 +67,19 @@ For local HTTP and local CLI products, the picker shows the skipped catalog reas
 
 ## Local non-loopback rejection
 
-**Symptom.** Test readiness for an Ollama or Local OpenAI-compatible configuration fails with **Local endpoint is not allowed**.
+**Symptom.** **Verify** for an Ollama or Local OpenAI-compatible configuration fails with **Local endpoint is not allowed**.
 
 **Cause.** Ollama or Local OpenAI-compatible configurations must use a validated loopback first hop such as `127.0.0.1` or `[::1]`.
 
-**Fix.** Choose a validated loopback endpoint on this machine. Then **test** the configuration again. LAN addresses, tunnels, and remote URLs are rejected.
+**Fix.** Choose a validated loopback endpoint on this machine, then **Verify** again or start a review. LAN addresses, tunnels, and remote URLs are rejected.
 
 ## Local incompatibility
 
-**Symptom.** Test readiness for a local configuration fails with **Local API is incompatible**.
+**Symptom.** **Verify** for a local configuration fails with **Local API is incompatible**.
 
 **Cause.** The loopback server responded, but its API or structured-output behavior does not satisfy the product contract.
 
-**Fix.** Use a supported local server and API configuration. Install a review-capable model if needed, then **test** again.
+**Fix.** Use a supported local server and API configuration. Install a review-capable model if needed, then **Verify** again or start a review.
 
 ## CLI version, account, or policy failure
 
@@ -111,7 +111,7 @@ For local HTTP and local CLI products, the picker shows the skipped catalog reas
 
 **Cause.** A required live probe was not run or could not run with the current prerequisites. A skipped probe is evidence only; it **never enables a product**.
 
-**Fix.** Satisfy the live-check prerequisites, then test the configuration again. Remediation code `enable-live-probe` means the configuration must be tested again after prerequisites are satisfied. In release smoke output, a skipped live probe is reported explicitly and does not count as passed.
+**Fix.** Satisfy the live-check prerequisites, then run Verify again. Remediation code `enable-live-probe` means the configuration must be verified again after prerequisites are satisfied. In release smoke output, a skipped live probe is reported explicitly and does not count as passed.
 
 ## Review completed successfully
 
@@ -123,11 +123,11 @@ For local HTTP and local CLI products, the picker shows the skipped catalog reas
 
 ## Transport failed
 
-**Symptom.** A review ends with **Transport Failed** and the message **The configured transport could not complete the review.**
+**Symptom.** A review ends with **Transport Failed** and the message **The configured transport could not complete the review.** When a hosted provider refused the request outright — a rejected credential (HTTP 401), refused access to the model or endpoint (403), exhausted billing or quota (402), an unknown model or endpoint (404), an oversized request (413), or a rate limit (429) — the review screen shows **Provider Rejected the Request** with the provider's own reason, for example **Groq rejected the credential (HTTP 401).**, and a **Fix provider** action that opens the providers page.
 
-**Cause.** The admitted transport failed after review admission, for example because the network path dropped or the CLI transport exited unexpectedly.
+**Cause.** The admitted transport failed after review admission, for example because the network path dropped, the CLI transport exited unexpectedly, or the provider refused the request.
 
-**Fix.** Verify service availability for hosted or local HTTP products, confirm the CLI is installed and signed in, then **test** the configuration and start a new review.
+**Fix.** For a refused request, fix the credential, billing, or model on the providers page. Otherwise verify service availability for hosted or local HTTP products, confirm the CLI is installed and signed in, then start a new review (**Verify** checks the tuple without a full review).
 
 ## Setup required
 
@@ -135,7 +135,7 @@ For local HTTP and local CLI products, the picker shows the skipped catalog reas
 
 **Cause.** The selected configuration has an open item a review cannot resolve for itself — no configuration, an invalid credential, a missing model, an unaccepted notice, or an unreachable endpoint. Unverified structured-output conformance is not one of them: reviews start and verify it inline. A `403` means the exact tuple already failed structured output.
 
-**Fix.** For `503`, fix the named remediation and start the review again. For `403`, select a different model or change the configuration; any tuple change clears the recorded failure.
+**Fix.** For `503`, fix the named remediation and start the review again. For `403`, select a different model or change the configuration; any tuple change clears the recorded failure. Both surface as **Configuration Needs Attention** with the server's remediation and an **Open Providers** action.
 
 ## Trust required
 

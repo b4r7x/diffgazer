@@ -6,6 +6,7 @@ import {
   describeUsageAvailability,
   getConfigurationNotReadyCopy,
   isCredentialSetupError,
+  type ReviewStartErrorDescription,
 } from "@diffgazer/core/review";
 import type { Readiness } from "@diffgazer/core/schemas/config";
 import type { TerminalOutcome, UsageAvailability } from "@diffgazer/core/schemas/review";
@@ -128,6 +129,48 @@ export function ReviewTerminalReceiptView({
       tone="error"
       scope={REVIEW_SETUP_GATE_SCOPE}
       primary={{ label: "Back to Home", onAction: onBack }}
+    />
+  );
+}
+
+/**
+ * A review the server refused to start from inside the review screen — the
+ * alternate mode after "no changes". The message is the server's remediation;
+ * a fix that lives on the providers screen leads with the jump there.
+ */
+export function ReviewStartErrorView({
+  startError,
+  onConfigureProvider,
+  onBack,
+  actionsDisabled,
+}: {
+  startError: ReviewStartErrorDescription;
+  onConfigureProvider: () => void;
+  onBack: () => void;
+  actionsDisabled?: boolean;
+}) {
+  const back = { label: "Back to Home", onAction: onBack };
+  if (startError.recovery === null) {
+    return (
+      <FailureView
+        title={startError.title}
+        message={startError.message}
+        scope={REVIEW_SETUP_GATE_SCOPE}
+        primary={back}
+      />
+    );
+  }
+  return (
+    <FailureView
+      title={startError.title}
+      message={startError.message}
+      scope={REVIEW_SETUP_GATE_SCOPE}
+      primary={{
+        label: "Open Providers",
+        onAction: onConfigureProvider,
+        disabled: actionsDisabled,
+      }}
+      secondary={back}
     />
   );
 }

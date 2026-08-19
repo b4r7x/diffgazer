@@ -3,7 +3,14 @@
  * context absent from this list would be dropped by `groupShortcutsByContext`,
  * so the union is derived from it rather than declared beside it.
  */
-const SHORTCUT_CONTEXT_ORDER = ["global", "list", "home", "review", "history"] as const;
+const SHORTCUT_CONTEXT_ORDER = [
+  "global",
+  "list",
+  "home",
+  "providers",
+  "review",
+  "history",
+] as const;
 
 /**
  * Where a shortcut applies. Only the help tables tag their entries; footers and
@@ -25,6 +32,7 @@ export const SHORTCUT_CONTEXT_LABELS: Record<ShortcutContext, string> = {
   global: "Anywhere",
   list: "In lists",
   home: "On the home screen",
+  providers: "On the Providers page",
   review: "In a review",
   history: "In history",
 };
@@ -92,11 +100,25 @@ export const SWITCH_PANE_SHORTCUT: Shortcut = { key: "Tab", label: "Switch Pane"
 export const NAVIGATE_SHORTCUT: Shortcut = { key: "↑/↓", label: "Navigate" };
 export const BACK_SHORTCUTS: Shortcut[] = [BACK_SHORTCUT];
 
+// The providers More menu owns the keys while it is open, on both surfaces.
+export const PROVIDER_ACTIONS_MENU_SHORTCUTS: Shortcut[] = [
+  NAVIGATE_SHORTCUT,
+  { key: "Enter", label: "Run" },
+];
+export const PROVIDER_ACTIONS_MENU_RIGHT_SHORTCUTS: Shortcut[] = [
+  { ...BACK_SHORTCUT, label: "Close" },
+];
+
+// Reopens the provider data notice from the Providers page while it is still to
+// be accepted; the details pane on both surfaces teaches it beside its status.
+export const REVIEW_CONSENT_SHORTCUT: Shortcut = { key: "c", label: "Review" };
+
 // Canonical help-screen shortcut table, consumed by both surfaces' Help screens.
 // Every entry has a live handler on at least one surface (web: q/s/h/shift+?,
 // list/menu navigation, `/` history search; TUI: q/s/?, `/` history search).
 // The home entries are the r/R/l menu bindings both surfaces resolve through
-// MENU_ITEMS.
+// MENU_ITEMS; the providers entries are the m/e/v/d accelerators both surfaces
+// resolve through PROVIDER_ACTION_HOTKEYS, plus REVIEW_CONSENT_SHORTCUT.
 // Entries are tagged with the context they apply in and grouped at render time;
 // the shared footer constants are spread rather than mutated so `context` never
 // leaks into footer rendering.
@@ -111,6 +133,11 @@ export const HELP_SHORTCUTS: ContextualShortcut[] = [
   { key: "r", label: "Review Unstaged", context: "home" },
   { key: "R", label: "Review Staged", context: "home" },
   { key: "l", label: "Resume Last Review", context: "home" },
+  { key: "m", label: "Change model", context: "providers" },
+  { key: "e", label: "Update configuration", context: "providers" },
+  { key: "v", label: "Verify", context: "providers" },
+  { key: "d", label: "Delete configuration", context: "providers" },
+  { ...REVIEW_CONSENT_SHORTCUT, label: "Review provider data notice", context: "providers" },
   { ...SWITCH_PANE_SHORTCUT, context: "review" },
   { key: "1-4", label: "Switch Tab", context: "review" },
   { key: "↑/↓", label: "Scroll the focused pane", context: "review" },

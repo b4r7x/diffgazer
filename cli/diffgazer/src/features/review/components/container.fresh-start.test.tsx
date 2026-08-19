@@ -30,6 +30,7 @@ function makeReadyInitResponse() {
       severityThreshold: "low" as const,
       secretsStorage: "file" as const,
       agentExecution: "sequential" as const,
+      providerConsent: null,
     },
     project: {
       projectId: "project-1",
@@ -83,6 +84,7 @@ function createFreshStartWrapper(initialRoute: Route) {
       severityThreshold: "low" as const,
       secretsStorage: "file" as const,
       agentExecution: "sequential" as const,
+      providerConsent: null,
     })),
   } satisfies BoundApi;
   const { Wrapper: ApiWrapper } = createTestQueryWrapper({ api });

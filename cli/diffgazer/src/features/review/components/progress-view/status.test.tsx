@@ -84,7 +84,7 @@ describe("ReviewProgressView (TUI) status", () => {
     expect(frame).toContain("API Key Error");
     expect(frame).toContain("Your API key may be invalid or expired.");
     // The recovery lives in the shortcut bar, and the callout says which key.
-    expect(frame).toContain("Press s to open Settings.");
+    expect(frame).toContain("Press p — Configure Provider.");
     expect(frame).not.toContain("Cancel");
   });
 
@@ -113,7 +113,29 @@ describe("ReviewProgressView (TUI) status", () => {
     });
 
     await vi.waitFor(() => expect(lastFrame() ?? "").toContain("API Key Error"));
-    stdin.write("s");
+    stdin.write("p");
+    await flush();
+
+    expect(onGoToSettings).toHaveBeenCalledTimes(1);
+  });
+
+  test.each([
+    { errorCode: "MODEL_INCOMPATIBLE", title: "Model Incompatible", cta: "Change model" },
+    { errorCode: "PROVIDER_REJECTED", title: "Provider Rejected the Request", cta: "Fix provider" },
+  ])("offers the providers screen for a $errorCode failure", async ({ errorCode, title, cta }) => {
+    const onGoToSettings = vi.fn();
+    const { stdin, lastFrame } = renderView({
+      isStreaming: false,
+      error: "The provider refused the review request",
+      errorCode,
+      transportFamily: "hosted-api",
+      onGoToSettings,
+    });
+
+    await vi.waitFor(() => expect(lastFrame() ?? "").toContain(title));
+    // The key is named by the same CTA the web button carries.
+    expect(lastFrame() ?? "").toContain(`Press p — ${cta}.`);
+    stdin.write("p");
     await flush();
 
     expect(onGoToSettings).toHaveBeenCalledTimes(1);

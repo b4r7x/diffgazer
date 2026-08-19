@@ -4,7 +4,7 @@ import { LENS_IDS } from "../schemas/review/index.js";
 import { getInitialWizardData, type OnboardingDraft, resetWizardProduct } from "./defaults.js";
 
 describe("family-specific onboarding defaults", () => {
-  it("starts hosted setup without inferring a credential, model, conformance, or notice", () => {
+  it("starts hosted setup without inferring a credential, model, or notice", () => {
     const data = getInitialWizardData("gemini");
 
     expect(data.configurationInput).toEqual({
@@ -14,7 +14,6 @@ describe("family-specific onboarding defaults", () => {
     });
     expect(data).toMatchObject({
       selectedModelId: null,
-      conformanceStatus: "not-tested",
       acknowledgement: { status: "required" },
       defaultLenses: [...LENS_IDS],
       agentExecution: "sequential",
@@ -72,7 +71,6 @@ describe("family-specific onboarding defaults", () => {
         credential: { kind: "environment" },
       },
       selectedModelId: "qwen3-coder-flash",
-      conformanceStatus: "passed",
       acknowledgement: {
         status: "accepted",
         noticeId: PRODUCT_REGISTRY.qwen.notice.id,

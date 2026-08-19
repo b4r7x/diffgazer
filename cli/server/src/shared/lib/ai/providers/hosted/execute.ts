@@ -9,7 +9,11 @@ import type {
 } from "@diffgazer/core/schemas/review";
 import { log } from "../../../log.js";
 import { composeExecutionDeadline } from "../../deadline.js";
-import { serializeFailureDiagnostic } from "../../diagnostics.js";
+import {
+  type FailureDiagnosticInput,
+  PROVIDER_REJECTED_DIAGNOSTIC_CODE,
+  serializeFailureDiagnostic,
+} from "../../diagnostics.js";
 import {
   cancelResponseBody,
   createResponseLimitingFetch,
@@ -43,6 +47,64 @@ function isTimeoutError(error: unknown): boolean {
     (error instanceof DOMException && error.name === "TimeoutError") ||
     (error instanceof Error && error.name === "TimeoutError")
   );
+}
+
+/**
+ * The bounded reason for a non-2xx provider response. The statuses a user can
+ * fix on the providers screen name the fix; everything else is the provider's
+ * own outage and stays a plain transport failure.
+ */
+function describeHttpFailure(
+  productId: HostedApiProductId,
+  status: number,
+): Pick<FailureDiagnosticInput, "code" | "message" | "retryable" | "remediation"> {
+  const name = PRODUCT_REGISTRY[productId].presentation.name;
+  const rejected = { code: PROVIDER_REJECTED_DIAGNOSTIC_CODE, retryable: false };
+  switch (status) {
+    case 401:
+      return {
+        ...rejected,
+        message: `${name} rejected the credential (HTTP 401).`,
+        remediation: "Update the configuration with a valid API key.",
+      };
+    case 403:
+      return {
+        ...rejected,
+        message: `${name} refused access (HTTP 403).`,
+        remediation: "Check the API key and the account's access to the selected model.",
+      };
+    case 402:
+      return {
+        ...rejected,
+        message: `${name} reported billing or quota exhausted (HTTP 402).`,
+        remediation: "Check the account balance or plan, or change the model.",
+      };
+    case 404:
+      return {
+        ...rejected,
+        message: `${name} could not find the selected model or endpoint (HTTP 404).`,
+        remediation: "Select a different model.",
+      };
+    case 413:
+      return {
+        ...rejected,
+        message: `${name} rejected the request as too large (HTTP 413).`,
+        remediation: "Reduce the review scope, or change the model or plan.",
+      };
+    case 429:
+      return {
+        ...rejected,
+        retryable: true,
+        message: `${name} rate limited the request (HTTP 429).`,
+        remediation: "Wait and retry, or change the model or plan.",
+      };
+    default:
+      return {
+        code: "transport-failed",
+        retryable: status >= 500,
+        message: `${name} returned HTTP ${status}.`,
+      };
+  }
 }
 
 function validateNoticeVersion(productId: HostedApiProductId, noticeVersion: number): boolean {
@@ -242,30 +304,31 @@ export async function executeHostedReview(request: HostedExecuteRequest): Promis
         return failed("transport-failed");
       }
 
-      if (response.status === 429) {
-        const captured = await readTextResponseWithLimit(
-          response,
-          Math.min(remainingLimits.maxResponseBytes, RATE_LIMIT_DIAGNOSTIC_MAX_BYTES),
-          "Hosted rate-limit",
-        );
+      if (!response.ok) {
+        const captured =
+          response.status === 429
+            ? await readTextResponseWithLimit(
+                response,
+                Math.min(remainingLimits.maxResponseBytes, RATE_LIMIT_DIAGNOSTIC_MAX_BYTES),
+                "Hosted rate-limit",
+              )
+            : null;
+        if (!captured) cancelResponseBody(response);
         const diagnostic = serializeFailureDiagnostic({
-          code: "rate-limited",
-          message: "Hosted provider rate limited the request.",
-          retryable: true,
-          capture: { channel: "response", text: captured.ok ? captured.value : "" },
+          ...describeHttpFailure(hostedProductId, response.status),
+          ...(captured
+            ? { capture: { channel: "response", text: captured.ok ? captured.value : "" } }
+            : {}),
           sensitive: { literalSecrets: [context.credential] },
         });
-        log("warn", "hosted_rate_limited", {
+        log("warn", "hosted_request_failed", {
           productId: hostedProductId,
+          status: response.status,
           correlationId: diagnostic.correlationId,
           safeMessage: diagnostic.safeMessage,
           details: diagnostic.truncatedDetails,
         });
-        return failed("transport-failed");
-      }
-
-      if (!response.ok) {
-        cancelResponseBody(response);
+        request.reportDiagnostic?.(diagnostic);
         return failed("transport-failed");
       }
 

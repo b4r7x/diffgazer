@@ -1,6 +1,8 @@
+import { LIVE_ONLY_MODEL_DESCRIPTION } from "@diffgazer/core/providers";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test } from "vitest";
+import { getDialogWidth } from "../../../components/ui/dialog";
 import { CliThemeProvider } from "../../../theme/provider";
 import { ModelListItem } from "./model-list-item";
 
@@ -58,5 +60,23 @@ describe("ModelListItem", () => {
     const frame = renderRow({ name: "openai/gpt-4.1-mini", description: "" }).lastFrame() ?? "";
 
     expect(frame.match(/openai\/gpt-4\.1-mini/g)).toHaveLength(1);
+  });
+
+  // The model picker hands rows the dialog's content width; at the 80-column
+  // floor the detail column truncates the tail, so the verdict must lead.
+  test("keeps 'Pricing unknown' visible for a live-only row at the 80-column floor", () => {
+    const contentWidth = getDialogWidth(80) - 6;
+    const frame =
+      renderRow(
+        {
+          id: "glm-5.3",
+          name: "glm-5.3",
+          description: LIVE_ONLY_MODEL_DESCRIPTION,
+          tier: "unknown",
+        },
+        contentWidth,
+      ).lastFrame() ?? "";
+
+    expect(frame).toContain("Pricing unknown");
   });
 });

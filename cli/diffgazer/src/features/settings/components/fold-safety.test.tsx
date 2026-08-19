@@ -10,6 +10,7 @@ const apiMocks = vi.hoisted(() => ({
     severityThreshold: "medium",
     secretsStorage: "keyring",
     agentExecution: "sequential",
+    providerConsent: null,
   } as SettingsConfig,
   saveFailure: null as string | null,
   mutate: vi.fn(),

@@ -1,6 +1,16 @@
 import { usePageFooter } from "@diffgazer/core/footer";
-import { getProviderRowId, UNRECOGNIZED_CONFIGURATION_COPY } from "@diffgazer/core/providers";
-import { BACK_SHORTCUT, type Shortcut } from "@diffgazer/core/schemas/presentation";
+import {
+  getProviderActionShortcuts,
+  getProviderRowId,
+  type ProviderActionLayout,
+  UNRECOGNIZED_CONFIGURATION_COPY,
+} from "@diffgazer/core/providers";
+import {
+  BACK_SHORTCUT,
+  PROVIDER_ACTIONS_MENU_RIGHT_SHORTCUTS,
+  PROVIDER_ACTIONS_MENU_SHORTCUTS,
+  type Shortcut,
+} from "@diffgazer/core/schemas/presentation";
 import { Panel } from "@diffgazer/ui/components/panel";
 import { CenteredStatus } from "@/components/shared/centered-status";
 import {
@@ -8,6 +18,7 @@ import {
   ConfigurationStatus,
 } from "@/components/shared/configuration-status";
 import { ApiKeyDialog } from "@/features/providers/components/api-key-dialog/dialog";
+import { DeleteConfigurationDialog } from "@/features/providers/components/delete-configuration-dialog";
 import { ProviderDetails } from "@/features/providers/components/details";
 import { ProviderList } from "@/features/providers/components/list";
 import { ModelSelectDialog } from "@/features/providers/components/model-select-dialog/dialog";
@@ -18,8 +29,19 @@ import { useFocusWithin } from "@/hooks/use-focus-within";
 
 function getProvidersFooter(
   focusZone: ProvidersFocusZone,
-  { hasSelectedRow, hasActions }: { hasSelectedRow: boolean; hasActions: boolean },
+  { layout, overflowMenuOpen }: { layout: ProviderActionLayout; overflowMenuOpen: boolean },
 ): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
+  if (overflowMenuOpen) {
+    return {
+      shortcuts: PROVIDER_ACTIONS_MENU_SHORTCUTS,
+      rightShortcuts: PROVIDER_ACTIONS_MENU_RIGHT_SHORTCUTS,
+    };
+  }
+
+  const hotkeys = getProviderActionShortcuts(layout);
+  const hasActions = layout.overflow.length > 0;
+  const primary = layout.primary && !layout.primary.disabledReason ? layout.primary : null;
+
   if (focusZone === "notice") {
     return {
       shortcuts: [
@@ -58,6 +80,7 @@ function getProvidersFooter(
       shortcuts: [
         { key: "←/→/↑/↓", label: "Move Action" },
         { key: "Enter/Space", label: "Activate Action" },
+        ...hotkeys,
         { key: "/", label: "Search" },
       ],
       rightShortcuts: [BACK_SHORTCUT],
@@ -67,8 +90,9 @@ function getProvidersFooter(
   return {
     shortcuts: [
       { key: "↑/↓", label: "Navigate Providers" },
-      ...(hasSelectedRow ? [{ key: "Enter", label: "Select Provider" }] : []),
+      ...(primary ? [{ key: "Enter", label: primary.label }] : []),
       ...(hasActions ? [{ key: "Space/→", label: "Actions" }] : []),
+      ...hotkeys,
       { key: "/", label: "Search" },
     ],
     rightShortcuts: [BACK_SHORTCUT],
@@ -85,11 +109,14 @@ export function ProvidersPage() {
     search,
     selection,
     dialogs,
+    deleteConfirm,
     handlers,
-    providerActions,
-    runProviderAction,
+    actionLayout,
+    runProviderControl,
+    overflowMenu,
     keyboard,
     isSubmitting,
+    consent,
   } = useProvidersPageState();
 
   const { loadState, secretsStorage } = useConfigData();
@@ -99,16 +126,18 @@ export function ProvidersPage() {
   const footer = dialogs.anyOpen
     ? { shortcuts: [] as Shortcut[], rightShortcuts: [] as Shortcut[] }
     : getProvidersFooter(keyboard.focusZone, {
-        hasSelectedRow: Boolean(selectedRow),
-        hasActions: providerActions.length > 0,
+        layout: actionLayout,
+        overflowMenuOpen: overflowMenu.open,
       });
 
   usePageFooter({ shortcuts: footer.shortcuts, rightShortcuts: footer.rightShortcuts });
 
+  // Enter on the highlighted row runs whatever the row's primary is right now;
+  // the active configuration has none, so Enter does nothing there.
   const handleProviderListActivate = (id: string) => {
-    if (selectedRow && getProviderRowId(selectedRow) === id) {
-      handlers.dispatchAction(selectedRow);
-    }
+    const primary = actionLayout.primary;
+    if (!primary || primary.disabledReason) return;
+    if (selectedRow && getProviderRowId(selectedRow) === id) runProviderControl(primary);
   };
 
   if (loadState.status === "loading") {
@@ -203,9 +232,12 @@ export function ProvidersPage() {
           <ProviderDetails
             row={selectedRow}
             unrecognized={selectedUnrecognized}
-            actions={providerActions}
-            onAction={runProviderAction}
+            layout={actionLayout}
+            onAction={runProviderControl}
+            overflowMenu={overflowMenu}
             isPending={isSubmitting}
+            consentRequired={consent.required}
+            onReviewConsent={consent.review}
             focusFallbackRef={keyboard.focusFallbackRef}
             focusedButtonIndex={
               keyboard.focusZone === "buttons" && hasSelection ? keyboard.buttonIndex : undefined
@@ -244,6 +276,15 @@ export function ProvidersPage() {
               opts,
             );
           }}
+        />
+      ) : null}
+
+      {deleteConfirm.open && selectedName ? (
+        <DeleteConfigurationDialog
+          open
+          onOpenChange={deleteConfirm.onOpenChange}
+          name={selectedName}
+          onConfirm={deleteConfirm.confirm}
         />
       ) : null}
 

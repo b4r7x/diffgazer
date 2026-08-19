@@ -187,6 +187,31 @@ function expectedEvidenceKeyFor(
 }
 
 /**
+ * What the stored evidence says about the tuple this server would prove today.
+ * An observation of a different tuple says nothing about this one — neither
+ * that it works nor that it failed — so the cached verdict clears the moment
+ * the tuple changes, matching the admission path's unproven admit. A passed
+ * observation that cannot authorize — a campaign-era record past its
+ * `expiresAt`, say — never failed the structured-output contract, so it asks
+ * for a re-check instead of reporting a failure that never happened.
+ */
+function observedEvidenceStatus(
+  record: SupportedProviderConfigurationRecord,
+  input: ProviderReadinessInput,
+): "pending" | "failed" | "passed" {
+  if (!input.evidence) return "pending";
+  const expectedEvidenceKey = expectedEvidenceKeyFor(record, input);
+  if (expectedEvidenceKey === null || !evidenceMatchesKey(input.evidence, expectedEvidenceKey)) {
+    return "pending";
+  }
+  if (input.evidence.status === "failed") return "failed";
+  if (!canAuthorizeEvidence(input.evidence, expectedEvidenceKey, { now: input.now })) {
+    return "pending";
+  }
+  return "passed";
+}
+
+/**
  * Recompute a client-safe readiness value from server-owned records.  No
  * credential/path/reference value is copied into the returned contract; the
  * only evidence detail retained is its SHA-256 identity hash.
@@ -242,43 +267,30 @@ export function computeProviderReadinessResult(
   }
 
   const checkedAt = input.evidence?.checkedAt ?? new Date().toISOString();
+  const evidenceStatus = observedEvidenceStatus(record, input);
 
-  if (!input.evidence) {
-    const readiness = buildReadiness("conformance-pending", checkedAt, "pending", acknowledgement);
-    return { readiness, details: detailsFor(readiness, input.evidence) };
-  }
-
-  // An observation of a different tuple says nothing about this one — neither
-  // that it works nor that it failed. The cached verdict clears the moment the
-  // tuple changes, matching the admission path's unproven admit.
-  const expectedEvidenceKey = expectedEvidenceKeyFor(record, input);
-  if (expectedEvidenceKey === null || !evidenceMatchesKey(input.evidence, expectedEvidenceKey)) {
-    const readiness = buildReadiness("conformance-pending", checkedAt, "pending", acknowledgement);
-    return { readiness, details: detailsFor(readiness, input.evidence) };
-  }
-
-  if (input.evidence.status === "failed") {
-    const status =
-      record.transportFamily === "hosted-api" ? "conformance-failed" : "local-conformance-failed";
-    const readiness = buildReadiness(status, checkedAt, "failed", acknowledgement);
-    return { readiness, details: detailsFor(readiness, input.evidence) };
-  }
-
-  // A passed observation that cannot authorize — a campaign-era record past its
-  // `expiresAt`, say — never failed the structured-output contract; ask for a
-  // re-check instead of reporting a contract failure that never happened.
-  if (!canAuthorizeEvidence(input.evidence, expectedEvidenceKey, { now: input.now })) {
-    const readiness = buildReadiness("conformance-pending", checkedAt, "pending", acknowledgement);
-    return { readiness, details: detailsFor(readiness, input.evidence) };
-  }
-
+  // The notice must be accepted before the first context send, so an
+  // outstanding acknowledgement outranks the evidence: an unacknowledged record
+  // is refused whether its tuple is unproven, failed, or proven.
   if (acknowledgement.status !== "accepted") {
     const readiness = buildReadiness(
       "acknowledgement-required",
       checkedAt,
-      "passed",
+      evidenceStatus,
       acknowledgement,
     );
+    return { readiness, details: detailsFor(readiness, input.evidence) };
+  }
+
+  if (evidenceStatus === "pending") {
+    const readiness = buildReadiness("conformance-pending", checkedAt, "pending", acknowledgement);
+    return { readiness, details: detailsFor(readiness, input.evidence) };
+  }
+
+  if (evidenceStatus === "failed") {
+    const status =
+      record.transportFamily === "hosted-api" ? "conformance-failed" : "local-conformance-failed";
+    const readiness = buildReadiness(status, checkedAt, "failed", acknowledgement);
     return { readiness, details: detailsFor(readiness, input.evidence) };
   }
 

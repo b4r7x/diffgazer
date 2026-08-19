@@ -218,14 +218,14 @@ describe("useProviderManagement", () => {
     });
 
     expect(toastMocks.error).toHaveBeenCalledWith(
-      "Failed to Test",
+      "Verification Failed",
       expect.objectContaining({ message: explanation }),
     );
     expect(toastMocks.error).toHaveBeenCalledTimes(1);
     expect(toastMocks.success).not.toHaveBeenCalled();
   });
 
-  it("toasts Readiness Tested only for a test response that reports succeeded", async () => {
+  it("toasts Verified only for a test response that reports succeeded", async () => {
     vi.mocked(mockApi.loadConfigurationInit).mockResolvedValue(
       makeInitResponse({
         configurations: [configurationStatus(supportedConfiguration, "conformance-pending")],
@@ -246,8 +246,8 @@ describe("useProviderManagement", () => {
     });
 
     expect(mockApi.testConfiguration).toHaveBeenCalledWith("gemini-primary");
-    expect(toastMocks.success).toHaveBeenCalledWith("Readiness Tested", {
-      message: "Configuration readiness updated",
+    expect(toastMocks.success).toHaveBeenCalledWith("Verified", {
+      message: "The configuration produced structured review output",
     });
     expect(toastMocks.success).toHaveBeenCalledOnce();
     expect(toastMocks.error).not.toHaveBeenCalled();

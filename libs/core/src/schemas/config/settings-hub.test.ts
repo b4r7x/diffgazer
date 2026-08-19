@@ -4,6 +4,12 @@ import {
   projectClientMetadata,
 } from "../../providers/client-metadata.js";
 import { PRODUCT_REGISTRY } from "../../providers/product-registry.js";
+import { requireValue } from "../../testing/assertions.js";
+import {
+  buildProviderRows,
+  configurationStatus,
+  ZAI_CONFIGURATION,
+} from "../../testing/provider-fixtures.js";
 import { READINESS_PRESENTATION, ReadinessSchema } from "./readiness.js";
 import type { ProviderSettingsRowId, SettingsHubInput } from "./settings-hub.js";
 import { buildHubValues, buildProviderSettingsRows } from "./settings-hub.js";
@@ -21,6 +27,7 @@ function makeInput(overrides: Partial<SettingsHubInput> = {}): SettingsHubInput 
     secretsStorage: "file",
     agentExecution: "parallel",
     selectedLensCount: 0,
+    providerConsent: null,
     ...overrides,
   };
 }
@@ -84,6 +91,51 @@ describe("buildProviderSettingsRows", () => {
     });
   });
 
+  test.each([
+    ["ready", /^Verified /],
+    ["acknowledgement-required", /^Verified /],
+    ["conformance-failed", /^Failed /],
+    ["conformance-pending", /^Not verified$/],
+    ["model-missing", /^Not verified$/],
+    ["credential-invalid", /^Not verified$/],
+    ["skipped", /^Skipped /],
+  ] as const)("names the last %s verification without restating the remediation", (status, expected) => {
+    const rows = buildProviderSettingsRows(
+      requireValue(
+        buildProviderRows([configurationStatus(ZAI_CONFIGURATION, status)]).find(
+          (row) => row.configuration?.configurationId === ZAI_CONFIGURATION.configurationId,
+        ),
+        `${status} row`,
+      ),
+    );
+
+    expect(rows.find(({ id }) => id === "verification")?.value).toMatch(expected);
+  });
+
+  test.each([
+    ["pending", /^Not verified$/],
+    ["failed", /^Failed /],
+  ] as const)("does not report an unacknowledged record with %s evidence as verified", (evidenceStatus, expected) => {
+    const status = configurationStatus(ZAI_CONFIGURATION, "acknowledgement-required");
+    const rows = buildProviderSettingsRows(
+      requireValue(
+        buildProviderRows([
+          {
+            ...status,
+            readiness: ReadinessSchema.parse({ ...status.readiness, evidenceStatus }),
+          },
+        ]).find((row) => row.configuration?.configurationId === ZAI_CONFIGURATION.configurationId),
+        "acknowledgement-required row",
+      ),
+    );
+
+    expect(rows.find(({ id }) => id === "verification")?.value).toMatch(expected);
+  });
+
+  test("reports an unconfigured product as never checked", () => {
+    expect(rowValue("zai", "verification")).toBe("Not checked");
+  });
+
   test("states facts only, never restating the actions the surfaces already render", () => {
     // Only `readiness.description` may name an action: it carries the remediation sentence.
     for (const productId of RUNNABLE_PRODUCT_IDS) {
@@ -95,6 +147,7 @@ describe("buildProviderSettingsRows", () => {
         "billing",
         "privacy",
         "readiness",
+        "verification",
       ]);
       for (const row of rows) {
         const scanned = [
@@ -155,6 +208,17 @@ describe("buildHubValues", () => {
     expect(buildHubValues(makeInput({ selectedLensCount: 0 })).analysis).toBe("Default");
     expect(buildHubValues(makeInput({ selectedLensCount: 1 })).analysis).toBe("1 lens");
     expect(buildHubValues(makeInput({ selectedLensCount: 2 })).analysis).toBe("2 lenses");
+  });
+
+  test("provider consent reads the acceptance date, or that none is on record", () => {
+    expect(buildHubValues(makeInput())["provider-consent"]).toBe("Not accepted");
+    expect(
+      buildHubValues(
+        makeInput({
+          providerConsent: { version: 1, acceptedAt: "2026-08-18T10:00:00.000Z" },
+        }),
+      )["provider-consent"],
+    ).toMatch(/^Accepted 2026-08-1[89]$/);
   });
 
   test("diagnostics stays constant", () => {

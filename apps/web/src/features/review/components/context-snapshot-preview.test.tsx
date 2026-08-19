@@ -28,6 +28,7 @@ function makeSettings(): SettingsConfig {
     severityThreshold: "low",
     secretsStorage: null,
     agentExecution: "parallel",
+    providerConsent: null,
   };
 }
 

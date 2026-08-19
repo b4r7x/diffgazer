@@ -21,6 +21,7 @@ function buildHarness(overrides: Partial<HomeMenuActionOptions> = {}): Harness {
     navigate: (r) => routes.push(r),
     activeSession: null,
     isTrusted: true,
+    requireProviderConsent: (action) => action(),
     shutdown: {
       mutate: ((_input: unknown, options?: { onSettled?: (...args: unknown[]) => void }) => {
         shutdownCalls += 1;
@@ -64,6 +65,17 @@ describe("createHomeMenuAction", () => {
     const h = buildHarness();
     h.dispatch("review-staged");
     expect(h.routes).toEqual([{ screen: "review", mode: "staged" }]);
+  });
+
+  test("review-start actions wait for the provider consent gate to run them", () => {
+    const held: Array<() => void> = [];
+    const h = buildHarness({ requireProviderConsent: (action) => held.push(action) });
+    h.dispatch("review-unstaged");
+    expect(h.routes).toEqual([]);
+    expect(held).toHaveLength(1);
+
+    held[0]?.();
+    expect(h.routes).toEqual([{ screen: "review", mode: "unstaged" }]);
   });
 
   test("review-start actions are gated when not trusted", () => {

@@ -136,8 +136,11 @@ describe("status badge wording", () => {
     });
   });
 
-  it("describes compatibility checks in product language rather than conformance jargon", () => {
-    expect(display("conformance-pending", "hosted-api").label).toBe("Compatibility check needed");
+  it("describes verification in product language and never presents an unverified model as a blocker", () => {
+    expect(display("conformance-pending", "hosted-api")).toMatchObject({
+      label: "Not verified",
+      variant: "info",
+    });
     expect(display("conformance-failed", "hosted-api").label).toBe("Compatibility check failed");
   });
 

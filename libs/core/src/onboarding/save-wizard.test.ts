@@ -24,7 +24,6 @@ function readyDraft(
     ...data,
     configurationInput,
     selectedModelId,
-    conformanceStatus: "passed",
     acknowledgement: {
       status: "accepted",
       noticeId: notice.id,
@@ -200,7 +199,7 @@ describe("wizard payloads", () => {
     });
   });
 
-  it("serializes only non-secret review preferences as settings", () => {
+  it("serializes review preferences and the provider consent the notice step recorded", () => {
     const data = {
       ...qwen(),
       defaultLenses: ["security"],
@@ -210,13 +209,17 @@ describe("wizard payloads", () => {
     expect(buildSettingsPayload(data)).toEqual({
       defaultLenses: ["security"],
       agentExecution: "parallel",
+      providerConsent: { version: 1, acceptedAt: ACCEPTED_AT },
     });
+    expect(() =>
+      buildSettingsPayload({ ...data, acknowledgement: { status: "required" } }),
+    ).toThrow();
   });
 });
 
 describe("saveWizard", () => {
   it("persists settings, the exact model, and the explicit notice without a paid conformance test", async () => {
-    const data = { ...qwen(), conformanceStatus: "not-tested" as const };
+    const data = qwen();
     const actions: ClientConfigurationAction[] = [];
     const saveSettings = vi.fn(async () => {});
     const runConfigurationAction = vi.fn(async (action: ClientConfigurationAction) => {

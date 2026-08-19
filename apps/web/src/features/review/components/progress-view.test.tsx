@@ -320,6 +320,36 @@ describe("ReviewProgressView", () => {
     expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
   });
 
+  it.each([
+    {
+      errorCode: "MODEL_INCOMPATIBLE",
+      error: "Adapter response failed schema validation.",
+      title: "Model Incompatible",
+      cta: "Change model",
+    },
+    {
+      errorCode: "PROVIDER_REJECTED",
+      error: "Groq rejected the credential (HTTP 401).",
+      title: "Provider Rejected the Request",
+      cta: "Fix provider",
+    },
+  ])("offers the providers screen for a $errorCode failure", ({ errorCode, error, title, cta }) => {
+    renderView({
+      isRunning: false,
+      error,
+      errorCode,
+      transportFamily: "hosted-api",
+      reviewId: "active-review",
+      onRetry: vi.fn(),
+      onBack: vi.fn(),
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(title);
+    expect(screen.getByRole("alert")).toHaveTextContent(error);
+    expect(screen.getByRole("button", { name: cta })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+  });
+
   it("renders streamed server notices in a non-blocking live region", () => {
     renderView({
       isRunning: true,

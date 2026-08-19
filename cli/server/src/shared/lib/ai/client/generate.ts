@@ -283,10 +283,14 @@ export async function executeReviewGeneration(
 
   // Dispatch through the authorized server-only channel: the adapter admission
   // resolved plus the credential resolver bound to its secret binding.
+  let adapterDiagnostic: BoundedDiagnostic | undefined;
   const clientResult = createFromAdmittedPlan(plan, {
     adapter: authorization.adapter,
     resolveCredential: authorization.resolveCredential,
     workspaceAccountId: authorization.workspaceAccountId,
+    reportDiagnostic: (diagnostic) => {
+      adapterDiagnostic = diagnostic;
+    },
   });
   if (!clientResult.ok) {
     return {
@@ -358,6 +362,10 @@ export async function executeReviewGeneration(
     };
   }
 
+  // The adapter's own account of a refused request beats the generic outcome message.
+  if (adapterDiagnostic) {
+    return { execution, diagnostic: adapterDiagnostic };
+  }
   return {
     execution,
     diagnostic: diagnosticForOutcome(plan, execution.receipt.outcome, {

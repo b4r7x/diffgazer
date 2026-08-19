@@ -24,8 +24,9 @@ describe("fetchModelsDevCatalog", () => {
     const result = await fetchModelsDevCatalog();
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.google).toBeDefined();
-      expect(result.value.groq).toBeDefined();
+      expect(result.value.catalog.google).toBeDefined();
+      expect(result.value.catalog.groq).toBeDefined();
+      expect(result.value.revalidated).toBe(false);
     }
     expect(spy).toHaveBeenCalledWith(
       "https://models.dev/api.json",
@@ -33,6 +34,46 @@ describe("fetchModelsDevCatalog", () => {
     );
     const [, init] = requireValue(spy.mock.calls[0], "fetch call");
     expect((init as RequestInit)?.headers).toBeUndefined();
+  });
+
+  it("carries the response ETag so the next refresh can be conditional", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      okResponse(MODELS_DEV_SAMPLE, { etag: '"catalog-v1"' }),
+    );
+    const result = await fetchModelsDevCatalog();
+    expect(result.ok && result.value.etag).toBe('"catalog-v1"');
+  });
+
+  it("revalidates with If-None-Match and keeps the cached catalog on 304", async () => {
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue({ ok: false, status: 304, headers: new Headers() } as Response);
+    const cached = parseModelsDevCatalog(MODELS_DEV_SAMPLE);
+    const result = await fetchModelsDevCatalog({
+      revalidate: { etag: '"catalog-v1"', catalog: cached },
+    });
+
+    const [, init] = requireValue(spy.mock.calls[0], "fetch call");
+    expect((init as RequestInit).headers).toEqual({ "if-none-match": '"catalog-v1"' });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual({ catalog: cached, etag: '"catalog-v1"', revalidated: true });
+    }
+  });
+
+  it("replaces a revalidated catalog when models.dev answers 200 with new content", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      okResponse(MODELS_DEV_SAMPLE, { etag: '"catalog-v2"' }),
+    );
+    const result = await fetchModelsDevCatalog({
+      revalidate: { etag: '"catalog-v1"', catalog: { google: { id: "google", models: {} } } },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.revalidated).toBe(false);
+      expect(result.value.etag).toBe('"catalog-v2"');
+      expect(result.value.catalog.groq).toBeDefined();
+    }
   });
 
   it("rejects redirects so a 3xx to a foreign host cannot poison the cache", async () => {
@@ -147,9 +188,10 @@ describe("modelInfoFromBoundedObservation", () => {
     expect(zai.find((model) => model.id === "glm-5-turbo")?.tier).toBe("free");
   });
 
-  it("offers only capable models the product's model policy also admits", () => {
+  it("offers every admitted text model, hiding a declared refusal only for strict-schema products", () => {
     const catalog = parseModelsDevCatalog(MODELS_DEV_SAMPLE);
     const zai = modelInfoFromBoundedObservation(catalog, "zai", "models.dev-live", fresh());
+    const gemini = modelInfoFromBoundedObservation(catalog, "gemini", "models.dev-live", fresh());
     const cerebras = modelInfoFromBoundedObservation(
       catalog,
       "cerebras",
@@ -157,13 +199,12 @@ describe("modelInfoFromBoundedObservation", () => {
       fresh(),
     );
 
-    expect(zai.map((model) => model.id)).toEqual(["glm-5-turbo"]);
-    // glm-4.7 declares it cannot; cerebras/gpt-oss-120b declares nothing at all;
-    // glm-4.7-flash declares it can, but the product refuses '-flash' ids, so
-    // offering it would advertise a model the select path would reject.
-    expect(zai.map((model) => model.id)).not.toContain("glm-4.7");
-    expect(zai.map((model) => model.id)).not.toContain("glm-4.7-flash");
-    expect(cerebras).toEqual([]);
+    // glm-4.7 declares it cannot, but Z.AI validates JSON mode locally;
+    // cerebras/gpt-oss-120b declares nothing at all and is listed as-is.
+    expect(zai.map((model) => model.id)).toEqual(["glm-4.7", "glm-4.7-flash", "glm-5-turbo"]);
+    expect(cerebras.map((model) => model.id)).toEqual(["gpt-oss-120b"]);
+    // Gemini runs strict JSON schema, so its declared refusal stays hidden.
+    expect(gemini.map((model) => model.id)).toEqual(["gemini-2.5-flash", "gemini-3-pro-preview"]);
   });
 
   it("carries the catalog display name so pickers need not fall back to the id", () => {

@@ -1,3 +1,5 @@
+import { PROVIDER_CONSENT_NOTICE } from "../config/settings.js";
+
 export type MenuAction =
   | "review-unstaged"
   | "review-staged"
@@ -11,6 +13,7 @@ export type SettingsAction =
   | "trust"
   | "theme"
   | "provider"
+  | "provider-consent"
   | "storage"
   | "agent-execution"
   | "analysis"
@@ -48,6 +51,11 @@ export const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
   },
   { id: "theme", label: "Theme", description: "Change color theme preferences" },
   { id: "provider", label: "Provider", description: "Select AI provider for code review" },
+  {
+    id: "provider-consent",
+    label: PROVIDER_CONSENT_NOTICE.title,
+    description: "What a review sends to your provider, and when you accepted it",
+  },
   { id: "storage", label: "Secrets Storage", description: "Choose where API keys are stored" },
   {
     id: "agent-execution",

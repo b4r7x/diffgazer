@@ -126,6 +126,7 @@ describe("ConfigGate app integration", () => {
           severityThreshold: "low",
           secretsStorage: null,
           agentExecution: "sequential",
+          providerConsent: null,
         },
         project: { path: "/repo", projectId: null, trust: null },
       },

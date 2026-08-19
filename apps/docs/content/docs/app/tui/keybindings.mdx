@@ -49,6 +49,7 @@ Inside a review the same letters do different work, because the screen owns the 
 | `1` - `4` | Switch directly to the matching available details tab |
 | `c` | Cancel the run, while a review is streaming |
 | `q` | Cancel the run, while a review is streaming; quit otherwise |
+| `p` | Open Providers with the failure's fix (Configure Provider, Change model, or Fix provider) when a review cannot start or fails on the provider |
 | Esc | Go back |
 
 ## History
@@ -64,6 +65,25 @@ The history screen has search, date sections, saved runs, and an insights pane. 
 | `/` | Focus search |
 | ↓ | Move from search to date sections |
 | Esc | Go back; in search, clear the query, select the first visible run, and return focus to runs |
+
+## Providers
+
+The Providers screen splits focus between the provider list and the details pane. The details pane shows the highlighted provider's primary action, at most one secondary, and a **More** menu; the footer lists only the letter keys that provider can run right now.
+
+| Key | Action |
+| --- | --- |
+| ↑ / ↓ | Move through the provider list |
+| Tab | Switch between the list and the action row |
+| ← / → | Move between actions |
+| Enter | In the list, run the highlighted provider's primary action (the footer names it); in the action row, activate the focused action; in **More**, run the highlighted entry (**Delete configuration** asks first) |
+| `m` | Change (or select) the model |
+| `e` | Update the configuration, or configure the provider |
+| `v` | Verify the configuration |
+| `d` | Ask to delete the configuration: a **Delete configuration?** confirm opens on Cancel; move to **Delete** and press Enter to delete, Esc keeps it |
+| `c` | Review the **Provider data notice** while it is not yet accepted (the details pane says so); Enter accepts, Esc declines |
+| Esc | Close the **More** menu; otherwise go back |
+
+The first action that would send repository content — **Configure** or **Update configuration** (before the credentials overlay), **Select configuration**, **Verify**, or starting a review from Home — opens the same notice as a full-screen confirm when the consent is not on record: Enter is **Accept and continue**, Esc is **Not now**.
 
 ## Settings
 
@@ -91,6 +111,7 @@ The help screen prints its own shortcut list and acts as the in-app cheat sheet.
 | 1 - 4 | Switch tab (in review) |
 | `j` / `k` | Navigate lists and the fix plan |
 | ↑ / ↓, PgUp / PgDn, Home / End | Scroll content |
+| `m`, `e`, `v`, `d`, `c` | Change model, update configuration, verify, delete, review the provider data notice (on the Providers page) |
 | `s` | Open settings |
 | `q` | Quit |
 | `?` | Open help |

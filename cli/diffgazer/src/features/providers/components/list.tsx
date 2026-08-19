@@ -5,7 +5,11 @@ import {
   type ProviderListRow,
   UNRECOGNIZED_CONFIGURATION_COPY,
 } from "@diffgazer/core/providers";
-import type { ConfigurationId, UnrecognizedConfiguration } from "@diffgazer/core/schemas/config";
+import {
+  type ConfigurationId,
+  canSelectConfiguration,
+  type UnrecognizedConfiguration,
+} from "@diffgazer/core/schemas/config";
 import { Box, Text } from "ink";
 import type { ReactElement } from "react";
 import { NavigationList } from "../../../components/ui/navigation-list";
@@ -70,7 +74,7 @@ function getStatusGlyph(
   row: ProviderListRow,
   selectedConfigurationId: ConfigurationId | null | undefined,
 ): string {
-  if (row.readiness.ready) {
+  if (canSelectConfiguration(row.readiness.status)) {
     return row.configuration?.configurationId === selectedConfigurationId ? "●" : "○";
   }
   return "!";
@@ -81,7 +85,7 @@ function getStatusColor(
   tokens: CliColorTokens,
   selectedConfigurationId: ConfigurationId | null | undefined,
 ): string {
-  if (row.readiness.ready) {
+  if (canSelectConfiguration(row.readiness.status)) {
     return row.configuration?.configurationId === selectedConfigurationId
       ? tokens.success
       : tokens.muted;

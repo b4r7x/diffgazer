@@ -76,7 +76,6 @@ function areAcknowledgementsEqual(
 export function areDraftsEqual(left: OnboardingDraft, right: OnboardingDraft): boolean {
   return (
     isSameConfigurationGeneration(left, right) &&
-    left.conformanceStatus === right.conformanceStatus &&
     areAcknowledgementsEqual(left.acknowledgement, right.acknowledgement) &&
     left.agentExecution === right.agentExecution &&
     left.defaultLenses.length === right.defaultLenses.length &&

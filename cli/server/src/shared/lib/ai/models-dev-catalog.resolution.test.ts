@@ -25,7 +25,10 @@ vi.mock("../fs.js", async (importOriginal) => {
   };
 });
 
-import { CATALOG_EMPTY_MODELS_REASON } from "@diffgazer/core/providers";
+import {
+  CATALOG_EMPTY_MODELS_REASON,
+  LIVE_ONLY_MODEL_DESCRIPTION,
+} from "@diffgazer/core/providers";
 import { CANDIDATE_PRODUCT_IDS } from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { MODELS_DEV_SAMPLE } from "../testing/models-dev-sample.js";
@@ -45,13 +48,19 @@ const stale = (): string => new Date(Date.now() - 25 * 60 * 60 * 1000).toISOStri
 
 let testHome: string;
 const cachePath = (): string => path.join(testHome, "models-dev.json");
-const writeCache = (catalog: unknown, fetchedAt: string, generationId?: string): void => {
+const writeCache = (catalog: unknown, fetchedAt: string, etag?: string): void => {
   fs.writeFileSync(
     cachePath(),
-    `${JSON.stringify({ catalog, fetchedAt, ...(generationId && { generationId }) }, null, 2)}\n`,
+    `${JSON.stringify({ catalog, fetchedAt, ...(etag && { etag }) }, null, 2)}\n`,
   );
 };
-const readCache = (): unknown => JSON.parse(fs.readFileSync(cachePath(), "utf-8"));
+const readCache = (): { catalog: Record<string, unknown>; fetchedAt: string; etag?: string } =>
+  JSON.parse(fs.readFileSync(cachePath(), "utf-8"));
+const modelListPath = (key: string): string => path.join(testHome, "model-lists", `${key}.json`);
+const writeModelListCache = (key: string, models: unknown[]): void => {
+  fs.mkdirSync(path.dirname(modelListPath(key)), { recursive: true });
+  fs.writeFileSync(modelListPath(key), JSON.stringify({ models, fetchedAt: fresh() }));
+};
 // Every inline model declares structured output: the picker only offers models
 // that do, so a fixture without it would be filtered out before the assertion.
 const catalogWithGoogleModel = (modelId: string): unknown => ({
@@ -139,6 +148,48 @@ describe("getProviderModels — three-tier fallback", () => {
     expect(result.cached).toBe(true);
   });
 
+  it("a cache older than an hour is stale: refetches instead of serving it", async () => {
+    writeCache(MODELS_DEV_SAMPLE, new Date(Date.now() - 90 * 60 * 1000).toISOString());
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
+    const result = await getProviderModels("gemini");
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(result.source).toBe("live");
+  });
+
+  it("persists the models.dev ETag with a live catalog", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      okResponse(MODELS_DEV_SAMPLE, { etag: '"catalog-v1"' }),
+    );
+    await getProviderModels("gemini");
+    expect(readCache().etag).toBe('"catalog-v1"');
+  });
+
+  it("revalidates a stale cache with If-None-Match: a 304 keeps the catalog and bumps fetchedAt", async () => {
+    const before = Date.now();
+    writeCache(MODELS_DEV_SAMPLE, stale(), '"catalog-v1"');
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue({ ok: false, status: 304, headers: new Headers() } as Response);
+
+    const result = await getProviderModels("gemini");
+
+    const [, init] = requireValue(spy.mock.calls[0], "fetch call");
+    expect((init as RequestInit).headers).toEqual({ "if-none-match": '"catalog-v1"' });
+    expect(result.source).toBe("cache");
+    expect(result.models.map((m) => m.id)).toContain("gemini-2.5-flash");
+    expect(Date.parse(result.fetchedAt)).toBeGreaterThanOrEqual(before);
+    const persisted = readCache();
+    expect(persisted.etag).toBe('"catalog-v1"');
+    expect(persisted.catalog.google).toBeDefined();
+    expect(Date.parse(persisted.fetchedAt)).toBeGreaterThanOrEqual(before);
+
+    // The revalidated cache is fresh again: the next read serves it without a request.
+    spy.mockClear();
+    const followUp = await getProviderModels("gemini");
+    expect(spy).not.toHaveBeenCalled();
+    expect(followUp.source).toBe("cache");
+  });
+
   it("fetch fails with a stale disk cache: serves the stale cache, source=cache", async () => {
     writeCache(MODELS_DEV_SAMPLE, stale());
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
@@ -212,7 +263,7 @@ describe("getProviderModels — three-tier fallback", () => {
     expect(result.source).toBe("cache");
     expect(result.models.map((m) => m.id)).toContain("gemini-2.5-flash");
     // The shrunken live payload must NOT have overwritten the trusted cache.
-    const persisted = readCache() as { catalog: Record<string, unknown> };
+    const persisted = readCache();
     expect(persisted.catalog.google).toBeDefined();
     expect(persisted.catalog.groq).toBeDefined();
   });
@@ -357,7 +408,7 @@ describe("getProviderModels — three-tier fallback", () => {
     expect(result.source).toBe("cache");
 
     // The provider-dropping payload must NOT have poisoned the on-disk cache.
-    const persisted = readCache() as { catalog: Record<string, unknown> };
+    const persisted = readCache();
     expect(persisted.catalog.groq).toBeDefined();
   });
 
@@ -374,7 +425,7 @@ describe("getProviderModels — three-tier fallback", () => {
 
     // The dropped provider must survive in the on-disk cache: the trusted cache
     // is not overwritten by a catalog that loses an overlay-populated provider.
-    const persisted = readCache() as { catalog: Record<string, unknown> };
+    const persisted = readCache();
     expect(persisted.catalog.groq).toBeDefined();
   });
 
@@ -417,6 +468,375 @@ describe("getProviderModels — three-tier fallback", () => {
   });
 });
 
+const OPENROUTER_CATALOG = {
+  openrouter: {
+    id: "openrouter",
+    models: {
+      "openai/gpt-oss-20b": {
+        id: "openai/gpt-oss-20b",
+        name: "OpenAI: gpt-oss-20b (catalog)",
+        cost: { input: 0.04, output: 0.15 },
+        limit: { context: 131072, output: 32768 },
+        structured_output: true,
+      },
+      // Withheld by the catalog for this strict-schema product; the live list
+      // must not resurrect it.
+      "google/gemma-3-27b-it": {
+        id: "google/gemma-3-27b-it",
+        name: "Google: Gemma 3 27B",
+        cost: { input: 0.1, output: 0.2 },
+        structured_output: false,
+      },
+      // The catalog believes it returns structured output; OpenRouter's own
+      // list says the route does not, and the route's provider is the authority.
+      "mistralai/mistral-small": {
+        id: "mistralai/mistral-small",
+        name: "Mistral: Mistral Small",
+        cost: { input: 0.2, output: 0.6 },
+        structured_output: true,
+      },
+      // No longer in the live list: the provider stopped serving it.
+      "anthropic/claude-3-haiku": {
+        id: "anthropic/claude-3-haiku",
+        name: "Anthropic: Claude 3 Haiku",
+        cost: { input: 0.25, output: 1.25 },
+        structured_output: true,
+      },
+    },
+  },
+};
+
+const OPENROUTER_MODEL_LIST = {
+  data: [
+    {
+      id: "openai/gpt-oss-20b",
+      name: "OpenAI: gpt-oss-20b",
+      pricing: { prompt: "0.00000004", completion: "0.00000015" },
+      context_length: 131072,
+      supported_parameters: ["response_format", "structured_outputs", "tools"],
+      created: 1754352000,
+    },
+    {
+      id: "z-ai/glm-5.2:free",
+      name: "Z.AI: GLM 5.2 (free)",
+      pricing: { prompt: "0", completion: "0" },
+      context_length: 202752,
+      supported_parameters: ["response_format", "structured_outputs", "tools"],
+      created: 1755216000,
+    },
+    {
+      id: "google/gemma-3-27b-it",
+      name: "Google: Gemma 3 27B",
+      pricing: { prompt: "0.0000001", completion: "0.0000002" },
+      context_length: 131072,
+      supported_parameters: ["tools"],
+    },
+    {
+      id: "mistralai/mistral-small",
+      name: "Mistral: Mistral Small",
+      pricing: { prompt: "0.0000002", completion: "0.0000006" },
+      context_length: 32768,
+      supported_parameters: ["response_format", "tools"],
+    },
+    {
+      id: "meta-llama/llama-guard-4-12b",
+      name: "Meta: Llama Guard 4 12B",
+      pricing: { prompt: "0.00000018", completion: "0.00000018" },
+      context_length: 163840,
+      supported_parameters: ["tools"],
+    },
+    { id: "openrouter/auto", name: "Auto Router", pricing: { prompt: "-1", completion: "-1" } },
+    {
+      id: "z-ai/glm-5.3",
+      name: "Z.AI: GLM 5.3",
+      context_length: 202752,
+      supported_parameters: ["structured_outputs"],
+    },
+  ],
+};
+
+const OLLAMA_CLOUD_CATALOG = {
+  "ollama-cloud": {
+    id: "ollama-cloud",
+    models: {
+      "gpt-oss:20b": { id: "gpt-oss:20b", name: "GPT-OSS 20B", limit: { context: 131072 } },
+      "kimi-k2:1t": { id: "kimi-k2:1t", name: "Kimi K2" },
+    },
+  },
+};
+
+const ZAI_CATALOG = {
+  zai: {
+    id: "zai",
+    models: {
+      "glm-5.2": {
+        id: "glm-5.2",
+        name: "GLM-5.2",
+        cost: { input: 1, output: 3.2 },
+        limit: { context: 200000 },
+        structured_output: true,
+      },
+    },
+  },
+  "zai-coding-plan": {
+    id: "zai-coding-plan",
+    models: {
+      "glm-5.3": {
+        id: "glm-5.3",
+        name: "GLM-5.3",
+        cost: { input: 0, output: 0 },
+        limit: { context: 200000 },
+        structured_output: true,
+      },
+    },
+  },
+};
+
+const OLLAMA_CLOUD_MODEL_LIST = {
+  object: "list",
+  data: [
+    { id: "gpt-oss:20b", object: "model", created: 1754352000, owned_by: "ollama" },
+    { id: "glm-5.2", object: "model", created: 1755216000, owned_by: "ollama" },
+  ],
+};
+
+describe("live provider model lists", () => {
+  const listFetch = (url: string, body: unknown) =>
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      if (String(input) === url) return okResponse(body);
+      throw new Error(`unexpected fetch ${String(input)}`);
+    });
+
+  it("merges OpenRouter's public list over the catalog: live ids, catalog rows where known", async () => {
+    writeCache(OPENROUTER_CATALOG, fresh());
+    const spy = listFetch("https://openrouter.ai/api/v1/models", OPENROUTER_MODEL_LIST);
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-openrouter",
+      productId: "openrouter",
+    });
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    const [, init] = requireValue(spy.mock.calls[0], "list fetch");
+    expect((init as RequestInit).headers).toEqual({});
+    expect((init as RequestInit).redirect).toBe("error");
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("provider-live");
+    expect(result.cached).toBe(false);
+    expect(
+      ProviderModelsResponseSchema.safeParse({
+        models: result.models,
+        fetchedAt: result.fetchedAt,
+        source: result.source,
+        cached: result.cached,
+      }).success,
+    ).toBe(true);
+    expect(result.models).toEqual([
+      // Known to the catalog: its row, not the live metadata.
+      {
+        id: "openai/gpt-oss-20b",
+        name: "OpenAI: gpt-oss-20b (catalog)",
+        description: "131K context",
+        tier: "paid",
+      },
+      // Live-only: name, zero price, and context from the list.
+      {
+        id: "z-ai/glm-5.2:free",
+        name: "Z.AI: GLM 5.2 (free)",
+        description: "203K context",
+        tier: "free",
+      },
+      // Live-only without a price: the context stays, the row says the price is unknown.
+      {
+        id: "z-ai/glm-5.3",
+        name: "Z.AI: GLM 5.3",
+        description: "203K context · pricing unknown",
+        tier: "unknown",
+      },
+    ]);
+    expect(fs.existsSync(modelListPath("openrouter"))).toBe(true);
+  });
+
+  it("requests the provider list and models.dev concurrently on a cold open", async () => {
+    const listResponse = createDeferred<Response>();
+    const spy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      if (String(input) === "https://openrouter.ai/api/v1/models") return listResponse.promise;
+      return okResponse(OPENROUTER_CATALOG);
+    });
+
+    const discovery = discoverConfigurationCatalog({
+      configurationId: "cfg-openrouter",
+      productId: "openrouter",
+    });
+    await vi.waitFor(() => expect(spy).toHaveBeenCalledTimes(2));
+    listResponse.resolve(okResponse(OPENROUTER_MODEL_LIST));
+
+    const result = await discovery;
+    expect(result.status === "passed" && result.source).toBe("provider-live");
+  });
+
+  it("serves the list from its five-minute cache without a second request", async () => {
+    writeCache(OPENROUTER_CATALOG, fresh());
+    const spy = listFetch("https://openrouter.ai/api/v1/models", OPENROUTER_MODEL_LIST);
+    const tuple = { configurationId: "cfg-openrouter", productId: "openrouter" } as const;
+
+    await discoverConfigurationCatalog(tuple);
+    const second = await discoverConfigurationCatalog(tuple);
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(second.status).toBe("passed");
+    if (second.status === "passed") {
+      expect(second.source).toBe("provider-cache");
+      expect(second.cached).toBe(true);
+    }
+  });
+
+  it("merges Z.AI's key-bearing list: a live-only id borrows the coding plan's name, never its price", async () => {
+    writeCache(ZAI_CATALOG, fresh());
+    // The configuration-keyed cache holds what the OpenAI-standard `{ data: [{ id, object, owned_by }] }`
+    // list parses to (see live-model-lists.test.ts), so no credential is read here.
+    writeModelListCache("configuration-cfg-zai", [
+      { id: "glm-5.2", tier: "unknown" },
+      { id: "glm-5.3", tier: "unknown" },
+    ]);
+    const spy = vi.spyOn(globalThis, "fetch");
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-zai",
+      productId: "zai",
+    });
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("provider-cache");
+    expect(result.models).toEqual([
+      { id: "glm-5.2", name: "GLM-5.2", description: "200K context", tier: "paid" },
+      { id: "glm-5.3", name: "GLM-5.3", description: LIVE_ONLY_MODEL_DESCRIPTION, tier: "unknown" },
+    ]);
+  });
+
+  it("keeps a catalog-withheld id withheld on the snapshot tier, whatever the provider's list says", async () => {
+    // models.dev is out of reach and no cache exists, so the bundled snapshot is
+    // the catalog. Groq's list names a TTS model models.dev knows but withholds
+    // (audio output); the snapshot carries that id, so the row must not resurface.
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+    writeModelListCache("configuration-cfg-groq", [
+      { id: "canopylabs/orpheus-v1-english", tier: "unknown" },
+      { id: "llama-3.3-70b-versatile", tier: "unknown" },
+    ]);
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-groq",
+      productId: "groq",
+    });
+
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("provider-cache");
+    expect(result.models.map((model) => model.id)).toEqual(["llama-3.3-70b-versatile"]);
+  });
+
+  it("merges Ollama Cloud's public list: live-only ids show as name=id with an unknown tier", async () => {
+    writeCache(OLLAMA_CLOUD_CATALOG, fresh());
+    listFetch("https://ollama.com/v1/models", OLLAMA_CLOUD_MODEL_LIST);
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-ollama-cloud",
+      productId: "ollama-cloud",
+    });
+
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("provider-live");
+    expect(result.models).toEqual([
+      { id: "glm-5.2", name: "glm-5.2", description: LIVE_ONLY_MODEL_DESCRIPTION, tier: "unknown" },
+      { id: "gpt-oss:20b", name: "GPT-OSS 20B", description: "131K context", tier: "unknown" },
+    ]);
+  });
+
+  it("degrades silently to the catalog when the list request fails", async () => {
+    writeCache(OPENROUTER_CATALOG, fresh());
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("openrouter down"));
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-openrouter",
+      productId: "openrouter",
+    });
+
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("cache");
+    expect(result.models.map((model) => model.id)).toEqual([
+      "anthropic/claude-3-haiku",
+      "mistralai/mistral-small",
+      "openai/gpt-oss-20b",
+    ]);
+  });
+
+  it("degrades to the catalog, caching nothing, when the response is not a model list", async () => {
+    writeCache(OPENROUTER_CATALOG, fresh());
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse({ error: "rate limited" }));
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-openrouter",
+      productId: "openrouter",
+    });
+
+    expect(result.status === "passed" && result.source).toBe("cache");
+    expect(fs.existsSync(modelListPath("openrouter"))).toBe(false);
+  });
+
+  it("degrades to the catalog when the list names only ids the product policy rejects", async () => {
+    writeCache(OPENROUTER_CATALOG, fresh());
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      okResponse({ data: [{ id: "openrouter/auto" }, { id: "openrouter/free" }] }),
+    );
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-openrouter",
+      productId: "openrouter",
+    });
+
+    expect(result.status).toBe("passed");
+    if (result.status !== "passed") return;
+    expect(result.source).toBe("cache");
+    expect(result.models.map((model) => model.id)).toEqual([
+      "anthropic/claude-3-haiku",
+      "mistralai/mistral-small",
+      "openai/gpt-oss-20b",
+    ]);
+  });
+
+  it("DIFFGAZER_OFFLINE: never requests a provider list", async () => {
+    process.env.DIFFGAZER_OFFLINE = "1";
+    writeCache(OPENROUTER_CATALOG, fresh());
+    const spy = vi.spyOn(globalThis, "fetch");
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-openrouter",
+      productId: "openrouter",
+    });
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(result.status === "passed" && result.source).toBe("cache");
+  });
+
+  it("does not request a list for a catalog-only product", async () => {
+    writeCache(MODELS_DEV_SAMPLE, fresh());
+    const spy = vi.spyOn(globalThis, "fetch");
+
+    const result = await discoverConfigurationCatalog({
+      configurationId: "cfg-gemini",
+      productId: "gemini",
+    });
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(result.status === "passed" && result.source).toBe("cache");
+  });
+});
+
 describe("configuration-bound catalog observations", () => {
   it("labels live responses with models.dev-live observations", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(okResponse(MODELS_DEV_SAMPLE));
@@ -428,7 +848,6 @@ describe("configuration-bound catalog observations", () => {
     if (live.status === "passed") {
       expect(live.configurationId).toBe("cfg-gemini-live");
       expect(live.source).toBe("live");
-      expect(live.observationSource).toBe("models.dev-live");
       expect(live.cached).toBe(false);
     }
   });
@@ -445,7 +864,6 @@ describe("configuration-bound catalog observations", () => {
     if (cached.status === "passed") {
       expect(cached.configurationId).toBe("cfg-gemini-cache");
       expect(cached.source).toBe("cache");
-      expect(cached.observationSource).toBe("models.dev-live");
       expect(cached.cached).toBe(true);
     }
   });
@@ -460,7 +878,6 @@ describe("configuration-bound catalog observations", () => {
     if (snapshot.status === "passed") {
       expect(snapshot.configurationId).toBe("cfg-gemini-snapshot");
       expect(snapshot.source).toBe("snapshot");
-      expect(snapshot.observationSource).toBe("models.dev-snapshot");
       expect(snapshot.cached).toBe(false);
     }
   });

@@ -29,6 +29,7 @@ function makeInitResponse(theme: SettingsTheme): InitResponse {
       severityThreshold: "low",
       secretsStorage: "file",
       agentExecution: "sequential",
+      providerConsent: null,
     },
     project: {
       projectId: "project-1",

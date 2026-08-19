@@ -811,6 +811,7 @@ describe("POST /api/review/reviews", () => {
       title: "Review Already Running",
       message:
         "A review is already running for this configuration. Wait for it to finish or cancel it, then start a new one.",
+      recovery: null,
     });
   });
 

@@ -13,7 +13,6 @@ function runnableState(configurationInput: Record<string, unknown>) {
     kind: "runnable",
     configurationInput,
     selectedModelId: null,
-    conformanceStatus: "not-tested",
     acknowledgement: { status: "required" },
     ...PREFERENCES,
   };

@@ -158,7 +158,7 @@ The GitHub Release Readiness workflow adds checks that `release-check` does not 
 
 ### Catalog smoke: bundled snapshot (offline) + live models.dev (network)
 
-`pnpm run smoke:modelsdev` asserts `gemini`/`groq`/`cerebras` each resolve to a
+`pnpm run smoke:modelsdev` asserts every `PROVIDER_OVERLAY` product resolves to a
 non-empty `ModelInfo[]` via `catalogToModelInfo` from the `@diffgazer/core/catalog`
 surface. It is part of the `smoke` chain.
 

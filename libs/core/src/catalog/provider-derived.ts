@@ -14,7 +14,7 @@ export const PROVIDER_DERIVED: Record<
   },
   zai: {
     displayName: "Z.AI",
-    billing: "paid",
+    billing: "mixed",
   },
   openrouter: {
     displayName: "OpenRouter",
@@ -22,7 +22,7 @@ export const PROVIDER_DERIVED: Record<
   },
   groq: {
     displayName: "Groq",
-    billing: "paid",
+    billing: "mixed",
   },
   cerebras: {
     displayName: "Cerebras",
@@ -30,19 +30,23 @@ export const PROVIDER_DERIVED: Record<
   },
   deepseek: {
     displayName: "DeepSeek",
-    billing: "unknown",
+    billing: "paid",
   },
   qwen: {
     displayName: "Qwen International",
-    billing: "unknown",
+    billing: "paid",
   },
   moonshot: {
     displayName: "Moonshot Open Platform",
-    billing: "unknown",
+    billing: "paid",
   },
   mistral: {
     displayName: "Mistral",
-    billing: "paid",
+    billing: "mixed",
+  },
+  "ollama-cloud": {
+    displayName: "Ollama Cloud",
+    billing: "unknown",
   },
   ollama: {
     displayName: "Ollama",

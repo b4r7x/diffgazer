@@ -1,5 +1,6 @@
 import {
   AcceptedAcknowledgementSchema,
+  acceptProviderConsent,
   type ClientConfigurationAction,
   type ClientConfigurationActionResponse,
   ClientConfigurationActionResponseSchema,
@@ -13,25 +14,16 @@ import {
 } from "../schemas/config/index.js";
 import { canProceed } from "./can-proceed.js";
 import type { OnboardingDraft } from "./defaults.js";
+import { getPlanNotice } from "./setup-plan.js";
 
-export type SettingsPayload = Pick<SettingsConfig, "defaultLenses" | "agentExecution">;
-
-export function buildSettingsPayload(data: OnboardingDraft): SettingsPayload {
-  return {
-    defaultLenses: [...data.defaultLenses],
-    agentExecution: data.agentExecution,
-  };
-}
+export type SettingsPayload = Pick<
+  SettingsConfig,
+  "defaultLenses" | "agentExecution" | "providerConsent"
+>;
 
 type CreateConfigurationAction = Extract<ClientConfigurationAction, { action: "create" }>;
 type SelectConfigurationAction = Extract<ClientConfigurationAction, { action: "select" }>;
 type UpdateConfigurationAction = Extract<ClientConfigurationAction, { action: "update" }>;
-
-function getNotice(data: OnboardingDraft) {
-  const notice = data.plan.steps.find((step) => step.id === "acknowledgement")?.notice;
-  if (!notice) throw new Error("The setup plan has no product notice");
-  return notice;
-}
 
 function assertExactModel(data: OnboardingDraft): ExactModelId {
   if (!canProceed("model", data)) {
@@ -44,7 +36,7 @@ function assertExactModel(data: OnboardingDraft): ExactModelId {
 
 function assertAcceptedNotice(data: OnboardingDraft) {
   const acknowledgement = AcceptedAcknowledgementSchema.parse(data.acknowledgement);
-  const notice = getNotice(data);
+  const notice = getPlanNotice(data.plan);
   if (
     acknowledgement.noticeId !== notice.id ||
     acknowledgement.noticeVersion !== notice.noticeVersion
@@ -52,6 +44,19 @@ function assertAcceptedNotice(data: OnboardingDraft) {
     throw new Error("Cannot complete setup before the current product notice is accepted");
   }
   return acknowledgement;
+}
+
+/**
+ * The wizard's consent step accepts the global provider consent and the selected
+ * product's notice in one gesture; the settings write records the former at the
+ * moment the draft recorded the latter.
+ */
+export function buildSettingsPayload(data: OnboardingDraft): SettingsPayload {
+  return {
+    defaultLenses: [...data.defaultLenses],
+    agentExecution: data.agentExecution,
+    providerConsent: acceptProviderConsent(assertAcceptedNotice(data).acceptedAt),
+  };
 }
 
 export function buildConfigPayload(data: OnboardingDraft): CreateConfigurationAction {
@@ -144,7 +149,7 @@ function noticesMatch(
 }
 
 function expectedNotices(data: OnboardingDraft): ClientConfigurationSummary["notices"] {
-  const notice = getNotice(data);
+  const notice = getPlanNotice(data.plan);
   return [
     {
       id: notice.id,

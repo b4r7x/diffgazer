@@ -15,7 +15,7 @@ Hosted products can also be configured through **environment references** instea
 | `DIFFGAZER_HOME` | Moves the global directory somewhere other than `~/.diffgazer`. | `~/.diffgazer` |
 | `DIFFGAZER_PROJECT_ROOT` | Repository root the server reviews. The packaged CLI sets this automatically. | Git root of the current working directory |
 | `DIFFGAZER_LOG_LEVEL` | Lowest log level: `debug`, `info`, `warn`, or `error`. | `warn` when packaged |
-| `DIFFGAZER_OFFLINE` | Skips the live models.dev catalog fetch and uses the bundled snapshot. | Off |
+| `DIFFGAZER_OFFLINE` | Skips every live model-list request — the models.dev catalog and provider model lists — and serves the cached or bundled catalog. | Off |
 | `DIFFGAZER_FORCE_KILL_DELAY_MS` | Milliseconds to wait after `SIGTERM` before `SIGKILL`. | `2000` |
 | `GOOGLE_API_KEY` | Credential reference for Google Gemini. | Unset |
 | `ZAI_API_KEY` | Credential reference for Z.AI general Open Platform PAYG. | Unset |
@@ -26,6 +26,7 @@ Hosted products can also be configured through **environment references** instea
 | `QWEN_API_KEY` | Credential reference for Qwen International. | Unset |
 | `MOONSHOT_API_KEY` | Credential reference for Moonshot Open Platform. | Unset |
 | `MISTRAL_API_KEY` | Credential reference for Mistral. | Unset |
+| `OLLAMA_API_KEY` | Credential reference for Ollama Cloud. | Unset |
 | `OPENAI_API_KEY` | Optional bearer reference for Local OpenAI-compatible servers that require one. | Unset |
 
 Local HTTP and local CLI products do not require these hosted variables. Ollama, LM Studio, llama.cpp, OpenAI Codex CLI, and GitHub Copilot CLI use loopback endpoints or **vendor-managed local auth** instead.

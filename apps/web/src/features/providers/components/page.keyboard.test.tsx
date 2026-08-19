@@ -12,6 +12,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { createConfigurationActionMocks } from "@/testing/configuration-action-mocks";
 import { ProvidersPage } from "./page";
@@ -54,7 +55,9 @@ function renderProvidersPage(api: BoundApi = createPendingOnlyApi()) {
       <FooterProvider>
         <KeyboardProvider>
           <ConfigProvider>
-            <ProvidersPage />
+            <ProviderConsentProvider>
+              <ProvidersPage />
+            </ProviderConsentProvider>
           </ConfigProvider>
         </KeyboardProvider>
       </FooterProvider>

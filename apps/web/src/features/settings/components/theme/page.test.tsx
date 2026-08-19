@@ -27,6 +27,7 @@ const SETTINGS_FIXTURE: SettingsConfig = {
   severityThreshold: "low",
   secretsStorage: null,
   agentExecution: "parallel",
+  providerConsent: null,
 };
 
 let mockGetSettings: Mock<BoundApi["getSettings"]>;

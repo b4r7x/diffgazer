@@ -14,12 +14,13 @@ The hub is a single menu. Each row names a settings area and shows its current s
 | Trust & Permissions | Whether Diffgazer may read files and git metadata in this directory |
 | Theme | The color theme of the web UI |
 | Provider | Which AI provider runs your reviews, and its API key and model |
+| Provider data notice | The one consent that lets reviews send repository content to your provider, and when you accepted it |
 | Secrets Storage | Where API keys are stored on disk |
 | Agent Execution | Whether analysis agents run one at a time or all at once |
 | Analysis | Which agents run during a review |
 | Diagnostics | System health checks for this directory |
 
-Pick a row to open that area. Configuration editors have Cancel and Save actions: they do not write changes before Save, and Cancel or `Esc` returns to the hub without applying them. The hub footer shows the project path this session is reviewing, plus a `local settings` caption. Your choices are persisted to `~/.diffgazer/config.json`, which the footer does not print. For the full shape of that file and every field it holds, see [configuration](/app/reference/configuration).
+Pick a row to open that area. **Provider data notice** is not an editor: it opens the notice as a read-only dialog once accepted (or offers the acceptance while none is on record), and `Esc` returns to the hub. Configuration editors have Cancel and Save actions: they do not write changes before Save, and Cancel or `Esc` returns to the hub without applying them. The hub footer shows the project path this session is reviewing, plus a `local settings` caption. Your choices are persisted to `~/.diffgazer/config.json`, which the footer does not print. For the full shape of that file and every field it holds, see [configuration](/app/reference/configuration).
 
 Diagnostics is not a configuration editor. It offers **Refresh Diagnostics** plus **Generate Context** or **Regenerate Context**, and each action runs immediately without a separate Save confirmation. Generating or regenerating context writes the local project snapshot under the project's `.diffgazer` directory. Press `Esc` to return to the settings hub.
 
@@ -41,6 +42,18 @@ Agent Execution controls scheduling, not which agents run. Sequential runs each 
 ## Provider and analysis
 
 The Provider area is where you pick the AI provider for reviews, enter or remove its API key, and choose a model. You can search and filter the provider list, and each provider shows its capabilities. API keys can be entered directly or pointed at an environment variable instead, so a key never has to be typed into the app at all. The active provider and model are global for this Diffgazer installation, so changing them affects every repository. The repository making an activation request must still be trusted, and its trust grant separately controls the repository reads used to build context and run reviews; trust does not create a project-specific provider selection. For background on providers and models, see [providers](/app/reference/providers).
+
+The details pane shows at most three controls for the highlighted provider: one primary action for its state, at most one secondary, and a **More** menu.
+
+| State | Primary | Secondary | More |
+| --- | --- | --- | --- |
+| Not configured | **Configure** | — | every entry disabled, with the reason |
+| Key saved, no model | **Select model** | **Update configuration** | Verify · Delete configuration |
+| Ready, not active | **Select configuration** | **Change model** | Update configuration · Verify · Delete configuration |
+| Active | an **Active** chip, no primary | **Change model** | Update configuration · Verify · Delete configuration |
+| Needs attention | the readiness fix (Update configuration, Verify, or Inspect configuration) | Change model or Select model | the rest |
+
+The **More** menu always lists the same entries; one the row already shows is left out, and one the state cannot run stays listed, disabled, with its reason. **Delete configuration** is always last, behind a divider. Keyboard: `Enter` runs the primary of the highlighted row, `m` changes the model, `e` updates (or creates) the configuration, `v` runs Verify, `d` asks to delete the configuration, and `c` reopens the **Provider data notice** while it is still to be accepted. Every way to **Delete configuration** — the menu entry, its key, a click — opens the same **Delete configuration?** confirmation, which opens on Cancel; `Esc` keeps the configuration. While the **More** menu is open, `↑`/`↓` move through its entries and `←`/`→` stay inside it rather than stepping the action row (a toolbar's menu button keeps the arrows in the open menu); `Esc` closes it and returns focus to **More**. The footer lists only the keys the highlighted provider can run right now; the Help screen (`?`) lists them all.
 
 The Analysis area chooses which agents run during a review. You toggle agents on and off, and at least one has to stay selected. If you have not picked any, every agent runs by default. The set you save here becomes the default agent list for reviews started from the web app.
 

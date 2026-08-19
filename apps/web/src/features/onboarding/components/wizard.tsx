@@ -1,6 +1,7 @@
 import type { OnboardingStep } from "@diffgazer/core/onboarding";
-import { STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
-import { CONFORMANCE_TEST_COST_DISCLOSURE } from "@diffgazer/core/schemas/config";
+import { getPlanNotice, STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
+import { acceptNotice, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { PROVIDER_CONSENT_TEXT } from "@diffgazer/core/schemas/config";
 import { Button } from "@diffgazer/ui/components/button";
 import { Callout } from "@diffgazer/ui/components/callout";
 import { Checkbox } from "@diffgazer/ui/components/checkbox";
@@ -43,6 +44,8 @@ export function OnboardingWizard() {
     complete,
   } = useOnboarding();
 
+  const notice = getPlanNotice(wizardData.plan);
+
   // The model step reads models back from a persisted record, so the draft
   // tuple is committed as the user arrives rather than invented client-side.
   const enterStep = (step: OnboardingStep | undefined) => {
@@ -82,18 +85,16 @@ export function OnboardingWizard() {
   });
 
   // The radio steps focus their selected item through RadioGroup autoFocus;
-  // the checkbox steps have no self-focusing group, so step entry places focus
-  // on the checkbox here or arrows would only reach the footer. The step
-  // components key entry focus on their own active flag; this one keys on the
-  // step, the only input that changes between the two checkbox steps.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: currentStep is never read in the body; it is the intentional re-trigger above. Dropping it stops entry focus from re-placing on conformance -> acknowledgement, where the ref does not change.
+  // the notice checkbox has no self-focusing group, so step entry places focus
+  // on it here or arrows would only reach the footer. The step components key
+  // entry focus on their own active flag; this one keys on the step.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: currentStep is never read in the body; it is the intentional re-trigger above.
   useEffect(() => {
     stepCheckboxRef.current?.focus();
   }, [currentStep]);
 
   const renderRunnableStep = () => {
-    const { configurationInput, selectedModelId, conformanceStatus, acknowledgement, plan } =
-      wizardData;
+    const { configurationInput, selectedModelId, acknowledgement, plan } = wizardData;
 
     switch (currentStep) {
       case "product":
@@ -140,39 +141,16 @@ export function OnboardingWizard() {
             onBoundaryReached={handleStepBoundary}
           />
         );
-      case "conformance":
-        return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground font-mono">
-              Your first review verifies structured review support automatically; Test readiness in
-              Providers can check it sooner.
-            </p>
-            <p className="text-sm text-muted-foreground font-mono">
-              {CONFORMANCE_TEST_COST_DISCLOSURE}
-            </p>
-            <Checkbox
-              ref={stepCheckboxRef}
-              checked={conformanceStatus === "passed"}
-              onChange={(checked) =>
-                updateData({ conformanceStatus: checked ? "passed" : "not-tested" })
-              }
-              label="I understand structured review support is verified on my first review."
-            />
-          </div>
-        );
       case "acknowledgement": {
-        const notice = plan.steps.find((step) => step.id === "acknowledgement")?.notice;
-        if (!notice) return null;
         const accepted =
           acknowledgement.status === "accepted" &&
           acknowledgement.noticeId === notice.id &&
           acknowledgement.noticeVersion === notice.noticeVersion;
         return (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground font-mono">
-              Review and explicitly accept the current product notice before completing setup.
-            </p>
-            <div className="space-y-2 text-xs font-mono">
+            <p className="text-sm font-mono">{PROVIDER_CONSENT_TEXT}</p>
+            <div className="space-y-2 text-xs font-mono text-muted-foreground">
+              <p>{PRODUCT_REGISTRY[plan.productId].presentation.name} notice:</p>
               {notice.billing.map((line) => (
                 <p key={line}>{line}</p>
               ))}
@@ -185,17 +163,10 @@ export function OnboardingWizard() {
               checked={accepted}
               onChange={(checked) =>
                 updateData({
-                  acknowledgement: checked
-                    ? {
-                        status: "accepted",
-                        noticeId: notice.id,
-                        noticeVersion: notice.noticeVersion,
-                        acceptedAt: new Date().toISOString(),
-                      }
-                    : { status: "required" },
+                  acknowledgement: checked ? acceptNotice(notice) : { status: "required" },
                 })
               }
-              label="I accept the billing and privacy notice for this product."
+              label="I accept"
             />
           </div>
         );

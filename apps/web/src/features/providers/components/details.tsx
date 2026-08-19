@@ -1,20 +1,25 @@
 import type { ProviderListRow } from "@diffgazer/core/providers";
 import {
   getProviderDisplayStatus,
+  getProviderRowControls,
+  isProviderControlDisabled,
   PROVIDER_DETAIL_EMPTY_LABEL,
+  type ProviderActionLayout,
+  type ProviderRowControl,
   UNRECOGNIZED_CONFIGURATION_COPY,
 } from "@diffgazer/core/providers";
 import type { UnrecognizedConfiguration } from "@diffgazer/core/schemas/config";
 import { buildProviderSettingsRows } from "@diffgazer/core/schemas/config";
 import type { BadgeVariant } from "@diffgazer/core/schemas/presentation";
+import { Badge } from "@diffgazer/ui/components/badge";
 import { Button } from "@diffgazer/ui/components/button";
 import { EmptyState } from "@diffgazer/ui/components/empty-state";
 import { ScrollArea } from "@diffgazer/ui/components/scroll-area";
 import { SectionHeader } from "@diffgazer/ui/components/section-header";
 import { cn } from "@diffgazer/ui/lib/utils";
 import type { ReactNode, RefCallback, RefObject } from "react";
-import { isProviderActionDisabled, type ProviderAction } from "../lib/actions";
 import { PROVIDER_STATUS_TONE } from "../lib/status-tone";
+import { ProviderOverflowMenu, type ProviderOverflowMenuState } from "./overflow-menu";
 
 export interface ProviderDetailsProps {
   row: ProviderListRow | null;
@@ -25,15 +30,19 @@ export interface ProviderDetailsProps {
    */
   unrecognized?: UnrecognizedConfiguration | null;
   /** Derived once per selection so the renderer and the keyboard row cannot diverge. */
-  actions: readonly ProviderAction[];
-  onAction: (action: ProviderAction) => void;
+  layout: ProviderActionLayout;
+  onAction: (control: ProviderRowControl) => void;
+  overflowMenu: ProviderOverflowMenuState;
   isPending?: boolean;
+  /** True until the provider consent is on record; the pane then offers to review it. */
+  consentRequired?: boolean;
+  onReviewConsent?: () => void;
   /** Keyboard focus parks here while a pending mutation disables every action button. */
   focusFallbackRef?: RefObject<HTMLDivElement | null>;
   focusedButtonIndex?: number;
   isFocused?: boolean;
   getButtonProps?: (index: number) => {
-    ref: RefCallback<HTMLButtonElement>;
+    ref: RefCallback<HTMLElement>;
     onFocus: () => void;
   };
 }
@@ -61,19 +70,27 @@ function ProviderDetailsPane({ children }: { children: ReactNode }) {
 
 type ProviderActionRowProps = Pick<
   ProviderDetailsProps,
-  "actions" | "onAction" | "isPending" | "focusedButtonIndex" | "isFocused" | "getButtonProps"
+  | "layout"
+  | "onAction"
+  | "overflowMenu"
+  | "isPending"
+  | "focusedButtonIndex"
+  | "isFocused"
+  | "getButtonProps"
 >;
 
 /** The one rendering of the action row, shared by every kind of selected record. */
 function ProviderActionRow({
-  actions,
+  layout,
   onAction,
+  overflowMenu,
   isPending = false,
   focusedButtonIndex,
   isFocused = false,
   getButtonProps,
 }: ProviderActionRowProps) {
-  if (actions.length === 0) return null;
+  const controls = getProviderRowControls(layout);
+  if (controls.length === 0) return null;
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: <fieldset> groups form controls and expects a <legend>; this is a labelled action row, and the group role is what makes "exactly one action row" observable.
@@ -82,23 +99,47 @@ function ProviderActionRow({
       aria-label="Provider actions"
       className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
     >
-      {actions.map((action, index) => (
-        <Button
-          key={action.id}
-          {...getButtonProps?.(index)}
-          variant={action.intent}
-          bracket
-          className={action.intent === "destructive" ? "sm:ml-auto" : undefined}
-          onClick={() => onAction(action)}
-          disabled={isProviderActionDisabled(action, isPending)}
-          highlighted={isFocused && focusedButtonIndex === index && !action.disabledReason}
-          aria-label={
-            action.disabledReason ? `${action.label}. ${action.disabledReason}` : action.label
-          }
-        >
-          {action.label}
-        </Button>
-      ))}
+      {/* The active configuration has nothing left to select: its status chip
+          takes the primary slot. */}
+      {layout.active ? (
+        <Badge variant="success" dot>
+          Active
+        </Badge>
+      ) : null}
+      {controls.map((control, index) => {
+        const buttonProps = getButtonProps?.(index);
+        const highlighted = isFocused && focusedButtonIndex === index && !control.disabledReason;
+        if (control.id === "more") {
+          return (
+            <ProviderOverflowMenu
+              key={control.id}
+              control={control}
+              layout={layout}
+              onAction={onAction}
+              overflowMenu={overflowMenu}
+              isPending={isPending}
+              highlighted={highlighted}
+              buttonProps={buttonProps}
+            />
+          );
+        }
+        return (
+          <Button
+            key={control.id}
+            {...buttonProps}
+            variant={control === layout.primary ? "primary" : "outline"}
+            bracket
+            onClick={() => onAction(control)}
+            disabled={isProviderControlDisabled(control, isPending)}
+            highlighted={highlighted}
+            aria-label={
+              control.disabledReason ? `${control.label}. ${control.disabledReason}` : control.label
+            }
+          >
+            {control.label}
+          </Button>
+        );
+      })}
     </div>
   );
 }
@@ -106,9 +147,12 @@ function ProviderActionRow({
 export function ProviderDetails({
   row,
   unrecognized = null,
-  actions,
+  layout,
   onAction,
+  overflowMenu,
   isPending = false,
+  consentRequired = false,
+  onReviewConsent,
   focusFallbackRef,
   focusedButtonIndex,
   isFocused = false,
@@ -116,8 +160,9 @@ export function ProviderDetails({
 }: ProviderDetailsProps) {
   const actionRow = (
     <ProviderActionRow
-      actions={actions}
+      layout={layout}
       onAction={onAction}
+      overflowMenu={overflowMenu}
       isPending={isPending}
       focusedButtonIndex={focusedButtonIndex}
       isFocused={isFocused}
@@ -186,6 +231,25 @@ export function ProviderDetails({
         className="flex flex-col gap-6 p-6 pt-3 focus:outline-none"
       >
         {actionRow}
+
+        {/* Neutral, not a warning: the app stays usable without the consent, and
+            declining the notice must leave a way back to the same notice the
+            actions gate on. */}
+        {consentRequired ? (
+          <p className="flex flex-wrap items-center gap-x-2 font-mono text-2xs text-muted-foreground">
+            <span>Consent required to run reviews</span>
+            <span aria-hidden="true">·</span>
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto min-h-0 px-0 py-0 text-2xs"
+              onClick={onReviewConsent}
+              aria-label="Review the provider data notice"
+            >
+              Review
+            </Button>
+          </p>
+        ) : null}
 
         <div className={cn("border-l-2 pl-3", STATUS_RAIL[displayStatus.variant])}>
           <p className="text-xs leading-relaxed text-foreground">{displayStatus.explanation}</p>

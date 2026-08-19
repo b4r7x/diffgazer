@@ -21,8 +21,9 @@ const COMPLETE_PAYLOAD = {
 };
 
 function inspect(raw: unknown) {
-  const trimmed = trimCatalogSnapshot(parseModelsDevCatalog(raw), REQUIRED);
-  return findCatalogSnapshotDefect(raw, trimmed, REQUIRED);
+  const parsed = parseModelsDevCatalog(raw);
+  const trimmed = trimCatalogSnapshot(parsed, REQUIRED);
+  return findCatalogSnapshotDefect(raw, parsed, trimmed, REQUIRED);
 }
 
 describe("findCatalogSnapshotDefect", () => {
@@ -35,7 +36,7 @@ describe("findCatalogSnapshotDefect", () => {
 
     expect(defect).toContain("missing sources: alpha, beta");
     expect(defect).toContain("raw models: 0");
-    expect(defect).toContain("kept models: 0");
+    expect(defect).toContain("usable models: 0");
   });
 
   it("rejects a refresh that drops one required source", () => {
@@ -58,7 +59,7 @@ describe("findCatalogSnapshotDefect", () => {
 
     expect(defect).toContain("sources without a usable model: beta");
     expect(defect).toContain("raw models: 2");
-    expect(defect).toContain("kept models: 1");
+    expect(defect).toContain("usable models: 1");
   });
 
   it("reports raw-versus-survivor counts when models fail schema validation", () => {
@@ -69,6 +70,25 @@ describe("findCatalogSnapshotDefect", () => {
 
     expect(defect).toContain("sources without a usable model: beta");
     expect(defect).toContain("raw models: 2");
-    expect(defect).toContain("kept models: 1");
+    expect(defect).toContain("usable models: 1");
+  });
+
+  it("names a malformed row the parser dropped from a required source that still has usable models", () => {
+    const defect = inspect({
+      ...COMPLETE_PAYLOAD,
+      beta: {
+        ...COMPLETE_PAYLOAD.beta,
+        models: { ...COMPLETE_PAYLOAD.beta.models, "beta-3": { id: "beta-3", cost: "free" } },
+      },
+    });
+
+    expect(defect).toContain("models dropped by the parser: beta/beta-3");
+    expect(defect).not.toContain("sources without a usable model");
+  });
+
+  it("ignores rows the parser drops from sources nobody bundles", () => {
+    expect(
+      inspect({ ...COMPLETE_PAYLOAD, gamma: { id: "gamma", models: { bad: { id: "other" } } } }),
+    ).toBeNull();
   });
 });

@@ -9,12 +9,14 @@ import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { Footer } from "../../../components/layout/footer";
 import { NavigationContext } from "../../../hooks/use-navigation";
+import { ApiBoundary } from "../../../testing/api-boundary";
 import { flush } from "../../../testing/flush";
 import { CliThemeProvider } from "../../../theme/provider";
 
 const apiMocks = vi.hoisted(() => ({
   useConfigurationInit: vi.fn(),
   useSettings: vi.fn(),
+  saveSettings: vi.fn(async () => {}),
 }));
 
 vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
@@ -32,6 +34,19 @@ vi.mock("../../../hooks/use-terminal-dimensions", () => ({
   useTerminalDimensions: () => terminalDimensions.current,
 }));
 
+// The provider data notice overlay sizes itself from the global layout's content zone.
+vi.mock("../../../components/layout/global", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../components/layout/global")>();
+  return {
+    ...actual,
+    useContentZone: () => ({
+      columns: terminalDimensions.current.columns,
+      contentColumns: terminalDimensions.current.columns,
+      contentRows: actual.getContentZoneRows(terminalDimensions.current.rows),
+    }),
+  };
+});
+
 import { SettingsHubScreen } from "./hub-screen";
 
 const SETTINGS: SettingsConfig = {
@@ -41,6 +56,7 @@ const SETTINGS: SettingsConfig = {
   severityThreshold: "low",
   secretsStorage: "file",
   agentExecution: "parallel",
+  providerConsent: null,
 };
 
 const shellList = makeAllConfigurationsListResponse();
@@ -100,16 +116,18 @@ function renderHub() {
   });
 
   return render(
-    <CliThemeProvider initialTheme="dark">
-      <NavigationContext
-        value={{ route: { screen: "settings" }, navigate, goBack, canGoBack: true }}
-      >
-        <FooterProvider>
-          <SettingsHubScreen />
-          <ConnectedFooter />
-        </FooterProvider>
-      </NavigationContext>
-    </CliThemeProvider>,
+    <ApiBoundary api={{ saveSettings: apiMocks.saveSettings }}>
+      <CliThemeProvider initialTheme="dark">
+        <NavigationContext
+          value={{ route: { screen: "settings" }, navigate, goBack, canGoBack: true }}
+        >
+          <FooterProvider>
+            <SettingsHubScreen />
+            <ConnectedFooter />
+          </FooterProvider>
+        </NavigationContext>
+      </CliThemeProvider>
+    </ApiBoundary>,
   );
 }
 
@@ -122,6 +140,7 @@ afterEach(() => {
 const HUB_LABELS = [
   "Trust & Permissions",
   "Theme",
+  "Provider data notice",
   "Provider",
   "Secrets Storage",
   "Agent Execution",
@@ -207,5 +226,103 @@ describe("SettingsHubScreen", () => {
     view.stdin.write(ESCAPE);
 
     await vi.waitFor(() => expect(goBack).toHaveBeenCalledTimes(1));
+  });
+
+  test("opens the provider data notice from its row and offers the acceptance while none is on record", async () => {
+    const view = renderHub();
+    await flush();
+    expect(stripAnsi(view.lastFrame() ?? "")).toMatch(/Provider data notice\s+NOT ACCEPTED/);
+
+    // Fourth row: Trust, Theme, Provider, then the notice.
+    for (const _row of ["theme", "provider", "notice"]) {
+      view.stdin.write(DOWN);
+      await flush();
+    }
+    view.stdin.write(ENTER);
+    await flush();
+
+    const frame = stripAnsi(view.lastFrame() ?? "");
+    expect(frame).toContain("Provider data notice");
+    expect(frame).toContain("[ Accept ]");
+    expect(frame).toContain("[ Not now ]");
+    expect(navigate).not.toHaveBeenCalled();
+
+    view.stdin.write(ENTER);
+    await vi.waitFor(() => expect(apiMocks.saveSettings).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(stripAnsi(view.lastFrame() ?? "")).toContain("SETTINGS HUB"));
+  });
+
+  test("keeps the notice row highlighted after the notice is declined", async () => {
+    const view = renderHub();
+    await flush();
+
+    for (const _row of ["theme", "provider", "notice"]) {
+      view.stdin.write(DOWN);
+      await flush();
+    }
+    view.stdin.write(ENTER);
+    await flush();
+    expect(stripAnsi(view.lastFrame() ?? "")).toContain("[ Not now ]");
+
+    view.stdin.write(ESCAPE);
+    await vi.waitFor(() => expect(stripAnsi(view.lastFrame() ?? "")).toContain("SETTINGS HUB"));
+
+    // Enter reopens the notice from the same row instead of opening the first row's screen.
+    view.stdin.write(ENTER);
+    await flush();
+    expect(stripAnsi(view.lastFrame() ?? "")).toContain("[ Not now ]");
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  test("reads an accepted provider data notice back with its date and a Close action", async () => {
+    apiMocks.useSettings.mockReturnValue({
+      data: {
+        ...SETTINGS,
+        providerConsent: { version: 1, acceptedAt: "2026-08-18T10:00:00.000Z" },
+      },
+      isLoading: false,
+      error: null,
+    });
+    apiMocks.useConfigurationInit.mockReturnValue({
+      data: makeInitResponse(),
+      isLoading: false,
+      error: null,
+    });
+    const view = render(
+      <ApiBoundary api={{ saveSettings: apiMocks.saveSettings }}>
+        <CliThemeProvider initialTheme="dark">
+          <NavigationContext
+            value={{ route: { screen: "settings" }, navigate, goBack, canGoBack: true }}
+          >
+            <FooterProvider>
+              <SettingsHubScreen />
+              <ConnectedFooter />
+            </FooterProvider>
+          </NavigationContext>
+        </CliThemeProvider>
+      </ApiBoundary>,
+    );
+    await flush();
+    expect(stripAnsi(view.lastFrame() ?? "")).toMatch(
+      /Provider data notice\s+ACCEPTED 2026-08-1[89]/,
+    );
+
+    for (const _row of ["theme", "provider", "notice"]) {
+      view.stdin.write(DOWN);
+      await flush();
+    }
+    view.stdin.write(ENTER);
+    await flush();
+
+    const frame = stripAnsi(view.lastFrame() ?? "");
+    expect(frame).toMatch(/Accepted 2026-08-1[89]/);
+    expect(frame).toContain("[ Close ]");
+    expect(frame).not.toContain("[ Accept ]");
+    expect(frame).toContain("[Esc] Close");
+
+    view.stdin.write(ESCAPE);
+    await vi.waitFor(() => expect(stripAnsi(view.lastFrame() ?? "")).toContain("SETTINGS HUB"));
+    expect(goBack).not.toHaveBeenCalled();
+    expect(apiMocks.saveSettings).not.toHaveBeenCalled();
   });
 });

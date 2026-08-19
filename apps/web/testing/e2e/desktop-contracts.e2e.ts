@@ -343,7 +343,7 @@ test("opening a dialog moves nothing on the page and keeps its filter chips comp
   await expect(details).toBeVisible();
 
   const before = await readPageAnchors(page);
-  await page.getByRole("button", { name: /Select model/i }).click();
+  await page.getByRole("button", { name: /Change model/i }).click();
   const dialog = page.getByRole("dialog", { name: "Select Model" });
   await expect(dialog).toBeVisible();
   // Discovery has to have landed before anything is measured: the tier chips
@@ -414,7 +414,7 @@ test("arrow navigation keeps the highlighted model row's focus ring unclipped", 
   await page.goto("/settings/providers");
 
   await page.getByRole("option", { name: /Google Gemini/ }).click();
-  await page.getByRole("button", { name: /Select model/i }).click();
+  await page.getByRole("button", { name: /Change model/i }).click();
   const dialog = page.getByRole("dialog", { name: "Select Model" });
   const radios = dialog.getByRole("radiogroup", { name: "Available models" }).getByRole("radio");
   await expect(radios).toHaveCount(14);

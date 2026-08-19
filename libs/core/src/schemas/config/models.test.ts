@@ -30,13 +30,15 @@ describe("schemas/config/models", () => {
     "live",
     "cache",
     "snapshot",
+    "provider-live",
+    "provider-cache",
   ] as const)("accepts provider model provenance from %s", (source) => {
     const fetchedAt = "2026-06-02T00:00:00.000Z";
     const result = ProviderModelsResponseSchema.safeParse({
       models: [],
       fetchedAt,
       source,
-      cached: source === "cache",
+      cached: source === "cache" || source === "provider-cache",
     });
 
     expect(result.success).toBe(true);
@@ -47,6 +49,8 @@ describe("schemas/config/models", () => {
     { source: "live", cached: true },
     { source: "snapshot", cached: true },
     { source: "cache", cached: false },
+    { source: "provider-live", cached: true },
+    { source: "provider-cache", cached: false },
   ] as const)("rejects the contradictory pair source=$source cached=$cached", (provenance) => {
     expect(
       ProviderModelsResponseSchema.safeParse({
@@ -89,6 +93,8 @@ describe("schemas/config/models", () => {
     expectTypeOf<CachedFor<"live">>().toEqualTypeOf<false>();
     expectTypeOf<CachedFor<"cache">>().toEqualTypeOf<true>();
     expectTypeOf<CachedFor<"snapshot">>().toEqualTypeOf<false>();
+    expectTypeOf<CachedFor<"provider-live">>().toEqualTypeOf<false>();
+    expectTypeOf<CachedFor<"provider-cache">>().toEqualTypeOf<true>();
   });
 });
 
@@ -117,11 +123,13 @@ describe("ConfigurationModelsResponseSchema", () => {
     "live",
     "cache",
     "snapshot",
+    "provider-live",
+    "provider-cache",
   ] as const)("accepts passed catalog provenance from %s", (source) => {
     const result = ConfigurationModelsResponseSchema.safeParse({
       ...passed,
       source,
-      cached: source === "cache",
+      cached: source === "cache" || source === "provider-cache",
     });
     expect(result.success).toBe(true);
     if (result.success && result.data.status === "passed") {
@@ -133,6 +141,8 @@ describe("ConfigurationModelsResponseSchema", () => {
     { source: "live", cached: true },
     { source: "snapshot", cached: true },
     { source: "cache", cached: false },
+    { source: "provider-live", cached: true },
+    { source: "provider-cache", cached: false },
   ] as const)("rejects contradictory provenance source=$source cached=$cached", (provenance) => {
     expect(ConfigurationModelsResponseSchema.safeParse({ ...passed, ...provenance }).success).toBe(
       false,

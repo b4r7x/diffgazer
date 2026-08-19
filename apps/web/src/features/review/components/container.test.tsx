@@ -21,6 +21,7 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps, ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
 
 const { mockNavigate, mockUseReviewLifecycleBase, routeParams } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -53,6 +54,7 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => {
 import { ReviewContainer } from "./container";
 
 let mockLoadConfigurationInit: Mock<BoundApi["loadConfigurationInit"]>;
+let mockCreateReview: Mock<BoundApi["createReview"]>;
 
 function makeLifecycleBaseReturn(
   overrides: Partial<UseReviewLifecycleBaseResult> = {},
@@ -106,6 +108,7 @@ function createTestApi(): BoundApi {
     deleteConfiguration: vi.fn(),
     executeConfigurationAction: vi.fn(),
     createConfiguration: vi.fn(),
+    createReview: mockCreateReview,
   } satisfies BoundApi;
 }
 
@@ -127,7 +130,9 @@ function renderReviewContainer(props: Partial<ComponentProps<typeof ReviewContai
         <ApiProvider value={api}>
           <ConfigProvider>
             <KeyboardProvider>
-              <FooterProvider>{children}</FooterProvider>
+              <ProviderConsentProvider>
+                <FooterProvider>{children}</FooterProvider>
+              </ProviderConsentProvider>
             </KeyboardProvider>
           </ConfigProvider>
         </ApiProvider>
@@ -146,6 +151,7 @@ describe("ReviewContainer configuration gates", () => {
       .fn<BoundApi["loadConfigurationInit"]>()
       .mockRejectedValue(new Error("init unavailable"));
     mockUseReviewLifecycleBase.mockReset();
+    mockCreateReview = vi.fn<BoundApi["createReview"]>();
     mockUseReviewLifecycleBase.mockReturnValue(makeLifecycleBaseReturn());
   });
 
@@ -378,6 +384,7 @@ describe("ReviewContainer review start", () => {
       .fn<BoundApi["loadConfigurationInit"]>()
       .mockResolvedValue(makeReadyInitResponse());
     mockUseReviewLifecycleBase.mockReset();
+    mockCreateReview = vi.fn<BoundApi["createReview"]>();
   });
 
   it("draws the review surface while the admitted run is starting", async () => {
@@ -404,6 +411,41 @@ describe("ReviewContainer review start", () => {
     expect(screen.getByText("Collect diff")).toBeInTheDocument();
     expect(screen.getByText("Generate report")).toBeInTheDocument();
     expect(screen.queryByText("Checking for changes...")).not.toBeInTheDocument();
+  });
+
+  it("renders an admission fast-fail from the alternate-mode start inline with the providers jump", async () => {
+    const user = userEvent.setup();
+    mockUseReviewLifecycleBase.mockReturnValue(
+      makeLifecycleBaseReturn({
+        gate: "no-diff",
+        checks: { isNoDiffError: true, isTerminalStreamError: false, loadingMessage: null },
+        stream: {
+          ...makeLifecycleBaseReturn().stream,
+          cancel: vi.fn().mockResolvedValue({ status: "cancelled", reason: "cancelled" }),
+        },
+      }),
+    );
+    mockCreateReview.mockRejectedValue(
+      Object.assign(new Error("The selected model failed structured output."), {
+        code: "SETUP_REQUIRED",
+        status: 403,
+      }),
+    );
+
+    renderReviewContainer();
+
+    await user.click(await screen.findByRole("button", { name: "Review Unstaged" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Configuration Needs Attention");
+    expect(screen.getByText("The selected model failed structured output.")).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Open Providers" }));
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "/settings/providers" }),
+      );
+    });
   });
 
   it("keeps the plain readout while configuration is still unresolved", async () => {

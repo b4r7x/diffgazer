@@ -13,11 +13,14 @@ import {
   makeConfigurationInitResponse,
   makeReadyInitResponse,
 } from "@diffgazer/core/testing/provider-fixtures";
+import { KeyboardProvider } from "@diffgazer/keys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
 import { REVIEW_PROGRESS_CONTROLS } from "./use-progress-keyboard";
 
 const {
@@ -104,12 +107,35 @@ function Wrapper({ children }: { children: ReactNode }) {
   return createElement(
     QueryClientProvider,
     { client: queryClient },
-    createElement(ApiProvider, { value: mockApi }, createElement(ConfigProvider, null, children)),
+    createElement(
+      ApiProvider,
+      { value: mockApi },
+      createElement(
+        ConfigProvider,
+        null,
+        createElement(
+          KeyboardProvider,
+          null,
+          createElement(ProviderConsentProvider, null, children),
+        ),
+      ),
+    ),
   );
 }
 
 function renderReviewLifecycle(mode: ReviewMode) {
   return renderHook(() => useReviewLifecycle({ mode }), { wrapper: Wrapper });
+}
+
+/**
+ * The no-diff switch is reached with the configuration loaded, so these render
+ * past the initial fetch: switching before it would meet the provider consent
+ * gate, which cannot see the recorded consent until the settings arrive.
+ */
+async function renderLoadedReviewLifecycle(mode: ReviewMode) {
+  const view = renderReviewLifecycle(mode);
+  await waitFor(() => expect(view.result.current.selectedConfiguration).not.toBeNull());
+  return view;
 }
 
 function makeBaseReturn() {
@@ -187,7 +213,7 @@ describe("useReviewLifecycle no-diff alternate start", () => {
     ["staged", "unstaged"],
     ["files", "unstaged"],
   ])("starts the alternate %s review instead of navigating home from %s", async (mode, alternateMode) => {
-    const { result } = renderReviewLifecycle(mode);
+    const { result } = await renderLoadedReviewLifecycle(mode);
 
     result.current.handleSwitchMode();
 
@@ -207,7 +233,36 @@ describe("useReviewLifecycle no-diff alternate start", () => {
     expect(mockNavigate).not.toHaveBeenCalledWith({ to: "/" });
   });
 
-  it("reports the code-specific start failure when the alternate review cannot be created", async () => {
+  it.each([
+    [
+      "API_KEY_MISSING",
+      "API key not found",
+      {
+        title: "API Key Missing",
+        message: "API key not found. Add one in Settings → Providers.",
+        recovery: "configure-provider",
+      },
+    ],
+    [
+      "SETUP_REQUIRED",
+      "The selected model failed structured output. Select a different model.",
+      {
+        title: "Configuration Needs Attention",
+        message: "The selected model failed structured output. Select a different model.",
+        recovery: "configure-provider",
+      },
+    ],
+    [
+      "REVIEW_IN_PROGRESS",
+      "busy",
+      {
+        title: "Review Already Running",
+        message:
+          "A review is already running for this configuration. Wait for it to finish or cancel it, then start a new one.",
+        recovery: null,
+      },
+    ],
+  ])("holds a %s start failure as review-screen state instead of a toast when the alternate review cannot be created", async (code, message, startError) => {
     const base = makeBaseReturn();
     base.stream.cancel = vi.fn(
       async (): Promise<CancelReviewOutcome | null> => ({
@@ -217,20 +272,44 @@ describe("useReviewLifecycle no-diff alternate start", () => {
     );
     mockUseReviewLifecycleBase.mockReturnValue(base);
     mockCreateReview.mockRejectedValue(
-      Object.assign(new Error("API key not found"), { code: "API_KEY_MISSING", status: 400 }),
+      Object.assign(new Error(message), { code, status: code === "SETUP_REQUIRED" ? 403 : 400 }),
     );
 
-    const { result } = renderReviewLifecycle("unstaged");
+    const { result } = await renderLoadedReviewLifecycle("unstaged");
 
     act(() => result.current.handleSwitchMode());
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith("API Key Missing", {
-        message: "API key not found. Add one in Settings → Providers.",
-      });
+      expect(result.current.startError).toEqual(startError);
     });
+    expect(mockToastError).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(result.current.isTransitionPending).toBe(false);
+  });
+
+  it("asks for the provider consent before the alternate review and starts it once accepted", async () => {
+    const user = userEvent.setup();
+    const init = makeReadyInitResponse();
+    init.settings.providerConsent = null;
+    mockApi = createMockApi(init);
+    mockApi.saveSettings = vi.fn(async (patch) => {
+      Object.assign(init.settings, patch);
+    });
+    const { result } = await renderLoadedReviewLifecycle("staged");
+
+    act(() => result.current.handleSwitchMode());
+
+    const dialog = await screen.findByRole("alertdialog", { name: "Provider data notice" });
+    expect(mockCreateReview).not.toHaveBeenCalled();
+    // The no-diff screen is untouched behind the notice: nothing was cancelled yet.
+    expect(result.current.isTransitionPending).toBe(false);
+
+    await user.click(within(dialog).getByRole("button", { name: "Accept and continue" }));
+
+    await waitFor(() => expect(mockCreateReview).toHaveBeenCalledWith({ mode: "unstaged" }));
+    expect(mockApi.saveSettings).toHaveBeenCalledWith({
+      providerConsent: { version: 1, acceptedAt: expect.any(String) },
+    });
   });
 
   it("clears the active session when the review reaches no-diff", async () => {
@@ -250,7 +329,7 @@ describe("useReviewLifecycle no-diff alternate start", () => {
     const base = makeBaseReturn();
     base.stream.cancel = vi.fn(() => cancel.promise);
     mockUseReviewLifecycleBase.mockReturnValue(base);
-    const { result } = renderReviewLifecycle("unstaged");
+    const { result } = await renderLoadedReviewLifecycle("unstaged");
 
     act(() => result.current.handleSwitchMode());
     await waitFor(() => expect(base.stream.cancel).toHaveBeenCalledTimes(1));
@@ -279,7 +358,7 @@ describe("useReviewLifecycle no-diff alternate start", () => {
     );
     mockUseReviewLifecycleBase.mockReturnValue(base);
     mockCreateReview.mockReturnValue(created.promise);
-    const { result } = renderReviewLifecycle("unstaged");
+    const { result } = await renderLoadedReviewLifecycle("unstaged");
 
     act(() => result.current.handleSwitchMode());
     await waitFor(() => expect(mockCreateReview).toHaveBeenCalledTimes(1));
@@ -319,7 +398,7 @@ describe("useReviewLifecycle no-diff alternate start", () => {
     );
     mockUseReviewLifecycleBase.mockReturnValue(base);
     mockCreateReview.mockReturnValue(created.promise);
-    const { result } = renderReviewLifecycle("unstaged");
+    const { result } = await renderLoadedReviewLifecycle("unstaged");
 
     act(() => result.current.handleSwitchMode());
     await waitFor(() => expect(mockCreateReview).toHaveBeenCalledTimes(1));
@@ -347,7 +426,7 @@ describe("useReviewLifecycle no-diff alternate start", () => {
     );
     mockUseReviewLifecycleBase.mockReturnValue(base);
     mockCreateReview.mockReturnValue(created.promise);
-    const view = renderReviewLifecycle("unstaged");
+    const view = await renderLoadedReviewLifecycle("unstaged");
 
     act(() => view.result.current.handleSwitchMode());
     await waitFor(() => expect(mockCreateReview).toHaveBeenCalledTimes(1));

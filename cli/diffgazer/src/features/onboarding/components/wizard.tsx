@@ -1,9 +1,7 @@
 import { usePageFooter } from "@diffgazer/core/footer";
 import { STEP_LABELS, STEP_TITLES } from "@diffgazer/core/onboarding";
-import {
-  CONFORMANCE_TEST_COST_DISCLOSURE,
-  LocalOpenAIPresetIdSchema,
-} from "@diffgazer/core/schemas/config";
+import { PRODUCT_REGISTRY } from "@diffgazer/core/providers";
+import { LocalOpenAIPresetIdSchema, PROVIDER_CONSENT_TEXT } from "@diffgazer/core/schemas/config";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
 import { Button } from "../../../components/ui/button";
@@ -128,33 +126,6 @@ function EndpointBindingStep({ wizard }: WizardStepBodyProps): ReactElement | nu
   return null;
 }
 
-function ConformanceStep({ wizard }: WizardStepBodyProps): ReactElement | null {
-  const { tokens } = useTheme();
-  const step = wizard.wizardData.plan.steps.find((candidate) => candidate.id === "conformance");
-  if (!step || step.id !== "conformance") return null;
-
-  return (
-    <Box flexDirection="column" gap={1}>
-      <Text color={tokens.muted}>
-        Your first review verifies structured review support automatically; Test readiness in
-        Providers can check it sooner.
-      </Text>
-      <Text color={tokens.muted}>
-        Usage reporting: {step.usage}. Structured output: {step.structuredOutput}.
-      </Text>
-      <Text color={tokens.muted}>{CONFORMANCE_TEST_COST_DISCLOSURE}</Text>
-      <Button
-        variant="secondary"
-        onPress={wizard.handleConformanceConfirm}
-        isActive={wizard.focusArea === "step"}
-        disabled={wizard.wizardData.conformanceStatus === "passed"}
-      >
-        {wizard.wizardData.conformanceStatus === "passed" ? "Understood" : "I understand"}
-      </Button>
-    </Box>
-  );
-}
-
 function AcknowledgementStep({ wizard }: WizardStepBodyProps): ReactElement | null {
   const { tokens } = useTheme();
   const step = wizard.wizardData.plan.steps.find((candidate) => candidate.id === "acknowledgement");
@@ -164,23 +135,24 @@ function AcknowledgementStep({ wizard }: WizardStepBodyProps): ReactElement | nu
 
   return (
     <Box flexDirection="column" gap={1}>
-      {notice.billing.map((line) => (
-        <Text key={line} color={tokens.muted}>
-          {line}
+      <Text>{PROVIDER_CONSENT_TEXT}</Text>
+      <Box flexDirection="column">
+        <Text color={tokens.muted}>
+          {PRODUCT_REGISTRY[wizard.plan.productId].presentation.name} notice:
         </Text>
-      ))}
-      {notice.privacy.map((line) => (
-        <Text key={line} color={tokens.muted}>
-          {line}
-        </Text>
-      ))}
+        {[...notice.billing, ...notice.privacy].map((line) => (
+          <Text key={line} color={tokens.muted}>
+            {line}
+          </Text>
+        ))}
+      </Box>
       <Button
         variant="secondary"
         onPress={wizard.handleAcknowledgementAccept}
         isActive={wizard.focusArea === "step"}
         disabled={accepted}
       >
-        {accepted ? "Notice accepted" : "Accept billing and privacy notice"}
+        {accepted ? "Accepted" : "Accept"}
       </Button>
     </Box>
   );
@@ -224,8 +196,6 @@ function WizardStepBody({ wizard }: WizardStepBodyProps): ReactElement | null {
           isActive={isStepFocused}
         />
       );
-    case "conformance":
-      return <ConformanceStep wizard={wizard} />;
     case "acknowledgement":
       return <AcknowledgementStep wizard={wizard} />;
   }

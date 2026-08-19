@@ -1,15 +1,27 @@
+import { useProviderConsentGate } from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
-import { getAlternateReviewMode, mapStepsToProgressDataWithAgents } from "@diffgazer/core/review";
+import {
+  classifyReviewStreamError,
+  getAlternateReviewMode,
+  isProviderRecoveryError,
+  mapStepsToProgressDataWithAgents,
+} from "@diffgazer/core/review";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { BACK_SHORTCUTS } from "@diffgazer/core/schemas/presentation";
 import type { ReviewMode, UsageAvailability } from "@diffgazer/core/schemas/review";
 import { Box, useInput } from "ink";
 import { type ReactElement, useEffect, useRef, useState } from "react";
+import { ProviderConsentOverlay } from "../../../components/shared/provider-consent-overlay";
 import { Button } from "../../../components/ui/button";
 import { Callout } from "../../../components/ui/callout";
 import { Spinner } from "../../../components/ui/spinner";
 import { useNavigation } from "../../../hooks/use-navigation";
 import { useReviewLifecycle } from "../hooks/use-lifecycle";
+import {
+  getProviderRecoveryLine,
+  getProviderRecoveryShortcut,
+  PROVIDER_RECOVERY_KEY,
+} from "../lib/provider-recovery";
 import {
   ApiKeyMissingView,
   ConfigurationErrorView,
@@ -50,17 +62,29 @@ function ReviewLoadingView({ message }: { message: string }): ReactElement {
 }
 
 function ReviewTerminalErrorView({
+  title,
   error,
+  guidance,
   onBack,
+  recovery,
 }: {
+  title: string;
   error: string;
+  guidance?: string;
   onBack: () => void;
+  /** Set when the failure is fixed on the providers screen; adds the `p` recovery shortcut, named by the CTA. */
+  recovery?: { label: string; open: () => void };
 }): ReactElement {
-  usePageFooter({ shortcuts: [], rightShortcuts: BACK_SHORTCUTS });
+  usePageFooter({
+    shortcuts: recovery ? [getProviderRecoveryShortcut(recovery.label)] : [],
+    rightShortcuts: BACK_SHORTCUTS,
+  });
   useInput(
-    (_input, key) => {
+    (input, key) => {
       if (key.escape) {
         onBack();
+      } else if (input === PROVIDER_RECOVERY_KEY && recovery) {
+        recovery.open();
       }
     },
     { isActive: true },
@@ -69,8 +93,12 @@ function ReviewTerminalErrorView({
   return (
     <Box flexDirection="column" gap={1}>
       <Callout variant="error">
-        <Callout.Title>Review failed</Callout.Title>
+        <Callout.Title>{title}</Callout.Title>
         <Callout.Content>{sanitizeTerminalText(error)}</Callout.Content>
+        {guidance ? <Callout.Content>{guidance}</Callout.Content> : null}
+        {recovery ? (
+          <Callout.Content>{getProviderRecoveryLine(recovery.label)}</Callout.Content>
+        ) : null}
       </Callout>
       <Box gap={2}>
         <Button variant="secondary" isActive onPress={onBack}>
@@ -112,6 +140,9 @@ function ReviewStreamContainer({
   );
   const [isSwitchingMode, setIsSwitchingMode] = useState(false);
   const switchingModeRef = useRef(false);
+  // Switching starts a new review, so it waits for the provider consent like
+  // the start on home does; declining leaves the no-diff screen as it was.
+  const consent = useProviderConsentGate(state.providerConsent);
 
   function handleGateBack() {
     reset({ clearActiveSession: true });
@@ -140,6 +171,8 @@ function ReviewStreamContainer({
   if (state.initState.status === "loading") {
     return <ReviewLoadingView message="Loading configuration..." />;
   }
+
+  if (consent.isOpen) return <ProviderConsentOverlay gate={consent} />;
 
   if (state.initState.status === "error") {
     return (
@@ -177,35 +210,66 @@ function ReviewStreamContainer({
   if (state.gate === "no-diff") {
     const currentMode = state.mode;
     const otherMode = getAlternateReviewMode(currentMode);
+    const startOtherMode = async () => {
+      if (switchingModeRef.current) return;
+      switchingModeRef.current = true;
+      setIsSwitchingMode(true);
+      try {
+        const result = await start(otherMode);
+        if (result === "setup-required") navigate({ screen: "settings/providers" });
+      } finally {
+        switchingModeRef.current = false;
+        setIsSwitchingMode(false);
+      }
+    };
     return (
       <NoChangesView
         mode={currentMode}
         disabled={isSwitchingMode}
-        onSwitchMode={async () => {
-          if (switchingModeRef.current) return;
-          switchingModeRef.current = true;
-          setIsSwitchingMode(true);
-          try {
-            const result = await start(otherMode);
-            if (result === "setup-required") navigate({ screen: "settings/providers" });
-          } finally {
-            switchingModeRef.current = false;
-            setIsSwitchingMode(false);
-          }
-        }}
+        onSwitchMode={() => consent.require(() => void startOtherMode())}
         onBack={handleGateBack}
       />
     );
   }
 
-  if (state.gate === "terminal-error") {
+  if (state.startError) {
     return (
-      <ReviewTerminalErrorView error={state.error ?? "Review failed."} onBack={handleGateBack} />
+      <ReviewTerminalErrorView
+        title={state.startError.title}
+        error={state.startError.message}
+        onBack={handleGateBack}
+        recovery={
+          state.startError.recovery === "configure-provider"
+            ? { label: "Open Providers", open: goToProviderSettings }
+            : undefined
+        }
+      />
     );
   }
 
-  if (state.error && state.phase !== "streaming" && state.phase !== "completing") {
-    return <ReviewTerminalErrorView error={state.error} onBack={handleGateBack} />;
+  if (
+    state.gate === "terminal-error" ||
+    (state.error && state.phase !== "streaming" && state.phase !== "completing")
+  ) {
+    const error = state.error ?? "Review failed.";
+    const guidance = classifyReviewStreamError(
+      error,
+      state.errorCode,
+      state.transportFamily ?? undefined,
+    );
+    return (
+      <ReviewTerminalErrorView
+        title={guidance.title}
+        error={error}
+        guidance={guidance.guidance}
+        onBack={handleGateBack}
+        recovery={
+          isProviderRecoveryError(guidance.kind)
+            ? { label: guidance.ctaLabel, open: goToProviderSettings }
+            : undefined
+        }
+      />
+    );
   }
 
   switch (state.phase) {

@@ -102,7 +102,7 @@ export function ModelList({
           ))}
         </RadioGroup>
       ) : null}
-      <EmptyState size="sm" live className={showList ? "sr-only" : undefined}>
+      <EmptyState size="sm" live className={showList ? "sr-only p-0" : undefined}>
         {showList ? null : (
           <StatusMessage loading={loading} isSaving={isSaving} emptyLabel={emptyLabel} />
         )}

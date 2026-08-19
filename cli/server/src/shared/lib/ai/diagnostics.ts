@@ -17,6 +17,14 @@ export const DETAIL_MAX_BYTES = 1024;
 export const AGGREGATE_DETAILS_MAX_BYTES = 4096;
 export const CAPTURE_MAX_BYTES = 64 * 1024;
 
+/**
+ * Diagnostic code for a provider that refused the request outright — a
+ * rejected credential, exhausted billing, an unknown model, or a rate limit.
+ * The review reports it as `PROVIDER_REJECTED` so the surfaces can send the
+ * user to the providers screen instead of a generic transport failure.
+ */
+export const PROVIDER_REJECTED_DIAGNOSTIC_CODE = "provider-rejected";
+
 const CLI_ACCOUNT_ID_PATTERN = /\b(?:acct_[A-Za-z0-9_-]{6,}|account[-_][A-Za-z0-9_-]{6,})\b/gi;
 const PROMPT_PATTERN =
   /\b(?:prompt|user[-_ ]?message|system[-_ ]?prompt)\s*[:=]\s*["'`]?[^\n"'`]{1,}/gi;

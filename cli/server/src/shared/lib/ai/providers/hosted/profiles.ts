@@ -57,6 +57,12 @@ export const HOSTED_PROFILES = {
     usageContract: "optional",
     malformedOutputRetry: false,
   },
+  "ollama-cloud": {
+    wireFamily: "openai-compatible",
+    structuredOutput: "json-object-local-validation",
+    usageContract: "optional",
+    malformedOutputRetry: true,
+  },
 } as const satisfies Record<HostedApiProductId, HostedProductProfile>;
 
 export const RATE_LIMIT_DIAGNOSTIC_MAX_BYTES = 64 * 1024;

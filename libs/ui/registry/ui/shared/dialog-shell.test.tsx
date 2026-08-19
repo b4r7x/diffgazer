@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { act } from "react";
+import { act, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DialogShell } from "./dialog-shell";
@@ -162,6 +162,34 @@ describe("DialogShell", () => {
     fireEvent.click(dialog, { clientX: 80, clientY: 120 });
 
     expect(onBackdropClick).not.toHaveBeenCalled();
+  });
+
+  // jsdom's showModal moves no focus; a browser's lands on the first focusable
+  // descendant, so the requested target has to win over that.
+  it("focuses the initialFocus target after showModal focused the first focusable", () => {
+    const showModal = vi
+      .spyOn(HTMLDialogElement.prototype, "showModal")
+      .mockImplementation(function showModal(this: HTMLDialogElement) {
+        this.setAttribute("open", "");
+        this.querySelector("button")?.focus();
+      });
+
+    function Shell() {
+      const confirmRef = useRef<HTMLButtonElement>(null);
+      return (
+        <DialogShell open aria-label="Initial focus shell" initialFocus={confirmRef}>
+          <button type="button">Cancel</button>
+          <button type="button" ref={confirmRef}>
+            Confirm
+          </button>
+        </DialogShell>
+      );
+    }
+    render(<Shell />);
+
+    expect(showModal).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Confirm" })).toHaveFocus();
+    showModal.mockRestore();
   });
 
   it("reconciles shell state when the native dialog closes without a cancelable cancel", () => {

@@ -8,7 +8,7 @@ import { CANDIDATE_VERDICTS } from "../providers/candidate-verdicts.js";
 import { PRODUCT_REGISTRY, SELECTABLE_PRODUCT_IDS } from "../providers/product-registry.js";
 import type { RunnableProductId } from "../schemas/config/transports.js";
 import { CATALOG_SNAPSHOT } from "./catalog-snapshot.js";
-import { getCatalogBillingRange } from "./model-capability.js";
+import { getCatalogBillingRange, producesTextOutput } from "./model-capability.js";
 import { CATALOG_MODEL_DERIVED } from "./model-derived.js";
 import { PROVIDER_DERIVED } from "./provider-derived.js";
 import { PROVIDER_OVERLAY } from "./provider-overlay.js";
@@ -134,6 +134,14 @@ describe("CATALOG_SNAPSHOT", () => {
     }
   });
 
+  it("bundles no name-lending source: those are read only from a live or cached full catalog", () => {
+    for (const overlay of Object.values(PROVIDER_OVERLAY)) {
+      for (const sourceId of overlay?.nameSourceIds ?? []) {
+        expect(CATALOG_SNAPSHOT[sourceId], `snapshot bundles ${sourceId}`).toBeUndefined();
+      }
+    }
+  });
+
   // Required-field rejection is owned by schema.test.ts; this only proves the
   // real bundled payload is an acceptable observation.
   it("parses as a complete observation around bundled data", () => {
@@ -176,7 +184,12 @@ describe("CATALOG_SNAPSHOT", () => {
   it("keeps only the model fields consumed by observation transforms", () => {
     for (const provider of Object.values(CATALOG_SNAPSHOT)) {
       for (const [modelId, model] of Object.entries(provider.models)) {
-        expect(model, `${modelId} must drop modalities`).not.toHaveProperty("modalities");
+        // A withheld model keeps the output modality that withholds it, and only that.
+        if (producesTextOutput(model)) {
+          expect(model, `${modelId} must drop modalities`).not.toHaveProperty("modalities");
+        } else {
+          expect(Object.keys(model.modalities ?? {}), `${modelId} modalities`).toEqual(["output"]);
+        }
         expect(model, `${modelId} must drop knowledge`).not.toHaveProperty("knowledge");
         expect(model, `${modelId} must drop release_date`).not.toHaveProperty("release_date");
         expect(model, `${modelId} must drop last_updated`).not.toHaveProperty("last_updated");
@@ -192,9 +205,8 @@ describe("CATALOG_SNAPSHOT", () => {
     }
   });
 
-  // The offered set is capability AND model policy. Measuring it by capability
-  // alone is what let Mistral pass this guard while its picker was empty and
-  // let OpenRouter be priced across routes it refuses to pin.
+  // The offered set is the model-policy-admitted set. Measuring it by anything
+  // wider is what let OpenRouter be priced across routes it refuses to pin.
   it("names exactly the bounded products whose picker the snapshot leaves empty", () => {
     const empty = snapshotObservations()
       .filter(({ productId, models }) => offeredModels(productId, models).length === 0)
@@ -233,11 +245,13 @@ describe("CATALOG_SNAPSHOT", () => {
     expect(
       offered.filter(({ billing }) => billing === "free").map(({ modelId }) => String(modelId)),
     ).toEqual([
+      "dots-studio/dots-3-note-preview:free",
       "google/gemma-4-26b-a4b-it:free",
       "liquid/lfm-2.5-2.6b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
       "nvidia/nemotron-nano-9b-v2:free",
       "openai/gpt-oss-20b:free",
+      "z-ai/glm-5.2:free",
     ]);
     expect(offeredIds).toContain("qwen/qwen-plus-2025-07-28:thinking");
     expect(offeredIds).not.toContain("openrouter/auto");
@@ -245,17 +259,31 @@ describe("CATALOG_SNAPSHOT", () => {
     expect(PROVIDER_DERIVED.openrouter.billing).toBe("mixed");
   });
 
-  // The allowlist that pinned `mistral-small-2603` published no
-  // `structured_output`, so the capability filter withheld it and the picker was
-  // empty while the one capable Mistral model sat off-list.
-  it("offers the capable Mistral model the retired allowlist withheld", () => {
-    const mistral = snapshotObservations().find(({ productId }) => productId === "mistral");
-    const offeredIds = offeredModels("mistral", mistral?.models ?? []).map(({ modelId }) =>
-      String(modelId),
+  // Owner evidence: the free models are the point. Z.AI's `-flash` tier used to
+  // sit behind an opt-in suffix and every model upstream published no
+  // `structured_output` for was withheld; both now reach the picker, and their
+  // zero prices make the product badge honest about the free/paid mix.
+  it("offers the free-tier models the picker used to withhold", () => {
+    const offeredIds = new Map(
+      snapshotObservations().map(({ productId, models }) => [
+        productId,
+        offeredModels(productId, models).map(({ modelId }) => String(modelId)),
+      ]),
     );
 
-    expect(offeredIds).toEqual(["mistral-medium-2604"]);
-    expect(PROVIDER_DERIVED.mistral.billing).toBe("paid");
+    expect(offeredIds.get("zai")).toEqual(
+      expect.arrayContaining(["glm-4.5-flash", "glm-4.7-flash", "glm-4.7", "glm-5-turbo"]),
+    );
+    expect(offeredIds.get("mistral")).toEqual(
+      expect.arrayContaining(["mistral-medium-2604", "labs-devstral-small-2512"]),
+    );
+    expect(offeredIds.get("groq")).toContain("allam-2-7b");
+    expect(offeredIds.get("deepseek")).toEqual(["deepseek-v4-flash", "deepseek-v4-pro"]);
+    expect(offeredIds.get("qwen")).toEqual(["qwen3-coder-flash"]);
+    expect(offeredIds.get("moonshot")).toEqual(["kimi-k2.6", "kimi-k3"]);
+    for (const productId of ["zai", "mistral", "groq"] as const) {
+      expect(PROVIDER_DERIVED[productId].billing, productId).toBe("mixed");
+    }
   });
 
   it("derives every product's billing range from the models it can offer", () => {

@@ -21,6 +21,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { createConfigurationActionMocks } from "@/testing/configuration-action-mocks";
 import { useProvidersPageState } from "./use-page-state";
@@ -84,6 +85,10 @@ describe("useProvidersPageState", () => {
   });
 
   it("selects a ready configuration through the primary action instead of inspecting it", async () => {
+    // Another configuration is active, so the ready row still offers selection.
+    const init = makeInitResponse({ selectedConfigurationId: "local-openai-1" });
+    mockApi.loadConfigurationInit.mockResolvedValue(init);
+    mockApi.listConfigurations.mockResolvedValue(makeConfigurationListResponse(init));
     const { result } = renderPageHook();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
@@ -93,11 +98,11 @@ describe("useProvidersPageState", () => {
     expect(readyRow?.readiness.ready).toBe(true);
 
     act(() => result.current.selection.setSelectedId("gemini-primary"));
-    const selectAction = result.current.providerActions[0];
+    const selectAction = result.current.actionLayout.primary;
     expect(selectAction).toMatchObject({ id: "selectConfiguration", task: "select-configuration" });
 
     await act(async () => {
-      if (selectAction) result.current.runProviderAction(selectAction);
+      if (selectAction) result.current.runProviderControl(selectAction);
     });
 
     await waitFor(() => {
@@ -107,6 +112,46 @@ describe("useProvidersPageState", () => {
       );
     });
     expect(mockApi.inspectConfiguration).not.toHaveBeenCalled();
+  });
+
+  it("selects an unverified configuration first and runs Verify from its own action", async () => {
+    const init = makeInitResponse({
+      configurations: [configurationStatus(GEMINI_CONFIGURATION, "conformance-pending")],
+      selectedConfigurationId: null,
+    });
+    mockApi.loadConfigurationInit.mockResolvedValue(init);
+    mockApi.listConfigurations.mockResolvedValue(makeConfigurationListResponse(init));
+    const { result } = renderPageHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.selection.setSelectedId("gemini-primary"));
+    const selectAction = result.current.actionLayout.primary;
+    const verifyAction = result.current.actionLayout.overflow.find(
+      (action) => action.id === "verify",
+    );
+    expect(selectAction).toMatchObject({
+      id: "selectConfiguration",
+      label: "Select configuration",
+    });
+    expect(verifyAction).toMatchObject({ label: "Verify" });
+
+    await act(async () => {
+      if (selectAction) result.current.runProviderControl(selectAction);
+    });
+    await waitFor(() => {
+      expect(mockApi.selectConfiguration).toHaveBeenCalledWith(
+        "gemini-primary",
+        "gemini-2.5-flash",
+      );
+    });
+    expect(mockApi.testConfiguration).not.toHaveBeenCalled();
+
+    await act(async () => {
+      if (verifyAction) result.current.runProviderControl(verifyAction);
+    });
+    await waitFor(() => {
+      expect(mockApi.testConfiguration).toHaveBeenCalledWith("gemini-primary");
+    });
   });
 
   it("dispatches the selected readiness action instead of key/model branches", async () => {
@@ -119,8 +164,10 @@ describe("useProvidersPageState", () => {
     expect(localRow?.readiness.action).toBe("test");
 
     act(() => result.current.selection.setSelectedId("local-openai-1"));
+    const primary = result.current.actionLayout.primary;
+    expect(primary).toMatchObject({ id: "dispatch", task: "test" });
     await act(async () => {
-      if (localRow) await result.current.handlers.dispatchAction(localRow);
+      if (primary) result.current.runProviderControl(primary);
     });
 
     await waitFor(() => {
@@ -179,9 +226,9 @@ describe("useProvidersPageState", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     act(() => result.current.selection.setSelectedId("openrouter"));
-    const createAction = result.current.providerActions.find((action) => action.id === "dispatch");
-    if (!createAction) throw new Error("Expected the create action");
-    act(() => result.current.runProviderAction(createAction));
+    const createAction = result.current.actionLayout.primary;
+    if (createAction?.id !== "dispatch") throw new Error("Expected the create action");
+    act(() => result.current.runProviderControl(createAction));
     const dialog = result.current.dialogs.current;
     if (dialog?.kind !== "setup") throw new Error("Expected the OpenRouter setup dialog");
 
@@ -262,11 +309,18 @@ describe("useProvidersPageState", () => {
     expect(result.current.selectedRow?.product.productId).toBe("openrouter");
     expect(result.current.selection.effectiveSelectedId).toBe(OPENROUTER_CONFIGURATION_ID);
 
-    const deleteAction = result.current.providerActions.find((action) => action.id === "delete");
+    const deleteAction = result.current.actionLayout.overflow.find(
+      (action) => action.id === "delete",
+    );
     if (!deleteAction) throw new Error("Expected the delete action");
+    // Removal waits behind its confirmation.
+    act(() => result.current.runProviderControl(deleteAction));
+    expect(mockApi.deleteConfiguration).not.toHaveBeenCalled();
+    expect(result.current.deleteConfirm.open).toBe(true);
     await act(async () => {
-      result.current.runProviderAction(deleteAction);
+      result.current.deleteConfirm.confirm();
     });
+    expect(mockApi.deleteConfiguration).toHaveBeenCalledWith(OPENROUTER_CONFIGURATION_ID, 1);
 
     const refreshed = makeInitResponse({ configurations: [] });
     mockApi.loadConfigurationInit.mockResolvedValue(refreshed);
@@ -308,50 +362,28 @@ describe("useProvidersPageState", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     act(() => result.current.selection.setSelectedId("local-openai-1"));
-    const localRow = result.current.filteredProviders.find(
-      (row) => getProviderRowId(row) === "local-openai-1",
-    );
-    if (!localRow) throw new Error("Expected local row");
+    const primary = result.current.actionLayout.primary;
+    expect(primary).toMatchObject({ id: "dispatch", task: "update" });
 
-    act(() => result.current.handlers.dispatchAction(localRow));
+    act(() => {
+      if (primary) result.current.runProviderControl(primary);
+    });
 
     expect(result.current.dialogs.current?.kind).toBe("setup");
     expect(result.current.dialogs.current?.row.product.transportFamily).toBe("local-http");
   });
 
-  it("derives no actions when the filtered list leaves nothing selected", async () => {
+  // The layout table itself is pinned in libs/core; this proves the page feeds
+  // it the selected configuration as the active one.
+  it("marks the selected configuration active in the layout and drops its primary", async () => {
     const { result } = renderPageHook();
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    act(() => result.current.search.setQuery("no-such-provider"));
-
-    expect(result.current.selectedRow).toBeNull();
-    expect(result.current.providerActions).toEqual([]);
-  });
-
-  it("derives a single action for an unconfigured provider", async () => {
-    const { result } = renderPageHook();
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    act(() => result.current.selection.setSelectedId("openrouter"));
-
-    expect(result.current.providerActions.map((action) => action.label)).toEqual([
-      "Create configuration",
-    ]);
-  });
-
-  it("derives a de-duplicated action row for a ready provider", async () => {
-    const { result } = renderPageHook();
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
+    // The fixture makes gemini-primary the selected configuration.
     act(() => result.current.selection.setSelectedId("gemini-primary"));
 
-    expect(result.current.providerActions.map((action) => action.label)).toEqual([
-      "Select configuration",
-      "Update configuration",
-      "Select model",
-      "Delete configuration",
-    ]);
+    expect(result.current.actionLayout.active).toBe(true);
+    expect(result.current.actionLayout.primary).toBeNull();
   });
 
   it("routes a derived action to its handler", async () => {
@@ -359,11 +391,25 @@ describe("useProvidersPageState", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     act(() => result.current.selection.setSelectedId("openrouter"));
-    const create = result.current.providerActions[0];
+    const create = result.current.actionLayout.primary;
     if (!create) throw new Error("Expected a create action");
-    act(() => result.current.runProviderAction(create));
+    act(() => result.current.runProviderControl(create));
 
     expect(result.current.dialogs.current?.kind).toBe("setup");
+  });
+
+  it("owns the More menu so the keyboard can stand down while it is open", async () => {
+    const { result } = renderPageHook();
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    act(() => result.current.selection.setSelectedId("gemini-primary"));
+    expect(result.current.overflowMenu.open).toBe(false);
+
+    act(() => result.current.runProviderControl({ id: "more", label: "More" }));
+    expect(result.current.overflowMenu.open).toBe(true);
+
+    act(() => result.current.overflowMenu.onOpenChange(false));
+    expect(result.current.overflowMenu.open).toBe(false);
   });
 
   it("seeds the selection from the reconnect deep-link's product param", async () => {
@@ -391,7 +437,11 @@ function TestProviders({ children }: { children: ReactNode }) {
     createElement(
       ApiProvider,
       { value: mockApi },
-      createElement(KeyboardProvider, null, createElement(ConfigProvider, null, children)),
+      createElement(
+        KeyboardProvider,
+        null,
+        createElement(ConfigProvider, null, createElement(ProviderConsentProvider, null, children)),
+      ),
     ),
   );
 }

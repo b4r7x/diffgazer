@@ -8,7 +8,7 @@ import {
   WriteOnlySecretInputSchema,
 } from "../schemas/config/index.js";
 import type { OnboardingDraft } from "./defaults.js";
-import type { RunnableSetupStep } from "./setup-plan.js";
+import { getPlanNotice, type RunnableSetupStep } from "./setup-plan.js";
 import { OnboardingAcknowledgementSchema } from "./types.js";
 
 function hasCurrentProduct(data: OnboardingDraft): boolean {
@@ -72,16 +72,12 @@ function hasExactModel(data: OnboardingDraft): boolean {
   return isModelIdAllowedForProduct(data.plan.productId, modelId);
 }
 
-function hasPassedConformance(data: OnboardingDraft): boolean {
-  return hasConfiguredTransport(data) && hasExactModel(data) && data.conformanceStatus === "passed";
-}
-
 function hasAcceptedNotice(data: OnboardingDraft): boolean {
-  if (!hasPassedConformance(data)) return false;
+  if (!hasConfiguredTransport(data) || !hasExactModel(data)) return false;
   if (!OnboardingAcknowledgementSchema.safeParse(data.acknowledgement).success) return false;
   if (data.acknowledgement.status !== "accepted") return false;
 
-  const notice = PRODUCT_REGISTRY[data.plan.productId].notice;
+  const notice = getPlanNotice(data.plan);
   return (
     data.acknowledgement.noticeId === notice.id &&
     data.acknowledgement.noticeVersion === notice.noticeVersion
@@ -101,8 +97,6 @@ export function canProceed(step: RunnableSetupStep["id"], data: OnboardingDraft)
       return hasConfiguredTransport(data);
     case "model":
       return hasConfiguredTransport(data) && hasExactModel(data);
-    case "conformance":
-      return hasPassedConformance(data);
     case "acknowledgement":
       return hasAcceptedNotice(data);
   }

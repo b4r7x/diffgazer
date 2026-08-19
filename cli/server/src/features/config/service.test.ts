@@ -318,7 +318,19 @@ describe("configuration service actions", () => {
   });
 
   it("reports skipped readiness without fallback when test has no evidence", async () => {
-    writeJson(configPath(), v2Config([supportedRecord({ selectedModelId: "gemini-2.5-flash" })]));
+    writeJson(
+      configPath(),
+      v2Config([
+        supportedRecord({
+          selectedModelId: "gemini-2.5-flash",
+          acknowledgement: {
+            noticeId: "gemini-hosted-api",
+            noticeVersion: 1,
+            acceptedAt: CREATED_AT,
+          },
+        }),
+      ]),
+    );
     writeJson(
       secretsPath(),
       v2Secrets([
@@ -439,36 +451,41 @@ describe("configuration catalog model discovery", () => {
     tier,
   });
 
-  async function seedZaiConfiguration() {
+  async function seedHostedConfiguration(
+    productId: "zai" | "deepseek" = "zai",
+    endpoint = "https://api.z.ai/api/paas/v4",
+  ) {
     const service = await loadService();
     await loadStore();
     const created = await service.runConfigurationAction({
       action: "create",
       input: {
         transportFamily: "hosted-api",
-        productId: "zai",
-        endpoint: "https://api.z.ai/api/paas/v4",
-        credential: { kind: "literal", value: "sk-zai-service-secret" },
+        productId,
+        endpoint,
+        credential: { kind: "literal", value: "sk-hosted-service-secret" },
       },
     });
     expect(created.ok).toBe(true);
-    if (!created.ok) throw new Error("expected zai configuration to be created");
+    if (!created.ok) throw new Error(`expected ${productId} configuration to be created`);
     const configurationId = created.value.configuration?.configurationId;
     if (!configurationId) throw new Error("create response requires a configuration");
     return { service, configurationId };
   }
 
   it("returns product-filtered catalog models for a supported configuration", async () => {
-    const { service, configurationId } = await seedZaiConfiguration();
+    const { service, configurationId } = await seedHostedConfiguration(
+      "deepseek",
+      "https://api.deepseek.com/v1",
+    );
     catalog.discoverConfigurationCatalog.mockImplementation(
       async (tuple: { configurationId: string; productId: string }) => ({
         ...tuple,
         status: "passed",
-        models: [catalogModel("glm-4.7"), catalogModel("glm-4.7-flash", "free")],
+        models: [catalogModel("deepseek-v4-flash"), catalogModel("deepseek-chat")],
         fetchedAt: discoveredAt,
         source: "snapshot",
         cached: false,
-        observationSource: "models.dev-snapshot",
         checkedAt: discoveredAt,
       }),
     );
@@ -480,22 +497,22 @@ describe("configuration catalog model discovery", () => {
     expect(result.value).toMatchObject({
       status: "passed",
       configurationId,
-      productId: "zai",
+      productId: "deepseek",
       transportFamily: "hosted-api",
       checkedAt: discoveredAt,
       source: "snapshot",
       cached: false,
     });
     if (result.value.status !== "passed") return;
-    expect(result.value.models.map(({ id }) => id)).toEqual(["glm-4.7"]);
+    expect(result.value.models.map(({ id }) => id)).toEqual(["deepseek-v4-flash"]);
     expect(catalog.discoverConfigurationCatalog).toHaveBeenCalledWith({
       configurationId,
-      productId: "zai",
+      productId: "deepseek",
     });
   });
 
   it("passes the registry-owned skipped reason through verbatim", async () => {
-    const { service, configurationId } = await seedZaiConfiguration();
+    const { service, configurationId } = await seedHostedConfiguration();
     catalog.discoverConfigurationCatalog.mockImplementation(
       async (tuple: { configurationId: string; productId: string }) => ({
         ...tuple,
@@ -520,7 +537,7 @@ describe("configuration catalog model discovery", () => {
   });
 
   it("degrades an invalid discovery payload to a mapped error instead of throwing", async () => {
-    const { service, configurationId } = await seedZaiConfiguration();
+    const { service, configurationId } = await seedHostedConfiguration();
     catalog.discoverConfigurationCatalog.mockImplementation(
       async (tuple: { configurationId: string; productId: string }) => ({
         ...tuple,
@@ -529,7 +546,6 @@ describe("configuration catalog model discovery", () => {
         fetchedAt: discoveredAt,
         source: "snapshot",
         cached: false,
-        observationSource: "models.dev-snapshot",
         checkedAt: discoveredAt,
       }),
     );

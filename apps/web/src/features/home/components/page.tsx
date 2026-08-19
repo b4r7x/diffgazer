@@ -9,6 +9,7 @@ import {
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { useConfigData } from "@/hooks/use-config";
+import { useProviderConsent } from "@/hooks/use-provider-consent";
 import { clearScopedRouteState, useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { shutdown } from "@/lib/shutdown";
 import { HomePagePresentation } from "./presentation";
@@ -20,6 +21,7 @@ export function HomePage() {
   const navigate = useNavigate();
   const search = useSearch({ strict: false });
   const createReview = useCreateReview();
+  const providerConsent = useProviderConsent();
 
   const { isTrusted, needsTrust } = deriveTrustStatus({ trust, projectId, repoRoot });
   const unstagedActive = useActiveReviewSession("unstaged");
@@ -58,6 +60,7 @@ export function HomePage() {
       onHighlightChange={setHighlighted}
       navigate={navigate}
       createReview={(input) => createReview.mutateAsync(input)}
+      requireProviderConsent={providerConsent.require}
       clearScopedRouteState={clearScopedRouteState}
       shutdown={shutdown}
     />

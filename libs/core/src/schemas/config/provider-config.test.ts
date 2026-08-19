@@ -498,28 +498,11 @@ describe("client configuration responses", () => {
   });
 
   it("fails closed for product notices and model policies from the registry", () => {
-    const zaiNotice = {
-      ...PRODUCT_REGISTRY.zai.notice,
-      billing: [...PRODUCT_REGISTRY.zai.notice.billing],
-      privacy: [...PRODUCT_REGISTRY.zai.notice.privacy],
-    };
     const openRouterNotice = {
       ...PRODUCT_REGISTRY.openrouter.notice,
       billing: [...PRODUCT_REGISTRY.openrouter.notice.billing],
       privacy: [...PRODUCT_REGISTRY.openrouter.notice.privacy],
     };
-
-    expect(
-      ClientConfigurationSummarySchema.safeParse({
-        ...hostedSummary,
-        productId: "zai",
-        endpoint: "https://api.z.ai/api/paas/v4",
-        region: undefined,
-        workspace: undefined,
-        selectedModelId: "glm-4.7-flash",
-        notices: [zaiNotice],
-      }).success,
-    ).toBe(false);
 
     expect(
       ClientConfigurationSummarySchema.safeParse({

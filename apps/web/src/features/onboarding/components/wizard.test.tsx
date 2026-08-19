@@ -9,7 +9,7 @@ import type {
 } from "@diffgazer/core/schemas/config";
 import {
   ClientConfigurationActionResponseSchema,
-  CONFORMANCE_TEST_COST_DISCLOSURE,
+  PROVIDER_CONSENT_TEXT,
   READINESS_PRESENTATION,
 } from "@diffgazer/core/schemas/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -43,7 +43,6 @@ function geminiWalkthroughDraft(): OnboardingDraft {
       credential: { kind: "environment" },
     },
     selectedModelId: "gemini-2.5-pro",
-    conformanceStatus: "passed",
     acknowledgement: {
       status: "accepted",
       noticeId: notice.id,
@@ -199,6 +198,7 @@ function makeInitResponse(
       severityThreshold: "low",
       secretsStorage: null,
       agentExecution: "parallel",
+      providerConsent: null,
     },
     project: { projectId: "proj-1", path: "/tmp/repo", trust: null },
     ...overrides,
@@ -282,14 +282,14 @@ describe("OnboardingWizard", () => {
     renderWizard();
     await expectStep(/select product/i);
     const progress = screen.getByLabelText("Setup progress");
-    expect(within(progress).getAllByRole("listitem")).toHaveLength(6);
-    expect(screen.getByText(/Step 1 of 6/i)).toBeInTheDocument();
+    expect(within(progress).getAllByRole("listitem")).toHaveLength(5);
+    expect(screen.getByText(/Step 1 of 5/i)).toBeInTheDocument();
   });
 
-  it("shows exactly 13 selectable products", async () => {
+  it("shows exactly 14 selectable products", async () => {
     renderWizard();
     await expectStep(/select product/i);
-    expect(screen.getAllByRole("radio")).toHaveLength(13);
+    expect(screen.getAllByRole("radio")).toHaveLength(14);
   });
 
   it("uses shared product names from the registry projection", async () => {
@@ -323,26 +323,25 @@ describe("OnboardingWizard", () => {
       expect.any(AbortSignal),
     );
     await clickNext(user);
-    await expectStep(/verify conformance/i);
-    // The first review verifies structured output; Test readiness stays an
-    // optional diagnostic, so its cost is still disclosed here.
-    expect(screen.getByText(/your first review verifies structured review support/i)).toBeVisible();
-    expect(screen.getByText(CONFORMANCE_TEST_COST_DISCLOSURE)).toBeVisible();
-    // The step records an acknowledgement, so its consent copy must not claim a
-    // verification the wizard gives the user no means to perform.
-    expect(
-      screen.getByRole("checkbox", {
-        name: /i understand structured review support is verified on my first review/i,
-      }),
-    ).toBeVisible();
-    await user.click(screen.getByRole("checkbox"));
-    await clickNext(user);
-    await expectStep(/accept product notice/i);
-    await user.click(screen.getByRole("checkbox"));
-    await user.click(screen.getByRole("button", { name: /complete setup/i }));
+    // Verification is optional and lives on the providers page: the wizard goes
+    // straight from the model to the consent step, which shows the global
+    // consent alongside the product's own notice lines.
+    await expectStep(/provider consent/i);
+    expect(screen.getByText(PROVIDER_CONSENT_TEXT)).toBeInTheDocument();
+    for (const line of PRODUCT_REGISTRY.gemini.notice.privacy) {
+      expect(screen.getByText(line)).toBeInTheDocument();
+    }
+    const complete = screen.getByRole("button", { name: /complete setup/i });
+    expect(complete).toBeDisabled();
+    await user.click(screen.getByRole("checkbox", { name: /i accept/i }));
+    await user.click(complete);
 
     await waitFor(() => {
-      expect(mockSaveSettings).toHaveBeenCalled();
+      expect(mockSaveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          providerConsent: { version: 1, acceptedAt: expect.any(String) },
+        }),
+      );
       expect(mockExecuteConfigurationAction).toHaveBeenCalled();
       expect(
         mockExecuteConfigurationAction.mock.calls.some(([action]) => action.action === "create"),
@@ -380,13 +379,48 @@ describe("OnboardingWizard", () => {
     await expectStep(/select model/i);
     await user.click(await screen.findByRole("radio", { name: /gemini-2\.5-pro/i }));
     await clickNext(user);
-    await expectStep(/verify conformance/i);
+    await expectStep(/provider consent/i);
     expect(screen.getByRole("checkbox")).toHaveFocus();
+  });
 
-    await user.click(screen.getByRole("checkbox"));
+  it("pre-accepts the consent step when provider consent is already on record", async () => {
+    const user = userEvent.setup();
+    const acceptedAt = "2026-08-01T09:00:00.000Z";
+    mockLoadConfigurationInit.mockResolvedValue(
+      makeInitResponse({
+        settings: {
+          ...makeInitResponse().settings,
+          providerConsent: { version: 1, acceptedAt },
+        },
+      }),
+    );
+    renderWizard();
+
+    await expectStep(/select product/i);
     await clickNext(user);
-    await expectStep(/accept product notice/i);
-    expect(screen.getByRole("checkbox")).toHaveFocus();
+    await expectStep(/configure endpoint/i);
+    await clickNext(user);
+    await expectStep(/configure authentication/i);
+    await user.click(screen.getByRole("radio", { name: /environment reference/i }));
+    await clickNext(user);
+    await expectStep(/select model/i);
+    await user.click(await screen.findByRole("radio", { name: /gemini-2\.5-pro/i }));
+    await clickNext(user);
+    await expectStep(/provider consent/i);
+
+    expect(screen.getByRole("checkbox", { name: /i accept/i })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: /complete setup/i }));
+
+    await waitFor(() => {
+      expect(mockSaveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ providerConsent: { version: 1, acceptedAt } }),
+      );
+      expect(
+        mockExecuteConfigurationAction.mock.calls.some(
+          ([action]) => action.action === "update" && action.acknowledgement.status === "accepted",
+        ),
+      ).toBe(true);
+    });
   });
 
   it("skips hosted credential prompts for local CLI plans", async () => {
@@ -422,10 +456,7 @@ describe("OnboardingWizard", () => {
     await expectStep(/select model/i);
     await user.click(await screen.findByRole("radio", { name: /gemini-2\.5-pro/i }));
     await clickNext(user);
-    await expectStep(/verify conformance/i);
-    await user.click(screen.getByRole("checkbox"));
-    await clickNext(user);
-    await expectStep(/accept product notice/i);
+    await expectStep(/provider consent/i);
     await user.click(screen.getByRole("checkbox"));
     await user.click(screen.getByRole("button", { name: /complete setup/i }));
 

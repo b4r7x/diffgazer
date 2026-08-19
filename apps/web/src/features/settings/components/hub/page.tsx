@@ -16,10 +16,12 @@ import { ConfigurationStatus } from "@/components/shared/configuration-status";
 import { PathValue } from "@/components/shared/path-value";
 import { useConfigData } from "@/hooks/use-config";
 import { useFocusWithin } from "@/hooks/use-focus-within";
+import { useProviderConsent } from "@/hooks/use-provider-consent";
 import { SETTINGS_HIGHLIGHTED_KEY, useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
 
-const SETTINGS_ROUTES: Record<SettingsAction, string> = {
+// The provider data notice is a dialog over the hub, not a page of its own.
+const SETTINGS_ROUTES: Record<Exclude<SettingsAction, "provider-consent">, string> = {
   trust: "/settings/trust-permissions",
   theme: "/settings/theme",
   provider: "/settings/providers",
@@ -72,6 +74,7 @@ export function SettingsHubPage() {
   const titleId = useId();
   const { loadState, selectedProductId, isConfigured, repoRoot, trust, settings } = useConfigData();
   const { theme } = useTheme();
+  const providerConsent = useProviderConsent();
   const [highlighted, setHighlighted] = useScopedRouteState<string | null>(
     SETTINGS_HIGHLIGHTED_KEY,
     SETTINGS_MENU_ITEMS[0]?.id ?? null,
@@ -91,7 +94,11 @@ export function SettingsHubPage() {
   }
 
   const handleActivate = (id: string) => {
-    const route = SETTINGS_ROUTES[id as SettingsAction];
+    if (id === "provider-consent") {
+      providerConsent.open();
+      return;
+    }
+    const route = SETTINGS_ROUTES[id as keyof typeof SETTINGS_ROUTES];
     if (route) {
       navigate({ to: route });
     }
@@ -105,6 +112,7 @@ export function SettingsHubPage() {
     secretsStorage: settings.secretsStorage,
     agentExecution: settings.agentExecution,
     selectedLensCount: settings.defaultLenses.length,
+    providerConsent: settings.providerConsent,
   });
 
   const persistedValueTone = (hasValue: boolean): HubValueTone =>
@@ -122,6 +130,10 @@ export function SettingsHubPage() {
     provider: {
       value: values.provider,
       tone: isConfigured ? "affirmative" : "muted",
+    },
+    "provider-consent": {
+      value: values["provider-consent"],
+      tone: persistedValueTone(settings.providerConsent !== null),
     },
     storage: {
       value: values.storage,

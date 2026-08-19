@@ -39,6 +39,7 @@ const SETTINGS_FIXTURE: SettingsConfig = {
   severityThreshold: "low",
   secretsStorage: null,
   agentExecution: "parallel",
+  providerConsent: null,
 };
 
 function makeInitResponse(
@@ -87,7 +88,6 @@ function readyDraft(productId: "mistral" | "gemini" = "mistral"): OnboardingDraf
       credential: { kind: "environment" },
     },
     selectedModelId: productId === "gemini" ? "gemini-2.5-flash" : "mistral-small-2603",
-    conformanceStatus: "passed",
     acknowledgement: {
       status: "accepted",
       noticeId: notice.id,
@@ -111,7 +111,6 @@ function readyLocalDraft(): OnboardingDraft {
       bearerToken: { kind: "literal", value: "write-only-local-bearer" },
     },
     selectedModelId: "local-model",
-    conformanceStatus: "passed",
     acknowledgement: {
       status: "accepted",
       noticeId: notice.id,
@@ -234,8 +233,8 @@ function discoveryReadiness(data: OnboardingDraft) {
 
 /**
  * Applies a ready draft the way the wizard steps do. A new configuration input
- * clears the model and the conformance result, so the model, its passing probe,
- * and the notice acknowledgement can only be set after it.
+ * clears the model, so the model and the notice acknowledgement can only be set
+ * after it.
  */
 function applyDraft(
   wizard: ReturnType<typeof useOnboarding>,
@@ -243,7 +242,6 @@ function applyDraft(
 ) {
   wizard.updateData({ configurationInput: draft.configurationInput });
   wizard.updateData({ selectedModelId: draft.selectedModelId });
-  wizard.updateData({ conformanceStatus: draft.conformanceStatus });
   wizard.updateData({ acknowledgement: draft.acknowledgement });
 }
 
@@ -377,7 +375,6 @@ describe("useOnboarding", () => {
       "product",
       "authentication",
       "model",
-      "conformance",
       "acknowledgement",
     ]);
     if (onboardingHook.result.current.wizardData.kind !== "runnable") {
@@ -397,7 +394,6 @@ describe("useOnboarding", () => {
       onboardingHook.result.current.updateData({
         configurationInput: draft.configurationInput,
         selectedModelId: draft.selectedModelId,
-        conformanceStatus: "passed",
       });
     });
     if (onboardingHook.result.current.wizardData.kind !== "runnable") {
@@ -414,7 +410,6 @@ describe("useOnboarding", () => {
     expect(onboardingHook.result.current.wizardData.acknowledgement).toEqual({
       status: "required",
     });
-    expect(onboardingHook.result.current.wizardData.conformanceStatus).toBe("not-tested");
     expect(onboardingHook.result.current.wizardData.selectedModelId).toBeNull();
   });
 
@@ -573,7 +568,6 @@ describe("useOnboarding", () => {
       onboardingHook.result.current.updateData({
         configurationInput: draft.configurationInput,
         selectedModelId: draft.selectedModelId,
-        conformanceStatus: draft.conformanceStatus,
       });
     });
 

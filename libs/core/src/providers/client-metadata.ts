@@ -41,7 +41,6 @@ const ClientModelPolicySchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("discovered-exact"),
     suggestedModelId: z.string().min(1).optional(),
-    explicitOptInSuffixes: z.array(z.string().min(1)).optional(),
     aliases: z.literal("forbidden"),
   }),
   z.strictObject({
@@ -257,9 +256,6 @@ function toClientModelPolicy(modelPolicy: ModelPolicy): ClientProductMetadata["m
       return {
         kind: modelPolicy.kind,
         suggestedModelId: modelPolicy.suggestedModelId,
-        explicitOptInSuffixes: modelPolicy.explicitOptInSuffixes
-          ? [...modelPolicy.explicitOptInSuffixes]
-          : undefined,
         aliases: modelPolicy.aliases,
       };
     case "discovered-allowlist":

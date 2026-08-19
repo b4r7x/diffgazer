@@ -14,6 +14,7 @@ const SELECTABLE_PRODUCT_IDS = [
   "qwen",
   "moonshot",
   "mistral",
+  "ollama-cloud",
   "ollama",
   "local-openai",
   "codex-cli",
@@ -21,7 +22,7 @@ const SELECTABLE_PRODUCT_IDS = [
 ];
 
 describe("selectable product presentation", () => {
-  it("exposes exactly the 13 selectable products from product authority", () => {
+  it("exposes exactly the 14 selectable products from product authority", () => {
     expect(selectableProducts.SELECTABLE_PRODUCTS.map((product) => product.productId)).toEqual(
       SELECTABLE_PRODUCT_IDS,
     );

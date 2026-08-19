@@ -1,7 +1,7 @@
 import { type BoundApi, createApi } from "@diffgazer/core/api";
 import { ApiProvider } from "@diffgazer/core/api/hooks";
 import { getCatalogModelName, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
-import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
+import { DEFAULT_SETTINGS, LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
 import {
   GEMINI_CONFIGURATION,
   makeAllConfigurationsListResponse,
@@ -39,6 +39,7 @@ vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
         severityThreshold: "low",
         secretsStorage: "file",
         agentExecution: "sequential",
+        providerConsent: null,
       },
       project: {
         projectId: "project-1",
@@ -139,12 +140,14 @@ afterEach(() => {
 const SPLIT_WIDTHS = [80, 100, 120] as const;
 
 const PROVIDERS_SCREEN = {
-  settled: PRODUCT_REGISTRY.gemini.presentation.name,
+  // The header names the selected Gemini configuration before the list resolves,
+  // so settle on a product that only the list prints.
+  settled: PRODUCT_REGISTRY.zai.presentation.name,
   render: () => withQueryClient(<ProvidersScreen />),
 };
 
 const MONOTONIC_SCREENS: { name: string; settled: string; render: () => ReactElement }[] = [
-  { name: "home", settled: "Main Menu", render: () => <HomeScreen /> },
+  { name: "home", settled: "Main Menu", render: () => withQueryClient(<HomeScreen />) },
   { name: "providers", ...PROVIDERS_SCREEN },
   { name: "history", settled: "RUNS", render: () => <HistoryScreen /> },
   {
@@ -159,6 +162,10 @@ const MONOTONIC_SCREENS: { name: string; settled: string; render: () => ReactEle
 function makeApi(): BoundApi {
   return {
     ...createApi({ baseUrl: "http://localhost" }),
+    getSettings: vi.fn<BoundApi["getSettings"]>().mockResolvedValue({
+      ...DEFAULT_SETTINGS,
+      providerConsent: { version: 1, acceptedAt: "2026-08-01T09:00:00.000Z" },
+    }),
     listConfigurations: vi.fn<BoundApi["listConfigurations"]>().mockResolvedValue(shellInit),
     createConfiguration: vi.fn(),
     updateConfiguration: vi.fn(),
@@ -208,7 +215,7 @@ describe("legibility invariant", () => {
   });
 
   test("prints the home context values whole once the frame is 100 columns", async () => {
-    const frame = await frameAt(100, <HomeScreen />, "Main Menu");
+    const frame = await frameAt(100, withQueryClient(<HomeScreen />), "Main Menu");
 
     expect(frame).toContain(
       getCatalogModelName(GEMINI_CONFIGURATION.productId, GEMINI_CONFIGURATION.selectedModelId),

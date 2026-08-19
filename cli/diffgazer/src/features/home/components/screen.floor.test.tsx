@@ -2,6 +2,7 @@ import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
 import { makeReadyInitResponse } from "@diffgazer/core/testing/provider-fixtures";
 import stripAnsi from "strip-ansi";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { ApiBoundary } from "../../../testing/api-boundary";
 import { cleanupRootFrames, renderRootFrame } from "../../../testing/render-root-frame";
 import { expectSingleHeavyCornerPane } from "../../../testing/reticle";
 import { HomeScreen } from "./screen";
@@ -73,7 +74,13 @@ afterEach(() => {
 describe("HomeScreen context sidebar floor", () => {
   test("keeps the untrusted CTA truncated so the header survives at 80x24", async () => {
     trustVar.trust = null;
-    const { lastFrame } = renderRootFrame(80, 24, <HomeScreen />);
+    const { lastFrame } = renderRootFrame(
+      80,
+      24,
+      <ApiBoundary>
+        <HomeScreen />
+      </ApiBoundary>,
+    );
 
     await vi.waitFor(() => expect(lastFrame()).toContain("SECURITY WARNING"));
     const frame = stripAnsi(lastFrame() ?? "");
@@ -97,7 +104,13 @@ describe("HomeScreen context sidebar floor", () => {
       repoRoot: "/tmp/repo",
       capabilities: { readFiles: true, runCommands: false },
     };
-    const { lastFrame } = renderRootFrame(columns, rows, <HomeScreen />);
+    const { lastFrame } = renderRootFrame(
+      columns,
+      rows,
+      <ApiBoundary>
+        <HomeScreen />
+      </ApiBoundary>,
+    );
 
     await vi.waitFor(() => expect(lastFrame()).toContain("Main Menu"));
     const lines = stripAnsi(lastFrame() ?? "").split("\n");
@@ -114,7 +127,13 @@ describe("HomeScreen context sidebar floor", () => {
       repoRoot: "/tmp/repo",
       capabilities: { readFiles: true, runCommands: false },
     };
-    const { lastFrame } = renderRootFrame(100, 30, <HomeScreen />);
+    const { lastFrame } = renderRootFrame(
+      100,
+      30,
+      <ApiBoundary>
+        <HomeScreen />
+      </ApiBoundary>,
+    );
 
     await vi.waitFor(() => expect(lastFrame()).toContain("Last Run"));
     const topBorder =
@@ -133,7 +152,13 @@ describe("HomeScreen context sidebar floor", () => {
       repoRoot: "/tmp/repo",
       capabilities: { readFiles: true, runCommands: false },
     };
-    const { lastFrame } = renderRootFrame(60, 24, <HomeScreen />);
+    const { lastFrame } = renderRootFrame(
+      60,
+      24,
+      <ApiBoundary>
+        <HomeScreen />
+      </ApiBoundary>,
+    );
 
     await vi.waitFor(() => expect(lastFrame()).toContain("Main Menu"));
     const frame = stripAnsi(lastFrame() ?? "");
@@ -150,7 +175,13 @@ describe("HomeScreen context sidebar floor", () => {
       repoRoot: "/tmp/repo",
       capabilities: { readFiles: true, runCommands: false },
     };
-    const { lastFrame } = renderRootFrame(100, 30, <HomeScreen />);
+    const { lastFrame } = renderRootFrame(
+      100,
+      30,
+      <ApiBoundary>
+        <HomeScreen />
+      </ApiBoundary>,
+    );
 
     await vi.waitFor(() => expect(lastFrame()).toContain("Main Menu"));
     expectSingleHeavyCornerPane(lastFrame());
@@ -161,7 +192,13 @@ describe("HomeScreen context sidebar floor", () => {
       repoRoot: "/tmp/repo",
       capabilities: { readFiles: true, runCommands: false },
     };
-    const { lastFrame } = renderRootFrame(80, 24, <HomeScreen />);
+    const { lastFrame } = renderRootFrame(
+      80,
+      24,
+      <ApiBoundary>
+        <HomeScreen />
+      </ApiBoundary>,
+    );
 
     await vi.waitFor(() => expect(lastFrame()).toContain("Last Run"));
     const frame = stripAnsi(lastFrame() ?? "");

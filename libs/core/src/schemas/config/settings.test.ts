@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  acceptProviderConsent,
   applySettingsPatch,
   DEFAULT_SETTINGS,
   parseSettingsRecord,
@@ -13,6 +14,7 @@ const baseSettings = {
   severityThreshold: "low" as const,
   secretsStorage: null,
   agentExecution: "sequential" as const,
+  providerConsent: null,
 };
 
 describe("SettingsConfigSchema", () => {
@@ -89,6 +91,24 @@ describe("parseSettingsRecord", () => {
     expect(patched.theme).toBe("dark");
     expect(patched.agentExecution).toBe("turbo");
     expect(serializeSettingsRecord(parseSettingsRecord(patched)).agentExecution).toBe("turbo");
+  });
+
+  it("treats a provider consent recorded under another version as not given", () => {
+    const accepted = parseSettingsRecord({
+      ...DEFAULT_SETTINGS,
+      providerConsent: acceptProviderConsent("2026-08-18T10:00:00.000Z"),
+    });
+    expect(accepted.settings.providerConsent).toEqual({
+      version: 1,
+      acceptedAt: "2026-08-18T10:00:00.000Z",
+    });
+
+    const outdated = parseSettingsRecord({
+      ...DEFAULT_SETTINGS,
+      providerConsent: { version: 0, acceptedAt: "2026-08-18T10:00:00.000Z" },
+    });
+    expect(outdated.settings.providerConsent).toBeNull();
+    expect(outdated.diagnostics).toEqual([{ field: "providerConsent", code: "invalid-value" }]);
   });
 
   it("clears salvaged bytes once a known field is repaired explicitly", () => {

@@ -26,6 +26,7 @@ import {
   buildExecutionResult,
   normalizeBuildExecutionUsageInput,
 } from "../../shared/lib/ai/client/generate.js";
+import { PROVIDER_REJECTED_DIAGNOSTIC_CODE } from "../../shared/lib/ai/diagnostics.js";
 import type { AIClient, AIErrorDiagnostic } from "../../shared/lib/ai/types.js";
 import { log } from "../../shared/lib/log.js";
 import { type ReviewAbort, reviewAbort } from "./abort.js";
@@ -149,6 +150,22 @@ type ReviewAIClient = AIClient & {
   terminalExecutions?: readonly ExecutionResult[];
   terminalDiagnostics?: readonly AIErrorDiagnostic[];
 };
+
+/**
+ * The stream error code a failed terminal outcome reports. The two failures the
+ * user fixes on the providers screen get their own codes so the surfaces can
+ * offer that jump; every other outcome stays a generic AI error.
+ */
+function terminalErrorCode(
+  outcome: TerminalOutcome,
+  diagnostic: AIErrorDiagnostic | undefined,
+): ReviewErrorCode {
+  if (outcome === "schema-failed") return ReviewErrorCode.MODEL_INCOMPATIBLE;
+  if (diagnostic?.code === PROVIDER_REJECTED_DIAGNOSTIC_CODE) {
+    return ReviewErrorCode.PROVIDER_REJECTED;
+  }
+  return ReviewErrorCode.AI_ERROR;
+}
 
 function mapOrchestrationErrorToTerminalOutcome(error: { code: string }): TerminalOutcome {
   if (error.code === "PARSE_ERROR") return "schema-failed";
@@ -558,7 +575,7 @@ export async function finalizeReview(params: {
     return err(
       reviewAbort(
         outcome.terminalDiagnostic?.safeMessage ?? fallbackMessage,
-        ReviewErrorCode.AI_ERROR,
+        terminalErrorCode(terminalOutcome, outcome.terminalDiagnostic),
       ),
     );
   }

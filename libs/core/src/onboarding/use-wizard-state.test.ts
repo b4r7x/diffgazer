@@ -30,7 +30,6 @@ function readyDraft(productId: "qwen" | "local-openai" = "qwen"): OnboardingDraf
           }
         : draft.configurationInput,
     selectedModelId: productId === "qwen" ? "qwen3-coder-flash" : "local-model",
-    conformanceStatus: "passed",
     acknowledgement: {
       status: "accepted",
       noticeId: notice.id,
@@ -199,7 +198,6 @@ describe("useWizardState", () => {
       "endpoint-binding",
       "authentication",
       "model",
-      "conformance",
       "acknowledgement",
     ]);
 
@@ -223,7 +221,6 @@ describe("useWizardState", () => {
       "endpoint-binding",
       "authentication",
       "model",
-      "conformance",
       "acknowledgement",
     ]);
     expect(result.current.wizardData).toEqual(getInitialWizardData("local-openai"));
@@ -315,32 +312,24 @@ describe("useWizardState", () => {
 
     act(() => result.current.setProduct("codex-cli"));
 
-    expect(result.current.steps).toEqual([
-      "product",
-      "authentication",
-      "model",
-      "conformance",
-      "acknowledgement",
-    ]);
+    expect(result.current.steps).toEqual(["product", "authentication", "model", "acknowledgement"]);
     expect(result.current.wizardData).toEqual(getInitialWizardData("codex-cli"));
     expect(JSON.stringify(result.current.wizardData.configurationInput)).not.toMatch(
       /endpoint|credential|apiKey/,
     );
   });
 
-  it("invalidates conformance and acknowledgement when the exact tuple or model changes", () => {
+  it("invalidates acknowledgement when the exact tuple or model changes", () => {
     const { result } = renderHook(() => useWizardState({ initial: readyDraft() }));
 
     act(() => result.current.updateData({ selectedModelId: "qwen3-coder-plus" }));
     expect(result.current.wizardData).toMatchObject({
       selectedModelId: "qwen3-coder-plus",
-      conformanceStatus: "not-tested",
       acknowledgement: { status: "required" },
     });
 
     act(() =>
       result.current.updateData({
-        conformanceStatus: "passed",
         acknowledgement: {
           status: "accepted",
           noticeId: PRODUCT_REGISTRY.qwen.notice.id,
@@ -364,9 +353,35 @@ describe("useWizardState", () => {
 
     expect(result.current.wizardData).toMatchObject({
       selectedModelId: null,
-      conformanceStatus: "not-tested",
       acknowledgement: { status: "required" },
     });
+  });
+
+  it("enters the acknowledgement step pre-accepted from the provider consent on record", () => {
+    const initial = { ...readyDraft(), acknowledgement: { status: "required" as const } };
+    const { result } = renderHook(() =>
+      useWizardState({
+        initial,
+        providerConsent: { version: 1, acceptedAt: "2026-08-01T09:00:00.000Z" },
+      }),
+    );
+
+    act(() => result.current.next());
+    act(() => result.current.next());
+    act(() => result.current.next());
+    expect(result.current.currentStep).toBe("model");
+    expect(result.current.wizardData.acknowledgement).toEqual({ status: "required" });
+
+    act(() => result.current.next());
+
+    expect(result.current.currentStep).toBe("acknowledgement");
+    expect(result.current.wizardData.acknowledgement).toEqual({
+      status: "accepted",
+      noticeId: PRODUCT_REGISTRY.qwen.notice.id,
+      noticeVersion: PRODUCT_REGISTRY.qwen.notice.noticeVersion,
+      acceptedAt: "2026-08-01T09:00:00.000Z",
+    });
+    expect(result.current.canProceed).toBe(true);
   });
 
   it("requires a model from the new endpoint after the discovery tuple changes", () => {
@@ -566,7 +581,7 @@ describe("useWizardState", () => {
     expect(result.current.isReconciling).toBe(false);
   });
 
-  it("revokes a stale pending save when acknowledgement, conformance, or preferences change", async () => {
+  it("revokes a stale pending save when acknowledgement or preferences change", async () => {
     const settingsStarted = createDeferred<void>();
     const data = readyDraft();
     const callbacks = makeCallbacks();
@@ -583,13 +598,11 @@ describe("useWizardState", () => {
 
     act(() => {
       result.current.updateData({ acknowledgement: { status: "required" } });
-      result.current.updateData({ conformanceStatus: "not-tested" });
       result.current.updateData({ defaultLenses: ["security"] });
       result.current.updateData({ agentExecution: "parallel" });
     });
     expect(result.current.wizardData).toMatchObject({
       acknowledgement: { status: "required" },
-      conformanceStatus: "not-tested",
       defaultLenses: ["security"],
       agentExecution: "parallel",
     });
@@ -917,7 +930,6 @@ describe("useWizardState", () => {
     expect(result.current.wizardData).toBe(before);
     expect(result.current.wizardData).toMatchObject({
       acknowledgement: { status: "accepted" },
-      conformanceStatus: "passed",
     });
   });
 

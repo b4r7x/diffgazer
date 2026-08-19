@@ -27,12 +27,11 @@ export function toClientSafeMessage(value: unknown, fallback: string): string {
 }
 
 /**
- * The picker lists only models the catalog states can return structured review
- * output, so a configuration saved before that filter existed can point at a
- * model the list no longer shows. That configuration keeps working; this is the
- * note that says so instead of letting the row silently vanish. Returns null
- * while there is nothing to compare against — an empty or failed discovery is
- * not evidence about the selected model.
+ * A saved configuration can point at a model the current catalog list no longer
+ * shows — retired upstream, or renamed. That configuration keeps working; this
+ * is the note that says so instead of letting the row silently vanish. Returns
+ * null while there is nothing to compare against — an empty or failed discovery
+ * is not evidence about the selected model.
  */
 export function getRetainedModelNotice(
   selectedModelId: string | null | undefined,
@@ -40,5 +39,5 @@ export function getRetainedModelNotice(
 ): string | null {
   if (!selectedModelId || models.length === 0) return null;
   if (models.some((model) => model.id === selectedModelId)) return null;
-  return `${selectedModelId} stays configured, but the catalog does not confirm it can return structured review output. Choose a listed model to be sure.`;
+  return `${selectedModelId} stays configured, but the current catalog no longer lists it. Choose a listed model to be sure it is still served.`;
 }

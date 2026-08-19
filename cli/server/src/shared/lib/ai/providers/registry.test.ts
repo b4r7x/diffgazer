@@ -157,7 +157,7 @@ function executeRequestFor(productId: RunnableProductId): AdapterExecuteRequest 
 describe("adapter registry", () => {
   it("enumerates exactly one wired adapter per runnable product id", () => {
     expect(Object.keys(ADAPTER_REGISTRY).sort()).toEqual([...RUNNABLE_PRODUCT_IDS].sort());
-    expect(Object.keys(ADAPTER_REGISTRY)).toHaveLength(13);
+    expect(Object.keys(ADAPTER_REGISTRY)).toHaveLength(14);
 
     for (const productId of HOSTED_API_PRODUCT_IDS) {
       expect(ADAPTER_REGISTRY[productId]).toBe(HOSTED_ADAPTERS[productId]);

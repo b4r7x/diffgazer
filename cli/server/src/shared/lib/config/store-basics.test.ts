@@ -84,6 +84,18 @@ const GEMINI_ACKNOWLEDGEMENT = {
   acceptedAt: "2026-01-02T00:00:00.000Z",
 } as const;
 
+// A record whose notice is accepted, so readiness reports the tuple rather than
+// the outstanding acknowledgement.
+const acknowledgedRecord = (overrides: Record<string, unknown> = {}) =>
+  supportedRecord({
+    acknowledgement: {
+      noticeId: GEMINI_ACKNOWLEDGEMENT.noticeId,
+      noticeVersion: GEMINI_ACKNOWLEDGEMENT.noticeVersion,
+      acceptedAt: GEMINI_ACKNOWLEDGEMENT.acceptedAt,
+    },
+    ...overrides,
+  });
+
 const createGeminiAction = (
   credential: { kind: "literal"; value: string } | { kind: "environment" },
   options?: { acknowledgement: typeof GEMINI_ACKNOWLEDGEMENT },
@@ -295,7 +307,7 @@ describe("config store actions", () => {
   });
 
   it("selects an exact model and marks the configuration as selected", async () => {
-    writeJson(configPath(), v2Config([supportedRecord()]));
+    writeJson(configPath(), v2Config([acknowledgedRecord()]));
     writeJson(secretsPath(), seedSupportedBinding());
     const store = await loadStore();
 
@@ -318,7 +330,10 @@ describe("config store actions", () => {
   });
 
   it("tests without registered evidence report a failed test with skipped readiness, never passed", async () => {
-    writeJson(configPath(), v2Config([supportedRecord({ selectedModelId: "gemini-2.5-flash" })]));
+    writeJson(
+      configPath(),
+      v2Config([acknowledgedRecord({ selectedModelId: "gemini-2.5-flash" })]),
+    );
     writeJson(secretsPath(), seedSupportedBinding());
     const store = await loadStore();
 
@@ -657,7 +672,10 @@ describe("config store actions", () => {
   it("reports ready only after exact-tuple evidence is registered", async () => {
     const store = await loadStore();
     const created = await store.runConfigurationAction(
-      createGeminiAction({ kind: "literal", value: "sk-proj-evidence-key" }),
+      createGeminiAction(
+        { kind: "literal", value: "sk-proj-evidence-key" },
+        { acknowledgement: GEMINI_ACKNOWLEDGEMENT },
+      ),
     );
     expect(created.ok).toBe(true);
     if (!created.ok) return;
@@ -689,7 +707,10 @@ describe("config store actions", () => {
   it("invalidates registered evidence when the selected model changes", async () => {
     const store = await loadStore();
     const created = await store.runConfigurationAction(
-      createGeminiAction({ kind: "literal", value: "sk-proj-evidence-key" }),
+      createGeminiAction(
+        { kind: "literal", value: "sk-proj-evidence-key" },
+        { acknowledgement: GEMINI_ACKNOWLEDGEMENT },
+      ),
     );
     expect(created.ok).toBe(true);
     if (!created.ok) return;

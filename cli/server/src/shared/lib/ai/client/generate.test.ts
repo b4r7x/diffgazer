@@ -17,6 +17,7 @@ import {
 } from "../../testing/ai-client-fixtures.js";
 import { STRUCTURED_OUTPUT_FAILURE_GUIDANCE } from "../admission/service.js";
 import { createBudgetLedger } from "../budget/ledger.js";
+import { serializeFailureDiagnostic } from "../diagnostics.js";
 import {
   estimatePromptTokens,
   estimateReviewInputTokens,
@@ -817,6 +818,32 @@ describe("review generation terminal failures", () => {
 
     expect(result.execution.receipt.outcome).toBe("transport-failed");
     expect(result.execution.result.issues).toEqual([]);
+  });
+
+  it("reports the adapter's own reason for a refused request instead of the generic transport message", async () => {
+    const plan = admittedPlan("mistral");
+    const adapter = clientTestCreateMockAdapter("mistral", async (request) => {
+      request.reportDiagnostic?.(
+        serializeFailureDiagnostic({
+          code: "provider-rejected",
+          message: "Mistral rejected the credential (HTTP 401).",
+          remediation: "Update the configuration with a valid API key.",
+        }),
+      );
+      return clientTestExecutionResult(plan, "transport-failed");
+    });
+    const { authorization } = authorize(plan, adapter);
+
+    const result = await executeReviewGeneration({
+      authorization,
+      prompt: "short",
+    });
+
+    expect(result.execution.receipt.outcome).toBe("transport-failed");
+    expect(result.diagnostic).toMatchObject({
+      code: "provider-rejected",
+      safeMessage: "Mistral rejected the credential (HTTP 401).",
+    });
   });
 
   it("returns zero findings for partial adapter output without prose salvage", async () => {

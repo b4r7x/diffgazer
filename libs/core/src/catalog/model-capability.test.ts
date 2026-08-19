@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  getCatalogBillingRange,
-  getModelBilling,
-  getModelReviewCapability,
-  producesTextOutput,
-} from "./model-capability.js";
+import { getCatalogBillingRange, getModelBilling, producesTextOutput } from "./model-capability.js";
 import { ModelsDevModelSchema } from "./schema.js";
 
 const model = (overrides: Record<string, unknown>) =>
@@ -21,33 +16,6 @@ describe("producesTextOutput", () => {
     expect(producesTextOutput(model({ modalities: { output: ["audio"] } }))).toBe(false);
     expect(producesTextOutput(model({ modalities: { output: ["image"] } }))).toBe(false);
     expect(producesTextOutput(model({ modalities: { output: ["video"] } }))).toBe(false);
-  });
-});
-
-describe("getModelReviewCapability", () => {
-  it("reports declared structured-output support", () => {
-    expect(getModelReviewCapability(model({ structured_output: true }))).toBe("supported");
-  });
-
-  it("reports a declared refusal as unsupported", () => {
-    expect(getModelReviewCapability(model({ structured_output: false }))).toBe("unsupported");
-  });
-
-  it("reports a missing declaration as unknown rather than guessing", () => {
-    expect(getModelReviewCapability(model({}))).toBe("unknown");
-  });
-
-  it("reads an explicit upstream null as unknown instead of dropping the model", () => {
-    expect(ModelsDevModelSchema.safeParse({ id: "m", structured_output: null }).success).toBe(true);
-    expect(getModelReviewCapability(model({ structured_output: null }))).toBe("unknown");
-  });
-
-  it("reports a non-text model as unsupported even when it declares structured output", () => {
-    expect(
-      getModelReviewCapability(
-        model({ structured_output: true, modalities: { output: ["audio"] } }),
-      ),
-    ).toBe("unsupported");
   });
 });
 

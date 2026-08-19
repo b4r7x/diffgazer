@@ -97,7 +97,7 @@ describe("getStepShortcuts", () => {
     expect(envTab?.label).toBe("Focus Actions");
   });
 
-  test("covers CLI acknowledgement and conformance paths", () => {
+  test("covers every CLI step through to acknowledgement", () => {
     for (const step of CLI_STEPS) {
       const shortcuts = getStepShortcuts({
         currentStep: step as OnboardingStep,

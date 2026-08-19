@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { NavigationProvider } from "../../../app/providers/navigation";
 import type { Route } from "../../../lib/routes";
+import { ApiBoundary } from "../../../testing/api-boundary";
 import { flush } from "../../../testing/flush";
 import { makeReviewLifecycleBase } from "../testing/review-lifecycle-base";
 
@@ -19,7 +20,8 @@ const apiMocks = vi.hoisted(() => ({
 }));
 
 // Boundary mock: network - core api hooks wrap fetch-backed API calls.
-vi.mock("@diffgazer/core/api/hooks", () => ({
+vi.mock("@diffgazer/core/api/hooks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@diffgazer/core/api/hooks")>()),
   useCreateReview: apiMocks.useCreateReview,
   useConfigurationInit: apiMocks.useConfigurationInit,
   useReview: apiMocks.useReview,
@@ -375,14 +377,16 @@ function renderReviewScreen(
   initialRoute: Route = { screen: "review", reviewId: "review-123", mode: "staged" },
 ) {
   return render(
-    <CliThemeProvider initialTheme="dark">
-      <TerminalKeyboardProvider>
-        <NavigationProvider initialRoute={initialRoute}>
-          <FooterProvider initialShortcuts={[]}>
-            <ReviewScreen />
-          </FooterProvider>
-        </NavigationProvider>
-      </TerminalKeyboardProvider>
-    </CliThemeProvider>,
+    <ApiBoundary>
+      <CliThemeProvider initialTheme="dark">
+        <TerminalKeyboardProvider>
+          <NavigationProvider initialRoute={initialRoute}>
+            <FooterProvider initialShortcuts={[]}>
+              <ReviewScreen />
+            </FooterProvider>
+          </NavigationProvider>
+        </TerminalKeyboardProvider>
+      </CliThemeProvider>
+    </ApiBoundary>,
   );
 }

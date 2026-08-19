@@ -6,6 +6,8 @@ import { Panel } from "../../../components/ui/panel";
 
 interface HomeMenuProps {
   isActive?: boolean;
+  highlightedId: MenuAction | null;
+  onHighlightChange: (id: MenuAction) => void;
   onAction: (action: MenuAction) => void;
   isTrusted?: boolean;
   hasResumableSession?: boolean;
@@ -13,6 +15,8 @@ interface HomeMenuProps {
 
 export function HomeMenu({
   isActive = true,
+  highlightedId,
+  onHighlightChange,
   onAction,
   isTrusted = false,
   hasResumableSession = false,
@@ -23,7 +27,12 @@ export function HomeMenu({
     <Panel grow focused={isActive}>
       <Panel.Header variant="subtle">Main Menu</Panel.Header>
       <Panel.Content grow>
-        <Menu isActive={isActive} onSelect={onAction}>
+        <Menu
+          isActive={isActive}
+          highlightedId={highlightedId}
+          onHighlightChange={onHighlightChange}
+          onSelect={onAction}
+        >
           {annotated.map(({ item, showDividerBefore }) => {
             const disabled = isMenuActionDisabled(item.id, { isTrusted, hasResumableSession });
             return (

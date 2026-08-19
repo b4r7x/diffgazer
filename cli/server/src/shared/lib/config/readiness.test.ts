@@ -202,6 +202,45 @@ describe("server V2 readiness calculation", () => {
     ).toBe("acknowledgement-required");
   });
 
+  it("refuses an unacknowledged record before any evidence exists", () => {
+    const record = hostedRecord({
+      acknowledgement: { noticeId: "gemini-hosted-api", noticeVersion: 1, acceptedAt: null },
+    });
+    const binding = createEnvironmentSecretBinding(
+      record.configurationId,
+      record.revision,
+      "GEMINI_KEY",
+    );
+
+    const unproven = computeProviderReadiness({
+      configuration: record,
+      binding,
+      evidence: null,
+      ...SERVER_OWNED_INPUTS,
+    });
+    expect(unproven).toMatchObject({
+      status: "acknowledgement-required",
+      ready: false,
+      evidenceStatus: "pending",
+      acknowledgement: { status: "required", noticeId: "gemini-hosted-api", noticeVersion: 1 },
+    });
+
+    // The notice outranks a cached failure too: accepting it first reveals the
+    // failed tuple, never the other way round.
+    const failed = computeProviderReadiness({
+      configuration: record,
+      binding,
+      evidence: createAdmissionEvidence({
+        evidenceKey: hostedEvidenceKey(record),
+        checkedAt: CHECKED_AT,
+        status: "failed",
+      }),
+      ...SERVER_OWNED_INPUTS,
+      now: NOW,
+    });
+    expect(failed).toMatchObject({ status: "acknowledgement-required", evidenceStatus: "failed" });
+  });
+
   it("names a recorded conformance failure by the transport that produced it", () => {
     const record = localRecord();
     const runtime = { identity: "ollama", version: "0.5.0" } as const;

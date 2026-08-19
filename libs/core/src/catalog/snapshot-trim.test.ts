@@ -58,20 +58,37 @@ const fixture = ModelsDevCatalogSchema.parse({
 });
 
 describe("trimCatalogSnapshot", () => {
-  it("filters non-text models and unwanted providers", () => {
+  it("drops unwanted providers and keeps every model of a wanted one, sorted", () => {
     const trimmed = trimCatalogSnapshot(fixture, new Set(["text-provider"]));
 
     const textProvider = requireValue(trimmed["text-provider"], "trimmed text-provider");
 
     expect(Object.keys(trimmed)).toEqual(["text-provider"]);
     expect(Object.keys(textProvider.models)).toEqual([
+      "audio-only",
+      "image-only",
       "missing-modality",
       "mixed-output",
       "null-capability",
       "text-only",
+      "video-only",
     ]);
-    for (const model of Object.values(textProvider.models)) {
-      expect(model).not.toHaveProperty("modalities");
+  });
+
+  // The offline tier must still know a withheld id, or a provider's live list
+  // would offer a TTS/image model the catalog refused; text models carry no
+  // modalities since nothing reads them past the filter.
+  it("keeps only the withholding output modality", () => {
+    const trimmed = trimCatalogSnapshot(fixture, new Set(["text-provider"]));
+    const models = requireValue(trimmed["text-provider"], "trimmed text-provider").models;
+
+    expect(models["audio-only"]).toEqual({
+      id: "audio-only",
+      name: "Audio Only",
+      modalities: { output: ["audio"] },
+    });
+    for (const id of ["text-only", "mixed-output", "missing-modality"]) {
+      expect(models[id]).not.toHaveProperty("modalities");
     }
   });
 

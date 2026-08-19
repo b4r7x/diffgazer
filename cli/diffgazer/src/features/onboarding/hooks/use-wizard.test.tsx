@@ -119,7 +119,6 @@ describe("useOnboardingWizard", () => {
       "product",
       "authentication",
       "model",
-      "conformance",
       "acknowledgement",
     ]);
   });

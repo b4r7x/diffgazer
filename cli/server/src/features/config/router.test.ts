@@ -332,7 +332,9 @@ describe("GET /config/providers/:configurationId/models", () => {
     });
     if (body.status !== "passed") throw new Error("expected a passed models response");
     expect(body.models.map(({ id }) => id)).toEqual(["gemini-2.5-flash", "gemini-2.5-pro"]);
-    expect(catalogSpy).toHaveBeenCalledWith("gemini");
+    // Gemini stays catalog-only, so discovery reaches the reader with no live list.
+    expect(catalogSpy).toHaveBeenCalledTimes(1);
+    await expect(catalogSpy.mock.calls[0]?.[1]).resolves.toBeNull();
   });
 
   it("keeps the exact /providers list route working next to the models route", async () => {

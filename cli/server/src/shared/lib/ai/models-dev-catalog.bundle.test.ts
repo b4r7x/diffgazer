@@ -183,8 +183,6 @@ describe("bundled catalog observations", () => {
       if (discovery.status !== "passed") throw new Error("Expected passed catalog discovery");
       expect(discovery.configurationId).toBe(configurationId);
       expect(discovery.source).toBe("snapshot");
-      expect(discovery.observationSource).toBe("models.dev-snapshot");
-      expect(discovery.observationSource).not.toBe("models.dev-live");
       expect(discovery.checkedAt).toBe(discovery.fetchedAt);
       expect(discovery.models.map((model) => model.id).sort()).toEqual(offeredModelIds);
     }
@@ -199,25 +197,47 @@ describe("bundled catalog observations", () => {
     const modelIds = models.map(({ id }) => id);
 
     expect(models.filter(({ tier }) => tier === "free").map(({ id }) => id)).toEqual([
+      "dots-studio/dots-3-note-preview:free",
       "google/gemma-4-26b-a4b-it:free",
       "liquid/lfm-2.5-2.6b:free",
       "nvidia/nemotron-3-super-120b-a12b:free",
       "nvidia/nemotron-nano-9b-v2:free",
       "openai/gpt-oss-20b:free",
+      "z-ai/glm-5.2:free",
     ]);
     expect(modelIds).toContain("qwen/qwen-plus-2025-07-28:thinking");
     expect(modelIds).not.toContain("openrouter/auto");
     expect(modelIds).not.toContain("openrouter/free");
   });
 
-  // The retired allowlist pinned `mistral-small-2603`, which publishes no
-  // `structured_output`, so the capability filter withheld it and left the
-  // picker empty while the one capable Mistral model sat off-list.
-  it("fills the Mistral picker with the capable model its allowlist withheld", async () => {
-    const { models } = await getProviderModels("mistral");
+  // The free models are the point: Z.AI's `-flash` tier and every model
+  // upstream publishes no `structured_output` for now reach the picker.
+  it("fills the pickers with the free-tier models they used to withhold", async () => {
+    const zai = await getProviderModels("zai");
+    const mistral = await getProviderModels("mistral");
 
-    expect(models.map(({ id, tier }) => ({ id, tier }))).toEqual([
-      { id: "mistral-medium-2604", tier: "paid" },
-    ]);
+    expect(zai.models.map(({ id, tier }) => ({ id, tier }))).toEqual(
+      expect.arrayContaining([
+        { id: "glm-4.5-flash", tier: "free" },
+        { id: "glm-4.7-flash", tier: "free" },
+        { id: "glm-5-turbo", tier: "paid" },
+      ]),
+    );
+    expect(mistral.models.map(({ id, tier }) => ({ id, tier }))).toEqual(
+      expect.arrayContaining([
+        { id: "mistral-medium-2604", tier: "paid" },
+        { id: "labs-devstral-small-2512", tier: "free" },
+      ]),
+    );
+  });
+
+  // Ollama Cloud is quota-billed, so models.dev prices none of its models: the
+  // picker still lists them, unbadged, with the suggested default among them.
+  it("lists Ollama Cloud's unpriced models with an unknown tier", async () => {
+    const { models } = await getProviderModels("ollama-cloud");
+
+    expect(models.length).toBeGreaterThan(0);
+    expect(models.map(({ id }) => id)).toContain("gpt-oss:20b");
+    expect(new Set(models.map(({ tier }) => tier))).toEqual(new Set(["unknown"]));
   });
 });

@@ -67,6 +67,7 @@ export const PRODUCT_ENDPOINT_TUPLES = {
       region: "eu",
     },
   ],
+  "ollama-cloud": [{ id: "cloud", label: "Ollama Cloud", endpoint: "https://ollama.com/v1" }],
   ollama: [{ id: "default", label: "Default loopback", endpoint: "http://127.0.0.1:11434" }],
   "local-openai": [
     {

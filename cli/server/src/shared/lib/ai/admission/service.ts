@@ -46,7 +46,7 @@ export type AdmissionFailureCode =
  * message a schema-failed review reports.
  */
 export const STRUCTURED_OUTPUT_FAILURE_GUIDANCE =
-  "This model could not produce Diffgazer's structured review output. Select a different model or update the configuration — reviews with this exact setup fail immediately until it changes. Test readiness can re-check it.";
+  "This model could not produce Diffgazer's structured review output. Select a different model or update the configuration — reviews with this exact setup fail immediately until it changes. Verify can re-check it.";
 
 export type AdmissionFailure = Readonly<{
   code: AdmissionFailureCode;

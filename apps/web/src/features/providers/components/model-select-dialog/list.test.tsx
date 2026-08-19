@@ -1,3 +1,4 @@
+import { LIVE_ONLY_MODEL_DESCRIPTION } from "@diffgazer/core/providers";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -55,6 +56,26 @@ describe("ModelList configuration-bound discovery", () => {
 
     expect(screen.getByText("Gemma 4 31B IT")).toBeInTheDocument();
     expect(screen.queryByText(/^(FREE|PAID|UNKNOWN)$/)).not.toBeInTheDocument();
+  });
+
+  it("explains a live-only row the catalog has not priced on its secondary line", () => {
+    render(
+      <ModelList
+        models={[
+          {
+            id: "glm-5.3",
+            name: "glm-5.3",
+            description: LIVE_ONLY_MODEL_DESCRIPTION,
+            tier: "unknown",
+          },
+        ]}
+        {...LIST_PROPS}
+      />,
+    );
+
+    expect(screen.getByRole("radio", { name: /glm-5\.3/ })).toHaveTextContent(
+      LIVE_ONLY_MODEL_DESCRIPTION,
+    );
   });
 
   it("confirms the double-clicked exact model ID directly", async () => {

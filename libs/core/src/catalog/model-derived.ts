@@ -8,8 +8,24 @@ export const CATALOG_MODEL_DERIVED: Partial<
   Record<RunnableProductId, Record<string, DerivedCatalogModel>>
 > = {
   gemini: {
+    "deep-research-max-preview-04-2026": {
+      name: "Deep Research Max Preview (Apr-21-2026)",
+      billing: "paid",
+    },
+    "deep-research-preview-04-2026": {
+      name: "Deep Research Preview (Apr-21-2026)",
+      billing: "paid",
+    },
+    "gemini-2.5-computer-use-preview-10-2025": {
+      name: "Gemini 2.5 Computer Use Preview 10-2025",
+      billing: "paid",
+    },
     "gemini-2.5-flash": {
       name: "Gemini 2.5 Flash",
+      billing: "paid",
+    },
+    "gemini-2.5-flash-image": {
+      name: "Nano Banana",
       billing: "paid",
     },
     "gemini-2.5-flash-lite": {
@@ -22,6 +38,22 @@ export const CATALOG_MODEL_DERIVED: Partial<
     },
     "gemini-3-flash-preview": {
       name: "Gemini 3 Flash Preview",
+      billing: "paid",
+    },
+    "gemini-3-pro-image": {
+      name: "Nano Banana Pro",
+      billing: "paid",
+    },
+    "gemini-3-pro-image-preview": {
+      name: "Nano Banana Pro",
+      billing: "paid",
+    },
+    "gemini-3.1-flash-image": {
+      name: "Nano Banana 2",
+      billing: "paid",
+    },
+    "gemini-3.1-flash-image-preview": {
+      name: "Nano Banana 2",
       billing: "paid",
     },
     "gemini-3.1-flash-lite": {
@@ -48,12 +80,24 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Gemini 3.5 Flash Lite",
       billing: "paid",
     },
+    "gemini-3.5-live-translate-preview": {
+      name: "Gemini 3.5 Live Translate Preview",
+      billing: "paid",
+    },
     "gemini-3.6-flash": {
       name: "Gemini 3.6 Flash",
       billing: "paid",
     },
     "gemini-3.7-flash": {
       name: "Gemini 3.7 Flash",
+      billing: "paid",
+    },
+    "gemini-embedding-001": {
+      name: "Gemini Embedding 001",
+      billing: "paid",
+    },
+    "gemini-embedding-2": {
+      name: "Gemini Embedding 2",
       billing: "paid",
     },
     "gemini-robotics-er-1.6-preview": {
@@ -70,6 +114,46 @@ export const CATALOG_MODEL_DERIVED: Partial<
     },
   },
   zai: {
+    "glm-4.5": {
+      name: "GLM-4.5",
+      billing: "paid",
+    },
+    "glm-4.5-air": {
+      name: "GLM-4.5-Air",
+      billing: "paid",
+    },
+    "glm-4.5-flash": {
+      name: "GLM-4.5-Flash",
+      billing: "free",
+    },
+    "glm-4.5v": {
+      name: "GLM-4.5V",
+      billing: "paid",
+    },
+    "glm-4.6": {
+      name: "GLM-4.6",
+      billing: "paid",
+    },
+    "glm-4.6v": {
+      name: "GLM-4.6V",
+      billing: "paid",
+    },
+    "glm-4.7": {
+      name: "GLM-4.7",
+      billing: "paid",
+    },
+    "glm-4.7-flash": {
+      name: "GLM-4.7-Flash",
+      billing: "free",
+    },
+    "glm-4.7-flashx": {
+      name: "GLM-4.7-FlashX",
+      billing: "paid",
+    },
+    "glm-5": {
+      name: "GLM-5",
+      billing: "paid",
+    },
     "glm-5-turbo": {
       name: "GLM-5-Turbo",
       billing: "paid",
@@ -80,6 +164,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
     },
     "glm-5.2": {
       name: "GLM-5.2",
+      billing: "paid",
+    },
+    "glm-5v-turbo": {
+      name: "GLM-5V-Turbo",
       billing: "paid",
     },
   },
@@ -165,11 +253,11 @@ export const CATALOG_MODEL_DERIVED: Partial<
       billing: "paid",
     },
     "bytedance-seed/seed-2.0-lite": {
-      name: "Seed-2.0-Lite",
+      name: "Seed 2.0 Lite",
       billing: "paid",
     },
     "bytedance-seed/seed-2.0-mini": {
-      name: "Seed-2.0-Mini",
+      name: "Seed 2.0 Mini",
       billing: "paid",
     },
     "bytedance/ui-tars-1.5-7b": {
@@ -243,6 +331,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
     "deepseek/deepseek-v4-pro-0813": {
       name: "DeepSeek V4 Pro 0813",
       billing: "paid",
+    },
+    "dots-studio/dots-3-note-preview:free": {
+      name: "Dots3-Note Preview (free)",
+      billing: "free",
     },
     "google/gemini-2.5-flash": {
       name: "Gemini 2.5 Flash",
@@ -370,6 +462,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
     },
     "inclusionai/ling-2.6-flash": {
       name: "Ling-2.6-flash",
+      billing: "paid",
+    },
+    "inclusionai/ling-3.0-flash": {
+      name: "Ling-3.0-flash",
       billing: "paid",
     },
     "kwaipilot/kat-coder-air-v2.5": {
@@ -984,6 +1080,10 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Qwen3.8 2.4T A95B",
       billing: "paid",
     },
+    "qwen/qwen3.8-27b": {
+      name: "Qwen3.8 27B",
+      billing: "paid",
+    },
     "qwen/qwen3.8-max": {
       name: "Qwen3.8 Max",
       billing: "paid",
@@ -1116,8 +1216,40 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "GLM-5.2",
       billing: "paid",
     },
+    "z-ai/glm-5.2:free": {
+      name: "GLM 5.2 (free)",
+      billing: "free",
+    },
   },
   groq: {
+    "allam-2-7b": {
+      name: "ALLaM-2-7b",
+      billing: "free",
+    },
+    "groq/compound": {
+      name: "Compound",
+      billing: "unknown",
+    },
+    "groq/compound-mini": {
+      name: "Compound Mini",
+      billing: "unknown",
+    },
+    "llama-3.1-8b-instant": {
+      name: "Llama 3.1 8B",
+      billing: "paid",
+    },
+    "llama-3.3-70b-versatile": {
+      name: "Llama 3.3 70B",
+      billing: "paid",
+    },
+    "meta-llama/llama-prompt-guard-2-22m": {
+      name: "Llama Prompt Guard 2 22M",
+      billing: "paid",
+    },
+    "meta-llama/llama-prompt-guard-2-86m": {
+      name: "Prompt Guard 2 86M",
+      billing: "paid",
+    },
     "openai/gpt-oss-120b": {
       name: "GPT OSS 120B",
       billing: "paid",
@@ -1134,6 +1266,14 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "Qwen3.6 27B",
       billing: "paid",
     },
+    "whisper-large-v3": {
+      name: "Whisper",
+      billing: "unknown",
+    },
+    "whisper-large-v3-turbo": {
+      name: "Whisper Large V3 Turbo",
+      billing: "unknown",
+    },
   },
   cerebras: {
     "gemma-4-31b": {
@@ -1144,15 +1284,195 @@ export const CATALOG_MODEL_DERIVED: Partial<
       name: "GPT OSS 120B",
       billing: "paid",
     },
-    "zai-glm-4.7": {
-      name: "Z.AI GLM-4.7",
+  },
+  deepseek: {
+    "deepseek-v4-flash": {
+      name: "DeepSeek V4 Flash",
+      billing: "paid",
+    },
+    "deepseek-v4-pro": {
+      name: "DeepSeek V4 Pro",
+      billing: "paid",
+    },
+  },
+  qwen: {
+    "qwen3-coder-flash": {
+      name: "Qwen3 Coder Flash",
+      billing: "paid",
+    },
+  },
+  moonshot: {
+    "kimi-k2.6": {
+      name: "Kimi K2.6",
+      billing: "paid",
+    },
+    "kimi-k3": {
+      name: "Kimi K3",
       billing: "paid",
     },
   },
   mistral: {
+    "devstral-2512": {
+      name: "Devstral 2",
+      billing: "paid",
+    },
+    "devstral-medium-2507": {
+      name: "Devstral Medium",
+      billing: "paid",
+    },
+    "devstral-small-2505": {
+      name: "Devstral Small 2505",
+      billing: "paid",
+    },
+    "devstral-small-2507": {
+      name: "Devstral Small",
+      billing: "paid",
+    },
+    "labs-devstral-small-2512": {
+      name: "Devstral Small 2",
+      billing: "free",
+    },
+    "magistral-small": {
+      name: "Magistral Small",
+      billing: "paid",
+    },
+    "mistral-embed": {
+      name: "Mistral Embed",
+      billing: "paid",
+    },
+    "mistral-large-2411": {
+      name: "Mistral Large 2.1",
+      billing: "paid",
+    },
+    "mistral-large-2512": {
+      name: "Mistral Large 3",
+      billing: "paid",
+    },
+    "mistral-medium-2505": {
+      name: "Mistral Medium 3",
+      billing: "paid",
+    },
+    "mistral-medium-2508": {
+      name: "Mistral Medium 3.1",
+      billing: "paid",
+    },
     "mistral-medium-2604": {
       name: "Mistral Medium 3.5",
       billing: "paid",
+    },
+    "mistral-nemo": {
+      name: "Mistral Nemo",
+      billing: "paid",
+    },
+    "mistral-small-2506": {
+      name: "Mistral Small 3.2",
+      billing: "paid",
+    },
+    "mistral-small-2603": {
+      name: "Mistral Small 4",
+      billing: "paid",
+    },
+    "open-mistral-7b": {
+      name: "Mistral 7B",
+      billing: "paid",
+    },
+    "open-mistral-nemo": {
+      name: "Open Mistral Nemo",
+      billing: "paid",
+    },
+    "open-mixtral-8x22b": {
+      name: "Mixtral 8x22B",
+      billing: "paid",
+    },
+    "open-mixtral-8x7b": {
+      name: "Mixtral 8x7B",
+      billing: "paid",
+    },
+    "pixtral-12b": {
+      name: "Pixtral 12B",
+      billing: "paid",
+    },
+  },
+  "ollama-cloud": {
+    "deepseek-v4-flash": {
+      name: "deepseek-v4-flash",
+      billing: "unknown",
+    },
+    "deepseek-v4-flash:0731": {
+      name: "DeepSeek V4 Flash 0731",
+      billing: "unknown",
+    },
+    "deepseek-v4-pro": {
+      name: "deepseek-v4-pro",
+      billing: "unknown",
+    },
+    "gemma4:31b": {
+      name: "gemma4:31b",
+      billing: "unknown",
+    },
+    "glm-5.1": {
+      name: "glm-5.1",
+      billing: "unknown",
+    },
+    "glm-5.2": {
+      name: "GLM-5.2",
+      billing: "unknown",
+    },
+    "gpt-oss:120b": {
+      name: "gpt-oss:120b",
+      billing: "unknown",
+    },
+    "gpt-oss:20b": {
+      name: "gpt-oss:20b",
+      billing: "unknown",
+    },
+    "kimi-k2.5": {
+      name: "kimi-k2.5",
+      billing: "unknown",
+    },
+    "kimi-k2.6": {
+      name: "kimi-k2.6",
+      billing: "unknown",
+    },
+    "kimi-k2.7-code": {
+      name: "kimi-k2.7-code",
+      billing: "unknown",
+    },
+    "kimi-k3": {
+      name: "kimi-k3",
+      billing: "unknown",
+    },
+    "minimax-m2.5": {
+      name: "minimax-m2.5",
+      billing: "unknown",
+    },
+    "minimax-m2.7": {
+      name: "minimax-m2.7",
+      billing: "unknown",
+    },
+    "minimax-m3": {
+      name: "minimax-m3",
+      billing: "unknown",
+    },
+    "mistral-large-3:675b": {
+      name: "mistral-large-3:675b",
+      billing: "unknown",
+    },
+    "nemotron-3-nano:30b": {
+      name: "nemotron-3-nano:30b",
+      billing: "unknown",
+    },
+    "nemotron-3-super": {
+      name: "nemotron-3-super",
+      billing: "unknown",
+    },
+    "nemotron-3-ultra": {
+      name: "nemotron-3-ultra",
+      billing: "unknown",
+    },
+    "qwen3.5:397b": {
+      name: "qwen3.5:397b",
+      billing: "unknown",
     },
   },
 };

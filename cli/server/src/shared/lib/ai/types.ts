@@ -69,6 +69,13 @@ export interface AdapterExecuteRequest {
    * the same authorized execution. The evidence key carries only its hash.
    */
   readonly workspaceAccountId?: string | null;
+  /**
+   * Sink for the bounded reason behind a failed attempt. The receipt records
+   * only the terminal outcome, so an adapter that knows why the provider
+   * refused the request reports it here and the review presents that instead
+   * of a generic transport failure.
+   */
+  readonly reportDiagnostic?: (diagnostic: BoundedDiagnostic) => void;
 }
 
 export interface Adapter {

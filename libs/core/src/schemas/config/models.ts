@@ -29,15 +29,23 @@ const ProviderModelsBaseSchema = z.object({
 });
 
 /**
+ * Where the offered id set came from. `live`, `cache`, and `snapshot` are the
+ * shared models.dev catalog tiers. `provider-live` and `provider-cache` mean the
+ * product's own model-list endpoint supplied the id set (fetched now, or from
+ * the five-minute list cache) and models.dev only supplied metadata for the ids
+ * it also knows.
+ *
  * `cached` is the freshness flag discovery wire contracts expose. It is not
- * independent state: it is exactly `source === "cache"`. Discriminating on
- * `source` with a literal `cached` makes a contradictory pair unrepresentable
- * in the inferred type instead of merely rejected at parse time.
+ * independent state: it is exactly `source === "cache" || source === "provider-cache"`.
+ * Discriminating on `source` with a literal `cached` makes a contradictory pair
+ * unrepresentable in the inferred type instead of merely rejected at parse time.
  */
 export const ProviderModelsResponseSchema = z.discriminatedUnion("source", [
   ProviderModelsBaseSchema.extend({ source: z.literal("live"), cached: z.literal(false) }),
   ProviderModelsBaseSchema.extend({ source: z.literal("cache"), cached: z.literal(true) }),
   ProviderModelsBaseSchema.extend({ source: z.literal("snapshot"), cached: z.literal(false) }),
+  ProviderModelsBaseSchema.extend({ source: z.literal("provider-live"), cached: z.literal(false) }),
+  ProviderModelsBaseSchema.extend({ source: z.literal("provider-cache"), cached: z.literal(true) }),
 ]);
 
 export type ProviderModelsResponse = z.infer<typeof ProviderModelsResponseSchema>;
@@ -73,6 +81,14 @@ export const ConfigurationModelsResponseSchema = z.discriminatedUnion("status", 
     PassedConfigurationModelsBaseSchema.extend({
       source: z.literal("snapshot"),
       cached: z.literal(false),
+    }),
+    PassedConfigurationModelsBaseSchema.extend({
+      source: z.literal("provider-live"),
+      cached: z.literal(false),
+    }),
+    PassedConfigurationModelsBaseSchema.extend({
+      source: z.literal("provider-cache"),
+      cached: z.literal(true),
     }),
   ]),
   ConfigurationModelsBaseSchema.extend({

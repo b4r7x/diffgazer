@@ -11,6 +11,7 @@ import { TerminalKeyboardProvider } from "../../../app/providers/keyboard";
 import { NavigationProvider } from "../../../app/providers/navigation";
 import { useNavigation } from "../../../hooks/use-navigation";
 import type { Route } from "../../../lib/routes";
+import { ApiBoundary } from "../../../testing/api-boundary";
 import { flush } from "../../../testing/flush";
 import { waitUntil } from "../../../testing/wait-until";
 import { CliThemeProvider } from "../../../theme/provider";
@@ -31,6 +32,8 @@ function makeReadyInitResponse() {
       severityThreshold: "low" as const,
       secretsStorage: "file" as const,
       agentExecution: "sequential" as const,
+      // A finished install: the consent is on record, so a switch starts at once.
+      providerConsent: { version: 1 as const, acceptedAt: "2026-08-01T09:00:00.000Z" },
     },
     project: {
       projectId: "project-1",
@@ -58,6 +61,7 @@ function makeUnconfiguredInitResponse() {
       severityThreshold: "low" as const,
       secretsStorage: "file" as const,
       agentExecution: "sequential" as const,
+      providerConsent: null,
     },
     project: {
       projectId: "project-1",
@@ -76,6 +80,7 @@ function makeUnconfiguredInitResponse() {
 const apiMocks = vi.hoisted(() => ({
   clearActiveSession: vi.fn(),
   createReview: vi.fn(),
+  saveSettings: vi.fn(async () => {}),
   useCreateReview: vi.fn(),
   useConfigurationInit: vi.fn(),
   useReviewLifecycleBase: vi.fn(),
@@ -162,16 +167,18 @@ function renderContainer({
   showFooterProbe?: boolean;
 } = {}) {
   return render(
-    <CliThemeProvider initialTheme="dark">
-      <TerminalKeyboardProvider>
-        <NavigationProvider initialRoute={initialRoute}>
-          <FooterProvider initialShortcuts={initialShortcuts}>
-            <RouteHarness />
-            {showFooterProbe ? <FooterProbe /> : null}
-          </FooterProvider>
-        </NavigationProvider>
-      </TerminalKeyboardProvider>
-    </CliThemeProvider>,
+    <ApiBoundary api={{ saveSettings: apiMocks.saveSettings }}>
+      <CliThemeProvider initialTheme="dark">
+        <TerminalKeyboardProvider>
+          <NavigationProvider initialRoute={initialRoute}>
+            <FooterProvider initialShortcuts={initialShortcuts}>
+              <RouteHarness />
+              {showFooterProbe ? <FooterProbe /> : null}
+            </FooterProvider>
+          </NavigationProvider>
+        </TerminalKeyboardProvider>
+      </CliThemeProvider>
+    </ApiBoundary>,
   );
 }
 
@@ -346,6 +353,54 @@ describe("ReviewContainer", () => {
     expect(apiMocks.clearActiveSession).toHaveBeenCalledWith("staged", "review-123");
   });
 
+  test("shows the admission fast-fail inline with the server remediation and a providers jump", async () => {
+    const remediation =
+      "This model could not produce Diffgazer's structured review output. Select a different model or update the configuration.";
+    apiMocks.createReview.mockRejectedValue(
+      Object.assign(new Error(remediation), { code: "SETUP_REQUIRED", status: 403 }),
+    );
+    apiMocks.useReviewLifecycleBase.mockReturnValue(makeReviewLifecycleBase());
+
+    const { stdin, lastFrame } = renderContainer({
+      initialRoute: { screen: "review", mode: "unstaged" },
+    });
+
+    await waitUntil(() => (lastFrame() ?? "").includes("Configuration Needs Attention"));
+    const frame = frameText(lastFrame());
+    expect(frame).toContain(remediation);
+    expect(frame).toContain("Press p — Open Providers.");
+    expect(frame).not.toContain("Cancel");
+
+    // The key handler attaches a tick after the error frame lands.
+    await flush();
+    stdin.write("p");
+    await waitUntil(() => (lastFrame() ?? "").includes("Route: settings/providers"));
+  });
+
+  test("routes an incompatible model to the providers screen from the terminal error", async () => {
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        error: "Adapter response failed schema validation.",
+        errorCode: ReviewErrorCode.MODEL_INCOMPATIBLE,
+        gate: "terminal-error",
+        isTerminalStreamError: true,
+        reviewId: "review-123",
+      }),
+    );
+
+    const { stdin, lastFrame } = renderContainer();
+
+    await waitUntil(() => (lastFrame() ?? "").includes("Model Incompatible"));
+    const frame = frameText(lastFrame());
+    expect(frame).toContain("Adapter response failed schema validation.");
+    expect(frame).toContain("Change the model or update the configuration");
+    // The key is named by the same CTA the web button carries.
+    expect(frame).toContain("Press p — Change model.");
+
+    stdin.write("p");
+    await waitUntil(() => (lastFrame() ?? "").includes("Route: settings/providers"));
+  });
+
   test("a reducer-stopped stream no longer exposes Cancel", () => {
     const cancel = vi.fn(async () => ({
       status: "cancelled" as const,
@@ -437,12 +492,59 @@ describe("ReviewContainer", () => {
 
     expect(lastFrame() ?? "").toContain("No staged changes");
     stdin.write("\r");
+    // A fresh install has no provider consent yet, so the switch asks for it first.
+    await waitUntil(() => (lastFrame() ?? "").includes("Provider data notice"));
+    stdin.write("\r");
     await waitUntil(() => (lastFrame() ?? "").includes("Route: settings/providers"));
 
     expect(lastFrame() ?? "").toContain("Route: settings/providers");
+    expect(apiMocks.saveSettings).toHaveBeenCalledOnce();
     expect(apiMocks.createReview).not.toHaveBeenCalled();
     expect(lifecycle.stream.abort).not.toHaveBeenCalled();
     expect(lifecycle.reset).not.toHaveBeenCalled();
+  });
+
+  test("Switch Mode asks for the provider consent once and Escape leaves the no-diff screen as it was", async () => {
+    const init = makeReadyInitResponse();
+    apiMocks.useConfigurationInit.mockReturnValue({
+      data: { ...init, settings: { ...init.settings, providerConsent: null } },
+      isLoading: false,
+    });
+    apiMocks.useReviewLifecycleBase.mockReturnValue(
+      makeReviewLifecycleBase({
+        gate: "no-diff",
+        isNoDiffError: true,
+        error: "No changes to review.",
+        errorCode: ReviewErrorCode.NO_DIFF,
+      }),
+    );
+
+    const { stdin, lastFrame } = renderContainer({
+      initialRoute: { screen: "review", reviewId: "review-123", mode: "staged", live: true },
+    });
+
+    expect(lastFrame() ?? "").toContain("No staged changes");
+    stdin.write("\r");
+    await waitUntil(() => (lastFrame() ?? "").includes("Provider data notice"));
+    expect(lastFrame() ?? "").toContain("[ Accept and continue ]");
+    expect(apiMocks.createReview).not.toHaveBeenCalled();
+
+    // Not now: nothing is saved or started, the no-diff screen is back.
+    stdin.write(ESC);
+    await waitUntil(() => (lastFrame() ?? "").includes("No staged changes"));
+    expect(apiMocks.saveSettings).not.toHaveBeenCalled();
+    expect(apiMocks.createReview).not.toHaveBeenCalled();
+
+    // Enter accepts: the consent is recorded, then the alternate review starts.
+    stdin.write("\r");
+    await waitUntil(() => (lastFrame() ?? "").includes("Provider data notice"));
+    stdin.write("\r");
+    await waitUntil(() =>
+      apiMocks.createReview.mock.calls.some(([request]) => request.mode === "unstaged"),
+    );
+    expect(apiMocks.saveSettings).toHaveBeenCalledWith({
+      providerConsent: { version: 1, acceptedAt: expect.any(String) },
+    });
   });
 
   test("starts only one alternate review while the no-diff action is pending", async () => {

@@ -188,7 +188,12 @@ describe("useReviewLifecycle active-session cache", () => {
     });
 
     expect(apiMocks.clearActiveSession).toHaveBeenCalledWith("unstaged", "missing-review");
-    expect(result.current.state.error).toBe("Review session not found.");
+    expect(result.current.state.startError).toEqual({
+      title: "Review Not Found",
+      message: "Review session not found.",
+      recovery: null,
+    });
+    expect(result.current.state.error).toBe("Review Not Found: Review session not found.");
   });
 
   test("clears the current review id when a resumed session is stale", () => {
@@ -287,6 +292,27 @@ describe("useReviewLifecycle resume and start routing", () => {
     expect(result.current.state.error).toBe(
       "Credential Storage Unavailable: Could not read credentials. Check Settings → Storage.",
     );
+    expect(result.current.state.startError?.recovery).toBeNull();
+  });
+
+  test("keeps the admission fast-fail as a start error that points at the providers screen", async () => {
+    const remediation =
+      "This model could not produce Diffgazer's structured review output. Select a different model or update the configuration.";
+    apiMocks.createReview.mockRejectedValue(
+      Object.assign(new Error(remediation), { code: "SETUP_REQUIRED", status: 403 }),
+    );
+    const { result } = renderHook(() => useReviewLifecycle({ mode: "staged" }));
+
+    await act(async () => {
+      expect(await result.current.start("staged")).toBe("failed");
+    });
+
+    expect(result.current.state.startError).toEqual({
+      title: "Configuration Needs Attention",
+      message: remediation,
+      recovery: "configure-provider",
+    });
+    expect(result.current.state.phase).toBe("summary");
   });
 
   test("exposes failed init state and retries through the init query", async () => {

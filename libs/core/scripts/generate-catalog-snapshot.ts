@@ -7,7 +7,7 @@ import {
   getCatalogBillingRange,
 } from "../src/catalog/model-capability.js";
 import { PROVIDER_OVERLAY } from "../src/catalog/provider-overlay.js";
-import { ModelsDevCatalogSchema, parseModelsDevCatalog } from "../src/catalog/schema.js";
+import { parseModelsDevCatalog } from "../src/catalog/schema.js";
 import { findCatalogSnapshotDefect } from "../src/catalog/snapshot-guard.js";
 import { trimCatalogSnapshot } from "../src/catalog/snapshot-trim.js";
 import {
@@ -45,27 +45,26 @@ function formatEmitted(...paths: string[]): void {
 // Offline-deterministic by default: with no MODELSDEV_SOURCE, re-derive from the
 // committed snapshot so `prepare:artifacts` re-normalizes the bundled fallback
 // (trim + sort) without a network fetch. Pass MODELSDEV_SOURCE to refresh from a
-// freshly captured models.dev payload.
+// freshly captured models.dev payload; it is parsed with the same tolerant
+// per-model parser the live fetch uses, so a malformed row in a provider nobody
+// bundles cannot block a refresh — the guard below rejects a dropped row only
+// inside a bundled source.
 async function loadSource(): Promise<unknown> {
   if (SOURCE) {
     if (!existsSync(SOURCE)) throw new Error(`MODELSDEV_SOURCE not found: ${SOURCE}`);
-    const raw = JSON.parse(readFileSync(SOURCE, "utf-8")) as unknown;
-    const parsed = ModelsDevCatalogSchema.safeParse(raw);
-    if (!parsed.success) {
-      throw new Error(`MODELSDEV_SOURCE failed catalog schema validation: ${parsed.error.message}`);
-    }
-    return parsed.data;
+    return JSON.parse(readFileSync(SOURCE, "utf-8")) as unknown;
   }
   const { CATALOG_SNAPSHOT } = await import("../src/catalog/catalog-snapshot.js");
   return CATALOG_SNAPSHOT;
 }
 
 const source = await loadSource();
-const trimmed = trimCatalogSnapshot(parseModelsDevCatalog(source), wantedSourceIds);
+const parsed = parseModelsDevCatalog(source);
+const trimmed = trimCatalogSnapshot(parsed, wantedSourceIds);
 
 // Both artifacts stay unwritten until the refresh is proven usable: a thinned
 // payload must fail the command, not silently replace the committed fallback.
-const defect = findCatalogSnapshotDefect(source, trimmed, wantedSourceIds);
+const defect = findCatalogSnapshotDefect(source, parsed, trimmed, wantedSourceIds);
 if (defect) {
   throw new Error(`[catalog-snapshot] refusing to overwrite the committed snapshot: ${defect}`);
 }
@@ -83,10 +82,9 @@ const header = [
 writeFileSync(OUT, header, "utf-8");
 
 // Both derived tables describe what a picker OFFERS, so they are built from the
-// offerable set — review-capable AND admitted by the product's model policy.
-// Deriving from capability alone would price and index models no user can ever
-// select: OpenRouter's zero-priced `openrouter/free` router is capable and
-// unroutable, and crediting it would put a price on a row nobody can pick.
+// offerable set, not every observed model: OpenRouter's zero-priced
+// `openrouter/free` router is observed and unroutable, and crediting it would
+// put a price on a row nobody can pick.
 const offerableModelsByProduct = new Map<RunnableProductId, readonly CatalogModelObservation[]>(
   transformCatalogObservation({
     source: "models.dev-snapshot",

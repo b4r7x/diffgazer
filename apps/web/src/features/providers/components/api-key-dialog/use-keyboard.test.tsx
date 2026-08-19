@@ -13,12 +13,14 @@ function Subject({
   canSubmit = false,
   isSubmitting = false,
   isHosted = true,
+  hasAcknowledgement = true,
 }: {
   onSubmit?: () => void;
   onClose?: () => void;
   canSubmit?: boolean;
   isSubmitting?: boolean;
   isHosted?: boolean;
+  hasAcknowledgement?: boolean;
 }) {
   const [method, setMethod] = useState<InputMethod>("paste");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,6 +37,7 @@ function Subject({
   } = useApiKeyDialogKeyboard({
     open: true,
     isHosted,
+    hasAcknowledgement,
     method,
     setMethod,
     canSubmit,
@@ -66,9 +69,11 @@ function Subject({
           getMethodOptionProps={getMethodOptionProps}
         />
       ) : null}
-      <button type="button" ref={acknowledgementProps.ref} onFocus={acknowledgementProps.onFocus}>
-        Accept notice
-      </button>
+      {hasAcknowledgement ? (
+        <button type="button" ref={acknowledgementProps.ref} onFocus={acknowledgementProps.onFocus}>
+          Accept notice
+        </button>
+      ) : null}
       <button ref={cancelProps.ref} type="button" onFocus={cancelProps.onFocus} onClick={onClose}>
         Cancel
       </button>
@@ -235,6 +240,41 @@ describe("useApiKeyDialogKeyboard hosted flow", () => {
 
     expect(onClose).toHaveBeenCalledOnce();
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+describe("useApiKeyDialogKeyboard without an acceptance control", () => {
+  it("skips straight from the env option to the footer and back", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <KeyboardProvider>
+        <Subject canSubmit hasAcknowledgement={false} />
+      </KeyboardProvider>,
+    );
+
+    const paste = screen.getByRole("radio", { name: "Paste Key Now" });
+    const env = screen.getByRole("radio", { name: "Import from Env" });
+    await waitFor(() => expect(paste).toHaveFocus());
+    expect(screen.queryByRole("button", { name: "Accept notice" })).not.toBeInTheDocument();
+
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+    expect(env).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "Save" })).toHaveFocus();
+
+    await user.keyboard("{ArrowUp}");
+    expect(env).toHaveFocus();
+  });
+
+  it("starts a local row on the footer when there is nothing else to focus", async () => {
+    render(
+      <KeyboardProvider>
+        <Subject canSubmit isHosted={false} hasAcknowledgement={false} />
+      </KeyboardProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save" })).toHaveFocus());
   });
 });
 

@@ -9,6 +9,7 @@ import type {
   LocalHttpProductId,
 } from "../schemas/config/transports.js";
 import type { ProviderListRow } from "./list.js";
+import { acceptNotice } from "./product-registry.js";
 
 type AcceptedAcknowledgement = Extract<ReadinessAcknowledgement, { status: "accepted" }>;
 
@@ -105,13 +106,7 @@ export function buildSetupInput(
 
 /** The notice a save accepts is always the bound product's own notice. */
 export function buildSetupAcknowledgement(row: ProviderListRow): AcceptedAcknowledgement {
-  const notice = row.product.notice;
-  return {
-    status: "accepted",
-    noticeId: notice.id,
-    noticeVersion: notice.noticeVersion,
-    acceptedAt: new Date().toISOString(),
-  };
+  return acceptNotice(row.product.notice);
 }
 
 export function toSetupCredential(method: "paste" | "env", value: string): WriteOnlySecretInput {

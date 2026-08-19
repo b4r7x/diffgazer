@@ -1,4 +1,9 @@
-import { guardQueryState, useConfigurationInit, useSettings } from "@diffgazer/core/api/hooks";
+import {
+  guardQueryState,
+  useConfigurationInit,
+  useProviderConsentGate,
+  useSettings,
+} from "@diffgazer/core/api/hooks";
 import { usePageFooter } from "@diffgazer/core/footer";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import {
@@ -13,6 +18,8 @@ import {
 } from "@diffgazer/core/schemas/presentation";
 import { Box, Text } from "ink";
 import type { ReactElement, ReactNode } from "react";
+import { useState } from "react";
+import { ProviderConsentOverlay } from "../../../components/shared/provider-consent-overlay";
 import { Menu } from "../../../components/ui/menu";
 import { Panel } from "../../../components/ui/panel";
 import { SectionHeader } from "../../../components/ui/section-header";
@@ -24,7 +31,8 @@ import type { Route } from "../../../lib/routes";
 import type { CliColorTokens } from "../../../theme/palettes";
 import { useTheme } from "../../../theme/provider";
 
-const SETTINGS_ROUTE_MAP: Record<SettingsAction, Route> = {
+// The provider data notice is an overlay over the hub, not a screen of its own.
+const SETTINGS_ROUTE_MAP: Record<Exclude<SettingsAction, "provider-consent">, Route> = {
   trust: { screen: "settings/trust-permissions" },
   theme: { screen: "settings/theme" },
   provider: { screen: "settings/providers" },
@@ -33,6 +41,16 @@ const SETTINGS_ROUTE_MAP: Record<SettingsAction, Route> = {
   analysis: { screen: "settings/analysis" },
   diagnostics: { screen: "settings/diagnostics" },
 };
+
+/**
+ * Branch-scoped footer publisher: it unmounts with the hub frame when the
+ * provider data notice takes the screen, so the overlay's own `usePageFooter`
+ * owns the bar instead of being overwritten by a parent effect.
+ */
+function HubFooter(): null {
+  usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
+  return null;
+}
 
 function HubFrame({
   columns,
@@ -45,6 +63,7 @@ function HubFrame({
 }): ReactElement {
   return (
     <Box justifyContent="center" alignItems="center" flexGrow={1}>
+      <HubFooter />
       <Box width={Math.min(columns, 70)} flexDirection="column">
         <Panel>
           <Panel.Content>
@@ -78,16 +97,23 @@ function getHubValueColors(
 }
 
 export function SettingsHubScreen(): ReactElement {
-  usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
-  useBackHandler();
-
   const { navigate } = useNavigation();
   const { columns } = useTerminalDimensions();
   const { tokens } = useTheme();
   const initQuery = useConfigurationInit();
   const settingsQuery = useSettings();
+  const consent = useProviderConsentGate(settingsQuery.data?.providerConsent);
+  // Screen state, not the menu's: the notice overlay replaces the hub frame, and
+  // the row it was opened from must still be highlighted when the frame is back.
+  const [highlightedId, setHighlightedId] = useState<SettingsAction | null>(null);
+
+  useBackHandler({ isActive: !consent.isOpen });
 
   const onSelect = (id: SettingsAction) => {
+    if (id === "provider-consent") {
+      consent.open();
+      return;
+    }
     navigate(SETTINGS_ROUTE_MAP[id]);
   };
 
@@ -113,6 +139,8 @@ export function SettingsHubScreen(): ReactElement {
     );
   }
 
+  if (consent.isOpen) return <ProviderConsentOverlay gate={consent} />;
+
   const settings = settingsQuery.data;
   const initData = initQuery.data;
   const selected = resolveSelectedConfiguration(initData);
@@ -129,6 +157,7 @@ export function SettingsHubScreen(): ReactElement {
     secretsStorage: settings.secretsStorage,
     agentExecution: settings.agentExecution,
     selectedLensCount: settings.defaultLenses.length,
+    providerConsent: settings.providerConsent,
   });
   const valueColors = getHubValueColors(setup, tokens);
   const settingsError = settingsQuery.error?.message ?? null;
@@ -148,7 +177,12 @@ export function SettingsHubScreen(): ReactElement {
         </Box>
       }
     >
-      <Menu variant="hub" onSelect={onSelect}>
+      <Menu
+        variant="hub"
+        highlightedId={highlightedId}
+        onHighlightChange={setHighlightedId}
+        onSelect={onSelect}
+      >
         {SETTINGS_MENU_ITEMS.map((item) => (
           <Menu.Item
             key={item.id}

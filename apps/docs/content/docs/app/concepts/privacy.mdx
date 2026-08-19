@@ -54,18 +54,23 @@ Two kinds of request cross the network boundary: model-catalog requests during s
 
 When you run a review, Diffgazer uses the admitted configuration and exact model you selected and sends the review prompt directly to that product's endpoint or CLI transport. Your diff and prompt go to your provider under your account and that product's documented terms.
 
-Local HTTP products: Diffgazer verifies only that the **first network hop is loopback**. Any downstream routing, data residency, storage, or telemetry beyond that hop is the server operator's responsibility. Ollama Cloud is not the Ollama loopback transport.
+Local HTTP products: Diffgazer verifies only that the **first network hop is loopback**. Any downstream routing, data residency, storage, or telemetry beyond that hop is the server operator's responsibility. Ollama Cloud is not the Ollama loopback transport; it is a separate hosted product that sends review content to ollama.com.
 
 Local CLI products: Diffgazer uses existing vendor-managed local auth and does not import CLI tokens. Consumer and business or enterprise data handling differ by account or plan and must match the active CLI posture. Cancellation and timeout behavior are bounded to what the pinned CLI review profile can prove during admission.
 
 ### Model-catalog requests, during setup
 
-Before any review, opening the model picker for a catalog-backed hosted product can make Diffgazer fetch a current model list:
+Before any review, opening the model picker for a catalog-backed hosted product can make Diffgazer fetch a current model list. None of these requests carry code; exactly one kind carries a credential:
 
-- For Google Gemini, Z.AI, Groq, Cerebras, Mistral, and OpenRouter, Diffgazer may read the public models.dev catalog at `https://models.dev/api.json`. That request carries no key and no code. `DIFFGAZER_OFFLINE` skips the live fetch.
-- DeepSeek, Qwen International, and Moonshot Open Platform discover models through their configured hosted tuple rather than the shared models.dev snapshot. Local HTTP and local CLI products do not expose picker-side model discovery in the setup wizard today — their **Model** step shows **Catalog observations are unavailable for this configuration product.** with **Retry** only, and exact model IDs must be selected through the local API.
+- **Keyless, for every catalog-backed product.** For Google Gemini, Z.AI, Groq, Cerebras, Mistral, DeepSeek, Qwen International, Moonshot Open Platform, Ollama Cloud, and OpenRouter, Diffgazer may read the public models.dev catalog at `https://models.dev/api.json`. The catalog is cached for an hour and then revalidated with the ETag models.dev returned, so an unchanged catalog costs one small conditional request. That request carries no key.
+- **Keyless public model lists.** OpenRouter's list at `https://openrouter.ai/api/v1/models` and Ollama Cloud's list at `https://ollama.com/v1/models` answer without a credential, so Diffgazer reads them without one — even when you have saved a key for that product. Each list is cached for five minutes.
+- **Your key, only to its own endpoint.** For a saved Z.AI, Groq, Cerebras, Mistral, DeepSeek, Qwen International, or Moonshot Open Platform configuration that has a credential, Diffgazer asks that configuration's own endpoint for its model list (`{endpoint}/models`) using that configuration's own credential. A credential is sent only to the endpoint of the configuration it belongs to — never to models.dev, never to a public list, never to another product's endpoint. Google Gemini uses a different list API and stays catalog-only, so model discovery never sends a Gemini key; only a review or an explicit Verify does. Each list is cached for five minutes per configuration.
 
-> Note: A provider may use what you send according to its own terms. Diffgazer keeps your code local up to the moment you send a review, but it cannot control provider-side handling. Choose a product whose notice you accept explicitly during setup.
+If a live list cannot be fetched or is unusable, the picker silently falls back to the models.dev catalog. `DIFFGAZER_OFFLINE` skips every live request — models.dev and provider lists alike — and serves cached or bundled data.
+
+Local HTTP and local CLI products do not expose picker-side model discovery in the setup wizard today — their **Model** step shows **Catalog observations are unavailable for this configuration product.** with **Retry** only, and exact model IDs must be selected through the local API.
+
+> Note: A provider may use what you send according to its own terms. Diffgazer keeps your code local up to the moment you send a review, but it cannot control provider-side handling. Before the first send it asks you once — in the setup wizard, or as a **Provider data notice** dialog the first time you configure a provider, select or verify a configuration, or start a review — to accept that repository content goes to the provider you configure, using your own credentials, that Diffgazer stores nothing remotely, and that billing, rate limits, retention and training terms are that provider's; each product's own notice is shown alongside, and a product whose notice materially changes asks again. Declining cancels only that action; the accepted notice stays readable from Settings. Choose a product whose notice you are comfortable with.
 
 ## Related
 

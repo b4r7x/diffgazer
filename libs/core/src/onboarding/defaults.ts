@@ -17,7 +17,7 @@ import {
 } from "../schemas/config/index.js";
 import { LENS_IDS, type LensId } from "../schemas/review/index.js";
 import { buildSetupPlan, type RunnableSetupPlan } from "./setup-plan.js";
-import type { OnboardingAcknowledgement, OnboardingConformanceStatus } from "./types.js";
+import type { OnboardingAcknowledgement } from "./types.js";
 
 export interface LocalCliConfigurationDraft {
   readonly transportFamily: "local-cli";
@@ -34,7 +34,6 @@ export interface OnboardingDraft {
   readonly kind: "runnable";
   readonly configurationInput: OnboardingConfigurationDraft;
   readonly selectedModelId: string | null;
-  readonly conformanceStatus: OnboardingConformanceStatus;
   readonly acknowledgement: OnboardingAcknowledgement;
   readonly defaultLenses: readonly LensId[];
   readonly agentExecution: AgentExecution;
@@ -89,7 +88,6 @@ export function getInitialWizardData(
     kind: "runnable",
     configurationInput: buildConfigurationDraft(productId),
     selectedModelId: null,
-    conformanceStatus: "not-tested",
     acknowledgement: { status: "required" },
     defaultLenses: [...LENS_IDS],
     agentExecution: "sequential",

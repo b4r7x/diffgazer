@@ -6,8 +6,7 @@ export const STEP_LABELS = {
   "endpoint-binding": "Endpoint",
   authentication: "Authentication",
   model: "Model",
-  conformance: "Conformance",
-  acknowledgement: "Notice",
+  acknowledgement: "Consent",
 } as const satisfies Record<OnboardingStep, string>;
 
 export const STEP_TITLES = {
@@ -15,8 +14,7 @@ export const STEP_TITLES = {
   "endpoint-binding": "Configure Endpoint",
   authentication: "Configure Authentication",
   model: "Select Model",
-  conformance: "Verify Conformance",
-  acknowledgement: "Accept Product Notice",
+  acknowledgement: "Provider Consent",
 } as const satisfies Record<OnboardingStep, string>;
 
 export function getStepAt(plan: RunnableSetupPlan, index: number): OnboardingStep {

@@ -15,16 +15,6 @@ export function assertCatalogProviders(catalog, providers, resolve, source) {
   });
 }
 
-/**
- * The snapshot-backed enabled roster: providers whose offline picker is served
- * from the bundled CATALOG_SNAPSHOT. Derived from PROVIDER_OVERLAY so it can
- * never drift from the roster, and auto-extends when a provider is added.
- * OpenRouter is excluded — it resolves through its own live key-gated path.
- */
-export function enabledSnapshotProviders(overlay) {
-  return Object.keys(overlay).filter((id) => id !== "openrouter");
-}
-
 export const PROVIDER_PROBE_REASONS = [
   "none",
   "network-disabled",

@@ -39,7 +39,6 @@ describe("setup plan", () => {
         requiredFields: ["credential"],
       },
       { id: "model" },
-      { id: "conformance" },
       { id: "acknowledgement" },
     ]);
   });
@@ -53,7 +52,6 @@ describe("setup plan", () => {
       "endpoint-binding",
       "authentication",
       "model",
-      "conformance",
       "acknowledgement",
     ]);
   });
@@ -72,7 +70,6 @@ describe("setup plan", () => {
         requiredFields: ["local-authentication"],
       },
       { id: "model" },
-      { id: "conformance" },
       { id: "acknowledgement" },
     ]);
     expect(plan.requiredFields).not.toContain("credential");
@@ -91,18 +88,16 @@ describe("setup plan", () => {
         requiredFields: ["installation"],
       },
       { id: "model" },
-      { id: "conformance" },
       { id: "acknowledgement" },
     ]);
     expect(plan.steps.some((step) => step.id === "endpoint-binding")).toBe(false);
     expect(plan.requiredFields).not.toContain("credential");
   });
 
-  it("requires exact discovered model selection, conformance, and explicit notice acceptance", () => {
+  it("requires exact discovered model selection and explicit notice acceptance", () => {
     for (const productId of SELECTABLE_PRODUCT_IDS) {
       const plan = runnablePlan(productId);
       const model = plan.steps.find((step) => step.id === "model");
-      const conformance = plan.steps.find((step) => step.id === "conformance");
       const acknowledgement = plan.steps.find((step) => step.id === "acknowledgement");
 
       expect(model).toMatchObject({
@@ -110,7 +105,6 @@ describe("setup plan", () => {
         selection: "exact",
         aliases: "forbidden",
       });
-      expect(conformance).toMatchObject({ action: "test" });
       expect(acknowledgement).toMatchObject({
         acceptance: "explicit",
         notice: PRODUCT_REGISTRY[productId].notice,
@@ -128,7 +122,7 @@ describe("setup plan", () => {
         action: "test",
         code: "rerun-conformance",
         message:
-          "Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Test readiness can re-check it.",
+          "Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Verify can re-check it.",
       },
     });
   });

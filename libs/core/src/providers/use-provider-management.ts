@@ -336,6 +336,7 @@ export function useProviderManagement({
     handleDeleteConfiguration,
     handleSelectConfiguration,
     handleSelectModel,
+    handleTestConfiguration,
     handleDispatchReadinessAction,
   };
 }

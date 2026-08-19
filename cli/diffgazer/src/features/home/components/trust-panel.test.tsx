@@ -24,6 +24,7 @@ function makeInitResponse(): ConfigurationInitResponse {
       severityThreshold: "low",
       secretsStorage: "file",
       agentExecution: "sequential",
+      providerConsent: null,
     },
     project: {
       projectId: "project-1",

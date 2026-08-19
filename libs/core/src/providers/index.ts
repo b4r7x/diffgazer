@@ -1,5 +1,21 @@
 export type { RunnableProductId } from "../schemas/config/transports.js";
 export {
+  findProviderHotkeyAction,
+  getProviderActionHotkey,
+  getProviderActionLayout,
+  getProviderActionShortcuts,
+  getProviderRowControls,
+  getUnrecognizedConfigurationActionLayout,
+  isConsentGatedProviderAction,
+  isProviderControlDisabled,
+  PROVIDER_ACTION_HOTKEYS,
+  type ProviderAction,
+  type ProviderActionHotkey,
+  type ProviderActionId,
+  type ProviderActionLayout,
+  type ProviderRowControl,
+} from "./action-layout.js";
+export {
   BILLING_TIER_BADGES,
   type BillingTier,
   type BillingTierBadge,
@@ -15,6 +31,7 @@ export {
 export {
   CATALOG_EMPTY_MODELS_REASON,
   CATALOG_SKIPPED_REASON,
+  LIVE_ONLY_MODEL_DESCRIPTION,
 } from "./catalog-discovery-reasons.js";
 export {
   type ClientMetadataPayload,
@@ -30,6 +47,7 @@ export {
   resolveCredentialEnvironmentVariable,
 } from "./credential-env-vars.js";
 export {
+  DELETE_CONFIGURATION_CONFIRM,
   PROVIDER_ACTION_LABELS,
   PROVIDER_DETAIL_EMPTY_LABEL,
   type ProviderActionTask,
@@ -66,6 +84,7 @@ export {
 export { cycleTierFilter, filterModels, TIER_FILTERS, type TierFilter } from "./models.js";
 export type { EndpointProfile } from "./product-endpoints.js";
 export {
+  acceptNotice,
   isModelIdAllowedForProduct,
   PRODUCT_REGISTRY,
   type ProductAdmissionPolicy,

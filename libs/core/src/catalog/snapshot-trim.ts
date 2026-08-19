@@ -4,11 +4,12 @@ import type { ModelsDevCatalog, ModelsDevModel } from "./schema.js";
 const dropUndefined = <T extends object>(obj: T): T =>
   Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined)) as T;
 
-// Keep only the fields the transform layer reads. modalities, knowledge, the
-// release/update dates, and the cache_read/cache_write prices have no
-// production consumers, so they stay out of the bundled snapshot. `modalities`
-// is dropped after the pre-trim text filter below has already used it, so the
-// offline snapshot carries text-capable models only.
+// Keep only the fields the transform layer reads. knowledge, the release/update
+// dates, and the cache_read/cache_write prices have no production consumers, so
+// they stay out of the bundled snapshot. `modalities` survives only where it
+// withholds the model (no text output): the transform still refuses the row,
+// and the id stays known offline, so a provider's live list cannot resurrect a
+// model the catalog deliberately withheld when models.dev is out of reach.
 function trimModel(model: ModelsDevModel): ModelsDevModel {
   return dropUndefined({
     id: model.id,
@@ -20,6 +21,7 @@ function trimModel(model: ModelsDevModel): ModelsDevModel {
     // An explicit upstream null is the same "unknown" as an absent field, so it
     // collapses to one spelling instead of shipping two in the snapshot.
     structured_output: model.structured_output ?? undefined,
+    modalities: producesTextOutput(model) ? undefined : { output: model.modalities?.output },
   });
 }
 
@@ -39,7 +41,6 @@ export function trimCatalogSnapshot(
     if (!wantedSourceIds.has(id)) continue;
     const models: Record<string, ModelsDevModel> = {};
     for (const [modelId, model] of sortKeys(provider.models)) {
-      if (!producesTextOutput(model)) continue;
       models[modelId] = trimModel(model);
     }
     trimmed[id] = { ...provider, models };

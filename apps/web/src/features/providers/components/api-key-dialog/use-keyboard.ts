@@ -22,6 +22,8 @@ type FocusZone = "radios" | "input" | "acknowledgement" | "footer";
 interface ApiKeyDialogKeyboardOptions {
   open: boolean;
   isHosted: boolean;
+  /** Whether the dialog renders an acceptance control between the credential controls and the footer. */
+  hasAcknowledgement: boolean;
   method: InputMethod;
   setMethod: (method: InputMethod) => void;
   canSubmit: boolean;
@@ -65,6 +67,18 @@ function getZoneForElement(element: ApiKeyFocusTarget, isHosted: boolean): Focus
   return "footer";
 }
 
+function getZones(
+  isHosted: boolean,
+  hasAcknowledgement: boolean,
+): readonly [FocusZone, ...FocusZone[]] {
+  if (isHosted) {
+    return hasAcknowledgement
+      ? ["radios", "input", "acknowledgement", "footer"]
+      : ["radios", "input", "footer"];
+  }
+  return hasAcknowledgement ? ["acknowledgement", "footer"] : ["footer"];
+}
+
 function getEffectiveFocused({
   inFooter,
   footerIndex,
@@ -88,6 +102,7 @@ function getEffectiveFocused({
 export function useApiKeyDialogKeyboard({
   open,
   isHosted,
+  hasAcknowledgement,
   method,
   setMethod,
   canSubmit,
@@ -98,23 +113,47 @@ export function useApiKeyDialogKeyboard({
   onClose,
 }: ApiKeyDialogKeyboardOptions): ApiKeyDialogKeyboardReturn {
   const methodOptionRefs = useRef(new Map<InputMethod, HTMLDivElement>());
-  const [focused, setFocusedInternal] = useState<ApiKeyFocusTarget>(
-    isHosted ? "paste" : "acknowledgement",
-  );
+  const zones = getZones(isHosted, hasAcknowledgement);
+  const [focused, setFocusedInternal] = useState<ApiKeyFocusTarget>(() => {
+    if (isHosted) return "paste";
+    return hasAcknowledgement ? "acknowledgement" : "cancel";
+  });
 
   useScope("api-key-dialog", { enabled: open });
 
-  const zones = isHosted
-    ? (["radios", "input", "acknowledgement", "footer"] as const)
-    : (["acknowledgement", "footer"] as const);
-
   const { setZone, isZone } = useFocusZone<FocusZone>({
-    initial: isHosted ? "radios" : "acknowledgement",
+    initial: zones[0],
     zones,
     enabled: open,
   });
 
+  const footerActionRow = useActionRowNavigation({
+    enabled: open && isZone("footer"),
+    actionCount: 2,
+    disabledActions: [isSubmitting, !canSubmit],
+    onAction: (index) => {
+      if (index === 0 && !isSubmitting) onClose();
+      else if (index === 1 && canSubmit) onSubmit();
+    },
+    onNavigationBoundaryReached: (direction) => {
+      if (direction === "previous") focusAboveFooter();
+    },
+    wrap: false,
+    defaultZone: "actions",
+  });
+
+  const enterFooter = (index = canSubmit ? 1 : 0) => {
+    setZone("footer");
+    footerActionRow.enterActions(index);
+  };
+
+  // Downward from the credential controls lands on the acceptance control when
+  // there is one, else straight on the footer; upward from the footer mirrors it.
   const setFocused = (element: ApiKeyFocusTarget) => {
+    if (element === "acknowledgement" && !hasAcknowledgement) {
+      enterFooter();
+      return;
+    }
     setFocusedInternal(element);
     setZone(getZoneForElement(element, isHosted));
   };
@@ -129,20 +168,10 @@ export function useApiKeyDialogKeyboard({
     acknowledgementRef.current?.focus();
   };
 
-  const footerActionRow = useActionRowNavigation({
-    enabled: open && isZone("footer"),
-    actionCount: 2,
-    disabledActions: [isSubmitting, !canSubmit],
-    onAction: (index) => {
-      if (index === 0 && !isSubmitting) onClose();
-      else if (index === 1 && canSubmit) onSubmit();
-    },
-    onNavigationBoundaryReached: (direction) => {
-      if (direction === "previous") focusAcknowledgement();
-    },
-    wrap: false,
-    defaultZone: "actions",
-  });
+  const focusAboveFooter = () => {
+    if (hasAcknowledgement) focusAcknowledgement();
+    else if (isHosted) focusMethodOption("env");
+  };
 
   const getMethodOptionProps = (nextMethod: InputMethod) => ({
     ref: (node: HTMLDivElement | null) => {
@@ -161,11 +190,6 @@ export function useApiKeyDialogKeyboard({
         actionProps.onFocus();
       },
     };
-  };
-
-  const enterFooter = (index = canSubmit ? 1 : 0) => {
-    setZone("footer");
-    footerActionRow.enterActions(index);
   };
 
   const handleMethodKeyDown = (event: ReactKeyboardEvent, focusedMethod: InputMethod) => {

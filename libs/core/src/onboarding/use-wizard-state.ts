@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
+import { acceptNotice } from "../providers/product-registry.js";
 import {
   type ClientConfigurationAction,
   ClientConfigurationActionResponseSchema,
   type ClientConfigurationSummary,
+  type ProviderConsent,
   type RunnableProductId,
 } from "../schemas/config/index.js";
 import { canProceed } from "./can-proceed.js";
@@ -16,6 +18,7 @@ import { areConfigurationInputsEqual, areDraftsEqual } from "./draft-equality.js
 import { scrubLiteralSecret } from "./draft-secrets.js";
 import { getClientSafeError } from "./redact-client-error.js";
 import { buildConfigPayload, type SaveWizardCallbacks, saveWizard } from "./save-wizard.js";
+import { getPlanNotice } from "./setup-plan.js";
 import { getStepAt } from "./steps.js";
 import type { OnboardingStep } from "./types.js";
 
@@ -28,6 +31,12 @@ export interface UseWizardStateOptions {
   callbacks?: SaveWizardCallbacks;
   onComplete?: () => Promise<void> | void;
   onCleanupError?: (message: string) => void;
+  /**
+   * The provider consent already on record. With one, the acknowledgement step
+   * is entered pre-accepted at that time, so a returning user is not asked to
+   * accept the same terms for every product.
+   */
+  providerConsent?: ProviderConsent | null;
 }
 
 export interface UseWizardStateResult {
@@ -95,13 +104,9 @@ function invalidatesAcknowledgement(
   ) {
     return true;
   }
-  if (
-    partial.selectedModelId !== undefined &&
-    partial.selectedModelId !== current.selectedModelId
-  ) {
-    return true;
-  }
-  return partial.conformanceStatus !== undefined && partial.conformanceStatus !== "passed";
+  return (
+    partial.selectedModelId !== undefined && partial.selectedModelId !== current.selectedModelId
+  );
 }
 
 function updateRunnableDraft(
@@ -117,9 +122,6 @@ function updateRunnableDraft(
   return {
     ...next,
     ...(configurationChanged ? { selectedModelId: null } : {}),
-    ...(partial.configurationInput || partial.selectedModelId !== undefined
-      ? { conformanceStatus: "not-tested" as const }
-      : {}),
     acknowledgement: { status: "required" },
   };
 }
@@ -143,7 +145,13 @@ const CROSS_PRODUCT_UPDATE_ERROR =
   "Onboarding draft updates cannot change the product; select the product first.";
 
 export function useWizardState(options: UseWizardStateOptions = {}): UseWizardStateResult {
-  const { initial = getInitialWizardData(), callbacks, onComplete, onCleanupError } = options;
+  const {
+    initial = getInitialWizardData(),
+    callbacks,
+    onComplete,
+    onCleanupError,
+    providerConsent = null,
+  } = options;
   const [wizardState, setWizardState] = useState<WizardState>(() => ({
     data: initial,
     stepIndex: 0,
@@ -390,8 +398,19 @@ export function useWizardState(options: UseWizardStateOptions = {}): UseWizardSt
       ) {
         return current;
       }
-      ensureGenerationFor(projectedData);
-      return { data: projectedData, stepIndex: current.stepIndex + 1, error: null };
+      const nextIndex = current.stepIndex + 1;
+      const data =
+        current.data.plan.steps[nextIndex]?.id === "acknowledgement" && providerConsent
+          ? {
+              ...projectedData,
+              acknowledgement: acceptNotice(
+                getPlanNotice(projectedData.plan),
+                providerConsent.acceptedAt,
+              ),
+            }
+          : projectedData;
+      ensureGenerationFor(data);
+      return { data, stepIndex: nextIndex, error: null };
     });
   };
 

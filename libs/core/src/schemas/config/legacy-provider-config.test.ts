@@ -30,7 +30,7 @@ const skippedReadiness = {
   explanation: "The live readiness check was intentionally skipped." as const,
   remediation: {
     code: "enable-live-probe" as const,
-    message: "Satisfy the live-check prerequisites, then test the configuration again." as const,
+    message: "Satisfy the live-check prerequisites, then run Verify again." as const,
   },
 };
 

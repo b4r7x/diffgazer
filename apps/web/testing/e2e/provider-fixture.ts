@@ -30,6 +30,7 @@ const SETTINGS_FIXTURE: ConfigurationInitResponse["settings"] = {
   severityThreshold: "low",
   secretsStorage: "file",
   agentExecution: "parallel",
+  providerConsent: { version: 1, acceptedAt: "2026-08-01T09:00:00.000Z" },
 };
 
 export const ONBOARDING_E2E_INIT: ConfigurationInitResponse = {
@@ -44,6 +45,7 @@ export const ONBOARDING_E2E_INIT: ConfigurationInitResponse = {
     secretsStorage: null,
     severityThreshold: "low",
     agentExecution: "parallel",
+    providerConsent: null,
   },
   project: { projectId: "onboarding-responsive", path: "/repo", trust: null },
 };

@@ -101,7 +101,7 @@ export const discoverConfigurationModels = async (
     // of a blank picker. Re-asserting it here is boundary defence over a payload
     // this response schema-validates anyway, not a second policy: both sites
     // call the one predicate, so neither can drift from the select and readiness
-    // paths (opt-in suffixes, reserved route segments).
+    // paths (higher-cost allowlist gates, reserved route segments).
     models: discovery.models.filter((model) =>
       isModelIdAllowedForProduct(configuration.productId, model.id),
     ),

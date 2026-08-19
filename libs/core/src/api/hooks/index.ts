@@ -26,6 +26,10 @@ export {
 export { useServerStatus, useShutdown } from "./server.js";
 export { useDeleteTrust, useSaveTrust } from "./trust.js";
 export {
+  type ProviderConsentGate,
+  useProviderConsentGate,
+} from "./use-provider-consent-gate.js";
+export {
   type ReviewGate,
   type UseReviewLifecycleBaseOptions,
   type UseReviewLifecycleBaseResult,

@@ -10,11 +10,12 @@ import {
 import { KeyboardProvider } from "@diffgazer/keys";
 import { Toaster } from "@diffgazer/ui/components/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConfigProvider } from "@/hooks/use-config";
+import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
 import { makeShellApiOverrides, makeShellInitResponse } from "@/testing/shell-fixtures";
 
 type ActiveSessionState = ActiveReviewSession | null;
@@ -42,24 +43,23 @@ function setActiveSessions(unstaged: ActiveSessionState, staged: ActiveSessionSt
   stagedActiveSession = staged;
 }
 
-function createTestApi(): BoundApi {
+function createTestApi(init = shellInit): BoundApi {
   return {
     ...createApi({ baseUrl: "http://localhost" }),
-    ...makeShellApiOverrides(shellInit),
+    ...makeShellApiOverrides(init),
     getReviews: mockGetReviews,
     getActiveReviewSession: mockGetActiveReviewSession,
     createReview: mockCreateReview,
   } satisfies BoundApi;
 }
 
-function renderHomePage() {
+function renderHomePage(api = createTestApi()) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
       mutations: { retry: false },
     },
   });
-  const api = createTestApi();
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -68,8 +68,10 @@ function renderHomePage() {
           <ConfigProvider>
             <FooterProvider>
               <KeyboardProvider>
-                {children}
-                <Toaster />
+                <ProviderConsentProvider>
+                  {children}
+                  <Toaster />
+                </ProviderConsentProvider>
               </KeyboardProvider>
             </FooterProvider>
           </ConfigProvider>
@@ -128,6 +130,35 @@ describe("HomePage composition", () => {
     expect(resume).not.toHaveAttribute("aria-disabled");
   });
 
+  it("asks for the provider consent before the first review and starts it once accepted", async () => {
+    const user = userEvent.setup();
+    const init = makeShellInitResponse();
+    init.settings.providerConsent = null;
+    const api = createTestApi(init);
+    api.saveSettings = vi.fn(async (patch) => {
+      Object.assign(init.settings, patch);
+    });
+    renderHomePage(api);
+
+    await user.click(await screen.findByRole("menuitem", { name: "Review Unstaged" }));
+
+    const dialog = screen.getByRole("alertdialog", { name: "Provider data notice" });
+    expect(mockCreateReview).not.toHaveBeenCalled();
+    // The r accelerator is the notice's while it is up: no second start behind it.
+    await user.keyboard("r");
+    expect(mockCreateReview).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Accept and continue" }));
+
+    await waitFor(() => expect(mockCreateReview).toHaveBeenCalledWith({ mode: "unstaged" }));
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "/review/{-$reviewId}" }),
+      ),
+    );
+    expect(api.saveSettings).toHaveBeenCalledOnce();
+  });
+
   it("keeps trusted home actions when configuration init succeeds", async () => {
     renderHomePage();
 
@@ -149,7 +180,9 @@ describe("HomePage composition", () => {
           <ConfigProvider>
             <FooterProvider>
               <KeyboardProvider>
-                <HomePage />
+                <ProviderConsentProvider>
+                  <HomePage />
+                </ProviderConsentProvider>
               </KeyboardProvider>
             </FooterProvider>
           </ConfigProvider>

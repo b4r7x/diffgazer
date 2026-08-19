@@ -16,8 +16,7 @@ describe("setup-plan-derived onboarding steps", () => {
     expect(localPlan.requiredFields).not.toContain("credential");
     expect(STEP_LABELS.authentication).toBe("Authentication");
     expect(STEP_TITLES.authentication).toBe("Configure Authentication");
-    expect(STEP_LABELS.conformance).toBe("Conformance");
-    expect(STEP_TITLES.conformance).toBe("Verify Conformance");
+    expect(Object.keys(STEP_LABELS)).not.toContain("conformance");
     expect(Object.values(STEP_LABELS)).not.toContain("API Key");
     expect(Object.values(STEP_TITLES)).not.toContain("API Key");
   });
@@ -27,12 +26,12 @@ describe("setup-plan-derived onboarding steps", () => {
     const cliPlan = setupPlan("codex-cli");
 
     expect(getStepAt(hostedPlan, 1)).toBe("endpoint-binding");
-    expect(getOnboardingProgressLabel(hostedPlan, 1)).toBe("Step 2 of 6: Endpoint");
+    expect(getOnboardingProgressLabel(hostedPlan, 1)).toBe("Step 2 of 5: Endpoint");
     expect(getStepAt(cliPlan, 1)).toBe("authentication");
-    expect(getOnboardingProgressLabel(cliPlan, 1)).toBe("Step 2 of 5: Authentication");
+    expect(getOnboardingProgressLabel(cliPlan, 1)).toBe("Step 2 of 4: Authentication");
   });
 
   it("rejects an index outside the selected plan", () => {
-    expect(() => getStepAt(setupPlan("codex-cli"), 5)).toThrow("No onboarding step at index 5");
+    expect(() => getStepAt(setupPlan("codex-cli"), 4)).toThrow("No onboarding step at index 4");
   });
 });

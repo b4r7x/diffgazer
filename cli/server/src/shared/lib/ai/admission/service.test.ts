@@ -419,6 +419,20 @@ describe("authorizeReviewExecution", () => {
     expect(dependencies.resolveCredential).not.toHaveBeenCalled();
   });
 
+  it("refuses an unacknowledged record before its first review, with no evidence to lean on", async () => {
+    const record = hostedRecord({
+      acknowledgement: { noticeId: "gemini-hosted-api", noticeVersion: 1, acceptedAt: null },
+    });
+    const dependencies = createDependencies(readySnapshot({ recordPatch: record, evidence: null }));
+
+    const result = await authorizeReviewExecution(record.configurationId, dependencies);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("acknowledgement-required");
+    expect(dependencies.resolveCredential).not.toHaveBeenCalled();
+  });
+
   it("rejects exhausted budget before secret resolution", async () => {
     const ledger = createBudgetLedger({
       ...executionLimitsFromBudget(BUDGET),

@@ -1,6 +1,7 @@
 import {
   useActiveReviewSession,
   useConfigurationInit,
+  useProviderConsentGate,
   useReviews,
   useShutdown,
 } from "@diffgazer/core/api/hooks";
@@ -9,7 +10,7 @@ import { deriveTrustStatus, selectResumableSession } from "@diffgazer/core/navig
 import { getCatalogModelName, PRODUCT_REGISTRY } from "@diffgazer/core/providers";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
 import { resolveSelectedConfiguration } from "@diffgazer/core/schemas/config";
-import type { HomeContextInfo, Shortcut } from "@diffgazer/core/schemas/presentation";
+import type { HomeContextInfo, MenuAction, Shortcut } from "@diffgazer/core/schemas/presentation";
 import {
   buildHomeContextInfo,
   MAIN_MENU_SHORTCUTS,
@@ -17,6 +18,8 @@ import {
 } from "@diffgazer/core/schemas/presentation";
 import { Box, Text, useInput } from "ink";
 import type { ReactElement } from "react";
+import { useState } from "react";
+import { ProviderConsentOverlay } from "../../../components/shared/provider-consent-overlay";
 import { Spinner } from "../../../components/ui/spinner";
 import { useBackHandler } from "../../../hooks/use-back-handler";
 import { useExit } from "../../../hooks/use-exit";
@@ -81,6 +84,11 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
   const { data: unstagedSessionData } = useActiveReviewSession("unstaged");
   const { data: stagedSessionData } = useActiveReviewSession("staged");
   const shutdown = useShutdown();
+  // The first review asks for the provider consent once, before anything is sent.
+  const consent = useProviderConsentGate(initData.settings.providerConsent);
+  // Screen state, not the menu's: the notice overlay replaces the home frame, and
+  // the row it was opened from must still be highlighted when the frame is back.
+  const [highlightedId, setHighlightedId] = useState<MenuAction | null>(null);
 
   const mostRecent = reviewsQuery.data?.reviews[0];
   const activeSession = selectResumableSession(
@@ -126,6 +134,7 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
     navigate,
     activeSession,
     isTrusted,
+    requireProviderConsent: consent.require,
     shutdown,
     onExit: handleExit,
   });
@@ -142,6 +151,8 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
   // as a border sliver, so there the context keeps its content height and only
   // the menu takes the slack.
   const paneHeight = isNarrow ? undefined : "100%";
+
+  if (consent.isOpen) return <ProviderConsentOverlay gate={consent} />;
 
   return (
     <Box justifyContent="center" alignItems="stretch" flexGrow={1}>
@@ -163,6 +174,8 @@ function LoadedHomeScreen({ initData, onRefresh }: { initData: InitData; onRefre
               <MainMenuFooter />
               <HomeMenu
                 isActive
+                highlightedId={highlightedId}
+                onHighlightChange={setHighlightedId}
                 onAction={onAction}
                 isTrusted={isTrusted}
                 hasResumableSession={hasActiveSession}

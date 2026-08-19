@@ -17,6 +17,7 @@ describe("credential environment variables", () => {
   it("resolves the canonical name for hosted products and fails closed otherwise", () => {
     expect(resolveCredentialEnvironmentVariable("gemini")).toBe("GOOGLE_API_KEY");
     expect(resolveCredentialEnvironmentVariable("mistral")).toBe("MISTRAL_API_KEY");
+    expect(resolveCredentialEnvironmentVariable("ollama-cloud")).toBe("OLLAMA_API_KEY");
     expect(() => resolveCredentialEnvironmentVariable("ollama")).toThrow(
       /No credential environment variable mapped for ollama/,
     );

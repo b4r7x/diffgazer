@@ -123,6 +123,7 @@ describe("HelpPage", () => {
       "Anywhere",
       "In lists",
       "On the home screen",
+      "On the Providers page",
       "In a review",
       "In history",
     ]);
@@ -131,6 +132,7 @@ describe("HelpPage", () => {
       "Anywhere",
       "In lists",
       "On the home screen",
+      "On the Providers page",
       "In a review",
       "In history",
     ]) {

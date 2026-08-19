@@ -102,7 +102,6 @@ export type ModelPolicy =
   | {
       readonly kind: "discovered-exact";
       readonly suggestedModelId?: string;
-      readonly explicitOptInSuffixes?: readonly string[];
       readonly aliases: "forbidden";
     }
   | {
@@ -141,12 +140,10 @@ export type ModelPolicy =
  * client-safe summaries, discovery mapping, and the execution tuple — must call
  * this so the interpretations cannot drift apart.
  *
- * It deliberately fails closed for the two policy shapes whose extra evidence
- * has no client-safe representation: an `explicitOptInSuffixes` model needs an
- * opt-in the V2 contracts do not carry, and a `higherCostModelIds` model needs
- * the named live output-limit and review-conformance observations, which are
- * server-only.  Neither may be inferred from discovery, conformance, or notice
- * acknowledgement.
+ * It deliberately fails closed for the policy shape whose extra evidence has no
+ * client-safe representation: a `higherCostModelIds` model needs the named live
+ * output-limit and review-conformance observations, which are server-only and
+ * may not be inferred from discovery, conformance, or notice acknowledgement.
  *
  * Model-id shape validation is deliberately left to the caller, because the
  * applicable shape schema differs per boundary.
@@ -154,7 +151,7 @@ export type ModelPolicy =
 export function matchesModelPolicy(modelId: string, policy: ModelPolicy): boolean {
   switch (policy.kind) {
     case "discovered-exact":
-      return !policy.explicitOptInSuffixes?.some((suffix) => modelId.endsWith(suffix));
+      return true;
     case "discovered-allowlist":
       if (!policy.modelIds.includes(modelId)) return false;
       return !(

@@ -27,11 +27,24 @@ export type ProviderActionTask = ClientConfigurationActionName | "select-configu
  * is what stops the same button reading differently on the two surfaces.
  */
 export const PROVIDER_ACTION_LABELS = {
-  create: "Create configuration",
+  create: "Configure",
   inspect: "Inspect configuration",
   select: "Select model",
-  test: "Test readiness",
+  test: "Verify",
   update: "Update configuration",
   delete: "Delete configuration",
   "select-configuration": "Select configuration",
 } as const satisfies Record<ProviderActionTask, string>;
+
+/** The model action once a model is pinned; before that it reads `PROVIDER_ACTION_LABELS.select`. */
+export const CHANGE_MODEL_LABEL = "Change model";
+
+/** The trigger of the details More menu on both surfaces. */
+export const MORE_ACTIONS_LABEL = "More";
+
+/** The confirmation every configuration removal passes through, on both surfaces. */
+export const DELETE_CONFIGURATION_CONFIRM = {
+  title: "Delete configuration?",
+  subtitle: "This cannot be undone",
+  body: (name: string) => `Removes ${name} and its stored credentials from this machine.`,
+} as const;

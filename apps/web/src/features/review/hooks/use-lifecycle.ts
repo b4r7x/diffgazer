@@ -7,6 +7,7 @@ import { getErrorMessage } from "@diffgazer/core/errors";
 import {
   describeReviewStartError,
   getAlternateReviewMode,
+  type ReviewStartErrorDescription,
   sanitizePresentationText,
   sessionTerminationCopy,
 } from "@diffgazer/core/review";
@@ -16,6 +17,7 @@ import { toast } from "@diffgazer/ui/components/toast";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useConfigData } from "@/hooks/use-config";
+import { useProviderConsent } from "@/hooks/use-provider-consent";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 
 export interface ReviewCompleteData {
@@ -45,9 +47,11 @@ export function useReviewLifecycle({
   const params = useParams({ strict: false });
   const { loadState, isReady, selectedReadiness, selectedConfiguration } = useConfigData();
   const createReview = useCreateReview();
+  const providerConsent = useProviderConsent();
   const reviewSessionCache = useReviewSessionCache();
   const transitionRef = useRef<symbol | null>(null);
   const [isTransitionPending, setIsTransitionPending] = useState(false);
+  const [startError, setStartError] = useState<ReviewStartErrorDescription | null>(null);
 
   const beginTransition = (): symbol | null => {
     if (transitionRef.current) return null;
@@ -215,7 +219,7 @@ export function useReviewLifecycle({
     });
   };
 
-  const handleSwitchMode = () => {
+  const startAlternateMode = () => {
     runCancelTransition(
       true,
       async (token) => {
@@ -231,10 +235,16 @@ export function useReviewLifecycle({
       },
       (error, token) => {
         if (!isCurrentTransition(token)) return;
-        const { title, message } = describeReviewStartError(error);
-        reportFailure(title, message);
+        const description = describeReviewStartError(error);
+        setStartError({ ...description, message: sanitizePresentationText(description.message) });
       },
     );
+  };
+
+  // Switching starts a new review, so it waits for the provider consent like
+  // the start on home does; declining leaves the no-diff screen as it was.
+  const handleSwitchMode = () => {
+    providerConsent.require(startAlternateMode);
   };
 
   return {
@@ -250,6 +260,7 @@ export function useReviewLifecycle({
     isCompleting: base.completion.isCompleting,
     isReady,
     isTransitionPending,
+    startError,
     handleCancel,
     handleBack,
     handleViewResults,

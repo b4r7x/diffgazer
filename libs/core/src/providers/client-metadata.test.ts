@@ -545,15 +545,7 @@ describe("client metadata projection", () => {
     }
   });
 
-  it("fails closed for opt-in, higher-cost, and unpinned route models at the client boundary", () => {
-    const zai = projectClientMetadata(readySourceFor("zai"));
-    expect(
-      ClientMetadataPayloadSchema.safeParse({
-        ...zai,
-        configuration: { ...zai.configuration, selectedModelId: "glm-4.7-flash" },
-      }).success,
-    ).toBe(false);
-
+  it("fails closed for higher-cost and unpinned route models at the client boundary", () => {
     const qwen = projectClientMetadata(readySourceFor("qwen"));
     expect(
       ClientMetadataPayloadSchema.safeParse({

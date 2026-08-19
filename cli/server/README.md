@@ -39,7 +39,7 @@ Routes add their own body limits, rate limits, setup guards, trust guards, and z
 | `DIFFGAZER_SHUTDOWN_TOKEN` | Required in packaged mode and whenever configured in dev. Sent through `x-diffgazer-shutdown-token`. |
 | `DIFFGAZER_CLI_PID` | Parent CLI process id used by the shutdown route. |
 | `DIFFGAZER_LOG_LEVEL` | Minimum log level: `debug`, `info`, `warn`, or `error`. |
-| `DIFFGAZER_OFFLINE` | Skips live models.dev fetches and uses cached or bundled model catalog data. |
+| `DIFFGAZER_OFFLINE` | Skips every live model-list request — the models.dev catalog and provider model lists — and serves the cached or bundled catalog. |
 
 ## Commands
 

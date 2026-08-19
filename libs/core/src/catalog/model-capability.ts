@@ -1,14 +1,5 @@
 import type { ModelsDevModel } from "./schema.js";
 
-/**
- * Whether a catalog model can run the structured review contract.
- *
- * `unknown` is a real third state, not a synonym for `unsupported`: upstream
- * leaves `structured_output` unset for whole providers, and reporting a guess
- * as a fact is exactly the dishonesty this module exists to remove.
- */
-export type ModelReviewCapability = "supported" | "unsupported" | "unknown";
-
 /** What a catalog model costs, derived from published per-model pricing only. */
 export type ModelBilling = "free" | "paid" | "unknown";
 
@@ -28,13 +19,6 @@ export interface DerivedCatalogModel {
 export function producesTextOutput(model: ModelsDevModel): boolean {
   const output = model.modalities?.output;
   return !output || output.includes("text");
-}
-
-export function getModelReviewCapability(model: ModelsDevModel): ModelReviewCapability {
-  if (!producesTextOutput(model)) return "unsupported";
-  const declared = model.structured_output;
-  if (declared === undefined || declared === null) return "unknown";
-  return declared ? "supported" : "unsupported";
 }
 
 export function getModelBilling(model: ModelsDevModel): ModelBilling {

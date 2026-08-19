@@ -3,6 +3,7 @@ import { usePageFooter } from "@diffgazer/core/footer";
 import {
   classifyReviewStreamError,
   type FileProgress,
+  isProviderRecoveryError,
   type ReviewEvent,
 } from "@diffgazer/core/review";
 import { sanitizeTerminalText } from "@diffgazer/core/sanitize-terminal";
@@ -21,6 +22,11 @@ import { KeyboardContext } from "../../../../hooks/keyboard-context";
 import { useResponsive } from "../../../../hooks/use-terminal-dimensions";
 import type { BreakpointTier } from "../../../../lib/breakpoints";
 import { wrappedRowCount } from "../../../../lib/terminal-width";
+import {
+  getProviderRecoveryLine,
+  getProviderRecoveryShortcut,
+  PROVIDER_RECOVERY_KEY,
+} from "../../lib/provider-recovery";
 import { ReviewProgressActivity } from "./activity";
 import { ReviewProgressOverview } from "./overview";
 
@@ -53,8 +59,6 @@ const STREAMING_SHORTCUTS: Shortcut[] = [{ key: "c", label: "Cancel" }];
 const COMPLETING_SHORTCUTS: Shortcut[] = [{ key: "Enter", label: "View Results" }];
 const SAVE_CONTEXT_SHORTCUT: Shortcut = { key: "w", label: "Save context" };
 const RETRY_CONTEXT_SHORTCUT: Shortcut = { key: "r", label: "Retry context" };
-const OPEN_SETTINGS_SHORTCUT: Shortcut = { key: "s", label: "Open Settings" };
-const SETTINGS_RECOVERY_LINE = "Press s to open Settings.";
 /** Callout chrome around its text: the margin above it plus its two border rows. */
 const CALLOUT_CHROME_ROWS = 3;
 /** Columns the callout spends per row: border, horizontal padding, icon and its gap. */
@@ -78,7 +82,7 @@ function getProgressShortcuts({
   hasContextSnapshot,
   hasContextRefreshError,
   hasError,
-  hasSettingsRecovery,
+  providerRecoveryLabel,
 }: {
   isStreaming: boolean;
   hasCancel: boolean;
@@ -86,11 +90,11 @@ function getProgressShortcuts({
   hasContextSnapshot: boolean;
   hasContextRefreshError: boolean;
   hasError: boolean;
-  hasSettingsRecovery: boolean;
+  providerRecoveryLabel: string | null;
 }): Shortcut[] {
-  // A missing API key has no other affordance, so it publishes the one key that
-  // recovers it instead of an in-content button.
-  if (hasSettingsRecovery) return [OPEN_SETTINGS_SHORTCUT];
+  // A provider failure has no other affordance, so it publishes the one key that
+  // recovers it, named by the CTA, instead of an in-content button.
+  if (providerRecoveryLabel) return [getProviderRecoveryShortcut(providerRecoveryLabel)];
   if (hasError) return [];
   if (hasContextRefreshError) return [RETRY_CONTEXT_SHORTCUT];
   if (isStreaming) return hasCancel ? STREAMING_SHORTCUTS : [];
@@ -149,9 +153,13 @@ export function ReviewProgressView({
     ? classifyReviewStreamError(error, errorCode, transportFamily ?? undefined)
     : null;
   const sanitizedError = sanitizeTerminalText(error ?? "");
-  const hasSettingsRecovery = Boolean(
-    errorGuidance?.kind === "api-key" && onGoToSettings !== undefined,
-  );
+  const providerRecoveryLabel =
+    errorGuidance && isProviderRecoveryError(errorGuidance.kind) && onGoToSettings !== undefined
+      ? errorGuidance.ctaLabel
+      : null;
+  const providerRecoveryLine = providerRecoveryLabel
+    ? getProviderRecoveryLine(providerRecoveryLabel)
+    : null;
 
   useInput(
     (input, key) => {
@@ -161,7 +169,7 @@ export function ReviewProgressView({
         onCancel?.();
       } else if (input === "r" && contextRefreshError) {
         onRetryContextRefresh?.();
-      } else if (input === "s" && hasSettingsRecovery) {
+      } else if (input === PROVIDER_RECOVERY_KEY && providerRecoveryLine) {
         onGoToSettings?.();
       } else if (key.return && !isStreaming && !error) {
         onViewResults?.();
@@ -171,7 +179,7 @@ export function ReviewProgressView({
       isActive: Boolean(
         onBack ||
           onViewResults ||
-          hasSettingsRecovery ||
+          providerRecoveryLine ||
           contextRefreshError ||
           (isStreaming && onCancel),
       ),
@@ -185,7 +193,7 @@ export function ReviewProgressView({
     hasContextSnapshot: Boolean(contextSnapshot),
     hasContextRefreshError: Boolean(contextRefreshError && onRetryContextRefresh),
     hasError: Boolean(error),
-    hasSettingsRecovery,
+    providerRecoveryLabel,
   });
 
   usePageFooter({
@@ -209,7 +217,7 @@ export function ReviewProgressView({
       calloutTextRows(errorGuidance.title, calloutColumns) +
       calloutTextRows(sanitizedError, calloutColumns) +
       calloutTextRows(errorGuidance.guidance, calloutColumns) +
-      (hasSettingsRecovery ? calloutTextRows(SETTINGS_RECOVERY_LINE, calloutColumns) : 0)
+      (providerRecoveryLine ? calloutTextRows(providerRecoveryLine, calloutColumns) : 0)
     : 0;
   const paneHeight = Math.max(contentRows - errorRows, 1);
   const hasCompletedSnapshot = Boolean(contextSnapshot && !isStreaming);
@@ -256,8 +264,8 @@ export function ReviewProgressView({
             <Callout.Title>{errorGuidance.title}</Callout.Title>
             <Callout.Content>{sanitizedError}</Callout.Content>
             <Callout.Content>{errorGuidance.guidance}</Callout.Content>
-            {hasSettingsRecovery ? (
-              <Callout.Content>{SETTINGS_RECOVERY_LINE}</Callout.Content>
+            {providerRecoveryLine ? (
+              <Callout.Content>{providerRecoveryLine}</Callout.Content>
             ) : null}
           </Callout>
         </Box>

@@ -37,6 +37,7 @@ export function makeUnconfiguredInitResponse(): ConfigurationInitResponse {
       severityThreshold: "low",
       secretsStorage: "file",
       agentExecution: "parallel",
+      providerConsent: null,
     },
   });
 }

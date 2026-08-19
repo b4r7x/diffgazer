@@ -25,6 +25,7 @@ function makeSettings(overrides: Partial<SettingsConfig> = {}): SettingsConfig {
     severityThreshold: "low",
     secretsStorage: null,
     agentExecution: "parallel",
+    providerConsent: null,
     ...overrides,
   });
 }

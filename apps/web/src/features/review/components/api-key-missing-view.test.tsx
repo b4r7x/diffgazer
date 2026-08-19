@@ -14,6 +14,7 @@ import {
   ApiKeyMissingView,
   type ApiKeyMissingViewProps,
   ConfigurationErrorView,
+  ReviewStartErrorView,
   ReviewTerminalReceiptView,
 } from "./api-key-missing-view";
 
@@ -327,5 +328,59 @@ describe("ReviewTerminalReceiptView", () => {
     expect(container.textContent).not.toMatch(/sk-[A-Za-z0-9_-]{8,}/i);
     expect(container.textContent).not.toMatch(/Bearer\s+/i);
     expect(container.textContent).not.toMatch(/\/Users\//);
+  });
+});
+
+describe("ReviewStartErrorView", () => {
+  it("renders the server's start refusal inline and leads with the providers jump", async () => {
+    const user = userEvent.setup();
+    const onConfigureProvider = vi.fn();
+    const onBack = vi.fn();
+
+    render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <ReviewStartErrorView
+            startError={{
+              title: "Configuration Needs Attention",
+              message: "The selected model failed structured output. Select a different model.",
+              recovery: "configure-provider",
+            }}
+            onConfigureProvider={onConfigureProvider}
+            onBack={onBack}
+          />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Configuration Needs Attention");
+    expect(screen.getByText(/failed structured output/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Open Providers" }));
+    expect(onConfigureProvider).toHaveBeenCalledTimes(1);
+
+    await user.keyboard("{Escape}");
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers only the way home when nothing on the providers screen can fix the start", () => {
+    render(
+      <KeyboardProvider>
+        <FooterProvider>
+          <ReviewStartErrorView
+            startError={{
+              title: "Review Already Running",
+              message: "A review is already running for this configuration.",
+              recovery: null,
+            }}
+            onConfigureProvider={vi.fn()}
+            onBack={vi.fn()}
+          />
+        </FooterProvider>
+      </KeyboardProvider>,
+    );
+
+    expect(screen.queryByRole("button", { name: "Open Providers" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Back to Home" })).toHaveLength(1);
   });
 });

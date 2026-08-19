@@ -18,6 +18,7 @@ import { type ReviewCompleteData, useReviewLifecycle } from "../hooks/use-lifecy
 import {
   ApiKeyMissingView,
   ConfigurationErrorView,
+  ReviewStartErrorView,
   ReviewTerminalReceiptView,
 } from "./api-key-missing-view";
 import { NoChangesView } from "./no-changes-view";
@@ -87,6 +88,7 @@ function ReviewStreamContainer({
     canStart,
     isCompleting,
     isTransitionPending,
+    startError,
     handleCancel,
     handleBack,
     handleViewResults,
@@ -134,6 +136,17 @@ function ReviewStreamContainer({
 
   if ((loadState.status === "loading" || gate === "loading") && !isStartingRun) {
     return <ReviewLoadingMessage message={loadingMessage ?? "Loading review..."} />;
+  }
+
+  if (startError) {
+    return (
+      <ReviewStartErrorView
+        startError={startError}
+        onConfigureProvider={handleSetupProvider}
+        onBack={handleCancel}
+        actionsDisabled={isTransitionPending}
+      />
+    );
   }
 
   if (gate === "unconfigured") {

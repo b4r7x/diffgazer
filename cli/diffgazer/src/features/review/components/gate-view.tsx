@@ -5,6 +5,7 @@ import { Box, useInput } from "ink";
 import { ErrorGatePanel } from "../../../components/layout/error-gate";
 import { Button } from "../../../components/ui/button";
 import { useActionRow } from "../../../hooks/use-action-row";
+import { getProviderRecoveryShortcut, PROVIDER_RECOVERY_KEY } from "../lib/provider-recovery";
 
 export interface ReviewGateViewProps {
   title: string;
@@ -26,7 +27,7 @@ const SELECT_SHORTCUT: Shortcut = { key: "Enter", label: "Select" };
 const ACTION_SHORTCUTS: Shortcut[] = [{ key: "Left/Right", label: "Actions" }, SELECT_SHORTCUT];
 const PROVIDER_ACTION_SHORTCUTS: Shortcut[] = [
   ...ACTION_SHORTCUTS,
-  { key: "p", label: "Providers" },
+  getProviderRecoveryShortcut("Providers"),
 ];
 
 export function ReviewGateView({
@@ -70,7 +71,7 @@ export function ReviewGateView({
         actions.activate();
         return;
       }
-      if (input === "p" && onGoToSettings) onGoToSettings();
+      if (input === PROVIDER_RECOVERY_KEY && onGoToSettings) onGoToSettings();
     },
     { isActive: !disabled },
   );

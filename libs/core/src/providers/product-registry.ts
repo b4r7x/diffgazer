@@ -5,6 +5,7 @@ import {
   RUNNABLE_PRODUCT_IDS,
   type RunnableProductId,
 } from "../schemas/config/product-ids.js";
+import type { ReadinessAcknowledgement } from "../schemas/config/readiness.js";
 import type {
   AdmissionCheck,
   BillingMode,
@@ -23,6 +24,19 @@ export interface ProductNotice {
   readonly renewAcknowledgementOn: "material-notice-change";
   readonly billing: readonly string[];
   readonly privacy: readonly string[];
+}
+
+/** The acknowledgement a surface records when a product notice is accepted. */
+export function acceptNotice(
+  notice: ProductNotice,
+  acceptedAt = new Date().toISOString(),
+): Extract<ReadinessAcknowledgement, { status: "accepted" }> {
+  return {
+    status: "accepted",
+    noticeId: notice.id,
+    noticeVersion: notice.noticeVersion,
+    acceptedAt,
+  };
 }
 
 export interface ProductAdmissionPolicy {
@@ -173,10 +187,7 @@ export const PRODUCT_REGISTRY = {
     },
     modelPolicy: {
       kind: "discovered-exact",
-      // glm-4.7 publishes no `structured_output`, so the catalog cannot confirm it and
-      // withholds it from the picker; suggesting it pointed at a model no surface would offer.
       suggestedModelId: "glm-5-turbo",
-      explicitOptInSuffixes: ["-flash"],
       aliases: "forbidden",
     },
     admission: {
@@ -310,7 +321,7 @@ export const PRODUCT_REGISTRY = {
       usage: "optional",
     },
     billing: {
-      modes: ["free-tier", "pay-as-you-go"],
+      modes: ["pay-as-you-go"],
       posture: "Quota, availability, and pricing are checked observations, not guarantees.",
     },
     notice: {
@@ -483,10 +494,6 @@ export const PRODUCT_REGISTRY = {
       endpoints: PRODUCT_ENDPOINT_TUPLES.mistral,
     },
     modelPolicy: {
-      // No allowlist: it carried no cost or evidence semantics the capability
-      // filter does not already enforce, and it went stale against it — pinning
-      // `mistral-small-2603`, which publishes no `structured_output`, left the
-      // picker empty while the one capable Mistral model sat off-list.
       kind: "discovered-exact",
       suggestedModelId: "mistral-medium-2604",
       aliases: "forbidden",
@@ -514,6 +521,52 @@ export const PRODUCT_REGISTRY = {
         "Submitted data may be used for training unless the account opts out.",
         "API inputs and outputs normally have rolling 30-day retention.",
         "Zero data retention requires an eligible approved arrangement and is never inferred.",
+      ],
+    },
+  },
+  "ollama-cloud": {
+    id: "ollama-cloud",
+    kind: "runnable",
+    selectable: true,
+    contractVersion: 1,
+    transportFamily: "hosted-api",
+    presentation: {
+      name: "Ollama Cloud",
+      description: "Ollama's hosted models behind the ollama.com OpenAI-compatible API.",
+      setupLabel: "Configure Ollama Cloud",
+    },
+    configuration: {
+      credentialKind: "hosted-api-key-reference",
+      fields: ["credential"],
+      endpoints: PRODUCT_ENDPOINT_TUPLES["ollama-cloud"],
+    },
+    modelPolicy: {
+      kind: "discovered-exact",
+      suggestedModelId: "gpt-oss:20b",
+      aliases: "forbidden",
+    },
+    admission: {
+      requiredChecks: HOSTED_CHECKS,
+      structuredOutput: "json-object-local-validation",
+      usage: "optional",
+    },
+    billing: {
+      modes: ["free-tier", "subscription-credit"],
+      posture:
+        "Usage draws on the account's plan quota (Free, Pro, or Max) in session and weekly windows; no per-token price is published.",
+    },
+    notice: {
+      id: "ollama-cloud-hosted-api",
+      noticeVersion: 1,
+      acknowledgement: "required",
+      acknowledgeBefore: "first-context-send",
+      renewAcknowledgementOn: "material-notice-change",
+      billing: [
+        "Usage counts against the account's Ollama plan quota (Free, Pro, or Max) in 5-hour session and 7-day weekly windows; no per-token price is published.",
+      ],
+      privacy: [
+        "Ollama states that cloud prompts and responses are not logged, stored, or trained on.",
+        "Repository content is sent to ollama.com; this is not the loopback Ollama transport.",
       ],
     },
   },
@@ -554,7 +607,7 @@ export const PRODUCT_REGISTRY = {
       privacy: [
         "Diffgazer verifies only that the first network hop is loopback.",
         "Any downstream routing, data residency, storage, or telemetry is the selected server operator's responsibility.",
-        "Ollama Cloud is not this transport.",
+        "Ollama Cloud is not this transport; the separate Ollama Cloud product reaches ollama.com.",
       ],
     },
   },

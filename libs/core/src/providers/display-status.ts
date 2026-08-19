@@ -15,11 +15,7 @@ const READINESS_BADGES = {
   unconfigured: { label: "Not configured", shortLabel: "setup", variant: "warning" },
   "credential-invalid": { label: "Credential invalid", shortLabel: "invalid", variant: "error" },
   "model-missing": { label: "Model missing", shortLabel: "missing", variant: "warning" },
-  "conformance-pending": {
-    label: "Compatibility check needed",
-    shortLabel: "pending",
-    variant: "info",
-  },
+  "conformance-pending": { label: "Not verified", shortLabel: "pending", variant: "info" },
   "conformance-failed": {
     label: "Compatibility check failed",
     shortLabel: "failed",
@@ -31,7 +27,7 @@ const READINESS_BADGES = {
     variant: "warning",
   },
   unsupported: { label: "Unsupported", shortLabel: "unsupported", variant: "warning" },
-  skipped: { label: "Readiness check skipped", shortLabel: "skipped", variant: "warning" },
+  skipped: { label: "Verification skipped", shortLabel: "skipped", variant: "warning" },
   "local-conformance-failed": {
     label: "Local conformance failed",
     shortLabel: "failed",

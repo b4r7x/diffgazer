@@ -84,6 +84,7 @@ describe("resolveReviewDefaults", () => {
     defaultProfile: null,
     severityThreshold: "low",
     agentExecution: "sequential",
+    providerConsent: null,
   };
 
   it("uses validated settings defaults when explicit lenses are empty", () => {
@@ -94,6 +95,7 @@ describe("resolveReviewDefaults", () => {
       severityThreshold: "low",
       secretsStorage: null,
       agentExecution: "sequential",
+      providerConsent: null,
     };
 
     expect(resolveReviewDefaults({ lensIds: [], settings }).activeLenses).toEqual(["security"]);
@@ -1261,8 +1263,39 @@ describe("finalizeReview", () => {
     if (result.ok) return;
     expect(result.error).toMatchObject({
       kind: "review_abort",
-      code: "AI_ERROR",
+      code: "MODEL_INCOMPATIBLE",
       message: STRUCTURED_OUTPUT_FAILURE_GUIDANCE,
+    });
+  });
+
+  it("reports a refused provider request under its own code so surfaces can offer the fix", async () => {
+    saveReview.mockResolvedValue(ok({ id: "review-1" }));
+    const execution = buildExecutionResult(pipelineAdmittedPlan(), "transport-failed", {
+      startedAt: "2026-07-31T10:00:00.000Z",
+      finishedAt: "2026-07-31T10:00:02.000Z",
+      attemptCount: 1,
+      usageAvailability: "unavailable",
+    });
+    const terminalDiagnostic = {
+      code: "provider-rejected",
+      safeMessage: "Groq rejected the credential (HTTP 401).",
+      retryable: false,
+      remediation: "Update the configuration with a valid API key.",
+      correlationId: "rejected-correlation",
+    };
+
+    const result = await runFinalize([], undefined, undefined, {
+      issues: [],
+      execution,
+      terminalDiagnostic,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toMatchObject({
+      kind: "review_abort",
+      code: "PROVIDER_REJECTED",
+      message: "Groq rejected the credential (HTTP 401).",
     });
   });
 

@@ -14,6 +14,8 @@ export interface HomeMenuActionOptions {
   navigate: (route: Route) => void;
   activeSession: ActiveSessionInfo | null;
   isTrusted?: boolean;
+  /** Runs the start once the provider consent is on record, asking for it first when it is not. */
+  requireProviderConsent: (action: () => void) => void;
   shutdown: Pick<UseMutationResult<unknown, unknown, void, unknown>, "mutate">;
   onExit: () => void;
 }
@@ -22,6 +24,7 @@ export function createHomeMenuAction({
   navigate,
   activeSession,
   isTrusted = false,
+  requireProviderConsent,
   shutdown,
   onExit,
 }: HomeMenuActionOptions): (action: MenuAction) => void {
@@ -33,7 +36,7 @@ export function createHomeMenuAction({
 
     switch (decision.kind) {
       case "start-review":
-        navigate({ screen: "review", mode: decision.mode });
+        requireProviderConsent(() => navigate({ screen: "review", mode: decision.mode }));
         return;
       case "resume":
         if (!activeSession) return;

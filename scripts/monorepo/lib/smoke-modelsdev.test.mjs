@@ -5,7 +5,6 @@ import {
   buildHostedProbeTuples,
   collectReachableBundleFiles,
   emitProviderProbeResults,
-  enabledSnapshotProviders,
   finalizeStrictProbeResults,
   findSnapshotInBundle,
   formatProviderProbeLine,
@@ -266,24 +265,6 @@ test("assertCatalogProviders throws attributing the failure to the injected sour
     () => assertCatalogProviders({}, ["gemini", "groq"], resolve, "bundled snapshot"),
     /bundled snapshot: provider 'groq' resolved to zero models/,
   );
-});
-
-test("enabledSnapshotProviders returns overlay-backed providers, excluding the OpenRouter live path", () => {
-  const overlay = {
-    gemini: { modelsDevIds: ["google"] },
-    zai: { modelsDevIds: ["zai"] },
-    openrouter: { modelsDevIds: ["openrouter"] },
-    groq: { modelsDevIds: ["groq"] },
-    cerebras: { modelsDevIds: ["cerebras"] },
-    mistral: { modelsDevIds: ["mistral"] },
-  };
-  assert.deepEqual(enabledSnapshotProviders(overlay), [
-    "gemini",
-    "zai",
-    "groq",
-    "cerebras",
-    "mistral",
-  ]);
 });
 
 test("findSnapshotInBundle returns the first bundle file containing every snapshot marker", () => {

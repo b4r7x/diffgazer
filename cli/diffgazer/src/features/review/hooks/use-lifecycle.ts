@@ -13,8 +13,12 @@ import type {
   ReviewEvent,
   ReviewScreenPhase,
 } from "@diffgazer/core/review";
-import { describeReviewStartError, sessionTerminationCopy } from "@diffgazer/core/review";
-import type { Readiness, TransportFamily } from "@diffgazer/core/schemas/config";
+import {
+  describeReviewStartError,
+  type ReviewStartErrorDescription,
+  sessionTerminationCopy,
+} from "@diffgazer/core/review";
+import type { ProviderConsent, Readiness, TransportFamily } from "@diffgazer/core/schemas/config";
 import {
   canAttemptReview,
   READINESS_PRESENTATION,
@@ -75,6 +79,8 @@ export interface ReviewLifecycleState {
   notices: string[];
   error: string | null;
   errorCode: string | null;
+  /** The session request was refused; `error` carries the same text for the summary. */
+  startError: ReviewStartErrorDescription | null;
   isStreaming: boolean;
   provider: string | null;
   productLabel: string | null;
@@ -82,6 +88,8 @@ export interface ReviewLifecycleState {
   configurationDisplay: string | null;
   transportFamily: TransportFamily | null;
   readiness: Readiness;
+  /** The recorded provider consent; null until accepted, or while init is still loading. */
+  providerConsent: ProviderConsent | null;
   initState: ReviewInitState;
   loadingMessage: string | null;
   /** The run is admitted, so the progress screen may carry its start itself. */
@@ -111,7 +119,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
   const [mode, setMode] = useState<ReviewMode>(options.mode ?? "staged");
   const [startedReviewId, setStartedReviewId] = useState<string | undefined>();
   const [phase, setPhase] = useState<ReviewScreenPhase>("streaming");
-  const [startError, setStartError] = useState<string | null>(null);
+  const [startError, setStartError] = useState<ReviewStartErrorDescription | null>(null);
   const requestedReviewId = startedReviewId ?? options.reviewId;
 
   const selectedStatus = resolveSelectedConfiguration(initData);
@@ -164,12 +172,16 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
       if (options.onStreamNotFound) {
         options.onStreamNotFound(reviewId);
       } else {
-        setStartError("Review session not found.");
+        setStartError({
+          title: "Review Not Found",
+          message: "Review session not found.",
+          recovery: null,
+        });
       }
     },
     onStaleSession: (code) => {
       clearActiveSessionForReview(requestedReviewId);
-      setStartError(sessionTerminationCopy(code).message);
+      setStartError({ ...sessionTerminationCopy(code), recovery: null });
     },
   });
 
@@ -218,8 +230,7 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
       setStartedReviewId(result.reviewId);
       return "started";
     } catch (err) {
-      const description = describeReviewStartError(err);
-      setStartError(`${description.title}: ${description.message}`);
+      setStartError(describeReviewStartError(err));
       return "failed";
     }
   }
@@ -276,14 +287,16 @@ export function useReviewLifecycle(options: UseReviewLifecycleOptions = {}): {
     completion,
     fileProgress: lifecycle.stream.state.fileProgress,
     notices: lifecycle.stream.state.notices,
-    error: startError ?? lifecycle.stream.state.error,
+    error: startError ? `${startError.title}: ${startError.message}` : lifecycle.stream.state.error,
     errorCode: startError ? null : lifecycle.stream.state.errorCode,
+    startError,
     isStreaming: lifecycle.stream.state.isStreaming,
     provider,
     productLabel,
     configurationDisplay,
     transportFamily,
     readiness,
+    providerConsent: initData?.settings.providerConsent ?? null,
     initState,
     loadingMessage: lifecycle.checks.loadingMessage,
     canStart: lifecycle.start.canStart,

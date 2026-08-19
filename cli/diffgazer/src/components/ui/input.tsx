@@ -50,7 +50,9 @@ export function Input({
   const showPlaceholder = value.length === 0 && placeholder != null;
 
   return (
-    <Box width={width} borderStyle={SURFACE_BORDER} borderColor={borderColor}>
+    // A field never gives up its single content row to a squeezed column: at the
+    // 80x24 floor the overlay prose around it may clip, the value must not.
+    <Box width={width} flexShrink={0} borderStyle={SURFACE_BORDER} borderColor={borderColor}>
       {showPlaceholder ? (
         <Text color={tokens.muted}>{placeholder}</Text>
       ) : (

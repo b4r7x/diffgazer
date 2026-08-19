@@ -5,7 +5,7 @@ import {
   ExactModelIdSchema,
 } from "../schemas/config/index.js";
 import { LensIdSchema } from "../schemas/review/index.js";
-import { buildSetupPlan, type RunnableSetupPlan } from "./setup-plan.js";
+import { buildSetupPlan, getPlanNotice, type RunnableSetupPlan } from "./setup-plan.js";
 
 /**
  * How a user supplies an API key: pasted literally, or named as an environment
@@ -13,15 +13,6 @@ import { buildSetupPlan, type RunnableSetupPlan } from "./setup-plan.js";
  * the `@diffgazer/core/onboarding` entry.
  */
 export type InputMethod = "paste" | "env";
-
-export const ONBOARDING_CONFORMANCE_STATUSES = [
-  "not-tested",
-  "pending",
-  "passed",
-  "failed",
-] as const;
-export const OnboardingConformanceStatusSchema = z.enum(ONBOARDING_CONFORMANCE_STATUSES);
-export type OnboardingConformanceStatus = z.infer<typeof OnboardingConformanceStatusSchema>;
 
 export const OnboardingAcknowledgementSchema = z.discriminatedUnion("status", [
   z.strictObject({ status: z.literal("required") }),
@@ -49,7 +40,6 @@ export const OnboardingStateSchema = z
     kind: z.literal("runnable"),
     configurationInput: ClientConfigurationInputSchema,
     selectedModelId: ExactModelIdSchema.nullable(),
-    conformanceStatus: OnboardingConformanceStatusSchema,
     acknowledgement: OnboardingAcknowledgementSchema,
     ...OnboardingPreferencesShape,
   })
@@ -59,10 +49,10 @@ export const OnboardingStateSchema = z
   }))
   .superRefine((state, context) => {
     if (state.acknowledgement.status !== "accepted") return;
-    const notice = state.plan.steps.find((step) => step.id === "acknowledgement")?.notice;
+    const notice = getPlanNotice(state.plan);
     if (
-      state.acknowledgement.noticeId !== notice?.id ||
-      state.acknowledgement.noticeVersion !== notice?.noticeVersion
+      state.acknowledgement.noticeId !== notice.id ||
+      state.acknowledgement.noticeVersion !== notice.noticeVersion
     ) {
       context.addIssue({
         code: "custom",

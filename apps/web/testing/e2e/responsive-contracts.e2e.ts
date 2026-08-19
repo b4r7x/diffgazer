@@ -71,11 +71,11 @@ test("onboarding progress renders the compact stepper at every width", async ({ 
 
   const progress = page.getByRole("list", { name: "Setup progress" });
   await expect(progress).toBeVisible();
-  await expect(progress.getByRole("listitem")).toHaveCount(6);
+  await expect(progress.getByRole("listitem")).toHaveCount(5);
 
   const active = progress.locator("li[aria-current='step']");
   await expect(active).toHaveCount(1);
-  await expect(page.getByText("Step 1 of 6: Product")).toBeVisible();
+  await expect(page.getByText("Step 1 of 5: Product")).toBeVisible();
   await expect(active).toContainText("Product");
 });
 
@@ -143,10 +143,11 @@ test("provider panes and controls adapt to the rendered viewport", async ({ page
     );
   }
 
-  const selectConfiguration = detailsPane.getByRole("button", { name: /Select configuration/i });
-  const updateConfiguration = detailsPane.getByRole("button", { name: /Update configuration/i });
-  const firstButton = await selectConfiguration.boundingBox();
-  const secondButton = await updateConfiguration.boundingBox();
+  // Gemini is the active configuration here: its row is Change model plus More.
+  const changeModel = detailsPane.getByRole("button", { name: /Change model/i });
+  const moreActions = detailsPane.getByRole("button", { name: "More actions" });
+  const firstButton = await changeModel.boundingBox();
+  const secondButton = await moreActions.boundingBox();
   expect(firstButton).not.toBeNull();
   expect(secondButton).not.toBeNull();
   if (testInfo.project.name === "mobile-chromium") {
@@ -159,7 +160,7 @@ test("provider panes and controls adapt to the rendered viewport", async ({ page
     );
   }
 
-  await page.getByRole("button", { name: /Select model/i }).click();
+  await changeModel.click();
   const dialog = page.getByRole("dialog", { name: "Select Model" });
   await expect(dialog).toBeVisible();
   // Measure the discovered list, not the loading or error shape that replaces it.

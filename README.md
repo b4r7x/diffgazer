@@ -22,7 +22,7 @@ Run one command, get a review. Only the diff and prompt content go to the provid
 - **Review pipeline** - diff, context, review, enrich, and report steps run in order.
 - **Web and terminal modes** - the browser UI by default; the Ink terminal UI (`--tui`) is in beta and still catching up (see [terminal UI](https://docs.b4r7.dev/app/tui)).
 - **Issue details** - read findings inline against your diff with evidence and fix guidance.
-- **Provider choice** - thirteen selectable products across hosted API, local HTTP, and local CLI transports (see [providers reference](https://docs.b4r7.dev/app/reference/providers)).
+- **Provider choice** - fourteen selectable products across hosted API, local HTTP, and local CLI transports (see [providers reference](https://docs.b4r7.dev/app/reference/providers)).
 - **Privacy controls** - localhost binding, host allowlist, CSRF protection, per-run token, explicit repo trust, and server-only secret/admission boundaries.
 - **Registry and packages** - `@diffgazer/ui`, `@diffgazer/keys`, and `dgadd` support copy-first and package consumption paths.
 
@@ -34,7 +34,7 @@ cd your-project
 diffgazer
 ```
 
-First run walks you through product selection, endpoint binding, authentication, exact model selection, conformance, the product notice, and repo trust.
+First run walks you through product selection, endpoint binding, authentication, exact model selection, the provider consent, and repo trust.
 
 Diffgazer is also a pnpm monorepo for the CLI, docs app, shared registry tooling, keyboard hooks, and UI packages.
 

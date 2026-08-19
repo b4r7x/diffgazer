@@ -14,6 +14,7 @@ export {
 } from "./save-wizard.js";
 export {
   buildSetupPlan,
+  getPlanNotice,
   type RunnableSetupPlan,
   type RunnableSetupStep,
   type SetupProductId,
@@ -23,14 +24,11 @@ export { getOnboardingProgressLabel, STEP_LABELS, STEP_TITLES } from "./steps.js
 export type {
   InputMethod,
   OnboardingAcknowledgement,
-  OnboardingConformanceStatus,
   OnboardingState,
   OnboardingStep,
 } from "./types.js";
 export {
-  ONBOARDING_CONFORMANCE_STATUSES,
   OnboardingAcknowledgementSchema,
-  OnboardingConformanceStatusSchema,
   OnboardingStateSchema,
 } from "./types.js";
 export {

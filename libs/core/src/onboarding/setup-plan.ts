@@ -39,13 +39,6 @@ export type RunnableSetupStep =
       readonly policy: RunnableProductDescriptor<RunnableProductId>["modelPolicy"];
     }
   | {
-      readonly id: "conformance";
-      readonly action: "test";
-      readonly requiredChecks: RunnableProductDescriptor<RunnableProductId>["admission"]["requiredChecks"];
-      readonly structuredOutput: RunnableProductDescriptor<RunnableProductId>["admission"]["structuredOutput"];
-      readonly usage: RunnableProductDescriptor<RunnableProductId>["admission"]["usage"];
-    }
-  | {
       readonly id: "acknowledgement";
       readonly acceptance: "explicit";
       readonly notice: ProductNotice;
@@ -117,13 +110,6 @@ function buildRunnablePlan(
       policy: product.modelPolicy,
     },
     {
-      id: "conformance",
-      action: "test",
-      requiredChecks: product.admission.requiredChecks,
-      structuredOutput: product.admission.structuredOutput,
-      usage: product.admission.usage,
-    },
-    {
       id: "acknowledgement",
       acceptance: "explicit",
       notice: product.notice,
@@ -155,4 +141,9 @@ export function buildSetupPlan(
   if (isCandidateProductId(productId)) return null;
 
   return buildRunnablePlan(PRODUCT_REGISTRY[productId], readiness);
+}
+
+/** The one notice a runnable plan's acknowledgement step accepts: the bound product's own. */
+export function getPlanNotice(plan: RunnableSetupPlan): ProductNotice {
+  return PRODUCT_REGISTRY[plan.productId].notice;
 }

@@ -15,6 +15,7 @@ import {
   getConfigurationNotReadyCopy,
   isCredentialReconnectReadiness,
   isCredentialSetupError,
+  isProviderRecoveryError,
   sanitizePresentationText,
   USAGE_AVAILABILITY_PRESENTATION,
 } from "./error-guidance.js";
@@ -77,7 +78,7 @@ describe("review error-guidance presentation", () => {
 
     expect(getConfigurationNotReadyCopy({ productLabel: "ollama", readiness })).toEqual({
       title: "Configuration Not Ready (ollama)",
-      body: "The local model failed the structured review conformance check. Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Test readiness can re-check it.",
+      body: "The local model failed the structured review conformance check. Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Verify can re-check it.",
     });
     expect(CONFIGURATION_ERROR_COPY).toEqual({
       title: "Configuration Unavailable",
@@ -199,38 +200,62 @@ describe("review error-guidance presentation", () => {
       code: "API_KEY_MISSING",
       title: "API Key Missing",
       message: "API key not found. Add one in Settings → Providers.",
+      recovery: "configure-provider",
     },
     {
       code: "UNSUPPORTED_PROVIDER",
       title: "Provider Not Configured",
       message: "Pick an AI provider in Settings → Providers.",
+      recovery: "configure-provider",
     },
     {
       code: "MODEL_ERROR",
       title: "Model Not Selected",
       message: "API key not found",
+      recovery: "configure-provider",
+    },
+    {
+      code: "SETUP_REQUIRED",
+      title: "Configuration Needs Attention",
+      message: "API key not found",
+      recovery: "configure-provider",
     },
     {
       code: "KEYRING_READ_FAILED",
       title: "Credential Storage Unavailable",
       message: "API key not found. Check Settings → Storage.",
+      recovery: null,
     },
     {
       code: "REVIEW_IN_PROGRESS",
       title: "Review Already Running",
       message:
         "A review is already running for this configuration. Wait for it to finish or cancel it, then start a new one.",
+      recovery: null,
     },
-  ])("describes $code review start failures", ({ code, title, message }) => {
+  ])("describes $code review start failures", ({ code, title, message, recovery }) => {
     const error = Object.assign(new Error("API key not found"), { code, status: 400 });
 
-    expect(describeReviewStartError(error)).toEqual({ title, message });
+    expect(describeReviewStartError(error)).toEqual({ title, message, recovery });
+  });
+
+  it("keeps the server remediation for the admission fast-fail and points at providers", () => {
+    const remediation =
+      "This model could not produce Diffgazer's structured review output. Select a different model or update the configuration.";
+    const error = Object.assign(new Error(remediation), { code: "SETUP_REQUIRED", status: 403 });
+
+    expect(describeReviewStartError(error)).toEqual({
+      title: "Configuration Needs Attention",
+      message: remediation,
+      recovery: "configure-provider",
+    });
   });
 
   it("falls back for unstructured review start failures", () => {
     expect(describeReviewStartError(new Error("network failed"))).toEqual({
       title: "Failed to Start Review",
       message: "Could not create a review session.",
+      recovery: null,
     });
   });
 
@@ -249,10 +274,36 @@ describe("review error-guidance presentation", () => {
       guidance: "The review stream was interrupted. Retry to reconnect to the active review.",
       ctaLabel: "Retry",
     });
+    expect(
+      classifyReviewStreamError("Adapter response failed schema validation.", "MODEL_INCOMPATIBLE"),
+    ).toEqual({
+      kind: "model-incompatible",
+      title: "Model Incompatible",
+      guidance:
+        "This model could not produce Diffgazer's structured review output. Change the model or update the configuration; reviews with this exact setup fail immediately until it changes.",
+      ctaLabel: "Change model",
+    });
+    expect(
+      classifyReviewStreamError("Groq rejected the credential (HTTP 401).", "PROVIDER_REJECTED"),
+    ).toEqual({
+      kind: "provider",
+      title: "Provider Rejected the Request",
+      guidance: "Fix the provider configuration or change the model, then start a new review.",
+      ctaLabel: "Fix provider",
+    });
     expect(classifyReviewStreamError("API-key rejected", "SESSION_STALE").kind).toBe("other");
     expect(classifyReviewStreamError("API-key rejected", null, "local-http").kind).toBe("other");
     expect(classifyReviewStreamError("API-key rejected", null, "local-cli").kind).toBe("other");
     expect(classifyReviewStreamError("API-key rejected", null, "hosted-api").kind).toBe("api-key");
+  });
+
+  it("routes only credential, model, and provider failures to the providers screen", () => {
+    expect(isProviderRecoveryError("api-key")).toBe(true);
+    expect(isProviderRecoveryError("model-incompatible")).toBe(true);
+    expect(isProviderRecoveryError("provider")).toBe(true);
+    expect(isProviderRecoveryError("trust")).toBe(false);
+    expect(isProviderRecoveryError("transport")).toBe(false);
+    expect(isProviderRecoveryError("other")).toBe(false);
   });
 
   it("fails neutral when the admitted transport family is unknown", () => {

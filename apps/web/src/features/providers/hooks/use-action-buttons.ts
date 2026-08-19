@@ -1,14 +1,14 @@
+import { isProviderControlDisabled, type ProviderRowControl } from "@diffgazer/core/providers";
 import { DECLINE, useActionRowNavigation, useKey } from "@diffgazer/keys";
 import { type RefCallback, type RefObject, useRef } from "react";
-import { isProviderActionDisabled, type ProviderAction } from "../lib/actions";
 import type { ProvidersFocusZone } from "./use-keyboard";
 
 interface UseProvidersActionButtonsOptions {
   /**
-   * The page layer's single derived action row -- never recomputed here, so the keyboard row
-   * and the rendered buttons address the same actions by the same indexes.
+   * The rendered row's controls -- never recomputed here, so the keyboard row and the
+   * rendered buttons address the same controls by the same indexes.
    */
-  actions: readonly ProviderAction[];
+  controls: readonly ProviderRowControl[];
   /** True while a list row is highlighted; without one there is nothing to act on. */
   hasSelection: boolean;
   dialogOpen: boolean;
@@ -17,8 +17,8 @@ interface UseProvidersActionButtonsOptions {
   inButtons: boolean;
   setZone: (zone: ProvidersFocusZone) => void;
   focusProviderList: () => void;
-  /** The page layer's single action dispatcher, shared with the rendered action row. */
-  runAction: (action: ProviderAction) => void;
+  /** The page layer's single control dispatcher, shared with the rendered action row. */
+  runControl: (control: ProviderRowControl) => void;
 }
 
 interface UseProvidersActionButtonsResult {
@@ -27,34 +27,34 @@ interface UseProvidersActionButtonsResult {
   /** Content element focus parks on while every action is disabled mid-mutation. */
   focusFallbackRef: RefObject<HTMLDivElement | null>;
   getActionButtonProps: (index: number) => {
-    ref: RefCallback<HTMLButtonElement>;
+    ref: RefCallback<HTMLElement>;
     onFocus: () => void;
   };
 }
 
 export function useProvidersActionButtons({
-  actions,
+  controls,
   hasSelection,
   dialogOpen,
   isPending,
   inButtons,
   setZone,
   focusProviderList,
-  runAction,
+  runControl,
 }: UseProvidersActionButtonsOptions): UseProvidersActionButtonsResult {
   const focusFallbackRef = useRef<HTMLDivElement>(null);
-  // Shares isProviderActionDisabled with the rendered row so focus custody sees what the DOM does.
-  const disabledActions = actions.map((action) => isProviderActionDisabled(action, isPending));
+  // Shares isProviderControlDisabled with the rendered row so focus custody sees what the DOM does.
+  const disabledActions = controls.map((control) => isProviderControlDisabled(control, isPending));
 
   const handleButtonAction = (index: number) => {
-    const action = actions[index];
-    if (!hasSelection || !action || isProviderActionDisabled(action, isPending)) return;
-    runAction(action);
+    const control = controls[index];
+    if (!hasSelection || !control || isProviderControlDisabled(control, isPending)) return;
+    runControl(control);
   };
 
   const actionRow = useActionRowNavigation({
     enabled: !dialogOpen && inButtons,
-    actionCount: actions.length,
+    actionCount: controls.length,
     disabledActions,
     disabledFocusFallbackRef: focusFallbackRef,
     onAction: handleButtonAction,
@@ -68,13 +68,13 @@ export function useProvidersActionButtons({
     defaultZone: "actions",
   });
 
-  // The row's action list shrinks and grows with the selection, so a focused index taken from a
+  // The row's control list shrinks and grows with the selection, so a focused index taken from a
   // longer list can outlive it. Clamping during render keeps the highlighted button in range
   // without a second copy of the index to keep in sync.
-  const focusedIndex = Math.min(actionRow.focusedIndex, actions.length - 1);
+  const focusedIndex = Math.min(actionRow.focusedIndex, controls.length - 1);
 
   const enterButtons = (index: number = 0) => {
-    if (!hasSelection || actions.length === 0) return;
+    if (!hasSelection || controls.length === 0) return;
     setZone("buttons");
     actionRow.enterActions(index);
   };
@@ -95,7 +95,7 @@ export function useProvidersActionButtons({
 
   const navigateButtonsVertical = (direction: 1 | -1) => {
     let next = focusedIndex + direction;
-    while (next >= 0 && next < actions.length) {
+    while (next >= 0 && next < controls.length) {
       if (!disabledActions[next]) {
         actionRow.enterActions(next);
         return;

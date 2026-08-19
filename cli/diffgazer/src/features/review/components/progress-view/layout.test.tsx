@@ -249,7 +249,7 @@ describe("ReviewProgressView (TUI) layout", () => {
     expect(lines).toHaveLength(24);
     // The recovery line is the callout's third content row, so the reserve has
     // to pay for it: the callout keeps its closing border inside the frame.
-    const recoveryRow = lines.findIndex((line) => line.includes("Press s to open Settings."));
+    const recoveryRow = lines.findIndex((line) => line.includes("Press p — Configure Provider."));
     expect(recoveryRow).toBeGreaterThan(-1);
     expect(lines.slice(recoveryRow + 1).some((line) => line.includes("\u2518"))).toBe(true);
   });
@@ -278,7 +278,7 @@ describe("ReviewProgressView (TUI) layout", () => {
     const lines = stripAnsi(lastFrame() ?? "").split("\n");
 
     expect(lines).toHaveLength(24);
-    const recoveryRow = lines.findIndex((line) => line.includes("Press s to open Settings."));
+    const recoveryRow = lines.findIndex((line) => line.includes("Press p — Configure Provider."));
     expect(recoveryRow).toBeGreaterThan(-1);
     expect(lines.slice(recoveryRow + 1).some((line) => line.includes("\u2518"))).toBe(true);
   });

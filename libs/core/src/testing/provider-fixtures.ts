@@ -170,6 +170,8 @@ export function makeConfigurationInitResponse(
       severityThreshold: "low",
       secretsStorage: null,
       agentExecution: "parallel",
+      // Consent is on record in the steady state; first-run tests override it.
+      providerConsent: { version: 1, acceptedAt: "2026-08-01T09:00:00.000Z" },
     },
     project: { projectId: "proj-1", path: "/repo", trust: null },
   });

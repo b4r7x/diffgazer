@@ -7,11 +7,12 @@ import {
 import { ClientConfigurationActionResponseSchema } from "@diffgazer/core/schemas/config";
 import { toast } from "@diffgazer/ui/components/toast";
 import { useEffect, useRef, useState } from "react";
-import { useConfigActions } from "@/hooks/use-config";
+import { useConfigActions, useConfigData } from "@/hooks/use-config";
 
 export function useOnboarding() {
   const api = useApi();
   const { refresh: refreshConfig } = useConfigActions();
+  const { settings } = useConfigData();
   const saveSettings = useSaveSettings();
   const { mutateAsync: executeConfigurationAction } = useConfigurationAction();
 
@@ -40,6 +41,7 @@ export function useOnboarding() {
     callbacks,
     onComplete: refreshConfig,
     onCleanupError: (message) => toast.error("Cleanup Failed", { message }),
+    providerConsent: settings?.providerConsent ?? null,
   });
 
   const revokeOnPageHideRef = useRef(wizard.revokeCreatedConfigurationOnPageHide);

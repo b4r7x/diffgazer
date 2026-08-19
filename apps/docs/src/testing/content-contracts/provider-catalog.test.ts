@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { PROVIDER_OVERLAY } from "@diffgazer/core/catalog";
 import {
   CANDIDATE_VERDICTS,
+  LIVE_ONLY_MODEL_DESCRIPTION,
   PRODUCT_REGISTRY,
   SELECTABLE_PRODUCT_IDS,
 } from "@diffgazer/core/providers";
@@ -180,8 +181,8 @@ describe("Web Ink canonical terminology matches", () => {
   const providersAndModels = readConcept("providers-and-models");
   const providersReference = readDoc("reference", "providers.mdx");
 
-  it("describes exactly thirteen selectable products with registry names", () => {
-    expect(providersAndModels).toContain("thirteen selectable products");
+  it("describes exactly fourteen selectable products with registry names", () => {
+    expect(providersAndModels).toContain("fourteen selectable products");
     for (const productId of SELECTABLE_PRODUCT_IDS) {
       const name = PRODUCT_REGISTRY[productId].presentation.name;
       expect(providersAndModels).toContain(name);
@@ -194,33 +195,72 @@ describe("Web Ink canonical terminology matches", () => {
       "A compatible endpoint, free credit, or local binary cannot override the frozen verdict",
     );
   });
+
+  it("quotes the secondary line a live-only model row carries", () => {
+    expect(providersAndModels).toContain(`"${LIVE_ONLY_MODEL_DESCRIPTION}"`);
+    expect(readDoc("reference", "api.mdx")).toContain(`"${LIVE_ONLY_MODEL_DESCRIPTION}"`);
+  });
 });
 
+/**
+ * The only URLs a pre-review model-list request may reach without a credential.
+ * A key-bearing request goes to `{endpoint}/models` of the configuration that
+ * owns the key, and to nothing else — the docs must state both halves.
+ */
+const KEYLESS_MODEL_LIST_URLS = [
+  "https://models.dev/api.json",
+  "https://openrouter.ai/api/v1/models",
+  "https://ollama.com/v1/models",
+] as const;
+
+const KEY_BEARING_LIST_PRODUCTS = [
+  "zai",
+  "groq",
+  "cerebras",
+  "mistral",
+  "deepseek",
+  "qwen",
+  "moonshot",
+] as const;
+
 describe("provider catalog privacy copy", () => {
-  it("discloses pre-review catalog traffic in the overview and links to full privacy details", () => {
+  it("discloses pre-review model-list traffic in the overview and links to full privacy details", () => {
     const overview = readConcept("how-it-works");
 
     expect(overview).toContain("pre-review model-catalog lookup");
     expect(overview).toContain("models.dev catalog");
-    expect(overview).not.toContain("OpenRouter API key");
     expect(overview).toContain("[Privacy](/app/concepts/privacy)");
     expect(overview).not.toContain("nothing leaves it until you start a review");
     expect(overview).not.toContain("The only thing that leaves your computer");
   });
 
-  it("names shared-catalog hosted products and the credential-bearing OpenRouter route", () => {
+  it("names every catalog-backed product, the keyless list URLs, and where a key may go", () => {
     const privacy = readConcept("privacy");
     const catalogSection = extractSection(privacy, "Model-catalog requests, during setup");
 
     const sharedCatalogProducts = SELECTABLE_PRODUCT_IDS.filter(
       (productId) => PROVIDER_OVERLAY[productId] !== undefined,
     );
-
     for (const productId of sharedCatalogProducts) {
       expect(catalogSection).toContain(PRODUCT_REGISTRY[productId].presentation.name);
     }
-    expect(catalogSection).toContain("https://models.dev/api.json");
-    expect(catalogSection).not.toContain("https://openrouter.ai/api/v1/models");
-    expect(catalogSection).not.toMatch(/with your OpenRouter API key/i);
+
+    for (const url of KEYLESS_MODEL_LIST_URLS) {
+      expect(catalogSection).toContain(`\`${url}\``);
+    }
+    const namedUrls = catalogSection.match(/https:\/\/[^\s`)]+/g) ?? [];
+    expect(new Set(namedUrls)).toEqual(new Set(KEYLESS_MODEL_LIST_URLS));
+
+    for (const productId of KEY_BEARING_LIST_PRODUCTS) {
+      expect(catalogSection).toContain(PRODUCT_REGISTRY[productId].presentation.name);
+    }
+    expect(catalogSection).toContain("`{endpoint}/models`");
+    expect(catalogSection).toContain(
+      "A credential is sent only to the endpoint of the configuration it belongs to",
+    );
+    expect(catalogSection).toContain(
+      "Google Gemini uses a different list API and stays catalog-only, so model discovery never sends a Gemini key; only a review or an explicit Verify does.",
+    );
+    expect(catalogSection).toContain("`DIFFGAZER_OFFLINE`");
   });
 });

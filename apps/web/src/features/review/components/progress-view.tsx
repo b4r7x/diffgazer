@@ -3,6 +3,7 @@ import { formatDuration } from "@diffgazer/core/format";
 import {
   classifyReviewStreamError,
   getPartialFailureWarning,
+  isProviderRecoveryError,
   type LogStreamState,
   type ReviewEvent,
   type ReviewStreamErrorGuidance,
@@ -126,7 +127,6 @@ function ErrorDisplay({
   onRetry?: () => void;
 }) {
   const navigate = useNavigate();
-  const isApiKeyError = guidance.kind === "api-key";
 
   return (
     <div className="shrink-0 px-4 pb-3">
@@ -142,7 +142,7 @@ function ErrorDisplay({
               Back to Home
             </Button>
           )}
-          {isApiKeyError && (
+          {isProviderRecoveryError(guidance.kind) && (
             <Button
               variant="outline"
               bracket

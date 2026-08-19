@@ -9,7 +9,7 @@ import type {
   ConfigurationModelsResponse,
 } from "@diffgazer/core/schemas/config";
 import {
-  CONFORMANCE_TEST_COST_DISCLOSURE,
+  DEFAULT_SETTINGS,
   LocalHttpConfigurationInputSchema,
 } from "@diffgazer/core/schemas/config";
 import { GEMINI_CONFIGURATION } from "@diffgazer/core/testing/provider-fixtures";
@@ -76,6 +76,7 @@ const DISCOVERED_MODELS: ConfigurationModelsResponse = {
 };
 
 let mockSaveSettings: Mock<BoundApi["saveSettings"]>;
+let mockGetSettings: Mock<BoundApi["getSettings"]>;
 let mockRunConfigurationAction: Mock<BoundApi["executeConfigurationAction"]>;
 let mockGetConfigurationModels: Mock<BoundApi["getConfigurationModels"]>;
 
@@ -83,6 +84,7 @@ function createWrapper() {
   const api = {
     ...createApi({ baseUrl: "http://localhost" }),
     saveSettings: mockSaveSettings,
+    getSettings: mockGetSettings,
     executeConfigurationAction: mockRunConfigurationAction,
     getConfigurationModels: mockGetConfigurationModels,
   } satisfies BoundApi;
@@ -114,6 +116,7 @@ describe("OnboardingWizard", () => {
   beforeEach(() => {
     terminalDimensions.current = { columns: 80, rows: 24 };
     mockSaveSettings = vi.fn<BoundApi["saveSettings"]>().mockResolvedValue(undefined);
+    mockGetSettings = vi.fn<BoundApi["getSettings"]>().mockResolvedValue(DEFAULT_SETTINGS);
     mockRunConfigurationAction = vi
       .fn<BoundApi["executeConfigurationAction"]>()
       .mockResolvedValue({ action: "delete", status: "succeeded" });
@@ -133,13 +136,16 @@ describe("OnboardingWizard", () => {
     );
 
     await flushInk();
-    await vi.waitFor(() => expect(lastFrame()).toContain("Google Gemini"));
-    const frame = lastFrame() ?? "";
-    expect(frame).toContain("Step 1 of 6: Product");
-    expect(frame).toContain("SELECT PRODUCT");
+    await vi.waitFor(() => expect(lastFrame()).toContain("SELECT PRODUCT"));
+    const frame = stripAnsi(lastFrame() ?? "").replace(/\s+/g, " ");
+    // Five steps fit the 80-column floor, so the full progress bar renders.
+    expect(frame).toContain("[o] Product");
+    expect(frame).toContain("[ ] Model");
+    expect(frame).toContain("Google Gemini");
+    expect(frame).toContain("[ Next ]");
   });
 
-  test("discloses the billed readiness test before the user confirms conformance", async () => {
+  test("goes straight from the model to the product notice without a conformance step", async () => {
     terminalDimensions.current = { columns: 80, rows: 40 };
     mockRunConfigurationAction.mockImplementation(async (action) =>
       action.action === "create"
@@ -190,14 +196,66 @@ describe("OnboardingWizard", () => {
     stdin.write("\u001b[C");
     await flushInk();
     stdin.write("\r");
-    await waitUntil(() => showsStep("Verify Conformance"));
+    await waitUntil(() => showsStep("Provider Consent"));
 
-    expect(frameText()).toContain(CONFORMANCE_TEST_COST_DISCLOSURE.replace(/\s+/g, " "));
-    expect(frameText()).toContain("Your first review verifies structured review support");
-    // The step records an acknowledgement, so its control must not claim a
-    // verification the wizard gives the user no means to perform.
-    expect(frameText()).toContain("I understand");
-    expect(frameText()).not.toContain("Confirm conformance");
+    expect(frameText()).toContain("Diffgazer sends repository content");
+    expect(frameText()).toContain("Google Gemini notice:");
+    expect(frameText()).toContain("[ Accept ]");
+  });
+
+  test("pre-accepts the consent step when provider consent is already on record", async () => {
+    terminalDimensions.current = { columns: 80, rows: 40 };
+    mockRunConfigurationAction.mockImplementation(async (action) =>
+      action.action === "create"
+        ? { action: "create", status: "succeeded", configuration: DRAFT_CONFIGURATION }
+        : { action: "delete", status: "succeeded" },
+    );
+    mockGetSettings.mockResolvedValue({
+      ...DEFAULT_SETTINGS,
+      providerConsent: { version: 1, acceptedAt: "2026-08-01T09:00:00.000Z" },
+    });
+
+    const Wrapper = createWrapper();
+    const { lastFrame, stdin } = renderRootFrame(
+      80,
+      40,
+      <Wrapper>
+        <OnboardingWizard />
+      </Wrapper>,
+    );
+    const frameText = () => stripAnsi(lastFrame() ?? "").replace(/\s+/g, " ");
+    const showsStep = (title: string) => frameText().includes(title.toUpperCase());
+
+    await flushInk();
+    stdin.write("\t");
+    await flushInk();
+    stdin.write("\r");
+    await waitUntil(() => showsStep("Configure Endpoint"));
+    stdin.write("\t");
+    await flushInk();
+    stdin.write("\u001b[C");
+    await flushInk();
+    stdin.write("\r");
+    await waitUntil(() => showsStep("Configure Authentication"));
+    stdin.write("\u001b[B");
+    await flushInk();
+    stdin.write("\t");
+    await flushInk();
+    stdin.write("\r");
+    await waitUntil(() => showsStep("Select Model"));
+    await waitUntil(() => frameText().includes("gemini-2.5-flash"));
+    stdin.write("\r");
+    await flushInk();
+    stdin.write("\t");
+    await flushInk();
+    stdin.write("\u001b[C");
+    await flushInk();
+    stdin.write("\r");
+    await waitUntil(() => showsStep("Provider Consent"));
+
+    // Nothing left to accept: the recorded consent stands and Complete Setup is live.
+    expect(frameText()).toContain("[ Accepted ]");
+    expect(frameText()).toContain("[ Complete Setup ]");
   });
 
   test("names each local server in the endpoint picker instead of showing bare URLs", async () => {

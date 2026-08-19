@@ -276,6 +276,28 @@ describe("add-now PAYG tuple model and notice policies", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("drives Ollama Cloud through ollama.com with a bearer credential and JSON mode", async () => {
+    const fetch = mockFetchResponse(openAiSuccessBody({ issues: [] }));
+
+    const result = await executeHostedReview({
+      ...executeRequest("ollama-cloud"),
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("completed");
+    expect(result.receipt.normalizedEndpoint).toBe("https://ollama.com/v1");
+    expect(result.receipt.modelId).toBe("gpt-oss:20b");
+
+    const [url, init] = (fetch as MockFetchFn).mock.calls[0] ?? [];
+    expect(url).toBe("https://ollama.com/v1/chat/completions");
+    expect((init as RequestInit).headers).toMatchObject({
+      authorization: `Bearer ${TEST_CREDENTIAL}`,
+    });
+    // Ollama Cloud ignores json_schema, so the wire asks for JSON mode and the
+    // review is validated locally.
+    expect(requestBodyAt(fetch, 0).response_format).toEqual({ type: "json_object" });
+  });
+
   it("isolates Moonshot by region endpoint tuple", async () => {
     const fetch = mockFetchResponse(
       openAiSuccessBody(
@@ -454,6 +476,52 @@ describe("failure outcomes emit zero findings without fallback", () => {
 
     expect(result.receipt.outcome).toBe("transport-failed");
     expect(result.result.issues).toEqual([]);
+  });
+
+  it.each([
+    [401, "Groq rejected the credential (HTTP 401)."],
+    [403, "Groq refused access (HTTP 403)."],
+    [402, "Groq reported billing or quota exhausted (HTTP 402)."],
+    [404, "Groq could not find the selected model or endpoint (HTTP 404)."],
+    [413, "Groq rejected the request as too large (HTTP 413)."],
+    [429, "Groq rate limited the request (HTTP 429)."],
+  ])("reports a refused HTTP %s response as a provider rejection the user can fix", async (status, message) => {
+    const fetch = mockFetchResponse({ error: "sk-secret-abcdefghijklmnop" }, { status });
+    const reportDiagnostic = vi.fn();
+
+    const result = await executeHostedReview({
+      ...executeRequest("groq"),
+      reportDiagnostic,
+      context: hostedContext(fetch),
+    });
+
+    expect(result.receipt.outcome).toBe("transport-failed");
+    expect(reportDiagnostic).toHaveBeenCalledTimes(1);
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "provider-rejected", safeMessage: message }),
+    );
+    expect(JSON.stringify(reportDiagnostic.mock.calls[0])).not.toContain(
+      "sk-secret-abcdefghijklmnop",
+    );
+  });
+
+  it("keeps a provider outage a plain transport failure", async () => {
+    const fetch = mockFetchResponse({ error: "down" }, { status: 503 });
+    const reportDiagnostic = vi.fn();
+
+    await executeHostedReview({
+      ...executeRequest("groq"),
+      reportDiagnostic,
+      context: hostedContext(fetch),
+    });
+
+    expect(reportDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "transport-failed",
+        retryable: true,
+        safeMessage: "Groq returned HTTP 503.",
+      }),
+    );
   });
 
   it("times out a request that stalls past the admitted wall time", async () => {

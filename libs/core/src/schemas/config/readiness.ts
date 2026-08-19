@@ -49,12 +49,12 @@ interface ReadinessPresentation {
 }
 
 /**
- * Every surface that offers Test readiness must say what it costs before the
- * user triggers it. Both wizards render this directly; the two conformance
- * remediation messages below carry it into the provider and review surfaces.
+ * Every surface that offers Verify must say what it costs before the user
+ * triggers it. The conformance remediation messages below carry it into the
+ * provider surfaces.
  */
 export const CONFORMANCE_TEST_COST_DISCLOSURE =
-  "Test readiness makes one small billed API call to the provider (typically under $0.02; free for local endpoints; codex and copilot use your CLI subscription quota).";
+  "Verify makes one small billed API call to the provider (typically under $0.02; free for local endpoints; codex and copilot use your CLI subscription quota).";
 
 /**
  * The statuses a review may still be attempted under. Structured-output
@@ -73,6 +73,17 @@ export const REVIEW_ATTEMPTABLE_STATUSES = [
 
 export function canAttemptReview(status: ReadinessStatus): boolean {
   return (REVIEW_ATTEMPTABLE_STATUSES as readonly ReadinessStatus[]).includes(status);
+}
+
+/**
+ * The statuses a provider surface offers "Select configuration" for as the
+ * primary action: ready, or unverified — the first review verifies structured
+ * output inline, so nothing has to run before the configuration is picked.
+ * A cached failure is attemptable (it fast-fails for free) but its primary
+ * action stays the remediation, never selection.
+ */
+export function canSelectConfiguration(status: ReadinessStatus): boolean {
+  return status === "ready" || status === "conformance-pending";
 }
 
 export const READINESS_PRESENTATION = {
@@ -96,10 +107,10 @@ export const READINESS_PRESENTATION = {
   },
   "conformance-pending": {
     action: "test",
-    explanation: "Structured review conformance has not been checked yet.",
+    explanation: "Structured review support has not been verified yet.",
     remediation: {
       code: "run-conformance",
-      message: `Structured review support is verified automatically on your first review. To check now, run Test readiness. ${CONFORMANCE_TEST_COST_DISCLOSURE}`,
+      message: `Reviews can start now; the first review verifies structured review support automatically. To check sooner, run Verify. ${CONFORMANCE_TEST_COST_DISCLOSURE}`,
     },
   },
   "conformance-failed": {
@@ -107,7 +118,7 @@ export const READINESS_PRESENTATION = {
     explanation: "The exact review path did not satisfy the structured output contract.",
     remediation: {
       code: "rerun-conformance",
-      message: `Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Test readiness can re-check it. ${CONFORMANCE_TEST_COST_DISCLOSURE}`,
+      message: `Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Verify can re-check it. ${CONFORMANCE_TEST_COST_DISCLOSURE}`,
     },
   },
   "acknowledgement-required": {
@@ -131,7 +142,7 @@ export const READINESS_PRESENTATION = {
     explanation: "The live readiness check was intentionally skipped.",
     remediation: {
       code: "enable-live-probe",
-      message: "Satisfy the live-check prerequisites, then test the configuration again.",
+      message: "Satisfy the live-check prerequisites, then run Verify again.",
     },
   },
   "local-conformance-failed": {
@@ -140,7 +151,7 @@ export const READINESS_PRESENTATION = {
     remediation: {
       code: "rerun-conformance",
       message:
-        "Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Test readiness can re-check it.",
+        "Select a different model or update the configuration; reviews with this exact setup fail immediately until it changes. Verify can re-check it.",
     },
   },
   ready: {
@@ -196,7 +207,7 @@ function presentationField<Source, const Field extends keyof Source>(
 function readinessVariant<
   const Status extends ReadinessStatus,
   const Ready extends boolean,
-  const EvidenceStatus extends ReadinessEvidenceStatus,
+  EvidenceStatus extends z.ZodType,
   CheckedAt extends z.ZodType,
   Acknowledgement extends z.ZodType,
 >(
@@ -211,7 +222,7 @@ function readinessVariant<
   return z.strictObject({
     status: z.literal(status),
     ready: z.literal(ready),
-    evidenceStatus: z.literal(evidenceStatus),
+    evidenceStatus,
     checkedAt,
     acknowledgement,
     action: z.literal(presentationField(presentation, "action")),
@@ -224,13 +235,19 @@ function readinessVariant<
 }
 
 const observedFailure = <const Status extends ReadinessStatus>(status: Status) =>
-  readinessVariant(status, false, "failed", CheckedAtSchema, ReadinessAcknowledgementSchema);
+  readinessVariant(
+    status,
+    false,
+    z.literal("failed"),
+    CheckedAtSchema,
+    ReadinessAcknowledgementSchema,
+  );
 
 export const ReadinessSchema = z.discriminatedUnion("status", [
   readinessVariant(
     "unconfigured",
     false,
-    "not-checked",
+    z.literal("not-checked"),
     NotCheckedAtSchema,
     ReadinessAcknowledgementSchema,
   ),
@@ -239,27 +256,41 @@ export const ReadinessSchema = z.discriminatedUnion("status", [
   readinessVariant(
     "conformance-pending",
     false,
-    "pending",
+    z.literal("pending"),
     CheckedAtSchema,
     ReadinessAcknowledgementSchema,
   ),
   observedFailure("conformance-failed"),
+  // The notice gates the first context send, so an outstanding acknowledgement
+  // is reported ahead of whatever the evidence says about the tuple.
   readinessVariant(
     "acknowledgement-required",
     false,
-    "passed",
+    z.enum(["pending", "failed", "passed"]),
     CheckedAtSchema,
     RequiredAcknowledgementSchema,
   ),
   readinessVariant(
     "unsupported",
     false,
-    "not-checked",
+    z.literal("not-checked"),
     NotCheckedAtSchema,
     NotApplicableAcknowledgementSchema,
   ),
-  readinessVariant("skipped", false, "skipped", CheckedAtSchema, ReadinessAcknowledgementSchema),
+  readinessVariant(
+    "skipped",
+    false,
+    z.literal("skipped"),
+    CheckedAtSchema,
+    ReadinessAcknowledgementSchema,
+  ),
   observedFailure("local-conformance-failed"),
-  readinessVariant("ready", true, "passed", CheckedAtSchema, AcceptedAcknowledgementSchema),
+  readinessVariant(
+    "ready",
+    true,
+    z.literal("passed"),
+    CheckedAtSchema,
+    AcceptedAcknowledgementSchema,
+  ),
 ]);
 export type Readiness = z.infer<typeof ReadinessSchema>;

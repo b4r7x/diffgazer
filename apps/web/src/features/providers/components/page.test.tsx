@@ -5,6 +5,8 @@ import type { ConfigurationInitResponse } from "@diffgazer/core/schemas/config";
 import {
   ClientConfigurationActionResponseSchema,
   LEGACY_V1_HAS_API_KEY_PROPERTY,
+  PROVIDER_CONSENT_TEXT,
+  type SettingsConfig,
 } from "@diffgazer/core/schemas/config";
 import {
   CODEX_CLI_CONFIGURATION,
@@ -16,26 +18,35 @@ import {
 } from "@diffgazer/core/testing/provider-fixtures";
 import { createTestQueryWrapper } from "@diffgazer/core/testing/query-wrapper";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { GlobalShortcuts } from "@/components/layout/global";
 import { ConfigProvider } from "@/hooks/use-config";
+import { ProviderConsentProvider } from "@/hooks/use-provider-consent";
 import { clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { createConfigurationActionMocks } from "@/testing/configuration-action-mocks";
+import { FooterView } from "@/testing/footer-view";
 import { ProvidersPage } from "./page";
+
+const navigateMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@tanstack/react-router", () => ({
   useLocation: () => ({ pathname: "/providers-page-test" }),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => navigateMock,
   useSearch: () => ({}),
 }));
 
+// No configuration is active, so the ready row keeps Select configuration as its primary.
 function makeInitResponse(): ConfigurationInitResponse {
-  return makeConfigurationInitResponse([
-    configurationStatus(GEMINI_CONFIGURATION, "ready"),
-    configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
-    configurationStatus(CODEX_CLI_CONFIGURATION, "unsupported"),
-  ]);
+  return makeConfigurationInitResponse(
+    [
+      configurationStatus(GEMINI_CONFIGURATION, "ready"),
+      configurationStatus(LOCAL_OPENAI_CONFIGURATION, "local-conformance-failed"),
+      configurationStatus(CODEX_CLI_CONFIGURATION, "unsupported"),
+    ],
+    null,
+  );
 }
 
 beforeAll(() => {
@@ -69,6 +80,23 @@ function createMockApi() {
   } satisfies BoundApi;
 }
 
+/**
+ * A first run: no provider consent on record. Saving settings updates the init
+ * the page refetches, the way the server does.
+ */
+function withoutProviderConsent() {
+  const init = makeInitResponse();
+  init.settings.providerConsent = null;
+  mockApi.loadConfigurationInit.mockResolvedValue(init);
+  mockApi.saveSettings = vi.fn(async (patch: Partial<SettingsConfig>) => {
+    Object.assign(init.settings, patch);
+  });
+}
+
+function getConsentDialog(): HTMLElement {
+  return screen.getByRole("alertdialog", { name: "Provider data notice" });
+}
+
 // The layout attribute is the handle the responsive-contracts e2e already
 // locates the panes by; data-state="focused" is Panel's documented bracket
 // contract.
@@ -78,20 +106,28 @@ function getPane(container: HTMLElement, pane: "provider-list" | "provider-detai
   return element;
 }
 
-function renderProvidersPage() {
+function renderProvidersPage({ footer = false, globalShortcuts = false } = {}) {
   const { Wrapper, queryClient } = createTestQueryWrapper({ api: mockApi });
   const view = render(
     <Wrapper>
       <FooterProvider>
         <KeyboardProvider>
+          {globalShortcuts ? <GlobalShortcuts /> : null}
           <ConfigProvider>
-            <ProvidersPage />
+            <ProviderConsentProvider>
+              <ProvidersPage />
+              {footer ? <FooterView /> : null}
+            </ProviderConsentProvider>
           </ConfigProvider>
         </KeyboardProvider>
       </FooterProvider>
     </Wrapper>,
   );
   return { ...view, queryClient };
+}
+
+function getDeleteConfirm(): HTMLElement {
+  return screen.getByRole("alertdialog", { name: "Delete configuration?" });
 }
 
 describe("ProvidersPage", () => {
@@ -138,6 +174,136 @@ describe("ProvidersPage", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("gates Select configuration behind the provider consent and continues once it is accepted", async () => {
+    const user = userEvent.setup();
+    withoutProviderConsent();
+    renderProvidersPage();
+
+    await screen.findByRole("listbox", { name: "Providers" });
+    expect(screen.queryByText(PROVIDER_CONSENT_TEXT)).not.toBeInTheDocument();
+    const select = screen.getByRole("button", { name: "Select configuration" });
+    await user.click(select);
+
+    const dialog = getConsentDialog();
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(within(dialog).getByText(PROVIDER_CONSENT_TEXT)).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: /Privacy notes/ })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/app/concepts/privacy"),
+    );
+    // Initial focus lands on the confirming action, so Enter accepts.
+    const accept = within(dialog).getByRole("button", { name: "Accept and continue" });
+    await waitFor(() => expect(accept).toHaveFocus());
+    expect(mockApi.selectConfiguration).not.toHaveBeenCalled();
+
+    await user.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(mockApi.saveSettings).toHaveBeenCalledWith({
+        providerConsent: { version: 1, acceptedAt: expect.any(String) },
+      }),
+    );
+    await waitFor(() => expect(mockApi.selectConfiguration).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(screen.queryByRole("alertdialog", { name: "Provider data notice" })).toBeNull(),
+    );
+    expect(mockApi.saveSettings).toHaveBeenCalledOnce();
+
+    // Accepted once: the next gated action runs without asking again.
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Verify" }));
+    await waitFor(() => expect(mockApi.testConfiguration).toHaveBeenCalledOnce());
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("gates Verify and Update configuration too, and Not now cancels the action", async () => {
+    const user = userEvent.setup();
+    withoutProviderConsent();
+    renderProvidersPage();
+
+    await screen.findByRole("listbox", { name: "Providers" });
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Verify" }));
+    await user.click(within(getConsentDialog()).getByRole("button", { name: "Not now" }));
+
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    expect(mockApi.testConfiguration).not.toHaveBeenCalled();
+    expect(mockApi.saveSettings).not.toHaveBeenCalled();
+
+    // Setup is gated as well: the credentials dialog waits behind the notice.
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Update configuration" }));
+    expect(screen.queryByRole("dialog", { name: /Update Configuration/ })).not.toBeInTheDocument();
+    await user.click(
+      within(getConsentDialog()).getByRole("button", { name: "Accept and continue" }),
+    );
+    expect(await screen.findByRole("dialog", { name: /Update Configuration/ })).toBeInTheDocument();
+  });
+
+  it("keeps a way back to the declined notice in the details pane and restores focus on Escape", async () => {
+    const user = userEvent.setup();
+    withoutProviderConsent();
+    renderProvidersPage();
+
+    await screen.findByRole("listbox", { name: "Providers" });
+    const details = screen.getByRole("region", { name: "Provider details" });
+    // Neutral status, not an alert: the app stays usable without the consent.
+    expect(within(details).getByText("Consent required to run reviews")).toBeInTheDocument();
+    expect(within(details).queryByRole("alert")).not.toBeInTheDocument();
+    const review = within(details).getByRole("button", {
+      name: "Review the provider data notice",
+    });
+    await user.click(review);
+
+    const dialog = getConsentDialog();
+    // Opened on its own there is nothing to continue, so the button just accepts.
+    expect(within(dialog).getByRole("button", { name: "Accept" })).toBeInTheDocument();
+    // fireEvent retained: dialog cancel is a native Event; userEvent has no cancel dispatch.
+    fireEvent(dialog, new Event("cancel", { bubbles: false }));
+    // fireEvent retained: animationend has no user-event equivalent; the libs/ui dialog
+    // completes its close presence transition — and restores focus — on this event.
+    fireEvent.animationEnd(dialog);
+
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(review).toHaveFocus());
+    expect(mockApi.saveSettings).not.toHaveBeenCalled();
+
+    // The key the pane teaches beside the status reopens it as well.
+    await user.keyboard("c");
+    expect(getConsentDialog()).toBeInTheDocument();
+  });
+
+  it("opens the model picker from a model-missing primary without asking for consent", async () => {
+    const user = userEvent.setup();
+    const init = makeConfigurationInitResponse(
+      [configurationStatus(LOCAL_OPENAI_CONFIGURATION, "model-missing")],
+      null,
+    );
+    init.settings.providerConsent = null;
+    mockApi.loadConfigurationInit.mockResolvedValue(init);
+    mockApi.listConfigurations.mockResolvedValue(makeConfigurationListResponse(init));
+    renderProvidersPage();
+
+    await screen.findByRole("listbox", { name: "Providers" });
+    await user.click(screen.getByRole("option", { name: /Local OpenAI-compatible/i }));
+    await user.click(await screen.findByRole("button", { name: "Select model" }));
+
+    expect(await screen.findByRole("dialog", { name: "Select Model" })).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("runs the gated actions straight away once provider consent is on record", async () => {
+    const user = userEvent.setup();
+    renderProvidersPage();
+
+    await screen.findByRole("listbox", { name: "Providers" });
+    expect(screen.queryByText("Consent required to run reviews")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Select configuration" }));
+
+    await waitFor(() => expect(mockApi.selectConfiguration).toHaveBeenCalledOnce());
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
   it("completes local setup routing without exposing credential inputs", async () => {
     const user = userEvent.setup();
     renderProvidersPage();
@@ -146,7 +312,9 @@ describe("ProvidersPage", () => {
       expect(screen.getByRole("option", { name: "Google Gemini" })).toBeInTheDocument(),
     );
     await user.click(screen.getByRole("option", { name: /Local OpenAI-compatible/i }));
-    await user.click(screen.getByRole("button", { name: /Update configuration/i }));
+    // A failed local check leads with Verify; setup lives behind More.
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Update configuration" }));
 
     expect(screen.queryByLabelText(/api key/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/sk-/)).not.toBeInTheDocument();
@@ -167,6 +335,209 @@ describe("ProvidersPage", () => {
     await user.click(screen.getByRole("option", { name: "Google Gemini" }));
     await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("button", { name: /Select configuration/i })).toHaveFocus();
+  });
+
+  it("keeps Left and Right inside the open More menu instead of stepping the action row", async () => {
+    const user = userEvent.setup();
+    renderProvidersPage();
+
+    const listbox = await screen.findByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+    await user.click(screen.getByRole("option", { name: "Google Gemini" }));
+    // Reach More from the row so its virtual focus, not a click, sits on the trigger.
+    await user.keyboard("{ArrowRight}{ArrowRight}{ArrowRight}");
+    const trigger = screen.getByRole("button", { name: "More actions" });
+    expect(trigger).toHaveFocus();
+    expect(trigger).toHaveAttribute("data-highlighted");
+
+    await user.keyboard("{Enter}");
+    const menu = await screen.findByRole("menu", { name: "More actions" });
+    await waitFor(() => expect(menu).toHaveFocus());
+    expect(trigger).not.toHaveAttribute("data-highlighted");
+
+    await user.keyboard("{ArrowLeft}");
+    expect(menu).toHaveFocus();
+    await user.keyboard("{ArrowRight}");
+    expect(menu).toHaveFocus();
+    expect(screen.getByRole("button", { name: /Change model/i })).not.toHaveFocus();
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+    expect(trigger).toHaveFocus();
+    expect(trigger).toHaveAttribute("data-highlighted");
+  });
+
+  it("shows the active configuration as a chip beside Change model and More", async () => {
+    const init = makeConfigurationInitResponse(
+      [configurationStatus(GEMINI_CONFIGURATION, "ready")],
+      GEMINI_CONFIGURATION.configurationId,
+    );
+    mockApi.loadConfigurationInit.mockResolvedValue(init);
+    mockApi.listConfigurations.mockResolvedValue(makeConfigurationListResponse(init));
+    renderProvidersPage();
+
+    const actions = await screen.findByRole("group", { name: "Provider actions" });
+    expect(within(actions).getByText("Active")).toBeInTheDocument();
+    expect(
+      within(actions)
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("aria-label")),
+    ).toEqual(["Change model", "More actions"]);
+  });
+
+  it("asks before deleting on d: a held key stops at Cancel, Escape keeps the configuration", async () => {
+    const user = userEvent.setup();
+    renderProvidersPage();
+
+    const listbox = await screen.findByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+    await user.click(screen.getByRole("option", { name: "Google Gemini" }));
+    await user.keyboard("d");
+
+    const confirm = getDeleteConfirm();
+    expect(confirm).toHaveAttribute("aria-modal", "true");
+    expect(within(confirm).getByText(/Removes Google Gemini/)).toBeInTheDocument();
+    const cancel = within(confirm).getByRole("button", { name: "Cancel" });
+    await waitFor(() => expect(cancel).toHaveFocus());
+
+    // The key that opened it, repeated or held, and Enter on the safe action delete nothing.
+    await user.keyboard("dd{Enter}");
+    expect(mockApi.deleteConfiguration).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+
+    await user.keyboard("d");
+    const reopened = getDeleteConfirm();
+    await waitFor(() =>
+      expect(within(reopened).getByRole("button", { name: "Cancel" })).toHaveFocus(),
+    );
+    // fireEvent retained: dialog cancel is a native Event; userEvent has no cancel dispatch.
+    fireEvent(reopened, new Event("cancel", { bubbles: false }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    expect(mockApi.deleteConfiguration).not.toHaveBeenCalled();
+    await waitFor(() => expect(listbox).toHaveFocus());
+  });
+
+  it("deletes once the confirmation's Delete is chosen, from the More menu's own d", async () => {
+    const user = userEvent.setup();
+    renderProvidersPage();
+
+    const listbox = await screen.findByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+    await user.click(screen.getByRole("option", { name: "Google Gemini" }));
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    const menu = await screen.findByRole("menu", { name: "More actions" });
+    await waitFor(() => expect(menu).toHaveFocus());
+
+    await user.keyboard("d");
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+    const confirm = getDeleteConfirm();
+    expect(mockApi.deleteConfiguration).not.toHaveBeenCalled();
+
+    await user.click(within(confirm).getByRole("button", { name: "Delete" }));
+    await waitFor(() =>
+      expect(mockApi.deleteConfiguration).toHaveBeenCalledWith("gemini-primary", 1),
+    );
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+  });
+
+  it("stands the global shortcuts down while the More menu and the confirmations own the keys", async () => {
+    const user = userEvent.setup();
+    withoutProviderConsent();
+    renderProvidersPage({ globalShortcuts: true });
+
+    const listbox = await screen.findByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+    await user.click(screen.getByRole("option", { name: "Google Gemini" }));
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await waitFor(() => expect(screen.getByRole("menu", { name: "More actions" })).toHaveFocus());
+    await user.keyboard("h");
+    expect(navigateMock).not.toHaveBeenCalled();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+
+    await user.keyboard("d");
+    const deleteConfirm = getDeleteConfirm();
+    await waitFor(() =>
+      expect(within(deleteConfirm).getByRole("button", { name: "Cancel" })).toHaveFocus(),
+    );
+    await user.keyboard("s");
+    expect(navigateMock).not.toHaveBeenCalled();
+    await user.click(within(deleteConfirm).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+
+    await user.keyboard("v");
+    const notice = getConsentDialog();
+    await waitFor(() =>
+      expect(within(notice).getByRole("button", { name: "Accept and continue" })).toHaveFocus(),
+    );
+    await user.keyboard("s");
+    expect(navigateMock).not.toHaveBeenCalled();
+    await user.click(within(notice).getByRole("button", { name: "Not now" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+
+    // The same key navigates once nothing owns the keys, proving the shortcuts were live.
+    await user.keyboard("h");
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: "/history" }));
+  });
+
+  it("hands the footer to the More menu while it is open", async () => {
+    const user = userEvent.setup();
+    renderProvidersPage({ footer: true });
+
+    const listbox = await screen.findByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+    await user.click(screen.getByRole("option", { name: "Google Gemini" }));
+    const footer = screen.getByRole("contentinfo");
+    await waitFor(() => expect(footer).toHaveTextContent("Verify"));
+    expect(footer).toHaveTextContent("Select configuration");
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await screen.findByRole("menu", { name: "More actions" });
+
+    expect(footer).toHaveTextContent("Navigate");
+    expect(footer).toHaveTextContent("Run");
+    expect(footer).toHaveTextContent("Close");
+    expect(footer).not.toHaveTextContent("Verify");
+    expect(footer).not.toHaveTextContent("Select configuration");
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+    expect(footer).toHaveTextContent("Verify");
+  });
+
+  it("keeps a bound letter the state cannot run from moving the list", async () => {
+    // An unconfigured provider has nothing to delete, so `d` runs nothing there;
+    // it must not fall through to typeahead and jump to DeepSeek either.
+    const user = userEvent.setup();
+    renderProvidersPage();
+
+    const listbox = await screen.findByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+    const mistral = screen.getByRole("option", { name: "Mistral" });
+    await user.click(mistral);
+    expect(mistral).toHaveAttribute("aria-selected", "true");
+
+    await user.keyboard("d");
+
+    expect(mistral).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("option", { name: "DeepSeek" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("runs Verify from its accelerator while the list has focus", async () => {
+    const user = userEvent.setup();
+    renderProvidersPage();
+
+    const listbox = await screen.findByRole("listbox", { name: "Providers" });
+    await waitFor(() => expect(listbox).toHaveFocus());
+    await user.click(screen.getByRole("option", { name: "Google Gemini" }));
+    await user.keyboard("v");
+
+    await waitFor(() => expect(mockApi.testConfiguration).toHaveBeenCalledWith("gemini-primary"));
   });
 
   it("moves the focus brackets between the list and details panes", async () => {
@@ -226,9 +597,11 @@ describe("ProvidersPage", () => {
     const actions = screen.getByRole("group", { name: "Provider actions" });
     const buttons = within(actions).getAllByRole("button");
     expect(buttons).toHaveLength(1);
-    expect(buttons[0]).toHaveAccessibleName("Delete configuration");
+    expect(buttons[0]).toHaveAccessibleName("More actions");
 
-    await user.click(within(actions).getByRole("button", { name: "Delete configuration" }));
+    await user.click(within(actions).getByRole("button", { name: "More actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete configuration" }));
+    await user.click(within(getDeleteConfirm()).getByRole("button", { name: "Delete" }));
 
     await waitFor(() =>
       expect(mockApi.deleteConfiguration).toHaveBeenCalledWith("cfg-retired", undefined),

@@ -17,14 +17,14 @@ Before you press Review Unstaged or Review Staged, make sure:
 
 - Node.js 22 or newer and `git` are installed.
 - The repository has changes to review.
-- A configuration is **ready**: the product tuple is admitted, an exact model is selected, required notices are accepted, and any required live probe has not been left in **skipped** state.
+- A configuration is **ready**: the product tuple is admitted, an exact model is selected, the provider consent (and with it the product's notice) is accepted, and any required live probe has not been left in **skipped** state.
 - The current directory is trusted with read access.
 
 ## Prerequisites
 
 - A git repository with changes to review.
 - Node.js 22 or newer, and a `git` binary on your PATH.
-- A supported product configuration. The wizard lists all thirteen selectable products from the [providers reference](/app/reference/providers).
+- A supported product configuration. The wizard lists all fourteen selectable products from the [providers reference](/app/reference/providers).
 
 ## Steps
 
@@ -58,7 +58,7 @@ It prints a banner, starts a local server at `http://localhost:3000`, and opens 
 
 <Step title="Complete the setup wizard">
 
-Pick a product, then work through that product's setup plan: **Endpoint**, **Authentication**, **Model**, **Conformance**, and **Notice**. Local CLI products skip the endpoint step. See [What the first run looks like](#what-the-first-run-looks-like) below.
+Pick a product, then work through that product's setup plan: **Endpoint**, **Authentication**, **Model**, and **Consent**. Local CLI products skip the endpoint step. See [What the first run looks like](#what-the-first-run-looks-like) below.
 
 </Step>
 
@@ -86,16 +86,17 @@ Skim the summary, press Enter to open the full review, then move through the iss
 
 ## What the first run looks like
 
-On first launch Diffgazer has no saved configuration, so the browser opens into the setup wizard. The steps come from the selected product's setup plan: product selection, endpoint binding, authentication, exact model selection, conformance, and the product notice.
+On first launch Diffgazer has no saved configuration, so the browser opens into the setup wizard. The steps come from the selected product's setup plan: product selection, endpoint binding, authentication, exact model selection, and the provider consent.
 
-### Hosted API setup (Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Qwen International, Moonshot Open Platform, Mistral)
+### Hosted API setup (Google Gemini, Z.AI, OpenRouter, Groq, Cerebras, DeepSeek, Qwen International, Moonshot Open Platform, Mistral, Ollama Cloud)
 
-1. Pick the product from the thirteen selectable entries.
+1. Pick the product from the fourteen selectable entries.
 2. Bind the allowed endpoint and, when required, region and workspace.
 3. Choose how the credential is supplied: **Enter credential now** for a write-only literal, or **Use environment reference** to bind the product's environment variable. The variable name is fixed per product — there is nothing to type.
 4. Select an exact discovered model ID.
-5. Confirm conformance for the configured tuple and model. Saving runs no billed probe — your first review verifies structured review support.
-6. Review and accept the product's billing and privacy notice.
+5. Accept the provider consent — Diffgazer sends repository content to the provider you configure, using your own credentials, and stores nothing remotely; billing, rate limits, retention and training terms are that provider's. The product's own billing and privacy notice reads alongside it. This is asked once; later configurations acknowledge their product's notice for you unless that notice materially changed. If you skipped the wizard, the same **Provider data notice** opens the first time you configure a provider (before the credentials dialog), select or verify a configuration, or start a review — **Accept and continue** runs the action, **Not now** cancels only that action.
+
+Saving runs no billed probe — your first review verifies structured review support for the exact tuple and model. The optional **Verify** action on the Providers page (under **More**, or the `v` key) checks it sooner and shows the last result.
 
 Example environment-reference flow without embedding a secret:
 
@@ -116,8 +117,8 @@ Follow the [local HTTP sequence in Configuration](/app/reference/configuration#l
 2. Add an optional bearer token with `update` when your server requires one.
 3. Look up the exact model ID from your server tooling (for example `ollama list`, or the LM Studio / llama.cpp UI).
 4. `select` that exact ID through the [local API](/app/reference/api).
-5. `test` until readiness is **ready** or remediation tells you to start the server, use a loopback endpoint, or install a review-capable model.
-6. `update` again to accept the product notice.
+5. `update` again to accept the product notice.
+6. Optionally `test` (**Verify** in the UI) to check structured review support up front; otherwise the first review verifies it and records the result. Remediation tells you when to start the server, use a loopback endpoint, or install a review-capable model.
 
 You can also drive the same actions from **Configure Provider** in Settings after `select` makes the configuration globally selected. Reloading the app after `select` lands on Home rather than reopening the wizard.
 
@@ -133,10 +134,10 @@ Follow the [local CLI sequence in Configuration](/app/reference/configuration#lo
 2. Install and sign in with the vendor CLI using its own tooling. Diffgazer uses **vendor-managed local auth** and does not ask for CLI tokens or auth file paths.
 3. Look up the exact model ID from the installed CLI or vendor docs.
 4. `select` that exact ID through the [local API](/app/reference/api).
-5. `inspect` and `test` until readiness is **ready** or **unsupported** with explicit remediation if the installed CLI version, account, or policy does not satisfy the pinned review profile.
-6. `update` to accept the account notice.
+5. `update` to accept the account notice.
+6. Optionally `inspect` and `test` (**Verify** in the UI); readiness reports **unsupported** with explicit remediation if the installed CLI version, account, or policy does not satisfy the pinned review profile.
 
-As with local HTTP, **Configure Provider** in Settings can run the remaining readiness actions after `select`.
+As with local HTTP, **Configure Provider** in Settings can run the remaining actions after `select`.
 
 ## Trust the directory
 

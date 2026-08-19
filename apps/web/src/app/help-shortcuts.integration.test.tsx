@@ -1,5 +1,10 @@
 import { FooterProvider } from "@diffgazer/core/footer";
 import {
+  getProviderActionLayout,
+  getProviderRowId,
+  type ProviderListRow,
+} from "@diffgazer/core/providers";
+import {
   createInitialReviewState,
   HISTORY_SEARCH_PLACEHOLDER,
   type ReviewEvent,
@@ -13,6 +18,7 @@ import {
   type Shortcut,
 } from "@diffgazer/core/schemas/presentation";
 import { makeIssue } from "@diffgazer/core/testing/factories";
+import { buildProviderRows } from "@diffgazer/core/testing/provider-fixtures";
 import { KeyboardProvider, useFocusZone, useScope } from "@diffgazer/keys";
 import {
   NavigationList,
@@ -36,6 +42,7 @@ import {
   HomePagePresentation,
   type HomePagePresentationProps,
 } from "@/features/home/components/presentation";
+import { useProvidersKeyboard } from "@/features/providers/hooks/use-keyboard";
 import { ActivityLog } from "@/features/review/components/activity-log/log";
 import { useReviewDetailsTabKeyboard } from "@/features/review/hooks/use-details-tab-keyboard";
 
@@ -152,6 +159,69 @@ function PaneContract({ onSwitch }: { onSwitch: () => void }) {
   return <output>{zone.zone}</output>;
 }
 
+function readyProviderRow(): ProviderListRow {
+  const row = buildProviderRows().find(
+    (candidate) => candidate.configuration?.configurationId === "gemini-primary",
+  );
+  if (!row) throw new Error("Missing gemini fixture row");
+  return row;
+}
+
+const READY_PROVIDER_ROW = readyProviderRow();
+
+/** The providers page keyboard over a ready row, with the list focused the way the page leaves it. */
+function ProvidersContract({
+  onRun,
+  onReviewConsent,
+}: {
+  onRun: (controlId: string) => void;
+  onReviewConsent: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const noticeActionRef = useRef<HTMLButtonElement>(null);
+  const keyboard = useProvidersKeyboard({
+    layout: getProviderActionLayout(READY_PROVIDER_ROW, null),
+    hasSelection: true,
+    listRowIds: [getProviderRowId(READY_PROVIDER_ROW)],
+    listReady: true,
+    filter: "all",
+    setSelectedId: vi.fn(),
+    dialogOpen: false,
+    overflowMenuOpen: false,
+    isPending: false,
+    hasNotice: false,
+    inputRef,
+    listContainerRef,
+    noticeActionRef,
+    runControl: (control) => onRun(control.id),
+    reviewConsent: onReviewConsent,
+  });
+  return (
+    <div
+      ref={listContainerRef}
+      tabIndex={0}
+      role="listbox"
+      aria-label="Providers"
+      onKeyDown={keyboard.handleListKeyDown}
+    />
+  );
+}
+
+async function pressProviderKey(key: string) {
+  const user = userEvent.setup();
+  const onRun = vi.fn();
+  const onReviewConsent = vi.fn();
+  render(
+    <KeyboardProvider>
+      <ProvidersContract onRun={onRun} onReviewConsent={onReviewConsent} />
+    </KeyboardProvider>,
+  );
+  await waitFor(() => expect(screen.getByRole("listbox", { name: "Providers" })).toHaveFocus());
+  await user.keyboard(key);
+  return { onRun, onReviewConsent };
+}
+
 function ReviewContract({
   onScroll,
   onSwitchTab,
@@ -208,6 +278,7 @@ function buildHomeProps(
     onHighlightChange: vi.fn(),
     navigate: vi.fn(async () => {}),
     createReview: vi.fn(async () => ({ reviewId: "review-1" })),
+    requireProviderConsent: (action) => action(),
     clearScopedRouteState: vi.fn(),
     shutdown: vi.fn(async () => ({ status: "closed" as const })),
     ...overrides,
@@ -435,6 +506,33 @@ const SHORTCUT_BEHAVIORS: Record<string, () => Promise<void>> = {
         expect.objectContaining({ params: { reviewId: "review-9" } }),
       ),
     );
+  },
+
+  "m → Change model": async () => {
+    const { onRun } = await pressProviderKey("m");
+    expect(onRun).toHaveBeenCalledWith("selectModel");
+  },
+
+  "e → Update configuration": async () => {
+    const { onRun } = await pressProviderKey("e");
+    expect(onRun).toHaveBeenCalledWith("setup");
+  },
+
+  "v → Verify": async () => {
+    const { onRun } = await pressProviderKey("v");
+    expect(onRun).toHaveBeenCalledWith("verify");
+  },
+
+  // The delete control opens its confirmation; the page owns that dialog.
+  "d → Delete configuration": async () => {
+    const { onRun } = await pressProviderKey("d");
+    expect(onRun).toHaveBeenCalledWith("delete");
+  },
+
+  "c → Review provider data notice": async () => {
+    const { onRun, onReviewConsent } = await pressProviderKey("c");
+    expect(onReviewConsent).toHaveBeenCalledOnce();
+    expect(onRun).not.toHaveBeenCalled();
   },
 
   "o → Open Last Run": async () => {

@@ -99,7 +99,7 @@ describe("product registry authority", () => {
     expect(PRODUCT_REGISTRY.gemini.configuration.endpoints).toBe(PRODUCT_ENDPOINT_TUPLES.gemini);
   });
 
-  it("enumerates exactly the 13 selectable products with add-now notices and gates", () => {
+  it("enumerates exactly the 14 selectable products with add-now notices and gates", () => {
     expect(SELECTABLE_PRODUCT_IDS).toEqual([
       "gemini",
       "zai",
@@ -110,6 +110,7 @@ describe("product registry authority", () => {
       "qwen",
       "moonshot",
       "mistral",
+      "ollama-cloud",
       "ollama",
       "local-openai",
       "codex-cli",
@@ -215,7 +216,6 @@ describe("product registry authority", () => {
         modelPolicy: {
           kind: "discovered-exact",
           suggestedModelId: "glm-5-turbo",
-          explicitOptInSuffixes: ["-flash"],
           aliases: "forbidden",
         },
         checks: HOSTED_CHECKS,
@@ -422,6 +422,28 @@ describe("product registry authority", () => {
         ),
       },
       {
+        id: "ollama-cloud",
+        endpoints: [{ id: "cloud", label: "Ollama Cloud", endpoint: "https://ollama.com/v1" }],
+        modelPolicy: {
+          kind: "discovered-exact",
+          suggestedModelId: "gpt-oss:20b",
+          aliases: "forbidden",
+        },
+        checks: HOSTED_CHECKS,
+        structuredOutput: "json-object-local-validation",
+        usage: "optional",
+        notice: notice(
+          "ollama-cloud-hosted-api",
+          [
+            "Usage counts against the account's Ollama plan quota (Free, Pro, or Max) in 5-hour session and 7-day weekly windows; no per-token price is published.",
+          ],
+          [
+            "Ollama states that cloud prompts and responses are not logged, stored, or trained on.",
+            "Repository content is sent to ollama.com; this is not the loopback Ollama transport.",
+          ],
+        ),
+      },
+      {
         id: "ollama",
         endpoints: [
           { id: "default", label: "Default loopback", endpoint: "http://127.0.0.1:11434" },
@@ -436,7 +458,7 @@ describe("product registry authority", () => {
           [
             "Diffgazer verifies only that the first network hop is loopback.",
             "Any downstream routing, data residency, storage, or telemetry is the selected server operator's responsibility.",
-            "Ollama Cloud is not this transport.",
+            "Ollama Cloud is not this transport; the separate Ollama Cloud product reaches ollama.com.",
           ],
         ),
       },
@@ -630,8 +652,7 @@ describe("product registry authority", () => {
 describe("the registry-owned model policy predicate", () => {
   it.each([
     { productId: "zai", modelId: "glm-4.7", allowed: true },
-    // Z.AI Flash needs an explicit opt-in no V2 contract carries yet.
-    { productId: "zai", modelId: "glm-4.7-flash", allowed: false },
+    { productId: "zai", modelId: "glm-4.7-flash", allowed: true },
     { productId: "deepseek", modelId: "deepseek-v4-flash", allowed: true },
     { productId: "deepseek", modelId: "deepseek-v5-flash", allowed: false },
     // Qwen Plus needs server-only higher-cost evidence.

@@ -33,7 +33,7 @@ const SETUP_SHORTCUTS: Shortcut[] = [
 ];
 // Only hosted rows render a key field, so only they can offer the Tab focus swap.
 const HOSTED_KEY_FIELD_SHORTCUT: Shortcut = { key: "Tab", label: "Focus Key Field" };
-const LOCAL_NOTICE_SHORTCUT: Shortcut = { key: "a", label: "Accept Notice" };
+const ACCEPT_SHORTCUT: Shortcut = { key: "a", label: "Accept" };
 const SETUP_RIGHT_SHORTCUTS: Shortcut[] = [{ ...BACK_SHORTCUT, label: "Close" }];
 
 interface ApiKeyOverlayProps {
@@ -65,17 +65,19 @@ export function ApiKeyOverlay({
 }: ApiKeyOverlayProps): ReactElement | null {
   const { tokens } = useTheme();
   const [inputFocused, setInputFocused] = useState(false);
-  // Only a stored acceptance pre-checks the notice: `not-applicable` means the row carries no
-  // acknowledgement yet (unconfigured), so consent is still outstanding.
-  const [noticeAccepted, setNoticeAccepted] = useState(
-    () => row.readiness.acknowledgement.status === "accepted",
-  );
+  // The provider consent is gated before this overlay opens and covers every
+  // product notice; an explicit acceptance is asked for only when this
+  // product's notice needs accepting again (a notice bump, or a record upgraded
+  // without an acceptance).
+  const needsAcceptance = row.readiness.acknowledgement.status === "required";
+  const [accepted, setAccepted] = useState(false);
+  const acknowledged = !needsAcceptance || accepted;
   const isHosted = row.product.transportFamily === "hosted-api";
   const isUpdating = row.configuration != null;
 
   const entry = useApiKeyEntry({
     onSubmit: async (method, value) => {
-      if (!noticeAccepted) return false;
+      if (!acknowledged) return false;
       const input = buildSetupInput(row, toSetupCredential(method, value));
       const acknowledgement = buildSetupAcknowledgement(row);
       const openModelDialog = requiresExplicitModelSelection(row.product.productId);
@@ -90,7 +92,7 @@ export function ApiKeyOverlay({
   });
 
   const { method, value, setMethod, setValue, canSubmit, isSubmitting: saving, error } = entry;
-  const canConfirmHosted = canSubmit && noticeAccepted;
+  const canConfirm = isHosted ? canSubmit && acknowledged : acknowledged;
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen && saving) return;
@@ -102,22 +104,19 @@ export function ApiKeyOverlay({
   }
 
   function handleSave() {
+    if (!canConfirm || saving) return;
     if (isHosted) {
-      if (!canConfirmHosted || saving) return;
       void entry.submit();
       return;
     }
-    if (!noticeAccepted || saving) return;
     void entry.submitCredentialless();
   }
 
   useInput(
     (input) => {
-      if (input === "a" && !saving && !inputFocused) {
-        setNoticeAccepted((accepted) => !accepted);
-      }
+      if (input === "a") setAccepted((current) => !current);
     },
-    { isActive: open && !saving && !inputFocused },
+    { isActive: open && !saving && !inputFocused && needsAcceptance },
   );
 
   useInput(
@@ -132,26 +131,28 @@ export function ApiKeyOverlay({
   );
 
   usePageFooter({
-    shortcuts: isHosted
-      ? [HOSTED_KEY_FIELD_SHORTCUT, ...SETUP_SHORTCUTS]
-      : [...SETUP_SHORTCUTS, LOCAL_NOTICE_SHORTCUT],
+    shortcuts: [
+      ...(isHosted ? [HOSTED_KEY_FIELD_SHORTCUT] : []),
+      ...SETUP_SHORTCUTS,
+      ...(needsAcceptance ? [ACCEPT_SHORTCUT] : []),
+    ],
     rightShortcuts: SETUP_RIGHT_SHORTCUTS,
   });
 
   const actions = useActionRow({
     actionCount: 2,
-    disabledActions: [isHosted ? !canConfirmHosted : !noticeAccepted, false],
+    disabledActions: [!canConfirm, false],
     onAction: (index) => (index === 0 ? handleSave() : handleClose()),
-    isActive: open && !saving && !inputFocused && (isHosted || noticeAccepted),
+    isActive: open && !saving && !inputFocused && (isHosted || acknowledged),
   });
-  const noticeButtonActive = open && !saving && !isHosted && !noticeAccepted;
+  const acceptButtonActive = open && !saving && !isHosted && needsAcceptance && !accepted;
 
   const resetSecrets = useEffectEvent(() => {
     if (entry.isSubmitting) return;
     entry.reset();
     actions.reset();
     setInputFocused(false);
-    setNoticeAccepted(row.readiness.acknowledgement.status === "accepted");
+    setAccepted(false);
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: open/row identity are reset triggers.
@@ -184,17 +185,27 @@ export function ApiKeyOverlay({
                 onInputFocusedChange={setInputFocused}
               />
             ) : null}
-            <Text color={tokens.muted}>
-              {noticeAccepted ? "[x]" : "[ ]"} Accept billing and privacy notice before saving.
-            </Text>
-            <Button
-              variant="secondary"
-              isActive={noticeButtonActive}
-              onPress={() => setNoticeAccepted((accepted) => !accepted)}
-              disabled={saving}
-            >
-              {noticeAccepted ? "Notice accepted" : "Accept notice"}
-            </Button>
+            <Box flexDirection="column">
+              {[...row.product.notice.billing, ...row.product.notice.privacy].map((line) => (
+                <Text key={line} color={tokens.muted}>
+                  {line}
+                </Text>
+              ))}
+            </Box>
+            {needsAcceptance ? (
+              <>
+                <Text>This product's notice needs your acceptance before saving.</Text>
+                <Text color={tokens.muted}>{accepted ? "[x]" : "[ ]"} I accept</Text>
+                <Button
+                  variant="secondary"
+                  isActive={acceptButtonActive}
+                  onPress={() => setAccepted((current) => !current)}
+                  disabled={saving}
+                >
+                  {accepted ? "Accepted" : "Accept"}
+                </Button>
+              </>
+            ) : null}
             {error != null ? <Text color={tokens.error}>{sanitizeTerminalText(error)}</Text> : null}
           </Box>
         </Dialog.Body>
@@ -208,7 +219,7 @@ export function ApiKeyOverlay({
                   variant="primary"
                   onPress={() => actions.activate(0)}
                   isActive={actions.isActionActive(0)}
-                  disabled={isHosted ? !canConfirmHosted : !noticeAccepted}
+                  disabled={!canConfirm}
                 >
                   Save
                 </Button>

@@ -52,6 +52,21 @@ describe("ProviderList", () => {
     expect(frame).toContain("Gemini 2.5 Flash · gemini-2.5-flash");
   });
 
+  test("marks an unverified configuration as selectable rather than as a problem", () => {
+    const frame = renderList(
+      buildProviderRows([
+        configurationStatus(GEMINI_CONFIGURATION, "conformance-pending"),
+        configurationStatus(ZAI_CONFIGURATION, "conformance-failed"),
+      ]),
+    );
+    const geminiRow = frame.split("\n").find((line) => line.includes("Google Gemini")) ?? "";
+    const zaiRow = frame.split("\n").find((line) => line.includes("Z.AI")) ?? "";
+
+    expect(geminiRow).toContain("○");
+    expect(geminiRow).not.toContain("!");
+    expect(zaiRow).toContain("!");
+  });
+
   test("falls back to the raw id for a model outside the bounded catalog", () => {
     const frame = renderList(buildProviderRows([configurationStatus(ZAI_CONFIGURATION, "ready")]));
 

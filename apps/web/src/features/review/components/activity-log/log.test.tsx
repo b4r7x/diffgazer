@@ -463,18 +463,23 @@ describe("ActivityLog heartbeats and live tail row", () => {
   });
 
   it("pins what is happening now, with the agent and the elapsed time", () => {
-    const state = createTaggedState([makeEvent(0)]);
+    vi.useFakeTimers();
+    try {
+      const state = createTaggedState([makeEvent(0)]);
 
-    render(
-      <ActivityLog
-        events={state.events}
-        streamState="flowing"
-        agents={runningDetective}
-        startTime={new Date(Date.now() - 46_000)}
-      />,
-    );
+      render(
+        <ActivityLog
+          events={state.events}
+          streamState="flowing"
+          agents={runningDetective}
+          startTime={new Date(Date.now() - 46_000)}
+        />,
+      );
 
-    expect(screen.getByText("Detective · waiting for model response · 46.0s")).toBeVisible();
+      expect(screen.getByText("Detective · waiting for model response · 46.0s")).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   // A run that has not queued anyone yet is still starting, so the tail row
@@ -524,39 +529,52 @@ describe("ActivityLog heartbeats and live tail row", () => {
   });
 
   it("narrows the tail row to the filtered agent", () => {
-    const state = createTaggedState([makeEvent(0)]);
+    vi.useFakeTimers();
+    try {
+      const state = createTaggedState([makeEvent(0)]);
 
-    render(
-      <ActivityLog
-        events={state.events}
-        streamState="flowing"
-        sourceFilter="Detective"
-        agents={runningDetective}
-        startTime={new Date(Date.now() - 12_000)}
-      />,
-    );
+      render(
+        <ActivityLog
+          events={state.events}
+          streamState="flowing"
+          sourceFilter="Detective"
+          agents={runningDetective}
+          startTime={new Date(Date.now() - 12_000)}
+        />,
+      );
 
-    expect(screen.getByText("Detective · waiting for model response · 12.0s")).toBeVisible();
+      expect(screen.getByText("Detective · waiting for model response · 12.0s")).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("freezes the cursor and names the stall when the stream dies", () => {
-    const state = createTaggedState([makeEvent(0)]);
+    vi.useFakeTimers();
+    try {
+      const state = createTaggedState([makeEvent(0)]);
 
-    const { container } = render(
-      <ActivityLog
-        events={state.events}
-        streamState="stalled"
-        agents={runningDetective}
-        startTime={new Date(Date.now() - 90_000)}
-        lastEventAt={Date.now() - 51_000}
-      />,
-    );
+      const { container } = render(
+        <ActivityLog
+          events={state.events}
+          streamState="stalled"
+          agents={runningDetective}
+          startTime={new Date(Date.now() - 90_000)}
+          lastEventAt={Date.now() - 51_000}
+        />,
+      );
 
-    expect(screen.getByText("stream stalled · last event 51.0s ago")).toBeVisible();
-    expect(container.querySelector("[data-log-tail]")).toHaveAttribute("data-log-tail", "stalled");
-    // class assertion retained: the frozen cursor is CSS-only, so the absence of
-    // the blink class is the only observable form the stopped cursor takes.
-    expect(container.querySelector(".cursor-blink")).toBeNull();
+      expect(screen.getByText("stream stalled · last event 51.0s ago")).toBeVisible();
+      expect(container.querySelector("[data-log-tail]")).toHaveAttribute(
+        "data-log-tail",
+        "stalled",
+      );
+      // class assertion retained: the frozen cursor is CSS-only, so the absence of
+      // the blink class is the only observable form the stopped cursor takes.
+      expect(container.querySelector(".cursor-blink")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("stops announcing the tail sentence once the run is over", () => {

@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { ModelInfo } from "../schemas/config/index.js";
+import { LIVE_ONLY_MODEL_DESCRIPTION } from "./catalog-discovery-reasons.js";
 import { cycleTierFilter, filterModels, TIER_FILTERS } from "./models.js";
 
 const makeModel = (
   id: string,
   name: string,
-  tier: "free" | "paid" | "local" | "ambient",
+  tier: ModelInfo["tier"],
   description = "",
 ): ModelInfo => ({ id, name, tier, description });
 
@@ -16,6 +17,7 @@ const MODELS: ModelInfo[] = [
   makeModel("gemini", "Gemini", "free", "Google model"),
   makeModel("ollama-local", "Ollama", "local", "Local runtime"),
   makeModel("codex-ambient", "Codex CLI", "ambient", "Vendor-managed local auth"),
+  makeModel("glm-5.3", "glm-5.3", "unknown", LIVE_ONLY_MODEL_DESCRIPTION),
 ];
 
 const ids = (models: ModelInfo[]) => models.map((m) => m.id);
@@ -29,7 +31,14 @@ describe("filterModels", () => {
       "gemini",
       "ollama-local",
       "codex-ambient",
+      "glm-5.3",
     ]);
+  });
+
+  it("hides unknown-tier rows under free and paid, keeps them under all", () => {
+    expect(ids(filterModels(MODELS, "free", ""))).not.toContain("glm-5.3");
+    expect(ids(filterModels(MODELS, "paid", ""))).not.toContain("glm-5.3");
+    expect(ids(filterModels(MODELS, "all", ""))).toContain("glm-5.3");
   });
 
   it("filters to free tier only, excluding neutral local and ambient models", () => {

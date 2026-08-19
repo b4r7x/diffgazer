@@ -148,6 +148,10 @@ export const ReviewErrorCode = {
   SESSION_TIMEOUT: "SESSION_TIMEOUT",
   SERVER_SHUTDOWN: "SERVER_SHUTDOWN",
   TRUST_REQUIRED: "TRUST_REQUIRED",
+  /** The admitted model could not produce Diffgazer's structured review output. */
+  MODEL_INCOMPATIBLE: "MODEL_INCOMPATIBLE",
+  /** The provider refused the request (credential, billing, model, or rate limit). */
+  PROVIDER_REJECTED: "PROVIDER_REJECTED",
 } as const;
 
 const REVIEW_SPECIFIC_CODES = [
@@ -163,6 +167,8 @@ const REVIEW_SPECIFIC_CODES = [
   ReviewErrorCode.SESSION_TIMEOUT,
   ReviewErrorCode.SERVER_SHUTDOWN,
   ReviewErrorCode.TRUST_REQUIRED,
+  ReviewErrorCode.MODEL_INCOMPATIBLE,
+  ReviewErrorCode.PROVIDER_REJECTED,
 ] as const;
 
 const REVIEW_ERROR_CODES = createDomainErrorCodes(REVIEW_SPECIFIC_CODES);

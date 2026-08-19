@@ -3,7 +3,7 @@ title: How it works
 description: What Diffgazer does between the command and the review.
 ---
 
-You run one command, and a moment later a review opens in your browser. In between, **Diffgazer starts an embedded local server and a UI on your own machine.** No account, no upload to a Diffgazer service, no dashboard you do not control. During provider setup, opening the model picker can make an outbound **models.dev catalog** request before any review starts; it never includes your code.
+You run one command, and a moment later a review opens in your browser. In between, **Diffgazer starts an embedded local server and a UI on your own machine.** No account, no upload to a Diffgazer service, no dashboard you do not control. During provider setup, opening the model picker can make outbound model-list requests before any review starts — the shared **models.dev catalog**, a product's public model list, or a saved configuration's own endpoint asked with its own key; none of them includes your code.
 
 ## The pieces
 
@@ -15,7 +15,7 @@ The **embedded server** is a [Hono](https://hono.dev) backend that runs the revi
 
 The **web SPA** is the review interface served by the same embedded server. If you prefer the terminal, there is an Ink **terminal UI** instead.
 
-Your **product configuration** is the model transport you bring. Diffgazer supports thirteen selectable products documented in the [providers reference](/app/reference/providers). Web, Ink, and CLI all consume the same client-safe configuration summaries and readiness language.
+Your **product configuration** is the model transport you bring. Diffgazer supports fourteen selectable products documented in the [providers reference](/app/reference/providers). Web, Ink, and CLI all consume the same client-safe configuration summaries and readiness language.
 
 ## The review pipeline
 
@@ -35,7 +35,7 @@ Web mode is the default. Pass `--tui` to start the Ink interface instead. Both m
 
 Everything before a review runs on your machine: the CLI, embedded server, UI, git access, secrets, admission checks, and configuration storage. Two kinds of request can leave your computer: a **pre-review model-catalog lookup** during provider setup, and the review request sent to the admitted product you configured.
 
-Diffgazer does not fall back to another product when admission or transport fails. Catalog-backed hosted products, including OpenRouter, may use the models.dev catalog. For exactly what each request carries, see [Privacy](/app/concepts/privacy).
+Diffgazer does not fall back to another product when admission or transport fails. Catalog-backed hosted products use the models.dev catalog; OpenRouter and Ollama Cloud also read their public model lists, and a saved OpenAI-compatible configuration with a key asks its own endpoint for its list. For exactly what each request carries, see [Privacy](/app/concepts/privacy).
 
 ## Related
 

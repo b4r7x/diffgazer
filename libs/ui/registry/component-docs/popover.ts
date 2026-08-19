@@ -57,6 +57,11 @@ export const popoverDoc: ComponentDoc = {
         "Popover.Content ships the surface: a 1px --border hairline, a --surface-1 fill with a 1px --surface-1-highlight inner top lip, and the family's tight rounded-sm corners. --surface-1 sits one step off the page background (lighter in dark, darker in light), so a floating layer separates from dense content by depth step rather than by blur — there is still no drop shadow. There is no padding either, so menu-style content can sit flush. `className` merges last, so a consumer can override or drop any of it; FloatingPanel underneath stays fully headless.",
     },
     {
+      title: "Actions Menu",
+      content:
+        'For a menu button, set popupRole="menu", give Popover.Content align="start" and no padding, and let Menu autoFocus with onClose closing the popover and onSelect closing it before running the pick; the popover then hands focus back to the trigger, whose aria-expanded carries the open state (a trigger sitting in a roving-focus row should drop its own highlight ring while open). MenuItem hotkey is a label only — bind the key in Menu onKeyDown, keep an entry the state cannot run listed and disabled with its reason instead of hiding it, and put the destructive entry last behind a MenuDivider. Inside the open menu ArrowUp/ArrowDown move the highlight and ArrowLeft/ArrowRight are inert (they only serve submenus); Escape and Tab close it. See the "Actions menu" example.',
+    },
+    {
       title: "Portal Rendering",
       content:
         "Content renders through the shared Portal primitive. When a PortalContainerProvider is present, Popover.Content uses that scoped container; otherwise it falls back to document.body. This keeps nested overlay trees in the same portal scope while still escaping overflow:hidden ancestors by default.",
@@ -67,7 +72,7 @@ export const popoverDoc: ComponentDoc = {
     { name: "popover-basic", title: "Basic" },
     { name: "popover-hover", title: "Hover Mode" },
     { name: "popover-placement", title: "Placement" },
-    { name: "popover-menu", title: "Menu composition" },
+    { name: "popover-menu", title: "Actions menu" },
     { name: "popover-controlled", title: "Controlled" },
   ],
   keyboard: {

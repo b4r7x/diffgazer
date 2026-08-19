@@ -28,7 +28,7 @@ function describeSuccess(
     case "inspect":
       return null;
     case "test":
-      return { title: "Readiness Tested", message: "Configuration readiness updated" };
+      return { title: "Verified", message: "The configuration produced structured review output" };
     case "select":
       return {
         title: "Configuration Selected",
@@ -46,7 +46,7 @@ const FAILURE_TITLES: Record<ProviderManagementEvent["action"], string | null> =
   update: null,
   delete: "Failed to Delete",
   inspect: "Failed to Inspect",
-  test: "Failed to Test",
+  test: "Verification Failed",
   select: "Failed to Select",
   "select-model": "Failed to Select Model",
 };

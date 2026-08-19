@@ -738,16 +738,7 @@ describe("execution contracts", () => {
     ).toBe(false);
   });
 
-  it("fails closed for opt-in and higher-cost model policies", () => {
-    const zaiFlash = {
-      ...evidenceKey,
-      productId: "zai" as const,
-      normalizedEndpoint: "https://api.z.ai/api/paas/v4",
-      modelId: "glm-4.7-flash",
-    };
-    expect(EvidenceKeySchema.safeParse(zaiFlash).success).toBe(false);
-    expect(EvidenceKeySchema.safeParse({ ...zaiFlash, modelId: "glm-4.7" }).success).toBe(true);
-
+  it("fails closed for higher-cost model policies", () => {
     const qwenPlus = { ...workspaceEvidence, modelId: "qwen3-coder-plus" };
     expect(EvidenceKeySchema.safeParse(qwenPlus).success).toBe(false);
     expect(EvidenceKeySchema.safeParse({ ...qwenPlus, modelId: "qwen3-coder-flash" }).success).toBe(

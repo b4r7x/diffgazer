@@ -53,6 +53,7 @@ function buildProps(overrides: Partial<HomePagePresentationProps> = {}): HomePag
     onHighlightChange: vi.fn(),
     navigate: createNavigateMock().navigate,
     createReview: vi.fn(async () => ({ reviewId: "rev-new" })),
+    requireProviderConsent: (action) => action(),
     clearScopedRouteState: vi.fn(),
     shutdown: vi.fn(async (): Promise<ShutdownResult> => ({ status: "closed" })),
     ...overrides,
@@ -344,6 +345,24 @@ describe("HomePagePresentation — startReview error surfacing", () => {
     expect(navigateMock.mock).not.toHaveBeenCalled();
   });
 
+  it("keeps the admission fast-fail on screen with a jump to the providers page", async () => {
+    const navigateMock = createNavigateMock();
+    const remediation =
+      "This model could not produce Diffgazer's structured review output. Select a different model or update the configuration.";
+    const createReview = vi.fn(async () => {
+      throw makeApiError(remediation, "SETUP_REQUIRED", 403);
+    });
+    const user = userEvent.setup();
+    renderPresentation(buildProps({ navigate: navigateMock.navigate, createReview }));
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+
+    expect(await screen.findByText("Configuration Needs Attention")).toBeInTheDocument();
+    expect(screen.getByText(remediation)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Open Providers" }));
+    expect(navigateMock.mock).toHaveBeenCalledWith({ to: "/settings/providers" });
+  });
+
   it("clears the starting state when the start fails, handing the menu back", async () => {
     let rejectReview: ((error: Error) => void) | undefined;
     const reviewPromise = new Promise<{ reviewId: string }>((_resolve, reject) => {
@@ -404,6 +423,34 @@ describe("HomePagePresentation — startReview error surfacing", () => {
     });
 
     expect(navigateMock.mock).not.toHaveBeenCalled();
+  });
+
+  it("hands the start to the provider consent gate and creates nothing until it runs it", async () => {
+    const createReview = vi.fn(async () => ({ reviewId: "rev-new" }));
+    const held: Array<() => void> = [];
+    const navigateMock = createNavigateMock();
+    const user = userEvent.setup();
+    renderPresentation(
+      buildProps({
+        createReview,
+        navigate: navigateMock.navigate,
+        requireProviderConsent: (action) => held.push(action),
+      }),
+    );
+
+    await user.click(screen.getByRole("menuitem", { name: "Review Unstaged" }));
+    expect(held).toHaveLength(1);
+    expect(createReview).not.toHaveBeenCalled();
+    // The row is not pending while the notice is up: nothing has started yet.
+    expect(screen.getByRole("menuitem", { name: "Review Unstaged" })).toBeEnabled();
+
+    await act(async () => {
+      held[0]?.();
+    });
+    await waitFor(() => expect(createReview).toHaveBeenCalledWith({ mode: "unstaged" }));
+    expect(navigateMock.mock).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/review/{-$reviewId}", params: { reviewId: "rev-new" } }),
+    );
   });
 
   it("starts a second review after a failed one, so the guard does not latch", async () => {

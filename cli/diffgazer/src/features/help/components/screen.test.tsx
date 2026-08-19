@@ -25,13 +25,22 @@ describe("HelpScreen", () => {
     expect(frame.split("\n")).toHaveLength(24);
   });
 
-  test("renders every group with one aligned key column at 100x30", async () => {
-    const { lastFrame } = renderRootFrame(100, 30, <HelpScreen />);
+  // Tall enough to show every group at once: the table has grown past what a
+  // 30-row terminal fits without scrolling, and the alignment check needs the
+  // first and last group on one screen.
+  test("renders every group with one aligned key column at 100x36", async () => {
+    const { lastFrame } = renderRootFrame(100, 36, <HelpScreen />);
 
     await vi.waitFor(() => expect(lastFrame()).toContain("IN HISTORY"));
     const frame = stripAnsi(lastFrame() ?? "");
 
-    for (const header of ["ANYWHERE", "IN LISTS", "IN A REVIEW", "IN HISTORY"]) {
+    for (const header of [
+      "ANYWHERE",
+      "IN LISTS",
+      "ON THE PROVIDERS PAGE",
+      "IN A REVIEW",
+      "IN HISTORY",
+    ]) {
       expect(frame).toContain(header);
     }
 
@@ -46,7 +55,7 @@ describe("HelpScreen", () => {
   });
 
   test("keeps a shortcut row for every distinct key and label pair", async () => {
-    const { lastFrame } = renderRootFrame(100, 30, <HelpScreen />);
+    const { lastFrame } = renderRootFrame(100, 36, <HelpScreen />);
 
     await vi.waitFor(() => expect(lastFrame()).toContain("IN HISTORY"));
     const frame = stripAnsi(lastFrame() ?? "");

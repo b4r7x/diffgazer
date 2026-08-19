@@ -19,12 +19,11 @@ describe("setup-plan progression", () => {
     ).toBe(true);
   });
 
-  it("requires a selected CLI installation and passing compatibility evidence", () => {
+  it("requires a selected CLI installation before the model step", () => {
     const initial = getInitialWizardData("codex-cli");
     if (initial.configurationInput.transportFamily !== "local-cli") {
       throw new Error("Expected local CLI configuration");
     }
-    const compatibilityStep = initial.plan.steps.find((step) => step.id === "conformance");
     const withInstallation = {
       ...initial,
       configurationInput: {
@@ -37,27 +36,16 @@ describe("setup-plan progression", () => {
       selectedModelId: "gpt-5-codex",
     } satisfies OnboardingDraft;
 
-    expect(compatibilityStep).toMatchObject({
-      requiredChecks: [
-        "installation",
-        "runtime-version",
-        "account-plan",
-        "model-discovery",
-        "negative-capabilities",
-        "structured-output",
-        "cancellation",
-        "acknowledgement",
-      ],
-    });
+    expect(initial.plan.steps.map((step) => step.id)).toEqual([
+      "product",
+      "authentication",
+      "model",
+      "acknowledgement",
+    ]);
     expect(canProceed("authentication", initial)).toBe(false);
     expect(canProceed("authentication", withInstallation)).toBe(true);
-    expect(canProceed("conformance", withModel)).toBe(false);
-    expect(
-      canProceed("conformance", {
-        ...withModel,
-        conformanceStatus: "passed",
-      }),
-    ).toBe(true);
+    expect(canProceed("model", withInstallation)).toBe(false);
+    expect(canProceed("model", withModel)).toBe(true);
   });
 
   it("never infers acknowledgement from save, test, or HTTP success", () => {
@@ -73,7 +61,6 @@ describe("setup-plan progression", () => {
         credential: { kind: "environment" as const },
       },
       selectedModelId: "mistral-small-2603",
-      conformanceStatus: "passed",
       saveStatus: "saved",
       testStatus: "passed",
       httpStatus: 200,
@@ -110,7 +97,6 @@ describe("setup-plan progression", () => {
         credential: { kind: "environment" },
       },
       selectedModelId: "mistral-small-2603",
-      conformanceStatus: "passed",
       acknowledgement: {
         status: "accepted",
         noticeId: notice.id,
@@ -226,42 +212,6 @@ describe("setup-plan progression", () => {
     ).toBe(false);
   });
 
-  it("fails closed for Z.AI Flash until an explicit model opt-in is represented", () => {
-    const initial = getInitialWizardData("zai");
-    if (initial.configurationInput.transportFamily !== "hosted-api") {
-      throw new Error("Expected hosted API configuration");
-    }
-    const configured = {
-      ...initial,
-      configurationInput: {
-        ...initial.configurationInput,
-        credential: { kind: "environment" as const },
-      },
-      selectedModelId: "glm-4.7-flash",
-    } satisfies OnboardingDraft;
-
-    // Discovery, conformance, and the product notice are not model opt-in.
-    expect(canProceed("model", configured)).toBe(false);
-    expect(
-      canProceed("conformance", {
-        ...configured,
-        conformanceStatus: "passed",
-      }),
-    ).toBe(false);
-    expect(
-      canProceed("acknowledgement", {
-        ...configured,
-        conformanceStatus: "passed",
-        acknowledgement: {
-          status: "accepted",
-          noticeId: PRODUCT_REGISTRY.zai.notice.id,
-          noticeVersion: PRODUCT_REGISTRY.zai.notice.noticeVersion,
-          acceptedAt: "2026-07-31T12:00:00.000Z",
-        },
-      }),
-    ).toBe(false);
-  });
-
   it("lets endpoint-binding proceed after clearing a hosted credential on a later step", () => {
     const initial = getInitialWizardData("gemini");
     if (initial.configurationInput.transportFamily !== "hosted-api") {
@@ -279,7 +229,7 @@ describe("setup-plan progression", () => {
     expect(canProceed("authentication", clearedCredential)).toBe(false);
   });
 
-  it("does not let a passed status bypass a changed endpoint or missing authentication", () => {
+  it("does not let a selected model bypass a changed endpoint or missing authentication", () => {
     const initial = getInitialWizardData("qwen");
     if (initial.configurationInput.transportFamily !== "hosted-api") {
       throw new Error("Expected hosted API configuration");
@@ -292,12 +242,11 @@ describe("setup-plan progression", () => {
         credential: { kind: "environment" as const },
       },
       selectedModelId: "qwen3-coder-flash",
-      conformanceStatus: "passed",
     } satisfies OnboardingDraft;
 
-    expect(canProceed("conformance", configured)).toBe(true);
+    expect(canProceed("model", configured)).toBe(true);
     expect(
-      canProceed("conformance", {
+      canProceed("model", {
         ...configured,
         configurationInput: {
           ...configured.configurationInput,
@@ -306,7 +255,7 @@ describe("setup-plan progression", () => {
       }),
     ).toBe(false);
     expect(
-      canProceed("conformance", {
+      canProceed("model", {
         ...configured,
         configurationInput: { ...configured.configurationInput, credential: undefined },
       }),
@@ -328,19 +277,12 @@ describe("setup-plan progression", () => {
       selectedModelId: "qwen3-coder-plus",
     } satisfies OnboardingDraft;
 
-    // The draft carries only generic conformance status, not the required
-    // server-verified output-limit and review-conformance evidence.
+    // The draft carries no server-verified output-limit or review-conformance
+    // evidence, so the model policy alone keeps this id out.
     expect(canProceed("model", configured)).toBe(false);
-    expect(
-      canProceed("conformance", {
-        ...configured,
-        conformanceStatus: "passed",
-      }),
-    ).toBe(false);
     expect(
       canProceed("acknowledgement", {
         ...configured,
-        conformanceStatus: "passed",
         acknowledgement: {
           status: "accepted",
           noticeId: PRODUCT_REGISTRY.qwen.notice.id,
@@ -350,13 +292,7 @@ describe("setup-plan progression", () => {
       }),
     ).toBe(false);
 
-    expect(
-      canProceed("conformance", {
-        ...configured,
-        selectedModelId: "qwen3-coder-flash",
-        conformanceStatus: "passed",
-      }),
-    ).toBe(true);
+    expect(canProceed("model", { ...configured, selectedModelId: "qwen3-coder-flash" })).toBe(true);
   });
 
   it("requires only the selected family's configuration fields", () => {
@@ -387,7 +323,7 @@ describe("setup-plan progression", () => {
     expect(canProceed("endpoint-binding", localCli)).toBe(false);
   });
 
-  it("blocks model and conformance progression until the exact admitted policy holds", () => {
+  it("blocks model progression until the exact admitted policy holds", () => {
     const initial = getInitialWizardData("deepseek");
     if (initial.configurationInput.transportFamily !== "hosted-api") {
       throw new Error("Expected hosted API configuration");
@@ -402,19 +338,12 @@ describe("setup-plan progression", () => {
     expect(canProceed("model", deepseek)).toBe(false);
     expect(canProceed("model", { ...deepseek, selectedModelId: "deepseek-latest" })).toBe(false);
     expect(canProceed("model", { ...deepseek, selectedModelId: "deepseek-v4-flash" })).toBe(true);
-    expect(canProceed("conformance", { ...deepseek, selectedModelId: "deepseek-v4-flash" })).toBe(
-      false,
-    );
     expect(
-      canProceed("conformance", {
-        ...deepseek,
-        selectedModelId: "deepseek-v4-flash",
-        conformanceStatus: "passed",
-      }),
-    ).toBe(true);
+      canProceed("acknowledgement", { ...deepseek, selectedModelId: "deepseek-v4-flash" }),
+    ).toBe(false);
   });
 
-  it("rechecks the configured transport before accepting final conformance or notice", () => {
+  it("rechecks the configured transport before accepting the notice", () => {
     const initial = getInitialWizardData("deepseek");
     if (initial.configurationInput.transportFamily !== "hosted-api") {
       throw new Error("Expected hosted API configuration");
@@ -426,7 +355,6 @@ describe("setup-plan progression", () => {
         credential: { kind: "environment" },
       },
       selectedModelId: "deepseek-v4-flash",
-      conformanceStatus: "passed",
       acknowledgement: {
         status: "accepted",
         noticeId: PRODUCT_REGISTRY.deepseek.notice.id,

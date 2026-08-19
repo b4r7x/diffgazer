@@ -26,6 +26,7 @@ const RunnableProductIdSchema = z.enum([
   "qwen",
   "moonshot",
   "mistral",
+  "ollama-cloud",
   "ollama",
   "local-openai",
   "codex-cli",

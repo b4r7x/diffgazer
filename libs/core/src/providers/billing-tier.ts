@@ -10,10 +10,11 @@ import { PRODUCT_REGISTRY } from "./product-registry.js";
  * tiers because "paid" is a claim about someone's bill: a model running on the
  * user's own machine bills nobody, and a CLI riding an existing subscription
  * bills whatever that subscription already does. `mixed` is the honest badge
- * for a hosted product selling both zero-priced and priced review-capable
+ * for a hosted product selling both zero-priced and priced
  * models — collapsing it to either one misstates the other half of the catalog.
- * `free-tier` is the account-level counterpart: every offerable model carries a
- * list price, but the product publishes a no-cost quota to run them on.
+ * `free-tier` is the account-level counterpart: the catalog prices none of the
+ * offerable models at zero (they are priced or unpriced), but the product
+ * publishes a no-cost quota to run them on.
  */
 export type BillingTier = "free" | "paid" | "mixed" | "local" | "ambient" | "free-tier";
 

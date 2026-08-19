@@ -2,7 +2,10 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PROJECT_ROOT_HEADER, SHUTDOWN_TOKEN_HEADER } from "@diffgazer/core/api/protocol";
-import { LEGACY_V1_HAS_API_KEY_PROPERTY } from "@diffgazer/core/schemas/config";
+import {
+  acceptProviderConsent,
+  LEGACY_V1_HAS_API_KEY_PROPERTY,
+} from "@diffgazer/core/schemas/config";
 import { requireValue } from "@diffgazer/core/testing/assertions";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConfigStore } from "../../shared/lib/config/store.js";
@@ -308,6 +311,34 @@ describe("settings trust routes — server-scoped project", () => {
     });
 
     expect(res.status).toBe(400);
+  });
+
+  it("persists the global provider consent and serves it back", async () => {
+    const app = await loadApp();
+    const providerConsent = acceptProviderConsent("2026-08-18T10:00:00.000Z");
+    const headers = {
+      Host: "localhost:3000",
+      "Content-Type": "application/json",
+      [SHUTDOWN_TOKEN_HEADER]: TEST_TOKEN,
+    };
+
+    const write = await app.request("/api/settings", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ providerConsent }),
+    });
+    expect(write.status).toBe(200);
+    const read = await app.request("/api/settings", { headers });
+    await expect(read.json()).resolves.toMatchObject({ providerConsent });
+
+    const rejected = await app.request("/api/settings", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        providerConsent: { version: 0, acceptedAt: "2026-08-18T10:00:00.000Z" },
+      }),
+    });
+    expect(rejected.status).toBe(400);
   });
 
   it.each([

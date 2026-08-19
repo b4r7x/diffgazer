@@ -1245,6 +1245,10 @@ if (args.includes("-p")) process.stdout.write(" S\\n");
           spawn: () => child.child,
           gracefulTimeoutMs: 10,
           forcedTimeoutMs: 10,
+          // The descendant is discovered only through the `ps` probe, a node
+          // script here, whose start-up outlives the default ceiling on a
+          // saturated machine.
+          probeTimeoutMs: 5_000,
           sleep: async () => {},
         },
       ).then(

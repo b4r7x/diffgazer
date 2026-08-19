@@ -134,6 +134,8 @@ export function getConfigurationNotReadyCopy(input: {
 export interface ReviewStartErrorDescription {
   title: string;
   message: string;
+  /** Set when the fix lives on the providers screen, so surfaces can offer the jump. */
+  recovery: "configure-provider" | null;
 }
 
 export function describeReviewStartError(error: unknown): ReviewStartErrorDescription {
@@ -141,6 +143,7 @@ export function describeReviewStartError(error: unknown): ReviewStartErrorDescri
     return {
       title: "Failed to Start Review",
       message: "Could not create a review session.",
+      recovery: null,
     };
   }
 
@@ -149,31 +152,55 @@ export function describeReviewStartError(error: unknown): ReviewStartErrorDescri
       return {
         title: "API Key Missing",
         message: `${error.message}. Add one in Settings → Providers.`,
+        recovery: "configure-provider",
       };
     case "UNSUPPORTED_PROVIDER":
       return {
         title: "Provider Not Configured",
         message: "Pick an AI provider in Settings → Providers.",
+        recovery: "configure-provider",
       };
     case "MODEL_ERROR":
-      return { title: "Model Not Selected", message: error.message };
+      return {
+        title: "Model Not Selected",
+        message: error.message,
+        recovery: "configure-provider",
+      };
+    // Admission refused the selected configuration before contacting the
+    // provider — a cached structured-output failure, an unaccepted notice, or a
+    // tuple that changed underneath the review. The message is the server's
+    // remediation; the fix is always a change on the providers screen.
+    case ErrorCode.SETUP_REQUIRED:
+      return {
+        title: "Configuration Needs Attention",
+        message: error.message,
+        recovery: "configure-provider",
+      };
     case ErrorCode.REVIEW_IN_PROGRESS:
       return {
         title: "Review Already Running",
         message:
           "A review is already running for this configuration. Wait for it to finish or cancel it, then start a new one.",
+        recovery: null,
       };
     case "KEYRING_READ_FAILED":
       return {
         title: "Credential Storage Unavailable",
         message: `${error.message}. Check Settings → Storage.`,
+        recovery: null,
       };
     default:
-      return { title: "Failed to Start Review", message: error.message };
+      return { title: "Failed to Start Review", message: error.message, recovery: null };
   }
 }
 
-export type ReviewStreamErrorKind = "api-key" | "trust" | "transport" | "other";
+export type ReviewStreamErrorKind =
+  | "api-key"
+  | "model-incompatible"
+  | "provider"
+  | "trust"
+  | "transport"
+  | "other";
 
 export interface ReviewStreamErrorGuidance {
   kind: ReviewStreamErrorKind;
@@ -225,6 +252,23 @@ export function classifyReviewStreamError(
       ctaLabel: CONFIGURE_PROVIDER_LABEL,
     };
   }
+  if (errorCode === ReviewErrorCode.MODEL_INCOMPATIBLE) {
+    return {
+      kind: "model-incompatible",
+      title: "Model Incompatible",
+      guidance:
+        "This model could not produce Diffgazer's structured review output. Change the model or update the configuration; reviews with this exact setup fail immediately until it changes.",
+      ctaLabel: "Change model",
+    };
+  }
+  if (errorCode === ReviewErrorCode.PROVIDER_REJECTED) {
+    return {
+      kind: "provider",
+      title: "Provider Rejected the Request",
+      guidance: "Fix the provider configuration or change the model, then start a new review.",
+      ctaLabel: "Fix provider",
+    };
+  }
   if (errorCode === ErrorCode.TRUST_REQUIRED || errorCode === ReviewErrorCode.TRUST_REQUIRED) {
     return {
       kind: "trust",
@@ -247,4 +291,9 @@ export function classifyReviewStreamError(
     guidance: "Return home and start a new review.",
     ctaLabel: "Back to Home",
   };
+}
+
+/** True when the guidance's call to action opens the providers screen. */
+export function isProviderRecoveryError(kind: ReviewStreamErrorKind): boolean {
+  return kind === "api-key" || kind === "model-incompatible" || kind === "provider";
 }

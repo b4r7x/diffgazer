@@ -1,10 +1,17 @@
 import {
   findProviderById,
   findProviderDialogRow,
+  getProviderActionLayout,
   getProviderRowId,
+  getUnrecognizedConfigurationActionLayout,
+  isConsentGatedProviderAction,
   type ProviderListRow,
+  type ProviderRowControl,
 } from "@diffgazer/core/providers";
-import type { UnrecognizedConfiguration } from "@diffgazer/core/schemas/config";
+import {
+  canSelectConfiguration,
+  type UnrecognizedConfiguration,
+} from "@diffgazer/core/schemas/config";
 import { useSearch } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { useProvidersKeyboard } from "@/features/providers/hooks/use-keyboard";
@@ -14,12 +21,8 @@ import {
   useProviderManagement,
 } from "@/features/providers/hooks/use-provider-management";
 import { useConfigData } from "@/hooks/use-config";
+import { useProviderConsent } from "@/hooks/use-provider-consent";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
-import {
-  getProviderActions,
-  type ProviderAction,
-  UNRECOGNIZED_CONFIGURATION_ACTIONS,
-} from "../lib/actions";
 import {
   filterProviders,
   filterUnrecognizedConfigurations,
@@ -72,8 +75,15 @@ export function useProvidersPageState() {
   );
   const [filter, setFilter] = useState<ProviderFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  // The page's own overlay: the More menu, or the confirmation removal waits
+  // behind wherever it was asked for. Page state so the keyboard can stand down
+  // while one of them owns the keys.
+  const [overlay, setOverlay] = useState<"more" | "delete" | null>(null);
+  const overflowMenuOpen = overlay === "more";
+  const deleteConfirmOpen = overlay === "delete";
 
-  const { loadState, unrecognizedConfigurations } = useConfigData();
+  const { loadState, unrecognizedConfigurations, selectedConfiguration } = useConfigData();
+  const consent = useProviderConsent();
   const {
     providers,
     isLoading,
@@ -87,6 +97,7 @@ export function useProvidersPageState() {
     handleDeleteConfiguration,
     handleSelectModel,
     handleSelectConfiguration,
+    handleTestConfiguration,
     handleDispatchReadinessAction,
   } = useProviderManagement();
 
@@ -131,77 +142,79 @@ export function useProvidersPageState() {
 
   const dispatchSelectedAction = (row: ProviderListRow) => {
     if (isSubmitting) return;
-    if (row.readiness.ready) {
+    if (canSelectConfiguration(row.readiness.status)) {
       void handleSelectConfiguration(row, row.configuration?.selectedModelId ?? undefined);
       return;
     }
     void handleDispatchReadinessAction(row);
   };
 
-  // Reached only through runProviderAction, the one dispatch path the rendered
-  // action row and the keyboard zone both use.
-  const actions = {
-    onSetup: () => {
-      if (selectedRow) openSetupDialog(getProviderRowId(selectedRow));
-    },
-    onSelectModel: () => {
-      if (selectedRow) openModelDialog(getProviderRowId(selectedRow));
-    },
-    onDelete: () => {
-      // An unrecognized record never showed a revision, so its delete asserts none.
-      if (selectedUnrecognized) {
-        void handleDeleteConfiguration(selectedUnrecognized.configurationId);
-        return;
-      }
-      const configurationId = selectedRow?.configuration?.configurationId;
-      const revision = selectedRow?.configuration?.revision;
-      if (configurationId != null && revision != null) {
-        void handleDeleteConfiguration(configurationId, revision);
-      }
-    },
-    onDispatchAction: () => {
-      if (selectedRow) dispatchSelectedAction(selectedRow);
-    },
+  const deleteSelected = () => {
+    // An unrecognized record never showed a revision, so its delete asserts none.
+    if (selectedUnrecognized) {
+      void handleDeleteConfiguration(selectedUnrecognized.configurationId);
+      return;
+    }
+    const configurationId = selectedRow?.configuration?.configurationId;
+    const revision = selectedRow?.configuration?.revision;
+    if (configurationId != null && revision != null) {
+      void handleDeleteConfiguration(configurationId, revision);
+    }
   };
 
   // The one derivation of the action row: the renderer and the keyboard zone both read this
-  // array, so their indexes and counts cannot drift apart.
-  const providerActions = selectedUnrecognized
-    ? UNRECOGNIZED_CONFIGURATION_ACTIONS
-    : getProviderActions(selectedRow);
+  // layout, so their controls and indexes cannot drift apart.
+  const actionLayout = selectedUnrecognized
+    ? getUnrecognizedConfigurationActionLayout()
+    : getProviderActionLayout(selectedRow, selectedConfiguration?.configurationId ?? null);
 
-  const runProviderAction = (action: ProviderAction) => {
-    switch (action.id) {
+  // The one dispatch path the rendered action row, the More menu and the keyboard zone use.
+  const runProviderControl = (control: ProviderRowControl) => {
+    if (control.id === "more") {
+      setOverlay("more");
+      return;
+    }
+    const run = isConsentGatedProviderAction(control)
+      ? consent.require
+      : (action: () => void) => action();
+    switch (control.id) {
       case "dispatch":
       case "selectConfiguration":
-        actions.onDispatchAction();
+        if (selectedRow) run(() => dispatchSelectedAction(selectedRow));
         break;
       case "setup":
-        actions.onSetup();
+        if (selectedRow) run(() => openSetupDialog(getProviderRowId(selectedRow)));
         break;
+      case "verify": {
+        const configurationId = selectedRow?.configuration?.configurationId;
+        if (configurationId != null) run(() => void handleTestConfiguration(configurationId));
+        break;
+      }
       case "selectModel":
-        actions.onSelectModel();
+        if (selectedRow) openModelDialog(getProviderRowId(selectedRow));
         break;
       case "delete":
-        actions.onDelete();
+        setOverlay("delete");
         break;
     }
   };
 
   const keyboard = useProvidersKeyboard({
-    actions: providerActions,
+    layout: actionLayout,
     hasSelection: selectedRow !== null || selectedUnrecognized !== null,
     listRowIds,
     listReady: !isLoading && listRowIds.length > 0,
     filter,
     setSelectedId: selectProvider,
-    dialogOpen: dialogOwner !== null,
+    dialogOpen: dialogOwner !== null || overlay !== null || consent.isOpen,
+    overflowMenuOpen,
     isPending: isSubmitting,
     hasNotice: loadState.status === "error",
     inputRef,
     listContainerRef,
     noticeActionRef,
-    runAction: runProviderAction,
+    runControl: runProviderControl,
+    reviewConsent: consent.consent === null ? consent.open : null,
   });
 
   return {
@@ -227,20 +240,33 @@ export function useProvidersPageState() {
     dialogs: {
       current: dialog,
       close: closeDialog,
-      anyOpen: dialogOwner !== null,
+      anyOpen: dialogOwner !== null || deleteConfirmOpen || consent.isOpen,
+    },
+
+    deleteConfirm: {
+      open: deleteConfirmOpen,
+      onOpenChange: (open: boolean) => setOverlay(open ? "delete" : null),
+      confirm: deleteSelected,
     },
 
     handlers: {
       createConfiguration: handleCreateConfiguration,
       updateConfiguration: handleUpdateConfiguration,
       selectModel: handleSelectModel,
-      dispatchAction: dispatchSelectedAction,
     },
 
-    providerActions,
-    runProviderAction,
+    actionLayout,
+    runProviderControl,
+    overflowMenu: {
+      open: overflowMenuOpen,
+      onOpenChange: (open: boolean) => setOverlay(open ? "more" : null),
+    },
 
     isSubmitting,
+    consent: {
+      required: consent.consent === null,
+      review: consent.open,
+    },
 
     keyboard: { ...keyboard, listContainerRef, noticeActionRef },
   };

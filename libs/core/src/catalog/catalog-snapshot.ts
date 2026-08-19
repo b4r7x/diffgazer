@@ -4,6 +4,726 @@
 import type { ModelsDevCatalog } from "./schema.js";
 
 export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
+  alibaba: {
+    id: "alibaba",
+    name: "Alibaba",
+    api: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    env: ["DASHSCOPE_API_KEY"],
+    models: {
+      "deepseek-v4-flash-0731": {
+        id: "deepseek-v4-flash-0731",
+        name: "DeepSeek V4 Flash 0731",
+        family: "deepseek-flash",
+        cost: {
+          input: 0.2,
+          output: 0.4,
+        },
+        limit: {
+          context: 1000000,
+          output: 384000,
+        },
+        structured_output: true,
+      },
+      "glm-5.2": {
+        id: "glm-5.2",
+        name: "GLM-5.2",
+        family: "glm",
+        cost: {
+          input: 1.4,
+          output: 4.4,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+      },
+      "qvq-max": {
+        id: "qvq-max",
+        name: "QVQ Max",
+        family: "qvq",
+        cost: {
+          input: 1.2,
+          output: 4.8,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen-flash": {
+        id: "qwen-flash",
+        name: "Qwen Flash",
+        family: "qwen",
+        cost: {
+          input: 0.05,
+          output: 0.4,
+        },
+        limit: {
+          context: 1000000,
+          output: 32768,
+        },
+      },
+      "qwen-max": {
+        id: "qwen-max",
+        name: "Qwen Max",
+        family: "qwen",
+        cost: {
+          input: 1.6,
+          output: 6.4,
+        },
+        limit: {
+          context: 32768,
+          output: 8192,
+        },
+      },
+      "qwen-mt-plus": {
+        id: "qwen-mt-plus",
+        name: "Qwen-MT Plus",
+        family: "qwen",
+        cost: {
+          input: 2.46,
+          output: 7.37,
+        },
+        limit: {
+          context: 16384,
+          output: 8192,
+        },
+      },
+      "qwen-mt-turbo": {
+        id: "qwen-mt-turbo",
+        name: "Qwen-MT Turbo",
+        family: "qwen",
+        cost: {
+          input: 0.16,
+          output: 0.49,
+        },
+        limit: {
+          context: 16384,
+          output: 8192,
+        },
+      },
+      "qwen-omni-turbo": {
+        id: "qwen-omni-turbo",
+        name: "Qwen-Omni Turbo",
+        family: "qwen",
+        cost: {
+          input: 0.07,
+          output: 0.27,
+        },
+        limit: {
+          context: 32768,
+          output: 2048,
+        },
+      },
+      "qwen-omni-turbo-realtime": {
+        id: "qwen-omni-turbo-realtime",
+        name: "Qwen-Omni Turbo Realtime",
+        family: "qwen",
+        cost: {
+          input: 0.27,
+          output: 1.07,
+        },
+        limit: {
+          context: 32768,
+          output: 2048,
+        },
+      },
+      "qwen-plus": {
+        id: "qwen-plus",
+        name: "Qwen Plus",
+        family: "qwen",
+        cost: {
+          input: 0.4,
+          output: 1.2,
+        },
+        limit: {
+          context: 1000000,
+          output: 32768,
+        },
+      },
+      "qwen-plus-character-ja": {
+        id: "qwen-plus-character-ja",
+        name: "Qwen Plus Character (Japanese)",
+        family: "qwen",
+        cost: {
+          input: 0.5,
+          output: 1.4,
+        },
+        limit: {
+          context: 8192,
+          output: 512,
+        },
+      },
+      "qwen-turbo": {
+        id: "qwen-turbo",
+        name: "Qwen Turbo",
+        family: "qwen",
+        cost: {
+          input: 0.05,
+          output: 0.2,
+        },
+        limit: {
+          context: 1000000,
+          output: 16384,
+        },
+      },
+      "qwen-vl-max": {
+        id: "qwen-vl-max",
+        name: "Qwen-VL Max",
+        family: "qwen",
+        cost: {
+          input: 0.8,
+          output: 3.2,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen-vl-ocr": {
+        id: "qwen-vl-ocr",
+        name: "Qwen-VL OCR",
+        family: "qwen",
+        cost: {
+          input: 0.72,
+          output: 0.72,
+        },
+        limit: {
+          context: 34096,
+          output: 4096,
+        },
+      },
+      "qwen-vl-plus": {
+        id: "qwen-vl-plus",
+        name: "Qwen-VL Plus",
+        family: "qwen",
+        cost: {
+          input: 0.21,
+          output: 0.63,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen2-5-14b-instruct": {
+        id: "qwen2-5-14b-instruct",
+        name: "Qwen2.5 14B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.35,
+          output: 1.4,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen2-5-32b-instruct": {
+        id: "qwen2-5-32b-instruct",
+        name: "Qwen2.5 32B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.7,
+          output: 2.8,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen2-5-72b-instruct": {
+        id: "qwen2-5-72b-instruct",
+        name: "Qwen2.5 72B Instruct",
+        family: "qwen",
+        cost: {
+          input: 1.4,
+          output: 5.6,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen2-5-7b-instruct": {
+        id: "qwen2-5-7b-instruct",
+        name: "Qwen2.5 7B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.175,
+          output: 0.7,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen2-5-omni-7b": {
+        id: "qwen2-5-omni-7b",
+        name: "Qwen2.5-Omni 7B",
+        family: "qwen",
+        cost: {
+          input: 0.1,
+          output: 0.4,
+        },
+        limit: {
+          context: 32768,
+          output: 2048,
+        },
+      },
+      "qwen2-5-vl-72b-instruct": {
+        id: "qwen2-5-vl-72b-instruct",
+        name: "Qwen2.5-VL 72B Instruct",
+        family: "qwen",
+        cost: {
+          input: 2.8,
+          output: 8.4,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen2-5-vl-7b-instruct": {
+        id: "qwen2-5-vl-7b-instruct",
+        name: "Qwen2.5-VL 7B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.35,
+          output: 1.05,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen3-14b": {
+        id: "qwen3-14b",
+        name: "Qwen3 14B",
+        family: "qwen",
+        cost: {
+          input: 0.35,
+          output: 1.4,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen3-235b-a22b": {
+        id: "qwen3-235b-a22b",
+        name: "Qwen3 235B-A22B",
+        family: "qwen",
+        cost: {
+          input: 0.7,
+          output: 2.8,
+        },
+        limit: {
+          context: 131072,
+          output: 16384,
+        },
+      },
+      "qwen3-32b": {
+        id: "qwen3-32b",
+        name: "Qwen3 32B",
+        family: "qwen",
+        cost: {
+          input: 0.7,
+          output: 2.8,
+        },
+        limit: {
+          context: 131072,
+          output: 16384,
+        },
+      },
+      "qwen3-8b": {
+        id: "qwen3-8b",
+        name: "Qwen3 8B",
+        family: "qwen",
+        cost: {
+          input: 0.18,
+          output: 0.7,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+      "qwen3-asr-flash": {
+        id: "qwen3-asr-flash",
+        name: "Qwen3-ASR Flash",
+        family: "qwen",
+        cost: {
+          input: 0.035,
+          output: 0.035,
+        },
+        limit: {
+          context: 53248,
+          output: 4096,
+        },
+      },
+      "qwen3-coder-30b-a3b-instruct": {
+        id: "qwen3-coder-30b-a3b-instruct",
+        name: "Qwen3-Coder 30B-A3B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.45,
+          output: 2.25,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+      },
+      "qwen3-coder-480b-a35b-instruct": {
+        id: "qwen3-coder-480b-a35b-instruct",
+        name: "Qwen3-Coder 480B-A35B Instruct",
+        family: "qwen",
+        cost: {
+          input: 1.5,
+          output: 7.5,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+      },
+      "qwen3-coder-flash": {
+        id: "qwen3-coder-flash",
+        name: "Qwen3 Coder Flash",
+        family: "qwen",
+        cost: {
+          input: 0.3,
+          output: 1.5,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+      },
+      "qwen3-coder-plus": {
+        id: "qwen3-coder-plus",
+        name: "Qwen3 Coder Plus",
+        family: "qwen",
+        cost: {
+          input: 1,
+          output: 5,
+        },
+        limit: {
+          context: 1048576,
+          output: 65536,
+        },
+      },
+      "qwen3-livetranslate-flash-realtime": {
+        id: "qwen3-livetranslate-flash-realtime",
+        name: "Qwen3-LiveTranslate Flash Realtime",
+        family: "qwen",
+        cost: {
+          input: 10,
+          output: 10,
+        },
+        limit: {
+          context: 53248,
+          output: 4096,
+        },
+      },
+      "qwen3-max": {
+        id: "qwen3-max",
+        name: "Qwen3 Max",
+        family: "qwen",
+        cost: {
+          input: 1.2,
+          output: 6,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+      },
+      "qwen3-next-80b-a3b-instruct": {
+        id: "qwen3-next-80b-a3b-instruct",
+        name: "Qwen3-Next 80B-A3B Instruct",
+        family: "qwen",
+        cost: {
+          input: 0.5,
+          output: 2,
+        },
+        limit: {
+          context: 131072,
+          output: 32768,
+        },
+      },
+      "qwen3-next-80b-a3b-thinking": {
+        id: "qwen3-next-80b-a3b-thinking",
+        name: "Qwen3-Next 80B-A3B (Thinking)",
+        family: "qwen",
+        cost: {
+          input: 0.5,
+          output: 6,
+        },
+        limit: {
+          context: 131072,
+          output: 32768,
+        },
+      },
+      "qwen3-omni-flash": {
+        id: "qwen3-omni-flash",
+        name: "Qwen3-Omni Flash",
+        family: "qwen",
+        cost: {
+          input: 0.43,
+          output: 1.66,
+        },
+        limit: {
+          context: 65536,
+          output: 16384,
+        },
+      },
+      "qwen3-omni-flash-realtime": {
+        id: "qwen3-omni-flash-realtime",
+        name: "Qwen3-Omni Flash Realtime",
+        family: "qwen",
+        cost: {
+          input: 0.52,
+          output: 1.99,
+        },
+        limit: {
+          context: 65536,
+          output: 16384,
+        },
+      },
+      "qwen3-vl-235b-a22b": {
+        id: "qwen3-vl-235b-a22b",
+        name: "Qwen3-VL 235B-A22B",
+        family: "qwen",
+        cost: {
+          input: 0.7,
+          output: 2.8,
+        },
+        limit: {
+          context: 131072,
+          output: 32768,
+        },
+      },
+      "qwen3-vl-30b-a3b": {
+        id: "qwen3-vl-30b-a3b",
+        name: "Qwen3-VL 30B-A3B",
+        family: "qwen",
+        cost: {
+          input: 0.2,
+          output: 0.8,
+        },
+        limit: {
+          context: 131072,
+          output: 32768,
+        },
+      },
+      "qwen3-vl-plus": {
+        id: "qwen3-vl-plus",
+        name: "Qwen3-VL Plus",
+        family: "qwen",
+        cost: {
+          input: 0.2,
+          output: 1.6,
+        },
+        limit: {
+          context: 262144,
+          output: 32768,
+        },
+      },
+      "qwen3.5-122b-a10b": {
+        id: "qwen3.5-122b-a10b",
+        name: "Qwen3.5 122B-A10B",
+        family: "qwen",
+        cost: {
+          input: 0.4,
+          output: 3.2,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        structured_output: true,
+      },
+      "qwen3.5-27b": {
+        id: "qwen3.5-27b",
+        name: "Qwen3.5 27B",
+        family: "qwen",
+        cost: {
+          input: 0.3,
+          output: 2.4,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        structured_output: true,
+      },
+      "qwen3.5-35b-a3b": {
+        id: "qwen3.5-35b-a3b",
+        name: "Qwen3.5 35B-A3B",
+        family: "qwen",
+        cost: {
+          input: 0.25,
+          output: 2,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        structured_output: true,
+      },
+      "qwen3.5-397b-a17b": {
+        id: "qwen3.5-397b-a17b",
+        name: "Qwen3.5 397B-A17B",
+        family: "qwen",
+        cost: {
+          input: 0.6,
+          output: 3.6,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        structured_output: true,
+      },
+      "qwen3.5-plus": {
+        id: "qwen3.5-plus",
+        name: "Qwen3.5 Plus",
+        family: "qwen",
+        cost: {
+          input: 0.4,
+          output: 2.4,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+      },
+      "qwen3.6-27b": {
+        id: "qwen3.6-27b",
+        name: "Qwen3.6 27B",
+        family: "qwen",
+        cost: {
+          input: 0.6,
+          output: 3.6,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        structured_output: true,
+      },
+      "qwen3.6-35b-a3b": {
+        id: "qwen3.6-35b-a3b",
+        name: "Qwen3.6 35B-A3B",
+        family: "qwen",
+        cost: {
+          input: 0.248,
+          output: 1.485,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+        structured_output: true,
+      },
+      "qwen3.6-flash": {
+        id: "qwen3.6-flash",
+        name: "Qwen3.6 Flash",
+        family: "qwen3.6",
+        cost: {
+          input: 0.1875,
+          output: 1.125,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+        structured_output: true,
+      },
+      "qwen3.6-max-preview": {
+        id: "qwen3.6-max-preview",
+        name: "Qwen3.6 Max Preview",
+        family: "qwen",
+        cost: {
+          input: 1.3,
+          output: 7.8,
+        },
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+      },
+      "qwen3.6-plus": {
+        id: "qwen3.6-plus",
+        name: "Qwen3.6 Plus",
+        family: "qwen",
+        cost: {
+          input: 0.5,
+          output: 3,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+      },
+      "qwen3.7-max": {
+        id: "qwen3.7-max",
+        name: "Qwen3.7 Max",
+        family: "qwen",
+        cost: {
+          input: 2.5,
+          output: 7.5,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+      },
+      "qwen3.7-plus": {
+        id: "qwen3.7-plus",
+        name: "Qwen3.7 Plus",
+        family: "qwen",
+        cost: {
+          input: 0.5,
+          output: 3,
+        },
+        limit: {
+          context: 1000000,
+          output: 65536,
+        },
+      },
+      "qwen3.8-max": {
+        id: "qwen3.8-max",
+        name: "Qwen3.8 Max",
+        family: "qwen",
+        cost: {
+          input: 2,
+          output: 6,
+        },
+        limit: {
+          context: 1000000,
+          output: 131072,
+        },
+        structured_output: true,
+      },
+      "qwq-plus": {
+        id: "qwq-plus",
+        name: "QwQ Plus",
+        family: "qwen",
+        cost: {
+          input: 0.8,
+          output: 2.4,
+        },
+        limit: {
+          context: 131072,
+          output: 8192,
+        },
+      },
+    },
+  },
   cerebras: {
     id: "cerebras",
     name: "Cerebras",
@@ -37,16 +757,65 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: true,
       },
-      "zai-glm-4.7": {
-        id: "zai-glm-4.7",
-        name: "Z.AI GLM-4.7",
+    },
+  },
+  deepseek: {
+    id: "deepseek",
+    name: "DeepSeek",
+    api: "https://api.deepseek.com",
+    env: ["DEEPSEEK_API_KEY"],
+    models: {
+      "deepseek-chat": {
+        id: "deepseek-chat",
+        name: "DeepSeek Chat",
+        family: "deepseek",
         cost: {
-          input: 2.25,
-          output: 2.75,
+          input: 0.14,
+          output: 0.28,
         },
         limit: {
-          context: 131072,
-          output: 40960,
+          context: 1000000,
+          output: 384000,
+        },
+      },
+      "deepseek-reasoner": {
+        id: "deepseek-reasoner",
+        name: "DeepSeek Reasoner",
+        family: "deepseek-thinking",
+        cost: {
+          input: 0.14,
+          output: 0.28,
+        },
+        limit: {
+          context: 1000000,
+          output: 384000,
+        },
+      },
+      "deepseek-v4-flash": {
+        id: "deepseek-v4-flash",
+        name: "DeepSeek V4 Flash",
+        family: "deepseek-flash",
+        cost: {
+          input: 0.14,
+          output: 0.28,
+        },
+        limit: {
+          context: 1000000,
+          output: 384000,
+        },
+        structured_output: true,
+      },
+      "deepseek-v4-pro": {
+        id: "deepseek-v4-pro",
+        name: "DeepSeek V4 Pro",
+        family: "deepseek-thinking",
+        cost: {
+          input: 0.435,
+          output: 0.87,
+        },
+        limit: {
+          context: 1000000,
+          output: 384000,
         },
         structured_output: true,
       },
@@ -137,6 +906,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: true,
       },
+      "gemini-2.5-flash-preview-tts": {
+        id: "gemini-2.5-flash-preview-tts",
+        name: "Gemini 2.5 Flash Preview TTS",
+        family: "gemini-flash",
+        cost: {
+          input: 0.5,
+          output: 10,
+        },
+        limit: {
+          context: 8192,
+          output: 16384,
+        },
+        modalities: {
+          output: ["audio"],
+        },
+      },
       "gemini-2.5-pro": {
         id: "gemini-2.5-pro",
         name: "Gemini 2.5 Pro",
@@ -150,6 +935,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: true,
+      },
+      "gemini-2.5-pro-preview-tts": {
+        id: "gemini-2.5-pro-preview-tts",
+        name: "Gemini 2.5 Pro Preview TTS",
+        family: "gemini-flash",
+        cost: {
+          input: 1,
+          output: 20,
+        },
+        limit: {
+          context: 8192,
+          output: 16384,
+        },
+        modalities: {
+          output: ["audio"],
+        },
       },
       "gemini-3-flash-preview": {
         id: "gemini-3-flash-preview",
@@ -272,6 +1073,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 65536,
         },
         structured_output: false,
+      },
+      "gemini-3.1-flash-tts-preview": {
+        id: "gemini-3.1-flash-tts-preview",
+        name: "Gemini 3.1 Flash TTS Preview",
+        family: "gemini-flash",
+        cost: {
+          input: 1,
+          output: 20,
+        },
+        limit: {
+          context: 8192,
+          output: 16384,
+        },
+        modalities: {
+          output: ["audio"],
+        },
       },
       "gemini-3.1-pro-preview": {
         id: "gemini-3.1-pro-preview",
@@ -424,6 +1241,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: true,
       },
+      "gemini-omni-flash-preview": {
+        id: "gemini-omni-flash-preview",
+        name: "Gemini Omni Flash Preview",
+        family: "gemini",
+        cost: {
+          input: 1.5,
+          output: 17.5,
+        },
+        limit: {
+          context: 131072,
+          output: 65536,
+        },
+        modalities: {
+          output: ["video"],
+        },
+      },
       "gemini-robotics-er-1.6-preview": {
         id: "gemini-robotics-er-1.6-preview",
         name: "Gemini Robotics-ER 1.6 Preview",
@@ -486,6 +1319,42 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         structured_output: false,
       },
+      "veo-3.1-fast-generate-preview": {
+        id: "veo-3.1-fast-generate-preview",
+        name: "Veo 3.1 fast",
+        family: "veo",
+        limit: {
+          context: 480,
+          output: 8192,
+        },
+        modalities: {
+          output: ["video"],
+        },
+      },
+      "veo-3.1-generate-preview": {
+        id: "veo-3.1-generate-preview",
+        name: "Veo 3.1",
+        family: "veo",
+        limit: {
+          context: 480,
+          output: 8192,
+        },
+        modalities: {
+          output: ["video"],
+        },
+      },
+      "veo-3.1-lite-generate-preview": {
+        id: "veo-3.1-lite-generate-preview",
+        name: "Veo 3.1 lite",
+        family: "veo",
+        limit: {
+          context: 480,
+          output: 8192,
+        },
+        modalities: {
+          output: ["video"],
+        },
+      },
     },
   },
   groq: {
@@ -503,6 +1372,30 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         limit: {
           context: 4096,
           output: 4096,
+        },
+      },
+      "canopylabs/orpheus-arabic-saudi": {
+        id: "canopylabs/orpheus-arabic-saudi",
+        name: "Canopy Labs Orpheus Arabic Saudi",
+        family: "canopylabs",
+        limit: {
+          context: 4000,
+          output: 50000,
+        },
+        modalities: {
+          output: ["audio"],
+        },
+      },
+      "canopylabs/orpheus-v1-english": {
+        id: "canopylabs/orpheus-v1-english",
+        name: "Canopy Labs Orpheus V1 English",
+        family: "canopylabs",
+        limit: {
+          context: 4000,
+          output: 50000,
+        },
+        modalities: {
+          output: ["audio"],
         },
       },
       "groq/compound": {
@@ -1057,6 +1950,18 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 0,
         },
       },
+      "voxtral-mini-tts-latest": {
+        id: "voxtral-mini-tts-latest",
+        name: "Voxtral Mini TTS (latest)",
+        family: "voxtral",
+        limit: {
+          context: 0,
+          output: 0,
+        },
+        modalities: {
+          output: ["audio"],
+        },
+      },
       "voxtral-small-latest": {
         id: "voxtral-small-latest",
         name: "Voxtral Small (latest)",
@@ -1068,6 +1973,341 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         limit: {
           context: 32000,
           output: 32000,
+        },
+      },
+    },
+  },
+  moonshotai: {
+    id: "moonshotai",
+    name: "Moonshot AI",
+    api: "https://api.moonshot.ai/v1",
+    env: ["MOONSHOT_API_KEY"],
+    models: {
+      "kimi-k2-0711-preview": {
+        id: "kimi-k2-0711-preview",
+        name: "Kimi K2 0711",
+        family: "kimi-k2",
+        cost: {
+          input: 0.6,
+          output: 2.5,
+        },
+        limit: {
+          context: 131072,
+          output: 16384,
+        },
+      },
+      "kimi-k2-0905-preview": {
+        id: "kimi-k2-0905-preview",
+        name: "Kimi K2 0905",
+        family: "kimi-k2",
+        cost: {
+          input: 0.6,
+          output: 2.5,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+      },
+      "kimi-k2-thinking": {
+        id: "kimi-k2-thinking",
+        name: "Kimi K2 Thinking",
+        family: "kimi-thinking",
+        cost: {
+          input: 0.6,
+          output: 2.5,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+      },
+      "kimi-k2-thinking-turbo": {
+        id: "kimi-k2-thinking-turbo",
+        name: "Kimi K2 Thinking Turbo",
+        family: "kimi-thinking",
+        cost: {
+          input: 1.15,
+          output: 8,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+      },
+      "kimi-k2-turbo-preview": {
+        id: "kimi-k2-turbo-preview",
+        name: "Kimi K2 Turbo",
+        family: "kimi-k2",
+        cost: {
+          input: 2.4,
+          output: 10,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+      },
+      "kimi-k2.5": {
+        id: "kimi-k2.5",
+        name: "Kimi K2.5",
+        family: "kimi-k2",
+        cost: {
+          input: 0.6,
+          output: 3,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        structured_output: true,
+      },
+      "kimi-k2.6": {
+        id: "kimi-k2.6",
+        name: "Kimi K2.6",
+        family: "kimi-k2",
+        cost: {
+          input: 0.95,
+          output: 4,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        structured_output: true,
+      },
+      "kimi-k2.7-code": {
+        id: "kimi-k2.7-code",
+        name: "Kimi K2.7 Code",
+        family: "kimi-k2",
+        cost: {
+          input: 0.95,
+          output: 4,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        structured_output: true,
+      },
+      "kimi-k2.7-code-highspeed": {
+        id: "kimi-k2.7-code-highspeed",
+        name: "Kimi K2.7 Code HighSpeed",
+        family: "kimi-k2",
+        cost: {
+          input: 1.9,
+          output: 8,
+        },
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        structured_output: true,
+      },
+      "kimi-k3": {
+        id: "kimi-k3",
+        name: "Kimi K3",
+        family: "kimi-k3",
+        cost: {
+          input: 3,
+          output: 15,
+        },
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: true,
+      },
+    },
+  },
+  "ollama-cloud": {
+    id: "ollama-cloud",
+    name: "Ollama Cloud",
+    api: "https://ollama.com/v1",
+    env: ["OLLAMA_API_KEY"],
+    models: {
+      "deepseek-v4-flash": {
+        id: "deepseek-v4-flash",
+        name: "deepseek-v4-flash",
+        family: "deepseek-flash",
+        limit: {
+          context: 1048576,
+          output: 1048576,
+        },
+      },
+      "deepseek-v4-flash:0731": {
+        id: "deepseek-v4-flash:0731",
+        name: "DeepSeek V4 Flash 0731",
+        family: "deepseek-flash",
+        limit: {
+          context: 1048576,
+          output: 1048576,
+        },
+        structured_output: true,
+      },
+      "deepseek-v4-pro": {
+        id: "deepseek-v4-pro",
+        name: "deepseek-v4-pro",
+        family: "deepseek-thinking",
+        limit: {
+          context: 1048576,
+          output: 1048576,
+        },
+      },
+      "gemma4:31b": {
+        id: "gemma4:31b",
+        name: "gemma4:31b",
+        family: "gemma",
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+      },
+      "glm-5.1": {
+        id: "glm-5.1",
+        name: "glm-5.1",
+        family: "glm",
+        limit: {
+          context: 202752,
+          output: 131072,
+        },
+      },
+      "glm-5.2": {
+        id: "glm-5.2",
+        name: "GLM-5.2",
+        family: "glm",
+        limit: {
+          context: 976000,
+          output: 131072,
+        },
+        structured_output: true,
+      },
+      "gpt-oss:120b": {
+        id: "gpt-oss:120b",
+        name: "gpt-oss:120b",
+        family: "gpt-oss",
+        limit: {
+          context: 131072,
+          output: 32768,
+        },
+      },
+      "gpt-oss:20b": {
+        id: "gpt-oss:20b",
+        name: "gpt-oss:20b",
+        family: "gpt-oss",
+        limit: {
+          context: 131072,
+          output: 32768,
+        },
+      },
+      "kimi-k2.5": {
+        id: "kimi-k2.5",
+        name: "kimi-k2.5",
+        family: "kimi-k2",
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+      },
+      "kimi-k2.6": {
+        id: "kimi-k2.6",
+        name: "kimi-k2.6",
+        family: "kimi-k2",
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+      },
+      "kimi-k2.7-code": {
+        id: "kimi-k2.7-code",
+        name: "kimi-k2.7-code",
+        family: "kimi-k2",
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+        structured_output: true,
+      },
+      "kimi-k3": {
+        id: "kimi-k3",
+        name: "kimi-k3",
+        family: "kimi-k3",
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: true,
+      },
+      "minimax-m2.5": {
+        id: "minimax-m2.5",
+        name: "minimax-m2.5",
+        family: "minimax",
+        limit: {
+          context: 204800,
+          output: 131072,
+        },
+      },
+      "minimax-m2.7": {
+        id: "minimax-m2.7",
+        name: "minimax-m2.7",
+        family: "minimax",
+        limit: {
+          context: 196608,
+          output: 196608,
+        },
+      },
+      "minimax-m3": {
+        id: "minimax-m3",
+        name: "minimax-m3",
+        family: "minimax-m3",
+        limit: {
+          context: 512000,
+          output: 131072,
+        },
+      },
+      "mistral-large-3:675b": {
+        id: "mistral-large-3:675b",
+        name: "mistral-large-3:675b",
+        family: "mistral-large",
+        limit: {
+          context: 262144,
+          output: 262144,
+        },
+      },
+      "nemotron-3-nano:30b": {
+        id: "nemotron-3-nano:30b",
+        name: "nemotron-3-nano:30b",
+        family: "nemotron",
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+      },
+      "nemotron-3-super": {
+        id: "nemotron-3-super",
+        name: "nemotron-3-super",
+        family: "nemotron",
+        limit: {
+          context: 262144,
+          output: 65536,
+        },
+      },
+      "nemotron-3-ultra": {
+        id: "nemotron-3-ultra",
+        name: "nemotron-3-ultra",
+        family: "nemotron",
+        limit: {
+          context: 262144,
+          output: 128000,
+        },
+      },
+      "qwen3.5:397b": {
+        id: "qwen3.5:397b",
+        name: "qwen3.5:397b",
+        family: "qwen",
+        limit: {
+          context: 262144,
+          output: 65536,
         },
       },
     },
@@ -1579,7 +2819,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       },
       "bytedance-seed/seed-2.0-lite": {
         id: "bytedance-seed/seed-2.0-lite",
-        name: "Seed-2.0-Lite",
+        name: "Seed 2.0 Lite",
         family: "seed",
         cost: {
           input: 0.25,
@@ -1593,7 +2833,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       },
       "bytedance-seed/seed-2.0-mini": {
         id: "bytedance-seed/seed-2.0-mini",
-        name: "Seed-2.0-Mini",
+        name: "Seed 2.0 Mini",
         family: "seed",
         cost: {
           input: 0.1,
@@ -1806,11 +3046,11 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         family: "deepseek",
         cost: {
           input: 0.27,
-          output: 0.95,
+          output: 1,
         },
         limit: {
           context: 163840,
-          output: 32768,
+          output: 163840,
         },
         structured_output: true,
       },
@@ -1847,12 +3087,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "DeepSeek V4 Flash",
         family: "deepseek-flash",
         cost: {
-          input: 0.14,
-          output: 0.28,
+          input: 0.0826,
+          output: 0.1652,
         },
         limit: {
           context: 1048576,
-          output: 393216,
+          output: 384000,
         },
         structured_output: true,
       },
@@ -1865,7 +3105,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 0.28,
         },
         limit: {
-          context: 1048576,
+          context: 1310720,
           output: 393216,
         },
         structured_output: true,
@@ -1875,12 +3115,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "DeepSeek V4 Pro",
         family: "deepseek-thinking",
         cost: {
-          input: 1.168,
-          output: 2.336,
+          input: 1.32,
+          output: 3.96,
         },
         limit: {
           context: 1048576,
-          output: 393216,
+          output: 384000,
         },
         structured_output: true,
       },
@@ -1889,12 +3129,25 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "DeepSeek V4 Pro 0813",
         family: "deepseek-thinking",
         cost: {
-          input: 0.435,
-          output: 0.87,
+          input: 1.32,
+          output: 3.96,
         },
         limit: {
           context: 1048576,
           output: 384000,
+        },
+        structured_output: true,
+      },
+      "dots-studio/dots-3-note-preview:free": {
+        id: "dots-studio/dots-3-note-preview:free",
+        name: "Dots3-Note Preview (free)",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 512000,
+          output: 512000,
         },
         structured_output: true,
       },
@@ -2253,12 +3506,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Gemma 4 26B A4B IT",
         family: "gemma",
         cost: {
-          input: 0.12,
-          output: 0.4,
+          input: 0.07,
+          output: 0.34,
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 16384,
         },
         structured_output: true,
       },
@@ -2281,12 +3534,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Gemma 4 31B IT",
         family: "gemma",
         cost: {
-          input: 0.1,
+          input: 0.09,
           output: 0.34,
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 16384,
         },
         structured_output: true,
       },
@@ -2427,7 +3680,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           context: 262144,
           output: 32768,
         },
-        structured_output: false,
+        structured_output: true,
       },
       "inclusionai/ring-2.6-1t": {
         id: "inclusionai/ring-2.6-1t",
@@ -2752,7 +4005,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       },
       "minimax/minimax-m2-her": {
         id: "minimax/minimax-m2-her",
-        name: "MiniMax M2-her",
+        name: "MiniMax-M2 Her",
         family: "minimax",
         cost: {
           input: 0.3,
@@ -3119,8 +4372,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Kimi K2.5",
         family: "kimi-k2",
         cost: {
-          input: 0.57,
-          output: 2.85,
+          input: 0.45,
+          output: 2.25,
         },
         limit: {
           context: 262144,
@@ -3147,8 +4400,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Kimi K2.7 Code",
         family: "kimi-k2",
         cost: {
-          input: 0.67,
-          output: 3.4,
+          input: 0.71,
+          output: 3.5,
         },
         limit: {
           context: 262144,
@@ -3292,7 +4545,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         },
         limit: {
           context: 262144,
-          output: 228000,
+          output: 262144,
         },
         structured_output: true,
       },
@@ -3399,12 +4652,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Nemotron 3.5 Lightning 30B A3B",
         family: "nemotron",
         cost: {
-          input: 0.1,
-          output: 0.25,
+          input: 0.08,
+          output: 0.2,
         },
         limit: {
           context: 1000000,
-          output: 262144,
+          output: 131072,
         },
         structured_output: true,
       },
@@ -3987,8 +5240,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "GPT-5.6 Luna",
         family: "gpt-luna",
         cost: {
-          input: 0.1,
-          output: 0.6,
+          input: 0.2,
+          output: 1.2,
         },
         limit: {
           context: 1050000,
@@ -4001,8 +5254,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "GPT-5.6 Luna Pro",
         family: "gpt-luna",
         cost: {
-          input: 0.1,
-          output: 0.6,
+          input: 0.2,
+          output: 1.2,
         },
         limit: {
           context: 1050000,
@@ -4015,8 +5268,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "GPT-5.6 Sol",
         family: "gpt-sol",
         cost: {
-          input: 5,
-          output: 30,
+          input: 2.5,
+          output: 15,
         },
         limit: {
           context: 1050000,
@@ -4029,8 +5282,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "GPT-5.6 Sol Pro",
         family: "gpt-sol",
         cost: {
-          input: 5,
-          output: 30,
+          input: 2.5,
+          output: 15,
         },
         limit: {
           context: 1050000,
@@ -4043,8 +5296,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "GPT-5.6 Terra",
         family: "gpt-terra",
         cost: {
-          input: 1,
-          output: 6,
+          input: 2,
+          output: 12,
         },
         limit: {
           context: 1050000,
@@ -4057,8 +5310,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "GPT-5.6 Terra Pro",
         family: "gpt-terra",
         cost: {
-          input: 1,
-          output: 6,
+          input: 2,
+          output: 12,
         },
         limit: {
           context: 1050000,
@@ -4540,8 +5793,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Qwen Plus 0728 (thinking)",
         family: "qwen",
         cost: {
-          input: 0.4,
-          output: 1.2,
+          input: 0.26,
+          output: 0.78,
         },
         limit: {
           context: 1000000,
@@ -4554,8 +5807,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Qwen2.5 VL 72B Instruct",
         family: "qwen",
         cost: {
-          input: 0.25,
-          output: 0.75,
+          input: 0.8,
+          output: 1,
         },
         limit: {
           context: 128000,
@@ -4624,12 +5877,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Qwen3 30B A3B",
         family: "qwen",
         cost: {
-          input: 0.12,
-          output: 0.5,
+          input: 0.13,
+          output: 0.52,
         },
         limit: {
           context: 131072,
-          output: 16384,
+          output: 8192,
         },
         structured_output: false,
       },
@@ -4792,12 +6045,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Qwen3-Next 80B-A3B Instruct",
         family: "qwen",
         cost: {
-          input: 0.1,
+          input: 0.09,
           output: 1.1,
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 16384,
         },
         structured_output: true,
       },
@@ -4820,8 +6073,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Qwen3 VL 235B A22B Instruct",
         family: "qwen",
         cost: {
-          input: 0.26,
-          output: 1.04,
+          input: 0.21,
+          output: 1.9,
         },
         limit: {
           context: 262144,
@@ -4918,12 +6171,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Qwen3.5 122B-A10B",
         family: "qwen",
         cost: {
-          input: 0.29,
-          output: 2.4,
+          input: 0.26,
+          output: 2.08,
         },
         limit: {
           context: 262144,
-          output: 81920,
+          output: 262144,
         },
         structured_output: true,
       },
@@ -4946,12 +6199,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Qwen3.5 35B-A3B",
         family: "qwen",
         cost: {
-          input: 0.25,
-          output: 1.25,
+          input: 0.225,
+          output: 1.8,
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 65536,
         },
         structured_output: true,
       },
@@ -4960,12 +6213,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Qwen3.5 397B-A17B",
         family: "qwen",
         cost: {
-          input: 0.5,
-          output: 3.6,
+          input: 0.39,
+          output: 2.34,
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 65536,
         },
         structured_output: true,
       },
@@ -5030,12 +6283,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Qwen3.6 27B",
         family: "qwen",
         cost: {
-          input: 0.6,
-          output: 3.6,
+          input: 0.3,
+          output: 2,
         },
         limit: {
           context: 262144,
-          output: 262144,
+          output: 65536,
         },
         structured_output: true,
       },
@@ -5044,7 +6297,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Qwen3.6 35B-A3B",
         family: "qwen",
         cost: {
-          input: 0.15,
+          input: 0.14,
           output: 1,
         },
         limit: {
@@ -5146,8 +6399,22 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
           output: 6,
         },
         limit: {
-          context: 1010000,
+          context: 1048576,
           output: 262144,
+        },
+        structured_output: true,
+      },
+      "qwen/qwen3.8-27b": {
+        id: "qwen/qwen3.8-27b",
+        name: "Qwen3.8 27B",
+        family: "qwen",
+        cost: {
+          input: 0.45,
+          output: 3.2,
+        },
+        limit: {
+          context: 262144,
+          output: 131072,
         },
         structured_output: true,
       },
@@ -5236,6 +6503,7 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
       "sakana/sakana-namazu": {
         id: "sakana/sakana-namazu",
         name: "Sakana Namazu",
+        family: "sakana-namazu",
         cost: {
           input: 0.95,
           output: 4,
@@ -5347,8 +6615,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "Hy3 preview",
         family: "Hy",
         cost: {
-          input: 0.063,
-          output: 0.21,
+          input: 0.18,
+          output: 0.6,
         },
         limit: {
           context: 262144,
@@ -5706,12 +6974,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "GLM-5",
         family: "glm",
         cost: {
-          input: 0.95,
-          output: 2.55,
+          input: 0.6,
+          output: 1.92,
         },
         limit: {
           context: 204800,
-          output: 131072,
+          output: 128000,
         },
         structured_output: true,
       },
@@ -5734,12 +7002,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "GLM-5.1",
         family: "glm",
         cost: {
-          input: 1.4,
-          output: 4.4,
+          input: 0.966,
+          output: 3.036,
         },
         limit: {
           context: 204800,
-          output: 131072,
+          output: 128000,
         },
         structured_output: true,
       },
@@ -5748,14 +7016,42 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "GLM-5.2",
         family: "glm",
         cost: {
-          input: 0.63,
-          output: 1.98,
+          input: 0.966,
+          output: 3.036,
         },
         limit: {
           context: 1048576,
           output: 131072,
         },
         structured_output: true,
+      },
+      "z-ai/glm-5.2:free": {
+        id: "z-ai/glm-5.2:free",
+        name: "GLM 5.2 (free)",
+        family: "glm",
+        cost: {
+          input: 0,
+          output: 0,
+        },
+        limit: {
+          context: 256000,
+          output: 256000,
+        },
+        structured_output: true,
+      },
+      "z-ai/glm-5.3": {
+        id: "z-ai/glm-5.3",
+        name: "GLM-5.3",
+        family: "glm",
+        cost: {
+          input: 1.4,
+          output: 4.4,
+        },
+        limit: {
+          context: 1048576,
+          output: 131072,
+        },
+        structured_output: false,
       },
       "z-ai/glm-5v-turbo": {
         id: "z-ai/glm-5v-turbo",
@@ -5832,11 +7128,11 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "DeepSeek V4 Flash Latest",
         family: "deepseek",
         cost: {
-          input: 0.079996,
-          output: 0.252,
+          input: 0.0765,
+          output: 0.153,
         },
         limit: {
-          context: 1048576,
+          context: 1310720,
           output: 262144,
         },
         structured_output: true,
@@ -5874,12 +7170,12 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "MoonshotAI Kimi Latest",
         family: "kimi",
         cost: {
-          input: 2.8,
-          output: 14,
+          input: 2.6,
+          output: 13,
         },
         limit: {
           context: 1048576,
-          output: 1048576,
+          output: 974842,
         },
         structured_output: true,
       },
@@ -5888,8 +7184,8 @@ export const CATALOG_SNAPSHOT: ModelsDevCatalog = {
         name: "OpenAI GPT Latest",
         family: "gpt",
         cost: {
-          input: 5,
-          output: 30,
+          input: 2.5,
+          output: 15,
         },
         limit: {
           context: 1050000,

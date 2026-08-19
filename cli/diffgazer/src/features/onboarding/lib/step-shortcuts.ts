@@ -70,14 +70,9 @@ export function getStepShortcuts({
         { key: "Enter/Space", label: "Select Model" },
         { key: "Tab", label: "Focus Actions" },
       ];
-    case "conformance":
-      return [
-        { key: "Enter/Space", label: "Confirm Conformance" },
-        { key: "Tab", label: "Focus Actions" },
-      ];
     case "acknowledgement":
       return [
-        { key: "Enter/Space", label: "Accept Notice" },
+        { key: "Enter/Space", label: "Accept Consent" },
         { key: "Tab", label: "Focus Actions" },
       ];
   }

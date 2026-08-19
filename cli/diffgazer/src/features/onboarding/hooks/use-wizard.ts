@@ -1,10 +1,12 @@
-import { useConfigurationAction, useSaveSettings } from "@diffgazer/core/api/hooks";
+import { useConfigurationAction, useSaveSettings, useSettings } from "@diffgazer/core/api/hooks";
 import type { InputMethod } from "@diffgazer/core/onboarding";
 import {
   getInitialWizardData,
+  getPlanNotice,
   type OnboardingStep,
   useWizardState,
 } from "@diffgazer/core/onboarding";
+import { acceptNotice } from "@diffgazer/core/providers";
 import type { RunnableProductId, WriteOnlySecretInput } from "@diffgazer/core/schemas/config";
 import { useState } from "react";
 import { useRegisterExitPreparation } from "../../../hooks/use-exit";
@@ -35,6 +37,7 @@ function credentialFromInput(method: InputMethod, apiKey: string): WriteOnlySecr
 export function useOnboardingWizard() {
   const { navigate } = useNavigation();
   const saveSettings = useSaveSettings();
+  const providerConsent = useSettings().data?.providerConsent ?? null;
   const runConfigurationAction = useConfigurationAction();
   const [focusZone, setFocusZone] = useState<WizardFocusZone>("step");
   const [navIndex, setNavIndex] = useState(0);
@@ -48,6 +51,7 @@ export function useOnboardingWizard() {
     },
     onComplete: () => navigate({ screen: "home" }),
     onCleanupError: reportCleanupError,
+    providerConsent,
   });
 
   useRegisterExitPreparation(wizard.cleanupCreatedConfiguration);
@@ -95,22 +99,8 @@ export function useOnboardingWizard() {
     wizard.updateData({ selectedModelId: modelId });
   }
 
-  function handleConformanceConfirm() {
-    wizard.updateData({ conformanceStatus: "passed" });
-  }
-
   function handleAcknowledgementAccept() {
-    const noticeStep = wizardData.plan.steps.find((step) => step.id === "acknowledgement");
-    const notice = noticeStep?.id === "acknowledgement" ? noticeStep.notice : null;
-    if (!notice) return;
-    wizard.updateData({
-      acknowledgement: {
-        status: "accepted",
-        noticeId: notice.id,
-        noticeVersion: notice.noticeVersion,
-        acceptedAt: new Date().toISOString(),
-      },
-    });
+    wizard.updateData({ acknowledgement: acceptNotice(getPlanNotice(wizardData.plan)) });
   }
 
   function enterStep(step: OnboardingStep | undefined) {
@@ -208,7 +198,6 @@ export function useOnboardingWizard() {
     handleInputMethodChange,
     handleApiKeyChange,
     handleModelChange,
-    handleConformanceConfirm,
     handleAcknowledgementAccept,
     handleNext,
     handleBack,

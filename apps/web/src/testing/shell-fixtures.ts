@@ -16,6 +16,8 @@ const SHELL_SETTINGS_FIXTURE: ConfigurationInitResponse["settings"] = {
   severityThreshold: "low",
   secretsStorage: "file",
   agentExecution: "parallel",
+  // A finished install: the consent is on record, so gated actions run at once.
+  providerConsent: { version: 1, acceptedAt: "2026-08-01T09:00:00.000Z" },
 };
 
 export const SHELL_TRUSTED_PROJECT: ConfigurationInitResponse["project"] = {

@@ -105,15 +105,21 @@ export function DialogShell({
 
   useFocusTrap(shellRef, { enabled: trapActive && isTopShell, restoreFocus: false, initialFocus });
 
+  // showModal() runs the browser's dialog focusing steps, which land on the
+  // first focusable descendant; the focus trap activates later, in a passive
+  // effect, and keeps focus where it already is inside the dialog. So the
+  // requested initial target is focused here, right after showModal, still
+  // before paint.
   useLayoutEffect(() => {
     const element = shellRef.current;
     if (!isHTMLDialogElement(element)) return;
     if (open && present && !element.open) {
       onBeforeShowModal?.(element.ownerDocument);
       element.showModal();
+      initialFocus?.current?.focus();
       onAfterShowModal?.();
     }
-  }, [onAfterShowModal, onBeforeShowModal, open, present]);
+  }, [initialFocus, onAfterShowModal, onBeforeShowModal, open, present]);
 
   useLayoutEffect(() => {
     const element = shellRef.current;
@@ -123,12 +129,13 @@ export function DialogShell({
       if (isClosingFromShellRef.current || !open || !present || element.open) return;
       onBeforeShowModal?.(element.ownerDocument);
       element.showModal();
+      initialFocus?.current?.focus();
       onAfterShowModal?.();
     };
 
     element.addEventListener("close", handleNativeClose);
     return () => element.removeEventListener("close", handleNativeClose);
-  }, [onAfterShowModal, onBeforeShowModal, open, present]);
+  }, [initialFocus, onAfterShowModal, onBeforeShowModal, open, present]);
 
   const setShellRef = useCallback((node: HTMLElement | null) => {
     shellRef.current = node;
